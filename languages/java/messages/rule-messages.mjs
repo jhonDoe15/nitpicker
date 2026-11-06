@@ -22,7 +22,7 @@ function layoutFix(javaStyle) {
     return 'Fix this layout by hand; no Java formatter runs.';
   }
   const formatter = JAVA_FORMATTER_TOOLS[javaStyle]?.label ?? 'your Java formatter';
-  return `Run ${formatter} on the file; it fixes this layout. ${NOT_YOUR_JAVA_FORMATTER}`;
+  return `Run nitpicker --fix or ${formatter} on the file; either fixes this layout. ${NOT_YOUR_JAVA_FORMATTER}`;
 }
 
 export function withRuleMessage(finding, { preset = 'java', javaStyle } = {}) {

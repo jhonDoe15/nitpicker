@@ -19,11 +19,11 @@ export function formatterPlan(settings) {
   });
 }
 
-export function formatCommand(context) {
+export function contextFormatPlan(context) {
   const { project, conventions, toolPrecedence, policyRoot, reportRoot, projectRoot, exclude } =
     context;
   const { formatter, targetVersion } = project;
-  const plan = formatterPlan({
+  return formatterPlan({
     formatter,
     conventions,
     precedence: toolPrecedence?.[formatter],
@@ -33,7 +33,11 @@ export function formatCommand(context) {
     reportRoot,
     exclude,
   });
-  return formatter === 'black'
+}
+
+export function formatCommand(context) {
+  const plan = contextFormatPlan(context);
+  return context.project.formatter === 'black'
     ? ['black', '--check', ...plan.options, '.']
     : ['ruff', 'format', '--check', '--diff', '--no-cache', ...plan.options, '.'];
 }

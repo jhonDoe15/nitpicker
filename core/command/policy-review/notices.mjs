@@ -4,27 +4,20 @@ import {
 } from '../../../shared/history/co-change/notices.mjs';
 import { CHANGE_HISTORY_TOOL } from '../../../shared/project-rules/hygiene-rules.mjs';
 import { jvmOutsideRootsNotices } from '../../../languages/java/adapters/notices/outside-roots-notice.mjs';
-import { readBuildSources } from '../../../languages/java/builds/narrowing/build-sources.mjs';
-import { listedFiles } from '../../policy-changes/policy-scope.mjs';
+import { declaredSourceRoots } from '../../../languages/java/adapters/notices/declared-roots.mjs';
 import { pythonOutsideRootsNotices } from '../../../languages/python/adapters/notices/outside-roots-notice.mjs';
 import { testFileMatcher } from '../../../languages/python/adapters/analysis/python-sources.mjs';
 import { detectSourceRoots } from '../../../languages/python/adapters/execution/python-project.mjs';
 import { outsideRootsNotices } from '../../../languages/typescript/preset/notices/outside-roots-notice.mjs';
 
 const TYPESCRIPT_PRESETS = new Set([undefined, 'typescript']);
-const BUILD_FILE = /(?:^|\/)(?:build\.gradle(?:\.kts)?|pom\.xml)$/u;
 
 function jvmDescriber(config, headPolicy, projectRoot) {
   return (changedFiles) =>
     jvmOutsideRootsNotices(changedFiles, {
       preset: config.preset,
       exclude: headPolicy.exclude,
-      declaredRoots: readBuildSources(
-        projectRoot,
-        listedFiles(projectRoot).filter((file) => BUILD_FILE.test(file)),
-      )
-        .filter(({ type }) => type === 'roots')
-        .flatMap(({ roots }) => roots),
+      declaredRoots: declaredSourceRoots(projectRoot),
     });
 }
 

@@ -14,7 +14,7 @@ const TOKEN = new RegExp(
   'gu',
 );
 
-function tokens(text) {
+export function gradleTokens(text) {
   return text.match(TOKEN)?.filter((token) => !/^\/[*/]/u.test(token)) ?? [];
 }
 
@@ -50,7 +50,7 @@ function consume(state, token) {
 
 export function gradleStatements(text) {
   const state = { statements: [], path: [], buffer: '', depth: 0 };
-  for (const token of tokens(text)) {
+  for (const token of gradleTokens(text)) {
     consume(state, token);
   }
   flush(state);
