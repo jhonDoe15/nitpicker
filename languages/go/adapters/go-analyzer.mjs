@@ -4,6 +4,7 @@ import { readdirSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { importClosure } from '../../../shared/import-closure.mjs';
 import { toolVersions } from './execution/go-tools.mjs';
+import { PROBE_TIMEOUT_MS } from '../../../shared/processes/deadlines.mjs';
 
 export const GO_ANALYZER_NAME = 'go';
 const ANALYZER_TIMEOUT_MS = 30 * 60 * 1000;
@@ -42,7 +43,11 @@ function hashConfiguration(settings) {
 }
 
 function goVersion(liveProjectRoot) {
-  const result = spawnSync('go', ['version'], { cwd: liveProjectRoot, encoding: 'utf8' });
+  const result = spawnSync('go', ['version'], {
+    cwd: liveProjectRoot,
+    encoding: 'utf8',
+    timeout: PROBE_TIMEOUT_MS,
+  });
   return result.status === 0 ? result.stdout.trim() : 'go missing';
 }
 
