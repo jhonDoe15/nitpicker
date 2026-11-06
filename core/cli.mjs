@@ -28,11 +28,7 @@ import { resolveComparison } from './diff/git/repository/git.mjs';
 import { resolveBase } from './diff/git/repository/base-ref.mjs';
 import { detachLocalGitVariables } from './diff/git/environment/local-variables.mjs';
 import path from 'node:path';
-import {
-  clearDiffReports,
-  absoluteTextReportPath,
-  outputRootFor,
-} from './diff/reporting/reporters.mjs';
+import { clearDiffReports, outputRootFor } from './diff/reporting/reporters.mjs';
 import { selectComparisonAnalyzers } from './command/comparison/analyzers.mjs';
 import { runQualityDiff } from './diff/comparison/run-diff.mjs';
 import { fixWorkingTree } from './fix/run-fix.mjs';
