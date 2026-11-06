@@ -4,6 +4,7 @@ export const HYGIENE_RULE_IDS = {
   committedBinary: 'committed-binary',
   largeFile: 'large-file',
   committedBuildOutput: 'committed-build-output',
+  startSchemaPush: 'start-schema-push',
 };
 
 export const PACKAGE_RULE_IDS = {
@@ -50,6 +51,13 @@ export const HYGIENE_RULES = [
     check: 'repository-hygiene',
     limit:
       'a committed build output folder (`dist`, `build`, `out`, `coverage`, `target` next to a project manifest; `.next`, `.nuxt`, `storybook-static`, `.turbo`, `.parcel-cache` anywhere)',
+    enforcedBy: EVERY_LANGUAGE,
+  },
+  {
+    id: HYGIENE_RULE_IDS.startSchemaPush,
+    check: 'repository-hygiene',
+    limit:
+      'a `start`, `prestart`, `serve` or `start:*` script (not `start:dev`, `start:local`, `start:watch`, `start:debug` or `start:test`) in `package.json`, or a script it runs, that pushes the ORM schema (`prisma db push`, `prisma migrate dev`, `drizzle-kit push`, `typeorm schema:sync`, `mikro-orm schema:update`)',
     enforcedBy: EVERY_LANGUAGE,
   },
   {

@@ -86,6 +86,10 @@ To learn why a rule is on and what form it allows before you write or change cod
   `if (!process.waitFor(30, TimeUnit.SECONDS)) process.destroyForcibly()`, reading the output on
   another thread first; never `waitFor()` or `getInputStream().readAllBytes()` alone
   (`pmd/ProcessWaitWithoutTimeout`; a build wrapper that only runs a child to completion takes an exception).
+- HTTP calls: every request has a deadline. `HttpRequest.newBuilder(uri).timeout(...)`,
+  `setReadTimeout` on an `HttpURLConnection`, `setDefaultRequestConfig(...)` on an Apache client
+  builder, `readTimeout` on a JAX-RS `ClientBuilder`; not `URL.openStream()` or
+  `HttpClients.createDefault()` (`pmd/HttpWithoutTimeout`).
 - Types: declare interfaces (`List<String> out = new ArrayList<>()`, not `ArrayList<String> out`).
 - Mutable state: don't return or store a caller's array or collection directly. Return
   `data.clone()` or `List.copyOf(items)`, and copy in the constructor.
