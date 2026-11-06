@@ -96,7 +96,10 @@ To learn why a rule is on and what form it allows before you write or change cod
   `x if x is not None else default`, never `x or default`; return a new list or dict instead of
   changing an argument (`items.append`). When code moves, change every caller and delete the old
   name: no alias (`Old = New`), module `__getattr__`, `@deprecated` or `DeprecationWarning` shim.
-- Every other rule (logging, naming, environment access, the domain, paths, secrets, shell and SQL,
+- Secrets: never put a secret in code (`password`, `token`, `api_key`, ... assigned a literal, also as the
+  fallback of `os.getenv`); read it from the environment in the composition root. Never log, print,
+  warn or raise with it: log that it is set (`token is not None`) or a masked tail.
+- Every other rule (logging, naming, environment access, the domain, paths, shell and SQL,
   test honesty) reports the allowed form in its message: follow the form the message names.
 - Tests: use the project's runner (pytest, unittest, Django or nose2). Every test asserts something. Every branch you add needs a test, and a
   surviving mutant fails: assert the exact value, so a changed line breaks a test. A test you add
@@ -105,6 +108,10 @@ To learn why a rule is on and what form it allows before you write or change cod
   instead of `time.sleep` and fake network, database and disk access. A test over budget is run
   again alone without coverage and fails only if it is still over. Lift a legitimate one in the
   top-level `exceptions` with `{ "rule": "slow-test", "paths": [...], "reason": "..." }`.
+- Start a container, server, process or git repository once, not for each test
+  (`server-or-container-per-test`): a fixture that starts one and serves several tests takes
+  `scope="session"` or `scope="module"` and resets its state between tests; `setup_method`,
+  `setUp` and `setup_function` do not start one; two tests do not make the same start.
 - Dependencies: every package production code imports is a production dependency of the project
   (pyproject, Pipfile, requirements or setup.cfg); test-only packages go in a dev group; remove a
   dependency nothing uses.
@@ -112,11 +119,13 @@ To learn why a rule is on and what form it allows before you write or change cod
   `nitpicker.config.json`. A ruff, type-checker, `python-rules`, import-linter, duplicate or coupling
   finding goes under `python.exceptions`, with an entry such as
   `{ "rule": "T201", "paths": ["src/cli/**"], "reason": "..." }`, the rule being the id in the
-  message. A function, CRAP, changed-branch coverage, mutation, file or size finding goes under the
-  top-level `exceptions`
-  (`{ "rule": "function-lines-limit", "paths": [...], "function": "name", "reason": "..." }`). Each
-  message ends with the entry and the list that takes it; each list rejects the other's rules.
-  Don't add one to get past the gate: stop and ask.
+  message. A function, CRAP, changed-branch coverage, mutation, file or size finding, and
+  `slow-test`, `test-console-output`, `unused-option` and the other rules every preset shares, go
+  under the top-level `exceptions`
+  (`{ "rule": "function-lines-limit", "paths": [...], "function": "name", "reason": "..." }`), and
+  one third-party console message goes in `testConsole.allow`. Each message ends with the entry and
+  the list that takes it; each list rejects the other's rules. Don't add one to get past the gate:
+  stop and ask.
 
 ## Repository files
 
