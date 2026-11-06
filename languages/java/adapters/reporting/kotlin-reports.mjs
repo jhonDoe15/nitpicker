@@ -31,6 +31,8 @@ import {
   readKotlinReviewFindings,
 } from '../kotlin/review-rules/review-findings.mjs';
 import { withoutCoveredSourceFindings } from '../kotlin/review-rules/spring/spring-findings.mjs';
+import { withoutTransactionAwareCacheWrites } from '../spring/transactions/transaction-aware.mjs';
+import { springRoots } from '../spring/transactions/transaction-filters.mjs';
 
 const DETEKT_TOOL = 'detekt';
 const DETEKT_REPORT = 'detekt.sarif';
@@ -149,7 +151,7 @@ export function readKotlinFindings(context, crapLimit) {
     metrics.detektCounts,
     functionUnitLocator({ ...context, kotlin: true }),
   );
-  return withoutCoveredSourceFindings(
+  const findings = withoutCoveredSourceFindings(
     [
       ...ruleFindings,
       ...readSuppressionFindings(projectRoot, {
@@ -171,6 +173,7 @@ export function readKotlinFindings(context, crapLimit) {
     ],
     context.classLimits,
   );
+  return withoutTransactionAwareCacheWrites(findings, { projectRoot, roots: springRoots(context) });
 }
 
 function subjectOf(text) {
