@@ -1,6 +1,6 @@
 # TypeScript and JavaScript: nitpicker ESLint rules
 
-The ESLint rules nitpicker's own plugin adds to the TypeScript and JavaScript presets (`nitpicker/*`). This page lists 94 rules. [All pages](README.md).
+The ESLint rules nitpicker's own plugin adds to the TypeScript and JavaScript presets (`nitpicker/*`). This page lists 95 rules. [All pages](README.md).
 
 The guide for these rules: [docs/typescript-strict-preset.md](../typescript-strict-preset.md).
 
@@ -1138,6 +1138,18 @@ Require a timeout on outbound HTTP calls.
 - **Exception:** If this is intended, add `{"rule":"nitpicker/require-http-timeout","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 - **Allowed forms by message:**
   - {{call}} has no timeout, so a server that never answers hangs this code for good. Give it a deadline: `fetch(url, { signal: AbortSignal.timeout(10_000) })`, `axios.get(url, { timeout: 10_000 })` or `{ signal: AbortSignal.timeout(10_000) }`, `https.get(url, { timeout: 10_000 })`, `got(url, { timeout: { request: 10_000 } })`; or set it once for the client: `axios.create({ timeout: 10_000 })`, `axios.defaults.timeout = 10_000`, `got.extend({ timeout: { request: 10_000 } })`, undici `setGlobalDispatcher(new Agent({ headersTimeout: 10_000, bodyTimeout: 10_000 }))`. An exception fits only when this call is meant to wait without a limit.
+
+<a id="eslint-nitpicker-require-process-timeout"></a>
+
+### `eslint/nitpicker/require-process-timeout`
+
+Require a deadline on subprocesses that production code waits for.
+
+- **Printed as:** `eslint-lint/nitpicker/require-process-timeout`
+- **Exception:** If this is intended, add `{"rule":"nitpicker/require-process-timeout","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
+- **Allowed forms by message:**
+  - Give {{method}} a positive timeout, such as { timeout: 30_000 }. This call waits for the child process to exit, so a command that never exits hangs this request, job or command for good. An exception fits only a program whose purpose is to run the child to completion, such as a build wrapper.
+  - Give {{method}} a deadline: { timeout: 30_000 } or { signal: AbortSignal.timeout(30_000) }. This code waits for the child process to exit, so a command that never exits hangs this request, job or command for good. An exception fits only a program whose purpose is to run the child to completion, such as a build wrapper.
 
 <a id="eslint-nitpicker-require-test-process-timeout"></a>
 

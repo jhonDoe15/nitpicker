@@ -1040,6 +1040,17 @@
       }
     ],
     { "key": "exceptions", "rule": "nitpicker/require-http-timeout" },
+    "nitpicker/require-process-timeout",
+    "Require a deadline on subprocesses that production code waits for",
+    [
+      {
+        "message": "Give {{method}} a positive timeout, such as { timeout: 30_000 }. This call waits for the child process to exit, so a command that never exits hangs this request, job or command for good. An exception fits only a program whose purpose is to run the child to completion, such as a build wrapper."
+      },
+      {
+        "message": "Give {{method}} a deadline: { timeout: 30_000 } or { signal: AbortSignal.timeout(30_000) }. This code waits for the child process to exit, so a command that never exits hangs this request, job or command for good. An exception fits only a program whose purpose is to run the child to completion, such as a build wrapper."
+      }
+    ],
+    { "key": "exceptions", "rule": "nitpicker/require-process-timeout" },
     "nitpicker/require-test-process-timeout",
     "Require a timeout on synchronous test subprocesses",
     [
@@ -1181,9 +1192,10 @@
     [0, 370, 2, 3, 371, 5, 372, 7, 373, -1, -1],
     [0, 374, 2, 3, 375, 5, 376, 7, 377, -1, -1],
     [0, 378, 2, 3, 379, 5, 380, 7, 381, -1, -1],
-    [0, 382, 383, 384, 385, 5, 386, 7, 387, -1, -1],
-    [0, 388, 2, 3, 389, 5, 390, 7, 391, -1, -1],
+    [0, 382, 2, 3, 383, 5, 384, 7, 385, -1, -1],
+    [0, 386, 387, 388, 389, 5, 390, 7, 391, -1, -1],
     [0, 392, 2, 3, 393, 5, 394, 7, 395, -1, -1],
-    [0, 396, 2, 3, 397, 5, 398, 7, 399, -1, -1]
+    [0, 396, 2, 3, 397, 5, 398, 7, 399, -1, -1],
+    [0, 400, 2, 3, 401, 5, 402, 7, 403, -1, -1]
   ]
 }
