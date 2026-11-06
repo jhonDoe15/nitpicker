@@ -428,4 +428,35 @@ describe.skipIf(!pytestUsable())('slow pytest tests through the timing plugin', 
       'TestOrders.test_create',
     ]);
   });
+  it('charges no shared fixture a test requests by name, and nested function fixtures once', () => {
+    const projectRoot = directory({
+      'tests/test_shop.py': [
+        'import time\n\nimport pytest\n\n',
+        '@pytest.fixture(scope="session")\ndef database():\n    time.sleep(0.4)\n\n',
+        '@pytest.fixture\ndef cart():\n    time.sleep(0.15)\n\n',
+        '@pytest.fixture\ndef order(request):\n    request.getfixturevalue("cart")\n\n',
+        'def test_query(request):\n    request.getfixturevalue("database")\n\n',
+        'def test_order(order):\n    pass\n',
+      ].join('\n'),
+    });
+    const { reportRoot } = timed(projectRoot, PYTEST_SCRIPT, [
+      '-q',
+      '-p',
+      'no:cacheprovider',
+      '-o',
+      'junit_family=xunit1',
+      '-o',
+      'junit_duration_report=call',
+    ]);
+    const findings = readSlowTestFindings({
+      reportRoot,
+      projectRoot,
+      limits: { unitTestSeconds: 0.1 },
+    });
+    const [name, seconds] = findings.map(({ message }) => message.split(' took '))[0];
+
+    expect(findings).toHaveLength(1);
+    expect(name).toBe('test_order');
+    expect(Number.parseFloat(seconds)).toBeLessThan(0.25);
+  });
 });

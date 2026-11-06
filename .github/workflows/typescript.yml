@@ -79,12 +79,12 @@ jobs:
     if: github.event_name != 'pull_request' || github.event.label.name == 'run-ci'
     name: test shard ${{ matrix.shard }}/${{ strategy.job-total }}
     runs-on: ubuntu-latest
-    # A healthy shard takes 1 to 3 minutes; this stops a hung one well before the 6-hour default.
+    # A healthy shard takes 6 to 9 minutes; this stops a hung one well before the 6-hour default.
     timeout-minutes: 30
     strategy:
       fail-fast: false
       matrix:
-        shard: [1, 2, 3, 4, 5, 6, 7, 8]
+        shard: [1, 2]
     steps:
       - uses: actions/checkout@v7.0.1
         with:

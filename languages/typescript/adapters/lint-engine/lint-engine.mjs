@@ -1,4 +1,3 @@
-import { spawnSyncWithOutputFile } from '../../../../core/tooling/output-file/output-file.mjs';
 import path from 'node:path';
 import { resolveTool } from '../../../../core/tooling/tool-resolution.mjs';
 import { readHeadPolicy } from '../../preset/head-policy.mjs';
@@ -7,11 +6,17 @@ import {
   TEST_ENVIRONMENTS_VARIABLE,
 } from '../../preset/test-environment/resolve-environment.mjs';
 import { lintWithOxlint } from '../oxlint/oxlint-runner.mjs';
+import { spawnCollected } from '../oxlint/oxlint-process.mjs';
 import { PROJECT_LAYER_VARIABLE, projectLayerValue } from './project-layer.mjs';
 
 const MAX_ESLINT_OUTPUT_BYTES = 50 * 1024 * 1024;
 
-export function runLintEngine({ options, projectConfigPath, policyConfigPath, testEnvironments }) {
+export async function runLintEngine({
+  options,
+  projectConfigPath,
+  policyConfigPath,
+  testEnvironments,
+}) {
   const invocation = eslintInvocation({
     options,
     projectConfigPath,
@@ -59,9 +64,9 @@ function eslintInvocation({ options, projectConfigPath, policyConfigPath, testEn
   };
 }
 
-function runEslintCli(invocation, patterns, extraEnvironment = {}) {
+async function runEslintCli(invocation, patterns, extraEnvironment = {}) {
   const { options } = invocation;
-  const result = spawnSyncWithOutputFile(
+  const result = await spawnCollected(
     process.execPath,
     [
       invocation.eslintCliPath,
@@ -76,10 +81,8 @@ function runEslintCli(invocation, patterns, extraEnvironment = {}) {
     {
       cwd: options.projectRoot,
       env: { ...invocation.environment, ...extraEnvironment },
-      encoding: 'utf8',
       maxBuffer: MAX_ESLINT_OUTPUT_BYTES,
-      timeout: options.timeoutMs,
-      killSignal: 'SIGTERM',
+      timeoutMs: options.timeoutMs,
     },
   );
   assertEslintCompleted(result, options.timeoutMs);
