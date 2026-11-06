@@ -832,7 +832,7 @@ Tests for null should not use the equals() method.
 
 ### `pmd/ExhaustiveEnumPredicate`
 
-In main sources: a boolean in a value position (returned, assigned, a lambda body, also inside a larger `&&`/`||` or as a ternary condition there) that compares one subject that reading cannot change (a variable, a `this` field, a no-argument `getX()`/`isX()` call, a record accessor; not `it.next()` or another call) with some constants of one enum, qualified or static-imported (`s == PAID || s == SHIPPED`, `o.status() != A && o.status() != B`, `EnumSet.of(A, B).contains(s)`).
+In main sources: a boolean in a value position (returned, assigned, a lambda body, also inside a larger `&&`/`||` or as a ternary condition there) that compares one subject that reading cannot change (a variable, a `this` field, a no-argument `getX()`/`isX()` call, a record accessor; not `it.next()` or another call) with some constants of one enum, qualified or static-imported (`s == PAID || s == SHIPPED`, `o.status() != A && o.status() != B`, `s.equals(A) || B.equals(s)`, `Objects.equals(s, A)`, membership in `EnumSet.of`, `Set.of`, `List.of` or `Arrays.asList` of constants). Also a `switch` over a project enum with a `default` whose other branches all yield the same boolean and whose `default` yields the other (`case A, B -> true; default -> false`).
 
 - **Scope:** Main sources only.
 - **Why it is on:** A PMD rule nitpicker defines: it names one allowed form where the language offers several, and reports the other forms.

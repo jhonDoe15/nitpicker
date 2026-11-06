@@ -82,6 +82,19 @@ describe('exhaustive enum predicate in Kotlin', () => {
     ]);
   });
 
+  it('reports a when over some entries whose else yields the other Boolean', () => {
+    const when = (elements, overrides = {}) =>
+      membership(elements, { kind: 'when', symbol: 'isPending', line: 12, ...overrides });
+    const findings = findingsFor([
+      when(['Status.NEW', 'Status.PAID']),
+      when(['Status.NEW', 'Status.PAID', 'Status.SHIPPED', 'Status.CANCELLED'], { line: 14 }),
+      when(['Status.NEW', 'Status.PAID'], { holder: 'other', line: 16 }),
+      when(['Status.NEW', 'Status.PAID'], { subjectStable: false, line: 18 }),
+    ]);
+
+    expect(summary(findings)).toEqual([`${ENUM_PREDICATE_RULE} isPending 12`]);
+  });
+
   it('allows a chain that lists every entry, an enum of fewer than three entries and a repeated entry', () => {
     const all = chain(
       ['NEW', 'PAID', 'SHIPPED', 'CANCELLED'].map((name) => comparison('status', `Status.${name}`)),

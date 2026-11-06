@@ -103,8 +103,8 @@ To learn why a rule is on and what form it allows before you write or change cod
   `SimpleDateFormat` are banned.
 - Enums: to sort the entries of one of your enums into two groups, classify every entry with a
   `when` without `else` (adding an entry then fails to compile), or a `Boolean` each entry
-  declares. Not `s == PAID || s == SHIPPED` or `s in setOf(PAID, SHIPPED)`
-  (`pmd/ExhaustiveEnumPredicate`).
+  declares. Not `s == PAID || s == SHIPPED`, `s in setOf(PAID, SHIPPED)` or a `when` with
+  `else -> false` (`pmd/ExhaustiveEnumPredicate`).
 - No top-level or `object` function that only passes its parameters, in order, to another function
   with the same parameters (`pmd/StaticForwardingWrapper`); call that function. Factories named
   `of` or `from` are fine.
