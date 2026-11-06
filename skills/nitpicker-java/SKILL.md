@@ -10,6 +10,14 @@ Checkstyle, google-java-format, JaCoCo, CRAP, PIT mutation testing, jscpd and si
 only on findings your change adds, so leave code the task doesn't need alone. Write the allowed
 forms below from the start; the gate is a backstop.
 
+## Check one file or folder
+
+To look at one file or folder, for example before you change it, pass its path: `npx nitpicker --all
+src/main/java/com/example/orders` lists every finding in it, and `npx nitpicker
+src/main/java/com/example/orders/Order.java` gates only your change to that file. Paths are read
+from the current folder. The analysis still covers the whole project, so it takes as long as a full
+run; finish with the plain run below.
+
 ## Finish with the gate
 
 1. Run the project's tests (`./gradlew test`, or `./mvnw test` on Maven). Failing tests or compile

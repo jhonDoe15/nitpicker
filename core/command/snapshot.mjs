@@ -17,18 +17,13 @@ import { realpathSync } from 'node:fs';
 import { runGit } from '../diff/git/repository/command.mjs';
 import { writeGithubOutput } from '../diff/reporting/github/emit.mjs';
 import { captureWorkingTree } from '../diff/git/repository/git.mjs';
+import { outputRootFor } from '../diff/reporting/reporters.mjs';
 import { assertHasCommit } from '../diff/git/repository/base-ref.mjs';
 import { partialRunField, partialRunOf } from '../diff/reporting/partial-run/partial-run.mjs';
 import { failingHeadTests } from '../diff/reporting/failing-tests/failing-tests.mjs';
 
 function stderrWarning(stderr) {
   return (message) => stderr.write(`nitpicker: ${message}\n`);
-}
-
-function snapshotOutputRoot(options, currentProjectRoot) {
-  return options.outputRoot === undefined
-    ? path.join(currentProjectRoot, 'reports/quality/snapshot')
-    : path.resolve(currentProjectRoot, options.outputRoot);
 }
 
 export function runSnapshotCli({
@@ -40,8 +35,9 @@ export function runSnapshotCli({
   stderr,
   environment,
   runTasks,
+  scope,
 }) {
-  const outputRoot = snapshotOutputRoot(options, currentProjectRoot);
+  const outputRoot = outputRootFor(currentProjectRoot, options.outputRoot, 'snapshot');
   const selectedAnalyzers = selectAnalyzers(analyzers, options.analyzerNames);
   if (selectedAnalyzers.length === 0) {
     throw new Error('No quality analyzers are configured.');
@@ -57,6 +53,7 @@ export function runSnapshotCli({
       currentProjectRoot,
       headPolicy,
       runTasks,
+      scope,
     }),
   );
   Object.assign(
@@ -93,6 +90,7 @@ function runInSnapshotWorktree({
   currentProjectRoot,
   headPolicy,
   runTasks,
+  scope,
 }) {
   const needsDependencies = selectedAnalyzers.some((analyzer) => analyzer.requiresDependencies);
   const dependencies = needsDependencies
@@ -111,6 +109,7 @@ function runInSnapshotWorktree({
       liveProjectRoot: currentProjectRoot,
       headPolicy,
       runTasks,
+      scope,
     });
   } finally {
     removeSnapshotDependencies(dependencies);
