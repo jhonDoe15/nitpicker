@@ -14,9 +14,15 @@ const NEUTRAL_CONFIGURATION = ['-c', 'core.excludesFile=', '-c', 'safe.directory
 const NOT_A_REPOSITORY =
   /not a git repository|gitfile does not point to a valid repository|invalid gitfile format/iu;
 const SUCCESS = 0;
+const GIT_TIMEOUT_MS = 10 * 60 * 1000;
 
 function spawnGit(directory, args) {
-  const options = { cwd: directory, encoding: 'utf8', maxBuffer: Number.POSITIVE_INFINITY };
+  const options = {
+    cwd: directory,
+    encoding: 'utf8',
+    maxBuffer: Number.POSITIVE_INFINITY,
+    timeout: GIT_TIMEOUT_MS,
+  };
   const gitArgs = ['git', ...NEUTRAL_CONFIGURATION, ...args];
   const scrubbed = spawnSync(ENV_PROGRAM, [...NEUTRAL_ENVIRONMENT, ...gitArgs], options);
   if (scrubbed.error?.code !== MISSING_PROGRAM) {
