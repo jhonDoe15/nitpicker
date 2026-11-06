@@ -107,6 +107,29 @@ export const testFailureMessageCases = [
     allowed: 'z.email()',
   },
   {
+    name: 'v.any() object field names the valibot pipe that validates it',
+    config: productionRulesConfig,
+    filename: 'src/service.ts',
+    banned: "import * as v from 'valibot';\nexport const schema = v.object({ email: v.any() });",
+    allowed: 'v.pipe(v.string(), v.email())',
+  },
+  {
+    name: 'Joi .unknown() names Joi.object as it is',
+    config: productionRulesConfig,
+    filename: 'src/service.ts',
+    banned:
+      "import Joi from 'joi';\nexport const schema = Joi.object({ a: Joi.string() }).unknown();",
+    allowed: 'Joi.object({...}) as it is, which rejects unknown keys',
+  },
+  {
+    name: 'additionalProperties: true in an ajv schema names additionalProperties: false',
+    config: productionRulesConfig,
+    filename: 'src/service.ts',
+    banned:
+      "import Ajv from 'ajv';\nconst ajv = new Ajv();\nexport const check = ajv.compile({ type: 'object', additionalProperties: true });",
+    allowed: 'additionalProperties: false, which rejects unknown keys',
+  },
+  {
     name: 'partial output assertion names toEqual',
     config: partialAssertionConfig,
     filename: testFile,

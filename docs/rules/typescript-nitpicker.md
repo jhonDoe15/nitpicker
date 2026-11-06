@@ -1,6 +1,6 @@
 # TypeScript and JavaScript: nitpicker ESLint rules
 
-The ESLint rules nitpicker's own plugin adds to the TypeScript and JavaScript presets (`nitpicker/*`). This page lists 88 rules. [All pages](README.md).
+The ESLint rules nitpicker's own plugin adds to the TypeScript and JavaScript presets (`nitpicker/*`). This page lists 89 rules. [All pages](README.md).
 
 The guide for these rules: [docs/typescript-strict-preset.md](../typescript-strict-preset.md).
 
@@ -849,14 +849,14 @@ This test file declares {{environment}} but never uses the DOM. Change the direc
 
 ### `eslint/nitpicker/no-unvalidated-schema-field`
 
-Disallow z.unknown() and z.any() as a field of a z.object schema.
+Disallow unchecked fields (z.unknown(), v.any(), Joi.any(), Type.Unknown() and the like) and objects that keep unknown keys in the schemas of every validation library the preset knows.
 
 - **Printed as:** `eslint-lint/nitpicker/no-unvalidated-schema-field`
 - **Exception:** If this is intended, add `{"rule":"nitpicker/no-unvalidated-schema-field","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 - **Allowed forms by message:**
-  - {{factory}}() as a field only checks that the key exists and hands the value on unchecked. Validate the field in the schema, e.g. z.string().trim().min(1) or z.email(). An exception fits only when the field is genuinely opaque.
+  - {{factory}} lets any value of this field through unchecked. Validate the field in the schema, e.g. {{example}}. An exception fits only when the field is genuinely opaque.
   - z.custom() without a check function is a cast, not a validator. Pass the check, z.custom\<T>((value) => ...), or build the schema from validating parts. An exception fits only when the value is genuinely opaque.
-  - z.looseObject(), .loose() and .passthrough() let unknown keys through unvalidated, and .catchall(z.unknown()) does the same. Use z.object({...}), which drops unknown keys, or z.strictObject({...}) to reject them. An exception fits only when the extra keys are genuinely opaque.
+  - {{form}} lets unknown keys through unvalidated. Use {{allowed}}. An exception fits only when the extra keys are genuinely opaque.
 
 <a id="eslint-nitpicker-no-wait-for-with-fake-timers"></a>
 
@@ -1061,6 +1061,17 @@ Report statements that execute observable work while a module is imported.
   - Top-level {{kind}} executes control flow during module loading. Move the work into a function that the app entry calls. The entry (the module script in Vite's index.html, else src/main.tsx) is detected; for another entry file, list it under `layout.entryPoints` in nitpicker.config.json.
   - Top-level expression executes work during module loading. Move the work into a function that the app entry calls. The entry (the module script in Vite's index.html, else src/main.tsx) is detected; for another entry file, list it under `layout.entryPoints` in nitpicker.config.json.
   - `{{call}}` runs when the module is imported. Move it into a function and call that from the composition root, passing the result in. An exception fits only when it must run at import.
+
+<a id="eslint-nitpicker-require-error-listener"></a>
+
+### `eslint/nitpicker/require-error-listener`
+
+Require an 'error' listener on streams, sockets, child processes and clients.
+
+- **Printed as:** `eslint-lint/nitpicker/require-error-listener`
+- **Exception:** If this is intended, add `{"rule":"nitpicker/require-error-listener","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
+- **Allowed forms by message:**
+  - `{{name}}` emits 'error' when its connection, file or process fails, and Node.js throws an 'error' event that has no listener, which stops the process. Attach one where it is created: `{{name}}.on('error', (error) => ...)`, or hand it to `pipeline(...)` or `finished(...)` from `node:stream/promises`, to `events.once(...)`, or read it with `for await`. An exception fits only when a crash of the process is the intended outcome.
 
 <a id="eslint-nitpicker-require-http-timeout"></a>
 
