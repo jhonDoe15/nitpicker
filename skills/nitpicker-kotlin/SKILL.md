@@ -108,7 +108,8 @@ To learn why a rule is on and what form it allows before you write or change cod
 - No top-level or `object` function that only passes its parameters, in order, to another function
   with the same parameters (`pmd/StaticForwardingWrapper`); call that function. Factories named
   `of` or `from` are fine.
-- A data class or `@ConfigurationProperties` class has `tags` or `tag`, not both
+- A data class, a `@ConfigurationProperties` class, the public properties of any class and the
+  defaulted parameters of a public function have `tags` or `tag`, not both
   (`pmd/SingularAndPluralMember`); one item is a one-element list.
 - A validation annotation on a constructor property takes the field target:
   `data class OrderRequest(@field:NotBlank val item: String)`, not `@NotBlank val item`, which

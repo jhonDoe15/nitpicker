@@ -1731,7 +1731,7 @@ A singleton class should only ever have one instance.
 
 ### `pmd/SingularAndPluralMember`
 
-In main sources: a record, or a `@ConfigurationProperties` class or a class nested in one, with both `tag` and `tags` (`-s`, `-es`, `y`/`ies`) where the plural is a `List`, `Set`, `Collection`, `Iterable` or array of the singular's type.
+In main sources: two members named `tag` and `tags` (`-s`, `-es`, `y`/`ies` and irregular plurals such as `child`/`children`) where the plural is a `List`, `Set`, `Collection`, `Iterable` or array of the singular's type, in a record, a `@ConfigurationProperties` class or a class nested in one, a data class (Lombok `@Value`, `@Data`, `@Builder` or `@SuperBuilder`, Jackson annotations on the class, its fields or constructors, or only getters, setters, `equals`, `hashCode` and `toString`; JPA entities and Spring stereotypes excluded), or two `@Nullable` parameters of a public method or constructor of a public type.
 
 - **Scope:** Main sources only.
 - **Why it is on:** A PMD rule nitpicker defines: it names one allowed form where the language offers several, and reports the other forms.
