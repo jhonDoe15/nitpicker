@@ -88,4 +88,140 @@
       </property>
     </properties>
   </rule>
+  <rule name="RetryInTest" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
+        message="Remove the retry: a test that passes on a later attempt hides a flaky or racy test. Fix the cause, such as waiting on the condition instead of a fixed delay or isolating shared state.">
+    <priority>2</priority>
+    <properties>
+      <property name="xpath">
+        <value><![CDATA[
+//Annotation[pmd-java:typeIs('org.junitpioneer.jupiter.RetryingTest')
+             or pmd-java:typeIs('io.github.artsok.RepeatedIfExceptionsTest')]
+| //Annotation[pmd-java:typeIs('org.testng.annotations.Test')]//MemberValuePair[@Name = 'retryAnalyzer']
+| //(ClassDeclaration | EnumDeclaration | RecordDeclaration)/(ExtendsList | ImplementsList)/ClassType
+    [pmd-java:typeIs('org.testng.IRetryAnalyzer')]
+| //ConstructorCall[AnonymousClassDeclaration][pmd-java:typeIs('org.testng.IRetryAnalyzer')]
+| //(LambdaExpression | MethodReference)[pmd-java:typeIs('org.testng.IRetryAnalyzer')]
+| //MethodCall[pmd-java:matchesSig('org.testng.annotations.ITestAnnotation#setRetryAnalyzer(_)')]
+]]></value>
+      </property>
+    </properties>
+  </rule>
+  <rule name="ServerOrContainerPerTest" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
+        message="Do not start a container, server or process for each test: a non-static @Container field, a @Rule or an instance @RegisterExtension of one, a start in @BeforeEach, @Before or @BeforeMethod (or a method of the class it calls) on an object made for each test, or the same start in two or more tests of a class. Start it once (a static @Container, a @ClassRule, a static @RegisterExtension or @BeforeAll) and reset its state between tests, or test the logic against an in-memory implementation and keep the real transport for transport tests. An exception fits only when each test needs a fresh instance.">
+    <priority>2</priority>
+    <properties>
+      <property name="xpath">
+        <value><![CDATA[
+let $perClass := function($type) {
+      exists($type/ModifierList/Annotation[pmd-java:typeIs('org.junit.jupiter.api.TestInstance')]
+        //(FieldAccess | VariableAccess)[@Name = 'PER_CLASS'])
+    },
+    $hooks := //MethodDeclaration[pmd-java:hasAnnotation('org.junit.jupiter.api.BeforeEach')
+      or pmd-java:hasAnnotation('org.junit.Before')
+      or pmd-java:hasAnnotation('org.testng.annotations.BeforeMethod')],
+    $teardowns := //MethodDeclaration[pmd-java:hasAnnotation('org.junit.jupiter.api.AfterEach')
+      or pmd-java:hasAnnotation('org.junit.After')
+      or pmd-java:hasAnnotation('org.testng.annotations.AfterMethod')],
+    $tests := //MethodDeclaration[pmd-java:hasAnnotation('org.junit.jupiter.api.Test')
+      or pmd-java:hasAnnotation('org.junit.Test')
+      or pmd-java:hasAnnotation('org.testng.annotations.Test')
+      or pmd-java:hasAnnotation('org.junit.jupiter.params.ParameterizedTest')],
+    $alwaysNew := //MethodCall[
+      pmd-java:matchesSig('org.springframework.boot.SpringApplication#run(_*)')
+      or pmd-java:matchesSig('org.springframework.boot.builder.SpringApplicationBuilder#run(_*)')
+      or pmd-java:matchesSig('java.lang.ProcessBuilder#start()')
+      or pmd-java:matchesSig('java.lang.Runtime#exec(_*)')
+      or pmd-java:matchesSig('org.mockserver.integration.ClientAndServer#startClientAndServer(_*)')
+      or pmd-java:matchesSig('org.springframework.kafka.test.EmbeddedKafkaBroker#afterPropertiesSet()')],
+    $container := function($node) {
+      $node/pmd-java:typeIs('org.testcontainers.containers.GenericContainer')
+        or $node/pmd-java:typeIs('org.testcontainers.containers.ComposeContainer')
+        or $node/pmd-java:typeIs('org.testcontainers.containers.DockerComposeContainer')
+    },
+    $chainRoot := function($expression) {
+      $expression/descendant-or-self::ConstructorCall[
+        every $link in (ancestor::* intersect $expression/descendant-or-self::*)
+        satisfies $link[self::MethodCall]]
+    },
+    $starters := //MethodCall[
+      pmd-java:matchesSig('org.testcontainers.lifecycle.Startable#start()')
+      or pmd-java:matchesSig('com.github.tomakehurst.wiremock.WireMockServer#start()')
+      or pmd-java:matchesSig('okhttp3.mockwebserver.MockWebServer#start(_*)')
+      or pmd-java:matchesSig('mockwebserver3.MockWebServer#start(_*)')
+      or pmd-java:matchesSig('com.sun.net.httpserver.HttpServer#start()')
+      or pmd-java:matchesSig('org.eclipse.jetty.util.component.LifeCycle#start()')
+      or pmd-java:matchesSig('org.apache.catalina.startup.Tomcat#start()')
+      or pmd-java:matchesSig('io.undertow.Undertow#start()')
+      or pmd-java:matchesSig('io.javalin.Javalin#start(_*)')
+      or pmd-java:matchesSig('redis.embedded.RedisServer#start()')
+      or (@MethodName = 'start' and ArgumentList[not(*)]
+        and (exists($chainRoot(*[1])[$container(.)])
+          or (let $name := *[1][self::VariableAccess or self::FieldAccess[ThisExpression]]/@Name
+              return (ancestor::MethodDeclaration[1]//LocalVariableDeclaration
+                  | ancestor::ClassBody[1]/FieldDeclaration)
+                [VariableDeclarator/VariableId/@Name = $name]
+                [ClassType[$container(.)] or $chainRoot(VariableDeclarator/*[2])[$container(.)]])))],
+    $fresh := $alwaysNew | $starters[
+      let $receiver := *[1][self::VariableAccess or self::FieldAccess[ThisExpression]],
+          $name := $receiver/@Name,
+          $method := ancestor::MethodDeclaration[1],
+          $type := ancestor::ClassBody[1]/..,
+          $field := ancestor::ClassBody[1]/FieldDeclaration[VariableDeclarator/VariableId/@Name = $name]
+      return exists($chainRoot(*[1]))
+        or ($receiver[self::VariableAccess]
+            and $method//LocalVariableDeclaration/VariableDeclarator/VariableId[@Name = $name])
+        or ($field and not($receiver[self::VariableAccess]
+            and $method//LocalVariableDeclaration/VariableDeclarator/VariableId[@Name = $name])
+            and ((not($field/pmd-java:modifiers() = 'static') and not($perClass($type)))
+              or $hooks[ancestor::ClassBody[1]/.. is $type]
+                  //AssignmentExpression/*[1][@Name = $name]
+              or $teardowns[ancestor::ClassBody[1]/.. is $type]
+                  //MethodCall[@MethodName = ('stop', 'close', 'shutdown')]/*[1][@Name = $name]))
+    ],
+    $key := function($call) {
+      let $statement := $call/ancestor::*[parent::Block][1],
+          $local := $call/ancestor::MethodDeclaration[1]//LocalVariableDeclaration
+            [VariableDeclarator/VariableId/@Name = $call/*[1][self::VariableAccess]/@Name]
+      return string-join(($local, $statement)/descendant-or-self::*
+        /(@Name | @MethodName | @SimpleName | @Image | @ValueAsInt), ' ')
+    }
+return (
+  //ClassDeclaration[not($perClass(.))]/ClassBody/FieldDeclaration
+    [pmd-java:hasAnnotation('org.testcontainers.junit.jupiter.Container')]
+    [not(pmd-java:modifiers() = 'static')]
+  | //ClassDeclaration[not($perClass(.))]/ClassBody/FieldDeclaration
+    [pmd-java:hasAnnotation('org.junit.jupiter.api.extension.RegisterExtension')]
+    [not(pmd-java:modifiers() = 'static')]
+    [ClassType[pmd-java:typeIs('com.github.tomakehurst.wiremock.junit5.WireMockExtension')]]
+  | //FieldDeclaration[pmd-java:hasAnnotation('org.junit.Rule')]
+    [not(pmd-java:modifiers() = 'static')]
+    [ClassType[pmd-java:typeIs('org.testcontainers.lifecycle.Startable')
+      or pmd-java:typeIs('com.github.tomakehurst.wiremock.WireMockServer')
+      or pmd-java:typeIs('okhttp3.mockwebserver.MockWebServer')
+      or pmd-java:typeIs('org.springframework.kafka.test.rule.EmbeddedKafkaRule')
+      or pmd-java:typeIs('org.mockserver.junit.MockServerRule')]]
+  | $fresh[
+      let $method := ancestor::MethodDeclaration[1],
+          $type := ancestor::ClassBody[1]/..
+      return $hooks[. is $method]
+        or $hooks[ancestor::ClassBody[1]/.. is $type]
+            //MethodCall[*[1][self::ArgumentList or self::ThisExpression]]
+              [@MethodName = $method/@Name]
+    ]
+  | $fresh[
+      let $call := .,
+          $method := ancestor::MethodDeclaration[1],
+          $type := ancestor::ClassBody[1]/..,
+          $own := $key(.)
+      return $tests[. is $method]
+        and (some $other in $fresh satisfies
+          $other/ancestor::MethodDeclaration[1][not(. is $method)][some $t in $tests satisfies $t is .]
+            /ancestor::ClassBody[1]/.. is $type
+          and $key($other) = $own)
+    ]
+)
+]]></value>
+      </property>
+    </properties>
+  </rule>
 </ruleset>

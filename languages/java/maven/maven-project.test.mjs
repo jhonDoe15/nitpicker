@@ -106,6 +106,8 @@ function defaultModule(basedir, coordinates, packaging) {
     surefireReports: path.join(target, 'surefire-reports'),
     failsafeReports: path.join(target, 'failsafe-reports'),
     runsFailsafe: false,
+    testJvmArgs: [],
+    integrationTestJvmArgs: [],
     published: false,
     jacocoDestFiles: [],
     archunitIncludes: undefined,
@@ -143,6 +145,8 @@ describe('readReactor', () => {
       surefireReports: `${root}/core/out/tests`,
       failsafeReports: `${root}/core/out/it-tests`,
       runsFailsafe: true,
+      testJvmArgs: [],
+      integrationTestJvmArgs: [],
       published: false,
       jacocoDestFiles: [`${root}/core/out/mine.exec`],
       archunitIncludes: '**/*Rules.class',
@@ -242,6 +246,31 @@ function failsafe(executions, configuration = '') {
 }
 
 const inBuild = (plugins) => `<build><plugins>${plugins}</plugins></build>`;
+
+describe('testJvmArgs', () => {
+  it('reads the surefire default-test execution, not another test execution', () => {
+    const execution = (id, value) =>
+      `<execution><id>${id}</id><goals><goal>test</goal></goals>` +
+      `<configuration><argLine>-Dfrom=${value}</argLine></configuration></execution>`;
+    const executions = `<executions>${execution('extra', 'extra')}${execution('default-test', 'default')}</executions>`;
+
+    expect(soloModule(inBuild(plugin('maven-surefire-plugin', executions))).testJvmArgs).toEqual([
+      '-Dfrom=default',
+    ]);
+  });
+
+  it('reads the Failsafe integration-test system properties apart from the Surefire ones', () => {
+    const properties =
+      '<configuration><systemPropertyVariables><spring.aot.enabled>true</spring.aot.enabled>' +
+      '</systemPropertyVariables></configuration>';
+    const module = soloModule(inBuild(failsafe(`<execution>${IT_GOAL}${properties}</execution>`)));
+
+    expect([module.testJvmArgs, module.integrationTestJvmArgs]).toEqual([
+      [],
+      ['-Dspring.aot.enabled=true'],
+    ]);
+  });
+});
 
 describe('lifecycleArgs', () => {
   it('runs verify, with release, publishing and network plugins and JaCoCo checks off, when Failsafe runs', () => {

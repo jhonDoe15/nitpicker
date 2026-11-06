@@ -10,6 +10,8 @@ import {
   TYPESCRIPT_CONVENTIONS,
 } from '../../languages/typescript/conventions/typescript-conventions.mjs';
 import { eslintConfigStyle } from '../../languages/typescript/preset/eslint-project/eslint-style.mjs';
+import { strykerIgnoredNotices } from '../../languages/typescript/preset/project-configs/ignored-notices.mjs';
+import { scriptProjectToolNotices } from '../../languages/typescript/preset/project-tools/ignored-notices.mjs';
 
 const BY_PRESET = new Map([
   ['typescript', TYPESCRIPT_CONVENTIONS],
@@ -23,18 +25,24 @@ export function conventionDefinitions(preset = 'typescript') {
   return BY_PRESET.get(preset) ?? [];
 }
 
-function jscpdStyle({ config, projectRoot }) {
-  return {
+function noticeStyle(notices) {
+  return (context) => ({
     unused: {},
     project: {},
     note: () => undefined,
-    summary: () => jscpdIgnoredNotices(config, projectRoot),
-  };
+    summary: () => notices(context),
+  });
 }
 
+const jscpdStyle = noticeStyle(({ config, projectRoot }) =>
+  jscpdIgnoredNotices(config, projectRoot),
+);
+const strykerStyle = noticeStyle(strykerIgnoredNotices);
+const scriptProjectToolStyle = noticeStyle(scriptProjectToolNotices);
+
 const STYLES_BY_PRESET = new Map([
-  ['typescript', [eslintConfigStyle, jscpdStyle]],
-  ['javascript', [eslintConfigStyle, jscpdStyle]],
+  ['typescript', [strykerStyle, eslintConfigStyle, jscpdStyle, scriptProjectToolStyle]],
+  ['javascript', [strykerStyle, eslintConfigStyle, jscpdStyle, scriptProjectToolStyle]],
   ['java', [javaProjectStyle, jscpdStyle]],
   ['kotlin', [javaProjectStyle, kotlinStyle, jscpdStyle]],
   ['python', [pythonStyle, jscpdStyle]],

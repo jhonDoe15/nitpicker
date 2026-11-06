@@ -3,6 +3,7 @@ import path from 'node:path';
 import { pathInside } from '../../../../../shared/filesystem.mjs';
 import { hash, nextOccurrence } from '../../../../../shared/rules/finding-helpers.mjs';
 import { braceDepths, lineOf, lineText, scanKotlinSource } from './kotlin-source.mjs';
+import { CAST_MESSAGES, unsafeCasts } from './casts/unsafe-casts.mjs';
 import { REPEATED_STRING_MESSAGE, repeatedStringLiterals } from './literals/repeated-strings.mjs';
 import { CALL_MESSAGES, ioInLoops, logTemplates, shellCommands } from './rules/calls.mjs';
 import { CATCH_MESSAGES, booleanFlags, catchOnlyLogs } from './rules/catches.mjs';
@@ -13,12 +14,9 @@ import {
   commentedOutCode,
   generatedFile,
 } from './rules/markers.mjs';
-import {
-  SECRET_MESSAGES,
-  credentialLiterals,
-  hardcodedSecrets,
-  secretsInLogs,
-} from './rules/secrets.mjs';
+import { credentialLiterals, hardcodedSecrets } from './rules/secrets/hardcoded-secrets.mjs';
+import { SECRET_MESSAGES } from './rules/secrets/secret-names.mjs';
+import { secretsInLogs } from './rules/secrets/secrets-in-logs.mjs';
 import {
   COMPATIBILITY_SHIM_MESSAGES,
   compatibilityShims,
@@ -33,20 +31,23 @@ import { CLIENT_MESSAGES, httpWithoutTimeout, unsafeDeserialization } from './se
 import { CRYPTO_MESSAGES, disabledTlsVerification, weakHashes } from './security/crypto.mjs';
 import { SQL_MESSAGES, sqlStringBuilding } from './security/sql.mjs';
 import { kotlinDeclarations } from './security/sql-values.mjs';
+import { LOG_FORMAT_MESSAGES, logFormatArguments } from './logging/log-format-rules.mjs';
 import { FAN_OUT_MESSAGES } from '../review-rules/main/fan-out/fan-out.mjs';
 
 const KOTLIN_SOURCE_TOOL = 'kotlin-source';
 
-const MESSAGES = {
+export const KOTLIN_SOURCE_MESSAGES = {
   ...MARKER_MESSAGES,
   ...DECLARATION_MESSAGES,
   ...CALL_MESSAGES,
+  ...CAST_MESSAGES,
   ...CATCH_MESSAGES,
   ...SECRET_MESSAGES,
   ...TEST_MESSAGES,
   ...SQL_MESSAGES,
   ...CRYPTO_MESSAGES,
   ...CLIENT_MESSAGES,
+  ...LOG_FORMAT_MESSAGES,
   ...FAN_OUT_MESSAGES,
   ...TRI_STATE_MESSAGES,
   ...PARAMETER_MUTATION_MESSAGES,
@@ -54,7 +55,7 @@ const MESSAGES = {
   RepeatedStringLiteral: REPEATED_STRING_MESSAGE,
 };
 
-export const KOTLIN_SOURCE_RULES = Object.keys(MESSAGES).map(
+export const KOTLIN_SOURCE_RULES = Object.keys(KOTLIN_SOURCE_MESSAGES).map(
   (rule) => `${KOTLIN_SOURCE_TOOL}/${rule}`,
 );
 
@@ -64,8 +65,10 @@ const MAIN_RULES = [
   mutableModuleState,
   genericNames,
   logTemplates,
+  logFormatArguments,
   shellCommands,
   ioInLoops,
+  unsafeCasts,
   catchOnlyLogs,
   booleanFlags,
   hardcodedSecrets,
@@ -82,7 +85,7 @@ const MAIN_RULES = [
   compatibilityShims,
   repeatedStringLiterals,
 ];
-const TEST_RULES = [testClassesWithoutTests];
+const TEST_RULES = [testClassesWithoutTests, unsafeCasts];
 
 const TOP_LEVEL_MAIN = /(?<![\w.])fun\s+main\s*\(/g;
 const ROOT_MARKERS = [
@@ -125,7 +128,7 @@ function finding({ file, scanned, occurrences }, reported) {
     rule: reported.rule,
     path: file,
     identity: `${reported.rule}:${hash(subject)}${occurrence === 1 ? '' : `#${String(occurrence)}`}`,
-    message: reported.message ?? MESSAGES[reported.rule],
+    message: reported.message ?? KOTLIN_SOURCE_MESSAGES[reported.rule],
     classification: 'enforceable',
     location: { line },
   };

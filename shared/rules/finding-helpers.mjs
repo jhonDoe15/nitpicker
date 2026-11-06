@@ -30,6 +30,31 @@ export function hash(value) {
   return createHash('sha256').update(String(value)).digest('hex').slice(0, 24);
 }
 
+const NAME_PART = /[\p{L}_$][\p{L}\p{N}_$]*/gu;
+const NAME_PLACEHOLDER = '\0';
+
+/**
+ * A digest of a function's text with the words of its own name (`Owner.method`) masked, so the
+ * same body under a renamed function or class has the same digest.
+ */
+export function nameFreeHash(text, name) {
+  const parts = new Set(String(name).match(NAME_PART) ?? []);
+  const masked = String(text).replaceAll(/[\p{L}\p{N}_$]+/gu, (word) =>
+    parts.has(word) ? NAME_PLACEHOLDER : word,
+  );
+  return hash(masked);
+}
+
+/** The first line of a function's text that is not blank or an annotation or decorator. */
+export function declarationLine(text) {
+  return (
+    String(text)
+      .split(/\r?\n/u)
+      .map((line) => line.trim())
+      .find((line) => line !== '' && !line.startsWith('@')) ?? ''
+  );
+}
+
 /** The n-th (1-based) time `key` has been seen in `occurrences`; mutates the map. */
 export function nextOccurrence(occurrences, key) {
   const occurrence = (occurrences.get(key) ?? 0) + 1;
@@ -92,6 +117,10 @@ export function summaryMetrics(analyzerName, summary = {}, rule, ignored = []) {
 
 /** The name of the narrowest function of `file` (`{ file, name, start, end }[]`) that holds `line`. */
 export function enclosingFunctionName(functions, file, line) {
+  return enclosingFunction(functions, file, line)?.name;
+}
+
+export function enclosingFunction(functions, file, line) {
   let found;
   for (const candidate of functions) {
     const holds = candidate.file === file && candidate.start <= line && line <= candidate.end;
@@ -102,5 +131,5 @@ export function enclosingFunctionName(functions, file, line) {
       found = candidate;
     }
   }
-  return found?.name;
+  return found;
 }

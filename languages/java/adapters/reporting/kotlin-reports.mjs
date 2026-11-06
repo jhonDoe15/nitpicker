@@ -2,7 +2,11 @@ import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { ingestFormatCheck } from '../../../../shared/ingest/format-check.mjs';
 import { ingestSarif } from '../../../../shared/ingest/sarif.mjs';
+import { createGeneratedFilter } from '../../ingest/kotlin-mutants/generated-filter.mjs';
+import { KOTLIN_REPORTS } from '../kotlin/report-names/kotlin-report-names.mjs';
 import { readKotlinClassLimitFindings } from '../kotlin/kotlin-class-limits.mjs';
+import { withDetektCountRatchets } from '../kotlin/detekt/detekt-counts.mjs';
+import { functionUnitLocator } from './function-locator.mjs';
 import { readSarifReport } from './sarif/sarif-reports.mjs';
 import { kotlinFormatAdvice } from '../kotlin/style/kotlin-format-advice.mjs';
 import {
@@ -20,12 +24,15 @@ import {
 } from '../kotlin/rules/kotlin-source-rules.mjs';
 import { readSuppressionFindings } from '../kotlin/rules/kotlin-suppressions.mjs';
 import { withFrameworkAllowances } from '../kotlin/scan/framework-allowances.mjs';
+import { withoutCoveredCasts } from '../kotlin/scan/casts/cast-precedence.mjs';
 import { readKotlinSourceFindings } from '../kotlin/scan/kotlin-scan.mjs';
 import {
   readKotlinFanOutFindings,
   readKotlinReviewFindings,
 } from '../kotlin/review-rules/review-findings.mjs';
 import { withoutCoveredSourceFindings } from '../kotlin/review-rules/spring/spring-findings.mjs';
+import { withoutTransactionAwareCacheWrites } from '../spring/transactions/transaction-aware.mjs';
+import { springRoots } from '../spring/transactions/transaction-filters.mjs';
 
 const DETEKT_TOOL = 'detekt';
 const DETEKT_REPORT = 'detekt.sarif';
@@ -93,12 +100,26 @@ function declaredPackage(file) {
   return PACKAGE_DECLARATION.exec(readFileSync(file, 'utf8'))?.[1].replaceAll('`', '') ?? '';
 }
 
-export function reportOnlyKotlinMutants(findings) {
-  return findings.map((finding) =>
-    finding.rule.startsWith('mutant-') && finding.path.endsWith('.kt')
-      ? { ...finding, classification: 'descriptive' }
-      : finding,
-  );
+export function kotlinGeneratedFilter({ reportRoot }) {
+  const name = KOTLIN_REPORTS.mutationFacts;
+  const report = path.join(reportRoot, name);
+  if (!existsSync(report)) {
+    throw new Error(
+      [
+        `The Kotlin mutation filter needs ${name} in ${reportRoot}.`,
+        'The kotlin-psi program writes it beside the facts report;',
+        'a build tool that skips the program (no Kotlin files) must write {"files":[]} there.',
+      ].join(' '),
+    );
+  }
+  try {
+    return createGeneratedFilter(JSON.parse(readFileSync(report, 'utf8')));
+  } catch (error) {
+    throw new Error(
+      `${name} in ${reportRoot} is unusable (${error.message}); run the kotlin-psi program again`,
+      { cause: error },
+    );
+  }
 }
 
 function leftToFanOut(calls) {
@@ -109,25 +130,28 @@ function leftToFanOut(calls) {
 export function readKotlinFindings(context, crapLimit) {
   const { reportRoot, manifest, projectRoot, jacoco, formatAdvice = DEFAULT_ADVICE } = context;
   const metrics = readKotlinMetrics(reportRoot);
-  const fanOut = readKotlinFanOutFindings({
-    reportRoot,
-    projectRoot,
-    manifest,
-    modules: context.modules,
-  });
+  const { modules, kotlinBuild: buildViews } = context;
+  const views = { reportRoot, projectRoot, manifest, modules, buildViews };
+  const fanOut = readKotlinFanOutFindings(views);
   const testRoots = manifest.kotlinTestSourceRoots ?? [];
   const helpers = context.conventions?.['kotlin.assertionHelpers'] ?? [];
-  const ruleFindings = applyKotlinRuleMessages([
-    ...withFrameworkAllowances(detektFindings(reportRoot, formatAdvice), {
-      projectRoot,
-      spring: manifest.spring === true,
-      testRoots,
-    }),
-    ...readKotlinSourceFindings(projectRoot, manifest).filter(leftToFanOut(fanOut.calls)),
-    ...fanOut.findings,
-    ...readCompilerFindings(reportRoot, manifest.kotlinSourceRoots ?? []),
-  ]);
-  return withoutCoveredSourceFindings(
+  const ruleFindings = withDetektCountRatchets(
+    applyKotlinRuleMessages(
+      withoutCoveredCasts([
+        ...withFrameworkAllowances(detektFindings(reportRoot, formatAdvice), {
+          projectRoot,
+          spring: manifest.spring === true,
+          testRoots,
+        }),
+        ...readKotlinSourceFindings(projectRoot, manifest).filter(leftToFanOut(fanOut.calls)),
+        ...fanOut.findings,
+        ...readCompilerFindings(reportRoot, manifest.kotlinSourceRoots ?? [], testRoots),
+      ]),
+    ),
+    metrics.detektCounts,
+    functionUnitLocator({ ...context, kotlin: true }),
+  );
+  const findings = withoutCoveredSourceFindings(
     [
       ...ruleFindings,
       ...readSuppressionFindings(projectRoot, {
@@ -140,7 +164,7 @@ export function readKotlinFindings(context, crapLimit) {
       }),
       ...readTestAssertionFindings(projectRoot, testRoots, helpers),
       ...formatterFindings(reportRoot, manifest.kotlinFormatter, formatAdvice),
-      ...readKotlinReviewFindings({ reportRoot, projectRoot, manifest, modules: context.modules }),
+      ...readKotlinReviewFindings(views),
       ...readKotlinStructureFindings(metrics, projectRoot),
       ...readKotlinClassLimitFindings(metrics, context.classLimits),
       ...(jacoco === undefined
@@ -149,6 +173,7 @@ export function readKotlinFindings(context, crapLimit) {
     ],
     context.classLimits,
   );
+  return withoutTransactionAwareCacheWrites(findings, { projectRoot, roots: springRoots(context) });
 }
 
 function subjectOf(text) {
@@ -188,12 +213,20 @@ function ktlintSwitch(ruleId) {
   return `ktlint_${ruleId.replace(':', '_')}`;
 }
 
+export function ktlintAdvice(advice, ruleId) {
+  return `${advice.ktlint(ktlintSwitch(ruleId))} ${NOT_YOUR_FORMATTER}`;
+}
+
+export function ktfmtMessage(advice) {
+  return `File is not formatted with ktfmt. ${advice.ktfmt} ${NOT_YOUR_FORMATTER}`;
+}
+
 function ktlintFindings(reportRoot, advice) {
   return ingestSarif(readSarif(reportRoot, KTLINT_REPORT), { tool: 'ktlint' }).findings.map(
     (finding) => ({
       ...finding,
       rule: `${KTLINT_PREFIX}${finding.rule}`,
-      message: `${finding.message}. ${advice.ktlint(ktlintSwitch(finding.rule))} ${NOT_YOUR_FORMATTER}`,
+      message: `${finding.message}. ${ktlintAdvice(advice, finding.rule)}`,
     }),
   );
 }
@@ -201,7 +234,7 @@ function ktlintFindings(reportRoot, advice) {
 function ktfmtFindings(reportRoot, advice) {
   return ingestFormatCheck(readFileSync(path.join(reportRoot, KTFMT_REPORT), 'utf8'), {
     tool: 'ktfmt',
-    message: `File is not formatted with ktfmt. ${advice.ktfmt} ${NOT_YOUR_FORMATTER}`,
+    message: ktfmtMessage(advice),
   }).findings;
 }
 

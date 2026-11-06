@@ -1,6 +1,10 @@
 import { rulesCases } from './define.mjs';
 
 export const RULES_CASES = [
+  ...rulesCases('type-laundering', [
+    ['type-cast', 'isinstance'],
+    ['explicit-any', 'ParamSpec'],
+  ]),
   ...rulesCases('cancellation', [['cancellation-not-propagated', 'bare `raise`']]),
   ...rulesCases('sql-queries', [['sql-string-formatting', 'query parameters']]),
   ...rulesCases('tls-verification', [['tls-verification-off', 'trust the certificate authority']]),
@@ -9,6 +13,10 @@ export const RULES_CASES = [
   ]),
   ...rulesCases('weak-hmac', [['weak-hmac', 'hashlib.sha256']]),
   ...rulesCases('http-client-timeout', [['http-without-timeout', 'timeout=10']]),
+  ...rulesCases('orm-config', [
+    ['orm-schema-sync', 'alembic upgrade head'],
+    ['orm-query-logging', 'slow-query log'],
+  ]),
   ...rulesCases('unsafe-model-loading', [['unsafe-deserialization', 'yaml.safe_load']]),
   ...rulesCases('shell-command-forms', [['shell-command', 'shell=false']]),
   ...rulesCases('env-access', [['process-env-access', 'composition root']]),
@@ -28,6 +36,8 @@ export const RULES_CASES = [
   ...rulesCases('domain-any', [['any-in-domain', 'frozen dataclass']]),
   ...rulesCases('pydantic-any', [['pydantic-any-field', 'real type']]),
   ...rulesCases('pydantic-extra', [['pydantic-extra-allow', 'extra="forbid"']]),
+  ...rulesCases('orm-eager', [['eager-relationship', 'selectinload']]),
+  ...rulesCases('orm-cascade', [['many-to-many-cascade-delete', '"save-update, merge"']]),
   ...rulesCases('repeated-string', [['repeated-string-literal', 'constant']]),
   ...rulesCases('generic-name', [['generic-name', 'name it for its job']]),
   ...rulesCases('boolean-flag', [['boolean-flag-parameter', 'keyword-only']]),
@@ -39,6 +49,7 @@ export const RULES_CASES = [
   ...rulesCases('todo-without-issue', [['todo-without-issue', '# todo(#123)']]),
   ...rulesCases('skipped-test', [['skipped-test-without-reason', 'reason=']]),
   ...rulesCases('sleep-in-test', [['sleep-in-test', 'fake clock']]),
+  ...rulesCases('negative-wait-in-test', [['negative-wait-in-test', 'event.is_set()']]),
   ...rulesCases('tautological-assert', [['tautological-assert', 'result of the code under test']]),
   ...rulesCases('test-without-assertion', [
     ['test-without-assertion', 'assert result == expected'],
@@ -46,9 +57,13 @@ export const RULES_CASES = [
   ...rulesCases('catch-log-without-exception', [
     ['catch-log-without-exception', 'logger.exception'],
   ]),
-  ...rulesCases('real-clock-test', [['real-clock-in-test', 'freeze']]),
+  ...rulesCases('real-clock-test', [
+    ['real-clock-in-test', 'freeze'],
+    ['real-clock-in-test', 'tzinfo=timezone.utc'],
+  ]),
   ...rulesCases('random-test', [['random-in-test', 'seed']]),
   ...rulesCases('network-test', [['network-in-test', 'fake']]),
+  ...rulesCases('server-per-test', [['server-or-container-per-test', 'scope="session"']]),
   ...rulesCases('uncollected-tests', [['uncollected-tests', 'python_files']]),
   ...rulesCases('test-helper-in-source', [['test-helper-in-source', 'tests folder']]),
   ...rulesCases('task-lifetimes', [['task-outlives-resource', 'around the whole task group']]),

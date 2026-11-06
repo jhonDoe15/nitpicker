@@ -2,6 +2,7 @@ import { readFileSync, rmSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest';
 import { createGitTemplate } from '../../../../core/diff/git/test-support/git-repository.mjs';
+import { docsUrl } from '../../../../shared/messages/docs-url.mjs';
 import {
   createCleanProject,
   git,
@@ -16,12 +17,15 @@ const BANNED_FORM_OUTPUT = [
   'Enforceable findings: 1',
   'Descriptive findings: 0',
   'Tool errors: 0',
+  'Ran only: eslint-lint. Run nitpicker without --analyzer before you finish.',
   '',
   'Per-tool counts:',
   'eslint-lint: total=1 enforceable=1 descriptive=0',
   '',
   'Enforceable findings:',
   'eslint-lint/no-restricted-syntax src/main/features/greeting/domain/greet.ts:21 Do not assert with `as`. Narrow the value (a discriminated union check or a zod parse) or give it the correct type at its source. `as const` is allowed. If this is intended, add {"rule":"no-restricted-syntax","paths":["src/main/features/greeting/domain/greet.ts"],"reason":"..."} to "exceptions" in nitpicker.config.json.',
+  '',
+  `Rule reference: ${docsUrl('docs/rules/README.md')} (nitpicker explain <tool/rule> prints one rule)`,
   '',
 ].join('\n');
 const FIXTURE_TIMEOUT_MS = 300_000;
@@ -153,8 +157,10 @@ describe('the strict-clean fixture project', () => {
           '',
           'Quality gate summary',
           '✖ 1 new enforceable violation',
-          '  eslint-lint/no-restricted-syntax src/main/legacy.ts:2',
-          '    Do not assert with `as`. Narrow the value (a discriminated union check or a zod parse) or give it the correct type at its source. `as const` is allowed. If this is intended, add {"rule":"no-restricted-syntax","paths":["src/main/legacy.ts"],"reason":"..."} to "exceptions" in nitpicker.config.json.',
+          '  eslint-lint/no-restricted-syntax: Do not assert with `as`. Narrow the value (a discriminated union check or a zod parse) or give it the correct type at its source. `as const` is allowed.',
+          '    src/main/legacy.ts:2:24',
+          '    If this is intended, add {"rule":"no-restricted-syntax","paths":["src/main/legacy.ts"],"reason":"..."} to "exceptions" in nitpicker.config.json.',
+          'Ran only: eslint-lint. Run nitpicker without --analyzer before you finish.',
           `Full diagnostics: ${sharedRoot}/reports/diff/report.txt`,
           '',
         ].join('\n'),
