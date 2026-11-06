@@ -1,6 +1,6 @@
 # Java and Kotlin: PMD rules
 
-PMD's bestpractices, design, errorprone, multithreading, performance and security categories, as far as nitpicker's rulesets keep them, and the rules nitpicker adds to them, for Java sources in the Java and Kotlin presets. This page lists 263 rules. [All pages](README.md).
+PMD's bestpractices, design, errorprone, multithreading, performance and security categories, as far as nitpicker's rulesets keep them, and the rules nitpicker adds to them, for Java sources in the Java and Kotlin presets. This page lists 264 rules. [All pages](README.md).
 
 The guide for these rules: [docs/java-preset.md](../java-preset.md).
 
@@ -1561,6 +1561,17 @@ Reports usages of primitive wrapper constructors.
 - **Allowed form:** Use Integer.valueOf(x), autoboxing, or the primitive itself instead of new Integer(x).
 - **Exception:** If this is intended, add `{"rule":"pmd/PrimitiveWrapperInstantiation","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json. The message gives no exception route because the flagged code is a defect; an entry still lifts it if a reviewer agrees.
 - **See also:** [PMD rule documentation](https://docs.pmd-code.org/pmd-doc-7.7.0/pmd_rules_java_bestpractices.html#primitivewrapperinstantiation)
+
+<a id="pmd-processwaitwithouttimeout"></a>
+
+### `pmd/ProcessWaitWithoutTimeout`
+
+In main sources: `Process.waitFor()` with no arguments, `process.onExit().get()` or `join()`, and reading a process's output (`getInputStream()`, `getErrorStream()`, `inputReader()` or `errorReader()`, directly, wrapped in a reader such as `new BufferedReader(new InputStreamReader(...))`, or held in a local) with `readAllBytes()`, `readNBytes(...)`, `transferTo(...)`, `lines()` or `readLine()`, unless the same method, constructor or initializer has a `waitFor(timeout, unit)` before the read or the read runs in a lambda. Matched by resolved type, so a project's own `waitFor()` is not flagged.
+
+- **Scope:** Main sources only.
+- **Why it is on:** A PMD rule nitpicker defines: it names one allowed form where the language offers several, and reports the other forms.
+- **Allowed form:** Wait with a deadline: process.waitFor(30, TimeUnit.SECONDS), and call process.destroyForcibly() when it returns false. Read the output on another thread (or redirect it to a file) before that wait. This waits for the child process without a deadline, so a command that never exits hangs this request, job or command for good. An exception fits only a program whose purpose is to run the child to completion, such as a build wrapper.
+- **Exception:** If this is intended, add `{"rule":"pmd/ProcessWaitWithoutTimeout","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 
 <a id="pmd-propercloneimplementation"></a>
 

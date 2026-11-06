@@ -60,6 +60,14 @@ outside a `try` that releases them. The TypeScript, JavaScript and Python preset
 counterpart yet; their thread and timer model differs and the NestJS provider case is tracked
 separately.
 
+Child process deadlines: `nitpicker/require-process-timeout` (production source, in `eslint-lint`)
+reports production code that waits for a child process to exit without a deadline: a synchronous
+`child_process` or `execa` call without a positive `timeout`, and `exec`, `execFile`, an awaited
+`execa` or a `spawn` or `fork` whose end is awaited without a `timeout` or an abort `signal`. The
+same rule runs as `subprocess-without-timeout` in the Python preset, `pmd/ProcessWaitWithoutTimeout`
+in the Java preset and `kotlin-source/ProcessWaitWithoutTimeout` in the Kotlin preset; tests keep
+`nitpicker/require-test-process-timeout` (TypeScript) or their runner's own limits.
+
 HTTP deadlines: `nitpicker/require-http-timeout` (strict preset, production source) reports an outbound
 HTTP call that has no timeout, so a server that accepts the connection and never answers hangs it. The same
 rule runs as `http-without-timeout` in the Python preset, `pmd/HttpWithoutTimeout` in the Java preset (main
