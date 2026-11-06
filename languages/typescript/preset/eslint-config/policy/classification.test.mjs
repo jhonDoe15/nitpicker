@@ -19,6 +19,8 @@ const BRANCH_STRICT_RULES = [
   'nitpicker/no-disabled-tls-verification',
   'nitpicker/no-magic-numbers',
   'nitpicker/no-module-level-mutable-state',
+  'nitpicker/no-orm-query-logging',
+  'nitpicker/no-orm-schema-sync',
   'nitpicker/no-process-access-outside-composition-root',
   'nitpicker/no-shell-string-command',
   'nitpicker/no-sql-string-building',

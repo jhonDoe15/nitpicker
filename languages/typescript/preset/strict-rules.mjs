@@ -40,6 +40,8 @@ export const strictEslintRuleIds = [
   'nitpicker/no-node-process-per-test',
   'nitpicker/no-parameter-mutation',
   'nitpicker/no-null',
+  'nitpicker/no-orm-query-logging',
+  'nitpicker/no-orm-schema-sync',
   'nitpicker/no-process-access-outside-composition-root',
   'nitpicker/no-process-globals-outside-main-guard',
   'nitpicker/no-promise-chain',
