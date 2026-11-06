@@ -5,7 +5,7 @@ import {
   TRANSLATION_CALLS,
   isIdiomaticText,
 } from '../../../../../../shared/literals/repeated-literal-exemptions.mjs';
-import { braceDepths, closingIndex } from '../kotlin-source.mjs';
+import { braceDepths, closingIndex, lineStart } from '../kotlin-source.mjs';
 
 const SHOWN_LENGTH = 30;
 const BEFORE_WINDOW = 300;
@@ -34,10 +34,6 @@ function repeatedMessage(subject) {
 }
 
 export const REPEATED_STRING_MESSAGE = repeatedMessage('A string');
-
-function lineStart(code, offset) {
-  return code.lastIndexOf('\n', offset - 1) + 1;
-}
 
 function annotationRanges(code) {
   return [...code.matchAll(ANNOTATION)].map(({ index, 0: text }) => ({

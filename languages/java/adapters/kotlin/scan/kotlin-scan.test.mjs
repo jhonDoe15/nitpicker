@@ -165,6 +165,7 @@ describe('readKotlinSourceFindings', () => {
         'MutableModuleState',
         'MutationIgnoreMarker',
         'ParameterMutation',
+        'ProcessWaitWithoutTimeout',
         'RepeatedStringLiteral',
         'SecretInLog',
         'ShellCommand',
