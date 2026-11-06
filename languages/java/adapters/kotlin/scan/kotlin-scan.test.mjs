@@ -159,6 +159,8 @@ describe('readKotlinSourceFindings', () => {
         'IoCallInLoop',
         'JvmSyntheticOnHandWrittenCode',
         'LegacyCalendarApi',
+        'LogExceptionFirst',
+        'LogFormatArguments',
         'LogStringConcatenation',
         'MutableModuleState',
         'MutationIgnoreMarker',
