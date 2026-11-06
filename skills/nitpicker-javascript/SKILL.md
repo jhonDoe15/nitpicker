@@ -143,6 +143,9 @@ line) is a finding.
   starts with `_` (`_event`).
 - `async`/`await`, never `.then()`. No floating promises.
 - Fan-out: bound concurrent remote or message calls. Run each call through a limiter created outside the loop (`pLimit(8)`, p-queue `concurrency`, Bottleneck `maxConcurrent`) or work through fixed-size chunks. RxJS: `mergeMap(fn, 8)` or `concatMap`, never `forkJoin(items.map(load))`. Never `Promise.all(items.map(send))` over a runtime collection.
+- A child process you wait for gets a deadline: `{ timeout: 30_000 }` on `execFileSync`/`spawnSync`, or a
+  `timeout` or `signal: AbortSignal.timeout(30_000)` on `execFile` and an awaited `spawn` or `execa`
+  (`nitpicker/require-process-timeout`; a build wrapper that only runs a child to completion takes an exception).
 - Named exports only (`export function`, `export { x } from`); no `export default`. No comments;
   JSDoc type tags are the exception.
 - Signatures: a value with three states is a union of string literals, not `{boolean|undefined}`,

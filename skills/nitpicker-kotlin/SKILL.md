@@ -58,6 +58,9 @@ To learn why a rule is on and what form it allows before you write or change cod
   `chunked(n)`, or `flatMapMerge(concurrency = n)`; never `items.map { async { client.get(it) } }.awaitAll()` over a
   runtime collection. `limitedParallelism(n)` caps threads, not suspending calls in flight. Reactor: pass a limit
   (`flatMap({ fetch(it) }, 8)`) or use `concatMap`; never `Mono.zip(items.map { fetch(it) })`.
+- Child processes: wait with a deadline, `if (!process.waitFor(30, TimeUnit.SECONDS)) process.destroyForcibly()`,
+  and read the output on another thread first; never `waitFor()` or `inputStream.readBytes()` alone
+  (`kotlin-source/ProcessWaitWithoutTimeout`; a build wrapper that only runs a child to completion takes an exception).
 - HTTP calls: every request has a deadline. `HttpRequest.newBuilder(uri).timeout(...)`, `readTimeout` on an
   `HttpURLConnection`, Ktor's `HttpTimeout`, OkHttp; not `URL(url).readText()` or `HttpClients.createDefault()`
   (`kotlin-source/HttpWithoutTimeout`).
