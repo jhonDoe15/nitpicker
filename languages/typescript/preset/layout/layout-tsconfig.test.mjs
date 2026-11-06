@@ -67,7 +67,7 @@ describe('layout-aware tsconfig', () => {
       'dist/**',
       'generated/**',
       'lib/legacy/**',
-      'reports/**',
+      'reports/quality/**',
       'target/**',
     ]);
   });

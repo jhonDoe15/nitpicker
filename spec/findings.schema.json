@@ -49,6 +49,7 @@
           "type": "array",
           "items": { "$ref": "#/$defs/nonEmptyString" }
         },
+        "anchor": { "$ref": "#/$defs/anchor" },
         "helpUri": {
           "description": "Link to the page that explains the rule. Nitpicker fills it in new-findings.json from its rule reference (docs/rules); an analyzer may set its own.",
           "allOf": [{ "$ref": "#/$defs/nonEmptyString" }, { "pattern": "^https?://\\S+$" }]
@@ -73,6 +74,19 @@
         "endLine": { "type": "integer", "minimum": 1 }
       }
     },
+    "anchor": {
+      "description": "A second identity that leaves out the function's name and signature. A new finding counts as present when the base has an unmatched finding with the same tool, rule, path (renames applied), classification and anchor key, so a renamed function, a renamed class, a new parameter or an overload added above keeps its findings.",
+      "type": "object",
+      "required": ["key"],
+      "additionalProperties": false,
+      "properties": {
+        "key": { "$ref": "#/$defs/nonEmptyString" },
+        "requireUnchangedLine": {
+          "description": "When true, only a finding whose line the change left as it was can match by anchor, so code moved into a new function stays new.",
+          "type": "boolean"
+        }
+      }
+    },
     "ratchet": {
       "description": "Lets an enforceable finding whose identity changed stay baselined: a new finding matching a base finding's ratchet key (with renames applied) is held while its value does not exceed the base value.",
       "type": "object",
@@ -80,6 +94,10 @@
       "additionalProperties": false,
       "properties": {
         "key": { "$ref": "#/$defs/nonEmptyString" },
+        "declarationKey": {
+          "description": "A ratchet key that names the function by its signature or declaration line. Base findings are matched by it before `key`, so an overload added above an edited function does not take its place.",
+          "$ref": "#/$defs/nonEmptyString"
+        },
         "value": { "type": "number" },
         "worseMessage": {
           "description": "Message to report instead of `message` when the finding is new only because its value grew past the base value; `{base}` is replaced with the base value.",

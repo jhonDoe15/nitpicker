@@ -10,8 +10,12 @@ import {
   ruleTable,
   toolErrorList,
 } from './markdown.mjs';
+import { partialRunLines } from '../partial-run/partial-run.mjs';
 
 function headline(report) {
+  if (report.summary.noChanges === true && report.toolErrors.length === 0) {
+    return '✓ No changes since the merge base; nothing to check';
+  }
   const enforceable = report.newFindings.filter(
     ({ classification }) => classification === 'enforceable',
   );
@@ -89,6 +93,7 @@ export function renderDiffSummary(report, context) {
     '',
     `**${headline(report)}**`,
     '',
+    ...partialRunLines(report.summary).flatMap((line) => [`> ${line}`, '']),
     ...comparisonLine(report),
     '',
     ...policySection(report.summary),

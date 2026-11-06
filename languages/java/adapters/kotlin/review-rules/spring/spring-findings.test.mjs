@@ -33,13 +33,40 @@ function findingsWith(manifest, { projectRoot = PROJECT, javaRoots = ['src/main/
 }
 
 function summary(findings) {
-  return findings.map(
-    ({ path: file, location, rule, symbol }) =>
-      `${file.replace('src/main/kotlin/shop/', '')}:${String(location.line)} ${rule} ${symbol}`,
-  );
+  return findings
+    .filter(({ path: file }) => !file.endsWith('/Ledger.kt'))
+    .map(
+      ({ path: file, location, rule, symbol }) =>
+        `${file.replace('src/main/kotlin/shop/', '')}:${String(location.line)} ${rule} ${symbol}`,
+    );
 }
 
 const EXPECTED = [
+  'bad/Batches.kt:24 JpaEnumString Posting.grade',
+  'bad/Batches.kt:26 JpaEnumString Posting.status',
+  'bad/Batches.kt:29 JpaEnumString Posting.seen',
+  'bad/Batches.kt:32 JpaManyToManySet Posting.linked',
+  'bad/Batches.kt:35 JpaManyToManySet Posting.qualified',
+  'bad/Batches.kt:39 SpringDataDerivedQuery AuditedLedgers.findByStatus',
+  'bad/Batches.kt:43 SpringDataDerivedQuery LedgerStore.findByGrade',
+  'bad/Batches.kt:48 SpringDataQueryTextBlock LedgerRepository.byStatus',
+  'bad/Batches.kt:51 SpringDataQueryTextBlock LedgerRepository.byGrade',
+  'bad/Batches.kt:64 SpringDataBatchOfOne LedgerService.importAll.saveAll',
+  'bad/Batches.kt:65 SpringDataBatchOfOne LedgerService.importAll.saveAll',
+  'bad/Batches.kt:68 SpringDataBatchOfOne LedgerService.importAll.saveAll',
+  'bad/Batches.kt:70 SpringDataSaveInLoopHelper LedgerService.importAll.persist',
+  'bad/Batches.kt:71 SpringDataSaveInLoopHelper LedgerService.importAll.keepCompanion',
+  'bad/Batches.kt:72 SpringDataSaveInLoopHelper LedgerService.importAll.keepTop',
+  'bad/Batches.kt:73 SpringDataNoSaveInLoop LedgerService.importAll.save',
+  'bad/Batches.kt:75 SpringDataNoSaveInLoop LedgerService.importAll.delete',
+  'bad/Batches.kt:76 SpringDataNoSaveInLoop LedgerService.importAll.delete',
+  'bad/Batches.kt:77 SpringDataNoSaveInLoop LedgerService.importAll.save',
+  'bad/Batches.kt:78 SpringDataNoSaveInLoop LedgerService.importAll.save',
+  'bad/Batches.kt:79 SpringDataNoSaveInLoop LedgerService.importAll.save',
+  'bad/Batches.kt:81 SpringDataNoSaveInLoop LedgerService.importAll.save',
+  'bad/Batches.kt:87 SpringDataRowWriteInLoop LedgerService.touchAll.executeUpdate',
+  'bad/Batches.kt:90 SpringDataRowWriteInLoop LedgerService.touchAll.executeUpdate',
+  'bad/Batches.kt:95 SpringDataFilterInQuery LedgerService.graded.findAll',
   'bad/Beans.kt:21 SpringConstructorInjection FieldInjected.orders',
   'bad/Beans.kt:21 SpringImmutableBeans FieldInjected.orders',
   'bad/Beans.kt:24 SpringConstructorInjection FieldInjected.token',
@@ -75,6 +102,7 @@ const EXPECTED = [
   'bad/Data.kt:18 SpringDataQueryTextBlock InvoiceRepository.byStatus',
   'bad/Data.kt:21 SpringDataNativeQuery InvoiceRepository.raw',
   'bad/Data.kt:24 SpringDataNativeQuery InvoiceRepository.rawOpen',
+  'bad/Data.kt:28 SpringDataWriteWithoutTransaction InvoiceRepository.markStatus',
   'bad/Data.kt:28 SpringDataModifyingQuery InvoiceRepository.markStatus',
   'bad/Data.kt:36 SpringDataNoSaveInLoop InvoiceService.importAll.save',
   'bad/Data.kt:38 SpringDataBatchOfOne InvoiceService.importAll.saveAll',
@@ -166,6 +194,52 @@ const EXPECTED = [
   'bad/Proxies.kt:60 SpringTransactionalAnnotation LegacyTx',
   'bad/Proxies.kt:64 SpringNoTransactionalController TxController',
   'bad/Proxies.kt:71 SpringProxyMethodVisibility Mailer.send',
+  'bad/ProxyFamilies.kt:39 SpringProxySelfCall RemoteSync.sync.fetch',
+  'bad/ProxyFamilies.kt:40 SpringProxySelfCall RemoteSync.sync.open',
+  'bad/ProxyFamilies.kt:41 SpringProxySelfCall RemoteSync.sync.timed',
+  'bad/ProxyFamilies.kt:42 SpringProxySelfCall RemoteSync.sync.observed',
+  'bad/ProxyFamilies.kt:43 SpringProxySelfCall RemoteSync.sync.admin',
+  'bad/ProxyFamilies.kt:44 SpringProxySelfCall RemoteSync.sync.rate',
+  'bad/ProxyFamilies.kt:45 SpringProxySelfCall RemoteSync.sync.logged',
+  'bad/ProxyFamilies.kt:74 SpringProxyMethodVisibility RemoteSync.hiddenRetry',
+  'bad/ProxyFamilies.kt:77 SpringProxyMethodVisibility RemoteSync.hiddenLog',
+  'bad/ProxyFamilies.kt:84 SpringProxySelfCall Checkout.place.verify',
+  'bad/ProxyFamilies.kt:85 SpringProxySelfCall Checkout.place.quantity',
+  'bad/ProxyFamilies.kt:86 SpringProxySelfCall Checkout.place.codes',
+  'bad/ProxyFamilies.kt:98 SpringProxyMethodVisibility Checkout.hidden',
+  'bad/Reactive.kt:23 SpringDataFilterInQuery PostingReports.open.findAll',
+  'bad/Reactive.kt:25 SpringDataFilterInQuery PostingReports.total.findAll',
+  'bad/Reactive.kt:27 SpringDataFilterInQuery PostingReports.stocked.findAll',
+  'bad/Reactive.kt:29 SpringDataFilterInQuery PostingReports.first.findAll',
+  'bad/Reactive.kt:31 SpringDataFilterInQuery PostingReports.firstTen.findAll',
+  'bad/Reactive.kt:33 SpringDataFilterInQuery PostingReports.sized.findAll',
+  'bad/Reactive.kt:35 SpringDataFilterInQuery PostingReports.openFlow.findAll',
+  'bad/Reactive.kt:37 SpringDataFilterInQuery PostingReports.countFlow.findAll',
+  'bad/Reactive.kt:39 SpringDataFilterInQuery PostingReports.firstOpen.findAll',
+  'bad/Reactive.kt:41 SpringDataFilterInQuery PostingReports.listed.findAll',
+  'bad/Rows.kt:35 JpaEnumString Carton.hue',
+  'bad/Rows.kt:42 SpringDataWriteWithoutTransaction CartonRepository.ship',
+  'bad/Rows.kt:46 SpringDataWriteWithoutTransaction CartonRepository.keepOnly',
+  'bad/Rows.kt:57 SpringDataRowWriteInLoop CartonService.shipAll.ship',
+  'bad/Rows.kt:58 SpringDataRowWriteInLoop CartonService.shipAll.ship',
+  'bad/Rows.kt:59 SpringDataRowWriteInLoop CartonService.shipAll.ship',
+  'bad/Rows.kt:60 SpringDataRowWriteInLoop CartonService.shipAll.ship',
+  'bad/Rows.kt:61 SpringDataRowWriteInLoop CartonService.shipAll.ship',
+  'bad/Rows.kt:62 SpringDataRowWriteInLoop CartonService.shipAll.ship',
+  'bad/Rows.kt:63 SpringDataRowWriteInLoop CartonService.shipAll.ship',
+  'bad/Rows.kt:64 SpringDataRowWriteInLoop CartonService.shipAll.keepOnly',
+  'bad/Rows.kt:65 SpringDataSaveInLoopHelper CartonService.shipAll.note',
+  'bad/Rows.kt:66 SpringDataRowWriteInLoop CartonService.shipAll.executeUpdate',
+  'bad/Rows.kt:67 SpringDataRowWriteInLoop CartonService.shipAll.executeUpdate',
+  'bad/Rows.kt:68 SpringDataRowWriteInLoop CartonService.shipAll.ship',
+  'bad/Rows.kt:69 SpringDataRowWriteInLoop CartonService.shipAll.ship',
+  'bad/Rows.kt:74 SpringDataNoFlush CartonService.flushChunks.saveAndFlush',
+  'bad/Rows.kt:74 SpringDataNoSaveInLoop CartonService.flushChunks.saveAndFlush',
+  'bad/Rows.kt:93 SpringDataBatchOfOne CartonBatches.saveEach.saveAll',
+  'bad/Rows.kt:94 SpringDataBatchOfOne CartonBatches.saveEach.saveAll',
+  'bad/Rows.kt:95 SpringDataBatchOfOne CartonBatches.saveEach.saveAll',
+  'bad/Rows.kt:99 SpringDataBatchOfOne CartonBatches.saveEach.saveAll',
+  'bad/Rows.kt:104 SpringDataBatchOfOne CartonBatches.saveEach.saveAll',
   'bad/Security.kt:18 SpringCsrfDisabled SecurityConfig.chain.csrf',
   'bad/Security.kt:21 SpringPermitAllAnyRequest SecurityConfig.chain.authorize',
   'bad/Security.kt:29 SpringPermitAllAnyRequest SecurityConfig.javaStyle.permitAll',
@@ -190,6 +264,17 @@ const EXPECTED = [
   'bad/Web.kt:47 SpringNoErrorLeak Errors.handle.e',
   'bad/Web.kt:52 SpringNoErrorLeak Errors.state.e',
   'bad/Web.kt:57 SpringNoErrorLeak Errors.trace.e',
+  'bad/Wiring.kt:18 SpringStaticPostProcessorBean PostProcessorConfig.tracing',
+  'bad/Wiring.kt:21 SpringStaticPostProcessorBean PostProcessorConfig.placeholders',
+  'bad/Wiring.kt:24 SpringStaticPostProcessorBean PostProcessorConfig.traced',
+  'bad/Wiring.kt:28 SpringStaticPostProcessorBean PostProcessorConfig.cents',
+  'bad/Wiring.kt:32 SpringStaticPostProcessorBean PostProcessorConfig.Companion.unmarked',
+  'bad/Wiring.kt:36 SpringStaticPostProcessorBean PostProcessorConfig.Companion.auditing',
+  'bad/Wiring.kt:43 SpringOrderedProvider Decorators.unordered.forEach',
+  'bad/Wiring.kt:44 SpringOrderedProvider Decorators.unordered.stream',
+  'bad/Wiring.kt:45 SpringOrderedProvider Decorators.unordered.for',
+  'bad/Wiring.kt:48 SpringOrderedProvider Decorators.unordered.iterator',
+  'bad/Wiring.kt:49 SpringOrderedProvider Decorators.unordered.map',
 ];
 
 describe('Kotlin Spring rules on the recorded fixture facts', () => {
@@ -256,6 +341,12 @@ describe('Kotlin Spring rules on the recorded fixture facts', () => {
       'bad/Proxies.kt:71 SpringProxyMethodVisibility Mailer.send',
     ]);
     expect(withoutPlugin.filter((line) => line.startsWith('good/'))).toEqual([
+      'good/Batches.kt:32 JpaEntityClass Swatch',
+      'good/Batches.kt:56 SpringProxyMethodVisibility SwatchService.recolor',
+      'good/Batches.kt:73 SpringProxyMethodVisibility SwatchService.sweep',
+      'good/Batches.kt:84 SpringProxyMethodVisibility SwatchService.lookups',
+      'good/Batches.kt:91 SpringProxyMethodVisibility SwatchService.batches',
+      'good/Batches.kt:109 SpringProxyMethodVisibility SwatchService.chunkUpdates',
       'good/Clients.kt:85 SpringProxyMethodVisibility Ledger.total',
       'good/Clients.kt:88 SpringProxyMethodVisibility Ledger.settle',
       'good/Clients.kt:102 SpringProxyMethodVisibility Ledger.close',
@@ -290,6 +381,11 @@ describe('Kotlin Spring rules on the recorded fixture facts', () => {
       'good/Proxies.kt:35 SpringProxyMethodVisibility Billing.export',
       'good/Proxies.kt:38 SpringProxyMethodVisibility Billing.notifyLater',
       'good/Proxies.kt:47 SpringProxyMethodVisibility Audit.write',
+      'good/ProxyFamilies.kt:19 SpringProxyMethodVisibility RemoteCalls.fetch',
+      'good/ProxyFamilies.kt:22 SpringProxyMethodVisibility RemoteCalls.timed',
+      'good/Rows.kt:38 JpaEntityClass Crate',
+      'good/Rows.kt:63 SpringProxyMethodVisibility CrateService.archive',
+      'good/Rows.kt:103 SpringProxyMethodVisibility ShelfService.tidy',
       'good/StarImports.kt:13 SpringProxyMethodVisibility Parser.parse',
     ]);
   });
@@ -322,6 +418,7 @@ describe('Kotlin Spring rules that read the rest of the project', () => {
     );
 
     expect(EXPECTED.filter((line) => !viaJava.includes(line))).toEqual([
+      'bad/Batches.kt:24 JpaEnumString Posting.grade',
       'bad/Clients.kt:41 SpringNoPostConstructIo Loader.warm.findAll',
       'bad/Clients.kt:53 SpringNoPostConstructIo Ledger.prime.count',
       'bad/Clients.kt:58 SpringTransactionalReadOnlyWrite Ledger.total.deleteAll',

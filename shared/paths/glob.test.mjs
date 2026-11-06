@@ -43,6 +43,10 @@ const CASES = [
 ];
 
 describe('globMatcher', () => {
+  it('compiles each glob once', () => {
+    expect(globMatcher('src/**/*.ts')).toBe(globMatcher('src/**/*.ts'));
+  });
+
   it.each(CASES)(
     'matches $glob like its regular expression source',
     ({ glob, matching, other }) => {

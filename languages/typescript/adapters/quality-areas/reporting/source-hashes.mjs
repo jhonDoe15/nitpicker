@@ -1,4 +1,9 @@
-import { hash, positiveInteger } from '../../../../../shared/rules/finding-helpers.mjs';
+import {
+  declarationLine,
+  hash,
+  nameFreeHash,
+  positiveInteger,
+} from '../../../../../shared/rules/finding-helpers.mjs';
 import { functionIdentity } from '../../exceptions/function-identity.mjs';
 import { readFileSync, lstatSync } from 'node:fs';
 import path from 'node:path';
@@ -22,12 +27,19 @@ export function withFunctionSourceHashes(report, projectRoot) {
         sourceTexts.set(entry.source, source);
         identities.set(entry.source, functionIdentity(source, entry.source));
       }
+      const name = identities.get(entry.source).crapFunctionName(entry) ?? entry.function;
+      const text = sourceLineRange(
+        source,
+        entry.start ?? entry.lines?.start,
+        entry.end ?? entry.lines?.end,
+      );
       return {
         ...entry,
-        function: identities.get(entry.source).crapFunctionName(entry) ?? entry.function,
-        sourceHash: hash(
-          sourceLineRange(source, entry.start ?? entry.lines?.start, entry.end ?? entry.lines?.end),
-        ),
+        function: name,
+        sourceHash: hash(text),
+        ...(text === ''
+          ? {}
+          : { anchorHash: nameFreeHash(text, name), declarationHash: hash(declarationLine(text)) }),
       };
     }),
   };

@@ -1,31 +1,33 @@
 import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs';
 import path from 'node:path';
-import { childrenNamed, parseXml } from '../../../shared/ingest/common.mjs';
+import { childrenNamed, parseXml, testCaseProblem } from '../../../shared/ingest/common.mjs';
 
 const MAX_LISTED_FAILURES = 10;
 const ROOT_MODULE = '.';
 const TEST_REPORT = /^TEST-.*\.xml$/u;
 const EXCEPTION_PREFIX = /^(?:[\w$]+\.)*[\w$]*(?:Error|Exception|Failure): /u;
 const PARAMETER_LIST = /\(\)$/u;
+const RERUN_PASS =
+  'failed, then passed on a rerun (fix the flaky test; nitpicker counts a rerun as a failure)';
+
+function firstLine(problem) {
+  return (problem.attrs.message ?? problem.attrs.type ?? '').split('\n')[0];
+}
 
 export function failedCases(file) {
   const root = parseXml(readFileSync(file, 'utf8'));
   const suites = root.name === 'testsuites' ? childrenNamed(root, 'testsuite') : [root];
   return suites.flatMap((suite) =>
-    childrenNamed(suite, 'testcase')
-      .filter(
-        (testCase) =>
-          childrenNamed(testCase, 'failure').length + childrenNamed(testCase, 'error').length > 0,
-      )
-      .map((testCase) => {
-        const problem = [
-          ...childrenNamed(testCase, 'failure'),
-          ...childrenNamed(testCase, 'error'),
-        ][0];
-        const raw = (problem.attrs.message ?? problem.attrs.type ?? '').split('\n')[0];
-        const name = testCase.attrs.name.replace(PARAMETER_LIST, '');
-        return `${testCase.attrs.classname ?? suite.attrs.name}.${name}: ${raw.replace(EXCEPTION_PREFIX, '')}`;
-      }),
+    childrenNamed(suite, 'testcase').flatMap((testCase) => {
+      const found = testCaseProblem(testCase);
+      if (found === undefined) {
+        return [];
+      }
+      const name = testCase.attrs.name.replace(PARAMETER_LIST, '');
+      const message = firstLine(found.problem).replace(EXCEPTION_PREFIX, '');
+      const where = `${testCase.attrs.classname ?? suite.attrs.name}.${name}`;
+      return [found.flaky ? `${where}: ${RERUN_PASS}: ${message}` : `${where}: ${message}`];
+    }),
   );
 }
 

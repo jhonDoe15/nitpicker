@@ -14,7 +14,7 @@ preset's, with the type syntax written in JSDoc. A `.ts`, `.mts` or `.cts` file 
 follows the full TypeScript rules (no `as`, `enum`, `interface`, `any`, `!`), not this page: install
 `nitpicker-typescript` too (`npx skills add jhonDoe15/nitpicker --skill nitpicker-typescript`).
 
-If your change edits a function that existed before it, read
+If your change edits a function, file or folder that existed before it, read
 [editing-existing-code.md](editing-existing-code.md) before you edit.
 
 Before you change code other modules use or fix a bug, read
@@ -32,7 +32,8 @@ Before you change code other modules use or fix a bug, read
    most of the project's files), then checks your change against the merge base. It
    takes minutes and prints a progress line for each slow analyzer.
 3. Act on the exit code:
-   - 0: done.
+   - 0: done, unless you narrowed the run with `--analyzer`: then the summary says `Ran only: ...`
+     and you run the gate again without it before you finish.
    - 1: fix every new finding and any tool error listed below them. Re-read the files `--fix`
      changed before editing them, then rerun.
    - 2: no new findings, but a tool failed. Fix the cause it names (usually a failing test or a
@@ -142,6 +143,9 @@ line) is a finding.
   starts with `_` (`_event`).
 - `async`/`await`, never `.then()`. No floating promises.
 - Fan-out: bound concurrent remote or message calls. Run each call through a limiter created outside the loop (`pLimit(8)`, p-queue `concurrency`, Bottleneck `maxConcurrent`) or work through fixed-size chunks. Never `Promise.all(items.map(send))` over a runtime collection.
+- A child process you wait for gets a deadline: `{ timeout: 30_000 }` on `execFileSync`/`spawnSync`, or a
+  `timeout` or `signal: AbortSignal.timeout(30_000)` on `execFile` and an awaited `spawn` or `execa`
+  (`nitpicker/require-process-timeout`; a build wrapper that only runs a child to completion takes an exception).
 - Named exports only (`export function`, `export { x } from`); no `export default`. No comments;
   JSDoc type tags are the exception.
 - Signatures: a value with three states is a union of string literals, not `{boolean|undefined}`,
@@ -175,14 +179,24 @@ line) is a finding.
   function; schemas live in `adapters/`. Dedupe with `[...new Set(xs)]` or a `ReadonlySet`.
 - A `Date` is mutable: use it in one expression (`new Date(ms).getUTCHours()`) or type it
   `Readonly<Date>`.
-- Count by a union as `Readonly<Record<Status, number>>` with one `reduce` from a literal with every
-  member, so a new member fails type-checking:
+- Count by a union as `Readonly<Record<Status, number>>` written as a literal with every member,
+  from one `Object.groupBy`, so a new member fails type-checking:
   ```js
+  const byStatus = Object.groupBy(invoices, (invoice) => invoice.status);
   /** @type {Readonly<Record<Status, number>>} */
-  const none = { paid: 0, open: 0, void: 0 };
-  return invoices.reduce(addInvoice, none);
+  const counts = {
+    paid: byStatus.paid?.length ?? 0,
+    open: byStatus.open?.length ?? 0,
+    void: byStatus.void?.length ?? 0,
+  };
   ```
-  Group by key with `[...new Set(xs.map(key))]` and `filter`.
+  `Object.groupBy` needs `lib` `ES2024` (TypeScript 5.7 or later) for the type check. Group by key
+  with `[...new Set(xs.map(key))]` and `filter`.
+- Build a result that grows with the input in one pass (`Object.fromEntries`, `new Map`,
+  `flatMap`, `Object.groupBy`), never by spreading the accumulator (`({ ...acc, [k]: v })`,
+  `[...acc, x]`). The gate reads only inline `reduce` callbacks, so a reducer passed by name is a
+  known gap, not a way around the rule: the same spread there is just as quadratic. Spreading a
+  record of fixed keys (`({ ...acc, paid: acc.paid + 1 })`) does not grow and is fine.
 - Variants of one union share one array type (`readonly Share[]` in each).
 - `module.exports` assignment is not mutation and may stay; every other property assignment is.
 
@@ -229,7 +243,8 @@ line) is a finding.
 - A surviving mutant no input can kill means the code is redundant: delete or restructure it.
   Don't pin call order or messages just to kill it. If an input can kill it, add that test (a
   padded value for a `.trim()`, two bad fields for a `join`); never delete a schema rule to silence it.
-- No per-test git repos, child processes, servers, fixed sleeps, or raised timeouts.
+- No per-test git repos, child processes, servers, fixed sleeps, raised timeouts, or test retries
+  (`retry`/`retries` options, `jest.retryTimes`, `this.retries(n)`); fix the flaky cause.
 - Wait for every callback that asserts: `await once(emitter, 'ready')`, await a promise the
   callback resolves, or advance fake timers in the test. An assertion in a timer, listener or
   error-first callback the test does not wait for runs after it ends and its failure is lost.

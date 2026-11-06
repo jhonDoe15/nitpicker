@@ -20,7 +20,8 @@ it with `npx skills add jhonDoe15/nitpicker --skill nitpicker-java`.
    is one, otherwise `gradle` from the PATH (`NITPICKER_GRADLE` overrides both). It takes minutes
    and prints a progress line for each slow analyzer.
 3. Act on the exit code:
-   - 0: done.
+   - 0: done, unless you narrowed the run with `--analyzer`: then the summary says `Ran only: ...`
+     and you run the gate again without it before you finish.
    - 1: fix every new finding and any tool error listed below them, then rerun.
    - 2: no new findings, but a tool failed. Fix the cause it names (usually a failing test or a
      Gradle error) and rerun. Exit 2 is never a pass. If it says another run is in progress, wait
@@ -33,6 +34,11 @@ it with `npx skills add jhonDoe15/nitpicker --skill nitpicker-java`.
    Never pass `--accept-policy-change` or set `NITPICKER_ACCEPT_POLICY_CHANGE`: a
    `nitpicker-config/policy-loosened` finding is for a person to accept.
 
+With Spring on the classpath, also follow [spring.md](spring.md).
+
+If your change edits a function, class, file or package that existed before it, read
+[editing-existing-code.md](editing-existing-code.md) before you edit.
+
 Before you change code other modules use, or fix a bug, read
 [beyond-the-gate.md](beyond-the-gate.md).
 
@@ -42,6 +48,8 @@ To learn why a rule is on and what form it allows before you write or change cod
 
 - Scope functions: `let` for null (`value?.let { ... }`) and `apply` to configure an object you just
   created. No `run`, `with` or `also`, and no `let` or `apply` where a direct call works.
+- Casts: no `as`, in tests too. Use an `is` check or `when` (smart cast), `as?` with the null handled, or
+  `assertIs<T>(value)` in a test; a read-only `List` is copied with `toMutableList()`, not cast.
 - Null: no `!!`, no `as String` on a nullable. Use `value ?: return`, `?.let`, or
   `checkNotNull(value) { "why" }` when null is a bug; `x?.let { ... }`, not `if (x == null) null else ...`.
 - Coroutines: no `GlobalScope`, no `runBlocking` (a call, however it is imported). Make the caller `suspend`
@@ -49,17 +57,18 @@ To learn why a rule is on and what form it allows before you write or change cod
 - Fan-out: bound concurrent remote or message calls. One `Semaphore(8)` with `withPermit { ... }` around each call,
   `chunked(n)`, or `flatMapMerge(concurrency = n)`; never `items.map { async { client.get(it) } }.awaitAll()` over a
   runtime collection. `limitedParallelism(n)` caps threads, not suspending calls in flight.
+- Child processes: wait with a deadline, `if (!process.waitFor(30, TimeUnit.SECONDS)) process.destroyForcibly()`,
+  and read the output on another thread first; never `waitFor()` or `inputStream.readBytes()` alone
+  (`kotlin-source/ProcessWaitWithoutTimeout`; a build wrapper that only runs a child to completion takes an exception).
+- HTTP calls: every request has a deadline. `HttpRequest.newBuilder(uri).timeout(...)`, `readTimeout` on an
+  `HttpURLConnection`, Ktor's `HttpTimeout`, OkHttp; not `URL(url).readText()` or `HttpClients.createDefault()`
+  (`kotlin-source/HttpWithoutTimeout`).
 - Records: a class that only holds data is a `data class` with `val`s; change a copy with `copy(...)`.
   A class with `var`s is not flagged, nor a JPA or Spring Data entity; the project adds other
   annotations to `UseDataClass`'s `excludeAnnotatedClasses` in its `detekt.yml`.
 - Design for a fixed clock and a seeded random: take a `java.time.Clock` and a `kotlin.random.Random`
   as constructor parameters, and read environment variables once where `fun main` (or the
   `@SpringBootApplication` class, or the Ktor module) builds the objects, into a config class passed in.
-- With Spring, the architecture rules (`archunit/spring-...`) read the compiled Kotlin classes: package
-  by feature; controllers call services, never repositories or another controller; a repository calls
-  no service; a request- or session-scoped bean reaches a singleton only as `ObjectProvider<T>` or
-  through a scoped proxy (`@RequestScope`); request data never lands in a singleton's property or a
-  `companion object`: pass it through parameters and return values.
 - With jMolecules (`AggregateRoot`, `Entity`, `ValueObject` or their annotations; also without Spring),
   the `archunit/ddd-...` rules hold aggregate boundaries: refer to another aggregate's root by its
   identifier or an `Association`, keep each entity in one aggregate, and keep entities and roots out of
@@ -82,6 +91,10 @@ To learn why a rule is on and what form it allows before you write or change cod
   members and parameters (an override, a function with a framework annotation and a name starting
   `ignored` or `unused` are skipped). A public function's `Boolean` parameter that picks a behavior
   becomes two functions or an enum (`BooleanFlagParameter`).
+- Secrets (nitpicker's own `kotlin-source` checks, not detekt): never put a secret literal in a
+  `password`, `token`, `apiKey` or `secret` name, map entry or fallback (`?: "..."`, `getOrDefault`);
+  read it from the environment or a secrets manager. Never pass a secret to a log call, `println`,
+  `System.out`/`System.err` or an exception message: log that it is set, or a masked tail.
 - Signatures: a value with three states is an `enum class`, not a `Boolean?` parameter, return
   type or property (`kotlin-source/TriStateBoolean`; a property or parameter a framework fills,
   such as `@Column`, `@JsonProperty`, `@SerialName` or an `@Entity` property, is exempt); a public
@@ -93,12 +106,13 @@ To learn why a rule is on and what form it allows before you write or change cod
   `SimpleDateFormat` are banned.
 - Enums: to sort the entries of one of your enums into two groups, classify every entry with a
   `when` without `else` (adding an entry then fails to compile), or a `Boolean` each entry
-  declares. Not `s == PAID || s == SHIPPED` or `s in setOf(PAID, SHIPPED)`
-  (`pmd/ExhaustiveEnumPredicate`).
+  declares. Not `s == PAID || s == SHIPPED`, `s in setOf(PAID, SHIPPED)` or a `when` with
+  `else -> false` (`pmd/ExhaustiveEnumPredicate`).
 - No top-level or `object` function that only passes its parameters, in order, to another function
   with the same parameters (`pmd/StaticForwardingWrapper`); call that function. Factories named
   `of` or `from` are fine.
-- A data class or `@ConfigurationProperties` class has `tags` or `tag`, not both
+- A data class, a `@ConfigurationProperties` class, the public properties of any class and the
+  defaulted parameters of a public function have `tags` or `tag`, not both
   (`pmd/SingularAndPluralMember`); one item is a one-element list.
 - A validation annotation on a constructor property takes the field target:
   `data class OrderRequest(@field:NotBlank val item: String)`, not `@NotBlank val item`, which
@@ -110,8 +124,14 @@ To learn why a rule is on and what form it allows before you write or change cod
   function `main` or the framework calls after startup (a `@Bean` method, an `ApplicationRunner`, a
   Ktor module) and pass the result in, or defer it with `by lazy { }`. Constants, loggers, `Regex`
   and collections can stay.
-- A private or `internal` function or constructor does not declare a default parameter that no
-  call in the project sets (`unused-option`): remove the parameter, or pass it from a real call.
+- The lambda passed to `computeIfAbsent`, `compute`, `computeIfPresent`, `merge`, or `getOrPut`
+  on a `ConcurrentMap`, never changes the same map, not even from a callback it starts
+  (`pmd/RecursiveMapUpdate`). Attach the cleanup to the result:
+  `map.computeIfAbsent(key) { start(it) }.whenComplete { r, _ -> map.remove(key, r) }`.
+- A public top-level, `object` or companion function, or a private or `internal` function or
+  constructor, does not declare a default parameter that no call sets (`unused-option`): remove the
+  parameter, or pass it from a real call. Tests count only for private and `internal` declarations
+  and published modules.
 - Never `@Suppress` a detekt or ktlint rule (its name, `all`, a ruleset, `detekt:...`, `ktlint:...`):
   fix the code. The compiler warnings `UNCHECKED_CAST`, `DEPRECATION` and `USELESS_CAST` are
   findings too and are not suppressed either. If a rule flags legitimate code, stop and ask: the
@@ -123,8 +143,6 @@ To learn why a rule is on and what form it allows before you write or change cod
   `detekt.yml` has no effect. Generated code belongs in `exclude`: ask the maintainer to add it.
 - A project may add forbidden calls to `ForbiddenMethodCall.methods` in its `detekt.yml`; they join
   the preset's. Do not call anything the project lists there.
-- With Spring, the Spring, JPA and Spring Data rules of the Java preset run on Kotlin under the same
-  `pmd/...` ids, and each finding names the Kotlin form.
 
 ## Repository files
 
@@ -169,6 +187,17 @@ To learn why a rule is on and what form it allows before you write or change cod
   config that never runs, no constant false `@EnabledIf` and no `assumeTrue(false)`; no `f:` name prefix,
   `ftest`, `fcontext`, `fit`. Fix the test or delete it; limit it to an environment with `@EnabledOnOs` or
   an assumption on a real condition when it cannot run elsewhere.
+- No retries in test code (`pmd/RetryInTest`): no `@RetryingTest`, `@RepeatedIfExceptionsTest`, TestNG
+  `retryAnalyzer`, `IRetryAnalyzer`, `RetryAnalyzerCount` or `setRetryAnalyzer(...)`, and no Kotest
+  `retries` (`.config(retries = n)`, `retries = n` in a spec, `override val retries` in a project or
+  package config, `TestConfig(retries = n)`). A test that passes on a later attempt hides a flaky or
+  racy test: wait on the condition instead of a fixed delay, isolate shared state. `retries = 0` and
+  `@RepeatedTest` are fine.
+- Start a container, server or process once, not for each test (`pmd/ServerOrContainerPerTest`): a
+  `@Container` or WireMock `@RegisterExtension` property lives in a companion object, a Kotest
+  container extension uses the spec lifecycle (not `ContainerLifecycleMode.Test` or `perTest()`),
+  and `@BeforeEach`, `beforeTest` or `beforeEach` does not create and start one; two tests do not
+  make the same start. Start it in `@BeforeAll` or a spec-level extension and reset its state.
 - Assert unconditionally (`pmd/AssertionInControlFlow`): no assertion that can be skipped, inside an `if`,
   a `when`, any loop (also over results), a safe call (`?.let`), `takeIf`, `&&`, `||`, `?:`, a `try` that
   swallows the failure, a `runCatching`, or after an early `return`. An `if`/`else` or `when` whose every
@@ -183,11 +212,6 @@ To learn why a rule is on and what form it allows before you write or change cod
   (`backgroundScope.launch` for work that ends with the test), keep the job and `join()` it or `await()` the
   deferred (a collection of them too), or build the scope on the test dispatcher and drive it with
   `advanceUntilIdle`; a scope the test class cancels in `@AfterEach` or Kotest `afterSpec` is owned too.
-- A `@SpringBootTest` class uses its context: it injects a bean or a `MockMvc`, `WebTestClient` or
-  `TestRestTemplate`, or it starts a web server port. Otherwise create the class with its
-  constructor in a unit test, or use a slice (`pmd/SpringUnusedContext`).
-- A function or file already over a limit may be edited but must not get worse: put new code in a
-  new function or file and call it.
 - A string of five characters or more used three times in a main file gets one
   `private const val NAME = "..."` (`kotlin-source/RepeatedStringLiteral`); annotation arguments,
   `when` labels, named arguments, map keys and message keys are not counted.

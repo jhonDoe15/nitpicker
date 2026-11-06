@@ -7,10 +7,23 @@ import { discoverSuites, scanTestFile } from './discovery/test-units.mjs';
 import { CONTROL_FLOW_RULE } from './honesty/flow/assertion-flow.mjs';
 import { FOCUSED_RULE } from './honesty/focused-tests.mjs';
 import { honestyReports } from './honesty/honesty-reports.mjs';
+import { RETRY_RULE } from './honesty/retries/retry-tests.mjs';
 import { DISABLED_RULE } from './honesty/skipped-tests.mjs';
 import { projectFlags } from './project-flags.mjs';
+import {
+  PER_TEST_START_MESSAGE,
+  PER_TEST_START_RULE,
+  perTestStarts,
+} from './setup/per-test-starts.mjs';
 
-export const HONESTY_RULES = [DISABLED_RULE, FOCUSED_RULE, CONTROL_FLOW_RULE, ESCAPING_RULE];
+export const HONESTY_RULES = [
+  DISABLED_RULE,
+  FOCUSED_RULE,
+  RETRY_RULE,
+  PER_TEST_START_RULE,
+  CONTROL_FLOW_RULE,
+  ESCAPING_RULE,
+];
 
 const CONTEXT_MARKERS = new RegExp(
   [
@@ -37,6 +50,11 @@ export function fileReports(scanned, project) {
   return [
     ...honestyReports(scanned, suites, project),
     ...coroutineReports(scanned, suites, project),
+    ...perTestStarts(scanned, suites).map((entry) => ({
+      ...entry,
+      rule: PER_TEST_START_RULE,
+      message: PER_TEST_START_MESSAGE,
+    })),
   ].toSorted((left, right) => left.offset - right.offset);
 }
 

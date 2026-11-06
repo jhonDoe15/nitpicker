@@ -3,6 +3,7 @@ import path from 'node:path';
 import { pathInside } from '../../../../../shared/filesystem.mjs';
 import { hash, nextOccurrence } from '../../../../../shared/rules/finding-helpers.mjs';
 import { braceDepths, lineOf, lineText, scanKotlinSource } from './kotlin-source.mjs';
+import { CAST_MESSAGES, unsafeCasts } from './casts/unsafe-casts.mjs';
 import { REPEATED_STRING_MESSAGE, repeatedStringLiterals } from './literals/repeated-strings.mjs';
 import { CALL_MESSAGES, ioInLoops, logTemplates, shellCommands } from './rules/calls.mjs';
 import { CATCH_MESSAGES, booleanFlags, catchOnlyLogs } from './rules/catches.mjs';
@@ -13,12 +14,9 @@ import {
   commentedOutCode,
   generatedFile,
 } from './rules/markers.mjs';
-import {
-  SECRET_MESSAGES,
-  credentialLiterals,
-  hardcodedSecrets,
-  secretsInLogs,
-} from './rules/secrets.mjs';
+import { credentialLiterals, hardcodedSecrets } from './rules/secrets/hardcoded-secrets.mjs';
+import { SECRET_MESSAGES } from './rules/secrets/secret-names.mjs';
+import { secretsInLogs } from './rules/secrets/secrets-in-logs.mjs';
 import {
   COMPATIBILITY_SHIM_MESSAGES,
   compatibilityShims,
@@ -30,9 +28,11 @@ import {
 import { TRI_STATE_MESSAGES, triStateBooleans } from './signatures/tri-state.mjs';
 import { TEST_MESSAGES, testClassesWithoutTests, testHelpersInSource } from './rules/tests.mjs';
 import { CLIENT_MESSAGES, httpWithoutTimeout, unsafeDeserialization } from './security/clients.mjs';
+import { PROCESS_MESSAGES, processWaitsWithoutTimeout } from './processes/process-waits.mjs';
 import { CRYPTO_MESSAGES, disabledTlsVerification, weakHashes } from './security/crypto.mjs';
 import { SQL_MESSAGES, sqlStringBuilding } from './security/sql.mjs';
 import { kotlinDeclarations } from './security/sql-values.mjs';
+import { LOG_FORMAT_MESSAGES, logFormatArguments } from './logging/log-format-rules.mjs';
 import { FAN_OUT_MESSAGES } from '../review-rules/main/fan-out/fan-out.mjs';
 
 const KOTLIN_SOURCE_TOOL = 'kotlin-source';
@@ -41,12 +41,15 @@ export const KOTLIN_SOURCE_MESSAGES = {
   ...MARKER_MESSAGES,
   ...DECLARATION_MESSAGES,
   ...CALL_MESSAGES,
+  ...CAST_MESSAGES,
   ...CATCH_MESSAGES,
   ...SECRET_MESSAGES,
   ...TEST_MESSAGES,
   ...SQL_MESSAGES,
   ...CRYPTO_MESSAGES,
   ...CLIENT_MESSAGES,
+  ...PROCESS_MESSAGES,
+  ...LOG_FORMAT_MESSAGES,
   ...FAN_OUT_MESSAGES,
   ...TRI_STATE_MESSAGES,
   ...PARAMETER_MUTATION_MESSAGES,
@@ -64,8 +67,10 @@ const MAIN_RULES = [
   mutableModuleState,
   genericNames,
   logTemplates,
+  logFormatArguments,
   shellCommands,
   ioInLoops,
+  unsafeCasts,
   catchOnlyLogs,
   booleanFlags,
   hardcodedSecrets,
@@ -76,13 +81,14 @@ const MAIN_RULES = [
   weakHashes,
   disabledTlsVerification,
   httpWithoutTimeout,
+  processWaitsWithoutTimeout,
   unsafeDeserialization,
   triStateBooleans,
   parameterMutations,
   compatibilityShims,
   repeatedStringLiterals,
 ];
-const TEST_RULES = [testClassesWithoutTests];
+const TEST_RULES = [testClassesWithoutTests, unsafeCasts];
 
 const TOP_LEVEL_MAIN = /(?<![\w.])fun\s+main\s*\(/g;
 const ROOT_MARKERS = [

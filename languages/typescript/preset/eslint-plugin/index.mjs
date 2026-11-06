@@ -16,11 +16,14 @@ import { rule as noUiFrameworkInDomain } from './rules/syntax/no-ui-framework-in
 import { noDefaultExport, noNull, noPromiseChain } from './rules/syntax/syntax-bans.mjs';
 import { rule as noProductionConsole } from './rules/modules/no-production-console.mjs';
 import { rule as noSelfRecursion } from './rules/control/no-self-recursion.mjs';
+import { rule as noAccumulatingSpread } from './rules/collections/no-accumulating-spread.mjs';
 import { rule as noSilentCatch } from './rules/errors/no-silent-catch.mjs';
 import { rule as noThrow } from './rules/errors/no-throw.mjs';
 import { rule as noUnknownInDomain } from './rules/boundaries/no-unknown-in-domain.mjs';
 import { rule as noMutatingMethodInDomain } from './rules/domain/no-mutating-method-in-domain.mjs';
 import { rule as noUnvalidatedSchemaField } from './rules/boundaries/no-unvalidated-schema-field.mjs';
+import { rule as noEagerRelation } from './rules/persistence/no-eager-relation.mjs';
+import { rule as noManyToManyCascadeRemove } from './rules/persistence/no-many-to-many-cascade-remove.mjs';
 import { rule as reportModuleLoadEffects } from './rules/modules/report-module-load-effects.mjs';
 import { rule as structuredCatchLogging } from './rules/errors/structured-catch-logging.mjs';
 import { rule as testMustUseProductionRuntime } from './rules/testing/assertions/test-must-use-production-runtime.mjs';
@@ -36,6 +39,7 @@ import { rule as noNodeProcessPerTest } from './rules/testing/processes/no-node-
 import { rule as noServerOrWorkerPerTest } from './rules/testing/processes/no-server-or-worker-per-test.mjs';
 import { rule as noRaisedTestTimeout } from './rules/testing/assertions/no-raised-test-timeout.mjs';
 import { rule as requireTestProcessTimeout } from './rules/testing/processes/timeouts/require-test-process-timeout.mjs';
+import { rule as requireProcessTimeout } from './rules/processes/require-process-timeout.mjs';
 import { rule as noUnusedDomEnvironment } from './rules/testing/environment/no-unused-dom-environment.mjs';
 import { rule as noPartialOutputAssertion } from './rules/testing/assertions/no-partial-output-assertion.mjs';
 import { rule as noProcessGlobalsOutsideMainGuard } from './rules/modules/no-process-globals-outside-main-guard.mjs';
@@ -48,7 +52,7 @@ import { rule as noFalsyDefault } from './rules/signatures/no-falsy-default.mjs'
 import { rule as noParameterMutation } from './rules/signatures/no-parameter-mutation.mjs';
 import { rule as noTriStateBoolean } from './rules/signatures/no-tri-state-boolean.mjs';
 import { rule as noRuntimeExclusivePropsCheck } from './rules/react-props/no-runtime-exclusive-props-check.mjs';
-import { rule as noSingularAndPluralProp } from './rules/react-props/no-singular-and-plural-prop.mjs';
+import { rule as noSingularAndPluralProp } from './rules/api-shape/no-singular-and-plural-prop.mjs';
 import { rule as reactNoEffectDataFetching } from './rules/react/react-no-effect-data-fetching.mjs';
 import { rule as reactNoHardcodedColors } from './rules/react/theme/react-no-hardcoded-colors.mjs';
 import { rule as reactNoEffectDerivedState } from './rules/react/react-no-effect-derived-state.mjs';
@@ -61,6 +65,9 @@ import { rule as reactNoRandomKey } from './rules/react/render/react-no-random-k
 import { rule as reactTestNoImplementationDetails } from './rules/react-tests/react-test-no-implementation-details.mjs';
 
 import { rule as unboundedFanOut } from './rules/concurrency/unbounded-fan-out.mjs';
+import { rule as noOrmQueryLogging } from './rules/database/no-orm-query-logging.mjs';
+import { rule as noOrmSchemaSync } from './rules/database/no-orm-schema-sync.mjs';
+import { rule as requireErrorListener } from './rules/events/require-error-listener.mjs';
 import { rule as noModuleLevelMutableState } from './rules/guards/no-module-level-mutable-state.mjs';
 import { rule as noProcessAccessOutsideCompositionRoot } from './rules/guards/no-process-access-outside-composition-root.mjs';
 import { rule as noShellStringCommand } from './rules/guards/no-shell-string-command.mjs';
@@ -109,9 +116,12 @@ export const nitpickerRules = {
     'no-sql-string-building': noSqlStringBuilding,
     'no-unsafe-deserialization': noUnsafeDeserialization,
     'no-weak-hash': noWeakHash,
+    'require-error-listener': requireErrorListener,
     'require-http-timeout': requireHttpTimeout,
     'no-unknown-main-folder': noUnknownMainFolder,
     'unbounded-fan-out': unboundedFanOut,
+    'no-orm-query-logging': noOrmQueryLogging,
+    'no-orm-schema-sync': noOrmSchemaSync,
     'no-magic-numbers': noMagicNumbers,
     'naming-convention': namingConvention,
     'no-unsafe-path-join': noUnsafePathJoin,
@@ -121,12 +131,15 @@ export const nitpickerRules = {
     'file-name-casing': fileNameCasing,
     'no-production-console': noProductionConsole,
     'no-self-recursion': noSelfRecursion,
+    'no-accumulating-spread': noAccumulatingSpread,
     'no-silent-catch': noSilentCatch,
     'no-dev-dependency-in-production': noDevDependencyInProduction,
     'no-throw': noThrow,
     'no-unknown-in-domain': noUnknownInDomain,
     'no-mutating-method-in-domain': noMutatingMethodInDomain,
     'no-unvalidated-schema-field': noUnvalidatedSchemaField,
+    'no-eager-relation': noEagerRelation,
+    'no-many-to-many-cascade-remove': noManyToManyCascadeRemove,
     'report-module-load-effects': reportModuleLoadEffects,
     'structured-catch-logging': structuredCatchLogging,
     'test-must-use-production-runtime': testMustUseProductionRuntime,
@@ -138,6 +151,7 @@ export const nitpickerRules = {
     'no-server-or-worker-per-test': noServerOrWorkerPerTest,
     'no-raised-test-timeout': noRaisedTestTimeout,
     'require-test-process-timeout': requireTestProcessTimeout,
+    'require-process-timeout': requireProcessTimeout,
     'no-partial-output-assertion': noPartialOutputAssertion,
     'no-unused-dom-environment': noUnusedDomEnvironment,
     'no-process-globals-outside-main-guard': noProcessGlobalsOutsideMainGuard,

@@ -216,7 +216,7 @@ runs:
         if [ -d node_modules ]; then
           echo "cache-dir=$(native_path "$PWD/node_modules/.cache/nitpicker")" >> "$GITHUB_OUTPUT"
         else
-          echo "cache-dir=$(native_path "$(git rev-parse --absolute-git-dir)/nitpicker-cache")" >> "$GITHUB_OUTPUT"
+          echo "cache-dir=$(native_path "$(git rev-parse --absolute-git-dir)/nitpicker/cache")" >> "$GITHUB_OUTPUT"
         fi
         if [ "$skip" = true ]; then
           echo "base-sha=none" >> "$GITHUB_OUTPUT"

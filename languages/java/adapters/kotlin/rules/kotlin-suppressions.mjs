@@ -129,7 +129,7 @@ function isBanned({ token, annotation }, compiled) {
   if (isUnusedCodeSuppression(token)) {
     return compiled && hidesUnusedParameter(annotation);
   }
-  return isBannedSuppression(token) && (compilerWarningRule(token) === undefined || compiled);
+  return isBannedSuppression(token);
 }
 
 export function readSuppressionFindings(projectRoot, { sourceRoots, testRoots = [] }) {
