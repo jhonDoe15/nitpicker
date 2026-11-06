@@ -26,9 +26,9 @@ forms below from the start; the gate is a backstop.
 4. Act on the exit code:
    - 0: done, unless you narrowed the run with `--analyzer`: then the summary says `Ran only: ...`
      and you run the gate again without it before you finish.
-   - 1: fix every new finding (printed as `tool/rule path:line`) and any tool error listed below
-     them, then rerun.
-   - 2: no new findings, but a tool failed (the build, a compile error, a test failure). Fix the
+   - 1: fix the failing tests the summary leads with, every new finding (printed as
+     `tool/rule path:line`) and any tool error listed below them, then rerun.
+   - 2: no new findings, but a tool failed (the build, a compile error). Fix the
      cause it names and rerun. Exit 2 is never a pass. If another run is in progress, wait for
      it; never kill it.
 5. Never suppress: no `// NOPMD`, `@SuppressWarnings`, `@SuppressFBWarnings`, `CHECKSTYLE`
@@ -104,6 +104,9 @@ To learn why a rule is on and what form it allows before you write or change cod
   Time comes from `java.time` with a `Clock` or a zone; `Calendar.getInstance()`,
   `new GregorianCalendar()` and `new SimpleDateFormat(...)` without a time zone are flagged
   (`pmd/LegacyCalendarApi`).
+- Regexes: `split`, `matches`, `replaceAll` and `replaceFirst` take a regex, so wrap a runtime
+  value in `Pattern.quote(value)` (also when you join it into a `Pattern.compile` pattern), and use
+  `replace` for plain text (`pmd/UnquotedRegexValue`, `pmd/PlainTextRegex`).
 - Maps: the function passed to `computeIfAbsent`, `compute`, `computeIfPresent` or `merge` never
   changes the same map, not even from a callback it starts (`pmd/RecursiveMapUpdate`). Attach the
   cleanup to the returned value:
