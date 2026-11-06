@@ -1,6 +1,6 @@
 # Python: nitpicker rules
 
-The Python rules nitpicker's own script checks (`python-rules/*`), the coupling and import-cycle findings, the ruff format check and the finding for a run in which no tests ran. This page lists 67 rules. [All pages](README.md).
+The Python rules nitpicker's own script checks (`python-rules/*`), the coupling and import-cycle findings, the ruff format check and the finding for a run in which no tests ran. This page lists 69 rules. [All pages](README.md).
 
 The guide for these rules: [docs/python-preset.md](../python-preset.md).
 
@@ -111,6 +111,15 @@ A string has the shape of a credential.
 
 - **Allowed form:** Read the credential from the environment in the composition root and pass it in; never commit a key, token, private key or URL with a password.
 - **Exception:** If this is intended, add `{"rule":"credential-shape","paths":["<path>"],"reason":"..."}` to "python.exceptions" in nitpicker.config.json.
+
+<a id="python-rules-eager-relationship"></a>
+
+### `python-rules/eager-relationship`
+
+`<name>` loads its related rows on every query of the model.
+
+- **Allowed form:** Leave `lazy` at its default (or set `lazy="raise"`) and load the relation on the queries that need it: `select(Order).options(selectinload(Order.lines))`. An exception fits only for a small lookup relation that every read of the model needs.
+- **Exception:** If this is intended, add `{"rule":"eager-relationship","paths":["<path>"],"reason":"..."}` to "python.exceptions" in nitpicker.config.json.
 
 <a id="python-rules-enum-string-constants"></a>
 
@@ -237,6 +246,15 @@ The value of `<name>` is a hardcoded secret.
 
 - **Allowed form:** Return a result that says what happened, or raise a domain error, and let `adapters/` or the composition root log it.
 - **Exception:** If this is intended, add `{"rule":"logger-in-domain","paths":["<path>"],"reason":"..."}` to "python.exceptions" in nitpicker.config.json.
+
+<a id="python-rules-many-to-many-cascade-delete"></a>
+
+### `python-rules/many-to-many-cascade-delete`
+
+The many-to-many relationship `<name>` deletes related rows that other owners still share.
+
+- **Allowed form:** Cascade only `"save-update, merge"` on a `secondary=` (or `link_model=`) relationship; deleting the owner already deletes its rows in the association table.
+- **Exception:** If this is intended, add `{"rule":"many-to-many-cascade-delete","paths":["<path>"],"reason":"..."}` to "python.exceptions" in nitpicker.config.json.
 
 <a id="python-rules-mocked-subject-in-test"></a>
 
