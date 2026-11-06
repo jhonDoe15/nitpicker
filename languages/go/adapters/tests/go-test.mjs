@@ -1,6 +1,6 @@
 import { readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
-import { TESTS_FAILED_RULE } from '../../../../shared/rules/finding-helpers.mjs';
+import { TESTS_FAILED_RULE, testsFailHeadline } from '../../../../shared/rules/finding-helpers.mjs';
 import { ANY_STATUS, failure, run } from '../execution/go-process.mjs';
 import { buildFlags } from '../build/go-vet.mjs';
 import { parseTestEvents } from './test-events.mjs';
@@ -54,6 +54,18 @@ function listed(failures) {
   return more > 0 ? [...shown, `  and ${String(more)} more`] : shown;
 }
 
+function failuresMessage(failures, snapshot) {
+  if (snapshot === 'base') {
+    return [
+      'Tests fail in the base snapshot. Make each failing test pass:',
+      ...listed(failures),
+      'The static analyzers ran as usual; coverage comes from the tests that ran.',
+    ].join('\n');
+  }
+  const consequence = 'the static analyzers ran, and coverage comes from the tests that ran';
+  return [testsFailHeadline(failures.length, consequence), ...listed(failures)].join('\n');
+}
+
 export function testRunFindings({ failures, testsRan, buildFailures }, snapshot = 'head') {
   return [
     ...(failures.length === 0
@@ -64,11 +76,7 @@ export function testRunFindings({ failures, testsRan, buildFailures }, snapshot 
             rule: TESTS_FAILED_RULE,
             path: '.',
             identity: TESTS_FAILED_RULE,
-            message: [
-              `Tests fail in the ${snapshot} snapshot. Make each failing test pass:`,
-              ...listed(failures),
-              'The static analyzers ran as usual; coverage comes from the tests that ran.',
-            ].join('\n'),
+            message: failuresMessage(failures, snapshot),
             classification: 'tool-error',
           },
         ]),
