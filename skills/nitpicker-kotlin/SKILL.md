@@ -104,8 +104,8 @@ To learn why a rule is on and what form it allows before you write or change cod
   `SimpleDateFormat` are banned.
 - Enums: to sort the entries of one of your enums into two groups, classify every entry with a
   `when` without `else` (adding an entry then fails to compile), or a `Boolean` each entry
-  declares. Not `s == PAID || s == SHIPPED` or `s in setOf(PAID, SHIPPED)`
-  (`pmd/ExhaustiveEnumPredicate`).
+  declares. Not `s == PAID || s == SHIPPED`, `s in setOf(PAID, SHIPPED)` or a `when` with
+  `else -> false` (`pmd/ExhaustiveEnumPredicate`).
 - No top-level or `object` function that only passes its parameters, in order, to another function
   with the same parameters (`pmd/StaticForwardingWrapper`); call that function. Factories named
   `of` or `from` are fine.
@@ -190,6 +190,11 @@ To learn why a rule is on and what form it allows before you write or change cod
   package config, `TestConfig(retries = n)`). A test that passes on a later attempt hides a flaky or
   racy test: wait on the condition instead of a fixed delay, isolate shared state. `retries = 0` and
   `@RepeatedTest` are fine.
+- Start a container, server or process once, not for each test (`pmd/ServerOrContainerPerTest`): a
+  `@Container` or WireMock `@RegisterExtension` property lives in a companion object, a Kotest
+  container extension uses the spec lifecycle (not `ContainerLifecycleMode.Test` or `perTest()`),
+  and `@BeforeEach`, `beforeTest` or `beforeEach` does not create and start one; two tests do not
+  make the same start. Start it in `@BeforeAll` or a spec-level extension and reset its state.
 - Assert unconditionally (`pmd/AssertionInControlFlow`): no assertion that can be skipped, inside an `if`,
   a `when`, any loop (also over results), a safe call (`?.let`), `takeIf`, `&&`, `||`, `?:`, a `try` that
   swallows the failure, a `runCatching`, or after an early `return`. An `if`/`else` or `when` whose every
