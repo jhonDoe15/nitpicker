@@ -19,6 +19,7 @@ dependencies {
     compileOnly("org.springframework:spring-tx:6.2.10")
     compileOnly("org.springframework:spring-web:6.2.10")
     compileOnly("org.springframework:spring-webflux:6.2.10")
+    compileOnly("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.10.2")
     compileOnly("org.springframework:spring-jdbc:6.2.10")
     compileOnly("org.springframework.data:spring-data-jpa:3.5.3")
     compileOnly("org.springframework.boot:spring-boot:3.5.5")
@@ -33,4 +34,8 @@ dependencies {
     compileOnly("jakarta.validation:jakarta.validation-api:3.0.2")
     compileOnly("jakarta.transaction:jakarta.transaction-api:2.0.1")
     compileOnly("org.slf4j:slf4j-api:2.0.17")
+    compileOnly("io.github.resilience4j:resilience4j-annotations:2.2.0")
+    compileOnly("io.micrometer:micrometer-core:1.15.3")
+    compileOnly("org.aspectj:aspectjrt:1.9.24")
+    compileOnly("com.github.ben-manes.caffeine:caffeine:3.2.2")
 }

@@ -2,6 +2,7 @@ import { writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { jscpdVersion } from '../../../core/tooling/jscpd/run-jscpd.mjs';
 import { scanImports } from './analysis/python-coupling.mjs';
+import { collectFacts } from './facts/python-facts.mjs';
 import { scanDependencies } from './dependencies/dependency-findings.mjs';
 import { runDuplicates } from './analysis/python-duplicates.mjs';
 import { openSnapshotEnvironment } from './execution/python-environment.mjs';
@@ -113,6 +114,9 @@ export function runPythonTools(context) {
     (stepContext) => {
       scanImports(stepContext, run);
       scanDependencies(stepContext, run);
+    },
+    (stepContext) => {
+      collectFacts(stepContext, run);
     },
     (stepContext) => {
       runImportLinter(stepContext, run);

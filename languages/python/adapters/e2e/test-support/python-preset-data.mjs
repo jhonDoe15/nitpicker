@@ -132,3 +132,29 @@ export const SIGN_NEGATIVE = ['sign_negative', 'signs.sign(-5) == -1'];
 export const CLAMP_LOW = ['clamp_low', 'signs.clamp(1) == 1'];
 
 export const CLAMP_HIGH = ['clamp_high', 'signs.clamp(50) == 10'];
+
+export const RUNTIME_TEST = [
+  'import logging',
+  'import time',
+  '',
+  'from demo.legacy import value',
+  '',
+  '',
+  'def test_value_is_cached():',
+  '    logging.getLogger("demo").warning("cache is cold for key %s", 42)',
+  '    time.sleep(0.3)',
+  '    assert value() == 1',
+  '',
+].join('\n');
+
+export const NOISY_TEST = [
+  'import sys',
+  '',
+  'from demo.legacy import clamp',
+  '',
+  '',
+  'def test_clamp_limits():',
+  '    sys.stderr.write("clamping above the limit\\n")',
+  '    assert clamp(30) == 10',
+  '',
+].join('\n');

@@ -1,7 +1,15 @@
 import ast
 import json
+import os
 import re
 import sys
+import tokenize
+
+sys.dont_write_bytecode = True
+HERE = os.path.dirname(os.path.abspath(__file__))
+sys.path[:0] = [os.path.join(HERE, "facts"), os.path.join(os.path.dirname(HERE), "rules")]
+
+from python_facts import decoded, facts_of
 
 
 TYPE_CHECKING = "TYPE_CHECKING"
@@ -61,7 +69,7 @@ def branches(node, type_only, flags):
     return None
 
 
-def statement_of(node, state):
+def statement_of(node, state, conditional):
     type_only, guarded, local = state
     level, module = (0, None) if isinstance(node, ast.Import) else (node.level, node.module)
     return {
@@ -72,6 +80,8 @@ def statement_of(node, state):
         "guarded": guarded,
         "local": local,
         "line": node.lineno,
+        "conditional": conditional,
+        "aliases": [{"name": a.name, "alias": a.asname} for a in node.names],
     }
 
 
@@ -98,6 +108,56 @@ def suppresses_import_error(node):
         and any(names_in(argument) & IMPORT_ERRORS for argument in item.context_expr.args)
         for item in node.items
     )
+
+
+def import_nodes(statements):
+    return [
+        node
+        for statement in statements
+        for node in ast.walk(statement)
+        if isinstance(node, IMPORTS)
+    ]
+
+
+def bound_names(node):
+    if isinstance(node, ast.Import):
+        return {alias.asname or alias.name.split(".")[0] for alias in node.names}
+    return {alias.asname or alias.name for alias in node.names}
+
+
+def fallback_imports(node):
+    handlers = [handler for handler in node.handlers if catches_import_error(handler)]
+    if not handlers:
+        return []
+    return import_nodes([*node.body, *(statement for h in handlers for statement in h.body)])
+
+
+def chain_branches(node):
+    found = [node.body]
+    while len(node.orelse) == 1 and isinstance(node.orelse[0], ast.If):
+        node = node.orelse[0]
+        found.append(node.body)
+    return [*found, node.orelse] if node.orelse else found
+
+
+def gated_imports(node):
+    per_branch = [import_nodes(branch) for branch in chain_branches(node)]
+    counts = {}
+    for nodes in per_branch:
+        for name in set().union(*map(bound_names, nodes)):
+            counts[name] = counts.get(name, 0) + 1
+    shared = {name for name, count in counts.items() if count >= 2}
+    return [node for nodes in per_branch for node in nodes if bound_names(node) & shared]
+
+
+def alternative_imports(tree):
+    found = set()
+    for node in ast.walk(tree):
+        if isinstance(node, TRY_NODES):
+            found.update(map(id, fallback_imports(node)))
+        elif isinstance(node, ast.If):
+            found.update(map(id, gated_imports(node)))
+    return found
 
 
 def stored_names(target):
@@ -164,13 +224,14 @@ def child_states(node, state, flags):
 
 
 def collect(root, flags):
+    alternatives = alternative_imports(root)
     found = []
     environment = import_flags(root)
     stack = [(root, (False, False, False))]
     while stack:
         node, state = stack.pop()
         if isinstance(node, IMPORTS):
-            found.append(statement_of(node, state))
+            found.append(statement_of(node, state, id(node) in alternatives))
             continue
         split = branches(node, state[0], flags) if isinstance(node, ast.If) else None
         if split is None:
@@ -187,13 +248,22 @@ def imports_of(tree):
     return collect(tree, type_checking_names(tree))
 
 
-def scan(root, files):
+def scan_file(root, relative, with_facts):
+    with open(f"{root}/{relative}", "rb") as handle:
+        source = handle.read()
+    tree = ast.parse(source, relative)
+    imports = imports_of(tree)
+    if not with_facts:
+        return imports
+    return facts_of(relative, tree, decoded(source), imports)
+
+
+def scan(root, files, with_facts=False):
     scanned = {}
     for relative in files:
         try:
-            with open(f"{root}/{relative}", "rb") as handle:
-                scanned[relative] = imports_of(ast.parse(handle.read(), relative))
-        except (SyntaxError, ValueError, RecursionError, OSError):
+            scanned[relative] = scan_file(root, relative, with_facts)
+        except (SyntaxError, ValueError, RecursionError, OSError, tokenize.TokenError):
             continue
     return scanned
 
@@ -201,4 +271,4 @@ def scan(root, files):
 if __name__ == "__main__":
     with open(sys.argv[1], encoding="utf-8") as handle:
         request = json.load(handle)
-    json.dump(scan(request["root"], request["files"]), sys.stdout)
+    json.dump(scan(request["root"], request["files"], request.get("facts") is True), sys.stdout)
