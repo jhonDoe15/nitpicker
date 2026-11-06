@@ -2,7 +2,13 @@ import { mkdtempSync, rmSync, utimesSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
-import { failedCases, failingTestsError, freshReports, moduleName } from './test-failures.mjs';
+import {
+  failedCaseEntries,
+  failedCases,
+  failingTestsError,
+  freshReports,
+  moduleName,
+} from './test-failures.mjs';
 
 const roots = [];
 
@@ -45,6 +51,149 @@ describe('failedCases', () => {
     expect(failedCases(path.join(root, 'TEST-shop.CartTest.xml'))).toEqual([
       'shop.CartTest.adds: expected: 4',
       'shop.CartTest.empties: java.lang.IllegalStateException',
+    ]);
+  });
+});
+
+describe('failedCaseEntries', () => {
+  const caseWith = (classname, failure) =>
+    `<testsuite name="${classname}"><testcase classname="${classname}" name="adds()">${failure}</testcase></testsuite>`;
+  const detailsOf = (xml) => {
+    const file = path.join(directory(), 'TEST-x.xml');
+    writeFileSync(file, xml);
+    return failedCaseEntries(file).map(({ detail }) => detail);
+  };
+
+  it('names the line of the first test-class frame, inside a lambda too', () => {
+    const failure =
+      '<failure message="org.opentest4j.AssertionFailedError: expected: &lt;4&gt; but was: &lt;3&gt;">' +
+      'org.opentest4j.AssertionFailedError: expected: &lt;4&gt; but was: &lt;3&gt;\n' +
+      '\tat org.junit.jupiter.api.AssertionUtils.fail(AssertionUtils.java:151)\n' +
+      '\tat demo.core.AdderTest.lambda$adds$0(AdderTest.java:14)\n' +
+      '\tat demo.core.AdderTest.adds(AdderTest.java:12)\n' +
+      '</failure>';
+
+    expect(detailsOf(caseWith('demo.core.AdderTest', failure))).toEqual([
+      {
+        name: 'demo.core.AdderTest.adds',
+        message: 'expected: <4> but was: <3>',
+        file: 'demo/core/AdderTest.java',
+        line: 14,
+        expected: '4',
+        received: '3',
+      },
+    ]);
+  });
+
+  it('reads frames that Gradle prefixes with a class loader or module', () => {
+    const failure =
+      '<failure message="boom">java.lang.AssertionError: boom\n' +
+      '\tat java.base@21.0.12/java.lang.reflect.Method.invoke(Method.java:580)\n' +
+      '\tat app//demo.GreeterTest.greets(GreeterTest.java:22)\n' +
+      '</failure>';
+
+    expect(detailsOf(caseWith('demo.GreeterTest', failure))).toEqual([
+      { name: 'demo.GreeterTest.adds', message: 'boom', file: 'demo/GreeterTest.java', line: 22 },
+    ]);
+  });
+
+  it.each([
+    [
+      'AssertJ',
+      'java.lang.AssertionError: &#10;expected: 4&#10; but was: 3',
+      'expected: 4',
+      '4',
+      '3',
+    ],
+    [
+      'Hamcrest',
+      'java.lang.AssertionError: &#10;Expected: is &lt;4&gt;&#10;     but: was &lt;3&gt;',
+      'Expected: is <4>',
+      'is <4>',
+      'was <3>',
+    ],
+    [
+      'kotlin.test',
+      'java.lang.AssertionError: Expected &lt;4&gt;, actual &lt;3&gt;.',
+      'Expected <4>, actual <3>.',
+      '4',
+      '3',
+    ],
+  ])(
+    'reads the expected and received values of a %s message',
+    (_, message, first, expected, received) => {
+      const failure = `<failure message="${message}">trace\n\tat shop.CartTest.adds(CartTest.kt:7)\n</failure>`;
+
+      expect(detailsOf(caseWith('shop.CartTest', failure))).toEqual([
+        {
+          name: 'shop.CartTest.adds',
+          message: first,
+          file: 'shop/CartTest.kt',
+          line: 7,
+          expected,
+          received,
+        },
+      ]);
+    },
+  );
+
+  it('reads the stack of a rerun from its stackTrace element', () => {
+    const failure =
+      '<flakyFailure message="boom" type="java.lang.AssertionError">' +
+      '<stackTrace>java.lang.AssertionError: boom\n\tat shop.CartTest.adds(CartTest.java:9)</stackTrace>' +
+      '</flakyFailure>';
+
+    expect(detailsOf(caseWith('shop.CartTest', failure))).toEqual([
+      {
+        name: 'shop.CartTest.adds',
+        message:
+          'failed, then passed on a rerun (fix the flaky test; nitpicker counts a rerun as a failure): boom',
+        file: 'shop/CartTest.java',
+        line: 9,
+      },
+    ]);
+  });
+
+  it('reads the values of an AssertJ comparison', () => {
+    const failure =
+      '<failure message="&#10;Expecting actual:&#10;  &quot;b&quot;&#10;to be equal to:&#10;  &quot;a&quot;&#10;but was not.">' +
+      'at shop.CartTest.adds(CartTest.java:4)</failure>';
+
+    expect(detailsOf(caseWith('shop.CartTest', failure))).toEqual([
+      {
+        name: 'shop.CartTest.adds',
+        message: 'Expecting actual:',
+        file: 'shop/CartTest.java',
+        line: 4,
+        expected: '"a"',
+        received: '"b"',
+      },
+    ]);
+  });
+
+  it('lists each failure with its location and the values the message leaves out', () => {
+    const error = failingTestsError([
+      {
+        module: '.',
+        tests: ['shop.CartTest.adds: expected: 4'],
+        details: [
+          {
+            name: 'shop.CartTest.adds',
+            message: 'expected: 4',
+            file: 'shop/CartTest.java',
+            line: 7,
+            expected: '4',
+            received: '3',
+          },
+        ],
+      },
+    ]);
+
+    expect(error.message.split('\n')).toEqual([
+      '1 test fails; the build stopped, so no other check ran. Fix the tests and rerun:',
+      '  shop/CartTest.java:7 > shop.CartTest.adds: expected: 4',
+      '    expected: 4',
+      '    received: 3',
     ]);
   });
 });
@@ -115,12 +264,12 @@ describe('freshReports', () => {
 });
 
 describe('failingTestsError', () => {
-  it('lists at most ten failing tests and counts the rest', () => {
-    const tests = Array.from({ length: 12 }, (_, index) => `shop.T.t${String(index)}: no`);
+  it('lists at most fifty failing tests and counts the rest', () => {
+    const tests = Array.from({ length: 52 }, (_, index) => `shop.T.t${String(index)}: no`);
 
     expect(failingTestsError([{ module: '.', tests }]).message.split('\n')).toEqual([
-      '12 tests fail; the build stopped, so no other check ran. Fix the tests and rerun:',
-      ...tests.slice(0, 10).map((test) => `  ${test}`),
+      '52 tests fail; the build stopped, so no other check ran. Fix the tests and rerun:',
+      ...tests.slice(0, 50).map((test) => `  ${test}`),
       '  and 2 more',
     ]);
   });
@@ -129,8 +278,25 @@ describe('failingTestsError', () => {
     const long = `shop.T.t: ${'x'.repeat(400)}`;
 
     expect(failingTestsError([{ module: '.', tests: [long] }]).message.split('\n')[1]).toBe(
-      `  ${long.slice(0, 300)}…`,
+      `  ${long.slice(0, 298)}…`,
     );
+  });
+
+  it('keeps the count of the unlisted tests within the length the runner keeps', () => {
+    const value = 'v'.repeat(400);
+    const tests = Array.from({ length: 60 }, (_, index) => `shop.T.t${String(index)}`);
+    const details = tests.map((name) => ({
+      name: `${name}${'n'.repeat(400)}`,
+      message: 'm'.repeat(400),
+      file: 'shop/T.java',
+      line: 12,
+      expected: value,
+      received: value,
+    }));
+    const lines = failingTestsError([{ module: '.', tests, details }]).message.split('\n');
+
+    expect(lines.at(-1)).toBe('  and 10 more');
+    expect(lines.join('\n').length).toBeLessThan(40_000);
   });
 
   it('lists the tests of every module', () => {

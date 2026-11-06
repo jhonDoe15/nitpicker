@@ -166,6 +166,45 @@ describe.skipIf(!enabled)('parameter-mutation', () => {
     expect(actual).toEqual(expected);
   });
 
+  it('treats a project TypedDict parameter as a dict', () => {
+    const [actual, expected] = outcomes([
+      [
+        'key writes, del and dict methods on a TypedDict',
+        'from typing import Generic, NotRequired, TypedDict, TypeVar, Union\n\nT = TypeVar("T")\n\n\nclass Movie(TypedDict):\n    title: str\n    year: NotRequired[int]\n\n\nclass Box(TypedDict, Generic[T]):\n    value: T\n\n\ndef tag(movie: Movie) -> None:\n    movie["year"] = 1\n\n\ndef clear(movie: Movie | None) -> None:\n    if movie is not None:\n        del movie["year"]\n\n\ndef fill(movie: "Movie") -> None:\n    movie.setdefault("year", 1)\n\n\ndef pick(movie: Union[Movie, int], box: Box[int]) -> None:\n    if isinstance(movie, dict):\n        movie["year"] = 1\n    box["value"] = 1\n',
+        [
+          'parameter-mutation:16 movie[...] (tag)',
+          'parameter-mutation:21 movie[...] (clear)',
+          'parameter-mutation:25 movie.setdefault (fill)',
+          'parameter-mutation:30 movie[...] (pick)',
+          'parameter-mutation:31 box[...] (pick)',
+        ],
+      ],
+      [
+        'a TypedDict from another module and a derived TypedDict',
+        {
+          files: {
+            'movies.py':
+              'from typing import TypedDict\n\n\nclass Movie(TypedDict):\n    title: str\n',
+            'mod.py':
+              'from .movies import Movie\n\n\nclass Film(Movie):\n    year: int\n\n\ndef rename(movie: Movie, film: Film) -> None:\n    movie["title"] = "x"\n    film["year"] = 1\n',
+          },
+        },
+        ['parameter-mutation:9 movie[...] (rename)', 'parameter-mutation:10 film[...] (rename)'],
+      ],
+      [
+        'a copy of a TypedDict and a plain class',
+        'from typing import TypedDict\n\n\nclass Movie(TypedDict):\n    title: str\n\n\nclass Box:\n    title: str\n\n\ndef rename(movie: Movie, box: Box) -> Movie:\n    box.title = "x"\n    return {**movie, "title": "x"}\n\n\ndef retitle(movie: Movie) -> Movie:\n    movie = Movie(**movie)\n    movie["title"] = "x"\n    return movie\n',
+        [],
+      ],
+      [
+        'a call that unpacks something else is not a copy',
+        'from typing import TypedDict\n\n\nclass Movie(TypedDict):\n    title: str\n\n\ndef keep(movie: Movie, **extra: str) -> Movie:\n    return movie\n\n\ndef retitle(movie: Movie, extra: dict[str, str]) -> None:\n    movie = keep(movie, **extra)\n    movie["title"] = "x"\n',
+        ['parameter-mutation:14 movie[...] (retitle)'],
+      ],
+    ]);
+    expect(actual).toEqual(expected);
+  });
+
   it('leaves copies of every kind, other scopes and private helpers alone', () => {
     const [actual, expected] = outcomes([
       [

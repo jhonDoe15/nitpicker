@@ -996,9 +996,18 @@ self.items.append(item)`), also through a package `__init__` that re-exports it 
   [`shared/literals/repeated-literal-exemptions.mjs`](../shared/literals/repeated-literal-exemptions.mjs);
   `literal-exemptions.test.mjs` fails when `literals.py` drifts from it. The message ends with the
   `exceptions` route for the rule like every other Python rule.
-- `generic-name` reports a file, a folder or a top-level class whose last word is `util`, `utils`,
-  `helper`, `helpers`, `manager`, `common`, `misc` and the like; a class that extends a type with the
-  same ending (`class SessionManager(CacheManager)`) is not reported.
+- `generic-name` reports a file, a folder or a class (nested ones too) whose last name word is `util`,
+  `utils`, `utility`, `utilities`, `helper`, `helpers`, `manager`, `managers`, `common`, `commons`,
+  `misc` or `miscellaneous` (the list in `shared/naming/smell-words.mjs`, which the Kotlin preset uses
+  too; trailing digits and version words such as `v2` are ignored). A last word that only wraps the
+  real one (`functions`, `funcs`, `methods`, `module`, `modules`, `mixin`, `mixins`, `base`, `classes`,
+  the container words of the same module) is skipped, so `util_functions`, `helper_module`,
+  `OrderHelperMixin` and `HelperBase` are reported and `LoggingMixin` or `ModelBase` are not; a word
+  elsewhere in the name (`common_prefix`, `get_common_ancestor`) is not reported. Test
+  files are skipped. A class that extends a type with the same ending (`class SessionManager(CacheManager)`),
+  a `managers.py` that holds a framework manager (`models.Manager`), `context_manager` and the roles
+  `Authentication`, `Transaction`, `Cache`, `Entity`, `Session`, `Connection`, `Lock` and `Resource`
+  before `Manager` or `Managers` (`ACCEPTED_MANAGER_ROLES` in the same module) are not reported.
 - `boolean-flag-parameter` reports a positional `bool` parameter (annotated `bool` or
   `Annotated[bool, ...]`, as a string too, or defaulted to `True` or `False`; `int | bool` is not one,
   and a nullable `bool | None` is a tri-state, not a flag) of a public function or method that is a condition: the test of an
@@ -1151,10 +1160,14 @@ self.items.append(item)`), also through a package `__init__` that re-exports it 
   its inner task must stay referenced; neither is modeled. Ruff 0.16.8 (the version pinned in
   `.github/python-e2e-constraints.txt`) and 0.16.9 have no ASYNC102, and no flake8-async code is
   used. The identity is the checkpoint, the block and the enclosing function.
-- `todo-without-issue` reports `TODO`, `FIXME`, `XXX` and `HACK` as a whole word at the start of a
-  comment or followed by `:` or `(`, not directly followed by `#123`, `PROJ-123` or a link. `TD` and
-  `FIX` from ruff are not used, because they ask for an author and a date, which the TypeScript and
-  Java presets do not.
+- `todo-without-issue` reports `TODO`, `FIXME`, `XXX` and `HACK` (in comments and docstrings) when the
+  marker is in capitals, at the start of the comment or followed by `:` or `(`, and is not directly
+  followed by an issue reference: `#123`, a key such as `PROJ-123` (not `SHA-1`, `UTF-8`, `RFC-7231` and
+  similar standards) or an `http(s)` link. Each marker is judged on its own, so a second marker in the
+  same comment needs its own issue. Prose that mentions the word (`todo lists`, `Todo list items`,
+  `Hack to ...`, `the list of TODO items`) is not a marker. The Kotlin preset's `ForbiddenComment`
+  follows the same rule (plus `STOPSHIP`); `shared/naming/test-support/task-marker-cases.json` is the table both are
+  tested against. `TD` and `FIX` from ruff are not used, because they ask for an author and a date.
 - `tri-state-boolean` owns every nullable boolean: `bool | None`, `None | bool`, `Optional[bool]` and
   `Union[bool, None]` (also as a string, inside `Annotated`, `Final` or `ClassVar`) on a parameter, a
   return value, a class or module field and a `self.x: bool | None` attribute. `boolean-flag-parameter`
@@ -1202,8 +1215,11 @@ self.items.append(item)`), also through a package `__init__` that re-exports it 
   `limit if limit is not None else DEFAULT_LIMIT`.
 - `parameter-mutation` reports a parameter annotated as a `list`, `dict`, `set`, `deque`,
   `bytearray`, `defaultdict`, `OrderedDict`, `Counter`, `MutableSequence`, `MutableMapping` or
-  `MutableSet` (also `Optional` and `|` members, `typing` aliases and strings) that the function
-  changes in place: `.append`, `.extend`, `.insert`, `.remove`, `.pop`, `.clear`, `.sort`, `.reverse`,
+  `MutableSet`, or a project `TypedDict` (a class that derives from `TypedDict`, resolved
+  through imports, subclasses, generic forms (`Box[int]`) and `Union` members, and treated as a
+  `dict`; the functional `TypedDict("Name", {...})` form is not resolved), also `Optional` and
+  `|` members, `typing` aliases and strings, that
+  the function changes in place: `.append`, `.extend`, `.insert`, `.remove`, `.pop`, `.clear`, `.sort`, `.reverse`,
   `.update`, `.setdefault`, `.popitem`, `.add`, `.discard` and the other mutating methods of its type,
   an item or slice assignment (`p[k] = v`, `p[:] = x`, `p[k][j] = v`), `del p[k]`, an in-place operator
   that the type implements as mutation (`p += [x]` on a list, `p |= other` on a set or dict) and
@@ -1212,13 +1228,17 @@ self.items.append(item)`), also through a package `__init__` that re-exports it 
   every target of `del a[0], b[k]` and of a tuple assignment, and the same operations on a one-hop
   alias (`alias = items`, `self.items = items`). A rebind makes the parameter a copy only when the
   right side is one (`list(p)`, `[*p]`, `{**p}`, `p.copy()`, `sorted(p)`, `p[:]`, `p + [x]`,
-  `copy.copy`, `copy.deepcopy`, a comprehension) and it comes before the first change; `p = p or []`
+  `copy.copy`, `copy.deepcopy`, a comprehension, a class call that unpacks the parameter
+  itself, such as `Movie(**p)`) and it comes before the first change; `p = p or []`
   and `if p is None: p = []` keep the caller's list on the other branch and are reported. A
   comprehension variable or lambda parameter named like the parameter is its own scope. Not
   reported: `self` and `cls`, unannotated and read-only (`Sequence`, `Mapping`) parameters,
   queues (`queue.Queue`, `asyncio.Queue`, which are not list-like types here), `pytest_*` hooks,
   `@override` and `@overload`, private helpers (`_name`) and functions nested in another function
-  (the hazard is a public function that changes the caller's data), and test files. A constructor
+  (the hazard is a public function that changes the caller's data), and test files. Attribute
+  writes are not reported: a project `@dataclass` must be `frozen=True` (`frozen-dataclass`), so
+  `p.field = v` raises at runtime and the type checker rejects it, and other class instances (a pydantic model, an
+  ORM entity) are skipped like class instances in the TypeScript preset. A constructor
   that changes its argument is reported like any other function. The allowed form returns a new
   value (`[*items, item]`, `{**table, key: value}`) or copies the argument first.
 - `regex-unescaped-value` reports a function argument built into the pattern of a `re` or `regex`
@@ -1253,7 +1273,8 @@ __getattr__` that warns or maps removed names to new ones (a PEP 562 lazy import
   report a call to a deprecated name; this rule reports the definition that keeps one alive. A
   published library that has to keep a deprecation takes an exception for its public modules.
 - `ERA001` finds commented-out code by a heuristic: a comment that parses as a statement. Prose
-  that happens to parse is reported too; reword it.
+  that happens to parse is reported too (a label such as `Contact: someone`, a formula, a bare
+  `name: value` note); reword it, or add an exception for the file.
 - The `S` group is selected by code, without the rules left off below; `S324`, `S501`,
   `S113`, `S301`, `S302`, `S506`, `S307`, `S102`, `S202`, `S201`, `S306`, `S108`, the XML rules
   `S313`-`S319`, the TLS rules `S323`, `S502`-`S505`, `S507`-`S509`, `S701`, `S702`, `S704`, `S308`
@@ -2327,9 +2348,10 @@ What the Python preset does the way the TypeScript and Java presets do (`parity/
 - **Failing tests.** pytest runs with `--junitxml` (xunit1, so each case has its file and line) and
   `--continue-on-collection-errors`; exit status 1 with failing cases is no longer a failure of
   the analyzer. The static analyzers run as usual, coverage and CRAP come from the tests that ran,
-  and the failing tests are one `tests/tests-failed` tool error per snapshot, listing up to 20 test
-  ids, as Java's `tests/tests-failed` (`test-runs/test-failures.mjs`). unittest failures are read
-  from its `FAIL:`/`ERROR:` lines. A run that exits 1 without naming a test, or whose
+  and the failing tests are one `tests/tests-failed` tool error per snapshot, listing up to 50 tests
+  with the line of the failing assertion and the error's first line, as Java's `tests/tests-failed`
+  (`test-runs/test-failures.mjs`). unittest failures are read from its `FAIL:`/`ERROR:` blocks
+  and their tracebacks. A run that exits 1 without naming a test, or whose
   failures are only collection errors (pytest) or load errors (unittest's `_FailedTest`), is a
   `python/tests-not-run` tool error on both snapshots.
 - **Slow tests.** `slow-test` (tool `test-runtime`; `test-runtime/slow-test` is accepted in
