@@ -155,6 +155,10 @@
     { "key": "python.exceptions", "rule": "not-type-checking" },
     "`<name>` hides code from the type checkers",
     "Put the code in the normal flow; `if TYPE_CHECKING:` is only for imports that annotations need.",
+    "number-truthiness",
+    { "key": "python.exceptions", "rule": "number-truthiness" },
+    "`<name>` is a number tested for truth, so `0` reads as false or missing",
+    "Compare the number: `count > 0`, `count != 0`, `index != -1`; test an optional number with `count is not None`, and default it with `count if count is not None else DEFAULT`. An exception fits only when `0` must take the same path as a missing value.",
     "orm-query-logging",
     [
       { "label": "Python preset guide", "path": "docs/python-preset.md" },
@@ -363,9 +367,9 @@
     [18, 132, 2, 3, 133, 134, 22, 135, -1],
     [18, 136, 2, 3, 137, 138, 22, 139, -1],
     [18, 140, 2, 3, 141, 142, 22, 143, -1],
-    [18, 144, 2, 145, 146, 147, 22, 148, -1],
-    [18, 149, 2, 150, 151, 152, 22, 153, -1],
-    [18, 154, 2, 3, 155, 156, 22, 157, -1],
+    [18, 144, 2, 3, 145, 146, 22, 147, -1],
+    [18, 148, 2, 149, 150, 151, 22, 152, -1],
+    [18, 153, 2, 154, 155, 156, 22, 157, -1],
     [18, 158, 2, 3, 159, 160, 22, 161, -1],
     [18, 162, 2, 3, 163, 164, 22, 165, -1],
     [18, 166, 2, 3, 167, 168, 22, 169, -1],
@@ -397,9 +401,10 @@
     [18, 270, 2, 3, 271, 272, 22, 273, -1],
     [18, 274, 2, 3, 275, 276, 22, 277, -1],
     [18, 278, 2, 3, 279, 280, 22, 281, -1],
-    [18, 282, 2, 3, 283, 284, 22, -1, -1],
-    [18, 285, 2, 3, 286, 287, 22, 288, -1],
-    [289, 290, 2, 3, 291, 292, 293, 294, -1],
-    [295, 296, 2, 3, 297, 298, 299, 300, 301]
+    [18, 282, 2, 3, 283, 284, 22, 285, -1],
+    [18, 286, 2, 3, 287, 288, 22, -1, -1],
+    [18, 289, 2, 3, 290, 291, 22, 292, -1],
+    [293, 294, 2, 3, 295, 296, 297, 298, -1],
+    [299, 300, 2, 3, 301, 302, 303, 304, 305]
   ]
 }
