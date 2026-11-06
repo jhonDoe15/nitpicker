@@ -1,5 +1,11 @@
 import { ancestorsOf } from '../analysis/ancestry.mjs';
 import { logicalOperands } from '../analysis/static-shapes.mjs';
+import {
+  isLiteralValue,
+  isPlainReference,
+  membershipComparisons,
+  switchComparisons,
+} from './union-predicate-forms.mjs';
 
 const COMPARISON_FOR = { '||': '===', '&&': '!==' };
 const MINIMUM_MEMBERS = 3;
@@ -8,24 +14,6 @@ const FUNCTION_TYPES = new Set([
   'FunctionExpression',
   'ArrowFunctionExpression',
 ]);
-
-function isLiteralValue(node) {
-  return node.type === 'Literal' && ['string', 'number'].includes(typeof node.value);
-}
-
-function isPlainReference(node) {
-  const pending = [node];
-  for (const current of pending) {
-    if (current.type !== 'MemberExpression') {
-      return current.type === 'Identifier' || current.type === 'ThisExpression';
-    }
-    if (current.computed && !isLiteralValue(current.property)) {
-      return false;
-    }
-    pending.push(current.object);
-  }
-  return false;
-}
 
 function comparisonOf(node, operator) {
   if (node.type !== 'BinaryExpression' || node.operator !== operator) {
@@ -36,6 +24,27 @@ function comparisonOf(node, operator) {
   return isLiteralValue(literal) && isPlainReference(subject)
     ? { subject, value: literal.value }
     : undefined;
+}
+
+function operandComparisons(node, logical) {
+  const comparison = comparisonOf(node, COMPARISON_FOR[logical]);
+  if (comparison !== undefined) {
+    return [comparison];
+  }
+  const negated = node.type === 'UnaryExpression' && node.operator === '!';
+  if (logical === '||') {
+    return negated ? undefined : membershipComparisons(node);
+  }
+  return negated ? membershipComparisons(node.argument) : undefined;
+}
+
+function isChainOperand(call) {
+  const negated = call.parent.type === 'UnaryExpression' && call.parent.operator === '!';
+  const operand = negated ? call.parent : call;
+  return (
+    operand.parent.type === 'LogicalExpression' &&
+    operand.parent.operator === (negated ? '&&' : '||')
+  );
 }
 
 function literalMembers(type) {
@@ -149,6 +158,50 @@ function partialUnion({ services, sourceCode }, comparisons) {
   return alias === undefined ? 'the union' : `\`${alias.name}\``;
 }
 
+function chainComparisons(node) {
+  const continuesChain =
+    node.parent.type === 'LogicalExpression' && node.parent.operator === node.operator;
+  if (
+    COMPARISON_FOR[node.operator] === undefined ||
+    continuesChain ||
+    !isPredicateValue(node) ||
+    returnsTypePredicate(node)
+  ) {
+    return undefined;
+  }
+  const operands = logicalOperands(node, node.operator).map((operand) =>
+    operandComparisons(operand, node.operator),
+  );
+  return operands.every((found) => found !== undefined) ? operands.flat() : undefined;
+}
+
+function callComparisons(node) {
+  const comparisons = membershipComparisons(node);
+  return comparisons !== undefined &&
+    !isChainOperand(node) &&
+    isPredicateValue(node) &&
+    !returnsTypePredicate(node)
+    ? comparisons
+    : undefined;
+}
+
+function switchPredicateComparisons(node) {
+  return returnsTypePredicate(node) ? undefined : switchComparisons(node);
+}
+
+const FORMS = {
+  LogicalExpression: chainComparisons,
+  CallExpression: callComparisons,
+  SwitchStatement: switchPredicateComparisons,
+};
+
+function reportPartial({ context, check }, node, comparisons) {
+  const union = comparisons === undefined ? undefined : partialUnion(check, comparisons);
+  if (union !== undefined) {
+    context.report({ node, messageId: 'partialUnionTest', data: { union } });
+  }
+}
+
 export const rule = {
   meta: {
     type: 'suggestion',
@@ -168,30 +221,14 @@ export const rule = {
       return {};
     }
 
-    return {
-      LogicalExpression(node) {
-        const operator = COMPARISON_FOR[node.operator];
-        const continuesChain =
-          node.parent.type === 'LogicalExpression' && node.parent.operator === node.operator;
-        if (
-          operator === undefined ||
-          continuesChain ||
-          !isPredicateValue(node) ||
-          returnsTypePredicate(node)
-        ) {
-          return;
-        }
-        const comparisons = logicalOperands(node, node.operator).map((operand) =>
-          comparisonOf(operand, operator),
-        );
-        if (comparisons.some((comparison) => comparison === undefined)) {
-          return;
-        }
-        const union = partialUnion({ services, sourceCode: context.sourceCode }, comparisons);
-        if (union !== undefined) {
-          context.report({ node, messageId: 'partialUnionTest', data: { union } });
-        }
-      },
-    };
+    const check = { services, sourceCode: context.sourceCode };
+    return Object.fromEntries(
+      Object.entries(FORMS).map(([type, comparisonsOf]) => [
+        type,
+        (node) => {
+          reportPartial({ context, check }, node, comparisonsOf(node));
+        },
+      ]),
+    );
   },
 };

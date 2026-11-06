@@ -1278,6 +1278,14 @@
         "This catch discards the failure. Return a failure result (`return { kind: 'malformed-json' }`), or rethrow an Error subclass with `{ cause: error }`. An exception fits only when dropping it is intended."
       ]
     },
+    "nitpicker/no-singular-and-plural-prop": {
+      "tools": ["eslint-lint"],
+      "forms": [],
+      "description": "Disallow optional alternative inputs (props, parameters, options properties, schema entries) that take one item or a list of the same item",
+      "messages": [
+        "Optional `{{ singular }}` and `{{ plural }}` are two ways to pass the same data. Keep `{{ plural }}` and pass a single item as a one-element array."
+      ]
+    },
     "nitpicker/no-sql-string-building": {
       "tools": ["eslint-lint"],
       "forms": [],
@@ -4122,9 +4130,9 @@
     "nitpicker/no-singular-and-plural-prop": {
       "tools": ["eslint-lint"],
       "forms": [],
-      "description": "Disallow optional alternative props that take one item or a list of the same item",
+      "description": "Disallow optional alternative inputs (props, parameters, options properties, schema entries) that take one item or a list of the same item",
       "messages": [
-        "Optional props `{{ singular }}` and `{{ plural }}` are two ways to pass the same data. Keep `{{ plural }}` and pass a single item as a one-element array."
+        "Optional `{{ singular }}` and `{{ plural }}` are two ways to pass the same data. Keep `{{ plural }}` and pass a single item as a one-element array."
       ]
     },
     "nitpicker/no-sql-string-building": {
@@ -7248,6 +7256,14 @@
       "description": "Require a catch clause to use the caught value or return a failure result, not discard it",
       "messages": [
         "This catch discards the failure. Return a failure result (`return { kind: 'malformed-json' }`), or rethrow an Error subclass with `{ cause: error }`. An exception fits only when dropping it is intended."
+      ]
+    },
+    "nitpicker/no-singular-and-plural-prop": {
+      "tools": ["eslint-lint"],
+      "forms": [],
+      "description": "Disallow optional alternative inputs (props, parameters, options properties, schema entries) that take one item or a list of the same item",
+      "messages": [
+        "Optional `{{ singular }}` and `{{ plural }}` are two ways to pass the same data. Keep `{{ plural }}` and pass a single item as a one-element array."
       ]
     },
     "nitpicker/no-sql-string-building": {
