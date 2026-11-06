@@ -13,6 +13,10 @@ export const RULES_CASES = [
   ]),
   ...rulesCases('weak-hmac', [['weak-hmac', 'hashlib.sha256']]),
   ...rulesCases('http-client-timeout', [['http-without-timeout', 'timeout=10']]),
+  ...rulesCases('orm-config', [
+    ['orm-schema-sync', 'alembic upgrade head'],
+    ['orm-query-logging', 'slow-query log'],
+  ]),
   ...rulesCases('unsafe-model-loading', [['unsafe-deserialization', 'yaml.safe_load']]),
   ...rulesCases('shell-command-forms', [['shell-command', 'shell=false']]),
   ...rulesCases('env-access', [['process-env-access', 'composition root']]),
