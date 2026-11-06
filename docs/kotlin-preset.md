@@ -1580,7 +1580,7 @@ the change adds or edits its lines, else unchanged. A failing root project cover
 source and test directories, so the other Gradle projects keep their comparison. A project that
 does not compile, a run that exits non-zero without a named failing test and a run that times out
 stay `kotlin/gradle-failure`. A change that deletes tests, or removes more test lines than it
-adds, gets no help from the red base. A head whose tests fail stays a `kotlin/gradle-failure`.
+adds, gets no help from the red base. A head whose tests fail is a `kotlin/tests-failed` tool error and exits 1.
 See "A base whose tests fail" in `usage.md`.
 
 ## Config keys

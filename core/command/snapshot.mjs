@@ -20,6 +20,7 @@ import { captureWorkingTree } from '../diff/git/repository/git.mjs';
 import { outputRootFor } from '../diff/reporting/reporters.mjs';
 import { assertHasCommit } from '../diff/git/repository/base-ref.mjs';
 import { partialRunField, partialRunOf } from '../diff/reporting/partial-run/partial-run.mjs';
+import { failingHeadTests } from '../diff/reporting/failing-tests/failing-tests.mjs';
 
 function stderrWarning(stderr) {
   return (message) => stderr.write(`nitpicker: ${message}\n`);
@@ -73,11 +74,11 @@ export function runSnapshotCli({
     stdout,
     stderr,
   });
-  return snapshotExitCode(report.summary);
+  return snapshotExitCode(report);
 }
 
-function snapshotExitCode(summary) {
-  if (summary.enforceableFindings > 0) {
+function snapshotExitCode({ summary, toolErrors }) {
+  if (summary.enforceableFindings > 0 || failingHeadTests(toolErrors).length > 0) {
     return 1;
   }
   return summary.overallStatus === 'tool-error' ? 2 : 0;
