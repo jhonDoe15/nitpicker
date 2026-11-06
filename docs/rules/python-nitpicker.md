@@ -1,6 +1,6 @@
 # Python: nitpicker rules
 
-The Python rules nitpicker's own script checks (`python-rules/*`), the coupling and import-cycle findings, the ruff format check and the finding for a run in which no tests ran. This page lists 73 rules. [All pages](README.md).
+The Python rules nitpicker's own script checks (`python-rules/*`), the coupling and import-cycle findings, the ruff format check and the finding for a run in which no tests ran. This page lists 74 rules. [All pages](README.md).
 
 The guide for these rules: [docs/python-preset.md](../python-preset.md).
 
@@ -410,6 +410,15 @@ The pydantic model `<name>` accepts unknown fields.
 
 - **Allowed form:** Freeze or inject the time: pass a fixed aware `datetime` in (`datetime(2026, 1, 1, tzinfo=timezone.utc)`), use `freezegun` or `time_machine`, or patch the clock with `monkeypatch`.
 - **Exception:** If this is intended, add `{"rule":"real-clock-in-test","paths":["<path>"],"reason":"..."}` to "python.exceptions" in nitpicker.config.json.
+
+<a id="python-rules-regex-unescaped-value"></a>
+
+### `python-rules/regex-unescaped-value`
+
+`<name>` is built into a regex pattern unescaped, so a `.`, `|`, `$` or other metacharacter in it changes what matches.
+
+- **Allowed form:** Escape the value first (`re.compile(rf"^/{re.escape(name)}/\d+$")`), compare plain text with `in`, `startswith` or `==`, or pass a value that is meant as a whole pattern to `re.compile(pattern)` on its own.
+- **Exception:** If this is intended, add `{"rule":"regex-unescaped-value","paths":["<path>"],"reason":"..."}` to "python.exceptions" in nitpicker.config.json.
 
 <a id="python-rules-repeated-string-literal"></a>
 

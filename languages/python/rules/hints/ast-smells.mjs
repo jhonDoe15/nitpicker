@@ -106,6 +106,14 @@ export const SMELL_HINTS = [
   },
   {
     tool: RULES_TOOL,
+    rules: ['regex-unescaped-value'],
+    describe: (subject) =>
+      `\`${subject}\` is built into a regex pattern unescaped, so a \`.\`, \`|\`, \`$\` or other metacharacter in it changes what matches`,
+    allowed:
+      'Escape the value first (`re.compile(rf"^/{re.escape(name)}/\\d+$")`), compare plain text with `in`, `startswith` or `==`, or pass a value that is meant as a whole pattern to `re.compile(pattern)` on its own.',
+  },
+  {
+    tool: RULES_TOOL,
     rules: ['shell-command'],
     describe: (subject) => `\`${subject}\` runs a command through a shell`,
     allowed:
