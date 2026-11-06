@@ -1253,6 +1253,14 @@
         "Do not start a server or worker thread in each test or beforeEach. Start it once in beforeAll and reset its state between tests, or test the logic against an in-memory implementation and keep the real transport for transport tests. An exception fits only when each test needs a fresh server."
       ]
     },
+    "nitpicker/no-shared-stateful-regex": {
+      "tools": ["eslint-lint"],
+      "forms": [],
+      "description": "Disallow reusing a regex with the g or y flag across calls through test(), exec() or a sticky match()",
+      "messages": [
+        "Create the regex where it is used, drop `{{ flag }}` when one match is enough, or walk every match with `text.matchAll(pattern)`, which leaves `pattern` untouched. `{{ name }}` has the `{{ flag }}` flag and is reused across calls, so `{{ method }}()` starts at the `lastIndex` the previous call left and the result depends on call order."
+      ]
+    },
     "nitpicker/no-shared-test-state": {
       "tools": ["eslint-lint"],
       "forms": [],
@@ -1292,6 +1300,15 @@
       "description": "Disallow SQL text built from runtime values",
       "messages": [
         "SQL text built by {{kind}} lets a runtime value change the statement (SQL injection). Use {{tagged}}bind parameters: `pool.query(\"SELECT * FROM users WHERE id = $1\", [id])` (pg), `?` with an array (mysql2, sqlite, knex.raw, knex.whereRaw), `:name` (sequelize, typeorm `.where(\"user.id = :id\", { id })`). Placeholder lists are built from placeholders alone: `ids.map(() => \"?\").join(\",\")`, rows as `rows.map(() => \"(?, ?)\").join(\", \")`, `$${i + 1}`, and optional filters as `conditions.push(\"name = ?\")` joined with `\" AND \"`. A table or column name comes from a fixed lookup (`const COLUMNS = { name: \"name\" } as const; COLUMNS[key]`) or a value typed as a union of literal names (`table: \"users\" | \"orders\"`). An exception fits only when the value is trusted and cannot be written that way."
+      ]
+    },
+    "nitpicker/no-string-as-regex": {
+      "tools": ["eslint-lint"],
+      "forms": [],
+      "description": "Disallow passing a string to match(), matchAll() or search(), and building a regex from an unescaped runtime string",
+      "messages": [
+        "Use `includes`, `startsWith`, `indexOf` or `===` for plain text, or pass a RegExp (`/…/` or `new RegExp(pattern)`) when the string is meant as a pattern. `{{ method }}()` compiles a string argument as a regex, so `.`, `*`, `?`, `(` and the other metacharacters in it change what matches.",
+        "Escape `{{ value }}` with the project's escape helper (`escapeRegExp({{ value }})`, or `RegExp.escape` on a runtime that has it), interpolate a RegExp's `.source` when the value is meant as a pattern, or compare plain text with `includes` or `startsWith`. Built into this regex unescaped, the metacharacters in it change the pattern."
       ]
     },
     "nitpicker/no-switched-off-tests": {
@@ -2159,6 +2176,24 @@
       "messages": [
         "This quantifier can reach itself via the loop {{parent}}. Using any string accepted by {{attack}}, this can be exploited to cause at least polynomial backtracking.{{exp}}",
         "The quantifier {{start}} can exchange characters with {{end}}. Using any string accepted by {{attack}}, this can be exploited to cause at least polynomial backtracking.{{exp}}"
+      ]
+    },
+    "regexp/no-useless-flag": {
+      "tools": ["eslint-lint"],
+      "forms": [],
+      "description": "disallow unnecessary regex flags",
+      "url": "https://ota-meshi.github.io/eslint-plugin-regexp/rules/no-useless-flag.html",
+      "messages": [
+        "The 'i' flag is unnecessary because the pattern only contains case-invariant characters.",
+        "The 'm' flag is unnecessary because the pattern does not contain start (^) or end ($) assertions.",
+        "The 's' flag is unnecessary because the pattern does not contain dots (.).",
+        "The 'g' flag is unnecessary because the regex does not use global search.",
+        "The 'g' flag is unnecessary because the regex is used only once in 'RegExp.prototype.test'.",
+        "The 'g' flag is unnecessary because the regex is used only once in 'RegExp.prototype.exec'.",
+        "The 'g' flag is unnecessary because 'String.prototype.split' ignores the 'g' flag.",
+        "The 'g' flag is unnecessary because 'String.prototype.search' ignores the 'g' flag.",
+        "The 'y' flag is unnecessary because 'String.prototype.split' ignores the 'y' flag.",
+        "The flags of this RegExp literal are useless because only the source of the regex is used."
       ]
     },
     "require-yield": {
@@ -4093,6 +4128,14 @@
         "Do not start a server or worker thread in each test or beforeEach. Start it once in beforeAll and reset its state between tests, or test the logic against an in-memory implementation and keep the real transport for transport tests. An exception fits only when each test needs a fresh server."
       ]
     },
+    "nitpicker/no-shared-stateful-regex": {
+      "tools": ["eslint-lint"],
+      "forms": [],
+      "description": "Disallow reusing a regex with the g or y flag across calls through test(), exec() or a sticky match()",
+      "messages": [
+        "Create the regex where it is used, drop `{{ flag }}` when one match is enough, or walk every match with `text.matchAll(pattern)`, which leaves `pattern` untouched. `{{ name }}` has the `{{ flag }}` flag and is reused across calls, so `{{ method }}()` starts at the `lastIndex` the previous call left and the result depends on call order."
+      ]
+    },
     "nitpicker/no-shared-test-state": {
       "tools": ["eslint-lint"],
       "forms": [],
@@ -4132,6 +4175,15 @@
       "description": "Disallow SQL text built from runtime values",
       "messages": [
         "SQL text built by {{kind}} lets a runtime value change the statement (SQL injection). Use {{tagged}}bind parameters: `pool.query(\"SELECT * FROM users WHERE id = $1\", [id])` (pg), `?` with an array (mysql2, sqlite, knex.raw, knex.whereRaw), `:name` (sequelize, typeorm `.where(\"user.id = :id\", { id })`). Placeholder lists are built from placeholders alone: `ids.map(() => \"?\").join(\",\")`, rows as `rows.map(() => \"(?, ?)\").join(\", \")`, `$${i + 1}`, and optional filters as `conditions.push(\"name = ?\")` joined with `\" AND \"`. A table or column name comes from a fixed lookup (`const COLUMNS = { name: \"name\" } as const; COLUMNS[key]`) or a value typed as a union of literal names (`table: \"users\" | \"orders\"`). An exception fits only when the value is trusted and cannot be written that way."
+      ]
+    },
+    "nitpicker/no-string-as-regex": {
+      "tools": ["eslint-lint"],
+      "forms": [],
+      "description": "Disallow passing a string to match(), matchAll() or search(), and building a regex from an unescaped runtime string",
+      "messages": [
+        "Use `includes`, `startsWith`, `indexOf` or `===` for plain text, or pass a RegExp (`/…/` or `new RegExp(pattern)`) when the string is meant as a pattern. `{{ method }}()` compiles a string argument as a regex, so `.`, `*`, `?`, `(` and the other metacharacters in it change what matches.",
+        "Escape `{{ value }}` with the project's escape helper (`escapeRegExp({{ value }})`, or `RegExp.escape` on a runtime that has it), interpolate a RegExp's `.source` when the value is meant as a pattern, or compare plain text with `includes` or `startsWith`. Built into this regex unescaped, the metacharacters in it change the pattern."
       ]
     },
     "nitpicker/no-switched-off-tests": {
@@ -5576,6 +5628,24 @@
       "messages": [
         "This quantifier can reach itself via the loop {{parent}}. Using any string accepted by {{attack}}, this can be exploited to cause at least polynomial backtracking.{{exp}}",
         "The quantifier {{start}} can exchange characters with {{end}}. Using any string accepted by {{attack}}, this can be exploited to cause at least polynomial backtracking.{{exp}}"
+      ]
+    },
+    "regexp/no-useless-flag": {
+      "tools": ["eslint-lint"],
+      "forms": [],
+      "description": "disallow unnecessary regex flags",
+      "url": "https://ota-meshi.github.io/eslint-plugin-regexp/rules/no-useless-flag.html",
+      "messages": [
+        "The 'i' flag is unnecessary because the pattern only contains case-invariant characters.",
+        "The 'm' flag is unnecessary because the pattern does not contain start (^) or end ($) assertions.",
+        "The 's' flag is unnecessary because the pattern does not contain dots (.).",
+        "The 'g' flag is unnecessary because the regex does not use global search.",
+        "The 'g' flag is unnecessary because the regex is used only once in 'RegExp.prototype.test'.",
+        "The 'g' flag is unnecessary because the regex is used only once in 'RegExp.prototype.exec'.",
+        "The 'g' flag is unnecessary because 'String.prototype.split' ignores the 'g' flag.",
+        "The 'g' flag is unnecessary because 'String.prototype.search' ignores the 'g' flag.",
+        "The 'y' flag is unnecessary because 'String.prototype.split' ignores the 'y' flag.",
+        "The flags of this RegExp literal are useless because only the source of the regex is used."
       ]
     },
     "require-yield": {
@@ -7215,6 +7285,14 @@
         "Do not start a server or worker thread in each test or beforeEach. Start it once in beforeAll and reset its state between tests, or test the logic against an in-memory implementation and keep the real transport for transport tests. An exception fits only when each test needs a fresh server."
       ]
     },
+    "nitpicker/no-shared-stateful-regex": {
+      "tools": ["eslint-lint"],
+      "forms": [],
+      "description": "Disallow reusing a regex with the g or y flag across calls through test(), exec() or a sticky match()",
+      "messages": [
+        "Create the regex where it is used, drop `{{ flag }}` when one match is enough, or walk every match with `text.matchAll(pattern)`, which leaves `pattern` untouched. `{{ name }}` has the `{{ flag }}` flag and is reused across calls, so `{{ method }}()` starts at the `lastIndex` the previous call left and the result depends on call order."
+      ]
+    },
     "nitpicker/no-shared-test-state": {
       "tools": ["eslint-lint"],
       "forms": [],
@@ -7254,6 +7332,15 @@
       "description": "Disallow SQL text built from runtime values",
       "messages": [
         "SQL text built by {{kind}} lets a runtime value change the statement (SQL injection). Use {{tagged}}bind parameters: `pool.query(\"SELECT * FROM users WHERE id = $1\", [id])` (pg), `?` with an array (mysql2, sqlite, knex.raw, knex.whereRaw), `:name` (sequelize, typeorm `.where(\"user.id = :id\", { id })`). Placeholder lists are built from placeholders alone: `ids.map(() => \"?\").join(\",\")`, rows as `rows.map(() => \"(?, ?)\").join(\", \")`, `$${i + 1}`, and optional filters as `conditions.push(\"name = ?\")` joined with `\" AND \"`. A table or column name comes from a fixed lookup (`const COLUMNS = { name: \"name\" } as const; COLUMNS[key]`) or a value typed as a union of literal names (`table: \"users\" | \"orders\"`). An exception fits only when the value is trusted and cannot be written that way."
+      ]
+    },
+    "nitpicker/no-string-as-regex": {
+      "tools": ["eslint-lint"],
+      "forms": [],
+      "description": "Disallow passing a string to match(), matchAll() or search(), and building a regex from an unescaped runtime string",
+      "messages": [
+        "Use `includes`, `startsWith`, `indexOf` or `===` for plain text, or pass a RegExp (`/…/` or `new RegExp(pattern)`) when the string is meant as a pattern. `{{ method }}()` compiles a string argument as a regex, so `.`, `*`, `?`, `(` and the other metacharacters in it change what matches.",
+        "Escape `{{ value }}` with the project's escape helper (`escapeRegExp({{ value }})`, or `RegExp.escape` on a runtime that has it), interpolate a RegExp's `.source` when the value is meant as a pattern, or compare plain text with `includes` or `startsWith`. Built into this regex unescaped, the metacharacters in it change the pattern."
       ]
     },
     "nitpicker/no-switched-off-tests": {
@@ -8216,6 +8303,24 @@
       "messages": [
         "This quantifier can reach itself via the loop {{parent}}. Using any string accepted by {{attack}}, this can be exploited to cause at least polynomial backtracking.{{exp}}",
         "The quantifier {{start}} can exchange characters with {{end}}. Using any string accepted by {{attack}}, this can be exploited to cause at least polynomial backtracking.{{exp}}"
+      ]
+    },
+    "regexp/no-useless-flag": {
+      "tools": ["eslint-lint"],
+      "forms": [],
+      "description": "disallow unnecessary regex flags",
+      "url": "https://ota-meshi.github.io/eslint-plugin-regexp/rules/no-useless-flag.html",
+      "messages": [
+        "The 'i' flag is unnecessary because the pattern only contains case-invariant characters.",
+        "The 'm' flag is unnecessary because the pattern does not contain start (^) or end ($) assertions.",
+        "The 's' flag is unnecessary because the pattern does not contain dots (.).",
+        "The 'g' flag is unnecessary because the regex does not use global search.",
+        "The 'g' flag is unnecessary because the regex is used only once in 'RegExp.prototype.test'.",
+        "The 'g' flag is unnecessary because the regex is used only once in 'RegExp.prototype.exec'.",
+        "The 'g' flag is unnecessary because 'String.prototype.split' ignores the 'g' flag.",
+        "The 'g' flag is unnecessary because 'String.prototype.search' ignores the 'g' flag.",
+        "The 'y' flag is unnecessary because 'String.prototype.split' ignores the 'y' flag.",
+        "The flags of this RegExp literal are useless because only the source of the regex is used."
       ]
     },
     "require-yield": {
