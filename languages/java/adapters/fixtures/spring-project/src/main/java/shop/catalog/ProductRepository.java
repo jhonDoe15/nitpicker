@@ -6,6 +6,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
+import org.springframework.transaction.annotation.Transactional;
 
 public interface ProductRepository extends JpaRepository<Product, Long> {
   Optional<Product> findById(Long id);
@@ -38,8 +39,9 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
 
   @Modifying // violation: SpringDataModifyingQuery
   @Query("update Product p set p.price = :price")
-  int reprice(@Param("price") long price);
+  int reprice(@Param("price") long price); // violation: SpringDataWriteWithoutTransaction
 
+  @Transactional
   @Modifying(clearAutomatically = true, flushAutomatically = true)
   @Query("delete from Product p where p.price = 0")
   int deleteFree();

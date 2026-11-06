@@ -33,7 +33,14 @@ const FILTERS = new Set([
   'size',
   'isEmpty',
   'isNotEmpty',
+  'filterWhen',
+  'hasElements',
+  'next',
+  'take',
+  'elementAt',
 ]);
+const COLLECTING = new Set(['asSequence', 'toList', 'collectList']);
+const AWAITING = new Set(['block', 'awaitSingle', 'awaitFirst']);
 const STREAM_FILTERS = new Set([
   'filter',
   'count',
@@ -150,13 +157,17 @@ function flushes(view) {
     );
 }
 
+function filtersList([first, second]) {
+  return FILTERS.has(first) || (first === 'stream' && STREAM_FILTERS.has(second));
+}
+
 function filtersAfterLoad(invocation) {
-  const [first, second] = invocation.after ?? [];
-  return (
-    FILTERS.has(first) ||
-    (first === 'stream' && STREAM_FILTERS.has(second)) ||
-    (first === 'asSequence' && FILTERS.has(second))
-  );
+  const [first, ...rest] = invocation.after ?? [];
+  if (!COLLECTING.has(first)) {
+    return filtersList([first, ...rest]);
+  }
+  const awaited = AWAITING.has(rest[0]) ? rest.slice(1) : rest;
+  return filtersList(awaited);
 }
 
 function filterInQuery(view) {
