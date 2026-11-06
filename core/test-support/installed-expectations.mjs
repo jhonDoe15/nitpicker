@@ -30,7 +30,7 @@ export function expectedDirtyFindings(links) {
       rule: 'no-debugger',
       path: 'src/main/example.ts',
       identity:
-        'message:`debugger` statement is not allowed|node:LastStatement|syntax:c101e41c622a39ff619763e2|occurrence:1',
+        'message:`debugger` statement is not allowed|node:LastStatement|syntax:3e60f1dc2469d9ea675d7a1c|occurrence:1',
       message: DEBUGGER_MESSAGE,
       classification: 'enforceable',
       symbol: 'example',
