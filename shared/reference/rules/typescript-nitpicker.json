@@ -508,10 +508,13 @@
     ],
     { "key": "exceptions", "rule": "nitpicker/no-orm-schema-sync" },
     "nitpicker/no-parameter-mutation",
-    "Disallow changing an array, Set, Map or indexed object that a parameter holds in place",
+    "Disallow changing an array, Set, Map, indexed object or project object that a parameter holds in place",
     [
       {
         "message": "`{{ name }}` changes the value the caller passed in. Build and return a new value instead (`[...items, item]`, `new Set([...set, item])`, `{ ...table, [key]: value }`, `items.toSorted()`), or copy the parameter first (`const copy = [...items]`)."
+      },
+      {
+        "message": "`{{ name }}` writes to the object the caller passed in, so a frozen or shared object breaks. Build a new object instead (`{ ...options, timeout: 5000 }`), or copy the parameter first (`const next = { ...options }`). An exception fits only when this function fills an object its caller hands it to be filled."
       }
     ],
     { "key": "exceptions", "rule": "nitpicker/no-parameter-mutation" },
@@ -757,6 +760,14 @@
       }
     ],
     { "key": "exceptions", "rule": "nitpicker/no-uncollected-tests" },
+    "nitpicker/no-unhandled-void-promise",
+    "Disallow `void` on a promise whose rejection nothing handles",
+    [
+      {
+        "message": "`void` discards this promise, so nothing handles its rejection and Node.js exits on an unhandled rejection by default. Await it, or call an async function whose whole body is a `try` with a `catch` that logs and does not rethrow: `void sendReport(id);` with `async function sendReport(id) { try { await report(id); } catch (error) { logger.error({ error }, \"report failed\"); } }`. A detached-work runner the project already has can be named in nitpicker.config.json under `conventions` as `\"typescript.detachedWorkRunners\": [\"runDetached\"]`."
+      }
+    ],
+    { "key": "exceptions", "rule": "nitpicker/no-unhandled-void-promise" },
     "nitpicker/no-uninjectable-delay",
     "{{timer}} waits {{name}} ({{value}} ms), a module constant that exported \"{{owner}}\" cannot override, so a test must wait it out or fake timers. Accept the delay as an option with {{name}} as its default, for example \"{ delayMs = {{name}} } = {}\". An exception fits only when the delay is deliberately fixed.",
     [
@@ -1187,10 +1198,10 @@
     [0, 304, 2, 3, 305, 5, 306, 7, 307, -1, -1],
     [0, 308, 2, 3, 309, 5, 310, 7, 311, -1, -1],
     [0, 312, 2, 3, 313, 5, 314, 7, 315, -1, -1],
-    [0, 316, 90, 121, 317, 5, 318, 7, 319, -1, -1],
-    [0, 320, 2, 3, 321, 5, 322, 7, 323, -1, -1],
-    [0, 324, 90, 121, 325, 5, 326, 7, 327, -1, -1],
-    [0, 328, 2, 34, 329, 5, 330, 37, 331, 39, -1],
+    [0, 316, 2, 3, 317, 5, 318, 7, 319, -1, -1],
+    [0, 320, 90, 121, 321, 5, 322, 7, 323, -1, -1],
+    [0, 324, 2, 3, 325, 5, 326, 7, 327, -1, -1],
+    [0, 328, 90, 121, 329, 5, 330, 7, 331, -1, -1],
     [0, 332, 2, 34, 333, 5, 334, 37, 335, 39, -1],
     [0, 336, 2, 34, 337, 5, 338, 37, 339, 39, -1],
     [0, 340, 2, 34, 341, 5, 342, 37, 343, 39, -1],
@@ -1200,14 +1211,15 @@
     [0, 356, 2, 34, 357, 5, 358, 37, 359, 39, -1],
     [0, 360, 2, 34, 361, 5, 362, 37, 363, 39, -1],
     [0, 364, 2, 34, 365, 5, 366, 37, 367, 39, -1],
-    [0, 368, 369, 370, 371, 5, 372, 7, 373, -1, -1],
-    [0, 374, 2, 3, 375, 5, 376, 7, 377, -1, -1],
+    [0, 368, 2, 34, 369, 5, 370, 37, 371, 39, -1],
+    [0, 372, 373, 374, 375, 5, 376, 7, 377, -1, -1],
     [0, 378, 2, 3, 379, 5, 380, 7, 381, -1, -1],
     [0, 382, 2, 3, 383, 5, 384, 7, 385, -1, -1],
     [0, 386, 2, 3, 387, 5, 388, 7, 389, -1, -1],
-    [0, 390, 391, 392, 393, 5, 394, 7, 395, -1, -1],
-    [0, 396, 2, 3, 397, 5, 398, 7, 399, -1, -1],
+    [0, 390, 2, 3, 391, 5, 392, 7, 393, -1, -1],
+    [0, 394, 395, 396, 397, 5, 398, 7, 399, -1, -1],
     [0, 400, 2, 3, 401, 5, 402, 7, 403, -1, -1],
-    [0, 404, 2, 3, 405, 5, 406, 7, 407, -1, -1]
+    [0, 404, 2, 3, 405, 5, 406, 7, 407, -1, -1],
+    [0, 408, 2, 3, 409, 5, 410, 7, 411, -1, -1]
   ]
 }

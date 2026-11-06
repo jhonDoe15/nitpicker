@@ -103,7 +103,8 @@ gradle -I languages/java/gradle/nitpicker.init.gradle nitpickerJava   (per snaps
   fits the X7 interface.
 - **Failure policy.** If Gradle fails on either snapshot (does not compile, tests fail, tool
   crashes, no `gradle` on the PATH, unreadable reports), nothing is silently skipped. `runJavaDiff`
-  (the library entry) throws; the CLI path maps the failure to a `tool-error` finding, see slice 2.
+  (the library entry) throws; the CLI path maps the failure to a `tool-error` finding, see slice 2:
+  `tests-failed` when the test reports name failing tests (exit 1), `gradle-failure` otherwise.
   The one exception is a base snapshot whose test reports name failing tests while the head passes:
   that is a note and the run goes on (see [A base whose tests fail](usage.md#a-base-whose-tests-fail)).
   A base that fails for another reason, or whose tests fail without a named failing test, still
@@ -184,8 +185,8 @@ by field. Per snapshot:
   with Failsafe kept off in every module, stays on `test`.
 - **Tests.** Failures of the ArchUnit rule classes (`*ArchTest`, `*ArchitectureTest`, or the
   `nitpicker.archunit.includes` property in the POM) become findings; any other failing test, from
-  Surefire's or Failsafe's reports, is a `java/maven-failure` tool error that names up to ten
-  failing tests. A `<rerunFailingTestsCount>` in a POM's plugin configuration wins over the `-D`
+  Surefire's or Failsafe's reports, is a `java/tests-failed` tool error (exit 1) that names up to
+  50 failing tests with the line of the failing assertion and the expected and received values. A `<rerunFailingTestsCount>` in a POM's plugin configuration wins over the `-D`
   properties, so a test case Surefire or Failsafe marked `flakyFailure` or `flakyError` is a failure
   as well (the Test retries bullet above has the message). On the base snapshot the failing tests
   are listed instead of thrown: that module skips JaCoCo and PIT, and the failure becomes a
@@ -267,10 +268,10 @@ for jscpd, a long-running PIT) and each is expensive enough to deserve its own r
   `ignoreFailures`). It runs on the framework the declared ArchUnit library needs: JUnit 4 for
   `archunit-junit4` rules (`@RunWith(ArchUnitRunner.class)`), the JUnit Platform for
   `archunit-junit5`; with both or neither declared, on the framework of the task whose classes it
-  runs. The ArchUnit classes are left out of every checked test task (`test` and each task `check`
-  depends on) and run by their own `nitpickerArchunit` task, `nitpickerArchunit<Task>` for a task
-  other than `test` (on that task's test classes and runtime classpath), so a rule in an
-  integration test source set is a finding, not a failed build.
+  runs. The ArchUnit classes are left out of every test task, and those of each checked test task
+  (`test` and each task `check` depends on) run by their own `nitpickerArchunit` task,
+  `nitpickerArchunit<Task>` for a task other than `test` (on that task's test classes and runtime
+  classpath), so a rule in an integration test source set is a finding, not a failed build.
   When the test classes hold ArchUnit classes and none of them produced a report, the task fails
   (a Gradle failure, `tool-error`), as Maven does, instead of passing without findings. The
   project must have one of the two libraries on its test classpath; Nitpicker adds no dependency
@@ -348,11 +349,12 @@ comma-separated>` changes that. Those classes are excluded from the regular `tes
   single PIT run does. The JUnit Platform is not pinned by
   Nitpicker: the plugin's own platform dependencies are excluded and the project's are used, with a
   launcher of the project's engine version added when the project does not declare one. PIT
-  requires a green test run: a failing test suite fails the build, which is a `java/gradle-failure`
-  tool error. When the failed build left JUnit reports with failing tests (the init script lists
-  the report directory of every test task in `test-results.json` of the report base), the error
-  names up to ten of them with the same text as on Maven (`Tests fail in <project>; nitpicker needs
-a passing test suite ...`) instead of Gradle's own failure output. Projects without main classes produce no report and no findings.
+  requires a green test run: a failing test suite fails the build. When the failed build left JUnit
+  reports with failing tests (the init script lists the report directory of every test task in
+  `test-results.json` of the report base), it is a `java/tests-failed` tool error (exit 1) that
+  names up to 50 of them with the same text as on Maven (`1 test fails; the build stopped, so no
+other check ran. Fix the tests and rerun:`) instead of Gradle's own failure output, with the path
+  of the full Gradle log on its last line; otherwise it is a `java/gradle-failure` tool error. Projects without main classes produce no report and no findings.
   The `pitest-junit5-plugin` and the launcher are added only when the project's test runtime has
   `junit-platform-engine`; a JUnit 4 project runs PIT's built-in JUnit 4 support. When the test
   runtime has a `testng` jar, the pinned `pitest-testng-plugin` (1.0.0) is added too, without a
