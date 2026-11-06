@@ -143,6 +143,22 @@ describe('readSpringArchFindings messages', () => {
       'Pass the request data from OrderController.place(id) on through parameters and return values instead of writing it into an element of the static field OrderController.SEEN: a static field is shared by every request, so request data kept there leaks between users and races between threads. Per-request data belongs in a @RequestScope bean, and a cache needs a size and an expiry (Spring Cache, Caffeine).',
     ],
     [
+      violation(
+        'spring-typed-request-field',
+        'com.shop.orders.OrderController',
+        'CreateOrder.attributes:field:OrderController.create',
+      ),
+      'Type CreateOrder.attributes with a record or an enum and validate it: OrderController.create binds it from the request, and an Object, JsonNode or Map<String, Object> field, or a collection of those, skips validation and lets a client send any shape. A Map with typed values, such as Map<String, String>, is fine.',
+    ],
+    [
+      violation(
+        'spring-typed-request-field',
+        'com.shop.orders.Profile',
+        'Profile.put:any-setter:ProfileController.update',
+      ),
+      'Declare the properties ProfileController.update accepts as typed fields instead of collecting unknown keys with @JsonAnySetter on Profile.put: it takes any key and value a client sends, unvalidated.',
+    ],
+    [
       violation('spring-test-placement', 'com.shop.orders.FlowTest'),
       'Test FlowTest with new and mocks, or run it as an integration test: name it FlowIT (Failsafe runs *IT on Maven) or put it in an integration test source set. Both keep its package, so package-private classes stay visible; a package named integration or it also counts.',
     ],
@@ -222,6 +238,20 @@ describe('readSpringArchFindings findings', () => {
 
     expect(identities('recent:add:A.a(id)')).toEqual(['OrderService|recent', 'OrderService|last']);
     expect(identities('recent:put:B.b(order)')).toEqual(identities('recent:add:A.a(id)'));
+  });
+
+  it('keys a typed request field by the field, so another handler reaching it keeps the finding', () => {
+    const identities = (detail) =>
+      read([violation('spring-typed-request-field', 'com.shop.orders.CreateOrder', detail)]).map(
+        (finding) => finding.identity,
+      );
+
+    expect(identities('CreateOrder.attributes:field:OrderController.create')).toEqual([
+      'CreateOrder|CreateOrder.attributes',
+    ]);
+    expect(identities('CreateOrder.attributes:field:BulkController.bulk')).toEqual(
+      identities('CreateOrder.attributes:field:OrderController.create'),
+    );
   });
 
   it('keeps the identity when the class and its dependency move to other packages', () => {
