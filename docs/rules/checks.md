@@ -53,6 +53,7 @@ A callback breaks its protocol: `source-loader-does-not-merge-published-state`, 
 
 A doc comment that only restates its declaration name, or whose description is longer than the limit.
 
+- **Printed as:** `coding-standards/doc-comment-content` and `facts/doc-comment-content`
 - **Analyzers:** `coding-standards` (TypeScript and JavaScript); `java` (Java); `kotlin` (Kotlin); `python` (Python)
 - **Why it is on:** A comment that repeats the name adds noise; a long one belongs in names and types.
 - **Threshold:** a doc comment or docstring that only restates its declaration name (a tag or section with text, such as `@param id the account` or `Args:`, says more), or a description longer than 5 lines, tags, sections and code examples not counted (TypeScript and JavaScript report it as `nitpicker/no-comments`)

@@ -1170,9 +1170,10 @@
     "nitpicker/no-parameter-mutation": {
       "tools": ["eslint-lint"],
       "forms": [],
-      "description": "Disallow changing an array, Set, Map or indexed object that a parameter holds in place",
+      "description": "Disallow changing an array, Set, Map, indexed object or project object that a parameter holds in place",
       "messages": [
-        "`{{ name }}` changes the value the caller passed in. Build and return a new value instead (`[...items, item]`, `new Set([...set, item])`, `{ ...table, [key]: value }`, `items.toSorted()`), or copy the parameter first (`const copy = [...items]`)."
+        "`{{ name }}` changes the value the caller passed in. Build and return a new value instead (`[...items, item]`, `new Set([...set, item])`, `{ ...table, [key]: value }`, `items.toSorted()`), or copy the parameter first (`const copy = [...items]`).",
+        "`{{ name }}` writes to the object the caller passed in, so a frozen or shared object breaks. Build a new object instead (`{ ...options, timeout: 5000 }`), or copy the parameter first (`const next = { ...options }`). An exception fits only when this function fills an object its caller hands it to be filled."
       ]
     },
     "nitpicker/no-partial-output-assertion": {
@@ -1368,6 +1369,14 @@
       "description": "Report test calls in a file the test runner never collects",
       "messages": [
         "This file defines tests but is not named like a test file, so they never run. Rename it `*.test.ts` (or `*.spec.ts`). An exception fits only when another test file runs it on purpose."
+      ]
+    },
+    "nitpicker/no-unhandled-void-promise": {
+      "tools": ["eslint-lint"],
+      "forms": [],
+      "description": "Disallow `void` on a promise whose rejection nothing handles",
+      "messages": [
+        "`void` discards this promise, so nothing handles its rejection and Node.js exits on an unhandled rejection by default. Await it, or call an async function whose whole body is a `try` with a `catch` that logs and does not rethrow: `void sendReport(id);` with `async function sendReport(id) { try { await report(id); } catch (error) { logger.error({ error }, \"report failed\"); } }`. A detached-work runner the project already has can be named in nitpicker.config.json under `conventions` as `\"typescript.detachedWorkRunners\": [\"runDetached\"]`."
       ]
     },
     "nitpicker/no-uninjectable-delay": {
@@ -4038,9 +4047,10 @@
     "nitpicker/no-parameter-mutation": {
       "tools": ["eslint-lint"],
       "forms": [],
-      "description": "Disallow changing an array, Set, Map or indexed object that a parameter holds in place",
+      "description": "Disallow changing an array, Set, Map, indexed object or project object that a parameter holds in place",
       "messages": [
-        "`{{ name }}` changes the value the caller passed in. Build and return a new value instead (`[...items, item]`, `new Set([...set, item])`, `{ ...table, [key]: value }`, `items.toSorted()`), or copy the parameter first (`const copy = [...items]`)."
+        "`{{ name }}` changes the value the caller passed in. Build and return a new value instead (`[...items, item]`, `new Set([...set, item])`, `{ ...table, [key]: value }`, `items.toSorted()`), or copy the parameter first (`const copy = [...items]`).",
+        "`{{ name }}` writes to the object the caller passed in, so a frozen or shared object breaks. Build a new object instead (`{ ...options, timeout: 5000 }`), or copy the parameter first (`const next = { ...options }`). An exception fits only when this function fills an object its caller hands it to be filled."
       ]
     },
     "nitpicker/no-partial-output-assertion": {
@@ -4252,6 +4262,14 @@
       "description": "Report test calls in a file the test runner never collects",
       "messages": [
         "This file defines tests but is not named like a test file, so they never run. Rename it `*.test.ts` (or `*.spec.ts`). An exception fits only when another test file runs it on purpose."
+      ]
+    },
+    "nitpicker/no-unhandled-void-promise": {
+      "tools": ["eslint-lint"],
+      "forms": [],
+      "description": "Disallow `void` on a promise whose rejection nothing handles",
+      "messages": [
+        "`void` discards this promise, so nothing handles its rejection and Node.js exits on an unhandled rejection by default. Await it, or call an async function whose whole body is a `try` with a `catch` that logs and does not rethrow: `void sendReport(id);` with `async function sendReport(id) { try { await report(id); } catch (error) { logger.error({ error }, \"report failed\"); } }`. A detached-work runner the project already has can be named in nitpicker.config.json under `conventions` as `\"typescript.detachedWorkRunners\": [\"runDetached\"]`."
       ]
     },
     "nitpicker/no-uninjectable-delay": {
@@ -7220,9 +7238,10 @@
     "nitpicker/no-parameter-mutation": {
       "tools": ["eslint-lint"],
       "forms": [],
-      "description": "Disallow changing an array, Set, Map or indexed object that a parameter holds in place",
+      "description": "Disallow changing an array, Set, Map, indexed object or project object that a parameter holds in place",
       "messages": [
-        "`{{ name }}` changes the value the caller passed in. Build and return a new value instead (`[...items, item]`, `new Set([...set, item])`, `{ ...table, [key]: value }`, `items.toSorted()`), or copy the parameter first (`const copy = [...items]`)."
+        "`{{ name }}` changes the value the caller passed in. Build and return a new value instead (`[...items, item]`, `new Set([...set, item])`, `{ ...table, [key]: value }`, `items.toSorted()`), or copy the parameter first (`const copy = [...items]`).",
+        "`{{ name }}` writes to the object the caller passed in, so a frozen or shared object breaks. Build a new object instead (`{ ...options, timeout: 5000 }`), or copy the parameter first (`const next = { ...options }`). An exception fits only when this function fills an object its caller hands it to be filled."
       ]
     },
     "nitpicker/no-partial-output-assertion": {
@@ -7418,6 +7437,14 @@
       "description": "Report test calls in a file the test runner never collects",
       "messages": [
         "This file defines tests but is not named like a test file, so they never run. Rename it `*.test.ts` (or `*.spec.ts`). An exception fits only when another test file runs it on purpose."
+      ]
+    },
+    "nitpicker/no-unhandled-void-promise": {
+      "tools": ["eslint-lint"],
+      "forms": [],
+      "description": "Disallow `void` on a promise whose rejection nothing handles",
+      "messages": [
+        "`void` discards this promise, so nothing handles its rejection and Node.js exits on an unhandled rejection by default. Await it, or call an async function whose whole body is a `try` with a `catch` that logs and does not rethrow: `void sendReport(id);` with `async function sendReport(id) { try { await report(id); } catch (error) { logger.error({ error }, \"report failed\"); } }`. A detached-work runner the project already has can be named in nitpicker.config.json under `conventions` as `\"typescript.detachedWorkRunners\": [\"runDetached\"]`."
       ]
     },
     "nitpicker/no-uninjectable-delay": {

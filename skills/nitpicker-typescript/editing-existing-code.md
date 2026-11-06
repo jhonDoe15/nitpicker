@@ -9,8 +9,9 @@ Everything in `SKILL.md` still applies to the lines you add.
   the task doesn't need.
 - A file or folder already over its limit must not grow either: put the new code in a new file,
   and a new file in a subfolder.
-- Keep a legacy function's name and file: renaming it or moving it to another file brings all its
-  findings back as new. Add a new function below the legacy one, not above it.
+- Keep a legacy function in its file: moving it to another file brings all its findings back as
+  new. Rename one only in a change that leaves its body as it was: an edit inside a renamed
+  function brings its findings back as new. Add a new function below the legacy one, not above it.
 - An edited legacy line may keep a violation its function already had, as long as the function
   doesn't get more of it: change `lines.push(a)` to `lines.push(a, ...extra)` rather than adding a
   second push.
