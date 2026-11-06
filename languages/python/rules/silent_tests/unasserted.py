@@ -11,5 +11,7 @@ def check(context):
     helpers = assertion_helpers(context.project)
     return [
         finding(context.path, RULE, subject, function)
-        for subject, function in unasserted_tests(context.tree, context.aliases, helpers)
+        for subject, function in unasserted_tests(
+            context.tree, context.aliases, helpers
+        )
     ]
