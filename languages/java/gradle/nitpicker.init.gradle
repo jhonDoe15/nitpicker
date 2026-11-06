@@ -20,6 +20,14 @@ def pinned = [
     nullAway        : '0.14.2',
 ]
 
+def pitMutators = [
+    'INVERT_NEGS', 'MATH', 'VOID_METHOD_CALLS', 'NEGATE_CONDITIONALS', 'CONDITIONALS_BOUNDARY', 'INCREMENTS',
+    'TRUE_RETURNS', 'FALSE_RETURNS', 'PRIMITIVE_RETURNS', 'EMPTY_RETURNS', 'NULL_RETURNS',
+    'REMOVE_CONDITIONALS', 'EXPERIMENTAL_SWITCH', 'REMOVE_SWITCH', 'REMOVE_INCREMENTS',
+    'EXPERIMENTAL_NAKED_RECEIVER', 'EXPERIMENTAL_MEMBER_VARIABLE', 'EXPERIMENTAL_BIG_DECIMAL',
+    'EXPERIMENTAL_BIG_INTEGER',
+]
+
 // BEGIN SH5 structure metrics
 // The directory of this script, where languages/java/gradle/StructureMetrics.java lives.
 def initScriptDir = buildscript.sourceFile.parentFile
@@ -114,10 +122,33 @@ def projectDependencyClosure = { Project root ->
     }
 }
 
-def callerSources = { Project project, sourceSet ->
+def declaredSourceDirs = { sourceSet ->
     def kotlin = sourceSet instanceof ExtensionAware ? sourceSet.extensions.findByName('kotlin') : null
-    def dirs = (sourceSet.allSource.srcDirs + (kotlin instanceof SourceDirectorySet ? kotlin.srcDirs : []))
-    dirs.findAll { it.exists() }.collectMany { project.fileTree(it) { include '**/*.kt', '**/*.java' }.files }
+    sourceSet.allSource.srcDirs + (kotlin instanceof SourceDirectorySet ? kotlin.srcDirs : [])
+}
+
+def callerSources = { Project project, sourceSet ->
+    declaredSourceDirs(sourceSet).findAll { it.exists() }
+        .collectMany { project.fileTree(it) { include '**/*.kt', '**/*.java' }.files }
+}
+
+def generatedSourceSet = { Project project, sourceSet ->
+    def buildRoot = project.layout.buildDirectory.get().asFile.toPath()
+    def dirs = declaredSourceDirs(sourceSet)
+    !project.projectDir.toPath().startsWith(buildRoot) && dirs.any { it.toPath().startsWith(buildRoot) } &&
+        !dirs.any { it.exists() && !it.toPath().startsWith(buildRoot) }
+}
+
+def aotModeMentions = [:]
+def aotModeDeclared = { Project project ->
+    synchronized (aotModeMentions) {
+        aotModeMentions.computeIfAbsent(project.rootDir.absolutePath) {
+            project.fileTree(project.rootDir) {
+                include '**/*.gradle', '**/*.gradle.kts', '**/gradle.properties', '**/spring.properties'
+                exclude '**/build/**', '**/.gradle/**', '**/node_modules/**'
+            }.files.any { it.getText('UTF-8').contains('spring.aot.enabled') }
+        }
+    }
 }
 
 def holdsTests = { Project project, sourceSet ->
@@ -153,7 +184,8 @@ def kotlinCallerGaps = { Project root ->
                     if (!other.projectDir.toPath().startsWith(analysisRoot.toPath())) {
                         gaps << [label: "the project ${other.path} outside the analysis root".toString(), reaches: reach]
                     } else {
-                        other.sourceSets.findAll { !(it.name in ['main', 'test']) }.each { set ->
+                        def written = other.sourceSets.findAll { !generatedSourceSet(other, it) }
+                        written.findAll { !(it.name in ['main', 'test']) }.each { set ->
                             if (!callerSources(other, set).isEmpty()) {
                                 gaps << [label: "the source set ${set.name} of ${other.path}".toString(),
                                          tests: holdsTests(other, set), owner: other.path,
@@ -226,7 +258,8 @@ def rulesetExcluding = { String name, String description, List<String> rules, Co
 }
 
 def mainRulesOnMainSources = { File mainRules, File rulesetDir, boolean spring, Collection<File> testDirectories ->
-    def rules = [mainRules] + (spring ? [new File(rulesetDir, 'spring-ruleset.xml')] : [])
+    def springRules = nitpickerArgument('nitpicker.pmd.springRules') ?: new File(rulesetDir, 'spring-ruleset.xml').absolutePath
+    def rules = [mainRules] + (spring ? [new File(springRules)] : [])
     rulesetExcluding('nitpicker-main', "Nitpicker's main-only rules on main sources only.",
         rules.collect { "  <rule ref=\"${escapeXml(it.absolutePath)}\"/>".toString() }, testDirectories)
 }
@@ -398,8 +431,9 @@ allprojects {
         def testSourceSets = {
             def testClassDirs = tasks.withType(Test).collectMany { it.testClassesDirs.files }
             sourceSets.findAll { sourceSet ->
-                sourceSet.name != 'main' && (sourceSet.name.toLowerCase().contains('test')
-                    || sourceSet.output.classesDirs.files.any { testClassDirs.contains(it) })
+                def ranByTests = sourceSet.output.classesDirs.files.any { testClassDirs.contains(it) }
+                def namedTest = sourceSet.name.toLowerCase().contains('test') && !generatedSourceSet(project, sourceSet)
+                sourceSet.name != 'main' && (namedTest || ranByTests)
             }
         }
         project.ext.nitpickerTestSourceSets = testSourceSets
@@ -536,6 +570,15 @@ allprojects {
             .toString().split(',')*.trim().findAll { it }
 
         tasks.withType(Test).configureEach { reports.junitXml.outputPerTestCase = true }
+        def aotFlag = { value -> value.toString().toLowerCase().contains('-dspring.aot.enabled=true') }
+        def runsAotTests = { Test test ->
+            test.allJvmArgs.any(aotFlag) || test.environment.values().any(aotFlag)
+        }
+        tasks.configureEach { task ->
+            if (task.class.name.startsWith('org.springframework.boot.gradle.tasks.aot.')) {
+                task.onlyIf { aotModeDeclared(project) || tasks.withType(Test).any(runsAotTests) }
+            }
+        }
 
         def verifyArchunitRan = { String taskName, Collection<File> classesDirs ->
             def archunitClasses = classesDirs.findAll { it.exists() }.collectMany { dir ->
@@ -750,6 +793,7 @@ allprojects {
                           '--sourceDirs', mainSources.files.findAll { it.exists() }.join(','),
                           '--classPath', pitClasspath.join(','),
                           '--mutableCodePaths', classDirs.collect { it.absolutePath }.join(','),
+                          '--mutators', pitMutators.join(','),
                           '--outputFormats', 'XML',
                           '--timestampedReports', 'false',
                           '--threads', '2',
