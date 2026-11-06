@@ -6,6 +6,7 @@ export const HYGIENE_RULE_IDS = {
   committedBuildOutput: 'committed-build-output',
   migrationOrder: 'migration-order',
   migrationHardcodedName: 'migration-hardcoded-name',
+  startSchemaPush: 'start-schema-push',
 };
 
 export const PACKAGE_RULE_IDS = {
@@ -66,6 +67,13 @@ export const HYGIENE_RULES = [
     check: 'repository-hygiene',
     limit:
       'a migration file that names the `public` schema (`public.table`), a database in `ALTER DATABASE` or a role in `OWNER TO`',
+    enforcedBy: EVERY_LANGUAGE,
+  },
+  {
+    id: HYGIENE_RULE_IDS.startSchemaPush,
+    check: 'repository-hygiene',
+    limit:
+      'a `start`, `prestart`, `serve` or `start:*` script (not `start:dev`, `start:local`, `start:watch`, `start:debug` or `start:test`) in `package.json`, or a script it runs, that pushes the ORM schema (`prisma db push`, `prisma migrate dev`, `drizzle-kit push`, `typeorm schema:sync`, `mikro-orm schema:update`)',
     enforcedBy: EVERY_LANGUAGE,
   },
   {

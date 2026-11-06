@@ -177,6 +177,7 @@ describe('the hygiene configuration hash', () => {
       'hygiene/files/known-files.mjs',
       'hygiene/files/output-sources.mjs',
       'hygiene/files/repository-files.mjs',
+      'hygiene/files/start-scripts.mjs',
       'hygiene/migrations/hardcoded-names.mjs',
       'hygiene/migrations/migration-files.mjs',
       'hygiene/migrations/migration-order.mjs',
