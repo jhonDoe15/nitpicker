@@ -1,6 +1,6 @@
 # Python: nitpicker rules
 
-The Python rules nitpicker's own script checks (`python-rules/*`), the coupling and import-cycle findings, the ruff format check and the finding for a run in which no tests ran. This page lists 73 rules. [All pages](README.md).
+The Python rules nitpicker's own script checks (`python-rules/*`), the coupling and import-cycle findings, the ruff format check and the finding for a run in which no tests ran. This page lists 74 rules. [All pages](README.md).
 
 The guide for these rules: [docs/python-preset.md](../python-preset.md).
 

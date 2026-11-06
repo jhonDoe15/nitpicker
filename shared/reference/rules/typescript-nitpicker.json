@@ -1070,6 +1070,64 @@
       }
     ],
     { "key": "exceptions", "rule": "nitpicker/require-test-process-timeout" },
+    "nitpicker/strict-boolean-expressions",
+    "Disallow testing a number for truthiness, where 0 reads as false or missing",
+    [
+      {
+        "message": "Unexpected any value in {{context}}. An explicit comparison or type conversion is required."
+      },
+      {
+        "message": "Unexpected nullable boolean value in {{context}}. Please handle the nullish case explicitly."
+      },
+      {
+        "message": "Unexpected nullable enum value in {{context}}. Please handle the nullish/zero/NaN cases explicitly. Test the missing case and the number apart: `value !== undefined`, `value !== undefined && value > 0`, or `value ?? fallback` for a default. An exception fits only when 0 must take the same path as a missing value."
+      },
+      {
+        "message": "Unexpected nullable number value in {{context}}: 0 reads as missing. Test the missing case and the number apart: `value !== undefined`, `value !== undefined && value > 0`, or `value ?? fallback` for a default. An exception fits only when 0 must take the same path as a missing value."
+      },
+      {
+        "message": "Unexpected nullable object value in {{context}}. An explicit null check is required."
+      },
+      {
+        "message": "Unexpected nullable string value in {{context}}. Please handle the nullish/empty cases explicitly."
+      },
+      { "message": "Unexpected nullish value in conditional. The condition is always false." },
+      {
+        "message": "Unexpected number value in {{context}}: 0 and NaN read as false. Compare it instead: `count > 0`, `index !== -1`, `items.length > 0`; for a default write `value ?? fallback`. An exception fits only when 0 must take the same path as a missing value."
+      },
+      { "message": "Unexpected object value in {{context}}. The condition is always true." },
+      {
+        "message": "Unexpected value in conditional. A boolean expression is required. Compare the value instead: `value !== undefined`, `count > 0`, `name !== ''`. An exception fits only when every falsy member must take the same path."
+      },
+      {
+        "message": "Unexpected string value in {{context}}. An explicit empty string check is required."
+      },
+      { "message": "Explicitly convert value to a boolean (`Boolean(value)`)" },
+      { "message": "Change condition to check array's length (`value.length > 0`)" },
+      { "message": "Change condition to check array's length (`value.length === 0`)" },
+      { "message": "Change condition to check for empty string (`value !== \"\"`)" },
+      { "message": "Change condition to check if false (`value === false`)" },
+      { "message": "Change condition to check for NaN (`!Number.isNaN(value)`)" },
+      { "message": "Change condition to check for null/undefined (`value != null`)" },
+      { "message": "Change condition to check string's length (`value.length !== 0`)" },
+      { "message": "Change condition to check if true (`value === true`)" },
+      { "message": "Change condition to check for 0 (`value !== 0`)" },
+      { "message": "Explicitly treat nullish value the same as an empty string (`value ?? \"\"`)" },
+      { "message": "Explicitly treat nullish value the same as false (`value ?? false`)" },
+      { "message": "Explicitly treat nullish value the same as 0 (`value ?? 0`)" },
+      { "message": "Add an explicit `boolean` return type annotation." },
+      {
+        "message": "This rule requires the `strictNullChecks` compiler option to be turned on to function correctly."
+      },
+      { "message": "Predicate function should not be 'async'; expected a boolean return type." }
+    ],
+    { "key": "exceptions", "rule": "nitpicker/strict-boolean-expressions" },
+    [
+      {
+        "label": "Rule documentation",
+        "url": "https://typescript-eslint.io/rules/strict-boolean-expressions"
+      }
+    ],
     "nitpicker/structured-catch-logging",
     ["eslint-logging", "coding-standards"],
     {
@@ -1205,9 +1263,10 @@
     [0, 378, 2, 3, 379, 5, 380, 7, 381, -1, -1],
     [0, 382, 2, 3, 383, 5, 384, 7, 385, -1, -1],
     [0, 386, 2, 3, 387, 5, 388, 7, 389, -1, -1],
-    [0, 390, 391, 392, 393, 5, 394, 7, 395, -1, -1],
-    [0, 396, 2, 3, 397, 5, 398, 7, 399, -1, -1],
-    [0, 400, 2, 3, 401, 5, 402, 7, 403, -1, -1],
-    [0, 404, 2, 3, 405, 5, 406, 7, 407, -1, -1]
+    [0, 390, 2, 3, 391, 5, 392, 7, 393, -1, 394],
+    [0, 395, 396, 397, 398, 5, 399, 7, 400, -1, -1],
+    [0, 401, 2, 3, 402, 5, 403, 7, 404, -1, -1],
+    [0, 405, 2, 3, 406, 5, 407, 7, 408, -1, -1],
+    [0, 409, 2, 3, 410, 5, 411, 7, 412, -1, -1]
   ]
 }
