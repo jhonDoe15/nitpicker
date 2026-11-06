@@ -32,6 +32,7 @@ import { CRYPTO_MESSAGES, disabledTlsVerification, weakHashes } from './security
 import { SQL_MESSAGES, sqlStringBuilding } from './security/sql.mjs';
 import { URI_MESSAGES, dynamicUris } from './uris/uri-parsing.mjs';
 import { kotlinDeclarations } from './security/sql-values.mjs';
+import { LOG_FORMAT_MESSAGES, logFormatArguments } from './logging/log-format-rules.mjs';
 import { FAN_OUT_MESSAGES } from '../review-rules/main/fan-out/fan-out.mjs';
 
 const KOTLIN_SOURCE_TOOL = 'kotlin-source';
@@ -48,6 +49,7 @@ export const KOTLIN_SOURCE_MESSAGES = {
   ...CRYPTO_MESSAGES,
   ...CLIENT_MESSAGES,
   ...URI_MESSAGES,
+  ...LOG_FORMAT_MESSAGES,
   ...FAN_OUT_MESSAGES,
   ...TRI_STATE_MESSAGES,
   ...PARAMETER_MUTATION_MESSAGES,
@@ -65,6 +67,7 @@ const MAIN_RULES = [
   mutableModuleState,
   genericNames,
   logTemplates,
+  logFormatArguments,
   shellCommands,
   ioInLoops,
   unsafeCasts,
