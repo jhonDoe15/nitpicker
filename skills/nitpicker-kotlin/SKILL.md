@@ -57,6 +57,9 @@ To learn why a rule is on and what form it allows before you write or change cod
 - Fan-out: bound concurrent remote or message calls. One `Semaphore(8)` with `withPermit { ... }` around each call,
   `chunked(n)`, or `flatMapMerge(concurrency = n)`; never `items.map { async { client.get(it) } }.awaitAll()` over a
   runtime collection. `limitedParallelism(n)` caps threads, not suspending calls in flight.
+- HTTP calls: every request has a deadline. `HttpRequest.newBuilder(uri).timeout(...)`, `readTimeout` on an
+  `HttpURLConnection`, Ktor's `HttpTimeout`, OkHttp; not `URL(url).readText()` or `HttpClients.createDefault()`
+  (`kotlin-source/HttpWithoutTimeout`).
 - Records: a class that only holds data is a `data class` with `val`s; change a copy with `copy(...)`.
   A class with `var`s is not flagged, nor a JPA or Spring Data entity; the project adds other
   annotations to `UseDataClass`'s `excludeAnnotatedClasses` in its `detekt.yml`.
@@ -186,6 +189,11 @@ To learn why a rule is on and what form it allows before you write or change cod
   package config, `TestConfig(retries = n)`). A test that passes on a later attempt hides a flaky or
   racy test: wait on the condition instead of a fixed delay, isolate shared state. `retries = 0` and
   `@RepeatedTest` are fine.
+- Start a container, server or process once, not for each test (`pmd/ServerOrContainerPerTest`): a
+  `@Container` or WireMock `@RegisterExtension` property lives in a companion object, a Kotest
+  container extension uses the spec lifecycle (not `ContainerLifecycleMode.Test` or `perTest()`),
+  and `@BeforeEach`, `beforeTest` or `beforeEach` does not create and start one; two tests do not
+  make the same start. Start it in `@BeforeAll` or a spec-level extension and reset its state.
 - Assert unconditionally (`pmd/AssertionInControlFlow`): no assertion that can be skipped, inside an `if`,
   a `when`, any loop (also over results), a safe call (`?.let`), `takeIf`, `&&`, `||`, `?:`, a `try` that
   swallows the failure, a `runCatching`, or after an early `return`. An `if`/`else` or `when` whose every

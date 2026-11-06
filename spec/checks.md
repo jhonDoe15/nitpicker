@@ -51,6 +51,13 @@ Database calls per element are left to the per-item I/O rules, which also keep a
 awaited per-item remote call; a call the fan-out rule reports is not reported twice. A worker pool
 started once per slot of a count is bounded, while a count read from a collection's size is not.
 
+HTTP deadlines: `nitpicker/require-http-timeout` (strict preset, production source) reports an outbound
+HTTP call that has no timeout, so a server that accepts the connection and never answers hangs it. The same
+rule runs as `http-without-timeout` in the Python preset, `pmd/HttpWithoutTimeout` in the Java preset (main
+sources, with or without Spring; the clients Spring builds stay with `pmd/SpringHttpClientTimeouts` and
+`pmd/SpringHttpClientPerCall`) and `kotlin-source/HttpWithoutTimeout` in the Kotlin preset; each preset's
+document lists the clients it knows.
+
 Recursive map updates have no TypeScript or JavaScript check: `Map` has no method that runs a
 callback while it updates an entry, so a callback cannot change the map in the middle of an update.
 The same holds for Python's `dict` (`setdefault` takes a value, and a `defaultdict` factory runs
