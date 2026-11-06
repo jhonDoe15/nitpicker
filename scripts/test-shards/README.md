@@ -140,7 +140,8 @@ The ruff lint precedence file (`adapters/project-tools/ruff/ruff-lint`, ten case
 projects, and took about six seconds locally.
 
 The shard counts were later lowered so that more pull request runs fit into the account's
-concurrent job limit at once: the unit `test` job went from eight shards to four, Java from 16 to
+concurrent job limit at once. The loads, targets and measurements earlier in this file describe
+the previous split; this paragraph replaces them. The unit `test` job went from eight shards to four, Java from 16 to
 eight, Kotlin from ten to six and Python from four to three. Go keeps two. Fewer runners also repeat
 the per-job setup (checkout, `npm ci`, toolchains) fewer times. With the current profiles the
 sequencer's estimated loads per shard are about 667 seconds for the unit suite (run with one worker
