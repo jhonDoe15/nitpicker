@@ -2,9 +2,14 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
+import {
+  nestedCheckout,
+  useGitCheckouts,
+} from '../../../../../core/diff/git/test-support/git-checkout.mjs';
 import { resolveLayoutFor } from '../../layout.mjs';
 import { loadPackages } from './packages.mjs';
 
+const { gitCheckout } = useGitCheckouts();
 const layout = resolveLayoutFor({});
 let directory;
 
@@ -59,6 +64,20 @@ describe('workspace discovery', () => {
     });
 
     expect(names(path.join(project, 'repo/packages/app'))).toEqual(['app']);
+  });
+
+  it('takes the members of the Git checkout, not ignored folders or nested checkouts', () => {
+    const project = gitCheckout(
+      {
+        'package.json': '{"name":"root","private":true,"workspaces":["packages/*"]}',
+        'packages/a/package.json': '{"name":"a"}',
+        'packages/scratch/package.json': '{"name":"scratch"}',
+        ...nestedCheckout('packages/agent', { 'package.json': '{"name":"agent"}' }),
+      },
+      ['packages/scratch/'],
+    );
+
+    expect(names(project)).toEqual(['a', 'root']);
   });
 
   it('calls a package published only when it is public and says what it ships', () => {

@@ -1,10 +1,15 @@
 import { mkdirSync, symlinkSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
+import {
+  nestedCheckout,
+  useGitCheckouts,
+} from '../../../../core/diff/git/test-support/git-checkout.mjs';
 import { resolveLayoutFor } from '../layout.mjs';
-import { walkRules } from './program.mjs';
+import { codeFilesUnder, walkRules } from './program.mjs';
 import { createProject, removeProject } from './test-support/project.mjs';
 
+const { gitCheckout } = useGitCheckouts();
 let root;
 
 function projectWith(files) {
@@ -77,5 +82,27 @@ describe('the files and directories that the walk of a project reaches', () => {
 
     expect(rules.isDirectory(path.dirname(root))).toBe(false);
     expect(rules.isFile(path.join(root, '../elsewhere.ts'))).toBe(false);
+  });
+});
+
+describe('the consumer files of a sibling package', () => {
+  it('include ignored generated code, but not nested checkouts or installed code', () => {
+    const checkout = gitCheckout(
+      {
+        'packages/lib/src/index.ts': '',
+        'packages/lib/src/graphql/gql.ts': '',
+        'packages/lib/node_modules/dep/index.ts': '',
+        ...nestedCheckout('packages/lib/agent', { 'x.ts': '' }),
+      },
+      ['packages/lib/src/graphql/', 'packages/lib/node_modules/'],
+    );
+    const layout = resolveLayoutFor({ layout: {} });
+
+    const files = codeFilesUnder([path.join(checkout, 'packages/lib')], layout, checkout);
+
+    expect(files.map((file) => path.relative(checkout, file)).toSorted()).toEqual([
+      'packages/lib/src/graphql/gql.ts',
+      'packages/lib/src/index.ts',
+    ]);
   });
 });

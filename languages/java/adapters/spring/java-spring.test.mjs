@@ -4,7 +4,12 @@ import { afterEach, describe, expect, it } from 'vitest';
 import { parseAnalyzerReport } from '../../../../core/diff/comparison/finding-schema.mjs';
 import { configurationFiles, createJavaAnalyzer } from '../java-analyzer.mjs';
 import { applyFindingPolicy } from '../../../../shared/findings/finding-policy.mjs';
+import {
+  nestedCheckout,
+  useGitCheckouts,
+} from '../../../../core/diff/git/test-support/git-checkout.mjs';
 import { readSpringConfigFindings } from './java-spring.mjs';
+import { usesJpa } from './spring-config-files.mjs';
 import {
   MAIN_PROPERTIES,
   OPEN_IN_VIEW_OFF,
@@ -19,6 +24,8 @@ import {
 } from './test-support/spring-config-projects.mjs';
 
 afterEach(removeProjects);
+
+const { gitCheckout } = useGitCheckouts();
 
 function read(files, options) {
   return readSpringConfigFindings(project(files, options), { sourceRoots });
@@ -395,5 +402,23 @@ describe('Java analyzer declaration', () => {
         .filter((file) => modules.includes(file))
         .sort(),
     ).toEqual(modules);
+  });
+});
+
+describe('usesJpa in a Git checkout', () => {
+  it('reads the sources of the checkout, not ignored folders or nested checkouts', () => {
+    const entity = 'import jakarta.persistence.Entity;\nclass E {}\n';
+    const hidden = gitCheckout(
+      {
+        'src/main/java/A.java': 'class A {}\n',
+        'src/main/java/gen/E.java': entity,
+        ...nestedCheckout('src/main/java/agent', { 'E.java': entity }),
+      },
+      ['src/main/java/gen/'],
+    );
+    const visible = gitCheckout({ 'src/main/java/E.java': entity });
+
+    expect(usesJpa(hidden, ['src/main/java'])).toBe(false);
+    expect(usesJpa(visible, ['src/main/java'])).toBe(true);
   });
 });

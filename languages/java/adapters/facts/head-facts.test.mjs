@@ -2,6 +2,11 @@ import { mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSync } from '
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
+import {
+  nestedCheckout,
+  useGitCheckouts,
+} from '../../../../core/diff/git/test-support/git-checkout.mjs';
+import { useProjectFixtures } from '../../../../core/diff/git/test-support/projects/project-fixtures.mjs';
 import { useGitFixtures } from '../../../../core/diff/git/test-support/git-repository.mjs';
 import {
   resolveHeadPolicy,
@@ -12,6 +17,8 @@ import { declaresSpring, javaHeadFacts } from './head-facts.mjs';
 import { analyzeJavaSnapshot, readRunnerPolicy } from '../java-runner.mjs';
 
 const { createGitRepository } = useGitFixtures();
+const { gitCheckout } = useGitCheckouts();
+const { outsideGit } = useProjectFixtures();
 const roots = [];
 const fakeGradle = path.resolve(import.meta.dirname, '../fixtures/fake-gradle.mjs');
 
@@ -72,7 +79,27 @@ describe('declaresSpring', () => {
       }),
     ).toBe(false);
     expect(declares({ 'pom.xml': '<project><!-- org.springframework --></project>' })).toBe(false);
-    expect(declaresSpring(realpathSync(tmpdir()))).toBe(false);
+  });
+
+  it('reads the build files of the Git checkout, not ignored folders or nested checkouts', () => {
+    const spring = "plugins { id 'org.springframework.boot' }\n";
+    const root = gitCheckout(
+      {
+        'build.gradle': "plugins { id 'java' }\n",
+        'scratch/build.gradle': spring,
+        ...nestedCheckout('agent', { 'build.gradle': spring }),
+      },
+      ['scratch/'],
+    );
+
+    expect(declaresSpring(root)).toBe(false);
+    expect(declaresSpring(gitCheckout({ 'app/build.gradle': spring }))).toBe(true);
+  });
+
+  it('reads the build files of a folder outside Git', () => {
+    const root = outsideGit({ 'pom.xml': '<project>org.springframework</project>' });
+
+    expect(declaresSpring(root)).toBe(true);
   });
 });
 

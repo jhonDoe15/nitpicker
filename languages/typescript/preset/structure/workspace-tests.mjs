@@ -1,7 +1,8 @@
-import { existsSync, globSync, readFileSync, statSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { ts } from '../../typescript-api/typescript-api.mjs';
-import { firstFileIn, pathInside } from '../../../../shared/filesystem.mjs';
+import { firstFileIn } from '../../../../shared/filesystem.mjs';
+import { projectFilePaths } from '../../../../shared/project-files/project-files.mjs';
 import { exceptionRoute } from '../../../../shared/exceptions/rule-names.mjs';
 import { exceptionMatcher } from '../../../../shared/rules/exceptions.mjs';
 import { propertyName } from '../syntax/property-names.mjs';
@@ -53,27 +54,28 @@ function workspacePatterns(root, manifest) {
   return [...npm, ...pnpmPatterns(root)].filter((pattern) => typeof pattern === 'string');
 }
 
-function isPackageDirectory(directory) {
-  return (
-    directory !== undefined &&
-    existsSync(path.join(directory, 'package.json')) &&
-    statSync(directory).isDirectory()
-  );
+function manifestDirectories(files) {
+  return [
+    ...new Set(
+      files
+        .filter((file) => path.posix.basename(file) === 'package.json')
+        .map((file) => path.posix.dirname(file)),
+    ),
+  ];
 }
 
-function packageDirectories(root, patterns) {
-  const negated = patterns
+function packageDirectories(files, patterns) {
+  const normalized = patterns.map((pattern) =>
+    pattern.replace(/^(!?)\.\//u, '$1').replace(/\/$/u, ''),
+  );
+  const negated = normalized
     .filter((pattern) => pattern.startsWith('!'))
     .map((pattern) => pattern.slice(1));
-  const found = patterns
-    .filter((pattern) => !pattern.startsWith('!'))
-    .flatMap((pattern) =>
-      globSync(pattern.replace(/^\.\//u, '').replace(/\/$/u, ''), { cwd: root }),
-    )
-    .map((match) => match.replaceAll('\\', '/'))
-    .filter((match) => !SKIPPED.test(match) && isPackageDirectory(pathInside(root, match)))
-    .filter((match) => !negated.some((pattern) => path.matchesGlob(match, pattern)));
-  return [...new Set(found)].sort();
+  const included = normalized.filter((pattern) => !pattern.startsWith('!'));
+  const found = manifestDirectories(files)
+    .filter((directory) => included.some((pattern) => path.matchesGlob(directory, pattern)))
+    .filter((directory) => !negated.some((pattern) => path.matchesGlob(directory, pattern)));
+  return found.sort();
 }
 
 function stringElements(node) {
@@ -182,7 +184,11 @@ function uncollectedFinding(analyzerName, packageDirectory, count) {
 
 export function uncollectedWorkspaceTestFindings(projectRoot, { analyzerName, exceptions = [] }) {
   const manifest = readJson(path.join(projectRoot, 'package.json'));
-  const directories = packageDirectories(projectRoot, workspacePatterns(projectRoot, manifest));
+  const files = projectFilePaths(projectRoot, {
+    skipDirectory: (absolute) =>
+      isSkipped(path.relative(projectRoot, absolute).split(path.sep).join('/')),
+  });
+  const directories = packageDirectories(files, workspacePatterns(projectRoot, manifest));
   if (directories.length === 0) {
     return [];
   }
@@ -192,10 +198,7 @@ export function uncollectedWorkspaceTestFindings(projectRoot, { analyzerName, ex
     if (hasTestScript(readJson(path.join(projectRoot, directory, 'package.json')))) {
       return [];
     }
-    const testFiles = globSync(`${directory}/${TEST_FILES}`, {
-      cwd: projectRoot,
-      exclude: isSkipped,
-    }).map((file) => file.replaceAll('\\', '/'));
+    const testFiles = files.filter((file) => path.matchesGlob(file, `${directory}/${TEST_FILES}`));
     if (testFiles.length === 0 || isCollectedByRoot(selection, directory, testFiles)) {
       return [];
     }

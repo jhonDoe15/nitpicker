@@ -1,6 +1,7 @@
 import { spawnSync } from 'node:child_process';
 import { readFileSync, realpathSync, statSync } from 'node:fs';
 import path from 'node:path';
+import { projectFilePaths } from '../../shared/project-files/project-files.mjs';
 
 const MAX_FILE_BYTES = 512 * 1024;
 const MAX_LISTING_BYTES = 1024 * 1024 * 1024;
@@ -100,19 +101,9 @@ export function headCommit(projectRoot) {
 
 export function workingTreeSource(projectRoot) {
   const root = realpathSync(projectRoot);
-  const listing = git(projectRoot, [
-    'ls-files',
-    '-z',
-    '--cached',
-    '--others',
-    '--exclude-standard',
-  ]);
+  const listing = projectFilePaths(projectRoot, { includeLinks: true });
   return {
-    paths: () =>
-      listing
-        .toString('utf8')
-        .split('\0')
-        .filter((file) => file.length > 0),
+    paths: () => listing,
     readMany: (files) =>
       new Map(
         files.flatMap((file) => {

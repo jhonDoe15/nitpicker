@@ -1,12 +1,17 @@
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
+import {
+  nestedCheckout,
+  useGitCheckouts,
+} from '../../../../../core/diff/git/test-support/git-checkout.mjs';
 import { afterEach, describe, expect, it } from 'vitest';
 import { finding, sourceRoots } from '../test-support/spring-config-projects.mjs';
 import { readSpringConfigFindings } from '../java-spring.mjs';
 import { springWiringProblems } from './spring-wiring.mjs';
 
 const roots = [];
+const { gitCheckout } = useGitCheckouts();
 
 afterEach(() => {
   for (const root of roots.splice(0)) {
@@ -215,5 +220,25 @@ describe('missing-enable', () => {
         line: 4,
       }),
     ]);
+  });
+});
+
+describe('springWiringProblems in a Git checkout', () => {
+  it('reads the sources of the checkout, not ignored folders or nested checkouts', () => {
+    const hidden = gitCheckout(
+      {
+        [`${MAIN}/Jobs.java`]: SCHEDULED,
+        [`${MAIN}/gen/Config.java`]: ENABLE,
+        ...nestedCheckout(`${MAIN}/agent`, { 'Config.java': ENABLE }),
+      },
+      [`${MAIN}/gen/`],
+    );
+    const enabled = gitCheckout({
+      [`${MAIN}/Jobs.java`]: SCHEDULED,
+      [`${MAIN}/Config.java`]: ENABLE,
+    });
+
+    expect(springWiringProblems(hidden, sourceRoots)).toHaveLength(1);
+    expect(springWiringProblems(enabled, sourceRoots)).toEqual([]);
   });
 });

@@ -1,4 +1,4 @@
-import { existsSync, readdirSync, readFileSync } from 'node:fs';
+import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { pathInside } from '../../../../../shared/filesystem.mjs';
 import { hash, nextOccurrence } from '../../../../../shared/rules/finding-helpers.mjs';
@@ -33,6 +33,7 @@ import { PROCESS_MESSAGES, processWaitsWithoutTimeout } from './processes/proces
 import { CRYPTO_MESSAGES, disabledTlsVerification, weakHashes } from './security/crypto.mjs';
 import { SQL_MESSAGES, sqlStringBuilding } from './security/sql.mjs';
 import { kotlinDeclarations } from './security/sql-values.mjs';
+import { projectFilePaths } from '../../../../../shared/project-files/project-files.mjs';
 import { LOG_FORMAT_MESSAGES, logFormatArguments } from './logging/log-format-rules.mjs';
 import { FAN_OUT_MESSAGES } from '../review-rules/main/fan-out/fan-out.mjs';
 
@@ -103,14 +104,14 @@ const ROOT_MARKERS = [
 function kotlinFiles(projectRoot, sourceRoots) {
   const files = sourceRoots.flatMap((sourceRoot) => {
     const directory = pathInside(projectRoot, sourceRoot);
-    if (directory === undefined || !existsSync(directory)) {
+    if (directory === undefined) {
       return [];
     }
-    return readdirSync(directory, { recursive: true })
+    return projectFilePaths(directory)
       .filter((entry) => entry.endsWith('.kt'))
       .map((entry) => ({
-        file: path.posix.join(sourceRoot, entry.replaceAll('\\', '/')),
-        absolute: path.join(directory, entry),
+        file: path.posix.join(sourceRoot, entry),
+        absolute: path.join(directory, ...entry.split('/')),
       }));
   });
   const byFile = new Map(files.map((entry) => [entry.file, entry]));

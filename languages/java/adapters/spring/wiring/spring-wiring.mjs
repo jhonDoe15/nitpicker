@@ -1,6 +1,7 @@
-import { existsSync, readdirSync, readFileSync } from 'node:fs';
+import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { blankLiterals } from '../../review-rules/java-sources.mjs';
+import { projectFilesUnder } from '../../../../../shared/project-files/project-files.mjs';
 
 const SCHEDULING = 'org.springframework.scheduling.annotation';
 const CACHE = 'org.springframework.cache.annotation';
@@ -43,12 +44,9 @@ function escaped(text) {
 }
 
 function filesIn(directory, pattern) {
-  return existsSync(directory)
-    ? readdirSync(directory, { withFileTypes: true, recursive: true })
-        .filter((entry) => entry.isFile() && pattern.test(entry.name))
-        .map((entry) => path.join(entry.parentPath, entry.name))
-        .sort()
-    : [];
+  return projectFilesUnder(directory)
+    .filter((file) => pattern.test(path.basename(file)))
+    .sort();
 }
 
 function enablerPattern(names) {

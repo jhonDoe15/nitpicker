@@ -2,8 +2,11 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
+import { nestedCheckout, useGitCheckouts } from '../../diff/git/test-support/git-checkout.mjs';
 import { loadConfig } from '../config.mjs';
 import { validateConfig } from '../validate.mjs';
+
+const { gitCheckout } = useGitCheckouts();
 
 const roots = [];
 
@@ -65,5 +68,20 @@ describe('config checks that need the project', () => {
       unanalyzed('lib/deep/View.tsx'),
     );
     expect(loadConfig(project(config, ['src/View.tsx']))).toEqual(config);
+  });
+
+  it('does not read .tsx files in git-ignored folders or nested checkouts', () => {
+    const view = { 'src/View.tsx': 'export {};\n' };
+    const files = {
+      'nitpicker.config.json': '{"preset":"javascript"}',
+      'src/a.js': 'export {};\n',
+      ...nestedCheckout('src/agent', view),
+      'src/generated/View.tsx': 'export {};\n',
+    };
+
+    expect(loadConfig(gitCheckout(files, ['src/generated/']))).toEqual({ preset: 'javascript' });
+    expect(() => loadConfig(gitCheckout({ ...files, ...view }, ['src/generated/']))).toThrow(
+      unanalyzed('src/View.tsx'),
+    );
   });
 });

@@ -1,7 +1,7 @@
 import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { ts } from '../../../typescript-api/typescript-api.mjs';
-import { filesUnder } from '../../../../../shared/filesystem.mjs';
+import { projectFilesUnder } from '../../../../../shared/project-files/project-files.mjs';
 import { existingRoots } from '../../layout.mjs';
 import { isNonProductionFolder, isReuseProductionPath } from './reuse-paths.mjs';
 import { fileDefinitions } from './syntax/definitions.mjs';
@@ -126,7 +126,7 @@ export function svgFiles(projectRoot, layout) {
   }
   return existingRoots(projectRoot, layout.sourceRoots)
     .flatMap((root) => [
-      ...filesUnder(path.join(projectRoot, root), {
+      ...projectFilesUnder(path.join(projectRoot, root), {
         skipDirectory: (absolute) => isSkipped(relativePath(projectRoot, absolute)),
       }),
     ])

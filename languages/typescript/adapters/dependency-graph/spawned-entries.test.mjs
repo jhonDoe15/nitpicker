@@ -2,7 +2,13 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterAll, describe, expect, it } from 'vitest';
+import {
+  nestedCheckout,
+  useGitCheckouts,
+} from '../../../../core/diff/git/test-support/git-checkout.mjs';
 import { spawnedEntryFiles } from './spawned-entries.mjs';
+
+const { gitCheckout } = useGitCheckouts();
 
 const root = mkdtempSync(path.join(tmpdir(), 'spawned-entries-'));
 
@@ -38,5 +44,23 @@ describe('spawnedEntryFiles', () => {
       writeFileSync(path.join(project, folder, 'main.mjs'), spawning);
     }
     expect(spawnedEntryFiles(project)).toEqual(['reports/worker.mjs', 'src/reports/worker.mjs']);
+  });
+
+  it('reads ignored generated folders of a Git checkout, but not nested checkouts or installed packages', () => {
+    const spawn = "new URL('./worker.mjs', import.meta.url)";
+    const project = gitCheckout(
+      {
+        'src/worker.mjs': '',
+        'src/main.mjs': spawn,
+        'scratch/worker.mjs': '',
+        'scratch/main.mjs': spawn,
+        'node_modules/dep/worker.mjs': '',
+        'node_modules/dep/main.mjs': spawn,
+        ...nestedCheckout('agent', { 'worker.mjs': '', 'main.mjs': spawn }),
+      },
+      ['scratch/', 'node_modules/'],
+    );
+
+    expect(spawnedEntryFiles(project)).toEqual(['scratch/worker.mjs', 'src/worker.mjs']);
   });
 });
