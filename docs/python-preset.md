@@ -1484,7 +1484,13 @@ members is not reported.
   two plural forms, such as `indexes` and `indices`, is reported once). Optional means a default
   value in a `@dataclass` (also pydantic's), an attrs class (`@define`, `@frozen`, `@mutable` from
   `attrs` or `attr`, `@attr.s`), a pydantic `BaseModel` or `BaseSettings` and a `NamedTuple`,
-  `total=False` or `NotRequired` in a `TypedDict`, and a default in a function's parameters. A
+  `total=False` or `NotRequired` in a `TypedDict`, a default in a `msgspec.Struct`, a marshmallow
+  `Schema` field without `required=True` or `dump_only=True` (`Str`, `Int` and `Bool` are read as
+  `String`, `Integer` and `Boolean`; `fields.List(fields.Str())` and
+  `fields.Nested(S, many=True)` are the plurals of `fields.Str()` and `fields.Nested(S)`), and a
+  default in a function's parameters (every function, private and nested ones too). Two fields
+  whose meanings differ (`owner` beside `owners` for the co-owners) are the case for an exception
+  with a reason. A
   class whose base is a project class of one of those kinds counts too (followed through imports,
   up to 10 bases deep). A value that only builds the field is not a default: `Field(...)` or
   `Field(description=...)` without a default, `field(metadata=...)` and `attr.ib()` without

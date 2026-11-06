@@ -700,15 +700,12 @@ Require a catch clause to use the caught value or return a failure result, not d
 
 ### `eslint/nitpicker/no-singular-and-plural-prop`
 
-Disallow optional alternative props that take one item or a list of the same item.
+Disallow optional alternative inputs (props, parameters, options properties, schema entries) that take one item or a list of the same item.
 
 - **Printed as:** `eslint-lint/nitpicker/no-singular-and-plural-prop`
-- **Presets:** TypeScript
-- **Scope:** A TypeScript project with React: `react` in package.json or `react.enabled`.
 - **Exception:** If this is intended, add `{"rule":"nitpicker/no-singular-and-plural-prop","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 - **Allowed forms by message:**
-  - Optional props `{{ singular }}` and `{{ plural }}` are two ways to pass the same data. Keep `{{ plural }}` and pass a single item as a one-element array.
-- **See also:** [Strict preset guide](../typescript-strict-preset.md#react)
+  - Optional `{{ singular }}` and `{{ plural }}` are two ways to pass the same data. Keep `{{ plural }}` and pass a single item as a one-element array.
 
 <a id="eslint-nitpicker-no-sql-string-building"></a>
 
