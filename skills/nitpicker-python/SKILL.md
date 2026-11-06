@@ -86,6 +86,9 @@ To learn why a rule is on and what form it allows before you write or change cod
   `logger.exception(...)` only inside an `except`, `logging.WARNING` rather than `WARN`.
 - Debugging and processes: remove debugger imports and breakpoints before committing. Pass
   `check=True` to `subprocess.run`, or `check=False` and handle `returncode`.
+- Child processes: give every wait a deadline: `subprocess.run(args, timeout=30, check=True)`,
+  `process.communicate(timeout=30)`, and asyncio process waits inside `async with asyncio.timeout(30):`
+  (`subprocess-without-timeout`; a build wrapper that only runs a child to completion takes an exception).
 - Loops and calls: bind a new name rather than reassigning the loop variable; pass a function
   itself (`key=str`), not `lambda x: str(x)`; one `max(a, b, c)`, not nested calls.
 - Records: `@dataclass(frozen=True)`, and `dataclasses.replace` for a changed copy. The project's
