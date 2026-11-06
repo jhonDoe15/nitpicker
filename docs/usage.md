@@ -270,9 +270,8 @@ SARIF file) and the run is judged as follows.
   are tool errors on the base too: `tests-not-run` for TypeScript and Python, `gradle-failure` or
   `maven-failure` for Java and Kotlin. A test that fails by timing out is an ordinary failing test
   when the runner names it, so a flaky base counts as red.
-- A red head still fails. Its tool error is `tests-failed` for TypeScript and Python and
-  `gradle-failure` or `maven-failure` for Java and Kotlin. When base and head are both red, both
-  are listed as tool errors.
+- A red head still fails, with exit 1. Its tool error is `tests-failed` in every preset. When base
+  and head are both red, both are listed as tool errors.
 - A base that does not type-check (`typecheck-failed-skipped`) or whose build fails for any other
   reason is still a tool error.
 - Java and Kotlin Gradle builds run the base with `--continue`, so every module's tests run, and
@@ -488,11 +487,17 @@ before metric notes (which also show the metric and its value); an overflow coun
 
 ## Exit codes
 
-| Code | Meaning                                                                                                           |
-| ---- | ----------------------------------------------------------------------------------------------------------------- |
-| 0    | Completed with no new enforceable findings. A run narrowed with `--analyzer` checked only the analyzers it names. |
-| 1    | At least one new enforceable finding (`--all`: any violation), even if a tool also errored.                       |
-| 2    | A tool error and no new enforceable findings, invalid arguments, invalid config, or any other failure to decide.  |
+| Code | Meaning                                                                                                                                                    |
+| ---- | ---------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 0    | Completed with no new enforceable findings. A run narrowed with `--analyzer` checked only the analyzers it names.                                          |
+| 1    | At least one new enforceable finding (`--all`: any violation), or tests that fail on the head (`--all`: in the checked code), even if a tool also errored. |
+| 2    | A tool error and no new enforceable findings or failing head tests, invalid arguments, invalid config, or any other failure to decide.                     |
+
+A failing test on the head is a problem with the change, not with a tool, so it exits 1 like a
+violation, and the console summary leads with it: `✖ 1 test fails; coverage, CRAP and mutation were
+skipped. Fix the tests and rerun:` followed by the failing tests. Every preset starts that line the
+same way (the count, what the failure skipped, the ask). Tests that fail only on the base are a note
+(see [A base whose tests fail](#a-base-whose-tests-fail)).
 
 A tool error never counts as a pass. When a run has both findings and tool errors it exits 1, and the
 tool errors are still listed in the console and reports and recorded in `summary.json`
@@ -1283,12 +1288,13 @@ SpotBugs, Error Prone (with NullAway), google-java-format and JaCoCo run on the 
 `languages/java/gradle/nitpicker.init.gradle`, shipped in this package; the consumer build is not edited), and only
 new enforceable findings fail. Exit codes, console summary, `new-findings.json`, `report.sarif`
 and `report.junit.xml` are the same as for TypeScript. If Gradle fails on either snapshot, the
-failure is reported as a `java/gradle-failure` tool error (exit 2 when there are no new findings), never thrown.
+failure is reported as a `java/gradle-failure` tool error (exit 2 when there are no new findings), never thrown;
+failing tests on the head are a `java/tests-failed` tool error instead (exit 1).
 A project whose root has a `pom.xml` and no Gradle build file (or both, with `mvnw` and no `gradlew`)
 is built with Maven 3.6.3 or newer instead, with the same tools, versions and findings, one module
-at a time (findings carry the module path); a Maven failure or a failing test on the head is a
-`java/maven-failure` tool error naming the cause (a base whose tests fail is a note, see "A base
-whose tests fail"). Maven runs through `mvnw` when the project has
+at a time (findings carry the module path); a Maven failure is a `java/maven-failure` tool error
+naming the cause, and a failing test on the head is a `java/tests-failed` one (exit 1; a base whose
+tests fail is a note, see "A base whose tests fail"). Maven runs through `mvnw` when the project has
 one, else `mvn` from the PATH; `NITPICKER_MAVEN=<command>` overrides both. See
 [Maven builds](java-preset.md#maven-builds).
 
@@ -1438,7 +1444,7 @@ environment, failing tests, a crashing tool; failing tests on the base alone are
 [A base whose tests fail](#a-base-whose-tests-fail)), the failure is reported as a tool error of the
 analyzer that ran it, never thrown: `python` for `ruff-failed`, `format-failed`, `tests-failed`,
 `coverage-failed`, `types-failed`, `rules-failed`, `structure-failed` or a plain one when the environment is missing, and `mutation` for
-`mutation-failed` (exit 2 when there are no new findings). A mutation failure keeps the lint,
+`mutation-failed` (exit 2 when there are no new findings; failing head tests exit 1). A mutation failure keeps the lint,
 format and coverage findings, and mutation testing is skipped when the `python` analyzer had a tool
 error.
 

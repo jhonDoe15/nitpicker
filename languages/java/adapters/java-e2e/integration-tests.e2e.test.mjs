@@ -120,7 +120,7 @@ describe.skipIf(!enabled)('integration tests on Gradle and Maven', () => {
     } catch (error) {
       runs.failure = error.message
         .replaceAll(project, '<project>')
-        .replace(/^Full Gradle log: \S+\n/u, '');
+        .replace(/\nFull Gradle log: \S+$/u, '');
     }
   }, 180_000);
 
@@ -172,7 +172,7 @@ describe.skipIf(!enabled)('integration tests on Gradle and Maven', () => {
 
   it('fail the build naming the failing cases of a checked integration task', () => {
     expect(runs.failure).toEqual(
-      'Tests fail in <project>; nitpicker needs a passing test suite for coverage and mutation testing:\n' +
+      '1 test fails; the build stopped, so no other check ran. Fix the tests and rerun:\n' +
         '  demo.GreeterIT.saysGoodbye: expected: <Nope> but was: <Goodbye, Ada>',
     );
   });
