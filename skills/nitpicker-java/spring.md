@@ -45,7 +45,8 @@ Beans and configuration:
   `@Enable...` on a `@Configuration` class. Secrets have no default (`${jwt.secret}`).
 
 Transactions and other proxies (`@Transactional`, `@Async`, `@Cacheable`, `@Retryable`,
-`@PreAuthorize`):
+`@PreAuthorize`, `@RolesAllowed`, Resilience4j, Micrometer `@Timed`, constraints in a `@Validated`
+class, and annotations of your own that carry one of these or that an `@Aspect` matches):
 
 - Only on public, non-final, non-static methods of non-final classes. Use Spring's
   `org.springframework.transaction.annotation.Transactional`.
@@ -56,6 +57,13 @@ Transactions and other proxies (`@Transactional`, `@Async`, `@Cacheable`, `@Retr
   exceptions; let them propagate.
 - A checked `throws` needs `rollbackFor = Exception.class`; a write under `readOnly = true` needs its
   own plain `@Transactional`.
+- A public service method that writes more than once (`save`, `delete`, a `@Modifying` query,
+  `JdbcTemplate.update`), also through its private helpers, is `@Transactional` or runs the writes in
+  `TransactionTemplate.execute`.
+- Write caches after the commit (`TransactionSynchronization.afterCommit`, a
+  `@TransactionalEventListener`, or the caller), never inside a writing transaction: no Spring
+  `Cache.put`/`evict`, `@CachePut`, Caffeine or Guava `put`/`invalidate`, or a map field filled with a
+  just-saved row. A transaction-aware cache manager makes the Spring `Cache` calls fine.
 - `@Async("executorName")` returning `CompletableFuture`. `@Scheduled` with `fixedDelay` or `cron`,
   not `fixedRate`.
 
@@ -90,7 +98,8 @@ JPA and Spring Data:
   List<Order> withCustomerByStatus(OrderStatus status);
   ```
 
-- `@Modifying(clearAutomatically = true, flushAutomatically = true)`.
+- `@Modifying(clearAutomatically = true, flushAutomatically = true)`, with `@Transactional` on the method
+  or the repository interface; so does a derived `deleteBy...` that an exception allows.
 - Never `save`, `delete` or `persist` one entity per loop iteration: call `saveAll` once (per chunk
   for large inputs), also through a helper, `saveAll(List.of(x))` or a `@Modifying` update per row.
   The one loop allowed is the JPA batch loop that calls `persist`, then `flush` and `clear` on the

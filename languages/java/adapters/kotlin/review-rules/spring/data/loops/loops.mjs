@@ -1,4 +1,4 @@
-import { WRITE_VERB } from '../../rules/transactions.mjs';
+import { WRITE_VERB } from '../../transactions/writes.mjs';
 import { report, symbolOf } from '../../spring-scopes.mjs';
 import { BATCH_WRITES, STANDARD_WRITES } from '../data-types.mjs';
 import { saveInLoopHelpers } from './helpers.mjs';

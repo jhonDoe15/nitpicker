@@ -1,6 +1,6 @@
 # TypeScript and JavaScript: nitpicker ESLint rules
 
-The ESLint rules nitpicker's own plugin adds to the TypeScript and JavaScript presets (`nitpicker/*`). This page lists 88 rules. [All pages](README.md).
+The ESLint rules nitpicker's own plugin adds to the TypeScript and JavaScript presets (`nitpicker/*`). This page lists 93 rules. [All pages](README.md).
 
 The guide for these rules: [docs/typescript-strict-preset.md](../typescript-strict-preset.md).
 
@@ -259,6 +259,19 @@ Disallow turning off TLS certificate verification.
 - **Allowed forms by message:**
   - Turning off TLS certificate verification lets anyone on the network pose as the server, and turning it off by environment ships the switch to production. Keep verification on in every environment and trust the certificate authority instead: `new https.Agent({ ca: readFileSync(caPath) })`, `tlsCAFile` for MongoDB, or set NODE_EXTRA_CA_CERTS for a private CA; for browser automation against a local certificate pin it with `--ignore-certificate-errors-spki-list=<hash>`. A server that asks for optional client certificates sets `requestCert: true` and checks `socket.authorized`. An exception fits only when a contained case cannot do that.
 
+<a id="eslint-nitpicker-no-eager-relation"></a>
+
+### `eslint/nitpicker/no-eager-relation`
+
+Disallow relations mapped to load on every query (TypeORM and MikroORM eager, a Sequelize defaultScope include).
+
+- **Printed as:** `eslint-lint/nitpicker/no-eager-relation`
+- **Exception:** If this is intended, add `{"rule":"nitpicker/no-eager-relation","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
+- **Allowed forms by message:**
+  - eager: true makes TypeORM load this relation with every find of the entity, whether the caller needs it or not. Leave it out and load the relation on the queries that need it: relations: { customer: true } in that find, or leftJoinAndSelect in a query builder. An exception fits only for a small lookup relation that every read needs.
+  - eager makes MikroORM populate this relation on every load of the entity, whether the caller needs it or not. Leave it out and populate the relation on the queries that need it: em.find(Order, where, { populate: ['customer'] }). An exception fits only for a small lookup relation that every read needs.
+  - An include in the defaultScope joins these associations into every query of the model, whether the caller needs them or not. Put the include in a named scope (Order.scope('withCustomer')) or pass include on the queries that need it. An exception fits only for a small lookup relation that every read needs.
+
 <a id="eslint-nitpicker-no-external-executables-in-unit-tests"></a>
 
 ### `eslint/nitpicker/no-external-executables-in-unit-tests`
@@ -396,6 +409,18 @@ Keep managed resource construction in approved composition roots.
 - **Allowed forms by message:**
   - Construct {{name}} only in the composition root (src/main/composition-root.ts, main.ts or server.ts) and pass it in as a parameter. An exception fits only when it is a plain value, not a long-lived resource.
 
+<a id="eslint-nitpicker-no-many-to-many-cascade-remove"></a>
+
+### `eslint/nitpicker/no-many-to-many-cascade-remove`
+
+Disallow cascading removes on many-to-many relations (TypeORM and MikroORM).
+
+- **Printed as:** `eslint-lint/nitpicker/no-many-to-many-cascade-remove`
+- **Exception:** If this is intended, add `{"rule":"nitpicker/no-many-to-many-cascade-remove","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
+- **Allowed forms by message:**
+  - A cascade that removes (cascade: true, 'remove' or 'soft-remove') on a many-to-many relation removes the related rows when one owner is removed, although other owners still share them. Cascade only ['insert', 'update']; removing the owner already deletes its join rows (the join table's onDelete: 'CASCADE', the default).
+  - Cascade.ALL or Cascade.REMOVE on a many-to-many relation removes the related rows when one owner is removed, although other owners still share them. Cascade only [Cascade.PERSIST]; removing the owner already deletes its pivot rows.
+
 <a id="eslint-nitpicker-no-mocking-subject-under-test"></a>
 
 ### `eslint/nitpicker/no-mocking-subject-under-test`
@@ -463,6 +488,30 @@ Disallow null outside the allowed library forms.
 - **Allowed forms by message:**
   - Use `undefined` for an absent value, and an optional field or parameter (`value?: T`) where it may be missing. `null` is only for strict comparison with a library value and the `JSON.stringify` replacer argument. An exception fits only when a framework or library requires it.
   - Use `undefined` for an absent value, and an optional field or parameter (`value?: T`) where it may be missing. `null` is only for strict comparison with a library value and the `JSON.stringify` replacer argument. An exception fits only when a framework or library requires it. Type it as optional with `undefined`.
+
+<a id="eslint-nitpicker-no-orm-query-logging"></a>
+
+### `eslint/nitpicker/no-orm-query-logging`
+
+Disallow ORM options that log every SQL query.
+
+- **Printed as:** `eslint-lint/nitpicker/no-orm-query-logging`
+- **Exception:** If this is intended, add `{"rule":"nitpicker/no-orm-query-logging","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
+- **Allowed forms by message:**
+  - `{{form}}` logs every SQL query: the logs fill with personal data and bound values, and every query pays for the log line. A value guarded by an environment check still logs in every other environment. Turn query logging off (`logging: false`) and log slow queries instead: TypeORM `maxQueryExecutionTime`, Sequelize `benchmark: true` with a logging function that keeps only slow queries, Prisma `log: [{ emit: "event", level: "query" }]` with a handler that filters by duration, or the database's own slow-query log. An exception fits only for a local debugging script.
+- **See also:** [Spring counterpart `spring/unsafe-diagnostics`](java-nitpicker.md#springunsafe-diagnostics)
+
+<a id="eslint-nitpicker-no-orm-schema-sync"></a>
+
+### `eslint/nitpicker/no-orm-schema-sync`
+
+Disallow the ORM creating or changing the database schema when the application starts.
+
+- **Printed as:** `eslint-lint/nitpicker/no-orm-schema-sync`
+- **Exception:** If this is intended, add `{"rule":"nitpicker/no-orm-schema-sync","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
+- **Allowed forms by message:**
+  - `{{form}}` lets the ORM create, alter or drop tables when the application starts: a deploy can drop columns and their data, instances race to change the schema, and the schema drifts from what the migrations record. A value guarded by an environment check still changes the schema in every other environment. Change the schema with migrations instead (TypeORM migrations with `migrationsRun` or `typeorm migration:run`, `sequelize-cli db:migrate`, MikroORM `orm.migrator.up()`, `prisma migrate deploy`). An exception fits only for a local script outside the application, such as a seed or a dev tool.
+- **See also:** [Spring counterpart `spring/ddl-auto`](java-nitpicker.md#springddl-auto)
 
 <a id="eslint-nitpicker-no-parameter-mutation"></a>
 
@@ -844,14 +893,14 @@ This test file declares {{environment}} but never uses the DOM. Change the direc
 
 ### `eslint/nitpicker/no-unvalidated-schema-field`
 
-Disallow z.unknown() and z.any() as a field of a z.object schema.
+Disallow unchecked fields (z.unknown(), v.any(), Joi.any(), Type.Unknown() and the like) and objects that keep unknown keys in the schemas of every validation library the preset knows.
 
 - **Printed as:** `eslint-lint/nitpicker/no-unvalidated-schema-field`
 - **Exception:** If this is intended, add `{"rule":"nitpicker/no-unvalidated-schema-field","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 - **Allowed forms by message:**
-  - {{factory}}() as a field only checks that the key exists and hands the value on unchecked. Validate the field in the schema, e.g. z.string().trim().min(1) or z.email(). An exception fits only when the field is genuinely opaque.
+  - {{factory}} lets any value of this field through unchecked. Validate the field in the schema, e.g. {{example}}. An exception fits only when the field is genuinely opaque.
   - z.custom() without a check function is a cast, not a validator. Pass the check, z.custom\<T>((value) => ...), or build the schema from validating parts. An exception fits only when the value is genuinely opaque.
-  - z.looseObject(), .loose() and .passthrough() let unknown keys through unvalidated, and .catchall(z.unknown()) does the same. Use z.object({...}), which drops unknown keys, or z.strictObject({...}) to reject them. An exception fits only when the extra keys are genuinely opaque.
+  - {{form}} lets unknown keys through unvalidated. Use {{allowed}}. An exception fits only when the extra keys are genuinely opaque.
 
 <a id="eslint-nitpicker-no-wait-for-with-fake-timers"></a>
 
@@ -1056,6 +1105,17 @@ Report statements that execute observable work while a module is imported.
   - Top-level {{kind}} executes control flow during module loading. Move the work into a function that the app entry calls. The entry (the module script in Vite's index.html, else src/main.tsx) is detected; for another entry file, list it under `layout.entryPoints` in nitpicker.config.json.
   - Top-level expression executes work during module loading. Move the work into a function that the app entry calls. The entry (the module script in Vite's index.html, else src/main.tsx) is detected; for another entry file, list it under `layout.entryPoints` in nitpicker.config.json.
   - `{{call}}` runs when the module is imported. Move it into a function and call that from the composition root, passing the result in. An exception fits only when it must run at import.
+
+<a id="eslint-nitpicker-require-error-listener"></a>
+
+### `eslint/nitpicker/require-error-listener`
+
+Require an 'error' listener on streams, sockets, child processes and clients.
+
+- **Printed as:** `eslint-lint/nitpicker/require-error-listener`
+- **Exception:** If this is intended, add `{"rule":"nitpicker/require-error-listener","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
+- **Allowed forms by message:**
+  - `{{name}}` emits 'error' when its connection, file or process fails, and Node.js throws an 'error' event that has no listener, which stops the process. Attach one where it is created: `{{name}}.on('error', (error) => ...)`, or hand it to `pipeline(...)` or `finished(...)` from `node:stream/promises`, to `events.once(...)`, or read it with `for await`. An exception fits only when a crash of the process is the intended outcome.
 
 <a id="eslint-nitpicker-require-http-timeout"></a>
 
