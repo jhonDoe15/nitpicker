@@ -27,6 +27,7 @@ def load_checks():
     from per_test import starts
     from resources import inline as inline_resources
     from persistence import cascades, eager, query_logging, schema_sync
+    from processes import timeouts as process_timeouts
     from review import fields
     from security import hashes, loading
     from security.sql import check as sql
@@ -55,6 +56,7 @@ def load_checks():
         tls,
         hashes,
         timeouts,
+        process_timeouts,
         loading,
         schema_sync,
         query_logging,

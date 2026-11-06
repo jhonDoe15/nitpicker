@@ -792,6 +792,34 @@ return (
       </property>
     </properties>
   </rule>
+  <rule name="ProcessWaitWithoutTimeout" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
+        message="Wait with a deadline: process.waitFor(30, TimeUnit.SECONDS), and call process.destroyForcibly() when it returns false. Read the output on another thread (or redirect it to a file) before that wait. This waits for the child process without a deadline, so a command that never exits hangs this request, job or command for good. An exception fits only a program whose purpose is to run the child to completion, such as a build wrapper.">
+    <priority>3</priority>
+    <properties>
+      <property name="xpath">
+        <value><![CDATA[
+(
+  //MethodCall[@MethodName = 'waitFor'][ArgumentList[@Size = 0]]
+    [*[1][pmd-java:typeIs('java.lang.Process')]]
+  | //MethodCall[@MethodName = ('get', 'join')][ArgumentList[@Size = 0]]
+    [*[1][self::MethodCall[@MethodName = 'onExit'][*[1][pmd-java:typeIs('java.lang.Process')]]]]
+  | //MethodCall[@MethodName = ('readAllBytes', 'readNBytes', 'transferTo', 'lines', 'readLine')]
+    [let $streams := ('getInputStream', 'getErrorStream', 'inputReader', 'errorReader'),
+         $scope := ancestor::*[self::MethodDeclaration or self::ConstructorDeclaration or self::Initializer][1],
+         $read := .,
+         $held := *[1][self::VariableAccess]/@Name
+     return (*[1][descendant-or-self::MethodCall[@MethodName = $streams][*[1][pmd-java:typeIs('java.lang.Process')]]]
+             or exists($scope//VariableDeclarator[VariableId/@Name = $held]
+                         /*[2][descendant-or-self::MethodCall[@MethodName = $streams]
+                                                          [*[1][pmd-java:typeIs('java.lang.Process')]]]))
+       and not($scope//MethodCall[@MethodName = 'waitFor'][ArgumentList[@Size = 2]]
+                 [exists($read/ancestor::LambdaExpression) or @BeginLine < $read/@BeginLine])]
+)
+]]></value>
+      </property>
+    </properties>
+  </rule>
+
   <rule name="HttpWithoutTimeout" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
         message="Give the call a deadline: HttpRequest.newBuilder(uri).timeout(Duration.ofSeconds(10)) for java.net.http, setConnectTimeout and setReadTimeout on an HttpURLConnection, setDefaultRequestConfig(RequestConfig.custom().setResponseTimeout(...)) on the Apache client builder, connectTimeout and readTimeout on a JAX-RS ClientBuilder, or OkHttp, which sets timeouts by default. This HTTP call has no timeout, so a server that never answers hangs it for good.">
     <priority>2</priority>
@@ -916,6 +944,7 @@ return (
       </property>
     </properties>
   </rule>
+
   <rule name="RecursiveMapUpdate" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
         message="Change the map after its computeIfAbsent, compute, computeIfPresent or merge returns, not inside the function passed to it or a callback or same-class method that function starts: build the value there and attach the cleanup to the result (map.computeIfAbsent(key, k -&gt; start(k)).whenComplete((r, e) -&gt; map.remove(key, r))). A ConcurrentHashMap otherwise throws IllegalStateException (Recursive update) or deadlocks, and a HashMap throws ConcurrentModificationException.">
     <priority>3</priority>

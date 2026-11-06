@@ -39,6 +39,7 @@ import { rule as noNodeProcessPerTest } from './rules/testing/processes/no-node-
 import { rule as noServerOrWorkerPerTest } from './rules/testing/processes/no-server-or-worker-per-test.mjs';
 import { rule as noRaisedTestTimeout } from './rules/testing/assertions/no-raised-test-timeout.mjs';
 import { rule as requireTestProcessTimeout } from './rules/testing/processes/timeouts/require-test-process-timeout.mjs';
+import { rule as requireProcessTimeout } from './rules/processes/require-process-timeout.mjs';
 import { rule as noUnusedDomEnvironment } from './rules/testing/environment/no-unused-dom-environment.mjs';
 import { rule as noPartialOutputAssertion } from './rules/testing/assertions/no-partial-output-assertion.mjs';
 import { rule as noProcessGlobalsOutsideMainGuard } from './rules/modules/no-process-globals-outside-main-guard.mjs';
@@ -150,6 +151,7 @@ export const nitpickerRules = {
     'no-server-or-worker-per-test': noServerOrWorkerPerTest,
     'no-raised-test-timeout': noRaisedTestTimeout,
     'require-test-process-timeout': requireTestProcessTimeout,
+    'require-process-timeout': requireProcessTimeout,
     'no-partial-output-assertion': noPartialOutputAssertion,
     'no-unused-dom-environment': noUnusedDomEnvironment,
     'no-process-globals-outside-main-guard': noProcessGlobalsOutsideMainGuard,
