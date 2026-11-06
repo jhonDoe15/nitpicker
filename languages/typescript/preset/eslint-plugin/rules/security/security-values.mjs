@@ -13,6 +13,10 @@ const TYPE_WRAPPERS = new Set([
 ]);
 const TEXT_PRESERVING_METHODS = new Set(['toLowerCase', 'toUpperCase', 'trim', 'toString']);
 
+export function isLiteral(node, value) {
+  return node?.type === 'Literal' && node.value === value;
+}
+
 export function isTypeWrapper(node) {
   return TYPE_WRAPPERS.has(node?.type);
 }

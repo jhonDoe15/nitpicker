@@ -167,6 +167,8 @@ Full diagnostics: ${repository.outputRoot}/report.txt
 
 Quality gate summary
 ✓ No new enforceable violations
+Design note for review (not failing): 1 new
+  fake-quality-analyzer/fixture-rule src/main/new.ts:1 Fixture finding (fanIn 3)
 Full diagnostics: ${repository.outputRoot}/report.txt
 `);
     expect(output.stdoutText).not.toContain('introduced-metric');

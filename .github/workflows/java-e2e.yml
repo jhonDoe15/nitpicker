@@ -65,9 +65,9 @@ jobs:
     timeout-minutes: 60
     strategy:
       fail-fast: false
-      max-parallel: 16
+      max-parallel: 4
       matrix:
-        shard: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16]
+        shard: [1, 2, 3, 4]
     steps:
       - uses: actions/checkout@v7.0.1
       - uses: actions/setup-node@v7.1.0
@@ -75,13 +75,17 @@ jobs:
           node-version: 24
           cache: npm
           cache-dependency-path: package-lock.json
-      # Maven comes with the runner image; the cache keeps ~/.m2 between runs, keyed on the fixture poms.
+      # Maven comes with the runner image; the cache keeps ~/.m2 between runs, keyed on the fixture poms and on the
+      # init script that pins the tool versions, so a tool upgrade saves a new cache instead of downloading the new
+      # jars from Maven Central on every run.
       - uses: actions/setup-java@v6.1.0
         with:
           distribution: temurin
           java-version: 21
           cache: maven
-          cache-dependency-path: languages/java/maven/fixtures/**/pom.xml
+          cache-dependency-path: |
+            languages/java/maven/fixtures/**/pom.xml
+            languages/java/gradle/nitpicker.init.gradle
       # Caches ~/.gradle: the Checkstyle, PMD, SpotBugs, Error Prone, palantir-java-format and PIT jars the init
       # script resolves, and the plugins the fixture projects use.
       - uses: gradle/actions/setup-gradle@v6.4.1

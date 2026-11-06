@@ -6,7 +6,7 @@ import { containedPath } from './contained-path.mjs';
 const DEPENDENCY_DIRECTORY = 'node_modules';
 const MAX_LISTING_BYTES = 64 * 1024 * 1024;
 
-function manifestDirectories(root) {
+export function manifestDirectories(root) {
   const result = spawnSync(
     'git',
     ['ls-files', '--cached', '--others', '--exclude-standard', '-z', '--', '*package.json'],

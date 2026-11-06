@@ -1,5 +1,6 @@
 import { spawnSync } from 'node:child_process';
 import path from 'node:path';
+import { markedPayload } from '../../../../core/tooling/child-output.mjs';
 import { readHeadPolicy, readLayout } from '../head-policy.mjs';
 import { projectConfigFile } from './config-files.mjs';
 import { DEFAULT_ENVIRONMENT } from './environments.mjs';
@@ -28,12 +29,11 @@ function runReader({ configFile, projectRoot, resolveRoots, timeoutMs }) {
   if (result.error?.code === 'ETIMEDOUT')
     return { failure: `it did not finish within ${String(timeoutMs)} ms` };
   if (result.error !== undefined) return { failure: result.error.message };
-  const line = result.stdout
-    .split('\n')
-    .findLast((candidate) => candidate.startsWith(RESULT_MARKER));
-  if (line === undefined)
-    return { failure: `the config ended the process with exit code ${String(result.status)}` };
-  return JSON.parse(line.slice(RESULT_MARKER.length));
+  return (
+    markedPayload(result.stdout, RESULT_MARKER) ?? {
+      failure: `the config ended the process with exit code ${String(result.status)}`,
+    }
+  );
 }
 
 export function loadTestEnvironments({

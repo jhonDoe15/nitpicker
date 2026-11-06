@@ -11,6 +11,7 @@ import {
   installDependencies,
 } from './package-managers/install.mjs';
 import { memberDependencyDirectories } from './package-managers/members.mjs';
+import { prepareLocalPackages, removeLocalPackages } from './local-packages.mjs';
 
 const DEPENDENCY_DIRECTORY = 'node_modules';
 
@@ -39,12 +40,21 @@ function installedMembers(root, existingMembers) {
   );
 }
 
+function installInto(packageManager, dependencyPath, missingLocalPackages) {
+  const outcome = installDependencies(packageManager);
+  if (!outcome.ok) {
+    throw new Error(failureMessage(packageManager, outcome.detail, missingLocalPackages));
+  }
+  ensureDependencyFolder(packageManager, dependencyPath);
+  assertRegularDirectory(dependencyPath);
+}
+
 const nodeDependencyHook = {
   language: 'typescript',
   manifests: DEPENDENCY_MANIFESTS,
   directory: DEPENDENCY_DIRECTORY,
   dependencyRoot: managerRoot,
-  install(projectRoot) {
+  install(projectRoot, liveProjectRoot) {
     const packageManager = detectPackageManager(projectRoot);
     const dependencyPath = containedPath(packageManager.root, DEPENDENCY_DIRECTORY);
     if (existsSync(dependencyPath)) {
@@ -54,18 +64,20 @@ const nodeDependencyHook = {
     function memberPaths() {
       return installedMembers(packageManager.root, existingMembers);
     }
+    const localPackages = prepareLocalPackages(packageManager.root, liveProjectRoot);
     try {
-      const outcome = installDependencies(packageManager);
-      if (!outcome.ok) {
-        throw new Error(failureMessage(packageManager, outcome.detail));
-      }
-      ensureDependencyFolder(packageManager, dependencyPath);
-      assertRegularDirectory(dependencyPath);
+      installInto(packageManager, dependencyPath, localPackages.missing);
     } catch (error) {
       removeInstalled(dependencyPath, memberPaths());
+      removeLocalPackages(localPackages.copied);
       throw error;
     }
-    return { kind: 'installed', dependencyPath, memberPaths: memberPaths() };
+    return {
+      kind: 'installed',
+      dependencyPath,
+      memberPaths: memberPaths(),
+      localPackagePaths: localPackages.copied,
+    };
   },
 };
 

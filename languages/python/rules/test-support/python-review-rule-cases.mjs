@@ -1,0 +1,31 @@
+export const REVIEW_RULE_CASES = [
+  {
+    name: 'singular and plural fields name the one-element list',
+    fixture: 'singular-and-plural-field',
+    tool: 'python-rules',
+    rule: 'singular-and-plural-field',
+    mention: 'one-element list',
+  },
+  {
+    name: 'a partial enum predicate names assert_never',
+    fixture: 'exhaustive-enum-predicate',
+    tool: 'python-rules',
+    rule: 'exhaustive-enum-predicate',
+    mention: 'assert_never',
+  },
+  {
+    name: 'a forwarding wrapper names calling the target',
+    fixture: 'forwarding-wrapper',
+    tool: 'python-rules',
+    rule: 'forwarding-wrapper',
+    mention: 'call the target directly',
+  },
+  {
+    name: 'an unused keyword parameter names setting it from a real call',
+    fixture: 'unused-option',
+    tool: 'python-rules',
+    rule: 'unused-option',
+    data: { scope: 'private' },
+    mention: 'set it from a real call',
+  },
+];

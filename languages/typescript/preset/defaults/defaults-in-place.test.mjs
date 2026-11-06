@@ -25,6 +25,7 @@ import {
 
 const packageRoot = path.resolve(import.meta.dirname, '../../../..');
 const POLICY_PATHS = [
+  'core/tooling/child-output.mjs',
   'core/tooling/host-environment.mjs',
   'core/tooling/policy-links.mjs',
   'core/tooling/temporary-files.mjs',
@@ -44,6 +45,7 @@ const POLICY_PATHS = [
   'languages/typescript/preset/layout/generated-files.mjs',
   'languages/typescript/preset/layout/path-patterns.mjs',
   'languages/typescript/preset/head-policy.mjs',
+  'languages/typescript/preset/project-configs',
   'languages/typescript/preset/project-tools',
   'languages/typescript/preset/libraries',
   'languages/typescript/preset/tool-configs.mjs',
