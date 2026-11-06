@@ -7,8 +7,9 @@ Everything in `SKILL.md` still applies to the lines you add.
   must not grow: the gate prints `grew from 77 to 78 lines`. Add one call to a new function and
   put the new code there, below the legacy function: above it, git can read the function's first
   lines as rewritten, and a `print` on them then counts as new. To make room, extract the smallest
-  existing block; extracted code is new code and must meet every rule. Don't rename a legacy
-  function or move it to another module: its findings return as new, at full size.
+  existing block; extracted code is new code and must meet every rule. Don't move a legacy
+  function to another module: its findings return as new, at full size. Rename one only in a change
+  that leaves its body as it was; an edit inside a renamed function brings its findings back too.
 - A module, package or class already over its limit must not grow either: put the new code in a
   new module, and a new module in a subpackage (a full folder takes no 7th module; a class with
   more than 10 fields takes a nested dataclass, not another field). Extracting new functions

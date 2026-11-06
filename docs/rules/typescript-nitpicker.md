@@ -519,12 +519,13 @@ Disallow the ORM creating or changing the database schema when the application s
 
 ### `eslint/nitpicker/no-parameter-mutation`
 
-Disallow changing an array, Set, Map or indexed object that a parameter holds in place.
+Disallow changing an array, Set, Map, indexed object or project object that a parameter holds in place.
 
 - **Printed as:** `eslint-lint/nitpicker/no-parameter-mutation`
 - **Exception:** If this is intended, add `{"rule":"nitpicker/no-parameter-mutation","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 - **Allowed forms by message:**
   - `{{ name }}` changes the value the caller passed in. Build and return a new value instead (`[...items, item]`, `new Set([...set, item])`, `{ ...table, [key]: value }`, `items.toSorted()`), or copy the parameter first (`const copy = [...items]`).
+  - `{{ name }}` writes to the object the caller passed in, so a frozen or shared object breaks. Build a new object instead (`{ ...options, timeout: 5000 }`), or copy the parameter first (`const next = { ...options }`). An exception fits only when this function fills an object its caller hands it to be filled.
 
 <a id="eslint-nitpicker-no-partial-output-assertion"></a>
 
