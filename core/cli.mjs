@@ -18,6 +18,7 @@ import { configureAnalyzers } from './configuration/configure-analyzers.mjs';
 import { presetAnalyzers } from './configuration/preset-analyzers.mjs';
 import { withRunLock } from './command/run-lock.mjs';
 import { runSnapshotCli } from './command/snapshot.mjs';
+import { writeComparisonOutcome } from './command/comparison/outcome.mjs';
 import { baseSetupResolver } from './command/policy-review/base-setup.mjs';
 import { historyAvailabilityNotes, noticeDescriber } from './command/policy-review/notices.mjs';
 import { policyAcceptance } from './command/policy-review/policy-acceptance.mjs';
@@ -27,20 +28,16 @@ import { resolveComparison } from './diff/git/repository/git.mjs';
 import { resolveBase } from './diff/git/repository/base-ref.mjs';
 import { detachLocalGitVariables } from './diff/git/environment/local-variables.mjs';
 import path from 'node:path';
-import { clearDiffReports, absoluteTextReportPath } from './diff/reporting/reporters.mjs';
-import { selectComparisonAnalyzers } from './command/comparison-analyzers.mjs';
+import { clearDiffReports } from './diff/reporting/reporters.mjs';
+import { selectComparisonAnalyzers } from './command/comparison/analyzers.mjs';
 import { runQualityDiff } from './diff/comparison/run-diff.mjs';
 import { fixWorkingTree } from './fix/run-fix.mjs';
 import { resolveCacheStore } from './diff/cache/cache-stores.mjs';
-import { renderConsoleSummary } from './diff/reporting/summary.mjs';
-import { writeGithubOutput } from './diff/reporting/github/emit.mjs';
-import { renderClosingSections } from './exceptions/stale-exceptions.mjs';
 import { runHistoryCli } from '../shared/history/runner.mjs';
 import { runHygieneCli } from '../shared/hygiene/runner.mjs';
 import { GO_ANALYZER_COMMAND, runGoCli } from '../languages/go/adapters/go-runner.mjs';
 import { redirectToBundledTypeScriptApi } from '../languages/typescript/typescript-api/api-selection.mjs';
 import { describeError } from '../shared/messages/error-chain.mjs';
-import { colorEnabled, displayPath } from '../shared/messages/terminal-text.mjs';
 
 const CHECK_COMMANDS = {
   hygiene: runHygieneCli,
@@ -251,32 +248,6 @@ function resolveRunCacheStore(cli) {
     }
   }
   return cli.options.cache ? store : undefined;
-}
-
-function writeComparisonOutcome({ cli, report, base, outputRoot }) {
-  const { options, environment, stdout } = cli;
-  stdout.write(`Base: ${base.baseRef} (${base.source})\n`);
-  const color = colorEnabled(stdout, environment);
-  const diagnosticsPath = displayPath(absoluteTextReportPath(outputRoot));
-  stdout.write(renderConsoleSummary(report, { color, details: options.details, diagnosticsPath }));
-  stdout.write(renderClosingSections(cli, report));
-  if (options.shardCount === undefined) {
-    writeGithubOutput({
-      kind: 'diff',
-      report,
-      projectRoot: cli.currentProjectRoot,
-      environment,
-      stdout,
-      stderr: cli.stderr,
-    });
-  }
-  if (options.deferExit) {
-    return 0;
-  }
-  if (report.summary.newEnforceableFindings > 0) {
-    return 1;
-  }
-  return report.summary.overallStatus === 'completed' ? 0 : 2;
 }
 
 const invokedPath = process.argv[1];

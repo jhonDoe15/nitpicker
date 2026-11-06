@@ -76,6 +76,7 @@ Full diagnostics: /tmp/nitpicker-cli-output-${/[A-Za-z0-9]{6}/}/reports/report.t
     const { run, snapshots, repository } = setup();
     const worktree = path.join(makeTemporaryRoot('nitpicker-cli-worktree-'), 'worktree');
     fixtureGit(repository.root, ['worktree', 'add', '--quiet', '--detach', worktree]);
+    writeFiles(worktree, { 'src/main/new.ts': findingLine(finding({ identity: 'new-finding' })) });
     const lines = [];
     const progress = { write: (text) => lines.push(text) };
 

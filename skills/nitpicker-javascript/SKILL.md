@@ -143,6 +143,9 @@ line) is a finding.
   starts with `_` (`_event`).
 - `async`/`await`, never `.then()`. No floating promises.
 - Fan-out: bound concurrent remote or message calls. Run each call through a limiter created outside the loop (`pLimit(8)`, p-queue `concurrency`, Bottleneck `maxConcurrent`) or work through fixed-size chunks. Never `Promise.all(items.map(send))` over a runtime collection.
+- A child process you wait for gets a deadline: `{ timeout: 30_000 }` on `execFileSync`/`spawnSync`, or a
+  `timeout` or `signal: AbortSignal.timeout(30_000)` on `execFile` and an awaited `spawn` or `execa`
+  (`nitpicker/require-process-timeout`; a build wrapper that only runs a child to completion takes an exception).
 - Named exports only (`export function`, `export { x } from`); no `export default`. No comments;
   JSDoc type tags are the exception.
 - Signatures: a value with three states is a union of string literals, not `{boolean|undefined}`,
@@ -176,14 +179,24 @@ line) is a finding.
   function; schemas live in `adapters/`. Dedupe with `[...new Set(xs)]` or a `ReadonlySet`.
 - A `Date` is mutable: use it in one expression (`new Date(ms).getUTCHours()`) or type it
   `Readonly<Date>`.
-- Count by a union as `Readonly<Record<Status, number>>` with one `reduce` from a literal with every
-  member, so a new member fails type-checking:
+- Count by a union as `Readonly<Record<Status, number>>` written as a literal with every member,
+  from one `Object.groupBy`, so a new member fails type-checking:
   ```js
+  const byStatus = Object.groupBy(invoices, (invoice) => invoice.status);
   /** @type {Readonly<Record<Status, number>>} */
-  const none = { paid: 0, open: 0, void: 0 };
-  return invoices.reduce(addInvoice, none);
+  const counts = {
+    paid: byStatus.paid?.length ?? 0,
+    open: byStatus.open?.length ?? 0,
+    void: byStatus.void?.length ?? 0,
+  };
   ```
-  Group by key with `[...new Set(xs.map(key))]` and `filter`.
+  `Object.groupBy` needs `lib` `ES2024` (TypeScript 5.7 or later) for the type check. Group by key
+  with `[...new Set(xs.map(key))]` and `filter`.
+- Build a result that grows with the input in one pass (`Object.fromEntries`, `new Map`,
+  `flatMap`, `Object.groupBy`), never by spreading the accumulator (`({ ...acc, [k]: v })`,
+  `[...acc, x]`). The gate reads only inline `reduce` callbacks, so a reducer passed by name is a
+  known gap, not a way around the rule: the same spread there is just as quadratic. Spreading a
+  record of fixed keys (`({ ...acc, paid: acc.paid + 1 })`) does not grow and is fine.
 - Variants of one union share one array type (`readonly Share[]` in each).
 - `module.exports` assignment is not mutation and may stay; every other property assignment is.
 

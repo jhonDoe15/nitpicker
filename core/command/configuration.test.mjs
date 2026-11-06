@@ -258,7 +258,7 @@ Full diagnostics: /tmp/nitpicker-cli-output-${/[A-Za-z0-9]{6}/}/reports/report.t
       'Policy changed in this change (nitpicker.config.json, head against base; ' +
       'loosening accepted by exact digest):';
     const analyzers = [fakeAnalyzer(), fakeAnalyzer('second-analyzer')];
-    const plain = runWithConfig(undefined, { analyzers });
+    const plain = runWithConfig({}, { analyzers });
     const disabled = runWithConfig(
       { disable: ['second-analyzer'] },
       {
