@@ -39,12 +39,13 @@ function failuresOf(context, { command, result }) {
   }
   const failed =
     context.project.testRunner === 'pytest'
-      ? failedTests(readJunit(context.reportRoot)).map(({ id, file, name }) => ({
+      ? failedTests(readJunit(context.reportRoot)).map(({ id, file, name, failure }) => ({
           id,
           file,
           notRun: name === undefined,
+          failure,
         }))
-      : unittestFailures(result.stderr);
+      : unittestFailures(result.stderr, context.projectRoot);
   if (failed.length === 0) {
     throw failure({ context, command, result, rule: TESTS_NOT_RUN_RULE });
   }

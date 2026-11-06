@@ -152,6 +152,7 @@ describe('readKotlinSourceFindings', () => {
         'DefaultTimeZone',
         'DetachedTestCase',
         'GeneratedOnHandWrittenCode',
+        'GenericFileName',
         'GenericPackageName',
         'GenericTypeName',
         'HardcodedSecret',
