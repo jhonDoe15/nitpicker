@@ -1491,7 +1491,13 @@ members is not reported.
   two plural forms, such as `indexes` and `indices`, is reported once). Optional means a default
   value in a `@dataclass` (also pydantic's), an attrs class (`@define`, `@frozen`, `@mutable` from
   `attrs` or `attr`, `@attr.s`), a pydantic `BaseModel` or `BaseSettings` and a `NamedTuple`,
-  `total=False` or `NotRequired` in a `TypedDict`, and a default in a function's parameters. A
+  `total=False` or `NotRequired` in a `TypedDict`, a default in a `msgspec.Struct`, a marshmallow
+  `Schema` field without `required=True` or `dump_only=True` (`Str`, `Int` and `Bool` are read as
+  `String`, `Integer` and `Boolean`; `fields.List(fields.Str())` and
+  `fields.Nested(S, many=True)` are the plurals of `fields.Str()` and `fields.Nested(S)`), and a
+  default in a function's parameters (every function, private and nested ones too). Two fields
+  whose meanings differ (`owner` beside `owners` for the co-owners) are the case for an exception
+  with a reason. A
   class whose base is a project class of one of those kinds counts too (followed through imports,
   up to 10 bases deep). A value that only builds the field is not a default: `Field(...)` or
   `Field(description=...)` without a default, `field(metadata=...)` and `attr.ib()` without
@@ -1501,7 +1507,10 @@ members is not reported.
   count (`child`/`children`, `index`/`indices`, `person`/`people`, `sub_index`/`sub_indices`), and
   a string annotation (`tags: "list[str]"`) is read as the annotation it spells.
 - `exhaustive-enum-predicate` (TypeScript: `nitpicker/exhaustive-union-predicate`): an `or` chain of
-  `==` or `is`, an `and` chain of `!=` or `is not`, or an `in` / `not in` tuple, list or set, that
+  `==` or `is`, an `and` chain of `!=` or `is not`, an `in` / `not in` tuple, list or set (also inside
+  `frozenset(...)`, `set(...)`, `tuple(...)` or `list(...)`), or a `match` whose cases (values or `|`
+  of values, without guards) return the same `True` or `False` and whose last case (`case _:` or a
+  bare capture such as `case other:`) returns the other, that
   compares one plain reference (`status`, `self.status`) with two or more distinct members of one
   project enum, or with values of a `Literal` the parameter is annotated with. A project enum is a
   class of the project, nested ones included (`Order.Kind.A`), that derives from `Enum`, `IntEnum`,
@@ -1511,14 +1520,16 @@ members is not reported.
   through imports and re-exports or as a module attribute (`st.Mode`), also inside `Optional`,
   `Annotated` or a string annotation. Only a value is checked (a `return`, an assignment, an
   augmented assignment, a lambda body, also inside `not`, a conditional expression or another
-  `and`/`or`), never an `if` or `while` condition, and not in a function that returns `TypeGuard`
-  or `TypeIs`. A method of the enum itself may list its own members (`def is_early(self): return
+  `and`/`or`, and a `match` as a whole), never an `if` or `while` condition, and not in a function
+  that returns `TypeGuard` or `TypeIs`. A method of the enum itself may list its own members (`def is_early(self): return
 self in (Stage.A, Stage.B)`), like the boolean each constant declares in the Java preset. Only a
   list of some of the members fails, as in the TypeScript and Java presets, because a member added
   later falls into the default silently; a list of every member is not reported. An alias
   (`DEFAULT = A`, or a second name with the value of an earlier member) is not a member of its own.
   Enums from libraries are not checked. The allowed form is a `match` with `case _:
-assert_never(value)`, or an `if`/`elif` chain ending in `else: assert_never(value)`.
+assert_never(value)`, or an `if`/`elif` chain ending in `else: assert_never(value)`; a `case _:`
+  that returns a boolean keeps the finding. A named constant set declared once (`OPEN = frozenset(...)`,
+  then `s in OPEN`) is one classification point and is not flagged.
 - `forwarding-wrapper` (TypeScript: `nitpicker/no-forwarding-wrapper`): an undecorated
   module-level function whose body (after a docstring) is `return target(...)`, or `return await
 target(...)` in an `async def`, passing its own parameters in order (by position or as
