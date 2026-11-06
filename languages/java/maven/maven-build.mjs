@@ -34,6 +34,7 @@ import {
   withDeclaredSpring,
 } from './spring/arch-rules-gate.mjs';
 import { writeSpringRoles } from '../adapters/spring-arch/spring-roles.mjs';
+import { writeSpringRuleset } from '../adapters/spring/proxies/proxy-ruleset.mjs';
 import { MAVEN_PRESETS } from '../adapters/gradle-presets.mjs';
 import { processorTool, runErrorProne } from './errorprone/maven-errorprone.mjs';
 import { GRADLE_DIRECTORY, readPinnedTools } from '../builds/java-build.mjs';
@@ -148,8 +149,8 @@ function readTestRuns(context) {
 
 function analyzeSources(options) {
   const { module, reportDir, classpaths, tools, pinned, configs, style, spring } = options;
-  const { springArch, springRoles, spawn } = options;
-  runPmd({ module, reportDir, tools, classpaths, configs, spring, spawn });
+  const { springArch, springRoles, springRules, spawn } = options;
+  runPmd({ module, reportDir, tools, classpaths, configs, spring, springRules, spawn });
   runSpotbugs({ module, reportDir, tools, spawn });
   runErrorProne({ module, reportDir, tools, classpaths, spawn });
   runFormat({ module, reportDir, tools, javaStyle: style.javaStyle, spawn });
@@ -285,6 +286,7 @@ export function runMavenPreset(projectRoot, { maven, policy = {}, configs, spawn
         projectRoot,
         spring: policy.spring,
         springRoles: writeSpringRoles(policy.springRoles, work),
+        springRules: writeSpringRuleset(projectRoot, work),
       }),
     };
   } finally {

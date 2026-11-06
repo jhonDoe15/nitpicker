@@ -5,6 +5,7 @@ import path from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { INIT_SCRIPT } from '../../../builds/java-build.mjs';
 import { readErrorProneFindings } from '../../errorprone/java-errorprone.mjs';
+import { writeSpringRuleset } from '../proxies/proxy-ruleset.mjs';
 
 import {
   enabled,
@@ -27,9 +28,18 @@ describe.skipIf(!enabled)('Spring rules on a Spring project', () => {
   beforeAll(() => {
     projectRoot = path.join(mkdtempSync(path.join(tmpdir(), 'nitpicker-spring-')), 'shop');
     cpSync(fixture, projectRoot, { recursive: true });
+    const springRules = writeSpringRuleset(projectRoot, path.dirname(projectRoot));
     const result = spawnSync(
       gradle,
-      ['--console=plain', '--quiet', '-I', INIT_SCRIPT, 'nitpickerPmd', 'nitpickerJava'],
+      [
+        '--console=plain',
+        '--quiet',
+        `-Pnitpicker.pmd.springRules=${springRules}`,
+        '-I',
+        INIT_SCRIPT,
+        'nitpickerPmd',
+        'nitpickerJava',
+      ],
       { cwd: projectRoot, encoding: 'utf8', timeout: 180_000 },
     );
     if (result.status !== 0) {

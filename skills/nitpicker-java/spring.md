@@ -45,7 +45,8 @@ Beans and configuration:
   `@Enable...` on a `@Configuration` class. Secrets have no default (`${jwt.secret}`).
 
 Transactions and other proxies (`@Transactional`, `@Async`, `@Cacheable`, `@Retryable`,
-`@PreAuthorize`):
+`@PreAuthorize`, `@RolesAllowed`, Resilience4j, Micrometer `@Timed`, constraints in a `@Validated`
+class, and annotations of your own that carry one of these or that an `@Aspect` matches):
 
 - Only on public, non-final, non-static methods of non-final classes. Use Spring's
   `org.springframework.transaction.annotation.Transactional`.
