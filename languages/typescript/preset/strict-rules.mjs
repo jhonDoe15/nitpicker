@@ -48,10 +48,12 @@ export const strictEslintRuleIds = [
   'nitpicker/no-raised-test-timeout',
   'nitpicker/no-self-recursion',
   'nitpicker/no-server-or-worker-per-test',
+  'nitpicker/no-shared-stateful-regex',
   'nitpicker/no-shell-string-command',
   'nitpicker/no-silent-catch',
   'nitpicker/no-singular-and-plural-prop',
   'nitpicker/no-sql-string-building',
+  'nitpicker/no-string-as-regex',
   'nitpicker/no-test-retry',
   'nitpicker/no-throw',
   'nitpicker/no-tri-state-boolean',
@@ -78,6 +80,7 @@ export const strictEslintRuleIds = [
   'no-restricted-properties',
   'no-restricted-syntax',
   'regexp/no-super-linear-backtracking',
+  'regexp/no-useless-flag',
 ];
 
 const PRETTIER_RULE = 'prettier/prettier';
