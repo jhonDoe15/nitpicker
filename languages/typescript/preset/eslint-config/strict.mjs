@@ -200,6 +200,7 @@ export const strictProductionRules = {
   'nitpicker/no-many-to-many-cascade-remove': 'error',
   'nitpicker/no-module-level-let': 'error',
   'nitpicker/no-shared-stateful-regex': 'error',
+  'nitpicker/no-singular-and-plural-prop': 'error',
   'nitpicker/no-uninjectable-delay': 'error',
   'nitpicker/no-unvalidated-schema-field': 'error',
 };
