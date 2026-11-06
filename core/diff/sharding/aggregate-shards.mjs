@@ -3,7 +3,13 @@ import path from 'node:path';
 import { configuredAnalyzers } from '../../../languages/typescript/preset/diff/configured-analyzers.mjs';
 import { planAnalyzerShards } from './sharding.mjs';
 import { resolveMetadata } from './metadata.mjs';
-import { readAndValidateShard, validateCommonSummaries, commonSummary } from './read-shards.mjs';
+import {
+  readAndValidateShard,
+  readUnchangedShards,
+  validateCommonSummaries,
+  commonSummary,
+} from './read-shards.mjs';
+import { noChangesReport } from '../comparison/results.mjs';
 import { sortByToolAndPath, policyHash, summaryFields } from '../reporting/report-model.mjs';
 import {
   writeDiffReports,
@@ -42,6 +48,11 @@ export function aggregateShardReports({
   warn,
 }) {
   const plan = planAnalyzerShards(analyzers, shardCount);
+  const unchangedShards = readUnchangedShards(inputRoot, plan.length);
+  if (unchangedShards !== undefined) {
+    const report = unchangedReport(unchangedShards, { analyzers, configOverrides });
+    return writeAggregate(report, { outputRoot, liveProjectRoot });
+  }
   const analyzerResolutionErrors = resolveMetadata({
     analyzers,
     liveProjectRoot,
@@ -72,7 +83,23 @@ export function aggregateShardReports({
     toolErrors: sortByToolAndPath(toolErrors),
     notes: sortByToolAndPath(notes),
   };
+  return writeAggregate(report, { outputRoot, liveProjectRoot });
+}
+
+function writeAggregate(report, { outputRoot, liveProjectRoot }) {
   report.text = writeDiffReports(outputRoot, report, repositoryLocationOf(liveProjectRoot));
+  return report;
+}
+
+function unchangedReport(shards, { analyzers, configOverrides }) {
+  const report = noChangesReport({
+    analyzers,
+    configOverrides,
+    comparison: commonSummary(shards[0].summary),
+    startedAt: Date.now(),
+    additionalToolErrors: sortByToolAndPath(shards.flatMap(({ toolErrors }) => toolErrors)),
+  });
+  report.summary.elapsedMs = Math.max(...shards.map(({ summary }) => summary.elapsedMs));
   return report;
 }
 

@@ -125,7 +125,7 @@ export const SMELL_HINTS = [
   {
     tool: RULES_TOOL,
     rules: ['hardcoded-secret'],
-    describe: (subject) => `\`${subject}\` holds a hardcoded secret`,
+    describe: (subject) => `The value of \`${subject}\` is a hardcoded secret`,
     allowed:
       'Read the secret from the environment in the composition root (`os.environ["API_TOKEN"]`) and pass it in; keep placeholders such as `"changeme"` out of production code.',
   },
@@ -167,7 +167,15 @@ export const SMELL_HINTS = [
     rules: ['sleep-in-test'],
     describe: (subject) => `\`${subject}\` waits for real time in a test`,
     allowed:
-      'Control the clock instead of waiting: inject a fake clock, patch `time.sleep` with `monkeypatch`, or poll a condition with a bounded retry helper.',
+      "Control the clock instead of waiting: inject a fake clock or patch `time.sleep` with `monkeypatch`. To wait for a condition, poll it in a loop until a deadline (`while not ready():` with a `time.monotonic()` check and a short sleep) or use the library's wait helper, such as Playwright's `expect(locator).to_be_visible()`.",
+  },
+  {
+    tool: RULES_TOOL,
+    rules: ['negative-wait-in-test'],
+    describe: (subject) =>
+      `\`${subject}\` proves that nothing happens by waiting out its timeout, so the test is slow and depends on the delay`,
+    allowed:
+      'Check the state at once (`assert not event.is_set()`, `assert queue.empty()`), or control the clock or scheduler the code waits on, move it past the delay and assert right away.',
   },
   {
     tool: RULES_TOOL,
@@ -203,6 +211,14 @@ export const SMELL_HINTS = [
     describe: (subject) => `\`${subject}\` reaches the network in a unit test`,
     allowed:
       'Replace the network with a fake: patch the client with `monkeypatch`, use `responses` or `respx`, or move the test to an `integration/` folder.',
+  },
+  {
+    tool: RULES_TOOL,
+    rules: ['server-or-container-per-test'],
+    describe: (subject) =>
+      `\`${subject}()\` starts a container, server, process or git repository for each test`,
+    allowed:
+      'Start it once: a `scope="session"` or `scope="module"` fixture that resets its state between tests, or `setup_class`/`setUpClass`. Or test the logic against an in-memory implementation and keep the real transport for transport tests. An exception fits only when each test needs a fresh instance.',
   },
   {
     tool: RULES_TOOL,

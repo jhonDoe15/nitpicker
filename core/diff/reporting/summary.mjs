@@ -4,6 +4,7 @@ import { heldFindings, heldLine } from './format/held-findings.mjs';
 import { foldMutants } from './format/mutants.mjs';
 import { noteSummaryLines } from './format/notes.mjs';
 import { singleLine } from './format/text.mjs';
+import { designNoteLines } from './format/design-notes.mjs';
 import { areaCountLine } from './format/rule-groups/finding-areas.mjs';
 import { byFixOrder, ruleGroupLines, withoutRoute } from './format/rule-groups/rule-groups.mjs';
 import { appendReviewSummary } from './review/notices.mjs';
@@ -14,7 +15,18 @@ import {
   TESTS_FAILED_SKIPPED_RULE,
 } from '../../../shared/rules/finding-helpers.mjs';
 
-export function renderConsoleSummary(
+const SHORT_SHA_LENGTH = 12;
+
+export function renderConsoleSummary(report, options = {}) {
+  if (report.summary?.noChanges !== true) {
+    return renderGateSummary(report, options);
+  }
+  const { requestedBaseRef, mergeBaseSha } = report.summary;
+  const line = `No changes since ${requestedBaseRef} (${mergeBaseSha.slice(0, SHORT_SHA_LENGTH)}); nothing to check.\n`;
+  return report.toolErrors.length === 0 ? line : `${line}${renderGateSummary(report, options)}`;
+}
+
+function renderGateSummary(
   report,
   {
     color = true,
@@ -49,6 +61,7 @@ export function renderConsoleSummary(
     style(text, [ANSI.bold, ANSI.yellow], color),
   );
   appendHeldSummary(lines, report.unchangedFindings, { color, details, diagnosticsPath });
+  lines.push(...designNoteLines(report.newFindings, diagnosticsPath));
   appendNoteSummary(lines, report.notes, color);
   appendToolErrorSummary(lines, report.toolErrors, color);
   for (const line of partialRunLines(report.summary)) {

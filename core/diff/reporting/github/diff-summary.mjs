@@ -14,6 +14,9 @@ import { scopeLine } from '../../../scope/scope-findings.mjs';
 import { partialRunLines } from '../partial-run/partial-run.mjs';
 
 function headline(report) {
+  if (report.summary.noChanges === true && report.toolErrors.length === 0) {
+    return '✓ No changes since the merge base; nothing to check';
+  }
   const enforceable = report.newFindings.filter(
     ({ classification }) => classification === 'enforceable',
   );
