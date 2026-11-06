@@ -10,13 +10,14 @@ import {
   SCRIPT_SKIPPED_FOLDERS,
   withSkippedFolders,
 } from '../../../core/tooling/jscpd/skipped-folders.mjs';
+import { projectLibs } from './modules/tsconfig-files.mjs';
 import {
-  PROJECT_TSCONFIG,
-  isSolutionTsconfig,
-  projectLibs,
-  readJsonc,
-  referencedTsconfigs,
-} from './modules/tsconfig-files.mjs';
+  POLICY_COMPILER_OPTIONS,
+  TYPESCRIPT_ONLY_OPTIONS,
+  extendedProjectTsconfig,
+  projectStrictOverrides,
+  strictCompilerOptions,
+} from './project-configs/typescript/typescript-project-options.mjs';
 import { selectedProjectTsconfig } from './modules/selected-project-tsconfig.mjs';
 import { END_TO_END_ROOT, sourceRoots, testRoots } from './layout.mjs';
 
@@ -69,12 +70,6 @@ function tsconfigRewrite(javascriptOptions, testRootsOf) {
     };
   };
 }
-
-const TYPESCRIPT_ONLY_OPTIONS = {
-  exactOptionalPropertyTypes: true,
-  noPropertyAccessFromIndexSignature: true,
-  noUncheckedSideEffectImports: true,
-};
 
 const JAVASCRIPT_RELAXED_OPTIONS = Object.fromEntries(
   Object.keys(TYPESCRIPT_ONLY_OPTIONS).map((option) => [option, false]),
@@ -147,19 +142,18 @@ export function layoutTransformFor(policyFileName, layout, { strictMutants = tru
     if (layout.typescriptProject !== undefined) {
       return selectedProjectTsconfig(projectDirectory, layout);
     }
-    const projectConfig = projectConfigName(projectDirectory, layout);
-    if (projectConfig !== undefined) {
-      const extended = projectBaseTsconfig(projectDirectory, layout, projectConfig);
+    const extended = extendedProjectTsconfig(projectDirectory, layout);
+    if (extended !== undefined) {
       const layered =
         name === STRYKER_TSCONFIG
           ? projectLayeredMutationTsconfig(extended, { strictMutants, layout })
           : projectLayeredTsconfig(extended, JSON.parse(text), { layout, projectDirectory });
       return `${JSON.stringify(layered, null, 2)}\n`;
     }
-    const rewritten = withEndToEndDom(layoutTransform?.(text) ?? text, name, {
-      projectDirectory,
+    const rewritten = withProjectStrictness(
+      withEndToEndDom(layoutTransform?.(text) ?? text, name, { projectDirectory, layout }),
       layout,
-    });
+    );
     return relaxesMutants ? withoutMutantStrictness(rewritten) : rewritten;
   };
 }
@@ -185,6 +179,20 @@ function withEndToEndDom(text, name, { projectDirectory, layout }) {
   return `${JSON.stringify({ ...config, compilerOptions: { ...config.compilerOptions, lib } }, null, 2)}\n`;
 }
 
+function strictOverrides(layout, keys = Object.keys(strictCompilerOptions(layout.javascript))) {
+  return projectStrictOverrides(layout.typescriptSettings, keys);
+}
+
+function withProjectStrictness(text, layout) {
+  const overrides = strictOverrides(layout);
+  if (Object.keys(overrides).length === 0) {
+    return text;
+  }
+  const config = JSON.parse(text);
+  const compilerOptions = { ...config.compilerOptions, ...overrides };
+  return `${JSON.stringify({ ...config, compilerOptions }, null, 2)}\n`;
+}
+
 function withoutMutantStrictness(text) {
   const config = JSON.parse(text);
   const compilerOptions = Object.fromEntries(
@@ -195,67 +203,22 @@ function withoutMutantStrictness(text) {
   return `${JSON.stringify({ ...config, compilerOptions }, null, 2)}\n`;
 }
 
-const PROJECT_JSCONFIG = 'jsconfig.json';
 const MUTANT_STRICTNESS_OPTIONS = new Set([
   'noImplicitReturns',
   'noFallthroughCasesInSwitch',
   'noUncheckedIndexedAccess',
 ]);
 
-function projectConfigName(directory, layout) {
-  if (existsSync(path.join(directory, PROJECT_TSCONFIG))) {
-    return PROJECT_TSCONFIG;
-  }
-  return layout.javascript && existsSync(path.join(directory, PROJECT_JSCONFIG))
-    ? PROJECT_JSCONFIG
-    : undefined;
-}
-
-const POLICY_COMPILER_OPTIONS = {
-  strict: true,
-  noImplicitAny: true,
-  strictNullChecks: true,
-  strictFunctionTypes: true,
-  strictBindCallApply: true,
-  strictPropertyInitialization: true,
-  noImplicitThis: true,
-  useUnknownInCatchVariables: true,
-  alwaysStrict: true,
-  noImplicitReturns: true,
-  noFallthroughCasesInSwitch: true,
-  noUncheckedIndexedAccess: true,
-  forceConsistentCasingInFileNames: true,
-};
-
-const ANALYSIS_OPTIONS = { allowJs: true, noEmit: true, skipLibCheck: true };
-
-function includesSourceRoot(config, layout) {
-  return (config?.include ?? []).some((entry) =>
-    layout.sourceRoots.includes(path.posix.normalize(entry).split('/')[0]),
-  );
-}
-
-function projectBaseTsconfig(projectDirectory, layout, projectConfig) {
-  const project = readJsonc(path.join(projectDirectory, projectConfig));
-  const projectBase = `./${projectConfig}`;
-  if (!isSolutionTsconfig(project)) {
-    return projectBase;
-  }
-  const sourceConfig = referencedTsconfigs(
-    path.join(projectDirectory, projectConfig),
-    project,
-  ).find((file) => includesSourceRoot(readJsonc(file), layout));
-  return sourceConfig === undefined
-    ? projectBase
-    : `./${path.relative(projectDirectory, sourceConfig).split(path.sep).join('/')}`;
-}
+const ANALYSIS_OPTIONS = { allowJs: true, noCheck: false, noEmit: true, skipLibCheck: true };
 
 function projectLayeredMutationTsconfig(extended, { strictMutants, layout }) {
   return {
     extends: extended,
     compilerOptions: {
+      noCheck: false,
       skipLibCheck: true,
       ...(strictMutants ? POLICY_COMPILER_OPTIONS : {}),
+      ...strictOverrides(layout, Object.keys(POLICY_COMPILER_OPTIONS)),
       ...(layout.javascript ? JAVASCRIPT_COMPILER_OPTIONS : {}),
     },
   };
@@ -273,8 +236,8 @@ function projectLayeredTsconfig(extended, base, { layout, projectDirectory }) {
     extends: extended,
     compilerOptions: {
       ...ANALYSIS_OPTIONS,
-      ...POLICY_COMPILER_OPTIONS,
-      ...(layout.javascript ? {} : TYPESCRIPT_ONLY_OPTIONS),
+      ...strictCompilerOptions(layout.javascript),
+      ...strictOverrides(layout),
       ...javascriptOptions,
       ...(lib === undefined ? {} : { lib }),
     },

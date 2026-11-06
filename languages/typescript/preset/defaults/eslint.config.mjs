@@ -36,6 +36,7 @@ import { existingRoots } from '../layout.mjs';
 import { fileNameRuleOptions } from '../../conventions/file-name-casing.mjs';
 import { assertionFunctionNames } from '../../conventions/measures/assertion-helpers.mjs';
 import { typeImportFixStyle } from '../../conventions/type-import-style.mjs';
+import { detachedWorkRunnerNames } from '../../conventions/measures/detached-work-runners.mjs';
 import {
   testEnvironmentConfigFor,
   testEnvironmentsFromVariables,
@@ -111,6 +112,7 @@ const presetConfig = defineConfig(
     routeHandlers,
     security,
     frameworkDefaultExports: policy.frameworks.defaultExports,
+    detachedWorkRunners: detachedWorkRunnerNames(policy.conventions),
   }),
   ...productionLayoutConfigFor(layout, { react }),
   ...(layout.endToEndGlobs.length === 0
