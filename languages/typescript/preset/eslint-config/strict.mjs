@@ -196,6 +196,8 @@ export function strictConfig(parserOptions) {
 
 export const strictProductionRules = {
   'nitpicker/no-branch-in-composition-root': 'error',
+  'nitpicker/no-eager-relation': 'error',
+  'nitpicker/no-many-to-many-cascade-remove': 'error',
   'nitpicker/no-module-level-let': 'error',
   'nitpicker/no-shared-stateful-regex': 'error',
   'nitpicker/no-uninjectable-delay': 'error',
