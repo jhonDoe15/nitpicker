@@ -22,7 +22,7 @@ async def nap():
 
 async def spawn():
     process = await asyncio.create_subprocess_exec("git", "status")
-    return await process.wait()
+    return await asyncio.wait_for(process.wait(), 30)
 
 
 async def read(path):
