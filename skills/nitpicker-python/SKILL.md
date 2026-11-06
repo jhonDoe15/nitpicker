@@ -112,6 +112,10 @@ To learn why a rule is on and what form it allows before you write or change cod
   variables and attributes with `monkeypatch.setenv`/`monkeypatch.setattr` or `mock.patch.dict(os.environ, ...)`,
   not `os.environ[...] =`, `settings.DEBUG = True`, `time.tzset()` or `locale.setlocale(...)`; or restore the old
   value in `finally`, after `yield` in a fixture, or in `tearDown`.
+- Start a container, server, process or git repository once, not for each test
+  (`server-or-container-per-test`): a fixture that starts one and serves several tests takes
+  `scope="session"` or `scope="module"` and resets its state between tests; `setup_method`,
+  `setUp` and `setup_function` do not start one; two tests do not make the same start.
 - Dependencies: every package production code imports is a production dependency of the project
   (pyproject, Pipfile, requirements or setup.cfg); test-only packages go in a dev group; remove a
   dependency nothing uses.

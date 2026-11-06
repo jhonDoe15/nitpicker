@@ -25,6 +25,7 @@ def load_checks():
     from errors import errors
     from honesty import assertions, isolation, skipped, waits
     from leaks import global_state
+    from per_test import starts
     from persistence import cascades, eager, query_logging, schema_sync
     from review import fields
     from security import hashes, loading
@@ -71,6 +72,7 @@ def load_checks():
         isolation,
         global_state,
         waits,
+        starts,
         uncollected,
         helpers,
         fields,

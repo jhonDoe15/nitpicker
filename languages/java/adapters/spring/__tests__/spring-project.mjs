@@ -64,6 +64,7 @@ const REVIEW_RULES = new Set([
   'NegativeWaitInTest',
   'RetryInTest',
   'GlobalStateLeakInTest',
+  'ServerOrContainerPerTest',
   'ExhaustiveEnumPredicate',
   'StaticForwardingWrapper',
   'SingularAndPluralMember',

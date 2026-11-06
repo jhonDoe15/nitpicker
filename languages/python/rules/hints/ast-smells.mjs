@@ -222,6 +222,14 @@ export const SMELL_HINTS = [
   },
   {
     tool: RULES_TOOL,
+    rules: ['server-or-container-per-test'],
+    describe: (subject) =>
+      `\`${subject}()\` starts a container, server, process or git repository for each test`,
+    allowed:
+      'Start it once: a `scope="session"` or `scope="module"` fixture that resets its state between tests, or `setup_class`/`setUpClass`. Or test the logic against an in-memory implementation and keep the real transport for transport tests. An exception fits only when each test needs a fresh instance.',
+  },
+  {
+    tool: RULES_TOOL,
     rules: ['uncollected-tests'],
     describe: (subject) => `\`${subject}\` defines tests that the test run does not collect`,
     allowed: (subject) => uncollectedAllowed(subject),
