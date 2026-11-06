@@ -1,6 +1,6 @@
 # Python: nitpicker rules
 
-The Python rules nitpicker's own script checks (`python-rules/*`), the coupling and import-cycle findings, the ruff format check and the finding for a run in which no tests ran. This page lists 67 rules. [All pages](README.md).
+The Python rules nitpicker's own script checks (`python-rules/*`), the coupling and import-cycle findings, the ruff format check and the finding for a run in which no tests ran. This page lists 72 rules. [All pages](README.md).
 
 The guide for these rules: [docs/python-preset.md](../python-preset.md).
 
@@ -111,6 +111,15 @@ A string has the shape of a credential.
 
 - **Allowed form:** Read the credential from the environment in the composition root and pass it in; never commit a key, token, private key or URL with a password.
 - **Exception:** If this is intended, add `{"rule":"credential-shape","paths":["<path>"],"reason":"..."}` to "python.exceptions" in nitpicker.config.json.
+
+<a id="python-rules-eager-relationship"></a>
+
+### `python-rules/eager-relationship`
+
+`<name>` loads its related rows on every query of the model.
+
+- **Allowed form:** Leave `lazy` at its default (or set `lazy="raise"`) and load the relation on the queries that need it: `select(Order).options(selectinload(Order.lines))`. An exception fits only for a small lookup relation that every read of the model needs.
+- **Exception:** If this is intended, add `{"rule":"eager-relationship","paths":["<path>"],"reason":"..."}` to "python.exceptions" in nitpicker.config.json.
 
 <a id="python-rules-enum-string-constants"></a>
 
@@ -238,6 +247,15 @@ The value of `<name>` is a hardcoded secret.
 - **Allowed form:** Return a result that says what happened, or raise a domain error, and let `adapters/` or the composition root log it.
 - **Exception:** If this is intended, add `{"rule":"logger-in-domain","paths":["<path>"],"reason":"..."}` to "python.exceptions" in nitpicker.config.json.
 
+<a id="python-rules-many-to-many-cascade-delete"></a>
+
+### `python-rules/many-to-many-cascade-delete`
+
+The many-to-many relationship `<name>` deletes related rows that other owners still share.
+
+- **Allowed form:** Cascade only `"save-update, merge"` on a `secondary=` (or `link_model=`) relationship; deleting the owner already deletes its rows in the association table.
+- **Exception:** If this is intended, add `{"rule":"many-to-many-cascade-delete","paths":["<path>"],"reason":"..."}` to "python.exceptions" in nitpicker.config.json.
+
 <a id="python-rules-module-level-mutable-state"></a>
 
 ### `python-rules/module-level-mutable-state`
@@ -301,14 +319,25 @@ Inline suppression `# <name>`.
 - **Allowed form:** Put the code in the normal flow; `if TYPE_CHECKING:` is only for imports that annotations need.
 - **Exception:** If this is intended, add `{"rule":"not-type-checking","paths":["<path>"],"reason":"..."}` to "python.exceptions" in nitpicker.config.json.
 
-<a id="python-rules-number-truthiness"></a>
+<a id="python-rules-orm-query-logging"></a>
 
-### `python-rules/number-truthiness`
+### `python-rules/orm-query-logging`
 
-`<name>` is a number tested for truth, so `0` reads as false or missing.
+`<name>` logs every SQL query: the logs fill with personal data and bound values, and every query pays for the log line.
 
-- **Allowed form:** Compare the number: `count > 0`, `count != 0`, `index != -1`; test an optional number with `count is not None`, and default it with `count if count is not None else DEFAULT`. An exception fits only when `0` must take the same path as a missing value.
-- **Exception:** If this is intended, add `{"rule":"number-truthiness","paths":["<path>"],"reason":"..."}` to "python.exceptions" in nitpicker.config.json.
+- **Allowed form:** Leave `echo` and the query loggers off and log slow queries instead: time queries with SQLAlchemy `before_cursor_execute`/`after_cursor_execute` events and log only the slow ones, or use the database's own slow-query log (`log_min_duration_statement` in PostgreSQL). A value switched on by an environment check (`echo=os.environ.get("ENV") != "production"`) still logs in every other environment. A local debugging script takes an exception.
+- **Exception:** If this is intended, add `{"rule":"orm-query-logging","paths":["<path>"],"reason":"..."}` to "python.exceptions" in nitpicker.config.json.
+- **See also:** [Spring counterpart `spring/unsafe-diagnostics`](java-nitpicker.md#springunsafe-diagnostics)
+
+<a id="python-rules-orm-schema-sync"></a>
+
+### `python-rules/orm-schema-sync`
+
+`<name>` lets the ORM create, alter or drop tables when the application runs, so a deploy can drop columns and their data and the schema drifts from the migrations.
+
+- **Allowed form:** Change the schema with migrations instead: Alembic (`alembic upgrade head` in the deploy step), Django migrations, or Aerich for Tortoise; create tables in test fixtures, not in the application. An environment check around the call (`if settings.DEBUG:`) still changes the schema in every other environment. A local script outside the application, such as a seed, takes an exception.
+- **Exception:** If this is intended, add `{"rule":"orm-schema-sync","paths":["<path>"],"reason":"..."}` to "python.exceptions" in nitpicker.config.json.
+- **See also:** [Spring counterpart `spring/ddl-auto`](java-nitpicker.md#springddl-auto)
 
 <a id="python-rules-parameter-mutation"></a>
 
@@ -400,6 +429,15 @@ The string "\<name>" is repeated three times or more.
 - **Allowed form:** Log that it is set (`logger.info("token set: %s", token is not None)`) or a masked tail, never the value.
 - **Exception:** If this is intended, add `{"rule":"secret-in-log","paths":["<path>"],"reason":"..."}` to "python.exceptions" in nitpicker.config.json.
 
+<a id="python-rules-server-or-container-per-test"></a>
+
+### `python-rules/server-or-container-per-test`
+
+`<name>()` starts a container, server, process or git repository for each test.
+
+- **Allowed form:** Start it once: a `scope="session"` or `scope="module"` fixture that resets its state between tests, or `setup_class`/`setUpClass`. Or test the logic against an in-memory implementation and keep the real transport for transport tests. An exception fits only when each test needs a fresh instance.
+- **Exception:** If this is intended, add `{"rule":"server-or-container-per-test","paths":["<path>"],"reason":"..."}` to "python.exceptions" in nitpicker.config.json.
+
 <a id="python-rules-shell-command"></a>
 
 ### `python-rules/shell-command`
@@ -453,6 +491,15 @@ Optional fields `<item>` and `<items>` of `<name` are two ways to pass the same 
 
 - **Allowed form:** Delete the `.pyi` file and annotate the `.py` file itself.
 - **Exception:** If this is intended, add `{"rule":"stub-beside-source","paths":["<path>"],"reason":"..."}` to "python.exceptions" in nitpicker.config.json.
+
+<a id="python-rules-subprocess-without-timeout"></a>
+
+### `python-rules/subprocess-without-timeout`
+
+`<name>` waits for a child process without a deadline, so a command that never exits hangs this code for good.
+
+- **Allowed form:** Pass a timeout: `subprocess.run(args, timeout=30, check=True)`, `process.communicate(timeout=30)` or `process.wait(timeout=30)` (then kill the child on `TimeoutExpired`). Wrap an asyncio wait in `async with asyncio.timeout(30):` or `asyncio.wait_for(process.wait(), 30)`. A program whose purpose is to run the child to completion, such as a build wrapper, takes an exception.
+- **Exception:** If this is intended, add `{"rule":"subprocess-without-timeout","paths":["<path>"],"reason":"..."}` to "python.exceptions" in nitpicker.config.json.
 
 <a id="python-rules-swallowed-exception"></a>
 
