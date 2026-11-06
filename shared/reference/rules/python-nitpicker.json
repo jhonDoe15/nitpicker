@@ -251,6 +251,10 @@
     { "key": "python.exceptions", "rule": "stub-beside-source" },
     "`<name>` sits beside its source and replaces it for the checkers",
     "Delete the `.pyi` file and annotate the `.py` file itself.",
+    "subprocess-without-timeout",
+    { "key": "python.exceptions", "rule": "subprocess-without-timeout" },
+    "`<name>` waits for a child process without a deadline, so a command that never exits hangs this code for good",
+    "Pass a timeout: `subprocess.run(args, timeout=30, check=True)`, `process.communicate(timeout=30)` or `process.wait(timeout=30)` (then kill the child on `TimeoutExpired`). Wrap an asyncio wait in `async with asyncio.timeout(30):` or `asyncio.wait_for(process.wait(), 30)`. A program whose purpose is to run the child to completion, such as a build wrapper, takes an exception.",
     "swallowed-exception",
     { "key": "python.exceptions", "rule": "swallowed-exception" },
     "`<name>` swallows the error: it only logs it or returns a default, and carries on",
@@ -397,9 +401,10 @@
     [18, 270, 2, 3, 271, 272, 22, 273, -1],
     [18, 274, 2, 3, 275, 276, 22, 277, -1],
     [18, 278, 2, 3, 279, 280, 22, 281, -1],
-    [18, 282, 2, 3, 283, 284, 22, -1, -1],
-    [18, 285, 2, 3, 286, 287, 22, 288, -1],
-    [289, 290, 2, 3, 291, 292, 293, 294, -1],
-    [295, 296, 2, 3, 297, 298, 299, 300, 301]
+    [18, 282, 2, 3, 283, 284, 22, 285, -1],
+    [18, 286, 2, 3, 287, 288, 22, -1, -1],
+    [18, 289, 2, 3, 290, 291, 22, 292, -1],
+    [293, 294, 2, 3, 295, 296, 297, 298, -1],
+    [299, 300, 2, 3, 301, 302, 303, 304, 305]
   ]
 }
