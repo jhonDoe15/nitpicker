@@ -38,6 +38,7 @@ def load_checks():
     from credentials import hardcoded, logs
     from smells import literals, loops, names
     from tasks import cleanup, lifetimes
+    from truthiness import numbers
 
     return [
         declarations,
@@ -83,6 +84,7 @@ def load_checks():
         cleanup,
         tri_state,
         defaults,
+        numbers,
         mutation,
         shims,
         patterns,

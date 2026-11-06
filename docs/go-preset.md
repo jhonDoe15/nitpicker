@@ -8,7 +8,9 @@ the other presets: run the tools on the merge base and on head, turn each report
 and fail only on new enforceable findings.
 
 Go already settles more than most languages: gofmt fixes the layout, the compiler rejects unused
-imports and variables, and `go vet` ships with the toolchain. What is left open is how a function
+imports and variables, and `go vet` ships with the toolchain. A condition must be a `bool`, so
+`if count {` cannot hide a zero; the TypeScript and Python presets report that slip as
+`nitpicker/strict-boolean-expressions` and `number-truthiness`. What is left open is how a function
 is shaped, how errors are handled, which of several equivalent forms to write, how tests are
 written, and the mistakes `go vet` does not look for. The preset is smaller than the others, and
 its later slices add the linters and one-way rules for that remaining room.

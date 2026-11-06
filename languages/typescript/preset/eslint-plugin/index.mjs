@@ -82,6 +82,7 @@ import { rule as noUnknownMainFolder } from './rules/guards/no-unknown-main-fold
 import { rule as noUnsafePathJoin } from './rules/guards/no-unsafe-path-join.mjs';
 import { rule as noMagicNumbers } from './rules/wrapped/no-magic-numbers.mjs';
 import { rule as namingConvention } from './rules/wrapped/naming-convention.mjs';
+import { rule as strictBooleanExpressions } from './rules/wrapped/strict-boolean-expressions.mjs';
 import { testAssertionRules } from './test-assertions/rules.mjs';
 import { rule as noTestHelpersInSource } from './test-placement/no-test-helpers-in-source.mjs';
 import { testIsolationRules } from './test-isolation/rules.mjs';
@@ -126,6 +127,7 @@ export const nitpickerRules = {
     'no-orm-schema-sync': noOrmSchemaSync,
     'no-magic-numbers': noMagicNumbers,
     'naming-convention': namingConvention,
+    'strict-boolean-expressions': strictBooleanExpressions,
     'no-unsafe-path-join': noUnsafePathJoin,
     'no-mocking-subject-under-test': noMockingSubjectUnderTest,
     'cognitive-complexity': cognitiveComplexity,
