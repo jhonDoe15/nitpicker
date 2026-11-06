@@ -92,6 +92,8 @@ function productionGuardRules({ react, security }) {
       'error',
       { allowImportMetaEnv: react, allowBundlerEnv: react },
     ],
+    'nitpicker/no-orm-query-logging': 'error',
+    'nitpicker/no-orm-schema-sync': 'error',
     'nitpicker/no-shell-string-command': 'error',
     'nitpicker/require-process-timeout': 'error',
     'nitpicker/no-unsafe-path-join': 'error',

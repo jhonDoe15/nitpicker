@@ -1,6 +1,6 @@
 # Nitpicker checks
 
-The checks nitpicker runs itself in every preset: function and file size, CRAP, coverage, mutation, duplicates, coupling, dead code, test runtime, repository hygiene and the policy checks on nitpicker.config.json. This page lists 52 rules. [All pages](README.md).
+The checks nitpicker runs itself in every preset: function and file size, CRAP, coverage, mutation, duplicates, coupling, dead code, test runtime, repository hygiene and the policy checks on nitpicker.config.json. This page lists 53 rules. [All pages](README.md).
 
 The guide for these rules: [spec/checks.md](../../spec/checks.md).
 
@@ -366,6 +366,18 @@ A committed file larger than the limit (lockfiles are exempt).
 - **Allowed form:** Keep large data outside the repository (artifact storage, Git LFS).
 - **Threshold:** a file larger than 1 MB (lockfiles are exempt)
 - **Exception:** If this is intended, add `{"rule":"large-file","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
+
+<a id="repository-hygiene-start-schema-push"></a>
+
+### `repository-hygiene/start-schema-push`
+
+A `start`, `prestart`, `serve` or `start:*` script (not `start:dev`, `start:local`, `start:watch`, `start:debug` or `start:test`) in `package.json`, or a script it runs, that pushes the ORM schema (`prisma db push`, `prisma migrate dev`, `drizzle-kit push`, `typeorm schema:sync`, `mikro-orm schema:update`).
+
+- **Presets:** TypeScript, JavaScript, Java, Kotlin and Python
+- **Analyzers:** `repository-hygiene`
+- **Why it is on:** A schema push changes the database on every start without a migration, so a deploy can drop columns and their data.
+- **Allowed form:** Apply migrations in the deploy step (`prisma migrate deploy`, `drizzle-kit migrate`, `typeorm migration:run`) and keep schema pushes for local development scripts.
+- **Exception:** If this is intended, add `{"rule":"start-schema-push","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 
 <a id="structure-class-fields-limit"></a>
 
