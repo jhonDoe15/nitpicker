@@ -659,6 +659,7 @@ are listed at the end.
 | Defaulting parameters    | `limit if limit is not None else DEFAULT_LIMIT`                                                                                                                                      | `falsy-default` (script)                                                                                                                                                                                      |
 | Changing an argument     | build and return a new value, or copy the argument first                                                                                                                             | `parameter-mutation` (script)                                                                                                                                                                                 |
 | Compatibility shims      | change every caller in the same change and delete the old name                                                                                                                       | `compatibility-shim` (script)                                                                                                                                                                                 |
+| Values in regex patterns | `re.escape(value)` inside a pattern, `in`/`startswith`/`==` for plain text, `re.compile(pattern)` with a whole pattern                                                               | `regex-unescaped-value` (script)                                                                                                                                                                              |
 | Input or output per item | one batch call, or `asyncio.gather` bounded by a shared `asyncio.Semaphore`                                                                                                          | `io-in-loop` (script)                                                                                                                                                                                         |
 | Concurrent remote calls  | `asyncio.Semaphore` acquired in the task, or chunks of fixed size, or one batch call                                                                                                 | `unbounded-fan-out` (script)                                                                                                                                                                                  |
 | Task lifetimes           | open the resource around the whole task group, or inside the child; await the task first                                                                                             | `task-outlives-resource` (script)                                                                                                                                                                             |
@@ -1220,6 +1221,21 @@ self.items.append(item)`), also through a package `__init__` that re-exports it 
   (the hazard is a public function that changes the caller's data), and test files. A constructor
   that changes its argument is reported like any other function. The allowed form returns a new
   value (`[*items, item]`, `{**table, key: value}`) or copies the argument first.
+- `regex-unescaped-value` reports a function argument built into the pattern of a `re` or `regex`
+  call (`compile`, `match`, `search`, `fullmatch`, `sub`, `subn`, `split`, `findall`, `finditer`,
+  also imported by name or passed as `pattern=`) through an f-string, `+`, `%` or `str.format`,
+  without `re.escape`: a `.`, `|` or `$` in the value changes the pattern. The value counts when it
+  reads a parameter of the enclosing function or lambda (not `self` or `cls`), directly or through a local assigned from
+  one, a `for` target or a comprehension over one. An `int`, `float`, `bool` or `complex` parameter,
+  `re.escape` (also passed to `map` or used in a comprehension) or a helper whose name contains
+  `escape` and `regex` or `pattern`, a `len()` or `int()` call, the condition of a conditional
+  expression, a compiled pattern's `.pattern`, module constants and module-level code are not
+  reported, and neither is a value passed as the whole
+  pattern (`re.compile(pattern)`): the issue suggested reporting a non-constant whole pattern as a
+  note, but a lone value is meant as a pattern far more often than not. The Java and Kotlin presets report the same mistake as
+  `UnquotedRegexValue`, the TypeScript preset as `nitpicker/no-string-as-regex`. The plain-text form
+  (`re.sub("abc", "", s)` for `s.replace("abc", "")`) is ruff's `RUF055`, still a preview rule in
+  the pinned ruff, so it is not selected yet.
 - `compatibility-shim` reports four ways to keep an old name alive: a module-level `def
 __getattr__` that warns or maps removed names to new ones (a PEP 562 lazy import through
   `importlib.import_module` is not a shim), a `warnings.warn` (or `warn_explicit`) call whose category
@@ -1793,7 +1809,7 @@ directory>` or `test-runs/unittest_timings.py <report> discover` (unittest's own
   and `python-failed` for anything unexpected. An environment that cannot be found at all (no
   `.venv` at the configured directory, no `uv sync`, poetry has none) is caught earlier, while the
   tool versions are read, and is reported as a plain tool error of each analyzer for each snapshot. Every failing step is reported, with the end of the tool output. The CLI
-  exits 2 when nothing new failed, and a snapshot with a tool error is not compared, as for Java; the other analyzer is.
+  exits 2 when nothing new failed and no head test failed (failing head tests exit 1), and a snapshot with a tool error is not compared, as for Java; the other analyzer is.
 - **Not included.** Multi-project
   repositories are analyzed one project root at a time. Windows is untested (mutation testing
   needs WSL, see slice 6).
@@ -2567,7 +2583,7 @@ and CRAP rules.
   base, editable install in a `.venv`) it checks: a change that alters behaviour and updates its
   tests passes, which only works when base tests run against base code; a moved legacy violation
   stays baselined; a new unused import and an unformatted file fail in every report format;
-  failing tests and a missing environment are tool errors with exit 2; a `unittest` project
+  failing tests are a tool error with exit 1 and a missing environment one with exit 2; a `unittest` project
   formatted with black passes and fails correctly using tools from the `PATH`; a `uv.lock` project
   runs through `uv run`; and a pytest project whose `addopts` has `--cov`, `-n 2` and `--lf`,
   with a legacy Python 2 file, which stays gated (the file is skipped by black, or excluded) and
