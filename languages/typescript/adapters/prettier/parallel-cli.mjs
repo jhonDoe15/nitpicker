@@ -8,6 +8,7 @@ import {
 
 const EXCLUSION_FILE_NAME = '.nitpicker-diff-prettier-exclude';
 const MAX_OUTPUT_BYTES = 50 * 1024 * 1024;
+const PRETTIER_RUN_CEILING_MS = 60 * 60 * 1000;
 const LITERAL_SEGMENT = /^[\w.-]+$/u;
 const GLOB_CHARACTERS = /[*?[\]{}()!+@|\\]/u;
 
@@ -46,7 +47,12 @@ export function listUnformattedInParallel({
         '--no-error-on-unmatched-pattern',
         ...patterns,
       ],
-      { cwd: projectRoot, encoding: 'utf8', maxBuffer: MAX_OUTPUT_BYTES },
+      {
+        cwd: projectRoot,
+        encoding: 'utf8',
+        maxBuffer: MAX_OUTPUT_BYTES,
+        timeout: PRETTIER_RUN_CEILING_MS,
+      },
     );
     return unformattedFilesOf(result);
   } finally {
