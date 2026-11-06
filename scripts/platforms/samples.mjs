@@ -72,6 +72,8 @@ export const SAMPLES = {
   },
 };
 
+const COMMAND_TIMEOUT_MS = 30 * 60 * 1000;
+
 const GIT_IDENTITY = [
   '-c',
   'user.name=nitpicker',
@@ -86,6 +88,7 @@ function runCommand(command, args, cwd) {
     cwd,
     encoding: 'utf8',
     stdio: ['ignore', 'pipe', 'inherit'],
+    timeout: COMMAND_TIMEOUT_MS,
   });
 }
 
