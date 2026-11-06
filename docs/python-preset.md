@@ -654,6 +654,8 @@ are listed at the end.
 | Datetimes                | a datetime with a zone: `datetime.now(tz=timezone.utc)`, `datetime.fromtimestamp(ts, tz=timezone.utc)`, `%z` when parsing an instant, `date.fromisoformat(text)` for a calendar date | ruff `DTZ001`-`DTZ007`, `DTZ011`, `DTZ012`, `DTZ901`                                                                                                                          |
 | Boolean flags            | keyword-only (`def send(message, *, urgent=False)`), two functions or an enum                                                                                                        | `boolean-flag-parameter` (script)                                                                                                                                             |
 | Tri-state booleans       | an enum that names the three states, or a keyword-only `bool` with a default (`*, urgent=False`)                                                                                     | `tri-state-boolean` (script)                                                                                                                                                  |
+| ORM schema at startup    | migrations: Alembic `alembic upgrade head` in the deploy step, Django migrations, Aerich                                                                                             | `orm-schema-sync` (script)                                                                                                                                                    |
+| ORM query logging        | `echo` and the query loggers off; slow queries logged from cursor events or by the database                                                                                          | `orm-query-logging` (script)                                                                                                                                                  |
 | Defaulting parameters    | `limit if limit is not None else DEFAULT_LIMIT`                                                                                                                                      | `falsy-default` (script)                                                                                                                                                      |
 | Changing an argument     | build and return a new value, or copy the argument first                                                                                                                             | `parameter-mutation` (script)                                                                                                                                                 |
 | Compatibility shims      | change every caller in the same change and delete the old name                                                                                                                       | `compatibility-shim` (script)                                                                                                                                                 |
@@ -1171,6 +1173,28 @@ self.items.append(item)`), also through a package `__init__` that re-exports it 
   `Base`, `Document`, `Schema` or `TypedDict` (also through a base class of the module). The allowed
   form is an enum that names the third state (`Consent.UNKNOWN`), or a keyword-only `bool` with a
   default (`*, urgent: bool = False`) when `None` only meant false.
+- `orm-schema-sync` (the Python counterpart of the Spring rule `spring/ddl-auto`) reports schema
+  changes the ORM makes while the application runs: SQLAlchemy and SQLModel `metadata.create_all`
+  and `drop_all` called or passed (`conn.run_sync(Base.metadata.create_all)`) inside a function
+  (at module level, `import-time-effect` reports it), `db.create_all()` and `db.drop_all()` in a
+  project that imports `flask_sqlalchemy`, Tortoise `register_tortoise(..., generate_schemas=True)`
+  and `Tortoise.generate_schemas()`, Peewee `create_tables`/`create_table` in a project that imports
+  `peewee` or `playhouse`, and Pony `generate_mapping(create_tables=True)`. An `if` around the call
+  does not lift it: the schema still changes in every other environment. Skipped: tests,
+  `conftest.py` and test support files, Alembic migrations (a module that imports `alembic`, or
+  under a `migrations`, `versions` or `alembic` folder), and one-off entry points: a block under
+  `if __name__ == "__main__":` and a function decorated as a CLI command (`@click.command()`,
+  `@app.cli.command()`, Typer's `@app.command()`). The allowed form is a migration (Alembic, Django
+  migrations, Aerich).
+- `orm-query-logging` (the counterpart of `spring/unsafe-diagnostics`) reports SQLAlchemy and
+  SQLModel `create_engine`, `create_async_engine` and `engine_from_config` with `echo=True`,
+  `echo="debug"` or an `echo` set by a condition, `engine_options={"echo": True}`,
+  Flask-SQLAlchemy `SQLALCHEMY_ECHO` on (assignment, `app.config[...]`, `config.update(...)` or a
+  dict key), `logging.getLogger("sqlalchemy")` or `"sqlalchemy.engine"` set to `INFO` or `DEBUG`,
+  the `peewee`, `tortoise.db_client` and `django.db.backends` loggers set to `DEBUG`, and the same
+  levels in a `LOGGING` dict (also as `"DEBUG" if DEBUG else "INFO"`). A value the check cannot
+  resolve, such as `echo=settings.DEBUG`, is not reported. The allowed form logs slow queries only
+  (SQLAlchemy cursor events, or the database's slow-query log).
 - `falsy-default` reports a parameter whose annotation can be falsy (`int`, `float`, `str`, `bytes`,
   `bool`, a list, dict, set or tuple type, a `Sequence`, `Mapping`, `Decimal`, `timedelta`) and is
   `None` by default or by its type, when the body writes `param or default` or
