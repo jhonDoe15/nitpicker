@@ -6,6 +6,7 @@ import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -202,7 +203,7 @@ public final class Prefetch {
   }
 
   private HttpRequest request(String url) {
-    return HttpRequest.newBuilder(URI.create(url)).build(); // violation: UriCreateDynamic
+    return HttpRequest.newBuilder(URI.create(url)).timeout(Duration.ofSeconds(10)).build(); // violation: UriCreateDynamic
   }
 
   private String body(String url) {
