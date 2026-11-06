@@ -1,6 +1,6 @@
 # Python: nitpicker rules
 
-The Python rules nitpicker's own script checks (`python-rules/*`), the coupling and import-cycle findings, the ruff format check and the finding for a run in which no tests ran. This page lists 72 rules. [All pages](README.md).
+The Python rules nitpicker's own script checks (`python-rules/*`), the coupling and import-cycle findings, the ruff format check and the finding for a run in which no tests ran. This page lists 73 rules. [All pages](README.md).
 
 The guide for these rules: [docs/python-preset.md](../python-preset.md).
 
@@ -318,6 +318,15 @@ Inline suppression `# <name>`.
 
 - **Allowed form:** Put the code in the normal flow; `if TYPE_CHECKING:` is only for imports that annotations need.
 - **Exception:** If this is intended, add `{"rule":"not-type-checking","paths":["<path>"],"reason":"..."}` to "python.exceptions" in nitpicker.config.json.
+
+<a id="python-rules-number-truthiness"></a>
+
+### `python-rules/number-truthiness`
+
+`<name>` is a number tested for truth, so `0` reads as false or missing.
+
+- **Allowed form:** Compare the number: `count > 0`, `count != 0`, `index != -1`; test an optional number with `count is not None`, and default it with `count if count is not None else DEFAULT`. An exception fits only when `0` must take the same path as a missing value.
+- **Exception:** If this is intended, add `{"rule":"number-truthiness","paths":["<path>"],"reason":"..."}` to "python.exceptions" in nitpicker.config.json.
 
 <a id="python-rules-orm-query-logging"></a>
 

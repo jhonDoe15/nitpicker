@@ -1,6 +1,6 @@
 # TypeScript and JavaScript: nitpicker ESLint rules
 
-The ESLint rules nitpicker's own plugin adds to the TypeScript and JavaScript presets (`nitpicker/*`). This page lists 94 rules. [All pages](README.md).
+The ESLint rules nitpicker's own plugin adds to the TypeScript and JavaScript presets (`nitpicker/*`). This page lists 95 rules. [All pages](README.md).
 
 The guide for these rules: [docs/typescript-strict-preset.md](../typescript-strict-preset.md).
 
@@ -1150,6 +1150,45 @@ Require a timeout on synchronous test subprocesses.
 - **Exception:** If this is intended, add `{"rule":"nitpicker/require-test-process-timeout","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 - **Allowed forms by message:**
   - Give {{method}} a positive subprocess timeout, such as { timeout: 10_000 }. A test runner timeout cannot interrupt a synchronous child process, so a stuck command can hang the suite. An exception fits only when this process must wait without a deadline.
+
+<a id="eslint-nitpicker-strict-boolean-expressions"></a>
+
+### `eslint/nitpicker/strict-boolean-expressions`
+
+Disallow testing a number for truthiness, where 0 reads as false or missing.
+
+- **Printed as:** `eslint-lint/nitpicker/strict-boolean-expressions`
+- **Allowed form:** See the tool's documentation: [Rule documentation](https://typescript-eslint.io/rules/strict-boolean-expressions).
+- **Exception:** If this is intended, add `{"rule":"nitpicker/strict-boolean-expressions","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
+- **Allowed forms by message:**
+  - Unexpected any value in {{context}}. An explicit comparison or type conversion is required.
+  - Unexpected nullable boolean value in {{context}}. Please handle the nullish case explicitly.
+  - Unexpected nullable enum value in {{context}}. Please handle the nullish/zero/NaN cases explicitly. Test the missing case and the number apart: `value !== undefined`, `value !== undefined && value > 0`, or `value ?? fallback` for a default. An exception fits only when 0 must take the same path as a missing value.
+  - Unexpected nullable number value in {{context}}: 0 reads as missing. Test the missing case and the number apart: `value !== undefined`, `value !== undefined && value > 0`, or `value ?? fallback` for a default. An exception fits only when 0 must take the same path as a missing value.
+  - Unexpected nullable object value in {{context}}. An explicit null check is required.
+  - Unexpected nullable string value in {{context}}. Please handle the nullish/empty cases explicitly.
+  - Unexpected nullish value in conditional. The condition is always false.
+  - Unexpected number value in {{context}}: 0 and NaN read as false. Compare it instead: `count > 0`, `index !== -1`, `items.length > 0`; for a default write `value ?? fallback`. An exception fits only when 0 must take the same path as a missing value.
+  - Unexpected object value in {{context}}. The condition is always true.
+  - Unexpected value in conditional. A boolean expression is required. Compare the value instead: `value !== undefined`, `count > 0`, `name !== ''`. An exception fits only when every falsy member must take the same path.
+  - Unexpected string value in {{context}}. An explicit empty string check is required.
+  - Explicitly convert value to a boolean (`Boolean(value)`)
+  - Change condition to check array's length (`value.length > 0`)
+  - Change condition to check array's length (`value.length === 0`)
+  - Change condition to check for empty string (`value !== ""`)
+  - Change condition to check if false (`value === false`)
+  - Change condition to check for NaN (`!Number.isNaN(value)`)
+  - Change condition to check for null/undefined (`value != null`)
+  - Change condition to check string's length (`value.length !== 0`)
+  - Change condition to check if true (`value === true`)
+  - Change condition to check for 0 (`value !== 0`)
+  - Explicitly treat nullish value the same as an empty string (`value ?? ""`)
+  - Explicitly treat nullish value the same as false (`value ?? false`)
+  - Explicitly treat nullish value the same as 0 (`value ?? 0`)
+  - Add an explicit `boolean` return type annotation.
+  - This rule requires the `strictNullChecks` compiler option to be turned on to function correctly.
+  - Predicate function should not be 'async'; expected a boolean return type.
+- **See also:** [Rule documentation](https://typescript-eslint.io/rules/strict-boolean-expressions)
 
 <a id="eslint-nitpicker-structured-catch-logging"></a>
 
