@@ -130,6 +130,22 @@ export const testFailureMessageCases = [
     allowed: 'additionalProperties: false, which rejects unknown keys',
   },
   {
+    name: 'eager TypeORM relation names loading it per query',
+    config: productionRulesConfig,
+    filename: 'src/orders/order.entity.ts',
+    banned:
+      "import { ManyToOne } from 'typeorm';\nexport class Order { @ManyToOne(() => Customer, { eager: true }) customer: Customer; }",
+    allowed: 'relations: { customer: true }',
+  },
+  {
+    name: 'many-to-many cascade remove names the persist-only cascade',
+    config: productionRulesConfig,
+    filename: 'src/posts/post.entity.ts',
+    banned:
+      "import { ManyToMany } from 'typeorm';\nexport class Post { @ManyToMany(() => Tag, { cascade: true }) tags: Tag[]; }",
+    allowed: "Cascade only ['insert', 'update']",
+  },
+  {
     name: 'partial output assertion names toEqual',
     config: partialAssertionConfig,
     filename: testFile,
