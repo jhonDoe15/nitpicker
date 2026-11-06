@@ -6,6 +6,7 @@ import {
   hasGeneratorMarker,
 } from '../../../../shared/conventions/generator-marker.mjs';
 import { codeExtensionNames, mayBeGenerated } from '../layout.mjs';
+import { GIT_TIMEOUT_MS } from '../../../../shared/processes/deadlines.mjs';
 
 const MAX_LISTING_BYTES = 64 * 1024 * 1024;
 const CODE_FILE = new RegExp(`\\.(?:${codeExtensionNames.join('|')})$`, 'u');
@@ -18,6 +19,7 @@ function projectFiles(projectRoot) {
       cwd: projectRoot,
       encoding: 'utf8',
       maxBuffer: MAX_LISTING_BYTES,
+      timeout: GIT_TIMEOUT_MS,
     },
   );
   return listed.status === 0 ? listed.stdout.split('\0').filter(Boolean) : [];
