@@ -1,7 +1,7 @@
 import { mkdirSync, mkdtempSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
-import { afterAll, describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { lintWithOxlint } from '../oxlint-runner.mjs';
 
 const RULES_URL = import.meta.resolve('../../../preset/eslint-plugin/rules');
@@ -11,7 +11,7 @@ function ruleUrl(path) {
 }
 
 const POLICY = `import tseslint from ${JSON.stringify(import.meta.resolve('typescript-eslint'))};
-import { rule as singularAndPlural } from ${ruleUrl('react-props/no-singular-and-plural-prop.mjs')};
+import { rule as singularAndPlural } from ${ruleUrl('api-shape/no-singular-and-plural-prop.mjs')};
 import { rule as exclusiveProps } from ${ruleUrl('react-props/no-runtime-exclusive-props-check.mjs')};
 import { rule as unionPredicate } from ${ruleUrl('api-shape/exhaustive-union-predicate.mjs')};
 import { rule as hoverNeedsKeyboard } from ${ruleUrl('react-tests/hover-test-needs-keyboard.mjs')};
@@ -62,7 +62,7 @@ const EXPECTED = {
   'src/Panel.tsx': [
     [
       'nitpicker/no-singular-and-plural-prop',
-      `Optional props \`field\` and \`fields\` are two ways to pass the same data. Keep \`fields\` and pass a single item as a one-element array.`,
+      `Optional \`field\` and \`fields\` are two ways to pass the same data. Keep \`fields\` and pass a single item as a one-element array.`,
     ],
     [
       'nitpicker/no-runtime-exclusive-props-check',
@@ -85,10 +85,7 @@ function recordResidualRules(files, extraEnvironment) {
   return [];
 }
 
-function lintOnce() {
-  if (outcome !== undefined) {
-    return outcome;
-  }
+async function lintProject() {
   outcome = {};
   root = realpathSync(mkdtempSync(path.join(tmpdir(), 'nitpicker-oxlint-messages-')));
   const files = {
@@ -104,13 +101,17 @@ function lintOnce() {
     NITPICKER_DIFF_ESLINT_POLICY_CONFIG: path.join(root, 'policy.mjs'),
     NITPICKER_DIFF_ESLINT_PROJECT_ROOT: root,
   };
-  outcome.results = lintWithOxlint({
+  outcome.results = await lintWithOxlint({
     options: { projectRoot: root, patterns: ['src/**/*.{ts,tsx}'] },
     environment,
     runEslintCli: recordResidualRules,
   });
   return outcome;
 }
+
+beforeAll(async () => {
+  await lintProject();
+});
 
 afterAll(() => {
   if (root !== undefined) {
@@ -120,7 +121,7 @@ afterAll(() => {
 
 describe('nitpicker rule messages through the oxlint engine', () => {
   it.each(Object.entries(EXPECTED))('keeps the full message text in %s', (file, expected) => {
-    const { results } = lintOnce();
+    const { results } = outcome;
     const messages = results
       .find((entry) => entry.filePath === path.join(root, file))
       .messages.map(({ ruleId, message }) => [ruleId, message]);
@@ -129,7 +130,7 @@ describe('nitpicker rule messages through the oxlint engine', () => {
   });
 
   it('hands only the type-aware rules to the ESLint residual pass, where their messages are kept', () => {
-    expect(lintOnce().residualRules).toEqual([
+    expect(outcome.residualRules).toEqual([
       'nitpicker/exhaustive-union-predicate',
       'nitpicker/no-forwarding-wrapper',
     ]);
