@@ -276,6 +276,20 @@
       }
     ],
     { "key": "exceptions", "rule": "nitpicker/no-disabled-tls-verification" },
+    "nitpicker/no-eager-relation",
+    "Disallow relations mapped to load on every query (TypeORM and MikroORM eager, a Sequelize defaultScope include)",
+    [
+      {
+        "message": "eager: true makes TypeORM load this relation with every find of the entity, whether the caller needs it or not. Leave it out and load the relation on the queries that need it: relations: { customer: true } in that find, or leftJoinAndSelect in a query builder. An exception fits only for a small lookup relation that every read needs."
+      },
+      {
+        "message": "eager makes MikroORM populate this relation on every load of the entity, whether the caller needs it or not. Leave it out and populate the relation on the queries that need it: em.find(Order, where, { populate: ['customer'] }). An exception fits only for a small lookup relation that every read needs."
+      },
+      {
+        "message": "An include in the defaultScope joins these associations into every query of the model, whether the caller needs them or not. Put the include in a named scope (Order.scope('withCustomer')) or pass include on the queries that need it. An exception fits only for a small lookup relation that every read needs."
+      }
+    ],
+    { "key": "exceptions", "rule": "nitpicker/no-eager-relation" },
     "nitpicker/no-external-executables-in-unit-tests",
     ["eslint-lint", "coding-standards"],
     { "typescript": ["eslint-lint", "coding-standards"] },
@@ -400,6 +414,17 @@
       "key": "exceptions",
       "rule": "nitpicker/no-managed-resource-construction-outside-composition-roots"
     },
+    "nitpicker/no-many-to-many-cascade-remove",
+    "Disallow cascading removes on many-to-many relations (TypeORM and MikroORM)",
+    [
+      {
+        "message": "A cascade that removes (cascade: true, 'remove' or 'soft-remove') on a many-to-many relation removes the related rows when one owner is removed, although other owners still share them. Cascade only ['insert', 'update']; removing the owner already deletes its join rows (the join table's onDelete: 'CASCADE', the default)."
+      },
+      {
+        "message": "Cascade.ALL or Cascade.REMOVE on a many-to-many relation removes the related rows when one owner is removed, although other owners still share them. Cascade only [Cascade.PERSIST]; removing the owner already deletes its pivot rows."
+      }
+    ],
+    { "key": "exceptions", "rule": "nitpicker/no-many-to-many-cascade-remove" },
     "nitpicker/no-mocking-subject-under-test",
     "Prevent a test from mocking the production module it imports as its subject",
     [{ "message": "Do not mock the production subject {{source}}." }],
@@ -450,6 +475,38 @@
       }
     ],
     { "key": "exceptions", "rule": "nitpicker/no-null" },
+    "nitpicker/no-orm-query-logging",
+    "Disallow ORM options that log every SQL query",
+    [
+      {
+        "message": "`{{form}}` logs every SQL query: the logs fill with personal data and bound values, and every query pays for the log line. A value guarded by an environment check still logs in every other environment. Turn query logging off (`logging: false`) and log slow queries instead: TypeORM `maxQueryExecutionTime`, Sequelize `benchmark: true` with a logging function that keeps only slow queries, Prisma `log: [{ emit: \"event\", level: \"query\" }]` with a handler that filters by duration, or the database's own slow-query log. An exception fits only for a local debugging script."
+      }
+    ],
+    [
+      { "label": "Strict preset guide", "path": "docs/typescript-strict-preset.md" },
+      {
+        "label": "Spring counterpart `spring/unsafe-diagnostics`",
+        "path": "docs/rules/java-nitpicker.md",
+        "anchor": "springunsafe-diagnostics"
+      }
+    ],
+    { "key": "exceptions", "rule": "nitpicker/no-orm-query-logging" },
+    "nitpicker/no-orm-schema-sync",
+    "Disallow the ORM creating or changing the database schema when the application starts",
+    [
+      {
+        "message": "`{{form}}` lets the ORM create, alter or drop tables when the application starts: a deploy can drop columns and their data, instances race to change the schema, and the schema drifts from what the migrations record. A value guarded by an environment check still changes the schema in every other environment. Change the schema with migrations instead (TypeORM migrations with `migrationsRun` or `typeorm migration:run`, `sequelize-cli db:migrate`, MikroORM `orm.migrator.up()`, `prisma migrate deploy`). An exception fits only for a local script outside the application, such as a seed or a dev tool."
+      }
+    ],
+    [
+      { "label": "Strict preset guide", "path": "docs/typescript-strict-preset.md" },
+      {
+        "label": "Spring counterpart `spring/ddl-auto`",
+        "path": "docs/rules/java-nitpicker.md",
+        "anchor": "springddl-auto"
+      }
+    ],
+    { "key": "exceptions", "rule": "nitpicker/no-orm-schema-sync" },
     "nitpicker/no-parameter-mutation",
     "Disallow changing an array, Set, Map or indexed object that a parameter holds in place",
     [
@@ -783,16 +840,16 @@
     ],
     { "key": "exceptions", "rule": "nitpicker/no-unused-dom-environment" },
     "nitpicker/no-unvalidated-schema-field",
-    "Disallow z.unknown() and z.any() as a field of a z.object schema",
+    "Disallow unchecked fields (z.unknown(), v.any(), Joi.any(), Type.Unknown() and the like) and objects that keep unknown keys in the schemas of every validation library the preset knows",
     [
       {
-        "message": "{{factory}}() as a field only checks that the key exists and hands the value on unchecked. Validate the field in the schema, e.g. z.string().trim().min(1) or z.email(). An exception fits only when the field is genuinely opaque."
+        "message": "{{factory}} lets any value of this field through unchecked. Validate the field in the schema, e.g. {{example}}. An exception fits only when the field is genuinely opaque."
       },
       {
         "message": "z.custom() without a check function is a cast, not a validator. Pass the check, z.custom<T>((value) => ...), or build the schema from validating parts. An exception fits only when the value is genuinely opaque."
       },
       {
-        "message": "z.looseObject(), .loose() and .passthrough() let unknown keys through unvalidated, and .catchall(z.unknown()) does the same. Use z.object({...}), which drops unknown keys, or z.strictObject({...}) to reject them. An exception fits only when the extra keys are genuinely opaque."
+        "message": "{{form}} lets unknown keys through unvalidated. Use {{allowed}}. An exception fits only when the extra keys are genuinely opaque."
       }
     ],
     { "key": "exceptions", "rule": "nitpicker/no-unvalidated-schema-field" },
@@ -959,6 +1016,14 @@
       }
     ],
     { "key": "exceptions", "rule": "nitpicker/report-module-load-effects" },
+    "nitpicker/require-error-listener",
+    "Require an 'error' listener on streams, sockets, child processes and clients",
+    [
+      {
+        "message": "`{{name}}` emits 'error' when its connection, file or process fails, and Node.js throws an 'error' event that has no listener, which stops the process. Attach one where it is created: `{{name}}.on('error', (error) => ...)`, or hand it to `pipeline(...)` or `finished(...)` from `node:stream/promises`, to `events.once(...)`, or read it with `for await`. An exception fits only when a crash of the process is the intended outcome."
+      }
+    ],
+    { "key": "exceptions", "rule": "nitpicker/require-error-listener" },
     "nitpicker/require-http-timeout",
     "Require a timeout on outbound HTTP calls",
     [
@@ -1037,17 +1102,17 @@
     [0, 73, 2, 3, 74, 5, 75, 7, 76, -1, -1],
     [0, 77, 2, 3, 78, 5, 79, 7, 80, -1, -1],
     [0, 81, 2, 3, 82, 5, 83, 7, 84, -1, -1],
-    [0, 85, 86, 87, 88, 5, 89, 7, 90, 91, -1],
-    [0, 92, 2, 3, 93, 5, 94, 7, 95, -1, -1],
+    [0, 85, 2, 3, 86, 5, 87, 7, 88, -1, -1],
+    [0, 89, 90, 91, 92, 5, 93, 7, 94, 95, -1],
     [0, 96, 2, 3, 97, 5, 98, 7, 99, -1, -1],
     [0, 100, 2, 3, 101, 5, 102, 7, 103, -1, -1],
     [0, 104, 2, 3, 105, 5, 106, 7, 107, -1, -1],
     [0, 108, 2, 3, 109, 5, 110, 7, 111, -1, -1],
     [0, 112, 2, 3, 113, 5, 114, 7, 115, -1, -1],
-    [0, 116, 86, 117, 118, 5, 119, 7, 120, -1, -1],
-    [0, 121, 2, 3, 122, 5, 123, 7, 124, -1, -1],
-    [0, 125, 2, 3, 126, 5, 127, 7, 128, -1, 129],
-    [0, 130, 2, 3, 131, 5, 132, 7, 133, -1, -1],
+    [0, 116, 2, 3, 117, 5, 118, 7, 119, -1, -1],
+    [0, 120, 90, 121, 122, 5, 123, 7, 124, -1, -1],
+    [0, 125, 2, 3, 126, 5, 127, 7, 128, -1, -1],
+    [0, 129, 2, 3, 130, 5, 131, 7, 132, -1, 133],
     [0, 134, 2, 3, 135, 5, 136, 7, 137, -1, -1],
     [0, 138, 2, 3, 139, 5, 140, 7, 141, -1, -1],
     [0, 142, 2, 3, 143, 5, 144, 7, 145, -1, -1],
@@ -1056,55 +1121,60 @@
     [0, 154, 2, 3, 155, 5, 156, 7, 157, -1, -1],
     [0, 158, 2, 3, 159, 5, 160, 7, 161, -1, -1],
     [0, 162, 2, 3, 163, 5, 164, 7, 165, -1, -1],
-    [0, 166, 2, 3, 167, 5, 168, 7, 169, -1, -1],
-    [0, 170, 2, 3, 171, 5, 172, 7, 173, -1, -1],
-    [0, 174, 175, 176, 177, 5, 178, 7, 179, -1, -1],
-    [0, 180, 2, 34, 181, 5, 182, 7, 183, 91, -1],
+    [0, 166, 2, 3, 167, 5, 168, 169, 170, -1, -1],
+    [0, 171, 2, 3, 172, 5, 173, 174, 175, -1, -1],
+    [0, 176, 2, 3, 177, 5, 178, 7, 179, -1, -1],
+    [0, 180, 2, 3, 181, 5, 182, 7, 183, -1, -1],
     [0, 184, 2, 3, 185, 5, 186, 7, 187, -1, -1],
     [0, 188, 2, 3, 189, 5, 190, 7, 191, -1, -1],
-    [0, 192, 2, 3, 193, 5, 194, 7, 195, -1, -1],
-    [0, 196, 2, 34, 197, 5, 198, 37, 199, 39, -1],
-    [0, 200, 2, 3, 201, 5, 202, 7, 203, -1, -1],
-    [0, 204, 2, 3, 205, 5, 206, 7, 207, -1, -1],
-    [0, 208, 2, 3, 209, 5, 210, 7, 211, -1, -1],
-    [0, 212, 2, 3, 213, 5, 214, 7, 215, -1, -1],
-    [0, 216, 217, 218, 219, 5, 220, 7, 221, -1, -1],
-    [0, 222, 2, 34, 223, 5, 224, 37, 225, 39, -1],
+    [0, 192, 193, 194, 195, 5, 196, 7, 197, -1, -1],
+    [0, 198, 2, 34, 199, 5, 200, 7, 201, 95, -1],
+    [0, 202, 2, 3, 203, 5, 204, 7, 205, -1, -1],
+    [0, 206, 2, 3, 207, 5, 208, 7, 209, -1, -1],
+    [0, 210, 2, 3, 211, 5, 212, 7, 213, -1, -1],
+    [0, 214, 2, 34, 215, 5, 216, 37, 217, 39, -1],
+    [0, 218, 2, 3, 219, 5, 220, 7, 221, -1, -1],
+    [0, 222, 2, 3, 223, 5, 224, 7, 225, -1, -1],
     [0, 226, 2, 3, 227, 5, 228, 7, 229, -1, -1],
     [0, 230, 2, 3, 231, 5, 232, 7, 233, -1, -1],
-    [0, 234, 2, 3, 235, 5, 236, 7, 237, -1, -1],
-    [0, 238, 2, 3, 239, 5, 240, 7, 241, -1, -1],
-    [0, 242, 2, 3, 243, 5, 244, 7, 245, -1, -1],
-    [0, 246, 2, 3, 247, 5, 248, 7, 249, -1, -1],
-    [0, 250, 2, 3, 251, 5, 252, 7, 253, -1, -1],
-    [0, 254, 2, 3, 255, 5, 256, 7, 257, -1, -1],
-    [0, 258, 2, 3, 259, 5, 260, 7, 261, -1, -1],
-    [0, 262, 2, 3, 263, 5, 264, 7, 265, -1, -1],
-    [0, 266, 2, 3, 267, 5, 268, 7, 269, -1, -1],
-    [0, 270, 2, 3, 271, 5, 272, 7, 273, -1, -1],
-    [0, 274, 2, 3, 275, 5, 276, 7, 277, -1, -1],
-    [0, 278, 2, 3, 279, 5, 280, 7, 281, -1, -1],
-    [0, 282, 2, 3, 283, 5, 284, 7, 285, -1, -1],
-    [0, 286, 2, 3, 287, 5, 288, 7, 289, -1, -1],
-    [0, 290, 86, 117, 291, 5, 292, 7, 293, -1, -1],
-    [0, 294, 2, 3, 295, 5, 296, 7, 297, -1, -1],
-    [0, 298, 86, 117, 299, 5, 300, 7, 301, -1, -1],
-    [0, 302, 2, 34, 303, 5, 304, 37, 305, 39, -1],
-    [0, 306, 2, 34, 307, 5, 308, 37, 309, 39, -1],
-    [0, 310, 2, 34, 311, 5, 312, 37, 313, 39, -1],
-    [0, 314, 2, 34, 315, 5, 316, 37, 317, 39, -1],
-    [0, 318, 2, 34, 319, 5, 320, 37, 321, 39, -1],
-    [0, 322, 2, 34, 323, 5, 324, 37, 325, 39, -1],
-    [0, 326, 2, 34, 327, 5, 328, 37, 329, 39, -1],
-    [0, 330, 2, 34, 331, 5, 332, 37, 333, 39, -1],
-    [0, 334, 2, 34, 335, 5, 336, 37, 337, 39, -1],
-    [0, 338, 2, 34, 339, 5, 340, 37, 341, 39, -1],
-    [0, 342, 343, 344, 345, 5, 346, 7, 347, -1, -1],
-    [0, 348, 2, 3, 349, 5, 350, 7, 351, -1, -1],
-    [0, 352, 2, 3, 353, 5, 354, 7, 355, -1, -1],
-    [0, 356, 357, 358, 359, 5, 360, 7, 361, -1, -1],
-    [0, 362, 2, 3, 363, 5, 364, 7, 365, -1, -1],
+    [0, 234, 235, 236, 237, 5, 238, 7, 239, -1, -1],
+    [0, 240, 2, 34, 241, 5, 242, 37, 243, 39, -1],
+    [0, 244, 2, 3, 245, 5, 246, 7, 247, -1, -1],
+    [0, 248, 2, 3, 249, 5, 250, 7, 251, -1, -1],
+    [0, 252, 2, 3, 253, 5, 254, 7, 255, -1, -1],
+    [0, 256, 2, 3, 257, 5, 258, 7, 259, -1, -1],
+    [0, 260, 2, 3, 261, 5, 262, 7, 263, -1, -1],
+    [0, 264, 2, 3, 265, 5, 266, 7, 267, -1, -1],
+    [0, 268, 2, 3, 269, 5, 270, 7, 271, -1, -1],
+    [0, 272, 2, 3, 273, 5, 274, 7, 275, -1, -1],
+    [0, 276, 2, 3, 277, 5, 278, 7, 279, -1, -1],
+    [0, 280, 2, 3, 281, 5, 282, 7, 283, -1, -1],
+    [0, 284, 2, 3, 285, 5, 286, 7, 287, -1, -1],
+    [0, 288, 2, 3, 289, 5, 290, 7, 291, -1, -1],
+    [0, 292, 2, 3, 293, 5, 294, 7, 295, -1, -1],
+    [0, 296, 2, 3, 297, 5, 298, 7, 299, -1, -1],
+    [0, 300, 2, 3, 301, 5, 302, 7, 303, -1, -1],
+    [0, 304, 2, 3, 305, 5, 306, 7, 307, -1, -1],
+    [0, 308, 90, 121, 309, 5, 310, 7, 311, -1, -1],
+    [0, 312, 2, 3, 313, 5, 314, 7, 315, -1, -1],
+    [0, 316, 90, 121, 317, 5, 318, 7, 319, -1, -1],
+    [0, 320, 2, 34, 321, 5, 322, 37, 323, 39, -1],
+    [0, 324, 2, 34, 325, 5, 326, 37, 327, 39, -1],
+    [0, 328, 2, 34, 329, 5, 330, 37, 331, 39, -1],
+    [0, 332, 2, 34, 333, 5, 334, 37, 335, 39, -1],
+    [0, 336, 2, 34, 337, 5, 338, 37, 339, 39, -1],
+    [0, 340, 2, 34, 341, 5, 342, 37, 343, 39, -1],
+    [0, 344, 2, 34, 345, 5, 346, 37, 347, 39, -1],
+    [0, 348, 2, 34, 349, 5, 350, 37, 351, 39, -1],
+    [0, 352, 2, 34, 353, 5, 354, 37, 355, 39, -1],
+    [0, 356, 2, 34, 357, 5, 358, 37, 359, 39, -1],
+    [0, 360, 361, 362, 363, 5, 364, 7, 365, -1, -1],
     [0, 366, 2, 3, 367, 5, 368, 7, 369, -1, -1],
-    [0, 370, 2, 3, 371, 5, 372, 7, 373, -1, -1]
+    [0, 370, 2, 3, 371, 5, 372, 7, 373, -1, -1],
+    [0, 374, 2, 3, 375, 5, 376, 7, 377, -1, -1],
+    [0, 378, 379, 380, 381, 5, 382, 7, 383, -1, -1],
+    [0, 384, 2, 3, 385, 5, 386, 7, 387, -1, -1],
+    [0, 388, 2, 3, 389, 5, 390, 7, 391, -1, -1],
+    [0, 392, 2, 3, 393, 5, 394, 7, 395, -1, -1]
   ]
 }

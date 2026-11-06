@@ -22,6 +22,8 @@ import { rule as noThrow } from './rules/errors/no-throw.mjs';
 import { rule as noUnknownInDomain } from './rules/boundaries/no-unknown-in-domain.mjs';
 import { rule as noMutatingMethodInDomain } from './rules/domain/no-mutating-method-in-domain.mjs';
 import { rule as noUnvalidatedSchemaField } from './rules/boundaries/no-unvalidated-schema-field.mjs';
+import { rule as noEagerRelation } from './rules/persistence/no-eager-relation.mjs';
+import { rule as noManyToManyCascadeRemove } from './rules/persistence/no-many-to-many-cascade-remove.mjs';
 import { rule as reportModuleLoadEffects } from './rules/modules/report-module-load-effects.mjs';
 import { rule as structuredCatchLogging } from './rules/errors/structured-catch-logging.mjs';
 import { rule as testMustUseProductionRuntime } from './rules/testing/assertions/test-must-use-production-runtime.mjs';
@@ -62,6 +64,9 @@ import { rule as reactNoRandomKey } from './rules/react/render/react-no-random-k
 import { rule as reactTestNoImplementationDetails } from './rules/react-tests/react-test-no-implementation-details.mjs';
 
 import { rule as unboundedFanOut } from './rules/concurrency/unbounded-fan-out.mjs';
+import { rule as noOrmQueryLogging } from './rules/database/no-orm-query-logging.mjs';
+import { rule as noOrmSchemaSync } from './rules/database/no-orm-schema-sync.mjs';
+import { rule as requireErrorListener } from './rules/events/require-error-listener.mjs';
 import { rule as noModuleLevelMutableState } from './rules/guards/no-module-level-mutable-state.mjs';
 import { rule as noProcessAccessOutsideCompositionRoot } from './rules/guards/no-process-access-outside-composition-root.mjs';
 import { rule as noShellStringCommand } from './rules/guards/no-shell-string-command.mjs';
@@ -110,9 +115,12 @@ export const nitpickerRules = {
     'no-sql-string-building': noSqlStringBuilding,
     'no-unsafe-deserialization': noUnsafeDeserialization,
     'no-weak-hash': noWeakHash,
+    'require-error-listener': requireErrorListener,
     'require-http-timeout': requireHttpTimeout,
     'no-unknown-main-folder': noUnknownMainFolder,
     'unbounded-fan-out': unboundedFanOut,
+    'no-orm-query-logging': noOrmQueryLogging,
+    'no-orm-schema-sync': noOrmSchemaSync,
     'no-magic-numbers': noMagicNumbers,
     'naming-convention': namingConvention,
     'no-unsafe-path-join': noUnsafePathJoin,
@@ -129,6 +137,8 @@ export const nitpickerRules = {
     'no-unknown-in-domain': noUnknownInDomain,
     'no-mutating-method-in-domain': noMutatingMethodInDomain,
     'no-unvalidated-schema-field': noUnvalidatedSchemaField,
+    'no-eager-relation': noEagerRelation,
+    'no-many-to-many-cascade-remove': noManyToManyCascadeRemove,
     'report-module-load-effects': reportModuleLoadEffects,
     'structured-catch-logging': structuredCatchLogging,
     'test-must-use-production-runtime': testMustUseProductionRuntime,

@@ -38,5 +38,10 @@ dependencies {
     compileOnly 'jakarta.inject:jakarta.inject-api:2.0.1'
     compileOnly 'io.netty:netty-transport:4.1.124.Final'
     compileOnly 'org.apache.kafka:kafka-clients:3.9.1'
+    compileOnly 'io.github.resilience4j:resilience4j-annotations:2.2.0'
+    compileOnly 'io.micrometer:micrometer-core:1.15.3'
+    compileOnly 'org.aspectj:aspectjrt:1.9.24'
+    compileOnly 'com.github.ben-manes.caffeine:caffeine:3.2.2'
+    compileOnly 'com.google.guava:guava:33.4.8-jre'
     checkstyle 'com.puppycrawl.tools:checkstyle:12.3.1'
 }

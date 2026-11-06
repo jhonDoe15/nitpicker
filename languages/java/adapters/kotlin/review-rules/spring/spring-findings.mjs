@@ -9,6 +9,8 @@ import { CLIENT_RULES } from './rules/clients.mjs';
 import { CONFIGURATION_RULES } from './rules/configuration.mjs';
 import { PROXY_RULES } from './rules/proxies.mjs';
 import { TRANSACTION_RULES } from './rules/transactions.mjs';
+import { CACHE_WRITE_RULES } from './transactions/cache-writes.mjs';
+import { UNGUARDED_WRITE_RULES } from './transactions/unguarded-writes.mjs';
 import { springMessage } from './spring-messages.mjs';
 import { springViews } from './view/spring-view.mjs';
 import { ERROR_LEAK_RULES } from './web/error-leaks.mjs';
@@ -27,6 +29,8 @@ const RULES = [
   ...CONFIGURATION_RULES,
   ...PROXY_RULES,
   ...TRANSACTION_RULES,
+  ...UNGUARDED_WRITE_RULES,
+  ...CACHE_WRITE_RULES,
   ...WEB_RULES,
   ...ERROR_LEAK_RULES,
   ...SECURITY_RULES,

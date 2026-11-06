@@ -1,12 +1,12 @@
 # Java and Kotlin: PMD rules
 
-PMD's bestpractices, design, errorprone, multithreading, performance and security categories, as far as nitpicker's rulesets keep them, and the rules nitpicker adds to them, for Java sources in the Java and Kotlin presets. This page lists 255 rules. [All pages](README.md).
+PMD's bestpractices, design, errorprone, multithreading, performance and security categories, as far as nitpicker's rulesets keep them, and the rules nitpicker adds to them, for Java sources in the Java and Kotlin presets. This page lists 263 rules. [All pages](README.md).
 
 The guide for these rules: [docs/java-preset.md](../java-preset.md).
 
 The descriptions of PMD's own rules are from PMD 7.7.0, under its BSD-style licence.
 
-In the Java preset, an entry of `exceptions` names a finding as it prints, `<tool>/<rule>` with one of the tools `pmd`, `spotbugs`, `errorprone`, `archunit`, `google-java-format`, `palantir-java-format`, `jacoco`, `checkstyle`, `crap`, `duplicates`, `pit`, `structure`, `coupling`, `spring` and `test-runtime`, or one of these rules: `function-lines-limit`, `function-statements-limit`, `function-control-nesting-limit`, `function-parameters-limit`, `crap-score-limit`, `crap-coverage-unknown`, `changed-branch-coverage`, `mutant-survived`, `mutant-nocoverage`, `duplicate-clone`, `stability-direction`, `file-lines-limit`, `line-length-limit`, `folder-files-limit`, `slow-test`, `committed-env-file`, `committed-private-key`, `committed-binary`, `large-file`, `committed-build-output`, `co-change`, `duplicate-definition`, `exported-name-collision`, `sibling-copy-edit`, `test-only-export`, `doc-comment-content`, `test-console-output`, `folder-depth-limit`, `class-methods-limit`, `class-fields-limit` and `inheritance-depth-limit`. The Kotlin preset takes the same `<tool>/<rule>` form for the Java sources of a mixed module.
+In the Java preset, an entry of `exceptions` names a finding as it prints, `<tool>/<rule>` with one of the tools `pmd`, `spotbugs`, `errorprone`, `archunit`, `google-java-format`, `palantir-java-format`, `jacoco`, `checkstyle`, `crap`, `duplicates`, `pit`, `structure`, `coupling`, `spring` and `test-runtime`, or one of these rules: `function-lines-limit`, `function-statements-limit`, `function-control-nesting-limit`, `function-parameters-limit`, `crap-score-limit`, `crap-coverage-unknown`, `changed-branch-coverage`, `mutant-survived`, `mutant-nocoverage`, `duplicate-clone`, `stability-direction`, `file-lines-limit`, `line-length-limit`, `folder-files-limit`, `slow-test`, `committed-env-file`, `committed-private-key`, `committed-binary`, `large-file`, `committed-build-output`, `start-schema-push`, `co-change`, `duplicate-definition`, `exported-name-collision`, `sibling-copy-edit`, `test-only-export`, `doc-comment-content`, `test-console-output`, `folder-depth-limit`, `class-methods-limit`, `class-fields-limit` and `inheritance-depth-limit`. The Kotlin preset takes the same `<tool>/<rule>` form for the Java sources of a mixed module.
 
 Unless an entry says otherwise:
 
@@ -948,6 +948,17 @@ Do not use hard coded values for cryptographic operations.
 - **Exception:** If this is intended, add `{"rule":"pmd/HardCodedCryptoKey","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 - **See also:** [PMD rule documentation](https://docs.pmd-code.org/pmd-doc-7.7.0/pmd_rules_java_security.html#hardcodedcryptokey)
 
+<a id="pmd-httpwithouttimeout"></a>
+
+### `pmd/HttpWithoutTimeout`
+
+In main sources: an HTTP call with no deadline: `HttpRequest.newBuilder()`/`newBuilder(uri)` built without `.timeout(...)` in the chain or on the builder variable (a copy made with `newBuilder(request, filter)` keeps its timeout); `(HttpURLConnection) url.openConnection()` on any URL, and `openConnection()` or `openStream()` on a URL built in the same method from `new URL(...)` or `uri.toURL()` (a URL that arrives as a parameter or field is not followed), where the method never calls `setReadTimeout`; the no-argument Apache factories `HttpClients.createDefault()`, `createSystem()`, `createMinimal()` (classic 4.x and 5.x, and `HttpAsyncClients` 4.x and 5.x); an Apache `custom()` or `HttpClientBuilder.create()` built without `setDefaultRequestConfig`, `setDefaultSocketConfig`, `setConnectionManager` (a pool is trusted to carry a socket timeout) or `setIOReactorConfig`; JAX-RS `ClientBuilder.newClient()` (`jakarta` and `javax`) without a `property(...)` call on it, and `ClientBuilder.newBuilder()` built without `readTimeout`, `property` or `withConfig`. Not flagged: a builder or connection handed to another method or returned unbuilt, a JAX-RS client handed to another method (a helper that sets the timeout), a URL from `getResource`, `toUri()`/`toURI()` or a literal that does not start with `http`, an Apache client in a class that sets a per-request config (`setConfig`, `setRequestConfig`), and an Apache client passed to a Spring `HttpComponentsClientHttpRequestFactory` that gets `setReadTimeout`.
+
+- **Scope:** Main sources only.
+- **Why it is on:** A PMD rule nitpicker defines: it names one allowed form where the language offers several, and reports the other forms.
+- **Allowed form:** Give the call a deadline: HttpRequest.newBuilder(uri).timeout(Duration.ofSeconds(10)) for java.net.http, setConnectTimeout and setReadTimeout on an HttpURLConnection, setDefaultRequestConfig(RequestConfig.custom().setResponseTimeout(...)) on the Apache client builder, connectTimeout and readTimeout on a JAX-RS ClientBuilder, or OkHttp, which sets timeouts by default. This HTTP call has no timeout, so a server that never answers hangs it for good.
+- **Exception:** If this is intended, add `{"rule":"pmd/HttpWithoutTimeout","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
+
 <a id="pmd-idempotentoperations"></a>
 
 ### `pmd/IdempotentOperations`
@@ -1266,6 +1277,28 @@ Position literals first in all String comparisons, if the second argument is nul
 - **Allowed form:** Put the literal first: "yes".equals(value), so a null value cannot throw.
 - **Exception:** If this is intended, add `{"rule":"pmd/LiteralsFirstInComparisons","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json. The message gives no exception route because the flagged code is a defect; an entry still lifts it if a reviewer agrees.
 - **See also:** [PMD rule documentation](https://docs.pmd-code.org/pmd-doc-7.7.0/pmd_rules_java_bestpractices.html#literalsfirstincomparisons)
+
+<a id="pmd-logexceptionfirst"></a>
+
+### `pmd/LogExceptionFirst`
+
+A JBoss Logging or Quarkus `Log` call of `tracef` to `fatalf`, `tracev` to `fatalv`, `logf` or `logv` with a `Throwable` among the arguments after the format: it fills a placeholder or is dropped, and the stack trace is not logged.
+
+- **Scope:** Main and test sources.
+- **Why it is on:** A PMD rule nitpicker defines: it names one allowed form where the language offers several, and reports the other forms.
+- **Allowed form:** Pass the exception first (log.errorf(e, "Cannot read %s", path)), or e.getMessage() when only the text is wanted. After the format, JBoss Logging never logs its stack trace.
+- **Exception:** If this is intended, add `{"rule":"pmd/LogExceptionFirst","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
+
+<a id="pmd-logformatarguments"></a>
+
+### `pmd/LogFormatArguments`
+
+A formatting log call whose format and arguments do not match, on JBoss Logging (`Logger`, `BasicLogger`, Quarkus `Log`): `tracef` to `fatalf` and `logf` (printf syntax), `tracev` to `fatalv` and `logv` (MessageFormat); on `java.util.logging`: `log(Level, String, Object)`, `log(Level, String, Object[])` and `logp` with a parameter (MessageFormat); on Log4j 2: `printf` and the level methods of a logger from `LogManager.getFormatterLogger` (printf). Flagged: a placeholder count other than the argument count (`%2$s` is argument 2, `%<s`, `%%` and `%n` take none, `{0,number,#}` is argument 0, and text that an apostrophe quotes in a MessageFormat string is not a placeholder), a placeholder of the other syntax or with spaces (`{ 0 }`), an invalid `%` sequence (`'%'`, `%q`), `%d`, `%o`, `%x` or `%X` given a `String`, `char`, boolean or decimal, `%e`, `%f`, `%g` or `%a` given a `String`, `char`, boolean or integer, and a format joined with `+` from a value that is not a constant. A Log4j 2 exception after the last argument, an array variable passed as the arguments and a format that is not a literal or a constant of the same file are not flagged. SLF4J and plain Log4j 2 `{}` messages are left to `InvalidLogMessageFormat`, its counts on a formatter logger's level methods too, and a joined `info`, `warn`, `error` or `log` message on `java.util.logging` or Log4j 2 to `LogStringConcatenation`.
+
+- **Scope:** Main and test sources.
+- **Why it is on:** A PMD rule nitpicker defines: it names one allowed form where the language offers several, and reports the other forms.
+- **Allowed form:** Pass one argument per placeholder, in the method's own syntax: %s for printf methods (JBoss Logging infof, Log4j 2 printf and formatter loggers), {0} for MessageFormat methods (JBoss Logging infov, java.util.logging log), with '' for an apostrophe there. Keep the format a constant. Otherwise values are dropped or the call throws.
+- **Exception:** If this is intended, add `{"rule":"pmd/LogFormatArguments","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 
 <a id="pmd-logstringconcatenation"></a>
 
@@ -1639,6 +1672,17 @@ Avoid returning from a finally block, this can discard exceptions.
 - **Exception:** If this is intended, add `{"rule":"pmd/ReturnFromFinallyBlock","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json. The message gives no exception route because the flagged code is a defect; an entry still lifts it if a reviewer agrees.
 - **See also:** [PMD rule documentation](https://docs.pmd-code.org/pmd-doc-7.7.0/pmd_rules_java_errorprone.html#returnfromfinallyblock)
 
+<a id="pmd-serverorcontainerpertest"></a>
+
+### `pmd/ServerOrContainerPerTest`
+
+In tests: a non-static Testcontainers `@Container` field or `@RegisterExtension` `WireMockExtension` outside a `@TestInstance(PER_CLASS)` class; a JUnit 4 `@Rule` field that is a container, a WireMock server, an OkHttp `MockWebServer`, an `EmbeddedKafkaRule` or a `MockServerRule`; and a start in `@BeforeEach`, `@Before` or `@BeforeMethod` (or in a method of the class that one calls) of a Testcontainers container, a WireMock, OkHttp `MockWebServer`, JDK `HttpServer`, Jetty, Tomcat, Undertow, Javalin or embedded Redis server, `SpringApplication.run`, an `EmbeddedKafkaBroker`, MockServer's `startClientAndServer`, `ProcessBuilder.start` or `Runtime.exec`, on an object made for each test. The same start in two or more test methods of one class is reported too.
+
+- **Scope:** Test sources only.
+- **Why it is on:** A PMD rule nitpicker defines: it names one allowed form where the language offers several, and reports the other forms.
+- **Allowed form:** Do not start a container, server or process for each test: a non-static @Container field, a @Rule or an instance @RegisterExtension of one, a start in @BeforeEach, @Before or @BeforeMethod (or a method of the class it calls) on an object made for each test, or the same start in two or more tests of a class. Start it once (a static @Container, a @ClassRule, a static @RegisterExtension or @BeforeAll) and reset its state between tests, or test the logic against an in-memory implementation and keep the real transport for transport tests. An exception fits only when each test needs a fresh instance.
+- **Exception:** If this is intended, add `{"rule":"pmd/ServerOrContainerPerTest","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
+
 <a id="pmd-simpledateformatneedslocale"></a>
 
 ### `pmd/SimpleDateFormatNeedsLocale`
@@ -1715,6 +1759,17 @@ Fill a plain collection of a shared singleton bean only at startup (the construc
 - **Why it is on:** One of nitpicker's Spring rules: it names the one form Spring code should take, and runs only when Spring is on the compile classpath.
 - **Message in Kotlin:** Fill a plain collection of a shared singleton bean only at startup (the constructor, an init block, @PostConstruct or afterPropertiesSet) and keep it read-only (toMap(), toList()), or use a ConcurrentHashMap or a cache (@Cacheable). Changed after startup, request threads would write to it at once.
 - **Exception:** If this is intended, add `{"rule":"pmd/SpringBeanCollectionState","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
+
+<a id="pmd-springcachewriteintransaction"></a>
+
+### `pmd/SpringCacheWriteInTransaction`
+
+Write the cache after the commit (in a TransactionSynchronization afterCommit callback, a @TransactionalEventListener, or the caller once the transactional call returns), or make the cache manager transaction-aware (TransactionAwareCacheManagerProxy, or transactionAware() on its builder). Written inside the transaction, the cache keeps a value that a rollback undoes, and an early evict lets a concurrent reader put the old value back.
+
+- **Scope:** Main sources of a project with Spring on the compile classpath.
+- **Why it is on:** One of nitpicker's Spring rules: it names the one form Spring code should take, and runs only when Spring is on the compile classpath.
+- **Message in Kotlin:** Write the cache after the commit (in a TransactionSynchronization afterCommit callback, a @TransactionalEventListener, or the caller once the transactional call returns), or make the cache manager transaction-aware (TransactionAwareCacheManagerProxy, or transactionAware() on its builder). Written inside the transaction, the cache keeps a value that a rollback undoes, and an early evict lets a concurrent reader put the old value back.
+- **Exception:** If this is intended, add `{"rule":"pmd/SpringCacheWriteInTransaction","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 
 <a id="pmd-springcomposedmapping"></a>
 
@@ -1881,6 +1936,17 @@ Collect the entities and call saveAll or deleteAll once after the loop; when row
 - **Message in Kotlin:** Collect the entities and call saveAll or deleteAll once after the loop; when rows must fail one by one, call saveAll per batch and handle the error per batch. This loop calls a function of this class that saves or deletes one entity, so it still writes once per iteration.
 - **Exception:** If this is intended, add `{"rule":"pmd/SpringDataSaveInLoopHelper","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 
+<a id="pmd-springdatawritewithouttransaction"></a>
+
+### `pmd/SpringDataWriteWithoutTransaction`
+
+Put @Transactional on this repository method, or on the repository interface. Spring Data opens a transaction only for the CRUD methods a repository inherits, so a declared @Modifying query or derived delete fails with TransactionRequiredException whenever its caller has no transaction.
+
+- **Scope:** Main sources of a project with Spring on the compile classpath.
+- **Why it is on:** One of nitpicker's Spring rules: it names the one form Spring code should take, and runs only when Spring is on the compile classpath.
+- **Message in Kotlin:** Put @Transactional on this repository function, or on the repository interface. Spring Data opens a transaction only for the CRUD functions a repository inherits, so a declared @Modifying query or derived delete fails with TransactionRequiredException whenever its caller has no transaction.
+- **Exception:** If this is intended, add `{"rule":"pmd/SpringDataWriteWithoutTransaction","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
+
 <a id="pmd-springhardcodeduser"></a>
 
 ### `pmd/SpringHardcodedUser`
@@ -1935,6 +2001,28 @@ Write @Configuration(proxyBeanMethods = false) and take dependencies as @Bean me
 - **Why it is on:** One of nitpicker's Spring rules: it names the one form Spring code should take, and runs only when Spring is on the compile classpath.
 - **Message in Kotlin:** Write @Configuration(proxyBeanMethods = false) and take dependencies as @Bean function parameters instead of calling other @Bean functions.
 - **Exception:** If this is intended, add `{"rule":"pmd/SpringLiteConfiguration","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
+
+<a id="pmd-springlocalcachewriteintransaction"></a>
+
+### `pmd/SpringLocalCacheWriteInTransaction`
+
+Write this in-memory cache or memo map after the commit (in a TransactionSynchronization afterCommit callback, a @TransactionalEventListener, or the caller once the transactional call returns). Written inside the transaction, it keeps a value or a generated id that a rollback undoes, and other threads read it until it expires.
+
+- **Scope:** Main sources of a project with Spring on the compile classpath.
+- **Why it is on:** One of nitpicker's Spring rules: it names the one form Spring code should take, and runs only when Spring is on the compile classpath.
+- **Message in Kotlin:** Write this in-memory cache or memo map after the commit (in a TransactionSynchronization afterCommit callback, a @TransactionalEventListener, or the caller once the transactional call returns). Written inside the transaction, it keeps a value or a generated id that a rollback undoes, and other threads read it until it expires.
+- **Exception:** If this is intended, add `{"rule":"pmd/SpringLocalCacheWriteInTransaction","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
+
+<a id="pmd-springmultiwritewithouttransaction"></a>
+
+### `pmd/SpringMultiWriteWithoutTransaction`
+
+Put @Transactional on this method, or run its writes inside TransactionTemplate.execute. It writes to the database more than once outside a transaction, so when a later write fails the earlier ones stay committed.
+
+- **Scope:** Main sources of a project with Spring on the compile classpath.
+- **Why it is on:** One of nitpicker's Spring rules: it names the one form Spring code should take, and runs only when Spring is on the compile classpath.
+- **Message in Kotlin:** Put @Transactional on this function, or run its writes inside transactionTemplate.execute { }. It writes to the database more than once outside a transaction, so when a later write fails the earlier ones stay committed.
+- **Exception:** If this is intended, add `{"rule":"pmd/SpringMultiWriteWithoutTransaction","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 
 <a id="pmd-springnocomponentscan"></a>
 
@@ -2083,22 +2171,24 @@ Put @Profile only on a @Configuration class or a @Bean method, so profiles choos
 
 ### `pmd/SpringProxyMethodVisibility`
 
-Make this proxied method public, non-final and non-static, in a non-final class. Spring never proxies final or static methods, and nitpicker keeps proxied methods public.
+A method with one of the annotations of `SpringProxySelfCall` that is not public, or is `final` or `static`, and one of them on a `final` class. Interface methods are left out.
 
 - **Scope:** Main sources of a project with Spring on the compile classpath.
 - **Why it is on:** One of nitpicker's Spring rules: it names the one form Spring code should take, and runs only when Spring is on the compile classpath.
-- **Message in Kotlin:** Make this proxied function public, and let Spring subclass it: apply the kotlin("plugin.spring") compiler plugin (or write open class and open fun), and keep it out of objects and companion objects. Spring never proxies private, final or static functions, and nitpicker keeps proxied functions public.
+- **Allowed form:** Make this proxied method public, non-final and non-static, in a non-final class. Spring never proxies final or static methods, and nitpicker keeps proxied methods public.
+- **Allowed form in Kotlin:** Make this proxied function public, and let Spring subclass it: apply the kotlin("plugin.spring") compiler plugin (or write open class and open fun), and keep it out of objects and companion objects. Spring never proxies private, final or static functions, and nitpicker keeps proxied functions public.
 - **Exception:** If this is intended, add `{"rule":"pmd/SpringProxyMethodVisibility","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 
 <a id="pmd-springproxyselfcall"></a>
 
 ### `pmd/SpringProxySelfCall`
 
-Move the annotated method to another bean and call it there. This call stays inside the class, so it skips the proxy and the called method's annotation does nothing.
+A call from a class to its own method (`name(...)`, `this.name(...)` or `this::name`) that carries an annotation only a Spring proxy applies: Spring's `@Transactional` (except from one `@Transactional` method to a plain `@Transactional` one), `@Async`, the cache annotations, `@Retryable` (Spring Retry and Spring Framework 7), Spring Retry's `@CircuitBreaker`, `@ConcurrencyLimit`, `@PreAuthorize`, `@PostAuthorize`, `@PreFilter`, `@PostFilter` and `@Secured`; JSR-250 `@RolesAllowed` and `@DenyAll`; Resilience4j `@Retry`, `@CircuitBreaker`, `@RateLimiter`, `@Bulkhead` and `@TimeLimiter`; Micrometer `@Timed`, `@Counted` and `@Observed`; in a `@Validated` class, a Bean Validation or Hibernate Validator constraint or `@Valid` on a parameter, a type argument of one, or the method, of a method that is neither private nor static (a getter's own constraints count as a property's, not the method's); an annotation of the project meta-annotated with one of the Spring or JSR-250 ones, or with `@Constraint`; an annotation an `@Aspect` of the project names in `@annotation(...)`.
 
 - **Scope:** Main sources of a project with Spring on the compile classpath.
 - **Why it is on:** One of nitpicker's Spring rules: it names the one form Spring code should take, and runs only when Spring is on the compile classpath.
-- **Message in Kotlin:** Move the annotated function to another bean and call it there. This call stays inside the class, so it skips the proxy and the called function's annotation does nothing.
+- **Allowed form:** Move the annotated method to another bean and call it there. This call stays inside the class, so it skips the proxy and the called method's annotation does nothing.
+- **Allowed form in Kotlin:** Move the annotated function to another bean and call it there. This call stays inside the class, so it skips the proxy and the called function's annotation does nothing.
 - **Exception:** If this is intended, add `{"rule":"pmd/SpringProxySelfCall","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 
 <a id="pmd-springqueryconcatenation"></a>

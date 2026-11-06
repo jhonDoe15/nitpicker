@@ -36,4 +36,8 @@ dependencies {
     compileOnly("org.slf4j:slf4j-api:2.0.17")
     compileOnly("io.netty:netty-transport:4.1.124.Final")
     compileOnly("org.apache.kafka:kafka-clients:3.9.1")
+    compileOnly("io.github.resilience4j:resilience4j-annotations:2.2.0")
+    compileOnly("io.micrometer:micrometer-core:1.15.3")
+    compileOnly("org.aspectj:aspectjrt:1.9.24")
+    compileOnly("com.github.ben-manes.caffeine:caffeine:3.2.2")
 }
