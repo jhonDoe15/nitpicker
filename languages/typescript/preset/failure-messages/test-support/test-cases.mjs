@@ -106,6 +106,21 @@ export const testFailureMessageCases = [
     banned: "import { z } from 'zod';\nexport const schema = z.object({ email: z.any() });",
     allowed: 'z.email()',
   },
+  ...[
+    ['props', 'export type PanelProps = { tag?: string; tags?: string[] };'],
+    ['parameters', 'export function send(recipient?: string, recipients?: string[]) {}'],
+    ['options', 'export function send(options: { recipient?: string; recipients?: string[] }) {}'],
+    [
+      'schema entries',
+      "import { z } from 'zod';\nexport const Query = z.object({ tag: z.string().optional(), tags: z.array(z.string()).optional() });",
+    ],
+  ].map(([kind, banned]) => ({
+    name: `singular and plural ${kind} name the one-element array`,
+    config: productionRulesConfig,
+    filename: 'src/service.ts',
+    banned,
+    allowed: 'pass a single item as a one-element array',
+  })),
   {
     name: 'v.any() object field names the valibot pipe that validates it',
     config: productionRulesConfig,

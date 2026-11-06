@@ -38,6 +38,16 @@ final class Declarations {
     return owner.hasModifier(KtTokens.INTERNAL_KEYWORD) ? "internal" : "public";
   }
 
+  private static String memberVisibility(KtModifierListOwner owner) {
+    if (owner.hasModifier(KtTokens.PRIVATE_KEYWORD)) {
+      return "private";
+    }
+    if (owner.hasModifier(KtTokens.PROTECTED_KEYWORD)) {
+      return "protected";
+    }
+    return owner.hasModifier(KtTokens.INTERNAL_KEYWORD) ? "internal" : "public";
+  }
+
   private String effective(String own, Frame frame) {
     String result = own;
     for (Frame f = frame; f != null; f = f.parent) {
@@ -124,6 +134,7 @@ final class Declarations {
         "vararg", parameter.isVarArg(), "default", parameter.hasDefaultValue(),
         "defaultValue", clip(parameter.getDefaultValue()),
         "property", parameter.hasValOrVar() ? (parameter.isMutable() ? "var" : "val") : null,
+        "visibility", parameter.hasValOrVar() ? memberVisibility(parameter) : null,
         "line", state.lineOf(parameter.getTextOffset()), "annotations", annotationNames(parameter),
         "annotationEntries", annotationEntries(parameter));
   }

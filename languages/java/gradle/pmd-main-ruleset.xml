@@ -143,29 +143,95 @@ return
     <properties>
       <property name="xpath">
         <value><![CDATA[
-(
+let $boxes := map { 'boolean': 'Boolean', 'byte': 'Byte', 'char': 'Character', 'short': 'Short',
+                    'int': 'Integer', 'long': 'Long', 'float': 'Float', 'double': 'Double' },
+    $irregular := ('analysis:analyses', 'axis:axes', 'child:children', 'criterion:criteria', 'foot:feet',
+                   'index:indices', 'index:indexes', 'leaf:leaves', 'life:lives', 'man:men', 'matrix:matrices',
+                   'mouse:mice', 'person:people', 'tooth:teeth', 'vertex:vertices', 'woman:women'),
+    $upper := function($word) { upper-case(substring($word, 1, 1)) || substring($word, 2) },
+    $plurals := function($name) {
+      ($name || 's', $name || 'es',
+       if (matches($name, '[^aeiou]y$')) then substring($name, 1, string-length($name) - 1) || 'ies' else (),
+       for $pair in $irregular
+       return let $one := substring-before($pair, ':'), $many := substring-after($pair, ':')
+              return if ($name = $one) then $many
+                     else if (ends-with($name, $upper($one)))
+                     then substring($name, 1, string-length($name) - string-length($one)) || $upper($many)
+                     else ())
+    },
+    $nullable := function($member) { exists($member/ModifierList/Annotation[@SimpleName = 'Nullable']) },
+    $entity := function($class) {
+      exists($class/ModifierList/Annotation[
+        pmd-java:typeIs('jakarta.persistence.Entity') or pmd-java:typeIs('javax.persistence.Entity')
+        or pmd-java:typeIs('jakarta.persistence.Embeddable') or pmd-java:typeIs('javax.persistence.Embeddable')
+        or pmd-java:typeIs('jakarta.persistence.MappedSuperclass')
+        or pmd-java:typeIs('javax.persistence.MappedSuperclass')])
+    },
+    $component := function($class) {
+      exists($class/ModifierList/Annotation[
+        pmd-java:typeIs('org.springframework.stereotype.Component')
+        or pmd-java:typeIs('org.springframework.stereotype.Service')
+        or pmd-java:typeIs('org.springframework.stereotype.Repository')
+        or pmd-java:typeIs('org.springframework.stereotype.Controller')
+        or pmd-java:typeIs('org.springframework.web.bind.annotation.RestController')
+        or pmd-java:typeIs('org.springframework.context.annotation.Configuration')])
+    },
+    $dto := function($class) {
+      not($entity($class)) and not($component($class)) and (
+        exists($class/ModifierList/Annotation[
+          pmd-java:typeIs('lombok.Value') or pmd-java:typeIs('lombok.Data') or pmd-java:typeIs('lombok.Builder')
+          or pmd-java:typeIs('lombok.experimental.SuperBuilder')
+          or pmd-java:typeIs('lombok.extern.jackson.Jacksonized')])
+        or exists(($class/ModifierList/Annotation | $class/ClassBody/FieldDeclaration/ModifierList/Annotation
+                   | $class/ClassBody/ConstructorDeclaration/ModifierList/Annotation)
+                  [ClassType[starts-with(@SimpleName, 'Json')]]
+                  [pmd-java:typeIs('com.fasterxml.jackson.annotation.JsonProperty')
+                   or pmd-java:typeIs('com.fasterxml.jackson.annotation.JsonAlias')
+                   or pmd-java:typeIs('com.fasterxml.jackson.annotation.JsonCreator')
+                   or pmd-java:typeIs('com.fasterxml.jackson.annotation.JsonInclude')
+                   or pmd-java:typeIs('com.fasterxml.jackson.annotation.JsonFormat')
+                   or pmd-java:typeIs('com.fasterxml.jackson.annotation.JsonIgnoreProperties')
+                   or pmd-java:typeIs('com.fasterxml.jackson.annotation.JsonPropertyOrder')
+                   or pmd-java:typeIs('com.fasterxml.jackson.annotation.JsonTypeName')
+                   or pmd-java:typeIs('com.fasterxml.jackson.databind.annotation.JsonDeserialize')
+                   or pmd-java:typeIs('com.fasterxml.jackson.databind.annotation.JsonSerialize')
+                   or pmd-java:typeIs('com.fasterxml.jackson.databind.annotation.JsonNaming')])
+        or (exists($class/ClassBody/MethodDeclaration)
+            and (every $method in $class/ClassBody/MethodDeclaration
+                 satisfies matches($method/@Name, '^(get|set|is)[A-Z]')
+                           or $method/@Name = ('equals', 'hashCode', 'toString'))))
+    },
+    $exported := function($executable) {
+      $executable/(self::MethodDeclaration | self::ConstructorDeclaration)[pmd-java:modifiers() = 'public']
+        [not(ModifierList/Annotation[pmd-java:typeIs('java.lang.Override')])]
+        [not(self::ConstructorDeclaration and parent::RecordBody)]
+        [ancestor::*[self::ClassDeclaration or self::InterfaceDeclaration or self::EnumDeclaration
+                     or self::RecordDeclaration][1][pmd-java:modifiers() = 'public']]
+    },
+    $typeOf := function($member) { ($member/ClassType | $member/ArrayType | $member/PrimitiveType)[1] },
+    $nameOf := function($member) { ($member/VariableId | $member/VariableDeclarator/VariableId)[1]/@Name },
+    $simple := function($type) { if ($type[self::PrimitiveType]) then $boxes($type/@Kind) else $type/@SimpleName }
+return (
   //RecordDeclaration/RecordComponentList/RecordComponent[not(@Varargs = true())]
   | //ClassDeclaration[ancestor-or-self::ClassDeclaration/ModifierList/Annotation
-                         [pmd-java:typeIs('org.springframework.boot.context.properties.ConfigurationProperties')]]
+                         [pmd-java:typeIs('org.springframework.boot.context.properties.ConfigurationProperties')]
+                       or $dto(.)]
       /ClassBody/FieldDeclaration[not(pmd-java:modifiers() = 'static')]
+  | //FormalParameters[exists($exported(..))]/FormalParameter[not(@Varargs = true())][$nullable(.)]
 )
-  [let $boxes := map { 'boolean': 'Boolean', 'byte': 'Byte', 'char': 'Character', 'short': 'Short',
-                       'int': 'Integer', 'long': 'Long', 'float': 'Float', 'double': 'Double' },
-       $type := (ClassType | ArrayType | PrimitiveType)[1],
+  [let $type := $typeOf(.),
        $element := if ($type[self::ArrayType]) then $type/*[1]
                    else $type[self::ClassType][@SimpleName = ('List', 'Set', 'Collection', 'Iterable', 'SortedSet')]
                           /TypeArguments[count(*) = 1]/*[1],
-       $plural := (VariableId | VariableDeclarator/VariableId)[1]/@Name
+       $plural := $nameOf(.)
    return exists($element)
-     and (some $other in ../(RecordComponent | FieldDeclaration[not(pmd-java:modifiers() = 'static')])
+     and (some $other in ../(RecordComponent | FieldDeclaration[not(pmd-java:modifiers() = 'static')]
+                             | FormalParameter[not(@Varargs = true())][$nullable(.)])
           satisfies
-            let $name := ($other/VariableId | $other/VariableDeclarator/VariableId)[1]/@Name,
-                $own := ($other/ClassType | $other/ArrayType | $other/PrimitiveType)[1],
-                $ownName := if ($own[self::PrimitiveType]) then $boxes($own/@Kind) else $own/@SimpleName,
-                $elementName := if ($element[self::PrimitiveType]) then $boxes($element/@Kind) else $element/@SimpleName
-            return $plural = ($name || 's', $name || 'es',
-                              if (matches($name, '[^aeiou]y$')) then substring($name, 1, string-length($name) - 1) || 'ies' else ())
-              and $own[self::ClassType or self::PrimitiveType] and $ownName = $elementName)]
+            let $own := $typeOf($other)
+            return $plural = $plurals($nameOf($other))
+              and $own[self::ClassType or self::PrimitiveType] and $simple($own) = $simple($element)
+              and not($own/TypeArguments) and not($element/TypeArguments))]
 ]]></value>
       </property>
     </properties>
