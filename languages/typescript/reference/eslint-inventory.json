@@ -993,6 +993,16 @@
         "Turning off TLS certificate verification lets anyone on the network pose as the server, and turning it off by environment ships the switch to production. Keep verification on in every environment and trust the certificate authority instead: `new https.Agent({ ca: readFileSync(caPath) })`, `tlsCAFile` for MongoDB, or set NODE_EXTRA_CA_CERTS for a private CA; for browser automation against a local certificate pin it with `--ignore-certificate-errors-spki-list=<hash>`. A server that asks for optional client certificates sets `requestCert: true` and checks `socket.authorized`. An exception fits only when a contained case cannot do that."
       ]
     },
+    "nitpicker/no-eager-relation": {
+      "tools": ["eslint-lint"],
+      "forms": [],
+      "description": "Disallow relations mapped to load on every query (TypeORM and MikroORM eager, a Sequelize defaultScope include)",
+      "messages": [
+        "eager: true makes TypeORM load this relation with every find of the entity, whether the caller needs it or not. Leave it out and load the relation on the queries that need it: relations: { customer: true } in that find, or leftJoinAndSelect in a query builder. An exception fits only for a small lookup relation that every read needs.",
+        "eager makes MikroORM populate this relation on every load of the entity, whether the caller needs it or not. Leave it out and populate the relation on the queries that need it: em.find(Order, where, { populate: ['customer'] }). An exception fits only for a small lookup relation that every read needs.",
+        "An include in the defaultScope joins these associations into every query of the model, whether the caller needs them or not. Put the include in a named scope (Order.scope('withCustomer')) or pass include on the queries that need it. An exception fits only for a small lookup relation that every read needs."
+      ]
+    },
     "nitpicker/no-external-executables-in-unit-tests": {
       "tools": ["eslint-lint", "coding-standards"],
       "forms": [],
@@ -1080,6 +1090,15 @@
       "description": "Keep managed resource construction in approved composition roots",
       "messages": [
         "Construct {{name}} only in the composition root (src/main/composition-root.ts, main.ts or server.ts) and pass it in as a parameter. An exception fits only when it is a plain value, not a long-lived resource."
+      ]
+    },
+    "nitpicker/no-many-to-many-cascade-remove": {
+      "tools": ["eslint-lint"],
+      "forms": [],
+      "description": "Disallow cascading removes on many-to-many relations (TypeORM and MikroORM)",
+      "messages": [
+        "A cascade that removes (cascade: true, 'remove' or 'soft-remove') on a many-to-many relation removes the related rows when one owner is removed, although other owners still share them. Cascade only ['insert', 'update']; removing the owner already deletes its join rows (the join table's onDelete: 'CASCADE', the default).",
+        "Cascade.ALL or Cascade.REMOVE on a many-to-many relation removes the related rows when one owner is removed, although other owners still share them. Cascade only [Cascade.PERSIST]; removing the owner already deletes its pivot rows."
       ]
     },
     "nitpicker/no-mocking-subject-under-test": {
@@ -3765,6 +3784,16 @@
         "Turning off TLS certificate verification lets anyone on the network pose as the server, and turning it off by environment ships the switch to production. Keep verification on in every environment and trust the certificate authority instead: `new https.Agent({ ca: readFileSync(caPath) })`, `tlsCAFile` for MongoDB, or set NODE_EXTRA_CA_CERTS for a private CA; for browser automation against a local certificate pin it with `--ignore-certificate-errors-spki-list=<hash>`. A server that asks for optional client certificates sets `requestCert: true` and checks `socket.authorized`. An exception fits only when a contained case cannot do that."
       ]
     },
+    "nitpicker/no-eager-relation": {
+      "tools": ["eslint-lint"],
+      "forms": [],
+      "description": "Disallow relations mapped to load on every query (TypeORM and MikroORM eager, a Sequelize defaultScope include)",
+      "messages": [
+        "eager: true makes TypeORM load this relation with every find of the entity, whether the caller needs it or not. Leave it out and load the relation on the queries that need it: relations: { customer: true } in that find, or leftJoinAndSelect in a query builder. An exception fits only for a small lookup relation that every read needs.",
+        "eager makes MikroORM populate this relation on every load of the entity, whether the caller needs it or not. Leave it out and populate the relation on the queries that need it: em.find(Order, where, { populate: ['customer'] }). An exception fits only for a small lookup relation that every read needs.",
+        "An include in the defaultScope joins these associations into every query of the model, whether the caller needs them or not. Put the include in a named scope (Order.scope('withCustomer')) or pass include on the queries that need it. An exception fits only for a small lookup relation that every read needs."
+      ]
+    },
     "nitpicker/no-external-executables-in-unit-tests": {
       "tools": ["eslint-lint", "coding-standards"],
       "forms": [],
@@ -3852,6 +3881,15 @@
       "description": "Keep managed resource construction in approved composition roots",
       "messages": [
         "Construct {{name}} only in the composition root (src/main/composition-root.ts, main.ts or server.ts) and pass it in as a parameter. An exception fits only when it is a plain value, not a long-lived resource."
+      ]
+    },
+    "nitpicker/no-many-to-many-cascade-remove": {
+      "tools": ["eslint-lint"],
+      "forms": [],
+      "description": "Disallow cascading removes on many-to-many relations (TypeORM and MikroORM)",
+      "messages": [
+        "A cascade that removes (cascade: true, 'remove' or 'soft-remove') on a many-to-many relation removes the related rows when one owner is removed, although other owners still share them. Cascade only ['insert', 'update']; removing the owner already deletes its join rows (the join table's onDelete: 'CASCADE', the default).",
+        "Cascade.ALL or Cascade.REMOVE on a many-to-many relation removes the related rows when one owner is removed, although other owners still share them. Cascade only [Cascade.PERSIST]; removing the owner already deletes its pivot rows."
       ]
     },
     "nitpicker/no-mocking-subject-under-test": {
@@ -6867,6 +6905,16 @@
         "Turning off TLS certificate verification lets anyone on the network pose as the server, and turning it off by environment ships the switch to production. Keep verification on in every environment and trust the certificate authority instead: `new https.Agent({ ca: readFileSync(caPath) })`, `tlsCAFile` for MongoDB, or set NODE_EXTRA_CA_CERTS for a private CA; for browser automation against a local certificate pin it with `--ignore-certificate-errors-spki-list=<hash>`. A server that asks for optional client certificates sets `requestCert: true` and checks `socket.authorized`. An exception fits only when a contained case cannot do that."
       ]
     },
+    "nitpicker/no-eager-relation": {
+      "tools": ["eslint-lint"],
+      "forms": [],
+      "description": "Disallow relations mapped to load on every query (TypeORM and MikroORM eager, a Sequelize defaultScope include)",
+      "messages": [
+        "eager: true makes TypeORM load this relation with every find of the entity, whether the caller needs it or not. Leave it out and load the relation on the queries that need it: relations: { customer: true } in that find, or leftJoinAndSelect in a query builder. An exception fits only for a small lookup relation that every read needs.",
+        "eager makes MikroORM populate this relation on every load of the entity, whether the caller needs it or not. Leave it out and populate the relation on the queries that need it: em.find(Order, where, { populate: ['customer'] }). An exception fits only for a small lookup relation that every read needs.",
+        "An include in the defaultScope joins these associations into every query of the model, whether the caller needs them or not. Put the include in a named scope (Order.scope('withCustomer')) or pass include on the queries that need it. An exception fits only for a small lookup relation that every read needs."
+      ]
+    },
     "nitpicker/no-falsy-default": {
       "tools": ["eslint-lint"],
       "forms": [],
@@ -6949,6 +6997,15 @@
       "description": "Keep managed resource construction in approved composition roots",
       "messages": [
         "Construct {{name}} only in the composition root (src/main/composition-root.ts, main.ts or server.ts) and pass it in as a parameter. An exception fits only when it is a plain value, not a long-lived resource."
+      ]
+    },
+    "nitpicker/no-many-to-many-cascade-remove": {
+      "tools": ["eslint-lint"],
+      "forms": [],
+      "description": "Disallow cascading removes on many-to-many relations (TypeORM and MikroORM)",
+      "messages": [
+        "A cascade that removes (cascade: true, 'remove' or 'soft-remove') on a many-to-many relation removes the related rows when one owner is removed, although other owners still share them. Cascade only ['insert', 'update']; removing the owner already deletes its join rows (the join table's onDelete: 'CASCADE', the default).",
+        "Cascade.ALL or Cascade.REMOVE on a many-to-many relation removes the related rows when one owner is removed, although other owners still share them. Cascade only [Cascade.PERSIST]; removing the owner already deletes its pivot rows."
       ]
     },
     "nitpicker/no-mocking-subject-under-test": {
