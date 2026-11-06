@@ -2,8 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { RUNNER_NAMES } from '../../../preset/test-runner/runners.mjs';
 import { formatTestFailures } from './test-report.mjs';
 
-const headline =
-  '1 test fails, so coverage, CRAP and mutation were skipped. Fix the tests and rerun:';
+const headline = '1 test fails; coverage, CRAP and mutation were skipped. Fix the tests and rerun:';
 
 function messageFor(failureMessage, runnerName = RUNNER_NAMES.vitest) {
   return formatTestFailures(
