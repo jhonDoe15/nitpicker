@@ -120,7 +120,7 @@ describe('the filter of one report', () => {
     [{}, 'the report has no "files" list'],
     [
       { files: [{ file: 'A.kt' }] },
-      'the entry of A.kt lacks lines, classes, functions, lambdas, branching, casts',
+      'the entry of A.kt lacks lines, classes, functions, lambdas, branching, casts, exhaustiveLastEntries',
     ],
   ])('refuses facts of another shape: %j', (broken, message) => {
     expect(() => createGeneratedFilter(broken)).toThrow(message);
