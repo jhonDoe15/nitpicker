@@ -71,6 +71,7 @@ const REVIEW_RULES = new Set([
   'CompatibilityShim',
   'LegacyCalendarApi',
   'UriCreateDynamic',
+  'RecursiveMapUpdate',
   'ClassLoadEffect',
   'SpringUnusedContext',
   'TestClassWithoutTestCases',

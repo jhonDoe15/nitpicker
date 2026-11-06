@@ -101,6 +101,10 @@ To learn why a rule is on and what form it allows before you write or change cod
   parse where the failure is handled (`URI.create(text)` in a `try` that catches
   `IllegalArgumentException`); `URI.create` on a non-constant string is flagged
   (`pmd/UriCreateDynamic`).
+- Maps: the function passed to `computeIfAbsent`, `compute`, `computeIfPresent` or `merge` never
+  changes the same map, not even from a callback it starts (`pmd/RecursiveMapUpdate`). Attach the
+  cleanup to the returned value:
+  `map.computeIfAbsent(key, k -> start(k)).whenComplete((r, e) -> map.remove(key, r))`.
 - Data and results: `record` for data, a `sealed interface` of records for an outcome, and an
   exhaustive `switch` expression over it. A `switch` statement needs `default`.
 - Enums: to sort the constants of one of your enums into two groups, classify every constant: a

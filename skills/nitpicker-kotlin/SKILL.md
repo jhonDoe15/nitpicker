@@ -122,6 +122,10 @@ To learn why a rule is on and what form it allows before you write or change cod
   function `main` or the framework calls after startup (a `@Bean` method, an `ApplicationRunner`, a
   Ktor module) and pass the result in, or defer it with `by lazy { }`. Constants, loggers, `Regex`
   and collections can stay.
+- The lambda passed to `computeIfAbsent`, `compute`, `computeIfPresent`, `merge`, or `getOrPut`
+  on a `ConcurrentMap`, never changes the same map, not even from a callback it starts
+  (`pmd/RecursiveMapUpdate`). Attach the cleanup to the result:
+  `map.computeIfAbsent(key) { start(it) }.whenComplete { r, _ -> map.remove(key, r) }`.
 - A public top-level, `object` or companion function, or a private or `internal` function or
   constructor, does not declare a default parameter that no call sets (`unused-option`): remove the
   parameter, or pass it from a real call. Tests count only for private and `internal` declarations
