@@ -52,7 +52,7 @@ import { rule as noFalsyDefault } from './rules/signatures/no-falsy-default.mjs'
 import { rule as noParameterMutation } from './rules/signatures/no-parameter-mutation.mjs';
 import { rule as noTriStateBoolean } from './rules/signatures/no-tri-state-boolean.mjs';
 import { rule as noRuntimeExclusivePropsCheck } from './rules/react-props/no-runtime-exclusive-props-check.mjs';
-import { rule as noSingularAndPluralProp } from './rules/react-props/no-singular-and-plural-prop.mjs';
+import { rule as noSingularAndPluralProp } from './rules/api-shape/no-singular-and-plural-prop.mjs';
 import { rule as reactNoEffectDataFetching } from './rules/react/react-no-effect-data-fetching.mjs';
 import { rule as reactNoHardcodedColors } from './rules/react/theme/react-no-hardcoded-colors.mjs';
 import { rule as reactNoEffectDerivedState } from './rules/react/react-no-effect-derived-state.mjs';
