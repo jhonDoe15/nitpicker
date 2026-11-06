@@ -49,7 +49,7 @@ export function suiteNameOf(report) {
   return path.basename(report).replace(/^TEST-|\.xml$/gu, '');
 }
 
-function testOutcome({ module, moduleName, failures, testsRan, tolerateFailures }) {
+function testOutcome({ moduleName, failures, testsRan, tolerateFailures }) {
   if (failures.length === 0) {
     return { testsRan, failure: undefined };
   }
@@ -57,7 +57,7 @@ function testOutcome({ module, moduleName, failures, testsRan, tolerateFailures 
   if (tolerateFailures === true) {
     return { testsRan, failure };
   }
-  throw failingTestsError(module.basedir, [failure]);
+  throw failingTestsError([failure]);
 }
 
 export function collectTestResults({
@@ -83,7 +83,6 @@ export function collectTestResults({
   }
   requireArchunitRun(module, reports, isArchunit);
   return testOutcome({
-    module,
     moduleName,
     failures,
     testsRan: reports.length > 0,

@@ -1,6 +1,7 @@
 import {
   TESTS_FAILED_RULE,
   TESTS_NOT_RUN_RULE,
+  testsFailHeadline,
   testsFailOnBase,
 } from '../../../../shared/rules/finding-helpers.mjs';
 
@@ -40,9 +41,11 @@ function mutationLine(failures, testRunner) {
 
 function headMessage(testFailures, testRunner) {
   return [
-    `Tests fail in ${snapshotScope('head')}. Make each failing test pass:`,
+    testsFailHeadline(
+      testFailures.length,
+      'the static analyzers ran, and coverage and CRAP come from the tests that ran',
+    ),
     ...listed(testFailures),
-    'The static analyzers ran as usual; coverage and CRAP come from the tests that ran.',
     ...mutationLine(testFailures, testRunner),
   ].join('\n');
 }
