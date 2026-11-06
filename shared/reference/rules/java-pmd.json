@@ -962,7 +962,7 @@
       "note": "The message gives no exception route because the flagged code is a defect; an entry still lifts it if a reviewer agrees."
     },
     "ExhaustiveEnumPredicate",
-    "In main sources: a boolean in a value position (returned, assigned, a lambda body, also inside a larger `&&`/`||` or as a ternary condition there) that compares one subject that reading cannot change (a variable, a `this` field, a no-argument `getX()`/`isX()` call, a record accessor; not `it.next()` or another call) with some constants of one enum, qualified or static-imported (`s == PAID || s == SHIPPED`, `o.status() != A && o.status() != B`, `EnumSet.of(A, B).contains(s)`).",
+    "In main sources: a boolean in a value position (returned, assigned, a lambda body, also inside a larger `&&`/`||` or as a ternary condition there) that compares one subject that reading cannot change (a variable, a `this` field, a no-argument `getX()`/`isX()` call, a record accessor; not `it.next()` or another call) with some constants of one enum, qualified or static-imported (`s == PAID || s == SHIPPED`, `o.status() != A && o.status() != B`, `s.equals(A) || B.equals(s)`, `Objects.equals(s, A)`, membership in `EnumSet.of`, `Set.of`, `List.of` or `Arrays.asList` of constants). Also a `switch` over a project enum with a `default` whose other branches all yield the same boolean and whose `default` yields the other (`case A, B -> true; default -> false`).",
     "These comparisons list only some constants of an enum of the project, so a constant added later silently falls into the other case. Classify every constant: a switch expression without default (adding a constant then fails to compile), or a boolean each constant declares (PAID(true)).",
     { "key": "exceptions", "rule": "pmd/ExhaustiveEnumPredicate" },
     "FinalizeDoesNotCallSuperFinalize",
@@ -1878,7 +1878,7 @@
       "note": "The message gives no exception route because the flagged code is a defect; an entry still lifts it if a reviewer agrees."
     },
     "SingularAndPluralMember",
-    "In main sources: a record, or a `@ConfigurationProperties` class or a class nested in one, with both `tag` and `tags` (`-s`, `-es`, `y`/`ies`) where the plural is a `List`, `Set`, `Collection`, `Iterable` or array of the singular's type.",
+    "In main sources: two members named `tag` and `tags` (`-s`, `-es`, `y`/`ies` and irregular plurals such as `child`/`children`) where the plural is a `List`, `Set`, `Collection`, `Iterable` or array of the singular's type, in a record, a `@ConfigurationProperties` class or a class nested in one, a data class (Lombok `@Value`, `@Data`, `@Builder` or `@SuperBuilder`, Jackson annotations on the class, its fields or constructors, or only getters, setters, `equals`, `hashCode` and `toString`; JPA entities and Spring stereotypes excluded), or two `@Nullable` parameters of a public method or constructor of a public type.",
     "A member and its plural (tag and tags) are two ways to pass the same data. Keep the plural and pass one item as a one-element list.",
     { "key": "exceptions", "rule": "pmd/SingularAndPluralMember" },
     "SpringAsyncExecutor",

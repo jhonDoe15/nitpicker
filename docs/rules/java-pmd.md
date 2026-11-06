@@ -6,7 +6,7 @@ The guide for these rules: [docs/java-preset.md](../java-preset.md).
 
 The descriptions of PMD's own rules are from PMD 7.7.0, under its BSD-style licence.
 
-In the Java preset, an entry of `exceptions` names a finding as it prints, `<tool>/<rule>` with one of the tools `pmd`, `spotbugs`, `errorprone`, `archunit`, `google-java-format`, `palantir-java-format`, `jacoco`, `checkstyle`, `crap`, `duplicates`, `pit`, `structure`, `coupling`, `spring` and `test-runtime`, or one of these rules: `function-lines-limit`, `function-statements-limit`, `function-control-nesting-limit`, `function-parameters-limit`, `crap-score-limit`, `crap-coverage-unknown`, `changed-branch-coverage`, `mutant-survived`, `mutant-nocoverage`, `duplicate-clone`, `stability-direction`, `file-lines-limit`, `line-length-limit`, `folder-files-limit`, `slow-test`, `committed-env-file`, `committed-private-key`, `committed-binary`, `large-file`, `committed-build-output`, `start-schema-push`, `co-change`, `duplicate-definition`, `exported-name-collision`, `sibling-copy-edit`, `test-only-export`, `doc-comment-content`, `test-console-output`, `folder-depth-limit`, `class-methods-limit`, `class-fields-limit` and `inheritance-depth-limit`. The Kotlin preset takes the same `<tool>/<rule>` form for the Java sources of a mixed module.
+In the Java preset, an entry of `exceptions` names a finding as it prints, `<tool>/<rule>` with one of the tools `pmd`, `spotbugs`, `errorprone`, `archunit`, `google-java-format`, `palantir-java-format`, `jacoco`, `checkstyle`, `crap`, `duplicates`, `pit`, `structure`, `coupling`, `spring` and `test-runtime`, or one of these rules: `function-lines-limit`, `function-statements-limit`, `function-control-nesting-limit`, `function-parameters-limit`, `crap-score-limit`, `crap-coverage-unknown`, `changed-branch-coverage`, `mutant-survived`, `mutant-nocoverage`, `duplicate-clone`, `stability-direction`, `file-lines-limit`, `line-length-limit`, `folder-files-limit`, `slow-test`, `committed-env-file`, `committed-private-key`, `committed-binary`, `large-file`, `committed-build-output`, `migration-order`, `migration-hardcoded-name`, `start-schema-push`, `co-change`, `duplicate-definition`, `exported-name-collision`, `sibling-copy-edit`, `test-only-export`, `doc-comment-content`, `test-console-output`, `folder-depth-limit`, `class-methods-limit`, `class-fields-limit` and `inheritance-depth-limit`. The Kotlin preset takes the same `<tool>/<rule>` form for the Java sources of a mixed module.
 
 Unless an entry says otherwise:
 
@@ -832,7 +832,7 @@ Tests for null should not use the equals() method.
 
 ### `pmd/ExhaustiveEnumPredicate`
 
-In main sources: a boolean in a value position (returned, assigned, a lambda body, also inside a larger `&&`/`||` or as a ternary condition there) that compares one subject that reading cannot change (a variable, a `this` field, a no-argument `getX()`/`isX()` call, a record accessor; not `it.next()` or another call) with some constants of one enum, qualified or static-imported (`s == PAID || s == SHIPPED`, `o.status() != A && o.status() != B`, `EnumSet.of(A, B).contains(s)`).
+In main sources: a boolean in a value position (returned, assigned, a lambda body, also inside a larger `&&`/`||` or as a ternary condition there) that compares one subject that reading cannot change (a variable, a `this` field, a no-argument `getX()`/`isX()` call, a record accessor; not `it.next()` or another call) with some constants of one enum, qualified or static-imported (`s == PAID || s == SHIPPED`, `o.status() != A && o.status() != B`, `s.equals(A) || B.equals(s)`, `Objects.equals(s, A)`, membership in `EnumSet.of`, `Set.of`, `List.of` or `Arrays.asList` of constants). Also a `switch` over a project enum with a `default` whose other branches all yield the same boolean and whose `default` yields the other (`case A, B -> true; default -> false`).
 
 - **Scope:** Main sources only.
 - **Why it is on:** A PMD rule nitpicker defines: it names one allowed form where the language offers several, and reports the other forms.
@@ -1731,7 +1731,7 @@ A singleton class should only ever have one instance.
 
 ### `pmd/SingularAndPluralMember`
 
-In main sources: a record, or a `@ConfigurationProperties` class or a class nested in one, with both `tag` and `tags` (`-s`, `-es`, `y`/`ies`) where the plural is a `List`, `Set`, `Collection`, `Iterable` or array of the singular's type.
+In main sources: two members named `tag` and `tags` (`-s`, `-es`, `y`/`ies` and irregular plurals such as `child`/`children`) where the plural is a `List`, `Set`, `Collection`, `Iterable` or array of the singular's type, in a record, a `@ConfigurationProperties` class or a class nested in one, a data class (Lombok `@Value`, `@Data`, `@Builder` or `@SuperBuilder`, Jackson annotations on the class, its fields or constructors, or only getters, setters, `equals`, `hashCode` and `toString`; JPA entities and Spring stereotypes excluded), or two `@Nullable` parameters of a public method or constructor of a public type.
 
 - **Scope:** Main sources only.
 - **Why it is on:** A PMD rule nitpicker defines: it names one allowed form where the language offers several, and reports the other forms.
