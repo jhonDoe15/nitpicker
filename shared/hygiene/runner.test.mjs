@@ -163,6 +163,7 @@ describe('the hygiene configuration hash', () => {
       'hygiene/files/known-files.mjs',
       'hygiene/files/output-sources.mjs',
       'hygiene/files/repository-files.mjs',
+      'hygiene/files/start-scripts.mjs',
       'hygiene/rules.mjs',
       'hygiene/runner.mjs',
       'hygiene/tracked-files.mjs',
