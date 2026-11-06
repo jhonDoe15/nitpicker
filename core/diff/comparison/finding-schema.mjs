@@ -1,4 +1,5 @@
 import { normalizeGitPath } from '../git/normalize.mjs';
+import { withoutAnsi } from '../../../shared/messages/terminal-text.mjs';
 
 const CLASSIFICATIONS = new Set(['enforceable', 'descriptive', 'tool-error']);
 const HTTP_URL = /^https?:\/\/\S+$/u;
@@ -27,7 +28,7 @@ export function parseFinding(value, context = 'finding') {
     `${context}.path`,
   );
   const identity = requiredString(value.identity, `${context}.identity`);
-  const message = requiredString(value.message, `${context}.message`);
+  const message = withoutAnsi(requiredString(value.message, `${context}.message`));
   const classification = requiredString(value.classification, `${context}.classification`);
   if (!CLASSIFICATIONS.has(classification)) {
     throw new TypeError(`${context}.classification is not supported: ${classification}`);

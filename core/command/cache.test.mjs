@@ -63,11 +63,11 @@ describe('findings cache', () => {
     expect(second.output.stdoutText).toEqual(
       expect.stringMatching(exactText`Base: comparison-base (argument)
 
-\u001b[1m\u001b[31mQuality gate summary\u001b[0m
-\u001b[1m\u001b[31m✖ 1 new enforceable violation\u001b[0m
-  \u001b[33mfake-quality-analyzer/fixture-rule\u001b[0m: Fixture finding
+Quality gate summary
+✖ 1 new enforceable violation
+  fake-quality-analyzer/fixture-rule: Fixture finding
     src/main/new.ts:1:4
-\u001b[2mFull diagnostics: /tmp/nitpicker-cli-output-${/[A-Za-z0-9]{6}/}/reports/report.txt\u001b[0m
+Full diagnostics: /tmp/nitpicker-cli-output-${/[A-Za-z0-9]{6}/}/reports/report.txt
 `),
     );
     expect(snapshots).toEqual(['base', 'head', 'head']);
@@ -163,11 +163,11 @@ describe('remote findings cache', () => {
       expect(result.output.stdoutText).toEqual(
         expect.stringMatching(exactText`Base: comparison-base (argument)
 
-\u001b[1m\u001b[31mQuality gate summary\u001b[0m
-\u001b[1m\u001b[31m✖ 1 new enforceable violation\u001b[0m
-  \u001b[33mfake-quality-analyzer/fixture-rule\u001b[0m: Fixture finding
+Quality gate summary
+✖ 1 new enforceable violation
+  fake-quality-analyzer/fixture-rule: Fixture finding
     src/main/new.ts:1:4
-\u001b[2mFull diagnostics: /tmp/nitpicker-cli-output-${/[A-Za-z0-9]{6}/}/reports/report.txt\u001b[0m
+Full diagnostics: /tmp/nitpicker-cli-output-${/[A-Za-z0-9]{6}/}/reports/report.txt
 `),
       );
       expect(snapshots).toEqual(['base', 'head']);
@@ -185,11 +185,11 @@ describe('remote findings cache', () => {
       expect(result.output.stdoutText).toEqual(
         expect.stringMatching(exactText`Base: comparison-base (argument)
 
-\u001b[1m\u001b[31mQuality gate summary\u001b[0m
-\u001b[1m\u001b[31m✖ 1 new enforceable violation\u001b[0m
-  \u001b[33mfake-quality-analyzer/fixture-rule\u001b[0m: Fixture finding
+Quality gate summary
+✖ 1 new enforceable violation
+  fake-quality-analyzer/fixture-rule: Fixture finding
     src/main/new.ts:1:4
-\u001b[2mFull diagnostics: /tmp/nitpicker-cli-output-${/[A-Za-z0-9]{6}/}/reports/report.txt\u001b[0m
+Full diagnostics: /tmp/nitpicker-cli-output-${/[A-Za-z0-9]{6}/}/reports/report.txt
 `),
       );
       expect(snapshots).toEqual(['base', 'head']);

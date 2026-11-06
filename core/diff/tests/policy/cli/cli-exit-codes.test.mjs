@@ -41,9 +41,9 @@ describe('quality diff command-line gate', () => {
     expect(exitCode).toBe(0);
     expect(output.stdoutText).toEqual(`Base: ${repository.baseRef} (argument)
 
-\u001b[1m\u001b[32mQuality gate summary\u001b[0m
-\u001b[32m✓ No new enforceable violations\u001b[0m
-\u001b[2mFull diagnostics: ${repository.outputRoot}/report.txt\u001b[0m
+Quality gate summary
+✓ No new enforceable violations
+Full diagnostics: ${repository.outputRoot}/report.txt
 `);
     expect(output.stdoutText).not.toContain('Per-tool counts:');
     expect(readFileSync(path.join(repository.outputRoot, 'report.txt'), 'utf8')).toEqual(
@@ -89,11 +89,11 @@ fake-quality-analyzer: base=1 head=1 new=0 resolved=0 unchanged=1 changed-metric
     expect(exitCode).toBe(1);
     expect(output.stdoutText).toEqual(`Base: ${repository.baseRef} (argument)
 
-\u001b[1m\u001b[31mQuality gate summary\u001b[0m
-\u001b[1m\u001b[31m✖ 1 new enforceable violation\u001b[0m
-  \u001b[33mfake-quality-analyzer/fixture-rule\u001b[0m: Fixture finding
+Quality gate summary
+✖ 1 new enforceable violation
+  fake-quality-analyzer/fixture-rule: Fixture finding
     src/main/new.ts:1:4
-\u001b[2mFull diagnostics: ${repository.outputRoot}/report.txt\u001b[0m
+Full diagnostics: ${repository.outputRoot}/report.txt
 `);
     expect(output.stdoutText).not.toContain('Per-tool counts:');
   });
@@ -208,11 +208,11 @@ fake-quality-analyzer: base=1 head=1 new=0 resolved=0 unchanged=1 changed-metric
     expect(exitCode).toBe(0);
     expect(output.stdoutText).toEqual(`Base: ${repository.baseRef} (argument)
 
-\u001b[1m\u001b[32mQuality gate summary\u001b[0m
-\u001b[32m✓ No new enforceable violations\u001b[0m
+Quality gate summary
+✓ No new enforceable violations
 Design note for review (not failing): 1 new
   fake-quality-analyzer/fixture-rule src/main/new.ts:1 Fixture finding (fanIn 3)
-\u001b[2mFull diagnostics: ${repository.outputRoot}/report.txt\u001b[0m
+Full diagnostics: ${repository.outputRoot}/report.txt
 `);
     expect(output.stdoutText).not.toContain('introduced-metric');
   });
@@ -244,9 +244,9 @@ Design note for review (not failing): 1 new
     expect(exitCode).toBe(0);
     expect(output.stdoutText).toEqual(`Base: ${repository.baseRef} (argument)
 
-\u001b[1m\u001b[32mQuality gate summary\u001b[0m
-\u001b[32m✓ No new enforceable violations\u001b[0m
-\u001b[2mFull diagnostics: ${repository.outputRoot}/report.txt\u001b[0m
+Quality gate summary
+✓ No new enforceable violations
+Full diagnostics: ${repository.outputRoot}/report.txt
 `);
     expect(readJson(repository.root, 'reports/quality/diff/summary.json').tools).toEqual([
       {
@@ -322,11 +322,11 @@ Design note for review (not failing): 1 new
     expect(exitCode).toBe(1);
     expect(output.stdoutText).toEqual(`Base: ${repository.baseRef} (argument)
 
-\u001b[1m\u001b[31mQuality gate summary\u001b[0m
-\u001b[1m\u001b[31m✖ 1 new enforceable violation\u001b[0m
-  \u001b[33mfake-quality-analyzer/match-me\u001b[0m: Fixture finding
+Quality gate summary
+✖ 1 new enforceable violation
+  fake-quality-analyzer/match-me: Fixture finding
     src/main/new.ts:1:4
-\u001b[2mFull diagnostics: ${repository.outputRoot}/report.txt\u001b[0m
+Full diagnostics: ${repository.outputRoot}/report.txt
 
 Findings matching --rule match-me:
 
