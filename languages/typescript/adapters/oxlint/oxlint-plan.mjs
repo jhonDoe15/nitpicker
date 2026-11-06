@@ -4,6 +4,7 @@ import path from 'node:path';
 import { promisify } from 'node:util';
 import { ESLint } from 'eslint';
 import { oxlintBinary } from './oxlint-process.mjs';
+import { PROBE_TIMEOUT_MS } from '../../../../shared/processes/deadlines.mjs';
 
 const [projectRoot, ...patterns] = process.argv.slice(2);
 const wrapperConfigPath = path.join(import.meta.dirname, '..', 'eslint-wrapper.config.mjs');
@@ -22,7 +23,7 @@ async function listedNativeRules() {
   const { stdout } = await promisify(execFile)(
     process.execPath,
     [oxlintBinary(), '--rules', '--format', 'json', import.meta.filename],
-    { cwd: import.meta.dirname, maxBuffer: MAX_LISTING_BYTES },
+    { cwd: import.meta.dirname, maxBuffer: MAX_LISTING_BYTES, timeout: PROBE_TIMEOUT_MS },
   );
   return JSON.parse(stdout);
 }

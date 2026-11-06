@@ -14,6 +14,7 @@ import { buildOutputFolders } from './build-output.mjs';
 import { holdsOnlyPublicValues, isEnvFileName } from './env-files.mjs';
 import { committedTooling, isKeyFileName, isLockFile } from './known-files.mjs';
 import { startSchemaPushes, startSchemaPushMessage } from './start-scripts.mjs';
+import { GIT_TIMEOUT_MS } from '../../processes/deadlines.mjs';
 
 export const REPOSITORY_HYGIENE_TOOL = 'repository-hygiene';
 const PRIVATE_KEY_HEADER = '-----BEGIN [A-Z ]*PRIVATE KEY';
@@ -118,7 +119,7 @@ function filesWithPrivateKeys(projectRoot) {
   const result = spawnSync(
     'git',
     ['grep', '-l', '-I', '-z', '-E', '-e', PRIVATE_KEY_HEADER, '--'],
-    { cwd: projectRoot, encoding: 'utf8', maxBuffer: MAX_GREP_BYTES },
+    { cwd: projectRoot, encoding: 'utf8', maxBuffer: MAX_GREP_BYTES, timeout: GIT_TIMEOUT_MS },
   );
   if (result.error !== undefined || (result.status !== 0 && result.status !== 1)) {
     throw new Error(`git grep failed: ${result.error?.message ?? result.stderr}`);

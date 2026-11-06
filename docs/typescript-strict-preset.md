@@ -833,6 +833,44 @@ only the library follows the project. Nitpicker reads `dependencies`, `peerDepen
   fallback of `undefined` or `null`, a condition (`if (a || b)`), and a value that is not a
   parameter. In the JavaScript preset the type comes from JSDoc; without JSDoc types the rule sees
   nothing.
+- `nitpicker/no-shared-stateful-regex`: a regex with the `g` or `y` flag keeps `lastIndex` between
+  calls, so `test()` and `exec()` on one that is reused start where the previous call stopped and
+  return order-dependent results. Reported: `test()` or `exec()` (and, for a `y` regex without `g`,
+  `match()` and `replace()`) on a `g` or `y` regex held in a `const`, `let` or `var` that is never
+  reassigned, a class field (also one set in the constructor, static or `#private`) or a property of
+  a `const` object literal, when the call runs in another function than the one that created the
+  regex (a module-level regex used in a function, a callback), inside a loop that does not create
+  it, or after an earlier call in the same function that is not in another branch of the same `if`,
+  `?:` or `switch`. The regex is a literal, or `RegExp` called with or without `new` and constant
+  flags (`new RegExp(/x/g)` keeps the literal's flags). Not reported: a call in a loop condition,
+  also after `&&` (`while ((match = pattern.exec(text)) !== null)`, which runs to the end and leaves
+  `lastIndex` at 0), a call in a function that assigns `pattern.lastIndex` (before the call, as a
+  sticky tokenizer does, or after it, as cleanup in `finally`), `match`, `replace`, `replaceAll`,
+  `search` and `split` with a `g` regex (they reset or ignore `lastIndex`), `matchAll` (it works on
+  a copy and leaves the regex as it is; the copy starts at the current `lastIndex`, so it is safe
+  once nothing else advances the regex), and a regex passed in as a parameter (its flags are the
+  caller's; that case was too noisy to report). A regex reached through an alias, an import or a
+  getter is not followed. The `let match = pattern.exec(text); while (match) { ... }` form is
+  reported for a shared regex: walk the matches with `matchAll` instead. A `g` flag that a regex
+  used once in its own function does not need is `regexp/no-useless-flag` (from
+  `eslint-plugin-regexp`, on for `g` and `y` only), so the two rules do not overlap. Allowed: create
+  the regex where it is used, drop `g` when one match is enough, or `text.matchAll(pattern)` for
+  every match.
+- `nitpicker/no-string-as-regex` (type-aware): `match()`, `matchAll()` and `search()` compile a
+  string argument as a regex, so a string-typed argument on a string receiver is reported (also a
+  literal: `text.match('a.b')`); use `includes`, `startsWith`, `indexOf` or `===` for plain text, or
+  pass a RegExp. It also reports a value built into the pattern of `new RegExp(...)` or `RegExp(...)`
+  through a template literal, `String.raw` or `+` without escaping, when its type is a wide `string`
+  (or a template literal type) and it comes from a parameter of the function: directly, through a
+  local `const`, a `for...of` variable or a callback parameter of a call on such a value. Module
+  constants, string literal unions, numbers, the condition of a `?:`, an escape (`RegExp.escape`, a
+  function whose name contains `escape` and `reg` or `pattern` such as `escapeRegExp` or
+  `_.escapeRegExp`, also passed as `names.map(escapeRegExp)`, and the inline
+  `value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')`) and a RegExp's `.source` are not reported, and neither is a value passed as the whole pattern
+  (`new RegExp(pattern)`), which is meant as one: issue #749 asked to report that form too, but on
+  this repository it flagged constant-derived patterns almost only, so the rule reports values
+  built into a pattern and leaves whole patterns alone. Without types (plain JavaScript without JSDoc)
+  the rule sees nothing.
 - `nitpicker/no-compatibility-shim`: a doc comment with a `@deprecated` tag, and an exported
   `const Old = New`, `type Old = New` or `export { New as Old }` whose target `New` is also
   exported from the same module (two public names for one thing). Generic aliases, aliases of
@@ -1760,8 +1798,8 @@ off (a PR that adds or removes React keeps linting on both sides); a misspelled 
   else a library forces is an exception for `nitpicker/no-null` on those paths (promise chains a
   library forces: `nitpicker/no-promise-chain`).
 
-`eslint-plugin-regexp` (MIT) supplies `regexp/no-super-linear-backtracking` in every project, React
-or not.
+`eslint-plugin-regexp` (MIT) supplies `regexp/no-super-linear-backtracking` and
+`regexp/no-useless-flag` (for the `g` and `y` flags only) in every project, React or not.
 
 The plugins are `eslint-plugin-react-hooks`, `eslint-plugin-react-x`, `eslint-plugin-react-dom` and
 `eslint-plugin-react-web-api` (the last three are eslint-react, MIT, pinned to one version),

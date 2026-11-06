@@ -14,6 +14,7 @@ import {
   workflowProblems,
 } from './e2e-gates.mjs';
 import { assignShards, readDurations } from './sequencer.mjs';
+import { TOOL_RUN_CEILING_MS } from '../../shared/processes/deadlines.mjs';
 
 const root = path.resolve(import.meta.dirname, '../..');
 const VITEST_CONFIG = path.join(root, 'vitest.config.mts');
@@ -39,7 +40,7 @@ function listCases(args, flag) {
       ...args,
       '--json',
     ],
-    { cwd: root, encoding: 'utf8' },
+    { cwd: root, encoding: 'utf8', timeout: TOOL_RUN_CEILING_MS },
   );
   assert.equal(result.status, 0, result.stderr || result.stdout);
   return JSON.parse(result.stdout).map(({ file, name }) => ({
