@@ -1,7 +1,7 @@
 import { existsSync, readFileSync } from 'node:fs';
 import { javaFilesUnder, pathInside } from '../../../../review-rules/java-sources.mjs';
 import { nameResolver, resolvesTo, typeName } from '../spring-names.mjs';
-import { DATA_REPOSITORIES } from '../spring-types.mjs';
+import { ADVICE, ASPECT, DATA_REPOSITORIES } from '../spring-types.mjs';
 
 const SEARCH_LIMIT = 64;
 const META_DEPTH = 3;
@@ -11,6 +11,8 @@ const JAVA_CONVERTER = new RegExp(
   'gu',
 );
 const DATA_REPOSITORY = /^org\.springframework\.data\.(?:[a-z]\w*\.)+\w*Repository$/u;
+const ANNOTATION_POINTCUT = /@annotation\(\s*([\w.$]+)\s*\)/gu;
+const BINDING = /^[a-z_$][\w$]*$/u;
 
 function javaExtends(name) {
   return new RegExp(String.raw`\binterface\s+${name}\b[^{]*?\bextends\s+([^{]+)\{`, 'u');
@@ -120,6 +122,7 @@ export function javaConverted(context) {
 
 export function projectContext({ projectFiles, declared, projectRoot, javaRoots }) {
   return {
+    projectFiles,
     classes: qualifiedClasses(projectFiles),
     resolvers: new Map(),
     javaSources: new Map(),
@@ -160,6 +163,23 @@ export function isJavaEnum(context, candidates) {
 
 export function projectClass(context, candidates) {
   return candidates.map((candidate) => context.classes.get(candidate)).find(Boolean);
+}
+
+export function extendsType(context, start, fqns) {
+  const queue = [{ names: start.resolve, type: start.text }];
+  const seen = new Set();
+  for (const { names, type } of queue) {
+    if (resolvesTo(names, type, fqns)) {
+      return true;
+    }
+    const found = projectClass(context, names(typeName(type)));
+    if (found !== undefined && !seen.has(found) && queue.length < SEARCH_LIMIT) {
+      seen.add(found);
+      const own = resolverOf(context, found.file);
+      queue.push(...found.declared.supers.map((next) => ({ names: own, type: next })));
+    }
+  }
+  return false;
 }
 
 export function projectFunctions(context, candidates, name) {
@@ -220,4 +240,40 @@ export function metaAnnotated(context, candidates, fqns) {
     levels.push(...(levels.length < META_DEPTH ? [next] : []));
   }
   return false;
+}
+
+function pointcutTargets(resolve, fn) {
+  return (fn.annotationEntries ?? [])
+    .filter((entry) => resolvesTo(resolve, entry.type ?? entry.name, ADVICE))
+    .flatMap((entry) => entry.arguments.map(({ text }) => text ?? ''))
+    .flatMap((text) => [...text.matchAll(ANNOTATION_POINTCUT)].map((match) => match[1]))
+    .map(
+      (target) =>
+        fn.parameters.find(({ name }) => BINDING.test(target) && name === target)?.type ?? target,
+    )
+    .flatMap((type) => resolve(typeName(type)));
+}
+
+/** The annotation types an `@Aspect` class of the project names in `@annotation(...)`. */
+export function adviceTargets(context) {
+  if (context.advised === undefined) {
+    context.advised = new Set(
+      (context.projectFiles ?? []).flatMap((file) => {
+        const resolve = resolverOf(context, file);
+        const aspects = new Set(
+          file.classes
+            .filter((declared) =>
+              declared.annotations.some(({ type, name }) =>
+                resolvesTo(resolve, type ?? name, ASPECT),
+              ),
+            )
+            .map((declared) => declared.qualified),
+        );
+        return file.functions
+          .filter((fn) => aspects.has(fn.owner))
+          .flatMap((fn) => pointcutTargets(resolve, fn));
+      }),
+    );
+  }
+  return context.advised;
 }
