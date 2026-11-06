@@ -75,9 +75,9 @@ public final class Owned implements Closeable {
     return new BufferedReader(new InputStreamReader(System.in, UTF_8)).readLine();
   }
 
-  public static byte[] borrowed(Socket socket, Process process, byte[] bytes) throws IOException {
+  public static int borrowed(Socket socket, Process process, byte[] bytes) throws IOException {
     socket.getOutputStream().write(bytes);
-    return process.getInputStream().readAllBytes();
+    return process.getInputStream().read();
   }
 
   public static List<Integer> doubled(List<Integer> values) {
