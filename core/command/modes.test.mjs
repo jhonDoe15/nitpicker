@@ -206,7 +206,7 @@ describe('nitpicker CLI', () => {
         'nitpicker failed: No base found: no remote, and you are on main. Pass --base <ref>, set "base" in nitpicker.config.json, or run nitpicker --all to check the whole project.\n',
     });
     fixtureGit(repository.root, ['checkout', '-q', '-b', 'feature']);
-
+    writeFiles(repository.root, { 'src/main/edited.ts': 'export const edited = true;\n' });
     expect(run(['base'])).toEqual({ exitCode: 0, stdout: 'main\n', stderr: '' });
     expect(run(['--output', makeOutputRoot()])).toEqual({
       exitCode: 0,

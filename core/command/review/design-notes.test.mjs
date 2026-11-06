@@ -61,10 +61,10 @@ describe.each(['diff', 'snapshot'])('design review notes in %s mode', (mode) => 
   it.each(cases)('shows a bounded, non-failing summary for %i findings', (count, expectedNotes) => {
     const repository = createRepository({ 'quality-policy.json': policy() });
     const numbers = Array.from({ length: count }, (_, index) => index + 1);
-    writeFiles(
-      repository.root,
-      Object.fromEntries(numbers.map((number) => [file(number), findingLine(note(number))])),
-    );
+    writeFiles(repository.root, {
+      'src/main/clean.ts': 'export const clean = true;\n',
+      ...Object.fromEntries(numbers.map((number) => [file(number), findingLine(note(number))])),
+    });
     const outputRoot = makeOutputRoot();
     const diagnosticsPath = path.join(outputRoot, 'report.txt');
     const output = captureOutput();
