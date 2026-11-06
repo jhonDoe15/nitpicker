@@ -6,7 +6,14 @@ import { CHECKS, documentedChecks } from './checks-docs.mjs';
 const OFF = 'Checks that are off';
 const ROUTE_KEPT = 'ERROR checks that keep the exceptions route';
 const SPARED = 'Checks spared in annotated classes';
-const LISTS = ['reviewedChecks', 'enable', 'disable', 'certainBugs', 'lombokUnsuppressedOff'];
+const LISTS = [
+  'reviewedChecks',
+  'enable',
+  'disable',
+  'defaultOff',
+  'certainBugs',
+  'lombokUnsuppressedOff',
+];
 
 describe('Error Prone check policy', () => {
   it('was reviewed for the Error Prone and NullAway versions both builds run', () => {
@@ -38,6 +45,13 @@ describe('Error Prone check policy', () => {
 
     expect(CHECKS.disable.filter((name) => !offList.includes(name))).toStrictEqual([]);
     expect(offList.filter((name) => CHECKS.enable.includes(name))).toStrictEqual([]);
+  });
+
+  it('lists as off exactly the checks that the table of checks that are off documents', () => {
+    expect([...CHECKS.disable, ...CHECKS.defaultOff].sort()).toStrictEqual(
+      documentedChecks(OFF).sort(),
+    );
+    expect(CHECKS.defaultOff.filter((name) => CHECKS.enable.includes(name))).toStrictEqual([]);
   });
 
   it('documents why each ERROR check outside certainBugs keeps the exceptions route', () => {

@@ -30,6 +30,7 @@ import { i18nRuleIds } from '../../languages/typescript/preset/eslint-config/i18
 import { validateScope, validateTestConsole } from './scopes/scope-settings.mjs';
 import { validateHistory } from './scopes/history-settings.mjs';
 import { TYPESCRIPT_PRESETS, validateLayout } from './scopes/layout-settings.mjs';
+import { didYouMean, suggestionOrAllowed } from '../../shared/messages/closest-match.mjs';
 
 const OPTIONAL_VALIDATORS = [
   [
@@ -99,7 +100,7 @@ export function validateConfig(config) {
 function validateKeys(config) {
   for (const key of Object.keys(config)) {
     if (!KEYS.includes(key)) {
-      throw configError(`unknown key "${key}". Allowed keys: ${KEYS.join(', ')}`);
+      throw configError(`unknown key "${key}"${suggestionOrAllowed(key, KEYS)}`);
     }
   }
 }
@@ -243,7 +244,9 @@ function validateCustomAnalyzerEntry(entry, label) {
   }
   for (const key of Object.keys(entry)) {
     if (!CUSTOM_ANALYZER_KEYS.includes(key)) {
-      throw configError(`unknown key "${key}" in "${label}"`);
+      throw configError(
+        `unknown key "${key}" in "${label}"${didYouMean(key, CUSTOM_ANALYZER_KEYS)}`,
+      );
     }
   }
   if (!isNonEmptyString(entry.name) || !isNonEmptyString(entry.command)) {

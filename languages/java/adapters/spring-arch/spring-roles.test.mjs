@@ -46,6 +46,10 @@ describe('Spring role mappings', () => {
       'unknown role "spring.roles.usecase". Roles: controller, service, repository',
     ],
     [
+      { preset: 'java', spring: { roles: { controler: ['com.acme.Api'] } } },
+      'unknown role "spring.roles.controler". Did you mean "controller"?',
+    ],
+    [
       { preset: 'java', spring: { roles: { service: ['UseCase'] } } },
       '"spring.roles.service" must be an array of binary annotation or type names, such as "com.example.UseCase" or "com.example.Roles$UseCase" for a nested type',
     ],

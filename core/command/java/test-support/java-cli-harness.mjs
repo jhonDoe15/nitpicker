@@ -2,6 +2,7 @@ import { tmpdir } from 'node:os';
 import { afterEach, beforeEach, expect, vi } from 'vitest';
 import { exactText } from '../../../diff/reporting/test-support/output-expectations.mjs';
 import {
+  EMPTY_MUTATION_FACTS,
   fakeGradle,
   fakeGradleRun,
   spawnFakeGradle,
@@ -59,6 +60,7 @@ export function useGradleFixtures(runNitpickerCli) {
       fixtures.repository({
         'nitpicker.config.json': kotlinConfig(),
         'detekt.txt': 'Legacy magic number\n',
+        'kotlin-mutation-facts.json': EMPTY_MUTATION_FACTS,
         ...files,
       }),
     run: fixtures.run,
@@ -154,6 +156,15 @@ export function useMavenFixtures(runNitpickerCli) {
 export function unusedFieldMessage(name, file = 'src/main/java/demo/A.java') {
   const { fix } = readCatalog('pmd').UnusedPrivateField;
   return `Avoid unused field: ${name}. ${fix} ${exceptionHint('pmd/UnusedPrivateField', file)}`;
+}
+
+export function unusedFieldConsoleEntry(name, line, file = 'src/main/java/demo/A.java') {
+  const { fix } = readCatalog('pmd').UnusedPrivateField;
+  return [
+    `  pmd/UnusedPrivateField: Avoid unused field: ${name}. ${fix}`,
+    `    ${file}:${String(line)}`,
+    `    ${exceptionHint('pmd/UnusedPrivateField', file)}`,
+  ].join('\n');
 }
 
 export function gradleFailureMessage(detail) {

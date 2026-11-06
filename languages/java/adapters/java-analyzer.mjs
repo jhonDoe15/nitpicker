@@ -1,3 +1,4 @@
+import { spawnSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import { readdirSync } from 'node:fs';
 import path from 'node:path';
@@ -6,6 +7,7 @@ import { JAVA_TOOLS } from './gradle-presets.mjs';
 import { INIT_SCRIPT, readPinnedTools } from '../builds/java-build.mjs';
 import { importClosure } from '../../../shared/import-closure.mjs';
 import { javaExecutionBudget } from './java-runner.mjs';
+import { JVM_NOISE, javaCommand } from '../maven/maven-command.mjs';
 
 const packageRoot = path.resolve(import.meta.dirname, '../../..');
 const runnerPath = path.join(import.meta.dirname, 'java-runner.mjs');
@@ -69,6 +71,18 @@ function readPinnedVersions(initScript = INIT_SCRIPT) {
   return [...versions, `jscpd@${jscpdVersion()}`].join(';');
 }
 
+export function javaRuntimeVersion(spawn = spawnSync) {
+  const java = javaCommand('java');
+  const result = spawn(java, ['-version'], { encoding: 'utf8', timeout: 60_000 });
+  if (result.status !== 0) {
+    return `jdk:unavailable(${java})`;
+  }
+  const lines = `${result.stderr}${result.stdout}`
+    .split(/\r?\n/u)
+    .filter((line) => line.length > 0 && !JVM_NOISE.test(line));
+  return `jdk:${lines.join(' | ')}`;
+}
+
 function hashConfiguration() {
   const hash = createHash('sha256');
   const contents = configurationContents();
@@ -84,9 +98,14 @@ const KOTLIN_TOOLS = ['detekt', 'ktlint', 'ktfmt', 'kotlin-source', 'kotlinc'];
 
 export function createJavaAnalyzer({ kotlin = false } = {}) {
   const budget = javaExecutionBudget();
+  let runtimeVersion;
   return {
     name: kotlin ? 'kotlin' : 'java',
     version: readPinnedVersions(),
+    resolveVersion: () => {
+      runtimeVersion ??= javaRuntimeVersion();
+      return `${readPinnedVersions()};${runtimeVersion}`;
+    },
     configurationHash: hashConfiguration(),
     exclusions: [],
     reportedTools: kotlin ? [...JAVA_TOOLS, ...KOTLIN_TOOLS] : JAVA_TOOLS,

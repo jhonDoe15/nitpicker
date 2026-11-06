@@ -1,8 +1,9 @@
 #!/usr/bin/env node
 import { runAggregateCli } from './diff/sharding/aggregate-shards.mjs';
 import { reportingProgress } from './diff/execution/progress.mjs';
-import { runScheduler, selectAnalyzers } from './diff/execution/run-analyzers.mjs';
+import { runScheduler } from './diff/execution/run-analyzers.mjs';
 import { runCacheCommand } from './command/cache.mjs';
+import { runExplainCommand, runRulesCommand } from './command/reference/reference.mjs';
 import { runBaseCommand } from './command/base.mjs';
 import { parseArguments, USAGE_TEXT } from './command/arguments.mjs';
 import { resolveProjectRoot } from './tooling/tool-resolution.mjs';
@@ -17,6 +18,7 @@ import { configureAnalyzers } from './configuration/configure-analyzers.mjs';
 import { presetAnalyzers } from './configuration/preset-analyzers.mjs';
 import { withRunLock } from './command/run-lock.mjs';
 import { runSnapshotCli } from './command/snapshot.mjs';
+import { writeComparisonOutcome } from './command/comparison/outcome.mjs';
 import { baseSetupResolver } from './command/policy-review/base-setup.mjs';
 import { historyAvailabilityNotes, noticeDescriber } from './command/policy-review/notices.mjs';
 import { policyAcceptance } from './command/policy-review/policy-acceptance.mjs';
@@ -26,20 +28,23 @@ import { resolveComparison } from './diff/git/repository/git.mjs';
 import { resolveBase } from './diff/git/repository/base-ref.mjs';
 import { detachLocalGitVariables } from './diff/git/environment/local-variables.mjs';
 import path from 'node:path';
-import { clearDiffReports, absoluteTextReportPath } from './diff/reporting/reporters.mjs';
+import { clearDiffReports } from './diff/reporting/reporters.mjs';
+import { selectComparisonAnalyzers } from './command/comparison/analyzers.mjs';
 import { runQualityDiff } from './diff/comparison/run-diff.mjs';
 import { fixWorkingTree } from './fix/run-fix.mjs';
 import { resolveCacheStore } from './diff/cache/cache-stores.mjs';
-import { selectAnalyzerShard } from './diff/sharding/sharding.mjs';
-import { renderConsoleSummary } from './diff/reporting/summary.mjs';
-import { writeGithubOutput } from './diff/reporting/github/emit.mjs';
-import { renderClosingSections } from './exceptions/stale-exceptions.mjs';
 import { runHistoryCli } from '../shared/history/runner.mjs';
 import { runHygieneCli } from '../shared/hygiene/runner.mjs';
 import { GO_ANALYZER_COMMAND, runGoCli } from '../languages/go/adapters/go-runner.mjs';
 import { redirectToBundledTypeScriptApi } from '../languages/typescript/typescript-api/api-selection.mjs';
+import { describeError } from '../shared/messages/error-chain.mjs';
 
-const CHECK_COMMANDS = { hygiene: runHygieneCli, history: runHistoryCli };
+const CHECK_COMMANDS = {
+  hygiene: runHygieneCli,
+  history: runHistoryCli,
+  [GO_ANALYZER_COMMAND]: runGoCli,
+};
+const REFERENCE_COMMANDS = { explain: runExplainCommand, rules: runRulesCommand };
 
 export function runCli(options = {}) {
   detachLocalGitVariables(process.env);
@@ -47,14 +52,6 @@ export function runCli(options = {}) {
   const checkCommand = CHECK_COMMANDS[cli.arguments_[0]];
   if (checkCommand !== undefined) {
     return checkCommand({
-      commandArguments: cli.arguments_.slice(1),
-      stdout: cli.stdout,
-      stderr: cli.stderr,
-      environment: cli.environment,
-    });
-  }
-  if (cli.arguments_[0] === GO_ANALYZER_COMMAND) {
-    return runGoCli({
       commandArguments: cli.arguments_.slice(1),
       stdout: cli.stdout,
       stderr: cli.stderr,
@@ -75,9 +72,7 @@ export function runCli(options = {}) {
     redirectToBundledTypeScriptApi(cli.environment);
     return runCommand(cli);
   } catch (error) {
-    cli.stderr.write(
-      `nitpicker failed: ${error instanceof Error ? error.message : String(error)}\n`,
-    );
+    cli.stderr.write(`nitpicker failed: ${describeError(error)}\n`);
     return 2;
   }
 }
@@ -114,6 +109,10 @@ function runCommand(cli) {
       stderr: cli.stderr,
       runTasks: cli.runTasks,
     });
+  }
+  const referenceCommand = REFERENCE_COMMANDS[cli.arguments_[0]];
+  if (referenceCommand !== undefined) {
+    return referenceCommand({ ...cli, commandArguments: cli.arguments_.slice(1) });
   }
   if (cli.arguments_[0] === 'base') {
     return runBaseCommand({ ...cli, arguments_: cli.arguments_.slice(1) });
@@ -181,8 +180,8 @@ function runComparisonCli(cli) {
     options.outputRoot === undefined
       ? path.join(currentProjectRoot, 'reports/quality/diff')
       : path.resolve(currentProjectRoot, options.outputRoot);
+  const { analyzers, partialRun } = selectComparisonAnalyzers(cli);
   clearDiffReports(outputRoot);
-  const analyzers = selectComparisonAnalyzers(cli);
   const headPolicy = comparisonPolicy({ ...cli, repositoryRoot, base }, resolveComparison);
   const fixResult = fixIfRequested({ ...cli, headPolicy }, repositoryRoot, base);
   const cacheStore = resolveRunCacheStore(cli);
@@ -193,6 +192,7 @@ function runComparisonCli(cli) {
     requestedBaseRef: base.baseRef,
     outputRoot,
     analyzers,
+    partialRun,
     cacheStore,
     includeWorkingTree: true,
     additionalToolErrors: fixResult.toolErrors,
@@ -203,6 +203,7 @@ function runComparisonCli(cli) {
     ...acceptanceOf(cli),
     progress: cli.progress,
     runTasks: cli.runTasks,
+    warn: (message) => cli.stderr.write(`nitpicker: ${message}\n`),
   });
   return writeComparisonOutcome({ cli, report, base, outputRoot });
 }
@@ -247,48 +248,6 @@ function resolveRunCacheStore(cli) {
     }
   }
   return cli.options.cache ? store : undefined;
-}
-
-function selectComparisonAnalyzers({ options, analyzers }) {
-  const selectedAnalyzers =
-    options.shardCount === undefined
-      ? selectAnalyzers(analyzers, options.analyzerNames)
-      : selectAnalyzerShard(analyzers, options.shardCount, options.shardIndex);
-  if (selectedAnalyzers.length === 0) {
-    throw new Error(
-      'No quality analyzers are configured. The comparison framework is ready, but real analyzer adapters are a later phase.',
-    );
-  }
-  return selectedAnalyzers;
-}
-
-function writeComparisonOutcome({ cli, report, base, outputRoot }) {
-  const { options, environment, stdout } = cli;
-  stdout.write(`Base: ${base.baseRef} (${base.source})\n`);
-  stdout.write(
-    renderConsoleSummary(report, {
-      color: environment.NO_COLOR === undefined,
-      diagnosticsPath: absoluteTextReportPath(outputRoot),
-    }),
-  );
-  stdout.write(renderClosingSections(cli, report));
-  if (options.shardCount === undefined) {
-    writeGithubOutput({
-      kind: 'diff',
-      report,
-      projectRoot: cli.currentProjectRoot,
-      environment,
-      stdout,
-      stderr: cli.stderr,
-    });
-  }
-  if (options.deferExit) {
-    return 0;
-  }
-  if (report.summary.newEnforceableFindings > 0) {
-    return 1;
-  }
-  return report.summary.overallStatus === 'completed' ? 0 : 2;
 }
 
 const invokedPath = process.argv[1];

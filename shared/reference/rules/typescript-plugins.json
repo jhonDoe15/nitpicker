@@ -1,0 +1,1221 @@
+{
+  "fields": [
+    "tool",
+    "rule",
+    "findingTools",
+    "analyzers",
+    "summary",
+    "why",
+    "scope",
+    "links",
+    "docs",
+    "exception",
+    "forms"
+  ],
+  "values": [
+    "eslint",
+    "formatjs/enforce-default-message",
+    ["eslint-lint"],
+    { "typescript": ["eslint-lint"] },
+    "Enforce defaultMessage in message descriptor",
+    "The i18n scope turns on the rules for internationalized messages.",
+    "A TypeScript project with `i18n.enabled` or an i18n library.",
+    [
+      {
+        "label": "Rule documentation",
+        "url": "https://formatjs.github.io/docs/tooling/linter#enforce-default-message"
+      }
+    ],
+    [
+      {
+        "label": "Strict preset guide",
+        "path": "docs/typescript-strict-preset.md",
+        "anchor": "internationalized-messages"
+      }
+    ],
+    { "key": "exceptions", "rule": "formatjs/enforce-default-message" },
+    "formatjs/enforce-description",
+    "Enforce description in message descriptor",
+    [
+      {
+        "label": "Rule documentation",
+        "url": "https://formatjs.github.io/docs/tooling/linter#enforce-description"
+      }
+    ],
+    { "key": "exceptions", "rule": "formatjs/enforce-description" },
+    "formatjs/enforce-placeholders",
+    "Enforce that all messages with placeholders have enough passed-in values",
+    [
+      {
+        "label": "Rule documentation",
+        "url": "https://formatjs.github.io/docs/tooling/linter#enforce-placeholders"
+      }
+    ],
+    { "key": "exceptions", "rule": "formatjs/enforce-placeholders" },
+    "formatjs/no-complex-selectors",
+    "Make sure a sentence is not too complex.\nComplexity is determined by how many strings are produced when we try to\nflatten the sentence given its selectors. For example:\n\"I have {count, plural, one{a dog} other{many dogs}}\"\nhas the complexity of 2 because flattening the plural selector\nresults in 2 sentences: \"I have a dog\" & \"I have many dogs\".\nDefault complexity limit is 20\n(using Smartling as a reference: https://help.smartling.com/hc/en-us/articles/360008030994-ICU-MessageFormat)\n",
+    [
+      {
+        "label": "Rule documentation",
+        "url": "https://formatjs.github.io/docs/tooling/linter#no-complex-selectors"
+      }
+    ],
+    { "key": "exceptions", "rule": "formatjs/no-complex-selectors" },
+    "formatjs/no-invalid-icu",
+    "Make sure ICU messages are formatted correctly with no bad select statements, plurals, etc.",
+    { "key": "exceptions", "rule": "formatjs/no-invalid-icu" },
+    "formatjs/no-literal-string-in-jsx",
+    "Disallow untranslated literal strings without translation.",
+    [
+      {
+        "label": "Rule documentation",
+        "url": "https://formatjs.github.io/docs/tooling/linter#no-literal-string-in-jsx"
+      }
+    ],
+    { "key": "exceptions", "rule": "formatjs/no-literal-string-in-jsx" },
+    "formatjs/no-missing-icu-plural-one-placeholders",
+    "We use `one {# item}` instead of `one {1 item}` in ICU messages as some locales use the `one` formatting for other similar numbers.",
+    [
+      {
+        "label": "Rule documentation",
+        "url": "https://formatjs.github.io/docs/tooling/linter#no-explicit-icu-plural"
+      }
+    ],
+    { "key": "exceptions", "rule": "formatjs/no-missing-icu-plural-one-placeholders" },
+    "formatjs/no-multiple-plurals",
+    "Disallow multiple plural rules in the same message",
+    [
+      {
+        "label": "Rule documentation",
+        "url": "https://formatjs.github.io/docs/tooling/linter#no-multiple-plurals"
+      }
+    ],
+    { "key": "exceptions", "rule": "formatjs/no-multiple-plurals" },
+    "formatjs/no-multiple-whitespaces",
+    "Prevents usage of multiple consecutive whitespaces in message",
+    [
+      {
+        "label": "Rule documentation",
+        "url": "https://formatjs.github.io/docs/tooling/linter#no-multiple-whitespaces"
+      }
+    ],
+    { "key": "exceptions", "rule": "formatjs/no-multiple-whitespaces" },
+    "formatjs/no-offset",
+    "Disallow offset in plural rules",
+    [
+      {
+        "label": "Rule documentation",
+        "url": "https://formatjs.github.io/docs/tooling/linter#no-offset"
+      }
+    ],
+    { "key": "exceptions", "rule": "formatjs/no-offset" },
+    "formatjs/no-useless-message",
+    "Disallow unnecessary formatted message",
+    [
+      {
+        "label": "Rule documentation",
+        "url": "https://formatjs.github.io/docs/tooling/linter#no-useless-message"
+      }
+    ],
+    { "key": "exceptions", "rule": "formatjs/no-useless-message" },
+    "formatjs/prefer-full-sentence",
+    "Detects messages with leading/trailing whitespace, which suggests string concatenation instead of full sentences",
+    [
+      {
+        "label": "Rule documentation",
+        "url": "https://formatjs.github.io/docs/tooling/linter#prefer-full-sentence"
+      }
+    ],
+    { "key": "exceptions", "rule": "formatjs/prefer-full-sentence" },
+    "formatjs/prefer-pound-in-plural",
+    "Prefer using # to reference the count in the plural argument.",
+    [
+      {
+        "label": "Rule documentation",
+        "url": "https://formatjs.github.io/docs/tooling/linter#prefer-pound-in-plurals"
+      }
+    ],
+    { "key": "exceptions", "rule": "formatjs/prefer-pound-in-plural" },
+    "functional/no-classes",
+    { "typescript": ["eslint-lint"], "javascript": ["eslint-lint"] },
+    "Disallow classes.",
+    "The preset turns on this rule to keep data immutable.",
+    [
+      {
+        "label": "Rule documentation",
+        "url": "https://github.com/eslint-functional/eslint-plugin-functional/blob/v10.0.1/docs/rules/no-classes.md"
+      }
+    ],
+    [{ "label": "Strict preset guide", "path": "docs/typescript-strict-preset.md" }],
+    { "key": "exceptions", "rule": "functional/no-classes" },
+    "functional/no-let",
+    "Disallow mutable variables.",
+    [
+      {
+        "label": "Rule documentation",
+        "url": "https://github.com/eslint-functional/eslint-plugin-functional/blob/v10.0.1/docs/rules/no-let.md"
+      }
+    ],
+    { "key": "exceptions", "rule": "functional/no-let" },
+    "functional/no-this-expressions",
+    "Disallow this access.",
+    [
+      {
+        "label": "Rule documentation",
+        "url": "https://github.com/eslint-functional/eslint-plugin-functional/blob/v10.0.1/docs/rules/no-this-expressions.md"
+      }
+    ],
+    { "key": "exceptions", "rule": "functional/no-this-expressions" },
+    "functional/prefer-immutable-types",
+    "Require function parameters to be typed as certain immutability",
+    [
+      {
+        "label": "Rule documentation",
+        "url": "https://github.com/eslint-functional/eslint-plugin-functional/blob/v10.0.1/docs/rules/prefer-immutable-types.md"
+      }
+    ],
+    { "key": "exceptions", "rule": "functional/prefer-immutable-types" },
+    "jsx-a11y/alt-text",
+    "Enforce all elements that require alternative text have meaningful information to relay back to end user.",
+    "The React scope turns on the accessibility rules for JSX.",
+    "A TypeScript project with React: `react` in package.json or `react.enabled`.",
+    [
+      {
+        "label": "Rule documentation",
+        "url": "https://github.com/es-tooling/eslint-plugin-jsx-a11y-x/tree/HEAD/docs/rules/alt-text.md"
+      }
+    ],
+    [
+      {
+        "label": "Strict preset guide",
+        "path": "docs/typescript-strict-preset.md",
+        "anchor": "react"
+      }
+    ],
+    { "key": "exceptions", "rule": "jsx-a11y/alt-text" },
+    "jsx-a11y/anchor-ambiguous-text",
+    "Enforce `<a>` text to not exactly match \"click here\", \"here\", \"link\", or \"a link\".",
+    [
+      {
+        "label": "Rule documentation",
+        "url": "https://github.com/es-tooling/eslint-plugin-jsx-a11y-x/tree/HEAD/docs/rules/anchor-ambiguous-text.md"
+      }
+    ],
+    { "key": "exceptions", "rule": "jsx-a11y/anchor-ambiguous-text" },
+    "jsx-a11y/anchor-has-content",
+    "Enforce all anchors to contain accessible content.",
+    [
+      {
+        "label": "Rule documentation",
+        "url": "https://github.com/es-tooling/eslint-plugin-jsx-a11y-x/tree/HEAD/docs/rules/anchor-has-content.md"
+      }
+    ],
+    { "key": "exceptions", "rule": "jsx-a11y/anchor-has-content" },
+    "jsx-a11y/anchor-is-valid",
+    "Enforce all anchors are valid, navigable elements.",
+    [
+      {
+        "label": "Rule documentation",
+        "url": "https://github.com/es-tooling/eslint-plugin-jsx-a11y-x/tree/HEAD/docs/rules/anchor-is-valid.md"
+      }
+    ],
+    { "key": "exceptions", "rule": "jsx-a11y/anchor-is-valid" },
+    "jsx-a11y/aria-activedescendant-has-tabindex",
+    "Enforce elements with aria-activedescendant are tabbable.",
+    [
+      {
+        "label": "Rule documentation",
+        "url": "https://github.com/es-tooling/eslint-plugin-jsx-a11y-x/tree/HEAD/docs/rules/aria-activedescendant-has-tabindex.md"
+      }
+    ],
+    { "key": "exceptions", "rule": "jsx-a11y/aria-activedescendant-has-tabindex" },
+    "jsx-a11y/aria-props",
+    "Enforce all `aria-*` props are valid.",
+    [
+      {
+        "label": "Rule documentation",
+        "url": "https://github.com/es-tooling/eslint-plugin-jsx-a11y-x/tree/HEAD/docs/rules/aria-props.md"
+      }
+    ],
+    { "key": "exceptions", "rule": "jsx-a11y/aria-props" },
+    "jsx-a11y/aria-proptypes",
+    "Enforce ARIA state and property values are valid.",
+    [
+      {
+        "label": "Rule documentation",
+        "url": "https://github.com/es-tooling/eslint-plugin-jsx-a11y-x/tree/HEAD/docs/rules/aria-proptypes.md"
+      }
+    ],
+    { "key": "exceptions", "rule": "jsx-a11y/aria-proptypes" },
+    "jsx-a11y/aria-role",
+    "Enforce that elements with ARIA roles must use a valid, non-abstract ARIA role.",
+    [
+      {
+        "label": "Rule documentation",
+        "url": "https://github.com/es-tooling/eslint-plugin-jsx-a11y-x/tree/HEAD/docs/rules/aria-role.md"
+      }
+    ],
+    { "key": "exceptions", "rule": "jsx-a11y/aria-role" },
+    "jsx-a11y/aria-unsupported-elements",
+    "Enforce that elements that do not support ARIA roles, states, and properties do not have those attributes.",
+    [
+      {
+        "label": "Rule documentation",
+        "url": "https://github.com/es-tooling/eslint-plugin-jsx-a11y-x/tree/HEAD/docs/rules/aria-unsupported-elements.md"
+      }
+    ],
+    { "key": "exceptions", "rule": "jsx-a11y/aria-unsupported-elements" },
+    "jsx-a11y/autocomplete-valid",
+    "Enforce that autocomplete attributes are used correctly.",
+    [
+      {
+        "label": "Rule documentation",
+        "url": "https://github.com/es-tooling/eslint-plugin-jsx-a11y-x/tree/HEAD/docs/rules/autocomplete-valid.md"
+      }
+    ],
+    { "key": "exceptions", "rule": "jsx-a11y/autocomplete-valid" },
+    "jsx-a11y/click-events-have-key-events",
+    "Enforce a clickable non-interactive element has at least one keyboard event listener.",
+    [
+      {
+        "label": "Rule documentation",
+        "url": "https://github.com/es-tooling/eslint-plugin-jsx-a11y-x/tree/HEAD/docs/rules/click-events-have-key-events.md"
+      }
+    ],
+    { "key": "exceptions", "rule": "jsx-a11y/click-events-have-key-events" },
+    "jsx-a11y/control-has-associated-label",
+    "Enforce that a control (an interactive element) has a text label.",
+    [
+      {
+        "label": "Rule documentation",
+        "url": "https://github.com/es-tooling/eslint-plugin-jsx-a11y-x/tree/HEAD/docs/rules/control-has-associated-label.md"
+      }
+    ],
+    { "key": "exceptions", "rule": "jsx-a11y/control-has-associated-label" },
+    "jsx-a11y/heading-has-content",
+    "Enforce heading (`h1`, `h2`, etc) elements contain accessible content.",
+    [
+      {
+        "label": "Rule documentation",
+        "url": "https://github.com/es-tooling/eslint-plugin-jsx-a11y-x/tree/HEAD/docs/rules/heading-has-content.md"
+      }
+    ],
+    { "key": "exceptions", "rule": "jsx-a11y/heading-has-content" },
+    "jsx-a11y/html-has-lang",
+    "Enforce `<html>` element has `lang` prop.",
+    [
+      {
+        "label": "Rule documentation",
+        "url": "https://github.com/es-tooling/eslint-plugin-jsx-a11y-x/tree/HEAD/docs/rules/html-has-lang.md"
+      }
+    ],
+    { "key": "exceptions", "rule": "jsx-a11y/html-has-lang" },
+    "jsx-a11y/iframe-has-title",
+    "Enforce iframe elements have a title attribute.",
+    [
+      {
+        "label": "Rule documentation",
+        "url": "https://github.com/es-tooling/eslint-plugin-jsx-a11y-x/tree/HEAD/docs/rules/iframe-has-title.md"
+      }
+    ],
+    { "key": "exceptions", "rule": "jsx-a11y/iframe-has-title" },
+    "jsx-a11y/img-redundant-alt",
+    "Enforce `<img>` alt prop does not contain the word \"image\", \"picture\", or \"photo\".",
+    [
+      {
+        "label": "Rule documentation",
+        "url": "https://github.com/es-tooling/eslint-plugin-jsx-a11y-x/tree/HEAD/docs/rules/img-redundant-alt.md"
+      }
+    ],
+    { "key": "exceptions", "rule": "jsx-a11y/img-redundant-alt" },
+    "jsx-a11y/interactive-supports-focus",
+    "Enforce that elements with interactive handlers like `onClick` must be focusable.",
+    [
+      {
+        "label": "Rule documentation",
+        "url": "https://github.com/es-tooling/eslint-plugin-jsx-a11y-x/tree/HEAD/docs/rules/interactive-supports-focus.md"
+      }
+    ],
+    { "key": "exceptions", "rule": "jsx-a11y/interactive-supports-focus" },
+    "jsx-a11y/label-has-associated-control",
+    "Enforce that a `label` tag has a text label and an associated control.",
+    [
+      {
+        "label": "Rule documentation",
+        "url": "https://github.com/es-tooling/eslint-plugin-jsx-a11y-x/tree/HEAD/docs/rules/label-has-associated-control.md"
+      }
+    ],
+    { "key": "exceptions", "rule": "jsx-a11y/label-has-associated-control" },
+    "jsx-a11y/media-has-caption",
+    "Enforces that `<audio>` and `<video>` elements must have a `<track>` for captions.",
+    [
+      {
+        "label": "Rule documentation",
+        "url": "https://github.com/es-tooling/eslint-plugin-jsx-a11y-x/tree/HEAD/docs/rules/media-has-caption.md"
+      }
+    ],
+    { "key": "exceptions", "rule": "jsx-a11y/media-has-caption" },
+    "jsx-a11y/mouse-events-have-key-events",
+    "Enforce that `onMouseOver`/`onMouseOut` are accompanied by `onFocus`/`onBlur` for keyboard-only users.",
+    [
+      {
+        "label": "Rule documentation",
+        "url": "https://github.com/es-tooling/eslint-plugin-jsx-a11y-x/tree/HEAD/docs/rules/mouse-events-have-key-events.md"
+      }
+    ],
+    { "key": "exceptions", "rule": "jsx-a11y/mouse-events-have-key-events" },
+    "jsx-a11y/no-access-key",
+    "Enforce that the `accessKey` prop is not used on any element to avoid complications with keyboard commands used by a screen reader.",
+    [
+      {
+        "label": "Rule documentation",
+        "url": "https://github.com/es-tooling/eslint-plugin-jsx-a11y-x/tree/HEAD/docs/rules/no-access-key.md"
+      }
+    ],
+    { "key": "exceptions", "rule": "jsx-a11y/no-access-key" },
+    "jsx-a11y/no-aria-hidden-on-focusable",
+    "Disallow `aria-hidden=\"true\"` from being set on focusable elements.",
+    [
+      {
+        "label": "Rule documentation",
+        "url": "https://github.com/es-tooling/eslint-plugin-jsx-a11y-x/tree/HEAD/docs/rules/no-aria-hidden-on-focusable.md"
+      }
+    ],
+    { "key": "exceptions", "rule": "jsx-a11y/no-aria-hidden-on-focusable" },
+    "jsx-a11y/no-autofocus",
+    "Enforce autoFocus prop is not enabled.",
+    [
+      {
+        "label": "Rule documentation",
+        "url": "https://github.com/es-tooling/eslint-plugin-jsx-a11y-x/tree/HEAD/docs/rules/no-autofocus.md"
+      }
+    ],
+    { "key": "exceptions", "rule": "jsx-a11y/no-autofocus" },
+    "jsx-a11y/no-distracting-elements",
+    "Enforce distracting elements are not used.",
+    [
+      {
+        "label": "Rule documentation",
+        "url": "https://github.com/es-tooling/eslint-plugin-jsx-a11y-x/tree/HEAD/docs/rules/no-distracting-elements.md"
+      }
+    ],
+    { "key": "exceptions", "rule": "jsx-a11y/no-distracting-elements" },
+    "jsx-a11y/no-interactive-element-to-noninteractive-role",
+    "Disallow interactive elements being assigned non-interactive roles.",
+    [
+      {
+        "label": "Rule documentation",
+        "url": "https://github.com/es-tooling/eslint-plugin-jsx-a11y-x/tree/HEAD/docs/rules/no-interactive-element-to-noninteractive-role.md"
+      }
+    ],
+    { "key": "exceptions", "rule": "jsx-a11y/no-interactive-element-to-noninteractive-role" },
+    "jsx-a11y/no-noninteractive-element-interactions",
+    "Disallow non-interactive elements being assigned mouse or keyboard event listeners.",
+    [
+      {
+        "label": "Rule documentation",
+        "url": "https://github.com/es-tooling/eslint-plugin-jsx-a11y-x/tree/HEAD/docs/rules/no-noninteractive-element-interactions.md"
+      }
+    ],
+    { "key": "exceptions", "rule": "jsx-a11y/no-noninteractive-element-interactions" },
+    "jsx-a11y/no-noninteractive-element-to-interactive-role",
+    "Disallow non-interactive elements being assigned interactive roles.",
+    [
+      {
+        "label": "Rule documentation",
+        "url": "https://github.com/es-tooling/eslint-plugin-jsx-a11y-x/tree/HEAD/docs/rules/no-noninteractive-element-to-interactive-role.md"
+      }
+    ],
+    { "key": "exceptions", "rule": "jsx-a11y/no-noninteractive-element-to-interactive-role" },
+    "jsx-a11y/no-noninteractive-tabindex",
+    "Enforce `tabIndex` only be declared on interactive elements.",
+    [
+      {
+        "label": "Rule documentation",
+        "url": "https://github.com/es-tooling/eslint-plugin-jsx-a11y-x/tree/HEAD/docs/rules/no-noninteractive-tabindex.md"
+      }
+    ],
+    { "key": "exceptions", "rule": "jsx-a11y/no-noninteractive-tabindex" },
+    "jsx-a11y/no-redundant-roles",
+    "Enforce explicit role property is not the same as implicit/default role property on element.",
+    [
+      {
+        "label": "Rule documentation",
+        "url": "https://github.com/es-tooling/eslint-plugin-jsx-a11y-x/tree/HEAD/docs/rules/no-redundant-roles.md"
+      }
+    ],
+    { "key": "exceptions", "rule": "jsx-a11y/no-redundant-roles" },
+    "jsx-a11y/no-static-element-interactions",
+    "Enforce that non-interactive, visible elements (such as `<div>`) that have click handlers use the role attribute.",
+    [
+      {
+        "label": "Rule documentation",
+        "url": "https://github.com/es-tooling/eslint-plugin-jsx-a11y-x/tree/HEAD/docs/rules/no-static-element-interactions.md"
+      }
+    ],
+    { "key": "exceptions", "rule": "jsx-a11y/no-static-element-interactions" },
+    "jsx-a11y/prefer-tag-over-role",
+    "Enforces using semantic DOM elements over the ARIA `role` property.",
+    [
+      {
+        "label": "Rule documentation",
+        "url": "https://github.com/es-tooling/eslint-plugin-jsx-a11y-x/tree/HEAD/docs/rules/prefer-tag-over-role.md"
+      }
+    ],
+    { "key": "exceptions", "rule": "jsx-a11y/prefer-tag-over-role" },
+    "jsx-a11y/role-has-required-aria-props",
+    "Enforce that elements with ARIA roles must have all required attributes for that role.",
+    [
+      {
+        "label": "Rule documentation",
+        "url": "https://github.com/es-tooling/eslint-plugin-jsx-a11y-x/tree/HEAD/docs/rules/role-has-required-aria-props.md"
+      }
+    ],
+    { "key": "exceptions", "rule": "jsx-a11y/role-has-required-aria-props" },
+    "jsx-a11y/role-supports-aria-props",
+    "Enforce that elements with explicit or implicit roles defined contain only `aria-*` properties supported by that `role`.",
+    [
+      {
+        "label": "Rule documentation",
+        "url": "https://github.com/es-tooling/eslint-plugin-jsx-a11y-x/tree/HEAD/docs/rules/role-supports-aria-props.md"
+      }
+    ],
+    { "key": "exceptions", "rule": "jsx-a11y/role-supports-aria-props" },
+    "jsx-a11y/scope",
+    "Enforce `scope` prop is only used on `<th>` elements.",
+    [
+      {
+        "label": "Rule documentation",
+        "url": "https://github.com/es-tooling/eslint-plugin-jsx-a11y-x/tree/HEAD/docs/rules/scope.md"
+      }
+    ],
+    { "key": "exceptions", "rule": "jsx-a11y/scope" },
+    "jsx-a11y/tabindex-no-positive",
+    "Enforce `tabIndex` value is not greater than zero.",
+    [
+      {
+        "label": "Rule documentation",
+        "url": "https://github.com/es-tooling/eslint-plugin-jsx-a11y-x/tree/HEAD/docs/rules/tabindex-no-positive.md"
+      }
+    ],
+    { "key": "exceptions", "rule": "jsx-a11y/tabindex-no-positive" },
+    "react-dom/no-dangerously-set-innerhtml",
+    "Disallows DOM elements from using 'dangerouslySetInnerHTML'.",
+    "The React scope turns on the rules of this plugin, so that components follow the rules of React: hooks, effects, state and the DOM.",
+    [
+      {
+        "label": "Rule documentation",
+        "url": "https://eslint-react.xyz/docs/rules/dom-no-dangerously-set-innerhtml"
+      }
+    ],
+    { "key": "exceptions", "rule": "react-dom/no-dangerously-set-innerhtml" },
+    "react-dom/no-missing-button-type",
+    "Enforces an explicit 'type' attribute for 'button' elements.",
+    [
+      {
+        "label": "Rule documentation",
+        "url": "https://eslint-react.xyz/docs/rules/dom-no-missing-button-type"
+      }
+    ],
+    { "key": "exceptions", "rule": "react-dom/no-missing-button-type" },
+    "react-dom/no-script-url",
+    "Disallows 'javascript:' URLs as attribute values.",
+    [
+      {
+        "label": "Rule documentation",
+        "url": "https://eslint-react.xyz/docs/rules/dom-no-script-url"
+      }
+    ],
+    { "key": "exceptions", "rule": "react-dom/no-script-url" },
+    "react-dom/no-unsafe-target-blank",
+    "Disallows 'target=\"_blank\"' without 'rel=\"noreferrer noopener\"'.",
+    [
+      {
+        "label": "Rule documentation",
+        "url": "https://eslint-react.xyz/docs/rules/dom-no-unsafe-target-blank"
+      }
+    ],
+    { "key": "exceptions", "rule": "react-dom/no-unsafe-target-blank" },
+    "react-hooks/exhaustive-deps",
+    "verifies the list of dependencies for Hooks like useEffect and similar",
+    [{ "label": "Rule documentation", "url": "https://github.com/facebook/react/issues/14920" }],
+    { "key": "exceptions", "rule": "react-hooks/exhaustive-deps" },
+    "react-hooks/rules-of-hooks",
+    "enforces the Rules of Hooks",
+    [{ "label": "Rule documentation", "url": "https://react.dev/reference/rules/rules-of-hooks" }],
+    { "key": "exceptions", "rule": "react-hooks/rules-of-hooks" },
+    "react-web-api/no-leaked-event-listener",
+    "Enforces that every 'addEventListener' in a component or custom hook has a corresponding 'removeEventListener'.",
+    [
+      {
+        "label": "Rule documentation",
+        "url": "https://eslint-react.xyz/docs/rules/web-api-no-leaked-event-listener"
+      }
+    ],
+    { "key": "exceptions", "rule": "react-web-api/no-leaked-event-listener" },
+    "react-web-api/no-leaked-intersection-observer",
+    "Enforces that every 'IntersectionObserver' created in a component or custom hook has a corresponding 'IntersectionObserver.disconnect()'.",
+    [
+      {
+        "label": "Rule documentation",
+        "url": "https://eslint-react.xyz/docs/rules/web-api-no-leaked-intersection-observer"
+      }
+    ],
+    { "key": "exceptions", "rule": "react-web-api/no-leaked-intersection-observer" },
+    "react-web-api/no-leaked-interval",
+    "Enforces that every 'setInterval' in a component or custom hook has a corresponding 'clearInterval'.",
+    [
+      {
+        "label": "Rule documentation",
+        "url": "https://eslint-react.xyz/docs/rules/web-api-no-leaked-interval"
+      }
+    ],
+    { "key": "exceptions", "rule": "react-web-api/no-leaked-interval" },
+    "react-web-api/no-leaked-resize-observer",
+    "Enforces that every 'ResizeObserver' created in a component or custom hook has a corresponding 'ResizeObserver.disconnect()'.",
+    [
+      {
+        "label": "Rule documentation",
+        "url": "https://eslint-react.xyz/docs/rules/web-api-no-leaked-resize-observer"
+      }
+    ],
+    { "key": "exceptions", "rule": "react-web-api/no-leaked-resize-observer" },
+    "react-web-api/no-leaked-timeout",
+    "Enforces that every 'setTimeout' in a component or custom hook has a corresponding 'clearTimeout'.",
+    [
+      {
+        "label": "Rule documentation",
+        "url": "https://eslint-react.xyz/docs/rules/web-api-no-leaked-timeout"
+      }
+    ],
+    { "key": "exceptions", "rule": "react-web-api/no-leaked-timeout" },
+    "react-x/immutability",
+    "Validates against mutating props, state, and other immutable values, including through functions passed into frozen contexts such as JSX props, hook arguments, and hook return values.",
+    [{ "label": "Rule documentation", "url": "https://eslint-react.xyz/docs/rules/immutability" }],
+    { "key": "exceptions", "rule": "react-x/immutability" },
+    "react-x/no-array-index-key",
+    "Disallows using an item's index in the array as its key.",
+    [
+      {
+        "label": "Rule documentation",
+        "url": "https://eslint-react.xyz/docs/rules/no-array-index-key"
+      }
+    ],
+    { "key": "exceptions", "rule": "react-x/no-array-index-key" },
+    "react-x/no-class-component",
+    "Disallows class components except for error boundaries.",
+    [
+      {
+        "label": "Rule documentation",
+        "url": "https://eslint-react.xyz/docs/rules/no-class-component"
+      }
+    ],
+    { "key": "exceptions", "rule": "react-x/no-class-component" },
+    "react-x/no-context-provider",
+    "Replaces usage of '<Context.Provider>' with '<Context>'.",
+    [
+      {
+        "label": "Rule documentation",
+        "url": "https://eslint-react.xyz/docs/rules/no-context-provider"
+      }
+    ],
+    { "key": "exceptions", "rule": "react-x/no-context-provider" },
+    "react-x/no-duplicate-key",
+    "Prevents duplicate 'key' props on sibling elements when rendering lists.",
+    [
+      {
+        "label": "Rule documentation",
+        "url": "https://eslint-react.xyz/docs/rules/no-duplicate-key"
+      }
+    ],
+    { "key": "exceptions", "rule": "react-x/no-duplicate-key" },
+    "react-x/no-forward-ref",
+    "Replaces usage of 'forwardRef' with passing 'ref' as a prop.",
+    [
+      { "label": "Rule documentation", "url": "https://eslint-react.xyz/docs/rules/no-forward-ref" }
+    ],
+    { "key": "exceptions", "rule": "react-x/no-forward-ref" },
+    "react-x/no-leaked-conditional-rendering",
+    "Prevents problematic leaked values from being rendered.",
+    [
+      {
+        "label": "Rule documentation",
+        "url": "https://eslint-react.xyz/docs/rules/no-leaked-conditional-rendering"
+      }
+    ],
+    { "key": "exceptions", "rule": "react-x/no-leaked-conditional-rendering" },
+    "react-x/no-missing-key",
+    "Disallows missing 'key' on items in list rendering.",
+    [
+      { "label": "Rule documentation", "url": "https://eslint-react.xyz/docs/rules/no-missing-key" }
+    ],
+    { "key": "exceptions", "rule": "react-x/no-missing-key" },
+    "react-x/no-nested-component-definitions",
+    "Disallows nesting component definitions inside other components.",
+    [
+      {
+        "label": "Rule documentation",
+        "url": "https://eslint-react.xyz/docs/rules/no-nested-component-definitions"
+      }
+    ],
+    { "key": "exceptions", "rule": "react-x/no-nested-component-definitions" },
+    "react-x/no-nested-lazy-component-declarations",
+    "Disallows nesting lazy component declarations inside other components or hooks.",
+    [
+      {
+        "label": "Rule documentation",
+        "url": "https://eslint-react.xyz/docs/rules/no-nested-lazy-component-declarations"
+      }
+    ],
+    { "key": "exceptions", "rule": "react-x/no-nested-lazy-component-declarations" },
+    "react-x/no-unstable-context-value",
+    "Prevents non-stable values (i.e., object literals) from being used as a value for 'Context.Provider'.",
+    [
+      {
+        "label": "Rule documentation",
+        "url": "https://eslint-react.xyz/docs/rules/no-unstable-context-value"
+      }
+    ],
+    { "key": "exceptions", "rule": "react-x/no-unstable-context-value" },
+    "react-x/no-unstable-default-props",
+    "Prevents using referential-type values as default props in object destructuring.",
+    [
+      {
+        "label": "Rule documentation",
+        "url": "https://eslint-react.xyz/docs/rules/no-unstable-default-props"
+      }
+    ],
+    { "key": "exceptions", "rule": "react-x/no-unstable-default-props" },
+    "react-x/purity",
+    "Validates that components and hooks are pure by checking that they do not call known-impure functions during render.",
+    [{ "label": "Rule documentation", "url": "https://eslint-react.xyz/docs/rules/purity" }],
+    { "key": "exceptions", "rule": "react-x/purity" },
+    "react-x/refs",
+    "Validates correct usage of refs by checking that 'ref.current' is not read or written during render.",
+    [{ "label": "Rule documentation", "url": "https://eslint-react.xyz/docs/rules/refs" }],
+    { "key": "exceptions", "rule": "react-x/refs" },
+    "react-x/set-state-in-render",
+    "Validates against unconditionally setting state during render, which can trigger additional renders and potential infinite render loops.",
+    [
+      {
+        "label": "Rule documentation",
+        "url": "https://eslint-react.xyz/docs/rules/set-state-in-render"
+      }
+    ],
+    { "key": "exceptions", "rule": "react-x/set-state-in-render" },
+    "react-x/static-components",
+    "Validates that components are static, not recreated every render.",
+    [
+      {
+        "label": "Rule documentation",
+        "url": "https://eslint-react.xyz/docs/rules/static-components"
+      }
+    ],
+    { "key": "exceptions", "rule": "react-x/static-components" },
+    "regexp/no-super-linear-backtracking",
+    "disallow exponential and polynomial backtracking",
+    "The preset turns on this rule to keep regular expressions safe and readable.",
+    [
+      {
+        "label": "Rule documentation",
+        "url": "https://ota-meshi.github.io/eslint-plugin-regexp/rules/no-super-linear-backtracking.html"
+      }
+    ],
+    { "key": "exceptions", "rule": "regexp/no-super-linear-backtracking" },
+    "testing-library/await-async-events",
+    "Enforce promises from async event methods are handled",
+    "The React scope turns on the Testing Library rules for component tests: query by role, user-event, no implementation details.",
+    [
+      {
+        "label": "Rule documentation",
+        "url": "https://github.com/testing-library/eslint-plugin-testing-library/tree/main/docs/rules/await-async-events.md"
+      }
+    ],
+    { "key": "exceptions", "rule": "testing-library/await-async-events" },
+    "testing-library/await-async-queries",
+    "Enforce promises from async queries to be handled",
+    [
+      {
+        "label": "Rule documentation",
+        "url": "https://github.com/testing-library/eslint-plugin-testing-library/tree/main/docs/rules/await-async-queries.md"
+      }
+    ],
+    { "key": "exceptions", "rule": "testing-library/await-async-queries" },
+    "testing-library/await-async-utils",
+    "Enforce promises from async utils to be awaited properly",
+    [
+      {
+        "label": "Rule documentation",
+        "url": "https://github.com/testing-library/eslint-plugin-testing-library/tree/main/docs/rules/await-async-utils.md"
+      }
+    ],
+    { "key": "exceptions", "rule": "testing-library/await-async-utils" },
+    "testing-library/no-debugging-utils",
+    "Disallow the use of debugging utilities like `debug`",
+    [
+      {
+        "label": "Rule documentation",
+        "url": "https://github.com/testing-library/eslint-plugin-testing-library/tree/main/docs/rules/no-debugging-utils.md"
+      }
+    ],
+    { "key": "exceptions", "rule": "testing-library/no-debugging-utils" },
+    "testing-library/no-manual-cleanup",
+    "Disallow the use of `cleanup`",
+    [
+      {
+        "label": "Rule documentation",
+        "url": "https://github.com/testing-library/eslint-plugin-testing-library/tree/main/docs/rules/no-manual-cleanup.md"
+      }
+    ],
+    { "key": "exceptions", "rule": "testing-library/no-manual-cleanup" },
+    "testing-library/no-node-access",
+    "Disallow direct Node access",
+    [
+      {
+        "label": "Rule documentation",
+        "url": "https://github.com/testing-library/eslint-plugin-testing-library/tree/main/docs/rules/no-node-access.md"
+      }
+    ],
+    { "key": "exceptions", "rule": "testing-library/no-node-access" },
+    "testing-library/no-test-id-queries",
+    "Ensure no `data-testid` queries are used",
+    [
+      {
+        "label": "Rule documentation",
+        "url": "https://github.com/testing-library/eslint-plugin-testing-library/tree/main/docs/rules/no-test-id-queries.md"
+      }
+    ],
+    { "key": "exceptions", "rule": "testing-library/no-test-id-queries" },
+    "testing-library/no-unnecessary-act",
+    "Disallow wrapping Testing Library utils or empty callbacks in `act`",
+    [
+      {
+        "label": "Rule documentation",
+        "url": "https://github.com/testing-library/eslint-plugin-testing-library/tree/main/docs/rules/no-unnecessary-act.md"
+      }
+    ],
+    { "key": "exceptions", "rule": "testing-library/no-unnecessary-act" },
+    "testing-library/prefer-presence-queries",
+    "Ensure appropriate `get*`/`query*` queries are used with their respective matchers",
+    [
+      {
+        "label": "Rule documentation",
+        "url": "https://github.com/testing-library/eslint-plugin-testing-library/tree/main/docs/rules/prefer-presence-queries.md"
+      }
+    ],
+    { "key": "exceptions", "rule": "testing-library/prefer-presence-queries" },
+    "testing-library/prefer-screen-queries",
+    "Suggest using `screen` while querying",
+    [
+      {
+        "label": "Rule documentation",
+        "url": "https://github.com/testing-library/eslint-plugin-testing-library/tree/main/docs/rules/prefer-screen-queries.md"
+      }
+    ],
+    { "key": "exceptions", "rule": "testing-library/prefer-screen-queries" },
+    "testing-library/prefer-user-event",
+    "Suggest using `userEvent` over `fireEvent` for simulating user interactions",
+    [
+      {
+        "label": "Rule documentation",
+        "url": "https://github.com/testing-library/eslint-plugin-testing-library/tree/main/docs/rules/prefer-user-event.md"
+      }
+    ],
+    { "key": "exceptions", "rule": "testing-library/prefer-user-event" },
+    "testing-library/prefer-user-event-setup",
+    "Suggest using userEvent with setup() instead of direct methods",
+    [
+      {
+        "label": "Rule documentation",
+        "url": "https://github.com/testing-library/eslint-plugin-testing-library/tree/main/docs/rules/prefer-user-event-setup.md"
+      }
+    ],
+    { "key": "exceptions", "rule": "testing-library/prefer-user-event-setup" },
+    "vitest/expect-expect",
+    "enforce having expectation in test body",
+    "Part of the recommended rules of the Vitest plugin, which the presets turn on for tests.",
+    [
+      {
+        "label": "Rule documentation",
+        "url": "https://github.com/vitest-dev/eslint-plugin-vitest/blob/main/docs/rules/expect-expect.md"
+      }
+    ],
+    [
+      {
+        "label": "Strict preset guide",
+        "path": "docs/typescript-strict-preset.md",
+        "anchor": "inside-tests"
+      }
+    ],
+    { "key": "exceptions", "rule": "vitest/expect-expect" },
+    "vitest/no-commented-out-tests",
+    "disallow commented out tests",
+    [
+      {
+        "label": "Rule documentation",
+        "url": "https://github.com/vitest-dev/eslint-plugin-vitest/blob/main/docs/rules/no-commented-out-tests.md"
+      }
+    ],
+    { "key": "exceptions", "rule": "vitest/no-commented-out-tests" },
+    "vitest/no-conditional-expect",
+    "disallow conditional expects",
+    [
+      {
+        "label": "Rule documentation",
+        "url": "https://github.com/vitest-dev/eslint-plugin-vitest/blob/main/docs/rules/no-conditional-expect.md"
+      }
+    ],
+    { "key": "exceptions", "rule": "vitest/no-conditional-expect" },
+    "vitest/no-conditional-in-test",
+    "disallow conditional tests",
+    "The preset turns on this rule of the Vitest plugin for tests.",
+    [
+      {
+        "label": "Rule documentation",
+        "url": "https://github.com/vitest-dev/eslint-plugin-vitest/blob/main/docs/rules/no-conditional-in-test.md"
+      }
+    ],
+    { "key": "exceptions", "rule": "vitest/no-conditional-in-test" },
+    "vitest/no-disabled-tests",
+    "disallow disabled tests",
+    [
+      {
+        "label": "Rule documentation",
+        "url": "https://github.com/vitest-dev/eslint-plugin-vitest/blob/main/docs/rules/no-disabled-tests.md"
+      }
+    ],
+    { "key": "exceptions", "rule": "vitest/no-disabled-tests" },
+    "vitest/no-focused-tests",
+    "disallow focused tests",
+    [
+      {
+        "label": "Rule documentation",
+        "url": "https://github.com/vitest-dev/eslint-plugin-vitest/blob/main/docs/rules/no-focused-tests.md"
+      }
+    ],
+    { "key": "exceptions", "rule": "vitest/no-focused-tests" },
+    "vitest/no-identical-title",
+    "disallow identical titles",
+    [
+      {
+        "label": "Rule documentation",
+        "url": "https://github.com/vitest-dev/eslint-plugin-vitest/blob/main/docs/rules/no-identical-title.md"
+      }
+    ],
+    { "key": "exceptions", "rule": "vitest/no-identical-title" },
+    "vitest/no-import-node-test",
+    "disallow importing `node:test`",
+    [
+      {
+        "label": "Rule documentation",
+        "url": "https://github.com/vitest-dev/eslint-plugin-vitest/blob/main/docs/rules/no-import-node-test.md"
+      }
+    ],
+    { "key": "exceptions", "rule": "vitest/no-import-node-test" },
+    "vitest/no-interpolation-in-snapshots",
+    "disallow string interpolation in snapshots",
+    [
+      {
+        "label": "Rule documentation",
+        "url": "https://github.com/vitest-dev/eslint-plugin-vitest/blob/main/docs/rules/no-interpolation-in-snapshots.md"
+      }
+    ],
+    { "key": "exceptions", "rule": "vitest/no-interpolation-in-snapshots" },
+    "vitest/no-mocks-import",
+    "disallow importing from __mocks__ directory",
+    [
+      {
+        "label": "Rule documentation",
+        "url": "https://github.com/vitest-dev/eslint-plugin-vitest/blob/main/docs/rules/no-mocks-import.md"
+      }
+    ],
+    { "key": "exceptions", "rule": "vitest/no-mocks-import" },
+    "vitest/no-restricted-matchers",
+    "disallow the use of certain matchers",
+    "The presets list the forms they ban in the options of this rule. Each form has a message that names the allowed form.",
+    [
+      {
+        "label": "Rule documentation",
+        "url": "https://github.com/vitest-dev/eslint-plugin-vitest/blob/main/docs/rules/no-restricted-matchers.md"
+      }
+    ],
+    { "key": "exceptions", "rule": "vitest/no-restricted-matchers" },
+    [
+      {
+        "label": "toBeDefined",
+        "message": "`toBeDefined` passes for any value but undefined. Assert the value itself with `toBe` or `toEqual`. An exception fits only when the value cannot be pinned."
+      },
+      {
+        "label": "resolves.toBeDefined",
+        "message": "`toBeDefined` passes for any value but undefined. Assert the value itself with `toBe` or `toEqual`. An exception fits only when the value cannot be pinned."
+      },
+      {
+        "label": "rejects.toBeDefined",
+        "message": "`toBeDefined` passes for any value but undefined. Assert the value itself with `toBe` or `toEqual`. An exception fits only when the value cannot be pinned."
+      },
+      {
+        "label": "not.toBeUndefined",
+        "message": "`not.toBeUndefined` passes for any value but undefined. Assert the value itself with `toBe` or `toEqual`. An exception fits only when the value cannot be pinned."
+      },
+      {
+        "label": "resolves.not.toBeUndefined",
+        "message": "`not.toBeUndefined` passes for any value but undefined. Assert the value itself with `toBe` or `toEqual`. An exception fits only when the value cannot be pinned."
+      },
+      {
+        "label": "rejects.not.toBeUndefined",
+        "message": "`not.toBeUndefined` passes for any value but undefined. Assert the value itself with `toBe` or `toEqual`. An exception fits only when the value cannot be pinned."
+      },
+      {
+        "label": "not.toBeNull",
+        "message": "`not.toBeNull` passes for any value but null. Assert the value itself with `toBe` or `toEqual`. An exception fits only when the value cannot be pinned."
+      },
+      {
+        "label": "resolves.not.toBeNull",
+        "message": "`not.toBeNull` passes for any value but null. Assert the value itself with `toBe` or `toEqual`. An exception fits only when the value cannot be pinned."
+      },
+      {
+        "label": "rejects.not.toBeNull",
+        "message": "`not.toBeNull` passes for any value but null. Assert the value itself with `toBe` or `toEqual`. An exception fits only when the value cannot be pinned."
+      },
+      {
+        "label": "toBeTruthy",
+        "message": "`toBeTruthy` passes for any truthy value. Assert the exact value with `toBe` or `toEqual`. An exception fits only when the value cannot be pinned."
+      },
+      {
+        "label": "resolves.toBeTruthy",
+        "message": "`toBeTruthy` passes for any truthy value. Assert the exact value with `toBe` or `toEqual`. An exception fits only when the value cannot be pinned."
+      },
+      {
+        "label": "rejects.toBeTruthy",
+        "message": "`toBeTruthy` passes for any truthy value. Assert the exact value with `toBe` or `toEqual`. An exception fits only when the value cannot be pinned."
+      },
+      {
+        "label": "toBeFalsy",
+        "message": "`toBeFalsy` passes for any falsy value. Assert the exact value with `toBe` or `toEqual`. An exception fits only when the value cannot be pinned."
+      },
+      {
+        "label": "resolves.toBeFalsy",
+        "message": "`toBeFalsy` passes for any falsy value. Assert the exact value with `toBe` or `toEqual`. An exception fits only when the value cannot be pinned."
+      },
+      {
+        "label": "rejects.toBeFalsy",
+        "message": "`toBeFalsy` passes for any falsy value. Assert the exact value with `toBe` or `toEqual`. An exception fits only when the value cannot be pinned."
+      }
+    ],
+    "vitest/no-standalone-expect",
+    "disallow using `expect` outside of `it` or `test` blocks",
+    [
+      {
+        "label": "Rule documentation",
+        "url": "https://github.com/vitest-dev/eslint-plugin-vitest/blob/main/docs/rules/no-standalone-expect.md"
+      }
+    ],
+    { "key": "exceptions", "rule": "vitest/no-standalone-expect" },
+    "vitest/no-unneeded-async-expect-function",
+    "Disallow unnecessary async function wrapper for expected promises",
+    [
+      {
+        "label": "Rule documentation",
+        "url": "https://github.com/vitest-dev/eslint-plugin-vitest/blob/main/docs/rules/no-unneeded-async-expect-function.md"
+      }
+    ],
+    { "key": "exceptions", "rule": "vitest/no-unneeded-async-expect-function" },
+    "vitest/prefer-called-exactly-once-with",
+    "Prefer `toHaveBeenCalledExactlyOnceWith` over `toHaveBeenCalledOnce` and `toHaveBeenCalledWith`",
+    [
+      {
+        "label": "Rule documentation",
+        "url": "https://github.com/vitest-dev/eslint-plugin-vitest/blob/main/docs/rules/prefer-called-exactly-once-with.md"
+      }
+    ],
+    { "key": "exceptions", "rule": "vitest/prefer-called-exactly-once-with" },
+    "vitest/prefer-called-with",
+    "enforce using `toBeCalledWith()` or `toHaveBeenCalledWith()`",
+    [
+      {
+        "label": "Rule documentation",
+        "url": "https://github.com/vitest-dev/eslint-plugin-vitest/blob/main/docs/rules/prefer-called-with.md"
+      }
+    ],
+    { "key": "exceptions", "rule": "vitest/prefer-called-with" },
+    "vitest/require-awaited-expect-poll",
+    "ensure that every `expect.poll` call is awaited",
+    [
+      {
+        "label": "Rule documentation",
+        "url": "https://github.com/vitest-dev/eslint-plugin-vitest/blob/main/docs/rules/require-awaited-expect-poll.md"
+      }
+    ],
+    { "key": "exceptions", "rule": "vitest/require-awaited-expect-poll" },
+    "vitest/require-local-test-context-for-concurrent-snapshots",
+    "require local Test Context for concurrent snapshot tests",
+    [
+      {
+        "label": "Rule documentation",
+        "url": "https://github.com/vitest-dev/eslint-plugin-vitest/blob/main/docs/rules/require-local-test-context-for-concurrent-snapshots.md"
+      }
+    ],
+    { "key": "exceptions", "rule": "vitest/require-local-test-context-for-concurrent-snapshots" },
+    "vitest/require-to-throw-message",
+    "require toThrow() to be called with an error message",
+    [
+      {
+        "label": "Rule documentation",
+        "url": "https://github.com/vitest-dev/eslint-plugin-vitest/blob/main/docs/rules/require-to-throw-message.md"
+      }
+    ],
+    { "key": "exceptions", "rule": "vitest/require-to-throw-message" },
+    "vitest/valid-describe-callback",
+    "enforce valid describe callback",
+    [
+      {
+        "label": "Rule documentation",
+        "url": "https://github.com/vitest-dev/eslint-plugin-vitest/blob/main/docs/rules/valid-describe-callback.md"
+      }
+    ],
+    { "key": "exceptions", "rule": "vitest/valid-describe-callback" },
+    "vitest/valid-expect",
+    "enforce valid `expect()` usage",
+    [
+      {
+        "label": "Rule documentation",
+        "url": "https://github.com/vitest-dev/eslint-plugin-vitest/blob/main/docs/rules/valid-expect.md"
+      }
+    ],
+    { "key": "exceptions", "rule": "vitest/valid-expect" },
+    "vitest/valid-expect-in-promise",
+    "require promises that have expectations in their chain to be valid",
+    [
+      {
+        "label": "Rule documentation",
+        "url": "https://github.com/vitest-dev/eslint-plugin-vitest/blob/main/docs/rules/valid-expect-in-promise.md"
+      }
+    ],
+    { "key": "exceptions", "rule": "vitest/valid-expect-in-promise" },
+    "vitest/valid-title",
+    "enforce valid titles",
+    [
+      {
+        "label": "Rule documentation",
+        "url": "https://github.com/vitest-dev/eslint-plugin-vitest/blob/main/docs/rules/valid-title.md"
+      }
+    ],
+    { "key": "exceptions", "rule": "vitest/valid-title" }
+  ],
+  "entries": [
+    [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, -1],
+    [0, 10, 2, 3, 11, 5, 6, 12, 8, 13, -1],
+    [0, 14, 2, 3, 15, 5, 6, 16, 8, 17, -1],
+    [0, 18, 2, 3, 19, 5, 6, 20, 8, 21, -1],
+    [0, 22, 2, 3, 23, 5, 6, -1, 8, 24, -1],
+    [0, 25, 2, 3, 26, 5, 6, 27, 8, 28, -1],
+    [0, 29, 2, 3, 30, 5, 6, 31, 8, 32, -1],
+    [0, 33, 2, 3, 34, 5, 6, 35, 8, 36, -1],
+    [0, 37, 2, 3, 38, 5, 6, 39, 8, 40, -1],
+    [0, 41, 2, 3, 42, 5, 6, 43, 8, 44, -1],
+    [0, 45, 2, 3, 46, 5, 6, 47, 8, 48, -1],
+    [0, 49, 2, 3, 50, 5, 6, 51, 8, 52, -1],
+    [0, 53, 2, 3, 54, 5, 6, 55, 8, 56, -1],
+    [0, 57, 2, 58, 59, 60, -1, 61, 62, 63, -1],
+    [0, 64, 2, 58, 65, 60, -1, 66, 62, 67, -1],
+    [0, 68, 2, 58, 69, 60, -1, 70, 62, 71, -1],
+    [0, 72, 2, 58, 73, 60, -1, 74, 62, 75, -1],
+    [0, 76, 2, 3, 77, 78, 79, 80, 81, 82, -1],
+    [0, 83, 2, 3, 84, 78, 79, 85, 81, 86, -1],
+    [0, 87, 2, 3, 88, 78, 79, 89, 81, 90, -1],
+    [0, 91, 2, 3, 92, 78, 79, 93, 81, 94, -1],
+    [0, 95, 2, 3, 96, 78, 79, 97, 81, 98, -1],
+    [0, 99, 2, 3, 100, 78, 79, 101, 81, 102, -1],
+    [0, 103, 2, 3, 104, 78, 79, 105, 81, 106, -1],
+    [0, 107, 2, 3, 108, 78, 79, 109, 81, 110, -1],
+    [0, 111, 2, 3, 112, 78, 79, 113, 81, 114, -1],
+    [0, 115, 2, 3, 116, 78, 79, 117, 81, 118, -1],
+    [0, 119, 2, 3, 120, 78, 79, 121, 81, 122, -1],
+    [0, 123, 2, 3, 124, 78, 79, 125, 81, 126, -1],
+    [0, 127, 2, 3, 128, 78, 79, 129, 81, 130, -1],
+    [0, 131, 2, 3, 132, 78, 79, 133, 81, 134, -1],
+    [0, 135, 2, 3, 136, 78, 79, 137, 81, 138, -1],
+    [0, 139, 2, 3, 140, 78, 79, 141, 81, 142, -1],
+    [0, 143, 2, 3, 144, 78, 79, 145, 81, 146, -1],
+    [0, 147, 2, 3, 148, 78, 79, 149, 81, 150, -1],
+    [0, 151, 2, 3, 152, 78, 79, 153, 81, 154, -1],
+    [0, 155, 2, 3, 156, 78, 79, 157, 81, 158, -1],
+    [0, 159, 2, 3, 160, 78, 79, 161, 81, 162, -1],
+    [0, 163, 2, 3, 164, 78, 79, 165, 81, 166, -1],
+    [0, 167, 2, 3, 168, 78, 79, 169, 81, 170, -1],
+    [0, 171, 2, 3, 172, 78, 79, 173, 81, 174, -1],
+    [0, 175, 2, 3, 176, 78, 79, 177, 81, 178, -1],
+    [0, 179, 2, 3, 180, 78, 79, 181, 81, 182, -1],
+    [0, 183, 2, 3, 184, 78, 79, 185, 81, 186, -1],
+    [0, 187, 2, 3, 188, 78, 79, 189, 81, 190, -1],
+    [0, 191, 2, 3, 192, 78, 79, 193, 81, 194, -1],
+    [0, 195, 2, 3, 196, 78, 79, 197, 81, 198, -1],
+    [0, 199, 2, 3, 200, 78, 79, 201, 81, 202, -1],
+    [0, 203, 2, 3, 204, 78, 79, 205, 81, 206, -1],
+    [0, 207, 2, 3, 208, 78, 79, 209, 81, 210, -1],
+    [0, 211, 2, 3, 212, 78, 79, 213, 81, 214, -1],
+    [0, 215, 2, 3, 216, 78, 79, 217, 81, 218, -1],
+    [0, 219, 2, 3, 220, 221, 79, 222, 81, 223, -1],
+    [0, 224, 2, 3, 225, 221, 79, 226, 81, 227, -1],
+    [0, 228, 2, 3, 229, 221, 79, 230, 81, 231, -1],
+    [0, 232, 2, 3, 233, 221, 79, 234, 81, 235, -1],
+    [0, 236, 2, 3, 237, 221, 79, 238, 81, 239, -1],
+    [0, 240, 2, 3, 241, 221, 79, 242, 81, 243, -1],
+    [0, 244, 2, 3, 245, 221, 79, 246, 81, 247, -1],
+    [0, 248, 2, 3, 249, 221, 79, 250, 81, 251, -1],
+    [0, 252, 2, 3, 253, 221, 79, 254, 81, 255, -1],
+    [0, 256, 2, 3, 257, 221, 79, 258, 81, 259, -1],
+    [0, 260, 2, 3, 261, 221, 79, 262, 81, 263, -1],
+    [0, 264, 2, 3, 265, 221, 79, 266, 81, 267, -1],
+    [0, 268, 2, 3, 269, 221, 79, 270, 81, 271, -1],
+    [0, 272, 2, 3, 273, 221, 79, 274, 81, 275, -1],
+    [0, 276, 2, 3, 277, 221, 79, 278, 81, 279, -1],
+    [0, 280, 2, 3, 281, 221, 79, 282, 81, 283, -1],
+    [0, 284, 2, 3, 285, 221, 79, 286, 81, 287, -1],
+    [0, 288, 2, 3, 289, 221, 79, 290, 81, 291, -1],
+    [0, 292, 2, 3, 293, 221, 79, 294, 81, 295, -1],
+    [0, 296, 2, 3, 297, 221, 79, 298, 81, 299, -1],
+    [0, 300, 2, 3, 301, 221, 79, 302, 81, 303, -1],
+    [0, 304, 2, 3, 305, 221, 79, 306, 81, 307, -1],
+    [0, 308, 2, 3, 309, 221, 79, 310, 81, 311, -1],
+    [0, 312, 2, 3, 313, 221, 79, 314, 81, 315, -1],
+    [0, 316, 2, 3, 317, 221, 79, 318, 81, 319, -1],
+    [0, 320, 2, 3, 321, 221, 79, 322, 81, 323, -1],
+    [0, 324, 2, 3, 325, 221, 79, 326, 81, 327, -1],
+    [0, 328, 2, 58, 329, 330, -1, 331, 62, 332, -1],
+    [0, 333, 2, 3, 334, 335, 79, 336, 81, 337, -1],
+    [0, 338, 2, 3, 339, 335, 79, 340, 81, 341, -1],
+    [0, 342, 2, 3, 343, 335, 79, 344, 81, 345, -1],
+    [0, 346, 2, 3, 347, 335, 79, 348, 81, 349, -1],
+    [0, 350, 2, 3, 351, 335, 79, 352, 81, 353, -1],
+    [0, 354, 2, 3, 355, 335, 79, 356, 81, 357, -1],
+    [0, 358, 2, 3, 359, 335, 79, 360, 81, 361, -1],
+    [0, 362, 2, 3, 363, 335, 79, 364, 81, 365, -1],
+    [0, 366, 2, 3, 367, 335, 79, 368, 81, 369, -1],
+    [0, 370, 2, 3, 371, 335, 79, 372, 81, 373, -1],
+    [0, 374, 2, 3, 375, 335, 79, 376, 81, 377, -1],
+    [0, 378, 2, 3, 379, 335, 79, 380, 81, 381, -1],
+    [0, 382, 2, 58, 383, 384, -1, 385, 386, 387, -1],
+    [0, 388, 2, 58, 389, 384, -1, 390, 386, 391, -1],
+    [0, 392, 2, 58, 393, 384, -1, 394, 386, 395, -1],
+    [0, 396, 2, 58, 397, 398, -1, 399, 386, 400, -1],
+    [0, 401, 2, 58, 402, 384, -1, 403, 386, 404, -1],
+    [0, 405, 2, 58, 406, 384, -1, 407, 386, 408, -1],
+    [0, 409, 2, 58, 410, 384, -1, 411, 386, 412, -1],
+    [0, 413, 2, 58, 414, 384, -1, 415, 386, 416, -1],
+    [0, 417, 2, 58, 418, 384, -1, 419, 386, 420, -1],
+    [0, 421, 2, 58, 422, 384, -1, 423, 386, 424, -1],
+    [0, 425, 2, 58, 426, 427, -1, 428, 386, 429, 430],
+    [0, 431, 2, 58, 432, 384, -1, 433, 386, 434, -1],
+    [0, 435, 2, 58, 436, 384, -1, 437, 386, 438, -1],
+    [0, 439, 2, 58, 440, 384, -1, 441, 386, 442, -1],
+    [0, 443, 2, 58, 444, 398, -1, 445, 386, 446, -1],
+    [0, 447, 2, 58, 448, 398, -1, 449, 386, 450, -1],
+    [0, 451, 2, 58, 452, 384, -1, 453, 386, 454, -1],
+    [0, 455, 2, 58, 456, 398, -1, 457, 386, 458, -1],
+    [0, 459, 2, 58, 460, 384, -1, 461, 386, 462, -1],
+    [0, 463, 2, 58, 464, 384, -1, 465, 386, 466, -1],
+    [0, 467, 2, 58, 468, 384, -1, 469, 386, 470, -1],
+    [0, 471, 2, 58, 472, 384, -1, 473, 386, 474, -1]
+  ]
+}

@@ -228,7 +228,7 @@ describe('tool precedence of the formatters and detekt', () => {
     expect(() =>
       validateConfig({ preset: 'python', tools: { basedpyright: { precedence: ['project'] } } }),
     ).toThrow(
-      '"tools" names unknown tool "basedpyright". Supported tools with this preset: ruff, black, pyright, mypy, mutmut, jscpd',
+      '"tools" names unknown tool "basedpyright". Supported tools with this preset: ruff, black, pyright, mypy, mutmut, coverage, jscpd',
     );
   });
 

@@ -14,6 +14,7 @@ import path from 'node:path';
 import { beforeAll, afterEach, describe, expect, it } from 'vitest';
 import {
   isToolInstalled,
+  missingToolMessage,
   PACKAGE_ROOT,
   resolveProjectRoot,
   resolveTool,
@@ -52,6 +53,22 @@ it('tells whether a project has a peer tool installed', () => {
   expect(isToolInstalled('eslint')).toBe(true);
 });
 
+it('names the npm 10 install failure when a Vitest peer is missing', () => {
+  const hint =
+    '. If npm 10 failed to install it with "reading \'edgesOut\'", install with npm 11 ' +
+    '(`npx npm@11 install`) or use Vitest 5';
+
+  expect(missingToolMessage('vitest', '/project')).toBe(
+    `Required tool vitest is not installed from /project${hint}`,
+  );
+  expect(missingToolMessage('@vitest/coverage-v8', '/project')).toBe(
+    `Required tool @vitest/coverage-v8 is not installed from /project${hint}`,
+  );
+  expect(missingToolMessage('typescript', '/project')).toBe(
+    'Required tool typescript is not installed from /project',
+  );
+});
+
 it('records the TypeScript version imported by structure instead of the consumer version', () => {
   const liveProjectRoot = createTemporaryRoot('nitpicker-live-typescript-');
   const consumerTypeScriptVersion = '5.0.0-consumer';
@@ -88,7 +105,7 @@ it('records the TypeScript version imported by structure instead of the consumer
   });
 
   expect(typecheck.resolveVersion(liveProjectRoot)).toBe(
-    `${consumerTypeScriptVersion};typescript-native@7.0.2;${importedTypeScriptVersion}`,
+    `${consumerTypeScriptVersion};@typescript/native@7.0.2;${importedTypeScriptVersion}`,
   );
   expect(report.summary.tools[0].version).toBe(importedTypeScriptVersion);
 });

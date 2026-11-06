@@ -1,9 +1,11 @@
 import { readHeadPolicyFile } from '../head-policy.mjs';
+import { describeError } from '../messages/error-chain.mjs';
 
 const OPTION_NAMES = {
   '--check': 'check',
   '--project-root': 'projectRoot',
   '--history-ref': 'historyRef',
+  '--baseline-root': 'baselineRoot',
 };
 
 export function parseCheckArguments(commandArguments, label = 'hygiene') {
@@ -29,9 +31,7 @@ export function runCheckCli({ commandArguments, stdout, stderr, environment, run
     stdout.write(`${JSON.stringify({ findings })}\n`);
     return 0;
   } catch (error) {
-    stderr.write(
-      `${label} check failed: ${error instanceof Error ? error.message : String(error)}\n`,
-    );
+    stderr.write(`${label} check failed: ${describeError(error)}\n`);
     return 2;
   }
 }

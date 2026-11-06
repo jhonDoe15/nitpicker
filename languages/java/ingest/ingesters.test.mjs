@@ -2,6 +2,7 @@ import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { parseAnalyzerReport } from '../../../core/diff/comparison/finding-schema.mjs';
+import { compareFindings } from '../../../core/diff/comparison/compare.mjs';
 import { baseMoves, comparisonKey } from '../../../core/diff/comparison/fingerprint.mjs';
 import { ingestArchunit } from './archunit.mjs';
 import { ingestCheckstyle } from './formatting/checkstyle.mjs';
@@ -196,6 +197,16 @@ describe('archunit', () => {
     ]);
   });
 
+  it('reports a rule that failed and passed on a rerun', () => {
+    const xml =
+      '<testsuite name="demo.NamingArchTest"><testcase name="servicesOnly" classname="demo.NamingArchTest"><flakyFailure message="Rule violated (1 times):&#10;Class &lt;demo.Calc&gt; does not have simple name ending with \'Service\'"/></testcase></testsuite>';
+    const { findings: flaky } = ingestArchunit(xml, { resolvePath: () => 'src/Calc.java' });
+
+    expect(flaky.map(({ rule, symbol }) => [rule, symbol])).toEqual([
+      ['servicesOnly', 'demo.Calc'],
+    ]);
+  });
+
   it('ignores passing test cases and rejects other documents', () => {
     expect(findings.some((finding) => finding.rule === 'layers_are_respected')).toBe(false);
     expect(() => ingestArchunit('<report/>')).toThrow('<testsuite>');
@@ -221,7 +232,7 @@ describe('pit', () => {
 
   it('names the equivalent-mutant cases in a survived mutant, whichever tool names it', () => {
     const message =
-      'Survived ConditionalsBoundaryMutator: changed conditional boundary: no test fails when this code changes. Add an assertion that would. If no input can tell the two apart (a compareTo boundary, a discarded lambda return), simplify the code so this mutant disappears.';
+      'Survived ConditionalsBoundaryMutator: changed conditional boundary: no test fails when this code changes. Add an assertion that would. If no input can tell the two apart (a compareTo boundary, a discarded lambda return, a field set to the value it already has, a redundant trim() or sorted()), simplify the code so this mutant disappears.';
     const named = ingestPit(fixture('pit-mutations.xml'), {
       tool: 'custom',
       resolvePath: resolveMainPath,
@@ -270,6 +281,29 @@ describe('pit', () => {
     expect(symbolOf('lambda$run$0', functionAt)).toBe('Wide#lambda$run$0()I');
   });
 
+  it('keeps the identity of a lambda or anonymous class mutant when javac renumbers it', () => {
+    const mutant = (className, method, line) =>
+      `<mutation detected='false' status='SURVIVED'><sourceFile>Idioms.java</sourceFile><mutatedClass>demo.${className}</mutatedClass><mutatedMethod>${method}</mutatedMethod><methodDescription>(Ljava/lang/String;)Z</methodDescription><lineNumber>${String(line)}</lineNumber><mutator>org.pitest.mutationtest.engine.gregor.mutators.returns.BooleanTrueReturnValsMutator</mutator><description>replaced boolean return with true for demo/${className}::${method}</description></mutation>`;
+    const identities = (mutants) =>
+      ingestPit(`<mutations>${mutants.join('')}</mutations>`, { resolvePath: resolveMainPath })
+        .findings.filter((finding) => (finding.location?.line ?? 0) > 8)
+        .map((finding) => finding.identity);
+
+    expect(
+      identities([mutant('Idioms', 'lambda$count$0', 9), mutant('Idioms$1', 'test', 14)]),
+    ).toEqual(
+      identities([
+        mutant('Idioms', 'lambda$other$0', 5),
+        mutant('Idioms$1', 'apply', 6),
+        mutant('Idioms', 'lambda$count$1', 9),
+        mutant('Idioms$2', 'test', 14),
+      ]),
+    );
+    expect(identities([mutant('Idioms', 'lambda$count$0', 9)])).toEqual([
+      'Idioms|lambda$count(LString;)Z|BooleanTrueReturnValsMutator|replaced boolean return with true for Idioms::lambda$count#1',
+    ]);
+  });
+
   it('matches the mutants of a class moved to another package, as a git rename', () => {
     const report = (packageName) =>
       `<mutations><mutation detected='false' status='NO_COVERAGE'><sourceFile>AuditService.java</sourceFile><mutatedClass>shop.${packageName}.AuditService</mutatedClass><mutatedMethod>agent</mutatedMethod><methodDescription>(Lshop/${packageName}/Request;)Ljava/lang/String;</methodDescription><lineNumber>9</lineNumber><mutator>org.pitest.mutationtest.engine.gregor.mutators.EmptyObjectReturnValsMutator</mutator><description>replaced return value with &quot;&quot; for shop/${packageName}/AuditService::agent</description></mutation></mutations>`;
@@ -282,6 +316,34 @@ describe('pit', () => {
     expect(
       keys('service', new Map([['src/main/java/shop/service/AuditService.java', moved]])),
     ).toEqual(keys('audit'));
+  });
+
+  it('keeps a mutant whose method was renamed or given a parameter, on an unchanged line', () => {
+    const report = (className, method, descriptor) =>
+      `<mutations><mutation detected='false' status='SURVIVED'><sourceFile>${className}.java</sourceFile><mutatedClass>shop.${className}</mutatedClass><mutatedMethod>${method}</mutatedMethod><methodDescription>${descriptor}</methodDescription><lineNumber>9</lineNumber><mutator>org.pitest.mutationtest.engine.gregor.mutators.EmptyObjectReturnValsMutator</mutator><description>replaced return value with &quot;&quot; for shop/${className}::${method}</description></mutation></mutations>`;
+    const findings = (className, method, descriptor, line = 'return name;') =>
+      ingestPit(report(className, method, descriptor), {
+        resolvePath: resolveJavaPath,
+        sourceText: () => `${'\n'.repeat(8)}    ${line}\n`,
+      }).findings.filter((finding) => finding.rule === 'mutant-survived');
+    const compare = (head, changedLine) =>
+      compareFindings({
+        baseFindings: findings('Audit', 'agent', '()Ljava/lang/String;'),
+        headFindings: head,
+        baseToHeadRenames: new Map([
+          ['src/main/java/shop/Audit.java', 'src/main/java/shop/Log.java'],
+        ]),
+        touchedCode: {
+          changedLines: new Map([
+            ['src/main/java/shop/Log.java', { added: false, ranges: [[changedLine, changedLine]] }],
+          ]),
+          isStrictRule: () => false,
+        },
+      }).newFindings.length;
+
+    expect(compare(findings('Log', 'user', '(I)Ljava/lang/String;'), 8)).toBe(0);
+    expect(compare(findings('Log', 'user', '(I)Ljava/lang/String;'), 9)).toBe(1);
+    expect(compare(findings('Log', 'user', '(I)Ljava/lang/String;', 'return label;'), 8)).toBe(1);
   });
 
   it('numbers the mutants of same-named classes in different packages independently', () => {

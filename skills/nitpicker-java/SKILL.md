@@ -24,14 +24,16 @@ forms below from the start; the gate is a backstop.
    `./gradlew` or `./mvnw` when there is one, otherwise `gradle` or `mvn` from the PATH
    (`NITPICKER_GRADLE` or `NITPICKER_MAVEN` overrides both).
 4. Act on the exit code:
-   - 0: done.
+   - 0: done, unless you narrowed the run with `--analyzer`: then the summary says `Ran only: ...`
+     and you run the gate again without it before you finish.
    - 1: fix every new finding (printed as `tool/rule path:line`) and any tool error listed below
      them, then rerun.
    - 2: no new findings, but a tool failed (the build, a compile error, a test failure). Fix the
      cause it names and rerun. Exit 2 is never a pass. If another run is in progress, wait for
      it; never kill it.
 5. Never suppress: no `// NOPMD`, `@SuppressWarnings`, `@SuppressFBWarnings`, `CHECKSTYLE`
-   comments, config `exclude`/`disable`/`exceptions`, legacy entries, or weakened tests. The one
+   comments, coverage or mutation markers (`@Generated`, `@ExcludeFromJacocoGeneratedReport`,
+   `@DoNotMutate`), config `exclude`/`disable`/`exceptions`, legacy entries, or weakened tests. The one
    exception is `@SuppressWarnings("PMD.SpringDataNativeQuery")` on a repository method with native
    SQL ([spring.md](spring.md)). If a finding seems wrong, stop and ask. Never pass
    `--accept-policy-change` or set `NITPICKER_ACCEPT_POLICY_CHANGE`: a
@@ -39,8 +41,13 @@ forms below from the start; the gate is a backstop.
 
 With Spring on the classpath, also follow [spring.md](spring.md).
 
+If your change edits a method, class, file or package that existed before it, read
+[editing-existing-code.md](editing-existing-code.md) before you edit.
+
 Before you change code other modules use, or fix a bug, read
 [beyond-the-gate.md](beyond-the-gate.md).
+
+To learn why a rule is on and what form it allows before you write or change code, run `npx nitpicker explain <tool/rule>` with the name a finding prints, or read the [rule reference](https://github.com/jhonDoe15/nitpicker/blob/main/docs/rules/README.md). `npx nitpicker rules` lists the rules of this project's preset.
 
 ## Write it this way
 
@@ -75,6 +82,10 @@ Before you change code other modules use, or fix a bug, read
   (`Executors.newFixedThreadPool(8)`), take a `Semaphore` permit around each call, or work through
   fixed-size batches; never `supplyAsync` per element on the default pool or a cached or
   virtual-thread executor.
+- HTTP calls: every request has a deadline. `HttpRequest.newBuilder(uri).timeout(...)`,
+  `setReadTimeout` on an `HttpURLConnection`, `setDefaultRequestConfig(...)` on an Apache client
+  builder, `readTimeout` on a JAX-RS `ClientBuilder`; not `URL.openStream()` or
+  `HttpClients.createDefault()` (`pmd/HttpWithoutTimeout`).
 - Types: declare interfaces (`List<String> out = new ArrayList<>()`, not `ArrayList<String> out`).
 - Mutable state: don't return or store a caller's array or collection directly. Return
   `data.clone()` or `List.copyOf(items)`, and copy in the constructor.
@@ -89,11 +100,16 @@ Before you change code other modules use, or fix a bug, read
   Time comes from `java.time` with a `Clock` or a zone; `Calendar.getInstance()`,
   `new GregorianCalendar()` and `new SimpleDateFormat(...)` without a time zone are flagged
   (`pmd/LegacyCalendarApi`).
+- Maps: the function passed to `computeIfAbsent`, `compute`, `computeIfPresent` or `merge` never
+  changes the same map, not even from a callback it starts (`pmd/RecursiveMapUpdate`). Attach the
+  cleanup to the returned value:
+  `map.computeIfAbsent(key, k -> start(k)).whenComplete((r, e) -> map.remove(key, r))`.
 - Data and results: `record` for data, a `sealed interface` of records for an outcome, and an
   exhaustive `switch` expression over it. A `switch` statement needs `default`.
 - Enums: to sort the constants of one of your enums into two groups, classify every constant: a
   `switch` expression without `default`, or a field each constant declares (`PAID(true)`). Not
-  `s == PAID || s == SHIPPED` or `EnumSet.of(...).contains(s)` (`ExhaustiveEnumPredicate`).
+  `s == PAID || s == SHIPPED`, `Set.of(...).contains(s)` or a boolean `switch` with
+  `default -> false` (`ExhaustiveEnumPredicate`).
 - No static method that only passes its parameters on to another method; call that method.
   Factories named `of` or `from` and copies such as `List.copyOf` are fine.
 - A record or `@ConfigurationProperties` class (and the classes nested in it) has `tags` or `tag`,
@@ -168,6 +184,15 @@ Before you change code other modules use, or fix a bug, read
   answer, a thread body or a test fake that implements or extends a main class is fine. To
   show something does not happen, give the code a `Clock` or scheduler the test moves forward, not
   `after(ms).never()` or `during(...)` (`NegativeWaitInTest`).
+- No retries in test code (`RetryInTest`): no `@RetryingTest`, `@RepeatedIfExceptionsTest`, TestNG
+  `retryAnalyzer`, `IRetryAnalyzer` or `RetryAnalyzerCount`, nor `setRetryAnalyzer(...)`. A test that
+  passes on a later attempt hides a flaky or racy test: wait on the condition instead of a fixed
+  delay, isolate shared state. `@RepeatedTest` is fine, since every repetition must pass.
+- Start a container, server or process once, not for each test (`ServerOrContainerPerTest`): a
+  Testcontainers `@Container` field is `static`, a WireMock `@RegisterExtension` is `static`, a JUnit 4
+  server or container is a `@ClassRule`, and `@BeforeEach`/`@Before` does not create and start one
+  (nor `SpringApplication.run`, `ProcessBuilder.start`); two tests do not make the same start. Start
+  it in `@BeforeAll` and reset its state between tests.
 - Tests print nothing new (`test-runtime/test-console-output`): no `System.out`/`System.err`, and
   no new `WARN` or `ERROR` log line from the code under test. Fix the cause the line names.
 - In main code, nothing with an outside effect runs while a class loads (`ClassLoadEffect`): no
@@ -185,18 +210,6 @@ Before you change code other modules use, or fix a bug, read
   class-load rules.
   If a PMD rule or an Error Prone check flags test code that is right, ask a human for a reviewed
   exception for `pmd/<rule>` or `errorprone/<Check>`.
-
-## Editing existing code
-
-- A method already over a size limit may be edited but must not get worse: the gate then prints
-  a note ("allowed because base was 4"). Adding a parameter, statement or nesting level fails
-  (`Legacy.total grew from 4 to 5 parameters`). Put new logic in a new method and call it once.
-- A file, folder or class already over its limit must not grow: put the new code in a new class,
-  and a new file in a new package.
-- A line you touch must have its branches covered, even if it was uncovered before.
-- Existing PMD, SpotBugs, Error Prone and Checkstyle findings stay baselined while their message is
-  unchanged; adding another of the same kind in the file is new. Don't rename or move a file that
-  has findings: Checkstyle and CRAP findings don't follow renames and would count as new.
 
 ## Repository files
 

@@ -3,9 +3,9 @@ import path from 'node:path';
 import { runGit } from '../../../../core/diff/git/repository/command.mjs';
 import { diffFromBase } from '../../../../core/tooling/git/base-diff.mjs';
 import { collectImports, importEdges } from '../analysis/python-coupling.mjs';
+import { testFileMatcher } from '../analysis/python-sources.mjs';
 import { META_SUFFIX, MUTANTS_DIRECTORY, metaFiles } from './python-mutation-data.mjs';
 import { run } from '../execution/python-process.mjs';
-import { TEST_PATH } from '../execution/python-test-files.mjs';
 
 const REUSABLE_STATUSES = ['M', 'A'];
 
@@ -40,14 +40,14 @@ function changesSinceBase(roots) {
     : undefined;
 }
 
-function isMutatedSourceChange({ status, file, prefix }, sourceRoots) {
+function isMutatedSourceChange({ status, file, prefix }, { sourceRoots, isTest }) {
   if (!REUSABLE_STATUSES.includes(status) || !file.startsWith(prefix)) {
     return false;
   }
   const relative = file.slice(prefix.length);
   return (
     relative.endsWith('.py') &&
-    !TEST_PATH.test(relative) &&
+    !isTest(relative) &&
     sourceRoots.some((root) => root === '.' || relative.startsWith(`${root}/`))
   );
 }
@@ -93,19 +93,26 @@ function isStaleSource(context, changes) {
   return (file) => !known.has(file) || affected.has(file);
 }
 
+function reusableChanges({ baselineRoot, projectRoot, project }, baseMutants) {
+  if (!existsSync(baseMutants)) {
+    return undefined;
+  }
+  const changes = changesSinceBase({ baselineRoot, projectRoot });
+  const isTest = testFileMatcher(projectRoot);
+  const reusable = changes?.every((change) =>
+    isMutatedSourceChange(change, { sourceRoots: project.sourceRoots, isTest }),
+  );
+  return reusable === true ? changes : undefined;
+}
+
 export function seedMutantsFromBase(context) {
-  const { snapshot, baselineRoot, projectRoot, project } = context;
+  const { snapshot, baselineRoot, projectRoot } = context;
   if (snapshot !== 'head' || baselineRoot === undefined) {
     return false;
   }
   const baseMutants = path.join(baselineRoot, MUTANTS_DIRECTORY);
-  const changes = existsSync(baseMutants)
-    ? changesSinceBase({ baselineRoot, projectRoot })
-    : undefined;
-  if (
-    changes === undefined ||
-    !changes.every((change) => isMutatedSourceChange(change, project.sourceRoots))
-  ) {
+  const changes = reusableChanges(context, baseMutants);
+  if (changes === undefined) {
     return false;
   }
   const isStale = isStaleSource(context, changes);

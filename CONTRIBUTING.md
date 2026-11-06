@@ -44,7 +44,7 @@ npm run check
 
 `npm run check` runs the self-gate (nitpicker checks your change against the remote's default
 branch) and then the full test suite, and fails if either fails. Arguments after `--` go to vitest,
-so `npm run check -- --shard=2/8` runs only what one CI test shard runs. It needs Node.js 22.14 or newer (CI
+so `npm run check -- --shard=2/2` runs only what one CI test shard runs. It needs Node.js 22.14 or newer (CI
 uses 24) and Java 21 for the structure-metrics test. It checks your working tree, uncommitted and
 untracked files included, while CI checks the pull request merged into its target branch, so commit
 everything and merge or rebase on the latest `main` before the final run. A change to a language's
@@ -53,13 +53,26 @@ end-to-end behaviour also needs that language's suite (`npm run test:java`, `tes
 `kotlin-e2e`, `python-e2e` and `go-e2e` workflows, which follow the same triggers as the `typescript` workflow
 below (pushes to `main` that touch the paths they list, a manual run, and the `run-ci` label). The
 `github-action` workflow, which runs the composite action in `action.yml` on the sample project in
-`.github/sample-project`, follows them too; it is not a required check.
+`.github/sample-project`, follows them too; it is not a required check. On a pull request, each of
+these five workflows first runs a small `changes` job (`scripts/ci/affected-jobs.mjs`) that compares the
+pull request's changed files with the workflow's own push `paths`. When none of them matches, the
+workflow's other jobs are skipped and its summary job passes; when the files cannot be listed, all
+jobs run. Changing a shared path such as `core/`, `shared/`, `package.json` or `vitest.config.mts`
+runs them all.
+The `typescript` workflow (the required `test` and `self-gate` checks) always runs in full, because
+its tests read the whole repository, documentation included. Keep a workflow's `paths` complete:
+on pull requests they now decide what runs, not only which pushes to `main` start a run.
+The Java and Kotlin suites add Maven resolver retry options to `MAVEN_OPTS`, so a Maven Central
+HTTP 429 (rate limit) is retried up to six times, ten seconds apart, instead of failing the build
+under test. CI keeps `~/.m2` and `~/.gradle` between runs; locally they are your own caches.
 The TypeScript red-base test (`npm run test:typescript`, which runs real vitest through the CLI) is
-not in CI: run it after changing `core/diff/comparison/base-red/` or a test runner's failure report.
+not in CI: run it after changing `core/diff/comparison/base-red/`, a test runner's failure report or how
+the Stryker report is read.
 
 CI (the `typescript` workflow) runs:
 
-- on every push to `main` that touches a path in the workflow's `paths` list;
+- on every push to `main` that touches a path in the workflow's `paths` list (a run that has started
+  finishes; a run still waiting is replaced by the next push's run, which tests everything merged so far);
 - on a pull request when someone adds the `run-ci` label, once per added label (remove and add the
   label again for another run);
 - by hand from the Actions tab (Run workflow) on any branch that already has this workflow.
@@ -90,11 +103,11 @@ arguments pass through) and rewrites the times of the files it ran.
 node scripts/test-shards/record-durations.mjs --maxWorkers=100%
 ```
 
-Java end-to-end CI uses 16 isolated runner shards and Kotlin uses 10, with files run serially in
-each shard. Independent behavior groups have separate fixture trees; the full 95 Java and 92
+Java end-to-end CI uses 4 isolated runner shards and Kotlin uses 3, with files run serially in
+each shard. Independent behavior groups have separate fixture trees; the full 102 Java and 98
 Kotlin cases remain selected. The final `java` or `kotlin` check passes only when all its shards
-pass. Reproduce a shard with `npm run test:java -- --shard=1/16` or
-`npm run test:kotlin -- --no-file-parallelism --shard=1/10`.
+pass. Reproduce a shard with `npm run test:java -- --shard=1/4` or
+`npm run test:kotlin -- --no-file-parallelism --shard=1/3`.
 
 Named `tools.tests.timeouts.projects` select the Java/Kotlin subject even though the harness is
 JavaScript. They inherit language declaration ceilings and repository execution defaults. JVM
@@ -121,9 +134,9 @@ timing file automatically. Run one enabled JVM suite at a time. CI uploads a JSO
 shard for reviewing durations and failures; timing provenance and limits are in
 [scripts/test-shards/README.md](scripts/test-shards/README.md).
 
-Python end-to-end CI uses four isolated shards with two test workers each and retains the final
+Python end-to-end CI uses two isolated shards with two test workers each and retains the final
 `python-e2e` check. Reproduce one with
-`npm run test:python -- --maxWorkers=2 --shard=1/4`. Enabled runs and recordings use
+`npm run test:python -- --maxWorkers=2 --shard=1/2`. Enabled runs and recordings use
 `scripts/test-shards/python-e2e.json` when `NITPICKER_PYTHON_E2E=1`. Enable only one language's
 end-to-end suite at a time so the sequencer and recorder can choose the correct timing profile.
 

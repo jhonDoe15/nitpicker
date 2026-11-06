@@ -45,6 +45,7 @@ function fileFindings(data, { path, lines, tool, minimum, options }) {
       path,
       line,
       key: hashIdentity('branch-source', [enclosingScope(lines, line - 1), source]),
+      anchor: hashIdentity('branch-source', [source]),
       percent: (outcomes.taken / (outcomes.taken + outcomes.missed.length)) * 100,
       arms: outcomes.missed.map((destination) => describeArm(lines, line, destination)),
       symbol: enclosingFunctionName(options.functions ?? [], path, line),

@@ -9,10 +9,16 @@ import { canonicalRule } from '../../../../shared/exceptions/rule-names.mjs';
 import { validateExceptions } from '../../../../shared/exceptions/validation.mjs';
 import { COMMON_EXCEPTION_RULES } from '../../../../shared/policy.mjs';
 import { PYTHON_SIZE_RULES } from '../../../../shared/project-rules/size-rules.mjs';
+import { UNUSED_API_RULE_IDS } from '../../../../shared/unused-api/unused-api-policy.mjs';
 import { ruleIdProblem } from './python-rule-ids.mjs';
+import { suggestionOrAllowed } from '../../../../shared/messages/closest-match.mjs';
 
 /** The rules the top-level "exceptions" lift; python.exceptions lifts every other rule. */
-export const PYTHON_TOP_LEVEL_EXCEPTION_RULES = [...COMMON_EXCEPTION_RULES, ...PYTHON_SIZE_RULES];
+export const PYTHON_TOP_LEVEL_EXCEPTION_RULES = [
+  ...COMMON_EXCEPTION_RULES,
+  ...PYTHON_SIZE_RULES,
+  UNUSED_API_RULE_IDS.unusedOption,
+];
 
 const ENVIRONMENTS = ['uv', 'poetry', 'path', 'pipenv', 'hatch', 'conda'];
 const FORMATTERS = ['ruff', 'black'];
@@ -53,7 +59,7 @@ function validateKnownKeys(settings) {
   for (const key of Object.keys(settings)) {
     if (!SETTING_KEYS.includes(key)) {
       throw configError(
-        `unknown key "${key}" in "python". Allowed keys: ${SETTING_KEYS.join(', ')}`,
+        `unknown key "${key}" in "python"${suggestionOrAllowed(key, SETTING_KEYS)}`,
       );
     }
   }

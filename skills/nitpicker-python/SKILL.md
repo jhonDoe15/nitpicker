@@ -8,6 +8,12 @@ description: Use before writing or changing Python in a project that runs nitpic
 nitpicker allows one way to write each construct. Write it that way from the start; the gate is a
 backstop. It fails only on findings your change adds, so leave code the task doesn't need alone.
 
+If your change edits a function, class, module or package that existed before it, read
+[editing-existing-code.md](editing-existing-code.md) before you edit.
+
+Before you change code other modules use, or fix a bug, read
+[beyond-the-gate.md](beyond-the-gate.md).
+
 ## Finish with the gate
 
 1. Run the project's tests with its own runner (pytest, unittest, `manage.py test` or nose2).
@@ -17,7 +23,8 @@ backstop. It fails only on findings your change adds, so leave code the task doe
    pipe: you need its exit code. It has no `--fix` for Python; format with the "Format with ..." command
    printed at the start of the run (the gate does not read the project's formatter config). It takes minutes and prints a progress line for each slow analyzer.
 3. Act on the exit code:
-   - 0: done.
+   - 0: done, unless you narrowed the run with `--analyzer`: then the summary says `Ran only: ...`
+     and you run the gate again without it before you finish.
    - 1: fix every new finding and any tool error listed below them, then rerun.
    - 2: no new findings, but a tool failed. Fix the cause it names (usually a failing test or a
      tool missing from the environment) and rerun. Exit 2 is never a pass. If it says another run
@@ -28,12 +35,16 @@ backstop. It fails only on findings your change adds, so leave code the task doe
    `--accept-policy-change` or set `NITPICKER_ACCEPT_POLICY_CHANGE`: a
    `nitpicker-config/policy-loosened` finding is for a person to accept.
 
+To learn why a rule is on and what form it allows before you write or change code, run `npx nitpicker explain <tool/rule>` with the name a finding prints, or read the [rule reference](https://github.com/jhonDoe15/nitpicker/blob/main/docs/rules/README.md). `npx nitpicker rules` lists the rules of this project's preset.
+
 ## Write it this way
 
 - Types: annotate every function, method and parameter; strict mypy, pyright or basedpyright (the project's own
   choice) checks the source roots. Fix the type. `# type: ignore`, `# noqa` and `# pyright: ignore`
   are findings themselves, so never write them, nor `# fmt: off`, `@no_type_check`, `if not TYPE_CHECKING:`
-  around code, or a `.pyi` beside its `.py`.
+  around code, or a `.pyi` beside its `.py`. No `typing.cast` or explicit `Any`, in tests
+  too: write the concrete type, `ParamSpec` for wrappers or `object`, narrow with `isinstance`, and
+  parse untrusted input once in an adapter.
 - Paths: `pathlib.Path` with `/`, `.read_text()`, `.exists()`. No `os.path`, no `open(path)`.
 - Strings: f-strings only. No `.format()` and no `%`.
 - Defaults: `None`, then build the value inside the function. No mutable default arguments.
@@ -61,6 +72,21 @@ backstop. It fails only on findings your change adds, so leave code the task doe
   log in an `except` keeps the traceback (`logger.exception(...)` or `exc_info=True`); passing the
   error as an argument or `str(error)` drops it. Logging alone is not handling: also re-raise the
   error or return a failure that carries it.
+- Async: inside `async def`, `await asyncio.sleep(...)`, an async client (`httpx.AsyncClient`),
+  `asyncio.create_subprocess_exec`, and `await asyncio.to_thread(...)` for other blocking calls. No
+  `timeout` parameter: the caller wraps the call in `async with asyncio.timeout(...)`, and the scope
+  holds an `await`. Wait on an `asyncio.Event`, not a sleep loop.
+- Time: aware datetimes only: `datetime(2026, 1, 1, tzinfo=timezone.utc)`,
+  `datetime.now(tz=timezone.utc)`, `datetime.fromtimestamp(value, tz=timezone.utc)`. Parse with
+  `%z`, `.replace(tzinfo=...)` for a known zone, or `date.fromisoformat(text)` for a date-only
+  string. A date is `datetime.now(tz=zone).date()` in the zone it is meant in, not `date.today()`.
+  Domain code takes the clock as a parameter; tests pass a fixed aware datetime or freeze the time.
+- Loggers: `logging.getLogger(__name__)`, never `logging.Logger(...)` or the root `logging.info(...)`;
+  `logger.exception(...)` only inside an `except`, `logging.WARNING` rather than `WARN`.
+- Debugging and processes: remove debugger imports and breakpoints before committing. Pass
+  `check=True` to `subprocess.run`, or `check=False` and handle `returncode`.
+- Loops and calls: bind a new name rather than reassigning the loop variable; pass a function
+  itself (`key=str`), not `lambda x: str(x)`; one `max(a, b, c)`, not nested calls.
 - Records: `@dataclass(frozen=True)`, and `dataclasses.replace` for a changed copy. The project's
   validation library (pydantic by default) only in an `adapters/` package, where untrusted input is
   parsed once; pass frozen dataclasses on from there.
@@ -70,7 +96,10 @@ backstop. It fails only on findings your change adds, so leave code the task doe
   `x if x is not None else default`, never `x or default`; return a new list or dict instead of
   changing an argument (`items.append`). When code moves, change every caller and delete the old
   name: no alias (`Old = New`), module `__getattr__`, `@deprecated` or `DeprecationWarning` shim.
-- Every other rule (logging, naming, environment access, the domain, paths, secrets, shell and SQL,
+- Secrets: never put a secret in code (`password`, `token`, `api_key`, ... assigned a literal, also as the
+  fallback of `os.getenv`); read it from the environment in the composition root. Never log, print,
+  warn or raise with it: log that it is set (`token is not None`) or a masked tail.
+- Every other rule (logging, naming, environment access, the domain, paths, shell and SQL,
   test honesty) reports the allowed form in its message: follow the form the message names.
 - Tests: use the project's runner (pytest, unittest, Django or nose2). Every test asserts something. Every branch you add needs a test, and a
   surviving mutant fails: assert the exact value, so a changed line breaks a test. A test you add
@@ -79,6 +108,10 @@ backstop. It fails only on findings your change adds, so leave code the task doe
   instead of `time.sleep` and fake network, database and disk access. A test over budget is run
   again alone without coverage and fails only if it is still over. Lift a legitimate one in the
   top-level `exceptions` with `{ "rule": "slow-test", "paths": [...], "reason": "..." }`.
+- Start a container, server, process or git repository once, not for each test
+  (`server-or-container-per-test`): a fixture that starts one and serves several tests takes
+  `scope="session"` or `scope="module"` and resets its state between tests; `setup_method`,
+  `setUp` and `setup_function` do not start one; two tests do not make the same start.
 - Dependencies: every package production code imports is a production dependency of the project
   (pyproject, Pipfile, requirements or setup.cfg); test-only packages go in a dev group; remove a
   dependency nothing uses.
@@ -86,11 +119,13 @@ backstop. It fails only on findings your change adds, so leave code the task doe
   `nitpicker.config.json`. A ruff, type-checker, `python-rules`, import-linter, duplicate or coupling
   finding goes under `python.exceptions`, with an entry such as
   `{ "rule": "T201", "paths": ["src/cli/**"], "reason": "..." }`, the rule being the id in the
-  message. A function, CRAP, changed-branch coverage, mutation, file or size finding goes under the
-  top-level `exceptions`
-  (`{ "rule": "function-lines-limit", "paths": [...], "function": "name", "reason": "..." }`). Each
-  message ends with the entry and the list that takes it; each list rejects the other's rules.
-  Don't add one to get past the gate: stop and ask.
+  message. A function, CRAP, changed-branch coverage, mutation, file or size finding, and
+  `slow-test`, `test-console-output`, `unused-option` and the other rules every preset shares, go
+  under the top-level `exceptions`
+  (`{ "rule": "function-lines-limit", "paths": [...], "function": "name", "reason": "..." }`), and
+  one third-party console message goes in `testConsole.allow`. Each message ends with the entry and
+  the list that takes it; each list rejects the other's rules. Don't add one to get past the gate:
+  stop and ask.
 
 ## Repository files
 
@@ -103,7 +138,7 @@ backstop. It fails only on findings your change adds, so leave code the task doe
   past 3 parameters, pass a frozen dataclass. A `lambda` is a function of its own with the same
   limits, counted on its own and not toward the function around it. Complex code needs tests: the
   CRAP score of a function must stay below 9.
-- Each `elif` and `except` adds a nesting level: `if`/`elif`/`elif` is already too deep. Return
+- Each `if`, loop, `match` and `except` handler adds a nesting level; an `elif` adds none. Return
   early, look the value up in a dict, or move a branch into a helper.
 - A new clone of at least 5 lines and 50 tokens (`duplicate-clone`) fails: extract a function, also when the copy has other names and literals. A
   package must not depend on a less stable one (`stability-direction`).
@@ -112,5 +147,3 @@ backstop. It fails only on findings your change adds, so leave code the task doe
   each other in a cycle, and production code imports only from the source roots.
 - A module stays within 300 lines (a test module 500) and a line within 120 characters. A folder
   holds at most 6 modules and 6 test modules directly: group the rest into packages by what they do.
-- A function or file already over a limit may be edited but must not get worse: put new code in a
-  new function or module and call it.
