@@ -1,6 +1,6 @@
 # Java and Kotlin: PMD rules
 
-PMD's bestpractices, design, errorprone, multithreading, performance and security categories, as far as nitpicker's rulesets keep them, and the rules nitpicker adds to them, for Java sources in the Java and Kotlin presets. This page lists 259 rules. [All pages](README.md).
+PMD's bestpractices, design, errorprone, multithreading, performance and security categories, as far as nitpicker's rulesets keep them, and the rules nitpicker adds to them, for Java sources in the Java and Kotlin presets. This page lists 261 rules. [All pages](README.md).
 
 The guide for these rules: [docs/java-preset.md](../java-preset.md).
 
@@ -1387,6 +1387,17 @@ A class that has private constructors and does not have any static methods or fi
 - **Exception:** If this is intended, add `{"rule":"pmd/MissingStaticMethodInNonInstantiatableClass","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 - **See also:** [PMD rule documentation](https://docs.pmd-code.org/pmd-doc-7.7.0/pmd_rules_java_errorprone.html#missingstaticmethodinnoninstantiatableclass)
 
+<a id="pmd-mockedsubjectintest"></a>
+
+### `pmd/MockedSubjectInTest`
+
+In tests: a mock of the class under test (`mock(OrderService.class)`, `mock()` assigned to it, `@Mock`, `@MockitoBean` or `@MockBean` on it), or a spy of it whose own methods the test stubs (`spy(...)`, `@Spy`, `@MockitoSpyBean`, or `@SpyBean`, with `when(spy.m())`, `given(spy.m())`, `doReturn(...).when(spy)`, `lenient()` or `willReturn(...).given(spy)`). The class under test is the type of an `@InjectMocks` field, or else the test class name without `Test`, `Tests`, `IT` or `Spec`. A spy that is only verified, a local spy stubbed only under the same name in another method, and a `CALLS_REAL_METHODS` mock (the way to test an abstract class) are not flagged.
+
+- **Scope:** Test sources only.
+- **Why it is on:** A PMD rule nitpicker defines: it names one allowed form where the language offers several, and reports the other forms.
+- **Allowed form:** This test mocks the class it tests, so it checks the mock instead of the code: a mock of it, or a spy whose own methods are stubbed. Test the real object: pass fakes or mocks of its collaborators in through the constructor, and test a helper through the public method that calls it.
+- **Exception:** If this is intended, add `{"rule":"pmd/MockedSubjectInTest","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
+
 <a id="pmd-morethanonelogger"></a>
 
 ### `pmd/MoreThanOneLogger`
@@ -2343,6 +2354,17 @@ In main sources: a static method with parameters whose body only passes them, in
 - **Why it is on:** A PMD rule nitpicker defines: it names one allowed form where the language offers several, and reports the other forms.
 - **Allowed form:** This static method only passes its parameters, in order, to another method. Call that method directly where this one is used and delete the wrapper. Factories named of or from and copies such as List.copyOf are allowed.
 - **Exception:** If this is intended, add `{"rule":"pmd/StaticForwardingWrapper","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
+
+<a id="pmd-staticmockofprojecttype"></a>
+
+### `pmd/StaticMockOfProjectType`
+
+In tests: `mockStatic`, `mockConstruction` or `mockConstructionWithAnswer` of a class declared in the project's main sources (Java or Kotlin, any module). Library types (`UUID`, `LocalDate`) are not flagged.
+
+- **Scope:** Test sources only.
+- **Why it is on:** A PMD rule nitpicker defines: it names one allowed form where the language offers several, and reports the other forms.
+- **Allowed form:** A static or constructor mock (mockStatic, mockConstruction) replaces a class of this project, for the whole thread, so the test runs a fake instead of the real code and depends on how that code is called. Pass the dependency in instead: an instance, a function or a Clock the test can replace. Keep static mocks for library types that cannot be passed in.
+- **Exception:** If this is intended, add `{"rule":"pmd/StaticMockOfProjectType","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 
 <a id="pmd-stringbufferinstantiationwithchar"></a>
 

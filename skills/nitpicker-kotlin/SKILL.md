@@ -189,6 +189,12 @@ To learn why a rule is on and what form it allows before you write or change cod
   package config, `TestConfig(retries = n)`). A test that passes on a later attempt hides a flaky or
   racy test: wait on the condition instead of a fixed delay, isolate shared state. `retries = 0` and
   `@RepeatedTest` are fine.
+- Never mock the class under test (`pmd/MockedSubjectInTest`): no `mockk<OrderService>()`,
+  `mock<OrderService>()` or `@MockK` of it in `OrderServiceTest`, and no `spyk`/`@SpyK` of it with
+  `every { subject.helper() }`. Pass its collaborators in through the constructor with fakes or mocks
+  of them, and test a helper through the public function that calls it. No `mockkObject`,
+  `mockkStatic`, `mockkConstructor` or `mockStatic` of the project's own code
+  (`pmd/StaticMockOfProjectType`): pass a function, an interface or a `Clock` instead.
 - Assert unconditionally (`pmd/AssertionInControlFlow`): no assertion that can be skipped, inside an `if`,
   a `when`, any loop (also over results), a safe call (`?.let`), `takeIf`, `&&`, `||`, `?:`, a `try` that
   swallows the failure, a `runCatching`, or after an early `return`. An `if`/`else` or `when` whose every

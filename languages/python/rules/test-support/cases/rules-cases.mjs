@@ -50,6 +50,7 @@ export const RULES_CASES = [
   ...rulesCases('skipped-test', [['skipped-test-without-reason', 'reason=']]),
   ...rulesCases('sleep-in-test', [['sleep-in-test', 'fake clock']]),
   ...rulesCases('negative-wait-in-test', [['negative-wait-in-test', 'event.is_set()']]),
+  ...rulesCases('mocked-subject', [['mocked-subject-in-test', 'collaborators in']]),
   ...rulesCases('tautological-assert', [['tautological-assert', 'result of the code under test']]),
   ...rulesCases('test-without-assertion', [
     ['test-without-assertion', 'assert result == expected'],

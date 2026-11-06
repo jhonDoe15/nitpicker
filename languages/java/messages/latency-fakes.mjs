@@ -53,7 +53,7 @@ function enclosingType(text, offset) {
     .toSorted((left, right) => right.open - left.open)[0];
 }
 
-function candidatesOf(name, text) {
+export function candidatesOf(name, text) {
   const [first, ...rest] = name.split('.');
   const imported = importsOf(text).find((entry) => entry.split('.').at(-1) === first);
   if (imported !== undefined) {
@@ -63,7 +63,7 @@ function candidatesOf(name, text) {
   return /^[a-z]/u.test(first) ? [name, local] : [local];
 }
 
-function declaredIn(roots, projectRoot) {
+export function declaredIn(roots, projectRoot) {
   return (qualified) => {
     const parts = qualified.split('.');
     return parts.some((_, index) => {

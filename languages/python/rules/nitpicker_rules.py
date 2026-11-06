@@ -24,6 +24,7 @@ def load_checks():
     from environment import domain_imports, environment, purity
     from errors import errors
     from honesty import assertions, isolation, skipped, waits
+    from honesty.subjects import check as mocked_subjects
     from persistence import cascades, eager, query_logging, schema_sync
     from review import fields
     from security import hashes, loading
@@ -68,6 +69,7 @@ def load_checks():
         assertions,
         unasserted,
         isolation,
+        mocked_subjects,
         waits,
         uncollected,
         helpers,
