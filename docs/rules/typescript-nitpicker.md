@@ -1,6 +1,6 @@
 # TypeScript and JavaScript: nitpicker ESLint rules
 
-The ESLint rules nitpicker's own plugin adds to the TypeScript and JavaScript presets (`nitpicker/*`). This page lists 94 rules. [All pages](README.md).
+The ESLint rules nitpicker's own plugin adds to the TypeScript and JavaScript presets (`nitpicker/*`). This page lists 95 rules. [All pages](README.md).
 
 The guide for these rules: [docs/typescript-strict-preset.md](../typescript-strict-preset.md).
 
@@ -796,6 +796,17 @@ Report test calls in a file the test runner never collects.
 - **Exception:** If this is intended, add `{"rule":"nitpicker/no-uncollected-tests","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 - **Allowed forms by message:**
   - This file defines tests but is not named like a test file, so they never run. Rename it `*.test.ts` (or `*.spec.ts`). An exception fits only when another test file runs it on purpose.
+
+<a id="eslint-nitpicker-no-unhandled-void-promise"></a>
+
+### `eslint/nitpicker/no-unhandled-void-promise`
+
+Disallow `void` on a promise whose rejection nothing handles.
+
+- **Printed as:** `eslint-lint/nitpicker/no-unhandled-void-promise`
+- **Exception:** If this is intended, add `{"rule":"nitpicker/no-unhandled-void-promise","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
+- **Allowed forms by message:**
+  - `void` discards this promise, so nothing handles its rejection and Node.js exits on an unhandled rejection by default. Await it, or call an async function whose whole body is a `try` with a `catch` that logs and does not rethrow: `void sendReport(id);` with `async function sendReport(id) { try { await report(id); } catch (error) { logger.error({ error }, "report failed"); } }`. A detached-work runner the project already has can be named in nitpicker.config.json under `conventions` as `"typescript.detachedWorkRunners": ["runDetached"]`.
 
 <a id="eslint-nitpicker-no-uninjectable-delay"></a>
 
