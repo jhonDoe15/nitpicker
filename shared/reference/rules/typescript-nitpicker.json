@@ -789,16 +789,16 @@
     ],
     { "key": "exceptions", "rule": "nitpicker/no-unused-dom-environment" },
     "nitpicker/no-unvalidated-schema-field",
-    "Disallow z.unknown() and z.any() as a field of a z.object schema",
+    "Disallow unchecked fields (z.unknown(), v.any(), Joi.any(), Type.Unknown() and the like) and objects that keep unknown keys in the schemas of every validation library the preset knows",
     [
       {
-        "message": "{{factory}}() as a field only checks that the key exists and hands the value on unchecked. Validate the field in the schema, e.g. z.string().trim().min(1) or z.email(). An exception fits only when the field is genuinely opaque."
+        "message": "{{factory}} lets any value of this field through unchecked. Validate the field in the schema, e.g. {{example}}. An exception fits only when the field is genuinely opaque."
       },
       {
         "message": "z.custom() without a check function is a cast, not a validator. Pass the check, z.custom<T>((value) => ...), or build the schema from validating parts. An exception fits only when the value is genuinely opaque."
       },
       {
-        "message": "z.looseObject(), .loose() and .passthrough() let unknown keys through unvalidated, and .catchall(z.unknown()) does the same. Use z.object({...}), which drops unknown keys, or z.strictObject({...}) to reject them. An exception fits only when the extra keys are genuinely opaque."
+        "message": "{{form}} lets unknown keys through unvalidated. Use {{allowed}}. An exception fits only when the extra keys are genuinely opaque."
       }
     ],
     { "key": "exceptions", "rule": "nitpicker/no-unvalidated-schema-field" },
@@ -965,6 +965,14 @@
       }
     ],
     { "key": "exceptions", "rule": "nitpicker/report-module-load-effects" },
+    "nitpicker/require-error-listener",
+    "Require an 'error' listener on streams, sockets, child processes and clients",
+    [
+      {
+        "message": "`{{name}}` emits 'error' when its connection, file or process fails, and Node.js throws an 'error' event that has no listener, which stops the process. Attach one where it is created: `{{name}}.on('error', (error) => ...)`, or hand it to `pipeline(...)` or `finished(...)` from `node:stream/promises`, to `events.once(...)`, or read it with `for await`. An exception fits only when a crash of the process is the intended outcome."
+      }
+    ],
+    { "key": "exceptions", "rule": "nitpicker/require-error-listener" },
     "nitpicker/require-http-timeout",
     "Require a timeout on outbound HTTP calls",
     [
@@ -1108,9 +1116,10 @@
     [0, 342, 343, 344, 345, 5, 346, 7, 347, -1, -1],
     [0, 348, 2, 3, 349, 5, 350, 7, 351, -1, -1],
     [0, 352, 2, 3, 353, 5, 354, 7, 355, -1, -1],
-    [0, 356, 357, 358, 359, 5, 360, 7, 361, -1, -1],
-    [0, 362, 2, 3, 363, 5, 364, 7, 365, -1, -1],
+    [0, 356, 2, 3, 357, 5, 358, 7, 359, -1, -1],
+    [0, 360, 361, 362, 363, 5, 364, 7, 365, -1, -1],
     [0, 366, 2, 3, 367, 5, 368, 7, 369, -1, -1],
-    [0, 370, 2, 3, 371, 5, 372, 7, 373, -1, -1]
+    [0, 370, 2, 3, 371, 5, 372, 7, 373, -1, -1],
+    [0, 374, 2, 3, 375, 5, 376, 7, 377, -1, -1]
   ]
 }
