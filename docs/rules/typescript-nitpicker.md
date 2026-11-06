@@ -1,6 +1,6 @@
 # TypeScript and JavaScript: nitpicker ESLint rules
 
-The ESLint rules nitpicker's own plugin adds to the TypeScript and JavaScript presets (`nitpicker/*`). This page lists 97 rules. [All pages](README.md).
+The ESLint rules nitpicker's own plugin adds to the TypeScript and JavaScript presets (`nitpicker/*`). This page lists 98 rules. [All pages](README.md).
 
 The guide for these rules: [docs/typescript-strict-preset.md](../typescript-strict-preset.md).
 
@@ -517,12 +517,13 @@ Disallow the ORM creating or changing the database schema when the application s
 
 ### `eslint/nitpicker/no-parameter-mutation`
 
-Disallow changing an array, Set, Map or indexed object that a parameter holds in place.
+Disallow changing an array, Set, Map, indexed object or project object that a parameter holds in place.
 
 - **Printed as:** `eslint-lint/nitpicker/no-parameter-mutation`
 - **Exception:** If this is intended, add `{"rule":"nitpicker/no-parameter-mutation","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 - **Allowed forms by message:**
   - `{{ name }}` changes the value the caller passed in. Build and return a new value instead (`[...items, item]`, `new Set([...set, item])`, `{ ...table, [key]: value }`, `items.toSorted()`), or copy the parameter first (`const copy = [...items]`).
+  - `{{ name }}` writes to the object the caller passed in, so a frozen or shared object breaks. Build a new object instead (`{ ...options, timeout: 5000 }`), or copy the parameter first (`const next = { ...options }`). An exception fits only when this function fills an object its caller hands it to be filled.
 
 <a id="eslint-nitpicker-no-partial-output-assertion"></a>
 
@@ -830,6 +831,17 @@ Require new URL(text) on runtime text to be checked with URL.canParse, parsed wi
 - **Exception:** If this is intended, add `{"rule":"nitpicker/no-unhandled-url-parse","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 - **Allowed forms by message:**
   - Parse this text with `URL.parse(text)` (null when it is not a URL), check `URL.canParse(text)` first, or build the URL in a `try` whose catch handles the failure. `new URL(text)` throws a TypeError on text that is not an absolute URL (no scheme, a bad host, `//` against a base), so one odd stored, user or header value turns this call into an error response. Constant text and a base are fine, and so are a `URL` value, an already parsed `.href`, `.url` or `.origin`, and `new URL(path, import.meta.url)`.
+
+<a id="eslint-nitpicker-no-unhandled-void-promise"></a>
+
+### `eslint/nitpicker/no-unhandled-void-promise`
+
+Disallow `void` on a promise whose rejection nothing handles.
+
+- **Printed as:** `eslint-lint/nitpicker/no-unhandled-void-promise`
+- **Exception:** If this is intended, add `{"rule":"nitpicker/no-unhandled-void-promise","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
+- **Allowed forms by message:**
+  - `void` discards this promise, so nothing handles its rejection and Node.js exits on an unhandled rejection by default. Await it, or call an async function whose whole body is a `try` with a `catch` that logs and does not rethrow: `void sendReport(id);` with `async function sendReport(id) { try { await report(id); } catch (error) { logger.error({ error }, "report failed"); } }`. A detached-work runner the project already has can be named in nitpicker.config.json under `conventions` as `"typescript.detachedWorkRunners": ["runDetached"]`.
 
 <a id="eslint-nitpicker-no-uninjectable-delay"></a>
 

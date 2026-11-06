@@ -58,7 +58,8 @@ than the others, and this skill teaches its rules before an agent writes Go.
   editing a vet line, formatting an unformatted file, editing a slow legacy test). Each bullet
   states what the gate reported, with its own message. Formatting only files that were formatted
   before matches the Python page: a formatter run rewrites lines, and line-keyed findings on them
-  turn new.
+  turn new. The rename bullet was revised once structure findings got a name-free anchor (the
+  function's text with its own name masked): a rename that leaves the body as it was keeps them.
 - **Table-driven tests and the slow-test limits.** Table-driven tests are the Go convention; the
   5 s / 30 s budgets and the integration markers (folders, file suffix, build tag,
   `testing.Short()`) cover the ways Go projects already separate their slow tests.
