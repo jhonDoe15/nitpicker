@@ -22,9 +22,9 @@ it with `npx skills add jhonDoe15/nitpicker --skill nitpicker-java`.
 3. Act on the exit code:
    - 0: done, unless you narrowed the run with `--analyzer`: then the summary says `Ran only: ...`
      and you run the gate again without it before you finish.
-   - 1: fix every new finding and any tool error listed below them, then rerun.
-   - 2: no new findings, but a tool failed. Fix the cause it names (usually a failing test or a
-     Gradle error) and rerun. Exit 2 is never a pass. If it says another run is in progress, wait
+   - 1: fix the failing tests the summary leads with, every new finding and any tool error listed
+     below them, then rerun.
+   - 2: no new findings, but a tool failed. Fix the cause it names (usually a Gradle error) and rerun. Exit 2 is never a pass. If it says another run is in progress, wait
      for that run; never kill it.
 4. Never suppress: no `@Suppress` of a detekt or ktlint rule, coverage or mutation markers
    (`@Generated`, `@ExcludeFromJacocoGeneratedReport`, `@DoNotMutate`), config `exclude`/`disable`/`exceptions`, legacy
@@ -91,6 +91,12 @@ To learn why a rule is on and what form it allows before you write or change cod
   members and parameters (an override, a function with a framework annotation and a name starting
   `ignored` or `unused` are skipped). A public function's `Boolean` parameter that picks a behavior
   becomes two functions or an enum (`BooleanFlagParameter`).
+- Names and comments (`kotlin-source` rules): name packages, files and types for their job
+  (`PriceRounding.kt`), never `Utils`, `Helpers`, `Managers`, `Common`, `Misc` or `Miscellaneous`,
+  also not before `Mixin`, `Module` or `Base` (`HelperMixin`); a framework role such as
+  `TransactionManager` is fine; pure logic shared between features goes in
+  the shared package under such a name. Delete commented-out code, in tests too (`CommentedOutCode`);
+  a sample under an `Example:` heading is fine.
 - Secrets (nitpicker's own `kotlin-source` checks, not detekt): never put a secret literal in a
   `password`, `token`, `apiKey` or `secret` name, map entry or fallback (`?: "..."`, `getOrDefault`);
   read it from the environment or a secrets manager. Never pass a secret to a log call, `println`,

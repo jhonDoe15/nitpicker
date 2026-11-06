@@ -11,7 +11,7 @@ function readCompilerConfig(configPath) {
     read.config,
     ts.sys,
     path.dirname(file),
-    { noEmit: true },
+    { noCheck: false, noEmit: true },
     file,
   );
   if (config.errors.length > 0) {

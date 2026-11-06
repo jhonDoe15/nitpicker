@@ -98,7 +98,7 @@ const MAIN_RULES = [
   plainTextRegexes,
   repeatedStringLiterals,
 ];
-const TEST_RULES = [testClassesWithoutTests, unsafeCasts];
+const TEST_RULES = [commentedOutCode, testClassesWithoutTests, unsafeCasts];
 
 const TOP_LEVEL_MAIN = /(?<![\w.])fun\s+main\s*\(/g;
 const ROOT_MARKERS = [
@@ -161,7 +161,7 @@ function scanFiles(files, rules) {
   return files.flatMap(({ file, scanned }) => {
     const occurrences = new Map();
     return rules
-      .flatMap((rule) => rule(scanned, context))
+      .flatMap((rule) => rule(scanned, { ...context, file }))
       .toSorted((left, right) => left.offset - right.offset)
       .map((reported) => finding({ file, scanned, occurrences }, reported));
   });

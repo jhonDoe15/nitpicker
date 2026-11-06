@@ -79,7 +79,7 @@ const NODE_TEST_HINT =
 
 const FLOATING_PROMISE_TEXT = /^Promises must be awaited/u;
 
-const FLOATING_PROMISE_MESSAGE = `Await this promise: \`await job()\`, or \`await Promise.all([...])\` for several; \`.then()\` and \`.catch()\` do not count. Deliberate fire-and-forget is written \`void job();\`.`;
+const FLOATING_PROMISE_MESSAGE = `Await this promise: \`await job()\`, or \`await Promise.all([...])\` for several; \`.then()\` and \`.catch()\` do not count. Deliberate fire-and-forget is written \`void job();\`, and in production code \`job\` is an async function whose whole body is a \`try\` with a \`catch\` that does not rethrow.`;
 
 const EVAL_MESSAGE = `Do not evaluate a string as code. Call the function directly, look it up in a table keyed by name, or parse the data with JSON.parse and a schema.`;
 
