@@ -2,12 +2,17 @@ import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import {
-  EXPECTED_REVIEW_FINDINGS,
+  EXPECTED_REVIEW_FINDINGS as RULE_FINDINGS,
   integrationSuiteFiles,
   publishedFiles,
   REVIEW_RULE_FILES,
   runtimeSerializationFiles,
 } from './test-support/review/kotlin-review-data.mjs';
+import { PLURAL_FINDINGS } from './test-support/review/kotlin-plural-data.mjs';
+import {
+  mapUpdateFiles,
+  MAP_UPDATE_FINDINGS,
+} from './test-support/review/kotlin-map-update-data.mjs';
 import {
   commitBranch,
   commitFromBranch,
@@ -21,6 +26,7 @@ import {
 import { helpUriProblems } from '../../../../shared/reference/test-support/help-uris.mjs';
 
 const REVIEW_TOOLS = new Set(['pmd']);
+const EXPECTED_REVIEW_FINDINGS = [...RULE_FINDINGS, ...MAP_UPDATE_FINDINGS].sort();
 const ORDERS_TESTS = 'src/test/kotlin/demo/orders/*';
 
 function reviewFindings(findings) {
@@ -35,13 +41,13 @@ describe.skipIf(!kotlinE2eEnabled)('Kotlin preset review rules end to end', () =
 
   beforeAll(() => {
     project = initializeProject();
-    commitBranch(project, 'review-rules', REVIEW_RULE_FILES);
+    commitBranch(project, 'review-rules', { ...REVIEW_RULE_FILES, ...mapUpdateFiles() });
   });
   afterAll(() => {
     removeProject(project);
   });
 
-  it('fails the sleeps, enum predicates, wrapper, plural member, unused option and unused context, and spares the allowed forms', () => {
+  it('fails the sleeps, enum predicates, wrapper, plural member, map updates, unused option and unused context, and spares the allowed forms', () => {
     const result = diffOf(project, 'review-rules');
 
     expect(result.failed).toBe(true);
@@ -62,15 +68,20 @@ describe.skipIf(!kotlinE2eEnabled)('Kotlin preset review rules end to end', () =
       },
     });
 
-    expect(reviewFindings(result.newEnforceable)).toEqual([
-      'ExhaustiveEnumPredicate isLive',
-      'ExhaustiveEnumPredicate isOpen',
-      'ExhaustiveEnumPredicate isSettled',
-      'ExhaustiveEnumPredicate weight',
-      'SingularAndPluralMember Query.tags',
-      'StaticForwardingWrapper absOf',
-      'StaticForwardingWrapper total',
-    ]);
+    expect(reviewFindings(result.newEnforceable)).toEqual(
+      [
+        'ExhaustiveEnumPredicate isHandedOver',
+        'ExhaustiveEnumPredicate isLive',
+        'ExhaustiveEnumPredicate isOpen',
+        'ExhaustiveEnumPredicate isPending',
+        'ExhaustiveEnumPredicate isSettled',
+        'ExhaustiveEnumPredicate weight',
+        ...PLURAL_FINDINGS,
+        'StaticForwardingWrapper absOf',
+        'StaticForwardingWrapper total',
+        ...MAP_UPDATE_FINDINGS,
+      ].sort(),
+    );
   });
 
   it('skips data classes when a serialization library is only on the runtime classpath', () => {
