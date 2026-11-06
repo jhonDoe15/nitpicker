@@ -1,6 +1,6 @@
 # Java and Kotlin: PMD rules
 
-PMD's bestpractices, design, errorprone, multithreading, performance and security categories, as far as nitpicker's rulesets keep them, and the rules nitpicker adds to them, for Java sources in the Java and Kotlin presets. This page lists 256 rules. [All pages](README.md).
+PMD's bestpractices, design, errorprone, multithreading, performance and security categories, as far as nitpicker's rulesets keep them, and the rules nitpicker adds to them, for Java sources in the Java and Kotlin presets. This page lists 260 rules. [All pages](README.md).
 
 The guide for these rules: [docs/java-preset.md](../java-preset.md).
 
@@ -1749,6 +1749,17 @@ Fill a plain collection of a shared singleton bean only at startup (the construc
 - **Message in Kotlin:** Fill a plain collection of a shared singleton bean only at startup (the constructor, an init block, @PostConstruct or afterPropertiesSet) and keep it read-only (toMap(), toList()), or use a ConcurrentHashMap or a cache (@Cacheable). Changed after startup, request threads would write to it at once.
 - **Exception:** If this is intended, add `{"rule":"pmd/SpringBeanCollectionState","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 
+<a id="pmd-springcachewriteintransaction"></a>
+
+### `pmd/SpringCacheWriteInTransaction`
+
+Write the cache after the commit (in a TransactionSynchronization afterCommit callback, a @TransactionalEventListener, or the caller once the transactional call returns), or make the cache manager transaction-aware (TransactionAwareCacheManagerProxy, or transactionAware() on its builder). Written inside the transaction, the cache keeps a value that a rollback undoes, and an early evict lets a concurrent reader put the old value back.
+
+- **Scope:** Main sources of a project with Spring on the compile classpath.
+- **Why it is on:** One of nitpicker's Spring rules: it names the one form Spring code should take, and runs only when Spring is on the compile classpath.
+- **Message in Kotlin:** Write the cache after the commit (in a TransactionSynchronization afterCommit callback, a @TransactionalEventListener, or the caller once the transactional call returns), or make the cache manager transaction-aware (TransactionAwareCacheManagerProxy, or transactionAware() on its builder). Written inside the transaction, the cache keeps a value that a rollback undoes, and an early evict lets a concurrent reader put the old value back.
+- **Exception:** If this is intended, add `{"rule":"pmd/SpringCacheWriteInTransaction","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
+
 <a id="pmd-springcomposedmapping"></a>
 
 ### `pmd/SpringComposedMapping`
@@ -1914,6 +1925,17 @@ Collect the entities and call saveAll or deleteAll once after the loop; when row
 - **Message in Kotlin:** Collect the entities and call saveAll or deleteAll once after the loop; when rows must fail one by one, call saveAll per batch and handle the error per batch. This loop calls a function of this class that saves or deletes one entity, so it still writes once per iteration.
 - **Exception:** If this is intended, add `{"rule":"pmd/SpringDataSaveInLoopHelper","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 
+<a id="pmd-springdatawritewithouttransaction"></a>
+
+### `pmd/SpringDataWriteWithoutTransaction`
+
+Put @Transactional on this repository method, or on the repository interface. Spring Data opens a transaction only for the CRUD methods a repository inherits, so a declared @Modifying query or derived delete fails with TransactionRequiredException whenever its caller has no transaction.
+
+- **Scope:** Main sources of a project with Spring on the compile classpath.
+- **Why it is on:** One of nitpicker's Spring rules: it names the one form Spring code should take, and runs only when Spring is on the compile classpath.
+- **Message in Kotlin:** Put @Transactional on this repository function, or on the repository interface. Spring Data opens a transaction only for the CRUD functions a repository inherits, so a declared @Modifying query or derived delete fails with TransactionRequiredException whenever its caller has no transaction.
+- **Exception:** If this is intended, add `{"rule":"pmd/SpringDataWriteWithoutTransaction","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
+
 <a id="pmd-springhardcodeduser"></a>
 
 ### `pmd/SpringHardcodedUser`
@@ -1968,6 +1990,28 @@ Write @Configuration(proxyBeanMethods = false) and take dependencies as @Bean me
 - **Why it is on:** One of nitpicker's Spring rules: it names the one form Spring code should take, and runs only when Spring is on the compile classpath.
 - **Message in Kotlin:** Write @Configuration(proxyBeanMethods = false) and take dependencies as @Bean function parameters instead of calling other @Bean functions.
 - **Exception:** If this is intended, add `{"rule":"pmd/SpringLiteConfiguration","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
+
+<a id="pmd-springlocalcachewriteintransaction"></a>
+
+### `pmd/SpringLocalCacheWriteInTransaction`
+
+Write this in-memory cache or memo map after the commit (in a TransactionSynchronization afterCommit callback, a @TransactionalEventListener, or the caller once the transactional call returns). Written inside the transaction, it keeps a value or a generated id that a rollback undoes, and other threads read it until it expires.
+
+- **Scope:** Main sources of a project with Spring on the compile classpath.
+- **Why it is on:** One of nitpicker's Spring rules: it names the one form Spring code should take, and runs only when Spring is on the compile classpath.
+- **Message in Kotlin:** Write this in-memory cache or memo map after the commit (in a TransactionSynchronization afterCommit callback, a @TransactionalEventListener, or the caller once the transactional call returns). Written inside the transaction, it keeps a value or a generated id that a rollback undoes, and other threads read it until it expires.
+- **Exception:** If this is intended, add `{"rule":"pmd/SpringLocalCacheWriteInTransaction","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
+
+<a id="pmd-springmultiwritewithouttransaction"></a>
+
+### `pmd/SpringMultiWriteWithoutTransaction`
+
+Put @Transactional on this method, or run its writes inside TransactionTemplate.execute. It writes to the database more than once outside a transaction, so when a later write fails the earlier ones stay committed.
+
+- **Scope:** Main sources of a project with Spring on the compile classpath.
+- **Why it is on:** One of nitpicker's Spring rules: it names the one form Spring code should take, and runs only when Spring is on the compile classpath.
+- **Message in Kotlin:** Put @Transactional on this function, or run its writes inside transactionTemplate.execute { }. It writes to the database more than once outside a transaction, so when a later write fails the earlier ones stay committed.
+- **Exception:** If this is intended, add `{"rule":"pmd/SpringMultiWriteWithoutTransaction","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 
 <a id="pmd-springnocomponentscan"></a>
 
