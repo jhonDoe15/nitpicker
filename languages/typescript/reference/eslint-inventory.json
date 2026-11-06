@@ -1151,6 +1151,22 @@
       ],
       "description": "Disallow null outside the allowed library forms"
     },
+    "nitpicker/no-orm-query-logging": {
+      "tools": ["eslint-lint"],
+      "forms": [],
+      "description": "Disallow ORM options that log every SQL query",
+      "messages": [
+        "`{{form}}` logs every SQL query: the logs fill with personal data and bound values, and every query pays for the log line. A value guarded by an environment check still logs in every other environment. Turn query logging off (`logging: false`) and log slow queries instead: TypeORM `maxQueryExecutionTime`, Sequelize `benchmark: true` with a logging function that keeps only slow queries, Prisma `log: [{ emit: \"event\", level: \"query\" }]` with a handler that filters by duration, or the database's own slow-query log. An exception fits only for a local debugging script."
+      ]
+    },
+    "nitpicker/no-orm-schema-sync": {
+      "tools": ["eslint-lint"],
+      "forms": [],
+      "description": "Disallow the ORM creating or changing the database schema when the application starts",
+      "messages": [
+        "`{{form}}` lets the ORM create, alter or drop tables when the application starts: a deploy can drop columns and their data, instances race to change the schema, and the schema drifts from what the migrations record. A value guarded by an environment check still changes the schema in every other environment. Change the schema with migrations instead (TypeORM migrations with `migrationsRun` or `typeorm migration:run`, `sequelize-cli db:migrate`, MikroORM `orm.migrator.up()`, `prisma migrate deploy`). An exception fits only for a local script outside the application, such as a seed or a dev tool."
+      ]
+    },
     "nitpicker/no-parameter-mutation": {
       "tools": ["eslint-lint"],
       "forms": [],
@@ -3976,6 +3992,22 @@
         }
       ],
       "description": "Disallow null outside the allowed library forms"
+    },
+    "nitpicker/no-orm-query-logging": {
+      "tools": ["eslint-lint"],
+      "forms": [],
+      "description": "Disallow ORM options that log every SQL query",
+      "messages": [
+        "`{{form}}` logs every SQL query: the logs fill with personal data and bound values, and every query pays for the log line. A value guarded by an environment check still logs in every other environment. Turn query logging off (`logging: false`) and log slow queries instead: TypeORM `maxQueryExecutionTime`, Sequelize `benchmark: true` with a logging function that keeps only slow queries, Prisma `log: [{ emit: \"event\", level: \"query\" }]` with a handler that filters by duration, or the database's own slow-query log. An exception fits only for a local debugging script."
+      ]
+    },
+    "nitpicker/no-orm-schema-sync": {
+      "tools": ["eslint-lint"],
+      "forms": [],
+      "description": "Disallow the ORM creating or changing the database schema when the application starts",
+      "messages": [
+        "`{{form}}` lets the ORM create, alter or drop tables when the application starts: a deploy can drop columns and their data, instances race to change the schema, and the schema drifts from what the migrations record. A value guarded by an environment check still changes the schema in every other environment. Change the schema with migrations instead (TypeORM migrations with `migrationsRun` or `typeorm migration:run`, `sequelize-cli db:migrate`, MikroORM `orm.migrator.up()`, `prisma migrate deploy`). An exception fits only for a local script outside the application, such as a seed or a dev tool."
+      ]
     },
     "nitpicker/no-parameter-mutation": {
       "tools": ["eslint-lint"],
@@ -7124,6 +7156,22 @@
         }
       ],
       "description": "Disallow null outside the allowed library forms"
+    },
+    "nitpicker/no-orm-query-logging": {
+      "tools": ["eslint-lint"],
+      "forms": [],
+      "description": "Disallow ORM options that log every SQL query",
+      "messages": [
+        "`{{form}}` logs every SQL query: the logs fill with personal data and bound values, and every query pays for the log line. A value guarded by an environment check still logs in every other environment. Turn query logging off (`logging: false`) and log slow queries instead: TypeORM `maxQueryExecutionTime`, Sequelize `benchmark: true` with a logging function that keeps only slow queries, Prisma `log: [{ emit: \"event\", level: \"query\" }]` with a handler that filters by duration, or the database's own slow-query log. An exception fits only for a local debugging script."
+      ]
+    },
+    "nitpicker/no-orm-schema-sync": {
+      "tools": ["eslint-lint"],
+      "forms": [],
+      "description": "Disallow the ORM creating or changing the database schema when the application starts",
+      "messages": [
+        "`{{form}}` lets the ORM create, alter or drop tables when the application starts: a deploy can drop columns and their data, instances race to change the schema, and the schema drifts from what the migrations record. A value guarded by an environment check still changes the schema in every other environment. Change the schema with migrations instead (TypeORM migrations with `migrationsRun` or `typeorm migration:run`, `sequelize-cli db:migrate`, MikroORM `orm.migrator.up()`, `prisma migrate deploy`). An exception fits only for a local script outside the application, such as a seed or a dev tool."
+      ]
     },
     "nitpicker/no-parameter-mutation": {
       "tools": ["eslint-lint"],
