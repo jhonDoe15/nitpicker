@@ -19,6 +19,7 @@
       "languages/typescript/preset/eslint-config/policies/coding-standards.config.mjs",
       "languages/typescript/preset/eslint-config/policies/errors.config.mjs",
       "languages/typescript/preset/eslint-config/policies/module-effects.config.mjs",
+      "core/bin.mjs",
       "core/cli.mjs",
       "core/diff/sharding/aggregate-shards.mjs",
       "core/diff/execution/analyzer-scheduler.mjs",
