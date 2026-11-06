@@ -1,4 +1,5 @@
 import path from 'node:path';
+import { escapeRegExp } from '../../paths/glob.mjs';
 import { readJson, trackedText } from './known-files.mjs';
 import { holdsSources } from './output-sources.mjs';
 
@@ -48,7 +49,7 @@ function isSourceFolder(folder, folderFiles, { projectRoot, tracked, manifests }
 
 function isReferenced(projectRoot, tracked, { folder, siblings }) {
   const name = path.posix.basename(folder);
-  const reference = new RegExp(`(?:^|[\\s"'=:(./])${name}/([\\w./-]+)`, 'gu');
+  const reference = new RegExp(`(?:^|[\\s"'=:(./])${escapeRegExp(name)}/([\\w./-]+)`, 'gu');
   return siblings.some((manifest) =>
     [...trackedText(projectRoot, manifest).matchAll(reference)].some((match) =>
       tracked.has(path.posix.normalize(`${folder}/${match[1]}`)),

@@ -1,6 +1,6 @@
 # TypeScript and JavaScript: ESLint plugin rules
 
-The rules of the third-party ESLint plugins the presets use: Vitest, React, accessibility, Testing Library, i18n, regular expressions and functional style. This page lists 114 rules. [All pages](README.md).
+The rules of the third-party ESLint plugins the presets use: Vitest, React, accessibility, Testing Library, i18n, regular expressions and functional style. This page lists 115 rules. [All pages](README.md).
 
 The guide for these rules: [docs/typescript-strict-preset.md](../typescript-strict-preset.md).
 
@@ -997,6 +997,19 @@ Disallow exponential and polynomial backtracking.
 - **Allowed form:** See the tool's documentation: [Rule documentation](https://ota-meshi.github.io/eslint-plugin-regexp/rules/no-super-linear-backtracking.html).
 - **Exception:** If this is intended, add `{"rule":"regexp/no-super-linear-backtracking","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 - **See also:** [Rule documentation](https://ota-meshi.github.io/eslint-plugin-regexp/rules/no-super-linear-backtracking.html)
+
+<a id="eslint-regexp-no-useless-flag"></a>
+
+### `eslint/regexp/no-useless-flag`
+
+Disallow unnecessary regex flags.
+
+- **Printed as:** `eslint-lint/regexp/no-useless-flag`
+- **Presets:** TypeScript and JavaScript
+- **Why it is on:** The preset turns on this rule to keep regular expressions safe and readable.
+- **Allowed form:** See the tool's documentation: [Rule documentation](https://ota-meshi.github.io/eslint-plugin-regexp/rules/no-useless-flag.html).
+- **Exception:** If this is intended, add `{"rule":"regexp/no-useless-flag","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
+- **See also:** [Rule documentation](https://ota-meshi.github.io/eslint-plugin-regexp/rules/no-useless-flag.html)
 
 <a id="eslint-testing-library-await-async-events"></a>
 
