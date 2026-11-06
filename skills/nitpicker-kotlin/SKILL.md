@@ -65,6 +65,12 @@ To learn why a rule is on and what form it allows before you write or change cod
 - Fan-out: bound concurrent remote or message calls. One `Semaphore(8)` with `withPermit { ... }` around each call,
   `chunked(n)`, or `flatMapMerge(concurrency = n)`; never `items.map { async { client.get(it) } }.awaitAll()` over a
   runtime collection. `limitedParallelism(n)` caps threads, not suspending calls in flight.
+- Child processes: wait with a deadline, `if (!process.waitFor(30, TimeUnit.SECONDS)) process.destroyForcibly()`,
+  and read the output on another thread first; never `waitFor()` or `inputStream.readBytes()` alone
+  (`kotlin-source/ProcessWaitWithoutTimeout`; a build wrapper that only runs a child to completion takes an exception).
+- HTTP calls: every request has a deadline. `HttpRequest.newBuilder(uri).timeout(...)`, `readTimeout` on an
+  `HttpURLConnection`, Ktor's `HttpTimeout`, OkHttp; not `URL(url).readText()` or `HttpClients.createDefault()`
+  (`kotlin-source/HttpWithoutTimeout`).
 - Records: a class that only holds data is a `data class` with `val`s; change a copy with `copy(...)`.
   A class with `var`s is not flagged, nor a JPA or Spring Data entity; the project adds other
   annotations to `UseDataClass`'s `excludeAnnotatedClasses` in its `detekt.yml`.
@@ -93,6 +99,10 @@ To learn why a rule is on and what form it allows before you write or change cod
   members and parameters (an override, a function with a framework annotation and a name starting
   `ignored` or `unused` are skipped). A public function's `Boolean` parameter that picks a behavior
   becomes two functions or an enum (`BooleanFlagParameter`).
+- Secrets (nitpicker's own `kotlin-source` checks, not detekt): never put a secret literal in a
+  `password`, `token`, `apiKey` or `secret` name, map entry or fallback (`?: "..."`, `getOrDefault`);
+  read it from the environment or a secrets manager. Never pass a secret to a log call, `println`,
+  `System.out`/`System.err` or an exception message: log that it is set, or a masked tail.
 - Signatures: a value with three states is an `enum class`, not a `Boolean?` parameter, return
   type or property (`kotlin-source/TriStateBoolean`; a property or parameter a framework fills,
   such as `@Column`, `@JsonProperty`, `@SerialName` or an `@Entity` property, is exempt); a public
@@ -104,12 +114,13 @@ To learn why a rule is on and what form it allows before you write or change cod
   `SimpleDateFormat` are banned.
 - Enums: to sort the entries of one of your enums into two groups, classify every entry with a
   `when` without `else` (adding an entry then fails to compile), or a `Boolean` each entry
-  declares. Not `s == PAID || s == SHIPPED` or `s in setOf(PAID, SHIPPED)`
-  (`pmd/ExhaustiveEnumPredicate`).
+  declares. Not `s == PAID || s == SHIPPED`, `s in setOf(PAID, SHIPPED)` or a `when` with
+  `else -> false` (`pmd/ExhaustiveEnumPredicate`).
 - No top-level or `object` function that only passes its parameters, in order, to another function
   with the same parameters (`pmd/StaticForwardingWrapper`); call that function. Factories named
   `of` or `from` are fine.
-- A data class or `@ConfigurationProperties` class has `tags` or `tag`, not both
+- A data class, a `@ConfigurationProperties` class, the public properties of any class and the
+  defaulted parameters of a public function have `tags` or `tag`, not both
   (`pmd/SingularAndPluralMember`); one item is a one-element list.
 - A validation annotation on a constructor property takes the field target:
   `data class OrderRequest(@field:NotBlank val item: String)`, not `@NotBlank val item`, which
@@ -121,6 +132,10 @@ To learn why a rule is on and what form it allows before you write or change cod
   function `main` or the framework calls after startup (a `@Bean` method, an `ApplicationRunner`, a
   Ktor module) and pass the result in, or defer it with `by lazy { }`. Constants, loggers, `Regex`
   and collections can stay.
+- The lambda passed to `computeIfAbsent`, `compute`, `computeIfPresent`, `merge`, or `getOrPut`
+  on a `ConcurrentMap`, never changes the same map, not even from a callback it starts
+  (`pmd/RecursiveMapUpdate`). Attach the cleanup to the result:
+  `map.computeIfAbsent(key) { start(it) }.whenComplete { r, _ -> map.remove(key, r) }`.
 - A public top-level, `object` or companion function, or a private or `internal` function or
   constructor, does not declare a default parameter that no call sets (`unused-option`): remove the
   parameter, or pass it from a real call. Tests count only for private and `internal` declarations
@@ -186,6 +201,11 @@ To learn why a rule is on and what form it allows before you write or change cod
   package config, `TestConfig(retries = n)`). A test that passes on a later attempt hides a flaky or
   racy test: wait on the condition instead of a fixed delay, isolate shared state. `retries = 0` and
   `@RepeatedTest` are fine.
+- Start a container, server or process once, not for each test (`pmd/ServerOrContainerPerTest`): a
+  `@Container` or WireMock `@RegisterExtension` property lives in a companion object, a Kotest
+  container extension uses the spec lifecycle (not `ContainerLifecycleMode.Test` or `perTest()`),
+  and `@BeforeEach`, `beforeTest` or `beforeEach` does not create and start one; two tests do not
+  make the same start. Start it in `@BeforeAll` or a spec-level extension and reset its state.
 - Assert unconditionally (`pmd/AssertionInControlFlow`): no assertion that can be skipped, inside an `if`,
   a `when`, any loop (also over results), a safe call (`?.let`), `takeIf`, `&&`, `||`, `?:`, a `try` that
   swallows the failure, a `runCatching`, or after an early `return`. An `if`/`else` or `when` whose every

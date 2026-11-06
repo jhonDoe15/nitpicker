@@ -1,6 +1,7 @@
 import path from 'node:path';
 import {
   clearSnapshotReports,
+  renderSnapshotConsoleSummary,
   writeSnapshotReports,
   renderRuleFilterSection as renderSnapshotRuleFilterSection,
 } from '../snapshot/reporters.mjs';
@@ -17,6 +18,7 @@ import { runGit } from '../diff/git/repository/command.mjs';
 import { writeGithubOutput } from '../diff/reporting/github/emit.mjs';
 import { captureWorkingTree } from '../diff/git/repository/git.mjs';
 import { outputRootFor } from '../diff/reporting/reporters.mjs';
+import { assertHasCommit } from '../diff/git/repository/base-ref.mjs';
 import { partialRunField, partialRunOf } from '../diff/reporting/partial-run/partial-run.mjs';
 
 function stderrWarning(stderr) {
@@ -61,7 +63,7 @@ export function runSnapshotCli({
     projectPath: relativeProjectPath,
     repositoryRoot,
   });
-  stdout.write(report.text);
+  stdout.write(renderSnapshotConsoleSummary(report, path.join(outputRoot, 'report.txt')));
   stdout.write(renderSnapshotRuleFilterSection(report, options.ruleFilters));
   writeGithubOutput({
     kind: 'snapshot',
@@ -118,6 +120,7 @@ function captureSnapshot(currentProjectRoot) {
     runGit(currentProjectRoot, ['rev-parse', '--show-toplevel']).trim(),
   );
   const relativeProjectPath = path.relative(repositoryRoot, currentProjectRoot) || '.';
+  assertHasCommit(repositoryRoot);
   const headSha = runGit(repositoryRoot, ['rev-parse', 'HEAD^{commit}']).trim();
   const capturedSha = captureWorkingTree(repositoryRoot, headSha);
   return { repositoryRoot, relativeProjectPath, capturedSha };

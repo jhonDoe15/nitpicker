@@ -90,6 +90,14 @@ To learn why a rule is on and what form it allows before you write or change cod
   (`Executors.newFixedThreadPool(8)`), take a `Semaphore` permit around each call, or work through
   fixed-size batches; never `supplyAsync` per element on the default pool or a cached or
   virtual-thread executor.
+- Child processes: wait with a deadline and destroy the child when it runs over,
+  `if (!process.waitFor(30, TimeUnit.SECONDS)) process.destroyForcibly()`, reading the output on
+  another thread first; never `waitFor()` or `getInputStream().readAllBytes()` alone
+  (`pmd/ProcessWaitWithoutTimeout`; a build wrapper that only runs a child to completion takes an exception).
+- HTTP calls: every request has a deadline. `HttpRequest.newBuilder(uri).timeout(...)`,
+  `setReadTimeout` on an `HttpURLConnection`, `setDefaultRequestConfig(...)` on an Apache client
+  builder, `readTimeout` on a JAX-RS `ClientBuilder`; not `URL.openStream()` or
+  `HttpClients.createDefault()` (`pmd/HttpWithoutTimeout`).
 - Types: declare interfaces (`List<String> out = new ArrayList<>()`, not `ArrayList<String> out`).
 - Mutable state: don't return or store a caller's array or collection directly. Return
   `data.clone()` or `List.copyOf(items)`, and copy in the constructor.
@@ -104,11 +112,16 @@ To learn why a rule is on and what form it allows before you write or change cod
   Time comes from `java.time` with a `Clock` or a zone; `Calendar.getInstance()`,
   `new GregorianCalendar()` and `new SimpleDateFormat(...)` without a time zone are flagged
   (`pmd/LegacyCalendarApi`).
+- Maps: the function passed to `computeIfAbsent`, `compute`, `computeIfPresent` or `merge` never
+  changes the same map, not even from a callback it starts (`pmd/RecursiveMapUpdate`). Attach the
+  cleanup to the returned value:
+  `map.computeIfAbsent(key, k -> start(k)).whenComplete((r, e) -> map.remove(key, r))`.
 - Data and results: `record` for data, a `sealed interface` of records for an outcome, and an
   exhaustive `switch` expression over it. A `switch` statement needs `default`.
 - Enums: to sort the constants of one of your enums into two groups, classify every constant: a
   `switch` expression without `default`, or a field each constant declares (`PAID(true)`). Not
-  `s == PAID || s == SHIPPED` or `EnumSet.of(...).contains(s)` (`ExhaustiveEnumPredicate`).
+  `s == PAID || s == SHIPPED`, `Set.of(...).contains(s)` or a boolean `switch` with
+  `default -> false` (`ExhaustiveEnumPredicate`).
 - No static method that only passes its parameters on to another method; call that method.
   Factories named `of` or `from` and copies such as `List.copyOf` are fine.
 - A record or `@ConfigurationProperties` class (and the classes nested in it) has `tags` or `tag`,
@@ -187,6 +200,11 @@ To learn why a rule is on and what form it allows before you write or change cod
   `retryAnalyzer`, `IRetryAnalyzer` or `RetryAnalyzerCount`, nor `setRetryAnalyzer(...)`. A test that
   passes on a later attempt hides a flaky or racy test: wait on the condition instead of a fixed
   delay, isolate shared state. `@RepeatedTest` is fine, since every repetition must pass.
+- Start a container, server or process once, not for each test (`ServerOrContainerPerTest`): a
+  Testcontainers `@Container` field is `static`, a WireMock `@RegisterExtension` is `static`, a JUnit 4
+  server or container is a `@ClassRule`, and `@BeforeEach`/`@Before` does not create and start one
+  (nor `SpringApplication.run`, `ProcessBuilder.start`); two tests do not make the same start. Start
+  it in `@BeforeAll` and reset its state between tests.
 - Tests print nothing new (`test-runtime/test-console-output`): no `System.out`/`System.err`, and
   no new `WARN` or `ERROR` log line from the code under test. Fix the cause the line names.
 - In main code, nothing with an outside effect runs while a class loads (`ClassLoadEffect`): no
