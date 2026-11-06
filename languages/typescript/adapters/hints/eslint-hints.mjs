@@ -91,6 +91,8 @@ const NAMING_HINT = `. Types are PascalCase; functions, variables and parameters
 
 const REGEXP_HINT = ` Rewrite the pattern without nested or overlapping quantifiers, or use a string method. An exception fits only when the input is bounded and trusted.`;
 
+const USELESS_FLAG_HINT = ` Remove the flag: a \`g\` or \`y\` regex keeps \`lastIndex\` between calls, so a reused one gives order-dependent results.`;
+
 const RETURN_TYPE_TEXT = /^Missing return type on function\.?$/u;
 
 const RETURN_TYPE_MESSAGE =
@@ -222,6 +224,7 @@ const MESSAGE_REWRITERS = new Map([
   ['curly', appendHint(CURLY_HINT)],
   ['no-duplicate-imports', appendHint(DUPLICATE_IMPORT_HINT)],
   ['regexp/no-super-linear-backtracking', appendHint(REGEXP_HINT)],
+  ['regexp/no-useless-flag', appendHint(USELESS_FLAG_HINT)],
   ['@typescript-eslint/no-deprecated', appendHint(DEPRECATED_HINT)],
 ]);
 
