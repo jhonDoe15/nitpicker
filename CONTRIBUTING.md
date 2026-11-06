@@ -44,7 +44,7 @@ npm run check
 
 `npm run check` runs the self-gate (nitpicker checks your change against the remote's default
 branch) and then the full test suite, and fails if either fails. Arguments after `--` go to vitest,
-so `npm run check -- --shard=2/8` runs only what one CI test shard runs. It needs Node.js 22.14 or newer (CI
+so `npm run check -- --shard=2/4` runs only what one CI test shard runs. It needs Node.js 22.14 or newer (CI
 uses 24) and Java 21 for the structure-metrics test. It checks your working tree, uncommitted and
 untracked files included, while CI checks the pull request merged into its target branch, so commit
 everything and merge or rebase on the latest `main` before the final run. A change to a language's
@@ -103,11 +103,11 @@ arguments pass through) and rewrites the times of the files it ran.
 node scripts/test-shards/record-durations.mjs --maxWorkers=100%
 ```
 
-Java end-to-end CI uses 16 isolated runner shards and Kotlin uses 10, with files run serially in
+Java end-to-end CI uses 8 isolated runner shards and Kotlin uses 6, with files run serially in
 each shard. Independent behavior groups have separate fixture trees; the full 102 Java and 98
 Kotlin cases remain selected. The final `java` or `kotlin` check passes only when all its shards
-pass. Reproduce a shard with `npm run test:java -- --shard=1/16` or
-`npm run test:kotlin -- --no-file-parallelism --shard=1/10`.
+pass. Reproduce a shard with `npm run test:java -- --shard=1/8` or
+`npm run test:kotlin -- --no-file-parallelism --shard=1/6`.
 
 Named `tools.tests.timeouts.projects` select the Java/Kotlin subject even though the harness is
 JavaScript. They inherit language declaration ceilings and repository execution defaults. JVM
@@ -134,9 +134,9 @@ timing file automatically. Run one enabled JVM suite at a time. CI uploads a JSO
 shard for reviewing durations and failures; timing provenance and limits are in
 [scripts/test-shards/README.md](scripts/test-shards/README.md).
 
-Python end-to-end CI uses four isolated shards with two test workers each and retains the final
+Python end-to-end CI uses three isolated shards with two test workers each and retains the final
 `python-e2e` check. Reproduce one with
-`npm run test:python -- --maxWorkers=2 --shard=1/4`. Enabled runs and recordings use
+`npm run test:python -- --maxWorkers=2 --shard=1/3`. Enabled runs and recordings use
 `scripts/test-shards/python-e2e.json` when `NITPICKER_PYTHON_E2E=1`. Enable only one language's
 end-to-end suite at a time so the sequencer and recorder can choose the correct timing profile.
 
