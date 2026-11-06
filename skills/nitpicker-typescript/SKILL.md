@@ -28,10 +28,10 @@ Before you change code other modules use, fix a bug, or add a UI state, read
 3. Act on the exit code:
    - 0: done, unless you narrowed the run with `--analyzer`: then the summary says `Ran only: ...`
      and you run the gate again without it before you finish.
-   - 1: fix every new finding and any tool error listed below them. Re-read the files `--fix`
+   - 1: fix the failing tests the summary leads with, every new finding and any tool error listed
+     below them. Re-read the files `--fix`
      changed before editing them, then rerun.
-   - 2: no new findings, but a tool failed. Fix the cause it names (usually a failing test or a
-     missing package) and rerun. Exit 2 is never a pass. If it says another run is in progress,
+   - 2: no new findings, but a tool failed. Fix the cause it names (usually a missing package) and rerun. Exit 2 is never a pass. If it says another run is in progress,
      wait for that run; never kill it.
 4. Never suppress: no `eslint-disable`, `@ts-ignore`, coverage or mutation ignore comments
    (`istanbul`/`c8`/`v8 ignore`, `Stryker disable`), config `exclude`/`disable`/`exceptions`, legacy entries, generator markers (`@generated`, `DO NOT EDIT`) in files you wrote, or weakened tests. If a finding seems wrong, stop and ask. Never pass `--accept-policy-change` or set
@@ -116,6 +116,11 @@ To learn why a rule is on and what form it allows before you write or change cod
   `main.ts` or `server.ts`) and pass them into factories; read `process.env` only there.
 - Parse untrusted input once with zod in `adapters/`; `domain/` takes readonly types it declares.
 - Run programs with `execFile(command, [args])`, never a command string.
+- Regexes: a `g` or `y` regex keeps `lastIndex`, so don't reuse one with `test()` or `exec()`
+  across calls; drop the flag or use `text.matchAll(pattern)` (`nitpicker/no-shared-stateful-regex`).
+  `match`, `matchAll` and `search` compile a string argument as a regex: use `includes` or
+  `startsWith` for text, and escape a parameter before building it into `new RegExp(...)`
+  (`nitpicker/no-string-as-regex`).
 - A child process you wait for gets a deadline: `{ timeout: 30_000 }` on `execFileSync`/`spawnSync`, or a
   `timeout` or `signal: AbortSignal.timeout(30_000)` on `execFile` and an awaited `spawn` or `execa`
   (`nitpicker/require-process-timeout`; a build wrapper that only runs a child to completion takes an exception).

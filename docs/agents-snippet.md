@@ -32,11 +32,11 @@ base and fails only on **new enforceable findings**. Existing debt is baselined 
 
 ### Exit codes
 
-| Code | Meaning                                                                                                          |
-| ---- | ---------------------------------------------------------------------------------------------------------------- |
-| 0    | Completed with no new enforceable findings. Done, unless the run was narrowed with `--analyzer`.                 |
-| 1    | At least one new enforceable finding, even if a tool also errored. Fix and rerun.                                |
-| 2    | A tool error and no new enforceable findings, invalid arguments, invalid config, or any other failure to decide. |
+| Code | Meaning                                                                                                                                |
+| ---- | -------------------------------------------------------------------------------------------------------------------------------------- |
+| 0    | Completed with no new enforceable findings. Done, unless the run was narrowed with `--analyzer`.                                       |
+| 1    | At least one new enforceable finding or a failing head test, even if a tool also errored. Fix and rerun.                               |
+| 2    | A tool error and no new enforceable findings or failing head tests, invalid arguments, invalid config, or any other failure to decide. |
 
 A full run takes minutes and prints a progress line to stderr for each slow, failed or skipped analyzer. Wait for it: do
 not start a second run or kill it. A second run in the same project exits 2 at once with `another run is in progress`.
