@@ -16,6 +16,8 @@ dependencies {
     implementation platform('org.springframework.boot:spring-boot-dependencies:3.5.5')
     implementation 'org.springframework.boot:spring-boot-starter'
     implementation 'io.projectreactor:reactor-core'
+    implementation 'org.jboss.logging:jboss-logging'
+    implementation 'org.apache.logging.log4j:log4j-api'
     testImplementation platform('org.springframework.boot:spring-boot-dependencies:3.5.5')
     testCompileOnly platform('org.springframework.boot:spring-boot-dependencies:3.5.5')
     testImplementation 'org.springframework.boot:spring-boot-starter-test'
