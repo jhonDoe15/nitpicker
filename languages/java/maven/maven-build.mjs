@@ -241,12 +241,15 @@ function readModules(run) {
   return modules;
 }
 
-function extraTools({ modules, analyzed, policy, pinned }) {
-  return [
-    ...modules.map((module) => processorTool(module.compiler)).filter(Boolean),
-    ...formatTool(policy.javaStyle, pinned),
-    ...archunitTool(buildRunsArchRules(policy, analyzed), pinned),
-  ];
+function toolNeeds({ modules, analyzed, policy, pinned }) {
+  return {
+    launcherVersions: missingLauncherVersions(analyzed),
+    extraTools: [
+      ...modules.map((module) => processorTool(module.compiler)).filter(Boolean),
+      ...formatTool(policy.javaStyle, pinned),
+      ...archunitTool(buildRunsArchRules(policy, analyzed), pinned),
+    ],
+  };
 }
 
 export function runMavenPreset(projectRoot, { maven, policy = {}, configs, spawn, timeoutMs }) {
@@ -265,15 +268,8 @@ export function runMavenPreset(projectRoot, { maven, policy = {}, configs, spawn
       module,
       classpaths: readClasspaths(work, module),
     }));
-    const tools = resolveTools({
-      projectRoot,
-      maven,
-      spawn,
-      timeoutMs,
-      pinned,
-      launcherVersions: missingLauncherVersions(analyzed),
-      extraTools: extraTools({ modules, analyzed, policy, pinned }),
-    });
+    const run = { projectRoot, maven, spawn, timeoutMs, pinned };
+    const tools = resolveTools({ ...run, ...toolNeeds({ modules, analyzed, policy, pinned }) });
     const style = {
       javaStyle: policy.javaStyle,
       indentation: checkstyleIndentation(policy.conventions),
