@@ -24,6 +24,8 @@ def load_checks():
     from environment import domain_imports, environment, purity
     from errors import errors
     from honesty import assertions, isolation, skipped, waits
+    from per_test import starts
+    from persistence import cascades, eager, query_logging, schema_sync
     from review import fields
     from security import hashes, loading
     from security.sql import check as sql
@@ -52,6 +54,8 @@ def load_checks():
         hashes,
         timeouts,
         loading,
+        schema_sync,
+        query_logging,
         guards,
         domain_types,
         paths,
@@ -66,9 +70,12 @@ def load_checks():
         unasserted,
         isolation,
         waits,
+        starts,
         uncollected,
         helpers,
         fields,
+        eager,
+        cascades,
         lifetimes,
         cleanup,
         tri_state,
