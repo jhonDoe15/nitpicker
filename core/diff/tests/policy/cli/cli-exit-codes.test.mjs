@@ -97,6 +97,49 @@ Full diagnostics: ${repository.outputRoot}/report.txt
 `);
     expect(output.stdoutText).not.toContain('Per-tool counts:');
   });
+  it('exits 1 for tests that fail on the head and leads the summary with them', () => {
+    const repository = createRepository({
+      'quality-policy.json': policy(),
+      'src/main/stable.ts': 'export const stable = true;\n',
+    });
+    const message =
+      '1 test fails; coverage, CRAP and mutation were skipped. Fix the tests and rerun:\n' +
+      '  test/a.test.ts > adds: expected 1 to be 2';
+    commitFiles(
+      repository.root,
+      {
+        'test/a.test.ts': findingLine(
+          finding({
+            rule: 'tests-failed',
+            identity: 'tests-failed',
+            classification: 'tool-error',
+            message,
+          }),
+        ),
+      },
+      'break a test',
+    );
+    const output = captureOutput();
+
+    const exitCode = runCli({
+      ...IN_PROCESS_TASKS,
+      arguments_: ['--base', repository.baseRef, '--output', 'reports/quality/diff'],
+      environment: { NO_COLOR: '1' },
+      currentProjectRoot: repository.root,
+      analyzers: [fakeAnalyzer()],
+      stdout: output.stdout,
+      stderr: output.stderr,
+    });
+
+    expect(exitCode).toBe(1);
+    expect(output.stdoutText.split('\n').slice(1, 6)).toEqual([
+      '',
+      'Quality gate summary',
+      '✖ 1 test fails; coverage, CRAP and mutation were skipped. Fix the tests and rerun:',
+      '  test/a.test.ts > adds: expected 1 to be 2',
+      'No new enforceable violations in the checks that ran.',
+    ]);
+  });
   it('defers a shard finding exit after writing its report', () => {
     const repository = createRepository({
       'quality-policy.json': policy(),

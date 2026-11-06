@@ -3,6 +3,7 @@ import { renderConsoleSummary } from '../../diff/reporting/summary.mjs';
 import { writeGithubOutput } from '../../diff/reporting/github/emit.mjs';
 import { renderClosingSections } from '../../exceptions/stale-exceptions.mjs';
 import { colorEnabled, displayPath } from '../../../shared/messages/terminal-text.mjs';
+import { comparisonExitCode } from '../../diff/reporting/failing-tests/failing-tests.mjs';
 
 function consoleSummary({ cli, report, outputRoot }) {
   const color = colorEnabled(cli.stdout, cli.environment);
@@ -33,8 +34,5 @@ export function writeComparisonOutcome({ cli, report, base, outputRoot }) {
   if (options.deferExit) {
     return 0;
   }
-  if (report.summary.newEnforceableFindings > 0) {
-    return 1;
-  }
-  return report.summary.overallStatus === 'completed' ? 0 : 2;
+  return comparisonExitCode(report);
 }
