@@ -1,8 +1,12 @@
 # Nitpicker checks
 
-The checks nitpicker runs itself in every preset: function and file size, CRAP, coverage, mutation, duplicates, coupling, dead code, test runtime, repository hygiene and the policy checks on nitpicker.config.json. This page lists 52 rules. [All pages](README.md).
+The checks nitpicker runs itself in every preset: function and file size, CRAP, coverage, mutation, duplicates, coupling, dead code, test runtime, repository hygiene and the policy checks on nitpicker.config.json. This page lists 55 rules. [All pages](README.md).
 
 The guide for these rules: [spec/checks.md](../../spec/checks.md).
+
+Unless an entry says otherwise:
+
+- **Presets:** TypeScript, JavaScript, Java, Kotlin and Python
 
 <a id="change-history-co-change"></a>
 
@@ -10,7 +14,6 @@ The guide for these rules: [spec/checks.md](../../spec/checks.md).
 
 Two folders of production code that changed together in most of the commits of the less-changed one, which the history check reads when `history.coChange` is on.
 
-- **Presets:** TypeScript, JavaScript, Java, Kotlin and Python
 - **Analyzers:** `change-history`
 - **Scope:** Report-only: it never fails the gate.
 - **Why it is on:** Folders that keep changing together usually share knowledge that has no single owner, so every change has to touch both.
@@ -25,7 +28,6 @@ Two folders of production code that changed together in most of the commits of t
 A change raises an allowance in the legacy baseline (`nitpicker.legacy.json`).
 
 - **Printed as:** `coding-standards/baseline-expansion`, `java/baseline-expansion`, `kotlin/baseline-expansion` and `python/baseline-expansion`
-- **Presets:** TypeScript, JavaScript, Java, Kotlin and Python
 - **Analyzers:** `coding-standards` (TypeScript and JavaScript); `java` (Java); `kotlin` (Kotlin); `python` (Python)
 - **Why it is on:** The baseline records old problems so that they can shrink; raising it would hide new ones.
 - **Allowed form:** Fix the new sites instead of baselining them.
@@ -51,7 +53,6 @@ A callback breaks its protocol: `source-loader-does-not-merge-published-state`, 
 
 A doc comment that only restates its declaration name, or whose description is longer than the limit.
 
-- **Presets:** TypeScript, JavaScript, Java, Kotlin and Python
 - **Analyzers:** `coding-standards` (TypeScript and JavaScript); `java` (Java); `kotlin` (Kotlin); `python` (Python)
 - **Why it is on:** A comment that repeats the name adds noise; a long one belongs in names and types.
 - **Threshold:** a doc comment or docstring that only restates its declaration name (a tag or section with text, such as `@param id the account` or `Args:`, says more), or a description longer than 5 lines, tags, sections and code examples not counted (TypeScript and JavaScript report it as `nitpicker/no-comments`)
@@ -104,7 +105,6 @@ A module under a shared root that exactly one feature reaches and nothing else u
 
 A package that depends on a less stable package.
 
-- **Presets:** TypeScript, JavaScript, Java, Kotlin and Python
 - **Analyzers:** `coupling` (TypeScript and JavaScript); `java` (Java); `kotlin` (Kotlin); `python` (Python)
 - **Why it is on:** Stable code that depends on volatile code breaks whenever the volatile code changes (the Stable Dependencies Principle).
 - **Allowed form:** Depend on an abstraction in a more stable package, or move the dependency inward. An import that exists only for the type checker is never the reported dependency.
@@ -117,7 +117,6 @@ A package that depends on a less stable package.
 A branch the change added or touched with coverage below the minimum.
 
 - **Printed as:** `coverage/changed-branch-coverage`, `jacoco/changed-branch-coverage` and `coverage-py/changed-branch-coverage`
-- **Presets:** TypeScript, JavaScript, Java, Kotlin and Python
 - **Analyzers:** `coverage` (TypeScript and JavaScript); `java` (Java); `kotlin` (Kotlin); `python` (Python)
 - **Why it is on:** Only changed code is held to coverage, so a change cannot add code that no test exercises.
 - **Allowed form:** Cover the branch with a test. When a branch cannot be reached from a test, accept it with an exception that names its function; it applies to that function only.
@@ -130,7 +129,6 @@ A branch the change added or touched with coverage below the minimum.
 
 A function with unknown coverage and so no CRAP score, because no test runs it.
 
-- **Presets:** TypeScript, JavaScript, Java, Kotlin and Python
 - **Analyzers:** `crap` (TypeScript and JavaScript); `java` (Java); `kotlin` (Kotlin); `python` (Python)
 - **Why it is on:** A function no test runs cannot be scored, and is the riskiest kind.
 - **Exception:** If this is intended, add `{"rule":"crap-coverage-unknown","paths":["<path>"],"function":"<function>","reason":"..."}` to "exceptions" in nitpicker.config.json.
@@ -144,7 +142,6 @@ A function with unknown coverage and so no CRAP score, because no test runs it.
 
 A function whose CRAP score (its complexity combined with how little of it the tests cover) is at or above the limit.
 
-- **Presets:** TypeScript, JavaScript, Java, Kotlin and Python
 - **Analyzers:** `crap` (TypeScript and JavaScript); `java` (Java); `kotlin` (Kotlin); `python` (Python)
 - **Why it is on:** Complex code that tests do not cover is the code most likely to break unnoticed.
 - **Threshold:** CRAP score at or above 9; override with `QUALITY_CRAP_SCORE_LIMIT` (positive number) or `thresholds.crapLimit`
@@ -184,7 +181,6 @@ Unused file.
 An export, module or main class that only tests use (a re-export is not an import).
 
 - **Printed as:** `dead-code/test-only-export` and `coupling/test-only-export`
-- **Presets:** TypeScript, JavaScript, Java, Kotlin and Python
 - **Analyzers:** `dead-code` (TypeScript and JavaScript); `java` (Java); `kotlin` (Kotlin); `python` (Python)
 - **Why it is on:** Code that only tests call is not part of the product, and its tests prove nothing about it.
 - **Exception:** If this is intended, add `{"rule":"test-only-export","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
@@ -249,7 +245,6 @@ A dependency in `package.json` that nothing imports or runs.
 
 A new block of code that repeats another block, also when only the names and literals differ.
 
-- **Presets:** TypeScript, JavaScript, Java, Kotlin and Python
 - **Analyzers:** `duplicates` (TypeScript and JavaScript); `java` (Java); `kotlin` (Kotlin); `python` (Python)
 - **Why it is on:** Copies drift apart and each fix has to be made twice.
 - **Allowed form:** Extract the shared code into one function or module and call it from both places. When the copies are meant to be copies, the message names the files to add to `exclude`.
@@ -275,7 +270,6 @@ An import that goes around the public entry point of a package.
 A mutant in code that no test runs.
 
 - **Printed as:** `mutation/mutant-nocoverage`, `pit/mutant-nocoverage` and `mutmut/mutant-nocoverage`
-- **Presets:** TypeScript, JavaScript, Java, Kotlin and Python
 - **Analyzers:** `mutation` (TypeScript, JavaScript and Python); `java` (Java); `kotlin` (Kotlin)
 - **Why it is on:** Code no test reaches is not protected against change.
 - **Allowed form:** Add a test that runs the code and asserts its result.
@@ -288,7 +282,6 @@ A mutant in code that no test runs.
 A mutant (a small deliberate change to production code) that every test survived.
 
 - **Printed as:** `mutation/mutant-survived`, `pit/mutant-survived` and `mutmut/mutant-survived`
-- **Presets:** TypeScript, JavaScript, Java, Kotlin and Python
 - **Analyzers:** `mutation` (TypeScript, JavaScript and Python); `java` (Java); `kotlin` (Kotlin)
 - **Why it is on:** A mutant that survives shows a test that runs the code without checking what it does.
 - **Allowed form:** Strengthen the test so that it fails for the mutant: assert the exact value instead of only running the code. An equivalent mutant is accepted with an exception after review.
@@ -300,7 +293,6 @@ A mutant (a small deliberate change to production code) that every test survived
 
 A change to `nitpicker.config.json` or to a tool config that makes the gate check less than the base did.
 
-- **Presets:** TypeScript, JavaScript, Java, Kotlin and Python
 - **Why it is on:** A change that loosens the policy it is judged by would pass itself, so a person has to accept it.
 - **Allowed form:** Keep the base's policy and change the code until it passes: keep new code under the source roots, where the gate checks it, and fix findings instead of excluding, excepting or reclassifying the code.
 - **Exception:** It has no `exceptions` entry. Only a person reviewing the change accepts exactly these loosenings, with `--accept-policy-change=<digest>` at an interactive terminal or `NITPICKER_ACCEPT_POLICY_CHANGE=<digest>` in CI.
@@ -312,7 +304,6 @@ A change to `nitpicker.config.json` or to a tool config that makes the gate chec
 
 A committed archive or compiled binary (`gradle-wrapper.jar` is allowed).
 
-- **Presets:** TypeScript, JavaScript, Java, Kotlin and Python
 - **Analyzers:** `repository-hygiene`
 - **Why it is on:** Binaries bloat the history, cannot be reviewed and go stale.
 - **Allowed form:** Remove the file; fetch or build it in the build instead.
@@ -324,7 +315,6 @@ A committed archive or compiled binary (`gradle-wrapper.jar` is allowed).
 
 A committed build output folder (`dist`, `build`, `out`, `coverage` or `target` next to a project manifest; `.next`, `.nuxt`, `storybook-static`, `.turbo` or `.parcel-cache` anywhere).
 
-- **Presets:** TypeScript, JavaScript, Java, Kotlin and Python
 - **Analyzers:** `repository-hygiene`
 - **Why it is on:** Build output is generated, so committing it creates noise and merge conflicts.
 - **Allowed form:** Remove the folder from version control and add it to `.gitignore`.
@@ -336,7 +326,6 @@ A committed build output folder (`dist`, `build`, `out`, `coverage` or `target` 
 
 A committed `.env` file (templates such as `.env.example` are fine).
 
-- **Presets:** TypeScript, JavaScript, Java, Kotlin and Python
 - **Analyzers:** `repository-hygiene`
 - **Why it is on:** An env file holds real secrets and values that differ per machine.
 - **Allowed form:** Remove the file from version control, ignore it, and commit a `.env.example` template.
@@ -348,7 +337,6 @@ A committed `.env` file (templates such as `.env.example` are fine).
 
 A committed private key: a key file, or any text file holding a private-key block.
 
-- **Presets:** TypeScript, JavaScript, Java, Kotlin and Python
 - **Analyzers:** `repository-hygiene`
 - **Why it is on:** A key in git is a leaked key.
 - **Allowed form:** Remove the key from the repository, rotate it, and load it from a secret store or the environment.
@@ -360,12 +348,44 @@ A committed private key: a key file, or any text file holding a private-key bloc
 
 A committed file larger than the limit (lockfiles are exempt).
 
-- **Presets:** TypeScript, JavaScript, Java, Kotlin and Python
 - **Analyzers:** `repository-hygiene`
 - **Why it is on:** Large files bloat every clone for ever.
 - **Allowed form:** Keep large data outside the repository (artifact storage, Git LFS).
 - **Threshold:** a file larger than 1 MB (lockfiles are exempt)
 - **Exception:** If this is intended, add `{"rule":"large-file","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
+
+<a id="repository-hygiene-migration-hardcoded-name"></a>
+
+### `repository-hygiene/migration-hardcoded-name`
+
+A migration that names the `public` schema, a database or an owner role.
+
+- **Analyzers:** `repository-hygiene`
+- **Why it is on:** Another install keeps its tables in another schema, or has another database name or roles.
+- **Allowed form:** Leave the schema out, target the current database, and leave out the owner or use `CURRENT_USER`.
+- **Exception:** If this is intended, add `{"rule":"migration-hardcoded-name","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
+
+<a id="repository-hygiene-migration-order"></a>
+
+### `repository-hygiene/migration-order`
+
+A migration the change adds that sorts before the newest migration on the base branch, or an Alembic or Django migration that forks the history.
+
+- **Analyzers:** `repository-hygiene`
+- **Why it is on:** A database that already ran the newer migration skips the older one or refuses to start.
+- **Allowed form:** Create the migration again with a current version, or point it at the latest migration.
+- **Exception:** If this is intended, add `{"rule":"migration-order","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
+
+<a id="repository-hygiene-start-schema-push"></a>
+
+### `repository-hygiene/start-schema-push`
+
+A `start`, `prestart`, `serve` or `start:*` script (not `start:dev`, `start:local`, `start:watch`, `start:debug` or `start:test`) in `package.json`, or a script it runs, that pushes the ORM schema (`prisma db push`, `prisma migrate dev`, `drizzle-kit push`, `typeorm schema:sync`, `mikro-orm schema:update`).
+
+- **Analyzers:** `repository-hygiene`
+- **Why it is on:** A schema push changes the database on every start without a migration, so a deploy can drop columns and their data.
+- **Allowed form:** Apply migrations in the deploy step (`prisma migrate deploy`, `drizzle-kit migrate`, `typeorm migration:run`) and keep schema pushes for local development scripts.
+- **Exception:** If this is intended, add `{"rule":"start-schema-push","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 
 <a id="structure-class-fields-limit"></a>
 
@@ -414,7 +434,6 @@ A component file without a story, in a package that has Storybook.
 
 A used literal constant, function or type with the same name and text in two modules of a package.
 
-- **Presets:** TypeScript, JavaScript, Java, Kotlin and Python
 - **Analyzers:** `structure` (TypeScript and JavaScript); `java` (Java); `kotlin` (Kotlin); `python` (Python)
 - **Scope:** The JavaScript preset enforces this check only in part.
 - **Why it is on:** Two copies of one definition drift apart.
@@ -427,7 +446,6 @@ A used literal constant, function or type with the same name and text in two mod
 
 Two different exports with one name, imported by the same module, which keeps the name for one of them.
 
-- **Presets:** TypeScript, JavaScript, Java, Kotlin and Python
 - **Analyzers:** `structure` (TypeScript and JavaScript); `java` (Java); `kotlin` (Kotlin); `python` (Python)
 - **Scope:** The JavaScript preset enforces this check only in part.
 - **Why it is on:** Two things with one name make an import ambiguous to read.
@@ -440,7 +458,6 @@ Two different exports with one name, imported by the same module, which keeps th
 
 A file longer than the limit (source and test files have separate limits).
 
-- **Presets:** TypeScript, JavaScript, Java, Kotlin and Python
 - **Analyzers:** `structure` (TypeScript and JavaScript); `java` (Java); `kotlin` (Kotlin); `python` (Python)
 - **Why it is on:** Long files collect unrelated responsibilities and are slow to review.
 - **Allowed form:** File has \<value> lines (limit \<limit>). ⟦Split it into files by responsibility.⟧
@@ -453,7 +470,6 @@ A file longer than the limit (source and test files have separate limits).
 
 Code nested deeper below its feature folder or root package than the limit.
 
-- **Presets:** TypeScript, JavaScript, Java, Kotlin and Python
 - **Analyzers:** `structure` (TypeScript and JavaScript); `java` (Java); `kotlin` (Kotlin); `python` (Python)
 - **Why it is on:** Deep trees hide where code belongs and make imports long.
 - **Allowed form:** Flatten the tree: move the code up to the feature or package that owns it.
@@ -466,7 +482,6 @@ Code nested deeper below its feature folder or root package than the limit.
 
 A folder with more source files, or more test files, directly in it than the limit.
 
-- **Presets:** TypeScript, JavaScript, Java, Kotlin and Python
 - **Analyzers:** `structure` (TypeScript and JavaScript); `java` (Java); `kotlin` (Kotlin); `python` (Python)
 - **Why it is on:** A flat folder of many files has no structure for a reader to follow.
 - **Allowed form:** Folder has \<value> \<kind> files directly in it (limit \<limit>). ⟦Group related files into subfolders (packages in Java).⟧
@@ -479,7 +494,6 @@ A folder with more source files, or more test files, directly in it than the lim
 
 A function that nests control flow deeper than the limit.
 
-- **Presets:** TypeScript, JavaScript, Java, Kotlin and Python
 - **Analyzers:** `structure` (TypeScript and JavaScript); `java` (Java); `kotlin` (Kotlin); `python` (Python)
 - **Why it is on:** Deep nesting makes the paths through a function hard to follow and to test.
 - **Allowed form:** \<name> nests control flow \<value> deep (limit \<limit>). ⟦Return early instead of nesting.⟧
@@ -492,7 +506,6 @@ A function that nests control flow deeper than the limit.
 
 A function longer than the limit.
 
-- **Presets:** TypeScript, JavaScript, Java, Kotlin and Python
 - **Analyzers:** `structure` (TypeScript and JavaScript); `java` (Java); `kotlin` (Kotlin); `python` (Python)
 - **Why it is on:** Long functions hide several jobs in one place; agents grow them instead of splitting them.
 - **Allowed form:** Split it into functions named for what each part does and put new code in a new function. A function, file or class already over its limit may be edited as long as the change does not make it worse.
@@ -505,7 +518,6 @@ A function longer than the limit.
 
 A function with more parameters than the limit.
 
-- **Presets:** TypeScript, JavaScript, Java, Kotlin and Python
 - **Analyzers:** `structure` (TypeScript and JavaScript); `java` (Java); `kotlin` (Kotlin); `python` (Python)
 - **Why it is on:** Long parameter lists are easy to call in the wrong order and tend to grow.
 - **Allowed form:** Group related parameters into one object (an options object, a record or a data class) instead of adding another.
@@ -518,7 +530,6 @@ A function with more parameters than the limit.
 
 A function with more statements than the limit.
 
-- **Presets:** TypeScript, JavaScript, Java, Kotlin and Python
 - **Analyzers:** `structure` (TypeScript and JavaScript); `java` (Java); `kotlin` (Kotlin); `python` (Python)
 - **Why it is on:** Many statements usually mean several responsibilities in one function.
 - **Allowed form:** \<name> has \<value> statements; limit is \<limit>. ⟦Split by responsibility and name each part for what it checks or does.⟧
@@ -556,7 +567,6 @@ A `.js`, `.mjs`, `.cjs` or `.jsx` file in a project that has a `tsconfig.json`.
 
 A line longer than the limit, except imports, URLs and the text of string literals.
 
-- **Presets:** TypeScript, JavaScript, Java, Kotlin and Python
 - **Analyzers:** `structure` (TypeScript and JavaScript); `java` (Java); `kotlin` (Kotlin); `python` (Python)
 - **Why it is on:** Long lines are hard to review in a diff and hide complexity.
 - **Allowed form:** Line is \<value> characters (limit \<limit>). ⟦Break it up or extract a named value.⟧
@@ -594,7 +604,6 @@ A component named like one the project already renders from a dependency.
 
 A function or class edited so that it drifts from its same-named copy in another module while that copy is left unedited.
 
-- **Presets:** TypeScript, JavaScript, Java, Kotlin and Python
 - **Analyzers:** `structure` (TypeScript and JavaScript); `java` (Java); `kotlin` (Kotlin); `python` (Python)
 - **Why it is on:** Editing one of two near-identical copies leaves the other with the old bug.
 - **Allowed form:** \<name> is edited here but not in \<others>, where it has almost the same code. ⟦Edit it there too, or merge the copies.⟧
@@ -632,7 +641,6 @@ A prop the project declares that no caller passes (a spread of a non-literal pas
 A test file that prints console error or warn output the base run did not print.
 
 - **Printed as:** `test-console/test-console-output` and `test-runtime/test-console-output`
-- **Presets:** TypeScript, JavaScript, Java, Kotlin and Python
 - **Analyzers:** `test-console` (TypeScript and JavaScript); `java` (Java); `kotlin` (Kotlin); `python` (Python)
 - **Why it is on:** Console noise hides real warnings and usually points at a leaked timer or an unhandled error.
 - **Allowed form:** Tests print new console output: \<output>. ⟦Fix the cause (for example a timer that outlives the test), or allow a third-party message in "testConsole.allow" of nitpicker.config.json.⟧
@@ -656,7 +664,6 @@ A test that runs no production runtime code.
 
 A test the change adds or edits that takes longer than the limit for its kind (unit or integration).
 
-- **Presets:** TypeScript, JavaScript, Java, Kotlin and Python
 - **Analyzers:** `test-runtime` (TypeScript and JavaScript); `java` (Java); `kotlin` (Kotlin); `python` (Python)
 - **Why it is on:** Slow tests slow every run and are the first to be skipped; most tests should be fast unit tests.
 - **Allowed form:** Make the test fast: inject a clock or a fake instead of waiting, or move it to the integration tests, which have a higher limit.
