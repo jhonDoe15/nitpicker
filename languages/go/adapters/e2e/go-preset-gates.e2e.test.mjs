@@ -108,13 +108,14 @@ describe.skipIf(!goE2eEnabled)('Go preset gates end to end', () => {
 
   it('reports failing tests as a tool error that quotes the failure', () => {
     const result = gate(project, 'failing');
+    expect(result.exitCode).toBe(1);
     expect(toolErrors(result)).toEqual(['tests/tests-failed .']);
     expect(toolErrorMessages(result)).toEqual([
       [
-        'Tests fail in the head snapshot. Make each failing test pass:',
+        '1 test fails; the static analyzers ran, and coverage comes from the tests that ran. ' +
+          'Fix the tests and rerun:',
         '  example.com/shop/shop.TestBroken',
         '    broken_test.go:6: still broken',
-        'The static analyzers ran as usual; coverage comes from the tests that ran.',
       ].join('\n'),
     ]);
   });

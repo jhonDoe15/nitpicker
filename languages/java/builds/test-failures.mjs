@@ -1,8 +1,10 @@
 import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs';
 import path from 'node:path';
 import { childrenNamed, parseXml, testCaseProblem } from '../../../shared/ingest/common.mjs';
+import { testsFailHeadline } from '../../../shared/rules/finding-helpers.mjs';
 
 const MAX_LISTED_FAILURES = 10;
+const MAX_LINE_LENGTH = 300;
 const ROOT_MODULE = '.';
 const TEST_REPORT = /^TEST-.*\.xml$/u;
 const EXCEPTION_PREFIX = /^(?:[\w$]+\.)*[\w$]*(?:Error|Exception|Failure): /u;
@@ -42,7 +44,11 @@ export function freshReports(directory, since) {
 
 function listedFailures(failures) {
   const lines = failures.flatMap(({ tests }) => tests);
-  const listed = lines.slice(0, MAX_LISTED_FAILURES).map((line) => `  ${line}`);
+  const listed = lines
+    .slice(0, MAX_LISTED_FAILURES)
+    .map(
+      (line) => `  ${line.length > MAX_LINE_LENGTH ? `${line.slice(0, MAX_LINE_LENGTH)}…` : line}`,
+    );
   const more =
     lines.length > MAX_LISTED_FAILURES
       ? [`  and ${String(lines.length - MAX_LISTED_FAILURES)} more`]
@@ -54,10 +60,16 @@ export function moduleName(directory) {
   return directory === '' ? ROOT_MODULE : directory;
 }
 
-export function failingTestsError(where, failures) {
+function modulesOf(failures) {
+  const modules = failures.map(({ module }) => module).filter((module) => module !== ROOT_MODULE);
+  return modules.length === 0 ? '' : ` in ${modules.join(', ')}`;
+}
+
+export function failingTestsError(failures) {
+  const count = failures.reduce((total, { tests }) => total + tests.length, 0);
   const error = new Error(
     [
-      `Tests fail in ${where}; nitpicker needs a passing test suite for coverage and mutation testing:`,
+      testsFailHeadline(count, 'the build stopped, so no other check ran', modulesOf(failures)),
       ...listedFailures(failures),
     ].join('\n'),
   );

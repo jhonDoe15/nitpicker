@@ -4,6 +4,7 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { promisify } from 'node:util';
+import { TOOL_TIMEOUT_MS } from '../../../shared/processes/deadlines.mjs';
 
 const run = promisify(execFile);
 const INVENTORY_FILE = new URL('./eslint-inventory.json', import.meta.url);
@@ -207,7 +208,7 @@ async function liveInventoryOf(variant) {
     await run(
       process.execPath,
       [`--env-file=${environmentFile}`, fileURLToPath(import.meta.url), variant, root],
-      { cwd: root },
+      { cwd: root, timeout: TOOL_TIMEOUT_MS },
     );
     return JSON.parse(readFileSync(path.join(root, INVENTORY_OUTPUT), 'utf8'));
   } finally {
