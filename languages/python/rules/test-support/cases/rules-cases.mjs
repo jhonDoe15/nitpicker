@@ -76,4 +76,5 @@ export const RULES_CASES = [
   ...rulesCases('falsy-default', [['falsy-default', 'is not None']]),
   ...rulesCases('parameter-mutation', [['parameter-mutation', 'new value']]),
   ...rulesCases('compatibility-shim', [['compatibility-shim', 'delete the old name']]),
+  ...rulesCases('regex-unescaped-value', [['regex-unescaped-value', 're.escape']]),
 ];
