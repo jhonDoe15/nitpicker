@@ -110,7 +110,8 @@ describe.skipIf(process.platform === 'win32')('Maven failures', () => {
     ).toThrow(
       new Error(
         `Maven did not finish in ${root} within 0.3 s and was stopped. Its post-integration-test ` +
-          'steps may not have run, so containers or servers the build started may still be running',
+          'steps may not have run, so containers or servers the build started may still be running. ' +
+          'Set NITPICKER_MAVEN_TIMEOUT_MINUTES to give each Maven command more time',
       ),
     );
   });

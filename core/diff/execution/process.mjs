@@ -1,5 +1,10 @@
 import { spawn } from 'node:child_process';
 import { parseAnalyzerReport } from '../comparison/finding-schema.mjs';
+import {
+  ANALYZER_TIMEOUT_KEY,
+  ANALYZER_TIMEOUT_VARIABLE,
+} from '../../../shared/analyzer-timeouts/analyzer-timeouts.mjs';
+import { CONFIG_FILE_NAME } from '../../../shared/config.mjs';
 import { withoutHostCiOutputs } from '../../tooling/host-environment.mjs';
 
 const MAX_ANALYZER_OUTPUT_BYTES = 50 * 1024 * 1024;
@@ -7,6 +12,15 @@ const MAX_ANALYZER_OUTPUT_BYTES = 50 * 1024 * 1024;
 const FORCE_KILL_DELAY_MS = 1_000;
 
 const activeChildren = new Set();
+
+function analyzerEnvironment(environment, task) {
+  return {
+    ...withoutHostCiOutputs(environment),
+    ...(task.configuredTimeout === true
+      ? { [ANALYZER_TIMEOUT_VARIABLE]: String(task.timeoutMs) }
+      : {}),
+  };
+}
 
 function settleClose(task, { failure, status, signal, stdout, stderr }, { resolve, reject }) {
   if (failure !== undefined) {
@@ -30,7 +44,7 @@ function settleClose(task, { failure, status, signal, stdout, stderr }, { resolv
 function spawnAnalyzer(task) {
   const child = spawn(task.invocation.command, task.invocation.args, {
     cwd: task.invocation.cwd,
-    env: withoutHostCiOutputs(task.invocation.env ?? process.env),
+    env: analyzerEnvironment(task.invocation.env ?? process.env, task),
     detached: process.platform !== 'win32',
     stdio: ['ignore', 'pipe', 'pipe'],
   });
@@ -63,6 +77,13 @@ function scheduleForceKill(child) {
   return timer;
 }
 
+function timeoutMessage(task) {
+  return (
+    `${task.name} timed out after ${String(task.timeoutMs)} ms. To give it more time, set ` +
+    `"${ANALYZER_TIMEOUT_KEY}": { "${task.name}": <minutes> } in ${CONFIG_FILE_NAME}`
+  );
+}
+
 function createTaskController(child, task) {
   const errors = new Map();
   const state = {
@@ -70,7 +91,7 @@ function createTaskController(child, task) {
     forceKillTimeout: undefined,
   };
   const timeout = setTimeout(() => {
-    terminate(new Error(`${task.name} timed out after ${String(task.timeoutMs)} ms`));
+    terminate(new Error(timeoutMessage(task)));
   }, task.timeoutMs);
   function terminate(error) {
     if (errors.has('termination')) return;

@@ -35,6 +35,29 @@ describe('analyzer process execution', () => {
       'wrapper emitted a finding for unexpected tool inner',
     );
   });
+  it.each([
+    [true, '60000'],
+    [false, 'unset'],
+  ])('passes a configured deadline (%s) to the analyzer process', async (configured, seen) => {
+    const probe = {
+      ...task('probe'),
+      timeoutMs: 60_000,
+      configuredTimeout: configured,
+      invocation: {
+        command: process.execPath,
+        args: [
+          '-e',
+          "process.stdout.write(JSON.stringify({findings:[{tool:'probe',rule:'r',path:'a',identity:'i',message:process.env.NITPICKER_ANALYZER_TIMEOUT_MS ?? 'unset',classification:'enforceable'}]}))",
+        ],
+        cwd: fileURLToPath(new URL('../', import.meta.url)),
+        env: { PATH: process.env.PATH },
+      },
+    };
+
+    const report = await executeAnalyzerTask(probe);
+
+    expect(report.findings.map(({ message }) => message)).toEqual([seen]);
+  });
   it('hides the CI job summary path from analyzers and keeps the rest of the environment', async () => {
     const probe = {
       ...task('probe'),

@@ -21,6 +21,7 @@ import { validateGoConfig } from '../../languages/go/adapters/configuration/go-c
 import { canonicalRule } from '../../shared/exceptions/rule-names.mjs';
 import { liftsOnlyRules, validateExceptions } from '../../shared/exceptions/validation.mjs';
 import { RULES } from '../../shared/policy.mjs';
+import { validateAnalyzerTimeouts } from '../../shared/analyzer-timeouts/analyzer-timeouts.mjs';
 import { validateTools } from './tool-settings.mjs';
 import { rejectHeadBase } from './project-checks/project-config.mjs';
 import { conventionDefinitions } from '../conventions/definitions.mjs';
@@ -44,6 +45,7 @@ const OPTIONAL_VALIDATORS = [
   ['legacyInventory', validateProjectRelativePath],
   ['duplicates', validateDuplicates],
   ['analyzers', validateCustomAnalyzers],
+  ['analyzerTimeoutMinutes', validateAnalyzerTimeouts],
 ];
 export const SUPPORTED_PRESETS = ['typescript', 'javascript', ...GRADLE_PRESETS, 'python', 'go'];
 
@@ -58,6 +60,7 @@ export const KEYS = [
   'react',
   'i18n',
   'analyzers',
+  'analyzerTimeoutMinutes',
   'legacyInventory',
   'duplicates',
   'python',

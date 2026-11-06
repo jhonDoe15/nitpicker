@@ -30,8 +30,10 @@ export function readConfigFile(projectRoot) {
   return validateConfig(withCanonicalRules(parsed));
 }
 
+const RUN_SETTINGS = new Set(['analyzerTimeoutMinutes']);
+
 export function describeConfigOverrides(config) {
-  return KEYS.filter((key) => config[key] !== undefined).flatMap((key) =>
+  return KEYS.filter((key) => config[key] !== undefined && !RUN_SETTINGS.has(key)).flatMap((key) =>
     key === 'python' ? describePythonOverrides(config.python) : describeOverride(config, key),
   );
 }
