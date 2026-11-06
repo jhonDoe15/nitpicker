@@ -282,7 +282,7 @@ the TypeScript preset, `{ "rule", "paths", "reason" }`, all required:
 `rule` is the rule as the finding prints it: any `detekt.<ruleset>.<Rule>`, a
 `kotlin-source/<Rule>` of the [source checks](#source-checks), `kotlinc/deprecation`,
 `kotlinc/unchecked` or `kotlinc/cast`, one of the [review rules](#review-rules) (`pmd/FixedSleepInTest`,
-`pmd/NegativeWaitInTest`, `pmd/DisabledTest`, `pmd/FocusedTest`, `pmd/RetryInTest`, `pmd/AssertionInControlFlow`,
+`pmd/NegativeWaitInTest`, `pmd/DisabledTest`, `pmd/FocusedTest`, `pmd/RetryInTest`, `pmd/ServerOrContainerPerTest`, `pmd/AssertionInControlFlow`,
 `pmd/CoroutineEscapesTest`, `pmd/SpringUnusedContext`, `pmd/ExhaustiveEnumPredicate`,
 `pmd/StaticForwardingWrapper`, `pmd/SingularAndPluralMember`, `pmd/ValidationAnnotationTarget`, `pmd/ClassLoadEffect`, `pmd/RecursiveMapUpdate`, `unused-option`), a class limit, a file
 limit or `test-runtime/slow-test`; for the structure, CRAP and coverage findings below,
@@ -522,6 +522,7 @@ skipped with a note on stderr.
 | `DisabledTest`                           | `review-rules/tests/honesty/`                    | a skipped test: `@Disabled`, `@Ignore`, `@Ignored` (also aliased or carried by an annotation), Kotest `xtest`, `xcontext`, `xdescribe`, `xit`, `xshould`, `xgiven`, a `!` name prefix, a `.config(...)` that never runs, a constant false condition or assumption                                                                                                                                                                |
 | `FocusedTest`                            | `review-rules/tests/honesty/`                    | a Kotest focus that runs only part of the suite: the `f:` name prefix, `ftest`, `fcontext`, `fdescribe`, `fit`, `fshould`, `fgiven`                                                                                                                                                                                                                                                                                              |
 | `RetryInTest`                            | `review-rules/tests/honesty/retries/`            | a retry set in test code: `@RetryingTest`, `@RepeatedIfExceptionsTest`, TestNG `retryAnalyzer`, `IRetryAnalyzer`, `RetryAnalyzerCount`, `setRetryAnalyzer`, Kotest `retries`                                                                                                                                                                                                                                                     |
+| `ServerOrContainerPerTest`               | `review-rules/tests/setup/`                      | a container, server or process started for each test: a `@Container`, `@Rule` or `@RegisterExtension` property of a JUnit instance, a Kotest container extension in a per-test mode, a start in `@BeforeEach`, `@Before`, `beforeTest` or `beforeEach` on an object made for each test, the same start in two or more tests of a class                                                                                           |
 | `AssertionInControlFlow`                 | `review-rules/tests/honesty/`                    | an assertion that can be skipped: inside an `if` or a `when` whose branches do not all assert, a loop, a safe call, `&&`, `\|\|`, `?:`, a swallowing `try` or `runCatching`, or after an early return                                                                                                                                                                                                                            |
 | `CoroutineEscapesTest`                   | `review-rules/tests/coroutines/`                 | a `launch`, `async`, `launchIn`, `stateIn` or `shareIn` on a scope the test does not own (`CoroutineScope(...)`, a scope field, `viewModelScope`) that nothing joins, awaits or cancels                                                                                                                                                                                                                                          |
 | `StaticForwardingWrapper`                | `review-rules/main/forwarding-wrappers.mjs`      | a function whose body only passes its parameters, in order, to another function                                                                                                                                                                                                                                                                                                                                                  |
@@ -771,6 +772,33 @@ guessed at.
   A base config class in another file and a constant from another file are not followed. The Java preset
   has the same rule id for the JVM forms. Fix the cause instead, for example wait on the condition instead
   of a fixed delay or isolate shared state; use `exceptions` only for a test that must retry on purpose.
+- `ServerOrContainerPerTest`: a container, server or process started for each test, the Kotlin
+  side of the Java rule. Reported: a property annotated `@Container` (Testcontainers) or
+  `@RegisterExtension` holding a `WireMockExtension`, declared in a class body (not a companion
+  object or `object`) of a class without `@TestInstance(PER_CLASS)`, a `@Rule` (or `@get:Rule`)
+  property holding a container, a WireMock or OkHttp mock server, an `EmbeddedKafkaRule` or a
+  `MockServerRule`, and a property of such a class that starts its value
+  (`MockWebServer().apply { start() }`); a Kotest `ContainerExtension` in
+  `ContainerLifecycleMode.Test`, `LifecycleMode.EveryTest` or a `perTest()` listener; a start in
+  `@BeforeEach`, `@Before`, `@BeforeMethod`, an `override fun beforeTest`, `beforeEach` or
+  `beforeAny`, a Kotest `beforeTest { }`, `beforeEach { }` or `beforeAny { }`, or a function of
+  the class one of them calls, on an object made for each test; and the same start in two or
+  more tests of a class. A start is `x.start()`, also at the end of a builder chain
+  (`GenericContainer(...).withEnv(...).start()`) or inside `apply`, `also`, `let`, `run` or `use`
+  on the object. The started types are matched through the imports: any Testcontainers class
+  named `*Container`, WireMock, OkHttp `MockWebServer`, embedded Redis, Jetty, Tomcat and
+  `ProcessBuilder`, a JDK `HttpServer.create`, and the calls `SpringApplication.run`,
+  `runApplication`, `SpringApplicationBuilder(...).run`, `Runtime.getRuntime().exec`,
+  `startClientAndServer` and Ktor's `embeddedServer(...).start`. An object made for each test is
+  a new object, a local, a property the class's hook assigns, an instance property of a JUnit
+  class without `PER_CLASS`, or a property that the class's `@AfterEach`, `@After`,
+  `@AfterMethod` or Kotest `afterTest`/`afterEach`/`afterAny` stops; a start on a companion or
+  Kotest spec property is left alone, since a second `start()` does nothing. The receiver is
+  looked up as a local of the hook or test first, then as a property of its class, its companion
+  object and the enclosing classes, so a same-named property of another class does not count.
+  Two starts are the same when the statement, and the declaration of a local it starts, read the
+  same apart from comments and spacing. A start in a helper that tests (not hooks) call is not
+  followed.
 - `AssertionInControlFlow`: an assertion inside a construct that can skip it, in a JUnit test or a Kotest
   test body: an `if` or `else`, a `when`, any loop (`for`, `while`, `do`, `repeat`, `forEach`,
   `forEachIndexed`, `onEach` and the other iteration calls), a safe call (`?.let`, `?.also`, `?.run`,
