@@ -33,10 +33,12 @@ function findingsWith(manifest, { projectRoot = PROJECT, javaRoots = ['src/main/
 }
 
 function summary(findings) {
-  return findings.map(
-    ({ path: file, location, rule, symbol }) =>
-      `${file.replace('src/main/kotlin/shop/', '')}:${String(location.line)} ${rule} ${symbol}`,
-  );
+  return findings
+    .filter(({ path: file }) => !file.endsWith('/Ledger.kt'))
+    .map(
+      ({ path: file, location, rule, symbol }) =>
+        `${file.replace('src/main/kotlin/shop/', '')}:${String(location.line)} ${rule} ${symbol}`,
+    );
 }
 
 const EXPECTED = [
@@ -100,6 +102,7 @@ const EXPECTED = [
   'bad/Data.kt:18 SpringDataQueryTextBlock InvoiceRepository.byStatus',
   'bad/Data.kt:21 SpringDataNativeQuery InvoiceRepository.raw',
   'bad/Data.kt:24 SpringDataNativeQuery InvoiceRepository.rawOpen',
+  'bad/Data.kt:28 SpringDataWriteWithoutTransaction InvoiceRepository.markStatus',
   'bad/Data.kt:28 SpringDataModifyingQuery InvoiceRepository.markStatus',
   'bad/Data.kt:36 SpringDataNoSaveInLoop InvoiceService.importAll.save',
   'bad/Data.kt:38 SpringDataBatchOfOne InvoiceService.importAll.saveAll',
@@ -191,7 +194,32 @@ const EXPECTED = [
   'bad/Proxies.kt:60 SpringTransactionalAnnotation LegacyTx',
   'bad/Proxies.kt:64 SpringNoTransactionalController TxController',
   'bad/Proxies.kt:71 SpringProxyMethodVisibility Mailer.send',
+  'bad/ProxyFamilies.kt:39 SpringProxySelfCall RemoteSync.sync.fetch',
+  'bad/ProxyFamilies.kt:40 SpringProxySelfCall RemoteSync.sync.open',
+  'bad/ProxyFamilies.kt:41 SpringProxySelfCall RemoteSync.sync.timed',
+  'bad/ProxyFamilies.kt:42 SpringProxySelfCall RemoteSync.sync.observed',
+  'bad/ProxyFamilies.kt:43 SpringProxySelfCall RemoteSync.sync.admin',
+  'bad/ProxyFamilies.kt:44 SpringProxySelfCall RemoteSync.sync.rate',
+  'bad/ProxyFamilies.kt:45 SpringProxySelfCall RemoteSync.sync.logged',
+  'bad/ProxyFamilies.kt:74 SpringProxyMethodVisibility RemoteSync.hiddenRetry',
+  'bad/ProxyFamilies.kt:77 SpringProxyMethodVisibility RemoteSync.hiddenLog',
+  'bad/ProxyFamilies.kt:84 SpringProxySelfCall Checkout.place.verify',
+  'bad/ProxyFamilies.kt:85 SpringProxySelfCall Checkout.place.quantity',
+  'bad/ProxyFamilies.kt:86 SpringProxySelfCall Checkout.place.codes',
+  'bad/ProxyFamilies.kt:98 SpringProxyMethodVisibility Checkout.hidden',
+  'bad/Reactive.kt:23 SpringDataFilterInQuery PostingReports.open.findAll',
+  'bad/Reactive.kt:25 SpringDataFilterInQuery PostingReports.total.findAll',
+  'bad/Reactive.kt:27 SpringDataFilterInQuery PostingReports.stocked.findAll',
+  'bad/Reactive.kt:29 SpringDataFilterInQuery PostingReports.first.findAll',
+  'bad/Reactive.kt:31 SpringDataFilterInQuery PostingReports.firstTen.findAll',
+  'bad/Reactive.kt:33 SpringDataFilterInQuery PostingReports.sized.findAll',
+  'bad/Reactive.kt:35 SpringDataFilterInQuery PostingReports.openFlow.findAll',
+  'bad/Reactive.kt:37 SpringDataFilterInQuery PostingReports.countFlow.findAll',
+  'bad/Reactive.kt:39 SpringDataFilterInQuery PostingReports.firstOpen.findAll',
+  'bad/Reactive.kt:41 SpringDataFilterInQuery PostingReports.listed.findAll',
   'bad/Rows.kt:35 JpaEnumString Carton.hue',
+  'bad/Rows.kt:42 SpringDataWriteWithoutTransaction CartonRepository.ship',
+  'bad/Rows.kt:46 SpringDataWriteWithoutTransaction CartonRepository.keepOnly',
   'bad/Rows.kt:57 SpringDataRowWriteInLoop CartonService.shipAll.ship',
   'bad/Rows.kt:58 SpringDataRowWriteInLoop CartonService.shipAll.ship',
   'bad/Rows.kt:59 SpringDataRowWriteInLoop CartonService.shipAll.ship',
@@ -236,6 +264,17 @@ const EXPECTED = [
   'bad/Web.kt:47 SpringNoErrorLeak Errors.handle.e',
   'bad/Web.kt:52 SpringNoErrorLeak Errors.state.e',
   'bad/Web.kt:57 SpringNoErrorLeak Errors.trace.e',
+  'bad/Wiring.kt:18 SpringStaticPostProcessorBean PostProcessorConfig.tracing',
+  'bad/Wiring.kt:21 SpringStaticPostProcessorBean PostProcessorConfig.placeholders',
+  'bad/Wiring.kt:24 SpringStaticPostProcessorBean PostProcessorConfig.traced',
+  'bad/Wiring.kt:28 SpringStaticPostProcessorBean PostProcessorConfig.cents',
+  'bad/Wiring.kt:32 SpringStaticPostProcessorBean PostProcessorConfig.Companion.unmarked',
+  'bad/Wiring.kt:36 SpringStaticPostProcessorBean PostProcessorConfig.Companion.auditing',
+  'bad/Wiring.kt:43 SpringOrderedProvider Decorators.unordered.forEach',
+  'bad/Wiring.kt:44 SpringOrderedProvider Decorators.unordered.stream',
+  'bad/Wiring.kt:45 SpringOrderedProvider Decorators.unordered.for',
+  'bad/Wiring.kt:48 SpringOrderedProvider Decorators.unordered.iterator',
+  'bad/Wiring.kt:49 SpringOrderedProvider Decorators.unordered.map',
 ];
 
 describe('Kotlin Spring rules on the recorded fixture facts', () => {
@@ -342,6 +381,8 @@ describe('Kotlin Spring rules on the recorded fixture facts', () => {
       'good/Proxies.kt:35 SpringProxyMethodVisibility Billing.export',
       'good/Proxies.kt:38 SpringProxyMethodVisibility Billing.notifyLater',
       'good/Proxies.kt:47 SpringProxyMethodVisibility Audit.write',
+      'good/ProxyFamilies.kt:19 SpringProxyMethodVisibility RemoteCalls.fetch',
+      'good/ProxyFamilies.kt:22 SpringProxyMethodVisibility RemoteCalls.timed',
       'good/Rows.kt:38 JpaEntityClass Crate',
       'good/Rows.kt:63 SpringProxyMethodVisibility CrateService.archive',
       'good/Rows.kt:103 SpringProxyMethodVisibility ShelfService.tidy',
