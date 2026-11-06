@@ -50,6 +50,7 @@
   "languages/python/rules/e2e/honesty/sleeps.e2e.test.mjs": 11,
   "languages/python/rules/e2e/honesty/test-assertions.e2e.test.mjs": 12,
   "languages/python/rules/e2e/resources/inline-resources.e2e.test.mjs": 2,
+  "languages/python/rules/e2e/persistence/orm-relations.e2e.test.mjs": 4,
   "languages/python/rules/e2e/review/enum-predicate.e2e.test.mjs": 5,
   "languages/python/rules/e2e/review/forwarding-wrapper.e2e.test.mjs": 4,
   "languages/python/rules/e2e/review/project-rules.e2e.test.mjs": 7,
