@@ -648,6 +648,24 @@ only the library follows the project. Nitpicker reads `dependencies`, `peerDepen
     3 `load`/`loadAll` without a `schema` (the installed major is read from the project), BSON
     `evalFunctions: true` and libxmljs `noent: true`. Allowed: `JSON.parse` checked against a schema,
     `yaml.load(text)` with the default schema in js-yaml 4, and `yaml.safeLoad(text)` in js-yaml 3.
+- Child processes the code waits for have a deadline (`nitpicker/require-process-timeout`, production
+  files; test files have `nitpicker/require-test-process-timeout`). From `child_process`, `execa` and
+  `cross-spawn`: `execSync`, `execFileSync`, `spawnSync`, `execaSync` and `execaCommandSync` need a
+  positive `timeout` (also cross-spawn's `spawn.sync` and execa's `$.sync`); `exec` and `execFile` (with a
+  callback, or through `promisify`, also declared inside a function or called at once) need a `timeout`
+  or a `signal`; `execa`, `execaCommand`, `execaNode` and execa's template tags (`` $`cmd` ``,
+  `` $({ timeout })`cmd` ``) need a `timeout`, `cancelSignal` or `signal` when the result is awaited or
+  `.then`-ed; `spawn` and `fork` need a `timeout` or `signal` when the
+  code waits for the child to end: an `'exit'` or `'close'` listener registered inside a
+  `new Promise` executor, or `await once(child, 'exit')`. A child held in a variable that is passed
+  elsewhere, returned or `kill()`-ed (a hand-made deadline) is not reported, nor are options from a
+  parameter, a call result or an unknown spread. A long-running child that nothing waits for (a dev
+  server, a worker) is not reported, and neither are module bindings made inside a function
+  (`require` there, `await import()`), zx, or a child whose end is awaited through a helper or by
+  reading its stream to the end. `stdio: 'inherit'` gets no pass: an interactive child still
+  hangs the program. A program whose purpose is to run a child to completion, such as a build
+  wrapper, takes an exception. The rule reads no types, so it behaves the same in the JavaScript
+  preset.
 - Named exports list their names: no `export *`, which makes every internal export of a feature's
   `index.ts` public (`export { name } from './domain/x.js'`).
 - Cognitive complexity of at most 15 per function, tests included (`nitpicker/cognitive-complexity`).

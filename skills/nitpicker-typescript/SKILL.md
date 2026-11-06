@@ -116,6 +116,9 @@ To learn why a rule is on and what form it allows before you write or change cod
   `main.ts` or `server.ts`) and pass them into factories; read `process.env` only there.
 - Parse untrusted input once with zod in `adapters/`; `domain/` takes readonly types it declares.
 - Run programs with `execFile(command, [args])`, never a command string.
+- A child process you wait for gets a deadline: `{ timeout: 30_000 }` on `execFileSync`/`spawnSync`, or a
+  `timeout` or `signal: AbortSignal.timeout(30_000)` on `execFile` and an awaited `spawn` or `execa`
+  (`nitpicker/require-process-timeout`; a build wrapper that only runs a child to completion takes an exception).
 - Each finding names the allowed form. A deliberate exception goes in `nitpicker.config.json`
   `exceptions` (rule, paths, reason), never inline.
 - The `$schema` line of `nitpicker.config.json`

@@ -206,6 +206,11 @@ describe('rules script report', () => {
       '`urllib.request.urlopen` can wait forever: it has no timeout',
     ],
     [
+      'subprocess-without-timeout',
+      'subprocess.run',
+      '`subprocess.run` waits for a child process without a deadline, so a command that never exits hangs this code for good',
+    ],
+    [
       'unsafe-deserialization',
       'torch.load',
       '`torch.load` unpickles arbitrary objects from the file on torch below 2.6, or with `weights_only=False`',
