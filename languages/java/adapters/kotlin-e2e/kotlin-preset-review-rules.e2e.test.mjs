@@ -8,6 +8,7 @@ import {
   REVIEW_RULE_FILES,
   runtimeSerializationFiles,
 } from './test-support/review/kotlin-review-data.mjs';
+import { PLURAL_FINDINGS } from './test-support/review/kotlin-plural-data.mjs';
 import {
   mapUpdateFiles,
   MAP_UPDATE_FINDINGS,
@@ -69,11 +70,13 @@ describe.skipIf(!kotlinE2eEnabled)('Kotlin preset review rules end to end', () =
 
     expect(reviewFindings(result.newEnforceable)).toEqual(
       [
+        'ExhaustiveEnumPredicate isHandedOver',
         'ExhaustiveEnumPredicate isLive',
         'ExhaustiveEnumPredicate isOpen',
+        'ExhaustiveEnumPredicate isPending',
         'ExhaustiveEnumPredicate isSettled',
         'ExhaustiveEnumPredicate weight',
-        'SingularAndPluralMember Query.tags',
+        ...PLURAL_FINDINGS,
         'StaticForwardingWrapper absOf',
         'StaticForwardingWrapper total',
         ...MAP_UPDATE_FINDINGS,

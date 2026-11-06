@@ -113,7 +113,8 @@ To learn why a rule is on and what form it allows before you write or change cod
   exhaustive `switch` expression over it. A `switch` statement needs `default`.
 - Enums: to sort the constants of one of your enums into two groups, classify every constant: a
   `switch` expression without `default`, or a field each constant declares (`PAID(true)`). Not
-  `s == PAID || s == SHIPPED` or `EnumSet.of(...).contains(s)` (`ExhaustiveEnumPredicate`).
+  `s == PAID || s == SHIPPED`, `Set.of(...).contains(s)` or a boolean `switch` with
+  `default -> false` (`ExhaustiveEnumPredicate`).
 - No static method that only passes its parameters on to another method; call that method.
   Factories named `of` or `from` and copies such as `List.copyOf` are fine.
 - A record or `@ConfigurationProperties` class (and the classes nested in it) has `tags` or `tag`,
