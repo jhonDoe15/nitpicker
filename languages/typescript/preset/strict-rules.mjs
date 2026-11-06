@@ -51,6 +51,7 @@ export const strictEslintRuleIds = [
   'nitpicker/no-shared-stateful-regex',
   'nitpicker/no-shell-string-command',
   'nitpicker/no-silent-catch',
+  'nitpicker/no-singular-and-plural-prop',
   'nitpicker/no-sql-string-building',
   'nitpicker/no-string-as-regex',
   'nitpicker/no-test-retry',
