@@ -2160,22 +2160,24 @@ Put @Profile only on a @Configuration class or a @Bean method, so profiles choos
 
 ### `pmd/SpringProxyMethodVisibility`
 
-Make this proxied method public, non-final and non-static, in a non-final class. Spring never proxies final or static methods, and nitpicker keeps proxied methods public.
+A method with one of the annotations of `SpringProxySelfCall` that is not public, or is `final` or `static`, and one of them on a `final` class. Interface methods are left out.
 
 - **Scope:** Main sources of a project with Spring on the compile classpath.
 - **Why it is on:** One of nitpicker's Spring rules: it names the one form Spring code should take, and runs only when Spring is on the compile classpath.
-- **Message in Kotlin:** Make this proxied function public, and let Spring subclass it: apply the kotlin("plugin.spring") compiler plugin (or write open class and open fun), and keep it out of objects and companion objects. Spring never proxies private, final or static functions, and nitpicker keeps proxied functions public.
+- **Allowed form:** Make this proxied method public, non-final and non-static, in a non-final class. Spring never proxies final or static methods, and nitpicker keeps proxied methods public.
+- **Allowed form in Kotlin:** Make this proxied function public, and let Spring subclass it: apply the kotlin("plugin.spring") compiler plugin (or write open class and open fun), and keep it out of objects and companion objects. Spring never proxies private, final or static functions, and nitpicker keeps proxied functions public.
 - **Exception:** If this is intended, add `{"rule":"pmd/SpringProxyMethodVisibility","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 
 <a id="pmd-springproxyselfcall"></a>
 
 ### `pmd/SpringProxySelfCall`
 
-Move the annotated method to another bean and call it there. This call stays inside the class, so it skips the proxy and the called method's annotation does nothing.
+A call from a class to its own method (`name(...)`, `this.name(...)` or `this::name`) that carries an annotation only a Spring proxy applies: Spring's `@Transactional` (except from one `@Transactional` method to a plain `@Transactional` one), `@Async`, the cache annotations, `@Retryable` (Spring Retry and Spring Framework 7), Spring Retry's `@CircuitBreaker`, `@ConcurrencyLimit`, `@PreAuthorize`, `@PostAuthorize`, `@PreFilter`, `@PostFilter` and `@Secured`; JSR-250 `@RolesAllowed` and `@DenyAll`; Resilience4j `@Retry`, `@CircuitBreaker`, `@RateLimiter`, `@Bulkhead` and `@TimeLimiter`; Micrometer `@Timed`, `@Counted` and `@Observed`; in a `@Validated` class, a Bean Validation or Hibernate Validator constraint or `@Valid` on a parameter, a type argument of one, or the method, of a method that is neither private nor static (a getter's own constraints count as a property's, not the method's); an annotation of the project meta-annotated with one of the Spring or JSR-250 ones, or with `@Constraint`; an annotation an `@Aspect` of the project names in `@annotation(...)`.
 
 - **Scope:** Main sources of a project with Spring on the compile classpath.
 - **Why it is on:** One of nitpicker's Spring rules: it names the one form Spring code should take, and runs only when Spring is on the compile classpath.
-- **Message in Kotlin:** Move the annotated function to another bean and call it there. This call stays inside the class, so it skips the proxy and the called function's annotation does nothing.
+- **Allowed form:** Move the annotated method to another bean and call it there. This call stays inside the class, so it skips the proxy and the called method's annotation does nothing.
+- **Allowed form in Kotlin:** Move the annotated function to another bean and call it there. This call stays inside the class, so it skips the proxy and the called function's annotation does nothing.
 - **Exception:** If this is intended, add `{"rule":"pmd/SpringProxySelfCall","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 
 <a id="pmd-springqueryconcatenation"></a>
