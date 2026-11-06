@@ -12,6 +12,11 @@ import { publishBaseSnapshot } from '../diff/cache/publish-cache.mjs';
 import { runGit } from '../diff/git/repository/command.mjs';
 import { selectAnalyzers } from '../diff/execution/run-analyzers.mjs';
 import { selectAnalyzerShard } from '../diff/sharding/sharding.mjs';
+import { CACHE_PUBLISH_USAGE_TEXT } from '../help/usage-text.mjs';
+
+const HELP = '--help';
+
+export const CACHE_PUBLISH_OPTIONS = ['--analyzer', '--shard-count', '--shard-index', HELP];
 
 function selectedAnalyzers(configured, options) {
   const selected =
@@ -31,9 +36,17 @@ function writableStore(projectRoot, cli) {
   return createLayeredStore({ remote, writeRemote: true });
 }
 
-const CACHE_OPTIONS = ['--analyzer', '--shard-count', '--shard-index'];
 const CACHE_USAGE =
   'Usage: nitpicker cache publish [--analyzer <name>]... [--shard-count <n> --shard-index <i>]';
+
+function rejectUnsupportedOptions(commandArguments) {
+  const unsupported = commandArguments.find(
+    (argument) => argument.startsWith('--') && !CACHE_PUBLISH_OPTIONS.includes(argument),
+  );
+  if (unsupported !== undefined) {
+    throw unknownArgumentError(unsupported, CACHE_PUBLISH_OPTIONS, CACHE_USAGE);
+  }
+}
 
 function validateCommand(arguments_) {
   const [command, extra] = arguments_;
@@ -47,7 +60,7 @@ function validateCommand(arguments_) {
     );
   }
   if (extra !== undefined) {
-    throw unknownArgumentError(extra, CACHE_OPTIONS, CACHE_USAGE);
+    throw unknownArgumentError(extra, CACHE_PUBLISH_OPTIONS, CACHE_USAGE);
   }
 }
 
@@ -61,7 +74,12 @@ function writeOutcome({ stdout, result, selected }) {
 }
 
 export function runCacheCommand(cli) {
+  rejectUnsupportedOptions(cli.arguments_);
   const options = parseDrillDownOptions(cli.arguments_);
+  if (options.remainingArguments.includes(HELP)) {
+    cli.stdout.write(CACHE_PUBLISH_USAGE_TEXT);
+    return 0;
+  }
   validateCommand(options.remainingArguments);
   const projectRoot =
     cli.currentProjectRoot === undefined

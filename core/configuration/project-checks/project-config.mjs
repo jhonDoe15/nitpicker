@@ -33,18 +33,22 @@ function existingJsxFiles(projectRoot, root) {
     .filter((file) => JSX_FILE.test(file));
 }
 
-export function rejectUnreadableSources(config, projectRoot) {
-  if (config.preset !== 'javascript') {
-    return;
-  }
+export function firstJsxFile(config, projectRoot) {
   const roots = [
     ...(config.layout?.sourceRoots ?? defaultSourceRoots),
     ...(config.layout?.testRoots ?? defaultTestRoots),
   ];
   const excluded = (config.exclude ?? []).map(globMatcher);
-  const found = roots
+  return roots
     .flatMap((root) => existingJsxFiles(projectRoot, root))
     .find((file) => !excluded.some((matcher) => matcher.test(file)));
+}
+
+export function rejectUnreadableSources(config, projectRoot) {
+  if (config.preset !== 'javascript') {
+    return;
+  }
+  const found = firstJsxFile(config, projectRoot);
   if (found !== undefined) {
     throw configError(
       `"preset": "javascript" does not analyze .jsx and .tsx files, and ${found} is one. Use "preset": "typescript", which reads them, or list the path in "exclude".`,

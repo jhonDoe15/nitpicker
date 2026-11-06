@@ -20,10 +20,14 @@ function declaresHatchEnvironments(projectRoot) {
   );
 }
 
-function condaFile(projectRoot) {
+export function condaFile(projectRoot) {
   const yml = path.join(projectRoot, 'environment.yml');
   const yaml = path.join(projectRoot, 'environment.yaml');
   return [yml, yaml].find((candidate) => existsSync(candidate));
+}
+
+export function condaEnvironmentName(file) {
+  return CONDA_NAME.exec(readFileSync(file, 'utf8'))?.[1];
 }
 
 function hasPipfile(projectRoot) {

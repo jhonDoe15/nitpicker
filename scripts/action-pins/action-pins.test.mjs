@@ -111,12 +111,13 @@ describe('action reference validation', () => {
     ]);
   });
 
-  it('ignores installed dependencies, Git internals and generated reports', () => {
+  it('ignores installed dependencies, Git internals, generated reports and init templates', () => {
     const root = repository({
       'node_modules/dependency/action.yml': 'uses: actions/checkout@main',
       'packages/project/node_modules/dependency/action.yml': 'uses: actions/checkout@main',
       '.git/workflows/test.yaml': 'uses: actions/checkout@main',
       'reports/example.yaml': 'uses: actions/checkout@main',
+      'core/init/templates/workflow.yml': "uses: '{{ACTION}}'",
     });
 
     expect(actionPinProblems(root)).toEqual([]);
