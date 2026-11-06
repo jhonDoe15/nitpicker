@@ -215,6 +215,10 @@
     { "key": "python.exceptions", "rule": "real-clock-in-test" },
     "`<name>()` reads the real clock in a test",
     "Freeze or inject the time: pass a fixed aware `datetime` in (`datetime(2026, 1, 1, tzinfo=timezone.utc)`), use `freezegun` or `time_machine`, or patch the clock with `monkeypatch`.",
+    "regex-unescaped-value",
+    { "key": "python.exceptions", "rule": "regex-unescaped-value" },
+    "`<name>` is built into a regex pattern unescaped, so a `.`, `|`, `$` or other metacharacter in it changes what matches",
+    "Escape the value first (`re.compile(rf\"^/{re.escape(name)}/\\d+$\")`), compare plain text with `in`, `startswith` or `==`, or pass a value that is meant as a whole pattern to `re.compile(pattern)` on its own.",
     "repeated-string-literal",
     { "key": "python.exceptions", "rule": "repeated-string-literal" },
     "The string \"<name>\" is repeated three times or more",
@@ -402,9 +406,10 @@
     [18, 274, 2, 3, 275, 276, 22, 277, -1],
     [18, 278, 2, 3, 279, 280, 22, 281, -1],
     [18, 282, 2, 3, 283, 284, 22, 285, -1],
-    [18, 286, 2, 3, 287, 288, 22, -1, -1],
-    [18, 289, 2, 3, 290, 291, 22, 292, -1],
-    [293, 294, 2, 3, 295, 296, 297, 298, -1],
-    [299, 300, 2, 3, 301, 302, 303, 304, 305]
+    [18, 286, 2, 3, 287, 288, 22, 289, -1],
+    [18, 290, 2, 3, 291, 292, 22, -1, -1],
+    [18, 293, 2, 3, 294, 295, 22, 296, -1],
+    [297, 298, 2, 3, 299, 300, 301, 302, -1],
+    [303, 304, 2, 3, 305, 306, 307, 308, 309]
   ]
 }

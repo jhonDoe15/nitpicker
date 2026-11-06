@@ -49,8 +49,11 @@ import { rule as hoverTestNeedsKeyboard } from './rules/react-tests/hover-test-n
 import { rule as noForwardingWrapper } from './rules/api-shape/no-forwarding-wrapper.mjs';
 import { rule as noCompatibilityShim } from './rules/signatures/no-compatibility-shim.mjs';
 import { rule as noFalsyDefault } from './rules/signatures/no-falsy-default.mjs';
+import { rule as noSharedStatefulRegex } from './rules/regex/no-shared-stateful-regex.mjs';
+import { rule as noStringAsRegex } from './rules/regex/no-string-as-regex.mjs';
 import { rule as noParameterMutation } from './rules/signatures/no-parameter-mutation.mjs';
 import { rule as noTriStateBoolean } from './rules/signatures/no-tri-state-boolean.mjs';
+import { rule as noUnhandledVoidPromise } from './rules/promises/no-unhandled-void-promise.mjs';
 import { rule as noRuntimeExclusivePropsCheck } from './rules/react-props/no-runtime-exclusive-props-check.mjs';
 import { rule as noSingularAndPluralProp } from './rules/api-shape/no-singular-and-plural-prop.mjs';
 import { rule as reactNoEffectDataFetching } from './rules/react/react-no-effect-data-fetching.mjs';
@@ -95,6 +98,7 @@ export const nitpickerRules = {
     'no-ui-framework-in-domain': noUiFrameworkInDomain,
     'no-null': noNull,
     'no-promise-chain': noPromiseChain,
+    'no-unhandled-void-promise': noUnhandledVoidPromise,
     'container-pause-requires-finally-unpause': containerPauseRequiresFinallyUnpause,
     'bounded-container-teardown': boundedContainerTeardown,
     'no-fixed-sleep-synchronization': noFixedSleepSynchronization,
@@ -161,6 +165,8 @@ export const nitpickerRules = {
     'no-forwarding-wrapper': noForwardingWrapper,
     'no-compatibility-shim': noCompatibilityShim,
     'no-falsy-default': noFalsyDefault,
+    'no-shared-stateful-regex': noSharedStatefulRegex,
+    'no-string-as-regex': noStringAsRegex,
     'no-parameter-mutation': noParameterMutation,
     'no-tri-state-boolean': noTriStateBoolean,
     'no-runtime-exclusive-props-check': noRuntimeExclusivePropsCheck,
