@@ -4,6 +4,7 @@ import path from 'node:path';
 import { resolveProjectRoot } from '../tooling/tool-resolution.mjs';
 
 const GIT_OUTPUT_LIMIT_BYTES = 64 * 1024 * 1024;
+const GIT_TIMEOUT_MS = 10 * 60 * 1000;
 
 export function resolveRunTarget({
   options,
@@ -33,7 +34,12 @@ export function resolveRunTarget({
 }
 
 function git(cwd, args) {
-  return execFileSync('git', args, { cwd, encoding: 'utf8', maxBuffer: GIT_OUTPUT_LIMIT_BYTES });
+  return execFileSync('git', args, {
+    cwd,
+    encoding: 'utf8',
+    maxBuffer: GIT_OUTPUT_LIMIT_BYTES,
+    timeout: GIT_TIMEOUT_MS,
+  });
 }
 
 function repositoryOf(base) {
