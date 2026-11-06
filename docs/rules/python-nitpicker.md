@@ -1,6 +1,6 @@
 # Python: nitpicker rules
 
-The Python rules nitpicker's own script checks (`python-rules/*`), the coupling and import-cycle findings, the ruff format check and the finding for a run in which no tests ran. This page lists 68 rules. [All pages](README.md).
+The Python rules nitpicker's own script checks (`python-rules/*`), the coupling and import-cycle findings, the ruff format check and the finding for a run in which no tests ran. This page lists 71 rules. [All pages](README.md).
 
 The guide for these rules: [docs/python-preset.md](../python-preset.md).
 
@@ -319,6 +319,26 @@ Inline suppression `# <name>`.
 - **Allowed form:** Put the code in the normal flow; `if TYPE_CHECKING:` is only for imports that annotations need.
 - **Exception:** If this is intended, add `{"rule":"not-type-checking","paths":["<path>"],"reason":"..."}` to "python.exceptions" in nitpicker.config.json.
 
+<a id="python-rules-orm-query-logging"></a>
+
+### `python-rules/orm-query-logging`
+
+`<name>` logs every SQL query: the logs fill with personal data and bound values, and every query pays for the log line.
+
+- **Allowed form:** Leave `echo` and the query loggers off and log slow queries instead: time queries with SQLAlchemy `before_cursor_execute`/`after_cursor_execute` events and log only the slow ones, or use the database's own slow-query log (`log_min_duration_statement` in PostgreSQL). A value switched on by an environment check (`echo=os.environ.get("ENV") != "production"`) still logs in every other environment. A local debugging script takes an exception.
+- **Exception:** If this is intended, add `{"rule":"orm-query-logging","paths":["<path>"],"reason":"..."}` to "python.exceptions" in nitpicker.config.json.
+- **See also:** [Spring counterpart `spring/unsafe-diagnostics`](java-nitpicker.md#springunsafe-diagnostics)
+
+<a id="python-rules-orm-schema-sync"></a>
+
+### `python-rules/orm-schema-sync`
+
+`<name>` lets the ORM create, alter or drop tables when the application runs, so a deploy can drop columns and their data and the schema drifts from the migrations.
+
+- **Allowed form:** Change the schema with migrations instead: Alembic (`alembic upgrade head` in the deploy step), Django migrations, or Aerich for Tortoise; create tables in test fixtures, not in the application. An environment check around the call (`if settings.DEBUG:`) still changes the schema in every other environment. A local script outside the application, such as a seed, takes an exception.
+- **Exception:** If this is intended, add `{"rule":"orm-schema-sync","paths":["<path>"],"reason":"..."}` to "python.exceptions" in nitpicker.config.json.
+- **See also:** [Spring counterpart `spring/ddl-auto`](java-nitpicker.md#springddl-auto)
+
 <a id="python-rules-parameter-mutation"></a>
 
 ### `python-rules/parameter-mutation`
@@ -408,6 +428,15 @@ The string "\<name>" is repeated three times or more.
 
 - **Allowed form:** Log that it is set (`logger.info("token set: %s", token is not None)`) or a masked tail, never the value.
 - **Exception:** If this is intended, add `{"rule":"secret-in-log","paths":["<path>"],"reason":"..."}` to "python.exceptions" in nitpicker.config.json.
+
+<a id="python-rules-server-or-container-per-test"></a>
+
+### `python-rules/server-or-container-per-test`
+
+`<name>()` starts a container, server, process or git repository for each test.
+
+- **Allowed form:** Start it once: a `scope="session"` or `scope="module"` fixture that resets its state between tests, or `setup_class`/`setUpClass`. Or test the logic against an in-memory implementation and keep the real transport for transport tests. An exception fits only when each test needs a fresh instance.
+- **Exception:** If this is intended, add `{"rule":"server-or-container-per-test","paths":["<path>"],"reason":"..."}` to "python.exceptions" in nitpicker.config.json.
 
 <a id="python-rules-shell-command"></a>
 

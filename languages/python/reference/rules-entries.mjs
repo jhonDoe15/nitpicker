@@ -1,3 +1,4 @@
+import { counterpartsOf } from '../../../shared/reference/counterparts.mjs';
 import { ruleEntry } from '../../../shared/reference/entry.mjs';
 import { RULE_HINTS, RULES_TOOL } from '../rules/rule-hints.mjs';
 import { allowedOf, describedBy } from './hint-text.mjs';
@@ -20,7 +21,10 @@ export function pythonRulesEntries() {
           hint.exception === 'top-level'
             ? { key: 'exceptions', rule }
             : { key: 'python.exceptions', rule },
-        docs: [{ label: 'Python preset guide', path: 'docs/python-preset.md' }],
+        docs: [
+          { label: 'Python preset guide', path: 'docs/python-preset.md' },
+          ...counterpartsOf(rule),
+        ],
       }),
     ),
   );
