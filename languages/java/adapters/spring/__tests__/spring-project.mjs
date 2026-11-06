@@ -63,6 +63,7 @@ const REVIEW_RULES = new Set([
   'FixedSleepInTest',
   'NegativeWaitInTest',
   'RetryInTest',
+  'ServerOrContainerPerTest',
   'ExhaustiveEnumPredicate',
   'StaticForwardingWrapper',
   'SingularAndPluralMember',
@@ -76,9 +77,12 @@ const REVIEW_RULES = new Set([
   'DefaultTimeZone',
   'ClassLoadEffect',
   'SpringUnusedContext',
+  'SpringProxySelfCall',
+  'SpringProxyMethodVisibility',
   'TestClassWithoutTestCases',
   'test-only-export',
   'UnboundedFanOut',
+  'HttpWithoutTimeout',
 ]);
 const roots = [];
 const RECEIPT_TEST_FILE = 'src/test/java/shop/ReceiptTest.java';

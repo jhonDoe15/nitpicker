@@ -13,6 +13,10 @@ export const RULES_CASES = [
   ]),
   ...rulesCases('weak-hmac', [['weak-hmac', 'hashlib.sha256']]),
   ...rulesCases('http-client-timeout', [['http-without-timeout', 'timeout=10']]),
+  ...rulesCases('orm-config', [
+    ['orm-schema-sync', 'alembic upgrade head'],
+    ['orm-query-logging', 'slow-query log'],
+  ]),
   ...rulesCases('unsafe-model-loading', [['unsafe-deserialization', 'yaml.safe_load']]),
   ...rulesCases('shell-command-forms', [['shell-command', 'shell=false']]),
   ...rulesCases('env-access', [['process-env-access', 'composition root']]),
@@ -59,6 +63,7 @@ export const RULES_CASES = [
   ]),
   ...rulesCases('random-test', [['random-in-test', 'seed']]),
   ...rulesCases('network-test', [['network-in-test', 'fake']]),
+  ...rulesCases('server-per-test', [['server-or-container-per-test', 'scope="session"']]),
   ...rulesCases('uncollected-tests', [['uncollected-tests', 'python_files']]),
   ...rulesCases('test-helper-in-source', [['test-helper-in-source', 'tests folder']]),
   ...rulesCases('task-lifetimes', [['task-outlives-resource', 'around the whole task group']]),
