@@ -73,6 +73,7 @@ const REVIEW_RULES = new Set([
   'LegacyCalendarApi',
   'UnquotedRegexValue',
   'PlainTextRegex',
+  'ProcessWaitWithoutTimeout',
   'LogFormatArguments',
   'LogExceptionFirst',
   'RecursiveMapUpdate',

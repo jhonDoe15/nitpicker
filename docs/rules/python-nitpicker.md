@@ -1,6 +1,6 @@
 # Python: nitpicker rules
 
-The Python rules nitpicker's own script checks (`python-rules/*`), the coupling and import-cycle findings, the ruff format check and the finding for a run in which no tests ran. This page lists 72 rules. [All pages](README.md).
+The Python rules nitpicker's own script checks (`python-rules/*`), the coupling and import-cycle findings, the ruff format check and the finding for a run in which no tests ran. This page lists 73 rules. [All pages](README.md).
 
 The guide for these rules: [docs/python-preset.md](../python-preset.md).
 
@@ -500,6 +500,15 @@ Optional fields `<item>` and `<items>` of `<name` are two ways to pass the same 
 
 - **Allowed form:** Delete the `.pyi` file and annotate the `.py` file itself.
 - **Exception:** If this is intended, add `{"rule":"stub-beside-source","paths":["<path>"],"reason":"..."}` to "python.exceptions" in nitpicker.config.json.
+
+<a id="python-rules-subprocess-without-timeout"></a>
+
+### `python-rules/subprocess-without-timeout`
+
+`<name>` waits for a child process without a deadline, so a command that never exits hangs this code for good.
+
+- **Allowed form:** Pass a timeout: `subprocess.run(args, timeout=30, check=True)`, `process.communicate(timeout=30)` or `process.wait(timeout=30)` (then kill the child on `TimeoutExpired`). Wrap an asyncio wait in `async with asyncio.timeout(30):` or `asyncio.wait_for(process.wait(), 30)`. A program whose purpose is to run the child to completion, such as a build wrapper, takes an exception.
+- **Exception:** If this is intended, add `{"rule":"subprocess-without-timeout","paths":["<path>"],"reason":"..."}` to "python.exceptions" in nitpicker.config.json.
 
 <a id="python-rules-swallowed-exception"></a>
 

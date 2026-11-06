@@ -121,6 +121,9 @@ To learn why a rule is on and what form it allows before you write or change cod
   `match`, `matchAll` and `search` compile a string argument as a regex: use `includes` or
   `startsWith` for text, and escape a parameter before building it into `new RegExp(...)`
   (`nitpicker/no-string-as-regex`).
+- A child process you wait for gets a deadline: `{ timeout: 30_000 }` on `execFileSync`/`spawnSync`, or a
+  `timeout` or `signal: AbortSignal.timeout(30_000)` on `execFile` and an awaited `spawn` or `execa`
+  (`nitpicker/require-process-timeout`; a build wrapper that only runs a child to completion takes an exception).
 - Each finding names the allowed form. A deliberate exception goes in `nitpicker.config.json`
   `exceptions` (rule, paths, reason), never inline.
 
