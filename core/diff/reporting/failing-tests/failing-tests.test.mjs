@@ -133,6 +133,28 @@ describe('failing head tests', () => {
     expect(comparisonExitCode(report())).toBe(0);
   });
 
+  it('show ten failing tests with their details and point to the report for the rest', () => {
+    const entries = Array.from({ length: 12 }, (_, index) => [
+      `  test/a.test.ts:${String(index + 1)} > case ${String(index)}: expected 1 to be 2`,
+      '    expected: { "kind": "no" }',
+      '    received: { "kind": "yes" }',
+    ]);
+    const message = [
+      '12 tests fail; coverage, CRAP and mutation were skipped. Fix the tests and rerun:',
+      ...entries.flat(),
+      '  and 3 more',
+      'Hint: the test runs without a DOM.',
+    ].join('\n');
+    const lines = consoleLines(report({ toolErrors: [testsFailed('coverage', message)] }));
+
+    expect(lines.slice(2, -3)).toEqual([
+      `✖ ${message.split('\n')[0]}`,
+      ...entries.slice(0, 10).flat(),
+      `  … and 5 more; see ${DIAGNOSTICS.replace('Full diagnostics: ', '')}`,
+      'Hint: the test runs without a DOM.',
+    ]);
+  });
+
   it('lead the GitHub step summary', () => {
     const context = { projectPrefix: '' };
     const alone = report({ toolErrors: [testsFailed('java', JAVA_MESSAGE)] });

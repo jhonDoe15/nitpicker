@@ -416,7 +416,20 @@ only the library follows the project. Nitpicker reads `dependencies`, `peerDepen
 - `async`/`await` and `Promise.all`. No `.then()`, `.catch()` or `.finally()` chains, and no promise
   left without being awaited (`@typescript-eslint/no-floating-promises`). Deliberate
   fire-and-forget is written `void job();`, typescript-eslint's own form; `.then()` and `.catch()`
-  do not count. `await Promise.allSettled(...)` with its result dropped hides every rejection, and
+  do not count. In production code `void` passes only when nothing can leave the promise rejected
+  (`nitpicker/no-unhandled-void-promise`, which reads types): `job` is an async function whose
+  whole body is `try` statements with a `catch`, where no `catch` or `finally` throws or awaits
+  outside a nested `try` with its own `catch`, and no `return` inside the `try` hands back a promise
+  without `await` (that rejection would skip the `catch`). The function may be declared in the same
+  file, imported, a method of the class, or written inline as `void (async () => { ... })()`.
+  Node.js exits on an unhandled rejection by default, so `void report(id)` on a call that can reject,
+  on a method known only through an interface, or on a promise variable is reported. A
+  detached-work runner the project already has (a queue, a supervisor) that handles rejections in a
+  way the rule cannot see is named under `conventions` as
+  `"typescript.detachedWorkRunners": ["runDetached"]`; `void runDetached(...)` and
+  `void tasks.runDetached(...)` then pass. The preset picked this form over typescript-eslint's
+  `ignoreVoid: false`, which would leave no allowed fire-and-forget form at all, since `.catch()` is
+  banned. `await Promise.allSettled(...)` with its result dropped hides every rejection, and
   `new Promise((resolve) => resolve(value))` wraps a value that `Promise.resolve(value)` or an
   async function returns directly.
 - An `'error'` listener on every socket, file stream, child process and client the code creates
@@ -820,8 +833,25 @@ only the library follows the project. Nitpicker reads `dependencies`, `peerDepen
   before the call), an accumulator (the first parameter of a `reduce` or `reduceRight` callback,
   inline or named, and a parameter defaulted to `[]`, `{}`, `new Set()` or `new Map()`), an immer
   draft (a parameter inside `produce`, `produceWithPatches`, `createSlice`, `createReducer`,
-  `useImmer` or `useImmerReducer`), a `readonly` type (the compiler rejects the write), and plain
-  property assignment (`user.name = name`). `domain/` files keep the stricter
+  `useImmer` or `useImmerReducer`) and a `readonly` type (the compiler rejects the write).
+  A write to a named property of a parameter object is flagged too: `options.retries = 3`,
+  `options.length ??= 8` (also `||=`, `&&=`, `+=`, `++`), `delete item.id`, a nested
+  `options.retry.count = 3` and `Object.assign(options, defaults)`, also through a simple alias
+  (`const o = options`, `const o = options ?? {}`, `options = options ?? {}`). Only an object
+  whose type is declared in the project or is an anonymous object type counts (an interface, a
+  type alias, `Partial<Options>`, a record, a JSDoc `@typedef` or `{{ ... }}` type), and every
+  member of a union must be one; a class instance, a class itself (`typeof Counter`), an enum, a
+  function or callable type, a type from a library or `lib.*.d.ts` (`Error`, `RegExp`, a
+  framework request), and an interface or intersection that extends one are left alone, since
+  middleware writes to those are the norm. `as`, `satisfies` and `!` around the target count as
+  the parameter (`(options as Options).size = 1`). The allowed form is a new object
+  (`{ ...options, retries: 3 }`) or a copy first
+  (`const next = { ...options }`, `options = { ...options }` or `Object.assign({}, options)`).
+  A function that fills an object its caller hands it to be filled takes a config exception.
+  The same aliases and nested named properties apply to the indexed and mutating-method forms
+  (`const list = items; list.push(x)`, `input.items.push(x)`, `input.items[0] = x`), with the
+  same project or anonymous type check on each named step.
+  `domain/` files keep the stricter
   `no-mutating-method-in-domain` and do not get this rule. The shared method tables are in
   `eslint-plugin/rules/analysis/mutation/mutating-methods.mjs`.
 - `nitpicker/no-falsy-default` (type-aware): `limit || DEFAULT_LIMIT` and `limit ? limit : DEFAULT`

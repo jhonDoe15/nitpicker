@@ -421,7 +421,10 @@ describe.each([
     });
 
     await expect(stryker(projectRoot)).resolves.toEqual({
-      config: { extends: './tsconfig.json', compilerOptions: { skipLibCheck: true } },
+      config: {
+        extends: './tsconfig.json',
+        compilerOptions: { noCheck: false, skipLibCheck: true },
+      },
       baselineErrors: false,
       native,
     });
@@ -434,7 +437,10 @@ describe.each([
       'src/first.ts': "export const legacy: number = 'oops';\n",
     });
     await expect(stryker(projectRoot)).resolves.toEqual({
-      config: { extends: './tsconfig.json', compilerOptions: { skipLibCheck: true } },
+      config: {
+        extends: './tsconfig.json',
+        compilerOptions: { noCheck: false, skipLibCheck: true },
+      },
       baselineErrors: true,
       native,
     });
