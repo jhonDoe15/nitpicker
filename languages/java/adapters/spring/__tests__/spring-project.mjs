@@ -72,6 +72,7 @@ const REVIEW_RULES = new Set([
   'CompatibilityShim',
   'LegacyCalendarApi',
   'UnclosedInlineResource',
+  'ProcessWaitWithoutTimeout',
   'LogFormatArguments',
   'LogExceptionFirst',
   'RecursiveMapUpdate',
