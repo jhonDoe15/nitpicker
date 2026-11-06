@@ -1370,6 +1370,14 @@
         "This file defines tests but is not named like a test file, so they never run. Rename it `*.test.ts` (or `*.spec.ts`). An exception fits only when another test file runs it on purpose."
       ]
     },
+    "nitpicker/no-unhandled-void-promise": {
+      "tools": ["eslint-lint"],
+      "forms": [],
+      "description": "Disallow `void` on a promise whose rejection nothing handles",
+      "messages": [
+        "`void` discards this promise, so nothing handles its rejection and Node.js exits on an unhandled rejection by default. Await it, or call an async function whose whole body is a `try` with a `catch` that logs and does not rethrow: `void sendReport(id);` with `async function sendReport(id) { try { await report(id); } catch (error) { logger.error({ error }, \"report failed\"); } }`. A detached-work runner the project already has can be named in nitpicker.config.json under `conventions` as `\"typescript.detachedWorkRunners\": [\"runDetached\"]`."
+      ]
+    },
     "nitpicker/no-uninjectable-delay": {
       "tools": ["eslint-lint"],
       "forms": [],
@@ -4243,6 +4251,14 @@
       "description": "Report test calls in a file the test runner never collects",
       "messages": [
         "This file defines tests but is not named like a test file, so they never run. Rename it `*.test.ts` (or `*.spec.ts`). An exception fits only when another test file runs it on purpose."
+      ]
+    },
+    "nitpicker/no-unhandled-void-promise": {
+      "tools": ["eslint-lint"],
+      "forms": [],
+      "description": "Disallow `void` on a promise whose rejection nothing handles",
+      "messages": [
+        "`void` discards this promise, so nothing handles its rejection and Node.js exits on an unhandled rejection by default. Await it, or call an async function whose whole body is a `try` with a `catch` that logs and does not rethrow: `void sendReport(id);` with `async function sendReport(id) { try { await report(id); } catch (error) { logger.error({ error }, \"report failed\"); } }`. A detached-work runner the project already has can be named in nitpicker.config.json under `conventions` as `\"typescript.detachedWorkRunners\": [\"runDetached\"]`."
       ]
     },
     "nitpicker/no-uninjectable-delay": {
@@ -7400,6 +7416,14 @@
       "description": "Report test calls in a file the test runner never collects",
       "messages": [
         "This file defines tests but is not named like a test file, so they never run. Rename it `*.test.ts` (or `*.spec.ts`). An exception fits only when another test file runs it on purpose."
+      ]
+    },
+    "nitpicker/no-unhandled-void-promise": {
+      "tools": ["eslint-lint"],
+      "forms": [],
+      "description": "Disallow `void` on a promise whose rejection nothing handles",
+      "messages": [
+        "`void` discards this promise, so nothing handles its rejection and Node.js exits on an unhandled rejection by default. Await it, or call an async function whose whole body is a `try` with a `catch` that logs and does not rethrow: `void sendReport(id);` with `async function sendReport(id) { try { await report(id); } catch (error) { logger.error({ error }, \"report failed\"); } }`. A detached-work runner the project already has can be named in nitpicker.config.json under `conventions` as `\"typescript.detachedWorkRunners\": [\"runDetached\"]`."
       ]
     },
     "nitpicker/no-uninjectable-delay": {

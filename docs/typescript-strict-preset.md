@@ -416,7 +416,20 @@ only the library follows the project. Nitpicker reads `dependencies`, `peerDepen
 - `async`/`await` and `Promise.all`. No `.then()`, `.catch()` or `.finally()` chains, and no promise
   left without being awaited (`@typescript-eslint/no-floating-promises`). Deliberate
   fire-and-forget is written `void job();`, typescript-eslint's own form; `.then()` and `.catch()`
-  do not count. `await Promise.allSettled(...)` with its result dropped hides every rejection, and
+  do not count. In production code `void` passes only when nothing can leave the promise rejected
+  (`nitpicker/no-unhandled-void-promise`, which reads types): `job` is an async function whose
+  whole body is `try` statements with a `catch`, where no `catch` or `finally` throws or awaits
+  outside a nested `try` with its own `catch`, and no `return` inside the `try` hands back a promise
+  without `await` (that rejection would skip the `catch`). The function may be declared in the same
+  file, imported, a method of the class, or written inline as `void (async () => { ... })()`.
+  Node.js exits on an unhandled rejection by default, so `void report(id)` on a call that can reject,
+  on a method known only through an interface, or on a promise variable is reported. A
+  detached-work runner the project already has (a queue, a supervisor) that handles rejections in a
+  way the rule cannot see is named under `conventions` as
+  `"typescript.detachedWorkRunners": ["runDetached"]`; `void runDetached(...)` and
+  `void tasks.runDetached(...)` then pass. The preset picked this form over typescript-eslint's
+  `ignoreVoid: false`, which would leave no allowed fire-and-forget form at all, since `.catch()` is
+  banned. `await Promise.allSettled(...)` with its result dropped hides every rejection, and
   `new Promise((resolve) => resolve(value))` wraps a value that `Promise.resolve(value)` or an
   async function returns directly.
 - An `'error'` listener on every socket, file stream, child process and client the code creates
