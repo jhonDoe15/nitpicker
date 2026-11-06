@@ -275,6 +275,22 @@ Math` and `Math['random']()` are caught; `process`, `fetch`, `setTimeout`, `setI
   `typia.assertEquals`). class-validator leaves unknown keys to the `whitelist` options of the
   validation pipe, which the rule cannot see.
 
+- `nitpicker/no-eager-relation` (all production code): a relation mapped to load on every query of
+  the entity. TypeORM and MikroORM `eager: true` on `@ManyToOne`, `@OneToOne`, `@OneToMany` and
+  `@ManyToMany` (also imported by namespace or under another name, and through a same-file `const`
+  or spread of the options), on an `EntitySchema` relation, and MikroORM's `defineEntity`
+  `.eager()`; a Sequelize `defaultScope` that `include`s associations (`Model.init`,
+  `sequelize.define`, `addScope('defaultScope', ...)` and sequelize-typescript's `@DefaultScope`).
+  Load the relation on the queries that need it: TypeORM `relations` or `leftJoinAndSelect`,
+  MikroORM `populate`, a Sequelize `include` on the query or a named scope. A small lookup
+  relation that every read needs is the exception. Port of the Java and Kotlin `JpaLazyFetching`.
+- `nitpicker/no-many-to-many-cascade-remove` (all production code): a cascade that removes on a
+  many-to-many relation (TypeORM `cascade: true`, `'remove'` or `'soft-remove'`; MikroORM
+  `Cascade.ALL` or `Cascade.REMOVE`, also through `defineEntity` `.cascade(...)`) deletes the
+  related rows that other owners still share. Cascade only `['insert', 'update']` (TypeORM) or
+  `[Cascade.PERSIST]` (MikroORM); the join rows already go with the owner. Sequelize is not
+  checked: `onDelete: 'CASCADE'` on a `belongsToMany` only removes rows of the through table, which
+  is the allowed form. Port of `JpaManyToManyCascade`.
 - Untrusted input is parsed once, at the boundary, with a schema library (zod by default). Hand-written
   type guards for external data are not allowed (`nitpicker/no-handwritten-boundary-guard`, in `adapters/`, `shared/` and
   the other layers outside `domain/`): a predicate whose parameter is `unknown`, `any`, `object`,
