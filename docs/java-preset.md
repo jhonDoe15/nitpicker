@@ -186,7 +186,7 @@ by field. Per snapshot:
 - **Tests.** Failures of the ArchUnit rule classes (`*ArchTest`, `*ArchitectureTest`, or the
   `nitpicker.archunit.includes` property in the POM) become findings; any other failing test, from
   Surefire's or Failsafe's reports, is a `java/tests-failed` tool error (exit 1) that names up to
-  ten failing tests. A `<rerunFailingTestsCount>` in a POM's plugin configuration wins over the `-D`
+  50 failing tests with the line of the failing assertion and the expected and received values. A `<rerunFailingTestsCount>` in a POM's plugin configuration wins over the `-D`
   properties, so a test case Surefire or Failsafe marked `flakyFailure` or `flakyError` is a failure
   as well (the Test retries bullet above has the message). On the base snapshot the failing tests
   are listed instead of thrown: that module skips JaCoCo and PIT, and the failure becomes a
@@ -352,7 +352,7 @@ comma-separated>` changes that. Those classes are excluded from the regular `tes
   requires a green test run: a failing test suite fails the build. When the failed build left JUnit
   reports with failing tests (the init script lists the report directory of every test task in
   `test-results.json` of the report base), it is a `java/tests-failed` tool error (exit 1) that
-  names up to ten of them with the same text as on Maven (`1 test fails; the build stopped, so no
+  names up to 50 of them with the same text as on Maven (`1 test fails; the build stopped, so no
 other check ran. Fix the tests and rerun:`) instead of Gradle's own failure output, with the path
   of the full Gradle log on its last line; otherwise it is a `java/gradle-failure` tool error. Projects without main classes produce no report and no findings.
   The `pitest-junit5-plugin` and the launcher are added only when the project's test runtime has
