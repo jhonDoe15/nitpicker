@@ -5,6 +5,7 @@ import { hash, nextOccurrence } from '../../../../../shared/rules/finding-helper
 import { braceDepths, lineOf, lineText, scanKotlinSource } from './kotlin-source.mjs';
 import { CAST_MESSAGES, unsafeCasts } from './casts/unsafe-casts.mjs';
 import { REPEATED_STRING_MESSAGE, repeatedStringLiterals } from './literals/repeated-strings.mjs';
+import { REGEX_MESSAGES, plainTextRegexes, unquotedRegexValues } from './regexes/regex-values.mjs';
 import { CALL_MESSAGES, ioInLoops, logTemplates, shellCommands } from './rules/calls.mjs';
 import { CATCH_MESSAGES, booleanFlags, catchOnlyLogs } from './rules/catches.mjs';
 import { DECLARATION_MESSAGES, genericNames, mutableModuleState } from './rules/declarations.mjs';
@@ -54,6 +55,7 @@ export const KOTLIN_SOURCE_MESSAGES = {
   ...TRI_STATE_MESSAGES,
   ...PARAMETER_MUTATION_MESSAGES,
   ...COMPATIBILITY_SHIM_MESSAGES,
+  ...REGEX_MESSAGES,
   RepeatedStringLiteral: REPEATED_STRING_MESSAGE,
 };
 
@@ -86,6 +88,8 @@ const MAIN_RULES = [
   triStateBooleans,
   parameterMutations,
   compatibilityShims,
+  unquotedRegexValues,
+  plainTextRegexes,
   repeatedStringLiterals,
 ];
 const TEST_RULES = [testClassesWithoutTests, unsafeCasts];
