@@ -440,76 +440,175 @@ return //MethodDeclaration[ModifierList/Annotation[pmd-java:typeIs('org.springfr
   <rule name="SpringProxyMethodVisibility" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
         message="Make this proxied method public, non-final and non-static, in a non-final class. Spring never proxies final or static methods, and nitpicker keeps proxied methods public.">
     <priority>1</priority>
-    <properties><property name="xpath"><value><![CDATA[
-//Annotation[
-    pmd-java:typeIs('org.springframework.transaction.annotation.Transactional')
-    or pmd-java:typeIs('org.springframework.scheduling.annotation.Async')
-    or pmd-java:typeIs('org.springframework.cache.annotation.Cacheable')
-    or pmd-java:typeIs('org.springframework.cache.annotation.CachePut')
-    or pmd-java:typeIs('org.springframework.cache.annotation.CacheEvict')
-    or pmd-java:typeIs('org.springframework.cache.annotation.Caching')
-    or pmd-java:typeIs('org.springframework.retry.annotation.Retryable')
-    or pmd-java:typeIs('org.springframework.resilience.annotation.Retryable')
-    or pmd-java:typeIs('org.springframework.security.access.prepost.PreAuthorize')
-    or pmd-java:typeIs('org.springframework.security.access.prepost.PostAuthorize')
-    or pmd-java:typeIs('org.springframework.security.access.annotation.Secured')]
-  [
-    parent::ModifierList/parent::MethodDeclaration[
-      not(ancestor::ClassDeclaration[1][@Interface = true()])]
-      [@Visibility != 'public' or pmd-java:modifiers() = ('final', 'static')]
-    or parent::ModifierList/parent::ClassDeclaration[pmd-java:modifiers() = 'final']
-  ]
-]]></value></property></properties>
+    <properties>
+      <property name="projectProxyAnnotations" type="List[String]" value=""
+                description="Annotation types of the project that a proxy or aspect handles, found by nitpicker in the sources."/>
+      <property name="projectConstraintAnnotations" type="List[String]" value=""
+                description="Bean Validation constraint annotations the project declares, found by nitpicker in the sources."/>
+      <property name="xpath"><value><![CDATA[
+let $proxyNames := (
+      'org.springframework.transaction.annotation.Transactional',
+      'org.springframework.scheduling.annotation.Async',
+      'org.springframework.cache.annotation.Cacheable',
+      'org.springframework.cache.annotation.CachePut',
+      'org.springframework.cache.annotation.CacheEvict',
+      'org.springframework.cache.annotation.Caching',
+      'org.springframework.retry.annotation.Retryable',
+      'org.springframework.retry.annotation.CircuitBreaker',
+      'org.springframework.resilience.annotation.Retryable',
+      'org.springframework.resilience.annotation.ConcurrencyLimit',
+      'org.springframework.security.access.prepost.PreAuthorize',
+      'org.springframework.security.access.prepost.PostAuthorize',
+      'org.springframework.security.access.prepost.PreFilter',
+      'org.springframework.security.access.prepost.PostFilter',
+      'org.springframework.security.access.annotation.Secured',
+      'jakarta.annotation.security.RolesAllowed',
+      'javax.annotation.security.RolesAllowed',
+      'jakarta.annotation.security.DenyAll',
+      'javax.annotation.security.DenyAll',
+      'io.github.resilience4j.retry.annotation.Retry',
+      'io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker',
+      'io.github.resilience4j.ratelimiter.annotation.RateLimiter',
+      'io.github.resilience4j.bulkhead.annotation.Bulkhead',
+      'io.github.resilience4j.timelimiter.annotation.TimeLimiter',
+      'io.micrometer.core.annotation.Timed',
+      'io.micrometer.core.annotation.Counted',
+      'io.micrometer.observation.annotation.Observed',
+      $projectProxyAnnotations),
+    $constraintNames := (
+      for $name in (
+        'AssertFalse', 'AssertTrue', 'DecimalMax', 'DecimalMin', 'Digits', 'Email', 'Future',
+        'FutureOrPresent', 'Max', 'Min', 'Negative', 'NegativeOrZero', 'NotBlank', 'NotEmpty',
+        'NotNull', 'Null', 'Past', 'PastOrPresent', 'Pattern', 'Positive', 'PositiveOrZero', 'Size')
+      return ('jakarta.validation.constraints.' || $name, 'javax.validation.constraints.' || $name),
+      for $name in (
+        'CodePointLength', 'CreditCardNumber', 'Currency', 'EAN', 'ISBN', 'Length', 'LuhnCheck',
+        'Mod10Check', 'Mod11Check', 'Normalized', 'Range', 'URL', 'UUID', 'UniqueElements')
+      return 'org.hibernate.validator.constraints.' || $name,
+      'jakarta.validation.Valid', 'javax.validation.Valid', $projectConstraintAnnotations),
+    $proxyAnnotation := function($annotation) {
+      exists($annotation[some $name in $proxyNames satisfies pmd-java:typeIs($name)])
+    },
+    $typeOf := function($node) {
+      $node/ancestor::*[self::ClassDeclaration or self::AnonymousClassDeclaration
+        or self::EnumDeclaration or self::RecordDeclaration][1]
+    },
+    $validated := function($method) {
+      exists($typeOf($method)/self::ClassDeclaration/ModifierList/Annotation[
+        pmd-java:typeIs('org.springframework.validation.annotation.Validated')])
+      and exists($method[not(@Visibility = 'private' or pmd-java:modifiers() = 'static')])
+      and exists(($method[not(@Arity = 0 and matches(@Name, '^(get|is)\p{Lu}'))]/ModifierList/Annotation
+                  | $method/FormalParameters//Annotation)[
+        some $name in $constraintNames satisfies pmd-java:typeIs($name)])
+    },
+    $hidden := function($method) {
+      $method[not(ancestor::ClassDeclaration[1][@Interface = true()])]
+        [@Visibility != 'public' or pmd-java:modifiers() = ('final', 'static')]
+    }
+return (
+  //Annotation[$proxyAnnotation(.)][
+    $hidden(parent::ModifierList/parent::MethodDeclaration)
+    or parent::ModifierList/parent::ClassDeclaration[pmd-java:modifiers() = 'final']]
+  |
+  //MethodDeclaration[not(ModifierList/Annotation[$proxyAnnotation(.)])][$hidden(.)][$validated(.)]
+)
+]]></value></property>
+    </properties>
   </rule>
 
   <rule name="SpringProxySelfCall" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
         message="Move the annotated method to another bean and call it there. This call stays inside the class, so it skips the proxy and the called method''s annotation does nothing.">
     <priority>1</priority>
-    <properties><property name="xpath"><value><![CDATA[
-//MethodCall[*[1][self::ArgumentList or self::TypeArguments or self::ThisExpression[not(*)]]][
-  let $name := @MethodName,
-      $arity := count(ArgumentList/*),
-      $callerTransactional := exists(ancestor::MethodDeclaration[1]/ModifierList/Annotation[
+    <properties>
+      <property name="projectProxyAnnotations" type="List[String]" value=""
+                description="Annotation types of the project that a proxy or aspect handles, found by nitpicker in the sources."/>
+      <property name="projectConstraintAnnotations" type="List[String]" value=""
+                description="Bean Validation constraint annotations the project declares, found by nitpicker in the sources."/>
+      <property name="xpath"><value><![CDATA[
+let $proxyNames := (
+      'org.springframework.transaction.annotation.Transactional',
+      'org.springframework.scheduling.annotation.Async',
+      'org.springframework.cache.annotation.Cacheable',
+      'org.springframework.cache.annotation.CachePut',
+      'org.springframework.cache.annotation.CacheEvict',
+      'org.springframework.cache.annotation.Caching',
+      'org.springframework.retry.annotation.Retryable',
+      'org.springframework.retry.annotation.CircuitBreaker',
+      'org.springframework.resilience.annotation.Retryable',
+      'org.springframework.resilience.annotation.ConcurrencyLimit',
+      'org.springframework.security.access.prepost.PreAuthorize',
+      'org.springframework.security.access.prepost.PostAuthorize',
+      'org.springframework.security.access.prepost.PreFilter',
+      'org.springframework.security.access.prepost.PostFilter',
+      'org.springframework.security.access.annotation.Secured',
+      'jakarta.annotation.security.RolesAllowed',
+      'javax.annotation.security.RolesAllowed',
+      'jakarta.annotation.security.DenyAll',
+      'javax.annotation.security.DenyAll',
+      'io.github.resilience4j.retry.annotation.Retry',
+      'io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker',
+      'io.github.resilience4j.ratelimiter.annotation.RateLimiter',
+      'io.github.resilience4j.bulkhead.annotation.Bulkhead',
+      'io.github.resilience4j.timelimiter.annotation.TimeLimiter',
+      'io.micrometer.core.annotation.Timed',
+      'io.micrometer.core.annotation.Counted',
+      'io.micrometer.observation.annotation.Observed',
+      $projectProxyAnnotations),
+    $constraintNames := (
+      for $name in (
+        'AssertFalse', 'AssertTrue', 'DecimalMax', 'DecimalMin', 'Digits', 'Email', 'Future',
+        'FutureOrPresent', 'Max', 'Min', 'Negative', 'NegativeOrZero', 'NotBlank', 'NotEmpty',
+        'NotNull', 'Null', 'Past', 'PastOrPresent', 'Pattern', 'Positive', 'PositiveOrZero', 'Size')
+      return ('jakarta.validation.constraints.' || $name, 'javax.validation.constraints.' || $name),
+      for $name in (
+        'CodePointLength', 'CreditCardNumber', 'Currency', 'EAN', 'ISBN', 'Length', 'LuhnCheck',
+        'Mod10Check', 'Mod11Check', 'Normalized', 'Range', 'URL', 'UUID', 'UniqueElements')
+      return 'org.hibernate.validator.constraints.' || $name,
+      'jakarta.validation.Valid', 'javax.validation.Valid', $projectConstraintAnnotations),
+    $proxyAnnotation := function($annotation) {
+      exists($annotation[some $name in $proxyNames satisfies pmd-java:typeIs($name)])
+    },
+    $typeOf := function($node) {
+      $node/ancestor::*[self::ClassDeclaration or self::AnonymousClassDeclaration
+        or self::EnumDeclaration or self::RecordDeclaration][1]
+    },
+    $validated := function($method) {
+      exists($typeOf($method)/self::ClassDeclaration/ModifierList/Annotation[
+        pmd-java:typeIs('org.springframework.validation.annotation.Validated')])
+      and exists($method[not(@Visibility = 'private' or pmd-java:modifiers() = 'static')])
+      and exists(($method[not(@Arity = 0 and matches(@Name, '^(get|is)\p{Lu}'))]/ModifierList/Annotation
+                  | $method/FormalParameters//Annotation)[
+        some $name in $constraintNames satisfies pmd-java:typeIs($name)])
+    },
+    $proxied := function($method, $callerTransactional) {
+      exists($method/ModifierList/Annotation[$proxyAnnotation(.)]
+        [not($callerTransactional and not(AnnotationMemberList)
+             and pmd-java:typeIs('org.springframework.transaction.annotation.Transactional'))])
+      or $validated($method)
+    },
+    $transactional := function($node) {
+      exists($node/ancestor::MethodDeclaration[1]/ModifierList/Annotation[
         pmd-java:typeIs('org.springframework.transaction.annotation.Transactional')])
-  return exists(ancestor::ClassDeclaration[1]/ClassBody/MethodDeclaration[@Name = $name]
-    [@Arity = $arity or (@Varargs and $arity >= @Arity - 1)]
-    /ModifierList/Annotation[
-      pmd-java:typeIs('org.springframework.transaction.annotation.Transactional')
-      or pmd-java:typeIs('org.springframework.scheduling.annotation.Async')
-      or pmd-java:typeIs('org.springframework.cache.annotation.Cacheable')
-      or pmd-java:typeIs('org.springframework.cache.annotation.CachePut')
-      or pmd-java:typeIs('org.springframework.cache.annotation.CacheEvict')
-      or pmd-java:typeIs('org.springframework.cache.annotation.Caching')
-      or pmd-java:typeIs('org.springframework.retry.annotation.Retryable')
-      or pmd-java:typeIs('org.springframework.resilience.annotation.Retryable')
-      or pmd-java:typeIs('org.springframework.security.access.prepost.PreAuthorize')
-      or pmd-java:typeIs('org.springframework.security.access.prepost.PostAuthorize')
-      or pmd-java:typeIs('org.springframework.security.access.annotation.Secured')]
-    [not($callerTransactional and not(AnnotationMemberList)
-         and pmd-java:typeIs('org.springframework.transaction.annotation.Transactional'))])
-]
-|
-//MethodReference[*[1][self::ThisExpression[not(*)]]][
-  let $name := @MethodName,
-      $callerTransactional := exists(ancestor::MethodDeclaration[1]/ModifierList/Annotation[
-        pmd-java:typeIs('org.springframework.transaction.annotation.Transactional')])
-  return exists(ancestor::ClassDeclaration[1]/ClassBody/MethodDeclaration[@Name = $name]
-    /ModifierList/Annotation[
-      pmd-java:typeIs('org.springframework.transaction.annotation.Transactional')
-      or pmd-java:typeIs('org.springframework.scheduling.annotation.Async')
-      or pmd-java:typeIs('org.springframework.cache.annotation.Cacheable')
-      or pmd-java:typeIs('org.springframework.cache.annotation.CachePut')
-      or pmd-java:typeIs('org.springframework.cache.annotation.CacheEvict')
-      or pmd-java:typeIs('org.springframework.cache.annotation.Caching')
-      or pmd-java:typeIs('org.springframework.retry.annotation.Retryable')
-      or pmd-java:typeIs('org.springframework.resilience.annotation.Retryable')
-      or pmd-java:typeIs('org.springframework.security.access.prepost.PreAuthorize')
-      or pmd-java:typeIs('org.springframework.security.access.prepost.PostAuthorize')
-      or pmd-java:typeIs('org.springframework.security.access.annotation.Secured')]
-    [not($callerTransactional and not(AnnotationMemberList)
-         and pmd-java:typeIs('org.springframework.transaction.annotation.Transactional'))])
-]
-]]></value></property></properties>
+    }
+return (
+  //MethodCall[*[1][self::ArgumentList or self::TypeArguments or self::ThisExpression[not(*)]]][
+    let $name := @MethodName,
+        $arity := count(ArgumentList/*),
+        $callerTransactional := $transactional(.)
+    return exists($typeOf(.)/self::ClassDeclaration/ClassBody/MethodDeclaration[@Name = $name]
+      [@Arity = $arity or (@Varargs and $arity >= @Arity - 1)]
+      [$proxied(., $callerTransactional)])
+  ]
+  |
+  //MethodReference[*[1][self::ThisExpression[not(*)]]][
+    let $name := @MethodName,
+        $callerTransactional := $transactional(.)
+    return exists($typeOf(.)/self::ClassDeclaration/ClassBody/MethodDeclaration[@Name = $name]
+      [$proxied(., $callerTransactional)])
+  ]
+)
+]]></value></property>
+    </properties>
   </rule>
 
   <rule name="SpringTransactionalAnnotation" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
