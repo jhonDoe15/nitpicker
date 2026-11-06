@@ -34,9 +34,9 @@ run; finish with the plain run below.
 4. Act on the exit code:
    - 0: done, unless you narrowed the run with `--analyzer`: then the summary says `Ran only: ...`
      and you run the gate again without it before you finish.
-   - 1: fix every new finding (printed as `tool/rule path:line`) and any tool error listed below
-     them, then rerun.
-   - 2: no new findings, but a tool failed (the build, a compile error, a test failure). Fix the
+   - 1: fix the failing tests the summary leads with, every new finding (printed as
+     `tool/rule path:line`) and any tool error listed below them, then rerun.
+   - 2: no new findings, but a tool failed (the build, a compile error). Fix the
      cause it names and rerun. Exit 2 is never a pass. If another run is in progress, wait for
      it; never kill it.
 5. Never suppress: no `// NOPMD`, `@SuppressWarnings`, `@SuppressFBWarnings`, `CHECKSTYLE`
