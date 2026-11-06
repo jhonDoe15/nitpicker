@@ -33,6 +33,8 @@ export const RULES_CASES = [
   ...rulesCases('domain-any', [['any-in-domain', 'frozen dataclass']]),
   ...rulesCases('pydantic-any', [['pydantic-any-field', 'real type']]),
   ...rulesCases('pydantic-extra', [['pydantic-extra-allow', 'extra="forbid"']]),
+  ...rulesCases('orm-eager', [['eager-relationship', 'selectinload']]),
+  ...rulesCases('orm-cascade', [['many-to-many-cascade-delete', '"save-update, merge"']]),
   ...rulesCases('repeated-string', [['repeated-string-literal', 'constant']]),
   ...rulesCases('generic-name', [['generic-name', 'name it for its job']]),
   ...rulesCases('boolean-flag', [['boolean-flag-parameter', 'keyword-only']]),

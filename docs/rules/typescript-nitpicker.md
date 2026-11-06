@@ -1,6 +1,6 @@
 # TypeScript and JavaScript: nitpicker ESLint rules
 
-The ESLint rules nitpicker's own plugin adds to the TypeScript and JavaScript presets (`nitpicker/*`). This page lists 90 rules. [All pages](README.md).
+The ESLint rules nitpicker's own plugin adds to the TypeScript and JavaScript presets (`nitpicker/*`). This page lists 92 rules. [All pages](README.md).
 
 The guide for these rules: [docs/typescript-strict-preset.md](../typescript-strict-preset.md).
 
@@ -259,6 +259,19 @@ Disallow turning off TLS certificate verification.
 - **Allowed forms by message:**
   - Turning off TLS certificate verification lets anyone on the network pose as the server, and turning it off by environment ships the switch to production. Keep verification on in every environment and trust the certificate authority instead: `new https.Agent({ ca: readFileSync(caPath) })`, `tlsCAFile` for MongoDB, or set NODE_EXTRA_CA_CERTS for a private CA; for browser automation against a local certificate pin it with `--ignore-certificate-errors-spki-list=<hash>`. A server that asks for optional client certificates sets `requestCert: true` and checks `socket.authorized`. An exception fits only when a contained case cannot do that.
 
+<a id="eslint-nitpicker-no-eager-relation"></a>
+
+### `eslint/nitpicker/no-eager-relation`
+
+Disallow relations mapped to load on every query (TypeORM and MikroORM eager, a Sequelize defaultScope include).
+
+- **Printed as:** `eslint-lint/nitpicker/no-eager-relation`
+- **Exception:** If this is intended, add `{"rule":"nitpicker/no-eager-relation","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
+- **Allowed forms by message:**
+  - eager: true makes TypeORM load this relation with every find of the entity, whether the caller needs it or not. Leave it out and load the relation on the queries that need it: relations: { customer: true } in that find, or leftJoinAndSelect in a query builder. An exception fits only for a small lookup relation that every read needs.
+  - eager makes MikroORM populate this relation on every load of the entity, whether the caller needs it or not. Leave it out and populate the relation on the queries that need it: em.find(Order, where, { populate: ['customer'] }). An exception fits only for a small lookup relation that every read needs.
+  - An include in the defaultScope joins these associations into every query of the model, whether the caller needs them or not. Put the include in a named scope (Order.scope('withCustomer')) or pass include on the queries that need it. An exception fits only for a small lookup relation that every read needs.
+
 <a id="eslint-nitpicker-no-external-executables-in-unit-tests"></a>
 
 ### `eslint/nitpicker/no-external-executables-in-unit-tests`
@@ -395,6 +408,18 @@ Keep managed resource construction in approved composition roots.
 - **Exception:** If this is intended, add `{"rule":"nitpicker/no-managed-resource-construction-outside-composition-roots","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 - **Allowed forms by message:**
   - Construct {{name}} only in the composition root (src/main/composition-root.ts, main.ts or server.ts) and pass it in as a parameter. An exception fits only when it is a plain value, not a long-lived resource.
+
+<a id="eslint-nitpicker-no-many-to-many-cascade-remove"></a>
+
+### `eslint/nitpicker/no-many-to-many-cascade-remove`
+
+Disallow cascading removes on many-to-many relations (TypeORM and MikroORM).
+
+- **Printed as:** `eslint-lint/nitpicker/no-many-to-many-cascade-remove`
+- **Exception:** If this is intended, add `{"rule":"nitpicker/no-many-to-many-cascade-remove","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
+- **Allowed forms by message:**
+  - A cascade that removes (cascade: true, 'remove' or 'soft-remove') on a many-to-many relation removes the related rows when one owner is removed, although other owners still share them. Cascade only ['insert', 'update']; removing the owner already deletes its join rows (the join table's onDelete: 'CASCADE', the default).
+  - Cascade.ALL or Cascade.REMOVE on a many-to-many relation removes the related rows when one owner is removed, although other owners still share them. Cascade only [Cascade.PERSIST]; removing the owner already deletes its pivot rows.
 
 <a id="eslint-nitpicker-no-mocking-subject-under-test"></a>
 

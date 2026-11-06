@@ -49,6 +49,7 @@
   "languages/python/rules/e2e/honesty/isolation.e2e.test.mjs": 4,
   "languages/python/rules/e2e/honesty/sleeps.e2e.test.mjs": 11,
   "languages/python/rules/e2e/honesty/test-assertions.e2e.test.mjs": 12,
+  "languages/python/rules/e2e/persistence/orm-relations.e2e.test.mjs": 4,
   "languages/python/rules/e2e/processes/subprocess-timeouts.e2e.test.mjs": 8,
   "languages/python/rules/e2e/review/enum-predicate.e2e.test.mjs": 5,
   "languages/python/rules/e2e/review/forwarding-wrapper.e2e.test.mjs": 4,
