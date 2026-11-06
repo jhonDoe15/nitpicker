@@ -51,10 +51,11 @@ describe('assertGradleSucceeded', () => {
     const error = thrownBy({ ...failed, stderr: 'FAILURE: Build failed' }, reportBase);
 
     expect(error.failures).toEqual([{ module: 'core', tests: ['shop.CartTest.adds: no'] }]);
-    expect(error.message.split('\n').slice(1)).toEqual([
-      'Tests fail in /p; nitpicker needs a passing test suite for coverage and mutation testing:',
+    expect(error.message.split('\n').slice(0, -1)).toEqual([
+      '1 test fails in core; the build stopped, so no other check ran. Fix the tests and rerun:',
       '  shop.CartTest.adds: no',
     ]);
+    expect(error.message.split('\n').at(-1)).toMatch(/^Full Gradle log: \S+$/u);
   });
 
   describe('on a build that succeeded', () => {

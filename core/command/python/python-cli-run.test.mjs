@@ -199,14 +199,33 @@ describe('nitpicker with "preset": "python" running the project', () => {
         rule: 'tests-failed',
         path: '.',
         message: [
-          'Tests fail in the head snapshot. Make each failing test pass:',
+          '1 test fails; the static analyzers ran, and coverage and CRAP come from the tests that ran. ' +
+            'Fix the tests and rerun:',
           '  tests/test_greet.py::test_greet',
-          'The static analyzers ran as usual; coverage and CRAP come from the tests that ran.',
           'Mutation testing (mutmut) leaves out the test modules tests/test_greet.py.',
         ].join('\n'),
       },
     ]);
     const ruff = result.json('new-findings.json').filter(({ tool }) => tool === 'ruff');
     expect(ruff.map(({ rule, path: file }) => `${rule} ${file}`)).toEqual(['F841 src/demo/a.py']);
+  });
+  it('exits 1 and leads the summary with failing tests that are the only problem', () => {
+    const root = pythonRepository({ 'tests/conftest.py': '' });
+    writeFiles(root, { 'test-exit.txt': '1\n' });
+    commit(root, 'break a test');
+
+    const result = run(root);
+    const lines = result.output.out.split('\n');
+
+    expect(result.exitCode, result.text).toBe(1);
+    expect(
+      result
+        .json('new-findings.json')
+        .filter(({ classification }) => classification === 'enforceable'),
+    ).toEqual([]);
+    expect(lines[lines.indexOf('Quality gate summary') + 1]).toBe(
+      '✖ 1 test fails; the static analyzers ran, and coverage and CRAP come from the tests that ran. ' +
+        'Fix the tests and rerun:',
+    );
   });
 });
