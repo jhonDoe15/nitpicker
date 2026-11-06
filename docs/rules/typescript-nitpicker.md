@@ -1,6 +1,6 @@
 # TypeScript and JavaScript: nitpicker ESLint rules
 
-The ESLint rules nitpicker's own plugin adds to the TypeScript and JavaScript presets (`nitpicker/*`). This page lists 91 rules. [All pages](README.md).
+The ESLint rules nitpicker's own plugin adds to the TypeScript and JavaScript presets (`nitpicker/*`). This page lists 93 rules. [All pages](README.md).
 
 The guide for these rules: [docs/typescript-strict-preset.md](../typescript-strict-preset.md).
 
@@ -490,6 +490,30 @@ Disallow null outside the allowed library forms.
 - **Allowed forms by message:**
   - Use `undefined` for an absent value, and an optional field or parameter (`value?: T`) where it may be missing. `null` is only for strict comparison with a library value and the `JSON.stringify` replacer argument. An exception fits only when a framework or library requires it.
   - Use `undefined` for an absent value, and an optional field or parameter (`value?: T`) where it may be missing. `null` is only for strict comparison with a library value and the `JSON.stringify` replacer argument. An exception fits only when a framework or library requires it. Type it as optional with `undefined`.
+
+<a id="eslint-nitpicker-no-orm-query-logging"></a>
+
+### `eslint/nitpicker/no-orm-query-logging`
+
+Disallow ORM options that log every SQL query.
+
+- **Printed as:** `eslint-lint/nitpicker/no-orm-query-logging`
+- **Exception:** If this is intended, add `{"rule":"nitpicker/no-orm-query-logging","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
+- **Allowed forms by message:**
+  - `{{form}}` logs every SQL query: the logs fill with personal data and bound values, and every query pays for the log line. A value guarded by an environment check still logs in every other environment. Turn query logging off (`logging: false`) and log slow queries instead: TypeORM `maxQueryExecutionTime`, Sequelize `benchmark: true` with a logging function that keeps only slow queries, Prisma `log: [{ emit: "event", level: "query" }]` with a handler that filters by duration, or the database's own slow-query log. An exception fits only for a local debugging script.
+- **See also:** [Spring counterpart `spring/unsafe-diagnostics`](java-nitpicker.md#springunsafe-diagnostics)
+
+<a id="eslint-nitpicker-no-orm-schema-sync"></a>
+
+### `eslint/nitpicker/no-orm-schema-sync`
+
+Disallow the ORM creating or changing the database schema when the application starts.
+
+- **Printed as:** `eslint-lint/nitpicker/no-orm-schema-sync`
+- **Exception:** If this is intended, add `{"rule":"nitpicker/no-orm-schema-sync","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
+- **Allowed forms by message:**
+  - `{{form}}` lets the ORM create, alter or drop tables when the application starts: a deploy can drop columns and their data, instances race to change the schema, and the schema drifts from what the migrations record. A value guarded by an environment check still changes the schema in every other environment. Change the schema with migrations instead (TypeORM migrations with `migrationsRun` or `typeorm migration:run`, `sequelize-cli db:migrate`, MikroORM `orm.migrator.up()`, `prisma migrate deploy`). An exception fits only for a local script outside the application, such as a seed or a dev tool.
+- **See also:** [Spring counterpart `spring/ddl-auto`](java-nitpicker.md#springddl-auto)
 
 <a id="eslint-nitpicker-no-parameter-mutation"></a>
 

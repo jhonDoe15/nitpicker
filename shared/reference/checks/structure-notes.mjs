@@ -79,6 +79,11 @@ export const STRUCTURE_NOTES = {
     'Build output is generated, so committing it creates noise and merge conflicts.',
     'Remove the folder from version control and add it to `.gitignore`.',
   ],
+  'start-schema-push': [
+    'A `start`, `prestart`, `serve` or `start:*` script (not `start:dev`, `start:local`, `start:watch`, `start:debug` or `start:test`) in `package.json`, or a script it runs, that pushes the ORM schema (`prisma db push`, `prisma migrate dev`, `drizzle-kit push`, `typeorm schema:sync`, `mikro-orm schema:update`).',
+    'A schema push changes the database on every start without a migration, so a deploy can drop columns and their data.',
+    'Apply migrations in the deploy step (`prisma migrate deploy`, `drizzle-kit migrate`, `typeorm migration:run`) and keep schema pushes for local development scripts.',
+  ],
   'unused-dependency': [
     'A dependency in `package.json` that nothing imports or runs.',
     'Unused dependencies add install time and attack surface.',
