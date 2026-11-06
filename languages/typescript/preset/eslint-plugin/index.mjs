@@ -22,6 +22,8 @@ import { rule as noThrow } from './rules/errors/no-throw.mjs';
 import { rule as noUnknownInDomain } from './rules/boundaries/no-unknown-in-domain.mjs';
 import { rule as noMutatingMethodInDomain } from './rules/domain/no-mutating-method-in-domain.mjs';
 import { rule as noUnvalidatedSchemaField } from './rules/boundaries/no-unvalidated-schema-field.mjs';
+import { rule as noEagerRelation } from './rules/persistence/no-eager-relation.mjs';
+import { rule as noManyToManyCascadeRemove } from './rules/persistence/no-many-to-many-cascade-remove.mjs';
 import { rule as reportModuleLoadEffects } from './rules/modules/report-module-load-effects.mjs';
 import { rule as structuredCatchLogging } from './rules/errors/structured-catch-logging.mjs';
 import { rule as testMustUseProductionRuntime } from './rules/testing/assertions/test-must-use-production-runtime.mjs';
@@ -132,6 +134,8 @@ export const nitpickerRules = {
     'no-unknown-in-domain': noUnknownInDomain,
     'no-mutating-method-in-domain': noMutatingMethodInDomain,
     'no-unvalidated-schema-field': noUnvalidatedSchemaField,
+    'no-eager-relation': noEagerRelation,
+    'no-many-to-many-cascade-remove': noManyToManyCascadeRemove,
     'report-module-load-effects': reportModuleLoadEffects,
     'structured-catch-logging': structuredCatchLogging,
     'test-must-use-production-runtime': testMustUseProductionRuntime,
