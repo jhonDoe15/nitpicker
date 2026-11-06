@@ -34,5 +34,8 @@ dependencies {
     compileOnly("jakarta.validation:jakarta.validation-api:3.0.2")
     compileOnly("jakarta.transaction:jakarta.transaction-api:2.0.1")
     compileOnly("org.slf4j:slf4j-api:2.0.17")
+    compileOnly("io.github.resilience4j:resilience4j-annotations:2.2.0")
+    compileOnly("io.micrometer:micrometer-core:1.15.3")
+    compileOnly("org.aspectj:aspectjrt:1.9.24")
     compileOnly("com.github.ben-manes.caffeine:caffeine:3.2.2")
 }
