@@ -270,6 +270,7 @@ public final class Bodies {
     }
     Map<String, Object> entry = m("line", lineOf(element), "scope", scopes.id(frame));
     entry.putAll(data);
+    entry.put("arms", Positions.arms(element, lines));
     invocations.add(entry);
   }
 
