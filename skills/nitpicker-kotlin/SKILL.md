@@ -25,9 +25,9 @@ it with `npx skills add jhonDoe15/nitpicker --skill nitpicker-java`.
 3. Act on the exit code:
    - 0: done, unless you narrowed the run with `--analyzer`: then the summary says `Ran only: ...`
      and you run the gate again without it before you finish.
-   - 1: fix every new finding and any tool error listed below them, then rerun.
-   - 2: no new findings, but a tool failed. Fix the cause it names (usually a failing test or a
-     Gradle error) and rerun. Exit 2 is never a pass. If it says another run is in progress, wait
+   - 1: fix the failing tests the summary leads with, every new finding and any tool error listed
+     below them, then rerun.
+   - 2: no new findings, but a tool failed. Fix the cause it names (usually a Gradle error) and rerun. Exit 2 is never a pass. If it says another run is in progress, wait
      for that run; never kill it.
 4. Never suppress: no `@Suppress` of a detekt or ktlint rule, coverage or mutation markers
    (`@Generated`, `@ExcludeFromJacocoGeneratedReport`, `@DoNotMutate`), config `exclude`/`disable`/`exceptions`, legacy
@@ -107,6 +107,10 @@ To learn why a rule is on and what form it allows before you write or change cod
   change every caller and delete the old name: no `@Deprecated` delegate or `typealias Old = New`
   (`kotlin-source/CompatibilityShim`). Time comes from an injected `Clock`; `Calendar`, `Date` and
   `SimpleDateFormat` are banned.
+- Regexes: escape a runtime value before it goes into a pattern (`Regex.escape(name)`), pass a
+  whole pattern to `Regex(pattern)` on its own, and use the plain-text `replace`, `split` and
+  `contains` for text without metacharacters (`kotlin-source/UnquotedRegexValue`,
+  `kotlin-source/PlainTextRegex`).
 - Enums: to sort the entries of one of your enums into two groups, classify every entry with a
   `when` without `else` (adding an entry then fails to compile), or a `Boolean` each entry
   declares. Not `s == PAID || s == SHIPPED`, `s in setOf(PAID, SHIPPED)` or a `when` with

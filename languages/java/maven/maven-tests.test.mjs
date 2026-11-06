@@ -199,7 +199,7 @@ describe('collectTestResults', () => {
     }).toThrow(
       new Error(
         [
-          'Tests fail in /m; nitpicker needs a passing test suite for coverage and mutation testing:',
+          '12 tests fail; the build stopped, so no other check ran. Fix the tests and rerun:',
           ...listed,
           '  and 2 more',
         ].join('\n'),
@@ -223,7 +223,8 @@ describe('collectTestResults', () => {
     const failing = (...lines) =>
       new Error(
         [
-          'Tests fail in /m; nitpicker needs a passing test suite for coverage and mutation testing:',
+          `${String(lines.length)} ${lines.length === 1 ? 'test fails' : 'tests fail'}; ` +
+            'the build stopped, so no other check ran. Fix the tests and rerun:',
           ...lines,
         ].join('\n'),
       );
