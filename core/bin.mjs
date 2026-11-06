@@ -1,6 +1,9 @@
 #!/usr/bin/env node
 import { readFileSync } from 'node:fs';
-import { unloadableNodeMessage, unsupportedNodeMessage } from './tooling/node-version/node-version.mjs';
+import {
+  unloadableNodeMessage,
+  unsupportedNodeMessage,
+} from './tooling/node-version/node-version.mjs';
 
 async function loadCli() {
   try {
