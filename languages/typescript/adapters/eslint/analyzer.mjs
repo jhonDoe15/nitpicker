@@ -16,6 +16,7 @@ export function createEslintAnalyzer({
   eslintCliPath,
   environment = {},
   shardWeight = 1,
+  policyFromPackage = false,
 }) {
   return {
     name,
@@ -25,7 +26,7 @@ export function createEslintAnalyzer({
     timeoutMs,
     shardWeight,
     requiresDependencies: true,
-    concurrencyGroup: 'eslint-snapshot-dependencies',
+    ...(policyFromPackage ? {} : { concurrencyGroup: 'eslint-snapshot-dependencies' }),
     createInvocation({ projectRoot, policyRoot, toolRoot, liveProjectRoot }) {
       const args = [
         runnerPath,
