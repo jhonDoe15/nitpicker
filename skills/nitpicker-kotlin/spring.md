@@ -62,6 +62,13 @@ Proxies (`@Transactional`, `@Async`, `@Cacheable`, `@Retryable`, `@PreAuthorize`
   `onFailure` or `fold`.
 - `@Throws(IOException::class)` or a checked `throw` needs `rollbackFor = [Exception::class]`. A
   write under `readOnly = true` needs its own plain `@Transactional`.
+- A public service function that writes more than once (`save`, `delete`, a `@Modifying` query,
+  `jdbcTemplate.update`), also through its private helpers, is `@Transactional` or runs the writes in
+  `transactionTemplate.execute { }`.
+- Write caches after the commit (`TransactionSynchronization.afterCommit`, a
+  `@TransactionalEventListener`, or the caller), never inside a writing transaction: no Spring
+  `Cache.put`/`evict`, `@CachePut`, Caffeine or Guava `put`/`invalidate`, or a map property filled
+  with a just-saved row. A transaction-aware cache manager makes the Spring `Cache` calls fine.
 - `@Async("executorName")` returning `CompletableFuture`; `@Scheduled` with `fixedDelay` or `cron`,
   not `fixedRate`.
 
@@ -103,7 +110,7 @@ GenerationType.SEQUENCE)`. `@ManyToOne` and `@OneToOne` say `fetch = FetchType.L
 - Every repository function you declare has `@Query` with named parameters (`:status`) and constant
   JPQL text, a raw string when it spans lines, never joined with `+`. Inherited `findById` and
   `save` need nothing; no derived names (`findByEmailAndStatus`). `@Modifying(clearAutomatically =
-true, flushAutomatically = true)`.
+true, flushAutomatically = true)`, with `@Transactional` on the function or the repository interface.
 - Never `save` or `delete` one entity per iteration of a loop, `forEach` or `map`: call `saveAll`
   once, per chunk for large inputs. No `flush` or `saveAndFlush` except in the JPA batch loop: a
   `for` or `while` loop that calls `persist`, then `flush` and `clear` on the `EntityManager`.
