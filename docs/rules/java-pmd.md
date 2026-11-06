@@ -1,6 +1,6 @@
 # Java and Kotlin: PMD rules
 
-PMD's bestpractices, design, errorprone, multithreading, performance and security categories, as far as nitpicker's rulesets keep them, and the rules nitpicker adds to them, for Java sources in the Java and Kotlin presets. This page lists 252 rules. [All pages](README.md).
+PMD's bestpractices, design, errorprone, multithreading, performance and security categories, as far as nitpicker's rulesets keep them, and the rules nitpicker adds to them, for Java sources in the Java and Kotlin presets. This page lists 254 rules. [All pages](README.md).
 
 The guide for these rules: [docs/java-preset.md](../java-preset.md).
 
@@ -1266,6 +1266,28 @@ Position literals first in all String comparisons, if the second argument is nul
 - **Allowed form:** Put the literal first: "yes".equals(value), so a null value cannot throw.
 - **Exception:** If this is intended, add `{"rule":"pmd/LiteralsFirstInComparisons","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json. The message gives no exception route because the flagged code is a defect; an entry still lifts it if a reviewer agrees.
 - **See also:** [PMD rule documentation](https://docs.pmd-code.org/pmd-doc-7.7.0/pmd_rules_java_bestpractices.html#literalsfirstincomparisons)
+
+<a id="pmd-logexceptionfirst"></a>
+
+### `pmd/LogExceptionFirst`
+
+A JBoss Logging or Quarkus `Log` call of `tracef` to `fatalf`, `tracev` to `fatalv`, `logf` or `logv` with a `Throwable` among the arguments after the format: it fills a placeholder or is dropped, and the stack trace is not logged.
+
+- **Scope:** Main and test sources.
+- **Why it is on:** A PMD rule nitpicker defines: it names one allowed form where the language offers several, and reports the other forms.
+- **Allowed form:** Pass the exception first (log.errorf(e, "Cannot read %s", path)), or e.getMessage() when only the text is wanted. After the format, JBoss Logging never logs its stack trace.
+- **Exception:** If this is intended, add `{"rule":"pmd/LogExceptionFirst","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
+
+<a id="pmd-logformatarguments"></a>
+
+### `pmd/LogFormatArguments`
+
+A formatting log call whose format and arguments do not match, on JBoss Logging (`Logger`, `BasicLogger`, Quarkus `Log`): `tracef` to `fatalf` and `logf` (printf syntax), `tracev` to `fatalv` and `logv` (MessageFormat); on `java.util.logging`: `log(Level, String, Object)`, `log(Level, String, Object[])` and `logp` with a parameter (MessageFormat); on Log4j 2: `printf` and the level methods of a logger from `LogManager.getFormatterLogger` (printf). Flagged: a placeholder count other than the argument count (`%2$s` is argument 2, `%<s`, `%%` and `%n` take none, `{0,number,#}` is argument 0, and text that an apostrophe quotes in a MessageFormat string is not a placeholder), a placeholder of the other syntax or with spaces (`{ 0 }`), an invalid `%` sequence (`'%'`, `%q`), `%d`, `%o`, `%x` or `%X` given a `String`, `char`, boolean or decimal, `%e`, `%f`, `%g` or `%a` given a `String`, `char`, boolean or integer, and a format joined with `+` from a value that is not a constant. A Log4j 2 exception after the last argument, an array variable passed as the arguments and a format that is not a literal or a constant of the same file are not flagged. SLF4J and plain Log4j 2 `{}` messages are left to `InvalidLogMessageFormat`, its counts on a formatter logger's level methods too, and a joined `info`, `warn`, `error` or `log` message on `java.util.logging` or Log4j 2 to `LogStringConcatenation`.
+
+- **Scope:** Main and test sources.
+- **Why it is on:** A PMD rule nitpicker defines: it names one allowed form where the language offers several, and reports the other forms.
+- **Allowed form:** Pass one argument per placeholder, in the method's own syntax: %s for printf methods (JBoss Logging infof, Log4j 2 printf and formatter loggers), {0} for MessageFormat methods (JBoss Logging infov, java.util.logging log), with '' for an apostrophe there. Keep the format a constant. Otherwise values are dropped or the call throws.
+- **Exception:** If this is intended, add `{"rule":"pmd/LogFormatArguments","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 
 <a id="pmd-logstringconcatenation"></a>
 

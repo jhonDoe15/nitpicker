@@ -157,6 +157,8 @@ describe('readKotlinSourceFindings', () => {
         'HttpWithoutTimeout',
         'IoCallInLoop',
         'JvmSyntheticOnHandWrittenCode',
+        'LogExceptionFirst',
+        'LogFormatArguments',
         'LogStringConcatenation',
         'MutableModuleState',
         'MutationIgnoreMarker',
