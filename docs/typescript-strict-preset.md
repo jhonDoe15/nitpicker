@@ -715,7 +715,15 @@ only the library follows the project. Nitpicker reads `dependencies`, `peerDepen
   literals of a union that has at least three members, when the chain is a predicate's value: an
   arrow body, a `return`, or a value stored in a variable or assigned (also inside `!`, another
   `&&`/`||` or a ternary branch). A chain used as the condition of an `if`, `while`, `for` or
-  ternary is ordinary narrowing and is not reported, and neither is a call argument. Allowed forms: a `switch` over the union with no `default`, or a
+  ternary is ordinary narrowing and is not reported, and neither is a call argument. The same
+  subset written as membership in an array or `Set` of literals (`['open', 'pending'].includes(s)`,
+  `new Set(['open', 'pending']).has(s)`, also negated, with `as const`, or inside an `||` chain of
+  comparisons) is reported. So is a `switch` over the union that lists at least two members whose
+  cases return the same `true` or `false` while its `default` returns the other, so adding a
+  `default` that returns `false` does not clear the finding. A list declared once
+  (`const OPEN: Kind[] = ['a', 'b']`, then `OPEN.includes(kind)`) is one classification point and
+  is not reported. Project `enum` declarations are not checked, since the preset bans `enum`.
+  Allowed forms: a `switch` over the union with no `default`, or a
   `Record<Union, boolean>` lookup, so adding a member fails to compile. A subset check such as
   `status === 'open' || status === 'pending'` on a project union of three or more members is the
   case this reports. The message names the union by its alias (`Kind`) when the value's declared type

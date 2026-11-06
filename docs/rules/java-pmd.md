@@ -1,6 +1,6 @@
 # Java and Kotlin: PMD rules
 
-PMD's bestpractices, design, errorprone, multithreading, performance and security categories, as far as nitpicker's rulesets keep them, and the rules nitpicker adds to them, for Java sources in the Java and Kotlin presets. This page lists 260 rules. [All pages](README.md).
+PMD's bestpractices, design, errorprone, multithreading, performance and security categories, as far as nitpicker's rulesets keep them, and the rules nitpicker adds to them, for Java sources in the Java and Kotlin presets. This page lists 261 rules. [All pages](README.md).
 
 The guide for these rules: [docs/java-preset.md](../java-preset.md).
 
@@ -832,7 +832,7 @@ Tests for null should not use the equals() method.
 
 ### `pmd/ExhaustiveEnumPredicate`
 
-In main sources: a boolean in a value position (returned, assigned, a lambda body, also inside a larger `&&`/`||` or as a ternary condition there) that compares one subject that reading cannot change (a variable, a `this` field, a no-argument `getX()`/`isX()` call, a record accessor; not `it.next()` or another call) with some constants of one enum, qualified or static-imported (`s == PAID || s == SHIPPED`, `o.status() != A && o.status() != B`, `EnumSet.of(A, B).contains(s)`).
+In main sources: a boolean in a value position (returned, assigned, a lambda body, also inside a larger `&&`/`||` or as a ternary condition there) that compares one subject that reading cannot change (a variable, a `this` field, a no-argument `getX()`/`isX()` call, a record accessor; not `it.next()` or another call) with some constants of one enum, qualified or static-imported (`s == PAID || s == SHIPPED`, `o.status() != A && o.status() != B`, `s.equals(A) || B.equals(s)`, `Objects.equals(s, A)`, membership in `EnumSet.of`, `Set.of`, `List.of` or `Arrays.asList` of constants). Also a `switch` over a project enum with a `default` whose other branches all yield the same boolean and whose `default` yields the other (`case A, B -> true; default -> false`).
 
 - **Scope:** Main sources only.
 - **Why it is on:** A PMD rule nitpicker defines: it names one allowed form where the language offers several, and reports the other forms.
@@ -1671,6 +1671,17 @@ Avoid returning from a finally block, this can discard exceptions.
 - **Allowed form:** Move the return out of finally, and return from the try or after the whole statement, so exceptions are not lost.
 - **Exception:** If this is intended, add `{"rule":"pmd/ReturnFromFinallyBlock","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json. The message gives no exception route because the flagged code is a defect; an entry still lifts it if a reviewer agrees.
 - **See also:** [PMD rule documentation](https://docs.pmd-code.org/pmd-doc-7.7.0/pmd_rules_java_errorprone.html#returnfromfinallyblock)
+
+<a id="pmd-serverorcontainerpertest"></a>
+
+### `pmd/ServerOrContainerPerTest`
+
+In tests: a non-static Testcontainers `@Container` field or `@RegisterExtension` `WireMockExtension` outside a `@TestInstance(PER_CLASS)` class; a JUnit 4 `@Rule` field that is a container, a WireMock server, an OkHttp `MockWebServer`, an `EmbeddedKafkaRule` or a `MockServerRule`; and a start in `@BeforeEach`, `@Before` or `@BeforeMethod` (or in a method of the class that one calls) of a Testcontainers container, a WireMock, OkHttp `MockWebServer`, JDK `HttpServer`, Jetty, Tomcat, Undertow, Javalin or embedded Redis server, `SpringApplication.run`, an `EmbeddedKafkaBroker`, MockServer's `startClientAndServer`, `ProcessBuilder.start` or `Runtime.exec`, on an object made for each test. The same start in two or more test methods of one class is reported too.
+
+- **Scope:** Test sources only.
+- **Why it is on:** A PMD rule nitpicker defines: it names one allowed form where the language offers several, and reports the other forms.
+- **Allowed form:** Do not start a container, server or process for each test: a non-static @Container field, a @Rule or an instance @RegisterExtension of one, a start in @BeforeEach, @Before or @BeforeMethod (or a method of the class it calls) on an object made for each test, or the same start in two or more tests of a class. Start it once (a static @Container, a @ClassRule, a static @RegisterExtension or @BeforeAll) and reset its state between tests, or test the logic against an in-memory implementation and keep the real transport for transport tests. An exception fits only when each test needs a fresh instance.
+- **Exception:** If this is intended, add `{"rule":"pmd/ServerOrContainerPerTest","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 
 <a id="pmd-simpledateformatneedslocale"></a>
 

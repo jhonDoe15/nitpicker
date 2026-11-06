@@ -32,6 +32,10 @@ dependencies {
     testImplementation 'org.junit-pioneer:junit-pioneer:2.3.0'
     testImplementation 'io.github.artsok:rerunner-jupiter:2.1.6'
     testImplementation 'org.testng:testng:7.10.2'
+    testImplementation 'org.testcontainers:junit-jupiter'
+    testImplementation 'org.testcontainers:postgresql'
+    testImplementation 'junit:junit'
+    testImplementation 'org.wiremock:wiremock-standalone:3.13.1'
     testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
 }
 
