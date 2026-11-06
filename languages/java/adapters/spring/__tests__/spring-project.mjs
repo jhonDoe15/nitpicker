@@ -71,6 +71,8 @@ const REVIEW_RULES = new Set([
   'ParameterMutation',
   'CompatibilityShim',
   'LegacyCalendarApi',
+  'LogFormatArguments',
+  'LogExceptionFirst',
   'RecursiveMapUpdate',
   'ClassLoadEffect',
   'SpringUnusedContext',
