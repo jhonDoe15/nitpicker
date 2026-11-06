@@ -307,7 +307,6 @@ describe('Kotlin Spring rules on the recorded fixture facts', () => {
 
   it('ends each message with the exception route of its own rule', () => {
     const findings = findingsWith({ spring: true, kotlinAllOpen: BUILD_PLUGIN });
-
     expect(
       findings.map(({ tool, classification, message, allowedForm }) => ({
         tool,
