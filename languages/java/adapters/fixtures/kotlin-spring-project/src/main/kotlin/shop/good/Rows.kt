@@ -41,7 +41,7 @@ class Crate(
     var label: String = "",
 ) : AuditedEntity()
 
-interface CrateRepository : JpaRepository<Crate, Long> {
+@Transactional interface CrateRepository : JpaRepository<Crate, Long> {
     @Modifying(clearAutomatically = true, flushAutomatically = true)
     @Query("update Crate c set c.version = 0 where c.id = :id")
     fun ship(id: Long?): Int
@@ -91,7 +91,7 @@ class CrateService(
 
 class Shelf(val id: Long?, val labels: Set<String>)
 
-interface ShelfRepository : JpaRepository<Crate, Long> {
+@Transactional interface ShelfRepository : JpaRepository<Crate, Long> {
     @Modifying(clearAutomatically = true, flushAutomatically = true)
     @Query("update Crate c set c.label = '' where c.label in :labels")
     fun clearLabels(labels: Set<String>)
