@@ -201,7 +201,7 @@ describe('nitpicker with "preset": "python" running the project', () => {
         message: [
           '1 test fails; the static analyzers ran, and coverage and CRAP come from the tests that ran. ' +
             'Fix the tests and rerun:',
-          '  tests/test_greet.py::test_greet',
+          '  tests/test_greet.py > test_greet: assert False',
           'Mutation testing (mutmut) leaves out the test modules tests/test_greet.py.',
         ].join('\n'),
       },

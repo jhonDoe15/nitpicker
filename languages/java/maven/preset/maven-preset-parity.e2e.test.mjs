@@ -182,7 +182,7 @@ describe.skipIf(!enabled)('Java preset on Maven builds', () => {
       classification: 'tool-error',
       message: [
         '1 test fails in core; the build stopped, so no other check ran. Fix the tests and rerun:',
-        '  demo.core.AdderTest.adds: expected: <4> but was: <3>',
+        '  demo/core/AdderTest.java:10 > demo.core.AdderTest.adds: expected: <4> but was: <3>',
       ].join('\n'),
     });
   }, 180_000);
