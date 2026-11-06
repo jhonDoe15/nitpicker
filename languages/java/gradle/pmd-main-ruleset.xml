@@ -971,4 +971,64 @@ return (
       </property>
     </properties>
   </rule>
+  <rule name="UnquotedRegexValue" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
+        message="Wrap the runtime value in Pattern.quote(value), also when you join it into a Pattern.compile pattern, and use replace(text, replacement) instead of replaceAll for a literal replacement; a value meant as a whole pattern goes to Pattern.compile(pattern) on its own. String.split, matches, replaceAll and replaceFirst compile their argument as a regex, so a dot, pipe, dollar sign or other metacharacter in the value changes what matches.">
+    <priority>3</priority>
+    <properties>
+      <property name="xpath">
+        <value><![CDATA[
+let $quote := 'java.util.regex.Pattern#quote(java.lang.String)',
+    $constants := //FieldDeclaration[pmd-java:modifiers() = 'static'][pmd-java:modifiers() = 'final']
+                    /VariableDeclarator/VariableId/@Name
+return (
+  //MethodCall[pmd-java:matchesSig('java.lang.String#split(_*)')
+              or pmd-java:matchesSig('java.lang.String#splitWithDelimiters(_*)')
+              or pmd-java:matchesSig('java.lang.String#matches(java.lang.String)')
+              or pmd-java:matchesSig('java.lang.String#replaceAll(java.lang.String,java.lang.String)')
+              or pmd-java:matchesSig('java.lang.String#replaceFirst(java.lang.String,java.lang.String)')]
+    /ArgumentList/*[1]
+  | //MethodCall[pmd-java:matchesSig('java.util.regex.Pattern#compile(_*)')
+                 or pmd-java:matchesSig('java.util.regex.Pattern#matches(java.lang.String,java.lang.CharSequence)')]
+    /ArgumentList/*[1][self::InfixExpression[@Operator = '+']]
+)[let $argument := .
+  return descendant-or-self::*
+    [not(self::InfixExpression[@Operator = '+'])]
+    [ancestor::*[not(self::InfixExpression[@Operator = '+'])][1] is $argument/..]
+    [pmd-java:typeIs('java.lang.String')]
+    [not(@CompileTimeConstant = true())]
+    [not(self::MethodCall[pmd-java:matchesSig($quote)])]
+    [not(descendant-or-self::MethodReference[@MethodName = 'quote']
+                                            [*[1][pmd-java:typeIs('java.util.regex.Pattern')]])]
+    [descendant-or-self::*[self::VariableAccess or self::FieldAccess[*[1][self::ThisExpression]]]
+       [not(@Name = $constants)][not(matches(@Name, '^[A-Z][A-Z0-9_]*$'))]
+       [not(pmd-java:typeIs('java.lang.Number') or pmd-java:typeIs('java.lang.Boolean')
+            or pmd-java:typeIs('java.lang.Character') or pmd-java:typeIs('int')
+            or pmd-java:typeIs('long') or pmd-java:typeIs('short') or pmd-java:typeIs('byte')
+            or pmd-java:typeIs('char') or pmd-java:typeIs('boolean') or pmd-java:typeIs('double')
+            or pmd-java:typeIs('float'))]
+       [not(ancestor::MethodCall[pmd-java:matchesSig($quote)])]
+       [not(ancestor::*[not(preceding-sibling::*)][parent::ConditionalExpression]
+                       [some $node in ancestor::* satisfies $node is $argument])]
+       [not(self::VariableAccess/@Name =
+              ancestor::*[self::MethodDeclaration or self::ConstructorDeclaration][1]
+                //VariableDeclarator[*[2][@CompileTimeConstant = true()
+                                          or descendant-or-self::MethodCall[pmd-java:matchesSig($quote)]
+                                          or descendant-or-self::MethodReference[@MethodName = 'quote']]]
+                /VariableId/@Name)]]]
+]]></value>
+      </property>
+    </properties>
+  </rule>
+  <rule name="PlainTextRegex" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
+        message="Use replace(target, replacement), which replaces every occurrence of the plain text and reads the replacement literally. This replaceAll pattern has no regex metacharacters, so replaceAll only compiles a regex on every call and reads a dollar sign or backslash in the replacement as a group reference.">
+    <priority>3</priority>
+    <properties>
+      <property name="xpath">
+        <value><![CDATA[
+//MethodCall[pmd-java:matchesSig('java.lang.String#replaceAll(java.lang.String,java.lang.String)')]
+  [ArgumentList/*[1][@CompileTimeConstant = true()][not(matches(@ConstValue, '[\\^$.|?*+()\[\]{}]'))]]
+]]></value>
+      </property>
+    </properties>
+  </rule>
 </ruleset>
