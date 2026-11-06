@@ -16,6 +16,27 @@
     <properties>
       <property name="xpath">
         <value><![CDATA[
+let $booleanSwitch := function($switch) {
+  let $branches := $switch/(SwitchArrowBranch | SwitchFallthroughBranch),
+      $valueOf := function($b) {
+        let $body := $b/(* except SwitchLabel),
+            $inner := if (count($body) = 1 and $body[self::Block]) then $body/* else $body
+        return if (empty($body) and $b[self::SwitchFallthroughBranch]) then 'fall'
+          else if (count($inner) = 1 and $inner[self::BooleanLiteral] and $b[self::SwitchArrowBranch]) then string($inner/@True)
+          else if (count($inner) = 1 and $inner[self::ReturnStatement or self::YieldStatement][count(*) = 1][BooleanLiteral])
+            then string($inner/BooleanLiteral/@True)
+          else 'other' },
+      $default := $branches[SwitchLabel[@Default = true()]],
+      $others := $branches except $default,
+      $branchValue := if (count($default) = 1 and $valueOf($default) = 'true') then 'false' else 'true'
+  return exists($switch/*[1][pmd-java:typeIs('java.lang.Enum')])
+    and count($default) = 1
+    and $valueOf($default) = ('true', 'false')
+    and $valueOf($branches[last()]) != 'fall'
+    and (every $label in $others/SwitchLabel/* satisfies $label[self::VariableAccess or self::FieldAccess[TypeExpression]])
+    and exists($others[$valueOf(.) != 'fall'])
+    and (every $b in $others satisfies $valueOf($b) = ('fall', $branchValue)) }
+return
 (
   //InfixExpression[@Operator = ('||', '&&')][not(parent::InfixExpression/@Operator = @Operator)]
     [let $root := ., $op := @Operator, $test := if ($op = '||') then '==' else '!=',
@@ -25,41 +46,58 @@
          $operands := descendant::*[not(self::InfixExpression[@Operator = $op])]
            [ancestor::*[not(self::InfixExpression[@Operator = $op])][1] is $root/..]
            [parent::InfixExpression[@Operator = $op]],
-         $constants := $operands/*[pmd-java:typeIs('java.lang.Enum')]
+         $sidesOf := function($o) {
+           let $e := if ($o[self::UnaryExpression[@Operator = '!']]) then $o/* else $o
+           return if ($e[self::InfixExpression[@Operator = ('==', '!=')]]) then $e/*
+             else if ($e[self::MethodCall[@MethodName = 'equals'][ArgumentList/@Size = 1][*[1][not(self::ArgumentList)]]])
+               then ($e/*[1], $e/ArgumentList/*)
+             else if ($e[self::MethodCall[pmd-java:matchesSig('java.util.Objects#equals(_,_)')]]) then $e/ArgumentList/*
+             else () },
+         $sides := for $o in $operands return $sidesOf($o),
+         $constants := $sides[pmd-java:typeIs('java.lang.Enum')]
            [self::FieldAccess[TypeExpression] or self::VariableAccess[@Name = $singles]
             or self::VariableAccess[$onDemand][matches(@Name, '^[A-Z][A-Z0-9_]*$')]],
-         $subjects := $operands/* except $constants
+         $subjects := $sides except $constants
        return count($operands) >= 2
-         and (every $o in $operands satisfies $o[self::InfixExpression[@Operator = $test]]
-               [count(* intersect $constants) = 1]
-               [(* except $constants)[self::VariableAccess or self::FieldAccess[ThisExpression]
+         and (every $o in $operands satisfies
+               ($o[self::InfixExpression[@Operator = $test]]
+                or $o[$op = '||'][self::MethodCall]
+                or $o[$op = '&&'][self::UnaryExpression[@Operator = '!']]
+                    [*[self::InfixExpression[@Operator = '=='] or self::MethodCall]])
+               and count($sidesOf($o)) = 2
+               and count($sidesOf($o) intersect $constants) = 1
+               and exists(($sidesOf($o) except $constants)[self::VariableAccess or self::FieldAccess[ThisExpression]
                   or self::MethodCall[ArgumentList/@Size = 0]
                     [*[1][self::ArgumentList or self::VariableAccess or self::ThisExpression
                           or self::FieldAccess[ThisExpression]]]
                     [matches(@MethodName, '^(get|is)[A-Z]')
                      or *[1][not(self::ArgumentList)][pmd-java:typeIs('java.lang.Record')]
                      or (*[1][self::ArgumentList or self::ThisExpression]
-                         and @MethodName = ancestor::RecordDeclaration[1]/RecordComponentList/RecordComponent/VariableId/@Name)]]])
+                         and @MethodName = ancestor::RecordDeclaration[1]/RecordComponentList/RecordComponent/VariableId/@Name)]]))
          and count(distinct-values(for $s in $subjects return
                if ($s[self::MethodCall])
                then string-join(($s/*[1][self::VariableAccess or self::FieldAccess]/@Name, $s/@MethodName), '.') || '()'
                else string($s/@Name))) = 1
          and count(distinct-values($constants/@Name)) = count($constants)]
   | //MethodCall[@MethodName = 'contains'][ArgumentList/@Size = 1]
-      [*[1][self::MethodCall[pmd-java:matchesSig('java.util.EnumSet#of(_*)')]]
+      [*[1][self::MethodCall[pmd-java:matchesSig('java.util.EnumSet#of(_*)') or pmd-java:matchesSig('java.util.Set#of(_*)')
+                             or pmd-java:matchesSig('java.util.List#of(_*)') or pmd-java:matchesSig('java.util.Arrays#asList(_*)')]]
         [ArgumentList/@Size >= 2]
         [let $statics := /CompilationUnit/ImportDeclaration[@Static = true()],
              $singles := $statics[not(@ImportOnDemand)]/@ImportedSimpleName,
              $onDemand := exists($statics[@ImportOnDemand])
          return every $c in ArgumentList/* satisfies
-           $c[self::FieldAccess[TypeExpression] or self::VariableAccess[@Name = $singles]
+           $c[pmd-java:typeIs('java.lang.Enum')]
+             [self::FieldAccess[TypeExpression] or self::VariableAccess[@Name = $singles]
               or self::VariableAccess[$onDemand][matches(@Name, '^[A-Z][A-Z0-9_]*$')]]]]
+  | //SwitchExpression[$booleanSwitch(.)]
 )
   [let $self := .,
        $holder := ancestor::*[not(self::InfixExpression[@Operator = ('&&', '||')] or self::ConditionalExpression
                                   or self::UnaryExpression[@Operator = '!'])][1]
    return $holder[self::ReturnStatement or self::LambdaExpression or self::VariableDeclarator]
      or $holder[self::AssignmentExpression][not(*[1] intersect $self/ancestor-or-self::*)]]
+| //SwitchStatement[$booleanSwitch(.)]
 ]]></value>
       </property>
     </properties>
