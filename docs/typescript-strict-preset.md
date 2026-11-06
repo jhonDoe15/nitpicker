@@ -715,6 +715,27 @@ only the library follows the project. Nitpicker reads `dependencies`, `peerDepen
 'a' | 'b'`), which names the subset in its type. The type is read at the first comparison, so an
   earlier guard that already narrowed the union can shrink it below three members. Add an exception
   for the rule when a partial test is intended.
+- `nitpicker/no-singular-and-plural-prop`: two optional inputs `tag?: string` and
+  `tags?: string[]` offer two ways to pass the same data. The rule reports the plural when both are
+  optional (`?` or a default value) and the plural is an array (`T[]`, `readonly T[]`, `Array<T>`,
+  `ReadonlyArray<T>`) of the singular's type; keep the plural and pass a single item as a
+  one-element array. The names may differ by `-s`, `-es`, `y`/`ies` or an irregular plural of the
+  last word (`selectedChild`, `selectedChildren`). It checks the parameters of an exported function,
+  of the public methods and constructors of an exported class (not `private`, `protected`, `#name`
+  or `override` ones), the properties of their parameter types, a component's props type, an
+  exported type or interface whose name ends in `Props`, `Options`, `Opts`, `Params`, `Parameters`,
+  `Args`, `Arguments`, `Input`, `Request`, `Config` or `Settings`, and the entries of an object
+  schema from zod, valibot, superstruct or TypeBox
+  (`z.object({ tag: z.string().optional(), tags: z.array(z.string()).optional() })`;
+  `.optional()`, `.nullish()`, `.default()`, `optional(...)`,
+  `nullish(...)`, `Type.Optional(...)` and `pipe(...)` count, and so do `X.array()` and length
+  checks on the array). Required inputs (`contains(role: string, roles: string[])`), inputs that
+  differ in type, a member typed `never` in a discriminated union and members in different union
+  branches are not reported. `| undefined` and `| null` are dropped from both types before they are
+  compared. Aliases and interfaces in the same file are followed; types imported from other files
+  are not. JavaScript files carry no type annotations, so there only the schema entries are checked.
+  Two members whose meanings differ (`owner?: User` for the main owner beside `owners?: User[]` for
+  the co-owners) are the case for an exception with a reason.
 - `nitpicker/no-forwarding-wrapper` (type-aware): a module-level named function or `const` arrow
   whose body is one `return` (or an expression body) of a call that passes exactly its own
   parameters, in order, unchanged (`export const loadUser = (id: string) => fetchUser(id)`; an
@@ -1514,14 +1535,8 @@ off (a PR that adds or removes React keeps linting on both sides); a misspelled 
   defines the palette gets one exception for the rule (`src/theme/**`); there is no filename
   heuristic.
 
-- **One optional input per concept** (`nitpicker/no-singular-and-plural-prop`). A component's props
-  type (or an exported `*Props` type) that declares both `tag?: string` and `tags?: string[]` offers
-  two ways to pass the same data. The rule reports the plural when both props are optional and the
-  plural is an array (`T[]`, `readonly T[]`, `Array<T>`, `ReadonlyArray<T>`) of the singular's type;
-  keep the plural and pass a single item as a one-element array. Props that differ in type, a
-  required prop, a prop typed `never` in a discriminated union and props in different union branches
-  are not reported. Aliases and interfaces in the same file are followed; types imported from other
-  files are not.
+- **One optional input per concept** (`nitpicker/no-singular-and-plural-prop`). Component props
+  are one of the inputs this rule checks everywhere; see [Everywhere](#everywhere).
 - **Exclusive props are a type, not a check** (`nitpicker/no-runtime-exclusive-props-check`). An
   `if` in a component body whose condition tests two or more of its own props the same way (`a && b`,
   `!a && !b`, `a !== undefined && b !== undefined`, `a != null && b != null`, only `&&` chains of
