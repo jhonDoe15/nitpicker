@@ -5,6 +5,7 @@ import { detectJavaBuild } from '../builds/java-build.mjs';
 import { parseJavaRunnerArguments } from './java-policy.mjs';
 import { javaStyle } from './style/java-style.mjs';
 import { gradleBudget, mavenBudget } from './gradle-wrapper/gradle-budget.mjs';
+import { TESTS_FAILED_RULE } from '../../../shared/rules/finding-helpers.mjs';
 
 export const GRADLE_FAILURE_RULE = 'gradle-failure';
 export const MAVEN_FAILURE_RULE = 'maven-failure';
@@ -46,8 +47,7 @@ export function analyzeJavaSnapshot(
     };
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
-    const rule =
-      detectJavaBuild(projectRoot) === 'maven' ? MAVEN_FAILURE_RULE : GRADLE_FAILURE_RULE;
+    const rule = failureRule(error, projectRoot);
     return {
       findings: [
         {
@@ -64,6 +64,13 @@ export function analyzeJavaSnapshot(
       ],
     };
   }
+}
+
+function failureRule(error, projectRoot) {
+  if (error?.failures?.length > 0) {
+    return TESTS_FAILED_RULE;
+  }
+  return detectJavaBuild(projectRoot) === 'maven' ? MAVEN_FAILURE_RULE : GRADLE_FAILURE_RULE;
 }
 
 export function readRunnerPolicy(runnerArguments, environment = process.env) {
