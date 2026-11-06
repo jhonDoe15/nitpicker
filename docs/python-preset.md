@@ -2348,9 +2348,10 @@ What the Python preset does the way the TypeScript and Java presets do (`parity/
 - **Failing tests.** pytest runs with `--junitxml` (xunit1, so each case has its file and line) and
   `--continue-on-collection-errors`; exit status 1 with failing cases is no longer a failure of
   the analyzer. The static analyzers run as usual, coverage and CRAP come from the tests that ran,
-  and the failing tests are one `tests/tests-failed` tool error per snapshot, listing up to 20 test
-  ids, as Java's `tests/tests-failed` (`test-runs/test-failures.mjs`). unittest failures are read
-  from its `FAIL:`/`ERROR:` lines. A run that exits 1 without naming a test, or whose
+  and the failing tests are one `tests/tests-failed` tool error per snapshot, listing up to 50 tests
+  with the line of the failing assertion and the error's first line, as Java's `tests/tests-failed`
+  (`test-runs/test-failures.mjs`). unittest failures are read from its `FAIL:`/`ERROR:` blocks
+  and their tracebacks. A run that exits 1 without naming a test, or whose
   failures are only collection errors (pytest) or load errors (unittest's `_FailedTest`), is a
   `python/tests-not-run` tool error on both snapshots.
 - **Slow tests.** `slow-test` (tool `test-runtime`; `test-runtime/slow-test` is accepted in
