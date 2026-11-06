@@ -2,12 +2,14 @@ import { spawnSync } from 'node:child_process';
 
 const MAX_BLOB_BYTES = 1_000_000;
 const HEADER_ROOM = 256;
+const GIT_TIMEOUT_MS = 10 * 60 * 1000;
 
 function catFile(repositoryRoot, mode, { specs, maxBuffer }) {
   const result = spawnSync('git', ['cat-file', mode], {
     cwd: repositoryRoot,
     input: `${specs.join('\n')}\n`,
     maxBuffer,
+    timeout: GIT_TIMEOUT_MS,
   });
   return result.error === undefined && result.status === 0 ? result.stdout : undefined;
 }
