@@ -81,6 +81,7 @@ const REVIEW_RULES = new Set([
   'test-only-export',
   'UnboundedFanOut',
   'UnboundedReactiveFanOut',
+  'HttpWithoutTimeout',
 ]);
 const roots = [];
 const RECEIPT_TEST_FILE = 'src/test/java/shop/ReceiptTest.java';
