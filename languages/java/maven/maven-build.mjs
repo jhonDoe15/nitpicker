@@ -151,7 +151,7 @@ function analyzeSources(options) {
   const { module, reportDir, classpaths, tools, pinned, configs, style, spring } = options;
   const { springArch, springRoles, springRules, spawn } = options;
   runPmd({ module, reportDir, tools, classpaths, configs, spring, springRules, spawn });
-  runSpotbugs({ module, reportDir, tools, spawn });
+  runSpotbugs({ module, reportDir, tools, configs, spawn });
   runErrorProne({ module, reportDir, tools, classpaths, spawn });
   runFormat({ module, reportDir, tools, javaStyle: style.javaStyle, spawn });
   runCheckstyle({ module, reportDir, tools, configs, pinned, style, spawn });
