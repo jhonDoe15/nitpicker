@@ -19,12 +19,12 @@ def load_checks():
     from boundary import domain_types, guards, paths
     from checks import comments, declarations, parameters, shell, state
     from concurrency import fan_out
-    from orm_config import query_logging, schema_sync
     from discovery import helpers, uncollected
     from effects import import_time, reach
     from environment import domain_imports, environment, purity
     from errors import errors
     from honesty import assertions, isolation, skipped, waits
+    from persistence import cascades, eager, query_logging, schema_sync
     from review import fields
     from security import hashes, loading
     from security.sql import check as sql
@@ -72,6 +72,8 @@ def load_checks():
         uncollected,
         helpers,
         fields,
+        eager,
+        cascades,
         lifetimes,
         cleanup,
         tri_state,

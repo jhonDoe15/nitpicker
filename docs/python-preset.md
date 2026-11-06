@@ -953,6 +953,21 @@ self.items.append(item)`), also through a package `__init__` that re-exports it 
   `tomllib` parsing, `.json()` or an `Any` parameter, and `TypeGuard` or `TypeIs` functions over
   `Any` or `object`. `pydantic-any-field` and `pydantic-extra-allow` look at classes deriving from
   `BaseModel`, `BaseSettings` or `RootModel` anywhere (v1 `Config` and `Extra.allow` too).
+- `eager-relationship` reports a SQLAlchemy `relationship` (or `backref`) mapped with
+  `lazy="joined"`, `"subquery"`, `"selectin"`, `"immediate"` or the legacy `lazy=False`, also
+  Flask-SQLAlchemy's `db.relationship` and SQLModel's `Relationship(sa_relationship_kwargs=...)`.
+  Every query of the model then loads the related rows. Leave `lazy` at its default (or
+  `"raise"`) and load per query with `options(selectinload(...))` or `joinedload(...)`. Port of
+  the JVM `JpaLazyFetching`.
+- `many-to-many-cascade-delete` reports a `cascade` with `all`, `delete` or `delete-orphan` on a
+  `relationship` with `secondary=` (and on its `backref`), and SQLModel's `cascade_delete=True` or
+  `sa_relationship_kwargs={"cascade": ...}` on a `Relationship` with `link_model=`: deleting one
+  owner deletes rows that other owners still share. `secondary` also counts when it is passed
+  positionally or through `sa_relationship_kwargs`; `single_parent=True` and `viewonly=True` are
+  not reported. Port of
+  the JVM `JpaManyToManyCascade`. Both rules check production sources only. Django has no eager
+  mapping option (`select_related` and `prefetch_related` are per query) and its `on_delete`
+  cascades are on foreign keys, not on a `ManyToManyField`, so neither rule applies to it.
 - `repeated-string-literal` counts a string of five characters or more (with a letter or digit) used
   three times or more in a file (not tests, not generated migrations) and reports each use from the
   third on. Not counted: annotations, f-string parts, keyword arguments (Kotlin exempts named
