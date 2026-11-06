@@ -1,6 +1,7 @@
 import { QUERY_TYPES } from '../data-types.mjs';
 import { lastSelector, parseSelector, unwrapped } from '../../view/expressions.mjs';
 import { chainOf, isCollection, loopFrames } from './loop-scopes.mjs';
+import { escapeRegExp } from '../../../../../../../../shared/paths/glob.mjs';
 
 const QUALIFIER = /^[\w.]+$/u;
 const NAME = /^"(\w+)"$/u;
@@ -146,7 +147,7 @@ function listParameter(view, text, binding) {
   const parameter = NAME.exec(name?.text.trim() ?? '')?.[1];
   return (
     parameter !== undefined &&
-    new RegExp(String.raw`\b(?:in|any)\s*\(?\s*:${parameter}\b`, 'iu').test(text) &&
+    new RegExp(String.raw`\b(?:in|any)\s*\(?\s*:${escapeRegExp(parameter)}\b`, 'iu').test(text) &&
     isCollection(view, binding.scope, value?.text) &&
     !oneElement(value.text)
   );

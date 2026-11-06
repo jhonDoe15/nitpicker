@@ -1,6 +1,7 @@
 import {
   TESTS_FAILED_RULE,
   TESTS_NOT_RUN_RULE,
+  testsFailHeadline,
   testsFailOnBase,
 } from '../../../../../shared/rules/finding-helpers.mjs';
 import { readFileSync } from 'node:fs';
@@ -169,16 +170,16 @@ function failureText(report, projectRoot, runnerName) {
   const failedCount = Number.isInteger(report?.numFailedTests)
     ? Math.max(report.numFailedTests, failures.length)
     : failures.length;
-  const headline = `${String(failedCount)} ${failedCount === 1 ? 'test fails' : 'tests fail'}, so coverage, CRAP and mutation were skipped. Fix the tests and rerun`;
+  const headline = testsFailHeadline(failedCount, 'coverage, CRAP and mutation were skipped');
   if (failures.length === 0) {
-    return `${headline}; the report named no test.`;
+    return `${headline.slice(0, -1)}; the report named no test.`;
   }
   const listed = failures
     .slice(0, MAX_LISTED_FAILURES)
     .map((failure) => `  ${failureEntry(failure)}`);
   const omitted = failures.length - listed.length;
   return [
-    `${headline}:`,
+    headline,
     ...listed,
     ...(omitted > 0 ? [`  … and ${String(omitted)} more`] : []),
     ...(runnerName === RUNNER_NAMES.vitest ? missingSetupHints(failures) : []),
