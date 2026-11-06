@@ -670,6 +670,7 @@ are listed at the end.
 | TLS                      | verification on in every environment; a CA bundle (`verify=ca_path`, `cafile=`, `tlsCAFile=`)                                                                                        | ruff `S501`, `S323`, `tls-verification-off` (script)                                                                                                                                                          |
 | Signatures               | `hmac.new(key, message, hashlib.sha256)`; HMAC-SHA1 where a protocol fixes it                                                                                                        | ruff `S324`, `S303`, `weak-hmac` (script)                                                                                                                                                                     |
 | Timeouts                 | `timeout=10` on every request, `urlopen` and plain `requests.Session` call; never `timeout=None`                                                                                     | ruff `S113`, `http-without-timeout` (script)                                                                                                                                                                  |
+| Child processes          | `subprocess.run(args, timeout=30, check=True)`, `communicate(timeout=30)`, asyncio waits in `asyncio.timeout(30)`                                                                    |
 | Test honesty             | a reason on every skip, no sleeping, no tautologies, fixed time and seeded random values, no network                                                                                 | ruff `PT`, `skipped-test-without-reason`, `sleep-in-test`, `negative-wait-in-test`, `tautological-assert`, `real-clock-in-test`, `random-in-test`, `network-in-test`, `server-or-container-per-test` (script) |
 | Test layout              | tests in files pytest collects; helpers in the tests folder                                                                                                                          | `uncollected-tests`, `test-helper-in-source` (script)                                                                                                                                                         |
 
@@ -730,6 +731,21 @@ Details that are decisions rather than the table:
   `os.exec*`, `os.spawn*`, `pty.spawn` and `asyncio.create_subprocess_*` calls (also
   `create_subprocess_shell`). A list of arguments, or a fixed command string that ruff already
   accepts, is the allowed form. Not in tests.
+- `subprocess-without-timeout` reports waiting for a child process without a deadline:
+  `subprocess.run`, `call`, `check_call` and `check_output` without `timeout=` or with `timeout=None`
+  (also through a `**options` dict and a `functools.partial`, reported where the partial is called),
+  `subprocess.getoutput` and `getstatusoutput` (they take no timeout), `wait()` and `communicate()`
+  without a timeout on a `subprocess.Popen` (a chain, a local, a `with` target or a `self.` attribute
+  set in the class), and `wait()` or `communicate()` on an `asyncio.create_subprocess_exec`/`_shell` or
+  `anyio.open_process` process and `anyio.run_process`/`trio.run_process` outside a deadline in the
+  same function: `asyncio.timeout`, `asyncio.timeout_at`, `async_timeout.timeout`,
+  `anyio.fail_after`/`move_on_after`, the trio equivalents, or a call wrapped (at any depth) in
+  `asyncio.wait_for(..., timeout)` or `asyncio.wait(..., timeout=...)`, each with a value other than
+  `None`. A wait held in a variable and passed to `wait_for` later, a Popen returned by a project
+  helper, and a function passed to `run_in_executor` by reference are not followed. A call with
+  `**kwargs` whose keys are unknown is not reported. Not in tests or test support, where the test run
+  has its own limits. A program whose purpose is to run a child to completion, such as a build
+  wrapper, takes an exception.
 - `sql-string-formatting` reports SQL text built at run time that reaches a query call. A value is
   built when an f-string, `%`, `+`, `+=`, `.format`, `.format_map`, `string.Template(...).substitute` or
   `.join` puts a piece into it that is not provably inert, followed through local names, parameter
