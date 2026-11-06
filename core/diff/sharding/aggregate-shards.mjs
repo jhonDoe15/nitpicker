@@ -28,6 +28,7 @@ import { renderConsoleSummary } from '../reporting/summary.mjs';
 import { writeGithubOutput } from '../reporting/github/emit.mjs';
 import { describeError } from '../../../shared/messages/error-chain.mjs';
 import { colorEnabled, displayPath, withoutAnsi } from '../../../shared/messages/terminal-text.mjs';
+import { comparisonExitCode } from '../reporting/failing-tests/failing-tests.mjs';
 
 function resolvePolicyRoot({ policyRoot, optionsPolicyRoot, currentProjectRoot }) {
   if (policyRoot !== undefined) {
@@ -285,8 +286,5 @@ function reportExitCode(
     stdout,
     stderr,
   });
-  if (report.summary.newEnforceableFindings > 0) {
-    return 1;
-  }
-  return report.summary.overallStatus === 'completed' ? 0 : 2;
+  return comparisonExitCode(report);
 }
