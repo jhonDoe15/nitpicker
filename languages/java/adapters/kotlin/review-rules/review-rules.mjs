@@ -1,6 +1,7 @@
 import { ENUM_PREDICATE_RULE } from '../../review-rules/enum-predicates.mjs';
 import { LOAD_EFFECT_RULE } from '../../../messages/load-effects.mjs';
 import { FORWARDING_RULE } from './main/forwarding-wrappers.mjs';
+import { RECURSIVE_MAP_UPDATE_RULE } from './main/map-updates/recursive-map-update.mjs';
 import { SINGULAR_PLURAL_RULE } from './main/member-names.mjs';
 import { UNUSED_OPTION_RULE } from './main/unused-options/unused-options.mjs';
 import { VALIDATION_TARGET_RULE } from './validation/validation-targets.mjs';
@@ -21,6 +22,7 @@ export const KOTLIN_REVIEW_EXCEPTION_RULES = [
   SINGULAR_PLURAL_RULE,
   VALIDATION_TARGET_RULE,
   LOAD_EFFECT_RULE,
+  RECURSIVE_MAP_UPDATE_RULE,
   ...SPRING_RULES,
   JAVA_ONLY_SPRING_RULE,
 ]

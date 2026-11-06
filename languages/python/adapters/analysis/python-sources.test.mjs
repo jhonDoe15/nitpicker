@@ -100,23 +100,27 @@ describe('listing production modules', () => {
     ]);
   });
 
-  it('skips documentation, examples and scripts at the top of a project that is its own root', () => {
+  it('skips documentation, examples, scripts and testing at the top of a project that is its own root', () => {
     const root = project([
       'app/__init__.py',
       'docs/conf.py',
       'doc/conf.py',
       'examples/demo.py',
       'scripts/release.py',
+      'testing/fakes.py',
       'app/scripts/keep.py',
+      'app/testing/fakes.py',
     ]);
 
     expect(listProductionModules(root, ['.']).map(({ file }) => file)).toEqual([
       'app/__init__.py',
       'app/scripts/keep.py',
+      'app/testing/fakes.py',
     ]);
     expect(listProductionModules(root, ['app']).map(({ file }) => file)).toEqual([
       'app/__init__.py',
       'app/scripts/keep.py',
+      'app/testing/fakes.py',
     ]);
   });
 
@@ -151,6 +155,7 @@ describe('listing production modules', () => {
       'doc/**',
       'examples/**',
       'scripts/**',
+      'testing/**',
     ]);
     expect(nonProductionGlobs(['src'], django).slice(NON_PRODUCTION_GLOBS.length)).toEqual([
       '**/tests.py',
@@ -199,6 +204,7 @@ describe('listing production modules', () => {
       'doc/**',
       'examples/**',
       'scripts/**',
+      'testing/**',
     ]);
   });
 
@@ -264,6 +270,8 @@ describe('pythonSourceFiles for a flat project', () => {
       'conftest.py': '',
       'tests/test_app.py': '',
       'util/tests/test_helpers.py': '',
+      'testing/fakes.py': '',
+      'util/testing/fakes.py': '',
       'build/lib/app.py': '',
       'dist/app.py': '',
       'env/lib/sitecustomize.py': '',
@@ -271,7 +279,11 @@ describe('pythonSourceFiles for a flat project', () => {
       '.venv/lib/v.py': '',
     });
 
-    expect(pythonSourceFiles(root, ['.'])).toEqual(['app.py', 'util/helpers.py']);
+    expect(pythonSourceFiles(root, ['.'])).toEqual([
+      'app.py',
+      'util/helpers.py',
+      'util/testing/fakes.py',
+    ]);
   });
 
   it('keeps a package named reports, where nitpicker writes its own output', () => {
