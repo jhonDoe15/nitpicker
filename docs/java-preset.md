@@ -268,10 +268,10 @@ for jscpd, a long-running PIT) and each is expensive enough to deserve its own r
   `ignoreFailures`). It runs on the framework the declared ArchUnit library needs: JUnit 4 for
   `archunit-junit4` rules (`@RunWith(ArchUnitRunner.class)`), the JUnit Platform for
   `archunit-junit5`; with both or neither declared, on the framework of the task whose classes it
-  runs. The ArchUnit classes are left out of every checked test task (`test` and each task `check`
-  depends on) and run by their own `nitpickerArchunit` task, `nitpickerArchunit<Task>` for a task
-  other than `test` (on that task's test classes and runtime classpath), so a rule in an
-  integration test source set is a finding, not a failed build.
+  runs. The ArchUnit classes are left out of every test task, and those of each checked test task
+  (`test` and each task `check` depends on) run by their own `nitpickerArchunit` task,
+  `nitpickerArchunit<Task>` for a task other than `test` (on that task's test classes and runtime
+  classpath), so a rule in an integration test source set is a finding, not a failed build.
   When the test classes hold ArchUnit classes and none of them produced a report, the task fails
   (a Gradle failure, `tool-error`), as Maven does, instead of passing without findings. The
   project must have one of the two libraries on its test classpath; Nitpicker adds no dependency
