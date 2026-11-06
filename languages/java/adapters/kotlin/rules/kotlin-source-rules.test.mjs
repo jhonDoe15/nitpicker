@@ -36,6 +36,7 @@ const finding = (file, rule, identity, message) => ({
   path: file,
   identity,
   message: `${message} ${exceptionHint(rule, file)}`,
+  allowedForm: message,
   classification: 'enforceable',
 });
 

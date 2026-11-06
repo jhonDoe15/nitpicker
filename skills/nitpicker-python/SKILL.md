@@ -129,6 +129,10 @@ To learn why a rule is on and what form it allows before you write or change cod
   one third-party console message goes in `testConsole.allow`. Each message ends with the entry and
   the list that takes it; each list rejects the other's rules. Don't add one to get past the gate:
   stop and ask.
+- The `$schema` line of `nitpicker.config.json`
+  (`"$schema": "https://raw.githubusercontent.com/jhonDoe15/nitpicker/main/spec/config.schema.json"`)
+  lets the editor flag a misspelled key or a value the run refuses; nitpicker ignores it. Keep it
+  when you edit the file.
 
 ## Repository files
 

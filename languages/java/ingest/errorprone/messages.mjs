@@ -104,6 +104,10 @@ function readableSummary(check, summary, guava) {
     : GUAVA_SUMMARIES.reduce((text, [from, to]) => text.replace(from, to), rewritten);
 }
 
+export function errorProneAllowedForm(check) {
+  return ALLOWED_FORMS.get(check);
+}
+
 export function errorProneMessage({ check, summary, suggestion }, { guava = true } = {}) {
   const cleaned = suggestion === undefined ? undefined : cleanSuggestion(check, suggestion, guava);
   const parts = [readableSummary(check, summary, guava), ALLOWED_FORMS.get(check), cleaned];

@@ -30,6 +30,7 @@ function finding(file, identity, definition) {
     path: file,
     identity,
     message: sourceRuleMessage(definition, file),
+    allowedForm: definition.message,
     classification: 'enforceable',
   };
 }

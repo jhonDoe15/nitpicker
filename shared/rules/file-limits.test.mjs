@@ -39,6 +39,7 @@ describe('file length', () => {
     expect(findings[0].ratchet).toEqual({
       key: 'file-lines',
       value: 301,
+      worseAllowedForm: 'Put new code in a new file.',
       worseMessage: `File grew from {base} to 301 lines (limit 300). Put new code in a new file. ${hint}`,
       heldMessage:
         'File: 301 lines (limit 300), allowed because base was {base}; any increase fails.',

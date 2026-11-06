@@ -27,6 +27,7 @@ describe('shared-used-by-one-feature findings', () => {
           'Move it into src/main/features/billing/.',
           `If this is intended, add ${exception} to "exceptions" in nitpicker.config.json.`,
         ].join(' '),
+        allowedForm: 'Move it into src/main/features/billing/.',
         classification: 'enforceable',
       },
     ]);

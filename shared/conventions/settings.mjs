@@ -1,7 +1,7 @@
 import { configError, isPlainObject } from '../config.mjs';
 import { didYouMean } from '../messages/closest-match.mjs';
 
-const NAME = /^[A-Za-z_]\w*$/;
+export const FUNCTION_NAME = /^[A-Za-z_]\w*$/;
 
 export const COLUMNS = {
   valuePattern: /^[1-9]\d{1,2}$/,
@@ -28,7 +28,7 @@ function validateChoice(definition, choice) {
   if (definition.kind === 'names') {
     if (
       !Array.isArray(choice) ||
-      !choice.every((name) => typeof name === 'string' && NAME.test(name))
+      !choice.every((name) => typeof name === 'string' && FUNCTION_NAME.test(name))
     ) {
       throw configError(`"conventions.${definition.id}" must be a list of function names`);
     }

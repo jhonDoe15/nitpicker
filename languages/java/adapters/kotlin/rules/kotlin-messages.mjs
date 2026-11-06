@@ -6,7 +6,7 @@ import {
 } from '../../../../../shared/messages/exception-sentence.mjs';
 import { withAllowedForm } from './kotlin-rules.mjs';
 
-const DETEKT_RULE = /^detekt\.[a-z-]+\.[A-Z][A-Za-z0-9]*$/;
+export const DETEKT_RULE = /^detekt\.[a-z-]+\.[A-Z][A-Za-z0-9]*$/;
 const KOTLINC_RULES = [
   'kotlinc/deprecation',
   'kotlinc/unchecked',

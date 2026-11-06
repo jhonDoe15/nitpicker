@@ -3,6 +3,7 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import { parseAnalyzerReport } from '../../../../core/diff/comparison/finding-schema.mjs';
+import { withoutRouteFields } from '../../../../core/exceptions/test-support/route-check.mjs';
 import { ingestFormatCheck } from '../../../../shared/ingest/format-check.mjs';
 import { readJavaFindings as readFindings } from './java-reports.mjs';
 import {
@@ -159,7 +160,9 @@ describe('readJavaFindings', () => {
   it('turns the preset reports into schema-valid, project-relative findings', () => {
     const { findings } = readJavaFindings(projectWithReports());
 
-    expect(parseAnalyzerReport({ findings }, 'java').findings).toEqual(findings);
+    expect(withoutRouteFields(parseAnalyzerReport({ findings }, 'java').findings)).toEqual(
+      findings,
+    );
     expect(identities(findings)).toEqual([
       ['pmd', 'EmptyCatchBlock', bad, 'fp:nitpicker/subject=Avoid empty catch blocks'],
       ['pmd', 'EmptyCatchBlock', bad, 'fp:nitpicker/subject=Avoid empty catch blocks#2'],

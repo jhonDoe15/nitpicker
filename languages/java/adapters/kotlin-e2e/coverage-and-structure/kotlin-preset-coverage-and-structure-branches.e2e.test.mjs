@@ -24,7 +24,7 @@ describe.skipIf(!kotlinE2eEnabled)('Kotlin preset coverage and structure end to 
         .map(({ message, location }) => ({ message, location })),
     ).toEqual([
       {
-        message: `Branch coverage is 50.00%; minimum is 95%. ${exceptionRoute({ rule: 'changed-branch-coverage', path: `${kotlinSources}/Label.kt`, function: 'Label.larger' })}`,
+        message: `Branch coverage is 50.00%; minimum is 95%. Add a test for each outcome it misses. ${exceptionRoute({ rule: 'changed-branch-coverage', path: `${kotlinSources}/Label.kt`, function: 'Label.larger' })}`,
         location: { line: 4 },
       },
     ]);

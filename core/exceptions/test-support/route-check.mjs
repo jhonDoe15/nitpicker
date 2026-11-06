@@ -1,10 +1,8 @@
 import { applyFindingExceptions } from '../../../shared/exceptions/finding-exceptions.mjs';
 import { withCanonicalRules } from '../../../shared/exceptions/validation.mjs';
 import { applyPythonExceptions } from '../../../languages/python/adapters/configuration/python-exceptions.mjs';
+import { routeFields } from '../../../shared/messages/exception-sentence.mjs';
 import { validateConfig } from '../../configuration/validate.mjs';
-
-const ROUTE =
-  /If this is intended, add (\{.*\}) to "((?:python\.)?exceptions)" in nitpicker\.config\.json\.$/su;
 
 const REASON = 'The test accepts this finding.';
 
@@ -33,11 +31,11 @@ function validationProblem(config) {
 
 /** What is wrong with the route that `message` ends with: empty when its own preset accepts it and it lifts `finding`. */
 export function routeProblems(finding, message, preset) {
-  const found = ROUTE.exec(message);
-  if (found === null) {
+  const { exception, exceptionList } = routeFields(message);
+  if (exception === undefined) {
     return ['the message does not end with an exception route'];
   }
-  const route = { entry: JSON.parse(found[1]), key: found[2] };
+  const route = { entry: exception, key: exceptionList };
   const config = configFor(preset, route);
   const problem = validationProblem(config);
   if (problem !== undefined) {
@@ -48,7 +46,11 @@ export function routeProblems(finding, message, preset) {
     : ['the route does not lift the finding'];
 }
 
-/** Whether `message` ends with an exception route. */
-export function hasRoute(message) {
-  return ROUTE.test(message);
+/** The findings as an analyzer wrote them: without the route fields that parsing derives from the message. */
+export function withoutRouteFields(findings) {
+  return findings.map((finding) =>
+    Object.fromEntries(
+      Object.entries(finding).filter(([key]) => key !== 'exception' && key !== 'exceptionList'),
+    ),
+  );
 }

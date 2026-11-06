@@ -1,4 +1,10 @@
-import { MESSAGES, RULE_IDS, TEST_TIME_DEFAULTS, renderMessage } from '../../policy.mjs';
+import {
+  MESSAGES,
+  RULE_IDS,
+  TEST_TIME_DEFAULTS,
+  messageFields,
+  renderMessage,
+} from '../../policy.mjs';
 import { exceptionText } from '../exceptions.mjs';
 import { SLOW_TEST_FIXES, SLOW_TEST_MOVES } from './slow-test-fixes.mjs';
 
@@ -48,7 +54,7 @@ export function slowTestFindings({ tool, language, advice = language, test, inte
       path: test.path,
       identity: test.identity,
       ...(test.line === undefined ? {} : { location: { line: test.line } }),
-      message: renderMessage(MESSAGES.slowTest, {
+      ...messageFields(MESSAGES.slowTest, {
         name: test.name,
         seconds: shownSeconds(test.seconds, limit),
         kind: integration ? 'an integration' : 'a unit',

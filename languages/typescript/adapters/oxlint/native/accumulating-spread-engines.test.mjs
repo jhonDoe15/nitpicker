@@ -5,6 +5,7 @@ import { ESLint } from 'eslint';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { createFindingsCache } from '../../../../../core/diff/cache/findings-cache.mjs';
 import { compareFindings } from '../../../../../core/diff/comparison/compare.mjs';
+import { parseAnalyzerReport } from '../../../../../core/diff/comparison/finding-schema.mjs';
 import { importClosure } from '../../../../../shared/import-closure.mjs';
 import { PACKAGE_ROOT } from '../../../../../core/tooling/tool-resolution.mjs';
 import { resolveAnalyzerVersion } from '../../../preset/analyzer-versions.mjs';
@@ -287,7 +288,9 @@ describe('nitpicker/no-accumulating-spread on both lint engines', () => {
     });
 
     expect(version.split(';').at(-1)).toBe('oxlint@1.87.0,oxlint-tsgolint@7.0.2004');
-    expect(ruleFindings(cache.read(before).findings)).toEqual(ruleFindings(oxlintFindings));
+    expect(ruleFindings(cache.read(before).findings)).toEqual(
+      ruleFindings(parseAnalyzerReport({ findings: oxlintFindings }, 'eslint-lint').findings),
+    );
     expect(new Set([before.configurationHash, ...hashes]).size).toBe(OWNED_ENGINE_FILES.length + 1);
     expect(hashes.map((hash) => cache.read(analyzerOf(hash)))).toEqual(
       OWNED_ENGINE_FILES.map(() => undefined),

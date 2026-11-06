@@ -150,6 +150,13 @@ set `python.sourceRoots`.
 
 ## Configuration
 
+A `$schema` line in the file gives the editor completion and inline errors for these keys
+(`python.environment`, `python.formatter`, `python.testRunner`, `python.typeChecker`, `python.exceptions`,
+`tools.ruff`, `tools.black`, `tools.pyright`, `tools.mypy`, `tools.mutmut`, the `python.*` conventions) and
+flags the TypeScript-only keys this preset refuses. A Python project has no `node_modules`, so it
+points at the published file: `"$schema": "https://raw.githubusercontent.com/jhonDoe15/nitpicker/main/spec/config.schema.json"`. nitpicker ignores the line; see
+[Editor support](usage.md#editor-support).
+
 Config keys with this preset: `base`, `disable` (the analyzer names are `python` and `mutation`), `analyzers`, the keys shared by all languages,
 `thresholds` (`crapLimit`, enforced from slice 3, the file limits `fileLines`, `testFileLines`,
 `lineLength` and `folderFiles`, the size limits `folderDepth`, `classMethods`, `classFields` and

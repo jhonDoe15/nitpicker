@@ -141,6 +141,10 @@ To learn why a rule is on and what form it allows before you write or change cod
   (`{ "rule": "function-lines-limit", "paths": [...], "function": "name", "reason": "..." }`);
   switching a one-way rule off in
   `detekt.yml` has no effect. Generated code belongs in `exclude`: ask the maintainer to add it.
+- The `$schema` line of `nitpicker.config.json`
+  (`"$schema": "https://raw.githubusercontent.com/jhonDoe15/nitpicker/main/spec/config.schema.json"`)
+  lets the editor flag a misspelled key or a value the run refuses; nitpicker ignores it. Keep it
+  when you edit the file.
 - A project may add forbidden calls to `ForbiddenMethodCall.methods` in its `detekt.yml`; they join
   the preset's. Do not call anything the project lists there.
 

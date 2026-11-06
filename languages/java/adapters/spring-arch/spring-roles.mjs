@@ -4,10 +4,10 @@ import { GRADLE_PRESETS } from '../gradle-presets.mjs';
 import { configError, isPlainObject } from '../../../../shared/config.mjs';
 import { suggestionOrAllowed } from '../../../../shared/messages/closest-match.mjs';
 
-const SPRING_ROLES = ['controller', 'service', 'repository'];
-const SPRING_KEYS = ['roles'];
+export const SPRING_ROLES = ['controller', 'service', 'repository'];
+export const SPRING_KEYS = ['roles'];
 const ROLES_FILE = 'spring-roles.txt';
-const BINARY_NAME = /^[\p{L}_$][\p{L}\p{N}_$]*(?:\.[\p{L}_$][\p{L}\p{N}_$]*)+$/u;
+export const BINARY_NAME = /^[\p{L}_$][\p{L}\p{N}_$]*(?:\.[\p{L}_$][\p{L}\p{N}_$]*)+$/u;
 
 export function validateSpringOptions(config) {
   const { spring } = config;

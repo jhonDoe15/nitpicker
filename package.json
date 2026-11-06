@@ -37,6 +37,7 @@
     "test": "vitest run --config vitest.config.mts",
     "check": "node scripts/check.mjs",
     "gen:checks": "node scripts/gen-checks.mjs",
+    "gen:schema": "node scripts/schema/gen-config-schema.mjs",
     "gen:rules": "node scripts/reference/gen-rules.mjs",
     "gen:overlap-probe": "node scripts/gen-overlap-probe.mjs",
     "test:installed": "NITPICKER_INSTALLED_TEST=1 vitest run --config vitest.config.mts core/installed.test.mjs",
@@ -67,10 +68,15 @@
     "!shared/reference/checks/**",
     "!languages/*/reference/**",
     "!languages/python/ruff/ruff-rules.json",
-    "skills/**"
+    "skills/**",
+    "spec/config.schema.json",
+    "spec/findings.schema.json"
   ],
   "exports": {
-    "./package.json": "./package.json"
+    "./package.json": "./package.json",
+    "./config.schema.json": "./spec/config.schema.json",
+    "./spec/config.schema.json": "./spec/config.schema.json",
+    "./spec/findings.schema.json": "./spec/findings.schema.json"
   },
   "peerDependencies": {
     "@types/node": ">=20",
