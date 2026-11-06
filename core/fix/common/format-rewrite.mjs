@@ -54,8 +54,16 @@ function differingFiles(decodable, live, formatted) {
   });
 }
 
+function formattersOf(options) {
+  const wrap = options.keepLineEndings === false ? (format) => format : keepingLineEndings;
+  return {
+    format: wrap(options.format),
+    formatBase: wrap(options.formatBase ?? options.format),
+  };
+}
+
 export function rewriteFormatted({ projectRoot, repositoryRoot, mergeBaseSha, files, ...options }) {
-  const format = keepingLineEndings(options.format);
+  const { format, formatBase } = formattersOf(options);
   const { bytes, decodable, undecodable, live } = liveSources(projectRoot, files);
   const first = decodable.length === 0 ? { formatted: new Map() } : format(live);
   const differing = differingFiles(decodable, live, first.formatted);
@@ -64,7 +72,7 @@ export function rewriteFormatted({ projectRoot, repositoryRoot, mergeBaseSha, fi
   const planned = plannedTexts({
     names: namesOf(differing),
     baseSources,
-    clean: existing.length === 0 ? new Set() : cleanAtBase(existing, baseSources, format),
+    clean: existing.length === 0 ? new Set() : cleanAtBase(existing, baseSources, formatBase),
     live,
     formatted: first.formatted,
     touchedLinesOnly: options.touchedLinesOnly === true,

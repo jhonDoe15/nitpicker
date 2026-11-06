@@ -18,6 +18,10 @@ function isolatedCache() {
   return { NITPICKER_CACHE_DIR: makeTemporaryRoot('nitpicker-cli-cache-') };
 }
 
+function fixLines(stdout) {
+  return stdout.slice(0, stdout.indexOf('Base: '));
+}
+
 function fixOrderObserver() {
   const operations = [];
   const operationsAtInvocations = [];
@@ -86,6 +90,9 @@ describe('nitpicker CLI', () => {
     expect(output.stdoutText).toBe(`Fixed files:
 src/main/changed.ts
 src/main/format.mjs
+Fix notes:
+  eslint --fix rewrote src/main/changed.ts
+  prettier rewrote src/main/changed.ts, src/main/format.mjs
 Base: ${repository.baseRef} (argument)
 
 \u001b[1m\u001b[32mQuality gate summary\u001b[0m
@@ -93,7 +100,7 @@ Base: ${repository.baseRef} (argument)
 \u001b[2mFull diagnostics: ${outputRoot}/report.txt\u001b[0m
 `);
     expect(output.stderrText).toBe('');
-    const fixOrder = ['eslint-fix', 'prettier-base-check', 'prettier-fix'];
+    const fixOrder = ['eslint-fix', 'prettier-fix', 'prettier-base-check'];
     expect(observer.operationsAtInvocations).toEqual([fixOrder, fixOrder]);
   });
   it('continues remaining fixers and comparison when a fixer fails', () => {
@@ -135,6 +142,8 @@ Base: ${repository.baseRef} (argument)
     expect(output.stdoutText).toEqual(`Fixed files:
 src/main/changed.ts
 src/main/format.mjs
+Fix notes:
+  prettier rewrote src/main/changed.ts, src/main/format.mjs
 Base: ${repository.baseRef} (argument)
 
 \u001b[1m\u001b[31mQuality gate summary\u001b[0m
@@ -220,6 +229,8 @@ No new enforceable violations, but the run is incomplete:
     expect(output.stdoutText).toEqual(
       expect.stringMatching(exactText`Fixed files:
 (none)
+Fix notes:
+  prettier left src/main/legacy.md as is: already unformatted before your change
 Base: ${repository.baseRef} (argument)
 
 \u001b[1m\u001b[32mQuality gate summary\u001b[0m
@@ -266,9 +277,13 @@ Base: ${repository.baseRef} (argument)
     expect(readFileSync(path.join(repository.root, 'src/main/legacy.mjs'), 'utf8')).toBe(
       'export const legacy=false\n',
     );
-    expect(output.stdoutText).toMatch(
-      /Fixed files:\nsrc\/main\/clean.mjs\nsrc\/main\/new.mjs\nBase:/,
-    );
+    expect(fixLines(output.stdoutText)).toBe(`Fixed files:
+src/main/clean.mjs
+src/main/new.mjs
+Fix notes:
+  prettier rewrote src/main/clean.mjs, src/main/new.mjs
+  prettier left src/main/legacy.mjs as is: already unformatted before your change
+`);
   });
   it('does not fix files that the config excludes, and fixes custom layout roots', () => {
     const repository = createRepository({
@@ -316,7 +331,12 @@ Base: ${repository.baseRef} (argument)
     expect(readFileSync(path.join(repository.root, 'lib/legacy/old.ts'), 'utf8')).toBe(
       'export let old=3;\n',
     );
-    expect(output.stdoutText).toMatch(/Fixed files:\nlib\/changed.ts\nBase:/);
+    expect(fixLines(output.stdoutText)).toBe(`Fixed files:
+lib/changed.ts
+Fix notes:
+  eslint --fix rewrote lib/changed.ts
+  prettier rewrote lib/changed.ts
+`);
   });
   it('hands eslint --fix the ESLint project config the project opted into', () => {
     const repository = createRepository({
@@ -343,7 +363,7 @@ Base: ${repository.baseRef} (argument)
           return undefined;
         }
         layers.push(JSON.parse(environment[PROJECT_LAYER_VARIABLE]));
-        return { status: 0, stdout: '', stderr: '' };
+        return { status: 0, stdout: '[]', stderr: '' };
       },
       stdout: output.stdout,
       stderr: output.stderr,

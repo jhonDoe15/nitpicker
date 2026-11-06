@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { keepingLineEndings, withLineEndingsOf } from './line-endings.mjs';
+import { keepingLineEndings, withFixedLineEndingsOf, withLineEndingsOf } from './line-endings.mjs';
 import { lineHunks, linesOf, touchedLinesFormatted } from './line-hunks.mjs';
 
 describe('linesOf', () => {
@@ -81,6 +81,13 @@ describe('line endings', () => {
       withLineEndingsOf('a\n', 'a\nb\n'),
       withLineEndingsOf('a\r\n', 'a\r\nb\n'),
     ]).toEqual(['a\r\nb\r\n', 'a\nb\n', 'a\r\nb\n']);
+  });
+  it('turns the bare LFs a fix inserted into CRLF only when the source used CRLF throughout', () => {
+    expect([
+      withFixedLineEndingsOf('a\r\nb\r\n', 'a\r\n\nb\r\n'),
+      withFixedLineEndingsOf('a\r\nb\n', 'a\r\n\nb\n'),
+      withFixedLineEndingsOf('a\n', 'a\n\n'),
+    ]).toEqual(['a\r\n\r\nb\r\n', 'a\r\n\nb\n', 'a\n\n']);
   });
   it('wraps a formatter so each output follows its own source', () => {
     const format = keepingLineEndings((sources) => ({

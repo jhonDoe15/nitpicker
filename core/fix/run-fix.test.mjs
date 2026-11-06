@@ -27,6 +27,11 @@ function repository() {
   return created;
 }
 
+const TYPESCRIPT_REPLIES = {
+  'eslint-fix': '[]',
+  'prettier-fix': JSON.stringify({ results: [{ path: 'src/a.ts', ignored: true }] }),
+};
+
 function operationsFor(config) {
   const created = repository();
   const python = fakePythonTools();
@@ -40,6 +45,9 @@ function operationsFor(config) {
     config,
     executeFixCommand: (invocation) => {
       operations.push(invocation.operation);
+      if (invocation.operation in TYPESCRIPT_REPLIES) {
+        return { status: 0, stdout: TYPESCRIPT_REPLIES[invocation.operation], stderr: '' };
+      }
       if (['ruff-fix', 'ruff-format-fix', 'python-probe'].includes(invocation.operation)) {
         return python.executeFixCommand(invocation);
       }
@@ -58,7 +66,7 @@ describe('fixWorkingTree', () => {
       const { operations, result } = operationsFor(config);
 
       expect(operations).toEqual(['eslint-fix', 'prettier-fix']);
-      expect(result.notes).toBeUndefined();
+      expect(result).toEqual({ fixedFiles: [], toolErrors: [], notes: [] });
     },
   );
   it('runs only the Python fixers for the python preset', () => {

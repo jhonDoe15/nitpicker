@@ -5,8 +5,19 @@ import path from 'node:path';
 const SUFFIX_BYTES = 6;
 const PERMISSION_BITS = 0o7777;
 
+function stillHolds(file, expected) {
+  try {
+    return readFileSync(file).equals(expected);
+  } catch (error) {
+    if (error.code === 'ENOENT') {
+      return false;
+    }
+    throw error;
+  }
+}
+
 export function replaceIfUnchanged(file, expected, text) {
-  if (!readFileSync(file).equals(expected)) {
+  if (!stillHolds(file, expected)) {
     return false;
   }
   const temporary = path.join(

@@ -1,5 +1,5 @@
 import { isUtf8 } from 'node:buffer';
-import { lstatSync, readFileSync } from 'node:fs';
+import { existsSync, lstatSync, readFileSync } from 'node:fs';
 import { globMatcher } from '../../../shared/paths/glob.mjs';
 import { collectWorkingTreeChanges } from '../changes.mjs';
 import { containedPath } from './contained-path.mjs';
@@ -35,11 +35,14 @@ export function readBytes(projectRoot, files) {
   );
 }
 
+function isRewritten(projectRoot, name, before) {
+  const file = containedPath(projectRoot, name);
+  return existsSync(file) && !before.get(name).equals(readFileSync(file));
+}
+
 export function rewrittenPaths(projectRoot, files, before) {
   return files
-    .filter(
-      ({ path: name }) => !before.get(name).equals(readFileSync(containedPath(projectRoot, name))),
-    )
+    .filter(({ path: name }) => isRewritten(projectRoot, name, before))
     .map(({ path: name }) => name);
 }
 
