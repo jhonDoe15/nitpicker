@@ -16,6 +16,27 @@
     <properties>
       <property name="xpath">
         <value><![CDATA[
+let $booleanSwitch := function($switch) {
+  let $branches := $switch/(SwitchArrowBranch | SwitchFallthroughBranch),
+      $valueOf := function($b) {
+        let $body := $b/(* except SwitchLabel),
+            $inner := if (count($body) = 1 and $body[self::Block]) then $body/* else $body
+        return if (empty($body) and $b[self::SwitchFallthroughBranch]) then 'fall'
+          else if (count($inner) = 1 and $inner[self::BooleanLiteral] and $b[self::SwitchArrowBranch]) then string($inner/@True)
+          else if (count($inner) = 1 and $inner[self::ReturnStatement or self::YieldStatement][count(*) = 1][BooleanLiteral])
+            then string($inner/BooleanLiteral/@True)
+          else 'other' },
+      $default := $branches[SwitchLabel[@Default = true()]],
+      $others := $branches except $default,
+      $branchValue := if (count($default) = 1 and $valueOf($default) = 'true') then 'false' else 'true'
+  return exists($switch/*[1][pmd-java:typeIs('java.lang.Enum')])
+    and count($default) = 1
+    and $valueOf($default) = ('true', 'false')
+    and $valueOf($branches[last()]) != 'fall'
+    and (every $label in $others/SwitchLabel/* satisfies $label[self::VariableAccess or self::FieldAccess[TypeExpression]])
+    and exists($others[$valueOf(.) != 'fall'])
+    and (every $b in $others satisfies $valueOf($b) = ('fall', $branchValue)) }
+return
 (
   //InfixExpression[@Operator = ('||', '&&')][not(parent::InfixExpression/@Operator = @Operator)]
     [let $root := ., $op := @Operator, $test := if ($op = '||') then '==' else '!=',
@@ -25,41 +46,58 @@
          $operands := descendant::*[not(self::InfixExpression[@Operator = $op])]
            [ancestor::*[not(self::InfixExpression[@Operator = $op])][1] is $root/..]
            [parent::InfixExpression[@Operator = $op]],
-         $constants := $operands/*[pmd-java:typeIs('java.lang.Enum')]
+         $sidesOf := function($o) {
+           let $e := if ($o[self::UnaryExpression[@Operator = '!']]) then $o/* else $o
+           return if ($e[self::InfixExpression[@Operator = ('==', '!=')]]) then $e/*
+             else if ($e[self::MethodCall[@MethodName = 'equals'][ArgumentList/@Size = 1][*[1][not(self::ArgumentList)]]])
+               then ($e/*[1], $e/ArgumentList/*)
+             else if ($e[self::MethodCall[pmd-java:matchesSig('java.util.Objects#equals(_,_)')]]) then $e/ArgumentList/*
+             else () },
+         $sides := for $o in $operands return $sidesOf($o),
+         $constants := $sides[pmd-java:typeIs('java.lang.Enum')]
            [self::FieldAccess[TypeExpression] or self::VariableAccess[@Name = $singles]
             or self::VariableAccess[$onDemand][matches(@Name, '^[A-Z][A-Z0-9_]*$')]],
-         $subjects := $operands/* except $constants
+         $subjects := $sides except $constants
        return count($operands) >= 2
-         and (every $o in $operands satisfies $o[self::InfixExpression[@Operator = $test]]
-               [count(* intersect $constants) = 1]
-               [(* except $constants)[self::VariableAccess or self::FieldAccess[ThisExpression]
+         and (every $o in $operands satisfies
+               ($o[self::InfixExpression[@Operator = $test]]
+                or $o[$op = '||'][self::MethodCall]
+                or $o[$op = '&&'][self::UnaryExpression[@Operator = '!']]
+                    [*[self::InfixExpression[@Operator = '=='] or self::MethodCall]])
+               and count($sidesOf($o)) = 2
+               and count($sidesOf($o) intersect $constants) = 1
+               and exists(($sidesOf($o) except $constants)[self::VariableAccess or self::FieldAccess[ThisExpression]
                   or self::MethodCall[ArgumentList/@Size = 0]
                     [*[1][self::ArgumentList or self::VariableAccess or self::ThisExpression
                           or self::FieldAccess[ThisExpression]]]
                     [matches(@MethodName, '^(get|is)[A-Z]')
                      or *[1][not(self::ArgumentList)][pmd-java:typeIs('java.lang.Record')]
                      or (*[1][self::ArgumentList or self::ThisExpression]
-                         and @MethodName = ancestor::RecordDeclaration[1]/RecordComponentList/RecordComponent/VariableId/@Name)]]])
+                         and @MethodName = ancestor::RecordDeclaration[1]/RecordComponentList/RecordComponent/VariableId/@Name)]]))
          and count(distinct-values(for $s in $subjects return
                if ($s[self::MethodCall])
                then string-join(($s/*[1][self::VariableAccess or self::FieldAccess]/@Name, $s/@MethodName), '.') || '()'
                else string($s/@Name))) = 1
          and count(distinct-values($constants/@Name)) = count($constants)]
   | //MethodCall[@MethodName = 'contains'][ArgumentList/@Size = 1]
-      [*[1][self::MethodCall[pmd-java:matchesSig('java.util.EnumSet#of(_*)')]]
+      [*[1][self::MethodCall[pmd-java:matchesSig('java.util.EnumSet#of(_*)') or pmd-java:matchesSig('java.util.Set#of(_*)')
+                             or pmd-java:matchesSig('java.util.List#of(_*)') or pmd-java:matchesSig('java.util.Arrays#asList(_*)')]]
         [ArgumentList/@Size >= 2]
         [let $statics := /CompilationUnit/ImportDeclaration[@Static = true()],
              $singles := $statics[not(@ImportOnDemand)]/@ImportedSimpleName,
              $onDemand := exists($statics[@ImportOnDemand])
          return every $c in ArgumentList/* satisfies
-           $c[self::FieldAccess[TypeExpression] or self::VariableAccess[@Name = $singles]
+           $c[pmd-java:typeIs('java.lang.Enum')]
+             [self::FieldAccess[TypeExpression] or self::VariableAccess[@Name = $singles]
               or self::VariableAccess[$onDemand][matches(@Name, '^[A-Z][A-Z0-9_]*$')]]]]
+  | //SwitchExpression[$booleanSwitch(.)]
 )
   [let $self := .,
        $holder := ancestor::*[not(self::InfixExpression[@Operator = ('&&', '||')] or self::ConditionalExpression
                                   or self::UnaryExpression[@Operator = '!'])][1]
    return $holder[self::ReturnStatement or self::LambdaExpression or self::VariableDeclarator]
      or $holder[self::AssignmentExpression][not(*[1] intersect $self/ancestor-or-self::*)]]
+| //SwitchStatement[$booleanSwitch(.)]
 ]]></value>
       </property>
     </properties>
@@ -105,29 +143,95 @@
     <properties>
       <property name="xpath">
         <value><![CDATA[
-(
+let $boxes := map { 'boolean': 'Boolean', 'byte': 'Byte', 'char': 'Character', 'short': 'Short',
+                    'int': 'Integer', 'long': 'Long', 'float': 'Float', 'double': 'Double' },
+    $irregular := ('analysis:analyses', 'axis:axes', 'child:children', 'criterion:criteria', 'foot:feet',
+                   'index:indices', 'index:indexes', 'leaf:leaves', 'life:lives', 'man:men', 'matrix:matrices',
+                   'mouse:mice', 'person:people', 'tooth:teeth', 'vertex:vertices', 'woman:women'),
+    $upper := function($word) { upper-case(substring($word, 1, 1)) || substring($word, 2) },
+    $plurals := function($name) {
+      ($name || 's', $name || 'es',
+       if (matches($name, '[^aeiou]y$')) then substring($name, 1, string-length($name) - 1) || 'ies' else (),
+       for $pair in $irregular
+       return let $one := substring-before($pair, ':'), $many := substring-after($pair, ':')
+              return if ($name = $one) then $many
+                     else if (ends-with($name, $upper($one)))
+                     then substring($name, 1, string-length($name) - string-length($one)) || $upper($many)
+                     else ())
+    },
+    $nullable := function($member) { exists($member/ModifierList/Annotation[@SimpleName = 'Nullable']) },
+    $entity := function($class) {
+      exists($class/ModifierList/Annotation[
+        pmd-java:typeIs('jakarta.persistence.Entity') or pmd-java:typeIs('javax.persistence.Entity')
+        or pmd-java:typeIs('jakarta.persistence.Embeddable') or pmd-java:typeIs('javax.persistence.Embeddable')
+        or pmd-java:typeIs('jakarta.persistence.MappedSuperclass')
+        or pmd-java:typeIs('javax.persistence.MappedSuperclass')])
+    },
+    $component := function($class) {
+      exists($class/ModifierList/Annotation[
+        pmd-java:typeIs('org.springframework.stereotype.Component')
+        or pmd-java:typeIs('org.springframework.stereotype.Service')
+        or pmd-java:typeIs('org.springframework.stereotype.Repository')
+        or pmd-java:typeIs('org.springframework.stereotype.Controller')
+        or pmd-java:typeIs('org.springframework.web.bind.annotation.RestController')
+        or pmd-java:typeIs('org.springframework.context.annotation.Configuration')])
+    },
+    $dto := function($class) {
+      not($entity($class)) and not($component($class)) and (
+        exists($class/ModifierList/Annotation[
+          pmd-java:typeIs('lombok.Value') or pmd-java:typeIs('lombok.Data') or pmd-java:typeIs('lombok.Builder')
+          or pmd-java:typeIs('lombok.experimental.SuperBuilder')
+          or pmd-java:typeIs('lombok.extern.jackson.Jacksonized')])
+        or exists(($class/ModifierList/Annotation | $class/ClassBody/FieldDeclaration/ModifierList/Annotation
+                   | $class/ClassBody/ConstructorDeclaration/ModifierList/Annotation)
+                  [ClassType[starts-with(@SimpleName, 'Json')]]
+                  [pmd-java:typeIs('com.fasterxml.jackson.annotation.JsonProperty')
+                   or pmd-java:typeIs('com.fasterxml.jackson.annotation.JsonAlias')
+                   or pmd-java:typeIs('com.fasterxml.jackson.annotation.JsonCreator')
+                   or pmd-java:typeIs('com.fasterxml.jackson.annotation.JsonInclude')
+                   or pmd-java:typeIs('com.fasterxml.jackson.annotation.JsonFormat')
+                   or pmd-java:typeIs('com.fasterxml.jackson.annotation.JsonIgnoreProperties')
+                   or pmd-java:typeIs('com.fasterxml.jackson.annotation.JsonPropertyOrder')
+                   or pmd-java:typeIs('com.fasterxml.jackson.annotation.JsonTypeName')
+                   or pmd-java:typeIs('com.fasterxml.jackson.databind.annotation.JsonDeserialize')
+                   or pmd-java:typeIs('com.fasterxml.jackson.databind.annotation.JsonSerialize')
+                   or pmd-java:typeIs('com.fasterxml.jackson.databind.annotation.JsonNaming')])
+        or (exists($class/ClassBody/MethodDeclaration)
+            and (every $method in $class/ClassBody/MethodDeclaration
+                 satisfies matches($method/@Name, '^(get|set|is)[A-Z]')
+                           or $method/@Name = ('equals', 'hashCode', 'toString'))))
+    },
+    $exported := function($executable) {
+      $executable/(self::MethodDeclaration | self::ConstructorDeclaration)[pmd-java:modifiers() = 'public']
+        [not(ModifierList/Annotation[pmd-java:typeIs('java.lang.Override')])]
+        [not(self::ConstructorDeclaration and parent::RecordBody)]
+        [ancestor::*[self::ClassDeclaration or self::InterfaceDeclaration or self::EnumDeclaration
+                     or self::RecordDeclaration][1][pmd-java:modifiers() = 'public']]
+    },
+    $typeOf := function($member) { ($member/ClassType | $member/ArrayType | $member/PrimitiveType)[1] },
+    $nameOf := function($member) { ($member/VariableId | $member/VariableDeclarator/VariableId)[1]/@Name },
+    $simple := function($type) { if ($type[self::PrimitiveType]) then $boxes($type/@Kind) else $type/@SimpleName }
+return (
   //RecordDeclaration/RecordComponentList/RecordComponent[not(@Varargs = true())]
   | //ClassDeclaration[ancestor-or-self::ClassDeclaration/ModifierList/Annotation
-                         [pmd-java:typeIs('org.springframework.boot.context.properties.ConfigurationProperties')]]
+                         [pmd-java:typeIs('org.springframework.boot.context.properties.ConfigurationProperties')]
+                       or $dto(.)]
       /ClassBody/FieldDeclaration[not(pmd-java:modifiers() = 'static')]
+  | //FormalParameters[exists($exported(..))]/FormalParameter[not(@Varargs = true())][$nullable(.)]
 )
-  [let $boxes := map { 'boolean': 'Boolean', 'byte': 'Byte', 'char': 'Character', 'short': 'Short',
-                       'int': 'Integer', 'long': 'Long', 'float': 'Float', 'double': 'Double' },
-       $type := (ClassType | ArrayType | PrimitiveType)[1],
+  [let $type := $typeOf(.),
        $element := if ($type[self::ArrayType]) then $type/*[1]
                    else $type[self::ClassType][@SimpleName = ('List', 'Set', 'Collection', 'Iterable', 'SortedSet')]
                           /TypeArguments[count(*) = 1]/*[1],
-       $plural := (VariableId | VariableDeclarator/VariableId)[1]/@Name
+       $plural := $nameOf(.)
    return exists($element)
-     and (some $other in ../(RecordComponent | FieldDeclaration[not(pmd-java:modifiers() = 'static')])
+     and (some $other in ../(RecordComponent | FieldDeclaration[not(pmd-java:modifiers() = 'static')]
+                             | FormalParameter[not(@Varargs = true())][$nullable(.)])
           satisfies
-            let $name := ($other/VariableId | $other/VariableDeclarator/VariableId)[1]/@Name,
-                $own := ($other/ClassType | $other/ArrayType | $other/PrimitiveType)[1],
-                $ownName := if ($own[self::PrimitiveType]) then $boxes($own/@Kind) else $own/@SimpleName,
-                $elementName := if ($element[self::PrimitiveType]) then $boxes($element/@Kind) else $element/@SimpleName
-            return $plural = ($name || 's', $name || 'es',
-                              if (matches($name, '[^aeiou]y$')) then substring($name, 1, string-length($name) - 1) || 'ies' else ())
-              and $own[self::ClassType or self::PrimitiveType] and $ownName = $elementName)]
+            let $own := $typeOf($other)
+            return $plural = $plurals($nameOf($other))
+              and $own[self::ClassType or self::PrimitiveType] and $simple($own) = $simple($element)
+              and not($own/TypeArguments) and not($element/TypeArguments))]
 ]]></value>
       </property>
     </properties>
