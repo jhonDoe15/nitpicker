@@ -61,8 +61,9 @@ The messages name zod, the default validation library; in a project that depends
 
 ## Getting started
 
-nitpicker needs Node.js 22.14 or newer (22.19 or newer on TypeScript 7) and a Git repository. For a
-TypeScript project:
+nitpicker needs Node.js 22.14 or newer (22.19 or newer on TypeScript 7) and a Git repository.
+[Compatibility](docs/compatibility.md) lists the operating systems, runtimes (Deno too), build tools
+and test runners CI tests, with their versions. For a TypeScript project:
 
 ```sh
 npm install --save-dev nitpicker typescript @types/node
@@ -124,6 +125,8 @@ with a link to the tool's own page for the rule where the reference has no allow
 - [nitpicker in CI](docs/ci.md): GitHub Actions (the action and plain steps), GitLab CI, Jenkins,
   the toolchain each preset needs.
 - [Checks](spec/checks.md): every check and rule, and what fails.
+- [Compatibility](docs/compatibility.md): the tested operating systems, runtimes, build tools and
+  test runners per preset, and the limits on Windows, Deno and Bun.
 - [Rule reference](docs/rules/README.md): one entry for every rule any preset can report, with the
   allowed form (or the tool's own page for the rule) and the exception to add.
   `nitpicker explain <tool/rule>` prints one in the terminal.
