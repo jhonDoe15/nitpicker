@@ -54,7 +54,7 @@ describe.skipIf(!enabled)('any in domain code and in pydantic models', () => {
       [
         'Any outside the domain',
         inFile('src/a.py', 'from typing import Any\n\n\ndef f(x: Any) -> int:\n    return 1\n'),
-        [],
+        ['explicit-any:4 f(x)'],
       ],
       [
         'Any in a domain test',
@@ -62,7 +62,7 @@ describe.skipIf(!enabled)('any in domain code and in pydantic models', () => {
           'tests/domain/test_a.py',
           'from typing import Any\n\n\ndef f(x: Any) -> int:\n    return 1\n',
         ),
-        [],
+        ['explicit-any:4 f(x)'],
       ],
     ]);
     expect(actual).toEqual(expected);
@@ -99,7 +99,7 @@ describe.skipIf(!enabled)('any in domain code and in pydantic models', () => {
         [
           'an Any field of a plain class',
           'from typing import Any\n\n\nclass M:\n    value: Any\n',
-          [],
+          ['explicit-any:5 M.value'],
         ],
       ]),
     );
@@ -169,6 +169,8 @@ describe.skipIf(!enabled)('any behind aliases and models in other files', () => 
       'any-in-domain src/shop/domain/order.py:14 later',
       'any-in-domain src/shop/domain/order.py:22 Row',
       'any-in-domain src/shop/domain/order.py:23 Pair',
+      'explicit-any src/shop/json_types.py:3 Payload',
+      'explicit-any src/shop/json_types.py:4 Blob',
     ]);
   });
 

@@ -54,6 +54,8 @@ export const POLICY_FILES = [
   'shared/rules/doc-comments/doc-comments.mjs',
   'languages/typescript/preset/eslint-plugin/rules/boundaries/no-handwritten-boundary-guard.mjs',
   'languages/typescript/preset/eslint-plugin/rules/control/no-self-recursion.mjs',
+  'languages/typescript/preset/eslint-plugin/rules/collections/accumulating-spread-messages.mjs',
+  'languages/typescript/preset/eslint-plugin/rules/collections/no-accumulating-spread.mjs',
   'languages/typescript/preset/eslint-plugin/rules/errors/no-throw.mjs',
   'languages/typescript/preset/eslint-plugin/rules/boundaries/no-unknown-in-domain.mjs',
   'languages/typescript/preset/eslint-plugin/rules/boundaries/no-unvalidated-schema-field.mjs',

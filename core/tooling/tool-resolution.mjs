@@ -44,8 +44,9 @@ function owningTool(name, { projectRoot, packageRoot }) {
 
 function installedTool(name, { owningManifest, owningPeers, from }) {
   const packageFile = findPackageJSON(name, pathToFileURL(path.join(from, 'package.json')).href);
-  if (packageFile === undefined)
-    throw new Error(`Required tool ${name} is not installed from ${from}`);
+  if (packageFile === undefined) {
+    throw new Error(missingToolMessage(name, from));
+  }
   const root = realpathSync(path.dirname(packageFile));
   if (isAnalyzedSnapshotPath(packageFile) || isAnalyzedSnapshotPath(root))
     throw new Error(`Tool ${name} must not resolve from an analyzed snapshot`);
@@ -57,6 +58,19 @@ function installedTool(name, { owningManifest, owningPeers, from }) {
     isPeer: owningPeers.has(name),
   });
   return { root, installed };
+}
+
+const VITEST_PACKAGES = new Set(['vitest', '@vitest/coverage-v8']);
+
+export function missingToolMessage(name, from) {
+  const message = `Required tool ${name} is not installed from ${from}`;
+  if (!VITEST_PACKAGES.has(name)) {
+    return message;
+  }
+  return (
+    `${message}. If npm 10 failed to install it with "reading 'edgesOut'", install with npm 11 ` +
+    '(`npx npm@11 install`) or use Vitest 5'
+  );
 }
 
 function toolBinary(name, root, bin) {

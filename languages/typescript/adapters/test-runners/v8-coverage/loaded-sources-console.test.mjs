@@ -1,11 +1,14 @@
+import { AsyncResource } from 'node:async_hooks';
 import { EventEmitter } from 'node:events';
 import fs, { mkdtempSync, readFileSync, rmSync } from 'node:fs';
 import { Console } from 'node:console';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { PassThrough } from 'node:stream';
+import { pathToFileURL } from 'node:url';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
+  IN_PROCESS_OPTION,
   LINES_VARIABLE,
   MAX_CONTENT_LENGTH,
   RUNNER_VARIABLE,
@@ -272,6 +275,106 @@ describe('the node:test console capture', () => {
       ['test/a.test.js', 'pick > answers', 'in the project afterEach'],
       ['test/a.test.js', '', 'in an async root after hook'],
     ]);
+  });
+
+  it('records under the node:test resource a call runs in when every file runs in the runner', async () => {
+    const environment = { [LINES_VARIABLE]: linesPath };
+    const file = path.resolve('test/a.test.js');
+    function resource(fields) {
+      return Object.assign(new AsyncResource('Test'), fields);
+    }
+    expect(
+      captureNodeTest({
+        environment,
+        testRunner: true,
+        processId: 5,
+        inProcess: true,
+        target,
+        events: new EventEmitter(),
+      }),
+    ).toEqual({ capturing: true });
+    const root = resource({ name: '<root>', entryFile: file });
+    const pick = resource({ name: 'pick', parent: root, entryFile: file });
+    const answers = resource({ name: 'answers', parent: pick, entryFile: file });
+    const hookFile = pathToFileURL(file).href;
+    const hook = resource({
+      name: 'beforeEach',
+      hookType: 'beforeEach',
+      parent: pick,
+      loc: { file: hookFile },
+    });
+    const loadTimeWork = root.runInAsyncScope(async () => {
+      target.warn('while loading');
+      await new Promise((resolve) => {
+        setImmediate(resolve);
+      });
+      target.warn('after loading');
+    });
+    root.entryFile = path.resolve('test/b.test.js');
+    await loadTimeWork;
+    hook.runInAsyncScope(() => {
+      target.warn('in a hook');
+    });
+    await answers.runInAsyncScope(async () => {
+      await new Promise((resolve) => {
+        setImmediate(resolve);
+      });
+      target.error('after a wait');
+    });
+    target.warn('from the runner itself');
+
+    expect([environment[RUNNER_VARIABLE], placesWritten()]).toEqual([
+      '5',
+      [
+        ['test/a.test.js', '', 'while loading'],
+        ['test/a.test.js', '', 'after loading'],
+        ['test/a.test.js', '', 'in a hook'],
+        ['test/a.test.js', '', 'after a wait'],
+      ],
+    ]);
+  });
+
+  it('records the loading of each file when the runner loads the preload inside its root test', async () => {
+    const environment = { [LINES_VARIABLE]: linesPath };
+    const root = Object.assign(new AsyncResource('Test'), { name: '<root>', entryFile: null });
+    const loadTimeTimer = root.runInAsyncScope(() => {
+      captureNodeTest({
+        environment,
+        testRunner: true,
+        processId: 5,
+        inProcess: true,
+        target,
+        events: new EventEmitter(),
+      });
+      root.entryFile = path.resolve('test/a.test.js');
+      target.warn('while loading a');
+      const timer = new Promise((resolve) => {
+        setTimeout(() => {
+          target.warn('timer from loading a');
+          resolve();
+        }, 5);
+      });
+      root.entryFile = path.resolve('test/b.test.js');
+      target.warn('while loading b');
+      return timer;
+    });
+    await loadTimeTimer;
+
+    expect(placesWritten()).toEqual([
+      ['test/a.test.js', '', 'while loading a'],
+      ['test/b.test.js', '', 'while loading b'],
+      ['test/a.test.js', '', 'timer from loading a'],
+    ]);
+  });
+
+  it.each([
+    ['--test --experimental-test-isolation=none ', true],
+    ['--test --test-isolation none ', true],
+    ['--test --max-old-space-size=100 --experimental-test-isolation=none', true],
+    ['--test --experimental-test-isolation=process ', false],
+    ['--test --test-isolation=nonesuch', false],
+  ])('tells a runner that runs every file itself from its options "%s"', (options, inProcess) => {
+    expect(IN_PROCESS_OPTION.test(options)).toBe(inProcess);
   });
 
   it('leaves the runner named by an outer run to it, so an inner runner a test starts records nothing', () => {

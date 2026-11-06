@@ -11,6 +11,14 @@ const skillNames = readdirSync(skillsRoot, { withFileTypes: true })
   .map((entry) => entry.name)
   .filter((name) => existsSync(path.join(skillsRoot, name, 'SKILL.md')));
 const PRESET_MENTIONS_ALLOWED = { java: ['kotlin'] };
+const SHARED_PAGES = ['SKILL.md', 'beyond-the-gate.md', 'editing-existing-code.md'];
+const OPTIONAL_PAGES = ['SOURCES.md'];
+const FRAMEWORK_PAGES = {
+  'spring.md': {
+    skills: ['nitpicker-java', 'nitpicker-kotlin'],
+    reason: 'only the JVM presets ship Spring rules',
+  },
+};
 
 function readSkill(name) {
   const text = readFileSync(path.join(skillsRoot, name, 'SKILL.md'), 'utf8').replaceAll(
@@ -20,6 +28,16 @@ function readSkill(name) {
   const yaml = /^---\n(?<yaml>[\s\S]*?)\n---\n/u.exec(text)?.groups?.yaml;
   if (yaml === undefined) throw new Error(`${name}/SKILL.md has no frontmatter`);
   return { text, frontmatter: parse(yaml, { strict: true, uniqueKeys: true }) };
+}
+
+function skillFiles(name) {
+  return readdirSync(path.join(skillsRoot, name), { withFileTypes: true }).map((entry) =>
+    entry.isFile() ? entry.name : `${entry.name}/`,
+  );
+}
+
+function frameworkPagesOf(name) {
+  return Object.keys(FRAMEWORK_PAGES).filter((page) => FRAMEWORK_PAGES[page].skills.includes(name));
 }
 
 function relativeLinks(text) {
@@ -68,6 +86,25 @@ describe('agent skills', () => {
       (file) => file.endsWith('.md') && file !== 'SKILL.md',
     );
     expect(pages.filter((page) => !links.includes(page))).toEqual([]);
+  });
+
+  it.each(skillNames)('%s ships every shared page', (name) => {
+    const files = skillFiles(name);
+    expect(SHARED_PAGES.filter((page) => !files.includes(page))).toEqual([]);
+  });
+
+  it.each(skillNames)(
+    '%s ships no page beyond the shared, optional and registered framework pages',
+    (name) => {
+      const allowed = [...SHARED_PAGES, ...OPTIONAL_PAGES, ...frameworkPagesOf(name)];
+      expect(skillFiles(name).filter((file) => !allowed.includes(file))).toEqual([]);
+    },
+  );
+
+  it.each(Object.keys(FRAMEWORK_PAGES))('%s names existing skills and a reason', (page) => {
+    const { skills, reason } = FRAMEWORK_PAGES[page];
+    expect(skills.filter((name) => !skillNames.includes(name))).toEqual([]);
+    expect(reason.length).toBeGreaterThan(0);
   });
 
   it.each(skillNames)('%s names other skills by their installable names', (name) => {

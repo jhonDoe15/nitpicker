@@ -23,7 +23,27 @@ itself is tested end to end with npm projects. nitpicker brings its own pinned E
 Stryker and CRAP tooling and loads them from its own package, so neither side of the comparison can
 choose them. `vitest` and `@vitest/coverage-v8` (4.1.11 or newer, or 5) and `typescript` come from
 your project; if one is missing or incompatible, the tool that needs it fails and the report shows a
-tool error.
+tool error. On Node.js 22 with its bundled npm 10, see [npm 10 and Vitest 4.1](#npm-10-and-vitest-41).
+
+### npm 10 and Vitest 4.1
+
+Node.js 22 ships with npm 10, and npm 10 cannot resolve the peers of Vitest 4.1 (every 4.1.x
+release, with or without `@vitest/coverage-v8`) when there is no lockfile to start from:
+
+```text
+npm error Cannot read properties of null (reading 'edgesOut')
+```
+
+Nothing is installed, so a later `npx nitpicker` fails with "Required tool vitest is not installed",
+followed by this hint. Any one of these avoids it:
+
+- Install with npm 11: `npx npm@11 install --save-dev nitpicker vitest @vitest/coverage-v8`, or
+  `npm install -g npm@11` once. The lockfile it writes then installs with npm 10 too, so `npm ci` in
+  CI on Node.js 22 works.
+- Use Vitest 5 (`vitest@5 @vitest/coverage-v8@5`), which npm 10 installs.
+- Add `--legacy-peer-deps` to the npm 10 install.
+
+Vitest 4.0 does not hit it, but nitpicker needs 4.1.11 or newer.
 
 ### From a GitHub release
 
@@ -174,6 +194,48 @@ first there). A lockfile that does not match its `package.json` fails the frozen
 tool error carries the manager's message. Installing the base is not supported on native Windows
 (run nitpicker in WSL).
 
+Local packages (`file:`, `link:` and `portal:` dependencies) resolve against the temporary
+worktree, so a package outside the repository (`file:../shared-lib`, `file:../nitpicker-0.1.0.tgz`)
+or one that is not committed would be missing there. Before the install, nitpicker copies each such
+package from your working tree to the matching place next to the worktree, leaving out its
+`node_modules` and `.git`, and removes the copies afterwards. The copy is the package as it is now,
+not as it was at the base. A package that is not in your working tree either is named in the tool
+error. On Node.js 22, npm 10 can stop with `Cannot read properties of null (reading 'edgesOut')`
+while it resolves the optional peer dependencies of Vitest 4; the tool error then says to update npm
+(`npm install --global npm@11`; see [npm 10 and Vitest 4.1](#npm-10-and-vitest-41)).
+
+### Console summary
+
+A comparison run prints a short summary. New violations are grouped by rule, in the order to fix
+them: format, type check, lint, structure, then tests, coverage, CRAP and mutation. Each rule prints
+its advice once, then one line per place (`path:line:col` and only the part of the message that
+differs between findings), then once the `exceptions` entry that accepts it, with `<path>` (or
+`<function>`) where the findings of the rule differ; a line then names its own function, for example
+`(function price)`. A count per area follows the headline:
+
+```text
+Quality gate summary
+✖ 5 new enforceable violations
+  by area: lint 4 · coverage 1
+  eslint-lint/nitpicker/no-magic-numbers: Name it with a module-level constant.
+    src/main/pricing.ts:4:20 No magic number: 3.
+    src/main/pricing.ts:5:24 No magic number: 4.
+    If this is intended, add {"rule":"nitpicker/no-magic-numbers","paths":["src/main/pricing.ts"],"reason":"..."} to "exceptions" in nitpicker.config.json.
+  eslint-lint/@typescript-eslint/no-unsafe-member-access: Have adapters/ parse it into a typed object.
+    src/main/pricing.ts:4:14, 6:23 Unsafe member access .qty on an `any` value.
+    If this is intended, add {"rule":"@typescript-eslint/no-unsafe-member-access","paths":["src/main/pricing.ts"],"reason":"..."} to "exceptions" in nitpicker.config.json.
+  coverage/changed-branch-coverage: Branch coverage is 0.00%; minimum is 95%. Test it, or remove it if it can't happen.
+    src/main/pricing.ts:4 Not taken: the true arm of the if at 4:5.
+    If this is intended, add {"rule":"changed-branch-coverage","paths":["src/main/pricing.ts"],"function":"price","reason":"..."} to "exceptions" in nitpicker.config.json.
+Full diagnostics: reports/quality/diff/report.txt
+```
+
+Findings that are allowed because the base already had them ("still over a limit", "existing lint
+findings in edited code") are listed after the violations, at most 10 of each, without their
+exception entries. `--details` prints every finding with its full message instead, the layout
+`report.txt`, the JSON reports and SARIF always keep. `--all` prints `report.txt` itself, so
+`--details` changes nothing there.
+
 ### Reports
 
 A comparison run writes these files to `reports/quality/diff/`:
@@ -263,7 +325,7 @@ Upload the comparison file in pull requests with `github/codeql-action/upload-sa
 ```yaml
 - run: npx nitpicker
   working-directory: packages/app
-- uses: github/codeql-action/upload-sarif@v3
+- uses: github/codeql-action/upload-sarif@v4.39.1
   if: always()
   with:
     sarif_file: packages/app/reports/quality/diff/report.sarif
@@ -277,11 +339,11 @@ next comparison upload would close the alerts it opened.
 
 ## Exit codes
 
-| Code | Meaning                                                                                                          |
-| ---- | ---------------------------------------------------------------------------------------------------------------- |
-| 0    | Completed with no new enforceable findings.                                                                      |
-| 1    | At least one new enforceable finding (`--all`: any violation), even if a tool also errored.                      |
-| 2    | A tool error and no new enforceable findings, invalid arguments, invalid config, or any other failure to decide. |
+| Code | Meaning                                                                                                           |
+| ---- | ----------------------------------------------------------------------------------------------------------------- |
+| 0    | Completed with no new enforceable findings. A run narrowed with `--analyzer` checked only the analyzers it names. |
+| 1    | At least one new enforceable finding (`--all`: any violation), even if a tool also errored.                       |
+| 2    | A tool error and no new enforceable findings, invalid arguments, invalid config, or any other failure to decide.  |
 
 A tool error never counts as a pass. When a run has both findings and tool errors it exits 1, and the
 tool errors are still listed in the console and reports and recorded in `summary.json`
@@ -302,11 +364,11 @@ automatically.
 
 ```text
 nitpicker [--base <ref>] [--output <dir>] [--all | --fix]
-          [--analyzer <name>]... [--rule <substring>]...
+          [--analyzer <name>]... [--rule <substring>]... [--details]
           [--shard-count <n> --shard-index <i>] [--defer-exit] [--no-cache]
           [--accept-policy-change=<digest>] [--help]
 nitpicker aggregate --input-root <dir> --shard-count <n>
-          [--output <dir>] [--policy-root <dir>]
+          [--output <dir>] [--policy-root <dir>] [--details]
 nitpicker cache publish [--analyzer <name>]...
           [--shard-count <n> --shard-index <i>]
 nitpicker base [--base <ref>]
@@ -330,8 +392,15 @@ nitpicker rules [--preset <name>] [--tool <name>]
   the gate's `prettier.endOfLine` convention, as its format check expects. A fixer that fails is reported as a tool error; the
   other fixers and the comparison still run. Cannot be combined with `--all`.
 - `--base <ref>`: the ref to compare against.
-- `--analyzer <name>`: run only this analyzer (repeatable). Cannot be combined with sharding.
+- `--analyzer <name>`: run only this analyzer and the analyzers it depends on (repeatable). Cannot
+  be combined with sharding. A narrowed run says so: the console, `report.txt` and the GitHub step
+  summary print `Ran only: <names>. Run nitpicker without --analyzer before you finish.`, and
+  `summary.json` records `partialRun: { ran, skipped, message }` (`skipped` lists the analyzers
+  left out). Its exit 0 is not a pass. An unknown name exits 2 and leaves the previous reports in
+  place.
 - `--rule <substring>`: list the findings whose rule matches, after the summary (repeatable).
+- `--details`: print every new finding with its full message, and every held finding, in the
+  console summary (see [Console summary](#console-summary)).
 - `--output <dir>`: where reports go.
 
 - `--no-cache`: do not read or write the findings cache for this run (local and remote).
@@ -574,7 +643,7 @@ hash, so a weakened check is visible in review.
 | `go`              | object                                                                     | Go preset only. `formatters`: a list of `"gofmt"`, `"gofumpt"` and `"goimports"`, the format check to run; detected from `go.mod` tool directives and the golangci-lint config when absent. `buildTags`: build tags passed as `-tags` to `go vet` and `go test`, for example `["integration"]`. See [Go preset](#go-preset).                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
 | `analyzers`       | object[]                                                                   | Custom analyzers; see below.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
 | `legacyInventory` | string                                                                     | Path of the legacy inventory, inside the project. Default `nitpicker.legacy.json`. Every preset; see [Adopting nitpicker on existing code](#adopting-nitpicker-on-existing-code) [Java preset](#java-preset) and [Python preset](#python-preset).                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       |
-| `tools`           | object                                                                     | Which config each tool uses: `{ "prettier": { "precedence": [...] } }`. See [Your project's tool configs](#your-projects-tool-configs). `jscpd` with every preset except `go`, which runs no duplicate-code scan yet; `prettier`, `knip`, `dependency-cruiser`, `eslint` and `typescript` with the TypeScript and JavaScript presets (`{ "eslint": { "engine": "oxlint", "precedence": ["nitpicker"] } }`; see [Lint engine](#lint-engine) and [ESLint configs](#eslint-configs-typescript-and-javascript-presets); `{ "typescript": { "engine": "native" } }`; see [Type check engine](#type-check-engine)), `tests` with the TypeScript and JavaScript presets (`{ "tests": { "runner": "jest" } }`; see [Test runners](#test-runners)), `pmd` and `checkstyle` with `java` and `kotlin`, `ktlint`, `ktfmt` and `detekt` with `kotlin`, and `ruff`, `black`, `pyright`, `mypy`, `mutmut` and `coverage` with `python`, and `gofumpt` and `goimports` with `go` (their options from the project's golangci-lint config; see [Go preset](#go-preset)); any other name is an error.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      |
+| `tools`           | object                                                                     | Which config each tool uses: `{ "prettier": { "precedence": [...] } }`. See [Your project's tool configs](#your-projects-tool-configs). `jscpd` with every preset except `go`, which runs no duplicate-code scan yet; `prettier`, `stryker` (see [Mutation testing config](#mutation-testing-config-typescript-and-javascript-presets)), `knip`, `dependency-cruiser`, `eslint` and `typescript` with the TypeScript and JavaScript presets (`{ "eslint": { "engine": "oxlint", "precedence": ["nitpicker"] } }`; see [Lint engine](#lint-engine) and [ESLint configs](#eslint-configs-typescript-and-javascript-presets); `{ "typescript": { "engine": "native" } }`; see [Type check engine](#type-check-engine)), `tests` with the TypeScript and JavaScript presets (`{ "tests": { "runner": "jest" } }`; see [Test runners](#test-runners)), `pmd` and `checkstyle` with `java` and `kotlin`, `ktlint`, `ktfmt` and `detekt` with `kotlin`, and `ruff`, `black`, `pyright`, `mypy`, `mutmut` and `coverage` with `python`, and `gofumpt` and `goimports` with `go` (their options from the project's golangci-lint config; see [Go preset](#go-preset)); any other name is an error.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               |
 | `history`         | object                                                                     | Every preset; opt-in analysis of the commit history, see [Change history](#change-history). `coChange`: `true` turns on the `change-history` analyzer, which reports modules that keep changing together (`false` or absent: off). Optional, with `coChange` set (`true`, or `false` to keep them while it is off; without `coChange` they are an error): `commits`, how many recent commits to read (whole number from 20 to 2000, default 300); `minSupport`, the commits two modules must share (whole number, at least 2, default 5); `minConfidence`, the share of the less-changed module's commits that must include the other (above 0, at most 1, default 0.6); `maxCommitFiles`, the most files a commit may touch and still count (whole number from 2 to 100, default 30).                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  |
 | `conventions`     | object                                                                     | Pins a style nitpicker otherwise takes from the project. When two conventions are equally valid, nitpicker counts which one most files use and checks with that: a comparison measures the merge base (so a branch cannot flip it), or the branch when the base has no files of that kind yet; `--all` measures the checkout. A tie, or nothing to measure, keeps the preset default, and the run prints what it followed. Java and Kotlin presets (Java sources): `"java.formatter"`, `"google"` (google-java-format, the default), `"palantir"` (palantir-java-format) or `"none"` (no Java format check); `"java.indentation"`, `"2"` (google-java-format), `"4"` (google-java-format `--aosp`; palantir-java-format is always 4) or `"tab"`; `"java.lineLength"`, a whole number of columns from 10 to 999 (`"100"`, `"120"` and `"140"` are the measured ones; it drives `line-length-limit` for Java files; google-java-format wraps at 100 and palantir-java-format at 120, so a pin that disagrees with a pinned or build-declared formatter is a config error, and with a default or measured one it turns the formatter into `"none"`); `"java.wildcardImports"` `"explicit"`/`"wildcard"` (wildcard turns off Checkstyle `AvoidStarImport` and Error Prone `WildcardImport`); `"java.testStaticImports"` `"explicit"`/`"wildcard"` (the same for `import static ...*` in test sources only); `"java.assertionHelpers"` and `"kotlin.assertionHelpers"`, a list of method names (a helper is followed when it ends tests that have no other assertion in at least three test files and is defined as a method or function in a test or test-support source whose body calls an assertion or throws; PMD's `UnitTestShouldIncludeAssert` and the Kotlin `test-without-assertion` rule then accept it as an assertion; `[]` pins none). Kotlin and Python presets: the `kotlin.*` and `python.*` ids and values are under [Formatter and detekt configs](#formatter-and-detekt-configs-python-and-kotlin-presets); a project's own tool config sets them only when `tools.<tool>.precedence` lists `"project"`. TypeScript and JavaScript presets (Prettier options): `"prettier.quotes"` `"single"`/`"double"`, `"prettier.semicolons"` `"always"`/`"never"`, `"prettier.indentation"` `"2"`/`"4"`/`"tab"`, `"prettier.printWidth"` `"80"`/`"100"`/`"120"` or any number of columns, `"prettier.trailingCommas"` `"all"`/`"es5"`/`"none"`, `"prettier.arrowParens"` `"always"`/`"avoid"`, `"prettier.bracketSpacing"` `"spaced"`/`"tight"`, `"prettier.endOfLine"` `"lf"`/`"crlf"`, `"prettier.jsonIndentation"` `"2"`/`"4"`/`"tab"` and `"prettier.yamlIndentation"` `"2"`/`"4"` (measured from the JSON and YAML files themselves, only the ones the Prettier check covers: JSON at the project root and under the source and test roots, YAML under the source roots; fixtures and generated files do not count). TypeScript preset only (React): `"prettier.jsxQuotes"` `"double"`/`"single"` (Prettier `jsxSingleQuote`, measured from string attribute values in `.tsx`/`.jsx` files) and `"prettier.bracketSameLine"` `"newLine"`/`"sameLine"` (where the `>` of a multi-line opening tag is, compared with its last attribute); and, beyond Prettier, `"typescript.typeImports"` (TypeScript preset only) `"separate"` (`import type { A }`)/`"inline"` (`import { type A }`), which sets the `consistent-type-imports` fix style, and `"typescript.assertionHelpers"` a list of function names (for example `["assertOk", "verifyCalled"]`): a function the project defines in a test file or a `test-support`, `test-utils`, `testing` or `testkit` folder whose body calls `expect` or `assert` (or throws), and that is the last call of a test (`it`, `test` and their `.only`, `.skip`, `.each`, `.for` and similar forms, not hooks or `describe`) containing no `expect` in at least three test files, counts as an assertion for `vitest/expect-expect`, next to `expect`, `assert`, `expectTypeOf` and `assertType`. A pin is a list of plain identifiers (letters, digits, `_`) and replaces the measured list. `"typescript.fileNames"` `"kebab-case"`/`"camelCase"`/`"snake_case"`, the casing `nitpicker/file-name-casing` expects of source and test file names (the part before the first dot, so `foo.min.js` is judged as `foo`). Only files under the source and test roots count; fixtures and generated files neither count nor fail. PascalCase names always pass (components, classes) and cast no vote, as do names that fit every casing (`index`, `utils`, `404`, `fr-CA`), React hook files (a file named `useX` that exports a function or constant named exactly `useX`; `useCase.ts` exporting something else is judged like any other name), Next.js and Remix names (`not-found`, `[id]`, `posts_.$id`, `_app`, `+page`), `*.config.*` files and names with a hash segment (`chunk-3f9a1c2b`). When a folder has at least three other files that vote, their plurality decides for that folder (a tie keeps the project casing); a pin in `conventions` overrides this, so every file follows the pin. |
 
@@ -926,13 +995,21 @@ way it is attributed, because findings are keyed by test file and message, so a 
 not name a test.
 
 For Jest the run uses Jest's `default` reporter and nitpicker's console reporter in place of the
-`reporters` of the project config (as the Vitest and Mocha runs replace theirs), and runs with
-`silent` and `verbose` off, because Jest buffers console calls only then; a `silent` project then
-shows its console output in the run's log. Jest keeps only the first argument of a failed
-`console.assert` (`console.assert(false, 'bad %s', 'input')` gives `Assertion failed: bad %s`). With
-`node:test`, tests of one file that run concurrently can swap the test name, and
-`--experimental-test-isolation=none` (every file in the runner's own process) is not read at all,
-because the file of a call is not known there: the check passes with no findings. Mocha runs every
+`reporters` of the project config, and runs with `silent` and `verbose` off, because Jest buffers
+console calls only then; a `silent` project then shows its console output in the run's log. No run
+starts the project's own reporters (the slow-test rerun uses `default` alone), as the Vitest, Mocha
+and `node:test` runs use only nitpicker's: a reporter's side effects, such as a JUnit file or an
+upload, are not wanted from the base and head runs of a check. Jest passes only the first message
+argument of `console.assert` on, so an `--import` preload in `NODE_OPTIONS` of the Jest run formats a
+failed assertion's string message with the other arguments as Node does:
+`console.assert(false, 'bad %s', 'input')` gives `Assertion failed: bad input` on every runner. With
+`node:test`, tests of one file that run concurrently can swap the test name. With
+`--experimental-test-isolation=none` (every file in the runner's own process) a call belongs to the
+file whose test or top-level code started the work (a hook's call to the file that declares the hook),
+read from the async resource node:test runs each of them in, and names no test, as with Jest. Work a
+file started keeps that file, also when it prints while a later file runs or after the file's tests,
+as long as the runner process lives; Vitest without isolation gives such a timer to the file running
+when it fires, and Mocha does not see it. Mocha runs every
 spec file in one process (one per worker with `--parallel`); a root hook from a `--require` file
 belongs to no test file and is not seen, but what the work it started prints while a test runs (a
 server it started handling the test's request) belongs to that test, as with Vitest. Work another spec
@@ -942,9 +1019,11 @@ It does not see:
 
 - `console.log`, `console.info` and `console.debug`, which go to standard output;
 - `process.stderr.write`, `process.emitWarning`, and the output of child processes and worker threads
-  a test starts;
+  a test starts, on every runner (a `worker_threads` Worker prints through its own console, whose
+  output the parent receives as a stream);
 - output printed after a test file has finished (after its last `after`/`afterAll` hook), such as a
-  dangling timer that fires later, or with Mocha a timer that fires while another file's tests run;
+  dangling timer that fires later, or with Mocha a timer that fires while another file's tests run
+  (`node:test` with isolation off is the exception above);
   with Jest such a call prints "Cannot log after tests are done", which fails a run in band only when
   it would fail without nitpicker too, and only when Jest's report shows no other failure (a failed
   test or suite, or an obsolete or unwritten snapshot);
@@ -1323,7 +1402,11 @@ new and touched code must comply.
   `as const`), `any`, non-null `!`, `<Type>value`, or `null` (except strict comparison and the
   `JSON.stringify` replacer); no comments except doc comments on exported API, no inline lint disables, no `@ts-ignore`,
   `@ts-expect-error` or `@ts-nocheck`; `for...of` is the only loop (no `for(;;)`, `for...in`,
-  `while`, `do...while` or `forEach`), `async`/`await` with no `.then()/.catch()/.finally()` chains
+  `while`, `do...while` or `forEach`), no growing accumulator spread into its own next value
+  (`xs.reduce((acc, x) => ({ ...acc, [x.id]: x }), {})` or `out = [...out, x]` in a loop: build the
+  result in one pass with `Object.fromEntries`, `new Map`, `flatMap` or `map`, or `Object.groupBy`
+  with `lib` `ES2024`; a fixed-key object or a literal `.slice` bound is not reported),
+  `async`/`await` with no `.then()/.catch()/.finally()` chains
   and no floating promises, and `===`/`!==` only. Config files are exempt from the loop and chain
   bans.
 - **Tests** follow the same construct bans: `for...of` is the only loop (use `it.each` for one test
@@ -1530,7 +1613,8 @@ sets the precedence for that tool. It lists `"project"` and `"nitpicker"`, highe
 | `["nitpicker", "project"]` | both merged; nitpicker's value wins where both set the same option   |
 
 A change that adds the opt-in is a policy change, and the project config files it starts reading are
-listed with it (each option for `jscpd`), so the person who accepts it sees what the config loosens.
+listed with it (each option for `jscpd` and `stryker`), so the person who accepts it sees what the config
+loosens. Stryker's config has its own section, [Mutation testing config](#mutation-testing-config-typescript-and-javascript-presets).
 
 For Prettier, "the project's config" is what Prettier itself resolves for each file
 (`.prettierrc*`, `prettier.config.*`, the `prettier` key in `package.json`, and `.editorconfig`),
@@ -1961,6 +2045,54 @@ forbidden or source module dropped, an ignored import added, indirect imports al
 unmatched-ignore alert relaxed. A change that only adds checking, such as a new contract or layer,
 is listed without failing. The full list is in the [Python preset](python-preset.md).
 
+#### Mutation testing config (typescript and javascript presets)
+
+Stryker runs with nitpicker's config, and the project's `stryker.config.*` or `.stryker.conf.*` is not
+read. Unless `mutation` is in `disable`, a project that has one gets the notice `Ignoring
+stryker.config.json; opt in with "tools": { "stryker": { "precedence": ["project", "nitpicker"] } }` at
+the start of the run. With the opt-in, nitpicker reads the first regular file Stryker itself would find
+(`stryker.conf.json`, `.js`, `.mjs` and `.cjs`, then `stryker.config.*`, then the same names with a
+leading dot; a directory with such a name is skipped). A JavaScript config is imported once with Node in
+the head checkout, in a child process that is stopped after 30 seconds, whose output is capped at
+10 MB, and that does not get the CI job summary variable; only the JSON values of its default export are
+kept, and whatever the config prints is ignored. While `mutation` is in `disable`, the head policy
+does not read it. The merge is shallow, key by key:
+
+| Stryker option                                                                                                                                                                                                                                                                                                                  | With the opt-in                                                                                                                                                                                                                                                                                  |
+| ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `mutator` (`excludedMutations`, `plugins`), `ignoreStatic`, `timeoutMS`, `timeoutFactor`, `dryRunTimeoutMinutes`, `concurrency`, `maxTestRunnerReuse`, `disableBail`, `warnings`                                                                                                                                                | the project's value; with `["nitpicker", "project"]` nitpicker's where it sets one (`timeoutMS` and `timeoutFactor` with Jest); a `timeoutMS`, `timeoutFactor` or `dryRunTimeoutMinutes` is never lower than nitpicker's value, or Stryker's default (5000, 1.5 and 5) where nitpicker sets none |
+| `testRunnerNodeArgs`, `checkerNodeArgs`                                                                                                                                                                                                                                                                                         | added after nitpicker's                                                                                                                                                                                                                                                                          |
+| `ignorePatterns`                                                                                                                                                                                                                                                                                                                | added before nitpicker's, so nitpicker's own entries still apply                                                                                                                                                                                                                                 |
+| `mutate`, `testRunner` and the runner options, `checkers`, `tsconfigFile`, `typescriptChecker`, `disableTypeChecks`, `coverageAnalysis`, `plugins`, `appendPlugins`, `ignorers`, `reporters` and the reporter options, `thresholds`, `tempDirName`, `inPlace`, `incremental`, `buildCommand`, `logLevel` and every other option | nitpicker's; the project's value is ignored                                                                                                                                                                                                                                                      |
+
+Everything Stryker needs to run and to report stays nitpicker's, so `["project"]` and
+`["project", "nitpicker"]` are the same. A project cannot lower a timeout, because a short one turns
+survivors into `Timeout` results that count as caught. The mutants the project's
+`mutator.excludedMutations` hides, and with `ignoreStatic` the static mutants Stryker skips, are left
+out of the findings, using the config Stryker was actually given, and only when the mutant's reason is
+Stryker's own (`Ignored because of excluded mutation "<mutator>"` or the static one); a mutant a
+`Stryker disable` comment hides is still an enforceable `mutant-ignored` finding, even when its mutator
+is excluded. The project's `thresholds` never fail the run: the gate fails for surviving mutants in
+changed code, not for a score. `ignorers` and plugins are not read because the reason an ignorer gives
+cannot be told apart from an ignore comment's, and `buildCommand` is not because the coverage run does
+not build either. The file is read from the head checkout and applies to both sides of the comparison,
+and when the head drops the opt-in the base is run with nitpicker's settings too; the keys nitpicker
+reads are part of the head policy, so editing them invalidates cached results. Naming `"project"`
+without a config, or with one that cannot be read (invalid JSON, a module that throws, ends the process,
+does not finish loading or does not export an object, a list option that is not a list of strings, a
+timeout that is not a number of 0 or more, a `mutator` that is not an object, a file that links outside
+the project), is a tool error of the `mutation` analyzer.
+
+An edit of the config is a policy change, judged on the values nitpicker applies, not on the file's
+text, and listed per key (`stryker stryker.config.mjs mutator.excludedMutations: [] -> ["StringLiteral"]`,
+with `mutator` listed as `mutator.<option>`). The config is loaded on both sides, so an edit of a file
+it imports, a computed value, or the deletion of the config that wins so that a lower-ranked one takes
+over all show up, while an edit of an option nitpicker does not read, a comment or the layout shows
+nothing. It needs a person's acceptance when `mutator.excludedMutations`, `ignorePatterns`,
+`testRunnerNodeArgs` or `checkerNodeArgs` gain an entry, `ignoreStatic` becomes `true`, or any other
+`mutator` option changes; every other change is only listed. When a side cannot be loaded, the text of
+the file is compared instead (`stryker project config changed: stryker.config.mjs`).
+
 ### Lint engine
 
 The lint analyzers apply nitpicker's ESLint policy, but by default they run it on
@@ -1970,6 +2102,16 @@ and plugins oxlint lacks) runs inside oxlint through the original ESLint plugin.
 plugin rules oxlint cannot run still run on ESLint, for those rules only. A project config opted in
 with `tools.eslint.precedence` is layered the same way on both engines; see
 [ESLint configs](#eslint-configs-typescript-and-javascript-presets).
+
+oxlint also has rules of its own that no ESLint plugin provides. nitpicker runs one only when it
+owns an ESLint rule that reports the same code: oxlint then runs its native rule, ESLint runs
+nitpicker's, and both report under the nitpicker rule id with the same message, location and
+finding identity, so an `exceptions` entry or a switch of engine changes nothing. With the pinned
+oxlint 1.87.0 that is `nitpicker/no-accumulating-spread` (oxlint's `oxc/no-accumulating-spread`);
+nitpicker checks each native report against the rule's own scope, so the accumulators it leaves
+out (fixed keys, a literal `.slice` bound) stay out on both engines. When the native rule is not
+available, oxlint runs nitpicker's rule through the bridge and reports the same findings.
+oxlint's other native rules, including whole categories such as `perf` or `pedantic`, stay off.
 
 Findings match ESLint's with these known differences:
 
@@ -2091,8 +2233,9 @@ of these is visible in the report. Remove them as the codebase improves.
 ## Container image
 
 The repository's `Dockerfile` builds an image that runs the gate in any CI without installing Node
-on the host. It is Node 22 (slim) with Git, nitpicker installed from source as `nitpicker` (the
-entrypoint), and `/work` as the working directory. Build it from the repository root; no image is
+on the host. It is Node 22 (slim) with Git, `ps` (procps, which mutation testing uses to manage child
+processes), nitpicker installed from source as `nitpicker` (the entrypoint), and `/work` as the
+working directory. Build it from the repository root; no image is
 published yet.
 
 ```sh
@@ -2118,7 +2261,7 @@ jobs:
   nitpicker:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7.0.1
         with:
           fetch-depth: 0
       - run: npm ci

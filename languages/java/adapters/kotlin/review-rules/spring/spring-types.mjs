@@ -33,6 +33,7 @@ export const CONFIGURATION_CLASSES = group(
   inPackage(BOOT, 'SpringBootApplication', 'AutoConfiguration'),
   inPackage(`${SPRING}.boot.test.context`, 'TestConfiguration'),
 );
+export const SPRING_MANAGED_CLASSES = group([...STEREOTYPES, ...CONFIGURATION_CLASSES]);
 export const BOOT_APPLICATION = group(inPackage(BOOT, 'SpringBootApplication'));
 export const BEAN = group(inPackage(CONTEXT, 'Bean'));
 export const PROFILE = group(inPackage(CONTEXT, 'Profile'));

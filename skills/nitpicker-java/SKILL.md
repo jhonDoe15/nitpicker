@@ -23,7 +23,8 @@ forms below from the start; the gate is a backstop.
    the project's `./gradlew` or `./mvnw` when there is one, otherwise `gradle` or `mvn` from the
    PATH (`NITPICKER_GRADLE` or `NITPICKER_MAVEN` overrides both).
 3. Act on the exit code:
-   - 0: done.
+   - 0: done, unless you narrowed the run with `--analyzer`: then the summary says `Ran only: ...`
+     and you run the gate again without it before you finish.
    - 1: fix every new finding (printed as `tool/rule path:line`) and any tool error listed below
      them, then rerun.
    - 2: no new findings, but a tool failed (the build, a compile error, a test failure). Fix the
@@ -38,6 +39,9 @@ forms below from the start; the gate is a backstop.
    `nitpicker-config/policy-loosened` finding is for a person to accept.
 
 With Spring on the classpath, also follow [spring.md](spring.md).
+
+If your change edits a method, class, file or package that existed before it, read
+[editing-existing-code.md](editing-existing-code.md) before you edit.
 
 Before you change code other modules use, or fix a bug, read
 [beyond-the-gate.md](beyond-the-gate.md).
@@ -170,6 +174,10 @@ To learn why a rule is on and what form it allows before you write or change cod
   answer, a thread body or a test fake that implements or extends a main class is fine. To
   show something does not happen, give the code a `Clock` or scheduler the test moves forward, not
   `after(ms).never()` or `during(...)` (`NegativeWaitInTest`).
+- No retries in test code (`RetryInTest`): no `@RetryingTest`, `@RepeatedIfExceptionsTest`, TestNG
+  `retryAnalyzer`, `IRetryAnalyzer` or `RetryAnalyzerCount`, nor `setRetryAnalyzer(...)`. A test that
+  passes on a later attempt hides a flaky or racy test: wait on the condition instead of a fixed
+  delay, isolate shared state. `@RepeatedTest` is fine, since every repetition must pass.
 - Tests print nothing new (`test-runtime/test-console-output`): no `System.out`/`System.err`, and
   no new `WARN` or `ERROR` log line from the code under test. Fix the cause the line names.
 - In main code, nothing with an outside effect runs while a class loads (`ClassLoadEffect`): no
@@ -187,18 +195,6 @@ To learn why a rule is on and what form it allows before you write or change cod
   class-load rules.
   If a PMD rule or an Error Prone check flags test code that is right, ask a human for a reviewed
   exception for `pmd/<rule>` or `errorprone/<Check>`.
-
-## Editing existing code
-
-- A method already over a size limit may be edited but must not get worse: the gate then prints
-  a note ("allowed because base was 4"). Adding a parameter, statement or nesting level fails
-  (`Legacy.total grew from 4 to 5 parameters`). Put new logic in a new method and call it once.
-- A file, folder or class already over its limit must not grow: put the new code in a new class,
-  and a new file in a new package.
-- A line you touch must have its branches covered, even if it was uncovered before.
-- Existing PMD, SpotBugs, Error Prone and Checkstyle findings stay baselined while their message is
-  unchanged; adding another of the same kind in the file is new. Don't rename or move a file that
-  has findings: Checkstyle and CRAP findings don't follow renames and would count as new.
 
 ## Repository files
 

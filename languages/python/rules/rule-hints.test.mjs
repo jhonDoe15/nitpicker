@@ -1,7 +1,9 @@
-import { readdirSync } from 'node:fs';
+import { readdirSync, readFileSync } from 'node:fs';
+import { createRequire } from 'node:module';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { exceptionRoute } from '../../../shared/exceptions/rule-names.mjs';
+import { RUFF_CONFIG } from '../adapters/configuration/python-ruff-config.mjs';
 import { RULE_CASES } from './test-support/python-rule-cases.mjs';
 import {
   applyRuleHints,
@@ -40,6 +42,20 @@ describe('every banned form has a banned and an allowed fixture', () => {
 
     expect(uncovered).toEqual([]);
   });
+});
+
+describe('every selected pitfall rule', () => {
+  const PITFALL = /^(?:ASYNC|DTZ|LOG|PLE|PLW|T10)\d+$/u;
+  const { lint } = createRequire(import.meta.url)('smol-toml').parse(
+    readFileSync(RUFF_CONFIG, 'utf8'),
+  );
+
+  it.each(lint.select.filter((code) => PITFALL.test(code)))(
+    '%s has its own allowed form',
+    (rule) => {
+      expect(hintFor(sample({ tool: 'ruff', rule }))?.rules).toContain(rule);
+    },
+  );
 });
 
 describe('every message names the allowed form', () => {
@@ -369,5 +385,33 @@ describe('hints follow the libraries of the project', () => {
 
     expect(message).toContain(call);
     expect(message).toContain(list);
+  });
+});
+
+describe('type laundering messages', () => {
+  const cast = (subject, libraries) =>
+    withHint(
+      { ...sample({ tool: 'python-rules', rule: 'type-cast' }), subject, message: 'x' },
+      libraries,
+    ).message;
+
+  it('names the parse at the boundary only for a container target', () => {
+    expect(cast('cast(str) in convert')).toBe(
+      `x. Narrow the value with \`isinstance\` or \`match\`, or give it the correct type at its source. ${route('type-cast')}`,
+    );
+    expect(cast('cast(dict[str, int])')).toBe(
+      `x. Narrow the value with \`isinstance\` or \`match\`, or give it the correct type at its source. Parse untrusted input once in \`adapters/\` with pydantic (\`Model.model_validate(data)\`). ${route('type-cast')}`,
+    );
+  });
+
+  it('keeps the allowed form of an explicit Any to one sentence', () => {
+    const { message } = withHint({
+      ...sample({ tool: 'python-rules', rule: 'explicit-any' }),
+      subject: 'f(a)',
+    });
+
+    expect(message).toBe(
+      `The base message. Write the concrete type, a \`Protocol\`, a \`TypeVar\`, a \`ParamSpec\` or \`object\` (\`dict[str, object]\`, \`Callable[..., object]\`). ${route('explicit-any')}`,
+    );
   });
 });

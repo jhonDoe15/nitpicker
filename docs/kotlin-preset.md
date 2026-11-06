@@ -12,6 +12,12 @@ GitHub Actions, GitLab CI and Jenkins, are in [nitpicker in CI](ci.md#toolchains
 
 Every rule the preset can report has an entry in the [rule reference](rules/README.md): [detekt](rules/kotlin-detekt.md), [the Kotlin source checks, compiler warnings and format checks](rules/kotlin-nitpicker.md), and the [Java rules](rules/java-pmd.md) that run on Java sources. `nitpicker explain <tool/rule>` prints an entry.
 
+## Test retries
+
+The retry rules of the [Java preset](java-preset.md#how-it-works) apply to Kotlin on Gradle: the
+same init script switches off the test-retry and Develocity retries of every `Test` task and reads
+the JUnit XML after a successful build. Maven support is separate.
+
 ## Selection
 
 `"preset": "kotlin"` in `nitpicker.config.json`. Like `java`, it is explicit and never
@@ -164,7 +170,9 @@ message names the fix and both routes. Each rule has a banned and an allowed fix
 |                   | `let` or `apply` that changes nothing                                                                                                             | call the member directly                                                                                                     | `style.UnnecessaryLet`, `style.UnnecessaryApply`                                                   |
 | Nullable handling | `!!`                                                                                                                                              | `?:`, `?.let`, `checkNotNull(value) { "why" }`                                                                               | `potential-bugs.UnsafeCallOnNullableType`                                                          |
 |                   | `value as String` on a nullable value                                                                                                             | handle null first, or `as?`                                                                                                  | `potential-bugs.CastNullableToNonNullableType`                                                     |
+|                   | `value as String?`                                                                                                                                | `value as? String`, which returns null instead of throwing                                                                   | `potential-bugs.CastToNullableType`                                                                |
 |                   | `if (x == null) null else ...`                                                                                                                    | `x?.let { ... }`                                                                                                             | `style.UseLet`                                                                                     |
+| Casts             | `items as MutableList<String>` or `items is MutableList<String>` on a read-only `List`                                                            | `items.toMutableList()`, or ask for the mutable type at its source                                                           | `potential-bugs.DontDowncastCollectionTypes`                                                       |
 | Coroutines        | `GlobalScope`                                                                                                                                     | `coroutineScope { launch { ... } }`, or a scope its owner cancels                                                            | `coroutines.GlobalCoroutineUsage`                                                                  |
 |                   | `runBlocking`                                                                                                                                     | a `suspend` caller (`suspend fun main()`); `runTest` in a test                                                               | `style.ForbiddenMethodCall` (`kotlinx.coroutines.runBlocking`)                                     |
 | Exceptions        | `catch (e: Exception)`, `Throwable`                                                                                                               | catch the specific exception type; `assertFailsWith` in a test                                                               | `exceptions.TooGenericExceptionCaught`                                                             |
@@ -199,6 +207,25 @@ after detekt runs, not by a path glob, so a `test` package inside the main sourc
 `ProcessBuilder("sh", "-c", ...)` is a [source check](#source-checks). The environment ban is lifted
 in the composition root by the gate (a file with a top-level `fun main`, an `@SpringBootApplication`
 class or a Ktor `fun Application.module()`), see [Frameworks](#frameworks).
+
+**Type laundering (decision).** The Kotlin counterpart of the TypeScript `as` ban is the unsafe cast operator,
+which the Kotlin documentation itself calls the "unsafe" cast: `value as T` throws `ClassCastException`
+when the type is wrong, and a generic target (`as List<String>`) is not even checked. The allowed forms
+are an `is` check or `when` (a smart cast), `as?` with the null handled, and `assertIs<T>(value)` in a
+test. So `kotlin-source/UnsafeCastOperator` flags every `as` in main and test sources (an import alias,
+`as?`, `null as T?` as a type hint and `as Any?` are not casts that can fail and pass). Where a more
+specific rule reports the same line, that one stays and the cast finding is dropped: the compiler's
+`kotlinc/unchecked` and `kotlinc/cast`, and detekt's `CastNullableToNonNullableType`, `CastToNullableType`,
+`DontDowncastCollectionTypes` (`items as MutableList<T>` and `items is MutableList<T>` on a read-only
+`List`) and `UnsafeCast`. `Any?` as a parameter type stays allowed: it is the counterpart of TypeScript's
+`unknown`, which is the allowed form there, and what is built from it has to be checked with `is`.
+
+Cases where the cast looks harmless and is still flagged, with the form to use: the `other as Foo` that an
+IDE writes into `equals` after a `javaClass` comparison (`if (other !is Foo) return false`), a reified
+`value as T` (`value as? T`, then handle the null), an upcast to pick an overload (`x as Any`; name the
+parameter type, or call the overload by its name), `mock as Foo` in a test (`assertIs<Foo>(mock)`). A cast
+inside a string template (`"${value as T}"`) is not seen, because the scan masks string bodies. Reflection
+and Java interop that cannot avoid a cast take an `exceptions` entry for `kotlin-source/UnsafeCastOperator`.
 
 **Why these allowed forms (decision).** One function per job: `let` binds a value to a name for a
 block (and is the null-handling form), `apply` configures an object and returns it. `run` and `with`
@@ -247,7 +274,7 @@ the TypeScript preset, `{ "rule", "paths", "reason" }`, all required:
 `rule` is the rule as the finding prints it: any `detekt.<ruleset>.<Rule>`, a
 `kotlin-source/<Rule>` of the [source checks](#source-checks), `kotlinc/deprecation`,
 `kotlinc/unchecked` or `kotlinc/cast`, one of the [review rules](#review-rules) (`pmd/FixedSleepInTest`,
-`pmd/NegativeWaitInTest`, `pmd/DisabledTest`, `pmd/FocusedTest`, `pmd/AssertionInControlFlow`,
+`pmd/NegativeWaitInTest`, `pmd/DisabledTest`, `pmd/FocusedTest`, `pmd/RetryInTest`, `pmd/AssertionInControlFlow`,
 `pmd/CoroutineEscapesTest`, `pmd/SpringUnusedContext`, `pmd/ExhaustiveEnumPredicate`,
 `pmd/StaticForwardingWrapper`, `pmd/SingularAndPluralMember`, `pmd/ValidationAnnotationTarget`, `pmd/ClassLoadEffect`, `unused-option`), a class limit, a file
 limit or `test-runtime/slow-test`; for the structure, CRAP and coverage findings below,
@@ -272,8 +299,7 @@ fails every token that targets a detekt or ktlint rule: `all`, anything starting
 `detekt.`, `detekt:`, `ktlint`, `ktlint.` or `ktlint:`, a detekt ruleset (`style`, `naming`, ...) and a
 PascalCase rule id (`MagicNumber`), and the compiler warnings the [kotlinc lint](#compiler-warnings)
 reports: `UNCHECKED_CAST`, `DEPRECATION`, `TYPEALIAS_EXPANSION_DEPRECATION` and `USELESS_CAST`, whose
-message gives the exception route of the `kotlinc/<rule>` it hides. Those four are banned in main
-sources only: the kotlinc lint compiles the main sources, so in a test they hide nothing. Other compiler diagnostics stay
+message gives the exception route of the `kotlinc/<rule>` it hides, in main and test sources alike. Other compiler diagnostics stay
 allowed. `unused`, `UNUSED_PARAMETER` and `UNUSED_VARIABLE` are banned in main sources when they would hide `UnusedParameter` (detekt honors them as its aliases): on a function or constructor with parameters, or on a class or file that holds one; on a parameterless declaration or in a test they stay allowed, and the message routes to the `detekt.style.UnusedParameter` exception. A rule-set-qualified token (`style:UnusedParameter`, `style.UnusedParameter`) is banned everywhere. Rule `inline-suppression`, tool `detekt`, one finding per
 token, identified by the token. detekt's own `ForbiddenSuppress` is not used: it cannot report
 `all` or `style`, because the suppression hides its report too. The scan reads the string literals of
@@ -314,6 +340,7 @@ whose first comment says it is generated (`@generated`, "generated ... do not ed
 | `GenericPackageName`            | a package segment `util`, `utils`, `utility`, `helpers`, `manager`, `common`, `commons`, `misc`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         | a package named for what it holds; shared pure logic in `shared`                                                       |
 | `LogStringConcatenation`        | an `info`, `warn`, `error`, `log`, `config`, `warning` or `severe` call on a logger (the levels of the Java rule) whose message is a string template, `+` or `format` with a value that is not a compile-time constant (a literal, a `CONSTANT_CASE` name or a `const val` is one)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      | placeholders (`log.info("user {}", user)`) or a lambda message (`logger.info { "user $user" }`)                        |
 | `ShellCommand`                  | a shell and its command flag as consecutive literals (`"sh", "-c"`, `"bash", "-c"`, `"cmd", "/c"`, `"powershell", "-Command"`)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          | the program with an argument list (`ProcessBuilder("git", "log", ref)`)                                                |
+| `UnsafeCastOperator`            | the cast operator `as` (not `as?`) in main and test sources, outside an import alias; `null as T?` and `as Any?` pass, and a line another cast rule already reports keeps only that finding                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             |                                                                                                                        |
 | `IoCallInLoop`                  | a repository, DAO, JDBC or HTTP client call in a `for`, `while` or `do` body or an iterating lambda (`forEach`, `map`, `filter` and similar); paging and polling loops (a `while` or `do` whose condition, `if (...) break` or `?: break` reads what the call returned) and retries (the call in a `try` that leaves the loop) pass; file calls are not checked                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         | fetch or write all items at once (`findAllById`, `saveAll`)                                                            |
 | `CatchOnlyLogsOrReturnsDefault` | a `catch` that neither throws, nor uses the exception, nor answers with an error response; log calls and `printStackTrace` do not count (so it is the one finding for a catch that only logs); an interrupt and a retry loop are skipped                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                | rethrow with the cause, or `Result.failure(e)`                                                                         |
 | `BooleanFlagParameter`          | an unannotated `Boolean` parameter (not a nullable `Boolean?`) of a public function that is the condition of an `if`, a `when` (its subject or a branch of a subject-less one) or a `while`, also as `== true` or in `&&`/`\|\|`, and a name the body rebinds (a loop variable, a lambda parameter, a `val`) is not the flag; private, `internal`, `protected` and `override` functions, functions of a private or `internal` class, local functions, setters, `with*`, `of`/`from`/`valueOf`/`builder` are skipped                                                                                                                                                                                                                                                                                                                                                                     | two functions, an enum or a data class                                                                                 |
@@ -407,8 +434,11 @@ Kotlin sources, generated ones included, with the pinned compiler into a throwaw
 module's compile classpath, its compiled Java classes, its language and API version, JVM target,
 opt-ins, free compiler arguments and compiler plugins, and `-Xrender-internal-diagnostic-names`. The
 arguments that silence warnings (`-nowarn`, `-Werror`, `-Xsuppress-warning`, `-Xwarning-level`) are
-dropped, so a build setting cannot hide them. Three groups of warnings are findings of the tool
-`kotlinc`, on the source roots only, each message naming the allowed form first:
+dropped, so a build setting cannot hide them. A second task, `nitpickerKotlinTestLint`, compiles the
+test sources the same way against the compiled main classes (`-Xfriend-paths` makes `internal` members
+visible), the module's test class path and its compiled Java test classes, and writes `kotlinc-test.json`.
+Three groups of warnings are findings of the tool `kotlinc`, on the main and test source roots, each
+message naming the allowed form first:
 
 | Rule          | Kotlin diagnostics                               | Allowed form                                                               |
 | ------------- | ------------------------------------------------ | -------------------------------------------------------------------------- |
@@ -418,8 +448,10 @@ dropped, so a build setting cannot hide them. Three groups of warnings are findi
 
 Like `-Werror` on changed code: a new warning fails, a legacy one stays baselined (the identity is
 the rule and the message with numbers replaced, not the line). Their `@Suppress` is an
-`inline-suppression` finding. A lint compile that fails (a compiler plugin it could not load, for
-example) is one descriptive `kotlinc/lint-not-run` finding naming the first error.
+`inline-suppression` finding, in test sources too. A lint compile that fails (a compiler plugin it could
+not load, a test class path that does not resolve) is one descriptive `kotlinc/lint-not-run` finding
+naming the first error, one for the main and one for the test compile, so a broken test compile does not
+hide the main warnings.
 
 ## Doc comments
 
@@ -478,6 +510,7 @@ skipped with a note on stderr.
 | `FixedSleepInTest`, `NegativeWaitInTest` | `review-rules/tests/test-waits.mjs`              | a fixed wait in a test: `Thread.sleep`, `TimeUnit.X.sleep`, `parkNanos`, `delay` in `runBlocking`, timed `join` or `wait`, `after(ms)`, kotest `continually`, `during`                                                                                                                                                                                                                                                           |
 | `DisabledTest`                           | `review-rules/tests/honesty/`                    | a skipped test: `@Disabled`, `@Ignore`, `@Ignored` (also aliased or carried by an annotation), Kotest `xtest`, `xcontext`, `xdescribe`, `xit`, `xshould`, `xgiven`, a `!` name prefix, a `.config(...)` that never runs, a constant false condition or assumption                                                                                                                                                                |
 | `FocusedTest`                            | `review-rules/tests/honesty/`                    | a Kotest focus that runs only part of the suite: the `f:` name prefix, `ftest`, `fcontext`, `fdescribe`, `fit`, `fshould`, `fgiven`                                                                                                                                                                                                                                                                                              |
+| `RetryInTest`                            | `review-rules/tests/honesty/retries/`            | a retry set in test code: `@RetryingTest`, `@RepeatedIfExceptionsTest`, TestNG `retryAnalyzer`, `IRetryAnalyzer`, `RetryAnalyzerCount`, `setRetryAnalyzer`, Kotest `retries`                                                                                                                                                                                                                                                     |
 | `AssertionInControlFlow`                 | `review-rules/tests/honesty/`                    | an assertion that can be skipped: inside an `if` or a `when` whose branches do not all assert, a loop, a safe call, `&&`, `\|\|`, `?:`, a swallowing `try` or `runCatching`, or after an early return                                                                                                                                                                                                                            |
 | `CoroutineEscapesTest`                   | `review-rules/tests/coroutines/`                 | a `launch`, `async`, `launchIn`, `stateIn` or `shareIn` on a scope the test does not own (`CoroutineScope(...)`, a scope field, `viewModelScope`) that nothing joins, awaits or cancels                                                                                                                                                                                                                                          |
 | `StaticForwardingWrapper`                | `review-rules/main/forwarding-wrappers.mjs`      | a function whose body only passes its parameters, in order, to another function                                                                                                                                                                                                                                                                                                                                                  |
@@ -485,7 +518,7 @@ skipped with a note on stderr.
 | `ValidationAnnotationTarget`             | `review-rules/validation/validation-targets.mjs` | a Bean Validation annotation (`jakarta.validation.constraints`, `javax.validation.constraints`, `org.hibernate.validator.constraints`, or `@Valid`) on a primary-constructor `val` or `var` of a main source without a `field:`, `get:` or `all:` use-site target; Kotlin puts it on the constructor parameter, where Bean Validation does not look. Kotlin-only: a Java record carries the annotation to its field and accessor |
 | `SpringUnusedContext`                    | `review-rules/tests/spring-context.mjs`          | a `@SpringBootTest` class that uses nothing from the context                                                                                                                                                                                                                                                                                                                                                                     |
 | `ExhaustiveEnumPredicate`                | `review-rules/main/enum-predicates.mjs`          | a test that lists only some constants of an enum (`==` chains, `in setOf(...)`), so a constant added later falls into the other case                                                                                                                                                                                                                                                                                             |
-| `unused-option` (tool `structure`)       | `review-rules/main/unused-options.mjs`           | a defaulted parameter of a private or internal function or constructor that no call sets                                                                                                                                                                                                                                                                                                                                         |
+| `unused-option` (tool `structure`)       | `review-rules/main/unused-options/`              | a defaulted parameter that no call sets, of a public top-level, `object` or companion function or a private or internal function or constructor                                                                                                                                                                                                                                                                                  |
 | `ClassLoadEffect`                        | `review-rules/main/load-effects.mjs`             | a call with an external effect (database, network, files, processes, threads and pools, JVM-wide settings) that runs while a file, `object`, companion object or enum class loads                                                                                                                                                                                                                                                |
 | `UnboundedFanOut` (tool `kotlin-source`) | `review-rules/main/fan-out/`                     | a task started for every element of a collection (`async`, `launch`, `supplyAsync`, `thread`) whose work makes a remote or message call; see the limits below                                                                                                                                                                                                                                                                    |
 
@@ -519,7 +552,8 @@ Limits, all chosen to flag less rather than guess:
   `main`, `valueOf`, `fromString`, `of`, `from`, `invoke` and `copy`; copies such as `copyOf`,
   `unmodifiable*`, `synchronized*` and `checked*`; and functions in or below a class with a Spring
   stereotype (`@Component`, `@Service`, `@Repository`, `@Controller`, `@RestController`, `@ControllerAdvice`,
-  `@Configuration`, `@SpringBootApplication`).
+  `@RestControllerAdvice`, `@Configuration`, `@SpringBootApplication`, `@AutoConfiguration`,
+  `@TestConfiguration`), resolved through the imports or written fully qualified, as in the Spring rules.
 - Singular and plural: both members must have the same element type (the plural a list, set,
   collection or array of it). Only the primary-constructor properties of a `data class` and the
   properties of a `@ConfigurationProperties` class are inspected.
@@ -532,15 +566,43 @@ Limits, all chosen to flag less rather than guess:
   body of a property getter, or the condition of an `if` that has an `else` and is itself one of those.
   Backticked constants (``Status.`in` ``) are matched by their name. A test in a property initializer is
   named after the property (`Holder.isOpen`), as it is in a getter.
-- Unused option: a defaulted parameter of a private or internal function that is not `override`, `open`,
-  `abstract`, `operator`, `infix` or `main`, has no annotation and is not declared in an interface, or of the
-  constructor of a final class without annotations. It is flagged when no call (in main or tests, matched by
-  name, through an import alias or a type alias) sets the parameter by name or position, no callable
-  reference exists and no Java file mentions the name. A call that cannot match the signature is ignored, a
-  call with a spread sets every parameter, and a `copy(name = ...)` call sets that parameter of a data class.
-  Data classes are skipped when the module has `jackson-module-kotlin`, `kotlinx-serialization` or
-  `moshi-kotlin` on its main compile or runtime classpath (`runtimeOnly` counts), since a library may set the defaults; a library that does so
-  without that jar (reflection in a framework) is not seen.
+- Unused option: a defaulted parameter that no call sets by name or position (matched by name and through
+  an import alias). A call that cannot match the signature is ignored, a call with a spread sets every
+  parameter, and a `copy(name = ...)` call sets that parameter of a data class. Functions that are
+  `override`, `open`, `abstract`, `operator`, `infix`, `main` or annotated are never judged, nor are names
+  with a callable reference or that a Java file mentions. Two kinds of declarations are judged:
+  - Public functions at the top level, in a top-level `object` or in the companion object of a top-level
+    class, the Kotlin form of TypeScript's exported functions and Python's module-level functions. Calls in
+    the main sources of every module of the build count, and so do the module's own tests when the module
+    is published (a Gradle `publishing` publication, as for `test-only-export`); callable references and
+    Java sources of every module are checked. An `object` or companion of a Spring-managed class is left
+    alone; the annotation is resolved through the imports as in the Spring rules (`@Component`, `@Service`,
+    `@Repository`, `@Controller`, `@RestController`, `@ControllerAdvice`, `@RestControllerAdvice`,
+    `@Configuration`, `@SpringBootApplication`, `@AutoConfiguration`, `@TestConfiguration`, also written
+    fully qualified), and the forwarding-wrapper rule uses the same check. Public member functions and
+    public constructors are not judged: frameworks build and call them by reflection (Jackson,
+    configuration binding, injection), out of sight of the facts, and TypeScript and Python do not judge
+    them either.
+  - Private and internal functions (not in an interface) and the constructors of final classes without
+    annotations, private or internal. All their callers are in the module, so calls in its main sources and
+    tests count, a type alias of the class counts as its name, and only the module's own facts and Java
+    sources are read. Data classes are skipped when the module has `jackson-module-kotlin`,
+    `kotlinx-serialization` or `moshi-kotlin` on its main compile or runtime classpath (`runtimeOnly`
+    counts), since a library may set the defaults; a library that does so without that jar (reflection in
+    a framework) is not seen.
+
+  Callers the facts do not see switch off the judging of public functions only in the modules they can
+  call. Each such place, read from the Gradle build, reaches the projects it depends on (directly or
+  through other projects): an Android or Multiplatform project; a Kotlin or Java project outside the
+  analysis root; a source set other than `main` and `test` that holds `.kt` or `.java` files (it also
+  reaches its own project); an included build whose build files name a project of this build as
+  `group:name` (an included build that names none, such as a plugin build, reaches nothing); and a file
+  the facts step skipped, which reaches its module and that module's dependencies. Test code (a source set
+  whose name has `test` or `jmh`, a JVM test suite, a source set a `Test` task runs, a skipped test file)
+  only counts for the declarations of its own module when that module is published, since tests count
+  nowhere else. One report-only note (`callers-not-analyzed`) names these places, anchored on the public
+  function of an affected module that comes first by path and line.
+
 - Class-load effects: load time is a top-level property initializer (it runs when the file's facade
   class loads), the property initializers and `init` blocks of an `object` or companion object, an
   enum entry's arguments and body and the enum class's own properties, `init` blocks and
@@ -666,6 +728,23 @@ guessed at.
   assumption on a real condition depend on the environment and are not reported. Allowed: run the test,
   delete it, or limit it to the environment it needs.
 - `FocusedTest`: Kotest only (JUnit has no focus). Reported at the outermost focused registration.
+- `RetryInTest`: a retry set in test code, so a flaky test cannot pass on a later attempt. JVM forms, in
+  any test source: JUnit Pioneer `@RetryingTest` and rerunner-jupiter `@RepeatedIfExceptionsTest` (also
+  through an import alias or in an `@[...]` group; any retry annotation is reported, `@RetryingTest(1)`
+  included, and so is a meta-annotation declared with one, at its declaration), TestNG
+  `@Test(retryAnalyzer = ...)`, a class or object that implements `IRetryAnalyzer` or extends
+  `RetryAnalyzerCount`, and a `setRetryAnalyzer(...)` call (an `IAnnotationTransformer` doing it for every
+  test), but not a function declared with that name. Kotest forms: `retries` in `.config(...)` on a test or
+  a container, `retries = n` (or `this.retries = n`) as a statement of a spec body or `init` block (not an
+  argument of another call, not a property of another object), `override val retries` in a class that
+  extends `AbstractProjectConfig` or `AbstractPackageConfig`, also over several lines, with `get()` or
+  `by lazy`, and through a base class of the same file, and `retries` in `TestConfig(...)` or
+  `DefaultTestConfig(...)` when the name comes from `io.kotest` (an import, an alias, a star import or the
+  fully qualified name). Not reported: a literal `0` or `null`, a constant of the same file that is `0` or
+  `null`, `retryDelay` alone, and `@RepeatedTest`, which is not a retry because every repetition must pass.
+  A base config class in another file and a constant from another file are not followed. The Java preset
+  has the same rule id for the JVM forms. Fix the cause instead, for example wait on the condition instead
+  of a fixed delay or isolate shared state; use `exceptions` only for a test that must retry on purpose.
 - `AssertionInControlFlow`: an assertion inside a construct that can skip it, in a JUnit test or a Kotest
   test body: an `if` or `else`, a `when`, any loop (`for`, `while`, `do`, `repeat`, `forEach`,
   `forEachIndexed`, `onEach` and the other iteration calls), a safe call (`?.let`, `?.also`, `?.run`,
@@ -1016,10 +1095,17 @@ project that meets a kind it does not know takes the exception route and reports
 **What runs.** The Java preset's `nitpickerPit` (PIT 1.17.4 with the test plugins the project's
 framework needs, `pitest-junit5-plugin` 1.2.1 for Kotest and JUnit 5, default mutators, the
 project's own tests) mutates `sourceSets.main.output.classesDirs`, which holds the Kotlin
-classes next to the Java ones; the other class tools keep to `compileJava`'s output. The
-ingester finds a class's source file under both kinds of source root from PIT's `sourceFile`
-(also when the directory does not match the package, as for coverage). PIT's built-in `FKOTLIN`
-filter (on by default) removes only mutants at line 0 of a `.kt` file, which is not enough.
+classes next to the Java ones; the other class tools keep to `compileJava`'s output. PIT's
+minions get the JVM arguments the tests run with, on Gradle and Maven alike: on Gradle the test
+task's `jvmArgs`, `systemProperties`, `minHeapSize`, `maxHeapSize` and `jvmArgumentProviders` (not
+the JaCoCo agent), on Maven maven-surefire-plugin's `argLine` (its configuration, else the
+`argLine` property) followed by its `<systemProperties>` and `<systemPropertyVariables>` as `-D`
+arguments. They reach PIT through a Java argument file, so spaces, quotes and commas survive;
+[Slice 7: mutation with PIT](java-preset.md#slice-7-mutation-with-pit) lists the exact rules and
+what is left out. The ingester finds a class's source file under both kinds of source root from
+PIT's `sourceFile` (also when the directory does not match the package, as for coverage). PIT's
+built-in `FKOTLIN` filter (on by default) removes only mutants at line 0 of a `.kt` file, which is
+not enough.
 
 **The filter.** The `kotlin-psi` program that already writes `kotlin-metrics.json` and
 `kotlin-facts.json` (one parse of the sources, see [Structure limits](#structure-limits)) writes a
@@ -1536,6 +1622,14 @@ fails only when it grows, and a package folder moved to a new path is matched to
 | KT2 | One-way rules and skill (#177)               | This document: done.                                                                                                                                        |
 | KT3 | Structure, CRAP, duplicates, coupling (#178) | Done: structure limits and CRAP from a PSI metrics step (a token-based reader misreads Kotlin), jscpd with the Kotlin format and jdeps over Kotlin classes. |
 | KT4 | Changed coverage and mutation (#179)         | Done: `changed-branch-coverage` on Kotlin with generated-branch filtering; PIT on Kotlin classes, gated after a filter for generated code.                  |
+
+## Tools evaluated and not integrated
+
+- [Infer](infer-evaluation.md): not integrated; the license finding applies to Kotlin too, and its Kotlin
+  support captures `kotlinc` invocations only, not Gradle or Maven Kotlin builds.
+- [BlockHound](blockhound-evaluation.md): not integrated by nitpicker. With the `kotlinx-coroutines-debug`
+  integration on the test classpath it flags a blocking call on `Dispatchers.Default` and accepts it on
+  `Dispatchers.IO`; a project opts in with its own test dependencies and JVM flag.
 
 ## Known limits
 

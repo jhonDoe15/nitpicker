@@ -26,6 +26,7 @@ import { detectLibraries } from './libraries/project-libraries.mjs';
 import { stylingApproachFor } from './eslint-config/react/react-styling.mjs';
 import { hasPrettierConventions } from '../conventions/prettier-conventions.mjs';
 import { markedGeneratedFiles } from './layout/generated-files.mjs';
+import { withHeadToolConfigs } from './project-configs/head-tool-configs.mjs';
 import { picked } from '../../../shared/config.mjs';
 import { projectConfigTools } from './project-tools/project-config-files.mjs';
 import { headCapturedFacts, withProjectToolConfigs } from './project-tools/project-tool-policy.mjs';
@@ -79,7 +80,11 @@ export function resolveHeadPolicy(config = {}, projectRoot) {
 function withProjectFacts(policy, config, projectRoot) {
   const jscpd = resolveJscpdPolicy(policy.tools?.jscpd, projectRoot);
   const tools = withProjectToolConfigs(
-    jscpd === undefined ? policy.tools : { ...policy.tools, jscpd },
+    withHeadToolConfigs(
+      jscpd === undefined ? policy.tools : { ...policy.tools, jscpd },
+      config,
+      projectRoot,
+    ),
     projectRoot,
     { disabled: config.disable },
   );
@@ -181,7 +186,7 @@ function headToolFacts(policy, headPolicy) {
       };
     }
   }
-  for (const tool of ['jscpd', ...projectConfigTools()]) {
+  for (const tool of ['jscpd', 'stryker', ...projectConfigTools()]) {
     if (usesProjectConfig(tools[tool]?.precedence ?? [])) {
       tools[tool] = headCapturedFacts(tools[tool], headPolicy.tools?.[tool]);
     }

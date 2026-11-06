@@ -1,4 +1,4 @@
-import { existsSync, readFileSync, realpathSync, statSync } from 'node:fs';
+import { readFileSync, realpathSync, statSync } from 'node:fs';
 import path from 'node:path';
 
 export function resolveInside(root, relative) {
@@ -7,9 +7,13 @@ export function resolveInside(root, relative) {
   return full.startsWith(base + path.sep) ? full : undefined;
 }
 
+export function isRegularFile(file) {
+  return statSync(file, { throwIfNoEntry: false })?.isFile() === true;
+}
+
 export function readInside(root, relative, encoding) {
   const full = resolveInside(root, relative);
-  return full !== undefined && existsSync(full) ? readFileSync(full, encoding) : undefined;
+  return full !== undefined && isRegularFile(full) ? readFileSync(full, encoding) : undefined;
 }
 
 export function isRealPathInside(root, full) {
@@ -24,7 +28,7 @@ export function isRealPathInside(root, full) {
 
 export function realFileInside(root, relative) {
   const full = resolveInside(root, relative);
-  if (full === undefined || !existsSync(full) || !statSync(full).isFile()) {
+  if (full === undefined || !isRegularFile(full)) {
     return undefined;
   }
   return isRealPathInside(root, full) ? full : undefined;

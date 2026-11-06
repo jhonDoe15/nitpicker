@@ -196,7 +196,7 @@ describe('describePolicyChanges', () => {
               'build/**',
               'generated/**',
               'coverage/**',
-              'reports/**',
+              'reports/quality/**',
               'target/**',
               '**/node_modules/**',
               '**/vendor/**',

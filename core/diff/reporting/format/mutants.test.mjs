@@ -52,14 +52,14 @@ function strykerFindings(mutants) {
 }
 
 function strykerSurvivor(line) {
-  return [
-    `  mutation/mutant-survived src/pricing.ts:${String(line)}`,
-    `    Survived ArithmeticOperator at column 3: replacing \`value + ${String(line)}\` with \`value - ${String(line)}\` fails no test. ${WAY_OUT}`,
-  ];
+  return `    src/pricing.ts:${String(line)}:3 Survived ArithmeticOperator at column 3: replacing \`value + ${String(line)}\` with \`value - ${String(line)}\` fails no test.`;
 }
 
-function unreached(header, text) {
-  return [header, `    ${text} that no test runs. Add a test that reaches this code.`];
+function unreached(label, place, text) {
+  return [
+    `  ${label}: ${text} that no test runs. Add a test that reaches this code.`,
+    `    ${place}`,
+  ];
 }
 
 function pitMutation(status, line, { method = 'total', descriptor = '(Ljava/util/List;)I' } = {}) {
@@ -75,14 +75,11 @@ function pitFindings(mutations) {
 }
 
 function pitSurvivor(line) {
-  return [
-    `  pit/mutant-survived src/main/java/shop/Cart.java:${String(line)}`,
-    `    Survived MathMutator: Replaced integer addition with subtraction ${String(line)}: no test fails when this code changes. ${PIT_WAY_OUT}`,
-  ];
+  return `    src/main/java/shop/Cart.java:${String(line)} Survived MathMutator: Replaced integer addition with subtraction ${String(line)}: no test fails when this code changes.`;
 }
 
-function survivorTail(header, text) {
-  return [header, `    and ${text} (listed in the diagnostics file)`];
+function survivorTail(place, text) {
+  return `    ${place} and ${text} (listed in the diagnostics file)`;
 }
 
 describe('mutation entries in the console summary', () => {
@@ -91,7 +88,8 @@ describe('mutation entries in the console summary', () => {
 
     expect(entriesOf(findings)).toEqual(
       unreached(
-        '  mutation/mutant-nocoverage src/pricing.ts:4',
+        'mutation/mutant-nocoverage',
+        'src/pricing.ts:4',
         'price: 4 mutants on lines 4 to 9',
       ),
     );
@@ -103,13 +101,11 @@ describe('mutation entries in the console summary', () => {
     );
 
     expect(entriesOf(findings)).toEqual([
-      ...strykerSurvivor(2),
-      ...strykerSurvivor(3),
-      ...strykerSurvivor(4),
-      ...survivorTail(
-        '  mutation/mutant-survived src/pricing.ts',
-        '2 more surviving mutants in price from line 5',
-      ),
+      `  mutation/mutant-survived: ${WAY_OUT}`,
+      strykerSurvivor(2),
+      strykerSurvivor(3),
+      strykerSurvivor(4),
+      survivorTail('src/pricing.ts:5', '2 more surviving mutants in price from line 5'),
     ]);
   });
 
@@ -122,16 +118,18 @@ describe('mutation entries in the console summary', () => {
     ]);
 
     expect(entriesOf(findings)).toEqual([
-      ...unreached(
-        '  pit/mutant-nocoverage src/main/java/shop/Cart.java:11',
-        'Cart#discount: 3 mutants on lines 11 to 14',
-      ),
-      ...pitSurvivor(3),
-      ...pitSurvivor(4),
-      ...pitSurvivor(5),
-      ...survivorTail(
-        '  pit/mutant-survived src/main/java/shop/Cart.java',
+      `  pit/mutant-survived: ${PIT_WAY_OUT}`,
+      pitSurvivor(3),
+      pitSurvivor(4),
+      pitSurvivor(5),
+      survivorTail(
+        'src/main/java/shop/Cart.java:6',
         '2 more surviving mutants in Cart#total from line 6',
+      ),
+      ...unreached(
+        'pit/mutant-nocoverage',
+        'src/main/java/shop/Cart.java:11',
+        'Cart#discount: 3 mutants on lines 11 to 14',
       ),
     ]);
   });
@@ -144,18 +142,19 @@ describe('mutation entries in the console summary', () => {
     );
 
     expect(entriesOf(findings)).toEqual([
-      ...pitSurvivor(1),
-      ...pitSurvivor(2),
-      ...pitSurvivor(3),
-      ...survivorTail(
-        '  pit/mutant-survived src/main/java/shop/Cart.java',
+      `  pit/mutant-survived: ${PIT_WAY_OUT}`,
+      pitSurvivor(1),
+      pitSurvivor(2),
+      pitSurvivor(3),
+      survivorTail(
+        'src/main/java/shop/Cart.java:4',
         '1 more surviving mutant in Cart#total from line 4',
       ),
-      ...pitSurvivor(11),
-      ...pitSurvivor(12),
-      ...pitSurvivor(13),
-      ...survivorTail(
-        '  pit/mutant-survived src/main/java/shop/Cart.java',
+      pitSurvivor(11),
+      pitSurvivor(12),
+      pitSurvivor(13),
+      survivorTail(
+        'src/main/java/shop/Cart.java:14',
         '1 more surviving mutant in Cart#total from line 14',
       ),
     ]);
@@ -165,28 +164,15 @@ describe('mutation entries in the console summary', () => {
     const findings = enforceable(ingestMutmut(recordedMutmutRun).findings);
 
     expect(entriesOf(findings)).toEqual([
-      '  mutmut/mutant-survived src/shop/pricing.py:6',
-      `    Survived number: replacing \`0\` with \`1\` fails no test. ${WAY_OUT}`,
-      '  mutmut/mutant-survived src/shop/pricing.py:10',
-      `    Survived operator: replacing \`>\` with \`>=\` fails no test. ${WAY_OUT}`,
-      '  mutmut/mutant-survived src/shop/pricing.py:10',
-      `    Survived number: replacing \`100\` with \`101\` fails no test. ${WAY_OUT}`,
-      ...survivorTail(
-        '  mutmut/mutant-survived src/shop/pricing.py',
-        '2 more surviving mutants in total from line 11',
-      ),
-      ...unreached(
-        '  mutmut/mutant-nocoverage src/shop/pricing.py:28',
-        'Cart.label: 7 mutants on line 28',
-      ),
-      ...unreached(
-        '  mutmut/mutant-nocoverage src/shop/pricing.py:39',
-        'fetch: 2 mutants on line 39',
-      ),
-      ...unreached(
-        '  mutmut/mutant-nocoverage src/shop/pricing.py:43',
-        'never_called: 8 mutants on line 43',
-      ),
+      `  mutmut/mutant-survived: ${WAY_OUT}`,
+      '    src/shop/pricing.py:6 Survived number: replacing `0` with `1` fails no test.',
+      '    src/shop/pricing.py:10 Survived operator: replacing `>` with `>=` fails no test.',
+      '    src/shop/pricing.py:10 Survived number: replacing `100` with `101` fails no test.',
+      survivorTail('src/shop/pricing.py:11', '2 more surviving mutants in total from line 11'),
+      '  mutmut/mutant-nocoverage: Add a test that reaches this code.',
+      '    src/shop/pricing.py:28 Cart.label: 7 mutants on line 28 that no test runs.',
+      '    src/shop/pricing.py:39 fetch: 2 mutants on line 39 that no test runs.',
+      '    src/shop/pricing.py:43 never_called: 8 mutants on line 43 that no test runs.',
     ]);
   });
 
@@ -199,12 +185,14 @@ describe('mutation entries in the console summary', () => {
     ]);
 
     expect(entriesOf(findings)).toEqual([
+      `  mutation/mutant-survived: ${WAY_OUT}`,
+      strykerSurvivor(2),
+      strykerSurvivor(3),
       ...unreached(
-        '  mutation/mutant-nocoverage src/pricing.ts:6',
+        'mutation/mutant-nocoverage',
+        'src/pricing.ts:6',
         'price: 2 mutants on lines 6 to 8',
       ),
-      ...strykerSurvivor(2),
-      ...strykerSurvivor(3),
     ]);
   });
 
@@ -218,16 +206,10 @@ describe('mutation entries in the console summary', () => {
     ]);
 
     expect(entriesOf(findings)).toEqual([
-      '  mutation/mutant-nocoverage src/pricing.ts:2',
-      '    NoCoverage ArithmeticOperator at column 3: no test runs this code. Add a test that reaches it.',
-      ...unreached(
-        '  mutation/mutant-nocoverage src/pricing.ts:6',
-        'total: 2 mutants on lines 6 to 7',
-      ),
-      ...unreached(
-        '  mutation/mutant-nocoverage src/pricing.ts:1',
-        'top-level code: 2 mutants on lines 1 to 9',
-      ),
+      '  mutation/mutant-nocoverage',
+      '    src/pricing.ts:1 top-level code: 2 mutants on lines 1 to 9 that no test runs. Add a test that reaches this code.',
+      '    src/pricing.ts:2:3 NoCoverage ArithmeticOperator at column 3: no test runs this code. Add a test that reaches it.',
+      '    src/pricing.ts:6 total: 2 mutants on lines 6 to 7 that no test runs. Add a test that reaches this code.',
     ]);
   });
 
@@ -255,10 +237,12 @@ describe('mutation entries in the console summary', () => {
         '',
         'Quality gate summary',
         '✖ 7 new enforceable violations',
-        '  eslint/no-console src/pricing.ts:1',
-        '    Unexpected console statement.',
+        '  by area: lint 1 · mutation 6',
+        '  eslint/no-console: Unexpected console statement.',
+        '    src/pricing.ts:1',
         ...unreached(
-          '  mutation/mutant-nocoverage src/pricing.ts:2',
+          'mutation/mutant-nocoverage',
+          'src/pricing.ts:2',
           'price: 6 mutants on lines 2 to 7',
         ),
         'Full diagnostics: reports/quality/diff/combined/report.txt',

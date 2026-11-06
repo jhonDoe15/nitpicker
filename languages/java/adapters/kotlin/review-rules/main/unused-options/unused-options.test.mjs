@@ -8,7 +8,7 @@ import {
   run,
   summary,
   testFile,
-} from '../test-support/facts.mjs';
+} from '../../test-support/facts.mjs';
 import { UNUSED_OPTION_RULE, UNUSED_OPTION_TOOL, unusedOptionFindings } from './unused-options.mjs';
 
 const options = [parameter('value', 'Int'), parameter('pad', 'Int', { default: true, line: 8 })];
@@ -35,7 +35,7 @@ describe('unused option in Kotlin', () => {
       symbol: 'format.pad',
       location: { line: 8 },
       message:
-        'Option format.pad is never set. Remove it, or set it from a real call (private and internal declarations only; calls in tests count). If this is intended, add {"rule":"unused-option","paths":["src/main/kotlin/demo/Sample.kt"],"reason":"..."} to "exceptions" in nitpicker.config.json.',
+        'Option format.pad is never set. Remove it, or set it from a real call (private or internal, so calls in tests count). If this is intended, add {"rule":"unused-option","paths":["src/main/kotlin/demo/Sample.kt"],"reason":"..."} to "exceptions" in nitpicker.config.json.',
       classification: 'enforceable',
     });
   });
@@ -98,7 +98,6 @@ describe('unused option in Kotlin', () => {
   });
 
   it.each([
-    ['a public function', { visibility: 'public' }],
     ['an override', { modifiers: ['override'] }],
     ['an annotated function', { annotations: ['JvmOverloads'] }],
     ['an open function', { modifiers: ['open'] }],

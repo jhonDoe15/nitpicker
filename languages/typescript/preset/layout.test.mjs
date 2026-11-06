@@ -1,6 +1,8 @@
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
+import * as prettier from 'prettier';
 import { describe, expect, it } from 'vitest';
+import { prettierExclusions } from '../../../core/fix/extensions.mjs';
 import {
   builtInExcludedGlobs,
   defaultResolvedLayout,
@@ -37,7 +39,8 @@ describe('common layout', () => {
   it('keeps the output folders of every tool config equal to the built-in exclusions', () => {
     const defaults = path.join(import.meta.dirname, 'defaults');
     const read = (name) => readFileSync(path.join(defaults, name), 'utf8');
-    const outputGlobs = (globs) => globs.filter((glob) => /^\*{0,2}\/?\w+\/\*\*$/u.test(glob));
+    const outputGlobs = (globs) =>
+      globs.filter((glob) => /^\*{0,2}\/?\w+(?:\/\w+)*\/\*\*$/u.test(glob));
     const builtIn = [...builtInExcludedGlobs].sort();
 
     const tsconfigs = ['tsconfig.quality.json', 'tsconfig.stryker.json'];
@@ -84,14 +87,43 @@ describe('built-in excluded globs', () => {
     const matches = (file) =>
       defaultResolvedLayout.excludedGlobs.some((glob) => globMatcher(glob).test(file));
 
-    const folders = ['dist', 'build', 'generated', 'coverage', 'reports', 'target'];
+    const folders = ['dist', 'build', 'generated', 'coverage', 'reports/quality', 'target'];
     expect(
       folders.map((folder) => [
         matches(`${folder}/a.ts`),
         matches(`src/main/features/${folder}/domain/a.ts`),
       ]),
     ).toEqual(folders.map(() => [true, false]));
+    expect(matches('reports/monthly.ts')).toBe(false);
+    expect(matches('src/reports/monthly.ts')).toBe(false);
     expect(matches('src/node_modules/pkg/a.ts')).toBe(true);
+  });
+
+  it('format folders named like an output folder unless they are the root output folder', async () => {
+    const ignorePath = path.join(import.meta.dirname, 'defaults/.prettierignore');
+    const ignored = async (file) =>
+      (await prettier.getFileInfo(path.join(import.meta.dirname, 'defaults', file), { ignorePath }))
+        .ignored;
+    const fixExcluded = (file) => prettierExclusions.some((pattern) => pattern.test(file));
+    const files = [
+      'reports/quality/diff/a.json',
+      'coverage/a.json',
+      '.stryker-tmp/a.ts',
+      'reports/monthly.ts',
+      'src/reports/monthly.ts',
+      'src/coverage/a.ts',
+    ];
+    const results = await Promise.all(
+      files.map(async (file) => [file, await ignored(file), fixExcluded(file)]),
+    );
+    expect(results).toEqual([
+      ['reports/quality/diff/a.json', true, true],
+      ['coverage/a.json', true, true],
+      ['.stryker-tmp/a.ts', true, true],
+      ['reports/monthly.ts', false, false],
+      ['src/reports/monthly.ts', false, false],
+      ['src/coverage/a.ts', false, false],
+    ]);
   });
 
   it('lint and type-check hand-written declaration files but keep them out of runtime checks', () => {
