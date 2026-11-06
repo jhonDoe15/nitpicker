@@ -39,3 +39,16 @@ export function hasBoundedKeys(context, node) {
   const type = services.getTypeAtLocation(node);
   return type.getProperties().length > 0 && checker.getIndexInfosOfType(type).length === 0;
 }
+
+export function hasArrayType(context, node, withTuples = true) {
+  const services = typeServices(context);
+  if (services === undefined) {
+    return undefined;
+  }
+  const checker = services.program.getTypeChecker();
+  const type = checker.getNonNullableType(services.getTypeAtLocation(node));
+  const members = type.isUnion() ? type.types : [type];
+  return members.every(
+    (member) => checker.isArrayType(member) || (withTuples && checker.isTupleType(member)),
+  );
+}

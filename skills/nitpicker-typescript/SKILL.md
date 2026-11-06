@@ -97,8 +97,11 @@ Before you change code other modules use, fix a bug, or add a UI state, read
   inner functions count toward its 50 lines: put helpers at module level and pass `deps` in.
 - `async`/`await`, never `.then()`. No floating promises.
 - Named exports only. No comments; a `/** ... */` doc comment on an export is the one exception.
-- The code smell rules (repeated strings, secrets, generic names, boolean flags, I/O per loop
-  item, spread in `reduce`, TODOs) name the allowed form in their message. Read secrets from the
+- The code smell rules (repeated strings, secrets, generic names, boolean flags, a query or
+  request per loop item, also through your own helpers and queries inside `Promise.all`, lazy
+  TypeORM relations awaited per item, an accumulator copied in `reduce` or a loop, a remote call
+  inside a transaction or lock, a retried write without an idempotency key, a database write and a
+  broker publish in one function, TODOs) name the allowed form in their message. Read secrets from the
   environment in the composition root; shared pure logic goes in `shared/` under a name for its job.
 
 ## Production rules

@@ -18,8 +18,15 @@ const ITERATION_METHODS = new Set([
   'every',
   'find',
   'findIndex',
+  'reduceRight',
+  'findLast',
+  'findLastIndex',
+  'sort',
+  'toSorted',
 ]);
 const IDENTIFIER = 'Identifier';
+const MEMBER = 'MemberExpression';
+const ASSIGNMENT = 'AssignmentExpression';
 const ARITHMETIC_OPERATORS = new Set(['+', '-', '*', '/', '%', '**']);
 const LOOP_EXITS = new Set(['ThrowStatement', 'ReturnStatement', 'BreakStatement']);
 const BREAK_TARGETS = new Set([...LOOPS, 'SwitchStatement']);
@@ -36,7 +43,7 @@ function ancestorsOf(node) {
   return ancestors;
 }
 
-function childrenOf(node, visitorKeys) {
+export function childrenOf(node, visitorKeys) {
   return (visitorKeys[node.type] ?? []).flatMap((key) => [node[key]].flat()).filter(Boolean);
 }
 
@@ -58,12 +65,21 @@ function isLoopBody(loop, child) {
 
 function isIterationCallback(fn) {
   const call = fn.parent;
-  return (
-    call.type === 'CallExpression' &&
-    call.arguments.includes(fn) &&
-    call.callee.type === 'MemberExpression' &&
-    ITERATION_METHODS.has(call.callee.property.name)
-  );
+  if (
+    call.type !== 'CallExpression' ||
+    !call.arguments.includes(fn) ||
+    call.callee.type !== MEMBER
+  ) {
+    return false;
+  }
+  const { object, property } = call.callee;
+  const mapsFrom = property.name === 'from' && object.name === 'Array' && call.arguments[1] === fn;
+  return mapsFrom || ITERATION_METHODS.has(property.name);
+}
+
+export function isIterationCall(call) {
+  const { callee } = call;
+  return callee.type === MEMBER && !callee.computed && ITERATION_METHODS.has(callee.property.name);
 }
 
 export function enclosingLoop(node, sourceCode) {
@@ -73,8 +89,9 @@ export function enclosingLoop(node, sourceCode) {
       return { loop: parent, child };
     }
     if (FUNCTIONS.has(parent.type)) {
-      const sequential = isIterationCallback(parent) && !isConcurrentBatch(parent, sourceCode);
-      return sequential ? { callback: parent } : undefined;
+      return isIterationCallback(parent)
+        ? { callback: parent, concurrent: isConcurrentBatch(parent, sourceCode) }
+        : undefined;
     }
     child = parent;
   }
@@ -126,7 +143,7 @@ function isArithmeticSelfUpdate({ operator, left, right }) {
   );
 }
 
-export function isPagingLoop(loop, visitorKeys) {
+function isPagingLoop(loop, visitorKeys) {
   if (loop === undefined || loop.test === null || loop.test === undefined) {
     return false;
   }
@@ -140,9 +157,51 @@ export function isPagingLoop(loop, visitorKeys) {
   );
   return descendants(loop.body, visitorKeys, (node) => FUNCTIONS.has(node.type)).some(
     (node) =>
-      node.type === 'AssignmentExpression' &&
+      node.type === ASSIGNMENT &&
       node.left.type === IDENTIFIER &&
       tested.has(node.left.name) &&
       !isArithmeticSelfUpdate(node),
   );
+}
+
+function isReference(identifier) {
+  const { parent } = identifier;
+  const isProperty =
+    (parent.type === MEMBER && parent.property === identifier && !parent.computed) ||
+    (parent.type === 'Property' && parent.key === identifier && !parent.shorthand);
+  return identifier.type === IDENTIFIER && !isProperty;
+}
+
+function namesIn(node, visitorKeys) {
+  return new Set(
+    descendants(node, visitorKeys, (each) => FUNCTIONS.has(each.type))
+      .filter(isReference)
+      .map(({ name }) => name),
+  );
+}
+
+function loopAssignments(loop, visitorKeys) {
+  const nodes = descendants(loop.body, visitorKeys, (node) => FUNCTIONS.has(node.type));
+  const varying = new Map();
+  for (const node of nodes) {
+    const target = node.type === ASSIGNMENT ? node.left : node.id;
+    const value = node.type === ASSIGNMENT ? node.right : node.init;
+    const assigns = [ASSIGNMENT, 'VariableDeclarator'].includes(node.type);
+    if (assigns && target.type === IDENTIFIER && value) {
+      const sources = [...namesIn(value, visitorKeys)].filter((name) => name !== target.name);
+      const carried = node.type === ASSIGNMENT ? sources.length > 0 : false;
+      varying.set(target.name, carried || sources.some((name) => varying.get(name) === true));
+    }
+  }
+  return varying;
+}
+
+export function isPagingCall(call, loop, visitorKeys) {
+  if (!isPagingLoop(loop, visitorKeys)) {
+    return false;
+  }
+  const varying = loopAssignments(loop, visitorKeys);
+  const inputs = (call.arguments ?? []).flatMap((argument) => [...namesIn(argument, visitorKeys)]);
+  const changing = inputs.filter((name) => varying.has(name));
+  return changing.length === 0 || changing.some((name) => varying.get(name));
 }

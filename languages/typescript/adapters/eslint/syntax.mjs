@@ -112,7 +112,18 @@ function declarationName(node) {
   if (ts.isConstructorDeclaration(node)) {
     return 'constructor';
   }
-  return undefined;
+  return ts.isPropertyAssignment(node) && namesMember(node.initializer)
+    ? node.name.getText()
+    : undefined;
+}
+
+function namesMember(initializer) {
+  return (
+    ts.isArrowFunction(initializer) ||
+    ts.isFunctionExpression(initializer) ||
+    ts.isObjectLiteralExpression(initializer) ||
+    ts.isClassExpression(initializer)
+  );
 }
 
 function fingerprintText(node) {
