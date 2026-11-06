@@ -54,6 +54,7 @@ const BANNED_GUARDS = {
   'Literals.kt': `${PACKAGE}fun labels(): List<String> = listOf("shipping", "shipping", "shipping")\n`,
   'App.kt': `${PACKAGE}fun main() {\n    ProcessBuilder("serve", "--port", System.getenv("PORT")).inheritIO().start()\n}\n`,
   'Prefetch.kt': prefetch('body'),
+  'Routes.kt': `${PACKAGE}fun route(name: String): Regex = Regex("^/$name/")\n\nfun clean(text: String): String = text.replace(Regex("abc"), "")\n`,
   'Exports.kt': `${PACKAGE}fun render(command: List<String>): Int = ProcessBuilder(command).start().waitFor()\n`,
   'Versions.kt': `${PACKAGE}fun version(command: List<String>): String {\n    val process = ProcessBuilder(command).start()\n    return process.inputStream.bufferedReader().readText()\n}\n`,
 };
@@ -81,6 +82,7 @@ const ALLOWED_GUARDS = {
   'Literals.kt': `${PACKAGE}private const val SHIPPING = "shipping"\n\nfun labels(): List<String> = listOf(SHIPPING, SHIPPING, SHIPPING)\n\nfun kind(text: String): Int = when (text) {\n    "shipping-pending" -> 1\n    "shipping-sent", "shipping-pending" -> 2\n    else -> 3\n}\n\nfun more(): Map<String, Int> = mapOf("shipping-pending" to 1)\n`,
   'App.kt': `${PACKAGE}fun main() {\n    ProcessBuilder("serve", "--port", System.getenv("PORT")).inheritIO().start()\n}\n`,
   'Prefetch.kt': prefetch('limited', LIMITED),
+  'Routes.kt': `${PACKAGE}fun route(name: String): Regex = Regex("^/\${Regex.escape(name)}/")\n\nfun clean(text: String): String = text.replace("abc", "")\n`,
   'Exports.kt': `${PACKAGE}import java.util.concurrent.TimeUnit\n\nprivate const val DEADLINE_SECONDS = 30L\n\nfun render(command: List<String>): Int {\n    val process = ProcessBuilder(command).start()\n    check(process.waitFor(DEADLINE_SECONDS, TimeUnit.SECONDS)) { "timed out: $command" }\n    return process.exitValue()\n}\n`,
   'Versions.kt': `${PACKAGE}import java.util.concurrent.CompletableFuture\nimport java.util.concurrent.TimeUnit\n\nprivate const val VERSION_SECONDS = 30L\n\nfun version(command: List<String>): String {\n    val process = ProcessBuilder(command).start()\n    val output = CompletableFuture.supplyAsync { process.inputStream.bufferedReader().readText() }\n    check(process.waitFor(VERSION_SECONDS, TimeUnit.SECONDS)) { "timed out: $command" }\n    return output.join()\n}\n`,
 };
@@ -119,6 +121,8 @@ const EXPECTED_BANNED = [
   'kotlin-source/GeneratedOnHandWrittenCode Marked.kt',
   'kotlin-source/TestClassWithoutTestCases EmptyTest.kt',
   'kotlin-source/UnboundedFanOut Prefetch.kt',
+  'kotlin-source/UnquotedRegexValue Routes.kt',
+  'kotlin-source/PlainTextRegex Routes.kt',
   'kotlin-source/ProcessWaitWithoutTimeout Exports.kt',
   'kotlin-source/ProcessWaitWithoutTimeout Versions.kt',
   'kotlinc/deprecation Casts.kt',
