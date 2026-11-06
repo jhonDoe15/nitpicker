@@ -216,19 +216,81 @@ Math` and `Math['random']()` are caught; `process`, `fetch`, `setTimeout`, `setI
   `test-utils`, `testing/`, `test-support/`, `__mocks__/`, stories) are skipped. The nearest package.json that lists
   dependencies is used; one that is not a JSON object is reported. Unlisted packages and unused dependencies are reported by the
   `dead-code` analyzer, see [Dependency and repository checks](usage.md#dependency-and-repository-checks).
-- `nitpicker/no-unvalidated-schema-field` (all production code): no `z.unknown()` or `z.any()`
-  (also with `.optional()`, `.nullable()`, `.default()` and similar wrappers, `z.optional(...)`,
-  `z.nullable(...)`, `z.nullish(...)` and `z.readonly(...)`) as a field of `z.object`,
-  `z.strictObject` or `z.looseObject`, or of a shape passed to `.extend`, `.safeExtend` or
-  `.augment`. A schema that only checks the shape hands the
-  field on unchecked, and `domain/` then re-validates it by hand. Validate the field in the schema
-  (`z.string().trim().min(1)`, `z.email()`). `z.array(z.unknown())` or `z.unknown()` as a whole
-  schema, and `z.unknown().refine(...)`/`.pipe(...)`, are not reported. The check looks through
-  `z.record`, `z.array`, `z.set`, `z.map` and `z.tuple` elements and `.array()`
-  (`z.record(z.string(), z.unknown())` and `z.unknown().array()` as a field are reported) and through a same-file `const` (`const anything = z.any()`). `z.custom<T>()`
-  without a check function is a cast, and `z.looseObject()`, `.loose()`, `.passthrough()` and
-  `.catchall(z.unknown())` let unknown keys through: use `z.object({...})` or
-  `z.strictObject({...})`.
+- `nitpicker/no-unvalidated-schema-field` (all production code): a schema field that accepts any
+  value, and an object schema that keeps unknown keys, in every validation library the preset
+  knows. A schema that only checks the shape hands the field on unchecked, and `domain/` then
+  re-validates it by hand. Validate the field in the schema (`z.string().trim().min(1)`,
+  `z.email()`). The library is known from the import or `require`: a namespace or default import,
+  a named (also renamed) import and a destructured `require` all count, and the message names that
+  library's own allowed form. For zod: no
+  `z.unknown()` or `z.any()` (also with `.optional()`, `.nullable()`, `.default()` and similar
+  wrappers, `z.optional(...)`, `z.nullable(...)`, `z.nullish(...)` and `z.readonly(...)`) as a field
+  of `z.object`, `z.strictObject` or `z.looseObject`, or of a shape passed to `.extend`,
+  `.safeExtend` or `.augment`. `z.array(z.unknown())` or `z.unknown()` as a whole schema, and
+  `z.unknown().refine(...)`/`.pipe(...)`, are not reported. The check looks through `z.record`,
+  `z.array`, `z.set`, `z.map` and `z.tuple` elements and `.array()` (a `z.record` of
+  `z.unknown()` and `z.unknown().array()` as a field are reported) and through a same-file `const`
+  (`const anything = z.any()`). `z.custom<T>()` without a check function is a cast, and
+  `z.looseObject()`, `.loose()`, `.passthrough()` and `.catchall(z.unknown())` let unknown keys
+  through: use `z.object({...})` or `z.strictObject({...})`. The other libraries, with the same
+  kind of wrappers, containers and aliases (field forms first, then the object forms):
+  - valibot: `v.unknown()`, `v.any()` in `v.object`, `v.strictObject`, `v.looseObject` and
+    `v.objectWithRest`; `v.looseObject(...)` and `v.objectWithRest(..., v.unknown())`.
+  - yup: `mixed()` without a check argument, `.test(...)`, `.oneOf(...)` or another check, in
+    `object({...})` or `.shape({...})`.
+  - joi: `Joi.any()` without `.valid(...)`, `.custom(...)` or another check, in `Joi.object({...})`,
+    `.keys(...)` or `.append(...)`; `.unknown()`, `.unknown(true)`, `.pattern(key, Joi.any())` and
+    `allowUnknown: true` in `.prefs`, `.preferences` or `.options`.
+  - typebox: `Type.Unknown()`, `Type.Any()` in `Type.Object`; `additionalProperties: true` (or an
+    unchecked schema) on `Type.Object`.
+  - io-ts: `t.unknown`, `t.any` in `t.type`, `t.strict` and `t.partial`.
+  - superstruct: `unknown()`, `any()` in `object`, `type` and `partial`.
+  - runtypes: `Unknown` in `Object`, `Record` (with an object) and `Partial`.
+  - valita: `v.unknown()` in `v.object`; `.rest(v.unknown())`.
+  - effect: `Schema.Unknown`, `Schema.Any` in `Schema.Struct` (also as the `value` of
+    `Schema.Record`); a `Schema.Struct` index signature (a `Schema.Record` or a plain
+    `{ key, value }`) whose value is `Schema.Unknown` or `Schema.Any`.
+  - arktype: `"unknown"`, `"any"` and their arrays as a property of `type({...})`, nested objects
+    included (tuple expressions such as `['string', '=', 'any']` are left alone).
+  - ajv: a property schema `{}` or `true` in `properties`, and `additionalProperties: true` or `{}`
+    or a `patternProperties` entry of `{}` or `true`, anywhere in the schema (through `items`,
+    `allOf`, `anyOf`, `oneOf`, `prefixItems`, `$defs` and `definitions`). The schema is a literal,
+    or a same-file `const` (also with `as const` or `satisfies`), passed to `compile`,
+    `compileAsync`, `compileParser`, `validate` or `addSchema` of a `new Ajv()`, or of an imported
+    or parameter receiver whose name contains `ajv`.
+  - class-validator: a class property or `accessor` whose only class-validator decorators are `@Allow()`,
+    `@IsOptional()`, `@IsDefined()` or `@ValidateIf()`. class-transformer and `@nestjs/swagger`
+    decorators are ignored; any other decorator may validate, so the property is left alone.
+  - typia: a property typed `unknown` or `any` (also in an array, a union or a `Record`, `Map`,
+    `Set` or `Partial`) in the type argument of a typia call whose name starts with `assert`, `is`,
+    `equals` or `validate` (or `create` and one of them), `typia.json` and `typia.http` included,
+    through same-file interfaces and type aliases, and through arrays, unions and `Record` values
+    of them (`typia.assert<Item[]>`).
+
+  An object form is reported only when it is an explicit choice to keep unknown keys and the
+  library also offers an object that drops or rejects them. yup `object()`, io-ts `t.type`,
+  superstruct `type`, arktype and `typia.assert` keep unknown keys by default, so reporting that
+  default would report almost every schema; prefer the stripping or strict form the library offers
+  (`.noUnknown()` or `stripUnknown`, `t.exact`/`t.strict`, `object`/`mask`, `"+": "delete"`,
+  `typia.assertEquals`). class-validator leaves unknown keys to the `whitelist` options of the
+  validation pipe, which the rule cannot see.
+
+- `nitpicker/no-eager-relation` (all production code): a relation mapped to load on every query of
+  the entity. TypeORM and MikroORM `eager: true` on `@ManyToOne`, `@OneToOne`, `@OneToMany` and
+  `@ManyToMany` (also imported by namespace or under another name, and through a same-file `const`
+  or spread of the options), on an `EntitySchema` relation, and MikroORM's `defineEntity`
+  `.eager()`; a Sequelize `defaultScope` that `include`s associations (`Model.init`,
+  `sequelize.define`, `addScope('defaultScope', ...)` and sequelize-typescript's `@DefaultScope`).
+  Load the relation on the queries that need it: TypeORM `relations` or `leftJoinAndSelect`,
+  MikroORM `populate`, a Sequelize `include` on the query or a named scope. A small lookup
+  relation that every read needs is the exception. Port of the Java and Kotlin `JpaLazyFetching`.
+- `nitpicker/no-many-to-many-cascade-remove` (all production code): a cascade that removes on a
+  many-to-many relation (TypeORM `cascade: true`, `'remove'` or `'soft-remove'`; MikroORM
+  `Cascade.ALL` or `Cascade.REMOVE`, also through `defineEntity` `.cascade(...)`) deletes the
+  related rows that other owners still share. Cascade only `['insert', 'update']` (TypeORM) or
+  `[Cascade.PERSIST]` (MikroORM); the join rows already go with the owner. Sequelize is not
+  checked: `onDelete: 'CASCADE'` on a `belongsToMany` only removes rows of the through table, which
+  is the allowed form. Port of `JpaManyToManyCascade`.
 - Untrusted input is parsed once, at the boundary, with a schema library (zod by default). Hand-written
   type guards for external data are not allowed (`nitpicker/no-handwritten-boundary-guard`, in `adapters/`, `shared/` and
   the other layers outside `domain/`): a predicate whose parameter is `unknown`, `any`, `object`,
@@ -284,8 +346,8 @@ only the library follows the project. Nitpicker reads `dependencies`, `peerDepen
   `struct` or `parser`. Other calls with the same names (`console.assert`, `form.validate`,
   `Value.Check`, yup `cast`) do not count. The guard and `unknown` messages are grammatical
   per library ("an io-ts codec", "an ajv schema") and the guard messages say how to add an
-  exception. `nitpicker/no-unvalidated-schema-field` only looks at zod schemas, so it stays silent
-  without zod.
+  exception. `nitpicker/no-unvalidated-schema-field` covers the same libraries, each known from its
+  import.
 - **Logger.** `nitpicker/structured-catch-logging` is never turned off; it checks the shape each
   detected logger reads. pino, nestjs-pino, pino-http and bunyan take the caught value as
   `logger.<level>({ err: error, ...context }, message)`. winston, log4js, loglevel, consola, tslog,
@@ -357,6 +419,40 @@ only the library follows the project. Nitpicker reads `dependencies`, `peerDepen
   do not count. `await Promise.allSettled(...)` with its result dropped hides every rejection, and
   `new Promise((resolve) => resolve(value))` wraps a value that `Promise.resolve(value)` or an
   async function returns directly.
+- An `'error'` listener on every socket, file stream, child process and client the code creates
+  (`nitpicker/require-error-listener`, production code). Node.js throws an `'error'` event that
+  has no listener, so a dropped connection, a missing file or a failed spawn stops the whole
+  process. The rule reports a value kept in a variable or an instance field (`this.client = ...`,
+  `this.client ??= ...`, `#client`, `client = new ImapFlow(...)`) when it comes from
+  `fs.createReadStream`/`createWriteStream`, `net`/`tls` `connect`, `createConnection` and
+  `new Socket()`, `dgram.createSocket`, `http(s).request`/`get`, `http2.connect`,
+  `child_process.spawn`/`fork`, the `zlib` stream factories, `worker_threads` `Worker`, node-redis
+  `createClient`/`createCluster`, `pg` `Client`/`Pool`, `ws` `WebSocket` and `ImapFlow` (also
+  behind a ternary, `??` or chained setters such as `.setTimeout(...)`), and the socket handed to a
+  `net` or `tls` `createServer` callback or `'connection'` listener (an inline function or one
+  declared in the file). In TypeScript files the type checker also catches `new` of a project class
+  that extends one of those (`class Mailer extends ImapFlow`, `class Link extends net.Socket`);
+  JavaScript files use the import table only. Allowed: `.on`/`.once`/`addListener`/
+  `prependListener('error', ...)` on the variable anywhere in its scope, or on the field anywhere in
+  the class (also after chained calls such as `.setTimeout(...)` or `.on('data', ...)`); passing it
+  to `pipeline` or `finished` (`node:stream`, `node:stream/promises`), as the first argument of
+  `events.once`/`events.on`, a `node:stream/consumers` reader, `Readable.from`/`Readable.toWeb` or
+  NestJS `StreamableFile`; `readline.createInterface({ input })`; `for await` over it or
+  `toArray()`/`forEach()`; a project function or constructor whose parameter gets an `'error'`
+  listener, a `for await` or a `pipeline`/`finished`/`once` call, also through a parameter property
+  (`constructor(private socket: Socket)`) or up to three helpers deep (read through the type
+  checker, so imported helpers count; without type information any call to a function of the file,
+  a relative import or a `this` method hands the value over); a Fastify `reply.send(stream)`; and a
+  value that is returned, yielded, exported, assigned to another name or field, or destructured from
+  `this`, which leaves the listener to its new owner. In-memory streams (`new PassThrough()`,
+  `new Readable(...)`) and plain `EventEmitter`s emit `'error'` only when the code itself does, so
+  they are not reported; neither are `ioredis` (it logs instead of throwing), `exec`/`execFile`
+  (they attach their own listener) or servers (`http.createServer`, `net.createServer`,
+  `WebSocketServer`), which fail at startup. `stream.pipe(dest)` does not count, since `pipe`
+  forwards no errors, and neither does an object holding the value passed to a library
+  (`new RedisStore({ client })`). Known limits: a static field, a parameter default and a
+  constructor function outside a `class` are not read, and a variable assigned twice counts a
+  listener on either value for both.
 - Bounded fan-out (`nitpicker/unbounded-fan-out`): `Promise.all`, `allSettled`, `any` and `race`
   (also through a `const P = Promise` alias) over `xs.map(...)`, `xs.flatMap(...)`,
   `Array.from(xs, ...)`, `Array.from({ length: xs.length }, ...)`, a `const` holding one of those,
@@ -392,6 +488,33 @@ only the library follows the project. Nitpicker reads `dependencies`, `peerDepen
   limiter is recognized by its name only, a client that arrives untyped through a parameter or an
   unlisted library is not recognized, and a collection that is small in practice but not by
   construction is reported; lift such a path with an `exceptions` entry for the rule.
+- No schema change by the ORM at startup (`nitpicker/no-orm-schema-sync`, the TypeScript and
+  JavaScript counterpart of the Spring rule `spring/ddl-auto`): TypeORM `synchronize` or
+  `dropSchema` on in ORM options (an object passed to `new DataSource`, `new Sequelize`,
+  `createConnection`, `TypeOrmModule.forRoot`, `MikroORM.init`, `defineConfig` or `knex`, returned
+  by the `useFactory` of a `*Module.forRootAsync`, or shaped like ORM options: `entities`,
+  `migrations`, a driver `type`, a Sequelize `dialect`), `synchronize()` and `dropDatabase()` on a
+  TypeORM data source, `sync()` on a Sequelize instance or model (with or without
+  `force`/`alter`), `@nestjs/sequelize` `autoLoadModels` without `synchronize: false`, and MikroORM
+  `updateSchema`, `createSchema`, `dropSchema`, `refreshDatabase` and
+  `ensureDatabase({ create: true })`. A value read from `process.env`, a comparison, a negation or
+  `Boolean(...)` (`synchronize: process.env.NODE_ENV !== 'production'`) is reported too: it still
+  changes the schema in every other environment. Allowed: migrations (`migrationsRun`,
+  `typeorm migration:run`, `sequelize-cli db:migrate`, `orm.migrator.up()`,
+  `prisma migrate deploy`). The repository check `start-schema-push` reports the same thing in a
+  `start` script (`prisma db push`, `drizzle-kit push`, `typeorm schema:sync`).
+- No query logging left on (`nitpicker/no-orm-query-logging`, the counterpart of
+  `spring/unsafe-diagnostics`), in ORM options as above: TypeORM `logging` set to `true`, `'all'`
+  or a list with `'query'`; Sequelize `logging` set to `console.log`, `true` or a function without
+  a condition, `logQueryParameters: true`, and `new Sequelize(...)`, `SequelizeModule.forRoot(...)`
+  or a `SequelizeModule.forRootAsync` factory without `logging: false` (Sequelize logs every query
+  by default); Prisma `log` with `'query'` or `{ level: 'query' }` printed to stdout; MikroORM and
+  Knex `debug` on or a list with `'query'`; Drizzle `logger: true` or `new DefaultLogger()`.
+  Conditions and environment reads are reported as above. Allowed: `logging: false` with
+  slow-query logging (TypeORM `maxQueryExecutionTime`, Sequelize `benchmark: true` with a logging
+  function that tests the duration, Prisma `{ emit: 'event', level: 'query' }` with a handler that
+  filters by duration) or the database's own slow-query log. Both rules skip tests; a local script
+  under the source roots takes an `exceptions` entry.
 - `===` and `!==` only (`eqeqeq`). Braces on every `if`, `else` and loop body (`curly`). One import
   statement per module (`no-duplicate-imports`; a separate `import type` is fine).
 - Identifier casing (`nitpicker/naming-convention`, which wraps
@@ -520,6 +643,24 @@ only the library follows the project. Nitpicker reads `dependencies`, `peerDepen
     3 `load`/`loadAll` without a `schema` (the installed major is read from the project), BSON
     `evalFunctions: true` and libxmljs `noent: true`. Allowed: `JSON.parse` checked against a schema,
     `yaml.load(text)` with the default schema in js-yaml 4, and `yaml.safeLoad(text)` in js-yaml 3.
+- Child processes the code waits for have a deadline (`nitpicker/require-process-timeout`, production
+  files; test files have `nitpicker/require-test-process-timeout`). From `child_process`, `execa` and
+  `cross-spawn`: `execSync`, `execFileSync`, `spawnSync`, `execaSync` and `execaCommandSync` need a
+  positive `timeout` (also cross-spawn's `spawn.sync` and execa's `$.sync`); `exec` and `execFile` (with a
+  callback, or through `promisify`, also declared inside a function or called at once) need a `timeout`
+  or a `signal`; `execa`, `execaCommand`, `execaNode` and execa's template tags (`` $`cmd` ``,
+  `` $({ timeout })`cmd` ``) need a `timeout`, `cancelSignal` or `signal` when the result is awaited or
+  `.then`-ed; `spawn` and `fork` need a `timeout` or `signal` when the
+  code waits for the child to end: an `'exit'` or `'close'` listener registered inside a
+  `new Promise` executor, or `await once(child, 'exit')`. A child held in a variable that is passed
+  elsewhere, returned or `kill()`-ed (a hand-made deadline) is not reported, nor are options from a
+  parameter, a call result or an unknown spread. A long-running child that nothing waits for (a dev
+  server, a worker) is not reported, and neither are module bindings made inside a function
+  (`require` there, `await import()`), zx, or a child whose end is awaited through a helper or by
+  reading its stream to the end. `stdio: 'inherit'` gets no pass: an interactive child still
+  hangs the program. A program whose purpose is to run a child to completion, such as a build
+  wrapper, takes an exception. The rule reads no types, so it behaves the same in the JavaScript
+  preset.
 - Named exports list their names: no `export *`, which makes every internal export of a feature's
   `index.ts` public (`export { name } from './domain/x.js'`).
 - Cognitive complexity of at most 15 per function, tests included (`nitpicker/cognitive-complexity`).
@@ -571,7 +712,15 @@ only the library follows the project. Nitpicker reads `dependencies`, `peerDepen
   literals of a union that has at least three members, when the chain is a predicate's value: an
   arrow body, a `return`, or a value stored in a variable or assigned (also inside `!`, another
   `&&`/`||` or a ternary branch). A chain used as the condition of an `if`, `while`, `for` or
-  ternary is ordinary narrowing and is not reported, and neither is a call argument. Allowed forms: a `switch` over the union with no `default`, or a
+  ternary is ordinary narrowing and is not reported, and neither is a call argument. The same
+  subset written as membership in an array or `Set` of literals (`['open', 'pending'].includes(s)`,
+  `new Set(['open', 'pending']).has(s)`, also negated, with `as const`, or inside an `||` chain of
+  comparisons) is reported. So is a `switch` over the union that lists at least two members whose
+  cases return the same `true` or `false` while its `default` returns the other, so adding a
+  `default` that returns `false` does not clear the finding. A list declared once
+  (`const OPEN: Kind[] = ['a', 'b']`, then `OPEN.includes(kind)`) is one classification point and
+  is not reported. Project `enum` declarations are not checked, since the preset bans `enum`.
+  Allowed forms: a `switch` over the union with no `default`, or a
   `Record<Union, boolean>` lookup, so adding a member fails to compile. A subset check such as
   `status === 'open' || status === 'pending'` on a project union of three or more members is the
   case this reports. The message names the union by its alias (`Kind`) when the value's declared type
@@ -584,17 +733,41 @@ only the library follows the project. Nitpicker reads `dependencies`, `peerDepen
 'a' | 'b'`), which names the subset in its type. The type is read at the first comparison, so an
   earlier guard that already narrowed the union can shrink it below three members. Add an exception
   for the rule when a partial test is intended.
+- `nitpicker/no-singular-and-plural-prop`: two optional inputs `tag?: string` and
+  `tags?: string[]` offer two ways to pass the same data. The rule reports the plural when both are
+  optional (`?` or a default value) and the plural is an array (`T[]`, `readonly T[]`, `Array<T>`,
+  `ReadonlyArray<T>`) of the singular's type; keep the plural and pass a single item as a
+  one-element array. The names may differ by `-s`, `-es`, `y`/`ies` or an irregular plural of the
+  last word (`selectedChild`, `selectedChildren`). It checks the parameters of an exported function,
+  of the public methods and constructors of an exported class (not `private`, `protected`, `#name`
+  or `override` ones), the properties of their parameter types, a component's props type, an
+  exported type or interface whose name ends in `Props`, `Options`, `Opts`, `Params`, `Parameters`,
+  `Args`, `Arguments`, `Input`, `Request`, `Config` or `Settings`, and the entries of an object
+  schema from zod, valibot, superstruct or TypeBox
+  (`z.object({ tag: z.string().optional(), tags: z.array(z.string()).optional() })`;
+  `.optional()`, `.nullish()`, `.default()`, `optional(...)`,
+  `nullish(...)`, `Type.Optional(...)` and `pipe(...)` count, and so do `X.array()` and length
+  checks on the array). Required inputs (`contains(role: string, roles: string[])`), inputs that
+  differ in type, a member typed `never` in a discriminated union and members in different union
+  branches are not reported. `| undefined` and `| null` are dropped from both types before they are
+  compared. Aliases and interfaces in the same file are followed; types imported from other files
+  are not. JavaScript files carry no type annotations, so there only the schema entries are checked.
+  Two members whose meanings differ (`owner?: User` for the main owner beside `owners?: User[]` for
+  the co-owners) are the case for an exception with a reason.
 - `nitpicker/no-forwarding-wrapper` (type-aware): a module-level named function or `const` arrow
   whose body is one `return` (or an expression body) of a call that passes exactly its own
-  parameters, in order, unchanged (`export const loadUser = (id: string) => fetchUser(id)`) is
-  flagged when its parameter types and return type are identical to the callee's, so a wrapper that
+  parameters, in order, unchanged (`export const loadUser = (id: string) => fetchUser(id)`; an
+  `async` one may `await` the call, and is flagged only when the callee is itself declared `async`,
+  since an `async` wrapper turns a synchronous throw of any other callee into a rejection, as the
+  Python preset decides) is flagged when its parameter types and return type are identical to the callee's, so a wrapper that
   brands, narrows or widens a type passes. The callee must be a module-level binding or an import
   that the file could re-export or the caller could import directly. Not flagged: member callees
   (`repo.find(id)`, `Math.abs(x)`, `api.get(url)`), callees that are parameters or closure variables
   (injected dependencies), functions declared inside a component, factory or other function,
   overload implementations, type-predicate and `asserts` functions (on either side), parameters
   whose optional or rest form differs from the callee's (`b?: number` over `b: number | undefined`),
-  methods, `async` and generator functions, functions with type
+  methods, generator functions, an `async` function over a callee that does not return the same
+  promise type, functions with type
   parameters, calls with type arguments, optional calls, PascalCase names (components), functions
   without parameters, default, destructured or transformed parameters, and a `const` with a type
   annotation. A wrapper around a hook (`useUser(key)` over an imported `useQuery(key)`) is reported
@@ -675,7 +848,10 @@ only the library follows the project. Nitpicker reads `dependencies`, `peerDepen
   drops stopwords (`the`, `a`, `of`, `get`, `returns`, `component`, `class`, `value`...), and reports when
   every remaining description word, with a crude `ing`/`ed`/`es`/`s` stem, is a word of the name
   (`/** Gets the user name. */ getUserName`, `/** The order id */ orderId`, `/** Button component */
-Button`). `@param`, `@returns` and other tag lines are not part of the description. Write the
+Button`). `@param`, `@returns` and other tag lines are not part of the description, but a tag
+  with text (`@param id the account`, `@returns the login name`, `@throws {RangeError} when ...`)
+  says more, so a comment with one is not reported as restating; a tag with only a name or a
+  type (`@param {string} id`, `@returns {string}`) is not text. Write the
   unit, the limit, the edge case or the reason (`/** Price in cents, rounded down. */`). A
   description longer than 5 lines, tag lines, blank lines and code examples not counted (a fenced
   ` ``` ` or `~~~` block, or the body of an `@example` tag; a fence that is never closed counts as prose), is reported too; bullets and
@@ -1377,14 +1553,8 @@ off (a PR that adds or removes React keeps linting on both sides); a misspelled 
   defines the palette gets one exception for the rule (`src/theme/**`); there is no filename
   heuristic.
 
-- **One optional input per concept** (`nitpicker/no-singular-and-plural-prop`). A component's props
-  type (or an exported `*Props` type) that declares both `tag?: string` and `tags?: string[]` offers
-  two ways to pass the same data. The rule reports the plural when both props are optional and the
-  plural is an array (`T[]`, `readonly T[]`, `Array<T>`, `ReadonlyArray<T>`) of the singular's type;
-  keep the plural and pass a single item as a one-element array. Props that differ in type, a
-  required prop, a prop typed `never` in a discriminated union and props in different union branches
-  are not reported. Aliases and interfaces in the same file are followed; types imported from other
-  files are not.
+- **One optional input per concept** (`nitpicker/no-singular-and-plural-prop`). Component props
+  are one of the inputs this rule checks everywhere; see [Everywhere](#everywhere).
 - **Exclusive props are a type, not a check** (`nitpicker/no-runtime-exclusive-props-check`). An
   `if` in a component body whose condition tests two or more of its own props the same way (`a && b`,
   `!a && !b`, `a !== undefined && b !== undefined`, `a != null && b != null`, only `&&` chains of

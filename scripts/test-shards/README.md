@@ -9,7 +9,7 @@ the corresponding enabled end-to-end suites. Selection uses the same `NITPICKER_
 `NITPICKER_KOTLIN_E2E=1` flag that enables those suites. The recorder and sequencer use the same
 profile; recording disabled tests in an ordinary run cannot erase enabled-suite measurements.
 
-Python uses `python-e2e.json` when `NITPICKER_PYTHON_E2E=1`, with four isolated runner jobs and
+Python uses `python-e2e.json` when `NITPICKER_PYTHON_E2E=1`, with two isolated runner jobs and
 two test workers each. Its initial weights come from the successful
 [Python run 39316386448](https://github.com/jhonDoe15/nitpicker/actions/runs/39316386448) on
 `aec1d434adabc8259fc8e0e56840687952a6c4d1`: 42 files, 767 tests and 399.74 seconds of test-run
@@ -153,3 +153,13 @@ only asks the installed ruff for its rule list.
 The ruff lint precedence file (`adapters/project-tools/ruff/ruff-lint`, ten cases) is in
 `test:python` with a planning weight of 15 seconds: it runs only the installed ruff on small
 projects, and took about six seconds locally.
+
+The shard counts were later lowered twice so that more pull request runs fit into the account's
+concurrent job limit at once. The loads, targets and measurements earlier in this file describe
+the previous split; this paragraph replaces them. The unit `test` job went from eight shards to
+two, Java from 16 to four, Kotlin from ten to three, Python from four to two and Go from two to one.
+Fewer runners also repeat the per-job setup (checkout, `npm ci`, toolchains) fewer times. With the
+current profiles the sequencer's estimated loads per shard are about 1,334 seconds for the unit
+suite (run with one worker per vCPU, so roughly six to nine minutes of wall time), 971–975 seconds
+for Java, 905–929 seconds for Kotlin, 707 seconds for Python and 70 seconds for Go, before setup.
+Every load stays well inside its job's `timeout-minutes`.

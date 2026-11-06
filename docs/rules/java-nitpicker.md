@@ -1,10 +1,10 @@
 # Java and Kotlin: nitpicker rules
 
-The rules nitpicker adds on top of the JVM tools: ArchUnit architecture rules, Spring configuration findings, the formatter check and the suppression scan, in Java and Kotlin projects. This page lists 31 rules. [All pages](README.md).
+The rules nitpicker adds on top of the JVM tools: ArchUnit architecture rules, Spring configuration findings, the formatter check and the suppression scan, in Java and Kotlin projects. This page lists 32 rules. [All pages](README.md).
 
 The guide for these rules: [docs/java-preset.md](../java-preset.md).
 
-In the Java preset, an entry of `exceptions` names a finding as it prints, `<tool>/<rule>` with one of the tools `pmd`, `spotbugs`, `errorprone`, `archunit`, `google-java-format`, `palantir-java-format`, `jacoco`, `checkstyle`, `crap`, `duplicates`, `pit`, `structure`, `coupling`, `spring` and `test-runtime`, or one of these rules: `function-lines-limit`, `function-statements-limit`, `function-control-nesting-limit`, `function-parameters-limit`, `crap-score-limit`, `crap-coverage-unknown`, `changed-branch-coverage`, `mutant-survived`, `mutant-nocoverage`, `duplicate-clone`, `stability-direction`, `file-lines-limit`, `line-length-limit`, `folder-files-limit`, `slow-test`, `committed-env-file`, `committed-private-key`, `committed-binary`, `large-file`, `committed-build-output`, `co-change`, `duplicate-definition`, `exported-name-collision`, `sibling-copy-edit`, `test-only-export`, `doc-comment-content`, `test-console-output`, `folder-depth-limit`, `class-methods-limit`, `class-fields-limit` and `inheritance-depth-limit`. The Kotlin preset takes the same `<tool>/<rule>` form for the Java sources of a mixed module.
+In the Java preset, an entry of `exceptions` names a finding as it prints, `<tool>/<rule>` with one of the tools `pmd`, `spotbugs`, `errorprone`, `archunit`, `google-java-format`, `palantir-java-format`, `jacoco`, `checkstyle`, `crap`, `duplicates`, `pit`, `structure`, `coupling`, `spring` and `test-runtime`, or one of these rules: `function-lines-limit`, `function-statements-limit`, `function-control-nesting-limit`, `function-parameters-limit`, `crap-score-limit`, `crap-coverage-unknown`, `changed-branch-coverage`, `mutant-survived`, `mutant-nocoverage`, `duplicate-clone`, `stability-direction`, `file-lines-limit`, `line-length-limit`, `folder-files-limit`, `slow-test`, `committed-env-file`, `committed-private-key`, `committed-binary`, `large-file`, `committed-build-output`, `migration-order`, `migration-hardcoded-name`, `start-schema-push`, `co-change`, `duplicate-definition`, `exported-name-collision`, `sibling-copy-edit`, `test-only-export`, `doc-comment-content`, `test-console-output`, `folder-depth-limit`, `class-methods-limit`, `class-fields-limit` and `inheritance-depth-limit`. The Kotlin preset takes the same `<tool>/<rule>` form for the Java sources of a mixed module.
 
 Unless an entry says otherwise:
 
@@ -192,6 +192,17 @@ Such a test is in the unit test source set (`test` on Gradle, the one test sourc
 - **Why it is on:** One of nitpicker's own architecture rules, run with ArchUnit over the compiled classes: it keeps the package-by-feature layout, the layering and the aggregate boundaries that the TypeScript preset keeps with its import rules.
 - **Allowed form:** Test \<Name>Test with new and mocks, or run it as an integration test: name it \<Name>IT (Failsafe runs \*IT on Maven) or put it in an integration test source set. Both keep its package, so package-private classes stay visible; a package named integration or it also counts.
 - **Exception:** If this is intended, add `{"rule":"archunit/spring-test-placement","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
+- **See also:** [Java preset guide](../java-preset.md#spring-architecture-rules)
+
+<a id="archunit-spring-typed-request-field"></a>
+
+### `archunit/spring-typed-request-field`
+
+A project type that a controller binds from the request (a `@RequestBody`, `@RequestPart`, `@ModelAttribute` or `HttpEntity` parameter, or the payload of a `@MessageMapping` or `@SubscribeMapping` method) has a field typed `Object`, `JsonNode` (or a subtype such as `ObjectNode`), a `Map` whose values are `Object` or `?`, a raw `Map` or collection, a project class extending `HashMap<String, Object>`, or a collection, array, `Optional` or map of those, or a `@JsonAnySetter` method or field, also in a nested type.
+
+- **Why it is on:** One of nitpicker's own architecture rules, run with ArchUnit over the compiled classes: it keeps the package-by-feature layout, the layering and the aggregate boundaries that the TypeScript preset keeps with its import rules.
+- **Allowed form:** Type \<Type>.\<field> with a record or an enum and validate it: \<Controller>.\<method> binds it from the request, and an Object, JsonNode or Map\<String, Object> field, or a collection of those, skips validation and lets a client send any shape. A Map with typed values, such as Map\<String, String>, is fine.
+- **Exception:** If this is intended, add `{"rule":"archunit/spring-typed-request-field","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 - **See also:** [Java preset guide](../java-preset.md#spring-architecture-rules)
 
 <a id="errorprone-inlinesuppression"></a>

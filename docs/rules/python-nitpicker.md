@@ -1,6 +1,6 @@
 # Python: nitpicker rules
 
-The Python rules nitpicker's own script checks (`python-rules/*`), the coupling and import-cycle findings, the ruff format check and the finding for a run in which no tests ran. This page lists 61 rules. [All pages](README.md).
+The Python rules nitpicker's own script checks (`python-rules/*`), the coupling and import-cycle findings, the ruff format check and the finding for a run in which no tests ran. This page lists 72 rules. [All pages](README.md).
 
 The guide for these rules: [docs/python-preset.md](../python-preset.md).
 
@@ -112,6 +112,15 @@ A string has the shape of a credential.
 - **Allowed form:** Read the credential from the environment in the composition root and pass it in; never commit a key, token, private key or URL with a password.
 - **Exception:** If this is intended, add `{"rule":"credential-shape","paths":["<path>"],"reason":"..."}` to "python.exceptions" in nitpicker.config.json.
 
+<a id="python-rules-eager-relationship"></a>
+
+### `python-rules/eager-relationship`
+
+`<name>` loads its related rows on every query of the model.
+
+- **Allowed form:** Leave `lazy` at its default (or set `lazy="raise"`) and load the relation on the queries that need it: `select(Order).options(selectinload(Order.lines))`. An exception fits only for a small lookup relation that every read of the model needs.
+- **Exception:** If this is intended, add `{"rule":"eager-relationship","paths":["<path>"],"reason":"..."}` to "python.exceptions" in nitpicker.config.json.
+
 <a id="python-rules-enum-string-constants"></a>
 
 ### `python-rules/enum-string-constants`
@@ -120,6 +129,15 @@ A string has the shape of a credential.
 
 - **Allowed form:** Declare an enum: `class Status(enum.StrEnum): ACTIVE = "active"` on Python 3.11+, otherwise `class Status(str, enum.Enum)`.
 - **Exception:** If this is intended, add `{"rule":"enum-string-constants","paths":["<path>"],"reason":"..."}` to "python.exceptions" in nitpicker.config.json.
+
+<a id="python-rules-exhaustive-enum-predicate"></a>
+
+### `python-rules/exhaustive-enum-predicate`
+
+These comparisons list only some members of `<enum>`, so a member added later is silently classified as the default.
+
+- **Allowed form:** Classify every member with a `match` that ends in `case _: assert_never(value)` (or an `if`/`elif` chain that ends in `else: assert_never(value)`), so the type checker fails when a member is added.
+- **Exception:** If this is intended, add `{"rule":"exhaustive-enum-predicate","paths":["<path>"],"reason":"..."}` to "python.exceptions" in nitpicker.config.json.
 
 <a id="python-rules-explicit-any"></a>
 
@@ -138,6 +156,15 @@ A string has the shape of a credential.
 
 - **Allowed form:** Test for `None` only: `limit if limit is not None else DEFAULT_LIMIT`, or `if limit is None: limit = DEFAULT_LIMIT`.
 - **Exception:** If this is intended, add `{"rule":"falsy-default","paths":["<path>"],"reason":"..."}` to "python.exceptions" in nitpicker.config.json.
+
+<a id="python-rules-forwarding-wrapper"></a>
+
+### `python-rules/forwarding-wrapper`
+
+`<name>` only forwards its parameters to `<target>`, with the same parameter and return types.
+
+- **Allowed form:** Call the target directly and delete the wrapper; to keep the name, import the target under it (`from module import target as name`) or bind it (`name = target`).
+- **Exception:** If this is intended, add `{"rule":"forwarding-wrapper","paths":["<path>"],"reason":"..."}` to "python.exceptions" in nitpicker.config.json.
 
 <a id="python-rules-frozen-dataclass"></a>
 
@@ -170,7 +197,7 @@ Dataclass \<name> is not frozen.
 
 ### `python-rules/hardcoded-secret`
 
-`<name>` holds a hardcoded secret.
+The value of `<name>` is a hardcoded secret.
 
 - **Allowed form:** Read the secret from the environment in the composition root (`os.environ["API_TOKEN"]`) and pass it in; keep placeholders such as `"changeme"` out of production code.
 - **Exception:** If this is intended, add `{"rule":"hardcoded-secret","paths":["<path>"],"reason":"..."}` to "python.exceptions" in nitpicker.config.json.
@@ -220,6 +247,15 @@ Dataclass \<name> is not frozen.
 - **Allowed form:** Return a result that says what happened, or raise a domain error, and let `adapters/` or the composition root log it.
 - **Exception:** If this is intended, add `{"rule":"logger-in-domain","paths":["<path>"],"reason":"..."}` to "python.exceptions" in nitpicker.config.json.
 
+<a id="python-rules-many-to-many-cascade-delete"></a>
+
+### `python-rules/many-to-many-cascade-delete`
+
+The many-to-many relationship `<name>` deletes related rows that other owners still share.
+
+- **Allowed form:** Cascade only `"save-update, merge"` on a `secondary=` (or `link_model=`) relationship; deleting the owner already deletes its rows in the association table.
+- **Exception:** If this is intended, add `{"rule":"many-to-many-cascade-delete","paths":["<path>"],"reason":"..."}` to "python.exceptions" in nitpicker.config.json.
+
 <a id="python-rules-module-level-mutable-state"></a>
 
 ### `python-rules/module-level-mutable-state`
@@ -237,6 +273,15 @@ Domain code uses the module state `<name>`.
 
 - **Allowed form:** Receive the state as a parameter and return the new value; the composition root creates the object and passes it in.
 - **Exception:** If this is intended, add `{"rule":"module-state-in-domain","paths":["<path>"],"reason":"..."}` to "python.exceptions" in nitpicker.config.json.
+
+<a id="python-rules-negative-wait-in-test"></a>
+
+### `python-rules/negative-wait-in-test`
+
+`<name>` proves that nothing happens by waiting out its timeout, so the test is slow and depends on the delay.
+
+- **Allowed form:** Check the state at once (`assert not event.is_set()`, `assert queue.empty()`), or control the clock or scheduler the code waits on, move it past the delay and assert right away.
+- **Exception:** If this is intended, add `{"rule":"negative-wait-in-test","paths":["<path>"],"reason":"..."}` to "python.exceptions" in nitpicker.config.json.
 
 <a id="python-rules-network-in-test"></a>
 
@@ -273,6 +318,26 @@ Inline suppression `# <name>`.
 
 - **Allowed form:** Put the code in the normal flow; `if TYPE_CHECKING:` is only for imports that annotations need.
 - **Exception:** If this is intended, add `{"rule":"not-type-checking","paths":["<path>"],"reason":"..."}` to "python.exceptions" in nitpicker.config.json.
+
+<a id="python-rules-orm-query-logging"></a>
+
+### `python-rules/orm-query-logging`
+
+`<name>` logs every SQL query: the logs fill with personal data and bound values, and every query pays for the log line.
+
+- **Allowed form:** Leave `echo` and the query loggers off and log slow queries instead: time queries with SQLAlchemy `before_cursor_execute`/`after_cursor_execute` events and log only the slow ones, or use the database's own slow-query log (`log_min_duration_statement` in PostgreSQL). A value switched on by an environment check (`echo=os.environ.get("ENV") != "production"`) still logs in every other environment. A local debugging script takes an exception.
+- **Exception:** If this is intended, add `{"rule":"orm-query-logging","paths":["<path>"],"reason":"..."}` to "python.exceptions" in nitpicker.config.json.
+- **See also:** [Spring counterpart `spring/unsafe-diagnostics`](java-nitpicker.md#springunsafe-diagnostics)
+
+<a id="python-rules-orm-schema-sync"></a>
+
+### `python-rules/orm-schema-sync`
+
+`<name>` lets the ORM create, alter or drop tables when the application runs, so a deploy can drop columns and their data and the schema drifts from the migrations.
+
+- **Allowed form:** Change the schema with migrations instead: Alembic (`alembic upgrade head` in the deploy step), Django migrations, or Aerich for Tortoise; create tables in test fixtures, not in the application. An environment check around the call (`if settings.DEBUG:`) still changes the schema in every other environment. A local script outside the application, such as a seed, takes an exception.
+- **Exception:** If this is intended, add `{"rule":"orm-schema-sync","paths":["<path>"],"reason":"..."}` to "python.exceptions" in nitpicker.config.json.
+- **See also:** [Spring counterpart `spring/ddl-auto`](java-nitpicker.md#springddl-auto)
 
 <a id="python-rules-parameter-mutation"></a>
 
@@ -364,6 +429,15 @@ The string "\<name>" is repeated three times or more.
 - **Allowed form:** Log that it is set (`logger.info("token set: %s", token is not None)`) or a masked tail, never the value.
 - **Exception:** If this is intended, add `{"rule":"secret-in-log","paths":["<path>"],"reason":"..."}` to "python.exceptions" in nitpicker.config.json.
 
+<a id="python-rules-server-or-container-per-test"></a>
+
+### `python-rules/server-or-container-per-test`
+
+`<name>()` starts a container, server, process or git repository for each test.
+
+- **Allowed form:** Start it once: a `scope="session"` or `scope="module"` fixture that resets its state between tests, or `setup_class`/`setUpClass`. Or test the logic against an in-memory implementation and keep the real transport for transport tests. An exception fits only when each test needs a fresh instance.
+- **Exception:** If this is intended, add `{"rule":"server-or-container-per-test","paths":["<path>"],"reason":"..."}` to "python.exceptions" in nitpicker.config.json.
+
 <a id="python-rules-shell-command"></a>
 
 ### `python-rules/shell-command`
@@ -372,6 +446,15 @@ The string "\<name>" is repeated three times or more.
 
 - **Allowed form:** Run the program directly with the arguments as a list and leave the shell out: `subprocess.run(["git", "status"], check=True)`; `shell=False` is the default.
 - **Exception:** If this is intended, add `{"rule":"shell-command","paths":["<path>"],"reason":"..."}` to "python.exceptions" in nitpicker.config.json.
+
+<a id="python-rules-singular-and-plural-field"></a>
+
+### `python-rules/singular-and-plural-field`
+
+Optional fields `<item>` and `<items>` of `<name` are two ways to pass the same data.
+
+- **Allowed form:** Keep the plural one and pass a single item as a one-element list.
+- **Exception:** If this is intended, add `{"rule":"singular-and-plural-field","paths":["<path>"],"reason":"..."}` to "python.exceptions" in nitpicker.config.json.
 
 <a id="python-rules-skipped-test-without-reason"></a>
 
@@ -388,7 +471,7 @@ The string "\<name>" is repeated three times or more.
 
 `<name>` waits for real time in a test.
 
-- **Allowed form:** Control the clock instead of waiting: inject a fake clock, patch `time.sleep` with `monkeypatch`, or poll a condition with a bounded retry helper.
+- **Allowed form:** Control the clock instead of waiting: inject a fake clock or patch `time.sleep` with `monkeypatch`. To wait for a condition, poll it in a loop until a deadline (`while not ready():` with a `time.monotonic()` check and a short sleep) or use the library's wait helper, such as Playwright's `expect(locator).to_be_visible()`.
 - **Exception:** If this is intended, add `{"rule":"sleep-in-test","paths":["<path>"],"reason":"..."}` to "python.exceptions" in nitpicker.config.json.
 
 <a id="python-rules-sql-string-formatting"></a>
@@ -408,6 +491,15 @@ The string "\<name>" is repeated three times or more.
 
 - **Allowed form:** Delete the `.pyi` file and annotate the `.py` file itself.
 - **Exception:** If this is intended, add `{"rule":"stub-beside-source","paths":["<path>"],"reason":"..."}` to "python.exceptions" in nitpicker.config.json.
+
+<a id="python-rules-subprocess-without-timeout"></a>
+
+### `python-rules/subprocess-without-timeout`
+
+`<name>` waits for a child process without a deadline, so a command that never exits hangs this code for good.
+
+- **Allowed form:** Pass a timeout: `subprocess.run(args, timeout=30, check=True)`, `process.communicate(timeout=30)` or `process.wait(timeout=30)` (then kill the child on `TimeoutExpired`). Wrap an asyncio wait in `async with asyncio.timeout(30):` or `asyncio.wait_for(process.wait(), 30)`. A program whose purpose is to run the child to completion, such as a build wrapper, takes an exception.
+- **Exception:** If this is intended, add `{"rule":"subprocess-without-timeout","paths":["<path>"],"reason":"..."}` to "python.exceptions" in nitpicker.config.json.
 
 <a id="python-rules-swallowed-exception"></a>
 
@@ -534,6 +626,15 @@ The task marker `<name>` has no issue.
 
 - **Allowed form:** Run the cleanup in a shielded scope with a deadline: `with trio.CancelScope(deadline=trio.current_time() + 5, shield=True): await resource.aclose()` (`anyio.CancelScope(deadline=anyio.current_time() + 5, shield=True)` in AnyIO; `move_on_after(5, shield=True)` needs Trio 0.27 or later). A shield without a deadline can hang shutdown.
 - **Exception:** If this is intended, add `{"rule":"unshielded-cleanup-await","paths":["<path>"],"reason":"..."}` to "python.exceptions" in nitpicker.config.json.
+
+<a id="python-rules-unused-option"></a>
+
+### `python-rules/unused-option`
+
+Option \<name> is never set. Remove it, or set it from a real call (tests do not count).
+
+- **Allowed form:** See the guide: [Python preset guide](../python-preset.md).
+- **Exception:** If this is intended, add `{"rule":"unused-option","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 
 <a id="python-rules-weak-hmac"></a>
 

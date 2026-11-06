@@ -43,6 +43,7 @@ const BANNED_GUARDS = {
   'Mutation.kt': `${PACKAGE}fun append(items: MutableList<String>) {\n    items.add("x")\n}\n`,
   'Legacy.kt': `${PACKAGE}@Deprecated("Use current")\nfun legacy(): Int = 1\n\nfun current(): Int = 2\n`,
   'Parser.kt': parser('logger.log(Level.WARNING, "parse failed")'),
+  'Formats.kt': `${LEVELS}class Formats(private val logger: Logger) {\n    fun loaded(count: Int) {\n        logger.log(Level.INFO, "loaded {0} of {1}", count)\n    }\n}\n`,
   'Secrets.kt': `${PACKAGE}val password = "hunter22x"\n`,
   'OrderHelper.kt': `${PACKAGE}class OrderHelper {\n    fun total(): Int = 1\n}\n`,
   'Commented.kt': `${PACKAGE}fun subtotal(): Int {\n    // val discount = compute(1)\n    return 1\n}\n`,
@@ -53,6 +54,8 @@ const BANNED_GUARDS = {
   'Literals.kt': `${PACKAGE}fun labels(): List<String> = listOf("shipping", "shipping", "shipping")\n`,
   'App.kt': `${PACKAGE}fun main() {\n    ProcessBuilder("serve", "--port", System.getenv("PORT")).inheritIO().start()\n}\n`,
   'Prefetch.kt': prefetch('body'),
+  'Exports.kt': `${PACKAGE}fun render(command: List<String>): Int = ProcessBuilder(command).start().waitFor()\n`,
+  'Versions.kt': `${PACKAGE}fun version(command: List<String>): String {\n    val process = ProcessBuilder(command).start()\n    return process.inputStream.bufferedReader().readText()\n}\n`,
 };
 
 const BANNED_TESTS = {
@@ -69,6 +72,7 @@ const ALLOWED_GUARDS = {
   'Mutation.kt': `${PACKAGE}fun append(items: List<String>): List<String> = items + "x"\n`,
   'Legacy.kt': `${PACKAGE}fun current(): Int = 2\n`,
   'Parser.kt': parser('logger.log(Level.WARNING, "parse failed", e)'),
+  'Formats.kt': `${LEVELS}class Formats(private val logger: Logger) {\n    fun loaded(count: Int, total: Int) {\n        logger.log(Level.INFO, "loaded {0} of {1}", arrayOf(count, total))\n    }\n}\n`,
   'Secrets.kt': `${PACKAGE}data class Credentials(val password: String)\n`,
   'PriceRounder.kt': `${PACKAGE}class PriceRounder {\n    fun round(cents: Int): Int = cents\n}\n`,
   'Commented.kt': `${PACKAGE}// Totals are in cents, so rounding stays exact.\nfun subtotal(): Int = 1\n`,
@@ -77,6 +81,8 @@ const ALLOWED_GUARDS = {
   'Literals.kt': `${PACKAGE}private const val SHIPPING = "shipping"\n\nfun labels(): List<String> = listOf(SHIPPING, SHIPPING, SHIPPING)\n\nfun kind(text: String): Int = when (text) {\n    "shipping-pending" -> 1\n    "shipping-sent", "shipping-pending" -> 2\n    else -> 3\n}\n\nfun more(): Map<String, Int> = mapOf("shipping-pending" to 1)\n`,
   'App.kt': `${PACKAGE}fun main() {\n    ProcessBuilder("serve", "--port", System.getenv("PORT")).inheritIO().start()\n}\n`,
   'Prefetch.kt': prefetch('limited', LIMITED),
+  'Exports.kt': `${PACKAGE}import java.util.concurrent.TimeUnit\n\nprivate const val DEADLINE_SECONDS = 30L\n\nfun render(command: List<String>): Int {\n    val process = ProcessBuilder(command).start()\n    check(process.waitFor(DEADLINE_SECONDS, TimeUnit.SECONDS)) { "timed out: $command" }\n    return process.exitValue()\n}\n`,
+  'Versions.kt': `${PACKAGE}import java.util.concurrent.CompletableFuture\nimport java.util.concurrent.TimeUnit\n\nprivate const val VERSION_SECONDS = 30L\n\nfun version(command: List<String>): String {\n    val process = ProcessBuilder(command).start()\n    val output = CompletableFuture.supplyAsync { process.inputStream.bufferedReader().readText() }\n    check(process.waitFor(VERSION_SECONDS, TimeUnit.SECONDS)) { "timed out: $command" }\n    return output.join()\n}\n`,
 };
 
 const ALLOWED_TESTS = {
@@ -100,6 +106,7 @@ const EXPECTED_BANNED = [
   'kotlin-source/ShellCommand Shell.kt',
   'kotlin-source/CatchOnlyLogsOrReturnsDefault Loader.kt',
   'detekt/catch-log-without-exception Parser.kt',
+  'kotlin-source/LogFormatArguments Formats.kt',
   'kotlin-source/BooleanFlagParameter Flags.kt',
   'kotlin-source/TriStateBoolean TriState.kt',
   'kotlin-source/ParameterMutation Mutation.kt',
@@ -112,6 +119,8 @@ const EXPECTED_BANNED = [
   'kotlin-source/GeneratedOnHandWrittenCode Marked.kt',
   'kotlin-source/TestClassWithoutTestCases EmptyTest.kt',
   'kotlin-source/UnboundedFanOut Prefetch.kt',
+  'kotlin-source/ProcessWaitWithoutTimeout Exports.kt',
+  'kotlin-source/ProcessWaitWithoutTimeout Versions.kt',
   'kotlinc/deprecation Casts.kt',
   'kotlinc/unchecked Casts.kt',
   'kotlinc/cast Casts.kt',
@@ -173,7 +182,9 @@ describe.skipIf(!kotlinE2eEnabled)(
     it('lets every allowed form through, the composition root reading the environment among them', () => {
       expect(summary(allowed.newFindings)).toEqual([]);
       expect(
-        allowed.newEnforceable.filter(({ path: file }) => file.endsWith(`${GUARD_ROOT}/App.kt`)),
+        allowed.newEnforceable.filter(
+          ({ tool, path: file }) => tool !== 'pit' && file.endsWith(`${GUARD_ROOT}/App.kt`),
+        ),
       ).toEqual([]);
     });
 
