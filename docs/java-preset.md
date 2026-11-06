@@ -1990,7 +1990,9 @@ when the code is right, for example `{ "rule": "pmd/SpringDataNoSaveInLoop", "pa
   and any of those inside a `List`, `Optional`, `ResponseEntity`, `Map` value, `CompletionStage` or
   reactive `Publisher`, two levels deep (`List<Map<String, Object>>`, `Mono<ResponseEntity<?>>`).
   `Map<String, String>`, `Map<String, ? extends Number>`, `MultiValueMap<String, String>` form
-  posts, `Optional<T>`, `List<T>`, `ResponseEntity<Void>` and `ResponseEntity<T>` are fine.
+  posts, `Optional<T>`, `List<T>`, `ResponseEntity<Void>` and `ResponseEntity<T>` are fine. An
+  untyped field inside the bound record or class (`record CreateOrder(Map<String, Object> attributes)`)
+  and `@JsonAnySetter` are `archunit/spring-typed-request-field` (see Spring architecture rules).
 - `SpringCorsWildcard` fires on a `"*"` origin (`setAllowedOrigins`, `addAllowedOrigin`, the
   pattern forms and the registry's `allowedOrigins`) only when the same method also allows
   credentials (`true` or `Boolean.TRUE`), and on a `@CrossOrigin` with origin `"*"` and
@@ -2317,6 +2319,39 @@ A registry keyed by request data (in-flight keys, per-key locks, pending replies
 map) is reported: bound it with a cache that has a size and an expiry, or add an exception that
 names why its entries are removed. The analysis reads one module's classes: a call into another
 module of a multi-module build or into a library is not followed.
+
+**Request bodies.** `pmd/SpringTypedRequestBody` reports a `@RequestBody` parameter that is itself
+untyped; this rule follows the parameter into the project's own types, which PMD cannot see from one
+file.
+
+| Rule                         | Fails when                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          |
+| ---------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `spring-typed-request-field` | a project type that a controller binds from the request (a `@RequestBody`, `@RequestPart`, `@ModelAttribute` or `HttpEntity` parameter, or the payload of a `@MessageMapping` or `@SubscribeMapping` method) has a field typed `Object`, `JsonNode` (or a subtype such as `ObjectNode`), a `Map` whose values are `Object` or `?`, a raw `Map` or collection, a project class extending `HashMap<String, Object>`, or a collection, array, `Optional` or map of those, or a `@JsonAnySetter` method or field, also in a nested type |
+
+The walk starts at the project types in the parameter type (also inside `List`, `Optional`, arrays,
+`Map`, `HttpEntity`, `Mono` and `Flux`) of the handler methods of controller classes (`@Controller`,
+composed annotations such as `@RestController`, and the `controller` role of `spring.roles`),
+including those inherited from project superclasses and interfaces, with their type arguments bound
+(`class OrderController extends CrudController<OrderDto>` walks `OrderDto`). A message handler's
+payload is its `@Payload` parameter or a parameter with no annotation other than nullability and
+validation ones; `@Header`, `@AuthenticationPrincipal` or a project's own argument annotation leave
+the parameter out. The walk goes through the bound properties (record components, public fields,
+fields with a getter or setter, fields with a Jackson annotation, every field of a `@JsonAutoDetect`
+class), project superclasses with their type arguments bound (`Envelope<Map<String, Object>>` makes
+`Envelope.data` untyped), the project types of each property, and every project subtype of a
+`@JsonTypeInfo` or `@JsonSubTypes` base. Each field is reported once, on the file of the type that
+declares it, naming the first handler (by class and method name) that reaches it; the identity is
+the declaring type and the field name. Fine: a `Map` with typed values (`Map<String, String>`,
+`Map<String, List<String>>`), a static, `transient` or synthetic field, a private field without an
+accessor, a property ignored with `@JsonIgnore` (on the field, the getter or the setter, Kotlin's
+`@get:JsonIgnore` included) or with `@JsonIgnoreProperties` on the class, `@JsonProperty(access =
+READ_ONLY)`, `@JsonDeserialize`, `@JsonAnySetter(enabled = false)`, enums, library types, a field
+typed with an unbound type variable, and a `?` argument of a bounded type parameter (it takes the
+bound). A type that only a client interface (Feign, `@HttpExchange`) sends, or a handler returns, is
+not walked, and neither is a handler parameter without a binding annotation (an implicit model
+attribute). A field that is free-form on purpose takes an exception. Kotlin classes are read the
+same way; an annotation Kotlin puts on the constructor parameter only (a `@JsonIgnore` without
+`@get:` or `@field:`) is not seen.
 
 **Aggregates (jMolecules).** A project that declares its domain model with
 [jMolecules](https://github.com/xmolecules/jmolecules) (`org.jmolecules:jmolecules-ddd`, Apache-2.0,
