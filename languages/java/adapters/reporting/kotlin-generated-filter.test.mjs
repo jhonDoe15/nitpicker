@@ -41,6 +41,7 @@ const USER = {
   lambdas: [],
   branching: [],
   casts: [],
+  exhaustiveLastEntries: [],
 };
 
 function reportRoot(facts) {
@@ -108,7 +109,7 @@ describe('the Kotlin mutation filter of a report directory', () => {
     ['{"files":[', parseFailure('{"files":[')],
     [
       '{"files":[{"file":"A.kt"}]}',
-      'the entry of A.kt lacks lines, classes, functions, lambdas, branching, casts',
+      'the entry of A.kt lacks lines, classes, functions, lambdas, branching, casts, exhaustiveLastEntries',
     ],
     ['{}', 'the report has no "files" list'],
   ])('refuses the report %s, naming it and the way to regenerate it', (text, reason) => {
