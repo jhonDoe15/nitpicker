@@ -25,9 +25,10 @@ Before you change code other modules use, or fix a bug, read
 3. Act on the exit code:
    - 0: done, unless you narrowed the run with `--analyzer`: then the summary says `Ran only: ...`
      and you run the gate again without it before you finish.
-   - 1: fix every new finding and any tool error listed below them, then rerun.
-   - 2: no new findings, but a tool failed. Fix the cause it names (usually a failing test or a
-     tool missing from the environment) and rerun. Exit 2 is never a pass. If it says another run
+   - 1: fix the failing tests the summary leads with, every new finding and any tool error listed
+     below them, then rerun.
+   - 2: no new findings, but a tool failed. Fix the cause it names (usually a tool missing from the
+     environment) and rerun. Exit 2 is never a pass. If it says another run
      is in progress, wait for that run; never kill it.
 4. Never suppress: no `# noqa`, `# type: ignore`, `# pragma: no mutate`, `do_not_mutate`, config
    `exclude`/`disable`/`exceptions`, legacy entries, or weakened tests (`-x`, `-k`, `--deselect` and

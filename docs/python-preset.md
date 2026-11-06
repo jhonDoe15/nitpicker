@@ -1807,7 +1807,7 @@ directory>` or `test-runs/unittest_timings.py <report> discover` (unittest's own
   and `python-failed` for anything unexpected. An environment that cannot be found at all (no
   `.venv` at the configured directory, no `uv sync`, poetry has none) is caught earlier, while the
   tool versions are read, and is reported as a plain tool error of each analyzer for each snapshot. Every failing step is reported, with the end of the tool output. The CLI
-  exits 2 when nothing new failed, and a snapshot with a tool error is not compared, as for Java; the other analyzer is.
+  exits 2 when nothing new failed and no head test failed (failing head tests exit 1), and a snapshot with a tool error is not compared, as for Java; the other analyzer is.
 - **Not included.** Multi-project
   repositories are analyzed one project root at a time. Windows is untested (mutation testing
   needs WSL, see slice 6).
@@ -2577,7 +2577,7 @@ and CRAP rules.
   base, editable install in a `.venv`) it checks: a change that alters behaviour and updates its
   tests passes, which only works when base tests run against base code; a moved legacy violation
   stays baselined; a new unused import and an unformatted file fail in every report format;
-  failing tests and a missing environment are tool errors with exit 2; a `unittest` project
+  failing tests are a tool error with exit 1 and a missing environment one with exit 2; a `unittest` project
   formatted with black passes and fails correctly using tools from the `PATH`; a `uv.lock` project
   runs through `uv run`; and a pytest project whose `addopts` has `--cov`, `-n 2` and `--lf`,
   with a legacy Python 2 file, which stays gated (the file is skipped by black, or excluded) and
