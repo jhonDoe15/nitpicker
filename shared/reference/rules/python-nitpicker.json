@@ -63,6 +63,10 @@
     { "key": "python.exceptions", "rule": "credential-shape" },
     "A string has the shape of a credential",
     "Read the credential from the environment in the composition root and pass it in; never commit a key, token, private key or URL with a password.",
+    "eager-relationship",
+    { "key": "python.exceptions", "rule": "eager-relationship" },
+    "`<name>` loads its related rows on every query of the model",
+    "Leave `lazy` at its default (or set `lazy=\"raise\"`) and load the relation on the queries that need it: `select(Order).options(selectinload(Order.lines))`. An exception fits only for a small lookup relation that every read of the model needs.",
     "enum-string-constants",
     { "key": "python.exceptions", "rule": "enum-string-constants" },
     "<name> are string constants that belong in one enum",
@@ -119,6 +123,10 @@
     { "key": "python.exceptions", "rule": "logger-in-domain" },
     "`<name>` is imported into domain code",
     "Return a result that says what happened, or raise a domain error, and let `adapters/` or the composition root log it.",
+    "many-to-many-cascade-delete",
+    { "key": "python.exceptions", "rule": "many-to-many-cascade-delete" },
+    "The many-to-many relationship `<name>` deletes related rows that other owners still share",
+    "Cascade only `\"save-update, merge\"` on a `secondary=` (or `link_model=`) relationship; deleting the owner already deletes its rows in the association table.",
     "module-level-mutable-state",
     { "key": "python.exceptions", "rule": "module-level-mutable-state" },
     "`<name>` changes a module-level collection",
@@ -356,9 +364,11 @@
     [18, 248, 2, 3, 249, 250, 22, 251, -1],
     [18, 252, 2, 3, 253, 254, 22, 255, -1],
     [18, 256, 2, 3, 257, 258, 22, 259, -1],
-    [18, 260, 2, 3, 261, 262, 22, -1, -1],
-    [18, 263, 2, 3, 264, 265, 22, 266, -1],
-    [267, 268, 2, 3, 269, 270, 271, 272, -1],
-    [273, 274, 2, 3, 275, 276, 277, 278, 279]
+    [18, 260, 2, 3, 261, 262, 22, 263, -1],
+    [18, 264, 2, 3, 265, 266, 22, 267, -1],
+    [18, 268, 2, 3, 269, 270, 22, -1, -1],
+    [18, 271, 2, 3, 272, 273, 22, 274, -1],
+    [275, 276, 2, 3, 277, 278, 279, 280, -1],
+    [281, 282, 2, 3, 283, 284, 285, 286, 287]
   ]
 }
