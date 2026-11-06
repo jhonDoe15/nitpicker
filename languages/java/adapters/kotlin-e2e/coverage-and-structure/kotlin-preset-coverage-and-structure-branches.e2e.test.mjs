@@ -11,7 +11,7 @@ import { useKotlinCoverageProject } from '../__tests__/kotlin-coverage-project.m
 
 describe.skipIf(!kotlinE2eEnabled)('Kotlin preset coverage and structure end to end', () => {
   const fixture = useKotlinCoverageProject();
-  it('fails a changed Kotlin branch that no test takes together with its surviving mutant', () => {
+  it('fails a changed Kotlin branch that no test takes together with its surviving mutants', () => {
     const result = diffOf(fixture.project, 'one-sided-branch');
 
     expect(result.failed).toBe(true);
@@ -28,7 +28,10 @@ describe.skipIf(!kotlinE2eEnabled)('Kotlin preset coverage and structure end to 
         location: { line: 4 },
       },
     ]);
-    expect(fromTool(result.newEnforceable, 'pit')).toEqual(['pit mutant-survived Label.kt']);
+    expect(fromTool(result.newEnforceable, 'pit')).toEqual([
+      'pit mutant-survived Label.kt',
+      'pit mutant-survived Label.kt',
+    ]);
   });
   it('fails the untested branches of a statement that spans lines and of a file outside its package directory', () => {
     const result = diffOf(fixture.project, 'multiline-branch');

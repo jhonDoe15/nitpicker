@@ -1,10 +1,10 @@
 # Kotlin: nitpicker source checks
 
-The Kotlin source checks, the compiler warnings and the ktlint and ktfmt format checks of the Kotlin preset. This page lists 44 rules. [All pages](README.md).
+The Kotlin source checks, the compiler warnings and the ktlint and ktfmt format checks of the Kotlin preset. This page lists 46 rules. [All pages](README.md).
 
 The guide for these rules: [docs/kotlin-preset.md#source-checks](../kotlin-preset.md#source-checks).
 
-In the Kotlin preset, an entry of `exceptions` names a detekt rule as `detekt.<ruleset>.<Rule>`, one of these rules: `catch-log-without-exception`, `test-without-assertion`, `function-lines-limit`, `function-statements-limit`, `function-control-nesting-limit`, `function-parameters-limit`, `crap-score-limit`, `crap-coverage-unknown`, `changed-branch-coverage`, `mutant-survived`, `mutant-nocoverage`, `duplicate-clone`, `stability-direction`, `file-lines-limit`, `line-length-limit`, `folder-files-limit`, `slow-test`, `committed-env-file`, `committed-private-key`, `committed-binary`, `large-file`, `committed-build-output`, `co-change`, `duplicate-definition`, `exported-name-collision`, `sibling-copy-edit`, `test-only-export`, `doc-comment-content`, `test-console-output`, `folder-depth-limit`, `class-methods-limit`, `class-fields-limit`, `inheritance-depth-limit`, `test-runtime/slow-test`, `test-runtime/test-console-output`, `test-runtime/test-not-run`, `coupling/test-only-export`, `kotlin-source/GeneratedOnHandWrittenCode`, `kotlin-source/JvmSyntheticOnHandWrittenCode`, `kotlin-source/MutationIgnoreMarker`, `kotlin-source/CommentedOutCode`, `kotlin-source/MutableModuleState`, `kotlin-source/GenericTypeName`, `kotlin-source/GenericFileName`, `kotlin-source/GenericPackageName`, `kotlin-source/LogStringConcatenation`, `kotlin-source/ShellCommand`, `kotlin-source/IoCallInLoop`, `kotlin-source/UnsafeCastOperator`, `kotlin-source/CatchOnlyLogsOrReturnsDefault`, `kotlin-source/BooleanFlagParameter`, `kotlin-source/HardcodedSecret`, `kotlin-source/CredentialLiteral`, `kotlin-source/SecretInLog`, `kotlin-source/TestClassWithoutTestCases`, `kotlin-source/DetachedTestCase`, `kotlin-source/TestHelperInSource`, `kotlin-source/SqlStringBuilding`, `kotlin-source/WeakHash`, `kotlin-source/TlsVerificationOff`, `kotlin-source/HttpWithoutTimeout`, `kotlin-source/UnsafeDeserialization`, `kotlin-source/UnboundedFanOut`, `kotlin-source/TriStateBoolean`, `kotlin-source/ParameterMutation`, `kotlin-source/CompatibilityShim`, `kotlin-source/RepeatedStringLiteral`, `kotlinc/deprecation`, `kotlinc/unchecked`, `kotlinc/cast`, `kotlinc/lint-not-run`, `pmd/FixedSleepInTest`, `pmd/NegativeWaitInTest`, `pmd/DisabledTest`, `pmd/FocusedTest`, `pmd/RetryInTest`, `pmd/AssertionInControlFlow`, `pmd/CoroutineEscapesTest`, `pmd/SpringUnusedContext`, `pmd/ExhaustiveEnumPredicate`, `pmd/StaticForwardingWrapper`, `pmd/SingularAndPluralMember`, `pmd/ValidationAnnotationTarget`, `pmd/ClassLoadEffect`, `pmd/SpringConstructorInjection`, `pmd/SpringImmutableBeans`, `pmd/SpringNoServiceLocator`, `pmd/SpringNoLazyInjection`, `pmd/SpringLiteConfiguration`, `pmd/SpringNoComponentScan`, `pmd/SpringBeanCollectionState`, `pmd/SpringHttpClientPerCall`, `pmd/SpringHttpClientTimeouts`, `pmd/SpringNoPostConstructIo`, `pmd/SpringTypedConfiguration`, `pmd/SpringValueSecretDefault`, `pmd/SpringProfileOnConfiguration`, `pmd/SpringProxyMethodVisibility`, `pmd/SpringProxySelfCall`, `pmd/SpringTransactionalAnnotation`, `pmd/SpringNoTransactionalController`, `pmd/SpringNoRequiresNew`, `pmd/SpringNoSwallowedTransactionException`, `pmd/SpringTransactionalCheckedRollback`, `pmd/SpringTransactionalReadOnlyWrite`, `pmd/SpringAsyncExecutor`, `pmd/SpringScheduledFixedDelay`, `pmd/SpringComposedMapping`, `pmd/SpringRestController`, `pmd/SpringValidRequestBody`, `pmd/SpringTypedResponse`, `pmd/SpringTypedRequestBody`, `pmd/SpringNoErrorLeak`, `pmd/SpringNoCrossOrigin`, `pmd/SpringCorsWildcard`, `pmd/SpringPasswordEncoder`, `pmd/SpringPermitAllAnyRequest`, `pmd/SpringCsrfDisabled`, `pmd/SpringHardcodedUser`, `pmd/JpaLazyFetching`, `pmd/JpaEntityClass`, `pmd/JpaManyToManyCascade`, `pmd/JpaManyToManySet`, `pmd/JpaVersion`, `pmd/JpaSequenceIds`, `pmd/JpaEnumString`, `pmd/JpaIdentityHashCode`, `pmd/SpringDataDerivedQuery`, `pmd/SpringDataNativeQuery`, `pmd/SpringDataModifyingQuery`, `pmd/SpringDataNoSaveInLoop`, `pmd/SpringDataNoFlush`, `pmd/SpringDataNamedParameters`, `pmd/SpringDataQueryTextBlock`, `pmd/SpringDataBatchOfOne`, `pmd/SpringDataRowWriteInLoop`, `pmd/SpringDataSaveInLoopHelper`, `pmd/SpringDataFilterInQuery`, `pmd/SpringQueryConcatenation` and `unused-option`, or, for the Java sources of the project, a finding as it prints, `<tool>/<rule>` with one of the tools `pmd`, `spotbugs`, `errorprone`, `archunit`, `google-java-format`, `palantir-java-format`, `jacoco`, `checkstyle`, `crap`, `duplicates`, `pit`, `structure`, `coupling`, `spring` and `test-runtime`.
+In the Kotlin preset, an entry of `exceptions` names a detekt rule as `detekt.<ruleset>.<Rule>`, one of these rules: `catch-log-without-exception`, `test-without-assertion`, `function-lines-limit`, `function-statements-limit`, `function-control-nesting-limit`, `function-parameters-limit`, `crap-score-limit`, `crap-coverage-unknown`, `changed-branch-coverage`, `mutant-survived`, `mutant-nocoverage`, `duplicate-clone`, `stability-direction`, `file-lines-limit`, `line-length-limit`, `folder-files-limit`, `slow-test`, `committed-env-file`, `committed-private-key`, `committed-binary`, `large-file`, `committed-build-output`, `migration-order`, `migration-hardcoded-name`, `start-schema-push`, `co-change`, `duplicate-definition`, `exported-name-collision`, `sibling-copy-edit`, `test-only-export`, `doc-comment-content`, `test-console-output`, `folder-depth-limit`, `class-methods-limit`, `class-fields-limit`, `inheritance-depth-limit`, `test-runtime/slow-test`, `test-runtime/test-console-output`, `test-runtime/test-not-run`, `coupling/test-only-export`, `kotlin-source/GeneratedOnHandWrittenCode`, `kotlin-source/JvmSyntheticOnHandWrittenCode`, `kotlin-source/MutationIgnoreMarker`, `kotlin-source/CommentedOutCode`, `kotlin-source/MutableModuleState`, `kotlin-source/GenericTypeName`, `kotlin-source/GenericPackageName`, `kotlin-source/LogStringConcatenation`, `kotlin-source/ShellCommand`, `kotlin-source/IoCallInLoop`, `kotlin-source/UnsafeCastOperator`, `kotlin-source/CatchOnlyLogsOrReturnsDefault`, `kotlin-source/BooleanFlagParameter`, `kotlin-source/HardcodedSecret`, `kotlin-source/CredentialLiteral`, `kotlin-source/SecretInLog`, `kotlin-source/TestClassWithoutTestCases`, `kotlin-source/DetachedTestCase`, `kotlin-source/TestHelperInSource`, `kotlin-source/SqlStringBuilding`, `kotlin-source/WeakHash`, `kotlin-source/TlsVerificationOff`, `kotlin-source/HttpWithoutTimeout`, `kotlin-source/UnsafeDeserialization`, `kotlin-source/ProcessWaitWithoutTimeout`, `kotlin-source/LogFormatArguments`, `kotlin-source/LogExceptionFirst`, `kotlin-source/UnboundedFanOut`, `kotlin-source/TriStateBoolean`, `kotlin-source/ParameterMutation`, `kotlin-source/CompatibilityShim`, `kotlin-source/RepeatedStringLiteral`, `kotlinc/deprecation`, `kotlinc/unchecked`, `kotlinc/cast`, `kotlinc/lint-not-run`, `pmd/FixedSleepInTest`, `pmd/NegativeWaitInTest`, `pmd/DisabledTest`, `pmd/FocusedTest`, `pmd/RetryInTest`, `pmd/ServerOrContainerPerTest`, `pmd/AssertionInControlFlow`, `pmd/CoroutineEscapesTest`, `pmd/SpringUnusedContext`, `pmd/ExhaustiveEnumPredicate`, `pmd/StaticForwardingWrapper`, `pmd/SingularAndPluralMember`, `pmd/ValidationAnnotationTarget`, `pmd/ClassLoadEffect`, `pmd/RecursiveMapUpdate`, `pmd/SpringConstructorInjection`, `pmd/SpringImmutableBeans`, `pmd/SpringNoServiceLocator`, `pmd/SpringNoLazyInjection`, `pmd/SpringStaticPostProcessorBean`, `pmd/SpringOrderedProvider`, `pmd/SpringLiteConfiguration`, `pmd/SpringNoComponentScan`, `pmd/SpringBeanCollectionState`, `pmd/SpringHttpClientPerCall`, `pmd/SpringHttpClientTimeouts`, `pmd/SpringNoPostConstructIo`, `pmd/SpringTypedConfiguration`, `pmd/SpringValueSecretDefault`, `pmd/SpringProfileOnConfiguration`, `pmd/SpringProxyMethodVisibility`, `pmd/SpringProxySelfCall`, `pmd/SpringTransactionalAnnotation`, `pmd/SpringNoTransactionalController`, `pmd/SpringNoRequiresNew`, `pmd/SpringNoSwallowedTransactionException`, `pmd/SpringTransactionalCheckedRollback`, `pmd/SpringTransactionalReadOnlyWrite`, `pmd/SpringMultiWriteWithoutTransaction`, `pmd/SpringCacheWriteInTransaction`, `pmd/SpringLocalCacheWriteInTransaction`, `pmd/SpringAsyncExecutor`, `pmd/SpringScheduledFixedDelay`, `pmd/SpringComposedMapping`, `pmd/SpringRestController`, `pmd/SpringValidRequestBody`, `pmd/SpringTypedResponse`, `pmd/SpringTypedRequestBody`, `pmd/SpringNoErrorLeak`, `pmd/SpringNoCrossOrigin`, `pmd/SpringCorsWildcard`, `pmd/SpringPasswordEncoder`, `pmd/SpringPermitAllAnyRequest`, `pmd/SpringCsrfDisabled`, `pmd/SpringHardcodedUser`, `pmd/JpaLazyFetching`, `pmd/JpaEntityClass`, `pmd/JpaManyToManyCascade`, `pmd/JpaManyToManySet`, `pmd/JpaVersion`, `pmd/JpaSequenceIds`, `pmd/JpaEnumString`, `pmd/JpaIdentityHashCode`, `pmd/SpringDataDerivedQuery`, `pmd/SpringDataNativeQuery`, `pmd/SpringDataWriteWithoutTransaction`, `pmd/SpringDataModifyingQuery`, `pmd/SpringDataNoSaveInLoop`, `pmd/SpringDataNoFlush`, `pmd/SpringDataNamedParameters`, `pmd/SpringDataQueryTextBlock`, `pmd/SpringDataBatchOfOne`, `pmd/SpringDataRowWriteInLoop`, `pmd/SpringDataSaveInLoopHelper`, `pmd/SpringDataFilterInQuery`, `pmd/SpringQueryConcatenation` and `unused-option`, or, for the Java sources of the project, a finding as it prints, `<tool>/<rule>` with one of the tools `pmd`, `spotbugs`, `errorprone`, `archunit`, `google-java-format`, `palantir-java-format`, `jacoco`, `checkstyle`, `crap`, `duplicates`, `pit`, `structure`, `coupling`, `spring` and `test-runtime`.
 
 Unless an entry says otherwise:
 
@@ -70,7 +70,7 @@ A `catch` that neither throws, nor uses the exception, nor answers with an error
 
 ### `kotlin-source/CommentedOutCode`
 
-A run of line comments, or a block comment (main and test sources), whose first code-shaped line is a declaration, call, assignment, control header, `fun`, `class`, import or return; the cases skipped are listed below the table.
+A run of line comments, or a block comment, whose first code-shaped line is a declaration, call, assignment, control header, `fun`, `class`, import or return.
 
 - **Allowed form:** Delete the commented-out code; version control keeps it.
 - **Exception:** If this is intended, add `{"rule":"kotlin-source/CommentedOutCode","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
@@ -88,7 +88,7 @@ A `@Deprecated` annotation (not on an `override` member, also with `override` on
 
 ### `kotlin-source/CredentialLiteral`
 
-An AWS key, a GitHub or Slack token, a `sk_live_`/`sk-proj-` key, a private key header, a password in a URL or a `Bearer`/`Basic` value.
+An AWS key, a GitHub or Slack token, a `sk_live_`/`sk-proj-` key, a private key header, a `django-insecure-` key, a password in a URL or a `password=` parameter, or a `Bearer`/`Basic`/`Token` value.
 
 - **Allowed form:** Read it from the environment or a secrets manager: this string looks like a credential (access key, token, private key, or a password in a URL).
 - **Exception:** If this is intended, add `{"rule":"kotlin-source/CredentialLiteral","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
@@ -111,20 +111,11 @@ An annotation whose name contains `Generated` (any package, also `@get:`/`@set:`
 - **Allowed form:** Remove the annotation from hand-written code: JaCoCo skips code carrying an annotation whose name contains Generated, and PIT skips @Generated, so this is not measured. Put the JPA @GeneratedValue on the field.
 - **Exception:** If this is intended, add `{"rule":"kotlin-source/GeneratedOnHandWrittenCode","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 
-<a id="kotlin-source-genericfilename"></a>
-
-### `kotlin-source/GenericFileName`
-
-A `.kt` file whose last name word is one of those (`StringUtils.kt`, `utils.kt`, `Utils2.kt`, `Utils.jvm.kt`) and that declares no type or `typealias` of that name (that one is `GenericTypeName`); framework roles pass.
-
-- **Allowed form:** Name this file for what it holds (`PriceRounding.kt`), not Utils, Helper, Manager, Common or Misc. Pure logic shared between features goes in the shared package under such a name.
-- **Exception:** If this is intended, add `{"rule":"kotlin-source/GenericFileName","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
-
 <a id="kotlin-source-genericpackagename"></a>
 
 ### `kotlin-source/GenericPackageName`
 
-A package with a segment `util`, `utils`, `utility`, `utilities`, `helper`, `helpers`, `manager`, `managers`, `common`, `commons`, `misc` or `miscellaneous`.
+A package segment `util`, `utils`, `utility`, `helpers`, `manager`, `common`, `commons`, `misc`.
 
 - **Allowed form:** Name this package for what it holds, not utils, helpers, common or misc. Pure logic shared between features goes in the shared package under a name that says what it does.
 - **Exception:** If this is intended, add `{"rule":"kotlin-source/GenericPackageName","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
@@ -133,7 +124,7 @@ A package with a segment `util`, `utils`, `utility`, `utilities`, `helper`, `hel
 
 ### `kotlin-source/GenericTypeName`
 
-A class, interface, object or `typealias` whose name ends in `Util(s)`, `Utility`, `Utilities`, `Helper(s)`, `Manager(s)`, `Common(s)`, `Misc` or `Miscellaneous` (trailing digits ignored), also after an acronym (`IOUtils`); framework roles (`TransactionManager`) and a type that extends one with the same ending are skipped.
+A class, interface or object named `*Util(s)`, `*Utility`, `*Utilities`, `*Helper`, `*Manager`, `*Common(s)`, `*Misc`; framework roles and a type that extends one with the same ending are skipped.
 
 - **Allowed form:** Name this type for what it does (`PriceRounder`, `OrderTotals`), not Utils, Helper, Manager, Common or Misc. Pure logic shared between features goes in the shared package under such a name.
 - **Exception:** If this is intended, add `{"rule":"kotlin-source/GenericTypeName","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
@@ -142,18 +133,18 @@ A class, interface, object or `typealias` whose name ends in `Util(s)`, `Utility
 
 ### `kotlin-source/HardcodedSecret`
 
-A secret-looking literal assigned to a name like `*password`, `*secret`, `*token`, `*apiKey`, also as a named argument, a `"key" to "value"` pair or a `"key", "value"` argument pair.
+A secret literal assigned to a name ending in `password`, `passwd`, `pwd`, `passphrase`, `secret`, `token`, `credentials`, `apiKey`, `privateKey`, `accessKey`, `secretKey`, `authKey`, `signingKey`, `encryptionKey`, `hmacKey` or `jwtKey` (a trailing `Value`, `Raw`, `Str`, `String`, `Text` or `Plain` is ignored; tokenizer marker tokens such as `eosToken` and `padToken` are not secrets). The value rules are shared with the other presets (`shared/naming/secret-words.mjs`): six characters or more with letters and digits, or three character classes; for a `password`, `passwd` or `passphrase` name also eight characters or more with a lowercase letter followed by an uppercase one (`CorrectHorseBatteryStaple`, not a single word such as `Elephantine` or an all-lowercase `hunterhunter`). Not secrets: placeholders (`changeme`, `<...>`, `${...}`, `$NAME`, `{{...}}`, `{name}`, `%s`, `%(name)s`, `:name`, `****1234`), environment variable names, header names such as `X-CSRF-TOKEN`, lowercase paths and message keys (`prod/db-creds-v2`, `errors.token.expired_v2`, `/etc/app/creds.json`), regular expressions (`^...$`), URLs, a value equal to the name and an identifier that contains a secret word (`extra_token_1`); a credential-shaped value is left to `CredentialLiteral`. Where: a property, `const val`, constructor default, named argument, `config.password = ...`, `settings["db.password"] = ...`, `by lazy { "..." }`, `fun token() = "..."`, a `get() = "..."` getter or a body that starts with `return "..."`, a `"key" to "value"` pair, a `"key", "value"` pair in `put`, `putIfAbsent`, `putString`, `putExtra`, `setProperty`, `addProperty`, `of`, `entry`, `Pair`, `set`, `getOrDefault` or `getProperty`, `getOrElse("key") { "..." }` and `getOrPut`, and a `"\${db.password:...}"` placeholder default outside files that import Spring (there `SpringValueSecretDefault` reports it). The literal that opens the value counts whatever follows (`.trimIndent()`, `.toCharArray()`, `as String`, `+ suffix`), except in a comparison, `.equals(...)`, `.toRegex()`, `.format(...)` and the like; so does a concatenation of literals and a fallback: `?: "..."`, either branch of an `if` or a `when` (braced too), `getOrDefault(k, "...")`, `System.getProperty(k, "...")`, `requireNonNullElse`, `orElse("...")`, `orElseGet { }`, `getOrElse(k) { }`, `getOrPut(k) { }`, `run { }`, `valueOf("...")`, `copyValueOf("...")` and `String("...")`. Main sources only.
 
-- **Allowed form:** Read it from the environment or a secrets manager and inject it: this variable holds a hardcoded secret.
+- **Allowed form:** Read it from the environment or a secrets manager and inject it: this value is a hardcoded secret.
 - **Exception:** If this is intended, add `{"rule":"kotlin-source/HardcodedSecret","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 
 <a id="kotlin-source-httpwithouttimeout"></a>
 
 ### `kotlin-source/HttpWithoutTimeout`
 
-A `java.net.http` request built without `.timeout(...)`, an `HttpURLConnection` from an HTTP URL whose block never sets `readTimeout`, `URL(...).readText()`/`readBytes()`/`openStream()`, `RestTemplate()`, `HttpClients.createDefault()`; OkHttp and Ktor pass (their engines set timeouts).
+A `java.net.http` request built without `.timeout(...)` (a copy made with `newBuilder(request, filter)` keeps its timeout), an `HttpURLConnection` from an HTTP URL whose block never sets `readTimeout`, `URL(...).readText()`/`readBytes()`/`openStream()`, `RestTemplate()`, the no-argument Apache factories (`HttpClients.createDefault()`, `createSystem()`, `createMinimal()`, also `HttpAsyncClients`), an Apache `custom()`/`HttpClientBuilder.create()` chain built without `setDefaultRequestConfig`, `setDefaultSocketConfig`, `setConnectionManager` or `setIOReactorConfig` (both skipped in a file that sets a per-request config with `setConfig` or `config =`), JAX-RS `ClientBuilder.newClient()` in a block with no `property(...)` call that is not handed to another function, and `ClientBuilder.newBuilder()` built without `readTimeout`, `property` or `withConfig`; OkHttp and Ktor pass (their engines set timeouts). The Java preset runs the same check as `pmd/HttpWithoutTimeout`.
 
-- **Allowed form:** Give the call a deadline: `HttpRequest.newBuilder(uri).timeout(Duration.ofSeconds(10))` (java.net.http), `connectTimeout` and `readTimeout` on an `HttpURLConnection`, a client with timeouts (OkHttp, which sets them by default, or Ktor with `install(HttpTimeout) { requestTimeoutMillis = 10_000 }`), `RestTemplateBuilder().connectTimeout(...).readTimeout(...)` for Spring, or `RequestConfig.custom().setResponseTimeout(...)` for the Apache client. This HTTP call has no timeout, so a server that never answers hangs it for good.
+- **Allowed form:** Give the call a deadline: `HttpRequest.newBuilder(uri).timeout(Duration.ofSeconds(10))` (java.net.http), `connectTimeout` and `readTimeout` on an `HttpURLConnection`, a client with timeouts (OkHttp, which sets them by default, or Ktor with `install(HttpTimeout) { requestTimeoutMillis = 10_000 }`), `RestTemplateBuilder().connectTimeout(...).readTimeout(...)` for Spring, `setDefaultRequestConfig(RequestConfig.custom().setResponseTimeout(...).build())` on the Apache client builder, or `connectTimeout` and `readTimeout` on a JAX-RS `ClientBuilder`. This HTTP call has no timeout, so a server that never answers hangs it for good.
 - **Exception:** If this is intended, add `{"rule":"kotlin-source/HttpWithoutTimeout","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 
 <a id="kotlin-source-iocallinloop"></a>
@@ -173,6 +164,24 @@ A repository, DAO, JDBC or HTTP client call in a `for`, `while` or `do` body or 
 
 - **Allowed form:** Remove @JvmSynthetic: JaCoCo skips synthetic functions, so this is not measured. An exception fits only a library function that must stay hidden from Java callers.
 - **Exception:** If this is intended, add `{"rule":"kotlin-source/JvmSyntheticOnHandWrittenCode","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
+
+<a id="kotlin-source-logexceptionfirst"></a>
+
+### `kotlin-source/LogExceptionFirst`
+
+A JBoss Logging or Quarkus `Log` `*f` or `*v` call with an exception after the format: a name declared with an `*Exception`, `*Error` or `Throwable` type in the file (a `catch` parameter is one), or a constructor call such as `IllegalStateException(...)`.
+
+- **Allowed form:** Pass the exception first (`log.errorf(e, "Cannot read %s", path)`), or `e.message` when only the text is wanted. After the format, JBoss Logging never logs its stack trace.
+- **Exception:** If this is intended, add `{"rule":"kotlin-source/LogExceptionFirst","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
+
+<a id="kotlin-source-logformatarguments"></a>
+
+### `kotlin-source/LogFormatArguments`
+
+In main sources (like the other source checks), a formatting log call whose format and arguments do not match, with the library imported in the file: JBoss Logging or Quarkus `Log` `tracef` to `fatalf`, `logf`, `tracev` to `fatalv` and `logv`; `java.util.logging` `log(Level.X, format, value)` (or `arrayOf(...)`) and `logp`; Log4j 2 `printf` and the level methods of a `val` set to `LogManager.getFormatterLogger(...)`. The receiver is named like a logger (`log`, `logger`, `*Log`, `*Logger`) or declared from a logger factory. The checks are those of the Java rule `pmd/LogFormatArguments`, plus the counts on a formatter logger's level methods that PMD's `InvalidLogMessageFormat` makes for Java. The format is a literal, a `const val` of the file, or these joined with `+`; a string template or another value in it counts as built at run time (on `info`, `warn`, `error` and `log` that is `LogStringConcatenation`). A `%d` or `%f` type is known for a literal and for a name with one declared type in the file (`name: String`); a `*values` spread is not counted.
+
+- **Allowed form:** Pass one argument per placeholder, in the method's own syntax: `%s` for printf methods (JBoss Logging `infof`, Log4j 2 `printf` and formatter loggers), `{0}` for MessageFormat methods (JBoss Logging `infov`, `java.util.logging` `log`), with `''` for an apostrophe there. Keep the format a constant, not a string template. Otherwise values are dropped or the call throws.
+- **Exception:** If this is intended, add `{"rule":"kotlin-source/LogFormatArguments","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 
 <a id="kotlin-source-logstringconcatenation"></a>
 
@@ -210,6 +219,15 @@ A public function that changes a parameter declared as `MutableList`, `MutableSe
 - **Allowed form:** Build and return a new collection or array (`items + item`, `items.sorted()`, `items.copyOf()`), or take a read-only `List`, `Set` or `Map` and copy it first (`val copy = items.toMutableList()`): this public function changes the argument its caller passed in.
 - **Exception:** If this is intended, add `{"rule":"kotlin-source/ParameterMutation","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 
+<a id="kotlin-source-processwaitwithouttimeout"></a>
+
+### `kotlin-source/ProcessWaitWithoutTimeout`
+
+(main sources) `.waitFor()` with no arguments, `.onExit().get()` or `join()`, and reading a process's output (`inputStream`, `errorStream`, `inputReader()` or `errorReader()`, also through a reader held in a local) with `readBytes`, `readText`, `readLines`, `readLine`, `lines`, `copyTo` and the like, unless the function has a `waitFor(timeout, unit)` before the read or the read runs in a lambda. The process is one started in the same expression (`ProcessBuilder(...).start()`, `Runtime.getRuntime().exec(...)`), a local `val` set from one, or a `Process` parameter.
+
+- **Allowed form:** Wait with a deadline: `if (!process.waitFor(30, TimeUnit.SECONDS)) process.destroyForcibly()`, and read the output on another thread (or redirect it to a file) before that wait. This waits for the child process without a deadline, so a command that never exits hangs this request, job or command for good. An exception fits only a program whose purpose is to run the child to completion, such as a build wrapper.
+- **Exception:** If this is intended, add `{"rule":"kotlin-source/ProcessWaitWithoutTimeout","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
+
 <a id="kotlin-source-repeatedstringliteral"></a>
 
 ### `kotlin-source/RepeatedStringLiteral`
@@ -223,7 +241,7 @@ A string of 5 or more characters (with a letter or digit, no `$` template) used 
 
 ### `kotlin-source/SecretInLog`
 
-A secret-named value passed to a log call (any level, Android `Log.d` too) or `print`, directly, in a `+`, in a template or in a lambda message (`logger.info { "token $token" }`).
+A secret-named value passed to a log call (any level, Android `Log.d`, Timber), `print`/`println`, `System.out`/`System.err` `print`/`println`/`printf`/`format`, SLF4J fluent `addKeyValue`/`addArgument`, `MDC.put` or an exception message (`throw X("...")`, `error("...")`): a variable, a member (`session.token`, not a member of a `tokenizer`), a getter (`getToken()`), directly, in a `+`, in a template (`$token`, `${config.apiKey}`, `${token ?: "none"}`), in `String.format`/`.format(...)`, in a lambda message (`logger.info { "token $token" }`), a read by key (`System.getenv("API_TOKEN")`, `getProperty(k)`, `map["k"]`) or as the key of a `"password" to pw` / `kv("password", pw)` pair; `token != null`, `token.length`, `hasToken`, a pair whose value is a status (`session.hasToken`) and constant names (other than a key that is read) are fine. Main sources only.
 
 - **Allowed form:** Log that the secret is set, or a masked tail, instead of the secret itself.
 - **Exception:** If this is intended, add `{"rule":"kotlin-source/SecretInLog","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.

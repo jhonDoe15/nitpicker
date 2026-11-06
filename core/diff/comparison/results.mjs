@@ -13,6 +13,21 @@ export function combineAnalyzerReports(context) {
   return buildReport({ ...context, outcomes, notes, toolErrors });
 }
 
+export function noChangesReport(context) {
+  const report = buildReport({
+    ...context,
+    outcomes: [],
+    notes: [],
+    toolErrors: context.additionalToolErrors,
+    policyChanges: [],
+    policyLoosenings: [],
+    notices: [],
+    baseToHeadRenames: new Map(),
+    reportsPolicy: false,
+  });
+  return { ...report, summary: { ...report.summary, noChanges: true } };
+}
+
 function collect(outcomes, key) {
   return outcomes.flatMap(({ result }) => result[key]);
 }

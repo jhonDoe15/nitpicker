@@ -9,7 +9,7 @@ export function allowedOf(hint) {
     : hint.allowed;
 }
 
-/** What a hint says the finding is, with a placeholder for the name it is about. */
+/** What a hint says the finding is, with placeholders for the name and the details it is about. */
 export function describedBy(hint) {
-  return hint.describe?.(SUBJECT, DEFAULT_LIBRARIES);
+  return hint.describe?.(SUBJECT, DEFAULT_LIBRARIES, hint.referenceData ?? {});
 }
