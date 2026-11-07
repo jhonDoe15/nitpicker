@@ -22,8 +22,10 @@ import {
   HELD_MESSAGES,
   MESSAGES,
   RULE_IDS,
+  messageFields,
   renderMessage,
 } from '../policy.mjs';
+import { allowedFormField, definedField } from '../messages/messages.mjs';
 import { exceptionMatcher } from './exceptions.mjs';
 import { hash, nextOccurrence } from './finding-helpers.mjs';
 
@@ -172,9 +174,11 @@ function folderFinding(context, { key, value, limit }) {
 }
 
 export function messagesFor(name, values) {
+  const worse = messageFields(GREW_MESSAGES[name], values);
   return {
-    message: renderMessage(MESSAGES[name], values),
-    worseMessage: renderMessage(GREW_MESSAGES[name], values),
+    ...messageFields(MESSAGES[name], values),
+    worseMessage: worse.message,
+    ...definedField('worseAllowedForm', worse.allowedForm),
     heldMessage: renderMessage(HELD_MESSAGES[name], values),
   };
 }
@@ -189,11 +193,13 @@ export function ratchetedFinding(
     path: findingPath,
     identity,
     message: messages.message,
+    ...allowedFormField(messages.allowedForm),
     classification: 'enforceable',
     ratchet: {
       key,
       value,
       worseMessage: messages.worseMessage,
+      ...definedField('worseAllowedForm', messages.worseAllowedForm),
       heldMessage: messages.heldMessage,
       ...(pathIsFolder ? { pathIsFolder } : {}),
       ...(folderFiles === undefined ? {} : { folderFiles }),

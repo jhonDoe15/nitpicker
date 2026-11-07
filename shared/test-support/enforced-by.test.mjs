@@ -14,6 +14,12 @@ const JVM_FACT_RULES_NOT_RUN = {
   'shared-used-by-one-feature': JVM_REUSE_RULES_ONLY,
 };
 const NOT_ENFORCED_ALTHOUGH_EMITTED = {
+  python: {
+    'shared-used-by-one-feature': {
+      file: 'languages/python/adapters/facts/python-facts.mjs',
+      evidence: /registeredFactRules\('python'\)/u,
+    },
+  },
   java: JVM_FACT_RULES_NOT_RUN,
   kotlin: JVM_FACT_RULES_NOT_RUN,
   go: {

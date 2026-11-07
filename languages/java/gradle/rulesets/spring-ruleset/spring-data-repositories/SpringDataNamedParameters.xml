@@ -1,0 +1,9 @@
+  <rule name="SpringDataNamedParameters" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
+        message="Bind query parameters by name (:email), not by position (?1); positions break silently when parameters are reordered.">
+    <priority>2</priority>
+    <properties><property name="xpath"><value><![CDATA[
+//Annotation[pmd-java:typeIs('org.springframework.data.jpa.repository.Query')
+    or pmd-java:typeIs('org.springframework.data.jpa.repository.NativeQuery')]
+  //StringLiteral[matches(@ConstValue, '\?[0-9]')]
+]]></value></property></properties>
+  </rule>

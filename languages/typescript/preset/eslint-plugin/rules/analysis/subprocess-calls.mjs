@@ -98,6 +98,30 @@ function defaultImportLocals(statement) {
     .map((specifier) => specifier.local.name);
 }
 
+export function isPromisify(callee) {
+  return (
+    (callee.type === 'Identifier' && callee.name === 'promisify') ||
+    (callee.type === 'MemberExpression' && callee.property.name === 'promisify')
+  );
+}
+
+export function withPromisified(program, bindings) {
+  const named = new Map(bindings.named);
+  const declarators = program.body
+    .flatMap((statement) =>
+      statement.type === 'VariableDeclaration' ? statement.declarations : [],
+    )
+    .filter(({ id, init }) => id.type === 'Identifier' && init?.type === 'CallExpression');
+  for (const { id, init } of declarators) {
+    const [wrapped] = init.arguments;
+    const name = wrapped === undefined ? undefined : importedCalleeName(wrapped, bindings);
+    if (isPromisify(init.callee) && name !== undefined) {
+      named.set(id.name, name);
+    }
+  }
+  return { ...bindings, named };
+}
+
 export function subprocessBindings(program) {
   const bindings = moduleBindings(program, SUBPROCESS_MODULES);
   for (const statement of program.body) {

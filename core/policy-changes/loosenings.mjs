@@ -57,6 +57,10 @@ function listShrank({ before = [], after = [] }) {
   return before.some((entry) => !after.includes(entry));
 }
 
+function listGrew({ before = [], after = [] }) {
+  return after.some((entry) => !before.includes(entry));
+}
+
 function formattersDropped({ before = [], after = [] }) {
   return before.some((formatter) =>
     formatter === 'gofmt' ? after.length === 0 : !after.includes(formatter),
@@ -78,6 +82,7 @@ const LOOSENING_SETTINGS = [
   [/^go\.buildTags$/u, 'go-build-tags-dropped', listShrank],
   [/^tools\.[^.]+\.precedence$/u, 'tool-precedence', precedenceLoosened],
   [/^spring\.roles\.[^.]+$/u, 'spring-roles-shrank', listShrank],
+  [/^conventions\.typescript\.detachedWorkRunners$/u, 'detached-work-runner-added', listGrew],
 ];
 
 export function looseningKindOfSetting(change, scope) {

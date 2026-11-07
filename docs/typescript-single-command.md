@@ -38,8 +38,9 @@ The first match wins:
 4. `git symbolic-ref refs/remotes/<remote>/HEAD`, using the remote `upstream` if it exists and
    `origin` otherwise.
 5. `origin/main`, then `origin/master`, whichever exists.
-
-Never use `@{upstream}`: on a feature branch it resolves to the same branch.
+6. `@{upstream}`, but only when it names another branch: a feature branch pushed with
+   `git push -u` tracks its own copy (`origin/feature`), which is not a base.
+7. A local `main`, then `master`, unless HEAD is on one of them, for repositories without a remote.
 
 ## Config file
 
@@ -59,7 +60,9 @@ and the base with its own when it differs (see [Using nitpicker](usage.md#config
 that checks less fails until a person accepts it. Keys are `base`, `preset` (`typescript`,
 `javascript`, `java`, `kotlin` or `python`), `disable` (analyzer names),
 `thresholds` (`crapLimit` replaces the old `QUALITY_CRAP_SCORE_LIMIT` variable), `exclude`,
-`layout`, `exceptions`, `analyzers`, and `legacyInventory`. Unknown keys are an error. `exclude` and `layout` are
+`layout`, `exceptions`, `analyzers`, and `legacyInventory`. Unknown keys are an error. `$schema`, the line that
+points an editor at `spec/config.schema.json` for completion and inline errors (see
+[Editor support](usage.md#editor-support)), is allowed and ignored. `exclude` and `layout` are
 applied everywhere (see below); `analyzers` are run as custom analyzers (see below).
 
 ### Head policy delivery
@@ -124,8 +127,8 @@ Decision (proposed, pending owner review):
   (`languages/typescript/preset/tool-configs.mjs`); with the default layout the shipped file is linked as before. The
   vitest configs copied for coverage and mutation read `NITPICKER_POLICY` themselves.
 - When the project has a `tsconfig.json`, the tsconfig copies extend it instead
-  (`policyTransformFor`). `tsconfig.quality.json` adds the policy flags, `noEmit`, `skipLibCheck`
-  and the layout's include and exclude globs; `tsconfig.stryker.json` adds `skipLibCheck` and the same
+  (`policyTransformFor`). `tsconfig.quality.json` adds the policy flags, `noEmit`, `noCheck: false`,
+  `skipLibCheck` and the layout's include and exclude globs; `tsconfig.stryker.json` adds `noCheck: false`, `skipLibCheck` and the same
   policy flags, so mutants that break the policy's indexing or return checks are compile errors.
   The mutation runner first type-checks the project with that config and, if it fails, installs the
   copy without the policy flags (the shipped file without `noImplicitReturns`,

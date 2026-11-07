@@ -3,6 +3,7 @@ import {
   isPlainObject,
   configError,
   isNonEmptyString,
+  SCHEMA_KEY,
   validateStringArray,
   validateThresholds,
   validateDuplicates,
@@ -70,15 +71,19 @@ export const KEYS = [
   'history',
 ];
 
-const REACT_KEYS = ['enabled', 'styling'];
+export const REACT_KEYS = ['enabled', 'styling'];
 
-const I18N_KEYS = ['enabled', 'functionNames', 'componentNames'];
+export const I18N_KEYS = ['enabled', 'functionNames', 'componentNames'];
 
-const CUSTOM_ANALYZER_KEYS = ['name', 'command', 'args'];
+export const CUSTOM_ANALYZER_KEYS = ['name', 'command', 'args'];
 
 const NITPICKER_RULE_IDS = new Set(RULES.map(({ id }) => id));
 
+export const NITPICKER_RULES = [...NITPICKER_RULE_IDS];
+
 const TYPESCRIPT_RULE_NAMES = new Map([['doc-comment-content', 'nitpicker/no-comments']]);
+
+export const RENAMED_TYPESCRIPT_RULES = [...TYPESCRIPT_RULE_NAMES.keys()];
 
 export function validateConfig(config) {
   if (!isPlainObject(config)) {
@@ -99,9 +104,12 @@ export function validateConfig(config) {
 
 function validateKeys(config) {
   for (const key of Object.keys(config)) {
-    if (!KEYS.includes(key)) {
-      throw configError(`unknown key "${key}"${suggestionOrAllowed(key, KEYS)}`);
+    if (!KEYS.includes(key) && key !== SCHEMA_KEY) {
+      throw configError(`unknown key "${key}"${suggestionOrAllowed(key, [SCHEMA_KEY, ...KEYS])}`);
     }
+  }
+  if (config[SCHEMA_KEY] !== undefined && typeof config[SCHEMA_KEY] !== 'string') {
+    throw configError(`"${SCHEMA_KEY}" must be a string`);
   }
 }
 
@@ -175,9 +183,6 @@ function validateOptional(config) {
   if (config.layout !== undefined) {
     validateLayout(config.layout, config.preset, config.history);
   }
-  if (config.exceptions !== undefined) {
-    validateTypescriptExceptionRules(config.exceptions, config.preset);
-  }
   if (config.tools !== undefined) {
     validateTools(config.tools, config.preset);
   }
@@ -203,13 +208,14 @@ function exceptionRuleProblem(rule, preset) {
   if (rule.startsWith('formatjs/') && !i18nRuleIds.includes(rule)) {
     return `which nitpicker does not run. The i18n rules it runs: ${i18nRuleIds.join(', ')}`;
   }
-  const native = TYPESCRIPT_RULE_NAMES.get(rule);
+  const native = TYPESCRIPT_RULE_NAMES.get(canonicalRule(rule));
   return native === undefined
     ? undefined
     : `which the ${preset ?? 'typescript'} preset reports as ${native}: name "${native}" instead`;
 }
 
 function validateProjectExceptions(exceptions, key, preset) {
+  validateTypescriptExceptionRules(exceptions, preset);
   validateExceptions(exceptions, key, {
     preset: preset ?? 'typescript',
     matchesOwnGlobs: TYPESCRIPT_PRESETS.includes(preset)
@@ -219,11 +225,12 @@ function validateProjectExceptions(exceptions, key, preset) {
 }
 
 function validateTypescriptExceptionRules(exceptions, preset) {
-  if (!TYPESCRIPT_PRESETS.includes(preset)) {
+  if (!TYPESCRIPT_PRESETS.includes(preset) || !Array.isArray(exceptions)) {
     return;
   }
-  for (const [index, { rule }] of exceptions.entries()) {
-    const problem = exceptionRuleProblem(rule, preset);
+  for (const [index, entry] of exceptions.entries()) {
+    const rule = entry?.rule;
+    const problem = typeof rule === 'string' ? exceptionRuleProblem(rule, preset) : undefined;
     if (problem !== undefined) {
       throw configError(`"exceptions[${String(index)}].rule" names ${rule}, ${problem}`);
     }
