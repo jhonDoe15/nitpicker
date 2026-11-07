@@ -96,6 +96,21 @@ const SPECS = new Map([
     }),
   ],
   [
+    '@angular/common/http',
+    client('remote', {
+      methods: new Set([...BODY_METHODS, 'options', 'request', 'jsonp']),
+      types: new Set(['HttpClient']),
+    }),
+  ],
+  [
+    'rxjs/ajax',
+    client('remote', {
+      callable: true,
+      functions: new Set(['ajax']),
+      methods: new Set([...BODY_METHODS, 'getJSON']),
+    }),
+  ],
+  [
     'graphql-request',
     client('remote', {
       functions: new Set(['request', 'rawRequest']),

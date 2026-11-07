@@ -150,7 +150,7 @@ function indexMarkdown(byPage) {
   return [
     '# Rule reference',
     '',
-    'Every rule that nitpicker can report, one entry each, with the preset that reports it, why it is on, the allowed form where it has one, and the `nitpicker.config.json` entry that accepts it. The pages are generated from the rule catalogs (`npm run gen:rules`) and a test fails when they are stale.',
+    'Every rule that nitpicker can report, one entry each, with the preset that reports it, why it is on, the allowed form where it has one, and the `nitpicker.config.json` entry that accepts it. The pages are generated from the rule catalogs (`npm run gen:rules`) and committed only on the commit each release tags, so they describe that release.',
     '',
     'From a terminal, `nitpicker explain <tool/rule>` prints one entry, and `nitpicker rules` lists the rules of the preset of the project. In the SARIF report and in the findings files (`new-findings.json`, `held-findings.json`, `resolved-findings.json`, and `findings.json` with `--all`), each finding whose rule has an entry here links to it with a `helpUri`, at the release tag of the installed version.',
     '',
