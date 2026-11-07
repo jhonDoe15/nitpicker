@@ -1433,7 +1433,7 @@ kind, a version entry, a check definition and project-level findings) and is not
 - **Rule.** `slow-test` fails a test the change adds or edits when it takes more than 5 s as a unit
   test, or more than 30 s as an integration test (`thresholds.unitTestSeconds` and
   `thresholds.integrationTestSeconds`), the same rule, message shape and budgets as for
-  [Java and Kotlin](java-preset.md#slow-tests) and [Python](python-preset.md#slow-tests). Its tool
+  [Java and Kotlin](java-preset/slow-tests.md) and [Python](python-preset/slow-tests.md). Its tool
   is `test-runtime`; the finding prints the bare route `slow-test`, and `test-runtime/slow-test` is
   accepted in `exceptions` as the same rule. The message names the budget, the measured time, the
   fixes (fake timers instead of waits, fakes for network, database and disk, or moving the test to
