@@ -1,6 +1,6 @@
 # Java and Kotlin: PMD rules
 
-PMD's bestpractices, design, errorprone, multithreading, performance and security categories, as far as nitpicker's rulesets keep them, and the rules nitpicker adds to them, for Java sources in the Java and Kotlin presets. This page lists 269 rules. [All pages](README.md).
+PMD's bestpractices, design, errorprone, multithreading, performance and security categories, as far as nitpicker's rulesets keep them, and the rules nitpicker adds to them, for Java sources in the Java and Kotlin presets. This page lists 270 rules. [All pages](README.md).
 
 The guide for these rules: [docs/java-preset.md](../java-preset.md).
 
@@ -936,6 +936,17 @@ Remove the annotation from hand-written code: JaCoCo skips code carrying an anno
 - **Scope:** Main and test sources.
 - **Why it is on:** A PMD rule nitpicker defines: it names one allowed form where the language offers several, and reports the other forms.
 - **Exception:** If this is intended, add `{"rule":"pmd/GeneratedOnHandWrittenCode","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
+
+<a id="pmd-globalstateleakintest"></a>
+
+### `pmd/GlobalStateLeakInTest`
+
+In tests: a change to process-wide state that nothing in the class puts back: `System.setProperty`, `clearProperty` and `setProperties`, `Locale.setDefault`, `TimeZone.setDefault`, `System.setOut`, `setErr` and `setIn`, `Thread.setDefaultUncaughtExceptionHandler`, `Security.addProvider` and `insertProviderAt`, `setDefault` on `CookieHandler`, `Authenticator`, `ProxySelector`, `ResponseCache` and `SSLContext`, `HttpsURLConnection.setDefaultSSLSocketFactory` and `setDefaultHostnameVerifier`, and a write to a static field or a call to a static `set...` method (not `setUp...`) of a project class. It counts as restored when the same state is set again in a `finally` of the same method, in an `@AfterEach`, `@AfterAll`, `@After` or `@AfterClass` method (TestNG `@AfterMethod`, `@AfterClass`, `@AfterTest`, `@AfterSuite`, `@AfterGroups`), in an `afterEach`, `afterAll`, `after`, `close` or `tearDown` method of the class or an outer class, or in a method of the class that one of those calls; for a project class a `reset...`, `clear...` or `restore...` call on it counts too. A change inside one of those places is not reported, nor one in the body of a try-with-resources whose resources name the changed class or a restoring extension type (`try (var frozen = Clock.frozen())`), nor one under junit-pioneer `@RestoreSystemProperties`, `@DefaultLocale`, `@DefaultTimeZone` or `@StdIo`, next to a system-stubs `@SystemStub` or system-rules `@Rule` field of the matching kind, or inside a `restoreSystemProperties(...)`, `tapSystemOut(...)`, `withTextFromSystemIn(...)` or system-stubs `execute(...)` lambda.
+
+- **Scope:** Test sources only.
+- **Why it is on:** A PMD rule nitpicker defines: it names one allowed form where the language offers several, and reports the other forms.
+- **Allowed form:** This test changes process-wide state and nothing in the class puts it back, so the tests after it pass or fail depending on the order they run in. Save the old value and restore it in finally or in an @AfterEach or @AfterAll method, or let an extension set and restore it: junit-pioneer @SetSystemProperty, @RestoreSystemProperties, @DefaultLocale or @DefaultTimeZone, a system-stubs @SystemStub field, or system-lambda restoreSystemProperties(...).
+- **Exception:** If this is intended, add `{"rule":"pmd/GlobalStateLeakInTest","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 
 <a id="pmd-guardlogstatement"></a>
 

@@ -182,6 +182,9 @@ To learn why a rule is on and what form it allows before you write or change cod
   Read a fake's calls through a helper that throws when the call is missing, not `calls[n]?.`. Spy on `process.stdout` only to test composition-root wiring,
   and give it a real temp file (`mkdtemp`) rather than `vi.mock` of `node:` modules. The gate
   restores spies; restore fake timers with `vi.useRealTimers()` in `afterEach`.
+- Do not write `process.env.X = ...` or override `Date.now`, `Math.random` or `globalThis.fetch` in a test
+  (`nitpicker/fake-timers-require-restore`): use `vi.stubEnv`, `vi.stubGlobal`, `vi.spyOn` or fake timers and
+  restore them in `afterEach`, or put the old value back in `afterEach` or `finally`.
 - Assert whole outputs with `toEqual`/`toBe`, not `toContain`, `toMatchObject` or `expect.any`.
   Write `expect` in the test body; asserting helpers don't count. Do not assert inside a loop,
   `forEach` or `map` callback: an empty collection passes without asserting, so assert the whole

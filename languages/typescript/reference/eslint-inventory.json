@@ -848,12 +848,14 @@
     "nitpicker/fake-timers-require-restore": {
       "tools": ["eslint-lint"],
       "forms": [],
-      "description": "Require fake timers, and stubs made in test files, to be restored",
+      "description": "Require fake timers, stubs, and writes to process.env or to globals made in test files, to be restored",
       "messages": [
         "Fake timers stay on for the tests that follow. Restore them: `afterEach(() => { vi.useRealTimers(); });`.",
         "Fake timers stay on for the tests that follow. Restore them: `afterEach(() => { vi.useRealTimers(); });`. With user-event, create the user with `userEvent.setup({ advanceTimers: vi.advanceTimersByTime })` or its clicks wait forever.",
         "This stubbed global stays stubbed for the tests that follow. Restore it: `afterEach(() => { vi.unstubAllGlobals(); });`, or stub it once in a setup file.",
-        "This stubbed environment variable stays set for the tests that follow. Restore it: `afterEach(() => { vi.unstubAllEnvs(); });`."
+        "This stubbed environment variable stays set for the tests that follow. Restore it: `afterEach(() => { vi.unstubAllEnvs(); });`.",
+        "This write to `process.env` stays for the tests that follow, so they pass or fail depending on the order they run in. Use `vi.stubEnv(name, value)` with `afterEach(() => { vi.unstubAllEnvs(); })`, or save the old value and put it back in `afterEach` or `finally`.",
+        "This global override stays for the tests that follow, so they pass or fail depending on the order they run in. Use `vi.stubGlobal`, `vi.spyOn(object, name)` or `vi.useFakeTimers()` and restore them in `afterEach`, or save the old value and put it back in `afterEach` or `finally`."
       ]
     },
     "nitpicker/file-name-casing": {
@@ -3717,12 +3719,14 @@
     "nitpicker/fake-timers-require-restore": {
       "tools": ["eslint-lint"],
       "forms": [],
-      "description": "Require fake timers, and stubs made in test files, to be restored",
+      "description": "Require fake timers, stubs, and writes to process.env or to globals made in test files, to be restored",
       "messages": [
         "Fake timers stay on for the tests that follow. Restore them: `afterEach(() => { vi.useRealTimers(); });`.",
         "Fake timers stay on for the tests that follow. Restore them: `afterEach(() => { vi.useRealTimers(); });`. With user-event, create the user with `userEvent.setup({ advanceTimers: vi.advanceTimersByTime })` or its clicks wait forever.",
         "This stubbed global stays stubbed for the tests that follow. Restore it: `afterEach(() => { vi.unstubAllGlobals(); });`, or stub it once in a setup file.",
-        "This stubbed environment variable stays set for the tests that follow. Restore it: `afterEach(() => { vi.unstubAllEnvs(); });`."
+        "This stubbed environment variable stays set for the tests that follow. Restore it: `afterEach(() => { vi.unstubAllEnvs(); });`.",
+        "This write to `process.env` stays for the tests that follow, so they pass or fail depending on the order they run in. Use `vi.stubEnv(name, value)` with `afterEach(() => { vi.unstubAllEnvs(); })`, or save the old value and put it back in `afterEach` or `finally`.",
+        "This global override stays for the tests that follow, so they pass or fail depending on the order they run in. Use `vi.stubGlobal`, `vi.spyOn(object, name)` or `vi.useFakeTimers()` and restore them in `afterEach`, or save the old value and put it back in `afterEach` or `finally`."
       ]
     },
     "nitpicker/file-name-casing": {
@@ -6942,12 +6946,14 @@
     "nitpicker/fake-timers-require-restore": {
       "tools": ["eslint-lint"],
       "forms": [],
-      "description": "Require fake timers, and stubs made in test files, to be restored",
+      "description": "Require fake timers, stubs, and writes to process.env or to globals made in test files, to be restored",
       "messages": [
         "Fake timers stay on for the tests that follow. Restore them: `afterEach(() => { vi.useRealTimers(); });`.",
         "Fake timers stay on for the tests that follow. Restore them: `afterEach(() => { vi.useRealTimers(); });`. With user-event, create the user with `userEvent.setup({ advanceTimers: vi.advanceTimersByTime })` or its clicks wait forever.",
         "This stubbed global stays stubbed for the tests that follow. Restore it: `afterEach(() => { vi.unstubAllGlobals(); });`, or stub it once in a setup file.",
-        "This stubbed environment variable stays set for the tests that follow. Restore it: `afterEach(() => { vi.unstubAllEnvs(); });`."
+        "This stubbed environment variable stays set for the tests that follow. Restore it: `afterEach(() => { vi.unstubAllEnvs(); });`.",
+        "This write to `process.env` stays for the tests that follow, so they pass or fail depending on the order they run in. Use `vi.stubEnv(name, value)` with `afterEach(() => { vi.unstubAllEnvs(); })`, or save the old value and put it back in `afterEach` or `finally`.",
+        "This global override stays for the tests that follow, so they pass or fail depending on the order they run in. Use `vi.stubGlobal`, `vi.spyOn(object, name)` or `vi.useFakeTimers()` and restore them in `afterEach`, or save the old value and put it back in `afterEach` or `finally`."
       ]
     },
     "nitpicker/file-name-casing": {
