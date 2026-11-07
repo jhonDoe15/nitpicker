@@ -1,0 +1,27 @@
+  <rule name="SpringValidRequestBody" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
+        message="Add @Valid to this @RequestBody; without it the record''s constraints are never checked.">
+    <priority>2</priority>
+    <properties><property name="xpath"><value><![CDATA[
+//FormalParameter[ModifierList/Annotation[pmd-java:typeIs('org.springframework.web.bind.annotation.RequestBody')]]
+  [not(ModifierList/Annotation[
+    (pmd-java:typeIs('jakarta.validation.Valid') or pmd-java:typeIs('javax.validation.Valid'))
+    or pmd-java:typeIs('org.springframework.validation.annotation.Validated')])]
+  [not(ClassType[
+    pmd-java:typeIs('java.lang.CharSequence')
+    or pmd-java:typeIs('java.lang.Number')
+    or pmd-java:typeIs('java.lang.Boolean')
+    or pmd-java:typeIsExactly('java.lang.Object')
+    or pmd-java:typeIs('java.util.Map')
+    or pmd-java:typeIs('java.io.InputStream')
+    or pmd-java:typeIs('org.springframework.core.io.Resource')
+    or pmd-java:typeIs('com.fasterxml.jackson.databind.JsonNode')
+    or pmd-java:typeIs('tools.jackson.databind.JsonNode')])]
+  [not(ClassType[pmd-java:typeIs('java.util.Collection') or pmd-java:typeIs('java.util.Optional')]
+    /TypeArguments/ClassType[pmd-java:typeIs('java.lang.CharSequence') or pmd-java:typeIs('java.lang.Number')
+      or pmd-java:typeIs('java.lang.Boolean') or pmd-java:typeIsExactly('java.lang.Object')
+      or pmd-java:typeIs('java.util.Map') or pmd-java:typeIs('com.fasterxml.jackson.databind.JsonNode')
+      or pmd-java:typeIs('tools.jackson.databind.JsonNode')])]
+  [not(ClassType/TypeArguments/WildcardType)]
+  [not(ArrayType or PrimitiveType)]
+]]></value></property></properties>
+  </rule>

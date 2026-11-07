@@ -1,0 +1,22 @@
+  <rule name="LogExceptionFirst" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
+        message="Pass the exception first (log.errorf(e, &quot;Cannot read %s&quot;, path)), or e.getMessage() when only the text is wanted. After the format, JBoss Logging never logs its stack trace.">
+    <priority>3</priority>
+    <properties>
+      <property name="xpath">
+        <value><![CDATA[
+let $levels := ('trace', 'debug', 'info', 'warn', 'error', 'fatal'),
+    $names := (for $level in $levels return (concat($level, 'f'), concat($level, 'v')), 'logf', 'logv')
+return //MethodCall[@MethodName = $names]
+  [*[1][pmd-java:typeIs('org.jboss.logging.BasicLogger') or pmd-java:typeIs('io.quarkus.logging.Log')]]
+  [let $arguments := ArgumentList/*,
+       $format := if (@MethodName = ('logf', 'logv'))
+         then (if ($arguments[1][pmd-java:typeIs('java.lang.String')]) then 4
+               else if ($arguments[2][pmd-java:typeIs('java.lang.Throwable')]) then 3 else 2)
+         else (if ($arguments[1][pmd-java:typeIs('java.lang.Throwable')]) then 2 else 1),
+       $rest := $arguments[position() > $format]
+   return exists($arguments[$format][pmd-java:typeIs('java.lang.String')])
+     and exists(($rest | $rest/ArrayInitializer/*)[not(self::NullLiteral)][pmd-java:typeIs('java.lang.Throwable')])]
+]]></value>
+      </property>
+    </properties>
+  </rule>

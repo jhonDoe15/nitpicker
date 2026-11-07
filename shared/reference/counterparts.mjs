@@ -4,7 +4,7 @@ function spring(rule) {
   return {
     label: `Spring counterpart \`spring/${rule}\``,
     path: SPRING_PAGE,
-    anchor: `spring${rule}`,
+    anchor: `spring-${rule}`,
   };
 }
 
