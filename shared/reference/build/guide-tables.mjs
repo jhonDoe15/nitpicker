@@ -54,8 +54,8 @@ function readGuideTables(guide) {
 
 /**
  * The cell under `header` (lowercase) of the table row that names `id` in its first column, in a
- * guide of this repository or its topic pages, with the guide's relative links made relative to the repository root,
- * or undefined when no such row exists.
+ * guide of this repository or its topic pages, with relative links made relative to the repository
+ * root, or undefined when no such row exists.
  */
 export function optionalGuideCell(guide, id, header) {
   return (readGuideTables(guide).get(id) ?? [])
