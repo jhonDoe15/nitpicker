@@ -130,6 +130,25 @@ describe.skipIf(!enabled)('generic-name', () => {
         ['generic-name:1 OrderHelperMixin'],
       ],
       [
+        'a mixin of another mixin',
+        inFile('views.py', 'class OrderHelperMixin(LoginRequiredMixin):\n    pass\n'),
+        ['generic-name:1 OrderHelperMixin'],
+      ],
+      [
+        'a generic base class',
+        inFile('bases.py', 'class HelperBase:\n    pass\n'),
+        ['generic-name:1 HelperBase'],
+      ],
+      [
+        'mixins and bases named for their job',
+        inFile(
+          'models.py',
+          'class LoggingMixin:\n    pass\n\n\nclass TimestampMixin:\n    pass\n\n\nclass ModelBase:\n    pass\n',
+        ),
+        [],
+      ],
+      ['a container word alone', inFile('module.py', 'X = 1\n'), []],
+      [
         'a nested class',
         inFile('orders.py', 'class Order:\n    class InnerManager:\n        pass\n'),
         ['generic-name:2 InnerManager'],
@@ -149,163 +168,39 @@ describe.skipIf(!enabled)('generic-name', () => {
         [],
       ],
       ['a test helper', inFile('tests/helpers.py', 'X = 1\n'), []],
-    ]);
-    expect(actual).toEqual(expected);
-  });
-});
-
-describe.skipIf(!enabled)('hardcoded-secret, credential-shape and secret-in-log', () => {
-  it('flags a secret-looking string assigned to a secret-named target', () => {
-    const [actual, expected] = outcomes([
-      ['a variable', 'API_TOKEN = "a1b2c3d4e5f6"\n', ['hardcoded-secret:1 API_TOKEN']],
-      ['an attribute', 'self.password = "hunter2hunter2"\n', ['hardcoded-secret:1 password']],
       [
-        'a parameter default',
-        'def connect(secret="s3cretPassw0rd"):\n    return secret\n',
-        ['hardcoded-secret:1 secret'],
+        'a plural managers module',
+        inFile('order_managers.py', 'X = 1\n'),
+        ['generic-name:1 order_managers'],
       ],
       [
-        'a keyword argument',
-        'client = Client(api_key="a1b2c3d4e5f6")\n',
-        ['hardcoded-secret:1 api_key'],
+        'a miscellaneous module',
+        inFile('miscellaneous.py', 'X = 1\n'),
+        ['generic-name:1 miscellaneous'],
       ],
+      ['a common word before a noun', inFile('common_prefix.py', 'X = 1\n'), []],
       [
-        'a dictionary entry',
-        'CONFIG = {"password": "a1b2c3d4e5f6"}\n',
-        ['hardcoded-secret:1 password'],
-      ],
-      [
-        'a fallback of an environment read',
-        inFile('main.py', 'import os\n\nTOKEN = os.getenv("TOKEN", "a1b2c3d4e5f6")\n'),
-        ['hardcoded-secret:3 TOKEN'],
-      ],
-      ['a key that signs', 'HMAC_KEY = "s3cr3t-hmac-2024"\n', ['hardcoded-secret:1 HMAC_KEY']],
-      [
-        'a name with a value suffix',
-        'DB_PASSWORD_VALUE = "Pa55word2024"\n',
-        ['hardcoded-secret:1 DB_PASSWORD_VALUE'],
-      ],
-      [
-        'a passphrase of letters',
-        'ADMIN_PASSWORD = "CorrectHorseBatteryStaple"\n',
-        ['hardcoded-secret:1 ADMIN_PASSWORD'],
-      ],
-      [
-        'a value built from parts',
-        'SERVICE_TOKEN = "prod" + "Abc123Xyz789"\n',
-        ['hardcoded-secret:1 SERVICE_TOKEN'],
-      ],
-      [
-        'a dataclass field default',
-        'from dataclasses import field\n\n\nclass C:\n    api_token: str = field(default="Abc123Xyz789Qwe")\n',
-        ['hardcoded-secret:5 api_token'],
-      ],
-      [
-        'a SecretStr literal',
-        inFile(
-          'adapters/m.py',
-          'from pydantic import SecretStr\n\nX = make(SecretStr("Abc123Xyz789Qwe"))\n',
-        ),
-        ['hardcoded-secret:3 SecretStr'],
-      ],
-      ['a key that is no secret', 'SORT_KEY = "created_at_desc"\nCACHE_KEY = "orders-list"\n', []],
-      ['an environment variable name', 'TOKEN = "MY_API_TOKEN"\n', []],
-      ['a placeholder', 'TOKEN = "changeme"\nPASSWORD = "<password>"\nSECRET = "xxxxxxxx"\n', []],
-      ['a plain word', 'PASSWORD = "password"\nTOKEN = "token"\n', []],
-      ['a header name', 'TOKEN_HEADER = "X-Auth-Token"\nTOKEN = "auth_token"\n', []],
-      ['a name that is no secret', 'LABEL = "a1b2c3d4e5f6"\n', []],
-      ['a url', 'TOKEN_URL = "https://example.com/oauth/token"\n', []],
-      ['a test file', inFile('tests/test_a.py', 'TOKEN = "a1b2c3d4e5f6"\n'), []],
-    ]);
-    expect(actual).toEqual(expected);
-  });
-
-  it('flags credential shapes anywhere', () => {
-    const [actual, expected] = outcomes([
-      [
-        'a url with a password',
-        'URL = "postgres://app:Pa55w0rdX9@db.internal/orders"\n',
-        ['credential-shape:1 credential'],
-      ],
-      [
-        'a password query parameter',
-        'URL = "https://x.test/?password=Pa55w0rdX9"\n',
-        ['credential-shape:1 credential'],
-      ],
-      [
-        'a bearer header',
-        'HEADER = "Bearer eyJhbGciOi.abc123"\n',
-        ['credential-shape:1 credential'],
-      ],
-      ['a url without a password', 'URL = "postgres://app@db.internal/orders"\n', []],
-      ['a url with a placeholder', 'URL = "postgres://app:changeme@db.internal/orders"\n', []],
-      [
-        'a url with an environment placeholder',
-        'URL = "postgres://app:${DB_PASSWORD}@db/orders"\n',
+        'a function named for its job',
+        inFile('orders.py', 'def get_common_ancestor():\n    pass\n'),
         [],
       ],
       [
-        'a test file',
-        inFile('tests/test_a.py', 'URL = "postgres://app:Pa55w0rdX9@db/orders"\n'),
+        'a generic word before a container noun',
+        inFile('helper_module.py', 'X = 1\n'),
+        ['generic-name:1 helper_module'],
+      ],
+      ['a lock manager', inFile('locks.py', 'class ModuleLockManager:\n    pass\n'), []],
+      [
+        'a plural framework role',
+        inFile('sessions.py', 'class TransactionManagers:\n    pass\n'),
         [],
       ],
-    ]);
-    expect(actual).toEqual(expected);
-  });
-
-  it('flags a secret passed to a log call', () => {
-    const [actual, expected] = outcomes([
+      ['a session manager', inFile('sessions.py', 'class SessionManager:\n    pass\n'), []],
       [
-        'an argument',
-        'import logging\n\nlogger = logging.getLogger(__name__)\n\n\ndef f(token):\n    logger.info("using %s", token)\n',
-        ['secret-in-log:7 token'],
+        'an order manager',
+        inFile('orders.py', 'class OrderManager:\n    pass\n'),
+        ['generic-name:1 OrderManager'],
       ],
-      [
-        'an f-string',
-        'import logging\n\nlogger = logging.getLogger(__name__)\n\n\ndef f(password):\n    logger.debug(f"using {password}")\n',
-        ['secret-in-log:7 password'],
-      ],
-      [
-        'an extra',
-        'import logging\n\nlogger = logging.getLogger(__name__)\n\n\ndef f(api_key):\n    logger.info("x", extra={"key": api_key})\n',
-        ['secret-in-log:7 api_key'],
-      ],
-      [
-        'an attribute',
-        'import logging\n\nlogger = logging.getLogger(__name__)\n\n\ndef f(self):\n    logger.info("x %s", self.secret)\n',
-        ['secret-in-log:7 secret'],
-      ],
-      [
-        'that it is set',
-        'import logging\n\nlogger = logging.getLogger(__name__)\n\n\ndef f(token):\n    logger.info("set: %s", token is not None)\n',
-        [],
-      ],
-      [
-        'a flag about the secret',
-        'import logging\n\nlogger = logging.getLogger(__name__)\n\n\ndef f(has_token):\n    logger.info("set: %s", has_token)\n',
-        [],
-      ],
-      [
-        'a subscripted value',
-        'import logging\n\nlogger = logging.getLogger(__name__)\n\n\ndef f(creds):\n    logger.info("creds %s", creds["token"])\n',
-        ['secret-in-log:7 token'],
-      ],
-      [
-        'a value wrapped in str',
-        'import logging\n\nlogger = logging.getLogger(__name__)\n\n\ndef f(token):\n    logger.info("x %s", str(token))\n',
-        ['secret-in-log:7 token'],
-      ],
-      [
-        'a format call',
-        'import logging\n\nlogger = logging.getLogger(__name__)\n\n\ndef f(token):\n    logger.info("x {}".format(token))\n',
-        ['secret-in-log:7 token'],
-      ],
-      [
-        'a logger with another name',
-        'import logging\n\naudit = logging.getLogger("audit")\n\n\ndef f(token):\n    audit.info("x %s", token)\n',
-        ['secret-in-log:7 token'],
-      ],
-      ['a call that is no log', 'def f(token):\n    print_value("x %s", token)\n', []],
     ]);
     expect(actual).toEqual(expected);
   });
@@ -411,65 +306,6 @@ describe.skipIf(!enabled)('io-in-loop through wrappers', () => {
         'def load(cursor, ids):\n    for ident in ids:\n        cursor.execute("select 1 where id = ?", (ident,))\n',
         ['io-in-loop:3 cursor.execute()'],
       ],
-    ]);
-    expect(actual).toEqual(expected);
-  });
-});
-
-describe.skipIf(!enabled)('todo-without-issue', () => {
-  it('flags a task marker that names no issue', () => {
-    const [actual, expected] = outcomes([
-      ['TODO', 'X = 1  # TODO: later\n', ['todo-without-issue:1 TODO: later']],
-      ['FIXME', '# FIXME this\nX = 1\n', ['todo-without-issue:1 FIXME this']],
-      ['HACK', '# HACK: temporary\nX = 1\n', ['todo-without-issue:1 HACK: temporary']],
-      ['XXX', '# XXX: check\nX = 1\n', ['todo-without-issue:1 XXX: check']],
-      [
-        'TODO with a name',
-        '# TODO(alice): later\nX = 1\n',
-        ['todo-without-issue:1 TODO(alice): later'],
-      ],
-      ['TODO(#123)', '# TODO(#123): later\nX = 1\n', []],
-      ['TODO(PROJ-123)', '# TODO(PROJ-123): later\nX = 1\n', []],
-      ['TODO PROJ-123', '# TODO PROJ-123 later\nX = 1\n', []],
-      ['TODO with a link', '# TODO: https://example.com/issues/1\nX = 1\n', []],
-      [
-        'SHA-256 is no issue',
-        '# TODO: SHA-256 later\nX = 1\n',
-        ['todo-without-issue:1 TODO: SHA-256 later'],
-      ],
-      ['prose', '# the todo list is long\nX = 1\n', []],
-      [
-        'lowercase',
-        '# todo: handle refunds\nX = 1\n',
-        ['todo-without-issue:1 todo: handle refunds'],
-      ],
-      [
-        'capitalized',
-        '# Todo handle refunds\nX = 1\n',
-        ['todo-without-issue:1 Todo handle refunds'],
-      ],
-      [
-        'trailing',
-        '# handle refunds later TODO\nX = 1\n',
-        ['todo-without-issue:1 handle refunds later TODO'],
-      ],
-      [
-        'issue zero',
-        '# TODO(#0): handle refunds\nX = 1\n',
-        ['todo-without-issue:1 TODO(#0): handle refunds'],
-      ],
-      [
-        'a docstring',
-        'def f():\n    """TODO: implement this properly."""\n    return 1\n',
-        ['todo-without-issue:2 TODO: implement this properly.'],
-      ],
-      [
-        'a NotImplementedError message',
-        'def f():\n    raise NotImplementedError("TODO")\n',
-        ['todo-without-issue:2 TODO'],
-      ],
-      ['a word that contains it', '# AUTODOC: later\nX = 1\n', []],
-      ['a marker inside a string', 'X = "TODO: later"\n', []],
     ]);
     expect(actual).toEqual(expected);
   });

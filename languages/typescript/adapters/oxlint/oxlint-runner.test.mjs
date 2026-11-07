@@ -1,12 +1,23 @@
-import { spawnSync } from 'node:child_process';
+import { spawn, spawnSync } from 'node:child_process';
 import { readFileSync, rmSync } from 'node:fs';
 import path from 'node:path';
-import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 import { oxlintBinary } from './oxlint-process.mjs';
 import { rejectedRuleIds } from './oxlint-translation.mjs';
 import { createProject, lintProject, TYPED_POLICY } from './test-support/oxlint-project.mjs';
 
 const PLUGIN = import.meta.resolve('../../preset/eslint-plugin/index.mjs');
+
+vi.mock('node:os', async (importOriginal) => ({
+  ...(await importOriginal()),
+  availableParallelism: () => 16,
+}));
+
+vi.mock('node:child_process', async (importOriginal) => {
+  const actual = await importOriginal();
+  return { ...actual, spawn: vi.fn(actual.spawn) };
+});
+
 const POLICY = `import tseslint from ${JSON.stringify(import.meta.resolve('typescript-eslint'))};
 import { nitpickerRules } from ${JSON.stringify(PLUGIN)};
 
@@ -63,9 +74,9 @@ function messagesOf(relativePath) {
   return (result?.messages ?? []).map(({ ruleId, line, column }) => ({ ruleId, line, column }));
 }
 
-beforeAll(() => {
+beforeAll(async () => {
   root = createProject('nitpicker-oxlint-test-', { 'policy.mjs': POLICY, ...SOURCES });
-  results = lintProject({ root, patterns: ['src/**/*.ts'] });
+  results = await lintProject({ root, patterns: ['src/**/*.ts'] });
 });
 
 afterAll(() => {
@@ -131,7 +142,7 @@ describe('lintWithOxlint with type-aware rules', () => {
   let typedRoot;
   let typedResults;
 
-  beforeAll(() => {
+  beforeAll(async () => {
     typedRoot = createProject('nitpicker-oxlint-typed-test-', {
       'policy.mjs': TYPED_POLICY,
       'tsconfig.nitpicker.json': JSON.stringify({
@@ -144,7 +155,7 @@ describe('lintWithOxlint with type-aware rules', () => {
       'src/top.ts': TYPED_SOURCE,
       'src/sub/nested.ts': TYPED_SOURCE,
     });
-    typedResults = lintProject({
+    typedResults = await lintProject({
       root: typedRoot,
       patterns: ['src/**/*.ts'],
       projectConfigName: 'tsconfig.nitpicker.json',
@@ -173,7 +184,7 @@ describe('lintWithOxlint with rule options oxlint rejects', () => {
   let policyLoads;
   let oxlintRejected;
 
-  beforeAll(() => {
+  beforeAll(async () => {
     rejectedRoot = createProject('nitpicker-oxlint-rejected-', {
       'policy.mjs': `import { appendFileSync } from 'node:fs';
 import path from 'node:path';
@@ -222,7 +233,7 @@ export default [
         },
       }),
     });
-    rejectedResults = lintProject({ root: rejectedRoot, patterns: ['src/**/*.ts'] });
+    rejectedResults = await lintProject({ root: rejectedRoot, patterns: ['src/**/*.ts'] });
     policyLoads = readFileSync(path.join(rejectedRoot, 'policy-loads.txt'), 'utf8')
       .split('\n')
       .filter(Boolean).length;
@@ -251,5 +262,49 @@ export default [
       { ruleId: 'local/no-foo', line: 8 },
     ]);
     expect(policyLoads).toBe(2);
+  });
+});
+
+describe('lintWithOxlint over many files', () => {
+  const FILE_COUNT = 800;
+  let manyRoot;
+  let manyResults;
+  let lintProcesses;
+
+  beforeAll(async () => {
+    manyRoot = createProject('nitpicker-oxlint-many-', {
+      'policy.mjs': POLICY,
+      ...Object.fromEntries(
+        Array.from({ length: FILE_COUNT }, (_file, index) => [
+          `src/many/file-${String(index).padStart(3, '0')}.ts`,
+          `export const value${String(index)} = 1;\ndebugger;\n`,
+        ]),
+      ),
+    });
+    vi.mocked(spawn).mockClear();
+    manyResults = await lintProject({ root: manyRoot, patterns: ['src/**/*.ts'] });
+    lintProcesses = vi.mocked(spawn).mock.calls.filter(([, args]) => args.includes('--config'));
+  });
+
+  afterAll(() => {
+    rmSync(manyRoot, { recursive: true, force: true });
+  });
+
+  it('splits the files over several oxlint processes', () => {
+    expect(lintProcesses).toHaveLength(4);
+  });
+
+  it('reports every file once and in path order', () => {
+    expect(
+      manyResults.map(({ filePath, messages }) => [
+        path.relative(manyRoot, filePath),
+        messages.map(({ ruleId, line }) => `${ruleId}:${String(line)}`),
+      ]),
+    ).toEqual(
+      Array.from({ length: FILE_COUNT }, (_file, index) => [
+        `src/many/file-${String(index).padStart(3, '0')}.ts`,
+        ['no-debugger:2'],
+      ]),
+    );
   });
 });

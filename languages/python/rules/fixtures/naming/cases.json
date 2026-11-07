@@ -1,0 +1,82 @@
+[
+  {
+    "tool": "ruff",
+    "rule": "N801",
+    "mention": "snake_case"
+  },
+  {
+    "tool": "ruff",
+    "rule": "N802",
+    "mention": "snake_case"
+  },
+  {
+    "tool": "ruff",
+    "rule": "N803",
+    "mention": "snake_case"
+  },
+  {
+    "tool": "ruff",
+    "rule": "N804",
+    "mention": "snake_case"
+  },
+  {
+    "tool": "ruff",
+    "rule": "N805",
+    "mention": "snake_case"
+  },
+  {
+    "tool": "ruff",
+    "rule": "N806",
+    "mention": "snake_case"
+  },
+  {
+    "tool": "ruff",
+    "rule": "N807",
+    "mention": "snake_case"
+  },
+  {
+    "tool": "ruff",
+    "rule": "N811",
+    "mention": "snake_case"
+  },
+  {
+    "tool": "ruff",
+    "rule": "N812",
+    "mention": "snake_case"
+  },
+  {
+    "tool": "ruff",
+    "rule": "N813",
+    "mention": "snake_case"
+  },
+  {
+    "tool": "ruff",
+    "rule": "N814",
+    "mention": "snake_case"
+  },
+  {
+    "tool": "ruff",
+    "rule": "N815",
+    "mention": "snake_case"
+  },
+  {
+    "tool": "ruff",
+    "rule": "N816",
+    "mention": "snake_case"
+  },
+  {
+    "tool": "ruff",
+    "rule": "N817",
+    "mention": "snake_case"
+  },
+  {
+    "tool": "ruff",
+    "rule": "N818",
+    "mention": "snake_case"
+  },
+  {
+    "tool": "ruff",
+    "rule": "N999",
+    "mention": "snake_case"
+  }
+]

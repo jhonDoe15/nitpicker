@@ -24,6 +24,20 @@ export function readPinnedTools(initScript = INIT_SCRIPT) {
   return pinned;
 }
 
+const PIT_MUTATOR = /^'[A-Z_]+'$/u;
+
+export function readPitMutators(initScript = INIT_SCRIPT) {
+  const block = /def pitMutators = \[([^\]]*)\]/u.exec(readFileSync(initScript, 'utf8'));
+  const entries = (block?.[1] ?? '').split(',').map((entry) => entry.trim());
+  const names = entries.at(-1) === '' ? entries.slice(0, -1) : entries;
+  if (names.length === 0 || !names.every((name) => PIT_MUTATOR.test(name))) {
+    throw new Error(
+      `No PIT mutators found in ${initScript}: list them as quoted names in def pitMutators`,
+    );
+  }
+  return names.map((name) => name.slice(1, -1));
+}
+
 export function detectJavaBuild(projectRoot) {
   const present = new Set(
     ['pom.xml', 'mvnw', 'gradlew', ...GRADLE_BUILD_FILES].filter((name) =>
