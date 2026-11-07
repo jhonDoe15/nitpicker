@@ -2,7 +2,7 @@ import { Linter } from 'eslint';
 import tseslint from 'typescript-eslint';
 import { describe, expect, it } from 'vitest';
 import { applyJavascriptDialect } from '../../../../javascript/preset/eslint-dialect.mjs';
-import { routedEslintMessage } from '../../../adapters/hints/eslint-hints.mjs';
+import { routedEslintFields } from '../../../adapters/hints/eslint-hints.mjs';
 import { defaultResolvedLayout, resolveLayout } from '../../layout.mjs';
 import { applyRuleExceptions } from '../exceptions.mjs';
 import { atomicUpdateConfigFor } from './atomic-updates.mjs';
@@ -187,7 +187,11 @@ describe('atomic updates', () => {
   it('explains the mechanism, the remediation and the exception route', () => {
     const text =
       'Possible race condition: `state.total` might be assigned based on an outdated state of `state`.';
-    const message = routedEslintMessage({ ruleId: rule, text, relativePath: 'src/main/update.ts' });
+    const { message } = routedEslintFields({
+      ruleId: rule,
+      text,
+      relativePath: 'src/main/update.ts',
+    });
     expect(message).toBe(
       `${text} Another call can change it during the \`await\`, and this write then overwrites that change. ` +
         'Await the new value into a local first and then read and write the shared state in one step with no ' +
