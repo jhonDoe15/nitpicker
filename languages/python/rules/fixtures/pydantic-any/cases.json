@@ -1,0 +1,7 @@
+[
+  {
+    "tool": "python-rules",
+    "rule": "pydantic-any-field",
+    "mention": "real type"
+  }
+]

@@ -1,0 +1,7 @@
+[
+  {
+    "tool": "python-rules",
+    "rule": "uncollected-tests",
+    "mention": "python_files"
+  }
+]

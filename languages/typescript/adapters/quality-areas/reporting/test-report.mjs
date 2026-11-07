@@ -1,6 +1,7 @@
 import {
   TESTS_FAILED_RULE,
   TESTS_NOT_RUN_RULE,
+  testsFailHeadline,
   testsFailOnBase,
 } from '../../../../../shared/rules/finding-helpers.mjs';
 import { readFileSync } from 'node:fs';
@@ -21,7 +22,9 @@ import {
   unhandledErrors,
   unhandledErrorText,
   withSnapshotAdvice,
+  assertionDetails,
 } from './failure-lines.mjs';
+import { failingTestEntries } from '../../../../../shared/rules/failing-tests/failing-tests.mjs';
 import { RUNNER_NAMES } from '../../../preset/test-runner/runners.mjs';
 
 const COULD_NOT_RUN = 'could not run';
@@ -95,8 +98,6 @@ export function toolErrorFinding(options, { rule, path: findingPath = '.', messa
   };
 }
 
-const MAX_LISTED_FAILURES = 5;
-
 function testFailures(report, projectRoot) {
   const failures = [];
   const testResults = Array.isArray(report?.testResults) ? report.testResults : [];
@@ -108,6 +109,10 @@ function testFailures(report, projectRoot) {
     for (const assertion of failedAssertions) {
       failures.push({
         file,
+        ...assertionDetails(assertion, {
+          testFile: absoluteFile(projectRoot, testResult?.name),
+          projectRoot,
+        }),
         name: assertionName(assertion),
         assertion:
           timeoutText(assertion) ??
@@ -121,6 +126,10 @@ function testFailures(report, projectRoot) {
     }
   }
   return failures;
+}
+
+function absoluteFile(projectRoot, name) {
+  return typeof name === 'string' ? path.resolve(projectRoot, name) : undefined;
 }
 
 function projectFile(projectRoot, name) {
@@ -169,18 +178,15 @@ function failureText(report, projectRoot, runnerName) {
   const failedCount = Number.isInteger(report?.numFailedTests)
     ? Math.max(report.numFailedTests, failures.length)
     : failures.length;
-  const headline = `${String(failedCount)} ${failedCount === 1 ? 'test fails' : 'tests fail'}, so coverage, CRAP and mutation were skipped. Fix the tests and rerun`;
+  const headline = testsFailHeadline(failedCount, 'coverage, CRAP and mutation were skipped');
   if (failures.length === 0) {
-    return `${headline}; the report named no test.`;
+    return `${headline.slice(0, -1)}; the report named no test.`;
   }
-  const listed = failures
-    .slice(0, MAX_LISTED_FAILURES)
-    .map((failure) => `  ${failureEntry(failure)}`);
-  const omitted = failures.length - listed.length;
   return [
-    `${headline}:`,
-    ...listed,
-    ...(omitted > 0 ? [`  … and ${String(omitted)} more`] : []),
+    headline,
+    ...failingTestEntries(
+      failures.map(({ assertion, ...failure }) => ({ ...failure, message: assertion })),
+    ),
     ...(runnerName === RUNNER_NAMES.vitest ? missingSetupHints(failures) : []),
   ].join('\n');
 }

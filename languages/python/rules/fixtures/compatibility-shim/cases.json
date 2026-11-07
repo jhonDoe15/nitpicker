@@ -1,0 +1,7 @@
+[
+  {
+    "tool": "python-rules",
+    "rule": "compatibility-shim",
+    "mention": "delete the old name"
+  }
+]

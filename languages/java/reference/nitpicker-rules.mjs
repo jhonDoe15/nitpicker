@@ -44,6 +44,7 @@ const SAMPLE_DETAILS = {
   'ddd-foreign-entity': '<Aggregate>:<Entity>',
   'ddd-value-object-reference': '<Entity>',
   'spring-request-state': '<field>:<mutator>:<request source>',
+  'spring-typed-request-field': '<Type>.<field>:field:<Controller>.<method>',
 };
 const TEST_RULES = new Set(['spring-test-placement', 'spring-no-dirties-context']);
 const DDD_PREFIX = 'ddd-';
