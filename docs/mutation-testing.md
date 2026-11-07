@@ -94,7 +94,7 @@ The Python preset does the same with mutmut's per-mutant results instead of a St
 starts from the `mutants/*.meta` files of the base work tree when only added or modified
 non-test `.py` files under a source root changed, and runs every mutant after any other change,
 including every test change, because mutmut does not re-test results when a test changes. See
-[python-preset.md](python-preset.md#reusing-base-results-on-head).
+[python-preset.md](python-preset/slice-6-mutation-testing.md#reusing-base-results-on-head).
 
 ## Java and Kotlin mutators
 
