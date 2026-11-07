@@ -21,6 +21,10 @@ const JVM_DESIGN_RULES = [
   'repeated-policy-decision',
   'foreign-state-decision',
 ];
+const PYTHON_FACTS_WITHOUT_DESIGN = {
+  file: 'languages/python/adapters/facts/python-facts.mjs',
+  evidence: /registeredFactRules\('python'\)/u,
+};
 const JVM_FACT_RULES_NOT_RUN = {
   'shared-used-by-one-feature': JVM_REUSE_RULES_ONLY,
   ...Object.fromEntries(JVM_DESIGN_RULES.map((id) => [id, JVM_REUSE_RULES_ONLY])),
@@ -31,6 +35,7 @@ const NOT_ENFORCED_ALTHOUGH_EMITTED = {
       file: 'languages/python/adapters/facts/python-facts.mjs',
       evidence: /registeredFactRules\('python'\)/u,
     },
+    ...Object.fromEntries(JVM_DESIGN_RULES.map((id) => [id, PYTHON_FACTS_WITHOUT_DESIGN])),
   },
   java: JVM_FACT_RULES_NOT_RUN,
   kotlin: JVM_FACT_RULES_NOT_RUN,
