@@ -10,7 +10,7 @@ only in the nitpicker config file, where it changes the policy hash and appears 
 Existing code that violates a rule is baselined by the differential gate. New and touched code must
 comply.
 
-Every rule the preset can report has an entry in the [rule reference](rules/README.md): [nitpicker's ESLint rules](rules/typescript-nitpicker.md), [ESLint core and typescript-eslint](rules/typescript-eslint.md), [the plugin rules](rules/typescript-plugins.md) and [the static checks](rules/typescript-static.md), with the allowed form and the `exceptions` entry of each. `nitpicker explain <tool/rule>` prints an entry.
+Every rule the preset can report has an entry in the [rule reference](https://github.com/jhonDoe15/nitpicker/blob/latest/docs/rules/README.md): [nitpicker's ESLint rules](https://github.com/jhonDoe15/nitpicker/blob/latest/docs/rules/typescript-nitpicker.md), [ESLint core and typescript-eslint](https://github.com/jhonDoe15/nitpicker/blob/latest/docs/rules/typescript-eslint.md), [the plugin rules](https://github.com/jhonDoe15/nitpicker/blob/latest/docs/rules/typescript-plugins.md) and [the static checks](https://github.com/jhonDoe15/nitpicker/blob/latest/docs/rules/typescript-static.md), with the allowed form and the `exceptions` entry of each. `nitpicker explain <tool/rule>` prints an entry.
 
 CI recipes for this preset (Node.js, the project's install, GitHub Actions, GitLab CI, Jenkins) are in
 [nitpicker in CI](ci.md#toolchains-by-preset).
