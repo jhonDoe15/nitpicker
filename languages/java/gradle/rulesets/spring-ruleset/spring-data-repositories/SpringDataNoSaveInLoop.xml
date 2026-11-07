@@ -1,0 +1,32 @@
+  <rule name="SpringDataNoSaveInLoop" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
+        message="Collect the entities and call saveAll or deleteAll once, instead of saving or deleting one entity per loop iteration.">
+    <priority>1</priority>
+    <properties><property name="xpath"><value><![CDATA[
+let $iterated := function($call) {
+  exists($call/*[1][pmd-java:typeIs('java.util.stream.BaseStream') or pmd-java:typeIs('java.lang.Iterable')
+    or pmd-java:typeIs('java.util.Map') or pmd-java:typeIs('java.util.Iterator')])
+},
+    $loop := function($node) {
+  exists($node/ancestor::*[self::ForStatement or self::ForeachStatement or self::WhileStatement or self::DoStatement]
+    [not(.//MethodCall[@MethodName = 'clear'][*[1][(pmd-java:typeIs('jakarta.persistence.EntityManager') or pmd-java:typeIs('javax.persistence.EntityManager'))]])])
+  or exists($node/ancestor::LambdaExpression[not(.//MethodCall[@MethodName = 'clear'][*[1][(pmd-java:typeIs('jakarta.persistence.EntityManager') or pmd-java:typeIs('javax.persistence.EntityManager'))]])][parent::ArgumentList/parent::MethodCall
+    [@MethodName = ('forEach', 'forEachOrdered', 'forEachRemaining', 'map', 'peek', 'flatMap', 'mapToObj')][$iterated(.)]])
+},
+    $entityWrite := function($node) {
+  $node/@MethodName = ('save', 'saveAndFlush', 'delete', 'deleteById', 'persist', 'merge', 'remove')
+  and exists($node/*[1][pmd-java:typeIs('org.springframework.data.repository.Repository')
+    or (pmd-java:typeIs('jakarta.persistence.EntityManager') or pmd-java:typeIs('javax.persistence.EntityManager'))])
+}
+return
+//MethodCall[$entityWrite(.)][$loop(.)]
+|
+//MethodCall[@MethodName = ('forEach', 'forEachOrdered', 'forEachRemaining', 'map', 'peek')][$iterated(.)]
+  /ArgumentList/MethodReference[$entityWrite(.)]
+|
+//VariableDeclarator[let $name := VariableId/@Name
+    return ancestor::MethodDeclaration[1]//(MethodCall[@MethodName = 'accept'][*[1][self::VariableAccess[@Name = $name]]][$loop(.)]
+      | MethodCall[@MethodName = ('forEach', 'forEachOrdered', 'forEachRemaining', 'map', 'peek')][$iterated(.)]
+          /ArgumentList/VariableAccess[@Name = $name])]
+  /MethodReference[$entityWrite(.)]
+]]></value></property></properties>
+  </rule>

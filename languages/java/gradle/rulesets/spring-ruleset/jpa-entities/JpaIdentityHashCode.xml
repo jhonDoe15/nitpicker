@@ -1,0 +1,30 @@
+  <rule name="JpaIdentityHashCode" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
+        message="Return getClass().hashCode() from the hashCode of an entity, or hash an immutable business key; with Lombok, write @EqualsAndHashCode(onlyExplicitlyIncluded = true) and mark that key with @EqualsAndHashCode.Include. A hash of the generated id or of every field changes when the entity is saved, and a hash set then loses it.">
+    <priority>2</priority>
+    <properties><property name="xpath"><value><![CDATA[
+//ClassDeclaration[ModifierList/Annotation[
+    (pmd-java:typeIs('jakarta.persistence.Entity') or pmd-java:typeIs('javax.persistence.Entity')) or (pmd-java:typeIs('jakarta.persistence.MappedSuperclass') or pmd-java:typeIs('javax.persistence.MappedSuperclass'))]]
+  /ClassBody[FieldDeclaration/ModifierList/Annotation[(pmd-java:typeIs('jakarta.persistence.GeneratedValue') or pmd-java:typeIs('javax.persistence.GeneratedValue'))]]
+  /MethodDeclaration[@Name = 'hashCode'][@Arity = 0]
+  /(.//*[
+    ((self::VariableAccess or self::FieldAccess)
+      and @Name = ancestor::ClassBody[1]/FieldDeclaration[ModifierList/Annotation[(pmd-java:typeIs('jakarta.persistence.GeneratedValue') or pmd-java:typeIs('javax.persistence.GeneratedValue'))]]
+        /VariableDeclarator/VariableId/@Name)
+    or (self::MethodCall and not(ArgumentList/*)
+      and @MethodName = (ancestor::ClassBody[1]/FieldDeclaration[ModifierList/Annotation[(pmd-java:typeIs('jakarta.persistence.GeneratedValue') or pmd-java:typeIs('javax.persistence.GeneratedValue'))]]
+        /VariableDeclarator/VariableId/@Name ! concat('get', upper-case(substring(., 1, 1)), substring(., 2))))])[1]
+|
+//ClassDeclaration[ModifierList/Annotation[
+    (pmd-java:typeIs('jakarta.persistence.Entity') or pmd-java:typeIs('javax.persistence.Entity')) or (pmd-java:typeIs('jakarta.persistence.MappedSuperclass') or pmd-java:typeIs('javax.persistence.MappedSuperclass'))]]
+  [not(ClassBody/MethodDeclaration[@Name = 'hashCode'][@Arity = 0])]
+  /ModifierList/Annotation[@SimpleName = ('Data', 'Value', 'EqualsAndHashCode')]
+  [not(@SimpleName = ('Data', 'Value') and ../Annotation[@SimpleName = 'EqualsAndHashCode'])]
+  [let $ids := ancestor::ClassDeclaration[1]/ClassBody/FieldDeclaration[ModifierList/Annotation[(pmd-java:typeIs('jakarta.persistence.GeneratedValue') or pmd-java:typeIs('javax.persistence.GeneratedValue'))]],
+       $names := $ids/VariableDeclarator/VariableId/@Name,
+       $members := AnnotationMemberList/MemberValuePair
+   return if ($members[@Name = 'onlyExplicitlyIncluded']/BooleanLiteral[@True = true()])
+     then exists($ids/ModifierList/Annotation[@SimpleName = 'Include'])
+     else if ($members[@Name = 'of']) then $members[@Name = 'of']//StringLiteral/@ConstValue = $names
+     else not($members[@Name = 'exclude']//StringLiteral/@ConstValue = $names)]
+]]></value></property></properties>
+  </rule>

@@ -78,6 +78,7 @@ function buildAnalyzers(checks) {
           exclusions: check.exclusions,
           policyFiles: check.policyFiles,
           shardWeight: check.shardWeight,
+          policyFromPackage: true,
         }),
       ),
     ),

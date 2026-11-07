@@ -79,7 +79,9 @@ export function testRunnerAnalyzerVersion(
   if (analyzerName !== 'mutation') {
     return runnerVersion;
   }
-  return `${resolve('@stryker-mutator/core', { projectRoot: liveProjectRoot }).version};${runnerVersion}`;
+  const stryker = resolve('@stryker-mutator/core', { projectRoot: liveProjectRoot }).version;
+  const native = resolve('@typescript/native', { projectRoot: PACKAGE_ROOT }).version;
+  return `${stryker};${runnerVersion};@typescript/native@${native}`;
 }
 
 function typeScriptApiVersion(resolve, bundled) {
@@ -114,8 +116,8 @@ function typeCheckVersion(liveProjectRoot, { resolve, bundled, installed }) {
   const project = installed('typescript', { projectRoot: liveProjectRoot })
     ? resolve('typescript', { projectRoot: liveProjectRoot }).version
     : 'none';
-  const native = resolve('typescript-native', { projectRoot: PACKAGE_ROOT }).version;
-  return `${project};typescript-native@${native};${typeScriptApiVersion(resolve, bundled)}`;
+  const native = resolve('@typescript/native', { projectRoot: PACKAGE_ROOT }).version;
+  return `${project};@typescript/native@${native};${typeScriptApiVersion(resolve, bundled)}`;
 }
 
 function withTypeScriptVersions({ analyzerName, toolName, version }, { resolve, bundled }) {
