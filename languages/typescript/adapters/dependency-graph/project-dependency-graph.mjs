@@ -99,12 +99,16 @@ function graphKey(cruise) {
 function runCruise(cruise) {
   const wrapper = installWrapperConfig(cruise);
   try {
-    const result = spawnSyncWithOutputFile(process.execPath, cruiseArguments(cruise, wrapper.path), {
-      cwd: cruise.projectRoot,
-      encoding: 'utf8',
-      maxBuffer: MAX_OUTPUT_BYTES,
-      timeout: TOOL_RUN_CEILING_MS,
-    });
+    const result = spawnSyncWithOutputFile(
+      process.execPath,
+      cruiseArguments(cruise, wrapper.path),
+      {
+        cwd: cruise.projectRoot,
+        encoding: 'utf8',
+        maxBuffer: MAX_OUTPUT_BYTES,
+        timeout: TOOL_RUN_CEILING_MS,
+      },
+    );
     assertCruised(result);
     return result.stdout;
   } finally {

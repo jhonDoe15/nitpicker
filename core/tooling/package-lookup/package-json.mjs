@@ -23,10 +23,10 @@ export function findPackageJsonByWalking(specifier, base) {
   const baseUrl = toFileUrl(base);
   const importer = fileURLToPath(baseUrl);
   if (isPathSpecifier(specifier)) {
-    return pathPackageJson(fileURLToPath(new URL(specifier, baseUrl)), importer);
+    return pathPackageJson(fileURLToPath(parsedUrl(specifier, baseUrl)), importer);
   }
   const name = packageName(specifier, importer);
-  const directory = fileURLToPath(new URL('.', baseUrl));
+  const directory = fileURLToPath(parsedUrl('.', baseUrl));
   const found = selfReference(name, directory) ?? installedPackageJson(name, directory);
   if (found === undefined) {
     throw new ModuleLookupError(
@@ -37,11 +37,19 @@ export function findPackageJsonByWalking(specifier, base) {
   return found;
 }
 
+function parsedUrl(text, base) {
+  const url = URL.parse(text, base);
+  if (url === null) {
+    throw new ModuleLookupError('ERR_INVALID_MODULE_SPECIFIER', `Invalid URL '${text}'`);
+  }
+  return url;
+}
+
 function toFileUrl(base) {
   if (base instanceof URL) {
     return base;
   }
-  return String(base).startsWith('file:') ? new URL(base) : pathToFileURL(base);
+  return String(base).startsWith('file:') ? parsedUrl(String(base)) : pathToFileURL(base);
 }
 
 function isPathSpecifier(specifier) {
