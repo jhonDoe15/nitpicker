@@ -130,7 +130,9 @@ To learn why a rule is on and what form it allows before you write or change cod
 - With jMolecules (`AggregateRoot`, `Entity`, `ValueObject` or their annotations), an aggregate holds
   another aggregate only by its identifier or an `Association<T, ID>`, an entity sits in one
   aggregate, and a value object holds identifiers, not entities (`archunit/ddd-...`).
-- Resources: try-with-resources for anything `Closeable`. No `finally` that returns or throws.
+- Resources: try-with-resources for anything `Closeable`, also one used once: not
+  `resource.getInputStream().readAllBytes()` or `load(new JarFile(root))`
+  (`pmd/UnclosedInlineResource`). No `finally` that returns or throws.
 - Utility classes: a `final` class of static methods with a `private` empty constructor.
 - Dependencies between packages follow the project's ArchUnit rules (classes named `*ArchTest` or
   `*ArchitectureTest`); read them before importing across packages. A package must not depend on a
