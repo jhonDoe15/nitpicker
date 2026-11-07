@@ -1,8 +1,12 @@
 import { hash, nextOccurrence } from '../../../../../../../shared/rules/finding-helpers.mjs';
 import { springViews } from '../../spring/view/spring-view.mjs';
-import { MESSAGE_KIND } from './clients.mjs';
+import {
+  REACTIVE_FAN_OUT_MESSAGES,
+  reactiveFindingsOf,
+} from '../reactive-fan-out/reactive-fan-out.mjs';
 import { projectIndex, remoteWork } from './reach.mjs';
 import { collectionLabel, isFixed, siteOf, starterOf, waitsInside } from './sites.mjs';
+import { target, workText } from './work-text.mjs';
 
 const RULE = 'UnboundedFanOut';
 const TOOL = 'kotlin-source';
@@ -18,15 +22,8 @@ export const FAN_OUT_MESSAGES = {
     'A task started for every element of a collection makes a remote or message call,',
     `${CONSEQUENCE} connections or rate limit of the remote service. ${ALLOWED}`,
   ].join(' '),
+  ...REACTIVE_FAN_OUT_MESSAGES,
 };
-
-function target(kind) {
-  return kind === MESSAGE_KIND ? 'broker' : 'remote service';
-}
-
-function workText({ call, helper }) {
-  return helper === undefined ? `\`${call}\`` : `\`${helper}\`, which reaches \`${call}\`,`;
-}
 
 export function fanOutMessage({ starter, collection, work }) {
   const started = `\`${starter}\` starts ${workText(work)} for every element of \`${collection}\` at once`;
@@ -85,7 +82,7 @@ export function fanOutFindings({ own, projectFiles, projectRoot, javaRoots }) {
     springViews({ files: projectFiles, projectFiles, projectRoot, javaRoots }),
   );
   const reported = springViews({ files: own, projectFiles, projectRoot, javaRoots }).flatMap(
-    (view) => findingsOf(project, view),
+    (view) => [...findingsOf(project, view), ...reactiveFindingsOf(project, view)],
   );
   return {
     findings: reported.map(({ finding }) => finding),
@@ -96,3 +93,5 @@ export function fanOutFindings({ own, projectFiles, projectRoot, javaRoots }) {
     ),
   };
 }
+
+export const kotlinSourceRules = { messages: FAN_OUT_MESSAGES };

@@ -14,6 +14,7 @@ const GENERATOR_ONLY_PATH = new RegExp(
     '^shared/reference/(?:build|checks)/',
     '^languages/[^/]+/reference/',
     '^languages/python/ruff/ruff-rules\\.json$',
+    '^languages/java/gradle/rulesets/',
   ].join('|'),
   'u',
 );
