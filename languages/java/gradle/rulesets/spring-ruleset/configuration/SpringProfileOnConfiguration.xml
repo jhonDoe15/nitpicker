@@ -1,0 +1,11 @@
+  <rule name="SpringProfileOnConfiguration" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
+        message="Put @Profile only on a @Configuration class or a @Bean method, so profiles choose beans and never branch business code.">
+    <priority>3</priority>
+    <properties><property name="xpath"><value><![CDATA[
+//ClassDeclaration[not(ModifierList/Annotation[pmd-java:typeIs('org.springframework.context.annotation.Configuration')])]
+  /ModifierList/Annotation[pmd-java:typeIs('org.springframework.context.annotation.Profile')]
+|
+//MethodDeclaration[not(ModifierList/Annotation[pmd-java:typeIs('org.springframework.context.annotation.Bean')])]
+  /ModifierList/Annotation[pmd-java:typeIs('org.springframework.context.annotation.Profile')]
+]]></value></property></properties>
+  </rule>

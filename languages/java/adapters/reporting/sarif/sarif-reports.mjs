@@ -11,6 +11,7 @@ import { dropSleepsInFakes } from '../../../messages/latency-fakes.mjs';
 import { withFanOutDetails } from '../../../messages/fan-out/fan-out-details.mjs';
 import { withLoadEffectSubjects } from '../../../messages/load-effects.mjs';
 import { withLockEvidence } from '../../../messages/locking/lock-evidence.mjs';
+import { withSpringTransactionFilters } from '../../spring/transactions/transaction-filters.mjs';
 
 const LINE_NUMBER = /\bline \d+\b/g;
 const EMPTY_SARIF = { version: '2.1.0', runs: [] };
@@ -45,10 +46,10 @@ export function sarifFindings(context) {
     ...withFanOutDetails(
       withWaitAdvice(
         dropSleepsInFakes(
-          dropInheritedVersions(ingestSarif(pmd, { tool: 'pmd' }).findings, {
-            projectRoot,
-            sourceRoots: allSourceRoots,
-          }),
+          dropInheritedVersions(
+            withSpringTransactionFilters(ingestSarif(pmd, { tool: 'pmd' }).findings, context),
+            { projectRoot, sourceRoots: allSourceRoots },
+          ),
           {
             rule: FIXED_SLEEP_RULE,
             projectRoot,

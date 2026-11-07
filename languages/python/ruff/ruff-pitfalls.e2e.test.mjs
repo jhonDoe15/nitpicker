@@ -138,7 +138,7 @@ const OVERLAP = {
   'tests/test_faked.py': ['17 ASYNC110'],
   'tests/test_waits.py': [
     '7 sleep-in-test',
-    '9 sleep-in-test',
+    '8 ASYNC110',
     '10 real-clock-in-test',
     '11 real-clock-in-test',
   ],

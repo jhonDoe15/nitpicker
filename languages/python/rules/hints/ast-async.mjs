@@ -37,4 +37,12 @@ export const ASYNC_HINTS = [
     allowed:
       'Hold the same lock for every write of the attribute (`with self.lock:` or `async with self.lock:`), or keep the state where only the lock holder changes it (a method that takes the lock and returns the new value). `__init__`, `__new__`, `__post_init__`, a write in a nested function or lambda, a method the class calls while it holds a lock, a decorated method and a method that calls `acquire()` are not reported.',
   },
+  {
+    tool: RULES_TOOL,
+    rules: ['subprocess-without-timeout'],
+    describe: (subject) =>
+      `\`${subject}\` waits for a child process without a deadline, so a command that never exits hangs this code for good`,
+    allowed:
+      'Pass a timeout: `subprocess.run(args, timeout=30, check=True)`, `process.communicate(timeout=30)` or `process.wait(timeout=30)` (then kill the child on `TimeoutExpired`). Wrap an asyncio wait in `async with asyncio.timeout(30):` or `asyncio.wait_for(process.wait(), 30)`. A program whose purpose is to run the child to completion, such as a build wrapper, takes an exception.',
+  },
 ];
