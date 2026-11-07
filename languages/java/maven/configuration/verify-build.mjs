@@ -1,0 +1,15 @@
+export const VERIFY_BUILD = [
+  'verify',
+  '-Djacoco.haltOnFailure=false',
+  '-Dgpg.skip=true',
+  '-Dmaven.javadoc.skip=true',
+  '-Dmaven.source.skip=true',
+  '-Dmaven.deploy.skip=true',
+  '-Djib.skip=true',
+  '-Ddependency-check.skip=true',
+  '-Drat.skip=true',
+  '-Dlicense.skip=true',
+  '-Dlicense.skipDownloadLicenses=true',
+  '-Dlicense.skipAggregateDownloadLicenses=true',
+  '-Djapicmp.skip=true',
+];

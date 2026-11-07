@@ -4,6 +4,7 @@ import path from 'node:path';
 import { childAt, childrenAt, childrenNamed, parseXml } from '../../../shared/ingest/common.mjs';
 import { compilerSettings } from './errorprone/maven-compiler.mjs';
 import { kotlinSourceRoots, kotlinTestSourceRoots } from './configuration/kotlin-roots.mjs';
+import { VERIFY_BUILD } from './configuration/verify-build.mjs';
 import { testJvmArguments } from './configuration/surefire-jvm.mjs';
 
 const SCOPES = new Set(['compile', 'provided', 'runtime', 'test', 'system']);
@@ -19,21 +20,6 @@ const FAILSAFE = 'org.apache.maven.plugins:maven-failsafe-plugin';
 const AGENT_GOALS = ['prepare-agent', 'prepare-agent-integration'];
 const FAILSAFE_SKIPS = ['skip', 'skipITs', 'skipTests'];
 const SKIP_PROPERTIES = ['skipITs', 'skipTests'];
-const VERIFY_BUILD = [
-  'verify',
-  '-Djacoco.haltOnFailure=false',
-  '-Dgpg.skip=true',
-  '-Dmaven.javadoc.skip=true',
-  '-Dmaven.source.skip=true',
-  '-Dmaven.deploy.skip=true',
-  '-Djib.skip=true',
-  '-Ddependency-check.skip=true',
-  '-Drat.skip=true',
-  '-Dlicense.skip=true',
-  '-Dlicense.skipDownloadLicenses=true',
-  '-Dlicense.skipAggregateDownloadLicenses=true',
-  '-Djapicmp.skip=true',
-];
 
 function textAt(element, ...names) {
   return childAt(element, ...names)?.text;
@@ -134,6 +120,16 @@ function setting(plugin, goal, name) {
   return configured(defaultExecution(plugin, goal), plugin, name);
 }
 
+function testRoots(build, plugins, basedir) {
+  const testSourceRoots = [
+    resolvedText(build, basedir, 'testSourceDirectory') ?? path.join(basedir, 'src/test/java'),
+    ...helperRoots(plugins.get(BUILD_HELPER), 'add-test-source', basedir),
+    ...groovyTestRoots(plugins.get(GMAVENPLUS), basedir),
+  ];
+  const kotlin = kotlinTestSourceRoots(plugins, basedir, testSourceRoots);
+  return { testSourceRoots, kotlinTestSourceRoots: kotlin };
+}
+
 function describeModule(project, basedir) {
   const build = childAt(project, 'build');
   const plugins = pluginsOf(project);
@@ -147,11 +143,6 @@ function describeModule(project, basedir) {
     resolvedText(build, basedir, 'sourceDirectory') ?? path.join(basedir, 'src/main/java'),
     ...helperRoots(plugins.get(BUILD_HELPER), 'add-source', basedir),
   ];
-  const testSourceRoots = [
-    resolvedText(build, basedir, 'testSourceDirectory') ?? path.join(basedir, 'src/test/java'),
-    ...helperRoots(plugins.get(BUILD_HELPER), 'add-test-source', basedir),
-    ...groovyTestRoots(plugins.get(GMAVENPLUS), basedir),
-  ];
   return {
     basedir,
     coordinates: coordinates(project),
@@ -164,8 +155,7 @@ function describeModule(project, basedir) {
       path.join(buildDirectory, 'test-classes'),
     sourceRoots,
     kotlinSourceRoots: kotlinSourceRoots(plugins, basedir, sourceRoots),
-    testSourceRoots,
-    kotlinTestSourceRoots: kotlinTestSourceRoots(plugins, basedir, testSourceRoots),
+    ...testRoots(build, plugins, basedir),
     resourceRoots: childrenAt(build, 'resources', 'resource')
       .map((resource) => textAt(resource, 'directory'))
       .filter((directory) => directory !== undefined)
