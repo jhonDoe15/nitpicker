@@ -1,0 +1,32 @@
+[
+  {
+    "tool": "ruff",
+    "rule": "S501",
+    "mention": "certificate verification on"
+  },
+  {
+    "tool": "ruff",
+    "rule": "S502",
+    "mention": "create_default_context"
+  },
+  {
+    "tool": "ruff",
+    "rule": "S503",
+    "mention": "create_default_context"
+  },
+  {
+    "tool": "ruff",
+    "rule": "S504",
+    "mention": "create_default_context"
+  },
+  {
+    "tool": "ruff",
+    "rule": "S323",
+    "mention": "create_default_context"
+  },
+  {
+    "tool": "ruff",
+    "rule": "S505",
+    "mention": "2048 bits"
+  }
+]

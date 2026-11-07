@@ -1,0 +1,12 @@
+[
+  {
+    "tool": "python-rules",
+    "rule": "type-cast",
+    "mention": "isinstance"
+  },
+  {
+    "tool": "python-rules",
+    "rule": "explicit-any",
+    "mention": "ParamSpec"
+  }
+]

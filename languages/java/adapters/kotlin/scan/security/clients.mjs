@@ -38,7 +38,7 @@ const UNSAFE_READERS = [
   /\bisRegistrationRequired\s*=\s*false\b|\bsetRegistrationRequired\s*\(\s*false\s*\)/g,
 ];
 
-export const CLIENT_MESSAGES = {
+const CLIENT_MESSAGES = {
   HttpWithoutTimeout:
     'Give the call a deadline: `HttpRequest.newBuilder(uri).timeout(Duration.ofSeconds(10))` (java.net.http), `connectTimeout` and `readTimeout` on an `HttpURLConnection`, a client with timeouts (OkHttp, which sets them by default, or Ktor with `install(HttpTimeout) { requestTimeoutMillis = 10_000 }`), `RestTemplateBuilder().connectTimeout(...).readTimeout(...)` for Spring, `setDefaultRequestConfig(RequestConfig.custom().setResponseTimeout(...).build())` on the Apache client builder, or `connectTimeout` and `readTimeout` on a JAX-RS `ClientBuilder`. This HTTP call has no timeout, so a server that never answers hangs it for good.',
   UnsafeDeserialization:
@@ -166,3 +166,8 @@ export function unsafeDeserialization(scanned) {
     .toSorted((left, right) => left - right)
     .map((offset) => ({ rule: 'UnsafeDeserialization', offset }));
 }
+
+export const kotlinSourceRules = {
+  messages: CLIENT_MESSAGES,
+  main: [httpWithoutTimeout, unsafeDeserialization],
+};

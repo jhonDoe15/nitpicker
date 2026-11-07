@@ -172,7 +172,7 @@ What the shipped tools do cover in this area: Error Prone `GuardedBy`, `Synchron
 `NonAtomicVolatileUpdate`, `DoubleCheckedLocking`, `StaticGuardedByInstance`,
 `UnsynchronizedOverridesSynchronized`, `WaitNotInLoop`, `LockNotBeforeTry`, `ThreadLocalUsage`,
 `Immutable`, PMD's multithreading category, and the Spring bean-lifetime rules `spring-scope-capture`
-and `spring-request-state` ([Spring architecture rules](java-preset.md#spring-architecture-rules)).
+and `spring-request-state` ([Spring architecture rules](java-preset/spring-architecture-rules.md)).
 They are lexical, annotation-driven (`GuardedBy` needs the annotation on the field) or modeled on
 Spring's bean scopes, and do not follow calls between methods.
 

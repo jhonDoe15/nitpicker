@@ -73,7 +73,7 @@ const BATCH_METHODS = new Set([
 const MEMBER_CALL = /\b([A-Za-z_]\w*)\s*\.\s*([A-Za-z_]\w*)\s*\(/g;
 const MESSAGE_LEVELS = new Set(['info', 'warn', 'error', 'log', 'config', 'warning', 'severe']);
 const OPERAND_MARK = /[()[\]{}+]/g;
-export const CALL_MESSAGES = {
+const CALL_MESSAGES = {
   LogStringConcatenation:
     'Pass values as placeholders (`log.info("user {}", user)`), or give a lambda logger the message (`logger.info { "user $user" }`), not a message built with a string template, `+` or `format`.',
   ShellCommand:
@@ -188,3 +188,8 @@ export function ioInLoops(scanned) {
       offset,
     }));
 }
+
+export const kotlinSourceRules = {
+  messages: CALL_MESSAGES,
+  main: [logTemplates, shellCommands, ioInLoops],
+};
