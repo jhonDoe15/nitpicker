@@ -24,7 +24,7 @@ const CONTROL_HEADER =
   /^\s*(?:\}\s*)?(?:if|else|while|for|try|catch|finally|when|do|init)\b|\b(?:class|object|interface)\b/;
 const HELD_STREAM = /(?<![\w$])va[lr]\s+([A-Za-z_]\w*)\s*(?::[^=]*)?=/;
 
-export const PROCESS_MESSAGES = {
+const PROCESS_MESSAGES = {
   ProcessWaitWithoutTimeout:
     'Wait with a deadline: `if (!process.waitFor(30, TimeUnit.SECONDS)) process.destroyForcibly()`, and read the output on another thread (or redirect it to a file) before that wait. This waits for the child process without a deadline, so a command that never exits hangs this request, job or command for good. An exception fits only a program whose purpose is to run the child to completion, such as a build wrapper.',
 };
@@ -143,3 +143,5 @@ export function processWaitsWithoutTimeout(scanned) {
       offset: offset + code.slice(offset).search(/\S/),
     }));
 }
+
+export const kotlinSourceRules = { messages: PROCESS_MESSAGES, main: [processWaitsWithoutTimeout] };

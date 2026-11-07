@@ -1,6 +1,10 @@
 import { readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { TESTS_FAILED_RULE, testsFailHeadline } from '../../../../shared/rules/finding-helpers.mjs';
+import {
+  failingTestEntries,
+  valuesInMessage,
+} from '../../../../shared/rules/failing-tests/failing-tests.mjs';
 import { ANY_STATUS, failure, run } from '../execution/go-process.mjs';
 import { buildFlags } from '../build/go-vet.mjs';
 import { parseTestEvents } from './test-events.mjs';
@@ -39,12 +43,17 @@ export function readTestRun(reportRoot) {
   return parseTestEvents(readFileSync(path.join(reportRoot, TEST_EVENTS), 'utf8'));
 }
 
-function failureLines({ id, output }) {
-  const lines = output
+function outputLines(output) {
+  return output
     .split(/\r?\n/u)
-    .filter((line) => line.trim() !== '' && !/^(?:=== |--- |FAIL\b|ok\b|PASS$)/u.test(line.trim()))
+    .map((line) => line.trim())
+    .filter((line) => line !== '' && !/^(?:=== |--- |FAIL\b|ok\b|PASS$)/u.test(line));
+}
+
+function failureLines({ id, output }) {
+  const lines = outputLines(output)
     .slice(0, OUTPUT_LINES)
-    .map((line) => `    ${line.trim()}`);
+    .map((line) => `    ${line}`);
   return [`  ${id}`, ...lines];
 }
 
@@ -52,6 +61,32 @@ function listed(failures) {
   const shown = failures.slice(0, LISTED_TESTS).flatMap(failureLines);
   const more = failures.length - LISTED_TESTS;
   return more > 0 ? [...shown, `  and ${String(more)} more`] : shown;
+}
+
+const OUTPUT_LOCATION = /^(?<file>\S+\.go):(?<line>\d+):(?<message>.*)$/u;
+
+function locatedLine(lines) {
+  const located = lines
+    .map((line) => OUTPUT_LOCATION.exec(line)?.groups)
+    .filter(Boolean)
+    .map((groups) => ({ ...groups, message: groups.message.trim() }));
+  return located.find(({ message }) => message !== '') ?? located[0];
+}
+
+function failureEntry({ id, output }) {
+  const lines = outputLines(output);
+  const located = locatedLine(lines);
+  const errorLine = lines
+    .find((line) => line.startsWith('Error:'))
+    ?.replace(/^Error:\s*/u, '')
+    .replace(/:$/u, '');
+  const message = located === undefined ? lines[0] : located.message || errorLine;
+  return {
+    name: id,
+    ...(located === undefined ? {} : { file: located.file, line: Number(located.line) }),
+    ...(message === undefined ? {} : { message }),
+    ...valuesInMessage(output),
+  };
 }
 
 function failuresMessage(failures, snapshot) {
@@ -63,7 +98,10 @@ function failuresMessage(failures, snapshot) {
     ].join('\n');
   }
   const consequence = 'the static analyzers ran, and coverage comes from the tests that ran';
-  return [testsFailHeadline(failures.length, consequence), ...listed(failures)].join('\n');
+  return [
+    testsFailHeadline(failures.length, consequence),
+    ...failingTestEntries(failures.map(failureEntry)),
+  ].join('\n');
 }
 
 export function testRunFindings({ failures, testsRan, buildFailures }, snapshot = 'head') {
