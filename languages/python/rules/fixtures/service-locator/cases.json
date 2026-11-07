@@ -1,0 +1,7 @@
+[
+  {
+    "tool": "python-rules",
+    "rule": "service-locator-lookup",
+    "mention": "composition root"
+  }
+]

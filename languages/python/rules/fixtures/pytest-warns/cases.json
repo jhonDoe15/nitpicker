@@ -1,0 +1,12 @@
+[
+  {
+    "tool": "ruff",
+    "rule": "PT030",
+    "mention": "match the message"
+  },
+  {
+    "tool": "ruff",
+    "rule": "PT031",
+    "mention": "one statement"
+  }
+]

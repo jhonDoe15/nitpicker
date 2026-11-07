@@ -1,0 +1,7 @@
+[
+  {
+    "tool": "ruff",
+    "rule": "S113",
+    "mention": "timeout=10"
+  }
+]

@@ -63,7 +63,7 @@ def files(name):
 
 def spawn():
     subprocess.Popen(["ls"], preexec_fn=os.setsid)
-    subprocess.run(["git", "status"])
+    subprocess.run(["git", "status"], timeout=30)
     pdb.set_trace()
 
 

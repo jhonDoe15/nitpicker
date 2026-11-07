@@ -1,0 +1,7 @@
+[
+  {
+    "tool": "python-rules",
+    "rule": "module-state-in-domain",
+    "mention": "receive the state as a parameter"
+  }
+]

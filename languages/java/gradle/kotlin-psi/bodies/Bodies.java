@@ -168,7 +168,7 @@ public final class Bodies {
       return;
     }
     Map<String, Object> data = m("name", name, "arguments", arguments(call),
-        "throwing", throwing.lambdaThrows(call) ? Boolean.TRUE : null);
+        "throwing", throwing.lambdaThrows(call) ? Boolean.TRUE : null, "guarded", Positions.guarded(call));
     if (call.getParent() instanceof KtQualifiedExpression
         && ((KtQualifiedExpression) call.getParent()).getSelectorExpression() == call) {
       KtQualifiedExpression qualified = (KtQualifiedExpression) call.getParent();
@@ -270,6 +270,7 @@ public final class Bodies {
     }
     Map<String, Object> entry = m("line", lineOf(element), "scope", scopes.id(frame));
     entry.putAll(data);
+    entry.put("arms", Positions.arms(element, lines));
     invocations.add(entry);
   }
 
