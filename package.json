@@ -68,6 +68,7 @@
     "!shared/reference/checks/**",
     "!languages/*/reference/**",
     "!languages/python/ruff/ruff-rules.json",
+    "!languages/java/gradle/rulesets/**",
     "skills/**"
   ],
   "exports": {
