@@ -66,6 +66,8 @@ To learn why a rule is on and what form it allows before you write or change cod
   (`z.string().trim().min(1)`, `z.email()`, `z.iso.date()`, `.transform(toCents)`), never
   `z.unknown()` fields plus hand checks. A JSON list is `z.array(recordSchema)`; the issues'
   `path` (`[index, field]`) names the bad record: `issues.map((issue) => issue.path.join('.'))`.
+  Parse a URL from runtime text with `URL.parse(text)` or after `URL.canParse(text)`; `new URL(text)`
+  throws on text that is not a URL (`nitpicker/no-unhandled-url-parse`).
 - `domain/` is pure and takes parsed, typed values, never `unknown`. Decisions go here. No I/O or
   `process`; time, IDs and randomness are parameters. Code that drives injected async deps
   (retries, worker pools, abort) is `adapters/`; the decisions it needs are domain functions.

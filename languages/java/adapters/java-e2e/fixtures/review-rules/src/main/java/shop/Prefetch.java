@@ -203,7 +203,7 @@ public final class Prefetch {
   }
 
   private HttpRequest request(String url) {
-    return HttpRequest.newBuilder(URI.create(url)).timeout(Duration.ofSeconds(10)).build();
+    return HttpRequest.newBuilder(URI.create(url)).timeout(Duration.ofSeconds(10)).build(); // violation: UriCreateDynamic
   }
 
   private String body(String url) {

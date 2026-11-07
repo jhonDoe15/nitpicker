@@ -25,10 +25,10 @@ const methods = Array.from(
 );
 
 const HTTP = `${PACKAGE}import java.net.URI\nimport java.net.http.HttpClient\nimport java.net.http.HttpRequest\nimport java.net.http.HttpResponse\nimport java.time.Duration\nimport java.util.concurrent.CompletableFuture\n`;
-const BODY = `    private fun body(url: String): String {\n        val request = HttpRequest.newBuilder(URI.create(url)).timeout(Duration.ofSeconds(5)).build()\n        return client.send(request, HttpResponse.BodyHandlers.ofString()).body()\n    }\n`;
+const BODY = `    private fun body(url: URI): String {\n        val request = HttpRequest.newBuilder(url).timeout(Duration.ofSeconds(5)).build()\n        return client.send(request, HttpResponse.BodyHandlers.ofString()).body()\n    }\n`;
 const prefetch = (task, extra = '') =>
-  `${HTTP}${extra === '' ? '' : 'import java.util.concurrent.Semaphore\n'}\nclass Prefetch(private val client: HttpClient) {\n${extra === '' ? '' : '    private val permits = Semaphore(8)\n\n'}    fun pages(urls: List<String>): List<CompletableFuture<String>> =\n        urls.map { url -> CompletableFuture.supplyAsync { ${task}(url) } }\n\n${extra}${BODY}}\n`;
-const LIMITED = `    private fun limited(url: String): String {\n        permits.acquire()\n        try {\n            return body(url)\n        } finally {\n            permits.release()\n        }\n    }\n\n`;
+  `${HTTP}${extra === '' ? '' : 'import java.util.concurrent.Semaphore\n'}\nclass Prefetch(private val client: HttpClient) {\n${extra === '' ? '' : '    private val permits = Semaphore(8)\n\n'}    fun pages(urls: List<URI>): List<CompletableFuture<String>> =\n        urls.map { url -> CompletableFuture.supplyAsync { ${task}(url) } }\n\n${extra}${BODY}}\n`;
+const LIMITED = `    private fun limited(url: URI): String {\n        permits.acquire()\n        try {\n            return body(url)\n        } finally {\n            permits.release()\n        }\n    }\n\n`;
 
 const GUARD_ROOT = 'src/main/kotlin/demo/guards';
 const GUARD_TEST_ROOT = 'src/test/kotlin/demo/guards';
@@ -55,6 +55,7 @@ const BANNED_GUARDS = {
   'Literals.kt': `${PACKAGE}fun labels(): List<String> = listOf("shipping", "shipping", "shipping")\n`,
   'App.kt': `${PACKAGE}fun main() {\n    ProcessBuilder("serve", "--port", System.getenv("PORT")).inheritIO().start()\n}\n`,
   'Prefetch.kt': prefetch('body'),
+  'Links.kt': `${PACKAGE}import java.net.URI\n\nfun cover(path: String): URI = URI.create("https://shop.example/$path")\n`,
   'Streams.kt': `${PACKAGE}import java.io.File\nimport java.util.jar.JarFile\n\nfun manifestOf(root: File): String = JarFile(root).name\n`,
   'Routes.kt': `${PACKAGE}fun route(name: String): Regex = Regex("^/$name/")\n\nfun clean(text: String): String = text.replace(Regex("abc"), "")\n`,
   'Exports.kt': `${PACKAGE}fun render(command: List<String>): Int = ProcessBuilder(command).start().waitFor()\n`,
@@ -86,6 +87,7 @@ const ALLOWED_GUARDS = {
   'Literals.kt': `${PACKAGE}private const val SHIPPING = "shipping"\n\nfun labels(): List<String> = listOf(SHIPPING, SHIPPING, SHIPPING)\n\nfun kind(text: String): Int = when (text) {\n    "shipping-pending" -> 1\n    "shipping-sent", "shipping-pending" -> 2\n    else -> 3\n}\n\nfun more(): Map<String, Int> = mapOf("shipping-pending" to 1)\n`,
   'App.kt': `${PACKAGE}fun main() {\n    ProcessBuilder("serve", "--port", System.getenv("PORT")).inheritIO().start()\n}\n`,
   'Prefetch.kt': prefetch('limited', LIMITED),
+  'Links.kt': `${PACKAGE}import java.net.URI\n\nfun cover(path: String): URI? = runCatching { URI.create("https://shop.example/$path") }.getOrNull()\n`,
   'Streams.kt': `${PACKAGE}import java.io.File\nimport java.util.jar.JarFile\n\nfun manifestOf(root: File): String = JarFile(root).use { it.name }\n`,
   'Routes.kt': `${PACKAGE}fun route(name: String): Regex = Regex("^/\${Regex.escape(name)}/")\n\nfun clean(text: String): String = text.replace("abc", "")\n`,
   'Exports.kt': `${PACKAGE}import java.util.concurrent.TimeUnit\n\nprivate const val DEADLINE_SECONDS = 30L\n\nfun render(command: List<String>): Int {\n    val process = ProcessBuilder(command).start()\n    check(process.waitFor(DEADLINE_SECONDS, TimeUnit.SECONDS)) { "timed out: $command" }\n    return process.exitValue()\n}\n`,
@@ -128,6 +130,7 @@ const EXPECTED_BANNED = [
   'kotlin-source/GeneratedOnHandWrittenCode Marked.kt',
   'kotlin-source/TestClassWithoutTestCases EmptyTest.kt',
   'kotlin-source/UnboundedFanOut Prefetch.kt',
+  'kotlin-source/UriCreateDynamic Links.kt',
   'kotlin-source/UnclosedInlineResource Streams.kt',
   'kotlin-source/UnquotedRegexValue Routes.kt',
   'kotlin-source/PlainTextRegex Routes.kt',

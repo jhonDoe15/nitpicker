@@ -29,14 +29,14 @@ public final class Connections {
   }
 
   public String read(String address) throws IOException {
-    URLConnection connection = URI.create(address).toURL().openConnection(); // violation: HttpWithoutTimeout
+    URLConnection connection = URI.create(address).toURL().openConnection(); // violation: HttpWithoutTimeout, UriCreateDynamic
     try (InputStream body = connection.getInputStream()) {
       return new String(body.readAllBytes(), StandardCharsets.UTF_8);
     }
   }
 
   public byte[] download(String address) throws IOException {
-    URL url = URI.create(address).toURL();
+    URL url = URI.create(address).toURL(); // violation: UriCreateDynamic
     try (InputStream body = url.openStream()) { // violation: HttpWithoutTimeout
       return body.readAllBytes();
     }

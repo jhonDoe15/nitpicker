@@ -1373,6 +1373,14 @@
         "This file defines tests but is not named like a test file, so they never run. Rename it `*.test.ts` (or `*.spec.ts`). An exception fits only when another test file runs it on purpose."
       ]
     },
+    "nitpicker/no-unhandled-url-parse": {
+      "tools": ["eslint-lint"],
+      "forms": [],
+      "description": "Require new URL(text) on runtime text to be checked with URL.canParse, parsed with URL.parse, or wrapped in a try",
+      "messages": [
+        "Parse this text with `URL.parse(text)` (null when it is not a URL), check `URL.canParse(text)` first, or build the URL in a `try` whose catch handles the failure. `new URL(text)` throws a TypeError on text that is not an absolute URL (no scheme, a bad host, `//` against a base), so one odd stored, user or header value turns this call into an error response. Constant text and a base are fine, and so are a `URL` value, an already parsed `.href`, `.url` or `.origin`, and `new URL(path, import.meta.url)`."
+      ]
+    },
     "nitpicker/no-unhandled-void-promise": {
       "tools": ["eslint-lint"],
       "forms": [],
@@ -4284,6 +4292,14 @@
       "description": "Report test calls in a file the test runner never collects",
       "messages": [
         "This file defines tests but is not named like a test file, so they never run. Rename it `*.test.ts` (or `*.spec.ts`). An exception fits only when another test file runs it on purpose."
+      ]
+    },
+    "nitpicker/no-unhandled-url-parse": {
+      "tools": ["eslint-lint"],
+      "forms": [],
+      "description": "Require new URL(text) on runtime text to be checked with URL.canParse, parsed with URL.parse, or wrapped in a try",
+      "messages": [
+        "Parse this text with `URL.parse(text)` (null when it is not a URL), check `URL.canParse(text)` first, or build the URL in a `try` whose catch handles the failure. `new URL(text)` throws a TypeError on text that is not an absolute URL (no scheme, a bad host, `//` against a base), so one odd stored, user or header value turns this call into an error response. Constant text and a base are fine, and so are a `URL` value, an already parsed `.href`, `.url` or `.origin`, and `new URL(path, import.meta.url)`."
       ]
     },
     "nitpicker/no-unhandled-void-promise": {
@@ -7479,6 +7495,14 @@
       "description": "Report test calls in a file the test runner never collects",
       "messages": [
         "This file defines tests but is not named like a test file, so they never run. Rename it `*.test.ts` (or `*.spec.ts`). An exception fits only when another test file runs it on purpose."
+      ]
+    },
+    "nitpicker/no-unhandled-url-parse": {
+      "tools": ["eslint-lint"],
+      "forms": [],
+      "description": "Require new URL(text) on runtime text to be checked with URL.canParse, parsed with URL.parse, or wrapped in a try",
+      "messages": [
+        "Parse this text with `URL.parse(text)` (null when it is not a URL), check `URL.canParse(text)` first, or build the URL in a `try` whose catch handles the failure. `new URL(text)` throws a TypeError on text that is not an absolute URL (no scheme, a bad host, `//` against a base), so one odd stored, user or header value turns this call into an error response. Constant text and a base are fine, and so are a `URL` value, an already parsed `.href`, `.url` or `.origin`, and `new URL(path, import.meta.url)`."
       ]
     },
     "nitpicker/no-unhandled-void-promise": {
