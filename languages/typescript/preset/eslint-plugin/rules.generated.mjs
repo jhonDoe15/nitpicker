@@ -59,6 +59,7 @@ import { rule as ruleNoSingularAndPluralProp } from './rules/api-shape/no-singul
 import { rule as ruleNoSqlStringBuilding } from './rules/security/sql/no-sql-string-building.mjs';
 import { rule as ruleNoStringAsRegex } from './rules/regex/no-string-as-regex.mjs';
 import { rule as ruleNoSwitchedOffTests } from './test-assertions/no-switched-off-tests.mjs';
+import { rule as ruleNoSyncNodeApiInAsync } from './rules/async/no-sync-node-api-in-async.mjs';
 import { rule as ruleNoTestHelpersInSource } from './test-placement/no-test-helpers-in-source.mjs';
 import { rule as ruleNoTestRetry } from './test-assertions/no-test-retry.mjs';
 import { rule as ruleNoThrow } from './rules/errors/no-throw.mjs';
@@ -162,6 +163,7 @@ export const directoryRules = {
   'no-sql-string-building': ruleNoSqlStringBuilding,
   'no-string-as-regex': ruleNoStringAsRegex,
   'no-switched-off-tests': ruleNoSwitchedOffTests,
+  'no-sync-node-api-in-async': ruleNoSyncNodeApiInAsync,
   'no-test-helpers-in-source': ruleNoTestHelpersInSource,
   'no-test-retry': ruleNoTestRetry,
   'no-throw': ruleNoThrow,
