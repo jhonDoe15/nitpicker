@@ -13,11 +13,13 @@ import { prettierExtensions, prettierExclusions, typescriptExtensions } from './
 import { linkPolicyFile } from '../tooling/policy-links.mjs';
 import { PACKAGE_ROOT, resolveTool } from '../tooling/tool-resolution.mjs';
 import { layoutTransformFor } from '../../languages/typescript/preset/tool-configs.mjs';
-import { spawnSyncWithOutputFile } from '../tooling/output-file/output-file.mjs';
 import {
   PROJECT_LAYER_VARIABLE,
   projectLayerValue,
 } from '../../languages/typescript/adapters/lint-engine/project-layer.mjs';
+import { spawnSyncWithOutputFile } from '../tooling/output-file/output-file.mjs';
+import { isInScope } from '../scope/scope-findings.mjs';
+import { TOOL_TIMEOUT_MS } from '../../shared/processes/deadlines.mjs';
 
 const eslintPolicy = eslintChecks.find(({ name }) => name === 'eslint-lint');
 
@@ -35,13 +37,11 @@ export function fixWorkingTree({ headPolicy = resolveHeadPolicy(), ...options })
 }
 
 function fixWithPolicy(settings) {
-  const { repositoryRoot, projectRoot, baseRef, layout } = settings;
-  const { comparison, changes } = collectWorkingTreeChanges({
-    repositoryRoot,
-    projectRoot,
-    baseRef,
-  });
-  const files = changes.filter(({ isFile, path: name }) => isFile && !layout.isExcluded(name));
+  const { projectRoot, layout, scope } = settings;
+  const { comparison, changes } = collectWorkingTreeChanges(settings);
+  const files = changes.filter(
+    ({ isFile, path: name }) => isFile && !layout.isExcluded(name) && isInScope(name, scope),
+  );
   const before = new Map(
     files.map(({ path: name }) => [name, readFileSync(path.join(projectRoot, name))]),
   );
@@ -280,6 +280,7 @@ function run({
       env: { ...process.env, ...environment },
       encoding: 'utf8',
       maxBuffer: 50 * 1024 * 1024,
+      timeout: TOOL_TIMEOUT_MS,
     });
   if (result.error || !acceptedStatuses.includes(result.status)) {
     throw new Error(

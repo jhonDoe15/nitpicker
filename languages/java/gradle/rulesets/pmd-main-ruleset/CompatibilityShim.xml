@@ -1,0 +1,12 @@
+  <rule name="CompatibilityShim" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
+        message="A @Deprecated declaration keeps the old API next to its replacement. Delete it and change its callers to the replacement in the same change.">
+    <priority>3</priority>
+    <properties>
+      <property name="xpath">
+        <value><![CDATA[
+//ModifierList/Annotation[@SimpleName = 'Deprecated']
+  [not(parent::ModifierList/parent::MethodDeclaration/ModifierList/Annotation[@SimpleName = 'Override'])]
+]]></value>
+      </property>
+    </properties>
+  </rule>

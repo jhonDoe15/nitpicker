@@ -2,6 +2,7 @@ import { globSync } from 'node:fs';
 import path from 'node:path';
 import { ESLint } from 'eslint';
 import { oxlintBinary, spawnJson } from './oxlint-process.mjs';
+import { PROBE_TIMEOUT_MS } from '../../../../shared/processes/deadlines.mjs';
 
 const [projectRoot, ...patterns] = process.argv.slice(2);
 const wrapperConfigPath = path.join(import.meta.dirname, '..', 'eslint-wrapper.config.mjs');
@@ -20,12 +21,13 @@ function listedNativeRules() {
     cwd: import.meta.dirname,
     env: process.env,
     context: 'oxlint --rules',
+    timeoutMs: PROBE_TIMEOUT_MS,
   });
 }
 
 async function lintPlan(root, globs) {
-  const nativeRules = listedNativeRules();
-  return { ...(await filePlan(root, globs)), nativeRules };
+  const [nativeRules, plan] = await Promise.all([listedNativeRules(), filePlan(root, globs)]);
+  return { ...plan, nativeRules };
 }
 
 async function filePlan(root, globs) {

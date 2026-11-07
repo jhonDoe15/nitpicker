@@ -10,6 +10,7 @@ import { spawnSyncWithOutputFile } from '../../../../../core/tooling/output-file
 import { pathToFileURL } from 'node:url';
 import path from 'node:path';
 import { lstatSync } from 'node:fs';
+import { TOOL_RUN_CEILING_MS } from '../../../../../shared/processes/deadlines.mjs';
 
 const MAX_OUTPUT_BYTES = 100 * 1024 * 1024;
 
@@ -67,16 +68,13 @@ export function spawnNodeTool({
   environment = {},
 }) {
   const toolPaths = nodeToolPaths(options, { relativeToolPath, absoluteToolPath });
-  const result = spawnSyncWithOutputFile(
-    process.execPath,
-    [...nodeArguments, ...toolPaths, ...arguments_],
-    {
-      cwd,
-      env: withNodeOptions({ ...process.env, ...environment }, nodeOptions),
-      encoding: 'utf8',
-      maxBuffer: MAX_OUTPUT_BYTES,
-    },
-  );
+  const result = spawnSyncWithOutputFile(process.execPath, [...nodeArguments, ...toolPaths, ...arguments_], {
+    cwd,
+    env: withNodeOptions({ ...process.env, ...environment }, nodeOptions),
+    encoding: 'utf8',
+    maxBuffer: MAX_OUTPUT_BYTES,
+    timeout: TOOL_RUN_CEILING_MS,
+  });
   if (result.error !== undefined) {
     throw result.error;
   }

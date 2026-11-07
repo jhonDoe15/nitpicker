@@ -1,0 +1,7 @@
+[
+  {
+    "tool": "ruff",
+    "rule": "S702",
+    "mention": "jinja2"
+  }
+]

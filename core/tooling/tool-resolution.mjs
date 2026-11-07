@@ -6,6 +6,7 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { CONFIG_FILE_NAME } from '../../shared/config.mjs';
+import { GIT_TIMEOUT_MS } from '../../shared/processes/deadlines.mjs';
 
 export const PACKAGE_ROOT = realpathSync(path.resolve(import.meta.dirname, '../..'));
 const manifest = readManifest(path.join(PACKAGE_ROOT, 'package.json'));
@@ -119,6 +120,7 @@ export function resolveProjectRoot(cwd = process.cwd()) {
     execFileSync('git', ['rev-parse', '--show-toplevel'], {
       cwd: current,
       encoding: 'utf8',
+      timeout: GIT_TIMEOUT_MS,
     }).trim(),
   );
   const directories = chainOf(current, (directory) => {

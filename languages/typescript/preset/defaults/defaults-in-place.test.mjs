@@ -60,6 +60,7 @@ const POLICY_PATHS = [
   'languages/typescript/preset/eslint-config',
   'languages/typescript/preset/eslint-project',
   'languages/typescript/preset/eslint-plugin/index.mjs',
+  'languages/typescript/preset/eslint-plugin/rules.generated.mjs',
   'languages/typescript/preset/eslint-plugin/rules',
   'languages/typescript/preset/eslint-plugin/test-assertions',
   'languages/typescript/preset/eslint-plugin/test-isolation',
@@ -74,6 +75,7 @@ const POLICY_PATHS = [
   'languages/typescript/preset/syntax',
   'languages/typescript/preset/modules',
   'languages/typescript/preset/test-environment',
+  'languages/typescript/preset/test-runner',
   'languages/typescript/typescript-api',
   'shared',
 ];

@@ -37,3 +37,19 @@ export const NODE_TEST_OPTIONS_NITPICKER_SETS = {
     '--test-coverage-lines',
   ],
 };
+
+export const MOCHA_OPTIONS_NITPICKER_SETS = {
+  flags: ['--watch', '-w', '--forbid-only', '--bail', '-b'],
+  valued: [
+    '--reporter',
+    '-R',
+    '--reporter-option',
+    '--reporter-options',
+    '-O',
+    '--timeout',
+    '-t',
+    '--retries',
+    '--watch-files',
+    '--watch-ignore',
+  ],
+};
