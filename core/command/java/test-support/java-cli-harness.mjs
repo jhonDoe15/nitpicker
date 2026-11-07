@@ -79,7 +79,6 @@ export function useGradleFixtures(runNitpickerCli) {
         },
       },
       redBase: {
-        headRule: 'gradle-failure',
         files: (suite) => ({ TESTS_FAIL: JSON.stringify({ '': suite }) }),
         repair: { remove: ['TESTS_FAIL'] },
         modules: {
@@ -135,7 +134,6 @@ export function useMavenFixtures(runNitpickerCli) {
         },
       },
       redBase: {
-        headRule: 'maven-failure',
         files: (suite) => ({ 'test-results/test/TEST-demo.ATest.xml': suite }),
         repair: {
           write: {

@@ -1,4 +1,13 @@
-const FILE_KEYS = ['file', 'lines', 'classes', 'functions', 'lambdas', 'branching', 'casts'];
+const FILE_KEYS = [
+  'file',
+  'lines',
+  'classes',
+  'functions',
+  'lambdas',
+  'branching',
+  'casts',
+  'exhaustiveLastEntries',
+];
 
 export function indexMutationFacts(facts) {
   if (!Array.isArray(facts?.files)) {
@@ -23,6 +32,7 @@ function indexFile(file) {
     lambdas: file.lambdas,
     branching: new Set(file.branching),
     casts: new Set(file.casts),
+    exhaustiveLastEntries: new Set(file.exhaustiveLastEntries),
   };
 }
 

@@ -77,16 +77,13 @@ describe('quality-area analyzer catalog', () => {
   );
   it.each([['differential', packageAnalyzers]])(
     'configures expensive analyzer scheduling metadata in the %s dial',
-    (dial, analyzers) => {
+    (_dial, analyzers) => {
       const weights = Object.fromEntries(
         analyzers.map(({ name, concurrencyWeight = 1 }) => [name, concurrencyWeight]),
       );
       const priorities = Object.fromEntries(
         analyzers.map(({ name, executionPriority = 0 }) => [name, executionPriority]),
       );
-      const eslintConcurrencyGroup =
-        dial === 'differential' ? 'eslint-snapshot-dependencies' : undefined;
-
       expect(weights.coverage).toBe(2);
       expect(weights.mutation).toBe(2);
       expect(weights.crap).toBe(1);
@@ -108,7 +105,7 @@ describe('quality-area analyzer catalog', () => {
         analyzers
           .filter(({ name }) => name.startsWith('eslint-'))
           .map(({ concurrencyGroup }) => concurrencyGroup),
-      ).toEqual(Array(4).fill(eslintConcurrencyGroup));
+      ).toEqual(Array(4).fill(undefined));
     },
   );
   it('bounds coverage worker processes independently of host CPU visibility', async () => {

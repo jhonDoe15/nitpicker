@@ -10,20 +10,23 @@ import {
   failureText,
   troubleshootingLinkOf,
 } from '../../../shared/messages/troubleshooting.mjs';
+import { TESTS_FAILED_RULE } from '../../../shared/rules/finding-helpers.mjs';
 
 export const GRADLE_FAILURE_RULE = 'gradle-failure';
 export const MAVEN_FAILURE_RULE = 'maven-failure';
 const MAX_MESSAGE_LENGTH = 4000;
+const MAX_TESTS_FAILED_LENGTH = 40_000;
 
-function truncated(message) {
-  if (message.length <= MAX_MESSAGE_LENGTH) {
+function truncated(message, rule) {
+  const limit = rule === TESTS_FAILED_RULE ? MAX_TESTS_FAILED_LENGTH : MAX_MESSAGE_LENGTH;
+  if (message.length <= limit) {
     return message;
   }
   const link = troubleshootingLinkOf(message);
   const kept = message
     .replace(link ?? '', '')
     .trimEnd()
-    .slice(0, MAX_MESSAGE_LENGTH);
+    .slice(0, limit);
   return `${kept}...${link === undefined ? '' : `\n${link}`}`;
 }
 
@@ -51,11 +54,11 @@ export function analyzeJavaSnapshot(
       }),
     };
   } catch (error) {
-    const isMaven = detectJavaBuild(projectRoot) === 'maven';
-    const rule = isMaven ? MAVEN_FAILURE_RULE : GRADLE_FAILURE_RULE;
-    const anchor = isMaven
-      ? TROUBLESHOOTING_ANCHORS.mavenFails
-      : TROUBLESHOOTING_ANCHORS.gradleFails;
+    const rule = failureRule(error, projectRoot);
+    const anchor =
+      rule === MAVEN_FAILURE_RULE
+        ? TROUBLESHOOTING_ANCHORS.mavenFails
+        : TROUBLESHOOTING_ANCHORS.gradleFails;
     return {
       findings: [
         {
@@ -63,12 +66,19 @@ export function analyzeJavaSnapshot(
           rule,
           path: '.',
           identity: rule,
-          message: truncated(failureText(error, anchor)),
+          message: truncated(failureText(error, anchor), rule),
           classification: 'tool-error',
         },
       ],
     };
   }
+}
+
+function failureRule(error, projectRoot) {
+  if (error?.failures?.length > 0) {
+    return TESTS_FAILED_RULE;
+  }
+  return detectJavaBuild(projectRoot) === 'maven' ? MAVEN_FAILURE_RULE : GRADLE_FAILURE_RULE;
 }
 
 export function readRunnerPolicy(runnerArguments, environment = process.env) {

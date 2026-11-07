@@ -10,6 +10,7 @@ import {
   TROUBLESHOOTING_ANCHORS,
   troubleshootingError,
 } from '../../shared/messages/troubleshooting.mjs';
+import { GIT_TIMEOUT_MS } from '../../shared/processes/deadlines.mjs';
 
 export const PACKAGE_ROOT = realpathSync(path.resolve(import.meta.dirname, '../..'));
 
@@ -151,6 +152,7 @@ function repositoryRootOf(directory) {
         cwd: directory,
         encoding: 'utf8',
         stdio: ['ignore', 'pipe', 'pipe'],
+        timeout: GIT_TIMEOUT_MS,
       }).trim(),
     );
   } catch (error) {

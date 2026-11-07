@@ -60,7 +60,11 @@ function ownStartError(cause) {
   );
 }
 
-async function startedApi({ projectRoot, apiRoot = resolveTool('typescript-native').root, entry }) {
+async function startedApi({
+  projectRoot,
+  apiRoot = resolveTool('@typescript/native').root,
+  entry,
+}) {
   const apiPath = createRequire(path.join(apiRoot, 'package.json')).resolve(entry);
   const { API } = await import(pathToFileURL(apiPath).href);
   let api;

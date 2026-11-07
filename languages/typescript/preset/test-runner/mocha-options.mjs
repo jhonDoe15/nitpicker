@@ -5,15 +5,8 @@ import {
   TROUBLESHOOTING_ANCHORS,
   troubleshootingError,
 } from '../../../../shared/messages/troubleshooting.mjs';
+import { mochaSources } from './mocha-config-files.mjs';
 
-const RC_FILES = [
-  '.mocharc.cjs',
-  '.mocharc.js',
-  '.mocharc.yaml',
-  '.mocharc.yml',
-  '.mocharc.jsonc',
-  '.mocharc.json',
-];
 const FILE_OPTIONS = new Set(['--config', '--package']);
 const LIST_OPTIONS = ['require', 'file', 'ignore', 'extension'];
 const MOCHA_DEFAULT_SPEC = 'test';
@@ -43,12 +36,16 @@ export function projectMocha(projectRoot) {
   }
 }
 
-function mochaModule(mocha, name) {
+export function mochaModulePath(mocha, name) {
   const modern = path.resolve(mocha.root, 'lib', 'cli', `${name}.cjs`);
   if (!modern.startsWith(`${mocha.root}${path.sep}`)) {
     throw new Error(`Mocha module ${name} is outside the Mocha package`);
   }
-  return mocha.require(existsSync(modern) ? modern : modern.replace(/\.cjs$/u, '.js'));
+  return existsSync(modern) ? modern : modern.replace(/\.cjs$/u, '.js');
+}
+
+function mochaModule(mocha, name) {
+  return mocha.require(mochaModulePath(mocha, name));
 }
 
 function optionNames(tokens) {
@@ -57,16 +54,14 @@ function optionNames(tokens) {
 
 function sourceArguments(projectRoot, tokens) {
   const names = optionNames(tokens);
-  const rc = RC_FILES.map((name) => projectFile(projectRoot, name)).find(
-    (file) => file !== undefined && existsSync(file),
-  );
-  const manifest = projectFile(projectRoot, 'package.json');
-  const config = rc === undefined ? ['--no-config'] : ['--config', rc];
-  const pkg =
-    manifest !== undefined && existsSync(manifest) ? ['--package', manifest] : ['--no-package'];
+  const { config, package: manifest } = mochaSources(projectRoot);
+  const configArguments =
+    config === undefined ? ['--no-config'] : ['--config', path.resolve(projectRoot, config)];
+  const packageArguments =
+    manifest === undefined ? ['--no-package'] : ['--package', path.resolve(projectRoot, manifest)];
   return [
-    ...(names.has('--config') || names.has('--no-config') ? [] : config),
-    ...(names.has('--package') || names.has('--no-package') ? [] : pkg),
+    ...(names.has('--config') || names.has('--no-config') ? [] : configArguments),
+    ...(names.has('--package') || names.has('--no-package') ? [] : packageArguments),
   ];
 }
 
@@ -141,6 +136,10 @@ function nodeFlagArguments(mocha, loaded) {
   return flags.unparseNodeFlags(Object.fromEntries(nodeFlags));
 }
 
+export function mochaLoadArguments(projectRoot, tokens) {
+  return [...sourceArguments(projectRoot, tokens), ...absoluteFileOptions(projectRoot, tokens)];
+}
+
 export function mochaMutationOptions({ projectRoot, tokens, testFiles }) {
   const mocha = projectMocha(projectRoot);
   if (mocha === undefined) {
@@ -149,10 +148,7 @@ export function mochaMutationOptions({ projectRoot, tokens, testFiles }) {
       TROUBLESHOOTING_ANCHORS.testRunnerNotInstalled,
     );
   }
-  const loaded = mochaModule(mocha, 'options').loadOptions([
-    ...sourceArguments(projectRoot, tokens),
-    ...absoluteFileOptions(projectRoot, tokens),
-  ]);
+  const loaded = mochaModule(mocha, 'options').loadOptions(mochaLoadArguments(projectRoot, tokens));
   return {
     mochaOptions: strykerMochaOptions(loaded, specEntries(projectRoot, loaded, testFiles)),
     nodeArguments: nodeFlagArguments(mocha, loaded),

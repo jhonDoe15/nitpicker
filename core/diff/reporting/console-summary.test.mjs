@@ -85,7 +85,7 @@ describe('renderConsoleSummary', () => {
           testsFailed(
             'coverage',
             'tests-failed',
-            '1 test fails, so coverage, CRAP and mutation were skipped. Fix the tests and rerun:\n  test/a.test.ts > adds: expected 1 to be 2',
+            '1 test fails; coverage, CRAP and mutation were skipped. Fix the tests and rerun:\n  test/a.test.ts > adds: expected 1 to be 2',
           ),
           testsFailed(
             'mutation',
@@ -101,11 +101,9 @@ describe('renderConsoleSummary', () => {
       [
         '',
         'Quality gate summary',
-        'No new enforceable violations, but the run is incomplete:',
-        '✖ 1 tool error',
-        '  coverage (head): 1 test fails, so coverage, CRAP and mutation were skipped. Fix the tests and rerun:',
-        '    test/a.test.ts > adds: expected 1 to be 2',
-        HELP_LINE,
+        '✖ 1 test fails; coverage, CRAP and mutation were skipped. Fix the tests and rerun:',
+        '  test/a.test.ts > adds: expected 1 to be 2',
+        'No new enforceable violations in the checks that ran.',
         'Full diagnostics: reports/quality/diff/combined/report.txt',
         '',
       ].join('\n'),

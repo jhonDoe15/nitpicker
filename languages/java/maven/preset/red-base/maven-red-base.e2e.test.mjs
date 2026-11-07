@@ -140,7 +140,7 @@ describe.skipIf(process.env.NITPICKER_JAVA_E2E !== '1')(
 
     it('fails a head whose tests still fail', () => {
       expect(() => diffOf(root, 'still-red')).toThrow(
-        /^Tests fail in .*; nitpicker needs a passing test suite/u,
+        /^\d+ tests? fails?(?: in [^;]+)?; the build stopped, so no other check ran\./u,
       );
     });
   },

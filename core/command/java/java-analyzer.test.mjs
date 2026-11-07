@@ -55,6 +55,7 @@ describe('Kotlin analyzer', () => {
     expect(analyzer.name).toBe('kotlin');
     expect(analyzer.reportedTools).toEqual([
       ...JAVA_TOOLS,
+      'facts',
       'detekt',
       'ktlint',
       'ktfmt',

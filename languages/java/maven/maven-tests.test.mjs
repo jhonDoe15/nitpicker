@@ -20,8 +20,10 @@ import {
   pitTests,
   freshExecFiles,
   runJacocoReport,
+  runPit,
 } from './maven-tests.mjs';
 import { explainedError } from '../../../shared/messages/troubleshooting.mjs';
+import { readPitMutators } from '../builds/java-build.mjs';
 
 const roots = [];
 
@@ -177,16 +179,14 @@ describe('collectTestResults', () => {
     expect(existsSync(path.join(reportDir, 'archunit/TEST-shop.OrderTest.xml'))).toBe(false);
   });
 
-  it('fails with the first failing tests by name', () => {
+  it('fails naming every failing test', () => {
     const cases = Array.from({ length: 12 }, (_, index) => [
       `case${String(index)}`,
       `expected ${String(index)}`,
     ]);
     const reports = tree({ 'TEST-shop.OrderTest.xml': suite('shop.OrderTest', cases) });
 
-    const listed = cases
-      .slice(0, 10)
-      .map(([test, failure]) => `  shop.OrderTest.${test}: ${failure}`);
+    const listed = cases.map(([test, failure]) => `  shop.OrderTest.${test}: ${failure}`);
 
     expect(() => {
       collectTestResults({
@@ -198,9 +198,8 @@ describe('collectTestResults', () => {
     }).toThrow(
       explainedError(
         [
-          'Tests fail in /m; nitpicker needs a passing test suite for coverage and mutation testing:',
+          '12 tests fail; the build stopped, so no other check ran. Fix the tests and rerun:',
           ...listed,
-          '  and 2 more',
         ].join('\n'),
       ),
     );
@@ -222,7 +221,8 @@ describe('collectTestResults', () => {
     const failing = (...lines) =>
       explainedError(
         [
-          'Tests fail in /m; nitpicker needs a passing test suite for coverage and mutation testing:',
+          `${String(lines.length)} ${lines.length === 1 ? 'test fails' : 'tests fail'}; ` +
+            'the build stopped, so no other check ran. Fix the tests and rerun:',
           ...lines,
         ].join('\n'),
       );
@@ -269,7 +269,11 @@ describe('collectTestResults', () => {
       }),
     ).toEqual({
       testsRan: true,
-      failure: { module: 'core', tests: ['shop.OrderTest.totals: expected 3'] },
+      failure: {
+        module: 'core',
+        tests: ['shop.OrderTest.totals: expected 3'],
+        details: [{ name: 'shop.OrderTest.totals', message: 'expected 3' }],
+      },
     });
   });
 
@@ -357,5 +361,34 @@ describe('runJacocoReport', () => {
     expect(readFileSync(path.join(reportDir, 'jacoco.xml'), 'utf8')).toBe(
       '<?xml version="1.0"?><report name="shop:it"></report>',
     );
+  });
+});
+
+describe('runPit', () => {
+  it('passes the mutators listed in the Gradle init script', () => {
+    const root = tree({ 'classes/demo/A.class': '', 'test-classes/demo/ATest.class': '' });
+    const module = {
+      basedir: root,
+      outputDirectory: path.join(root, 'classes'),
+      testOutputDirectory: path.join(root, 'test-classes'),
+      sourceRoots: [],
+      testJvmArgs: [],
+    };
+    const calls = [];
+    const spawn = (command, [argumentFile]) => {
+      calls.push(readFileSync(argumentFile.slice(1), 'utf8').split('\n'));
+      return { status: 0, stdout: '', stderr: '' };
+    };
+    runPit({
+      module,
+      reportDir: root,
+      tools: { pit: [] },
+      classpaths: { testRuntime: [] },
+      isArchunit: () => false,
+      spawn,
+    });
+    const [tokens] = calls;
+
+    expect(tokens[tokens.indexOf('"--mutators"') + 1]).toBe(`"${readPitMutators().join(',')}"`);
   });
 });

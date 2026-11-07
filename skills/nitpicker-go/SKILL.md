@@ -11,6 +11,13 @@ backstop. It fails only on findings your change adds, so leave code the task doe
 If your change edits a function, type, file or package that existed before it, read
 [editing-existing-code.md](editing-existing-code.md) before you edit.
 
+## Check one file or folder
+
+To look at one file or folder, for example before you change it, pass its path: `npx nitpicker --all
+internal/orders` lists every finding in it, and `npx nitpicker internal/orders/order.go` gates only
+your change to that file. Paths are read from the current folder. The analysis still covers the
+whole project, so it takes as long as a full run; finish with the plain run below.
+
 ## Finish with the gate
 
 1. Run the project's tests: `go test ./...` (with the build tags the project's
@@ -27,9 +34,10 @@ If your change edits a function, type, file or package that existed before it, r
 4. Act on the exit code:
    - 0: done, unless you narrowed the run with `--analyzer`: then the summary says `Ran only: ...`
      and you run the gate again without it before you finish.
-   - 1: fix every new finding and any tool error listed below them, then rerun.
-   - 2: no new findings, but a tool failed. Fix the cause it names (usually a failing test, a module
-     that does not load, or Go missing from the `PATH`) and rerun. Exit 2 is never a pass. If it
+   - 1: fix the failing tests the summary leads with, every new finding and any tool error listed
+     below them, then rerun.
+   - 2: no new findings, but a tool failed. Fix the cause it names (usually a module that does not load,
+     or Go missing from the `PATH`) and rerun. Exit 2 is never a pass. If it
      says another run is in progress, wait for that run; never kill it.
      When the message links to [troubleshooting](https://github.com/jhonDoe15/nitpicker/blob/main/docs/troubleshooting.md), the fix is there.
 5. Never suppress: no `//nolint`, `//lint:ignore`, build tags that hide a file from the checks,

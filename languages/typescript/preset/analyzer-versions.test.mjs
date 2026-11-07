@@ -49,7 +49,7 @@ describe('ESLint analyzer versions', () => {
   });
 
   it('records the project, native and source-reading TypeScript versions for the type check', () => {
-    const resolve = fakeResolver({ typescript: '5.9.3', 'typescript-native': '7.0.2' });
+    const resolve = fakeResolver({ typescript: '5.9.3', '@typescript/native': '7.0.2' });
 
     expect(
       resolveAnalyzerVersion('typescript-typecheck', '/project', {
@@ -57,14 +57,14 @@ describe('ESLint analyzer versions', () => {
         bundled: false,
         installed: () => true,
       }),
-    ).toBe('5.9.3;typescript-native@7.0.2;5.9.3');
+    ).toBe('5.9.3;@typescript/native@7.0.2;5.9.3');
     expect(
       resolveAnalyzerVersion('typescript-typecheck', '/project', {
         resolve,
         bundled: false,
         installed: () => false,
       }),
-    ).toBe('none;typescript-native@7.0.2;5.9.3');
+    ).toBe('none;@typescript/native@7.0.2;5.9.3');
   });
 
   it('records the bundled TypeScript API when the installed typescript has none', () => {
@@ -79,7 +79,7 @@ describe('ESLint analyzer versions', () => {
         ...bundled,
         installed: () => true,
       }),
-    ).toBe('7.0.2;typescript-native@1.0.0;js-api-6.0.3');
+    ).toBe('7.0.2;@typescript/native@1.0.0;js-api-6.0.3');
     expect(resolveAnalyzerVersion('coupling', '/project', bundled)).toBe(
       '1.0.0;typescript@js-api-6.0.3',
     );
@@ -108,7 +108,7 @@ describe('ESLint analyzer versions', () => {
     ).toBe('jest@30.5.2');
     expect(
       testRunnerAnalyzerVersion('mutation', '/project', { resolve, configuredRunner: 'jest' }),
-    ).toBe('10.0.0;jest@30.5.2');
+    ).toBe('10.0.0;jest@30.5.2;@typescript/native@1.0.0');
     expect(
       testRunnerAnalyzerVersion('coverage', '/project', { resolve, configuredRunner: 'node' }),
     ).toBe(`node@${process.versions.node}`);

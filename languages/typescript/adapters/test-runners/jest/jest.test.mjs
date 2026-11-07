@@ -154,7 +154,7 @@ describe('coverage on a Jest project', () => {
 
     expect(rulesOf(findings)).toEqual(['tool-error:tests-failed']);
     expect(findings[0].message).toMatch(
-      /test\/pick\.test\.ts > says no: .*expect\(received\)\.toBe/u,
+      /test\/pick\.test\.ts:3 > says no: .*expect\(received\)\.toBe/u,
     );
   });
 

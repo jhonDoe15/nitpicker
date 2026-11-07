@@ -64,7 +64,7 @@ describe('test timeout text', () => {
     );
 
     expect(message).toBe(
-      '1 test fails, so coverage, CRAP and mutation were skipped. Fix the tests and rerun:\n  src/t.test.ts > times out: Test timed out after 305 ms. A fake clock that was never restored (`vi.useRealTimers()` in `afterEach`), a promise that never settles or a long wait is the usual cause.',
+      '1 test fails; coverage, CRAP and mutation were skipped. Fix the tests and rerun:\n  src/t.test.ts > times out: Test timed out after 305 ms. A fake clock that was never restored (`vi.useRealTimers()` in `afterEach`), a promise that never settles or a long wait is the usual cause.',
     );
   });
 });
@@ -102,7 +102,7 @@ describe('snapshot failures', () => {
     );
 
     expect(message).toBe(
-      '1 test fails, so coverage, CRAP and mutation were skipped. Fix the tests and rerun:\n  test/a.test.ts > snap: Error: Snapshot `snap 1` mismatched. A new snapshot must be committed: run `vitest -u` locally and commit the .snap file.',
+      '1 test fails; coverage, CRAP and mutation were skipped. Fix the tests and rerun:\n  test/a.test.ts > snap: Error: Snapshot `snap 1` mismatched. A new snapshot must be committed: run `vitest -u` locally and commit the .snap file.',
     );
   });
 });
@@ -207,7 +207,7 @@ describe('failures of a base snapshot', () => {
     const [finding] = findingsOf({ report: failedReport, snapshot: 'head', runnerName: 'Jest' });
 
     expect(finding.message.split('\n')[0]).toBe(
-      '2 tests fail, so coverage, CRAP and mutation were skipped. Fix the tests and rerun:',
+      '2 tests fail; coverage, CRAP and mutation were skipped. Fix the tests and rerun:',
     );
   });
 
@@ -229,7 +229,7 @@ describe('failures of a base snapshot', () => {
     expect([finding.rule, finding.message]).toEqual([
       'tests-not-run',
       [
-        '1 test fails, so coverage, CRAP and mutation were skipped. Fix the tests and rerun:',
+        '1 test fails; coverage, CRAP and mutation were skipped. Fix the tests and rerun:',
         '  src/a.test.ts > could not run: Cannot find module',
         linkSentence('baseTestsFail'),
       ].join('\n'),

@@ -104,10 +104,10 @@ describe.skipIf(!enabled)('TypeScript preset on a base whose tests fail', () => 
     ]);
   });
 
-  it('still fails when the head fails its tests too', () => {
+  it('still fails when the head fails its tests too, with exit 1', () => {
     const result = project.gate('still-red', { base: 'red-base' });
 
-    expect(result.exitCode, result.text).toBe(2);
+    expect(result.exitCode, result.text).toBe(1);
     expect(result.json('tool-errors.json')).toEqual([
       {
         tool: 'coverage',

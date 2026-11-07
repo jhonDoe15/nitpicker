@@ -4,9 +4,14 @@ import { fileURLToPath } from 'node:url';
 import { environmentError } from './python-environment.mjs';
 import { TROUBLESHOOTING_ANCHORS } from '../../../../shared/messages/troubleshooting.mjs';
 import { probe, probeVersion, VERSION_PATTERN } from './python-process.mjs';
-import { readOptional, readProjectHints } from './python-project.mjs';
+import {
+  readOptional,
+  readProjectHints,
+  ROOT_TEST_DIRECTORIES,
+  TOP_LEVEL_TEST_DIRECTORIES,
+} from './python-project.mjs';
 import { DJANGO_SCRIPT, readDjangoScript } from './python-django.mjs';
-import { TEST_DIRECTORIES, TEST_FILE_NAME } from './python-test-files.mjs';
+import { TEST_FILE_NAME } from './python-test-files.mjs';
 import { JUNIT_REPORT } from '../test-runs/junit-results.mjs';
 import { pinnedEnvironmentAddopts, pinnedPytestArguments } from '../test-runs/pytest-pins.mjs';
 
@@ -35,7 +40,9 @@ const NOSE2_DEPENDENCY = /(?:^|[\s"'=])nose2(?![\w.-])/m;
 const NOSE2_SECTION = '[unittest]';
 
 function existingTestFiles(projectRoot) {
-  const directories = TEST_DIRECTORIES.filter((name) => existsSync(path.join(projectRoot, name)));
+  const directories = ROOT_TEST_DIRECTORIES.filter((name) =>
+    existsSync(path.join(projectRoot, name)),
+  );
   return [
     ...readdirSync(projectRoot).filter((name) => TEST_FILE_NAME.test(name)),
     ...directories.flatMap((directory) =>
@@ -47,7 +54,7 @@ function existingTestFiles(projectRoot) {
 }
 
 function hasPytestFile(projectRoot) {
-  const conftests = ['', ...TEST_DIRECTORIES].map((directory) =>
+  const conftests = ['', ...ROOT_TEST_DIRECTORIES].map((directory) =>
     path.join(projectRoot, directory, 'conftest.py'),
   );
   return (
@@ -195,11 +202,28 @@ export function testEnvironment(context) {
     : {};
 }
 
+const UNITTEST_FILE = /^test.*\.py$/u;
+
+function holdsUnittestFiles(directory) {
+  return readdirSync(directory, { recursive: true }).some((file) =>
+    UNITTEST_FILE.test(path.basename(String(file))),
+  );
+}
+
+function startDirectory(projectRoot, name) {
+  const directory = path.resolve(projectRoot, name);
+  if (!directory.startsWith(`${projectRoot}${path.sep}`)) {
+    return false;
+  }
+  return (
+    existsSync(directory) &&
+    (!TOP_LEVEL_TEST_DIRECTORIES.includes(name) || holdsUnittestFiles(directory))
+  );
+}
+
 function unittestCommand(context) {
   const timed = [UNITTEST_SCRIPT, path.join(context.reportRoot, JUNIT_REPORT), 'discover'];
-  const directory = TEST_DIRECTORIES.find((name) =>
-    existsSync(path.join(context.projectRoot, name)),
-  );
+  const directory = ROOT_TEST_DIRECTORIES.find((name) => startDirectory(context.projectRoot, name));
   if (directory === undefined) {
     return timed;
   }
