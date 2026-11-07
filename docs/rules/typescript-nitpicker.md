@@ -1,6 +1,6 @@
 # TypeScript and JavaScript: nitpicker ESLint rules
 
-The ESLint rules nitpicker's own plugin adds to the TypeScript and JavaScript presets (`nitpicker/*`). This page lists 97 rules. [All pages](README.md).
+The ESLint rules nitpicker's own plugin adds to the TypeScript and JavaScript presets (`nitpicker/*`). This page lists 98 rules. [All pages](README.md).
 
 The guide for these rules: [docs/typescript-strict-preset.md](../typescript-strict-preset.md).
 
@@ -385,6 +385,27 @@ Prefer vi.waitFor / expect.poll over setInterval polling in tests.
 - **Exception:** If this is intended, add `{"rule":"nitpicker/no-interval-polling-in-tests","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 - **Allowed forms by message:**
   - Prefer vi.waitFor / expect.poll over setInterval polling in tests.
+
+<a id="eslint-nitpicker-no-local-time-zone"></a>
+
+### `eslint/nitpicker/no-local-time-zone`
+
+Disallow dates computed or formatted in the server's local time zone.
+
+- **Printed as:** `eslint-lint/nitpicker/no-local-time-zone`
+- **Exception:** If this is intended, add `{"rule":"nitpicker/no-local-time-zone","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
+- **Allowed forms by message:**
+  - `{{ name }}()` uses the server's local time zone, so the result changes with the server's `TZ`. Use `{{ utc }}()`, or compute in an explicit zone (luxon `DateTime.fromJSDate(date, { zone })`).
+  - `{{ name }}()` is the offset of the server's local time zone, so the result changes with the server's `TZ`. Take the offset of an explicit zone (luxon `DateTime.now().setZone(zone).offset`).
+  - `{{ name }}()` prints the date in the server's local time zone, so the result changes with the server's `TZ`. Use `toISOString()`, or `Intl.DateTimeFormat` with a `timeZone`.
+  - `{{ name }}` without a `timeZone` option formats in the server's local time zone, so the result changes with the server's `TZ`. Pass the zone: `date.{{ name }}('en-US', { timeZone: 'UTC' })`, or the user's zone.
+  - `Intl.DateTimeFormat` without a `timeZone` option formats in the server's local time zone, so the result changes with the server's `TZ`. Pass the zone: `new Intl.DateTimeFormat('en-US', { timeZone: 'UTC' })`, or the user's zone.
+  - `Intl.DateTimeFormat().resolvedOptions().timeZone` is the server's own zone, so the result changes with the server's `TZ`. Use a configured zone name or `'UTC'`.
+  - `new Date(year, month, ...)` builds the date in the server's local time zone, so the result changes with the server's `TZ`. Use `new Date(Date.UTC(year, month, ...))`.
+  - This date-time text has no offset, so it is read in the server's local time zone and the result changes with the server's `TZ`. Add `Z` or an offset (`'2024-01-01T10:00:00Z'`), or parse it in an explicit zone (luxon `DateTime.fromISO(text, { zone })`).
+  - luxon `{{ name }}` without a `zone` option uses the server's local time zone, so the result changes with the server's `TZ`. Pass `{ zone: 'utc' }` (or the user's zone), chain `.setZone(zone)`, or use `DateTime.utc()`.
+  - date-fns `{{ name }}` works in the server's local time zone, so the result changes with the server's `TZ`. Pass the zone with `{ in: tz('UTC') }` from `@date-fns/tz`, or use `formatInTimeZone` from `date-fns-tz`.
+  - `{{ name }}` builds a date in the server's local time zone, so the result changes with the server's `TZ`. Chain `.utc()` or `.tz(zone)` before calendar methods like `format`, `startOf` or `add`, or start from `.utc(...)`.
 
 <a id="eslint-nitpicker-no-magic-numbers"></a>
 
