@@ -664,6 +664,7 @@ are listed at the end.
 | Concurrent remote calls  | `asyncio.Semaphore` acquired in the task, or chunks of fixed size, or one batch call                                                                                                 | `unbounded-fan-out` (script)                                                                                                                                                                                                               |
 | Task lifetimes           | open the resource around the whole task group, or inside the child; await the task first                                                                                             | `task-outlives-resource` (script)                                                                                                                                                                                                          |
 | Trio/AnyIO cleanup       | `with trio.CancelScope(deadline=trio.current_time() + 5, shield=True): await resource.aclose()`                                                                                      | `unshielded-cleanup-await` (script)                                                                                                                                                                                                        |
+| Files and connections    | `with open(path) as handle:`, `Path(path).read_text()`, `contextlib.closing(...)`                                                                                                    | `unclosed-inline-resource` (script), `SIM115`                                                                                                                                                                                              |
 | Task markers             | `# TODO(#123): ...` with an issue                                                                                                                                                    | `todo-without-issue` (script)                                                                                                                                                                                                              |
 | Commented-out code       | delete it                                                                                                                                                                            | ruff `ERA001`                                                                                                                                                                                                                              |
 | Security sinks           | parameterized queries, `sha256`, verified TLS, a timeout, `yaml.safe_load`, `defusedxml`                                                                                             | ruff `S` (see below)                                                                                                                                                                                                                       |
@@ -1132,6 +1133,27 @@ self.items.append(item)`), also through a package `__init__` that re-exports it 
   no flake8-async code is used. The identity is the resource name, the method and the enclosing
   function. Ruff's `RUF006` reports the discarded `asyncio.create_task(...)` statement for its own
   reason (the task can be garbage collected) and keeps its own finding.
+- `unclosed-inline-resource` covers what ruff's `SIM115` leaves out: a file, URL, archive, socket
+  or database handle opened and used in the same expression, with no `with` (the receiver of a
+  call, an argument or a `for` source). Checked in ruff 0.16.9, `SIM115` reports `open`, `io.open`,
+  `codecs.open`, `gzip.open`, `bz2.open`, `lzma.open`, `tarfile.open`, `shelve.open`, `dbm.open`,
+  `tempfile.TemporaryFile`, `tempfile.NamedTemporaryFile` and `Path(...).open()` outside `with`,
+  also inline (`json.load(open(path))`), but not in a `return` statement
+  (`return open(path).read()`), and never `urlopen()` or `.open()` on a path held in a name. So the
+  script reports those openers only in a `return`, and these everywhere: `zipfile.ZipFile`,
+  `tarfile.TarFile`, `os.fdopen`, `socket.create_connection`, `sqlite3.connect`,
+  `urllib.request.urlopen` (not over `io.BytesIO`, `io.StringIO` or `":memory:"`), and `.open()` on
+  `Path.home()`, `Path.cwd()`, a `path / "name"` or a name annotated or assigned as a `Path` in the
+  same function. An argument counts only when the call reads the handle and keeps nothing (`load`,
+  `safe_load`, `full_load`, `copyfileobj`, `read_file`, `file_digest`, `parse`, `iterparse`), since
+  a response, a wrapper class or a collection that takes the handle owns it
+  (`StreamingResponse(open(path, "rb"))`). Wrapping in `io.TextIOWrapper` or `gzip.GzipFile` moves
+  the check to the wrapper; `contextlib.closing`, `ExitStack.enter_context`, `.close()`, a `return`
+  of the handle itself and an assignment pass. `os.scandir` is left out: its iterator closes itself
+  when a loop runs it to the end. CPython closes the handle when the last reference goes, so
+  the leak is the PyPy one and the exception one (a traceback keeps the frame and the handle), plus
+  a `ResourceWarning` when warnings are on (`-X dev`, pytest). `with sqlite3.connect(path)` only
+  commits, so its message names `contextlib.closing(sqlite3.connect(path))`. Not in tests.
 - `unshielded-cleanup-await` follows the documented flake8-async ASYNC102 behavior for Trio and
   AnyIO, which cancel again at every checkpoint of a cancelled scope: an `await`, `async with`,
   `async for` or async comprehension inside `finally:` or inside a handler for `trio.Cancelled` or

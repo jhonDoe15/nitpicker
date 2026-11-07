@@ -51,6 +51,15 @@ Database calls per element are left to the per-item I/O rules, which also keep a
 awaited per-item remote call; a call the fan-out rule reports is not reported twice. A worker pool
 started once per slot of a count is bounded, while a count read from a collection's size is not.
 
+Unbounded thread pools: `pmd/UnboundedThreadPool` in the Java and Kotlin presets reports
+`Executors.newCachedThreadPool()` and a `ThreadPoolExecutor` without a maximum size in main
+sources. In a Spring project, `pmd/SpringUnreleasedResource` reports a bean field that holds an
+executor, event loop, client or other resource the bean built and never releases at shutdown, and
+`pmd/SpringStartupCleanup` reports a startup call that can fail after the bean started threads,
+outside a `try` that releases them. The TypeScript, JavaScript and Python presets have no
+counterpart yet; their thread and timer model differs and the NestJS provider case is tracked
+separately.
+
 Child process deadlines: `nitpicker/require-process-timeout` (production source, in `eslint-lint`)
 reports production code that waits for a child process to exit without a deadline: a synchronous
 `child_process` or `execa` call without a positive `timeout`, and `exec`, `execFile`, an awaited
