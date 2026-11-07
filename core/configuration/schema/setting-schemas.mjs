@@ -19,7 +19,7 @@ function optionText(definition, option) {
 function choiceSchema(definition) {
   if (definition.kind === 'names') {
     return {
-      description: `${definition.label}: the names of the helper functions that count as assertions.`,
+      description: `${definition.label}: ${definition.namesMeaning ?? 'the names of the helper functions that count as assertions'}.`,
       type: 'array',
       items: { type: 'string', pattern: FUNCTION_NAME.source },
     };
