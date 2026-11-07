@@ -1,6 +1,7 @@
 import { exceptionRoute } from '../../../../../shared/exceptions/rule-names.mjs';
 import { exceptionMatcher } from '../../../../../shared/rules/exceptions.mjs';
 import { inModule } from '../../../builds/module-path.mjs';
+import { definedField } from '../../../../../shared/messages/messages.mjs';
 import { createIdentityCounter } from '../../../../../shared/ingest/common.mjs';
 import {
   appendSentence,
@@ -19,7 +20,7 @@ function withRoute({ tool, rule, file, message }) {
 
 export function findingFactory() {
   const next = createIdentityCounter();
-  return ({ tool = REVIEW_TOOL, rule, file, line, symbol, key, message }) => ({
+  return ({ tool = REVIEW_TOOL, rule, file, line, symbol, key, message, allowedForm }) => ({
     tool,
     rule,
     path: file,
@@ -27,6 +28,7 @@ export function findingFactory() {
     symbol,
     location: { line },
     message: withRoute({ tool, rule, file, message }),
+    ...definedField('allowedForm', allowedForm),
     classification: 'enforceable',
   });
 }
