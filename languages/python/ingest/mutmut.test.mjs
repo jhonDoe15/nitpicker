@@ -1,6 +1,7 @@
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
+import { hash } from '../../../shared/rules/finding-helpers.mjs';
 import { functionBlocks, ingestMutmut, statusOfExitCode } from './mutmut.mjs';
 
 const recorded = JSON.parse(
@@ -51,8 +52,11 @@ describe('mutmut run data ingester', () => {
       identity: 'total|0→1#1',
       message:
         'Survived number: replacing `0` with `1` fails no test. Add an assertion that would. If no input can tell the two apart, simplify the code so this mutant disappears.',
+      allowedForm:
+        'Add an assertion that would. If no input can tell the two apart, simplify the code so this mutant disappears.',
       classification: 'enforceable',
       symbol: 'total',
+      anchor: { key: expect.stringMatching(/^mutant:0→1\|/u), requireUnchangedLine: true },
       location: { line: 6 },
     });
   });
@@ -71,8 +75,10 @@ describe('mutmut run data ingester', () => {
       path: 'src/shop/pricing.py',
       identity: 'fetch|1→2#1',
       message: 'NoCoverage number: no test runs this code. Add a test that reaches it.',
+      allowedForm: 'Add a test that reaches it.',
       classification: 'enforceable',
       symbol: 'fetch',
+      anchor: { key: expect.stringMatching(/^mutant:1→2\|/u), requireUnchangedLine: true },
       location: { line: 39 },
     });
   });
@@ -184,6 +190,7 @@ describe('mutmut run data ingester', () => {
         message: 'Timeout operator',
         classification: 'descriptive',
         symbol: 'f',
+        anchor: { key: `mutant:+→-|${hash('return a + b')}`, requireUnchangedLine: true },
         location: { line: 2 },
       },
       {
@@ -194,6 +201,7 @@ describe('mutmut run data ingester', () => {
         message: 'CompileError operator',
         classification: 'descriptive',
         symbol: 'f',
+        anchor: { key: `mutant:+→*|${hash('return a + b')}`, requireUnchangedLine: true },
         location: { line: 2 },
       },
     ]);
@@ -210,6 +218,8 @@ describe('mutmut run data ingester', () => {
         identity: 'f|?→?#1',
         message:
           'Survived mutation: no test fails when this code changes. Add an assertion that would. If no input can tell the two apart, simplify the code so this mutant disappears.',
+        allowedForm:
+          'Add an assertion that would. If no input can tell the two apart, simplify the code so this mutant disappears.',
         classification: 'enforceable',
         symbol: 'f',
       },

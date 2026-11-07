@@ -113,8 +113,8 @@ describe('nitpicker CLI', () => {
     expect(output.stdoutText).toEqual(`
 Quality gate summary
 ✖ 1 new enforceable violation
-  second/example src/main/example.ts
-    example finding
+  second/example: example finding
+    src/main/example.ts
 Full diagnostics: ${root}/combined/report.txt
 `);
     expect(output.stderrText).toBe('');
@@ -258,7 +258,7 @@ describe('nitpicker config file', () => {
       'Policy changed in this change (nitpicker.config.json, head against base; ' +
       'loosening accepted by exact digest):';
     const analyzers = [fakeAnalyzer(), fakeAnalyzer('second-analyzer')];
-    const plain = runWithConfig(undefined, { analyzers });
+    const plain = runWithConfig({}, { analyzers });
     const disabled = runWithConfig(
       { disable: ['second-analyzer'] },
       {
@@ -409,8 +409,8 @@ fake-quality-analyzer: base=0 head=0 new=0 resolved=0 unchanged=0 changed-metric
 
 \u001b[1m\u001b[31mQuality gate summary\u001b[0m
 \u001b[1m\u001b[31m✖ 1 new enforceable violation\u001b[0m
-  \u001b[33mcustom/text-file\u001b[0m src/main/new.txt
-    Text file new.txt
+  \u001b[33mcustom/text-file\u001b[0m: Text file new.txt
+    src/main/new.txt
 \u001b[1m\u001b[33mPolicy changed in this change (nitpicker.config.json, head against base):\u001b[0m
   analyzer added: custom
 \u001b[2mFull diagnostics: ${outputRoot}/report.txt\u001b[0m

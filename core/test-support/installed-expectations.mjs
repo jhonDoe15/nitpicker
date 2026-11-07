@@ -1,7 +1,7 @@
 import { runCli } from '../cli.mjs';
 import { PACKAGE_ROOT } from '../tooling/tool-resolution.mjs';
 import { captureOutput } from '../diff/reporting/test-support/output-capture.mjs';
-import { docsRef } from '../../shared/messages/docs-url.mjs';
+import { docsRef, LATEST_RELEASE_TAG } from '../../shared/messages/docs-url.mjs';
 import { indexEntries, readReferenceEntries, referenceUrl } from '../../shared/reference/store.mjs';
 
 /** The links of an installed copy of the package with `manifest`: they point at its release tag. */
@@ -36,11 +36,14 @@ export function expectedDirtyFindings(links) {
       symbol: 'example',
       location: { line: 2, column: 3 },
       helpUri: installedHelpUri(links, 'eslint-lint/no-debugger'),
+      anchor: { key: 'count:`debugger` statement is not allowed:text:3d3cda36d748dcd4e7c34fd3' },
       ratchet: {
         key: 'count:`debugger` statement is not allowed',
         value: 1,
         existingCodeOnly: true,
       },
+      exception: { rule: 'no-debugger', paths: ['src/main/example.ts'], reason: '...' },
+      exceptionList: 'exceptions',
     },
     {
       tool: 'prettier-format',
@@ -74,6 +77,7 @@ export function expectedSnapshotOutput(links) {
     'Enforceable findings: 2',
     'Descriptive findings: 0',
     'Tool errors: 0',
+    'Ran only: prettier-format. Run nitpicker without --analyzer before you finish.',
     '',
     'Per-tool counts:',
     'prettier-format: total=2 enforceable=2 descriptive=0',
@@ -94,10 +98,11 @@ export function expectedDirtyOutput(root) {
 
 Quality gate summary
 ✖ 3 new enforceable violations
-  eslint-lint/no-debugger src/main/example.ts:2
-    ${DEBUGGER_MESSAGE}
-  prettier-format/prettier/prettier src/main/example.ts (2 times, lines 1, 3)
-    Format these lines with Prettier
+  by area: format 2 · lint 1
+  prettier-format/prettier/prettier: Format these lines with Prettier
+    src/main/example.ts:1, 3
+  eslint-lint/no-debugger: ${DEBUGGER_MESSAGE.replace(' If', '\n    src/main/example.ts:2:3\n    If')}
+Ran only: eslint-lint, prettier-format. Run nitpicker without --analyzer before you finish.
 Full diagnostics: ${root}/reports/dirty/report.txt
 nitpicker: base 2 analyzers cached (${root}/node_modules/.cache/nitpicker; use --no-cache to rerun)
 nitpicker: head: running 2 analyzers
@@ -114,8 +119,7 @@ export function checkoutOutput(links, args) {
     stdout: output.stdout,
     stderr: output.stderr,
   });
-  return `${output.stdoutText}${output.stderrText}`.replaceAll(
-    `${links.repositoryUrl}/blob/main/`,
-    `${links.tagRoot}/`,
-  );
+  return `${output.stdoutText}${output.stderrText}`
+    .replaceAll(`${links.repositoryUrl}/blob/main/`, `${links.tagRoot}/`)
+    .replaceAll(`${links.repositoryUrl}/blob/${LATEST_RELEASE_TAG}/`, `${links.tagRoot}/`);
 }

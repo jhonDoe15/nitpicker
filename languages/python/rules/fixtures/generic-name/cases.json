@@ -1,0 +1,7 @@
+[
+  {
+    "tool": "python-rules",
+    "rule": "generic-name",
+    "mention": "name it for its job"
+  }
+]

@@ -2,6 +2,7 @@ import { readFileSync, rmSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest';
 import { createGitTemplate } from '../../../../core/diff/git/test-support/git-repository.mjs';
+import { findingsSchemaErrors } from '../../../../core/diff/comparison/test-support/findings-schema-check.mjs';
 import { docsUrl } from '../../../../shared/messages/docs-url.mjs';
 import {
   createCleanProject,
@@ -25,13 +26,15 @@ const unknownFolder = (file, line) =>
   routed('nitpicker/no-unknown-main-folder', `src/main/${file}`);
 const unusedFile = (file) =>
   `dead-code/files src/main/${file} Unused file: src/main/${file}. ` +
-  `Nothing imports it: delete it, or import it where it is needed. ${routed('files', `src/main/${file}`)}`;
+  `Nothing imports it. Delete it, or import it where it is needed. ${routed('files', `src/main/${file}`)}`;
 const PLANTED_OUTPUT = [
   'Nitpicker quality snapshot',
   'Status: violations',
   'Enforceable findings: 31',
   'Descriptive findings: 2',
   'Tool errors: 0',
+  'Ran only: eslint-lint, entry-points, prettier-format, typescript-typecheck, duplicates, dead-code. ' +
+    'Run nitpicker without --analyzer before you finish.',
   '',
   'Per-tool counts:',
   'eslint-lint: total=14 enforceable=14 descriptive=0',
@@ -74,9 +77,9 @@ const PLANTED_OUTPUT = [
   'prettier-format/prettier/prettier src/main/format/unformatted.ts:1 Format these lines with Prettier',
   "typescript-typecheck/TS2345 src/main/features/greeting/domain/typed.js:9 Argument of type 'number' is not assignable to parameter of type 'string'.",
   '',
-  'Descriptive findings:',
-  'duplicates/duplicate-clone-size src/main/dup/a.js:5 Duplicate with src/main/dup/b.js',
-  'duplicates/duplicate-clone-size src/main/dup/a.js:5 Duplicate with src/main/dup/b.js',
+  'Design notes for review (not failing): 2 in the snapshot',
+  '  duplicates/duplicate-clone-size src/main/dup/a.js:5 Duplicate with src/main/dup/b.js (lines 12)',
+  '  duplicates/duplicate-clone-size src/main/dup/a.js:5 Duplicate with src/main/dup/b.js (tokens 126)',
   '',
   `Rule reference: ${docsUrl('docs/rules/README.md')} (nitpicker explain <tool/rule> prints one rule)`,
   '',
@@ -87,13 +90,14 @@ const FAILING_COVERAGE_OUTPUT = [
   'Enforceable findings: 0',
   'Descriptive findings: 0',
   'Tool errors: 1',
+  'Ran only: coverage. Run nitpicker without --analyzer before you finish.',
   '',
   'Per-tool counts:',
   'coverage: total=0 enforceable=0 descriptive=0',
   '',
   'Tool errors:',
-  'coverage (head): 1 test fails, so coverage, CRAP and mutation were skipped. Fix the tests and rerun:',
-  "  test/failing.test.js > fails on purpose: AssertionError: expected 'greeted' to be 'empty-name' // Object.is equality",
+  'coverage (head): 1 test fails; coverage, CRAP and mutation were skipped. Fix the tests and rerun:',
+  "  test/failing.test.js:5 > fails on purpose: AssertionError: expected 'greeted' to be 'empty-name' // Object.is equality",
   '',
 ].join('\n');
 
@@ -208,6 +212,7 @@ describe('the js-clean fixture project', () => {
       expect(stderrText).toBe('');
       expect(findings.filter(({ classification }) => classification === 'enforceable')).toEqual([]);
       expect(toolErrors).toEqual([]);
+      expect(findingsSchemaErrors(findings)).toEqual([]);
       expect(summary.overallStatus).toBe('clean');
       expect(summary.tools.length).toBeGreaterThan(10);
       expect(
@@ -223,7 +228,7 @@ describe('the js-clean fixture project', () => {
     it('each report a problem planted in .js and .cjs files', () => {
       const root = createProject(plantedProblems);
 
-      const { exitCode, stdoutText, summary } = runSnapshot(root, [
+      const { exitCode, stdoutText, summary, findings } = runSnapshot(root, [
         '--analyzer',
         'typescript-typecheck',
         '--analyzer',
@@ -247,6 +252,7 @@ describe('the js-clean fixture project', () => {
         'typescript-typecheck',
       ]);
       expect(stdoutText).toBe(PLANTED_OUTPUT);
+      expect(findingsSchemaErrors(findings)).toEqual([]);
       expect(exitCode).toBe(1);
     });
 
@@ -289,7 +295,7 @@ it('fails on purpose', () => {
       const { exitCode, stdoutText } = runSnapshot(root, ['--analyzer', 'coverage']);
 
       expect(stdoutText).toBe(FAILING_COVERAGE_OUTPUT);
-      expect(exitCode).toBe(2);
+      expect(exitCode).toBe(1);
     });
 
     it(
@@ -321,6 +327,7 @@ it('fails on purpose', () => {
             '',
             'Quality gate summary',
             '✓ No new enforceable violations',
+            'Ran only: eslint-lint, prettier-format. Run nitpicker without --analyzer before you finish.',
             `Full diagnostics: ${root}/reports/fix/report.txt`,
             '',
           ].join('\n'),
@@ -393,8 +400,10 @@ it('fails on purpose', () => {
           '',
           'Quality gate summary',
           '✖ 1 new enforceable violation',
-          '  eslint-lint/nitpicker/no-null src/main/legacy.js:2',
-          '    Use `undefined` for an absent value, and an optional field or parameter (`value?: T`) where it may be missing. `null` is only for strict comparison with a library value and the `JSON.stringify` replacer argument. An exception fits only when a framework or library requires it. If this is intended, add {"rule":"nitpicker/no-null","paths":["src/main/legacy.js"],"reason":"..."} to "exceptions" in nitpicker.config.json.',
+          '  eslint-lint/nitpicker/no-null: Use `undefined` for an absent value, and an optional field or parameter (`value?: T`) where it may be missing. `null` is only for strict comparison with a library value and the `JSON.stringify` replacer argument. An exception fits only when a framework or library requires it.',
+          '    src/main/legacy.js:2:24',
+          '    If this is intended, add {"rule":"nitpicker/no-null","paths":["src/main/legacy.js"],"reason":"..."} to "exceptions" in nitpicker.config.json.',
+          'Ran only: eslint-lint. Run nitpicker without --analyzer before you finish.',
           `Full diagnostics: ${sharedRoot}/reports/diff/report.txt`,
           '',
         ].join('\n'),

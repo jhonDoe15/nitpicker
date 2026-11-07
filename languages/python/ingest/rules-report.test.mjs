@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { ingestRulesReport } from './rules-report.mjs';
 import { FAN_OUT_SEPARATOR } from '../rules/hints/ast-smells.mjs';
+import { applyRuleHints } from '../rules/rule-hints.mjs';
 
 const entry = (overrides) => ({
   rule: 'frozen-dataclass',
@@ -141,12 +142,15 @@ describe('rules script report', () => {
       'isinstance(data)',
       '`isinstance(data)` checks untrusted data by hand',
     ],
+    ['type-cast', 'cast(str)', '`cast(str)` asserts a type without checking the value'],
+    ['type-cast', 'cast(str) in convert', '`cast(str)` asserts a type without checking the value'],
+    ['explicit-any', 'convert(value)', '`convert(value)` is typed with an explicit `Any`'],
     ['any-in-domain', 'total', '`total` uses `Any` in domain code'],
     ['pydantic-any-field', 'Payload.body', 'The pydantic field `Payload.body` is typed `Any`'],
     ['pydantic-extra-allow', 'Payload', 'The pydantic model `Payload` accepts unknown fields'],
     ['repeated-string-literal', 'pending', 'The string "pending" is repeated three times or more'],
     ['generic-name', 'utils', '`utils` has a generic name'],
-    ['hardcoded-secret', 'API_TOKEN', '`API_TOKEN` holds a hardcoded secret'],
+    ['hardcoded-secret', 'API_TOKEN', 'The value of `API_TOKEN` is a hardcoded secret'],
     ['credential-shape', 'credential', 'A string has the shape of a credential'],
     ['secret-in-log', 'token', '`token` is a secret and is passed to a log call'],
     ['io-in-loop', 'requests.get()', '`requests.get()` runs once per item of a loop'],
@@ -200,6 +204,11 @@ describe('rules script report', () => {
       'http-without-timeout',
       'urllib.request.urlopen',
       '`urllib.request.urlopen` can wait forever: it has no timeout',
+    ],
+    [
+      'subprocess-without-timeout',
+      'subprocess.run',
+      '`subprocess.run` waits for a child process without a deadline, so a command that never exits hangs this code for good',
     ],
     [
       'unsafe-deserialization',
@@ -302,5 +311,69 @@ describe('rules script report', () => {
 
   it('reads an empty report', () => {
     expect(ingestRulesReport('[]')).toEqual([]);
+  });
+
+  it('turns a check skipped for a too deep expression into a descriptive note', () => {
+    const report = [
+      entry({ rule: 'rules-too-deep', path: 'src/sums.py', subject: 'file', line: 1 }),
+      entry({ rule: 'rules-too-deep', path: '.', subject: 'unused-option', line: 1 }),
+      entry({ rule: 'rules-too-deep', path: 'src/deep.py', subject: 'all', line: 1 }),
+    ];
+
+    expect(ingestRulesReport(JSON.stringify(report))).toEqual([
+      {
+        tool: 'python-rules',
+        rule: 'rules-too-deep',
+        path: 'src/sums.py',
+        identity: 'file',
+        subject: 'file',
+        message:
+          "python-rules skipped some of the per-file checks here: an expression nests too deeply for Python's recursion limit. Split the expression to have it checked.",
+        classification: 'descriptive',
+        location: { line: 1 },
+      },
+      {
+        tool: 'python-rules',
+        rule: 'rules-too-deep',
+        path: '.',
+        identity: 'unused-option',
+        subject: 'unused-option',
+        message:
+          "python-rules skipped the unused-option checks here: an expression nests too deeply for Python's recursion limit. Split the expression to have it checked.",
+        classification: 'descriptive',
+        location: { line: 1 },
+      },
+      {
+        tool: 'python-rules',
+        rule: 'rules-too-deep',
+        path: 'src/deep.py',
+        identity: 'all',
+        subject: 'all',
+        message:
+          "python-rules skipped every check here: an expression nests too deeply for Python's recursion limit. Split the expression to have it checked.",
+        classification: 'descriptive',
+        location: { line: 1 },
+      },
+    ]);
+  });
+
+  it('names an unused parameter with a default, and which calls count', () => {
+    const report = [
+      entry({ rule: 'unused-option', subject: 'total.rate', data: { scope: 'private' } }),
+      entry({ rule: 'unused-option', subject: 'total.cents', data: { scope: 'published' } }),
+    ];
+
+    expect(ingestRulesReport(JSON.stringify(report)).map(({ message }) => message)).toEqual([
+      'Option total.rate is never set. Remove it, or set it from a real call (tests do not count).',
+      "Option total.cents is never set. Remove it, or set it from a real call (this package's own tests count).",
+    ]);
+    expect(
+      applyRuleHints(ingestRulesReport(JSON.stringify(report))).map(
+        ({ allowedForm }) => allowedForm,
+      ),
+    ).toEqual([
+      'Remove it, or set it from a real call (tests do not count).',
+      "Remove it, or set it from a real call (this package's own tests count).",
+    ]);
   });
 });

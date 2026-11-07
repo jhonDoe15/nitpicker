@@ -25,6 +25,7 @@ import {
 
 const packageRoot = path.resolve(import.meta.dirname, '../../../..');
 const POLICY_PATHS = [
+  'core/tooling/child-output.mjs',
   'core/tooling/host-environment.mjs',
   'core/tooling/policy-links.mjs',
   'core/tooling/temporary-files.mjs',
@@ -44,6 +45,7 @@ const POLICY_PATHS = [
   'languages/typescript/preset/layout/generated-files.mjs',
   'languages/typescript/preset/layout/path-patterns.mjs',
   'languages/typescript/preset/head-policy.mjs',
+  'languages/typescript/preset/project-configs',
   'languages/typescript/preset/project-tools',
   'languages/typescript/preset/libraries',
   'languages/typescript/preset/tool-configs.mjs',
@@ -57,6 +59,7 @@ const POLICY_PATHS = [
   'languages/typescript/preset/eslint-config',
   'languages/typescript/preset/eslint-project',
   'languages/typescript/preset/eslint-plugin/index.mjs',
+  'languages/typescript/preset/eslint-plugin/rules.generated.mjs',
   'languages/typescript/preset/eslint-plugin/rules',
   'languages/typescript/preset/eslint-plugin/test-assertions',
   'languages/typescript/preset/eslint-plugin/test-isolation',
@@ -71,6 +74,7 @@ const POLICY_PATHS = [
   'languages/typescript/preset/syntax',
   'languages/typescript/preset/modules',
   'languages/typescript/preset/test-environment',
+  'languages/typescript/preset/test-runner',
   'languages/typescript/typescript-api',
   'shared',
 ];

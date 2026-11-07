@@ -51,7 +51,7 @@ describe('renderConsoleSummary', () => {
           testsFailed(
             'coverage',
             'tests-failed',
-            '1 test fails, so coverage, CRAP and mutation were skipped. Fix the tests and rerun:\n  test/a.test.ts > adds: expected 1 to be 2',
+            '1 test fails; coverage, CRAP and mutation were skipped. Fix the tests and rerun:\n  test/a.test.ts > adds: expected 1 to be 2',
           ),
           testsFailed(
             'mutation',
@@ -67,10 +67,9 @@ describe('renderConsoleSummary', () => {
       [
         '',
         'Quality gate summary',
-        'No new enforceable violations, but the run is incomplete:',
-        '✖ 1 tool error',
-        '  coverage (head): 1 test fails, so coverage, CRAP and mutation were skipped. Fix the tests and rerun:',
-        '    test/a.test.ts > adds: expected 1 to be 2',
+        '✖ 1 test fails; coverage, CRAP and mutation were skipped. Fix the tests and rerun:',
+        '  test/a.test.ts > adds: expected 1 to be 2',
+        'No new enforceable violations in the checks that ran.',
         'Full diagnostics: reports/quality/diff/combined/report.txt',
         '',
       ].join('\n'),
@@ -134,7 +133,7 @@ describe('renderConsoleSummary', () => {
       ].join('\n'),
     );
   });
-  it('collapses repeated findings of one rule and message in one file into a single entry', () => {
+  describe('repeated findings of one rule in one file', () => {
     const finding = (line, message = 'Variable is mutable.') => ({
       tool: 'eslint-lint',
       rule: 'functional/prefer-immutable-types',
@@ -143,27 +142,44 @@ describe('renderConsoleSummary', () => {
       classification: 'enforceable',
       location: { line },
     });
-    const summary = renderConsoleSummary(
-      {
-        newFindings: [finding(26), finding(9), finding(11), finding(12, 'Parameter is mutable.')],
-        toolErrors: [],
-      },
-      { color: false },
-    );
+    const report = {
+      newFindings: [finding(26), finding(9), finding(11), finding(12, 'Parameter is mutable.')],
+      toolErrors: [],
+    };
 
-    expect(summary).toBe(
-      [
-        '',
-        'Quality gate summary',
-        '✖ 4 new enforceable violations',
-        '  eslint-lint/functional/prefer-immutable-types src/main/a.ts (3 times, lines 9, 11, 26)',
-        '    Variable is mutable.',
-        '  eslint-lint/functional/prefer-immutable-types src/main/a.ts:12',
-        '    Parameter is mutable.',
-        'Full diagnostics: reports/quality/diff/combined/report.txt',
-        '',
-      ].join('\n'),
-    );
-    expect(summary.match(/Variable is mutable\./g)).toHaveLength(1);
+    it('prints the rule once and one line per message with all its lines', () => {
+      const summary = renderConsoleSummary(report, { color: false });
+
+      expect(summary).toBe(
+        [
+          '',
+          'Quality gate summary',
+          '✖ 4 new enforceable violations',
+          '  eslint-lint/functional/prefer-immutable-types',
+          '    src/main/a.ts:9, 11, 26 Variable is mutable.',
+          '    src/main/a.ts:12 Parameter is mutable.',
+          'Full diagnostics: reports/quality/diff/combined/report.txt',
+          '',
+        ].join('\n'),
+      );
+    });
+    it('collapses only exact repeats with --details', () => {
+      const summary = renderConsoleSummary(report, { color: false, details: true });
+
+      expect(summary).toBe(
+        [
+          '',
+          'Quality gate summary',
+          '✖ 4 new enforceable violations',
+          '  eslint-lint/functional/prefer-immutable-types src/main/a.ts (3 times, lines 9, 11, 26)',
+          '    Variable is mutable.',
+          '  eslint-lint/functional/prefer-immutable-types src/main/a.ts:12',
+          '    Parameter is mutable.',
+          'Full diagnostics: reports/quality/diff/combined/report.txt',
+          '',
+        ].join('\n'),
+      );
+      expect(summary.match(/Variable is mutable\./g)).toHaveLength(1);
+    });
   });
 });

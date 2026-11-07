@@ -1,0 +1,7 @@
+[
+  {
+    "tool": "ruff",
+    "rule": "ERA001",
+    "mention": "delete the commented-out code"
+  }
+]

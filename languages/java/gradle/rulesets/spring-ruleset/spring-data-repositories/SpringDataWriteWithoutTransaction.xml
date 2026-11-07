@@ -1,0 +1,21 @@
+  <rule name="SpringDataWriteWithoutTransaction" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
+        message="Put @Transactional on this repository method, or on the repository interface. Spring Data opens a transaction only for the CRUD methods a repository inherits, so a declared @Modifying query or derived delete fails with TransactionRequiredException whenever its caller has no transaction.">
+    <priority>1</priority>
+    <properties><property name="xpath"><value><![CDATA[
+let $transactional := function($annotations) {
+  exists($annotations[pmd-java:typeIs('org.springframework.transaction.annotation.Transactional')
+    or pmd-java:typeIs('jakarta.transaction.Transactional') or pmd-java:typeIs('javax.transaction.Transactional')])
+}
+return
+//ClassDeclaration[@Interface = true()][ExtendsList/ClassType[pmd-java:typeIs('org.springframework.data.repository.Repository')]]
+  [not($transactional(ModifierList/Annotation))]
+  /ClassBody/MethodDeclaration[not(Block) and not(pmd-java:modifiers() = ('default', 'static'))]
+  [not($transactional(ModifierList/Annotation))]
+  [ModifierList/Annotation[pmd-java:typeIs('org.springframework.data.jpa.repository.Modifying')]
+   or (matches(@Name, '^(delete|remove)(\p{Lu}\w*?)?By')
+     and not(@Name = ('deleteById', 'deleteAllById', 'deleteAllByIdInBatch'))
+     and not(ModifierList/Annotation[pmd-java:typeIs('org.springframework.data.jpa.repository.Query')
+       or pmd-java:typeIs('org.springframework.data.jpa.repository.NativeQuery')])
+     and ancestor::ClassDeclaration[1]/ExtendsList/ClassType[pmd-java:typeIs('org.springframework.data.jpa.repository.JpaRepository')])]
+]]></value></property></properties>
+  </rule>

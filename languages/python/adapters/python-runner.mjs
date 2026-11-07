@@ -20,7 +20,7 @@ const UNEXPECTED_FAILURE_RULES = {
   [PYTHON_ANALYZER_NAME]: 'python-failed',
   [MUTATION_ANALYZER_NAME]: 'mutation-failed',
 };
-const PYTHON_OPTIONS = ['--live-root', '--python-settings', '--part'];
+const PYTHON_OPTIONS = ['--live-root', '--python-settings', '--part', '--baseline-moves-file'];
 
 function toolError({ rule, message }, part = PYTHON_ANALYZER_NAME) {
   return {
@@ -91,6 +91,7 @@ function collectPythonFindings({ projectRoot, liveRoot, settings, policy, spawn 
       reportRoot,
       crapLimit: policy.crapLimit,
       policy,
+      exceptions: settings.exceptions,
     });
     return applyFindingPolicy(applyPythonExceptions(findings, settings.exceptions), {
       ...policy,
@@ -147,7 +148,7 @@ export function parsePythonArguments(arguments_) {
     projectRoot,
     liveRoot: own.get('--live-root') ?? projectRoot,
     settings: JSON.parse(own.get('--python-settings') ?? '{}'),
-    policy,
+    policy: { ...policy, baselineMovesFile: own.get('--baseline-moves-file') },
   };
 }
 

@@ -15,10 +15,12 @@ const FAILING_SUMMARY = [
   '',
   'Quality gate summary',
   '✖ 2 new enforceable violations',
-  '  ruff/B006 src/demo/a.py:2',
-  '    Do not use mutable data structures for argument defaults. Default to `None` and create the value inside the function, or use an immutable default such as a tuple. If this is intended, add {"rule":"B006","paths":["src/demo/a.py"],"reason":"..."} to "python.exceptions" in nitpicker.config.json.',
-  '  ruff-format/format src/demo/a.py',
-  `    File is not formatted with ruff (detected; set "python.formatter" if wrong). ${RUFF_FORMAT_ADVICE}`,
+  '  by area: format 1 · lint 1',
+  `  ruff-format/format: File is not formatted with ruff (detected; set "python.formatter" if wrong). ${RUFF_FORMAT_ADVICE}`,
+  '    src/demo/a.py',
+  '  ruff/B006: Do not use mutable data structures for argument defaults. Default to `None` and create the value inside the function, or use an immutable default such as a tuple.',
+  '    src/demo/a.py:2:1',
+  '    If this is intended, add {"rule":"B006","paths":["src/demo/a.py"],"reason":"..."} to "python.exceptions" in nitpicker.config.json.',
   'Full diagnostics: <path>',
   '',
 ].join('\n');
@@ -65,6 +67,10 @@ describe('nitpicker with "preset": "python"', () => {
         identity: 'fp:nitpicker/subject=Do not use mutable data structures for argument defaults',
         message:
           'Do not use mutable data structures for argument defaults. Default to `None` and create the value inside the function, or use an immutable default such as a tuple. If this is intended, add {"rule":"B006","paths":["src/demo/a.py"],"reason":"..."} to "python.exceptions" in nitpicker.config.json.',
+        allowedForm:
+          'Default to `None` and create the value inside the function, or use an immutable default such as a tuple.',
+        exception: { rule: 'B006', paths: ['src/demo/a.py'], reason: '...' },
+        exceptionList: 'python.exceptions',
         classification: 'enforceable',
         location: { line: 2, column: 1 },
       },
@@ -193,6 +199,9 @@ describe('nitpicker with "preset": "python"', () => {
         identity: 'Bad',
         message:
           'Bad. Fix the type; inline ignores are banned. If this is intended, add {"rule":"reportReturnType","paths":["src/demo/a.py"],"reason":"..."} to "python.exceptions" in nitpicker.config.json.',
+        allowedForm: 'Fix the type; inline ignores are banned.',
+        exception: { rule: 'reportReturnType', paths: ['src/demo/a.py'], reason: '...' },
+        exceptionList: 'python.exceptions',
         classification: 'enforceable',
         location: { line: 4, column: 5 },
       },

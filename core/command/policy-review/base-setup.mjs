@@ -42,7 +42,7 @@ export function createBaseSetupResolver({
   profile = {},
   warn = () => undefined,
 }) {
-  return ({ baseProjectRoot, headSnapshotRoot, moves, analyzers }) => {
+  return ({ baseProjectRoot, headSnapshotRoot, liveProjectRoot, moves, analyzers }) => {
     const baseConfig = readBaseConfig(baseProjectRoot, warn);
     const compared = baseConfig ?? {};
     const scope = readPolicyScope({
@@ -50,6 +50,7 @@ export function createBaseSetupResolver({
       headConfig,
       baseProjectRoot,
       headProjectRoot: headSnapshotRoot,
+      liveProjectRoot,
       moves,
     });
     const unchanged = JSON.stringify(compared) === JSON.stringify(headConfig);

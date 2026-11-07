@@ -1,0 +1,22 @@
+  <rule name="SpringNoSwallowedTransactionException" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
+        message="Rethrow a broad or persistence exception caught inside a @Transactional method, or catch it in the caller. Swallowed there, by a catch without throw, it leaves the transaction rollback-only, so the commit fails anyway.">
+    <priority>2</priority>
+    <properties><property name="xpath"><value><![CDATA[
+//MethodDeclaration[
+    ModifierList/Annotation[pmd-java:typeIs('org.springframework.transaction.annotation.Transactional')]
+    or ancestor::ClassDeclaration[1]/ModifierList/Annotation[pmd-java:typeIs('org.springframework.transaction.annotation.Transactional')]
+    or (@Visibility != 'public' and (let $name := @Name, $arity := @Arity, $varargs := @Varargs
+        return exists(ancestor::ClassDeclaration[1]/ClassBody/MethodDeclaration
+          [ModifierList/Annotation[pmd-java:typeIs('org.springframework.transaction.annotation.Transactional')]]
+          //MethodCall[*[1][self::ArgumentList or self::ThisExpression[not(*)]]][@MethodName = $name]
+          [count(ArgumentList/*) = $arity or ($varargs and count(ArgumentList/*) >= $arity - 1)])))]
+  //CatchClause[not(.//ThrowStatement)][not(ancestor::LambdaExpression or ancestor::ClassBody[parent::ConstructorCall])]
+  [CatchParameter//ClassType[
+    pmd-java:typeIsExactly('java.lang.Exception')
+    or pmd-java:typeIsExactly('java.lang.RuntimeException')
+    or pmd-java:typeIsExactly('java.lang.Throwable')
+    or pmd-java:typeIs('org.springframework.dao.DataAccessException')
+    or pmd-java:typeIs('org.springframework.transaction.TransactionException')
+    or (pmd-java:typeIs('jakarta.persistence.PersistenceException') or pmd-java:typeIs('javax.persistence.PersistenceException'))]]
+]]></value></property></properties>
+  </rule>

@@ -28,8 +28,10 @@ import {
   GREW_MESSAGES,
   HELD_MESSAGES,
   MESSAGES,
+  messageFields,
   renderMessage,
 } from '../policy.mjs';
+import { allowedFormField, definedField } from '../messages/messages.mjs';
 import {
   addMetric,
   hash,
@@ -43,6 +45,8 @@ const METADATA_FIELDS = new Set([
   'file',
   'name',
   'sourceHash',
+  'anchorHash',
+  'declarationHash',
   'numberedAmongSameSource',
   'start',
   'end',
@@ -121,26 +125,32 @@ function limitFinding({
 }) {
   const route = exceptionRoute({ rule: ruleId, path: entry.file, function: entry.name });
   const values = { name: entry.name, value: entry[metricName], limit, base: '{base}' };
+  const shown = messageFields(structureMessage(metricName), { ...values, metric: metricName });
+  const worse = messageFields(GREW_MESSAGES[metricName], values);
   return {
     tool: analyzerName,
     rule: ruleId,
     path: entry.file,
     identity: `function:${entry.name}:occurrence:${String(occurrence)}:source:${sourceHash}`,
-    message: withHint(
-      withHint(
-        renderMessage(structureMessage(metricName), { ...values, metric: metricName }),
-        hint,
-      ),
-      route,
-    ),
+    message: withHint(withHint(shown.message, hint), route),
+    ...allowedFormField(shown.allowedForm, hint),
     classification: 'enforceable',
     symbol: entry.name,
     ratchet: {
       key: `function:${entry.name}:occurrence:${String(occurrence)}:${metricName}`,
       value: entry[metricName],
-      worseMessage: withHint(renderMessage(GREW_MESSAGES[metricName], values), route),
+      worseMessage: withHint(worse.message, route),
+      ...definedField('worseAllowedForm', worse.allowedForm),
       heldMessage: renderMessage(HELD_MESSAGES[metricName], values),
+      ...(typeof entry.declarationHash === 'string'
+        ? {
+            declarationKey: `function:${entry.name}:declaration:${entry.declarationHash}:${metricName}`,
+          }
+        : {}),
     },
+    ...(typeof entry.anchorHash === 'string'
+      ? { anchor: { key: `function:${metricName}:text:${entry.anchorHash}` } }
+      : {}),
     ...(positiveInteger(entry.start) === undefined ? {} : { location: { line: entry.start } }),
   };
 }

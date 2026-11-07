@@ -1,6 +1,7 @@
 import path from 'node:path';
 import {
   clearSnapshotReports,
+  renderSnapshotConsoleSummary,
   writeSnapshotReports,
   renderRuleFilterSection as renderSnapshotRuleFilterSection,
 } from '../snapshot/reporters.mjs';
@@ -17,6 +18,14 @@ import { runGit } from '../diff/git/repository/command.mjs';
 import { writeGithubOutput } from '../diff/reporting/github/emit.mjs';
 import { captureWorkingTree } from '../diff/git/repository/git.mjs';
 import { runProfileSummary } from '../quick/summary.mjs';
+import { outputRootFor } from '../diff/reporting/reporters.mjs';
+import { assertHasCommit } from '../diff/git/repository/base-ref.mjs';
+import { partialRunField, partialRunOf } from '../diff/reporting/partial-run/partial-run.mjs';
+import { failingHeadTests } from '../diff/reporting/failing-tests/failing-tests.mjs';
+
+function stderrWarning(stderr) {
+  return (message) => stderr.write(`nitpicker: ${message}\n`);
+}
 
 export function runSnapshotCli({
   options,
@@ -29,36 +38,40 @@ export function runSnapshotCli({
   stderr,
   environment,
   runTasks,
+  scope,
 }) {
-  const outputRoot =
-    options.outputRoot === undefined
-      ? path.join(currentProjectRoot, 'reports/quality/snapshot')
-      : path.resolve(currentProjectRoot, options.outputRoot);
-  clearSnapshotReports(outputRoot);
+  const outputRoot = outputRootFor(currentProjectRoot, options.outputRoot, 'snapshot');
   const selectedAnalyzers = selectAnalyzers(analyzers, options.analyzerNames);
   if (selectedAnalyzers.length === 0) {
     throw new Error('No quality analyzers are configured.');
   }
+  clearSnapshotReports(outputRoot);
 
   const { repositoryRoot, relativeProjectPath, capturedSha } = captureSnapshot(
     currentProjectRoot,
     captureHead,
   );
-  const report = withTemporaryWorktree(repositoryRoot, capturedSha, (worktreeRoot) =>
+  const snapshot = { commitSha: capturedSha, warn: stderrWarning(stderr) };
+  const report = withTemporaryWorktree(repositoryRoot, snapshot, (worktreeRoot) =>
     runInSnapshotWorktree({
       snapshotRoot: path.join(worktreeRoot, relativeProjectPath),
       selectedAnalyzers,
       currentProjectRoot,
       headPolicy,
       runTasks,
+      scope,
     }),
   );
-  Object.assign(report.summary, runProfileSummary({ quick, staged: options.staged }));
+  Object.assign(
+    report.summary,
+    partialRunField(partialRunOf(options.analyzerNames, analyzers, selectedAnalyzers)),
+    runProfileSummary({ quick, staged: options.staged }),
+  );
   report.text = writeSnapshotReports(outputRoot, report, {
     projectPath: relativeProjectPath,
     repositoryRoot,
   });
-  stdout.write(report.text);
+  stdout.write(renderSnapshotConsoleSummary(report, path.join(outputRoot, 'report.txt')));
   stdout.write(renderSnapshotRuleFilterSection(report, options.ruleFilters));
   writeGithubOutput({
     kind: 'snapshot',
@@ -68,11 +81,11 @@ export function runSnapshotCli({
     stdout,
     stderr,
   });
-  return snapshotExitCode(report.summary);
+  return snapshotExitCode(report);
 }
 
-function snapshotExitCode(summary) {
-  if (summary.enforceableFindings > 0) {
+function snapshotExitCode({ summary, toolErrors }) {
+  if (summary.enforceableFindings > 0 || failingHeadTests(toolErrors).length > 0) {
     return 1;
   }
   return summary.overallStatus === 'tool-error' ? 2 : 0;
@@ -84,6 +97,7 @@ function runInSnapshotWorktree({
   currentProjectRoot,
   headPolicy,
   runTasks,
+  scope,
 }) {
   const needsDependencies = selectedAnalyzers.some((analyzer) => analyzer.requiresDependencies);
   const dependencies = needsDependencies
@@ -102,6 +116,7 @@ function runInSnapshotWorktree({
       liveProjectRoot: currentProjectRoot,
       headPolicy,
       runTasks,
+      scope,
     });
   } finally {
     removeSnapshotDependencies(dependencies);
@@ -113,6 +128,7 @@ function captureSnapshot(currentProjectRoot, capture) {
     runGit(currentProjectRoot, ['rev-parse', '--show-toplevel']).trim(),
   );
   const relativeProjectPath = path.relative(repositoryRoot, currentProjectRoot) || '.';
+  assertHasCommit(repositoryRoot);
   const headSha = runGit(repositoryRoot, ['rev-parse', 'HEAD^{commit}']).trim();
   const capturedSha = capture(repositoryRoot, headSha);
   return { repositoryRoot, relativeProjectPath, capturedSha };
