@@ -19,9 +19,6 @@ Part of the [nitpicker-javascript](../SKILL.md) skill. Write these forms from th
   function; schemas live in `adapters/`. Dedupe with `[...new Set(xs)]` or a `ReadonlySet`.
 - A `Date` is mutable: use it in one expression (`new Date(ms).getUTCHours()`) or type it
   `Readonly<Date>`.
-- In a server project, dates use UTC or a named zone, never the server's own: `getUTCHours()`,
-  `toISOString()`, `Date.UTC(...)`, `{ timeZone }` for `Intl.DateTimeFormat` and `toLocale*String`,
-  luxon `{ zone }`, date-fns `{ in: tz(zone) }`, dayjs `.utc()` (`nitpicker/no-local-time-zone`).
 - Count by a union as `Readonly<Record<Status, number>>` written as a literal with every member,
   from one `Object.groupBy`, so a new member fails type-checking:
   ```js

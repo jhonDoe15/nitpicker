@@ -41,3 +41,6 @@ Part of the [nitpicker-javascript](../SKILL.md) skill. Write these forms from th
   or `exports.f = f`. In `domain/`,
   destructure a `require`: `const { basename } = require('node:path');`, not
   `const path = require('node:path');`.
+- In a server project, dates use UTC or a named zone, never the server's own: `getUTCHours()`,
+  `toISOString()`, `Date.UTC(...)`, `{ timeZone }` for `Intl.DateTimeFormat` and `toLocale*String`,
+  luxon `{ zone }`, date-fns `{ in: tz(zone) }`, dayjs `.utc()` (`nitpicker/no-local-time-zone`).
