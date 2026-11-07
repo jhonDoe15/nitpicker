@@ -1,0 +1,8 @@
+  <rule name="JpaEntityClass" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
+        message="Make the entity a non-final class. Records and final classes cannot be JPA entities; use records for DTOs.">
+    <priority>1</priority>
+    <properties><property name="xpath"><value><![CDATA[
+//(RecordDeclaration | ClassDeclaration[pmd-java:modifiers() = 'final'])
+  /ModifierList/Annotation[(pmd-java:typeIs('jakarta.persistence.Entity') or pmd-java:typeIs('javax.persistence.Entity'))]
+]]></value></property></properties>
+  </rule>

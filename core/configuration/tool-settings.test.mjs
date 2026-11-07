@@ -47,9 +47,9 @@ describe('tool precedence', () => {
     );
   });
 
-  it('has no precedence for the TypeScript compiler', () => {
-    expect(() => validateConfig({ tools: { typescript: { precedence: ['project'] } } })).toThrow(
-      '"tools.typescript" has unknown key "precedence"',
+  it('rejects a precedence for tests', () => {
+    expect(() => validateConfig({ tools: { tests: { precedence: ['project'] } } })).toThrow(
+      '"tools.tests" has unknown key "precedence"',
     );
   });
 
