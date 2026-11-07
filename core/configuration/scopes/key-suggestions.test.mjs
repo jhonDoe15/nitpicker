@@ -38,7 +38,7 @@ describe('config key typos', () => {
 
   it('lists the allowed keys when no key is close', () => {
     expect(() => validateConfig({ colour: 'red' })).toThrow(
-      /^nitpicker\.config\.json: unknown key "colour"\. Allowed keys: base, preset, /u,
+      /^nitpicker\.config\.json: unknown key "colour"\. Allowed keys: \$schema, base, preset, /u,
     );
   });
 });

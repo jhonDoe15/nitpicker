@@ -6,8 +6,10 @@ import {
   exceptionSentence,
   hasExceptionRoute,
   insertBeforeRoute,
+  isExceptionEntry,
   isPlaceholderReason,
   retargetSentence,
+  routeFields,
 } from './exception-sentence.mjs';
 
 const ENTRY = '{"rule":"no-throw","paths":["src/a.ts"],"reason":"..."}';
@@ -98,5 +100,49 @@ describe('retargetSentence', () => {
       entry('["lib/src/a/**"]'),
     );
     expect(retargetSentence(entry('["src/a/*"]'), 'src/a', '.')).toBe(entry('["*"]'));
+  });
+});
+
+describe('routeFields', () => {
+  it('reads back the entry and the list of any sentence the builders print', () => {
+    const entry = {
+      rule: 'unused-dependency',
+      path: 'packages/[id]/package.json',
+      packages: ['left-pad'],
+      name: 'helper',
+    };
+    const text = exceptionEntryText(entry);
+
+    expect(routeFields(`Remove it. ${exceptionSentence(text)}`)).toEqual({
+      exception: {
+        rule: 'unused-dependency',
+        paths: ['packages/\\[id\\]/package.json'],
+        packages: ['left-pad'],
+        name: 'helper',
+        reason: '...',
+      },
+      exceptionList: 'exceptions',
+    });
+    expect(routeFields(exceptionSentence(text, 'python.exceptions')).exceptionList).toBe(
+      'python.exceptions',
+    );
+  });
+
+  it('is empty for a message that does not end with the sentence', () => {
+    expect(routeFields('Do not throw.')).toEqual({});
+    expect(routeFields(`${ROUTE} Then more.`)).toEqual({});
+    expect(routeFields(exceptionSentence('{not json}'))).toEqual({});
+    expect(routeFields(exceptionSentence('{"rule":"a","paths":[],"reason":"..."}'))).toEqual({});
+  });
+});
+
+describe('isExceptionEntry', () => {
+  it('needs a rule, some paths and a reason', () => {
+    expect(isExceptionEntry({ rule: 'a', paths: ['b'], reason: '...' })).toBe(true);
+    expect(isExceptionEntry({ rule: 'a', paths: ['b'] })).toBe(false);
+    expect(isExceptionEntry({ rule: 'a', paths: [], reason: 'x' })).toBe(false);
+    expect(isExceptionEntry({ rule: 'a', paths: [1], reason: 'x' })).toBe(false);
+    expect(isExceptionEntry(null)).toBe(false);
+    expect(isExceptionEntry([])).toBe(false);
   });
 });

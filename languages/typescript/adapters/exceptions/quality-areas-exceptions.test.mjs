@@ -212,7 +212,7 @@ describe('exceptions for duplicate and dead-code findings in the TypeScript anal
       [
         'files',
         'src/main/orphan.ts',
-        'Unused file: src/main/orphan.ts. Nothing imports it: delete it, or import it where it is needed. If this is intended, add {"rule":"files","paths":["src/main/orphan.ts"],"reason":"..."} to "exceptions" in nitpicker.config.json.',
+        'Unused file: src/main/orphan.ts. Nothing imports it. Delete it, or import it where it is needed. If this is intended, add {"rule":"files","paths":["src/main/orphan.ts"],"reason":"..."} to "exceptions" in nitpicker.config.json.',
       ],
       [
         'exports',
@@ -284,7 +284,7 @@ describe('exceptions for CRAP and coverage findings in the TypeScript analyzers'
     expect(findings.map(({ symbol, message }) => [symbol, message])).toEqual([
       [
         'risky',
-        'Branch coverage is 50.00%; minimum is 95%. If this is intended, add {"rule":"changed-branch-coverage","paths":["src/main/a.ts"],"function":"risky","reason":"..."} to "exceptions" in nitpicker.config.json.',
+        'Branch coverage is 50.00%; minimum is 95%. Add a test for each outcome it misses. If this is intended, add {"rule":"changed-branch-coverage","paths":["src/main/a.ts"],"function":"risky","reason":"..."} to "exceptions" in nitpicker.config.json.',
       ],
     ]);
     expect(applyFindingExceptions(findings, [entry])).toEqual([]);
@@ -301,7 +301,7 @@ describe('exceptions for CRAP and coverage findings in the TypeScript analyzers'
         ({ message }) => message,
       ),
     ).toEqual([
-      'Branch coverage is 50.00%; minimum is 95%. To accept the file, add it to "exclude" in nitpicker.config.json.',
+      'Branch coverage is 50.00%; minimum is 95%. Add a test for each outcome it misses. To accept the file, add it to "exclude" in nitpicker.config.json.',
     ]);
   });
 
