@@ -128,6 +128,8 @@ public final class FactsCollector {
     } else if (element instanceof KtTryExpression) {
       state.handlers.addAll(
           Catches.completing((KtTryExpression) element, state::lineOf, Predicates.symbolAt(frame, element), throwing));
+    } else if (element instanceof KtWhenExpression) {
+      predicates.when((KtWhenExpression) element, frame);
     } else if (element instanceof KtCallableReferenceExpression) {
       state.references.add(((KtCallableReferenceExpression) element).getCallableReference().getReferencedName());
     }

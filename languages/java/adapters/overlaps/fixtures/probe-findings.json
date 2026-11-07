@@ -33,6 +33,7 @@
     "src/main/java/probe/Hiding.java": "package probe;\n\npublic class Hiding extends Fields {\n  public String name = \"h\";\n  private String inner;\n\n  public static class Base {\n    public String name = \"b\";\n  }\n\n  public static class Sub extends Base {\n    public String name = \"s\";\n\n    @Override\n    public String toString() {\n      return null;\n    }\n  }\n\n  public String inner() {\n    return inner;\n  }\n}\n",
     "src/main/java/probe/Immut.java": "package probe;\n\nimport java.math.BigDecimal;\nimport java.math.BigInteger;\n\npublic class Immut {\n  public void ops(BigDecimal d, BigInteger i, String s) {\n    d.add(BigDecimal.ONE);\n    i.add(BigInteger.ONE);\n    s.trim();\n  }\n}\n",
     "src/main/java/probe/Lazy.java": "package probe;\n\npublic class Lazy {\n  private static Lazy shared;\n  private volatile int hits;\n\n  public static Lazy shared() {\n    if (shared == null) {\n      shared = new Lazy();\n    }\n    return shared;\n  }\n\n  public static Lazy fresh() {\n    return new Lazy();\n  }\n\n  public int hit() {\n    hits = hits + 1;\n    return hits;\n  }\n}\n",
+    "src/main/java/probe/Leaks1.java": "package probe;\n\nimport java.io.IOException;\nimport java.nio.file.Files;\nimport java.nio.file.Path;\nimport java.sql.SQLException;\nimport javax.sql.DataSource;\n\npublic class Leaks1 {\n  public String first(Path path) throws IOException {\n    return Files.newBufferedReader(path).readLine();\n  }\n\n  public boolean rows(DataSource source) throws SQLException {\n    return source.getConnection().createStatement().execute(\"select 1\");\n  }\n}\n",
     "src/main/java/probe/Locales.java": "package probe;\n\nimport java.text.SimpleDateFormat;\n\npublic class Locales {\n  public String all(String s) {\n    String f = String.format(\"%d\", 1);\n    String l = s.toLowerCase();\n    return f + l + new SimpleDateFormat(\"yyyy\").toPattern();\n  }\n}\n",
     "src/main/java/probe/Locks.java": "package probe;\n\nimport java.net.URL;\nimport java.text.SimpleDateFormat;\nimport java.util.HashSet;\nimport java.util.Locale;\nimport java.util.Set;\nimport java.util.concurrent.locks.ReentrantLock;\n\npublic class Locks {\n  private static final SimpleDateFormat FORMAT = new SimpleDateFormat(\"yyyy\", Locale.ROOT);\n  private final ReentrantLock lock = new ReentrantLock();\n  private final Set<URL> urls = new HashSet<>();\n\n  public String run(boolean a) {\n    lock.lock();\n    String s = FORMAT.toPattern();\n    lock.unlock();\n    return s + urls.size() + (a & check());\n  }\n\n  private boolean check() {\n    return urls.isEmpty();\n  }\n}\n",
     "src/main/java/probe/Misc.java": "package probe;\n\npublic class Misc {\n  private Object guard = new Object();\n\n  /**\n   * Old.\n   *\n   * @deprecated use other\n   */\n  public void old() {}\n\n  /**\n   * Void.\n   *\n   * @return nothing\n   */\n  public void v() {}\n\n  public int paren(int x) {\n    char c = 'A';\n    ;\n    synchronized (guard) {\n      guard = new Object();\n    }\n    return (x + c);\n  }\n\n  public void end() {\n    Thread t = new Thread(() -> {});\n    t.setPriority(1);\n    double d = 1.0;\n    if (d == d) {\n      return;\n    }\n    return;\n  }\n}\n",
@@ -1593,6 +1594,18 @@
     },
     {
       "tool": "pmd",
+      "rule": "UnclosedInlineResource",
+      "path": "src/main/java/probe/Leaks1.java",
+      "line": 11
+    },
+    {
+      "tool": "pmd",
+      "rule": "UnclosedInlineResource",
+      "path": "src/main/java/probe/Leaks1.java",
+      "line": 15
+    },
+    {
+      "tool": "pmd",
       "rule": "UseLocaleWithCaseConversions",
       "path": "src/main/java/probe/Locales.java",
       "line": 8
@@ -2465,6 +2478,34 @@
       "path": "src/main/java/probe/Lazy.java",
       "line": 8,
       "symbol": "probe.Lazy.shared"
+    },
+    {
+      "tool": "spotbugs",
+      "rule": "OS_OPEN_STREAM",
+      "path": "src/main/java/probe/Leaks1.java",
+      "line": 11,
+      "symbol": "probe.Leaks1.first(Path)"
+    },
+    {
+      "tool": "spotbugs",
+      "rule": "OBL_UNSATISFIED_OBLIGATION",
+      "path": "src/main/java/probe/Leaks1.java",
+      "line": 15,
+      "symbol": "probe.Leaks1.rows(DataSource)"
+    },
+    {
+      "tool": "spotbugs",
+      "rule": "ODR_OPEN_DATABASE_RESOURCE",
+      "path": "src/main/java/probe/Leaks1.java",
+      "line": 15,
+      "symbol": "probe.Leaks1.rows(DataSource)"
+    },
+    {
+      "tool": "spotbugs",
+      "rule": "ODR_OPEN_DATABASE_RESOURCE",
+      "path": "src/main/java/probe/Leaks1.java",
+      "line": 15,
+      "symbol": "probe.Leaks1.rows(DataSource)"
     },
     {
       "tool": "spotbugs",

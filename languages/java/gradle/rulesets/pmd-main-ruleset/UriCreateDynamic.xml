@@ -1,0 +1,21 @@
+  <rule name="UriCreateDynamic" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
+        message="URI.create throws IllegalArgumentException on a space, a non-ASCII character or any other character that is not encoded, so one odd stored, user or header value turns this call into an error response. Build the URI with an encoding builder (UriComponentsBuilder.fromUriString(base).path(path).queryParam(name, value).encode().build().toUri(), or new URI(scheme, host, path, fragment)), or parse the text where the failure is handled: new URI(text) with URISyntaxException caught, or URI.create(text) in a try that catches IllegalArgumentException. A constant or a project helper that does one of these is fine. A value read from configuration at startup also matches, because a bad value fails only at runtime.">
+    <priority>3</priority>
+    <properties>
+      <property name="xpath">
+        <value><![CDATA[
+let $caught := ('IllegalArgumentException', 'RuntimeException', 'Exception', 'Throwable')
+return (
+  //MethodCall[pmd-java:matchesSig('java.net.URI#create(java.lang.String)')]
+    [not(ArgumentList/*[1][@CompileTimeConstant = true()])]
+  | //MethodReference[@MethodName = 'create'][*[1][self::TypeExpression][pmd-java:typeIsExactly('java.net.URI')]]
+)[let $scope := ancestor::*[self::MethodDeclaration or self::ConstructorDeclaration or self::Initializer
+                             or self::FieldDeclaration or self::EnumConstant
+                             or self::CompactConstructorDeclaration][1]
+   return not(ancestor::*[self::Block or self::ResourceList]
+                [parent::TryStatement/CatchClause/CatchParameter/descendant::ClassType[@SimpleName = $caught]]
+                [$scope << .])]
+]]></value>
+      </property>
+    </properties>
+  </rule>

@@ -6,7 +6,7 @@ import { sharedFactFindings } from '../../../../shared/rules/facts/evaluate.mjs'
 import { javaDocComments } from './java-doc-comments.mjs';
 import { kotlinDocComments } from './kotlin-doc-comments.mjs';
 
-const DOC_COMMENT_TOOL = 'facts';
+export const DOC_COMMENT_TOOL = 'facts';
 
 const READERS = { '.java': javaDocComments, '.kt': kotlinDocComments };
 
