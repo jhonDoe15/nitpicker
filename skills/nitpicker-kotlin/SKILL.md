@@ -110,7 +110,10 @@ To learn why a rule is on and what form it allows before you write or change cod
   `kotlin-source/ParameterMutation`; private and local functions are exempt). When code moves,
   change every caller and delete the old name: no `@Deprecated` delegate or `typealias Old = New`
   (`kotlin-source/CompatibilityShim`). Time comes from an injected `Clock`; `Calendar`, `Date` and
-  `SimpleDateFormat` are banned.
+  `SimpleDateFormat` are banned, and so are `now()` on the `java.time` types without a clock or
+  zone, `ZoneId.systemDefault()`, `TimeZone.getDefault()` and `TimeZone.currentSystemDefault()`
+  (`kotlin-source/DefaultTimeZone`); `Calendar`, `GregorianCalendar` and `SimpleDateFormat` need a
+  zone (`kotlin-source/LegacyCalendarApi`).
 - Regexes: escape a runtime value before it goes into a pattern (`Regex.escape(name)`), pass a
   whole pattern to `Regex(pattern)` on its own, and use the plain-text `replace`, `split` and
   `contains` for text without metacharacters (`kotlin-source/UnquotedRegexValue`,

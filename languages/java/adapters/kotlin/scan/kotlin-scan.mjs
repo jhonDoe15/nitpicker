@@ -39,6 +39,7 @@ import {
 import { kotlinDeclarations } from './security/sql-values.mjs';
 import { LOG_FORMAT_MESSAGES, logFormatArguments } from './logging/log-format-rules.mjs';
 import { FAN_OUT_MESSAGES } from '../review-rules/main/fan-out/fan-out.mjs';
+import { TIME_ZONE_MESSAGES, defaultTimeZones } from './time/default-time-zone.mjs';
 
 const KOTLIN_SOURCE_TOOL = 'kotlin-source';
 
@@ -60,6 +61,7 @@ export const KOTLIN_SOURCE_MESSAGES = {
   ...TRI_STATE_MESSAGES,
   ...PARAMETER_MUTATION_MESSAGES,
   ...COMPATIBILITY_SHIM_MESSAGES,
+  ...TIME_ZONE_MESSAGES,
   ...REGEX_MESSAGES,
   RepeatedStringLiteral: REPEATED_STRING_MESSAGE,
 };
@@ -94,6 +96,7 @@ const MAIN_RULES = [
   triStateBooleans,
   parameterMutations,
   compatibilityShims,
+  defaultTimeZones,
   unquotedRegexValues,
   plainTextRegexes,
   repeatedStringLiterals,

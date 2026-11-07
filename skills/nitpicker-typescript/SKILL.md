@@ -142,6 +142,9 @@ To learn why a rule is on and what form it allows before you write or change cod
   function; schemas live in `adapters/`. Dedupe with `[...new Set(xs)]` or a `ReadonlySet`.
 - A `Date` is mutable: use it in one expression (`new Date(ms).getUTCHours()`) or type it
   `Readonly<Date>`.
+- In a server project, dates use UTC or a named zone, never the server's own: `getUTCHours()`,
+  `toISOString()`, `Date.UTC(...)`, `{ timeZone }` for `Intl.DateTimeFormat` and `toLocale*String`,
+  luxon `{ zone }`, date-fns `{ in: tz(zone) }`, dayjs `.utc()` (`nitpicker/no-local-time-zone`).
 - Count by a union as `Readonly<Record<Status, number>>` written as a literal with every member,
   from one `Object.groupBy` (`const byStatus = Object.groupBy(xs, (x) => x.status);` then
   `{ paid: byStatus.paid?.length ?? 0, ... }`), so a new member fails to compile. Group by key with
