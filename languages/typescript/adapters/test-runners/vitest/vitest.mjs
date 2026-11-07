@@ -47,6 +47,17 @@ function withFailureDetails(run, detailsPath) {
   return run;
 }
 
+function reportArguments(options, reportPath) {
+  return [
+    '--reporter',
+    'json',
+    '--outputFile',
+    reportPath,
+    '--reporter',
+    path.join(options.policyRoot, FAILURE_DETAILS_REPORTER),
+  ];
+}
+
 export function runVitest(options) {
   const configured = readHeadPolicyFile().tools?.tests?.timeouts !== undefined;
   const configPath = temporaryProjectPath(options, 'vitest.config.ts');
@@ -69,12 +80,7 @@ export function runVitest(options) {
           : ['--maxWorkers=1', '--testNamePattern', options.rerun.namePattern]),
         ...(configured ? [] : ['--testTimeout', String(testTimeouts().testTimeoutMs)]),
         ...vitestRetryArguments(projectTestRetry('vitest')),
-        '--reporter',
-        'json',
-        '--outputFile',
-        reportPath,
-        '--reporter',
-        path.join(options.policyRoot, FAILURE_DETAILS_REPORTER),
+        ...reportArguments(options, reportPath),
         ...(options.rerun?.files ?? []),
         ...(testConsole.enabled ? ['--reporter', consoleProducerPath(options, 'vitest')] : []),
       ],
