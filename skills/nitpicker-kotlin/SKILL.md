@@ -56,7 +56,8 @@ To learn why a rule is on and what form it allows before you write or change cod
   (`suspend fun main()` for an entry point) and use `coroutineScope { launch { ... } }`; a test uses `runTest`.
 - Fan-out: bound concurrent remote or message calls. One `Semaphore(8)` with `withPermit { ... }` around each call,
   `chunked(n)`, or `flatMapMerge(concurrency = n)`; never `items.map { async { client.get(it) } }.awaitAll()` over a
-  runtime collection. `limitedParallelism(n)` caps threads, not suspending calls in flight.
+  runtime collection. `limitedParallelism(n)` caps threads, not suspending calls in flight. Reactor: pass a limit
+  (`flatMap({ fetch(it) }, 8)`) or use `concatMap`; never `Mono.zip(items.map { fetch(it) })`.
 - Child processes: wait with a deadline, `if (!process.waitFor(30, TimeUnit.SECONDS)) process.destroyForcibly()`,
   and read the output on another thread first; never `waitFor()` or `inputStream.readBytes()` alone
   (`kotlin-source/ProcessWaitWithoutTimeout`; a build wrapper that only runs a child to completion takes an exception).
@@ -109,7 +110,10 @@ To learn why a rule is on and what form it allows before you write or change cod
   `kotlin-source/ParameterMutation`; private and local functions are exempt). When code moves,
   change every caller and delete the old name: no `@Deprecated` delegate or `typealias Old = New`
   (`kotlin-source/CompatibilityShim`). Time comes from an injected `Clock`; `Calendar`, `Date` and
-  `SimpleDateFormat` are banned.
+  `SimpleDateFormat` are banned, and so are `now()` on the `java.time` types without a clock or
+  zone, `ZoneId.systemDefault()`, `TimeZone.getDefault()` and `TimeZone.currentSystemDefault()`
+  (`kotlin-source/DefaultTimeZone`); `Calendar`, `GregorianCalendar` and `SimpleDateFormat` need a
+  zone (`kotlin-source/LegacyCalendarApi`).
 - URIs from runtime text: build them with an encoding builder (`UriComponentsBuilder` with
   `encode()`, `URI(scheme, host, path, fragment)`), or parse where the failure is handled
   (`runCatching { URI.create(text) }`, a `try` that catches `IllegalArgumentException`);

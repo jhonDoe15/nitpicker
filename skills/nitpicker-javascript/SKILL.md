@@ -148,7 +148,7 @@ line) is a finding.
 - Remove a parameter the body does not read. One that a callback or override signature requires
   starts with `_` (`_event`).
 - `async`/`await`, never `.then()`. No floating promises.
-- Fan-out: bound concurrent remote or message calls. Run each call through a limiter created outside the loop (`pLimit(8)`, p-queue `concurrency`, Bottleneck `maxConcurrent`) or work through fixed-size chunks. Never `Promise.all(items.map(send))` over a runtime collection.
+- Fan-out: bound concurrent remote or message calls. Run each call through a limiter created outside the loop (`pLimit(8)`, p-queue `concurrency`, Bottleneck `maxConcurrent`) or work through fixed-size chunks. RxJS: `mergeMap(fn, 8)` or `concatMap`, never `forkJoin(items.map(load))`. Never `Promise.all(items.map(send))` over a runtime collection.
 - A child process you wait for gets a deadline: `{ timeout: 30_000 }` on `execFileSync`/`spawnSync`, or a
   `timeout` or `signal: AbortSignal.timeout(30_000)` on `execFile` and an awaited `spawn` or `execa`
   (`nitpicker/require-process-timeout`; a build wrapper that only runs a child to completion takes an exception).
@@ -185,6 +185,9 @@ line) is a finding.
   function; schemas live in `adapters/`. Dedupe with `[...new Set(xs)]` or a `ReadonlySet`.
 - A `Date` is mutable: use it in one expression (`new Date(ms).getUTCHours()`) or type it
   `Readonly<Date>`.
+- In a server project, dates use UTC or a named zone, never the server's own: `getUTCHours()`,
+  `toISOString()`, `Date.UTC(...)`, `{ timeZone }` for `Intl.DateTimeFormat` and `toLocale*String`,
+  luxon `{ zone }`, date-fns `{ in: tz(zone) }`, dayjs `.utc()` (`nitpicker/no-local-time-zone`).
 - Count by a union as `Readonly<Record<Status, number>>` written as a literal with every member,
   from one `Object.groupBy`, so a new member fails type-checking:
   ```js
