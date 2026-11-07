@@ -28,13 +28,30 @@ function isRuleCandidate(item) {
   return isModule && !SKIPPED_FILES.has(item.name);
 }
 
+const RULE_ID = /^[a-z][a-z0-9]*(?:-[a-z][a-z0-9]*)*$/u;
+
 function identifier(id) {
-  return id.replaceAll(/-(\p{Ll})/gu, (_, letter) => letter.toUpperCase());
+  return `rule-${id}`.replaceAll(/-([a-z])/gu, (_, letter) => letter.toUpperCase());
+}
+
+function byCodePoint(a, b) {
+  if (a.id === b.id) {
+    return 0;
+  }
+  return a.id < b.id ? -1 : 1;
+}
+
+function idProblems(rules) {
+  const taken = Map.groupBy(rules, ({ id }) => id);
+  return [
+    ...[...taken].filter(([, same]) => same.length > 1).map(([id]) => `${id} is defined twice`),
+    ...rules.filter(({ id }) => !RULE_ID.test(id)).map(({ file }) => `${file} is not kebab-case`),
+  ];
 }
 
 /**
  * The plugin's rules, found from its folders: each module that exports `rule` is the rule named
- * after its file. Sorted by id; two modules with one name are an error.
+ * after its file, which must be kebab-case. Sorted by id; two modules with one name are an error.
  */
 export function eslintPluginRules(repositoryRoot) {
   const root = path.join(repositoryRoot, PLUGIN);
@@ -44,11 +61,10 @@ export function eslintPluginRules(repositoryRoot) {
       id: path.basename(file, '.mjs'),
       file: `./${path.relative(root, file).split(path.sep).join('/')}`,
     }))
-    .toSorted((a, b) => a.id.localeCompare(b.id));
-  const taken = Map.groupBy(rules, ({ id }) => id);
-  const repeated = [...taken].filter(([, same]) => same.length > 1).map(([id]) => id);
-  if (repeated.length > 0) {
-    throw new Error(`Two ESLint plugin rule modules share a name: ${repeated.join(', ')}`);
+    .toSorted(byCodePoint);
+  const problems = idProblems(rules);
+  if (problems.length > 0) {
+    throw new Error(`The ESLint plugin's rule modules have problems: ${problems.join('; ')}`);
   }
   return rules;
 }
