@@ -1,0 +1,7 @@
+[
+  {
+    "tool": "ruff",
+    "rule": "PLR2004",
+    "mention": "name the value as a constant"
+  }
+]
