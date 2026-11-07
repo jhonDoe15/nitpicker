@@ -95,10 +95,6 @@ export function anchorsLinkedFrom(documents) {
   );
 }
 
-export function sectionOf(markdown, heading) {
-  return markdown.split(new RegExp(`^${heading}$`, 'mu'))[1]?.split(/^## /mu)[0] ?? '';
-}
-
 export function stringConstants(ts, source) {
   const constants = new Map();
   for (const statement of source.statements) {

@@ -43,3 +43,4 @@ Each topic has its own page, so two changes to different topics never edit the s
 - [Remaining slices](kotlin-preset/remaining-slices.md)
 - [Tools evaluated and not integrated](kotlin-preset/tools-evaluated-and-not-integrated.md)
 - [Known limits](kotlin-preset/known-limits.md)
+- [Troubleshooting](kotlin-preset/troubleshooting.md)

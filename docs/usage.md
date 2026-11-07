@@ -1244,7 +1244,7 @@ error with this preset; `layout` is an error too until the Java preset runs the 
 [java-preset.md](java-preset.md).
 
 Troubleshooting: the failures this preset meets are listed in the
-[Java preset guide](java-preset.md#troubleshooting).
+[Java preset guide](java-preset/troubleshooting.md).
 
 ## Kotlin preset
 
@@ -1279,7 +1279,7 @@ entry with the same shape as TypeScript's, for example
 `{ "rule": "detekt.style.ForbiddenMethodCall", "paths": ["src/main/kotlin/app/Main.kt"], "reason": "The entry point blocks on its coroutine." }`.
 
 Troubleshooting: the failures this preset meets are listed in the
-[Kotlin preset guide](kotlin-preset.md#troubleshooting).
+[Kotlin preset guide](kotlin-preset/troubleshooting.md).
 
 ## Go preset
 
@@ -1360,7 +1360,7 @@ reports no enforceable findings for it.
 CRAP is measured on `.js`, `.mjs`, `.cjs`, `.ts`, `.mts` and `.cts` files, the same way as on TypeScript ones.
 
 Troubleshooting: the failures this preset meets are listed in the
-[TypeScript and JavaScript preset guide](typescript-strict-preset.md#troubleshooting).
+[TypeScript and JavaScript preset guide](typescript-strict-preset/troubleshooting.md).
 
 ## Python preset
 
@@ -1454,7 +1454,7 @@ stubs) and a `case _:` arm whose only statement is `assert_never(subject)` on th
 A branch that cannot be tested is accepted for one function with an `exceptions` entry for `changed-branch-coverage` that names the function, which keeps every other finding of the file (see [Exceptions for rules nitpicker adds](#exceptions-for-rules-nitpicker-adds)); `exclude` lifts the whole file. A change that leaves the project with no test at all fails as `python/no-tests-ran`. Details: [python-preset.md](python-preset.md).
 
 Troubleshooting: the failures this preset meets are listed in the
-[Python preset guide](python-preset.md#troubleshooting).
+[Python preset guide](python-preset/troubleshooting.md).
 
 ## The strict preset
 
@@ -2418,7 +2418,7 @@ no `project`, nitpicker keeps its strict preset and automatic root tsconfig/jsco
 Other analyzers still enforce nitpicker's rules and source/test layout.
 
 Troubleshooting: the failures this preset meets are listed in the
-[TypeScript and JavaScript preset guide](typescript-strict-preset.md#troubleshooting).
+[TypeScript and JavaScript preset guide](typescript-strict-preset/troubleshooting.md).
 
 ## Adopting nitpicker on existing code
 

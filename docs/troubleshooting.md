@@ -121,7 +121,9 @@ with several projects, run nitpicker once in each project directory.
 
 ### No base could be determined
 
-**Symptom.** `No base could be determined. Use --base <ref>.`, or `"base" is <ref>, the commit you are
+**Symptom.** `No base found: <what is missing>, and <where you are>.` followed by `Pass --base <ref>, set "base" in nitpicker.config.json,`
+and `or run nitpicker --all to check the whole project.` The first part names what is missing: no remote, no origin or
+upstream remote, or no origin/main or origin/master. Or `"base" is <ref>, the commit you are
 on, so the change would be compared with itself`.
 
 **Cause.** nitpicker takes the first of `--base`, the pull request target branch from CI
@@ -373,10 +375,8 @@ quietly. It is a finding, not a tool error, so the exit code is 1.
 
 ### Tests fail
 
-**Symptom.** A tool error on `head` that lists the failing tests: `1 test fails, so coverage, CRAP and
-mutation were skipped. Fix the tests and rerun:` with the rule `tests-failed` (or `tests-not-run` when a
-test file could not even load) on TypeScript, JavaScript and Python, or `Tests fail in <project>; nitpicker needs a passing test suite for coverage and mutation
-testing:` as the `gradle-failure` or `maven-failure` of Java and Kotlin. The analyzers that need the
+**Symptom.** A tool error on `head` that lists the failing tests: `<n> tests fail; <what was skipped>. Fix the tests and rerun:` with the rule `tests-failed` (or `tests-not-run` when a
+test file could not even load) on TypeScript, JavaScript and Python, or `<n> tests fail; the build stopped, so no other check ran. Fix the tests and rerun:` as the `gradle-failure` or `maven-failure` of Java and Kotlin. The analyzers that need the
 tests (coverage, CRAP, console output, mutation testing) are skipped (`skipped (tests failed)`). Exit
 code 2 when there is no new finding.
 
