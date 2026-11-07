@@ -1,0 +1,8 @@
+[
+  {
+    "name": "except returning an empty list names returning the collected errors",
+    "tool": "python-rules",
+    "rule": "swallowed-exception",
+    "mention": "return the errors the function builds"
+  }
+]

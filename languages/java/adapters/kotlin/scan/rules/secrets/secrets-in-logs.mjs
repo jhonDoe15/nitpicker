@@ -110,3 +110,5 @@ export function secretsInLogs(source) {
       : [{ rule: 'SecretInLog', offset: sink.start, subject: secret.name }];
   });
 }
+
+export const kotlinSourceRules = { main: [secretsInLogs] };

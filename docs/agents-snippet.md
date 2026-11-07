@@ -31,11 +31,11 @@ base and fails only on **new enforceable findings**. Existing debt is baselined 
 
 ### Exit codes
 
-| Code | Meaning                                                                                                          |
-| ---- | ---------------------------------------------------------------------------------------------------------------- |
-| 0    | Completed with no new enforceable findings. Done, unless the run was narrowed with `--analyzer`.                 |
-| 1    | At least one new enforceable finding, even if a tool also errored. Fix and rerun.                                |
-| 2    | A tool error and no new enforceable findings, invalid arguments, invalid config, or any other failure to decide. |
+| Code | Meaning                                                                                                                                |
+| ---- | -------------------------------------------------------------------------------------------------------------------------------------- |
+| 0    | Completed with no new enforceable findings. Done, unless the run was narrowed with `--analyzer`.                                       |
+| 1    | At least one new enforceable finding or a failing head test, even if a tool also errored. Fix and rerun.                               |
+| 2    | A tool error and no new enforceable findings or failing head tests, invalid arguments, invalid config, or any other failure to decide. |
 
 A full run takes minutes and prints a progress line to stderr for each slow, failed or skipped analyzer. Wait for it: do
 not start a second run or kill it. A second run in the same project exits 2 at once with `another run is in progress`.
@@ -54,7 +54,10 @@ for `--all`):
 
 - `report.txt`: the readable report. Start here.
 - `new-findings.json`: the new findings that count against you. Each has a tool, rule, path,
-  location and message.
+  location and message, and where the rule states them, `allowedForm` (what to write instead) and
+  `exception` (the entry the message tells you to add to `exceptions`, with `exceptionList` naming
+  the config list). Use `allowedForm` to fix the code. Never add `exception` yourself (step 3
+  below).
 - `resolved-findings.json` and `changed-metrics.json`: informational.
 - `tool-errors.json`: the tool errors, whatever the exit code.
 - `notes.json`: notes such as a base whose tests fail, which the run reports but does not fail on.

@@ -9,17 +9,18 @@ import {
   stableSyntaxAnchor,
   eslintNodeType,
   enclosingSymbol,
+  enclosingFunctionHash,
   syntaxFingerprint,
   commentFingerprint,
   normalizeMessageText,
   nodeChain,
 } from './syntax.mjs';
 import {
-  growthAdviceFor,
-  metricWorseMessage,
-  routedEslintMessage,
+  metricGrowth,
+  routedEslintFields,
   withoutFatalDirectives,
 } from '../hints/eslint-hints.mjs';
+import { growthAdviceFor } from '../hints/growth-advice.mjs';
 import { requiredString, positiveInteger } from './arguments.mjs';
 import { withoutSupersededMessages } from '../lint-engine/overlapping-reports.mjs';
 
@@ -92,6 +93,12 @@ function countGroupOf(finding, plan) {
   return JSON.stringify([finding.rule, finding.path, finding.symbol, plan.kind, plan.key]);
 }
 
+function anchorOf(plan, subject) {
+  return plan.anchorHash === undefined
+    ? {}
+    : { anchor: { key: `${plan.kind}:${subject}:text:${plan.anchorHash}` } };
+}
+
 function withRatchets(findings, plans) {
   const counts = new Map();
   const occurrences = new Map();
@@ -107,14 +114,15 @@ function withRatchets(findings, plans) {
       return finding;
     }
     if (plan.kind === 'count') {
-      const growthAdvice = growthAdviceFor(finding.rule);
+      const growth = growthAdviceFor(finding.rule);
       return {
         ...finding,
+        ...anchorOf(plan, plan.key),
         ratchet: {
           key: `count:${plan.key}`,
           value: counts.get(countGroupOf(finding, plan)),
           existingCodeOnly: true,
-          ...(growthAdvice === undefined ? {} : { growthAdvice }),
+          ...growth,
         },
       };
     }
@@ -123,10 +131,11 @@ function withRatchets(findings, plans) {
     occurrences.set(group, occurrence);
     return {
       ...finding,
+      ...anchorOf(plan, plan.label),
       ratchet: {
         key: `metric:occurrence:${String(occurrence)}`,
         value: plan.value,
-        worseMessage: metricWorseMessage(finding, plan),
+        ...metricGrowth(finding, plan),
       },
     };
   });
@@ -153,7 +162,7 @@ function normalizeMessage({ message, context, analyzerName, relativePath, source
       `syntax:${report.syntax}`,
       ...(metric === undefined ? [] : [`value:${String(metric.value)}`]),
     ].join('|'),
-    message: hintedMessage({
+    ...hintedMessage({
       ruleId,
       messageText,
       relativePath,
@@ -168,7 +177,8 @@ function normalizeMessage({ message, context, analyzerName, relativePath, source
     finding.symbol = symbol;
   }
   const plan = ratchetPlan({ metric, symbol, reportedNode: report.reportedNode, messageIdentity });
-  return { finding, plan };
+  const anchorHash = plan && enclosingFunctionHash(report.reportedNode, symbol);
+  return { finding, plan: anchorHash === undefined ? plan : { ...plan, anchorHash } };
 }
 
 function validatedMessageText(message, context) {
@@ -196,7 +206,7 @@ function locateReport(sourceFile, { sourcePosition, endPosition }) {
 }
 
 function hintedMessage({ ruleId, messageText, relativePath, comment, locatedNode, sourceFile }) {
-  return routedEslintMessage({
+  return routedEslintFields({
     ruleId,
     text: messageText,
     relativePath,
