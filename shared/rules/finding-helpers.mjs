@@ -142,3 +142,12 @@ export function enclosingFunction(functions, file, line) {
   }
   return found;
 }
+
+/** A function that calls `read` the first time it is called and returns that value from then on. */
+export function lazy(read) {
+  let value;
+  return () => {
+    value ??= read();
+    return value;
+  };
+}
