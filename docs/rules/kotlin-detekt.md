@@ -2,7 +2,7 @@
 
 detekt's default rules and the one-way rules nitpicker pins on top of them (`detekt.<ruleset>.<Rule>`). This page lists 126 rules. [All pages](README.md).
 
-The guide for these rules: [docs/kotlin-preset.md#one-way-rules](../kotlin-preset.md#one-way-rules).
+The guide for these rules: [docs/kotlin-preset/one-way-rules.md](../kotlin-preset/one-way-rules.md).
 
 The descriptions of detekt's rules are from detekt 1.23.8, under the Apache License 2.0.
 

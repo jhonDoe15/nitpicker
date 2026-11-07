@@ -1,0 +1,45 @@
+  <rule name="SpringTypedResponse" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
+        message="Return a record or a specific type from this handler, never Object, JsonNode, Map&lt;String, Object&gt;, ResponseEntity&lt;?&gt;, a list or Optional of those, or null. For no body return void or ResponseEntity&lt;Void&gt;, and for an error throw an exception that a @RestControllerAdvice maps to a ProblemDetail.">
+    <priority>2</priority>
+    <properties><property name="xpath"><value><![CDATA[
+let $leaf := function($type) {
+  exists($type[self::ClassType[pmd-java:typeIsExactly('java.lang.Object')
+      or pmd-java:typeIs('com.fasterxml.jackson.databind.JsonNode') or pmd-java:typeIs('tools.jackson.databind.JsonNode')]
+    or self::WildcardType[not(*) or ClassType[pmd-java:typeIsExactly('java.lang.Object')]]
+    or self::ClassType[pmd-java:typeIs('java.util.Map')]
+      [not(TypeArguments) or TypeArguments/*[2][self::WildcardType[not(*) or ClassType[pmd-java:typeIsExactly('java.lang.Object')]]
+        or self::ClassType[pmd-java:typeIsExactly('java.lang.Object')]]]])
+},
+    $inner := function($type) {
+  $type[self::ClassType[pmd-java:typeIs('java.util.Map')]]/TypeArguments/*[2]
+  | $type[self::ClassType[pmd-java:typeIs('java.lang.Iterable') or pmd-java:typeIs('java.util.Optional')
+      or pmd-java:typeIs('org.springframework.http.HttpEntity') or pmd-java:typeIs('java.util.concurrent.CompletionStage')
+      or pmd-java:typeIs('org.reactivestreams.Publisher')]]/TypeArguments/*
+},
+    $untyped := function($type) {
+  $leaf($type)
+  or exists($type[self::ClassType[pmd-java:typeIs('org.springframework.http.HttpEntity')][not(TypeArguments)]])
+  or (some $argument in $inner($type) satisfies ($leaf($argument) or (some $nested in $inner($argument) satisfies $leaf($nested))))
+}
+return
+//MethodDeclaration[ModifierList/Annotation[
+    pmd-java:typeIs('org.springframework.web.bind.annotation.GetMapping')
+    or pmd-java:typeIs('org.springframework.web.bind.annotation.PostMapping')
+    or pmd-java:typeIs('org.springframework.web.bind.annotation.PutMapping')
+    or pmd-java:typeIs('org.springframework.web.bind.annotation.PatchMapping')
+    or pmd-java:typeIs('org.springframework.web.bind.annotation.DeleteMapping')
+    or pmd-java:typeIs('org.springframework.web.bind.annotation.RequestMapping')
+    or pmd-java:typeIs('org.springframework.web.bind.annotation.ExceptionHandler')]]
+  /ClassType[$untyped(.)]
+|
+//ReturnStatement[NullLiteral]
+  [ancestor::*[self::MethodDeclaration or self::LambdaExpression][1][self::MethodDeclaration][ModifierList/Annotation[
+    pmd-java:typeIs('org.springframework.web.bind.annotation.GetMapping')
+    or pmd-java:typeIs('org.springframework.web.bind.annotation.PostMapping')
+    or pmd-java:typeIs('org.springframework.web.bind.annotation.PutMapping')
+    or pmd-java:typeIs('org.springframework.web.bind.annotation.PatchMapping')
+    or pmd-java:typeIs('org.springframework.web.bind.annotation.DeleteMapping')
+    or pmd-java:typeIs('org.springframework.web.bind.annotation.RequestMapping')
+    or pmd-java:typeIs('org.springframework.web.bind.annotation.ExceptionHandler')]]]
+]]></value></property></properties>
+  </rule>

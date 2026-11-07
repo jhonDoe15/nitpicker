@@ -1,0 +1,8 @@
+  <rule name="SpringLiteConfiguration" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
+        message="Write @Configuration(proxyBeanMethods = false) and take dependencies as @Bean method parameters instead of calling other @Bean methods.">
+    <priority>3</priority>
+    <properties><property name="xpath"><value><![CDATA[
+//ClassDeclaration/ModifierList/Annotation[pmd-java:typeIs('org.springframework.context.annotation.Configuration')]
+  [not(AnnotationMemberList/MemberValuePair[@Name = 'proxyBeanMethods']/BooleanLiteral[@True = false()])]
+]]></value></property></properties>
+  </rule>

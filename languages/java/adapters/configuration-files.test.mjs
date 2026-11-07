@@ -6,10 +6,13 @@ import { configurationFiles, createJavaAnalyzer, javaRuntimeVersion } from './ja
 const packageRoot = path.resolve(import.meta.dirname, '../../..');
 const STATIC_IMPORT = /(?:^|\n)\s*(?:import|export)\b[^'";]*?\bfrom\s*['"](\.[^'"]+)['"]/g;
 
+const GENERATOR_INPUTS = 'languages/java/gradle/rulesets/';
+
 function resourceFiles(directory) {
   return readdirSync(path.join(packageRoot, directory), { recursive: true, withFileTypes: true })
     .filter((entry) => entry.isFile())
-    .map((entry) => path.relative(packageRoot, path.join(entry.parentPath, entry.name)));
+    .map((entry) => path.relative(packageRoot, path.join(entry.parentPath, entry.name)))
+    .filter((file) => !file.startsWith(GENERATOR_INPUTS));
 }
 
 function staticImports(file) {

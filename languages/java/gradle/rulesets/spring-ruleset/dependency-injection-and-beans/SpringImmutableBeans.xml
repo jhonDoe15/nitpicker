@@ -1,0 +1,17 @@
+  <rule name="SpringImmutableBeans" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
+        message="Make this field of a bean final, static fields too. Beans are shared singletons, so keep per-call state in locals.">
+    <priority>2</priority>
+    <properties><property name="xpath"><value><![CDATA[
+//ClassDeclaration[ModifierList/Annotation[
+    pmd-java:typeIs('org.springframework.stereotype.Component')
+    or pmd-java:typeIs('org.springframework.stereotype.Service')
+    or pmd-java:typeIs('org.springframework.stereotype.Repository')
+    or pmd-java:typeIs('org.springframework.stereotype.Controller')
+    or pmd-java:typeIs('org.springframework.web.bind.annotation.RestController')
+    or pmd-java:typeIs('org.springframework.web.bind.annotation.ControllerAdvice')
+    or pmd-java:typeIs('org.springframework.web.bind.annotation.RestControllerAdvice')]]
+  /ClassBody/FieldDeclaration[not(pmd-java:modifiers() = 'final')]
+  [not(ModifierList/Annotation[(pmd-java:typeIs('jakarta.persistence.PersistenceContext') or pmd-java:typeIs('javax.persistence.PersistenceContext'))
+    or (pmd-java:typeIs('jakarta.persistence.PersistenceUnit') or pmd-java:typeIs('javax.persistence.PersistenceUnit'))])]
+]]></value></property></properties>
+  </rule>
