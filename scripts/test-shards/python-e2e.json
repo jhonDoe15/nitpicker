@@ -49,7 +49,7 @@
   "languages/python/rules/e2e/honesty/isolation.e2e.test.mjs": 4,
   "languages/python/rules/e2e/honesty/per-test-starts.e2e.test.mjs": 2,
   "languages/python/rules/e2e/honesty/sleeps.e2e.test.mjs": 11,
-  "languages/python/rules/e2e/honesty/subject-mocks.e2e.test.mjs": 3,
+  "languages/python/rules/e2e/honesty/mocks/subject-mocks.e2e.test.mjs": 3,
   "languages/python/rules/e2e/honesty/test-assertions.e2e.test.mjs": 12,
   "languages/python/rules/e2e/resources/inline-resources.e2e.test.mjs": 2,
   "languages/python/rules/e2e/persistence/orm-config.e2e.test.mjs": 3,
