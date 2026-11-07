@@ -72,7 +72,7 @@ npx nitpicker
 Tests run with the runner your project already uses: Vitest, Jest, `node:test` or Mocha. A Vitest
 project also needs `@vitest/coverage-v8` at its Vitest version.
 
-The TypeScript preset assumes a feature-folder [layout](docs/typescript-strict-preset.md#layout-and-boundaries).
+The TypeScript preset assumes a feature-folder [layout](docs/typescript-strict-preset/layout-and-boundaries.md).
 For another language, put the preset in `nitpicker.config.json`, for example
 `{ "preset": "python" }`, and run `npx nitpicker`. Each guide lists what your project provides.
 
