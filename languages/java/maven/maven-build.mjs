@@ -1,7 +1,7 @@
 import { mkdirSync, mkdtempSync, readFileSync, rmSync, existsSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
-import { javaCommand, runJava, runMaven } from './maven-command.mjs';
+import { javaCommand, runJava, runMaven, TEST_RERUNS_OFF } from './maven-command.mjs';
 import { runCheckstyle, runFormat, runPmd, runSpotbugs } from './maven-lint.mjs';
 import {
   lifecycleArgs,
@@ -28,8 +28,13 @@ import {
 import { ownSourceRoots } from '../adapters/red-base/tests-failed.mjs';
 import { moduleManifest, relativeTo, writeManifest } from './manifest/maven-manifest.mjs';
 import { runSpringArch } from './spring/maven-spring-arch.mjs';
-import { buildRunsArchRules, withDeclaredSpring } from './spring/arch-rules-gate.mjs';
+import {
+  buildRunsArchRules,
+  springAotSkip,
+  withDeclaredSpring,
+} from './spring/arch-rules-gate.mjs';
 import { writeSpringRoles } from '../adapters/spring-arch/spring-roles.mjs';
+import { writeSpringRuleset } from '../adapters/spring/proxies/proxy-ruleset.mjs';
 import { MAVEN_PRESETS } from '../adapters/gradle-presets.mjs';
 import { processorTool, runErrorProne } from './errorprone/maven-errorprone.mjs';
 import { GRADLE_DIRECTORY, readPinnedTools } from '../builds/java-build.mjs';
@@ -62,7 +67,7 @@ function dependencyFile(work, module) {
   return path.join(work, 'dependencies', groupId, `${artifactId}.txt`);
 }
 
-function buildAndTest({ projectRoot, maven, work, pinned, modules, spawn }) {
+export function buildAndTest({ projectRoot, maven, work, pinned, modules, spawn }) {
   runMaven({
     projectRoot,
     maven,
@@ -79,7 +84,9 @@ function buildAndTest({ projectRoot, maven, work, pinned, modules, spawn }) {
       '-Dmaven.test.failure.ignore=true',
       '-DskipTests=false',
       '-Dmaven.test.skip=false',
+      ...TEST_RERUNS_OFF,
       ...PROJECT_CHECKS_OFF,
+      ...springAotSkip(modules),
     ],
   });
 }
@@ -142,8 +149,8 @@ function readTestRuns(context) {
 
 function analyzeSources(options) {
   const { module, reportDir, classpaths, tools, pinned, configs, style, spring } = options;
-  const { springArch, springRoles, spawn } = options;
-  runPmd({ module, reportDir, tools, classpaths, configs, spring, spawn });
+  const { springArch, springRoles, springRules, spawn } = options;
+  runPmd({ module, reportDir, tools, classpaths, configs, spring, springRules, spawn });
   runSpotbugs({ module, reportDir, tools, spawn });
   runErrorProne({ module, reportDir, tools, classpaths, spawn });
   runFormat({ module, reportDir, tools, javaStyle: style.javaStyle, spawn });
@@ -279,6 +286,7 @@ export function runMavenPreset(projectRoot, { maven, policy = {}, configs, spawn
         projectRoot,
         spring: policy.spring,
         springRoles: writeSpringRoles(policy.springRoles, work),
+        springRules: writeSpringRuleset(projectRoot, work),
       }),
     };
   } finally {

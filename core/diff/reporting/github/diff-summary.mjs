@@ -10,13 +10,32 @@ import {
   ruleTable,
   toolErrorList,
 } from './markdown.mjs';
+import { partialRunLines } from '../partial-run/partial-run.mjs';
+import { failingHeadTests } from '../failing-tests/failing-tests.mjs';
+
+function failingTestsHeadline(report) {
+  const failing = failingHeadTests(report.toolErrors);
+  if (failing.length === 0) {
+    return undefined;
+  }
+  const [first] = String(failing[0].message).split('\n');
+  return failing.length === 1 ? first.replace(/:$/u, '') : 'Tests fail in more than one test run';
+}
 
 function headline(report) {
+  if (report.summary.noChanges === true && report.toolErrors.length === 0) {
+    return '✓ No changes since the merge base; nothing to check';
+  }
   const enforceable = report.newFindings.filter(
     ({ classification }) => classification === 'enforceable',
   );
+  const tests = failingTestsHeadline(report);
   if (enforceable.length > 0) {
-    return `✖ ${pluralize(enforceable.length, 'new enforceable finding')}`;
+    const findings = pluralize(enforceable.length, 'new enforceable finding');
+    return tests === undefined ? `✖ ${findings}` : `✖ ${findings}, and tests fail`;
+  }
+  if (tests !== undefined) {
+    return `✖ ${tests}`;
   }
   return report.toolErrors.length > 0
     ? '✖ Incomplete: no new enforceable findings, but a tool failed'
@@ -89,6 +108,7 @@ export function renderDiffSummary(report, context) {
     '',
     `**${headline(report)}**`,
     '',
+    ...partialRunLines(report.summary).flatMap((line) => [`> ${line}`, '']),
     ...comparisonLine(report),
     '',
     ...policySection(report.summary),

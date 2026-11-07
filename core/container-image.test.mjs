@@ -14,9 +14,12 @@ const instructions = dockerfile
 
 const expectedCopyInstructions = [
   'COPY core/ /opt/nitpicker/core/',
+  'COPY docs/ /opt/nitpicker/docs/',
   'COPY languages/ /opt/nitpicker/languages/',
   'COPY package.json package-lock.json .npmrc LICENSE README.md /opt/nitpicker/',
+  'COPY scripts/reference/ /opt/nitpicker/scripts/reference/',
   'COPY shared/ /opt/nitpicker/shared/',
+  'COPY spec/ /opt/nitpicker/spec/',
 ];
 const expectedDockerignoreLines = [
   '',
@@ -30,7 +33,8 @@ const expectedDockerignoreLines = [
   '.claude',
   '.git',
   '.github',
-  'docs',
+  'languages/typescript/reference/eslint-inventory.json',
+  'shared/reference/rules',
 ];
 
 function instruction(name) {
@@ -43,8 +47,9 @@ describe('container image Dockerfile', () => {
     expect(instruction('FROM')[0]).toMatch(/^FROM node:\d+\.\d+\.\d+-slim$/);
   });
 
-  it('installs git', () => {
-    expect(instruction('RUN').some((line) => /apt-get install\b.*\bgit\b/.test(line))).toBe(true);
+  it.each(['git', 'procps'])('installs %s for repository and process-tree operations', (name) => {
+    const install = new RegExp(`apt-get install\\b.*\\b${name}\\b`, 'u');
+    expect(instruction('RUN').some((line) => install.test(line))).toBe(true);
   });
 
   it('installs the package from the repo source and exposes the nitpicker binary', () => {

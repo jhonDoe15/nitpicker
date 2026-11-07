@@ -15,6 +15,8 @@ base and fails only on **new enforceable findings**. Existing debt is baselined 
 
 - `npx nitpicker` checks your changes (committed, staged, unstaged and untracked) against the merge
   base. Run it from anywhere inside the project, and run it before you finish a task.
+- When nothing changed since the merge base, no analyzer runs: it prints
+  `No changes since <base> (<sha>); nothing to check.` and exits 0.
 - `npx nitpicker --fix` first applies ESLint and Prettier fixes to the changed files, then runs the
   comparison. Use it to clear formatting and auto-fixable lint findings. It cannot be combined with
   `--all`.
@@ -24,15 +26,16 @@ base and fails only on **new enforceable findings**. Existing debt is baselined 
   violation, so use it to survey existing code, not as your pass/fail check. It cannot be combined
   with `--base`, `--fix`, sharding or `--defer-exit`.
 - `--rule <substring>` lists the findings whose rule matches, after the summary. `--analyzer <name>`
-  runs one analyzer only, which is faster while iterating.
+  runs one analyzer only, which is faster while iterating. Its exit 0 is not a pass: the summary
+  says `Ran only: ...`, and you run the gate without `--analyzer` before you finish.
 
 ### Exit codes
 
-| Code | Meaning                                                                                                          |
-| ---- | ---------------------------------------------------------------------------------------------------------------- |
-| 0    | Completed with no new enforceable findings. Done.                                                                |
-| 1    | At least one new enforceable finding, even if a tool also errored. Fix and rerun.                                |
-| 2    | A tool error and no new enforceable findings, invalid arguments, invalid config, or any other failure to decide. |
+| Code | Meaning                                                                                                                                |
+| ---- | -------------------------------------------------------------------------------------------------------------------------------------- |
+| 0    | Completed with no new enforceable findings. Done, unless the run was narrowed with `--analyzer`.                                       |
+| 1    | At least one new enforceable finding or a failing head test, even if a tool also errored. Fix and rerun.                               |
+| 2    | A tool error and no new enforceable findings or failing head tests, invalid arguments, invalid config, or any other failure to decide. |
 
 A full run takes minutes and prints a progress line to stderr for each slow, failed or skipped analyzer. Wait for it: do
 not start a second run or kill it. A second run in the same project exits 2 at once with `another run is in progress`.

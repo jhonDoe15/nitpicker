@@ -5,7 +5,7 @@ import {
   TRANSLATION_CALLS,
   isIdiomaticText,
 } from '../../../../../../shared/literals/repeated-literal-exemptions.mjs';
-import { braceDepths, closingIndex } from '../kotlin-source.mjs';
+import { braceDepths, closingIndex, lineStart } from '../kotlin-source.mjs';
 
 const SHOWN_LENGTH = 30;
 const BEFORE_WINDOW = 300;
@@ -33,11 +33,7 @@ function repeatedMessage(subject) {
   return `${subject} is repeated three times or more in the file. ${ADVICE}`;
 }
 
-export const REPEATED_STRING_MESSAGE = repeatedMessage('A string');
-
-function lineStart(code, offset) {
-  return code.lastIndexOf('\n', offset - 1) + 1;
-}
+const REPEATED_STRING_MESSAGE = repeatedMessage('A string');
 
 function annotationRanges(code) {
   return [...code.matchAll(ANNOTATION)].map(({ index, 0: text }) => ({
@@ -162,3 +158,8 @@ export function repeatedStringLiterals(scanned) {
     })),
   );
 }
+
+export const kotlinSourceRules = {
+  messages: { RepeatedStringLiteral: REPEATED_STRING_MESSAGE },
+  main: [repeatedStringLiterals],
+};

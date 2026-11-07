@@ -10,7 +10,8 @@ import {
 import path from 'node:path';
 import { globMatcher } from '../../../shared/paths/glob.mjs';
 import { runJava } from './maven-command.mjs';
-import { failedCases, failingTestsError, freshReports } from '../builds/test-failures.mjs';
+import { failedCaseEntries, failingTestsError, freshReports } from '../builds/test-failures.mjs';
+import { readPitMutators } from '../builds/java-build.mjs';
 
 const DEFAULT_ARCHUNIT_INCLUDES = '**/*ArchTest.class,**/*ArchitectureTest.class';
 const JUNIT_ENGINE_JAR = /^junit-platform-engine-.+\.jar$/u;
@@ -48,15 +49,19 @@ export function suiteNameOf(report) {
   return path.basename(report).replace(/^TEST-|\.xml$/gu, '');
 }
 
-function testOutcome({ module, moduleName, failures, testsRan, tolerateFailures }) {
+function testOutcome({ moduleName, failures, testsRan, tolerateFailures }) {
   if (failures.length === 0) {
     return { testsRan, failure: undefined };
   }
-  const failure = { module: moduleName, tests: failures };
+  const failure = {
+    module: moduleName,
+    tests: failures.map(({ text }) => text),
+    details: failures.map(({ detail }) => detail),
+  };
   if (tolerateFailures === true) {
     return { testsRan, failure };
   }
-  throw failingTestsError(module.basedir, [failure]);
+  throw failingTestsError([failure]);
 }
 
 export function collectTestResults({
@@ -77,12 +82,11 @@ export function collectTestResults({
       mkdirSync(archunitDir, { recursive: true });
       copyFileSync(report, path.join(archunitDir, path.basename(report)));
     } else {
-      failures.push(...failedCases(report));
+      failures.push(...failedCaseEntries(report));
     }
   }
   requireArchunitRun(module, reports, isArchunit);
   return testOutcome({
-    module,
     moduleName,
     failures,
     testsRan: reports.length > 0,
@@ -205,6 +209,29 @@ export function pitClasspath(tools, testRuntime) {
   ];
 }
 
+export function javaArgumentFile(args) {
+  return args
+    .map((argument) => {
+      const escaped = argument
+        .replaceAll('\\', '\\\\')
+        .replaceAll('"', '\\"')
+        .replaceAll('\n', '\\n')
+        .replaceAll('\r', '\\r');
+      return `"${escaped}"\n`;
+    })
+    .join('');
+}
+
+function pitArgLine(pitDir, args) {
+  if (args.length === 0) {
+    return [];
+  }
+  const file = path.join(pitDir, 'jvm-arguments');
+  writeFileSync(file, javaArgumentFile(args));
+  const quote = file.includes('"') ? "'" : '"';
+  return ['--argLine', `${quote}@${file}${quote}`];
+}
+
 export function runPit({ module, reportDir, tools, classpaths, isArchunit, spawn }) {
   const pitDir = path.join(reportDir, 'pit');
   rmSync(pitDir, { recursive: true, force: true });
@@ -230,6 +257,8 @@ export function runPit({ module, reportDir, tools, classpaths, isArchunit, spawn
       [...new Set(classpaths.testRuntime)].filter((entry) => existsSync(entry)).join(','),
       '--mutableCodePaths',
       module.outputDirectory,
+      '--mutators',
+      readPitMutators().join(','),
       '--outputFormats',
       'XML',
       '--timestampedReports',
@@ -240,6 +269,7 @@ export function runPit({ module, reportDir, tools, classpaths, isArchunit, spawn
       'false',
       '--verbose',
       'false',
+      ...pitArgLine(pitDir, module.testJvmArgs),
     ],
     cwd: module.basedir,
     accept: (result) => result.status === 0,

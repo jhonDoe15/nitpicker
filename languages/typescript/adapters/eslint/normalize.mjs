@@ -9,6 +9,7 @@ import {
   stableSyntaxAnchor,
   eslintNodeType,
   enclosingSymbol,
+  enclosingFunctionHash,
   syntaxFingerprint,
   commentFingerprint,
   normalizeMessageText,
@@ -21,6 +22,7 @@ import {
   withoutFatalDirectives,
 } from '../hints/eslint-hints.mjs';
 import { requiredString, positiveInteger } from './arguments.mjs';
+import { withoutSupersededMessages } from '../lint-engine/overlapping-reports.mjs';
 
 export function normalizeEslintResults({ value, projectRoot, analyzerName }) {
   if (!Array.isArray(value)) {
@@ -67,22 +69,6 @@ function normalizeResult({ result, resultIndex, projectRoot, analyzerName }) {
   );
 }
 
-const supersedingRules = new Map([['no-restricted-properties', 'nitpicker/react-no-random-key']]);
-
-function startOf(ruleId, message) {
-  return `${String(ruleId)}@${String(message.line)}:${String(message.column)}`;
-}
-
-function withoutSupersededMessages(messages) {
-  const starts = new Set(
-    messages.filter(isRecord).map((message) => startOf(message.ruleId, message)),
-  );
-  return messages.filter((message) => {
-    const superseding = isRecord(message) ? supersedingRules.get(message.ruleId) : undefined;
-    return superseding === undefined || !starts.has(startOf(superseding, message));
-  });
-}
-
 function metricRules() {
   return {
     'nitpicker/cognitive-complexity': {
@@ -107,6 +93,12 @@ function countGroupOf(finding, plan) {
   return JSON.stringify([finding.rule, finding.path, finding.symbol, plan.kind, plan.key]);
 }
 
+function anchorOf(plan, subject) {
+  return plan.anchorHash === undefined
+    ? {}
+    : { anchor: { key: `${plan.kind}:${subject}:text:${plan.anchorHash}` } };
+}
+
 function withRatchets(findings, plans) {
   const counts = new Map();
   const occurrences = new Map();
@@ -125,6 +117,7 @@ function withRatchets(findings, plans) {
       const growthAdvice = growthAdviceFor(finding.rule);
       return {
         ...finding,
+        ...anchorOf(plan, plan.key),
         ratchet: {
           key: `count:${plan.key}`,
           value: counts.get(countGroupOf(finding, plan)),
@@ -138,6 +131,7 @@ function withRatchets(findings, plans) {
     occurrences.set(group, occurrence);
     return {
       ...finding,
+      ...anchorOf(plan, plan.label),
       ratchet: {
         key: `metric:occurrence:${String(occurrence)}`,
         value: plan.value,
@@ -183,7 +177,8 @@ function normalizeMessage({ message, context, analyzerName, relativePath, source
     finding.symbol = symbol;
   }
   const plan = ratchetPlan({ metric, symbol, reportedNode: report.reportedNode, messageIdentity });
-  return { finding, plan };
+  const anchorHash = plan && enclosingFunctionHash(report.reportedNode, symbol);
+  return { finding, plan: anchorHash === undefined ? plan : { ...plan, anchorHash } };
 }
 
 function validatedMessageText(message, context) {

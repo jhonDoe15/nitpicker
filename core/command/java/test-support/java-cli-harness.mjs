@@ -78,7 +78,6 @@ export function useGradleFixtures(runNitpickerCli) {
         },
       },
       redBase: {
-        headRule: 'gradle-failure',
         files: (suite) => ({ TESTS_FAIL: JSON.stringify({ '': suite }) }),
         repair: { remove: ['TESTS_FAIL'] },
         modules: {
@@ -134,7 +133,6 @@ export function useMavenFixtures(runNitpickerCli) {
         },
       },
       redBase: {
-        headRule: 'maven-failure',
         files: (suite) => ({ 'test-results/test/TEST-demo.ATest.xml': suite }),
         repair: {
           write: {
@@ -156,6 +154,15 @@ export function useMavenFixtures(runNitpickerCli) {
 export function unusedFieldMessage(name, file = 'src/main/java/demo/A.java') {
   const { fix } = readCatalog('pmd').UnusedPrivateField;
   return `Avoid unused field: ${name}. ${fix} ${exceptionHint('pmd/UnusedPrivateField', file)}`;
+}
+
+export function unusedFieldConsoleEntry(name, line, file = 'src/main/java/demo/A.java') {
+  const { fix } = readCatalog('pmd').UnusedPrivateField;
+  return [
+    `  pmd/UnusedPrivateField: Avoid unused field: ${name}. ${fix}`,
+    `    ${file}:${String(line)}`,
+    `    ${exceptionHint('pmd/UnusedPrivateField', file)}`,
+  ].join('\n');
 }
 
 export function gradleFailureMessage(detail) {

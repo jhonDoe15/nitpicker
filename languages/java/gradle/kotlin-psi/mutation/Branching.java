@@ -9,6 +9,7 @@ import org.jetbrains.kotlin.lexer.KtTokens;
 import org.jetbrains.kotlin.psi.KtBinaryExpression;
 import org.jetbrains.kotlin.psi.KtBinaryExpressionWithTypeRHS;
 import org.jetbrains.kotlin.psi.KtCallExpression;
+import org.jetbrains.kotlin.psi.KtDeclarationWithBody;
 import org.jetbrains.kotlin.psi.KtExpression;
 import org.jetbrains.kotlin.psi.KtForExpression;
 import org.jetbrains.kotlin.psi.KtIfExpression;
@@ -16,7 +17,11 @@ import org.jetbrains.kotlin.psi.KtIsExpression;
 import org.jetbrains.kotlin.psi.KtLoopExpression;
 import org.jetbrains.kotlin.psi.KtPostfixExpression;
 import org.jetbrains.kotlin.psi.KtPrefixExpression;
+import org.jetbrains.kotlin.psi.KtProperty;
+import org.jetbrains.kotlin.psi.KtReturnExpression;
 import org.jetbrains.kotlin.psi.KtSafeQualifiedExpression;
+import org.jetbrains.kotlin.psi.KtValueArgument;
+import org.jetbrains.kotlin.psi.KtWhenCondition;
 import org.jetbrains.kotlin.psi.KtWhenEntry;
 import org.jetbrains.kotlin.psi.KtWhenExpression;
 import org.jetbrains.kotlin.psi.KtWhileExpressionBase;
@@ -43,6 +48,8 @@ final class Branching {
   private final Set<String> projectInline;
   private final Set<Integer> branching = new TreeSet<>();
   private final Set<Integer> casts = new TreeSet<>();
+  private final Set<Integer> otherBranching = new TreeSet<>();
+  private final Set<Integer> lastEntries = new TreeSet<>();
 
   Branching(Spans spans, Set<String> projectInline) {
     this.spans = spans;
@@ -55,6 +62,12 @@ final class Branching {
 
   List<Integer> castLines() {
     return new ArrayList<>(casts);
+  }
+
+  List<Integer> exhaustiveLastEntryLines() {
+    Set<Integer> lines = new TreeSet<>(lastEntries);
+    lines.removeAll(otherBranching);
+    return new ArrayList<>(lines);
   }
 
   void visit(PsiElement element) {
@@ -89,14 +102,40 @@ final class Branching {
   private void whenExpression(KtWhenExpression expression) {
     mark(expression.getWhenKeyword());
     markEnds(expression.getSubjectExpression());
-    for (KtWhenEntry entry : expression.getEntries()) {
-      for (PsiElement condition : entry.getConditions()) {
-        markEnds(condition);
+    List<KtWhenEntry> entries = expression.getEntries();
+    KtWhenEntry exhaustiveLast = exhaustiveLastEntry(expression, entries);
+    for (KtWhenEntry entry : entries) {
+      KtWhenCondition[] conditions = entry.getConditions();
+      for (int index = 0; index < conditions.length; index++) {
+        if (entry == exhaustiveLast && index == conditions.length - 1) {
+          markLastEntry(conditions[index]);
+        } else {
+          markEnds(conditions[index]);
+        }
       }
       if (entry.isElse()) {
         mark(entry.getElseKeyword());
       }
     }
+  }
+
+  private static KtWhenEntry exhaustiveLastEntry(KtWhenExpression expression, List<KtWhenEntry> entries) {
+    if (expression.getSubjectExpression() == null || entries.isEmpty() || expression.getElseExpression() != null
+        || !usedAsValue(expression)) {
+      return null;
+    }
+    return entries.get(entries.size() - 1);
+  }
+
+  private static boolean usedAsValue(KtWhenExpression expression) {
+    PsiElement parent = expression.getParent();
+    if (parent instanceof KtDeclarationWithBody) {
+      return ((KtDeclarationWithBody) parent).getBodyExpression() == expression;
+    }
+    if (parent instanceof KtProperty) {
+      return ((KtProperty) parent).getInitializer() == expression;
+    }
+    return parent instanceof KtReturnExpression || parent instanceof KtValueArgument;
   }
 
   private void loop(KtLoopExpression loop) {
@@ -147,13 +186,23 @@ final class Branching {
   private void mark(PsiElement element) {
     if (element != null) {
       branching.add(spans.startLine(element));
+      otherBranching.add(spans.startLine(element));
     }
   }
 
   private void markEnds(PsiElement element) {
     if (element != null) {
-      branching.add(spans.startLine(element));
+      mark(element);
       branching.add(spans.endLineNotBeforeStart(element));
+      otherBranching.add(spans.endLineNotBeforeStart(element));
     }
+  }
+
+  private void markLastEntry(PsiElement element) {
+    for (int line = spans.startLine(element); line <= spans.endLineNotBeforeStart(element); line++) {
+      lastEntries.add(line);
+    }
+    branching.add(spans.startLine(element));
+    branching.add(spans.endLineNotBeforeStart(element));
   }
 }
