@@ -14,7 +14,7 @@ Every rule the preset can report has an entry in the [rule reference](rules/READ
 
 ## Test retries
 
-The retry rules of the [Java preset](java-preset.md#how-it-works) apply to Kotlin on Gradle: the
+The retry rules of the [Java preset](java-preset/how-it-works.md) apply to Kotlin on Gradle: the
 same init script switches off the test-retry and Develocity retries of every `Test` task and reads
 the JUnit XML after a successful build. Maven support is separate.
 
@@ -488,7 +488,7 @@ hide the main warnings.
 ## Doc comments
 
 KDoc is checked by the shared `doc-comment-content` rule, as Javadoc is in the Java preset (see
-[Doc comments](java-preset.md#doc-comments)): a KDoc comment whose description only restates the
+[Doc comments](java-preset/doc-comments.md)): a KDoc comment whose description only restates the
 declaration's name, unless a block tag says more (`@param id the account`; `@param id` alone does
 not), or whose description is longer than 5 lines, tags, blank lines and fenced code not counted,
 is reported with the tool `facts` and an exception for `doc-comment-content`. The scan
@@ -1120,7 +1120,7 @@ Two styles are equally valid in each of these, so the preset follows the project
 longest line that could have been wrapped, against the shortest join of a wrapped argument list, and
 else the lines that run past 100 or 120. With no clear answer each tool keeps its own width.
 An id the formatter cannot apply is neither measured nor printed, and pinning it is a config error.
-`java.indentation` (google-java-format `2` or `--aosp` 4, or `tab`; palantir-java-format is always 4, see `java.formatter` and `java.lineLength` in the [Java preset](java-preset.md#style)) is the Java twin of `kotlin.indentation` and
+`java.indentation` (google-java-format `2` or `--aosp` 4, or `tab`; palantir-java-format is always 4, see `java.formatter` and `java.lineLength` in the [Java preset](java-preset/style.md)) is the Java twin of `kotlin.indentation` and
 applies to the Java sources of the same project; the difference is the default: `java.indentation`
 falls back to 2 (google-java-format's), while `kotlin.indentation` has none, because ktfmt's default
 is 2 and ktlint's is 4, so with no clear majority the tool keeps its own. For ktlint the choices are a
@@ -1155,7 +1155,7 @@ reading Kover's own report is a follow-up only if it is wanted.
 ### Changed-branch coverage (`changed-branch-coverage`)
 
 The rule and its differential mechanics are the Java ones (see
-[java-preset.md](java-preset.md#slice-8-gate-on-changed-coverage)): per source line, JaCoCo's covered
+[java-preset.md](java-preset/slice-8-gate-on-changed-coverage.md)): per source line, JaCoCo's covered
 and missed branch outcomes; a line below 95% is an enforceable `jacoco` finding whose identity is a
 hash of the line's source text, and it is new when its line is in a range `git diff` says changed.
 For Kotlin the source text is read from the `.kt` files under `kotlinSourceRoots` (before KT4 only
@@ -1273,7 +1273,7 @@ task's `jvmArgs`, `systemProperties`, `minHeapSize`, `maxHeapSize` and `jvmArgum
 the JaCoCo agent), on Maven maven-surefire-plugin's `argLine` (its configuration, else the
 `argLine` property) followed by its `<systemProperties>` and `<systemPropertyVariables>` as `-D`
 arguments. They reach PIT through a Java argument file, so spaces, quotes and commas survive;
-[Slice 7: mutation with PIT](java-preset.md#slice-7-mutation-with-pit) lists the exact rules and
+[Slice 7: mutation with PIT](java-preset/slice-7-mutation-with-pit.md) lists the exact rules and
 what is left out. The ingester finds a class's source file under both kinds of source root from
 PIT's `sourceFile` (also when the directory does not match the package, as for coverage). PIT's
 built-in `FKOTLIN` filter (on by default) removes only mutants at line 0 of a `.kt` file, which is
@@ -1307,7 +1307,7 @@ mutant of PIT's report; a mutant a rule names is left out of the findings and co
 descriptive `mutation-summary` finding `GeneratedCode`. Mutants in generated source files (KSP and
 KAPT output under `build/generated/`, files with a generator header) need no rule here: every
 finding on a generated source is dropped for both languages (see
-[Generated sources](java-preset.md#generated-sources)). The Java preset does not run any of it:
+[Generated sources](java-preset/generated-sources.md)). The Java preset does not run any of it:
 see [Java mutants of generated code](#java-mutants-of-generated-code). A rule drops one named
 kind of mutant and nothing else; each has tests with the junk it drops and the look-alike it
 keeps (`generated-filter.test.mjs`, `generated-filter-gaps.test.mjs` and
@@ -1609,7 +1609,7 @@ overload, are not.
 The stability-direction rule runs on Kotlin. `nitpickerJdeps` runs the JDK's `jdeps` over every main
 class directory (the Java and the Kotlin one, so references in both directions between the languages
 count) and the Nitpicker side builds the package graph as for Java (see the
-[Java preset](java-preset.md#coupling-and-stability-ticket-sh6)): a package depending on a less stable
+[Java preset](java-preset/coupling-and-stability-ticket-sh6.md)): a package depending on a less stable
 package fails with `stability-direction`, with the report-only coupling metrics beside it.
 
 **Module and package (decisions).** A module is a source file, as in Java and TypeScript. The Kotlin
@@ -1658,7 +1658,7 @@ the [one-way rules](#one-way-rules), the [source checks](#source-checks), the
 [review rules](#review-rules), the [class limits](#class-limits), the file limits
 `file-lines-limit` and `folder-files-limit`, `slow-test` (or `test-runtime/slow-test`),
 `test-runtime/test-not-run` (a test source set no test task runs, see
-[java-preset.md](java-preset.md#tests-that-never-run)), the
+[java-preset.md](java-preset/tests-that-never-run.md)), the
 [dependency and repository checks](usage.md#dependency-and-repository-checks), `co-change` of the
 [change history](usage.md#change-history) check (with a `<module>/**` glob), stability, and the
 mutants of Java and Kotlin classes per path, and the structure, CRAP and coverage rules per function. Java rule
@@ -1668,7 +1668,7 @@ a config error until the Kotlin preset runs the rule that reads them (`shared-us
 
 ## Slow tests
 
-As for Java ([slow tests](java-preset.md#slow-tests)): a test the change adds or edits fails over 5 s
+As for Java ([slow tests](java-preset/slow-tests.md)): a test the change adds or edits fails over 5 s
 as a unit test or 30 s as an integration test (`thresholds.unitTestSeconds`,
 `thresholds.integrationTestSeconds`), measured on head from the JUnit XML of the test tasks, once and
 without a rerun (see Java). A Kotlin test named with backticks is found by its name.
