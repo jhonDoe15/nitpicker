@@ -68,6 +68,16 @@ function readRuffFindings({ reportRoot, roots, projectRoot, exceptions }) {
   });
 }
 
+function crapFindings({ reportRoot, coverage, projectRoot, roots, crapLimit }) {
+  return readPythonCrapFindings({
+    functions: readPythonFunctions(reportRoot),
+    coverage,
+    projectRoot,
+    roots,
+    crapLimit,
+  });
+}
+
 export function readPythonFindings({
   projectRoot,
   reportRoot,
@@ -89,13 +99,7 @@ export function readPythonFindings({
       ...ingestCoverageJson(coverage, { roots }).findings,
       ...readPythonStructureFindings(reportRoot, projectRoot),
       ...pythonFileLimitFindings(projectRoot, policy),
-      ...readPythonCrapFindings({
-        functions: readPythonFunctions(reportRoot),
-        coverage,
-        projectRoot,
-        roots,
-        crapLimit,
-      }),
+      ...crapFindings({ reportRoot, coverage, projectRoot, roots, crapLimit }),
       ...(manifest.testsRan === false ? [noTestsFinding()] : []),
       ...ingestCoverageBranches(readReport(reportRoot, COVERAGE_REPORT), {
         roots,
