@@ -5,8 +5,8 @@ import { runScheduler } from './diff/execution/run-analyzers.mjs';
 import { runCacheCommand } from './command/cache.mjs';
 import { runExplainCommand, runRulesCommand } from './command/reference/reference.mjs';
 import { runBaseCommand } from './command/base.mjs';
-import { parseArguments, USAGE_TEXT } from './command/arguments.mjs';
-import { resolveProjectRoot } from './tooling/tool-resolution.mjs';
+import { missingPathHint, parseArguments, USAGE_TEXT } from './command/arguments.mjs';
+import { resolveRunTarget } from './scope/run-target.mjs';
 import { realpathSync } from 'node:fs';
 import {
   describeConfigOverrides,
@@ -28,7 +28,7 @@ import { resolveComparison } from './diff/git/repository/git.mjs';
 import { resolveBase } from './diff/git/repository/base-ref.mjs';
 import { detachLocalGitVariables } from './diff/git/environment/local-variables.mjs';
 import path from 'node:path';
-import { clearDiffReports } from './diff/reporting/reporters.mjs';
+import { clearDiffReports, outputRootFor } from './diff/reporting/reporters.mjs';
 import { selectComparisonAnalyzers } from './command/comparison/analyzers.mjs';
 import { runQualityDiff } from './diff/comparison/run-diff.mjs';
 import { fixIfRequested } from './command/fix-request.mjs';
@@ -127,10 +127,7 @@ function runCommand(cli) {
 
 function runConfigured(cli) {
   const { options, stdout, runTasks } = cli;
-  const currentProjectRoot =
-    cli.currentProjectRoot === undefined
-      ? resolveProjectRoot()
-      : realpathSync(cli.currentProjectRoot);
+  const { currentProjectRoot, scope } = resolveRunTarget({ ...cli, missingPathHint });
   const config = loadConfig(currentProjectRoot);
   const headPolicy = resolveProjectHeadPolicy(config, currentProjectRoot);
   const presetSet = presetAnalyzers(config, options.all ? cli.snapshotAnalyzers : cli.analyzers);
@@ -152,6 +149,7 @@ function runConfigured(cli) {
         stderr: cli.stderr,
         environment: cli.environment,
         runTasks,
+        scope,
       });
     }
     return runComparisonCli({
@@ -161,6 +159,7 @@ function runConfigured(cli) {
       injectedAnalyzers: cli.analyzers,
       config,
       headPolicy,
+      scope,
     });
   });
 }
@@ -176,10 +175,7 @@ function runComparisonCli(cli) {
     configuredBase: config.base,
     environment: cli.environment,
   });
-  const outputRoot =
-    options.outputRoot === undefined
-      ? path.join(currentProjectRoot, 'reports/quality/diff')
-      : path.resolve(currentProjectRoot, options.outputRoot);
+  const outputRoot = outputRootFor(currentProjectRoot, options.outputRoot, 'diff');
   const { analyzers, partialRun } = selectComparisonAnalyzers(cli);
   clearDiffReports(outputRoot);
   const headPolicy = comparisonPolicy({ ...cli, repositoryRoot, base }, resolveComparison);
@@ -205,6 +201,7 @@ function runComparisonCli(cli) {
     resolveBaseSetup: baseSetupResolver(cli, config, headPolicy),
     describeNotices: noticeDescriber(config, headPolicy, currentProjectRoot),
     ...acceptanceOf(cli),
+    scope: cli.scope,
     progress: cli.progress,
     runTasks: cli.runTasks,
     warn: (message) => cli.stderr.write(`nitpicker: ${message}\n`),

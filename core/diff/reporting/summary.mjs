@@ -8,6 +8,7 @@ import { designNoteLines } from './format/design-notes.mjs';
 import { areaCountLine } from './format/rule-groups/finding-areas.mjs';
 import { byFixOrder, ruleGroupLines, withoutRoute } from './format/rule-groups/rule-groups.mjs';
 import { appendReviewSummary } from './review/notices.mjs';
+import { scopeLine } from '../../scope/scope-findings.mjs';
 import { partialRunLines } from './partial-run/partial-run.mjs';
 import { failingHeadTests, failingTestLines } from './failing-tests/failing-tests.mjs';
 import {
@@ -46,12 +47,13 @@ function renderGateSummary(
       hasFailures ? [ANSI.bold, ANSI.red] : [ANSI.bold, ANSI.green],
       color,
     ),
+    ...scopeLine(report.summary),
     ...failingTestLines(failingTests, {
       headline: (text) => failing(text, color),
       label: (tool) => style(tool, [ANSI.yellow], color),
+      diagnosticsPath,
     }),
   ];
-
   appendViolationSummary(
     lines,
     {

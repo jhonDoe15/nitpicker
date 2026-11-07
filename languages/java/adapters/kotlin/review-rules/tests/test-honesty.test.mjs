@@ -84,6 +84,7 @@ describe('testHonestyFindings', () => {
       'ServerOrContainerPerTest',
       'AssertionInControlFlow',
       'CoroutineEscapesTest',
+      'GlobalStateLeakInTest',
     ]);
   });
 

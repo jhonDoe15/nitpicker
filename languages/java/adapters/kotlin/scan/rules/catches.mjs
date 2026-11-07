@@ -30,7 +30,7 @@ const HEADER_START = /[;{}]/g;
 const BOOLEAN_PARAMETER =
   /^\s*(?:vararg\s+)?(?:(?:val|var)\s+)?([A-Za-z_]\w*)\s*:\s*Boolean\s*(?:=.*)?$/s;
 
-export const CATCH_MESSAGES = {
+const CATCH_MESSAGES = {
   CatchOnlyLogsOrReturnsDefault:
     'Rethrow it with the cause (`throw OrderException(message, e)`), return a failure result that carries the exception (`Result.failure(e)`), or answer with an error response: this catch only logs the failure or returns a default, and carries on.',
   BooleanFlagParameter:
@@ -237,3 +237,5 @@ export function booleanFlags(scanned) {
     });
   });
 }
+
+export const kotlinSourceRules = { messages: CATCH_MESSAGES, main: [catchOnlyLogs, booleanFlags] };

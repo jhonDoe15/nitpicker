@@ -47,7 +47,7 @@ const TRUST_ALL = [
   new RegExp(String.raw`\b(?:${INSECURE_TYPES.join('|')})\b`, 'g'),
 ];
 
-export const CRYPTO_MESSAGES = {
+const CRYPTO_MESSAGES = {
   WeakHash:
     'Hash with `MessageDigest.getInstance("SHA-256")` (or SHA-384, SHA-512, SHA3-256), sign with `Mac.getInstance("HmacSHA256")`, and hash passwords with Argon2 or bcrypt (`Argon2PasswordEncoder`, `BCryptPasswordEncoder`): MD5 and SHA-1 are broken hashes, collisions are cheap and brute force is fast. A protocol you do not control that requires one (a legacy signature, an ETag, a WebSocket accept key) is the exception.',
   TlsVerificationOff:
@@ -123,3 +123,8 @@ export function disabledTlsVerification(scanned) {
     .toSorted((left, right) => left - right)
     .map((offset) => ({ rule: 'TlsVerificationOff', offset }));
 }
+
+export const kotlinSourceRules = {
+  messages: CRYPTO_MESSAGES,
+  main: [weakHashes, disabledTlsVerification],
+};

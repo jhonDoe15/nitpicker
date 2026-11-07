@@ -1,6 +1,9 @@
 import { existsSync, readFileSync } from 'node:fs';
 
 const MAIN_BRANCH = 'main';
+const MAIN_ROOT = /\/blob\/main$/u;
+const RULE_PAGES = 'docs/rules/';
+export const LATEST_RELEASE_TAG = 'latest';
 const REPOSITORY_URL = /^(?:git\+)?(https:\/\/.*?)(?:\.git)?\/?$/u;
 const PACKAGE_ROOT = new URL('../../', import.meta.url);
 
@@ -26,10 +29,16 @@ export function docsRootUrl(packageRoot = PACKAGE_ROOT) {
   return `${repository}/blob/${docsRef({ version: manifest.version, checkout })}`;
 }
 
+function rootWithRulePagesAtLatestRelease(relativePath, root) {
+  return relativePath.startsWith(RULE_PAGES)
+    ? root.replace(MAIN_ROOT, `/blob/${LATEST_RELEASE_TAG}`)
+    : root;
+}
+
 export function docsUrl(relativePath, anchor, root = docsRootUrl()) {
   if (root === undefined) {
     return undefined;
   }
-  const url = `${root}/${relativePath}`;
+  const url = `${rootWithRulePagesAtLatestRelease(relativePath, root)}/${relativePath}`;
   return anchor === undefined || anchor === '' ? url : `${url}#${anchor}`;
 }
