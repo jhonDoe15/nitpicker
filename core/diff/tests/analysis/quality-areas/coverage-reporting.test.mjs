@@ -117,11 +117,11 @@ describe('coverage reporting in the quality-area analyzers', () => {
       rule: 'tests-failed',
       path: '.',
       identity: 'tests-failed',
-      message: `1 test fails, so coverage, CRAP and mutation were skipped. Fix the tests and rerun:\n  /elsewhere/test/a.test.ts > adds: no`,
+      message: `1 test fails; coverage, CRAP and mutation were skipped. Fix the tests and rerun:\n  /elsewhere/test/a.test.ts > adds: no`,
       classification: 'tool-error',
     });
     expect(finding.message).toBe(
-      `1 test fails, so coverage, CRAP and mutation were skipped. Fix the tests and rerun:\n  /elsewhere/test/a.test.ts > adds: no`,
+      `1 test fails; coverage, CRAP and mutation were skipped. Fix the tests and rerun:\n  /elsewhere/test/a.test.ts > adds: no`,
     );
   });
   it('says which steps of the test script nitpicker did not run before the tests', () => {
