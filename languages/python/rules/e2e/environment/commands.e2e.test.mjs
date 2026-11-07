@@ -2,7 +2,7 @@ import { afterEach, describe, expect, it } from 'vitest';
 import { createScripts } from '../../test-support/python-script-helpers.mjs';
 
 const enabled = process.env.NITPICKER_PYTHON_E2E === '1';
-const { cleanup, outcomes, findingsOf } = createScripts();
+const { cleanup, outcomes, findingsOf } = createScripts({ hidden: ['subprocess-without-timeout'] });
 afterEach(cleanup);
 
 describe.skipIf(!enabled)('shell-command', () => {

@@ -2,6 +2,7 @@ import { mkdirSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import { parseAnalyzerReport } from '../../../../core/diff/comparison/finding-schema.mjs';
+import { withoutRouteFields } from '../../../../core/exceptions/test-support/route-check.mjs';
 import { exceptionHint } from '../../../../shared/rules/exceptions.mjs';
 import { kotlinFormatAdvice } from '../kotlin/style/kotlin-format-advice.mjs';
 import {
@@ -21,7 +22,9 @@ describe('readJavaFindings with the kotlin preset: detekt, ktlint and ktfmt', ()
     const { findings } = readJavaFindings(projectWithKotlinReports(), { preset: 'kotlin' });
     const detekt = findings.filter((finding) => finding.tool === 'detekt');
 
-    expect(parseAnalyzerReport({ findings }, 'kotlin').findings).toEqual(findings);
+    expect(withoutRouteFields(parseAnalyzerReport({ findings }, 'kotlin').findings)).toEqual(
+      findings,
+    );
     expect(
       detekt.map(({ rule, path: file, identity, classification }) => [
         rule,
@@ -141,6 +144,8 @@ describe('readJavaFindings with the kotlin preset: detekt, ktlint and ktfmt', ()
         identity: 'suppress:UnsafeCallOnNullableType',
         message:
           'Suppressing "UnsafeCallOnNullableType" inline is not allowed. Fix the code the rule flags; to skip generated code, add it to "exclude" in nitpicker.config.json. If this is intended, add {"rule":"inline-suppression","paths":["src/main/kotlin/demo/Bad.kt"],"reason":"..."} to "exceptions" in nitpicker.config.json.',
+        allowedForm:
+          'Fix the code the rule flags; to skip generated code, add it to "exclude" in nitpicker.config.json.',
         classification: 'enforceable',
       },
       {
@@ -150,6 +155,8 @@ describe('readJavaFindings with the kotlin preset: detekt, ktlint and ktfmt', ()
         identity: 'suppress:unused',
         message:
           'Suppressing "unused" inline would hide an unused parameter. Remove the parameter, or use it; a name starting `ignored` or `unused` marks one a signature requires. When reflection or a framework calls it with that signature, remove the suppression and lift the rule for this path instead. If this is intended, add {"rule":"detekt.style.UnusedParameter","paths":["src/main/kotlin/demo/Bad.kt"],"reason":"..."} to "exceptions" in nitpicker.config.json.',
+        allowedForm:
+          'Remove the parameter, or use it; a name starting `ignored` or `unused` marks one a signature requires.',
         classification: 'enforceable',
       },
     ]);

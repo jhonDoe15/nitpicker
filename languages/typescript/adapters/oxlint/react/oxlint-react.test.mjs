@@ -107,9 +107,9 @@ for (const [file, contents] of Object.entries(files)) {
   );
 }
 
-function lintedWithResidualRun() {
+async function lintedWithResidualRun() {
   const residualRuns = [];
-  const results = lintWithOxlint({
+  const results = await lintWithOxlint({
     options: { projectRoot: root, patterns: ['src/**/*.ts', 'src/**/*.tsx'] },
     projectConfigPath: path.join(root, 'tsconfig.nitpicker.json'),
     environment: {
@@ -134,8 +134,8 @@ const OXLINT_TIMEOUT_MS = 30_000;
 describe('the React rules under the oxlint engine', () => {
   let run;
 
-  beforeAll(() => {
-    run = lintedWithResidualRun();
+  beforeAll(async () => {
+    run = await lintedWithResidualRun();
   }, OXLINT_TIMEOUT_MS);
 
   function findingsOf(rule) {

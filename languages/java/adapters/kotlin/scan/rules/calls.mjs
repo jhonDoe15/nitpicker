@@ -75,7 +75,7 @@ const MESSAGE_LEVELS = new Set(['info', 'warn', 'error', 'log', 'config', 'warni
 const OPERAND_MARK = /[()[\]{}+]/g;
 const STANDARD_STREAM =
   /(?<![\w.])(?:java\s*\.\s*lang\s*\.\s*)?`?System`?\s*\??\.\s*`?(?:out|err)`?(?!\w)/g;
-export const CALL_MESSAGES = {
+const CALL_MESSAGES = {
   LogStringConcatenation:
     'Pass values as placeholders (`log.info("user {}", user)`), or give a lambda logger the message (`logger.info { "user $user" }`), not a message built with a string template, `+` or `format`.',
   ShellCommand:
@@ -193,7 +193,7 @@ export function ioInLoops(scanned) {
     }));
 }
 
-export function standardStreams(scanned) {
+function standardStreams(scanned) {
   if (isCompositionRoot(scanned)) {
     return [];
   }
@@ -202,3 +202,8 @@ export function standardStreams(scanned) {
     offset: index,
   }));
 }
+
+export const kotlinSourceRules = {
+  messages: CALL_MESSAGES,
+  main: [logTemplates, shellCommands, ioInLoops, standardStreams],
+};
