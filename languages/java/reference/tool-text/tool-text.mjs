@@ -4,6 +4,7 @@ import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { readPinnedTools } from '../../builds/java-build.mjs';
+import { TOOL_TIMEOUT_MS } from '../../../../shared/processes/deadlines.mjs';
 
 const EXTRACTOR = fileURLToPath(new URL('./ToolText.java', import.meta.url));
 const MAXIMUM_OUTPUT = 64 * 1024 * 1024;
@@ -75,6 +76,7 @@ function run(command, commandArguments) {
   const result = spawnSync(command, commandArguments, {
     encoding: 'utf8',
     maxBuffer: MAXIMUM_OUTPUT,
+    timeout: TOOL_TIMEOUT_MS,
   });
   if (result.status !== 0) {
     throw new Error(`${command} failed: ${result.stderr || result.error?.message}`);
