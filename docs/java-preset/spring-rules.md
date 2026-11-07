@@ -36,7 +36,7 @@ the `rule` of a config exception.
 project, on Gradle and Maven alike. In a kotlin-preset project every rule of the table except
 `SpringQueryConcatenation` (covered there by `kotlin-source/SqlStringBuilding`) also runs on the main
 Kotlin sources, under the same ids and exception route, from the Kotlin syntax facts (see
-[Kotlin preset: Spring rules](../kotlin-preset.md#spring-rules)). Kotlin classes of a Java-preset project (a mixed module)
+[Kotlin preset: Spring rules](../kotlin-preset/review-rules.md#spring-rules)). Kotlin classes of a Java-preset project (a mixed module)
 get none of these rules. The Spring configuration file checks
 ([below](spring-configuration-files.md)) do not depend on the language and apply to Kotlin projects
 too, and `missing-enable` scans the Kotlin sources.
