@@ -1,3 +1,4 @@
+import { scopeLine } from '../scope/scope-findings.mjs';
 import { renderSnapshotSarifReport } from '../diff/reporting/sarif.mjs';
 import { clearReports, json, writeReports } from '../diff/reporting/reporters.mjs';
 import { designNoteLines } from '../diff/reporting/format/design-notes.mjs';
@@ -52,6 +53,7 @@ function renderTextReport(report, reference, descriptiveLines) {
   const lines = [
     'Nitpicker quality snapshot',
     `Status: ${report.summary.overallStatus}`,
+    ...scopeLine(report.summary),
     `Enforceable findings: ${String(enforceable.length)}`,
     `Descriptive findings: ${String(descriptive.length)}`,
     `Tool errors: ${String(report.toolErrors.length)}`,

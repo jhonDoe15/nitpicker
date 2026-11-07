@@ -4,7 +4,7 @@ import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { exceptionRoute } from '../../../shared/exceptions/rule-names.mjs';
 import { RUFF_CONFIG } from '../adapters/configuration/python-ruff-config.mjs';
-import { RULE_CASES } from './test-support/python-rule-cases.mjs';
+import { ruleCases } from './test-support/python-rule-cases.mjs';
 import {
   applyRuleHints,
   describeRuleFinding,
@@ -12,6 +12,8 @@ import {
   RULE_HINTS,
   withHint,
 } from './rule-hints.mjs';
+
+const RULE_CASES = ruleCases();
 
 const route = (rule) => exceptionRoute({ rule, path: 'src/a.py', key: 'python.exceptions' });
 
