@@ -193,7 +193,7 @@ export function ioInLoops(scanned) {
     }));
 }
 
-function standardStreams(scanned) {
+export function standardStreams(scanned) {
   if (isCompositionRoot(scanned)) {
     return [];
   }

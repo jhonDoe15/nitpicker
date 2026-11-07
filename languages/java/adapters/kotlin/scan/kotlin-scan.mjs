@@ -21,6 +21,23 @@ export const KOTLIN_SOURCE_RULES = Object.keys(KOTLIN_SOURCE_MESSAGES).map(
 const MAIN_RULES = directoryRules.flatMap(({ main = [] }) => main);
 const TEST_RULES = directoryRules.flatMap(({ test = [] }) => test);
 
+function kotlinFiles(projectRoot, sourceRoots) {
+  const files = sourceRoots.flatMap((sourceRoot) => {
+    const directory = pathInside(projectRoot, sourceRoot);
+    if (directory === undefined || !existsSync(directory)) {
+      return [];
+    }
+    return readdirSync(directory, { recursive: true })
+      .filter((entry) => entry.endsWith('.kt'))
+      .map((entry) => ({
+        file: path.posix.join(sourceRoot, entry.replaceAll('\\', '/')),
+        absolute: path.join(directory, entry),
+      }));
+  });
+  const byFile = new Map(files.map((entry) => [entry.file, entry]));
+  return [...byFile.values()].toSorted((left, right) => (left.file < right.file ? -1 : 1));
+}
+
 function finding({ file, scanned, occurrences }, reported) {
   const line = lineOf(scanned, reported.offset);
   const subject = reported.subject ?? lineText(scanned, line).trim().replaceAll(/\s+/g, ' ');
