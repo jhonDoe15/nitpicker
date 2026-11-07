@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { linkSentence } from '../../../../../shared/messages/test-support/link-sentence.mjs';
-import { MESSAGES } from '../../../../../shared/policy.mjs';
+import { MESSAGES, renderMessage } from '../../../../../shared/policy.mjs';
 import { mutationSkipFor } from '../runners/skips/mutation-skips.mjs';
 import { normalizeCrap, normalizeMutation, crapUnknownMessage } from './tests.mjs';
 import {
@@ -260,8 +260,12 @@ describe('unknown coverage text', () => {
   it('suggests composition-root wiring only for composition-root files', () => {
     expect(crapUnknownMessage('src/main/composition-root.ts')).toBe(MESSAGES.crapCoverageUnknown);
     expect(crapUnknownMessage('src/server.ts')).toBe(MESSAGES.crapCoverageUnknown);
-    expect(crapUnknownMessage('src/main/features/greeting/domain/greet.ts')).toBe(
-      '{name} has unknown coverage and no CRAP score: no test runs it. Add a test that calls it.',
+    expect(
+      renderMessage(crapUnknownMessage('src/main/features/greeting/domain/greet.ts'), {
+        name: 'greet',
+      }),
+    ).toBe(
+      'greet has unknown coverage and no CRAP score: no test runs it. Add a test that calls it.',
     );
   });
 
