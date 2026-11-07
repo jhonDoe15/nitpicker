@@ -101,7 +101,10 @@ describe('errorProneMessage', () => {
 describe('the Java skill', () => {
   it('gives the null form the NullAway message gives', () => {
     const skill = readFileSync(
-      path.resolve(import.meta.dirname, '../../../../skills/nitpicker-java/SKILL.md'),
+      path.resolve(
+        import.meta.dirname,
+        '../../../../skills/nitpicker-java/rules/values-and-types.md',
+      ),
       'utf8',
     );
     const nullRule = /^- Null:[\s\S]*?(?=\n- |\n\n)/mu.exec(skill)?.[0].replaceAll(/\s+/gu, ' ');
