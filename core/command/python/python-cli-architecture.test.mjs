@@ -62,6 +62,8 @@ describe('nitpicker with "preset": "python" and its architecture checks', () => 
         identity: 'package-edge:base->other',
         message:
           'base depends on less stable package other. Depend on an abstraction in a more stable package instead. If this is intended, add {"rule":"stability-direction","paths":["src/base/__init__.py"],"reason":"..."} to "python.exceptions" in nitpicker.config.json.',
+        exception: { rule: 'stability-direction', paths: ['src/base/__init__.py'], reason: '...' },
+        exceptionList: 'python.exceptions',
         classification: 'enforceable',
       },
     ]);
@@ -85,6 +87,8 @@ describe('nitpicker with "preset": "python" and its architecture checks', () => 
         identity: 'contract:Layers:demo.a -> demo.b',
         message:
           'Import contract "Layers" is broken: demo.a -> demo.b. Remove the import. If this is intended, add {"rule":"contract-broken","paths":["src/demo/a.py"],"reason":"..."} to "python.exceptions" in nitpicker.config.json.',
+        exception: { rule: 'contract-broken', paths: ['src/demo/a.py'], reason: '...' },
+        exceptionList: 'python.exceptions',
         classification: 'enforceable',
         location: { line: 4 },
       },
@@ -161,6 +165,12 @@ describe('nitpicker with "preset": "python" and its architecture checks', () => 
         identity: 'unlisted:pyyaml',
         message:
           'Package pyyaml is imported (as yaml) but not listed in pyproject.toml. Add it to the project dependencies (a dev dependency group for tests and tooling). If this is intended, add {"rule":"unlisted-dependency","paths":["src/billing/invoice.py"],"reason":"..."} to "python.exceptions" in nitpicker.config.json.',
+        exception: {
+          rule: 'unlisted-dependency',
+          paths: ['src/billing/invoice.py'],
+          reason: '...',
+        },
+        exceptionList: 'python.exceptions',
         classification: 'enforceable',
       },
     ]);
@@ -205,6 +215,12 @@ describe('nitpicker with "preset": "python" and its architecture checks', () => 
         location: { line: 2 },
         message:
           'Import billing.taxes resolves to no module or package. Fix the module name, or install the package and list it in pyproject.toml. If this is intended, add {"rule":"unresolved-import","paths":["src/billing/invoice.py"],"reason":"..."} to "python.exceptions" in nitpicker.config.json.',
+        exception: {
+          rule: 'unresolved-import',
+          paths: ['src/billing/invoice.py'],
+          reason: '...',
+        },
+        exceptionList: 'python.exceptions',
         classification: 'enforceable',
       },
     ]);

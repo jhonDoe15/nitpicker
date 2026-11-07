@@ -1,4 +1,4 @@
-import { MESSAGES, RULE_IDS, renderMessage } from '../../policy.mjs';
+import { MESSAGES, RULE_IDS, messageFields } from '../../policy.mjs';
 import { exceptionText } from '../exceptions.mjs';
 
 const MAX_LISTED = 3;
@@ -13,7 +13,7 @@ export function reuseFinding(
     rule,
     path: findingPath,
     identity,
-    message: renderMessage(MESSAGES[key], {
+    ...messageFields(MESSAGES[key], {
       ...values,
       exception: exceptionText(rule, findingPath),
     }),

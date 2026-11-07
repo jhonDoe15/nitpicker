@@ -92,6 +92,10 @@ The allowed forms are on one page per topic. Before you write code, read the pag
   reason. A structure, CRAP, changed-branch coverage, duplicate or coupling finding ends with its
   own entry. Never add one, nor a config `exclude`, `disable`, `thresholds` or legacy entry, nor a
   weaker test, to get past the gate yourself: stop and ask.
+- The `$schema` line of `nitpicker.config.json`
+  (`"$schema": "https://raw.githubusercontent.com/jhonDoe15/nitpicker/main/spec/config.schema.json"`)
+  lets the editor flag a misspelled key or a value the run refuses; nitpicker ignores it. Keep it
+  when you edit the file.
 - A violated ArchUnit rule is a finding (`archunit/<rule>`) on the offending class. Run the
   `*ArchTest` class with the build's test task to read the full violation, and fix the code. In a Spring
   project nitpicker's own `archunit/spring-...` rules apply too; their message says what to change

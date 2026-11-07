@@ -2,6 +2,7 @@ import { mkdirSync } from 'node:fs';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import { parseAnalyzerReport } from '../../../../core/diff/comparison/finding-schema.mjs';
+import { withoutRouteFields } from '../../../../core/exceptions/test-support/route-check.mjs';
 import { configurationFiles, createJavaAnalyzer } from '../java-analyzer.mjs';
 import { applyFindingPolicy } from '../../../../shared/findings/finding-policy.mjs';
 import { readSpringConfigFindings } from './java-spring.mjs';
@@ -38,7 +39,9 @@ describe('readSpringConfigFindings', () => {
     });
 
     expect(findings).toEqual([openInView(MAIN_PROPERTIES, 3)]);
-    expect(parseAnalyzerReport({ findings }, 'java').findings).toEqual(findings);
+    expect(withoutRouteFields(parseAnalyzerReport({ findings }, 'java').findings)).toEqual(
+      findings,
+    );
   });
 
   it('lets a spring/<rule> exception drop the finding', () => {
