@@ -43,7 +43,7 @@ Before you change code other modules use, fix a bug, or add a UI state, read
    `reason`, to get past the gate: stop and ask a human, and quote the finding with its entry. A
    TypeScript compiler error has no entry; fix the type.
 
-To learn why a rule is on and what form it allows before you write or change code, run `npx nitpicker explain <tool/rule>` with the name a finding prints, or read the [rule reference](https://github.com/jhonDoe15/nitpicker/blob/main/docs/rules/README.md). `npx nitpicker rules` lists the rules of this project's preset.
+To learn why a rule is on and what form it allows before you write or change code, run `npx nitpicker explain <tool/rule>` with the name a finding prints, or read the [rule reference](https://github.com/jhonDoe15/nitpicker/blob/latest/docs/rules/README.md). `npx nitpicker rules` lists the rules of this project's preset.
 
 ## Write it this way
 
