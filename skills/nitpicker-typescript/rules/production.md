@@ -23,3 +23,7 @@ Part of the [nitpicker-typescript](../SKILL.md) skill. Write these forms from th
   luxon `{ zone }`, date-fns `{ in: tz(zone) }`, dayjs `.utc()` (`nitpicker/no-local-time-zone`).
 - Each finding names the allowed form. A deliberate exception goes in `nitpicker.config.json`
   `exceptions` (rule, paths, reason), never inline.
+- The `$schema` line of `nitpicker.config.json`
+  (`"$schema": "./node_modules/nitpicker/spec/config.schema.json"`)
+  lets the editor flag a misspelled key or a value the run refuses; nitpicker ignores it. Keep it
+  when you edit the file.
