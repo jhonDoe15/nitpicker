@@ -102,7 +102,12 @@ describe('feature-cycle', () => {
         edge('shipping/label.py', 'billing/__init__.py'),
         edge('orders/cart.py', 'billing/__init__.py'),
       ]),
-      { language: 'python', analyzerName: 'coupling', publicFace: PUBLIC_FACES.python },
+      {
+        language: 'python',
+        analyzerName: 'coupling',
+        rules: [RULE],
+        publicFace: PUBLIC_FACES.python,
+      },
     );
 
     expect(analysis.explainedCycles).toEqual([
@@ -127,6 +132,7 @@ describe('feature-cycle', () => {
       {
         language: 'python',
         analyzerName: 'coupling',
+        rules: [RULE],
         publicFace: PUBLIC_FACES.python,
         policy: { exceptions: [{ rule: RULE, paths: ['src/**'] }] },
       },

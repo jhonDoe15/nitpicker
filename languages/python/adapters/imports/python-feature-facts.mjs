@@ -1,8 +1,15 @@
 import { featureFactAnalysis } from '../../../../shared/rules/facts/evaluate.mjs';
 import { PUBLIC_FACES } from '../../../../shared/rules/features/feature-roles.mjs';
+import { RULE_IDS } from '../../../../shared/policy.mjs';
 import { statementTargets, WHOLE_MODULE } from '../analysis/python-coupling.mjs';
 
 const COUPLING_TOOL = 'coupling';
+export const FEATURE_RULES = [
+  RULE_IDS.sharedUsedByOneFeature,
+  RULE_IDS.featureInternalImport,
+  RULE_IDS.sharedImportsFeature,
+  RULE_IDS.featureCycle,
+];
 
 function isPublicName(name) {
   return name === WHOLE_MODULE || !name.startsWith('_');
@@ -58,6 +65,7 @@ export function pythonFeatureAnalysis(report, { policy = {}, isGenerated } = {})
   return featureFactAnalysis(pythonImportFacts(report, isGenerated), {
     language: 'python',
     analyzerName: COUPLING_TOOL,
+    rules: FEATURE_RULES,
     policy: { exceptions: policy.exceptions ?? [], layout: policy.layout ?? {} },
     publicFace: PUBLIC_FACES.python,
   });
