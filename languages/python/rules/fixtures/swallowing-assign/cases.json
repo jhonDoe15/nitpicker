@@ -1,0 +1,8 @@
+[
+  {
+    "name": "except assigning a constant names a result that carries the error",
+    "tool": "python-rules",
+    "rule": "swallowed-exception",
+    "mention": "carries the error"
+  }
+]

@@ -1,0 +1,41 @@
+  <rule name="SpringNoErrorLeak" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
+        message="Log the exception and return a ProblemDetail with a fixed detail from this @ExceptionHandler. The message or stack trace of a generic, JDK or persistence exception exposes internals; messages of your own exception types are fine.">
+    <priority>2</priority>
+    <properties><property name="xpath"><value><![CDATA[
+let $logged := function($node) {
+  exists($node/ancestor::MethodCall[*[1][
+    pmd-java:typeIs('org.slf4j.Logger')
+    or pmd-java:typeIs('org.apache.commons.logging.Log')
+    or pmd-java:typeIs('org.apache.logging.log4j.Logger')
+    or pmd-java:typeIs('java.util.logging.Logger')
+    or pmd-java:typeIs('java.lang.System$Logger')]])
+}
+return //MethodDeclaration[ModifierList/Annotation[pmd-java:typeIs('org.springframework.web.bind.annotation.ExceptionHandler')]]
+  //*[let $handler := ancestor::MethodDeclaration[1],
+          $names := $handler/FormalParameters/FormalParameter[ClassType[
+            pmd-java:typeIsExactly('java.lang.Exception')
+            or pmd-java:typeIsExactly('java.lang.Throwable')
+            or pmd-java:typeIsExactly('java.lang.RuntimeException')
+            or pmd-java:typeIsExactly('java.lang.IllegalArgumentException')
+            or pmd-java:typeIsExactly('java.lang.IllegalStateException')
+            or pmd-java:typeIsExactly('java.lang.NullPointerException')
+            or pmd-java:typeIs('java.io.IOException')
+            or pmd-java:typeIs('java.io.UncheckedIOException')
+            or pmd-java:typeIs('org.springframework.dao.DataAccessException')
+            or pmd-java:typeIs('org.springframework.transaction.TransactionException')
+            or (pmd-java:typeIs('jakarta.persistence.PersistenceException') or pmd-java:typeIs('javax.persistence.PersistenceException'))
+            or pmd-java:typeIs('java.sql.SQLException')]]/VariableId/@Name,
+          $exception := function($node) {
+            exists($node[self::VariableAccess[@Name = $names]
+              or self::MethodCall[@MethodName = ('getCause', 'getRootCause', 'getMostSpecificCause')]/*[1][self::VariableAccess[@Name = $names]]])
+          }
+      return (self::MethodCall[@MethodName = ('getStackTrace', 'printStackTrace')]
+        or self::MethodCall[@MethodName = ('getMessage', 'getLocalizedMessage', 'toString')][$exception(*[1])]
+        or self::InfixExpression[@Operator = '+'][*[$exception(.)]]
+        or self::MethodCall[@MethodName = ('valueOf', 'toString', 'format', 'formatted')][ArgumentList/*[$exception(.)]])
+      and not($logged(.))
+      and (let $local := ancestor::VariableDeclarator[parent::LocalVariableDeclaration][1]/VariableId/@Name
+           return empty($local)
+             or exists($handler//VariableAccess[@Name = $local][not($logged(.))]))]
+]]></value></property></properties>
+  </rule>

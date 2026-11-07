@@ -73,6 +73,104 @@
       </property>
     </properties>
   </rule>
+  <rule name="GlobalStateLeakInTest" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
+        message="This test changes process-wide state and nothing in the class puts it back, so the tests after it pass or fail depending on the order they run in. Save the old value and restore it in finally or in an @AfterEach or @AfterAll method, or let an extension set and restore it: junit-pioneer @SetSystemProperty, @RestoreSystemProperties, @DefaultLocale or @DefaultTimeZone, a system-stubs @SystemStub field, or system-lambda restoreSystemProperties(...).">
+    <priority>2</priority>
+    <properties>
+      <property name="xpath">
+        <value><![CDATA[
+let $typeOf := function($n) {
+      string(($n/*[1][self::TypeExpression]/ClassType/@SimpleName,
+              $n/*[1][self::AmbiguousName][matches(@Name, '^[A-Z]\w*[a-z]\w*$')]/@Name)[1]) },
+    $familyOf := function($n) {
+      let $type := $typeOf($n), $name := string(($n/@MethodName, $n/@Name)[1])
+      return concat($type, '.',
+        if ($type = 'System' and $name = ('setProperty', 'clearProperty', 'setProperties')) then 'property'
+        else if ($type = 'Security' and $name = ('addProvider', 'insertProviderAt', 'removeProvider')) then 'provider'
+        else if (matches($name, '^set[A-Z]')) then concat(lower-case(substring($name, 4, 1)), substring($name, 5))
+        else $name) },
+    $jdk := function($n) {
+      exists($n/self::MethodCall/*[1][self::TypeExpression][
+        (pmd-java:typeIs('java.lang.System')
+          and ../@MethodName = ('setProperty', 'clearProperty', 'setProperties', 'setOut', 'setErr', 'setIn'))
+        or ((pmd-java:typeIs('java.util.Locale') or pmd-java:typeIs('java.util.TimeZone')
+             or pmd-java:typeIs('java.net.CookieHandler') or pmd-java:typeIs('java.net.Authenticator')
+             or pmd-java:typeIs('java.net.ProxySelector') or pmd-java:typeIs('java.net.ResponseCache')
+             or pmd-java:typeIs('javax.net.ssl.SSLContext'))
+            and ../@MethodName = 'setDefault')
+        or (pmd-java:typeIs('java.lang.Thread') and ../@MethodName = 'setDefaultUncaughtExceptionHandler')
+        or (pmd-java:typeIs('java.security.Security') and ../@MethodName = ('addProvider', 'insertProviderAt'))
+        or (pmd-java:typeIs('javax.net.ssl.HttpsURLConnection')
+            and ../@MethodName = ('setDefaultSSLSocketFactory', 'setDefaultHostnameVerifier'))]) },
+    $project := function($n) {
+      let $type := $typeOf($n),
+          $unit := $n/ancestor::CompilationUnit,
+          $parts := tokenize(string($unit/@PackageName), '\.'),
+          $depth := if ($parts[2] = ('github', 'gitlab', 'bitbucket')) then 3
+                    else if ($parts[1] = ('com', 'org', 'net', 'io', 'dev', 'app', 'co', 'me', 'ai', 'edu', 'gov', 'info',
+                                          'de', 'fr', 'uk', 'nl', 'ch', 'be', 'it', 'es', 'se', 'no', 'fi', 'dk', 'pl',
+                                          'at', 'cz', 'ru', 'cn', 'jp', 'kr', 'in', 'br', 'au', 'ca', 'us', 'eu')) then 2
+                    else 1,
+          $prefix := string-join($parts[position() le $depth], '.'),
+          $qualifier := string($n/*[1]/ClassType/@PackageQualifier),
+          $imports := $unit/ImportDeclaration[@Static = false()][@ImportOnDemand = false()][@ImportedSimpleName = $type],
+          $owned := function($package) { $prefix != '' and ($package = $prefix or starts-with($package, concat($prefix, '.'))) }
+      return $type != '' and not($type = ('System', 'Thread', 'Runtime'))
+        and ($n/self::FieldAccess
+             or (matches(string($n/@MethodName), '^set[A-Z]') and not(matches(string($n/@MethodName), '^setUp([A-Z]|$)'))))
+        and not($unit//(ClassDeclaration | EnumDeclaration | RecordDeclaration | InterfaceDeclaration)[@SimpleName = $type])
+        and (if ($qualifier != '') then $owned($qualifier)
+             else if (exists($imports)) then (some $import in $imports satisfies $owned(string($import/@PackageName)))
+             else true()) }
+return
+//(MethodCall | FieldAccess[@AccessType = 'WRITE'])[$jdk(.) or $project(.)]
+  [let $change := ., $family := $familyOf(.), $type := $typeOf(.),
+       $classes := ancestor::*[self::ClassDeclaration or self::EnumDeclaration or self::RecordDeclaration
+                               or self::AnonymousClassDeclaration],
+       $methods := $classes/ClassBody/MethodDeclaration,
+       $afters := $methods[ModifierList/Annotation/@SimpleName = ('AfterEach', 'AfterAll', 'After', 'AfterClass',
+                                                                 'AfterMethod', 'AfterTest', 'AfterSuite', 'AfterGroups')
+                           or @Name = ('afterEach', 'afterAll', 'afterTestExecution', 'afterTestMethod',
+                                       'afterTestClass', 'after', 'close', 'tearDown')],
+       $helpers := $methods[@Name = $afters//MethodCall[*[1][self::ArgumentList or self::ThisExpression]]/@MethodName],
+       $finally := ancestor::*[self::MethodDeclaration or self::ConstructorDeclaration or self::Initializer][1]//FinallyClause,
+       $sites := ($afters | $helpers | $finally),
+       $tests := $methods[ModifierList/Annotation/@SimpleName = ('Test', 'ParameterizedTest', 'RepeatedTest',
+                                                                'TestFactory', 'TestTemplate')],
+       $zones := ($sites | (if (exists($tests)) then () else $classes[last()])),
+       $hosts := ancestor::LambdaExpression/parent::ArgumentList/parent::MethodCall,
+       $resources := ancestor::Block[parent::TryStatement[ResourceList]]/../ResourceList
+                       //(ClassType/@SimpleName | AmbiguousName/@Name | MethodCall/@MethodName),
+       $marks := (($classes | ancestor::MethodDeclaration)/ModifierList/Annotation/@SimpleName,
+                  $classes/ClassBody/FieldDeclaration[ModifierList/Annotation/@SimpleName
+                                                      = ('SystemStub', 'Rule', 'ClassRule', 'RegisterExtension')]
+                    /ClassType/@SimpleName,
+                  $hosts/@MethodName,
+                  $hosts[@MethodName = 'execute']/*[1]/descendant-or-self::*/(self::MethodCall/@MethodName
+                                                                              | self::ClassType/@SimpleName)),
+       $extensions := map {
+         'System.property': ('RestoreSystemProperties', 'SystemProperties', 'ProvideSystemProperty',
+                             'ClearSystemProperties', 'restoreSystemProperties', 'withSystemProperty'),
+         'Locale.default': ('DefaultLocale'),
+         'TimeZone.default': ('DefaultTimeZone'),
+         'System.out': ('SystemOut', 'SystemOutRule', 'SystemErrAndOut', 'StdIo', 'tapSystemOut',
+                        'tapSystemOutNormalized', 'tapSystemErrAndOut', 'tapSystemErrAndOutNormalized'),
+         'System.err': ('SystemErr', 'SystemErrRule', 'SystemErrAndOut', 'tapSystemErr', 'tapSystemErrNormalized',
+                        'tapSystemErrAndOut', 'tapSystemErrAndOutNormalized'),
+         'System.in': ('SystemIn', 'TextFromStandardInputStream', 'StdIo', 'withTextFromSystemIn')
+       }
+   return not(
+     exists(ancestor::* intersect $sites)
+     or $resources = ($type, $extensions($family))
+     or $marks = $extensions($family)
+     or (some $restore in $zones//(MethodCall | FieldAccess[@AccessType = 'WRITE'])[not(. is $change)]
+         satisfies ($familyOf($restore) = $family
+                    or (not($jdk($change)) and $typeOf($restore) = $type
+                        and matches(string($restore/@MethodName), '^(reset|clear|restore)')))))]
+]]></value>
+      </property>
+    </properties>
+  </rule>
   <rule name="NegativeWaitInTest" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
         message="Do not prove that something does not happen by waiting out a delay: after(ms).never() and during(...) pass only after the full wait, so the test is slow and depends on the timing. Give the code a Clock or a scheduler the test controls, move it past the delay and assert at once.">
     <priority>2</priority>
@@ -224,4 +322,5 @@ return (
       </property>
     </properties>
   </rule>
+  <!-- Built by npm run gen:rules from languages/java/gradle/rulesets/pmd-test-ruleset/: edit the rule files there. -->
 </ruleset>

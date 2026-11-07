@@ -4,6 +4,7 @@ import { kotlinFiles } from '../../rules/kotlin-suppressions.mjs';
 import { coroutineReports } from './coroutines/coroutine-reports.mjs';
 import { ESCAPING_RULE } from './coroutines/escapes/escaping-launches.mjs';
 import { discoverSuites, scanTestFile } from './discovery/test-units.mjs';
+import { GLOBAL_STATE_RULE, globalStateReports } from './global-state/global-state.mjs';
 import { CONTROL_FLOW_RULE } from './honesty/flow/assertion-flow.mjs';
 import { FOCUSED_RULE } from './honesty/focused-tests.mjs';
 import { honestyReports } from './honesty/honesty-reports.mjs';
@@ -23,6 +24,7 @@ export const HONESTY_RULES = [
   PER_TEST_START_RULE,
   CONTROL_FLOW_RULE,
   ESCAPING_RULE,
+  GLOBAL_STATE_RULE,
 ];
 
 const CONTEXT_MARKERS = new RegExp(
@@ -50,6 +52,7 @@ export function fileReports(scanned, project) {
   return [
     ...honestyReports(scanned, suites, project),
     ...coroutineReports(scanned, suites, project),
+    ...globalStateReports(scanned, suites),
     ...perTestStarts(scanned, suites).map((entry) => ({
       ...entry,
       rule: PER_TEST_START_RULE,

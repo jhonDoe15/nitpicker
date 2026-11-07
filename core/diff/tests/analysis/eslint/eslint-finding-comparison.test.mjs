@@ -51,6 +51,7 @@ describe('ESLint finding comparison', () => {
         classification: 'enforceable',
         symbol: 'added',
         location: { line: 2, column: 3 },
+        anchor: { key: expect.stringMatching(/^count:/u) },
         ratchet: { key: 'count:unexpected', value: 1, existingCodeOnly: true },
       },
     ]);
@@ -66,6 +67,7 @@ describe('ESLint finding comparison', () => {
         classification: 'enforceable',
         symbol: 'resolved',
         location: { line: 2, column: 3 },
+        anchor: { key: expect.stringMatching(/^count:/u) },
         ratchet: { key: 'count:unexpected', value: 1, existingCodeOnly: true },
       },
     ]);
@@ -82,6 +84,7 @@ describe('ESLint finding comparison', () => {
         classification: 'enforceable',
         symbol: 'moved',
         location: { line: 5, column: 3 },
+        anchor: { key: expect.stringMatching(/^count:/u) },
         ratchet: { key: 'count:unexpected', value: 1, existingCodeOnly: true },
       },
       {
@@ -95,6 +98,7 @@ describe('ESLint finding comparison', () => {
         classification: 'enforceable',
         symbol: 'renamed',
         location: { line: 2, column: 3 },
+        anchor: { key: expect.stringMatching(/^count:/u) },
         ratchet: { key: 'count:unexpected', value: 1, existingCodeOnly: true },
       },
       {
@@ -108,6 +112,7 @@ describe('ESLint finding comparison', () => {
         classification: 'enforceable',
         symbol: 'stable',
         location: { line: 2, column: 3 },
+        anchor: { key: expect.stringMatching(/^count:/u) },
         ratchet: { key: 'count:unexpected', value: 1, existingCodeOnly: true },
       },
     ]);
@@ -165,6 +170,7 @@ describe('ESLint finding comparison', () => {
         classification: 'enforceable',
         symbol: 'empty',
         location: { line: 2, column: 25 },
+        anchor: { key: expect.stringMatching(/^count:/u) },
         ratchet: { key: 'count:unexpected', value: 1, existingCodeOnly: true },
       },
       {
@@ -189,6 +195,7 @@ describe('ESLint finding comparison', () => {
         classification: 'enforceable',
         symbol: 'unreachable',
         location: { line: 6, column: 3 },
+        anchor: { key: expect.stringMatching(/^count:/u) },
         ratchet: { key: 'count:unexpected', value: 1, existingCodeOnly: true },
       },
       {
@@ -213,6 +220,7 @@ describe('ESLint finding comparison', () => {
         classification: 'enforceable',
         symbol: 'unreachable',
         location: { line: 6, column: 3 },
+        anchor: { key: expect.stringMatching(/^count:/u) },
         ratchet: { key: 'count:unreachableCode', value: 1, existingCodeOnly: true },
       },
     ]);
@@ -261,6 +269,7 @@ describe('ESLint finding comparison', () => {
         classification: 'enforceable',
         symbol: 'repeated',
         location: { line: 7, column: 3 },
+        anchor: { key: expect.stringMatching(/^count:/u) },
         ratchet: { key: 'count:unexpected', value: 3, existingCodeOnly: true },
       },
     ]);

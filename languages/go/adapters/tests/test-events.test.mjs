@@ -117,10 +117,54 @@ describe('parseTestEvents', () => {
     expect(finding.message.split('\n')).toEqual([
       '2 tests fail; the static analyzers ran, and coverage comes from the tests that ran. ' +
         'Fix the tests and rerun:',
-      '  example.com/shop.TestPrice/zero',
-      '    price_test.go:12: got 1, want 0',
-      '  example.com/shop/boot',
-      '    panic: missing config',
+      '  price_test.go:12 > example.com/shop.TestPrice/zero: got 1, want 0',
+      '  example.com/shop/boot: panic: missing config',
+    ]);
+  });
+
+  it('reads the expected and actual values of a testify failure', () => {
+    const output = [
+      '    cart_test.go:9: ',
+      '        \tError Trace:\t/work/shop/cart_test.go:9',
+      '        \tError:      \tNot equal: ',
+      '        \t            \texpected: 4',
+      '        \t            \tactual  : 3',
+      '        \tTest:       \tTestTotal',
+      '',
+    ].join('\n');
+    const failures = [{ id: 'example.com/shop.TestTotal', package: 'example.com/shop', output }];
+    const [finding] = testRunFindings({ failures, testsRan: true, buildFailures: [] }, 'head');
+
+    expect(finding.message.split('\n').slice(1)).toEqual([
+      '  cart_test.go:9 > example.com/shop.TestTotal: Not equal',
+      '    expected: 4',
+      '    received: 3',
+    ]);
+  });
+
+  it('takes the first located line that has a message', () => {
+    const output = '    helper_test.go:5: \n    cart_test.go:9: boom\n';
+    const failures = [{ id: 'example.com/shop.TestTotal', package: 'example.com/shop', output }];
+    const [finding] = testRunFindings({ failures, testsRan: true, buildFailures: [] }, 'head');
+
+    expect(finding.message.split('\n').slice(1)).toEqual([
+      '  cart_test.go:9 > example.com/shop.TestTotal: boom',
+    ]);
+  });
+
+  it('lists at most fifty failing tests and counts the rest', () => {
+    const failures = Array.from({ length: 52 }, (_, index) => ({
+      id: `example.com/shop.Test${String(index)}`,
+      package: 'example.com/shop',
+      output: 'cart_test.go:9: boom\n',
+    }));
+    const lines = testRunFindings({ failures, testsRan: true, buildFailures: [] }, 'head')[0]
+      .message.split('\n')
+      .slice(1);
+
+    expect(lines).toEqual([
+      ...failures.slice(0, 50).map(({ id }) => `  cart_test.go:9 > ${id}: boom`),
+      '  and 2 more',
     ]);
   });
 
