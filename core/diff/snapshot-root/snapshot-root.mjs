@@ -1,5 +1,5 @@
 import path from 'node:path';
-import { withMessage } from '../../../shared/messages/finding-advice.mjs';
+import { withMessage } from '../../../shared/messages/advice/finding-advice.mjs';
 
 function escaped(text) {
   return text.replaceAll(/[\\^$.*+?()[\]{}|]/gu, String.raw`\$&`);

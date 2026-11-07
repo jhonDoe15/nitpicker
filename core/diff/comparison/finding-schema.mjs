@@ -1,6 +1,6 @@
 import { normalizeGitPath } from '../git/normalize.mjs';
 import { routeFields } from '../../../shared/messages/exception-sentence.mjs';
-import { adviceProblems } from '../../../shared/messages/finding-advice.mjs';
+import { adviceProblems } from '../../../shared/messages/advice/finding-advice.mjs';
 
 const CLASSIFICATIONS = new Set(['enforceable', 'descriptive', 'tool-error']);
 const HTTP_URL = /^https?:\/\/\S+$/u;
