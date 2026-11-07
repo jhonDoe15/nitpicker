@@ -25,6 +25,10 @@ Beans and configuration:
   with a new component or an event.
 - `@Configuration(proxyBeanMethods = false)`; `@Bean` methods take their dependencies as
   parameters. No `@ComponentScan` or `scanBasePackages`.
+- A `@Bean` method that returns a `BeanPostProcessor` or `BeanFactoryPostProcessor`, or carries
+  `@ConfigurationPropertiesBinding`, is `static` and takes only `Environment` or `ObjectProvider<T>`.
+- Customizers and other beans taken from an `ObjectProvider` go through `orderedStream()`, never
+  `stream()`, `forEach`, `iterator()` or a for-each loop, which ignore `@Order`.
 - Configuration comes in through a `@ConfigurationProperties` record. No `@Value` outside
   configuration classes, no `System.getenv`, `System.getProperty` or `Environment.getProperty` in
   beans or helper classes (JVM properties such as `java.*` are fine). `@Profile` only on
@@ -37,11 +41,17 @@ Beans and configuration:
   Caffeine cache that has a size and an expiry.
 - HTTP clients are built once, from the injected builders, with timeouts. No database or HTTP calls
   in `@PostConstruct`; use an `ApplicationRunner`.
+- Executors, schedulers, Netty event loops and clients are their own `@Bean` (a
+  `ThreadPoolTaskExecutor` with a queue capacity) so Spring closes them. A bean that builds one in a
+  field releases it in `@PreDestroy`: `shutdown()`, then `shutdownNow()` when `awaitTermination`
+  times out. A startup method that binds a port or starts a server after starting threads shuts
+  them down in a `catch` and rethrows. Never `Executors.newCachedThreadPool()`.
 - `@Scheduled`, `@Async`, the cache annotations, `@PreAuthorize` and `@Retryable` need their
   `@Enable...` on a `@Configuration` class. Secrets have no default (`${jwt.secret}`).
 
 Transactions and other proxies (`@Transactional`, `@Async`, `@Cacheable`, `@Retryable`,
-`@PreAuthorize`):
+`@PreAuthorize`, `@RolesAllowed`, Resilience4j, Micrometer `@Timed`, constraints in a `@Validated`
+class, and annotations of your own that carry one of these or that an `@Aspect` matches):
 
 - Only on public, non-final, non-static methods of non-final classes. Use Spring's
   `org.springframework.transaction.annotation.Transactional`.
@@ -52,6 +62,13 @@ Transactions and other proxies (`@Transactional`, `@Async`, `@Cacheable`, `@Retr
   exceptions; let them propagate.
 - A checked `throws` needs `rollbackFor = Exception.class`; a write under `readOnly = true` needs its
   own plain `@Transactional`.
+- A public service method that writes more than once (`save`, `delete`, a `@Modifying` query,
+  `JdbcTemplate.update`), also through its private helpers, is `@Transactional` or runs the writes in
+  `TransactionTemplate.execute`.
+- Write caches after the commit (`TransactionSynchronization.afterCommit`, a
+  `@TransactionalEventListener`, or the caller), never inside a writing transaction: no Spring
+  `Cache.put`/`evict`, `@CachePut`, Caffeine or Guava `put`/`invalidate`, or a map field filled with a
+  just-saved row. A transaction-aware cache manager makes the Spring `Cache` calls fine.
 - `@Async("executorName")` returning `CompletableFuture`. `@Scheduled` with `fixedDelay` or `cron`,
   not `fixedRate`.
 
@@ -86,12 +103,15 @@ JPA and Spring Data:
   List<Order> withCustomerByStatus(OrderStatus status);
   ```
 
-- `@Modifying(clearAutomatically = true, flushAutomatically = true)`.
+- `@Modifying(clearAutomatically = true, flushAutomatically = true)`, with `@Transactional` on the method
+  or the repository interface; so does a derived `deleteBy...` that an exception allows.
 - Never `save`, `delete` or `persist` one entity per loop iteration: call `saveAll` once (per chunk
   for large inputs), also through a helper, `saveAll(List.of(x))` or a `@Modifying` update per row.
   The one loop allowed is the JPA batch loop that calls `persist`, then `flush` and `clear` on the
   `EntityManager`. No other `flush` or `saveAndFlush`.
-- Filter in the query, not with `findAll().stream()`. Query text is constant (a text block) and
+- Filter and count in the query, not after `findAll()`: not with `stream()`, `size()`, a local
+  that holds the list, or a reactive `filter`, `count`, `any`, `hasElements`, `take` or
+  `collectList()`. Query text is constant (a text block) and
   values are bind parameters, in JPQL and JDBC alike.
 - Native SQL only when JPQL can't express it, marked on that one method with
   `@SuppressWarnings("PMD.SpringDataNativeQuery")`, `EntityManager.createNativeQuery` too.

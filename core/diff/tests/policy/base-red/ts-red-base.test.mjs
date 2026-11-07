@@ -10,7 +10,7 @@ const FAILING_TEST = PASSING_TEST.replace('Hello, Ada!', 'Hi, Ada!');
 const ASSERTION = (expected) =>
   `test/greeter.test.ts > greets: AssertionError: expected '${expected}' to be 'Hi, Ada!' // Object.is equality`;
 const FAILURE_MESSAGE = (expected) =>
-  `1 test fails, so coverage, CRAP and mutation were skipped. Fix the tests and rerun:\n  ${ASSERTION(expected)}`;
+  `1 test fails; coverage, CRAP and mutation were skipped. Fix the tests and rerun:\n  ${ASSERTION(expected)}`;
 const BASE_NOTE = `Tests fail on the base:\n  ${ASSERTION('Hello, Ada!')}`;
 const BRANCHY = (name) =>
   `export function ${name}(value: number): string {\n${[1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
@@ -103,10 +103,10 @@ describe.skipIf(!enabled)('TypeScript preset on a base whose tests fail', () => 
     ]);
   });
 
-  it('still fails when the head fails its tests too', () => {
+  it('still fails when the head fails its tests too, with exit 1', () => {
     const result = project.gate('still-red', { base: 'red-base' });
 
-    expect(result.exitCode, result.text).toBe(2);
+    expect(result.exitCode, result.text).toBe(1);
     expect(result.json('tool-errors.json')).toEqual([
       {
         tool: 'coverage',

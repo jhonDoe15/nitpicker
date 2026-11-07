@@ -4,8 +4,8 @@ import path from 'node:path';
 import { afterAll, describe, expect, it } from 'vitest';
 import { applyFindingPolicy } from '../../../../shared/findings/finding-policy.mjs';
 import { OVERLAP_PAIRS, matchesRule, withoutOverlaps } from './static-overlaps.mjs';
+import { guidePages, guideText } from '../../../../shared/reference/build/guide-pages.mjs';
 
-const DOCS = path.resolve(import.meta.dirname, '../../../../docs/java-preset.md');
 const PROBE = JSON.parse(
   readFileSync(path.join(import.meta.dirname, 'fixtures/probe-findings.json'), 'utf8'),
 );
@@ -217,7 +217,9 @@ describe('overlaps after policy', () => {
 describe('the overlap list in docs/java-preset.md', () => {
   it('is the pair table, in order', () => {
     const printed = (rules) => rules.map((rule) => `\`${rule}\``).join(', ');
-    const documented = readFileSync(DOCS, 'utf8')
+    const documented = guidePages('docs/java-preset.md')
+      .map(guideText)
+      .join('\n')
       .split('\n')
       .filter((line) => /^- (?:line|member|javadoc|class|field|file): `/u.test(line));
 

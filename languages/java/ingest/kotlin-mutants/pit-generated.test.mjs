@@ -14,6 +14,7 @@ const facts = {
       lambdas: [],
       branching: [7],
       casts: [],
+      exhaustiveLastEntries: [],
     },
   ],
 };

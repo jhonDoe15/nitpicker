@@ -137,3 +137,5 @@ export function suspendCleanupFindings(files, { finding, declaredIn = files }) {
       });
   });
 }
+
+export const kotlinSourceRules = { messages: SUSPEND_CLEANUP_MESSAGES };

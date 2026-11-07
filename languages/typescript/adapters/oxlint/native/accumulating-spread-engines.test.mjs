@@ -2,9 +2,10 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { ESLint } from 'eslint';
-import { afterAll, describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { createFindingsCache } from '../../../../../core/diff/cache/findings-cache.mjs';
 import { compareFindings } from '../../../../../core/diff/comparison/compare.mjs';
+import { parseAnalyzerReport } from '../../../../../core/diff/comparison/finding-schema.mjs';
 import { importClosure } from '../../../../../shared/import-closure.mjs';
 import { PACKAGE_ROOT } from '../../../../../core/tooling/tool-resolution.mjs';
 import { resolveAnalyzerVersion } from '../../../preset/analyzer-versions.mjs';
@@ -205,7 +206,11 @@ function nativeRulesByFile(plan, bridgedRules) {
 
 describe('nitpicker/no-accumulating-spread on both lint engines', () => {
   const root = project(SOURCES);
-  const oxlintFindings = findingsOf(root, oxlintResults(root));
+  let oxlintFindings;
+
+  beforeAll(async () => {
+    oxlintFindings = findingsOf(root, await oxlintResults(root));
+  });
 
   it('runs the native rule only through the owned rule, on production files outside exceptions', () => {
     const plan = lintPlan(root);
@@ -237,7 +242,7 @@ describe('nitpicker/no-accumulating-spread on both lint engines', () => {
   it('reports the same findings when the owned rule runs through the bridge', async () => {
     PARITY_BRIDGED_RULES.add(RULE);
     try {
-      const bridged = findingsOf(root, oxlintResults(root));
+      const bridged = findingsOf(root, await oxlintResults(root));
       expect(ruleFindings(bridged)).toEqual(
         ruleFindings(findingsOf(root, await eslintResults(root))),
       );
@@ -283,21 +288,23 @@ describe('nitpicker/no-accumulating-spread on both lint engines', () => {
     });
 
     expect(version.split(';').at(-1)).toBe('oxlint@1.87.0,oxlint-tsgolint@7.0.2004');
-    expect(ruleFindings(cache.read(before).findings)).toEqual(ruleFindings(oxlintFindings));
+    expect(ruleFindings(cache.read(before).findings)).toEqual(
+      ruleFindings(parseAnalyzerReport({ findings: oxlintFindings }, 'eslint-lint').findings),
+    );
     expect(new Set([before.configurationHash, ...hashes]).size).toBe(OWNED_ENGINE_FILES.length + 1);
     expect(hashes.map((hash) => cache.read(analyzerOf(hash)))).toEqual(
       OWNED_ENGINE_FILES.map(() => undefined),
     );
   });
 
-  it('fails only the spread a change adds when the base already had others', () => {
+  it('fails only the spread a change adds when the base already had others', async () => {
     const head = project({
       ...SOURCES,
       [ADAPTER]: `export const keys = (rows: readonly object[]) => rows.reduce((all, row) => [...all, ...Object.keys(row)], []);\n${SOURCES[ADAPTER]}`,
     });
     const comparison = compareFindings({
       baseFindings: ruleFindings(oxlintFindings),
-      headFindings: ruleFindings(findingsOf(head, oxlintResults(head))),
+      headFindings: ruleFindings(findingsOf(head, await oxlintResults(head))),
     });
     expect(comparison.newFindings.map(({ path: file, location }) => [file, location.line])).toEqual(
       [[ADAPTER, 1]],
@@ -317,7 +324,7 @@ describe('nitpicker/no-accumulating-spread on both lint engines', () => {
       },
       { javascript: true },
     );
-    const fromOxlint = findingsOf(javascript, oxlintResults(javascript));
+    const fromOxlint = findingsOf(javascript, await oxlintResults(javascript));
     const fromEslint = findingsOf(javascript, await eslintResults(javascript));
     expect(located(fromOxlint)).toEqual([
       ['src/main/features/billing/adapters/ledger.mjs', 2, 39, 'reduceArray'],
