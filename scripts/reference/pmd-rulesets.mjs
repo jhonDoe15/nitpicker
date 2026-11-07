@@ -1,4 +1,4 @@
-import { readdirSync, readFileSync } from 'node:fs';
+import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 
 const GRADLE_DIRECTORY = 'languages/java/gradle';
@@ -30,16 +30,29 @@ function ruleFiles(directory) {
     .toSorted(byCodePoint);
 }
 
+const RULE_ELEMENT = /<rule\s+name="([^"]+)"/gu;
+const OUTSIDE_RULE = /^\s*<rule\b[\s\S]*<\/rule>\s*$/u;
+
 function readRuleFile(directory, file) {
   const full = path.resolve(directory, file);
   if (!full.startsWith(directory + path.sep)) {
     throw new Error(`The rule file ${file} is outside ${directory}`);
   }
-  return readFileSync(full, 'utf8');
+  const text = readFileSync(full, 'utf8');
+  const names = [...text.matchAll(RULE_ELEMENT)].map((match) => match[1]);
+  const expected = path.posix.basename(file, '.xml');
+  if (names.length !== 1 || names[0] !== expected || !OUTSIDE_RULE.test(text)) {
+    throw new Error(`${directory}/${file} must hold exactly one <rule name="${expected}">`);
+  }
+  return text;
 }
 
 function rulesetText(directory, name) {
-  const head = readFileSync(path.join(directory, HEAD), 'utf8');
+  const headFile = path.join(directory, HEAD);
+  if (!existsSync(headFile)) {
+    throw new Error(`${directory} has no ${HEAD} with the ruleset's head`);
+  }
+  const head = readFileSync(headFile, 'utf8');
   const rules = ruleFiles(directory).map((file) => readRuleFile(directory, file));
   const note = `  <!-- Built by npm run gen:rules from ${FRAGMENTS}/${name}/: edit the rule files there. -->\n`;
   return `${head}${rules.join('')}${note}</ruleset>\n`;
