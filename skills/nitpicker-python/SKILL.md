@@ -44,13 +44,13 @@ The allowed forms are on one page per topic. Before you write code, read the pag
 
 - [Types, names and style](rules/style.md): annotations, paths, strings, defaults, parameters, flow, imports, loops, records, constants, names, signatures, regexes.
 - [Errors and cancellation](rules/errors.md): specific exceptions, causes, cancellation handlers, `try` in a loop.
-- [Async code, I/O and processes](rules/concurrency-and-io.md): bounded fan-out, task groups, async calls, output and loggers, aware datetimes, debuggers, child processes, secrets.
+- [Async code, logging, time, processes and secrets](rules/concurrency-and-io.md): bounded fan-out, task groups, async calls, output and loggers, aware datetimes, debuggers, child processes, secrets.
 - [Size and dependencies](rules/structure.md): function, class, module and folder limits, nesting, CRAP, clones, dependencies.
 - [Tests](rules/tests.md): runners, assertions, branch coverage and mutants, process-wide state, containers and servers.
 
 ## When a rule flags legitimate code
 
-- A rule the topic pages do not cover (logging, naming, environment access, the domain, paths, shell and SQL,
+- Every rule, also one the pages do not spell out (environment access, the domain, paths, shell and SQL,
   test honesty) reports the allowed form in its message: follow the form the message names.
 - A finding that flags legitimate code (a command line entry point that prints) is lifted in
   `nitpicker.config.json`. A ruff, type-checker, `python-rules`, import-linter, duplicate or coupling

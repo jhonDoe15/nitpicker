@@ -1,4 +1,4 @@
-# Async code, I/O and processes
+# Async code, logging, time, processes and secrets
 
 Part of the [nitpicker-python](../SKILL.md) skill. Write these forms from the start; the gate is a backstop.
 
