@@ -388,6 +388,44 @@
     "Prefer vi.waitFor / expect.poll over setInterval polling in tests.",
     [{ "message": "Prefer vi.waitFor / expect.poll over setInterval polling in tests." }],
     { "key": "exceptions", "rule": "nitpicker/no-interval-polling-in-tests" },
+    "nitpicker/no-local-time-zone",
+    "Disallow dates computed or formatted in the server's local time zone",
+    [
+      {
+        "message": "`{{ name }}()` uses the server's local time zone, so the result changes with the server's `TZ`. Use `{{ utc }}()`, or compute in an explicit zone (luxon `DateTime.fromJSDate(date, { zone })`)."
+      },
+      {
+        "message": "`{{ name }}()` is the offset of the server's local time zone, so the result changes with the server's `TZ`. Take the offset of an explicit zone (luxon `DateTime.now().setZone(zone).offset`)."
+      },
+      {
+        "message": "`{{ name }}()` prints the date in the server's local time zone, so the result changes with the server's `TZ`. Use `toISOString()`, or `Intl.DateTimeFormat` with a `timeZone`."
+      },
+      {
+        "message": "`{{ name }}` without a `timeZone` option formats in the server's local time zone, so the result changes with the server's `TZ`. Pass the zone: `date.{{ name }}('en-US', { timeZone: 'UTC' })`, or the user's zone."
+      },
+      {
+        "message": "`Intl.DateTimeFormat` without a `timeZone` option formats in the server's local time zone, so the result changes with the server's `TZ`. Pass the zone: `new Intl.DateTimeFormat('en-US', { timeZone: 'UTC' })`, or the user's zone."
+      },
+      {
+        "message": "`Intl.DateTimeFormat().resolvedOptions().timeZone` is the server's own zone, so the result changes with the server's `TZ`. Use a configured zone name or `'UTC'`."
+      },
+      {
+        "message": "`new Date(year, month, ...)` builds the date in the server's local time zone, so the result changes with the server's `TZ`. Use `new Date(Date.UTC(year, month, ...))`."
+      },
+      {
+        "message": "This date-time text has no offset, so it is read in the server's local time zone and the result changes with the server's `TZ`. Add `Z` or an offset (`'2024-01-01T10:00:00Z'`), or parse it in an explicit zone (luxon `DateTime.fromISO(text, { zone })`)."
+      },
+      {
+        "message": "luxon `{{ name }}` without a `zone` option uses the server's local time zone, so the result changes with the server's `TZ`. Pass `{ zone: 'utc' }` (or the user's zone), chain `.setZone(zone)`, or use `DateTime.utc()`."
+      },
+      {
+        "message": "date-fns `{{ name }}` works in the server's local time zone, so the result changes with the server's `TZ`. Pass the zone with `{ in: tz('UTC') }` from `@date-fns/tz`, or use `formatInTimeZone` from `date-fns-tz`."
+      },
+      {
+        "message": "`{{ name }}` builds a date in the server's local time zone, so the result changes with the server's `TZ`. Chain `.utc()` or `.tz(zone)` before calendar methods like `format`, `startOf` or `add`, or start from `.utc(...)`."
+      }
+    ],
+    { "key": "exceptions", "rule": "nitpicker/no-local-time-zone" },
     "nitpicker/no-magic-numbers",
     "Disallow magic numbers",
     [
@@ -1153,8 +1191,8 @@
     [0, 116, 2, 3, 117, 5, 118, 7, 119, -1, -1],
     [0, 120, 90, 121, 122, 5, 123, 7, 124, -1, -1],
     [0, 125, 2, 3, 126, 5, 127, 7, 128, -1, -1],
-    [0, 129, 2, 3, 130, 5, 131, 7, 132, -1, 133],
-    [0, 134, 2, 3, 135, 5, 136, 7, 137, -1, -1],
+    [0, 129, 2, 3, 130, 5, 131, 7, 132, -1, -1],
+    [0, 133, 2, 3, 134, 5, 135, 7, 136, -1, 137],
     [0, 138, 2, 3, 139, 5, 140, 7, 141, -1, -1],
     [0, 142, 2, 3, 143, 5, 144, 7, 145, -1, -1],
     [0, 146, 2, 3, 147, 5, 148, 7, 149, -1, -1],
@@ -1162,25 +1200,25 @@
     [0, 154, 2, 3, 155, 5, 156, 7, 157, -1, -1],
     [0, 158, 2, 3, 159, 5, 160, 7, 161, -1, -1],
     [0, 162, 2, 3, 163, 5, 164, 7, 165, -1, -1],
-    [0, 166, 2, 3, 167, 5, 168, 169, 170, -1, -1],
-    [0, 171, 2, 3, 172, 5, 173, 174, 175, -1, -1],
-    [0, 176, 2, 3, 177, 5, 178, 7, 179, -1, -1],
+    [0, 166, 2, 3, 167, 5, 168, 7, 169, -1, -1],
+    [0, 170, 2, 3, 171, 5, 172, 173, 174, -1, -1],
+    [0, 175, 2, 3, 176, 5, 177, 178, 179, -1, -1],
     [0, 180, 2, 3, 181, 5, 182, 7, 183, -1, -1],
     [0, 184, 2, 3, 185, 5, 186, 7, 187, -1, -1],
     [0, 188, 2, 3, 189, 5, 190, 7, 191, -1, -1],
-    [0, 192, 193, 194, 195, 5, 196, 7, 197, -1, -1],
-    [0, 198, 2, 34, 199, 5, 200, 7, 201, 95, -1],
-    [0, 202, 2, 3, 203, 5, 204, 7, 205, -1, -1],
+    [0, 192, 2, 3, 193, 5, 194, 7, 195, -1, -1],
+    [0, 196, 197, 198, 199, 5, 200, 7, 201, -1, -1],
+    [0, 202, 2, 34, 203, 5, 204, 7, 205, 95, -1],
     [0, 206, 2, 3, 207, 5, 208, 7, 209, -1, -1],
     [0, 210, 2, 3, 211, 5, 212, 7, 213, -1, -1],
-    [0, 214, 2, 34, 215, 5, 216, 37, 217, 39, -1],
-    [0, 218, 2, 3, 219, 5, 220, 7, 221, -1, -1],
+    [0, 214, 2, 3, 215, 5, 216, 7, 217, -1, -1],
+    [0, 218, 2, 34, 219, 5, 220, 37, 221, 39, -1],
     [0, 222, 2, 3, 223, 5, 224, 7, 225, -1, -1],
     [0, 226, 2, 3, 227, 5, 228, 7, 229, -1, -1],
     [0, 230, 2, 3, 231, 5, 232, 7, 233, -1, -1],
     [0, 234, 2, 3, 235, 5, 236, 7, 237, -1, -1],
-    [0, 238, 239, 240, 241, 5, 242, 7, 243, -1, -1],
-    [0, 244, 2, 3, 245, 5, 246, 7, 247, -1, -1],
+    [0, 238, 2, 3, 239, 5, 240, 7, 241, -1, -1],
+    [0, 242, 243, 244, 245, 5, 246, 7, 247, -1, -1],
     [0, 248, 2, 3, 249, 5, 250, 7, 251, -1, -1],
     [0, 252, 2, 3, 253, 5, 254, 7, 255, -1, -1],
     [0, 256, 2, 3, 257, 5, 258, 7, 259, -1, -1],
@@ -1199,10 +1237,10 @@
     [0, 308, 2, 3, 309, 5, 310, 7, 311, -1, -1],
     [0, 312, 2, 3, 313, 5, 314, 7, 315, -1, -1],
     [0, 316, 2, 3, 317, 5, 318, 7, 319, -1, -1],
-    [0, 320, 90, 121, 321, 5, 322, 7, 323, -1, -1],
-    [0, 324, 2, 3, 325, 5, 326, 7, 327, -1, -1],
-    [0, 328, 90, 121, 329, 5, 330, 7, 331, -1, -1],
-    [0, 332, 2, 34, 333, 5, 334, 37, 335, 39, -1],
+    [0, 320, 2, 3, 321, 5, 322, 7, 323, -1, -1],
+    [0, 324, 90, 121, 325, 5, 326, 7, 327, -1, -1],
+    [0, 328, 2, 3, 329, 5, 330, 7, 331, -1, -1],
+    [0, 332, 90, 121, 333, 5, 334, 7, 335, -1, -1],
     [0, 336, 2, 34, 337, 5, 338, 37, 339, 39, -1],
     [0, 340, 2, 34, 341, 5, 342, 37, 343, 39, -1],
     [0, 344, 2, 34, 345, 5, 346, 37, 347, 39, -1],
@@ -1212,14 +1250,15 @@
     [0, 360, 2, 34, 361, 5, 362, 37, 363, 39, -1],
     [0, 364, 2, 34, 365, 5, 366, 37, 367, 39, -1],
     [0, 368, 2, 34, 369, 5, 370, 37, 371, 39, -1],
-    [0, 372, 373, 374, 375, 5, 376, 7, 377, -1, -1],
-    [0, 378, 2, 3, 379, 5, 380, 7, 381, -1, -1],
+    [0, 372, 2, 34, 373, 5, 374, 37, 375, 39, -1],
+    [0, 376, 377, 378, 379, 5, 380, 7, 381, -1, -1],
     [0, 382, 2, 3, 383, 5, 384, 7, 385, -1, -1],
     [0, 386, 2, 3, 387, 5, 388, 7, 389, -1, -1],
     [0, 390, 2, 3, 391, 5, 392, 7, 393, -1, -1],
-    [0, 394, 395, 396, 397, 5, 398, 7, 399, -1, -1],
-    [0, 400, 2, 3, 401, 5, 402, 7, 403, -1, -1],
+    [0, 394, 2, 3, 395, 5, 396, 7, 397, -1, -1],
+    [0, 398, 399, 400, 401, 5, 402, 7, 403, -1, -1],
     [0, 404, 2, 3, 405, 5, 406, 7, 407, -1, -1],
-    [0, 408, 2, 3, 409, 5, 410, 7, 411, -1, -1]
+    [0, 408, 2, 3, 409, 5, 410, 7, 411, -1, -1],
+    [0, 412, 2, 3, 413, 5, 414, 7, 415, -1, -1]
   ]
 }
