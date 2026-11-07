@@ -1,0 +1,33 @@
+  <rule name="SpringTypedConfiguration" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
+        message="Read configuration through a @ConfigurationProperties record and pass the values in through constructors or parameters, not @Value, System.getenv, System.getProperty or Environment.getProperty. JVM properties such as java.*, user.*, javax.*, jdk.* and http.* are fine.">
+    <priority>3</priority>
+    <properties><property name="xpath"><value><![CDATA[
+//FormalParameter/ModifierList/Annotation[pmd-java:typeIs('org.springframework.beans.factory.annotation.Value')]
+  [not(ancestor::ClassDeclaration[1]/ModifierList/Annotation[
+    pmd-java:typeIs('org.springframework.context.annotation.Configuration')
+    or pmd-java:typeIs('org.springframework.boot.autoconfigure.SpringBootApplication')
+    or pmd-java:typeIs('org.springframework.boot.autoconfigure.AutoConfiguration')
+    or pmd-java:typeIs('org.springframework.boot.test.context.TestConfiguration')])]
+|
+//MethodCall[@MethodName = ('getenv', 'getProperty') and *[1][self::TypeExpression and pmd-java:typeIs('java.lang.System')]
+  and not(ArgumentList/StringLiteral[1][matches(@ConstValue, '^(java|user|os|file|line|path|javax|jdk|sun|com\.sun|http|https|ftp)\.|^socks')])
+  and (ArgumentList/* or parent::MethodCall[@MethodName = ('get', 'getOrDefault', 'containsKey')])]
+  [not(ancestor::ClassDeclaration[last()]/ModifierList/Annotation[
+    pmd-java:typeIs('org.springframework.context.annotation.Configuration')
+    or pmd-java:typeIs('org.springframework.boot.autoconfigure.SpringBootApplication')
+    or pmd-java:typeIs('org.springframework.boot.autoconfigure.AutoConfiguration')
+    or pmd-java:typeIs('org.springframework.boot.test.context.TestConfiguration')])]
+  [not(ancestor::ClassDeclaration[last()]/ImplementsList/ClassType[
+    pmd-java:typeIs('org.springframework.boot.env.EnvironmentPostProcessor')
+    or pmd-java:typeIs('org.springframework.context.ApplicationContextInitializer')])]
+  [not(ancestor::MethodDeclaration[1][@Name = 'main'][pmd-java:modifiers() = 'static'])]
+|
+//ClassDeclaration[ModifierList/Annotation[
+    pmd-java:typeIs('org.springframework.stereotype.Component')
+    or pmd-java:typeIs('org.springframework.stereotype.Service')
+    or pmd-java:typeIs('org.springframework.stereotype.Repository')
+    or pmd-java:typeIs('org.springframework.stereotype.Controller')
+    or pmd-java:typeIs('org.springframework.web.bind.annotation.RestController')]]
+  //MethodCall[@MethodName = ('getProperty', 'getRequiredProperty') and *[1][pmd-java:typeIs('org.springframework.core.env.PropertyResolver')]]
+]]></value></property></properties>
+  </rule>

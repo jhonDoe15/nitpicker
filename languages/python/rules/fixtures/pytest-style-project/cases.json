@@ -1,0 +1,7 @@
+[
+  {
+    "tool": "ruff",
+    "rule": "PT001",
+    "mention": "parentheses"
+  }
+]

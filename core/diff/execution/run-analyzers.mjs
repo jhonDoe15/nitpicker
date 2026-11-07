@@ -14,6 +14,10 @@ const SCHEDULER_OUTPUT_OVERHEAD_BYTES = 1024 * 1024;
 
 const DEFAULT_ANALYZER_TIMEOUT_MS = 5 * 60 * 1000;
 
+const SCHEDULER_GRACE_MS = 60 * 1000;
+
+const TASK_STOP_GRACE_MS = 5 * 1000;
+
 const schedulerPath = fileURLToPath(new URL('./analyzer-scheduler.mjs', import.meta.url));
 
 export function selectAnalyzers(analyzers, analyzerNames) {
@@ -129,6 +133,13 @@ function scheduleTasks(tasks, { runTasks, headPolicyFile, snapshot }) {
   return outcome;
 }
 
+function schedulerDeadline(tasks) {
+  return tasks.reduce(
+    (total, task) => total + task.timeoutMs + TASK_STOP_GRACE_MS,
+    SCHEDULER_GRACE_MS,
+  );
+}
+
 export function runScheduler(tasks, headPolicyFile, { progress } = {}) {
   const liveProgress = Number.isInteger(progress?.stream.fd);
   const result = withSharedBuildDirectory((sharedEnvironment) =>
@@ -144,6 +155,7 @@ export function runScheduler(tasks, headPolicyFile, { progress } = {}) {
       },
       encoding: 'utf8',
       maxBuffer: tasks.length * MAX_ANALYZER_OUTPUT_BYTES + SCHEDULER_OUTPUT_OVERHEAD_BYTES,
+      timeout: schedulerDeadline(tasks),
     }),
   );
   if (result.error !== undefined) {

@@ -100,6 +100,7 @@ function productionGuardRules({ react, security }) {
     'nitpicker/no-unsafe-path-join': 'error',
     'nitpicker/require-error-listener': 'error',
     'nitpicker/unbounded-fan-out': 'error',
+    'nitpicker/unbounded-reactive-fan-out': 'error',
     ...securityRules({ react, security }),
   };
 }

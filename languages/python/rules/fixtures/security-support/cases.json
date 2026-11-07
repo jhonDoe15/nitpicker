@@ -1,0 +1,7 @@
+[
+  {
+    "tool": "ruff",
+    "rule": "S501",
+    "mention": "certificate verification on"
+  }
+]

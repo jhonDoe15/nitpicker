@@ -75,12 +75,12 @@ export function acceptsArguments(fn, count) {
   );
 }
 
-function initMethods(view) {
+export function beanMethodNames(view, option) {
   return new Set(
     view.file.functions
       .map((fn) => annotationIn(view.resolve, entriesOf(fn), BEAN))
       .flatMap((entry) => entry?.arguments ?? [])
-      .filter(({ name }) => name === 'initMethod')
+      .filter(({ name }) => name === option)
       .map(({ text }) => text.replaceAll('"', '')),
   );
 }
@@ -123,7 +123,7 @@ export function setupScopes(view, isStart) {
 }
 
 export function startupScopes(view, { singletons = true } = {}) {
-  const initNames = initMethods(view);
+  const initNames = beanMethodNames(view, 'initMethod');
   const callbacks = singletons ? STARTUP_NAMES : INIT_NAMES;
   return setupScopes(
     view,

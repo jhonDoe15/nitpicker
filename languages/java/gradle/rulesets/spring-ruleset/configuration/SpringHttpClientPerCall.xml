@@ -1,0 +1,35 @@
+  <rule name="SpringHttpClientPerCall" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
+        message="Build the HTTP client once, from the injected RestClient.Builder or RestTemplateBuilder, and keep it in a final field or a @Bean. A client built in each call throws away its connection pool.">
+    <priority>2</priority>
+    <properties><property name="xpath"><value><![CDATA[
+let $onlyFrom := function($method, $callers) {
+  let $uses := $method/parent::ClassBody//(MethodCall[*[1][self::ArgumentList or self::ThisExpression[not(*)]]]
+      | MethodReference[*[1][self::ThisExpression[not(*)]]])[@MethodName = $method/@Name]
+  return $method/@Visibility = 'private' and exists($uses)
+    and (every $use in $uses satisfies exists($use/ancestor::* intersect $callers))
+},
+    $setupMethod := function($method) {
+  let $body := $method/parent::ClassBody,
+      $starts := ($body/ConstructorDeclaration, $body/Initializer, $body/FieldDeclaration,
+        $body/MethodDeclaration[ModifierList/Annotation[pmd-java:typeIs('org.springframework.context.annotation.Bean')]]),
+      $helpers := $body/MethodDeclaration[$onlyFrom(., $starts)]
+  return exists($method intersect ($starts, $helpers, $body/MethodDeclaration[$onlyFrom(., ($starts, $helpers))]))
+},
+    $setup := function($node) {
+  not($node/ancestor::MethodDeclaration)
+  or $setupMethod($node/ancestor::MethodDeclaration[1])
+  or $node/ancestor::MethodDeclaration[1][pmd-java:modifiers() = 'static']
+    [exists($node/ancestor::ReturnStatement[ancestor::MethodDeclaration[1] is $node/ancestor::MethodDeclaration[1]])]
+}
+return (
+  //ConstructorCall[pmd-java:typeIs('org.springframework.web.client.RestTemplate')
+    or pmd-java:typeIs('org.springframework.boot.web.client.RestTemplateBuilder')
+    or pmd-java:typeIs('org.springframework.boot.restclient.RestTemplateBuilder')]
+  | //MethodCall[@MethodName = ('create', 'builder')]
+      [*[1][self::TypeExpression and (pmd-java:typeIs('org.springframework.web.client.RestClient')
+        or pmd-java:typeIs('org.springframework.web.reactive.function.client.WebClient'))]]
+  | //MethodCall[@MethodName = ('newHttpClient', 'newBuilder')]
+      [*[1][self::TypeExpression and pmd-java:typeIs('java.net.http.HttpClient')]]
+)[not($setup(.))]
+]]></value></property></properties>
+  </rule>

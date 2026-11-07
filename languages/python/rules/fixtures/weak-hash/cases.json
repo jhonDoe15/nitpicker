@@ -1,0 +1,12 @@
+[
+  {
+    "tool": "ruff",
+    "rule": "S324",
+    "mention": "sha256"
+  },
+  {
+    "tool": "ruff",
+    "rule": "S303",
+    "mention": "sha256"
+  }
+]

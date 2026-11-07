@@ -12,7 +12,7 @@ import { messageFormat, printfFormat, wrongConversion } from './log-formats.mjs'
 const ARGUMENTS_RULE = 'LogFormatArguments';
 const EXCEPTION_RULE = 'LogExceptionFirst';
 
-export const LOG_FORMAT_MESSAGES = {
+const LOG_FORMAT_MESSAGES = {
   [ARGUMENTS_RULE]:
     "Pass one argument per placeholder, in the method's own syntax: `%s` for printf methods (JBoss Logging `infof`, Log4j 2 `printf` and formatter loggers), `{0}` for MessageFormat methods (JBoss Logging `infov`, `java.util.logging` `log`), with `''` for an apostrophe there. Keep the format a constant, not a string template. Otherwise values are dropped or the call throws.",
   [EXCEPTION_RULE]:
@@ -192,3 +192,5 @@ export function logFormatArguments(scanned) {
       : []),
   ]);
 }
+
+export const kotlinSourceRules = { messages: LOG_FORMAT_MESSAGES, main: [logFormatArguments] };
