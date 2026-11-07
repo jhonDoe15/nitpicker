@@ -7,6 +7,7 @@ import { isStale } from '../../../scripts/schema/gen-config-schema.mjs';
 import { PACKAGE_ROOT } from '../../tooling/tool-resolution.mjs';
 import { KEYS } from '../validate.mjs';
 import { SCHEMA_URL } from './config-schema.mjs';
+import { guidePages, guideText } from '../../../shared/reference/build/guide-pages.mjs';
 import { documentedConfigs } from './test-support/doc-examples.mjs';
 import {
   PRESETS,
@@ -145,7 +146,7 @@ describe('the configurations in the documentation', () => {
     const files = new Set(examples.map(({ file }) => file));
     expect(
       ['usage', 'java-preset', 'kotlin-preset', 'python-preset'].filter(
-        (guide) => !files.has(`docs/${guide}.md`),
+        (guide) => !guidePages(`docs/${guide}.md`).some((page) => files.has(page)),
       ),
     ).toEqual([]);
   });
@@ -157,7 +158,7 @@ describe('the configurations in the documentation', () => {
     ['kotlin-preset', SCHEMA_URL],
     ['python-preset', SCHEMA_URL],
   ])('the %s guide shows the $schema line', (guide, line) => {
-    expect(readFileSync(path.join(PACKAGE_ROOT, 'docs', `${guide}.md`), 'utf8')).toContain(line);
+    expect(guidePages(`docs/${guide}.md`).map(guideText).join('\n')).toContain(line);
   });
 
   it.each(examples.map((example) => [`${example.file}: ${example.text.slice(0, 60)}`, example]))(
