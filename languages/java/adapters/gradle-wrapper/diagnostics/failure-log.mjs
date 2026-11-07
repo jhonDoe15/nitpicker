@@ -2,7 +2,7 @@ import { mkdtempSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 
-export function withGradleLog(error, result) {
+export function withGradleLog(error, result, { logLast = false } = {}) {
   try {
     const directory = mkdtempSync(path.join(tmpdir(), 'nitpicker-gradle-failure-'));
     const file = path.join(directory, 'gradle.log');
@@ -13,7 +13,10 @@ export function withGradleLog(error, result) {
         mode: 0o600,
       },
     );
-    return new Error(`Full Gradle log: ${file}\n${error.message}`, { cause: error });
+    const log = `Full Gradle log: ${file}`;
+    return new Error(logLast ? `${error.message}\n${log}` : `${log}\n${error.message}`, {
+      cause: error,
+    });
   } catch (logError) {
     return new AggregateError(
       [error, logError],
