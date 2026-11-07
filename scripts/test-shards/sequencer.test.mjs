@@ -7,6 +7,7 @@ import {
   createDurationSequencer,
   heaviestFirst,
   readDurations,
+  unmeasuredWeight,
 } from './sequencer.mjs';
 
 const files = ['a.test.mjs', 'b.test.mjs', 'c.test.mjs', 'd.test.mjs', 'e.test.mjs', 'f.test.mjs'];
@@ -15,6 +16,8 @@ const durations = new Map([
   ['b.test.mjs', 60],
   ['c.test.mjs', 40],
   ['d.test.mjs', 20],
+  ['e.test.mjs', 1],
+  ['f.test.mjs', 1],
 ]);
 
 afterEach(() => vi.unstubAllEnvs());
@@ -89,10 +92,18 @@ describe('assignShards', () => {
     );
   });
 
-  it('weighs a file with no recorded duration as one second', () => {
+  it('weighs a file with no recorded duration as the median measured file, so a new file needs no profile edit', () => {
+    const measured = new Map([
+      ['a.test.mjs', 1],
+      ['b.test.mjs', 5],
+      ['c.test.mjs', 9],
+    ]);
+
     expect(
-      heaviestFirst(['z.test.mjs', 'y.test.mjs', 'x.test.mjs'], new Map([['z.test.mjs', 2]])),
-    ).toEqual(['z.test.mjs', 'x.test.mjs', 'y.test.mjs']);
+      heaviestFirst(['a.test.mjs', 'n.test.mjs', 'b.test.mjs', 'c.test.mjs'], measured),
+    ).toEqual(['c.test.mjs', 'b.test.mjs', 'n.test.mjs', 'a.test.mjs']);
+    expect(unmeasuredWeight(measured)).toBe(5);
+    expect(unmeasuredWeight(new Map())).toBe(1);
   });
 });
 
