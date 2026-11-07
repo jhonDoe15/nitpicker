@@ -48,7 +48,7 @@ To learn why a rule is on and what form it allows before you write or change cod
 
 The allowed forms are on one page per topic. Before you write code, read the pages for the kind of code you are about to write; on your first task in a project, read them all.
 
-- [Style, names and secrets](rules/style-and-names.md): detekt's defaults, names, commented-out code, repeated strings, KDoc, secrets.
+- [Style, names and secrets](rules/style-and-names.md): detekt's defaults (exceptions, `require` and `check`, magic numbers, returns), names, commented-out code, repeated strings, KDoc, secrets.
 - [Values, types and data](rules/values-and-types.md): scope functions, casts, null, data classes, signatures, default parameters, URIs, regexes, enums, maps, validation targets.
 - [Coroutines, I/O and remote calls](rules/concurrency-and-io.md): coroutine scopes, bounded fan-out, child processes, HTTP deadlines, closing resources, work at load time.
 - [Structure and dependencies](rules/structure.md): function, file and folder limits, CRAP, duplicates, aggregates.
