@@ -1,0 +1,12 @@
+[
+  {
+    "tool": "ruff",
+    "rule": "S312",
+    "mention": "sftp"
+  },
+  {
+    "tool": "ruff",
+    "rule": "S321",
+    "mention": "sftp"
+  }
+]
