@@ -1,6 +1,6 @@
 # Python: nitpicker rules
 
-The Python rules nitpicker's own script checks (`python-rules/*`), the coupling and import-cycle findings, the ruff format check and the finding for a run in which no tests ran. This page lists 74 rules. [All pages](README.md).
+The Python rules nitpicker's own script checks (`python-rules/*`), the coupling and import-cycle findings, the ruff format check and the finding for a run in which no tests ran. This page lists 75 rules. [All pages](README.md).
 
 The guide for these rules: [docs/python-preset.md](../python-preset.md).
 
@@ -183,6 +183,15 @@ Dataclass \<name> is not frozen.
 
 - **Allowed form:** Name it for its job (`price_rounding.py`, `OrderRepository`); shared logic that belongs to no feature lives in `shared/` under a name that says what it does.
 - **Exception:** If this is intended, add `{"rule":"generic-name","paths":["<path>"],"reason":"..."}` to "python.exceptions" in nitpicker.config.json.
+
+<a id="python-rules-global-state-leak-in-test"></a>
+
+### `python-rules/global-state-leak-in-test`
+
+`<name>` changes process-wide state in a test and nothing puts it back, so the tests after it depend on the order they run in.
+
+- **Allowed form:** Let pytest undo it: `monkeypatch.setenv`, `monkeypatch.setattr` or `mock.patch.dict(os.environ, ...)`, or save the old value and restore it in `finally`, after `yield` in a fixture, or in `tearDown`.
+- **Exception:** If this is intended, add `{"rule":"global-state-leak-in-test","paths":["<path>"],"reason":"..."}` to "python.exceptions" in nitpicker.config.json.
 
 <a id="python-rules-handwritten-boundary-guard"></a>
 

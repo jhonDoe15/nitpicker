@@ -225,6 +225,14 @@ export const SMELL_HINTS = [
   },
   {
     tool: RULES_TOOL,
+    rules: ['global-state-leak-in-test'],
+    describe: (subject) =>
+      `\`${subject}\` changes process-wide state in a test and nothing puts it back, so the tests after it depend on the order they run in`,
+    allowed:
+      'Let pytest undo it: `monkeypatch.setenv`, `monkeypatch.setattr` or `mock.patch.dict(os.environ, ...)`, or save the old value and restore it in `finally`, after `yield` in a fixture, or in `tearDown`.',
+  },
+  {
+    tool: RULES_TOOL,
     rules: ['network-in-test'],
     describe: (subject) => `\`${subject}\` reaches the network in a unit test`,
     allowed:
