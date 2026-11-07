@@ -6,7 +6,9 @@ import { normalizeEslintResults } from '../normalize.mjs';
 
 export function makeTemporaryRoot(prefix) {
   const root = mkdtempSync(path.join(tmpdir(), prefix));
-  onTestFinished(() => rmSync(root, { recursive: true, force: true }));
+  onTestFinished(() => {
+    rmSync(root, { recursive: true, force: true });
+  });
   return root;
 }
 
