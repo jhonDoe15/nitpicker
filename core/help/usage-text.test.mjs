@@ -22,7 +22,7 @@ const { temporaryRoot } = useGitFixtures();
 const MANIFEST = new URL('../../package.json', import.meta.url);
 const PAIRED = { '--shard-count': ['--shard-index', '0'], '--shard-index': ['--shard-count', '2'] };
 const EXPECTED_USAGE = [
-  'Usage: nitpicker [--base <ref>] [--output <dir>] [--all | --fix] [--analyzer <name>]...',
+  'Usage: nitpicker [<path>...] [--base <ref>] [--output <dir>] [--all | --fix] [--analyzer <name>]...',
   '                 [--rule <substring>]... [--details] [--shard-count <n> --shard-index <i>]',
   '                 [--defer-exit] [--no-cache] [--accept-policy-change=<digest>] [--help] [--version]',
   '       nitpicker init [--agents-md] [--ci github] [--help]',
@@ -75,6 +75,11 @@ const EXPECTED_USAGE = [
   '  --shard-count <n>  Split the analyzers over n jobs (with --shard-index).',
   '  --shard-index <i>  Publish shard i of the split (0 to n-1).',
   '  --help             Print this help.',
+  '',
+  'Paths (files or folders, relative to the current folder) limit the findings that are shown',
+  'and gate the run; the analysis still covers the whole project. Examples:',
+  '  nitpicker src/orders/order.ts    gate your change to one file',
+  '  nitpicker --all src/orders       show every finding in one folder',
   '',
   'Start a new project with nitpicker init. Reference: https://github.com/jhonDoe15/nitpicker/blob/main/docs/usage.md',
   '',
