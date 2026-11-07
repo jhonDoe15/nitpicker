@@ -16,6 +16,11 @@ import {
   STRYKER_PROJECT_FILES,
 } from '../../../languages/typescript/preset/project-configs/stryker-project-config.mjs';
 import {
+  appliedTypescriptOptions,
+  projectTsconfigFiles,
+} from '../../../languages/typescript/preset/project-configs/typescript/typescript-project-options.mjs';
+import { resolveLayoutFor } from '../../../languages/typescript/preset/layout.mjs';
+import {
   isProjectConfigTool,
   manifestSection,
   packageJsonKey,
@@ -42,12 +47,14 @@ const KOTLIN_TOOLS = ['detekt', 'ktlint', 'ktfmt'];
 const GO_TOOLS = ['gofumpt', 'goimports'];
 const SCRIPT_PRESETS = new Set([undefined, 'typescript', 'javascript']);
 const SCRIPT_TOOL_FILES = new Map([
-  ['prettier', PRETTIER_PROJECT_FILES],
-  ['stryker', STRYKER_PROJECT_FILES],
+  ['prettier', () => PRETTIER_PROJECT_FILES],
+  ['stryker', () => STRYKER_PROJECT_FILES],
+  ['typescript', ({ config, root }) => projectTsconfigFiles(root, resolveLayoutFor(config))],
 ]);
 
 function usesProjectConfig(config, tool) {
-  return (config.tools?.[tool]?.precedence ?? []).includes('project');
+  const layers = precedenceLayers(config.tools?.[tool]?.precedence);
+  return layers.usesProject && !(tool === 'typescript' && layers.nitpickerFirst);
 }
 
 function fingerprintOf(tool, { projectRoot, file }, gitBlobId) {
@@ -117,7 +124,7 @@ function isScriptTool(tool) {
 
 function scriptCandidates(tool, side) {
   if (SCRIPT_TOOL_FILES.has(tool)) {
-    return SCRIPT_TOOL_FILES.get(tool);
+    return SCRIPT_TOOL_FILES.get(tool)(side);
   }
   return tool === 'eslint' ? eslintConfigFiles(side.root) : projectConfigCandidates(tool);
 }
@@ -180,7 +187,17 @@ function jscpdSide(side, optedIn) {
 function strykerSide(side, optedIn) {
   try {
     const { values, file } = optedIn ? appliedStrykerConfig(side.root) : { values: {} };
-    return { kind: 'applied', config: values, file };
+    return { kind: 'applied', config: values, files: file === undefined ? [] : [file] };
+  } catch {
+    return { kind: 'rejected' };
+  }
+}
+
+function typescriptSide(side, optedIn) {
+  try {
+    return optedIn
+      ? { kind: 'applied', ...appliedTypescriptOptions(side.root, resolveLayoutFor(side.config)) }
+      : { kind: 'rejected' };
   } catch {
     return { kind: 'rejected' };
   }
@@ -189,6 +206,7 @@ function strykerSide(side, optedIn) {
 const APPLIED_SIDES = new Map([
   ['jscpd', jscpdSide],
   ['stryker', strykerSide],
+  ['typescript', typescriptSide],
 ]);
 
 function appliedConfigs(tool, base, head) {
@@ -200,12 +218,12 @@ function appliedConfigs(tool, base, head) {
   if (!sides.every(({ kind }) => kind === 'applied')) {
     return {};
   }
-  const files = sides.map(({ file }) => file);
   return {
     applied: {
       base: sides[0].config,
       head: sides[1].config,
-      ...(tool === 'stryker' ? { files } : {}),
+      file: sides[1].file,
+      files: [...new Set(sides.flatMap(({ files = [] }) => files))],
     },
   };
 }

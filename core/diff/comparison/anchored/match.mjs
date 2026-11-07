@@ -1,5 +1,10 @@
 import { normalizeGitPath } from '../../git/normalize.mjs';
-import { isBelowChange, isOnInsertedLine, isOnUnchangedLine } from '../ratchet/touched-code.mjs';
+import {
+  isBelowChange,
+  isOnInsertedLine,
+  isOnLoneInsertedLine,
+  isOnUnchangedLine,
+} from '../ratchet/touched-code.mjs';
 
 function placeOf(finding, renames) {
   const normalizedPath = normalizeGitPath(finding.path);
@@ -35,7 +40,10 @@ function byLine(left, right) {
 }
 
 function canMove(head, touchedCode) {
-  if (head.anchor === undefined || isOnInsertedLine(head, touchedCode)) {
+  if (
+    head.anchor === undefined ||
+    (isOnInsertedLine(head, touchedCode) && !isOnLoneInsertedLine(head, touchedCode))
+  ) {
     return false;
   }
   return (
