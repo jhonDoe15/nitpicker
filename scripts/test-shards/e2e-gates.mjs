@@ -3,7 +3,7 @@ import path from 'node:path';
 
 export const SUITES = ['java', 'kotlin', 'python', 'go'];
 const E2E_NAME = '.e2e.test.';
-const TEST_FILES = ['{core,shared,languages,scripts}/**/*.test.mjs', 'evals/**/*.test.mjs'];
+export const TEST_FILES = ['{core,shared,languages,scripts}/**/*.test.mjs', 'evals/**/*.test.mjs'];
 const FLAG_READ = /process\.env(?:\.|\[\s*['"])(NITPICKER_\w+?_E2E)\b/gu;
 const RELATIVE_IMPORT = /(?:from|import)[\s(]*['"](\.{1,2}\/[^'"]+)['"]/gu;
 
@@ -30,6 +30,20 @@ export function gateCandidates(root) {
       const flags = [...new Set([absolute, ...relativeImports(absolute)].flatMap(flagsRead))];
       return file.includes(E2E_NAME) || flags.length > 0 ? [{ file, flags: flags.toSorted() }] : [];
     });
+}
+
+/**
+ * The test files of the suites whose flags are set in `environment`: each file that reads one of
+ * their flags itself or through a module it imports.
+ */
+export function suiteFiles(root, environment) {
+  const flags = SUITES.map(suiteFlag).filter((flag) => environment[flag] === '1');
+  if (flags.length === 0) {
+    return [];
+  }
+  return gateCandidates(root)
+    .filter((candidate) => candidate.flags.some((flag) => flags.includes(flag)))
+    .map(({ file }) => file);
 }
 
 export function caseId({ file, name }) {

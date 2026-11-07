@@ -1,5 +1,6 @@
 import { CANCELLATION_FILES, SWALLOWED_CANCELLATIONS } from './kotlin-cancellation-data.mjs';
 import { INTERRUPT_FILES, SWALLOWED_INTERRUPTS } from './kotlin-interrupt-data.mjs';
+import { PLURAL_FINDINGS, PLURALS } from './kotlin-plural-data.mjs';
 
 const MAIN = 'src/main/kotlin/demo/orders';
 const TEST = 'src/test/kotlin/demo/orders';
@@ -29,6 +30,26 @@ fun isFinal(status: Status): Boolean =
         Status.SHIPPED, Status.CANCELLED -> true
     }
 
+fun isPending(status: Status): Boolean =
+    when (status) {
+        Status.NEW, Status.PAID -> true
+        else -> false
+    }
+
+fun isBilled(status: Status): Boolean =
+    when (status) {
+        Status.NEW -> false
+        Status.PAID -> true
+        else -> false
+    }
+
+fun isHandedOver(status: Status): Boolean {
+    when (status) {
+        Status.SHIPPED, Status.CANCELLED -> return true
+        else -> return false
+    }
+}
+
 val Status.isLive: Boolean get() = this == Status.NEW || this == Status.PAID
 
 fun weight(status: Status) = if (status == Status.NEW || status == Status.PAID) 1 else 0
@@ -38,10 +59,6 @@ fun absOf(value: Int) = Math.abs(value)
 fun total(cents: Int) = scaled(cents)
 
 fun scaled(cents: Int): Int = cents * 2
-
-data class Query(val tag: String, val tags: List<String>)
-
-data class Page(val tag: String, val size: Int)
 `;
 
 const FORMATTING = `package demo.orders
@@ -218,6 +235,7 @@ export const REVIEW_RULE_FILES = {
   [`${MAIN}/Status.kt`]: STATUS,
   [`${MAIN}/Clock.kt`]: CLOCK,
   [`${MAIN}/Settlement.kt`]: SETTLEMENT,
+  [`${MAIN}/Plurals.kt`]: PLURALS,
   [`${MAIN}/Formatting.kt`]: FORMATTING,
   ...CANCELLATION_FILES,
   ...INTERRUPT_FILES,
@@ -236,15 +254,17 @@ export const EXPECTED_REVIEW_FINDINGS = [
   'ClassLoadEffect Inventory.workers',
   'ClassLoadEffect Shelf.present',
   'ClassLoadEffect seeded',
+  'ExhaustiveEnumPredicate isHandedOver',
   'ExhaustiveEnumPredicate isLive',
   'ExhaustiveEnumPredicate isOpen',
+  'ExhaustiveEnumPredicate isPending',
   'ExhaustiveEnumPredicate isSettled',
   'ExhaustiveEnumPredicate weight',
   'FixedSleepInTest HandlersTest.pause',
   'FixedSleepInTest WaitingTest.iterates',
   'FixedSleepInTest WaitingTest.sleeps',
   'FixedSleepInTest WaitingTest.sleeps',
-  'SingularAndPluralMember Query.tags',
+  ...PLURAL_FINDINGS,
   'SpringUnusedContext UnusedContextTest',
   'StaticForwardingWrapper absOf',
   'StaticForwardingWrapper total',

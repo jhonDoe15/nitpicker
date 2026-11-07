@@ -1,0 +1,8 @@
+[
+  {
+    "name": "except returning a constant names a failure result",
+    "tool": "python-rules",
+    "rule": "swallowed-exception",
+    "mention": "failure result"
+  }
+]

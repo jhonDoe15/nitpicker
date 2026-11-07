@@ -76,9 +76,9 @@ const PLANTED_OUTPUT = [
   'prettier-format/prettier/prettier src/main/format/unformatted.ts:1 Format these lines with Prettier',
   "typescript-typecheck/TS2345 src/main/features/greeting/domain/typed.js:9 Argument of type 'number' is not assignable to parameter of type 'string'.",
   '',
-  'Descriptive findings:',
-  'duplicates/duplicate-clone-size src/main/dup/a.js:5 Duplicate with src/main/dup/b.js',
-  'duplicates/duplicate-clone-size src/main/dup/a.js:5 Duplicate with src/main/dup/b.js',
+  'Design notes for review (not failing): 2 in the snapshot',
+  '  duplicates/duplicate-clone-size src/main/dup/a.js:5 Duplicate with src/main/dup/b.js (lines 12)',
+  '  duplicates/duplicate-clone-size src/main/dup/a.js:5 Duplicate with src/main/dup/b.js (tokens 126)',
   '',
   `Rule reference: ${docsUrl('docs/rules/README.md')} (nitpicker explain <tool/rule> prints one rule)`,
   '',
@@ -95,8 +95,8 @@ const FAILING_COVERAGE_OUTPUT = [
   'coverage: total=0 enforceable=0 descriptive=0',
   '',
   'Tool errors:',
-  'coverage (head): 1 test fails, so coverage, CRAP and mutation were skipped. Fix the tests and rerun:',
-  "  test/failing.test.js > fails on purpose: AssertionError: expected 'greeted' to be 'empty-name' // Object.is equality",
+  'coverage (head): 1 test fails; coverage, CRAP and mutation were skipped. Fix the tests and rerun:',
+  "  test/failing.test.js:5 > fails on purpose: AssertionError: expected 'greeted' to be 'empty-name' // Object.is equality",
   '',
 ].join('\n');
 
@@ -292,7 +292,7 @@ it('fails on purpose', () => {
       const { exitCode, stdoutText } = runSnapshot(root, ['--analyzer', 'coverage']);
 
       expect(stdoutText).toBe(FAILING_COVERAGE_OUTPUT);
-      expect(exitCode).toBe(2);
+      expect(exitCode).toBe(1);
     });
 
     it(

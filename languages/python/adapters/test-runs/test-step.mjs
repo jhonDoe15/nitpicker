@@ -13,6 +13,7 @@ import { insideProject } from '../../libraries/project-files.mjs';
 import { writeCoverageConfig } from '../configuration/coverage-config/python-coverage-config.mjs';
 import { failedTests, readJunit } from './junit-results.mjs';
 import { unittestFailures } from './test-failures.mjs';
+import { consoleReportEnvironment } from '../test-results/console-output.mjs';
 
 export const COVERAGE_REPORT = 'coverage.json';
 const COVERAGE_DATA = '.coverage';
@@ -38,12 +39,13 @@ function failuresOf(context, { command, result }) {
   }
   const failed =
     context.project.testRunner === 'pytest'
-      ? failedTests(readJunit(context.reportRoot)).map(({ id, file, name }) => ({
+      ? failedTests(readJunit(context.reportRoot)).map(({ id, file, name, failure }) => ({
           id,
           file,
           notRun: name === undefined,
+          failure,
         }))
-      : unittestFailures(result.stderr);
+      : unittestFailures(result.stderr, context.projectRoot);
   if (failed.length === 0) {
     throw failure({ context, command, result, rule: TESTS_NOT_RUN_RULE });
   }
@@ -57,7 +59,7 @@ export function test(context, outcome) {
   const result = run(context, command, {
     accepted: [0, TESTS_FAILED_EXIT, NO_TESTS_EXIT],
     rule: TESTS_NOT_RUN_RULE,
-    env: testEnvironment(context),
+    env: { ...testEnvironment(context), ...consoleReportEnvironment(context) },
     cwd: testDirectory(context),
   });
   outcome.testsRan = testsRan(result);

@@ -1,0 +1,7 @@
+[
+  {
+    "tool": "ruff",
+    "rule": "S612",
+    "mention": "dictconfig"
+  }
+]

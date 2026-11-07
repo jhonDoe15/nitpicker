@@ -1,7 +1,7 @@
 # Editing existing code
 
 Read this when your change edits a function, class, file or package that existed before it.
-Everything in `SKILL.md` still applies to the lines you add.
+Everything in `SKILL.md` and the topic pages it links still applies to the lines you add.
 
 - A function already over a size limit may be edited but must not grow: the run notes the base
   value (`allowed because base was 64`) and fails any increase
@@ -12,9 +12,10 @@ Everything in `SKILL.md` still applies to the lines you add.
 - When an enum or sealed type gains an entry that a legacy `when` must handle and the function is
   over a limit, move the `when` into a new function and call it (`total += weight(kind)`); a branch
   added in place grows the function.
-- Keep a legacy function's name. Renaming it makes all its limit, branch-coverage and
-  `LongMethod` findings new. An overload with the same name added above it makes its limit
-  findings new: add the overload below, or give it its own name.
+- Rename a legacy function only in a change that leaves its body as it was: its limit, CRAP,
+  branch-coverage and detekt count findings (`LongMethod`, `ReturnCount`) follow the rename then,
+  but an edit inside the renamed function makes its limit, CRAP and count findings new. An
+  overload with the same name added above a legacy function doesn't take its findings.
 - Don't add a `return` or `throw` to a function at or over detekt's `ReturnCount` or `ThrowsCount`
   limit (2): one more fails at the limit. Return the new failure from a new function instead.
 - A file, class or folder already over its limit must not grow: `File grew from 320 to 321 lines`,
@@ -31,6 +32,8 @@ Everything in `SKILL.md` still applies to the lines you add.
   (``Private property `leftover` is unused``), so renaming it makes the finding new: fix it in the
   same change. Another finding of the same rule in the same file is new, and the report may place
   it on the legacy line.
+- A count finding (a function length, complexity, parameter or return count) stays baselined while
+  its count does not grow; any increase fails.
 - Moving a file to another package, or renaming the file, keeps its detekt, CRAP and size
   findings. After a package move, findings that name the class (`coupling/test-only-export`) count
   as new; a renamed file whose one top-level declaration keeps its name fails
