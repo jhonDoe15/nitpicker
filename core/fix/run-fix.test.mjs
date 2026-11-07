@@ -3,6 +3,7 @@ import { fakeJvmTools } from '../../languages/java/fix/test-support/fake-jvm-too
 import { fakePythonTools } from '../../languages/python/fix/test-support/fake-python-fix.mjs';
 import { fixtureGit, useGitFixtures } from '../diff/git/test-support/git-repository.mjs';
 import { writeFiles } from '../diff/git/test-support/fixture-files.mjs';
+import { TOOL_TIMEOUT_MS } from '../../shared/processes/deadlines.mjs';
 import { fixWorkingTree, spawnInvocation } from './run-fix.mjs';
 
 const { createGitRepository, temporaryRoot } = useGitFixtures();
@@ -97,7 +98,7 @@ describe('spawnInvocation', () => {
       spawnInvocation({ ...base, environment: { A: '1' } }, { B: '2' }, optionsOf),
     ]).toEqual([
       [5, undefined],
-      [undefined, { B: '2', A: '1' }],
+      [TOOL_TIMEOUT_MS, { B: '2', A: '1' }],
     ]);
   });
   it('asks for a shell only when the invocation says so', () => {
