@@ -109,6 +109,21 @@ describe('the shared fact rules over the Python facts', () => {
     expect(findingsOf(true)).toEqual([]);
   });
 
+  it.each(['doc-comment-content', 'facts/doc-comment-content'])(
+    'lifts a docstring finding with an exception for %s',
+    (rule) => {
+      const comment = { file: 'src/shop/helpers.py', line: 2, name: 'helper', lines: ['Helper.'] };
+      const exceptions = [
+        { rule: 'test-only-export', paths: ['src/shop/**'], reason: 'r' },
+        { rule, paths: ['src/shop/helpers.py'], reason: 'r' },
+      ];
+
+      expect(
+        readFactFindings(reportRootWith({ ...FACTS, docComments: [comment] }), { exceptions }),
+      ).toEqual([]);
+    },
+  );
+
   it('reads the base facts for an edit to one of two copies', () => {
     const base = siblingFacts({ 'src/shop/a.py': SUM, 'src/shop/b.py': SUM });
     const head = siblingFacts({ 'src/shop/a.py': EDITED_SUM, 'src/shop/b.py': SUM });

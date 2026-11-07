@@ -4,6 +4,7 @@ import { linkPolicyFile } from '../../../../core/tooling/policy-links.mjs';
 import { readLayout } from '../head-policy.mjs';
 import { EXCLUDED_PATH_PATTERN } from '../layout.mjs';
 import { layoutTransformFor } from '../tool-configs.mjs';
+import { TOOL_RUN_CEILING_MS } from '../../../../shared/processes/deadlines.mjs';
 
 const projectRoot = path.resolve(import.meta.dirname, '../../../..');
 const dependencyCruiser = path.join(
@@ -52,6 +53,7 @@ function spawnDependencyCruiser(paths, environment) {
       env: { ...process.env, ...environment },
       encoding: 'utf8',
       maxBuffer: 50 * 1024 * 1024,
+      timeout: TOOL_RUN_CEILING_MS,
     },
   );
 }

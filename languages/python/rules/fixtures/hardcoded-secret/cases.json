@@ -1,0 +1,7 @@
+[
+  {
+    "tool": "python-rules",
+    "rule": "hardcoded-secret",
+    "mention": "environment"
+  }
+]

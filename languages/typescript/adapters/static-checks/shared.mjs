@@ -4,6 +4,7 @@ import { realpathSync, lstatSync, statSync } from 'node:fs';
 import path from 'node:path';
 import { normalizedRelativePath } from './arguments.mjs';
 import { createHash } from 'node:crypto';
+import { TOOL_RUN_CEILING_MS } from '../../../../shared/processes/deadlines.mjs';
 
 const MAX_OUTPUT_BYTES = 50 * 1024 * 1024;
 
@@ -17,6 +18,7 @@ export function runNodeTool({ options, relativeToolPath, arguments_, acceptedSta
     cwd: options.projectRoot,
     encoding: 'utf8',
     maxBuffer: MAX_OUTPUT_BYTES,
+    timeout: TOOL_RUN_CEILING_MS,
   });
   if (result.error !== undefined) {
     throw result.error;

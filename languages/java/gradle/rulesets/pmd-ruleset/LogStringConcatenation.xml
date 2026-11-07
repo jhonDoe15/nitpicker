@@ -1,0 +1,17 @@
+  <rule name="LogStringConcatenation" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
+        message="Pass values as placeholders (LOG.info(&quot;user '{'}&quot;, user); '{'0} in System.Logger and java.util.logging), not a message built with + or String.format.">
+    <priority>3</priority>
+    <properties>
+      <property name="xpath">
+        <value><![CDATA[
+//MethodCall[@MethodName = ('info', 'warn', 'error', 'log', 'config', 'warning', 'severe')]
+  [*[1][pmd-java:typeIs('org.slf4j.Logger') or pmd-java:typeIs('org.slf4j.spi.LoggingEventBuilder')
+    or pmd-java:typeIs('java.util.logging.Logger') or pmd-java:typeIs('java.lang.System.Logger')
+    or pmd-java:typeIs('org.apache.logging.log4j.Logger') or pmd-java:typeIs('org.apache.commons.logging.Log')]]
+  /ArgumentList/(*[1] | *[1][not(pmd-java:typeIs('java.lang.String'))]/following-sibling::*[1])
+  [(self::InfixExpression[@Operator = '+'] and not(@CompileTimeConstant = true()))
+    or self::MethodCall[@MethodName = ('format', 'formatted')]]
+]]></value>
+      </property>
+    </properties>
+  </rule>

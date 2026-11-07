@@ -8,7 +8,15 @@ description: Use before writing or changing Java in a project that runs nitpicke
 nitpicker gates a Gradle or Maven project (Java 21) with PMD, SpotBugs, Error Prone with NullAway,
 Checkstyle, google-java-format, JaCoCo, CRAP, PIT mutation testing, jscpd and size limits. It fails
 only on findings your change adds, so leave code the task doesn't need alone. Write the allowed
-forms below from the start; the gate is a backstop.
+forms of the topic pages under "Write it this way" from the start; the gate is a backstop.
+
+## Check one file or folder
+
+To look at one file or folder, for example before you change it, pass its path: `npx nitpicker --all
+src/main/java/com/example/orders` lists every finding in it, and `npx nitpicker
+src/main/java/com/example/orders/Order.java` gates only your change to that file. Paths are read
+from the current folder. The analysis still covers the whole project, so it takes as long as a full
+run; finish with the plain run below.
 
 ## Finish with the gate
 
@@ -26,9 +34,9 @@ forms below from the start; the gate is a backstop.
 4. Act on the exit code:
    - 0: done, unless you narrowed the run with `--analyzer`: then the summary says `Ran only: ...`
      and you run the gate again without it before you finish.
-   - 1: fix every new finding (printed as `tool/rule path:line`) and any tool error listed below
-     them, then rerun.
-   - 2: no new findings, but a tool failed (the build, a compile error, a test failure). Fix the
+   - 1: fix the failing tests the summary leads with, every new finding (printed as
+     `tool/rule path:line`) and any tool error listed below them, then rerun.
+   - 2: no new findings, but a tool failed (the build, a compile error). Fix the
      cause it names and rerun. Exit 2 is never a pass. If another run is in progress, wait for
      it; never kill it.
 5. Never suppress: no `// NOPMD`, `@SuppressWarnings`, `@SuppressFBWarnings`, `CHECKSTYLE`
@@ -47,176 +55,18 @@ If your change edits a method, class, file or package that existed before it, re
 Before you change code other modules use, or fix a bug, read
 [beyond-the-gate.md](beyond-the-gate.md).
 
-To learn why a rule is on and what form it allows before you write or change code, run `npx nitpicker explain <tool/rule>` with the name a finding prints, or read the [rule reference](https://github.com/jhonDoe15/nitpicker/blob/main/docs/rules/README.md). `npx nitpicker rules` lists the rules of this project's preset.
+To learn why a rule is on and what form it allows before you write or change code, run `npx nitpicker explain <tool/rule>` with the name a finding prints, or read the [rule reference](https://github.com/jhonDoe15/nitpicker/blob/latest/docs/rules/README.md). `npx nitpicker rules` lists the rules of this project's preset.
 
 ## Write it this way
 
-- Style is google-java-format, 100 columns, unless the project formats with palantir-java-format
-  (120 columns, 4 spaces). Indent like the files around you (nitpicker follows the project's
-  formatter and majority, 2 spaces or 4 with `--aosp`); a misformatted file is one finding, so run the
-  formatter rather than fixing layout by hand. With no formatter, nitpicker still reports unused
-  imports and bad indentation or whitespace; in a tab-indented project it checks neither tabs nor
-  indentation.
-- Text: `"a".equals(x)` or `a.equals(b)`, never `==` on strings or other objects. Pass a charset and
-  a locale: `s.getBytes(StandardCharsets.UTF_8)`, `s.toUpperCase(Locale.ROOT)`.
-- Strings, arrays and files: no field initializer that repeats the default (`= 0`, `= null`,
-  `= false`). Append one character as a char (`append('x')`) and chain appends
-  (`sb.append(a).append(b)`). Write `i + "x"`, not `"" + i + "x"`; `String.valueOf(i)` only when
-  nothing else is concatenated. Build loop output in a local `StringBuilder`. Copy arrays with
-  `System.arraycopy`, and an array into a collection with `Collections.addAll(target, array)`. Open
-  files with `Files.newInputStream` or `Files.newBufferedReader`, not `FileInputStream`.
-- Threads: no `synchronized`, `wait` or `notify`. Lock with a private final `ReentrantLock`
-  (`lock()` right before `try`, `unlock()` in `finally`) and wait on a `Condition` from it
-  (`await()` in a loop, `signalAll()`).
-- Output: no `System.out`/`System.err` and no `printStackTrace()`. Log with
-  `System.getLogger(Foo.class.getName())`, or the project's logger.
-- Null: a method returning a collection returns an empty one (`List.of()`), never `null`. Any
-  other value that may be absent is declared `@Nullable` (the project's annotation, JSpecify's
-  `org.jspecify.annotations.Nullable` if it has none) and checked before use. Never assign `null`
-  (`out = null`); restructure instead.
-- Literals: compare against named constants (`quantity >= BULK_THRESHOLD`), not literals in an
-  `if`; `-1`, `0`, `1` and `2` are fine.
-- Parameters and loops: never reassign a parameter or a catch variable; copy to a local. Use
-  for-each where the index is unused. Remove unused fields, locals, private methods, assignments.
-- Fan-out: bound concurrent remote or message calls. Run the tasks on a fixed pool
-  (`Executors.newFixedThreadPool(8)`), take a `Semaphore` permit around each call, or work through
-  fixed-size batches; never `supplyAsync` per element on the default pool or a cached or
-  virtual-thread executor.
-- Child processes: wait with a deadline and destroy the child when it runs over,
-  `if (!process.waitFor(30, TimeUnit.SECONDS)) process.destroyForcibly()`, reading the output on
-  another thread first; never `waitFor()` or `getInputStream().readAllBytes()` alone
-  (`pmd/ProcessWaitWithoutTimeout`; a build wrapper that only runs a child to completion takes an exception).
-- HTTP calls: every request has a deadline. `HttpRequest.newBuilder(uri).timeout(...)`,
-  `setReadTimeout` on an `HttpURLConnection`, `setDefaultRequestConfig(...)` on an Apache client
-  builder, `readTimeout` on a JAX-RS `ClientBuilder`; not `URL.openStream()` or
-  `HttpClients.createDefault()` (`pmd/HttpWithoutTimeout`).
-- Types: declare interfaces (`List<String> out = new ArrayList<>()`, not `ArrayList<String> out`).
-- Mutable state: don't return or store a caller's array or collection directly. Return
-  `data.clone()` or `List.copyOf(items)`, and copy in the constructor.
-- Signatures: a value with three states is an `enum`, not a boxed `Boolean` parameter, field,
-  return type or record component (`pmd/TriStateBoolean`; a field or parameter that a framework
-  fills, such as `@RequestParam`, `@JsonProperty` or an `@Entity` field, is exempt); a public
-  method returns a new collection or array instead of changing a parameter (`items.add`,
-  `Arrays.sort(names)`, `counts[0] = 0`, also through `this.items = items`;
-  `pmd/ParameterMutation`; private helpers and queues shared between threads are exempt). When code
-  moves, change every caller and delete the old name: no `@Deprecated` delegate
-  (`pmd/CompatibilityShim`; a Javadoc `@deprecated` without the annotation is no way around it).
-  Time comes from `java.time` with a `Clock` or a zone; `Calendar.getInstance()`,
-  `new GregorianCalendar()` and `new SimpleDateFormat(...)` without a time zone are flagged
-  (`pmd/LegacyCalendarApi`).
-- Regexes: `split`, `matches`, `replaceAll` and `replaceFirst` take a regex, so wrap a runtime
-  value in `Pattern.quote(value)` (also when you join it into a `Pattern.compile` pattern), and use
-  `replace` for plain text (`pmd/UnquotedRegexValue`, `pmd/PlainTextRegex`).
-- Maps: the function passed to `computeIfAbsent`, `compute`, `computeIfPresent` or `merge` never
-  changes the same map, not even from a callback it starts (`pmd/RecursiveMapUpdate`). Attach the
-  cleanup to the returned value:
-  `map.computeIfAbsent(key, k -> start(k)).whenComplete((r, e) -> map.remove(key, r))`.
-- Data and results: `record` for data, a `sealed interface` of records for an outcome, and an
-  exhaustive `switch` expression over it. A `switch` statement needs `default`.
-- Enums: to sort the constants of one of your enums into two groups, classify every constant: a
-  `switch` expression without `default`, or a field each constant declares (`PAID(true)`). Not
-  `s == PAID || s == SHIPPED`, `Set.of(...).contains(s)` or a boolean `switch` with
-  `default -> false` (`ExhaustiveEnumPredicate`).
-- No static method that only passes its parameters on to another method; call that method.
-  Factories named `of` or `from` and copies such as `List.copyOf` are fine.
-- A record or `@ConfigurationProperties` class (and the classes nested in it) has `tags` or `tag`,
-  not both; one item is a one-element list.
-- A main class only tests use belongs in the test sources (`coupling/test-only-export`).
-- With jMolecules (`AggregateRoot`, `Entity`, `ValueObject` or their annotations), an aggregate holds
-  another aggregate only by its identifier or an `Association<T, ID>`, an entity sits in one
-  aggregate, and a value object holds identifiers, not entities (`archunit/ddd-...`).
-- Resources: try-with-resources for anything `Closeable`. No `finally` that returns or throws.
-- Utility classes: a `final` class of static methods with a `private` empty constructor.
-- Dependencies between packages follow the project's ArchUnit rules (classes named `*ArchTest` or
-  `*ArchitectureTest`); read them before importing across packages. A package must not depend on a
-  less stable one (`stability-direction`).
-- Names and declarations: abbreviations are words (`parseUrl`, `HttpClient`, `userId`, never
-  `parseURL`). Declare a local next to its first use, one variable per declaration, and keep
-  overloads next to each other. Mark overrides `@Override`. Never reassign a loop variable, and
-  never call `System.exit`. A trailing array parameter is varargs (`String... names`).
-- Javadoc is optional; when you write it, the first sentence is a real summary (not `@return`),
-  every `@param`/`@return` has a description, in that order, and paragraphs start with `<p>`.
-  It says what the name cannot (a unit, a limit, an edge case or why), never only restates the
-  name, and keeps the description to 5 lines, tags and `<pre>` blocks not counted
-  (`doc-comment-content`).
-- nitpicker runs its own PMD rules (errorprone, bestpractices, performance, multithreading,
-  security and a broad-catch rule) and Google checks. A project's `config/pmd/ruleset.xml` or
-  `config/checkstyle/checkstyle.xml` counts only when `nitpicker.config.json` opts in under
-  `tools`; then read it too.
+The allowed forms are on one page per topic. Before you write code, read the pages for the kind of code you are about to write; on your first task in a project, read them all.
 
-## Errors
-
-- Never swallow: no empty `catch` (PMD `EmptyCatchBlock` and Checkstyle both fail it). A `catch`
-  returns a failure value, logs and recovers, or rethrows with the cause:
-  `throw new IllegalStateException("bad quantity " + text, e);` (`PreserveStackTrace`).
-- Catch the narrowest type: `catch (NumberFormatException e)`. `catch (Exception)`,
-  `catch (RuntimeException)`, `catch (Throwable)` and `catch (NullPointerException)` fail. Keep
-  the `try` around the one call that throws.
-- Expected failures are values: a `sealed interface` result returning
-  `new QuantityParse.Invalid(text)` beats throwing.
-
-## Structure limits
-
-- A method in main sources: at most 50 lines, 15 statements, control nesting 2, 3 parameters. Each lambda and each static or instance
-  initializer block is a unit with the same limits, counted on its own and not toward the method around it. Return early instead of nesting; past 3 parameters, pass a `record`.
-- A file: at most 300 lines (test file 500). A folder: at most 6 source files and, separately, 6
-  test files directly in it; group the rest into sub-packages.
-- Keep classes small: split by responsibility and prefer holding a collaborator to extending one.
-- Cyclomatic complexity 9 or more fails `crap-score-limit` even when fully covered; less
-  coverage lowers the ceiling (`ccn^2 * (1 - coverage)^3 + ccn < 9`). Split branchy methods.
-- A new clone of at least 5 lines and 50 tokens in main sources (`duplicate-clone`) fails, also
-  when the copy has other names and literals: extract a method.
-- Smaller copies fail too: a static helper or a constant with the same code in two classes of one
-  module (`duplicate-definition`), and editing one of two near-identical copies while leaving the
-  other (`sibling-copy-edit`). Keep one and call it. Don't give two classes one name and use both in
-  one file, one fully qualified (`exported-name-collision`): rename one.
-
-## Tests
-
-- Every branch you add needs a test, both outcomes of each `if`, `?:` and `catch`: each changed
-  line must have at least 95% of its branches covered (`changed-branch-coverage`).
-- Mutation testing runs on your change. Assert exact values and test both sides of each boundary
-  (`discountCents(1000, 10)` and `(1000, 9)`); a new mutant that survives or has no test
-  (`mutant-survived`, `mutant-nocoverage`) fails. If no input can kill a mutant, the code is
-  redundant: delete or simplify it. A `compareTo` boundary or an ignored lambda result that truly
-  cannot be told apart takes an exception for `pit/mutant-survived`.
-- Plan tests to be fast (`slow-test`): a fake clock instead of `Thread.sleep`, a test
-  slice instead of `@SpringBootTest`.
-- Never wait a fixed time (`FixedSleepInTest`): wait on the condition with Awaitility when the
-  tests use it (`await().atMost(Duration.ofSeconds(5)).until(...)`), otherwise in a loop against a
-  deadline; `verify(mock, timeout(1000))` for a mock, not `after(1000)`. `parkNanos` and
-  `pollDelay(...).until(() -> true)` are fixed waits too. `join(ms)` and `wait(ms)` are timed
-  waits: they return early, but the test goes on unchecked when the time runs out, so assert the
-  result of `join(Duration)` or of a latch `await`. A sleep that simulates slow work in a mock
-  answer, a thread body or a test fake that implements or extends a main class is fine. To
-  show something does not happen, give the code a `Clock` or scheduler the test moves forward, not
-  `after(ms).never()` or `during(...)` (`NegativeWaitInTest`).
-- No retries in test code (`RetryInTest`): no `@RetryingTest`, `@RepeatedIfExceptionsTest`, TestNG
-  `retryAnalyzer`, `IRetryAnalyzer` or `RetryAnalyzerCount`, nor `setRetryAnalyzer(...)`. A test that
-  passes on a later attempt hides a flaky or racy test: wait on the condition instead of a fixed
-  delay, isolate shared state. `@RepeatedTest` is fine, since every repetition must pass.
-- Start a container, server or process once, not for each test (`ServerOrContainerPerTest`): a
-  Testcontainers `@Container` field is `static`, a WireMock `@RegisterExtension` is `static`, a JUnit 4
-  server or container is a `@ClassRule`, and `@BeforeEach`/`@Before` does not create and start one
-  (nor `SpringApplication.run`, `ProcessBuilder.start`); two tests do not make the same start. Start
-  it in `@BeforeAll` and reset its state between tests.
-- Tests print nothing new (`test-runtime/test-console-output`): no `System.out`/`System.err`, and
-  no new `WARN` or `ERROR` log line from the code under test. Fix the cause the line names.
-- In main code, nothing with an outside effect runs while a class loads (`ClassLoadEffect`): no
-  connection, request, file access, thread, pool, sleep or JVM-wide setting in a `static` field or
-  block, an enum constant, or the constructor or initializer of a `static final INSTANCE = new X()`
-  singleton, nor in a method of the class they call. Do the work in a method `main` or the
-  framework calls after startup (a `@Bean` method, an `ApplicationRunner`) and pass the result in,
-  or create it on first use in a lazy holder
-  (`private static final class Holder { static final Db INSTANCE = new Db(); }`). Constants,
-  loggers, `Pattern.compile` and collections stay static.
-- Tests get the same PMD, Checkstyle, Error Prone and formatter checks as main code, plus the file
-  (500 lines) and folder (6 files) limits. SpotBugs, the method limits, CRAP and duplicate detection
-  read main sources only. In a test, use `assertThrows` instead of a try/catch. Spring rules apply
-  to main sources only, as do the enum predicate, forwarding wrapper, singular-and-plural and
-  class-load rules.
-  If a PMD rule or an Error Prone check flags test code that is right, ask a human for a reviewed
-  exception for `pmd/<rule>` or `errorprone/<Check>`.
+- [Style, names and Javadoc](rules/style-and-names.md): formatting, names and declarations, literals, parameters and loops, utility classes, Javadoc, the PMD and Checkstyle configs.
+- [Values, types and data](rules/values-and-types.md): strings, arrays, null, declared types, defensive copies, signatures, time, URIs, regexes, maps, records, enums, forwarding methods, `tags` or `tag`.
+- [Threads, I/O and remote calls](rules/concurrency-and-io.md): locks, logging, bounded fan-out, child processes, HTTP deadlines, resources and `finally`, work at class load.
+- [Errors](rules/errors.md): catching, rethrowing and failures as values.
+- [Structure and dependencies](rules/structure.md): method, file and folder limits, CRAP, duplicates, test-only code, aggregates, package dependencies.
+- [Tests](rules/tests.md): branch coverage, mutation testing, fast tests, waits, retries, shared state, servers and containers, console output.
 
 ## Repository files
 
