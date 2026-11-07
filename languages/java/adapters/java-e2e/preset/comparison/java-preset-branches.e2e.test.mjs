@@ -29,7 +29,7 @@ describe.skipIf(!enabled)('Java preset end to end', () => {
     const result = fixture.diffOf('branch-edited');
 
     expect(result.newEnforceable.map(({ message }) => message)).toEqual([
-      'Branch coverage is 0.00%; minimum is 95%. If this is intended, add {"rule":"changed-branch-coverage","paths":["src/main/java/demo/Branchy.java"],"function":"Branchy.larger","reason":"..."} to "exceptions" in nitpicker.config.json.',
+      'Branch coverage is 0.00%; minimum is 95%. Add a test for each outcome it misses. If this is intended, add {"rule":"changed-branch-coverage","paths":["src/main/java/demo/Branchy.java"],"function":"Branchy.larger","reason":"..."} to "exceptions" in nitpicker.config.json.',
     ]);
   }, 180_000);
   it('accepts an uncovered branch with an exception that names its method', () => {
@@ -53,7 +53,7 @@ describe.skipIf(!enabled)('Java preset end to end', () => {
     expect(result.failed).toBe(true);
     expect(summarize(result.newEnforceable)).toEqual([
       'jacoco changed-branch-coverage Branchy.java',
-      ...repeated(4, 'pit mutant-nocoverage Branchy.java'),
+      ...repeated(6, 'pit mutant-nocoverage Branchy.java'),
     ]);
     expect([...new Set(summarize(result.unchangedFindings))].sort()).toEqual(BASELINED_FINDINGS);
   }, 180_000);

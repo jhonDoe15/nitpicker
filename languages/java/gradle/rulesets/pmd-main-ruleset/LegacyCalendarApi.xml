@@ -1,0 +1,21 @@
+  <rule name="LegacyCalendarApi" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
+        message="Calendar.getInstance() and new GregorianCalendar() without a time zone, and new SimpleDateFormat(...) without setTimeZone, read the default time zone and are not thread-safe. Use java.time with an explicit zone: Instant, or ZonedDateTime.now(clock), and a DateTimeFormatter with withZone(zone). Passing a TimeZone to Calendar.getInstance or the GregorianCalendar constructor is allowed.">
+    <priority>3</priority>
+    <properties>
+      <property name="xpath">
+        <value><![CDATA[
+(
+  //MethodCall[@MethodName = 'getInstance'][*[1][self::TypeExpression/ClassType[@SimpleName = 'Calendar']]]
+    [not(ArgumentList/*[pmd-java:typeIs('java.util.TimeZone')])]
+  | //ConstructorCall[ClassType[@SimpleName = 'GregorianCalendar']]
+    [not(ArgumentList/*[pmd-java:typeIs('java.util.TimeZone')])]
+  | //ConstructorCall[ClassType[@SimpleName = 'SimpleDateFormat']]
+    [let $scope := ancestor::*[self::MethodDeclaration or self::ConstructorDeclaration or self::ClassBody][1],
+         $format := parent::VariableDeclarator/VariableId/@Name
+     return empty($format)
+       or not($scope//MethodCall[@MethodName = 'setTimeZone']/*[1][self::VariableAccess[@Name = $format]])]
+)
+]]></value>
+      </property>
+    </properties>
+  </rule>

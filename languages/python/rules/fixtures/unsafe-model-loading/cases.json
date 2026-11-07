@@ -1,0 +1,7 @@
+[
+  {
+    "tool": "python-rules",
+    "rule": "unsafe-deserialization",
+    "mention": "yaml.safe_load"
+  }
+]

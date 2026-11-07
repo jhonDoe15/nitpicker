@@ -128,8 +128,8 @@ describe('unused files', () => {
     };
 
     expect(normalizeDeadCode(report, 'dead-code').map(({ message }) => message)).toEqual([
-      'Unused file: src/a.ts. Nothing imports it: delete it, or import it where it is needed.',
-      'Unused file: src/b.ts. Nothing imports it: delete it, or import it where it is needed.',
+      'Unused file: src/a.ts. Nothing imports it. Delete it, or import it where it is needed.',
+      'Unused file: src/b.ts. Nothing imports it. Delete it, or import it where it is needed.',
     ]);
   });
 });

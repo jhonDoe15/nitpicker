@@ -49,7 +49,8 @@ function writeAuxClasspath({ module, reportDir, classpaths }) {
 }
 
 export function runPmd(options) {
-  const { module, reportDir, tools, classpaths, configs, spring, reactor, spawn } = options;
+  const { module, reportDir, tools, classpaths, configs, spring, springRules, reactor, spawn } =
+    options;
   const report = path.join(reportDir, 'pmd.sarif');
   const linted = [...module.sourceRoots, ...module.testSourceRoots].filter((root) =>
     existsSync(root),
@@ -64,6 +65,7 @@ export function runPmd(options) {
     reportDir,
     configs,
     spring,
+    springRules,
     reactor,
   });
   const rulesets = [

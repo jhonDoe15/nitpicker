@@ -4,6 +4,7 @@ import path from 'node:path';
 import { TEMPORARY_WORKTREE_PREFIX } from '../../../../core/diff/git/repository/worktree.mjs';
 import { containedPath } from './package-managers/contained-path.mjs';
 import { manifestDirectories } from './package-managers/members.mjs';
+import { GIT_TIMEOUT_MS } from '../../../../shared/processes/deadlines.mjs';
 
 const LOCAL_SPEC = /^(?:file|link|portal):(?<target>.+)$/u;
 const DEPENDENCY_FIELDS = [
@@ -18,6 +19,7 @@ function repositoryRoot(directory) {
   const result = spawnSync('git', ['rev-parse', '--show-toplevel'], {
     cwd: directory,
     encoding: 'utf8',
+    timeout: GIT_TIMEOUT_MS,
   });
   return result.status === 0 ? realpathSync(result.stdout.trim()) : undefined;
 }

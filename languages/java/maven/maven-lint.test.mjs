@@ -253,7 +253,7 @@ describe('runFormat', () => {
 });
 
 describe.skipIf(process.platform === 'win32')('runPmd', () => {
-  function pmdRun(spring, reactor = false) {
+  function pmdRun(spring, springRules, reactor = false) {
     const basedir = mkdtempSync(path.join(tmpdir(), 'nitpicker-maven-pmd-'));
     roots.push(basedir);
     const java = path.join(basedir, 'jdk/bin/java');
@@ -286,6 +286,7 @@ describe.skipIf(process.platform === 'win32')('runPmd', () => {
       classpaths,
       configs: { pmd: {} },
       spring,
+      springRules,
       reactor,
     });
     const args = JSON.parse(readFileSync(path.join(basedir, 'arguments.json'), 'utf8'));
@@ -319,13 +320,20 @@ describe.skipIf(process.platform === 'win32')('runPmd', () => {
   });
 
   it('adds the Reactor rule set to the main-only wrapper of a module that uses Reactor', () => {
-    const run = pmdRun(false, true);
+    const run = pmdRun(false, undefined, true);
 
     expect(run.mainRules).toEqual([
       shipped('pmd-main-ruleset.xml'),
       shipped('reactor-ruleset.xml'),
     ]);
     expect(run.testRules).toEqual([shipped('pmd-test-ruleset.xml')]);
+  });
+
+  it('takes the Spring rule set written for the project when it names annotations of its own', () => {
+    const own = path.join(tmpdir(), 'spring-ruleset-project.xml');
+
+    expect(pmdRun(true, own).mainRules).toEqual([shipped('pmd-main-ruleset.xml'), own]);
+    expect(pmdRun(false, own).mainRules).toEqual([shipped('pmd-main-ruleset.xml')]);
   });
 
   it('leaves the Spring rule sets out of a module without Spring', () => {
