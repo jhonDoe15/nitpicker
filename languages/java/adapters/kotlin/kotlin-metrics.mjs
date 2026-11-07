@@ -4,6 +4,7 @@ import { KOTLIN_REPORTS } from './report-names/kotlin-report-names.mjs';
 import { ingestCrapFunctions } from '../../ingest/crap.mjs';
 import { ownRange } from '../../ingest/units/unit-coverage.mjs';
 import { MESSAGES, RULE_IDS } from '../../../../shared/policy.mjs';
+import { definedField } from '../../../../shared/messages/messages.mjs';
 import { repeatsInSource } from '../../../../shared/rules/finding-helpers.mjs';
 import { methodText, structureFindings } from '../../../../shared/ingest/structure-report.mjs';
 
@@ -19,13 +20,35 @@ export function readKotlinMetrics(reportRoot) {
 const RETURN_EARLY = 'Return early instead of nesting.';
 const EXTRACT_NESTED = 'Move the nested part into its own function.';
 
+function extractNested(text) {
+  return text?.replace(RETURN_EARLY, EXTRACT_NESTED);
+}
+
+function withExtractAdvice(finding) {
+  const { ratchet } = finding;
+  return {
+    ...finding,
+    message: extractNested(finding.message),
+    ...definedField('allowedForm', extractNested(finding.allowedForm)),
+    ...(ratchet === undefined
+      ? {}
+      : {
+          ratchet: {
+            ...ratchet,
+            ...definedField('worseMessage', extractNested(ratchet.worseMessage)),
+            ...definedField('worseAllowedForm', extractNested(ratchet.worseAllowedForm)),
+          },
+        }),
+  };
+}
+
 function adviseInitializers(findings, functions) {
   const initializers = new Set(
     functions.filter(({ initializer }) => initializer === true).map(({ name }) => name),
   );
   return findings.map((finding) =>
     finding.rule === RULE_IDS.functionControlNesting && initializers.has(finding.symbol)
-      ? { ...finding, message: finding.message.replace(RETURN_EARLY, EXTRACT_NESTED) }
+      ? withExtractAdvice(finding)
       : finding,
   );
 }
