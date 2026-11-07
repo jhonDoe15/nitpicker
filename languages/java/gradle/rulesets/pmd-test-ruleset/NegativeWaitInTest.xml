@@ -1,0 +1,15 @@
+  <rule name="NegativeWaitInTest" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
+        message="Do not prove that something does not happen by waiting out a delay: after(ms).never() and during(...) pass only after the full wait, so the test is slow and depends on the timing. Give the code a Clock or a scheduler the test controls, move it past the delay and assert at once.">
+    <priority>2</priority>
+    <properties>
+      <property name="xpath">
+        <value><![CDATA[
+//MethodCall[pmd-java:matchesSig('org.mockito.Mockito#after(long)')]
+  [parent::MethodCall[@MethodName = ('never', 'atMost', 'atMostOnce')]
+   or parent::MethodCall[@MethodName = 'times'][ArgumentList/NumericLiteral[@ValueAsInt = 0]]]
+| //MethodCall[pmd-java:matchesSig('org.awaitility.core.ConditionFactory#during(_)')
+  or pmd-java:matchesSig('org.awaitility.core.ConditionFactory#during(long,_)')]
+]]></value>
+      </property>
+    </properties>
+  </rule>
