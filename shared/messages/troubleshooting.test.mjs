@@ -32,7 +32,7 @@ const DOC_URL = 'https://github.com/jhonDoe15/nitpicker/blob/main/docs/troublesh
 const ANCHOR_REFERENCE = /TROUBLESHOOTING_ANCHORS\.([A-Za-z0-9]+)/gu;
 const DOCS_INDEX = [
   'docs/usage.md',
-  ...files('docs', (name) => name.endsWith('-preset.md') || name.endsWith('-strict-preset.md')),
+  ...files('docs', (name) => name.endsWith('.md')).filter((file) => /-preset(\.md|\/)/u.test(file)),
 ];
 
 const headings = headingsOf(read(TROUBLESHOOTING_FILE));

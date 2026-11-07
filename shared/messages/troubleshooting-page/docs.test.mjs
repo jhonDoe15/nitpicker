@@ -8,7 +8,6 @@ import {
   pageEntries,
   read,
   root,
-  sectionOf,
 } from '../test-support/troubleshooting-page.mjs';
 
 const EVERY_PRESET = [
@@ -19,7 +18,7 @@ const EVERY_PRESET = [
   'another-run-is-in-progress',
   'a-policy-loosened-finding',
 ];
-const SECTION_LINK = /\]\(troubleshooting\.md#([a-z0-9-]+)\)/gu;
+const SECTION_LINK = /\]\(\.\.\/troubleshooting\.md#([a-z0-9-]+)\)/gu;
 const PROJECT_TOOL_CONFIG = 'a-project-tool-config-is-missing-or-broken';
 const WINDOWS = 'windows-and-wsl';
 const PRESET_GUIDES = [
@@ -90,7 +89,7 @@ describe('the links to the page from the documentation', () => {
 
 describe('the troubleshooting section of each preset guide', () => {
   it.each(PRESET_GUIDES)('lists the entries $guide meets, and only those', (preset) => {
-    const section = sectionOf(read(preset.guide), '## Troubleshooting');
+    const section = read(preset.guide.replace(/\.md$/u, '/troubleshooting.md'));
     const listed = [...new Set([...section.matchAll(SECTION_LINK)].map(([, anchor]) => anchor))];
 
     expect(listed.toSorted()).toEqual(expectedIndex(preset));
@@ -103,7 +102,9 @@ describe('the troubleshooting section of each preset guide', () => {
     );
 
     expect([...new Set(sent)].toSorted()).toEqual(
-      PRESET_GUIDES.map(({ guide }) => `${path.basename(guide)}#troubleshooting`).toSorted(),
+      PRESET_GUIDES.map(({ guide }) =>
+        path.join(path.basename(guide, '.md'), 'troubleshooting.md'),
+      ).toSorted(),
     );
   });
 });
