@@ -41,68 +41,7 @@ def check_module_names():
 
 def load_checks():
     sys.path.insert(0, HERE)
-<<<<<<< HEAD
-    from aliases import methods
-    from boundary import domain_types, guards, paths
-    from checks import comments, declarations, parameters, shell, state
-    from concurrency import fan_out
-    from discovery import helpers, uncollected
-    from effects import import_time, reach
-    from environment import domain_imports, environment, purity
-    from errors import errors
-    from honesty import assertions, isolation, skipped
-    from security import hashes, loading
-    from security.sql import check as sql
-    from security.timeouts import check as timeouts
-    from security.tls import check as tls
-    from signatures import defaults, mutation, shims, tri_state
-    from silent_tests import unasserted
-    from smells import literals, loops, names, secret_logs, secrets
-    from tasks import cleanup, lifetimes
-
-    return [
-        declarations,
-        methods,
-        parameters,
-        errors,
-        comments,
-        environment,
-        purity,
-        reach,
-        domain_imports,
-        import_time,
-        state,
-        shell,
-        sql,
-        tls,
-        hashes,
-        timeouts,
-        loading,
-        guards,
-        domain_types,
-        paths,
-        literals,
-        names,
-        secrets,
-        secret_logs,
-        loops,
-        fan_out,
-        skipped,
-        assertions,
-        unasserted,
-        isolation,
-        uncollected,
-        helpers,
-        lifetimes,
-        cleanup,
-        tri_state,
-        defaults,
-        mutation,
-        shims,
-    ]
-=======
     return [importlib.import_module(name) for name in check_module_names()]
->>>>>>> origin/main
 
 
 class FileContext:
