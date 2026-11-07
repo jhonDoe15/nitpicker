@@ -62,6 +62,7 @@ describe('reading the CRAP inputs', () => {
         identity: expect.any(String),
         message:
           'f has CRAP 12.00; score must be below 9. Test its uncovered branches, or split a branchy part into its own function. If this is intended, add {"rule":"crap-score-limit","paths":["src/demo/a.py"],"function":"f","reason":"..."} to "exceptions" in nitpicker.config.json.',
+        allowedForm: 'Test its uncovered branches, or split a branchy part into its own function.',
         classification: 'enforceable',
         anchor: { key: 'function:crap:text:15a68d14db1abd87a016d9fe' },
         location: { line: 1, endLine: 2 },
@@ -71,6 +72,7 @@ describe('reading the CRAP inputs', () => {
           value: 12,
           worseMessage:
             'f CRAP rose from {base} to 12 (limit 9). Put new code in a new function and cover it with tests. If this is intended, add {"rule":"crap-score-limit","paths":["src/demo/a.py"],"function":"f","reason":"..."} to "exceptions" in nitpicker.config.json.',
+          worseAllowedForm: 'Put new code in a new function and cover it with tests.',
           heldMessage:
             'f: CRAP 12.00 (limit 9), allowed because base was {base}; any increase fails.',
         },
@@ -81,10 +83,18 @@ describe('reading the CRAP inputs', () => {
   });
 
   it('scores no function of a test file, which coverage does not measure', () => {
-    const { root } = project();
-    const testFunctions = ['src/polls/tests.py', 'src/demo/tests/test_a.py', 'test_b.py'].map(
-      (file) => ({ ...FUNCTIONS[0], file }),
-    );
+    const { root } = scratch.project({
+      files: {
+        'manage.py': '',
+        'pytest.ini': '[pytest]\npython_files = check_*.py test_*.py\n',
+      },
+    });
+    const testFunctions = [
+      'src/polls/tests.py',
+      'src/demo/tests/test_a.py',
+      'test_b.py',
+      'src/demo/check_c.py',
+    ].map((file) => ({ ...FUNCTIONS[0], file }));
 
     expect(
       readPythonCrapFindings({
@@ -94,6 +104,21 @@ describe('reading the CRAP inputs', () => {
         roots: [root],
       }),
     ).toEqual([]);
+  });
+
+  it('scores a tests.py outside a Django project, which pytest does not collect', () => {
+    const { root } = scratch.project({
+      files: { 'src/demo/tests.py': 'def f():\n    return 1\n' },
+    });
+
+    expect(
+      readPythonCrapFindings({
+        functions: [{ ...FUNCTIONS[0], file: 'src/demo/tests.py' }],
+        coverage: coverage(0).replace('src/demo/a.py', 'src/demo/tests.py'),
+        projectRoot: root,
+        roots: [root],
+      }).map(({ path: file }) => file),
+    ).toEqual(['src/demo/tests.py']);
   });
 
   it('keys the identity on the function text', () => {

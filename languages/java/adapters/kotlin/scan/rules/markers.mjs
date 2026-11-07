@@ -34,7 +34,7 @@ const DECLARATION_KEYWORD = /^(?:(?:class|interface|object|fun|constructor)\b|(?
 const MUTATION_MARKERS = new Set(['DoNotMutate', 'CoverageIgnore']);
 const GENERATED_HEADER = /@generated\b|\bgenerated\b[\s\S]*\bdo not (?:edit|modify)\b/i;
 
-export const MARKER_MESSAGES = {
+const MARKER_MESSAGES = {
   GeneratedOnHandWrittenCode: `Remove the annotation from hand-written code: JaCoCo skips code carrying an annotation whose name contains Generated, and PIT skips @Generated, so this is not measured. Put the JPA @GeneratedValue on the field.`,
   JvmSyntheticOnHandWrittenCode:
     'Remove @JvmSynthetic: JaCoCo skips synthetic functions, so this is not measured. An exception fits only a library function that must stay hidden from Java callers.',
@@ -61,7 +61,22 @@ const CODE_SHAPES = [
 ];
 const SENTENCE = /^[A-Z][a-z]+ [a-z]+ [a-z]+/;
 const FENCE = /^(?:```|~~~)/;
-const NOT_CODE = /^(?:@|https?:|TODO\b|FIXME\b|[-*>#]|\{@)/;
+const IDE_DIRECTIVE = String.raw`language\s*=\s*[A-Za-z]\w*(?:\s+(?:prefix|suffix)=.*)?$|noinspection\b`;
+const NOT_CODE = new RegExp(String.raw`^(?:@|https?:|TODO\b|FIXME\b|[-*>#]|\{@|${IDE_DIRECTIVE})`);
+const EXAMPLE_HEADING =
+  /^(?:(?:examples?|usage|samples?)(?:\s+(?:usage|code))?\s*(?::|$)|(?:e\.g\.|for example)\s*(?:[,:]|$))/i;
+const STRING_LITERAL = /"(?:\\.|[^"\\\n])*"/g;
+const OPENERS = new Set(['(', '[']);
+const CLOSERS = new Set([')', ']']);
+const WORD_RUN = /\b(?:[a-z]{2,}|\d+)\s+[a-z]{2,}\b/;
+const KOTLIN_WORD_LIST = [
+  ...['if', 'else', 'when', 'try', 'catch', 'is', 'in', 'as', 'by', 'to', 'and', 'or'],
+  ...['shl', 'shr', 'ushr', 'xor', 'until', 'downTo', 'step', 'object', 'return', 'throw'],
+  ...['null', 'true', 'false', 'this', 'super', 'new', 'it', 'var', 'val', 'fun', 'const'],
+  'lateinit',
+];
+const KOTLIN_WORDS = new RegExp(String.raw`\b(?:${KOTLIN_WORD_LIST.join('|')})\b`, 'g');
+const VALUE_SHAPES = new Set([0, 2]);
 
 export function generatedFile(scanned) {
   const header = scanned.comments.find(({ start }) => scanned.code.slice(0, start).trim() === '');
@@ -157,21 +172,52 @@ function commentGroups(scanned) {
   return groups;
 }
 
+function withoutGroups(text) {
+  let depth = 0;
+  let kept = '';
+  for (const char of text) {
+    if (OPENERS.has(char)) {
+      depth += 1;
+    } else if (CLOSERS.has(char)) {
+      depth = Math.max(depth - 1, 0);
+    } else if (depth === 0) {
+      kept += char;
+    }
+  }
+  return kept;
+}
+
+function readsAsProse(text) {
+  const keywordsMarked = text.replaceAll(STRING_LITERAL, '""').replaceAll(KOTLIN_WORDS, '~');
+  return WORD_RUN.test(withoutGroups(keywordsMarked));
+}
+
 function isCodeLine(text) {
   if (text === '' || SENTENCE.test(text) || NOT_CODE.test(text)) {
     return false;
   }
-  return CODE_SHAPES.some((shape) => shape.test(text));
+  const shape = CODE_SHAPES.findIndex((candidate) => candidate.test(text));
+  return shape !== -1 && !(VALUE_SHAPES.has(shape) && readsAsProse(text));
 }
 
 function firstCodeLine(lines) {
   let fenced = false;
+  let example = { open: false, started: false };
   return lines.findIndex((line) => {
     if (FENCE.test(line)) {
       fenced = !fenced;
       return false;
     }
-    return !fenced && isCodeLine(line);
+    if (EXAMPLE_HEADING.test(line)) {
+      example = { open: true, started: false };
+      return false;
+    }
+    if (line === '' && example.started) {
+      example = { open: false, started: false };
+    } else if (line !== '') {
+      example.started = true;
+    }
+    return !fenced && !example.open && isCodeLine(line);
   });
 }
 
@@ -184,3 +230,9 @@ export function commentedOutCode(scanned) {
       : [{ rule: 'CommentedOutCode', offset: group[0].start, subject: lines[index] }];
   });
 }
+
+export const kotlinSourceRules = {
+  messages: MARKER_MESSAGES,
+  main: [annotationMarkers, commentedOutCode],
+  test: [commentedOutCode],
+};

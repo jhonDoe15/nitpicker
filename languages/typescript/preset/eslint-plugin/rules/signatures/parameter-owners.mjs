@@ -26,6 +26,12 @@ const COPY_METHODS = new Set([
 const COPY_CONSTRUCTORS = new Set(['Set', 'Map', 'Array']);
 const COPY_FUNCTIONS = new Set(['structuredClone', 'from']);
 const FRESH_CONTAINERS = new Set(['Set', 'Map']);
+const WRAPPERS = new Set([
+  'TSNonNullExpression',
+  'TSAsExpression',
+  'TSSatisfiesExpression',
+  'TSTypeAssertion',
+]);
 
 function calleeName(call) {
   const { callee } = call;
@@ -39,23 +45,82 @@ function calleeName(call) {
     : undefined;
 }
 
-function subscriptStep(node) {
-  if (node.type === 'TSNonNullExpression') {
-    return node.expression;
-  }
-  return node.type === 'MemberExpression' && node.computed ? node.object : undefined;
-}
-
-function subscriptRoot(node) {
+export function withoutAssertion(node) {
   const chain = [node];
   for (const current of chain) {
-    const next = subscriptStep(current);
+    if (WRAPPERS.has(current.type)) {
+      chain.push(current.expression);
+    }
+  }
+  return chain.at(-1);
+}
+
+function chainStep(node, crossesProperty) {
+  if (WRAPPERS.has(node.type)) {
+    return node.expression;
+  }
+  if (node.type !== 'MemberExpression') {
+    return undefined;
+  }
+  return node.computed || crossesProperty(node) ? node.object : undefined;
+}
+
+function chainRoot(node, crossesProperty) {
+  const chain = [node];
+  for (const current of chain) {
+    const next = chainStep(current, crossesProperty);
     if (next !== undefined) {
       chain.push(next);
     }
   }
   const root = chain.at(-1);
   return root.type === 'Identifier' ? root : undefined;
+}
+
+function aliasSource(node) {
+  const chain = [node];
+  for (const current of chain) {
+    const inner = withoutAssertion(current);
+    if (inner.type === 'LogicalExpression' && ['??', '||'].includes(inner.operator)) {
+      chain.push(inner.left);
+    }
+  }
+  const source = withoutAssertion(chain.at(-1));
+  return source.type === 'Identifier' ? source : undefined;
+}
+
+function aliasedVariable(sourceCode, variable) {
+  const definition = variable.defs.at(0);
+  const declarator = definition?.type === 'Variable' ? definition.node : undefined;
+  const fixed = variable.references.every((reference) => !reference.isWrite() || reference.init);
+  const source =
+    declarator?.id.type === 'Identifier' && declarator.init !== null && fixed
+      ? aliasSource(declarator.init)
+      : undefined;
+  return source === undefined ? undefined : variableNamed(sourceCode, source);
+}
+
+function aliasedParameter(sourceCode, variable) {
+  const seen = [variable];
+  for (const current of seen) {
+    const next = current === undefined ? undefined : aliasedVariable(sourceCode, current);
+    if (next !== undefined && !seen.includes(next)) {
+      seen.push(next);
+    }
+  }
+  return seen.at(-1);
+}
+
+export function isObjectAssign(call) {
+  const { callee } = call;
+  return (
+    callee.type === 'MemberExpression' &&
+    !callee.computed &&
+    callee.object.type === 'Identifier' &&
+    callee.object.name === 'Object' &&
+    callee.property.type === 'Identifier' &&
+    callee.property.name === 'assign'
+  );
 }
 
 function isFreshContainer(node) {
@@ -81,6 +146,9 @@ function isCopy(node) {
   }
   if (node.type !== 'CallExpression') {
     return false;
+  }
+  if (isObjectAssign(node)) {
+    return node.arguments[0]?.type === 'ObjectExpression';
   }
   const name = calleeName(node);
   return name !== undefined && (COPY_METHODS.has(name) || COPY_FUNCTIONS.has(name));
@@ -177,9 +245,11 @@ function isInternalFunction(owner) {
   );
 }
 
-export function changedParameter(sourceCode, target, mutation) {
-  const root = subscriptRoot(target);
-  const variable = root === undefined ? undefined : variableNamed(sourceCode, root);
+export function changedParameter(walk, target, mutation) {
+  const { sourceCode, crossesProperty } = walk;
+  const root = chainRoot(target, crossesProperty);
+  const named = root === undefined ? undefined : variableNamed(sourceCode, root);
+  const variable = named === undefined ? undefined : aliasedParameter(sourceCode, named);
   const definition = variable?.defs.at(0);
   if (
     definition?.type !== 'Parameter' ||

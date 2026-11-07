@@ -3,7 +3,7 @@ import path from 'node:path';
 import { childrenNamed, parseXml } from '../../../../shared/ingest/common.mjs';
 import { inModule } from '../../builds/module-path.mjs';
 import { sourceLocator } from '../reporting/kotlin-reports.mjs';
-import { MESSAGES, RULE_IDS, renderMessage } from '../../../../shared/policy.mjs';
+import { MESSAGES, RULE_IDS, messageFields, renderMessage } from '../../../../shared/policy.mjs';
 import {
   shownSeconds,
   slowestRuns,
@@ -145,7 +145,7 @@ function slowTestFinding({ testCase, method, limit, integration, modulePath, ...
     path: source ?? '.',
     identity: `test:${testCase.className}#${testCase.name}`,
     ...(method === undefined ? {} : { location: { line: method.line } }),
-    message: renderMessage(MESSAGES.slowTest, {
+    ...messageFields(MESSAGES.slowTest, {
       name: `${testCase.className.split('.').pop().replaceAll('$', '.')} ${testCase.name}`,
       seconds: shownSeconds(testCase.seconds, limit),
       kind: integration ? 'an integration' : 'a unit',

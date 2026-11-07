@@ -1,0 +1,8 @@
+  <rule name="JpaManyToManyCascade" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
+        message="Cascade only PERSIST and MERGE on @ManyToMany, never ALL or REMOVE: removing one parent deletes rows that other parents still share.">
+    <priority>1</priority>
+    <properties><property name="xpath"><value><![CDATA[
+//Annotation[(pmd-java:typeIs('jakarta.persistence.ManyToMany') or pmd-java:typeIs('javax.persistence.ManyToMany'))]
+  /AnnotationMemberList/MemberValuePair[@Name = 'cascade'][.//*[@Name = ('ALL', 'REMOVE')]]
+]]></value></property></properties>
+  </rule>

@@ -1,6 +1,6 @@
 import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
-import { MESSAGES, RULE_IDS, renderMessage } from '../../../../shared/policy.mjs';
+import { MESSAGES, RULE_IDS, messageFields } from '../../../../shared/policy.mjs';
 import { exceptionMatcher, exceptionText } from '../../../../shared/rules/exceptions.mjs';
 import {
   isStorybookPackage,
@@ -123,7 +123,7 @@ function findingsFor({ file, components }, { analyzerName, enforced }) {
       path: file,
       identity: `${RULE}:${name}`,
       location: { line },
-      message: renderMessage(template, { story, name, exception }),
+      ...messageFields(template, { story, name, exception }),
       classification: enforced ? 'enforceable' : 'descriptive',
     };
   });

@@ -1,0 +1,7 @@
+[
+  {
+    "tool": "python-rules",
+    "rule": "unshielded-cleanup-await",
+    "mention": "shielded scope with a deadline"
+  }
+]
