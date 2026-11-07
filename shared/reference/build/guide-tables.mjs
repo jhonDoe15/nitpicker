@@ -1,7 +1,6 @@
-import { readFileSync } from 'node:fs';
 import path from 'node:path';
+import { guidePages, guideText } from './guide-pages.mjs';
 
-const REPOSITORY_ROOT = new URL('../../../', import.meta.url);
 const TABLE_ROW = /^\|(.*)\|\s*$/u;
 const DIVIDER = /^\|[\s|:-]+\|\s*$/u;
 const CELL_SPLIT = /(?<!\\)\|/u;
@@ -22,7 +21,11 @@ function withRepositoryLinks(text, guide) {
 }
 
 function rowsOf(guide) {
-  const lines = readFileSync(new URL(guide, REPOSITORY_ROOT), 'utf8').split('\n');
+  return guidePages(guide).flatMap(pageRows);
+}
+
+function pageRows(guide) {
+  const lines = guideText(guide).split('\n');
   return lines.flatMap((line, index) => {
     if (!TABLE_ROW.test(line) || DIVIDER.test(line) || !DIVIDER.test(lines[index + 1] ?? '')) {
       return [];
@@ -51,7 +54,7 @@ function readGuideTables(guide) {
 
 /**
  * The cell under `header` (lowercase) of the table row that names `id` in its first column, in a
- * guide of this repository, with the guide's relative links made relative to the repository root,
+ * guide of this repository or its topic pages, with the guide's relative links made relative to the repository root,
  * or undefined when no such row exists.
  */
 export function optionalGuideCell(guide, id, header) {
