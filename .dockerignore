@@ -1,7 +1,7 @@
 .git
 .github
 .claude
-docs
+shared/reference/rules
 **/node_modules
 **/reports
 **/coverage

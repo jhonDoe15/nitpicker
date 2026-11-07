@@ -39,6 +39,8 @@ jobs:
         run: |
           git merge-base --is-ancestor "$COMMIT" origin/main
           echo "tag=v$(node -p "require('./package.json').version")" >> "$GITHUB_OUTPUT"
+      # `npm pack` runs `prepack`, which builds the rule reference data with the dependencies.
+      - run: npm ci
       # The notes come from .github/release-notes/<tag>.md on main, or from the released commit.
       - name: Pack the tarball and checksum
         env:

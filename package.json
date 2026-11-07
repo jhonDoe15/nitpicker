@@ -38,6 +38,7 @@
     "check": "node scripts/check.mjs",
     "gen:checks": "node scripts/gen-checks.mjs",
     "gen:rules": "node scripts/reference/gen-rules.mjs",
+    "prepack": "node scripts/reference/gen-rules.mjs --data",
     "gen:overlap-probe": "node scripts/gen-overlap-probe.mjs",
     "test:installed": "NITPICKER_INSTALLED_TEST=1 vitest run --config vitest.config.mts core/installed.test.mjs",
     "test:record-eslint": "node scripts/record-eslint-reports.mjs",

@@ -1,9 +1,14 @@
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import { entryProblems } from './build.mjs';
-import { formattedText, referenceFiles, staleReferenceFiles } from './generate.mjs';
+import {
+  formattedText,
+  referenceDataFiles,
+  referenceFiles,
+  staleReferenceFiles,
+} from './generate.mjs';
 import { PAGES } from '../../shared/reference/pages.mjs';
 import { ruleEntry } from '../../shared/reference/entry.mjs';
 
@@ -32,7 +37,7 @@ function entry(rule, fields = {}) {
 }
 
 describe('the generated rule reference', () => {
-  it('is up to date, and each page stays under the 512 KB GitHub renders: the committed data files and pages equal what the catalogs generate', () => {
+  it('is up to date, and each page stays under the 512 KB GitHub renders: the local data files and the committed pages equal what the catalogs generate', () => {
     const generated = referenceFiles(REPOSITORY_ROOT);
 
     expect([...generated.keys()].toSorted()).toEqual(
@@ -48,6 +53,21 @@ describe('the generated rule reference', () => {
         .filter(([file, text]) => file.endsWith('.md') && Buffer.byteLength(text) >= PAGE_LIMIT)
         .map(([file]) => file),
     ).toEqual([]);
+  });
+
+  it('builds the data files on their own, the same as the full run, and keeps them out of git so two rule changes never merge into one', () => {
+    const generated = referenceFiles(REPOSITORY_ROOT);
+    const data = referenceDataFiles(REPOSITORY_ROOT);
+
+    expect([...data.keys()].toSorted()).toEqual(
+      PAGES.map(({ id }) => `shared/reference/rules/${id}.json`).toSorted(),
+    );
+    expect([...data].filter(([file, text]) => generated.get(file) !== text)).toEqual([]);
+    expect(
+      readFileSync(path.join(REPOSITORY_ROOT, '.gitignore'), 'utf8')
+        .split('\n')
+        .filter((line) => line.startsWith('shared/reference/')),
+    ).toEqual(['shared/reference/rules/']);
   });
 });
 
