@@ -1,9 +1,9 @@
-import { mkdirSync, realpathSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, realpathSync, renameSync, rmSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import {
-  formattedReferenceFiles,
   formattedText,
+  referenceDataFiles,
   referenceFiles,
   staleReferenceFiles,
 } from '../../core/reference/generate.mjs';
@@ -74,6 +74,17 @@ async function refreshJvm() {
   }
 }
 
+function replaceFile(temporary, target) {
+  try {
+    renameSync(temporary, target);
+  } catch (error) {
+    rmSync(temporary, { force: true });
+    if (error.code !== 'EPERM' || !existsSync(target)) {
+      throw error;
+    }
+  }
+}
+
 function writeGenerated(generated) {
   for (const [file, text] of generated) {
     const target = path.resolve(repositoryRoot, file);
@@ -81,14 +92,19 @@ function writeGenerated(generated) {
       throw new Error(`The generated file ${file} is outside the repository`);
     }
     mkdirSync(path.dirname(target), { recursive: true });
-    writeFileSync(target, text);
+    const temporary = path.resolve(repositoryRoot, `${file}.${String(process.pid)}.tmp`);
+    if (!temporary.startsWith(repositoryRoot + path.sep)) {
+      throw new Error(`The generated file ${file} is outside the repository`);
+    }
+    writeFileSync(temporary, text);
+    replaceFile(temporary, target);
   }
 }
 
-const FLAGS = ['--check', '--refresh-eslint', '--refresh-jvm'];
+const FLAGS = ['--check', '--data', '--refresh-eslint', '--refresh-jvm'];
 const RUFF_OPTION = /^--refresh-ruff(?:=(.+))?$/u;
 const USAGE =
-  'Usage: node scripts/reference/gen-rules.mjs [--check] [--refresh-eslint] [--refresh-jvm] [--refresh-ruff[=<path>]]\n';
+  'Usage: node scripts/reference/gen-rules.mjs [--check | --data] [--refresh-eslint] [--refresh-jvm] [--refresh-ruff[=<path>]]\n';
 
 async function refreshSnapshots(options, stderr) {
   const ruffOption = options.map((option) => RUFF_OPTION.exec(option)).find(Boolean);
@@ -104,8 +120,8 @@ async function refreshSnapshots(options, stderr) {
 }
 
 /**
- * Regenerates the rule reference, or with `--check` lists what is stale. `--refresh-ruff[=<path>]`
- * first rewrites the ruff snapshot from that ruff (`ruff` on the PATH by default),
+ * Regenerates the rule reference; `--check` lists what is stale, `--data` writes only the built,
+ * uncommitted data files. `--refresh-ruff[=<path>]` first rewrites the ruff snapshot from that ruff,
  * `--refresh-eslint` the ESLint inventory from the preset configs, and `--refresh-jvm` the rule
  * texts of the pinned PMD, SpotBugs, Checkstyle, detekt and Error Prone, with Maven and Java.
  */
@@ -115,8 +131,12 @@ export async function main(options, { stderr }) {
     return 2;
   }
   await refreshSnapshots(options, stderr);
+  if (options.includes('--data')) {
+    writeGenerated(referenceDataFiles(repositoryRoot));
+    return 0;
+  }
   if (!options.includes('--check')) {
-    writeGenerated(await formattedReferenceFiles(repositoryRoot));
+    writeGenerated(referenceFiles(repositoryRoot));
     return 0;
   }
   const stale = staleReferenceFiles(repositoryRoot, referenceFiles(repositoryRoot));
