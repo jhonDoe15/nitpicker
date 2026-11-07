@@ -79,6 +79,7 @@ import { rule as noSqlStringBuilding } from './rules/security/sql/no-sql-string-
 import { rule as noUnsafeDeserialization } from './rules/security/deserialization/no-unsafe-deserialization.mjs';
 import { rule as noWeakHash } from './rules/security/hash/no-weak-hash.mjs';
 import { rule as requireHttpTimeout } from './rules/security/http/require-http-timeout.mjs';
+import { rule as noLocalTimeZone } from './rules/time/no-local-time-zone.mjs';
 import { rule as noUnknownMainFolder } from './rules/guards/no-unknown-main-folder.mjs';
 import { rule as noUnsafePathJoin } from './rules/guards/no-unsafe-path-join.mjs';
 import { rule as noMagicNumbers } from './rules/wrapped/no-magic-numbers.mjs';
@@ -122,6 +123,7 @@ export const nitpickerRules = {
     'no-weak-hash': noWeakHash,
     'require-error-listener': requireErrorListener,
     'require-http-timeout': requireHttpTimeout,
+    'no-local-time-zone': noLocalTimeZone,
     'no-unknown-main-folder': noUnknownMainFolder,
     'unbounded-fan-out': unboundedFanOut,
     'no-orm-query-logging': noOrmQueryLogging,
