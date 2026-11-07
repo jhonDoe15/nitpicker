@@ -63,7 +63,10 @@ export function toolPrefixError(rule, preset) {
   const valid = toolsOf(printed.rest).filter((tool) =>
     (PRESET_TOOLS[preset] ?? Object.values(PRESET_TOOLS).flat()).includes(tool),
   );
-  return valid.includes(printed.tool)
-    ? undefined
-    : `unknown tool prefix "${printed.tool}" for ${printed.rest}: use the rule bare or as ${valid.map((tool) => `${tool}/${printed.rest}`).join(' or ')}`;
+  if (valid.includes(printed.tool)) {
+    return undefined;
+  }
+  const printedForms = valid.map((tool) => `${tool}/${printed.rest}`);
+  const advice = printedForms.length === 0 ? '' : ` or as ${printedForms.join(' or ')}`;
+  return `unknown tool prefix "${printed.tool}" for ${printed.rest}: use the rule bare${advice}`;
 }

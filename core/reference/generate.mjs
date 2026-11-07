@@ -31,6 +31,11 @@ function dataFiles(entries) {
   ]);
 }
 
+/** The data file of each page, as compact JSON, by path relative to the repository root. */
+export function referenceDataFiles(repositoryRoot) {
+  return new Map(dataFiles(buildReference(repositoryRoot)));
+}
+
 /**
  * The generated files, by path relative to the repository root: the data file of each page, as
  * compact JSON, and the Markdown pages, already in the form Prettier gives them.
@@ -38,18 +43,6 @@ function dataFiles(entries) {
 export function referenceFiles(repositoryRoot) {
   const entries = buildReference(repositoryRoot);
   return new Map([...dataFiles(entries), ...renderReference(entries)]);
-}
-
-/** The generated files as they are committed: the data files formatted by Prettier. */
-export async function formattedReferenceFiles(repositoryRoot) {
-  return new Map(
-    await Promise.all(
-      [...referenceFiles(repositoryRoot)].map(async ([file, text]) => [
-        file,
-        JSON_FILE.test(file) ? await formattedText(repositoryRoot, file, text) : text,
-      ]),
-    ),
-  );
 }
 
 function committedText(target, file) {

@@ -23,7 +23,27 @@ GENERIC_WORDS = {
 FRAMEWORK_BASES = ("Manager", "QuerySet")
 COMPOUND_TERMS = {"manager": "context", "managers": "context"}
 VERSION_WORD = re.compile(r"^v?\d*$")
-CHECKED_WORDS = 2
+CONTAINER_WORDS = {
+    "functions",
+    "funcs",
+    "methods",
+    "module",
+    "modules",
+    "mixin",
+    "mixins",
+    "base",
+    "classes",
+}
+ACCEPTED_MANAGER_WORDS = {
+    "authentication",
+    "transaction",
+    "cache",
+    "entity",
+    "session",
+    "connection",
+    "lock",
+    "resource",
+}
 
 
 def name_words(name):
@@ -38,14 +58,31 @@ def name_words(name):
     return merged
 
 
+def judged_words(name):
+    words = name_words(name)
+    if len(words) > 1 and words[-1] in CONTAINER_WORDS:
+        return words[:-1]
+    return words
+
+
 def is_generic(name):
-    return any(word in GENERIC_WORDS for word in name_words(name)[-CHECKED_WORDS:])
+    words = judged_words(name)
+    if not words:
+        return False
+    last = words[-1]
+    if last not in GENERIC_WORDS:
+        return False
+    return not (
+        last in {"manager", "managers"}
+        and len(words) > 1
+        and words[-2] in ACCEPTED_MANAGER_WORDS
+    )
 
 
 def follows_framework_type(node):
-    word = (words_of(node.name) or [""])[-1]
+    word = (judged_words(node.name) or [""])[-1]
     return any(
-        (words_of(last_name(base) or "") or [""])[-1] == word for base in node.bases
+        (judged_words(last_name(base) or "") or [""])[-1] == word for base in node.bases
     )
 
 

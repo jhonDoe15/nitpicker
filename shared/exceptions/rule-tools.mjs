@@ -67,6 +67,7 @@ const RULE_TOOLS = new Map([
   [RULE_IDS.newIconAsset, ['structure']],
   [RULE_IDS.componentStoryMissing, ['structure']],
   [RULE_IDS.javascriptInTypescriptProject, ['structure']],
+  [RULE_IDS.docCommentContent, ['facts']],
   ...CODING_STANDARDS_RULES.map((rule) => [rule, ['coding-standards']]),
   ...DEPENDENCY_RULES.map((rule) => [rule, ['dependency-architecture']]),
 ]);
@@ -99,7 +100,15 @@ const TYPESCRIPT_TOOLS = [
   'dependency-architecture',
 ];
 const SHARED_TOOLS = ['structure', 'test-runtime', 'repository-hygiene', CHANGE_HISTORY_TOOL];
-const JVM_ANALYZER_TOOLS = [...SHARED_TOOLS, 'crap', 'jacoco', 'pit', 'duplicates', 'coupling'];
+const JVM_ANALYZER_TOOLS = [
+  ...SHARED_TOOLS,
+  'crap',
+  'jacoco',
+  'pit',
+  'duplicates',
+  'coupling',
+  'facts',
+];
 
 /** The tools of each preset that print rules an `exceptions` entry can name. */
 export const PRESET_TOOLS = {
@@ -107,6 +116,6 @@ export const PRESET_TOOLS = {
   javascript: TYPESCRIPT_TOOLS,
   java: JVM_ANALYZER_TOOLS,
   kotlin: JVM_ANALYZER_TOOLS,
-  python: [...SHARED_TOOLS, 'crap', 'coverage-py', 'mutmut', 'duplicates', 'coupling'],
+  python: [...SHARED_TOOLS, 'crap', 'coverage-py', 'mutmut', 'duplicates', 'coupling', 'facts'],
   go: SHARED_TOOLS,
 };

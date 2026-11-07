@@ -1,0 +1,9 @@
+  <rule name="SpringOrderedProvider" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
+        message="Use orderedStream() on the ObjectProvider, so the beans come in @Order and Ordered order. stream(), forEach, iterator() and a for-each loop give them in registration order.">
+    <priority>2</priority>
+    <properties><property name="xpath"><value><![CDATA[
+//MethodCall[@MethodName = ('stream', 'forEach', 'iterator', 'spliterator')]
+  [*[1][pmd-java:typeIs('org.springframework.beans.factory.ObjectProvider')]]
+| //ForeachStatement[*[2][pmd-java:typeIs('org.springframework.beans.factory.ObjectProvider')]]
+]]></value></property></properties>
+  </rule>

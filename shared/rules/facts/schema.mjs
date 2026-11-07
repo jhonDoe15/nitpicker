@@ -99,6 +99,8 @@ const SHAPES = {
     names: isNames,
     reexport: optional(isBoolean),
     typeOnly: optional(isBoolean),
+    conditional: optional(isBoolean),
+    reference: optional(isBoolean),
   },
   docComments: {
     file: isProjectPath,

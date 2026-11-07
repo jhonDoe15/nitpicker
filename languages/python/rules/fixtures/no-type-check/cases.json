@@ -1,0 +1,8 @@
+[
+  {
+    "name": "no_type_check names annotating the code",
+    "tool": "python-rules",
+    "rule": "no-type-check",
+    "mention": "annotate the code"
+  }
+]
