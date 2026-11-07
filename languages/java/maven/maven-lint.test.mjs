@@ -261,7 +261,7 @@ describe('runFormat', () => {
 });
 
 describe.skipIf(process.platform === 'win32')('runPmd', () => {
-  function pmdRun(spring) {
+  function pmdRun(spring, springRules) {
     const basedir = mkdtempSync(path.join(tmpdir(), 'nitpicker-maven-pmd-'));
     roots.push(basedir);
     const java = path.join(basedir, 'jdk/bin/java');
@@ -295,6 +295,7 @@ describe.skipIf(process.platform === 'win32')('runPmd', () => {
       classpaths,
       configs: { pmd: {} },
       spring,
+      springRules,
     });
     const args = JSON.parse(readFileSync(path.join(basedir, 'arguments.json'), 'utf8'));
     const refs = (name) =>
@@ -324,6 +325,13 @@ describe.skipIf(process.platform === 'win32')('runPmd', () => {
       shipped('pmd-test-ruleset.xml'),
       shipped('spring-test-ruleset.xml'),
     ]);
+  });
+
+  it('takes the Spring rule set written for the project when it names annotations of its own', () => {
+    const own = path.join(tmpdir(), 'spring-ruleset-project.xml');
+
+    expect(pmdRun(true, own).mainRules).toEqual([shipped('pmd-main-ruleset.xml'), own]);
+    expect(pmdRun(false, own).mainRules).toEqual([shipped('pmd-main-ruleset.xml')]);
   });
 
   it('leaves the Spring rule sets out of a module without Spring', () => {

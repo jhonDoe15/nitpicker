@@ -5,10 +5,12 @@ import { detectJavaBuild } from '../builds/java-build.mjs';
 import { parseJavaRunnerArguments } from './java-policy.mjs';
 import { javaStyle } from './style/java-style.mjs';
 import { gradleBudget } from './gradle-wrapper/gradle-budget.mjs';
+import { TESTS_FAILED_RULE } from '../../../shared/rules/finding-helpers.mjs';
 
 export const GRADLE_FAILURE_RULE = 'gradle-failure';
 export const MAVEN_FAILURE_RULE = 'maven-failure';
 const MAX_MESSAGE_LENGTH = 4000;
+const MAX_TESTS_FAILED_LENGTH = 40_000;
 
 export function javaExecutionBudget(environment = process.env) {
   return gradleBudget(environment);
@@ -37,8 +39,7 @@ export function analyzeJavaSnapshot(
     };
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
-    const rule =
-      detectJavaBuild(projectRoot) === 'maven' ? MAVEN_FAILURE_RULE : GRADLE_FAILURE_RULE;
+    const rule = failureRule(error, projectRoot);
     return {
       findings: [
         {
@@ -46,10 +47,7 @@ export function analyzeJavaSnapshot(
           rule,
           path: '.',
           identity: rule,
-          message:
-            message.length > MAX_MESSAGE_LENGTH
-              ? `${message.slice(0, MAX_MESSAGE_LENGTH)}...`
-              : message,
+          message: cappedMessage(message, rule),
           classification: 'tool-error',
         },
       ],
@@ -68,6 +66,18 @@ export function withHeadPolicy(policy, headPolicy) {
     kotlinFormatter: kotlin?.formatter ?? policy.kotlinFormatter,
     ...(kotlin === undefined ? {} : { kotlinFacts: kotlin }),
   };
+}
+
+function cappedMessage(message, rule) {
+  const limit = rule === TESTS_FAILED_RULE ? MAX_TESTS_FAILED_LENGTH : MAX_MESSAGE_LENGTH;
+  return message.length > limit ? `${message.slice(0, limit)}...` : message;
+}
+
+function failureRule(error, projectRoot) {
+  if (error?.failures?.length > 0) {
+    return TESTS_FAILED_RULE;
+  }
+  return detectJavaBuild(projectRoot) === 'maven' ? MAVEN_FAILURE_RULE : GRADLE_FAILURE_RULE;
 }
 
 export function readRunnerPolicy(runnerArguments, environment = process.env) {

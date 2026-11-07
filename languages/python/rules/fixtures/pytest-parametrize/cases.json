@@ -1,0 +1,17 @@
+[
+  {
+    "tool": "ruff",
+    "rule": "PT006",
+    "mention": "tuple"
+  },
+  {
+    "tool": "ruff",
+    "rule": "PT007",
+    "mention": "list of tuples"
+  },
+  {
+    "tool": "ruff",
+    "rule": "PT014",
+    "mention": "each parametrize case once"
+  }
+]
