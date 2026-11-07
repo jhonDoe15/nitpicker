@@ -4,6 +4,7 @@ import path from 'node:path';
 import { resolveJscpdPolicy } from '../../../core/tooling/jscpd/config.mjs';
 import {
   readHeadPolicyFile,
+  readHeadPolicySource,
   resolveHeadPolicy as resolveSharedHeadPolicy,
 } from '../../../shared/head-policy.mjs';
 import {
@@ -26,6 +27,7 @@ import { detectLibraries } from './libraries/project-libraries.mjs';
 import { stylingApproachFor } from './eslint-config/react/react-styling.mjs';
 import { hasPrettierConventions } from '../conventions/prettier-conventions.mjs';
 import { markedGeneratedFiles } from './layout/generated-files.mjs';
+import { withHeadToolConfigs } from './project-configs/head-tool-configs.mjs';
 import { picked } from '../../../shared/config.mjs';
 import { projectConfigTools } from './project-tools/project-config-files.mjs';
 import { headCapturedFacts, withProjectToolConfigs } from './project-tools/project-tool-policy.mjs';
@@ -79,7 +81,11 @@ export function resolveHeadPolicy(config = {}, projectRoot) {
 function withProjectFacts(policy, config, projectRoot) {
   const jscpd = resolveJscpdPolicy(policy.tools?.jscpd, projectRoot);
   const tools = withProjectToolConfigs(
-    jscpd === undefined ? policy.tools : { ...policy.tools, jscpd },
+    withHeadToolConfigs(
+      jscpd === undefined ? policy.tools : { ...policy.tools, jscpd },
+      { policy, config },
+      projectRoot,
+    ),
     projectRoot,
     { disabled: config.disable },
   );
@@ -181,7 +187,7 @@ function headToolFacts(policy, headPolicy) {
       };
     }
   }
-  for (const tool of ['jscpd', ...projectConfigTools()]) {
+  for (const tool of ['jscpd', 'stryker', 'typescript', 'tests', ...projectConfigTools()]) {
     if (usesProjectConfig(tools[tool]?.precedence ?? [])) {
       tools[tool] = headCapturedFacts(tools[tool], headPolicy.tools?.[tool]);
     }
@@ -260,7 +266,25 @@ export function readHeadPolicy(environment = process.env) {
   };
 }
 
+function lastResolved() {
+  const resolved = new Map();
+  return (key, resolve) => {
+    if (!resolved.has(key)) {
+      resolved.clear();
+      resolved.set(key, resolve());
+    }
+    return resolved.get(key);
+  };
+}
+
+const layoutForPolicy = lastResolved();
+
 export function readLayout(environment = process.env) {
+  const { policyFile, text } = readHeadPolicySource(environment);
+  return layoutForPolicy(JSON.stringify([policyFile, text]), () => resolvedLayout(environment));
+}
+
+function resolvedLayout(environment) {
   const policy = readHeadPolicy(environment);
   return {
     ...resolveLayoutFor({ ...policy, layout: readHeadPolicyFile(environment).layout }),

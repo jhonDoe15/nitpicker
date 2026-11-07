@@ -3,7 +3,13 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import { parse } from 'yaml';
-import { SUITES, classifyGates, gateCandidates, workflowProblems } from './e2e-gates.mjs';
+import {
+  SUITES,
+  classifyGates,
+  gateCandidates,
+  suiteFiles,
+  workflowProblems,
+} from './e2e-gates.mjs';
 
 const ENV = ['process', 'env'].join('.');
 const roots = [];
@@ -40,6 +46,37 @@ describe('the E2E gate candidates', () => {
       { file: 'languages/a/plain.e2e.test.mjs', flags: [] },
       { file: 'scripts/typo.test.mjs', flags: ['NITPICKER_JAAVA_E2E'] },
     ]);
+  });
+});
+
+describe('the suite files', () => {
+  const files = {
+    'languages/a/java.e2e.test.mjs': `const on = ${ENV}.NITPICKER_JAVA_E2E === '1';\n`,
+    'languages/a/support.mjs': `export const on = ${ENV}.NITPICKER_KOTLIN_E2E === '1';\n`,
+    'languages/a/kotlin.test.mjs': "import { on } from './support.mjs';\n",
+    'languages/a/plain.e2e.test.mjs': "it('runs', () => {});\n",
+    'languages/a/unit.test.mjs': "it('runs', () => {});\n",
+  };
+
+  it('are the files that read the flag of a suite that is set, directly or through an import', () => {
+    const root = repository(files);
+
+    expect(suiteFiles(root, { NITPICKER_JAVA_E2E: '1' })).toEqual([
+      'languages/a/java.e2e.test.mjs',
+    ]);
+    expect(suiteFiles(root, { NITPICKER_KOTLIN_E2E: '1' })).toEqual([
+      'languages/a/kotlin.test.mjs',
+    ]);
+    expect(suiteFiles(root, { NITPICKER_JAVA_E2E: '1', NITPICKER_KOTLIN_E2E: '1' })).toEqual([
+      'languages/a/java.e2e.test.mjs',
+      'languages/a/kotlin.test.mjs',
+    ]);
+  });
+
+  it('are none when no suite flag is set to 1', () => {
+    const root = repository(files);
+
+    expect(suiteFiles(root, { NITPICKER_JAVA_E2E: '0' })).toEqual([]);
   });
 });
 
@@ -118,8 +155,7 @@ describe('the E2E workflows', () => {
 
   it('report an aggregate that does not need the plan, and a shard run without --shard', () => {
     const parsed = workflow('python');
-    const aggregate = Object.keys(parsed.jobs).find((name) => !name.startsWith('python-shard'));
-    parsed.jobs[aggregate].needs = ['python-shard'];
+    parsed.jobs['python-e2e'].needs = ['changes', 'python-shard'];
     for (const step of parsed.jobs['python-shard'].steps) {
       step.run = step.run?.replace(/ --shard=\S+/u, '');
     }
@@ -127,6 +163,15 @@ describe('the E2E workflows', () => {
     expect(workflowProblems(parsed, 'python')).toEqual([
       'python-shard must run test:python with --shard=${{ matrix.shard }}/${{ strategy.job-total }}',
       'one aggregate job must always run, need python-shard-plan and python-shard and check both results',
+    ]);
+  });
+
+  it('report an aggregate that ignores the changed-file selection', () => {
+    const parsed = workflow('go');
+    parsed.jobs['go-e2e'].needs = ['go-shard-plan', 'go-shard'];
+
+    expect(workflowProblems(parsed, 'go')).toEqual([
+      'the aggregate job must also need changes and check its result',
     ]);
   });
 });

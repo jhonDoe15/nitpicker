@@ -108,6 +108,35 @@ class ShapesTest {
     }
 }
 `;
+const GUARD = `package demo;
+
+public final class Guard {
+    public int share(int total, int parts) {
+        if (parts == 0) {
+            throw new IllegalArgumentException("parts must not be zero");
+        }
+        return total / parts;
+    }
+
+    public String label(String raw) {
+        return raw.trim();
+    }
+}
+`;
+const GUARD_TEST = `package demo;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+
+import org.junit.jupiter.api.Test;
+
+class GuardTest {
+    @Test
+    void sharesTotals() {
+        assertEquals(3, new Guard().share(6, 2));
+        assertEquals("a", new Guard().label("a"));
+    }
+}
+`;
 function copyOf(...sources) {
   const root = mkdtempSync(path.join(tmpdir(), 'nitpicker-maven-e2e-'));
   temporary.push(root);
@@ -162,6 +191,8 @@ export {
   DATED,
   EMPTY_CATCH,
   FAILING_TEST,
+  GUARD,
+  GUARD_TEST,
   SHAPES,
   SHAPES_TEST,
   copyOf,

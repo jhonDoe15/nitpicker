@@ -1,4 +1,6 @@
 import { normalizeGitPath } from '../git/normalize.mjs';
+import { routeFields } from '../../../shared/messages/exception-sentence.mjs';
+import { adviceProblems } from '../../../shared/messages/finding-advice.mjs';
 
 const CLASSIFICATIONS = new Set(['enforceable', 'descriptive', 'tool-error']);
 const HTTP_URL = /^https?:\/\/\S+$/u;
@@ -42,16 +44,28 @@ export function parseFinding(value, context = 'finding') {
     classification,
   };
 
-  return { ...finding, ...parseOptionalFields(value, classification, context) };
+  return {
+    ...finding,
+    ...parseOptionalFields(value, classification, context),
+    ...parseAdvice(value, message, context),
+  };
 }
+
+const OPTIONAL_PARSERS = {
+  symbol: requiredString,
+  location: parseLocation,
+  ratchet: parseRatchet,
+  tokens: parseTokens,
+  anchor: parseAnchor,
+  helpUri: parseHelpUri,
+};
 
 function parseOptionalFields(value, classification, context) {
   const fields = {};
-  if (value.symbol !== undefined) {
-    fields.symbol = requiredString(value.symbol, `${context}.symbol`);
-  }
-  if (value.location !== undefined) {
-    fields.location = parseLocation(value.location, `${context}.location`);
+  for (const [name, parse] of Object.entries(OPTIONAL_PARSERS)) {
+    if (value[name] !== undefined) {
+      fields[name] = parse(value[name], `${context}.${name}`);
+    }
   }
   if (value.metric !== undefined) {
     if (classification !== 'descriptive') {
@@ -59,21 +73,25 @@ function parseOptionalFields(value, classification, context) {
     }
     fields.metric = parseMetric(value.metric, `${context}.metric`);
   }
-  return { ...fields, ...parseLaterFields(value, context) };
+  return fields;
 }
 
-function parseLaterFields(value, context) {
-  return {
-    ...(value.ratchet === undefined
+function parseAdvice(value, message, context) {
+  const advice = {
+    ...(value.allowedForm === undefined
       ? {}
-      : { ratchet: parseRatchet(value.ratchet, `${context}.ratchet`) }),
-    ...(value.tokens === undefined
-      ? {}
-      : { tokens: parseTokens(value.tokens, `${context}.tokens`) }),
-    ...(value.helpUri === undefined
-      ? {}
-      : { helpUri: parseHelpUri(value.helpUri, `${context}.helpUri`) }),
+      : { allowedForm: requiredString(value.allowedForm, `${context}.allowedForm`) }),
+    ...(value.exception === undefined && value.exceptionList === undefined
+      ? routeFields(message)
+      : { exception: value.exception, exceptionList: value.exceptionList }),
   };
+  const [problem] = adviceProblems({ message, ...advice });
+  if (problem !== undefined) {
+    throw new TypeError(
+      `${context} (${String(value.tool)} ${String(value.rule)} in ${String(value.path)}): ${problem}`,
+    );
+  }
+  return advice;
 }
 
 function parseLocation(value, context) {
@@ -105,8 +123,50 @@ function parseMetric(value, context) {
   };
 }
 
-const RATCHET_TEXT_FIELDS = ['worseMessage', 'growthAdvice', 'heldMessage'];
+function parseAnchor(value, context) {
+  if (!isRecord(value)) {
+    throw new TypeError(`${context} must be an object`);
+  }
+  const anchor = { key: requiredString(value.key, `${context}.key`) };
+  if (value.requireUnchangedLine !== undefined) {
+    if (typeof value.requireUnchangedLine !== 'boolean') {
+      throw new TypeError(`${context}.requireUnchangedLine must be a boolean`);
+    }
+    anchor.requireUnchangedLine = value.requireUnchangedLine;
+  }
+  return anchor;
+}
+
+const RATCHET_TEXT_FIELDS = [
+  'declarationKey',
+  'worseMessage',
+  'worseAllowedForm',
+  'growthAdvice',
+  'growthAllowedForm',
+  'heldMessage',
+];
+const RATCHET_PARTS = [
+  ['worseAllowedForm', 'worseMessage'],
+  ['growthAllowedForm', 'growthAdvice'],
+];
 const RATCHET_FLAGS = ['existingCodeOnly', 'pathIsFolder'];
+
+function ratchetTexts(value, context) {
+  return Object.fromEntries(
+    RATCHET_TEXT_FIELDS.filter((name) => value[name] !== undefined).map((name) => [
+      name,
+      requiredString(value[name], `${context}.${name}`),
+    ]),
+  );
+}
+
+function checkRatchetParts(ratchet, context) {
+  for (const [part, whole] of RATCHET_PARTS) {
+    if (ratchet[part] !== undefined && !(ratchet[whole] ?? '').includes(ratchet[part])) {
+      throw new TypeError(`${context}.${part} is not part of ${whole}`);
+    }
+  }
+}
 
 function parseRatchet(value, context) {
   if (!isRecord(value)) {
@@ -119,11 +179,8 @@ function parseRatchet(value, context) {
   if (value.folderFiles !== undefined) {
     ratchet.folderFiles = positiveInteger(value.folderFiles, `${context}.folderFiles`);
   }
-  for (const name of RATCHET_TEXT_FIELDS) {
-    if (value[name] !== undefined) {
-      ratchet[name] = requiredString(value[name], `${context}.${name}`);
-    }
-  }
+  Object.assign(ratchet, ratchetTexts(value, context));
+  checkRatchetParts(ratchet, context);
   for (const name of RATCHET_FLAGS.filter((flag) => value[flag] !== undefined)) {
     if (typeof value[name] !== 'boolean') {
       throw new TypeError(`${context}.${name} must be a boolean`);

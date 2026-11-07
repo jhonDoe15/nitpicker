@@ -69,6 +69,7 @@ function productionRules({ react, routeHandlers }) {
     'no-duplicate-imports': ['error', { allowSeparateTypeImports: true }],
     'no-restricted-properties': ['error', ...productionRestrictedProperties],
     'nitpicker/naming-convention': namingConvention({ react, routeHandlers }),
+    'nitpicker/no-accumulating-spread': 'error',
     'nitpicker/no-magic-numbers': [
       'error',
       {
@@ -82,6 +83,7 @@ function productionRules({ react, routeHandlers }) {
       },
     ],
     'regexp/no-super-linear-backtracking': 'error',
+    'regexp/no-useless-flag': ['error', { ignore: ['i', 'm', 's'] }],
   };
 }
 
@@ -91,9 +93,14 @@ function productionGuardRules({ react, security }) {
       'error',
       { allowImportMetaEnv: react, allowBundlerEnv: react },
     ],
+    'nitpicker/no-orm-query-logging': 'error',
+    'nitpicker/no-orm-schema-sync': 'error',
     'nitpicker/no-shell-string-command': 'error',
+    'nitpicker/require-process-timeout': 'error',
     'nitpicker/no-unsafe-path-join': 'error',
+    'nitpicker/require-error-listener': 'error',
     'nitpicker/unbounded-fan-out': 'error',
+    'nitpicker/unbounded-reactive-fan-out': 'error',
     ...securityRules({ react, security }),
   };
 }

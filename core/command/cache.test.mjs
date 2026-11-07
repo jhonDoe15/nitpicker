@@ -65,8 +65,8 @@ describe('findings cache', () => {
 
 \u001b[1m\u001b[31mQuality gate summary\u001b[0m
 \u001b[1m\u001b[31m✖ 1 new enforceable violation\u001b[0m
-  \u001b[33mfake-quality-analyzer/fixture-rule\u001b[0m src/main/new.ts:1
-    Fixture finding
+  \u001b[33mfake-quality-analyzer/fixture-rule\u001b[0m: Fixture finding
+    src/main/new.ts:1:4
 \u001b[2mFull diagnostics: /tmp/nitpicker-cli-output-${/[A-Za-z0-9]{6}/}/reports/report.txt\u001b[0m
 `),
     );
@@ -76,6 +76,7 @@ describe('findings cache', () => {
     const { run, snapshots, repository } = setup();
     const worktree = path.join(makeTemporaryRoot('nitpicker-cli-worktree-'), 'worktree');
     fixtureGit(repository.root, ['worktree', 'add', '--quiet', '--detach', worktree]);
+    writeFiles(worktree, { 'src/main/new.ts': findingLine(finding({ identity: 'new-finding' })) });
     const lines = [];
     const progress = { write: (text) => lines.push(text) };
 
@@ -164,8 +165,8 @@ describe('remote findings cache', () => {
 
 \u001b[1m\u001b[31mQuality gate summary\u001b[0m
 \u001b[1m\u001b[31m✖ 1 new enforceable violation\u001b[0m
-  \u001b[33mfake-quality-analyzer/fixture-rule\u001b[0m src/main/new.ts:1
-    Fixture finding
+  \u001b[33mfake-quality-analyzer/fixture-rule\u001b[0m: Fixture finding
+    src/main/new.ts:1:4
 \u001b[2mFull diagnostics: /tmp/nitpicker-cli-output-${/[A-Za-z0-9]{6}/}/reports/report.txt\u001b[0m
 `),
       );
@@ -186,8 +187,8 @@ describe('remote findings cache', () => {
 
 \u001b[1m\u001b[31mQuality gate summary\u001b[0m
 \u001b[1m\u001b[31m✖ 1 new enforceable violation\u001b[0m
-  \u001b[33mfake-quality-analyzer/fixture-rule\u001b[0m src/main/new.ts:1
-    Fixture finding
+  \u001b[33mfake-quality-analyzer/fixture-rule\u001b[0m: Fixture finding
+    src/main/new.ts:1:4
 \u001b[2mFull diagnostics: /tmp/nitpicker-cli-output-${/[A-Za-z0-9]{6}/}/reports/report.txt\u001b[0m
 `),
       );

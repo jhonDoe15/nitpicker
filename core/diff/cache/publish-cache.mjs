@@ -20,6 +20,7 @@ export function publishBaseSnapshot({
   configOverrides = [],
   headPolicy = {},
   runTasks,
+  warn,
 }) {
   const commitSha = runGit(repositoryRoot, ['rev-parse', 'HEAD^{commit}']).trim();
   const cache = createFindingsCache({
@@ -31,7 +32,7 @@ export function publishBaseSnapshot({
   });
   const published = [];
   const skipped = [];
-  withTemporaryWorktree(repositoryRoot, commitSha, (worktreeRoot) => {
+  withTemporaryWorktree(repositoryRoot, { commitSha, warn }, (worktreeRoot) => {
     const projectRoot = path.join(worktreeRoot, projectRelativePath);
     const dependencies = analyzers.some((analyzer) => analyzer.requiresDependencies)
       ? prepareSnapshotDependencies({ projectRoot, liveProjectRoot, toolRoot: PACKAGE_ROOT })

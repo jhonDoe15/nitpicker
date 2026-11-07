@@ -37,8 +37,18 @@ describe('nitpicker with "preset": "python" and mutation testing', () => {
         identity: 'value|1→3#1',
         message:
           'Survived number: replacing `1` with `3` fails no test. Add an assertion that would. If no input can tell the two apart, simplify the code so this mutant disappears. If this is intended, add {"rule":"mutant-survived","paths":["src/demo/a.py"],"function":"value","reason":"..."} to "exceptions" in nitpicker.config.json.',
+        allowedForm:
+          'Add an assertion that would. If no input can tell the two apart, simplify the code so this mutant disappears.',
+        exception: {
+          rule: 'mutant-survived',
+          paths: ['src/demo/a.py'],
+          function: 'value',
+          reason: '...',
+        },
+        exceptionList: 'exceptions',
         classification: 'enforceable',
         symbol: 'value',
+        anchor: { key: expect.stringMatching(/^mutant:/u), requireUnchangedLine: true },
         location: { line: 5 },
       },
     ]);
@@ -59,8 +69,17 @@ describe('nitpicker with "preset": "python" and mutation testing', () => {
         identity: 'value|1→3#1',
         message:
           'NoCoverage number: no test runs this code. Add a test that reaches it. If this is intended, add {"rule":"mutant-nocoverage","paths":["src/demo/a.py"],"function":"value","reason":"..."} to "exceptions" in nitpicker.config.json.',
+        allowedForm: 'Add a test that reaches it.',
+        exception: {
+          rule: 'mutant-nocoverage',
+          paths: ['src/demo/a.py'],
+          function: 'value',
+          reason: '...',
+        },
+        exceptionList: 'exceptions',
         classification: 'enforceable',
         symbol: 'value',
+        anchor: { key: expect.stringMatching(/^mutant:/u), requireUnchangedLine: true },
         location: { line: 5 },
       },
     ]);
@@ -92,6 +111,7 @@ describe('nitpicker with "preset": "python" and mutation testing', () => {
         message: 'Timeout number',
         classification: 'descriptive',
         symbol: 'value',
+        anchor: { key: expect.stringMatching(/^mutant:/u), requireUnchangedLine: true },
         location: { line: 5 },
       },
     ]);

@@ -113,6 +113,8 @@ describe('readSuppressionFindings', () => {
         identity: 'suppress:UnsafeCallOnNullableType',
         message:
           'Suppressing "UnsafeCallOnNullableType" inline is not allowed. Fix the code the rule flags; to skip generated code, add it to "exclude" in nitpicker.config.json. If this is intended, add {"rule":"inline-suppression","paths":["src/main/kotlin/demo/A.kt"],"reason":"..."} to "exceptions" in nitpicker.config.json.',
+        allowedForm:
+          'Fix the code the rule flags; to skip generated code, add it to "exclude" in nitpicker.config.json.',
         classification: 'enforceable',
       },
       {
@@ -122,6 +124,8 @@ describe('readSuppressionFindings', () => {
         identity: 'suppress:all',
         message:
           'Suppressing "all" inline is not allowed. Fix the code the rule flags; to skip generated code, add it to "exclude" in nitpicker.config.json. If this is intended, add {"rule":"inline-suppression","paths":["src/main/kotlin/demo/A.kt"],"reason":"..."} to "exceptions" in nitpicker.config.json.',
+        allowedForm:
+          'Fix the code the rule flags; to skip generated code, add it to "exclude" in nitpicker.config.json.',
         classification: 'enforceable',
       },
     ]);
@@ -176,7 +180,7 @@ describe('readSuppressionFindings', () => {
     ]);
   });
 
-  it('bans compiler-warning tokens in main sources only, which the kotlinc lint compiles, and rule tokens everywhere', () => {
+  it('bans compiler-warning tokens in main and test sources, which the kotlinc lint compiles, and rule tokens everywhere', () => {
     const suppressed =
       '@Suppress("UNCHECKED_CAST", "DEPRECATION", "MagicNumber")\nfun a(value: Any) = value as List<String>\n';
     const root = projectWith({
@@ -193,6 +197,8 @@ describe('readSuppressionFindings', () => {
       'src/main/kotlin/A.kt suppress:UNCHECKED_CAST',
       'src/main/kotlin/A.kt suppress:DEPRECATION',
       'src/main/kotlin/A.kt suppress:MagicNumber',
+      'src/test/kotlin/ATest.kt suppress:UNCHECKED_CAST',
+      'src/test/kotlin/ATest.kt suppress:DEPRECATION',
       'src/test/kotlin/ATest.kt suppress:MagicNumber',
     ]);
   });
@@ -266,13 +272,16 @@ describe('readSuppressionFindings', () => {
     });
 
     it('name the parameter and the route for other unused code', () => {
-      const [{ message }] = readSuppressionFindings(
+      const [{ message, allowedForm }] = readSuppressionFindings(
         projectWith({ [file]: '@Suppress("unused")\nfun a(x: Int) = 1\n' }),
         { sourceRoots: ['src/main/kotlin'] },
       );
 
       expect(message).toBe(
         `Suppressing "unused" inline would hide an unused parameter. Remove the parameter, or use it; a name starting \`ignored\` or \`unused\` marks one a signature requires. When reflection or a framework calls it with that signature, remove the suppression and lift the rule for this path instead. ${exceptionHint('detekt.style.UnusedParameter', file)}`,
+      );
+      expect(allowedForm).toBe(
+        'Remove the parameter, or use it; a name starting `ignored` or `unused` marks one a signature requires.',
       );
     });
 

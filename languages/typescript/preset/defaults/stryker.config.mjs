@@ -41,7 +41,7 @@ export default {
   ignorePatterns: [
     ...sourceRoots.map((root) => `${root}/dist`),
     ...testRoots.map((root) => `${root}/integration`),
-    'reports',
+    '/reports/quality',
     '.nitpicker-*',
     '!.nitpicker-diff-stryker.*',
     '!.nitpicker-diff-tsconfig.stryker.json',

@@ -47,6 +47,140 @@
       "useInstead": "my_list = [1, 2, 3, 4, 5]\nsquares = map(lambda x: x**2, my_list)"
     },
     {
+      "code": "ASYNC100",
+      "name": "cancel-scope-no-checkpoint",
+      "linter": "flake8-async",
+      "summary": "A `with {method_name}(...):` context does not contain any `await` statements. This makes it pointless, as the timeout can only be triggered by a checkpoint.",
+      "whatItDoes": "Checks for timeout context managers which do not contain a checkpoint.",
+      "why": "Some asynchronous context managers, such as `asyncio.timeout` and `trio.move_on_after`, have no effect unless they contain a checkpoint. The use of such context managers without an `await`, `async with` or `async for` statement is likely a mistake.",
+      "useInstead": "import asyncio\n\n\nasync def func():\n    async with asyncio.timeout(2):\n        do_something()\n        await awaitable()"
+    },
+    {
+      "code": "ASYNC105",
+      "name": "trio-sync-call",
+      "linter": "flake8-async",
+      "summary": "Call to `{method_name}` is not immediately awaited",
+      "whatItDoes": "Checks for calls to trio functions that are not immediately awaited.",
+      "why": "Many of the functions exposed by trio are asynchronous, and must be awaited to take effect. Calling a trio function without an `await` can lead to `RuntimeWarning` diagnostics and unexpected behaviour.",
+      "useInstead": "import trio\n\n\nasync def double_sleep(x):\n    await trio.sleep(2 * x)"
+    },
+    {
+      "code": "ASYNC109",
+      "name": "async-function-with-timeout",
+      "linter": "flake8-async",
+      "summary": "Async function definition with a `timeout` parameter",
+      "whatItDoes": "Checks for `async` function definitions with `timeout` parameters.",
+      "why": "Rather than implementing asynchronous timeout behavior manually, prefer built-in timeout functionality, such as `asyncio.timeout`, `trio.fail_after`, or `anyio.move_on_after`, among others. This rule is highly opinionated to enforce a design pattern called \"structured concurrency\" that allows for `async` functions to be oblivious to timeouts, instead letting callers to handle the logic with a context manager.",
+      "useInstead": "async def long_running_task(): ...\n\n\nasync def main():\n    async with asyncio.timeout(2):\n        await long_running_task()"
+    },
+    {
+      "code": "ASYNC110",
+      "name": "async-busy-wait",
+      "linter": "flake8-async",
+      "summary": "Use `{module}.Event` instead of awaiting `{module}.sleep` in a `while` loop",
+      "whatItDoes": "Checks for the use of an async sleep function in a `while` loop.",
+      "why": "Busy-waiting for a condition in a loop forces a tradeoff between efficiency and latency: shorter sleep times improve responsiveness but waste more CPU cycles, while longer sleep times reduce CPU usage but delay reaction to state changes. Waiting on an `Event` object like `asyncio.Event`, `trio.Event`, or `anyio.Event` eliminates this tradeoff, allowing immediate response with minimal wasted CPU time.",
+      "useInstead": "import asyncio\n\nDONE = asyncio.Event()\n\n\nasync def func():\n    await DONE.wait()"
+    },
+    {
+      "code": "ASYNC115",
+      "name": "async-zero-sleep",
+      "linter": "flake8-async",
+      "summary": "Use `{module}.lowlevel.checkpoint()` instead of `{module}.sleep(0)`",
+      "whatItDoes": "Checks for uses of `trio.sleep(0)` or `anyio.sleep(0)`.",
+      "why": "`trio.sleep(0)` is equivalent to calling `trio.lowlevel.checkpoint()`. However, the latter better conveys the intent of the code.",
+      "useInstead": "import trio.lowlevel\n\n\nasync def func():\n    await trio.lowlevel.checkpoint()"
+    },
+    {
+      "code": "ASYNC116",
+      "name": "long-sleep-not-forever",
+      "linter": "flake8-async",
+      "summary": "`{module}.sleep()` with >24 hour interval should usually be `{module}.sleep_forever()`",
+      "whatItDoes": "Checks for uses of `trio.sleep()` or `anyio.sleep()` with a delay greater than 24 hours.",
+      "why": "Calling `sleep()` with a delay greater than 24 hours is usually intended to sleep indefinitely. Instead of using a large delay, `trio.sleep_forever()` or `anyio.sleep_forever()` better conveys the intent.",
+      "useInstead": "import trio\n\n\nasync def func():\n    await trio.sleep_forever()"
+    },
+    {
+      "code": "ASYNC210",
+      "name": "blocking-http-call-in-async-function",
+      "linter": "flake8-async",
+      "summary": "Async functions should not call blocking HTTP methods",
+      "whatItDoes": "Checks that async functions do not contain blocking HTTP calls.",
+      "why": "Blocking an async function via a blocking HTTP call will block the entire event loop, preventing it from executing other tasks while waiting for the HTTP response, negating the benefits of asynchronous programming. Instead of making a blocking HTTP call, use an asynchronous HTTP client library such as `aiohttp` or `httpx`.",
+      "useInstead": "import aiohttp\n\n\nasync def fetch():\n    async with aiohttp.ClientSession() as session:\n        async with session.get(\"https://example.com/foo/bar\") as resp:\n            ..."
+    },
+    {
+      "code": "ASYNC212",
+      "name": "blocking-http-call-httpx-in-async-function",
+      "linter": "flake8-async",
+      "summary": "Blocking httpx method {name}.{call}() in async context, use httpx.AsyncClient",
+      "whatItDoes": "Checks that async functions do not use blocking httpx clients.",
+      "why": "Blocking an async function via a blocking HTTP call will block the entire event loop, preventing it from executing other tasks while waiting for the HTTP response, negating the benefits of asynchronous programming. Instead of using the blocking `httpx` client, use the asynchronous client.",
+      "useInstead": "import httpx\n\n\nasync def fetch():\n    async with httpx.AsyncClient() as client:\n        response = await client.get(...)"
+    },
+    {
+      "code": "ASYNC220",
+      "name": "create-subprocess-in-async-function",
+      "linter": "flake8-async",
+      "summary": "Async functions should not create subprocesses with blocking methods",
+      "whatItDoes": "Checks that async functions do not create subprocesses with blocking methods.",
+      "why": "Blocking an async function via a blocking call will block the entire event loop, preventing it from executing other tasks while waiting for the call to complete, negating the benefits of asynchronous programming. Instead of making a blocking call, use an equivalent asynchronous library or function, like [`trio.run_process()`](https://trio.readthedocs.io/en/stable/reference-io.html#trio.run_process) or [`anyio.run_process()`](https://anyio.readthedocs.io/en/latest/api.html#anyio.run_process).",
+      "useInstead": "import asyncio\n\n\nasync def foo():\n    asyncio.create_subprocess_shell(cmd)"
+    },
+    {
+      "code": "ASYNC221",
+      "name": "run-process-in-async-function",
+      "linter": "flake8-async",
+      "summary": "Async functions should not run processes with blocking methods",
+      "whatItDoes": "Checks that async functions do not run processes with blocking methods.",
+      "why": "Blocking an async function via a blocking call will block the entire event loop, preventing it from executing other tasks while waiting for the call to complete, negating the benefits of asynchronous programming. Instead of making a blocking call, use an equivalent asynchronous library or function, like [`trio.run_process()`](https://trio.readthedocs.io/en/stable/reference-io.html#trio.run_process) or [`anyio.run_process()`](https://anyio.readthedocs.io/en/latest/api.html#anyio.run_process).",
+      "useInstead": "import asyncio\n\n\nasync def foo():\n    asyncio.create_subprocess_shell(cmd)"
+    },
+    {
+      "code": "ASYNC222",
+      "name": "wait-for-process-in-async-function",
+      "linter": "flake8-async",
+      "summary": "Async functions should not wait on processes with blocking methods",
+      "whatItDoes": "Checks that async functions do not wait on processes with blocking methods.",
+      "why": "Blocking an async function via a blocking call will block the entire event loop, preventing it from executing other tasks while waiting for the call to complete, negating the benefits of asynchronous programming. Instead of making a blocking call, use an equivalent asynchronous library or function, like [`trio.to_thread.run_sync()`](https://trio.readthedocs.io/en/latest/reference-core.html#trio.to_thread.run_sync) or [`anyio.to_thread.run_sync()`](https://anyio.readthedocs.io/en/latest/api.html#anyio.to_thread.run_sync).",
+      "useInstead": "import asyncio\nimport os\n\n\ndef wait_for_process():\n    os.waitpid(0)\n\n\nasync def foo():\n    await asyncio.loop.run_in_executor(None, wait_for_process)"
+    },
+    {
+      "code": "ASYNC230",
+      "name": "blocking-open-call-in-async-function",
+      "linter": "flake8-async",
+      "summary": "Async functions should not open files with blocking methods like `open`",
+      "whatItDoes": "Checks that async functions do not open files with blocking methods like `open`.",
+      "why": "Blocking an async function via a blocking call will block the entire event loop, preventing it from executing other tasks while waiting for the call to complete, negating the benefits of asynchronous programming. Instead of making a blocking call, use an equivalent asynchronous library or function.",
+      "useInstead": "import anyio\n\n\nasync def foo():\n    async with await anyio.open_file(\"bar.txt\") as f:\n        contents = await f.read()"
+    },
+    {
+      "code": "ASYNC240",
+      "name": "blocking-path-method-in-async-function",
+      "linter": "flake8-async",
+      "summary": "Async functions should not perform blocking {path_library} operations",
+      "whatItDoes": "Checks that async functions do not call blocking `os.path` functions or `pathlib.Path` methods.",
+      "why": "Calling some `os.path` functions or `pathlib.Path` methods in an async function will block the entire event loop, preventing it from executing other tasks while waiting for the operation. This negates the benefits of asynchronous programming. Instead, run blocking path operations in a separate thread, or use an API that provides asynchronous path operations, such as `aiofiles.os.path`, `anyio.Path`, or `trio.Path`."
+    },
+    {
+      "code": "ASYNC250",
+      "name": "blocking-input-in-async-function",
+      "linter": "flake8-async",
+      "summary": "Blocking call to `input()` in async context",
+      "whatItDoes": "Checks that async functions do not contain blocking usage of input from user.",
+      "why": "Blocking an async function via a blocking input call will block the entire event loop, preventing it from executing other tasks while waiting for user input, negating the benefits of asynchronous programming. Instead of making a blocking input call directly, wrap the input call in an executor to execute the blocking call on another thread.",
+      "useInstead": "import asyncio\n\n\nasync def foo():\n    loop = asyncio.get_running_loop()\n    username = await loop.run_in_executor(None, input, \"Username:\")"
+    },
+    {
+      "code": "ASYNC251",
+      "name": "blocking-sleep-in-async-function",
+      "linter": "flake8-async",
+      "summary": "Async functions should not call `time.sleep`",
+      "whatItDoes": "Checks that async functions do not call `time.sleep`.",
+      "why": "Blocking an async function via a `time.sleep` call will block the entire event loop, preventing it from executing other tasks while waiting for the `time.sleep`, negating the benefits of asynchronous programming. Instead of `time.sleep`, use `asyncio.sleep`.",
+      "useInstead": "import asyncio\n\n\nasync def fetch():\n    await asyncio.sleep(1)"
+    },
+    {
       "code": "B002",
       "name": "unary-prefix-increment-decrement",
       "linter": "flake8-bugbear",
@@ -1257,6 +1391,69 @@
       "useInstead": "import logging\n\ntry:\n    ...\nexcept ValueError:\n    logging.exception(\"Exception occurred\")"
     },
     {
+      "code": "LOG001",
+      "name": "direct-logger-instantiation",
+      "linter": "flake8-logging",
+      "summary": "Use `logging.getLogger()` to instantiate loggers",
+      "whatItDoes": "Checks for direct instantiation of `logging.Logger`, as opposed to using `logging.getLogger()`.",
+      "why": "The Logger Objects documentation states that: > Note that Loggers should NEVER be instantiated directly, but always > through the module-level function `logging.getLogger(name)`.",
+      "useInstead": "import logging\n\nlogger = logging.getLogger(__name__)"
+    },
+    {
+      "code": "LOG002",
+      "name": "invalid-get-logger-argument",
+      "linter": "flake8-logging",
+      "summary": "Use `__name__` with `logging.getLogger()`",
+      "whatItDoes": "Checks for any usage of `__cached__` and `__file__` as an argument to `logging.getLogger()`.",
+      "why": "The logging documentation recommends this pattern: Here, `__name__` is the fully qualified module name, such as `foo.bar`, which is the intended format for logger names.",
+      "useInstead": "import logging\n\nlogger = logging.getLogger(__name__)"
+    },
+    {
+      "code": "LOG004",
+      "name": "log-exception-outside-except-handler",
+      "linter": "flake8-logging",
+      "summary": "`.exception()` call outside exception handlers",
+      "whatItDoes": "Checks for `.exception()` logging calls outside of exception handlers.",
+      "why": "The documentation states: > This function should only be called from an exception handler. Calling `.exception()` outside of an exception handler attaches `None` as exception information, leading to confusing messages:",
+      "useInstead": "import logging\n\nlogging.error(\"Foobar\")"
+    },
+    {
+      "code": "LOG007",
+      "name": "exception-without-exc-info",
+      "linter": "flake8-logging",
+      "summary": "Use of `logging.exception` with falsy `exc_info`",
+      "whatItDoes": "Checks for uses of `logging.exception()` with `exc_info` set to `False`.",
+      "why": "The `logging.exception()` method captures the exception automatically, but accepts an optional `exc_info` argument to override this behavior. Setting `exc_info` to `False` disables the automatic capture of the exception and stack trace. Instead of setting `exc_info` to `False`, prefer `logging.error()`, which has equivalent behavior to `logging.exception()` with `exc_info` set to `False`, but is clearer in intent.",
+      "useInstead": "logging.error(\"...\")"
+    },
+    {
+      "code": "LOG009",
+      "name": "undocumented-warn",
+      "linter": "flake8-logging",
+      "summary": "Use of undocumented `logging.WARN` constant",
+      "whatItDoes": "Checks for uses of `logging.WARN`.",
+      "why": "The `logging.WARN` constant is an undocumented alias for `logging.WARNING`. Although it’s not explicitly deprecated, `logging.WARN` is not mentioned in the `logging` documentation. Prefer `logging.WARNING` instead.",
+      "useInstead": "import logging\n\n\nlogging.basicConfig(level=logging.WARNING)"
+    },
+    {
+      "code": "LOG014",
+      "name": "exc-info-outside-except-handler",
+      "linter": "flake8-logging",
+      "summary": "`exc_info=` outside exception handlers",
+      "whatItDoes": "Checks for logging calls with `exc_info=` outside exception handlers.",
+      "why": "Using `exc_info=True` outside of an exception handler attaches `None` as the exception information, leading to confusing messages:",
+      "useInstead": "import logging\n\n\nlogging.warning(\"Foobar\")"
+    },
+    {
+      "code": "LOG015",
+      "name": "root-logger-call",
+      "linter": "flake8-logging",
+      "summary": "`{}()` call on root logger",
+      "whatItDoes": "Checks for usages of the following `logging` top-level functions: `debug`, `info`, `warn`, `warning`, `error`, `critical`, `log`, `exception`.",
+      "why": "Using the root logger causes the messages to have no source information, making them less useful for debugging.",
+      "useInstead": "import logging\n\nlogger = logging.getLogger(__name__)\nlogger.info(\"Foobar\")"
+    },
+    {
       "code": "N801",
       "name": "invalid-class-name",
       "linter": "pep8-naming",
@@ -1526,6 +1723,282 @@
       "useInstead": "msg = \"Hello, world!\"\nif msg.startswith((\"Hello\", \"Hi\")):\n    print(\"Greetings!\")"
     },
     {
+      "code": "PLE0100",
+      "name": "yield-in-init",
+      "linter": "Pylint",
+      "summary": "`__init__` method is a generator",
+      "whatItDoes": "Checks for `__init__` methods that are turned into generators by the inclusion of `yield` or `yield from` expressions.",
+      "why": "The `__init__` method is the constructor for a given Python class, responsible for initializing, rather than creating, new objects. The `__init__` method has to return `None`. By including a `yield` or `yield from` expression in an `__init__`, the method will return a generator object when called at runtime, resulting in a runtime error."
+    },
+    {
+      "code": "PLE0101",
+      "name": "return-in-init",
+      "linter": "Pylint",
+      "summary": "Explicit return in `__init__`",
+      "whatItDoes": "Checks for `__init__` methods that return values.",
+      "why": "The `__init__` method is the constructor for a given Python class, responsible for initializing, rather than creating, new objects. The `__init__` method has to return `None`. Returning any value from an `__init__` method will result in a runtime error.",
+      "useInstead": "class Example:\n    def __init__(self):\n        self.value = []"
+    },
+    {
+      "code": "PLE0115",
+      "name": "nonlocal-and-global",
+      "linter": "Pylint",
+      "summary": "Name `{name}` is both `nonlocal` and `global`",
+      "whatItDoes": "Checks for variables which are both declared as both `nonlocal` and `global`.",
+      "why": "A `nonlocal` variable is a variable that is defined in the nearest enclosing scope, but not in the global scope, while a `global` variable is a variable that is defined in the global scope. Declaring a variable as both `nonlocal` and `global` is contradictory and will raise a `SyntaxError`.",
+      "useInstead": "counter = 0\n\n\ndef increment():\n    global counter\n    counter += 1"
+    },
+    {
+      "code": "PLE0117",
+      "name": "nonlocal-without-binding",
+      "linter": "Pylint",
+      "summary": "Nonlocal name `{name}` found without binding",
+      "whatItDoes": "Checks for `nonlocal` names without bindings.",
+      "why": "`nonlocal` names must be bound to a name in an outer scope. Violating this rule leads to a `SyntaxError` at runtime.",
+      "useInstead": "def foo():\n    bar = 1\n\n    def get_bar(self):\n        nonlocal bar\n        ..."
+    },
+    {
+      "code": "PLE0118",
+      "name": "load-before-global-declaration",
+      "linter": "Pylint",
+      "summary": "Name `{name}` is used prior to global declaration on {row}",
+      "whatItDoes": "Checks for uses of names that are declared as `global` prior to the relevant `global` declaration.",
+      "why": "The `global` declaration applies to the entire scope. Using a name that's declared as `global` in a given scope prior to the relevant `global` declaration is a `SyntaxError`.",
+      "useInstead": "counter = 1\n\n\ndef increment():\n    global counter\n    print(f\"Adding 1 to {counter}\")\n    counter += 1"
+    },
+    {
+      "code": "PLE0237",
+      "name": "non-slot-assignment",
+      "linter": "Pylint",
+      "summary": "Attribute `{name}` is not defined in class's `__slots__`",
+      "whatItDoes": "Checks for assignments to attributes that are not defined in `__slots__`.",
+      "why": "When using `__slots__`, only the specified attributes are allowed. Attempting to assign to an attribute that is not defined in `__slots__` will result in an `AttributeError` at runtime.",
+      "useInstead": "class Student:\n    __slots__ = (\"name\", \"surname\")\n\n    def __init__(self, name, surname):\n        self.name = name\n        self.surname = surname\n        self.setup()\n\n    def setup(self):\n        pass"
+    },
+    {
+      "code": "PLE0241",
+      "name": "duplicate-bases",
+      "linter": "Pylint",
+      "summary": "Duplicate base `{base}` for class `{class}`",
+      "whatItDoes": "Checks for duplicate base classes in class definitions.",
+      "why": "Including duplicate base classes will raise a `TypeError` at runtime.",
+      "useInstead": "class Foo:\n    pass\n\n\nclass Bar(Foo):\n    pass"
+    },
+    {
+      "code": "PLE0302",
+      "name": "unexpected-special-method-signature",
+      "linter": "Pylint",
+      "summary": "The special method `{}` expects {}, {} {} given",
+      "whatItDoes": "Checks for \"special\" methods that have an unexpected method signature.",
+      "why": "\"Special\" methods, like `__len__`, are expected to adhere to a specific, standard function signature. Implementing a \"special\" method using a non-standard function signature can lead to unexpected and surprising behavior for users of a given class.",
+      "useInstead": "class Bookshelf:\n    def __init__(self):\n        self._books = [\"Foo\", \"Bar\", \"Baz\"]\n\n    def __len__(self):\n        return len(self._books)\n\n    def __getitem__(self, index):\n        return self._books[index]"
+    },
+    {
+      "code": "PLE0303",
+      "name": "invalid-length-return-type",
+      "linter": "Pylint",
+      "summary": "`__len__` does not return a non-negative integer",
+      "whatItDoes": "Checks for `__len__` implementations that return values that are not non-negative integers.",
+      "why": "The `__len__` method should return a non-negative integer. Returning a different value may cause unexpected behavior. Note: `bool` is a subclass of `int`, so it's technically valid for `__len__` to return `True` or `False`. However, for consistency with other rules, Ruff will still emit a diagnostic when `__len__` returns a `bool`.",
+      "useInstead": "class Foo:\n    def __len__(self):\n        return 2"
+    },
+    {
+      "code": "PLE0304",
+      "name": "invalid-bool-return-type",
+      "linter": "Pylint",
+      "summary": "`__bool__` does not return `bool`",
+      "whatItDoes": "Checks for `__bool__` implementations that return a type other than `bool`.",
+      "why": "The `__bool__` method should return a `bool` object. Returning a different type may cause unexpected behavior.",
+      "useInstead": "class Foo:\n    def __bool__(self):\n        return True"
+    },
+    {
+      "code": "PLE0305",
+      "name": "invalid-index-return-type",
+      "linter": "Pylint",
+      "summary": "`__index__` does not return an integer",
+      "whatItDoes": "Checks for `__index__` implementations that return non-integer values.",
+      "why": "The `__index__` method should return an integer. Returning a different type may cause unexpected behavior. Note: `bool` is a subclass of `int`, so it's technically valid for `__index__` to return `True` or `False`. However, a `DeprecationWarning` (`DeprecationWarning: __index__ returned non-int (type bool)`) for such cases was already introduced, thus this is a conscious difference between the original pylint rule and the current ruff implementation.",
+      "useInstead": "class Foo:\n    def __index__(self):\n        return 2"
+    },
+    {
+      "code": "PLE0307",
+      "name": "invalid-str-return-type",
+      "linter": "Pylint",
+      "summary": "`__str__` does not return `str`",
+      "whatItDoes": "Checks for `__str__` implementations that return a type other than `str`.",
+      "why": "The `__str__` method should return a `str` object. Returning a different type may cause unexpected behavior.",
+      "useInstead": "class Foo:\n    def __str__(self):\n        return \"Foo\""
+    },
+    {
+      "code": "PLE0308",
+      "name": "invalid-bytes-return-type",
+      "linter": "Pylint",
+      "summary": "`__bytes__` does not return `bytes`",
+      "whatItDoes": "Checks for `__bytes__` implementations that return types other than `bytes`.",
+      "why": "The `__bytes__` method should return a `bytes` object. Returning a different type may cause unexpected behavior.",
+      "useInstead": "class Foo:\n    def __bytes__(self):\n        return b\"2\""
+    },
+    {
+      "code": "PLE0309",
+      "name": "invalid-hash-return-type",
+      "linter": "Pylint",
+      "summary": "`__hash__` does not return an integer",
+      "whatItDoes": "Checks for `__hash__` implementations that return non-integer values.",
+      "why": "The `__hash__` method should return an integer. Returning a different type may cause unexpected behavior. Note: `bool` is a subclass of `int`, so it's technically valid for `__hash__` to return `True` or `False`. However, for consistency with other rules, Ruff will still emit a diagnostic when `__hash__` returns a `bool`.",
+      "useInstead": "class Foo:\n    def __hash__(self):\n        return 2"
+    },
+    {
+      "code": "PLE0604",
+      "name": "invalid-all-object",
+      "linter": "Pylint",
+      "summary": "Invalid object in `__all__`, must contain only strings",
+      "whatItDoes": "Checks for the inclusion of invalid objects in `__all__`.",
+      "why": "In Python, `__all__` should contain a sequence of strings that represent the names of all \"public\" symbols exported by a module. Assigning anything other than a `tuple` or `list` of strings to `__all__` is invalid.",
+      "useInstead": "__all__ = [\"Foo\", \"Bar\", \"Baz\"]"
+    },
+    {
+      "code": "PLE0605",
+      "name": "invalid-all-format",
+      "linter": "Pylint",
+      "summary": "Invalid format for `__all__`, must be `tuple` or `list`",
+      "whatItDoes": "Checks for invalid assignments to `__all__`.",
+      "why": "In Python, `__all__` should contain a sequence of strings that represent the names of all \"public\" symbols exported by a module. Assigning anything other than a `tuple` or `list` of strings to `__all__` is invalid.",
+      "useInstead": "__all__ = (\"Foo\",)"
+    },
+    {
+      "code": "PLE0643",
+      "name": "potential-index-error",
+      "linter": "Pylint",
+      "summary": "Expression is likely to raise `IndexError`",
+      "whatItDoes": "Checks for hard-coded sequence accesses that are known to be out of bounds.",
+      "why": "Attempting to access a sequence with an out-of-bounds index will cause an `IndexError` to be raised at runtime. When the sequence and index are defined statically (e.g., subscripts on `list` and `tuple` literals, with integer indexes), such errors can be detected ahead of time."
+    },
+    {
+      "code": "PLE0704",
+      "name": "misplaced-bare-raise",
+      "linter": "Pylint",
+      "summary": "Bare `raise` statement is not inside an exception handler",
+      "whatItDoes": "Checks for bare `raise` statements outside of exception handlers.",
+      "why": "A bare `raise` statement without an exception object will re-raise the last exception that was active in the current scope, and is typically used within an exception handler to re-raise the caught exception. If a bare `raise` is used outside of an exception handler, it will generate an error due to the lack of an active exception.",
+      "useInstead": "from typing import Any\n\n\ndef is_some(obj: Any) -> bool:\n    if obj is None:\n        raise ValueError(\"`obj` cannot be `None`\")"
+    },
+    {
+      "code": "PLE1142",
+      "name": "await-outside-async",
+      "linter": "Pylint",
+      "summary": "`await` should be used within an async function",
+      "whatItDoes": "Checks for uses of `await` outside `async` functions.",
+      "why": "Using `await` outside an `async` function is a syntax error.",
+      "useInstead": "import asyncio\n\n\nasync def foo():\n    await asyncio.sleep(1)"
+    },
+    {
+      "code": "PLE1205",
+      "name": "logging-too-many-args",
+      "linter": "Pylint",
+      "summary": "Too many arguments for `logging` format string",
+      "whatItDoes": "Checks for too many positional arguments for a `logging` format string.",
+      "why": "A `TypeError` will be raised if the statement is run.",
+      "useInstead": "import logging\n\ntry:\n    function()\nexcept Exception as e:\n    logging.error(\"%s error occurred: %s\", type(e), e)\n    raise"
+    },
+    {
+      "code": "PLE1206",
+      "name": "logging-too-few-args",
+      "linter": "Pylint",
+      "summary": "Not enough arguments for `logging` format string",
+      "whatItDoes": "Checks for too few positional arguments for a `logging` format string.",
+      "why": "A `TypeError` will be raised if the statement is run.",
+      "useInstead": "import logging\n\ntry:\n    function()\nexcept Exception as e:\n    logging.error(\"%s error occurred: %s\", type(e), e)\n    raise"
+    },
+    {
+      "code": "PLE1507",
+      "name": "invalid-envvar-value",
+      "linter": "Pylint",
+      "summary": "Invalid type for initial `os.getenv` argument; expected `str`",
+      "whatItDoes": "Checks for `os.getenv` calls with an invalid `key` argument.",
+      "why": "`os.getenv` only supports strings as the first argument (`key`). If the provided argument is not a string, `os.getenv` will throw a `TypeError` at runtime.",
+      "useInstead": "import os\n\nos.getenv(\"1\")"
+    },
+    {
+      "code": "PLE1519",
+      "name": "singledispatch-method",
+      "linter": "Pylint",
+      "summary": "`@singledispatch` decorator should not be used on methods",
+      "whatItDoes": "Checks for methods decorated with `@singledispatch`.",
+      "why": "The `@singledispatch` decorator is intended for use with functions, not methods. Instead, use the `@singledispatchmethod` decorator, or migrate the method to a standalone function.",
+      "useInstead": "from functools import singledispatchmethod\n\n\nclass Class:\n    @singledispatchmethod\n    def method(self, arg): ..."
+    },
+    {
+      "code": "PLE1520",
+      "name": "singledispatchmethod-function",
+      "linter": "Pylint",
+      "summary": "`@singledispatchmethod` decorator should not be used on non-method functions",
+      "whatItDoes": "Checks for non-method functions decorated with `@singledispatchmethod`.",
+      "why": "The `@singledispatchmethod` decorator is intended for use with methods, not functions. Instead, use the `@singledispatch` decorator.",
+      "useInstead": "from functools import singledispatch\n\n\n@singledispatch\ndef func(arg): ..."
+    },
+    {
+      "code": "PLE1700",
+      "name": "yield-from-in-async-function",
+      "linter": "Pylint",
+      "summary": "`yield from` statement in async function; use `async for` instead",
+      "whatItDoes": "Checks for uses of `yield from` in async functions.",
+      "why": "Python doesn't support the use of `yield from` in async functions, and will raise a `SyntaxError` in such cases. Instead, considering refactoring the code to use an `async for` loop instead.",
+      "useInstead": "async def numbers():\n    async for number in [1, 2, 3, 4, 5]:\n        yield number"
+    },
+    {
+      "code": "PLE2502",
+      "name": "bidirectional-unicode",
+      "linter": "Pylint",
+      "summary": "Contains control characters that can permit obfuscated code",
+      "whatItDoes": "Checks for bidirectional formatting characters.",
+      "why": "The interaction between bidirectional formatting characters and the surrounding code can be surprising to those that are unfamiliar with right-to-left writing systems. In some cases, bidirectional formatting characters can also be used to obfuscate code and introduce or mask security vulnerabilities."
+    },
+    {
+      "code": "PLE2510",
+      "name": "invalid-character-backspace",
+      "linter": "Pylint",
+      "summary": "Invalid unescaped character backspace, use \"\\b\" instead",
+      "whatItDoes": "Checks for strings that contain the control character `BS`.",
+      "why": "Control characters are displayed differently by different text editors and terminals. By using the `\\b` sequence in lieu of the `BS` control character, the string will contain the same value, but will render visibly in all editors.",
+      "useInstead": "x = \"\\b\""
+    },
+    {
+      "code": "PLE2512",
+      "name": "invalid-character-sub",
+      "linter": "Pylint",
+      "summary": "Invalid unescaped character SUB, use \"\\x1a\" instead",
+      "whatItDoes": "Checks for strings that contain the raw control character `SUB`.",
+      "why": "Control characters are displayed differently by different text editors and terminals. By using the `\\x1a` sequence in lieu of the `SUB` control character, the string will contain the same value, but will render visibly in all editors.",
+      "useInstead": "x = \"\\x1a\""
+    },
+    {
+      "code": "PLE2513",
+      "name": "invalid-character-esc",
+      "linter": "Pylint",
+      "summary": "Invalid unescaped character ESC, use \"\\x1b\" instead",
+      "whatItDoes": "Checks for strings that contain the raw control character `ESC`.",
+      "why": "Control characters are displayed differently by different text editors and terminals. By using the `\\x1b` sequence in lieu of the `ESC` control character, the string will contain the same value, but will render visibly in all editors.",
+      "useInstead": "x = \"\\x1b\""
+    },
+    {
+      "code": "PLE2514",
+      "name": "invalid-character-nul",
+      "linter": "Pylint",
+      "summary": "Invalid unescaped character NUL, use \"\\0\" instead",
+      "whatItDoes": "Checks for strings that contain the raw control character `NUL` (0 byte).",
+      "why": "Control characters are displayed differently by different text editors and terminals. By using the `\\0` sequence in lieu of the `NUL` control character, the string will contain the same value, but will render visibly in all editors.",
+      "useInstead": "x = \"\\0\""
+    },
+    {
+      "code": "PLE2515",
+      "name": "invalid-character-zero-width-space",
+      "linter": "Pylint",
+      "summary": "Invalid unescaped character zero-width-space, use \"\\u200B\" instead",
+      "whatItDoes": "Checks for strings that contain the zero width space character.",
+      "why": "This character is rendered invisibly in some text editors and terminals. By using the `\\u200B` sequence, the string will contain the same value, but will render visibly in all editors.",
+      "useInstead": "x = \"Dear Sir\\u200b/\\u200bMadam\"  # zero width space"
+    },
+    {
       "code": "PLR2004",
       "name": "magic-value-comparison",
       "linter": "Pylint",
@@ -1533,6 +2006,103 @@
       "whatItDoes": "Checks for the use of unnamed numerical constants (\"magic\") values in comparisons.",
       "why": "The use of \"magic\" values can make code harder to read and maintain, as readers will have to infer the meaning of the value from the context. Such values are discouraged by PEP 8. For convenience, this rule excludes a variety of common values from the \"magic\" value definition, such as `0`, `1`, `\"\"`, and `\"__main__\"`. It also exempts comparisons against `sys.version`, `sys.version_info`, and `sys.implementation.version`.",
       "useInstead": "MAX_DISCOUNT = 100\n\n\ndef apply_discount(price: float) -> float:\n    if price <= MAX_DISCOUNT:\n        return price / 2\n    else:\n        return price"
+    },
+    {
+      "code": "PLW0108",
+      "name": "unnecessary-lambda",
+      "linter": "Pylint",
+      "summary": "Lambda may be unnecessary; consider inlining inner function",
+      "whatItDoes": "Checks for `lambda` definitions that consist of a single function call with the same arguments as the `lambda` itself.",
+      "why": "When a `lambda` is used to wrap a function call, and merely propagates the `lambda` arguments to that function, it can typically be replaced with the function itself, removing a level of indirection.",
+      "useInstead": "df.apply(str)"
+    },
+    {
+      "code": "PLW0120",
+      "name": "useless-else-on-loop",
+      "linter": "Pylint",
+      "summary": "`else` clause on loop without a `break` statement; remove the `else` and dedent its contents",
+      "whatItDoes": "Checks for `else` clauses on loops without a `break` statement.",
+      "why": "When a loop includes an `else` statement, the code inside the `else` clause will be executed if the loop terminates \"normally\" (i.e., without a `break`). If a loop always terminates \"normally\" (i.e., does not contain a `break`), then the `else` clause is redundant, as the code inside the `else` clause will always be executed.",
+      "useInstead": "for item in items:\n    print(item)\nprint(\"All items printed\")"
+    },
+    {
+      "code": "PLW0127",
+      "name": "self-assigning-variable",
+      "linter": "Pylint",
+      "summary": "Self-assignment of variable `{name}`",
+      "whatItDoes": "Checks for self-assignment of variables.",
+      "why": "Self-assignment of variables is redundant and likely a mistake.",
+      "useInstead": "country = \"Poland\""
+    },
+    {
+      "code": "PLW0128",
+      "name": "redeclared-assigned-name",
+      "linter": "Pylint",
+      "summary": "Redeclared variable `{name}` in assignment",
+      "whatItDoes": "Checks for declared assignments to the same variable multiple times in the same assignment.",
+      "why": "Assigning a variable multiple times in the same assignment is redundant, as the final assignment to the variable is what the value will be.",
+      "useInstead": "# this is assuming you want to assign 3 to `a`\n_, b, a = (1, 2, 3)\nprint(a)  # 3"
+    },
+    {
+      "code": "PLW0129",
+      "name": "assert-on-string-literal",
+      "linter": "Pylint",
+      "summary": "Asserting on an empty string literal will never pass",
+      "whatItDoes": "Checks for `assert` statements that use a string literal as the first argument.",
+      "why": "An `assert` on a non-empty string literal will always pass, while an `assert` on an empty string literal will always fail."
+    },
+    {
+      "code": "PLW0131",
+      "name": "named-expr-without-context",
+      "linter": "Pylint",
+      "summary": "Named expression used without context",
+      "whatItDoes": "Checks for uses of named expressions (e.g., `a := 42`) that can be replaced by regular assignment statements (e.g., `a = 42`).",
+      "why": "While a top-level named expression is syntactically and semantically valid, it's less clear than a regular assignment statement. Named expressions are intended to be used in comprehensions and generator expressions, where assignment statements are not allowed.",
+      "useInstead": "a = 42"
+    },
+    {
+      "code": "PLW0133",
+      "name": "useless-exception-statement",
+      "linter": "Pylint",
+      "summary": "Missing `raise` statement on exception",
+      "whatItDoes": "Checks for an exception that is not raised.",
+      "why": "It's unnecessary to create an exception without raising it. For example, `ValueError(\"...\")` on its own will have no effect (unlike `raise ValueError(\"...\")`) and is likely a mistake.",
+      "useInstead": "raise ValueError(\"...\")"
+    },
+    {
+      "code": "PLW0177",
+      "name": "nan-comparison",
+      "linter": "Pylint",
+      "summary": "Comparing against a NaN value; use `math.isnan` instead",
+      "whatItDoes": "Checks for comparisons against NaN values.",
+      "why": "Comparing against a NaN value can lead to unexpected results. For example, `float(\"NaN\") == float(\"NaN\")` will return `False` and, in general, `x == float(\"NaN\")` will always return `False`, even if `x` is `NaN`. To determine whether a value is `NaN`, use `math.isnan` or `np.isnan` instead of comparing against `NaN` directly.",
+      "useInstead": "import math\n\nif math.isnan(x):\n    pass"
+    },
+    {
+      "code": "PLW0211",
+      "name": "bad-staticmethod-argument",
+      "linter": "Pylint",
+      "summary": "First argument of a static method should not be named `{argument_name}`",
+      "whatItDoes": "Checks for static methods that use `self` or `cls` as their first argument. This rule also applies to `__new__` methods, which are implicitly static.",
+      "why": "PEP 8 recommends the use of `self` and `cls` as the first arguments for instance methods and class methods, respectively. Naming the first argument of a static method as `self` or `cls` can be misleading, as static methods do not receive an instance or class reference as their first argument.",
+      "useInstead": "class Wolf:\n    @staticmethod\n    def eat(sheep):\n        pass"
+    },
+    {
+      "code": "PLW0245",
+      "name": "super-without-brackets",
+      "linter": "Pylint",
+      "summary": "`super` call is missing parentheses",
+      "whatItDoes": "Detects attempts to use `super` without parentheses.",
+      "why": "The [`super()` callable](https://docs.python.org/3/library/functions.html#super) can be used inside method definitions to create a proxy object that delegates attribute access to a superclass of the current class. Attempting to access attributes on `super` itself, however, instead of the object returned by a call to `super()`, will raise `AttributeError`.",
+      "useInstead": "class Animal:\n    @staticmethod\n    def speak():\n        return \"This animal says something.\"\n\n\nclass Dog(Animal):\n    @staticmethod\n    def speak():\n        original_speak = super().speak()  # Correct: `super().speak()`\n        return f\"{original_speak} But as a dog, it barks!\""
+    },
+    {
+      "code": "PLW0406",
+      "name": "import-self",
+      "linter": "Pylint",
+      "summary": "Module `{name}` imports itself",
+      "whatItDoes": "Checks for import statements that import the current module.",
+      "why": "Importing a module from itself is a circular dependency and results in an `ImportError` exception."
     },
     {
       "code": "PLW0602",
@@ -1551,6 +2121,94 @@
       "whatItDoes": "Checks for the use of `global` statements to update identifiers.",
       "why": "Pylint discourages the use of `global` variables as global mutable state is a common source of bugs and confusing behavior.",
       "useInstead": "var = 1\n\n\ndef foo():\n    var = 10\n    print(var)\n    return var\n\n\nvar = foo()\nprint(var)"
+    },
+    {
+      "code": "PLW0604",
+      "name": "global-at-module-level",
+      "linter": "Pylint",
+      "summary": "`global` at module level is redundant",
+      "whatItDoes": "Checks for uses of the `global` keyword at the module level.",
+      "why": "The `global` keyword is used within functions to indicate that a name refers to a global variable, rather than a local variable. At the module level, all names are global by default, so the `global` keyword is redundant."
+    },
+    {
+      "code": "PLW0642",
+      "name": "self-or-cls-assignment",
+      "linter": "Pylint",
+      "summary": "Reassigned `{}` variable in {method_type} method",
+      "whatItDoes": "Checks for assignment of `self` and `cls` in instance and class methods respectively.",
+      "why": "The identifiers `self` and `cls` are conventional in Python for the first parameter of instance methods and class methods, respectively. Assigning new values to these variables can be confusing for others reading your code; using a different variable name can lead to clearer code.",
+      "useInstead": "class Version:\n    def add(self, other):\n        new_version = self + other\n        return new_version\n\n    @classmethod\n    def superclass(cls):\n        supercls = cls.__mro__[-1]\n        return supercls"
+    },
+    {
+      "code": "PLW1501",
+      "name": "bad-open-mode",
+      "linter": "Pylint",
+      "summary": "`{mode}` is not a valid mode for `open`",
+      "whatItDoes": "Check for an invalid `mode` argument in `open` calls.",
+      "why": "The `open` function accepts a `mode` argument that specifies how the file should be opened (e.g., read-only, write-only, append-only, etc.). Python supports a variety of open modes: `r`, `w`, `a`, and `x`, to control reading, writing, appending, and creating, respectively, along with `b` (binary mode), `+` (read and write), and `U` (universal newlines), the latter of which is only valid alongside `r`. This rule detects both invalid combinations of modes and invalid characters in the mode string itself.",
+      "useInstead": "with open(\"file\", \"r\") as f:\n    content = f.read()"
+    },
+    {
+      "code": "PLW1507",
+      "name": "shallow-copy-environ",
+      "linter": "Pylint",
+      "summary": "Shallow copy of `os.environ` via `copy.copy(os.environ)`",
+      "whatItDoes": "Check for shallow `os.environ` copies.",
+      "why": "`os.environ` is not a `dict` object, but rather, a proxy object. As such, mutating a shallow copy of `os.environ` will also mutate the original object. See BPO 15373 for more information.",
+      "useInstead": "import os\n\nenv = os.environ.copy()"
+    },
+    {
+      "code": "PLW1508",
+      "name": "invalid-envvar-default",
+      "linter": "Pylint",
+      "summary": "Invalid type for environment variable default; expected `str` or `None`",
+      "whatItDoes": "Checks for `os.getenv` calls with invalid default values.",
+      "why": "If an environment variable is set, `os.getenv` will return its value as a string. If the environment variable is not set, `os.getenv` will return `None`, or the default value if one is provided. If the default value is not a string or `None`, then it will be inconsistent with the return type of `os.getenv`, which can lead to confusing behavior.",
+      "useInstead": "import os\n\nint(os.getenv(\"FOO\", \"1\"))"
+    },
+    {
+      "code": "PLW1509",
+      "name": "subprocess-popen-preexec-fn",
+      "linter": "Pylint",
+      "summary": "`preexec_fn` argument is unsafe when using threads",
+      "whatItDoes": "Checks for uses of `subprocess.Popen` with a `preexec_fn` argument.",
+      "why": "The `preexec_fn` argument is unsafe within threads as it can lead to deadlocks. Furthermore, `preexec_fn` is targeted for deprecation. Instead, consider using task-specific arguments such as `env`, `start_new_session`, and `process_group`. These are not prone to deadlocks and are more explicit.",
+      "useInstead": "import subprocess\n\nsubprocess.Popen(foo, start_new_session=True)\nsubprocess.Popen(bar, process_group=0)  # Introduced in Python 3.11"
+    },
+    {
+      "code": "PLW1510",
+      "name": "subprocess-run-without-check",
+      "linter": "Pylint",
+      "summary": "`subprocess.run` without explicit `check` argument",
+      "whatItDoes": "Checks for uses of `subprocess.run` without an explicit `check` argument.",
+      "why": "By default, `subprocess.run` does not check the return code of the process it runs. This can lead to silent failures. Instead, consider using `check=True` to raise an exception if the process fails, or set `check=False` explicitly to mark the behavior as intentional.",
+      "useInstead": "import subprocess\n\nsubprocess.run([\"ls\", \"nonexistent\"], check=True)  # Raises exception."
+    },
+    {
+      "code": "PLW2101",
+      "name": "useless-with-lock",
+      "linter": "Pylint",
+      "summary": "Threading lock directly created in `with` statement has no effect",
+      "whatItDoes": "Checks for lock objects that are created and immediately discarded in `with` statements.",
+      "why": "Creating a lock (via `threading.Lock` or similar) in a `with` statement has no effect, as locks are only relevant when shared between threads. Instead, assign the lock to a variable outside the `with` statement, and share that variable between threads.",
+      "useInstead": "import threading\n\ncounter = 0\nlock = threading.Lock()\n\n\ndef increment():\n    global counter\n\n    with lock:\n        counter += 1"
+    },
+    {
+      "code": "PLW2901",
+      "name": "redefined-loop-name",
+      "linter": "Pylint",
+      "summary": "Outer {outer_kind} variable `{name}` overwritten by inner {inner_kind} target",
+      "whatItDoes": "Checks for variables defined in `for` loops and `with` statements that get overwritten within the body, for example by another `for` loop or `with` statement or by direct assignment.",
+      "why": "Redefinition of a loop variable inside the loop's body causes its value to differ from the original loop iteration for the remainder of the block, in a way that will likely cause bugs. In Python, unlike many other languages, `for` loops and `with` statements don't define their own scopes. Therefore, a nested loop that uses the same target variable name as an outer loop will reuse the same actual variable, and the value from the last iteration will \"leak out\" into the remainder of the enclosing loop."
+    },
+    {
+      "code": "PLW3301",
+      "name": "nested-min-max",
+      "linter": "Pylint",
+      "summary": "Nested `{func}` calls can be flattened",
+      "whatItDoes": "Checks for nested `min` and `max` calls.",
+      "why": "Nested `min` and `max` calls can be flattened into a single call to improve readability.",
+      "useInstead": "minimum = min(1, 2, 3, 4, 5)\nmaximum = max(1, 2, 3, 4, 5)\ndiff = maximum - minimum"
     },
     {
       "code": "PT001",
@@ -3228,6 +3886,14 @@
       "whatItDoes": "Checks for use of `zip()` to iterate over keys and values of a dictionary at once.",
       "why": "The `dict` type provides an `.items()` method which is faster and more readable.",
       "useInstead": "flag_stars = {\"USA\": 50, \"Slovenia\": 3, \"Panama\": 2, \"Australia\": 6}\n\nfor country, stars in flag_stars.items():\n    print(f\"{country}'s flag has {stars} stars.\")"
+    },
+    {
+      "code": "T100",
+      "name": "debugger",
+      "linter": "flake8-debugger",
+      "summary": "Trace found: `{name}` used",
+      "whatItDoes": "Checks for the presence of debugger calls and imports.",
+      "why": "Debugger calls and imports should be used for debugging purposes only. The presence of a debugger call or import in production code is likely a mistake and may cause unintended behavior, such as exposing sensitive information or causing the program to hang. Instead, consider using a logging library to log information about the program's state, and writing tests to verify that the program behaves as expected."
     },
     {
       "code": "T201",

@@ -8,23 +8,36 @@ description: Use before writing or changing Go code in a project that runs nitpi
 nitpicker allows one way to write each construct. Write it that way from the start; the gate is a
 backstop. It fails only on findings your change adds, so leave code the task doesn't need alone.
 
+If your change edits a function, type, file or package that existed before it, read
+[editing-existing-code.md](editing-existing-code.md) before you edit.
+
+## Check one file or folder
+
+To look at one file or folder, for example before you change it, pass its path: `npx nitpicker --all
+internal/orders` lists every finding in it, and `npx nitpicker internal/orders/order.go` gates only
+your change to that file. Paths are read from the current folder. The analysis still covers the
+whole project, so it takes as long as a full run; finish with the plain run below.
+
 ## Finish with the gate
 
 1. Run the project's tests: `go test ./...` (with the build tags the project's
    `nitpicker.config.json` lists under `go.buildTags`, as `-tags=...`). Failing tests are a tool
    error that names them.
-2. Format every file you touched with the formatter printed in the finding (gofmt, gofumpt or
-   goimports: the gate uses the one the project already uses, so never switch it). With no other
-   signal it is `gofmt -w`.
+2. Format every new file, and every file you touched that was formatted before your change
+   (`gofmt -l <file>` on the base lists it if not), with the formatter printed in the finding
+   (gofmt, gofumpt or goimports: the gate uses the one the project already uses, so never switch
+   it). With no other signal it is `gofmt -w`.
 3. When the change is complete, run `npx nitpicker` as a background command you wait on, without a
    pipe: you need its exit code. It runs `go vet`, `go test` and its own checks on the merge base
    and on head with the Go toolchain on the `PATH`. It takes minutes and prints a progress line for
    each slow analyzer.
 4. Act on the exit code:
-   - 0: done.
-   - 1: fix every new finding and any tool error listed below them, then rerun.
-   - 2: no new findings, but a tool failed. Fix the cause it names (usually a failing test, a module
-     that does not load, or Go missing from the `PATH`) and rerun. Exit 2 is never a pass. If it
+   - 0: done, unless you narrowed the run with `--analyzer`: then the summary says `Ran only: ...`
+     and you run the gate again without it before you finish.
+   - 1: fix the failing tests the summary leads with, every new finding and any tool error listed
+     below them, then rerun.
+   - 2: no new findings, but a tool failed. Fix the cause it names (usually a module that does not load,
+     or Go missing from the `PATH`) and rerun. Exit 2 is never a pass. If it
      says another run is in progress, wait for that run; never kill it.
 5. Never suppress: no `//nolint`, `//lint:ignore`, build tags that hide a file from the checks,
    config `exclude`/`exceptions`, legacy entries, or weakened tests (`t.Skip` added to get past a
@@ -71,8 +84,6 @@ Before you change code other packages use, or fix a bug, read
   as one). A package folder holds at most 6 files and 6 test files directly (`doc.go` does not
   count): split it into packages by what they do. A package sits at most 4 levels below the module
   root; `internal` does not count as a level.
-- A function or file already over a limit may be edited but must not get worse: put new code in a
-  new function or file and call it.
 - Every package with code has tests; a module where no test runs fails (`no-tests-ran`). Tests are
   table-driven where cases share a shape: `tests := []struct{...}{...}` and `t.Run(tt.name, ...)`.
 - A new or changed unit test runs in under 5 s (`slow-test`); an integration test in under 30 s.
@@ -88,3 +99,8 @@ Stop and ask. The maintainer adds the entry the finding's message ends with to `
 `{ "rule": "vet/printf", "paths": ["shop/label.go"], "reason": "..." }`, or
 `{ "rule": "function-lines-limit", "paths": [...], "function": "Name", "reason": "..." }` for a
 structure limit. That change is a policy change a person accepts.
+
+The `$schema` line of `nitpicker.config.json`
+(`"$schema": "https://raw.githubusercontent.com/jhonDoe15/nitpicker/main/spec/config.schema.json"`)
+lets the editor flag a misspelled key or a value the run refuses; nitpicker ignores it. Keep it when
+you edit the file.

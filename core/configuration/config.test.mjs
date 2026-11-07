@@ -377,7 +377,7 @@ describe('tool precedence', () => {
 
   it('rejects unknown tools, unknown keys and malformed precedence lists', () => {
     expect(() => validateConfig({ tools: { stylelint: { precedence: ['project'] } } })).toThrow(
-      '"tools" names unknown tool "stylelint". Supported tools with this preset: prettier, jscpd, knip, dependency-cruiser, eslint, typescript, tests',
+      '"tools" names unknown tool "stylelint". Supported tools with this preset: prettier, jscpd, stryker, knip, dependency-cruiser, eslint, typescript, tests',
     );
     expect(() => validateConfig({ tools: { prettier: { config: 'project' } } })).toThrow(
       '"tools.prettier" has unknown key "config"',
@@ -428,7 +428,7 @@ describe('tool precedence', () => {
     const tools = { pmd: { precedence: ['project'] } };
     expect(() => validateConfig({ tools })).toThrow(
       new Error(
-        'nitpicker.config.json: "tools" names unknown tool "pmd". Supported tools with this preset: prettier, jscpd, knip, dependency-cruiser, eslint, typescript, tests',
+        'nitpicker.config.json: "tools" names unknown tool "pmd". Supported tools with this preset: prettier, jscpd, stryker, knip, dependency-cruiser, eslint, typescript, tests',
       ),
     );
     expect(() => validateConfig({ preset: 'python', tools })).toThrow(

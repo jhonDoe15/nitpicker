@@ -1,6 +1,10 @@
-import { validatorNamed } from '../libraries/library-tables.mjs';
-import { validatorsOf } from '../libraries/project-libraries.mjs';
+import {
+  renderMessage,
+  UNUSED_OPTION_FIX,
+  UNUSED_OPTION_TEXT,
+} from '../../../../shared/messages/messages.mjs';
 import { RULES_TOOL } from './tool.mjs';
+import { UNUSED_OPTION_SCOPES } from '../../../../shared/unused-api/unused-api-policy.mjs';
 
 const HELPER_CHAIN = ' -> ';
 
@@ -41,18 +45,8 @@ function isDomainPath(path = '') {
   return path.split('/').slice(0, -1).includes('domain');
 }
 
-function validatorForm(name) {
-  return `${name} (\`${validatorNamed(name).call}\`)`;
-}
-
-function boundaryAdvice(libraries) {
-  const [validator] = validatorsOf(libraries);
-  return `Parse untrusted input once at the boundary with ${validatorForm(validator)} in an \`adapters/\` package, not with \`isinstance\` checks or a \`TypeGuard\`.`;
-}
-
-function importBoundaryAdvice(libraries) {
-  const validators = validatorsOf(libraries);
-  return `Use ${validators.join(' or ')} only in an \`adapters/\` package to parse untrusted input (\`${validatorNamed(validators[0]).call}\`), and pass frozen dataclasses on from there.`;
+function ownerOf(subject) {
+  return subject.slice(0, subject.lastIndexOf('.'));
 }
 
 export const STRUCTURE_HINTS = [
@@ -96,35 +90,10 @@ export const STRUCTURE_HINTS = [
   },
   {
     tool: RULES_TOOL,
-    rules: ['pydantic-boundary'],
-    describe: (subject) => `${subject} is imported outside an adapters/ package`,
-    allowed: (_subject, libraries) => importBoundaryAdvice(libraries),
-  },
-  {
-    tool: RULES_TOOL,
     rules: ['enum-string-constants'],
     describe: (subject) => `${subject} are string constants that belong in one enum`,
     allowed:
       'Declare an enum: `class Status(enum.StrEnum): ACTIVE = "active"` on Python 3.11+, otherwise `class Status(str, enum.Enum)`.',
-  },
-  {
-    tool: RULES_TOOL,
-    rules: ['no-type-check'],
-    describe: (subject) => `\`${subject}\` is excluded from type checking by \`@no_type_check\``,
-    allowed: 'Remove the decorator and annotate the code so the checker can verify it.',
-  },
-  {
-    tool: RULES_TOOL,
-    rules: ['not-type-checking'],
-    describe: (subject) => `\`${subject}\` hides code from the type checkers`,
-    allowed:
-      'Put the code in the normal flow; `if TYPE_CHECKING:` is only for imports that annotations need.',
-  },
-  {
-    tool: RULES_TOOL,
-    rules: ['stub-beside-source'],
-    describe: (subject) => `\`${subject}\` sits beside its source and replaces it for the checkers`,
-    allowed: 'Delete the `.pyi` file and annotate the `.py` file itself.',
   },
   {
     tool: RULES_TOOL,
@@ -217,29 +186,43 @@ export const STRUCTURE_HINTS = [
   },
   {
     tool: RULES_TOOL,
-    rules: ['handwritten-boundary-guard'],
-    describe: (subject) => `\`${subject}\` checks untrusted data by hand`,
-    allowed: (_subject, libraries) => boundaryAdvice(libraries),
+    rules: ['singular-and-plural-field'],
+    describe: (subject, _libraries, { singular, plural, kind }) =>
+      `Optional ${kind} \`${singular}\` and \`${plural}\` of \`${ownerOf(subject)}\` are two ways to pass the same data`,
+    referenceData: { singular: '<item>', plural: '<items>', kind: 'fields' },
+    allowed: 'Keep the plural one and pass a single item as a one-element list.',
   },
   {
     tool: RULES_TOOL,
-    rules: ['any-in-domain'],
-    describe: (subject) => `\`${subject}\` uses \`Any\` in domain code`,
+    rules: ['exhaustive-enum-predicate'],
+    describe: (_subject, _libraries, { union }) => {
+      const name = union === 'the Literal' ? union : `\`${union}\``;
+      return `These comparisons list only some members of ${name}, so a member added later is silently classified as the default`;
+    },
+    referenceData: { union: '<enum>' },
     allowed:
-      'Use the real type, a `Protocol`, a `TypeVar` or a frozen dataclass; parse untrusted data at the boundary so the domain only sees typed values.',
+      'Classify every member with a `match` that ends in `case _: assert_never(value)` (or an `if`/`elif` chain that ends in `else: assert_never(value)`), so the type checker fails when a member is added.',
   },
   {
     tool: RULES_TOOL,
-    rules: ['pydantic-any-field'],
-    describe: (subject) => `The pydantic field \`${subject}\` is typed \`Any\``,
+    rules: ['forwarding-wrapper'],
+    describe: (subject, _libraries, { target }) =>
+      `\`${subject}\` only forwards its parameters to \`${target}\`, with the same parameter and return types`,
+    referenceData: { target: '<target>' },
     allowed:
-      'Give the field its real type (`str`, `int`, a nested model, `Literal[...]`) or constrain it with `Field(min_length=1)` so the model validates it.',
+      'Call the target directly and delete the wrapper; to keep the name, import the target under it (`from module import target as name`) or bind it (`name = target`).',
   },
   {
     tool: RULES_TOOL,
-    rules: ['pydantic-extra-allow'],
-    describe: (subject) => `The pydantic model \`${subject}\` accepts unknown fields`,
-    allowed:
-      'Set `model_config = ConfigDict(extra="forbid")` (or leave the default `ignore`) and declare every field the model needs.',
+    rules: ['unused-option'],
+    describe: (subject, _libraries, { scope }) =>
+      renderMessage(UNUSED_OPTION_TEXT, {
+        name: subject,
+        scope: UNUSED_OPTION_SCOPES.python[scope],
+      }),
+    referenceData: { scope: 'private' },
+    allowedFor: ({ scope }) =>
+      renderMessage(UNUSED_OPTION_FIX, { scope: UNUSED_OPTION_SCOPES.python[scope] }),
+    exception: 'top-level',
   },
 ];

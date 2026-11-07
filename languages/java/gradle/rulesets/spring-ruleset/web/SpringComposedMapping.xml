@@ -1,0 +1,7 @@
+  <rule name="SpringComposedMapping" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
+        message="Use @GetMapping, @PostMapping, @PutMapping, @PatchMapping or @DeleteMapping on methods. @RequestMapping belongs only on the class, for the path prefix.">
+    <priority>2</priority>
+    <properties><property name="xpath"><value><![CDATA[
+//MethodDeclaration/ModifierList/Annotation[pmd-java:typeIs('org.springframework.web.bind.annotation.RequestMapping')]
+]]></value></property></properties>
+  </rule>
