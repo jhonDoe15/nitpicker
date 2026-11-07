@@ -239,9 +239,9 @@ const releaseWorkflow = parse(
   readFileSync(path.join(repositoryRoot, '.github/workflows/github-release.yml'), 'utf8'),
 );
 
-const releaseStep = releaseWorkflow.jobs.release.steps.find(
-  ({ name }) => name === 'Move the floating tag',
-);
+const releaseSteps = releaseWorkflow.jobs.release.steps;
+const releaseStep = releaseSteps.find(({ name }) => name === 'Move the floating tag');
+const latestStep = releaseSteps.find(({ name }) => name === 'Move the latest tag');
 
 const { createGitRepository, temporaryRoot } = useGitFixtures();
 
@@ -253,18 +253,29 @@ function releaseClone() {
   return { remote, clone };
 }
 
-function release(clone, tag) {
+function releaseCommit(clone, tag) {
+  const branch = fixtureGit(clone, ['branch', '--show-current']).trim();
+  const sha = fixtureGit(clone, ['rev-parse', 'HEAD']).trim();
+  fixtureGit(clone, ['checkout', '-q', '--detach']);
+  writeFiles(clone, { 'docs/rules/README.md': `${tag}\n` });
+  commit(clone, `Rule reference pages for ${tag}`);
+  const released = fixtureGit(clone, ['rev-parse', 'HEAD']).trim();
+  fixtureGit(clone, ['checkout', '-q', branch]);
+  return { sha, released };
+}
+
+function release(clone, tag, step = releaseStep) {
   writeFiles(clone, { 'release.txt': `${tag}\n` });
   commit(clone, tag);
-  const sha = fixtureGit(clone, ['rev-parse', 'HEAD']).trim();
+  const { sha, released } = releaseCommit(clone, tag);
   const result = executeStep({
-    step: releaseStep,
+    step,
     root: temporaryRoot('nitpicker-release-runner-'),
     cwd: clone,
-    environment: { TAG: tag, COMMIT: sha },
+    environment: { TAG: tag, COMMIT: sha, RELEASE_COMMIT: released },
     searchPath: process.env.PATH,
   });
-  return { ...result, sha };
+  return { ...result, sha: released };
 }
 
 function remoteTags(remote) {
@@ -309,6 +320,30 @@ describe('the floating release tag', () => {
       1,
       '::error::v0.3 points at a commit that v0.3.0 does not contain; move it by hand if that is intended.\n',
       [`v0.3 ${later.sha}`],
+    ]);
+  });
+});
+
+describe('the latest release tag', () => {
+  it('runs for every release and follows the newest release commit, pre-releases included', () => {
+    const { remote, clone } = releaseClone();
+    const stable = release(clone, 'v0.1.0', latestStep);
+    const candidate = release(clone, 'v0.2.0-rc.1', latestStep);
+
+    expect([latestStep.if, stable.status, candidate.status]).toEqual([undefined, 0, 0]);
+    expect(remoteTags(remote)).toEqual([`latest ${candidate.sha}`]);
+  });
+
+  it('stays on a newer release when an older line is released', () => {
+    const { remote, clone } = releaseClone();
+    const later = release(clone, 'v0.3.1', latestStep);
+    fixtureGit(clone, ['checkout', '-q', '-b', 'old', 'HEAD~1']);
+    const { status, stdout } = release(clone, 'v0.2.5', latestStep);
+
+    expect([status, stdout, remoteTags(remote)]).toEqual([
+      0,
+      '::notice::latest points at a newer release than this one; it stays.\n',
+      [`latest ${later.sha}`],
     ]);
   });
 });

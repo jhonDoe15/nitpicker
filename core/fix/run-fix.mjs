@@ -21,6 +21,8 @@ import {
   PROJECT_LAYER_VARIABLE,
   projectLayerValue,
 } from '../../languages/typescript/adapters/lint-engine/project-layer.mjs';
+import { isInScope } from '../scope/scope-findings.mjs';
+import { TOOL_TIMEOUT_MS } from '../../shared/processes/deadlines.mjs';
 
 const eslintPolicy = eslintChecks.find(({ name }) => name === 'eslint-lint');
 
@@ -36,7 +38,7 @@ function spawnEnvironment(baseEnvironment, overrides = {}) {
 }
 
 export function spawnInvocation(
-  { command, args, cwd, input, environment, shell = false, timeout },
+  { command, args, cwd, input, environment, shell = false, timeout = TOOL_TIMEOUT_MS },
   baseEnvironment,
   spawn = spawnSync,
 ) {
@@ -74,13 +76,11 @@ function fixTypeScript({ headPolicy = resolveHeadPolicy(), ...options }) {
 }
 
 function fixWithPolicy(settings) {
-  const { repositoryRoot, projectRoot, baseRef, layout } = settings;
-  const { comparison, changes } = collectWorkingTreeChanges({
-    repositoryRoot,
-    projectRoot,
-    baseRef,
-  });
-  const files = changes.filter(({ isFile, path: name }) => isFile && !layout.isExcluded(name));
+  const { projectRoot, layout, scope } = settings;
+  const { comparison, changes } = collectWorkingTreeChanges(settings);
+  const files = changes.filter(
+    ({ isFile, path: name }) => isFile && !layout.isExcluded(name) && isInScope(name, scope),
+  );
   const before = new Map(
     files.map(({ path: name }) => [name, readFileSync(path.join(projectRoot, name))]),
   );

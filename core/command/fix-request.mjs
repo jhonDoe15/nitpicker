@@ -11,6 +11,7 @@ export function fixIfRequested(cli, repositoryRoot, base) {
     executeFixCommand: cli.executeFixCommand,
     headPolicy: cli.headPolicy,
     config: cli.config,
+    scope: cli.scope,
     environment: cli.environment,
     spawnEnvironment: cli.spawnEnvironment,
   });

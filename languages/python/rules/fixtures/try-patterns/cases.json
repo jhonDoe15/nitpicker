@@ -1,0 +1,32 @@
+[
+  {
+    "tool": "ruff",
+    "rule": "TRY002",
+    "mention": "specific exception"
+  },
+  {
+    "tool": "ruff",
+    "rule": "TRY004",
+    "mention": "typeerror"
+  },
+  {
+    "tool": "ruff",
+    "rule": "TRY201",
+    "mention": "bare `raise`"
+  },
+  {
+    "tool": "ruff",
+    "rule": "TRY203",
+    "mention": "remove the `try`"
+  },
+  {
+    "tool": "ruff",
+    "rule": "TRY400",
+    "mention": "logger.exception"
+  },
+  {
+    "tool": "ruff",
+    "rule": "TRY401",
+    "mention": "leave the exception out"
+  }
+]

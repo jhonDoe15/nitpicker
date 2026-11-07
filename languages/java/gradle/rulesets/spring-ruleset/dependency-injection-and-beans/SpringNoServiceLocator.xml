@@ -1,0 +1,23 @@
+  <rule name="SpringNoServiceLocator" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
+        message="Inject the bean you need through the constructor instead of looking it up in the ApplicationContext or BeanFactory. Use ObjectProvider for optional or prototype beans.">
+    <priority>2</priority>
+    <properties><property name="xpath"><value><![CDATA[
+//ClassDeclaration[not(ModifierList/Annotation[
+    pmd-java:typeIs('org.springframework.context.annotation.Configuration')
+    or pmd-java:typeIs('org.springframework.boot.autoconfigure.SpringBootApplication')])]
+  [not(ImplementsList/ClassType[
+    pmd-java:typeIs('org.springframework.beans.factory.config.BeanFactoryPostProcessor')
+    or pmd-java:typeIs('org.springframework.beans.factory.config.BeanPostProcessor')
+    or pmd-java:typeIs('org.springframework.context.ApplicationContextInitializer')
+    or pmd-java:typeIs('org.springframework.boot.env.EnvironmentPostProcessor')])]
+  /ClassBody/(
+    FieldDeclaration
+    | ConstructorDeclaration/FormalParameters/FormalParameter
+    | MethodDeclaration/FormalParameters/FormalParameter
+  )/ClassType[pmd-java:typeIs('org.springframework.beans.factory.BeanFactory')]
+|
+//ClassDeclaration/ImplementsList/ClassType[
+  pmd-java:typeIs('org.springframework.context.ApplicationContextAware')
+  or pmd-java:typeIs('org.springframework.beans.factory.BeanFactoryAware')]
+]]></value></property></properties>
+  </rule>

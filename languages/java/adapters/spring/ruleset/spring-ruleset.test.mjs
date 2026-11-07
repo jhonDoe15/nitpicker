@@ -3,10 +3,11 @@ import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { configurationFiles } from '../../java-analyzer.mjs';
 import { ALLOWED_FORM_FIRST } from '../test-support/allowed-form.mjs';
+import { guidePages, guideText } from '../../../../../shared/reference/build/guide-pages.mjs';
 
 const root = path.resolve(import.meta.dirname, '../../../../..');
 const ruleset = readFileSync(path.join(root, 'languages/java/gradle/spring-ruleset.xml'), 'utf8');
-const docs = readFileSync(path.join(root, 'docs/java-preset.md'), 'utf8');
+const docs = guidePages('docs/java-preset.md').map(guideText).join('\n');
 const RULE = /<rule name="(?<name>[A-Za-z]+)"[^>]*?\smessage="(?<message>[^"]*)"/g;
 const rules = [...ruleset.matchAll(RULE)].map(({ groups }) => groups);
 const PMD_RULESETS = [

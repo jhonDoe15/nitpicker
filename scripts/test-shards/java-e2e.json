@@ -5,6 +5,7 @@
   "languages/java/adapters/errorprone/lombok.e2e.test.mjs": 69,
   "languages/java/adapters/java-e2e/build-retries.e2e.test.mjs": 225,
   "languages/java/adapters/java-e2e/fix/java-fix.e2e.test.mjs": 99,
+  "languages/java/adapters/java-e2e/gradle-9/late-artifacts.e2e.test.mjs": 110,
   "languages/java/adapters/java-e2e/integration/integration-checked.e2e.test.mjs": 159,
   "languages/java/adapters/java-e2e/integration/integration-unchecked.e2e.test.mjs": 185,
   "languages/java/adapters/java-e2e/multi-project.e2e.test.mjs": 70,

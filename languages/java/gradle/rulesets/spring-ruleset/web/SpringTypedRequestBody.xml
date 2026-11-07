@@ -1,0 +1,27 @@
+  <rule name="SpringTypedRequestBody" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
+        message="Bind this @RequestBody to a record with validation annotations, not to Object, JsonNode, Map&lt;String, Object&gt; or a list of those. Untyped payloads skip validation and allow mass assignment. A Map with typed values, such as Map&lt;String, String&gt;, is fine.">
+    <priority>2</priority>
+    <properties><property name="xpath"><value><![CDATA[
+let $leaf := function($type) {
+  exists($type[self::ClassType[pmd-java:typeIsExactly('java.lang.Object')
+      or pmd-java:typeIs('com.fasterxml.jackson.databind.JsonNode') or pmd-java:typeIs('tools.jackson.databind.JsonNode')]
+    or self::WildcardType[not(*) or ClassType[pmd-java:typeIsExactly('java.lang.Object')]]
+    or self::ClassType[pmd-java:typeIs('java.util.Map')]
+      [not(TypeArguments) or TypeArguments/*[2][self::WildcardType[not(*) or ClassType[pmd-java:typeIsExactly('java.lang.Object')]]
+        or self::ClassType[pmd-java:typeIsExactly('java.lang.Object')]]]])
+},
+    $inner := function($type) {
+  $type[self::ClassType[pmd-java:typeIs('java.util.Map')]]/TypeArguments/*[2]
+  | $type[self::ClassType[pmd-java:typeIs('java.lang.Iterable') or pmd-java:typeIs('java.util.Optional')
+      or pmd-java:typeIs('org.springframework.http.HttpEntity') or pmd-java:typeIs('java.util.concurrent.CompletionStage')
+      or pmd-java:typeIs('org.reactivestreams.Publisher')]]/TypeArguments/*
+},
+    $untyped := function($type) {
+  $leaf($type)
+  or exists($type[self::ClassType[pmd-java:typeIs('org.springframework.http.HttpEntity')][not(TypeArguments)]])
+  or (some $argument in $inner($type) satisfies ($leaf($argument) or (some $nested in $inner($argument) satisfies $leaf($nested))))
+}
+return //FormalParameter[ModifierList/Annotation[pmd-java:typeIs('org.springframework.web.bind.annotation.RequestBody')]]
+  /ClassType[$untyped(.)]
+]]></value></property></properties>
+  </rule>

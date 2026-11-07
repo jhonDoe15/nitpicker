@@ -1,0 +1,7 @@
+[
+  {
+    "tool": "python-rules",
+    "rule": "clock-now",
+    "mention": "datetime.now(tz=utc)"
+  }
+]
