@@ -51,8 +51,8 @@ The allowed forms are on one page per topic. Before you write code, read the pag
 
 - [Layout, size and dependencies](rules/layout.md): features, adapters, domain and the composition root, exports, source roots, file and folder limits, clones, dependencies.
 - [Functions, types and expressions](rules/style.md): function declarations, types and unions, no casts or null, comparisons, template literals, sorting, loops, parameters, exports, signatures.
-- [Async code, I/O and production rules](rules/production.md): async/await, bounded fan-out, wiring, parsing input, child processes, URLs, regexes, exceptions.
-- [domain/ is deeply readonly](rules/domain.md): no mutation, readonly types, regexes and dates, counting by a union, one-pass results.
+- [Async code, I/O and production rules](rules/production.md): async/await, bounded fan-out, wiring, parsing input, child processes, URLs, regexes, server time zones, exceptions.
+- [domain/ is deeply readonly](rules/domain.md): no mutation, readonly types, regexes and `Date`, counting by a union, one-pass results.
 - [Errors](rules/errors.md): failures as unions, what a catch returns, error causes, malformed input.
 - [Tests](rules/tests.md): branch coverage and mutants, console output, fakes, globals, whole-output assertions, shared helpers, test roots, waits, child processes, fast tests.
 - [React](rules/react.md): component tests, hooks and the other React rules, when `react` is in `package.json`.
