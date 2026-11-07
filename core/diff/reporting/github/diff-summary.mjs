@@ -10,6 +10,7 @@ import {
   ruleTable,
   toolErrorList,
 } from './markdown.mjs';
+import { scopeLine } from '../../../scope/scope-findings.mjs';
 import { partialRunLines } from '../partial-run/partial-run.mjs';
 import { failingHeadTests } from '../failing-tests/failing-tests.mjs';
 
@@ -108,6 +109,7 @@ export function renderDiffSummary(report, context) {
     '',
     `**${headline(report)}**`,
     '',
+    ...scopeLine(report.summary).flatMap((line) => [line, '']),
     ...partialRunLines(report.summary).flatMap((line) => [`> ${line}`, '']),
     ...comparisonLine(report),
     '',

@@ -143,6 +143,7 @@ function compareSnapshots(context) {
     policyLoosenings: [],
     ...settings.resolveBaseSetup?.({
       ...roots,
+      liveProjectRoot: settings.headProjectRoot,
       moves: layout.moves,
       analyzers: settings.analyzers,
     }),
@@ -209,6 +210,7 @@ function runAndCombine(context) {
     policyKinds: context.baseSetup.policyKinds,
     policyDigest: context.baseSetup.policyDigest,
     acceptPolicyChange: settings.acceptPolicyChange,
+    scope: settings.scope,
     policyAcceptanceSource: settings.policyAcceptanceSource,
     reportsPolicy: settings.reportsPolicy !== false,
     notices:
