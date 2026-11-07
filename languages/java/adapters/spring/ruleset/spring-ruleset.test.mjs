@@ -8,8 +8,7 @@ import { guidePages, guideText } from '../../../../../shared/reference/build/gui
 
 const root = path.resolve(import.meta.dirname, '../../../../..');
 const ruleset = readFileSync(path.join(root, 'languages/java/gradle/spring-ruleset.xml'), 'utf8');
-const docs = guidePages('docs/java-preset.md').map(guideText).join('
-');
+const docs = guidePages('docs/java-preset.md').map(guideText).join('\n');
 const testRuleset = readFileSync(
   path.join(root, 'languages/java/gradle/spring-test-ruleset.xml'),
   'utf8',
