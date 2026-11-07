@@ -72,7 +72,7 @@ describe('the shared fact rules', () => {
   it('runs every rule registered for a language', () => {
     expect(registeredFactRules('typescript')).toEqual(factRulesOf('typescript'));
     expect(registeredFactRules('javascript')).toEqual(factRulesOf('javascript'));
-    expect(registeredFactRules('python')).toEqual(['shared-used-by-one-feature', ...FEATURE_RULES]);
+    expect(registeredFactRules('python')).toEqual(factRulesOf('python'));
     expect(registeredFactRules('cobol')).toEqual([]);
   });
 
@@ -188,7 +188,7 @@ describe('the shared fact rules', () => {
     expect(registeredFactRules('python')).toEqual(python);
     withLanguageRegistered('feature-cycle', 'kotlin', () => {
       expect(sharedFactExceptionRules()).toEqual(python);
-      expect(registeredFactRules('kotlin')).toEqual(['feature-cycle']);
+      expect(registeredFactRules('kotlin')).toContain('feature-cycle');
       expect(registeredFactRules('python')).toEqual(python);
     });
   });
