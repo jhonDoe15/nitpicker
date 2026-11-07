@@ -1,0 +1,8 @@
+[
+  {
+    "name": "a forwarding wrapper names calling the target",
+    "tool": "python-rules",
+    "rule": "forwarding-wrapper",
+    "mention": "call the target directly"
+  }
+]

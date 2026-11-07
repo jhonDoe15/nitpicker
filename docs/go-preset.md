@@ -125,8 +125,9 @@ finding (vet already ran), and `-coverpkg=./...` makes each package's coverage i
 packages' tests exercise; the coverage profile is what slice GO4 gates on. Go does not cache a
 run that writes a coverage profile, so every test runs and its time is measured.
 
-- A failing test makes the snapshot a `tests/tests-failed` tool error (exit 2) that lists up to 20
-  failing tests with the first lines each printed, as in the Python preset. Only the deepest
+- A failing test makes the snapshot a `tests/tests-failed` tool error (exit 1) that lists up to 50
+  failing tests with the `file_test.go:line` and message they printed (and testify's expected and
+  actual values), as in the other presets. Only the deepest
   failing subtest is listed, and a package that failed to build is not, because its compile error
   is already a finding.
 - A module where no test ran gets `tests/no-tests-ran`, unless a build failure stopped them.

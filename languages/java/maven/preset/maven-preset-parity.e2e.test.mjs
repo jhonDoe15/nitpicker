@@ -169,21 +169,20 @@ describe.skipIf(!enabled)('Java preset on Maven builds', () => {
         .sort(),
     ).toEqual(['Library.kt:12', 'Library.kt:14', 'Library.kt:18']);
   }, 180_000);
-  it('reports a failing test as a maven-failure tool error that names the test', () => {
+  it('reports a failing test as a tests-failed tool error that names the test', () => {
     const project = copyOf(path.join(fixtures, 'multi-module'));
     writeFileSync(path.join(project, 'core/src/test/java/demo/core/AdderTest.java'), FAILING_TEST);
     const [finding] = analyzeJavaSnapshot(project, { maven, policy: {} }).findings;
 
     expect(finding).toEqual({
       tool: 'java',
-      rule: 'maven-failure',
+      rule: 'tests-failed',
       path: '.',
-      identity: 'maven-failure',
+      identity: 'tests-failed',
       classification: 'tool-error',
       message: [
-        `Tests fail in ${path.join(project, 'core')}; nitpicker needs a passing test suite ` +
-          'for coverage and mutation testing:',
-        '  demo.core.AdderTest.adds: expected: <4> but was: <3>',
+        '1 test fails in core; the build stopped, so no other check ran. Fix the tests and rerun:',
+        '  demo/core/AdderTest.java:10 > demo.core.AdderTest.adds: expected: <4> but was: <3>',
       ].join('\n'),
     });
   }, 180_000);

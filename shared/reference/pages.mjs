@@ -46,7 +46,7 @@ export const PAGES = [
     title: 'Java and Kotlin: Checkstyle rules',
     summary:
       "The checks of Checkstyle's Google style that the Java and Kotlin presets run on Java sources: Java with Gradle or Maven, Kotlin with Gradle.",
-    guide: 'docs/java-preset.md#slice-3-checkstyle',
+    guide: 'docs/java-preset/slice-3-checkstyle.md',
   },
   {
     id: 'java-spotbugs',
@@ -60,7 +60,7 @@ export const PAGES = [
     title: 'Java and Kotlin: Error Prone and NullAway checks',
     summary:
       'The Error Prone checks and NullAway that the Java and Kotlin presets compile Java sources with: Java with Gradle or Maven, Kotlin with Gradle.',
-    guide: 'docs/java-preset.md#error-prone-and-nullaway',
+    guide: 'docs/java-preset/error-prone-and-nullaway.md',
   },
   {
     id: 'java-nitpicker',
@@ -74,14 +74,14 @@ export const PAGES = [
     title: 'Kotlin: detekt rules',
     summary:
       "detekt's default rules and the one-way rules nitpicker pins on top of them (`detekt.<ruleset>.<Rule>`).",
-    guide: 'docs/kotlin-preset.md#one-way-rules',
+    guide: 'docs/kotlin-preset/one-way-rules.md',
   },
   {
     id: 'kotlin-nitpicker',
     title: 'Kotlin: nitpicker source checks',
     summary:
       'The Kotlin source checks, the compiler warnings and the ktlint and ktfmt format checks of the Kotlin preset.',
-    guide: 'docs/kotlin-preset.md#source-checks',
+    guide: 'docs/kotlin-preset/source-checks.md',
   },
   {
     id: 'python-ruff',
