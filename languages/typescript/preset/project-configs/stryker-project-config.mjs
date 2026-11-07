@@ -1,5 +1,5 @@
 import { isPlainObject, isStringList, picked } from '../../../../shared/config.mjs';
-import { isRegularFile, resolveInside } from '../../../../shared/conventions/read-inside.mjs';
+import { firstProjectFile } from '../../../../shared/conventions/read-inside.mjs';
 import {
   missingProjectConfig,
   precedenceLayers,
@@ -37,10 +37,7 @@ export function mutationDisabled(config) {
 }
 
 export function strykerProjectFile(projectRoot) {
-  return STRYKER_PROJECT_FILES.find((name) => {
-    const file = resolveInside(projectRoot, name);
-    return file !== undefined && isRegularFile(file);
-  });
+  return firstProjectFile(projectRoot, STRYKER_PROJECT_FILES);
 }
 
 function malformedKey(config) {

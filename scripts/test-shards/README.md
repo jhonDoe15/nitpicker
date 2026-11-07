@@ -1,15 +1,18 @@
 # Test shard timings
 
 The duration sequencer assigns every selected file to exactly one shard, longest files first.
-Files without a measurement count as one second. The selected files always come from Vitest's
-package-script filters, so adding a test to a language suite does not require editing a shard list.
+Files without a measurement count as one second, so a new file, end-to-end ones included, needs
+no profile edit. The plan is rough until `record-durations` measures the file. With a suite flag such
+as `NITPICKER_JAVA_E2E=1` set, `vitest.config.mts` selects the test files that read that flag
+(`suiteFiles` in `e2e-gates.mjs`, itself or through a module it imports), so adding a test to a
+language suite edits neither a shard list nor the `test:<language>` script in `package.json`.
 
 `durations.json` describes ordinary `npm test` runs. `java-e2e.json` and `kotlin-e2e.json` describe
 the corresponding enabled end-to-end suites. Selection uses the same `NITPICKER_JAVA_E2E=1` or
 `NITPICKER_KOTLIN_E2E=1` flag that enables those suites. The recorder and sequencer use the same
 profile; recording disabled tests in an ordinary run cannot erase enabled-suite measurements.
 
-Python uses `python-e2e.json` when `NITPICKER_PYTHON_E2E=1`, with four isolated runner jobs and
+Python uses `python-e2e.json` when `NITPICKER_PYTHON_E2E=1`, with two isolated runner jobs and
 two test workers each. Its initial weights come from the successful
 [Python run 39316386448](https://github.com/jhonDoe15/nitpicker/actions/runs/39316386448) on
 `aec1d434adabc8259fc8e0e56840687952a6c4d1`: 42 files, 767 tests and 399.74 seconds of test-run
@@ -38,7 +41,7 @@ Kotlin coverage/structure at 297.21 seconds. Every individual case took at most 
 JSON first-to-last assertion time excludes the first `beforeAll`: the Spring file actually
 spent 213.51 seconds including hooks, and Kotlin one-way rules spent 211.65 seconds.
 
-The refined split uses 16 Java and 14 Kotlin runners. Java preset cases are grouped into nine
+The refined split uses 16 Java and 10 Kotlin runners. Java preset cases are grouped into nine
 pairs, Maven into five behavior groups, Kotlin lint into five pairs and coverage/structure into
 three groups. Spring retains its three existing independent build hooks in separate files.
 Kotlin one-way rules build only the banned, allowed or hostile-config snapshot needed by their
@@ -57,12 +60,6 @@ The Kotlin parity guards file and the added one-way rules bring the Kotlin total
 Kotlin review rules file (three cases) and the added `kotlin-psi` cases to 79; the guards and review
 rules files are planning estimates of 100 and 110 seconds for their single builds.
 
-The Kotlin-on-Maven end-to-end files add Kotlin cases, giving 126/191 cases
-in total. Their weights in `kotlin-e2e.json` are measured where a CI run recorded a file and planning
-estimates otherwise. The Maven test-framework file runs three builds of about 30 seconds each on an idle
-machine and is weighted 120 seconds for a cold dependency cache. The 14 shards keep the estimated
-load of every shard near five minutes (at most 328 seconds).
-
 The split-file weights remain planning estimates, not measurements of the new split. Unchanged files
 use the successful isolated-shard log totals, including hooks. Split case groups sum their
 measured case times plus original hook time and a conservative 25-second allowance for the
@@ -74,7 +71,7 @@ the banned group also retains its measured 46.52-second exception comparison. Th
 are hypotheses to replace with new full-module measurements.
 
 The deterministic sequencer gives estimated Java loads of 111–181 seconds and Kotlin loads
-of 258–328 seconds (14 shards, after the Maven suites joined), before runner setup. The goal is 2–3 minutes normally and under five minutes
+of 117–181 seconds, before runner setup. The goal is 2–3 minutes normally and under five minutes
 including setup. The successful warm-cache sample on `0925469` measured Java jobs at 112/152/277 seconds
 (minimum/median/maximum) and Kotlin jobs at 110/150.5/206 seconds. Every shard stayed under
 five minutes; two shards per language exceeded three minutes. Java queue delays were
@@ -101,11 +98,12 @@ cases its flag gates, so the expected cases are derived rather than counted by h
 file that a script leaves out fails. It checks the workflow wiring: the shard job runs the package
 script with `--shard`, the plan job runs this verifier for its language, and the one aggregate job
 always runs, needs both and checks both results. It resolves CLI shard options through Vitest and
-exercises the configured sequencer with the language's profile. It requires the profile to cover
-every selected file exactly and each matrix shard to be nonempty, with every selected file in
-exactly one shard. Vitest list itself does not apply sharding, so its `--shard` output alone is
-insufficient to verify the partition. The script's own main guard resolves `process.argv[1]`
-through `realpathSync`, so a run through a symlinked path checks rather than exiting silently.
+exercises the configured sequencer with the language's profile. It requires the profile to name
+only selected files (a new file may be missing from it) and each matrix shard to be nonempty,
+with every selected file in exactly one shard. Vitest list itself does not apply sharding, so its
+`--shard` output alone is insufficient to verify the partition. The script's own main guard
+resolves `process.argv[1]` through `realpathSync`, so a run through a symlinked path checks rather
+than exiting silently.
 
 Fixture Git trees, generated reports and build outputs remain local to each runner. The existing
 Maven/Gradle actions cache dependencies; mutable fixture builds are not shared between shards.
@@ -144,3 +142,13 @@ only asks the installed ruff for its rule list.
 The ruff lint precedence file (`adapters/project-tools/ruff/ruff-lint`, ten cases) is in
 `test:python` with a planning weight of 15 seconds: it runs only the installed ruff on small
 projects, and took about six seconds locally.
+
+The shard counts were later lowered twice so that more pull request runs fit into the account's
+concurrent job limit at once. The loads, targets and measurements earlier in this file describe
+the previous split; this paragraph replaces them. The unit `test` job went from eight shards to
+two, Java from 16 to four, Kotlin from ten to three, Python from four to two and Go from two to one.
+Fewer runners also repeat the per-job setup (checkout, `npm ci`, toolchains) fewer times. With the
+current profiles the sequencer's estimated loads per shard are about 1,334 seconds for the unit
+suite (run with one worker per vCPU, so roughly six to nine minutes of wall time), 971–975 seconds
+for Java, 905–929 seconds for Kotlin, 707 seconds for Python and 70 seconds for Go, before setup.
+Every load stays well inside its job's `timeout-minutes`.

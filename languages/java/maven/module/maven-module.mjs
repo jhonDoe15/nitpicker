@@ -94,7 +94,17 @@ function runArchitecture(options) {
 
 function runSourceTools(options) {
   const { module, reportDir, tools, classpaths, configs, pinned, kotlin, style, spawn } = options;
-  runPmd({ module, reportDir, tools, classpaths, configs, spring: kotlin.spring, spawn });
+  const { springRules } = options;
+  runPmd({
+    module,
+    reportDir,
+    tools,
+    classpaths,
+    configs,
+    spring: kotlin.spring,
+    springRules,
+    spawn,
+  });
   runSpotbugs({
     module: kotlin.spotbugsModule,
     reportDir,

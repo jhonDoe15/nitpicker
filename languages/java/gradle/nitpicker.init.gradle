@@ -254,7 +254,8 @@ def rulesetExcluding = { String name, String description, List<String> rules, Co
 }
 
 def mainRulesOnMainSources = { File mainRules, File rulesetDir, boolean spring, Collection<File> testDirectories ->
-    def rules = [mainRules] + (spring ? [new File(rulesetDir, 'spring-ruleset.xml')] : [])
+    def springRules = nitpickerArgument('nitpicker.pmd.springRules') ?: new File(rulesetDir, 'spring-ruleset.xml').absolutePath
+    def rules = [mainRules] + (spring ? [new File(springRules)] : [])
     rulesetExcluding('nitpicker-main', "Nitpicker's main-only rules on main sources only.",
         rules.collect { "  <rule ref=\"${escapeXml(it.absolutePath)}\"/>".toString() }, testDirectories)
 }
@@ -757,8 +758,9 @@ allprojects {
             target.text = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<mutations>${mutations}</mutations>\n"
         }
         def jacocoArgumentProvider = 'org.gradle.testing.jacoco.plugins.JacocoPluginExtension$JacocoAgent'
-        def registerPit = { String pitName, Test source ->
+        def registerPit = { String pitName, TaskProvider<Test> sourceTask ->
             tasks.register(pitName, JavaExec) {
+                def source = sourceTask.get()
                 group = 'nitpicker'
                 dependsOn tasks.named('classes')
                 dependsOn source.testClassesDirs
@@ -900,37 +902,47 @@ allprojects {
             executionData(emptyExecutionData)
         }
         afterEvaluate {
-            checkedTestTasks().each { it.exclude archunitIncludes }
-            if (testsFailed) {
-                checkedTestTasks().each { it.enabled = false }
-            }
-            checkedTestTasks().findAll { it.name != 'test' }.each { source ->
-                def archunitName = "nitpickerArchunit${capitalized(source.name)}".toString()
-                def sourceSet = sourceSets.find { set ->
-                    set.output.classesDirs.files.any { source.testClassesDirs.files.contains(it) }
-                }
-                def declared = sourceSet == null ? []
-                    : configurations.getByName(sourceSet.runtimeClasspathConfigurationName).allDependencies*.name
-                tasks.register(archunitName, Test) {
-                    group = 'nitpicker'
-                    dependsOn source.testClassesDirs
-                    testClassesDirs = source.testClassesDirs
-                    classpath = source.classpath
-                    include archunitIncludes
-                    ignoreFailures = true
-                    reports {
-                        junitXml.outputLocation = reportDir.map { it.dir('archunit') }
-                        html.required = false
-                    }
-                    doLast { verifyArchunitRan(archunitName, source.testClassesDirs.files) }
-                    if (archunitOnJUnit4(declared, onJUnit4(source))) {
-                        useJUnit()
-                    } else {
-                        useJUnitPlatform()
+            def followedTest = { String name -> !name.startsWith('nitpickerArchunit') }
+            tasks.withType(Test).configureEach { testTask ->
+                if (followedTest(testTask.name)) {
+                    testTask.exclude archunitIncludes
+                    if (testsFailed) {
+                        testTask.enabled = false
                     }
                 }
             }
-            checkedTestTasks().each { registerPit("nitpickerPit${capitalized(it.name)}".toString(), it) }
+            tasks.withType(Test).names.findAll(followedTest).each { sourceName ->
+                def sourceTask = tasks.named(sourceName, Test)
+                if (sourceName != 'test') {
+                    def archunitName = "nitpickerArchunit${capitalized(sourceName)}".toString()
+                    tasks.register(archunitName, Test) {
+                        def source = sourceTask.get()
+                        def sourceSet = sourceSets.find { set ->
+                            set.output.classesDirs.files.any { source.testClassesDirs.files.contains(it) }
+                        }
+                        def runtime = sourceSet == null ? null
+                            : configurations.getByName(sourceSet.runtimeClasspathConfigurationName)
+                        def declared = runtime == null ? [] : runtime.allDependencies*.name
+                        group = 'nitpicker'
+                        dependsOn source.testClassesDirs
+                        testClassesDirs = source.testClassesDirs
+                        classpath = source.classpath
+                        include archunitIncludes
+                        ignoreFailures = true
+                        reports {
+                            junitXml.outputLocation = reportDir.map { it.dir('archunit') }
+                            html.required = false
+                        }
+                        doLast { verifyArchunitRan(archunitName, source.testClassesDirs.files) }
+                        if (archunitOnJUnit4(declared, onJUnit4(source))) {
+                            useJUnit()
+                        } else {
+                            useJUnitPlatform()
+                        }
+                    }
+                }
+                registerPit("nitpickerPit${capitalized(sourceName)}".toString(), sourceTask)
+            }
         }
         gradle.projectsEvaluated {
             tasks.withType(Test).configureEach { testTask ->

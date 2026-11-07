@@ -1,10 +1,9 @@
 name: kotlin-e2e
 
-# The Kotlin end-to-end suite (npm run test:kotlin): real Gradle builds of a small Kotlin and Java project
-# and real Maven builds with the runner's Maven, sharded across isolated runners. It runs on a push to main
-# that touches the Java and Kotlin preset code, the core and shared code it imports, the package and test
-# configuration, or this file; by hand from the Actions tab; and on a pull request only when the `run-ci`
-# label is added and the pull request changes one of those paths.
+# The Kotlin end-to-end suite (npm run test:kotlin): real Gradle builds of a small Kotlin and Java project,
+# sharded across isolated runners. It runs on a push to main that touches the Java and Kotlin preset code, the core and
+# shared code it imports, the package and test configuration, or this file; by hand from the Actions tab;
+# and on a pull request only when the `run-ci` label is added and the pull request changes one of those paths.
 on:
   push:
     branches: [main]
@@ -65,9 +64,9 @@ jobs:
     timeout-minutes: 60
     strategy:
       fail-fast: false
-      max-parallel: 14
+      max-parallel: 3
       matrix:
-        shard: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14]
+        shard: [1, 2, 3]
     steps:
       - uses: actions/checkout@v7.0.1
       - uses: actions/setup-node@v7.1.0
@@ -85,7 +84,7 @@ jobs:
             languages/java/maven/fixtures/**/pom.xml
             languages/java/gradle/nitpicker.init.gradle
       # Caches ~/.gradle: the Kotlin compiler, detekt, ktlint, ktfmt, PMD, SpotBugs and PIT jars the init script
-      # resolves, and the Kotlin Gradle plugin. Maven's tool jars land in ~/.m2, which the setup-java step caches.
+      # resolves, and the Kotlin Gradle plugin.
       - uses: gradle/actions/setup-gradle@v6.4.1
         with:
           gradle-version: 8.14.3

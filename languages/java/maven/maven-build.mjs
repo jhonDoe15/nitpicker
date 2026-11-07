@@ -20,6 +20,7 @@ import {
 } from './maven-tools.mjs';
 import { buildRunsArchRules, springAotSkip } from './spring/arch-rules-gate.mjs';
 import { writeSpringRoles } from '../adapters/spring-arch/spring-roles.mjs';
+import { writeSpringRuleset } from '../adapters/spring/proxies/proxy-ruleset.mjs';
 import { MAVEN_PRESETS } from '../adapters/gradle-presets.mjs';
 import { processorTool } from './errorprone/maven-errorprone.mjs';
 import { readPinnedTools } from '../builds/java-build.mjs';
@@ -111,6 +112,7 @@ function analyzeAll({ analyzed, policy, kotlin, work, ...shared }) {
     indentation: checkstyleIndentation(policy.conventions),
   };
   const springRoles = writeSpringRoles(policy.springRoles, work);
+  const springRules = writeSpringRuleset(shared.projectRoot, work);
   return analyzed
     .map(({ module, classpaths }) =>
       analyzeModule({
@@ -122,6 +124,7 @@ function analyzeAll({ analyzed, policy, kotlin, work, ...shared }) {
         kotlinOptions: kotlin.options,
         spring: policy.spring,
         springRoles,
+        springRules,
       }),
     )
     .filter((failure) => failure !== undefined);

@@ -1,0 +1,8 @@
+[
+  {
+    "name": "mutable default names None",
+    "tool": "ruff",
+    "rule": "B006",
+    "mention": "default to `None`"
+  }
+]

@@ -7,6 +7,7 @@ import { pathToFileURL } from 'node:url';
 import { resolveTool } from '../../../../core/tooling/tool-resolution.mjs';
 import { trackTemporaryPath } from '../../../../core/tooling/temporary-files.mjs';
 import { formattingHunks } from '../prettier/format-hunks.mjs';
+import { listUnformattedInParallel } from '../prettier/parallel-cli.mjs';
 
 export async function runPrettier(options) {
   if (options.patterns.length === 0) {
@@ -32,6 +33,23 @@ export async function runPrettier(options) {
 }
 
 function listUnformattedFiles(options, installedPolicy) {
+  const exclusions = readLayout().exclude;
+  return (
+    listUnformattedInParallel({
+      toolPath: resolveTool('prettier', {
+        projectRoot: options.liveProjectRoot,
+        bin: 'bin/prettier.cjs',
+      }).binPath,
+      projectRoot: options.projectRoot,
+      configPath: installedPolicy.configPath,
+      ignorePath: installedPolicy.ignorePath,
+      patterns: options.patterns,
+      exclusions,
+    }) ?? listUnformattedFilesSerially(options, installedPolicy, exclusions)
+  );
+}
+
+function listUnformattedFilesSerially(options, installedPolicy, exclusions) {
   const result = runNodeTool({
     options,
     relativeToolPath: 'prettier/bin/prettier.cjs',
@@ -44,7 +62,7 @@ function listUnformattedFiles(options, installedPolicy) {
       '--list-different',
       '--no-error-on-unmatched-pattern',
       ...options.patterns,
-      ...readLayout().exclude.map((glob) => `!${glob}`),
+      ...exclusions.map((glob) => `!${glob}`),
     ],
     acceptedStatuses: [0, 1],
   });
