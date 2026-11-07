@@ -61,7 +61,11 @@ function slowTestMessage({ file, seconds, budget, integration }) {
   const move = integration
     ? ''
     : ' If it really is an integration test, move it to an `integration/` or `e2e/` folder of a test root.';
-  return `This test took ${seconds.toFixed(1)} s; the budget for ${kind} is ${String(budget)} s. Replace real waits with fake timers (\`vi.useFakeTimers()\`) and use smaller fixtures.${move} ${exceptionHint(RULE_IDS.slowTest, file)}`;
+  const allowedForm = `Replace real waits with fake timers (\`vi.useFakeTimers()\`) and use smaller fixtures.${move}`;
+  return {
+    message: `This test took ${seconds.toFixed(1)} s; the budget for ${kind} is ${String(budget)} s. ${allowedForm} ${exceptionHint(RULE_IDS.slowTest, file)}`,
+    allowedForm,
+  };
 }
 
 function fileFindings(context, testResult) {
@@ -91,7 +95,7 @@ function fileFindings(context, testResult) {
       rule: RULE_IDS.slowTest,
       path: file,
       identity: `slow-test|${file}|${test.fullName}`,
-      message: slowTestMessage({
+      ...slowTestMessage({
         file,
         seconds: test.duration / MILLISECONDS,
         budget,

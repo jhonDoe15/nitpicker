@@ -103,11 +103,11 @@ function suppressionEntry() {
     forms: [
       {
         label: 'detekt.<ruleset>',
-        message: adviceOf(inlineSuppressionMessage('<path>', 'detekt.style')),
+        message: adviceOf(inlineSuppressionMessage('<path>', 'detekt.style').message),
       },
       {
         label: 'UNCHECKED_CAST',
-        message: adviceOf(inlineSuppressionMessage('<path>', 'UNCHECKED_CAST')),
+        message: adviceOf(inlineSuppressionMessage('<path>', 'UNCHECKED_CAST').message),
       },
     ],
     exception: {
