@@ -1,9 +1,9 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!-- Nitpicker's PMD rules for main sources only: API design rules and the class-load effect rule
-     that, like their TypeScript counterparts, leave test code alone, and the security category,
-     since a test encrypts with a fixed key and IV to check known output. Gradle and Maven reference
-     this file from a generated ruleset that excludes the test source roots. docs/java-preset.md
-     lists the rules and why each exists. -->
+     that, like their TypeScript counterparts, leave test code alone, the inline resource rule, and
+     the security category, since a test encrypts with a fixed key and IV to check known output.
+     Gradle and Maven reference this file from a generated ruleset that excludes the test source
+     roots. docs/java-preset.md lists the rules and why each exists. -->
 <ruleset name="nitpicker-main-rules"
          xmlns="http://pmd.sourceforge.net/ruleset/2.0.0"
          xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
@@ -635,6 +635,53 @@ return (
     and empty($named/(ClassBody | EnumBody | RecordBody)/MethodDeclaration[@MainMethod = true()])
     and ($direct($member) or $helper($member))
 ]
+]]></value>
+      </property>
+    </properties>
+  </rule>
+  <rule name="UnclosedInlineResource" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
+        message="This closeable (a stream, reader, writer, channel, JAR or ZIP file, class loader or JDBC connection) is opened and used in the same expression, as the receiver of a call, an argument or a loop source, so nothing closes it: each call leaks a file handle or a connection, and on Windows the file stays locked. Open it in a try-with-resources header and use the variable (try (InputStream in = resource.getInputStream()) ... in.readAllBytes()). Returning it, storing it in a field of a closeable class, or passing it to a closeable wrapper (new BufferedReader(new InputStreamReader(in))) that is itself owned also matches. In-memory types (ByteArrayInputStream, StringReader, StringWriter) and streams owned elsewhere (System.in, a Socket, a Process, a servlet response) are not reported.">
+    <priority>3</priority>
+    <properties>
+      <property name="xpath">
+        <value><![CDATA[
+let $closeable := 'java.lang.AutoCloseable',
+    $skipped := ('java.io.ByteArrayInputStream', 'java.io.ByteArrayOutputStream', 'java.io.StringReader',
+                'java.io.StringWriter', 'java.io.CharArrayReader', 'java.io.CharArrayWriter',
+                'java.util.stream.BaseStream', 'com.fasterxml.jackson.core.JsonParser',
+                'com.fasterxml.jackson.core.JsonGenerator', 'tools.jackson.core.JsonParser',
+                'tools.jackson.core.JsonGenerator', 'java.util.concurrent.ExecutorService',
+                'java.net.http.HttpClient'),
+    $owners := ('java.lang.Process', 'java.net.Socket', 'java.util.zip.ZipFile',
+                'javax.servlet.ServletRequest', 'javax.servlet.ServletResponse',
+                'jakarta.servlet.ServletRequest', 'jakarta.servlet.ServletResponse'),
+    $opening := concat('^(?:(?:open|new|create|prepare|accept|connect|build)(?:[A-Z_].*)?',
+                       '|getInputStream|getOutputStream|getResourceAsStream|getSystemResourceAsStream|getConnection)$'),
+    $fresh := function($n, $self) {
+      exists($n[self::MethodCall or self::ConstructorCall][pmd-java:typeIs($closeable)])
+      and not(some $t in $skipped satisfies exists($n[pmd-java:typeIs($t)]))
+      and (if (exists($n/ArgumentList/*[pmd-java:typeIs($closeable)]))
+           then (some $a in $n/ArgumentList/*[pmd-java:typeIs($closeable)] satisfies $self($a, $self))
+           else if (exists($n/self::ConstructorCall))
+           then not($n[pmd-java:typeIs('java.util.Scanner')]/ArgumentList/*[1][pmd-java:typeIs('java.lang.String')])
+                and not($n[pmd-java:typeIs('java.util.Formatter')]
+                          [empty(ArgumentList/*) or ArgumentList/*[1][pmd-java:typeIs('java.lang.StringBuilder')]])
+           else (matches($n/@MethodName, $opening)
+                 and not(some $t in $owners satisfies exists($n/*[1][pmd-java:typeIs($t)]))))
+    }
+return //(MethodCall | ConstructorCall)[$fresh(., $fresh)]
+  [not(self::MethodCall/*[1][$fresh(., $fresh)])]
+  [parent::MethodCall[not(@MethodName = 'close')]
+   or parent::ForeachStatement
+   or parent::ArgumentList[not(parent::ExplicitConstructorInvocation)]
+       [not(..[pmd-java:typeIs($closeable) or pmd-java:typeIs('org.springframework.beans.factory.DisposableBean')])]
+       [not(matches(../@MethodName, '^(?:close\w*|register|exit|add\w*|put\w*|offer\w*|push|set[A-Z]\w*|of|ofNullable)$'))]
+       [not(..[@MethodName = ('readValue', 'readValues', 'readTree')]
+              /*[1][pmd-java:typeIs('com.fasterxml.jackson.databind.ObjectMapper')
+                    or pmd-java:typeIs('com.fasterxml.jackson.databind.ObjectReader')
+                    or pmd-java:typeIs('tools.jackson.databind.ObjectMapper')
+                    or pmd-java:typeIs('tools.jackson.databind.ObjectReader')])]
+       [not(../*[1][self::TypeExpression][pmd-java:typeIs('org.springframework.util.FileCopyUtils')])]]
 ]]></value>
       </property>
     </properties>
