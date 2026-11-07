@@ -87,6 +87,7 @@ const REVIEW_RULES = new Set([
   'TestClassWithoutTestCases',
   'test-only-export',
   'UnboundedFanOut',
+  'UnboundedReactiveFanOut',
   'UnboundedThreadPool',
   'SpringUnreleasedResource',
   'SpringStartupCleanup',

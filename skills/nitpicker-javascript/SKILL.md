@@ -146,7 +146,7 @@ line) is a finding.
 - Remove a parameter the body does not read. One that a callback or override signature requires
   starts with `_` (`_event`).
 - `async`/`await`, never `.then()`. No floating promises.
-- Fan-out: bound concurrent remote or message calls. Run each call through a limiter created outside the loop (`pLimit(8)`, p-queue `concurrency`, Bottleneck `maxConcurrent`) or work through fixed-size chunks. Never `Promise.all(items.map(send))` over a runtime collection.
+- Fan-out: bound concurrent remote or message calls. Run each call through a limiter created outside the loop (`pLimit(8)`, p-queue `concurrency`, Bottleneck `maxConcurrent`) or work through fixed-size chunks. RxJS: `mergeMap(fn, 8)` or `concatMap`, never `forkJoin(items.map(load))`. Never `Promise.all(items.map(send))` over a runtime collection.
 - A child process you wait for gets a deadline: `{ timeout: 30_000 }` on `execFileSync`/`spawnSync`, or a
   `timeout` or `signal: AbortSignal.timeout(30_000)` on `execFile` and an awaited `spawn` or `execa`
   (`nitpicker/require-process-timeout`; a build wrapper that only runs a child to completion takes an exception).
