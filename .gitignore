@@ -9,3 +9,4 @@ release-assets/
 __pycache__/
 *.pyc
 shared/reference/rules/
+languages/typescript/reference/eslint-inventory.json
