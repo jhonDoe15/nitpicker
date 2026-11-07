@@ -33,6 +33,7 @@ const expectedDockerignoreLines = [
   '.claude',
   '.git',
   '.github',
+  'languages/typescript/reference/eslint-inventory.json',
   'shared/reference/rules',
 ];
 

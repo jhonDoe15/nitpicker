@@ -223,19 +223,14 @@ export async function liveEslintInventory() {
   return Object.fromEntries(names.map((name, index) => [name, inventories[index]]));
 }
 
-/** The committed ESLint inventory that the reference is built from. */
+/** The ESLint inventory that the reference is built from, which `npm run gen:rules` builds. */
 export function readEslintInventory() {
   return JSON.parse(readFileSync(INVENTORY_FILE, 'utf8'));
 }
 
-/** Rewrites the committed ESLint inventory as `text`. */
+/** Writes the built ESLint inventory as `text`. */
 export function writeEslintInventory(text) {
   writeFileSync(INVENTORY_FILE, text);
-}
-
-/** The path of the committed ESLint inventory, relative to `repositoryRoot`. */
-export function eslintInventoryPath(repositoryRoot) {
-  return path.relative(repositoryRoot, fileURLToPath(INVENTORY_FILE));
 }
 
 if (process.argv[1] !== undefined && import.meta.url === pathToFileURL(process.argv[1]).href) {
