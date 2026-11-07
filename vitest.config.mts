@@ -31,6 +31,7 @@ export default defineConfig({
     include: ['{core,shared,languages,scripts}/**/*.test.mjs', 'evals/**/*.test.mjs'],
     testTimeout: 30_000,
     hookTimeout: 30_000,
+    globalSetup: ['./scripts/reference/global-setup.mjs'],
     setupFiles: jvmEndToEnd ? ['./scripts/test-shards/repository-timeouts.mjs'] : [],
   },
 });
