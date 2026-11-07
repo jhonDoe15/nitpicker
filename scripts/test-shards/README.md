@@ -1,9 +1,10 @@
 # Test shard timings
 
 The duration sequencer assigns every selected file to exactly one shard, longest files first.
-A file without a measurement weighs the median of the profile's measured files (one second when
-there are none), so a new e2e file needs no profile edit; `record-durations` measures it later. The selected files always come from Vitest's
-package-script filters, so adding a test to a language suite does not require editing a shard list.
+Files without a measurement count as one second, so a new file, end-to-end ones included, needs
+no profile edit. The plan is rough until `record-durations` measures the file. The selected files
+always come from Vitest's package-script filters, so adding a test to a language suite does not
+require editing a shard list.
 
 `durations.json` describes ordinary `npm test` runs. `java-e2e.json` and `kotlin-e2e.json` describe
 the corresponding enabled end-to-end suites. Selection uses the same `NITPICKER_JAVA_E2E=1` or
@@ -97,10 +98,11 @@ file that a script leaves out fails. It checks the workflow wiring: the shard jo
 script with `--shard`, the plan job runs this verifier for its language, and the one aggregate job
 always runs, needs both and checks both results. It resolves CLI shard options through Vitest and
 exercises the configured sequencer with the language's profile. It requires the profile to name
-only selected files (a new file may be missing from it) and each matrix shard to be nonempty, with every selected file in
-exactly one shard. Vitest list itself does not apply sharding, so its `--shard` output alone is
-insufficient to verify the partition. The script's own main guard resolves `process.argv[1]`
-through `realpathSync`, so a run through a symlinked path checks rather than exiting silently.
+only selected files (a new file may be missing from it) and each matrix shard to be nonempty,
+with every selected file in exactly one shard. Vitest list itself does not apply sharding, so its
+`--shard` output alone is insufficient to verify the partition. The script's own main guard
+resolves `process.argv[1]` through `realpathSync`, so a run through a symlinked path checks rather
+than exiting silently.
 
 Fixture Git trees, generated reports and build outputs remain local to each runner. The existing
 Maven/Gradle actions cache dependencies; mutable fixture builds are not shared between shards.
