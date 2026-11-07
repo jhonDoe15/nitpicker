@@ -1,0 +1,20 @@
+[
+  {
+    "name": "mypy type error names fixing the type",
+    "tool": "mypy",
+    "rule": "return-value",
+    "mention": "fix the type"
+  },
+  {
+    "name": "pyright type error names fixing the type",
+    "tool": "pyright",
+    "rule": "reportReturnType",
+    "mention": "fix the type"
+  },
+  {
+    "name": "basedpyright type error names fixing the type",
+    "tool": "basedpyright",
+    "rule": "reportReturnType",
+    "mention": "fix the type"
+  }
+]
