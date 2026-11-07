@@ -1,0 +1,7 @@
+[
+  {
+    "tool": "ruff",
+    "rule": "PT013",
+    "mention": "import pytest"
+  }
+]

@@ -1,0 +1,12 @@
+[
+  {
+    "tool": "python-rules",
+    "rule": "orm-schema-sync",
+    "mention": "alembic upgrade head"
+  },
+  {
+    "tool": "python-rules",
+    "rule": "orm-query-logging",
+    "mention": "slow-query log"
+  }
+]

@@ -1,6 +1,8 @@
 import ast
+import importlib
 import json
 import os
+import re
 import sys
 import tokenize
 
@@ -14,83 +16,32 @@ TOO_DEEP_RULE = "rules-too-deep"
 GUARDED_PREFIXES = ("security.", "signatures.", "concurrency.")
 
 
+SKIPPED_FOLDERS = {"fixtures", "test-support", "e2e", "__pycache__"}
+CHECK_DEFINITION = re.compile(r"^def check\(", re.MULTILINE)
+
+
+def defines_check(path):
+    with open(path, encoding="utf-8") as handle:
+        return CHECK_DEFINITION.search(handle.read()) is not None
+
+
+def check_module_names():
+    names = []
+    for root, folders, files in os.walk(HERE):
+        folders[:] = sorted(name for name in folders if name not in SKIPPED_FOLDERS)
+        if root == HERE:
+            continue
+        for name in sorted(files):
+            path = os.path.join(root, name)
+            if name.endswith(".py") and defines_check(path):
+                module = os.path.relpath(path, HERE)[: -len(".py")].replace(os.sep, ".")
+                names.append(module.removesuffix(".__init__"))
+    return names
+
+
 def load_checks():
     sys.path.insert(0, HERE)
-    from boundary import domain_types, guards, paths
-    from checks import comments, declarations, parameters, shell, state
-    from concurrency import fan_out
-    from discovery import helpers, uncollected
-    from effects import import_time, reach
-    from environment import domain_imports, environment, purity
-    from errors import errors
-    from honesty import assertions, isolation, skipped, waits
-    from leaks import global_state
-    from per_test import starts
-    from resources import inline as inline_resources
-    from persistence import cascades, eager, query_logging, schema_sync
-    from processes import timeouts as process_timeouts
-    from regexes import patterns
-    from review import fields
-    from security import hashes, loading
-    from security.sql import check as sql
-    from security.timeouts import check as timeouts
-    from security.tls import check as tls
-    from signatures import defaults, mutation, shims, tri_state
-    from silent_tests import unasserted
-    from credentials import hardcoded, logs
-    from smells import literals, loops, names
-    from tasks import cleanup, lifetimes
-
-    return [
-        declarations,
-        parameters,
-        errors,
-        comments,
-        environment,
-        purity,
-        reach,
-        domain_imports,
-        import_time,
-        state,
-        shell,
-        sql,
-        inline_resources,
-        tls,
-        hashes,
-        timeouts,
-        process_timeouts,
-        loading,
-        schema_sync,
-        query_logging,
-        guards,
-        domain_types,
-        paths,
-        literals,
-        names,
-        hardcoded,
-        logs,
-        loops,
-        fan_out,
-        skipped,
-        assertions,
-        unasserted,
-        isolation,
-        global_state,
-        waits,
-        starts,
-        uncollected,
-        helpers,
-        fields,
-        eager,
-        cascades,
-        lifetimes,
-        cleanup,
-        tri_state,
-        defaults,
-        mutation,
-        shims,
-        patterns,
-    ]
+    return [importlib.import_module(name) for name in check_module_names()]
 
 
 class FileContext:

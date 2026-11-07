@@ -1,0 +1,17 @@
+[
+  {
+    "tool": "ruff",
+    "rule": "S308",
+    "mention": "format_html"
+  },
+  {
+    "tool": "ruff",
+    "rule": "S704",
+    "mention": "format_html"
+  },
+  {
+    "tool": "ruff",
+    "rule": "S701",
+    "mention": "jinja2"
+  }
+]
