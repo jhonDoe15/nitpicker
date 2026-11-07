@@ -178,6 +178,8 @@ const FIXTURES = {
       { preset: 'java', spring: { roles: { service: ['com.example.UseCase'] } } },
       { preset: 'java' },
     ),
+  'detached-work-runner-added': () =>
+    synthetic({}, { conventions: { 'typescript.detachedWorkRunners': ['runDetached'] } }),
 };
 
 const VARIANTS = [

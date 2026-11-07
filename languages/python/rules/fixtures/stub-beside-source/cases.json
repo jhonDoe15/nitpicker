@@ -1,0 +1,8 @@
+[
+  {
+    "name": "a stub beside its source names deleting the stub",
+    "tool": "python-rules",
+    "rule": "stub-beside-source",
+    "mention": "delete the `.pyi` file"
+  }
+]

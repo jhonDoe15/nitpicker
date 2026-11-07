@@ -1,34 +1,56 @@
 import { precedenceLayers } from '../../../../shared/conventions/tool-precedence.mjs';
+import { resolveLayoutFor } from '../layout.mjs';
 import { mutationDisabled, readStrykerProjectConfig } from './stryker-project-config.mjs';
+import {
+  TYPESCRIPT_TOOL,
+  readTypescriptProjectConfig,
+} from './typescript/typescript-project-options.mjs';
 
-const PROJECT_CONFIG_READERS = new Map([['stryker', readStrykerProjectConfig]]);
+const PROJECT_CONFIG_READERS = new Map([
+  [
+    'stryker',
+    {
+      read: (projectRoot) => readStrykerProjectConfig(projectRoot),
+      applies: ({ config }) => !mutationDisabled(config),
+    },
+  ],
+  [
+    TYPESCRIPT_TOOL,
+    {
+      read: (projectRoot, { policy }) =>
+        readTypescriptProjectConfig(projectRoot, resolveLayoutFor(policy)),
+      applies: ({ layers }) => !layers.nitpickerFirst,
+    },
+  ],
+]);
 
-function captured(read, projectRoot) {
+function captured(reader, projectRoot, context) {
   try {
-    return { projectConfig: read(projectRoot) };
+    return { projectConfig: reader.read(projectRoot, context) };
   } catch (error) {
     return { projectConfigError: error instanceof Error ? error.message : String(error) };
   }
 }
 
-function readsProject(tool, settings, config) {
-  return (
-    PROJECT_CONFIG_READERS.has(tool) &&
-    precedenceLayers(settings?.precedence).usesProject &&
-    !mutationDisabled(config)
-  );
+function readerFor(tool, settings, context) {
+  const reader = PROJECT_CONFIG_READERS.get(tool);
+  const layers = precedenceLayers(settings?.precedence);
+  return layers.usesProject && reader?.applies({ ...context, layers }) ? reader : undefined;
 }
 
-export function withHeadToolConfigs(tools, config, projectRoot) {
+export function withHeadToolConfigs(tools, context, projectRoot) {
   if (tools === undefined) {
     return undefined;
   }
   return Object.fromEntries(
-    Object.entries(tools).map(([tool, settings]) => [
-      tool,
-      readsProject(tool, settings, config)
-        ? { ...settings, ...captured(PROJECT_CONFIG_READERS.get(tool), projectRoot) }
-        : settings,
-    ]),
+    Object.entries(tools).map(([tool, settings]) => {
+      const reader = readerFor(tool, settings, context);
+      return [
+        tool,
+        reader === undefined
+          ? settings
+          : { ...settings, ...captured(reader, projectRoot, context) },
+      ];
+    }),
   );
 }

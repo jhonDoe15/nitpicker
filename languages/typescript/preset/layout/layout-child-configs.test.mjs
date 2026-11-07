@@ -1,16 +1,21 @@
-import { afterAll, describe, expect, it } from 'vitest';
+import { afterAll, afterEach, describe, expect, it, vi } from 'vitest';
 import { securitySupportGlobs } from '../eslint-config/policy/security-facts.mjs';
 import {
   selectFilesAndIgnores,
   customPolicy as policy,
   loadConfig,
   removeTemporaryRoots,
+  temporaryProject,
 } from './test-support/layout-config-helpers.mjs';
 
 afterAll(removeTemporaryRoots);
+afterEach(() => {
+  vi.unstubAllEnvs();
+});
 
 describe('package-owned child configs', () => {
   it('eslint.config.mjs lints the custom roots and ignores excluded paths', async () => {
+    vi.stubEnv('NITPICKER_DIFF_ESLINT_PROJECT_ROOT', temporaryProject({}));
     const config = await loadConfig('defaults/eslint.config.mjs', policy, selectFilesAndIgnores);
     const ignores = config.flatMap((entry) =>
       entry.files === undefined ? (entry.ignores ?? []) : [],

@@ -1,15 +1,24 @@
-import { EXISTING_CASES } from './cases/existing-cases.mjs';
-import { RULES_CASES } from './cases/rules-cases.mjs';
-import { SECURITY_CASES } from './cases/security-cases.mjs';
-import { STYLE_CASES } from './cases/style-cases.mjs';
-import { TYPE_CASES } from './cases/type-cases.mjs';
-import { REVIEW_RULE_CASES } from './python-review-rule-cases.mjs';
+import { existsSync, readdirSync, readFileSync } from 'node:fs';
 
-export const RULE_CASES = [
-  ...EXISTING_CASES,
-  ...STYLE_CASES,
-  ...SECURITY_CASES,
-  ...RULES_CASES,
-  ...TYPE_CASES,
-  ...REVIEW_RULE_CASES,
-];
+const FIXTURES = new URL('../fixtures/', import.meta.url);
+const CASES_FILE = 'cases.json';
+
+function fixtureCases(fixture) {
+  const file = new URL(`${fixture}/${CASES_FILE}`, FIXTURES);
+  if (!existsSync(file)) {
+    return [];
+  }
+  return JSON.parse(readFileSync(file, 'utf8')).map((testCase) => ({
+    name: `${testCase.rule} names "${testCase.mention}"`,
+    fixture,
+    ...testCase,
+  }));
+}
+
+/**
+ * The rule message cases, read from the `cases.json` of each fixture folder, so a new rule adds its
+ * case next to its fixture and edits no shared table. A case without a `name` takes the default one.
+ */
+export function ruleCases() {
+  return readdirSync(FIXTURES).toSorted().flatMap(fixtureCases);
+}
