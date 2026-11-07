@@ -1,6 +1,6 @@
 # TypeScript and JavaScript: nitpicker ESLint rules
 
-The ESLint rules nitpicker's own plugin adds to the TypeScript and JavaScript presets (`nitpicker/*`). This page lists 98 rules. [All pages](README.md).
+The ESLint rules nitpicker's own plugin adds to the TypeScript and JavaScript presets (`nitpicker/*`). This page lists 99 rules. [All pages](README.md).
 
 The guide for these rules: [docs/typescript-strict-preset.md](../typescript-strict-preset.md).
 
@@ -1253,3 +1253,15 @@ Bound the concurrency of remote calls started per element.
 - **Exception:** If this is intended, add `{"rule":"nitpicker/unbounded-fan-out","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 - **Allowed forms by message:**
   - {{combinator}} starts {{operation}}{{via}} for every element of `{{collection}}` at once, so a large collection exhausts the {{target}}'s connections or rate limit. Run each call through a limiter created once outside the loop (`const limit = pLimit(8)`, then `limit(() => send(item))`), await fixed-size chunks, or make one batch call when the API has one. An exception fits only when the collection is always small.
+
+<a id="eslint-nitpicker-unbounded-reactive-fan-out"></a>
+
+### `eslint/nitpicker/unbounded-reactive-fan-out`
+
+Bound the concurrency of remote calls that RxJS subscribes per element.
+
+- **Printed as:** `eslint-lint/nitpicker/unbounded-reactive-fan-out`
+- **Exception:** If this is intended, add `{"rule":"nitpicker/unbounded-reactive-fan-out","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
+- **Allowed forms by message:**
+  - `{{operator}}` without a concurrency argument subscribes to {{operation}}{{via}} for every element of `{{collection}}` at once, so a large collection exhausts the {{target}}'s connections or rate limit. Pass a concurrency limit (`mergeMap((item) => load(item), 8)`), use `concatMap` for one call at a time, or `bufferCount(20)` and make one batch call per chunk. An exception fits only when the collection is always small.
+  - `{{operator}}` subscribes to {{operation}}{{via}} for every element of `{{collection}}` at once, so a large collection exhausts the {{target}}'s connections or rate limit. Build the result with `from(items).pipe(mergeMap((item) => load(item), 8), toArray())`, or make one batch call when the API has one. An exception fits only when the collection is always small.

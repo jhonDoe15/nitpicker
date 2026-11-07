@@ -15,6 +15,7 @@ java {
 dependencies {
     implementation platform('org.springframework.boot:spring-boot-dependencies:3.5.5')
     implementation 'org.springframework.boot:spring-boot-starter'
+    implementation 'io.projectreactor:reactor-core'
     implementation 'org.springframework:spring-web'
     implementation 'org.apache.httpcomponents.client5:httpclient5'
     implementation 'org.apache.httpcomponents:httpclient:4.5.14'

@@ -177,6 +177,7 @@ describe('readKotlinSourceFindings', () => {
         'TlsVerificationOff',
         'TriStateBoolean',
         'UnboundedFanOut',
+        'UnboundedReactiveFanOut',
         'UnclosedInlineResource',
         'UnquotedRegexValue',
         'UnsafeCastOperator',

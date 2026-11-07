@@ -162,6 +162,8 @@ export const POLICY_FILES = [
   'languages/typescript/preset/eslint-plugin/rules/concurrency/io-origin.mjs',
   'languages/typescript/preset/eslint-plugin/rules/concurrency/sites.mjs',
   'languages/typescript/preset/eslint-plugin/rules/concurrency/unbounded-fan-out.mjs',
+  'languages/typescript/preset/eslint-plugin/rules/concurrency/reactive/rxjs-calls.mjs',
+  'languages/typescript/preset/eslint-plugin/rules/concurrency/reactive/unbounded-reactive-fan-out.mjs',
   'languages/typescript/preset/eslint-plugin/rules/events/emitter-creations.mjs',
   'languages/typescript/preset/eslint-plugin/rules/events/emitter-modules.mjs',
   'languages/typescript/preset/eslint-plugin/rules/events/error-handling.mjs',
