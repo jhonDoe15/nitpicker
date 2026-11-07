@@ -32,6 +32,7 @@ import { CLIENT_MESSAGES, httpWithoutTimeout, unsafeDeserialization } from './se
 import { PROCESS_MESSAGES, processWaitsWithoutTimeout } from './processes/process-waits.mjs';
 import { CRYPTO_MESSAGES, disabledTlsVerification, weakHashes } from './security/crypto.mjs';
 import { SQL_MESSAGES, sqlStringBuilding } from './security/sql.mjs';
+import { URI_MESSAGES, dynamicUris } from './uris/uri-parsing.mjs';
 import {
   INLINE_CLOSEABLE_MESSAGES,
   unclosedInlineResources,
@@ -54,6 +55,7 @@ export const KOTLIN_SOURCE_MESSAGES = {
   ...SQL_MESSAGES,
   ...CRYPTO_MESSAGES,
   ...CLIENT_MESSAGES,
+  ...URI_MESSAGES,
   ...INLINE_CLOSEABLE_MESSAGES,
   ...PROCESS_MESSAGES,
   ...LOG_FORMAT_MESSAGES,
@@ -92,6 +94,7 @@ const MAIN_RULES = [
   httpWithoutTimeout,
   processWaitsWithoutTimeout,
   unsafeDeserialization,
+  dynamicUris,
   unclosedInlineResources,
   triStateBooleans,
   parameterMutations,

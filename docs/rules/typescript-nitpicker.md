@@ -1,6 +1,6 @@
 # TypeScript and JavaScript: nitpicker ESLint rules
 
-The ESLint rules nitpicker's own plugin adds to the TypeScript and JavaScript presets (`nitpicker/*`). This page lists 99 rules. [All pages](README.md).
+The ESLint rules nitpicker's own plugin adds to the TypeScript and JavaScript presets (`nitpicker/*`). This page lists 100 rules. [All pages](README.md).
 
 The guide for these rules: [docs/typescript-strict-preset.md](../typescript-strict-preset.md).
 
@@ -843,6 +843,17 @@ Report test calls in a file the test runner never collects.
 - **Exception:** If this is intended, add `{"rule":"nitpicker/no-uncollected-tests","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 - **Allowed forms by message:**
   - This file defines tests but is not named like a test file, so they never run. Rename it `*.test.ts` (or `*.spec.ts`). An exception fits only when another test file runs it on purpose.
+
+<a id="eslint-nitpicker-no-unhandled-url-parse"></a>
+
+### `eslint/nitpicker/no-unhandled-url-parse`
+
+Require new URL(text) on runtime text to be checked with URL.canParse, parsed with URL.parse, or wrapped in a try.
+
+- **Printed as:** `eslint-lint/nitpicker/no-unhandled-url-parse`
+- **Exception:** If this is intended, add `{"rule":"nitpicker/no-unhandled-url-parse","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
+- **Allowed forms by message:**
+  - Parse this text with `URL.parse(text)` (null when it is not a URL), check `URL.canParse(text)` first, or build the URL in a `try` whose catch handles the failure. `new URL(text)` throws a TypeError on text that is not an absolute URL (no scheme, a bad host, `//` against a base), so one odd stored, user or header value turns this call into an error response. Constant text and a base are fine, and so are a `URL` value, an already parsed `.href`, `.url` or `.origin`, and `new URL(path, import.meta.url)`.
 
 <a id="eslint-nitpicker-no-unhandled-void-promise"></a>
 

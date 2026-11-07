@@ -822,6 +822,19 @@ only the library follows the project. Nitpicker reads `dependencies`, `peerDepen
   `@param {boolean} [force]` with no default, and `Promise<boolean|undefined>` in `@returns`.
   `[force=false]` (a default given), `@property` tags and dotted option names
   (`@param {boolean} [options.verbose]`) are not reported.
+- `nitpicker/no-unhandled-url-parse`: `new URL(text)` or `new URL(text, base)` (also
+  `new globalThis.URL`) where `text` or `base` is neither a constant string (a literal, a template
+  or `+` of constants, or a `const` holding one) nor a `URL` value (a `new URL(...)` constant, a
+  name annotated `URL`, an already parsed `.href`, `.url` or `.origin`) throws a
+  `TypeError` on text that is not an absolute URL, so one odd stored, user or header value turns
+  the call into an error response. The allowed forms are `URL.parse(text)` (`null` for bad text),
+  a `URL.canParse(text)` check on the same text in the same or an enclosing function, and a `try`
+  with a `catch` around the call in the same function (arrow callbacks inside the `try` count; a
+  nested `function` does not). A module path against `import.meta.url`, or against a URL built from
+  it, is not reported. The rule reads no types, so a `URL` parameter without an annotation is
+  reported; `new URL(url.href)` passes. The Java and Kotlin presets report `URI.create(text)` the
+  same way (`pmd/UriCreateDynamic`, `kotlin-source/UriCreateDynamic`); Python has no counterpart,
+  since `urllib.parse` does not raise on such text.
 - `nitpicker/no-parameter-mutation` (type-aware): a mutating method (`push`, `pop`, `splice`,
   `sort`, `reverse`, `add`, `set`, `delete`, `clear` and the other array, `Set`, `Map` mutators of
   `no-mutating-method-in-domain`) called on a parameter, or an assignment, `++` or `delete` on an

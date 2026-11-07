@@ -182,6 +182,7 @@ describe('readKotlinSourceFindings', () => {
         'UnquotedRegexValue',
         'UnsafeCastOperator',
         'UnsafeDeserialization',
+        'UriCreateDynamic',
         'WeakHash',
       ].map((rule) => `kotlin-source/${rule}`),
     );

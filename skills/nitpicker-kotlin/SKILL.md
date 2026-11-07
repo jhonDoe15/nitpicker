@@ -114,6 +114,11 @@ To learn why a rule is on and what form it allows before you write or change cod
   zone, `ZoneId.systemDefault()`, `TimeZone.getDefault()` and `TimeZone.currentSystemDefault()`
   (`kotlin-source/DefaultTimeZone`); `Calendar`, `GregorianCalendar` and `SimpleDateFormat` need a
   zone (`kotlin-source/LegacyCalendarApi`).
+- URIs from runtime text: build them with an encoding builder (`UriComponentsBuilder` with
+  `encode()`, `URI(scheme, host, path, fragment)`), or parse where the failure is handled
+  (`runCatching { URI.create(text) }`, a `try` that catches `IllegalArgumentException`);
+  `URI.create(text)` and `URI(text)` on a non-constant string are flagged
+  (`kotlin-source/UriCreateDynamic`).
 - Regexes: escape a runtime value before it goes into a pattern (`Regex.escape(name)`), pass a
   whole pattern to `Regex(pattern)` on its own, and use the plain-text `replace`, `split` and
   `contains` for text without metacharacters (`kotlin-source/UnquotedRegexValue`,

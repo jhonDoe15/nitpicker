@@ -106,6 +106,11 @@ To learn why a rule is on and what form it allows before you write or change cod
   `new GregorianCalendar()` and `new SimpleDateFormat(...)` without a time zone are flagged
   (`pmd/LegacyCalendarApi`), and so are `ZoneId.systemDefault()` and `TimeZone.getDefault()`
   (`pmd/DefaultTimeZone`).
+- URIs from runtime text: build them with an encoding builder
+  (`UriComponentsBuilder...encode().build().toUri()`, `new URI(scheme, host, path, fragment)`), or
+  parse where the failure is handled (`URI.create(text)` in a `try` that catches
+  `IllegalArgumentException`); `URI.create` on a non-constant string is flagged
+  (`pmd/UriCreateDynamic`).
 - Regexes: `split`, `matches`, `replaceAll` and `replaceFirst` take a regex, so wrap a runtime
   value in `Pattern.quote(value)` (also when you join it into a `Pattern.compile` pattern), and use
   `replace` for plain text (`pmd/UnquotedRegexValue`, `pmd/PlainTextRegex`).

@@ -53,6 +53,7 @@ import { rule as noSharedStatefulRegex } from './rules/regex/no-shared-stateful-
 import { rule as noStringAsRegex } from './rules/regex/no-string-as-regex.mjs';
 import { rule as noParameterMutation } from './rules/signatures/no-parameter-mutation.mjs';
 import { rule as noTriStateBoolean } from './rules/signatures/no-tri-state-boolean.mjs';
+import { rule as noUnhandledUrlParse } from './rules/parsing/no-unhandled-url-parse.mjs';
 import { rule as noUnhandledVoidPromise } from './rules/promises/no-unhandled-void-promise.mjs';
 import { rule as noRuntimeExclusivePropsCheck } from './rules/react-props/no-runtime-exclusive-props-check.mjs';
 import { rule as noSingularAndPluralProp } from './rules/api-shape/no-singular-and-plural-prop.mjs';
@@ -173,6 +174,7 @@ export const nitpickerRules = {
     'no-string-as-regex': noStringAsRegex,
     'no-parameter-mutation': noParameterMutation,
     'no-tri-state-boolean': noTriStateBoolean,
+    'no-unhandled-url-parse': noUnhandledUrlParse,
     'no-runtime-exclusive-props-check': noRuntimeExclusivePropsCheck,
     'no-singular-and-plural-prop': noSingularAndPluralProp,
     'react-no-effect-data-fetching': reactNoEffectDataFetching,

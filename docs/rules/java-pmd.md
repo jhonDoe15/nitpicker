@@ -1,6 +1,6 @@
 # Java and Kotlin: PMD rules
 
-PMD's bestpractices, design, errorprone, multithreading, performance and security categories, as far as nitpicker's rulesets keep them, and the rules nitpicker adds to them, for Java sources in the Java and Kotlin presets. This page lists 270 rules. [All pages](README.md).
+PMD's bestpractices, design, errorprone, multithreading, performance and security categories, as far as nitpicker's rulesets keep them, and the rules nitpicker adds to them, for Java sources in the Java and Kotlin presets. This page lists 271 rules. [All pages](README.md).
 
 The guide for these rules: [docs/java-preset.md](../java-preset.md).
 
@@ -2772,6 +2772,17 @@ Unused Private Method detects when a private method is declared but is unused.
 - **Allowed form:** Remove the method, or call it.
 - **Exception:** If this is intended, add `{"rule":"pmd/UnusedPrivateMethod","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 - **See also:** [PMD rule documentation](https://docs.pmd-code.org/pmd-doc-7.7.0/pmd_rules_java_bestpractices.html#unusedprivatemethod)
+
+<a id="pmd-uricreatedynamic"></a>
+
+### `pmd/UriCreateDynamic`
+
+In main sources: `URI.create(text)` where `text` is not a compile-time constant (a literal, a text block, a `static final` constant or constants joined with `+`), and the method reference `URI::create`. A call in a `try` whose `catch` takes `IllegalArgumentException`, `RuntimeException`, `Exception` or `Throwable` is not flagged when the `try` is in the same method, constructor or initializer; lambdas inside the `try` count, an anonymous or local class does not.
+
+- **Scope:** Main sources only.
+- **Why it is on:** A PMD rule nitpicker defines: it names one allowed form where the language offers several, and reports the other forms.
+- **Allowed form:** URI.create throws IllegalArgumentException on a space, a non-ASCII character or any other character that is not encoded, so one odd stored, user or header value turns this call into an error response. Build the URI with an encoding builder (UriComponentsBuilder.fromUriString(base).path(path).queryParam(name, value).encode().build().toUri(), or new URI(scheme, host, path, fragment)), or parse the text where the failure is handled: new URI(text) with URISyntaxException caught, or URI.create(text) in a try that catches IllegalArgumentException. A constant or a project helper that does one of these is fine. A value read from configuration at startup also matches, because a bad value fails only at runtime.
+- **Exception:** If this is intended, add `{"rule":"pmd/UriCreateDynamic","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 
 <a id="pmd-usearraylistinsteadofvector"></a>
 
