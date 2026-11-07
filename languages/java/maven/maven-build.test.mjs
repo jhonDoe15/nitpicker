@@ -125,4 +125,14 @@ describe('buildAndTest', () => {
       ],
     ]);
   });
+
+  it('skips Spring AOT processing unless the tests run in AOT mode', () => {
+    const aotArguments = (module) =>
+      mavenArguments({ ...singleModule(), ...module }).filter((arg) => arg.includes('aot'));
+
+    expect([
+      aotArguments({ testJvmArgs: [] }),
+      aotArguments({ testJvmArgs: ['-Dspring.aot.enabled=true'] }),
+    ]).toEqual([['-Dspring-boot.aot.skip=true'], []]);
+  });
 });

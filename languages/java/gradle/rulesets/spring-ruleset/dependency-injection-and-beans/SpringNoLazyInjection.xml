@@ -1,0 +1,7 @@
+  <rule name="SpringNoLazyInjection" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
+        message="Remove @Lazy from this injection point. It hides a dependency cycle; break the cycle with a new component or an event instead.">
+    <priority>2</priority>
+    <properties><property name="xpath"><value><![CDATA[
+(//FieldDeclaration | //FormalParameter)/ModifierList/Annotation[pmd-java:typeIs('org.springframework.context.annotation.Lazy')]
+]]></value></property></properties>
+  </rule>

@@ -1,0 +1,7 @@
+[
+  {
+    "tool": "python-rules",
+    "rule": "io-in-loop",
+    "mention": "batch it"
+  }
+]

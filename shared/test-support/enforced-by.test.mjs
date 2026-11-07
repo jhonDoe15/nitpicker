@@ -18,6 +18,12 @@ const JVM_RUNTIME_EDGES_ONLY = {
   evidence: /kind: EDGE_KINDS\.RUNTIME/u,
 };
 const NOT_ENFORCED_ALTHOUGH_EMITTED = {
+  python: {
+    'shared-used-by-one-feature': {
+      file: 'languages/python/adapters/facts/python-facts.mjs',
+      evidence: /registeredFactRules\('python'\)/u,
+    },
+  },
   java: {
     ...JVM_FACT_RULES_NOT_RUN,
     'type-only-production-dependency': JVM_RUNTIME_EDGES_ONLY,

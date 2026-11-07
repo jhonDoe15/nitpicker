@@ -62,7 +62,8 @@ function methodOf(callee) {
 
 function helperOf(call, context) {
   const callee = skipped(call.callee);
-  return resolveFunction(context, callee) ?? methodOf(callee);
+  const helper = resolveFunction(context, callee) ?? methodOf(callee);
+  return helper?.body ? helper : undefined;
 }
 
 export function createIo(context) {
