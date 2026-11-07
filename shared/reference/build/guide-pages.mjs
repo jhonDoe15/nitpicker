@@ -40,14 +40,9 @@ export function guidePages(guide) {
   return [guide, ...pages];
 }
 
-const texts = new Map();
-
-/** The text of `page`, a file of this repository, read once per process. */
+/** The text of `page`, a file of this repository. */
 export function guideText(page) {
-  if (!texts.has(page)) {
-    texts.set(page, readFileSync(new URL(page, REPOSITORY_ROOT), 'utf8'));
-  }
-  return texts.get(page);
+  return readFileSync(new URL(page, REPOSITORY_ROOT), 'utf8');
 }
 
 /**
