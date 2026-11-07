@@ -13,7 +13,7 @@ import {
   suiteFlag,
   workflowProblems,
 } from './e2e-gates.mjs';
-import { assignShards, readDurations } from './sequencer.mjs';
+import { assignShards, readDurations, weightOf } from './sequencer.mjs';
 import { TOOL_RUN_CEILING_MS } from '../../shared/processes/deadlines.mjs';
 
 const root = path.resolve(import.meta.dirname, '../..');
@@ -77,9 +77,9 @@ function suiteGates() {
 function readProfile(profile, files) {
   const durations = readDurations(profile);
   assert.deepEqual(
-    [...durations.keys()].toSorted(),
-    files,
-    'timing profile must cover every selected file',
+    [...durations.keys()].filter((file) => !files.includes(file)),
+    [],
+    'the timing profile must name only selected files',
   );
   return durations;
 }
@@ -128,7 +128,9 @@ async function verifyLanguage(language, expected) {
   const matrix = readMatrix(language);
   const shards = assignShards(files, durations, matrix.length);
   await assertShardPartition({ files, durations, shards, matrix });
-  const loads = shards.map((shard) => shard.reduce((sum, file) => sum + durations.get(file), 0));
+  const loads = shards.map((shard) =>
+    shard.reduce((sum, file) => sum + weightOf(durations, file), 0),
+  );
   return { cases, files, matrix, loads };
 }
 
