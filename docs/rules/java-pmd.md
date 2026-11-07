@@ -1,6 +1,6 @@
 # Java and Kotlin: PMD rules
 
-PMD's bestpractices, design, errorprone, multithreading, performance and security categories, as far as nitpicker's rulesets keep them, and the rules nitpicker adds to them, for Java sources in the Java and Kotlin presets. This page lists 264 rules. [All pages](README.md).
+PMD's bestpractices, design, errorprone, multithreading, performance and security categories, as far as nitpicker's rulesets keep them, and the rules nitpicker adds to them, for Java sources in the Java and Kotlin presets. This page lists 267 rules. [All pages](README.md).
 
 The guide for these rules: [docs/java-preset.md](../java-preset.md).
 
@@ -2245,6 +2245,17 @@ Use fixedDelay or cron instead of fixedRate, so a slow run never overlaps the ne
 - **Message in Kotlin:** Use fixedDelay or cron instead of fixedRate, so a slow run never overlaps the next one.
 - **Exception:** If this is intended, add `{"rule":"pmd/SpringScheduledFixedDelay","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 
+<a id="pmd-springstartupcleanup"></a>
+
+### `pmd/SpringStartupCleanup`
+
+Release what this startup method already started when this call fails: put the call in a try and shut the event loops, executors or servers down in its catch before rethrowing, or in a finally. Spring does not call @PreDestroy on a bean whose startup failed, so the started threads keep the JVM running and the application hangs instead of exiting.
+
+- **Scope:** Main sources of a project with Spring on the compile classpath.
+- **Why it is on:** One of nitpicker's Spring rules: it names the one form Spring code should take, and runs only when Spring is on the compile classpath.
+- **Message in Kotlin:** Release what this startup function already started when this call fails: put the call in a try and shut the event loops, executors or servers down in its catch before rethrowing, or in a finally. Spring does not call @PreDestroy on a bean whose startup failed, so the started threads keep the JVM running and the application hangs instead of exiting.
+- **Exception:** If this is intended, add `{"rule":"pmd/SpringStartupCleanup","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
+
 <a id="pmd-springstaticpostprocessorbean"></a>
 
 ### `pmd/SpringStaticPostProcessorBean`
@@ -2321,6 +2332,17 @@ Return a record or a specific type from this handler, never Object, JsonNode, Ma
 - **Why it is on:** One of nitpicker's Spring rules: it names the one form Spring code should take, and runs only when Spring is on the compile classpath.
 - **Message in Kotlin:** Return a data class or a specific type from this handler, never Any, JsonNode, Map\<String, Any>, ResponseEntity\<\*>, a list or Mono of those, or null. For no body return Unit or ResponseEntity\<Void>, and for an error throw an exception that a @RestControllerAdvice maps to a ProblemDetail.
 - **Exception:** If this is intended, add `{"rule":"pmd/SpringTypedResponse","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
+
+<a id="pmd-springunreleasedresource"></a>
+
+### `pmd/SpringUnreleasedResource`
+
+Release this resource when the context closes: shut it down, close it or cancel it in a @PreDestroy method (shutdown, then shutdownNow when awaitTermination times out), DisposableBean.destroy, AutoCloseable.close or SmartLifecycle.stop, or declare it as its own @Bean or as a ThreadPoolTaskExecutor bean, which Spring closes. Spring closes only the beans it created, so this one keeps its threads or connections after the context closes, and non-daemon threads keep the JVM running.
+
+- **Scope:** Main sources of a project with Spring on the compile classpath.
+- **Why it is on:** One of nitpicker's Spring rules: it names the one form Spring code should take, and runs only when Spring is on the compile classpath.
+- **Message in Kotlin:** Release this resource when the context closes: shut it down, close it or cancel it in a @PreDestroy function (shutdown, then shutdownNow when awaitTermination times out), DisposableBean.destroy, AutoCloseable.close or SmartLifecycle.stop, or declare it as its own @Bean or as a ThreadPoolTaskExecutor bean, which Spring closes. Spring closes only the beans it created, so this one keeps its threads, coroutines or connections after the context closes, and non-daemon threads keep the JVM running.
+- **Exception:** If this is intended, add `{"rule":"pmd/SpringUnreleasedResource","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 
 <a id="pmd-springunusedcontext"></a>
 
@@ -2508,6 +2530,17 @@ In main sources: a stream `map`/`forEach`/`flatMap` lambda (also a `this::helper
 - **Why it is on:** A PMD rule nitpicker defines: it names one allowed form where the language offers several, and reports the other forms.
 - **Allowed form:** This loop or stream starts a remote or message call on a new task for every element of a collection at once, so a large collection exhausts the connections or rate limit of the remote service. Run the tasks on a fixed pool (Executors.newFixedThreadPool(8) passed to supplyAsync or used for submit), take a Semaphore permit around each call, or work through fixed-size batches (Lists.partition(items, 20)). An exception fits only when the collection is always small.
 - **Exception:** If this is intended, add `{"rule":"pmd/UnboundedFanOut","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
+
+<a id="pmd-unboundedthreadpool"></a>
+
+### `pmd/UnboundedThreadPool`
+
+In main sources: `Executors.newCachedThreadPool()` (also static-imported) and a `new ThreadPoolExecutor(...)` whose maximum pool size is `Integer.MAX_VALUE`. Allowed: a bounded pool such as `Executors.newFixedThreadPool(n)`, a `ThreadPoolExecutor` with a bounded maximum and queue, or a Spring `ThreadPoolTaskExecutor` with a queue capacity.
+
+- **Scope:** Main sources only.
+- **Why it is on:** A PMD rule nitpicker defines: it names one allowed form where the language offers several, and reports the other forms.
+- **Allowed form:** Use a bounded pool, such as Executors.newFixedThreadPool(n) or a ThreadPoolExecutor with a bounded maximum size and queue (in Spring, a ThreadPoolTaskExecutor with a queue capacity). A cached pool starts a new thread for every task that finds no idle thread, with no upper limit, so a burst of tasks can exhaust memory and native threads.
+- **Exception:** If this is intended, add `{"rule":"pmd/UnboundedThreadPool","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 
 <a id="pmd-unclosedinlineresource"></a>
 

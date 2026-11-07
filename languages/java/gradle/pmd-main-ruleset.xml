@@ -432,6 +432,16 @@ return (
       </property>
     </properties>
   </rule>
+  <rule name="UnboundedThreadPool" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
+        message="Use a bounded pool, such as Executors.newFixedThreadPool(n) or a ThreadPoolExecutor with a bounded maximum size and queue (in Spring, a ThreadPoolTaskExecutor with a queue capacity). A cached pool starts a new thread for every task that finds no idle thread, with no upper limit, so a burst of tasks can exhaust memory and native threads.">
+    <priority>2</priority>
+    <properties><property name="xpath"><value><![CDATA[
+//MethodCall[pmd-java:matchesSig('java.util.concurrent.Executors#newCachedThreadPool(_*)')]
+| //ConstructorCall[pmd-java:typeIs('java.util.concurrent.ThreadPoolExecutor')]
+    [ArgumentList/*[2][self::FieldAccess[@Name = 'MAX_VALUE'][TypeExpression[pmd-java:typeIs('java.lang.Integer')]]]]
+]]></value></property></properties>
+  </rule>
+
   <rule name="ClassLoadEffect" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
         message="Do this work in a method that main or the framework calls after startup (a @Bean method, an ApplicationRunner) and pass the result in, or create it on first use in a lazy holder class: this call runs while its class loads (in a static field or block, an enum constant, the constructor or initializer of an instance created at load, or a method one of them calls), so it connects, starts threads, sleeps or touches files in whatever order classes load, and in every test that touches the class. Constants, loggers, Pattern.compile and collections can stay static, and the class with main is not checked.">
     <priority>3</priority>
