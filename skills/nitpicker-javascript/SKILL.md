@@ -58,7 +58,7 @@ The allowed forms are on one page per topic. Before you write code, read the pag
 
 - [Layout, size and dependencies](rules/layout.md): features, adapters, domain and the composition root, shared code, exports, file and folder limits, clones, dependencies.
 - [Types are JSDoc](rules/types.md): allowed tags, annotations, typedefs, imports of types, no casts, any or null, narrowing.
-- [Functions, values and modules](rules/style.md): function declarations, unions, comparisons, declarations, sorting, loops, parameters, async code, fan-out, child processes, exports, signatures, CommonJS.
-- [domain/ is deeply readonly](rules/domain.md): no mutation, readonly types, regexes and dates, counting by a union, one-pass results.
+- [Functions, values and modules](rules/style.md): function declarations, unions, comparisons, declarations, sorting, loops, parameters, async code, fan-out, child processes, exports, signatures, CommonJS, server time zones.
+- [domain/ is deeply readonly](rules/domain.md): no mutation, readonly types, regexes and `Date`, counting by a union, one-pass results.
 - [Errors](rules/errors.md): failures as unions, what a catch returns, error causes, malformed input.
 - [Tests](rules/tests.md): test files, branch coverage and mutants, console output, fakes, globals, typed test data, whole-output assertions, shared helpers, waits, child processes, fast tests.
