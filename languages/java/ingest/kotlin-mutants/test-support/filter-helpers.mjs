@@ -20,6 +20,7 @@ const emptyFile = {
   lambdas: [],
   branching: [],
   casts: [],
+  exhaustiveLastEntries: [],
 };
 
 export function filterFor(file = {}, mutants = []) {

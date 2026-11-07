@@ -1,0 +1,7 @@
+[
+  {
+    "tool": "python-rules",
+    "rule": "unclosed-inline-resource",
+    "mention": "with"
+  }
+]

@@ -1,0 +1,8 @@
+[
+  {
+    "name": "import star names the explicit import",
+    "tool": "ruff",
+    "rule": "F403",
+    "mention": "from module import name"
+  }
+]

@@ -52,6 +52,8 @@ describe('Python analyzer', () => {
       'import-linter',
       'tests',
       'test-runtime',
+      'test-console',
+      'facts',
       'dependencies',
     ]);
     expect(analyzer.exclusions).toEqual([]);
@@ -140,6 +142,23 @@ describe('Python analyzer', () => {
       '--live-root',
       '/live',
     ]);
+  });
+
+  it('hands the moves file of the head run to the python part only', () => {
+    const context = {
+      projectRoot: '/snapshot',
+      liveProjectRoot: '/live',
+      toolRoot: '/tool',
+      baselineMovesFile: '/m/moves.json',
+    };
+
+    expect(createPythonAnalyzer().createInvocation(context).args.slice(-2)).toEqual([
+      '--baseline-moves-file',
+      '/m/moves.json',
+    ]);
+    expect(createMutationAnalyzer().createInvocation(context).args).not.toContain(
+      '--baseline-moves-file',
+    );
   });
 
   it('has a stable configuration hash that follows the settings', () => {

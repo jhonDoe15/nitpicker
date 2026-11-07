@@ -1,10 +1,10 @@
 import { ingestPythonCrap } from '../../ingest/crap.mjs';
-import { functionText } from '../analysis/python-sources.mjs';
-import { TEST_PATH } from '../execution/python-test-files.mjs';
+import { functionText, testFileMatcher } from '../analysis/python-sources.mjs';
 
 export function readPythonCrapFindings({ functions, coverage, projectRoot, roots, crapLimit }) {
   const sources = new Map();
-  const production = functions.filter(({ file }) => !TEST_PATH.test(file));
+  const isTest = testFileMatcher(projectRoot);
+  const production = functions.filter(({ file }) => !isTest(file));
   return ingestPythonCrap(production, coverage, {
     roots,
     limit: crapLimit,

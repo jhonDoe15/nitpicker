@@ -1,0 +1,8 @@
+[
+  {
+    "name": "if not TYPE_CHECKING names the normal flow",
+    "tool": "python-rules",
+    "rule": "not-type-checking",
+    "mention": "normal flow"
+  }
+]

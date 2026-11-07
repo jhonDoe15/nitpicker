@@ -205,11 +205,21 @@ tester.run('no-unvalidated-schema-field loose forms', noUnvalidatedSchemaField, 
     },
     {
       code: 'const s = z.object({ a: z.record(z.string(), z.unknown()) });',
-      errors: [{ messageId: 'unvalidatedField', data: { factory: 'z.unknown' } }],
+      errors: [
+        {
+          messageId: 'unvalidatedField',
+          data: { factory: 'z.unknown()', example: 'z.string().trim().min(1) or z.email()' },
+        },
+      ],
     },
     {
       code: 'const s = z.object({ a: z.array(z.any()) });',
-      errors: [{ messageId: 'unvalidatedField', data: { factory: 'z.any' } }],
+      errors: [
+        {
+          messageId: 'unvalidatedField',
+          data: { factory: 'z.any()', example: 'z.string().trim().min(1) or z.email()' },
+        },
+      ],
     },
     {
       code: 'const anything = z.any(); const s = z.object({ a: anything });',
