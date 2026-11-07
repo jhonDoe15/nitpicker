@@ -731,7 +731,7 @@ rule that flags legitimate code is lifted for some paths with an entry in `excep
 `react-hooks/exhaustive-deps`); an exception that names a React rule is skipped while the scope is
 off, so adding or removing React in a PR does not break either side of the comparison. The rules and
 their allowed forms, and the Vite entry point, CSS Module typing and framework file conventions,
-are in [The strict preset](typescript-strict-preset.md#react).
+are in [The strict preset](typescript-strict-preset/react.md).
 
 ### Exceptions for rules nitpicker adds
 
@@ -840,7 +840,7 @@ legitimate code (a brand name in JSX text) is lifted for some paths with an entr
 (`formatjs/no-literal-string-in-jsx`); an exception that names an i18n rule is skipped while the
 scope is off, and one that names an i18n rule nitpicker does not run is an error. Story files
 (`*.stories.*`, `*.story.*`) are not checked. The rules, the ones left off and why are in
-[The strict preset](typescript-strict-preset.md#internationalized-messages).
+[The strict preset](typescript-strict-preset/internationalized-messages.md).
 
 ### Dependency and repository checks
 
@@ -1457,7 +1457,7 @@ new and touched code must comply.
   superstruct, runtypes, typia, effect or valita); with none installed the messages name
   [zod](https://zod.dev), an expectation of the preset, not a dependency of nitpicker. The
   catch-logging rule follows the project's logger the same way. See
-  [Libraries follow the project](typescript-strict-preset.md#libraries-follow-the-project).
+  [Libraries follow the project](typescript-strict-preset/inside-adapters.md#libraries-follow-the-project).
 - **All production code** has no recursion: a function that calls itself is flagged (use `map`,
   `flatMap` and friends, or a `for...of` loop for a retry outside `domain/`).
 - **Touched code**: a strict-rule finding that exists on the base stays baselined while its file's
