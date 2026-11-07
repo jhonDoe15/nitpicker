@@ -4,6 +4,7 @@ import {
   nameFreeHash,
   positiveInteger,
 } from '../../../../../shared/rules/finding-helpers.mjs';
+import { escapeRegExp } from '../../../../../shared/paths/glob.mjs';
 import { functionIdentity } from '../../exceptions/function-identity.mjs';
 import { readFileSync, lstatSync } from 'node:fs';
 import path from 'node:path';
@@ -179,7 +180,7 @@ function isUsedBesidesDeclaration(name, lines, declarationLine) {
   if (typeof name !== 'string' || name.length === 0) {
     return false;
   }
-  const word = new RegExp(`(?<![\\w$])${name.replaceAll('$', String.raw`\$`)}(?![\\w$])`, 'u');
+  const word = new RegExp(`(?<![\\w$])${escapeRegExp(name)}(?![\\w$])`, 'u');
   return lines.some((text, index) => index !== declarationLine - 1 && word.test(text));
 }
 

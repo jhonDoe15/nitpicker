@@ -37,9 +37,21 @@ describe('failingTestsOf', () => {
   it('names the failing tests of each module like the Maven build does', () => {
     const { reportBase } = gradleRun({ '': FAILING, core: FAILING, api: PASSING });
 
+    const failing = {
+      tests: ['shop.CartTest.adds: expected: <4> but was: <3>'],
+      details: [
+        {
+          name: 'shop.CartTest.adds',
+          message: 'expected: <4> but was: <3>',
+          expected: '4',
+          received: '3',
+        },
+      ],
+    };
+
     expect(failingTestsOf({ reportBase, since: 0 })).toEqual([
-      { module: '.', tests: ['shop.CartTest.adds: expected: <4> but was: <3>'] },
-      { module: 'core', tests: ['shop.CartTest.adds: expected: <4> but was: <3>'] },
+      { module: '.', ...failing },
+      { module: 'core', ...failing },
     ]);
   });
 
