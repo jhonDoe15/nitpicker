@@ -116,6 +116,7 @@ describe('nitpicker CLI', () => {
         exclusions: [],
         renamedPaths: 0,
         elapsedMs: expect.any(Number),
+        mode: 'full',
         overallStatus: 'completed',
         newEnforceableFindings: 0,
         noChanges: true,
