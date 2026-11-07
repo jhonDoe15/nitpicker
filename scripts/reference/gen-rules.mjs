@@ -2,6 +2,7 @@ import { existsSync, mkdirSync, realpathSync, renameSync, rmSync, writeFileSync 
 import path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { ESLINT_REGISTRY, eslintRegistrySource } from './eslint-registry.mjs';
+import { pmdRulesetSources } from './pmd-rulesets.mjs';
 import {
   installedRuffRules,
   isOlderVersion,
@@ -133,7 +134,7 @@ function reportStale(registry, reference, stderr) {
 }
 
 /**
- * Regenerates the ESLint plugin's rule map and the rule reference. `--check` lists what is stale,
+ * Regenerates the ESLint plugin's rule map, the PMD rulesets and the rule reference. `--check` lists what is stale,
  * `--data` writes only the built, uncommitted data files. `--refresh-ruff[=<path>]` first rewrites
  * the ruff snapshot from that ruff, `--refresh-eslint` the ESLint inventory from the preset configs,
  * and `--refresh-jvm` the texts of the pinned PMD, SpotBugs, Checkstyle, detekt and Error Prone.
@@ -143,7 +144,10 @@ export async function main(options, { stderr }) {
     stderr.write(USAGE);
     return 2;
   }
-  const registry = new Map([[ESLINT_REGISTRY, await eslintRegistrySource(repositoryRoot)]]);
+  const registry = new Map([
+    [ESLINT_REGISTRY, await eslintRegistrySource(repositoryRoot)],
+    ...pmdRulesetSources(repositoryRoot),
+  ]);
   if (!options.includes('--check') && !options.includes('--data')) {
     writeGenerated(registry);
   }
