@@ -30,7 +30,7 @@ if (
 ) {
   try {
     const options = parseArguments(process.argv.slice(2));
-    const findings = runEslint(options);
+    const findings = await runEslint(options);
     process.stdout.write(`${JSON.stringify({ findings })}\n`);
   } catch (failure) {
     const error = withTypeScriptHint(failure);
@@ -41,7 +41,7 @@ if (
   }
 }
 
-export function runEslint(options) {
+export async function runEslint(options) {
   const state = {
     linkedDependencies: [],
     installedPolicyFiles: [],
@@ -55,7 +55,7 @@ export function runEslint(options) {
       '--config',
     );
     const testEnvironments = testEnvironmentsFor(options);
-    const value = runLintEngine({
+    const value = await runLintEngine({
       options,
       projectConfigPath: installedPolicyFiles.at(0)?.targetPath,
       policyConfigPath: policyConfig.canonicalPath,

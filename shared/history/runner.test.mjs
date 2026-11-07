@@ -83,6 +83,7 @@ describe('the history configuration hash', () => {
       'messages/exception-sentence.mjs',
       'messages/troubleshooting.mjs',
       'paths/glob.mjs',
+      'processes/deadlines.mjs',
       'project-rules/hygiene-rules.mjs',
       'rules/features/feature-roles.mjs',
       'traversal.mjs',

@@ -1,6 +1,7 @@
 import path from 'node:path';
 import {
   clearSnapshotReports,
+  renderSnapshotConsoleSummary,
   writeSnapshotReports,
   renderRuleFilterSection as renderSnapshotRuleFilterSection,
 } from '../snapshot/reporters.mjs';
@@ -16,16 +17,13 @@ import { realpathSync } from 'node:fs';
 import { runGit } from '../diff/git/repository/command.mjs';
 import { writeGithubOutput } from '../diff/reporting/github/emit.mjs';
 import { captureWorkingTree } from '../diff/git/repository/git.mjs';
+import { outputRootFor } from '../diff/reporting/reporters.mjs';
+import { assertHasCommit } from '../diff/git/repository/base-ref.mjs';
 import { partialRunField, partialRunOf } from '../diff/reporting/partial-run/partial-run.mjs';
+import { failingHeadTests } from '../diff/reporting/failing-tests/failing-tests.mjs';
 
 function stderrWarning(stderr) {
   return (message) => stderr.write(`nitpicker: ${message}\n`);
-}
-
-function snapshotOutputRoot(options, currentProjectRoot) {
-  return options.outputRoot === undefined
-    ? path.join(currentProjectRoot, 'reports/quality/snapshot')
-    : path.resolve(currentProjectRoot, options.outputRoot);
 }
 
 export function runSnapshotCli({
@@ -37,8 +35,9 @@ export function runSnapshotCli({
   stderr,
   environment,
   runTasks,
+  scope,
 }) {
-  const outputRoot = snapshotOutputRoot(options, currentProjectRoot);
+  const outputRoot = outputRootFor(currentProjectRoot, options.outputRoot, 'snapshot');
   const selectedAnalyzers = selectAnalyzers(analyzers, options.analyzerNames);
   if (selectedAnalyzers.length === 0) {
     throw new Error('No quality analyzers are configured.');
@@ -54,6 +53,7 @@ export function runSnapshotCli({
       currentProjectRoot,
       headPolicy,
       runTasks,
+      scope,
     }),
   );
   Object.assign(
@@ -64,7 +64,7 @@ export function runSnapshotCli({
     projectPath: relativeProjectPath,
     repositoryRoot,
   });
-  stdout.write(report.text);
+  stdout.write(renderSnapshotConsoleSummary(report, path.join(outputRoot, 'report.txt')));
   stdout.write(renderSnapshotRuleFilterSection(report, options.ruleFilters));
   writeGithubOutput({
     kind: 'snapshot',
@@ -74,11 +74,11 @@ export function runSnapshotCli({
     stdout,
     stderr,
   });
-  return snapshotExitCode(report.summary);
+  return snapshotExitCode(report);
 }
 
-function snapshotExitCode(summary) {
-  if (summary.enforceableFindings > 0) {
+function snapshotExitCode({ summary, toolErrors }) {
+  if (summary.enforceableFindings > 0 || failingHeadTests(toolErrors).length > 0) {
     return 1;
   }
   return summary.overallStatus === 'tool-error' ? 2 : 0;
@@ -90,6 +90,7 @@ function runInSnapshotWorktree({
   currentProjectRoot,
   headPolicy,
   runTasks,
+  scope,
 }) {
   const needsDependencies = selectedAnalyzers.some((analyzer) => analyzer.requiresDependencies);
   const dependencies = needsDependencies
@@ -108,6 +109,7 @@ function runInSnapshotWorktree({
       liveProjectRoot: currentProjectRoot,
       headPolicy,
       runTasks,
+      scope,
     });
   } finally {
     removeSnapshotDependencies(dependencies);
@@ -119,6 +121,7 @@ function captureSnapshot(currentProjectRoot) {
     runGit(currentProjectRoot, ['rev-parse', '--show-toplevel']).trim(),
   );
   const relativeProjectPath = path.relative(repositoryRoot, currentProjectRoot) || '.';
+  assertHasCommit(repositoryRoot);
   const headSha = runGit(repositoryRoot, ['rev-parse', 'HEAD^{commit}']).trim();
   const capturedSha = captureWorkingTree(repositoryRoot, headSha);
   return { repositoryRoot, relativeProjectPath, capturedSha };

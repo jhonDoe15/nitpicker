@@ -20,7 +20,7 @@ function withLineBeforeLink(message, line) {
     : `${withoutTroubleshooting(message)}\n${line}\n${link}`;
 }
 
-export function withGradleLog(error, result) {
+export function withGradleLog(error, result, { logLast = false } = {}) {
   try {
     const directory = mkdtempSync(path.join(tmpdir(), 'nitpicker-gradle-failure-'));
     const file = path.join(directory, 'gradle.log');
@@ -31,9 +31,12 @@ export function withGradleLog(error, result) {
         mode: 0o600,
       },
     );
+    const log = `Full Gradle log: ${file}`;
     return keepingExplained(
       error,
-      new Error(`Full Gradle log: ${file}\n${error.message}`, { cause: error }),
+      new Error(logLast ? withLineBeforeLink(error.message, log) : `${log}\n${error.message}`, {
+        cause: error,
+      }),
     );
   } catch (logError) {
     return keepingExplained(

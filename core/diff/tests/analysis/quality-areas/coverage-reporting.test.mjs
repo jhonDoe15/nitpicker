@@ -75,7 +75,7 @@ describe('coverage reporting in the quality-area analyzers', () => {
     );
 
     expect(message).toBe(
-      '2 tests fail, so coverage, CRAP and mutation were skipped. Fix the tests and rerun:\n' +
+      '2 tests fail; coverage, CRAP and mutation were skipped. Fix the tests and rerun:\n' +
         '  test/example.test.ts > example rejects invalid input: AssertionError: expected 500 to be 400\n' +
         '  test/example.test.ts > example other: expected [] to have a length of 1',
     );
@@ -146,7 +146,7 @@ describe('coverage reporting in the quality-area analyzers', () => {
         },
       ).map(({ message }) => message);
     const failure =
-      '1 test fails, so coverage, CRAP and mutation were skipped. Fix the tests and rerun:\n' +
+      '1 test fails; coverage, CRAP and mutation were skipped. Fix the tests and rerun:\n' +
       "  test/a.test.js > could not run: Cannot find module '../dist/a.js'";
 
     expect(run(['tsc'])).toEqual([
@@ -159,7 +159,7 @@ describe('coverage reporting in the quality-area analyzers', () => {
     ]);
     expect(run([])).toEqual([failure]);
   });
-  it('lists at most five failing tests and a test file that could not run', () => {
+  it('lists every failing test and a test file that could not run', () => {
     const failing = (index) => ({
       fullName: `case ${String(index)}`,
       status: 'failed',
@@ -183,13 +183,14 @@ describe('coverage reporting in the quality-area analyzers', () => {
 
     expect(message).toBe(
       [
-        '7 tests fail, so coverage, CRAP and mutation were skipped. Fix the tests and rerun:',
+        '7 tests fail; coverage, CRAP and mutation were skipped. Fix the tests and rerun:',
         '  test/a.test.ts > case 1: boom',
         '  test/a.test.ts > case 2: boom',
         '  test/a.test.ts > case 3: boom',
         '  test/a.test.ts > case 4: boom',
         '  test/a.test.ts > case 5: boom',
-        '  … and 2 more',
+        '  test/a.test.ts > case 6: boom',
+        '  test/broken.test.ts > could not run: Failed to resolve import "./missing"',
       ].join('\n'),
     );
   });

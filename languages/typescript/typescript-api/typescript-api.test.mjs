@@ -27,7 +27,7 @@ import { ts } from './typescript-api.mjs';
 const require = createRequire(import.meta.url);
 const bundledFile = require.resolve('typescript-js-api');
 const bundledRoot = path.dirname(path.dirname(bundledFile));
-const nativeRoot = resolveTool('typescript-native').root;
+const nativeRoot = resolveTool('@typescript/native').root;
 const nativeMain = path.join(nativeRoot, 'lib/version.cjs');
 const bundledVersion = resolveTool('typescript-js-api').version;
 
@@ -202,7 +202,7 @@ describe('a Node process started with the preload in a TypeScript 7 project', ()
       parses: 'function',
       manifest: bundledVersion,
       server: 'object',
-      own: resolveTool('typescript-native').version,
+      own: resolveTool('@typescript/native').version,
     });
   });
 });

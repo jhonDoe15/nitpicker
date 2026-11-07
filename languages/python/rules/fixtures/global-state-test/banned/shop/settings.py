@@ -1,0 +1,2 @@
+DEBUG = False
+TIMEOUT = 5

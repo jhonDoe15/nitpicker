@@ -1,3 +1,4 @@
+import { counterpartsOf } from '../../../shared/reference/counterparts.mjs';
 import { ruleEntry } from '../../../shared/reference/entry.mjs';
 import { RULE_HINTS, RULES_TOOL } from '../rules/rule-hints.mjs';
 import { allowedOf, describedBy } from './hint-text.mjs';
@@ -16,8 +17,14 @@ export function pythonRulesEntries() {
         summary: describedBy(hint),
         why: "One of the checks of nitpicker's own Python script. It runs on the Python source and tests and names one allowed form.",
         allowed: allowedOf(hint),
-        exception: { key: 'python.exceptions', rule },
-        docs: [{ label: 'Python preset guide', path: 'docs/python-preset.md' }],
+        exception:
+          hint.exception === 'top-level'
+            ? { key: 'exceptions', rule }
+            : { key: 'python.exceptions', rule },
+        docs: [
+          { label: 'Python preset guide', path: 'docs/python-preset.md' },
+          ...counterpartsOf(rule),
+        ],
       }),
     ),
   );

@@ -6,6 +6,7 @@ const OPTION_NAMES = {
   '--check': 'check',
   '--project-root': 'projectRoot',
   '--history-ref': 'historyRef',
+  '--baseline-root': 'baselineRoot',
 };
 
 export function parseCheckArguments(commandArguments, label = 'hygiene') {

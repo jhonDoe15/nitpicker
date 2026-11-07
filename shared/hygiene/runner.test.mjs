@@ -151,6 +151,20 @@ describe('createHygieneAnalyzers', () => {
       cwd: '/tool',
     });
   });
+
+  it('hands the base checkout to the head run only', () => {
+    const [analyzer] = createHygieneAnalyzers('/tool/core/cli.mjs');
+    const argumentsOf = (snapshot) =>
+      analyzer.createInvocation({
+        projectRoot: '/side',
+        toolRoot: '/tool',
+        snapshot,
+        baselineRoot: '/base',
+      }).args;
+
+    expect(argumentsOf('head').slice(-2)).toEqual(['--baseline-root', '/base']);
+    expect(argumentsOf('base')).not.toContain('--baseline-root');
+  });
 });
 
 describe('the hygiene configuration hash', () => {
@@ -164,6 +178,11 @@ describe('the hygiene configuration hash', () => {
       'hygiene/files/known-files.mjs',
       'hygiene/files/output-sources.mjs',
       'hygiene/files/repository-files.mjs',
+      'hygiene/files/start-scripts.mjs',
+      'hygiene/migrations/hardcoded-names.mjs',
+      'hygiene/migrations/migration-files.mjs',
+      'hygiene/migrations/migration-order.mjs',
+      'hygiene/migrations/revision-graph.mjs',
       'hygiene/rules.mjs',
       'hygiene/runner.mjs',
       'hygiene/tracked-files.mjs',
@@ -172,6 +191,7 @@ describe('the hygiene configuration hash', () => {
       'messages/exception-sentence.mjs',
       'messages/troubleshooting.mjs',
       'paths/glob.mjs',
+      'processes/deadlines.mjs',
       'project-rules/hygiene-rules.mjs',
       'traversal.mjs',
     ]);
