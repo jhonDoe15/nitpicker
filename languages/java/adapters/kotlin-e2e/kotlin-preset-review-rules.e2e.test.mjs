@@ -85,7 +85,7 @@ describe.skipIf(!kotlinE2eEnabled)('Kotlin preset review rules end to end', () =
         'ExhaustiveEnumPredicate isPending',
         'ExhaustiveEnumPredicate isSettled',
         'ExhaustiveEnumPredicate weight',
-        ...EXPECTED_REVIEW_FINDINGS.filter((entry) =>
+        ...RULE_FINDINGS.filter((entry) =>
           /^(?:InconsistentFieldLocking|LockOrderInversion|NonAtomicUpdateAcrossSuspension) /u.test(
             entry,
           ),
