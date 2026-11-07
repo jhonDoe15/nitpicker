@@ -13,7 +13,7 @@ function message({ builder, resource, scope }) {
   return `\`${builder}\` starts a child coroutine in ${scope}, which keeps running after this \`use\` block, and the child reads \`${resource}\`; \`use\` closes the resource when the block ends, so the child can run on a closed resource. Start the child inside \`coroutineScope { ... }\` or \`supervisorScope { ... }\` in the block, wait for the launched job before the block ends (\`job.join()\`, \`deferred.await()\` or \`joinAll(...)\`, outside any \`if\`, loop or \`catch\` that the launch is not in), or open and close the resource inside the child (\`scope.launch { open().use { ... } }\`).`;
 }
 
-export const CHILD_LIFETIME_MESSAGES = {
+const CHILD_LIFETIME_MESSAGES = {
   [CHILD_OUTLIVES_RESOURCE_RULE]: message({
     builder: 'launch',
     resource: '<resource>',
