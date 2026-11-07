@@ -1,0 +1,20 @@
+[
+  {
+    "name": "mypy deprecated API names the replacement",
+    "tool": "mypy",
+    "rule": "deprecated",
+    "mention": "the replacement the deprecation notice names"
+  },
+  {
+    "name": "pyright deprecated API names the replacement",
+    "tool": "pyright",
+    "rule": "reportDeprecated",
+    "mention": "the replacement the deprecation notice names"
+  },
+  {
+    "name": "basedpyright deprecated API names the replacement",
+    "tool": "basedpyright",
+    "rule": "reportDeprecated",
+    "mention": "the replacement the deprecation notice names"
+  }
+]

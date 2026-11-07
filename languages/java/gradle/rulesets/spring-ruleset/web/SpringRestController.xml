@@ -1,0 +1,11 @@
+  <rule name="SpringRestController" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
+        message="Use @RestController for a JSON controller and drop @ResponseBody.">
+    <priority>3</priority>
+    <properties><property name="xpath"><value><![CDATA[
+//ClassDeclaration[ModifierList/Annotation[pmd-java:typeIs('org.springframework.web.bind.annotation.RestController')]]
+  //Annotation[pmd-java:typeIs('org.springframework.web.bind.annotation.ResponseBody')]
+|
+//ClassDeclaration[ModifierList/Annotation[pmd-java:typeIs('org.springframework.stereotype.Controller')]]
+  /ModifierList/Annotation[pmd-java:typeIs('org.springframework.web.bind.annotation.ResponseBody')]
+]]></value></property></properties>
+  </rule>

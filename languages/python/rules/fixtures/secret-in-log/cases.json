@@ -1,0 +1,7 @@
+[
+  {
+    "tool": "python-rules",
+    "rule": "secret-in-log",
+    "mention": "masked tail"
+  }
+]

@@ -4,6 +4,7 @@ import { kotlinFiles } from '../../rules/kotlin-suppressions.mjs';
 import { coroutineReports } from './coroutines/coroutine-reports.mjs';
 import { ESCAPING_RULE } from './coroutines/escapes/escaping-launches.mjs';
 import { discoverSuites, scanTestFile } from './discovery/test-units.mjs';
+import { GLOBAL_STATE_RULE, globalStateReports } from './global-state/global-state.mjs';
 import { CONTROL_FLOW_RULE } from './honesty/flow/assertion-flow.mjs';
 import { FOCUSED_RULE } from './honesty/focused-tests.mjs';
 import { honestyReports } from './honesty/honesty-reports.mjs';
@@ -11,14 +12,21 @@ import { RETRY_RULE } from './honesty/retries/retry-tests.mjs';
 import { DISABLED_RULE } from './honesty/skipped-tests.mjs';
 import { FLOAT_EQUALITY_RULE, floatEqualityReports } from './floats/float-equality.mjs';
 import { projectFlags } from './project-flags.mjs';
+import {
+  PER_TEST_START_MESSAGE,
+  PER_TEST_START_RULE,
+  perTestStarts,
+} from './setup/per-test-starts.mjs';
 
 export const HONESTY_RULES = [
   DISABLED_RULE,
   FOCUSED_RULE,
   RETRY_RULE,
+  PER_TEST_START_RULE,
   CONTROL_FLOW_RULE,
   ESCAPING_RULE,
   FLOAT_EQUALITY_RULE,
+  GLOBAL_STATE_RULE,
 ];
 
 const CONTEXT_MARKERS = new RegExp(
@@ -47,6 +55,12 @@ export function fileReports(scanned, project) {
     ...honestyReports(scanned, suites, project),
     ...coroutineReports(scanned, suites, project),
     ...floatEqualityReports(scanned, suites),
+    ...globalStateReports(scanned, suites),
+    ...perTestStarts(scanned, suites).map((entry) => ({
+      ...entry,
+      rule: PER_TEST_START_RULE,
+      message: PER_TEST_START_MESSAGE,
+    })),
   ].toSorted((left, right) => left.offset - right.offset);
 }
 
