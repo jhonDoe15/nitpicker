@@ -5,7 +5,7 @@ Part of the [Java preset guide](../java-preset.md).
 - **Rule.** `slow-test` (tool `test-runtime`) fails a test the change adds or edits when it takes more than 5 s
   as a unit test, or more than 30 s as an integration test (`thresholds.unitTestSeconds` and
   `thresholds.integrationTestSeconds`). The rule, message shape, budgets and exception are the same
-  for [TypeScript and JavaScript](../typescript-strict-preset.md#slow-tests) and
+  for [TypeScript and JavaScript](../typescript-strict-preset/slow-tests.md) and
   [Python](../python-preset/slow-tests.md); the finding prints the bare id `slow-test`, and
   `test-runtime/slow-test` is accepted in `exceptions` as the same rule. Integration tests are those
   of a test task other than `test` (Maven's `surefire` counts as `test`), classes named `*IT`,

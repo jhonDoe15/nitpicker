@@ -105,7 +105,7 @@ Require a keyboard test in every component test file that hovers.
 - **Exception:** If this is intended, add `{"rule":"nitpicker/hover-test-needs-keyboard","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 - **Allowed forms by message:**
   - Every hover behavior needs a keyboard equivalent. Add a test that tabs to the element (`await user.tab()`) and asserts the same state.
-- **See also:** [Strict preset guide](../typescript-strict-preset.md#react)
+- **See also:** [Strict preset guide](../typescript-strict-preset/react.md)
 
 <a id="eslint-nitpicker-integration-test-uses-approved-harness"></a>
 
@@ -657,7 +657,7 @@ Disallow a runtime check that rejects a combination of props.
 - **Exception:** If this is intended, add `{"rule":"nitpicker/no-runtime-exclusive-props-check","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 - **Allowed forms by message:**
   - Props {{ props }} are checked together at runtime. Make the props a discriminated union (`{ icon: Icon; image?: never } | { image: string; icon?: never }`) so the compiler rejects the combination.
-- **See also:** [Strict preset guide](../typescript-strict-preset.md#react)
+- **See also:** [Strict preset guide](../typescript-strict-preset/react.md)
 
 <a id="eslint-nitpicker-no-self-recursion"></a>
 
@@ -1022,7 +1022,7 @@ Disallow form fields that are both controlled and uncontrolled, or read-only by 
 - **Allowed forms by message:**
   - Pass either `value` (controlled, with `onChange`) or `defaultValue` (uncontrolled), not both. An exception fits only when a form library needs both on this field.
   - A field with `value` or `checked` and no `onChange` cannot be edited. Add `onChange`, use `defaultValue`, or mark it `readOnly`. An exception fits only when a form library handles the change events.
-- **See also:** [Strict preset guide](../typescript-strict-preset.md#react)
+- **See also:** [Strict preset guide](../typescript-strict-preset/react.md)
 
 <a id="eslint-nitpicker-react-field-has-label"></a>
 
@@ -1036,7 +1036,7 @@ Require a label for form fields.
 - **Exception:** If this is intended, add `{"rule":"nitpicker/react-field-has-label","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 - **Allowed forms by message:**
   - Label this field: wrap it in `<label>`, give it an `id` that a `<label htmlFor>` points to, or set `aria-label`. An exception fits only when a wrapper labels it elsewhere.
-- **See also:** [Strict preset guide](../typescript-strict-preset.md#react)
+- **See also:** [Strict preset guide](../typescript-strict-preset/react.md)
 
 <a id="eslint-nitpicker-react-no-direct-dom"></a>
 
@@ -1050,7 +1050,7 @@ Disallow changing the DOM directly from a component.
 - **Exception:** If this is intended, add `{"rule":"nitpicker/react-no-direct-dom","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 - **Allowed forms by message:**
   - Do not query or change the page DOM directly: render the value from state or props, render into another node with `createPortal`, and reach an element through a ref (`ref.current.style`, focus, measuring); `document.documentElement` and `document.body` may change their class, style and attributes. An exception fits only for a third-party widget or a file download.
-- **See also:** [Strict preset guide](../typescript-strict-preset.md#react)
+- **See also:** [Strict preset guide](../typescript-strict-preset/react.md)
 
 <a id="eslint-nitpicker-react-no-effect-data-fetching"></a>
 
@@ -1065,7 +1065,7 @@ Disallow fetching data inside useEffect.
 - **Allowed forms by message:**
   - Do not fetch data in `useEffect`: it races and caches nothing. Use `useQuery` or a route loader. An exception fits only when this request is not data for rendering (an analytics beacon).
   - Do not load state asynchronously in `useEffect` (a state setter after `await` or in a `.then` callback): it races the render and nothing caches the result. Load data with `useQuery` or a route loader; run an action (a save, a clipboard write) in the event handler that causes it; redirect by rendering `<Navigate />`. An exception fits only when this effect only synchronizes with an external system.
-- **See also:** [Strict preset guide](../typescript-strict-preset.md#react)
+- **See also:** [Strict preset guide](../typescript-strict-preset/react.md)
 
 <a id="eslint-nitpicker-react-no-effect-derived-state"></a>
 
@@ -1081,7 +1081,7 @@ Disallow setting state from an effect body, which derives state from props or st
   - Do not set state from an effect to mirror props or state. Compute the value during render (`const total = price * quantity;`). An exception fits only when this effect synchronizes with an external system.
   - Do not reset state from an effect when a prop changes: render the component with that prop as its `key` (`<Form key={userId} />`), so React starts it with fresh state. An exception fits only when this effect synchronizes with an external system.
   - Do not copy browser storage into state from an effect: read it during render with `useSyncExternalStore(subscribe, () => localStorage.getItem(key))`, which also follows changes from other tabs. An exception fits only when this effect synchronizes with an external system.
-- **See also:** [Strict preset guide](../typescript-strict-preset.md#react)
+- **See also:** [Strict preset guide](../typescript-strict-preset/react.md)
 
 <a id="eslint-nitpicker-react-no-effect-event-handling"></a>
 
@@ -1095,7 +1095,7 @@ Disallow calling a prop callback from an effect that reacts to a change.
 - **Exception:** If this is intended, add `{"rule":"nitpicker/react-no-effect-event-handling","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 - **Allowed forms by message:**
   - Do not call `{{name}}` from an effect to react to a change: call it in the event handler that causes the change (`onSubmit` calls `onSave(value)`). An exception fits only when this effect synchronizes with an external system.
-- **See also:** [Strict preset guide](../typescript-strict-preset.md#react)
+- **See also:** [Strict preset guide](../typescript-strict-preset/react.md)
 
 <a id="eslint-nitpicker-react-no-hardcoded-colors"></a>
 
@@ -1109,7 +1109,7 @@ Take colors from the theme or palette, not from literals.
 - **Exception:** If this is intended, add `{"rule":"nitpicker/react-no-hardcoded-colors","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 - **Allowed forms by message:**
   - Take the color from the theme or design-system palette (a theme token, a CSS variable, or currentColor) instead of the literal {{color}}. A file that defines the palette, or a theme or palette folder, takes one glob exception (for example `src/theme/**`).
-- **See also:** [Strict preset guide](../typescript-strict-preset.md#react)
+- **See also:** [Strict preset guide](../typescript-strict-preset/react.md)
 
 <a id="eslint-nitpicker-react-no-random-key"></a>
 
@@ -1123,7 +1123,7 @@ Disallow keys generated from randomness or the clock.
 - **Exception:** If this is intended, add `{"rule":"nitpicker/react-no-random-key","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 - **Allowed forms by message:**
   - Do not build a `key` from `{{call}}()`: it changes on every render and remounts the row. Use a stable id from the item (`key={todo.id}`) and generate ids when the item is created. An exception fits only when remounting on every render is intended.
-- **See also:** [Strict preset guide](../typescript-strict-preset.md#react)
+- **See also:** [Strict preset guide](../typescript-strict-preset/react.md)
 
 <a id="eslint-nitpicker-react-single-styling-approach"></a>
 
@@ -1139,7 +1139,7 @@ Allow one styling approach per project.
   - Style with {{allowed}}, not an inline `style` object of fixed values: {{form}}. A `style` object stays for values computed at runtime, such as `{ width: progress }`. An exception fits only for a one-off.
   - Style with {{allowed}}, not an inline `style` object of fixed values: declare `const styles = StyleSheet.create({ title: { fontSize: 18 } })` at module level and pass `style={styles.title}`. A `style` object stays for values computed at runtime, such as `{ opacity: fade }`. An exception fits only for a one-off.
   - This project styles with {{allowed}}, not with {{found}}. To change the approach set "styling" under "react" in nitpicker.config.json.
-- **See also:** [Strict preset guide](../typescript-strict-preset.md#react)
+- **See also:** [Strict preset guide](../typescript-strict-preset/react.md)
 
 <a id="eslint-nitpicker-react-test-no-implementation-details"></a>
 
@@ -1156,7 +1156,7 @@ Disallow React component tests that depend on component or hook internals.
   - Do not read React internals ({{ name }}). Assert what the user sees with `screen.getByRole(...)`.
   - Do not replace `{{ name }}` with a module mock. Assert what the user sees with `screen.getByRole(...)`, or test a custom hook with `renderHook`.
   - Do not spy on the React hook `{{ name }}`. Assert what the user sees with `screen.getByRole(...)`, or test a custom hook with `renderHook`.
-- **See also:** [Strict preset guide](../typescript-strict-preset.md#react)
+- **See also:** [Strict preset guide](../typescript-strict-preset/react.md)
 
 <a id="eslint-nitpicker-report-module-load-effects"></a>
 
