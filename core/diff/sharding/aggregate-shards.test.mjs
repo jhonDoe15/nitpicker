@@ -44,6 +44,7 @@ describe('quality shard aggregation', () => {
       tools: [],
       exclusions: ['generated/**'],
       elapsedMs: 30,
+      mode: 'full',
       overallStatus: 'completed',
       newEnforceableFindings: 0,
       noChanges: true,
