@@ -51,7 +51,7 @@
     ],
     { "key": "exceptions", "rule": "nitpicker/exhaustive-union-predicate" },
     "nitpicker/fake-timers-require-restore",
-    "Require fake timers, and stubs made in test files, to be restored",
+    "Require fake timers, stubs, and writes to process.env or to globals made in test files, to be restored",
     [
       {
         "message": "Fake timers stay on for the tests that follow. Restore them: `afterEach(() => { vi.useRealTimers(); });`."
@@ -64,6 +64,12 @@
       },
       {
         "message": "This stubbed environment variable stays set for the tests that follow. Restore it: `afterEach(() => { vi.unstubAllEnvs(); });`."
+      },
+      {
+        "message": "This write to `process.env` stays for the tests that follow, so they pass or fail depending on the order they run in. Use `vi.stubEnv(name, value)` with `afterEach(() => { vi.unstubAllEnvs(); })`, or save the old value and put it back in `afterEach` or `finally`."
+      },
+      {
+        "message": "This global override stays for the tests that follow, so they pass or fail depending on the order they run in. Use `vi.stubGlobal`, `vi.spyOn(object, name)` or `vi.useFakeTimers()` and restore them in `afterEach`, or save the old value and put it back in `afterEach` or `finally`."
       }
     ],
     { "key": "exceptions", "rule": "nitpicker/fake-timers-require-restore" },
