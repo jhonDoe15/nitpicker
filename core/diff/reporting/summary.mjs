@@ -54,7 +54,6 @@ function renderGateSummary(
       diagnosticsPath,
     }),
   ];
-
   appendViolationSummary(
     lines,
     {
