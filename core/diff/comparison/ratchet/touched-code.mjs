@@ -50,6 +50,17 @@ export function isOnInsertedLine(finding, touchedCode) {
   );
 }
 
+export function isOnLoneInsertedLine(finding, touchedCode) {
+  const line = finding.location?.line;
+  const changed = touchedCode?.changedLines.get(finding.path);
+  return (
+    line !== undefined &&
+    changed !== undefined &&
+    changed.added !== true &&
+    (changed.inserted ?? []).some(([start, end]) => start === line && end === line)
+  );
+}
+
 export function isBelowChange(finding, touchedCode) {
   const line = finding.location?.line;
   const ranges = touchedCode?.changedLines.get(finding.path)?.ranges ?? [];

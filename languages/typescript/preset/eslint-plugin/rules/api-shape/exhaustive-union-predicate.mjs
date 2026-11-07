@@ -1,5 +1,6 @@
 import { ancestorsOf } from '../analysis/ancestry.mjs';
 import { logicalOperands } from '../analysis/static-shapes.mjs';
+import { isProjectFile } from '../analysis/mutation/caller-objects.mjs';
 import {
   isLiteralValue,
   isPlainReference,
@@ -52,14 +53,6 @@ function literalMembers(type) {
     return [];
   }
   return type.types.filter((member) => member.isStringLiteral() || member.isNumberLiteral());
-}
-
-function isProjectFile(program, sourceFile) {
-  return (
-    !program.isSourceFileFromExternalLibrary(sourceFile) &&
-    !program.isSourceFileDefaultLibrary(sourceFile) &&
-    !sourceFile.fileName.includes('/node_modules/')
-  );
 }
 
 function declaredAliasOf(services, subject, type) {

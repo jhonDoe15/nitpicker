@@ -5,6 +5,7 @@ import { SQL_LIBRARIES } from '../../eslint-plugin/rules/security/sql/no-sql-str
 import { codeExtensions } from '../../layout.mjs';
 import { nonProductionFolders } from '../../structure/reuse/reuse-paths.mjs';
 import { packageMajorOf, readDependencyNames, storyGlobs } from '../scope-support.mjs';
+import { GIT_TIMEOUT_MS } from '../../../../../shared/processes/deadlines.mjs';
 
 export const SECURITY_RULES = [
   'nitpicker/no-disabled-tls-verification',
@@ -61,7 +62,7 @@ function filesSettingDefaults(projectRoot) {
       ':(exclude)**/node_modules/**',
       ':(exclude)node_modules/**',
     ],
-    { cwd: projectRoot, encoding: 'utf8', maxBuffer: MAX_LISTING_BYTES },
+    { cwd: projectRoot, encoding: 'utf8', maxBuffer: MAX_LISTING_BYTES, timeout: GIT_TIMEOUT_MS },
   );
   return found.status === 0 ? found.stdout.split('\n').filter(Boolean) : [];
 }

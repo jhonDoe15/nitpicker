@@ -49,6 +49,7 @@ function renderGateSummary(
     ...failingTestLines(failingTests, {
       headline: (text) => failing(text, color),
       label: (tool) => style(tool, [ANSI.yellow], color),
+      diagnosticsPath,
     }),
   ];
 

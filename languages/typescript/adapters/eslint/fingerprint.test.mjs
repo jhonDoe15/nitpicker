@@ -183,6 +183,7 @@ describe('a finding in an edited function stays baselined while the function has
       location: { line: 4, column: 5 },
       classification: 'enforceable',
       symbol: 'load',
+      anchor: { key: expect.stringMatching(/^count:Reported text\.:text:/u) },
       ratchet: { key: 'count:Reported text.', value: 1, existingCodeOnly: true },
       heldAtBase: 1,
     },
@@ -277,6 +278,7 @@ describe('a finding in an edited function stays baselined while the function has
         location: { line: 13, column: 5 },
         classification: 'enforceable',
         symbol: 'fetchValue',
+        anchor: { key: expect.stringMatching(/^count:Reported text\.:text:/u) },
         ratchet: { key: 'count:Reported text.', value: 1, existingCodeOnly: true },
       },
     ]);
@@ -353,6 +355,18 @@ describe('a new throw in a legacy function', () => {
     ]);
   });
 
+  it('keeps the throws of a renamed legacy function baselined', () => {
+    const renamed = twoThrows.replace('function parse', 'function read');
+    const result = compareWithInserted(throws(twoThrows), throws(renamed), [[1, 1]]);
+
+    expect(result.newFindings).toEqual([]);
+    expect(result.resolvedFindings).toEqual([]);
+    expect(result.unchangedFindings.map(({ symbol, heldAtBase }) => [symbol, heldAtBase])).toEqual([
+      ['read', 2],
+      ['read', 2],
+    ]);
+  });
+
   it('keeps the plain message when the base function had no throw', () => {
     const result = compareWithInserted(throws(withoutThrow), throws(oneThrow), [[3, 3]]);
 
@@ -414,6 +428,36 @@ describe('a complexity finding fails only when the number rises', () => {
     expect(result.unchangedFindings.map(({ rule, heldAtBase }) => ({ rule, heldAtBase }))).toEqual([
       { rule: 'nitpicker/cognitive-complexity', heldAtBase: 16 },
     ]);
+  });
+
+  it.each(cases)('keeps %s baselined after a rename', (_name, build, reported) => {
+    const rename = (body) => build(body).replace('total', 'sum');
+    const renamed = find(rename, reported === 'total' ? 'sum' : reported, 16);
+    const result = compareFindings({
+      baseFindings: find(build, reported, 16),
+      headFindings: renamed,
+      touchedCode: {
+        changedLines: new Map([
+          ['src/legacy.ts', { added: false, ranges: [[1, 1]], inserted: [] }],
+        ]),
+        isStrictRule,
+      },
+    });
+
+    expect(result.newFindings).toEqual([]);
+    expect(result.resolvedFindings).toEqual([]);
+    expect(result.unchangedFindings.map(({ symbol, heldAtBase }) => [symbol, heldAtBase])).toEqual([
+      ['sum', 16],
+    ]);
+  });
+
+  it.each(cases)('fails %s that is renamed and grows', (_name, build, reported) => {
+    const rename = (body) => build(body).replace('total', 'sum');
+    const grown = find(rename, reported === 'total' ? 'sum' : reported, 60, '  return 2;');
+    const result = compare(find(build, reported, 16), grown);
+
+    expect(result.newFindings.map(({ rule }) => rule)).toEqual(['nitpicker/cognitive-complexity']);
+    expect(result.resolvedFindings.map(({ symbol }) => symbol)).toEqual(['total']);
   });
 
   it.each(cases)('fails %s that is over the limit for the first time', (_name, build, reported) => {
