@@ -107,10 +107,10 @@ export function fieldAt(text, at) {
 }
 
 function writePattern(name) {
-  const field = new RegExp(String.raw`(?:this\s*\.\s*)?${escaped(name)}`, 'u').source;
+  const field = new RegExp(String.raw`(?:this\s*\.\s*)?${escaped(name)}`, 'u');
   const operator = String.raw`(?:\+\+|--|(?:[-+*/%&|^]|<<|>>>?)?=(?!=))`;
   return new RegExp(
-    String.raw`(?:\+\+|--)\s*${field}(?![\w$])|(?<![\w$.])${field}\s*${operator}`,
+    String.raw`(?:\+\+|--)\s*${field.source}(?![\w$])|(?<![\w$.])${field.source}\s*${operator}`,
     'gu',
   );
 }
