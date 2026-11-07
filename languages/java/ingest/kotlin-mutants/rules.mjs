@@ -4,6 +4,7 @@ import {
   isConditional,
   isReturn,
   isSuspendContext,
+  isSwitch,
   jvmNameOf,
   unmangled,
   within,
@@ -13,6 +14,8 @@ const INTRINSICS_CALL = /^removed call to kotlin\/jvm\/internal\/Intrinsics::(\w
 const INLINE_MARKER_CALL = /^removed call to kotlin\/jvm\/internal\/InlineMarker::/;
 const COMPOSE_CALL =
   /^removed call to androidx\/compose\/runtime\/(?:Composer|ComposerKt|ScopeUpdateScope|RecomposeScope)::/;
+const MEMBER_ASSIGNMENT = /^Removed assignment to member variable (\S+)$/;
+const SPILLED_VARIABLE = /^[A-Z]\$\d+$/;
 const UNIT_BUILDERS = new Set([
   'launch',
   'flow',
@@ -68,10 +71,32 @@ function defaultStub({ mutant, file }) {
 
 function stateMachineBranch({ mutant, file }) {
   return (
-    isConditional(mutant) &&
+    (isConditional(mutant) || isSwitch(mutant)) &&
     isSuspendContext(mutant) &&
     file !== undefined &&
     !file.branching.has(mutant.line)
+  );
+}
+
+function coroutineStateField({ mutant, cls }) {
+  const field = MEMBER_ASSIGNMENT.exec(mutant.description)?.[1];
+  if (field === undefined || !isSuspendContext(mutant)) {
+    return false;
+  }
+  if (SPILLED_VARIABLE.test(field)) {
+    return true;
+  }
+  return (
+    field === 'label' &&
+    (mutant.method === 'invokeSuspend' ||
+      !(cls?.properties ?? []).some(({ name }) => name === 'label'))
+  );
+}
+
+function exhaustiveWhenLastBranch({ mutant, file }) {
+  return (
+    mutant.mutatorName === 'RemoveConditionalMutator_EQUAL_IF' &&
+    file?.exhaustiveLastEntries.has(mutant.line) === true
   );
 }
 
@@ -181,6 +206,8 @@ export const SOURCE_FREE_RULES = [
 
 export const SOURCE_RULES = [
   ['state-machine-branch', stateMachineBranch],
+  ['coroutine-state-field', coroutineStateField],
+  ['exhaustive-when-last-branch', exhaustiveWhenLastBranch],
   ['suspend-lambda-result', suspendLambdaResult],
   ['suspend-unit-result', suspendUnitResult],
   ['jvm-static-bridge', jvmStaticBridge],

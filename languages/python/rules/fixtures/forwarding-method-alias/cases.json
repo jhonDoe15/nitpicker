@@ -1,0 +1,7 @@
+[
+  {
+    "tool": "python-rules",
+    "rule": "forwarding-method-alias",
+    "mention": "delete the alias"
+  }
+]

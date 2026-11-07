@@ -43,13 +43,13 @@ afterAll(() => {
   for (const root of roots) rmSync(root, { recursive: true, force: true });
 });
 
-function findings(options) {
+async function findings(options) {
   const root = createProject('nitpicker-oxlint-conventions-', {
     'policy.mjs': policy(options),
     ...SOURCES,
   });
   roots.push(root);
-  return lintProject({ root, patterns: ['src/**/*.ts'] }).flatMap((result) =>
+  return (await lintProject({ root, patterns: ['src/**/*.ts'] })).flatMap((result) =>
     result.messages.map(({ ruleId, line }) => ({
       file: path.relative(root, result.filePath),
       ruleId,
@@ -61,8 +61,8 @@ function findings(options) {
 describe('convention-driven rules on the default oxlint engine', () => {
   it.each(['separate-type-imports', 'inline-type-imports'])(
     'accepts both type import forms with fixStyle %s and flags only the value import',
-    (fixStyle) => {
-      expect(findings({ fixStyle, casing: 'kebab-case' })).toEqual([
+    async (fixStyle) => {
+      expect(await findings({ fixStyle, casing: 'kebab-case' })).toEqual([
         { file: 'src/snake/odd-one.ts', ruleId: 'nitpicker/file-name-casing', line: 1 },
         {
           file: 'src/valueStyle.ts',
@@ -74,8 +74,8 @@ describe('convention-driven rules on the default oxlint engine', () => {
     },
   );
 
-  it('checks file names against the configured casing and the folder majority', () => {
-    expect(findings({ fixStyle: 'separate-type-imports', casing: 'camelCase' })).toEqual([
+  it('checks file names against the configured casing and the folder majority', async () => {
+    expect(await findings({ fixStyle: 'separate-type-imports', casing: 'camelCase' })).toEqual([
       { file: 'src/inline-style.ts', ruleId: 'nitpicker/file-name-casing', line: 1 },
       { file: 'src/separate-style.ts', ruleId: 'nitpicker/file-name-casing', line: 1 },
       { file: 'src/snake/odd-one.ts', ruleId: 'nitpicker/file-name-casing', line: 1 },

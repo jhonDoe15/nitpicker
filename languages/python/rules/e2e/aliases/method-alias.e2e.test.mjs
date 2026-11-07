@@ -7,7 +7,7 @@ import { createScripts } from '../../test-support/python-script-helpers.mjs';
 
 const enabled = process.env.NITPICKER_PYTHON_E2E === '1';
 const scripts = createScripts();
-const { cleanup, reportsOf } = scripts;
+const { cleanup, reportOf } = scripts;
 const bare = (text) => text.replace(/ via .*$/u, '');
 const findingsOf = (files) => scripts.findingsOf(files).map(bare);
 const outcomes = (rows) => {
@@ -248,7 +248,7 @@ describe.skipIf(!enabled)('forwarding-method-alias', () => {
 
   it('tells whether to call the target or to rename it', () => {
     const messages = (code) =>
-      applyRuleHints(ingestRulesReport(JSON.stringify(reportsOf({ 'src/cart.py': code })))).map(
+      applyRuleHints(ingestRulesReport(JSON.stringify(reportOf({ 'src/cart.py': code })))).map(
         ({ message }) => message,
       );
     const route = exceptionRoute({
@@ -269,7 +269,7 @@ describe.skipIf(!enabled)('forwarding-method-alias', () => {
 
   it('keeps the identity when the target is renamed', () => {
     const identities = (code) =>
-      ingestRulesReport(JSON.stringify(reportsOf({ 'src/cart.py': code })));
+      ingestRulesReport(JSON.stringify(reportOf({ 'src/cart.py': code })));
     const base = identities(PUBLIC_TARGET);
     const renamed = identities(PUBLIC_TARGET.replaceAll('compute', 'accumulate'));
     const result = compareFindings({ baseFindings: base, headFindings: renamed });
