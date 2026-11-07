@@ -101,7 +101,7 @@ To learn why a rule is on and what form it allows before you write or change cod
 - Remove a parameter the body does not read. One that a callback or override signature requires
   starts with `_` (`_event`).
 - `async`/`await`, never `.then()`. No floating promises.
-- Fan-out: bound concurrent remote or message calls. Run each call through a limiter created outside the loop (`pLimit(8)`, p-queue `concurrency`, Bottleneck `maxConcurrent`) or work through fixed-size chunks. Never `Promise.all(items.map(send))` over a runtime collection.
+- Fan-out: bound concurrent remote or message calls. Run each call through a limiter created outside the loop (`pLimit(8)`, p-queue `concurrency`, Bottleneck `maxConcurrent`) or work through fixed-size chunks. RxJS: `mergeMap(fn, 8)` or `concatMap`, never `forkJoin(items.map(load))`. Never `Promise.all(items.map(send))` over a runtime collection.
 - Named exports only. No comments; a `/** ... */` doc comment on an export is the one exception.
 - Signatures: a value with three states is a union of string literals, not `boolean | undefined`
   or `flag?: boolean` (also as an optional property); default only `undefined` with `??`, never `||` on an optional parameter that can be `0`, `''` or
@@ -144,6 +144,9 @@ To learn why a rule is on and what form it allows before you write or change cod
   function; schemas live in `adapters/`. Dedupe with `[...new Set(xs)]` or a `ReadonlySet`.
 - A `Date` is mutable: use it in one expression (`new Date(ms).getUTCHours()`) or type it
   `Readonly<Date>`.
+- In a server project, dates use UTC or a named zone, never the server's own: `getUTCHours()`,
+  `toISOString()`, `Date.UTC(...)`, `{ timeZone }` for `Intl.DateTimeFormat` and `toLocale*String`,
+  luxon `{ zone }`, date-fns `{ in: tz(zone) }`, dayjs `.utc()` (`nitpicker/no-local-time-zone`).
 - Count by a union as `Readonly<Record<Status, number>>` written as a literal with every member,
   from one `Object.groupBy` (`const byStatus = Object.groupBy(xs, (x) => x.status);` then
   `{ paid: byStatus.paid?.length ?? 0, ... }`), so a new member fails to compile. Group by key with

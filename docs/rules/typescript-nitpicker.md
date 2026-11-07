@@ -1,6 +1,6 @@
 # TypeScript and JavaScript: nitpicker ESLint rules
 
-The ESLint rules nitpicker's own plugin adds to the TypeScript and JavaScript presets (`nitpicker/*`). This page lists 98 rules. [All pages](README.md).
+The ESLint rules nitpicker's own plugin adds to the TypeScript and JavaScript presets (`nitpicker/*`). This page lists 100 rules. [All pages](README.md).
 
 The guide for these rules: [docs/typescript-strict-preset.md](../typescript-strict-preset.md).
 
@@ -383,6 +383,27 @@ Prefer vi.waitFor / expect.poll over setInterval polling in tests.
 - **Exception:** If this is intended, add `{"rule":"nitpicker/no-interval-polling-in-tests","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 - **Allowed forms by message:**
   - Prefer vi.waitFor / expect.poll over setInterval polling in tests.
+
+<a id="eslint-nitpicker-no-local-time-zone"></a>
+
+### `eslint/nitpicker/no-local-time-zone`
+
+Disallow dates computed or formatted in the server's local time zone.
+
+- **Printed as:** `eslint-lint/nitpicker/no-local-time-zone`
+- **Exception:** If this is intended, add `{"rule":"nitpicker/no-local-time-zone","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
+- **Allowed forms by message:**
+  - `{{ name }}()` uses the server's local time zone, so the result changes with the server's `TZ`. Use `{{ utc }}()`, or compute in an explicit zone (luxon `DateTime.fromJSDate(date, { zone })`).
+  - `{{ name }}()` is the offset of the server's local time zone, so the result changes with the server's `TZ`. Take the offset of an explicit zone (luxon `DateTime.now().setZone(zone).offset`).
+  - `{{ name }}()` prints the date in the server's local time zone, so the result changes with the server's `TZ`. Use `toISOString()`, or `Intl.DateTimeFormat` with a `timeZone`.
+  - `{{ name }}` without a `timeZone` option formats in the server's local time zone, so the result changes with the server's `TZ`. Pass the zone: `date.{{ name }}('en-US', { timeZone: 'UTC' })`, or the user's zone.
+  - `Intl.DateTimeFormat` without a `timeZone` option formats in the server's local time zone, so the result changes with the server's `TZ`. Pass the zone: `new Intl.DateTimeFormat('en-US', { timeZone: 'UTC' })`, or the user's zone.
+  - `Intl.DateTimeFormat().resolvedOptions().timeZone` is the server's own zone, so the result changes with the server's `TZ`. Use a configured zone name or `'UTC'`.
+  - `new Date(year, month, ...)` builds the date in the server's local time zone, so the result changes with the server's `TZ`. Use `new Date(Date.UTC(year, month, ...))`.
+  - This date-time text has no offset, so it is read in the server's local time zone and the result changes with the server's `TZ`. Add `Z` or an offset (`'2024-01-01T10:00:00Z'`), or parse it in an explicit zone (luxon `DateTime.fromISO(text, { zone })`).
+  - luxon `{{ name }}` without a `zone` option uses the server's local time zone, so the result changes with the server's `TZ`. Pass `{ zone: 'utc' }` (or the user's zone), chain `.setZone(zone)`, or use `DateTime.utc()`.
+  - date-fns `{{ name }}` works in the server's local time zone, so the result changes with the server's `TZ`. Pass the zone with `{ in: tz('UTC') }` from `@date-fns/tz`, or use `formatInTimeZone` from `date-fns-tz`.
+  - `{{ name }}` builds a date in the server's local time zone, so the result changes with the server's `TZ`. Chain `.utc()` or `.tz(zone)` before calendar methods like `format`, `startOf` or `add`, or start from `.utc(...)`.
 
 <a id="eslint-nitpicker-no-magic-numbers"></a>
 
@@ -1243,3 +1264,15 @@ Bound the concurrency of remote calls started per element.
 - **Exception:** If this is intended, add `{"rule":"nitpicker/unbounded-fan-out","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 - **Allowed forms by message:**
   - {{combinator}} starts {{operation}}{{via}} for every element of `{{collection}}` at once, so a large collection exhausts the {{target}}'s connections or rate limit. Run each call through a limiter created once outside the loop (`const limit = pLimit(8)`, then `limit(() => send(item))`), await fixed-size chunks, or make one batch call when the API has one. An exception fits only when the collection is always small.
+
+<a id="eslint-nitpicker-unbounded-reactive-fan-out"></a>
+
+### `eslint/nitpicker/unbounded-reactive-fan-out`
+
+Bound the concurrency of remote calls that RxJS subscribes per element.
+
+- **Printed as:** `eslint-lint/nitpicker/unbounded-reactive-fan-out`
+- **Exception:** If this is intended, add `{"rule":"nitpicker/unbounded-reactive-fan-out","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
+- **Allowed forms by message:**
+  - `{{operator}}` without a concurrency argument subscribes to {{operation}}{{via}} for every element of `{{collection}}` at once, so a large collection exhausts the {{target}}'s connections or rate limit. Pass a concurrency limit (`mergeMap((item) => load(item), 8)`), use `concatMap` for one call at a time, or `bufferCount(20)` and make one batch call per chunk. An exception fits only when the collection is always small.
+  - `{{operator}}` subscribes to {{operation}}{{via}} for every element of `{{collection}}` at once, so a large collection exhausts the {{target}}'s connections or rate limit. Build the result with `from(items).pipe(mergeMap((item) => load(item), 8), toArray())`, or make one batch call when the API has one. An exception fits only when the collection is always small.

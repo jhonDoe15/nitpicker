@@ -79,6 +79,7 @@ const REVIEW_RULES = new Set([
   'LogFormatArguments',
   'LogExceptionFirst',
   'RecursiveMapUpdate',
+  'DefaultTimeZone',
   'ClassLoadEffect',
   'SpringUnusedContext',
   'SpringProxySelfCall',
@@ -86,6 +87,10 @@ const REVIEW_RULES = new Set([
   'TestClassWithoutTestCases',
   'test-only-export',
   'UnboundedFanOut',
+  'UnboundedReactiveFanOut',
+  'UnboundedThreadPool',
+  'SpringUnreleasedResource',
+  'SpringStartupCleanup',
   'HttpWithoutTimeout',
 ]);
 const roots = [];

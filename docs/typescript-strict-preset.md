@@ -501,6 +501,27 @@ only the library follows the project. Nitpicker reads `dependencies`, `peerDepen
   limiter is recognized by its name only, a client that arrives untyped through a parameter or an
   unlisted library is not recognized, and a collection that is small in practice but not by
   construction is reported; lift such a path with an `exceptions` entry for the rule.
+- Bounded RxJS fan-out (`nitpicker/unbounded-reactive-fan-out`): the RxJS counterpart of
+  `unbounded-fan-out`, for `rxjs` and `rxjs/operators` imports (named or `import * as rx`). It
+  reports `mergeMap`, `flatMap` and `mergeAll` without a concurrency argument (unlimited by default;
+  `Infinity` counts as none) inside a `.pipe(...)` whose source is a collection: `from(xs)`,
+  `of(...xs)`, a `const` holding one, or an earlier `.pipe(...)` on one; `mergeAll()` right after a
+  `map(...)` there counts as a `mergeMap`. With type information,
+  `from(x)` counts only when `x` is an array, a tuple, a `Set`, a `Map` or another iterable, so
+  `from(promise)` passes; without it, `x` must be an array literal, an array method call or a name.
+  It also reports `forkJoin`, `combineLatest`, `zip` and `merge` over `xs.map(...)` (also spread, a
+  `const` holding one or an array filled by `push` in a loop), which subscribe to every element at
+  once. The projected work must make a remote or message call, recognized as in
+  `unbounded-fan-out`, plus Angular's `HttpClient` (`@angular/common/http`, a parameter property, a
+  field typed with it or set with `inject(HttpClient)`, which also counts for `unbounded-fan-out`)
+  and `ajax` from `rxjs/ajax`; `from(fetch(...))` and `defer(() => fetch(...))`
+  count. Allowed: a numeric concurrency argument (`mergeMap((id) => load(id), 8)`, a `const` or a
+  parameter), `concatMap`, a `bufferCount`, `bufferTime`, `toArray`, `windowCount`, `reduce` or an
+  operator that lets one value through (`first`, `last`, `single`, `count`, `min`, `max`, `every`,
+  `isEmpty`, `find`, `findIndex`, `elementAt`) before the operator, a `take` or `takeLast` there whose count does not read a `length` or `size`, `merge(...calls, 4)`, a fixed collection, and a stream that is not a
+  collection (events, `actions$`, route parameters), which this rule leaves alone. Limits: a
+  standalone `pipe()` composition and a `mergeMap` nested inside the projection are not followed,
+  and without type information any name passed to `from()` counts as a collection.
 - No schema change by the ORM at startup (`nitpicker/no-orm-schema-sync`, the TypeScript and
   JavaScript counterpart of the Spring rule `spring/ddl-auto`): TypeORM `synchronize` or
   `dropSchema` on in ORM options (an object passed to `new DataSource`, `new Sequelize`,
@@ -1913,6 +1934,46 @@ Off, with the reason:
 - `formatjs/enforce-message-types`: without its type generation option it repeats
   `enforce-placeholders`, so every missing value would be reported twice.
 
+## Server code
+
+The server scope turns on when a server framework (`@nestjs/core`, `express`, `fastify`, `hono`,
+`koa`, `@hapi/hapi`, `restify`, `@adonisjs/core`, `@feathersjs/feathers`, `@apollo/server`,
+`graphql-yoga`, `elysia` or `h3`) is in `dependencies` or `peerDependencies` of the head
+checkout; a dev dependency alone (a test server in a library) does not count. Full-stack
+frameworks (Next.js, SvelteKit, Remix) do not turn it on, since most of their code runs in the
+browser too. It covers production source, not tests, test support or stories, and in the
+JavaScript preset too. When the project also has a browser framework (React, Vue, Svelte, Solid,
+Angular, Next.js), `*.tsx` and `*.jsx` files are left out, since component code runs in the
+user's browser.
+
+- `nitpicker/no-local-time-zone`: a date computed or formatted in the server's local time zone,
+  whose result changes with the host's `TZ`. It reports the local `Date` methods (`getFullYear`,
+  `getYear`, `getMonth`, `getDate`, `getDay`, `getHours`, `getMinutes`, `getTimezoneOffset` and
+  the matching setters; seconds and milliseconds do not depend on the zone), `toString`,
+  `toDateString` and `toTimeString`, `toLocaleDateString`, `toLocaleTimeString`,
+  `toLocaleString` and `Intl.DateTimeFormat` without a `timeZone` option,
+  `Intl.DateTimeFormat().resolvedOptions().timeZone` (also destructured),
+  `new Date(year, month, ...)`, and `new Date(text)` or `Date.parse(text)` of a literal date-time
+  with neither an offset nor a zone name such as `GMT` (also a template that ends in a time,
+  `` `${day}T00:00:00` ``). The `Date` methods are recognized from the type checker: the called
+  method must be the one the built-in `Date` declares, so `Readonly<Date>` and subclasses count
+  and `TZDate` from `@date-fns/tz`, which overrides them, passes. In libraries: luxon
+  `DateTime.now`, `local`, `fromJSDate`, `fromISO`, `fromFormat`, `fromSQL`, `fromMillis`,
+  `fromSeconds`, `fromObject` and `fromRFC2822` without a `zone` (or `setZone`) option; date-fns
+  calendar functions (`format`, `parseISO`, `startOfDay`, `addDays`, `add`, `isSameDay`,
+  `differenceInCalendarDays` and the rest of the calendar family) without `{ in: tz(...) }`,
+  unless the date comes from `@date-fns/tz`, `@date-fns/utc` or `date-fns-tz`; and `dayjs()`,
+  `dayjs.unix()`, `moment()` and `moment.unix()` unless `.utc()`, `.tz(zone)` or `.utcOffset()`
+  comes first. A chained call that only reads the instant (`toMillis`, `valueOf`, `toISOString`,
+  `.isValid`, `isBefore(other)`, `diff(other, 'hour')`) passes, and so do luxon options passed
+  as a variable; `{ zone: 'local' }` and `.setZone('system')` count as local. A process-wide
+  default (luxon `Settings.defaultZone`, `dayjs.tz.setDefault`) does not make a call pass: it is
+  the same hidden global as `TZ`, and the zone belongs at the call. The allowed forms are the UTC
+  methods (`getUTCFullYear`), `toISOString()`, `Date.UTC`, and an explicit zone: `{ timeZone }`,
+  `{ zone }`, `{ in: tz(zone) }`, `.tz(zone)`. A command-line tool that prints local time on
+  purpose needs an exception for the rule in `nitpicker.config.json`. An exception for it is
+  skipped while the scope is off.
+
 ## No prop, option or export without a caller
 
 New public surface that nothing uses is rejected in review, so it is a check. A finding names the
@@ -2024,6 +2085,8 @@ from a real caller) and the `exceptions` entry that lifts it.
 - The i18n scope lives in `languages/typescript/preset/eslint-config/i18n/i18n-scope.mjs`; see
   "Internationalized messages" above and `docs/internals.md`. Its rules are strict rules too
   (`i18n-rules.mjs` lists them).
+- The server scope lives in `languages/typescript/preset/eslint-config/server/server-scope.mjs`; see
+  "Server code" above. Its rule, `nitpicker/no-local-time-zone`, is a strict rule too.
 - The test rules live in `languages/typescript/preset/eslint-config/strict-tests.mjs` (`strictTestConfigFor(layout)`),
   which `strictPresetConfig()` includes. They follow the layout's test roots and are strict rules,
   so the differential gate holds touched test code to them. The test `no-restricted-syntax` list

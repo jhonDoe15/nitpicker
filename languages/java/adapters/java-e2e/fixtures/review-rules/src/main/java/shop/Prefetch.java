@@ -23,7 +23,7 @@ public final class Prefetch {
   private static final List<String> MIRRORS = List.of("https://a.example", "https://b.example");
   private final HttpClient client;
   private final ExecutorService workers = Executors.newFixedThreadPool(8);
-  private final ExecutorService everyone = Executors.newCachedThreadPool();
+  private final ExecutorService everyone = Executors.newCachedThreadPool(); // violation: UnboundedThreadPool
   private final ExecutorService virtual = Executors.newVirtualThreadPerTaskExecutor();
   private final Semaphore permits = new Semaphore(8);
 
