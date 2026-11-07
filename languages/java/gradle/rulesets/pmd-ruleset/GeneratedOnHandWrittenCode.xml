@@ -1,0 +1,12 @@
+  <rule name="GeneratedOnHandWrittenCode" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
+        message="Remove the annotation from hand-written code: JaCoCo skips code carrying an annotation whose name contains Generated, and PIT skips @Generated, so this is not measured. Put the JPA @GeneratedValue on the field.">
+    <priority>2</priority>
+    <properties>
+      <property name="xpath">
+        <value><![CDATA[
+//(ClassDeclaration | RecordDeclaration | EnumDeclaration | MethodDeclaration | ConstructorDeclaration | CompactConstructorDeclaration)
+  /ModifierList/Annotation[contains(@SimpleName, 'Generated')]
+]]></value>
+      </property>
+    </properties>
+  </rule>

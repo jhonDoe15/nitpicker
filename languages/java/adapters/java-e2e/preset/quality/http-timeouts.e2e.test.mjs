@@ -15,7 +15,7 @@ const RULESET = path.resolve(import.meta.dirname, '../../../../gradle/pmd-main-r
 const RULE = 'HttpWithoutTimeout';
 const REMOTE = 'src/main/java/shop/remote';
 const fixtures = path.resolve(import.meta.dirname, '../../fixtures/review-rules', REMOTE);
-const MARKER = new RegExp(`// violation: ${RULE}$`, 'u');
+const MARKER = new RegExp(`// violation: (?:\\w+, )*${RULE}(?:, \\w+)*$`, 'u');
 let root;
 let findings;
 

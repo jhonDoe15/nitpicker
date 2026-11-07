@@ -1,0 +1,58 @@
+  <rule name="SpringBeanCollectionState" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
+        message="Fill a plain collection of a shared singleton bean only at startup (the constructor, @PostConstruct or afterPropertiesSet) and keep it as Map.copyOf or List.copyOf, or use a ConcurrentHashMap or a cache (@Cacheable). Changed after startup, request threads would write to it at once.">
+    <priority>2</priority>
+    <properties><property name="xpath"><value><![CDATA[
+//ClassDeclaration[ModifierList/Annotation[
+    pmd-java:typeIs('org.springframework.stereotype.Component')
+    or pmd-java:typeIs('org.springframework.stereotype.Service')
+    or pmd-java:typeIs('org.springframework.stereotype.Repository')
+    or pmd-java:typeIs('org.springframework.stereotype.Controller')
+    or pmd-java:typeIs('org.springframework.web.bind.annotation.RestController')
+    or pmd-java:typeIs('org.springframework.web.bind.annotation.ControllerAdvice')
+    or pmd-java:typeIs('org.springframework.web.bind.annotation.RestControllerAdvice')]]
+  [not(ModifierList/Annotation[
+    pmd-java:typeIs('org.springframework.web.context.annotation.RequestScope')
+    or pmd-java:typeIs('org.springframework.web.context.annotation.SessionScope')
+    or (pmd-java:typeIs('org.springframework.context.annotation.Scope')
+        and not(AnnotationMemberList/MemberValuePair[@Name = ('value', 'scopeName')]/StringLiteral[@ConstValue = 'singleton']))])]
+  /ClassBody/FieldDeclaration[pmd-java:modifiers() = 'final']
+  [let $name := VariableDeclarator/VariableId/@Name,
+       $body := ancestor::ClassBody[1],
+       $starts := ($body/ConstructorDeclaration, $body/Initializer,
+         $body/MethodDeclaration[ModifierList/Annotation[
+           pmd-java:typeIs('jakarta.annotation.PostConstruct') or pmd-java:typeIs('javax.annotation.PostConstruct')]],
+         $body[parent::ClassDeclaration[pmd-java:typeIs('org.springframework.beans.factory.InitializingBean')]]
+           /MethodDeclaration[@Name = 'afterPropertiesSet'][@Arity = 0],
+         $body[parent::ClassDeclaration[pmd-java:typeIs('org.springframework.beans.factory.SmartInitializingSingleton')]]
+           /MethodDeclaration[@Name = 'afterSingletonsInstantiated'][@Arity = 0],
+         $body/MethodDeclaration[@Arity = 0][@Name = //Annotation[pmd-java:typeIs('org.springframework.context.annotation.Bean')]
+           /AnnotationMemberList/MemberValuePair[@Name = 'initMethod']//StringLiteral/@ConstValue]),
+       $onlyFrom := function($method, $callers) {
+         let $uses := $body//(MethodCall[*[1][self::ArgumentList or self::ThisExpression[not(*)]]]
+             | MethodReference[*[1][self::ThisExpression[not(*)]]])[@MethodName = $method/@Name]
+         return $method/@Visibility = 'private' and exists($uses)
+           and (every $use in $uses satisfies exists($use/ancestor::* intersect $callers))
+       },
+       $helpers := $body/MethodDeclaration[$onlyFrom(., $starts)],
+       $startup := ($starts, $helpers, $body/MethodDeclaration[$onlyFrom(., ($starts, $helpers))])
+   return exists($body/MethodDeclaration[not(exists(. intersect $startup))][not(pmd-java:modifiers() = 'synchronized')]
+     [not(.//MethodCall[@MethodName = ('lock', 'lockInterruptibly', 'tryLock')]
+       [*[1][pmd-java:typeIs('java.util.concurrent.locks.Lock') or pmd-java:typeIs('java.util.concurrent.locks.StampedLock')]])]
+     //MethodCall[@MethodName = ('add', 'addAll', 'put', 'putAll', 'remove', 'removeIf', 'removeAll', 'retainAll', 'clear',
+       'putIfAbsent', 'computeIfAbsent', 'computeIfPresent', 'compute', 'merge', 'replace', 'replaceAll',
+       'push', 'pop', 'poll', 'offer', 'addFirst', 'addLast')]
+     [*[1][(self::FieldAccess or (self::VariableAccess
+       and not(ancestor::MethodDeclaration[1]//VariableId[@Name = $name]))) and @Name = $name]]
+     [not(ancestor::SynchronizedStatement)])]
+  /VariableDeclarator/ConstructorCall/ClassType[
+    pmd-java:typeIsExactly('java.util.HashMap')
+    or pmd-java:typeIsExactly('java.util.LinkedHashMap')
+    or pmd-java:typeIsExactly('java.util.TreeMap')
+    or pmd-java:typeIsExactly('java.util.ArrayList')
+    or pmd-java:typeIsExactly('java.util.LinkedList')
+    or pmd-java:typeIsExactly('java.util.HashSet')
+    or pmd-java:typeIsExactly('java.util.LinkedHashSet')
+    or pmd-java:typeIsExactly('java.util.TreeSet')
+    or pmd-java:typeIsExactly('java.util.ArrayDeque')]
+]]></value></property></properties>
+  </rule>

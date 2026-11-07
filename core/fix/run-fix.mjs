@@ -19,6 +19,7 @@ import {
 } from '../../languages/typescript/adapters/lint-engine/project-layer.mjs';
 import { spawnSync } from 'node:child_process';
 import { isInScope } from '../scope/scope-findings.mjs';
+import { TOOL_TIMEOUT_MS } from '../../shared/processes/deadlines.mjs';
 
 const eslintPolicy = eslintChecks.find(({ name }) => name === 'eslint-lint');
 
@@ -279,6 +280,7 @@ function run({
       env: { ...process.env, ...environment },
       encoding: 'utf8',
       maxBuffer: 50 * 1024 * 1024,
+      timeout: TOOL_TIMEOUT_MS,
     });
   if (result.error || !acceptedStatuses.includes(result.status)) {
     throw new Error(

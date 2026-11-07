@@ -100,6 +100,7 @@ async function ruleSettings(policy) {
     typeImports: settingOf('@typescript-eslint/consistent-type-imports'),
     fileNames: settingOf('nitpicker/file-name-casing'),
     assertFunctionNames: settingOf('vitest/expect-expect')[1].assertFunctionNames,
+    detachedWorkRunners: settingOf('nitpicker/no-unhandled-void-promise')[1].runners,
   };
 }
 
@@ -109,16 +110,18 @@ describe('rules configured from the followed conventions', () => {
       typeImports: ['error', { disallowTypeAnnotations: false, fixStyle: 'separate-type-imports' }],
       fileNames: ['error', { casing: 'kebab-case' }],
       assertFunctionNames: ['expect', 'assert', 'expectTypeOf', 'assertType'],
+      detachedWorkRunners: [],
     });
   });
 
-  it('follows inline type imports and the project file name casing', async () => {
+  it('follows inline type imports, the file name casing, helpers and runners', async () => {
     expect(
       await ruleSettings({
         conventions: {
           'typescript.typeImports': 'inline',
           'typescript.fileNames': 'snake_case',
           'typescript.assertionHelpers': ['assertOk', 'verifyCalled'],
+          'typescript.detachedWorkRunners': ['runDetached'],
         },
       }),
     ).toEqual({
@@ -132,6 +135,7 @@ describe('rules configured from the followed conventions', () => {
         'assertOk',
         'verifyCalled',
       ],
+      detachedWorkRunners: ['runDetached'],
     });
   });
 

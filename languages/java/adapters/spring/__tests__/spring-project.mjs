@@ -58,11 +58,12 @@ function reportedViolations(sarifFile, sourceRoot) {
     })
     .sort();
 }
-const REVIEW_MARKER = /\/\/ violation: (\w+)/u;
+const REVIEW_MARKER = /\/\/ violation: (\w+(?:, \w+)*)/u;
 const REVIEW_RULES = new Set([
   'FixedSleepInTest',
   'NegativeWaitInTest',
   'RetryInTest',
+  'GlobalStateLeakInTest',
   'ServerOrContainerPerTest',
   'ExhaustiveEnumPredicate',
   'StaticForwardingWrapper',
@@ -71,12 +72,15 @@ const REVIEW_RULES = new Set([
   'ParameterMutation',
   'CompatibilityShim',
   'LegacyCalendarApi',
+  'UriCreateDynamic',
+  'UnclosedInlineResource',
   'UnquotedRegexValue',
   'PlainTextRegex',
   'ProcessWaitWithoutTimeout',
   'LogFormatArguments',
   'LogExceptionFirst',
   'RecursiveMapUpdate',
+  'DefaultTimeZone',
   'ClassLoadEffect',
   'SpringUnusedContext',
   'SpringProxySelfCall',
@@ -84,6 +88,10 @@ const REVIEW_RULES = new Set([
   'TestClassWithoutTestCases',
   'test-only-export',
   'UnboundedFanOut',
+  'UnboundedReactiveFanOut',
+  'UnboundedThreadPool',
+  'SpringUnreleasedResource',
+  'SpringStartupCleanup',
   'HttpWithoutTimeout',
 ]);
 const roots = [];
@@ -135,8 +143,8 @@ function markedReviewViolations(root) {
       readFileSync(path.join(root, 'src', name), 'utf8')
         .split('\n')
         .flatMap((line, index) => {
-          const rule = REVIEW_MARKER.exec(line)?.[1];
-          return rule === undefined ? [] : [`src/${name}:${String(index + 1)} ${rule}`];
+          const rules = REVIEW_MARKER.exec(line)?.[1].split(', ') ?? [];
+          return rules.map((rule) => `src/${name}:${String(index + 1)} ${rule}`);
         }),
     )
     .sort();
