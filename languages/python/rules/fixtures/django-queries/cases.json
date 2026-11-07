@@ -1,0 +1,12 @@
+[
+  {
+    "tool": "ruff",
+    "rule": "S610",
+    "mention": "orm query api"
+  },
+  {
+    "tool": "ruff",
+    "rule": "S611",
+    "mention": "orm query api"
+  }
+]

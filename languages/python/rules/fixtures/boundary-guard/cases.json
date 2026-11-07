@@ -1,0 +1,7 @@
+[
+  {
+    "tool": "python-rules",
+    "rule": "handwritten-boundary-guard",
+    "mention": "model_validate"
+  }
+]

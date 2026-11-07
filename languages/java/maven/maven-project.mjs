@@ -139,8 +139,10 @@ function describeModule(project, basedir) {
   const plugins = pluginsOf(project);
   const buildDirectory = resolvedText(build, basedir, 'directory') ?? path.join(basedir, 'target');
   const surefire = plugins.get(SUREFIRE);
+  const failsafe = plugins.get(FAILSAFE);
   const reports = setting(surefire, 'test', 'reportsDirectory');
-  const failsafeReports = setting(plugins.get(FAILSAFE), 'integration-test', 'reportsDirectory');
+  const failsafeReports = setting(failsafe, 'integration-test', 'reportsDirectory');
+  const integrationTests = defaultExecution(failsafe, 'integration-test');
   const sourceRoots = [
     resolvedText(build, basedir, 'sourceDirectory') ?? path.join(basedir, 'src/main/java'),
     ...helperRoots(plugins.get(BUILD_HELPER), 'add-source', basedir),
@@ -173,8 +175,9 @@ function describeModule(project, basedir) {
       basedir,
       failsafeReports ?? path.join(buildDirectory, 'failsafe-reports'),
     ),
-    runsFailsafe: runsFailsafe(project, plugins.get(FAILSAFE)),
+    runsFailsafe: runsFailsafe(project, failsafe),
     testJvmArgs: testJvmArguments(project, surefire, defaultExecution(surefire, 'test')),
+    integrationTestJvmArgs: testJvmArguments(project, failsafe, integrationTests),
     published: isPublished(project, plugins),
     jacocoDestFiles: jacocoDestFiles(plugins.get(JACOCO), basedir),
     archunitIncludes: textAt(project, 'properties', 'nitpicker.archunit.includes'),

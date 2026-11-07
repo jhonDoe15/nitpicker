@@ -37,6 +37,7 @@ describe('layout-aware tsconfig', () => {
     expect(layered.extends).toBe('./tsconfig.json');
     expect(layered.compilerOptions).toEqual({
       allowJs: true,
+      noCheck: false,
       noEmit: true,
       skipLibCheck: true,
       strict: true,
@@ -171,7 +172,7 @@ describe('layout-aware tsconfig', () => {
     })(shipped, target);
     expect(JSON.parse(relaxed)).toEqual({
       extends: './tsconfig.json',
-      compilerOptions: { skipLibCheck: true },
+      compilerOptions: { noCheck: false, skipLibCheck: true },
     });
   });
   it('ship the mutation tsconfig with the same indexing and return checks as the type check', () => {

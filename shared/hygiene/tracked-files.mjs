@@ -1,4 +1,5 @@
 import { execFileSync } from 'node:child_process';
+import { GIT_TIMEOUT_MS } from '../processes/deadlines.mjs';
 
 const MAX_LISTING_BYTES = 256 * 1024 * 1024;
 const REGULAR_FILE_MODES = new Set(['100644', '100755']);
@@ -9,6 +10,7 @@ export function git(root, gitArguments, input) {
     encoding: 'utf8',
     input,
     maxBuffer: MAX_LISTING_BYTES,
+    timeout: GIT_TIMEOUT_MS,
     stdio: ['pipe', 'pipe', 'pipe'],
   });
 }

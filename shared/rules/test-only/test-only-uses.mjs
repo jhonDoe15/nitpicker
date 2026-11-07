@@ -74,7 +74,10 @@ function isTestOnly(roles) {
 function definitionCandidates(file, definitions, graph) {
   const starred = graph.starred.get(file) ?? new Set();
   return definitions
-    .filter(({ exported, exportNames }) => exported || (exportNames ?? []).length > 0)
+    .filter(
+      ({ exported, exportNames, entry }) =>
+        entry !== true && (exported || (exportNames ?? []).length > 0),
+    )
     .filter(({ name }) =>
       isTestOnly(new Set([...(graph.named.get(`${file}\0${name}`) ?? []), ...starred])),
     )

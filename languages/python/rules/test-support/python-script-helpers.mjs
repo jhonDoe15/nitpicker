@@ -73,8 +73,12 @@ export function createScripts({ hidden = [] } = {}) {
     }
   }
 
+  function reportOf(files, settings) {
+    return rawFindingsOf(roots, files, { settings, hidden });
+  }
+
   function findingsOf(files, settings) {
-    return rawFindingsOf(roots, files, { settings, hidden }).map(
+    return reportOf(files, settings).map(
       ({ rule, path: file, subject, line, via }) =>
         `${rule} ${file}:${String(line)} ${subject}${viaText(via)}`,
     );
@@ -95,5 +99,5 @@ export function createScripts({ hidden = [] } = {}) {
     return findingsOf({ [file]: code });
   }
 
-  return { cleanup, outcomes, findingsOf, single, verdicts };
+  return { cleanup, outcomes, findingsOf, reportOf, single, verdicts };
 }
