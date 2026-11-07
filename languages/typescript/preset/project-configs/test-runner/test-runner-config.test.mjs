@@ -110,9 +110,13 @@ describe('the test runner retries a project opts into', () => {
     const [finding] = await runArea('coverage', root);
 
     expect(finding.message).toBe(
-      '2 tests fail, so coverage, CRAP and mutation were skipped. Fix the tests and rerun:\n' +
-        '  test/pick.test.ts > pick first: AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:\n' +
-        '  test/pick.test.ts > pick second: AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:',
+      '2 tests fail; coverage, CRAP and mutation were skipped. Fix the tests and rerun:\n' +
+        '  test/pick.test.ts:3 > pick first: AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:\n' +
+        '    expected: 2\n' +
+        '    received: 1\n' +
+        '  test/pick.test.ts:4 > pick second: AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:\n' +
+        '    expected: 2\n' +
+        '    received: 1',
     );
   });
 });
