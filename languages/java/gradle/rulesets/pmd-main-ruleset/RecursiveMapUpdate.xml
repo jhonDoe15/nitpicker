@@ -1,0 +1,63 @@
+  <rule name="RecursiveMapUpdate" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
+        message="Change the map after its computeIfAbsent, compute, computeIfPresent or merge returns, not inside the function passed to it or a callback or same-class method that function starts: build the value there and attach the cleanup to the result (map.computeIfAbsent(key, k -&gt; start(k)).whenComplete((r, e) -&gt; map.remove(key, r))). A ConcurrentHashMap otherwise throws IllegalStateException (Recursive update) or deadlocks, and a HashMap throws ConcurrentModificationException.">
+    <priority>3</priority>
+    <properties>
+      <property name="xpath">
+        <value><![CDATA[
+let $computes := ('computeIfAbsent', 'compute', 'computeIfPresent', 'merge'),
+    $writes := ('put', 'putAll', 'putIfAbsent', 'remove', 'clear', 'compute', 'computeIfAbsent',
+                'computeIfPresent', 'merge', 'replace', 'replaceAll'),
+    $views := ('keySet', 'values', 'entrySet'),
+    $viewWrites := ('remove', 'removeIf', 'removeAll', 'retainAll', 'clear'),
+    $mapRef := function($ref) {
+      $ref[self::VariableAccess or self::FieldAccess[*[1][self::ThisExpression[not(*)]]]]
+        [pmd-java:typeIs('java.util.Map')]
+    },
+    $written := function($call) {
+      if ($call/@MethodName = $viewWrites
+          and $call/*[1][self::MethodCall[@MethodName = $views][ArgumentList/@Size = 0]])
+      then $mapRef($call/*[1]/*[1])
+      else if ($call/@MethodName = $writes) then $mapRef($call/*[1]) else ()
+    },
+    $compute := function($callback) {
+      $callback/parent::ArgumentList/parent::MethodCall[@MethodName = $computes]/*[1]
+    }
+return (
+  //MethodCall[let $ref := $written(.),
+                  $method := ancestor::*[self::MethodDeclaration or self::ConstructorDeclaration
+                                         or self::Initializer][1]
+     return exists($ref)
+       and (some $callback in ancestor::*[self::LambdaExpression or self::ConstructorCall[AnonymousClassDeclaration]]
+            satisfies let $map := $compute($callback)
+              return $map/@Name = $ref/@Name
+                and exists($mapRef($map))
+                and (local-name($map) = local-name($ref) or empty($method//VariableId[@Name = $ref/@Name]))
+                and ($ref[self::FieldAccess] or empty($callback//VariableId[@Name = $ref/@Name])))]
+  | //*[self::MethodReference[parent::ArgumentList]
+          [*[1][self::ThisExpression[not(*)]
+                or self::TypeExpression[ClassType/@SimpleName = ancestor::*[self::ClassDeclaration
+                     or self::EnumDeclaration or self::RecordDeclaration][1]/@SimpleName]]]
+        | self::MethodCall[*[1][self::ArgumentList or self::ThisExpression[not(*)]]][ancestor::LambdaExpression]]
+    [let $site := .,
+         $body := ancestor::*[self::ClassBody or self::EnumBody or self::RecordBody][1],
+         $arity := if (self::MethodReference)
+                   then (if (parent::ArgumentList/parent::MethodCall/@MethodName = 'computeIfAbsent') then 1 else 2)
+                   else ArgumentList/@Size,
+         $helpers := $body/MethodDeclaration[@Name = $site/@MethodName][FormalParameters/@Size = $arity][Block],
+         $callbacks := if (self::MethodReference) then . else ancestor::LambdaExpression
+     return some $callback in $callbacks satisfies
+       let $map := $compute($callback),
+           $name := $map/@Name,
+           $method := $callback/ancestor::*[self::MethodDeclaration or self::ConstructorDeclaration
+                                            or self::Initializer][1]
+       return exists($mapRef($map))
+         and exists($body/FieldDeclaration/VariableDeclarator/VariableId[@Name = $name])
+         and ($map[self::FieldAccess] or empty($method//VariableId[@Name = $name]))
+         and (some $helper in $helpers satisfies
+                empty($helper//VariableId[@Name = $name])
+                and (some $call in $helper//MethodCall satisfies $written($call)/@Name = $name))]
+)
+]]></value>
+      </property>
+    </properties>
+  </rule>

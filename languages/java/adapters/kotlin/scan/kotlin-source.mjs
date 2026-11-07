@@ -242,7 +242,11 @@ export function literalsIn(scanned, from, to) {
   return scanned.literals.filter(({ start, end }) => start >= from && end <= to);
 }
 
+export function lineStart(code, offset) {
+  return code.lastIndexOf('\n', offset - 1) + 1;
+}
+
 export function inImport(code, offset) {
-  const start = code.lastIndexOf('\n', offset - 1) + 1;
+  const start = lineStart(code, offset);
   return /^[ \t]*import\s/.test(code.slice(start, offset + 1));
 }

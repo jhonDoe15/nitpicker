@@ -79,7 +79,7 @@ describe('the TypeScript 7 API entry', () => {
 
   it("type checks with a project's own TypeScript 7 on every runtime", async () => {
     const configPath = writeConfig('tsconfig.own.json', { ...STRICT, types: [] });
-    const own = resolveTool('typescript-native').root;
+    const own = resolveTool('@typescript/native').root;
 
     const sync = await checked(SYNC, configPath, own);
 
