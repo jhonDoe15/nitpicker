@@ -1,11 +1,10 @@
-import { mkdirSync, mkdtempSync, writeFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { mkdirSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { compareFindings } from '../../../../core/diff/comparison/compare.mjs';
 import { isStrictRule } from '../../preset/strict-rules.mjs';
 import { normalizeEslintResults } from './normalize.mjs';
-import { findingFor, positionOf, registerTemporaryRoot } from './test-support/finding-for.mjs';
+import { findingFor, makeTemporaryRoot, positionOf } from './test-support/finding-for.mjs';
 
 function compare(base, head) {
   return compareFindings({ baseFindings: base, headFindings: head });
@@ -399,8 +398,7 @@ describe('a complexity finding fails only when the number rises', () => {
 
 describe('findings another rule already covers', () => {
   function normalized(code, reports) {
-    const root = mkdtempSync(path.join(tmpdir(), 'nitpicker-eslint-superseded-'));
-    registerTemporaryRoot(root);
+    const root = makeTemporaryRoot('nitpicker-eslint-superseded-');
     mkdirSync(path.join(root, 'src'), { recursive: true });
     writeFileSync(path.join(root, 'src/rows.tsx'), code);
     const messages = reports.map(([ruleId, text]) => {

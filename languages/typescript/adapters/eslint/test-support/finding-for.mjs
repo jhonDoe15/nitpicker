@@ -1,26 +1,20 @@
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
-import { afterAll, expect } from 'vitest';
+import { expect, onTestFinished } from 'vitest';
 import { normalizeEslintResults } from '../normalize.mjs';
 
-export const temporaryRoots = [];
-
-export const registerTemporaryRoot = (root) => temporaryRoots.push(root);
-
-afterAll(() => {
-  for (const root of temporaryRoots) {
-    rmSync(root, { recursive: true, force: true });
-  }
-});
+export function makeTemporaryRoot(prefix) {
+  const root = mkdtempSync(path.join(tmpdir(), prefix));
+  onTestFinished(() => rmSync(root, { recursive: true, force: true }));
+  return root;
+}
 
 export function positionOf(code, offset) {
   const before = code.slice(0, offset).split('\n');
   return { line: before.length, column: (before.at(-1)?.length ?? 0) + 1 };
 }
 
-// Normalizes ESLint messages that point at `reported` (a substring of `code`, or a list of them,
-// one message each), the way ESLint reports them: a 1-based start and end.
 export function findingFor({
   code,
   reported,
@@ -28,8 +22,7 @@ export function findingFor({
   messageId,
   message = 'Reported text.',
 }) {
-  const root = mkdtempSync(path.join(tmpdir(), 'nitpicker-eslint-fingerprint-'));
-  registerTemporaryRoot(root);
+  const root = makeTemporaryRoot('nitpicker-eslint-fingerprint-');
   mkdirSync(path.join(root, 'src'), { recursive: true });
   writeFileSync(path.join(root, 'src/legacy.ts'), code);
   const reportedTexts = [reported].flat();
