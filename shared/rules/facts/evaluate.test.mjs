@@ -188,7 +188,7 @@ describe('the shared fact rules', () => {
     expect(registeredFactRules('python')).toEqual(python);
     withLanguageRegistered('feature-cycle', 'kotlin', () => {
       expect(sharedFactExceptionRules()).toEqual(python);
-      expect(registeredFactRules('kotlin')).toContain('feature-cycle');
+      expect(registeredFactRules('kotlin').includes('feature-cycle')).toBe(true);
       expect(registeredFactRules('python')).toEqual(python);
     });
   });
