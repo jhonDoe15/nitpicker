@@ -1,6 +1,6 @@
 import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
-import { failedCases, freshReports, moduleName } from '../../builds/test-failures.mjs';
+import { failedCaseEntries, freshReports, moduleName } from '../../builds/test-failures.mjs';
 
 const TEST_RESULTS_FILE = 'test-results.json';
 
@@ -10,12 +10,16 @@ export function failingTestsOf({ reportBase, since }) {
     return [];
   }
   return JSON.parse(readFileSync(file, 'utf8'))
-    .map(({ dir, results }) => ({
-      module: moduleName(dir),
-      tests: results
+    .map(({ dir, results }) => {
+      const entries = results
         .flatMap((directory) => freshReports(directory, since))
         .sort()
-        .flatMap(failedCases),
-    }))
+        .flatMap(failedCaseEntries);
+      return {
+        module: moduleName(dir),
+        tests: entries.map(({ text }) => text),
+        details: entries.map(({ detail }) => detail),
+      };
+    })
     .filter(({ tests }) => tests.length > 0);
 }

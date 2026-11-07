@@ -10,6 +10,7 @@ import { TESTS_FAILED_RULE } from '../../../shared/rules/finding-helpers.mjs';
 export const GRADLE_FAILURE_RULE = 'gradle-failure';
 export const MAVEN_FAILURE_RULE = 'maven-failure';
 const MAX_MESSAGE_LENGTH = 4000;
+const MAX_TESTS_FAILED_LENGTH = 40_000;
 
 export function javaExecutionBudget(environment = process.env) {
   const gradle = gradleBudget(environment);
@@ -55,15 +56,17 @@ export function analyzeJavaSnapshot(
           rule,
           path: '.',
           identity: rule,
-          message:
-            message.length > MAX_MESSAGE_LENGTH
-              ? `${message.slice(0, MAX_MESSAGE_LENGTH)}...`
-              : message,
+          message: cappedMessage(message, rule),
           classification: 'tool-error',
         },
       ],
     };
   }
+}
+
+function cappedMessage(message, rule) {
+  const limit = rule === TESTS_FAILED_RULE ? MAX_TESTS_FAILED_LENGTH : MAX_MESSAGE_LENGTH;
+  return message.length > limit ? `${message.slice(0, limit)}...` : message;
 }
 
 function failureRule(error, projectRoot) {

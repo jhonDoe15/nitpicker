@@ -1,12 +1,16 @@
-import { readFileSync } from 'node:fs';
+import { spawnSync } from 'node:child_process';
+import { existsSync, readFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
 import { docsRootUrl } from '../messages/docs-url.mjs';
 import { repositoryUrl } from './facts.mjs';
 import { ruleEntry } from './entry.mjs';
 import { PAGE_IDS } from './pages.mjs';
+import { TOOL_TIMEOUT_MS } from '../processes/deadlines.mjs';
 
 /** Where the entries are kept, one JSON file per page, relative to the repository root. */
 export const REFERENCE_DATA_DIRECTORY = 'shared/reference/rules';
 const REFERENCE_DATA = new URL('./rules/', import.meta.url);
+const GENERATOR = new URL('../../scripts/reference/gen-rules.mjs', import.meta.url);
 const DERIVED_FIELDS = ['id', 'anchor', 'page'];
 const ABSENT = -1;
 
@@ -58,8 +62,32 @@ export function decodePage(page, { fields, values, entries }) {
   });
 }
 
-/** The committed entries, read from the data file of each page, sorted by id. */
+function missingDataFiles() {
+  return PAGE_IDS.some((page) => !existsSync(new URL(`${page}.json`, REFERENCE_DATA)));
+}
+
+function buildMissingDataInCheckout() {
+  if (!missingDataFiles() || !existsSync(GENERATOR)) {
+    return;
+  }
+  const result = spawnSync(process.execPath, [fileURLToPath(GENERATOR), '--data'], {
+    encoding: 'utf8',
+    stdio: ['ignore', 'ignore', 'pipe'],
+    timeout: TOOL_TIMEOUT_MS,
+  });
+  if (result.status !== 0) {
+    throw new Error(
+      `Building the rule reference failed (npm run gen:rules -- --data): ${result.error?.message ?? result.stderr}`,
+    );
+  }
+}
+
+/**
+ * The entries, read from the data file of each page, sorted by id. The data files are build output:
+ * a package ships them (`prepack`), and in a checkout a missing one is built first.
+ */
 export function readReferenceEntries() {
+  buildMissingDataInCheckout();
   return PAGE_IDS.flatMap((page) =>
     decodePage(page, JSON.parse(readFileSync(new URL(`${page}.json`, REFERENCE_DATA), 'utf8'))),
   ).toSorted((a, b) => a.id.localeCompare(b.id));
@@ -179,7 +207,7 @@ export function referenceUrl(entry, root) {
 }
 
 /**
- * The rule reference as one run uses it: `index()` over the committed entries and the `root()` of
+ * The rule reference as one run uses it: `index()` over the entries and the `root()` of
  * its links, each read on first use and kept for the later calls on this object.
  */
 export function referenceLinks() {

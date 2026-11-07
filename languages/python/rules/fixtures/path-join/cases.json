@@ -1,0 +1,7 @@
+[
+  {
+    "tool": "python-rules",
+    "rule": "unsafe-path-join",
+    "mention": "is_relative_to"
+  }
+]

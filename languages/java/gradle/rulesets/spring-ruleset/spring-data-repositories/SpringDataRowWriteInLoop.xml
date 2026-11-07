@@ -1,0 +1,66 @@
+  <rule name="SpringDataRowWriteInLoop" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
+        message="Write one set-based @Query that takes the whole list, for example where id in :ids, and call it once after the loop instead of one repository update or delete per iteration.">
+    <priority>1</priority>
+    <properties><property name="xpath"><value><![CDATA[
+let $loop := function($node) {
+  exists($node/ancestor::*[self::ForStatement or self::ForeachStatement or self::WhileStatement or self::DoStatement]
+    [not(.//MethodCall[@MethodName = 'clear'][*[1][(pmd-java:typeIs('jakarta.persistence.EntityManager') or pmd-java:typeIs('javax.persistence.EntityManager'))]])])
+  or exists($node/ancestor::LambdaExpression[not(.//MethodCall[@MethodName = 'clear'][*[1][(pmd-java:typeIs('jakarta.persistence.EntityManager') or pmd-java:typeIs('javax.persistence.EntityManager'))]])][parent::ArgumentList/parent::MethodCall
+    [@MethodName = ('forEach', 'forEachOrdered', 'forEachRemaining', 'map', 'peek', 'flatMap', 'mapToObj')]
+    [*[1][pmd-java:typeIs('java.util.stream.BaseStream') or pmd-java:typeIs('java.lang.Iterable')
+      or pmd-java:typeIs('java.util.Map') or pmd-java:typeIs('java.util.Iterator')]]])
+},
+    $entityWrite := function($node) {
+  $node/@MethodName = ('save', 'saveAndFlush', 'delete', 'deleteById', 'persist', 'merge', 'remove')
+  and exists($node/*[1][pmd-java:typeIs('org.springframework.data.repository.Repository')
+    or (pmd-java:typeIs('jakarta.persistence.EntityManager') or pmd-java:typeIs('javax.persistence.EntityManager'))])
+},
+    $loopVariables := function($node) {
+  $node/ancestor::ForeachStatement/LocalVariableDeclaration//VariableId/@Name
+  | $node/ancestor::LambdaExpression/LambdaParameterList//VariableId/@Name
+},
+    $setBased := function($call) {
+  let $arguments := $call/ArgumentList/*, $variables := $loopVariables($call)
+  return exists($arguments[1][pmd-java:typeIs('java.lang.Iterable')])
+    or (exists($arguments[pmd-java:typeIs('java.lang.Iterable')])
+      and empty($arguments[not(pmd-java:typeIs('java.lang.Iterable'))][descendant-or-self::VariableAccess[@Name = $variables]]))
+},
+    $queryCalls := function($update) {
+  let $name := $update/*[1][self::VariableAccess]/@Name, $block := $update/ancestor::Block[1]
+  return $update//MethodCall
+    | $block//VariableDeclarator[VariableId/@Name = $name]//MethodCall
+    | $block//MethodCall[@MethodName = 'setParameter'][*[1][self::VariableAccess][@Name = $name]]
+},
+    $chunkUpdate := function($update) {
+  let $calls := $queryCalls($update),
+    $query := $calls[@MethodName = ('createQuery', 'createNativeQuery')]/ArgumentList/*[1],
+    $text := string(($query/@ConstValue, $update/ancestor::CompilationUnit//VariableDeclarator[VariableId/@Name = $query[self::VariableAccess]/@Name]/*[2]/@ConstValue)[1]),
+    $bindings := $calls[@MethodName = 'setParameter'],
+    $variables := $loopVariables($update)
+  return exists($bindings[ArgumentList/*[2][pmd-java:typeIs('java.lang.Iterable')]
+      [not(self::MethodCall[@MethodName = ('of', 'singleton', 'singletonList', 'asList')][count(ArgumentList/*) = 1])]]
+    [matches($text, concat('(^|[^A-Za-z0-9_])(in|any)\s*\(?\s*:', ArgumentList/*[1]/@ConstValue, '([^A-Za-z0-9_]|$)'), 'i')])
+    and empty($bindings/ArgumentList/*[2][not(pmd-java:typeIs('java.lang.Iterable'))]
+      [descendant-or-self::VariableAccess[@Name = $variables]])
+},
+    $read := '^(find|get|read|count|exists|query|stream|search|load|fetch|list|is|has)',
+    $write := '^(update|delete|remove|mark|set|rename|insert|upsert|increment|decrement|reset|clear|purge|archive|touch)([A-Z\d_]|$)',
+    $standard := ('save', 'saveAndFlush', 'saveAll', 'saveAllAndFlush', 'delete', 'deleteById', 'deleteAll',
+      'deleteAllById', 'deleteAllInBatch', 'deleteAllByIdInBatch', 'flush')
+return (
+  //MethodCall[*[1][pmd-java:typeIs('org.springframework.data.repository.Repository')]]
+    [not(@MethodName = $standard) and not(matches(@MethodName, $read))]
+    [not($setBased(.))]
+    [parent::ExpressionStatement
+     or parent::LambdaExpression[parent::ArgumentList/parent::MethodCall[@MethodName = ('forEach', 'forEachOrdered', 'forEachRemaining', 'peek',
+       'ifPresent', 'ifPresentOrElse', 'executeWithoutResult')]]
+     or matches(@MethodName, $write)]
+  | //MethodCall[@MethodName = 'executeUpdate'][*[1][(pmd-java:typeIs('jakarta.persistence.Query') or pmd-java:typeIs('javax.persistence.Query'))]]
+    [not($chunkUpdate(.))]
+)[$loop(.)]
+|
+//MethodCall[@MethodName = ('forEach', 'forEachOrdered', 'forEachRemaining', 'peek')]
+  /ArgumentList/MethodReference[*[1][pmd-java:typeIs('org.springframework.data.repository.Repository')]]
+    [not(@MethodName = $standard) and not(matches(@MethodName, $read))]
+]]></value></property></properties>
+  </rule>

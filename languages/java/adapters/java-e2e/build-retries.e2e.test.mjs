@@ -52,7 +52,7 @@ describe.skipIf(!enabled)(
 
         expect(message).toEqual(
           '1 test fails; the build stopped, so no other check ran. Fix the tests and rerun:\n' +
-            `  ${FAILURE}: first attempt ==> expected: <true> but was: <false>`,
+            `  demo/GreeterTest.java:22 > ${FAILURE}: first attempt ==> expected: <true> but was: <false>`,
         );
       },
       180_000,
@@ -63,7 +63,7 @@ describe.skipIf(!enabled)(
 
       expect(() => collectJavaFindings(project, { maven, policy: {} })).toThrow(
         '1 test fails; the build stopped, so no other check ran. Fix the tests and rerun:\n' +
-          `  ${FAILURE}: failed, then passed on a rerun (fix the flaky test; nitpicker counts a rerun as a failure): first attempt ==> ` +
+          `  demo/GreeterTest.java:22 > ${FAILURE}: failed, then passed on a rerun (fix the flaky test; nitpicker counts a rerun as a failure): first attempt ==> ` +
           'expected: <true> but was: <false>',
       );
     }, 180_000);

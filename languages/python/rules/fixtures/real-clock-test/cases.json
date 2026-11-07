@@ -1,0 +1,12 @@
+[
+  {
+    "tool": "python-rules",
+    "rule": "real-clock-in-test",
+    "mention": "freeze"
+  },
+  {
+    "tool": "python-rules",
+    "rule": "real-clock-in-test",
+    "mention": "tzinfo=timezone.utc"
+  }
+]
