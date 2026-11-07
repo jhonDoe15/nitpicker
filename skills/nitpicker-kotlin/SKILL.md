@@ -10,6 +10,14 @@ backstop. It fails only on findings your change adds, so leave code the task doe
 Java sources in the same project follow the `nitpicker-java` skill; if it isn't installed, install
 it with `npx skills add jhonDoe15/nitpicker --skill nitpicker-java`.
 
+## Check one file or folder
+
+To look at one file or folder, for example before you change it, pass its path: `npx nitpicker --all
+src/main/kotlin/com/example/orders` lists every finding in it, and `npx nitpicker
+src/main/kotlin/com/example/orders/Order.kt` gates only your change to that file. Paths are read
+from the current folder. The analysis still covers the whole project, so it takes as long as a full
+run; finish with the plain run below.
+
 ## Finish with the gate
 
 1. Run the project's tests (`./gradlew test`). Failing tests stop coverage, CRAP and mutation from

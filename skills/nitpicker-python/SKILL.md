@@ -14,6 +14,13 @@ If your change edits a function, class, module or package that existed before it
 Before you change code other modules use, or fix a bug, read
 [beyond-the-gate.md](beyond-the-gate.md).
 
+## Check one file or folder
+
+To look at one file or folder, for example before you change it, pass its path: `npx nitpicker --all
+src/orders` lists every finding in it, and `npx nitpicker src/orders/order.py` gates only your
+change to that file. Paths are read from the current folder. The analysis still covers the whole
+project, so it takes as long as a full run; finish with the plain run below.
+
 ## Finish with the gate
 
 1. Run the project's tests with its own runner (pytest, unittest, `manage.py test` or nose2).
