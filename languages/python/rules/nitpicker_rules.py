@@ -25,6 +25,7 @@ def load_checks():
     from errors import errors
     from honesty import assertions, isolation, skipped, waits
     from per_test import starts
+    from resources import inline as inline_resources
     from persistence import cascades, eager, query_logging, schema_sync
     from processes import timeouts as process_timeouts
     from regexes import patterns
@@ -52,6 +53,7 @@ def load_checks():
         state,
         shell,
         sql,
+        inline_resources,
         tls,
         hashes,
         timeouts,

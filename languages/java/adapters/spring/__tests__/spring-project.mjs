@@ -71,6 +71,7 @@ const REVIEW_RULES = new Set([
   'ParameterMutation',
   'CompatibilityShim',
   'LegacyCalendarApi',
+  'UnclosedInlineResource',
   'UnquotedRegexValue',
   'PlainTextRegex',
   'ProcessWaitWithoutTimeout',
@@ -85,6 +86,9 @@ const REVIEW_RULES = new Set([
   'test-only-export',
   'UnboundedFanOut',
   'UnboundedReactiveFanOut',
+  'UnboundedThreadPool',
+  'SpringUnreleasedResource',
+  'SpringStartupCleanup',
   'HttpWithoutTimeout',
 ]);
 const roots = [];
