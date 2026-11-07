@@ -20,9 +20,18 @@ SKIPPED_FOLDERS = {"fixtures", "test-support", "e2e", "__pycache__"}
 CHECK_DEFINITION = re.compile(r"^def check\(", re.MULTILINE)
 
 
+def is_module_name(name):
+    return name.endswith(".py") and not name.startswith(".")
+
+
 def defines_check(path):
-    with open(path, encoding="utf-8") as handle:
-        return CHECK_DEFINITION.search(handle.read()) is not None
+    if os.path.islink(path) or not os.path.isfile(path):
+        return False
+    try:
+        with open(path, encoding="utf-8") as handle:
+            return CHECK_DEFINITION.search(handle.read()) is not None
+    except (OSError, UnicodeDecodeError):
+        return False
 
 
 def check_module_names():
@@ -33,7 +42,7 @@ def check_module_names():
             continue
         for name in sorted(files):
             path = os.path.join(root, name)
-            if name.endswith(".py") and defines_check(path):
+            if is_module_name(name) and defines_check(path):
                 module = os.path.relpath(path, HERE)[: -len(".py")].replace(os.sep, ".")
                 names.append(module.removesuffix(".__init__"))
     return names
