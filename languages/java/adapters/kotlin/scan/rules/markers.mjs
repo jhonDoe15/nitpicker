@@ -34,7 +34,7 @@ const DECLARATION_KEYWORD = /^(?:(?:class|interface|object|fun|constructor)\b|(?
 const MUTATION_MARKERS = new Set(['DoNotMutate', 'CoverageIgnore']);
 const GENERATED_HEADER = /@generated\b|\bgenerated\b[\s\S]*\bdo not (?:edit|modify)\b/i;
 
-export const MARKER_MESSAGES = {
+const MARKER_MESSAGES = {
   GeneratedOnHandWrittenCode: `Remove the annotation from hand-written code: JaCoCo skips code carrying an annotation whose name contains Generated, and PIT skips @Generated, so this is not measured. Put the JPA @GeneratedValue on the field.`,
   JvmSyntheticOnHandWrittenCode:
     'Remove @JvmSynthetic: JaCoCo skips synthetic functions, so this is not measured. An exception fits only a library function that must stay hidden from Java callers.',
@@ -230,3 +230,9 @@ export function commentedOutCode(scanned) {
       : [{ rule: 'CommentedOutCode', offset: group[0].start, subject: lines[index] }];
   });
 }
+
+export const kotlinSourceRules = {
+  messages: MARKER_MESSAGES,
+  main: [annotationMarkers, commentedOutCode],
+  test: [commentedOutCode],
+};

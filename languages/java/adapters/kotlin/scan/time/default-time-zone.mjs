@@ -30,7 +30,7 @@ const CHAINED_SETUP = /^\s*\.\s*(?:apply|also|run)\s*\{/;
 const ZONE_SETTING = /\btimeZone\s*=|\bsetTimeZone\s*\(/;
 const ASSIGNED_NAME = /\b(?:val|var)\s+(\w+)\s*(?::[^=]+)?=\s*$/;
 
-export const TIME_ZONE_MESSAGES = {
+const TIME_ZONE_MESSAGES = {
   DefaultTimeZone:
     'Pass a `Clock` or a zone: `LocalDate.now(clock)` with an injected `Clock`, `ZoneId.of("UTC")` or a configured zone; with kotlinx.datetime, `TimeZone.UTC` or `TimeZone.of(zone)`. This reads the JVM default time zone, which changes with the server.',
   LegacyCalendarApi:
@@ -92,3 +92,5 @@ function legacyCalendarCalls(code) {
 export function defaultTimeZones(scanned) {
   return [...defaultZoneCalls(scanned.code), ...legacyCalendarCalls(scanned.code)];
 }
+
+export const kotlinSourceRules = { messages: TIME_ZONE_MESSAGES, main: [defaultTimeZones] };

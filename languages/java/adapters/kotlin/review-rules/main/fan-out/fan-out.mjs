@@ -93,3 +93,5 @@ export function fanOutFindings({ own, projectFiles, projectRoot, javaRoots }) {
     ),
   };
 }
+
+export const kotlinSourceRules = { messages: FAN_OUT_MESSAGES };
