@@ -2,6 +2,7 @@ import { spawnSync } from 'node:child_process';
 import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
+import { PROBE_TIMEOUT_MS, TOOL_TIMEOUT_MS } from '../../../shared/processes/deadlines.mjs';
 
 export const script = path.resolve(import.meta.dirname, 'structure_metrics.py');
 
@@ -9,7 +10,7 @@ export function pythonUsable() {
   const interpreter = spawnSync(
     'python3',
     ['-c', 'import sys; print(sys.version_info >= (3, 10))'],
-    { encoding: 'utf8' },
+    { encoding: 'utf8', timeout: PROBE_TIMEOUT_MS },
   );
   return interpreter.error === undefined && interpreter.stdout.trim() === 'True';
 }
@@ -45,7 +46,10 @@ export function createMetrics() {
     const listing = path.join(root, 'listing.txt');
     writeFileSync(listing, Object.keys(files).join('\n'));
     const output = path.join(root, 'metrics.json');
-    const result = spawnSync('python3', [script, output, root, listing], { encoding: 'utf8' });
+    const result = spawnSync('python3', [script, output, root, listing], {
+      encoding: 'utf8',
+      timeout: TOOL_TIMEOUT_MS,
+    });
     if (result.status !== 0) {
       throw result.error ?? new Error(result.stderr);
     }
