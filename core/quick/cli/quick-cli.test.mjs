@@ -60,8 +60,8 @@ function consoleSummary(outputRoot, verdict) {
 
 const ADDED_FINDING = [
   '✖ 1 new enforceable violation',
-  '  fake-quality-analyzer/fixture-rule src/main/added.ts:1',
-  '    Fixture finding',
+  '  fake-quality-analyzer/fixture-rule: Fixture finding',
+  '    src/main/added.ts:1:4',
 ];
 
 function readSummary(outputRoot) {
@@ -86,11 +86,25 @@ describe('nitpicker --quick', () => {
       'quality-policy.json': policy(),
       'src/main/clean.ts': 'export const clean = true;\n',
     });
+    writeFiles(repository.root, { 'src/main/added.ts': 'export const added = true;\n' });
 
     const { exitCode, output, outputRoot } = run(repository, ['--quick']);
 
     expect(exitCode).toBe(0);
     expect(output.stdoutText).toBe(consoleSummary(outputRoot, ['✓ No new enforceable violations']));
+  });
+
+  it('reports nothing to check without running anything when nothing changed', () => {
+    const repository = createRepository({
+      'quality-policy.json': policy(),
+      'src/main/clean.ts': 'export const clean = true;\n',
+    });
+
+    const { exitCode, output, outputRoot } = run(repository, ['--quick']);
+
+    expect(exitCode).toBe(0);
+    expect(output.stdoutText).toContain('nothing to check.');
+    expect(readSummary(outputRoot).mode).toBe('quick');
   });
 
   it('does not mention quick mode or write a quick field on a full run', () => {

@@ -28,6 +28,7 @@ function project() {
     'detekt.txt': 'Magic number 42\n',
     'mutations.xml': KILLED_MUTANT,
     'jacoco.xml': UNCOVERED_JACOCO,
+    'kotlin-mutation-facts.json': '{"files":[]}\n',
   };
   for (const [name, text] of Object.entries(files)) {
     mkdirSync(path.dirname(path.join(root, name)), { recursive: true });

@@ -3,6 +3,7 @@ import { parseArguments, USAGE_TEXT } from '../command/arguments.mjs';
 
 const DEFAULTS = {
   all: false,
+  details: false,
   fix: false,
   help: false,
   cache: true,
@@ -11,6 +12,9 @@ const DEFAULTS = {
   analyzerNames: [],
   ruleFilters: [],
   deferExit: false,
+  paths: [],
+  shardCount: undefined,
+  shardIndex: undefined,
 };
 
 describe('--quick and --staged arguments', () => {
@@ -51,7 +55,7 @@ describe('--quick and --staged arguments', () => {
 
   it('lists both flags in the usage text', () => {
     expect(USAGE_TEXT.split('\n')[0]).toBe(
-      'Usage: nitpicker [--base <ref>] [--output <dir>] [--all | --fix] [--analyzer <name>]... [--rule <substring>]... [--quick] [--staged] [--shard-count <n> --shard-index <i>] [--defer-exit] [--no-cache] [--accept-policy-change=<digest>] [--help]',
+      'Usage: nitpicker [<path>...] [--base <ref>] [--output <dir>] [--all | --fix] [--analyzer <name>]... [--rule <substring>]... [--details] [--quick] [--staged] [--shard-count <n> --shard-index <i>] [--defer-exit] [--no-cache] [--accept-policy-change=<digest>] [--help]',
     );
   });
 });
