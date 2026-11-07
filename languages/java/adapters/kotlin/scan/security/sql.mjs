@@ -36,7 +36,7 @@ const FORMAT_AFTER = /^\s*\.\s*format\s*\(/;
 const CONVERSION = /%(?:\d+\$)?[-#+ 0,(]*(?:[1-9]\d*)?(?:\.\d+)?([a-zA-Z%])/g;
 const PARENS = /[()]/g;
 
-export const SQL_MESSAGES = {
+const SQL_MESSAGES = {
   SqlStringBuilding:
     'Pass values as bind parameters: `jdbcTemplate.query("SELECT * FROM users WHERE id = ?", mapper, id)`, `prepareStatement("... WHERE id = ?")` with `setLong(1, id)`, `:id` with `NamedParameterJdbcTemplate` or JPA `setParameter("id", id)`, or a query DSL (Exposed, jOOQ). Build placeholder lists from placeholders alone (`ids.joinToString(", ") { "?" }`), optional filters from literal fragments joined with `" AND "`, and take a table or column name from a constant or an enum. This SQL text is built from a runtime value with a string template, `+` or `format`, so the value can change the statement (SQL injection).',
 };
@@ -261,3 +261,5 @@ export function sqlStringBuilding(scanned, context) {
   }
   return reported.map(({ start }) => ({ rule: 'SqlStringBuilding', offset: start }));
 }
+
+export const kotlinSourceRules = { messages: SQL_MESSAGES, main: [sqlStringBuilding] };

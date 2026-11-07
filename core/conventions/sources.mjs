@@ -2,6 +2,7 @@ import { spawnSync } from 'node:child_process';
 import { readFileSync, realpathSync, statSync } from 'node:fs';
 import path from 'node:path';
 import { projectFilePaths } from '../../shared/project-files/project-files.mjs';
+import { GIT_TIMEOUT_MS } from '../../shared/processes/deadlines.mjs';
 
 const MAX_FILE_BYTES = 512 * 1024;
 const MAX_LISTING_BYTES = 1024 * 1024 * 1024;
@@ -172,7 +173,12 @@ function readBlobs(repositoryRoot, blobs) {
 }
 
 function git(cwd, args, input) {
-  const result = spawnSync('git', args, { cwd, input, maxBuffer: MAX_LISTING_BYTES });
+  const result = spawnSync('git', args, {
+    cwd,
+    input,
+    maxBuffer: MAX_LISTING_BYTES,
+    timeout: GIT_TIMEOUT_MS,
+  });
   if (result.error !== undefined || result.status !== 0) {
     throw new Error(
       `git ${args.join(' ')} failed in ${cwd}: ${result.error?.message ?? result.stderr.toString('utf8').trim()}`,

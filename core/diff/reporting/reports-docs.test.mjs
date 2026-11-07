@@ -3,6 +3,7 @@ import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { SNAPSHOT_REPORT_FILE_NAMES } from '../../snapshot/reporters.mjs';
 import { REPORT_FILE_NAMES } from './reporters.mjs';
+import { guidePages, guideText } from '../../../shared/reference/build/guide-pages.mjs';
 
 const REPOSITORY = path.join(import.meta.dirname, '../../..');
 const DOCS = path.join(REPOSITORY, 'docs');
@@ -36,7 +37,8 @@ function guides() {
     ['README.md', readFileSync(path.join(REPOSITORY, 'README.md'), 'utf8')],
     ...readdirSync(DOCS)
       .filter((name) => name.endsWith('.md'))
-      .map((name) => [`docs/${name}`, readDoc(name)]),
+      .flatMap((name) => guidePages(`docs/${name}`))
+      .map((file) => [file, guideText(file)]),
   ];
 }
 

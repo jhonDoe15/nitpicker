@@ -45,7 +45,7 @@ describe('coverage on a Mocha project', () => {
     );
 
     expect(rulesOf(findings)).toEqual(['tool-error:tests-failed']);
-    expect(findings[0].message).toMatch(/test\/pick\.test\.ts > pick answers: AssertionError/u);
+    expect(findings[0].message).toMatch(/test\/pick\.test\.ts:5 > pick answers: AssertionError/u);
   });
 
   it('names the test file that Mocha could not load', async () => {
