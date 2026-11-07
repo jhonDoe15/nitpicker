@@ -221,7 +221,7 @@ describe('TypeScript 7 type check', () => {
 });
 
 describe('a project whose own typescript is TypeScript 7', () => {
-  const projectNative = resolveTool('typescript-native').root;
+  const projectNative = resolveTool('@typescript/native').root;
 
   it('type checks with the project compiler and reports what the native engine reports', async () => {
     const configPath = writeConfig('tsconfig.own.json', { ...STRICT, types: ['missing-types'] });

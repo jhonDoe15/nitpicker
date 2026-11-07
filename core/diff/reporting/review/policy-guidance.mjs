@@ -154,6 +154,11 @@ export const POLICY_GUIDANCE = {
     'Drops a Spring role mapping, so the classes it marked lose that role and its layering checks.',
     'Restore the mapping.',
   ].join(' '),
+  'detached-work-runner-added': [
+    'Names a new detached-work runner, so `void` on its calls is no longer checked for an',
+    'unhandled rejection. Remove the name, or have a person check that the runner handles',
+    'every rejection.',
+  ].join(' '),
 };
 
 export function policyKindGuidance(kind) {
