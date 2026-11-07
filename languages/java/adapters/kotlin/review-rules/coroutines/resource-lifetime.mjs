@@ -69,3 +69,5 @@ export function childLifetimeFindings(files, { finding }) {
       });
     });
 }
+
+export const kotlinSourceRules = { messages: CHILD_LIFETIME_MESSAGES };

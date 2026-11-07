@@ -6,6 +6,7 @@ import { policyChangeSection } from './review/policy-changes.mjs';
 import { partialRunLines } from './partial-run/partial-run.mjs';
 import { repositoryUrl } from '../../../shared/reference/facts.mjs';
 import { helpUriFor, referenceLinks } from '../../../shared/reference/store.mjs';
+import { scopeLine } from '../../scope/scope-findings.mjs';
 
 export function renderTextReport(report, { reference = referenceLinks() } = {}) {
   const lines = [
@@ -13,7 +14,7 @@ export function renderTextReport(report, { reference = referenceLinks() } = {}) 
     ...configOverrideLines(report.summary.configOverrides ?? []),
     ...policyChangeSection(report.summary),
     ...noticeSection(report.summary.notices),
-    ...toolCountLines(report.summary.tools),
+    ...toolCountLines(report.summary),
   ];
   appendFindingSection(lines, 'New findings', report.newFindings);
   lines.push(...ruleReferenceLines(report.newFindings, reference));
@@ -32,6 +33,7 @@ function summaryLines(report) {
     `Merge base: ${report.summary.mergeBaseSha}`,
     `Head: ${report.summary.headSha}`,
     `Status: ${report.summary.overallStatus}`,
+    ...scopeLine(report.summary),
     `New enforceable findings: ${String(report.summary.newEnforceableFindings)}`,
     `New findings: ${String(report.newFindings.length)}`,
     `Resolved findings: ${String(report.resolvedFindings.length)}`,
@@ -49,7 +51,10 @@ function configOverrideLines(configOverrides) {
   return ['', 'Config overrides:', ...configOverrides.map((override) => `  ${override}`)];
 }
 
-function toolCountLines(tools) {
+function toolCountLines({ tools, noChanges }) {
+  if (noChanges === true) {
+    return ['Analyzers: none ran, the head has the same files as the merge base'];
+  }
   if (tools.length === 0) {
     return ['Analyzers: none configured'];
   }

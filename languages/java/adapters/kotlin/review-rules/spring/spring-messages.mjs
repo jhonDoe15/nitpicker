@@ -7,6 +7,14 @@ const ALLOWED = {
     'Inject the bean you need through the constructor instead of looking it up in the ApplicationContext or BeanFactory. Use ObjectProvider for optional or prototype beans.',
   SpringNoLazyInjection:
     'Remove @Lazy from this injection point. It hides a dependency cycle; break the cycle with a new component or an event instead.',
+  SpringStaticPostProcessorBean:
+    'Move this @Bean function into a companion object, mark it @JvmStatic and give it only Environment or ObjectProvider parameters. A post-processor or @ConfigurationPropertiesBinding bean is created before post-processing is ready, so an instance function creates its configuration class, and each parameter its bean, too early; those beans then miss proxies such as @Transactional and @Async.',
+  SpringOrderedProvider:
+    'Use orderedStream() on the ObjectProvider, so the beans come in @Order and Ordered order. Iterating the provider itself (a for loop, forEach, map, toList, stream() or iterator()) gives them in registration order.',
+  SpringUnreleasedResource:
+    'Release this resource when the context closes: shut it down, close it or cancel it in a @PreDestroy function (shutdown, then shutdownNow when awaitTermination times out), DisposableBean.destroy, AutoCloseable.close or SmartLifecycle.stop, or declare it as its own @Bean or as a ThreadPoolTaskExecutor bean, which Spring closes. Spring closes only the beans it created, so this one keeps its threads, coroutines or connections after the context closes, and non-daemon threads keep the JVM running.',
+  SpringStartupCleanup:
+    'Release what this startup function already started when this call fails: put the call in a try and shut the event loops, executors or servers down in its catch before rethrowing, or in a finally. Spring does not call @PreDestroy on a bean whose startup failed, so the started threads keep the JVM running and the application hangs instead of exiting.',
   SpringLiteConfiguration:
     'Write @Configuration(proxyBeanMethods = false) and take dependencies as @Bean function parameters instead of calling other @Bean functions.',
   SpringNoComponentScan:
@@ -41,6 +49,12 @@ const ALLOWED = {
     'Add rollbackFor = [Exception::class] to this @Transactional, or throw an unchecked exception. Kotlin lets any function throw a checked exception, and a checked exception commits the work done so far instead of rolling it back.',
   SpringTransactionalReadOnlyWrite:
     'Put @Transactional without readOnly on this function: a write inside a read-only transaction is skipped or fails.',
+  SpringMultiWriteWithoutTransaction:
+    'Put @Transactional on this function, or run its writes inside transactionTemplate.execute { }. It writes to the database more than once outside a transaction, so when a later write fails the earlier ones stay committed.',
+  SpringCacheWriteInTransaction:
+    'Write the cache after the commit (in a TransactionSynchronization afterCommit callback, a @TransactionalEventListener, or the caller once the transactional call returns), or make the cache manager transaction-aware (TransactionAwareCacheManagerProxy, or transactionAware() on its builder). Written inside the transaction, the cache keeps a value that a rollback undoes, and an early evict lets a concurrent reader put the old value back.',
+  SpringLocalCacheWriteInTransaction:
+    'Write this in-memory cache or memo map after the commit (in a TransactionSynchronization afterCommit callback, a @TransactionalEventListener, or the caller once the transactional call returns). Written inside the transaction, it keeps a value or a generated id that a rollback undoes, and other threads read it until it expires.',
   SpringAsyncExecutor:
     'Name a bounded executor bean, @Async("executorName"), and return CompletableFuture so failures reach the caller.',
   SpringScheduledFixedDelay:
@@ -88,16 +102,18 @@ const ALLOWED = {
     'Write this repository function with @Query (JPQL in a raw string for JPA), naming the entity and every condition, instead of a query derived from the function name.',
   SpringDataNativeQuery:
     'Write the query in JPQL; native SQL is not checked at startup. If this one needs SQL, mark this function with @Suppress("PMD.SpringDataNativeQuery"), the only inline suppression nitpicker accepts.',
+  SpringDataWriteWithoutTransaction:
+    'Put @Transactional on this repository function, or on the repository interface. Spring Data opens a transaction only for the CRUD functions a repository inherits, so a declared @Modifying query or derived delete fails with TransactionRequiredException whenever its caller has no transaction.',
   SpringDataModifyingQuery:
     'Write @Modifying(clearAutomatically = true, flushAutomatically = true), so pending changes are flushed first and no stale entities stay in the persistence context.',
   SpringDataNoSaveInLoop:
     'Collect the entities and call saveAll or deleteAll once, instead of saving or deleting one entity per loop iteration.',
   SpringDataNoFlush:
-    'Let the transaction write changes at commit and remove this flush; an early flush defeats JDBC batching and hides ordering bugs.',
+    'Let the transaction write changes at commit and remove this flush; in a batch loop, flush and then call entityManager.clear() every N entities. Any other early flush defeats JDBC batching and hides ordering bugs.',
   SpringDataNamedParameters:
     'Bind query parameters by name (:email), not by position (?1); positions break silently when parameters are reordered.',
   SpringDataQueryTextBlock:
-    'Write a multi-part query as one raw string (""") instead of joining strings with +.',
+    'Write a multi-part query as one raw string (""") instead of joining strings with +, plus() or string templates.',
   SpringDataBatchOfOne:
     'Collect the entities of the whole loop and call saveAll or deleteAll once. Calling it with a one-element list on each iteration is still one write per entity.',
   SpringDataRowWriteInLoop:

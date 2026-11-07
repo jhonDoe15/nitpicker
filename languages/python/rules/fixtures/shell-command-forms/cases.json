@@ -1,0 +1,7 @@
+[
+  {
+    "tool": "python-rules",
+    "rule": "shell-command",
+    "mention": "shell=false"
+  }
+]

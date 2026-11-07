@@ -1,0 +1,11 @@
+  <rule name="SpringNoTransactionalController" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
+        message="Put @Transactional on a service method, not on a controller; a controller transaction spans the whole request and response serialization.">
+    <priority>2</priority>
+    <properties><property name="xpath"><value><![CDATA[
+//ClassDeclaration[ModifierList/Annotation[
+    pmd-java:typeIs('org.springframework.stereotype.Controller')
+    or pmd-java:typeIs('org.springframework.web.bind.annotation.RestController')]]
+  /(ModifierList | ClassBody/MethodDeclaration/ModifierList)
+  /Annotation[pmd-java:typeIs('org.springframework.transaction.annotation.Transactional')]
+]]></value></property></properties>
+  </rule>

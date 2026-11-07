@@ -1,7 +1,7 @@
 # Editing existing code
 
 Read this when your change edits a method, class, file or package that existed before it.
-Everything in `SKILL.md` still applies to the lines you add.
+Everything in `SKILL.md` and the topic pages it links still applies to the lines you add.
 
 - A method already over a size limit may be edited but must not grow: the run notes the base value
   (`allowed because base was 66`) and fails any increase (`Big.process grew from 66 to 67 lines`).
@@ -11,10 +11,10 @@ Everything in `SKILL.md` still applies to the lines you add.
 - Extracted code is new code and must meet every rule. PIT keys a mutant by its method, so the
   moved lines' surviving mutants count as new: test the new method with exact values
   (`assertEquals(4, Big.combine(1, 2, 3))`).
-- Keep a legacy method's name and parameters. Renaming it or its class makes all its limit,
-  branch-coverage and surviving-mutant findings new; adding a parameter makes all its surviving
-  mutants new. An overload with the same name added above it makes its limit findings new: add it
-  below, or give the new method its own name.
+- Rename a legacy method or its class only in a change that leaves the method's body as it was:
+  its limit, count, CRAP, branch-coverage and surviving-mutant findings follow the rename then, but
+  an edit inside the renamed method makes its limit, count and CRAP findings new. An overload with
+  the same name added above a legacy method doesn't take its findings.
 - A file, class or folder already over its limit must not grow: `File grew from 320 to 321 lines`,
   `Class Sprawl grew from 314 to 315 methods`, `Folder grew from 8 to 9 source files`. Put new code
   in a new class, and a new class in a subpackage. A folder at 6 files fails on the 7th.
@@ -27,6 +27,8 @@ Everything in `SKILL.md` still applies to the lines you add.
   unchanged, also when you edit its line. Many messages name the field, method or class, so
   renaming that symbol makes its findings new: fix them in the same change. Another finding of the
   same rule in the same file is new, and the report may place it on the legacy line.
+- A count finding (a repeated literal, a method length or complexity) stays baselined while its
+  count does not grow; any increase fails.
 - Moving a file to another package keeps its PMD, Error Prone, CRAP, size and mutation findings;
   its Checkstyle findings and those that name the class (`coupling/test-only-export`) count as new.
   Don't move or rename a file the task doesn't need moved.

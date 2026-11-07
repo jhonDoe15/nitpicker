@@ -1,0 +1,74 @@
+  <rule name="SpringLocalCacheWriteInTransaction" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
+        message="Write this in-memory cache or memo map after the commit (in a TransactionSynchronization afterCommit callback, a @TransactionalEventListener, or the caller once the transactional call returns). Written inside the transaction, it keeps a value or a generated id that a rollback undoes, and other threads read it until it expires.">
+    <priority>2</priority>
+    <properties><property name="xpath"><value><![CDATA[
+let $writing := function($annotations) {
+  exists($annotations[pmd-java:typeIs('org.springframework.transaction.annotation.Transactional')]
+      [not(AnnotationMemberList/MemberValuePair[@Name = 'readOnly']/BooleanLiteral[@True = true()])]
+      [not(AnnotationMemberList/MemberValuePair[@Name = 'propagation'][.//*[@Name = ('NOT_SUPPORTED', 'NEVER', 'SUPPORTS')]])]
+    | $annotations[pmd-java:typeIs('jakarta.transaction.Transactional') or pmd-java:typeIs('javax.transaction.Transactional')]
+      [not(AnnotationMemberList/MemberValuePair[@Name = 'value'][.//*[@Name = ('NOT_SUPPORTED', 'NEVER', 'SUPPORTS')]])])
+},
+    $runsInTransaction := function($method) {
+  $writing($method/ModifierList/Annotation)
+  or ($method/@Visibility = 'public' and not($method/pmd-java:modifiers() = 'static')
+    and not($method/ModifierList/Annotation[pmd-java:typeIs('org.springframework.transaction.annotation.Transactional')
+      or pmd-java:typeIs('jakarta.transaction.Transactional') or pmd-java:typeIs('javax.transaction.Transactional')])
+    and $writing($method/parent::ClassBody/parent::ClassDeclaration/ModifierList/Annotation))
+},
+    $inTransaction := function($node) {
+  let $method := $node/ancestor::MethodDeclaration[1]
+  return exists($node/ancestor::ArgumentList/parent::MethodCall[@MethodName = ('execute', 'executeWithoutResult')]
+      [*[1][pmd-java:typeIs('org.springframework.transaction.support.TransactionOperations')
+        or pmd-java:typeIs('org.springframework.transaction.reactive.TransactionalOperator')]])
+    or (not($node/ancestor::LambdaExpression[ancestor::MethodDeclaration[1] is $method]
+          [parent::ArgumentList/parent::MethodCall[matches(@MethodName, 'commit|completion', 'i')]])
+      and ($runsInTransaction($method)
+        or ($method/@Visibility != 'public' and $method/parent::ClassBody/parent::ClassDeclaration
+          and (let $name := $method/@Name, $arity := $method/@Arity
+            return exists($method/parent::ClassBody/MethodDeclaration[$runsInTransaction(.)]
+              //MethodCall[*[1][self::ArgumentList or self::ThisExpression[not(*)]]]
+                [@MethodName = $name][count(ArgumentList/*) = $arity])))))
+},
+    $write := function($call) {
+  ($call/@MethodName = ('save', 'saveAll', 'saveAndFlush', 'saveAllAndFlush', 'delete', 'deleteAll', 'deleteById',
+      'deleteAllById', 'deleteAllInBatch', 'persist', 'merge', 'remove')
+   and exists($call/*[1][pmd-java:typeIs('org.springframework.data.repository.Repository')
+     or (pmd-java:typeIs('jakarta.persistence.EntityManager') or pmd-java:typeIs('javax.persistence.EntityManager'))]))
+  or (matches($call/@MethodName, '^(update|delete|remove|mark|set|rename|insert|upsert|increment|decrement|reset|clear|purge|archive|touch)([A-Z\d_]|$)')
+   and exists($call/*[1][pmd-java:typeIs('org.springframework.data.repository.Repository')]))
+  or ($call/@MethodName = ('update', 'batchUpdate')
+   and exists($call/*[1][pmd-java:typeIs('org.springframework.jdbc.core.JdbcOperations')
+     or pmd-java:typeIs('org.springframework.jdbc.core.namedparam.NamedParameterJdbcOperations')]))
+  or ($call/@MethodName = 'update'
+   and exists($call/*[1][pmd-java:typeIs('org.springframework.jdbc.core.simple.JdbcClient.StatementSpec')]))
+  or ($call/@MethodName = 'executeUpdate'
+   and exists($call/*[1][pmd-java:typeIs('jakarta.persistence.Query') or pmd-java:typeIs('javax.persistence.Query')]))
+},
+    $localCache := function($node) {
+  exists($node[pmd-java:typeIs('com.github.benmanes.caffeine.cache.Cache')
+    or pmd-java:typeIs('com.google.common.cache.Cache')])
+},
+    $field := function($node) {
+  exists($node[self::FieldAccess[ThisExpression]])
+  or exists($node[self::VariableAccess][@Name = ancestor::ClassDeclaration[1]/ClassBody/FieldDeclaration//VariableId/@Name]
+    [not(@Name = ancestor::MethodDeclaration[1]//(LocalVariableDeclaration//VariableId | FormalParameter/VariableId)/@Name)])
+},
+    $fromWrite := function($call) {
+  exists($call/ArgumentList//(MethodCall | MethodReference)[$write(.)])
+  or exists($call/ArgumentList//VariableAccess[@Name = $call/ancestor::MethodDeclaration[1]//LocalVariableDeclaration
+    /VariableDeclarator[.//MethodCall[$write(.)]]/VariableId/@Name])
+}
+return
+//MethodCall[@MethodName = ('put', 'putAll', 'invalidate', 'invalidateAll')][$localCache(*[1])][$inTransaction(.)]
+|
+//MethodCall[@MethodName = ('put', 'putAll', 'putIfAbsent', 'remove', 'replace', 'compute', 'computeIfAbsent',
+    'computeIfPresent', 'merge', 'clear')]
+  [*[1][self::MethodCall[@MethodName = 'asMap'][$localCache(*[1])]]][$inTransaction(.)]
+|
+//MethodCall[@MethodName = 'get'][$localCache(*[1])][count(ArgumentList/*) = 2][$fromWrite(.)][$inTransaction(.)]
+|
+//MethodCall[@MethodName = ('put', 'putIfAbsent', 'computeIfAbsent', 'compute', 'merge')]
+  [*[1][pmd-java:typeIs('java.util.Map')][$field(.)]][$fromWrite(.)][$inTransaction(.)]
+]]></value></property></properties>
+  </rule>

@@ -1,0 +1,8 @@
+[
+  {
+    "name": "except with only an ellipsis names suppress",
+    "tool": "python-rules",
+    "rule": "swallowed-exception",
+    "mention": "contextlib.suppress"
+  }
+]
