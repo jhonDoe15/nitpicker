@@ -240,6 +240,8 @@ Details that are decisions rather than the table:
   error, to `pytest.raises` in a test, and to the `python.exceptions` entry for `blind-suppress`.
 - `ruff check` runs with `--ignore-noqa`, so a `noqa` never hides a finding either.
 
+The slice continues on these pages:
+
 - [The shared one-way rules](the-shared-one-way-rules.md)
 - [Rules from code review](rules-from-code-review.md)
 - [Slow tests](slow-tests.md)
