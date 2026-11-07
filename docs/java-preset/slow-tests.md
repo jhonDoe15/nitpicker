@@ -6,7 +6,7 @@ Part of the [Java preset guide](../java-preset.md).
   as a unit test, or more than 30 s as an integration test (`thresholds.unitTestSeconds` and
   `thresholds.integrationTestSeconds`). The rule, message shape, budgets and exception are the same
   for [TypeScript and JavaScript](../typescript-strict-preset.md#slow-tests) and
-  [Python](../python-preset.md#slow-tests); the finding prints the bare id `slow-test`, and
+  [Python](../python-preset/slow-tests.md); the finding prints the bare id `slow-test`, and
   `test-runtime/slow-test` is accepted in `exceptions` as the same rule. Integration tests are those
   of a test task other than `test` (Maven's `surefire` counts as `test`), classes named `*IT`,
   `*ITCase`, `*IntegrationTest(s)`, `*IntegrationSpec` or `*ISpec`, classes in a package with an
