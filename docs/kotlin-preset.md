@@ -283,7 +283,7 @@ the TypeScript preset, `{ "rule", "paths", "reason" }`, all required:
 `kotlin-source/<Rule>` of the [source checks](#source-checks), `kotlinc/deprecation`,
 `kotlinc/unchecked` or `kotlinc/cast`, one of the [review rules](#review-rules) (`pmd/FixedSleepInTest`,
 `pmd/NegativeWaitInTest`, `pmd/DisabledTest`, `pmd/FocusedTest`, `pmd/RetryInTest`, `pmd/ServerOrContainerPerTest`, `pmd/AssertionInControlFlow`,
-`pmd/CoroutineEscapesTest`, `pmd/SpringUnusedContext`, `pmd/ExhaustiveEnumPredicate`,
+`pmd/CoroutineEscapesTest`, `pmd/GlobalStateLeakInTest`, `pmd/SpringUnusedContext`, `pmd/ExhaustiveEnumPredicate`,
 `pmd/StaticForwardingWrapper`, `pmd/SingularAndPluralMember`, `pmd/ValidationAnnotationTarget`, `pmd/ClassLoadEffect`, `pmd/RecursiveMapUpdate`, `unused-option`), a class limit, a file
 limit or `test-runtime/slow-test`; for the structure, CRAP and coverage findings below,
 `function-lines-limit`, `function-statements-limit`, `function-control-nesting-limit`,
@@ -546,6 +546,7 @@ skipped with a note on stderr.
 | `ServerOrContainerPerTest`                       | `review-rules/tests/setup/`                      | a container, server or process started for each test: a `@Container`, `@Rule` or `@RegisterExtension` property of a JUnit instance, a Kotest container extension in a per-test mode, a start in `@BeforeEach`, `@Before`, `beforeTest` or `beforeEach` on an object made for each test, the same start in two or more tests of a class                                                                                           |
 | `AssertionInControlFlow`                         | `review-rules/tests/honesty/`                    | an assertion that can be skipped: inside an `if` or a `when` whose branches do not all assert, a loop, a safe call, `&&`, `\|\|`, `?:`, a swallowing `try` or `runCatching`, or after an early return                                                                                                                                                                                                                            |
 | `CoroutineEscapesTest`                           | `review-rules/tests/coroutines/`                 | a `launch`, `async`, `launchIn`, `stateIn` or `shareIn` on a scope the test does not own (`CoroutineScope(...)`, a scope field, `viewModelScope`) that nothing joins, awaits or cancels                                                                                                                                                                                                                                          |
+| `GlobalStateLeakInTest`                          | `review-rules/tests/global-state/`               | a test that changes process-wide state (a system property, the default `Locale` or `TimeZone`, `System.out`, a default handler, a security provider, `Dispatchers.setMain`, or a property or `set...` function of a project `object` or class) that nothing in the class puts back                                                                                                                                               |
 | `StaticForwardingWrapper`                        | `review-rules/main/forwarding-wrappers.mjs`      | a function whose body only passes its parameters, in order, to another function                                                                                                                                                                                                                                                                                                                                                  |
 | `SingularAndPluralMember`                        | `review-rules/main/member-names.mjs`             | a member and its plural form (`tag` and `tags`) in one class, or two defaulted parameters of a public function                                                                                                                                                                                                                                                                                                                   |
 | `ValidationAnnotationTarget`                     | `review-rules/validation/validation-targets.mjs` | a Bean Validation annotation (`jakarta.validation.constraints`, `javax.validation.constraints`, `org.hibernate.validator.constraints`, or `@Valid`) on a primary-constructor `val` or `var` of a main source without a `field:`, `get:` or `all:` use-site target; Kotlin puts it on the constructor parameter, where Bean Validation does not look. Kotlin-only: a Java record carries the annotation to its field and accessor |
@@ -827,6 +828,25 @@ guessed at.
   A base config class in another file and a constant from another file are not followed. The Java preset
   has the same rule id for the JVM forms. Fix the cause instead, for example wait on the condition instead
   of a fixed delay or isolate shared state; use `exceptions` only for a test that must retry on purpose.
+- `GlobalStateLeakInTest`: the same rule id as the Java preset. Reported in a test source file: `System.setProperty`,
+  `clearProperty`, `setProperties`, `setOut`, `setErr` and `setIn`, `Thread.setDefaultUncaughtExceptionHandler` (also
+  with a trailing lambda), `Locale.setDefault` and `TimeZone.setDefault` (from `java.util`), `Security.addProvider` and
+  `insertProviderAt`, `setDefault` on `CookieHandler`, `Authenticator`, `ProxySelector`, `ResponseCache` and `SSLContext`,
+  the `HttpsURLConnection` default factory and verifier, `Dispatchers.setMain`, and an assignment (`=`, `+=`, `++`) to a
+  property of a project type (`Clock.offset = 5`, `Prices.Companion.rounding += 1`) or a call of its `set...` function
+  (not `setUp...`). A type counts as the project's under the same package-root rule as the Java preset; a library's
+  object and a type declared in the test file are left alone. Restored means: the same state set again in a `finally`
+  of the same function, in an `@AfterEach`, `@AfterAll`, `@After`, `@AfterClass` or `kotlin.test` `@AfterTest` function,
+  in an `afterEach`, `afterAll`, `afterTest`, `afterSpec`, `close` or `tearDown` function or a Kotest `afterTest { }`,
+  `afterEach { }`, `afterSpec { }` or `afterContainer { }` block of the class, or in a function of the class that one of
+  those calls; `Dispatchers.resetMain()` and a `reset...`, `clear...` or `restore...` call on the same project type count
+  too. A change inside one of those places is not reported, nor one in a `.use { }` block on the changed type or a
+  restoring extension type (`Clock.frozen().use { }`), nor one under junit-pioneer `@RestoreSystemProperties`,
+  `@DefaultLocale`, `@DefaultTimeZone` or `@StdIo`, next to a system-stubs `@SystemStub` or JUnit 4 `@Rule` field of the
+  matching kind, with a Kotest `SystemPropertyTestListener`, `LocaleTestListener` or `TimeZoneTestListener`, or inside
+  `withSystemProperty { }`, `withSystemProperties { }`, `captureStandardOut { }`, `restoreSystemProperties { }` or a
+  system-stubs `execute { }`. Outside a test class (a helper object), a restore anywhere in the file counts. The scan
+  reads text, so a restore in a superclass or another file is not followed.
 - `ServerOrContainerPerTest`: a container, server or process started for each test, the Kotlin
   side of the Java rule. Reported: a property annotated `@Container` (Testcontainers) or
   `@RegisterExtension` holding a `WireMockExtension`, declared in a class body (not a companion

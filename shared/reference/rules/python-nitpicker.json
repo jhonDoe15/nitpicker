@@ -95,6 +95,10 @@
     { "key": "python.exceptions", "rule": "generic-name" },
     "`<name>` has a generic name",
     "Name it for its job (`price_rounding.py`, `OrderRepository`); shared logic that belongs to no feature lives in `shared/` under a name that says what it does.",
+    "global-state-leak-in-test",
+    { "key": "python.exceptions", "rule": "global-state-leak-in-test" },
+    "`<name>` changes process-wide state in a test and nothing puts it back, so the tests after it depend on the order they run in",
+    "Let pytest undo it: `monkeypatch.setenv`, `monkeypatch.setattr` or `mock.patch.dict(os.environ, ...)`, or save the old value and restore it in `finally`, after `yield` in a fixture, or in `tearDown`.",
     "handwritten-boundary-guard",
     { "key": "python.exceptions", "rule": "handwritten-boundary-guard" },
     "`<name>` checks untrusted data by hand",
@@ -371,9 +375,9 @@
     [18, 132, 2, 3, 133, 134, 22, 135, -1],
     [18, 136, 2, 3, 137, 138, 22, 139, -1],
     [18, 140, 2, 3, 141, 142, 22, 143, -1],
-    [18, 144, 2, 145, 146, 147, 22, 148, -1],
-    [18, 149, 2, 150, 151, 152, 22, 153, -1],
-    [18, 154, 2, 3, 155, 156, 22, 157, -1],
+    [18, 144, 2, 3, 145, 146, 22, 147, -1],
+    [18, 148, 2, 149, 150, 151, 22, 152, -1],
+    [18, 153, 2, 154, 155, 156, 22, 157, -1],
     [18, 158, 2, 3, 159, 160, 22, 161, -1],
     [18, 162, 2, 3, 163, 164, 22, 165, -1],
     [18, 166, 2, 3, 167, 168, 22, 169, -1],
@@ -407,9 +411,10 @@
     [18, 278, 2, 3, 279, 280, 22, 281, -1],
     [18, 282, 2, 3, 283, 284, 22, 285, -1],
     [18, 286, 2, 3, 287, 288, 22, 289, -1],
-    [18, 290, 2, 3, 291, 292, 22, -1, -1],
-    [18, 293, 2, 3, 294, 295, 22, 296, -1],
-    [297, 298, 2, 3, 299, 300, 301, 302, -1],
-    [303, 304, 2, 3, 305, 306, 307, 308, 309]
+    [18, 290, 2, 3, 291, 292, 22, 293, -1],
+    [18, 294, 2, 3, 295, 296, 22, -1, -1],
+    [18, 297, 2, 3, 298, 299, 22, 300, -1],
+    [301, 302, 2, 3, 303, 304, 305, 306, -1],
+    [307, 308, 2, 3, 309, 310, 311, 312, 313]
   ]
 }

@@ -24,6 +24,7 @@ def load_checks():
     from environment import domain_imports, environment, purity
     from errors import errors
     from honesty import assertions, isolation, skipped, waits
+    from leaks import global_state
     from per_test import starts
     from resources import inline as inline_resources
     from persistence import cascades, eager, query_logging, schema_sync
@@ -74,6 +75,7 @@ def load_checks():
         assertions,
         unasserted,
         isolation,
+        global_state,
         waits,
         starts,
         uncollected,
