@@ -1,6 +1,6 @@
 # Java and Kotlin: PMD rules
 
-PMD's bestpractices, design, errorprone, multithreading, performance and security categories, as far as nitpicker's rulesets keep them, and the rules nitpicker adds to them, for Java sources in the Java and Kotlin presets. This page lists 269 rules. [All pages](README.md).
+PMD's bestpractices, design, errorprone, multithreading, performance and security categories, as far as nitpicker's rulesets keep them, and the rules nitpicker adds to them, for Java sources in the Java and Kotlin presets. This page lists 270 rules. [All pages](README.md).
 
 The guide for these rules: [docs/java-preset.md](../java-preset.md).
 
@@ -2552,6 +2552,17 @@ In main sources: a stream `map`/`forEach`/`flatMap` lambda (also a `this::helper
 - **Why it is on:** A PMD rule nitpicker defines: it names one allowed form where the language offers several, and reports the other forms.
 - **Allowed form:** This loop or stream starts a remote or message call on a new task for every element of a collection at once, so a large collection exhausts the connections or rate limit of the remote service. Run the tasks on a fixed pool (Executors.newFixedThreadPool(8) passed to supplyAsync or used for submit), take a Semaphore permit around each call, or work through fixed-size batches (Lists.partition(items, 20)). An exception fits only when the collection is always small.
 - **Exception:** If this is intended, add `{"rule":"pmd/UnboundedFanOut","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
+
+<a id="pmd-unboundedreactivefanout"></a>
+
+### `pmd/UnboundedReactiveFanOut`
+
+In main sources, when Reactor is on the classpath: `flatMap` or `flatMapSequential` without a concurrency argument over `Flux.fromIterable`, `fromStream` or `fromArray` of a collection, and `Mono.zip`, `Mono.zipDelayError`, `Mono.when`, `Mono.whenDelayError`, `Flux.zip`, or a one-argument `Flux.merge` or `Flux.mergeSequential`, over a list built per element of a collection, when the element work makes a remote or message call. See the notes below.
+
+- **Scope:** Main sources only.
+- **Why it is on:** A PMD rule nitpicker defines: it names one allowed form where the language offers several, and reports the other forms.
+- **Allowed form:** This Reactor operator subscribes to a remote or message call for every element of a collection: Mono.zip, Mono.when and Flux.zip over a list built per element start every call at once, and flatMap or Flux.merge without a concurrency argument run up to 256 at once, so a large collection exhausts the connections or rate limit of the remote service. Pass a concurrency limit (flatMap(this::fetch, 8)), use concatMap for one call at a time, or buffer(20) and make one batch call per chunk; for a zip, use Flux.fromIterable(items).flatMap(this::fetch, 8).collectList(). An exception fits only when the collection is always small.
+- **Exception:** If this is intended, add `{"rule":"pmd/UnboundedReactiveFanOut","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 
 <a id="pmd-unboundedthreadpool"></a>
 

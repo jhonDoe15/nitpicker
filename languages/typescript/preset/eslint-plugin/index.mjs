@@ -68,6 +68,7 @@ import { rule as reactNoRandomKey } from './rules/react/render/react-no-random-k
 import { rule as reactTestNoImplementationDetails } from './rules/react-tests/react-test-no-implementation-details.mjs';
 
 import { rule as unboundedFanOut } from './rules/concurrency/unbounded-fan-out.mjs';
+import { rule as unboundedReactiveFanOut } from './rules/concurrency/reactive/unbounded-reactive-fan-out.mjs';
 import { rule as noOrmQueryLogging } from './rules/database/no-orm-query-logging.mjs';
 import { rule as noOrmSchemaSync } from './rules/database/no-orm-schema-sync.mjs';
 import { rule as requireErrorListener } from './rules/events/require-error-listener.mjs';
@@ -126,6 +127,7 @@ export const nitpickerRules = {
     'no-local-time-zone': noLocalTimeZone,
     'no-unknown-main-folder': noUnknownMainFolder,
     'unbounded-fan-out': unboundedFanOut,
+    'unbounded-reactive-fan-out': unboundedReactiveFanOut,
     'no-orm-query-logging': noOrmQueryLogging,
     'no-orm-schema-sync': noOrmSchemaSync,
     'no-magic-numbers': noMagicNumbers,
