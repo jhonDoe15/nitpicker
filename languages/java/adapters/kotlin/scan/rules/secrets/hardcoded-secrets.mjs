@@ -120,3 +120,5 @@ export function credentialLiterals(scanned) {
     .filter(({ text }) => hasCredentialShape(text.replaceAll('\\$', '$')))
     .map(({ start }) => ({ rule: 'CredentialLiteral', offset: start }));
 }
+
+export const kotlinSourceRules = { main: [hardcodedSecrets, credentialLiterals] };

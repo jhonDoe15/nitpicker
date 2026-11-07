@@ -53,7 +53,7 @@ const OWNERS =
   /^(?:close\w*|register|exit|readValue|readTree|add\w*|put\w*|offer\w*|push|set[A-Z]\w*|listOf|setOf|of|ofNullable)$/;
 const CLOSING_OWNERS = new Set(['FileCopyUtils']);
 
-export const INLINE_CLOSEABLE_MESSAGES = {
+const INLINE_CLOSEABLE_MESSAGES = {
   [RULE]:
     'Close what this opens: `resource.inputStream.use { it.readBytes() }`, `FileInputStream(file).bufferedReader().use { it.readLine() }`, or a variable passed to `.use { }`. The closeable (a stream, reader, writer, channel, JAR or ZIP file, class loader or JDBC connection) is opened and used in the same expression, as the receiver of a call, an argument or a loop source, so nothing closes it: each call leaks a file handle or a connection, and on Windows the file stays locked. `readLines()`, `useLines { }` and `forEachLine { }` close the reader, and returning the closeable or passing it to a closeable wrapper that is closed also matches.',
 };
@@ -144,3 +144,8 @@ export function unclosedInlineResources(scanned) {
     return [{ rule: RULE, offset: opened.start, subject }];
   });
 }
+
+export const kotlinSourceRules = {
+  messages: INLINE_CLOSEABLE_MESSAGES,
+  main: [unclosedInlineResources],
+};

@@ -95,7 +95,7 @@ const TYPE_DECLARATION = new RegExp(
 const GENERIC_PACKAGE = new RegExp(`(?:^|\\.)(?:${GENERIC_NAME_WORDS.join('|')})(?:\\.|$)`);
 const PACKAGE = /^\s*package\s+([\w.`]+)/m;
 
-export const DECLARATION_MESSAGES = {
+const DECLARATION_MESSAGES = {
   MutableModuleState:
     'Keep state in an instance: a class whose object the composition root creates and passes in, holding `val`s and immutable `listOf`/`mapOf`. A top-level `var` or a mutable collection in an `object` is shared by the whole program.',
   GenericTypeName:
@@ -231,3 +231,8 @@ export function genericNames(scanned, context = {}) {
   const names = types.map(({ name }) => name);
   return [...fileFindings(context.file, names), ...packageFindings(scanned.code), ...typeFindings];
 }
+
+export const kotlinSourceRules = {
+  messages: DECLARATION_MESSAGES,
+  main: [mutableModuleState, genericNames],
+};

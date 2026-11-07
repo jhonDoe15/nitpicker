@@ -1,33 +1,13 @@
 import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import path from 'node:path';
+import { byCodePoint, registryFiles } from './registry-files.mjs';
 
 const GRADLE_DIRECTORY = 'languages/java/gradle';
 const FRAGMENTS = `${GRADLE_DIRECTORY}/rulesets`;
 const HEAD = 'ruleset.xml';
 
-function byCodePoint(left, right) {
-  if (left === right) {
-    return 0;
-  }
-  return left < right ? -1 : 1;
-}
-
 function ruleFiles(directory) {
-  const files = [];
-  const pending = [directory];
-  for (const folder of pending) {
-    const items = readdirSync(folder, { withFileTypes: true });
-    pending.push(
-      ...items.filter((item) => item.isDirectory()).map((item) => path.join(folder, item.name)),
-    );
-    const rules = items.filter((item) => item.isFile() && item.name.endsWith('.xml'));
-    files.push(...rules.map((item) => path.join(folder, item.name)));
-  }
-  const head = path.join(directory, HEAD);
-  return files
-    .filter((file) => file !== head)
-    .map((file) => path.relative(directory, file).split(path.sep).join('/'))
-    .toSorted(byCodePoint);
+  return registryFiles(directory, '.xml').filter((file) => file !== HEAD);
 }
 
 const RULE_ELEMENT = /<rule\s+name="([^"]+)"/gu;

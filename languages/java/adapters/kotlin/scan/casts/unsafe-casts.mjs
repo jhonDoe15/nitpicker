@@ -5,7 +5,7 @@ const NULL_WINDOW = 20;
 const NULL_BEFORE = /\bnull\s*$/;
 const ANY_OR_NULL = /^\s*(?:kotlin\.)?Any\?$/;
 
-export const CAST_MESSAGES = {
+const CAST_MESSAGES = {
   UnsafeCastOperator:
     'Narrow with an `is` check or `when` (a smart cast), or use `as?` and handle the null; `as` throws ClassCastException when the type is wrong. A test can use `assertIs<T>(value)`.',
 };
@@ -21,3 +21,9 @@ export function unsafeCasts(scanned) {
     })
     .map(({ index }) => ({ rule: 'UnsafeCastOperator', offset: index }));
 }
+
+export const kotlinSourceRules = {
+  messages: CAST_MESSAGES,
+  main: [unsafeCasts],
+  test: [unsafeCasts],
+};

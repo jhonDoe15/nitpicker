@@ -1,6 +1,6 @@
-import { readdirSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import * as prettier from 'prettier';
+import { byCodePoint, readRegistryFile, registryFiles } from './registry-files.mjs';
 
 const PLUGIN = 'languages/typescript/preset/eslint-plugin';
 const REGISTRY_NAME = 'rules.generated.mjs';
@@ -11,34 +11,14 @@ const SKIPPED_FILES = new Set(['index.mjs', REGISTRY_NAME]);
 /** Where the generated rule map of nitpicker's ESLint plugin goes, relative to the repository root. */
 export const ESLINT_REGISTRY = `${PLUGIN}/${REGISTRY_NAME}`;
 
-function moduleFiles(root) {
-  const files = [];
-  const pending = [root];
-  for (const directory of pending) {
-    const items = readdirSync(directory, { withFileTypes: true });
-    const folders = items.filter((item) => item.isDirectory() && !SKIPPED_FOLDERS.has(item.name));
-    pending.push(...folders.map((item) => path.join(directory, item.name)));
-    files.push(...items.filter(isRuleCandidate).map((item) => path.join(directory, item.name)));
-  }
-  return files;
-}
-
-function isRuleCandidate(item) {
-  const isModule = item.isFile() && item.name.endsWith('.mjs') && !item.name.endsWith('.test.mjs');
-  return isModule && !SKIPPED_FILES.has(item.name);
-}
-
 const RULE_ID = /^[a-z][a-z0-9]*(?:-[a-z][a-z0-9]*)*$/u;
 
 function identifier(id) {
   return `rule-${id}`.replaceAll(/-([a-z])/gu, (_, letter) => letter.toUpperCase());
 }
 
-function byCodePoint(a, b) {
-  if (a.id === b.id) {
-    return 0;
-  }
-  return a.id < b.id ? -1 : 1;
+function byId(left, right) {
+  return byCodePoint(left.id, right.id);
 }
 
 function idProblems(rules) {
@@ -55,13 +35,11 @@ function idProblems(rules) {
  */
 export function eslintPluginRules(repositoryRoot) {
   const root = path.join(repositoryRoot, PLUGIN);
-  const rules = moduleFiles(root)
-    .filter((file) => RULE_EXPORT.test(readFileSync(file, 'utf8')))
-    .map((file) => ({
-      id: path.basename(file, '.mjs'),
-      file: `./${path.relative(root, file).split(path.sep).join('/')}`,
-    }))
-    .toSorted(byCodePoint);
+  const rules = registryFiles(root, '.mjs', SKIPPED_FOLDERS)
+    .filter((file) => !SKIPPED_FILES.has(path.posix.basename(file)))
+    .filter((file) => RULE_EXPORT.test(readRegistryFile(root, file)))
+    .map((file) => ({ id: path.posix.basename(file, '.mjs'), file: `./${file}` }))
+    .toSorted(byId);
   const problems = idProblems(rules);
   if (problems.length > 0) {
     throw new Error(`The ESLint plugin's rule modules have problems: ${problems.join('; ')}`);

@@ -8,7 +8,7 @@ import {
 
 const URI_RULE = 'UriCreateDynamic';
 
-export const URI_MESSAGES = {
+const URI_MESSAGES = {
   [URI_RULE]:
     'Build the URI with an encoding builder (`UriComponentsBuilder.fromUriString(base).path(path).queryParam(name, value).encode().build().toUri()` with Spring, or `URI(scheme, host, path, fragment)`), or parse the text where the failure is handled: `runCatching { URI.create(text) }`, or a `try` that catches `IllegalArgumentException` (`URISyntaxException` for `URI(text)`). `URI.create(text)` and `URI(text)` throw on a space, a non-ASCII character or any other character that is not encoded, so one odd stored, user or header value turns this call into an error response. A constant is fine, and so is a project helper that does one of these. A value read from configuration at startup also matches, because a bad value fails only at runtime.',
 };
@@ -223,3 +223,5 @@ export function dynamicUris(scanned) {
     ...referencesOf(file),
   ];
 }
+
+export const kotlinSourceRules = { messages: URI_MESSAGES, main: [dynamicUris] };
