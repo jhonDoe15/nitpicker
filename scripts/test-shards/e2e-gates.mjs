@@ -38,6 +38,9 @@ export function gateCandidates(root) {
  */
 export function suiteFiles(root, environment) {
   const flags = SUITES.map(suiteFlag).filter((flag) => environment[flag] === '1');
+  if (flags.length === 0) {
+    return [];
+  }
   return gateCandidates(root)
     .filter((candidate) => candidate.flags.some((flag) => flags.includes(flag)))
     .map(({ file }) => file);
