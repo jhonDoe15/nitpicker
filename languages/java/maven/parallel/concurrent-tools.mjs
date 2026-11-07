@@ -1,5 +1,6 @@
 import { spawnSync } from 'node:child_process';
 import { availableParallelism } from 'node:os';
+import { TOOL_RUN_CEILING_MS } from '../../../../shared/processes/deadlines.mjs';
 
 const SUPERVISOR_URL = new URL('tool-supervisor.mjs', import.meta.url).href;
 const SUPERVISOR_SOURCE = [
@@ -19,6 +20,7 @@ function runInProcesses(tasks) {
     }),
     encoding: 'utf8',
     maxBuffer: MAX_OUTCOME_BYTES,
+    timeout: TOOL_RUN_CEILING_MS,
   });
   if (result.error !== undefined) {
     throw result.error;

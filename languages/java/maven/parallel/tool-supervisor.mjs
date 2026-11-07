@@ -1,4 +1,5 @@
 import { spawn } from 'node:child_process';
+import { TOOL_RUN_CEILING_MS } from '../../../../shared/processes/deadlines.mjs';
 
 const TOOL_SOURCE = [
   'const chunks = [];',
@@ -32,6 +33,7 @@ function runTool(task) {
   return new Promise((resolve) => {
     const child = spawn(process.execPath, ['--input-type=module', '--eval', TOOL_SOURCE], {
       stdio: ['pipe', 'pipe', 'pipe'],
+      timeout: TOOL_RUN_CEILING_MS,
     });
     const output = { stdout: [], stderr: [] };
     child.stdout.on('data', (chunk) => output.stdout.push(chunk));

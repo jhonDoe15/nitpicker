@@ -1,6 +1,8 @@
 import { runGit } from '../../git/repository/command.mjs';
 import { createFindingsCache, runBaseWithCache } from '../../cache/findings-cache.mjs';
 import { cachedLine } from '../../execution/progress.mjs';
+import { runAnalyzers } from '../../execution/run-analyzers.mjs';
+import { PACKAGE_ROOT } from '../../../tooling/tool-resolution.mjs';
 import { scopeToTouchedFiles } from './scope.mjs';
 
 export function quickScoped(settings, layout, analyzers) {
@@ -9,7 +11,7 @@ export function quickScoped(settings, layout, analyzers) {
     : scopeToTouchedFiles(analyzers, layout.touchedPaths);
 }
 
-export function runQuickHead({ settings, comparison, roots, layout }, run) {
+function runQuickHead({ settings, comparison, roots, layout }, run) {
   const analyzers = quickScoped(settings, layout, settings.analyzers);
   if (settings.quick === undefined || settings.cacheStore === undefined) {
     return run(analyzers);
@@ -37,4 +39,22 @@ export function runQuickHead({ settings, comparison, roots, layout }, run) {
       policyRoot: roots.headSnapshotRoot,
     },
   });
+}
+
+export function runHeadAnalyzers(context, baselineMovesFile) {
+  const { settings, roots, headPolicyFile } = context;
+  return runQuickHead(context, (analyzers) =>
+    runAnalyzers({
+      analyzers,
+      projectRoot: roots.headSnapshotRoot,
+      policyRoot: roots.headSnapshotRoot,
+      toolRoot: PACKAGE_ROOT,
+      liveProjectRoot: settings.headProjectRoot,
+      headPolicyFile,
+      snapshot: 'head',
+      baselineRoot: roots.baseProjectRoot,
+      baselineMovesFile,
+      runTasks: settings.runTasks,
+    }),
+  );
 }

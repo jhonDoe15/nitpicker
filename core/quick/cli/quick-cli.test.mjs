@@ -103,7 +103,9 @@ describe('nitpicker --quick', () => {
     const { exitCode, output, outputRoot } = run(repository, ['--quick']);
 
     expect(exitCode).toBe(0);
-    expect(output.stdoutText).toContain('nothing to check.');
+    expect(output.stdoutText).toBe(
+      `No changes since comparison-base (${repository.baseSha.slice(0, 12)}); nothing to check.\n`,
+    );
     expect(readSummary(outputRoot).mode).toBe('quick');
   });
 
