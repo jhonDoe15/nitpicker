@@ -193,17 +193,12 @@ export function variantEnvironment(root) {
   };
 }
 
-function inventoryEnvironment(root) {
-  const inherited = Object.entries(process.env).filter(([name]) => !name.startsWith('NITPICKER_'));
-  return { ...Object.fromEntries(inherited), ...variantEnvironment(root) };
-}
-
 async function liveInventoryOf(variant) {
   const root = variantProject(variant);
   try {
     await run(process.execPath, [fileURLToPath(import.meta.url), variant, root], {
       cwd: root,
-      env: inventoryEnvironment(root),
+      env: variantEnvironment(root),
       timeout: TOOL_TIMEOUT_MS,
     });
     return JSON.parse(readFileSync(path.join(root, INVENTORY_OUTPUT), 'utf8'));
@@ -212,7 +207,10 @@ async function liveInventoryOf(variant) {
   }
 }
 
-/** The ESLint rules the presets enable, read from the configs one process per variant: `{ [variant]: inventory }`. */
+/**
+ * The ESLint rules the presets enable, read from the configs one process per variant whose
+ * environment holds only the variant's settings, so the caller's cannot change it.
+ */
 export async function liveEslintInventory() {
   const names = Object.keys(ESLINT_VARIANTS);
   const inventories = await Promise.all(names.map(liveInventoryOf));
