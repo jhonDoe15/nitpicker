@@ -54,8 +54,8 @@ To learn why a rule is on and what form it allows before you write or change cod
 The allowed forms are on one page per topic. Before you write code, read the pages for the kind of code you are about to write; on your first task in a project, read them all.
 
 - [Style, names and Javadoc](rules/style-and-names.md): formatting, names and declarations, literals, parameters and loops, utility classes, Javadoc, the PMD and Checkstyle configs.
-- [Values, types and data](rules/values-and-types.md): strings, arrays, null, declared types, defensive copies, signatures, time, URIs, regexes, maps, records, enums.
-- [Threads, I/O and remote calls](rules/concurrency-and-io.md): locks, logging, bounded fan-out, child processes, HTTP deadlines, resources, work at class load.
+- [Values, types and data](rules/values-and-types.md): strings, arrays, null, declared types, defensive copies, signatures, time, URIs, regexes, maps, records, enums, forwarding methods, `tags` or `tag`.
+- [Threads, I/O and remote calls](rules/concurrency-and-io.md): locks, logging, bounded fan-out, child processes, HTTP deadlines, resources and `finally`, work at class load.
 - [Errors](rules/errors.md): catching, rethrowing and failures as values.
 - [Structure and dependencies](rules/structure.md): method, file and folder limits, CRAP, duplicates, test-only code, aggregates, package dependencies.
 - [Tests](rules/tests.md): branch coverage, mutation testing, fast tests, waits, retries, shared state, servers and containers, console output.
