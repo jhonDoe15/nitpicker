@@ -73,6 +73,104 @@
       </property>
     </properties>
   </rule>
+  <rule name="GlobalStateLeakInTest" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
+        message="This test changes process-wide state and nothing in the class puts it back, so the tests after it pass or fail depending on the order they run in. Save the old value and restore it in finally or in an @AfterEach or @AfterAll method, or let an extension set and restore it: junit-pioneer @SetSystemProperty, @RestoreSystemProperties, @DefaultLocale or @DefaultTimeZone, a system-stubs @SystemStub field, or system-lambda restoreSystemProperties(...).">
+    <priority>2</priority>
+    <properties>
+      <property name="xpath">
+        <value><![CDATA[
+let $typeOf := function($n) {
+      string(($n/*[1][self::TypeExpression]/ClassType/@SimpleName,
+              $n/*[1][self::AmbiguousName][matches(@Name, '^[A-Z]\w*[a-z]\w*$')]/@Name)[1]) },
+    $familyOf := function($n) {
+      let $type := $typeOf($n), $name := string(($n/@MethodName, $n/@Name)[1])
+      return concat($type, '.',
+        if ($type = 'System' and $name = ('setProperty', 'clearProperty', 'setProperties')) then 'property'
+        else if ($type = 'Security' and $name = ('addProvider', 'insertProviderAt', 'removeProvider')) then 'provider'
+        else if (matches($name, '^set[A-Z]')) then concat(lower-case(substring($name, 4, 1)), substring($name, 5))
+        else $name) },
+    $jdk := function($n) {
+      exists($n/self::MethodCall/*[1][self::TypeExpression][
+        (pmd-java:typeIs('java.lang.System')
+          and ../@MethodName = ('setProperty', 'clearProperty', 'setProperties', 'setOut', 'setErr', 'setIn'))
+        or ((pmd-java:typeIs('java.util.Locale') or pmd-java:typeIs('java.util.TimeZone')
+             or pmd-java:typeIs('java.net.CookieHandler') or pmd-java:typeIs('java.net.Authenticator')
+             or pmd-java:typeIs('java.net.ProxySelector') or pmd-java:typeIs('java.net.ResponseCache')
+             or pmd-java:typeIs('javax.net.ssl.SSLContext'))
+            and ../@MethodName = 'setDefault')
+        or (pmd-java:typeIs('java.lang.Thread') and ../@MethodName = 'setDefaultUncaughtExceptionHandler')
+        or (pmd-java:typeIs('java.security.Security') and ../@MethodName = ('addProvider', 'insertProviderAt'))
+        or (pmd-java:typeIs('javax.net.ssl.HttpsURLConnection')
+            and ../@MethodName = ('setDefaultSSLSocketFactory', 'setDefaultHostnameVerifier'))]) },
+    $project := function($n) {
+      let $type := $typeOf($n),
+          $unit := $n/ancestor::CompilationUnit,
+          $parts := tokenize(string($unit/@PackageName), '\.'),
+          $depth := if ($parts[2] = ('github', 'gitlab', 'bitbucket')) then 3
+                    else if ($parts[1] = ('com', 'org', 'net', 'io', 'dev', 'app', 'co', 'me', 'ai', 'edu', 'gov', 'info',
+                                          'de', 'fr', 'uk', 'nl', 'ch', 'be', 'it', 'es', 'se', 'no', 'fi', 'dk', 'pl',
+                                          'at', 'cz', 'ru', 'cn', 'jp', 'kr', 'in', 'br', 'au', 'ca', 'us', 'eu')) then 2
+                    else 1,
+          $prefix := string-join($parts[position() le $depth], '.'),
+          $qualifier := string($n/*[1]/ClassType/@PackageQualifier),
+          $imports := $unit/ImportDeclaration[@Static = false()][@ImportOnDemand = false()][@ImportedSimpleName = $type],
+          $owned := function($package) { $prefix != '' and ($package = $prefix or starts-with($package, concat($prefix, '.'))) }
+      return $type != '' and not($type = ('System', 'Thread', 'Runtime'))
+        and ($n/self::FieldAccess
+             or (matches(string($n/@MethodName), '^set[A-Z]') and not(matches(string($n/@MethodName), '^setUp([A-Z]|$)'))))
+        and not($unit//(ClassDeclaration | EnumDeclaration | RecordDeclaration | InterfaceDeclaration)[@SimpleName = $type])
+        and (if ($qualifier != '') then $owned($qualifier)
+             else if (exists($imports)) then (some $import in $imports satisfies $owned(string($import/@PackageName)))
+             else true()) }
+return
+//(MethodCall | FieldAccess[@AccessType = 'WRITE'])[$jdk(.) or $project(.)]
+  [let $change := ., $family := $familyOf(.), $type := $typeOf(.),
+       $classes := ancestor::*[self::ClassDeclaration or self::EnumDeclaration or self::RecordDeclaration
+                               or self::AnonymousClassDeclaration],
+       $methods := $classes/ClassBody/MethodDeclaration,
+       $afters := $methods[ModifierList/Annotation/@SimpleName = ('AfterEach', 'AfterAll', 'After', 'AfterClass',
+                                                                 'AfterMethod', 'AfterTest', 'AfterSuite', 'AfterGroups')
+                           or @Name = ('afterEach', 'afterAll', 'afterTestExecution', 'afterTestMethod',
+                                       'afterTestClass', 'after', 'close', 'tearDown')],
+       $helpers := $methods[@Name = $afters//MethodCall[*[1][self::ArgumentList or self::ThisExpression]]/@MethodName],
+       $finally := ancestor::*[self::MethodDeclaration or self::ConstructorDeclaration or self::Initializer][1]//FinallyClause,
+       $sites := ($afters | $helpers | $finally),
+       $tests := $methods[ModifierList/Annotation/@SimpleName = ('Test', 'ParameterizedTest', 'RepeatedTest',
+                                                                'TestFactory', 'TestTemplate')],
+       $zones := ($sites | (if (exists($tests)) then () else $classes[last()])),
+       $hosts := ancestor::LambdaExpression/parent::ArgumentList/parent::MethodCall,
+       $resources := ancestor::Block[parent::TryStatement[ResourceList]]/../ResourceList
+                       //(ClassType/@SimpleName | AmbiguousName/@Name | MethodCall/@MethodName),
+       $marks := (($classes | ancestor::MethodDeclaration)/ModifierList/Annotation/@SimpleName,
+                  $classes/ClassBody/FieldDeclaration[ModifierList/Annotation/@SimpleName
+                                                      = ('SystemStub', 'Rule', 'ClassRule', 'RegisterExtension')]
+                    /ClassType/@SimpleName,
+                  $hosts/@MethodName,
+                  $hosts[@MethodName = 'execute']/*[1]/descendant-or-self::*/(self::MethodCall/@MethodName
+                                                                              | self::ClassType/@SimpleName)),
+       $extensions := map {
+         'System.property': ('RestoreSystemProperties', 'SystemProperties', 'ProvideSystemProperty',
+                             'ClearSystemProperties', 'restoreSystemProperties', 'withSystemProperty'),
+         'Locale.default': ('DefaultLocale'),
+         'TimeZone.default': ('DefaultTimeZone'),
+         'System.out': ('SystemOut', 'SystemOutRule', 'SystemErrAndOut', 'StdIo', 'tapSystemOut',
+                        'tapSystemOutNormalized', 'tapSystemErrAndOut', 'tapSystemErrAndOutNormalized'),
+         'System.err': ('SystemErr', 'SystemErrRule', 'SystemErrAndOut', 'tapSystemErr', 'tapSystemErrNormalized',
+                        'tapSystemErrAndOut', 'tapSystemErrAndOutNormalized'),
+         'System.in': ('SystemIn', 'TextFromStandardInputStream', 'StdIo', 'withTextFromSystemIn')
+       }
+   return not(
+     exists(ancestor::* intersect $sites)
+     or $resources = ($type, $extensions($family))
+     or $marks = $extensions($family)
+     or (some $restore in $zones//(MethodCall | FieldAccess[@AccessType = 'WRITE'])[not(. is $change)]
+         satisfies ($familyOf($restore) = $family
+                    or (not($jdk($change)) and $typeOf($restore) = $type
+                        and matches(string($restore/@MethodName), '^(reset|clear|restore)')))))]
+]]></value>
+      </property>
+    </properties>
+  </rule>
   <rule name="NegativeWaitInTest" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
         message="Do not prove that something does not happen by waiting out a delay: after(ms).never() and during(...) pass only after the full wait, so the test is slow and depends on the timing. Give the code a Clock or a scheduler the test controls, move it past the delay and assert at once.">
     <priority>2</priority>
@@ -106,78 +204,123 @@
       </property>
     </properties>
   </rule>
-  <rule name="MockedSubjectInTest" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
-        message="This test mocks the class it tests, so it checks the mock instead of the code: a mock of it, or a spy whose own methods are stubbed. Test the real object: pass fakes or mocks of its collaborators in through the constructor, and test a helper through the public method that calls it.">
+  <rule name="ServerOrContainerPerTest" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
+        message="Do not start a container, server or process for each test: a non-static @Container field, a @Rule or an instance @RegisterExtension of one, a start in @BeforeEach, @Before or @BeforeMethod (or a method of the class it calls) on an object made for each test, or the same start in two or more tests of a class. Start it once (a static @Container, a @ClassRule, a static @RegisterExtension or @BeforeAll) and reset its state between tests, or test the logic against an in-memory implementation and keep the real transport for transport tests. An exception fits only when each test needs a fresh instance.">
     <priority>2</priority>
     <properties>
       <property name="xpath">
         <value><![CDATA[
-let $injected := //FieldDeclaration[ModifierList/Annotation[pmd-java:typeIs('org.mockito.InjectMocks')]]
-                     /ClassType/@SimpleName,
-    $named := for $name in /CompilationUnit/ClassDeclaration/@SimpleName[matches(., '^.+(Tests?|IT|Spec)$')]
-                return replace($name, '^(.+?)(Tests|Test|IT|Spec)$', '$1'),
-    $subjects := if (exists($injected)) then $injected else $named,
-    $mockCalls := //MethodCall[pmd-java:matchesSig('org.mockito.Mockito#mock(_*)')]
-                    [not(ArgumentList//*[@Name = 'CALLS_REAL_METHODS'])],
-    $spyCalls := //MethodCall[pmd-java:matchesSig('org.mockito.Mockito#spy(_*)')],
-    $mockAnnotated := //(FieldDeclaration | FormalParameter)
-      [ModifierList/Annotation[pmd-java:typeIs('org.mockito.Mock')
-         or pmd-java:typeIs('org.springframework.test.context.bean.override.mockito.MockitoBean')
-         or pmd-java:typeIs('org.springframework.boot.test.mock.mockito.MockBean')]]
-      [not(ModifierList/Annotation//*[@Name = 'CALLS_REAL_METHODS'])],
-    $spyAnnotated := //(FieldDeclaration | FormalParameter)
-      [ModifierList/Annotation[pmd-java:typeIs('org.mockito.Spy')
-         or pmd-java:typeIs('org.springframework.test.context.bean.override.mockito.MockitoSpyBean')
-         or pmd-java:typeIs('org.springframework.boot.test.mock.mockito.SpyBean')]],
-    $stubs := (
-      //MethodCall[pmd-java:matchesSig('org.mockito.Mockito#when(_)')
-                   or pmd-java:matchesSig('org.mockito.BDDMockito#given(_)')]
-        /ArgumentList/MethodCall/*[1][self::VariableAccess or self::FieldAccess],
-      //MethodCall[pmd-java:matchesSig('org.mockito.stubbing.Stubber#when(_)')
-                   or pmd-java:matchesSig('org.mockito.stubbing.LenientStubber#when(_)')
-                   or pmd-java:matchesSig('org.mockito.BDDMockito$BDDStubber#given(_)')]
-        /ArgumentList/*[1][self::VariableAccess or self::FieldAccess]),
-    $fieldStubs := $stubs[self::FieldAccess or not(ancestor::Block//LocalVariableDeclaration
-                                                     /VariableDeclarator/VariableId/@Name = @Name)]/@Name,
-    $fields := //FieldDeclaration
-return
-  $mockCalls
-    /(ArgumentList/ClassLiteral/ClassType
-      | self::*[not(ArgumentList/ClassLiteral)]/parent::VariableDeclarator/../ClassType)
-    [@SimpleName = $subjects]
-  | $mockAnnotated/ClassType[@SimpleName = $subjects]
-  | $spyAnnotated[(VariableDeclarator/VariableId | VariableId)/@Name = $fieldStubs]
-      /ClassType[@SimpleName = $subjects]
-  | $spyCalls/parent::VariableDeclarator[parent::LocalVariableDeclaration]
-      [let $name := VariableId/@Name, $block := ancestor::Block[1]
-       return some $stub in $stubs satisfies
-         ($stub[self::VariableAccess]/@Name = $name and $stub/ancestor::Block[. is $block])]
-      /((../ClassType | *[last()]/ArgumentList/*[1]/(self::ConstructorCall | self::ClassLiteral)/ClassType)
-         [@SimpleName = $subjects][1])
-  | $spyCalls/parent::VariableDeclarator[parent::FieldDeclaration][VariableId/@Name = $fieldStubs]
-      /((../ClassType | *[last()]/ArgumentList/*[1]/(self::ConstructorCall | self::ClassLiteral)/ClassType)
-         [@SimpleName = $subjects][1])
-  | $spyCalls[parent::AssignmentExpression/*[1]/@Name = $fieldStubs]
-      /(let $name := ../*[1]/@Name
-        return (ArgumentList/*[1]/(self::ConstructorCall | self::ClassLiteral)/ClassType
-                | $fields[VariableDeclarator/VariableId/@Name = $name]/ClassType)
-               [@SimpleName = $subjects][1])
+let $perClass := function($type) {
+      exists($type/ModifierList/Annotation[pmd-java:typeIs('org.junit.jupiter.api.TestInstance')]
+        //(FieldAccess | VariableAccess)[@Name = 'PER_CLASS'])
+    },
+    $hooks := //MethodDeclaration[pmd-java:hasAnnotation('org.junit.jupiter.api.BeforeEach')
+      or pmd-java:hasAnnotation('org.junit.Before')
+      or pmd-java:hasAnnotation('org.testng.annotations.BeforeMethod')],
+    $teardowns := //MethodDeclaration[pmd-java:hasAnnotation('org.junit.jupiter.api.AfterEach')
+      or pmd-java:hasAnnotation('org.junit.After')
+      or pmd-java:hasAnnotation('org.testng.annotations.AfterMethod')],
+    $tests := //MethodDeclaration[pmd-java:hasAnnotation('org.junit.jupiter.api.Test')
+      or pmd-java:hasAnnotation('org.junit.Test')
+      or pmd-java:hasAnnotation('org.testng.annotations.Test')
+      or pmd-java:hasAnnotation('org.junit.jupiter.params.ParameterizedTest')],
+    $alwaysNew := //MethodCall[
+      pmd-java:matchesSig('org.springframework.boot.SpringApplication#run(_*)')
+      or pmd-java:matchesSig('org.springframework.boot.builder.SpringApplicationBuilder#run(_*)')
+      or pmd-java:matchesSig('java.lang.ProcessBuilder#start()')
+      or pmd-java:matchesSig('java.lang.Runtime#exec(_*)')
+      or pmd-java:matchesSig('org.mockserver.integration.ClientAndServer#startClientAndServer(_*)')
+      or pmd-java:matchesSig('org.springframework.kafka.test.EmbeddedKafkaBroker#afterPropertiesSet()')],
+    $container := function($node) {
+      $node/pmd-java:typeIs('org.testcontainers.containers.GenericContainer')
+        or $node/pmd-java:typeIs('org.testcontainers.containers.ComposeContainer')
+        or $node/pmd-java:typeIs('org.testcontainers.containers.DockerComposeContainer')
+    },
+    $chainRoot := function($expression) {
+      $expression/descendant-or-self::ConstructorCall[
+        every $link in (ancestor::* intersect $expression/descendant-or-self::*)
+        satisfies $link[self::MethodCall]]
+    },
+    $starters := //MethodCall[
+      pmd-java:matchesSig('org.testcontainers.lifecycle.Startable#start()')
+      or pmd-java:matchesSig('com.github.tomakehurst.wiremock.WireMockServer#start()')
+      or pmd-java:matchesSig('okhttp3.mockwebserver.MockWebServer#start(_*)')
+      or pmd-java:matchesSig('mockwebserver3.MockWebServer#start(_*)')
+      or pmd-java:matchesSig('com.sun.net.httpserver.HttpServer#start()')
+      or pmd-java:matchesSig('org.eclipse.jetty.util.component.LifeCycle#start()')
+      or pmd-java:matchesSig('org.apache.catalina.startup.Tomcat#start()')
+      or pmd-java:matchesSig('io.undertow.Undertow#start()')
+      or pmd-java:matchesSig('io.javalin.Javalin#start(_*)')
+      or pmd-java:matchesSig('redis.embedded.RedisServer#start()')
+      or (@MethodName = 'start' and ArgumentList[not(*)]
+        and (exists($chainRoot(*[1])[$container(.)])
+          or (let $name := *[1][self::VariableAccess or self::FieldAccess[ThisExpression]]/@Name
+              return (ancestor::MethodDeclaration[1]//LocalVariableDeclaration
+                  | ancestor::ClassBody[1]/FieldDeclaration)
+                [VariableDeclarator/VariableId/@Name = $name]
+                [ClassType[$container(.)] or $chainRoot(VariableDeclarator/*[2])[$container(.)]])))],
+    $fresh := $alwaysNew | $starters[
+      let $receiver := *[1][self::VariableAccess or self::FieldAccess[ThisExpression]],
+          $name := $receiver/@Name,
+          $method := ancestor::MethodDeclaration[1],
+          $type := ancestor::ClassBody[1]/..,
+          $field := ancestor::ClassBody[1]/FieldDeclaration[VariableDeclarator/VariableId/@Name = $name]
+      return exists($chainRoot(*[1]))
+        or ($receiver[self::VariableAccess]
+            and $method//LocalVariableDeclaration/VariableDeclarator/VariableId[@Name = $name])
+        or ($field and not($receiver[self::VariableAccess]
+            and $method//LocalVariableDeclaration/VariableDeclarator/VariableId[@Name = $name])
+            and ((not($field/pmd-java:modifiers() = 'static') and not($perClass($type)))
+              or $hooks[ancestor::ClassBody[1]/.. is $type]
+                  //AssignmentExpression/*[1][@Name = $name]
+              or $teardowns[ancestor::ClassBody[1]/.. is $type]
+                  //MethodCall[@MethodName = ('stop', 'close', 'shutdown')]/*[1][@Name = $name]))
+    ],
+    $key := function($call) {
+      let $statement := $call/ancestor::*[parent::Block][1],
+          $local := $call/ancestor::MethodDeclaration[1]//LocalVariableDeclaration
+            [VariableDeclarator/VariableId/@Name = $call/*[1][self::VariableAccess]/@Name]
+      return string-join(($local, $statement)/descendant-or-self::*
+        /(@Name | @MethodName | @SimpleName | @Image | @ValueAsInt), ' ')
+    }
+return (
+  //ClassDeclaration[not($perClass(.))]/ClassBody/FieldDeclaration
+    [pmd-java:hasAnnotation('org.testcontainers.junit.jupiter.Container')]
+    [not(pmd-java:modifiers() = 'static')]
+  | //ClassDeclaration[not($perClass(.))]/ClassBody/FieldDeclaration
+    [pmd-java:hasAnnotation('org.junit.jupiter.api.extension.RegisterExtension')]
+    [not(pmd-java:modifiers() = 'static')]
+    [ClassType[pmd-java:typeIs('com.github.tomakehurst.wiremock.junit5.WireMockExtension')]]
+  | //FieldDeclaration[pmd-java:hasAnnotation('org.junit.Rule')]
+    [not(pmd-java:modifiers() = 'static')]
+    [ClassType[pmd-java:typeIs('org.testcontainers.lifecycle.Startable')
+      or pmd-java:typeIs('com.github.tomakehurst.wiremock.WireMockServer')
+      or pmd-java:typeIs('okhttp3.mockwebserver.MockWebServer')
+      or pmd-java:typeIs('org.springframework.kafka.test.rule.EmbeddedKafkaRule')
+      or pmd-java:typeIs('org.mockserver.junit.MockServerRule')]]
+  | $fresh[
+      let $method := ancestor::MethodDeclaration[1],
+          $type := ancestor::ClassBody[1]/..
+      return $hooks[. is $method]
+        or $hooks[ancestor::ClassBody[1]/.. is $type]
+            //MethodCall[*[1][self::ArgumentList or self::ThisExpression]]
+              [@MethodName = $method/@Name]
+    ]
+  | $fresh[
+      let $call := .,
+          $method := ancestor::MethodDeclaration[1],
+          $type := ancestor::ClassBody[1]/..,
+          $own := $key(.)
+      return $tests[. is $method]
+        and (some $other in $fresh satisfies
+          $other/ancestor::MethodDeclaration[1][not(. is $method)][some $t in $tests satisfies $t is .]
+            /ancestor::ClassBody[1]/.. is $type
+          and $key($other) = $own)
+    ]
+)
 ]]></value>
       </property>
     </properties>
   </rule>
-  <rule name="StaticMockOfProjectType" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
-        message="A static or constructor mock (mockStatic, mockConstruction) replaces a class of this project, for the whole thread, so the test runs a fake instead of the real code and depends on how that code is called. Pass the dependency in instead: an instance, a function or a Clock the test can replace. Keep static mocks for library types that cannot be passed in.">
-    <priority>2</priority>
-    <properties>
-      <property name="xpath">
-        <value><![CDATA[
-//MethodCall[pmd-java:matchesSig('org.mockito.Mockito#mockStatic(_*)')
-             or pmd-java:matchesSig('org.mockito.Mockito#mockConstruction(_*)')
-             or pmd-java:matchesSig('org.mockito.Mockito#mockConstructionWithAnswer(_*)')]
-  /ArgumentList/*[1][self::ClassLiteral]/ClassType
-]]></value>
-      </property>
-    </properties>
-  </rule>
+  <!-- Built by npm run gen:rules from languages/java/gradle/rulesets/pmd-test-ruleset/: edit the rule files there. -->
 </ruleset>

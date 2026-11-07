@@ -1,4 +1,5 @@
 import { spawnSync } from 'node:child_process';
+import { GIT_TIMEOUT_MS } from '../../../../shared/processes/deadlines.mjs';
 
 const CONFIGURATION_VARIABLES = new Set(['GIT_CONFIG_PARAMETERS', 'GIT_CONFIG_COUNT']);
 
@@ -6,6 +7,7 @@ function localVariableNames(environment) {
   const result = spawnSync('git', ['rev-parse', '--local-env-vars'], {
     encoding: 'utf8',
     env: environment,
+    timeout: GIT_TIMEOUT_MS,
   });
   if (result.error !== undefined || result.status !== 0) {
     return [];
