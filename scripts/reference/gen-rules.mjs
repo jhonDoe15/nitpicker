@@ -1,4 +1,4 @@
-import { mkdirSync, realpathSync, renameSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, realpathSync, renameSync, rmSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import {
@@ -74,6 +74,17 @@ async function refreshJvm() {
   }
 }
 
+function replaceFile(temporary, target) {
+  try {
+    renameSync(temporary, target);
+  } catch (error) {
+    rmSync(temporary, { force: true });
+    if (error.code !== 'EPERM' || !existsSync(target)) {
+      throw error;
+    }
+  }
+}
+
 function writeGenerated(generated) {
   for (const [file, text] of generated) {
     const target = path.resolve(repositoryRoot, file);
@@ -86,7 +97,7 @@ function writeGenerated(generated) {
       throw new Error(`The generated file ${file} is outside the repository`);
     }
     writeFileSync(temporary, text);
-    renameSync(temporary, target);
+    replaceFile(temporary, target);
   }
 }
 
