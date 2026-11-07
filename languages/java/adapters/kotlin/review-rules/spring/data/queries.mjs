@@ -10,12 +10,13 @@ import {
   QUERY_ANNOTATIONS,
   SUPPRESS,
 } from './data-types.mjs';
-import { entityReceiver, inClearedLoop, repositoryReceiver } from './loop-scopes.mjs';
+import { entityReceiver, inClearedLoop, repositoryReceiver } from './loops/loop-scopes.mjs';
 
 const QUERIES = new Set([...JPA_QUERY, ...NATIVE_QUERY]);
 const POSITIONAL = /\?\d/u;
 const STRINGS = /"""[\s\S]*?"""|"(?:[^"\\]|\\.)*"/gu;
-const PLUS = /\+/u;
+const JOINED = /\+|\.plus\(/u;
+const TEMPLATE = /(?<=(?:^|[^\\])(?:\\\\)*)\$(?:\{(?!'\$'\})|[\p{L}_])/u;
 const NATIVE_MARKER = '"PMD.SpringDataNativeQuery"';
 const FILTERS = new Set([
   'filter',
@@ -32,7 +33,14 @@ const FILTERS = new Set([
   'size',
   'isEmpty',
   'isNotEmpty',
+  'filterWhen',
+  'hasElements',
+  'next',
+  'take',
+  'elementAt',
 ]);
+const COLLECTING = new Set(['asSequence', 'toList', 'collectList']);
+const AWAITING = new Set(['block', 'awaitSingle', 'awaitFirst']);
 const STREAM_FILTERS = new Set([
   'filter',
   'count',
@@ -107,6 +115,13 @@ function queryTexts(query) {
   );
 }
 
+function joined(text) {
+  return (
+    JOINED.test(text.replaceAll(STRINGS, '')) ||
+    (text.match(STRINGS) ?? []).some((literal) => TEMPLATE.test(literal))
+  );
+}
+
 function queryAnnotations(view) {
   return view.file.functions.flatMap((fn) => {
     const query = queryOf(view, fn);
@@ -116,8 +131,7 @@ function queryAnnotations(view) {
       ['SpringDataNamedParameters', query?.arguments.some(({ text }) => POSITIONAL.test(text))],
       [
         'SpringDataQueryTextBlock',
-        query !== undefined &&
-          queryTexts(query).some((text) => PLUS.test(text.replaceAll(STRINGS, ''))),
+        query !== undefined && queryTexts(query).some((text) => joined(text)),
       ],
       [
         'SpringDataModifyingQuery',
@@ -143,9 +157,17 @@ function flushes(view) {
     );
 }
 
-function filtersAfterLoad(invocation) {
-  const [first, second] = invocation.after ?? [];
+function filtersList([first, second]) {
   return FILTERS.has(first) || (first === 'stream' && STREAM_FILTERS.has(second));
+}
+
+function filtersAfterLoad(invocation) {
+  const [first, ...rest] = invocation.after ?? [];
+  if (!COLLECTING.has(first)) {
+    return filtersList([first, ...rest]);
+  }
+  const awaited = AWAITING.has(rest[0]) ? rest.slice(1) : rest;
+  return filtersList(awaited);
 }
 
 function filterInQuery(view) {

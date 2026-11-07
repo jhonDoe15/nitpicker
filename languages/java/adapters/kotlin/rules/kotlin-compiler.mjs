@@ -6,7 +6,7 @@ import { createIdentityCounter } from '../../../../../shared/ingest/common.mjs';
 import { compilerWarningRule } from './kotlin-rules.mjs';
 
 const TOOL = 'kotlinc';
-const REPORT = 'kotlinc.json';
+const REPORTS = { main: 'kotlinc.json', test: 'kotlinc-test.json' };
 const LINT_NOT_RUN = 'lint-not-run';
 const WARNING = /^(.+\.kt):(\d+):\d+: warning: \[([A-Z_]+)\] (.+)$/;
 const ERROR = /^(?:.+\.kt:\d+:\d+: )?error: (.+)$/;
@@ -35,19 +35,20 @@ export function parseCompilerWarnings(text) {
   });
 }
 
-export function lintNotRun(output) {
+export function lintNotRun(output, kind) {
   const firstError = output
     .split(/\r?\n/)
     .map((line) => ERROR.exec(line)?.[0])
     .find(Boolean);
+  const sources = kind === 'test' ? 'test sources' : 'main sources';
   return {
     tool: TOOL,
     rule: LINT_NOT_RUN,
     path: '.',
-    identity: LINT_NOT_RUN,
+    identity: kind === 'test' ? `${LINT_NOT_RUN}:test` : LINT_NOT_RUN,
     message:
-      `No kotlinc lint report from the lint compile (${firstError ?? 'kotlinc exited with an error'}), so unchecked casts, ` +
-      'deprecated calls and redundant casts were not checked. Fix what that compile reports (the main sources, ' +
+      `No kotlinc lint report from the lint compile of the ${sources} (${firstError ?? 'kotlinc exited with an error'}), so unchecked casts, ` +
+      `deprecated calls and redundant casts were not checked there. Fix what that compile reports (the ${sources}, ` +
       `the compile class path and the compiler plugins). ${exceptionHint(`${TOOL}/${LINT_NOT_RUN}`, '**')}`,
     classification: 'descriptive',
   };
@@ -70,14 +71,14 @@ function inRoots(file, sourceRoots) {
   return sourceRoots.some((root) => file.startsWith(`${root}/`));
 }
 
-export function readCompilerFindings(reportRoot, sourceRoots) {
-  const report = path.join(reportRoot, REPORT);
+function readReport(reportRoot, kind, sourceRoots) {
+  const report = path.join(reportRoot, REPORTS[kind]);
   if (!existsSync(report)) {
     return [];
   }
   const { exitCode, output } = JSON.parse(readFileSync(report, 'utf8'));
   if (exitCode !== 0) {
-    return [lintNotRun(output)];
+    return [lintNotRun(output, kind)];
   }
   const counters = new Map();
   return parseCompilerWarnings(output)
@@ -88,4 +89,11 @@ export function readCompilerFindings(reportRoot, sourceRoots) {
       }
       return warningFinding(warning, counters.get(warning.file));
     });
+}
+
+export function readCompilerFindings(reportRoot, sourceRoots, testRoots = []) {
+  return [
+    ...readReport(reportRoot, 'main', sourceRoots),
+    ...readReport(reportRoot, 'test', testRoots),
+  ];
 }

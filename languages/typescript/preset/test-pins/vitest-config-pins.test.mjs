@@ -1,8 +1,16 @@
 import { spawnSync } from 'node:child_process';
-import { mkdirSync, mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
+import {
+  copyFileSync,
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  rmSync,
+  symlinkSync,
+  writeFileSync,
+} from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 import { afterEach, beforeAll, describe, expect, it } from 'vitest';
 import qualityConfig from '../defaults/vitest.quality.config.ts';
 
@@ -281,6 +289,93 @@ describe('a test run with the vitest config nitpicker runs tests with', () => {
     expect({ status: run.status, passed: run.report?.numPassedTests === 2 }).toEqual({
       status: 0,
       passed: true,
+    });
+  });
+});
+
+function linkVitestWithRequireOnlyVite(root) {
+  const vitest = path.join(root, 'node_modules/vitest');
+  const vite = path.join(vitest, 'node_modules/vite');
+  mkdirSync(path.join(vite, 'dist/node'), { recursive: true });
+  copyFileSync(
+    path.join(packageRoot, 'node_modules/vitest/package.json'),
+    path.join(vitest, 'package.json'),
+  );
+  symlinkSync(path.join(packageRoot, 'node_modules/vitest/dist'), path.join(vitest, 'dist'), 'dir');
+  const exportsMap = {
+    '.': { import: './dist/node/index.js', require: './index.cjs' },
+    './package.json': './package.json',
+  };
+  writeFileSync(
+    path.join(vite, 'package.json'),
+    JSON.stringify({ name: 'vite', exports: exportsMap }),
+  );
+  writeFileSync(path.join(vite, 'index.cjs'), 'module.exports = {};\n');
+  const realVite = pathToFileURL(
+    path.join(packageRoot, 'node_modules/vite/dist/node/index.js'),
+  ).href;
+  writeFileSync(path.join(vite, 'dist/node/index.js'), `export * from '${realVite}';\n`);
+}
+
+function isolatedInstall(layout) {
+  const root = mkdtempSync(path.join(tmpdir(), 'nitpicker-isolated-install-'));
+  temporaryRoots.push(root);
+  mkdirSync(path.join(root, 'node_modules'));
+  const vitestPackage = path.join(packageRoot, 'node_modules/vitest');
+  if (layout === 'require-only-vite') {
+    linkVitestWithRequireOnlyVite(root);
+  } else {
+    symlinkSync(vitestPackage, path.join(root, 'node_modules/vitest'), 'dir');
+  }
+  const files = {
+    'package.json': '{"type":"module"}\n',
+    'vitest.config.mjs': 'export default { test: { env: { LAYERED: "yes" } } };\n',
+    'src/layered.test.ts': [
+      "import { expect, it } from 'vitest';",
+      "it('runs with the project config', () => expect(process.env.LAYERED).toBe('yes'));",
+    ].join('\n'),
+  };
+  for (const [name, text] of Object.entries(files)) {
+    mkdirSync(path.dirname(path.join(root, name)), { recursive: true });
+    writeFileSync(path.join(root, name), text);
+  }
+  const config = path.join(root, '.nitpicker-diff-vitest.config.ts');
+  copyFileSync(new URL('../defaults/vitest.quality.config.ts', import.meta.url), config);
+  return spawnSync(
+    process.execPath,
+    [path.join(vitestPackage, 'vitest.mjs'), 'run', '--config', config, '--reporter=json'],
+    {
+      cwd: root,
+      encoding: 'utf8',
+      env: { ...process.env, NITPICKER_POLICY: '' },
+      timeout: 30_000,
+    },
+  );
+}
+
+describe('the vitest config in an install that does not hoist vite next to the project', () => {
+  const runs = {};
+
+  beforeAll(() => {
+    for (const layout of ['pnpm', 'require-only-vite']) {
+      runs[layout] = isolatedInstall(layout);
+    }
+  });
+
+  it.each([
+    ['as pnpm lays out node_modules', 'pnpm'],
+    ['with a Vite whose require entry has no named exports, as Vite 5 ships', 'require-only-vite'],
+  ])('layers the project config %s', (_name, layout) => {
+    const run = runs[layout];
+    const summary = run.status === 0 ? JSON.parse(run.stdout) : {};
+
+    expect(
+      { status: run.status, ...pick(summary, ['numTotalTests', 'numPassedTests']) },
+      run.stderr,
+    ).toEqual({
+      status: 0,
+      numTotalTests: 1,
+      numPassedTests: 1,
     });
   });
 });

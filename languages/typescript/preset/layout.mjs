@@ -28,7 +28,7 @@ const javascriptProjectExtensionNames = [
   ...JAVASCRIPT_EXTENSIONS,
 ];
 const typescriptFormatExtensionNames = ['ts', 'tsx', 'mts', 'mjs'];
-const ROOT_OUTPUT_FOLDERS = ['dist', 'build', 'generated', 'coverage', 'reports', 'target'];
+const ROOT_OUTPUT_FOLDERS = ['dist', 'build', 'generated', 'coverage', 'reports/quality', 'target'];
 export const builtInExcludedGlobs = [
   ...ROOT_OUTPUT_FOLDERS.map((folder) => `${folder}/**`),
   '**/node_modules/**',

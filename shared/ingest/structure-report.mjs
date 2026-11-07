@@ -1,6 +1,6 @@
 import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
-import { hash, repeatsInSource } from '../rules/finding-helpers.mjs';
+import { declarationLine, hash, nameFreeHash, repeatsInSource } from '../rules/finding-helpers.mjs';
 import { evaluateStructure } from '../rules/structure.mjs';
 
 const STRUCTURE_REPORT = 'structure.json';
@@ -22,12 +22,21 @@ export function structureFindings(
   { textOf = methodText, hints, numberedAmongSameSource } = {},
 ) {
   const sources = new Map();
-  const functions = entries.map((entry) => ({
-    ...entry,
-    numberedAmongSameSource:
-      numberedAmongSameSource ?? entry.numberedAmongSameSource ?? repeatsInSource(entry.name),
-    sourceHash: hash(textOf(sources, projectRoot, entry)),
-  }));
+  const functions = entries.map((entry) => {
+    const text = textOf(sources, projectRoot, entry);
+    return {
+      ...entry,
+      numberedAmongSameSource:
+        numberedAmongSameSource ?? entry.numberedAmongSameSource ?? repeatsInSource(entry.name),
+      sourceHash: hash(text),
+      ...(text === ''
+        ? {}
+        : {
+            anchorHash: nameFreeHash(text, entry.name),
+            declarationHash: hash(entry.signature ?? declarationLine(text)),
+          }),
+    };
+  });
   return evaluateStructure({ functions }, STRUCTURE_TOOL, { hints }).filter(
     (finding) => finding.classification === 'enforceable',
   );

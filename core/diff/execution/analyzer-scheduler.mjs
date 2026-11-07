@@ -5,6 +5,7 @@ import { createWeightedSemaphore } from './capacity.mjs';
 import { createProgressReporter, writeToDescriptor } from './progress.mjs';
 import { pathToFileURL } from 'node:url';
 import path from 'node:path';
+import { describeError } from '../../../shared/messages/error-chain.mjs';
 
 const DEFAULT_MAX_PARALLEL = 4;
 
@@ -230,7 +231,7 @@ async function executeTimedTask(task, { execute, signal }) {
   } catch (error) {
     return {
       name: task.name,
-      error: error instanceof Error ? error.message : String(error),
+      error: describeError(error),
       elapsedMs: Date.now() - startedAt,
     };
   }

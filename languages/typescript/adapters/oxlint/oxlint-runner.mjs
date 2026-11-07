@@ -1,11 +1,12 @@
 import { rmSync } from 'node:fs';
+import { availableParallelism } from 'node:os';
 import path from 'node:path';
 import {
   trackTemporaryPath,
   untrackTemporaryPath,
 } from '../../../../core/tooling/temporary-files.mjs';
 import { eslintShapedResults } from './oxlint-diagnostics.mjs';
-import { oxlintBinary, spawnJson, tsgolintBinary } from './oxlint-process.mjs';
+import { oxlintBinary, spawnJson, spawnJsonAsync, tsgolintBinary } from './oxlint-process.mjs';
 import {
   messageIdResolver,
   nativeRuleIndex,
@@ -27,8 +28,11 @@ import {
 
 const MAX_ARGUMENT_BYTES = 1024 * 1024;
 const MAX_CONFIGURATION_ATTEMPTS = 20;
+const MAX_LINT_SLICES = 4;
+const MIN_FILES_PER_SLICE = 200;
+const CPUS_PER_LINT_SLICE = 4;
 
-export function lintWithOxlint({ options, environment, projectConfigPath, runEslintCli }) {
+export async function lintWithOxlint({ options, environment, projectConfigPath, runEslintCli }) {
   const plan = spawnJson(
     [path.join(import.meta.dirname, 'oxlint-plan.mjs'), options.projectRoot, ...options.patterns],
     {
@@ -46,10 +50,11 @@ export function lintWithOxlint({ options, environment, projectConfigPath, runEsl
     }
     const inlineConfig = neutralizeInlineConfig(stage, options.projectRoot, plan.noInlineConfig);
     const directiveFiles = directiveFilesOf(options.projectRoot, files, plan.noInlineConfig);
-    const { translation, results } = lintUntilAccepted({
+    const { results, residual } = await lintUntilAccepted({
       plan,
       stage,
       projectRoot: options.projectRoot,
+      runEslintCli,
       environment,
       timeoutMs: options.timeoutMs,
       neutralized: new Map([
@@ -58,37 +63,39 @@ export function lintWithOxlint({ options, environment, projectConfigPath, runEsl
       ]),
       directiveFiles,
     });
-    return mergeResults([
-      ...results,
-      ...inlineConfig.results,
-      ...residualResults(options.projectRoot, translation.residual, runEslintCli),
-    ]).map((result) => ({ ...result, filePath: path.join(options.projectRoot, result.filePath) }));
+    return mergeResults([...results, ...inlineConfig.results, ...residual]).map((result) => ({
+      ...result,
+      filePath: path.join(options.projectRoot, result.filePath),
+    }));
   } finally {
     rmSync(stage, { recursive: true, force: true });
     untrackTemporaryPath(stage);
   }
 }
 
-function lintUntilAccepted({ plan, environment, ...run }) {
+async function lintUntilAccepted({ plan, environment, ...run }) {
   const context = {
     plan,
     environment,
     ...run,
     native: { nativeRules: nativeRuleIndex(plan.nativeRules) },
     bridgedRules: new Set(PARITY_BRIDGED_RULES),
+    residualRuns: new Map(),
   };
   const attempts = Array.from({ length: MAX_CONFIGURATION_ATTEMPTS }, () => context);
   for (const attempt of attempts) {
-    const outcome = lintAttempt(attempt);
+    const outcome = await lintAttempt(attempt);
     if (outcome.results !== undefined) return outcome;
   }
   throw new Error('oxlint rejected the lint configuration too many times');
 }
 
-function lintAttempt({
+async function lintAttempt({
   plan,
   stage,
   projectRoot,
+  runEslintCli,
+  residualRuns,
   native,
   bridgedRules,
   neutralized,
@@ -104,23 +111,83 @@ function lintAttempt({
     directiveFiles,
     ruleNames: translation.ruleNames,
   });
+  try {
+    checkNativeConfigs({ stage, configs, sampleFile, ...run });
+  } catch (error) {
+    bridgeRejectedRules(error, translation.ruleNames, bridgedRules);
+    return { results: undefined };
+  }
   const naming = {
     ruleNames: translation.ruleNames,
     messageIdOf: messageIdResolver(plan.ruleMessages),
+    ruleMessages: plan.ruleMessages,
     neutralized,
   };
-  try {
-    checkNativeConfigs({ stage, configs, sampleFile, ...run });
-    return {
-      translation,
-      results: configs.flatMap((config) =>
-        lintStage({ stage, ...config, typeAware: translation.typeAware, naming, ...run }),
-      ),
-    };
-  } catch (error) {
-    bridgeRejectedRules(error, translation.ruleNames, bridgedRules);
-    return { translation, results: undefined };
+  return lintBesideResidual({
+    residual: residualRun(residualRuns, translation.residual, () =>
+      residualResults(projectRoot, translation.residual, runEslintCli),
+    ),
+    translation,
+    bridgedRules,
+    stage,
+    configs,
+    naming,
+    ...run,
+  });
+}
+
+function residualRun(residualRuns, residual, start) {
+  const key = JSON.stringify(residual);
+  if (!residualRuns.has(key)) {
+    residualRuns.set(key, start());
   }
+  return residualRuns.get(key);
+}
+
+async function lintBesideResidual({ residual, translation, bridgedRules, ...run }) {
+  const [linted, residualOutcome] = await Promise.allSettled([
+    lintConfigs({ ...run, typeAware: translation.typeAware }),
+    residual,
+  ]);
+  if (linted.status === 'rejected') {
+    bridgeRejectedRules(linted.reason, translation.ruleNames, bridgedRules);
+  }
+  if (residualOutcome.status === 'rejected') {
+    throw residualOutcome.reason;
+  }
+  return linted.status === 'rejected'
+    ? { results: undefined }
+    : { results: linted.value, residual: residualOutcome.value };
+}
+
+async function lintConfigs({ configs, ...run }) {
+  const results = [];
+  for (const config of configs) {
+    const slices = fileSlices(config.files);
+    const reports = await Promise.allSettled(
+      slices.map((files) => lintStage({ ...run, configPath: config.configPath, files })),
+    );
+    const failed = reports.find(({ status }) => status === 'rejected');
+    if (failed !== undefined) {
+      throw failed.reason;
+    }
+    results.push(...reports.flatMap(({ value }) => value));
+  }
+  return results;
+}
+
+function fileSlices(files) {
+  const count = Math.max(
+    1,
+    Math.min(
+      MAX_LINT_SLICES,
+      Math.floor(availableParallelism() / CPUS_PER_LINT_SLICE),
+      Math.floor(files.length / MIN_FILES_PER_SLICE),
+    ),
+  );
+  return Array.from({ length: count }, (_slice, index) =>
+    files.filter((_file, position) => position % count === index),
+  );
 }
 
 function checkNativeConfigs({ stage, configs, sampleFile, environment, timeoutMs }) {
@@ -148,10 +215,11 @@ function bridgeRejectedRules(error, ruleNames, bridgedRules) {
   for (const ruleId of rejected) bridgedRules.add(ruleId);
 }
 
-function lintStage({ stage, configPath, files, typeAware, naming, environment, timeoutMs }) {
+async function lintStage({ stage, configPath, files, typeAware, naming, environment, timeoutMs }) {
   const typeAwareEnvironment = typeAware ? { OXLINT_TSGOLINT_PATH: tsgolintBinary() } : {};
-  return argumentChunks(files).flatMap((chunk) => {
-    const report = spawnJson(
+  const results = [];
+  for (const chunk of argumentChunks(files)) {
+    const report = await spawnJsonAsync(
       [
         oxlintBinary(),
         '--config',
@@ -172,8 +240,9 @@ function lintStage({ stage, configPath, files, typeAware, naming, environment, t
         acceptedStatuses: [0, 1],
       },
     );
-    return eslintShapedResults(stage, report.diagnostics, naming);
-  });
+    results.push(...eslintShapedResults(stage, report.diagnostics, naming));
+  }
+  return results;
 }
 
 function argumentChunks(files) {
@@ -190,16 +259,17 @@ function argumentChunks(files) {
   return chunks.filter((chunk) => chunk.length > 0);
 }
 
-function residualResults(projectRoot, residual, runEslintCli) {
+async function residualResults(projectRoot, residual, runEslintCli) {
   if (residual.length === 0) return [];
   const files = [...new Set(residual.flatMap((group) => group.files))].sort();
   const rules = [...new Set(residual.flatMap((group) => group.rules))].sort();
-  return runEslintCli(files, { NITPICKER_DIFF_ESLINT_ONLY_RULES: JSON.stringify(rules) }).map(
-    (result) => ({
-      filePath: path.relative(projectRoot, result.filePath).replaceAll('\\', '/'),
-      messages: result.messages.filter((message) => rules.includes(message.ruleId)),
-    }),
-  );
+  const results = await runEslintCli(files, {
+    NITPICKER_DIFF_ESLINT_ONLY_RULES: JSON.stringify(rules),
+  });
+  return results.map((result) => ({
+    filePath: path.relative(projectRoot, result.filePath).replaceAll('\\', '/'),
+    messages: result.messages.filter((message) => rules.includes(message.ruleId)),
+  }));
 }
 
 function mergeResults(results) {

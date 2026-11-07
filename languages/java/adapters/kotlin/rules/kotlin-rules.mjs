@@ -40,6 +40,17 @@ export const ONE_WAY_RULES = [
   },
   { name: 'CastNullableToNonNullableType', ruleset: 'potential-bugs' },
   {
+    name: 'CastToNullableType',
+    ruleset: 'potential-bugs',
+    allowed: 'Use `as? T` and handle the null; `as T?` still throws when the type is wrong.',
+  },
+  {
+    name: 'DontDowncastCollectionTypes',
+    ruleset: 'potential-bugs',
+    allowed:
+      'Copy it with `toMutableList()`, `toMutableMap()` or `toMutableSet()`, or ask for the mutable type at its source.',
+  },
+  {
     name: 'TooGenericExceptionCaught',
     ruleset: 'exceptions',
     allowed: 'In a test, use `assertFailsWith`.',

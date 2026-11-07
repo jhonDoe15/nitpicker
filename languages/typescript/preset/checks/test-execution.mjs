@@ -25,6 +25,7 @@ const COVERAGE_CONFIGURATION_FILES = [
   'languages/typescript/preset/test-console/runners/mocha-capture.config.mjs',
   'languages/typescript/preset/test-console/runners/mocha-capture.mjs',
   'languages/typescript/preset/test-console/vitest-reporter.config.mjs',
+  'languages/typescript/preset/test-failures/vitest-failure-details.config.mjs',
   JAVASCRIPT_PRESET_FILE,
 ];
 

@@ -1,16 +1,9 @@
 import { runScopedMutation } from '../test-weakening/scoped-mutation.mjs';
 import { MUTATION_REPORT_PATH } from './mutation-scope.mjs';
 import { readHeadPolicy, readLayout } from '../../../preset/head-policy.mjs';
-import {
-  importPolicyModule,
-  relativeProjectPath,
-  runNodeTool,
-  spawnNodeTool,
-  policyFile,
-} from './tooling.mjs';
+import { importPolicyModule, relativeProjectPath, runNodeTool, policyFile } from './tooling.mjs';
 import path from 'node:path';
-import { fileURLToPath } from 'node:url';
-import { normalizeMutation } from '../reporting/tests.mjs';
+import { normalizeMutation, withUnreachedMutantsUncovered } from '../reporting/tests.mjs';
 import { withMutationSourceHashes } from '../reporting/source-hashes.mjs';
 import { rmSync, readFileSync, writeFileSync, existsSync } from 'node:fs';
 import {
@@ -28,11 +21,15 @@ import {
   unsupportedMutationRunner,
 } from '../../test-runners/mutation-runner-config.mjs';
 import { runnableTestFiles } from '../../test-runners/test-run.mjs';
-import { strykerPlugins } from '../../mutation-checker/plugin.mjs';
 import {
   layeredStrykerConfig,
   withoutProjectIgnoredMutants,
 } from '../../../preset/project-configs/stryker-project-config.mjs';
+import {
+  mutationCheckerConfig,
+  mutationCheckerEngine,
+  mutationTypecheck,
+} from '../../mutation-checker/native-checker.mjs';
 
 const UNSUPPORTED_RUNNER_RULE = 'mutation-unsupported-runner';
 
@@ -68,7 +65,7 @@ async function mutationReport(options, targets) {
   const configPath = path.join(options.projectRoot, '.nitpicker-diff-stryker.config.mjs');
   const createdFiles = [];
   try {
-    const written = writeStrykerConfig({
+    const written = await writeStrykerConfig({
       options,
       sourceConfig,
       targets,
@@ -82,7 +79,10 @@ async function mutationReport(options, targets) {
     }
     return {
       report: withMutationSourceHashes(
-        withoutProjectIgnoredMutants(readMutationReport(options.projectRoot), written.config),
+        withoutProjectIgnoredMutants(
+          readMutationReport(options.projectRoot, written.config.coverageAnalysis),
+          written.config,
+        ),
         options.projectRoot,
       ),
     };
@@ -93,23 +93,14 @@ async function mutationReport(options, targets) {
   }
 }
 
-function runnerConfig({ options, sourceConfig, createdFiles, testRunner }) {
-  const { tsconfigPath, baselineErrors } = installStrykerTsconfig(
-    options,
-    sourceConfig.tsconfigFile,
+async function runnerConfig({ options, sourceConfig, targets, createdFiles, testRunner }) {
+  const { tsconfigPath, baselineErrors, native } = await installStrykerTsconfig(options, {
+    sourceRelativePath: sourceConfig.tsconfigFile,
     createdFiles,
-  );
+    engine: mutationCheckerEngine(targets),
+  });
   function withChecker(config) {
-    return baselineErrors
-      ? {
-          ...config,
-          checkers: [strykerPlugins[0].name],
-          plugins: [
-            ...config.plugins,
-            fileURLToPath(new URL('../../mutation-checker/plugin.mjs', import.meta.url)),
-          ],
-        }
-      : config;
+    return mutationCheckerConfig(config, { baselineErrors, native });
   }
   const tsconfigFile = relativeProjectPath(options.projectRoot, tsconfigPath);
   if (testRunner.command.launcher === 'craco') {
@@ -140,7 +131,7 @@ function runnerConfig({ options, sourceConfig, createdFiles, testRunner }) {
   );
 }
 
-function writeStrykerConfig({
+async function writeStrykerConfig({
   options,
   sourceConfig,
   targets,
@@ -149,7 +140,9 @@ function writeStrykerConfig({
   testRunner,
 }) {
   const config = strykerRunConfig(
-    layeredStrykerConfig(runnerConfig({ options, sourceConfig, createdFiles, testRunner })),
+    layeredStrykerConfig(
+      await runnerConfig({ options, sourceConfig, targets, createdFiles, testRunner }),
+    ),
     { snapshot: options.snapshot, targets },
   );
   writeTemporaryFile(
@@ -214,8 +207,11 @@ function runStrykerOrExplainSkip(options, configPath, command) {
   }
 }
 
-function readMutationReport(projectRoot) {
-  return JSON.parse(readFileSync(path.join(projectRoot, MUTATION_REPORT_PATH), 'utf8'));
+function readMutationReport(projectRoot, coverageAnalysis) {
+  return withUnreachedMutantsUncovered(
+    JSON.parse(readFileSync(path.join(projectRoot, MUTATION_REPORT_PATH), 'utf8')),
+    coverageAnalysis,
+  );
 }
 
 export function rebaseMutationConfig(sourceConfig, { tsconfigFile, vitestConfigFile }) {
@@ -229,24 +225,19 @@ export function rebaseMutationConfig(sourceConfig, { tsconfigFile, vitestConfigF
   };
 }
 
-export function installStrykerTsconfig(options, sourceRelativePath, createdFiles) {
+export async function installStrykerTsconfig(
+  options,
+  { sourceRelativePath, createdFiles, engine },
+) {
   const target = [sourceRelativePath, STRYKER_TSCONFIG_TARGET];
   const tsconfigPath = installMutationCompanion(options, target, createdFiles);
-  if (!typechecksCleanly(options, tsconfigPath)) {
-    writeFileSync(tsconfigPath, mutationCompanionText(options, target, { strictMutants: false }));
-    return { tsconfigPath, baselineErrors: !typechecksCleanly(options, tsconfigPath) };
+  const strict = await mutationTypecheck({ options, tsconfigPath, engine });
+  if (strict.clean) {
+    return { tsconfigPath, baselineErrors: false, native: strict.native };
   }
-  return { tsconfigPath, baselineErrors: false };
-}
-
-function typechecksCleanly(options, tsconfigPath) {
-  return (
-    spawnNodeTool({
-      options,
-      relativeToolPath: 'typescript/bin/tsc',
-      arguments_: ['--project', tsconfigPath, '--noEmit', '--incremental', 'false'],
-    }).status === 0
-  );
+  writeFileSync(tsconfigPath, mutationCompanionText(options, target, { strictMutants: false }));
+  const relaxed = await mutationTypecheck({ options, tsconfigPath, engine });
+  return { tsconfigPath, baselineErrors: !relaxed.clean, native: relaxed.native };
 }
 
 function installMutationCompanion(options, target, createdFiles) {

@@ -129,8 +129,8 @@ Inputs:
 
 Outputs:
 
-- `exit-code`: The exit code of the gate: 0 passed, 1 new enforceable findings, 2 a tool error or a
-  failure to decide. Empty when the gate did not run.
+- `exit-code`: The exit code of the gate: 0 passed, 1 new enforceable findings or failing head
+  tests, 2 a tool error or a failure to decide. Empty when the gate did not run.
 - `report-directory`: The absolute path of the report directory.
 - `skipped`: `true` on a push to the default branch, where the head is the base and there is nothing
   to compare.

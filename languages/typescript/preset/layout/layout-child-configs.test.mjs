@@ -1,16 +1,21 @@
-import { afterAll, describe, expect, it } from 'vitest';
+import { afterAll, afterEach, describe, expect, it, vi } from 'vitest';
 import { securitySupportGlobs } from '../eslint-config/policy/security-facts.mjs';
 import {
   selectFilesAndIgnores,
   customPolicy as policy,
   loadConfig,
   removeTemporaryRoots,
+  temporaryProject,
 } from './test-support/layout-config-helpers.mjs';
 
 afterAll(removeTemporaryRoots);
+afterEach(() => {
+  vi.unstubAllEnvs();
+});
 
 describe('package-owned child configs', () => {
   it('eslint.config.mjs lints the custom roots and ignores excluded paths', async () => {
+    vi.stubEnv('NITPICKER_DIFF_ESLINT_PROJECT_ROOT', temporaryProject({}));
     const config = await loadConfig('defaults/eslint.config.mjs', policy, selectFilesAndIgnores);
     const ignores = config.flatMap((entry) =>
       entry.files === undefined ? (entry.ignores ?? []) : [],
@@ -23,7 +28,7 @@ describe('package-owned child configs', () => {
       'dist/**',
       'generated/**',
       'lib/legacy/**',
-      'reports/**',
+      'reports/quality/**',
       'target/**',
     ]);
     const files = config.flatMap((entry) => entry.files ?? []).flat();
@@ -78,7 +83,7 @@ describe('package-owned child configs', () => {
       'dist/**',
       'generated/**',
       'lib/legacy/**',
-      'reports/**',
+      'reports/quality/**',
       'target/**',
     ]);
     expect([...new Set(config.flatMap((entry) => entry.files ?? []).flat())].sort()).toEqual([
@@ -101,7 +106,7 @@ describe('package-owned child configs', () => {
       'lib/**/*.{test,spec}.{ts,tsx,mts,cts,js,jsx,mjs,cjs}',
       'lib/**/__tests__/**',
       'lib/legacy/**',
-      'reports/**',
+      'reports/quality/**',
       'spec/**/*.{ts,tsx,mts,cts,js,jsx,mjs,cjs}',
       'target/**',
     ]);
@@ -147,7 +152,7 @@ describe('package-owned child configs', () => {
       'generated/**',
       'lib/**/*.{test,spec}.{ts,tsx,mts,cts,js,jsx,mjs,cjs}',
       'lib/legacy/**',
-      'reports/**',
+      'reports/quality/**',
       'spec/**/*.{ts,tsx,mts,cts,js,jsx,mjs,cjs}',
       'target/**',
     ]);
@@ -164,7 +169,7 @@ describe('package-owned child configs', () => {
       '!lib/**/*.{test,spec}.{ts,tsx,mts,cts,js,jsx,mjs,cjs}',
       '!lib/**/__tests__/**',
       '!lib/legacy/**',
-      '!reports/**',
+      '!reports/quality/**',
       '!spec/**/*.{ts,tsx,mts,cts,js,jsx,mjs,cjs}',
       '!target/**',
       'lib/**/*.{ts,tsx,mts,cts,js,jsx,mjs,cjs}',
@@ -173,7 +178,7 @@ describe('package-owned child configs', () => {
     expect(config.ignorePatterns).toEqual([
       'lib/dist',
       'spec/integration',
-      'reports',
+      '/reports/quality',
       '.nitpicker-*',
       '!.nitpicker-diff-stryker.*',
       '!.nitpicker-diff-tsconfig.stryker.json',

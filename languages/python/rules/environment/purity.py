@@ -1,6 +1,12 @@
 import ast
 
-from checks.common import call_name, dotted_name, finding, type_checking_nodes
+from checks.common import (
+    call_name,
+    dotted_name,
+    finding,
+    overlap_sites,
+    type_checking_nodes,
+)
 from environment.paths import path_method_calls
 from environment.purity_names import (
     CLOCK_CALLS_WITHOUT_ARGUMENT,
@@ -17,6 +23,8 @@ from environment.purity_names import (
     RANDOM_NAMES,
     SEEDED_FACTORIES,
 )
+
+CLOCK_OVERLAPS = {"clock-now": ("DTZ002", "DTZ003", "DTZ005", "DTZ011")}
 
 
 def random_reference(name):
@@ -133,3 +141,7 @@ def domain_findings(context):
 
 def check(context):
     return domain_findings(context) if context.domain else []
+
+
+def allowances(context):
+    return overlap_sites(check(context), CLOCK_OVERLAPS)
