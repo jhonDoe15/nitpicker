@@ -12,7 +12,7 @@ sum + x, 0)`), `Object.fromEntries`, and `Object.groupBy`. No loops, `forEach`, 
 - No classes and no `this`. No reassigning a parameter (`no-param-reassign`) and no changing one in place (`nitpicker/no-parameter-mutation`).
 - No clock, randomness or I/O, however it is written: `Date.now`, `Math.random` and
   `performance.now` are reported as properties, so `const now = Date.now`, `const { random } =
-Math` and `Math['random'](../)` are caught; `process`, `fetch`, `setTimeout`, `setInterval`,
+Math` and `Math['random']()` are caught; `process`, `fetch`, `setTimeout`, `setInterval`,
   `setImmediate`, `queueMicrotask`, `performance`, `XMLHttpRequest`, `WebSocket`, `localStorage`
   and `sessionStorage` are restricted globals, also read through `globalThis`, `window`, `self`
   or `global` (`globalThis.fetch(url)`, `globalThis.Date.now()`); `Date()` without `new` reads the
@@ -47,7 +47,7 @@ Math` and `Math['random'](../)` are caught; `process`, `fetch`, `setTimeout`, `s
   or `setPrototypeOf` on anything but a fresh object literal, and the mutating `Reflect` and
   `Atomics` calls). `nitpicker/no-mutating-method-in-domain` uses the types to report every other
   use of a mutating method of an array, `Set`, `Map`, `WeakSet`, `WeakMap`, `Date` (its `set`
-  methods), typed array, `Buffer` or `URLSearchParams`: a computed `a['push'](../)`, a method taken as
+  methods), typed array, `Buffer` or `URLSearchParams`: a computed `a['push']()`, a method taken as
   a value (`const add = set.add`, `xs.map(set.add, set)`), or a receiver typed `Readonly<Date>` or
   by a type parameter. Aliasing `Object` or `Reflect` itself is not followed.
   `functional/immutable-data` is not enabled because it reported the same sites a second time with
