@@ -17,7 +17,7 @@ const TOOL_SETTING_KEYS = new Map([
   ['dependency-cruiser', ['precedence']],
   ['eslint', ['engine', 'precedence']],
   ['typescript', ['engine', 'project', 'precedence']],
-  ['tests', ['runner', 'timeouts']],
+  ['tests', ['runner', 'timeouts', 'precedence']],
 ]);
 const ENGINES = new Map([
   [
@@ -70,6 +70,7 @@ const ORDERED_PRECEDENCE_TOOLS = [
   'dependency-cruiser',
   'eslint',
   'typescript',
+  'tests',
 ];
 const PRECEDENCE_LAYERS = ['project', 'nitpicker'];
 
@@ -125,6 +126,9 @@ function validateEngineSettings(name, settings) {
   validateEngine(name, settings[ENGINES.get(name).key]);
   if (name === 'tests' && settings.timeouts !== undefined) {
     validateTestTimeouts(settings.timeouts);
+  }
+  if (name === 'tests' && settings.precedence !== undefined) {
+    validatePrecedence(settings.precedence, name);
   }
   if (name === 'typescript') {
     validateTypeScriptProject(settings.project);
