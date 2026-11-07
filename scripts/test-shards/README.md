@@ -2,9 +2,10 @@
 
 The duration sequencer assigns every selected file to exactly one shard, longest files first.
 Files without a measurement count as one second, so a new file, end-to-end ones included, needs
-no profile edit. The plan is rough until `record-durations` measures the file. The selected files
-always come from Vitest's package-script filters, so adding a test to a language suite does not
-require editing a shard list.
+no profile edit. The plan is rough until `record-durations` measures the file. With a suite flag such
+as `NITPICKER_JAVA_E2E=1` set, `vitest.config.mts` selects the test files that read that flag
+(`suiteFiles` in `e2e-gates.mjs`, itself or through a module it imports), so adding a test to a
+language suite edits neither a shard list nor the `test:<language>` script in `package.json`.
 
 `durations.json` describes ordinary `npm test` runs. `java-e2e.json` and `kotlin-e2e.json` describe
 the corresponding enabled end-to-end suites. Selection uses the same `NITPICKER_JAVA_E2E=1` or
