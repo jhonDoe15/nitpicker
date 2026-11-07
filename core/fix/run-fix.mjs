@@ -22,7 +22,6 @@ import { withoutAnsi } from '../../shared/messages/terminal-text.mjs';
 import { TOOL_TIMEOUT_MS } from '../../shared/processes/deadlines.mjs';
 
 const eslintPolicy = eslintChecks.find(({ name }) => name === 'eslint-lint');
-
 const prettierPolicy = staticChecks.find(({ name }) => name === 'prettier-format');
 
 export function fixWorkingTree({ headPolicy = resolveHeadPolicy(), ...options }) {
