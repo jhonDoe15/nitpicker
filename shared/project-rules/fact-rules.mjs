@@ -23,16 +23,41 @@ const FEATURE_BOUNDARY_LANGUAGES = {
 const FEATURE_LAYOUT_SETTINGS = ['layout.sharedRoots', 'layout.featureRoots'];
 
 export const FACT_RULE_LANGUAGES = {
-  'duplicate-definition': { ...TYPESCRIPT_AND_JAVASCRIPT, ...JVM, javascript: 'partial' },
-  'exported-name-collision': { ...TYPESCRIPT_AND_JAVASCRIPT, ...JVM, javascript: 'partial' },
-  'sibling-copy-edit': { ...TYPESCRIPT_AND_JAVASCRIPT, ...JVM },
+  'duplicate-definition': {
+    ...TYPESCRIPT_AND_JAVASCRIPT,
+    ...JVM,
+    javascript: 'partial',
+    python: true,
+  },
+  'exported-name-collision': {
+    ...TYPESCRIPT_AND_JAVASCRIPT,
+    ...JVM,
+    javascript: 'partial',
+    python: true,
+  },
+  'sibling-copy-edit': { ...TYPESCRIPT_AND_JAVASCRIPT, ...JVM, python: true },
   'shared-used-by-one-feature': { ...TYPESCRIPT_AND_JAVASCRIPT, python: true },
   'feature-internal-import': { ...FEATURE_BOUNDARY_LANGUAGES },
   'shared-imports-feature': { ...FEATURE_BOUNDARY_LANGUAGES },
   'feature-cycle': { ...FEATURE_BOUNDARY_LANGUAGES },
-  'test-only-export': { ...TYPESCRIPT_AND_JAVASCRIPT, java: true, kotlin: true },
-  'doc-comment-content': { ...TYPESCRIPT_AND_JAVASCRIPT, java: true, kotlin: true },
-  'test-console-output': { ...TYPESCRIPT_AND_JAVASCRIPT, java: true, kotlin: true },
+  'test-only-export': {
+    ...TYPESCRIPT_AND_JAVASCRIPT,
+    java: true,
+    kotlin: true,
+    python: true,
+  },
+  'doc-comment-content': {
+    ...TYPESCRIPT_AND_JAVASCRIPT,
+    java: true,
+    kotlin: true,
+    python: true,
+  },
+  'test-console-output': {
+    ...TYPESCRIPT_AND_JAVASCRIPT,
+    java: true,
+    kotlin: true,
+    python: true,
+  },
 };
 
 export const FACT_RULE_LISTS = {

@@ -48,8 +48,16 @@ function featureBoundaryRule(findings) {
     findings(withoutGenerated(facts), featureContext(context, options));
 }
 
+function acrossPackages(modules) {
+  return modules.map((module) => ({ ...module, packageRoot: '' }));
+}
+
 const EVALUATORS = {
-  'duplicate-definition': ({ modules, context }) => duplicateDefinitionFindings(modules, context),
+  'duplicate-definition': ({ modules, context, options }) =>
+    duplicateDefinitionFindings(
+      options.duplicatesAcrossPackages === true ? acrossPackages(modules) : modules,
+      context,
+    ),
   'exported-name-collision': ({ facts, modules, context, options }) =>
     exportedNameCollisionFindings(modules, facts.imports, {
       ...context,

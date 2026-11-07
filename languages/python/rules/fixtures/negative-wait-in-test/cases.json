@@ -1,0 +1,7 @@
+[
+  {
+    "tool": "python-rules",
+    "rule": "negative-wait-in-test",
+    "mention": "event.is_set()"
+  }
+]

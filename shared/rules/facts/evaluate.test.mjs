@@ -91,8 +91,8 @@ describe('the shared fact rules', () => {
     ).toThrow(/test-console-output is not registered for cobol/u);
   });
 
-  it.each([['rust'], ['typscript']])(
-    'fails for %s, which registers no rule yet, instead of finding nothing',
+  it.each([['cobol'], ['typscript']])(
+    'fails for %s, which registers no rule, instead of finding nothing',
     (language) => {
       expect(() => sharedFactFindings({}, { language, analyzerName: 'facts' })).toThrow(
         `No fact rule is registered for language "${language}" in FACT_RULE_LANGUAGES (shared/project-rules/fact-rules.mjs)`,
@@ -174,25 +174,22 @@ describe('the shared fact rules', () => {
   });
 
   it('lets every preset lift a rule once a language besides TypeScript registers it', () => {
-    const jvmRules = ['duplicate-definition', 'exported-name-collision', 'sibling-copy-edit'];
-    const lifted = [
-      ...jvmRules,
+    const python = [
+      'duplicate-definition',
+      'exported-name-collision',
+      'sibling-copy-edit',
       'shared-used-by-one-feature',
       ...FEATURE_RULES,
       'test-only-export',
       'doc-comment-content',
       CONSOLE,
     ];
-
-    expect(sharedFactExceptionRules()).toEqual(lifted);
-    expect(registeredFactRules('python')).toEqual(['shared-used-by-one-feature', ...FEATURE_RULES]);
-    withLanguageRegistered('sibling-copy-edit', 'python', () => {
-      expect(sharedFactExceptionRules()).toEqual(lifted);
-      expect(registeredFactRules('python')).toEqual([
-        'sibling-copy-edit',
-        'shared-used-by-one-feature',
-        ...FEATURE_RULES,
-      ]);
+    expect(sharedFactExceptionRules()).toEqual(python);
+    expect(registeredFactRules('python')).toEqual(python);
+    withLanguageRegistered('feature-cycle', 'kotlin', () => {
+      expect(sharedFactExceptionRules()).toEqual(python);
+      expect(registeredFactRules('kotlin')).toEqual(['feature-cycle']);
+      expect(registeredFactRules('python')).toEqual(python);
     });
   });
 });

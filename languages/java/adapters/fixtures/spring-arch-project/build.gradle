@@ -30,6 +30,8 @@ tasks.register('integrationTest', Test) {
 dependencies {
     compileOnly 'org.springframework:spring-context:6.2.10'
     compileOnly 'org.springframework:spring-web:6.2.10'
+    compileOnly 'org.springframework:spring-messaging:6.2.10'
+    compileOnly 'com.fasterxml.jackson.core:jackson-databind:2.19.2'
     compileOnly 'org.springframework:spring-jdbc:6.2.10'
     compileOnly 'org.springframework.data:spring-data-jpa:3.5.3'
     compileOnly 'org.springframework.boot:spring-boot:3.5.5'

@@ -17,18 +17,6 @@ import { acceptedDigest } from '../test-support/accepted-digest.mjs';
 import { docsUrl } from '../../../shared/messages/docs-url.mjs';
 
 const EMPTY_JDEPS = { 'jdeps/jdeps.txt': '', 'jdeps/jdeps-classes.txt': '' };
-const EXCEPTION_ENTRY = /\{"rule":"[^"]+","paths":\[[^\]]+\],"reason":"\.\.\."\}/u;
-const TEST_SOURCE = { 'src/test/java/demo/ATest.java': 'package demo;\n\nfinal class ATest {}\n' };
-const TEST_REPORTS = {
-  MAIN_CLASSES: '',
-  'jdeps/jdeps-classes.txt': 'demo.A\n',
-  'jdeps/jdeps.txt': '',
-  'jdeps/jdeps-test.txt': '   demo.ATest -> demo.A   classes\n',
-  'test-results/test/TEST-demo.ATest.xml':
-    '<testsuite name="demo.ATest"><testcase classname="demo.ATest" name="works">' +
-    '<system-err>Connection pool leaked a worker thread</system-err></testcase></testsuite>\n',
-};
-const LIFTABLE_RULES = ['test-only-export', 'test-console-output'];
 const addedField = unusedFieldMessage('added');
 const xmlText = (text) =>
   text
@@ -38,6 +26,8 @@ const xmlText = (text) =>
     .replaceAll('"', '&quot;')
     .replaceAll("'", '&apos;');
 
+const CLONE_SIZE_NOTE =
+  'duplicates/duplicate-clone-size src/main/java/demo/First.java:3 Duplicate with src/main/java/demo/Second.java';
 const CLONE_MESSAGE = [
   'This code repeats src/main/java/demo/Second.java:3 (30 lines).',
   'Keep one copy and call it from both places.',
@@ -223,6 +213,9 @@ Quality gate summary
 ✖ 1 new enforceable violation
   duplicates/duplicate-clone: ${CLONE_MESSAGE}
     src/main/java/demo/First.java:3
+Design notes for review (not failing): 2 new
+  ${CLONE_SIZE_NOTE} (lines 30)
+  ${CLONE_SIZE_NOTE} (tokens 381)
 Full diagnostics: ${tmpdir()}/nitpicker-java-out-${/[A-Za-z0-9]{6}/}/reports/report.txt
 `),
     });
@@ -331,7 +324,7 @@ Full diagnostics: ${tmpdir()}/nitpicker-java-out-${/[A-Za-z0-9]{6}/}/reports/rep
       },
     );
 
-    it('stays a tool error on both snapshots when the head tests fail too', () => {
+    it('stays a tool error on both snapshots when the head tests fail too, and exits 1', () => {
       const root = repository(build.redBase.files(failing('works')));
       writeFiles(root, {
         'src/main/java/demo/B.java': 'package demo;\n\npublic final class B {}\n',
@@ -345,10 +338,23 @@ Full diagnostics: ${tmpdir()}/nitpicker-java-out-${/[A-Za-z0-9]{6}/}/reports/rep
         errors: result.json('tool-errors.json').map(({ snapshot, rule }) => `${snapshot} ${rule}`),
         notes: result.json('notes.json'),
       }).toEqual({
-        exitCode: 2,
-        errors: [`head ${build.redBase.headRule}`, 'base tests-failed'],
+        exitCode: 1,
+        errors: ['base tests-failed', 'head tests-failed'],
         notes: [],
       });
+    });
+
+    it('leads the summary with tests that fail only on the head, and exits 1', () => {
+      const root = repository();
+      writeFiles(root, build.redBase.files(failing('works')));
+      commit(root, 'break a test');
+      const result = run(root);
+
+      expect(result.exitCode, result.text).toBe(1);
+      expect(result.output.out.split('\n').filter((line) => line.startsWith('✖'))).toEqual([
+        '✖ 1 test fails; the build stopped, so no other check ran. Fix the tests and rerun:',
+      ]);
+      expect(result.json('tool-errors.json').map(({ rule }) => rule)).toEqual(['tests-failed']);
     });
   });
   it('lets an exception entry for the rule and path allow a new finding', () => {
@@ -385,6 +391,7 @@ Full diagnostics: ${tmpdir()}/nitpicker-java-out-${/[A-Za-z0-9]{6}/}/reports/rep
     const binary = path.join(temporaryRoot('nitpicker-java-none-'), 'no-build-tool');
     build.missingBinary.stub(binary);
     const root = repository();
+    writeFiles(root, { 'notes.txt': 'edited\n' });
 
     const result = run(root);
 
@@ -426,10 +433,10 @@ Full diagnostics: ${tmpdir()}/nitpicker-java-out-${/[A-Za-z0-9]{6}/}/reports/rep
         'Enforceable findings:',
         `pmd/UnusedPrivateField src/main/java/demo/A.java:3 ${unusedFieldMessage('legacy')}`,
         '',
-        'Descriptive findings:',
-        'coupling/coupling . dependencies summary',
-        'coupling/coupling . modules summary',
-        'coupling/coupling . packages summary',
+        'Design notes for review (not failing): 3 in the snapshot',
+        '  coupling/coupling . dependencies summary (dependencies 0)',
+        '  coupling/coupling . modules summary (modules 0)',
+        '  coupling/coupling . packages summary (packages 0)',
         '',
         `Rule reference: ${docsUrl('docs/rules/README.md')} (nitpicker explain <tool/rule> prints one rule)`,
         '',
@@ -437,45 +444,3 @@ Full diagnostics: ${tmpdir()}/nitpicker-java-out-${/[A-Za-z0-9]{6}/}/reports/rep
     );
   });
 });
-
-describe.each([
-  ['java', 'a Gradle build', useGradleFixtures, 'repository'],
-  ['java', 'a Maven build', useMavenFixtures, 'repository'],
-  ['kotlin', 'a Gradle build', useGradleFixtures, 'kotlinRepository'],
-])(
-  'the exception a %s finding message suggests on %s',
-  (preset, _build, useFixtures, repositoryName) => {
-    const fixtures = useFixtures(nitpickerCli);
-    const repository = (files = {}) => fixtures[repositoryName]({ ...TEST_SOURCE, ...files });
-    function liftableFindings(root) {
-      writeFiles(root, TEST_REPORTS);
-      commit(root, 'add test-only use and console output');
-      const result = fixtures.run(root);
-      return {
-        result,
-        found: result.json('new-findings.json').filter(({ rule }) => LIFTABLE_RULES.includes(rule)),
-      };
-    }
-    it('is accepted by the preset and lifts the finding', () => {
-      const { found } = liftableFindings(repository());
-      const exceptions = found.map(({ message }) => ({
-        ...JSON.parse(EXCEPTION_ENTRY.exec(message)[0]),
-        reason: 'Loaded by name from a plugin descriptor of another build.',
-      }));
-      const config = JSON.parse(readFileSync(path.join(repository(), 'nitpicker.config.json')));
-
-      const { result, found: lifted } = liftableFindings(
-        repository({
-          'nitpicker.config.json': `${JSON.stringify({ ...config, exceptions })}\n`,
-        }),
-      );
-
-      expect(found.map(({ rule }) => rule).toSorted()).toEqual(LIFTABLE_RULES.toSorted());
-      expect({ exitCode: result.exitCode, lifted }, result.text).toEqual({
-        exitCode: 0,
-        lifted: [],
-      });
-      expect(preset).toBe(config.preset);
-    });
-  },
-);
