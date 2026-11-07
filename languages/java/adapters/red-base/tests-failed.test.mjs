@@ -138,7 +138,7 @@ describe('collectJavaFindings on a failing Gradle build', () => {
   it('does not rerun a failed head: a red head fails', () => {
     const fake = fakeGradle([['']]);
 
-    expect(() => collect(fake, 'head')).toThrow('Tests fail in');
+    expect(() => collect(fake, 'head')).toThrow('1 test fails; the build stopped');
     expect(fake.calls()).toEqual([{ continued: false, testsFailed: undefined }]);
   });
 

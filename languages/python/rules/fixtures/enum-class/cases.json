@@ -1,0 +1,8 @@
+[
+  {
+    "name": "constants class names an enum",
+    "tool": "python-rules",
+    "rule": "enum-string-constants",
+    "mention": "enum.StrEnum"
+  }
+]

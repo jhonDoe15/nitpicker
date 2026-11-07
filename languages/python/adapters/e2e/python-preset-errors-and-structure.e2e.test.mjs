@@ -57,10 +57,10 @@ describe.skipIf(!pythonE2eEnabled)(
           rule: 'tests-failed',
           path: '.',
           message: [
-            'Tests fail in the head snapshot. Make each failing test pass:',
-            '  tests/test_more.py::test_one',
-            '  tests/test_more.py::test_two',
-            'The static analyzers ran as usual; coverage and CRAP come from the tests that ran.',
+            '2 tests fail; the static analyzers ran, and coverage and CRAP come from the tests ' +
+              'that ran. Fix the tests and rerun:',
+            '  tests/test_more.py:2 > test_one: assert 1 == 2',
+            '  tests/test_more.py:6 > test_two: assert 2 == 3',
             'Mutation testing (mutmut) leaves out the test modules tests/test_more.py.',
           ].join('\n'),
         },

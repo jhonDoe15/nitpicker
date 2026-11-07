@@ -59,4 +59,5 @@
      [Block/*]]
 ]]></value></property></properties>
   </rule>
+  <!-- Built by npm run gen:rules from languages/java/gradle/rulesets/spring-test-ruleset/: edit the rule files there. -->
 </ruleset>

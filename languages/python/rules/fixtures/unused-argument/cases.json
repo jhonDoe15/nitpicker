@@ -1,0 +1,27 @@
+[
+  {
+    "tool": "ruff",
+    "rule": "ARG001",
+    "mention": "remove the unused argument"
+  },
+  {
+    "tool": "ruff",
+    "rule": "ARG002",
+    "mention": "remove the unused argument"
+  },
+  {
+    "tool": "ruff",
+    "rule": "ARG003",
+    "mention": "remove the unused argument"
+  },
+  {
+    "tool": "ruff",
+    "rule": "ARG004",
+    "mention": "remove the unused argument"
+  },
+  {
+    "tool": "ruff",
+    "rule": "ARG005",
+    "mention": "remove the unused argument"
+  }
+]

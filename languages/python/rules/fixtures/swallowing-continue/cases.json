@@ -1,0 +1,8 @@
+[
+  {
+    "name": "except continue says logging alone is not handling",
+    "tool": "python-rules",
+    "rule": "swallowed-exception",
+    "mention": "logging alone is not handling"
+  }
+]

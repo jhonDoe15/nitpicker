@@ -1,0 +1,7 @@
+[
+  {
+    "tool": "python-rules",
+    "rule": "any-in-domain",
+    "mention": "frozen dataclass"
+  }
+]
