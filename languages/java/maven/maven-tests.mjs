@@ -10,7 +10,7 @@ import {
 import path from 'node:path';
 import { globMatcher } from '../../../shared/paths/glob.mjs';
 import { runJava } from './maven-command.mjs';
-import { failedCases, failingTestsError, freshReports } from '../builds/test-failures.mjs';
+import { failedCaseEntries, failingTestsError, freshReports } from '../builds/test-failures.mjs';
 import { readPitMutators } from '../builds/java-build.mjs';
 
 const DEFAULT_ARCHUNIT_INCLUDES = '**/*ArchTest.class,**/*ArchitectureTest.class';
@@ -49,15 +49,19 @@ export function suiteNameOf(report) {
   return path.basename(report).replace(/^TEST-|\.xml$/gu, '');
 }
 
-function testOutcome({ module, moduleName, failures, testsRan, tolerateFailures }) {
+function testOutcome({ moduleName, failures, testsRan, tolerateFailures }) {
   if (failures.length === 0) {
     return { testsRan, failure: undefined };
   }
-  const failure = { module: moduleName, tests: failures };
+  const failure = {
+    module: moduleName,
+    tests: failures.map(({ text }) => text),
+    details: failures.map(({ detail }) => detail),
+  };
   if (tolerateFailures === true) {
     return { testsRan, failure };
   }
-  throw failingTestsError(module.basedir, [failure]);
+  throw failingTestsError([failure]);
 }
 
 export function collectTestResults({
@@ -78,12 +82,11 @@ export function collectTestResults({
       mkdirSync(archunitDir, { recursive: true });
       copyFileSync(report, path.join(archunitDir, path.basename(report)));
     } else {
-      failures.push(...failedCases(report));
+      failures.push(...failedCaseEntries(report));
     }
   }
   requireArchunitRun(module, reports, isArchunit);
   return testOutcome({
-    module,
     moduleName,
     failures,
     testsRan: reports.length > 0,

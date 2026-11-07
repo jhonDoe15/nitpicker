@@ -1,7 +1,7 @@
 import { runCli } from '../cli.mjs';
 import { PACKAGE_ROOT } from '../tooling/tool-resolution.mjs';
 import { captureOutput } from '../diff/reporting/test-support/output-capture.mjs';
-import { docsRef } from '../../shared/messages/docs-url.mjs';
+import { docsRef, LATEST_RELEASE_TAG } from '../../shared/messages/docs-url.mjs';
 import { indexEntries, readReferenceEntries, referenceUrl } from '../../shared/reference/store.mjs';
 
 /** The links of an installed copy of the package with `manifest`: they point at its release tag. */
@@ -36,6 +36,7 @@ export function expectedDirtyFindings(links) {
       symbol: 'example',
       location: { line: 2, column: 3 },
       helpUri: installedHelpUri(links, 'eslint-lint/no-debugger'),
+      anchor: { key: 'count:`debugger` statement is not allowed:text:3d3cda36d748dcd4e7c34fd3' },
       ratchet: {
         key: 'count:`debugger` statement is not allowed',
         value: 1,
@@ -118,8 +119,7 @@ export function checkoutOutput(links, args) {
     stdout: output.stdout,
     stderr: output.stderr,
   });
-  return `${output.stdoutText}${output.stderrText}`.replaceAll(
-    `${links.repositoryUrl}/blob/main/`,
-    `${links.tagRoot}/`,
-  );
+  return `${output.stdoutText}${output.stderrText}`
+    .replaceAll(`${links.repositoryUrl}/blob/main/`, `${links.tagRoot}/`)
+    .replaceAll(`${links.repositoryUrl}/blob/${LATEST_RELEASE_TAG}/`, `${links.tagRoot}/`);
 }

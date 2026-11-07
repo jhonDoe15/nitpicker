@@ -81,7 +81,7 @@ const NODE_TEST_HINT =
 
 const FLOATING_PROMISE_TEXT = /^Promises must be awaited/u;
 
-const FLOATING_PROMISE_MESSAGE = `Await this promise: \`await job()\`, or \`await Promise.all([...])\` for several; \`.then()\` and \`.catch()\` do not count. Deliberate fire-and-forget is written \`void job();\`.`;
+const FLOATING_PROMISE_MESSAGE = `Await this promise: \`await job()\`, or \`await Promise.all([...])\` for several; \`.then()\` and \`.catch()\` do not count. Deliberate fire-and-forget is written \`void job();\`, and in production code \`job\` is an async function whose whole body is a \`try\` with a \`catch\` that does not rethrow.`;
 
 const EVAL_MESSAGE = `Do not evaluate a string as code. Call the function directly, look it up in a table keyed by name, or parse the data with JSON.parse and a schema.`;
 
@@ -92,6 +92,8 @@ const CURLY_HINT = ` Wrap the body in braces: \`if (done) { return; }\`.`;
 const NAMING_HINT = `. Types are PascalCase; functions, variables and parameters are camelCase; constants may be UPPER_CASE; a schema constant may be PascalCase (\`const Order = z.object(...)\`). An exception fits only when an external API forces the name.`;
 
 const REGEXP_HINT = ` Rewrite the pattern without nested or overlapping quantifiers, or use a string method. An exception fits only when the input is bounded and trusted.`;
+
+const USELESS_FLAG_HINT = ` Remove the flag: a \`g\` or \`y\` regex keeps \`lastIndex\` between calls, so a reused one gives order-dependent results.`;
 
 const RETURN_TYPE_TEXT = /^Missing return type on function\.?$/u;
 
@@ -230,6 +232,7 @@ const MESSAGE_REWRITERS = new Map([
   ['curly', appendHint(CURLY_HINT)],
   ['no-duplicate-imports', appendHint(DUPLICATE_IMPORT_HINT)],
   ['regexp/no-super-linear-backtracking', appendHint(REGEXP_HINT)],
+  ['regexp/no-useless-flag', appendHint(USELESS_FLAG_HINT)],
   ['@typescript-eslint/no-deprecated', appendHint(DEPRECATED_HINT)],
   ['no-unused-vars', unusedVariableMessage],
 ]);

@@ -96,8 +96,8 @@ const FAILING_COVERAGE_OUTPUT = [
   'coverage: total=0 enforceable=0 descriptive=0',
   '',
   'Tool errors:',
-  'coverage (head): 1 test fails, so coverage, CRAP and mutation were skipped. Fix the tests and rerun:',
-  "  test/failing.test.js > fails on purpose: AssertionError: expected 'greeted' to be 'empty-name' // Object.is equality",
+  'coverage (head): 1 test fails; coverage, CRAP and mutation were skipped. Fix the tests and rerun:',
+  "  test/failing.test.js:5 > fails on purpose: AssertionError: expected 'greeted' to be 'empty-name' // Object.is equality",
   '',
 ].join('\n');
 
@@ -295,7 +295,7 @@ it('fails on purpose', () => {
       const { exitCode, stdoutText } = runSnapshot(root, ['--analyzer', 'coverage']);
 
       expect(stdoutText).toBe(FAILING_COVERAGE_OUTPUT);
-      expect(exitCode).toBe(2);
+      expect(exitCode).toBe(1);
     });
 
     it(
