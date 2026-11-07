@@ -1,61 +1,11 @@
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
-import { afterAll, describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import { compareFindings } from '../../../../core/diff/comparison/compare.mjs';
 import { isStrictRule } from '../../preset/strict-rules.mjs';
 import { normalizeEslintResults } from './normalize.mjs';
-
-const temporaryRoots = [];
-
-afterAll(() => {
-  for (const root of temporaryRoots) {
-    rmSync(root, { recursive: true, force: true });
-  }
-});
-
-function positionOf(code, offset) {
-  const before = code.slice(0, offset).split('\n');
-  return { line: before.length, column: (before.at(-1)?.length ?? 0) + 1 };
-}
-
-// Normalizes ESLint messages that point at `reported` (a substring of `code`, or a list of them,
-// one message each), the way ESLint reports them: a 1-based start and end.
-function findingFor({
-  code,
-  reported,
-  ruleId = 'functional/prefer-immutable-types',
-  messageId,
-  message = 'Reported text.',
-}) {
-  const root = mkdtempSync(path.join(tmpdir(), 'nitpicker-eslint-fingerprint-'));
-  temporaryRoots.push(root);
-  mkdirSync(path.join(root, 'src'), { recursive: true });
-  writeFileSync(path.join(root, 'src/legacy.ts'), code);
-  const reportedTexts = [reported].flat();
-  const messages = reportedTexts.map((text, index) => {
-    const start = code.indexOf(text, index === 0 ? 0 : code.indexOf(reportedTexts[index - 1]) + 1);
-    const first = positionOf(code, start);
-    const last = positionOf(code, start + text.length);
-    return {
-      ruleId,
-      messageId,
-      message,
-      severity: 2,
-      line: first.line,
-      column: first.column,
-      endLine: last.line,
-      endColumn: last.column,
-    };
-  });
-  const findings = normalizeEslintResults({
-    value: [{ filePath: path.join(root, 'src/legacy.ts'), messages }],
-    projectRoot: root,
-    analyzerName: 'eslint-strict',
-  });
-  expect(findings).toHaveLength(reportedTexts.length);
-  return findings;
-}
+import { findingFor, positionOf, registerTemporaryRoot } from './test-support/finding-for.mjs';
 
 function compare(base, head) {
   return compareFindings({ baseFindings: base, headFindings: head });
@@ -108,28 +58,6 @@ describe('a finding anchored on a whole function is about its signature', () => 
 
     expect(find(call('1'))[0].identity).toBe(find(call('1'))[0].identity);
     expect(find(call('2'))[0].identity).not.toBe(find(call('1'))[0].identity);
-  });
-
-  it('keeps the identity through quotes, semicolons, trailing commas and arrow parentheses', () => {
-    const find = (code) =>
-      findingFor({ code, reported: code.slice(code.indexOf('items'), code.lastIndexOf(')') + 1) });
-    const unformatted = "export const run = () => items.map(item => log('a', item,));\n";
-    const formatted = 'export const run = () => items.map((item) => log("a", item))\n';
-
-    expect(find(formatted)[0].identity).toBe(find(unformatted)[0].identity);
-    expect(find(formatted.replace('"a"', '"b"'))[0].identity).not.toBe(
-      find(unformatted)[0].identity,
-    );
-  });
-
-  it('tells an empty statement, a line break after return and a spaced operator from formatting', () => {
-    const block = (body) => `export function run() {${body}}\n`;
-    const identity = (body) => findingFor({ code: block(body), reported: `{${body}}` })[0].identity;
-
-    expect(identity('\n  if (ready); start();\n')).not.toBe(identity('\n  if (ready) start();\n'));
-    expect(identity('\n  return\n  value;\n')).not.toBe(identity('\n  return value;\n'));
-    expect(identity(' a + ++b ')).not.toBe(identity(' a++ + b '));
-    expect(identity(' start() ')).toBe(identity('\n  start();\n'));
   });
 
   it('keeps a declaration without a body tied to its whole text', () => {
@@ -472,7 +400,7 @@ describe('a complexity finding fails only when the number rises', () => {
 describe('findings another rule already covers', () => {
   function normalized(code, reports) {
     const root = mkdtempSync(path.join(tmpdir(), 'nitpicker-eslint-superseded-'));
-    temporaryRoots.push(root);
+    registerTemporaryRoot(root);
     mkdirSync(path.join(root, 'src'), { recursive: true });
     writeFileSync(path.join(root, 'src/rows.tsx'), code);
     const messages = reports.map(([ruleId, text]) => {
