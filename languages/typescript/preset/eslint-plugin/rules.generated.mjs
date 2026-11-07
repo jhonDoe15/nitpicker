@@ -22,6 +22,7 @@ import { rule as ruleNoExternalExecutablesInUnitTests } from './rules/testing/pr
 import { rule as ruleNoFalsyDefault } from './rules/signatures/no-falsy-default.mjs';
 import { rule as ruleNoFirstTestChargedSetup } from './rules/testing/lifecycle/no-first-test-charged-setup.mjs';
 import { rule as ruleNoFixedSleepSynchronization } from './rules/testing/lifecycle/no-fixed-sleep-synchronization.mjs';
+import { rule as ruleNoFloatEqualityInTests } from './test-assertions/no-float-equality-in-tests.mjs';
 import { rule as ruleNoForwardingWrapper } from './rules/api-shape/no-forwarding-wrapper.mjs';
 import { rule as ruleNoGitRepositoryPerTest } from './rules/testing/processes/no-git-repository-per-test.mjs';
 import { rule as ruleNoHandwrittenBoundaryGuard } from './rules/boundaries/no-handwritten-boundary-guard.mjs';
@@ -124,6 +125,7 @@ export const directoryRules = {
   'no-falsy-default': ruleNoFalsyDefault,
   'no-first-test-charged-setup': ruleNoFirstTestChargedSetup,
   'no-fixed-sleep-synchronization': ruleNoFixedSleepSynchronization,
+  'no-float-equality-in-tests': ruleNoFloatEqualityInTests,
   'no-forwarding-wrapper': ruleNoForwardingWrapper,
   'no-git-repository-per-test': ruleNoGitRepositoryPerTest,
   'no-handwritten-boundary-guard': ruleNoHandwrittenBoundaryGuard,
