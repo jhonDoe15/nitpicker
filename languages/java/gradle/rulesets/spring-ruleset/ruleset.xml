@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Nitpicker's Spring rules. The init script adds this ruleset to the PMD run of every Gradle
+     project whose compile classpath has Spring on it, next to the PMD categories or the project's own
+     config/pmd/ruleset.xml. Rules match annotation types through PMD type resolution, so the init
+     script passes the compile classpath as the auxiliary classpath. Each message names the allowed
+     form and the exception entry that accepts it. docs/java-preset.md lists the rules and why each exists. -->
+<ruleset name="nitpicker-spring"
+         xmlns="http://pmd.sourceforge.net/ruleset/2.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://pmd.sourceforge.net/ruleset/2.0.0 https://pmd.sourceforge.io/ruleset_2_0_0.xsd">
+  <description>Nitpicker Spring rules: one allowed way for dependency injection, proxies, web, JPA and Spring Data.</description>
