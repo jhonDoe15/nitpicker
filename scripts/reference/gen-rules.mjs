@@ -2,6 +2,7 @@ import { existsSync, mkdirSync, realpathSync, renameSync, rmSync, writeFileSync 
 import path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { ESLINT_REGISTRY, eslintRegistrySource } from './eslint-registry.mjs';
+import { KOTLIN_SCAN_REGISTRY, kotlinScanRegistrySource } from './kotlin-scan-registry.mjs';
 import { pmdRulesetSources } from './pmd-rulesets.mjs';
 import {
   installedRuffRules,
@@ -134,10 +135,10 @@ function reportStale(registry, reference, stderr) {
 }
 
 /**
- * Regenerates the ESLint plugin's rule map, the PMD rulesets and the rule reference. `--check` lists what is stale,
- * `--data` writes only the built, uncommitted data files. `--refresh-ruff[=<path>]` first rewrites
- * the ruff snapshot from that ruff, `--refresh-eslint` the ESLint inventory from the preset configs,
- * and `--refresh-jvm` the texts of the pinned PMD, SpotBugs, Checkstyle, detekt and Error Prone.
+ * Regenerates the plugin rule map, the Kotlin scan module list, the PMD rulesets and the reference.
+ * `--check` lists what is stale, `--data` writes only the built, uncommitted data files.
+ * `--refresh-ruff[=<path>]`, `--refresh-eslint` and `--refresh-jvm` first rewrite the ruff
+ * snapshot, the ESLint inventory, and the texts of the pinned JVM tools.
  */
 export async function main(options, { stderr }) {
   if (!options.every((option) => FLAGS.includes(option) || RUFF_OPTION.test(option))) {
@@ -146,6 +147,7 @@ export async function main(options, { stderr }) {
   }
   const registry = new Map([
     [ESLINT_REGISTRY, await eslintRegistrySource(repositoryRoot)],
+    [KOTLIN_SCAN_REGISTRY, await kotlinScanRegistrySource(repositoryRoot)],
     ...pmdRulesetSources(repositoryRoot),
   ]);
   if (!options.includes('--check') && !options.includes('--data')) {

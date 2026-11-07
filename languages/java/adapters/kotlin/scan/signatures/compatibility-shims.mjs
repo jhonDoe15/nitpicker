@@ -7,7 +7,7 @@ const DECLARATION_KEYWORD = /\b(?:fun|val|var|class|interface|object|typealias|c
 const ALIAS = /(?<![\w.])typealias\s+([A-Z]\w*)\s*=\s*([A-Z]\w*)\s*$/gm;
 const TYPE_DECLARATION = /(?<![\w.])(?:class|interface|object|typealias)\s+(\w+)/g;
 
-export const COMPATIBILITY_SHIM_MESSAGES = {
+const COMPATIBILITY_SHIM_MESSAGES = {
   CompatibilityShim:
     'Delete the deprecated declaration and change its callers to the replacement in the same change: `@Deprecated` and a second name for one type (`typealias Old = New`) keep two APIs alive.',
 };
@@ -46,3 +46,8 @@ function aliases(code) {
 export function compatibilityShims(scanned) {
   return [...deprecations(scanned.code), ...aliases(scanned.code)];
 }
+
+export const kotlinSourceRules = {
+  messages: COMPATIBILITY_SHIM_MESSAGES,
+  main: [compatibilityShims],
+};
