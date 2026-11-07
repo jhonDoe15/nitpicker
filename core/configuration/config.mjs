@@ -1,5 +1,5 @@
 import path from 'node:path';
-import { CONFIG_FILE_NAME, configError } from '../../shared/config.mjs';
+import { CONFIG_FILE_NAME, SCHEMA_KEY, configError } from '../../shared/config.mjs';
 import { withCanonicalRules } from '../../shared/exceptions/validation.mjs';
 import { existsSync, readFileSync } from 'node:fs';
 import { validateConfig, KEYS } from './validate.mjs';
@@ -27,7 +27,11 @@ export function readConfigFile(projectRoot) {
       { cause: error },
     );
   }
-  return validateConfig(withCanonicalRules(parsed));
+  return withoutSchemaKey(validateConfig(withCanonicalRules(parsed)));
+}
+
+function withoutSchemaKey(config) {
+  return Object.fromEntries(Object.entries(config).filter(([key]) => key !== SCHEMA_KEY));
 }
 
 export function describeConfigOverrides(config) {
