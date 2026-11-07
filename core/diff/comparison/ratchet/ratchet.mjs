@@ -1,7 +1,10 @@
 import { baseMoves, comparisonKey } from '../fingerprint.mjs';
 import { normalizeGitPath } from '../../git/normalize.mjs';
 import { folderMoves, mainDestination } from '../../git/patches/renames.mjs';
-import { withGrowthAdvice, withWorseMessage } from '../../../../shared/messages/finding-advice.mjs';
+import {
+  withGrowthAdvice,
+  withWorseMessage,
+} from '../../../../shared/messages/advice/finding-advice.mjs';
 import { isInTouchedCode, isOnAddedLine } from './touched-code.mjs';
 
 const NO_MOVES = baseMoves(new Map());

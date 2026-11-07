@@ -10,11 +10,9 @@ import { crashingAnalyzer, fakeAnalyzer, useCliFixtures } from './test-support/c
 import { writeFiles } from '../diff/git/test-support/fixture-files.mjs';
 import { linkSentence } from '../../shared/messages/test-support/link-sentence.mjs';
 import { docsUrl } from '../../shared/messages/docs-url.mjs';
-
 const { createRepository, makeOutputRoot, makeTemporaryRoot, runCli } =
   useCliFixtures(nitpickerCli);
 const CRASH = `crashing-analyzer crashed with exit 2: no diagnostic output. ${linkSentence('analyzerCrashed')}`;
-
 describe('nitpicker CLI', () => {
   it('fails comparison for a finding in an untracked file and identifies an argument base', () => {
     const repository = createRepository({
@@ -475,7 +473,7 @@ describe('nitpicker CLI', () => {
       }),
     ).toBe(2);
     expect(unknown.stderrText).toEqual(
-      `nitpicker failed: Unknown --analyzer: unknown. Known analyzers: fake-quality-analyzer\n`,
+      'nitpicker failed: Unknown --analyzer: unknown. Known analyzers: fake-quality-analyzer\n',
     );
   });
   it('runs the packaged prettier preset against a consumer snapshot', () => {
