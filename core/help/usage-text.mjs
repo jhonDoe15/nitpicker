@@ -60,7 +60,7 @@ const AGGREGATE_USAGE =
 const CACHE_PUBLISH_USAGE =
   'nitpicker cache publish [--analyzer <name>]... [--shard-count <n> --shard-index <i>] [--help]';
 const USAGE_LINES = [
-  'nitpicker [--base <ref>] [--output <dir>] [--all | --fix] [--analyzer <name>]...',
+  'nitpicker [<path>...] [--base <ref>] [--output <dir>] [--all | --fix] [--analyzer <name>]...',
   '          [--rule <substring>]... [--details] [--shard-count <n> --shard-index <i>]',
   '          [--defer-exit] [--no-cache] [--accept-policy-change=<digest>] [--help] [--version]',
   INIT_USAGE,
@@ -86,6 +86,10 @@ export const USAGE_TEXT =
   `Options of nitpicker init:\n${table(INIT_FLAGS)}\n` +
   `Options of nitpicker aggregate:\n${table(AGGREGATE_FLAGS)}\n` +
   `Options of nitpicker cache publish:\n${table(CACHE_PUBLISH_FLAGS)}\n` +
+  'Paths (files or folders, relative to the current folder) limit the findings that are shown\n' +
+  'and gate the run; the analysis still covers the whole project. Examples:\n' +
+  '  nitpicker src/orders/order.ts    gate your change to one file\n' +
+  '  nitpicker --all src/orders       show every finding in one folder\n\n' +
   `Start a new project with nitpicker init. Reference: ${DOCUMENTATION_URL}\n`;
 
 export const INIT_USAGE_TEXT =
