@@ -123,7 +123,7 @@ the TypeScript preset, `{ "rule", "paths", "reason" }`, all required:
 `pmd/NegativeWaitInTest`, `pmd/DisabledTest`, `pmd/FocusedTest`, `pmd/RetryInTest`, `pmd/ServerOrContainerPerTest`, `pmd/AssertionInControlFlow`,
 `pmd/CoroutineEscapesTest`, `pmd/GlobalStateLeakInTest`, `pmd/SpringUnusedContext`, `pmd/ExhaustiveEnumPredicate`,
 `pmd/StaticForwardingWrapper`, `pmd/SingularAndPluralMember`, `pmd/ValidationAnnotationTarget`, `pmd/ClassLoadEffect`, `pmd/RecursiveMapUpdate`, `unused-option`), a class limit, a file
-limit or `test-runtime/slow-test`; for the structure, CRAP and coverage findings below,
+limit or `test-runtime/slow-test`; for the [structure](structure-limits.md), [CRAP](crap.md) and [coverage](coverage.md) findings,
 `function-lines-limit`, `function-statements-limit`, `function-control-nesting-limit`,
 `function-parameters-limit`, `crap-score-limit`, `crap-coverage-unknown` or `changed-branch-coverage`
 with an optional `function` (required for the last one); `duplicate-clone` and `stability-direction`
@@ -161,5 +161,5 @@ not a rule with `exceptions`.
   is why `let` is not limited to `?.let` (detekt cannot tell the two apart), `takeIf`, `takeUnless`,
   `lateinit` and unstructured `CoroutineScope(...)` are not covered. `GlobalScope` imported under
   another name (`import kotlinx.coroutines.GlobalScope as G`) is not seen by detekt's rule.
-- Type resolution reports less where a library is built with a newer Kotlin than detekt's (above);
+- Type resolution reports less where a library is built with a newer Kotlin than detekt's ([detekt](detekt.md));
   `!!` on a value of such a type is not seen.
