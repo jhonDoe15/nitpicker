@@ -31,12 +31,14 @@ describe('readKotlinClassLimitFindings', () => {
       path: file,
       identity: 'methods:Orders:occurrence:1:21',
       message: `Class Orders has 21 methods (limit 20). Split it into classes by responsibility. ${exceptionHint('class-methods-limit', file)}`,
+      allowedForm: 'Split it into classes by responsibility.',
       classification: 'enforceable',
       location: { line: 3 },
       ratchet: {
         key: 'methods',
         value: 21,
         worseMessage: `Class Orders grew from {base} to 21 methods (limit 20). Put the new method in a new class. ${exceptionHint('class-methods-limit', file)}`,
+        worseAllowedForm: 'Put the new method in a new class.',
         heldMessage:
           'Class Orders: 21 methods (limit 20), allowed because base was {base}; any increase fails.',
       },
