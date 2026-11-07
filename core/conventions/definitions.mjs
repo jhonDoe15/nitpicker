@@ -14,6 +14,7 @@ import {
   strykerIgnoredNotices,
   typescriptIgnoredNotices,
 } from '../../languages/typescript/preset/project-configs/ignored-notices.mjs';
+import { testsIgnoredNotices } from '../../languages/typescript/preset/project-configs/test-runner/test-runner-notices.mjs';
 import { scriptProjectToolNotices } from '../../languages/typescript/preset/project-tools/ignored-notices.mjs';
 
 const BY_PRESET = new Map([
@@ -43,6 +44,7 @@ const jscpdStyle = noticeStyle(({ config, projectRoot }) =>
 const scriptStyle = noticeStyle((context) => [
   ...typescriptIgnoredNotices(context),
   ...strykerIgnoredNotices(context),
+  ...testsIgnoredNotices(context),
 ]);
 const scriptProjectToolStyle = noticeStyle(scriptProjectToolNotices);
 

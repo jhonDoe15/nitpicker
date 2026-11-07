@@ -6,6 +6,8 @@ import { runNodeTool } from '../../quality-areas/runners/tooling.mjs';
 import { readRun, removeTemporary, temporaryProjectPath, testTimeouts } from '../test-run.mjs';
 import { RUNNER_NAMES } from '../../../preset/test-runner/runners.mjs';
 import { consoleProducerPath, startTestConsole } from '../test-console-run.mjs';
+import { projectTestRetry } from '../../../preset/project-configs/test-runner/test-runner-config.mjs';
+import { vitestRetryArguments } from '../../../preset/project-configs/test-runner/test-retry.mjs';
 import { FAILURE_DETAILS_VARIABLE } from '../../../preset/test-failures/vitest-failure-details.config.mjs';
 
 const TIMEOUT_SETUP_VARIABLE = 'NITPICKER_TEST_TIMEOUT_SETUP';
@@ -45,6 +47,17 @@ function withFailureDetails(run, detailsPath) {
   return run;
 }
 
+function reportArguments(options, reportPath) {
+  return [
+    '--reporter',
+    'json',
+    '--outputFile',
+    reportPath,
+    '--reporter',
+    path.join(options.policyRoot, FAILURE_DETAILS_REPORTER),
+  ];
+}
+
 export function runVitest(options) {
   const configured = readHeadPolicyFile().tools?.tests?.timeouts !== undefined;
   const configPath = temporaryProjectPath(options, 'vitest.config.ts');
@@ -66,12 +79,8 @@ export function runVitest(options) {
           ? ['--coverage']
           : ['--maxWorkers=1', '--testNamePattern', options.rerun.namePattern]),
         ...(configured ? [] : ['--testTimeout', String(testTimeouts().testTimeoutMs)]),
-        '--reporter',
-        'json',
-        '--outputFile',
-        reportPath,
-        '--reporter',
-        path.join(options.policyRoot, FAILURE_DETAILS_REPORTER),
+        ...vitestRetryArguments(projectTestRetry('vitest')),
+        ...reportArguments(options, reportPath),
         ...(options.rerun?.files ?? []),
         ...(testConsole.enabled ? ['--reporter', consoleProducerPath(options, 'vitest')] : []),
       ],
