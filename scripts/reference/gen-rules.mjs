@@ -125,9 +125,9 @@ function reportStale(registry, reference, stderr) {
 
 /**
  * Regenerates the plugin rule map, the Kotlin scan module list, the PMD rulesets, the ESLint
- * inventory and the reference. `--check` lists what is stale, `--data` writes only the built,
- * uncommitted files. `--refresh-ruff[=<path>]` and `--refresh-jvm` first rewrite the ruff snapshot
- * and the texts of the pinned JVM tools.
+ * inventory and the reference. `--check` lists what is stale (it still rebuilds the inventory),
+ * `--data` writes only the built, uncommitted files. `--refresh-ruff[=<path>]` and `--refresh-jvm`
+ * first rewrite the ruff snapshot and the texts of the pinned JVM tools.
  */
 export async function main(options, { stderr }) {
   if (!options.every((option) => FLAGS.includes(option) || RUFF_OPTION.test(option))) {

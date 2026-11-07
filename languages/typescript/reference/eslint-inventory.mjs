@@ -1,5 +1,5 @@
 import { execFile } from 'node:child_process';
-import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdtempSync, readFileSync, renameSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
@@ -9,7 +9,6 @@ import { TOOL_TIMEOUT_MS } from '../../../shared/processes/deadlines.mjs';
 const run = promisify(execFile);
 const INVENTORY_FILE = new URL('./eslint-inventory.json', import.meta.url);
 const INVENTORY_OUTPUT = 'inventory.json';
-const ENVIRONMENT_FILE = 'eslint.env';
 const POLICY_FILE = 'policy.json';
 const CORE_PLUGIN = '@';
 const POLICIES = new URL('../preset/eslint-config/policies/', import.meta.url);
@@ -194,22 +193,19 @@ export function variantEnvironment(root) {
   };
 }
 
-function environmentFileText(root) {
-  return Object.entries(variantEnvironment(root))
-    .map(([name, value]) => `${name}=${JSON.stringify(value)}\n`)
-    .join('');
+function inventoryEnvironment(root) {
+  const inherited = Object.entries(process.env).filter(([name]) => !name.startsWith('NITPICKER_'));
+  return { ...Object.fromEntries(inherited), ...variantEnvironment(root) };
 }
 
 async function liveInventoryOf(variant) {
   const root = variantProject(variant);
   try {
-    const environmentFile = path.join(root, ENVIRONMENT_FILE);
-    writeFileSync(environmentFile, environmentFileText(root));
-    await run(
-      process.execPath,
-      [`--env-file=${environmentFile}`, fileURLToPath(import.meta.url), variant, root],
-      { cwd: root, timeout: TOOL_TIMEOUT_MS },
-    );
+    await run(process.execPath, [fileURLToPath(import.meta.url), variant, root], {
+      cwd: root,
+      env: inventoryEnvironment(root),
+      timeout: TOOL_TIMEOUT_MS,
+    });
     return JSON.parse(readFileSync(path.join(root, INVENTORY_OUTPUT), 'utf8'));
   } finally {
     rmSync(root, { recursive: true, force: true });
@@ -230,7 +226,9 @@ export function readEslintInventory() {
 
 /** Writes the built ESLint inventory as `text`. */
 export function writeEslintInventory(text) {
-  writeFileSync(INVENTORY_FILE, text);
+  const temporary = new URL(`./eslint-inventory.${String(process.pid)}.tmp`, import.meta.url);
+  writeFileSync(temporary, text);
+  renameSync(temporary, INVENTORY_FILE);
 }
 
 if (process.argv[1] !== undefined && import.meta.url === pathToFileURL(process.argv[1]).href) {
