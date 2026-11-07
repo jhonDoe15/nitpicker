@@ -449,7 +449,7 @@ nitpicker rules [--preset <name>] [--tool <name>]
 - `nitpicker cache publish`: analyze the committed `HEAD` tree and upload its findings to the remote
   cache so later branches reuse them as their base. Requires `NITPICKER_CACHE_URL`; exits 0 when
   everything was uploaded and 2 otherwise.
-- `nitpicker explain <tool/rule>...`: print what the [rule reference](rules/README.md) says about
+- `nitpicker explain <tool/rule>...`: print what the [rule reference](https://github.com/jhonDoe15/nitpicker/blob/latest/docs/rules/README.md) says about
   each rule: the presets and analyzers that report it, why it is on, the allowed form where the
   reference has one, and the `nitpicker.config.json` entry that accepts it. Name a rule as a finding prints it
   (`eslint-lint/no-undef`, `pmd/UnusedLocalVariable`), by its bare name (`F401`, or `MagicNumber`
@@ -466,7 +466,7 @@ nitpicker rules [--preset <name>] [--tool <name>]
 
 ### Rule reference
 
-[docs/rules](rules/README.md) has one entry for every rule that can fail the gate, for all presets:
+The [rule reference](https://github.com/jhonDoe15/nitpicker/blob/latest/docs/rules/README.md) has one entry for every rule that can fail the gate, for all presets:
 the tool and rule id, the presets that report it, why it is on, the allowed form where it has one,
 and the exact `exceptions` entry that accepts it. Where the reference has no allowed form of its
 own, the entry links to the page the tool keeps for the rule (or to the guide that describes it);
@@ -475,7 +475,8 @@ finding prints, which names the form to use. The summaries,
 reasons and examples of PMD, Error Prone, detekt, ruff and ESLint rules are those tools' own text,
 taken from the versions nitpicker pins; SpotBugs and Checkstyle are under the LGPL, so their entries
 name the rule and its category and link to the tool's description. The pages are generated from the
-rule catalogs with `npm run gen:rules`, and a test fails when they are stale. Report-only
+rule catalogs with `npm run gen:rules` and committed only on the commit each release tags, so the
+link above opens the latest release and an installed version links to its own tag. Report-only
 measurements and tool errors are not rules and have no entry.
 
 Each entry has a stable anchor, and the places that show a finding link to it: the SARIF report
