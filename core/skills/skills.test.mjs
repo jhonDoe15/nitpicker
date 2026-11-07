@@ -13,6 +13,7 @@ const skillNames = readdirSync(skillsRoot, { withFileTypes: true })
 const PRESET_MENTIONS_ALLOWED = { java: ['kotlin'] };
 const SHARED_PAGES = ['SKILL.md', 'beyond-the-gate.md', 'editing-existing-code.md'];
 const OPTIONAL_PAGES = ['SOURCES.md'];
+const TOPIC_FOLDER = 'rules';
 const FRAMEWORK_PAGES = {
   'spring.md': {
     skills: ['nitpicker-java', 'nitpicker-kotlin'],
@@ -28,6 +29,16 @@ function readSkill(name) {
   const yaml = /^---\n(?<yaml>[\s\S]*?)\n---\n/u.exec(text)?.groups?.yaml;
   if (yaml === undefined) throw new Error(`${name}/SKILL.md has no frontmatter`);
   return { text, frontmatter: parse(yaml, { strict: true, uniqueKeys: true }) };
+}
+
+function topicPages(name) {
+  const folder = path.join(skillsRoot, name, TOPIC_FOLDER);
+  return existsSync(folder) ? readdirSync(folder).map((file) => `${TOPIC_FOLDER}/${file}`) : [];
+}
+
+function pageLinks(name, page) {
+  const text = readFileSync(path.join(skillsRoot, name, page), 'utf8');
+  return relativeLinks(text).map((target) => path.posix.join(path.posix.dirname(page), target));
 }
 
 function skillFiles(name) {
@@ -74,15 +85,23 @@ describe('agent skills', () => {
   });
 
   it.each(skillNames)('%s links only to files inside its own folder', (name) => {
-    const missing = relativeLinks(readSkill(name).text).filter(
-      (target) => target.startsWith('..') || !existsSync(path.join(skillsRoot, name, target)),
+    const missing = ['SKILL.md', ...topicPages(name)].flatMap((page) =>
+      pageLinks(name, page).filter(
+        (target) => target.startsWith('..') || !existsSync(path.join(skillsRoot, name, target)),
+      ),
     );
     expect(missing).toEqual([]);
   });
 
+  it.each(skillNames)('%s keeps only Markdown topic pages that link back to SKILL.md', (name) => {
+    const pages = topicPages(name);
+    expect(pages.filter((page) => !page.endsWith('.md'))).toEqual([]);
+    expect(pages.filter((page) => !pageLinks(name, page).includes('SKILL.md'))).toEqual([]);
+  });
+
   it.each(skillNames)('%s links every page in its folder', (name) => {
     const links = relativeLinks(readSkill(name).text);
-    const pages = readdirSync(path.join(skillsRoot, name)).filter(
+    const pages = [...readdirSync(path.join(skillsRoot, name)), ...topicPages(name)].filter(
       (file) => file.endsWith('.md') && file !== 'SKILL.md',
     );
     expect(pages.filter((page) => !links.includes(page))).toEqual([]);
@@ -96,7 +115,12 @@ describe('agent skills', () => {
   it.each(skillNames)(
     '%s ships no page beyond the shared, optional and registered framework pages',
     (name) => {
-      const allowed = [...SHARED_PAGES, ...OPTIONAL_PAGES, ...frameworkPagesOf(name)];
+      const allowed = [
+        ...SHARED_PAGES,
+        ...OPTIONAL_PAGES,
+        `${TOPIC_FOLDER}/`,
+        ...frameworkPagesOf(name),
+      ];
       expect(skillFiles(name).filter((file) => !allowed.includes(file))).toEqual([]);
     },
   );
