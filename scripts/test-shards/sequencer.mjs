@@ -8,7 +8,19 @@ export function readDurations(file = durationFile()) {
   return new Map(Object.entries(JSON.parse(readFileSync(file, 'utf8'))));
 }
 
-const weightOf = (durations, file) => durations.get(file) ?? UNMEASURED_SECONDS;
+/**
+ * The weight of a file without a measurement: the median of the measured ones (or one second
+ * without any), so a new file needs no profile edit and still lands as a typical file would.
+ */
+export function unmeasuredWeight(durations) {
+  const measured = [...durations.values()].toSorted((left, right) => left - right);
+  return measured.length === 0 ? UNMEASURED_SECONDS : measured[Math.floor(measured.length / 2)];
+}
+
+/** The weight of `file` in `durations`, or the weight of an unmeasured file. */
+export function weightOf(durations, file) {
+  return durations.get(file) ?? unmeasuredWeight(durations);
+}
 
 export function heaviestFirst(files, durations) {
   return files.toSorted(
