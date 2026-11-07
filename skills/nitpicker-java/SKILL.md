@@ -81,7 +81,8 @@ To learn why a rule is on and what form it allows before you write or change cod
 - Fan-out: bound concurrent remote or message calls. Run the tasks on a fixed pool
   (`Executors.newFixedThreadPool(8)`), take a `Semaphore` permit around each call, or work through
   fixed-size batches; never `supplyAsync` per element on the default pool or a cached or
-  virtual-thread executor.
+  virtual-thread executor. Reactor: `flatMap(this::fetch, 8)` or `concatMap`, never
+  `Flux.fromIterable(items).flatMap(this::fetch)` or `Mono.zip` over a list built per element.
 - Child processes: wait with a deadline and destroy the child when it runs over,
   `if (!process.waitFor(30, TimeUnit.SECONDS)) process.destroyForcibly()`, reading the output on
   another thread first; never `waitFor()` or `getInputStream().readAllBytes()` alone

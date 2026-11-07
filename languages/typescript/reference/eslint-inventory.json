@@ -1562,6 +1562,15 @@
         "{{combinator}} starts {{operation}}{{via}} for every element of `{{collection}}` at once, so a large collection exhausts the {{target}}'s connections or rate limit. Run each call through a limiter created once outside the loop (`const limit = pLimit(8)`, then `limit(() => send(item))`), await fixed-size chunks, or make one batch call when the API has one. An exception fits only when the collection is always small."
       ]
     },
+    "nitpicker/unbounded-reactive-fan-out": {
+      "tools": ["eslint-lint"],
+      "forms": [],
+      "description": "Bound the concurrency of remote calls that RxJS subscribes per element",
+      "messages": [
+        "`{{operator}}` without a concurrency argument subscribes to {{operation}}{{via}} for every element of `{{collection}}` at once, so a large collection exhausts the {{target}}'s connections or rate limit. Pass a concurrency limit (`mergeMap((item) => load(item), 8)`), use `concatMap` for one call at a time, or `bufferCount(20)` and make one batch call per chunk. An exception fits only when the collection is always small.",
+        "`{{operator}}` subscribes to {{operation}}{{via}} for every element of `{{collection}}` at once, so a large collection exhausts the {{target}}'s connections or rate limit. Build the result with `from(items).pipe(mergeMap((item) => load(item), 8), toArray())`, or make one batch call when the API has one. An exception fits only when the collection is always small."
+      ]
+    },
     "no-async-promise-executor": {
       "tools": ["eslint-lint"],
       "forms": [],
@@ -4551,6 +4560,15 @@
       "description": "Bound the concurrency of remote calls started per element",
       "messages": [
         "{{combinator}} starts {{operation}}{{via}} for every element of `{{collection}}` at once, so a large collection exhausts the {{target}}'s connections or rate limit. Run each call through a limiter created once outside the loop (`const limit = pLimit(8)`, then `limit(() => send(item))`), await fixed-size chunks, or make one batch call when the API has one. An exception fits only when the collection is always small."
+      ]
+    },
+    "nitpicker/unbounded-reactive-fan-out": {
+      "tools": ["eslint-lint"],
+      "forms": [],
+      "description": "Bound the concurrency of remote calls that RxJS subscribes per element",
+      "messages": [
+        "`{{operator}}` without a concurrency argument subscribes to {{operation}}{{via}} for every element of `{{collection}}` at once, so a large collection exhausts the {{target}}'s connections or rate limit. Pass a concurrency limit (`mergeMap((item) => load(item), 8)`), use `concatMap` for one call at a time, or `bufferCount(20)` and make one batch call per chunk. An exception fits only when the collection is always small.",
+        "`{{operator}}` subscribes to {{operation}}{{via}} for every element of `{{collection}}` at once, so a large collection exhausts the {{target}}'s connections or rate limit. Build the result with `from(items).pipe(mergeMap((item) => load(item), 8), toArray())`, or make one batch call when the API has one. An exception fits only when the collection is always small."
       ]
     },
     "no-async-promise-executor": {
@@ -7646,6 +7664,15 @@
       "description": "Bound the concurrency of remote calls started per element",
       "messages": [
         "{{combinator}} starts {{operation}}{{via}} for every element of `{{collection}}` at once, so a large collection exhausts the {{target}}'s connections or rate limit. Run each call through a limiter created once outside the loop (`const limit = pLimit(8)`, then `limit(() => send(item))`), await fixed-size chunks, or make one batch call when the API has one. An exception fits only when the collection is always small."
+      ]
+    },
+    "nitpicker/unbounded-reactive-fan-out": {
+      "tools": ["eslint-lint"],
+      "forms": [],
+      "description": "Bound the concurrency of remote calls that RxJS subscribes per element",
+      "messages": [
+        "`{{operator}}` without a concurrency argument subscribes to {{operation}}{{via}} for every element of `{{collection}}` at once, so a large collection exhausts the {{target}}'s connections or rate limit. Pass a concurrency limit (`mergeMap((item) => load(item), 8)`), use `concatMap` for one call at a time, or `bufferCount(20)` and make one batch call per chunk. An exception fits only when the collection is always small.",
+        "`{{operator}}` subscribes to {{operation}}{{via}} for every element of `{{collection}}` at once, so a large collection exhausts the {{target}}'s connections or rate limit. Build the result with `from(items).pipe(mergeMap((item) => load(item), 8), toArray())`, or make one batch call when the API has one. An exception fits only when the collection is always small."
       ]
     },
     "no-async-promise-executor": {

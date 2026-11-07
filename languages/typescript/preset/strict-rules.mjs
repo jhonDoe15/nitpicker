@@ -73,6 +73,7 @@ export const strictEslintRuleIds = [
   'nitpicker/require-test-process-timeout',
   'nitpicker/test-tsconfig-pins-lib-and-types',
   'nitpicker/unbounded-fan-out',
+  'nitpicker/unbounded-reactive-fan-out',
   'no-duplicate-imports',
   'no-empty',
   'no-eval',
