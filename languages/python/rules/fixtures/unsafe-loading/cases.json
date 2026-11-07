@@ -1,0 +1,17 @@
+[
+  {
+    "tool": "ruff",
+    "rule": "S301",
+    "mention": "json.loads"
+  },
+  {
+    "tool": "ruff",
+    "rule": "S302",
+    "mention": "json.loads"
+  },
+  {
+    "tool": "ruff",
+    "rule": "S506",
+    "mention": "yaml.safe_load"
+  }
+]

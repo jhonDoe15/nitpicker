@@ -76,6 +76,10 @@ function protocolsLoosened({ before = [], after = [] }) {
   return before.some((contract) => contractLoosened(contract, heads.get(contract.type)));
 }
 
+function listGrew({ before = [], after = [] }) {
+  return after.some((entry) => !before.includes(entry));
+}
+
 function formattersDropped({ before = [], after = [] }) {
   return before.some((formatter) =>
     formatter === 'gofmt' ? after.length === 0 : !after.includes(formatter),
@@ -98,6 +102,7 @@ const LOOSENING_SETTINGS = [
   [/^tools\.[^.]+\.precedence$/u, 'tool-precedence', precedenceLoosened],
   [/^protocols$/u, 'protocols-loosened', protocolsLoosened],
   [/^spring\.roles\.[^.]+$/u, 'spring-roles-shrank', listShrank],
+  [/^conventions\.typescript\.detachedWorkRunners$/u, 'detached-work-runner-added', listGrew],
 ];
 
 export function looseningKindOfSetting(change, scope) {

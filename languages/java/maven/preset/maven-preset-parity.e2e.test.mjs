@@ -15,6 +15,8 @@ import {
   fixtures,
   DATED,
   FAILING_TEST,
+  GUARD,
+  GUARD_TEST,
   SHAPES,
   SHAPES_TEST,
   copyOf,
@@ -129,6 +131,26 @@ describe.skipIf(!enabled)('Java preset on Maven builds', () => {
     expect(fromMaven.map(({ rule }) => rule)).toEqual(['line-coverage']);
     expect(comparable(fromMaven)).toEqual(comparable(fromGradle));
   }, 180_000);
+  it('runs the same PIT mutators on Gradle and Maven, beyond PIT defaults', () => {
+    const [gradleProject, mavenProject] = twinProjects();
+    const survivors = (findings) =>
+      findings
+        .filter(({ rule, path: file }) => rule === 'mutant-survived' && file.endsWith('Guard.java'))
+        .map(({ identity }) => identity)
+        .sort();
+    for (const root of [gradleProject, mavenProject]) {
+      writeFileSync(path.join(root, 'src/main/java/demo/Guard.java'), GUARD);
+      writeFileSync(path.join(root, 'src/test/java/demo/GuardTest.java'), GUARD_TEST);
+    }
+    const fromGradle = survivors(collectJavaFindings(gradleProject, { gradle, policy: {} }));
+    const fromMaven = survivors(collectJavaFindings(mavenProject, { maven, policy: {} }));
+
+    expect(fromMaven).toEqual([
+      'Guard|label(LString;)LString;|NakedReceiverMutator|replaced call to String::trim with receiver#1',
+      'Guard|share(II)I|RemoveConditionalMutator_EQUAL_ELSE|removed conditional - replaced equality check with false#1',
+    ]);
+    expect(fromGradle).toEqual(fromMaven);
+  }, 180_000);
   it('filters the inlined library branches of Kotlin sources as the Kotlin preset does', () => {
     const project = copyOf(path.join(fixtures, 'kotlin'));
     for (const [file, text] of [
@@ -147,21 +169,20 @@ describe.skipIf(!enabled)('Java preset on Maven builds', () => {
         .sort(),
     ).toEqual(['Library.kt:12', 'Library.kt:14', 'Library.kt:18']);
   }, 180_000);
-  it('reports a failing test as a maven-failure tool error that names the test', () => {
+  it('reports a failing test as a tests-failed tool error that names the test', () => {
     const project = copyOf(path.join(fixtures, 'multi-module'));
     writeFileSync(path.join(project, 'core/src/test/java/demo/core/AdderTest.java'), FAILING_TEST);
     const [finding] = analyzeJavaSnapshot(project, { maven, policy: {} }).findings;
 
     expect(finding).toEqual({
       tool: 'java',
-      rule: 'maven-failure',
+      rule: 'tests-failed',
       path: '.',
-      identity: 'maven-failure',
+      identity: 'tests-failed',
       classification: 'tool-error',
       message: [
-        `Tests fail in ${path.join(project, 'core')}; nitpicker needs a passing test suite ` +
-          'for coverage and mutation testing:',
-        '  demo.core.AdderTest.adds: expected: <4> but was: <3>',
+        '1 test fails in core; the build stopped, so no other check ran. Fix the tests and rerun:',
+        '  demo/core/AdderTest.java:10 > demo.core.AdderTest.adds: expected: <4> but was: <3>',
       ].join('\n'),
     });
   }, 180_000);

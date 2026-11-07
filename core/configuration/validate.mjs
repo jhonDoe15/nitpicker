@@ -178,9 +178,6 @@ function validateOptional(config) {
   if (config.layout !== undefined) {
     validateLayout(config.layout, config.preset, config.history);
   }
-  if (config.exceptions !== undefined) {
-    validateTypescriptExceptionRules(config.exceptions, config.preset);
-  }
   if (config.tools !== undefined) {
     validateTools(config.tools, config.preset);
   }
@@ -206,13 +203,14 @@ function exceptionRuleProblem(rule, preset) {
   if (rule.startsWith('formatjs/') && !i18nRuleIds.includes(rule)) {
     return `which nitpicker does not run. The i18n rules it runs: ${i18nRuleIds.join(', ')}`;
   }
-  const native = TYPESCRIPT_RULE_NAMES.get(rule);
+  const native = TYPESCRIPT_RULE_NAMES.get(canonicalRule(rule));
   return native === undefined
     ? undefined
     : `which the ${preset ?? 'typescript'} preset reports as ${native}: name "${native}" instead`;
 }
 
 function validateProjectExceptions(exceptions, key, preset) {
+  validateTypescriptExceptionRules(exceptions, preset);
   validateExceptions(exceptions, key, {
     preset: preset ?? 'typescript',
     matchesOwnGlobs: TYPESCRIPT_PRESETS.includes(preset)
@@ -222,11 +220,12 @@ function validateProjectExceptions(exceptions, key, preset) {
 }
 
 function validateTypescriptExceptionRules(exceptions, preset) {
-  if (!TYPESCRIPT_PRESETS.includes(preset)) {
+  if (!TYPESCRIPT_PRESETS.includes(preset) || !Array.isArray(exceptions)) {
     return;
   }
-  for (const [index, { rule }] of exceptions.entries()) {
-    const problem = exceptionRuleProblem(rule, preset);
+  for (const [index, entry] of exceptions.entries()) {
+    const rule = entry?.rule;
+    const problem = typeof rule === 'string' ? exceptionRuleProblem(rule, preset) : undefined;
     if (problem !== undefined) {
       throw configError(`"exceptions[${String(index)}].rule" names ${rule}, ${problem}`);
     }

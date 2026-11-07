@@ -1,0 +1,21 @@
+  <rule name="TriStateBoolean" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
+        message="A boxed Boolean can be true, false or null, so this has three states that the type does not name. Use an enum that names each state (Mode.ON, Mode.OFF, Mode.AUTO), or a primitive boolean when absence means nothing.">
+    <priority>3</priority>
+    <properties>
+      <property name="xpath">
+        <value><![CDATA[
+let $mapped := ('RequestParam', 'RequestBody', 'RequestHeader', 'PathVariable', 'JsonProperty', 'Column', 'Field'),
+    $mappedClass := ('Entity', 'Embeddable', 'MappedSuperclass', 'Document')
+return (
+  //MethodDeclaration[not(ModifierList/Annotation[@SimpleName = 'Override'])]/ClassType
+  | //MethodDeclaration[not(ModifierList/Annotation[@SimpleName = 'Override'])]
+      /FormalParameters/FormalParameter[not(ModifierList/Annotation[@SimpleName = $mapped])]/ClassType
+  | //ConstructorDeclaration/FormalParameters/FormalParameter[not(ModifierList/Annotation[@SimpleName = $mapped])]/ClassType
+  | //FieldDeclaration[not(ModifierList/Annotation[@SimpleName = $mapped])]
+      [not(ancestor::ClassDeclaration[1]/ModifierList/Annotation[@SimpleName = $mappedClass])]/ClassType
+  | //RecordComponent[not(ModifierList/Annotation[@SimpleName = $mapped])]/ClassType
+)[@SimpleName = 'Boolean'][not(TypeArguments)]
+]]></value>
+      </property>
+    </properties>
+  </rule>

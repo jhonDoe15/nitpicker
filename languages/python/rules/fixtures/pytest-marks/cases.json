@@ -1,0 +1,17 @@
+[
+  {
+    "tool": "ruff",
+    "rule": "PT023",
+    "mention": "without parentheses"
+  },
+  {
+    "tool": "ruff",
+    "rule": "PT026",
+    "mention": "name the fixtures"
+  },
+  {
+    "tool": "ruff",
+    "rule": "PT028",
+    "mention": "remove the default value"
+  }
+]

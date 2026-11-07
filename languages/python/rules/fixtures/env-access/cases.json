@@ -1,0 +1,7 @@
+[
+  {
+    "tool": "python-rules",
+    "rule": "process-env-access",
+    "mention": "composition root"
+  }
+]

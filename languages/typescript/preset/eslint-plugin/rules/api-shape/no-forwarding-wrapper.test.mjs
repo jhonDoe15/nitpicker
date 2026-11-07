@@ -29,6 +29,8 @@ writeFileSync(
     "export type UserId = string & { readonly brand: 'UserId' };",
     'export declare function fetchUser(id: string): User;',
     'export declare function fetchUsers(...ids: string[]): User[];',
+    'export async function loadRemote(id: string): Promise<User> { return { id }; }',
+    'export declare function loadEager(id: string): Promise<User>;',
     'export type Options = { deep: boolean };',
     'export declare function findUser(id: string, options: Options): User;',
     'export declare function fetchWith(id: string, retry?: number): User;',
@@ -60,7 +62,7 @@ function typed(code, errors) {
 }
 
 const imports =
-  "import { api, assertOk, fetchRetry, fetchUser, fetchUsers, fetchWith, findUser, isObject, overloaded, pick, useQuery } from './api';\nimport type { Foo, Options, User, UserId } from './api';\n";
+  "import { api, assertOk, fetchRetry, fetchUser, fetchUsers, fetchWith, findUser, isObject, loadEager, loadRemote, overloaded, pick, useQuery } from './api';\nimport type { Foo, Options, User, UserId } from './api';\n";
 
 function wrapper(name, target, exported = name) {
   return [{ messageId: 'forwardingWrapper', data: { name, target, exported } }];
@@ -85,6 +87,10 @@ tester.run('no-forwarding-wrapper', rule, {
     'export function loadUser(id: string) { return fetchUser(id).id; }',
     'export const loadUser = (id: string) => fetchUser(id).id;',
     'export async function loadUser(id: string) { return fetchUser(id); }',
+    'export async function loadUser(id: string) { return await fetchUser(id); }',
+    'export function loadUser(id: string) { return loadRemote(id).then((user) => user); }',
+    'export async function loadUser(id: string) { return loadEager(id); }',
+    'export const loadUser = async (id: string) => await loadEager(id);',
     'export function* loadUsers(id: string) { return fetchUsers(id); }',
     'export function loadUser<T extends string>(id: T) { return fetchUser(id); }',
     'export function loadUser(id: string) { return pick<string>(id); }',
@@ -168,6 +174,14 @@ tester.run('no-forwarding-wrapper', rule, {
     typed(
       `${imports}export function loadUsers(...ids: string[]) { return fetchUsers(...ids); }`,
       wrapper('loadUsers', 'fetchUsers'),
+    ),
+    typed(
+      `${imports}export async function loadUser(id: string) { return await loadRemote(id); }`,
+      wrapper('loadUser', 'loadRemote'),
+    ),
+    typed(
+      `${imports}export const loadUser = async (id: string) => loadRemote(id);`,
+      wrapper('loadUser', 'loadRemote'),
     ),
     typed(
       `${imports}export function useUser(key: string) { return useQuery(key); }`,
