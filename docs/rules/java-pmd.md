@@ -1,6 +1,6 @@
 # Java and Kotlin: PMD rules
 
-PMD's bestpractices, design, errorprone, multithreading, performance and security categories, as far as nitpicker's rulesets keep them, and the rules nitpicker adds to them, for Java sources in the Java and Kotlin presets. This page lists 267 rules. [All pages](README.md).
+PMD's bestpractices, design, errorprone, multithreading, performance and security categories, as far as nitpicker's rulesets keep them, and the rules nitpicker adds to them, for Java sources in the Java and Kotlin presets. This page lists 268 rules. [All pages](README.md).
 
 The guide for these rules: [docs/java-preset.md](../java-preset.md).
 
@@ -673,6 +673,17 @@ By convention, the default label should be the last label in a switch statement 
 - **Allowed form:** Move the default label to the end of the switch.
 - **Exception:** If this is intended, add `{"rule":"pmd/DefaultLabelNotLastInSwitchStmt","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json. The message gives no exception route because the flagged code is a defect; an entry still lifts it if a reviewer agrees.
 - **See also:** [PMD rule documentation](https://docs.pmd-code.org/pmd-doc-7.7.0/pmd_rules_java_bestpractices.html#defaultlabelnotlastinswitch)
+
+<a id="pmd-defaulttimezone"></a>
+
+### `pmd/DefaultTimeZone`
+
+In main sources: `ZoneId.systemDefault()` (also through `ZoneOffset`) and `TimeZone.getDefault()`, which read the JVM's default time zone, so the result changes with the server's `TZ` or `-Duser.timezone`.
+
+- **Scope:** Main sources only.
+- **Why it is on:** A PMD rule nitpicker defines: it names one allowed form where the language offers several, and reports the other forms.
+- **Allowed form:** ZoneId.systemDefault() and TimeZone.getDefault() read the default time zone of the JVM, so the result changes with the TZ or -Duser.timezone of the server. Pass a zone: ZoneId.of("UTC"), a configured zone, or the zone of an injected Clock (clock.getZone()).
+- **Exception:** If this is intended, add `{"rule":"pmd/DefaultTimeZone","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 
 <a id="pmd-detachedtestcase"></a>
 

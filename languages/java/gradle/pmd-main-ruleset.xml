@@ -1078,4 +1078,24 @@ return (
       </property>
     </properties>
   </rule>
+  <rule name="DefaultTimeZone" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
+        message="ZoneId.systemDefault() and TimeZone.getDefault() read the default time zone of the JVM, so the result changes with the TZ or -Duser.timezone of the server. Pass a zone: ZoneId.of(&quot;UTC&quot;), a configured zone, or the zone of an injected Clock (clock.getZone()).">
+    <priority>3</priority>
+    <properties>
+      <property name="xpath">
+        <value><![CDATA[
+(
+  //MethodCall[ArgumentList/@Size = 0]
+    [@MethodName = 'systemDefault' and *[1][pmd-java:typeIs('java.time.ZoneId')]
+     or @MethodName = 'getDefault' and *[1][pmd-java:typeIs('java.util.TimeZone')]
+     or pmd-java:matchesSig('java.time.ZoneId#systemDefault()')
+     or pmd-java:matchesSig('java.util.TimeZone#getDefault()')]
+  | //MethodReference
+    [@MethodName = 'systemDefault' and *[1][pmd-java:typeIs('java.time.ZoneId')]
+     or @MethodName = 'getDefault' and *[1][pmd-java:typeIs('java.util.TimeZone')]]
+)
+]]></value>
+      </property>
+    </properties>
+  </rule>
 </ruleset>
