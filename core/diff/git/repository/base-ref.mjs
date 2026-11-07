@@ -65,6 +65,10 @@ export function resolveBase({
     return { baseRef: notCheckedOutCommit(repositoryRoot, configuredBase), source: 'config' };
   }
 
+  return inferredBase(repositoryRoot, staged);
+}
+
+function inferredBase(repositoryRoot, staged) {
   const remotes = listRemotes(repositoryRoot);
   const branch = currentBranch(repositoryRoot);
   const onDefault = defaultBranchAtHead(repositoryRoot, branch);

@@ -22,7 +22,7 @@ import { PACKAGE_ROOT } from '../../tooling/tool-resolution.mjs';
 import { combineAnalyzerReports, noChangesReport } from './results.mjs';
 import { runBaseWithCache, createFindingsCache } from '../cache/findings-cache.mjs';
 import { cachedLine } from '../execution/progress.mjs';
-import { quickScoped, runQuickHead } from './quick/head-run.mjs';
+import { quickScoped, runHeadAnalyzers } from './quick/head-run.mjs';
 import {
   prepareSnapshotDependencies,
   removeSnapshotDependencies,
@@ -183,9 +183,7 @@ function runAndCombine(context) {
   const { settings, comparison, layout, startedAt } = context;
   const baseRun = runBaseSide(context);
   const headRun = withMovesFile(layout.moves.files, (baselineMovesFile) =>
-    runQuickHead(context, (headAnalyzers) =>
-      runHeadAnalyzers(context, { headAnalyzers, baselineMovesFile }),
-    ),
+    runHeadAnalyzers(context, baselineMovesFile),
   );
   return combineAnalyzerReports({
     analyzers: settings.analyzers,
@@ -213,22 +211,6 @@ function runAndCombine(context) {
         mergeBaseSha: comparison.mergeBaseSha,
         touchedPaths: [...layout.touchedPaths],
       }) ?? [],
-  });
-}
-
-function runHeadAnalyzers(context, { headAnalyzers, baselineMovesFile }) {
-  const { settings, roots, headPolicyFile } = context;
-  return runAnalyzers({
-    analyzers: headAnalyzers,
-    projectRoot: roots.headSnapshotRoot,
-    policyRoot: roots.headSnapshotRoot,
-    toolRoot: PACKAGE_ROOT,
-    liveProjectRoot: settings.headProjectRoot,
-    headPolicyFile,
-    snapshot: 'head',
-    baselineRoot: roots.baseProjectRoot,
-    baselineMovesFile,
-    runTasks: settings.runTasks,
   });
 }
 

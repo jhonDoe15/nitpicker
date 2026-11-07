@@ -67,10 +67,19 @@ export function runSnapshotCli({
     partialRunField(partialRunOf(options.analyzerNames, analyzers, selectedAnalyzers)),
     runProfileSummary({ quick, staged: options.staged }),
   );
-  report.text = writeSnapshotReports(outputRoot, report, {
+  publishSnapshot(report, {
+    outputRoot,
     projectPath: relativeProjectPath,
     repositoryRoot,
+    options,
+    cli: { currentProjectRoot, environment, stdout, stderr },
   });
+  return snapshotExitCode(report);
+}
+
+function publishSnapshot(report, { outputRoot, projectPath, repositoryRoot, options, cli }) {
+  const { currentProjectRoot, environment, stdout, stderr } = cli;
+  report.text = writeSnapshotReports(outputRoot, report, { projectPath, repositoryRoot });
   stdout.write(renderSnapshotConsoleSummary(report, path.join(outputRoot, 'report.txt')));
   stdout.write(renderSnapshotRuleFilterSection(report, options.ruleFilters));
   writeGithubOutput({
@@ -81,7 +90,6 @@ export function runSnapshotCli({
     stdout,
     stderr,
   });
-  return snapshotExitCode(report);
 }
 
 function snapshotExitCode({ summary, toolErrors }) {

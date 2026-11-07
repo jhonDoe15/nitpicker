@@ -48,6 +48,11 @@ function declaredExclusions(analyzers) {
   ].sort();
 }
 
+function runAndScopeSummary(context, outcomes) {
+  const outside = outcomes.reduce((total, { outside: count }) => total + count, 0);
+  return { ...runProfileSummary(context), ...scopeSummary(context.scope, outside) };
+}
+
 function buildReport(context) {
   const { analyzers, outcomes, toolErrors, comparison, startedAt } = context;
   const { configOverrides, policyChanges, policyLoosenings, acceptPolicyChange, notices } = context;
@@ -77,11 +82,7 @@ function buildReport(context) {
         ? {}
         : { policyAcceptanceSource: context.policyAcceptanceSource }),
       notices,
-      ...runProfileSummary(context),
-      ...scopeSummary(
-        context.scope,
-        outcomes.reduce((total, { outside }) => total + outside, 0),
-      ),
+      ...runAndScopeSummary(context, outcomes),
       tools: outcomes.map(({ tool }) => tool),
       exclusions: declaredExclusions(analyzers),
       renamedPaths: context.baseToHeadRenames.size,
