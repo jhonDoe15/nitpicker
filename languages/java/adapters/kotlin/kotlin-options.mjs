@@ -21,7 +21,7 @@ import { COPIED_CONSTANT_EXCEPTION_RULE } from '../review-rules/copied-constants
 import { suggestionOrAllowed } from '../../../../shared/messages/closest-match.mjs';
 
 export const KOTLIN_FORMATTERS = ['ktlint', 'ktfmt', 'none'];
-const KOTLIN_KEYS = ['formatter', 'detektConfig'];
+export const KOTLIN_KEYS = ['formatter', 'detektConfig'];
 export const KOTLIN_EXCEPTION_RULES = [
   ...new Set([
     ...SOURCE_RULE_IDS,

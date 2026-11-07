@@ -27,6 +27,7 @@ export function branchCoverageFindings(
       path: branch.path,
       identity: identify(branch.key, occurrence),
       message: `${branchMessage(branch, minimum)} ${acceptSentence(branch)}`,
+      allowedForm: branchAllowedForm(branch),
       classification: 'enforceable',
       ...(isNamed(branch) ? { symbol: branch.symbol } : {}),
       anchor: { key: `branch:${branch.anchor ?? branch.key}`, requireUnchangedLine: true },
@@ -36,15 +37,25 @@ export function branchCoverageFindings(
   return findings;
 }
 
+const UNTESTED_OUTCOMES = 'Add a test for each outcome it misses.';
+const UNTAKEN_ARMS = "Test it, or remove it if it can't happen.";
+
+function hasArms(branch) {
+  return Array.isArray(branch.arms) && branch.arms.length > 0;
+}
+
+function branchAllowedForm(branch) {
+  return hasArms(branch) ? UNTAKEN_ARMS : UNTESTED_OUTCOMES;
+}
+
 function branchMessage(branch, minimum) {
   const message = renderMessage(MESSAGES.changedBranchCoverage, {
     percent: branch.percent.toFixed(2),
     minimum,
   });
-  if (!Array.isArray(branch.arms) || branch.arms.length === 0) {
-    return `${message}.`;
-  }
-  return `${message}. Not taken: ${branch.arms.join('; ')}. Test it, or remove it if it can't happen.`;
+  return hasArms(branch)
+    ? `${message}. Not taken: ${branch.arms.join('; ')}. ${UNTAKEN_ARMS}`
+    : `${message}. ${UNTESTED_OUTCOMES}`;
 }
 
 function isNamed(branch) {
