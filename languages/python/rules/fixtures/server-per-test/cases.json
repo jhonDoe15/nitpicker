@@ -1,0 +1,7 @@
+[
+  {
+    "tool": "python-rules",
+    "rule": "server-or-container-per-test",
+    "mention": "scope=\"session\""
+  }
+]

@@ -37,7 +37,7 @@ class Swatch(
         get() = primary
 }
 
-interface SwatchRepository : JpaRepository<Swatch, Long> {
+@Transactional interface SwatchRepository : JpaRepository<Swatch, Long> {
     @Modifying(clearAutomatically = true, flushAutomatically = true)
     @Query("update Swatch s set s.primary = :shade where s.id in :ids")
     fun recolor(ids: Collection<Long>, shade: Shade): Int

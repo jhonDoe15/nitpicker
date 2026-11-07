@@ -178,16 +178,14 @@ describe('collectTestResults', () => {
     expect(existsSync(path.join(reportDir, 'archunit/TEST-shop.OrderTest.xml'))).toBe(false);
   });
 
-  it('fails with the first failing tests by name', () => {
+  it('fails naming every failing test', () => {
     const cases = Array.from({ length: 12 }, (_, index) => [
       `case${String(index)}`,
       `expected ${String(index)}`,
     ]);
     const reports = tree({ 'TEST-shop.OrderTest.xml': suite('shop.OrderTest', cases) });
 
-    const listed = cases
-      .slice(0, 10)
-      .map(([test, failure]) => `  shop.OrderTest.${test}: ${failure}`);
+    const listed = cases.map(([test, failure]) => `  shop.OrderTest.${test}: ${failure}`);
 
     expect(() => {
       collectTestResults({
@@ -199,9 +197,8 @@ describe('collectTestResults', () => {
     }).toThrow(
       new Error(
         [
-          'Tests fail in /m; nitpicker needs a passing test suite for coverage and mutation testing:',
+          '12 tests fail; the build stopped, so no other check ran. Fix the tests and rerun:',
           ...listed,
-          '  and 2 more',
         ].join('\n'),
       ),
     );
@@ -223,7 +220,8 @@ describe('collectTestResults', () => {
     const failing = (...lines) =>
       new Error(
         [
-          'Tests fail in /m; nitpicker needs a passing test suite for coverage and mutation testing:',
+          `${String(lines.length)} ${lines.length === 1 ? 'test fails' : 'tests fail'}; ` +
+            'the build stopped, so no other check ran. Fix the tests and rerun:',
           ...lines,
         ].join('\n'),
       );
@@ -270,7 +268,11 @@ describe('collectTestResults', () => {
       }),
     ).toEqual({
       testsRan: true,
-      failure: { module: 'core', tests: ['shop.OrderTest.totals: expected 3'] },
+      failure: {
+        module: 'core',
+        tests: ['shop.OrderTest.totals: expected 3'],
+        details: [{ name: 'shop.OrderTest.totals', message: 'expected 3' }],
+      },
     });
   });
 

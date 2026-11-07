@@ -81,9 +81,11 @@ describe('testHonestyFindings', () => {
       'DisabledTest',
       'FocusedTest',
       'RetryInTest',
+      'ServerOrContainerPerTest',
       'AssertionInControlFlow',
       'CoroutineEscapesTest',
       'WeakAssertionInTest',
+      'GlobalStateLeakInTest',
     ]);
   });
 

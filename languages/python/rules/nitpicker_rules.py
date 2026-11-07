@@ -1,6 +1,8 @@
 import ast
+import importlib
 import json
 import os
+import re
 import sys
 import tokenize
 
@@ -14,8 +16,32 @@ TOO_DEEP_RULE = "rules-too-deep"
 GUARDED_PREFIXES = ("security.", "signatures.", "concurrency.")
 
 
+SKIPPED_FOLDERS = {"fixtures", "test-support", "e2e", "__pycache__"}
+CHECK_DEFINITION = re.compile(r"^def check\(", re.MULTILINE)
+
+
+def defines_check(path):
+    with open(path, encoding="utf-8") as handle:
+        return CHECK_DEFINITION.search(handle.read()) is not None
+
+
+def check_module_names():
+    names = []
+    for root, folders, files in os.walk(HERE):
+        folders[:] = sorted(name for name in folders if name not in SKIPPED_FOLDERS)
+        if root == HERE:
+            continue
+        for name in sorted(files):
+            path = os.path.join(root, name)
+            if name.endswith(".py") and defines_check(path):
+                module = os.path.relpath(path, HERE)[: -len(".py")].replace(os.sep, ".")
+                names.append(module.removesuffix(".__init__"))
+    return names
+
+
 def load_checks():
     sys.path.insert(0, HERE)
+<<<<<<< HEAD
     from boundary import domain_types, guards, paths
     from checks import comments, declarations, parameters, shell, state
     from concurrency import fan_out
@@ -78,6 +104,9 @@ def load_checks():
         mutation,
         shims,
     ]
+=======
+    return [importlib.import_module(name) for name in check_module_names()]
+>>>>>>> origin/main
 
 
 class FileContext:

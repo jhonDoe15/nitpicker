@@ -4,7 +4,7 @@ import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { exceptionRoute } from '../../../shared/exceptions/rule-names.mjs';
 import { RUFF_CONFIG } from '../adapters/configuration/python-ruff-config.mjs';
-import { RULE_CASES } from './test-support/python-rule-cases.mjs';
+import { ruleCases } from './test-support/python-rule-cases.mjs';
 import {
   applyRuleHints,
   describeRuleFinding,
@@ -12,6 +12,8 @@ import {
   RULE_HINTS,
   withHint,
 } from './rule-hints.mjs';
+
+const RULE_CASES = ruleCases();
 
 const route = (rule) => exceptionRoute({ rule, path: 'src/a.py', key: 'python.exceptions' });
 
@@ -132,6 +134,8 @@ describe('hints', () => {
       ...sample({ tool: 'ruff', rule: 'T201' }),
       message:
         'The base message. Use `logging`: `logger = logging.getLogger(__name__)`, then `logger.info(...)`. If this is intended, add {"rule":"T201","paths":["src/a.py"],"reason":"..."} to "python.exceptions" in nitpicker.config.json.',
+      allowedForm:
+        'Use `logging`: `logger = logging.getLogger(__name__)`, then `logger.info(...)`.',
     });
   });
 
@@ -194,7 +198,13 @@ describe('hints', () => {
   it('keep every other field of the finding', () => {
     const finding = sample({ tool: 'mypy', rule: 'return-value' });
 
-    expect(applyRuleHints([finding])).toEqual([{ ...finding, message: expect.any(String) }]);
+    expect(applyRuleHints([finding])).toEqual([
+      {
+        ...finding,
+        message: expect.any(String),
+        allowedForm: 'Fix the type; inline ignores are banned.',
+      },
+    ]);
   });
 
   it('describe a custom rule finding by its subject', () => {

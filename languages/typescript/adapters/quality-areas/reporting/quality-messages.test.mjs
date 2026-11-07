@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { MESSAGES } from '../../../../../shared/policy.mjs';
+import { MESSAGES, renderMessage } from '../../../../../shared/policy.mjs';
 import { mutationSkipFor } from '../runners/mutation.mjs';
 import { normalizeCrap, normalizeMutation, crapUnknownMessage } from './tests.mjs';
 import {
@@ -63,7 +63,7 @@ describe('test timeout text', () => {
     );
 
     expect(message).toBe(
-      '1 test fails, so coverage, CRAP and mutation were skipped. Fix the tests and rerun:\n  src/t.test.ts > times out: Test timed out after 305 ms. A fake clock that was never restored (`vi.useRealTimers()` in `afterEach`), a promise that never settles or a long wait is the usual cause.',
+      '1 test fails; coverage, CRAP and mutation were skipped. Fix the tests and rerun:\n  src/t.test.ts > times out: Test timed out after 305 ms. A fake clock that was never restored (`vi.useRealTimers()` in `afterEach`), a promise that never settles or a long wait is the usual cause.',
     );
   });
 });
@@ -101,7 +101,7 @@ describe('snapshot failures', () => {
     );
 
     expect(message).toBe(
-      '1 test fails, so coverage, CRAP and mutation were skipped. Fix the tests and rerun:\n  test/a.test.ts > snap: Error: Snapshot `snap 1` mismatched. A new snapshot must be committed: run `vitest -u` locally and commit the .snap file.',
+      '1 test fails; coverage, CRAP and mutation were skipped. Fix the tests and rerun:\n  test/a.test.ts > snap: Error: Snapshot `snap 1` mismatched. A new snapshot must be committed: run `vitest -u` locally and commit the .snap file.',
     );
   });
 });
@@ -205,7 +205,7 @@ describe('failures of a base snapshot', () => {
     const [finding] = findingsOf({ report: failedReport, snapshot: 'head', runnerName: 'Jest' });
 
     expect(finding.message.split('\n')[0]).toBe(
-      '2 tests fail, so coverage, CRAP and mutation were skipped. Fix the tests and rerun:',
+      '2 tests fail; coverage, CRAP and mutation were skipped. Fix the tests and rerun:',
     );
   });
 
@@ -227,7 +227,7 @@ describe('failures of a base snapshot', () => {
     expect([finding.rule, finding.message]).toEqual([
       'tests-not-run',
       [
-        '1 test fails, so coverage, CRAP and mutation were skipped. Fix the tests and rerun:',
+        '1 test fails; coverage, CRAP and mutation were skipped. Fix the tests and rerun:',
         '  src/a.test.ts > could not run: Cannot find module',
       ].join('\n'),
     ]);
@@ -257,8 +257,12 @@ describe('unknown coverage text', () => {
   it('suggests composition-root wiring only for composition-root files', () => {
     expect(crapUnknownMessage('src/main/composition-root.ts')).toBe(MESSAGES.crapCoverageUnknown);
     expect(crapUnknownMessage('src/server.ts')).toBe(MESSAGES.crapCoverageUnknown);
-    expect(crapUnknownMessage('src/main/features/greeting/domain/greet.ts')).toBe(
-      '{name} has unknown coverage and no CRAP score: no test runs it. Add a test that calls it.',
+    expect(
+      renderMessage(crapUnknownMessage('src/main/features/greeting/domain/greet.ts'), {
+        name: 'greet',
+      }),
+    ).toBe(
+      'greet has unknown coverage and no CRAP score: no test runs it. Add a test that calls it.',
     );
   });
 

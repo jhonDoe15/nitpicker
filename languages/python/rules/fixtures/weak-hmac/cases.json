@@ -1,0 +1,7 @@
+[
+  {
+    "tool": "python-rules",
+    "rule": "weak-hmac",
+    "mention": "hashlib.sha256"
+  }
+]

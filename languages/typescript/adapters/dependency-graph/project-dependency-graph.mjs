@@ -13,6 +13,7 @@ import { revivedExpression } from '../../preset/project-tools/config-values.mjs'
 import { layoutTransformFor } from '../../preset/tool-configs.mjs';
 import { projectExcludePaths } from './project-config/dependency-cruiser-layers.mjs';
 import { projectGraphLayer } from './project-config/graph-layer.mjs';
+import { TOOL_RUN_CEILING_MS } from '../../../../shared/processes/deadlines.mjs';
 
 const MAX_OUTPUT_BYTES = 100 * 1024 * 1024;
 const TSCONFIG_NAME = 'tsconfig.quality.json';
@@ -102,6 +103,7 @@ function runCruise(cruise) {
       cwd: cruise.projectRoot,
       encoding: 'utf8',
       maxBuffer: MAX_OUTPUT_BYTES,
+      timeout: TOOL_RUN_CEILING_MS,
     });
     assertCruised(result);
     return result.stdout;
