@@ -115,7 +115,7 @@ function writeRequested(options, reference) {
 }
 
 function reportStale(registry, reference, stderr) {
-  const generated = new Map([...registry, ...reference.referenceFiles(repositoryRoot)]);
+  const generated = new Map([...registry, ...reference.referenceDataFiles(repositoryRoot)]);
   const stale = reference.staleReferenceFiles(repositoryRoot, generated);
   if (stale.length > 0) {
     stderr.write(`Stale (run npm run gen:rules): ${stale.join(', ')}\n`);
@@ -125,9 +125,9 @@ function reportStale(registry, reference, stderr) {
 
 /**
  * Regenerates the plugin rule map, the Kotlin scan module list, the PMD rulesets, the ESLint
- * inventory and the reference. `--check` lists what is stale (it still rebuilds the inventory),
- * `--data` writes only the built, uncommitted files. `--refresh-ruff[=<path>]` and `--refresh-jvm`
- * first rewrite the ruff snapshot and the texts of the pinned JVM tools.
+ * inventory, the data files and the uncommitted pages. `--check` lists stale registries and data
+ * files, `--data` writes only the data files. `--refresh-ruff[=<path>]` and `--refresh-jvm` first
+ * rewrite the ruff snapshot and the texts of the pinned JVM tools.
  */
 export async function main(options, { stderr }) {
   if (!options.every((option) => FLAGS.includes(option) || RUFF_OPTION.test(option))) {
