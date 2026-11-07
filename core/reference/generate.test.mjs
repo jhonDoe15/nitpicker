@@ -82,10 +82,9 @@ describe('the generated rule reference', () => {
         .split('\n')
         .filter((line) => line.startsWith('docs/')),
     ).toEqual(['docs/rules/']);
-    expect(commitStep.run.split('\n').slice(1, 3)).toEqual([
-      'npm run gen:rules',
-      'git add --force docs/rules',
-    ]);
+    expect(
+      commitStep.run.split('\n').filter((line) => /^(?:npm run gen:rules|git add)/u.test(line)),
+    ).toEqual(['npm run gen:rules', 'git add --force docs/rules']);
   });
 });
 
@@ -149,6 +148,18 @@ describe('entryProblems', () => {
     ]);
     expect(entryProblems([link('docs/gone.md')], root)).toEqual([
       'demo/one: docs/gone.md does not exist',
+    ]);
+  });
+
+  it('checks a link to a rule page against the entries, since the pages are not on disk', () => {
+    const root = project({});
+    const page = `docs/rules/${PAGES[0].id}.md`;
+    const link = (anchor) => entry('one', { docs: [{ label: 'Counterpart', path: page, anchor }] });
+
+    expect(entryProblems([link('demo-one')], root)).toEqual([]);
+    expect(entryProblems([link()], root)).toEqual([]);
+    expect(entryProblems([link('demo-gone')], root)).toEqual([
+      `demo/one: the reference has no ${page}#demo-gone`,
     ]);
   });
 });

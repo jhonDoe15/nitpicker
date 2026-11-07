@@ -52,18 +52,28 @@ jobs:
           (cd release-assets && shasum -a 256 nitpicker-*.tgz > SHA256SUMS)
           git show "origin/main:.github/release-notes/$TAG.md" > notes.md 2>/dev/null || cp ".github/release-notes/$TAG.md" notes.md
       # main does not commit the rule pages (docs/rules), so the release commit adds them on top of
-      # the released commit, and the tag points at it.
+      # the released commit, and the tag points at it. A rerun reuses a tag an earlier run pushed.
       - name: Commit the rule pages and tag the release commit
         id: release-commit
         env:
           TAG: ${{ steps.version.outputs.tag }}
+          COMMIT: ${{ inputs.commit }}
         run: |
           set -euo pipefail
           npm run gen:rules
           git add --force docs/rules
+          if [ -n "$(git ls-remote --tags origin "refs/tags/$TAG" | cut -f1)" ]; then
+            git fetch --no-tags origin "+refs/tags/$TAG:refs/tags/$TAG"
+            if [ "$(git rev-parse "refs/tags/$TAG^{commit}^")" != "$(git rev-parse "$COMMIT")" ]; then
+              echo "::error::$TAG already exists and is not the release commit of $COMMIT."
+              exit 1
+            fi
+            echo "sha=$(git rev-parse "refs/tags/$TAG^{commit}")" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
           git -c user.name="github-actions[bot]" \
             -c user.email="41898282+github-actions[bot]@users.noreply.github.com" \
-            commit --quiet -m "Rule reference pages for $TAG"
+            commit --quiet --allow-empty -m "Rule reference pages for $TAG"
           git tag "$TAG"
           git push origin "refs/tags/$TAG"
           echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
