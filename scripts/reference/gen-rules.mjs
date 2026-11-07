@@ -19,7 +19,6 @@ import {
   toolTextFile,
 } from '../../languages/java/reference/tool-text/tool-text.mjs';
 import {
-  eslintInventoryPath,
   liveEslintInventory,
   writeEslintInventory,
 } from '../../languages/typescript/reference/eslint-inventory.mjs';
@@ -49,15 +48,8 @@ async function refreshRuff(ruff, { stderr, formattedText }) {
   );
 }
 
-async function refreshEslint({ formattedText }) {
-  const inventory = await liveEslintInventory();
-  writeEslintInventory(
-    await formattedText(
-      repositoryRoot,
-      eslintInventoryPath(repositoryRoot),
-      JSON.stringify(inventory),
-    ),
-  );
+async function buildEslintInventory() {
+  writeEslintInventory(`${JSON.stringify(await liveEslintInventory())}\n`);
 }
 
 async function refreshJvm({ formattedText }) {
@@ -98,18 +90,15 @@ function writeGenerated(generated) {
   }
 }
 
-const FLAGS = ['--check', '--data', '--refresh-eslint', '--refresh-jvm'];
+const FLAGS = ['--check', '--data', '--refresh-jvm'];
 const RUFF_OPTION = /^--refresh-ruff(?:=(.+))?$/u;
 const USAGE =
-  'Usage: node scripts/reference/gen-rules.mjs [--check | --data] [--refresh-eslint] [--refresh-jvm] [--refresh-ruff[=<path>]]\n';
+  'Usage: node scripts/reference/gen-rules.mjs [--check | --data] [--refresh-jvm] [--refresh-ruff[=<path>]]\n';
 
 async function refreshSnapshots(options, context) {
   const ruffOption = options.map((option) => RUFF_OPTION.exec(option)).find(Boolean);
   if (ruffOption !== undefined) {
     await refreshRuff(ruffOption[1] ?? 'ruff', context);
-  }
-  if (options.includes('--refresh-eslint')) {
-    await refreshEslint(context);
   }
   if (options.includes('--refresh-jvm')) {
     await refreshJvm(context);
@@ -135,10 +124,10 @@ function reportStale(registry, reference, stderr) {
 }
 
 /**
- * Regenerates the plugin rule map, the Kotlin scan module list, the PMD rulesets and the reference.
- * `--check` lists what is stale, `--data` writes only the built, uncommitted data files.
- * `--refresh-ruff[=<path>]`, `--refresh-eslint` and `--refresh-jvm` first rewrite the ruff
- * snapshot, the ESLint inventory, and the texts of the pinned JVM tools.
+ * Regenerates the plugin rule map, the Kotlin scan module list, the PMD rulesets, the ESLint
+ * inventory and the reference. `--check` lists what is stale, `--data` writes only the built,
+ * uncommitted files. `--refresh-ruff[=<path>]` and `--refresh-jvm` first rewrite the ruff snapshot
+ * and the texts of the pinned JVM tools.
  */
 export async function main(options, { stderr }) {
   if (!options.every((option) => FLAGS.includes(option) || RUFF_OPTION.test(option))) {
@@ -153,6 +142,7 @@ export async function main(options, { stderr }) {
   if (!options.includes('--check') && !options.includes('--data')) {
     writeGenerated(registry);
   }
+  await buildEslintInventory();
   const reference = await import('../../core/reference/generate.mjs');
   await refreshSnapshots(options, { stderr, formattedText: reference.formattedText });
   return options.includes('--check')
