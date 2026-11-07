@@ -1,0 +1,9 @@
+  <rule name="SpringDataQueryTextBlock" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
+        message="Write a multi-part query as one text block (&quot;&quot;&quot;) instead of joining strings with +.">
+    <priority>3</priority>
+    <properties><property name="xpath"><value><![CDATA[
+//Annotation[pmd-java:typeIs('org.springframework.data.jpa.repository.Query')
+    or pmd-java:typeIs('org.springframework.data.jpa.repository.NativeQuery')]
+  /AnnotationMemberList/MemberValuePair[@Name = ('value', 'countQuery')]/InfixExpression[@Operator = '+']
+]]></value></property></properties>
+  </rule>

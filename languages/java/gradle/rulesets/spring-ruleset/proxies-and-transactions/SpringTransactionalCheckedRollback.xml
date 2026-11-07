@@ -1,0 +1,18 @@
+  <rule name="SpringTransactionalCheckedRollback" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
+        message="Add rollbackFor = Exception.class to this @Transactional, or throw an unchecked exception. A checked exception commits the work done so far instead of rolling it back.">
+    <priority>2</priority>
+    <properties><property name="xpath"><value><![CDATA[
+//MethodDeclaration[
+    ThrowsList/ClassType[pmd-java:typeIs('java.lang.Throwable')]
+      [not(pmd-java:typeIs('java.lang.RuntimeException') or pmd-java:typeIs('java.lang.Error'))]]
+  [ModifierList/Annotation[pmd-java:typeIs('org.springframework.transaction.annotation.Transactional')]
+      [not(AnnotationMemberList/MemberValuePair[@Name = ('rollbackFor', 'rollbackForClassName')])]
+      [not(AnnotationMemberList/MemberValuePair[@Name = 'readOnly']/BooleanLiteral[@True = true()])]
+   or (@Visibility = 'public'
+       and not(ModifierList/Annotation[pmd-java:typeIs('org.springframework.transaction.annotation.Transactional')])
+       and ancestor::ClassDeclaration[1]/ModifierList/Annotation[pmd-java:typeIs('org.springframework.transaction.annotation.Transactional')]
+         [not(AnnotationMemberList/MemberValuePair[@Name = ('rollbackFor', 'rollbackForClassName')])]
+         [not(AnnotationMemberList/MemberValuePair[@Name = 'readOnly']/BooleanLiteral[@True = true()])])]
+  /ThrowsList
+]]></value></property></properties>
+  </rule>

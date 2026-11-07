@@ -1,0 +1,7 @@
+[
+  {
+    "tool": "python-rules",
+    "rule": "todo-without-issue",
+    "mention": "# todo(#123)"
+  }
+]

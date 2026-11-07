@@ -1,0 +1,7 @@
+[
+  {
+    "tool": "python-rules",
+    "rule": "many-to-many-cascade-delete",
+    "mention": "\"save-update, merge\""
+  }
+]

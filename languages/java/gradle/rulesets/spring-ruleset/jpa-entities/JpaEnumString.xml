@@ -1,0 +1,44 @@
+  <rule name="JpaEnumString" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
+        message="Write @Enumerated(EnumType.STRING) on this enum field or element collection, and @MapKeyEnumerated(EnumType.STRING) on a map with enum keys. The default stores the ordinal, so adding or reordering constants silently corrupts stored rows.">
+    <priority>2</priority>
+    <properties><property name="xpath"><value><![CDATA[
+let $fields := //ClassDeclaration[ModifierList/Annotation[
+    (pmd-java:typeIs('jakarta.persistence.Entity') or pmd-java:typeIs('javax.persistence.Entity'))
+    or (pmd-java:typeIs('jakarta.persistence.Embeddable') or pmd-java:typeIs('javax.persistence.Embeddable'))
+    or (pmd-java:typeIs('jakarta.persistence.MappedSuperclass') or pmd-java:typeIs('javax.persistence.MappedSuperclass'))]]
+  [not(ClassBody/MethodDeclaration/ModifierList/Annotation[(pmd-java:typeIs('jakarta.persistence.Id') or pmd-java:typeIs('javax.persistence.Id'))])]
+  /ClassBody/FieldDeclaration[not(pmd-java:modifiers() = ('static', 'transient'))]
+  [not(ModifierList/Annotation[
+    (pmd-java:typeIs('jakarta.persistence.Transient') or pmd-java:typeIs('javax.persistence.Transient'))
+    or (pmd-java:typeIs('jakarta.persistence.Convert') or pmd-java:typeIs('javax.persistence.Convert'))
+    or pmd-java:typeIs('org.hibernate.annotations.JdbcTypeCode')
+    or pmd-java:typeIs('org.hibernate.annotations.JdbcType')
+    or pmd-java:typeIs('org.hibernate.annotations.Type')])],
+    $converters := //ClassDeclaration[ModifierList/Annotation[(pmd-java:typeIs('jakarta.persistence.Converter') or pmd-java:typeIs('javax.persistence.Converter'))]
+      [AnnotationMemberList/MemberValuePair[@Name = 'autoApply']/BooleanLiteral[@True = true()]]],
+    $converted := (
+  $converters/ImplementsList/ClassType[(pmd-java:typeIs('jakarta.persistence.AttributeConverter') or pmd-java:typeIs('javax.persistence.AttributeConverter'))]/TypeArguments/ClassType[1]/@SimpleName,
+  for $extended in $converters/ExtendsList/ClassType[(pmd-java:typeIs('jakarta.persistence.AttributeConverter') or pmd-java:typeIs('javax.persistence.AttributeConverter'))]
+  return let $base := (//ClassDeclaration[@SimpleName = $extended/@SimpleName])[1],
+    $argument := string(($base/ImplementsList/ClassType[(pmd-java:typeIs('jakarta.persistence.AttributeConverter') or pmd-java:typeIs('javax.persistence.AttributeConverter'))]/TypeArguments/ClassType[1]/@SimpleName)[1]),
+    $index := index-of($base/TypeParameters/TypeParameter/@Name, $argument)
+  return if (empty($base)) then $extended/TypeArguments/ClassType/@SimpleName
+    else if (empty($index)) then $argument
+    else $extended/TypeArguments/*[$index[1]]/@SimpleName),
+    $string := function($field) {
+  exists($field/ModifierList/Annotation[pmd-java:typeIs('jakarta.persistence.Enumerated') or pmd-java:typeIs('javax.persistence.Enumerated')]
+    [.//*[@Name = 'STRING']])
+},
+    $stringKey := function($field) {
+  exists($field/ModifierList/Annotation[pmd-java:typeIs('jakarta.persistence.MapKeyEnumerated') or pmd-java:typeIs('javax.persistence.MapKeyEnumerated')]
+    [.//*[@Name = 'STRING']])
+},
+    $collections := $fields[ModifierList/Annotation[pmd-java:typeIs('jakarta.persistence.ElementCollection') or pmd-java:typeIs('javax.persistence.ElementCollection')]]
+return (
+  $fields[not($string(.))]/ClassType[pmd-java:typeIs('java.lang.Enum')]
+  | $collections[not($string(.))]/ClassType[not(pmd-java:typeIs('java.util.Map'))]/TypeArguments/*[1]
+  | $collections[not($string(.))]/ClassType[pmd-java:typeIs('java.util.Map')]/TypeArguments/*[2]
+  | $collections[not($stringKey(.))]/ClassType[pmd-java:typeIs('java.util.Map')]/TypeArguments/*[1]
+)[self::ClassType[pmd-java:typeIs('java.lang.Enum')]][not(@SimpleName = $converted)]
+]]></value></property></properties>
+  </rule>
