@@ -28,6 +28,8 @@ import { readDependencyNames } from '../eslint-config/scope-support.mjs';
 import { securityFactsFor } from '../eslint-config/policy/security-facts.mjs';
 import { i18nRuleIds } from '../eslint-config/i18n/i18n-rules.mjs';
 import { i18nScopeConfigFor, isI18nProject } from '../eslint-config/i18n/i18n-scope.mjs';
+import { isServerProject, serverScopeConfigFor } from '../eslint-config/server/server-scope.mjs';
+import { serverRuleIds } from '../eslint-config/server/server-rules.mjs';
 import { readHeadPolicy, readLayout } from '../head-policy.mjs';
 import { precedenceLayers } from '../../../../shared/conventions/tool-precedence.mjs';
 import { existingRoots } from '../layout.mjs';
@@ -55,6 +57,7 @@ const i18n = isI18nProject({
   javascript: layout.javascript,
 });
 const security = securityFactsFor(analyzedProjectRoot(), (file) => layout.isSourceFile(file));
+const server = isServerProject(analyzedProjectRoot());
 const { sourceGlobs, testGlobs, excludedGlobs, unitTestGlobs } = layout;
 const parserOptions = {
   project: './tsconfig.quality.json',
@@ -122,6 +125,7 @@ const presetConfig = defineConfig(
       ]),
   ...(react ? await reactScopeConfigFor(layout, policy.react) : []),
   ...(i18n ? await i18nScopeConfigFor(layout, policy.i18n) : []),
+  ...(server ? serverScopeConfigFor(layout, { browser: react || security.browser }) : []),
   {
     // eslint-errors reports this rule for all production code; reporting it here too lists every
     files: productionFiles,
@@ -193,6 +197,7 @@ const presetConfig = defineConfig(
 const inactiveRuleIds = [
   ...(react ? [] : [...reactRuleIds, ...reactTestRuleIds]),
   ...(i18n ? [] : i18nRuleIds),
+  ...(server ? [] : serverRuleIds),
 ];
 const applicableExceptions = policy.exceptions.filter(
   ({ rule }) => !inactiveRuleIds.includes(rule),
