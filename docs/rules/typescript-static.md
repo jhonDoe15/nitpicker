@@ -18,7 +18,7 @@ Domain does not import adapters.
 
 - **Allowed form:** domain/ stays pure and may not import adapters/. Define the dependency as a type in domain/ and let adapters/ implement it. An exception fits only when it is deliberate; its paths are the importing files.
 - **Exception:** If this is intended, add `{"rule":"domain-does-not-import-adapters","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
-- **See also:** [Strict preset guide](../typescript-strict-preset.md#layout-and-boundaries)
+- **See also:** [Strict preset guide](../typescript-strict-preset/layout-and-boundaries.md)
 
 <a id="dependency-architecture-domain-does-not-import-id-libraries"></a>
 
@@ -28,7 +28,7 @@ Domain does not import id libraries.
 
 - **Allowed form:** domain/ may not import ID or random-data libraries (uuid, nanoid, cuid, ulid, faker). Take the ID as a parameter from adapters/. An exception fits only when it is deliberate; its paths are the importing files.
 - **Exception:** If this is intended, add `{"rule":"domain-does-not-import-id-libraries","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
-- **See also:** [Strict preset guide](../typescript-strict-preset.md#layout-and-boundaries)
+- **See also:** [Strict preset guide](../typescript-strict-preset/layout-and-boundaries.md)
 
 <a id="dependency-architecture-domain-does-not-import-module-state"></a>
 
@@ -38,7 +38,7 @@ Domain does not import module state.
 
 - **Allowed form:** domain/ may not import module state (state/, \*-state, \*-store files). Receive the state as a parameter and return the new value. An exception fits only when it is deliberate; its paths are the importing files.
 - **Exception:** If this is intended, add `{"rule":"domain-does-not-import-module-state","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
-- **See also:** [Strict preset guide](../typescript-strict-preset.md#layout-and-boundaries)
+- **See also:** [Strict preset guide](../typescript-strict-preset/layout-and-boundaries.md)
 
 <a id="dependency-architecture-domain-does-not-import-network-or-database-clients"></a>
 
@@ -48,7 +48,7 @@ Domain does not import network or database clients.
 
 - **Allowed form:** domain/ may not import network or database clients. Call the client from adapters/ and pass the data into domain/ as a parameter. An exception fits only when it is deliberate; its paths are the importing files.
 - **Exception:** If this is intended, add `{"rule":"domain-does-not-import-network-or-database-clients","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
-- **See also:** [Strict preset guide](../typescript-strict-preset.md#layout-and-boundaries)
+- **See also:** [Strict preset guide](../typescript-strict-preset/layout-and-boundaries.md)
 
 <a id="dependency-architecture-domain-does-not-import-node-io"></a>
 
@@ -58,7 +58,7 @@ Domain does not import node io.
 
 - **Allowed form:** domain/ may import only pure Node modules (path, url, util, assert, buffer, events, string_decoder, punycode, querystring, and their subpaths such as path/posix). Do the I/O in adapters/ and pass the result in as a parameter. An exception fits only when it is deliberate; its paths are the importing files.
 - **Exception:** If this is intended, add `{"rule":"domain-does-not-import-node-io","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
-- **See also:** [Strict preset guide](../typescript-strict-preset.md#layout-and-boundaries)
+- **See also:** [Strict preset guide](../typescript-strict-preset/layout-and-boundaries.md)
 
 <a id="dependency-architecture-domain-does-not-import-the-logger"></a>
 
@@ -68,7 +68,7 @@ Domain does not import the logger.
 
 - **Allowed form:** domain/ may not import the logger. Return a result describing what happened and let adapters/ log it. An exception fits only when it is deliberate; its paths are the importing files.
 - **Exception:** If this is intended, add `{"rule":"domain-does-not-import-the-logger","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
-- **See also:** [Strict preset guide](../typescript-strict-preset.md#layout-and-boundaries)
+- **See also:** [Strict preset guide](../typescript-strict-preset/layout-and-boundaries.md)
 
 <a id="dependency-architecture-domain-does-not-reach-io-through-shared"></a>
 
@@ -78,7 +78,7 @@ Domain does not reach io through shared.
 
 - **Allowed form:** domain/ reaches Node I/O or a client through a shared/ module it imports. Move that dependency out of the shared module, or do the work in adapters/ and pass the result into domain/ as a parameter. An exception fits only when it is deliberate; its paths are the importing files.
 - **Exception:** If this is intended, add `{"rule":"domain-does-not-reach-io-through-shared","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
-- **See also:** [Strict preset guide](../typescript-strict-preset.md#layout-and-boundaries)
+- **See also:** [Strict preset guide](../typescript-strict-preset/layout-and-boundaries.md)
 
 <a id="dependency-architecture-feature-internals-only-through-index"></a>
 
@@ -88,7 +88,7 @@ Feature internals only through index.
 
 - **Allowed form:** Import a feature only through its public index.ts (src/main/features/\<name>/index.ts), not its internal files.
 - **Exception:** If this is intended, add `{"rule":"feature-internals-only-through-index","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
-- **See also:** [Strict preset guide](../typescript-strict-preset.md#layout-and-boundaries)
+- **See also:** [Strict preset guide](../typescript-strict-preset/layout-and-boundaries.md)
 
 <a id="dependency-architecture-features-do-not-import-composition-root"></a>
 
@@ -98,7 +98,7 @@ Features do not import composition root.
 
 - **Allowed form:** Features do not import the composition root. Accept the dependency as a parameter; only the composition root wires features together.
 - **Exception:** If this is intended, add `{"rule":"features-do-not-import-composition-root","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
-- **See also:** [Strict preset guide](../typescript-strict-preset.md#layout-and-boundaries)
+- **See also:** [Strict preset guide](../typescript-strict-preset/layout-and-boundaries.md)
 
 <a id="dependency-architecture-features-do-not-import-other-feature-internals"></a>
 
@@ -108,7 +108,7 @@ Features do not import other feature internals.
 
 - **Allowed form:** Import another feature only through its public index.ts (src/main/features/\<name>/index.ts), not its internal files.
 - **Exception:** If this is intended, add `{"rule":"features-do-not-import-other-feature-internals","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
-- **See also:** [Strict preset guide](../typescript-strict-preset.md#layout-and-boundaries)
+- **See also:** [Strict preset guide](../typescript-strict-preset/layout-and-boundaries.md)
 
 <a id="dependency-architecture-no-import-outside-roots"></a>
 
@@ -118,7 +118,7 @@ No import outside roots.
 
 - **Allowed form:** Production code imports only from layout.sourceRoots: move the imported code under a source root, or add its folder to layout.sourceRoots so the gate checks it. Excluding the imported file instead is a policy loosening that fails until a person accepts it.
 - **Exception:** It has no exception: move the code under a source root, or add its folder to `layout.sourceRoots`.
-- **See also:** [Strict preset guide](../typescript-strict-preset.md#layout-and-boundaries)
+- **See also:** [Strict preset guide](../typescript-strict-preset/layout-and-boundaries.md)
 
 <a id="dependency-architecture-no-production-cycles"></a>
 
@@ -129,7 +129,7 @@ Production modules import each other in a cycle.
 - **Why it is on:** A cycle makes modules impossible to load, test or replace one at a time.
 - **Allowed form:** Break the cycle: move the shared part to a module both import, or pass the dependency in as a parameter.
 - **Exception:** If this is intended, add `{"rule":"no-production-cycles","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
-- **See also:** [Strict preset guide](../typescript-strict-preset.md#layout-and-boundaries)
+- **See also:** [Strict preset guide](../typescript-strict-preset/layout-and-boundaries.md)
 
 <a id="dependency-architecture-no-production-to-test"></a>
 
@@ -140,7 +140,7 @@ Production code imports a test file or a file under a test root.
 - **Why it is on:** Code that ships must not depend on code that only tests use.
 - **Allowed form:** Move what both need to a production module, or keep the import in a test.
 - **Exception:** If this is intended, add `{"rule":"no-production-to-test","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
-- **See also:** [Strict preset guide](../typescript-strict-preset.md#layout-and-boundaries)
+- **See also:** [Strict preset guide](../typescript-strict-preset/layout-and-boundaries.md)
 
 <a id="dependency-architecture-shared-does-not-import-features"></a>
 
@@ -150,7 +150,7 @@ Shared does not import features.
 
 - **Allowed form:** Shared code does not import features. Move the dependency into the feature, or pass it in as a parameter from the composition root.
 - **Exception:** If this is intended, add `{"rule":"shared-does-not-import-features","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
-- **See also:** [Strict preset guide](../typescript-strict-preset.md#layout-and-boundaries)
+- **See also:** [Strict preset guide](../typescript-strict-preset/layout-and-boundaries.md)
 
 <a id="prettier-format-prettier-prettier"></a>
 
