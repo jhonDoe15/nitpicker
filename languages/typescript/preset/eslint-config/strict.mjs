@@ -115,6 +115,7 @@ export function strictSyntaxConfigFor(layout = defaultResolvedLayout, options = 
         ...sourceSyntaxBans(options),
         'nitpicker/no-self-recursion': 'error',
         'nitpicker/no-tri-state-boolean': 'error',
+        'nitpicker/no-unhandled-url-parse': 'error',
         'nitpicker/no-compatibility-shim': 'error',
       },
     },
@@ -149,7 +150,7 @@ export function strictSyntaxConfigFor(layout = defaultResolvedLayout, options = 
 
 export const strictSyntaxConfig = strictSyntaxConfigFor();
 
-function strictTypedConfigFor(layout, parserOptions) {
+function strictTypedConfigFor(layout, parserOptions, options = {}) {
   return [
     {
       files: layout.sourceGlobs,
@@ -159,9 +160,14 @@ function strictTypedConfigFor(layout, parserOptions) {
       rules: {
         ...typedDeclarationRules,
         ...controlFlowTypedRules,
+        'nitpicker/no-unhandled-void-promise': [
+          'error',
+          { runners: options.detachedWorkRunners ?? [] },
+        ],
         'nitpicker/exhaustive-union-predicate': 'error',
         'nitpicker/no-forwarding-wrapper': 'error',
         'nitpicker/no-falsy-default': 'error',
+        'nitpicker/no-string-as-regex': 'error',
       },
     },
     {
@@ -196,7 +202,11 @@ export function strictConfig(parserOptions) {
 
 export const strictProductionRules = {
   'nitpicker/no-branch-in-composition-root': 'error',
+  'nitpicker/no-eager-relation': 'error',
+  'nitpicker/no-many-to-many-cascade-remove': 'error',
   'nitpicker/no-module-level-let': 'error',
+  'nitpicker/no-shared-stateful-regex': 'error',
+  'nitpicker/no-singular-and-plural-prop': 'error',
   'nitpicker/no-uninjectable-delay': 'error',
   'nitpicker/no-unvalidated-schema-field': 'error',
 };
@@ -205,7 +215,7 @@ export function strictPresetConfig(layout, parserOptions, options = {}) {
   return [
     ...productionPolicyConfigFor(layout, options),
     ...strictSyntaxConfigFor(layout, options),
-    ...strictTypedConfigFor(layout, parserOptions),
+    ...strictTypedConfigFor(layout, parserOptions, options),
     {
       files: layout.sourceGlobs,
       ...productionScope(layout),

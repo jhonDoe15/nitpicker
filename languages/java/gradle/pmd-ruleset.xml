@@ -81,46 +81,6 @@
       </property>
     </properties>
   </rule>
-  <rule name="LogStringConcatenation" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
-        message="Pass values as placeholders (LOG.info(&quot;user '{'}&quot;, user); '{'0} in System.Logger and java.util.logging), not a message built with + or String.format.">
-    <priority>3</priority>
-    <properties>
-      <property name="xpath">
-        <value><![CDATA[
-//MethodCall[@MethodName = ('info', 'warn', 'error', 'log', 'config', 'warning', 'severe')]
-  [*[1][pmd-java:typeIs('org.slf4j.Logger') or pmd-java:typeIs('org.slf4j.spi.LoggingEventBuilder')
-    or pmd-java:typeIs('java.util.logging.Logger') or pmd-java:typeIs('java.lang.System.Logger')
-    or pmd-java:typeIs('org.apache.logging.log4j.Logger') or pmd-java:typeIs('org.apache.commons.logging.Log')]]
-  /ArgumentList/(*[1] | *[1][not(pmd-java:typeIs('java.lang.String'))]/following-sibling::*[1])
-  [(self::InfixExpression[@Operator = '+'] and not(@CompileTimeConstant = true()))
-    or self::MethodCall[@MethodName = ('format', 'formatted')]]
-]]></value>
-      </property>
-    </properties>
-  </rule>
-  <rule name="GeneratedOnHandWrittenCode" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
-        message="Remove the annotation from hand-written code: JaCoCo skips code carrying an annotation whose name contains Generated, and PIT skips @Generated, so this is not measured. Put the JPA @GeneratedValue on the field.">
-    <priority>2</priority>
-    <properties>
-      <property name="xpath">
-        <value><![CDATA[
-//(ClassDeclaration | RecordDeclaration | EnumDeclaration | MethodDeclaration | ConstructorDeclaration | CompactConstructorDeclaration)
-  /ModifierList/Annotation[contains(@SimpleName, 'Generated')]
-]]></value>
-      </property>
-    </properties>
-  </rule>
-  <rule name="MutationIgnoreMarker" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
-        message="Remove the annotation and kill the mutants with a test: PIT does not mutate code annotated @DoNotMutate or @CoverageIgnore.">
-    <priority>2</priority>
-    <properties>
-      <property name="xpath">
-        <value><![CDATA[
-//Annotation[@SimpleName = ('DoNotMutate', 'CoverageIgnore')]
-]]></value>
-      </property>
-    </properties>
-  </rule>
   <rule ref="category/java/performance.xml">
     <exclude name="AvoidArrayLoops"/>
     <exclude name="AvoidFileStream"/>
@@ -172,173 +132,6 @@
       </property>
     </properties>
   </rule>
-  <rule name="LockOrderInversion" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
-        message="This nesting takes two locks of the class in the opposite order to another nesting of the class: two threads that run both can each hold one lock and wait forever for the other, a deadlock that no test reliably shows. Take nested locks in one order everywhere in the class (if any path takes a and then b, no path takes b and then a), or guard the state with one lock. Only locks held in fields of the class, this, Type.class and Type.FIELD are compared; a lock passed in, held in a local or taken in a called method is not followed.">
-    <priority>2</priority>
-    <properties>
-      <property name="xpath">
-        <value><![CDATA[
-let $unitOf := function($n) {
-      $n/ancestor::*[self::MethodDeclaration or self::ConstructorDeclaration
-        or self::CompactConstructorDeclaration or self::Initializer or self::LambdaExpression
-        or self::FieldDeclaration or self::EnumConstant][1]
-    },
-    $typeOf := function($n) {
-      $n/ancestor::*[self::ClassDeclaration or self::EnumDeclaration or self::RecordDeclaration
-        or self::AnonymousClassDeclaration][1]
-    },
-    $memberOf := function($n) {
-      $n/ancestor::*[self::MethodDeclaration or self::ConstructorDeclaration
-        or self::CompactConstructorDeclaration or self::Initializer or self::FieldDeclaration][1]
-    },
-    $fields := function($t) { $t/*[self::ClassBody or self::EnumBody or self::RecordBody]/FieldDeclaration },
-    $keyOf := function($e) as xs:string? {
-      let $t := $typeOf($e), $names := $fields($t)/VariableDeclarator/VariableId/@Name
-      return if ($e[self::ThisExpression][not(*)]) then 'this'
-        else if ($e[self::ClassLiteral]) then string($e/ClassType/@SimpleName) || '.class'
-        else if ($e[self::FieldAccess][*[1][self::ThisExpression][not(*)]][@Name = $names])
-          then string($e/@Name)
-        else if ($e[self::VariableAccess][@Name = $names][empty($memberOf($e)//VariableId[@Name = $e/@Name])])
-          then string($e/@Name)
-        else if ($e[self::FieldAccess]
-                   [*[1][self::TypeExpression or self::AmbiguousName[matches(@Name, '^[A-Z]')]]])
-          then (let $owner := string(($e/TypeExpression/ClassType/@SimpleName, $e/AmbiguousName/@Name)[1])
-                return if ($owner = $t/@SimpleName and $e/@Name = $names) then string($e/@Name)
-                  else $owner || '.' || $e/@Name)
-        else ()
-    },
-    $isLock := function($call) as xs:boolean {
-      exists($call[@MethodName = ('lock', 'lockInterruptibly')][ArgumentList/@Size = 0]
-        [*[1][pmd-java:typeIs('java.util.concurrent.locks.Lock')]])
-    },
-    $held := function($n) {
-      let $u := $unitOf($n)
-      return (
-        for $b in $n/ancestor::Block[parent::SynchronizedStatement][$unitOf(.) is $u]
-        return ($keyOf($b/../*[1]), '?')[1],
-        $u[self::MethodDeclaration][pmd-java:modifiers() = 'synchronized']
-          /(if (pmd-java:modifiers() = 'static') then string($typeOf(.)/@SimpleName) || '.class' else 'this'),
-        for $s in $n/ancestor-or-self::*[parent::Block][$unitOf(.) is $u],
-            $l in $s/preceding-sibling::ExpressionStatement[MethodCall[$isLock(.)]]
-        return let $k := $keyOf($l/MethodCall/*[1])
-        return if (empty($k)) then '?'
-          else if (exists($s/preceding-sibling::*[. >> $l]
-                     /(self::ExpressionStatement/MethodCall | self::TryStatement/FinallyClause//MethodCall)
-                     [@MethodName = 'unlock'][ArgumentList/@Size = 0][$keyOf(*[1]) = $k])) then ()
-          else $k,
-        $u[.//MethodCall[@MethodName = 'tryLock']]/'?')
-    },
-    $siteKey := function($s) {
-      if ($s[self::SynchronizedStatement]) then $keyOf($s/*[1]) else $keyOf($s/MethodCall/*[1])
-    },
-    $sites := function($t) {
-      $t//(SynchronizedStatement | ExpressionStatement[MethodCall[$isLock(.)]])[$typeOf(.) is $t]
-    }
-return //(SynchronizedStatement | ExpressionStatement[MethodCall[$isLock(.)]])
-  [let $k := $siteKey(.), $t := $typeOf(.)
-   return exists($k) and not($k = $held(.)) and (some $h in $held(.)[. != '?'] satisfies
-     (some $other in $sites($t) satisfies
-       $siteKey($other) = $h and not($h = $held($other)) and $held($other) = $k))]
-]]></value>
-      </property>
-    </properties>
-  </rule>
-  <rule name="InconsistentFieldLocking" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
-        message="This write of a field holds no lock, while another write of the same field in the class holds one: a thread that writes here races with the locked writer, so an update is lost or another thread sees a stale value. Hold the lock the locked write holds for every write of the field (synchronized on the same monitor, or lock() and unlock() of the same Lock), or make the field an atomic or concurrent type (AtomicLong, LongAdder, ConcurrentHashMap). Constructors, initializers, a single write of a volatile field, a write in a lambda and a method the class calls while it holds a lock are not reported.">
-    <priority>2</priority>
-    <properties>
-      <property name="xpath">
-        <value><![CDATA[
-let $unitOf := function($n) {
-      $n/ancestor::*[self::MethodDeclaration or self::ConstructorDeclaration
-        or self::CompactConstructorDeclaration or self::Initializer or self::LambdaExpression
-        or self::FieldDeclaration or self::EnumConstant][1]
-    },
-    $typeOf := function($n) {
-      $n/ancestor::*[self::ClassDeclaration or self::EnumDeclaration or self::RecordDeclaration
-        or self::AnonymousClassDeclaration][1]
-    },
-    $memberOf := function($n) {
-      $n/ancestor::*[self::MethodDeclaration or self::ConstructorDeclaration
-        or self::CompactConstructorDeclaration or self::Initializer or self::FieldDeclaration][1]
-    },
-    $fields := function($t) { $t/*[self::ClassBody or self::EnumBody or self::RecordBody]/FieldDeclaration },
-    $keyOf := function($e) as xs:string? {
-      let $t := $typeOf($e), $names := $fields($t)/VariableDeclarator/VariableId/@Name
-      return if ($e[self::ThisExpression][not(*)]) then 'this'
-        else if ($e[self::ClassLiteral]) then string($e/ClassType/@SimpleName) || '.class'
-        else if ($e[self::FieldAccess][*[1][self::ThisExpression][not(*)]][@Name = $names])
-          then string($e/@Name)
-        else if ($e[self::VariableAccess][@Name = $names][empty($memberOf($e)//VariableId[@Name = $e/@Name])])
-          then string($e/@Name)
-        else if ($e[self::FieldAccess]
-                   [*[1][self::TypeExpression or self::AmbiguousName[matches(@Name, '^[A-Z]')]]])
-          then (let $owner := string(($e/TypeExpression/ClassType/@SimpleName, $e/AmbiguousName/@Name)[1])
-                return if ($owner = $t/@SimpleName and $e/@Name = $names) then string($e/@Name)
-                  else $owner || '.' || $e/@Name)
-        else ()
-    },
-    $isLock := function($call) as xs:boolean {
-      exists($call[@MethodName = ('lock', 'lockInterruptibly')][ArgumentList/@Size = 0]
-        [*[1][pmd-java:typeIs('java.util.concurrent.locks.Lock')]])
-    },
-    $held := function($n) {
-      let $u := $unitOf($n)
-      return (
-        for $b in $n/ancestor::Block[parent::SynchronizedStatement][$unitOf(.) is $u]
-        return ($keyOf($b/../*[1]), '?')[1],
-        $u[self::MethodDeclaration][pmd-java:modifiers() = 'synchronized']
-          /(if (pmd-java:modifiers() = 'static') then string($typeOf(.)/@SimpleName) || '.class' else 'this'),
-        for $s in $n/ancestor-or-self::*[parent::Block][$unitOf(.) is $u],
-            $l in $s/preceding-sibling::ExpressionStatement[MethodCall[$isLock(.)]]
-        return let $k := $keyOf($l/MethodCall/*[1])
-        return if (empty($k)) then '?'
-          else if (exists($s/preceding-sibling::*[. >> $l]
-                     /(self::ExpressionStatement/MethodCall | self::TryStatement/FinallyClause//MethodCall)
-                     [@MethodName = 'unlock'][ArgumentList/@Size = 0][$keyOf(*[1]) = $k])) then ()
-          else $k,
-        $u[.//MethodCall[@MethodName = 'tryLock']]/'?')
-    },
-    $concurrent := '^(Atomic|Concurrent|CopyOnWrite|(Long|Double)(Adder|Accumulator)$)|Blocking(Queue|Deque)$',
-    $eligible := function($t) {
-      $fields($t)[not(pmd-java:modifiers() = ('static', 'final'))]
-        [not(ClassType[matches(@SimpleName, $concurrent)])]/VariableDeclarator/VariableId/@Name
-    },
-    $fieldOf := function($w) as xs:string? {
-      let $target := $w/*[1], $names := $eligible($typeOf($w))
-      return if ($target[self::FieldAccess][*[1][self::ThisExpression][not(*)]][@Name = $names])
-          then string($target/@Name)
-        else if ($target[self::VariableAccess][@Name = $names]
-                   [empty($memberOf($w)//VariableId[@Name = $target/@Name])])
-          then string($target/@Name)
-        else ()
-    },
-    $writes := function($t) {
-      $t//(AssignmentExpression | UnaryExpression[@Operator = ('++', '--')])
-        [$typeOf(.) is $t][$unitOf(.)[self::MethodDeclaration]]
-    },
-    $single := function($w, $name) as xs:boolean {
-      $w[self::AssignmentExpression][@Operator = '=']
-        and empty($w/*[2]/descendant-or-self::*
-          [self::VariableAccess[empty($memberOf($w)//VariableId[@Name = $name])]
-            or self::FieldAccess[*[1][self::ThisExpression]]][@Name = $name])
-    },
-    $calledLocked := function($m, $t) as xs:boolean {
-      some $c in $t//MethodCall[@MethodName = $m/@Name][*[1][self::ArgumentList or self::ThisExpression]]
-        [$typeOf(.) is $t]
-      satisfies exists($held($c))
-    }
-return //(AssignmentExpression | UnaryExpression[@Operator = ('++', '--')])[$unitOf(.)[self::MethodDeclaration]]
-  [let $t := $typeOf(.), $name := $fieldOf(.),
-       $volatile := $fields($t)[pmd-java:modifiers() = 'volatile']/VariableDeclarator/VariableId/@Name
-   return exists($name) and empty($held(.))
-     and not($name = $volatile and $single(., $name))
-     and not($calledLocked($unitOf(.), $t))
-     and (some $w in $writes($t) satisfies $fieldOf($w) = $name and exists($held($w)[. != '?']))]
-]]></value>
-      </property>
-    </properties>
-  </rule>
   <rule ref="category/java/multithreading.xml/DontCallThreadRun">
     <properties>
       <!-- super.run() in a Thread subclass's run() runs the parent body on the same thread. -->
@@ -346,4 +139,194 @@ return //(AssignmentExpression | UnaryExpression[@Operator = ('++', '--')])[$uni
     </properties>
   </rule>
   <rule ref="category/java/design.xml/AvoidCatchingGenericException"/>
+  <rule name="GeneratedOnHandWrittenCode" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
+        message="Remove the annotation from hand-written code: JaCoCo skips code carrying an annotation whose name contains Generated, and PIT skips @Generated, so this is not measured. Put the JPA @GeneratedValue on the field.">
+    <priority>2</priority>
+    <properties>
+      <property name="xpath">
+        <value><![CDATA[
+//(ClassDeclaration | RecordDeclaration | EnumDeclaration | MethodDeclaration | ConstructorDeclaration | CompactConstructorDeclaration)
+  /ModifierList/Annotation[contains(@SimpleName, 'Generated')]
+]]></value>
+      </property>
+    </properties>
+  </rule>
+  <rule name="LogExceptionFirst" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
+        message="Pass the exception first (log.errorf(e, &quot;Cannot read %s&quot;, path)), or e.getMessage() when only the text is wanted. After the format, JBoss Logging never logs its stack trace.">
+    <priority>3</priority>
+    <properties>
+      <property name="xpath">
+        <value><![CDATA[
+let $levels := ('trace', 'debug', 'info', 'warn', 'error', 'fatal'),
+    $names := (for $level in $levels return (concat($level, 'f'), concat($level, 'v')), 'logf', 'logv')
+return //MethodCall[@MethodName = $names]
+  [*[1][pmd-java:typeIs('org.jboss.logging.BasicLogger') or pmd-java:typeIs('io.quarkus.logging.Log')]]
+  [let $arguments := ArgumentList/*,
+       $format := if (@MethodName = ('logf', 'logv'))
+         then (if ($arguments[1][pmd-java:typeIs('java.lang.String')]) then 4
+               else if ($arguments[2][pmd-java:typeIs('java.lang.Throwable')]) then 3 else 2)
+         else (if ($arguments[1][pmd-java:typeIs('java.lang.Throwable')]) then 2 else 1),
+       $rest := $arguments[position() > $format]
+   return exists($arguments[$format][pmd-java:typeIs('java.lang.String')])
+     and exists(($rest | $rest/ArrayInitializer/*)[not(self::NullLiteral)][pmd-java:typeIs('java.lang.Throwable')])]
+]]></value>
+      </property>
+    </properties>
+  </rule>
+  <rule name="LogFormatArguments" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
+        message="Pass one argument per placeholder, in the method''s own syntax: %s for printf methods (JBoss Logging infof, Log4j 2 printf and formatter loggers), '{'0} for MessageFormat methods (JBoss Logging infov, java.util.logging log), with '''' for an apostrophe there. Keep the format a constant. Otherwise values are dropped or the call throws.">
+    <priority>3</priority>
+    <properties>
+      <property name="xpath">
+        <value><![CDATA[
+let $levels := ('trace', 'debug', 'info', 'warn', 'error', 'fatal'),
+    $printfNames := (for $level in $levels return concat($level, 'f'), 'logf'),
+    $messageNames := (for $level in $levels return concat($level, 'v'), 'logv'),
+    $throwable := function($node) {
+      exists($node[not(self::NullLiteral)][pmd-java:typeIs('java.lang.Throwable')])
+    },
+    $formatter := function($logger) {
+      exists($logger[self::MethodCall][@MethodName = 'getFormatterLogger'])
+      or exists($logger[self::VariableAccess or self::FieldAccess]
+        [let $name := @Name
+         return root(.)//(VariableDeclarator[@Name = $name]
+                          | AssignmentExpression[*[1][@Name = $name]])
+           [*[last()][self::MethodCall][@MethodName = 'getFormatterLogger']]])
+    },
+    $constant := function($access) {
+      let $name := $access/@Name,
+          $declared := root($access)//VariableDeclarator[@Name = $name]
+      return if (count($declared) = 1 and $declared/*[last()][self::StringLiteral])
+             then string($declared/*[last()]/@ConstValue) else ()
+    },
+    $text := function($format) {
+      let $parts := $format/descendant-or-self::*[not(self::InfixExpression[@Operator = '+'])],
+          $values := for $part in $parts return
+            if ($part[self::StringLiteral]) then string($part/@ConstValue)
+            else if ($part[self::VariableAccess]) then $constant($part) else ()
+      return if ($format/@CompileTimeConstant = true() and count($values) = count($parts))
+             then string-join($values, '') else ()
+    },
+    $spec := '^(\d+\$)?[-#+ 0,(<]*\d*(\.\d+)?([bBhHsScCdoxXeEfgGaA]|[tT][HIklMSLNpzZsQBbhAaCYyjmdeRTrDFc])',
+    $integral := function($argument) {
+      exists($argument[pmd-java:typeIsExactly('int') or pmd-java:typeIsExactly('long')
+        or pmd-java:typeIsExactly('short') or pmd-java:typeIsExactly('byte')
+        or pmd-java:typeIsExactly('java.lang.Integer') or pmd-java:typeIsExactly('java.lang.Long')
+        or pmd-java:typeIsExactly('java.lang.Short') or pmd-java:typeIsExactly('java.lang.Byte')
+        or pmd-java:typeIsExactly('java.math.BigInteger')])
+    },
+    $decimal := function($argument) {
+      exists($argument[pmd-java:typeIsExactly('double') or pmd-java:typeIsExactly('float')
+        or pmd-java:typeIsExactly('java.lang.Double') or pmd-java:typeIsExactly('java.lang.Float')
+        or pmd-java:typeIsExactly('java.math.BigDecimal')])
+    },
+    $textual := function($argument) {
+      exists($argument[pmd-java:typeIsExactly('java.lang.String') or pmd-java:typeIsExactly('boolean')
+        or pmd-java:typeIsExactly('java.lang.Boolean') or pmd-java:typeIsExactly('char')
+        or pmd-java:typeIsExactly('java.lang.Character')])
+    },
+    $wrongType := function($conversion, $argument) {
+      ($conversion = ('d', 'o', 'x', 'X') and ($textual($argument) or $decimal($argument)))
+      or ($conversion = ('e', 'E', 'f', 'g', 'G', 'a', 'A') and ($textual($argument) or $integral($argument)))
+    },
+    $calls := (
+      for $call in //MethodCall[@MethodName = ($printfNames, $messageNames)]
+        [*[1][pmd-java:typeIs('org.jboss.logging.BasicLogger') or pmd-java:typeIs('io.quarkus.logging.Log')]]
+      return let $arguments := $call/ArgumentList/*,
+          $position := if ($call/@MethodName = ('logf', 'logv'))
+            then (if ($arguments[1][pmd-java:typeIs('java.lang.String')]) then 4
+                  else if ($throwable($arguments[2])) then 3 else 2)
+            else (if ($throwable($arguments[1])) then 2 else 1)
+      return map { 'call': $call, 'format': $position, 'printf': $call/@MethodName = $printfNames,
+                   'api': 'jboss', 'formats': true() },
+      for $call in //MethodCall[@MethodName = ('log', 'logp')][*[1][pmd-java:typeIs('java.util.logging.Logger')]]
+        [ArgumentList/*[1][pmd-java:typeIs('java.util.logging.Level')]]
+        [count(ArgumentList/*) = (if (@MethodName = 'log') then 3 else 5)]
+      return map { 'call': $call, 'format': if ($call/@MethodName = 'log') then 2 else 4, 'printf': false(),
+                   'api': 'jul', 'formats': false() },
+      for $call in //MethodCall[*[1][pmd-java:typeIs('org.apache.logging.log4j.Logger')]]
+        [@MethodName = 'printf' or (@MethodName = ($levels, 'log') and $formatter(*[1]))]
+      return let $arguments := $call/ArgumentList/*
+      return map { 'call': $call,
+                   'format': 1 + count($arguments[position() le 2][pmd-java:typeIs('org.apache.logging.log4j.Level')
+                                   or pmd-java:typeIs('org.apache.logging.log4j.Marker')]),
+                   'printf': true(), 'api': 'log4j', 'formats': $call/@MethodName = 'printf' }
+    )
+return for $entry in $calls
+return let $call := $entry?call,
+    $format := $call/ArgumentList/*[$entry?format],
+    $rest := $call/ArgumentList/*[position() > $entry?format],
+    $spread := if (count($rest) = 1 and $rest/ArrayInitializer) then $rest/ArrayInitializer/* else $rest,
+    $unknown := count($rest) = 1 and empty($rest/ArrayInitializer)
+      and exists($rest[pmd-java:typeIs('java.lang.Object[]')]),
+    $values := if ($entry?api = ('jul', 'log4j') and not($entry?formats) and count($rest) = 1
+                   and $throwable($rest)) then ()
+               else $spread,
+    $plain := if ($entry?api = 'jboss') then $spread[not($throwable(.))] else $values,
+    $string := $text($format)
+return $call[exists($format[pmd-java:typeIs('java.lang.String')])][
+  if ($format[self::InfixExpression][@CompileTimeConstant = false()][descendant::StringLiteral]) then
+    $entry?api = 'jboss' or not($call/@MethodName = ('info', 'warn', 'error', 'log'))
+  else if (empty($string) or $unknown) then false()
+  else if ($entry?printf) then
+    let $stripped := replace($string, '%-?\d*%|%n', ''),
+        $specs := tokenize($stripped, '%')[position() > 1],
+        $ordinary := $specs[not(matches(., '^\d+\$'))][not(matches(., '^[-#+ 0,(<]*<'))],
+        $explicit := for $s in $specs[matches(., '^\d+\$')] return xs:integer(substring-before($s, '$')),
+        $required := max(($explicit, count($ordinary), 0)),
+        $conversion := function($s) { replace($s, concat($spec, '.*$'), '$3', 's') },
+        $formats := $entry?formats or exists($values)
+    return ($formats and (some $s in $specs satisfies not(matches($s, $spec))))
+      or (exists($values) and matches($stripped, '\{\s*(\d+\s*)?[,}]'))
+      or ((not($entry?api = 'log4j') or $entry?formats or (empty($values) and exists($rest)))
+          and not(count($values) = $required or count($plain) = $required
+               or ($entry?api = 'log4j' and count($values) = $required + 1 and $throwable($values[last()]))))
+      or (some $i in 1 to count($ordinary) satisfies
+            ($i le count($values) and matches($ordinary[$i], $spec)
+             and $wrongType($conversion($ordinary[$i]), $values[$i])))
+      or (some $s in $specs[matches(., '^\d+\$')][matches(., $spec)] satisfies
+            (let $i := xs:integer(substring-before($s, '$'))
+             return $i le count($values) and $wrongType($conversion($s), $values[$i])))
+  else
+    let $unquoted := replace(replace($string, "''", ''), "'[^']*('|$)", ''),
+        $indexes := for $m in analyze-string($unquoted, '\{\s*(\d+)\s*[,}]')/*:match
+                    return xs:integer($m/*:group[@nr = 1]),
+        $required := if (empty($indexes)) then 0 else max($indexes) + 1
+    return (count($values) != $required and count($plain) != $required)
+      or matches($unquoted, '\{\s*(\}|[^\d\s])|\{\s+\d')
+      or (exists($values) and matches($unquoted, '%(\d+\$)?[-#+0,(]*\d*(\.\d+)?[sdfxXbBcSeEgG]'))
+]
+]]></value>
+      </property>
+    </properties>
+  </rule>
+  <rule name="LogStringConcatenation" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
+        message="Pass values as placeholders (LOG.info(&quot;user '{'}&quot;, user); '{'0} in System.Logger and java.util.logging), not a message built with + or String.format.">
+    <priority>3</priority>
+    <properties>
+      <property name="xpath">
+        <value><![CDATA[
+//MethodCall[@MethodName = ('info', 'warn', 'error', 'log', 'config', 'warning', 'severe')]
+  [*[1][pmd-java:typeIs('org.slf4j.Logger') or pmd-java:typeIs('org.slf4j.spi.LoggingEventBuilder')
+    or pmd-java:typeIs('java.util.logging.Logger') or pmd-java:typeIs('java.lang.System.Logger')
+    or pmd-java:typeIs('org.apache.logging.log4j.Logger') or pmd-java:typeIs('org.apache.commons.logging.Log')]]
+  /ArgumentList/(*[1] | *[1][not(pmd-java:typeIs('java.lang.String'))]/following-sibling::*[1])
+  [(self::InfixExpression[@Operator = '+'] and not(@CompileTimeConstant = true()))
+    or self::MethodCall[@MethodName = ('format', 'formatted')]]
+]]></value>
+      </property>
+    </properties>
+  </rule>
+  <rule name="MutationIgnoreMarker" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
+        message="Remove the annotation and kill the mutants with a test: PIT does not mutate code annotated @DoNotMutate or @CoverageIgnore.">
+    <priority>2</priority>
+    <properties>
+      <property name="xpath">
+        <value><![CDATA[
+//Annotation[@SimpleName = ('DoNotMutate', 'CoverageIgnore')]
+]]></value>
+      </property>
+    </properties>
+  </rule>
+  <!-- Built by npm run gen:rules from languages/java/gradle/rulesets/pmd-ruleset/: edit the rule files there. -->
 </ruleset>

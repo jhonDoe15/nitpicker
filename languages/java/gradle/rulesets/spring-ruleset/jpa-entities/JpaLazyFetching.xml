@@ -1,0 +1,12 @@
+  <rule name="JpaLazyFetching" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
+        message="Write fetch = FetchType.LAZY on every @ManyToOne and @OneToOne (they are eager by default) and never use EAGER; load what a query needs with join fetch.">
+    <priority>2</priority>
+    <properties><property name="xpath"><value><![CDATA[
+//Annotation[(pmd-java:typeIs('jakarta.persistence.ManyToOne') or pmd-java:typeIs('javax.persistence.ManyToOne')) or (pmd-java:typeIs('jakarta.persistence.OneToOne') or pmd-java:typeIs('javax.persistence.OneToOne'))]
+  [not(AnnotationMemberList/MemberValuePair[@Name = 'fetch'][.//*[@Name = 'LAZY']])]
+|
+//Annotation[(pmd-java:typeIs('jakarta.persistence.OneToMany') or pmd-java:typeIs('javax.persistence.OneToMany')) or (pmd-java:typeIs('jakarta.persistence.ManyToMany') or pmd-java:typeIs('javax.persistence.ManyToMany'))
+    or (pmd-java:typeIs('jakarta.persistence.ElementCollection') or pmd-java:typeIs('javax.persistence.ElementCollection'))]
+  [AnnotationMemberList/MemberValuePair[@Name = 'fetch'][.//*[@Name = 'EAGER']]]
+]]></value></property></properties>
+  </rule>

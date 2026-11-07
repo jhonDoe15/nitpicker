@@ -1,5 +1,6 @@
 import { isFunctionNode, stringValue } from '../../analysis/constant-resolution.mjs';
 import {
+  isLiteral,
   leafValues,
   memberName,
   propertyNamed,
@@ -27,10 +28,6 @@ const TRUE_DISABLES = new Set([
 ]);
 const SERVER_FACTORIES = new Set(['createServer', 'createSecureServer', 'Server']);
 const CONDITION_OPERATORS = new Set(['===', '!==', '==', '!=']);
-
-function isLiteral(node, value) {
-  return node?.type === 'Literal' && node.value === value;
-}
 
 function isOffValue(leaf) {
   return isLiteral(leaf, 0) || stringValue(leaf) === '0';

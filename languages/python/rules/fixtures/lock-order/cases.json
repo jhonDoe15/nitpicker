@@ -1,0 +1,7 @@
+[
+  {
+    "tool": "python-rules",
+    "rule": "lock-order-inversion",
+    "mention": "one order everywhere in the class"
+  }
+]

@@ -1,6 +1,6 @@
 import ast
 
-from boundary.laundering.visitor import check as type_laundering
+from boundary.laundering.visitor import laundering_findings as type_laundering
 from boundary.pydantic_models import model_findings
 from boundary.type_aliases import has_any, is_functional_type
 from checks.common import finding

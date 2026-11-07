@@ -1,0 +1,71 @@
+  <rule name="LockOrderInversion" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
+        message="This nesting takes two locks of the class in the opposite order to another nesting of the class: two threads that run both can each hold one lock and wait forever for the other, a deadlock that no test reliably shows. Take nested locks in one order everywhere in the class (if any path takes a and then b, no path takes b and then a), or guard the state with one lock. Only locks held in fields of the class, this, Type.class and Type.FIELD are compared; a lock passed in, held in a local or taken in a called method is not followed.">
+    <priority>2</priority>
+    <properties>
+      <property name="xpath">
+        <value><![CDATA[
+let $unitOf := function($n) {
+      $n/ancestor::*[self::MethodDeclaration or self::ConstructorDeclaration
+        or self::CompactConstructorDeclaration or self::Initializer or self::LambdaExpression
+        or self::FieldDeclaration or self::EnumConstant][1]
+    },
+    $typeOf := function($n) {
+      $n/ancestor::*[self::ClassDeclaration or self::EnumDeclaration or self::RecordDeclaration
+        or self::AnonymousClassDeclaration][1]
+    },
+    $memberOf := function($n) {
+      $n/ancestor::*[self::MethodDeclaration or self::ConstructorDeclaration
+        or self::CompactConstructorDeclaration or self::Initializer or self::FieldDeclaration][1]
+    },
+    $fields := function($t) { $t/*[self::ClassBody or self::EnumBody or self::RecordBody]/FieldDeclaration },
+    $keyOf := function($e) as xs:string? {
+      let $t := $typeOf($e), $names := $fields($t)/VariableDeclarator/VariableId/@Name
+      return if ($e[self::ThisExpression][not(*)]) then 'this'
+        else if ($e[self::ClassLiteral]) then string($e/ClassType/@SimpleName) || '.class'
+        else if ($e[self::FieldAccess][*[1][self::ThisExpression][not(*)]][@Name = $names])
+          then string($e/@Name)
+        else if ($e[self::VariableAccess][@Name = $names][empty($memberOf($e)//VariableId[@Name = $e/@Name])])
+          then string($e/@Name)
+        else if ($e[self::FieldAccess]
+                   [*[1][self::TypeExpression or self::AmbiguousName[matches(@Name, '^[A-Z]')]]])
+          then (let $owner := string(($e/TypeExpression/ClassType/@SimpleName, $e/AmbiguousName/@Name)[1])
+                return if ($owner = $t/@SimpleName and $e/@Name = $names) then string($e/@Name)
+                  else $owner || '.' || $e/@Name)
+        else ()
+    },
+    $isLock := function($call) as xs:boolean {
+      exists($call[@MethodName = ('lock', 'lockInterruptibly')][ArgumentList/@Size = 0]
+        [*[1][pmd-java:typeIs('java.util.concurrent.locks.Lock')]])
+    },
+    $held := function($n) {
+      let $u := $unitOf($n)
+      return (
+        for $b in $n/ancestor::Block[parent::SynchronizedStatement][$unitOf(.) is $u]
+        return ($keyOf($b/../*[1]), '?')[1],
+        $u[self::MethodDeclaration][pmd-java:modifiers() = 'synchronized']
+          /(if (pmd-java:modifiers() = 'static') then string($typeOf(.)/@SimpleName) || '.class' else 'this'),
+        for $s in $n/ancestor-or-self::*[parent::Block][$unitOf(.) is $u],
+            $l in $s/preceding-sibling::ExpressionStatement[MethodCall[$isLock(.)]]
+        return let $k := $keyOf($l/MethodCall/*[1])
+        return if (empty($k)) then '?'
+          else if (exists($s/preceding-sibling::*[. >> $l]
+                     /(self::ExpressionStatement/MethodCall | self::TryStatement/FinallyClause//MethodCall)
+                     [@MethodName = 'unlock'][ArgumentList/@Size = 0][$keyOf(*[1]) = $k])) then ()
+          else $k,
+        $u[.//MethodCall[@MethodName = 'tryLock']]/'?')
+    },
+    $siteKey := function($s) {
+      if ($s[self::SynchronizedStatement]) then $keyOf($s/*[1]) else $keyOf($s/MethodCall/*[1])
+    },
+    $sites := function($t) {
+      $t//(SynchronizedStatement | ExpressionStatement[MethodCall[$isLock(.)]])[$typeOf(.) is $t]
+    }
+return //(SynchronizedStatement | ExpressionStatement[MethodCall[$isLock(.)]])
+  [let $k := $siteKey(.), $t := $typeOf(.)
+   return exists($k) and not($k = $held(.)) and (some $h in $held(.)[. != '?'] satisfies
+     (some $other in $sites($t) satisfies
+       $siteKey($other) = $h and not($h = $held($other)) and $held($other) = $k))]
+]]></value>
+      </property>
+    </properties>
+  </rule>
