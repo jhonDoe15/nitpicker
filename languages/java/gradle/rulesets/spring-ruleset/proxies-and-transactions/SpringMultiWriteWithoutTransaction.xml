@@ -1,0 +1,66 @@
+  <rule name="SpringMultiWriteWithoutTransaction" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
+        message="Put @Transactional on this method, or run its writes inside TransactionTemplate.execute. It writes to the database more than once outside a transaction, so when a later write fails the earlier ones stay committed.">
+    <priority>2</priority>
+    <properties><property name="xpath"><value><![CDATA[
+let $transactional := function($annotations) {
+  exists($annotations[pmd-java:typeIs('org.springframework.transaction.annotation.Transactional')
+    or pmd-java:typeIs('jakarta.transaction.Transactional') or pmd-java:typeIs('javax.transaction.Transactional')])
+},
+    $write := function($call) {
+  ($call/@MethodName = ('save', 'saveAll', 'saveAndFlush', 'saveAllAndFlush', 'delete', 'deleteAll', 'deleteById',
+      'deleteAllById', 'deleteAllInBatch', 'persist', 'merge', 'remove')
+   and exists($call/*[1][pmd-java:typeIs('org.springframework.data.repository.Repository')
+     or (pmd-java:typeIs('jakarta.persistence.EntityManager') or pmd-java:typeIs('javax.persistence.EntityManager'))]))
+  or (matches($call/@MethodName, '^(update|delete|remove|mark|set|rename|insert|upsert|increment|decrement|reset|clear|purge|archive|touch)([A-Z\d_]|$)')
+   and exists($call/*[1][pmd-java:typeIs('org.springframework.data.repository.Repository')]))
+  or ($call/@MethodName = ('update', 'batchUpdate')
+   and exists($call/*[1][pmd-java:typeIs('org.springframework.jdbc.core.JdbcOperations')
+     or pmd-java:typeIs('org.springframework.jdbc.core.namedparam.NamedParameterJdbcOperations')]))
+  or ($call/@MethodName = 'update'
+   and exists($call/*[1][pmd-java:typeIs('org.springframework.jdbc.core.simple.JdbcClient.StatementSpec')]))
+  or ($call/@MethodName = 'executeUpdate'
+   and exists($call/*[1][pmd-java:typeIs('jakarta.persistence.Query') or pmd-java:typeIs('javax.persistence.Query')]))
+},
+    $inTemplate := function($node) {
+  exists($node/ancestor::ArgumentList/parent::MethodCall[@MethodName = ('execute', 'executeWithoutResult')]
+    [*[1][pmd-java:typeIs('org.springframework.transaction.support.TransactionOperations')
+      or pmd-java:typeIs('org.springframework.transaction.reactive.TransactionalOperator')]])
+},
+    $writes := function($body) {
+  $body//(MethodCall | MethodReference)[$write(.)][not($inTemplate(.))]
+},
+    $leaves := function($write, $other) {
+  exists($write/ancestor::*[parent::IfStatement][not(. is ../*[1])]
+    [self::ReturnStatement or self::ThrowStatement
+      or self::Block[*[last()][self::ReturnStatement or self::ThrowStatement]]]
+    [$other >> .. and not($other/ancestor::* intersect ..)])
+},
+    $exclusive := function($a, $b) {
+  let $common := ($a/ancestor::* intersect $b/ancestor::*)[last()],
+      $paths := ($a/ancestor-or-self::* | $b/ancestor-or-self::*)
+  return exists($common[self::IfStatement or self::ConditionalExpression or self::SwitchStatement
+      or self::SwitchExpression][not(*[1] intersect $paths)])
+    or exists($common[self::TryStatement][CatchClause intersect $paths])
+    or $leaves($a, $b) or $leaves($b, $a)
+},
+    $twice := function($sites) {
+  some $a in $sites, $b in $sites satisfies (not($a is $b) and not($exclusive($a, $b)))
+}
+return
+//ClassDeclaration[@Interface = false()][ModifierList/Annotation[
+    pmd-java:typeIs('org.springframework.stereotype.Component')
+    or pmd-java:typeIs('org.springframework.stereotype.Service')
+    or pmd-java:typeIs('org.springframework.stereotype.Repository')]]
+  [not($transactional(ModifierList/Annotation))]
+  /ClassBody/MethodDeclaration[@Visibility = 'public'][Block][not(pmd-java:modifiers() = 'static')]
+  [not($transactional(ModifierList/Annotation))]
+  [not(.//(MethodCall | MethodReference)[@MethodName = ('transactional', 'execute')]
+    [*[1][pmd-java:typeIs('org.springframework.transaction.reactive.TransactionalOperator')]])]
+  [let $method := .,
+       $helpers := parent::ClassBody/MethodDeclaration[@Visibility != 'public'][Block][exists($writes(Block))],
+       $calls := $method//MethodCall[*[1][self::ArgumentList or self::ThisExpression[not(*)]]][not($inTemplate(.))]
+         [let $call := . return exists($helpers[@Name = $call/@MethodName][@Arity = count($call/ArgumentList/*)])],
+       $sites := ($writes($method/Block), $calls)
+   return $twice($sites) or (some $helper in $helpers[@Name = $calls/@MethodName] satisfies $twice($writes($helper/Block)))]
+]]></value></property></properties>
+  </rule>

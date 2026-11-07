@@ -282,7 +282,7 @@ class TypeLaundering(IterativeVisitor):
         self.collecting(self.binding(node.targets[0]), walk, node.value)
 
 
-def check(context, existing):
+def laundering_findings(context, existing):
     visitor = TypeLaundering(context, existing)
     visitor.visit(context.tree)
     return visitor.findings

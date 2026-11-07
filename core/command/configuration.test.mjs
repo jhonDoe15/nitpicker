@@ -258,7 +258,7 @@ describe('nitpicker config file', () => {
       'Policy changed in this change (nitpicker.config.json, head against base; ' +
       'loosening accepted by exact digest):';
     const analyzers = [fakeAnalyzer(), fakeAnalyzer('second-analyzer')];
-    const plain = runWithConfig(undefined, { analyzers });
+    const plain = runWithConfig({}, { analyzers });
     const disabled = runWithConfig(
       { disable: ['second-analyzer'] },
       {
