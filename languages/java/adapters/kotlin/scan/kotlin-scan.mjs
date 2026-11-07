@@ -32,6 +32,10 @@ import { CLIENT_MESSAGES, httpWithoutTimeout, unsafeDeserialization } from './se
 import { PROCESS_MESSAGES, processWaitsWithoutTimeout } from './processes/process-waits.mjs';
 import { CRYPTO_MESSAGES, disabledTlsVerification, weakHashes } from './security/crypto.mjs';
 import { SQL_MESSAGES, sqlStringBuilding } from './security/sql.mjs';
+import {
+  INLINE_CLOSEABLE_MESSAGES,
+  unclosedInlineResources,
+} from './resources/inline-closeables.mjs';
 import { kotlinDeclarations } from './security/sql-values.mjs';
 import { LOG_FORMAT_MESSAGES, logFormatArguments } from './logging/log-format-rules.mjs';
 import { FAN_OUT_MESSAGES } from '../review-rules/main/fan-out/fan-out.mjs';
@@ -50,6 +54,7 @@ export const KOTLIN_SOURCE_MESSAGES = {
   ...SQL_MESSAGES,
   ...CRYPTO_MESSAGES,
   ...CLIENT_MESSAGES,
+  ...INLINE_CLOSEABLE_MESSAGES,
   ...PROCESS_MESSAGES,
   ...LOG_FORMAT_MESSAGES,
   ...FAN_OUT_MESSAGES,
@@ -87,6 +92,7 @@ const MAIN_RULES = [
   httpWithoutTimeout,
   processWaitsWithoutTimeout,
   unsafeDeserialization,
+  unclosedInlineResources,
   triStateBooleans,
   parameterMutations,
   compatibilityShims,
