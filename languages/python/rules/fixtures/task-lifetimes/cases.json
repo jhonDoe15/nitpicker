@@ -1,0 +1,7 @@
+[
+  {
+    "tool": "python-rules",
+    "rule": "task-outlives-resource",
+    "mention": "around the whole task group"
+  }
+]

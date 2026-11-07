@@ -14,6 +14,15 @@ export const TYPECHECK_FAILED_SKIPPED_RULE = 'typecheck-failed-skipped';
 
 const MAX_LISTED_TESTS = 5;
 
+/**
+ * The first line of every preset's failing-tests message on the head: the count, what the failure
+ * skipped, and the ask. The console summary leads with it.
+ */
+export function testsFailHeadline(count, consequence, where = '') {
+  const verb = count === 1 ? 'test fails' : 'tests fail';
+  return `${String(count)} ${verb}${where}; ${consequence}. Fix the tests and rerun:`;
+}
+
 /** The note of a base whose own tests fail: one headline, then the failing tests. */
 export function testsFailOnBase(tests, where = '') {
   const listed = tests.slice(0, MAX_LISTED_TESTS).map((test) => `  ${test}`);
@@ -117,6 +126,10 @@ export function summaryMetrics(analyzerName, summary = {}, rule, ignored = []) {
 
 /** The name of the narrowest function of `file` (`{ file, name, start, end }[]`) that holds `line`. */
 export function enclosingFunctionName(functions, file, line) {
+  return enclosingFunction(functions, file, line)?.name;
+}
+
+export function enclosingFunction(functions, file, line) {
   let found;
   for (const candidate of functions) {
     const holds = candidate.file === file && candidate.start <= line && line <= candidate.end;
@@ -127,5 +140,5 @@ export function enclosingFunctionName(functions, file, line) {
       found = candidate;
     }
   }
-  return found?.name;
+  return found;
 }

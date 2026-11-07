@@ -96,6 +96,24 @@ function fanOutAllowed(subject) {
 export const SMELL_HINTS = [
   {
     tool: RULES_TOOL,
+    rules: ['unclosed-inline-resource'],
+    describe: (subject) =>
+      `\`${subject}\` opens a file, socket or connection and uses it in the same expression, so nothing closes it`,
+    allowed: (subject) =>
+      subject === 'connect()'
+        ? 'Close the connection with `with contextlib.closing(sqlite3.connect(path)) as connection:`; `with sqlite3.connect(path)` alone only commits or rolls back and leaves the connection open.'
+        : 'Open it in a `with` block (`with open(path, encoding="utf-8") as handle: data = json.load(handle)`), or read the whole file with `Path(path).read_text(encoding="utf-8")` or `read_bytes()`. Without `with`, only the garbage collector closes the handle: CPython does it when the last reference goes, PyPy later, an exception that keeps the frame alive holds it open, and Python warns with `ResourceWarning` when warnings are on (`-X dev`, pytest). `contextlib.closing(...)` and `ExitStack.enter_context(...)` also pass.',
+  },
+  {
+    tool: RULES_TOOL,
+    rules: ['regex-unescaped-value'],
+    describe: (subject) =>
+      `\`${subject}\` is built into a regex pattern unescaped, so a \`.\`, \`|\`, \`$\` or other metacharacter in it changes what matches`,
+    allowed:
+      'Escape the value first (`re.compile(rf"^/{re.escape(name)}/\\d+$")`), compare plain text with `in`, `startswith` or `==`, or pass a value that is meant as a whole pattern to `re.compile(pattern)` on its own.',
+  },
+  {
+    tool: RULES_TOOL,
     rules: ['shell-command'],
     describe: (subject) => `\`${subject}\` runs a command through a shell`,
     allowed:
@@ -125,7 +143,7 @@ export const SMELL_HINTS = [
   {
     tool: RULES_TOOL,
     rules: ['hardcoded-secret'],
-    describe: (subject) => `\`${subject}\` holds a hardcoded secret`,
+    describe: (subject) => `The value of \`${subject}\` is a hardcoded secret`,
     allowed:
       'Read the secret from the environment in the composition root (`os.environ["API_TOKEN"]`) and pass it in; keep placeholders such as `"changeme"` out of production code.',
   },
@@ -167,7 +185,15 @@ export const SMELL_HINTS = [
     rules: ['sleep-in-test'],
     describe: (subject) => `\`${subject}\` waits for real time in a test`,
     allowed:
-      'Control the clock instead of waiting: inject a fake clock, patch `time.sleep` with `monkeypatch`, or poll a condition with a bounded retry helper.',
+      "Control the clock instead of waiting: inject a fake clock or patch `time.sleep` with `monkeypatch`. To wait for a condition, poll it in a loop until a deadline (`while not ready():` with a `time.monotonic()` check and a short sleep) or use the library's wait helper, such as Playwright's `expect(locator).to_be_visible()`.",
+  },
+  {
+    tool: RULES_TOOL,
+    rules: ['negative-wait-in-test'],
+    describe: (subject) =>
+      `\`${subject}\` proves that nothing happens by waiting out its timeout, so the test is slow and depends on the delay`,
+    allowed:
+      'Check the state at once (`assert not event.is_set()`, `assert queue.empty()`), or control the clock or scheduler the code waits on, move it past the delay and assert right away.',
   },
   {
     tool: RULES_TOOL,
@@ -199,10 +225,26 @@ export const SMELL_HINTS = [
   },
   {
     tool: RULES_TOOL,
+    rules: ['global-state-leak-in-test'],
+    describe: (subject) =>
+      `\`${subject}\` changes process-wide state in a test and nothing puts it back, so the tests after it depend on the order they run in`,
+    allowed:
+      'Let pytest undo it: `monkeypatch.setenv`, `monkeypatch.setattr` or `mock.patch.dict(os.environ, ...)`, or save the old value and restore it in `finally`, after `yield` in a fixture, or in `tearDown`.',
+  },
+  {
+    tool: RULES_TOOL,
     rules: ['network-in-test'],
     describe: (subject) => `\`${subject}\` reaches the network in a unit test`,
     allowed:
       'Replace the network with a fake: patch the client with `monkeypatch`, use `responses` or `respx`, or move the test to an `integration/` folder.',
+  },
+  {
+    tool: RULES_TOOL,
+    rules: ['server-or-container-per-test'],
+    describe: (subject) =>
+      `\`${subject}()\` starts a container, server, process or git repository for each test`,
+    allowed:
+      'Start it once: a `scope="session"` or `scope="module"` fixture that resets its state between tests, or `setup_class`/`setUpClass`. Or test the logic against an in-memory implementation and keep the real transport for transport tests. An exception fits only when each test needs a fresh instance.',
   },
   {
     tool: RULES_TOOL,

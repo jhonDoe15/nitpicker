@@ -1,0 +1,7 @@
+[
+  {
+    "tool": "python-rules",
+    "rule": "sleep-in-test",
+    "mention": "fake clock"
+  }
+]
