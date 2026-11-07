@@ -114,8 +114,7 @@ describe.skipIf(!goE2eEnabled)('Go preset gates end to end', () => {
       [
         '1 test fails; the static analyzers ran, and coverage comes from the tests that ran. ' +
           'Fix the tests and rerun:',
-        '  example.com/shop/shop.TestBroken',
-        '    broken_test.go:6: still broken',
+        '  broken_test.go:6 > example.com/shop/shop.TestBroken: still broken',
       ].join('\n'),
     ]);
   });

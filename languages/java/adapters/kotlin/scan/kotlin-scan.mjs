@@ -32,6 +32,10 @@ import { CLIENT_MESSAGES, httpWithoutTimeout, unsafeDeserialization } from './se
 import { PROCESS_MESSAGES, processWaitsWithoutTimeout } from './processes/process-waits.mjs';
 import { CRYPTO_MESSAGES, disabledTlsVerification, weakHashes } from './security/crypto.mjs';
 import { SQL_MESSAGES, sqlStringBuilding } from './security/sql.mjs';
+import {
+  INLINE_CLOSEABLE_MESSAGES,
+  unclosedInlineResources,
+} from './resources/inline-closeables.mjs';
 import { kotlinDeclarations } from './security/sql-values.mjs';
 import { LOG_FORMAT_MESSAGES, logFormatArguments } from './logging/log-format-rules.mjs';
 import { FAN_OUT_MESSAGES } from '../review-rules/main/fan-out/fan-out.mjs';
@@ -49,6 +53,7 @@ export const KOTLIN_SOURCE_MESSAGES = {
   ...SQL_MESSAGES,
   ...CRYPTO_MESSAGES,
   ...CLIENT_MESSAGES,
+  ...INLINE_CLOSEABLE_MESSAGES,
   ...PROCESS_MESSAGES,
   ...LOG_FORMAT_MESSAGES,
   ...FAN_OUT_MESSAGES,
@@ -85,6 +90,7 @@ const MAIN_RULES = [
   httpWithoutTimeout,
   processWaitsWithoutTimeout,
   unsafeDeserialization,
+  unclosedInlineResources,
   triStateBooleans,
   parameterMutations,
   compatibilityShims,
@@ -92,7 +98,7 @@ const MAIN_RULES = [
   plainTextRegexes,
   repeatedStringLiterals,
 ];
-const TEST_RULES = [testClassesWithoutTests, unsafeCasts];
+const TEST_RULES = [commentedOutCode, testClassesWithoutTests, unsafeCasts];
 
 const TOP_LEVEL_MAIN = /(?<![\w.])fun\s+main\s*\(/g;
 const ROOT_MARKERS = [
@@ -155,7 +161,7 @@ function scanFiles(files, rules) {
   return files.flatMap(({ file, scanned }) => {
     const occurrences = new Map();
     return rules
-      .flatMap((rule) => rule(scanned, context))
+      .flatMap((rule) => rule(scanned, { ...context, file }))
       .toSorted((left, right) => left.offset - right.offset)
       .map((reported) => finding({ file, scanned, occurrences }, reported));
   });

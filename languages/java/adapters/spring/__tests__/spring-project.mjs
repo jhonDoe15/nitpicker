@@ -71,6 +71,7 @@ const REVIEW_RULES = new Set([
   'ParameterMutation',
   'CompatibilityShim',
   'LegacyCalendarApi',
+  'UnclosedInlineResource',
   'UnquotedRegexValue',
   'PlainTextRegex',
   'ProcessWaitWithoutTimeout',

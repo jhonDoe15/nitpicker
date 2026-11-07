@@ -91,6 +91,12 @@ To learn why a rule is on and what form it allows before you write or change cod
   members and parameters (an override, a function with a framework annotation and a name starting
   `ignored` or `unused` are skipped). A public function's `Boolean` parameter that picks a behavior
   becomes two functions or an enum (`BooleanFlagParameter`).
+- Names and comments (`kotlin-source` rules): name packages, files and types for their job
+  (`PriceRounding.kt`), never `Utils`, `Helpers`, `Managers`, `Common`, `Misc` or `Miscellaneous`,
+  also not before `Mixin`, `Module` or `Base` (`HelperMixin`); a framework role such as
+  `TransactionManager` is fine; pure logic shared between features goes in
+  the shared package under such a name. Delete commented-out code, in tests too (`CommentedOutCode`);
+  a sample under an `Example:` heading is fine.
 - Secrets (nitpicker's own `kotlin-source` checks, not detekt): never put a secret literal in a
   `password`, `token`, `apiKey` or `secret` name, map entry or fallback (`?: "..."`, `getOrDefault`);
   read it from the environment or a secrets manager. Never pass a secret to a log call, `println`,
@@ -118,6 +124,9 @@ To learn why a rule is on and what form it allows before you write or change cod
 - A data class, a `@ConfigurationProperties` class, the public properties of any class and the
   defaulted parameters of a public function have `tags` or `tag`, not both
   (`pmd/SingularAndPluralMember`); one item is a one-element list.
+- A stream, reader, JAR file or connection you open is closed with `.use { }`, also one used
+  once: `resource.inputStream.use { it.readBytes() }`, not `resource.inputStream.readBytes()`
+  (`kotlin-source/UnclosedInlineResource`; Java sources: `pmd/UnclosedInlineResource`).
 - A validation annotation on a constructor property takes the field target:
   `data class OrderRequest(@field:NotBlank val item: String)`, not `@NotBlank val item`, which
   lands on the constructor parameter where `@Valid` never looks (`pmd/ValidationAnnotationTarget`).

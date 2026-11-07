@@ -47,6 +47,8 @@ To learn why a rule is on and what form it allows before you write or change cod
   too: write the concrete type, `ParamSpec` for wrappers or `object`, narrow with `isinstance`, and
   parse untrusted input once in an adapter.
 - Paths: `pathlib.Path` with `/`, `.read_text()`, `.exists()`. No `os.path`, no `open(path)`.
+  A handle you keep open goes in a `with` block, never inline: not `json.load(open(path))` or
+  `urlopen(url).read()` (`unclosed-inline-resource`).
 - Strings: f-strings only. No `.format()` and no `%`.
 - Defaults: `None`, then build the value inside the function. No mutable default arguments.
 - Parameters: remove an unused one (`@override` marks an override; `_context` only when a callback
@@ -96,6 +98,11 @@ To learn why a rule is on and what form it allows before you write or change cod
   parsed once; pass frozen dataclasses on from there.
 - Constants: a fixed set of strings is an `enum.StrEnum` (`class X(str, Enum)` before Python 3.11),
   not `STATUS_ACTIVE = "active"` constants or a class holding them. Settings like `DB_HOST` are fine.
+- Names and comments: name files, packages and classes for their job (`price_rounding.py`), never
+  `utils`, `helpers`, `common`, `misc`, `miscellaneous` or `*Manager`, also not before `mixin`,
+  `module` or `base` (`HelperMixin`, `util_functions`); a role such as `SessionManager` is fine;
+  pure logic shared between features goes in `shared/` under such a name. No commented-out code,
+  and a `TODO` or `FIXME` carries an issue (`# TODO(#123): ...`, `# TODO PROJ-123: ...` or a link).
 - Signatures: a value with three states is an enum, not `bool | None`; test `None` with
   `x if x is not None else default`, never `x or default`; return a new list or dict instead of
   changing an argument (`items.append`). When code moves, change every caller and delete the old

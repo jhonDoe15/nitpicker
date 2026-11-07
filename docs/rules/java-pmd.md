@@ -1,6 +1,6 @@
 # Java and Kotlin: PMD rules
 
-PMD's bestpractices, design, errorprone, multithreading, performance and security categories, as far as nitpicker's rulesets keep them, and the rules nitpicker adds to them, for Java sources in the Java and Kotlin presets. This page lists 266 rules. [All pages](README.md).
+PMD's bestpractices, design, errorprone, multithreading, performance and security categories, as far as nitpicker's rulesets keep them, and the rules nitpicker adds to them, for Java sources in the Java and Kotlin presets. This page lists 267 rules. [All pages](README.md).
 
 The guide for these rules: [docs/java-preset.md](../java-preset.md).
 
@@ -2541,6 +2541,17 @@ In main sources: `Executors.newCachedThreadPool()` (also static-imported) and a 
 - **Why it is on:** A PMD rule nitpicker defines: it names one allowed form where the language offers several, and reports the other forms.
 - **Allowed form:** Use a bounded pool, such as Executors.newFixedThreadPool(n) or a ThreadPoolExecutor with a bounded maximum size and queue (in Spring, a ThreadPoolTaskExecutor with a queue capacity). A cached pool starts a new thread for every task that finds no idle thread, with no upper limit, so a burst of tasks can exhaust memory and native threads.
 - **Exception:** If this is intended, add `{"rule":"pmd/UnboundedThreadPool","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
+
+<a id="pmd-unclosedinlineresource"></a>
+
+### `pmd/UnclosedInlineResource`
+
+In main sources: a closeable opened by a call or constructor and used in the same expression, with no variable: the receiver of a call (`resource.getInputStream().readAllBytes()`, `new JarFile(root).getManifest()`), an argument (`StreamUtils.copyToString(resource.getInputStream(), charset)`, `properties.load(...)`) or the source of an enhanced `for` (`Files.newDirectoryStream(dir)`). A closeable counts by its resolved type (`AutoCloseable`); a call opens one when it is a constructor, a method named `open*`, `new*`, `create*`, `prepare*`, `accept*`, `connect*` or `build*`, or `getInputStream`, `getOutputStream`, `getResourceAsStream` or `getConnection`. A wrapper (`new BufferedReader(new FileReader(file))`, `Objects.requireNonNull(in)`) opens one only when what it wraps does, and is reported once, on the outer call.
+
+- **Scope:** Main sources only.
+- **Why it is on:** A PMD rule nitpicker defines: it names one allowed form where the language offers several, and reports the other forms.
+- **Allowed form:** This closeable (a stream, reader, writer, channel, JAR or ZIP file, class loader or JDBC connection) is opened and used in the same expression, as the receiver of a call, an argument or a loop source, so nothing closes it: each call leaks a file handle or a connection, and on Windows the file stays locked. Open it in a try-with-resources header and use the variable (try (InputStream in = resource.getInputStream()) ... in.readAllBytes()). Returning it, storing it in a field of a closeable class, or passing it to a closeable wrapper (new BufferedReader(new InputStreamReader(in))) that is itself owned also matches. In-memory types (ByteArrayInputStream, StringReader, StringWriter) and streams owned elsewhere (System.in, a Socket, a Process, a servlet response) are not reported.
+- **Exception:** If this is intended, add `{"rule":"pmd/UnclosedInlineResource","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 
 <a id="pmd-unconditionalifstatement"></a>
 

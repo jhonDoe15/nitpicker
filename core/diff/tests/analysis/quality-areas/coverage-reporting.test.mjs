@@ -160,7 +160,7 @@ describe('coverage reporting in the quality-area analyzers', () => {
     ]);
     expect(run([])).toEqual([failure]);
   });
-  it('lists at most five failing tests and a test file that could not run', () => {
+  it('lists every failing test and a test file that could not run', () => {
     const failing = (index) => ({
       fullName: `case ${String(index)}`,
       status: 'failed',
@@ -190,7 +190,8 @@ describe('coverage reporting in the quality-area analyzers', () => {
         '  test/a.test.ts > case 3: boom',
         '  test/a.test.ts > case 4: boom',
         '  test/a.test.ts > case 5: boom',
-        '  … and 2 more',
+        '  test/a.test.ts > case 6: boom',
+        '  test/broken.test.ts > could not run: Failed to resolve import "./missing"',
       ].join('\n'),
     );
   });

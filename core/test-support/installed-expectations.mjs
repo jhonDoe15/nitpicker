@@ -36,6 +36,7 @@ export function expectedDirtyFindings(links) {
       symbol: 'example',
       location: { line: 2, column: 3 },
       helpUri: installedHelpUri(links, 'eslint-lint/no-debugger'),
+      anchor: { key: 'count:`debugger` statement is not allowed:text:3d3cda36d748dcd4e7c34fd3' },
       ratchet: {
         key: 'count:`debugger` statement is not allowed',
         value: 1,
