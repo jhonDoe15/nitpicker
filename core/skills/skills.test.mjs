@@ -132,7 +132,11 @@ describe('agent skills', () => {
   });
 
   it.each(skillNames)('%s names other skills by their installable names', (name) => {
-    const { text } = readSkill(name);
-    expect(/skills\/nitpicker\/|\bthe nitpicker skill\b/iu.test(text)).toBe(false);
+    const texts = ['SKILL.md', ...topicPages(name)].map((page) =>
+      readFileSync(path.join(skillsRoot, name, page), 'utf8'),
+    );
+    expect(
+      texts.filter((text) => /skills\/nitpicker\/|\bthe nitpicker skill\b/iu.test(text)),
+    ).toEqual([]);
   });
 });
