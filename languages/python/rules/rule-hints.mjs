@@ -29,6 +29,10 @@ const HINTED_TOOLS = [
   'mutmut',
 ];
 
+const LIFTED_TEST_RUNTIME_RULES = new Set([
+  'no-production-runtime',
+  'type-only-production-dependency',
+]);
 const RULES_ROUTED_BY_A_SETTING = new Set(['no-import-outside-roots']);
 
 const FIX_TYPE = 'Fix the type; inline ignores are banned.';
@@ -107,7 +111,8 @@ export const PYTHON_RULES_IDS = RULE_HINTS.filter(({ tool }) => tool === RULES_T
 
 function canBeLifted(finding) {
   return (
-    HINTED_TOOLS.includes(finding.tool) &&
+    (HINTED_TOOLS.includes(finding.tool) ||
+      (finding.tool === 'test-runtime' && LIFTED_TEST_RUNTIME_RULES.has(finding.rule))) &&
     finding.classification === 'enforceable' &&
     typeof finding.rule === 'string' &&
     finding.rule !== '' &&
