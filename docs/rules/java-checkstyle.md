@@ -2,7 +2,7 @@
 
 The checks of Checkstyle's Google style that the Java and Kotlin presets run on Java sources: Java with Gradle or Maven, Kotlin with Gradle. This page lists 72 rules. [All pages](README.md).
 
-The guide for these rules: [docs/java-preset.md#slice-3-checkstyle](../java-preset.md#slice-3-checkstyle).
+The guide for these rules: [docs/java-preset/slice-3-checkstyle.md](../java-preset/slice-3-checkstyle.md).
 
 Checkstyle 10.21.1 is under the LGPL-2.1, so this page names each rule and its category only; the description is in the documentation each entry links to.
 

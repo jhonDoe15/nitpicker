@@ -17,7 +17,8 @@ import javax.tools.*;
  * each arguments file holds javac arguments, then {@code --sources} and the sources, one per line.
  * The non-javac lines ({@code --test-only}, {@code --own-classes=}, {@code --release=}, {@code
  * --source=}, {@code --target=}, {@code --project-arg=}) and lombok.config handling are described in
- * docs/java-preset.md. A failed compilation exits with status 1 and javac's errors on stderr.
+ * docs/java-preset/error-prone-and-nullaway.md. A failed compilation exits with status 1 and
+ * javac's errors on stderr.
  */
 public final class ErrorProneReport {
   private static final String SOURCES = "--sources";
