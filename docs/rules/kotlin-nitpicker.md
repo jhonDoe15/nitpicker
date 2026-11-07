@@ -2,7 +2,7 @@
 
 The Kotlin source checks, the compiler warnings and the ktlint and ktfmt format checks of the Kotlin preset. This page lists 54 rules. [All pages](README.md).
 
-The guide for these rules: [docs/kotlin-preset.md#source-checks](../kotlin-preset.md#source-checks).
+The guide for these rules: [docs/kotlin-preset/source-checks.md](../kotlin-preset/source-checks.md).
 
 In the Kotlin preset, an entry of `exceptions` names a detekt rule as `detekt.<ruleset>.<Rule>`, one of these rules: `catch-log-without-exception`, `test-without-assertion`, `function-lines-limit`, `function-statements-limit`, `function-control-nesting-limit`, `function-parameters-limit`, `crap-score-limit`, `crap-coverage-unknown`, `changed-branch-coverage`, `mutant-survived`, `mutant-nocoverage`, `duplicate-clone`, `stability-direction`, `file-lines-limit`, `line-length-limit`, `folder-files-limit`, `slow-test`, `committed-env-file`, `committed-private-key`, `committed-binary`, `large-file`, `committed-build-output`, `migration-order`, `migration-hardcoded-name`, `start-schema-push`, `co-change`, `duplicate-definition`, `exported-name-collision`, `sibling-copy-edit`, `test-only-export`, `doc-comment-content`, `test-console-output`, `folder-depth-limit`, `class-methods-limit`, `class-fields-limit`, `inheritance-depth-limit`, `test-runtime/slow-test`, `test-runtime/test-console-output`, `test-runtime/test-not-run`, `coupling/test-only-export`, `kotlin-source/GeneratedOnHandWrittenCode`, `kotlin-source/JvmSyntheticOnHandWrittenCode`, `kotlin-source/MutationIgnoreMarker`, `kotlin-source/CommentedOutCode`, `kotlin-source/MutableModuleState`, `kotlin-source/GenericTypeName`, `kotlin-source/GenericFileName`, `kotlin-source/GenericPackageName`, `kotlin-source/LogStringConcatenation`, `kotlin-source/ShellCommand`, `kotlin-source/IoCallInLoop`, `kotlin-source/UnsafeCastOperator`, `kotlin-source/CatchOnlyLogsOrReturnsDefault`, `kotlin-source/BooleanFlagParameter`, `kotlin-source/HardcodedSecret`, `kotlin-source/CredentialLiteral`, `kotlin-source/SecretInLog`, `kotlin-source/TestClassWithoutTestCases`, `kotlin-source/DetachedTestCase`, `kotlin-source/TestHelperInSource`, `kotlin-source/SqlStringBuilding`, `kotlin-source/WeakHash`, `kotlin-source/TlsVerificationOff`, `kotlin-source/HttpWithoutTimeout`, `kotlin-source/UnsafeDeserialization`, `kotlin-source/UriCreateDynamic`, `kotlin-source/UnclosedInlineResource`, `kotlin-source/ProcessWaitWithoutTimeout`, `kotlin-source/LogFormatArguments`, `kotlin-source/LogExceptionFirst`, `kotlin-source/UnboundedFanOut`, `kotlin-source/UnboundedReactiveFanOut`, `kotlin-source/TriStateBoolean`, `kotlin-source/ParameterMutation`, `kotlin-source/CompatibilityShim`, `kotlin-source/DefaultTimeZone`, `kotlin-source/LegacyCalendarApi`, `kotlin-source/UnquotedRegexValue`, `kotlin-source/PlainTextRegex`, `kotlin-source/RepeatedStringLiteral`, `kotlinc/deprecation`, `kotlinc/unchecked`, `kotlinc/cast`, `kotlinc/lint-not-run`, `pmd/FixedSleepInTest`, `pmd/NegativeWaitInTest`, `pmd/DisabledTest`, `pmd/FocusedTest`, `pmd/RetryInTest`, `pmd/ServerOrContainerPerTest`, `pmd/AssertionInControlFlow`, `pmd/CoroutineEscapesTest`, `pmd/GlobalStateLeakInTest`, `pmd/SpringUnusedContext`, `pmd/ExhaustiveEnumPredicate`, `pmd/StaticForwardingWrapper`, `pmd/SingularAndPluralMember`, `pmd/ValidationAnnotationTarget`, `pmd/ClassLoadEffect`, `pmd/UnboundedThreadPool`, `pmd/RecursiveMapUpdate`, `pmd/SpringConstructorInjection`, `pmd/SpringImmutableBeans`, `pmd/SpringNoServiceLocator`, `pmd/SpringNoLazyInjection`, `pmd/SpringStaticPostProcessorBean`, `pmd/SpringOrderedProvider`, `pmd/SpringUnreleasedResource`, `pmd/SpringStartupCleanup`, `pmd/SpringLiteConfiguration`, `pmd/SpringNoComponentScan`, `pmd/SpringBeanCollectionState`, `pmd/SpringHttpClientPerCall`, `pmd/SpringHttpClientTimeouts`, `pmd/SpringNoPostConstructIo`, `pmd/SpringTypedConfiguration`, `pmd/SpringValueSecretDefault`, `pmd/SpringProfileOnConfiguration`, `pmd/SpringProxyMethodVisibility`, `pmd/SpringProxySelfCall`, `pmd/SpringTransactionalAnnotation`, `pmd/SpringNoTransactionalController`, `pmd/SpringNoRequiresNew`, `pmd/SpringNoSwallowedTransactionException`, `pmd/SpringTransactionalCheckedRollback`, `pmd/SpringTransactionalReadOnlyWrite`, `pmd/SpringMultiWriteWithoutTransaction`, `pmd/SpringCacheWriteInTransaction`, `pmd/SpringLocalCacheWriteInTransaction`, `pmd/SpringAsyncExecutor`, `pmd/SpringScheduledFixedDelay`, `pmd/SpringComposedMapping`, `pmd/SpringRestController`, `pmd/SpringValidRequestBody`, `pmd/SpringTypedResponse`, `pmd/SpringTypedRequestBody`, `pmd/SpringNoErrorLeak`, `pmd/SpringNoCrossOrigin`, `pmd/SpringCorsWildcard`, `pmd/SpringPasswordEncoder`, `pmd/SpringPermitAllAnyRequest`, `pmd/SpringCsrfDisabled`, `pmd/SpringHardcodedUser`, `pmd/JpaLazyFetching`, `pmd/JpaEntityClass`, `pmd/JpaManyToManyCascade`, `pmd/JpaManyToManySet`, `pmd/JpaVersion`, `pmd/JpaSequenceIds`, `pmd/JpaEnumString`, `pmd/JpaIdentityHashCode`, `pmd/SpringDataDerivedQuery`, `pmd/SpringDataNativeQuery`, `pmd/SpringDataWriteWithoutTransaction`, `pmd/SpringDataModifyingQuery`, `pmd/SpringDataNoSaveInLoop`, `pmd/SpringDataNoFlush`, `pmd/SpringDataNamedParameters`, `pmd/SpringDataQueryTextBlock`, `pmd/SpringDataBatchOfOne`, `pmd/SpringDataRowWriteInLoop`, `pmd/SpringDataSaveInLoopHelper`, `pmd/SpringDataFilterInQuery`, `pmd/SpringQueryConcatenation` and `unused-option`, or, for the Java sources of the project, a finding as it prints, `<tool>/<rule>` with one of the tools `pmd`, `spotbugs`, `errorprone`, `archunit`, `google-java-format`, `palantir-java-format`, `jacoco`, `checkstyle`, `crap`, `duplicates`, `pit`, `structure`, `coupling`, `spring` and `test-runtime`.
 
@@ -22,7 +22,7 @@ A `catch` block that logs a failure without passing the caught exception to the 
 - **Why it is on:** A scan of the Kotlin sources on the Node side reports it under the tool detekt.
 - **Allowed form:** Pass the caught exception to the logger as its own argument so the stack trace is kept (log.error("what failed", e), or logger.error(e) { "what failed" }). e.message, e.toString() and a string template of the exception drop it.
 - **Exception:** If this is intended, add `{"rule":"catch-log-without-exception","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
-- **See also:** [Kotlin preset guide](../kotlin-preset.md#source-scans)
+- **See also:** [Kotlin preset guide](../kotlin-preset/source-scans.md)
 
 <a id="detekt-inline-suppression"></a>
 
@@ -35,7 +35,7 @@ An inline `@Suppress` of a detekt or ktlint rule, a ruleset, `all` or a compiler
 - **Allowed forms by message:**
   - `detekt.<ruleset>`: Suppressing "detekt.style" inline is not allowed. Fix the code the rule flags; to skip generated code, add it to "exclude" in nitpicker.config.json.
   - `UNCHECKED_CAST`: Suppressing "UNCHECKED_CAST" inline is not allowed. Fix the code the compiler warns about.
-- **See also:** [Kotlin preset guide](../kotlin-preset.md#one-way-rules)
+- **See also:** [Kotlin preset guide](../kotlin-preset/one-way-rules.md)
 
 <a id="detekt-test-without-assertion"></a>
 
@@ -46,7 +46,7 @@ A test method that calls no assertion.
 - **Why it is on:** A scan of the Kotlin sources on the Node side reports it under the tool detekt.
 - **Allowed form:** Assert the result (assertEquals, assertFailsWith, `shouldBe`, MockK `verify`): this test has no assertion, so it passes whenever the code does not throw. A project helper that asserts is learned from the tests that end with it (conventions kotlin.assertionHelpers).
 - **Exception:** If this is intended, add `{"rule":"test-without-assertion","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
-- **See also:** [Kotlin preset guide](../kotlin-preset.md#source-scans)
+- **See also:** [Kotlin preset guide](../kotlin-preset/source-scans.md)
 
 <a id="kotlin-source-booleanflagparameter"></a>
 
@@ -417,7 +417,7 @@ A Kotlin compiler warning: `USELESS_CAST`.
 - **Why it is on:** The kotlinc lint compiles the main Kotlin sources with the pinned compiler and reports these warnings as findings, like -Werror on the code the change touched; a build setting cannot hide them.
 - **Allowed form:** Remove the cast.
 - **Exception:** If this is intended, add `{"rule":"kotlinc/cast","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
-- **See also:** [Kotlin preset guide](../kotlin-preset.md#compiler-warnings)
+- **See also:** [Kotlin preset guide](../kotlin-preset/compiler-warnings.md)
 
 <a id="kotlinc-deprecation"></a>
 
@@ -428,7 +428,7 @@ A Kotlin compiler warning: `DEPRECATION`, `TYPEALIAS_EXPANSION_DEPRECATION`.
 - **Why it is on:** The kotlinc lint compiles the main Kotlin sources with the pinned compiler and reports these warnings as findings, like -Werror on the code the change touched; a build setting cannot hide them.
 - **Allowed form:** Call the replacement the deprecation names (its `ReplaceWith`, or the Javadoc of a Java API).
 - **Exception:** If this is intended, add `{"rule":"kotlinc/deprecation","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
-- **See also:** [Kotlin preset guide](../kotlin-preset.md#compiler-warnings)
+- **See also:** [Kotlin preset guide](../kotlin-preset/compiler-warnings.md)
 
 <a id="kotlinc-lint-not-run"></a>
 
@@ -439,7 +439,7 @@ The kotlinc lint could not compile the sources, for example because a compiler p
 - **Why it is on:** Without the lint compile, the compiler warnings above are not checked, so the run says so.
 - **Allowed form:** No kotlinc lint report from the lint compile of the main sources (kotlinc exited with an error), so unchecked casts, deprecated calls and redundant casts were not checked there. Fix what that compile reports (the main sources, the compile class path and the compiler plugins).
 - **Exception:** A descriptive finding: it never fails the gate, so no exception applies.
-- **See also:** [Kotlin preset guide](../kotlin-preset.md#compiler-warnings)
+- **See also:** [Kotlin preset guide](../kotlin-preset/compiler-warnings.md)
 
 <a id="kotlinc-unchecked"></a>
 
@@ -450,7 +450,7 @@ A Kotlin compiler warning: `UNCHECKED_CAST`.
 - **Why it is on:** The kotlinc lint compiles the main Kotlin sources with the pinned compiler and reports these warnings as findings, like -Werror on the code the change touched; a build setting cannot hide them.
 - **Allowed form:** Use a typed API, a checked conversion (`as? List<*>` and a check of each element) or a reified generic function instead of the unchecked cast.
 - **Exception:** If this is intended, add `{"rule":"kotlinc/unchecked","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
-- **See also:** [Kotlin preset guide](../kotlin-preset.md#compiler-warnings)
+- **See also:** [Kotlin preset guide](../kotlin-preset/compiler-warnings.md)
 
 <a id="ktfmt-format"></a>
 
@@ -485,7 +485,7 @@ An assertion that can be skipped: inside an `if` or a `when` whose branches do n
 - **Why it is on:** One of the review rules of the Kotlin preset, a scan of the Kotlin sources on the Node side; it prints as a PMD rule, like the Java rules it mirrors.
 - **Allowed form:** Assert unconditionally. An assertion inside an if, a when, a loop, a safe call, a try/catch that swallows the failure or a runCatching can be skipped, so the test passes without checking anything: a loop over an empty list, or a branch the data never takes, checks nothing. Assert in every branch (an if/else or when whose branches all assert or fail is fine), or narrow with assertNotNull, assertIs or `?: fail(...)` instead of an if or a safe call. Put a table of cases in a parameterized test (@ParameterizedTest with @MethodSource or @CsvSource, Kotest withData) and assert every time; for a loop over results, assert the whole collection at once (assertEquals(expected, results), shouldContainExactly, AssertJ containsExactly). Do not return early before the assertions, and let assertion errors escape. An exception fits only a case that cannot be stated unconditionally, such as cases generated at run time.
 - **Exception:** If this is intended, add `{"rule":"pmd/AssertionInControlFlow","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
-- **See also:** [Kotlin preset guide](../kotlin-preset.md#review-rules)
+- **See also:** [Kotlin preset guide](../kotlin-preset/review-rules.md)
 
 <a id="pmd-coroutineescapestest"></a>
 
@@ -496,7 +496,7 @@ A `launch`, `async`, `launchIn`, `stateIn` or `shareIn` on a scope the test does
 - **Why it is on:** One of the review rules of the Kotlin preset, a scan of the Kotlin sources on the Node side; it prints as a PMD rule, like the Java rules it mirrors.
 - **Allowed form:** This test starts a coroutine that the test does not wait for, so it can still be running, or fail, after the test has passed: a launch, async, launchIn, stateIn or shareIn on CoroutineScope(...), MainScope(), a scope kept in a field or a local, a scope a helper returns, lifecycleScope or viewModelScope without a test Main dispatcher, or a TestScope outside runTest is not a child of the test, and with, run, apply or also on such a scope does not change that. Run the body in runTest (or runBlocking, coroutineScope, supervisorScope) and launch from there, keep the Job or Deferred and join or await it (`val job = scope.launch { ... }; job.join()`), or build the scope on the test dispatcher and drive it with advanceUntilIdle; `backgroundScope.launch` inside runTest is for work that should end with the test. An exception fits only when the test waits through a harness this rule cannot see.
 - **Exception:** If this is intended, add `{"rule":"pmd/CoroutineEscapesTest","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
-- **See also:** [Kotlin preset guide](../kotlin-preset.md#review-rules)
+- **See also:** [Kotlin preset guide](../kotlin-preset/review-rules.md)
 
 <a id="pmd-disabledtest"></a>
 
@@ -507,7 +507,7 @@ A skipped test: `@Disabled`, `@Ignore`, `@Ignored` (also aliased or carried by a
 - **Why it is on:** One of the review rules of the Kotlin preset, a scan of the Kotlin sources on the Node side; it prints as a PMD rule, like the Java rules it mirrors.
 - **Allowed form:** Fix or delete this test instead of disabling it: @Disabled, @Ignore, @Ignored (also through an alias or an annotation that carries them), an x-prefixed Kotest name (xtest, xcontext, xdescribe, xit, xshould, xgiven), a "!" name prefix, `.config(enabled = false)`, a condition that is always false and an assumption that is always false all skip it while the build stays green, so nothing shows that the behavior it covered is unchecked. Delete the test when the behavior is gone; to run it only where it can run, use a condition on the environment (`@EnabledOnOs`, `@EnabledIfSystemProperty`, an assumption on a real condition). An exception fits only a test that is skipped on purpose until a tracked defect is fixed.
 - **Exception:** If this is intended, add `{"rule":"pmd/DisabledTest","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
-- **See also:** [Kotlin preset guide](../kotlin-preset.md#review-rules)
+- **See also:** [Kotlin preset guide](../kotlin-preset/review-rules.md)
 
 <a id="pmd-focusedtest"></a>
 
@@ -518,7 +518,7 @@ A Kotest focus that runs only part of the suite: the `f:` name prefix, `ftest`, 
 - **Why it is on:** One of the review rules of the Kotlin preset, a scan of the Kotlin sources on the Node side; it prints as a PMD rule, like the Java rules it mirrors.
 - **Allowed form:** Remove the focus from this test: a Kotest name with the "f:" prefix and the f-prefixed registrations (ftest, fcontext, fdescribe, fit, fshould, fgiven) make Kotest run only the focused tests of the spec, so the rest of the suite is skipped while the build stays green. Run one test while you work with the IDE or a Gradle `--tests` filter, and commit the test without the focus.
 - **Exception:** If this is intended, add `{"rule":"pmd/FocusedTest","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
-- **See also:** [Kotlin preset guide](../kotlin-preset.md#review-rules)
+- **See also:** [Kotlin preset guide](../kotlin-preset/review-rules.md)
 
 <a id="pmd-validationannotationtarget"></a>
 
@@ -527,6 +527,6 @@ A Kotest focus that runs only part of the suite: the `f:` name prefix, `ftest`, 
 A Bean Validation annotation (`jakarta.validation.constraints`, `javax.validation.constraints`, `org.hibernate.validator.constraints`, or `@Valid`) on a primary-constructor `val` or `var` of a main source without a `field:`, `get:` or `all:` use-site target; Kotlin puts it on the constructor parameter, where Bean Validation does not look. Kotlin-only: a Java record carries the annotation to its field and accessor.
 
 - **Why it is on:** One of the review rules of the Kotlin preset, a scan of the Kotlin sources on the Node side; it prints as a PMD rule, like the Java rules it mirrors.
-- **Allowed form:** See the guide: [Kotlin preset guide](../kotlin-preset.md#review-rules).
+- **Allowed form:** See the guide: [Kotlin preset guide](../kotlin-preset/review-rules.md).
 - **Exception:** If this is intended, add `{"rule":"pmd/ValidationAnnotationTarget","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
-- **See also:** [Kotlin preset guide](../kotlin-preset.md#review-rules)
+- **See also:** [Kotlin preset guide](../kotlin-preset/review-rules.md)
