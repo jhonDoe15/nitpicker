@@ -20,6 +20,7 @@ export const RULES_CASES = [
   ]),
   ...rulesCases('unsafe-model-loading', [['unsafe-deserialization', 'yaml.safe_load']]),
   ...rulesCases('shell-command-forms', [['shell-command', 'shell=false']]),
+  ...rulesCases('unclosed-inline-resource', [['unclosed-inline-resource', 'with']]),
   ...rulesCases('env-access', [['process-env-access', 'composition root']]),
   ...rulesCases('domain-clock', [['clock-now', 'datetime.now(tz=utc)']]),
   ...rulesCases('domain-random', [['random-in-domain', 'random.random']]),

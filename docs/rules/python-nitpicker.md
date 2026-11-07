@@ -1,6 +1,6 @@
 # Python: nitpicker rules
 
-The Python rules nitpicker's own script checks (`python-rules/*`), the coupling and import-cycle findings, the ruff format check and the finding for a run in which no tests ran. This page lists 74 rules. [All pages](README.md).
+The Python rules nitpicker's own script checks (`python-rules/*`), the coupling and import-cycle findings, the ruff format check and the finding for a run in which no tests ran. This page lists 75 rules. [All pages](README.md).
 
 The guide for these rules: [docs/python-preset.md](../python-preset.md).
 
@@ -608,6 +608,15 @@ The task marker `<name>` has no issue.
 
 - **Allowed form:** A large collection exhausts the remote service's connections or rate limit. Hold one `asyncio.Semaphore(8)` created outside the tasks with `async with limit:` around each call, gather fixed-size slices (`items[i : i + 20]`), or make one batch call when the API has one.
 - **Exception:** If this is intended, add `{"rule":"unbounded-fan-out","paths":["<path>"],"reason":"..."}` to "python.exceptions" in nitpicker.config.json.
+
+<a id="python-rules-unclosed-inline-resource"></a>
+
+### `python-rules/unclosed-inline-resource`
+
+`<name>` opens a file, socket or connection and uses it in the same expression, so nothing closes it.
+
+- **Allowed form:** Open it in a `with` block (`with open(path, encoding="utf-8") as handle: data = json.load(handle)`), or read the whole file with `Path(path).read_text(encoding="utf-8")` or `read_bytes()`. Without `with`, only the garbage collector closes the handle: CPython does it when the last reference goes, PyPy later, an exception that keeps the frame alive holds it open, and Python warns with `ResourceWarning` when warnings are on (`-X dev`, pytest). `contextlib.closing(...)` and `ExitStack.enter_context(...)` also pass.
+- **Exception:** If this is intended, add `{"rule":"unclosed-inline-resource","paths":["<path>"],"reason":"..."}` to "python.exceptions" in nitpicker.config.json.
 
 <a id="python-rules-uncollected-tests"></a>
 
