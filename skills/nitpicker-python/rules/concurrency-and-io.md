@@ -35,6 +35,10 @@ Part of the [nitpicker-python](../SKILL.md) skill. Write these forms from the st
 - Child processes: give every wait a deadline: `subprocess.run(args, timeout=30, check=True)`,
   `process.communicate(timeout=30)`, and asyncio process waits inside `async with asyncio.timeout(30):`
   (`subprocess-without-timeout`; a build wrapper that only runs a child to completion takes an exception).
+- PostgreSQL connections get a statement timeout once, where they are made:
+  `psycopg.connect(dsn, options="-c statement_timeout=30000")`, `asyncpg.create_pool(dsn, command_timeout=30)`,
+  `create_engine(url, connect_args={"options": "-c statement_timeout=30000"})`, Django
+  `"OPTIONS": {"options": "-c statement_timeout=30000"}` (`client-without-timeout`).
 - Secrets: never put a secret in code (`password`, `token`, `api_key`, ... assigned a literal, also as the
   fallback of `os.getenv`); read it from the environment in the composition root. Never log, print,
   warn or raise with it: log that it is set (`token is not None`) or a masked tail.
