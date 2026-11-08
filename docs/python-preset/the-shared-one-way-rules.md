@@ -142,6 +142,20 @@ Details that are decisions rather than the table:
   `**kwargs` whose keys are unknown is not reported. Not in tests or test support, where the test run
   has its own limits. A program whose purpose is to run a child to completion, such as a build
   wrapper, takes an exception.
+- `time-unit-mismatch` reports time values in two different units that meet without a conversion. Units
+  come from the API (`time.time()`, `time.monotonic()`, `time.perf_counter()`, `datetime.timestamp()` and
+  `timedelta.total_seconds()` in seconds, the `_ns` variants in nanoseconds, the JWT claims `exp`, `iat`,
+  `nbf` and `auth_time` read by subscript or `.get`) and from name suffixes (`_ms`, `_millis`, `_seconds`,
+  `_secs`, `_nanos`, `_micros`, `_minutes` and their camel-case and upper-case forms; a ratio such as
+  `MS_PER_SECOND` has no unit). A name assigned once takes the unit of its value, and `* 1000`, `/ 1000`,
+  `// 1000` (also through a unit-less constant), `int()`, `round()` and `math.floor` convert or keep it.
+  Reported: a `+`, `-` or comparison of two units; a name, attribute, dictionary key, default or keyword
+  argument in one unit that gets a value in another; an argument of one unit where the call takes another
+  (`time.sleep`, `asyncio.sleep`, `datetime.fromtimestamp`, the positional and keyword arguments of
+  `timedelta`, a module-level function whose parameter is named with a unit); and an epoch time passed to
+  `numpy.int32`, `numpy.uint32`, `ctypes.c_int` or `ctypes.c_int32`. Not in tests or test support. The same
+  rule runs as `nitpicker/time-unit-mismatch` (TypeScript, JavaScript), `pmd/MixedTimeUnits` and
+  `pmd/EpochNarrowedToInt` (Java) and `kotlin-source/TimeUnitMismatch` (Kotlin).
 - `sql-string-formatting` reports SQL text built at run time that reaches a query call. A value is
   built when an f-string, `%`, `+`, `+=`, `.format`, `.format_map`, `string.Template(...).substitute` or
   `.join` puts a piece into it that is not provably inert, followed through local names, parameter
