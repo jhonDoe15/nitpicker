@@ -76,6 +76,7 @@ describe('duplicate-definition on Java and Kotlin', () => {
         'Move it to one module and import it.',
         exceptionHint('duplicate-definition', invoices),
       ].join(' '),
+      allowedForm: 'Move it to one module and import it.',
     });
   });
 

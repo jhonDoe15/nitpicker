@@ -34,6 +34,7 @@ function described({ rule, subject, data }, libraries) {
   return {
     message: describeRuleFinding(rule, subject, { libraries, data }),
     classification: 'enforceable',
+    ...(data === undefined ? {} : { hintData: data }),
   };
 }
 
