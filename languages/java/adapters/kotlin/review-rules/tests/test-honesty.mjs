@@ -10,6 +10,7 @@ import { FOCUSED_RULE } from './honesty/focused-tests.mjs';
 import { honestyReports } from './honesty/honesty-reports.mjs';
 import { RETRY_RULE } from './honesty/retries/retry-tests.mjs';
 import { DISABLED_RULE } from './honesty/skipped-tests.mjs';
+import { FLOAT_EQUALITY_RULE, floatEqualityReports } from './floats/float-equality.mjs';
 import { projectFlags } from './project-flags.mjs';
 import {
   PER_TEST_START_MESSAGE,
@@ -24,6 +25,7 @@ export const HONESTY_RULES = [
   PER_TEST_START_RULE,
   CONTROL_FLOW_RULE,
   ESCAPING_RULE,
+  FLOAT_EQUALITY_RULE,
   GLOBAL_STATE_RULE,
 ];
 
@@ -52,6 +54,7 @@ export function fileReports(scanned, project) {
   return [
     ...honestyReports(scanned, suites, project),
     ...coroutineReports(scanned, suites, project),
+    ...floatEqualityReports(scanned, suites),
     ...globalStateReports(scanned, suites),
     ...perTestStarts(scanned, suites).map((entry) => ({
       ...entry,

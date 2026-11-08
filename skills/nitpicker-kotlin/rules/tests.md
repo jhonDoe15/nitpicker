@@ -45,6 +45,13 @@ Part of the [nitpicker-kotlin](../SKILL.md) skill. Write these forms from the st
   package config, `TestConfig(retries = n)`). A test that passes on a later attempt hides a flaky or
   racy test: wait on the condition instead of a fixed delay, isolate shared state. `retries = 0` and
   `@RepeatedTest` are fine.
+- Compare floating-point numbers with a tolerance (`pmd/FloatEqualityInTest`): no `assertEquals`,
+  `assertNotEquals`, `shouldBe`, `shouldNotBe` or AssertJ `isEqualTo` against a fractional literal
+  such as `0.1`. Use `assertEquals(expected, actual, absoluteTolerance = 1e-9)`, the JUnit delta
+  overload, `actual shouldBe (expected plusOrMinus 1e-9)` or `isCloseTo(expected, within(1e-9))`;
+  the same goes for `assertTrue(x == 0.1)` and `(x == 0.1) shouldBe true`, which need
+  `abs(x - 0.1) < 1e-9`. An AssertJ `using...Comparator(...)` is fine. An integral literal such as
+  `1.0` is exact and fine.
 - Never mock the class under test (`pmd/MockedSubjectInTest`): no `mockk<OrderService>()`,
   `mock<OrderService>()` or `@MockK` of it in `OrderServiceTest`, and no `spyk`/`@SpyK` of it with
   `every { subject.helper() }`. Pass its collaborators in through the constructor with fakes or mocks

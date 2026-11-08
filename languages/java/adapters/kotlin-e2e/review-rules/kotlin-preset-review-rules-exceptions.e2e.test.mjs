@@ -37,6 +37,7 @@ describe.skipIf(!kotlinE2eEnabled)('Kotlin preset review rule exceptions end to 
         ...kotlinPolicy,
         exceptions: [
           { rule: 'pmd/FixedSleepInTest', glob: ORDERS_TESTS },
+          { rule: 'pmd/FloatEqualityInTest', glob: ORDERS_TESTS },
           { rule: 'pmd/GlobalStateLeakInTest', glob: ORDERS_TESTS },
           { rule: 'pmd/SpringUnusedContext', glob: ORDERS_TESTS },
           { rule: 'pmd/MockedSubjectInTest', glob: ORDERS_TESTS },

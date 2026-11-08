@@ -30,6 +30,7 @@ skipped with a note on stderr.
 | `DisabledTest`                                          | `review-rules/tests/honesty/`                          | a skipped test: `@Disabled`, `@Ignore`, `@Ignored` (also aliased or carried by an annotation), Kotest `xtest`, `xcontext`, `xdescribe`, `xit`, `xshould`, `xgiven`, a `!` name prefix, a `.config(...)` that never runs, a constant false condition or assumption                                                                                                                                                                |
 | `FocusedTest`                                           | `review-rules/tests/honesty/`                          | a Kotest focus that runs only part of the suite: the `f:` name prefix, `ftest`, `fcontext`, `fdescribe`, `fit`, `fshould`, `fgiven`                                                                                                                                                                                                                                                                                              |
 | `RetryInTest`                                           | `review-rules/tests/honesty/retries/`                  | a retry set in test code: `@RetryingTest`, `@RepeatedIfExceptionsTest`, TestNG `retryAnalyzer`, `IRetryAnalyzer`, `RetryAnalyzerCount`, `setRetryAnalyzer`, Kotest `retries`                                                                                                                                                                                                                                                     |
+| `FloatEqualityInTest`                                   | `review-rules/tests/floats/`                           | `assertEquals`, `shouldBe`, AssertJ `isEqualTo` or `assertTrue(x == 0.1)` against a fractional float literal (`0.1`, `1e-3`) in a test                                                                                                                                                                                                                                                                                           |
 | `ServerOrContainerPerTest`                              | `review-rules/tests/setup/`                            | a container, server or process started for each test: a `@Container`, `@Rule` or `@RegisterExtension` property of a JUnit instance, a Kotest container extension in a per-test mode, a start in `@BeforeEach`, `@Before`, `beforeTest` or `beforeEach` on an object made for each test, the same start in two or more tests of a class                                                                                           |
 | `AssertionInControlFlow`                                | `review-rules/tests/honesty/`                          | an assertion that can be skipped: inside an `if` or a `when` whose branches do not all assert, a loop, a safe call, `&&`, `\|\|`, `?:`, a swallowing `try` or `runCatching`, or after an early return                                                                                                                                                                                                                            |
 | `CoroutineEscapesTest`                                  | `review-rules/tests/coroutines/`                       | a `launch`, `async`, `launchIn`, `stateIn` or `shareIn` on a scope the test does not own (`CoroutineScope(...)`, a scope field, `viewModelScope`) that nothing joins, awaits or cancels                                                                                                                                                                                                                                          |
@@ -631,6 +632,22 @@ guessed at.
   A base config class in another file and a constant from another file are not followed. The Java preset
   has the same rule id for the JVM forms. Fix the cause instead, for example wait on the condition instead
   of a fixed delay or isolate shared state; use `exceptions` only for a test that must retry on purpose.
+- `FloatEqualityInTest`: the same rule id as the Java preset. Reported anywhere in a test source file (a
+  helper included): `assertEquals` and `assertNotEquals` (also `Assertions.`, `Assert.` or `kotlin.test.`
+  qualified, with a type argument, a message first or last, or named `expected` and `actual`) whose
+  expected or actual argument is a fractional literal (`0.1`, `-0.1`, `0.1f`, `1e-3`) and that have no
+  `absoluteTolerance =` or `delta =` argument and no third numeric argument; Kotest `x shouldBe 0.1`,
+  `x shouldNotBe 0.1` and the `x.shouldBe(0.1)` call form; AssertJ `isEqualTo` and `isNotEqualTo` with
+  one such literal in a file that imports `org.assertj`; and a `==`, `!=`, `===` or `!==` with such a literal
+  inside `assertTrue` / `assertFalse` (also the block form), `(x == 0.1) shouldBe true` and `.shouldBeTrue()`,
+  and `assertThat(x == 0.1).isTrue()` (AssertJ file). Literals may omit the integer part (`.5`).
+  Allowed: ordering comparisons, `abs(x - 0.1) < tolerance`, a tolerance, an AssertJ chain with a
+  `using...` call (`usingComparator(...)`),
+  `x shouldBe (0.1 plusOrMinus 1e-9)`, `0.1.plusOrMinus(...)`, `isCloseTo(...)`, integral literals such as
+  `1.0`, and literals in strings and comments. Only a literal written in the call counts: `0.1 + 0.2`, a
+  constant, a collection literal, a literal followed by a call, an operator or a line that continues
+  the expression (`x shouldBe (0.5) * y`, `0.1` then `.plus(1)`), and a third argument that is not a
+  string or a lambda (read as a delta) are left alone. Hamcrest is not read in Kotlin.
 - `GlobalStateLeakInTest`: the same rule id as the Java preset. Reported in a test source file: `System.setProperty`,
   `clearProperty`, `setProperties`, `setOut`, `setErr` and `setIn`, `Thread.setDefaultUncaughtExceptionHandler` (also
   with a trailing lambda), `Locale.setDefault` and `TimeZone.setDefault` (from `java.util`), `Security.addProvider` and

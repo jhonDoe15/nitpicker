@@ -39,7 +39,7 @@ describe.skipIf(!kotlinE2eEnabled)('Kotlin preset review rules end to end', () =
     removeProject(project);
   });
 
-  it('fails the sleeps, enum predicates, wrapper, plural member, map updates, unused option, unused context, update across a suspension, lock-order inversion, inconsistently locked property and swallowed cancellation or interrupt, blocking coroutine calls and timeout blocks, and spares the allowed forms', () => {
+  it('fails the sleeps, float comparisons, enum predicates, wrapper, plural member, map updates, unused option, unused context, update across a suspension, lock-order inversion, inconsistently locked property and swallowed cancellation or interrupt, blocking coroutine calls and timeout blocks, and spares the allowed forms', () => {
     const result = diffOf(project, 'review-rules');
 
     expect(result.failed).toBe(true);
