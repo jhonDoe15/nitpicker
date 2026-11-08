@@ -13,6 +13,7 @@ import { boundaryRoots, detectLibraries } from '../../rules/libraries/project-li
 
 export const RULES_REPORT = 'rules.json';
 export const ALLOWANCES_REPORT = 'rules-allowances.json';
+const REGEXES_REPORT = 'rules-regexes.json';
 const RULES_FAILED_RULE = 'rules-failed';
 const FILE_LIST = 'python-files.txt';
 const OPTIONS_FILE = 'rule-options.json';
@@ -24,6 +25,11 @@ const RULES_SCRIPT = path.resolve(
 export function readTestFiles(reportRoot) {
   const file = path.join(reportRoot, OPTIONS_FILE);
   return existsSync(file) ? (JSON.parse(readFileSync(file, 'utf8')).testFiles ?? []) : [];
+}
+
+export function readRegexSites(reportRoot) {
+  const file = path.join(reportRoot, REGEXES_REPORT);
+  return existsSync(file) ? readFileSync(file, 'utf8') : '[]';
 }
 
 export function readAllowances(reportRoot) {

@@ -1264,6 +1264,44 @@ return (
       </property>
     </properties>
   </rule>
+  <rule name="BacktrackingRegex" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
+        message="Rewrite this regex without nested or overlapping quantifiers, or use a String method: it backtracks super-linearly on some inputs. An exception fits only when the input is bounded and trusted.">
+    <priority>3</priority>
+    <properties>
+      <property name="xpath">
+        <value><![CDATA[
+//MethodCall[pmd-java:matchesSig('java.util.regex.Pattern#compile(java.lang.String)')
+             or pmd-java:matchesSig('java.util.regex.Pattern#compile(java.lang.String,int)')
+             or pmd-java:matchesSig('java.util.regex.Pattern#matches(java.lang.String,java.lang.CharSequence)')
+             or pmd-java:matchesSig('java.lang.String#matches(java.lang.String)')
+             or pmd-java:matchesSig('java.lang.String#replaceAll(java.lang.String,java.lang.String)')
+             or pmd-java:matchesSig('java.lang.String#replaceFirst(java.lang.String,java.lang.String)')
+             or pmd-java:matchesSig('java.lang.String#split(_*)')
+             or pmd-java:matchesSig('java.lang.String#splitWithDelimiters(_*)')]
+  /ArgumentList/*[1][self::StringLiteral][not(@TextBlock = true())]
+]]></value>
+      </property>
+    </properties>
+  </rule>
+  <rule name="RegexPartDefect" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
+        message="Remove the part of this regex that never changes what it matches, rewrite the part that does not do what it looks like, or write the shorter form with the same meaning.">
+    <priority>3</priority>
+    <properties>
+      <property name="xpath">
+        <value><![CDATA[
+//MethodCall[pmd-java:matchesSig('java.util.regex.Pattern#compile(java.lang.String)')
+             or pmd-java:matchesSig('java.util.regex.Pattern#compile(java.lang.String,int)')
+             or pmd-java:matchesSig('java.util.regex.Pattern#matches(java.lang.String,java.lang.CharSequence)')
+             or pmd-java:matchesSig('java.lang.String#matches(java.lang.String)')
+             or pmd-java:matchesSig('java.lang.String#replaceAll(java.lang.String,java.lang.String)')
+             or pmd-java:matchesSig('java.lang.String#replaceFirst(java.lang.String,java.lang.String)')
+             or pmd-java:matchesSig('java.lang.String#split(_*)')
+             or pmd-java:matchesSig('java.lang.String#splitWithDelimiters(_*)')]
+  /ArgumentList/*[1][self::StringLiteral][not(@TextBlock = true())]
+]]></value>
+      </property>
+    </properties>
+  </rule>
   <rule name="timeout-abandons-async-task" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
         message="{0}(...) on a CompletableFuture from supplyAsync or runAsync stops waiting, not the task: cancelling or completing a CompletableFuture never interrupts its task, so the task keeps running with its thread and side effects, and a retry overlaps it. Submit the work to an ExecutorService instead, wait with future.get(timeout, unit) and call cancel(true) on that Future when the TimeoutException arrives.">
     <priority>3</priority>

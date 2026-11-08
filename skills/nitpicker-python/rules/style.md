@@ -37,3 +37,5 @@ Part of the [nitpicker-python](../SKILL.md) skill. Write these forms from the st
   name: no alias (`Old = New`), module `__getattr__`, `@deprecated` or `DeprecationWarning` shim.
 - Regexes: an argument built into a `re` pattern goes through `re.escape(value)`; plain text is
   compared with `in`, `startswith` or `==` (`regex-unescaped-value`).
+  Every part of a literal pattern must change what it matches (`a|b|a`, `[\w_]` and `x{1}` are
+  `regex-part-defect`), and nested quantifiers such as `^(\s*\w+)*$` are `regex-backtracking`.

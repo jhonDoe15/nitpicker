@@ -12,6 +12,8 @@ MINIMUM_PYTHON = (3, 10)
 SKIPPED_RULE = "rules-skipped"
 CHECK_FAILED_RULE = "rules-check-failed"
 ALLOWANCES_REPORT = "rules-allowances.json"
+REGEXES_REPORT = "rules-regexes.json"
+REGEX_SITE_RULE = "regex-pattern"
 TOO_DEEP_RULE = "rules-too-deep"
 GUARDED_PREFIXES = ("security.", "signatures.", "concurrency.")
 
@@ -200,9 +202,10 @@ def main(arguments):
     results.findings.sort(
         key=lambda item: (item["path"], item["line"], item["rule"], item["subject"])
     )
-    write_json(
-        out_file, [{k: v for k, v in item.items() if k != "end"} for item in results.findings]
-    )
+    reported = [{k: v for k, v in item.items() if k != "end"} for item in results.findings]
+    write_json(out_file, [item for item in reported if item["rule"] != REGEX_SITE_RULE])
+    regexes = [item for item in reported if item["rule"] == REGEX_SITE_RULE]
+    write_json(os.path.join(os.path.dirname(out_file), REGEXES_REPORT), regexes)
     allowed = sorted(
         results.allowances, key=lambda item: (item["path"], item["line"], item["rule"])
     )

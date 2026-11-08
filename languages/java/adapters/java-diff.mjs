@@ -35,7 +35,7 @@ import {
   withTestsFailures,
 } from './red-base/tests-failed.mjs';
 import { isJavaTouchedRule } from './touched-rules.mjs';
-import { withProjectEnumPredicates } from './review-rules/enum-predicates.mjs';
+import { withProjectSourceRules } from './regexes/regex-defects.mjs';
 import { gradleBudget } from './gradle-wrapper/gradle-budget.mjs';
 import { gradleStages } from './gradle-wrapper/gradle-stages.mjs';
 
@@ -199,7 +199,7 @@ export function collectJavaFindings(root, options = {}) {
   ).findings;
   const policed = applyFindingPolicy(
     withoutFollowedImports(
-      withProjectEnumPredicates(withoutGeneratedSources(parsed, projectRoot), projectRoot),
+      withProjectSourceRules(withoutGeneratedSources(parsed, projectRoot), projectRoot),
       options.policy?.conventions,
       readSource,
     ),
