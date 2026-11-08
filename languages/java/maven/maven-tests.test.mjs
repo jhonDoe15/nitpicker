@@ -16,13 +16,13 @@ import {
   junitLauncherVersion,
   pitClasspath,
   javaArgumentFile,
-  pitTargets,
   pitTests,
   freshExecFiles,
   runJacocoReport,
   runPit,
 } from './maven-tests.mjs';
 import { readPitMutators } from '../builds/java-build.mjs';
+import { pitTargets } from './module/pit-scope.mjs';
 
 const roots = [];
 

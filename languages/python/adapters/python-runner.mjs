@@ -47,6 +47,7 @@ function toolContext({ projectRoot, liveRoot, settings, policy, spawn }, reportR
     conventions: policy?.conventions,
     policyRoot: policy?.policyRoot,
     toolPrecedence: policy?.toolPrecedence,
+    mutationScope: policy?.mutationScope,
     pytestAddopts: process.env.PYTEST_ADDOPTS,
   });
 }

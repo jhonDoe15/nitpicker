@@ -382,4 +382,31 @@ describe('nitpicker with paths', () => {
       'nitpicker failed: Paths cannot be combined with --shard-count; shards always cover the whole project\n',
     );
   });
+
+  it('hands the paths to the head analyzers only, for mutation to narrow to', () => {
+    const repository = repositoryWithTwoFolders();
+    const seen = [];
+    const recording = {
+      ...fakeAnalyzer(),
+      createInvocation(context) {
+        seen.push([context.snapshot, context.mutationScope]);
+        return fakeAnalyzer().createInvocation(context);
+      },
+    };
+
+    runScoped({
+      repository,
+      arguments_: ['src/orders', '--base', repository.baseRef, '--no-cache'],
+      analyzers: [recording],
+    });
+    runScoped({ repository, arguments_: ['--all', 'src/orders'], snapshotAnalyzers: [recording] });
+    runScoped({ repository, arguments_: ['--all', '.'], snapshotAnalyzers: [recording] });
+
+    expect(seen).toEqual([
+      ['base', undefined],
+      ['head', ['src/orders']],
+      ['head', ['src/orders']],
+      ['head', undefined],
+    ]);
+  });
 });

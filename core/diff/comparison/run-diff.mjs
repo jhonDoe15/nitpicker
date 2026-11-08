@@ -191,6 +191,7 @@ function runAndCombine(context) {
       snapshot: 'head',
       baselineRoot: roots.baseProjectRoot,
       baselineMovesFile,
+      mutationScope: settings.scope?.paths,
       runTasks: settings.runTasks,
     }),
   );
@@ -282,7 +283,6 @@ function withPreparedAnalyzerDependencies(
     if (baseDependencies !== undefined) {
       preparedDependencies.push(baseDependencies);
     }
-
     const headDependencies = prepareSnapshotDependencies({
       projectRoot: headSnapshotRoot,
       liveProjectRoot,
