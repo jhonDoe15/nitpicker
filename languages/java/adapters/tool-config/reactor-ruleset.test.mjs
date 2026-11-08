@@ -9,11 +9,12 @@ import {
   MEMBER_CALLS,
   STATIC_CALLS,
 } from '../kotlin/review-rules/blocking/blocking-catalog.mjs';
+import { guidePages, guideText } from '../../../../shared/reference/build/guide-pages.mjs';
 import { ALLOWED_FORM_FIRST } from '../spring/test-support/allowed-form.mjs';
 
 const root = path.resolve(import.meta.dirname, '../../../..');
 const ruleset = readFileSync(path.join(root, 'languages/java/gradle/reactor-ruleset.xml'), 'utf8');
-const docs = readFileSync(path.join(root, 'docs/java-preset.md'), 'utf8');
+const docs = guidePages('docs/java-preset.md').map(guideText).join('\n');
 const RULE = /<rule name="(?<name>[A-Za-z]+)"[^>]*?\smessage="(?<message>[^"]*)"/g;
 const rules = [...ruleset.matchAll(RULE)].map(({ groups }) => groups);
 const blockingBody = ruleset.slice(

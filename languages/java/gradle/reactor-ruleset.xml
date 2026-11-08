@@ -78,7 +78,7 @@ let $operators := ('map', 'mapNotNull', 'flatMap', 'flatMapMany', 'flatMapIterab
               or pmd-java:typeIs('org.springframework.jdbc.core.simple.JdbcClient')
               or pmd-java:typeIs('org.springframework.web.client.RestTemplate')
               or pmd-java:typeIs('org.springframework.web.client.RestOperations')
-              or pmd-java:typeIs('jakarta.persistence.EntityManager') or pmd-java:typeIs('javax.persistence.EntityManager')])
+              or pmd-java:typeIs('jakarta.persistence.EntityManager') or pmd-java:typeIs('javax.persistence.EntityManager') or pmd-java:typeIs('org.hibernate.Session')])
              and not(@MethodName = ('toString', 'equals', 'hashCode', 'getClass')))
           or (exists(*[1][pmd-java:typeIs('org.springframework.data.repository.Repository')
               or pmd-java:typeIs('org.springframework.data.repository.query.QueryByExampleExecutor')])
