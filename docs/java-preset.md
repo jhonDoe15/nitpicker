@@ -51,3 +51,4 @@ Each topic has its own page, so two changes to different topics never edit the s
 - [Slice 1: what is deliberately not included](java-preset/slice-1-what-is-deliberately-not-included.md)
 - [Tools evaluated and not integrated](java-preset/tools-evaluated-and-not-integrated.md)
 - [Tests](java-preset/tests.md)
+- [Troubleshooting](java-preset/troubleshooting.md)

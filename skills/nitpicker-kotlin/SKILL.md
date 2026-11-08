@@ -42,6 +42,7 @@ full run below.
      below them, then rerun.
    - 2: no new findings, but a tool failed. Fix the cause it names (usually a Gradle or Maven error) and rerun. Exit 2 is never a pass. If it says another run is in progress, wait
      for that run; never kill it.
+     When the message links to [troubleshooting](https://github.com/jhonDoe15/nitpicker/blob/main/docs/troubleshooting.md), the fix is there.
 4. Never suppress: no `@Suppress` of a detekt or ktlint rule, coverage or mutation markers
    (`@Generated`, `@ExcludeFromJacocoGeneratedReport`, `@DoNotMutate`), config `exclude`/`disable`/`exceptions`, legacy
    entries, or weakened tests. In Java files the Java rules apply: `@SuppressFBWarnings` and

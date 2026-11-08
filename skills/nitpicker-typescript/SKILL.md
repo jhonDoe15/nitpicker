@@ -44,6 +44,7 @@ full run below.
      changed before editing them, then rerun.
    - 2: no new findings, but a tool failed. Fix the cause it names (usually a missing package) and rerun. Exit 2 is never a pass. If it says another run is in progress,
      wait for that run; never kill it.
+     When the message links to [troubleshooting](https://github.com/jhonDoe15/nitpicker/blob/main/docs/troubleshooting.md), the fix is there.
 4. Never suppress: no `eslint-disable`, `@ts-ignore`, coverage or mutation ignore comments
    (`istanbul`/`c8`/`v8 ignore`, `Stryker disable`), config `exclude`/`disable`/`exceptions`, legacy entries, generator markers (`@generated`, `DO NOT EDIT`) in files you wrote, or weakened tests. If a finding seems wrong, stop and ask. Never pass `--accept-policy-change`, set `NITPICKER_ACCEPT_POLICY_CHANGE`
    or add the `accept-policy-change` label: a `nitpicker-config/policy-loosened` finding is for a person to

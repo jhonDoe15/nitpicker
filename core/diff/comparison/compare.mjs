@@ -3,7 +3,7 @@ import { baseMoves, comparisonKey } from './fingerprint.mjs';
 import { matchSimilarFindings } from './similar/match.mjs';
 import { matchAnchoredFindings } from './anchored/match.mjs';
 import { addGrowthAdvice, holdRatchetedFindings } from './ratchet/ratchet.mjs';
-import { withWorseMessage } from '../../../shared/messages/finding-advice.mjs';
+import { withWorseMessage } from '../../../shared/messages/advice/finding-advice.mjs';
 import { isHeldOnTouchedLine } from './ratchet/touched-code.mjs';
 import { pairedKeys } from './positions/occurrences.mjs';
 import { withEditedLineReason } from './positions/touched-lines.mjs';

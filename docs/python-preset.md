@@ -42,3 +42,4 @@ Each topic has its own page, so two changes to different topics never edit the s
 - [Runner parity](python-preset/runner-parity.md)
 - [Slices](python-preset/slices.md)
 - [Tests](python-preset/tests.md)
+- [Troubleshooting](python-preset/troubleshooting.md)

@@ -1,4 +1,5 @@
 import { configError, isPlainObject } from '../config.mjs';
+import { explainedError } from '../messages/troubleshooting.mjs';
 
 export const ANALYZER_TIMEOUT_KEY = 'analyzerTimeoutMinutes';
 export const ANALYZER_TIMEOUT_VARIABLE = 'NITPICKER_ANALYZER_TIMEOUT_MS';
@@ -34,7 +35,7 @@ export function minutesSetting(environment, variable, { fallbackMs, maxMinutes }
     return fallbackMs;
   }
   if (!WHOLE_NUMBER.test(value) || Number(value) > maxMinutes) {
-    throw new Error(`${variable} must be a whole number from 1 to ${String(maxMinutes)} (minutes)`);
+    throw explainedError(`${variable} must be a whole number from 1 to ${String(maxMinutes)} (minutes)`);
   }
   return Number(value) * MINUTE_MS;
 }

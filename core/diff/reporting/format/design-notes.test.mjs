@@ -1,5 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import { renderConsoleSummary } from '../summary.mjs';
+import {
+  TROUBLESHOOTING_ANCHORS,
+  troubleshootingUrl,
+} from '../../../../shared/messages/troubleshooting.mjs';
+
+const HELP_LINE = `Help with tool errors: ${troubleshootingUrl(TROUBLESHOOTING_ANCHORS.exitCode2)}`;
 
 const note = {
   tool: 'design',
@@ -40,6 +46,7 @@ describe('design notes in the shared console summary', () => {
         '  design/foreign-state src/orders.ts:8 Review this boundary.',
         '✖ 1 tool error',
         '  lint: Missing executable',
+        HELP_LINE,
         'Full diagnostics: artifacts/report.txt',
         '',
       ].join('\n'),

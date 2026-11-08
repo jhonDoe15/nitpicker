@@ -47,3 +47,4 @@ Each topic has its own page, so two changes to different topics never edit the s
 - [Enforcement sources](typescript-strict-preset/enforcement-sources.md)
 - [Open points](typescript-strict-preset/open-points.md)
 - [Decisions](typescript-strict-preset/decisions.md)
+- [Troubleshooting](typescript-strict-preset/troubleshooting.md)

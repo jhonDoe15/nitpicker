@@ -1,4 +1,8 @@
 import { withoutAnsi } from '../../../shared/messages/terminal/terminal-text.mjs';
+import {
+  TROUBLESHOOTING_ANCHORS,
+  withTroubleshooting,
+} from '../../../shared/messages/troubleshooting.mjs';
 import { withoutJvmNoise } from '../../../shared/messages/jvm/jvm-noise.mjs';
 
 export function failureText(result) {
@@ -59,6 +63,9 @@ export function fixerError(tool, error) {
   return {
     tool,
     snapshot: 'fix',
-    message: withoutAnsi(error instanceof Error ? error.message : String(error)),
+    message: withTroubleshooting(
+      withoutAnsi(error instanceof Error ? error.message : String(error)),
+      TROUBLESHOOTING_ANCHORS.fixersFail,
+    ),
   };
 }

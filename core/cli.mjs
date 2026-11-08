@@ -3,6 +3,7 @@ import { runAggregateCli } from './diff/sharding/aggregate-shards.mjs';
 import { reportingProgress } from './diff/execution/progress.mjs';
 import { runScheduler } from './diff/execution/run-analyzers.mjs';
 import { runCacheCommand } from './command/cache.mjs';
+import { runChangelogCommand } from './command/changelog/changelog.mjs';
 import { runExplainCommand, runRulesCommand } from './command/reference/reference.mjs';
 import { runBaseCommand } from './command/base.mjs';
 import { missingPathHint, parseArguments } from './command/arguments.mjs';
@@ -80,7 +81,6 @@ export function runCli(options = {}) {
     });
   }
   try {
-    redirectToBundledTypeScriptApi(cli.environment);
     return runCommand(cli);
   } catch (error) {
     cli.stderr.write(`nitpicker failed: ${describeError(error)}\n`);
@@ -111,6 +111,10 @@ function withCliDefaults(options) {
 
 function runCommand(cli) {
   const [name, ...rest] = cli.arguments_;
+  if (name === 'changelog') {
+    return runChangelogCommand({ ...cli, arguments_: rest });
+  }
+  redirectToBundledTypeScriptApi(cli.environment);
   if (Object.hasOwn(SUBCOMMANDS, name)) {
     return SUBCOMMANDS[name](cli, rest);
   }

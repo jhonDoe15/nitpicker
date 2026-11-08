@@ -4,6 +4,7 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { JVM_NOISE } from '../../../shared/messages/jvm/jvm-noise.mjs';
 import { wrapperTarget } from '../adapters/gradle-wrapper/gradle-command.mjs';
+import { explainedError } from '../../../shared/messages/troubleshooting.mjs';
 
 const MAVEN_TIMEOUT_MS = 15 * 60 * 1000;
 const MAX_OUTPUT_BYTES = 50 * 1024 * 1024;
@@ -51,7 +52,7 @@ export function mavenErrorSummary(output) {
 
 function missingMaven(error, command) {
   return error.code === 'ENOENT'
-    ? new Error(
+    ? explainedError(
         `${command} was not found. Add the Maven wrapper (mvnw) to the project, put mvn on the PATH, or set NITPICKER_MAVEN`,
       )
     : error;
@@ -67,7 +68,7 @@ function spawnFailure(error, { command, projectRoot, timeoutMs }) {
   if (error.code !== 'ETIMEDOUT') {
     return missingMaven(error, command);
   }
-  return new Error(
+  return explainedError(
     `Maven did not finish in ${projectRoot} within ${duration(timeoutMs)} and was stopped. ` +
       'Its post-integration-test steps may not have run, so containers or servers the build ' +
       'started may still be running. Set NITPICKER_MAVEN_TIMEOUT_MINUTES to give each Maven ' +
@@ -142,7 +143,7 @@ export function runJava({
       timeout: timeoutMs,
     });
     if (result.error?.code === 'ENOENT') {
-      throw new Error(
+      throw explainedError(
         `java not found (${java}): set JAVA_HOME to a JDK, or put its bin directory on the PATH`,
       );
     }

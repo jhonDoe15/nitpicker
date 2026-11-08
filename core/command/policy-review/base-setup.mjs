@@ -14,6 +14,7 @@ import { policyChangeFields } from '../../policy-changes/describe-policy-changes
 import { readPolicyScope } from '../../policy-changes/policy-scope.mjs';
 import { presetAnalyzers } from '../../configuration/preset-analyzers.mjs';
 import { applyRunProfile } from '../../quick/profile.mjs';
+import { withoutTroubleshooting } from '../../../shared/messages/troubleshooting.mjs';
 
 function readBaseConfig(baseProjectRoot, warn) {
   if (!existsSync(path.join(baseProjectRoot, CONFIG_FILE_NAME))) {
@@ -23,7 +24,7 @@ function readBaseConfig(baseProjectRoot, warn) {
     return readConfigFile(baseProjectRoot);
   } catch (error) {
     warn(
-      `The base's ${CONFIG_FILE_NAME} cannot be applied (${error instanceof Error ? error.message : String(error)}); the base is analysed with the head config, and the head config is compared with the defaults.`,
+      `The base's ${CONFIG_FILE_NAME} cannot be applied (${withoutTroubleshooting(error instanceof Error ? error.message : String(error))}); the base is analysed with the head config, and the head config is compared with the defaults.`,
     );
     return undefined;
   }

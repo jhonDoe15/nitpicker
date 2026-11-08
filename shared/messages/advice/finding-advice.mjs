@@ -1,4 +1,4 @@
-import { insertBeforeRoute, isExceptionEntry, routeFields } from './exception-sentence.mjs';
+import { insertBeforeRoute, isExceptionEntry, routeFields } from '../exception-sentence.mjs';
 
 const EXCEPTION_LISTS = ['exceptions', 'python.exceptions'];
 
