@@ -88,7 +88,10 @@ describe('Kotlin analyzer', () => {
 });
 describe('a build without a project that applies the plugin', () => {
   it.each([
-    ['kotlin', 'org.jetbrains.kotlin.jvm'],
+    [
+      'kotlin',
+      'org.jetbrains.kotlin.jvm, org.jetbrains.kotlin.multiplatform or org.jetbrains.kotlin.android',
+    ],
     ['java', 'java'],
   ])('is a tool error naming the plugin for the %s preset', (preset, plugin) => {
     const root = temporaryRoot('nitpicker-no-reports-');

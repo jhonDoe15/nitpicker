@@ -25,6 +25,8 @@
   "languages/java/adapters/kotlin-e2e/lint/kotlin-preset-lint-detekt-config-project.e2e.test.mjs": 66,
   "languages/java/adapters/kotlin-e2e/lint/kotlin-preset-lint-violation.e2e.test.mjs": 59,
   "languages/java/adapters/kotlin-e2e/multi-project/kotlin-multi-project.e2e.test.mjs": 110,
+  "languages/java/adapters/kotlin-e2e/multiplatform/kotlin-android.e2e.test.mjs": 150,
+  "languages/java/adapters/kotlin-e2e/multiplatform/kotlin-multiplatform.e2e.test.mjs": 90,
   "languages/java/adapters/kotlin-e2e/mutation/kotlin-mutation-facts.e2e.test.mjs": 31,
   "languages/java/adapters/kotlin-e2e/one-way/kotlin-preset-one-way-rules-allowed.e2e.test.mjs": 81,
   "languages/java/adapters/kotlin-e2e/one-way/kotlin-preset-one-way-rules-banned.e2e.test.mjs": 128,
