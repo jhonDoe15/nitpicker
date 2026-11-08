@@ -194,7 +194,7 @@ describe('the overlap list in docs/java-preset.md', () => {
       .map(guideText)
       .join('\n')
       .split('\n')
-      .filter((line) => /^- (?:line|member|javadoc|class|field|file): `/u.test(line));
+      .filter((line) => /^- (?:line|member|javadoc|catch|class|field|file): `/u.test(line));
 
     expect(documented).toStrictEqual(
       OVERLAP_PAIRS.map(

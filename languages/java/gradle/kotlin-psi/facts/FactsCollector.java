@@ -8,6 +8,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import nitpicker.kotlinpsi.bodies.Bodies;
+import nitpicker.kotlinpsi.bodies.Throwing;
+import nitpicker.kotlinpsi.catches.Catches;
 import nitpicker.kotlinpsi.common.Frame;
 import nitpicker.kotlinpsi.facts.updates.Updates;
 import nitpicker.kotlinpsi.load.LoadCalls;
@@ -27,6 +29,7 @@ public final class FactsCollector {
   private final Updates updates;
   private final Bodies bodies;
   private final LoadCalls loads;
+  private final Throwing throwing;
 
   public FactsCollector(KtFile file, String text, String relative, boolean test, Set<String> nothing) {
     this.file = file;
@@ -36,7 +39,8 @@ public final class FactsCollector {
     this.timeouts = new Timeouts(file, text, state.timeouts);
     this.predicates = new Predicates(state);
     this.updates = new Updates(state::lineOf);
-    this.bodies = new Bodies(text, test, nothing, state.namesOf(HANDLER));
+    this.throwing = new Throwing(nothing, file);
+    this.bodies = new Bodies(text, test, throwing, state.namesOf(HANDLER));
     this.loads = test ? null : new LoadCalls(file, state::lineOf);
   }
 
@@ -132,6 +136,9 @@ public final class FactsCollector {
       predicates.binary((KtBinaryExpression) element, frame);
     } else if (element instanceof KtDotQualifiedExpression) {
       predicates.containsForm((KtDotQualifiedExpression) element, frame);
+    } else if (element instanceof KtTryExpression) {
+      state.handlers.addAll(
+          Catches.completing((KtTryExpression) element, state::lineOf, Predicates.symbolAt(frame, element), throwing));
     } else if (element instanceof KtWhenExpression) {
       predicates.when((KtWhenExpression) element, frame);
     } else if (element instanceof KtCallableReferenceExpression) {

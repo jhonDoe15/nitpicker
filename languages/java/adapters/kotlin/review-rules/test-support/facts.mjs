@@ -15,6 +15,7 @@ export function file(overrides = {}) {
     waits: [],
     timeouts: [],
     predicates: [],
+    handlers: [],
     calls: [],
     references: [],
     loads: [],
