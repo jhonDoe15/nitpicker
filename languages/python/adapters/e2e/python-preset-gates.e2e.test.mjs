@@ -1,6 +1,7 @@
 import path from 'node:path';
 import { readdirSync, readFileSync } from 'node:fs';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { messageOf } from '../analysis/test-runtime/test-support/runtime-data.mjs';
 import { acceptedDigest } from '../../../../core/command/test-support/accepted-digest.mjs';
 import {
   GREETER_HI,
@@ -11,6 +12,8 @@ import {
   ONE_WAY_VIOLATIONS,
   RUNTIME_TEST,
   TYPE_ERROR,
+  TYPE_ONLY_TEST,
+  UNLINKED_TEST,
   VIOLATION,
   WEAKENED_MYPY,
   WEAKENED_PYRIGHT,
@@ -116,6 +119,10 @@ describe.skipIf(!pythonE2eEnabled)('Python preset lint, type and rule gates end 
       'pyrightconfig.json': `${WEAKENED_PYRIGHT}\n`,
     });
     commitBranch(project, 'hidden-from-types', { 'src/demo/hidden.py': HIDDEN_ERROR });
+    commitBranch(project, 'unlinked-tests', {
+      'tests/test_unlinked.py': UNLINKED_TEST,
+      'tests/test_typed_only.py': TYPE_ONLY_TEST,
+    });
     const testRun = TEST_RUN_CONFIG;
     const testFiles = { 'tests/test_runtime.py': RUNTIME_TEST, 'tests/test_noisy.py': NOISY_TEST };
     commitBranch(project, 'test-run', {
@@ -270,6 +277,31 @@ describe.skipIf(!pythonE2eEnabled)('Python preset lint, type and rule gates end 
     expect(result.exitCode, result.text).toBe(1);
     expect(withoutMutants(enforceable(result))).toEqual(['python-rules no-type-check hidden.py']);
     expect(result.text).toMatch(/Remove the decorator and annotate the code/);
+  });
+  it('fails tests that run no production code, or only import it for the type checker', () => {
+    const result = gate(project, 'unlinked-tests');
+
+    expect(result.exitCode, result.text).toBe(1);
+    expect(
+      result
+        .json('new-findings.json')
+        .filter(
+          ({ tool, classification }) => tool === 'test-runtime' && classification === 'enforceable',
+        )
+        .map(({ rule, path: file, message }) => ({ rule, path: file, message }))
+        .sort((left, right) => left.path.localeCompare(right.path)),
+    ).toEqual([
+      {
+        rule: 'type-only-production-dependency',
+        path: 'tests/test_typed_only.py',
+        message: `${messageOf('type-only-production-dependency')}. If this is intended, add {"rule":"type-only-production-dependency","paths":["tests/test_typed_only.py"],"reason":"..."} to "python.exceptions" in nitpicker.config.json.`,
+      },
+      {
+        rule: 'no-production-runtime',
+        path: 'tests/test_unlinked.py',
+        message: `${messageOf('no-production-runtime')}. If this is intended, add {"rule":"no-production-runtime","paths":["tests/test_unlinked.py"],"reason":"..."} to "python.exceptions" in nitpicker.config.json.`,
+      },
+    ]);
   });
   it('fails a new slow test and new test output', () => {
     const mutationOff = acceptedDigest(['analyzer disabled: mutation'], {

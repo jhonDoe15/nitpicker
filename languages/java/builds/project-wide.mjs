@@ -6,6 +6,7 @@ import { readJavaFileLimitFindings } from '../adapters/metrics/java-structure.mj
 import { kotlinModules, readKotlinMetrics } from '../adapters/kotlin/kotlin-metrics.mjs';
 import { inModule } from './module-path.mjs';
 import { readTestOnlyClassFindings } from '../adapters/review-rules/test-only-classes.mjs';
+import { readTestRuntimeFindings } from '../adapters/test-runtime/test-runtime-findings.mjs';
 import { readJvmReuseFindings } from '../adapters/reuse/jvm-reuse-facts.mjs';
 
 const JDEPS_REPORT = 'jdeps.txt';
@@ -141,6 +142,7 @@ export function projectWideFindings(
     }),
     ...couplingFindings(projectRoot, { projects, mergedRoot, manifest, kotlin }),
     ...readTestOnlyClassFindings(projectRoot, { projects }),
+    ...readTestRuntimeFindings(projectRoot, { projects }),
     ...readJvmReuseFindings(projectRoot, { projects, kotlin, policy }),
   ];
 }
