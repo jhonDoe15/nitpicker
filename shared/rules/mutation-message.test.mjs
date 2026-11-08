@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { mutantMessage } from './mutation.mjs';
+import { mutantFindings, mutantMessage } from './mutation.mjs';
 
 describe('mutantMessage', () => {
   it('shows the replacement that no test caught', () => {
@@ -91,5 +91,31 @@ describe('mutantMessage', () => {
       'Survived ConditionalExpression at column 15: replacing `a > b` with `true` fails no test.',
     );
     expect(second).not.toBe(first);
+  });
+});
+
+describe('mutantFindings advice', () => {
+  it('gives enforceable mutants the allowed form their message states', () => {
+    const findings = mutantFindings(
+      [
+        { path: 'a', identity: '1', status: 'Survived', label: 'Op', replacement: 'x' },
+        { path: 'a', identity: '2', status: 'NoCoverage', label: 'Op' },
+        { path: 'a', identity: '3', status: 'Survived', label: 'Op', hiddenByComment: true },
+        { path: 'a', identity: '4', status: 'Timeout', label: 'Op' },
+      ],
+      { tool: 'mut', wayOut: 'Simplify it.' },
+    );
+
+    expect(
+      findings.map(({ message, allowedForm }) => [
+        allowedForm,
+        allowedForm === undefined || message.includes(allowedForm),
+      ]),
+    ).toEqual([
+      ['Add an assertion that would. Simplify it.', true],
+      ['Add a test that reaches it.', true],
+      ['Remove the comment and test the code; an ignore comment is not an exception route.', true],
+      [undefined, true],
+    ]);
   });
 });
