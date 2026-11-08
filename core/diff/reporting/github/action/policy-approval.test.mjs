@@ -210,7 +210,7 @@ describe('the policy approval workflow', () => {
     expect(template.includes('${{')).toBe(false);
   });
 
-  it('records the approval of a person with write access and re-runs the latest runs that failed', async () => {
+  it('records the approval of a person with write access and re-runs the failed runs, oldest first', async () => {
     const runs = [
       { id: 3, workflow_id: 1, name: 'typescript', status: 'completed', conclusion: 'skipped' },
       { id: 2, workflow_id: 1, name: 'typescript', status: 'completed', conclusion: 'failure' },
@@ -221,7 +221,10 @@ describe('the policy approval workflow', () => {
 
     const calls = await approve(github);
 
-    expect([calls.failed, calls.notices]).toEqual([[], ['Re-ran the failed jobs of typescript.']]);
+    expect([calls.failed, calls.notices]).toEqual([
+      [],
+      ['Re-ran the failed jobs of typescript.', 'Re-ran the failed jobs of typescript.'],
+    ]);
     expect(callLog(github)).toEqual([
       ['removeLabel', { ...REPO, issue_number: 7, name: 'accept-policy-change' }],
       ['getCollaboratorPermissionLevel', { ...REPO, username: 'reviewer' }],
@@ -239,24 +242,25 @@ describe('the policy approval workflow', () => {
         'listWorkflowRunsForRepo',
         { ...REPO, head_sha: HEAD, event: 'pull_request', per_page: 100 },
       ],
+      ['reRunWorkflowFailedJobs', { ...REPO, run_id: 1 }],
       ['reRunWorkflowFailedJobs', { ...REPO, run_id: 2 }],
     ]);
   });
 
-  it('re-runs nothing for a workflow whose latest run passed after an earlier failure', async () => {
+  it('re-runs a failed run that a later failed label run copied, before the copy', async () => {
     const runs = [
-      { id: 6, workflow_id: 1, name: 'typescript', status: 'completed', conclusion: 'success' },
-      { id: 2, workflow_id: 1, name: 'typescript', status: 'completed', conclusion: 'failure' },
+      { id: 7, workflow_id: 1, name: 'typescript', status: 'completed', conclusion: 'failure' },
+      { id: 6, workflow_id: 1, name: 'typescript', status: 'completed', conclusion: 'failure' },
+      { id: 4, workflow_id: 1, name: 'typescript', status: 'completed', conclusion: 'success' },
     ];
     const github = fakeGithub({ permission: 'write', runs });
 
-    const calls = await approve(github);
+    await approve(github);
 
-    expect([calls.failed, calls.notices]).toEqual([
-      [],
-      ['Recorded the approval; no failed run of this commit to re-run.'],
+    expect(github.rest.actions.reRunWorkflowFailedJobs.mock.calls).toEqual([
+      [{ ...REPO, run_id: 6 }],
+      [{ ...REPO, run_id: 7 }],
     ]);
-    expect(github.rest.actions.reRunWorkflowFailedJobs.mock.calls).toEqual([]);
   });
 
   it('waits for a run that is still going, then re-runs it when it failed', async () => {

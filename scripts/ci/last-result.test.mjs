@@ -55,24 +55,28 @@ describe('lastResult', () => {
       checkRun(950, 51, 'completed', 'success'),
     ];
 
-    expect(lastResult(runs, RUN_ID)).toEqual({ last: runs[2] });
+    expect(lastResult(runs, RUN_ID)).toEqual({ listed: true, last: runs[2] });
   });
 
   it('waits for an earlier check that is still going, but not for a later one', () => {
     const going = checkRun(5, 10, 'queued');
 
     expect(lastResult([checkRun(1, 9, 'completed', 'success'), going, current], RUN_ID)).toEqual({
+      listed: true,
       pending: going,
     });
     expect(lastResult([checkRun(901, 52, 'in_progress'), current], RUN_ID)).toEqual({
+      listed: true,
       last: undefined,
     });
   });
 
-  it('counts an earlier attempt of this run as a result', () => {
+  it('leaves out earlier attempts of this run, and waits until this job is listed', () => {
     const attempt = checkRun(7, RUN_ID, 'completed', 'failure');
+    const other = checkRun(8, 11, 'completed', 'success');
 
-    expect(lastResult([attempt, current], RUN_ID)).toEqual({ last: attempt });
+    expect(lastResult([attempt, other, current], RUN_ID)).toEqual({ listed: true, last: other });
+    expect(lastResult([attempt, other], RUN_ID)).toEqual({ listed: false });
   });
 });
 
@@ -112,6 +116,18 @@ describe('copyLastResult', () => {
         ],
       ],
       [['self-gate has not run on this commit. Add the run-ci label to run CI.']],
+    ]);
+  });
+
+  it('polls again while its own check run is not listed yet', async () => {
+    const pause = vi.fn().mockResolvedValue(undefined);
+    const late = fakes([], [checkRun(2, 12, 'completed', 'success'), current]);
+
+    await copyLastResult({ ...late, check: 'test', pause });
+
+    expect([late.core.info.mock.calls, late.core.notice.mock.calls.length]).toEqual([
+      [['Waiting for the check run of this job to be listed or to finish.']],
+      1,
     ]);
   });
 

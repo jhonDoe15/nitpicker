@@ -10,23 +10,23 @@ function newest(checkRuns) {
   );
 }
 
-function isCurrent(checkRun, runId) {
-  return (
-    checkRun.status !== 'completed' &&
-    checkRun.html_url?.includes(`/actions/runs/${runId}/`) === true
-  );
+function inRun(checkRun, runId) {
+  return checkRun.html_url?.includes(`/actions/runs/${runId}/`) === true;
 }
 
 export function lastResult(checkRuns, runId) {
   const own = checkRuns.filter((run) => run.app?.slug === 'github-actions');
-  const current = own.filter((run) => isCurrent(run, runId));
+  const current = own.filter((run) => inRun(run, runId) && run.status !== 'completed');
+  if (current.length === 0) {
+    return { listed: false };
+  }
   const before = Math.min(...current.map((run) => run.id));
-  const earlier = own.filter((run) => run.id < before && !isCurrent(run, runId));
+  const earlier = own.filter((run) => run.id < before && !inRun(run, runId));
   const pending = earlier.filter((run) => run.status !== 'completed');
   if (pending.length > 0) {
-    return { pending: newest(pending) };
+    return { listed: true, pending: newest(pending) };
   }
-  return { last: newest(earlier.filter((run) => run.conclusion !== 'skipped')) };
+  return { listed: true, last: newest(earlier.filter((run) => run.conclusion !== 'skipped')) };
 }
 
 function report(core, check, last) {
@@ -60,21 +60,20 @@ export async function copyLastResult({
     per_page: 100,
   };
   for (const poll of Array.from({ length: polls + 1 }, (_, index) => index)) {
-    const { pending, last } = lastResult(
+    const { listed, pending, last } = lastResult(
       await github.paginate(github.rest.checks.listForRef, listing),
       context.runId,
     );
-    if (pending === undefined) {
+    if (listed && pending === undefined) {
       report(core, check, last);
       return;
     }
+    const awaited = pending?.html_url ?? 'the check run of this job';
     if (poll < polls) {
-      core.info(`Waiting for ${pending.html_url} to finish.`);
+      core.info(`Waiting for ${awaited} to be listed or to finish.`);
       await pause(POLL_MS);
     } else {
-      core.setFailed(
-        `${check}: ${pending.html_url} is still going. Add run-ci again once it ends.`,
-      );
+      core.setFailed(`${check}: ${awaited} is still going. Add run-ci again once it ends.`);
     }
   }
 }
