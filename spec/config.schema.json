@@ -2018,6 +2018,8 @@
                             "pmd/ExhaustiveEnumPredicate",
                             "pmd/StaticForwardingWrapper",
                             "pmd/SingularAndPluralMember",
+                            "pmd/SwallowedInterrupt",
+                            "pmd/SwallowedCancellation",
                             "pmd/ValidationAnnotationTarget",
                             "pmd/ClassLoadEffect",
                             "pmd/UnboundedThreadPool",
