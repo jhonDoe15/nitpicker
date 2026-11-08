@@ -1,0 +1,8 @@
+[
+  {
+    "name": "a back reference in a dataclass names field(compare=False)",
+    "tool": "python-rules",
+    "rule": "generated-member-cycle",
+    "mention": "field(compare=False)"
+  }
+]
