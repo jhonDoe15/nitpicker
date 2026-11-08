@@ -81,6 +81,7 @@ export function readJavaFindings(projectRoot, options = {}) {
               kotlinSourceRoots: module.manifest.kotlinSourceRoots ?? [],
               testSourceRoots: module.manifest.testSourceRoots ?? [],
               kotlinTestSourceRoots: module.manifest.kotlinTestSourceRoots ?? [],
+              kotlinExcludedFiles: module.manifest.kotlinExcludedFiles ?? [],
               resourceRoots: module.manifest.resourceRoots ?? [],
             })),
             mergedRoot: path.join(reportBase, 'project'),

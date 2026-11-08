@@ -24,9 +24,11 @@ function sourceRootsOf(project, kotlin) {
 
 function projectSources(projectRoot, { project, kotlin }) {
   const extensions = kotlin ? ['.java', '.kt'] : ['.java'];
+  const excluded = new Set(project.kotlinExcludedFiles ?? []);
   return [...new Set(sourceRootsOf(project, kotlin))]
     .flatMap((root) => sourceFilesUnder(pathInside(projectRoot, root), extensions, NOTHING_SKIPPED))
-    .map((full) => [path.relative(projectRoot, full).replaceAll('\\', '/'), project]);
+    .map((full) => [path.relative(projectRoot, full).replaceAll('\\', '/'), project])
+    .filter(([file]) => !excluded.has(file));
 }
 
 function sourceFiles(projectRoot, { projects, kotlin, exclude = [] }) {

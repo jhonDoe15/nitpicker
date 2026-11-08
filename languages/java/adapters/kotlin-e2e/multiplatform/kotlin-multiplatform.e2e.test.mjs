@@ -60,6 +60,14 @@ describe.skipIf(!kotlinE2eEnabled)('a Gradle build with a Kotlin Multiplatform p
     expect(findings.filter(({ path: file }) => EXCLUDED.includes(file))).toEqual([]);
   });
 
+  it('notes that only the source checks ran on the Multiplatform project', () => {
+    expect(
+      findings
+        .filter(({ rule }) => rule === 'build-note')
+        .map(({ identity, classification }) => `${classification} ${identity.split(':')[0]}`),
+    ).toEqual(['descriptive build-note']);
+  });
+
   it('reports no tool error and no coverage finding for the Multiplatform project', () => {
     const shared = findings.filter(
       ({ identity, path: file }) => file.startsWith('shared/') || identity.endsWith('@:shared'),
