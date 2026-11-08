@@ -45,6 +45,14 @@ describe.skipIf(!enabled)('Java preset on Maven builds', () => {
           'Remove Thread.sleep and other waits, start a smaller Spring context or a test slice. ' +
           `If this is intended, add ${exception} to "exceptions" in nitpicker.config.json.`,
         classification: 'enforceable',
+        allowedForm:
+          'Remove Thread.sleep and other waits, start a smaller Spring context or a test slice.',
+        exception: {
+          rule: 'slow-test',
+          paths: ['src/test/java/demo/GreeterIT.java'],
+          reason: '...',
+        },
+        exceptionList: 'exceptions',
       },
     ]);
   }, 180_000);

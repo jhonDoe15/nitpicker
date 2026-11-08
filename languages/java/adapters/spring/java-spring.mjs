@@ -57,6 +57,8 @@ export const SPRING_CONFIG_RULES = [
   ...ENTRY_RULES.map(({ rule }) => rule),
 ];
 
+export const SPRING_CONFIG_RULE_IDS = SPRING_CONFIG_RULES.map((rule) => `${SPRING_TOOL}/${rule}`);
+
 function secretProblem(entry) {
   return entry.value.trim().startsWith('${')
     ? `Drop the default from the placeholder of ${entry.key}, so a missing secret fails at startup; it falls back to a literal secret.`
@@ -201,6 +203,7 @@ function buildFinding({ rule, document, entry, key, message, occurrences }) {
     path: document.path,
     identity: occurrence === 1 ? key : `${key}#${String(occurrence)}`,
     message: `${message} ${allowance(rule, document.path)}`,
+    allowedForm: message,
     classification: 'enforceable',
     ...(entry === undefined ? {} : { location: { line: entry.line } }),
   };
