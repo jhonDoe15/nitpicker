@@ -389,11 +389,17 @@ classpath) and `published` (a library module that is deployed, see `test-only-ex
   that closes a cycle and only a superclass with instance fields. Lombok's own rules apply: `static`
   fields are left out of both members and `transient` fields of `equals`, `exclude`, `of` and
   `onlyExplicitlyIncluded` narrow the fields, and a hand-written `toString`, `equals` or `hashCode`
-  stops generation. Types resolve through nesting, imports, the same package and wildcard imports.
+  stops generation. Types resolve through nesting, imports, the same package and wildcard imports;
+  an explicit import of an outside class shadows a project class of that name, and a type parameter
+  is not a class. The type argument of `Class`, `Supplier`, `Function`, `Comparator`, `Future`,
+  `Stream` and similar wrappers is not followed, since the generated members print and compare them
+  by identity. A field after a declarator with an initializer (`A a = null, b;`) is not read.
   A tree (a class holding only its children) and a list (only `next`) are not cycles; two classes
   that refer to each other are, so a menu whose items hold submenus is reported as well, and the
   message names that intended case. JPA entities are checked too: `JpaIdentityHashCode` only reads a hand-written `hashCode`, and a `@Data` entity with a `@OneToMany`/`@ManyToOne` pair is the most common form. Records are
-  not checked: their components are final, so a cycle needs a mutable collection filled later.
+  not checked: their components are final, so a cycle needs a mutable collection filled later. A
+  doubly linked node (`prev` and `next`) is not reported, since two single references look the same
+  as a binary tree's `left` and `right`.
 - `RecursiveMapUpdate` follows the `Map` contract: the function passed to `computeIfAbsent`,
   `compute`, `computeIfPresent` or `merge` must not change the map. A `ConcurrentHashMap` throws
   `IllegalStateException: Recursive update` or deadlocks, a `HashMap` throws

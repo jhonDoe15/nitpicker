@@ -32,6 +32,9 @@ function baseCandidates(first, file, owner) {
   const imported = file.imports
     .filter(({ all, alias, path }) => !all && (alias ?? path.split('.').at(-1)) === first)
     .map(({ path }) => path);
+  if (imported.length > 0) {
+    return [...nested, ...imported];
+  }
   const starred = file.imports.filter(({ all }) => all).map(({ path }) => `${path}.${first}`);
   return [...nested, ...imported, `${prefix}${first}`, ...starred];
 }

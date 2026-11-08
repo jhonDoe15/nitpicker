@@ -219,7 +219,9 @@ Limits, all chosen to flag less rather than guess:
   of the same names. Only data classes count, since only they generate the members; a class that
   writes `toString`, or both `equals` and `hashCode`, leaves that member out. A property type is
   followed through its type arguments (`List<Line>`, `Map<String, Line>`), resolved by nesting,
-  explicit and aliased imports, the same package and star imports; a function type is not followed.
+  explicit and aliased imports, the same package and star imports; an explicit import shadows a
+  same-package class, and a `vararg` counts as a collection. A type that contains a function type
+  is not followed, nor is a `typealias`, since the facts keep no type arguments for it.
   A class that holds itself only in a collection (a tree) or only as one property (a list) is not a
   cycle, and the two-class form also reports a menu whose items hold submenus, which is the intended
   case the message names. The superclass check follows Kotlin superclasses up to ten levels and

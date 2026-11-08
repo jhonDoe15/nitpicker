@@ -142,11 +142,38 @@ function methodOf(header) {
   return { name: match[1], parameters };
 }
 
+function withoutGenerics(text) {
+  let depth = 0;
+  return [...text]
+    .filter((character) => {
+      depth += GENERIC_DEPTH[character] ?? 0;
+      return depth === 0 && character !== '>';
+    })
+    .join('');
+}
+
+function typeParametersOf(header) {
+  const declared = CLASS_HEADER.exec(header);
+  const after =
+    declared === null ? '' : header.slice(declared.index + declared[0].length).trimStart();
+  if (!after.startsWith('<')) {
+    return [];
+  }
+  let depth = 0;
+  const close = [...after].findIndex((character) => {
+    depth += GENERIC_DEPTH[character] ?? 0;
+    return depth === 0;
+  });
+  const inner = after.slice(1, close < 0 ? after.length : close);
+  return splitTopLevel(inner).flatMap((part) => /^[A-Za-z_$][\w$]*/u.exec(part)?.[0] ?? []);
+}
+
 function newClass(state, { header, headerStart, bodyStart, kind, name }) {
   const owner = state.frames.at(-1).klass;
   const { annotations } = leadingAnnotations(state.text, headerStart);
+  const plain = withoutGenerics(header);
   const superclass =
-    kind === 'class' ? (EXTENDS.exec(header.split(/\bimplements\b/u)[0]) ?? undefined) : undefined;
+    kind === 'class' ? (EXTENDS.exec(plain.split(/\bimplements\b/u)[0]) ?? undefined) : undefined;
   const klass = {
     name: owner === undefined ? name : `${owner.name}.${name}`,
     simple: name,
@@ -155,6 +182,7 @@ function newClass(state, { header, headerStart, bodyStart, kind, name }) {
     annotations,
     line: lineAt(state.starts, headerStart + header.search(/\S/u)),
     extendsName: superclass?.[1].replaceAll(/\s+/gu, ''),
+    typeParameters: typeParametersOf(header),
     bodyStart,
     fields: [],
     methods: [],

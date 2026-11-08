@@ -100,6 +100,14 @@ describe('generated members over a cycle of Lombok fields', () => {
     ['a tree that only holds its children', '  private List<Node> children;'],
     ['a list that only holds the next node', '  private Node next;'],
     ['two single references', '  private Node left;\n  private Node right;'],
+    [
+      'a comparator and a class token',
+      '  private Node parent;\n  private java.util.Comparator<Node> order;',
+    ],
+    [
+      'a supplier of children',
+      '  private Node parent;\n  private java.util.function.Supplier<List<Node>> children;',
+    ],
   ])('allows %s', (_name, fields) => {
     expect(reported([javaFile('Node', `@Data\npublic class Node {\n${fields}\n}`)])).toEqual([]);
   });
@@ -225,6 +233,33 @@ describe('generated members over a cycle of Lombok fields', () => {
   });
 });
 
+describe('type names that do not reach a project class', () => {
+  const date = javaFile('Date', '@Data\npublic class Date {\n  private Order order;\n}');
+
+  it.each([
+    [
+      'a type parameter named like a project class',
+      javaFile('Order', '@Data\npublic class Order<Date> {\n  private Date when;\n}'),
+    ],
+    [
+      'an explicit import of an outside class',
+      javaFile(
+        'Order',
+        '@Data\npublic class Order {\n  private Date when;\n}',
+        'import java.util.Date;\nimport lombok.*;\n',
+      ),
+    ],
+  ])('allows %s', (_name, order) => {
+    expect(reported([order, date])).toEqual([]);
+  });
+
+  it('still follows a same-package class of that name', () => {
+    const order = javaFile('Order', '@Data\npublic class Order {\n  private Date when;\n}');
+
+    expect(summary(reported([order, date]))).toEqual(['Order.java:8']);
+  });
+});
+
 describe('generated equals that skips the superclass', () => {
   const base = javaFile('Base', 'public class Base {\n  protected String tenant;\n}', '');
 
@@ -237,6 +272,17 @@ describe('generated equals that skips the superclass', () => {
 
     expect(summary(findings)).toEqual(['Child.java:7']);
     expect(findings[0].message).toBe('This class extends Base, which declares fields.');
+  });
+
+  it('reads the superclass after a bounded type parameter', () => {
+    const child = javaFile(
+      'Child',
+      '@Data\npublic class Child<T extends Number> extends Base {\n}',
+    );
+
+    expect(new Set(summary(reported([base, child], SKIPPED_SUPER_RULE)))).toEqual(
+      new Set(['Child.java:7']),
+    );
   });
 
   it('names the ancestor that declares the fields', () => {
@@ -259,6 +305,10 @@ describe('generated equals that skips the superclass', () => {
       '@Data\npublic class Child extends Base {\n  public boolean equals(Object o) { return false; }\n}',
     ],
     ['no generated equals', '@ToString\npublic class Child extends Base {\n}'],
+    [
+      'a bounded type parameter and an explicit callSuper',
+      '@Data\n@EqualsAndHashCode(callSuper = true)\npublic class Child<T extends Number> extends Base {\n}',
+    ],
   ])('allows %s', (_name, body) => {
     expect(reported([base, javaFile('Child', body)], SKIPPED_SUPER_RULE)).toEqual([]);
   });

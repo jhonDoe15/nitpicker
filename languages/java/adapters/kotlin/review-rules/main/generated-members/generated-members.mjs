@@ -67,7 +67,8 @@ function memberEdges(classes, kind) {
   const generated = generatedFor(classes, kind);
   return [...generated.values()].flatMap(({ klass, file, qualified }) =>
     klass.primaryParameters.filter(isProperty).flatMap((parameter) =>
-      kotlinTypeReferences(parameter.type).flatMap(({ name, many }) => {
+      kotlinTypeReferences(parameter.type).flatMap(({ name, many: nested }) => {
+        const many = nested || parameter.vararg === true;
         const target = resolveKotlinClass(name, { classes, file, owner: klass.qualified });
         return target === undefined || !generated.has(target)
           ? []

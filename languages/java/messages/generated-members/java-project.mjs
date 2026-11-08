@@ -15,6 +15,30 @@ const WILDCARD_IMPORT = /^\s*import\s+([\w.]+)\.\*\s*;/gmu;
 const TYPE_NAME = /[A-Za-z_$][\w$]*(?:\s*\.\s*[A-Za-z_$][\w$]*)*/gu;
 const KEYWORDS = new Set(['extends', 'super']);
 const SINGLE_WRAPPERS = new Set(['Optional', 'AtomicReference', 'SoftReference', 'WeakReference']);
+const OPAQUE_WRAPPERS = new Set([
+  'Class',
+  'Supplier',
+  'Function',
+  'BiFunction',
+  'UnaryOperator',
+  'BinaryOperator',
+  'Predicate',
+  'BiPredicate',
+  'Consumer',
+  'BiConsumer',
+  'Callable',
+  'Comparator',
+  'ThreadLocal',
+  'Future',
+  'CompletableFuture',
+  'CompletionStage',
+  'Provider',
+  'ObjectProvider',
+  'Mono',
+  'Flux',
+  'Publisher',
+  'Stream',
+]);
 const MAX_SUPERCLASSES = 10;
 
 function readFile(projectRoot, absolute) {
@@ -73,6 +97,9 @@ function baseCandidates(first, { source, klass }) {
     owner.simple === first ? [`${prefix}${owner.name}`] : [`${prefix}${owner.name}.${first}`],
   );
   const imported = source.imports.filter((entry) => entry.split('.').at(-1) === first);
+  if (imported.length > 0) {
+    return [...nested, ...imported];
+  }
   return [
     ...nested,
     ...imported,
@@ -83,6 +110,9 @@ function baseCandidates(first, { source, klass }) {
 
 export function resolveClass(name, { project, source, klass }) {
   const parts = name.replaceAll(/\s+/gu, '').split('.');
+  if (ownerChain(klass).some((owner) => owner.typeParameters.includes(parts[0]))) {
+    return undefined;
+  }
   if (parts.length > 1 && project.classes.has(parts.join('.'))) {
     return parts.join('.');
   }
@@ -120,6 +150,7 @@ export function typeReferences(type) {
   const depths = genericDepths(type);
   return [...type.matchAll(TYPE_NAME)]
     .filter((match) => !KEYWORDS.has(match[0]))
+    .filter((match) => !(depths.get(match.index) ?? []).some((outer) => OPAQUE_WRAPPERS.has(outer)))
     .map((match) => ({ name: match[0], many: isMany(depths.get(match.index) ?? [], type) }));
 }
 

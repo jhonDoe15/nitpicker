@@ -7,20 +7,22 @@ from review.members.classes import (
     references,
     resolve_class,
 )
+from review.project.index import attribute_chain
 
 RULE = "generated-member-cycle"
 MAX_CYCLE_CLASSES = 6
+MAX_BASES = 10
 
 
 class Edge:
     def __init__(self, source, target, field, many):
         self.source = source
         self.target = target
-        self.field = field
+        self.path, self.field = field[0], field[1:]
         self.many = many
 
     def position(self):
-        return self.source["path"], self.field[1]
+        return self.path, self.field[1]
 
 
 def generated_classes(index):
@@ -46,15 +48,38 @@ def generated_classes(index):
     return classes
 
 
+def generated_bases(index, classes, source):
+    chain = [source]
+    for current in chain:
+        for base in current["node"].bases:
+            if attribute_chain(base) is None:
+                continue
+            _, target = resolve_class(index, current["path"], base)
+            entry = classes.get(id(target))
+            if entry is not None and entry not in chain and len(chain) < MAX_BASES:
+                chain.append(entry)
+    return chain
+
+
+def all_fields(index, classes, source):
+    fields = {}
+    for owner in reversed(generated_bases(index, classes, source)):
+        for name, annotation, line in compared_fields(
+            owner["node"], owner["kind"], owner["aliases"]
+        ):
+            fields[name] = (owner["path"], annotation, line)
+    return fields
+
+
 def class_edges(index, classes, source):
     edges = []
-    for name, annotation, line in compared_fields(
-        source["node"], source["kind"], source["aliases"]
-    ):
+    for name, (path, annotation, line) in all_fields(index, classes, source).items():
         for reference, many in references(annotation):
-            _, target = resolve_class(index, source["path"], reference)
+            _, target = resolve_class(index, path, reference)
             if target is not None and id(target) in classes:
-                edges.append(Edge(source, classes[id(target)], (name, line), many))
+                edges.append(
+                    Edge(source, classes[id(target)], (path, name, line), many)
+                )
     return edges
 
 
@@ -121,12 +146,12 @@ def member_cycle_findings(index):
     found = {}
     for cycle in self_cycles(edges) + longer_cycles(edges):
         edge = closing_edge(cycle)
-        key = (edge.source["path"], edge.field)
+        key = (edge.path, edge.field)
         if key not in found:
             subject = f"{edge.source['name']}.{edge.field[0]}"
             found[key] = finding(
                 RULE,
-                edge.source["path"],
+                edge.path,
                 subject,
                 edge.field[1],
                 {"cycle": cycle_text(cycle, edge)},

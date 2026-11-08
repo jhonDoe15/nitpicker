@@ -16,6 +16,8 @@ DATACLASS_FIELDS = {
     "pydantic.Field",
     "pydantic.fields.Field",
 }
+EXPLICIT_ATTRS = {"attr.s", "attr.attrs", "attrs.attrs"}
+FROZEN_ATTRS = {"attr.frozen", "attrs.frozen"}
 ATTRS_FIELDS = {
     f"{module}.{name}"
     for module in ("attr", "attrs")
@@ -24,7 +26,7 @@ ATTRS_FIELDS = {
 NOT_FIELDS = {"ClassVar", "InitVar"}
 SINGLE_WRAPPERS = {"Optional", "Union", "Final", "Required", "NotRequired", "ReadOnly"}
 ANNOTATED = "Annotated"
-CALLABLES = {"Callable"}
+CALLABLES = {"Callable", "type", "Type"}
 
 
 def decorator_call(decorator, aliases):
@@ -43,26 +45,64 @@ def keyword_false(call, names):
     )
 
 
+def keyword_true(call, names):
+    if not isinstance(call, ast.Call):
+        return False
+    return any(
+        keyword.arg in names
+        and isinstance(keyword.value, ast.Constant)
+        and keyword.value.value is True
+        for keyword in call.keywords
+    )
+
+
+def defines(node, name):
+    return any(
+        isinstance(child, (ast.FunctionDef, ast.AsyncFunctionDef))
+        and child.name == name
+        for child in node.body
+    )
+
+
+def hand_written_eq(node, name, call):
+    if not defines(node, "__eq__"):
+        return False
+    hashed = name in FROZEN_ATTRS or keyword_true(
+        call, {"frozen", "unsafe_hash", "hash"}
+    )
+    return defines(node, "__hash__") or not hashed
+
+
+def attrs_kind(name, call):
+    if name in EXPLICIT_ATTRS and not keyword_true(call, {"auto_attribs"}):
+        return "attrs-explicit"
+    return "attrs"
+
+
 def generated_eq(node, aliases):
     for decorator in node.decorator_list:
         name, call = decorator_call(decorator, aliases)
         if name in DATACLASSES:
-            return "dataclass" if not keyword_false(call, {"eq"}) else None
+            skipped = keyword_false(call, {"eq"}) or hand_written_eq(node, name, call)
+            return None if skipped else "dataclass"
         if name in ATTRS:
-            return "attrs" if not keyword_false(call, {"eq", "cmp"}) else None
+            skipped = keyword_false(call, {"eq", "cmp"}) or hand_written_eq(
+                node, name, call
+            )
+            return None if skipped else attrs_kind(name, call)
     return None
 
 
 def compared(statement, kind, aliases):
     value = statement.value
     if not isinstance(value, ast.Call):
-        return True
+        return kind != "attrs-explicit"
     name = dotted_name(value.func, aliases)
     if kind == "dataclass" and name in DATACLASS_FIELDS:
         return not keyword_false(value, {"compare"})
-    if kind == "attrs" and name in ATTRS_FIELDS:
+    if kind.startswith("attrs") and name in ATTRS_FIELDS:
         return not keyword_false(value, {"eq", "cmp"})
-    return True
+    return kind != "attrs-explicit"
 
 
 def compared_fields(node, kind, aliases):

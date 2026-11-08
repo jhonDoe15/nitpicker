@@ -114,6 +114,20 @@ describe('generated members of Kotlin data classes over a cycle', () => {
     expect(run(generatedMemberFindings, [other, item])).toEqual([]);
   });
 
+  it('counts a vararg as many and lets an explicit import shadow a same-package class', () => {
+    const node = data('Node', [
+      val('parent', 'Node?', 2),
+      val('children', 'Node', 3, { vararg: true }),
+    ]);
+    const imports = [{ path: 'java.util.Date', alias: null, all: false }];
+    const date = data('Date', [val('order', 'Order', 6)]);
+    const order = data('Order', [val('placed', 'Date', 7)]);
+
+    expect(summary(findingsFor([node]))).toEqual([`${MEMBER_CYCLE_RULE} Node.parent 2`]);
+    expect(findingsFor([date, order], { imports })).toEqual([]);
+    expect(summary(findingsFor([date, order]))).toEqual([`${MEMBER_CYCLE_RULE} Order.placed 7`]);
+  });
+
   it('reports a cycle only in the module that declares its closing property', () => {
     const order = file({ classes: [data('Order', [val('lines', 'List<Line>')])] });
     const line = file({

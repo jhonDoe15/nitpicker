@@ -52,8 +52,32 @@ describe.skipIf(!enabled)('generated-member-cycle', () => {
       'from typing import Callable, ClassVar\n\n\n@dataclass\nclass Node:\n    root: ClassVar[Node]\n    parent: Callable[[], Node]\n    children: list[Node]\n',
     ],
     ['a plain class', 'class Node:\n    parent: Node | None\n    children: list[Node]\n'],
+    [
+      'a hand-written __eq__',
+      '@dataclass\nclass Node:\n    parent: Node | None\n    children: list[Node]\n\n    def __eq__(self, other):\n        return self is other\n',
+    ],
+    [
+      'a class token',
+      '@dataclass\nclass Node:\n    parent: Node | None\n    kinds: list[type[Node]]\n',
+    ],
+    [
+      'attr.s annotations that are not attributes',
+      'import attr\n\n\n@attr.s\nclass Node:\n    parent: Node | None\n    children: list[Node] = attr.ib(factory=list)\n',
+    ],
   ])('allows %s', (_name, code) => {
     expect(cycles({ 'shop/tree.py': `${HEAD}\n${code}` })).toEqual([]);
+  });
+
+  it('follows the fields a dataclass inherits, and a frozen hash over a hand-written __eq__', () => {
+    const tree = `${HEAD}\n@dataclass\nclass Base:\n    parent: Node | None\n\n\n@dataclass\nclass Node(Base):\n    children: list[Node] = field(default_factory=list)\n`;
+    const frozen = `${HEAD}\n@dataclass(frozen=True)\nclass Node:\n    parent: Node | None\n    children: tuple[Node, ...]\n\n    def __eq__(self, other):\n        return self is other\n`;
+
+    expect(cycles({ 'shop/tree.py': tree })).toEqual([
+      ['Node.parent', { cycle: 'Node.children -> Node.parent -> Node' }],
+    ]);
+    expect(cycles({ 'shop/tree.py': frozen })).toEqual([
+      ['Node.parent', { cycle: 'Node.children -> Node.parent -> Node' }],
+    ]);
   });
 
   it('allows an attrs back reference with eq=False and leaves tests alone', () => {

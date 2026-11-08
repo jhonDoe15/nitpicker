@@ -126,7 +126,10 @@ assert_never(value)`, or an `if`/`elif` chain ending in `else: assert_never(valu
   Field types are read through `Optional`, `Union`, `|`, `Annotated` and string annotations, and
   through the type arguments of any generic (`list[Item]`, `dict[str, Item]`), resolved through
   imports, `TYPE_CHECKING` imports included. One finding per cycle, on the single field that points
-  back. `ClassVar`, `InitVar` and `Callable` fields and fields with `field(compare=False)`
+  back. Fields inherited from dataclass and attrs bases count. A class that writes `__eq__` is left
+  out, unless it is frozen and `hash()` still reads the fields; under `attr.s` without
+  `auto_attribs=True` only `attr.ib()` fields count. `ClassVar`, `InitVar`, `Callable` and `type[...]`
+  fields and fields with `field(compare=False)`
   (`attrs.field(eq=False)`) are left out. Comparing or hashing two objects of such a cycle recurses
   until `RecursionError`; the generated `__repr__` is not checked, since `dataclasses` and attrs
   guard it against recursion. Production sources only.
