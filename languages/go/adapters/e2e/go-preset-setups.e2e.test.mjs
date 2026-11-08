@@ -79,7 +79,7 @@ describe.skipIf(!goE2eEnabled)('Go preset project setups end to end', () => {
     expect(
       newMessages(result).map((message) => message.replace(/took \d+\.\d s/u, 'took N s')),
     ).toEqual([
-      'TestSlow took N s; a unit test may take 5 s. Remove time.Sleep and other waits (inject the clock, or wait on a channel or sync.WaitGroup) and fake network, database and disk access with an interface or httptest, or move it to an integration test (an integration or e2e folder, a *_integration_test.go file, an integration or e2e build tag, or a test that skips under testing.Short()) if it is one. If this is intended, add {"rule":"slow-test","paths":["shop/slow_test.go"],"reason":"..."} to "exceptions" in nitpicker.config.json.',
+      'TestSlow took N s; a unit test may take 5 s. Remove time.Sleep and other waits (inject the clock, or wait on a channel or sync.WaitGroup) and fake network, database and disk access with an interface or httptest, or move it to an integration test (an integration or e2e folder, a *_integration_test.go file, an integration or e2e build tag, or a first statement if testing.Short() { t.Skip(...) }) if it is one. If this is intended, add {"rule":"slow-test","paths":["shop/slow_test.go"],"reason":"..."} to "exceptions" in nitpicker.config.json.',
     ]);
   });
 
