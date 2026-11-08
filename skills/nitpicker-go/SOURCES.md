@@ -64,6 +64,23 @@ than the others, and this skill teaches its rules before an agent writes Go.
   5 s / 30 s budgets and the integration markers (folders, file suffix, build tag,
   `testing.Short()`) cover the ways Go projects already separate their slow tests.
 
+- **Tests run under the race detector.** Data races are the Go mistake no linter catches reliably,
+  and `go test -race` finds the ones the tests exercise. Each race is a finding keyed by the two
+  conflicting functions rather than a failing test, because a failing test makes a snapshot a tool
+  error, and a project whose merge base already had a race could then never pass. Keyed by the
+  functions (not lines or goroutine numbers, which change between runs), a race the base had stays
+  quiet and only a new one fails. A data race is undefined behaviour in Go's memory model, so the
+  finding has no exception route. Without cgo the tests run without `-race` and a descriptive
+  finding says races were not checked, instead of skipping silently.
+- **The cost of `-race`.** The race detector documents a 2 to 20 times slowdown in CPU and 5 to 10
+  times in memory. On the preset's own metrics program (one package, 7 tests) a warm run took
+  0.18 s without it and 1.3 s with it, most of it linking the instrumented binary, and a cold run
+  (empty build cache) 5.1 s against 7.6 s. The end-to-end fixture modules stay within a few seconds
+  per snapshot. That is cheap enough to run every time, on every package, from the same run that
+  writes the coverage profile, so the preset runs it always instead of only on the packages a change
+  touches. The slow-test check reruns a test over its budget without `-race` and keeps the fastest
+  time, so the slowdown never fails a test.
+
 ## Rejected ideas
 
 - **Running golangci-lint.** It is GPL-3.0 licensed, and nitpicker ships only permissively licensed
