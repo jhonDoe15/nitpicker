@@ -1,4 +1,4 @@
-import { findPackageJSON } from 'node:module';
+import { findPackageJSON } from '../../../../../core/tooling/package-lookup/package-json.mjs';
 import { existsSync, realpathSync } from 'node:fs';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';

@@ -125,7 +125,9 @@ function runConfigured(cli) {
   const { options, stdout, runTasks } = cli;
   const { currentProjectRoot, scope } = resolveRunTarget({ ...cli, missingPathHint });
   const config = loadConfig(currentProjectRoot);
-  const headPolicy = resolveProjectHeadPolicy(config, currentProjectRoot);
+  const headPolicy = resolveProjectHeadPolicy(config, currentProjectRoot, {
+    maven: cli.environment.NITPICKER_MAVEN,
+  });
   const presetSet = presetAnalyzers(config, options.all ? cli.snapshotAnalyzers : cli.analyzers);
   const analyzers = configureAnalyzers(presetSet, config, headPolicy);
   for (const note of describeDisableCascade(presetSet, config)) {
