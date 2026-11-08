@@ -337,10 +337,17 @@ describe('spec/findings.schema.json', () => {
       { ...valid, classification: 'descriptive', toolNotRun: true, notRunIdentityPrefix: 1 },
     ];
 
-    for (const finding of malformed) {
-      expect(() => parseFinding(finding)).toThrow(TypeError);
-      expect(validate({ findings: [finding] }), JSON.stringify(finding)).not.toEqual([]);
-    }
+    const rejected = (finding) => {
+      let threw = false;
+      try {
+        parseFinding(finding);
+      } catch (error) {
+        threw = error instanceof TypeError;
+      }
+      return threw && validate({ findings: [finding] }).length > 0;
+    };
+
+    expect(malformed.filter((finding) => !rejected(finding))).toEqual([]);
     expect(validate({})).not.toEqual([]);
     expect(validate({ findings: [{ ...valid, extra: true }] })).not.toEqual([]);
   });

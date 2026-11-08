@@ -1,7 +1,9 @@
 import { normalizeGitPath } from '../../git/normalize.mjs';
 
+export { isPlainObject as isRecord } from '../../../../shared/config.mjs';
+
 export function positiveInteger(value, context) {
-  if (!Number.isInteger(value) || value < 1) {
+  if (!Number.isSafeInteger(value) || value <= 0) {
     throw new TypeError(`${context} must be a positive integer`);
   }
   return value;
@@ -25,8 +27,4 @@ export function normalizeFindingPath(value, context) {
     throw new TypeError(`${context} must stay within the analyzed project`);
   }
   return normalizedPath;
-}
-
-export function isRecord(value) {
-  return typeof value === 'object' && value !== null && !Array.isArray(value);
 }

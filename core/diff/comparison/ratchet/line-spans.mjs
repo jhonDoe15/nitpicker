@@ -1,5 +1,5 @@
 import { normalizeGitPath } from '../../git/normalize.mjs';
-import { baseLineOf, canMapLines, isChangedLine } from '../../git/patches/line-map.mjs';
+import { baseLineOf, canMapLines, isChangedLine } from '../../git/patches/lines/line-map.mjs';
 
 function linesOf({ startLine, endLine }) {
   return Array.from({ length: endLine - startLine + 1 }, (_, offset) => startLine + offset);

@@ -115,6 +115,15 @@ function parseFileSection(section, projectRelativePath) {
 
 const NO_LINES = { removed: [], added: [], inserted: [] };
 
+function noteHunk(file, { oldStart, removedCount, start, count }) {
+  file.hunks.push({ oldStart, oldCount: removedCount, newStart: start, newCount: count });
+  if (count > 0) {
+    file.ranges.push([start, start + count - 1]);
+  } else {
+    file.deletions.push(start);
+  }
+}
+
 function recordHunk(file, hunkText) {
   const [headerLine = '', ...body] = hunkText.split('\n');
   const hunk = HUNK_HEADER.exec(headerLine);
@@ -124,17 +133,7 @@ function recordHunk(file, hunkText) {
   const removedCount = hunk[2] === undefined ? 1 : Number(hunk[2]);
   const start = Number(hunk[3]);
   const count = hunk[4] === undefined ? 1 : Number(hunk[4]);
-  file.hunks.push({
-    oldStart: Number(hunk[1]),
-    oldCount: removedCount,
-    newStart: start,
-    newCount: count,
-  });
-  if (count > 0) {
-    file.ranges.push([start, start + count - 1]);
-  } else {
-    file.deletions.push(start);
-  }
+  noteHunk(file, { oldStart: Number(hunk[1]), removedCount, start, count });
   const removed = body.filter((line) => line.startsWith('-')).map((line) => line.slice(1));
   const added = body.filter((line) => line.startsWith('+')).map((line) => line.slice(1));
   if (added.length === count && removed.length === removedCount) {
