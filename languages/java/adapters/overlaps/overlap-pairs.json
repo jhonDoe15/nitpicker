@@ -730,5 +730,18 @@
       "spotbugs/SING_SINGLETON_GETTER_NOT_SYNCHRONIZED"
     ],
     "scope": "line"
+  },
+  {
+    "primary": ["pmd/SqlConcatenation"],
+    "secondary": [
+      "spotbugs/SQL_NONCONSTANT_STRING_PASSED_TO_EXECUTE",
+      "spotbugs/SQL_PREPARED_STATEMENT_GENERATED_FROM_NONCONSTANT_STRING"
+    ],
+    "scope": "line"
+  },
+  {
+    "primary": ["checkstyle/MagicNumber"],
+    "secondary": ["pmd/AvoidLiteralsInIfCondition"],
+    "scope": "line"
   }
 ]
