@@ -118,6 +118,14 @@ export const STRUCTURE_HINTS = [
   },
   {
     tool: RULES_TOOL,
+    rules: ['env-none-only-check'],
+    describe: (subject) =>
+      `\`${subject}\` is tested only for being missing, so an empty value counts as set: \`${subject}=\` gives \`""\`, which passes \`is not None\` and \`in os.environ\` and skips a \`getenv\` default`,
+    allowed:
+      'Test the value for truth: `if not os.environ.get("API_URL"):`, `os.environ.get("PORT") or "8000"` instead of a default argument, or `.strip()` first when blanks count as empty. An exception fits only when an empty value is a real setting here.',
+  },
+  {
+    tool: RULES_TOOL,
     rules: ['process-stream-access'],
     describe: (subject) => `\`${subject}\` reaches a standard stream outside the composition root`,
     allowed:

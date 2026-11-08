@@ -65,6 +65,7 @@ import { rule as ruleNoThrow } from './rules/errors/no-throw.mjs';
 import { rule as ruleNoTriStateBoolean } from './rules/signatures/no-tri-state-boolean.mjs';
 import { rule as ruleNoUiFrameworkInDomain } from './rules/syntax/no-ui-framework-in-domain.mjs';
 import { rule as ruleNoUncollectedTests } from './test-isolation/no-uncollected-tests.mjs';
+import { rule as ruleNoUndefinedOnlyEnvCheck } from './rules/config/no-undefined-only-env-check.mjs';
 import { rule as ruleNoUnhandledUrlParse } from './rules/parsing/no-unhandled-url-parse.mjs';
 import { rule as ruleNoUnhandledVoidPromise } from './rules/promises/no-unhandled-void-promise.mjs';
 import { rule as ruleNoUninjectableDelay } from './rules/testing/lifecycle/no-uninjectable-delay.mjs';
@@ -170,6 +171,7 @@ export const directoryRules = {
   'no-tri-state-boolean': ruleNoTriStateBoolean,
   'no-ui-framework-in-domain': ruleNoUiFrameworkInDomain,
   'no-uncollected-tests': ruleNoUncollectedTests,
+  'no-undefined-only-env-check': ruleNoUndefinedOnlyEnvCheck,
   'no-unhandled-url-parse': ruleNoUnhandledUrlParse,
   'no-unhandled-void-promise': ruleNoUnhandledVoidPromise,
   'no-uninjectable-delay': ruleNoUninjectableDelay,

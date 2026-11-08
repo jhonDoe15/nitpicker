@@ -16,6 +16,9 @@ Part of the [nitpicker-typescript](../SKILL.md) skill. Write these forms from th
 - Run programs with `execFile(command, [args])`, never a command string.
 - Parse a URL from runtime text with `URL.parse(text)` or after `URL.canParse(text)`; `new URL(text)`
   throws on text that is not a URL (`nitpicker/no-unhandled-url-parse`).
+- Test an environment variable for a value, not only for `undefined`: `if (!process.env.API_URL)`,
+  `process.env.PORT || '3000'`, or a schema with `z.string().min(1)`. `API_URL=` gives `''`, which passes
+  `!== undefined`, `in` and `??` (`nitpicker/no-undefined-only-env-check`).
 - Regexes: a `g` or `y` regex keeps `lastIndex`, so don't reuse one with `test()` or `exec()`
   across calls; drop the flag or use `text.matchAll(pattern)` (`nitpicker/no-shared-stateful-regex`).
   `match`, `matchAll` and `search` compile a string argument as a regex: use `includes` or

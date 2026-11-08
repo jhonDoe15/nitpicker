@@ -244,6 +244,120 @@ return //MethodDeclaration[ModifierList/Annotation[pmd-java:typeIs('org.springfr
     or pmd-java:typeIs('java.net.http.HttpClient')]]
 ]]></value></property></properties>
   </rule>
+  <rule name="SpringNullOnlyConfigCheck" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
+        message="Use StringUtils.hasText (or hasLength, or isBlank next to the null test) to test this configuration string, not only a null check. A property set to an empty value binds as an empty string, which passes a null check, so the feature turns on with nothing to use; requireNonNullElse and Optional.orElse keep the empty value too. An exception fits only when an empty value is a real setting here.">
+    <priority>2</priority>
+    <properties><property name="xpath"><value><![CDATA[
+let $configuration := 'org.springframework.boot.context.properties.ConfigurationProperties',
+    $value := 'org.springframework.beans.factory.annotation.Value',
+    $string := function($declaration) {
+  exists($declaration/ClassType[pmd-java:typeIsExactly('java.lang.String')])
+},
+    $getter := function($name) {
+  concat('get', upper-case(substring($name, 1, 1)), substring($name, 2))
+},
+    $valued := function($declaration) {
+  exists($declaration/ModifierList/Annotation[pmd-java:typeIs($value)])
+},
+    $fields := function($type) {
+  let $bound := exists($type/ancestor-or-self::*[self::ClassDeclaration or self::RecordDeclaration]
+        /ModifierList/Annotation[pmd-java:typeIs($configuration)]),
+      $valueParameters := $type/ClassBody/ConstructorDeclaration/FormalParameters/FormalParameter
+        [$valued(.)][$string(.)]/VariableId/@Name
+  return distinct-values((
+    $type/ClassBody/FieldDeclaration[$string(.)][not(pmd-java:modifiers() = 'static')]
+      [$bound or $valued(.)]/VariableDeclarator/VariableId/@Name,
+    $type[$bound]/RecordComponentList/RecordComponent[$string(.)]/VariableId/@Name,
+    $type/ClassBody/ConstructorDeclaration//AssignmentExpression[*[2][self::VariableAccess][@Name = $valueParameters]]
+      /*[1][self::FieldAccess[ThisExpression] or self::VariableAccess]/@Name))
+},
+    $own := function($target) {
+  let $type := $target/ancestor::*[self::ClassDeclaration or self::RecordDeclaration or self::EnumDeclaration][1],
+      $names := $fields($type),
+      $record := exists($type/self::RecordDeclaration),
+      $method := $target/ancestor::*[self::MethodDeclaration or self::ConstructorDeclaration or self::LambdaExpression][1],
+      $locals := ($method/FormalParameters/FormalParameter/VariableId/@Name,
+        $method//LocalVariableDeclaration/VariableDeclarator/VariableId/@Name)
+  return ($target/self::VariableAccess[@Name = $names][not(@Name = $locals)]
+    or $target/self::FieldAccess[ThisExpression][@Name = $names]
+    or $target/self::MethodCall[ArgumentList[count(*) = 0]][not(*[1][not(self::ArgumentList or self::ThisExpression)])]
+      [some $name in $names satisfies (@MethodName = $getter($name) or ($record and @MethodName = $name))])
+},
+    $parameter := function($target) {
+  $target/self::VariableAccess[@Name = $target/ancestor::*[self::MethodDeclaration or self::ConstructorDeclaration][1]
+    /FormalParameters/FormalParameter[$valued(.)][$string(.)]/VariableId/@Name]
+},
+    $propertiesRoot := function($root) {
+  let $name := $root/self::*[self::VariableAccess or self::FieldAccess[ThisExpression]]/@Name
+  return exists($root/ancestor::CompilationUnit//(FieldDeclaration[VariableDeclarator/VariableId/@Name = $name]
+      | FormalParameter[VariableId/@Name = $name] | LocalVariableDeclaration[VariableDeclarator/VariableId/@Name = $name]
+      | RecordComponent[VariableId/@Name = $name])
+    /ClassType[matches(@SimpleName, '.Properties$')][not(pmd-java:typeIs('java.util.Properties'))])
+},
+    $read := function($target) {
+  exists($target/self::MethodCall[ArgumentList[count(*) = 0]][not(@MethodName = 'toString')]
+    [pmd-java:typeIsExactly('java.lang.String')]
+    [not(*[1]/descendant-or-self::MethodCall[ArgumentList/*])]
+    [$propertiesRoot(*[1]/descendant-or-self::*[self::VariableAccess or self::FieldAccess][last()])])
+},
+    $configured := function($target) {
+  $own($target) or $parameter($target) or $read($target)
+},
+    $key := function($target) {
+  string-join(for $part in $target/descendant-or-self::*[self::VariableAccess or self::FieldAccess or self::MethodCall]
+    return string(($part/@Name, $part/@MethodName)[1]), '.')
+},
+    $bare := function($target) {
+  if ($target/self::MethodCall[@MethodName = ('trim', 'strip')][ArgumentList[count(*) = 0]])
+  then $target/*[1] else $target
+},
+    $emptiness := function($root, $wanted) {
+  some $call in $root/descendant-or-self::MethodCall satisfies (
+    ($call[@MethodName = ('isEmpty', 'isBlank', 'length')][ArgumentList[count(*) = 0]]
+      and $key($bare($call/*[1])) = $wanted)
+    or ($call[@MethodName = ('hasText', 'hasLength', 'isEmpty', 'isBlank', 'isNotEmpty', 'isNotBlank', 'isNullOrEmpty')]
+      [ArgumentList[count(*) = 1]] and $key($bare($call/ArgumentList/*[1])) = $wanted)
+    or ($call[@MethodName = 'equals'][ArgumentList[count(*) = 1]]
+      and (($call/*[1][self::StringLiteral[@ConstValue = '']] and $key($call/ArgumentList/*[1]) = $wanted)
+        or ($call/ArgumentList/StringLiteral[@ConstValue = ''] and $key($call/*[1]) = $wanted))))
+},
+    $condition := function($test) {
+  ($test/ancestor-or-self::*[not(parent::InfixExpression[@Operator = ('&&', '||')]
+    or parent::UnaryExpression[@Operator = '!'])])[last()]
+},
+    $nullSafe := function($test) {
+  let $branches := $test/parent::ConditionalExpression[*[1] is $test]
+  return exists($branches[($test/@Operator = '==' and *[2][self::NullLiteral])
+    or ($test/@Operator = '!=' and *[3][self::NullLiteral])])
+},
+    $plain := function($test) {
+  not($test/ancestor::MethodDeclaration[1][@Name = ('equals', 'hashCode', 'toString', 'compareTo')])
+}
+return
+//InfixExpression[@Operator = ('==', '!=')][NullLiteral][$plain(.)][not($nullSafe(.))]
+  [let $target := *[not(self::NullLiteral)]
+   return $configured($target) and not($emptiness($condition(.), $key($target)))]
+|
+//MethodCall[pmd-java:matchesSig('java.util.Objects#isNull(_)') or pmd-java:matchesSig('java.util.Objects#nonNull(_)')]
+  [$plain(.)]
+  [let $target := ArgumentList/*[1]
+   return $configured($target) and not($emptiness($condition(.), $key($target)))]
+|
+//MethodCall[@MethodName = ('isPresent', 'isEmpty')][ArgumentList[count(*) = 0]]
+  [*[1][self::MethodCall][pmd-java:matchesSig('java.util.Optional#ofNullable(_)')]]
+  [let $target := *[1]/ArgumentList/*[1]
+   return $configured($target) and not($emptiness($condition(.), $key($target)))]
+|
+//MethodCall[pmd-java:matchesSig('java.util.Objects#requireNonNullElse(_,_)')]
+  [not(ArgumentList/*[2][self::NullLiteral or self::StringLiteral[@ConstValue = '']])]
+  [$configured(ArgumentList/*[1])]
+|
+//MethodCall[@MethodName = 'orElse'][ArgumentList[count(*) = 1]]
+  [not(ArgumentList/*[1][self::NullLiteral or self::StringLiteral[@ConstValue = '']])]
+  [*[1][self::MethodCall][pmd-java:matchesSig('java.util.Optional#ofNullable(_)')]]
+  [$configured(*[1]/ArgumentList/*[1])]
+]]></value></property></properties>
+  </rule>
   <rule name="SpringProfileOnConfiguration" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
         message="Put @Profile only on a @Configuration class or a @Bean method, so profiles choose beans and never branch business code.">
     <priority>3</priority>

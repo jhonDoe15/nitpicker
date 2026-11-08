@@ -51,3 +51,6 @@ Part of the [nitpicker-java](../SKILL.md) skill. Write these forms from the star
   Factories named `of` or `from` and copies such as `List.copyOf` are fine.
 - A record or `@ConfigurationProperties` class (and the classes nested in it) has `tags` or `tag`,
   not both; one item is a one-element list.
+- Test a configuration string (a `@ConfigurationProperties` field, a `@Value` string) with
+  `StringUtils.hasText(x)`, not only `x != null`: an empty property binds as `""`, which passes a null
+  check (`SpringNullOnlyConfigCheck`).

@@ -46,6 +46,9 @@ Part of the [nitpicker-kotlin](../SKILL.md) skill. Write these forms from the st
 - A data class, a `@ConfigurationProperties` class, the public properties of any class and the
   defaulted parameters of a public function have `tags` or `tag`, not both
   (`pmd/SingularAndPluralMember`); one item is a one-element list.
+- Test a `String?` configuration property (a `@ConfigurationProperties` class, `@Value`) with
+  `isNullOrBlank()`, not only `!= null`, `?.let` or `?:`: an empty property binds as `""`, which those
+  count as set (`pmd/SpringNullOnlyConfigCheck`). Default it with `props.x?.ifBlank { null } ?: fallback`.
 - The lambda passed to `computeIfAbsent`, `compute`, `computeIfPresent`, `merge`, or `getOrPut`
   on a `ConcurrentMap`, never changes the same map, not even from a callback it starts
   (`pmd/RecursiveMapUpdate`). Attach the cleanup to the result:
