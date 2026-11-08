@@ -7,7 +7,7 @@ import {
 } from '../../languages/typescript/preset/head-policy.mjs';
 import { resolveLayoutFor } from '../../languages/typescript/preset/layout.mjs';
 import { collectWorkingTreeChanges, readBaseFiles } from './changes.mjs';
-import { spawnSync } from 'node:child_process';
+import { spawnSyncWithOutputFile } from '../tooling/output-file/output-file.mjs';
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { prettierExtensions, prettierExclusions, typescriptExtensions } from './extensions.mjs';
@@ -40,7 +40,7 @@ function spawnEnvironment(baseEnvironment, overrides = {}) {
 export function spawnInvocation(
   { command, args, cwd, input, environment, shell = false, timeout = TOOL_TIMEOUT_MS },
   baseEnvironment,
-  spawn = spawnSync,
+  spawn = spawnSyncWithOutputFile,
 ) {
   return spawn(command, args, {
     cwd,

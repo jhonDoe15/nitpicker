@@ -18,6 +18,20 @@ ktfmt checks the base with the same formatter and legacy formatting is not a new
 3. Otherwise `ktlint_` properties in `.editorconfig` mean ktlint.
 4. Otherwise none: no format check runs.
 
+On Maven the plugin declarations of the effective POM of the head checkout (`mvn help:effective-pom`,
+which contains the plugins of the parent POMs and the active profiles) are read, not its text: a
+project name, a dependency or a comment that holds the word `ktlint` or `ktfmt` decides nothing, and
+a POM that does not parse names no formatter. `ktlint` means ktlint (the ktlint Maven plugin of
+`com.github.gantsign.maven` or `com.github.shyiko`, or a Spotless `<kotlin><ktlint/></kotlin>`
+step), and `ktfmt` means ktfmt (a Spotless `<kotlin><ktfmt/></kotlin>` step). Both mean ktlint, as on
+Gradle. A formatter that is run through `exec-maven-plugin` is not read; set `kotlin.formatter`
+there. The ktfmt style is the `<style>` (`KOTLINLANG`, `DROPBOX`, `GOOGLE` or `META`) of the ktfmt
+step itself, never the `<style>` of another formatter such as the Java `googleJavaFormat` step; no
+style means the followed indentation decides, as on Gradle (`DROPBOX` is ktfmt's older name for the
+kotlinlang style, and `dropboxStyle()` in a Gradle build means the same). The head POM is the one
+source: the convention step, the summary and the run of both snapshots use the formatter and style it
+gives, so the base run cannot pick another formatter than the head run.
+
 Build logic that lives in `buildSrc`, an included build or a submodule is not searched; use the
 override there.
 

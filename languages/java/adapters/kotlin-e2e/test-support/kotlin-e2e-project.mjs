@@ -3,6 +3,7 @@ import path from 'node:path';
 import { cpSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { runJavaDiff } from '../../java-diff.mjs';
+import { schemaChecked } from '../../../../../core/diff/comparison/test-support/findings-schema-check.mjs';
 
 const GIT_TIMEOUT_MS = 30_000;
 const JDK_PROBE_TIMEOUT_MS = 30_000;
@@ -88,7 +89,9 @@ export function removeProject(project) {
 
 export function diffOf(project, branch, { policy = kotlinPolicy, base = 'main' } = {}) {
   git(project, 'checkout', '-q', branch);
-  return runJavaDiff({ repositoryRoot: project.root, requestedBaseRef: base, gradle, policy });
+  return schemaChecked(
+    runJavaDiff({ repositoryRoot: project.root, requestedBaseRef: base, gradle, policy }),
+  );
 }
 
 export function summarize(findings) {

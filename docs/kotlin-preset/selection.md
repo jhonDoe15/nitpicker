@@ -5,6 +5,13 @@ Part of the [Kotlin preset guide](../kotlin-preset.md).
 `"preset": "kotlin"` in `nitpicker.config.json`. Like `java`, it is explicit and never
 auto-detected.
 
+A `$schema` line in the file gives the editor completion and inline errors for this preset's keys
+(`kotlin.formatter`, `kotlin.detektConfig`, `tools.ktlint`, `tools.ktfmt`, `tools.detekt`, the `java.*`
+and `kotlin.*` conventions, the printed `detekt.<ruleset>.<Rule>` ids). A Kotlin project has no
+`node_modules`, so it points at the published file:
+`"$schema": "https://raw.githubusercontent.com/jhonDoe15/nitpicker/main/spec/config.schema.json"`. nitpicker ignores the line; see
+[Editor support](usage.md#editor-support).
+
 **Why a preset of its own and not the Java preset covering Kotlin sources (decision).** The Java
 preset already builds a Kotlin module, because the Kotlin plugin applies `java`, but it would
 change meaning for every project that already uses it with a Kotlin module the moment it started
@@ -15,5 +22,5 @@ also lets the reports say what ran: the analyzer is named `kotlin`, so a Gradle 
 `kotlin/gradle-failure` tool error and `baseline-expansion` findings carry the tool `kotlin`. What
 stays shared is everything else: `languages/java/` holds both presets, and `createJavaAnalyzer`
 takes `{ kotlin: true }`. A project whose build has no Kotlin module and sets `"preset": "kotlin"`
-fails with a tool error saying so, and so does a Maven project (`kotlin/maven-failure`): the
-Kotlin tasks live in the Gradle init script, so a Maven project uses the java preset.
+fails with a tool error saying so, and so does a Maven project whose build never applies
+`kotlin-maven-plugin` (`kotlin/maven-failure`): such a project uses the java preset.

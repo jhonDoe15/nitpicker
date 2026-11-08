@@ -36,6 +36,8 @@ describe('unused option in Kotlin', () => {
       location: { line: 8 },
       message:
         'Option format.pad is never set. Remove it, or set it from a real call (private or internal, so calls in tests count). If this is intended, add {"rule":"unused-option","paths":["src/main/kotlin/demo/Sample.kt"],"reason":"..."} to "exceptions" in nitpicker.config.json.',
+      allowedForm:
+        'Remove it, or set it from a real call (private or internal, so calls in tests count).',
       classification: 'enforceable',
     });
   });
