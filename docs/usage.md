@@ -448,9 +448,16 @@ per function (with their count and lines), and a function prints at most three s
 then how many more there are. The headline still counts every mutant, and the reports above list
 each one.
 
-Set `NO_COLOR` to disable colored console output. On GitHub Actions the run also writes a job
-summary and `::error` annotations for the new enforceable findings (see
-[Job summary and annotations](ci.md#job-summary-and-annotations)).
+The summary is colored only when standard output is a terminal, so a pipe, a file or an agent's
+shell tool gets plain text. `FORCE_COLOR` turns color on anywhere, for CI logs that render it
+(`FORCE_COLOR=0` or `false` turns it off), and `NO_COLOR` (any value) always turns it off, even with
+`FORCE_COLOR`. A `TERM` of `dumb` also turns it off. Color codes that the tools print, for example in
+a failing test's message, are removed from every finding and tool error, so the console summary and
+every report are plain text. The `Full diagnostics:` path and the cache folder in the cache line are
+printed relative to the current folder when they are inside it, else as absolute paths.
+
+On GitHub Actions the run also writes a job summary and `::error` annotations for the new
+enforceable findings (see [Job summary and annotations](ci.md#job-summary-and-annotations)).
 
 #### SARIF
 

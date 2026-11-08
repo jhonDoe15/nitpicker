@@ -92,8 +92,8 @@ export function expectedSnapshotOutput(links) {
   ].join('\n');
 }
 
-/** What a dirty diff run of the installed package prints, with its reports under `root`. */
-export function expectedDirtyOutput(root) {
+/** What a dirty diff run of the installed package prints from the consumer root. */
+export function expectedDirtyOutput() {
   return `Base: main (argument)
 
 Quality gate summary
@@ -103,8 +103,8 @@ Quality gate summary
     src/main/example.ts:1, 3
   eslint-lint/no-debugger: ${DEBUGGER_MESSAGE.replace(' If', '\n    src/main/example.ts:2:3\n    If')}
 Ran only: eslint-lint, prettier-format. Run nitpicker without --analyzer before you finish.
-Full diagnostics: ${root}/reports/dirty/report.txt
-nitpicker: base 2 analyzers cached (${root}/node_modules/.cache/nitpicker; use --no-cache to rerun)
+Full diagnostics: reports/dirty/report.txt
+nitpicker: base 2 analyzers cached (node_modules/.cache/nitpicker; use --no-cache to rerun)
 nitpicker: head: running 2 analyzers
 `;
 }

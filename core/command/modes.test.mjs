@@ -38,11 +38,11 @@ describe('nitpicker CLI', () => {
     expect(output.stdoutText).toEqual(
       expect.stringMatching(exactText`Base: ${repository.baseRef} (argument)
 
-\u001b[1m\u001b[31mQuality gate summary\u001b[0m
-\u001b[1m\u001b[31m✖ 1 new enforceable violation\u001b[0m
-  \u001b[33mfake-quality-analyzer/fixture-rule\u001b[0m: Fixture finding
+Quality gate summary
+✖ 1 new enforceable violation
+  fake-quality-analyzer/fixture-rule: Fixture finding
     src/main/untracked.ts:1:4
-\u001b[2mFull diagnostics: /tmp/nitpicker-cli-output-${/[A-Za-z0-9]{6}/}/reports/report.txt\u001b[0m
+Full diagnostics: /tmp/nitpicker-cli-output-${/[A-Za-z0-9]{6}/}/reports/report.txt
 `),
     );
     expect(output.stderrText).toBe('');
@@ -68,9 +68,9 @@ describe('nitpicker CLI', () => {
     expect(output.stdoutText).toEqual(
       expect.stringMatching(exactText`Base: ${repository.baseRef} (argument)
 
-\u001b[1m\u001b[32mQuality gate summary\u001b[0m
-\u001b[32m✓ No new enforceable violations\u001b[0m
-\u001b[2mFull diagnostics: /tmp/nitpicker-cli-output-${/[A-Za-z0-9]{6}/}/reports/report.txt\u001b[0m
+Quality gate summary
+✓ No new enforceable violations
+Full diagnostics: /tmp/nitpicker-cli-output-${/[A-Za-z0-9]{6}/}/reports/report.txt
 `),
     );
     expect(output.stderrText).toBe('');
@@ -174,9 +174,9 @@ describe('nitpicker CLI', () => {
     expect(output.stdoutText).toEqual(
       expect.stringMatching(exactText`Base: origin/main (remote-head)
 
-\u001b[1m\u001b[32mQuality gate summary\u001b[0m
-\u001b[32m✓ No new enforceable violations\u001b[0m
-\u001b[2mFull diagnostics: /tmp/nitpicker-cli-output-${/[A-Za-z0-9]{6}/}/reports/report.txt\u001b[0m
+Quality gate summary
+✓ No new enforceable violations
+Full diagnostics: /tmp/nitpicker-cli-output-${/[A-Za-z0-9]{6}/}/reports/report.txt
 `),
     );
     expect(output.stderrText).toBe('');
@@ -263,9 +263,9 @@ describe('nitpicker CLI', () => {
     expect(output.stdoutText).toEqual(
       expect.stringMatching(exactText`Base: ${repository.baseRef} (argument)
 
-\u001b[1m\u001b[32mQuality gate summary\u001b[0m
-\u001b[32m✓ No new enforceable violations\u001b[0m
-\u001b[2mFull diagnostics: /tmp/nitpicker-cli-output-${/[A-Za-z0-9]{6}/}/reports/report.txt\u001b[0m
+Quality gate summary
+✓ No new enforceable violations
+Full diagnostics: /tmp/nitpicker-cli-output-${/[A-Za-z0-9]{6}/}/reports/report.txt
 `),
     );
   });
@@ -394,14 +394,14 @@ describe('nitpicker CLI', () => {
           ].join('\n')
         : expect.stringMatching(exactText`Base: comparison-base (argument)
 
-\u001b[1m\u001b[31mQuality gate summary\u001b[0m
-\u001b[1m\u001b[31m✖ 1 new enforceable violation\u001b[0m
-  \u001b[33mfake-quality-analyzer/fixture-rule\u001b[0m: Fixture finding
+Quality gate summary
+✖ 1 new enforceable violation
+  fake-quality-analyzer/fixture-rule: Fixture finding
     src/main/new.ts:1:4
-\u001b[1m\u001b[31m✖ 2 tool errors\u001b[0m
-  \u001b[33mcrashing-analyzer (base)\u001b[0m: crashing-analyzer crashed with exit 2: no diagnostic output
-  \u001b[33mcrashing-analyzer (head)\u001b[0m: crashing-analyzer crashed with exit 2: no diagnostic output
-\u001b[2mFull diagnostics: /tmp/nitpicker-cli-output-${/[A-Za-z0-9]{6}/}/reports/report.txt\u001b[0m
+✖ 2 tool errors
+  crashing-analyzer (base): crashing-analyzer crashed with exit 2: no diagnostic output
+  crashing-analyzer (head): crashing-analyzer crashed with exit 2: no diagnostic output
+Full diagnostics: /tmp/nitpicker-cli-output-${/[A-Za-z0-9]{6}/}/reports/report.txt
 `);
     it('exits 1 for findings plus a tool error and still lists the error', () => {
       const { exitCode, output } = run({ withFinding: true, withToolError: true });
