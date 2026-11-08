@@ -2,7 +2,7 @@ function listed(paths, note) {
   return paths.length === 0 ? [] : [note(paths.join(', '))];
 }
 
-export function rewrittenNote(tool, paths) {
+function rewrittenNote(tool, paths) {
   return listed(paths, (names) => `${tool} rewrote ${names}`);
 }
 

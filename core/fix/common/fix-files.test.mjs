@@ -1,4 +1,4 @@
-import { readFileSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
+import { rmSync, symlinkSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { fixtureGit, useGitFixtures } from '../../diff/git/test-support/git-repository.mjs';

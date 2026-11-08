@@ -6,6 +6,8 @@ const PARSE_FAILURES = {
   'black-fix': { status: 123, stderr: 'error: cannot format -: Cannot parse: 1:0: BROKEN\n' },
 };
 
+const STDIN_FILENAME = '--stdin-filename=';
+
 const JUPYTER_SKIP =
   'Skipping .ipynb files as Jupyter dependencies are not installed.\nYou can fix this by running ``pip install "black[jupyter]"``\n';
 
@@ -23,7 +25,9 @@ export function fakePythonTools({
 } = {}) {
   const calls = [];
   function lint(invocation) {
-    const file = invocation.args.find((arg) => arg.startsWith('--stdin-filename=')).slice(17);
+    const file = invocation.args
+      .find((arg) => arg.startsWith(STDIN_FILENAME))
+      .slice(STDIN_FILENAME.length);
     const edited = lintEdit?.(file, invocation.input) ?? invocation.input;
     if (lintStatus !== 0) {
       return { status: lintStatus, stdout: '', stderr: 'ruff exploded' };
