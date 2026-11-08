@@ -60,6 +60,16 @@ class SatchelViews(
         return view
     }
 
+    fun shadowed(id: Long, views: List<SatchelView>): List<SatchelView> {
+        val satchel = satchels.findById(id).orElseThrow()
+        views.forEach { satchel -> satchel.status = "SEEN" }
+        run {
+            val satchel = Satchel()
+            satchel.status = "NEW"
+        }
+        return views + SatchelView(satchel.status)
+    }
+
     @Transactional
     fun markSeen(id: Long) {
         val satchel = satchels.findById(id).orElseThrow()

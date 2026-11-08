@@ -155,7 +155,7 @@ describe('Kotlin Spring rules on the recorded fixture facts', () => {
       'good/ProxyFamilies.kt:22 SpringProxyMethodVisibility RemoteCalls.timed',
       'good/ReadOnly.kt:17 JpaEntityClass Satchel',
       'good/ReadOnly.kt:35 SpringProxyMethodVisibility SatchelViews',
-      'good/ReadOnly.kt:64 SpringProxyMethodVisibility SatchelViews.markSeen',
+      'good/ReadOnly.kt:74 SpringProxyMethodVisibility SatchelViews.markSeen',
       'good/Rows.kt:38 JpaEntityClass Crate',
       'good/Rows.kt:63 SpringProxyMethodVisibility CrateService.archive',
       'good/Rows.kt:103 SpringProxyMethodVisibility ShelfService.tidy',

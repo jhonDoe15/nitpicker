@@ -14,16 +14,27 @@ import {
 
 const RULE = 'SpringTransactionalReadOnlyWrite';
 const WRITES = new Set(REPOSITORY_WRITES);
-const CALL = /^([A-Za-z_$][\w$]*)\s*\.\s*([A-Za-z_$][\w$]*)\s*\(/u;
+const NAME = String.raw`[A-Za-z_$][\w$]*`;
+const SITE = new RegExp(
+  String.raw`^(?:this\s*\.\s*)?(${NAME})\s*(?:\.\s*(${NAME})\s*(\(|=(?!=))|::\s*(${NAME}))`,
+  'u',
+);
+const SETTER = /^set\p{Lu}/u;
 const QUERY = /@(?:[\w.]*\.)?(?:Query|NativeQuery)\b/u;
 const WRITING = /@(?:[\w.]*\.)?(?:Modifying|Procedure)\b|\bdefault\b/u;
+const ENTITY = /@(?:[\w.]*\.)?Entity\b/u;
 const BOUNDARY = /[;{}][^;{}]*$/u;
 const EXTENSIONS = ['.java', '.kt'];
 
-function calledAt(text, location) {
+function siteAt(text, location) {
   const start = offsetOf(text, { line: location?.line ?? 1, column: location?.column ?? 1 });
-  const match = CALL.exec(text.slice(start));
-  return match === null ? undefined : { receiver: match[1], name: match[2] };
+  const match = SITE.exec(text.slice(start));
+  if (match === null) {
+    return undefined;
+  }
+  const [, receiver, member, operator, referenced] = match;
+  const field = operator === '=';
+  return { receiver, name: member ?? referenced, call: !field, field };
 }
 
 function declaredType(text, name) {
@@ -34,11 +45,16 @@ function declaredType(text, name) {
   return declaration.exec(text)?.[1];
 }
 
-function interfaceBody(text, type) {
-  const header = new RegExp(String.raw`\binterface\s+${escapeRegExp(type)}\b[^{;]*\{`, 'u').exec(
+function bodyOf(text, kind, type) {
+  const header = new RegExp(String.raw`\b${kind}\s+${escapeRegExp(type)}\b[^{;]*\{`, 'u').exec(
     text,
   );
-  return header === null ? undefined : text.slice(header.index + header[0].length);
+  return header === null
+    ? undefined
+    : {
+        prefix: BOUNDARY.exec(text.slice(0, header.index))?.[0] ?? text.slice(0, header.index),
+        body: text.slice(header.index + header[0].length),
+      };
 }
 
 function declarationsOf(body, name) {
@@ -61,15 +77,26 @@ function declarationsOf(body, name) {
   return prefixes;
 }
 
+function sourcesOf(index, type) {
+  return (index.get(type) ?? []).map((file) => blankLiterals(readJavaSource(file) ?? ''));
+}
+
 function readsOnly(index, type, name) {
-  const declarations = (index.get(type) ?? []).flatMap((file) => {
-    const body = interfaceBody(blankLiterals(readJavaSource(file) ?? ''), type);
-    return body === undefined ? [] : declarationsOf(body, name);
+  const declarations = sourcesOf(index, type).flatMap((text) => {
+    const found = bodyOf(text, 'interface', type);
+    return found === undefined ? [] : declarationsOf(found.body, name);
   });
   return (
     declarations.length > 0 &&
     declarations.every((prefix) => QUERY.test(prefix) && !WRITING.test(prefix))
   );
+}
+
+function plainClass(index, type) {
+  const headers = sourcesOf(index, type).flatMap((text) =>
+    ['class', 'record'].map((kind) => bodyOf(text, kind, type)).filter(Boolean),
+  );
+  return headers.length > 0 && headers.every(({ prefix }) => !ENTITY.test(prefix));
 }
 
 function sourceIndex(projectRoot, roots) {
@@ -83,22 +110,26 @@ function sourceIndex(projectRoot, roots) {
   return index;
 }
 
-export function withoutQueryReads(findings, { projectRoot, roots }) {
+function notAWrite(site, type, index) {
+  if (site.field || SETTER.test(site.name)) {
+    return plainClass(index, type);
+  }
+  return !WRITES.has(site.name) && !WRITE_VERB.test(site.name) && readsOnly(index, type, site.name);
+}
+
+export function withoutReadOnlyReads(findings, { projectRoot, roots }) {
   let index;
   return findings.filter((finding) => {
     if (finding.tool !== 'pmd' || finding.rule !== RULE) {
       return true;
     }
     const text = blankLiterals(readJavaSource(path.join(projectRoot, finding.path)) ?? '');
-    const call = calledAt(text, finding.location);
-    if (call === undefined || WRITES.has(call.name) || WRITE_VERB.test(call.name)) {
-      return true;
-    }
-    const type = declaredType(text, call.receiver);
+    const site = siteAt(text, finding.location);
+    const type = site === undefined ? undefined : declaredType(text, site.receiver);
     if (type === undefined) {
       return true;
     }
     index ??= sourceIndex(projectRoot, roots);
-    return !readsOnly(index, type, call.name);
+    return !notAWrite(site, type, index);
   });
 }

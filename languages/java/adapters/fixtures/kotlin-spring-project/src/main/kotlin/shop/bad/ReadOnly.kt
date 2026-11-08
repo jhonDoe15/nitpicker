@@ -75,7 +75,11 @@ class SatchelReports(
 }
 
 @Service
-class SatchelImports(private val satchels: SatchelRepository, private val jdbc: JdbcTemplate, private val dsl: DSLContext) {
+class SatchelImports(
+    private val satchels: SatchelRepository,
+    private val jdbc: JdbcTemplate,
+    private val dsl: DSLContext,
+) {
     fun replaceLog(id: Long) {
         jdbc.execute("delete from satchel_log")
         dsl.insertInto(DSL.table("satchel_log")).values(id).execute()
