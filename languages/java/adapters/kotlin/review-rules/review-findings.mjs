@@ -14,6 +14,8 @@ import { unboundedPoolFindings } from './main/thread-pools/unbounded-pools.mjs';
 import { unusedOptionFindings } from './main/unused-options/unused-options.mjs';
 import { validationTargetFindings } from './validation/validation-targets.mjs';
 import { buildViews, javaMentions } from './build-view.mjs';
+import { childLifetimeFindings } from './coroutines/resource-lifetime.mjs';
+import { suspendCleanupFindings } from './coroutines/suspend-cleanup.mjs';
 import { productionTypeResolver } from './production-types.mjs';
 import { findingFactory } from './review-finding.mjs';
 import { springFindings } from './spring/spring-findings.mjs';
@@ -85,6 +87,8 @@ export function readKotlinReviewFindings(context) {
     ...swallowedHandlerFindings(own, { finding, declaredIn: projectFiles }),
     ...lockOrderFindings(own, { finding, declaredIn: projectFiles }),
     ...fieldLockingFindings(own, { finding, declaredIn: projectFiles }),
+    ...suspendCleanupFindings(own, { finding, declaredIn: projectFiles }),
+    ...childLifetimeFindings(own, { finding }),
     ...validationTargetFindings(own, { finding }),
     ...loadEffectFindings(own, { finding, declaredIn: projectFiles }),
     ...unboundedPoolFindings(own, { finding }),
