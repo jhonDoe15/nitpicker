@@ -15,8 +15,11 @@ export const JVM_BUILDS = Object.fromEntries(
 );
 
 const PAGES = { pmd: 'java-pmd', checkstyle: 'java-checkstyle', spotbugs: 'java-spotbugs' };
-const PMD_WHY =
-  "PMD's errorprone and bestpractices categories run on main and test sources. Each rule names one allowed form of something Java allows several ways, or a defect.";
+const PMD_WHY = [
+  "PMD's errorprone, bestpractices, performance and multithreading categories, a broad-catch rule",
+  'and the boolean simplification rules run on main and test sources. Each rule names one allowed',
+  'form of something Java allows several ways, or a defect.',
+].join(' ');
 const CHECKSTYLE_WHY = {
   javadoc:
     "Google style asks for Javadoc in the shape it prescribes, and Checkstyle's Google checks report a missing or malformed comment; the formatter does not write Javadoc.",
@@ -48,8 +51,10 @@ const SPOTBUGS_CATEGORIES = {
 
 const FORMATTER_LABELS = Object.values(JAVA_FORMATTER_TOOLS).map(({ label }) => `\`${label}\``);
 const LAYOUT_ALLOWED = `Run the formatter of the project (${[...new Set(FORMATTER_LABELS)].join(', ')}) on the file; with no formatter, fix the layout by hand. ${NOT_YOUR_JAVA_FORMATTER}`;
-const NO_ROUTE =
-  'The message gives no exception route because the flagged code is a defect; an entry still lifts it if a reviewer agrees.';
+const NO_ROUTE = [
+  'The message gives no exception route because the flagged code is a defect or has one exact fix;',
+  'an entry still lifts it if a reviewer agrees.',
+].join(' ');
 
 function allowedOf({ fix, layout }) {
   if (layout === true) {

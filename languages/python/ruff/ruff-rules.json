@@ -1999,6 +1999,15 @@
       "useInstead": "x = \"Dear Sir\\u200b/\\u200bMadam\"  # zero width space"
     },
     {
+      "code": "PLR1711",
+      "name": "useless-return",
+      "linter": "Pylint",
+      "summary": "Useless `return` statement at end of function",
+      "whatItDoes": "Checks for functions that end with an unnecessary `return` or `return None`, and contain no other `return` statements.",
+      "why": "Python implicitly assumes a `None` return at the end of a function, making it unnecessary to explicitly write `return None`.",
+      "useInstead": "def f():\n    print(5)"
+    },
+    {
       "code": "PLR2004",
       "name": "magic-value-comparison",
       "linter": "Pylint",

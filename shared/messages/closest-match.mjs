@@ -2,7 +2,7 @@ const LEADING_DASHES = /^-+/u;
 const INLINE_VALUE = /=.*$/u;
 const CHARACTERS_PER_ALLOWED_EDIT = 3;
 
-function editDistance(left, right) {
+export function editDistance(left, right) {
   let previousRow = [];
   let row = Array.from({ length: right.length + 1 }, (_, index) => index);
   for (const [leftIndex, leftCharacter] of [...left].entries()) {

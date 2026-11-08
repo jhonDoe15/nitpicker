@@ -246,9 +246,9 @@ function combined(context, node, values) {
 }
 
 export function valueUnit(context, node) {
-  return foldTree(
-    node,
-    (current, depth) => operands(context, current, depth),
-    (current, values) => combined(context, current, values),
-  );
+  return foldTree(node, 0, {
+    expand: (current, depth) =>
+      operands(context, current, depth).map((operand) => [operand, depth + 1]),
+    combine: (current, _depth, values) => combined(context, current, values),
+  });
 }
