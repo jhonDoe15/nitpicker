@@ -5,7 +5,7 @@ import org.springframework.boot.test.util.TestPropertyValues;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.TestPropertySource;
 
-@SpringBootTest(properties = {"shop.mail.host=localhost", "shop.mail.hots=localhost"})
+@SpringBootTest(properties = {"shop.mail.host=localhost", "shop.mail.retry.max-atempts=1"})
 @TestPropertySource(properties = "spring.datasource.passwrd=secret")
 abstract class MailOverrides {
     static TestPropertyValues values() {

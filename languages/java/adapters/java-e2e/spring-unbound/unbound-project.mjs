@@ -7,13 +7,13 @@ const FIXTURE = path.resolve(import.meta.dirname, '../../fixtures/spring-unbound
 const BUILD_FILES = { gradle: ['build.gradle.kts', 'settings.gradle.kts'], maven: ['pom.xml'] };
 
 export const UNBOUND_FINDINGS = [
-  'src/main/resources/application.yml:14 shop.mail.hots',
+  'src/main/resources/application.yml:16 shop.mail.retry.maxatempts',
   'src/main/resources/application.yml:19 shop.pricing.curency',
   'src/main/resources/application.yml:6 spring.datasource.user',
   'src/main/resources/application.yml:8 spring.redis.host',
   'src/test/java/shop/MailOverrides.java:12 server.adress',
   'src/test/java/shop/MailOverrides.java:17 spring.datasource.urll',
-  'src/test/java/shop/MailOverrides.java:8 shop.mail.hots',
+  'src/test/java/shop/MailOverrides.java:8 shop.mail.retry.maxatempts',
   'src/test/java/shop/MailOverrides.java:9 spring.datasource.passwrd',
   'src/test/kotlin/shop/PricingOverrides.kt:6 shop.pricing.curency',
   'src/test/kotlin/shop/PricingOverrides.kt:9 shop.pricing.currncy',

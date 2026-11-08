@@ -11,9 +11,9 @@ server:
 shop:
   mail:
     host: smtp.example.com
-    hots: smtp.example.org
     retry:
       max-attempts: 3
+      max-atempts: 5
   pricing:
     currency: EUR
     curency: USD
