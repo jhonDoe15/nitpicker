@@ -328,7 +328,8 @@ true)` class in the same file converts, directly or through a generic base class
   `System.getenv()` map, unless it is read by key (`System.getenv().get("X")`). It covers every
   class, plain helpers included, because a helper is the easy way around it; the allowed form there
   is to read the value once through `@ConfigurationProperties` and pass it in as a constructor or
-  method argument. `SpringValueSecretDefault` uses the secret words of the config files'
+  method argument. `pmd/ConfigurationReadOutsideCompositionRoot`, which covers the same reads without Spring,
+  is dropped on a line this rule reports. `SpringValueSecretDefault` uses the secret words of the config files'
   `literal-secret` check (see [Literal secrets](spring-configuration-files.md)): the last key segment,
   split into words, ends in `password`, `passwd`, `passphrase`, `secret`, `token`, `credential(s)`
   or a named key (`api-key`, `apiKey`, `signing-key`, `access-key`, ...), or is a bare `key` under an

@@ -544,6 +544,8 @@ Kotlin-specific choices:
   a mixed project with it.
 - `System.getenv` is not part of `SpringTypedConfiguration` here: detekt's `ForbiddenMethodCall`
   already bans it outside the composition root (see [One-way rules](one-way-rules.md)).
+- One finding per read: `kotlin-source/ConfigurationReadOutsideCompositionRoot` is dropped where
+  `SpringTypedConfiguration` reports the same line.
 - Loops. A call is in a loop inside a `for`, `while` or `do` body, a `forEach`, `forEachIndexed`, `onEach`
   or `repeat` lambda, or a `map`, `flatMap`, `mapNotNull`, `associate*` lambda on a value whose declared type
   is a collection, sequence, array, map or stream (or a `listOf(...)` or a range). The value may be a

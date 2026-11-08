@@ -12,6 +12,7 @@ import { withFanOutDetails } from '../../../messages/fan-out/fan-out-details.mjs
 import { withLoadEffectSubjects } from '../../../messages/load-effects.mjs';
 import { withProjectTypeMocks } from '../../../messages/mocks/project-mocks.mjs';
 import { withSpringTransactionFilters } from '../../spring/transactions/transaction-filters.mjs';
+import { withoutSpringCoveredReads } from '../../spring/configuration/covered-reads.mjs';
 
 const LINE_NUMBER = /\bline \d+\b/g;
 const PRINTED_PMD_RULES = new Map([['timeout-abandons-async-task', 'timeout-abandons-operation']]);
@@ -61,7 +62,10 @@ export function sarifFindings(context) {
         dropSleepsInFakes(
           withProjectTypeMocks(
             dropInheritedVersions(
-              withSpringTransactionFilters(ingestSarif(pmd, { tool: 'pmd' }).findings, context),
+              withSpringTransactionFilters(
+                withoutSpringCoveredReads(ingestSarif(pmd, { tool: 'pmd' }).findings),
+                context,
+              ),
               { projectRoot, sourceRoots: allSourceRoots },
             ),
             { projectRoot, mainRoots },

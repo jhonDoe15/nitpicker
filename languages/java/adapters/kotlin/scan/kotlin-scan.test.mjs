@@ -155,6 +155,7 @@ describe('readKotlinSourceFindings', () => {
         'CatchOnlyLogsOrReturnsDefault',
         'CommentedOutCode',
         'CompatibilityShim',
+        'ConfigurationReadOutsideCompositionRoot',
         'CredentialLiteral',
         'DefaultTimeZone',
         'DetachedTestCase',
@@ -246,6 +247,22 @@ describe('withFrameworkAllowances', () => {
 
     expect(
       withFrameworkAllowances([environment('src/main/kotlin/Cli.kt')], { projectRoot: project }),
+    ).toEqual([]);
+  });
+
+  it('lets a framework configuration file read the environment', () => {
+    const project = projectWith({
+      'src/main/kotlin/Wiring.kt':
+        'package demo\n\nimport dagger.Module\nimport dagger.Provides\n\n@Module\nobject Wiring {\n    @Provides\n    fun region(): String = System.getenv("REGION")\n}\n',
+      'src/main/kotlin/Shop.kt':
+        'package demo\n\nimport com.google.inject.AbstractModule\n\nclass Shop : AbstractModule()\n',
+    });
+
+    expect(
+      withFrameworkAllowances(
+        [environment('src/main/kotlin/Wiring.kt'), environment('src/main/kotlin/Shop.kt')],
+        { projectRoot: project },
+      ),
     ).toEqual([]);
   });
 
