@@ -70,6 +70,7 @@ const REVIEW_RULES = new Set([
   'ServerOrContainerPerTest',
   'ExhaustiveEnumPredicate',
   'StaticForwardingWrapper',
+  'ForwardingMethodAlias',
   'SingularAndPluralMember',
   'timeout-abandons-operation',
   'TriStateBoolean',

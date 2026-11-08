@@ -24,11 +24,11 @@ class Mailer:
         if strict:
             self.level = 2
 
-    def audit(self, enabled: bool) -> bool:
-        return self._record(enabled)
+    def audit(self, enabled: bool) -> int:
+        return self._record("audit", enabled)
 
-    def _record(self, enabled: bool) -> bool:
-        return 1 if enabled else 0
+    def _record(self, kind: str, enabled: bool) -> int:
+        return len(kind) if enabled else 0
 
 
 class Sender(Protocol):
