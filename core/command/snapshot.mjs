@@ -17,6 +17,7 @@ import { realpathSync } from 'node:fs';
 import { runGit } from '../diff/git/repository/command.mjs';
 import { writeGithubOutput } from '../diff/reporting/github/emit.mjs';
 import { captureWorkingTree } from '../diff/git/repository/git.mjs';
+import { runProfileSummary } from '../quick/summary.mjs';
 import { outputRootFor } from '../diff/reporting/reporters.mjs';
 import { assertHasCommit } from '../diff/git/repository/base-ref.mjs';
 import { partialRunField, partialRunOf } from '../diff/reporting/partial-run/partial-run.mjs';
@@ -30,6 +31,8 @@ export function runSnapshotCli({
   options,
   currentProjectRoot,
   analyzers,
+  quick,
+  captureHead = captureWorkingTree,
   headPolicy,
   stdout,
   stderr,
@@ -44,7 +47,10 @@ export function runSnapshotCli({
   }
   clearSnapshotReports(outputRoot);
 
-  const { repositoryRoot, relativeProjectPath, capturedSha } = captureSnapshot(currentProjectRoot);
+  const { repositoryRoot, relativeProjectPath, capturedSha } = captureSnapshot(
+    currentProjectRoot,
+    captureHead,
+  );
   const snapshot = { commitSha: capturedSha, warn: stderrWarning(stderr) };
   const report = withTemporaryWorktree(repositoryRoot, snapshot, (worktreeRoot) =>
     runInSnapshotWorktree({
@@ -59,11 +65,21 @@ export function runSnapshotCli({
   Object.assign(
     report.summary,
     partialRunField(partialRunOf(options.analyzerNames, analyzers, selectedAnalyzers)),
+    runProfileSummary({ quick, staged: options.staged }),
   );
-  report.text = writeSnapshotReports(outputRoot, report, {
+  publishSnapshot(report, {
+    outputRoot,
     projectPath: relativeProjectPath,
     repositoryRoot,
+    options,
+    cli: { currentProjectRoot, environment, stdout, stderr },
   });
+  return snapshotExitCode(report);
+}
+
+function publishSnapshot(report, { outputRoot, projectPath, repositoryRoot, options, cli }) {
+  const { currentProjectRoot, environment, stdout, stderr } = cli;
+  report.text = writeSnapshotReports(outputRoot, report, { projectPath, repositoryRoot });
   stdout.write(renderSnapshotConsoleSummary(report, path.join(outputRoot, 'report.txt')));
   stdout.write(renderSnapshotRuleFilterSection(report, options.ruleFilters));
   writeGithubOutput({
@@ -74,7 +90,6 @@ export function runSnapshotCli({
     stdout,
     stderr,
   });
-  return snapshotExitCode(report);
 }
 
 function snapshotExitCode({ summary, toolErrors }) {
@@ -116,13 +131,13 @@ function runInSnapshotWorktree({
   }
 }
 
-function captureSnapshot(currentProjectRoot) {
+function captureSnapshot(currentProjectRoot, capture) {
   const repositoryRoot = realpathSync(
     runGit(currentProjectRoot, ['rev-parse', '--show-toplevel']).trim(),
   );
   const relativeProjectPath = path.relative(repositoryRoot, currentProjectRoot) || '.';
   assertHasCommit(repositoryRoot);
   const headSha = runGit(repositoryRoot, ['rev-parse', 'HEAD^{commit}']).trim();
-  const capturedSha = captureWorkingTree(repositoryRoot, headSha);
+  const capturedSha = capture(repositoryRoot, headSha);
   return { repositoryRoot, relativeProjectPath, capturedSha };
 }

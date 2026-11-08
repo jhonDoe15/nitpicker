@@ -44,9 +44,13 @@ function headFactProperties(projectRoot, policy, directory) {
 }
 
 export function gradleStages(
-  common,
+  baseArguments,
   { projectRoot, initScript, policy, directory, testsFailedModules = [] },
 ) {
+  const common = [
+    ...baseArguments,
+    ...(policy.quick ? ['-Pnitpicker.quick=true', '--build-cache'] : []),
+  ];
   const checkstyleBase = path.join(directory, CHECKSTYLE_EXPORT);
   const layersCheckstyle = toolConfigChoices(projectRoot, policy).checkstyle.project !== undefined;
   return [

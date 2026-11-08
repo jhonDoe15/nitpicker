@@ -40,7 +40,6 @@ import { gradleBudget } from './gradle-wrapper/gradle-budget.mjs';
 import { gradleStages } from './gradle-wrapper/gradle-stages.mjs';
 
 const CLOCK_SLACK_MS = 2000;
-
 function runJavaPreset(
   projectRoot,
   {
@@ -97,6 +96,7 @@ function withoutReportBase(error, reportBase) {
 function readOptions(policy = {}) {
   return {
     crapLimit: policy.crapLimit,
+    quick: policy.quick,
     preset: policy.preset ?? 'java',
     conventions: policy.conventions,
     fileLimits: policy.fileLimits,

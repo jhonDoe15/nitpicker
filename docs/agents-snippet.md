@@ -17,6 +17,10 @@ base and fails only on **new enforceable findings**. Existing debt is baselined 
   base. Run it from anywhere inside the project, and run it before you finish a task.
 - When nothing changed since the merge base, no analyzer runs: it prints
   `No changes since <base> (<sha>); nothing to check.` and exits 0.
+- `npx nitpicker --quick` skips the tests and the checks built on them; read the printed skipped
+  list for what it left out.
+  Use it while you iterate; a quick run is never a pass, so run `npx nitpicker` without `--quick`
+  before you finish. `--quick` works with `--fix`, `--base`, `--analyzer` and `--all`.
 - `npx nitpicker --fix` first applies the preset's fixers to the changed files (ESLint and Prettier;
   `ruff check --fix` and ruff format or black; google-java-format or palantir-java-format; ktlint or
   ktfmt), then runs the comparison. Use it to clear formatting and auto-fixable lint findings. It

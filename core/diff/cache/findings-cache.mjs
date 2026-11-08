@@ -27,6 +27,7 @@ export function cacheKey({
         configOverrides,
         headPolicy,
         analyzer.legacyInventory,
+        ...(analyzer.quick === true ? ['quick'] : []),
       ]),
     )
     .digest('hex');

@@ -32,6 +32,8 @@ import { clearDiffReports, outputRootFor } from './diff/reporting/reporters.mjs'
 import { selectComparisonAnalyzers } from './command/comparison/analyzers.mjs';
 import { runQualityDiff } from './diff/comparison/run-diff.mjs';
 import { fixIfRequested } from './command/fix-request.mjs';
+import { applyRunProfile } from './quick/profile.mjs';
+import { stagedCapture, withIndexFile } from './staged/capture-index.mjs';
 import { resolveCacheStore } from './diff/cache/cache-stores.mjs';
 import { runHistoryCli } from '../shared/history/runner.mjs';
 import { runHygieneCli } from '../shared/hygiene/runner.mjs';
@@ -56,8 +58,8 @@ const SUBCOMMANDS = {
 };
 
 export function runCli(options = {}) {
-  detachLocalGitVariables(process.env);
-  const cli = withCliDefaults(options);
+  const detached = detachLocalGitVariables(process.env);
+  const cli = withIndexFile(withCliDefaults(options), detached);
   const checkCommand = CHECK_COMMANDS[cli.arguments_[0]];
   if (checkCommand !== undefined) {
     return checkCommand({
@@ -132,7 +134,10 @@ function runConfigured(cli) {
     maven: cli.environment.NITPICKER_MAVEN,
   });
   const presetSet = presetAnalyzers(config, options.all ? cli.snapshotAnalyzers : cli.analyzers);
-  const analyzers = configureAnalyzers(presetSet, config, headPolicy);
+  const setup = {
+    ...applyRunProfile(configureAnalyzers(presetSet, config, headPolicy), options),
+    captureHead: stagedCapture(cli, currentProjectRoot),
+  };
   for (const note of describeDisableCascade(presetSet, config)) {
     cli.stderr.write(`nitpicker: ${note}\n`);
   }
@@ -144,7 +149,7 @@ function runConfigured(cli) {
       return runSnapshotCli({
         options,
         currentProjectRoot,
-        analyzers,
+        ...setup,
         headPolicy: snapshotPolicy({ config, currentProjectRoot, headPolicy, stdout }),
         stdout,
         stderr: cli.stderr,
@@ -156,7 +161,7 @@ function runConfigured(cli) {
     return runComparisonCli({
       ...cli,
       currentProjectRoot,
-      analyzers,
+      ...setup,
       injectedAnalyzers: cli.analyzers,
       config,
       headPolicy,
@@ -175,6 +180,7 @@ function runComparisonCli(cli) {
     explicitBase: options.baseRef,
     configuredBase: config.base,
     environment: cli.environment,
+    staged: options.staged,
   });
   const outputRoot = outputRootFor(currentProjectRoot, options.outputRoot, 'diff');
   const { analyzers, partialRun } = selectComparisonAnalyzers(cli);
@@ -196,6 +202,9 @@ function runComparisonCli(cli) {
     partialRun,
     cacheStore,
     includeWorkingTree: true,
+    captureHead: cli.captureHead,
+    quick: cli.quick,
+    staged: options.staged,
     additionalToolErrors: fixResult.toolErrors,
     configOverrides: describeConfigOverrides(config),
     headPolicy,
