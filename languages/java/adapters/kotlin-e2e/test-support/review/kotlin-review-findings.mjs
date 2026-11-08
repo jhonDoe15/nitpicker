@@ -1,4 +1,5 @@
 import { GLOBAL_STATE_FILES, GLOBAL_STATE_FINDINGS } from './kotlin-global-state-data.mjs';
+import { ISOLATION_FILES, ISOLATION_FINDINGS } from './isolation/kotlin-isolation-data.mjs';
 import { mapUpdateFiles, MAP_UPDATE_FINDINGS } from './kotlin-map-update-data.mjs';
 import { EXPECTED_REVIEW_FINDINGS, REVIEW_RULE_FILES } from './kotlin-review-data.mjs';
 import { PLURAL_FINDINGS } from './kotlin-plural-data.mjs';
@@ -9,12 +10,13 @@ export const ALL_FINDINGS = [
   ...EXPECTED_REVIEW_FINDINGS,
   ...MAP_UPDATE_FINDINGS,
   ...GLOBAL_STATE_FINDINGS,
+  ...ISOLATION_FINDINGS,
 ].sort();
 
 export { MAP_UPDATE_FINDINGS, PLURAL_FINDINGS };
 
 export function reviewBranchFiles() {
-  return { ...REVIEW_RULE_FILES, ...mapUpdateFiles(), ...GLOBAL_STATE_FILES };
+  return { ...REVIEW_RULE_FILES, ...mapUpdateFiles(), ...GLOBAL_STATE_FILES, ...ISOLATION_FILES };
 }
 
 export function reviewFindings(findings) {

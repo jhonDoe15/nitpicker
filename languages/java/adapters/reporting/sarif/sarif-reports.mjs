@@ -11,6 +11,7 @@ import { dropSleepsInFakes } from '../../../messages/latency-fakes.mjs';
 import { withFanOutDetails } from '../../../messages/fan-out/fan-out-details.mjs';
 import { withLoadEffectSubjects } from '../../../messages/load-effects.mjs';
 import { withProjectTypeMocks } from '../../../messages/mocks/project-mocks.mjs';
+import { dropNetworkInIntegrationTests } from '../../../messages/isolation/unit-tests.mjs';
 import { withSpringTransactionFilters } from '../../spring/transactions/transaction-filters.mjs';
 
 const LINE_NUMBER = /\bline \d+\b/g;
@@ -55,19 +56,24 @@ export function sarifFindings(context) {
   );
   const spotbugs = preparedReport('spotbugs.sarif', context, spotbugsSubject);
   const mainRoots = [...(allSourceRoots ?? []), ...(context.manifest?.kotlinSourceRoots ?? [])];
+  const testRoots = [
+    ...(context.manifest?.testSourceRoots ?? []),
+    ...(context.manifest?.kotlinTestSourceRoots ?? []),
+  ];
+  const ownFindings = dropNetworkInIntegrationTests(
+    withProjectTypeMocks(
+      dropInheritedVersions(
+        withSpringTransactionFilters(ingestSarif(pmd, { tool: 'pmd' }).findings, context),
+        { projectRoot, sourceRoots: allSourceRoots },
+      ),
+      { projectRoot, mainRoots },
+    ),
+    { projectRoot, testRoots },
+  );
   return [
     ...withFanOutDetails(
       withWaitAdvice(
-        dropSleepsInFakes(
-          withProjectTypeMocks(
-            dropInheritedVersions(
-              withSpringTransactionFilters(ingestSarif(pmd, { tool: 'pmd' }).findings, context),
-              { projectRoot, sourceRoots: allSourceRoots },
-            ),
-            { projectRoot, mainRoots },
-          ),
-          { rule: FIXED_SLEEP_RULE, projectRoot, mainRoots },
-        ),
+        dropSleepsInFakes(ownFindings, { rule: FIXED_SLEEP_RULE, projectRoot, mainRoots }),
         { manifest: context.manifest, projectRoot },
       ),
       { projectRoot },

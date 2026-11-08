@@ -33,6 +33,9 @@ skipped with a note on stderr.
 | `MockedSubjectInTest`                            | `review-rules/tests/mocks/`                      | a mock of the class under test (`mockk<OrderService>()`, `mock<OrderService>()`, `mock(OrderService::class.java)`, `@MockK`, `@Mock`), or a spy of it whose own methods the test stubs (`spyk(...)`, `spy(...)`, `@SpyK`, `@Spy`, with `every`, `coEvery`, `justRun`, `whenever`, `` `when` ``, `given` or `stub`)                                                                                                               |
 | `StaticMockOfProjectType`                        | `review-rules/tests/mocks/`                      | `mockkObject`, `mockkStatic` (class, `"pkg.FileKt"` or `::function`), `mockkConstructor`, `mockStatic` or `mockConstruction` of code declared in the project's main sources                                                                                                                                                                                                                                                      |
 | `GlobalStateLeakInTest`                          | `review-rules/tests/global-state/`               | a test that changes process-wide state (a system property, the default `Locale` or `TimeZone`, `System.out`, a default handler, a security provider, `Dispatchers.setMain`, or a property or `set...` function of a project `object` or class) that nothing in the class puts back                                                                                                                                               |
+| `RealClockInTest`                                | `review-rules/tests/isolation/`                  | a test that reads the real clock: `now()` of a `java.time` type without a `Clock`, `System.currentTimeMillis()`, `Clock.systemUTC()`, `Clock.system(...)`, `InstantSource.system()`, `Date()` or `Clock.System.now()`, unless it only measures time                                                                                                                                                                              |
+| `RandomInTest`                                   | `review-rules/tests/isolation/`                  | a test that draws unseeded random values: `Random()`, `Math.random()`, `ThreadLocalRandom.current()`, `Random.Default`, `random()`, `shuffled()`, or a `UUID.randomUUID()` compared in an assertion                                                                                                                                                                                                                              |
+| `NetworkInTest`                                  | `review-rules/tests/isolation/`                  | a unit test that sends a request to a literal non-loopback `http`, `https`, `ws` or `wss` URL (or opens a socket to a literal remote host) through a real client                                                                                                                                                                                                                                                                 |
 | `StaticForwardingWrapper`                        | `review-rules/main/forwarding-wrappers.mjs`      | a function whose body only passes its parameters, in order, to another function                                                                                                                                                                                                                                                                                                                                                  |
 | `SingularAndPluralMember`                        | `review-rules/main/member-names.mjs`             | a member and its plural form (`tag` and `tags`) in one class, or two defaulted parameters of a public function                                                                                                                                                                                                                                                                                                                   |
 | `ValidationAnnotationTarget`                     | `review-rules/validation/validation-targets.mjs` | a Bean Validation annotation (`jakarta.validation.constraints`, `javax.validation.constraints`, `org.hibernate.validator.constraints`, or `@Valid`) on a primary-constructor `val` or `var` of a main source without a `field:`, `get:` or `all:` use-site target; Kotlin puts it on the constructor parameter, where Bean Validation does not look. Kotlin-only: a Java record carries the annotation to its field and accessor |
@@ -372,6 +375,42 @@ guessed at.
   `withSystemProperty { }`, `withSystemProperties { }`, `captureStandardOut { }`, `restoreSystemProperties { }` or a
   system-stubs `execute { }`. Outside a test class (a helper object), a restore anywhere in the file counts. The scan
   reads text, so a restore in a superclass or another file is not followed.
+- `RealClockInTest`: the same rule id as the Java preset, reported in every test source file. Reported: `now()` of
+  `Instant`, `LocalDate`, `LocalDateTime`, `LocalTime`, `ZonedDateTime`, `OffsetDateTime`, `OffsetTime`, `Year`,
+  `YearMonth` and `MonthDay` with no argument or with a `ZoneId`, `ZoneOffset` or `ZoneId.systemDefault()` argument
+  (any other single argument is taken as a `Clock`), `System.currentTimeMillis()`, `Clock.systemUTC()`,
+  `Clock.systemDefaultZone()`, `Clock.system(...)`, `InstantSource.system()`, `java.util.Date()` without arguments
+  and `Clock.System.now()`. Not reported: `System.nanoTime()`, `TimeSource.Monotonic`, `measureTime { }`, and a read
+  that only measures time: an operand of `<`, `>`, `<=` or `>=`, an operand of `-` whose other side is a local, property or
+  another clock read (not a number or a constant: `System.currentTimeMillis() - 60_000` is reported), an argument of
+  `Duration.between`, `Period.between` or `ChronoUnit.X.between`,
+  a receiver or argument of `isBefore`, `isAfter`, `compareTo` or `until`, anything in a `while` or `do ... while`
+  condition, and a `val` or `var` set from a read (also through `plus...`, `minus...` or `to...`) whose later uses in
+  the same function are all such places. A file with `mockkStatic`, `mockStatic`, `mockkObject` or `mockkConstructor` of a
+  `java.time` type, `Clock`, `InstantSource`, `System` or `Date` is skipped. A deadline built with `+`
+  (`val end = System.currentTimeMillis() + 1000`) and then only compared is a measuring local too. Reads inside a string
+  template (`"order-${Instant.now()}"`) are not scanned. The value is not followed into the subject or an assertion.
+- `RandomInTest`: the same rule id as the Java preset, reported in every test source file. Reported: `Random()` and
+  `SplittableRandom()` without a seed (when `java.util` supplies the name), `Math.random()`,
+  `ThreadLocalRandom.current()`, `Collections.shuffle(list)` with one argument, `Random.Default` and `Random.nextX()`
+  called on the `Random` companion, `random()`, `randomOrNull()`, `shuffled()` and `shuffle()` without arguments, and
+  `Random(System.nanoTime())` and the like, and `UUID.randomUUID()` (also with a receiver chain such as `.toString()`)
+  as a direct argument of `assertEquals`, `assertSame`, `assertArrayEquals`, `assertIterableEquals`, `isEqualTo`,
+  `isSameAs` or `hasToString`, or next to `shouldBe`; `assertThat(...)` itself, `isNotEqualTo`, `containsKey` and a call nested in another call are left alone. `Random(42)`, `list.random(random)`, `SecureRandom` and a `UUID.randomUUID()` that
+  no assertion holds are allowed. A file that fakes the generator with `mockkStatic`, `mockStatic` or `mockkObject` is
+  skipped (`UUID` for the UUID form).
+- `NetworkInTest`: the same rule id as the Java preset, reported in unit test files only; a file that is an
+  integration test by the slow-test rules (an `IT` or `IntegrationTest` class, an `integration`, `it` or `e2e`
+  package, an integration source set such as `src/integrationTest`, `@SpringBootTest` on the class or a base class) is skipped. Reported: an
+  absolute `http`, `https`, `ws` or `wss` URL with a host that is not loopback (`localhost`, `127.x`, `[::1]`,
+  `0.0.0.0`, `host.docker.internal`), written as a literal or held in a `val` of the same file, that reaches
+  `URL(...).openConnection()`, `openStream()`, `readText()` or `readBytes()`, `HttpRequest.newBuilder(...)` and `.uri(...)` in a file that builds a
+  `java.net.http.HttpClient`, a `RestTemplate` or `TestRestTemplate` request method, `RestClient.create`, `WebClient.create`, `.baseUrl(...)` (not in a file that
+  sets its own `exchangeFunction`, `requestFactory` or `clientConnector`), OkHttp `Request.Builder().url(...)` in a file that
+  builds an `OkHttpClient`, a Ktor `client.get(...)` and the other verbs, Fuel, Jsoup `connect`, or
+  `Socket` with a literal remote host. Not reported: calls inside `every { }`, `coEvery { }`,
+  `verify { }`, `whenever(...)` and the like, calls on a receiver declared as a mock, and files that use
+  `MockRestServiceServer` or `MockEngine`. A URL built only from variables or from another file is not followed.
 - `ServerOrContainerPerTest`: a container, server or process started for each test, the Kotlin
   side of the Java rule. Reported: a property annotated `@Container` (Testcontainers) or
   `@RegisterExtension` holding a `WireMockExtension`, declared in a class body (not a companion

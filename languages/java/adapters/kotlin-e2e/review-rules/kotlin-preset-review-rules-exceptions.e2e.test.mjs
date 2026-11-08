@@ -34,6 +34,9 @@ describe.skipIf(!kotlinE2eEnabled)('Kotlin preset review rule exceptions end to 
         exceptions: [
           { rule: 'pmd/FixedSleepInTest', glob: ORDERS_TESTS },
           { rule: 'pmd/GlobalStateLeakInTest', glob: ORDERS_TESTS },
+          { rule: 'pmd/RealClockInTest', glob: ORDERS_TESTS },
+          { rule: 'pmd/RandomInTest', glob: ORDERS_TESTS },
+          { rule: 'pmd/NetworkInTest', glob: ORDERS_TESTS },
           { rule: 'pmd/SpringUnusedContext', glob: ORDERS_TESTS },
           { rule: 'pmd/MockedSubjectInTest', glob: ORDERS_TESTS },
           { rule: 'pmd/StaticMockOfProjectType', glob: ORDERS_TESTS },
