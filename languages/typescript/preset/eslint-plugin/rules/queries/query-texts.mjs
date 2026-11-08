@@ -69,10 +69,6 @@ function consumedAsSql(context, node) {
   return sinkFor(context, node) !== undefined;
 }
 
-/**
- * The SQL text `node` holds, with `DYNAMIC` for each interpolated value, when `node` is SQL: a
- * `sql` tagged template, or a string or template that starts a SELECT or goes to a SQL sink.
- */
 function sqlTextOf(context, node) {
   if (node.type === 'TaggedTemplateExpression') {
     return isSqlTemplate(node) && !isInsideSqlTemplate(node)

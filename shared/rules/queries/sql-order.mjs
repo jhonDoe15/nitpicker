@@ -33,8 +33,6 @@ const VALUE_WORDS = [
   'offset',
   'where',
   'on',
-];
-VALUE_WORDS.push(
   'having',
   'when',
   'then',
@@ -47,8 +45,8 @@ VALUE_WORDS.push(
   'by',
   'select',
   'set',
-);
-VALUE_WORDS.push('distinct');
+  'distinct',
+];
 const VALUE_BEFORE = new RegExp(
   String.raw`(?:[=<>!+\-*/%,(|]|\b(?:${VALUE_WORDS.join('|')}))\s*$`,
   'u',
