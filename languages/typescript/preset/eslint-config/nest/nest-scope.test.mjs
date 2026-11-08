@@ -1,10 +1,11 @@
-import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import tseslint from 'typescript-eslint';
 import { afterAll, describe, expect, it } from 'vitest';
 import { lintFixture } from '../../failure-messages/test-support/harness.mjs';
-import { isNestProject, nestScopeConfigFor } from './nest-scope.mjs';
+import { isNestProject, nestEntryPoints } from './nest-project.mjs';
+import { nestScopeConfigFor } from './nest-scope.mjs';
 
 const roots = [];
 
@@ -12,12 +13,19 @@ afterAll(() => {
   for (const root of roots) rmSync(root, { recursive: true, force: true });
 });
 
-function projectWith(manifest) {
+function projectWith(manifest, files = {}) {
   const root = mkdtempSync(path.join(tmpdir(), 'nitpicker-nest-scope-'));
   roots.push(root);
   writeFileSync(path.join(root, 'package.json'), JSON.stringify(manifest));
+  for (const [file, text] of Object.entries(files)) {
+    mkdirSync(path.dirname(path.join(root, file)), { recursive: true });
+    writeFileSync(path.join(root, file), text);
+  }
   return root;
 }
+
+const NEST = { dependencies: { '@nestjs/core': '^11.0.0' } };
+const BOOTSTRAP = 'void bootstrap();\n';
 
 const strictEmptyClass = {
   files: ['**/*.ts'],
@@ -50,5 +58,27 @@ describe('NestJS scope', () => {
 
     expect(extraneousClassLines([strictEmptyClass], code)).toEqual([2, 3]);
     expect(extraneousClassLines(nestConfig, code)).toEqual([3]);
+  });
+
+  it('takes src/main.ts as the entry point by default', () => {
+    expect(nestEntryPoints(projectWith(NEST, { 'src/main.ts': BOOTSTRAP }))).toEqual([
+      'src/main.ts',
+    ]);
+  });
+
+  it('reads the entry from nest-cli.json', () => {
+    const root = projectWith(NEST, {
+      'nest-cli.json':
+        '{ // comments are allowed\n "sourceRoot": "apps/api", "entryFile": "server" }',
+      'apps/api/server.ts': BOOTSTRAP,
+      'src/main.ts': BOOTSTRAP,
+    });
+
+    expect(nestEntryPoints(root)).toEqual(['apps/api/server.ts']);
+  });
+
+  it('names no entry point without NestJS or without the entry file', () => {
+    expect(nestEntryPoints(projectWith({}, { 'src/main.ts': BOOTSTRAP }))).toEqual([]);
+    expect(nestEntryPoints(projectWith(NEST))).toEqual([]);
   });
 });
