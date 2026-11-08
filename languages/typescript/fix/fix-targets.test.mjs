@@ -10,7 +10,7 @@ function selection(layout, files) {
 describe('fixTargets', () => {
   it('selects the files eslint-lint and prettier-format check in a TypeScript project', () => {
     expect(
-      selection(resolveLayout(), [
+      selection(resolveLayout(undefined, ['src/legacy/**']), [
         'src/main/a.ts',
         'src/main/a.js',
         'src/main/config.yaml',
@@ -23,6 +23,9 @@ describe('fixTargets', () => {
         'docs/guide.md',
         'scripts/tool.ts',
         'coverage/a.json',
+        'src/main/dist/a.json',
+        'src/legacy/old.ts',
+        'src/index.ts',
       ]),
     ).toEqual([
       ['src/main/a.ts', true, true],
@@ -37,6 +40,9 @@ describe('fixTargets', () => {
       ['docs/guide.md', false, false],
       ['scripts/tool.ts', false, false],
       ['coverage/a.json', false, false],
+      ['src/main/dist/a.json', false, false],
+      ['src/legacy/old.ts', false, false],
+      ['src/index.ts', true, true],
     ]);
   });
 
