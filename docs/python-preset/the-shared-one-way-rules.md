@@ -56,7 +56,7 @@ are listed at the end.
 | Timeouts                 | `timeout=10` on every request, `urlopen` and plain `requests.Session` call; never `timeout=None`                                                                                     | ruff `S113`, `http-without-timeout` (script)                                                                                                                                                                                               |
 | Abandoned work           | `asyncio.wait_for`, `asyncio.timeout` or a `TaskGroup`; cancel or hand off `pending` after `asyncio.wait(..., timeout=)`                                                             | `timeout-abandons-operation` (script)                                                                                                                                                                                                      |
 | Child processes          | `subprocess.run(args, timeout=30, check=True)`, `communicate(timeout=30)`, asyncio waits in `asyncio.timeout(30)`                                                                    |
-| Test honesty             | a reason on every skip, no sleeping, no tautologies, fixed time and seeded random values, no network, no leaked global state                                                         | ruff `PT`, `skipped-test-without-reason`, `sleep-in-test`, `negative-wait-in-test`, `mocked-subject-in-test`, `tautological-assert`, `real-clock-in-test`, `random-in-test`, `network-in-test`, `server-or-container-per-test`, `global-state-leak-in-test` (script) |
+| Test honesty             | a reason on every skip, no sleeping, no tautologies, fixed time and seeded random values, no network, no leaked global state                                                         | ruff `PT`, `skipped-test-without-reason`, `sleep-in-test`, `negative-wait-in-test`, `mocked-subject-in-test`, `untested-round-trip`, `tautological-assert`, `real-clock-in-test`, `random-in-test`, `network-in-test`, `server-or-container-per-test`, `global-state-leak-in-test` (script) |
 | Test layout              | tests in files pytest collects; helpers in the tests folder                                                                                                                          | `uncollected-tests`, `test-helper-in-source` (script)                                                                                                                                                                                      |
 
 `type-cast` rejects `typing.cast` (and `typing_extensions.cast`) as a call or as a value
@@ -903,6 +903,22 @@ t)`, `asyncio.timeout(t)`, `fail_after(t)`, `wait(t)`) inside `pytest.raises` or
   (`patch("shop.cart.LIMIT", 1)`) or another module is not reported; #519 covers patch targets that
   miss. Allowed: pass the collaborators in and give the test a fake of them, and test a helper
   through the public function that calls it.
+- `untested-round-trip` (TypeScript and JavaScript: `nitpicker/untested-round-trip`; Java and
+  Kotlin: `pmd/UntestedRoundTrip`) reports two public module-level functions of one production
+  module (also inside `if` and `try` blocks), or two public methods of one class or nested class
+  (class and static methods too), that turn values into each
+  other, when no test calls both. Pairs differ only by a direction word: `to_X`/`from_X`,
+  `dumps`/`loads`, `dump`/`load`, `encode`/`decode`, `serialize`/`deserialize`,
+  `marshal`/`unmarshal`, `parse`/`format`, `pack`/`unpack`, `encrypt`/`decrypt`,
+  `compress`/`decompress`, `escape`/`unescape`, alone or with the same rest (`encode_token`/
+  `decode_token`); `to_string`/`from_string` is not a pair. A test is one `test...` function or
+  method of a test file; the functions, methods and fixtures of test files that it calls or takes
+  as a parameter count, directly or through each other, and names match by name
+  (`Order.from_dict(order.to_dict())`). Not
+  reported: `_`-prefixed names, stubs (`...`, `pass`, `raise NotImplementedError`),
+  `@abstractmethod`, `@overload` and properties, and classes based on `Protocol` or `ABC`. The
+  finding is on the later definition. Allowed: `assert Order.from_dict(order.to_dict()) == order`
+  with values that need escaping or mapping. An exception goes in `python.exceptions`.
 - `global-state-leak-in-test` (Java and Kotlin: `GlobalStateLeakInTest`; TypeScript:
   `nitpicker/fake-timers-require-restore`) reports, in a test file, a direct change to process-wide state that nothing
   puts back: `os.environ[...] = ...`, `del os.environ[...]`, `os.environ.update`, `setdefault`, `pop`, `popitem` and

@@ -21,3 +21,6 @@ Part of the [nitpicker-python](../SKILL.md) skill. Write these forms from the st
   (`server-or-container-per-test`): a fixture that starts one and serves several tests takes
   `scope="session"` or `scope="module"` and resets its state between tests; `setup_method`,
   `setUp` and `setup_function` do not start one; two tests do not make the same start.
+- Test each public inverse pair on its own output (`untested-round-trip`): for `encode_token`/
+  `decode_token` or `Order.to_dict`/`Order.from_dict`, one test calls both,
+  `assert Order.from_dict(order.to_dict()) == order`.

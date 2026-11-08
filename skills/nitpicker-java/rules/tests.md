@@ -41,6 +41,9 @@ Part of the [nitpicker-java](../SKILL.md) skill. Write these forms from the star
   it in `@BeforeAll` and reset its state between tests.
 - Tests print nothing new (`test-runtime/test-console-output`): no `System.out`/`System.err`, and
   no new `WARN` or `ERROR` log line from the code under test. Fix the cause the line names.
+- Test each public inverse pair on its own output (`pmd/UntestedRoundTrip`): for `Codec.encode`/
+  `Codec.decode` or `toJson`/`fromJson`, one test calls both,
+  `assertEquals(value, Codec.decode(Codec.encode(value)))`.
 - Tests get the same PMD, Checkstyle, Error Prone and formatter checks as main code, plus the file
   (500 lines) and folder (6 files) limits. SpotBugs, the method limits, CRAP and duplicate detection
   read main sources only. In a test, use `assertThrows` instead of a try/catch. Spring rules apply
