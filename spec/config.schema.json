@@ -368,6 +368,8 @@
                         "structure/exported-name-collision",
                         "sibling-copy-edit",
                         "structure/sibling-copy-edit",
+                        "shared-used-by-one-feature",
+                        "coupling/shared-used-by-one-feature",
                         "test-only-export",
                         "dead-code/test-only-export",
                         "coupling/test-only-export",
@@ -1729,6 +1731,8 @@
                             "structure/exported-name-collision",
                             "sibling-copy-edit",
                             "structure/sibling-copy-edit",
+                            "shared-used-by-one-feature",
+                            "coupling/shared-used-by-one-feature",
                             "test-only-export",
                             "dead-code/test-only-export",
                             "coupling/test-only-export",
@@ -1964,6 +1968,8 @@
                             "structure/exported-name-collision",
                             "sibling-copy-edit",
                             "structure/sibling-copy-edit",
+                            "shared-used-by-one-feature",
+                            "coupling/shared-used-by-one-feature",
                             "test-only-export",
                             "dead-code/test-only-export",
                             "coupling/test-only-export",
@@ -2274,6 +2280,8 @@
                         "structure/exported-name-collision",
                         "sibling-copy-edit",
                         "structure/sibling-copy-edit",
+                        "shared-used-by-one-feature",
+                        "coupling/shared-used-by-one-feature",
                         "test-only-export",
                         "dead-code/test-only-export",
                         "coupling/test-only-export",
@@ -2339,11 +2347,17 @@
       "then": {
         "properties": {
           "thresholds": { "properties": { "inheritanceDepth": false } },
-          "layout": false,
+          "layout": {
+            "properties": {
+              "sourceRoots": false,
+              "testRoots": false,
+              "excludedGlobs": false,
+              "entryPoints": false
+            }
+          },
           "tools": {
             "properties": {
               "prettier": false,
-              "jscpd": false,
               "stryker": false,
               "knip": false,
               "dependency-cruiser": false,
@@ -2430,6 +2444,8 @@
                             "structure/exported-name-collision",
                             "sibling-copy-edit",
                             "structure/sibling-copy-edit",
+                            "shared-used-by-one-feature",
+                            "coupling/shared-used-by-one-feature",
                             "test-only-export",
                             "dead-code/test-only-export",
                             "coupling/test-only-export",
@@ -2441,10 +2457,18 @@
                             "class-methods-limit",
                             "structure/class-methods-limit",
                             "class-fields-limit",
-                            "structure/class-fields-limit"
+                            "structure/class-fields-limit",
+                            "duplicate-clone",
+                            "duplicates/duplicate-clone",
+                            "stability-direction",
+                            "coupling/stability-direction",
+                            "unused-dependency",
+                            "dead-code/unused-dependency",
+                            "unlisted-dependency",
+                            "dead-code/unlisted-dependency"
                           ]
                         },
-                        { "pattern": "^(?:vet)/[\\s\\S]" }
+                        { "pattern": "^(?:vet|deadcode)/[\\s\\S]" }
                       ]
                     }
                   }
@@ -2469,26 +2493,9 @@
           "i18n": false,
           "python": false,
           "kotlin": false,
-          "duplicates": false,
           "spring": false,
           "testConsole": false
-        },
-        "allOf": [
-          {
-            "if": {
-              "not": {
-                "required": ["history"],
-                "properties": {
-                  "history": {
-                    "required": ["coChange"],
-                    "properties": { "coChange": { "const": true } }
-                  }
-                }
-              }
-            },
-            "then": { "properties": { "layout": { "properties": { "featureRoots": false } } } }
-          }
-        ]
+        }
       }
     }
   ],

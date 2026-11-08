@@ -23,12 +23,13 @@ export const FACT_RULE_LANGUAGES = {
     python: true,
   },
   'sibling-copy-edit': { ...TYPESCRIPT_AND_JAVASCRIPT, ...JVM, python: true },
-  'shared-used-by-one-feature': { ...TYPESCRIPT_AND_JAVASCRIPT },
+  'shared-used-by-one-feature': { ...TYPESCRIPT_AND_JAVASCRIPT, go: true },
   'test-only-export': {
     ...TYPESCRIPT_AND_JAVASCRIPT,
     java: true,
     kotlin: true,
     python: true,
+    go: true,
   },
   'doc-comment-content': {
     ...TYPESCRIPT_AND_JAVASCRIPT,
