@@ -39,8 +39,6 @@ import { withProjectEnumPredicates } from './review-rules/enum-predicates.mjs';
 import { gradleBudget } from './gradle-wrapper/gradle-budget.mjs';
 import { gradleStages } from './gradle-wrapper/gradle-stages.mjs';
 
-const CLOCK_SLACK_MS = 2000;
-
 function runJavaPreset(
   projectRoot,
   {
@@ -56,7 +54,7 @@ function runJavaPreset(
 ) {
   const withKotlin = kotlinRun?.withArguments ?? ((run) => run([]));
   const directory = path.join(reportBase, 'tool-config');
-  const since = Date.now() - CLOCK_SLACK_MS;
+  const since = Date.now() - 2000;
   withKotlin((kotlinArguments) => {
     const common = [
       '--console=plain',
@@ -64,7 +62,6 @@ function runJavaPreset(
       '--no-configuration-cache',
       ...(policy.snapshot === 'base' ? ['--continue'] : []),
       `-Pnitpicker.reportDir=${reportBase}`,
-      ...(policy.quick ? ['-Pnitpicker.quick=true', '--build-cache'] : []),
       ...kotlinArguments,
     ];
     const stages = gradleStages(common, {
