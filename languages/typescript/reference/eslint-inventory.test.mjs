@@ -1,4 +1,5 @@
-import { rmSync } from 'node:fs';
+import { readFileSync, rmSync } from 'node:fs';
+import path from 'node:path';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
   ESLINT_CONFIGS,
@@ -33,9 +34,9 @@ async function liveInventory(variant) {
   return inventoryOfConfigs({ configs, cwd: root, files: ESLINT_VARIANTS[variant].files });
 }
 
-describe('the committed ESLint inventory of the rule reference', () => {
+describe('the built ESLint inventory of the rule reference', () => {
   it.each(Object.keys(ESLINT_VARIANTS))(
-    'lists the rules the %s configs turn on (run npm run gen:rules -- --refresh-eslint)',
+    'lists the rules the %s configs turn on (run npm run gen:rules -- --data)',
     async (variant) => {
       expect(await liveInventory(variant)).toEqual(readEslintInventory()[variant]);
     },
@@ -43,5 +44,15 @@ describe('the committed ESLint inventory of the rule reference', () => {
 
   it('has an inventory for each variant and nothing else', () => {
     expect(Object.keys(readEslintInventory())).toEqual(Object.keys(ESLINT_VARIANTS));
+  });
+});
+
+describe('the ESLint inventory file', () => {
+  it('is build output, so two rule changes never merge into one committed file', () => {
+    expect(
+      readFileSync(path.resolve(import.meta.dirname, '../../../.gitignore'), 'utf8')
+        .split('\n')
+        .filter((line) => line.includes('eslint-inventory')),
+    ).toEqual(['languages/typescript/reference/eslint-inventory.json']);
   });
 });

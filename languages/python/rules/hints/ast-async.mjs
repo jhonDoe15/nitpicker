@@ -44,4 +44,12 @@ export const ASYNC_HINTS = [
         ? 'Cancel or await the task in the timeout path (`except asyncio.TimeoutError: task.cancel(); raise`), or drop the shield so `asyncio.wait_for` (or `async with asyncio.timeout(seconds):`) cancels the work on timeout.'
         : 'Cancel what is still pending (`for task in pending: task.cancel()`, then `await asyncio.gather(*pending, return_exceptions=True)`) or hand the set to an owner that does; or bound the work with `asyncio.wait_for(task, timeout)`, `async with asyncio.timeout(seconds):` or a `TaskGroup`, which cancel it.',
   },
+  {
+    tool: RULES_TOOL,
+    rules: ['subprocess-without-timeout'],
+    describe: (subject) =>
+      `\`${subject}\` waits for a child process without a deadline, so a command that never exits hangs this code for good`,
+    allowed:
+      'Pass a timeout: `subprocess.run(args, timeout=30, check=True)`, `process.communicate(timeout=30)` or `process.wait(timeout=30)` (then kill the child on `TimeoutExpired`). Wrap an asyncio wait in `async with asyncio.timeout(30):` or `asyncio.wait_for(process.wait(), 30)`. A program whose purpose is to run the child to completion, such as a build wrapper, takes an exception.',
+  },
 ];

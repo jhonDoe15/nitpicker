@@ -1,0 +1,7 @@
+[
+  {
+    "tool": "python-rules",
+    "rule": "module-level-mutable-state",
+    "mention": "composition root"
+  }
+]

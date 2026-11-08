@@ -257,6 +257,7 @@ describe('component stories', () => {
       location: { line: 1 },
       message:
         'Most components in this project have a story. Add src/D.stories.tsx for D. If this is intended, add {"rule":"component-story-missing","paths":["src/D.tsx"],"reason":"..."} to "exceptions" in nitpicker.config.json.',
+      allowedForm: 'Add src/D.stories.tsx for D.',
       classification: 'enforceable',
     });
   });
