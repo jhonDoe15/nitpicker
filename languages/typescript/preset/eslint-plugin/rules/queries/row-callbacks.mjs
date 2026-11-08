@@ -1,4 +1,5 @@
 import { ts } from '../../../../typescript-api/typescript-api.mjs';
+import { chainOf } from '../analysis/ancestry.mjs';
 import { memberName, staticKey, typeServices, unwrapped } from '../security/security-values.mjs';
 
 const FUNCTIONS = new Set(['ArrowFunctionExpression', 'FunctionExpression']);
@@ -20,12 +21,14 @@ function newState(elements, accumulators) {
   return { elements, accumulators, destructured: new Map(), fields: [], valid: true };
 }
 
-function rootOf(member, keyed = false) {
-  const object = unwrapped(member.object);
-  const computed = keyed || (member.computed && member.property.type !== 'Literal');
-  return object.type === 'MemberExpression'
-    ? rootOf(object, computed)
-    : { root: object, first: member, computed };
+function rootOf(member) {
+  const chain = chainOf(member, (current) => {
+    const object = unwrapped(current.object);
+    return object.type === 'MemberExpression' ? object : undefined;
+  });
+  const first = chain.at(-1);
+  const computed = chain.some((current) => current.computed && current.property.type !== 'Literal');
+  return { root: unwrapped(first.object), first, computed, chain };
 }
 
 function rootField(root, first, state) {
@@ -49,12 +52,11 @@ function isPlainFieldCall(node) {
 }
 
 function fieldOf(node, state) {
-  const target = unwrapped(node);
+  const target = chainOf(unwrapped(node), (current) =>
+    isPlainFieldCall(current) ? unwrapped(unwrapped(current.callee).object) : undefined,
+  ).at(-1);
   if (target.type === 'Identifier') {
     return state.destructured.get(target.name);
-  }
-  if (isPlainFieldCall(target)) {
-    return fieldOf(unwrapped(target.callee).object, state);
   }
   if (target.type !== 'MemberExpression') {
     return undefined;
@@ -73,14 +75,12 @@ function visitIdentifier(node, state) {
 }
 
 function visitComputedKeys(member, state) {
-  const object = unwrapped(member.object);
-  if (member.computed) {
-    visit(member.property, state);
+  const { root, chain } = rootOf(member);
+  for (const current of chain.filter((step) => step.computed)) {
+    visit(current.property, state);
   }
-  if (object.type === 'MemberExpression') {
-    visitComputedKeys(object, state);
-  } else if (object.type !== 'Identifier') {
-    visit(object, state);
+  if (root.type !== 'Identifier') {
+    visit(root, state);
   }
 }
 
@@ -115,7 +115,7 @@ function visitCall(node, state) {
     state.valid = false;
     return;
   }
-  node.arguments.forEach((argument) => visit(argument, state));
+  visitAll(node.arguments, state);
 }
 
 function visitProperty(node, state) {
@@ -135,23 +135,44 @@ const VISITORS = {
   Identifier: visitIdentifier,
   MemberExpression: visitMember,
   CallExpression: visitCall,
-  BinaryExpression: (node, state) => [node.left, node.right].forEach((part) => visit(part, state)),
-  LogicalExpression: (node, state) => [node.left, node.right].forEach((part) => visit(part, state)),
-  ConditionalExpression: (node, state) =>
-    [node.test, node.consequent, node.alternate].forEach((part) => visit(part, state)),
+  BinaryExpression: (node, state) => {
+    visitAll([node.left, node.right], state);
+  },
+  LogicalExpression: (node, state) => {
+    visitAll([node.left, node.right], state);
+  },
+  ConditionalExpression: (node, state) => {
+    visitAll([node.test, node.consequent, node.alternate], state);
+  },
   UnaryExpression: (node, state) => {
     state.valid = state.valid && !SIDE_EFFECTS.has(node.operator);
     visit(node.argument, state);
   },
-  TemplateLiteral: (node, state) => node.expressions.forEach((part) => visit(part, state)),
-  ArrayExpression: (node, state) => node.elements.forEach((part) => visit(part, state)),
-  ObjectExpression: (node, state) => node.properties.forEach((part) => visitProperty(part, state)),
-  SpreadElement: (node, state) => visit(node.argument, state),
+  TemplateLiteral: (node, state) => {
+    visitAll(node.expressions, state);
+  },
+  ArrayExpression: (node, state) => {
+    visitAll(node.elements, state);
+  },
+  ObjectExpression: (node, state) => {
+    for (const property of node.properties) {
+      visitProperty(property, state);
+    }
+  },
+  SpreadElement: (node, state) => {
+    visit(node.argument, state);
+  },
 };
+
+function visitAll(nodes, state) {
+  for (const node of nodes) {
+    visit(node, state);
+  }
+}
 
 function visit(node, state) {
   const target = unwrapped(node);
-  const visitor = target === null ? undefined : VISITORS[target.type];
+  const visitor = Object.hasOwn(VISITORS, target?.type ?? '') ? VISITORS[target.type] : undefined;
   if (visitor === undefined) {
     state.valid = false;
     return;
@@ -182,7 +203,9 @@ function returnedExpression(fn) {
     return fn.body;
   }
   const [only] = fn.body.body;
-  return fn.body.body.length === 1 && only.type === 'ReturnStatement' ? only.argument : null;
+  return fn.body.body.length === 1 && only.type === 'ReturnStatement'
+    ? (only.argument ?? undefined)
+    : undefined;
 }
 
 function isComputed(services, { owner, name }) {
@@ -206,8 +229,8 @@ export function readsOnlyFields(context, node, { rows, accumulator = false }) {
   const rowParams = fn.params.slice(leading);
   const bound =
     fn.params.length === leading + rows && rowParams.every((p) => bindPattern(p, state));
-  const body = bound ? returnedExpression(fn) : null;
-  if (body === null || (accumulator && fn.params[0].type !== 'Identifier')) {
+  const body = bound ? returnedExpression(fn) : undefined;
+  if (body === undefined || (accumulator && fn.params[0].type !== 'Identifier')) {
     return false;
   }
   visit(body, state);

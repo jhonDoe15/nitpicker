@@ -1,5 +1,5 @@
 import { libraryBinding, variableOf } from '../../../libraries/module-bindings.mjs';
-import { ancestorsOf } from '../analysis/ancestry.mjs';
+import { ancestorsOf, chainOf } from '../analysis/ancestry.mjs';
 import { isFunctionNode, stringValue } from '../analysis/constant-resolution.mjs';
 import { isTypeWrapper, memberName, unwrapped } from '../security/security-values.mjs';
 import { readsOnlyFields } from './row-callbacks.mjs';
@@ -44,8 +44,10 @@ function isWrapper(node) {
   return isTypeWrapper(node) || node?.type === 'ChainExpression';
 }
 
-export function outerOf(node) {
-  return isWrapper(node.parent) ? outerOf(node.parent) : node;
+function outerOf(node) {
+  return chainOf(node, (current) => (isWrapper(current.parent) ? current.parent : undefined)).at(
+    -1,
+  );
 }
 
 function homeOf(node) {
