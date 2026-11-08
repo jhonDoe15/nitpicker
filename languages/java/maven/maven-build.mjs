@@ -47,11 +47,12 @@ function dependencyFile(work, module) {
   return path.join(work, 'dependencies', groupId, `${artifactId}.txt`);
 }
 
-export function buildAndTest({ projectRoot, maven, work, pinned, modules, spawn }) {
+export function buildAndTest({ projectRoot, maven, work, pinned, modules, spawn, timeoutMs }) {
   runMaven({
     projectRoot,
     maven,
     spawn,
+    timeoutMs,
     args: [
       '--quiet',
       `${jacocoPlugin(pinned)}:prepare-agent`,
@@ -87,8 +88,8 @@ function staleOutputs(module) {
   ];
 }
 
-function readModules({ projectRoot, maven, work, spawn }) {
-  const effectivePom = readEffectivePom({ projectRoot, maven, work, spawn });
+function readModules({ projectRoot, maven, work, spawn, timeoutMs }) {
+  const effectivePom = readEffectivePom({ projectRoot, maven, work, spawn, timeoutMs });
   const modules = readReactor(projectRoot, effectivePom).filter(
     (module) => module.packaging !== 'pom',
   );
@@ -141,7 +142,7 @@ function extraTools({ modules, analyzed, policy, pinned, kotlin }) {
 
 export function runMavenPreset(
   projectRoot,
-  { maven, policy = {}, configs, environment = {}, spawn },
+  { maven, policy = {}, configs, environment = {}, spawn, timeoutMs },
 ) {
   if (policy.preset !== undefined && !MAVEN_PRESETS.includes(policy.preset)) {
     throw new Error(
@@ -150,7 +151,7 @@ export function runMavenPreset(
   }
   const pinned = readPinnedTools();
   const work = mkdtempSync(path.join(tmpdir(), 'nitpicker-maven-'));
-  const run = { projectRoot, maven, spawn, pinned };
+  const run = { projectRoot, maven, spawn, timeoutMs, pinned };
   try {
     const { modules, effectivePom } = readModules({ ...run, work });
     const kotlin = kotlinSetup({ ...run, policy, modules, effectivePom, work, environment });

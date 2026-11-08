@@ -22,7 +22,7 @@ export function jacocoExecFiles(module) {
   return [path.join(module.buildDirectory, OWN_JACOCO_EXEC), ...module.jacocoDestFiles];
 }
 
-function runStructure(module, reportDir, spawn) {
+function runStructure(module, reportDir, { spawn, timeoutMs }) {
   const roots = module.sourceRoots
     .filter((root) => existsSync(root))
     .map((root) => relativeTo(module.basedir, root));
@@ -38,6 +38,7 @@ function runStructure(module, reportDir, spawn) {
     cwd: module.basedir,
     accept: (result) => result.status === 0,
     spawn,
+    timeoutMs,
   });
 }
 
@@ -72,15 +73,15 @@ function readTestRuns(context) {
 }
 
 function runCoverageTools(options) {
-  const { module, reportDir, tools, classpaths, since, testsRan, isArchunit, configs, spawn } =
-    options;
+  const { module, reportDir, tools, classpaths, since, testsRan, isArchunit, configs } = options;
+  const run = { spawn: options.spawn, timeoutMs: options.timeoutMs };
   const execFiles = jacocoExecFiles(module);
-  runJacocoReport({ module, reportDir, tools, execFiles, since, testsRan, spawn });
-  runPit({ module, reportDir, tools, classpaths, isArchunit, configs, spawn });
+  runJacocoReport({ module, reportDir, tools, execFiles, since, testsRan, ...run });
+  runPit({ module, reportDir, tools, classpaths, isArchunit, configs, ...run });
 }
 
 function runArchitecture(options) {
-  const { module, reportDir, tools, classpaths, pinned, springArch, springRoles, spawn } = options;
+  const { module, reportDir, tools, classpaths, pinned, springArch, springRoles } = options;
   runSpringArch({
     module,
     reportDir,
@@ -89,12 +90,14 @@ function runArchitecture(options) {
     pinned,
     archRules: springArch,
     springRoles,
-    spawn,
+    spawn: options.spawn,
+    timeoutMs: options.timeoutMs,
   });
 }
 
 function runSourceTools(options) {
-  const { module, reportDir, tools, classpaths, configs, pinned, kotlin, style, spawn } = options;
+  const { module, reportDir, tools, classpaths, configs, pinned, kotlin, style } = options;
+  const run = { spawn: options.spawn, timeoutMs: options.timeoutMs };
   const { springRules } = options;
   runPmd({
     module,
@@ -104,7 +107,7 @@ function runSourceTools(options) {
     configs,
     spring: kotlin.spring,
     springRules,
-    spawn,
+    ...run,
   });
   runSpotbugs({
     module: kotlin.spotbugsModule,
@@ -112,18 +115,18 @@ function runSourceTools(options) {
     tools,
     configs,
     auxClasspath: kotlin.auxClasspath,
-    spawn,
+    ...run,
   });
-  runErrorProne({ module, reportDir, tools, classpaths, configs, spawn });
-  runFormat({ module, reportDir, tools, javaStyle: style.javaStyle, spawn });
-  runCheckstyle({ module, reportDir, tools, configs, pinned, style, spawn });
+  runErrorProne({ module, reportDir, tools, classpaths, configs, ...run });
+  runFormat({ module, reportDir, tools, javaStyle: style.javaStyle, ...run });
+  runCheckstyle({ module, reportDir, tools, configs, pinned, style, ...run });
 }
 
 function analyzeSources(options) {
   const { module, reportDir } = options;
   const kotlin = analyzeKotlinModule({ ...options, options: options.kotlinOptions });
   runSourceTools({ ...options, kotlin: { ...kotlin, spring: options.spring } });
-  runStructure(module, reportDir, options.spawn);
+  runStructure(module, reportDir, options);
   runJdeps(module, reportDir, options.spawn);
   runArchitecture({ ...options, module: kotlin.coverageModule });
   return kotlin;

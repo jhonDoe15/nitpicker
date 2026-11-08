@@ -33,6 +33,7 @@ import {
   without,
 } from './schema-parts.mjs';
 import { tools, toolsByPreset } from './tools-schema.mjs';
+import { MAX_TIMER_MS, MINUTE_MS } from '../../../shared/analyzer-timeouts/analyzer-timeouts.mjs';
 
 export const SCHEMA_URL =
   'https://raw.githubusercontent.com/jhonDoe15/nitpicker/main/spec/config.schema.json';
@@ -70,6 +71,17 @@ const TOP_LEVEL = {
   react: areas.react,
   i18n: areas.i18n,
   analyzers: areas.analyzers,
+  analyzerTimeoutMinutes: {
+    description:
+      'Minutes each named analyzer may run before it is stopped. A deadline is not policy: it leaves the policy hash alone.',
+    type: 'object',
+    propertyNames: { pattern: '\\S' },
+    additionalProperties: {
+      type: 'integer',
+      minimum: 1,
+      maximum: Math.floor(MAX_TIMER_MS / MINUTE_MS),
+    },
+  },
   legacyInventory: {
     description:
       'Path of the legacy inventory inside the project; nitpicker.legacy.json when absent.',

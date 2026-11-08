@@ -106,7 +106,7 @@ function analysisSets(module, classpaths) {
   ];
 }
 
-export function runErrorProne({ module, reportDir, tools, classpaths, configs, spawn }) {
+export function runErrorProne({ module, reportDir, tools, classpaths, configs, ...run }) {
   const report = path.join(reportDir, 'errorprone.json');
   const work = path.join(reportDir, 'errorprone');
   rmSync(work, { recursive: true, force: true });
@@ -128,8 +128,8 @@ export function runErrorProne({ module, reportDir, tools, classpaths, configs, s
     settings.compilerArgs.includes('--enable-preview'),
   );
   runJava({
-    java: errorProneJava({ preview, spawn }),
-    spawn,
+    java: errorProneJava({ preview, spawn: run.spawn }),
+    ...run,
     tool: 'Error Prone',
     jvmArgs: JVM_FLAGS,
     args: [
