@@ -132,6 +132,43 @@ describe('shared-used-by-one-feature on Java and Kotlin', () => {
     ).toEqual([ids]);
   });
 
+  it.each([
+    ['the file class', 'import shop.shared.IdsKt;', 'IdsKt.nextId()', ''],
+    ['its JvmName', 'import static shop.shared.Ids.nextId;', 'nextId()', '@file:JvmName("Ids")\n'],
+    ['a fully qualified file class', '', 'shop.shared.IdsKt.nextId()', ''],
+  ])(
+    'counts Java code that calls a shared Kotlin function through %s',
+    (_, imports, call, head) => {
+      const ids = `${KOTLIN_ROOT}/shop/shared/Ids.kt`;
+      const files = {
+        [ids]: `${head}package shop.shared\n\nfun nextId(): Long = 1L\n`,
+        [`${KOTLIN_ROOT}/shop/features/orders/Cart.kt`]:
+          'package shop.features.orders\n\nimport shop.shared.nextId\n\nfun cartId() = nextId()\n',
+        [`${JAVA_ROOT}/shop/features/billing/Invoice.java`]: javaClass(
+          'shop.features.billing',
+          'Invoice',
+          `  long id() { return ${call}; }\n`,
+          `${imports}\n\n`,
+        ),
+      };
+
+      expect(sharedUsage(files, { kotlin: true })).toEqual([]);
+    },
+  );
+
+  it('counts a Kotlin import of a companion member', () => {
+    const files = {
+      [`${KOTLIN_ROOT}/shop/shared/Ids.kt`]:
+        'package shop.shared\n\nclass Ids {\n  companion object {\n    fun next() = 1\n  }\n}\n',
+      [`${KOTLIN_ROOT}/shop/features/orders/Cart.kt`]:
+        'package shop.features.orders\n\nimport shop.shared.Ids\n\nfun cartId() = Ids.next()\n',
+      [`${KOTLIN_ROOT}/shop/features/billing/Bill.kt`]:
+        'package shop.features.billing\n\nimport shop.shared.Ids.Companion.next\n\nfun billId() = next()\n',
+    };
+
+    expect(sharedUsage(files, { kotlin: true })).toEqual([]);
+  });
+
   it('is lifted by an exception and turned off by an empty feature list', () => {
     const files = {
       [MONEY]: SHARED_MONEY,

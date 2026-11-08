@@ -22,7 +22,7 @@ export const LARGE_FILE_BYTES = 1024 * 1024;
 
 const EVERY_LANGUAGE = { typescript: true, java: true, python: true, kotlin: true, go: true };
 const IMPORTS_COMPILE =
-  'an import that resolves to no class is a compile error, so the build fails and reports it before any analyzer runs';
+  'an import that resolves to no class is a compile error in the source sets the build compiles, which are the ones nitpicker reads, so the build fails and reports it before any analyzer runs';
 const TYPESCRIPT_AND_PYTHON = { typescript: true, java: false, python: true, kotlin: false };
 
 export const HYGIENE_RULES = [
