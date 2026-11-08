@@ -62,12 +62,13 @@ left for you:
    Without such sources, or when a `pom.xml`, Gradle build or Python file sits next to them and
    there is no `package.json`, it is Python (`pyproject.toml`, `setup.py`, `setup.cfg`, `Pipfile`
    or `requirements.txt`), Java (Gradle or Maven) or Kotlin (Gradle, when there are `.kt` files and
-   they outnumber the `.java` ones or a build script applies the Kotlin JVM plugin, the one the
-   kotlin preset runs on: `kotlin("jvm")`, `id("org.jetbrains.kotlin.jvm")`, `apply plugin: 'kotlin'`,
+   they outnumber the `.java` ones or a build script applies a Kotlin plugin the kotlin preset runs on:
+   `kotlin("jvm")`, `kotlin("multiplatform")`, `kotlin("android")`, `id("org.jetbrains.kotlin.jvm")` (or
+   `.multiplatform`, `.android`), `apply plugin: 'kotlin'` (or `'kotlin-multiplatform'`, `'kotlin-android'`),
    or a version catalog alias such as `alias(libs.plugins.kotlin.jvm)`, looked up in
    `gradle/libs.versions.toml` and the catalogs `settings.gradle(.kts)` declares, also inside the
    convention plugins of `buildSrc` or `build-logic` (`.gradle.kts` and `.kt`); a plugin declared
-   with `apply false` and the Android and multiplatform plugins do not count, nor do `.kts` build
+   with `apply false` does not count, nor do `.kts` build
    scripts and the files of `buildSrc` and `build-logic` as sources). A Gradle project with fewer `.kt` than `.java` files and no Kotlin plugin
    in its build scripts gets the `java` preset with a note. The Kotlin preset needs Gradle today: a
    Maven project with Kotlin and Java sources gets the `java` preset with a note that only its Java

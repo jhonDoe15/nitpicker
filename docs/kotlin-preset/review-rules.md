@@ -160,7 +160,8 @@ Limits, all chosen to flag less rather than guess:
 
   Callers the facts do not see switch off the judging of public functions only in the modules they can
   call. Each such place, read from the Gradle build, reaches the projects it depends on (directly or
-  through other projects): an Android or Multiplatform project; a Kotlin or Java project outside the
+  through other projects): an Android or Multiplatform project that the facts step does not read (one that
+  applies the `java` plugin, or one without the Kotlin plugin); a Kotlin or Java project outside the
   analysis root; a source set other than `main` and `test` that holds `.kt` or `.java` files and is not
   generated (Spring Boot's `aot` and `aotTest`, see the Java preset's Spring AOT) (it also reaches its
   own project); an included build whose build files name a project of this build as
@@ -293,9 +294,8 @@ Limits, all chosen to flag less rather than guess:
   the receiver text, so an import alias (`import reactor.core.publisher.Flux as F`) or a static import
   of `fromIterable` is not recognized, and a `Flux` held in a local is not followed. A call this rule reports is
   not reported again by `IoCallInLoop`.
-- Not covered: Android and Kotlin Multiplatform modules (the facts step is registered for
-  `org.jetbrains.kotlin.jvm` only), and source-set `exclude` patterns (every `.kt` file under a source
-  directory is read, as for detekt and the other Kotlin steps).
+- Android and Kotlin Multiplatform modules: the facts step reads every Kotlin source set of the project,
+  and a source-set `exclude` pattern keeps a file out of the facts (see [Known limits](known-limits.md)).
 
 ## Test honesty
 
