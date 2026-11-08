@@ -36,6 +36,7 @@ export function policyFindings(loosenings, digest, { acceptedDigest, kinds = {} 
     path: 'nitpicker.config.json',
     identity: change,
     message: `${printable(change)}. ${policyKindGuidance(kinds[change])} ${route}`,
+    allowedForm: policyKindGuidance(kinds[change]),
     classification: 'enforceable',
     ...(kinds[change] === undefined ? {} : { policyKind: kinds[change] }),
   }));
