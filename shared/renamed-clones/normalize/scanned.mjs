@@ -28,7 +28,15 @@ const JAVA_KEYWORDS = new Set(
     'synchronized this throw throws try void volatile while var record yield'
   ).split(' '),
 );
-const LITERAL_WORDS = new Set(['False', 'None', 'True', 'false', 'null', 'true']);
+const GO_KEYWORDS = new Set(
+  (
+    'break case chan const continue default defer else fallthrough for func go goto if import ' +
+    'interface map package range return select struct switch type var any bool byte error ' +
+    'float32 float64 int int8 int16 int32 int64 rune string uint uint8 uint16 uint32 uint64 ' +
+    'nil true false'
+  ).split(' '),
+);
+const LITERAL_WORDS = new Set(['False', 'None', 'True', 'false', 'null', 'true', 'nil']);
 const DATA_PUNCTUATION = new Set([',', ':', '-', '+']);
 const DATA_KINDS = new Set(['string', 'number', 'comment']);
 const KOTLIN_DATA_CALL = /^(?:\w*Of|Pair|Triple)$/u;
@@ -99,6 +107,15 @@ const LANGUAGES = {
       (tokens[index].text === '(' && JAVA_DATA_CALL.test(tokens[index - 1]?.text ?? '')) ||
       (tokens[index].text === '{' && ['=', ']'].includes(tokens[index - 1]?.text)),
     isDataWord: (token) => JAVA_DATA_CALL.test(token.text),
+  },
+  go: {
+    syntax: SYNTAXES.go,
+    keywords: GO_KEYWORDS,
+    statementWords: new Set('import package'.split(' ')),
+    opensData: (tokens, index) =>
+      tokens[index].text === '{' &&
+      (tokens[index - 1]?.text === ']' || tokens[index - 2]?.text === ']'),
+    isDataWord: () => false,
   },
 };
 
