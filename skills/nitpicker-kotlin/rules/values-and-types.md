@@ -44,6 +44,14 @@ Part of the [nitpicker-kotlin](../SKILL.md) skill. Write these forms from the st
   with the same parameters (`pmd/StaticForwardingWrapper`); call that function. Factories named
   `of` or `from` are fine. The same goes for a member that only passes its parameters to another
   member of its class (`pmd/ForwardingMethodAlias`); when that member is less visible, rename it to the alias's name and delete the alias.
+- Blocking calls (`Files.readString`, `File.readText`, JDBC, `Future.get()`, `latch.await()`,
+  `queue.take()`, `Mono.block()`) in a `suspend` function, coroutine builder or `flow { }` go through
+  `withContext(ioDispatcher) { ... }` (or `flowOn(ioDispatcher)`), or `runInterruptible(ioDispatcher) { ... }`
+  for an interruptible one, with the `CoroutineDispatcher` injected through the constructor, never
+  `Dispatchers.IO` at the call site (detekt `InjectDispatcher`); `withContext(NonCancellable)` does not
+  move the call (`kotlin-source/BlockingCallInCoroutine`). A `withTimeout` block needs a suspension point:
+  `withTimeout(1.seconds) { blocking() }` never times out, so offload the blocking call inside it
+  (`kotlin-source/TimeoutWithoutSuspension`).
 - A data class, a `@ConfigurationProperties` class, the public properties of any class and the
   defaulted parameters of a public function have `tags` or `tag`, not both
   (`pmd/SingularAndPluralMember`); one item is a one-element list.

@@ -15,6 +15,7 @@ import nitpicker.kotlinpsi.common.Frame;
 import nitpicker.kotlinpsi.facts.locking.Locking;
 import nitpicker.kotlinpsi.facts.updates.Updates;
 import nitpicker.kotlinpsi.facts.lifetimes.Lifetimes;
+import nitpicker.kotlinpsi.coroutines.CoroutineFacts;
 import nitpicker.kotlinpsi.load.LoadCalls;
 import nitpicker.kotlinpsi.timeouts.Timeouts;
 import org.jetbrains.kotlin.com.intellij.psi.PsiElement;
@@ -32,6 +33,7 @@ public final class FactsCollector {
   private final Updates updates;
   private final Locking locking;
   private final Lifetimes lifetimes;
+  private final CoroutineFacts coroutines;
   private final Bodies bodies;
   private int frames;
   private final LoadCalls loads;
@@ -48,6 +50,7 @@ public final class FactsCollector {
     this.throwing = new Throwing(nothing, file);
     this.locking = new Locking(file, state::lineOf);
     this.lifetimes = new Lifetimes(file, state::lineOf);
+    this.coroutines = new CoroutineFacts(file, text);
     this.bodies = new Bodies(text, test, throwing, state.namesOf(HANDLER));
     this.loads = test ? null : new LoadCalls(file, state::lineOf);
   }
@@ -66,6 +69,7 @@ public final class FactsCollector {
     if (!lifetimes.useLaunches().isEmpty()) {
       result.put("useLaunches", lifetimes.useLaunches());
     }
+    result.put("coroutines", coroutines.collect());
     if (loads != null) {
       result.putAll(loads.result());
     }

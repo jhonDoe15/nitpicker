@@ -13,6 +13,15 @@ function waitReturn(subject) {
   return first === undefined ? 'when its timeout passes' : `when its timeout passes or ${finished}`;
 }
 
+const SEPARATOR = ': ';
+
+function parts(subject = '') {
+  const index = subject.indexOf(SEPARATOR);
+  return index === -1
+    ? { scope: subject, call: '' }
+    : { scope: subject.slice(0, index), call: subject.slice(index + SEPARATOR.length) };
+}
+
 export const ASYNC_HINTS = [
   {
     tool: RULES_TOOL,
@@ -67,5 +76,15 @@ export const ASYNC_HINTS = [
       `\`${subject}\` waits for a child process without a deadline, so a command that never exits hangs this code for good`,
     allowed:
       'Pass a timeout: `subprocess.run(args, timeout=30, check=True)`, `process.communicate(timeout=30)` or `process.wait(timeout=30)` (then kill the child on `TimeoutExpired`). Wrap an asyncio wait in `async with asyncio.timeout(30):` or `asyncio.wait_for(process.wait(), 30)`. A program whose purpose is to run the child to completion, such as a build wrapper, takes an exception.',
+  },
+  {
+    tool: RULES_TOOL,
+    rules: ['timeout-scope-path-without-checkpoint'],
+    describe: (subject) => {
+      const { scope, call } = parts(subject);
+      return `\`${scope}\` has a path that runs \`${call}\` without reaching a checkpoint (an \`await\` that suspends, \`async with\` or \`async for\`), so its timeout or cancellation cannot interrupt that path`;
+    },
+    allowed:
+      'Reach a checkpoint on every path through the scope: await the slow work (`await asyncio.to_thread(work)`, `await trio.to_thread.run_sync(work)`, `await anyio.to_thread.run_sync(work)`), or add an explicit checkpoint before it (`await asyncio.sleep(0)`, `await trio.lowlevel.checkpoint()`, `await anyio.lowlevel.checkpoint()`), or move the checkpoint-free path out of the scope. A scope with no checkpoint at all is reported by Ruff ASYNC100.',
   },
 ];

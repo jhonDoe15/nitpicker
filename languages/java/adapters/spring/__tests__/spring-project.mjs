@@ -93,6 +93,8 @@ const REVIEW_RULES = new Set([
   'InconsistentFieldLocking',
   'SpringUnusedContext',
   'TaskOutlivesTryResource',
+  'ReactorBlockingInOperator',
+  'ReactorBlockInReactiveMethod',
   'SpringProxySelfCall',
   'SpringProxyMethodVisibility',
   'TestClassWithoutTestCases',

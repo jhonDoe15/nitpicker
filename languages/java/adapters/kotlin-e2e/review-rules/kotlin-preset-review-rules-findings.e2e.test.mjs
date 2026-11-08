@@ -1,5 +1,6 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import {
+  ARCHIVE_FILE,
   integrationSuiteFiles,
   publishedFiles,
 } from '../test-support/review/kotlin-review-data.mjs';
@@ -38,11 +39,19 @@ describe.skipIf(!kotlinE2eEnabled)('Kotlin preset review rules end to end', () =
     removeProject(project);
   });
 
-  it('fails the sleeps, enum predicates, wrapper, plural member, map updates, unused option, unused context, update across a suspension, lock-order inversion, inconsistently locked property and swallowed cancellation or interrupt, and spares the allowed forms', () => {
+  it('fails the sleeps, enum predicates, wrapper, plural member, map updates, unused option, unused context, update across a suspension, lock-order inversion, inconsistently locked property and swallowed cancellation or interrupt, blocking coroutine calls and timeout blocks, and spares the allowed forms', () => {
     const result = diffOf(project, 'review-rules');
 
     expect(result.failed).toBe(true);
     expect(reviewFindings(result.newEnforceable)).toEqual(ALL_FINDINGS);
+    expect(
+      result.newEnforceable
+        .filter(
+          ({ tool, rule, path: file }) =>
+            tool === 'detekt' && file === ARCHIVE_FILE && rule.endsWith('InjectDispatcher'),
+        )
+        .map(({ rule }) => rule),
+    ).toEqual([]);
     expect(helpUriProblems(result.newFindings)).toEqual([]);
   });
 

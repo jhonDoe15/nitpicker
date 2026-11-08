@@ -298,6 +298,8 @@ describe('Kotlin exception rules for the review rules', () => {
       'unused-option',
       'kotlin-source/SuspendFunInFinallySection',
       'kotlin-source/ChildCoroutineOutlivesResource',
+      'kotlin-source/BlockingCallInCoroutine',
+      'kotlin-source/TimeoutWithoutSuspension',
     ]);
   });
 

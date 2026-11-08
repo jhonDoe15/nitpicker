@@ -20,6 +20,12 @@ Part of the [nitpicker-typescript](../SKILL.md) skill. Write these forms from th
   `console.*` is a finding everywhere.
 - Parse untrusted input once with zod in `adapters/`; `domain/` takes readonly types it declares.
 - Run programs with `execFile(command, [args])`, never a command string.
+- In an `async` function or a request handler, use the promise APIs (`readFile` from
+  `node:fs/promises`, `access` or `stat` instead of `existsSync`, `promisify(execFile)`,
+  `promisify(pbkdf2)`), never `readFileSync`, `execSync`, `pbkdf2Sync` and the other `*Sync` calls of
+  `fs`, `child_process`, `crypto` and `zlib`: they block the event loop for every other request
+  (`nitpicker/no-sync-node-api-in-async`, entry points included). Module top level, a worker thread
+  and a CLI `main` that is only called from startup code stay synchronous.
 - Parse a URL from runtime text with `URL.parse(text)` or after `URL.canParse(text)`; `new URL(text)`
   throws on text that is not a URL (`nitpicker/no-unhandled-url-parse`).
 - Regexes: a `g` or `y` regex keeps `lastIndex`, so don't reuse one with `test()` or `exec()`

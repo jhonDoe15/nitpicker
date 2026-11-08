@@ -5,9 +5,14 @@ import { relativeRoots } from '../module/module-paths.mjs';
 
 const GUAVA_JAR = /^guava-\d.*\.jar$/u;
 const AWAITILITY_JAR = /^awaitility-\d.*\.jar$/u;
+const REACTOR_JAR = /^reactor-core-.*\.jar$/u;
 
 function hasJar(classpath, jar) {
   return classpath.some((entry) => jar.test(path.basename(entry)));
+}
+
+export function usesReactor(classpaths) {
+  return hasJar(classpaths.mainCompile, REACTOR_JAR);
 }
 
 function kotlinOnlyRoots(module) {

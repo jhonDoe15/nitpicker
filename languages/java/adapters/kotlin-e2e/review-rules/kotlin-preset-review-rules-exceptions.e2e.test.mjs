@@ -15,6 +15,7 @@ import {
   kotlinPolicy,
   removeProject,
 } from '../test-support/kotlin-e2e-project.mjs';
+import { ARCHIVE_FILE } from '../test-support/review/kotlin-review-data.mjs';
 import { SWALLOWED_CANCELLATIONS } from '../test-support/review/swallowed/kotlin-cancellation-data.mjs';
 
 const ORDERS_TESTS = 'src/test/kotlin/demo/orders/*';
@@ -42,6 +43,7 @@ describe.skipIf(!kotlinE2eEnabled)('Kotlin preset review rule exceptions end to 
           { rule: 'pmd/StaticMockOfProjectType', glob: ORDERS_TESTS },
           { rule: 'unused-option', glob: 'src/main/kotlin/demo/orders/*' },
           { rule: 'pmd/SwallowedInterrupt', glob: 'src/main/kotlin/demo/orders/*' },
+          { rule: 'kotlin-source/BlockingCallInCoroutine', glob: ARCHIVE_FILE },
           { rule: 'pmd/ClassLoadEffect', glob: 'src/main/kotlin/demo/orders/Inventory.kt' },
         ],
       },
@@ -68,6 +70,7 @@ describe.skipIf(!kotlinE2eEnabled)('Kotlin preset review rule exceptions end to 
           ),
         ),
         ...SWALLOWED_CANCELLATIONS,
+        'TimeoutWithoutSuspension Archive.timesOutBlockingWork.withTimeout',
         'timeout-abandons-operation awaitAllOutside:withTimeout:first',
         'timeout-abandons-operation awaitAllOutside:withTimeout:second',
         'timeout-abandons-operation awaitOutside:withTimeout:work',

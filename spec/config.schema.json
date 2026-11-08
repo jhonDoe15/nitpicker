@@ -2158,7 +2158,9 @@
                             "pmd/SpringDataFilterInQuery",
                             "pmd/SpringQueryConcatenation",
                             "unused-option",
-                            "structure/unused-option"
+                            "structure/unused-option",
+                            "kotlin-source/BlockingCallInCoroutine",
+                            "kotlin-source/TimeoutWithoutSuspension"
                           ]
                         },
                         { "pattern": "^detekt\\.[a-z-]+\\.[A-Z][A-Za-z0-9]*$" },
