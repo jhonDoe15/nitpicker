@@ -1,5 +1,6 @@
 import ast
 import re
+from functools import lru_cache
 
 from checks.common import dotted_name
 from security.resolve.scopes import lookup
@@ -40,6 +41,7 @@ CONVERTER_PREFIXES = (
     "divided",
     "is",
     "has",
+    "format",
 )
 CLOCK_CALLS = {
     "time.time": ("s", True),
@@ -52,12 +54,14 @@ CLOCK_CALLS = {
     "time.process_time_ns": ("ns", False),
 }
 CLAIMS = {"exp", "iat", "nbf", "auth_time"}
+CLAIMS_OWNER = re.compile(r"token|claim|payload|jwt|decode", re.IGNORECASE)
 PASS_THROUGH = {"int", "float", "round", "abs", "math.floor", "math.ceil", "math.trunc"}
 SAME_UNIT = {"max", "min"}
 MAX_DEPTH = 6
 CAMEL_BOUNDARY = re.compile(r"[a-z0-9]$")
 SNAKE_EPOCH = re.compile(r"(?<=[a-z])(?=epoch)|(?<=epoch)(?=[a-z])")
 RATIO = re.compile(r"(?:Per|_per|_PER)(?=[A-Z_]|$)")
+FLAG = re.compile(r"^_*(?:show|hide|include|display|enable|disable|use|should|can|allow)(?=[A-Z_])")
 
 
 class Unit:
@@ -79,8 +83,9 @@ def word_unit(name, word, unit):
     return None
 
 
+@lru_cache(maxsize=4096)
 def unit_of_name(name):
-    if not name or RATIO.search(name):
+    if not name or RATIO.search(name) or FLAG.search(name):
         return None
     for word, unit in UNIT_WORDS:
         found = word_unit(name, word, unit)
@@ -153,6 +158,18 @@ def subscript_key(node):
     return None
 
 
+def owner_name(node):
+    if isinstance(node, ast.Call):
+        return owner_name(node.func)
+    if isinstance(node, ast.Attribute):
+        return node.attr
+    return node.id if isinstance(node, ast.Name) else ""
+
+
+def is_claims(node):
+    return CLAIMS_OWNER.search(owner_name(node)) is not None
+
+
 def claim_get(node):
     if (
         isinstance(node, ast.Call)
@@ -160,6 +177,7 @@ def claim_get(node):
         and node.func.attr == "get"
         and node.args
         and isinstance(node.args[0], ast.Constant)
+        and is_claims(node.func.value)
     ):
         return node.args[0].value
     return None
@@ -246,7 +264,7 @@ def value_unit(node, where, depth=0):
         return named(node.attr, unit_of_name(node.attr))
     if isinstance(node, ast.Subscript):
         key = subscript_key(node)
-        if key in CLAIMS:
+        if key in CLAIMS and is_claims(node.value):
             return Unit("s", True)
         return named(key, unit_of_name(key)) if key else None
     if isinstance(node, ast.Call):

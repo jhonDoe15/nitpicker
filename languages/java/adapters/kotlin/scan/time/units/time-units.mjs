@@ -1,17 +1,7 @@
-import {
-  argumentUnitOfCallName,
-  conversionExample,
-  unitFactor,
-  unitLabel,
-  unitOfName,
-} from '../../../../../../../shared/naming/time-units/unit-names.mjs';
-import { unitMessage } from '../../../../../../../shared/naming/time-units/unit-messages.mjs';
-import { closingIndex, kotlinTokens } from './kotlin-tokens.mjs';
-import { UnitParser } from './unit-expressions.mjs';
+import { closingIndex, isOperator, kotlinTokens } from './kotlin-tokens.mjs';
+import { expression, isCallOpen, MAX_DEPTH, parseArguments } from './unit-expressions.mjs';
+import { reportAssigned, TIME_UNIT_RULE } from './unit-reports.mjs';
 
-export const TIME_UNIT_RULE = 'TimeUnitMismatch';
-const MAX_TEXT = 40;
-const KEEP = 'Keep epoch times in a `Long` or an `Instant`.';
 const STARTS = new Set([
   '(',
   ',',
@@ -31,42 +21,43 @@ const STARTS = new Set([
 ]);
 const START_WORDS = new Set(['return', 'else', 'in', 'if', 'while']);
 const ASSIGNING = new Set(['=', '+=', '-=']);
+const DECLARING = new Set(['val', 'var']);
 const TYPE_PARTS = new Set(['.', '<', '>', '?', ',', '*']);
+const DECLARATION_ENDS = new Set(['\n', ';', '{', '}', '(']);
 const DURATION_IMPORT = /\bimport\s+kotlin\.time\.Duration\.Companion\.(\w+|\*)/gu;
+const GROUPING = new Set(['(']);
+const FUNCTION_NAME_REACH = 8;
+const TYPE_REACH = 16;
 
-function shortened(text) {
-  return text.length > MAX_TEXT ? `${text.slice(0, MAX_TEXT - 3)}...` : text;
+function uniquely(entries) {
+  const counts = Map.groupBy(entries, ([name]) => name);
+  return new Map(
+    [...counts]
+      .filter(([, found]) => found.length === 1)
+      .map(([name, [[, value]]]) => [name, value]),
+  );
 }
 
-const DECLARATION_ENDS = new Set(['\n', ';', '{', '}', '(']);
+function initializerOf(tokens, declaration) {
+  const rest = tokens.slice(declaration + 2, declaration + TYPE_REACH);
+  const end = rest.findIndex(({ text }) => text === '=' || DECLARATION_ENDS.has(text));
+  return rest[end]?.text === '=' ? declaration + 2 + end + 1 : undefined;
+}
 
-function initializerOf(tokens, index) {
-  for (let at = index + 2; at < tokens.length; at += 1) {
-    const { text } = tokens[at];
-    if (text === '=') {
-      return at + 1;
-    }
-    if (DECLARATION_ENDS.has(text)) {
-      return undefined;
-    }
-  }
-  return undefined;
+function isDeclaration(tokens, index) {
+  const token = tokens[index];
+  return token.kind === 'id' && DECLARING.has(token.text) && tokens[index + 1]?.kind === 'id';
 }
 
 function declaredValues(tokens) {
-  const found = new Map();
-  tokens.forEach((token, index) => {
-    const name = tokens[index + 1];
-    if (
-      token.kind === 'id' &&
-      (token.text === 'val' || token.text === 'var') &&
-      name?.kind === 'id'
-    ) {
-      const start = token.text === 'val' ? initializerOf(tokens, index) : undefined;
-      found.set(name.text, found.has(name.text) || start === undefined ? null : start);
-    }
-  });
-  return new Map([...found].filter(([, start]) => start !== null));
+  const declarations = [...tokens.keys()].filter((index) => isDeclaration(tokens, index));
+  const values = uniquely(
+    declarations.map((index) => [
+      tokens[index + 1].text,
+      tokens[index].text === 'val' ? initializerOf(tokens, index) : undefined,
+    ]),
+  );
+  return new Map([...values].filter(([, start]) => start !== undefined));
 }
 
 function parameterNames(tokens, open) {
@@ -81,25 +72,25 @@ function parameterNames(tokens, open) {
 }
 
 function functionOpen(tokens, index) {
-  for (let at = index + 1; at < tokens.length && at < index + 8; at += 1) {
-    if (tokens[at].text === '(') {
-      return at;
-    }
-  }
-  return undefined;
+  const offset = tokens
+    .slice(index + 1, index + FUNCTION_NAME_REACH)
+    .findIndex(({ text }) => text === '(');
+  return offset === -1 ? undefined : index + 1 + offset;
 }
 
 function declaredFunctions(tokens) {
-  const found = new Map();
-  tokens.forEach((token, index) => {
-    const open =
-      token.kind === 'id' && token.text === 'fun' ? functionOpen(tokens, index) : undefined;
-    const name = open === undefined ? undefined : tokens[open - 1];
-    if (name?.kind === 'id') {
-      found.set(name.text, found.has(name.text) ? null : parameterNames(tokens, open));
-    }
-  });
-  return new Map([...found].filter(([, names]) => names !== null));
+  const opens = [...tokens.keys()]
+    .filter((index) => tokens[index].kind === 'id' && tokens[index].text === 'fun')
+    .map((index) => functionOpen(tokens, index))
+    .filter((open) => open !== undefined && tokens[open - 1].kind === 'id');
+  return uniquely(opens.map((open) => [tokens[open - 1].text, parameterNames(tokens, open)]));
+}
+
+function annotatedName(tokens, index) {
+  const before = tokens.slice(Math.max(0, index - TYPE_REACH), index).toReversed();
+  const stop = before.findIndex((token) => token.kind !== 'id' && !TYPE_PARTS.has(token.text));
+  const name = before[stop + 1];
+  return before[stop]?.text === ':' && name?.kind === 'id' ? name.text : undefined;
 }
 
 function assignmentTarget(tokens, index) {
@@ -107,164 +98,95 @@ function assignmentTarget(tokens, index) {
   if (before?.kind !== 'id') {
     return undefined;
   }
-  let at = index - 1;
-  while (
-    at > 0 &&
-    (tokens[at].kind === 'id' || TYPE_PARTS.has(tokens[at].text)) &&
-    tokens[at].text !== ':'
-  ) {
-    at -= 1;
-  }
-  if (tokens[at]?.text === ':' && tokens[at - 1]?.kind === 'id') {
-    return { name: tokens[at - 1].text, named: false };
+  const annotated = annotatedName(tokens, index);
+  if (annotated !== undefined) {
+    return { name: annotated, named: false };
   }
   const opener = tokens[index - 2];
   const named = before.inside === '(' && (opener?.text === '(' || opener?.text === ',');
   return { name: before.text, named };
 }
 
-class UnitFile {
-  constructor(scanned) {
-    this.code = scanned.code;
-    this.tokens = kotlinTokens(scanned.code);
-    this.values = declaredValues(this.tokens);
-    this.functions = declaredFunctions(this.tokens);
-    this.imports = new Set([...scanned.code.matchAll(DURATION_IMPORT)].map((match) => match[1]));
-    this.reports = new Map();
-  }
+function startsExpression(tokens, index) {
+  const previous = tokens[index - 1];
+  return (
+    tokens[index].kind !== 'nl' &&
+    (index === 0 ||
+      previous.kind === 'nl' ||
+      (previous.kind === 'op' && STARTS.has(previous.text)) ||
+      (previous.kind === 'id' && START_WORDS.has(previous.text)))
+  );
+}
 
-  durationProperty(name) {
-    return this.imports.has(name) || this.imports.has('*');
-  }
-
-  textOf(value) {
-    if (value.from === undefined || value.to === undefined || value.to < value.from) {
-      return value.name ?? 'value';
-    }
-    const { start } = this.tokens[value.from];
-    const { end } = this.tokens[value.to];
-    return shortened(this.code.slice(start, end).replaceAll(/\s+/gu, ' '));
-  }
-
-  report(offset, kind, values) {
-    const key = `${String(offset)}:${kind}`;
-    if (!this.reports.has(key)) {
-      this.reports.set(key, {
-        rule: TIME_UNIT_RULE,
-        offset,
-        message: unitMessage(kind, { keep: KEEP, ...values }),
-      });
+function levelValues(file, { depth, declared, opens }) {
+  const target = depth === 0 ? file : { ...file, reports: new Map() };
+  const regions = new Map();
+  const { tokens } = file;
+  for (const open of opens) {
+    const parser = { file: target, tokens, position: open, depth, regions, declared };
+    if (isCallOpen(tokens, open)) {
+      regions.set(open, parseArguments(parser));
+    } else {
+      parser.position += 1;
+      regions.set(open, expression(parser));
     }
   }
+  const values = [...file.values].map(([name, position]) => [
+    name,
+    expression({ file: target, tokens, position, depth, regions, declared }),
+  ]);
+  return { regions, declared, values: new Map(values) };
+}
 
-  convertedValues(from, to, value) {
-    return {
-      valueUnit: unitLabel(from),
-      targetUnit: unitLabel(to),
-      factor: String(unitFactor(from, to)),
-      example: conversionExample(value, from, to),
-    };
-  }
+function unitLevels(file) {
+  const { tokens } = file;
+  const opens = [...tokens.keys()]
+    .filter((index) => isOperator(tokens[index], GROUPING))
+    .toSorted((left, right) => tokens[right].nesting - tokens[left].nesting);
+  const depths = [...Array.from({ length: MAX_DEPTH + 1 }).keys()].toReversed();
+  return depths.reduce(
+    (deeper, depth) => levelValues(file, { depth, declared: deeper.values, opens }),
+    { values: new Map() },
+  );
+}
 
-  mixed(operator, left, right) {
-    const value = this.textOf(right);
-    this.report(operator.start, 'mixed', {
-      left: this.textOf(left),
-      leftUnit: unitLabel(left.unit),
-      right: value,
-      rightUnit: unitLabel(right.unit),
-      factor: String(unitFactor(left.unit, right.unit)),
-      example: conversionExample(value, right.unit, left.unit),
-    });
-  }
+function parseExpression(file, position) {
+  const { regions, declared } = file.levels;
+  return expression({ file, tokens: file.tokens, position, depth: 0, regions, declared });
+}
 
-  argument(nameIndex, callee, unit, value, parameter) {
-    if (unit === undefined || value?.unit === undefined || value.unit === unit) {
-      return;
-    }
-    const text = this.textOf(value);
-    const offset =
-      value.from === undefined ? this.tokens[nameIndex].start : this.tokens[value.from].start;
-    this.report(offset, 'argument', {
-      callee,
-      parameter,
-      value: text,
-      ...this.convertedValues(value.unit, unit, text),
-    });
-  }
-
-  assigned(index, target, value) {
-    const unit = unitOfName(target);
-    if (unit === undefined || value.unit === undefined || value.unit === unit) {
-      return;
-    }
-    const text = this.textOf(value);
-    this.report(this.tokens[index].start, 'assigned', {
-      target,
-      value: text,
-      ...this.convertedValues(value.unit, unit, text),
-    });
-  }
-
-  narrowed(index, value, operator) {
-    this.report(this.tokens[index].start, 'narrowed', { value: this.textOf(value), operator });
-  }
-
-  checkCall({ name, nameIndex, args, receiver, unit }) {
-    const positional = args.filter((arg) => arg.name === undefined);
-    const known = unit ?? argumentUnitOfCallName(name);
-    const callee = receiver?.name === undefined ? name : `${receiver.name}.${name}`;
-    if (known !== undefined && positional[0] !== undefined) {
-      this.argument(nameIndex, callee, known, positional[0].value, name);
-    }
-    const parameters = this.functions.get(name) ?? [];
-    positional.forEach((arg, index) => {
-      const parameter = parameters[index];
-      if (parameter !== undefined) {
-        this.argument(nameIndex, callee, unitOfName(parameter), arg.value, parameter);
-      }
-      const paired = positional[index + 1]?.value.timeUnit;
-      if (paired !== undefined) {
-        this.argument(nameIndex, callee, paired, arg.value, positional[index + 1].value.name);
-      }
-    });
-    args
-      .filter((arg) => arg.name !== undefined)
-      .forEach((arg) =>
-        this.argument(nameIndex, callee, unitOfName(arg.name), arg.value, arg.name),
-      );
-  }
-
-  scan() {
-    this.tokens.forEach((token, index) => {
-      const previous = this.tokens[index - 1];
-      const starts =
-        index === 0 ||
-        previous.kind === 'nl' ||
-        (previous.kind === 'op' && STARTS.has(previous.text)) ||
-        (previous.kind === 'id' && START_WORDS.has(previous.text));
-      if (starts && token.kind !== 'nl') {
-        new UnitParser(this, index).expression();
-      }
-      if (token.kind === 'op' && ASSIGNING.has(token.text)) {
-        this.assignment(index);
-      }
-    });
-    return [...this.reports.values()];
-  }
-
-  assignment(index) {
-    const target = assignmentTarget(this.tokens, index);
-    if (target === undefined || target.named) {
-      return;
-    }
-    const value = new UnitParser(this, index + 1).expression();
-    this.assigned(index + 1, target.name, value);
+function checkAssignment(file, index) {
+  const target = assignmentTarget(file.tokens, index);
+  if (target !== undefined && !target.named) {
+    const value = parseExpression(file, index + 1);
+    reportAssigned(file, { index: index + 1, target: target.name, value });
   }
 }
 
+function unitFile(scanned) {
+  const tokens = kotlinTokens(scanned.code);
+  const file = {
+    code: scanned.code,
+    tokens,
+    values: declaredValues(tokens),
+    functions: declaredFunctions(tokens),
+    imports: new Set([...scanned.code.matchAll(DURATION_IMPORT)].map((match) => match[1])),
+    reports: new Map(),
+  };
+  return { ...file, levels: unitLevels(file) };
+}
+
 export function timeUnitMismatches(scanned) {
-  return new UnitFile(scanned).scan();
+  const file = unitFile(scanned);
+  for (const [index, token] of file.tokens.entries()) {
+    if (startsExpression(file.tokens, index)) {
+      parseExpression(file, index);
+    }
+    if (token.kind === 'op' && ASSIGNING.has(token.text)) {
+      checkAssignment(file, index);
+    }
+  }
+  return [...file.reports.values()];
 }
 
 export const kotlinSourceRules = {

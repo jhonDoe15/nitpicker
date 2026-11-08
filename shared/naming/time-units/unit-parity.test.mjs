@@ -10,6 +10,9 @@ const XPATH_UNIT = /matches\(\$name, '([^']+)'\)\) then '(\w+)'/gu;
 const XPATH_RATIO = /or matches\(\$name, '([^']+)'\)\) then \(\)/u;
 const XPATH_CONVERTER = /matches\(string\(\$names\[1\]\), '\^_\*\(([^)]+)\)/u;
 const PYTHON_WORD = /\("(\w+)", "(\w+)"\)/gu;
+const PYTHON_PREFIXES = /CONVERTER_PREFIXES = \(([^)]+)\)/u;
+const BUILT_PMD_RULESET = 'languages/java/gradle/pmd-main-ruleset.xml';
+const XPATH_EXPRESSION = /<!\[CDATA\[([\s\S]*?)\]\]>/u;
 
 const NAMES = [
   'timeoutMs',
@@ -36,6 +39,11 @@ const NAMES = [
   'SECONDS_PER_MINUTE',
   'millisPerSecond',
   'timestamp',
+  'showSeconds',
+  'include_millis',
+  'useMs',
+  'userMs',
+  'formatSeconds',
 ];
 
 function read(file) {
@@ -66,8 +74,15 @@ describe('time unit tables of the other presets', () => {
     const text = read(PYTHON_UNITS);
     const words = [...text.matchAll(PYTHON_WORD)].map(([, word, unit]) => [word, unit]);
     expect(words).toEqual(UNIT_WORDS);
-    for (const prefix of CONVERTER_PREFIXES) {
-      expect(text).toContain(`"${prefix}",`);
-    }
+    const prefixes = [...PYTHON_PREFIXES.exec(text)[1].matchAll(/"(\w+)"/gu)].map(
+      ([, word]) => word,
+    );
+    expect(prefixes).toEqual(CONVERTER_PREFIXES);
+  });
+
+  it('ship the same Java PMD rule in the built ruleset', () => {
+    const own = XPATH_EXPRESSION.exec(read(PMD_RULE))[1];
+    const built = read(BUILT_PMD_RULESET);
+    expect(built.split(own)).toHaveLength(2);
   });
 });

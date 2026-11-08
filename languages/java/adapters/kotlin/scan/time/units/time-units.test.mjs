@@ -87,6 +87,10 @@ describe('timeUnitMismatches', () => {
       'fun lock(text: String) { lockWaitTimeoutMillis = parseDuration(text).toMillis() }',
     ],
     ['words that only end like a unit', 'fun count(items: Int, atoms: Int) = items + atoms'],
+    [
+      'flags named with a unit',
+      'fun differ(showSeconds: Boolean, showMs: Boolean) = showSeconds != showMs',
+    ],
     ['unit text in a string', 'val hint = "timeoutMs = ttlSeconds"'],
     ['a named constant factor', 'fun ms(ttlSeconds: Long) = ttlSeconds * MILLIS_PER_SECOND'],
     ['division by a whole second', 'val nowSeconds = System.currentTimeMillis() / 1000'],
@@ -113,6 +117,8 @@ describe('timeUnitMismatches', () => {
   it('flags epoch times cut to an Int and leaves durations alone', () => {
     expect(found(['val stamp = (System.currentTimeMillis() / 1000).toInt()'])).toEqual([1]);
     expect(found(['val stamp = Math.toIntExact(Instant.now().epochSecond)'])).toEqual([1]);
+    expect(found(['val stamp = Date().time.toInt()'])).toEqual([1]);
+    expect(found(['fun late(ttlSeconds: Long) = Date().getTime() > ttlSeconds'])).toEqual([1]);
     expect(
       found(['fun elapsed(startedMs: Long) = (System.currentTimeMillis() - startedMs).toInt()']),
     ).toEqual([]);
@@ -124,5 +130,14 @@ describe('timeUnitMismatches', () => {
     ).toEqual([
       '`System.currentTimeMillis()` is in milliseconds and `ttlSeconds` is in seconds, so the result is off by 1000x. Bring both sides to one unit first: convert the value once where it enters (`ttlSeconds * 1000`), and name the result with its unit.',
     ]);
+  });
+
+  it('scans deeply nested and generated expressions without running out of stack', () => {
+    const depth = 5000;
+    const nested = `${'f('.repeat(depth)}timeoutMs${')'.repeat(depth)}`;
+    expect(found([`fun deep(timeoutMs: Long) = ${nested}`])).toEqual([]);
+    expect(
+      found([`fun deep(timeoutMs: Long) = ${'('.repeat(depth)}1${')'.repeat(depth)}`]),
+    ).toEqual([]);
   });
 });

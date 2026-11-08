@@ -396,7 +396,7 @@ Part of the [TypeScript strict preset guide](../typescript-strict-preset.md).
   gets a value in another; an argument of one unit where the call takes another (`setTimeout` and
   `setInterval` delays, `node:timers/promises` `setTimeout`, `AbortSignal.timeout`, `new Date(epochMs)`,
   a function of the same file, or, with type information, any function whose parameter is named with a
-  unit); and an epoch time cut to 32 bits (`| 0`, `>> 0`, `>>> 0`, `~~`). The message names both units,
+  unit); and an epoch time cut to 32 bits (`| 0`, `>> 0`, `<< 0`, `>>> 0`, `^ 0`, `~~`). The message names both units,
   the factor and the conversion. A name with the wrong unit is fixed by renaming it. The same rule runs as
   `time-unit-mismatch` (Python), `pmd/MixedTimeUnits` and `pmd/EpochNarrowedToInt` (Java) and
   `kotlin-source/TimeUnitMismatch` (Kotlin).

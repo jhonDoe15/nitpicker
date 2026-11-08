@@ -37,3 +37,27 @@ export function objectChildren(node) {
     .flatMap(([, value]) => (Array.isArray(value) ? value : [value]))
     .filter((value) => value !== null && typeof value === 'object');
 }
+
+export function foldTree(root, children, combine) {
+  const entries = [{ node: root, depth: 0, children: [] }];
+  for (const entry of entries) {
+    const nested = children(entry.node, entry.depth).map((node) => ({
+      node,
+      depth: entry.depth + 1,
+      children: [],
+    }));
+    entry.children.push(...nested);
+    entries.push(...nested);
+  }
+  const values = new Map();
+  for (const entry of entries.toReversed()) {
+    values.set(
+      entry,
+      combine(
+        entry.node,
+        entry.children.map((child) => values.get(child)),
+      ),
+    );
+  }
+  return values.get(entries[0]);
+}

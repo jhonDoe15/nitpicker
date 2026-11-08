@@ -104,6 +104,7 @@ export const POLICY_FILES = [
   'languages/typescript/preset/eslint-plugin/rules/api-shape/plural-inputs/type-members.mjs',
   'shared/naming/plural-names.mjs',
   'shared/naming/time-units/unit-names.mjs',
+  'shared/naming/time-units/unit-messages.mjs',
   'languages/typescript/preset/eslint-plugin/rules/react-tests/hover-test-needs-keyboard.mjs',
   'languages/typescript/preset/eslint-plugin/rules/react/react-effects.mjs',
   'languages/typescript/preset/eslint-plugin/rules/react/react-no-effect-data-fetching.mjs',

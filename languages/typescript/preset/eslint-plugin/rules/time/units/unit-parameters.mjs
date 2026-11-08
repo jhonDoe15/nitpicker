@@ -1,4 +1,4 @@
-import { findVariable, isFunctionNode } from '../../analysis/constant-resolution.mjs';
+import { findVariable, resolveFunction } from '../../analysis/constant-resolution.mjs';
 import {
   argumentUnitOfCallName,
   unitOfName,
@@ -65,19 +65,6 @@ function withUnits(names) {
     .filter(({ unit }) => unit !== undefined);
 }
 
-function localFunction(context, callee) {
-  const target = unwrap(callee);
-  if (target?.type !== 'Identifier') {
-    return undefined;
-  }
-  const definition = findVariable(context, target, target.name)?.defs[0];
-  if (definition?.type === 'FunctionName') {
-    return definition.node;
-  }
-  const init = definition?.type === 'Variable' ? definition.node.init : undefined;
-  return isFunctionNode(init) ? init : undefined;
-}
-
 function typedNames(context, call) {
   const services = context.sourceCode.parserServices;
   if (services?.program === null || services?.program === undefined) {
@@ -96,7 +83,7 @@ export function parameterUnits(context, call) {
   if (known !== undefined) {
     return known;
   }
-  const local = localFunction(context, call.callee);
+  const local = resolveFunction(context, unwrap(call.callee));
   if (local !== undefined) {
     return withUnits(local.params.map((parameter) => parameterName(parameter) ?? ''));
   }

@@ -4,6 +4,7 @@ import {
   unitOfConstant,
   unitOfName,
 } from '../../../../../../../shared/naming/time-units/unit-names.mjs';
+import { checkCall, hasDurationProperty, reportArgument, reportNarrowed } from './unit-reports.mjs';
 
 const UNIT_TYPES = new Set(['TimeUnit', 'ChronoUnit', 'DurationUnit']);
 const DURATION_PROPERTIES = {
@@ -24,6 +25,7 @@ const PASSING = new Set([
 const CALL_UNITS = { nanoTime: 'ns', measureNanoTime: 'ns' };
 const EPOCH_CALLS = new Set(['currentTimeMillis']);
 const RECEIVER_CALLS = { 'Thread.sleep': 'ms' };
+const EPOCH_SELECTORS = new Set(['Date.time', 'Date.getTime']);
 
 export function namedValue(name, unit, call = false) {
   return unit === undefined
@@ -45,41 +47,67 @@ function unitTypeValue(receiver, name, call) {
 function unitTypeCall(file, { receiver, name, nameIndex, args }) {
   const [first] = args;
   if (first !== undefined && first.name === undefined) {
-    file.argument(
+    reportArgument(file, {
       nameIndex,
-      `${receiver.name}.${name}`,
-      receiver.timeUnit,
-      first.value,
-      'duration',
-    );
+      callee: `${receiver.name}.${name}`,
+      unit: receiver.timeUnit,
+      value: first.value,
+      parameter: 'duration',
+    });
   }
   return callValue(name);
 }
 
 function durationProperty(file, { receiver, name, nameIndex }) {
-  file.argument(nameIndex, `.${name}`, DURATION_PROPERTIES[name], receiver, 'receiver');
+  const unit = DURATION_PROPERTIES[name];
+  reportArgument(file, {
+    nameIndex,
+    callee: `.${name}`,
+    unit,
+    value: receiver,
+    parameter: 'receiver',
+  });
   return {};
 }
 
 function conversion(file, { receiver, name, nameIndex, args }) {
   const call = args !== undefined;
   if (call && name === 'toDuration' && args[0]?.value.timeUnit !== undefined) {
-    file.argument(nameIndex, '.toDuration', args[0].value.timeUnit, receiver, 'receiver');
+    const unit = args[0].value.timeUnit;
+    reportArgument(file, {
+      nameIndex,
+      callee: '.toDuration',
+      unit,
+      value: receiver,
+      parameter: 'receiver',
+    });
     return {};
   }
   if (call && name === 'toInt' && receiver.epoch === true) {
-    file.narrowed(nameIndex, receiver, '.toInt()');
+    reportNarrowed(file, { index: nameIndex, value: receiver, operator: '.toInt()' });
     return { unit: receiver.unit, epoch: true };
   }
   if (call && name === 'toIntExact' && args[0]?.value.epoch === true) {
-    file.narrowed(nameIndex, args[0].value, 'Math.toIntExact');
+    reportNarrowed(file, { index: nameIndex, value: args[0].value, operator: 'Math.toIntExact' });
     return { unit: args[0].value.unit, epoch: true };
   }
   return PASSING.has(name) ? { unit: receiver.unit, epoch: receiver.epoch } : undefined;
 }
 
-export function selectorValue(parser, selector) {
-  const { file } = parser;
+function plainSelector(file, selector) {
+  const { receiver, name, args } = selector;
+  if (EPOCH_SELECTORS.has(`${receiver.name}.${name}`)) {
+    return { unit: 'ms', epoch: true };
+  }
+  if (args !== undefined) {
+    const unit = RECEIVER_CALLS[`${receiver.name}.${name}`];
+    checkCall(file, { ...selector, unit });
+    return callValue(name);
+  }
+  return namedValue(name, unitOfName(name));
+}
+
+function unitSelector(file, selector) {
   const { receiver, name, args } = selector;
   const call = args !== undefined;
   const unitType = unitTypeValue(receiver, name, call);
@@ -89,17 +117,14 @@ export function selectorValue(parser, selector) {
   if (receiver.timeUnit !== undefined && call) {
     return unitTypeCall(file, selector);
   }
-  if (!call && DURATION_PROPERTIES[name] !== undefined && file.durationProperty(name)) {
-    return durationProperty(file, selector);
-  }
-  const converted = conversion(file, selector);
-  if (converted !== undefined) {
-    return converted;
-  }
-  if (call) {
-    const unit = RECEIVER_CALLS[`${receiver.name}.${name}`];
-    file.checkCall({ ...selector, unit });
-    return callValue(name);
-  }
-  return namedValue(name, unitOfName(name));
+  return !call && DURATION_PROPERTIES[name] !== undefined && hasDurationProperty(file, name)
+    ? durationProperty(file, selector)
+    : undefined;
+}
+
+export function selectorValue(parser, selector) {
+  const { file } = parser;
+  return (
+    unitSelector(file, selector) ?? conversion(file, selector) ?? plainSelector(file, selector)
+  );
 }

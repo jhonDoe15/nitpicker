@@ -263,6 +263,8 @@ let $epochCall := function($e) {
     $epochName := function($e) {
       $e[self::VariableAccess or self::FieldAccess or self::MethodCall]
         [matches(string((@Name, @MethodName)[1]), 'epoch', 'i')]
+        [matches(string((@Name, @MethodName)[1]),
+                 '(Milli|Millis|Ms|Second|Seconds|Secs|_MILLI|_MILLIS|_MS|_SECOND|_SECONDS|_SECS|_milli|_millis|_ms|_second|_seconds|_secs)$')]
     },
     $direct := function($e) {
       exists($epochCall($e)) or exists($epochName($e))
@@ -533,8 +535,9 @@ return (
       <property name="xpath">
         <value><![CDATA[
 let $scales := map { 'ns': 1, 'us': 1000, 'ms': 1000000, 's': 1000000000, 'min': 60000000000 },
-    $named := function($name) {
-      if (empty($name)) then ()
+    $named := function($names) {
+      let $name := string($names[1])
+      return if (empty($names) or matches($name, '(Per|_per|_PER)([A-Z_]|$)|^_*(show|hide|include|display|enable|disable|use|should|can|allow)[A-Z_]')) then ()
       else if (matches($name, '^_*(NANOS|NANOSECONDS|nanos|nanoseconds)$|[a-z0-9](Nanoseconds|Nanos)$|_(NANOS|NANOSECONDS|nanos|nanoseconds)$')) then 'ns'
       else if (matches($name, '^_*(MICROS|MICROSECONDS|micros|microseconds)$|[a-z0-9](Microseconds|Micros)$|_(MICROS|MICROSECONDS|micros|microseconds)$')) then 'us'
       else if (matches($name, '^_*(EPOCHMILLI|MILLIS|MILLISECONDS|MS|epochMilli|epochmilli|millis|milliseconds|ms)$|[a-z0-9](Milliseconds|Millis|Ms|EpochMilli)$|_(EPOCH_MILLI|MILLIS|MILLISECONDS|MS|epoch_milli|millis|milliseconds|ms)$')) then 'ms'
@@ -542,8 +545,8 @@ let $scales := map { 'ns': 1, 'us': 1000, 'ms': 1000000, 's': 1000000000, 'min':
       else if (matches($name, '^_*(MINUTES|minutes)$|[a-z0-9](Minutes)$|_(MINUTES|minutes)$')) then 'min'
       else ()
     },
-    $converter := function($name) {
-      matches($name, '^_*(of|plus|minus|with|set|from|parse|sleep|truncated|multiplied|divided|is|has)([^a-z]|$)')
+    $converter := function($names) {
+      matches(string($names[1]), '^_*(of|plus|minus|with|set|from|parse|sleep|truncated|multiplied|divided|is|has|format)([^a-z]|$)')
     },
     $constant := function($name) {
       if ($name = ('NANOSECONDS', 'NANOS')) then 'ns'
@@ -569,13 +572,15 @@ let $scales := map { 'ns': 1, 'us': 1000, 'ms': 1000000, 's': 1000000000, 'min':
     },
     $scaled := function($e, $unit) {
       let $operand := $e/*[not(self::NumericLiteral)],
-          $literal := $e/NumericLiteral,
-          $from := $unit($operand)
-      return if (count($operand) = 1 and count($literal) = 1 and exists($from)
+          $literal := $e/NumericLiteral
+      return if (count($operand) = 1 and count($literal) = 1
                  and ($e/@Operator = '*' or $e/*[1] is $operand)) then
-        let $target := if ($e/@Operator = '*') then $scales($from) div $literal/@ValueAsDouble
-                       else $scales($from) * $literal/@ValueAsDouble
-        return ('ns', 'us', 'ms', 's', 'min')[$scales(.) = $target]
+        let $from := $unit($operand)
+        return if (empty($from)) then ()
+        else
+          let $target := if ($e/@Operator = '*') then $scales($from) div $literal/@ValueAsDouble
+                         else $scales($from) * $literal/@ValueAsDouble
+          return ('ns', 'us', 'ms', 's', 'min')[$scales(.) = $target]
       else ()
     },
     $local := function($e) {
@@ -626,10 +631,11 @@ return (
              $differs($unitType(ArgumentList/*[$index]), $unit(ArgumentList/*[$index - 1])))
        or (let $methods := ancestor::ClassBody[1]/MethodDeclaration[@Name = $call/@MethodName]
                                 [FormalParameters/@Size = $call/ArgumentList/@Size]
-           return count($methods) = 1 and (*[1][self::ThisExpression] or count(*) = 1)
-             and (some $index in 1 to count(ArgumentList/*) satisfies
-                    $differs($named($methods/FormalParameters/FormalParameter[$index]/VariableId/@Name),
-                             $unit($call/ArgumentList/*[$index]))))]
+           return if (count($methods) = 1 and (*[1][self::ThisExpression] or count(*) = 1)) then
+             some $index in 1 to count(ArgumentList/*) satisfies
+               $differs($named($methods/FormalParameters/FormalParameter[$index]/VariableId/@Name),
+                        $unit($call/ArgumentList/*[$index]))
+           else false())]
 )
 ]]></value>
       </property>

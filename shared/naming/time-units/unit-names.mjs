@@ -1,4 +1,4 @@
-export const TIME_UNITS = {
+const TIME_UNITS = {
   ns: { scale: 1, label: 'nanoseconds' },
   us: { scale: 1e3, label: 'microseconds' },
   ms: { scale: 1e6, label: 'milliseconds' },
@@ -21,7 +21,7 @@ export const UNIT_WORDS = [
   ['EpochSecond', 's'],
 ];
 
-export const UNIT_CONSTANTS = {
+const UNIT_CONSTANTS = {
   NANOSECONDS: 'ns',
   NANOS: 'ns',
   MICROSECONDS: 'us',
@@ -46,10 +46,12 @@ export const CONVERTER_PREFIXES = [
   'divided',
   'is',
   'has',
+  'format',
 ];
 
 const EPOCH_WORD = /epoch/iu;
 const RATIO = /(?:Per|_per|_PER)(?=[A-Z_]|$)/u;
+const FLAG = /^_*(?:show|hide|include|display|enable|disable|use|should|can|allow)(?=[A-Z_])/u;
 const CAMEL_BOUNDARY = /[a-z0-9]$/u;
 
 function snakeUnit(name, word, unit) {
@@ -73,7 +75,7 @@ function wordUnit(name, word, unit) {
 }
 
 export function unitOfName(name) {
-  if (typeof name !== 'string' || name.length === 0 || RATIO.test(name)) {
+  if (typeof name !== 'string' || name.length === 0 || RATIO.test(name) || FLAG.test(name)) {
     return undefined;
   }
   for (const [word, unit] of UNIT_WORDS) {

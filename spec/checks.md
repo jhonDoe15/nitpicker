@@ -79,7 +79,10 @@ Time units: `nitpicker/time-unit-mismatch` (production source, in `eslint-lint`)
 two different units that meet without a conversion: a `+`, `-` or comparison of seconds with milliseconds
 (or nanoseconds, microseconds, minutes), a value assigned or passed under a name or parameter of another
 unit, and an epoch time cut to 32 bits. Units come from known clock and conversion APIs and from name
-suffixes such as `Ms`, `Millis`, `Seconds` and `_seconds`. The same rule runs as `time-unit-mismatch` in
+suffixes such as `Ms`, `Millis`, `Seconds` and `_seconds`; ratio names (`MS_PER_SECOND`) and flags
+(`showSeconds`, `use_ms`) carry no unit, a `format...` call takes its unit rather than returning it,
+JWT claims (`exp`, `iat`) count as epoch seconds only on a token, claims or payload object, and an epoch
+name needs a unit (`expiresAtEpochSecond`, not `epoch`). The same rule runs as `time-unit-mismatch` in
 the Python preset, `pmd/MixedTimeUnits` and `pmd/EpochNarrowedToInt` in the Java preset (Gradle and
 Maven; the overlap keeps `pmd/MixedTimeUnits` over Error Prone's `TimeUnitMismatch`) and
 `kotlin-source/TimeUnitMismatch` in the Kotlin preset. The Go preset has no own rule engine yet.

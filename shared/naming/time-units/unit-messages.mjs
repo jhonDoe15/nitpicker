@@ -2,7 +2,7 @@ import { renderMessage } from '../../messages/messages.mjs';
 
 const CONVERT_ONCE = 'once where it enters (`{example}`)';
 
-export const UNIT_MESSAGES = {
+const UNIT_MESSAGES = {
   mixed: {
     describe:
       '`{left}` is in {leftUnit} and `{right}` is in {rightUnit}, so the result is off by {factor}x',
@@ -25,7 +25,7 @@ export const UNIT_MESSAGES = {
   },
 };
 
-export function unitMessageTemplate(kind) {
+function unitMessageTemplate(kind) {
   const { describe, allowed } = UNIT_MESSAGES[kind];
   return `${describe}. ${allowed}`;
 }
