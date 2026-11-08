@@ -1,8 +1,20 @@
-import { describe, expect, it } from 'vitest';
+import { mkdirSync, mkdtempSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import path from 'node:path';
+import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { condenseFailure, withoutToolNoise } from './failure-text.mjs';
 
 const NOTICE = 'Picked up JAVA_TOOL_OPTIONS: -Dhttps.proxyHost=127.0.0.1';
-const ROOT = '/work/head';
+const ROOT = realpathSync(mkdtempSync(path.join(tmpdir(), 'nitpicker-failure-text-')));
+
+beforeAll(() => {
+  mkdirSync(path.join(ROOT, 'src/main/java/demo'), { recursive: true });
+  writeFileSync(path.join(ROOT, 'src/main/java/demo/Greeter.java'), '\n');
+});
+
+afterAll(() => {
+  rmSync(ROOT, { recursive: true, force: true });
+});
 const TRY = [
   '* Try:',
   '> Run with --stacktrace option to get the stack trace.',
@@ -117,6 +129,32 @@ describe('condenseFailure', () => {
       "Could not resolve all files for configuration ':compileClasspath'.",
       '> Could not find com.example:missing:1.0.',
     ]);
+  });
+
+  it('keeps every unresolved dependency with its parent', () => {
+    const text = banner([
+      '* What went wrong:',
+      "Execution failed for task ':compileJava'.",
+      "> Could not resolve all files for configuration ':compileClasspath'.",
+      '   > Could not resolve org.foo:bar:1.0.',
+      '      > No matching variant of org.foo:bar:1.0 was found.',
+      '   > Could not resolve org.baz:qux:2.0.',
+      '      > Could not GET https://repo.example/qux-2.0.pom. Received status code 500',
+      '',
+    ]);
+
+    expect(condenseFailure(text, ROOT).split('\n')).toEqual([
+      'Could not resolve org.foo:bar:1.0.',
+      '> No matching variant of org.foo:bar:1.0 was found.',
+      'Could not resolve org.baz:qux:2.0.',
+      '> Could not GET https://repo.example/qux-2.0.pom. Received status code 500',
+    ]);
+  });
+
+  it('leaves a sibling folder that starts like the project folder alone', () => {
+    const text = `* What went wrong:\nCannot read ${ROOT}-lib/settings.gradle in ${ROOT}.`;
+
+    expect(condenseFailure(text, ROOT)).toBe(`Cannot read ${ROOT}-lib/settings.gradle in ..`);
   });
 
   it("keeps the Where of the project's own build script", () => {

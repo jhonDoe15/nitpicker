@@ -1,8 +1,8 @@
 import { existsSync, realpathSync } from 'node:fs';
 import path from 'node:path';
-import { fileURLToPath } from 'node:url';
 
-const FILE = String.raw`(?<file>(?:file://)?(?:[A-Za-z]:)?[^:\n]*?\.(?:java|kts?))`;
+const FILE = String.raw`(?<file>(?:file://)?(?:[A-Za-z]:)?[^:\s][^:\n]*?\.(?:java|kts?))`;
+const FILE_URL = /^file:\/\/(?:\/(?=[A-Za-z]:))?/u;
 const JAVAC = new RegExp(
   String.raw`^\s*(?:\[ERROR\]\s+)?${FILE}:(?<line>\d+): error: (?<message>.+)$`,
   'u',
@@ -12,7 +12,7 @@ const POSITIONED = [
   String.raw`:(?<line>\d+):(?<column>\d+):? (?<message>.+)`,
   String.raw`: \((?<line>\d+), (?<column>\d+)\):? (?<message>.+)`,
 ].map((position) => new RegExp(String.raw`^\s*(?:\[ERROR\]|e:)\s+${FILE}${position}$`, 'u'));
-const SYMBOL = /^\s*(?:\[ERROR\]\s+)?symbol:\s+(?<symbol>.+)$/u;
+const SYMBOL = /^\s*(?:\[ERROR\]\s+)?symbol:\s+(?<symbol>\S.*)$/u;
 const SYMBOL_LOOKAHEAD = 4;
 const ERROR_PREFIX = /^error: /u;
 
@@ -20,19 +20,17 @@ function realOrSame(file) {
   return existsSync(file) ? realpathSync.native(file) : file;
 }
 
-function projectPath(projectRoot, reported) {
-  const absolute = reported.startsWith('file:')
-    ? fileURLToPath(reported)
-    : path.resolve(projectRoot, reported);
-  for (const root of new Set([projectRoot, realOrSame(projectRoot)])) {
-    for (const file of new Set([absolute, realOrSame(absolute)])) {
-      const relative = path.relative(root, file);
-      if (relative !== '' && !relative.startsWith('..') && !path.isAbsolute(relative)) {
-        return relative.split(path.sep).join('/');
-      }
-    }
+function insidePath(root, file) {
+  const absolute = path.resolve(root, file);
+  if (!absolute.startsWith(`${root}${path.sep}`)) {
+    return undefined;
   }
-  return undefined;
+  return existsSync(absolute) ? path.relative(root, absolute).split(path.sep).join('/') : undefined;
+}
+
+function projectPath(projectRoot, reported) {
+  const file = reported.replace(FILE_URL, '');
+  return insidePath(projectRoot, file) ?? insidePath(realOrSame(projectRoot), file);
 }
 
 function errorMatch(line) {
@@ -74,7 +72,9 @@ export function compileErrorsIn(output, projectRoot) {
   return lines.flatMap((_, index) => {
     const error = compileError(projectRoot, lines, index);
     const key =
-      error === undefined ? undefined : `${error.path}:${String(error.line)}:${error.message}`;
+      error === undefined
+        ? undefined
+        : `${error.path}:${String(error.line)}:${String(error.column)}:${error.message}`;
     if (key === undefined || seen.has(key)) {
       return [];
     }

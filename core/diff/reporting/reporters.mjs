@@ -1,4 +1,4 @@
-import { rmSync, mkdirSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { renderTextReport } from './text.mjs';
 import { renderJunitReport } from './junit.mjs';
@@ -70,8 +70,19 @@ export function writeReports(outputRoot, reports, { report, options }) {
 
 export const LOG_DIRECTORY = 'logs';
 
+const OWN_LOG = /^[\w-]+-(?:base|head)-gradle\.log$/u;
+
 export function clearLogs(outputRoot) {
-  rmSync(path.join(path.resolve(outputRoot), LOG_DIRECTORY), { recursive: true, force: true });
+  const directory = path.join(path.resolve(outputRoot), LOG_DIRECTORY);
+  if (!existsSync(directory)) {
+    return;
+  }
+  for (const name of readdirSync(directory).filter((entry) => OWN_LOG.test(entry))) {
+    rmSync(reportPath(outputRoot, `${LOG_DIRECTORY}/${name}`), { force: true });
+  }
+  if (readdirSync(directory).length === 0) {
+    rmSync(directory, { recursive: true, force: true });
+  }
 }
 
 export function clearDiffReports(outputRoot) {

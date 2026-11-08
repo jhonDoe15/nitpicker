@@ -1,6 +1,8 @@
 import { mkdirSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 
+export const GRADLE_LOG_LINE = 'Full Gradle log: ';
+
 export function gradleLog({ logRoot, logLabel, preset = 'java', snapshot = 'head' } = {}) {
   if (logRoot === undefined) {
     return undefined;
@@ -23,7 +25,7 @@ export function withGradleLog(error, result, log) {
       `=== stdout ===\n${result.stdout ?? ''}\n=== stderr ===\n${result.stderr ?? ''}`,
       { mode: 0o600 },
     );
-    return new Error(`${error.message}\nFull Gradle log: ${log.label}`, { cause: error });
+    return new Error(`${error.message}\n${GRADLE_LOG_LINE}${log.label}`, { cause: error });
   } catch (logError) {
     return new AggregateError(
       [error, logError],

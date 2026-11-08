@@ -8,6 +8,7 @@ import { namedReports, namedToolErrors } from '../snapshot-root/snapshot-root.mj
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
 import { describeError } from '../../../shared/messages/error-chain.mjs';
+import { LOG_DIRECTORY } from '../reporting/reporters.mjs';
 
 const MAX_ANALYZER_OUTPUT_BYTES = 50 * 1024 * 1024;
 
@@ -200,6 +201,14 @@ function prepareTasks(analyzers, context) {
   }
 
   return { tasks, toolErrors };
+}
+
+export function analyzerRunOptions({ outputRoot, runTasks }) {
+  return {
+    runTasks,
+    logRoot:
+      outputRoot === undefined ? undefined : path.join(path.resolve(outputRoot), LOG_DIRECTORY),
+  };
 }
 
 function logLocation(logRoot, liveProjectRoot) {

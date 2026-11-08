@@ -6,6 +6,7 @@ import { parseJavaRunnerArguments } from './java-policy.mjs';
 import { javaStyle } from './style/java-style.mjs';
 import { gradleBudget } from './gradle-wrapper/gradle-budget.mjs';
 import { TESTS_FAILED_RULE } from '../../../shared/rules/finding-helpers.mjs';
+import { GRADLE_LOG_LINE } from './gradle-wrapper/diagnostics/failure-log.mjs';
 import {
   compileErrorFindings,
   compileErrorsOf,
@@ -78,7 +79,9 @@ export function withHeadPolicy(policy, headPolicy) {
 
 function cappedMessage(message, rule) {
   const limit = rule === TESTS_FAILED_RULE ? MAX_TESTS_FAILED_LENGTH : MAX_MESSAGE_LENGTH;
-  return message.length > limit ? `${message.slice(0, limit)}...` : message;
+  const logAt = message.lastIndexOf(`\n${GRADLE_LOG_LINE}`);
+  const [body, log] = logAt < 0 ? [message, ''] : [message.slice(0, logAt), message.slice(logAt)];
+  return body.length > limit ? `${body.slice(0, limit)}...${log}` : message;
 }
 
 function failureRule(error, projectRoot) {

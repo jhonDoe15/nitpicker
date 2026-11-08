@@ -37,9 +37,9 @@ describe('assertGradleSucceeded', () => {
     return path.join(root, 'logs');
   }
 
-  function thrownBy(result, reportBase, extra = {}) {
+  function thrownBy(result, reportBase, { projectRoot = '/p', ...extra } = {}) {
     try {
-      assertGradleSucceeded(result, '/p', { reportBase, since: 0, ...extra });
+      assertGradleSucceeded(result, projectRoot, { reportBase, since: 0, ...extra });
     } catch (error) {
       return error;
     }
@@ -73,8 +73,8 @@ describe('assertGradleSucceeded', () => {
     expect(error.message.split('\n').at(-1)).toBe(
       'Full Gradle log: reports/logs/java-head-gradle.log',
     );
-    expect(readFileSync(path.join(logs, 'java-head-gradle.log'), 'utf8')).toContain(
-      'FAILURE: Build failed',
+    expect(readFileSync(path.join(logs, 'java-head-gradle.log'), 'utf8')).toBe(
+      '=== stdout ===\n\n=== stderr ===\nFAILURE: Build failed',
     );
   });
 
@@ -125,13 +125,14 @@ describe('assertGradleSucceeded', () => {
   });
 
   it('carries the compile errors of the project for the runner to report as findings', () => {
+    const root = mkdtempSync(path.join(tmpdir(), 'nitpicker-gradle-compile-'));
+    temporaryRoots.push(root);
+    mkdirSync(path.join(root, 'src/main/java/demo'), { recursive: true });
+    writeFileSync(path.join(root, 'src/main/java/demo/A.java'), '\n');
     const error = thrownBy(
-      {
-        status: 1,
-        stdout: '',
-        stderr: '/p/src/main/java/demo/A.java:5: error: cannot find symbol',
-      },
+      { status: 1, stdout: '', stderr: 'src/main/java/demo/A.java:5: error: cannot find symbol' },
       '/none',
+      { projectRoot: root },
     );
 
     expect(error.compileErrors).toEqual([

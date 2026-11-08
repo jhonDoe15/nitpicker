@@ -1,14 +1,24 @@
 import { mkdirSync, mkdtempSync, realpathSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
-import { pathToFileURL } from 'node:url';
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest';
 import { compileErrorsIn } from './compiler-output.mjs';
 
-const ROOT = '/work/head';
+const roots = [];
+const ROOT = realpathSync(mkdtempSync(path.join(tmpdir(), 'nitpicker-compile-root-')));
 const JAVA = `${ROOT}/src/main/java/demo/Greeter.java`;
 const KOTLIN = `${ROOT}/src/main/kotlin/demo/Greeter.kt`;
-const roots = [];
+
+beforeAll(() => {
+  for (const file of [JAVA, KOTLIN]) {
+    mkdirSync(path.dirname(file), { recursive: true });
+    writeFileSync(file, '\n');
+  }
+});
+
+afterAll(() => {
+  rmSync(ROOT, { recursive: true, force: true });
+});
 
 afterEach(() => {
   for (const root of roots.splice(0)) {
@@ -65,9 +75,9 @@ describe('compileErrorsIn', () => {
   });
 
   it.each([
-    [`e: ${pathToFileURL(KOTLIN).href}:5:9 Unresolved reference 'missing'.`],
+    [`e: file://${KOTLIN}:5:9 Unresolved reference 'missing'.`],
     [`e: ${KOTLIN}: (5, 9): Unresolved reference 'missing'.`],
-    [`[ERROR] ${pathToFileURL(KOTLIN).href}:[5,9] Unresolved reference 'missing'.`],
+    [`[ERROR] file://${KOTLIN}:[5,9] Unresolved reference 'missing'.`],
     [`[ERROR] ${KOTLIN}: (5, 9) Unresolved reference 'missing'.`],
   ])('reads a Kotlin compiler error from Gradle or Maven: %s', (line) => {
     expect(compileErrorsIn(line, ROOT)).toEqual([
@@ -80,11 +90,12 @@ describe('compileErrorsIn', () => {
     ]);
   });
 
-  it('ignores warnings, errors outside the project and lines that only look like positions', () => {
+  it('ignores warnings, errors outside the project or in no file, and lines that only look like positions', () => {
     const output = [
-      `w: ${pathToFileURL(KOTLIN).href}:3:1 Parameter 'x' is never used.`,
+      `w: file://${KOTLIN}:3:1 Parameter 'x' is never used.`,
       '/tmp/nitpicker-tool/CpdReport.java:4: error: cannot find symbol',
       `${KOTLIN}:5:9 Unresolved reference 'missing'.`,
+      'src/main/java/demo/Missing.java:3: error: cannot find symbol',
       '    at demo.GreeterTest.greets(GreeterTest.java:12)',
     ].join('\n');
 
@@ -94,7 +105,7 @@ describe('compileErrorsIn', () => {
   it('resolves a relative path against the project and follows a linked project folder', () => {
     const real = realpathSync(mkdtempSync(path.join(tmpdir(), 'nitpicker-compile-')));
     roots.push(real);
-    const project = path.join(real, 'project');
+    const project = path.join(real, 'my 100% project');
     mkdirSync(path.join(project, 'src'), { recursive: true });
     writeFileSync(path.join(project, 'src/A.java'), 'class A {}\n');
     const link = path.join(real, 'link');
@@ -102,10 +113,11 @@ describe('compileErrorsIn', () => {
     const output = [
       'src/A.java:1: error: class, interface, enum, or record expected',
       `${project}/src/A.java:2: error: reached end of file while parsing`,
+      `e: file://${project}/src/A.java:3:1 expecting a top level declaration`,
     ].join('\n');
 
     expect(
       compileErrorsIn(output, link).map(({ path: file, line }) => `${file}:${String(line)}`),
-    ).toEqual(['src/A.java:1', 'src/A.java:2']);
+    ).toEqual(['src/A.java:1', 'src/A.java:2', 'src/A.java:3']);
   });
 });

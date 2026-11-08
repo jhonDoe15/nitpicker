@@ -22,12 +22,17 @@ export function withCompileErrors(error, output, projectRoot) {
 }
 
 export function compileErrorsOf(error) {
-  let current = error;
-  while (current instanceof Error) {
+  const chain = [error];
+  for (const current of chain) {
+    if (!(current instanceof Error)) {
+      return [];
+    }
     if (current.compileErrors !== undefined) {
       return current.compileErrors;
     }
-    current = current.cause;
+    if (!chain.includes(current.cause)) {
+      chain.push(current.cause);
+    }
   }
   return [];
 }
