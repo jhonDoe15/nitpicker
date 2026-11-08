@@ -28,6 +28,10 @@ tester.run('reusable-object-per-call', rule, {
     'import { useMemo } from "react"; export function Price({ value }: { value: number }) { const money = useMemo(() => new Intl.NumberFormat("en-US"), []); return money.format(value); }',
     'export function show(value: number) { const Intl = { NumberFormat: class { format(n: number) { return String(n); } } }; return new Intl.NumberFormat().format(value); }',
     `${AJV}export const ajv = new Ajv({ allErrors: true });`,
+    'const formats = new Map<string, Intl.NumberFormat>(); export function money(key: string) { let format = formats.get(key); if (!format) { format = new Intl.NumberFormat("en"); formats.set(key, format); } return format; }',
+    'export function formats() { return { money: new Intl.NumberFormat("en-US") }; }',
+    'export function formatter() { const money = new Intl.NumberFormat("en-US"); return (value: number) => money.format(value); }',
+    'export function setup() { const money = new Intl.NumberFormat("en-US"); return { money }; }',
     'class Ajv { compile() { return () => true; } } export function valid(data: unknown) { return new Ajv().compile()(data); }',
   ],
   invalid: [
@@ -63,6 +67,21 @@ tester.run('reusable-object-per-call', rule, {
       'import { useState } from "react"; export function Price({ value }: { value: number }) { const [shown] = useState(value); return new Intl.NumberFormat("en-US").format(shown); }',
       'Intl.NumberFormat',
     ),
-    flagged(`${AJV}export function valid(schema: object, data: unknown) { return new Ajv().compile(schema)(data); }`, 'Ajv'),
+    flagged(
+      'export function show(value: number) { return { text: new Intl.NumberFormat("en-US").format(value) }; }',
+      'Intl.NumberFormat',
+    ),
+    flagged(
+      'export function show(value: number) { const money = new Intl.NumberFormat("en-US"); return money.format(value); }',
+      'Intl.NumberFormat',
+    ),
+    flagged(
+      'export function show(values: number[]) { const money = new Intl.NumberFormat("en-US"); return values.map((value) => money.format(value)); }',
+      'Intl.NumberFormat',
+    ),
+    flagged(
+      `${AJV}export function valid(schema: object, data: unknown) { return new Ajv().compile(schema)(data); }`,
+      'Ajv',
+    ),
   ],
 });

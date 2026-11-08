@@ -2045,6 +2045,7 @@
                             "pmd/ClassLoadEffect",
                             "pmd/UnboundedThreadPool",
                             "pmd/RecursiveMapUpdate",
+                            "pmd/ReusableObjectPerCall",
                             "pmd/SpringConstructorInjection",
                             "pmd/SpringImmutableBeans",
                             "pmd/SpringNoServiceLocator",

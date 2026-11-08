@@ -11,6 +11,7 @@ import {
   REUSABLE_RESULT_TYPES,
   SETUP_ANNOTATIONS,
   SETUP_METHODS,
+  STORING_CALLS,
 } from '../../../../../messages/reuse/reusable-objects.mjs';
 
 const RULE_FILE = path.resolve(
@@ -54,7 +55,7 @@ function factoryPairs() {
 
 describe('ReusableObjectPerCall: the Java rule and the shared type list agree', () => {
   it('uses the shared message', () => {
-    expect(rule).toContain(`message="${REUSABLE_OBJECT_MESSAGE}"`);
+    expect(/message="([^"]*)"/u.exec(rule)[1]).toBe(REUSABLE_OBJECT_MESSAGE);
   });
 
   it('builds the listed constructors', () => {
@@ -82,11 +83,10 @@ describe('ReusableObjectPerCall: the Java rule and the shared type list agree', 
   it('allows the listed setup places, result types and caches', () => {
     expect(listOf('shared')).toEqual(REUSABLE_RESULT_TYPES);
     expect(listOf('caches')).toEqual(CACHING_CALLS);
-    expect(typesIn(section('$start :=', '$setupMethod :='))).toEqual(
-      [...SETUP_ANNOTATIONS].sort(),
-    );
-    expect(section('$start :=', '$setupMethod :=')).toContain(
-      `@Name = (${SETUP_METHODS.map((name) => `'${name}'`).join(', ')})`,
-    );
+    expect(listOf('stores')).toEqual(STORING_CALLS);
+    expect(typesIn(section('$start :=', '$setupMethod :='))).toEqual([...SETUP_ANNOTATIONS].sort());
+    const named = /\$method\/@Name = \(([^)]*)\)/u.exec(section('$start :=', '$setupMethod :='));
+
+    expect([...named[1].matchAll(/'([^']+)'/gu)].map(([, name]) => name)).toEqual(SETUP_METHODS);
   });
 });

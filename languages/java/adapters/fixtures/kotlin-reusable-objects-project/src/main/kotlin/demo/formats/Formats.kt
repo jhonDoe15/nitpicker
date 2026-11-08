@@ -50,8 +50,15 @@ class Formats(private val gson: Gson = Gson()) {
 
     fun dynamicRegex(text: String, pattern: String): Boolean = Regex(pattern).matches(text)
 
-    fun unmarshal(type: Class<*>, text: String): Any =
+    fun unmarshal(text: String): Any =
+        JAXBContext.newInstance(Formats::class.java).createUnmarshaller().unmarshal(java.io.StringReader(text))
+
+    fun unmarshalAny(type: Class<*>, text: String): Any =
         JAXBContext.newInstance(type).createUnmarshaller().unmarshal(java.io.StringReader(text))
+
+    fun inferred() = ObjectMapper()
+
+    fun supplier(): () -> ObjectMapper = { ObjectMapper() }
 
     fun cachedContext(type: Class<*>): JAXBContext = contexts.getOrPut(type) { JAXBContext.newInstance(type) }
 

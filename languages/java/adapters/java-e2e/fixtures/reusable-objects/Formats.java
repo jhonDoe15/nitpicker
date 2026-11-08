@@ -14,9 +14,9 @@ import java.time.format.DateTimeFormatter;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import jakarta.xml.bind.JAXBContext;
+import java.util.Locale;
+import java.util.function.Supplier;
 import org.springframework.context.annotation.Bean;
-import org.springframework.expression.spel.standard.SpelExpressionParser;
-import org.springframework.web.util.pattern.PathPatternParser;
 
 class Formats {
   private static final ObjectMapper SHARED = new ObjectMapper();
@@ -51,20 +51,36 @@ class Formats {
     return new Gson().toJson(value); // violation: ReusableObjectPerCall
   }
 
-  Object spel(String text) {
-    return new SpelExpressionParser().parseExpression(text).getValue(); // violation: ReusableObjectPerCall
+  String localized(LocalDate date, Locale locale) {
+    return date.format(DateTimeFormatter.ofPattern("d MMMM", locale));
   }
 
-  boolean path(String pattern) {
-    return new PathPatternParser().parse(pattern) != null; // violation: ReusableObjectPerCall
+  String english(LocalDate date) {
+    return date.format(DateTimeFormatter.ofPattern("d MMMM", Locale.ENGLISH)); // violation: ReusableObjectPerCall
+  }
+
+  void store(Map<String, Gson> cache, String key) {
+    cache.put(key, new Gson());
+  }
+
+  JsonMapper.Builder baseBuilder() {
+    return JsonMapper.builder();
+  }
+
+  Supplier<ObjectMapper> supplier() {
+    return () -> new ObjectMapper();
   }
 
   JAXBContext context(Class<?> type) throws Exception {
     return JAXBContext.newInstance(type);
   }
 
-  Object unmarshal(Class<?> type, Reader reader) throws Exception {
-    return JAXBContext.newInstance(type).createUnmarshaller().unmarshal(reader); // violation: ReusableObjectPerCall
+  Object unmarshal(Reader reader) throws Exception {
+    return JAXBContext.newInstance(Formats.class).createUnmarshaller().unmarshal(reader); // violation: ReusableObjectPerCall
+  }
+
+  Object unmarshalAny(Class<?> type, Reader reader) throws Exception {
+    return JAXBContext.newInstance(type).createUnmarshaller().unmarshal(reader);
   }
 
   Object cached(Class<?> type) {
@@ -128,5 +144,39 @@ class Formats {
         new Gson().toJson(SHARED); // violation: ReusableObjectPerCall
       }
     };
+  }
+
+  enum Shared {
+    INSTANCE;
+
+    private final Gson gson;
+
+    Shared() {
+      gson = build();
+    }
+
+    private Gson build() {
+      return new GsonBuilder().create();
+    }
+
+    @Bean
+    ObjectMapper mapper() {
+      return new ObjectMapper();
+    }
+
+    String toJson(Object value) {
+      return new Gson().toJson(value); // violation: ReusableObjectPerCall
+    }
+  }
+
+  record Settings(String name) {
+    String toJson() {
+      return new Gson().toJson(name); // violation: ReusableObjectPerCall
+    }
+
+    @Bean
+    Gson gson() {
+      return new Gson();
+    }
   }
 }

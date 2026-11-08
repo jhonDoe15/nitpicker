@@ -641,15 +641,15 @@ return (
     </properties>
   </rule>
   <rule name="ReusableObjectPerCall" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
-        message="Build this object once and reuse it: it is safe to share between threads once built, and building it costs far more than using it. Keep it in a static final constant, a final field set in the constructor, or a @Bean.">
+        message="Build this once and reuse it: once built it is safe to share between threads, and building it costs far more than using it. Keep it in a static final constant, a final field set in the constructor, or a @Bean.">
     <priority>2</priority>
     <properties><property name="xpath"><value><![CDATA[
 let $shared := ('ObjectMapper', 'JsonMapper', 'XmlMapper', 'YAMLMapper', 'Gson', 'GsonBuilder', 'JAXBContext',
-      'ValidatorFactory', 'Validator', 'ExpressionParser', 'SpelExpressionParser', 'PathPatternParser',
-      'DateTimeFormatter'),
+      'ValidatorFactory', 'Validator', 'DateTimeFormatter'),
     $caches := ('computeIfAbsent', 'withInitial', 'memoize', 'memoizeWithExpiration'),
+    $stores := ('put', 'putIfAbsent', 'set'),
     $onlyFrom := function($method, $callers) {
-  let $uses := $method/parent::ClassBody//(MethodCall[*[1][self::ArgumentList or self::ThisExpression[not(*)]]]
+  let $uses := $method/..//(MethodCall[*[1][self::ArgumentList or self::ThisExpression[not(*)]]]
       | MethodReference[*[1][self::ThisExpression[not(*)]]])[@MethodName = $method/@Name]
   return $method/@Visibility = 'private' and exists($uses)
     and (every $use in $uses satisfies exists($use/ancestor::* intersect $callers))
@@ -660,10 +660,10 @@ let $shared := ('ObjectMapper', 'JsonMapper', 'XmlMapper', 'YAMLMapper', 'Gson',
     or pmd-java:typeIs('jakarta.enterprise.inject.Produces') or pmd-java:typeIs('javax.enterprise.inject.Produces')])
   or ($method/@Name = ('afterPropertiesSet', 'start') and not($method/FormalParameters/*))
   or ($method/@Name = 'main' and $method[pmd-java:modifiers() = 'static'])
-  or exists($method/ClassType[@SimpleName = $shared])
+  or exists($method/ClassType/descendant-or-self::ClassType[@SimpleName = $shared])
 },
     $setupMethod := function($method) {
-  let $body := $method/parent::ClassBody,
+  let $body := $method/..,
       $starts := ($body/ConstructorDeclaration, $body/CompactConstructorDeclaration, $body/Initializer,
         $body/FieldDeclaration, $body/MethodDeclaration[$start(.)]),
       $helpers := $body/MethodDeclaration[$onlyFrom(., $starts)]
@@ -679,11 +679,15 @@ let $shared := ('ObjectMapper', 'JsonMapper', 'XmlMapper', 'YAMLMapper', 'Gson',
   return exists($node/ancestor::AssignmentExpression[ancestor::MethodDeclaration[1] is $method]
     [*[1][self::FieldAccess or self::VariableAccess[not(@Name = $locals)]]]
     [exists(*[2]/descendant-or-self::* intersect $node)])
+  or exists($node/parent::ArgumentList/parent::MethodCall[@MethodName = $stores])
+},
+    $fromCall := function($node, $method) {
+  exists($node/ArgumentList//VariableAccess[@Name = $method//VariableId/@Name])
 },
     $perCall := function($node) {
   let $method := $node/ancestor::MethodDeclaration[1]
   return exists($method) and not($setupMethod($method)) and not($cached($node, $method))
-    and not($keptInField($node, $method))
+    and not($keptInField($node, $method)) and not($fromCall($node, $method))
 }
 return (
   //ConstructorCall[pmd-java:typeIs('com.fasterxml.jackson.databind.ObjectMapper')
@@ -693,9 +697,7 @@ return (
     or pmd-java:typeIs('tools.jackson.databind.ObjectMapper')
     or pmd-java:typeIs('tools.jackson.databind.json.JsonMapper')
     or pmd-java:typeIs('com.google.gson.Gson')
-    or pmd-java:typeIs('com.google.gson.GsonBuilder')
-    or pmd-java:typeIs('org.springframework.expression.spel.standard.SpelExpressionParser')
-    or pmd-java:typeIs('org.springframework.web.util.pattern.PathPatternParser')]
+    or pmd-java:typeIs('com.google.gson.GsonBuilder')]
   | //MethodCall[@MethodName = 'builder'][*[1][self::TypeExpression
       and (pmd-java:typeIs('com.fasterxml.jackson.databind.json.JsonMapper')
         or pmd-java:typeIs('com.fasterxml.jackson.dataformat.xml.XmlMapper')

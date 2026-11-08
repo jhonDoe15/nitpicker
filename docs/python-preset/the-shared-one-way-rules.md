@@ -491,12 +491,13 @@ self.items.append(item)`), also through a package `__init__` that re-exports it 
   `token is not None` and `len(token)` are fine. Test files are skipped, as in the other presets. A
   module name used as a key of a documentation table (`'pwd': 'pwd#module-pwd'`) is a false
   positive; add an exception for the file.
-- `reusable-object-per-call` reports `pydantic.TypeAdapter(...)`, `jinja2.Environment(...)` and
-  `fastjsonschema.compile(...)` built inside a function that runs on every call, when no argument
-  reads a parameter or local of that function. Each is safe to share and costly to build (a schema
+- `reusable-object-per-call` reports `pydantic.TypeAdapter(...)`, `jinja2.Environment(...)`,
+  `jinja2.sandbox.SandboxedEnvironment(...)` and `fastjsonschema.compile(...)` built inside a function that runs on every call, when no argument
+  reads a parameter, local, nested class or import of that function or an enclosing one. Each is safe to share and costly to build (a schema
   build, a template cache, a compiled validator). Allowed: module level, a class body, `__init__`
   and `__post_init__`, `main`, a `functools.cache`/`lru_cache`/`cached_property` function, a
-  `return` of the object, and an assignment to an attribute or a `global`. `re.compile` and
+  default argument or decorator argument (they run once), a `return` of the object (also wrapped in
+  a call or a literal), and an assignment to an attribute, a subscript or a `global`. `re.compile` and
   `json.JSONEncoder` are not reported: `re` caches compiled patterns and `json.dumps` builds an
   encoder per call itself. Test files are skipped.
 - `io-in-loop` reports an HTTP, database or repository call once per item of a `for`, `while` or
