@@ -1,16 +1,34 @@
 import { readFileSync } from 'node:fs';
 import { hasExceptionRoute } from '../../../shared/messages/exception-sentence.mjs';
+import { definedField } from '../../../shared/messages/messages.mjs';
 import { exceptionHint } from '../../../shared/rules/exceptions.mjs';
 import { JAVA_FORMATTER_TOOLS, NOT_YOUR_JAVA_FORMATTER } from '../adapters/style/java-style.mjs';
+import { lazy } from '../../../shared/rules/finding-helpers.mjs';
 
 export const CATALOG_TOOLS = ['pmd', 'checkstyle', 'spotbugs'];
-const CATALOGS = new Map(CATALOG_TOOLS.map((tool) => [tool, readCatalog(tool)]));
+const catalogs = lazy(() => new Map(CATALOG_TOOLS.map((tool) => [tool, readCatalog(tool)])));
 const CHECKSTYLE_CHECK =
   /^com\.puppycrawl\.tools\.checkstyle\.checks\.(?:\w+\.)*(\w+?)(?:Check)?$/u;
 const SENTENCE_END = /[.!?;]$/u;
+const FIRST_SENTENCE = /^.*?[.!?](?= |$)/u;
+const leadingFormRules = lazy(
+  () =>
+    new Map([
+      ...rulesetNames('spring-ruleset.xml').map((name) => [name, (sentence) => sentence]),
+      ...rulesetNames('spring-test-ruleset.xml').map((name) => [
+        name,
+        (sentence) => FIRST_SENTENCE.exec(sentence)?.[0] ?? sentence,
+      ]),
+    ]),
+);
 
 export function readCatalog(tool) {
   return JSON.parse(readFileSync(new URL(`./${tool}.json`, import.meta.url), 'utf8'));
+}
+
+function rulesetNames(file) {
+  const text = readFileSync(new URL(`../gradle/${file}`, import.meta.url), 'utf8');
+  return [...text.matchAll(/<rule name="([A-Za-z]+)"/gu)].map(([, name]) => name);
 }
 
 export function checkstyleRuleName(source) {
@@ -26,7 +44,7 @@ function layoutFix(javaStyle) {
 }
 
 export function withRuleMessage(finding, { preset = 'java', javaStyle } = {}) {
-  const catalog = CATALOGS.get(finding.tool);
+  const catalog = catalogs().get(finding.tool);
   if (catalog === undefined) {
     return finding;
   }
@@ -35,7 +53,7 @@ export function withRuleMessage(finding, { preset = 'java', javaStyle } = {}) {
   return {
     ...finding,
     rule,
-    message: ruleMessage({ ...finding, rule }, entry, { preset, javaStyle }),
+    ...ruleMessage({ ...finding, rule }, entry, { preset, javaStyle }),
   };
 }
 
@@ -46,16 +64,24 @@ export function applyRuleMessages(findings, options) {
 function ruleMessage(finding, entry, { preset, javaStyle }) {
   const message = finding.message.trim();
   if (hasExceptionRoute(message)) {
-    return message;
+    return { message };
   }
   const fix = entry?.layout === true ? layoutFix(javaStyle) : entry?.fix;
   const liftable =
     (preset === 'java' || finding.path.endsWith('.java')) &&
     finding.classification === 'enforceable' &&
     entry?.mayBeIntended !== false;
-  return [
-    SENTENCE_END.test(message) ? message : `${message}.`,
-    ...(typeof fix === 'string' ? [fix] : []),
-    ...(liftable ? [exceptionHint(`${finding.tool}/${finding.rule}`, finding.path)] : []),
-  ].join(' ');
+  const sentence = SENTENCE_END.test(message) ? message : `${message}.`;
+  return {
+    message: [
+      sentence,
+      ...(typeof fix === 'string' ? [fix] : []),
+      ...(liftable ? [exceptionHint(`${finding.tool}/${finding.rule}`, finding.path)] : []),
+    ].join(' '),
+    ...definedField('allowedForm', typeof fix === 'string' ? fix : leadingForm(finding, sentence)),
+  };
+}
+
+function leadingForm({ tool, rule }, sentence) {
+  return tool === 'pmd' ? leadingFormRules().get(rule)?.(sentence) : undefined;
 }

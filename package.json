@@ -37,6 +37,7 @@
     "test": "vitest run --config vitest.config.mts",
     "check": "node scripts/check.mjs",
     "gen:checks": "node scripts/gen-checks.mjs",
+    "gen:schema": "node scripts/schema/gen-config-schema.mjs",
     "gen:rules": "node scripts/reference/gen-rules.mjs",
     "prepack": "node scripts/reference/gen-rules.mjs --data",
     "gen:overlap-probe": "node scripts/gen-overlap-probe.mjs",
@@ -69,10 +70,15 @@
     "!languages/*/reference/**",
     "!languages/python/ruff/ruff-rules.json",
     "!languages/java/gradle/rulesets/**",
-    "skills/**"
+    "skills/**",
+    "spec/config.schema.json",
+    "spec/findings.schema.json"
   ],
   "exports": {
-    "./package.json": "./package.json"
+    "./package.json": "./package.json",
+    "./config.schema.json": "./spec/config.schema.json",
+    "./spec/config.schema.json": "./spec/config.schema.json",
+    "./spec/findings.schema.json": "./spec/findings.schema.json"
   },
   "peerDependencies": {
     "@types/node": ">=20",
