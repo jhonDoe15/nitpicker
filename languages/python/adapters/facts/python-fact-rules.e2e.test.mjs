@@ -460,3 +460,37 @@ describe.skipIf(!pythonE2eEnabled)('copy scope', () => {
     ]);
   });
 });
+
+describe.skipIf(!pythonE2eEnabled)('public-alternative-bypass over Python packages', () => {
+  const billing = {
+    'src/shop/__init__.py': '',
+    'src/shop/billing/__init__.py': 'from .invoice import Invoice\n\n__all__ = ["Invoice"]\n',
+    'src/shop/billing/invoice.py': 'class Invoice:\n    pass\n\n\ndef draft():\n    return 1\n',
+    'src/shop/billing/refund.py': 'from shop.billing.invoice import Invoice\n\nREFUND = Invoice\n',
+  };
+
+  it('reports an import around the package that re-exports the name, and keeps the rest', () => {
+    const files = {
+      ...billing,
+      'src/shop/orders.py':
+        'from shop.billing.invoice import Invoice, draft\n\nORDER = (Invoice, draft)\n',
+      'src/shop/carts.py': 'from shop.billing import Invoice\n\nCART = Invoice\n',
+      'tests/test_orders.py':
+        'from shop.billing.invoice import Invoice\n\n\ndef test_it():\n    assert Invoice\n',
+    };
+
+    expect(
+      findingsOf('public-alternative-bypass', files).map(({ path, identity, allowedForm }) => [
+        path,
+        identity,
+        allowedForm,
+      ]),
+    ).toEqual([
+      [
+        'src/shop/orders.py',
+        'target:src/shop/billing/invoice.py',
+        'Import it from src/shop/billing/__init__.py.',
+      ],
+    ]);
+  });
+});

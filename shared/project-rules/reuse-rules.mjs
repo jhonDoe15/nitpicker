@@ -5,7 +5,8 @@ export function entryPointRule(ids, enforcedBy) {
   return {
     id: ids.publicAlternativeBypass,
     check: 'entry-points',
-    limit: 'none: importing around a public entry point fails',
+    limit:
+      "none: importing around a public entry point fails, an import from inside a folder of a name the folder's entry point re-exports (TypeScript: the `index.ts` of a top-level source folder; Python: a package's `__init__.py`; Kotlin: a `typealias` in an enclosing package, for Kotlin code)",
     enforcedBy,
     notApplicable: { java: NO_REEXPORT },
   };

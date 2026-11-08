@@ -7,6 +7,7 @@ import { pathInside, sourceFilesUnder } from '../review-rules/java-sources.mjs';
 import { definitionKey } from './jvm-definition-keys.mjs';
 import { fileBindings, importFacts, projectIndex, referenceScope } from './jvm-references.mjs';
 import { readJvmDefinitions } from './source/jvm-definitions.mjs';
+import { kotlinEntryPointFindings, typeAliasReexports } from './kotlin-type-aliases.mjs';
 
 const REUSE_TOOL = 'structure';
 const COUPLING_TOOL = 'coupling';
@@ -84,7 +85,10 @@ export function jvmReuseFacts(projectRoot, { projects, kotlin = false, exclude }
         neutralDefinition(entry.file, definition, entry),
       ),
     ),
-    imports: bound.flatMap((entry) => importFacts(index, entry)),
+    imports: bound.flatMap((entry) => [
+      ...importFacts(index, entry),
+      ...typeAliasReexports(index, entry),
+    ]),
   };
 }
 
@@ -138,5 +142,6 @@ export function readJvmReuseFindings(projectRoot, { projects, kotlin = false, po
       rules: SHARED_USAGE_RULES,
       policy: { exceptions, ...(policy.layout === undefined ? {} : { layout: policy.layout }) },
     }),
+    ...(kotlin ? kotlinEntryPointFindings(facts, exceptions) : []),
   ];
 }

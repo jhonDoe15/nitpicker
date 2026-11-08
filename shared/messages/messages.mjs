@@ -34,6 +34,7 @@ export const BASE_MESSAGES = {
   restatingDocComment: `This doc comment only restates {name}. ${allowedForm('Delete it, or say what the name cannot: a unit, a limit, an edge case or why.')} ${EXCEPTION_HINT}`,
   longDocComment: `This doc comment's description is {lines} lines (limit {limit}). ${allowedForm('Keep the non-obvious point, a unit, a limit or an edge case, and put the rest in names and types.')} ${EXCEPTION_HINT}`,
   slowTest: `{name} took {seconds} s; {kind} test may take {limit} s. ${allowedForm('{fix}.')} ${EXCEPTION_HINT}`,
+  publicAlternativeBypass: `{names} is imported from {target}, which {entry} re-exports. ${allowedForm('Import it from {entry}.')} ${EXCEPTION_HINT}`,
   sharedUsedByOneFeature: `{path} is used only by feature {feature}. ${allowedForm('Move it into {directory}.')} ${EXCEPTION_HINT}`,
   duplicateDefinition: `{name} is also defined with {same} in {others}. ${allowedForm('{fix}')} ${EXCEPTION_HINT}`,
   siblingCopyEdit: `{name} is edited here but not in {others}, where it has almost the same code. ${allowedForm('Edit it there too, or merge the copies.')} ${EXCEPTION_HINT}`,

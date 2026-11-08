@@ -8,6 +8,10 @@ import {
   sharedUsageFindings,
   sharedUsedByOneFeature,
 } from '../features/shared-usage.mjs';
+import {
+  publicAlternativeBypasses,
+  publicAlternativeFindings,
+} from '../entry-points/public-alternatives.mjs';
 import { duplicateDefinitionFindings } from '../reuse/duplicate-definitions.mjs';
 import { exportedNameCollisionFindings } from '../reuse/name-collisions.mjs';
 import { uniqueFindings } from '../reuse/reuse-finding.mjs';
@@ -60,6 +64,8 @@ const EVALUATORS = {
       ),
       context,
     ),
+  'public-alternative-bypass': ({ facts, context }) =>
+    publicAlternativeFindings(publicAlternativeBypasses(facts), context),
   'test-only-export': ({ facts, context }) => testOnlyFactFindings(facts, context),
   'doc-comment-content': ({ facts, context }) => docCommentFindings(facts.docComments, context),
   'test-console-output': ({ facts, context, options }) =>
