@@ -7,7 +7,7 @@ where Python allows it. Each message names the allowed form and the `python.exce
 lifts the rule for some paths. The per-file rules live in `languages/python/rules/review/`
 and the project-wide ones, which resolve imports across files, in `review/project/`. The
 TypeScript `nitpicker/no-fixed-sleep-synchronization` check is `sleep-in-test` above.
-`singular-and-plural-field`, `exhaustive-enum-predicate` and `forwarding-wrapper` check production
+`singular-and-plural-field`, `exhaustive-enum-predicate`, `generated-member-cycle` and `forwarding-wrapper` check production
 sources only, never test files, as in TypeScript (its production scope) and Java (main sources); a
 test helper that forwards, a fixture factory with `tag` and `tags`, or a test that compares a few
 members is not reported.
@@ -118,6 +118,18 @@ self in (Stage.A, Stage.B)`), like the boolean each constant declares in the Jav
 assert_never(value)`, or an `if`/`elif` chain ending in `else: assert_never(value)`; a `case _:`
   that returns a boolean keeps the finding. A named constant set declared once (`OPEN = frozenset(...)`,
   then `s in OPEN`) is one classification point and is not flagged.
+- `generated-member-cycle` (Java and Kotlin: `pmd/GeneratedMemberCycle`): a field of a class whose
+  `__eq__` is generated (`@dataclass` without `eq=False`, `pydantic.dataclasses.dataclass`, and the
+  attrs decorators `attrs.define`, `attrs.frozen`, `attrs.mutable`, `attr.s` and `attr.dataclass`
+  without `eq=False`) that closes a cycle of such classes: a class that holds itself both as a
+  single field and in a collection (a parent and its children), or classes that refer to each other.
+  Field types are read through `Optional`, `Union`, `|`, `Annotated` and string annotations, and
+  through the type arguments of any generic (`list[Item]`, `dict[str, Item]`), resolved through
+  imports, `TYPE_CHECKING` imports included. One finding per cycle, on the single field that points
+  back. `ClassVar`, `InitVar` and `Callable` fields and fields with `field(compare=False)`
+  (`attrs.field(eq=False)`) are left out. Comparing or hashing two objects of such a cycle recurses
+  until `RecursionError`; the generated `__repr__` is not checked, since `dataclasses` and attrs
+  guard it against recursion. Production sources only.
 - `forwarding-wrapper` (TypeScript: `nitpicker/no-forwarding-wrapper`): an undecorated
   module-level function whose body (after a docstring) is `return target(...)`, or `return await
 target(...)` in an `async def`, passing its own parameters in order (by position or as
