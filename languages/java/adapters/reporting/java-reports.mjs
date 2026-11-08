@@ -87,7 +87,7 @@ export function readJavaFindings(projectRoot, options = {}) {
       ...readInlineSuppressionFindings(projectRoot, lintedRoots(manifest)),
       ...springFindings(projectRoot, manifest, options),
     ],
-    { preset, testRoots: manifest.testSourceRoots ?? [], javaStyle: options.javaStyle },
+    { preset, javaStyle: options.javaStyle },
   );
   const locate = modulesUnitLocator(projectRoot, modules, kotlinPreset);
   return { findings: withJavaCountRatchets(findings, locate) };

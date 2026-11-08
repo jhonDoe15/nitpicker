@@ -192,8 +192,14 @@ describe('withRuleMessage', () => {
       'This code repeats B.java:3. Keep one copy and call it from both places. If the repetition is intended, add A.java or B.java to "exclude" in nitpicker.config.json.',
     );
     const archunit = finding('archunit', 'layers', 'Layer violated');
+    const errorprone = finding('errorprone', 'JdkObsolete', 'Stack is a nonstandard class.');
 
-    expect(applyRuleMessages([spring, clone, archunit])).toEqual([spring, clone, archunit]);
+    expect(applyRuleMessages([spring, clone, archunit, errorprone])).toEqual([
+      spring,
+      clone,
+      archunit,
+      errorprone,
+    ]);
   });
 });
 
