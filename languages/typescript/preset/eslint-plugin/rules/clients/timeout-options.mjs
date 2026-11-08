@@ -54,25 +54,18 @@ export function textOf(context, node) {
   return visible.complete ? visible.text : undefined;
 }
 
-function settingValue(text, start) {
-  const rest = text.slice(start).replaceAll(/%3D/giu, '=');
-  const first = [...rest].findIndex((char) => !SEPARATORS.has(char));
-  return first === -1 ? '' : (/^[\w.]*/u.exec(rest.slice(first))?.[0] ?? '');
-}
-
-function keyEnds(text, key) {
-  const ends = [];
-  let at = text.indexOf(key);
-  while (at !== -1) {
-    ends.push(at + key.length);
-    at = text.indexOf(key, at + key.length);
-  }
-  return ends;
+function settingValue(rest) {
+  const decoded = rest.replaceAll(/%3D/giu, '=');
+  const first = [...decoded].findIndex((char) => !SEPARATORS.has(char));
+  return first === -1 ? '' : (/^[\w.]*/u.exec(decoded.slice(first))?.[0] ?? '');
 }
 
 export function carriesTimeout(text) {
   return TIMEOUT_KEYS.some((key) =>
-    keyEnds(text, key).some((end) => !ZERO_VALUE.test(settingValue(text, end))),
+    text
+      .split(key)
+      .slice(1)
+      .some((rest) => !ZERO_VALUE.test(settingValue(rest))),
   );
 }
 
