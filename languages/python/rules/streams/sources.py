@@ -1,6 +1,6 @@
 import ast
 
-STREAMING_METHODS = {"iterator", "yield_per", "stream", "stream_scalars", "partitions"}
+STREAMING_METHODS = {"iterator", "yield_per", "stream_scalars", "partitions"}
 CURSOR_METHODS = {"cursor"}
 
 
@@ -17,12 +17,42 @@ def calls_in_chain(node):
             return
 
 
-def streams_results(call):
+def is_true(node):
+    return isinstance(node, ast.Constant) and node.value is True
+
+
+def option_dict_streams(node):
+    return isinstance(node, ast.Dict) and any(
+        isinstance(key, ast.Constant)
+        and key.value == "stream_results"
+        and is_true(value)
+        for key, value in zip(node.keys, node.values)
+    )
+
+
+def has_stream_option(call):
     return any(
-        keyword.arg == "stream_results"
-        and isinstance(keyword.value, ast.Constant)
-        and keyword.value.value is True
+        (keyword.arg == "stream_results" and is_true(keyword.value))
+        or (keyword.arg == "execution_options" and option_dict_streams(keyword.value))
         for keyword in call.keywords
+    )
+
+
+def streams_statement(call):
+    return (
+        isinstance(call.func, ast.Attribute)
+        and call.func.attr == "stream"
+        and bool(call.args)
+        and not isinstance(call.args[0], ast.Constant)
+    )
+
+
+def streams_results(call):
+    inner = [nested for argument in call.args for nested in calls_in_chain(argument)]
+    return (
+        has_stream_option(call)
+        or streams_statement(call)
+        or any(has_stream_option(nested) for nested in inner)
     )
 
 

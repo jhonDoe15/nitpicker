@@ -76,6 +76,16 @@ public final class RowExports {
     return rows.streamAllBy().limit(BATCH).toList();
   }
 
+  public Map<String, Long> perPath() {
+    return rows.streamAllBy().collect(Collectors.groupingBy(Row::path, Collectors.counting()));
+  }
+
+  public List<Row> reassigned() {
+    Stream<Row> all = rows.streamAllBy();
+    all = all.limit(BATCH);
+    return all.toList();
+  }
+
   public List<Row> listed() {
     return rows.findAllBy();
   }

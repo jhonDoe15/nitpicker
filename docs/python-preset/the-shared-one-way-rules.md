@@ -513,9 +513,11 @@ self.items.append(item)`), also through a package `__init__` that re-exports it 
   `nitpicker/no-costly-collection-form` (TypeScript), `pmd/ListUsedAsSet`, `pmd/LinearLookupInLoop`
   and `pmd/SortForExtreme` (Java) and `kotlin-source/` rules of the same names (Kotlin).
 - `streamed-rows-collected` reports a list that collects every row of a streamed query: a loop
-  over `qs.iterator()`, `yield_per(...)`, `stream()`, `stream_scalars()`, `partitions()`, an
-  `execution_options(stream_results=True)` query, a named or server-side cursor, or a name bound to
-  one, that appends to a list declared before the loop and never cleared in it, and the same
+  over `qs.iterator()`, `yield_per(...)`, `session.stream(statement)`, `stream_scalars()`,
+  `partitions()`, a query run with `stream_results=True` (as `execution_options` on the statement,
+  the connection or the `execute` call), a named or server-side cursor, or a name bound to one, that
+  appends to a list (`[]` or `list()`, annotated or not) declared before the loop, never cleared in
+  it and with no `break` or `return` in the loop, and the same
   collection with a comprehension, `list(...)` or `sorted(...)`. Allowed form: flush a fixed-size
   batch inside the loop and the rest once after it. Test files are skipped. The same form runs as
   `nitpicker/no-collected-stream-rows` (TypeScript) and `pmd/StreamedRowsCollected` (Java and

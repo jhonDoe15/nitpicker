@@ -20,3 +20,10 @@ def named(connection):
     with connection.cursor(name="assets") as cursor:
         cursor.execute("select id from assets")
         return list(cursor)
+
+
+def typed_jobs(session, statement):
+    jobs: list[int] = []
+    for row in session.execute(statement.execution_options(stream_results=True)):
+        jobs.append(row.id)
+    return jobs
