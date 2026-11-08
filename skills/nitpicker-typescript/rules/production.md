@@ -3,6 +3,9 @@
 Part of the [nitpicker-typescript](../SKILL.md) skill. Write these forms from the start; the gate is a backstop.
 
 - `async`/`await`, never `.then()`. No floating promises.
+- A timeout does not stop the work it races: `Promise.race([op(), rejectAfter(ms)])` leaves `op` running
+  (`timeout-abandons-operation`). Give `op` the `AbortSignal` the timeout aborts (`{ signal: controller.signal }`,
+  or `AbortSignal.timeout(ms)` straight to an API that takes `signal`) and drop the race.
 - Fan-out: bound concurrent remote or message calls. Run each call through a limiter created outside the loop (`pLimit(8)`, p-queue `concurrency`, Bottleneck `maxConcurrent`) or work through fixed-size chunks. RxJS: `mergeMap(fn, 8)` or `concatMap`, never `forkJoin(items.map(load))`. Never `Promise.all(items.map(send))` over a runtime collection.
 - Wire clients, servers, pools and config in the composition root (`src/main/composition-root.ts`,
   `main.ts` or `server.ts`) and pass them into factories; read `process.env` only there.

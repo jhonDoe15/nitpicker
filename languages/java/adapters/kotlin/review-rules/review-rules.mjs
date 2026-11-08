@@ -3,6 +3,7 @@ import { LOAD_EFFECT_RULE } from '../../../messages/load-effects.mjs';
 import { FORWARDING_RULE } from './main/forwarding-wrappers.mjs';
 import { RECURSIVE_MAP_UPDATE_RULE } from './main/map-updates/recursive-map-update.mjs';
 import { SINGULAR_PLURAL_RULE } from './main/member-names.mjs';
+import { TIMEOUT_RULE } from './main/timeouts/timeouts.mjs';
 import { UNBOUNDED_POOL_RULE } from './main/thread-pools/unbounded-pools.mjs';
 import { UNUSED_OPTION_RULE } from './main/unused-options/unused-options.mjs';
 import { VALIDATION_TARGET_RULE } from './validation/validation-targets.mjs';
@@ -24,6 +25,7 @@ export const KOTLIN_REVIEW_EXCEPTION_RULES = [
   ENUM_PREDICATE_RULE,
   FORWARDING_RULE,
   SINGULAR_PLURAL_RULE,
+  TIMEOUT_RULE,
   VALIDATION_TARGET_RULE,
   LOAD_EFFECT_RULE,
   UNBOUNDED_POOL_RULE,

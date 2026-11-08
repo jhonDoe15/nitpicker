@@ -1,0 +1,7 @@
+[
+  {
+    "tool": "python-rules",
+    "rule": "timeout-abandons-operation",
+    "mention": "asyncio.timeout"
+  }
+]
