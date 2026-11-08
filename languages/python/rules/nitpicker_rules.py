@@ -79,6 +79,7 @@ def too_deep(path, subject):
 
 
 def review_findings(project):
+    from review.members.cycles import member_cycle_findings
     from review.project.enum_predicates import enum_predicate_findings
     from review.project.forwarding import forwarding_findings
     from review.project.index import ProjectIndex
@@ -90,6 +91,7 @@ def review_findings(project):
         "forwarding-wrapper": lambda: forwarding_findings(index),
         "exhaustive-enum-predicate": lambda: enum_predicate_findings(index),
         "unused-option": lambda: unused_option_findings(index, options),
+        "generated-member-cycle": lambda: member_cycle_findings(index),
     }
     found = []
     for name, run in checks.items():

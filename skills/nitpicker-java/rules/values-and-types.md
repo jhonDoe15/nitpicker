@@ -43,6 +43,11 @@ Part of the [nitpicker-java](../SKILL.md) skill. Write these forms from the star
   changes the same map, not even from a callback it starts (`pmd/RecursiveMapUpdate`). Attach the
   cleanup to the returned value:
   `map.computeIfAbsent(key, k -> start(k)).whenComplete((r, e) -> map.remove(key, r))`.
+- Lombok: a back reference (a child's `parent`, an item's `order`) carries `@ToString.Exclude` and
+  `@EqualsAndHashCode.Exclude`, or the generated members recurse until `StackOverflowError`
+  (`pmd/GeneratedMemberCycle`). `@Data` or `@EqualsAndHashCode` on a subclass of a class with fields
+  states `callSuper = true`, or `callSuper = false` when the inherited fields do not count
+  (`pmd/GeneratedEqualsSkipsSuperclass`).
 - Data and results: `record` for data, a `sealed interface` of records for an outcome, and an
   exhaustive `switch` expression over it. A `switch` statement needs `default`.
 - Enums: to sort the constants of one of your enums into two groups, classify every constant: a
