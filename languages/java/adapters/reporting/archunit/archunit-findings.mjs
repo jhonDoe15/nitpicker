@@ -1,4 +1,4 @@
-import { existsSync, readdirSync, readFileSync } from 'node:fs';
+import { existsSync, readdirSync, readFileSync, realpathSync } from 'node:fs';
 import path from 'node:path';
 import { ingestArchunit } from '../../../ingest/archunit.mjs';
 import { exceptionMatcher } from '../../../../../shared/rules/exceptions.mjs';
@@ -29,8 +29,8 @@ export function springArchFindings(context) {
 }
 
 function archunitReportText(archunitRoot, name) {
-  const file = path.resolve(archunitRoot, name);
-  if (!file.startsWith(path.resolve(archunitRoot) + path.sep)) {
+  const file = realpathSync(path.resolve(archunitRoot, name));
+  if (!file.startsWith(realpathSync(archunitRoot) + path.sep)) {
     throw new Error(`ArchUnit report ${name} is outside ${archunitRoot}.`);
   }
   return readFileSync(file, 'utf8');
@@ -41,7 +41,7 @@ export function archunitFindings({ reportRoot, projectRoot, sourceRoots, manifes
   const archunitReports = existsSync(archunitRoot)
     ? readdirSync(archunitRoot)
         .filter((name) => name.endsWith('.xml'))
-        .toSorted((left, right) => left.localeCompare(right, 'en'))
+        .sort()
     : [];
   const locate = classLocator({ projectRoot, sourceRoots, manifest });
   return archunitReports.flatMap(
