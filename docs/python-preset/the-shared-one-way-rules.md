@@ -894,13 +894,18 @@ t)`, `asyncio.timeout(t)`, `fail_after(t)`, `wait(t)`) inside `pytest.raises` or
   retry set in test code: the `flaky` mark of pytest-rerunfailures, pytest-retry and the `flaky`
   package (`@pytest.mark.flaky(reruns=3)`, `@pytest.mark.flaky(retries=2)`, a bare
   `@pytest.mark.flaky`, in `pytestmark`, in `pytest.param(..., marks=...)` or added with
-  `add_marker`), the `flaky` package's `@flaky` decorator, and a tenacity, backoff or stamina retry
-  decorator on a test function or method. A literal `reruns=0`, `retries=0` or `max_runs=1` is not
-  a retry. A retry decorator on a helper that polls is not reported. The marks override the
+  `add_marker` or `applymarker`, also by the name `"flaky"`), the `flaky` package's `@flaky`
+  decorator, and a tenacity, backoff, stamina, retry or retrying retry decorator on a test function
+  or method. A literal `reruns=0`, `retries=0` or `max_runs=1` is not a retry. A retry decorator
+  on a function whose name does not start with `test`, such as a helper that polls, is not
+  reported. The marks override the
   `-o reruns=0` pin, so the test run backs the rule up: a test that fails and then passes on a
   later attempt (a `rerun` or `retried` report, or a second setup or call of the same test)
   counts as failed, with the first failure in the message. pytest-rerunfailures, pytest-retry and
-  the `flaky` plugin are covered, also under xdist.
+  the `flaky` plugin are covered, also under xdist, and so is a `retries` value in the config of
+  pytest-retry, which is not pinned. That run-time failure is `tests/tests-failed`, so an exception
+  for `retry-in-test` does not lift it. Only the rule sees a retry decorator, which retries inside
+  the test call, and the forms under unittest, nose2 and Django, which run no retry plugin.
 - `mocked-subject-in-test` (Java and Kotlin: `MockedSubjectInTest`; TypeScript:
   `nitpicker/no-mocking-subject-under-test`) reports a test that replaces the code it is named after.
   The subject is the module a test file is named for (`tests/test_cart.py` or `cart_test.py` for the

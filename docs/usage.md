@@ -2509,8 +2509,8 @@ their own setting, `tools.tests.timeouts` (see [Test timeout tiers](#test-timeou
 `tools.tests.precedence` decides one thing: whether the retries set in the test runner's config apply.
 Without the opt-in, a test that fails once fails the run as far as config-level retries in Vitest and
 Mocha go. Retries set in test code (a per-test `{ retry }`, `vi.setConfig`, `jest.retryTimes`, Mocha's
-`this.retries`) are not controlled by this setting and are tracked in
-[#630](https://github.com/jhonDoe15/nitpicker/issues/630).
+`this.retries`) are not controlled by this setting: they are reported in every preset
+(`nitpicker/no-test-retry`, Java and Kotlin `RetryInTest`, Python `retry-in-test`).
 
 | `precedence`                              | Retries                                                                                                                                                                                                                                                            |
 | ----------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
