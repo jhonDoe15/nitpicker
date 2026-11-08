@@ -80,7 +80,8 @@ that make sense for Kotlin, on Gradle and on Maven. Three kinds of check exist, 
 for each whether it applies and what differs.
 
 **Source-independent checks apply unchanged.** The configuration checks (`spring/open-in-view`,
-`spring/ddl-auto`, `spring/risky-startup-flags`, the secret and profile checks) read the project's
+`spring/ddl-auto`, `spring/risky-startup-flags`, `spring/datasource-without-timeout`, the secret and
+profile checks) read the project's
 `application*.properties` and `application*.yml`, not the sources, so Kotlin projects get all of
 them. `spring/open-in-view` looks for JPA in the main sources and now scans `.kt` files for the
 `jakarta.persistence` and `javax.persistence` imports as well as `.java`. The ArchUnit rules (layers,

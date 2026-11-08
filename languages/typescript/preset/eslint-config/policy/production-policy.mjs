@@ -103,6 +103,7 @@ function productionGuardRules({ react, security }) {
     'nitpicker/no-orm-schema-sync': 'error',
     'nitpicker/no-shell-string-command': 'error',
     'nitpicker/require-process-timeout': 'error',
+    'nitpicker/require-client-timeout': 'error',
     'nitpicker/no-unsafe-path-join': 'error',
     'nitpicker/timeout-abandons-operation': ['error', httpClientOptions({ react, security })],
     'nitpicker/require-error-listener': 'error',
@@ -154,7 +155,11 @@ export function productionPolicyConfigFor(layout, options = {}) {
       files: securitySupportGlobs(),
       plugins: { nitpicker: nitpickerRules },
       rules: Object.fromEntries(
-        [...SECURITY_RULES, 'nitpicker/timeout-abandons-operation'].map((rule) => [rule, 'off']),
+        [
+          ...SECURITY_RULES,
+          'nitpicker/timeout-abandons-operation',
+          'nitpicker/require-client-timeout',
+        ].map((rule) => [rule, 'off']),
       ),
     },
     {

@@ -46,6 +46,9 @@ const TLS_ALLOWED =
 const TIMEOUT_ALLOWED =
   'Pass a timeout in seconds: `urllib.request.urlopen(url, timeout=10)`, `session.get(url, timeout=10)`, or set `socket.setdefaulttimeout(10)` once at startup for `urllib`; an `httpx` client keeps its 5 second default unless you pass another number (`httpx.Client(timeout=10)`), never `timeout=None`.';
 
+const CLIENT_TIMEOUT_ALLOWED =
+  'Set a statement timeout once for the connection: `psycopg.connect(dsn, options="-c statement_timeout=30000")`, `ConnectionPool(dsn, kwargs={"options": "-c statement_timeout=30000"})`, `asyncpg.create_pool(dsn, command_timeout=30)`, `create_engine(url, connect_args={"options": "-c statement_timeout=30000"})` (asyncpg engines: `connect_args={"command_timeout": 30}`), or Django `"OPTIONS": {"options": "-c statement_timeout=30000"}`. An exception fits only for a connection that is meant to wait without a limit, such as a migration runner.';
+
 const LOADING = [
   [
     'torch.',
@@ -125,6 +128,13 @@ export const RULES_SECURITY_HINTS = [
     rules: ['http-without-timeout'],
     describe: (subject) => `\`${subject}\` can wait forever: it has no timeout`,
     allowed: TIMEOUT_ALLOWED,
+  },
+  {
+    tool: RULES_TOOL,
+    rules: ['client-without-timeout'],
+    describe: (subject) =>
+      `\`${subject}\` has no statement timeout, so a stuck query holds the request and its database connection for good`,
+    allowed: CLIENT_TIMEOUT_ALLOWED,
   },
   {
     tool: RULES_TOOL,

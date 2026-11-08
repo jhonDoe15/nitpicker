@@ -2,6 +2,10 @@ import { exceptionRoute } from '../../../../shared/exceptions/rule-names.mjs';
 import { nextOccurrence } from '../../../../shared/rules/finding-helpers.mjs';
 import { readSpringDocuments, usesJpa } from './spring-config-files.mjs';
 import { ACTUATOR_RULE } from './config-rules/actuator.mjs';
+import {
+  DATASOURCE_TIMEOUT_MESSAGE,
+  datasourceTimeoutSites,
+} from './config-rules/datasource-timeout.mjs';
 import { DIAGNOSTIC_RULES } from './config-rules/diagnostics.mjs';
 import { isPlaceholder, isTest, isTestOrLocal, isTrue } from './config-rules/profiles.mjs';
 import { relaxKey } from './spring-config-parser.mjs';
@@ -54,6 +58,7 @@ const ENTRY_RULES = [
 export const SPRING_CONFIG_RULES = [
   'open-in-view',
   'missing-enable',
+  'datasource-without-timeout',
   ...ENTRY_RULES.map(({ rule }) => rule),
 ];
 
@@ -130,6 +135,16 @@ export function readSpringConfigFindings(
 function documentFindings({ projectRoot, sourceRoots, documents, occurrences }) {
   return [
     ...(usesJpa(projectRoot, sourceRoots) ? openInViewFindings(documents, occurrences) : []),
+    ...datasourceTimeoutSites(documents).map(({ document, entry }) =>
+      buildFinding({
+        rule: 'datasource-without-timeout',
+        document,
+        entry,
+        key: relaxKey(entry.key),
+        message: DATASOURCE_TIMEOUT_MESSAGE,
+        occurrences,
+      }),
+    ),
     ...ENTRY_RULES.flatMap((rule) => entryFindings(documents, rule, occurrences)),
   ];
 }
