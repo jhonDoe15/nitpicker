@@ -7,6 +7,8 @@ import { aliasesFromConfig } from './aliases.mjs';
 import { environmentsFromConfig } from './environments.mjs';
 
 const READ_SCRIPT = loaderScript(
+  "process.env.VITEST = 'true';",
+  "process.env.NODE_ENV = 'test';",
   `const { readEnvironment } = await import(${JSON.stringify(import.meta.url)});`,
   'const [configFile, projectRoot, ...resolveRoots] = process.argv.slice(1);',
   'report({ value: await readEnvironment({ configFile, projectRoot, resolveRoots }) });',
@@ -98,6 +100,5 @@ export function readConfigInChild({ configFile, projectRoot, resolveRoots, timeo
     name: path.relative(projectRoot, configFile).split(path.sep).join('/'),
     projectRoot,
     timeoutMs,
-    env: { VITEST: 'true', NODE_ENV: 'test' },
   });
 }
