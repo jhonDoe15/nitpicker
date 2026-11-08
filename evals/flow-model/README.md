@@ -232,37 +232,41 @@ retains; it is not a token or cost benchmark, and no token or cost savings are c
 
 `census/run.mjs` runs the engine, without contracts or input domains, on every top-level function
 declaration and function-valued `const` in the production `.mjs` files under `core/`, `shared/` and
-`languages/` (tests, fixtures, test support and e2e folders left out). It writes
+`languages/` (tests, fixtures, test support, `__tests__` and e2e folders left out). It writes
 `reports/flow-model/census.json`. Each function falls in one class:
 
 - `complete`: no partial reason at all. Without contracts this only happens for functions that call
   nothing the engine cannot see.
 - `contractsOnly`: partial only because of unknown calls, unknown dispatch, missing helpers or
-  guards on values without a declared domain. Contracts and input domains could make these
-  complete without new syntax.
-- `needsSyntax`: at least one unsupported form, loop, `async` function, call-depth or state-budget
-  limit.
+  guards on values without a declared domain. This is an upper bound on what contracts and input
+  domains could complete without new syntax: a guard on a value with no finite domain stays
+  unknown even with contracts.
+- `needsSyntax`: anything else, that is an unsupported form, a loop, an `async` function, or the
+  call-depth or state-budget limit.
 
-Measured on main (2026-11-08):
+Measured on main at 7d3c5aa2 (2026-11-08):
 
 | Measure                                             |          Count |
 | --------------------------------------------------- | -------------: |
-| Files / functions                                   | 1,419 / 10,437 |
+| Files / functions                                   | 1,406 / 10,388 |
 | Extraction errors                                   |              0 |
-| `complete`                                          |    47 (0.45 %) |
-| `contractsOnly`                                     | 1,483 (14.2 %) |
-| `needsSyntax`                                       | 8,907 (85.3 %) |
-| Functions with a closure (arrow function)           |          4,671 |
-| Functions with an array literal                     |          3,527 |
+| `complete`                                          |    46 (0.44 %) |
+| `contractsOnly`                                     | 1,480 (14.2 %) |
+| `needsSyntax`                                       | 8,862 (85.3 %) |
+| Functions with an unsupported form                  | 8,559 (82.4 %) |
+| Functions with a closure (arrow function)           |          4,635 |
+| Functions with an array literal                     |          3,521 |
 | Functions with a binary operator (`??`, arithmetic) |          2,151 |
 | Functions with an optional chain                    |          1,454 |
-| Functions with a loop                               |          1,605 |
+| Functions with a loop                               |          1,600 |
 
-The `complete` functions are trivial: none has a modeled effect, because no contract was supplied.
-The forms that block most functions are the everyday ones of this code base (callbacks passed to
-`map`/`filter`, array literals, `??`, optional chains, loops), not rare constructs. Supporting them
-means modelling closures, collections and iteration, which is a general interpreter, the universal
-framework this spike set out not to build.
+The per-form rows are lower bounds: a form only counts when the engine reaches it on an explored
+path, so code after an early return or in a pruned branch adds nothing. The `complete` functions are
+trivial: none has a modeled effect, because no contract was supplied. The forms that block most
+functions are the everyday ones of this code base (callbacks passed to `map`/`filter`, array
+literals, `??`, optional chains, loops), not rare constructs. Supporting them means modelling
+closures, collections and iteration, which is a general interpreter, the universal framework this
+spike set out not to build.
 
 ## Limits
 
@@ -307,11 +311,11 @@ check that no observed violation is missing, under stand-ins that never mutate o
 The oracle shares the checker's reading of the contracts, so it does not validate the contracts.
 
 The census settles the question the earlier decision left open: 85 % of this repository's
-production functions use syntax the engine does not model, and the forms responsible are ordinary
-callbacks, collections, operators and loops. Widening the subset to reach them is building a general
-JavaScript interpreter. The remaining 14 % could be completed with contracts alone, but a contract is
-hand-written per operation, so that path pays off only for a specific protocol with several
-consumers, and the one real protocol found here has a single exact call site.
+production functions need more than contracts, 82 % because they use a form the engine does not
+model, and the forms responsible are ordinary callbacks, collections, operators and loops. Widening
+the subset to reach them is building a general JavaScript interpreter. At most 14 % could be
+completed with contracts and input domains alone, but a contract is hand-written per operation, so
+that path pays off only for a specific protocol with several consumers.
 
 What stays useful: the code remains as a reference for focused, contract-driven checks. A focused
 rule that needs path-sensitive facts for one protocol (for example caller-owned protocols, #351, or

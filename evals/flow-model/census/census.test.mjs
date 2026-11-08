@@ -36,6 +36,8 @@ describe('flow-model census', () => {
         'core/fixtures/b.mjs',
         'shared/test-support/c.mjs',
         'languages/x/e2e/d.mjs',
+        'languages/java/java-e2e/e.mjs',
+        'languages/java/maven/__tests__/f.mjs',
         'core/readme.md',
       ].filter(isCensusFile),
     ).toEqual(['core/a.mjs']);
@@ -47,7 +49,25 @@ describe('flow-model census', () => {
     expect(census.errors).toBe(0);
     expect(census.classes).toEqual({ complete: 1, contractsOnly: 2, needsSyntax: 1 });
     expect(census.anyReason).toMatchObject({ 'unknown-call': 2, 'unknown-guard': 1 });
-    expect(census.unsupportedSyntax).toHaveProperty('ArrowFunction');
+    expect(census.unsupportedSyntax).toEqual({ ArrowFunction: 1 });
+    expect(census.firstReason).toEqual({ 'unknown-call': 2, 'unknown-guard': 1 });
+  });
+  it('counts each reason once per function and keeps dispatch among contract gaps', () => {
+    const source = `
+import { load, store } from './io.mjs';
+export function copy(item, target) {
+  load(item);
+  store(item);
+  return target.write(item);
+}
+export function notify(handler) {
+  return handler(1);
+}
+`;
+    const census = censusOf(entriesOf('copy.mjs', source));
+
+    expect(census.classes).toEqual({ contractsOnly: 2 });
+    expect(census.anyReason).toMatchObject({ 'unknown-call': 1, 'unknown-dispatch': 1 });
   });
   it('counts a source the extractor rejects as an error, not a result', () => {
     const entries = [{ file: 'broken.mjs', text: 'function f( {', entry: 'f' }];
