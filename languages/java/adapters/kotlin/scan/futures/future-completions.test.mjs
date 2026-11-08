@@ -29,6 +29,16 @@ describe('futuresWithoutException', () => {
       'fun reply(client: Client): CompletableFuture<Map<String, Int>> {\n    val reply: CompletableFuture<Map<String, Int>> = CompletableFuture<Map<String, Int>>()\n    client.onReply(reply::complete)\n    return reply\n}\n',
       [2],
     ],
+    [
+      'a continuation whose cancellation handler cancels something else',
+      'suspend fun reply(client: Client): String = suspendCancellableCoroutine { cont ->\n    val handle = client.onReply { cont.resume(it) }\n    cont.invokeOnCancellation { handle.cancel() }\n}\n',
+      [1],
+    ],
+    [
+      'a continuation with nested generic arguments',
+      'suspend fun load(x: Source): Map<String, List<Int>> =\n    suspendCancellableCoroutine<Map<String, List<Int>>> { c -> x.on { c.resume(it) } }\n',
+      [2],
+    ],
   ])('reports %s', (_name, source, expected) => {
     expect(lines(source)).toEqual(expected);
   });
@@ -61,6 +71,10 @@ describe('futuresWithoutException', () => {
     [
       'names only inside strings and comments',
       'fun note(): String = "suspendCoroutine { client.onReply(it::resume) }" // suspendCoroutine { x::resume }\n',
+    ],
+    [
+      'a class property used as a latch',
+      'class Gate {\n    private val ready = CompletableDeferred<Unit>()\n\n    fun onReady() {\n        ready.complete(Unit)\n    }\n\n    suspend fun await() = ready.await()\n}\n',
     ],
   ])('passes %s', (_name, source) => {
     expect(lines(source)).toEqual([]);
