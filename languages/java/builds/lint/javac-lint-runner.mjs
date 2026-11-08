@@ -118,7 +118,7 @@ function clearReports(plan, reportDir) {
 function lintedSources(plan) {
   const java = [...new Set(plan.sources)]
     .filter((file) => file.endsWith('.java') && inside(plan.root, file) && existsSync(file))
-    .sort();
+    .sort((left, right) => left.localeCompare(right));
   const moduleInfo = java.find((file) => path.basename(file) === MODULE_INFO);
   return {
     moduleInfo,

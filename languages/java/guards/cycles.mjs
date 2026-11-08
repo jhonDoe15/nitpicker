@@ -70,7 +70,7 @@ function collectComponent(state, node) {
   const ahead = reachable(state.forward, node, state.core);
   const component = [...reachable(state.backward, node, state.core)]
     .filter((member) => ahead.has(member))
-    .sort();
+    .sort((left, right) => left.localeCompare(right));
   for (const member of component) {
     state.assigned.add(member);
   }
@@ -87,7 +87,7 @@ export function cyclicComponents(nodes, edges) {
     assigned: new Set(),
     components: [],
   };
-  for (const node of [...state.core].sort()) {
+  for (const node of [...state.core].sort((left, right) => left.localeCompare(right))) {
     collectComponent(state, node);
   }
   return state.components.filter((component) => component.length > 1);
@@ -118,7 +118,7 @@ function packageEdges(edges, packageOf) {
 export function cycleFindings({ modules, edges, packageOf, fileOf }, tool) {
   const known = new Set(modules);
   const internal = edges.filter((edge) => known.has(edge.source) && known.has(edge.target));
-  const sorted = [...modules].sort();
+  const sorted = [...modules].sort((left, right) => left.localeCompare(right));
   const components = cyclicComponents(modules.map(packageOf), packageEdges(internal, packageOf));
   return components.flatMap((members) =>
     members.map((member) =>

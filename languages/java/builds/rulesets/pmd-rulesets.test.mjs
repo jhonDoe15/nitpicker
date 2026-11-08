@@ -75,7 +75,7 @@ describe('javaRelease', () => {
     [{ target: '11', args: ['--release', '17'] }, 17],
     [{ args: ['--release=21'] }, 21],
     [{ target: '11', args: ['-target', '1.8'] }, 8],
-    [{ target: '${java.version}', args: [] }, 8],
+    [{ target: `\${java.version}`, args: [] }, 8],
   ])('reads %o as Java %i', (compiler, release) => {
     expect(javaRelease(compiler)).toBe(release);
   });
