@@ -17,6 +17,11 @@ function invalid(code, errors, filename) {
 
 tester.run('no-uncoerced-request-input on request schemas', rule, {
   valid: [
+    `${ZOD}const Query = z.object({ page: z.number() });\nexport function list(req, Query) { return Query.parse(req.query); }`,
+    `${ZOD}const Query = z.object({ page: z.number() });\nexport function list(req) { const Query = z.object({ page: z.coerce.number() }); return Query.parse(req.query); }`,
+    `${ZOD}const key = 'page';\nexport const list = (req) => z.object({ [key]: z.number() }).parse(req.query);`,
+    `${ZOD}const Query = z.object({ page: z.number().or(z.string().transform(Number)), size: z.number().catch(20) });\nexport const list = (req) => Query.parse(req.query);`,
+    `${ZOD}const Query = z.object({ page: z.number(), name: z.string() });\nexport const list = (req) => Query.omit({ page: true } as const).parse(req.query);`,
     `${ZOD}const Query = z.object({ limit: z.coerce.number() });\nexport function list(req) { return Query.parse(req.query); }`,
     `${ZOD}const Body = z.object({ limit: z.number() });\nexport function create(req) { return Body.parse(req.body); }`,
     `${ZOD}const Query = z.object({ limit: z.number() });\nexport function load(input) { return Query.parse(input.query); }`,
@@ -41,7 +46,7 @@ tester.run('no-uncoerced-request-input on request schemas', rule, {
           'rejected',
           {
             field: 'all',
-            fix: "z.stringbool() or z.enum(['true', 'false']).transform((value) => value === 'true')",
+            fix: "z.stringbool() (zod 4) or z.enum(['true', 'false']).transform((value) => value === 'true')",
           },
         ],
       ],

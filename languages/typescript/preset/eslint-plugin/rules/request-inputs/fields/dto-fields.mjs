@@ -6,6 +6,7 @@ import {
   importOf,
   isFromPackage,
   nameOf,
+  resolvedExpression,
 } from '../bindings/ts-nodes.mjs';
 import { schemaProblems } from './schema-fields.mjs';
 
@@ -83,7 +84,8 @@ function propertyProblem(property) {
     : { kind, form, library: 'class-validator' };
 }
 
-function keyFilter(name, keys) {
+function keyFilter(name, argument, checker) {
+  const keys = resolvedExpression(argument, checker);
   if (!KEY_PICKERS.has(name) || keys === undefined || !ts.isArrayLiteralExpression(keys)) {
     return () => true;
   }
@@ -135,7 +137,7 @@ function ownProblems(declaration, entry) {
   });
 }
 
-function inheritedEntries(declaration, entry) {
+function inheritedEntries(declaration, entry, checker) {
   const base = heritageBase(declaration);
   const hidden = new Set([
     ...entry.hidden,
@@ -148,7 +150,11 @@ function inheritedEntries(declaration, entry) {
     return { entries: [{ identifier: base, hidden, keep: entry.keep }] };
   }
   const mapped = mappedSources(base);
-  const filter = keyFilter(mapped.name, ts.isCallExpression(base) ? base.arguments[1] : undefined);
+  const filter = keyFilter(
+    mapped.name,
+    ts.isCallExpression(base) ? base.arguments[1] : undefined,
+    checker,
+  );
   const keep = both(entry.keep, filter);
   return {
     entries: mapped.sources.map((identifier) => ({ identifier, hidden, keep })),
@@ -162,17 +168,41 @@ function schemaEntryProblems(schema, checker) {
   );
 }
 
-export function classProblems(identifier, checker) {
-  const first = declarationOf(identifier, checker);
-  if (first === undefined || !ts.isClassDeclaration(first)) {
+function aliasedName(declaration) {
+  return declaration !== undefined &&
+    ts.isTypeAliasDeclaration(declaration) &&
+    ts.isTypeReferenceNode(declaration.type)
+    ? declaration.type.typeName
+    : undefined;
+}
+
+function classDeclaration(name, checker) {
+  const pending = [name];
+  for (const current of pending) {
+    const identifier = ts.isQualifiedName(current) ? current.right : current;
+    const usable = ts.isIdentifier(identifier) && (checker !== undefined || identifier === current);
+    const declaration = usable ? declarationOf(identifier, checker) : undefined;
+    if (declaration !== undefined && ts.isClassDeclaration(declaration)) {
+      return declaration;
+    }
+    const target = aliasedName(declaration);
+    if (target !== undefined && pending.length < MAX_CLASSES) {
+      pending.push(target);
+    }
+  }
+  return undefined;
+}
+
+export function classProblems(name, checker) {
+  if (classDeclaration(name, checker) === undefined) {
     return undefined;
   }
-  const pending = [{ identifier, hidden: new Set(), keep: () => true }];
+  const pending = [{ identifier: name, hidden: new Set(), keep: () => true }];
   const problems = [];
   for (const entry of pending) {
-    const declaration = declarationOf(entry.identifier, checker);
-    if (declaration !== undefined && ts.isClassDeclaration(declaration)) {
-      const inherited = inheritedEntries(declaration, entry);
+    const declaration = classDeclaration(entry.identifier, checker);
+    if (declaration !== undefined) {
+      const inherited = inheritedEntries(declaration, entry, checker);
       problems.push(...ownProblems(declaration, entry));
       problems.push(
         ...(inherited.schema === undefined ? [] : schemaEntryProblems(inherited.schema, checker)),

@@ -1,11 +1,10 @@
 import { ts } from '../../../../typescript-api/typescript-api.mjs';
-import { childrenOf } from '../../../crap/functions/own-nodes.mjs';
 import { handlerProblems } from './bindings/nest-handlers.mjs';
 import { callProblems, routeSchemaProblems } from './bindings/request-calls.mjs';
 import { sourceOf } from './bindings/ts-nodes.mjs';
 
 const ZOD_BOOLEAN =
-  "z.stringbool() or z.enum(['true', 'false']).transform((value) => value === 'true')";
+  "z.stringbool() (zod 4) or z.enum(['true', 'false']).transform((value) => value === 'true')";
 const VALIBOT_BOOLEAN =
   "v.pipe(v.picklist(['true', 'false']), v.transform((value) => value === 'true'))";
 const DTO_BOOLEAN = "@Transform(({ value }) => value === 'true')";
@@ -14,6 +13,7 @@ const CONVERTING_SCHEMA = 'a DTO or schema that converts it';
 const FIXES = {
   zod: {
     number: 'z.coerce.number()',
+    integer: 'z.coerce.number().int()',
     bigint: 'z.coerce.bigint()',
     date: 'z.coerce.date()',
     boolean: ZOD_BOOLEAN,
@@ -61,7 +61,9 @@ function collect(file, checker) {
   const found = [];
   for (const node of pending) {
     found.push(...nodeProblems(node, checker));
-    pending.push(...childrenOf(node));
+    ts.forEachChild(node, (child) => {
+      pending.push(child);
+    });
   }
   return found;
 }
@@ -91,7 +93,7 @@ function report(context, file, entry) {
       field: entry.field,
       source: entry.source,
       form: problem.form,
-      fix: FIXES[problem.library][problem.kind],
+      fix: problem.fix ?? FIXES[problem.library][problem.kind],
     },
   });
 }

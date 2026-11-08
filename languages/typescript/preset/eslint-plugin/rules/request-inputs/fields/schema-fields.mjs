@@ -58,6 +58,8 @@ const SCHEMA_LIBRARIES = [
 ];
 
 const PICKERS = new Set(['pick', 'omit']);
+const OPEN_METHODS = new Set(['or', 'and', 'catch']);
+const INTEGERS = new Set(['int', 'int32', 'uint32']);
 const MERGERS = new Set(['extend', 'safeExtend', 'merge']);
 const SHAPE_OPERATIONS = new Set([...PICKERS, ...MERGERS]);
 
@@ -131,12 +133,16 @@ function callProblem(call, found) {
     found.library.kinds[found.name] ??
     (found.name === 'literal' ? literalKind(call.arguments[0]) : undefined);
   const form = found.display ?? `${found.name}()`;
-  return kind === undefined ? undefined : { kind, form, library: found.library.id };
+  if (kind === undefined) {
+    return undefined;
+  }
+  const integer = found.library.id === 'zod' && INTEGERS.has(found.name);
+  return { kind: integer ? 'integer' : kind, form, library: found.library.id };
 }
 
 function leafStep(node) {
   if (isMethodCall(node)) {
-    return { next: node.expression.expression };
+    return OPEN_METHODS.has(node.expression.name.text) ? {} : { next: node.expression.expression };
   }
   const found = libraryCall(node);
   if (found === undefined) {
@@ -167,7 +173,8 @@ function literalFields(literal) {
   }
   return literal.properties.flatMap((property) => {
     if (ts.isPropertyAssignment(property)) {
-      return [{ name: nameOf(property.name), value: property.initializer }];
+      const name = nameOf(property.name);
+      return name === undefined ? [] : [{ name, value: property.initializer }];
     }
     return ts.isShorthandPropertyAssignment(property)
       ? [{ name: property.name.text, value: property.name }]
@@ -175,7 +182,8 @@ function literalFields(literal) {
   });
 }
 
-function keyNames(argument) {
+function keyNames(expression, checker) {
+  const argument = resolvedExpression(expression, checker);
   const fields = literalFields(argument);
   if (fields !== undefined) {
     return new Set(fields.map(({ name }) => name));
@@ -187,7 +195,7 @@ function keyNames(argument) {
 
 function applied(fields, { method, argument }, checker) {
   if (PICKERS.has(method)) {
-    const keys = keyNames(argument);
+    const keys = keyNames(argument, checker);
     return keys === undefined
       ? fields
       : fields.filter(({ name }) => keys.has(name) === (method === 'pick'));

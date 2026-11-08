@@ -54,18 +54,22 @@ user's browser.
   `@IsDivisibleBy`, `@IsBoolean`, `@IsDate`, `@MinDate` or `@MaxDate` and no `@Type` or
   `@Transform`; a zod `number`, `int`, `int32`, `uint32`, `float32`, `float64`, `int64`,
   `uint64`, `bigint`, `boolean`, `date` or non-string `literal` field (through `optional`,
-  `nullable`, `array`, chained checks and constants), and the valibot `number`, `bigint`,
+  `nullable`, `array`, chained checks and constants; `.or()`, `.and()` and `.catch()` let the
+  field pass, since they accept or replace the text), and the valibot `number`, `bigint`,
   `boolean` and `date` fields (through `pipe` and the wrappers); `z.coerce.boolean()` and
   `@Type(() => Boolean)`; and a single NestJS parameter (`@Query('limit') limit: number`) or a
   type literal parameter typed `number`, `bigint`, `boolean` or `Date` without a pipe that
   converts it. DTOs built with `createZodDto`, `PartialType`, `PickType`, `OmitType`,
-  `IntersectionType` or `extends` are followed, in other files too when type information is
-  available (otherwise only in the same file). The allowed forms are a conversion at the
-  declaration: `z.coerce.number()`, `z.coerce.date()`, `z.stringbool()` or
+  `IntersectionType` (key lists also `as const`) or `extends` are followed, and so are type
+  aliases and namespace-qualified names, in other files too when type information is available
+  (otherwise only in the same file). The allowed forms are a conversion at the declaration:
+  `z.coerce.number()` (`z.coerce.number().int()` for `z.int()`), `z.coerce.date()`,
+  `z.stringbool()` (zod 4) or
   `z.enum(['true', 'false']).transform((value) => value === 'true')`,
   `v.pipe(v.string(), v.toNumber(), v.number())`, `@Type(() => Number)`, `@Type(() => Date)`,
   `@Transform(({ value }) => value === 'true')`, and `ParseIntPipe`, `ParseFloatPipe`,
-  `ParseBoolPipe` or `ParseDatePipe` on a single parameter. A property decorator from another
+  `ParseBoolPipe` or `ParseDatePipe` on a single parameter (`{ optional: true }` when it may be
+  missing, `new ParseArrayPipe({ items: Number })` for an array). A property decorator from another
   package and a pipe the rule does not know (other than `DefaultValuePipe` and `ParseUUIDPipe`)
   count as converting. A global `ValidationPipe` with `transform` or `enableImplicitConversion`
   does not make a field pass: it is not visible at the declaration, and implicit conversion turns
