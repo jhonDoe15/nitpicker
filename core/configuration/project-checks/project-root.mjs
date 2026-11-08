@@ -1,10 +1,11 @@
 import { execFileSync } from 'node:child_process';
-import { existsSync, realpathSync } from 'node:fs';
+import { realpathSync } from 'node:fs';
 import path from 'node:path';
 import { CONFIG_FILE_NAME } from '../../../shared/config.mjs';
 import { GIT_TIMEOUT_MS } from '../../../shared/processes/deadlines.mjs';
 import { chainOf } from '../../../shared/traversal.mjs';
 import { detectedPreset } from './preset-detection.mjs';
+import { markerFilesIn } from './project-markers.mjs';
 
 const PROJECT_MARKERS = ['package.json', CONFIG_FILE_NAME];
 
@@ -21,10 +22,12 @@ export function resolveProjectRoot(cwd = process.cwd()) {
     const parent = path.dirname(directory);
     return directory === repositoryRoot || directory === parent ? undefined : parent;
   });
-  const projectRoot = directories.find((directory) =>
-    PROJECT_MARKERS.some((marker) => existsSync(path.join(directory, marker))),
+  const projectRoot = directories.find(
+    (directory) => markerFilesIn(directory, PROJECT_MARKERS).length > 0,
   );
-  if (projectRoot !== undefined) return projectRoot;
+  if (projectRoot !== undefined) {
+    return projectRoot;
+  }
   throw new Error(noProjectMessage(current, repositoryRoot));
 }
 
