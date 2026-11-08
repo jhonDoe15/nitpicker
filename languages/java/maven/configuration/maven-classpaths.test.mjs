@@ -23,7 +23,7 @@ describe('parseDependencyList', () => {
 });
 
 describe('moduleClasspaths', () => {
-  it('keeps compile scopes for main code, adds test for test code, and everything at test runtime', () => {
+  it('keeps compile scopes for main code, adds runtime for the main runtime, test for test code, and everything at test runtime', () => {
     const module = { outputDirectory: '/m/classes', testOutputDirectory: '/m/test-classes' };
     const dependencies = ['compile', 'provided', 'runtime', 'test', 'system'].map((scope) => ({
       scope,
@@ -32,6 +32,7 @@ describe('moduleClasspaths', () => {
 
     expect(moduleClasspaths(module, dependencies)).toEqual({
       mainCompile: ['compile.jar', 'provided.jar', 'system.jar'],
+      mainRuntime: ['compile.jar', 'provided.jar', 'runtime.jar', 'system.jar'],
       testCompile: ['compile.jar', 'provided.jar', 'test.jar', 'system.jar'],
       testRuntime: [
         '/m/test-classes',

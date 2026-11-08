@@ -12,6 +12,10 @@ Part of the [nitpicker-python](../SKILL.md) skill. Write these forms from the st
 - Assert the value, not that something is there (`weak-assertion`): no `assert x`, `assert x is not None`
   or `assert len(x) > 0` as the whole check, and no `m.assert_called()` or `assert_called_with(ANY)`; assert
   the exact value, contents or length and the call's arguments. A not-null check is fine when the test uses `x` afterwards.
+- Never patch the module a test is named after (`mocked-subject-in-test`): in `test_cart.py`, no
+  `patch("shop.cart.total")`, no `patch.object(cart, "helper")` on a `Cart`, no `Mock(spec=Cart)`.
+  Pass the collaborators in and fake them, test a helper through the public function that calls
+  it, and patch only what the module imports (`patch("shop.cart.requests.get")`).
 - Tests put back what they change for the whole process (`global-state-leak-in-test`): set environment
   variables and attributes with `monkeypatch.setenv`/`monkeypatch.setattr` or `mock.patch.dict(os.environ, ...)`,
   not `os.environ[...] =`, `settings.DEBUG = True`, `time.tzset()` or `locale.setlocale(...)`; or restore the old
