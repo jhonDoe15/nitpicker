@@ -11,6 +11,7 @@ import {
   productionLayoutConfigFor,
 } from '../eslint-config/policy/production-policy.mjs';
 import { applyRuleExceptions } from '../eslint-config/exceptions.mjs';
+import { logicConfigFor } from '../eslint-config/logic/logic-rules.mjs';
 import {
   applyJavascriptDialect,
   scriptRuleEntries,
@@ -98,6 +99,7 @@ const presetConfig = defineConfig(
       ],
     },
   },
+  ...logicConfigFor(selectedFiles, parserOptions),
   {
     files: productionFiles,
     ignores: testFiles,
