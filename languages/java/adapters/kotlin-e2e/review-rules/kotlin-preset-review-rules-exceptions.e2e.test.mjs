@@ -58,7 +58,11 @@ describe.skipIf(!kotlinE2eEnabled)('Kotlin preset review rule exceptions end to 
         'StaticForwardingWrapper absOf',
         'StaticForwardingWrapper total',
         ...MAP_UPDATE_FINDINGS,
-        ...ALL_FINDINGS.filter((entry) => entry.startsWith('NonAtomicUpdateAcrossSuspension ')),
+        ...ALL_FINDINGS.filter((entry) =>
+          /^(?:InconsistentFieldLocking|LockOrderInversion|NonAtomicUpdateAcrossSuspension) /u.test(
+            entry,
+          ),
+        ),
         ...SWALLOWED_CANCELLATIONS,
         'timeout-abandons-operation awaitAllOutside:withTimeout:first',
         'timeout-abandons-operation awaitAllOutside:withTimeout:second',

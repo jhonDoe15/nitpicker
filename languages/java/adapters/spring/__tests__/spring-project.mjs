@@ -87,6 +87,8 @@ const REVIEW_RULES = new Set([
   'RecursiveMapUpdate',
   'DefaultTimeZone',
   'ClassLoadEffect',
+  'LockOrderInversion',
+  'InconsistentFieldLocking',
   'SpringUnusedContext',
   'SpringProxySelfCall',
   'SpringProxyMethodVisibility',

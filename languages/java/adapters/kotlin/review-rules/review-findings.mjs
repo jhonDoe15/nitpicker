@@ -4,10 +4,12 @@ import { enumPredicateFindings } from './main/enum-predicates.mjs';
 import { fanOutFindings } from './main/fan-out/fan-out.mjs';
 import { forwardingWrapperFindings } from './main/forwarding-wrappers.mjs';
 import { loadEffectFindings } from './main/load-effects.mjs';
-import { recursiveMapUpdateFindings } from './main/map-updates/recursive-map-update.mjs';
+import { fieldLockingFindings } from './main/locking/field-locking.mjs';
+import { lockOrderFindings } from './main/locking/lock-order.mjs';
 import { singularPluralFindings } from './main/member-names.mjs';
 import { timeoutFindings } from './main/timeouts/timeouts.mjs';
 import { suspendedUpdateFindings } from './main/suspension/suspended-updates.mjs';
+import { recursiveMapUpdateFindings } from './main/map-updates/recursive-map-update.mjs';
 import { unboundedPoolFindings } from './main/thread-pools/unbounded-pools.mjs';
 import { unusedOptionFindings } from './main/unused-options/unused-options.mjs';
 import { validationTargetFindings } from './validation/validation-targets.mjs';
@@ -81,6 +83,8 @@ export function readKotlinReviewFindings(context) {
     ...timeoutFindings(own, { finding }),
     ...suspendedUpdateFindings(own, { finding, declaredIn: projectFiles }),
     ...swallowedHandlerFindings(own, { finding, declaredIn: projectFiles }),
+    ...lockOrderFindings(own, { finding, declaredIn: projectFiles }),
+    ...fieldLockingFindings(own, { finding, declaredIn: projectFiles }),
     ...validationTargetFindings(own, { finding }),
     ...loadEffectFindings(own, { finding, declaredIn: projectFiles }),
     ...unboundedPoolFindings(own, { finding }),

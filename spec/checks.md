@@ -42,6 +42,67 @@ number about a function (`nitpicker/cognitive-complexity`, `complexity`, `max-li
 | `eslint-logging`        | production source (tests excluded) | `languages/typescript/preset/eslint-config/policies/logging.config.mjs`        | enforceable |
 | `eslint-module-effects` | production source (tests excluded) | `languages/typescript/preset/eslint-config/policies/module-effects.config.mjs` | enforceable |
 
+## Updates across a suspension
+
+A statement reads shared state, suspends, then writes a value derived from the stale read, so
+concurrent calls overwrite each other's updates. Each async preset checks it with a rule of its own
+analyzer, so the rule id differs per preset and the rule is not part of the generated
+[Custom rules](#custom-rules) table, which lists rules nitpicker emits under one id in several
+presets. Every finding is enforceable and names a reviewed `exceptions` entry for state that is
+already serialized.
+
+| Preset                    | Rule                                      | Implementation                                                                                    |
+| ------------------------- | ----------------------------------------- | ------------------------------------------------------------------------------------------------- |
+| TypeScript and JavaScript | `nitpicker/require-atomic-updates`        | ESLint's `require-atomic-updates` (`allowProperties: false`), reports narrowed, in `eslint-lint`  |
+| Python                    | `python-rules/atomic-update-across-await` | `languages/python/rules/concurrency/atomic_updates.py`                                            |
+| Kotlin                    | `pmd/NonAtomicUpdateAcrossSuspension`     | `review-rules/main/suspension/suspended-updates.mjs` over the `kotlin-psi` facts                  |
+| Java                      | not covered by this rule                  | nothing suspends inside a Java expression; see `errorprone/NonAtomicVolatileUpdate` in the preset |
+
+What each recognizes:
+
+| Preset                    | `this` / `self` state       | Saved local                                     | Lock recognized                         | Semaphore or limiter recognized               |
+| ------------------------- | --------------------------- | ----------------------------------------------- | --------------------------------------- | --------------------------------------------- |
+| TypeScript and JavaScript | no (`this` is not followed) | yes                                             | no: a reviewed exception                | no                                            |
+| Python                    | yes (`self`, `cls`)         | yes, through derived locals, branches and loops | yes, when built once outside the method | only with one slot, stated as the literal `1` |
+| Kotlin                    | yes (bare and `this.`)      | yes, within one function or lambda              | `withLock`, unless the mutex is a local | `withPermit` on a `val` `Semaphore(1)`        |
+
+A lazy initialization written as an operator (`cached ??= await load()`) is reported in TypeScript and
+JavaScript; Python and Kotlin have no such operator, and the checked form
+(`if cached is None: cached = await load()`) passes in every preset. See
+[TypeScript](../docs/typescript-strict-preset.md), [Python](../docs/python-preset.md),
+[Kotlin](../docs/kotlin-preset.md#review-rules) and [Java](../docs/java-preset.md#error-prone-and-nullaway)
+for what each leaves alone.
+
+## Lock discipline
+
+Two rules check how a class takes its locks. A lock-order inversion is two locks of one class taken
+in opposite orders, so two threads that run both nestings can each hold one lock and wait forever for
+the other. Inconsistent locking is a field written while a lock is held in one place and with no lock
+in another, so the unlocked write races with the locked one. Every finding is enforceable, names both
+places, is keyed by the class, the method and the lock pair or the field (no line number) and names a reviewed
+`exceptions` entry.
+
+| Preset                    | Lock order                          | Field written with and without a lock         | Implementation                                                                                 |
+| ------------------------- | ----------------------------------- | --------------------------------------------- | ---------------------------------------------------------------------------------------------- |
+| Java                      | `pmd/LockOrderInversion`            | `pmd/InconsistentFieldLocking`                | XPath rules in `pmd-ruleset.xml`; `messages/locking/lock-evidence.mjs` names both places       |
+| Kotlin                    | `pmd/LockOrderInversion`            | `pmd/InconsistentFieldLocking`                | `review-rules/main/locking/` over the `kotlin-psi` locking facts                               |
+| Python                    | `python-rules/lock-order-inversion` | `python-rules/inconsistent-attribute-locking` | `languages/python/rules/locking/`                                                              |
+| TypeScript and JavaScript | not applicable                      | not applicable                                | one thread runs the code between two `await`s; there is no lock to hold or to take in an order |
+
+What each recognizes:
+
+| Preset | Locks                                                                                                                                    | Not followed                                                                                        |
+| ------ | ---------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------- |
+| Java   | `synchronized` blocks and methods, `lock()` and `lockInterruptibly()` up to `unlock()`, on a field, `this`, `Type.class` or `Type.FIELD` | a lock passed in, held in a local, taken in a called method, or taken with `tryLock`                |
+| Kotlin | `synchronized(x) { }`, `@Synchronized`, `withLock` of `ReentrantLock` and `Mutex`, also under an import alias                            | a lock passed in or held in a local, a lambda that may run later, a lock taken in a called function |
+| Python | `with` and `async with` on `threading` and `asyncio` locks, `RLock`, `Condition` and a one-slot semaphore built once                     | a lock passed in, an object the analysis cannot identify, a nested function that may run later      |
+
+A write the analysis cannot place (in a constructor or initializer, in a lambda or nested function,
+in a method the class calls while it holds a lock, under a `with` it cannot identify; in Python
+also in a decorated method or one that calls `acquire()`) is never reported as unlocked. A lock taken
+again while the thread already holds it (a reentrant re-acquire) is not an inversion. Java and Kotlin also skip a single write of a `volatile` field and fields of an
+atomic or concurrent type.
+
 Bounded fan-out: `nitpicker/unbounded-fan-out` (production source, in `eslint-lint`) reports
 `Promise.all`, `allSettled`, `any` and `race` over a runtime collection whose element work reaches a
 remote or message call with no limiter created outside the worker and no fixed-size chunk. The same
