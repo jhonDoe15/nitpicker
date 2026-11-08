@@ -31,7 +31,7 @@ export function processorTool(compiler) {
   return { name: `processors-${key.slice(0, 16)}`, coordinates: compiler.processorPaths };
 }
 
-function processorPath(classpath, compiler, tools) {
+export function processorPath(classpath, compiler, tools) {
   if (compiler.proc === 'none') {
     return [];
   }
