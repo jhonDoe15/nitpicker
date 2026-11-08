@@ -2,8 +2,8 @@ import ast
 
 from checks.common import call_name, dotted_name
 from honesty.mocks.targets import resolve
+from honesty.subjects.targets import FUNCTIONS
 
-FUNCTIONS = (ast.FunctionDef, ast.AsyncFunctionDef)
 UNWRAPPED = {"Optional", "Union", "Annotated", "Final", "ReadOnly"}
 FIRST_ONLY = {"Annotated", "Final", "ReadOnly"}
 STATIC = "staticmethod"

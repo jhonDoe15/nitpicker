@@ -1,6 +1,12 @@
 import ast
 
-from checks.common import call_name, finding, imported_module, own_nodes
+from checks.common import (
+    call_name,
+    finding,
+    imported_module,
+    own_nodes,
+    type_checking_nodes,
+)
 from honesty.mocks.targets import (
     PATCH,
     PATCH_OBJECT,
@@ -12,7 +18,6 @@ from honesty.mocks.targets import (
     subject_of,
 )
 from honesty.subjects.check import mock_name
-from honesty.subjects.targets import imported_modules
 
 RULE = "patch-misses-lookup"
 PATCHES = {PATCH, PATCH_OBJECT, SETATTR}
@@ -45,15 +50,35 @@ def patches(context):
             yield node, target, located[:2]
 
 
+def imported_dotted(node, context):
+    if isinstance(node, ast.Import):
+        return [alias.name for alias in node.names]
+    module = imported_module(node, context.project, context.path)
+    if not module:
+        return []
+    project = context.project
+    return [
+        f"{module}.{alias.name}"
+        if project.module_path(f"{module}.{alias.name}")
+        else module
+        for alias in node.names
+    ]
+
+
 def imported_paths(context):
     project = context.project
-    found = {project.module_path(dotted) for dotted in imported_modules(context)}
+    found = set()
+    for node in ast.walk(context.tree):
+        if isinstance(node, (ast.Import, ast.ImportFrom)):
+            found.update(project.module_path(dotted) for dotted in imported_dotted(node, context))
     return sorted(path for path in found if path and is_production(project, path))
 
 
 def bindings(project, path, defining, name):
-    for node in own_nodes(project.contexts[path].tree):
-        if not isinstance(node, ast.ImportFrom):
+    context = project.contexts[path]
+    skipped = type_checking_nodes(context.tree, context.aliases)
+    for node in own_nodes(context.tree):
+        if not isinstance(node, ast.ImportFrom) or id(node) in skipped:
             continue
         module = imported_module(node, project, path)
         if not module or project.module_path(module) != defining:
@@ -72,27 +97,30 @@ def lookups(context, defining, name):
             yield path, alias
 
 
-def check(context):
+def missed_lookups(context):
     if not context.tests:
         return []
     project = context.project
     subject = subject_of(context)
     found = list(patches(context))
     patched = {place for _, _, place in found}
-    findings = []
+    missed = []
     for node, target, (path, name) in found:
         if not is_production(project, path) or is_subject(target, subject):
             continue
         if not defines(project.contexts[path].tree, name):
             continue
-        missed = [
+        places = [
             (where, alias)
             for where, alias in lookups(context, path, name)
             if (where, alias) not in patched
         ]
-        if missed:
-            where, alias = missed[0]
+        if places:
+            where, alias = places[0]
             place = f"{project.module_name(where)}.{alias}"
-            subject_text = f"{target} (looked up as {place})"
-            findings.append(finding(context.path, RULE, subject_text, node))
-    return findings
+            missed.append((node, f"{project.module_name(path)}.{name} (looked up as {place})"))
+    return missed
+
+
+def check(context):
+    return [finding(context.path, RULE, text, node) for node, text in missed_lookups(context)]

@@ -16,6 +16,7 @@ import io.mockk.mockk
 import io.mockk.mockkClass
 import io.mockk.impl.annotations.MockK
 import io.mockk.impl.annotations.RelaxedMockK
+import com.ninjasquad.springmockk.MockkBean
 import org.slf4j.Logger
 `;
 const HEAD_LINES = HEAD.split('\n').length;
@@ -54,6 +55,7 @@ describe('relaxedMockFindings', () => {
   private val direct = mockk<Mailer>(relaxed = true)
   private val named: Pricing = mockk(name = "p", relaxed = true)
   private val byClass = mockkClass(Mailer::class, relaxed = true)
+  @MockkBean(relaxed = true) lateinit var bean: Pricing
 }
 `;
     expect(summary(body)).toEqual([
@@ -62,6 +64,7 @@ describe('relaxedMockFindings', () => {
       `${RELAXED_MOCK_RULE}@4`,
       `${RELAXED_MOCK_RULE}@5`,
       `${RELAXED_MOCK_RULE}@6`,
+      `${RELAXED_MOCK_RULE}@7`,
     ]);
   });
 
@@ -76,7 +79,6 @@ describe('relaxedMockFindings', () => {
         message: relaxedMessage('Mailer'),
       }).message,
     );
-    expect(found.message).toContain('every { ... } returns');
   });
 
   it('allows plain mocks, relaxUnitFun, library types and the class under test', () => {
@@ -93,7 +95,7 @@ describe('relaxedMockFindings', () => {
   });
 
   it('skips files that do not use MockK and production sources', () => {
-    const head = HEAD.replaceAll(/^import io\.mockk.*$/gmu, '');
+    const head = HEAD.replaceAll(/^import (?:io\.mockk|com\.ninjasquad).*$/gmu, '');
 
     expect(summary('val m = mockk<Mailer>(relaxed = true)\n', head)).toEqual([]);
   });

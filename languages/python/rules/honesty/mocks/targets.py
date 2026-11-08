@@ -1,17 +1,9 @@
 import ast
 
 from checks.common import dotted_name, string_value
-from honesty.subjects.check import argument
-from honesty.subjects.targets import (
-    defined_names,
-    is_subject_target,
-    subject_path,
-    subject_stem,
-)
+from honesty.subjects.check import PATCH, PATCH_OBJECT, SETATTR, Subject, argument
+from honesty.subjects.targets import is_subject_target, subject_path, subject_stem
 
-PATCH = "mock.patch"
-PATCH_OBJECT = "mock.patch.object"
-SETATTR = "monkeypatch.setattr"
 DEFINITIONS = (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)
 FOLLOW_DEPTH = 4
 
@@ -28,19 +20,12 @@ class Definition:
         return f"{self.module}.{self.name}"
 
 
-class Subject:
-    def __init__(self, project, path):
-        self.project = project
-        self.path = path
-        self.functions, self.classes = defined_names(project.contexts[path].tree)
-
-
 def subject_of(context):
     stem = subject_stem(context.path) if context.tests else None
     path = subject_path(context, stem) if stem else None
     if path is None or path not in context.project.contexts:
         return None
-    return Subject(context.project, path)
+    return Subject(context, path)
 
 
 def is_subject(dotted, subject):

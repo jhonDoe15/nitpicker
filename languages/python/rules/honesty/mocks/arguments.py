@@ -3,7 +3,14 @@ import ast
 from checks.common import call_name
 from honesty.mocks.expected import expected_class
 from honesty.subjects.check import mock_name
-from honesty.subjects.targets import enclosing, is_fixture, returned_values, target_text
+from honesty.subjects.targets import (
+    FUNCTIONS,
+    binding_scope,
+    enclosing,
+    is_fixture,
+    returned_values,
+    target_text,
+)
 
 FACTORIES = {
     "mock.Mock",
@@ -13,8 +20,7 @@ FACTORIES = {
     "mock.NonCallableMagicMock",
 }
 SPEC_ARGUMENTS = {"spec", "spec_set", "wraps"}
-FUNCTIONS = (ast.FunctionDef, ast.AsyncFunctionDef)
-SELF_NAMES = ("self.", "cls.")
+TEST_PREFIX = "test"
 
 
 def is_unspecced(node, aliases):
@@ -51,19 +57,30 @@ def uses(context, scope, text):
             yield from call_slots(context, node)
 
 
-def binding_scope(context, node, text):
-    kinds = ast.ClassDef if text.startswith(SELF_NAMES) else FUNCTIONS
-    return enclosing(context, node, kinds) or context.tree
+def bound_target(parent):
+    if isinstance(parent, ast.Assign) and len(parent.targets) == 1:
+        return parent.targets[0]
+    return parent.target if isinstance(parent, ast.AnnAssign) else None
+
+
+def bindings_of(scope, text):
+    return sum(
+        1
+        for node in ast.walk(scope)
+        if (target := bound_target(node)) is not None and target_text(target) == text
+    )
 
 
 def bound_slots(context, mock):
     parent = context.parents.get(id(mock))
-    if not isinstance(parent, ast.Assign) or len(parent.targets) != 1:
-        return []
-    text = target_text(parent.targets[0])
+    target = bound_target(parent)
+    text = target_text(target) if target is not None else None
     if not text:
         return []
-    found = list(uses(context, binding_scope(context, parent, text), text))
+    scope = binding_scope(context, parent, text) or context.tree
+    if bindings_of(scope, text) != 1:
+        return []
+    found = list(uses(context, scope, text))
     owner = enclosing(context, parent, FUNCTIONS)
     if owner is not None and is_fixture(owner, context.aliases):
         returned = {target_text(value) for value in returned_values(owner)}
@@ -75,6 +92,8 @@ def fixture_slots(context, fixture):
     found = []
     for node in ast.walk(context.tree):
         if not isinstance(node, FUNCTIONS) or node is fixture:
+            continue
+        if not node.name.startswith(TEST_PREFIX) and not is_fixture(node, context.aliases):
             continue
         names = {item.arg for item in node.args.args + node.args.kwonlyargs}
         if fixture.name in names:

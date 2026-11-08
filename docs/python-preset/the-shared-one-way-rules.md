@@ -903,7 +903,7 @@ t)`, `asyncio.timeout(t)`, `fail_after(t)`, `wait(t)`) inside `pytest.raises` or
   (`patch("shop.cart.LIMIT", 1)`) or another module is not reported; `patch-misses-lookup` covers
   patch targets that miss. Allowed: pass the collaborators in and give the test a fake of them, and
   test a helper through the public function that calls it.
-- `mock-without-spec` (Kotlin: `RelaxedMockInTest`) reports, in a test file, a mock of project code
+- `mock-without-spec` (the Kotlin preset's `RelaxedMockInTest` covers the MockK form, a relaxed mock) reports, in a test file, a mock of project code
   that accepts any call. A `Mock`, `MagicMock`, `AsyncMock`, `NonCallableMock` or
   `NonCallableMagicMock` with no spec (no first argument, `spec`, `spec_set` or `wraps`), passed
   where a project class is expected: an argument of a call to a project function, class or class
@@ -912,7 +912,9 @@ t)`, `asyncio.timeout(t)`, `fail_after(t)`, `wait(t)`) inside `pytest.raises` or
   bound to it, or through a fixture of the file that returns it. Also `patch`, `patch.object`,
   `mocker.patch` and `mocker.patch.object` whose target is a project function, class or method
   (followed through `from ... import`), with none of `autospec`, `spec`, `spec_set`, `new` or
-  `new_callable` (`autospec=False` counts as none). A mock of a library type, and a mock of the
+  `new_callable` (`autospec=False` counts as none). Not followed: fixtures from `conftest.py`, an
+  inherited `__init__` or inherited dataclass fields, and `patch.multiple`. A patch that
+  `patch-misses-lookup` reports is left to it. A mock of a library type, and a mock of the
   module the test is named after (`mocked-subject-in-test` reports that), are not reported. Allowed:
   `Mock(spec=Mailer)`, `create_autospec(Mailer, instance=True)`, `patch(..., autospec=True)`, a
   `new=` value, or a hand-written fake. TypeScript, JavaScript and Java have no counterpart: a
@@ -923,8 +925,9 @@ t)`, `asyncio.timeout(t)`, `fail_after(t)`, `wait(t)`) inside `pytest.raises` or
   when a production module the test imports bound the name at import time with
   `from shop.mailer import send`: that module keeps the original, so the patch does not reach the
   code under test. Not reported when the file also patches the name in that module, when the
-  module imports the name inside a function (looked up at call time), or for the module the test
-  is named after. Allowed: patch where the name is looked up (`patch("shop.checkout.send")`), or
+  module imports the name inside a function (looked up at call time) or under `if TYPE_CHECKING:`,
+  or for the module the test is named after. The modules counted are the ones the test file
+  imports itself (`import shop.checkout`, `from shop import checkout`, `from shop.checkout import pay`). Allowed: patch where the name is looked up (`patch("shop.checkout.send")`), or
   have the module import the module (`from shop import mailer`, then `mailer.send(...)`). The
   other presets have no counterpart: ES module imports are live bindings, and the JVM has no
   module-level names.
