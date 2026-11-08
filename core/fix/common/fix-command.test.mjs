@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { linkSentence } from '../../../shared/messages/test-support/link-sentence.mjs';
 import { failureText, fixSpawn, fixerError, runFixCommand } from './fix-command.mjs';
 
 const BASE = {
@@ -149,12 +150,12 @@ describe('fixerError', () => {
     expect(fixerError('demo-fix', new Error('broken'))).toEqual({
       tool: 'demo-fix',
       snapshot: 'fix',
-      message: 'broken',
+      message: `broken. ${linkSentence('fixersFail')}`,
     });
     expect(fixerError('demo-fix', 'text')).toEqual({
       tool: 'demo-fix',
       snapshot: 'fix',
-      message: 'text',
+      message: `text. ${linkSentence('fixersFail')}`,
     });
   });
 });

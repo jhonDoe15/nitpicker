@@ -11,6 +11,7 @@ import {
 import { captureOutput } from '../../diff/reporting/test-support/output-capture.mjs';
 import { writeFiles } from '../../diff/git/test-support/fixture-files.mjs';
 import { fakeAnalyzer, useCliFixtures } from '../test-support/cli-harness.mjs';
+import { linkSentence } from '../../../shared/messages/test-support/link-sentence.mjs';
 
 const { createRepository, makeOutputRoot, runCli } = useCliFixtures(nitpickerCli);
 
@@ -108,8 +109,8 @@ Quality gate summary
   fake-quality-analyzer/fixture-rule: Expected 1 to be 2
     src/main/flagged.ts:1:4
 ✖ 2 tool errors
-  coloured-crash (base): coloured-crash crashed with exit 2: boom
-  coloured-crash (head): coloured-crash crashed with exit 2: boom
+  coloured-crash (base): coloured-crash crashed with exit 2: boom. ${linkSentence('analyzerCrashed')}
+  coloured-crash (head): coloured-crash crashed with exit 2: boom. ${linkSentence('analyzerCrashed')}
 Full diagnostics: ${OUTPUT_ROOT}/report.txt
 `),
     );
