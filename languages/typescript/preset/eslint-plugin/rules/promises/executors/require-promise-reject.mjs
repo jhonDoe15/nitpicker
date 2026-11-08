@@ -1,7 +1,6 @@
 import { typeServices } from '../../security/security-values.mjs';
 import { ignoredErrors, readsError } from './error-callbacks.mjs';
-import { isFunctionExpression } from './executor-sources.mjs';
-import { promiseExecutor } from './executor-sources.mjs';
+import { isFunctionExpression, promiseExecutor } from './executor-sources.mjs';
 
 const ALLOWED =
   "`new Promise((resolve, reject) => { source.once('error', reject); ... })`, or a form that rejects by itself: `once` from `node:events`, `pipeline` or `finished` from `node:stream/promises`, or `util.promisify`.";
@@ -21,7 +20,7 @@ function errorReceivers(sources) {
   );
 }
 
-function isGuarded(context, services, source, receivers) {
+function isGuarded({ context, services, receivers }, source) {
   if (source.kind !== 'callback') {
     return source.event === 'error' || receivers.has(source.receiver);
   }
@@ -31,7 +30,7 @@ function isGuarded(context, services, source, receivers) {
 
 function unguardedSource(context, services, sources) {
   const receivers = errorReceivers(sources);
-  return sources.find((source) => !isGuarded(context, services, source, receivers));
+  return sources.find((source) => !isGuarded({ context, services, receivers }, source));
 }
 
 export const rule = {
