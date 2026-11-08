@@ -1,4 +1,8 @@
-import { renderMessage, UNUSED_OPTION_TEXT } from '../../../../shared/messages/messages.mjs';
+import {
+  renderMessage,
+  UNUSED_OPTION_FIX,
+  UNUSED_OPTION_TEXT,
+} from '../../../../shared/messages/messages.mjs';
 import { RULES_TOOL } from './tool.mjs';
 import { UNUSED_OPTION_SCOPES } from '../../../../shared/unused-api/unused-api-policy.mjs';
 
@@ -225,6 +229,8 @@ export const STRUCTURE_HINTS = [
         scope: UNUSED_OPTION_SCOPES.python[scope],
       }),
     referenceData: { scope: 'private' },
+    allowedFor: ({ scope }) =>
+      renderMessage(UNUSED_OPTION_FIX, { scope: UNUSED_OPTION_SCOPES.python[scope] }),
     exception: 'top-level',
   },
 ];
