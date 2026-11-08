@@ -57,6 +57,8 @@ describe.skipIf(!kotlinE2eEnabled)('Kotlin preset review rule exceptions end to 
         ...PLURAL_FINDINGS,
         'StaticForwardingWrapper absOf',
         'StaticForwardingWrapper total',
+        'ForwardingMethodAlias Cart.count',
+        'ForwardingMethodAlias Cart.visible',
         ...MAP_UPDATE_FINDINGS,
         ...ALL_FINDINGS.filter((entry) =>
           /^(?:InconsistentFieldLocking|LockOrderInversion|NonAtomicUpdateAcrossSuspension) /u.test(

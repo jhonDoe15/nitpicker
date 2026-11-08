@@ -167,6 +167,7 @@ function strictTypedConfigFor(layout, parserOptions, options = {}) {
           { runners: options.detachedWorkRunners ?? [] },
         ],
         'nitpicker/exhaustive-union-predicate': 'error',
+        'nitpicker/no-forwarding-method-alias': 'error',
         'nitpicker/no-forwarding-wrapper': 'error',
         'nitpicker/no-falsy-default': 'error',
         'nitpicker/no-string-as-regex': 'error',
