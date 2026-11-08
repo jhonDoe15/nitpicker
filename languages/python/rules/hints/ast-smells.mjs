@@ -170,6 +170,14 @@ export const SMELL_HINTS = [
   },
   {
     tool: RULES_TOOL,
+    rules: ['reusable-object-per-call'],
+    describe: (subject) =>
+      `\`${subject}\` is built on every call, though it is safe to share once built and costly to build`,
+    allowed:
+      'Build it once at module level (`ORDERS = TypeAdapter(list[Order])`), in `__init__`, or in a `functools.cache` factory keyed by what varies.',
+  },
+  {
+    tool: RULES_TOOL,
     rules: ['unbounded-fan-out'],
     describe: fanOutDescription,
     allowed: fanOutAllowed,

@@ -2,6 +2,7 @@ import { ENUM_PREDICATE_RULE } from '../../review-rules/enum-predicates.mjs';
 import { LOAD_EFFECT_RULE } from '../../../messages/load-effects.mjs';
 import { FORWARDING_RULE } from './main/forwarding-wrappers.mjs';
 import { RECURSIVE_MAP_UPDATE_RULE } from './main/map-updates/recursive-map-update.mjs';
+import { REUSABLE_OBJECT_RULE } from '../../../messages/reuse/reusable-objects.mjs';
 import { SINGULAR_PLURAL_RULE } from './main/member-names.mjs';
 import { TIMEOUT_RULE } from './main/timeouts/timeouts.mjs';
 import { UNBOUNDED_POOL_RULE } from './main/thread-pools/unbounded-pools.mjs';
@@ -30,6 +31,7 @@ export const KOTLIN_REVIEW_EXCEPTION_RULES = [
   LOAD_EFFECT_RULE,
   UNBOUNDED_POOL_RULE,
   RECURSIVE_MAP_UPDATE_RULE,
+  REUSABLE_OBJECT_RULE,
   ...SPRING_RULES,
   JAVA_ONLY_SPRING_RULE,
 ]
