@@ -404,9 +404,13 @@ describe('JVM imports for co-change dependencies', () => {
     const read = readJvmReuse(root, { projects: SINGLE, kotlin: true });
 
     expect(read.findings).toEqual(readJvmReuseFindings(root, { projects: SINGLE, kotlin: true }));
-    expect(read.imports.map(({ from, to }) => [from, to]).sort()).toEqual([
-      [`${JAVA_ROOT}/shop/billing/Invoice.java`, `${JAVA_ROOT}/shop/invoicing/Ledger.java`],
-      [`${KOTLIN_ROOT}/shop/refunds/Refund.kt`, `${JAVA_ROOT}/shop/invoicing/Ledger.java`],
+    expect(
+      read.imports
+        .map(({ from, to }) => `${from} -> ${to}`)
+        .toSorted((left, right) => left.localeCompare(right)),
+    ).toEqual([
+      `${JAVA_ROOT}/shop/billing/Invoice.java -> ${JAVA_ROOT}/shop/invoicing/Ledger.java`,
+      `${KOTLIN_ROOT}/shop/refunds/Refund.kt -> ${JAVA_ROOT}/shop/invoicing/Ledger.java`,
     ]);
   });
 });

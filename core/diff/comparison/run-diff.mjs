@@ -97,11 +97,10 @@ function readSnapshotLayout({ repositoryRoot, projectRelativePath }, comparison)
     baseProjectRelativePath,
     inferredMoves: moves.inferred,
   });
-  const touchedPaths = readTouchedPaths({ projectRelativePath, baseProjectRelativePath, changes });
   return {
     baseProjectRelativePath,
     moves,
-    touchedPaths,
+    touchedPaths: readTouchedPaths({ projectRelativePath, baseProjectRelativePath, changes }),
     touchedCode: {
       changedLines,
       isStrictRule,
@@ -209,8 +208,7 @@ function runAndCombine(context) {
     policyLoosenings: context.baseSetup.policyLoosenings,
     policyKinds: context.baseSetup.policyKinds,
     policyDigest: context.baseSetup.policyDigest,
-    headPolicy: settings.headPolicy,
-    basePolicy: context.baseSetup.headPolicy,
+    policies: { base: context.baseSetup.headPolicy, head: settings.headPolicy },
     acceptPolicyChange: settings.acceptPolicyChange,
     scope: settings.scope,
     policyAcceptanceSource: settings.policyAcceptanceSource,

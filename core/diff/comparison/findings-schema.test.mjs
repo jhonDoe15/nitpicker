@@ -458,7 +458,7 @@ describe('spec/findings.schema.json', () => {
     expect(() => validate({ findings: [] }, { oneOf: [] })).toThrow(/does not support/);
   });
 
-  it('accepts folder-level module imports and rejects malformed ones like the reference parser', () => {
+  it('accepts folder-level module imports like the reference parser', () => {
     const moduleImports = [{ from: 'src/billing', to: 'src/invoicing', files: 2 }];
 
     expect(parseAnalyzerReport({ findings: [], moduleImports }, 'fixture')).toEqual({
@@ -466,15 +466,17 @@ describe('spec/findings.schema.json', () => {
       moduleImports,
     });
     expect(validate({ findings: [], moduleImports })).toEqual([]);
-    for (const entry of [
-      { from: 'src/billing', to: 'src/invoicing', files: 0 },
-      { from: 'src/billing', files: 1 },
-      { from: '', to: 'src/invoicing', files: 1 },
-      { from: 'src/billing', to: 'src/invoicing', files: 1, kind: 'runtime' },
-    ]) {
-      const report = { findings: [], moduleImports: [entry] };
-      expect(() => parseAnalyzerReport(report, 'fixture')).toThrow(TypeError);
-      expect(validate(report)).not.toEqual([]);
-    }
+  });
+
+  it.each([
+    [{ from: 'src/billing', to: 'src/invoicing', files: 0 }],
+    [{ from: 'src/billing', files: 1 }],
+    [{ from: '', to: 'src/invoicing', files: 1 }],
+    [{ from: 'src/billing', to: 'src/invoicing', files: 1, kind: 'runtime' }],
+  ])('rejects the malformed module import %j like the reference parser', (entry) => {
+    const report = { findings: [], moduleImports: [entry] };
+
+    expect(() => parseAnalyzerReport(report, 'fixture')).toThrow(TypeError);
+    expect(validate(report)).not.toEqual([]);
   });
 });

@@ -6,7 +6,7 @@ import { parseArguments } from './quality-areas/arguments.mjs';
 import { applyAreaExceptions } from './exceptions/area-exceptions.mjs';
 import { hasProjectTests } from './test-runners/test-run.mjs';
 
-export async function runQualityAreaReport(options) {
+function areaResult(options) {
   const runner = QUALITY_AREA_RUNNERS.get(options.kind);
   if (runner === undefined) {
     throw new Error(`Unsupported quality area: ${options.kind}`);
@@ -15,25 +15,29 @@ export async function runQualityAreaReport(options) {
     const layout = readLayout();
     const files = layout.projectCodeFiles(options.projectRoot);
     if (files.length === 0) {
-      return { findings: [] };
+      return [];
     }
     if (
       ['coupling', 'crap', 'mutation'].includes(options.kind) &&
       !files.some(layout.isSourceFile)
     ) {
-      return { findings: [] };
+      return [];
     }
     if (options.kind === 'test-runtime' && !files.some(layout.isRunnableTestFile)) {
-      return { findings: [] };
+      return [];
     }
     if (
       ['coverage', 'test-console', 'mutation'].includes(options.kind) &&
       !hasProjectTests(options, layout, files)
     ) {
-      return { findings: [] };
+      return [];
     }
   }
-  const result = await runner(options);
+  return runner(options);
+}
+
+export async function runQualityAreaReport(options) {
+  const result = await areaResult(options);
   return Array.isArray(result)
     ? { findings: applyAreaExceptions(result) }
     : { ...result, findings: applyAreaExceptions(result.findings) };

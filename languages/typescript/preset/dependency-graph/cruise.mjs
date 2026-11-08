@@ -160,7 +160,9 @@ export function internalEdges(graph, sourceRoot) {
 
 export function projectImports(graph, isSourceFile) {
   const modulePaths = new Set(graph.modules.map((module) => normalizePath(module.source)));
-  const isProjectSource = (file) => modulePaths.has(file) && isSourceFile(file);
+  function isProjectSource(file) {
+    return modulePaths.has(file) && isSourceFile(file);
+  }
   return graph.modules.flatMap((module) => {
     const from = normalizePath(module.source);
     return isProjectSource(from)

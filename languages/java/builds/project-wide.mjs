@@ -124,8 +124,16 @@ function couplingFindings(projectRoot, { projects, mergedRoot, manifest, kotlin 
   });
 }
 
-export function projectWideFindings(projectRoot, options) {
-  return projectWideReport(projectRoot, options).findings;
+export function reportModuleProjects(modules, rootKey) {
+  return modules.map((module) => ({
+    reportRoot: module.reportRoot,
+    qualifier: module.key === rootKey ? '' : module.dir,
+    sourceRoots: module.manifest.sourceRoots ?? [],
+    kotlinSourceRoots: module.manifest.kotlinSourceRoots ?? [],
+    testSourceRoots: module.manifest.testSourceRoots ?? [],
+    kotlinTestSourceRoots: module.manifest.kotlinTestSourceRoots ?? [],
+    resourceRoots: module.manifest.resourceRoots ?? [],
+  }));
 }
 
 export function projectWideReport(projectRoot, { projects, mergedRoot, manifest, kotlin, policy }) {
