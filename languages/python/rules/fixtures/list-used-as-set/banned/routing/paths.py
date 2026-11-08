@@ -18,3 +18,11 @@ def reachable(start, edges):
 
     visit(start)
     return visited
+
+
+def tagged(routes):
+    tags: list[str] = []
+    for route in routes:
+        if route.tag not in tags:
+            tags += [route.tag]
+    return tags

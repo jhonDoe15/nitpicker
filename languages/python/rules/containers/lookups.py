@@ -9,6 +9,7 @@ from containers.scope import (
     is_name,
     is_self_field,
     name_stores,
+    parameter_names,
     repeating_scopes,
     store_targets,
 )
@@ -107,7 +108,9 @@ def fixed_binding(receiver, call, parents):
     stores = name_stores(function, receiver.id)
     if len(stores) > 1 or changes_in_place(function, is_name(receiver.id)):
         return None
-    return stores[0] if stores else function.args
+    if stores:
+        return stores[0]
+    return function.args if receiver.id in parameter_names(function) else None
 
 
 def check(context):

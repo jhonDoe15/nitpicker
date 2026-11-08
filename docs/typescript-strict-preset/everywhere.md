@@ -59,14 +59,14 @@ Part of the [TypeScript strict preset guide](../typescript-strict-preset.md).
 - `nitpicker/no-costly-collection-form`: a collection form with a cheaper equivalent, in all
   production code (not in tests). It reports an array declared with an array literal that gets
   `push`, `unshift` or `xs = [...xs, x]` and is searched with `includes`, `indexOf(x) === -1` (or
-  another test against `-1` or `0`) or `some((y) => y === x)` inside a loop, a callback or a nested
-  function such as a recursive visitor; an array also used by position (`xs[i]`, `splice`, `sort`,
+  another test against `-1` or `0`) or `some((y) => y === x)` inside a loop, a callback or a
+  recursive function such as a visitor; an array also used by position (`xs[i]`, `splice`, `sort`,
   `pop`, `shift`, `at`, a positional `indexOf`) is left alone. Allowed form: a `Set` (`add`, `has`;
   `[...set]` keeps insertion order). It reports `find`, `findIndex`, `findLast`,
   `findLastIndex` or `some` whose callback only compares a property of the item with `===` or `==`
   to a value that is not a literal (`handlers.find((h) => h.message === event.type)`), inside a
   loop, an iteration callback (`map`, `forEach`, `filter`, `reduce` and the like) or a listener
-  (`on`, `once`, `addEventListener`, `subscribe`), on a binding declared outside it that is never
+  (`on`, `once`, `addListener`, `prependListener`, `addEventListener`, `subscribe`), on a binding declared outside it that is never
   reassigned or changed in place (`push`, `splice`, `sort` and the like), or a `this` field that
   only the constructor assigns. Allowed form: a `Map` built once, before the loop or handler. It
   reports `sort(...)` or `toSorted(...)` followed by `[0]`, `.at(0)`, `.at(-1)`, `.pop()`, `.shift()`
@@ -74,9 +74,10 @@ Part of the [TypeScript strict preset guide](../typescript-strict-preset.md).
   again later, or on a property, keeps the sorted array and is left alone. Allowed form: one pass
   with `reduce`, or `Math.min`/`Math.max` for a few numbers. An exception fits only for a list that
   always stays a handful of items. The rule reads no types, so it behaves the same in the
-  JavaScript preset. The same rules run as `list-used-as-set`, `linear-lookup-in-loop` and ruff
+  JavaScript preset; it reads local arrays only, not class fields or exported arrays. The same rules run as `list-used-as-set`, `linear-lookup-in-loop` and ruff
   `FURB192` (Python), `pmd/ListUsedAsSet`, `pmd/LinearLookupInLoop` and `pmd/SortForExtreme` (Java)
-  and `kotlin-source/` rules of the same names (Kotlin).
+  and `kotlin-source/` rules of the same names (Kotlin). Only this rule also reads `indexOf`
+  and identity `some` as membership tests and listeners as repeated runs.
 - `async`/`await` and `Promise.all`. No `.then()`, `.catch()` or `.finally()` chains, and no promise
   left without being awaited (`@typescript-eslint/no-floating-promises`). Deliberate
   fire-and-forget is written `void job();`, typescript-eslint's own form; `.then()` and `.catch()`

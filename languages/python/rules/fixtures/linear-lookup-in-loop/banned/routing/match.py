@@ -18,3 +18,7 @@ class Dispatcher:
         for message in messages:
             handler = next(h for h in self.handlers if h.kind == message.kind)
             handler.run(message)
+
+
+def ranked(routes, paths):
+    return sorted(paths, key=lambda p: next(r.weight for r in routes if r.path == p))

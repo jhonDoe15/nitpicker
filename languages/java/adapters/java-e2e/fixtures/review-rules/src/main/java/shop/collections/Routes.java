@@ -9,6 +9,7 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.function.Function;
+import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
 public final class Routes {
@@ -46,6 +47,24 @@ public final class Routes {
       }
     }
     return ordered;
+  }
+
+  public List<String> streamedUnique(List<Route> incoming) {
+    List<String> seen = new ArrayList<>();
+    incoming.forEach(
+        route -> {
+          if (!seen.contains(route.path())) { // violation: ListUsedAsSet
+            seen.add(route.path());
+          }
+        });
+    return seen;
+  }
+
+  public boolean lazyCheck(String path) {
+    List<String> once = new ArrayList<>();
+    once.add(path);
+    Supplier<Boolean> check = () -> once.contains(path);
+    return check.get();
   }
 
   public boolean addOnce(String path) {

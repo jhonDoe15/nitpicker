@@ -1,12 +1,14 @@
   <rule name="ListUsedAsSet" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
-        message="This local list gets add and is searched with contains inside a loop or lambda, so every search scans the whole list. Keep it in a Set (new HashSet&lt;&gt;(), or LinkedHashSet to keep insertion order): add returns false when the item is already there. An exception fits only for a list that always stays a handful of items.">
+        message="This local list gets add and is searched with contains inside a loop or stream step, so every search scans the whole list. Keep it in a Set (new HashSet&lt;&gt;(), or LinkedHashSet to keep insertion order): add returns false when the item is already there. An exception fits only for a list that always stays a handful of items.">
     <priority>3</priority>
     <properties>
       <property name="xpath">
         <value><![CDATA[
 let $positional := ('get', 'set', 'indexOf', 'lastIndexOf', 'subList', 'listIterator', 'sort', 'replaceAll',
                     'getFirst', 'getLast', 'addFirst', 'addLast', 'removeFirst', 'removeLast', 'reversed'),
-    $repeats := ('ForeachStatement', 'ForStatement', 'WhileStatement', 'DoStatement', 'LambdaExpression')
+    $repeats := ('ForeachStatement', 'ForStatement', 'WhileStatement', 'DoStatement'),
+    $iterating := ('forEach', 'forEachOrdered', 'map', 'flatMap', 'filter', 'anyMatch', 'allMatch', 'noneMatch',
+                   'peek', 'removeIf', 'mapToObj', 'mapToInt', 'mapToLong', 'mapToDouble', 'takeWhile', 'dropWhile')
 return //MethodCall[@MethodName = 'contains'][ArgumentList/@Size = 1][*[1][self::VariableAccess]]
   [let $call := .,
        $name := *[1]/@Name,
@@ -19,7 +21,9 @@ return //MethodCall[@MethodName = 'contains'][ArgumentList/@Size = 1][*[1][self:
      and empty($uses[@MethodName = $positional])
      and empty($uses[@MethodName = 'add'][ArgumentList/@Size = 2])
      and empty($uses[@MethodName = 'remove'][ArgumentList/*[1][pmd-java:typeIs('int')]])
-     and exists($call/ancestor::*[local-name() = $repeats][. >> $declarator])]
+     and exists($call/ancestor::*[local-name() = $repeats
+           or self::LambdaExpression[parent::ArgumentList/parent::MethodCall[@MethodName = $iterating]
+             [*[1][pmd-java:typeIs('java.util.stream.BaseStream') or pmd-java:typeIs('java.lang.Iterable') or pmd-java:typeIs('java.util.Map')]]]][. >> $declarator])]
 ]]></value>
       </property>
     </properties>
