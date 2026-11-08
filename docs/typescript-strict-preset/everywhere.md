@@ -240,6 +240,24 @@ Part of the [TypeScript strict preset guide](../typescript-strict-preset.md).
   `exceptions` entry.
 - `===` and `!==` only (`eqeqeq`). Braces on every `if`, `else` and loop body (`curly`). One import
   statement per module (`no-duplicate-imports`; a separate `import type` is fine).
+- Logic mistakes the bundled rules catch, in production code and tests of both presets
+  (`eslint-config/logic/logic-rules.mjs`): a `map`, `filter`, `find` or `reduce` callback with a
+  path that returns nothing (`array-callback-return`; `forEach` is banned anyway); `sort()` or
+  `toSorted()` on numbers without a compare function, which sorts them as strings
+  (`@typescript-eslint/require-array-sort-compare`, type-aware; a string array is fine, and an
+  untyped JavaScript one passes once JSDoc types it); a loop whose body always leaves on the first
+  pass (`no-unreachable-loop`); a loop condition nothing in the loop
+  changes (`no-unmodified-loop-condition`, for the loops config files and exceptions allow);
+  `${...}` inside a plain string (`no-template-curly-in-string`; an exception fits text another
+  tool fills, such as shell, CI or Kotlin source); a constructor that returns a value (`no-constructor-return`); a bare
+  `return;` at the end of a function (`no-useless-return`); a private class member nothing reads
+  (`@typescript-eslint/no-unused-private-class-members`); `'a' + 'b'` (`no-useless-concat`) and
+  `fn.call(undefined, x)` (`no-useless-call`). `no-promise-executor-return` and `no-loop-func` stay
+  off: their reports were almost all harmless forms such as an executor that returns
+  `server.listen(...)` and handlers that share a flag on purpose, and `for...of` with `const`
+  bindings already removes the late-binding bug `no-loop-func` exists for. Python's counterparts are ruff `PLE0101`,
+  `B023` and `PLR1711`; in Java and Kotlin a missing return does not compile and the existing
+  unused-member checks already report an unused private member.
 - Identifier casing (`nitpicker/naming-convention`, which wraps
   `@typescript-eslint/naming-convention`): types and type parameters in PascalCase; functions,
   variables and parameters in camelCase; constants may be UPPER_CASE; a leading underscore is
@@ -671,6 +689,20 @@ Part of the [TypeScript strict preset guide](../typescript-strict-preset.md).
   `eslint-plugin-regexp`, on for `g` and `y` only), so the two rules do not overlap. Allowed: create
   the regex where it is used, drop `g` when one match is enough, or `text.matchAll(pattern)` for
   every match.
+- Regular expressions with a part that never changes what they match or does not do what it looks
+  like (`eslint-plugin-regexp`, in production code). A part that can never match, always matches or repeats another part is either
+  a bug or dead weight, and tests seldom reach the input that tells which: an assertion that always
+  accepts or always rejects (`/a\bb/`), an alternative or quantifier an assertion rules out, a
+  duplicate alternative (`/a|b|a/`) or class member (`[\w_]`), an empty group, alternative or
+  lookaround, a lazy quantifier at the end of the pattern, a backreference that is always empty, a
+  zero quantifier, a capturing group that captures less than it reads, a set operand that never
+  changes the set, `[\b]`, a `$2` replacement with one group and a `replaceAll`/`matchAll` regex
+  without `g`. Forms with a shorter equivalent are reported too, with the fix: `a{1}`, `a{2,2}`,
+  `(?:a+)*`, `\w+\d*`, `(?:ab)c`, `[a]`, `[a-ab]`, `a{3}?`, `(?=(?=b))`, `a(?!\w)` (`\b`), and a
+  range such as `[ -~]` whose characters are not obvious (write `[\x20-\x7E]`). The rules are the
+  `regexp/` ids listed in `eslint-config/regexp/regexp-rules.mjs`. `regexp/no-super-linear-move` is
+  off: it reports the common trailing trim `replace(/\/+$/u, '')` and cannot tell bounded input
+  from attacker-controlled input.
 - `nitpicker/no-string-as-regex` (type-aware): `match()`, `matchAll()` and `search()` compile a
   string argument as a regex, so a string-typed argument on a string receiver is reported (also a
   literal: `text.match('a.b')`); use `includes`, `startsWith`, `indexOf` or `===` for plain text, or
