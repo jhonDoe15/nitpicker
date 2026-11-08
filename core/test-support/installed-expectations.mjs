@@ -129,7 +129,7 @@ export function checkoutOutput(links, args) {
 /** The help an installed package prints in `projectRoot`: its usage page at its release tag. */
 export function installedHelpText(links, projectRoot) {
   return usageText({
-    analyzers: projectAnalyzers(projectRoot),
+    analyzers: projectAnalyzers({ options: {}, currentProjectRoot: projectRoot }),
     referenceUrl: `${links.tagRoot}/docs/usage.md`,
   });
 }

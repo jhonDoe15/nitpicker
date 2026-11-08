@@ -629,7 +629,7 @@ nitpicker rules [--preset <name>] [--tool <name>]
   `accept-policy-change` label sets it (see
   [Accepting a policy change with a label](ci.md#accepting-a-policy-change-with-a-label)).
 - `--help` (or `-h`): print one screen and exit 0: the commands and flags with a one-line
-  description, the analyzers `--analyzer` takes in this project (the preset of the nearest
+  description, the analyzers `--analyzer` takes in the project a run would check (the preset of its
   `nitpicker.config.json`, `typescript` without one, minus `disable`, plus custom analyzers), the
   exit codes, the report files to read first, a few example runs and a link to this page for the
   installed version. `nitpicker <command> --help` (or `-h`) prints the options of that command.
