@@ -45,12 +45,7 @@ async function filePlan(root, globs) {
   for (const file of candidateFiles(root, globs)) {
     const config = await lintedConfig(eslint, file);
     if (config !== undefined) {
-      addFile(
-        plan,
-        file,
-        config,
-        programRulesOf(plan.metadataProjects, path.join(root, file), config),
-      );
+      addFile(plan, { root, file }, config);
     }
   }
   return {
@@ -61,8 +56,9 @@ async function filePlan(root, globs) {
   };
 }
 
-function addFile(plan, file, config, programRules) {
+function addFile(plan, { root, file }, config) {
   const rules = enabledRules(config.rules);
+  const programRules = programRulesOf(plan.metadataProjects, path.join(root, file), config);
   addToGroup(plan.groups, file, {
     rules,
     globals: sortedGlobals(config.languageOptions?.globals),
