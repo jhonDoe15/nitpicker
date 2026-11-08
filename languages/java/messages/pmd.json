@@ -100,7 +100,7 @@
     "mayBeIntended": true
   },
   "AvoidLiteralsInIfCondition": {
-    "fix": "Compare against a named private static final constant instead of the literal.",
+    "fix": "Compare against a named private static final constant instead of the literal; 0 and -1 are fine.",
     "mayBeIntended": true
   },
   "AvoidLosingExceptionInformation": {
@@ -136,7 +136,7 @@
     "mayBeIntended": true
   },
   "AvoidSynchronizedAtMethodLevel": {
-    "fix": null,
+    "fix": "Guard the state with a private final ReentrantLock: lock.lock() right before try, lock.unlock() in finally.",
     "mayBeIntended": true
   },
   "AvoidSynchronizedStatement": {
@@ -576,7 +576,7 @@
     "mayBeIntended": false
   },
   "SystemPrintln": {
-    "fix": "Write through a logger, or take a PrintStream as a parameter so callers choose the stream.",
+    "fix": "Use a logger, or write to a PrintStream, Writer or Appendable parameter; only static void main passes System.out. An exception fits only without a main method.",
     "mayBeIntended": true
   },
   "TestClassWithoutTestCases": {
@@ -630,10 +630,6 @@
   "UnnecessaryConversionTemporary": {
     "fix": "Call the conversion on the value directly (Integer.toString(i), String.valueOf(i)) instead of building a wrapper object first.",
     "mayBeIntended": false
-  },
-  "UnnecessaryImport": {
-    "fix": "Remove the import.",
-    "mayBeIntended": true
   },
   "UnnecessaryVarargsArrayCreation": {
     "fix": "Pass the elements directly: Arrays.asList(\"a\", \"b\") instead of wrapping them in new String[] { ... }.",

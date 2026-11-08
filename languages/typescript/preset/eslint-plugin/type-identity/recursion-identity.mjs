@@ -1,4 +1,4 @@
-import ts from 'typescript';
+import { ts } from '../../../typescript-api/typescript-api.mjs';
 
 const MAX_TYPE_ARGUMENT_DEPTH = 12;
 const SHARED_IDENTITY = Symbol('sharedRecursionIdentity');

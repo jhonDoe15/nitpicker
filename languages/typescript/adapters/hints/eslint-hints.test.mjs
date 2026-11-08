@@ -5,10 +5,10 @@ import { describe, expect, it } from 'vitest';
 import { normalizeEslintResults } from '../eslint/normalize.mjs';
 import {
   eslintMessageWithHint,
-  growthAdviceFor,
-  routedEslintMessage,
+  routedEslintFields,
   withoutFatalDirectives,
 } from './eslint-hints.mjs';
+import { growthAdviceFor } from './growth-advice.mjs';
 
 const IMMUTABLE = (kind) =>
   `${kind} should have an immutability of at least "ReadonlyDeep" (actual: "Mutable").`;
@@ -285,9 +285,12 @@ describe('eslintMessageWithHint', () => {
   });
 
   it('offers growth advice for nitpicker/no-throw only', () => {
-    expect(growthAdviceFor('nitpicker/no-throw')).toBe(
-      'This function had {base} of these at base and the count may not grow: a throw on a new line counts as new even when the count holds, so edit an existing throw line in place to throw a reason a new helper returns, or return a union from a new helper function.',
-    );
+    expect(growthAdviceFor('nitpicker/no-throw')).toEqual({
+      growthAdvice:
+        'Edit an existing throw line in place to throw a reason a new helper returns, or return a union from a new helper function. This function had {base} of these at base and the count may not grow: a throw on a new line counts as new even when the count holds.',
+      growthAllowedForm:
+        'Edit an existing throw line in place to throw a reason a new helper returns, or return a union from a new helper function.',
+    });
     expect(growthAdviceFor('no-debugger')).toBeUndefined();
   });
 
@@ -302,40 +305,43 @@ describe('eslintMessageWithHint', () => {
   });
 });
 
-describe('routedEslintMessage', () => {
+describe('routedEslintFields', () => {
   const route = (rule) =>
     `If this is intended, add {"rule":"${rule}","paths":["src/a.ts"],"reason":"..."} to "exceptions" in nitpicker.config.json.`;
 
   it('ends the message of any rule with the entry that turns it off for the path', () => {
     expect(
-      routedEslintMessage({
+      routedEslintFields({
         ruleId: '@typescript-eslint/no-explicit-any',
         text: 'Unexpected any.',
         relativePath: 'src/a.ts',
       }),
-    ).toBe(`Unexpected any. ${route('@typescript-eslint/no-explicit-any')}`);
+    ).toEqual({ message: `Unexpected any. ${route('@typescript-eslint/no-explicit-any')}` });
   });
 
-  it('ends the hint of a rule it rewrites with the entry', () => {
+  it('ends the hint of a rule it rewrites with the entry, and gives the hint as the allowed form', () => {
+    const advice =
+      'Call `expect` in the test body: asserting helpers do not count, so return the value and `expect` it in the test.';
     expect(
-      routedEslintMessage({
+      routedEslintFields({
         ruleId: 'vitest/expect-expect',
         text: 'Test has no assertions',
         relativePath: 'src/a.ts',
       }),
-    ).toBe(
-      `Test has no assertions. Call \`expect\` in the test body: asserting helpers do not count, so return the value and \`expect\` it in the test. ${route('vitest/expect-expect')}`,
-    );
+    ).toEqual({
+      message: `Test has no assertions. ${advice} ${route('vitest/expect-expect')}`,
+      allowedForm: advice,
+    });
   });
 
   it('names no entry for a directive eslint reports without a rule', () => {
     expect(
-      routedEslintMessage({
+      routedEslintFields({
         ruleId: 'eslint/unused-disable-directive',
         text: 'Unused eslint-disable directive',
         relativePath: 'src/a.ts',
       }),
-    ).toBe('Unused eslint-disable directive');
+    ).toEqual({ message: 'Unused eslint-disable directive' });
   });
 });
 
@@ -379,7 +385,7 @@ describe('hints for the production policy rules', () => {
     );
 
     expect(message).toBe(
-      `Await this promise: \`await job()\`, or \`await Promise.all([...])\` for several; \`.then()\` and \`.catch()\` do not count. Deliberate fire-and-forget is written \`void job();\`.`,
+      `Await this promise: \`await job()\`, or \`await Promise.all([...])\` for several; \`.then()\` and \`.catch()\` do not count. Deliberate fire-and-forget is written \`void job();\`, and in production code \`job\` is an async function whose whole body is a \`try\` with a \`catch\` that does not rethrow.`,
     );
   });
 
@@ -453,6 +459,21 @@ describe('hints for the production policy rules', () => {
       'no-param-reassign',
       "Assignment to function parameter 'n'.",
       "Assignment to function parameter 'n'. Declare a new const with another name instead of reassigning the parameter. An exception fits only when the reassignment is deliberate.",
+    ],
+    [
+      '@typescript-eslint/no-unused-vars',
+      "'context' is defined but never used. Allowed unused args must match /^_/u.",
+      "'context' is defined but never used. Remove the parameter and update the callers. Drop a destructured property from the pattern, or rename it `{ total: _total }`. A parameter that an override or a callback signature requires starts with `_` (`_context`); that includes one whose position matters, such as the `_req` of an Express error handler.",
+    ],
+    [
+      '@typescript-eslint/no-unused-vars',
+      "Parameter 'context' is declared but never used. Unused parameters should start with a '_'.",
+      "Parameter 'context' is declared but never used. Remove the parameter and update the callers. Drop a destructured property from the pattern, or rename it `{ total: _total }`. A parameter that an override or a callback signature requires starts with `_` (`_context`); that includes one whose position matters, such as the `_req` of an Express error handler.",
+    ],
+    [
+      '@typescript-eslint/no-unused-vars',
+      "'total' is assigned a value but never used.",
+      "'total' is assigned a value but never used. Remove it, or use it.",
     ],
   ])('names the allowed form for %s', (ruleId, text, expected) => {
     expect(hint(ruleId, text)).toBe(expected);

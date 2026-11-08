@@ -3,6 +3,7 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import { parseAnalyzerReport } from '../../../../core/diff/comparison/finding-schema.mjs';
+import { withoutRouteFields } from '../../../../core/exceptions/test-support/route-check.mjs';
 import { readSpringArchFindings, SPRING_ARCH_REPORT } from './spring-arch.mjs';
 
 const ROOT = 'com.shop';
@@ -119,6 +120,46 @@ describe('readSpringArchFindings messages', () => {
       'Keep Svc free of web types: take and return plain values, throw a domain exception for errors, and map them to and from ServerWebExchange in the controller or a @ControllerAdvice.',
     ],
     [
+      violation(
+        'spring-request-state',
+        'com.shop.orders.OrderService',
+        'recent:add:OrderController.place(order)',
+      ),
+      'Pass the request data from OrderController.place(order) on through parameters and return values instead of passing it to OrderService.recent with add(): OrderService is a singleton that every request shares, so request data kept there leaks between users and races between threads. Per-request data belongs in a @RequestScope bean, and a cache needs a size and an expiry (Spring Cache, Caffeine).',
+    ],
+    [
+      violation(
+        'spring-request-state',
+        'com.shop.orders.Holder',
+        'attributes:=:RequestContextHolder.currentRequestAttributes()',
+      ),
+      'Pass the request data from RequestContextHolder.currentRequestAttributes() on through parameters and return values instead of assigning it to Holder.attributes: Holder is a singleton that every request shares, so request data kept there leaks between users and races between threads. Per-request data belongs in a @RequestScope bean, and a cache needs a size and an expiry (Spring Cache, Caffeine).',
+    ],
+    [
+      violation(
+        'spring-request-state',
+        'com.shop.orders.OrderController',
+        'OrderController.SEEN:[]:OrderController.place(id)',
+      ),
+      'Pass the request data from OrderController.place(id) on through parameters and return values instead of writing it into an element of the static field OrderController.SEEN: a static field is shared by every request, so request data kept there leaks between users and races between threads. Per-request data belongs in a @RequestScope bean, and a cache needs a size and an expiry (Spring Cache, Caffeine).',
+    ],
+    [
+      violation(
+        'spring-typed-request-field',
+        'com.shop.orders.OrderController',
+        'CreateOrder.attributes:field:OrderController.create',
+      ),
+      'Type CreateOrder.attributes with a record or an enum and validate it: OrderController.create binds it from the request, and an Object, JsonNode or Map<String, Object> field, or a collection of those, skips validation and lets a client send any shape. A Map with typed values, such as Map<String, String>, is fine.',
+    ],
+    [
+      violation(
+        'spring-typed-request-field',
+        'com.shop.orders.Profile',
+        'Profile.put:any-setter:ProfileController.update',
+      ),
+      'Declare the properties ProfileController.update accepts as typed fields instead of collecting unknown keys with @JsonAnySetter on Profile.put: it takes any key and value a client sends, unvalidated.',
+    ],
+    [
       violation('spring-test-placement', 'com.shop.orders.FlowTest'),
       'Test FlowTest with new and mocks, or run it as an integration test: name it FlowIT (Failsafe runs *IT on Maven) or put it in an integration test source set. Both keep its package, so package-private classes stay visible; a package named integration or it also counts.',
     ],
@@ -130,6 +171,7 @@ describe('readSpringArchFindings messages', () => {
     const [finding] = read([input]);
 
     expect(finding.message).toBe(`${message} ${exceptionRoute(input.rule, finding.path)}`);
+    expect(finding.allowedForm).toBe(message);
     expect(finding.rule).toBe(input.rule);
   });
 });
@@ -186,7 +228,34 @@ describe('readSpringArchFindings findings', () => {
         classification: 'enforceable',
       },
     ]);
-    expect(parseAnalyzerReport({ findings }, 'java').findings).toEqual(findings);
+    expect(withoutRouteFields(parseAnalyzerReport({ findings }, 'java').findings)).toEqual(
+      findings,
+    );
+  });
+
+  it('keys request state by its field, so another handler or operation reaching it keeps the finding', () => {
+    const identities = (detail) =>
+      read([
+        violation('spring-request-state', 'com.shop.orders.OrderService', detail),
+        violation('spring-request-state', 'com.shop.orders.OrderService', 'last:=:A.a(id)'),
+      ]).map((finding) => finding.identity);
+
+    expect(identities('recent:add:A.a(id)')).toEqual(['OrderService|recent', 'OrderService|last']);
+    expect(identities('recent:put:B.b(order)')).toEqual(identities('recent:add:A.a(id)'));
+  });
+
+  it('keys a typed request field by the field, so another handler reaching it keeps the finding', () => {
+    const identities = (detail) =>
+      read([violation('spring-typed-request-field', 'com.shop.orders.CreateOrder', detail)]).map(
+        (finding) => finding.identity,
+      );
+
+    expect(identities('CreateOrder.attributes:field:OrderController.create')).toEqual([
+      'CreateOrder|CreateOrder.attributes',
+    ]);
+    expect(identities('CreateOrder.attributes:field:BulkController.bulk')).toEqual(
+      identities('CreateOrder.attributes:field:OrderController.create'),
+    );
   });
 
   it('keeps the identity when the class and its dependency move to other packages', () => {

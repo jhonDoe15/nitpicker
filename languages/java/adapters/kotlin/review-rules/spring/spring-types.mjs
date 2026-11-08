@@ -1,9 +1,12 @@
+import { CONSTRAINT_TYPES } from '../validation/constraint-names.mjs';
+
 const SPRING = 'org.springframework';
 const STEREOTYPE = `${SPRING}.stereotype`;
 const WEB = `${SPRING}.web.bind.annotation`;
 const CONTEXT = `${SPRING}.context.annotation`;
 const BOOT = `${SPRING}.boot.autoconfigure`;
 const FACTORY = `${SPRING}.beans.factory`;
+const RESILIENCE4J = 'io.github.resilience4j';
 
 function twins(...names) {
   return names.flatMap((name) => [`jakarta.${name}`, `javax.${name}`]);
@@ -33,6 +36,7 @@ export const CONFIGURATION_CLASSES = group(
   inPackage(BOOT, 'SpringBootApplication', 'AutoConfiguration'),
   inPackage(`${SPRING}.boot.test.context`, 'TestConfiguration'),
 );
+export const SPRING_MANAGED_CLASSES = group([...STEREOTYPES, ...CONFIGURATION_CLASSES]);
 export const BOOT_APPLICATION = group(inPackage(BOOT, 'SpringBootApplication'));
 export const BEAN = group(inPackage(CONTEXT, 'Bean'));
 export const PROFILE = group(inPackage(CONTEXT, 'Profile'));
@@ -49,6 +53,7 @@ export const PERSISTENCE_INJECTION = group(
   twins('persistence.PersistenceContext', 'persistence.PersistenceUnit'),
 );
 export const POST_CONSTRUCT = group(twins('annotation.PostConstruct'));
+export const PRE_DESTROY = group(twins('annotation.PreDestroy'));
 export const SINGLETON_SCOPES = group(
   inPackage(`${SPRING}.web.context.annotation`, 'RequestScope', 'SessionScope'),
 );
@@ -62,13 +67,45 @@ export const SPRING_TRANSACTIONAL = group(
 export const JAKARTA_TRANSACTIONAL = group(twins('transaction.Transactional'));
 export const ASYNC = group(inPackage(`${SPRING}.scheduling.annotation`, 'Async'));
 export const SCHEDULED = group(inPackage(`${SPRING}.scheduling.annotation`, 'Scheduled'));
-export const PROXIED = group(
+export const META_PROXIED = group(
   [...SPRING_TRANSACTIONAL, ...ASYNC],
   inPackage(`${SPRING}.cache.annotation`, 'Cacheable', 'CachePut', 'CacheEvict', 'Caching'),
-  inPackage(`${SPRING}.retry.annotation`, 'Retryable'),
-  inPackage(`${SPRING}.resilience.annotation`, 'Retryable'),
-  inPackage(`${SPRING}.security.access.prepost`, 'PreAuthorize', 'PostAuthorize'),
+  inPackage(`${SPRING}.retry.annotation`, 'Retryable', 'CircuitBreaker'),
+  inPackage(`${SPRING}.resilience.annotation`, 'Retryable', 'ConcurrencyLimit'),
+  inPackage(
+    `${SPRING}.security.access.prepost`,
+    'PreAuthorize',
+    'PostAuthorize',
+    'PreFilter',
+    'PostFilter',
+  ),
   inPackage(`${SPRING}.security.access.annotation`, 'Secured'),
+  twins('annotation.security.RolesAllowed', 'annotation.security.DenyAll'),
+);
+export const PROXIED = group(
+  [...META_PROXIED],
+  inPackage(`${RESILIENCE4J}.retry.annotation`, 'Retry'),
+  inPackage(`${RESILIENCE4J}.circuitbreaker.annotation`, 'CircuitBreaker'),
+  inPackage(`${RESILIENCE4J}.ratelimiter.annotation`, 'RateLimiter'),
+  inPackage(`${RESILIENCE4J}.bulkhead.annotation`, 'Bulkhead'),
+  inPackage(`${RESILIENCE4J}.timelimiter.annotation`, 'TimeLimiter'),
+  inPackage('io.micrometer.core.annotation', 'Timed', 'Counted'),
+  inPackage('io.micrometer.observation.annotation', 'Observed'),
+);
+export const VALIDATED = group(inPackage(`${SPRING}.validation.annotation`, 'Validated'));
+export const CONSTRAINTS = group(CONSTRAINT_TYPES, twins('validation.Valid'));
+export const CONSTRAINT = group(twins('validation.Constraint'));
+export const ASPECT = group(['org.aspectj.lang.annotation.Aspect']);
+export const ADVICE = group(
+  inPackage(
+    'org.aspectj.lang.annotation',
+    'Around',
+    'Before',
+    'After',
+    'AfterReturning',
+    'AfterThrowing',
+    'Pointcut',
+  ),
 );
 export const SPRING_PRESET_OPEN = group(
   [...STEREOTYPES, ...CONFIGURATION_CLASSES, ...SPRING_TRANSACTIONAL, ...ASYNC],
@@ -149,8 +186,15 @@ export const DATA_REPOSITORIES = group(
   inPackage(`${DATA}.jpa.repository`, 'JpaRepository'),
   inPackage(`${DATA}.mongodb.repository`, 'MongoRepository', 'ReactiveMongoRepository'),
   inPackage(`${DATA}.r2dbc.repository`, 'R2dbcRepository'),
+  inPackage(`${DATA}.jpa.repository.support`, 'JpaRepositoryImplementation'),
+  inPackage(`${DATA}.repository.history`, 'RevisionRepository'),
+  inPackage(`${DATA}.cassandra.repository`, 'CassandraRepository', 'ReactiveCassandraRepository'),
+  inPackage(`${DATA}.elasticsearch.repository`, 'ElasticsearchRepository'),
+  inPackage(`${DATA}.neo4j.repository`, 'Neo4jRepository', 'ReactiveNeo4jRepository'),
+  inPackage(`${DATA}.couchbase.repository`, 'CouchbaseRepository', 'ReactiveCouchbaseRepository'),
+  inPackage(`${DATA}.keyvalue.repository`, 'KeyValueRepository'),
 );
-export const ENTITY_MANAGER = group(twins('persistence.EntityManager'));
+export const ENTITY_MANAGER = group(twins('persistence.EntityManager'), ['org.hibernate.Session']);
 export const JDBC = group(
   inPackage(`${SPRING}.jdbc.core`, 'JdbcTemplate', 'JdbcOperations'),
   inPackage(

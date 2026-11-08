@@ -1,7 +1,7 @@
 import { existsSync } from 'node:fs';
 import { builtinModules } from 'node:module';
 import path from 'node:path';
-import ts from 'typescript';
+import { ts } from '../../typescript-api/typescript-api.mjs';
 import { chainOf } from '../../../../shared/traversal.mjs';
 import { parsedTsconfig, readJsonc, referencedTsconfigs } from './tsconfig-files.mjs';
 

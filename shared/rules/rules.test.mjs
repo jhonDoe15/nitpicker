@@ -5,7 +5,7 @@ import { computeCoupling, evaluateCoupling } from './coupling.mjs';
 import { crapFindings } from './crap.mjs';
 import { mutantFindings } from './mutation.mjs';
 import { evaluateStructure } from './structure.mjs';
-import { evaluateTestRuntime } from './test-runtime.mjs';
+import { evaluateTestRuntime } from './test-runtime/evaluate.mjs';
 
 const byRule = (findings, rule) => findings.filter((finding) => finding.rule === rule);
 
@@ -191,7 +191,8 @@ describe('test-runtime rule on neutral findings', () => {
       rule: 'no-production-runtime',
       path: 'test/AT.java',
       identity: 'test:test/AT.java:source:h1',
-      message: 'Test has no production runtime',
+      message:
+        'Test runs no production code: nothing it imports or references, directly or through test helpers, is production code. Test the production code it is about, or delete the test',
     });
     expect(failures[1].identity).toMatch(/^test:test\/BT\.java:source:[0-9a-f]{24}$/);
   });
@@ -238,6 +239,7 @@ describe('crapFindings', () => {
         identity: 'function:f',
         message:
           'f has CRAP 9.00; score must be below 9. Test its uncovered branches, or split a branchy part into its own function. If this is intended, add {"rule":"crap-score-limit","paths":["a.ts"],"function":"f","reason":"..."} to "exceptions" in nitpicker.config.json.',
+        allowedForm: 'Test its uncovered branches, or split a branchy part into its own function.',
         classification: 'enforceable',
         symbol: 'f',
         location: { line: 3 },
@@ -290,7 +292,7 @@ describe('branchCoverageFindings', () => {
     expect(findings[0]).toMatchObject({
       rule: 'changed-branch-coverage',
       message:
-        'Branch coverage is 50.00%; minimum is 95%. To accept the file, add it to "exclude" in nitpicker.config.json.',
+        'Branch coverage is 50.00%; minimum is 95%. Add a test for each outcome it misses. To accept the file, add it to "exclude" in nitpicker.config.json.',
       classification: 'enforceable',
       location: { line: 1 },
     });
@@ -306,6 +308,23 @@ describe('branchCoverageFindings', () => {
       'Branch coverage is 50.00%; minimum is 95%. Not taken: the exit. Test it, or remove it if it can\'t happen. If this is intended, add {"rule":"changed-branch-coverage","paths":["src/a.py"],"function":"Store.save","reason":"..."} to "exceptions" in nitpicker.config.json.',
     );
     expect(finding.symbol).toBe('Store.save');
+  });
+
+  it('gives each finding the allowed form its message states', () => {
+    const findings = branchCoverageFindings(
+      [
+        { path: 'a', key: 'k', percent: 50 },
+        { path: 'a', key: 'j', percent: 50, arms: ['the exit'] },
+      ],
+      { tool: 'cov', identify },
+    );
+
+    expect(
+      findings.map(({ message, allowedForm }) => [allowedForm, message.includes(allowedForm)]),
+    ).toEqual([
+      ['Add a test for each outcome it misses.', true],
+      ["Test it, or remove it if it can't happen.", true],
+    ]);
   });
 
   it('passes a branch at the minimum', () => {
@@ -384,15 +403,24 @@ describe('coupling metrics on a neutral dependency graph', () => {
   });
 
   it('lists a package pair whose source is less stable than its target once', () => {
-    const result = computeCoupling({ modules, edges, packageOf });
-    for (const entry of result.stabilityDirection) {
-      const source = result.packages.find((item) => item.name === entry.source);
-      const target = result.packages.find((item) => item.name === entry.target);
-      expect(source.instability).toBeLessThan(target.instability);
-      expect(entry.delta).toBeGreaterThan(0);
-    }
-    const keys = result.stabilityDirection.map((entry) => `${entry.source}>${entry.target}`);
-    expect(new Set(keys).size).toBe(keys.length);
+    const violatingModules = ['x/p', 'y/q', 'z/r', 's/a', 'v/b', 'v/d', 'w/c'];
+    const runtime = (source, target) => ({ source, target, kind: 'runtime' });
+    const result = computeCoupling({
+      modules: violatingModules,
+      edges: [
+        runtime('x/p', 's/a'),
+        runtime('y/q', 's/a'),
+        runtime('z/r', 's/a'),
+        runtime('s/a', 'v/b'),
+        runtime('s/a', 'v/d'),
+        runtime('v/b', 'w/c'),
+        runtime('v/d', 'w/c'),
+      ],
+      packageOf,
+    });
+    expect(result.stabilityDirection).toEqual([
+      { source: 's', target: 'v', sourceInstability: 0.4, targetInstability: 0.5, delta: 0.1 },
+    ]);
   });
 
   it('reports no instability for an isolated module and handles an empty graph', () => {

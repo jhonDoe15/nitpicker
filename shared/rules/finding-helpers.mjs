@@ -5,12 +5,63 @@ import { createHash } from 'node:crypto';
 
 /** Tool-error rules for a project whose own tests fail; the skipped one is a notice, not a cause. */
 export const TESTS_FAILED_RULE = 'tests-failed';
+export const TESTS_NOT_RUN_RULE = 'tests-not-run';
 export const TESTS_FAILED_SKIPPED_RULE = 'tests-failed-skipped';
+export const TESTS_FAILED_RULES = [TESTS_FAILED_RULE, TESTS_FAILED_SKIPPED_RULE];
+/** A tests-failed finding's `symbol` lists the directories it covers, joined by this. */
+export const TESTS_FAILED_SCOPE_SEPARATOR = ',';
 export const TYPECHECK_FAILED_SKIPPED_RULE = 'typecheck-failed-skipped';
+
+const MAX_LISTED_TESTS = 5;
+
+/**
+ * The first line of every preset's failing-tests message on the head: the count, what the failure
+ * skipped, and the ask. The console summary leads with it.
+ */
+export function testsFailHeadline(count, consequence, where = '') {
+  const verb = count === 1 ? 'test fails' : 'tests fail';
+  return `${String(count)} ${verb}${where}; ${consequence}. Fix the tests and rerun:`;
+}
+
+/** The note of a base whose own tests fail: one headline, then the failing tests. */
+export function testsFailOnBase(tests, where = '') {
+  const listed = tests.slice(0, MAX_LISTED_TESTS).map((test) => `  ${test}`);
+  const omitted = tests.length - listed.length;
+  return [
+    `Tests fail on the base${where}:`,
+    ...listed,
+    ...(omitted > 0 ? [`  and ${String(omitted)} more`] : []),
+  ].join('\n');
+}
 
 /** A stable 24-character digest used inside finding identities. */
 export function hash(value) {
   return createHash('sha256').update(String(value)).digest('hex').slice(0, 24);
+}
+
+const NAME_PART = /[\p{L}_$][\p{L}\p{N}_$]*/gu;
+const NAME_PLACEHOLDER = '\0';
+
+/**
+ * A digest of a function's text with the words of its own name (`Owner.method`) masked, so the
+ * same body under a renamed function or class has the same digest.
+ */
+export function nameFreeHash(text, name) {
+  const parts = new Set(String(name).match(NAME_PART) ?? []);
+  const masked = String(text).replaceAll(/[\p{L}\p{N}_$]+/gu, (word) =>
+    parts.has(word) ? NAME_PLACEHOLDER : word,
+  );
+  return hash(masked);
+}
+
+/** The first line of a function's text that is not blank or an annotation or decorator. */
+export function declarationLine(text) {
+  return (
+    String(text)
+      .split(/\r?\n/u)
+      .map((line) => line.trim())
+      .find((line) => line !== '' && !line.startsWith('@')) ?? ''
+  );
 }
 
 /** The n-th (1-based) time `key` has been seen in `occurrences`; mutates the map. */
@@ -84,6 +135,10 @@ export function listed(members) {
 
 /** The name of the narrowest function of `file` (`{ file, name, start, end }[]`) that holds `line`. */
 export function enclosingFunctionName(functions, file, line) {
+  return enclosingFunction(functions, file, line)?.name;
+}
+
+export function enclosingFunction(functions, file, line) {
   let found;
   for (const candidate of functions) {
     const holds = candidate.file === file && candidate.start <= line && line <= candidate.end;
@@ -94,5 +149,14 @@ export function enclosingFunctionName(functions, file, line) {
       found = candidate;
     }
   }
-  return found?.name;
+  return found;
+}
+
+/** A function that calls `read` the first time it is called and returns that value from then on. */
+export function lazy(read) {
+  let value;
+  return () => {
+    value ??= read();
+    return value;
+  };
 }

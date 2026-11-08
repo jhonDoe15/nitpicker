@@ -1,0 +1,8 @@
+[
+  {
+    "name": "bare except names the specific exception",
+    "tool": "ruff",
+    "rule": "E722",
+    "mention": "specific exception"
+  }
+]

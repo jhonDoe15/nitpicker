@@ -1,10 +1,12 @@
 #!/usr/bin/env node
 import { runAggregateCli } from './diff/sharding/aggregate-shards.mjs';
 import { reportingProgress } from './diff/execution/progress.mjs';
-import { runScheduler, selectAnalyzers } from './diff/execution/run-analyzers.mjs';
+import { runScheduler } from './diff/execution/run-analyzers.mjs';
 import { runCacheCommand } from './command/cache.mjs';
-import { parseArguments, USAGE_TEXT } from './command/arguments.mjs';
-import { resolveProjectRoot } from './tooling/tool-resolution.mjs';
+import { runExplainCommand, runRulesCommand } from './command/reference/reference.mjs';
+import { runBaseCommand } from './command/base.mjs';
+import { missingPathHint, parseArguments } from './command/arguments.mjs';
+import { resolveRunTarget } from './scope/run-target.mjs';
 import { realpathSync } from 'node:fs';
 import {
   describeConfigOverrides,
@@ -16,6 +18,7 @@ import { configureAnalyzers } from './configuration/configure-analyzers.mjs';
 import { presetAnalyzers } from './configuration/preset-analyzers.mjs';
 import { withRunLock } from './command/run-lock.mjs';
 import { runSnapshotCli } from './command/snapshot.mjs';
+import { writeComparisonOutcome } from './command/comparison/outcome.mjs';
 import { baseSetupResolver } from './command/policy-review/base-setup.mjs';
 import { historyAvailabilityNotes, noticeDescriber } from './command/policy-review/notices.mjs';
 import { policyAcceptance } from './command/policy-review/policy-acceptance.mjs';
@@ -23,20 +26,37 @@ import { comparisonPolicy, snapshotPolicy } from './conventions/resolve.mjs';
 import { runGit } from './diff/git/repository/command.mjs';
 import { resolveComparison } from './diff/git/repository/git.mjs';
 import { resolveBase } from './diff/git/repository/base-ref.mjs';
+import { detachLocalGitVariables } from './diff/git/environment/local-variables.mjs';
 import path from 'node:path';
-import { clearDiffReports, absoluteTextReportPath } from './diff/reporting/reporters.mjs';
+import { clearDiffReports, outputRootFor } from './diff/reporting/reporters.mjs';
+import { selectComparisonAnalyzers } from './command/comparison/analyzers.mjs';
 import { runQualityDiff } from './diff/comparison/run-diff.mjs';
 import { fixWorkingTree } from './fix/run-fix.mjs';
 import { resolveCacheStore } from './diff/cache/cache-stores.mjs';
-import { selectAnalyzerShard } from './diff/sharding/sharding.mjs';
-import { renderConsoleSummary } from './diff/reporting/summary.mjs';
-import { renderClosingSections } from './exceptions/stale-exceptions.mjs';
 import { runHistoryCli } from '../shared/history/runner.mjs';
 import { runHygieneCli } from '../shared/hygiene/runner.mjs';
+import { printedInformation } from './help/printed-information.mjs';
+import { runInitCommand } from './init/run-init.mjs';
+import { javascriptPresetHint } from './configuration/project-checks/preset-detection.mjs';
+import { GO_ANALYZER_COMMAND, runGoCli } from '../languages/go/adapters/go-runner.mjs';
+import { redirectToBundledTypeScriptApi } from '../languages/typescript/typescript-api/api-selection.mjs';
+import { describeError } from '../shared/messages/error-chain.mjs';
 
-const CHECK_COMMANDS = { hygiene: runHygieneCli, history: runHistoryCli };
+const CHECK_COMMANDS = {
+  hygiene: runHygieneCli,
+  history: runHistoryCli,
+  [GO_ANALYZER_COMMAND]: runGoCli,
+};
+const SUBCOMMANDS = {
+  cache: (cli, rest) => runCacheCommand({ ...cli, arguments_: rest }),
+  init: (cli, rest) => runInitCommand({ ...cli, arguments_: rest }),
+  base: (cli, rest) => runBaseCommand({ ...cli, arguments_: rest }),
+  explain: (cli, rest) => runExplainCommand({ ...cli, commandArguments: rest }),
+  rules: (cli, rest) => runRulesCommand({ ...cli, commandArguments: rest }),
+};
 
 export function runCli(options = {}) {
+  detachLocalGitVariables(process.env);
   const cli = withCliDefaults(options);
   const checkCommand = CHECK_COMMANDS[cli.arguments_[0]];
   if (checkCommand !== undefined) {
@@ -58,11 +78,10 @@ export function runCli(options = {}) {
     });
   }
   try {
+    redirectToBundledTypeScriptApi(cli.environment);
     return runCommand(cli);
   } catch (error) {
-    cli.stderr.write(
-      `nitpicker failed: ${error instanceof Error ? error.message : String(error)}\n`,
-    );
+    cli.stderr.write(`nitpicker failed: ${describeError(error)}\n`);
     return 2;
   }
 }
@@ -89,33 +108,29 @@ function withCliDefaults(options) {
 }
 
 function runCommand(cli) {
-  if (cli.arguments_[0] === 'cache') {
-    return runCacheCommand({
-      arguments_: cli.arguments_.slice(1),
-      environment: cli.environment,
-      currentProjectRoot: cli.currentProjectRoot,
-      analyzers: cli.analyzers,
-      stdout: cli.stdout,
-      stderr: cli.stderr,
-      runTasks: cli.runTasks,
-    });
+  const [name, ...rest] = cli.arguments_;
+  if (Object.hasOwn(SUBCOMMANDS, name)) {
+    return SUBCOMMANDS[name](cli, rest);
   }
   const options = parseArguments(cli.arguments_);
-  if (options.help) {
-    cli.stdout.write(USAGE_TEXT);
-    return 0;
+  return printedInformation(options, cli.stdout) ? 0 : runConfigured({ ...cli, options });
+}
+
+function writePresetHint(stderr, config, projectRoot) {
+  const hint = javascriptPresetHint(config, projectRoot);
+  if (hint !== undefined) {
+    stderr.write(`nitpicker: ${hint}\n`);
   }
-  return runConfigured({ ...cli, options });
 }
 
 function runConfigured(cli) {
   const { options, stdout, runTasks } = cli;
-  const currentProjectRoot =
-    cli.currentProjectRoot === undefined
-      ? resolveProjectRoot()
-      : realpathSync(cli.currentProjectRoot);
+  const { currentProjectRoot, scope } = resolveRunTarget({ ...cli, missingPathHint });
   const config = loadConfig(currentProjectRoot);
-  const headPolicy = resolveProjectHeadPolicy(config, currentProjectRoot);
+  writePresetHint(cli.stderr, config, currentProjectRoot);
+  const headPolicy = resolveProjectHeadPolicy(config, currentProjectRoot, {
+    maven: cli.environment.NITPICKER_MAVEN,
+  });
   const presetSet = presetAnalyzers(config, options.all ? cli.snapshotAnalyzers : cli.analyzers);
   const analyzers = configureAnalyzers(presetSet, config, headPolicy);
   for (const note of describeDisableCascade(presetSet, config)) {
@@ -132,7 +147,10 @@ function runConfigured(cli) {
         analyzers,
         headPolicy: snapshotPolicy({ config, currentProjectRoot, headPolicy, stdout }),
         stdout,
+        stderr: cli.stderr,
+        environment: cli.environment,
         runTasks,
+        scope,
       });
     }
     return runComparisonCli({
@@ -142,6 +160,7 @@ function runConfigured(cli) {
       injectedAnalyzers: cli.analyzers,
       config,
       headPolicy,
+      scope,
     });
   });
 }
@@ -157,12 +176,9 @@ function runComparisonCli(cli) {
     configuredBase: config.base,
     environment: cli.environment,
   });
-  const outputRoot =
-    options.outputRoot === undefined
-      ? path.join(currentProjectRoot, 'reports/quality/diff')
-      : path.resolve(currentProjectRoot, options.outputRoot);
+  const outputRoot = outputRootFor(currentProjectRoot, options.outputRoot, 'diff');
+  const { analyzers, partialRun } = selectComparisonAnalyzers(cli);
   clearDiffReports(outputRoot);
-  const analyzers = selectComparisonAnalyzers(cli);
   const headPolicy = comparisonPolicy({ ...cli, repositoryRoot, base }, resolveComparison);
   const fixResult = fixIfRequested({ ...cli, headPolicy }, repositoryRoot, base);
   const cacheStore = resolveRunCacheStore(cli);
@@ -173,6 +189,7 @@ function runComparisonCli(cli) {
     requestedBaseRef: base.baseRef,
     outputRoot,
     analyzers,
+    partialRun,
     cacheStore,
     includeWorkingTree: true,
     additionalToolErrors: fixResult.toolErrors,
@@ -181,8 +198,10 @@ function runComparisonCli(cli) {
     resolveBaseSetup: baseSetupResolver(cli, config, headPolicy),
     describeNotices: noticeDescriber(config, headPolicy, currentProjectRoot),
     ...acceptanceOf(cli),
+    scope: cli.scope,
     progress: cli.progress,
     runTasks: cli.runTasks,
+    warn: (message) => cli.stderr.write(`nitpicker: ${message}\n`),
   });
   return writeComparisonOutcome({ cli, report, base, outputRoot });
 }
@@ -209,6 +228,7 @@ function fixIfRequested(cli, repositoryRoot, base) {
     baseRef: base.baseRef,
     executeFixCommand: cli.executeFixCommand,
     headPolicy: cli.headPolicy,
+    scope: cli.scope,
   });
   cli.stdout.write(
     `Fixed files:\n${fixResult.fixedFiles.length === 0 ? '(none)\n' : `${fixResult.fixedFiles.join('\n')}\n`}`,
@@ -227,38 +247,6 @@ function resolveRunCacheStore(cli) {
     }
   }
   return cli.options.cache ? store : undefined;
-}
-
-function selectComparisonAnalyzers({ options, analyzers }) {
-  const selectedAnalyzers =
-    options.shardCount === undefined
-      ? selectAnalyzers(analyzers, options.analyzerNames)
-      : selectAnalyzerShard(analyzers, options.shardCount, options.shardIndex);
-  if (selectedAnalyzers.length === 0) {
-    throw new Error(
-      'No quality analyzers are configured. The comparison framework is ready, but real analyzer adapters are a later phase.',
-    );
-  }
-  return selectedAnalyzers;
-}
-
-function writeComparisonOutcome({ cli, report, base, outputRoot }) {
-  const { options, environment, stdout } = cli;
-  stdout.write(`Base: ${base.baseRef} (${base.source})\n`);
-  stdout.write(
-    renderConsoleSummary(report, {
-      color: environment.NO_COLOR === undefined,
-      diagnosticsPath: absoluteTextReportPath(outputRoot),
-    }),
-  );
-  stdout.write(renderClosingSections(cli, report));
-  if (options.deferExit) {
-    return 0;
-  }
-  if (report.summary.newEnforceableFindings > 0) {
-    return 1;
-  }
-  return report.summary.overallStatus === 'completed' ? 0 : 2;
 }
 
 const invokedPath = process.argv[1];

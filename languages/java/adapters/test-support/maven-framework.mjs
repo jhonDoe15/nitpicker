@@ -1,7 +1,7 @@
 import { existsSync, mkdirSync, readFileSync, readdirSync } from 'node:fs';
 import path from 'node:path';
 import { readPinnedTools } from '../../builds/java-build.mjs';
-import { runMaven } from '../../maven/maven-command.mjs';
+import { runMaven, TEST_RERUNS_OFF } from '../../maven/maven-command.mjs';
 import { lifecycleArgs, readReactor } from '../../maven/maven-project.mjs';
 import {
   moduleClasspaths,
@@ -50,6 +50,7 @@ function buildFixture(projectRoot, { maven, reportDir, pinned }) {
       `-Djacoco.destFile=${path.join(reportDir, 'jacoco.exec')}`,
       ...lifecycleArgs(modules),
       '-Dmaven.test.failure.ignore=true',
+      ...TEST_RERUNS_OFF,
       `${MAVEN_PLUGINS.dependency}:list`,
       `-DoutputFile=${path.join(reportDir, 'dependencies.txt')}`,
       '-DoutputAbsoluteArtifactFilename=true',
@@ -72,7 +73,7 @@ function measureFixture(context) {
     launcherVersions: !mutations || launcher === undefined ? [] : [launcher],
   });
   const isArchunit = archunitMatcher(module.archunitIncludes);
-  const testsRan = collectTestResults({ module, reportDir, since, isArchunit });
+  const { testsRan } = collectTestResults({ module, reportDir, since, isArchunit });
   copyTestResults({ module, reportDir, since, isArchunit });
   runJacocoReport({
     module,

@@ -10,12 +10,14 @@ import {
 } from '../adapters/execution/python-project.mjs';
 import { ignoredProjectToolNotices } from '../adapters/project-tools/ignored-notices.mjs';
 import { formatterPlan } from '../adapters/formatting/format-command.mjs';
+import { optionsOverNitpickerRules } from '../adapters/project-tools/ruff/ruff-lint-config.mjs';
 import { readBlackConfig, readRuffConfig } from '../adapters/formatting/project-format-config.mjs';
 import { PYTHON_INDENTATION, PYTHON_QUOTES, PYTHON_SETTING_IDS } from './python-conventions.mjs';
 
 const BLACK_QUOTES = { preserve: 'single', normalize: 'double' };
 const BLACK_NOTE = 'black accepts both quote styles';
 const PYPROJECT = 'pyproject.toml';
+const RUFF_NOTE = ' except lint.flake8-pytest-style';
 
 function projectChoices(formatter, project) {
   if (project === undefined) {
@@ -40,12 +42,8 @@ function ignoredConfig(formatter, projectRoot) {
   }
   const relative = path.relative(projectRoot, project.file).split(path.sep).join('/');
   const table = `[tool.${formatter}]`;
-  return [
-    ignoredConfigNotice(
-      path.basename(project.file) === PYPROJECT ? `${table} in ${relative}` : relative,
-      formatter,
-    ),
-  ];
+  const label = path.basename(project.file) === PYPROJECT ? `${table} in ${relative}` : relative;
+  return [ignoredConfigNotice(`${label}${formatter === 'ruff' ? RUFF_NOTE : ''}`, formatter)];
 }
 
 function formattingLines({ formatter, precedence, conventions, projectRoot }) {
@@ -64,6 +62,25 @@ function formattingLines({ formatter, precedence, conventions, projectRoot }) {
     return [`Format with ${formatter}: ${plan.command}`, ...ignored];
   } catch (error) {
     return [`Could not read the Python formatting settings: ${error.message}`];
+  }
+}
+
+function replacedOptions(projectRoot) {
+  const keys = optionsOverNitpickerRules(projectRoot);
+  return keys.length === 0
+    ? []
+    : [`ruff check: the project's ${keys.join(', ')} replace nitpicker's for its own rules`];
+}
+
+function lintLines({ config, formatter, projectRoot }) {
+  const layers = precedenceLayers(config.tools?.ruff?.precedence);
+  try {
+    if (layers.usesProject) {
+      return layers.nitpickerFirst ? [] : replacedOptions(projectRoot);
+    }
+    return formatter === 'ruff' ? [] : ignoredConfig('ruff', projectRoot);
+  } catch (error) {
+    return [`Could not read the ruff lint settings: ${error.message}`];
   }
 }
 
@@ -100,6 +117,7 @@ export function pythonStyle({
       formatter === 'black' && id === PYTHON_QUOTES && choice === 'single' ? BLACK_NOTE : undefined,
     summary: (conventions) => [
       ...formattingLines({ formatter, precedence, conventions, projectRoot }),
+      ...lintLines({ config, formatter, projectRoot }),
       ...ignoredProjectToolNotices({ config, projectRoot }),
     ],
   };

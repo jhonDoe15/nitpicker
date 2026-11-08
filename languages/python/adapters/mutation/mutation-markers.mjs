@@ -1,4 +1,5 @@
 import { hashIdentity } from '../../../../shared/ingest/common.mjs';
+import { escapeRegExp } from '../../../../shared/paths/glob.mjs';
 import { readProjectFile } from '../../libraries/project-files.mjs';
 import { listProductionModules } from '../analysis/python-sources.mjs';
 import { readMutmutConfig } from '../project-tools/mutmut/mutmut-config.mjs';
@@ -53,7 +54,7 @@ function fnmatch(pattern) {
       if (character === '?') {
         return '.';
       }
-      return character.replaceAll(/[.+^${}()|[\]\\]/gu, String.raw`\$&`);
+      return escapeRegExp(character);
     })
     .join('');
   return new RegExp(`^${source}$`, 'u');

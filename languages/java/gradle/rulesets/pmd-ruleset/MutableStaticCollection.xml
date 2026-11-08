@@ -1,0 +1,18 @@
+  <rule name="MutableStaticCollection" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
+        message="Do not mutate a static collection or expose a mutable one. Build it once as an immutable List.of, Map.of or Map.copyOf, or keep the state in an instance.">
+    <description>A static final collection that is public or changed after class loading is global mutable state.</description>
+    <priority>3</priority>
+    <properties><property name="xpath"><value><![CDATA[
+//FieldDeclaration[pmd-java:modifiers() = 'static'][pmd-java:modifiers() = 'final']
+  [VariableDeclarator/ConstructorCall[pmd-java:typeIs('java.util.Collection') or pmd-java:typeIs('java.util.Map')]]
+  [not(pmd-java:modifiers() = 'private' and VariableDeclarator/ConstructorCall[pmd-java:typeIs('java.util.concurrent.ConcurrentMap')
+      or pmd-java:typeIs('java.util.concurrent.CopyOnWriteArrayList') or pmd-java:typeIs('java.util.concurrent.CopyOnWriteArraySet')
+      or pmd-java:typeIs('java.util.concurrent.ConcurrentLinkedQueue') or pmd-java:typeIs('java.util.concurrent.ConcurrentLinkedDeque')
+      or pmd-java:typeIs('java.util.concurrent.ConcurrentSkipListSet')])]
+  [let $name := VariableDeclarator/VariableId/@Name return
+    pmd-java:modifiers() = 'public'
+    or ancestor::ClassBody[1]//MethodCall[@MethodName = ('add', 'addAll', 'put', 'putAll', 'putIfAbsent', 'remove', 'clear', 'merge', 'compute', 'computeIfAbsent', 'offer', 'push', 'poll', 'pop', 'addFirst', 'addLast', 'removeIf', 'replaceAll', 'sort')]
+        [*[1][self::VariableAccess or self::FieldAccess]/@Name = $name]
+        [ancestor::MethodDeclaration or ancestor::ConstructorDeclaration]]
+]]></value></property></properties>
+  </rule>

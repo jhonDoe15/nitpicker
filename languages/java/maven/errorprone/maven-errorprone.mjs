@@ -50,7 +50,8 @@ function levelLines(compiler) {
   ];
 }
 
-function lookupLines({ classpath, own, modular }) {
+function lookupLines({ classpath: sourcePath, compiled = [], own, modular }) {
+  const classpath = [...sourcePath, ...compiled];
   const libraries = classpath.filter((entry) => !own.includes(entry) && existsSync(entry));
   const modules =
     modular === false ? [] : libraries.filter((entry) => modular === 'all' || isJavaModule(entry));
@@ -109,6 +110,7 @@ function compileSets({ module, classpaths }, modular) {
       name: 'test',
       roots: module.testSourceRoots,
       classpath: [module.outputDirectory, ...classpaths.testCompile],
+      compiled: [module.testOutputDirectory],
       own: [module.outputDirectory, module.testOutputDirectory],
       test: true,
       modular: false,

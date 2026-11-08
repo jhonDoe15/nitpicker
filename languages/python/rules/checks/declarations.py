@@ -2,12 +2,11 @@ import ast
 import os
 import re
 
-from checks.common import dotted_name, finding, is_boundary_path
+from checks.common import dotted_name, finding, is_boundary_path, is_type_checking
 
 DEFAULT_BOUNDARY_ROOTS = ["pydantic", "pydantic_settings"]
 MIN_CLASS_CONSTANTS = 2
 MIN_MODULE_CONSTANTS = 3
-TYPE_CHECKING_NAMES = {"typing.TYPE_CHECKING", "typing_extensions.TYPE_CHECKING"}
 CONSTANT_NAME = re.compile(r"[A-Z][A-Z0-9_]*")
 
 
@@ -100,9 +99,7 @@ class Declarations(ast.NodeVisitor):
             self.add("no-type-check", ".".join(self.scope), node)
 
     def is_type_checking(self, node):
-        return dotted_name(node, self.aliases) in TYPE_CHECKING_NAMES or (
-            isinstance(node, ast.Name) and node.id == "TYPE_CHECKING"
-        )
+        return is_type_checking(node, self.aliases)
 
     def visit_If(self, node):
         if any(

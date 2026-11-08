@@ -2,8 +2,10 @@ import { isPublished, isTrue } from './configuration/publishing.mjs';
 import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { childAt, childrenAt, childrenNamed, parseXml } from '../../../shared/ingest/common.mjs';
+import { executionsWithGoal, pluginsOf, textAt } from './configuration/pom-elements.mjs';
 import { compilerSettings } from './errorprone/maven-compiler.mjs';
-import { kotlinSourceRoots } from './configuration/kotlin-roots.mjs';
+import { kotlinRoots } from './kotlin/kotlin-roots.mjs';
+import { testJvmArguments } from './configuration/surefire-jvm.mjs';
 
 const BUILD_HELPER = 'org.codehaus.mojo:build-helper-maven-plugin';
 const GMAVENPLUS = 'org.codehaus.gmavenplus:gmavenplus-plugin';
@@ -31,28 +33,9 @@ const VERIFY_BUILD = [
   '-Djapicmp.skip=true',
 ];
 
-function textAt(element, ...names) {
-  return childAt(element, ...names)?.text;
-}
-
 function coordinates(project) {
   const groupId = textAt(project, 'groupId') ?? textAt(project, 'parent', 'groupId');
   return `${groupId}:${textAt(project, 'artifactId')}`;
-}
-
-function pluginsOf(project) {
-  return new Map(
-    childrenAt(project, 'build', 'plugins', 'plugin').map((plugin) => [
-      `${textAt(plugin, 'groupId') ?? 'org.apache.maven.plugins'}:${textAt(plugin, 'artifactId')}`,
-      plugin,
-    ]),
-  );
-}
-
-function executionsWithGoal(plugin, goal) {
-  return childrenAt(plugin, 'executions', 'execution').filter((execution) =>
-    childrenAt(execution, 'goals', 'goal').some((element) => element.text === goal),
-  );
 }
 
 function configured(execution, plugin, name) {
@@ -119,18 +102,26 @@ function resolvedText(build, basedir, name) {
   return value === undefined ? undefined : path.resolve(basedir, value);
 }
 
-function reportsDirectory(plugin, goal) {
-  return plugin === undefined
-    ? undefined
-    : configured(executionsWithGoal(plugin, goal)[0], plugin, 'reportsDirectory');
+function defaultExecution(plugin, goal) {
+  const executions = plugin === undefined ? [] : executionsWithGoal(plugin, goal);
+  return (
+    executions.find((execution) => textAt(execution, 'id') === `default-${goal}`) ?? executions[0]
+  );
+}
+
+function setting(plugin, goal, name) {
+  return configured(defaultExecution(plugin, goal), plugin, name);
 }
 
 function describeModule(project, { basedir, pomFile }) {
   const build = childAt(project, 'build');
   const plugins = pluginsOf(project);
   const buildDirectory = resolvedText(build, basedir, 'directory') ?? path.join(basedir, 'target');
-  const reports = reportsDirectory(plugins.get(SUREFIRE), 'test');
-  const failsafeReports = reportsDirectory(plugins.get(FAILSAFE), 'integration-test');
+  const surefire = plugins.get(SUREFIRE);
+  const failsafe = plugins.get(FAILSAFE);
+  const reports = setting(surefire, 'test', 'reportsDirectory');
+  const failsafeReports = setting(failsafe, 'integration-test', 'reportsDirectory');
+  const integrationTests = defaultExecution(failsafe, 'integration-test');
   const sourceRoots = [
     resolvedText(build, basedir, 'sourceDirectory') ?? path.join(basedir, 'src/main/java'),
     ...helperRoots(plugins.get(BUILD_HELPER), 'add-source', basedir),
@@ -147,7 +138,6 @@ function describeModule(project, { basedir, pomFile }) {
       resolvedText(build, basedir, 'testOutputDirectory') ??
       path.join(buildDirectory, 'test-classes'),
     sourceRoots,
-    kotlinSourceRoots: kotlinSourceRoots(plugins, basedir, sourceRoots),
     testSourceRoots: [
       resolvedText(build, basedir, 'testSourceDirectory') ?? path.join(basedir, 'src/test/java'),
       ...helperRoots(plugins.get(BUILD_HELPER), 'add-test-source', basedir),
@@ -164,12 +154,18 @@ function describeModule(project, { basedir, pomFile }) {
       basedir,
       failsafeReports ?? path.join(buildDirectory, 'failsafe-reports'),
     ),
-    runsFailsafe: runsFailsafe(project, plugins.get(FAILSAFE)),
+    runsFailsafe: runsFailsafe(project, failsafe),
+    testJvmArgs: testJvmArguments(project, surefire, defaultExecution(surefire, 'test')),
+    integrationTestJvmArgs: testJvmArguments(project, failsafe, integrationTests),
     published: isPublished(project, plugins),
     jacocoDestFiles: jacocoDestFiles(plugins.get(JACOCO), basedir),
     archunitIncludes: textAt(project, 'properties', 'nitpicker.archunit.includes'),
     compiler: compilerSettings(project),
   };
+}
+
+function withKotlin(project, module) {
+  return { ...module, kotlin: kotlinRoots(project, module) };
 }
 
 function rawCoordinates(pomFile) {
@@ -236,7 +232,7 @@ export function readReactor(projectRoot, effectivePom) {
     const basedir = moduleDirectory(projectRoot, pomFile, modules);
     const project = matchProject(pomFile, candidates);
     candidates.splice(candidates.indexOf(project), 1);
-    modules.push(describeModule(project, { basedir, pomFile }));
+    modules.push(withKotlin(project, describeModule(project, { basedir, pomFile })));
     const children = childrenAt(project, 'modules', 'module')
       .filter((module) => module.text !== undefined)
       .map((module) => pomFileOf(basedir, module.text));

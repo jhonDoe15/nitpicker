@@ -3,7 +3,7 @@ import { depthFirst } from '../../../../shared/traversal.mjs';
 import { syntaxChildren } from '../syntax/children.mjs';
 import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
-import ts from 'typescript';
+import { ts } from '../../typescript-api/typescript-api.mjs';
 import { isExcludedPath, normalizePath } from '../dependency-graph/cruise.mjs';
 import { defaultResolvedLayout } from '../layout.mjs';
 import { functionUnits, isFunctionLike } from './units/function-units.mjs';

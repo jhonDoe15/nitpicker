@@ -1,0 +1,20 @@
+[
+  {
+    "name": "mypy missing import names installing the package",
+    "tool": "mypy",
+    "rule": "import-not-found",
+    "mention": "install the package"
+  },
+  {
+    "name": "pyright missing import names installing the package",
+    "tool": "pyright",
+    "rule": "reportMissingImports",
+    "mention": "install the package"
+  },
+  {
+    "name": "basedpyright missing import names installing the package",
+    "tool": "basedpyright",
+    "rule": "reportMissingImports",
+    "mention": "install the package"
+  }
+]

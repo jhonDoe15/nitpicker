@@ -5,6 +5,7 @@ import {
 } from '../../../../shared/config.mjs';
 import { JAVA_SIZE_RULES } from '../../../../shared/project-rules/size-rules.mjs';
 import { SHARED_EXCEPTION_RULES } from '../../../../shared/policy.mjs';
+import { SPRING_CONFIG_RULE_IDS } from '../spring/java-spring.mjs';
 import { JAVA_TOOLS } from '../gradle-presets.mjs';
 import {
   isJavaFindingRule,
@@ -17,12 +18,14 @@ import { TEST_ONLY_EXCEPTION_RULE } from '../review-rules/test-only-classes.mjs'
 import { CONSOLE_EXCEPTION_RULE } from '../test-times/console-findings.mjs';
 import { KOTLIN_REVIEW_EXCEPTION_RULES } from './review-rules/review-rules.mjs';
 import { UNRUN_TEST_EXCEPTION_RULE } from '../test-runs/unrun-tests.mjs';
+import { suggestionOrAllowed } from '../../../../shared/messages/closest-match.mjs';
 
 export const KOTLIN_FORMATTERS = ['ktlint', 'ktfmt', 'none'];
-const KOTLIN_KEYS = ['formatter', 'detektConfig'];
+export const KOTLIN_KEYS = ['formatter', 'detektConfig'];
 export const KOTLIN_EXCEPTION_RULES = [
   ...new Set([
     ...SOURCE_RULE_IDS,
+    ...SPRING_CONFIG_RULE_IDS,
     ...SHARED_EXCEPTION_RULES,
     ...JAVA_SIZE_RULES,
     'test-runtime/slow-test',
@@ -70,7 +73,7 @@ export function validateKotlinOptions(config) {
   }
   for (const key of Object.keys(config.kotlin)) {
     if (!KOTLIN_KEYS.includes(key)) {
-      throw configError(`unknown key "kotlin.${key}". Allowed keys: ${KOTLIN_KEYS.join(', ')}`);
+      throw configError(`unknown key "kotlin.${key}"${suggestionOrAllowed(key, KOTLIN_KEYS)}`);
     }
   }
   const { formatter, detektConfig } = config.kotlin;

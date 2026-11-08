@@ -107,14 +107,15 @@ describe('duplicate-code report', () => {
     ).toEqual([['fifth.ts', 'fourth.ts']]);
   });
 
-  it('finds no clone when an exclude takes out either file of the pair', () => {
-    for (const excluded of ['first.ts', 'second.ts']) {
+  it.each(['first.ts', 'second.ts'])(
+    'finds no clone when an exclude takes out %s of the pair',
+    (excluded) => {
       const { result, report } = analyzeFixture('clones', ['--ignore', `**/${excluded}`]);
 
       expect(result.status, result.stderr || result.stdout).toBe(0);
       expect(report.duplicates).toEqual([]);
-    }
-  });
+    },
+  );
 
   it('keeps analyzer configuration failures visible', () => {
     const result = spawnSync(

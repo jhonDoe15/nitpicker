@@ -2,6 +2,8 @@ import { writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { jscpdVersion } from '../../../core/tooling/jscpd/run-jscpd.mjs';
 import { scanImports } from './analysis/python-coupling.mjs';
+import { scanTestStrings } from './analysis/test-runtime/python-test-runtime.mjs';
+import { collectFacts } from './facts/python-facts.mjs';
 import { scanDependencies } from './dependencies/dependency-findings.mjs';
 import { runDuplicates } from './analysis/python-duplicates.mjs';
 import { openSnapshotEnvironment } from './execution/python-environment.mjs';
@@ -18,7 +20,7 @@ import {
   importRoots,
 } from './execution/python-project.mjs';
 import { formatCommand, ruffExclusions } from './formatting/format-command.mjs';
-import { ruffConfigFor } from './configuration/python-ruff-config.mjs';
+import { ruffLintConfig } from './project-tools/ruff/ruff-lint-config.mjs';
 import { detectTestRunner, pytestLabel, testRunnerLabel } from './execution/python-test-runner.mjs';
 import { mutationRunnerLabels } from './mutation/test-run/python-mutation-runner.mjs';
 import { test } from './test-runs/test-step.mjs';
@@ -37,9 +39,9 @@ const PARSE_ERROR = {
   ruff: /^error: Failed to parse /,
 };
 
-function projectSettings({ projectRoot, liveRoot, settings, sourceRoots }) {
+function projectSettings({ projectRoot, liveRoot, policyRoot, settings, sourceRoots }) {
   return {
-    formatter: detectFormatter(projectRoot, settings.formatter),
+    formatter: detectFormatter(policyRoot ?? projectRoot, settings.formatter),
     formatterDetected: settings.formatter === undefined,
     typeCheckers: detectTypeCheckers(liveRoot, settings.typeChecker),
     testRunner: detectTestRunner(projectRoot, settings.testRunner),
@@ -90,7 +92,7 @@ export function createToolContext({
     exclude,
     duplicateSkippedFolders,
     pytestAddopts,
-    project: projectSettings({ projectRoot, liveRoot, settings, sourceRoots }),
+    project: projectSettings({ projectRoot, liveRoot, policyRoot, settings, sourceRoots }),
     env: {
       PYTHONPATH: pythonPath,
       PYTHONDONTWRITEBYTECODE: '1',
@@ -112,7 +114,11 @@ export function runPythonTools(context) {
     runDuplicates,
     (stepContext) => {
       scanImports(stepContext, run);
+      scanTestStrings(stepContext, run);
       scanDependencies(stepContext, run);
+    },
+    (stepContext) => {
+      collectFacts(stepContext, run);
     },
     (stepContext) => {
       runImportLinter(stepContext, run);
@@ -146,16 +152,19 @@ export function runPythonTools(context) {
 }
 
 export function lint(context) {
+  const config = ruffLintConfig(context);
+  const style = pytestStyle(context.projectRoot, undefined, context.policyRoot);
   run(
     context,
     [
       'ruff',
       'check',
       '--config',
-      ruffConfigFor(context),
-      '--target-version',
-      context.project.targetVersion,
-      ...pytestStyleFlags(pytestStyle(context.projectRoot)),
+      config.file,
+      ...(config.setsTargetVersion ? [] : ['--target-version', context.project.targetVersion]),
+      '--line-length',
+      config.lineLength,
+      ...pytestStyleFlags(style),
       '--ignore-noqa',
       '--no-cache',
       ...ruffExclusions(context),

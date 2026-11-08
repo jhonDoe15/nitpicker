@@ -238,7 +238,11 @@ describe.skipIf(!enabled)('sleep-in-test', () => {
         ),
         [],
       ],
-      ['production code', { file: 'src/mod.py', code: 'import time\n\ntime.sleep(1)\n' }, []],
+      [
+        'production code',
+        { file: 'src/mod.py', code: 'import time\n\n\ndef wait():\n    time.sleep(1)\n' },
+        [],
+      ],
     ]);
     expect(actual).toEqual(expected);
   });
@@ -342,7 +346,7 @@ describe.skipIf(!enabled)('real clock, randomness and network in unit tests', ()
       [
         'a fixed datetime',
         inTests(
-          'from datetime import datetime\n\n\ndef test_a():\n    assert datetime(2026, 1, 1).year\n',
+          'from datetime import datetime, timezone\n\n\ndef test_a():\n    assert datetime(2026, 1, 1, tzinfo=timezone.utc).year\n',
         ),
         [],
       ],
@@ -464,7 +468,10 @@ describe.skipIf(!enabled)('real clock, randomness and network in unit tests', ()
       ],
       [
         'production code',
-        { file: 'src/mod.py', code: 'import requests\n\nrequests.get("http://x")\n' },
+        {
+          file: 'src/mod.py',
+          code: 'import requests\n\n\ndef load():\n    return requests.get("http://x")\n',
+        },
         [],
       ],
     ]);

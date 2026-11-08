@@ -2,7 +2,12 @@ import regexp from 'eslint-plugin-regexp';
 import tseslint from 'typescript-eslint';
 import { nitpickerRules } from '../../eslint-plugin/index.mjs';
 import { domainGlobsFor } from '../strict/strict-domain.mjs';
-import { SECURITY_RULES, securityRules, securitySupportGlobs } from './security-facts.mjs';
+import {
+  SECURITY_RULES,
+  httpClientOptions,
+  securityRules,
+  securitySupportGlobs,
+} from './security-facts.mjs';
 
 const JAVASCRIPT_FILES = '**/*.{js,jsx,mjs,cjs}';
 const MAGIC_NUMBER_ALLOWED = [-1, 0, 1, 2, 10, 100, 1000];
@@ -13,6 +18,8 @@ const RANDOM_MESSAGE =
 const productionRestrictedProperties = [
   { object: 'Math', property: 'random', message: RANDOM_MESSAGE },
 ];
+
+const UNUSED_PARAMETERS = { args: 'all', argsIgnorePattern: '^_', ignoreRestSiblings: true };
 
 const DESTRUCTURED_FORMATS = ['camelCase', 'PascalCase', 'UPPER_CASE', 'snake_case'];
 
@@ -63,9 +70,11 @@ function productionRules({ react, routeHandlers }) {
     curly: ['error', 'all'],
     'no-eval': 'error',
     'no-param-reassign': ['error', { props: false }],
+    '@typescript-eslint/no-unused-vars': ['error', UNUSED_PARAMETERS],
     'no-duplicate-imports': ['error', { allowSeparateTypeImports: true }],
     'no-restricted-properties': ['error', ...productionRestrictedProperties],
     'nitpicker/naming-convention': namingConvention({ react, routeHandlers }),
+    'nitpicker/no-accumulating-spread': 'error',
     'nitpicker/no-magic-numbers': [
       'error',
       {
@@ -79,6 +88,7 @@ function productionRules({ react, routeHandlers }) {
       },
     ],
     'regexp/no-super-linear-backtracking': 'error',
+    'regexp/no-useless-flag': ['error', { ignore: ['i', 'm', 's'] }],
   };
 }
 
@@ -88,8 +98,15 @@ function productionGuardRules({ react, security }) {
       'error',
       { allowImportMetaEnv: react, allowBundlerEnv: react },
     ],
+    'nitpicker/no-orm-query-logging': 'error',
+    'nitpicker/no-orm-schema-sync': 'error',
     'nitpicker/no-shell-string-command': 'error',
+    'nitpicker/require-process-timeout': 'error',
     'nitpicker/no-unsafe-path-join': 'error',
+    'nitpicker/timeout-abandons-operation': ['error', httpClientOptions({ react, security })],
+    'nitpicker/require-error-listener': 'error',
+    'nitpicker/unbounded-fan-out': 'error',
+    'nitpicker/unbounded-reactive-fan-out': 'error',
     ...securityRules({ react, security }),
   };
 }
@@ -135,7 +152,9 @@ export function productionPolicyConfigFor(layout, options = {}) {
     {
       files: securitySupportGlobs(),
       plugins: { nitpicker: nitpickerRules },
-      rules: Object.fromEntries(SECURITY_RULES.map((rule) => [rule, 'off'])),
+      rules: Object.fromEntries(
+        [...SECURITY_RULES, 'nitpicker/timeout-abandons-operation'].map((rule) => [rule, 'off']),
+      ),
     },
     {
       files: layout.sourceGlobs,

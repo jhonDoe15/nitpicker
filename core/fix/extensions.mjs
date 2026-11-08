@@ -19,4 +19,7 @@ export const prettierExtensions = new Set([
   '.less',
 ]);
 
-export const prettierExclusions = [/^(?:coverage|reports|\.stryker-tmp)\//, /^src\/main\/dist\//];
+export const prettierExclusions = [
+  /^(?:coverage|reports\/quality|\.stryker-tmp)\//,
+  /^src\/main\/dist\//,
+];

@@ -353,13 +353,17 @@ describe('budgets', () => {
   });
 
   it('rejects when the budgets file is not valid', async () => {
-    for (const content of ['not json', '{"budgets":"x"}', '{"budgets":[{"month":"2024-03"}]}', '[]']) {
+    const rejectsContent = async (content: string) => {
       const disk = createDisk({ 'data/budgets.json': content });
       const tracker = open(disk);
       await expect(tracker.setBudget('2024-03', 'Food', 100)).rejects.toThrow();
       await expect(tracker.report('2024-03')).rejects.toThrow();
       expect(disk.files.get('data/budgets.json')).toBe(content);
-    }
+    };
+    await rejectsContent('not json');
+    await rejectsContent('{"budgets":"x"}');
+    await rejectsContent('{"budgets":[{"month":"2024-03"}]}');
+    await rejectsContent('[]');
   });
 });
 

@@ -1,12 +1,13 @@
 import { readFileSync } from 'node:fs';
 import { hasExceptionRoute } from '../../../shared/messages/exception-sentence.mjs';
+import { definedField } from '../../../shared/messages/messages.mjs';
 import { exceptionHint } from '../../../shared/rules/exceptions.mjs';
 import { JAVA_FORMATTER_TOOLS, NOT_YOUR_JAVA_FORMATTER } from '../adapters/style/java-style.mjs';
+import { lazy } from '../../../shared/rules/finding-helpers.mjs';
 import { SOURCE_RULE_IDS } from '../adapters/kotlin/rules/kotlin-rules.mjs';
 
 export const CATALOG_TOOLS = ['pmd', 'checkstyle', 'spotbugs'];
-const CATALOGS = new Map(CATALOG_TOOLS.map((tool) => [tool, readCatalog(tool)]));
-const ERROR_PRONE_CERTAIN_BUGS = readCertainBugs();
+const catalogs = lazy(() => new Map(CATALOG_TOOLS.map((tool) => [tool, readCatalog(tool)])));
 const ROUTED = new Set([
   ...CATALOG_TOOLS,
   'errorprone',
@@ -19,10 +20,22 @@ const ROUTED = new Set([
   'dependencies',
   'spring',
 ]);
+const certainBugs = lazy(() => readCertainBugs());
 const CHECKSTYLE_CHECK =
   /^com\.puppycrawl\.tools\.checkstyle\.checks\.(?:\w+\.)*(\w+?)(?:Check)?$/u;
 const SENTENCE_END = /[.!?;:]$/u;
 const EXCLUDE_ROUTE = /to "exclude" in nitpicker\.config\.json\.$/u;
+const FIRST_SENTENCE = /^.*?[.!?](?= |$)/u;
+const leadingFormRules = lazy(
+  () =>
+    new Map([
+      ...rulesetNames('spring-ruleset.xml').map((name) => [name, (sentence) => sentence]),
+      ...rulesetNames('spring-test-ruleset.xml').map((name) => [
+        name,
+        (sentence) => FIRST_SENTENCE.exec(sentence)?.[0] ?? sentence,
+      ]),
+    ]),
+);
 
 export function readCatalog(tool) {
   return JSON.parse(readFileSync(new URL(`./${tool}.json`, import.meta.url), 'utf8'));
@@ -31,6 +44,11 @@ export function readCatalog(tool) {
 function readCertainBugs() {
   const checks = new URL('../gradle/errorprone/checks.json', import.meta.url);
   return new Set(JSON.parse(readFileSync(checks, 'utf8')).certainBugs);
+}
+
+function rulesetNames(file) {
+  const text = readFileSync(new URL(`../gradle/${file}`, import.meta.url), 'utf8');
+  return [...text.matchAll(/<rule name="([A-Za-z]+)"/gu)].map(([, name]) => name);
 }
 
 export function checkstyleRuleName(source) {
@@ -49,7 +67,7 @@ export function withRuleMessage(finding, { preset = 'java', testRoots = [], java
   if (!ROUTED.has(finding.tool) && !ROUTED.has(`${finding.tool}/${finding.rule}`)) {
     return finding;
   }
-  const catalog = CATALOGS.get(finding.tool) ?? {};
+  const catalog = catalogs().get(finding.tool) ?? {};
   const rule = finding.tool === 'checkstyle' ? checkstyleRuleName(finding.rule) : finding.rule;
   const entry = Object.hasOwn(catalog, rule) ? catalog[rule] : undefined;
   const exceptionRule = exceptionRuleFor({ ...finding, rule }, preset);
@@ -61,7 +79,7 @@ export function withRuleMessage(finding, { preset = 'java', testRoots = [], java
   return {
     ...finding,
     rule,
-    message: ruleMessage({ ...finding, rule }, entry, { liftable, javaStyle, exceptionRule }),
+    ...ruleMessage({ ...finding, rule }, entry, { liftable, javaStyle, exceptionRule }),
   };
 }
 
@@ -80,7 +98,7 @@ function exceptionRuleFor(finding, preset) {
 function isCertainBug(finding, testRoots) {
   return (
     finding.tool === 'errorprone' &&
-    ERROR_PRONE_CERTAIN_BUGS.has(finding.rule) &&
+    certainBugs().has(finding.rule) &&
     !testRoots.some((root) => finding.path.startsWith(`${root}/`))
   );
 }
@@ -92,15 +110,23 @@ export function applyRuleMessages(findings, options) {
 function ruleMessage(finding, entry, { liftable, javaStyle, exceptionRule }) {
   const message = finding.message.trim();
   if (hasExceptionRoute(message) || EXCLUDE_ROUTE.test(message)) {
-    return message;
+    return { message };
   }
   const fix = entry?.layout === true ? layoutFix(javaStyle) : entry?.fix;
-  if (!CATALOGS.has(finding.tool) && !liftable) {
-    return finding.message;
+  if (!catalogs().has(finding.tool) && !liftable) {
+    return { message: finding.message };
   }
-  return [
-    SENTENCE_END.test(message) ? message : `${message}.`,
-    ...(typeof fix === 'string' ? [fix] : []),
-    ...(liftable ? [exceptionHint(exceptionRule, finding.path)] : []),
-  ].join(' ');
+  const sentence = SENTENCE_END.test(message) ? message : `${message}.`;
+  return {
+    message: [
+      sentence,
+      ...(typeof fix === 'string' ? [fix] : []),
+      ...(liftable ? [exceptionHint(exceptionRule, finding.path)] : []),
+    ].join(' '),
+    ...definedField('allowedForm', typeof fix === 'string' ? fix : leadingForm(finding, sentence)),
+  };
+}
+
+function leadingForm({ tool, rule }, sentence) {
+  return tool === 'pmd' ? leadingFormRules().get(rule)?.(sentence) : undefined;
 }

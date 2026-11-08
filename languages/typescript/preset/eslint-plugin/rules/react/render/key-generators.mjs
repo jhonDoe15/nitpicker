@@ -1,5 +1,5 @@
 import { readFileSync } from 'node:fs';
-import ts from 'typescript';
+import { ts } from '../../../../../typescript-api/typescript-api.mjs';
 import { scriptKindOf } from '../../../../modules/module-sources.mjs';
 import { readStamped } from '../../../../modules/stamped-file-cache.mjs';
 

@@ -1,0 +1,22 @@
+[
+  {
+    "tool": "ruff",
+    "rule": "G010",
+    "mention": "logger.warning"
+  },
+  {
+    "tool": "ruff",
+    "rule": "G101",
+    "mention": "extra"
+  },
+  {
+    "tool": "ruff",
+    "rule": "G201",
+    "mention": "logger.exception"
+  },
+  {
+    "tool": "ruff",
+    "rule": "G202",
+    "mention": "exc_info=true"
+  }
+]

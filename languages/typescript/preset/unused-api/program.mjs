@@ -1,6 +1,6 @@
 import { existsSync, lstatSync, readdirSync } from 'node:fs';
 import path from 'node:path';
-import ts from 'typescript';
+import { ts } from '../../typescript-api/typescript-api.mjs';
 import { filesUnder } from '../../../../shared/filesystem.mjs';
 import { codeExtensionNames } from '../layout.mjs';
 import { workspacePaths } from './workspace/entries.mjs';

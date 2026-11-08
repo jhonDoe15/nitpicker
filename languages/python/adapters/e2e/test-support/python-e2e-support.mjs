@@ -2,6 +2,7 @@ import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 import {
   cpSync,
+  existsSync,
   mkdirSync,
   mkdtempSync,
   readFileSync,
@@ -11,6 +12,11 @@ import {
 } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { runCli } from '../../../../../core/cli.mjs';
+import { readConfigFile } from '../../../../../core/configuration/config.mjs';
+import { policyChangeFields } from '../../../../../core/policy-changes/describe-policy-changes.mjs';
+import { readPolicyScope } from '../../../../../core/policy-changes/policy-scope.mjs';
+import { schemaChecked } from '../../../../../core/diff/comparison/test-support/findings-schema-check.mjs';
+import { withoutHelpUris } from '../../../../../core/diff/reporting/test-support/report-reading.mjs';
 import { fileURLToPath } from 'node:url';
 
 const LOCAL_COMMAND_TIMEOUT_MS = 30_000;
@@ -61,19 +67,23 @@ export function write(root, files) {
   }
 }
 
-export function commitBranch(root, name, files) {
-  git(root, 'checkout', '-q', '-b', name, 'main');
+export function commitBranchFrom({ root, name, files, from }) {
+  git(root, 'checkout', '-q', '-b', name, from);
   write(root, files);
   git(root, 'add', '-A');
   git(root, 'commit', '-q', '-m', name);
 }
 
-export function gate(root, branch, { extra = [], environment = {} } = {}) {
+export function commitBranch(root, name, files) {
+  commitBranchFrom({ root, name, files, from: 'main' });
+}
+
+export function gate(root, branch, { extra = [], environment = {}, base = 'main' } = {}) {
   git(root, 'checkout', '-q', branch);
   const reports = mkdtempSync(path.join(tmpdir(), 'nitpicker-python-e2e-out-'));
   const output = { text: '' };
   const exitCode = runCli({
-    arguments_: ['--base', 'main', '--output', reports, ...extra],
+    arguments_: ['--base', base, '--output', reports, ...extra],
     environment: { NO_COLOR: '1', ...environment },
     currentProjectRoot: root,
     stdout: {
@@ -89,9 +99,35 @@ export function gate(root, branch, { extra = [], environment = {} } = {}) {
     progress: { write: () => undefined },
   });
   function json(name) {
-    return JSON.parse(readFileSync(path.join(reports, name), 'utf8'));
+    const file = path.resolve(reports, name);
+    if (!file.startsWith(reports + path.sep)) {
+      throw new Error(`${name} is outside the reports directory`);
+    }
+    return withoutHelpUris(JSON.parse(readFileSync(file, 'utf8')));
+  }
+  if (existsSync(path.join(reports, 'new-findings.json'))) {
+    schemaChecked({ newFindings: json('new-findings.json') });
   }
   return { exitCode, json, text: output.text, reports };
+}
+
+export function policyChangesOf(root, branch) {
+  git(root, 'checkout', '-q', branch);
+  const base = mkdtempSync(path.join(tmpdir(), 'nitpicker-python-e2e-base-'));
+  git(root, 'worktree', 'add', '-q', '--detach', base, 'main');
+  try {
+    const headConfig = readConfigFile(root);
+    const scope = readPolicyScope({
+      baseConfig: {},
+      headConfig,
+      baseProjectRoot: base,
+      headProjectRoot: root,
+      moves: {},
+    });
+    return policyChangeFields({}, headConfig, scope);
+  } finally {
+    git(root, 'worktree', 'remove', '--force', base);
+  }
 }
 
 export function summarize(findings) {

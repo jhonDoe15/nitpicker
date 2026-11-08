@@ -1,6 +1,6 @@
 import { existsSync, readFileSync, realpathSync } from 'node:fs';
 import path from 'node:path';
-import ts from 'typescript';
+import { ts } from '../../typescript-api/typescript-api.mjs';
 import { depthFirst } from '../../../../shared/traversal.mjs';
 import { reachableModules } from './module-resolution.mjs';
 import { readJsonc } from './tsconfig-files.mjs';

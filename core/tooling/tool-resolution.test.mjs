@@ -12,7 +12,13 @@ import { createRequire } from 'node:module';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { beforeAll, afterEach, describe, expect, it } from 'vitest';
-import { PACKAGE_ROOT, resolveProjectRoot, resolveTool } from './tool-resolution.mjs';
+import {
+  isToolInstalled,
+  missingToolMessage,
+  PACKAGE_ROOT,
+  resolveProjectRoot,
+  resolveTool,
+} from './tool-resolution.mjs';
 import {
   applyLegacyInventory,
   configuredAnalyzers,
@@ -32,6 +38,35 @@ it('resolves installed tool versions and binaries outside snapshots', () => {
   const prettier = resolveTool('prettier', { bin: 'bin/prettier.cjs' });
   expect(prettier.binPath.startsWith(prettier.root + path.sep)).toBe(true);
   expect(resolveTool('vitest', { projectRoot: PACKAGE_ROOT }).version).toBe('4.1.11');
+});
+
+it('tells whether a project has a peer tool installed', () => {
+  const withTypeScript = createTemporaryRoot('nitpicker-with-typescript-');
+  const without = createTemporaryRoot('nitpicker-without-typescript-');
+  writeManifest(path.join(withTypeScript, 'node_modules/typescript'), {
+    name: 'typescript',
+    version: '5.9.3',
+  });
+
+  expect(isToolInstalled('typescript', { projectRoot: withTypeScript })).toBe(true);
+  expect(isToolInstalled('typescript', { projectRoot: without })).toBe(false);
+  expect(isToolInstalled('eslint')).toBe(true);
+});
+
+it('names the npm 10 install failure when a Vitest peer is missing', () => {
+  const hint =
+    '. If npm 10 failed to install it with "reading \'edgesOut\'", install with npm 11 ' +
+    '(`npx npm@11 install`) or use Vitest 5';
+
+  expect(missingToolMessage('vitest', '/project')).toBe(
+    `Required tool vitest is not installed from /project${hint}`,
+  );
+  expect(missingToolMessage('@vitest/coverage-v8', '/project')).toBe(
+    `Required tool @vitest/coverage-v8 is not installed from /project${hint}`,
+  );
+  expect(missingToolMessage('typescript', '/project')).toBe(
+    'Required tool typescript is not installed from /project',
+  );
 });
 
 it('records the TypeScript version imported by structure instead of the consumer version', () => {
@@ -70,7 +105,7 @@ it('records the TypeScript version imported by structure instead of the consumer
   });
 
   expect(typecheck.resolveVersion(liveProjectRoot)).toBe(
-    `${consumerTypeScriptVersion};typescript-native@7.0.2`,
+    `${consumerTypeScriptVersion};@typescript/native@7.0.2;${importedTypeScriptVersion}`,
   );
   expect(report.summary.tools[0].version).toBe(importedTypeScriptVersion);
 });
@@ -250,7 +285,7 @@ describe('project root resolution', () => {
     expect(() => resolveProjectRoot(emptyRoot)).toThrow(
       new Error(
         `No package.json or nitpicker.config.json found between ${emptyRoot} and repository root ${emptyRoot}. ` +
-          'For a Java, Kotlin or Python project, create nitpicker.config.json with its preset, for example {"preset": "java"}.',
+          'For a Java, Kotlin, Python or Go project, create nitpicker.config.json with its preset, for example {"preset": "java"}.',
       ),
     );
   });

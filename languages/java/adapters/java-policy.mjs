@@ -1,10 +1,11 @@
 import { createHash } from 'node:crypto';
-import { existsSync, readdirSync, readFileSync } from 'node:fs';
+import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs';
 import path from 'node:path';
 import { parseRunnerArguments } from '../../../core/tooling/runner-arguments.mjs';
 import { withLegacyInventory } from '../../../shared/legacy-inventory.mjs';
 import { configError, TYPESCRIPT_ONLY_KEYS } from '../../../shared/config.mjs';
 import {
+  BUILD_DECLARED_TOOLS,
   GRADLE_PRESETS,
   JAVA_TOOLS,
   PROJECT_TOOL_CONFIGS,
@@ -20,6 +21,7 @@ import { SHARED_EXCEPTION_RULES } from '../../../shared/policy.mjs';
 import { sharedRouteRule } from '../../../shared/exceptions/routes.mjs';
 import { INLINE_SUPPRESSION_RULE } from './suppressions/java-suppressions.mjs';
 import { canonicalRule } from '../../../shared/exceptions/rule-names.mjs';
+import { declaredToolDigest } from './tool-config/declared/declared-choices.mjs';
 
 const FILE_LIMIT_THRESHOLDS = [
   'fileLines',
@@ -32,18 +34,37 @@ const FILE_LIMIT_THRESHOLDS = [
   'inheritanceDepth',
 ];
 const TEST_TIME_THRESHOLDS = ['unitTestSeconds', 'integrationTestSeconds'];
-const NATIVE_LINE_LENGTH = {
+export const NATIVE_LINE_LENGTH = {
   java: `Java line length follows the formatter (google-java-format wraps at ${String(JAVA_LINE_LENGTH)}, palantir-java-format at 120); with the "conventions" key "java.formatter" set to "none", "java.lineLength" (any number of columns) sets it, as does max on LineLength in config/checkstyle/checkstyle.xml once "tools": { "checkstyle": { "precedence": ["project"] } } opts in, and an exception for "line-length-limit" lifts the rule for some paths`,
   kotlin: `the "conventions" key "kotlin.lineLength" (any number of columns) sets it for ktlint, ktfmt and detekt when a formatter runs; otherwise set style>MaxLineLength in config/detekt/detekt.yml and opt in with "tools": { "detekt": { "precedence": ["project"] } }; the Java files follow "java.lineLength" (${String(JAVA_LINE_LENGTH)} by default, or max on LineLength in config/checkstyle/checkstyle.xml once "tools": { "checkstyle": { "precedence": ["project"] } } opts in), and an exception for "line-length-limit" lifts that for some paths`,
 };
-const JAVA_EXCEPTION_RULES = [...SHARED_EXCEPTION_RULES, ...JAVA_SIZE_RULES];
+export const JAVA_EXCEPTION_RULES = [...SHARED_EXCEPTION_RULES, ...JAVA_SIZE_RULES];
+
+const MOVES_OPTION = '--baseline-moves-file';
 
 export function parseJavaRunnerArguments(argumentList) {
-  return parseRunnerArguments(argumentList, {
+  const at = argumentList.indexOf(MOVES_OPTION);
+  const movesFile = at === -1 ? undefined : argumentList[at + 1];
+  if (
+    at !== -1 &&
+    !(movesFile !== undefined && existsSync(movesFile) && statSync(movesFile).isFile())
+  ) {
+    throw new Error(`${MOVES_OPTION} must be a file`);
+  }
+  const parsed = parseRunnerArguments(at === -1 ? argumentList : argumentList.toSpliced(at, 2), {
     runner: 'java-runner.mjs',
     choices: { '--preset': GRADLE_PRESETS, '--kotlin-formatter': KOTLIN_FORMATTERS },
     precedenceTools: precedenceToolNames(),
   });
+  return movesFile === undefined
+    ? parsed
+    : { ...parsed, policy: { ...parsed.policy, baselineMovesFile: movesFile } };
+}
+
+function movesArguments(analyzer, { baselineMovesFile }) {
+  return baselineMovesFile === undefined || !GRADLE_PRESETS.includes(analyzer.name)
+    ? []
+    : [MOVES_OPTION, baselineMovesFile];
 }
 
 export function validateJavaConfig(config) {
@@ -127,16 +148,19 @@ export function configureJavaAnalyzer(analyzer, options) {
   const projectConfigDirectories = [...PROJECT_TOOL_CONFIGS]
     .filter(([tool]) => tools[tool]?.precedence.includes('project'))
     .map(([, file]) => path.dirname(file));
+  const declared = declaredPrecedence(tools);
   const configured = {
     ...analyzer,
     configurationHash,
-    ...(projectConfigDirectories.length === 0 && styleFiles === undefined
+    ...(projectConfigDirectories.length === 0 && styleFiles === undefined && declared === undefined
       ? {}
       : {
           resolveConfigurationHash: (policyRoot) =>
             hashWithProjectConfigs(configurationHash, policyRoot, {
               directories: projectConfigDirectories,
               files: styleFiles?.(policyRoot) ?? [],
+              declared:
+                declared === undefined ? undefined : declaredToolDigest(declared, policyRoot),
             }),
         }),
     createInvocation: (context) => {
@@ -152,6 +176,7 @@ export function configureJavaAnalyzer(analyzer, options) {
             ? []
             : ['--policy-root', context.projectPolicyRoot]),
           ...(context.baselineRoot === undefined ? [] : ['--baseline-root', context.baselineRoot]),
+          ...movesArguments(analyzer, context),
         ],
       };
     },
@@ -169,8 +194,18 @@ function exceptionArgument({ rule, paths, function: functionName }) {
   });
 }
 
-function hashWithProjectConfigs(configurationHash, policyRoot, { directories, files }) {
+function declaredPrecedence(tools) {
+  const listed = BUILD_DECLARED_TOOLS.filter((tool) => tools[tool]?.precedence.includes('project'));
+  return listed.length === 0
+    ? undefined
+    : Object.fromEntries(listed.map((tool) => [tool, tools[tool].precedence]));
+}
+
+function hashWithProjectConfigs(configurationHash, policyRoot, { directories, files, declared }) {
   const hash = createHash('sha256').update(configurationHash);
+  if (declared !== undefined) {
+    hash.update(`declared\0${declared}\0`);
+  }
   const named = [
     ...directories.flatMap((directory) => filesUnder(policyRoot, directory)),
     ...files.map((file) => path.relative(policyRoot, file)),

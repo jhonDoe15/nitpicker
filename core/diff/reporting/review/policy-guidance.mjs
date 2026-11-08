@@ -13,7 +13,8 @@ export const POLICY_GUIDANCE = {
     `${VERIFY_INVOCATION} Other checks still apply.`,
   ].join(' '),
   'python-entry-point': [
-    'Matching files may read the process environment: process-env-access skips them.',
+    'Matching files may read the process environment and the standard streams and run effects at import:',
+    'process-env-access, process-stream-access and import-time-effect skip them.',
     `${VERIFY_INVOCATION} Other checks still apply.`,
   ].join(' '),
   exception: [
@@ -84,6 +85,10 @@ export const POLICY_GUIDANCE = {
     'An edited project config now applies to this tool, and nitpicker does not judge whether the edit is stricter.',
     'Restore the file, or have a person review the edit.',
   ].join(' '),
+  'tool-config-opt-in': [
+    'The change opts this tool into a project config, which nitpicker does not judge.',
+    'Remove "project" from the tool\'s precedence, or have a person review the config.',
+  ].join(' '),
   'test-timeout': [
     'Raises or removes a test time limit, or moves tests into a project with its own limits, so slower tests pass.',
     'Restore the base limits and speed up the tests, unless a person confirms.',
@@ -128,6 +133,14 @@ export const POLICY_GUIDANCE = {
     'Points detekt at another config, which may relax its rules; nitpicker does not judge that.',
     'Restore the base path, or have a person review the new config.',
   ].join(' '),
+  'go-formatters-dropped': [
+    'Drops a Go formatter from the format check, so the files it would change stop failing.',
+    'Restore the base formatters.',
+  ].join(' '),
+  'go-build-tags-dropped': [
+    'Drops a Go build tag, so the files behind it are no longer built, vetted or tested.',
+    'Restore the base build tags.',
+  ].join(' '),
   'tool-precedence': [
     "The project's own tool config now outranks nitpicker's, or nitpicker's is dropped,",
     'so the project can relax the checks.',
@@ -136,6 +149,11 @@ export const POLICY_GUIDANCE = {
   'spring-roles-shrank': [
     'Drops a Spring role mapping, so the classes it marked lose that role and its layering checks.',
     'Restore the mapping.',
+  ].join(' '),
+  'detached-work-runner-added': [
+    'Names a new detached-work runner, so `void` on its calls is no longer checked for an',
+    'unhandled rejection. Remove the name, or have a person check that the runner handles',
+    'every rejection.',
   ].join(' '),
 };
 

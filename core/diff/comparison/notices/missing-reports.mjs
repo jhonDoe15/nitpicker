@@ -34,7 +34,8 @@ function renamedOutOf(directory, renames) {
   return [...renames].filter(([from]) => under(from, directory)).map(([, to]) => to);
 }
 
-function baseNotice(notice, renames) {
+function baseNotice(notice, moves) {
+  const renames = moves.files;
   const original = scopeOf(notice);
   const moved = original.includes(WHOLE_PROJECT)
     ? []
@@ -42,7 +43,7 @@ function baseNotice(notice, renames) {
   return {
     tool: notice.tool,
     prefix: notice.notRunIdentityPrefix,
-    key: comparisonKey(notice, renames),
+    key: comparisonKey(notice, moves),
     scope: [...new Set([...original, ...moved])],
   };
 }
@@ -68,10 +69,10 @@ function covered(notRunOnBase, finding) {
   );
 }
 
-export function againstMissingReports(unmatchedHead, baseFindings, renames) {
+export function againstMissingReports(unmatchedHead, baseFindings, moves) {
   const notRunOnBase = baseFindings
     .filter((finding) => finding.toolNotRun === true)
-    .map((notice) => baseNotice(notice, renames));
+    .map((notice) => baseNotice(notice, moves));
   return unmatchedHead.map((finding) => {
     if (finding.toolNotRun === true) {
       return alsoNotRun(notRunOnBase, finding)

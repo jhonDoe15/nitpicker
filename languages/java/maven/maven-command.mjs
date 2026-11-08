@@ -1,4 +1,4 @@
-import { spawnSync } from 'node:child_process';
+import { spawnSyncWithOutputFile } from '../../../core/tooling/output-file/output-file.mjs';
 import { existsSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
@@ -13,6 +13,10 @@ const MILLISECONDS_PER_MINUTE = 60_000;
 const MINIMUM_MAVEN = '3.6.3';
 const OLD_MAVEN = /Unrecognized option: --no-transfer-progress|requires Maven version/u;
 const MAVEN_FLAGS = ['--batch-mode', '--no-transfer-progress', '-Dstyle.color=never'];
+export const TEST_RERUNS_OFF = [
+  '-Dsurefire.rerunFailingTestsCount=0',
+  '-Dfailsafe.rerunFailingTestsCount=0',
+];
 const MAVEN_NOISE = [
   /^\[ERROR\]\s*$/u,
   /^\[ERROR\] -> \[Help \d+\]/u,
@@ -78,7 +82,7 @@ export function runMaven({
   maven,
   args,
   timeoutMs = MAVEN_TIMEOUT_MS,
-  spawn = spawnSync,
+  spawn = spawnSyncWithOutputFile,
 }) {
   const target = mavenTarget({ projectRoot, configured: maven, args: [...MAVEN_FLAGS, ...args] });
   const result = spawn(target.command, target.args, {
@@ -116,7 +120,7 @@ export function runJava({
   args,
   cwd,
   accept = () => true,
-  spawn = spawnSync,
+  spawn = spawnSyncWithOutputFile,
 }) {
   const directory = mkdtempSync(path.join(tmpdir(), 'nitpicker-java-'));
   try {

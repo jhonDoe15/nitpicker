@@ -1,17 +1,22 @@
 import { withSharedBuildDirectory } from '../../tooling/build-once/build-once.mjs';
-import { spawnSync } from 'node:child_process';
+import { spawnSyncWithOutputFile } from '../../tooling/output-file/output-file.mjs';
 import { headPolicyEnvironment } from '../../../languages/typescript/preset/head-policy.mjs';
 import { analyzerName } from '../reporting/report-model.mjs';
 import { validateAnalyzer, validateInvocation } from './validation/analyzers.mjs';
 import { PACKAGE_ROOT } from '../../tooling/tool-resolution.mjs';
 import { namedReports, namedToolErrors } from '../snapshot-root/snapshot-root.mjs';
 import { fileURLToPath } from 'node:url';
+import { describeError } from '../../../shared/messages/error-chain.mjs';
 
 const MAX_ANALYZER_OUTPUT_BYTES = 50 * 1024 * 1024;
 
 const SCHEDULER_OUTPUT_OVERHEAD_BYTES = 1024 * 1024;
 
 const DEFAULT_ANALYZER_TIMEOUT_MS = 5 * 60 * 1000;
+
+const SCHEDULER_GRACE_MS = 60 * 1000;
+
+const TASK_STOP_GRACE_MS = 5 * 1000;
 
 const schedulerPath = fileURLToPath(new URL('./analyzer-scheduler.mjs', import.meta.url));
 
@@ -122,16 +127,23 @@ function scheduleTasks(tasks, { runTasks, headPolicyFile, snapshot }) {
     outcome.toolErrors.push({
       tool: 'analyzer-scheduler',
       snapshot,
-      message: error instanceof Error ? error.message : String(error),
+      message: describeError(error),
     });
   }
   return outcome;
 }
 
+function schedulerDeadline(tasks) {
+  return tasks.reduce(
+    (total, task) => total + task.timeoutMs + TASK_STOP_GRACE_MS,
+    SCHEDULER_GRACE_MS,
+  );
+}
+
 export function runScheduler(tasks, headPolicyFile, { progress } = {}) {
   const liveProgress = Number.isInteger(progress?.stream.fd);
   const result = withSharedBuildDirectory((sharedEnvironment) =>
-    spawnSync(process.execPath, [schedulerPath], {
+    spawnSyncWithOutputFile(process.execPath, [schedulerPath], {
       input: JSON.stringify({
         tasks: liveProgress ? withProgressLabel(tasks, progress.label) : tasks,
       }),
@@ -143,6 +155,7 @@ export function runScheduler(tasks, headPolicyFile, { progress } = {}) {
       },
       encoding: 'utf8',
       maxBuffer: tasks.length * MAX_ANALYZER_OUTPUT_BYTES + SCHEDULER_OUTPUT_OVERHEAD_BYTES,
+      timeout: schedulerDeadline(tasks),
     }),
   );
   if (result.error !== undefined) {
@@ -178,7 +191,7 @@ function prepareTasks(analyzers, context) {
       toolErrors.push({
         tool: name,
         snapshot: context.snapshot,
-        message: error instanceof Error ? error.message : String(error),
+        message: describeError(error),
       });
     }
   }

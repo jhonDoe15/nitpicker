@@ -24,6 +24,30 @@ export const kotlinRuleCases = [
     allowed: 'fun text(value: Any?): String = value as? String ?: "none"\n',
   },
   {
+    id: 'nullableCast',
+    rule: 'detekt.potential-bugs.CastToNullableType',
+    message: "Use the safe cast ('as? String') instead of 'as String?'.",
+    allowedForm: 'as? String',
+    banned: 'fun text(value: Any): String? = value as String?\n',
+    allowed: 'fun text(value: Any): String? = value as? String\n',
+  },
+  {
+    id: 'collectionDowncast',
+    rule: 'detekt.potential-bugs.DontDowncastCollectionTypes',
+    message: 'Down-casting from type List to MutableList is risky. Use `toMutableList()` instead.',
+    allowedForm: 'toMutableList',
+    banned: 'fun grow(items: List<String>): MutableList<String> = items as MutableList<String>\n',
+    allowed: 'fun grow(items: List<String>): MutableList<String> = items.toMutableList()\n',
+  },
+  {
+    id: 'collectionTypeCheck',
+    rule: 'detekt.potential-bugs.DontDowncastCollectionTypes',
+    message: 'Down-casting from type List to MutableList is risky. Use `toMutableList()` instead.',
+    allowedForm: 'toMutableList',
+    banned: 'fun writable(items: List<String>): Boolean = items is MutableList<String>\n',
+    allowed: 'fun writable(items: List<String>): Boolean = items.isNotEmpty()\n',
+  },
+  {
     id: 'broadCatch',
     rule: 'detekt.exceptions.TooGenericExceptionCaught',
     message:
@@ -121,6 +145,15 @@ export const kotlinRuleCases = [
     allowedForm: 'copy(',
     banned: 'data class {name}(var count: Int)\n',
     allowed: 'data class {name}(val count: Int)\n',
+  },
+  {
+    id: 'unusedParameter',
+    rule: 'detekt.style.UnusedParameter',
+    message: 'Function parameter `extra` is unused.',
+    allowedForm: 'remove the parameter',
+    banned: 'fun total(count: Int, extra: Int): Int = count\n',
+    allowed:
+      'interface Source {\n    fun next(step: Int): Int\n}\n\nclass Counter : Source {\n    override fun next(step: Int): Int = 1\n}\n\nfun total(count: Int, ignoredExtra: Int): Int = count\n\nfun main(args: Array<String>) {\n    total(1, 2)\n}\n\nannotation class Bean\n\n@Bean\nfun wire(name: String): Int = total(1, 2)\n\n@Deprecated("use total")\nfun old(count: Int): Int = count\n',
   },
   {
     id: 'suppression',

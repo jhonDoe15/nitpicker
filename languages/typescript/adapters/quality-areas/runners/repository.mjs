@@ -19,6 +19,7 @@ import { readHeadPolicy, readLayout } from '../../../preset/head-policy.mjs';
 import { withFunctionSourceHashes, withDeadCodeSourceHashes } from '../reporting/source-hashes.mjs';
 import { typescriptStructureProjectFindings } from '../../../preset/structure/project-findings.mjs';
 import { layoutJscpdConfig, layoutKnipConfig } from '../../../preset/tool-configs.mjs';
+import { layeredJscpdConfig } from '../../../../../core/tooling/jscpd/config.mjs';
 import { rootsPattern } from '../../../../../core/tooling/jscpd/skipped-folders.mjs';
 import { trackTemporaryPath } from '../../../../../core/tooling/temporary-files.mjs';
 import { normalizeDuplicates } from '../../../preset/duplicates/normalize.mjs';
@@ -26,6 +27,7 @@ import { renamedDuplicatesReport } from '../../../preset/duplicates/renamed.mjs'
 import { runTestOnlyExports, runUnusedApi } from './unused-api.mjs';
 import { spawnedEntryFiles } from '../../dependency-graph/spawned-entries.mjs';
 import { baselinePathsOf } from '../../../../../shared/rules/facts/baseline.mjs';
+import { knipReport, withProjectKnipConfig } from '../knip/knip-run.mjs';
 
 export async function runCodingStandards(options) {
   const checker = await importPolicyModule(
@@ -148,7 +150,8 @@ function duplicatesJscpdConfig(options) {
     ),
     readLayout(),
   );
-  return { ...config, path: existingRoots(options.projectRoot, config.path) };
+  const layered = layeredJscpdConfig(config);
+  return { ...layered, path: existingRoots(options.projectRoot, config.path) };
 }
 
 function jscpdRunner(options) {
@@ -237,35 +240,20 @@ function withSpawnedEntries(config, projectRoot) {
   return { ...config, entry: [...config.entry, ...spawnedEntryFiles(projectRoot)] };
 }
 
-function knipReport(options, config) {
-  const configPath = path.join(options.projectRoot, '.nitpicker-diff-knip.json');
-  trackTemporaryPath(configPath);
-  writeFileSync(configPath, `${JSON.stringify(config, null, 2)}\n`);
-  try {
-    const result = runNodeTool({
-      options,
-      relativeToolPath: 'knip/bin/knip.js',
-      arguments_: ['--config', configPath, '--reporter', 'json'],
-      acceptedStatuses: [0, 1],
-    });
-    return JSON.parse(result.stdout);
-  } finally {
-    unlinkSync(configPath);
-  }
-}
-
 export function runDeadCode(options) {
-  const config = withSpawnedEntries(
-    layoutKnipConfig(
-      parseReportJson(
-        readFileSync(
-          path.join(options.policyRoot, 'languages/typescript/preset/defaults/knip.json'),
-          'utf8',
+  const config = withProjectKnipConfig(
+    withSpawnedEntries(
+      layoutKnipConfig(
+        parseReportJson(
+          readFileSync(
+            path.join(options.policyRoot, 'languages/typescript/preset/defaults/knip.json'),
+            'utf8',
+          ),
         ),
+        readLayout(),
       ),
-      readLayout(),
+      options.projectRoot,
     ),
-    options.projectRoot,
   );
   const normal = knipReport(options, config);
   return [

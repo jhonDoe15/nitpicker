@@ -38,7 +38,7 @@ describe('policy change rendering', () => {
     ).toEqual([
       '',
       'Policy changed in this change (nitpicker.config.json, head against base; ' +
-        'loosening accepted by exact digest):',
+        'loosening accepted):',
       '  exclude added: a/**',
     ]);
   });

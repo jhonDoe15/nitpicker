@@ -1,14 +1,12 @@
-import { comparisonKey } from './fingerprint.mjs';
+import { changedByDiff } from './base-red/unknown-base.mjs';
+import { baseMoves, comparisonKey } from './fingerprint.mjs';
 import { alignOccurrences } from './matching/occurrences.mjs';
 import { againstMissingReports } from './notices/missing-reports.mjs';
-import {
-  holdRatchetedFindings,
-  isInTouchedCode,
-  isOnAddedLine,
-  ratchetKey,
-} from './ratchet/hold-ratchets.mjs';
 import { matchSimilarFindings } from './similar/match.mjs';
-import { insertBeforeRoute } from '../../../shared/messages/exception-sentence.mjs';
+import { matchAnchoredFindings } from './anchored/match.mjs';
+import { addGrowthAdvice, holdRatchetedFindings } from './ratchet/ratchet.mjs';
+import { withWorseMessage } from '../../../shared/messages/finding-advice.mjs';
+import { isInTouchedCode, isOnAddedLine } from './ratchet/touched-code.mjs';
 
 export function compareFindings({
   baseFindings,
@@ -16,30 +14,38 @@ export function compareFindings({
   baseToHeadRenames = new Map(),
   baseToHeadDirectories = new Map(),
   touchedCode,
+  unknownOnBase,
 }) {
-  const { baseByKey, headByKey } = indexSnapshots(baseFindings, headFindings, {
-    renames: baseToHeadRenames,
-    directories: baseToHeadDirectories,
+  const moves = baseMoves(baseToHeadRenames, baseToHeadDirectories);
+  const baseByKey = indexFindings({ findings: baseFindings, moves, snapshot: 'base' });
+  const headByKey = indexFindings({
+    findings: alignOccurrences(baseFindings, headFindings, { moves, touchedCode }),
+    snapshot: 'head',
+  });
+  const present = classifyHeadFindings({ headByKey, baseByKey, touchedCode, unknownOnBase });
+  const withoutExactMatch = [...baseByKey]
+    .filter(([key]) => !headByKey.has(key))
+    .map(([, baseFinding]) => baseFinding);
+  const anchored = moveAnchoredFindings(present, {
+    baseFindings: moveSimilarFindings(present, withoutExactMatch, moves.files),
+    snapshots: { base: baseFindings, head: headFindings },
+    renames: moves.files,
     touchedCode,
   });
-  const present = classifyHeadFindings({ headByKey, baseByKey, touchedCode });
-  const unmatchedBase = matchUnpairedFindings({ baseByKey, headByKey, present, baseToHeadRenames });
+  const { unmatchedBase } = anchored;
   const ratcheted = holdRatchetedFindings({
     newFindings: present.newFindings,
     unmatchedBase,
-    renames: baseToHeadRenames,
-    directories: baseToHeadDirectories,
+    moves,
     touchedCode,
   });
   present.newFindings = againstMissingReports(
-    withGrowthAdvice({
-      findings: ratcheted.newFindings,
-      baseFindings,
-      renames: baseToHeadRenames,
-      directories: baseToHeadDirectories,
-    }),
+    [
+      ...addGrowthAdvice({ findings: ratcheted.newFindings, baseFindings, moves }),
+      ...anchored.grown,
+    ],
     baseFindings,
-    baseToHeadRenames,
+    moves,
   );
   present.unchangedFindings.push(...ratcheted.heldFindings);
   const resolvedFindings = unmatchedBase.filter((finding) => !ratcheted.matchedBase.has(finding));
@@ -52,27 +58,71 @@ export function compareFindings({
   };
 }
 
-function indexSnapshots(baseFindings, headFindings, context) {
-  const { renames, directories } = context;
-  return {
-    baseByKey: indexFindings({ findings: baseFindings, renames, directories, snapshot: 'base' }),
-    headByKey: indexFindings({
-      findings: alignOccurrences(baseFindings, headFindings, context),
-      snapshot: 'head',
-    }),
-  };
+function moveSimilarFindings(present, baseFindings, renames) {
+  const similar = matchSimilarFindings({
+    headFindings: present.newFindings,
+    baseFindings,
+    renames,
+  });
+  present.newFindings = similar.unmatched;
+  present.unchangedFindings.push(...similar.matched);
+  return baseFindings.filter((finding) => !similar.matchedBase.has(finding));
 }
 
-function classifyHeadFindings({ headByKey, baseByKey, touchedCode }) {
-  const buckets = { newFindings: [], unchangedFindings: [], changedMetrics: [] };
+function moveAnchoredFindings(present, { baseFindings, snapshots, renames, touchedCode }) {
+  const pairs = matchAnchoredFindings({
+    headFindings: present.newFindings.filter((finding) => present.withoutBase.has(finding)),
+    baseFindings,
+    snapshots,
+    renames,
+    touchedCode,
+  });
+  const movedHeads = new Set(pairs.map(({ head }) => head));
+  present.newFindings = present.newFindings.filter((finding) => !movedHeads.has(finding));
+  const grown = [];
+  for (const { head, base } of pairs) {
+    if (head.ratchet !== undefined && head.ratchet.value > (base.ratchet?.value ?? Infinity)) {
+      grown.push(withWorseMessage(head, base.ratchet.value));
+      continue;
+    }
+    const { bucket, entry } = classify(head, base, { touchedCode, isUnknown: false });
+    present[bucket].push(heldAt(bucket, entry, base));
+  }
+  const movedBase = new Set(pairs.map(({ base }) => base));
+  return { unmatchedBase: baseFindings.filter((finding) => !movedBase.has(finding)), grown };
+}
+
+function heldAt(bucket, entry, base) {
+  return bucket === 'unchangedFindings' && entry.ratchet !== undefined && base.ratchet !== undefined
+    ? { ...entry, heldAtBase: base.ratchet.value }
+    : entry;
+}
+
+function classifyHeadFindings({ headByKey, baseByKey, touchedCode, unknownOnBase }) {
+  const buckets = {
+    newFindings: [],
+    unchangedFindings: [],
+    changedMetrics: [],
+    withoutBase: new Set(),
+  };
   for (const [key, headFinding] of headByKey) {
-    const { bucket, entry } = classify(headFinding, baseByKey.get(key), touchedCode);
+    if (!baseByKey.has(key)) {
+      buckets.withoutBase.add(headFinding);
+    }
+    const { bucket, entry } = classify(headFinding, baseByKey.get(key), {
+      touchedCode,
+      isUnknown: unknownOnBase?.(headFinding) === true,
+    });
     buckets[bucket].push(entry);
   }
   return buckets;
 }
 
-function classify(headFinding, baseFinding, touchedCode) {
+function classify(headFinding, baseFinding, { touchedCode, isUnknown }) {
+  if (baseFinding === undefined && isUnknown) {
+    const bucket = changedByDiff(headFinding, touchedCode) ? 'newFindings' : 'unchangedFindings';
+    return { bucket, entry: headFinding };
+  }
   if (baseFinding === undefined) {
     return { bucket: 'newFindings', entry: headFinding };
   }
@@ -82,31 +132,6 @@ function classify(headFinding, baseFinding, touchedCode) {
   const isNew =
     isInTouchedCode(headFinding, touchedCode) || isOnAddedLine(headFinding, touchedCode);
   return { bucket: isNew ? 'newFindings' : 'unchangedFindings', entry: headFinding };
-}
-
-function withGrowthAdvice({ findings, baseFindings, renames, directories }) {
-  const baseValues = new Map(
-    baseFindings
-      .filter((baseFinding) => baseFinding.ratchet !== undefined)
-      .map((baseFinding) => [
-        ratchetKey(baseFinding, renames, directories),
-        baseFinding.ratchet.value,
-      ]),
-  );
-  return findings.map((finding) => {
-    const advice = finding.ratchet?.growthAdvice;
-    const baseValue =
-      advice === undefined ? undefined : baseValues.get(ratchetKey(finding, new Map(), new Map()));
-    return baseValue === undefined
-      ? finding
-      : {
-          ...finding,
-          message: insertBeforeRoute(
-            finding.message,
-            advice.replaceAll('{base}', String(baseValue)),
-          ),
-        };
-  });
 }
 
 function changedMetricOf(baseFinding, headFinding) {
@@ -124,10 +149,10 @@ function changedMetricOf(baseFinding, headFinding) {
   };
 }
 
-function indexFindings({ findings, renames = new Map(), directories = new Map(), snapshot }) {
+function indexFindings({ findings, moves, snapshot }) {
   const indexed = new Map();
   for (const finding of findings) {
-    const key = comparisonKey(finding, renames, directories);
+    const key = comparisonKey(finding, moves);
     if (indexed.has(key)) {
       throw new Error(
         `${snapshot} analyzer output contains duplicate stable identity for ${finding.tool}/${finding.rule} at ${finding.path}`,
@@ -160,18 +185,4 @@ function compareDisplayOrder(left, right) {
     left.rule.localeCompare(right.rule) ||
     left.identity.localeCompare(right.identity)
   );
-}
-
-function matchUnpairedFindings({ baseByKey, headByKey, present, baseToHeadRenames }) {
-  const withoutExactMatch = [...baseByKey]
-    .filter(([key]) => !headByKey.has(key))
-    .map(([, baseFinding]) => baseFinding);
-  const similar = matchSimilarFindings({
-    headFindings: present.newFindings,
-    baseFindings: withoutExactMatch,
-    renames: baseToHeadRenames,
-  });
-  present.newFindings = similar.unmatched;
-  present.unchangedFindings.push(...similar.matched);
-  return withoutExactMatch.filter((finding) => !similar.matchedBase.has(finding));
 }

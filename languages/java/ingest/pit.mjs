@@ -1,8 +1,9 @@
 import { mutantFindings } from '../../../shared/rules/mutation.mjs';
 import { decodeEntities } from '../../../shared/ingest/common.mjs';
+import { hash } from '../../../shared/rules/finding-helpers.mjs';
 
 const PIT_WAY_OUT =
-  'If no input can tell the two apart (a compareTo boundary, a discarded lambda return), simplify the code so this mutant disappears.';
+  'If no input can tell the two apart (a compareTo boundary, a discarded lambda return, a field set to the value it already has, a redundant trim() or sorted()), simplify the code so this mutant disappears.';
 
 const STATUS_NAMES = {
   KILLED: 'Killed',
@@ -21,42 +22,54 @@ export function ingestPit(xml, options = {}) {
   }
   const tool = options.tool ?? 'pit';
   const resolvePath = options.resolvePath ?? ((className, sourceFile) => sourceFile);
+  const generated = options.generated;
   const mutants = [...xml.matchAll(/<mutation\b([^>]*?)(?:\/>|>([\s\S]*?)<\/mutation>)/g)]
     .map(([, attributes, body = '']) => parseMutant(attributes, body))
     .filter((mutant) => mutant !== undefined);
 
-  const { groups, statusCounts } = groupMutants(mutants, resolvePath);
-  const findings = mutantFindings(neutralMutants(groups, options.functionAt), {
+  const { groups, statusCounts, leftOut } = groupMutants(mutants, { resolvePath, generated });
+  const findings = mutantFindings(neutralMutants(groups, options), {
     tool,
     wayOut: PIT_WAY_OUT,
   });
-  findings.push(...statusSummaries(statusCounts, tool));
+  findings.push(...statusSummaries(statusCounts, tool), ...leftOutSummary(leftOut, tool));
   return { findings };
 }
 
-function groupMutants(mutants, resolvePath) {
+function groupMutants(mutants, { resolvePath, generated }) {
   const statusCounts = new Map();
   const groups = new Map();
+  let leftOut = 0;
+  const judge = generated?.(mutants);
   for (const mutant of mutants) {
     const status = STATUS_NAMES[mutant.status] ?? 'Unknown';
-    statusCounts.set(status, (statusCounts.get(status) ?? 0) + 1);
     const filePath =
-      status === 'Killed' ? undefined : resolvePath(mutant.className, mutant.sourceFile);
-    if (filePath === undefined) {
+      status === 'Killed' && judge === undefined
+        ? undefined
+        : resolvePath(mutant.className, mutant.sourceFile);
+    if (judge?.(mutant, filePath) !== undefined) {
+      leftOut += 1;
       continue;
     }
-    const key = [
-      simpleClassName(mutant.className),
-      `${mutant.method}${simpleDescriptor(mutant.methodDescription)}`,
-      mutator(mutant.mutator),
-      withoutPackages(mutant.description),
-    ].join('|');
-    const groupKey = `${status}\0${filePath}\0${key}`;
-    const group = groups.get(groupKey) ?? [];
-    group.push({ mutant, status, key, filePath });
-    groups.set(groupKey, group);
+    statusCounts.set(status, (statusCounts.get(status) ?? 0) + 1);
+    if (status !== 'Killed' && filePath !== undefined) {
+      addToGroup(groups, { mutant, status, filePath });
+    }
   }
-  return { groups, statusCounts };
+  return { groups, statusCounts, leftOut };
+}
+
+function addToGroup(groups, { mutant, status, filePath }) {
+  const key = [
+    withoutSyntheticNumbers(simpleClassName(mutant.className)),
+    `${withoutSyntheticNumbers(mutant.method)}${simpleDescriptor(mutant.methodDescription)}`,
+    mutant.mutatorName,
+    withoutSyntheticNumbers(withoutPackages(mutant.description)),
+  ].join('|');
+  const groupKey = `${status}\0${filePath}\0${key}`;
+  const group = groups.get(groupKey) ?? [];
+  group.push({ mutant, status, key, filePath });
+  groups.set(groupKey, group);
 }
 
 const INITIALIZER_LAMBDA = /^lambda\$new\$\d+$/u;
@@ -68,7 +81,25 @@ function mutantSymbol(mutant, filePath, functionAt) {
     : symbol;
 }
 
-function neutralMutants(groups, functionAt) {
+function lineReader(sourceText) {
+  const files = new Map();
+  return (filePath, line) => {
+    if (!files.has(filePath)) {
+      files.set(filePath, sourceText?.(filePath)?.split(/\r?\n/u));
+    }
+    return files.get(filePath)?.[line - 1]?.trim();
+  };
+}
+
+function mutantAnchor(mutant, filePath, lineAt) {
+  const text = lineAt(filePath, mutant.line);
+  return text === undefined || text === ''
+    ? undefined
+    : [mutant.mutatorName, withoutMethod(mutant.description), hash(text)].join('|');
+}
+
+function neutralMutants(groups, { functionAt, sourceText }) {
+  const lineAt = lineReader(sourceText);
   const neutral = [];
   for (const group of groups.values()) {
     group.sort((a, b) => a.mutant.line - b.mutant.line || a.mutant.block - b.mutant.block);
@@ -77,9 +108,10 @@ function neutralMutants(groups, functionAt) {
         path: filePath,
         identity: `${key}#${String(index + 1)}`,
         status,
-        label: `${mutator(mutant.mutator)}: ${mutant.description}`,
+        label: `${mutant.mutatorName}: ${mutant.description}`,
         symbol: mutantSymbol(mutant, filePath, functionAt),
         line: mutant.line,
+        anchor: mutantAnchor(mutant, filePath, lineAt),
       });
     }
   }
@@ -98,6 +130,22 @@ function statusSummaries(statusCounts, tool) {
   }));
 }
 
+function leftOutSummary(count, tool) {
+  return count === 0
+    ? []
+    : [
+        {
+          tool,
+          rule: 'mutation-summary',
+          path: '.',
+          identity: 'status:GeneratedCode',
+          message: 'Mutants in compiler-generated code, left out',
+          classification: 'descriptive',
+          metric: { name: 'GeneratedCode', value: count },
+        },
+      ];
+}
+
 function simpleClassName(className) {
   return className.slice(className.lastIndexOf('.') + 1);
 }
@@ -108,6 +156,14 @@ function simpleDescriptor(descriptor) {
 
 function withoutPackages(text) {
   return text.replaceAll(/(?:[\w$]+\/)+([\w$]+)/g, '$1');
+}
+
+function withoutSyntheticNumbers(name) {
+  return name.replaceAll(/\$\d+(?!\w)/gu, '');
+}
+
+function withoutMethod(description) {
+  return description.replaceAll(/(?:[\w$]+\/)*[\w$]+::[\w$<>]+/gu, '');
 }
 
 function mutator(qualifiedName) {
@@ -131,7 +187,7 @@ function parseMutant(attributes, body) {
     sourceFile,
     method: field('mutatedMethod') ?? '',
     methodDescription: field('methodDescription') ?? '',
-    mutator: field('mutator') ?? 'unknown',
+    mutatorName: mutator(field('mutator') ?? 'unknown'),
     description: field('description') ?? '',
     line: Number.parseInt(field('lineNumber') ?? '', 10) || 0,
     block: Number.parseInt((field('blocks') ?? '').match(/\d+/)?.[0] ?? '', 10) || 0,

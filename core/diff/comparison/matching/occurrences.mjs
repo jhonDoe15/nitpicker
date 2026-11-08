@@ -62,17 +62,11 @@ function canRealign(heads, bases, changed) {
   );
 }
 
-export function alignOccurrences(
-  baseFindings,
-  headFindings,
-  { renames, directories, touchedCode },
-) {
+export function alignOccurrences(baseFindings, headFindings, { moves, touchedCode }) {
   if (touchedCode === undefined) {
     return headFindings;
   }
-  const baseGroups = groupBy(baseFindings, (finding) =>
-    comparisonKey(finding, renames, directories),
-  );
+  const baseGroups = groupBy(baseFindings, (finding) => comparisonKey(finding, moves));
   const replaced = new Map(
     [...groupBy(headFindings, (finding) => comparisonKey(finding))].flatMap(([key, heads]) => {
       const bases = baseGroups.get(key) ?? [];

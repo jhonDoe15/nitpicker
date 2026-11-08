@@ -54,15 +54,17 @@ describe('entry points of a JavaScript project', () => {
   });
 
   it('accepts index.mjs and index.cjs as entry points', () => {
-    for (const extension of ['mjs', 'cjs']) {
+    const counts = ['mjs', 'cjs'].map((extension) => {
       const report = entryPointReport(
         [[`src/main/other/use.js`, `src/main/greeting/index.${extension}`]],
         javascriptLayout,
       );
-      expect([report.summary.declaredEntryPoints, report.summary.throughEntryPoint]).toEqual([
-        1, 1,
-      ]);
-    }
+      return [report.summary.declaredEntryPoints, report.summary.throughEntryPoint];
+    });
+    expect(counts).toEqual([
+      [1, 1],
+      [1, 1],
+    ]);
   });
 
   it('reports a bypass of the entry point that the entry point re-exports', () => {
@@ -101,13 +103,15 @@ describe('entry points of a JavaScript project', () => {
   });
 
   it('exempts composition roots of every JavaScript extension', () => {
-    for (const root of ['composition-root.mjs', 'composition-root.js', 'main.cjs', 'server.js']) {
-      const report = entryPointReport(
-        [[`src/main/${root}`, 'src/main/greeting/adapters/run.js'], ...publicImport.slice(1)],
-        javascriptLayout,
-      );
-      expect(report.summary.publicAlternativeBypasses, root).toBe(0);
-    }
+    const roots = ['composition-root.mjs', 'composition-root.js', 'main.cjs', 'server.js'];
+    const bypasses = roots.map(
+      (root) =>
+        entryPointReport(
+          [[`src/main/${root}`, 'src/main/greeting/adapters/run.js'], ...publicImport.slice(1)],
+          javascriptLayout,
+        ).summary.publicAlternativeBypasses,
+    );
+    expect(bypasses).toEqual(roots.map(() => 0));
   });
 
   it('exempts a TypeScript composition root of a project that is migrating', () => {
@@ -122,16 +126,18 @@ describe('entry points of a JavaScript project', () => {
   });
 
   it('flags concrete clients imported across components', () => {
-    for (const file of ['client.js', 'pool.mjs', 'store.cjs']) {
-      const report = entryPointReport(
-        [
-          ['src/main/other/use.js', `src/main/greeting/${file}`],
-          ['src/main/greeting/index.js', `src/main/greeting/${file}`, ['export']],
-        ],
-        javascriptLayout,
-      );
-      expect(report.summary.concreteCrossBoundaryImports, file).toBe(1);
-    }
+    const files = ['client.js', 'pool.mjs', 'store.cjs'];
+    const crossings = files.map(
+      (file) =>
+        entryPointReport(
+          [
+            ['src/main/other/use.js', `src/main/greeting/${file}`],
+            ['src/main/greeting/index.js', `src/main/greeting/${file}`, ['export']],
+          ],
+          javascriptLayout,
+        ).summary.concreteCrossBoundaryImports,
+    );
+    expect(crossings).toEqual(files.map(() => 1));
   });
 
   it('flags a TypeScript client name in both projects and a JavaScript one only in JavaScript', () => {
@@ -172,16 +178,21 @@ function bridgeUsage(text, layout) {
 
 describe('test runtime of a JavaScript project', () => {
   it('accepts the JavaScript app-process bridges of every test root', () => {
-    for (const extension of ['js', 'mjs', 'cjs']) {
-      const usage = bridgeUsage(`spawn('./fixtures/app-process.${extension}')`, javascriptLayout);
-      expect(usage.category, extension).toBe('subprocess-production-runtime');
-      expect(usage.subprocessBridges).toEqual([
+    const extensions = ['js', 'mjs', 'cjs'];
+    const usages = extensions.map((extension) =>
+      bridgeUsage(`spawn('./fixtures/app-process.${extension}')`, javascriptLayout),
+    );
+    expect(usages.map(({ category }) => category)).toEqual(
+      extensions.map(() => 'subprocess-production-runtime'),
+    );
+    expect(usages.map(({ subprocessBridges }) => subprocessBridges)).toEqual(
+      extensions.map((extension) => [
         `test/fixtures/app-process.${extension}`,
         `tests/fixtures/app-process.${extension}`,
         `__tests__/fixtures/app-process.${extension}`,
         `e2e/fixtures/app-process.${extension}`,
-      ]);
-    }
+      ]),
+    );
   });
 
   it('accepts the TypeScript bridge of a JavaScript project that is migrating', () => {

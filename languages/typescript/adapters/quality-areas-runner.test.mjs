@@ -334,6 +334,17 @@ describe('mutation testing that cannot start', () => {
     });
   });
 
+  it('says the base commit fails its own tests when the base snapshot cannot start mutation', () => {
+    const strykerMessage =
+      'Error: There were failed tests in the initial test run. Fix the tests first.';
+
+    expect(mutationSkipFor(strykerMessage, 'base')).toEqual({
+      rule: 'tests-failed-skipped',
+      message:
+        'mutation skipped: the base commit fails its own tests, so its mutants are unknown there.',
+    });
+  });
+
   it('leaves any other Stryker failure to be reported as it is', () => {
     expect(mutationSkipFor('Error: Stryker crashed')).toBeUndefined();
   });
@@ -355,7 +366,10 @@ function strictFlags({
   };
 }
 
-describe('mutation type-check config', () => {
+describe.each([
+  { engine: 'native', native: true },
+  { engine: 'project', native: false },
+])('mutation type-check config with the $engine engine', ({ engine, native }) => {
   const projectTsconfig = `${JSON.stringify({
     compilerOptions: {
       target: 'ES2022',
@@ -366,25 +380,30 @@ describe('mutation type-check config', () => {
     },
     include: ['src'],
   })}\n`;
-  const stryker = (projectRoot) => {
+  const stryker = async (projectRoot) => {
     const created = [];
-    const { tsconfigPath, baselineErrors } = installStrykerTsconfig(
-      optionsFor('mutation', projectRoot),
-      'tsconfig.stryker.json',
-      created,
-    );
-    return { config: JSON.parse(readFileSync(tsconfigPath, 'utf8')), baselineErrors };
+    const prepared = await installStrykerTsconfig(optionsFor('mutation', projectRoot), {
+      sourceRelativePath: 'tsconfig.stryker.json',
+      createdFiles: created,
+      engine,
+    });
+    return {
+      config: JSON.parse(readFileSync(prepared.tsconfigPath, 'utf8')),
+      baselineErrors: prepared.baselineErrors,
+      native: prepared.native,
+    };
   };
 
-  it('adds the policy compiler options when the project type-checks with them', () => {
+  it('adds the policy compiler options when the project type-checks with them', async () => {
     const projectRoot = snapshotWith({
       'package.json': '{"name":"p","type":"module"}\n',
       'tsconfig.json': projectTsconfig,
       'src/first.ts': 'export const first = (rows: string[]): string | undefined => rows[0];\n',
     });
 
-    const prepared = stryker(projectRoot);
+    const prepared = await stryker(projectRoot);
     expect(prepared.baselineErrors).toBe(false);
+    expect(prepared.native).toBe(native);
     expect(strictFlags(prepared.config.compilerOptions)).toEqual({
       skipLibCheck: true,
       strict: true,
@@ -394,28 +413,36 @@ describe('mutation type-check config', () => {
     });
   });
 
-  it('keeps the project options when the project does not type-check with them yet', () => {
+  it('keeps the project options when the project does not type-check with them yet', async () => {
     const projectRoot = snapshotWith({
       'package.json': '{"name":"p","type":"module"}\n',
       'tsconfig.json': projectTsconfig,
       'src/first.ts': 'export const first = (rows: string[]): string => rows[0].toUpperCase();\n',
     });
 
-    expect(stryker(projectRoot)).toEqual({
-      config: { extends: './tsconfig.json', compilerOptions: { skipLibCheck: true } },
+    await expect(stryker(projectRoot)).resolves.toEqual({
+      config: {
+        extends: './tsconfig.json',
+        compilerOptions: { noCheck: false, skipLibCheck: true },
+      },
       baselineErrors: false,
+      native,
     });
   });
 
-  it('selects baseline-aware checking when errors remain with the project compiler options', () => {
+  it('selects baseline-aware checking when errors remain with the project compiler options', async () => {
     const projectRoot = snapshotWith({
       'package.json': '{"name":"p","type":"module"}\n',
       'tsconfig.json': projectTsconfig,
       'src/first.ts': "export const legacy: number = 'oops';\n",
     });
-    expect(stryker(projectRoot)).toEqual({
-      config: { extends: './tsconfig.json', compilerOptions: { skipLibCheck: true } },
+    await expect(stryker(projectRoot)).resolves.toEqual({
+      config: {
+        extends: './tsconfig.json',
+        compilerOptions: { noCheck: false, skipLibCheck: true },
+      },
       baselineErrors: true,
+      native,
     });
   });
 });

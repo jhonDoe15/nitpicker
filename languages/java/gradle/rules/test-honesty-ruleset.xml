@@ -5,15 +5,6 @@
          xsi:schemaLocation="http://pmd.sourceforge.net/ruleset/2.0.0 https://pmd.sourceforge.io/ruleset_2_0_0.xsd">
   <description>Nitpicker's PMD rules for test sources.</description>
 
-  <rule name="TestSleep" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
-        message="Do not sleep in a test. Wait for the condition with a deadline (poll until it holds), or control time with an injected Clock.">
-    <description>A sleep makes a test slow and flaky.</description>
-    <priority>3</priority>
-    <properties><property name="xpath"><value><![CDATA[
-//MethodCall[pmd-java:matchesSig('java.lang.Thread#sleep(_*)') or pmd-java:matchesSig('java.util.concurrent.TimeUnit#sleep(_*)')]
-]]></value></property></properties>
-  </rule>
-
   <rule name="DisabledTest" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
         message="Fix or delete this test instead of disabling it.">
     <description>A disabled test checks nothing.</description>
@@ -42,18 +33,6 @@
 //TryStatement[CatchClause]
   [ancestor::*[self::MethodDeclaration or self::LambdaExpression or self::AnonymousClassDeclaration][1]
     [self::MethodDeclaration][ModifierList/Annotation[@SimpleName = ('Test', 'ParameterizedTest', 'RepeatedTest', 'TestFactory', 'TestTemplate')]]]
-]]></value></property></properties>
-  </rule>
-
-  <rule name="AssertTrueOnEquality" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
-        message="Use assertEquals(expected, actual) or assertThat(actual).isEqualTo(expected), so a failure shows both values. Use assertSame for identity.">
-    <description>assertTrue(a.equals(b)) reports only 'expected true'.</description>
-    <priority>3</priority>
-    <properties><property name="xpath"><value><![CDATA[
-//MethodCall[@MethodName = ('assertTrue', 'assertFalse')][ArgumentList/*[1][self::InfixExpression[@Operator = ('==', '!=')] or self::MethodCall[@MethodName = 'equals']
-    or self::UnaryExpression[@Operator = '!']/MethodCall[@MethodName = 'equals']]]
-|
-//MethodCall[@MethodName = 'assertThat'][count(ArgumentList/*) = 1][ArgumentList/*[1][self::MethodCall[@MethodName = 'equals'] or self::InfixExpression[@Operator = ('==', '!=')]]]
 ]]></value></property></properties>
   </rule>
 

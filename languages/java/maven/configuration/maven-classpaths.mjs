@@ -1,5 +1,6 @@
 const SCOPES = new Set(['compile', 'provided', 'runtime', 'test', 'system']);
 const MAIN_COMPILE_SCOPES = new Set(['compile', 'provided', 'system']);
+const MAIN_RUNTIME_SCOPES = new Set([...MAIN_COMPILE_SCOPES, 'runtime']);
 const TEST_COMPILE_SCOPES = new Set([...MAIN_COMPILE_SCOPES, 'test']);
 const SCOPE_POSITIONS = [5, 4];
 
@@ -38,6 +39,7 @@ function filesIn(dependencies, scopes) {
 export function moduleClasspaths(module, dependencies) {
   return {
     mainCompile: filesIn(dependencies, MAIN_COMPILE_SCOPES),
+    mainRuntime: filesIn(dependencies, MAIN_RUNTIME_SCOPES),
     testCompile: filesIn(dependencies, TEST_COMPILE_SCOPES),
     testRuntime: [
       module.testOutputDirectory,

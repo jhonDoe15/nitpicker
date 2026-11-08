@@ -1,6 +1,6 @@
 import { lstatSync, mkdirSync, readdirSync, symlinkSync, unlinkSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
-import ts from 'typescript';
+import { ts } from '../../../typescript-api/typescript-api.mjs';
 
 const TOGGLE_KEYWORD = String.raw`(?:eslint|oxlint)-(?:disable|enable)(?:-line|-next-line)?`;
 const LINE_DIRECTIVE = directivePattern(TOGGLE_KEYWORD);
@@ -8,7 +8,12 @@ const INVISIBLE_TO_OXLINT = '\uFEFF';
 const RULE_TOKEN = /[\w@/-]+/gu;
 const BLOCK_DIRECTIVE = directivePattern(`${TOGGLE_KEYWORD}|eslint|eslint-env|globals?|exported`);
 
+const DIRECTIVE_KEYWORD = /eslint|oxlint|global|exported/u;
+
 export function directiveComments(text, fileName) {
+  if (!DIRECTIVE_KEYWORD.test(text)) {
+    return [];
+  }
   const sourceFile = ts.createSourceFile(fileName, text, ts.ScriptTarget.Latest, true);
   return commentRanges(sourceFile)
     .map((range) => directiveAt(sourceFile, range))

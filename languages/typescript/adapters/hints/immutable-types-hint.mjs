@@ -1,16 +1,20 @@
 import { ERROR_CLASS_HINT, KINDS } from '../immutable-types/kinds.mjs';
-import ts from 'typescript';
+import { ts } from '../../typescript-api/typescript-api.mjs';
 import { mutablePart, kindOfType } from '../immutable-types/types.mjs';
 import { typeParameterFinding, untypedFinding } from '../immutable-types/untyped.mjs';
 
 const GENERIC_HINT = 'Type it deeply readonly, e.g. `readonly T[]` or `{ readonly field: T }`.';
 
-export function immutableTypesMessage({ kind, node, sourceFile }) {
+export function immutableTypesParts({ kind, node, sourceFile }) {
   const declaration = node === undefined ? undefined : declarationOf(kind, node);
   const name = declaration === undefined ? undefined : declarationName(kind, declaration);
   const finding = declaration === undefined ? undefined : flaggedPart(declaration, sourceFile);
   const subject = subjectOf(kind, name);
-  return `${subject} is mutable${detailOf(finding)}; domain/ values must be deeply readonly. ${hintOf(finding)}`;
+  const hint = hintOf(finding);
+  return {
+    message: `${subject} is mutable${detailOf(finding)}; domain/ values must be deeply readonly. ${hint}`,
+    allowedForm: hint,
+  };
 }
 
 function subjectOf(kind, name) {

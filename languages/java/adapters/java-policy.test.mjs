@@ -2,6 +2,7 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
+import { readConfigFile } from '../../../core/configuration/config.mjs';
 import { createJavaAnalyzer } from './java-analyzer.mjs';
 import { JAVA_TOOLS } from './gradle-presets.mjs';
 import { lintBaselineProperties } from './java-diff.mjs';
@@ -135,7 +136,7 @@ describe('configureJavaAnalyzer', () => {
   });
 
   it('declares every tool the Java reports produce', () => {
-    expect(createJavaAnalyzer().reportedTools).toEqual(JAVA_TOOLS);
+    expect(createJavaAnalyzer().reportedTools).toEqual([...JAVA_TOOLS, 'facts']);
     expect([...new Set(JAVA_TOOLS)].sort()).toEqual([
       'archunit',
       'checkstyle',
@@ -173,16 +174,47 @@ describe('the duplicate folder list', () => {
     expect(configureJavaAnalyzer(analyzer, { duplicates: {} })).toBe(analyzer);
   });
 
-  it('is left unset without the option and rejected when it is not a list of names', () => {
+  it('is left unset without the option', () => {
     expect(
       parseJavaRunnerArguments(['--project-root', '/p']).policy.duplicateSkippedFolders,
     ).toBeUndefined();
-    for (const value of ['"build"', '[1]', '{}']) {
-      expect(() =>
-        parseJavaRunnerArguments(['--project-root', '/p', '--duplicate-skipped-folders', value]),
-      ).toThrow('--duplicate-skipped-folders must be a JSON array of folder names');
-    }
   });
+
+  it.each(['"build"', '[1]', '{}'])('rejects %s when it is not a list of names', (value) => {
+    expect(() =>
+      parseJavaRunnerArguments(['--project-root', '/p', '--duplicate-skipped-folders', value]),
+    ).toThrow('--duplicate-skipped-folders must be a JSON array of folder names');
+  });
+});
+
+describe('the baseline moves file', () => {
+  function movesFile() {
+    const root = mkdtempSync(path.join(tmpdir(), 'java-moves-'));
+    roots.push(root);
+    writeFileSync(path.join(root, 'moves.json'), '[]');
+    return path.join(root, 'moves.json');
+  }
+
+  it('hands the renames of a change to the runner when the head run has them', () => {
+    const configured = configureJavaAnalyzer(createJavaAnalyzer(), { exclude: ['a/**'] });
+    const baselineMovesFile = movesFile();
+    const { args } = configured.createInvocation({ ...context(), baselineMovesFile });
+    const { policy } = parseJavaRunnerArguments(args.slice(1));
+
+    expect([policy.exclude, policy.baselineMovesFile]).toEqual([['a/**'], baselineMovesFile]);
+    expect(
+      parseJavaRunnerArguments(configured.createInvocation(context()).args.slice(1)).policy,
+    ).not.toHaveProperty('baselineMovesFile');
+  });
+
+  it.each([[[]], [['/missing/moves.json']], [[tmpdir()]]])(
+    'rejects the option without an existing file (%j)',
+    (rest) => {
+      expect(() =>
+        parseJavaRunnerArguments(['--project-root', '/p', '--baseline-moves-file', ...rest]),
+      ).toThrow('--baseline-moves-file must be a file');
+    },
+  );
 });
 
 describe('project tool configs', () => {
@@ -232,6 +264,28 @@ describe('project tool configs', () => {
       '<suppressions> </suppressions>',
     );
 
+    expect(configured.resolveConfigurationHash(root)).not.toBe(before);
+  });
+
+  it('hands a build-declared tool to the runner and hashes only the settings it reads', () => {
+    const spotbugs = { spotbugs: { precedence: ['project'] } };
+    const configured = configureJavaAnalyzer(createJavaAnalyzer(), { tools: spotbugs });
+    const root = projectWith({
+      'build.gradle': "spotbugs { effort = 'max' }\n",
+      'settings.gradle': '',
+    });
+
+    const parsed = parseJavaRunnerArguments(configured.createInvocation(context()).args.slice(1));
+    const before = configured.resolveConfigurationHash(root);
+    writeFileSync(
+      path.join(root, 'build.gradle'),
+      "dependencies { }\nspotbugs { effort = 'max' }\n",
+    );
+    const unchanged = configured.resolveConfigurationHash(root);
+    writeFileSync(path.join(root, 'build.gradle'), "spotbugs { effort = 'more' }\n");
+
+    expect(parsed.policy.toolPrecedence).toEqual({ spotbugs: ['project'] });
+    expect(unchanged).toBe(before);
     expect(configured.resolveConfigurationHash(root)).not.toBe(before);
   });
 
@@ -402,5 +456,29 @@ describe('validateJavaConfig', () => {
     }).toThrow(
       `"exceptions[0].rule" names a Checkstyle check by class; findings print the check's name, so write "checkstyle/Indentation"`,
     );
+  });
+});
+
+describe('the no-production-runtime exception in nitpicker.config.json', () => {
+  function configOf(preset, rule) {
+    const root = mkdtempSync(path.join(tmpdir(), 'nitpicker-config-'));
+    roots.push(root);
+    const exception = { rule, paths: ['src/test/**'], reason: 'checks the schema only' };
+    writeFileSync(
+      path.join(root, 'nitpicker.config.json'),
+      JSON.stringify({ preset, exceptions: [exception] }),
+    );
+    return readConfigFile(root);
+  }
+
+  it.each([
+    ['java', 'no-production-runtime'],
+    ['java', 'test-runtime/no-production-runtime'],
+    ['kotlin', 'no-production-runtime'],
+    ['kotlin', 'test-runtime/no-production-runtime'],
+  ])('is accepted by config validation for the %s preset as %s', (preset, rule) => {
+    expect(configOf(preset, rule).exceptions).toEqual([
+      { rule: 'no-production-runtime', paths: ['src/test/**'], reason: 'checks the schema only' },
+    ]);
   });
 });

@@ -1,4 +1,5 @@
 import { readFileSync } from 'node:fs';
+import { isCount } from '../../config.mjs';
 
 const ROLES = ['production', 'test'];
 const KINDS = ['function', 'class', 'const', 'type', 'interface', 'enum'];
@@ -16,10 +17,6 @@ function isNonEmpty(value) {
 
 function isLine(value) {
   return Number.isInteger(value) && value > 0;
-}
-
-function isCount(value) {
-  return Number.isInteger(value) && value >= 0;
 }
 
 function isBoolean(value) {
@@ -91,6 +88,7 @@ const SHAPES = {
     key: optional(isString),
     text: optional(isString),
     entry: optional(isBoolean),
+    overloads: optional(isBoolean),
     package: OPTIONAL_PATH,
   },
   imports: {
@@ -98,6 +96,8 @@ const SHAPES = {
     to: isProjectPath,
     names: isNames,
     reexport: optional(isBoolean),
+    conditional: optional(isBoolean),
+    reference: optional(isBoolean),
   },
   docComments: {
     file: isProjectPath,
@@ -105,6 +105,7 @@ const SHAPES = {
     name: isNonEmpty,
     qualifier: optional(isNonEmpty),
     lines: isStrings,
+    detailed: optional(isBoolean),
   },
   console: { file: isRootOrPath, test: isString, messages: isStrings },
 };
