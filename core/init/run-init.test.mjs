@@ -23,6 +23,8 @@ const PYTHON_ARGUMENTS = "coverage mypy pytest 'mutmut>=3,<4'";
 const WORKFLOW_PATH = '.github/workflows/nitpicker.yml';
 const APPROVAL_PATH = '.github/workflows/nitpicker-policy-approval.yml';
 const TEMPLATES = path.join(import.meta.dirname, 'templates');
+const LABEL_NOTE =
+  'A person accepts a policy loosening with the accept-policy-change label; create it once: gh label create accept-policy-change';
 const CREATED = ['created nitpicker.config.json'];
 const SET_UP = ['nitpicker.config.json is already set up'];
 const YARN_WORKFLOW = [
@@ -410,7 +412,7 @@ describe('nitpicker init --ci github', () => {
     expect(init(root, '--ci', 'github')).toEqual({
       exitCode: 0,
       stderrText: '',
-      stdoutText: yarnReport([`created ${WORKFLOW_PATH}`, `created ${APPROVAL_PATH}`]),
+      stdoutText: yarnReport([`created ${WORKFLOW_PATH}`, `created ${APPROVAL_PATH}`, LABEL_NOTE]),
     });
     expect(readText(root, WORKFLOW_PATH)).toBe(YARN_WORKFLOW);
     expect(readText(root, APPROVAL_PATH)).toBe(readText(TEMPLATES, 'github-policy-approval.yml'));
@@ -426,6 +428,7 @@ describe('nitpicker init --ci github', () => {
           'To add the agent guidance to AGENTS.md, run: npx nitpicker init --agents-md',
           'created .github/workflows/nitpicker-apps--web.yml',
           `created ${APPROVAL_PATH}`,
+          LABEL_NOTE,
         ],
       }),
     );
@@ -447,6 +450,7 @@ describe('nitpicker init --ci github', () => {
         '',
         `Apply the change by hand, or move ${WORKFLOW_PATH} aside and run nitpicker init again.`,
         `created ${APPROVAL_PATH}`,
+        LABEL_NOTE,
       ]),
     });
     expect(readText(root, WORKFLOW_PATH)).toBe(existing);
