@@ -2,22 +2,22 @@ import { readdirSync, readFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { RUFF_CONFIG } from '../../adapters/configuration/python-ruff-config.mjs';
-import { route, sample } from '../test-support/hint-samples.mjs';
-import { ruleCases } from '../test-support/python-rule-cases.mjs';
+import { RUFF_CONFIG } from '../adapters/configuration/python-ruff-config.mjs';
+import { route, sample } from './test-support/hint-samples.mjs';
+import { ruleCases } from './test-support/python-rule-cases.mjs';
 import {
   applyRuleHints,
   describeRuleFinding,
   hintFor,
   RULE_HINTS,
   withHint,
-} from '../rule-hints.mjs';
+} from './rule-hints.mjs';
 
 const RULE_CASES = ruleCases();
 
 describe('every banned form has a banned and an allowed fixture', () => {
   const pythonFiles = (fixture, side) =>
-    readdirSync(path.join(import.meta.dirname, '..', 'fixtures', fixture, side), {
+    readdirSync(path.join(import.meta.dirname, 'fixtures', fixture, side), {
       recursive: true,
     }).filter((file) => file.endsWith('.py'));
 
