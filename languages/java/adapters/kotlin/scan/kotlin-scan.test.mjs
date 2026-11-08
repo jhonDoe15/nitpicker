@@ -151,6 +151,7 @@ describe('readKotlinSourceFindings', () => {
   it('names every rule it reports in KOTLIN_SOURCE_RULES', () => {
     expect(KOTLIN_SOURCE_RULES.toSorted()).toEqual(
       [
+        'BacktrackingRegex',
         'BooleanFlagParameter',
         'CatchOnlyLogsOrReturnsDefault',
         'CommentedOutCode',
@@ -175,6 +176,7 @@ describe('readKotlinSourceFindings', () => {
         'ParameterMutation',
         'PlainTextRegex',
         'ProcessWaitWithoutTimeout',
+        'RegexPartDefect',
         'RepeatedStringLiteral',
         'SecretInLog',
         'ShellCommand',

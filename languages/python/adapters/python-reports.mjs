@@ -15,7 +15,12 @@ import { detectLibraries } from '../rules/libraries/project-libraries.mjs';
 import { pytestStyle } from '../rules/libraries/pytest-style.mjs';
 import { withoutAllowedForms } from '../rules/filters/ruff-allowed-forms.mjs';
 import { applyPythonExceptions } from './configuration/python-exceptions.mjs';
-import { RULES_REPORT, readAllowances, readTestFiles } from './analysis/python-ast-rules.mjs';
+import {
+  RULES_REPORT,
+  readAllowances,
+  readRegexSites,
+  readTestFiles,
+} from './analysis/python-ast-rules.mjs';
 import { readPythonCrapFindings } from './mutation/python-crap.mjs';
 import { readImportLinterFindings } from './analysis/python-import-linter.mjs';
 import {
@@ -96,6 +101,7 @@ export function readPythonFindings({
       ...formatFindings(readReport(reportRoot, FORMAT_REPORT), { roots, manifest }),
       ...typeFindings(JSON.parse(readReport(reportRoot, TYPES_REPORT)), roots),
       ...ingestRulesReport(readReport(reportRoot, RULES_REPORT), libraries),
+      ...ingestRulesReport(readRegexSites(reportRoot), libraries),
       ...ingestCoverageJson(coverage, { roots }).findings,
       ...readPythonStructureFindings(reportRoot, projectRoot),
       ...pythonFileLimitFindings(projectRoot, policy),

@@ -42,6 +42,7 @@ are listed at the end.
 | Changing an argument     | build and return a new value, or copy the argument first                                                                                                                             | `parameter-mutation` (script)                                                                                                                                                                                                              |
 | Compatibility shims      | change every caller in the same change and delete the old name                                                                                                                       | `compatibility-shim` (script)                                                                                                                                                                                                              |
 | Values in regex patterns | `re.escape(value)` inside a pattern, `in`/`startswith`/`==` for plain text, `re.compile(pattern)` with a whole pattern                                                               | `regex-unescaped-value` (script)                                                                                                                                                                                                           |
+| Regex pattern parts | every part of a literal `re` pattern changes what it matches; the shorter form of the same pattern; no nested or overlapping quantifiers | `regex-part-defect`, `regex-backtracking` (script) |
 | Input or output per item | one batch call, or `asyncio.gather` bounded by a shared `asyncio.Semaphore`                                                                                                          | `io-in-loop` (script)                                                                                                                                                                                                                      |
 | Concurrent remote calls  | `asyncio.Semaphore` acquired in the task, or chunks of fixed size, or one batch call                                                                                                 | `unbounded-fan-out` (script)                                                                                                                                                                                                               |
 | Task lifetimes           | open the resource around the whole task group, or inside the child; await the task first                                                                                             | `task-outlives-resource` (script)                                                                                                                                                                                                          |
@@ -713,6 +714,20 @@ self.items.append(item)`), also through a package `__init__` that re-exports it 
   `UnquotedRegexValue`, the TypeScript preset as `nitpicker/no-string-as-regex`. The plain-text form
   (`re.sub("abc", "", s)` for `s.replace("abc", "")`) is ruff's `RUF055`, still a preview rule in
   the pinned ruff, so it is not selected yet.
+- `regex-part-defect` reports a literal pattern of `re.compile`, `match`, `search`, `fullmatch`,
+  `findall`, `finditer`, `split`, `sub` or `subn` with a part that never changes what it matches
+  (`a|b|a`, `[\w_]`, an empty group), that does not do what it looks like (`a\bb`, which can never
+  match), or that has a shorter form with the same meaning (`x{1}`, `(?:ab)c`). `regex-backtracking`
+  reports one with nested or overlapping quantifiers that backtrack super-linearly (`^(\s*\w+)*$`).
+  Both run the checks of the TypeScript preset's `regexp/` rules on the pattern, with `re.I`,
+  `re.M`, `re.S` or a leading `(?i)`, `(?m)` or `(?s)` read as flags, and the message names the
+  part. A pattern outside the syntax Python and JavaScript share is skipped, never misreported:
+  `(?P<name>...)`, `(?x)` and `re.VERBOSE`, `\A`, `\Z`, a `$` before the end (Python's `$` also
+  matches before a final newline), `\p`, a character above ASCII (Python's `\w`, `\d` and `\s`
+  cover Unicode), a flags value that is not one of those constants, and `bytes` patterns. The
+  `regex` module is not read. The Java preset reports the same as `RegexPartDefect` and
+  `BacktrackingRegex`, the Kotlin preset as `kotlin-source/RegexPartDefect` and
+  `kotlin-source/BacktrackingRegex`.
 - `compatibility-shim` reports four ways to keep an old name alive: a module-level `def
 __getattr__` that warns or maps removed names to new ones (a PEP 562 lazy import through
   `importlib.import_module` is not a shim), a `warnings.warn` (or `warn_explicit`) call whose category
