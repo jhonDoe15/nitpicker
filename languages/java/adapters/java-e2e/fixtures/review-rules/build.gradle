@@ -25,6 +25,9 @@ dependencies {
     compileOnly platform('org.springframework.boot:spring-boot-dependencies:3.5.5')
     compileOnly 'org.springframework.data:spring-data-jpa'
     compileOnly 'jakarta.persistence:jakarta.persistence-api'
+    compileOnly 'org.projectlombok:lombok'
+    annotationProcessor platform('org.springframework.boot:spring-boot-dependencies:3.5.5')
+    annotationProcessor 'org.projectlombok:lombok'
     testImplementation platform('org.springframework.boot:spring-boot-dependencies:3.5.5')
     testCompileOnly platform('org.springframework.boot:spring-boot-dependencies:3.5.5')
     testImplementation 'org.springframework.boot:spring-boot-starter-test'

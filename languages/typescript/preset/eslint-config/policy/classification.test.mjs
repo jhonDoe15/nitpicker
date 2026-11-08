@@ -17,6 +17,7 @@ const BRANCH_STRICT_RULES = [
   'curly',
   'nitpicker/naming-convention',
   'nitpicker/no-disabled-tls-verification',
+  'nitpicker/no-in-memory-query',
   'nitpicker/no-magic-numbers',
   'nitpicker/no-module-level-mutable-state',
   'nitpicker/no-orm-query-logging',

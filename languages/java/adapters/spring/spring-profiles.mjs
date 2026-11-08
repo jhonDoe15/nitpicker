@@ -79,6 +79,14 @@ function resourceRootsFor(testSourceRoots) {
   return [...new Set([...DEFAULT_TEST_RESOURCE_ROOTS, ...siblings])];
 }
 
+export function testSourceRootsOr(testSourceRoots) {
+  return testSourceRoots?.length > 0 ? testSourceRoots : DEFAULT_TEST_SOURCE_ROOTS;
+}
+
+export function testResourceRoots(testSourceRoots) {
+  return resourceRootsFor(testSourceRootsOr(testSourceRoots));
+}
+
 function resourceProfiles(documents) {
   return documents.flatMap((document) => [
     ...(document.negated ? [] : document.profiles),
@@ -89,7 +97,7 @@ function resourceProfiles(documents) {
 }
 
 export function readTestProfiles(projectRoot, testSourceRoots) {
-  const sourceRoots = testSourceRoots?.length > 0 ? testSourceRoots : DEFAULT_TEST_SOURCE_ROOTS;
+  const sourceRoots = testSourceRootsOr(testSourceRoots);
   const fromSources = sourceRoots.flatMap((root) => {
     const absolute = path.join(projectRoot, root);
     return listFiles(absolute).flatMap((file) =>
