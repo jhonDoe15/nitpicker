@@ -5,7 +5,8 @@ import { ACTUATOR_RULE } from './config-rules/actuator.mjs';
 import { DIAGNOSTIC_RULES } from './config-rules/diagnostics.mjs';
 import { isPlaceholder, isTest, isTestOrLocal, isTrue } from './config-rules/profiles.mjs';
 import { relaxKey } from './spring-config-parser.mjs';
-import { readTestProfiles, withProfileKinds } from './spring-profiles.mjs';
+import { readTestProfiles, testSourceRootsOr, withProfileKinds } from './spring-profiles.mjs';
+import { unboundPropertyProblems } from './unbound-keys/unbound-keys.mjs';
 import { credentialUrl, isLiteralSecret, secretVariable } from './spring-secrets.mjs';
 import { springWiringProblems } from './wiring/spring-wiring.mjs';
 
@@ -54,6 +55,7 @@ const ENTRY_RULES = [
 export const SPRING_CONFIG_RULES = [
   'open-in-view',
   'missing-enable',
+  'unbound-property',
   ...ENTRY_RULES.map(({ rule }) => rule),
 ];
 
@@ -94,25 +96,38 @@ function allowance(rule, path) {
   return exceptionRoute({ rule: `${SPRING_TOOL}/${rule}`, path });
 }
 
-export function readSpringConfigFindings(
-  projectRoot,
-  { sourceRoots = [], resourceRoots, testSourceRoots, baselineRoot } = {},
-) {
+function problemFindings(rule, problems, occurrences) {
+  return problems.map(({ path: file, line, key, message }) =>
+    buildFinding({ rule, document: { path: file }, entry: { line }, key, message, occurrences }),
+  );
+}
+
+function unboundFindings(projectRoot, { sourceRoots, resources, options, occurrences }) {
+  const testSourceRoots = [
+    ...testSourceRootsOr(options.testSourceRoots),
+    ...(options.kotlinTestSourceRoots ?? []),
+  ];
+  const problems = unboundPropertyProblems(projectRoot, {
+    classpath: options.classpath ?? [],
+    sourceRoots,
+    testSourceRoots: [...new Set(testSourceRoots)],
+    resourceRoots: resources,
+  });
+  return problemFindings('unbound-property', problems, occurrences);
+}
+
+export function readSpringConfigFindings(projectRoot, options = {}) {
+  const { sourceRoots = [], resourceRoots, testSourceRoots, baselineRoot } = options;
   const resources = Array.isArray(resourceRoots) ? resourceRoots : DEFAULT_RESOURCE_ROOTS;
   const read = readSpringDocuments(projectRoot, resources);
   const occurrences = new Map();
   return [
-    ...springWiringProblems(projectRoot, sourceRoots, resources).map(
-      ({ path: file, line, key, message }) =>
-        buildFinding({
-          rule: 'missing-enable',
-          document: { path: file },
-          entry: { line },
-          key,
-          message,
-          occurrences,
-        }),
+    ...problemFindings(
+      'missing-enable',
+      springWiringProblems(projectRoot, sourceRoots, resources),
+      occurrences,
     ),
+    ...unboundFindings(projectRoot, { sourceRoots, resources, options, occurrences }),
     ...(read.length === 0
       ? []
       : documentFindings({

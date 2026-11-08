@@ -203,6 +203,8 @@ function springFindings(projectRoot, manifest, options) {
         ],
         resourceRoots: manifest.resourceRoots,
         testSourceRoots: manifest.testSourceRoots,
+        kotlinTestSourceRoots: manifest.kotlinTestSourceRoots,
+        classpath: manifest.springClasspath,
         baselineRoot: baselineRootOf(options),
       })
     : [];
