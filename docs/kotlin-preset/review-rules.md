@@ -427,14 +427,20 @@ guessed at.
   loop, `withData`). Allowed form: separate tests or `@ParameterizedTest` with `@MethodSource` or
   `@CsvSource`, Kotest `withData`, one assertion on the whole collection, and `assertNotNull`, `assertIs` or
   `?: fail(...)` to narrow a type instead of an `if` or a safe call. Unlike the Java guard, a loop over the
-  results of the code under test is reported too: an empty result checks nothing. A loop that always
-  runs is allowed, as in the TypeScript and Python presets: `repeat(3)` with a positive literal count,
-  `for` over a literal range that is not empty (`1..3`, `0 until 3`, `0..<3`, `3 downTo 1`, with or
-  without `step`), the same range with `.forEach { }` or another iteration call, and `do { } while`.
-  Loops in the helpers a test calls are reported too: a function of the same file (top level or a
-  member, not a test itself) that the test calls, directly or through other helpers, whose loop holds
-  an assertion. A loop in the test that calls such an asserting helper counts as a loop that asserts.
-  Each helper loop is reported once, under the first test that reaches it.
+  results of the code under test is reported too: an empty result checks nothing. A loop that cannot
+  run zero times is allowed, as in the TypeScript preset: `repeat(n)` with a positive integer literal,
+  `for` over a non-empty range of integer literals (`1..3`, `0 until 3`, `0..<3`, `3 downTo 1`, with
+  or without `step`), the same range with `.forEach { }` or another iteration call, and
+  `do { } while`. Loops in the helpers a test calls are reported too: a function of the same file
+  that is not a test, called by its bare name, with `this.` or as a `::name` reference (also with a
+  trailing lambda), directly or through other helpers, whose loop holds an assertion. A call
+  resolves to the test's class and its nested objects (a companion), then to the top level; a name
+  with more than one definition there (overloads) or a local function of the same name is not
+  followed, nor is a call on another receiver (`x.check()`, an extension function). A loop in the
+  test that calls such an asserting helper counts as a loop that asserts. Each helper loop is
+  reported once, under the first test that reaches it, and keyed by the helper's name, so the key
+  stays when that test goes. Tests registered in a loop are checked in their own bodies; a
+  registration loop over an empty collection registers no test and is not reported.
 - `CoroutineEscapesTest`: in a test body, a `launch`, `async` or `future`, and a `launchIn`,
   `produceIn`, `stateIn` or `shareIn`, on a scope the test does not own: `CoroutineScope(...)`,
   `MainScope()`, a name declared in the file as a `CoroutineScope` (a field, `lateinit var`, local or
@@ -473,7 +479,8 @@ guessed at.
 The Java preset gains guards with the same rule ids (`pmd/DisabledTest`, `pmd/AssertionInControlFlow`) in an
 open change; until it lands, these ids are Kotlin only. Its messages start the same way ("Fix or delete this
 test instead of disabling it", "Assert unconditionally"), and an `exceptions` entry for either id reads the same
-in both presets.
+in both presets. The Java guard is to follow the same loop decisions (#587): helpers followed, loops that
+cannot run zero times allowed.
 
 Every message names the allowed form and ends with the exception route. For the pmd-id rules it is
 `exceptions` with `pmd/<RuleId>` and a path glob; for `unused-option` it is
