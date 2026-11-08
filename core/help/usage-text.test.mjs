@@ -155,6 +155,15 @@ function runIn(currentProjectRoot, ...cliArguments) {
   return { exitCode, stdoutText, stderrText };
 }
 
+function parseError(text) {
+  try {
+    JSON.parse(text);
+  } catch (error) {
+    return error.message;
+  }
+  throw new Error(`${text} parsed`);
+}
+
 function projectWith(config) {
   const root = temporaryRoot('nitpicker-help-');
   writeFiles(root, config === undefined ? {} : { 'nitpicker.config.json': config });
@@ -183,20 +192,15 @@ describe('nitpicker --help', () => {
     expect(run('--help')).toEqual({ exitCode: 0, stdoutText: EXPECTED_USAGE, stderrText: '' });
   });
 
-  it('takes -h as --help, for every command', () => {
-    expect(run('-h')).toEqual(run('--help'));
-    for (const command of [
-      ['init'],
-      ['aggregate'],
-      ['cache', 'publish'],
-      ['base'],
-      ['explain'],
-      ['rules'],
-    ]) {
-      expect(run(...command, '-h')).toEqual(run(...command, '--help'));
-      expect(run(...command, '-h').exitCode).toBe(0);
-    }
-  });
+  it.each([[], ['init'], ['aggregate'], ['cache', 'publish'], ['base'], ['explain'], ['rules']])(
+    'takes -h as --help after %j',
+    (...command) => {
+      const help = run(...command, '--help');
+
+      expect(run(...command, '-h')).toEqual(help);
+      expect(help.exitCode).toBe(0);
+    },
+  );
 
   it('lists the analyzers of the preset the config names, and uses one in the example', () => {
     const root = projectWith('{ "preset": "java" }');
@@ -222,17 +226,22 @@ describe('nitpicker --help', () => {
     const root = projectWith('{ "preset": ');
     const { exitCode, stdoutText } = runIn(root, '--help');
 
-    const analyzerLine = stdoutText.split('\n').find((line) => line.startsWith('Analyzers'));
+    const reason = parseError('{ "preset": ');
 
-    expect(exitCode).toBe(0);
-    expect(analyzerLine).toMatch(
-      /^Analyzers: not listed, the config could not be read: nitpicker\.config\.json is not valid JSON: ./u,
-    );
-    expect(stdoutText).toBe(expectedUsage([analyzerLine], '<name>'));
+    expect({ exitCode, stdoutText }).toEqual({
+      exitCode: 0,
+      stdoutText: expectedUsage(
+        [
+          'Analyzers: not listed, the config could not be read: ' +
+            `nitpicker.config.json is not valid JSON: ${reason}`,
+        ],
+        '<name>',
+      ),
+    });
   });
 
-  it('links the usage page of the docs the package version ships', () => {
-    expect(USAGE_LINK).toMatch(/\/blob\/main\/docs\/usage\.md$/u);
+  it('links the usage page of the checkout it runs from', () => {
+    expect(USAGE_LINK).toBe('https://github.com/jhonDoe15/nitpicker/blob/main/docs/usage.md');
   });
 
   it('lists every command with its description', () => {

@@ -1,7 +1,7 @@
-import { docsUrl } from '../../shared/messages/docs-url.mjs';
-import { packageVersion } from './package-version.mjs';
+import { docsUrl } from '../../../shared/messages/docs-url.mjs';
+import { packageVersion } from '../../help/package-version.mjs';
 import { projectAnalyzers } from './project-analyzers.mjs';
-import { usageText } from './usage-text.mjs';
+import { usageText } from '../../help/usage-text.mjs';
 
 const USAGE_PAGE = 'docs/usage.md';
 

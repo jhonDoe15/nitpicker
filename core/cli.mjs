@@ -35,7 +35,7 @@ import { fixWorkingTree } from './fix/run-fix.mjs';
 import { resolveCacheStore } from './diff/cache/cache-stores.mjs';
 import { runHistoryCli } from '../shared/history/runner.mjs';
 import { runHygieneCli } from '../shared/hygiene/runner.mjs';
-import { printedInformation } from './help/printed-information.mjs';
+import { printedInformation } from './command/information/printed-information.mjs';
 import { runInitCommand } from './init/run-init.mjs';
 import { javascriptPresetHint } from './configuration/project-checks/preset-detection.mjs';
 import { GO_ANALYZER_COMMAND, runGoCli } from '../languages/go/adapters/go-runner.mjs';
