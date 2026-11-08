@@ -2,8 +2,12 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import tseslint from 'typescript-eslint';
-import { afterAll, describe, expect, it } from 'vitest';
+import { ESLint } from 'eslint';
+import { fileURLToPath, pathToFileURL } from 'node:url';
+import { afterAll, afterEach, describe, expect, it, vi } from 'vitest';
 import { lintFixture } from '../../failure-messages/test-support/harness.mjs';
+import { frameworkConventions } from '../scope-support.mjs';
+import { nestClassMessage } from './nest-forms.mjs';
 import { isNestProject, nestEntryPoints } from './nest-project.mjs';
 import { nestScopeConfigFor } from './nest-scope.mjs';
 
@@ -12,6 +16,26 @@ const roots = [];
 afterAll(() => {
   for (const root of roots) rmSync(root, { recursive: true, force: true });
 });
+
+afterEach(() => {
+  vi.unstubAllEnvs();
+});
+
+const defaultsDirectory = path.join(path.dirname(fileURLToPath(import.meta.url)), '../../defaults');
+let importCount = 0;
+
+async function presetRulesFor(manifest, file) {
+  vi.stubEnv('NITPICKER_DIFF_ESLINT_PROJECT_ROOT', projectWith(manifest));
+  importCount += 1;
+  const configUrl = pathToFileURL(path.join(defaultsDirectory, 'eslint.config.mjs'));
+  const { default: config } = await import(`${configUrl.href}?nest=${String(importCount)}`);
+  const eslint = new ESLint({
+    cwd: defaultsDirectory,
+    overrideConfigFile: true,
+    overrideConfig: config,
+  });
+  return (await eslint.calculateConfigForFile(file)).rules;
+}
 
 function projectWith(manifest, files = {}) {
   const root = mkdtempSync(path.join(tmpdir(), 'nitpicker-nest-scope-'));
@@ -80,5 +104,56 @@ describe('NestJS scope', () => {
   it('names no entry point without NestJS or without the entry file', () => {
     expect(nestEntryPoints(projectWith({}, { 'src/main.ts': BOOTSTRAP }))).toEqual([]);
     expect(nestEntryPoints(projectWith(NEST))).toEqual([]);
+  });
+
+  it('reads the entry of every project of a monorepo', () => {
+    const root = projectWith(NEST, {
+      'nest-cli.json': JSON.stringify({
+        monorepo: true,
+        sourceRoot: 'apps/api/src',
+        projects: { api: { sourceRoot: 'apps/api/src' }, web: { sourceRoot: 'apps/web/src' } },
+      }),
+      'apps/api/src/main.ts': BOOTSTRAP,
+      'apps/web/src/main.ts': BOOTSTRAP,
+    });
+
+    expect(nestEntryPoints(root)).toEqual(['apps/api/src/main.ts', 'apps/web/src/main.ts']);
+  });
+
+  it('ignores an entry outside the project', () => {
+    const root = projectWith(NEST, { 'nest-cli.json': '{ "sourceRoot": "../elsewhere" }' });
+
+    expect(nestEntryPoints(root)).toEqual([]);
+  });
+
+  it('adds the NestJS entry to the framework entry points', () => {
+    const root = projectWith(NEST, { 'src/main.ts': BOOTSTRAP });
+
+    expect(frameworkConventions(root).entryPoints).toEqual(['src/main.ts']);
+  });
+});
+
+describe('the preset config with NestJS', () => {
+  const ADAPTER = 'src/main/features/cats/adapters/cats.ts';
+
+  function classMessages(rules) {
+    return rules['no-restricted-syntax'].slice(1).map(({ message }) => message);
+  }
+
+  it('turns on the NestJS forms and the empty decorated class', async () => {
+    const rules = await presetRulesFor(NEST, ADAPTER);
+
+    expect(classMessages(rules)).toContain(nestClassMessage);
+    expect(rules['@typescript-eslint/no-extraneous-class']).toEqual([
+      2,
+      { allowWithDecorator: true },
+    ]);
+  });
+
+  it('keeps them off without NestJS', async () => {
+    const rules = await presetRulesFor({ dependencies: { express: '^5.0.0' } }, ADAPTER);
+
+    expect(classMessages(rules)).not.toContain(nestClassMessage);
+    expect(rules['@typescript-eslint/no-extraneous-class']).toEqual([2]);
   });
 });

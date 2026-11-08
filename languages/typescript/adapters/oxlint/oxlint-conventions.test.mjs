@@ -106,7 +106,18 @@ async function decoratorRun(compilerOptions) {
     'policy.mjs': decoratorPolicy(),
     'tsconfig.json': JSON.stringify({ compilerOptions, include: ['src'] }),
     'src/store.ts': 'export type Store = { size: number };\n',
-    'src/cats.ts':
+    'src/cats.ts': [
+      "import { Store } from './store';",
+      'function Injectable() {',
+      '  return (target: object) => target;',
+      '}',
+      '@Injectable()',
+      'export class Cats {',
+      '  constructor(private readonly store: Store) {}',
+      '}',
+      '',
+    ].join('\n'),
+    'src/sizes.ts':
       "import { Store } from './store';\nexport const size = (store: Store) => store.size;\n",
   });
   roots.push(root);
@@ -119,21 +130,20 @@ async function decoratorRun(compilerOptions) {
       return [];
     },
   });
-  const ruleIds = results.flatMap((result) => result.messages.map(({ ruleId }) => ruleId));
+  const ruleIds = results.flatMap((result) =>
+    result.messages.map(({ ruleId }) => `${path.relative(root, result.filePath)}:${ruleId}`),
+  );
   return { ruleIds, residualRuns };
 }
 
 describe('type imports where the compiler emits decorator metadata', () => {
-  it('runs the type import rule through ESLint, which knows the decorator metadata', async () => {
+  it('runs the type import rule of decorated files through ESLint, which knows the metadata', async () => {
     const run = await decoratorRun({ experimentalDecorators: true, emitDecoratorMetadata: true });
 
     expect(run).toEqual({
-      ruleIds: [],
+      ruleIds: ['src/sizes.ts:@typescript-eslint/consistent-type-imports'],
       residualRuns: [
-        {
-          files: ['src/cats.ts', 'src/store.ts'],
-          rules: ['@typescript-eslint/consistent-type-imports'],
-        },
+        { files: ['src/cats.ts'], rules: ['@typescript-eslint/consistent-type-imports'] },
       ],
     });
   });
@@ -142,7 +152,10 @@ describe('type imports where the compiler emits decorator metadata', () => {
     'keeps the rule on oxlint with compiler options %j',
     async (compilerOptions) => {
       expect(await decoratorRun(compilerOptions)).toEqual({
-        ruleIds: ['@typescript-eslint/consistent-type-imports'],
+        ruleIds: [
+          'src/cats.ts:@typescript-eslint/consistent-type-imports',
+          'src/sizes.ts:@typescript-eslint/consistent-type-imports',
+        ],
         residualRuns: [],
       });
     },

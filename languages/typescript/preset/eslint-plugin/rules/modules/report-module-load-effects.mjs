@@ -9,8 +9,8 @@ const SYNC_MODULES = new Set(
 
 const ENTRY_HINT =
   " Move the work into a function that the app entry calls. The entry (the module script in Vite's " +
-  'index.html, else src/main.tsx, and the NestJS entry file named in nest-cli.json, src/main.ts by ' +
-  'default) is detected; for another entry file, list it under `layout.entryPoints` in nitpicker.config.json.';
+  'index.html, else src/main.tsx, and the NestJS entry in nest-cli.json) is detected; for another entry ' +
+  'file, list it under `layout.entryPoints` in nitpicker.config.json.';
 
 const TOP_LEVEL_CONTROL = new Set([
   'BlockStatement',

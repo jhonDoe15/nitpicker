@@ -1,4 +1,4 @@
-import { globSync } from 'node:fs';
+import { globSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { ESLint } from 'eslint';
 import { oxlintBinary, spawnJson } from './oxlint-process.mjs';
@@ -8,6 +8,7 @@ import { parsedTsconfig } from '../../preset/modules/tsconfig-files.mjs';
 const [projectRoot, ...patterns] = process.argv.slice(2);
 const wrapperConfigPath = path.join(import.meta.dirname, '..', 'eslint-wrapper.config.mjs');
 const DECORATOR_METADATA_RULES = ['@typescript-eslint/consistent-type-imports'];
+const DECORATOR = /(?:^|[\s(,])@[A-Za-z_$]/mu;
 
 try {
   process.stdout.write(`${JSON.stringify(await lintPlan(projectRoot, patterns))}\n`);
@@ -38,39 +39,38 @@ async function filePlan(root, globs) {
     groups: new Map(),
     noInlineConfig: [],
     typedPluginRules: new Set(),
-    programRules: new Set(),
     ruleMessages: {},
     metadataProjects: new Map(),
   };
   for (const file of candidateFiles(root, globs)) {
     const config = await lintedConfig(eslint, file);
     if (config !== undefined) {
-      addFile(plan, file, config);
+      addFile(
+        plan,
+        file,
+        config,
+        programRulesOf(plan.metadataProjects, path.join(root, file), config),
+      );
     }
   }
   return {
     groups: [...plan.groups.values()],
     noInlineConfig: plan.noInlineConfig,
     typedPluginRules: [...plan.typedPluginRules],
-    programRules: [...plan.programRules],
     ruleMessages: plan.ruleMessages,
   };
 }
 
-function addFile(plan, file, config) {
+function addFile(plan, file, config, programRules) {
   const rules = enabledRules(config.rules);
   addToGroup(plan.groups, file, {
     rules,
     globals: sortedGlobals(config.languageOptions?.globals),
     settings: config.settings ?? {},
+    ...(programRules.length === 0 ? {} : { programRules }),
   });
   if (config.linterOptions?.noInlineConfig === true) plan.noInlineConfig.push(file);
   for (const ruleId of typedRulesOf(config, rules)) plan.typedPluginRules.add(ruleId);
-  if (emitsDecoratorMetadata(plan.metadataProjects, config)) {
-    for (const ruleId of DECORATOR_METADATA_RULES.filter((id) => id in rules)) {
-      plan.programRules.add(ruleId);
-    }
-  }
   addRuleMessages(plan.ruleMessages, config, rules);
 }
 
@@ -133,10 +133,17 @@ function typedRulesOf(config, rules) {
   );
 }
 
-function emitsDecoratorMetadata(projects, config) {
-  const { project, tsconfigRootDir } = config.languageOptions?.parserOptions ?? {};
-  if (typeof project !== 'string' || typeof tsconfigRootDir !== 'string') return false;
-  const configFile = path.resolve(tsconfigRootDir, project);
+function projectFilesOf({ project, tsconfigRootDir }) {
+  if (typeof tsconfigRootDir !== 'string') {
+    return [];
+  }
+  const projects = project === true ? ['tsconfig.json'] : [project].flat();
+  return projects
+    .filter((name) => typeof name === 'string')
+    .map((name) => path.resolve(tsconfigRootDir, name));
+}
+
+function emitsDecoratorMetadata(projects, configFile) {
   if (!projects.has(configFile)) {
     const { options } = parsedTsconfig(configFile);
     projects.set(
@@ -145,6 +152,19 @@ function emitsDecoratorMetadata(projects, config) {
     );
   }
   return projects.get(configFile);
+}
+
+function programRulesOf(projects, absoluteFile, config) {
+  const enabled = enabledRules(config.rules);
+  const configured = DECORATOR_METADATA_RULES.filter((ruleId) => ruleId in enabled);
+  const configFiles = projectFilesOf(config.languageOptions?.parserOptions ?? {});
+  if (
+    configured.length === 0 ||
+    !configFiles.some((file) => emitsDecoratorMetadata(projects, file))
+  ) {
+    return [];
+  }
+  return DECORATOR.test(readFileSync(absoluteFile, 'utf8')) ? configured : [];
 }
 
 function addRuleMessages(ruleMessages, config, rules) {
