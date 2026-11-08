@@ -792,6 +792,13 @@
                   }
                 }
               }
+            },
+            "precedence": {
+              "description": "Which config tests uses: \"project\" is your own config file, \"nitpicker\" is the preset's. List each at most once, highest first.",
+              "type": "array",
+              "minItems": 1,
+              "uniqueItems": true,
+              "items": { "enum": ["project", "nitpicker"] }
             }
           }
         },
@@ -1867,6 +1874,15 @@
                           "enum": [
                             "catch-log-without-exception",
                             "test-without-assertion",
+                            "spring/open-in-view",
+                            "spring/missing-enable",
+                            "spring/ddl-auto",
+                            "spring/risky-startup-flags",
+                            "spring/actuator-exposure",
+                            "spring/error-details",
+                            "spring/unsafe-diagnostics",
+                            "spring/active-profile",
+                            "spring/literal-secret",
                             "function-lines-limit",
                             "structure/function-lines-limit",
                             "function-statements-limit",
@@ -1996,6 +2012,8 @@
                             "pmd/AssertionInControlFlow",
                             "pmd/CoroutineEscapesTest",
                             "pmd/GlobalStateLeakInTest",
+                            "pmd/MockedSubjectInTest",
+                            "pmd/StaticMockOfProjectType",
                             "pmd/SpringUnusedContext",
                             "pmd/ExhaustiveEnumPredicate",
                             "pmd/StaticForwardingWrapper",

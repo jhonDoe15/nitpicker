@@ -64,6 +64,8 @@ const REVIEW_RULES = new Set([
   'FixedSleepInTest',
   'NegativeWaitInTest',
   'RetryInTest',
+  'MockedSubjectInTest',
+  'StaticMockOfProjectType',
   'GlobalStateLeakInTest',
   'ServerOrContainerPerTest',
   'ExhaustiveEnumPredicate',
