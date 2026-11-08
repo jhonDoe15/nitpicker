@@ -9,6 +9,7 @@ import java.util.Map;
 import java.util.Set;
 import nitpicker.kotlinpsi.bodies.Bodies;
 import nitpicker.kotlinpsi.common.Frame;
+import nitpicker.kotlinpsi.facts.updates.Updates;
 import nitpicker.kotlinpsi.load.LoadCalls;
 import nitpicker.kotlinpsi.timeouts.Timeouts;
 import org.jetbrains.kotlin.com.intellij.psi.PsiElement;
@@ -23,6 +24,7 @@ public final class FactsCollector {
   private final Calls calls;
   private final Timeouts timeouts;
   private final Predicates predicates;
+  private final Updates updates;
   private final Bodies bodies;
   private final LoadCalls loads;
 
@@ -33,6 +35,7 @@ public final class FactsCollector {
     this.calls = new Calls(state);
     this.timeouts = new Timeouts(file, text, state.timeouts);
     this.predicates = new Predicates(state);
+    this.updates = new Updates(state::lineOf);
     this.bodies = new Bodies(text, test, nothing, state.namesOf(HANDLER));
     this.loads = test ? null : new LoadCalls(file, state::lineOf);
   }
@@ -122,6 +125,10 @@ public final class FactsCollector {
     } else if (element instanceof KtConstructorDelegationCall) {
       calls.constructorDelegation((KtConstructorDelegationCall) element, frame);
     } else if (element instanceof KtBinaryExpression) {
+      Map<String, Object> update = updates.assignment((KtBinaryExpression) element, frame);
+      if (update != null) {
+        state.updates.add(update);
+      }
       predicates.binary((KtBinaryExpression) element, frame);
     } else if (element instanceof KtDotQualifiedExpression) {
       predicates.containsForm((KtDotQualifiedExpression) element, frame);

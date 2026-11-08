@@ -89,6 +89,7 @@ import { rule as ruleReactNoRandomKey } from './rules/react/render/react-no-rand
 import { rule as ruleReactSingleStylingApproach } from './rules/react/react-single-styling-approach.mjs';
 import { rule as ruleReactTestNoImplementationDetails } from './rules/react-tests/react-test-no-implementation-details.mjs';
 import { rule as ruleReportModuleLoadEffects } from './rules/modules/report-module-load-effects.mjs';
+import { rule as ruleRequireAtomicUpdates } from './rules/wrapped/require-atomic-updates.mjs';
 import { rule as ruleRequireErrorListener } from './rules/events/require-error-listener.mjs';
 import { rule as ruleRequireHttpTimeout } from './rules/security/http/require-http-timeout.mjs';
 import { rule as ruleRequireProcessTimeout } from './rules/processes/require-process-timeout.mjs';
@@ -194,6 +195,7 @@ export const directoryRules = {
   'react-single-styling-approach': ruleReactSingleStylingApproach,
   'react-test-no-implementation-details': ruleReactTestNoImplementationDetails,
   'report-module-load-effects': ruleReportModuleLoadEffects,
+  'require-atomic-updates': ruleRequireAtomicUpdates,
   'require-error-listener': ruleRequireErrorListener,
   'require-http-timeout': ruleRequireHttpTimeout,
   'require-process-timeout': ruleRequireProcessTimeout,

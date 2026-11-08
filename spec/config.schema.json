@@ -2081,6 +2081,7 @@
                             "pmd/StaticForwardingWrapper",
                             "pmd/SingularAndPluralMember",
                             "pmd/timeout-abandons-operation",
+                            "pmd/NonAtomicUpdateAcrossSuspension",
                             "pmd/ValidationAnnotationTarget",
                             "pmd/ClassLoadEffect",
                             "pmd/UnboundedThreadPool",
