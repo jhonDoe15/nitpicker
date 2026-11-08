@@ -44,6 +44,9 @@ function classSteps(context, { prefix, name, depth }) {
     return [];
   }
   context.groups.add(prefix);
+  if (bindable.some(({ renamed }) => renamed)) {
+    context.open.add(prefix);
+  }
   return bindable.flatMap((declaration) => [
     ...declaration.members.map(({ name: member, type }) => ({
       key: `${prefix}.${kebab(member)}`,

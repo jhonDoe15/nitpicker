@@ -150,6 +150,31 @@ describe('known keys from the project', () => {
       `${PROPERTIES}:12 server.unread binds to no property, so Spring ignores it; use a key that the server properties define.`,
     ]);
   });
+
+  it('judges keys under a project properties class only for near misses of its members', () => {
+    expect(
+      problemsIn({
+        'src/main/java/acme/AcmeProperties.java': [
+          '@ConfigurationProperties("acme")',
+          'class AcmeProperties { private String endpoint; }',
+        ].join('\n'),
+        'src/main/kotlin/acme/Reader.kt': [
+          'class Reader(private val environment: Environment) {',
+          '  fun url(name: String) = environment.getProperty("server.feeds.$name.url")',
+          '}',
+        ].join('\n'),
+        [PROPERTIES]: [
+          'acme.endpoint=x',
+          'acme.security.token=bound-elsewhere',
+          'acme.http.pool.size=4',
+          'server.feeds.news.url=http://feeds',
+          'acme.endpont=x',
+        ].join('\n'),
+      }),
+    ).toEqual([
+      `${PROPERTIES}:5 acme.endpont binds to no property, so Spring ignores it; did you mean acme.endpoint?`,
+    ]);
+  });
 });
 
 describe('judgedKey', () => {

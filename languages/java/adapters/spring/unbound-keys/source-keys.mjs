@@ -65,16 +65,28 @@ function endpointKeys(text) {
   ]);
 }
 
+function isDynamic([, key, next]) {
+  return next === '+' || /[$%]/u.test(key);
+}
+
+function staticPart(key) {
+  const dynamic = key.search(/[$%]/u);
+  return dynamic < 0 ? key : key.slice(0, key.lastIndexOf('.', dynamic) + 1);
+}
+
 function sourceKeys({ text, code }) {
   const reads = [...text.matchAll(READ_CALL)];
   return {
     exact: [
       ...[...text.matchAll(PLACEHOLDER)].map(([, key]) => key),
-      ...reads.filter(([, , next]) => next !== '+').map(([, key]) => key),
+      ...reads.filter((read) => !isDynamic(read)).map(([, key]) => key),
       ...conditionKeys(text, code),
     ],
     open: [
-      ...reads.filter(([, , next]) => next === '+').map(([, key]) => key),
+      ...reads
+        .filter(isDynamic)
+        .map(([, key]) => staticPart(key))
+        .filter((key) => key.includes('.')),
       ...[...text.matchAll(BIND_CALL)].map(([, key]) => key),
       ...endpointKeys(text),
     ],

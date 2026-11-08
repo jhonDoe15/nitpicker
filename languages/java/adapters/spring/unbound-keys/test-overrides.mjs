@@ -11,12 +11,14 @@ const JAVA_REGISTRY = /\bDynamicPropertyRegistry\s+(\w+)/gu;
 const KOTLIN_REGISTRY = /\b(\w+)\s*:\s*DynamicPropertyRegistry\b/gu;
 const ATTRIBUTE = /^\s*(\w+)\s*=\s*/u;
 const PAIR_KEY = /^\s*([^=:\s]+)/u;
+const QUOTED = /"""[\s\S]*?"""|"(?:\\.|[^"\\\n])*"/gu;
 
 function quotedOnly(text) {
-  return text.replaceAll(
-    /"(?:\\.|[^"\\\n])*"/gu,
-    (literal) => `"${' '.repeat(literal.length - 2)}"`,
-  );
+  return text.replaceAll(QUOTED, (literal) => {
+    const quote = literal.startsWith('"""') ? '"""' : '"';
+    const inside = literal.slice(quote.length, -quote.length).replaceAll(/[^\n]/gu, ' ');
+    return `${quote}${inside}${quote}`;
+  });
 }
 
 function argumentsAt({ text, code }, open) {
@@ -64,10 +66,19 @@ function annotationKeys(source) {
   });
 }
 
+function isPropertyCall(code, match) {
+  if (!match[0].startsWith('.')) {
+    return true;
+  }
+  const before = code.slice(0, match.index);
+  const start = Math.max(...[';', '{', '}'].map((end) => before.lastIndexOf(end)));
+  const statement = before.slice(start + 1);
+  return /\b(?:TestPropertyValues|withPropertyValues)\b/u.test(statement);
+}
+
 function callKeys(source) {
-  const usesValues = /\b(?:TestPropertyValues|withPropertyValues)\b/u.test(source.code);
   return [...source.code.matchAll(CALL)]
-    .filter(() => usesValues)
+    .filter((match) => isPropertyCall(source.code, match))
     .flatMap((match) => pairKeys(source, argumentsAt(source, match.index + match[0].length - 1)));
 }
 

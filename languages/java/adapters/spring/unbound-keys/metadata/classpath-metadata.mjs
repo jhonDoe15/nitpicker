@@ -28,7 +28,8 @@ function entryTexts(entry) {
 }
 
 function parsed(text) {
-  return valueOr({}, () => JSON.parse(text));
+  const document = valueOr({}, () => JSON.parse(text));
+  return typeof document === 'object' && document !== null ? document : {};
 }
 
 function propertyOf(property) {

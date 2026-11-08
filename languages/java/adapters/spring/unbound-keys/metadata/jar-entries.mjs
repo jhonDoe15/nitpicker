@@ -22,6 +22,7 @@ const LOCAL_EXTRA_LENGTH = 28;
 const STORED = 0;
 const DEFLATED = 8;
 const ZIP64_MARK = 0xff_ff_ff_ff;
+const MAX_ENTRY_TEXT = 64 * 1024 * 1024;
 
 function readAt(descriptor, position, length) {
   const buffer = Buffer.alloc(length);
@@ -92,7 +93,9 @@ function entryText(descriptor, entry) {
   if (entry.method === STORED) {
     return data.toString('utf8');
   }
-  return entry.method === DEFLATED ? inflateRawSync(data).toString('utf8') : undefined;
+  return entry.method === DEFLATED
+    ? inflateRawSync(data, { maxOutputLength: MAX_ENTRY_TEXT }).toString('utf8')
+    : undefined;
 }
 
 function readEntries(descriptor, names) {

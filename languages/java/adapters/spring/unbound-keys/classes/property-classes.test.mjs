@@ -111,6 +111,36 @@ describe('propertyClassKeys', () => {
     });
   });
 
+  it('reads Kotlin use-site annotations, several fields in one declaration and @Name', () => {
+    expect(
+      keysOf({
+        'Retry.kt': [
+          '@ConfigurationProperties("app.retry")',
+          'class RetryProperties(@field:NotBlank val name: String, @param:DefaultValue("3") @get:Min(1) val count: Int) {',
+          '    @field:[NotNull Size(max = 3)] var codes: String = ""',
+          '}',
+        ],
+        'Pool.java': [
+          '@ConfigurationProperties("app.pool")',
+          'class PoolProperties { private int min, max = 4; }',
+          '@ConfigurationProperties("app.named")',
+          'record Named(@Name("custom") String value) {}',
+        ],
+      }),
+    ).toEqual({
+      owned: ['app.named', 'app.pool', 'app.retry'],
+      exact: [
+        'app.named.value',
+        'app.pool.max',
+        'app.pool.min',
+        'app.retry.codes',
+        'app.retry.count',
+        'app.retry.name',
+      ],
+      open: ['app.named'],
+    });
+  });
+
   it('accepts any key below a @Bean method, a class outside the project or an unknown superclass', () => {
     expect(
       keysOf({

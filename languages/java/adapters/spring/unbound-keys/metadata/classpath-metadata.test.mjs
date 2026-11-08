@@ -89,7 +89,12 @@ describe('readClasspathMetadata', () => {
 
   it('skips unreadable JSON and entries without a name', () => {
     expect(
-      metadataOf(['{', '{"properties":[{"type":"x"},{"name":"a.b"}],"groups":"none"}']),
+      metadataOf([
+        '{',
+        'null',
+        '[]',
+        '{"properties":[{"type":"x"},{"name":"a.b"}],"groups":"none"}',
+      ]),
     ).toEqual({
       properties: [{ name: 'a.b', type: undefined, removed: false }],
       groups: [],

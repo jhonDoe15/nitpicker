@@ -61,6 +61,24 @@ describe('spring/unbound-property in Java test overrides', () => {
     ]);
   });
 
+  it('reads text blocks line by line and ignores and() on other receivers', () => {
+    expect(
+      keysIn(JAVA_TEST, [
+        '@SpringBootTest(properties = """',
+        '    server.prot=0',
+        '    server.port=0',
+        '    """)',
+        'class ShopTest {',
+        '  void values() {',
+        '    runner.withPropertyValues("""',
+        '        server.port=1""", "server.adress=x");',
+        '    query.and("server.portt=1");',
+        '  }',
+        '}',
+      ]),
+    ).toEqual([`${JAVA_TEST}:2 server.prot`, `${JAVA_TEST}:8 server.adress`]);
+  });
+
   it('ignores comments and keys built at run time', () => {
     expect(
       keysIn(JAVA_TEST, [
