@@ -41,11 +41,11 @@ export function snapshotPolicy({ config, currentProjectRoot, headPolicy, stdout 
   return followConventions({ config, projectRoot: currentProjectRoot, headPolicy, stdout });
 }
 
-export function publishHeadPolicy(config, projectRoot) {
+export function publishHeadPolicy(config, projectRoot, host = {}) {
   return followConventions({
     config,
     projectRoot,
-    headPolicy: resolveProjectHeadPolicy(config, projectRoot),
+    headPolicy: resolveProjectHeadPolicy(config, projectRoot, host),
     commit: () => headCommit(projectRoot),
   });
 }
@@ -133,6 +133,7 @@ function conventionContext({ config, projectRoot, headPolicy, sources, configRoo
   const style = conventionStyle(config.preset, {
     config,
     projectRoot,
+    headPolicy,
     source: projectStyleSource(sources, { exclude, useBase: baseHoldsSources(sources.base, all) }),
     configRoot: configRoot.get,
   });

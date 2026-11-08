@@ -2,13 +2,14 @@ import { isPublished, isTrue } from './configuration/publishing.mjs';
 import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { childAt, childrenAt, childrenNamed, parseXml } from '../../../shared/ingest/common.mjs';
+import { executionsWithGoal, pluginsOf, textAt } from './configuration/pom-elements.mjs';
 import { compilerSettings } from './errorprone/maven-compiler.mjs';
-import { kotlinSourceRoots, kotlinTestSourceRoots } from './configuration/kotlin-roots.mjs';
-import { VERIFY_BUILD } from './configuration/verify-build.mjs';
+import { kotlinRoots } from './kotlin/kotlin-roots.mjs';
 import { testJvmArguments } from './configuration/surefire-jvm.mjs';
 
 const SCOPES = new Set(['compile', 'provided', 'runtime', 'test', 'system']);
 const MAIN_COMPILE_SCOPES = new Set(['compile', 'provided', 'system']);
+const MAIN_RUNTIME_SCOPES = new Set([...MAIN_COMPILE_SCOPES, 'runtime']);
 const TEST_COMPILE_SCOPES = new Set([...MAIN_COMPILE_SCOPES, 'test']);
 const BUILD_HELPER = 'org.codehaus.mojo:build-helper-maven-plugin';
 const GMAVENPLUS = 'org.codehaus.gmavenplus:gmavenplus-plugin';
@@ -20,29 +21,25 @@ const FAILSAFE = 'org.apache.maven.plugins:maven-failsafe-plugin';
 const AGENT_GOALS = ['prepare-agent', 'prepare-agent-integration'];
 const FAILSAFE_SKIPS = ['skip', 'skipITs', 'skipTests'];
 const SKIP_PROPERTIES = ['skipITs', 'skipTests'];
-
-function textAt(element, ...names) {
-  return childAt(element, ...names)?.text;
-}
+const VERIFY_BUILD = [
+  'verify',
+  '-Djacoco.haltOnFailure=false',
+  '-Dgpg.skip=true',
+  '-Dmaven.javadoc.skip=true',
+  '-Dmaven.source.skip=true',
+  '-Dmaven.deploy.skip=true',
+  '-Djib.skip=true',
+  '-Ddependency-check.skip=true',
+  '-Drat.skip=true',
+  '-Dlicense.skip=true',
+  '-Dlicense.skipDownloadLicenses=true',
+  '-Dlicense.skipAggregateDownloadLicenses=true',
+  '-Djapicmp.skip=true',
+];
 
 function coordinates(project) {
   const groupId = textAt(project, 'groupId') ?? textAt(project, 'parent', 'groupId');
   return `${groupId}:${textAt(project, 'artifactId')}`;
-}
-
-function pluginsOf(project) {
-  return new Map(
-    childrenAt(project, 'build', 'plugins', 'plugin').map((plugin) => [
-      `${textAt(plugin, 'groupId') ?? 'org.apache.maven.plugins'}:${textAt(plugin, 'artifactId')}`,
-      plugin,
-    ]),
-  );
-}
-
-function executionsWithGoal(plugin, goal) {
-  return childrenAt(plugin, 'executions', 'execution').filter((execution) =>
-    childrenAt(execution, 'goals', 'goal').some((element) => element.text === goal),
-  );
 }
 
 function configured(execution, plugin, name) {
@@ -120,16 +117,6 @@ function setting(plugin, goal, name) {
   return configured(defaultExecution(plugin, goal), plugin, name);
 }
 
-function testRoots(build, plugins, basedir) {
-  const testSourceRoots = [
-    resolvedText(build, basedir, 'testSourceDirectory') ?? path.join(basedir, 'src/test/java'),
-    ...helperRoots(plugins.get(BUILD_HELPER), 'add-test-source', basedir),
-    ...groovyTestRoots(plugins.get(GMAVENPLUS), basedir),
-  ];
-  const kotlin = kotlinTestSourceRoots(plugins, basedir, testSourceRoots);
-  return { testSourceRoots, kotlinTestSourceRoots: kotlin };
-}
-
 function describeModule(project, basedir) {
   const build = childAt(project, 'build');
   const plugins = pluginsOf(project);
@@ -154,8 +141,11 @@ function describeModule(project, basedir) {
       resolvedText(build, basedir, 'testOutputDirectory') ??
       path.join(buildDirectory, 'test-classes'),
     sourceRoots,
-    kotlinSourceRoots: kotlinSourceRoots(plugins, basedir, sourceRoots),
-    ...testRoots(build, plugins, basedir),
+    testSourceRoots: [
+      resolvedText(build, basedir, 'testSourceDirectory') ?? path.join(basedir, 'src/test/java'),
+      ...helperRoots(plugins.get(BUILD_HELPER), 'add-test-source', basedir),
+      ...groovyTestRoots(plugins.get(GMAVENPLUS), basedir),
+    ],
     resourceRoots: childrenAt(build, 'resources', 'resource')
       .map((resource) => textAt(resource, 'directory'))
       .filter((directory) => directory !== undefined)
@@ -175,6 +165,10 @@ function describeModule(project, basedir) {
     archunitIncludes: textAt(project, 'properties', 'nitpicker.archunit.includes'),
     compiler: compilerSettings(project),
   };
+}
+
+function withKotlin(project, module) {
+  return { ...module, kotlin: kotlinRoots(project, module) };
 }
 
 function rawCoordinates(pomFile) {
@@ -241,7 +235,7 @@ export function readReactor(projectRoot, effectivePom) {
     const basedir = moduleDirectory(projectRoot, pomFile, modules);
     const project = matchProject(pomFile, candidates);
     candidates.splice(candidates.indexOf(project), 1);
-    modules.push(describeModule(project, basedir));
+    modules.push(withKotlin(project, describeModule(project, basedir)));
     const children = childrenAt(project, 'modules', 'module')
       .filter((module) => module.text !== undefined)
       .map((module) => pomFileOf(basedir, module.text));
@@ -281,6 +275,7 @@ function filesIn(dependencies, scopes) {
 export function moduleClasspaths(module, dependencies) {
   return {
     mainCompile: filesIn(dependencies, MAIN_COMPILE_SCOPES),
+    mainRuntime: filesIn(dependencies, MAIN_RUNTIME_SCOPES),
     testCompile: filesIn(dependencies, TEST_COMPILE_SCOPES),
     testRuntime: [
       module.testOutputDirectory,

@@ -29,7 +29,7 @@ Every message ends with the shared exception sentence, naming
 `integrationTest` source set without a test task) and the Maven `multi-module` fixture (an `*IT`
 class in a module without Failsafe).
 
-# Tests without production runtime
+## Tests without production runtime
 
 A test class that reaches no production class at run time is an enforceable `no-production-runtime`
 finding (tool `test-runtime`, `languages/java/adapters/test-runtime/`), on Gradle and Maven builds, for

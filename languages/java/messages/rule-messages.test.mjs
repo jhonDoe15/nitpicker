@@ -41,12 +41,31 @@ describe('checkstyleRuleName', () => {
 
 describe('withRuleMessage', () => {
   it('adds the fix and the exception route to a rule that can hit intended code', () => {
-    expect(withRuleMessage(finding('pmd', 'SystemPrintln', 'Usage of System.out/err'))).toEqual(
-      finding(
+    const { fix } = readCatalog('pmd').SystemPrintln;
+
+    expect(withRuleMessage(finding('pmd', 'SystemPrintln', 'Usage of System.out/err'))).toEqual({
+      ...finding(
         'pmd',
         'SystemPrintln',
-        `Usage of System.out/err. ${readCatalog('pmd').SystemPrintln.fix} ${hint('pmd/SystemPrintln')}`,
+        `Usage of System.out/err. ${fix} ${hint('pmd/SystemPrintln')}`,
       ),
+      allowedForm: fix,
+    });
+  });
+
+  it('tells a Spring rule its message as the allowed form, since the message leads with it', () => {
+    const message = 'Inject through the constructor.';
+
+    expect(withRuleMessage(finding('pmd', 'SpringConstructorInjection', message))).toEqual({
+      ...finding(
+        'pmd',
+        'SpringConstructorInjection',
+        `${message} ${hint('pmd/SpringConstructorInjection')}`,
+      ),
+      allowedForm: message,
+    });
+    expect(withRuleMessage(finding('pmd', 'HouseRule', 'Avoid it'))).not.toHaveProperty(
+      'allowedForm',
     );
   });
 

@@ -27,7 +27,7 @@ describe.skipIf(!kotlinE2eEnabled)('Kotlin preset coverage and structure end to 
       ([, line]) => Number(line),
     );
 
-    expect(missedLines.length).toBeGreaterThan(0);
+    expect(missedLines).toEqual([33, 34, 35]);
     expect(findings.filter(({ rule }) => rule === 'changed-branch-coverage')).toEqual([]);
   });
   it('keeps a legacy init block baselined when init blocks are inserted around it, in a class, a companion object and an object expression', () => {

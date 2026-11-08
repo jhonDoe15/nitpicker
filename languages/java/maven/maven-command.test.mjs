@@ -6,6 +6,7 @@ import { analyzeJavaSnapshot } from '../adapters/java-runner.mjs';
 import { mavenErrorSummary, mavenTarget, runMaven } from './maven-command.mjs';
 
 const roots = [];
+const FAKE_MAVEN = path.resolve(import.meta.dirname, '../adapters/fixtures/fake-maven.mjs');
 
 function project(files = {}) {
   const root = realpathSync(mkdtempSync(path.join(tmpdir(), 'nitpicker-maven-')));
@@ -133,11 +134,15 @@ describe.skipIf(process.platform === 'win32')('Maven failures', () => {
     ]);
   });
 
-  it('asks for a Gradle build under the kotlin preset', () => {
-    const root = project({ 'pom.xml': {} });
+  it('asks for kotlin-maven-plugin under the kotlin preset when no module applies it', () => {
+    const root = project({
+      'pom.xml': {
+        text: '<project><groupId>demo</groupId><artifactId>demo</artifactId></project>',
+      },
+    });
 
     expect(
-      analyzeJavaSnapshot(root, { maven: '/unused', policy: { preset: 'kotlin' } }).findings,
+      analyzeJavaSnapshot(root, { maven: FAKE_MAVEN, policy: { preset: 'kotlin' } }).findings,
     ).toEqual([
       {
         tool: 'kotlin',
@@ -145,7 +150,7 @@ describe.skipIf(process.platform === 'win32')('Maven failures', () => {
         path: '.',
         identity: 'maven-failure',
         message:
-          'The kotlin preset needs a Gradle build, and this project builds with Maven. Use the java preset for its Java sources',
+          'The kotlin preset needs a Maven project that applies kotlin-maven-plugin; this one does not. Use the java preset for its Java sources',
         classification: 'tool-error',
       },
     ]);

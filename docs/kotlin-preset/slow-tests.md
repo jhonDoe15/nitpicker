@@ -6,10 +6,13 @@ As for Java ([slow tests](../java-preset/slow-tests.md)): a test the change adds
 as a unit test or 30 s as an integration test (`thresholds.unitTestSeconds`,
 `thresholds.integrationTestSeconds`), measured on head from the JUnit XML of the test tasks, once and
 without a rerun (see Java). A Kotlin test named with backticks is found by its name.
+A Kotest test nested in contexts is identified by its whole path, `twice/doubles the value`, on Gradle and
+on Maven alike (Gradle's XML names only the test, so the init script records the contexts in a side file
+next to it), so a project that switches build tools keeps its slow tests.
 
-# Tests without production runtime
+## Tests without production runtime
 
-As for Java ([tests without production runtime](java-preset.md#tests-without-production-runtime)): a
+As for Java ([tests without production runtime](../java-preset/tests-that-never-run.md#tests-without-production-runtime)): a
 Kotlin test class (a `@Test` class, a Kotest spec) whose class files reach no production class, directly
 or through test helpers, base classes and top-level functions of a `...Kt` file, fails as
 `no-production-runtime`. A test that starts a framework context (`@SpringBootTest`, a Spring Boot
