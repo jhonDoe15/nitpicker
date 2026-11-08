@@ -1,8 +1,15 @@
 import { readFileSync } from 'node:fs';
-import { blankLiterals, pathInside, sourceFilesUnder } from '../../review-rules/java-sources.mjs';
-import { fieldRelation } from './fetch-paths.mjs';
+import {
+  blankLiterals,
+  pathInside,
+  sourceFilesUnder,
+} from '../../../review-rules/java-sources.mjs';
+import { escapeRegExp } from '../../../../../../shared/paths/glob.mjs';
+import { fieldRelation } from '../fetch-paths.mjs';
 
-const CLASS = /\bclass\s+([\w$]+)(?:\s*<[^{]*?>)?(?:\s+extends\s+([\w$.]+))?[^{;]*\{/gu;
+const CLASS = /\bclass\s+([\w$]+)/gu;
+const EXTENDS = /\bextends\s+([\w$.]+)/u;
+const ANGLES = { '<': 1, '>': -1 };
 const ENTITY_NAME = /@\s*(?:[\w.]*\.)?Entity\s*\(\s*(?:name\s*=\s*)?"([^"]+)"/u;
 const ANNOTATION_CALL = /@\s*[\w$.]+\s*\([^()]*\)/gu;
 const ANNOTATION = /@\s*([\w$.]+)/gu;
@@ -33,29 +40,43 @@ function lastBoundary(text, parens, end) {
   return found === undefined ? 0 : found.index + 1;
 }
 
+function headerOf(text, from) {
+  let depth = 0;
+  let header = '';
+  for (const [offset, character] of [...text.slice(from)].entries()) {
+    if (depth === 0 && (character === '{' || character === ';')) {
+      return { header, open: character === '{' ? from + offset : -1 };
+    }
+    depth += ANGLES[character] ?? 0;
+    header += depth === 0 && character !== '>' ? character : ' ';
+  }
+  return { header, open: -1 };
+}
+
 function declarationsIn(file) {
   const raw = readFileSync(file, 'utf8');
   const text = blankLiterals(raw);
   const depths = depthsOf(text, STEP);
   const parens = depthsOf(text, PARENS);
-  return [...text.matchAll(CLASS)].map((match) => {
-    const open = match.index + match[0].length - 1;
-    const header = raw.slice(lastBoundary(text, parens, match.index), match.index);
-    return {
-      name: match[1],
-      entityName: ENTITY_NAME.exec(header)?.[1],
-      superclass: match[2]?.split('.').at(-1),
-      text,
-      depths,
-      parens,
-      open,
-      close: closingBrace(depths, open),
-    };
+  return [...text.matchAll(CLASS)].flatMap((match) => {
+    const { header, open } = headerOf(text, match.index + match[0].length);
+    if (open < 0) {
+      return [];
+    }
+    const annotations = raw.slice(lastBoundary(text, parens, match.index), match.index);
+    return [
+      {
+        name: match[1],
+        entityName: ENTITY_NAME.exec(annotations)?.[1],
+        superclass: EXTENDS.exec(header)?.[1].split('.').at(-1),
+        text,
+        depths,
+        parens,
+        open,
+        close: closingBrace(depths, open),
+      },
+    ];
   });
-}
-
-function escaped(name) {
-  return name.replaceAll('$', String.raw`\$`);
 }
 
 function relationAt(text, parens, end) {
@@ -71,7 +92,7 @@ function relationAt(text, parens, end) {
 }
 
 function fieldIn({ text, depths, parens, open, close }, field) {
-  const pattern = new RegExp(String.raw`(?<![\w$.])${escaped(field)}\s*[;=]`, 'gu');
+  const pattern = new RegExp(String.raw`(?<![\w$.])${escapeRegExp(field)}\s*[;=]`, 'gu');
   const match = [...text.slice(0, close).matchAll(pattern)].find(
     ({ index }) => index > open && depths[index] === depths[open] + 1 && parens[index] === 0,
   );
@@ -93,18 +114,25 @@ function indexOf(projectRoot, sourceRoots) {
 
 export function javaEntities(projectRoot, sourceRoots) {
   let index;
-  function relationOf(entity, field, depth = 0) {
+  function relationOf(entity, field) {
     index ??= indexOf(projectRoot, sourceRoots);
-    const found = index.get(entity) ?? [];
-    if (found.length !== 1 || depth > MAX_SUPERCLASSES) {
-      return undefined;
+    const pending = [entity];
+    for (const current of pending) {
+      const [declaration, ...others] = index.get(current) ?? [];
+      if (declaration === undefined || others.length > 0) {
+        return undefined;
+      }
+      const own = fieldIn(declaration, field);
+      if (
+        own !== undefined ||
+        declaration.superclass === undefined ||
+        pending.length > MAX_SUPERCLASSES
+      ) {
+        return own;
+      }
+      pending.push(declaration.superclass);
     }
-    const [declaration] = found;
-    const own = fieldIn(declaration, field);
-    if (own !== undefined || declaration.superclass === undefined) {
-      return own;
-    }
-    return relationOf(declaration.superclass, field, depth + 1);
+    return undefined;
   }
   return { relationOf };
 }

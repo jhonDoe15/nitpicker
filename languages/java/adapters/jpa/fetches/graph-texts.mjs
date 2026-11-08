@@ -9,10 +9,10 @@ export const BRACES = { '{': 1, '}': -1 };
 
 export function closingOf(text, open, step) {
   let depth = 0;
-  for (let index = open; index < text.length; index += 1) {
-    depth += step[text[index]] ?? 0;
+  for (const [offset, character] of [...text.slice(open)].entries()) {
+    depth += step[character] ?? 0;
     if (depth === 0) {
-      return index;
+      return open + offset;
     }
   }
   return text.length;
@@ -62,11 +62,13 @@ function subgraphsIn(text) {
 export function namedGraphPaths(argumentsText) {
   const [own, nested = ''] = argumentsText.split(SUBGRAPHS);
   const subgraphs = subgraphsIn(nested);
-  const expand = (nodes, prefix, depth) =>
-    nodes.flatMap(({ name, subgraph }) => {
-      const path = [...prefix, name];
-      const children = depth < MAX_SUBGRAPH_DEPTH ? (subgraphs.get(subgraph) ?? []) : [];
-      return [path, ...expand(children, path, depth + 1)];
-    });
-  return expand(nodesIn(own), [], 0).filter((path) => path.every(Boolean));
+  const paths = [];
+  const pending = nodesIn(own).map((node) => ({ node, prefix: [], depth: 0 }));
+  for (const { node, prefix, depth } of pending) {
+    const path = [...prefix, node.name];
+    paths.push(path);
+    const children = depth < MAX_SUBGRAPH_DEPTH ? (subgraphs.get(node.subgraph) ?? []) : [];
+    pending.push(...children.map((child) => ({ node: child, prefix: path, depth: depth + 1 })));
+  }
+  return paths.filter((path) => path.every(Boolean));
 }

@@ -41,7 +41,7 @@ function byModel(types, owner, model) {
   return matches.length === 1 ? { name: matches[0][0], relation: matches[0][1] } : undefined;
 }
 
-function includedRelation(context, types, owner, entry) {
+function includedRelation(context, types, { owner, entry }) {
   const name = associationName(context, entry);
   if (name !== undefined) {
     const relation = relationNamed(types, owner, name);
@@ -57,38 +57,35 @@ function isTrue(node) {
   return node?.type === 'Literal' && node.value === true;
 }
 
-function entryGroups(context, types, { owner, entry, prefix }) {
+function nestedWork(context, types, { item, entry, groups }) {
   const found =
     option(context, entry, 'all') === undefined
-      ? includedRelation(context, types, owner, entry)
+      ? includedRelation(context, types, { owner: item.owner, entry })
       : undefined;
   if (found === undefined) {
-    return { joined: [], separate: [] };
+    return [];
   }
-  const key = prefix === '' ? found.name : `${prefix}.${found.name}`;
-  const nested = groupsOf(context, types, {
-    owner: found.relation.target,
-    include: option(context, entry, INCLUDE),
-    prefix: key,
-  });
-  if (isTrue(option(context, entry, 'separate'))) {
-    return { joined: [], separate: nested };
+  const key = item.prefix === '' ? found.name : `${item.prefix}.${found.name}`;
+  const separate = isTrue(option(context, entry, 'separate'));
+  if (!separate) {
+    groups[item.group].push([key, found.relation.many]);
   }
-  const [same, ...separate] = nested;
-  return { joined: [[key, found.relation.many], ...same], separate };
+  const group = separate ? groups.push([]) - 1 : item.group;
+  return [
+    { owner: found.relation.target, include: option(context, entry, INCLUDE), prefix: key, group },
+  ];
 }
 
-function groupsOf(context, types, { owner, include, prefix }) {
-  const results =
-    include === undefined
-      ? []
-      : entriesOf(context, include).map((entry) =>
-          entryGroups(context, types, { owner, entry, prefix }),
-        );
-  return [
-    results.flatMap((result) => result.joined),
-    ...results.flatMap((result) => result.separate),
-  ];
+function groupsOf(context, types, root) {
+  const groups = [[]];
+  const pending = [{ ...root, group: 0 }];
+  for (const item of pending) {
+    const entries = item.include === undefined ? [] : entriesOf(context, item.include);
+    pending.push(
+      ...entries.flatMap((entry) => nestedWork(context, types, { item, entry, groups })),
+    );
+  }
+  return groups;
 }
 
 export function includeJoins(context, types, call) {

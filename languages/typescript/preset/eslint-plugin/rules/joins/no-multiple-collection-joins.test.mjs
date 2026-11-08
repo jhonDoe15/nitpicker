@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto';
 import { rmSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { afterAll } from 'vitest';
@@ -5,9 +6,20 @@ import { typescriptRuleTester } from '../../test-support/rule-tester.mjs';
 import { rule } from './no-multiple-collection-joins.mjs';
 import { ormProject } from './test-support/orm-stubs.mjs';
 
+const MANIFEST = JSON.stringify({ dependencies: { '@mikro-orm/core': '^6.0.0' } });
 const root = ormProject();
+const selectInConfig = ormProject({
+  'package.json': MANIFEST,
+  'mikro-orm.config.ts': "export default { loadStrategy: 'select-in' };",
+});
+const version5 = ormProject({
+  'package.json': MANIFEST,
+  'node_modules/@mikro-orm/core/package.json': JSON.stringify({ version: '5.9.8' }),
+});
 afterAll(() => {
-  rmSync(root, { recursive: true, force: true });
+  for (const projectRoot of [root, selectInConfig, version5]) {
+    rmSync(projectRoot, { recursive: true, force: true });
+  }
 });
 
 const tester = typescriptRuleTester({ project: './tsconfig.json', tsconfigRootDir: root });
@@ -27,14 +39,15 @@ const MIKRO = [
 ].join('\n');
 const SEQUELIZE = "import { Invoice, Line } from './entities';";
 
-let counter = 0;
-
-function typed(header, body, errors) {
-  counter += 1;
+function caseIn(projectRoot, { header, body, errors }) {
   const code = `${header}\nexport async function run() {\n${body}\n}\n`;
-  const filename = path.join(root, `src/case-${String(counter)}.ts`);
+  const filename = path.join(projectRoot, `src/case-${randomUUID()}.ts`);
   writeFileSync(filename, code);
   return { filename, code, ...(errors === undefined ? {} : { errors }) };
+}
+
+function typed(header, body, errors) {
+  return caseIn(root, { header, body, errors });
 }
 
 function crossed(messageId, first, second) {
@@ -43,6 +56,24 @@ function crossed(messageId, first, second) {
 
 tester.run('no-multiple-collection-joins', rule, {
   valid: [
+    typed(
+      TYPEORM,
+      [
+        "const qb = orders.createQueryBuilder('o');",
+        "const withItems = await qb.clone().leftJoinAndSelect('o.items', 'i').getMany();",
+        "const withPayments = await qb.clone().leftJoinAndSelect('o.payments', 'p').getMany();",
+        'return [withItems, withPayments];',
+      ].join('\n'),
+    ),
+    typed(
+      TYPEORM,
+      [
+        'const flag = Math.random() > 0.5;',
+        "const qb = orders.createQueryBuilder('o');",
+        "if (flag) { qb.leftJoinAndSelect('o.items', 'i'); } else { qb.leftJoinAndSelect('o.payments', 'p'); }",
+        'return qb.getMany();',
+      ].join('\n'),
+    ),
     typed(TYPEORM, "return orders.find({ relations: ['items', 'customer'] });"),
     typed(TYPEORM, "return orders.find({ relations: ['items', 'items.options'] });"),
     typed(
@@ -71,7 +102,6 @@ tester.run('no-multiple-collection-joins', rule, {
       TYPEORM,
       "return orders.createQueryBuilder('o').leftJoinAndSelect(Item, 'i', 'i.orderId = o.id').leftJoinAndSelect('o.items', 'x').getMany();",
     ),
-    typed(MIKRO, "return em.find(Author, {}, { populate: ['books', 'prizes'] });"),
     typed(
       MIKRO,
       "return em.find(Author, {}, { populate: ['books', 'prizes'], strategy: 'select-in' });",
@@ -144,6 +174,11 @@ tester.run('no-multiple-collection-joins', rule, {
     ),
     typed(
       MIKRO,
+      "return em.find(Author, {}, { populate: ['books', 'prizes'] });",
+      crossed('mikroOrm', 'books', 'prizes'),
+    ),
+    typed(
+      MIKRO,
       "return em.find(Author, {}, { populate: ['books', 'prizes'], strategy: 'joined' });",
       crossed('mikroOrm', 'books', 'prizes'),
     ),
@@ -169,3 +204,28 @@ tester.run('no-multiple-collection-joins', rule, {
     ),
   ],
 });
+
+for (const [name, projectRoot] of [
+  ['a project whose MikroORM config selects in by default', selectInConfig],
+  ['a project on MikroORM 5, which selects in by default', version5],
+]) {
+  typescriptRuleTester({ project: './tsconfig.json', tsconfigRootDir: projectRoot }).run(
+    name,
+    rule,
+    {
+      valid: [
+        caseIn(projectRoot, {
+          header: MIKRO,
+          body: "return em.find(Author, {}, { populate: ['books', 'prizes'] });",
+        }),
+      ],
+      invalid: [
+        caseIn(projectRoot, {
+          header: MIKRO,
+          body: "return em.find(Author, {}, { populate: ['books', 'prizes'], strategy: 'joined' });",
+          errors: crossed('mikroOrm', 'books', 'prizes'),
+        }),
+      ],
+    },
+  );
+}

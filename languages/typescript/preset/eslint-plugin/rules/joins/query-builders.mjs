@@ -1,10 +1,12 @@
 import { stringValue } from '../analysis/constant-resolution.mjs';
-import { chainOf, variableNamed } from '../analysis/ancestry.mjs';
+import { ancestorsOf, chainOf, variableNamed } from '../analysis/ancestry.mjs';
 import { memberName } from '../security/security-values.mjs';
 import { declaredInPackage, instanceOf, relationNamed, typeArgumentOf } from './relation-types.mjs';
 
 const BUILDER = 'createQueryBuilder';
 const FROM = 'from';
+const CLONE = 'clone';
+const BLOCKS = new Set(['BlockStatement', 'Program', 'StaticBlock', 'SwitchCase']);
 const JOIN_SELECTS = new Set(['leftJoinAndSelect', 'innerJoinAndSelect']);
 
 function chainedCall(node) {
@@ -22,15 +24,23 @@ function callsAfter(node) {
   return chainOf(chainedCall(node), chainedCall);
 }
 
+function enclosingBlock(node) {
+  return ancestorsOf(node).find(({ type }) => BLOCKS.has(type));
+}
+
 function heldIn(sourceCode, node) {
   const declarator = (callsAfter(node).at(-1) ?? node).parent;
   if (declarator?.type !== 'VariableDeclarator' || declarator.id.type !== 'Identifier') {
     return [];
   }
   const variable = variableNamed(sourceCode, declarator.id);
+  const block = enclosingBlock(declarator);
   return (variable?.references ?? [])
     .filter((reference) => reference.identifier !== declarator.id && reference.isRead())
-    .flatMap((reference) => callsAfter(reference.identifier));
+    .filter((reference) => enclosingBlock(reference.identifier) === block)
+    .map((reference) => callsAfter(reference.identifier))
+    .filter((calls) => calls.length > 0 && memberName(calls[0].callee) !== CLONE)
+    .flat();
 }
 
 function rootAlias(types, builder) {

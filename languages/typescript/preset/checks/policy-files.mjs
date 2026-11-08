@@ -10,6 +10,7 @@ export const POLICY_FILES = [
   'shared/head-policy.mjs',
   'shared/policy.mjs',
   'shared/traversal.mjs',
+  'shared/joins/crossed-collections.mjs',
   'languages/typescript/preset/layout.mjs',
   'languages/typescript/preset/head-policy.mjs',
   JAVASCRIPT_PRESET_FILE,

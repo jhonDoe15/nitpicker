@@ -673,7 +673,9 @@ self.items.append(item)`), also through a package `__init__` that re-exports it 
   one row for every pair of their elements. It reads the options of `select(Model)`,
   `session.query(Model)` and Flask-SQLAlchemy `Model.query` (chained `.options(...)` calls
   included) and the `options=[...]` of `Session.get`, with attribute (`Order.lines`) and legacy
-  string (`"lines"`) paths. A relationship is a collection when it has `uselist=True`, `secondary`
+  string (`"lines"`) paths. Loaders imported under another name, loaders held in a local variable and a
+  statement extended after it was assigned (`statement = statement.options(...)`) are followed;
+  relations of two roots in one statement count together. A relationship is a collection when it has `uselist=True`, `secondary`
   or a SQLModel `link_model`, a `Mapped[list[...]]` or `Mapped[set[...]]` annotation (SQLModel
   `list["Hero"]` too), or, without those, when the target model holds the foreign key to this
   model's table. A chain along one collection (`joinedload(Order.lines).joinedload(Line.parts)`),

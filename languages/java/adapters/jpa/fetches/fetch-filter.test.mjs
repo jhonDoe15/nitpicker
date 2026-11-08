@@ -35,6 +35,8 @@ describe('withCrossedFetches', () => {
     ['a concatenated createQuery string', 'Queries.java', 16],
     ['two criteria fetches on one root', 'Queries.java', 25],
     ['two fetches in a Specification lambda', 'Queries.java', 42],
+    ['the second of two queries on one line', 'Edges.java', 29],
+    ['collections inherited past a bounded type parameter', 'Edges.java', 33],
   ])('keeps %s', (_name, file, line) => {
     expect(kept([candidate(file, line)])).toEqual([`${file}:${String(line)}`]);
   });
@@ -45,8 +47,20 @@ describe('withCrossedFetches', () => {
     ['an @EntityGraph of a collection and a to-one relation', 'OrderRepository.java', 32],
     ['a @NamedEntityGraph whose subgraph nests under its only collection', 'Order.java', 9],
     ['a criteria fetch chain along one collection', 'Queries.java', 34],
+    ['a to-one relation whose entity is named Collection', 'Edges.java', 10],
+    ['two criteria queries in one method, one collection each', 'Edges.java', 19],
+    ['a method of a nested class next to another method', 'Edges.java', 23],
   ])('drops %s', (_name, file, line) => {
     expect(kept([candidate(file, line)])).toEqual([]);
+  });
+
+  it('drops an entity graph whose attribute name is not a field name', () => {
+    expect(
+      withCrossedFetches([{ ...candidate('Odd.java', 7) }], {
+        projectRoot: root,
+        sourceRoots: ['src'],
+      }),
+    ).toEqual([]);
   });
 
   it('leaves other rules, Kotlin files and missing files alone', () => {

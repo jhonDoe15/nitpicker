@@ -24,6 +24,8 @@ COLLECTION_TYPES = {
     "MutableMapping",
 }
 WRAPPERS = {"Mapped", "Optional"}
+COLLECTION_WRAPPERS = {"WriteOnlyMapped", "DynamicMapped"}
+UNION = "Union"
 TABLE_NAME = "__tablename__"
 FOREIGN_KEY = "ForeignKey"
 FOREIGN_KEY_OPTION = "foreign_key"
@@ -50,17 +52,25 @@ def is_none(node):
     return isinstance(node, ast.Constant) and node.value is None
 
 
+def one_side(nodes):
+    sides = [side for side in nodes if not is_none(side)]
+    return annotation_of(sides[0]) if len(sides) == 1 else (None, None)
+
+
 def annotation_of(node):
     node = parsed(node)
     if isinstance(node, ast.Subscript):
         head = last_name(node.value)
         if head in WRAPPERS:
             return annotation_of(node.slice)
+        if head in COLLECTION_WRAPPERS:
+            return COLLECTION, class_name(node.slice)
+        if head == UNION and isinstance(node.slice, ast.Tuple):
+            return one_side(node.slice.elts)
         inner = node.slice.elts[-1] if isinstance(node.slice, ast.Tuple) else node.slice
         return (COLLECTION, class_name(inner)) if head in COLLECTION_TYPES else (None, None)
     if isinstance(node, ast.BinOp) and isinstance(node.op, ast.BitOr):
-        sides = [side for side in (node.left, node.right) if not is_none(side)]
-        return annotation_of(sides[0]) if len(sides) == 1 else (None, None)
+        return one_side([node.left, node.right])
     name = class_name(node)
     return (SCALAR, name) if name else (None, None)
 
