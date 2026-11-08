@@ -370,6 +370,37 @@ describe('readForbiddenApiFindings', () => {
   });
 });
 
+describe('forbiddenapis Date uses next to an unrelated toInstant()', () => {
+  afterEach(() => {
+    guardProjects.remove();
+  });
+
+  it('keeps the use of a new Date() that nothing converts on the line', () => {
+    const root = guardProjects.project({
+      'src/main/java/demo/Stamp.java': [
+        'package demo;',
+        'class Stamp {',
+        '  Instant now(ZonedDateTime zoned) { Date unused = new Date(); return zoned.withNano(0).toInstant(); }',
+        '  Instant held(ZonedDateTime zoned) { return new Date().toInstant(); }',
+        '}',
+      ].join('\n'),
+      'reports/forbidden-apis.txt': [3, 4, 4]
+        .flatMap((line) => [
+          'ERROR: Forbidden class/interface use: java.util.Date [legacy-date-time: Use java.time.]',
+          `ERROR:   in demo.Stamp (Stamp.java:${String(line)})`,
+        ])
+        .join('\n'),
+    });
+
+    const findings = readForbiddenApiFindings(path.join(root, 'reports'), {
+      locate: (packageDirectory, fileName) => `src/main/java/${packageDirectory}/${fileName}`,
+      projectRoot: root,
+    });
+
+    expect(findings.map(({ location }) => location.line)).toEqual([3, 4]);
+  });
+});
+
 describe('forbiddenapis identities and declaration lines', () => {
   afterEach(() => {
     guardProjects.remove();
