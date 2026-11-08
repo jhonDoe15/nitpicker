@@ -1,0 +1,407 @@
+[
+  {
+    "tool": "ruff",
+    "rule": "ASYNC100",
+    "mention": "put an `await` inside the timeout scope"
+  },
+  {
+    "tool": "ruff",
+    "rule": "ASYNC105",
+    "mention": "await trio.sleep(delay)"
+  },
+  {
+    "tool": "ruff",
+    "rule": "ASYNC109",
+    "mention": "drop the `timeout` parameter"
+  },
+  {
+    "tool": "ruff",
+    "rule": "ASYNC109",
+    "mention": "async with asyncio.timeout(...)"
+  },
+  {
+    "tool": "ruff",
+    "rule": "ASYNC109",
+    "mention": "@typing.override"
+  },
+  {
+    "tool": "ruff",
+    "rule": "ASYNC110",
+    "mention": "await ready.wait()"
+  },
+  {
+    "tool": "ruff",
+    "rule": "ASYNC115",
+    "mention": "trio.lowlevel.checkpoint()"
+  },
+  {
+    "tool": "ruff",
+    "rule": "ASYNC116",
+    "mention": "trio.sleep_forever()"
+  },
+  {
+    "tool": "ruff",
+    "rule": "ASYNC210",
+    "mention": "httpx.AsyncClient()"
+  },
+  {
+    "tool": "ruff",
+    "rule": "ASYNC212",
+    "mention": "httpx.AsyncClient()"
+  },
+  {
+    "tool": "ruff",
+    "rule": "ASYNC220",
+    "mention": "asyncio.create_subprocess_exec"
+  },
+  {
+    "tool": "ruff",
+    "rule": "ASYNC221",
+    "mention": "asyncio.create_subprocess_exec"
+  },
+  {
+    "tool": "ruff",
+    "rule": "ASYNC222",
+    "mention": "await asyncio.to_thread(...)"
+  },
+  {
+    "tool": "ruff",
+    "rule": "ASYNC230",
+    "mention": "await anyio.Path(path).read_text()"
+  },
+  {
+    "tool": "ruff",
+    "rule": "ASYNC240",
+    "mention": "await anyio.Path(path).exists()"
+  },
+  {
+    "tool": "ruff",
+    "rule": "ASYNC250",
+    "mention": "await asyncio.to_thread(input, prompt)"
+  },
+  {
+    "tool": "ruff",
+    "rule": "ASYNC251",
+    "mention": "await asyncio.sleep(...)"
+  },
+  {
+    "tool": "ruff",
+    "rule": "LOG001",
+    "mention": "logging.getLogger(__name__)"
+  },
+  {
+    "tool": "ruff",
+    "rule": "LOG002",
+    "mention": "not `__file__`"
+  },
+  {
+    "tool": "ruff",
+    "rule": "LOG004",
+    "mention": "only inside an `except` handler"
+  },
+  {
+    "tool": "ruff",
+    "rule": "LOG014",
+    "mention": "only inside an `except` handler"
+  },
+  {
+    "tool": "ruff",
+    "rule": "LOG007",
+    "mention": "drop `exc_info=False`"
+  },
+  {
+    "tool": "ruff",
+    "rule": "LOG009",
+    "mention": "logging.WARNING"
+  },
+  {
+    "tool": "ruff",
+    "rule": "LOG015",
+    "mention": "module logger"
+  },
+  {
+    "tool": "ruff",
+    "rule": "T100",
+    "mention": "remove the debugger"
+  },
+  {
+    "tool": "ruff",
+    "rule": "PLE0100",
+    "mention": "`@classmethod` factory"
+  },
+  {
+    "tool": "ruff",
+    "rule": "PLE0101",
+    "mention": "`@classmethod` factory"
+  },
+  {
+    "tool": "ruff",
+    "rule": "PLE0115",
+    "mention": "remove the `global` declaration"
+  },
+  {
+    "tool": "ruff",
+    "rule": "PLE0118",
+    "mention": "remove the `global` declaration"
+  },
+  {
+    "tool": "ruff",
+    "rule": "PLE0117",
+    "mention": "remove the `nonlocal` declaration"
+  },
+  {
+    "tool": "ruff",
+    "rule": "PLE0237",
+    "mention": "add the attribute to `__slots__`"
+  },
+  {
+    "tool": "ruff",
+    "rule": "PLE0241",
+    "mention": "each base class once"
+  },
+  {
+    "tool": "ruff",
+    "rule": "PLE0302",
+    "mention": "def __eq__(self, other)"
+  },
+  {
+    "tool": "ruff",
+    "rule": "PLE0303",
+    "mention": "non-negative `int` from `__len__`"
+  },
+  {
+    "tool": "ruff",
+    "rule": "PLE0304",
+    "mention": "`bool` from `__bool__`"
+  },
+  {
+    "tool": "ruff",
+    "rule": "PLE0305",
+    "mention": "`int` from `__index__` and `__hash__`"
+  },
+  {
+    "tool": "ruff",
+    "rule": "PLE0309",
+    "mention": "`int` from `__index__` and `__hash__`"
+  },
+  {
+    "tool": "ruff",
+    "rule": "PLE0307",
+    "mention": "`str` from `__str__`"
+  },
+  {
+    "tool": "ruff",
+    "rule": "PLE0308",
+    "mention": "`bytes` from `__bytes__`"
+  },
+  {
+    "tool": "ruff",
+    "rule": "PLE0604",
+    "mention": "__all__ = [\"load\", \"save\"]"
+  },
+  {
+    "tool": "ruff",
+    "rule": "PLE0605",
+    "mention": "__all__ = [\"load\", \"save\"]"
+  },
+  {
+    "tool": "ruff",
+    "rule": "PLE0643",
+    "mention": "index inside the sequence"
+  },
+  {
+    "tool": "ruff",
+    "rule": "PLE0704",
+    "mention": "raise ValueError(...)"
+  },
+  {
+    "tool": "ruff",
+    "rule": "PLE1142",
+    "mention": "only inside `async def`"
+  },
+  {
+    "tool": "ruff",
+    "rule": "PLE1700",
+    "mention": "async for item in source"
+  },
+  {
+    "tool": "ruff",
+    "rule": "PLE1205",
+    "mention": "placeholder"
+  },
+  {
+    "tool": "ruff",
+    "rule": "PLE1206",
+    "mention": "placeholder"
+  },
+  {
+    "tool": "ruff",
+    "rule": "PLE1507",
+    "mention": "os.getenv(\"HOME\")"
+  },
+  {
+    "tool": "ruff",
+    "rule": "PLE1507",
+    "mention": "composition root"
+  },
+  {
+    "tool": "ruff",
+    "rule": "PLE1519",
+    "mention": "@functools.singledispatchmethod"
+  },
+  {
+    "tool": "ruff",
+    "rule": "PLE1520",
+    "mention": "@functools.singledispatchmethod"
+  },
+  {
+    "tool": "ruff",
+    "rule": "PLE2502",
+    "mention": "remove bidirectional control characters"
+  },
+  {
+    "tool": "ruff",
+    "rule": "PLE2510",
+    "mention": "\"\\b\""
+  },
+  {
+    "tool": "ruff",
+    "rule": "PLE2512",
+    "mention": "\"\\x1a\""
+  },
+  {
+    "tool": "ruff",
+    "rule": "PLE2513",
+    "mention": "\"\\x1b\""
+  },
+  {
+    "tool": "ruff",
+    "rule": "PLE2514",
+    "mention": "\"\\0\""
+  },
+  {
+    "tool": "ruff",
+    "rule": "PLE2515",
+    "mention": "\"\\u200b\""
+  },
+  {
+    "tool": "ruff",
+    "rule": "PLW0108",
+    "mention": "key=str"
+  },
+  {
+    "tool": "ruff",
+    "rule": "PLW0120",
+    "mention": "remove the `else`"
+  },
+  {
+    "tool": "ruff",
+    "rule": "PLW0127",
+    "mention": "assign each name once"
+  },
+  {
+    "tool": "ruff",
+    "rule": "PLW0128",
+    "mention": "assign each name once"
+  },
+  {
+    "tool": "ruff",
+    "rule": "PLW0129",
+    "mention": "assert ready, \"not ready\""
+  },
+  {
+    "tool": "ruff",
+    "rule": "PLW0131",
+    "mention": "plain assignment"
+  },
+  {
+    "tool": "ruff",
+    "rule": "PLW0133",
+    "mention": "raise ValueError(...)"
+  },
+  {
+    "tool": "ruff",
+    "rule": "PLW0177",
+    "mention": "math.isnan(value)"
+  },
+  {
+    "tool": "ruff",
+    "rule": "PLW0211",
+    "mention": "drop `self` or `cls`"
+  },
+  {
+    "tool": "ruff",
+    "rule": "PLW0245",
+    "mention": "super().__init__()"
+  },
+  {
+    "tool": "ruff",
+    "rule": "PLW0406",
+    "mention": "remove the self-import"
+  },
+  {
+    "tool": "ruff",
+    "rule": "PLW0603",
+    "mention": "pass the state in"
+  },
+  {
+    "tool": "ruff",
+    "rule": "PLW0604",
+    "mention": "remove the module-level `global`"
+  },
+  {
+    "tool": "ruff",
+    "rule": "PLW0642",
+    "mention": "bind a new name"
+  },
+  {
+    "tool": "ruff",
+    "rule": "PLW1501",
+    "mention": "path.open(\"r\")"
+  },
+  {
+    "tool": "ruff",
+    "rule": "PLW1507",
+    "mention": "os.environ.copy()"
+  },
+  {
+    "tool": "ruff",
+    "rule": "PLW1508",
+    "mention": "int(os.getenv(\"PORT\", \"8080\"))"
+  },
+  {
+    "tool": "ruff",
+    "rule": "PLW1509",
+    "mention": "start_new_session=True"
+  },
+  {
+    "tool": "ruff",
+    "rule": "PLW1509",
+    "mention": "process_group=0"
+  },
+  {
+    "tool": "ruff",
+    "rule": "PLW1510",
+    "mention": "check=True"
+  },
+  {
+    "tool": "ruff",
+    "rule": "PLW1510",
+    "mention": "check=False"
+  },
+  {
+    "tool": "ruff",
+    "rule": "PLW2101",
+    "mention": "with self._lock:"
+  },
+  {
+    "tool": "ruff",
+    "rule": "PLW2901",
+    "mention": "bind the changed value to a new name"
+  },
+  {
+    "tool": "ruff",
+    "rule": "PLW3301",
+    "mention": "max(a, b, c)"
+  }
+]

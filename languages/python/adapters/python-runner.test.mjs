@@ -148,7 +148,7 @@ describe('analyzing a Python snapshot', () => {
       'python-rules frozen-dataclass Order',
     ]);
     expect(findings.map(({ message }) => message)).toEqual([
-      '`print` found. Use `logging`: `logger = logging.getLogger(__name__)`, then `logger.info(...)`. If this is intended, add {"rule":"T201","paths":["src/demo/a.py"],"reason":"..."} to "python.exceptions" in nitpicker.config.json.',
+      '`print` found. Use `logging`: `logger = logging.getLogger(__name__)`, then `logger.info(...)`. For program output, take a `TextIO` parameter and write with `out.write(...)` or `print(..., file=out)`; the entry point passes `sys.stdout`. If this is intended, add {"rule":"T201","paths":["src/demo/a.py"],"reason":"..."} to "python.exceptions" in nitpicker.config.json.',
       'Incompatible return value type (got "int", expected "str"). Fix the type; inline ignores are banned. If this is intended, add {"rule":"return-value","paths":["src/demo/a.py"],"reason":"..."} to "python.exceptions" in nitpicker.config.json.',
       'Dataclass Order is not frozen. Declare records as `@dataclass(frozen=True)` and build a changed copy with `dataclasses.replace`. If this is intended, add {"rule":"frozen-dataclass","paths":["src/demo/a.py"],"reason":"..."} to "python.exceptions" in nitpicker.config.json.',
     ]);
@@ -172,7 +172,7 @@ describe('analyzing a Python snapshot', () => {
     const findings = withoutCoupling(analyze(root));
 
     expect(findings.map(({ message }) => message)).toEqual([
-      '`print` found. Use loguru: `from loguru import logger`, then `logger.info(...)`. If this is intended, add {"rule":"T201","paths":["src/demo/a.py"],"reason":"..."} to "python.exceptions" in nitpicker.config.json.',
+      '`print` found. Use loguru: `from loguru import logger`, then `logger.info(...)`. For program output, take a `TextIO` parameter and write with `out.write(...)` or `print(..., file=out)`; the entry point passes `sys.stdout`. If this is intended, add {"rule":"T201","paths":["src/demo/a.py"],"reason":"..."} to "python.exceptions" in nitpicker.config.json.',
       'marshmallow is imported outside an adapters/ package. Use marshmallow only in an `adapters/` package to parse untrusted input (`Schema().load(data)`), and pass frozen dataclasses on from there. If this is intended, add {"rule":"pydantic-boundary","paths":["src/demo/a.py"],"reason":"..."} to "python.exceptions" in nitpicker.config.json.',
       '`logger.error(...)` logs a caught error without its traceback. Keep the traceback: `logger.exception("message")` or `logger.opt(exception=True).error("message")`; the exception as an argument drops it. Re-raising after the log also passes. If this is intended, add {"rule":"catch-log-without-exception","paths":["src/demo/a.py"],"reason":"..."} to "python.exceptions" in nitpicker.config.json.',
     ]);
@@ -213,7 +213,10 @@ describe('analyzing a Python snapshot', () => {
         symbol: 'f',
         message:
           'Survived number: replacing `1` with `2` fails no test. Add an assertion that would. If no input can tell the two apart, simplify the code so this mutant disappears. If this is intended, add {"rule":"mutant-survived","paths":["src/demo/a.py"],"function":"f","reason":"..."} to "exceptions" in nitpicker.config.json.',
+        allowedForm:
+          'Add an assertion that would. If no input can tell the two apart, simplify the code so this mutant disappears.',
         classification: 'enforceable',
+        anchor: { key: 'mutant:1→2|486d9affb60dbb0063b03d8e', requireUnchangedLine: true },
         location: { line: 2 },
       },
       {
@@ -348,9 +351,9 @@ describe('analyzing a Python snapshot', () => {
       },
       {
         tool: 'python',
-        rule: 'tests-failed',
+        rule: 'tests-not-run',
         path: '.',
-        identity: 'tests-failed',
+        identity: 'tests-not-run',
         message: 'coverage run exited 1 in the virtualenv environment:\n1 failed: test_greet',
         classification: 'tool-error',
       },
@@ -436,7 +439,9 @@ describe('runner arguments', () => {
       '--exclude',
       'gen/**',
       '--snapshot',
-      'base',
+      'head',
+      '--baseline-moves-file',
+      '/m/moves.json',
     ]);
 
     expect(parsed).toEqual({
@@ -444,7 +449,12 @@ describe('runner arguments', () => {
       projectRoot: '/snapshot',
       liveRoot: '/live',
       settings: { formatter: 'black' },
-      policy: { exclude: ['gen/**'], exceptions: [], snapshot: 'base' },
+      policy: {
+        exclude: ['gen/**'],
+        exceptions: [],
+        snapshot: 'head',
+        baselineMovesFile: '/m/moves.json',
+      },
     });
   });
 

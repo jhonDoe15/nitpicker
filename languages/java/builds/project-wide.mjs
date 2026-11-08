@@ -1,13 +1,13 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
-import {
-  outerClass,
-  parseJdeps,
-  readCouplingFindings,
-} from '../adapters/metrics/java-coupling.mjs';
+import { outerClass } from '../ingest/class-names.mjs';
+import { parseJdeps, readCouplingFindings } from '../adapters/metrics/java-coupling.mjs';
 import { readJavaFileLimitFindings } from '../adapters/metrics/java-structure.mjs';
 import { kotlinModules, readKotlinMetrics } from '../adapters/kotlin/kotlin-metrics.mjs';
+import { inModule } from './module-path.mjs';
 import { readTestOnlyClassFindings } from '../adapters/review-rules/test-only-classes.mjs';
+import { readTestRuntimeFindings } from '../adapters/test-runtime/test-runtime-findings.mjs';
+import { readJvmReuseFindings } from '../adapters/reuse/jvm-reuse-facts.mjs';
 
 const JDEPS_REPORT = 'jdeps.txt';
 const JDEPS_CLASSES = 'jdeps-classes.txt';
@@ -60,7 +60,7 @@ function kotlinNodes(projects) {
       moduleOf.set(qualified(project.qualifier, className), qualified(project.qualifier, node));
     }
     for (const [node, file] of nodes.fileOf) {
-      fileOf.set(qualified(project.qualifier, node), file);
+      fileOf.set(qualified(project.qualifier, node), inModule(project.filePrefix, file));
     }
   }
   return { moduleOf, fileOf };
@@ -170,5 +170,7 @@ export function projectWideFindings(
     }),
     ...couplingFindings(projectRoot, { projects, mergedRoot, manifest, kotlin }),
     ...readTestOnlyClassFindings(projectRoot, { projects }),
+    ...readTestRuntimeFindings(projectRoot, { projects }),
+    ...readJvmReuseFindings(projectRoot, { projects, kotlin, policy }),
   ];
 }

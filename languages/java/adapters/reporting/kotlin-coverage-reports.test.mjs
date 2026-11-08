@@ -83,15 +83,15 @@ describe('readJavaFindings with the kotlin preset: coverage and mutation', () =>
         .map(({ rule, path: file, classification }) => [rule, file, classification]),
     ).toEqual([['branch-source-not-found', 'demo/other/Bad.kt', 'descriptive']]);
   });
-  it('reports mutants of Kotlin classes without failing and keeps Java mutants enforceable', () => {
+  it('gates the mutants of Kotlin classes like those of Java classes', () => {
     const { findings } = readJavaFindings(projectWithKotlinReports(), { preset: 'kotlin' });
     const mutants = findings
       .filter((finding) => finding.rule.startsWith('mutant-'))
       .map(({ rule, path: file, classification }) => [rule, file, classification]);
 
     expect(mutants).toEqual([
-      ['mutant-survived', bad, 'descriptive'],
-      ['mutant-nocoverage', bad, 'descriptive'],
+      ['mutant-survived', bad, 'enforceable'],
+      ['mutant-nocoverage', bad, 'enforceable'],
       ['mutant-survived', 'src/main/java/demo/Legacy.java', 'enforceable'],
     ]);
   });

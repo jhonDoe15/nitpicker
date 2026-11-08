@@ -1,8 +1,10 @@
-import { readdirSync } from 'node:fs';
+import { readdirSync, readFileSync } from 'node:fs';
+import { createRequire } from 'node:module';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { exceptionRoute } from '../../../shared/exceptions/rule-names.mjs';
-import { RULE_CASES } from './test-support/python-rule-cases.mjs';
+import { RUFF_CONFIG } from '../adapters/configuration/python-ruff-config.mjs';
+import { ruleCases } from './test-support/python-rule-cases.mjs';
 import {
   applyRuleHints,
   describeRuleFinding,
@@ -11,14 +13,17 @@ import {
   withHint,
 } from './rule-hints.mjs';
 
+const RULE_CASES = ruleCases();
+
 const route = (rule) => exceptionRoute({ rule, path: 'src/a.py', key: 'python.exceptions' });
 
-const sample = ({ tool, rule }) => ({
+const sample = ({ tool, rule, data }) => ({
   tool,
   rule,
   path: 'src/a.py',
   identity: 'x',
-  message: 'The base message.',
+  message:
+    data === undefined ? 'The base message.' : describeRuleFinding(rule, 'total.rate', { data }),
   classification: 'enforceable',
 });
 
@@ -42,6 +47,20 @@ describe('every banned form has a banned and an allowed fixture', () => {
   });
 });
 
+describe('every selected pitfall rule', () => {
+  const PITFALL = /^(?:ASYNC|DTZ|LOG|PLE|PLW|T10)\d+$/u;
+  const { lint } = createRequire(import.meta.url)('smol-toml').parse(
+    readFileSync(RUFF_CONFIG, 'utf8'),
+  );
+
+  it.each(lint.select.filter((code) => PITFALL.test(code)))(
+    '%s has its own allowed form',
+    (rule) => {
+      expect(hintFor(sample({ tool: 'ruff', rule }))?.rules).toContain(rule);
+    },
+  );
+});
+
 describe('every message names the allowed form', () => {
   it.each(RULE_CASES.map((testCase) => [testCase.name, testCase]))('%s', (_name, testCase) => {
     const { message } = withHint(sample(testCase));
@@ -49,12 +68,22 @@ describe('every message names the allowed form', () => {
     expect(message.toLowerCase()).toContain(testCase.mention.toLowerCase());
   });
 
-  it.each(RULE_CASES.filter((testCase) => hintFor(sample(testCase)).exception !== false))(
+  it.each(RULE_CASES.filter((testCase) => hintFor(sample(testCase)).exception === undefined))(
     'tells how to add an exception for $tool $rule',
     (testCase) => {
       expect(withHint(sample(testCase)).message.endsWith(route(testCase.rule))).toBe(true);
     },
   );
+
+  it('sends unused-option to the top-level exceptions, in the wording every preset shares', () => {
+    const { message } = withHint(
+      sample({ tool: 'python-rules', rule: 'unused-option', data: { scope: 'private' } }),
+    );
+
+    expect(message).toBe(
+      'Option total.rate is never set. Remove it, or set it from a real call (tests do not count). If this is intended, add {"rule":"unused-option","paths":["src/a.py"],"reason":"..."} to "exceptions" in nitpicker.config.json.',
+    );
+  });
 
   it('sends a suppression comment to the exception of no-inline-suppression itself', () => {
     const { message } = withHint(sample({ tool: 'python-rules', rule: 'no-inline-suppression' }));
@@ -104,7 +133,9 @@ describe('hints', () => {
     expect(withHint(sample({ tool: 'ruff', rule: 'T201' }))).toEqual({
       ...sample({ tool: 'ruff', rule: 'T201' }),
       message:
-        'The base message. Use `logging`: `logger = logging.getLogger(__name__)`, then `logger.info(...)`. If this is intended, add {"rule":"T201","paths":["src/a.py"],"reason":"..."} to "python.exceptions" in nitpicker.config.json.',
+        'The base message. Use `logging`: `logger = logging.getLogger(__name__)`, then `logger.info(...)`. For program output, take a `TextIO` parameter and write with `out.write(...)` or `print(..., file=out)`; the entry point passes `sys.stdout`. If this is intended, add {"rule":"T201","paths":["src/a.py"],"reason":"..."} to "python.exceptions" in nitpicker.config.json.',
+      allowedForm:
+        'Use `logging`: `logger = logging.getLogger(__name__)`, then `logger.info(...)`. For program output, take a `TextIO` parameter and write with `out.write(...)` or `print(..., file=out)`; the entry point passes `sys.stdout`.',
     });
   });
 
@@ -167,7 +198,13 @@ describe('hints', () => {
   it('keep every other field of the finding', () => {
     const finding = sample({ tool: 'mypy', rule: 'return-value' });
 
-    expect(applyRuleHints([finding])).toEqual([{ ...finding, message: expect.any(String) }]);
+    expect(applyRuleHints([finding])).toEqual([
+      {
+        ...finding,
+        message: expect.any(String),
+        allowedForm: 'Fix the type; inline ignores are banned.',
+      },
+    ]);
   });
 
   it('describe a custom rule finding by its subject', () => {
@@ -178,6 +215,8 @@ describe('hints', () => {
 describe('hints follow the libraries of the project', () => {
   const advice = (rule, libraries, tool = 'ruff', subject) =>
     withHint({ ...sample({ tool, rule }), subject }, libraries).message;
+  const PROGRAM_OUTPUT =
+    'For program output, take a `TextIO` parameter and write with `out.write(...)` or `print(..., file=out)`; the entry point passes `sys.stdout`.';
   const expected = (rule, allowed) => `The base message. ${allowed} ${route(rule)}`;
 
   it.each([
@@ -204,7 +243,7 @@ describe('hints follow the libraries of the project', () => {
     ],
     ['loguru', 'Use loguru: `from loguru import logger`, then `logger.info(...)`.'],
   ])('send a print to %s', (logging, allowed) => {
-    expect(advice('T201', { logging })).toBe(expected('T201', allowed));
+    expect(advice('T201', { logging })).toBe(expected('T201', `${allowed} ${PROGRAM_OUTPUT}`));
   });
 
   it.each([
@@ -328,6 +367,15 @@ describe('hints follow the libraries of the project', () => {
     },
   );
 
+  it('tell domain code to raise instead of logging a caught error', () => {
+    const rule = 'catch-log-without-exception';
+    const finding = { ...sample({ tool: 'python-rules', rule }), path: 'shop/domain/orders.py' };
+
+    expect(withHint({ ...finding, subject: 'logger.error(...)' }).message).toBe(
+      `The base message. Domain code does not log: re-raise the error with its cause (\`raise DomainError(...) from error\`) or return a failure, and let the caller in \`adapters/\` or the composition root log it with its traceback. ${exceptionRoute({ rule, path: 'shop/domain/orders.py', key: 'python.exceptions' })}`,
+    );
+  });
+
   it('describe the rules for caught logs and silent tests by their subject', () => {
     expect(describeRuleFinding('catch-log-without-exception', 'logger.error(...)')).toBe(
       '`logger.error(...)` logs a caught error without its traceback',
@@ -360,5 +408,33 @@ describe('hints follow the libraries of the project', () => {
 
     expect(message).toContain(call);
     expect(message).toContain(list);
+  });
+});
+
+describe('type laundering messages', () => {
+  const cast = (subject, libraries) =>
+    withHint(
+      { ...sample({ tool: 'python-rules', rule: 'type-cast' }), subject, message: 'x' },
+      libraries,
+    ).message;
+
+  it('names the parse at the boundary only for a container target', () => {
+    expect(cast('cast(str) in convert')).toBe(
+      `x. Narrow the value with \`isinstance\` or \`match\`, or give it the correct type at its source. ${route('type-cast')}`,
+    );
+    expect(cast('cast(dict[str, int])')).toBe(
+      `x. Narrow the value with \`isinstance\` or \`match\`, or give it the correct type at its source. Parse untrusted input once in \`adapters/\` with pydantic (\`Model.model_validate(data)\`). ${route('type-cast')}`,
+    );
+  });
+
+  it('keeps the allowed form of an explicit Any to one sentence', () => {
+    const { message } = withHint({
+      ...sample({ tool: 'python-rules', rule: 'explicit-any' }),
+      subject: 'f(a)',
+    });
+
+    expect(message).toBe(
+      `The base message. Write the concrete type, a \`Protocol\`, a \`TypeVar\`, a \`ParamSpec\` or \`object\` (\`dict[str, object]\`, \`Callable[..., object]\`). ${route('explicit-any')}`,
+    );
   });
 });

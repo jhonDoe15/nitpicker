@@ -1,0 +1,12 @@
+[
+  {
+    "tool": "ruff",
+    "rule": "PLW0602",
+    "mention": "remove the `global`"
+  },
+  {
+    "tool": "ruff",
+    "rule": "PLW0603",
+    "mention": "functools.cache"
+  }
+]

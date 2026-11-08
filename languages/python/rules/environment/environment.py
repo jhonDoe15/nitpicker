@@ -1,8 +1,9 @@
 import ast
 
-from checks.common import dotted_name, finding
+from checks.common import dotted_name, finding, overlap_sites
 from environment.roots import is_composition_root
 
+ENVIRONMENT_OVERLAPS = {"process-env-access": ("PLE1507", "PLW1507", "PLW1508")}
 ENVIRONMENT_NAMES = {
     "os.environ",
     "os.environb",
@@ -23,18 +24,31 @@ ENVIRONMENT_ATTRIBUTES = {"environ", "environb", "getenv", "getenvb"}
 SETTINGS_BASES = {"pydantic_settings.BaseSettings", "pydantic.BaseSettings"}
 HARMLESS_DEFAULTS = {"DJANGO_SETTINGS_MODULE"}
 MODULE_LOADERS = {"importlib.import_module", "__import__"}
+STREAM_NAMES = {"sys.stdout", "sys.stderr", "sys.__stdout__", "sys.__stderr__"}
+STREAM_ATTRIBUTES = {"stdout", "stderr", "__stdout__", "__stderr__"}
+
+
+def is_name_check(test):
+    if not (isinstance(test, ast.Compare) and len(test.comparators) == 1):
+        return False
+    if not isinstance(test.ops[0], ast.Eq):
+        return False
+    sides = [test.left, test.comparators[0]]
+    names = [side for side in sides if isinstance(side, ast.Name)]
+    texts = [side for side in sides if isinstance(side, ast.Constant)]
+    return (
+        len(names) == 1
+        and names[0].id == "__name__"
+        and len(texts) == 1
+        and texts[0].value == "__main__"
+    )
 
 
 def is_main_guard(node):
     test = node.test
-    return (
-        isinstance(test, ast.Compare)
-        and isinstance(test.left, ast.Name)
-        and test.left.id == "__name__"
-        and len(test.comparators) == 1
-        and isinstance(test.comparators[0], ast.Constant)
-        and test.comparators[0].value == "__main__"
-    )
+    if isinstance(test, ast.BoolOp) and isinstance(test.op, ast.And):
+        return any(is_name_check(value) for value in test.values)
+    return is_name_check(test)
 
 
 def guarded_nodes(tree):
@@ -145,13 +159,79 @@ def access_name(node, context):
     )
 
 
+def root_name(node):
+    while isinstance(node, (ast.Attribute, ast.Subscript, ast.Call)):
+        node = node.func if isinstance(node, ast.Call) else node.value
+    return node.id if isinstance(node, ast.Name) else None
+
+
+def is_imported(node, aliases):
+    root = root_name(node)
+    return root in aliases[0] or root in aliases[1]
+
+
+def stream_attribute(node, context):
+    if not isinstance(node, ast.Attribute) or node.attr not in STREAM_ATTRIBUTES:
+        return None
+    module = module_named(node.value, context.aliases)
+    return f"sys.{node.attr}" if module == "sys" else None
+
+
+def stream_getattr(node, context):
+    if not (
+        isinstance(node, ast.Call)
+        and isinstance(node.func, ast.Name)
+        and node.func.id == "getattr"
+        and len(node.args) >= 2
+    ):
+        return None
+    key = node.args[1]
+    owner = node.args[0]
+    if dotted_name(owner, context.aliases) != "sys" or not is_imported(
+        owner, context.aliases
+    ):
+        return None
+    is_stream = isinstance(key, ast.Constant) and key.value in STREAM_ATTRIBUTES
+    return f"sys.{key.value}" if is_stream else None
+
+
+def star_import(node):
+    is_star = isinstance(node, ast.ImportFrom) and node.level == 0
+    is_star = is_star and node.module == "sys"
+    return "from sys import *" if is_star and node.names[0].name == "*" else None
+
+
+def stream_name(node, context):
+    reads = isinstance(node, ast.Attribute) or (
+        isinstance(node, ast.Name) and isinstance(node.ctx, ast.Load)
+    )
+    name = dotted_name(node, context.aliases) if reads else None
+    if name in STREAM_NAMES and is_imported(node, context.aliases):
+        return name
+    return (
+        star_import(node)
+        or stream_getattr(node, context)
+        or (is_imported(node, context.aliases) and stream_attribute(node, context))
+        or None
+    )
+
+
 def check(context):
     if context.tests or is_composition_root(context):
         return []
     guarded = guarded_nodes(context.tree)
     found = []
     for node in ast.walk(context.tree):
+        if id(node) in guarded:
+            continue
         name = access_name(node, context)
-        if name and id(node) not in guarded:
+        if name:
             found.append(finding(context.path, "process-env-access", name, node))
+        stream = stream_name(node, context)
+        if stream:
+            found.append(finding(context.path, "process-stream-access", stream, node))
     return found
+
+
+def allowances(context):
+    return overlap_sites(check(context), ENVIRONMENT_OVERLAPS)

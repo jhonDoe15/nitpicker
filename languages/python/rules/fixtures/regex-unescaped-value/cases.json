@@ -1,0 +1,7 @@
+[
+  {
+    "tool": "python-rules",
+    "rule": "regex-unescaped-value",
+    "mention": "re.escape"
+  }
+]

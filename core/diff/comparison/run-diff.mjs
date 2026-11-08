@@ -3,8 +3,9 @@ import {
   mustMeetOnEditedLines,
 } from '../../../languages/typescript/preset/strict-rules.mjs';
 import { writeDiffReports } from '../reporting/reporters.mjs';
+import { partialRunField } from '../reporting/partial-run/partial-run.mjs';
 import path from 'node:path';
-import { resolveComparison, captureWorkingTree } from '../git/repository/git.mjs';
+import { resolveComparison, captureWorkingTree, hasSameTree } from '../git/repository/git.mjs';
 import { readRepositoryChanges } from '../git/patches/changes.mjs';
 import {
   resolveBaseProjectPath,
@@ -12,12 +13,13 @@ import {
   readTouchedPaths,
 } from '../git/patches/project-moves.mjs';
 import { readChangedLines } from '../git/patches/changed-lines.mjs';
+import { readRemovesTests } from '../git/patches/test-removal.mjs';
 import { withTemporaryWorktree, withNamedTemporaryWorktree } from '../git/repository/worktree.mjs';
 import { withHeadPolicyFile } from '../../../languages/typescript/preset/head-policy.mjs';
 import { runAnalyzers } from '../execution/run-analyzers.mjs';
 import { withMovesFile } from '../git/patches/moves-file.mjs';
 import { PACKAGE_ROOT } from '../../tooling/tool-resolution.mjs';
-import { combineAnalyzerReports } from './results.mjs';
+import { combineAnalyzerReports, noChangesReport } from './results.mjs';
 import { runBaseWithCache, createFindingsCache } from '../cache/findings-cache.mjs';
 import { cachedLine } from '../execution/progress.mjs';
 import {
@@ -29,15 +31,23 @@ export function runQualityDiff(options) {
   const settings = withDefaults(options);
   const startedAt = Date.now();
   const comparison = resolveSnapshots(settings);
-  const layout = readSnapshotLayout(settings, comparison);
-  const report = withSnapshotRoots({ settings, comparison, layout }, (roots) =>
-    compareSnapshots({ settings, comparison, layout, roots, startedAt }),
-  );
+  const report = hasSameTree(settings.repositoryRoot, comparison.mergeBaseSha, comparison.headSha)
+    ? noChangesReport({ ...settings, comparison, startedAt })
+    : compareChanges(settings, comparison, startedAt);
   report.summary.elapsedMs = Date.now() - startedAt;
+  Object.assign(report.summary, partialRunField(settings.partialRun));
   report.text = writeDiffReports(settings.outputRoot, report, {
     projectPath: settings.projectRelativePath,
+    repositoryRoot: settings.repositoryRoot,
   });
   return report;
+}
+
+function compareChanges(settings, comparison, startedAt) {
+  const layout = readSnapshotLayout(settings, comparison);
+  return withSnapshotRoots({ settings, comparison, layout }, (roots) =>
+    compareSnapshots({ settings, comparison, layout, roots, startedAt }),
+  );
 }
 
 function withDefaults(options) {
@@ -92,16 +102,28 @@ function readSnapshotLayout({ repositoryRoot, projectRelativePath }, comparison)
     baseProjectRelativePath,
     moves,
     touchedPaths,
-    touchedCode: { changedLines, isStrictRule, mustMeetOnEditedLines },
+    touchedCode: {
+      changedLines,
+      isStrictRule,
+      mustMeetOnEditedLines,
+      testsRemoved: readRemovesTests({
+        repositoryRoot,
+        mergeBaseSha,
+        headSha,
+        projectRelativePath,
+        baseProjectRelativePath,
+      }),
+    },
   };
 }
 
 function withSnapshotRoots({ settings, comparison, layout }, operation) {
-  const { repositoryRoot, projectRelativePath } = settings;
-  return withTemporaryWorktree(repositoryRoot, comparison.mergeBaseSha, (baseWorktreeRoot) =>
+  const { repositoryRoot, projectRelativePath, warn } = settings;
+  const base = { commitSha: comparison.mergeBaseSha, warn };
+  return withTemporaryWorktree(repositoryRoot, base, (baseWorktreeRoot) =>
     withNamedTemporaryWorktree(
       repositoryRoot,
-      { commitSha: comparison.headSha, directoryName: 'head' },
+      { commitSha: comparison.headSha, directoryName: 'head', warn },
       (headWorktreeRoot) =>
         operation({
           baseProjectRoot: path.join(baseWorktreeRoot, layout.baseProjectRelativePath),
@@ -121,6 +143,7 @@ function compareSnapshots(context) {
     policyLoosenings: [],
     ...settings.resolveBaseSetup?.({
       ...roots,
+      liveProjectRoot: settings.headProjectRoot,
       moves: layout.moves,
       analyzers: settings.analyzers,
     }),
@@ -187,6 +210,7 @@ function runAndCombine(context) {
     policyKinds: context.baseSetup.policyKinds,
     policyDigest: context.baseSetup.policyDigest,
     acceptPolicyChange: settings.acceptPolicyChange,
+    scope: settings.scope,
     policyAcceptanceSource: settings.policyAcceptanceSource,
     reportsPolicy: settings.reportsPolicy !== false,
     notices:
@@ -226,7 +250,10 @@ function runBaseSide(context) {
     }),
     analyzers: baseSetup.analyzers,
     run: (baseAnalyzers) => runBaseAnalyzers(context, baseAnalyzers),
-    onCached: (count) => settings.progress?.write(cachedLine({ label: 'base', count })),
+    onCached: (count) =>
+      settings.progress?.write(
+        cachedLine({ label: 'base', count, directory: settings.cacheStore.directory }),
+      ),
     resolveContext: {
       liveProjectRoot: settings.headProjectRoot,
       policyRoot: roots.headSnapshotRoot,

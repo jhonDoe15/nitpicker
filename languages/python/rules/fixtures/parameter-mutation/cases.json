@@ -1,0 +1,7 @@
+[
+  {
+    "tool": "python-rules",
+    "rule": "parameter-mutation",
+    "mention": "new value"
+  }
+]

@@ -3,6 +3,7 @@ import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import { PACKAGE_ROOT } from '../../../../../core/tooling/tool-resolution.mjs';
 import { testTimeoutMs } from '../test-run.mjs';
+import { TEST_CONSOLE_REPORT_PATH } from '../../quality-areas/reporting/test-report.mjs';
 import { consoleProducerPath } from '../test-console-run.mjs';
 import { createRunnerProjects } from '../test-support/runner-project.mjs';
 import { coverageArguments } from './jest-coverage.mjs';
@@ -41,7 +42,8 @@ function launchedProject(files) {
       'src/main/pick.js': PICK_JS,
       'test/pick.test.js': [
         "const { pick } = require('../src/main/pick');",
-        "it('answers', () => {\n  expect(pick(true)).toBe('yes');\n});\n",
+        "it('answers', () => {\n  console.assert(pick(false) === 'yes', 'got %s', pick(false));",
+        "  expect(pick(true)).toBe('yes');\n});\n",
       ].join('\n'),
       ...files,
     },
@@ -68,13 +70,23 @@ afterEach(() => {
 });
 
 describe('the Jest command line', () => {
-  it('disables configured coverage when rerunning a slow test', () => {
+  it('disables configured coverage and project reporters when rerunning a slow test', () => {
     const root = projects.project({
       'package.json': {
         name: 'p',
         private: true,
-        jest: { collectCoverage: true, coverageProvider: 'babel', coverageReporters: ['json'] },
+        jest: {
+          collectCoverage: true,
+          coverageProvider: 'babel',
+          coverageReporters: ['json'],
+          reporters: ['<rootDir>/reporter.js'],
+        },
       },
+      'reporter.js': [
+        'module.exports = class {',
+        "  onRunComplete() { require('node:fs').writeFileSync(`${__dirname}/reported`, ''); }",
+        '};',
+      ].join('\n'),
       'src/value.js': 'exports.value = () => 42;',
       'test/value.test.js': [
         "const { value } = require('../src/value');",
@@ -93,9 +105,12 @@ describe('the Jest command line', () => {
       command(undefined, []),
     );
 
-    expect([run.failed, run.report.numTotalTests, existsSync(path.join(root, 'coverage'))]).toEqual(
-      [false, 1, false],
-    );
+    expect([
+      run.failed,
+      run.report.numTotalTests,
+      existsSync(path.join(root, 'coverage')),
+      existsSync(path.join(root, 'reported')),
+    ]).toEqual([false, 1, false, false]);
   });
 
   it('drops the options that narrow the run to some of the tests', () => {
@@ -127,6 +142,15 @@ describe('a Jest run that a Create React App script starts', () => {
 
     expect([run.failed, run.report.numTotalTests]).toEqual([false, 1]);
     expect(
+      JSON.parse(readFileSync(path.join(root, TEST_CONSOLE_REPORT_PATH), 'utf8')).entries,
+    ).toEqual([
+      {
+        file: path.join(root, 'test/pick.test.js'),
+        test: '',
+        messages: ['Assertion failed: got no'],
+      },
+    ]);
+    expect(
       readFileSync(path.join(root, ARGV_FILE), 'utf8')
         .trim()
         .split('\n')
@@ -142,7 +166,7 @@ describe('a Jest run that a Create React App script starts', () => {
           `--testTimeout=${String(testTimeoutMs())}`,
           '--restoreMocks',
         ],
-        ...['--silent=false', '--verbose=false', '--reporters=default'],
+        ...['--reporters=default', '--silent=false', '--verbose=false'],
         `--reporters=${consoleProducerPath(options, 'jest')}`,
         '--watchAll=false',
       ],

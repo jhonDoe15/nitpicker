@@ -5,6 +5,7 @@ import { pathInside } from '../../../shared/filesystem.mjs';
 import { globMatcher } from '../../../shared/paths/glob.mjs';
 import { DUPLICATES_MODE } from '../../../shared/policy.mjs';
 import { RENAMED_SETTINGS, withNormalizedTree } from '../../../shared/renamed-clones/tree.mjs';
+import { layeredJscpdConfig, renamedJscpdSettings } from './config.mjs';
 import { trackTemporaryPath, untrackTemporaryPath } from '../temporary-files.mjs';
 import { resolveTool } from '../tool-resolution.mjs';
 import { rootsPattern } from './skipped-folders.mjs';
@@ -15,7 +16,7 @@ const MAX_OUTPUT_BYTES = 50 * 1024 * 1024;
 const JSCPD_TIMEOUT_MS = 10 * 60 * 1000;
 const JSCPD_CONFIG = 'jscpd-config.json';
 const RENAMED_CONFIG = 'jscpd-renamed-config.json';
-const JSCPD_SETTINGS = { minTokens: 50, minLines: 5, threshold: 100 };
+const JSCPD_SETTINGS = { minTokens: 50, minLines: 5, threshold: 100, mode: DUPLICATES_MODE };
 
 export function insideReportRoot(reportRoot, ...segments) {
   const root = path.resolve(reportRoot);
@@ -30,7 +31,7 @@ export function jscpdVersion() {
   return resolveTool('jscpd', { bin: 'run-jscpd.js' }).version;
 }
 
-function jscpdArguments({ jscpd, paths, config, format, output, ignore, together }) {
+function jscpdArguments({ jscpd, paths, config, format, output, together, mode }) {
   return [
     jscpd,
     ...(together ? ['.', '--pattern', rootsPattern(paths)] : paths),
@@ -39,13 +40,12 @@ function jscpdArguments({ jscpd, paths, config, format, output, ignore, together
     '--format',
     format,
     '--mode',
-    DUPLICATES_MODE,
+    mode,
     '--reporters',
     'json',
     '--output',
     output,
     '--silent',
-    ...(ignore.length > 0 ? ['--ignore', ignore.join(',')] : []),
   ];
 }
 
@@ -68,16 +68,17 @@ function runJscpdOnce({ cwd, output, args }) {
   return JSON.parse(readFileSync(path.join(output, 'jscpd-report.json'), 'utf8'));
 }
 
-function runGroups({ cwd, roots, together, settings, names, reportRoot, ...tool }) {
+function runGroups({ cwd, roots, together, settings, ignore, names, reportRoot, ...tool }) {
   const jscpd = resolveTool('jscpd', { bin: 'run-jscpd.js' }).binPath;
   const config = insideReportRoot(reportRoot, names.config);
-  writeFileSync(config, JSON.stringify(settings));
+  const { mode = DUPLICATES_MODE, ...written } = settings;
+  writeFileSync(config, JSON.stringify({ ...written, ...(ignore.length > 0 ? { ignore } : {}) }));
   const groups = together
     ? [roots].filter((group) => group.length > 0)
     : roots.map((root) => [root]);
   return groups.map((paths, index) => {
     const output = insideReportRoot(reportRoot, names.output, String(index));
-    const args = jscpdArguments({ jscpd, paths, config, output, together, ...tool });
+    const args = jscpdArguments({ jscpd, paths, config, output, together, mode, ...tool });
     const report = runJscpdOnce({ cwd, output, args });
     return together ? { root: '.', report } : { root: paths[0], report };
   });
@@ -87,7 +88,16 @@ export function renamedReportFile(reportFile) {
   return `renamed-${reportFile}`;
 }
 
-function runRenamedJscpd({ cwd, roots, renamed, reportFile, ignore, reportRoot, ...tool }) {
+function runRenamedJscpd({
+  cwd,
+  roots,
+  renamed,
+  reportFile,
+  ignore,
+  reportRoot,
+  settings,
+  ...tool
+}) {
   const ignored = ignore.map((glob) => globMatcher(glob));
   const files = renamed.files.filter((file) => !ignored.some((pattern) => pattern.test(file)));
   const runs = withNormalizedTree(
@@ -108,7 +118,7 @@ function runRenamedJscpd({ cwd, roots, renamed, reportFile, ignore, reportRoot, 
         }),
         ignore,
         reportRoot,
-        settings: RENAMED_SETTINGS,
+        settings: renamedJscpdSettings(settings, RENAMED_SETTINGS),
         names: { config: RENAMED_CONFIG, output: 'jscpd-renamed' },
       }),
   );
@@ -128,18 +138,30 @@ export function runJscpd({
   together = false,
   renamed,
 }) {
+  const { ignore: projectIgnore = [], ...settings } = layeredJscpdConfig(JSCPD_SETTINGS);
+  const ignores = [...new Set([...ignore, ...projectIgnore])];
   const runs = runGroups({
     cwd,
     roots,
     format,
-    ignore,
+    ignore: ignores,
     together,
     reportRoot,
-    settings: JSCPD_SETTINGS,
+    settings,
     names: { config: JSCPD_CONFIG, output: 'jscpd' },
   });
   writeFileSync(insideReportRoot(reportRoot, reportFile), `${JSON.stringify({ runs })}\n`);
   if (renamed !== undefined) {
-    runRenamedJscpd({ cwd, roots, renamed, reportFile, format, ignore, together, reportRoot });
+    runRenamedJscpd({
+      cwd,
+      roots,
+      renamed,
+      reportFile,
+      format,
+      ignore: ignores,
+      together,
+      reportRoot,
+      settings,
+    });
   }
 }

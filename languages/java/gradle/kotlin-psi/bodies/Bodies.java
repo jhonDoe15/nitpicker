@@ -60,6 +60,18 @@ public final class Bodies {
     }
   }
 
+  public void iterable(Frame inner, PsiElement element) {
+    if (!active) {
+      return;
+    }
+    KtExpression source = Iterables.sourceOf(element);
+    Map<String, Object> detail = m("line", lineOf(element));
+    if (source != null) {
+      detail.put("collection", Iterables.describe(source));
+    }
+    scopes.describe(inner, detail);
+  }
+
   public void observe(PsiElement element, Frame frame) {
     if (!active) {
       return;
@@ -98,7 +110,8 @@ public final class Bodies {
     }
     locals.add(m("name", local.getName(), "scope", scopes.id(frame), "line", lineOf(local),
         "type", clip(local.getTypeReference()), "initializer", Initializers.callee(local),
-        "alias", Initializers.alias(local)));
+        "alias", Initializers.alias(local), "initializerTypeArguments",
+        Initializers.typeArguments(local.getInitializer())));
   }
 
   private void destructured(KtDestructuringDeclaration declaration, Frame frame) {
@@ -155,7 +168,7 @@ public final class Bodies {
       return;
     }
     Map<String, Object> data = m("name", name, "arguments", arguments(call),
-        "throwing", throwing.lambdaThrows(call) ? Boolean.TRUE : null);
+        "throwing", throwing.lambdaThrows(call) ? Boolean.TRUE : null, "guarded", Positions.guarded(call));
     if (call.getParent() instanceof KtQualifiedExpression
         && ((KtQualifiedExpression) call.getParent()).getSelectorExpression() == call) {
       KtQualifiedExpression qualified = (KtQualifiedExpression) call.getParent();
@@ -204,6 +217,11 @@ public final class Bodies {
       data.put("elvis", clip(((KtBinaryExpression) parent).getRight()));
     }
     data.put("statement", parent instanceof KtBlockExpression ? Boolean.TRUE : null);
+    KtExpression settled = Positions.settled(outer);
+    boolean branch = (settled != outer || !(parent instanceof KtBlockExpression))
+        && Positions.statementPosition(settled);
+    data.put("branch", branch ? Boolean.TRUE : null);
+    data.put("result", Positions.lambdaResult(settled) ? Boolean.TRUE : null);
     data.put("returned", parent instanceof KtReturnExpression
         || (parent instanceof KtDeclarationWithBody && ((KtDeclarationWithBody) parent).getBodyExpression() == outer)
         ? Boolean.TRUE : null);
@@ -252,6 +270,7 @@ public final class Bodies {
     }
     Map<String, Object> entry = m("line", lineOf(element), "scope", scopes.id(frame));
     entry.putAll(data);
+    entry.put("arms", Positions.arms(element, lines));
     invocations.add(entry);
   }
 

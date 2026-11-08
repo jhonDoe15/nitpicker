@@ -1,4 +1,4 @@
-import ts from 'typescript';
+import { ts } from '../../typescript-api/typescript-api.mjs';
 import path from 'node:path';
 
 function readCompilerConfig(configPath) {
@@ -11,7 +11,7 @@ function readCompilerConfig(configPath) {
     read.config,
     ts.sys,
     path.dirname(file),
-    { noEmit: true },
+    { noCheck: false, noEmit: true },
     file,
   );
   if (config.errors.length > 0) {

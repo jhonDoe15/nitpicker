@@ -18,6 +18,7 @@ export function readAndValidateShard(inputRoot, index, expectedAnalyzers) {
     changedMetrics: readJson(shardRoot, 'changed-metrics.json', index),
     heldFindings: readOptionalJson(shardRoot, 'held-findings.json', index) ?? [],
     toolErrors: readJson(shardRoot, 'tool-errors.json', index),
+    notes: readOptionalJson(shardRoot, 'notes.json', index) ?? [],
   };
   const expectedNames = expectedAnalyzers.map(({ name }) => name);
   const actualNames = report.summary.tools?.map(({ name }) => name);
@@ -39,6 +40,27 @@ export function readAndValidateShard(inputRoot, index, expectedAnalyzers) {
   return report;
 }
 
+export function readUnchangedShards(inputRoot, shardCount) {
+  const shards = Array.from({ length: shardCount }, (_, index) => {
+    const shardRoot = path.join(inputRoot, String(index));
+    return {
+      summary: readJson(shardRoot, 'summary.json', index),
+      toolErrors: readJson(shardRoot, 'tool-errors.json', index),
+    };
+  });
+  if (!shards.some(({ summary }) => summary.noChanges === true)) {
+    return undefined;
+  }
+  validateCommonSummaries(shards);
+  const changed = shards.findIndex(({ summary }) => summary.noChanges !== true);
+  if (changed !== -1) {
+    throw new Error(
+      `Quality shard ${String(changed)} ran the analyzers, but another shard found no changes`,
+    );
+  }
+  return shards;
+}
+
 function readOptionalJson(root, fileName, shardIndex) {
   return existsSync(path.join(root, fileName)) ? readJson(root, fileName, shardIndex) : undefined;
 }
@@ -56,7 +78,13 @@ export function readJson(root, fileName, shardIndex) {
 }
 
 function validateShardEntries(report, expectedNames, shardIndex) {
-  for (const property of ['newFindings', 'resolvedFindings', 'changedMetrics', 'heldFindings']) {
+  for (const property of [
+    'newFindings',
+    'resolvedFindings',
+    'changedMetrics',
+    'heldFindings',
+    'notes',
+  ]) {
     if (!Array.isArray(report[property])) {
       throw new TypeError(`Quality shard ${String(shardIndex)} ${property} must be an array`);
     }

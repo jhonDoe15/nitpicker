@@ -1,5 +1,8 @@
 import { existsSync, readFileSync } from 'node:fs';
-import { outerClass, parseJdeps } from '../metrics/java-coupling.mjs';
+import { outerClass } from '../../ingest/class-names.mjs';
+import { parseJdeps } from '../metrics/java-coupling.mjs';
+import { exceptionText } from '../../../../shared/rules/exceptions.mjs';
+import { EXCEPTION_HINT, allowedForm, messageFields } from '../../../../shared/policy.mjs';
 import { pathInside } from './java-sources.mjs';
 import { isNamedElsewhere, readProjectTexts } from './project-texts.mjs';
 import { readDeclarations } from './source-declarations.mjs';
@@ -9,9 +12,7 @@ const TEST_ONLY_TOOL = 'coupling';
 const TEST_ONLY_RULE = 'test-only-export';
 export const TEST_ONLY_EXCEPTION_RULE = `${TEST_ONLY_TOOL}/${TEST_ONLY_RULE}`;
 const REPORTS = ['jdeps.txt', 'jdeps-classes.txt', 'jdeps-test.txt'];
-const MESSAGE =
-  'Class {name} is only used by tests. Move it to the test sources, or use it from production code. ' +
-  'Nitpicker cannot see uses loaded by name from a file it does not read, or uses from another build.';
+const MESSAGE = `Class {name} is only used by tests. ${allowedForm('Move it to the test sources, or use it from production code.')} ${EXCEPTION_HINT}`;
 
 function readProject(project) {
   function report(name) {
@@ -30,7 +31,7 @@ function readProject(project) {
   };
 }
 
-function ownersOf(projects) {
+export function ownersOf(projects) {
   const owners = new Map();
   for (const project of projects) {
     for (const name of new Set(project.classes.map(outerClass))) {
@@ -40,7 +41,7 @@ function ownersOf(projects) {
   return owners;
 }
 
-function resolver(owners) {
+export function resolver(owners) {
   return (target, qualifier) => {
     const found = owners.get(outerClass(target)) ?? [];
     if (found.includes(qualifier)) {
@@ -73,6 +74,7 @@ function withDeclarations(projectRoot, project) {
 }
 
 function finding({ file, className, line }) {
+  const exception = exceptionText(TEST_ONLY_EXCEPTION_RULE, file);
   return {
     tool: TEST_ONLY_TOOL,
     rule: TEST_ONLY_RULE,
@@ -80,7 +82,7 @@ function finding({ file, className, line }) {
     identity: `class:${className}`,
     symbol: className,
     location: { line },
-    message: MESSAGE.replace('{name}', className),
+    ...messageFields(MESSAGE, { name: className, exception }),
     classification: 'enforceable',
   };
 }

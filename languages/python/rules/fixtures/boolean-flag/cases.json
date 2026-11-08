@@ -1,0 +1,7 @@
+[
+  {
+    "tool": "python-rules",
+    "rule": "boolean-flag-parameter",
+    "mention": "keyword-only"
+  }
+]

@@ -1,6 +1,29 @@
-import { validatorNamed } from '../libraries/library-tables.mjs';
-import { validatorsOf } from '../libraries/project-libraries.mjs';
+import {
+  renderMessage,
+  UNUSED_OPTION_FIX,
+  UNUSED_OPTION_TEXT,
+} from '../../../../shared/messages/messages.mjs';
 import { RULES_TOOL } from './tool.mjs';
+import { UNUSED_OPTION_SCOPES } from '../../../../shared/unused-api/unused-api-policy.mjs';
+
+const HELPER_CHAIN = ' -> ';
+
+function isHelperChain(subject = '') {
+  return subject.includes(HELPER_CHAIN);
+}
+
+function helperTakesItToo(subject) {
+  return isHelperChain(subject) ? ' (the helper takes it the same way)' : '';
+}
+
+function randomDescription(subject = '') {
+  if (isHelperChain(subject)) {
+    return `\`${subject}\` draws randomness through a project helper called from domain code`;
+  }
+  return subject.startsWith('import ')
+    ? `\`${subject}\` brings an id or random-data library into domain code`
+    : `\`${subject}()\` draws randomness in domain code`;
+}
 
 const IN_TEST = 'In a test, use `pytest.raises(SpecificError)` (`self.assertRaises` in unittest).';
 
@@ -15,18 +38,15 @@ const CAUGHT_LOG_ADVICE = {
     'Keep the traceback: `logger.exception("message")` or `logger.opt(exception=True).error("message")`; the exception as an argument drops it. Re-raising after the log also passes.',
 };
 
-function validatorForm(name) {
-  return `${name} (\`${validatorNamed(name).call}\`)`;
+const DOMAIN_CAUGHT_LOG_ADVICE =
+  'Domain code does not log: re-raise the error with its cause (`raise DomainError(...) from error`) or return a failure, and let the caller in `adapters/` or the composition root log it with its traceback.';
+
+function isDomainPath(path = '') {
+  return path.split('/').slice(0, -1).includes('domain');
 }
 
-function boundaryAdvice(libraries) {
-  const [validator] = validatorsOf(libraries);
-  return `Parse untrusted input once at the boundary with ${validatorForm(validator)} in an \`adapters/\` package, not with \`isinstance\` checks or a \`TypeGuard\`.`;
-}
-
-function importBoundaryAdvice(libraries) {
-  const validators = validatorsOf(libraries);
-  return `Use ${validators.join(' or ')} only in an \`adapters/\` package to parse untrusted input (\`${validatorNamed(validators[0]).call}\`), and pass frozen dataclasses on from there.`;
+function ownerOf(subject) {
+  return subject.slice(0, subject.lastIndexOf('.'));
 }
 
 export const STRUCTURE_HINTS = [
@@ -44,13 +64,16 @@ export const STRUCTURE_HINTS = [
     rules: ['swallowed-exception'],
     describe: (subject) =>
       `\`${subject}\` swallows the error: it only logs it or returns a default, and carries on`,
-    allowed: `Re-raise it with its cause (\`raise DomainError(...) from error\`), return a failure result that carries the error (\`return Rejected(str(error))\`), or collect it for the caller (\`errors.append(error)\`); logging alone is not handling. \`contextlib.suppress(SpecificError)\` ignores one expected error. ${IN_TEST}`,
+    allowed: `Re-raise it with its cause (\`raise DomainError(...) from error\`), return a failure result that carries the error (\`return Rejected(str(error))\`), or return the errors the function builds along with its result (\`return results, errors\`); logging alone is not handling. \`contextlib.suppress(SpecificError)\` ignores one expected error. ${IN_TEST}`,
   },
   {
     tool: RULES_TOOL,
     rules: ['catch-log-without-exception'],
     describe: (subject) => `\`${subject}\` logs a caught error without its traceback`,
-    allowed: (_subject, libraries) => CAUGHT_LOG_ADVICE[libraries?.logging ?? 'logging'],
+    allowed: (_subject, libraries, path) =>
+      isDomainPath(path)
+        ? DOMAIN_CAUGHT_LOG_ADVICE
+        : CAUGHT_LOG_ADVICE[libraries?.logging ?? 'logging'],
   },
   {
     tool: RULES_TOOL,
@@ -67,35 +90,10 @@ export const STRUCTURE_HINTS = [
   },
   {
     tool: RULES_TOOL,
-    rules: ['pydantic-boundary'],
-    describe: (subject) => `${subject} is imported outside an adapters/ package`,
-    allowed: (_subject, libraries) => importBoundaryAdvice(libraries),
-  },
-  {
-    tool: RULES_TOOL,
     rules: ['enum-string-constants'],
     describe: (subject) => `${subject} are string constants that belong in one enum`,
     allowed:
       'Declare an enum: `class Status(enum.StrEnum): ACTIVE = "active"` on Python 3.11+, otherwise `class Status(str, enum.Enum)`.',
-  },
-  {
-    tool: RULES_TOOL,
-    rules: ['no-type-check'],
-    describe: (subject) => `\`${subject}\` is excluded from type checking by \`@no_type_check\``,
-    allowed: 'Remove the decorator and annotate the code so the checker can verify it.',
-  },
-  {
-    tool: RULES_TOOL,
-    rules: ['not-type-checking'],
-    describe: (subject) => `\`${subject}\` hides code from the type checkers`,
-    allowed:
-      'Put the code in the normal flow; `if TYPE_CHECKING:` is only for imports that annotations need.',
-  },
-  {
-    tool: RULES_TOOL,
-    rules: ['stub-beside-source'],
-    describe: (subject) => `\`${subject}\` sits beside its source and replaces it for the checkers`,
-    allowed: 'Delete the `.pyi` file and annotate the `.py` file itself.',
   },
   {
     tool: RULES_TOOL,
@@ -120,24 +118,63 @@ export const STRUCTURE_HINTS = [
   },
   {
     tool: RULES_TOOL,
-    rules: ['clock-now'],
-    describe: (subject) => `\`${subject}()\` reads the clock in domain code`,
+    rules: ['process-stream-access'],
+    describe: (subject) => `\`${subject}\` reaches a standard stream outside the composition root`,
     allowed:
-      'Take the time as a parameter or a `Callable[[], datetime]` and call `datetime.now(tz=UTC)` in the composition root.',
+      'Take a `TextIO` parameter and write with `out.write(...)` or `print(..., file=out)`; the entry point (`main.py`, `cli.py`, a `[project.scripts]` target or the `if __name__ == "__main__":` block) passes `sys.stdout` or `sys.stderr`. For an entry point the gate does not recognize, list its file in `python.entryPoints`.',
+  },
+  {
+    tool: RULES_TOOL,
+    rules: ['clock-now'],
+    describe: (subject) =>
+      isHelperChain(subject)
+        ? `\`${subject}\` reads the clock through a project helper called from domain code`
+        : `\`${subject}()\` reads the clock in domain code`,
+    allowed: (subject) =>
+      `Take the time as a parameter or a \`Callable[[], datetime]\`${helperTakesItToo(subject)} and call \`datetime.now(tz=UTC)\` in the composition root.`,
   },
   {
     tool: RULES_TOOL,
     rules: ['random-in-domain'],
-    describe: (subject) => `\`${subject}()\` draws randomness in domain code`,
-    allowed:
-      'Take the value, a `random.Random` or an id factory as a parameter and create it in the composition root.',
+    describe: (subject) => randomDescription(subject),
+    allowed: (subject) =>
+      `Take the value, a \`random.Random\` or an id factory as a parameter${helperTakesItToo(subject)} and create it in the composition root.`,
   },
   {
     tool: RULES_TOOL,
     rules: ['io-in-domain'],
-    describe: (subject) => `\`${subject}\` does input or output in domain code`,
+    describe: (subject) =>
+      isHelperChain(subject)
+        ? `\`${subject}\` does input or output through a project helper called from domain code`
+        : `\`${subject}\` does input or output in domain code`,
+    allowed: (subject) =>
+      isHelperChain(subject)
+        ? 'Keep `domain/` pure: call the helper from `adapters/` or the composition root and pass its result in, or define a `Protocol` in the domain, implement it in `adapters/` and pass the adapter in.'
+        : 'Keep `domain/` pure: define a `Protocol` in the domain and implement it in `adapters/`, then pass the adapter in.',
+  },
+  {
+    tool: RULES_TOOL,
+    rules: ['logger-in-domain'],
+    describe: (subject) => `\`${subject}\` is imported into domain code`,
     allowed:
-      'Keep `domain/` pure: define a `Protocol` in the domain and implement it in `adapters/`, then pass the adapter in.',
+      'Return a result that says what happened, or raise a domain error, and let `adapters/` or the composition root log it.',
+  },
+  {
+    tool: RULES_TOOL,
+    rules: ['module-state-in-domain'],
+    describe: (subject) => `Domain code uses the module state \`${subject}\``,
+    allowed:
+      'Receive the state as a parameter and return the new value; the composition root creates the object and passes it in.',
+  },
+  {
+    tool: RULES_TOOL,
+    rules: ['import-time-effect'],
+    describe: (subject) =>
+      isHelperChain(subject)
+        ? `\`${subject}\` runs an external effect when the module is imported, so every import, tests included, performs it`
+        : `\`${subject}()\` runs when the module is imported, so every import, tests included, performs it`,
+    allowed:
+      'Move the call into a function and call that from the composition root (`main.py`, a `create_app` factory) or under `if __name__ == "__main__":`, passing the result in.',
   },
   {
     tool: RULES_TOOL,
@@ -156,29 +193,43 @@ export const STRUCTURE_HINTS = [
   },
   {
     tool: RULES_TOOL,
-    rules: ['handwritten-boundary-guard'],
-    describe: (subject) => `\`${subject}\` checks untrusted data by hand`,
-    allowed: (_subject, libraries) => boundaryAdvice(libraries),
+    rules: ['singular-and-plural-field'],
+    describe: (subject, _libraries, { singular, plural, kind }) =>
+      `Optional ${kind} \`${singular}\` and \`${plural}\` of \`${ownerOf(subject)}\` are two ways to pass the same data`,
+    referenceData: { singular: '<item>', plural: '<items>', kind: 'fields' },
+    allowed: 'Keep the plural one and pass a single item as a one-element list.',
   },
   {
     tool: RULES_TOOL,
-    rules: ['any-in-domain'],
-    describe: (subject) => `\`${subject}\` uses \`Any\` in domain code`,
+    rules: ['exhaustive-enum-predicate'],
+    describe: (_subject, _libraries, { union }) => {
+      const name = union === 'the Literal' ? union : `\`${union}\``;
+      return `These comparisons list only some members of ${name}, so a member added later is silently classified as the default`;
+    },
+    referenceData: { union: '<enum>' },
     allowed:
-      'Use the real type, a `Protocol`, a `TypeVar` or a frozen dataclass; parse untrusted data at the boundary so the domain only sees typed values.',
+      'Classify every member with a `match` that ends in `case _: assert_never(value)` (or an `if`/`elif` chain that ends in `else: assert_never(value)`), so the type checker fails when a member is added.',
   },
   {
     tool: RULES_TOOL,
-    rules: ['pydantic-any-field'],
-    describe: (subject) => `The pydantic field \`${subject}\` is typed \`Any\``,
+    rules: ['forwarding-wrapper'],
+    describe: (subject, _libraries, { target }) =>
+      `\`${subject}\` only forwards its parameters to \`${target}\`, with the same parameter and return types`,
+    referenceData: { target: '<target>' },
     allowed:
-      'Give the field its real type (`str`, `int`, a nested model, `Literal[...]`) or constrain it with `Field(min_length=1)` so the model validates it.',
+      'Call the target directly and delete the wrapper; to keep the name, import the target under it (`from module import target as name`) or bind it (`name = target`).',
   },
   {
     tool: RULES_TOOL,
-    rules: ['pydantic-extra-allow'],
-    describe: (subject) => `The pydantic model \`${subject}\` accepts unknown fields`,
-    allowed:
-      'Set `model_config = ConfigDict(extra="forbid")` (or leave the default `ignore`) and declare every field the model needs.',
+    rules: ['unused-option'],
+    describe: (subject, _libraries, { scope }) =>
+      renderMessage(UNUSED_OPTION_TEXT, {
+        name: subject,
+        scope: UNUSED_OPTION_SCOPES.python[scope],
+      }),
+    referenceData: { scope: 'private' },
+    allowedFor: ({ scope }) =>
+      renderMessage(UNUSED_OPTION_FIX, { scope: UNUSED_OPTION_SCOPES.python[scope] }),
+    exception: 'top-level',
   },
 ];

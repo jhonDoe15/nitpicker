@@ -6,8 +6,9 @@ import { isIntegrationTest } from '../test-times/integration-tests.mjs';
 
 export const SPRING_ARCH_REPORT = 'spring-arch.json';
 const TOOL = 'archunit';
+const ANY_SETTER = 'any-setter';
 
-const MESSAGES = {
+export const SPRING_ARCH_MESSAGES = {
   'spring-layout': ({ simple, detail, root }) =>
     detail === ''
       ? `Put ${simple} in a feature package ${root}.<feature>: the root package ${root} holds only the application, @Configuration and @ConfigurationProperties classes.`
@@ -45,13 +46,33 @@ const MESSAGES = {
   },
   'ddd-value-object-reference': ({ simple, detail }) =>
     `Hold the identifier of ${detail} in ${simple}, not the object: a value object is compared by its values, and ${detail} is an entity with an identity and lifecycle of its own.`,
+  'spring-request-state': ({ simple, detail }) => {
+    const [field, op, label] = detail.split(':');
+    const shared = field.includes('.');
+    const where = shared ? `the static field ${field}` : `${simple}.${field}`;
+    const owner = shared
+      ? 'a static field is shared by every request'
+      : `${simple} is a singleton that every request shares`;
+    return `Pass the request data from ${label} on through parameters and return values instead of ${storing(op, where)}: ${owner}, so request data kept there leaks between users and races between threads. Per-request data belongs in a @RequestScope bean, and a cache needs a size and an expiry (Spring Cache, Caffeine).`;
+  },
+  'spring-typed-request-field': ({ detail }) => {
+    const [member, kind, handler] = detail.split(':');
+    return kind === ANY_SETTER
+      ? `Declare the properties ${handler} accepts as typed fields instead of collecting unknown keys with @JsonAnySetter on ${member}: it takes any key and value a client sends, unvalidated.`
+      : `Type ${member} with a record or an enum and validate it: ${handler} binds it from the request, and an Object, JsonNode or Map<String, Object> field, or a collection of those, skips validation and lets a client send any shape. A Map with typed values, such as Map<String, String>, is fine.`;
+  },
   'spring-test-placement': ({ simple }) =>
     `Test ${simple} with new and mocks, or run it as an integration test: name it ${simple.replace(/Tests?$/u, '')}IT (Failsafe runs *IT on Maven) or put it in an integration test source set. Both keep its package, so package-private classes stay visible; a package named integration or it also counts.`,
   'spring-no-dirties-context': ({ simple }) =>
     `Reset state in ${simple} itself, or test the class without a Spring context: @DirtiesContext rebuilds the context and slows the suite.`,
 };
 
+export const SPRING_ARCH_RULES = Object.keys(SPRING_ARCH_MESSAGES);
+
 const PLACEMENT = 'spring-test-placement';
+const REQUEST_STATE = 'spring-request-state';
+const TYPED_FIELD = 'spring-typed-request-field';
+const VERBATIM_DETAILS = new Set([REQUEST_STATE, TYPED_FIELD]);
 const BOUNDARY = 'spring-feature-boundary';
 const DEPENDENCY_RULES = new Set([
   'spring-controller-repository',
@@ -68,8 +89,21 @@ function packageOf(name) {
   return name.includes('.') ? name.slice(0, name.lastIndexOf('.')) : '';
 }
 
-function shortDetail(detail) {
-  return detail.split(':').map(simpleName).join(':');
+function storing(op, where) {
+  if (op === '=') {
+    return `assigning it to ${where}`;
+  }
+  return op === '[]'
+    ? `writing it into an element of ${where}`
+    : `passing it to ${where} with ${op}()`;
+}
+
+function shortDetail(rule, detail) {
+  return VERBATIM_DETAILS.has(rule) ? detail : detail.split(':').map(simpleName).join(':');
+}
+
+function identityDetail(rule, short) {
+  return VERBATIM_DETAILS.has(rule) ? short.split(':')[0] : short;
 }
 
 function targetOf(detail, root) {
@@ -109,7 +143,7 @@ export function readSpringArchFindings(reportRoot, { resolvePath, isExcepted = (
   return violations.flatMap((violation) => {
     const { rule, className, detail } = violation;
     const filePath = violationPath(resolvePath, violation);
-    const describe = MESSAGES[rule];
+    const describe = SPRING_ARCH_MESSAGES[rule];
     if (describe === undefined) {
       throw new Error(`Unknown Spring architecture rule ${rule} in ${SPRING_ARCH_REPORT}`);
     }
@@ -123,7 +157,8 @@ export function readSpringArchFindings(reportRoot, { resolvePath, isExcepted = (
     const unique = counters.get(filePath) ?? createIdentityCounter();
     counters.set(filePath, unique);
     const simple = simpleName(className);
-    const short = shortDetail(detail);
+    const short = shortDetail(rule, detail);
+    const key = identityDetail(rule, short);
     const message = describe({
       simple,
       detail: short,
@@ -135,10 +170,11 @@ export function readSpringArchFindings(reportRoot, { resolvePath, isExcepted = (
         tool: TOOL,
         rule,
         path: filePath,
-        identity: unique(`${rule}:${short === '' ? simple : `${simple}|${short}`}`).slice(
+        identity: unique(`${rule}:${key === '' ? simple : `${simple}|${key}`}`).slice(
           rule.length + 1,
         ),
         message: `${message} ${exceptionHint(`${TOOL}/${rule}`, filePath)}`,
+        allowedForm: message,
         classification: 'enforceable',
         symbol: simple,
       },

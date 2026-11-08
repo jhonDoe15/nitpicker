@@ -124,21 +124,28 @@ describe('the React scope config', () => {
   });
 
   it('registers an implementation for every plugin rule it configures', async () => {
-    for (const entry of await reactScopeConfigFor(layout)) {
-      for (const id of Object.keys(entry.rules).filter((ruleId) => ruleId.includes('/'))) {
-        const [pluginName, ...rest] = id.split('/');
-        expect(entry.plugins[pluginName].rules[rest.join('/')], id).toBeDefined();
-      }
-    }
+    const entries = await reactScopeConfigFor(layout);
+    const registered = entries.flatMap((entry) =>
+      Object.keys(entry.rules)
+        .filter((ruleId) => ruleId.includes('/'))
+        .map((id) => {
+          const [pluginName, ...rest] = id.split('/');
+          return [id, entry.plugins[pluginName].rules[rest.join('/')] !== undefined];
+        }),
+    );
+    expect(registered).not.toHaveLength(0);
+    expect(registered).toEqual(registered.map(([id]) => [id, true]));
   });
 
   it('runs every rule as an error, except the ones story files switch off', async () => {
     const entries = await reactScopeConfigFor(layout, { autoCleanup: true });
-    for (const entry of entries.filter(({ files }) => files !== storyGlobs)) {
-      for (const [id, setting] of Object.entries(entry.rules)) {
-        expect([setting].flat()[0], id).toBe('error');
-      }
-    }
+    const severities = entries
+      .filter(({ files }) => files !== storyGlobs)
+      .flatMap((entry) =>
+        Object.entries(entry.rules).map(([id, setting]) => [id, [setting].flat()[0]]),
+      );
+    expect(severities).not.toHaveLength(0);
+    expect(severities).toEqual(severities.map(([id]) => [id, 'error']));
   });
 
   it('gives every Testing Library rule a hint naming the allowed form', async () => {
@@ -147,13 +154,20 @@ describe('the React scope config', () => {
     expect(Object.keys(testingLibraryPlugin.rules).toSorted()).toEqual(
       Object.keys(testingLibraryHints).toSorted(),
     );
-    for (const [name, hint] of Object.entries(testingLibraryHints)) {
-      const messages = Object.values(testingLibraryPlugin.rules[name].meta.messages);
-      expect(messages.length, name).toBeGreaterThan(0);
-      for (const message of messages) {
-        expect(message.endsWith(hint), name).toBe(true);
-      }
-    }
+    const hinted = Object.entries(testingLibraryHints).map(([name, hint]) => ({
+      name,
+      hint,
+      messages: Object.values(testingLibraryPlugin.rules[name].meta.messages),
+    }));
+    expect(hinted).not.toHaveLength(0);
+    expect(hinted.map(({ name, messages }) => [name, messages.length > 0])).toEqual(
+      hinted.map(({ name }) => [name, true]),
+    );
+    expect(
+      hinted.flatMap(({ name, hint, messages }) =>
+        messages.filter((message) => !message.endsWith(hint)).map(() => name),
+      ),
+    ).toEqual([]);
   });
 
   it('lists the accessibility rules the plugin recommends, plus the extra ones', () => {
@@ -217,20 +231,24 @@ describe('the React scope config', () => {
   it('applies to production source only, not to tests', async () => {
     const entries = await reactScopeConfigFor(layout);
 
-    for (const file of ['src/ui/panel.tsx', 'src/hooks/use-panel.ts']) {
-      const config = await calculatedConfig(entries, file);
-      expect(config.rules['react-hooks/rules-of-hooks'], file).toBeDefined();
-    }
-    for (const file of [
+    const production = ['src/ui/panel.tsx', 'src/hooks/use-panel.ts'];
+    const tests = [
       'src/ui/panel.test.tsx',
       'test/panel.tsx',
       '__tests__/panel.tsx',
       'e2e/panel.tsx',
       'src/ui/__tests__/panel.tsx',
-    ]) {
-      const config = await calculatedConfig(entries, file);
-      expect(config?.rules?.['react-hooks/rules-of-hooks'], file).toBeUndefined();
-    }
+    ];
+    const productionConfigs = await Promise.all(
+      production.map((file) => calculatedConfig(entries, file)),
+    );
+    const testConfigs = await Promise.all(tests.map((file) => calculatedConfig(entries, file)));
+    expect(
+      productionConfigs.map((config) => config.rules['react-hooks/rules-of-hooks'] !== undefined),
+    ).toEqual(production.map(() => true));
+    expect(testConfigs.map((config) => config?.rules?.['react-hooks/rules-of-hooks'])).toEqual(
+      tests.map(() => undefined),
+    );
   });
 
   it('checks colors in every production source file, but not in tests or stories', async () => {
@@ -238,24 +256,24 @@ describe('the React scope config', () => {
     const severityOf = async (file) =>
       (await calculatedConfig(entries, file))?.rules?.['nitpicker/react-no-hardcoded-colors']?.[0];
 
-    for (const file of ['src/ui/panel.tsx', 'src/map/geometry.ts', 'src/map/geometry.mjs']) {
-      expect(await severityOf(file), file).toBe(2);
-    }
-    for (const file of [
+    const checked = ['src/ui/panel.tsx', 'src/map/geometry.ts', 'src/map/geometry.mjs'];
+    const unchecked = [
       'src/ui/panel.test.tsx',
       'test/panel.tsx',
       'src/ui/__tests__/panel.tsx',
       'src/ui/panel.stories.tsx',
       'src/ui/panel.stories.ts',
-    ]) {
-      expect(await severityOf(file), file).not.toBe(2);
-    }
+    ];
+    expect(await Promise.all(checked.map(severityOf))).toEqual(checked.map(() => 2));
+    expect(
+      (await Promise.all(unchecked.map(severityOf))).map((severity) => severity === 2),
+    ).toEqual(unchecked.map(() => false));
   });
 
   it('applies the test rules to test files only, not to production source', async () => {
     const entries = await reactScopeConfigFor(layout);
 
-    for (const file of [
+    const tests = [
       'src/ui/panel.test.tsx',
       'src/ui/panel.spec.jsx',
       'test/panel.tsx',
@@ -263,16 +281,20 @@ describe('the React scope config', () => {
       '__tests__/ui/panel.tsx',
       'e2e/ui/panel.tsx',
       'src/ui/__tests__/panel.tsx',
-    ]) {
-      const config = await calculatedConfig(entries, file);
-      expect(config?.rules?.['testing-library/no-test-id-queries'], file).toBeDefined();
-      expect(config.rules['nitpicker/react-test-no-implementation-details'], file).toBeDefined();
-    }
-    for (const file of ['src/ui/panel.tsx', 'src/hooks/use-panel.ts']) {
-      const config = await calculatedConfig(entries, file);
-      expect(config.rules['testing-library/no-test-id-queries'], file).toBeUndefined();
-      expect(config.rules['nitpicker/react-test-no-implementation-details'], file).toBeUndefined();
-    }
+    ];
+    const production = ['src/ui/panel.tsx', 'src/hooks/use-panel.ts'];
+    const ruleIds = [
+      'testing-library/no-test-id-queries',
+      'nitpicker/react-test-no-implementation-details',
+    ];
+    const testConfigs = await Promise.all(tests.map((file) => calculatedConfig(entries, file)));
+    const productionConfigs = await Promise.all(
+      production.map((file) => calculatedConfig(entries, file)),
+    );
+    const applied = (configs) =>
+      configs.map((config) => ruleIds.map((id) => config.rules[id] !== undefined));
+    expect(applied(testConfigs)).toEqual(tests.map(() => [true, true]));
+    expect(applied(productionConfigs)).toEqual(production.map(() => [false, false]));
   });
 
   it.each([

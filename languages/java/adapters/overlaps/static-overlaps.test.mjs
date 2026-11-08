@@ -5,7 +5,14 @@ import { CATALOG_TOOLS, readCatalog } from '../../messages/rule-messages.mjs';
 import { OVERLAP_PAIRS, matchesRule, withoutOverlaps } from './static-overlaps.mjs';
 
 const CHECKS = path.resolve(import.meta.dirname, '../../gradle/errorprone/checks.json');
-const OWN_PMD_RULESETS = ['pmd-ruleset.xml', 'rules/guards-ruleset.xml'];
+const OWN_PMD_RULESETS = [
+  'pmd-ruleset.xml',
+  'pmd-main-ruleset.xml',
+  'pmd-test-ruleset.xml',
+  'spring-ruleset.xml',
+  'rules/guards-ruleset.xml',
+  'rules/test-honesty-ruleset.xml',
+];
 const OWN_PMD_RULE = /<rule (?:name="(\w+)"|ref="category\/java\/\w+\.xml\/(\w+)")/gu;
 const SIGNATURES = path.resolve(import.meta.dirname, '../../gradle/rules/forbidden-apis.txt');
 const SIGNATURE_TAG = /^@defaultMessage ([a-z-]+):/gmu;

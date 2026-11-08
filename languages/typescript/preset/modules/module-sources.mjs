@@ -1,5 +1,5 @@
 import { readFileSync } from 'node:fs';
-import ts from 'typescript';
+import { ts } from '../../typescript-api/typescript-api.mjs';
 import { readStamped } from './stamped-file-cache.mjs';
 
 function literalSource(node) {

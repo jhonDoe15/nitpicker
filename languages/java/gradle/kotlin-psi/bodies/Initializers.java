@@ -20,6 +20,18 @@ public final class Initializers {
     return value instanceof KtCallExpression ? nameOf(((KtCallExpression) value).getCalleeExpression()) : null;
   }
 
+  public static String qualifier(KtExpression initializer) {
+    return initializer instanceof KtDotQualifiedExpression
+        && ((KtDotQualifiedExpression) initializer).getSelectorExpression() instanceof KtNameReferenceExpression
+        ? clip(((KtDotQualifiedExpression) initializer).getReceiverExpression()) : null;
+  }
+
+  public static String typeArguments(KtExpression initializer) {
+    KtExpression value = initializer instanceof KtQualifiedExpression
+        ? ((KtQualifiedExpression) initializer).getSelectorExpression() : initializer;
+    return value instanceof KtCallExpression ? clip(((KtCallExpression) value).getTypeArgumentList()) : null;
+  }
+
   static String alias(KtProperty property) {
     KtExpression value = property.getInitializer();
     while (value instanceof KtDotQualifiedExpression
@@ -32,6 +44,10 @@ public final class Initializers {
 
   public static Boolean literal(KtProperty property) {
     return isLiteral(property.getInitializer()) ? Boolean.TRUE : null;
+  }
+
+  public static String literalText(KtProperty property) {
+    return isLiteral(property.getInitializer()) ? clip(property.getInitializer()) : null;
   }
 
   static boolean isLiteral(KtExpression value) {

@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { ingestRulesReport } from './rules-report.mjs';
+import { FAN_OUT_SEPARATOR } from '../rules/hints/ast-smells.mjs';
+import { applyRuleHints } from '../rules/rule-hints.mjs';
 
 const entry = (overrides) => ({
   rule: 'frozen-dataclass',
@@ -10,6 +12,57 @@ const entry = (overrides) => ({
 });
 
 describe('rules script report', () => {
+  it('shows the helper chain in the message and keeps it out of the identity', () => {
+    const via = 'quote -> shop.prices.fetch -> requests.get';
+    const report = [entry({ rule: 'io-in-domain', subject: 'shop.prices.fetch', via })];
+
+    expect(ingestRulesReport(JSON.stringify(report))).toEqual([
+      {
+        tool: 'python-rules',
+        rule: 'io-in-domain',
+        path: 'src/order.py',
+        identity: 'shop.prices.fetch',
+        subject: via,
+        message: `\`${via}\` does input or output through a project helper called from domain code`,
+        classification: 'enforceable',
+        location: { line: 4 },
+      },
+    ]);
+  });
+
+  it('keeps two helpers with the same name apart by their qualified names', () => {
+    const report = ['shop.shared.a.fetch', 'shop.shared.c.fetch'].map((subject) =>
+      entry({ rule: 'io-in-domain', subject, via: `quote -> ${subject} -> requests.get` }),
+    );
+
+    expect(ingestRulesReport(JSON.stringify(report)).map(({ identity }) => identity)).toEqual([
+      'shop.shared.a.fetch',
+      'shop.shared.c.fetch',
+    ]);
+  });
+
+  it.each([
+    [
+      'clock-now',
+      'when -> shop.clock.now -> datetime.datetime.now',
+      '`when -> shop.clock.now -> datetime.datetime.now` reads the clock through a project helper called from domain code',
+    ],
+    [
+      'random-in-domain',
+      'ident -> shop.ids.new -> uuid.uuid4',
+      '`ident -> shop.ids.new -> uuid.uuid4` draws randomness through a project helper called from domain code',
+    ],
+    [
+      'import-time-effect',
+      'shop.db.connect -> sqlite3.connect',
+      '`shop.db.connect -> sqlite3.connect` runs an external effect when the module is imported, so every import, tests included, performs it',
+    ],
+  ])('words the %s helper chain', (rule, via, message) => {
+    const [found] = ingestRulesReport(JSON.stringify([entry({ rule, subject: 'x', via })]));
+
+    expect(found.message).toBe(message);
+  });
+
   it('turns each entry into an enforceable finding identified by its subject', () => {
     expect(ingestRulesReport(JSON.stringify([entry()]))).toEqual([
       {
@@ -56,12 +109,33 @@ describe('rules script report', () => {
       '`os.getenv` reads the process environment outside the composition root',
     ],
     [
+      'process-stream-access',
+      'sys.stdout',
+      '`sys.stdout` reaches a standard stream outside the composition root',
+    ],
+    [
       'clock-now',
       'datetime.datetime.now',
       '`datetime.datetime.now()` reads the clock in domain code',
     ],
     ['random-in-domain', 'random.random', '`random.random()` draws randomness in domain code'],
     ['io-in-domain', 'requests', '`requests` does input or output in domain code'],
+    [
+      'random-in-domain',
+      'import faker',
+      '`import faker` brings an id or random-data library into domain code',
+    ],
+    ['logger-in-domain', 'logging', '`logging` is imported into domain code'],
+    [
+      'module-state-in-domain',
+      'shop.cache.PRICES',
+      'Domain code uses the module state `shop.cache.PRICES`',
+    ],
+    [
+      'import-time-effect',
+      'sqlite3.connect',
+      '`sqlite3.connect()` runs when the module is imported, so every import, tests included, performs it',
+    ],
     ['module-level-mutable-state', 'ITEMS', '`ITEMS` changes a module-level collection'],
     [
       'unsafe-path-join',
@@ -73,15 +147,23 @@ describe('rules script report', () => {
       'isinstance(data)',
       '`isinstance(data)` checks untrusted data by hand',
     ],
+    ['type-cast', 'cast(str)', '`cast(str)` asserts a type without checking the value'],
+    ['type-cast', 'cast(str) in convert', '`cast(str)` asserts a type without checking the value'],
+    ['explicit-any', 'convert(value)', '`convert(value)` is typed with an explicit `Any`'],
     ['any-in-domain', 'total', '`total` uses `Any` in domain code'],
     ['pydantic-any-field', 'Payload.body', 'The pydantic field `Payload.body` is typed `Any`'],
     ['pydantic-extra-allow', 'Payload', 'The pydantic model `Payload` accepts unknown fields'],
     ['repeated-string-literal', 'pending', 'The string "pending" is repeated three times or more'],
     ['generic-name', 'utils', '`utils` has a generic name'],
-    ['hardcoded-secret', 'API_TOKEN', '`API_TOKEN` holds a hardcoded secret'],
+    ['hardcoded-secret', 'API_TOKEN', 'The value of `API_TOKEN` is a hardcoded secret'],
     ['credential-shape', 'credential', 'A string has the shape of a credential'],
     ['secret-in-log', 'token', '`token` is a secret and is passed to a log call'],
     ['io-in-loop', 'requests.get()', '`requests.get()` runs once per item of a loop'],
+    [
+      'unbounded-fan-out',
+      ['asyncio.gather', 'a | b', 'fetch()', 'client.get()', 'message'].join(FAN_OUT_SEPARATOR),
+      '`asyncio.gather` starts `fetch()` (which publishes through `client.get()`) for every element of `a | b` at once',
+    ],
     [
       'task-outlives-resource',
       'stream passed to nursery.start_soon',
@@ -127,6 +209,11 @@ describe('rules script report', () => {
       'http-without-timeout',
       'urllib.request.urlopen',
       '`urllib.request.urlopen` can wait forever: it has no timeout',
+    ],
+    [
+      'subprocess-without-timeout',
+      'subprocess.run',
+      '`subprocess.run` waits for a child process without a deadline, so a command that never exits hangs this code for good',
     ],
     [
       'unsafe-deserialization',
@@ -229,5 +316,69 @@ describe('rules script report', () => {
 
   it('reads an empty report', () => {
     expect(ingestRulesReport('[]')).toEqual([]);
+  });
+
+  it('turns a check skipped for a too deep expression into a descriptive note', () => {
+    const report = [
+      entry({ rule: 'rules-too-deep', path: 'src/sums.py', subject: 'file', line: 1 }),
+      entry({ rule: 'rules-too-deep', path: '.', subject: 'unused-option', line: 1 }),
+      entry({ rule: 'rules-too-deep', path: 'src/deep.py', subject: 'all', line: 1 }),
+    ];
+
+    expect(ingestRulesReport(JSON.stringify(report))).toEqual([
+      {
+        tool: 'python-rules',
+        rule: 'rules-too-deep',
+        path: 'src/sums.py',
+        identity: 'file',
+        subject: 'file',
+        message:
+          "python-rules skipped some of the per-file checks here: an expression nests too deeply for Python's recursion limit. Split the expression to have it checked.",
+        classification: 'descriptive',
+        location: { line: 1 },
+      },
+      {
+        tool: 'python-rules',
+        rule: 'rules-too-deep',
+        path: '.',
+        identity: 'unused-option',
+        subject: 'unused-option',
+        message:
+          "python-rules skipped the unused-option checks here: an expression nests too deeply for Python's recursion limit. Split the expression to have it checked.",
+        classification: 'descriptive',
+        location: { line: 1 },
+      },
+      {
+        tool: 'python-rules',
+        rule: 'rules-too-deep',
+        path: 'src/deep.py',
+        identity: 'all',
+        subject: 'all',
+        message:
+          "python-rules skipped every check here: an expression nests too deeply for Python's recursion limit. Split the expression to have it checked.",
+        classification: 'descriptive',
+        location: { line: 1 },
+      },
+    ]);
+  });
+
+  it('names an unused parameter with a default, and which calls count', () => {
+    const report = [
+      entry({ rule: 'unused-option', subject: 'total.rate', data: { scope: 'private' } }),
+      entry({ rule: 'unused-option', subject: 'total.cents', data: { scope: 'published' } }),
+    ];
+
+    expect(ingestRulesReport(JSON.stringify(report)).map(({ message }) => message)).toEqual([
+      'Option total.rate is never set. Remove it, or set it from a real call (tests do not count).',
+      "Option total.cents is never set. Remove it, or set it from a real call (this package's own tests count).",
+    ]);
+    expect(
+      applyRuleHints(ingestRulesReport(JSON.stringify(report))).map(
+        ({ allowedForm }) => allowedForm,
+      ),
+    ).toEqual([
+      'Remove it, or set it from a real call (tests do not count).',
+      "Remove it, or set it from a real call (this package's own tests count).",
+    ]);
   });
 });

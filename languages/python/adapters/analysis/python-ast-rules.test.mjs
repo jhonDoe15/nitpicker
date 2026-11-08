@@ -78,9 +78,43 @@ describe('running the rules script', () => {
       entryFiles: [],
       entryModules: [],
       boundaryRoots: ['pydantic', 'pydantic_settings'],
+      modules: { 'src/demo/a.py': 'demo.a' },
+      published: false,
+      entryPoints: [],
     });
     expect(readFileSync(path.join(reportRoot, 'python-files.txt'), 'utf8')).toBe('src/demo/a.py');
     expect(readFileSync(path.join(reportRoot, 'rules.json'), 'utf8')).toBe('[{"rule":"x"}]');
+  });
+
+  it('hands it the production modules and the package facts', () => {
+    const root = fakes.project({
+      'pyproject.toml':
+        '[project]\nname = "shop"\n[project.scripts]\nshop = "shop.cli:main"\n[build-system]\nbuild-backend = "hatchling.build"\n',
+      'src/shop/__init__.py': '',
+      'src/shop/cli.py': '',
+      'tests/test_cli.py': '',
+      'testing/helpers.py': '',
+      'src/shop/cart_test.py': '',
+      'src/shop/testing/fakes.py': '',
+    });
+    const { context, reportRoot } = fakes.contextFor(root);
+
+    checkRules(context);
+
+    const { modules, testFiles, entryModules, published, entryPoints } = JSON.parse(
+      readFileSync(path.join(reportRoot, 'rule-options.json'), 'utf8'),
+    );
+    expect({ modules, testFiles, entryModules, published, entryPoints }).toEqual({
+      modules: {
+        'src/shop/__init__.py': 'shop',
+        'src/shop/cli.py': 'shop.cli',
+        'src/shop/testing/fakes.py': 'shop.testing.fakes',
+      },
+      testFiles: ['src/shop/cart_test.py', 'testing/helpers.py', 'tests/test_cli.py'],
+      entryModules: ['shop.cli'],
+      published: true,
+      entryPoints: ['shop.cli:main'],
+    });
   });
 
   it('fails with the rules-failed rule when python fails', () => {

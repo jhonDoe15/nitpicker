@@ -1,0 +1,10 @@
+  <rule name="SpringAsyncExecutor" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
+        message="Name a bounded executor bean, @Async(&quot;executorName&quot;), and return CompletableFuture so failures reach the caller.">
+    <priority>2</priority>
+    <properties><property name="xpath"><value><![CDATA[
+//Annotation[pmd-java:typeIs('org.springframework.scheduling.annotation.Async')][not(AnnotationMemberList/MemberValuePair)]
+|
+//MethodDeclaration[ModifierList/Annotation[pmd-java:typeIs('org.springframework.scheduling.annotation.Async')]]
+  [not(ClassType[pmd-java:typeIs('java.util.concurrent.CompletableFuture')])]
+]]></value></property></properties>
+  </rule>

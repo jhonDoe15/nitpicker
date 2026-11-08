@@ -1,0 +1,7 @@
+[
+  {
+    "tool": "ruff",
+    "rule": "S201",
+    "mention": "flask --debug run"
+  }
+]

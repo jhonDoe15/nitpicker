@@ -1,0 +1,7 @@
+  <rule name="SpringTransactionalAnnotation" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
+        message="Use org.springframework.transaction.annotation.Transactional. The jakarta and javax annotations have no readOnly or timeout and roll back on different exceptions.">
+    <priority>2</priority>
+    <properties><property name="xpath"><value><![CDATA[
+//Annotation[pmd-java:typeIs('jakarta.transaction.Transactional') or pmd-java:typeIs('javax.transaction.Transactional')]
+]]></value></property></properties>
+  </rule>

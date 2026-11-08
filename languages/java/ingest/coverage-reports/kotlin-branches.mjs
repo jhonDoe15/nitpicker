@@ -26,15 +26,21 @@ const BRANCHING_CALL_NAMES = [
   'takeUnless',
   'ifEmpty',
   'ifBlank',
-  'orEmpty',
   'getOrElse',
-  'maxOf',
-  'minOf',
   'coerceAtLeast',
   'coerceAtMost',
   'coerceIn',
 ];
+const LIBRARY_BRANCHES = new Map([
+  ['orEmpty', 2],
+  ['isNullOrEmpty', 4],
+  ['isNullOrBlank', 4],
+]);
 const SUSPENSION_CALL = new RegExp(String.raw`\b(${SUSPENSION_NAMES.join('|')})\s*[({]`);
+const LIBRARY_CALL = new RegExp(
+  String.raw`(?<!\bfun\b[^=(]*)\.\s*(${[...LIBRARY_BRANCHES.keys()].join('|')})\s*\(\s*\)`,
+  'g',
+);
 const BRANCHING_SYNTAX = new RegExp(
   String.raw`\b(?:if|when|while|for|do|is|in|as)\b|&&|\|\||\?[.:]|[<>!]|==|\b(?:${BRANCHING_CALL_NAMES.join('|')})\b`,
 );
@@ -53,6 +59,14 @@ function codeOf(sourceLine) {
 
 export function suspensionCall(sourceLine) {
   return SUSPENSION_CALL.exec(codeOf(sourceLine))?.[1];
+}
+
+export function libraryCalls(sourceLine) {
+  return [...codeOf(sourceLine).matchAll(LIBRARY_CALL)].map(([, name]) => name);
+}
+
+export function libraryBranchCount(sourceLine) {
+  return libraryCalls(sourceLine).reduce((sum, name) => sum + LIBRARY_BRANCHES.get(name), 0);
 }
 
 export function isCompilerGeneratedBranchLine(sourceLine) {

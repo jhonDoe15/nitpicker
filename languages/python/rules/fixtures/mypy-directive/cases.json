@@ -1,0 +1,8 @@
+[
+  {
+    "name": "mypy directive names fixing the cause",
+    "tool": "python-rules",
+    "rule": "no-inline-suppression",
+    "mention": "fix the code"
+  }
+]

@@ -3,7 +3,13 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import { parse } from 'yaml';
-import { SUITES, classifyGates, gateCandidates, workflowProblems } from './e2e-gates.mjs';
+import {
+  SUITES,
+  classifyGates,
+  gateCandidates,
+  suiteFiles,
+  workflowProblems,
+} from './e2e-gates.mjs';
 
 const ENV = ['process', 'env'].join('.');
 const roots = [];
@@ -25,11 +31,15 @@ function repository(files) {
 }
 
 describe('the E2E gate candidates', () => {
-  it('are the .e2e.test. files and the tests that read a suite flag directly or through an import', () => {
+  it('are the .e2e.test. files and the tests that read a suite flag directly, through an import or its re-exports', () => {
     const root = repository({
       'languages/a/plain.e2e.test.mjs': "it('runs', () => {});\n",
       'languages/a/support.mjs': `export const on = ${ENV}.NITPICKER_JAVA_E2E === '1';\n`,
       'languages/a/gated.test.mjs': "import { on } from './support.mjs';\n",
+      'languages/a/project.mjs': "export { on } from './support.mjs';\n",
+      'languages/a/nested/deep.test.mjs': "import { on } from '../project.mjs';\n",
+      'languages/a/helper.mjs': "import { on } from './support.mjs';\nexport const size = 1;\n",
+      'languages/a/helper.test.mjs': "import { size } from './helper.mjs';\n",
       'languages/a/unit.test.mjs': "vi.stubEnv('NITPICKER_JAVA_E2E', '1');\n",
       'scripts/typo.test.mjs': `const on = ${ENV}['NITPICKER_JAAVA_E2E'] === '1';\n`,
       'docs/other.test.mjs': `const on = ${ENV}.NITPICKER_JAVA_E2E === '1';\n`,
@@ -37,9 +47,41 @@ describe('the E2E gate candidates', () => {
 
     expect(gateCandidates(root)).toEqual([
       { file: 'languages/a/gated.test.mjs', flags: ['NITPICKER_JAVA_E2E'] },
+      { file: 'languages/a/nested/deep.test.mjs', flags: ['NITPICKER_JAVA_E2E'] },
       { file: 'languages/a/plain.e2e.test.mjs', flags: [] },
       { file: 'scripts/typo.test.mjs', flags: ['NITPICKER_JAAVA_E2E'] },
     ]);
+  });
+});
+
+describe('the suite files', () => {
+  const files = {
+    'languages/a/java.e2e.test.mjs': `const on = ${ENV}.NITPICKER_JAVA_E2E === '1';\n`,
+    'languages/a/support.mjs': `export const on = ${ENV}.NITPICKER_KOTLIN_E2E === '1';\n`,
+    'languages/a/kotlin.test.mjs': "import { on } from './support.mjs';\n",
+    'languages/a/plain.e2e.test.mjs': "it('runs', () => {});\n",
+    'languages/a/unit.test.mjs': "it('runs', () => {});\n",
+  };
+
+  it('are the files that read the flag of a suite that is set, directly or through an import', () => {
+    const root = repository(files);
+
+    expect(suiteFiles(root, { NITPICKER_JAVA_E2E: '1' })).toEqual([
+      'languages/a/java.e2e.test.mjs',
+    ]);
+    expect(suiteFiles(root, { NITPICKER_KOTLIN_E2E: '1' })).toEqual([
+      'languages/a/kotlin.test.mjs',
+    ]);
+    expect(suiteFiles(root, { NITPICKER_JAVA_E2E: '1', NITPICKER_KOTLIN_E2E: '1' })).toEqual([
+      'languages/a/java.e2e.test.mjs',
+      'languages/a/kotlin.test.mjs',
+    ]);
+  });
+
+  it('are none when no suite flag is set to 1', () => {
+    const root = repository(files);
+
+    expect(suiteFiles(root, { NITPICKER_JAVA_E2E: '0' })).toEqual([]);
   });
 });
 
@@ -55,6 +97,7 @@ describe('the E2E gates', () => {
     { file: 'ungated.e2e.test.mjs', flags: [] },
     { file: 'typo.e2e.test.mjs', flags: ['NITPICKER_KOTLN_E2E'] },
     { file: 'foreign.e2e.test.mjs', flags: ['NITPICKER_PYTHON_E2E'] },
+    { file: 'go.e2e.test.mjs', flags: ['NITPICKER_GO_E2E'] },
   ];
   const ungated = cases('ungated.e2e.test.mjs', 'runs everywhere');
   const listings = {
@@ -73,6 +116,7 @@ describe('the E2E gates', () => {
         ...cases('both.e2e.test.mjs', 'd'),
       ],
       python: [...ungated, ...cases('python.e2e.test.mjs', 'g')],
+      go: [...ungated, ...cases('go.e2e.test.mjs', 'h')],
     },
   };
 
@@ -96,6 +140,7 @@ describe('the E2E gates', () => {
       ],
       kotlin: ['kotlin.e2e.test.mjs > f'],
       python: ['python.e2e.test.mjs > g'],
+      go: ['go.e2e.test.mjs > h'],
     });
   });
 });
@@ -115,8 +160,7 @@ describe('the E2E workflows', () => {
 
   it('report an aggregate that does not need the plan, and a shard run without --shard', () => {
     const parsed = workflow('python');
-    const aggregate = Object.keys(parsed.jobs).find((name) => !name.startsWith('python-shard'));
-    parsed.jobs[aggregate].needs = ['python-shard'];
+    parsed.jobs['python-e2e'].needs = ['changes', 'python-shard'];
     for (const step of parsed.jobs['python-shard'].steps) {
       step.run = step.run?.replace(/ --shard=\S+/u, '');
     }
@@ -124,6 +168,15 @@ describe('the E2E workflows', () => {
     expect(workflowProblems(parsed, 'python')).toEqual([
       'python-shard must run test:python with --shard=${{ matrix.shard }}/${{ strategy.job-total }}',
       'one aggregate job must always run, need python-shard-plan and python-shard and check both results',
+    ]);
+  });
+
+  it('report an aggregate that ignores the changed-file selection', () => {
+    const parsed = workflow('go');
+    parsed.jobs['go-e2e'].needs = ['go-shard-plan', 'go-shard'];
+
+    expect(workflowProblems(parsed, 'go')).toEqual([
+      'the aggregate job must also need changes and check its result',
     ]);
   });
 });

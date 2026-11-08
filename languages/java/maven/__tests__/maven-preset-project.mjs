@@ -14,6 +14,88 @@ const gradleFixture = path.join(
   '../adapters/fixtures/gradle-project',
 );
 const temporary = [];
+const SHAPES = `package demo;
+
+public final class Shapes {
+    private Shapes() {}
+
+    public sealed interface Shape permits Circle, Square {}
+
+    public record Circle(int radius) implements Shape {}
+
+    public record Square(int side) implements Shape {}
+
+    public enum Tone { LOW, HIGH }
+
+    public interface Writer {
+        String write(String text);
+    }
+
+    public static int area(Shape shape) {
+        return switch (shape) {
+            case Circle circle -> 3 * circle.radius() * circle.radius();
+            case Square square -> square.side() * square.side();
+        };
+    }
+
+    public static String name(Tone tone) {
+        return switch (tone) {
+            case LOW -> "low";
+            case HIGH -> "high";
+        };
+    }
+
+    public static String send(Writer writer, String text) {
+        return writer.write(text);
+    }
+}
+`;
+const SHAPES_TEST = `package demo;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+
+import org.junit.jupiter.api.Test;
+
+class ShapesTest {
+    @Test
+    void takesEveryCase() {
+        assertEquals(3, Shapes.area(new Shapes.Circle(1)));
+        assertEquals(4, Shapes.area(new Shapes.Square(2)));
+        assertEquals("low", Shapes.name(Shapes.Tone.LOW));
+        assertEquals("high", Shapes.name(Shapes.Tone.HIGH));
+        assertEquals("a", Shapes.send(text -> text, "a"));
+    }
+}
+`;
+const GUARD = `package demo;
+
+public final class Guard {
+    public int share(int total, int parts) {
+        if (parts == 0) {
+            throw new IllegalArgumentException("parts must not be zero");
+        }
+        return total / parts;
+    }
+
+    public String label(String raw) {
+        return raw.trim();
+    }
+}
+`;
+const GUARD_TEST = `package demo;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+
+import org.junit.jupiter.api.Test;
+
+class GuardTest {
+    @Test
+    void sharesTotals() {
+        assertEquals(3, new Guard().share(6, 2));
+        assertEquals("a", new Guard().label("a"));
+    }
+}
+`;
 function copyOf(...sources) {
   const root = mkdtempSync(path.join(tmpdir(), 'nitpicker-maven-e2e-'));
   temporary.push(root);
@@ -68,6 +150,10 @@ export {
   DATED,
   EMPTY_CATCH,
   FAILING_TEST,
+  GUARD,
+  GUARD_TEST,
+  SHAPES,
+  SHAPES_TEST,
   copyOf,
   twinProjects,
   copiedTestCases,

@@ -1,3 +1,5 @@
+import { ownedNativeName } from './native/owned-native-rules.mjs';
+
 const NATIVE_PREFIXES = new Map([
   ['', ['eslint']],
   ['@typescript-eslint', ['typescript', 'eslint']],
@@ -49,10 +51,13 @@ function pluginAlias(namespace) {
 
 export function translateRule(ruleId, { nativeRules, bridgedRules = new Set() }) {
   const { namespace, rule } = splitRuleId(ruleId);
-  const nativeScopes = bridgedRules.has(ruleId) ? [] : (NATIVE_PREFIXES.get(namespace) ?? []);
-  const nativeName = nativeScopes
-    .map((scope) => `${scope}/${rule}`)
-    .find((candidate) => nativeRules.has(candidate));
+  const candidates = bridgedRules.has(ruleId)
+    ? []
+    : [
+        ...(NATIVE_PREFIXES.get(namespace) ?? []).map((scope) => `${scope}/${rule}`),
+        ownedNativeName(ruleId),
+      ];
+  const nativeName = candidates.find((candidate) => nativeRules.has(candidate));
   if (nativeName !== undefined) {
     return { name: nativeName, typeAware: nativeRules.get(nativeName).typeAware };
   }

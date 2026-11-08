@@ -1,0 +1,15 @@
+  <rule name="SpringCorsWildcard" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
+        message="List the allowed origins from configuration instead of &quot;*&quot; when credentials are allowed; any site could then call this API as the signed-in user.">
+    <priority>1</priority>
+    <properties><property name="xpath"><value><![CDATA[
+//MethodCall[@MethodName = ('setAllowedOrigins', 'setAllowedOriginPatterns', 'allowedOrigins', 'allowedOriginPatterns',
+    'addAllowedOrigin', 'addAllowedOriginPattern')]
+  /ArgumentList//StringLiteral[@ConstValue = '*']
+  [ancestor::MethodDeclaration[1]//MethodCall[@MethodName = ('setAllowCredentials', 'allowCredentials')]
+    /ArgumentList/*[self::BooleanLiteral[@True = true()] or self::FieldAccess[@Name = 'TRUE']]]
+|
+//Annotation[pmd-java:typeIs('org.springframework.web.bind.annotation.CrossOrigin')]
+  [AnnotationMemberList/MemberValuePair[@Name = 'allowCredentials']//StringLiteral[@ConstValue = 'true']]
+  /AnnotationMemberList/MemberValuePair[@Name = ('value', 'origins', 'originPatterns')]//StringLiteral[@ConstValue = '*']
+]]></value></property></properties>
+  </rule>

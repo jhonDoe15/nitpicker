@@ -9,6 +9,8 @@ import java.util.Map;
 import java.util.Set;
 import nitpicker.kotlinpsi.bodies.Bodies;
 import nitpicker.kotlinpsi.common.Frame;
+import nitpicker.kotlinpsi.load.LoadCalls;
+import nitpicker.kotlinpsi.timeouts.Timeouts;
 import org.jetbrains.kotlin.com.intellij.psi.PsiElement;
 import org.jetbrains.kotlin.psi.*;
 
@@ -19,16 +21,20 @@ public final class FactsCollector {
   private final State state;
   private final Declarations declarations;
   private final Calls calls;
+  private final Timeouts timeouts;
   private final Predicates predicates;
   private final Bodies bodies;
+  private final LoadCalls loads;
 
   public FactsCollector(KtFile file, String text, String relative, boolean test, Set<String> nothing) {
     this.file = file;
     this.state = new State(file, text, relative, test);
     this.declarations = new Declarations(state);
     this.calls = new Calls(state);
+    this.timeouts = new Timeouts(file, text, state.timeouts);
     this.predicates = new Predicates(state);
     this.bodies = new Bodies(text, test, nothing, state.namesOf(HANDLER));
+    this.loads = test ? null : new LoadCalls(file, state::lineOf);
   }
 
   public void collect() {
@@ -38,6 +44,9 @@ public final class FactsCollector {
   public Map<String, Object> result() {
     Map<String, Object> result = new LinkedHashMap<>(state.result());
     result.putAll(bodies.result());
+    if (loads != null) {
+      result.putAll(loads.result());
+    }
     return result;
   }
 
@@ -74,10 +83,14 @@ public final class FactsCollector {
       return new Frame(frame, m("k", "init"));
     }
     if (element instanceof KtLambdaExpression) {
-      return new Frame(frame, Scopes.lambdaData((KtLambdaExpression) element, state));
+      Frame inner = new Frame(frame, Scopes.lambdaData((KtLambdaExpression) element, state));
+      bodies.iterable(inner, element);
+      return inner;
     }
     if (element instanceof KtLoopExpression) {
-      return new Frame(frame, Scopes.loopData((KtLoopExpression) element, state));
+      Frame inner = new Frame(frame, Scopes.loopData((KtLoopExpression) element, state));
+      bodies.iterable(inner, element);
+      return inner;
     }
     observe(element, frame);
     return frame;
@@ -93,12 +106,16 @@ public final class FactsCollector {
 
   private void observe(PsiElement element, Frame frame) {
     bodies.observe(element, frame);
+    if (loads != null) {
+      loads.observe(element);
+    }
     if (element instanceof KtProperty) {
       declarations.declareProperty((KtProperty) element, frame);
     } else if (element instanceof KtTypeAlias) {
       declarations.declareTypeAlias((KtTypeAlias) element);
     } else if (element instanceof KtCallExpression) {
       calls.call((KtCallExpression) element, frame);
+      timeouts.call((KtCallExpression) element, frame);
     } else if (element instanceof KtSuperTypeCallEntry) {
       KtSuperTypeCallEntry entry = (KtSuperTypeCallEntry) element;
       calls.delegation(element, nameOf(entry.getCalleeExpression()), entry.getValueArguments(), List.of());
@@ -108,6 +125,8 @@ public final class FactsCollector {
       predicates.binary((KtBinaryExpression) element, frame);
     } else if (element instanceof KtDotQualifiedExpression) {
       predicates.containsForm((KtDotQualifiedExpression) element, frame);
+    } else if (element instanceof KtWhenExpression) {
+      predicates.when((KtWhenExpression) element, frame);
     } else if (element instanceof KtCallableReferenceExpression) {
       state.references.add(((KtCallableReferenceExpression) element).getCallableReference().getReferencedName());
     }

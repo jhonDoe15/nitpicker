@@ -1,6 +1,8 @@
 import ast
+import importlib
 import json
 import os
+import re
 import sys
 import tokenize
 
@@ -10,54 +12,36 @@ MINIMUM_PYTHON = (3, 10)
 SKIPPED_RULE = "rules-skipped"
 CHECK_FAILED_RULE = "rules-check-failed"
 ALLOWANCES_REPORT = "rules-allowances.json"
+TOO_DEEP_RULE = "rules-too-deep"
+GUARDED_PREFIXES = ("security.", "signatures.", "concurrency.")
+
+
+SKIPPED_FOLDERS = {"fixtures", "test-support", "e2e", "__pycache__"}
+CHECK_DEFINITION = re.compile(r"^def check\(", re.MULTILINE)
+
+
+def defines_check(path):
+    with open(path, encoding="utf-8") as handle:
+        return CHECK_DEFINITION.search(handle.read()) is not None
+
+
+def check_module_names():
+    names = []
+    for root, folders, files in os.walk(HERE):
+        folders[:] = sorted(name for name in folders if name not in SKIPPED_FOLDERS)
+        if root == HERE:
+            continue
+        for name in sorted(files):
+            path = os.path.join(root, name)
+            if name.endswith(".py") and defines_check(path):
+                module = os.path.relpath(path, HERE)[: -len(".py")].replace(os.sep, ".")
+                names.append(module.removesuffix(".__init__"))
+    return names
 
 
 def load_checks():
     sys.path.insert(0, HERE)
-    from boundary import domain_types, guards, paths
-    from checks import comments, declarations, shell, state
-    from discovery import helpers, uncollected
-    from environment import environment, purity
-    from errors import errors
-    from honesty import assertions, isolation, skipped
-    from security import hashes, loading
-    from security.sql import check as sql
-    from security.timeouts import check as timeouts
-    from security.tls import check as tls
-    from silent_tests import unasserted
-    from smells import literals, loops, names, secret_logs, secrets
-    from tasks import cleanup, lifetimes
-
-    return [
-        declarations,
-        errors,
-        comments,
-        environment,
-        purity,
-        state,
-        shell,
-        sql,
-        tls,
-        hashes,
-        timeouts,
-        loading,
-        guards,
-        domain_types,
-        paths,
-        literals,
-        names,
-        secrets,
-        secret_logs,
-        loops,
-        skipped,
-        assertions,
-        unasserted,
-        isolation,
-        uncollected,
-        helpers,
-        lifetimes,
-        cleanup,
-    ]
+    return [importlib.import_module(name) for name in check_module_names()]
 
 
 class FileContext:
@@ -88,8 +72,34 @@ def parse_file(path):
         return None
 
 
+def too_deep(path, subject):
+    return {"rule": TOO_DEEP_RULE, "path": path, "subject": subject, "line": 1}
+
+
+def review_findings(project):
+    from review.project.enum_predicates import enum_predicate_findings
+    from review.project.forwarding import forwarding_findings
+    from review.project.index import ProjectIndex
+    from review.project.unused_options import unused_option_findings
+
+    options = project.options
+    index = ProjectIndex(project)
+    checks = {
+        "forwarding-wrapper": lambda: forwarding_findings(index),
+        "exhaustive-enum-predicate": lambda: enum_predicate_findings(index),
+        "unused-option": lambda: unused_option_findings(index, options),
+    }
+    found = []
+    for name, run in checks.items():
+        try:
+            found.extend(run())
+        except RecursionError:
+            found.append(too_deep(".", name))
+    return found
+
+
 def is_guarded(module):
-    return module.__name__.startswith("security.")
+    return getattr(module, "GUARDED", False) or module.__name__.startswith(GUARDED_PREFIXES)
 
 
 def check_failure(module, context, error):
@@ -121,26 +131,42 @@ class Results:
         self.support = support
 
 
+def file_results(context, modules):
+    found, allowances, deep = [], [], False
+    for module in modules:
+        try:
+            checked, failures = run_check(module, context)
+            allowed, allowance_failures = run_check(module, context, "allowances")
+        except RecursionError:
+            deep = True
+            continue
+        found.extend(checked + failures + allowance_failures)
+        allowances.extend(allowed)
+    return found + ([too_deep(context.path, "file")] if deep else []), allowances
+
+
 def check_all(paths, options, modules):
     from checks.comments import stub_findings
     from index.project import Project
     from security.support import support_files
 
     project = Project(options, paths)
-    parsed = {path: parse_file(path) for path in paths}
-    for path, source in parsed.items():
+    findings = [item for path in paths for item in stub_findings(path)]
+    for path in paths:
+        try:
+            source = parse_file(path)
+        except RecursionError:
+            findings.append(too_deep(path, "all"))
+            continue
         if source is not None:
             project.add(FileContext(path, source[0], source[1], project))
-    findings = [item for path in paths for item in stub_findings(path)]
     allowances = []
     for context in project.contexts.values():
-        for module in modules:
-            found, failures = run_check(module, context)
-            allowed, allowance_failures = run_check(module, context, "allowances")
-            findings.extend(found + failures + allowance_failures)
-            allowances.extend(allowed)
+        found, allowed = file_results(context, modules)
+        findings.extend(found)
+        allowances.extend(allowed)
     support = project.memo("security-support-files", support_files)
-    return Results(findings, allowances, sorted(support))
+    return Results(findings + review_findings(project), allowances, sorted(support))
 
 
 def read_options(arguments):
@@ -174,7 +200,9 @@ def main(arguments):
     results.findings.sort(
         key=lambda item: (item["path"], item["line"], item["rule"], item["subject"])
     )
-    write_json(out_file, results.findings)
+    write_json(
+        out_file, [{k: v for k, v in item.items() if k != "end"} for item in results.findings]
+    )
     allowed = sorted(
         results.allowances, key=lambda item: (item["path"], item["line"], item["rule"])
     )

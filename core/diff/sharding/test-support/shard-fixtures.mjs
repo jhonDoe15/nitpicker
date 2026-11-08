@@ -70,6 +70,7 @@ export function writeShard(
     headSha = 'head',
     findings = [],
     held,
+    notes,
     toolErrors = [],
     toolVersions = {},
     configurationHashes = {},
@@ -98,6 +99,9 @@ export function writeShard(
   writeJson(path.join(shardRoot, 'changed-metrics.json'), []);
   if (held !== undefined) {
     writeJson(path.join(shardRoot, 'held-findings.json'), held);
+  }
+  if (notes !== undefined) {
+    writeJson(path.join(shardRoot, 'notes.json'), notes);
   }
   writeJson(path.join(shardRoot, 'tool-errors.json'), toolErrors);
 }

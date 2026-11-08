@@ -1,4 +1,4 @@
-import ts from 'typescript';
+import { ts } from '../../../../typescript-api/typescript-api.mjs';
 
 const TEXT_KINDS = new Set([
   ts.SyntaxKind.StringLiteral,

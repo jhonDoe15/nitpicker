@@ -12,7 +12,7 @@ describe.skipIf(!enabled)('Java preset end to end', () => {
     expect(summarize(result.newEnforceable)).toEqual([
       'crap crap-score-limit Complex.java',
       ...repeated(9, 'jacoco changed-branch-coverage Complex.java'),
-      ...repeated(28, 'pit mutant-nocoverage Complex.java'),
+      ...repeated(55, 'pit mutant-nocoverage Complex.java'),
       'structure function-statements-limit Complex.java', // the method has more than 15 statements
     ]);
   }, 180_000);

@@ -1,0 +1,24 @@
+  <rule name="SpringDataDerivedQuery" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
+        message="Write this repository method with @Query (JPQL in a text block for JPA), naming the entity and every condition, instead of a query derived from the method name.">
+    <priority>2</priority>
+    <properties><property name="xpath"><value><![CDATA[
+//ClassDeclaration[@Interface = true()][ExtendsList/ClassType[pmd-java:typeIs('org.springframework.data.repository.Repository')]]
+  /ClassBody/MethodDeclaration[not(Block) and not(pmd-java:modifiers() = ('default', 'static'))]
+  [not(@Name = ('findById', 'findAll', 'findAllById', 'findOne', 'findBy', 'count', 'exists', 'existsById',
+      'save', 'saveAll', 'saveAndFlush', 'saveAllAndFlush', 'delete', 'deleteById', 'deleteAll', 'deleteAllById',
+      'deleteAllInBatch', 'deleteAllByIdInBatch', 'getReferenceById'))]
+  [not(ModifierList/Annotation[
+    pmd-java:typeIs('org.springframework.data.jpa.repository.Query')
+    or pmd-java:typeIs('org.springframework.data.jpa.repository.NativeQuery')
+    or pmd-java:typeIs('org.springframework.data.jpa.repository.query.Procedure')
+    or pmd-java:typeIs('org.springframework.data.jpa.repository.Procedure')
+    or pmd-java:typeIs('org.springframework.data.jdbc.repository.query.Query')
+    or pmd-java:typeIs('org.springframework.data.r2dbc.repository.Query')
+    or pmd-java:typeIs('org.springframework.data.mongodb.repository.Query')
+    or pmd-java:typeIs('org.springframework.data.mongodb.repository.Aggregation')
+    or pmd-java:typeIs('org.springframework.data.neo4j.repository.query.Query')
+    or pmd-java:typeIs('org.springframework.data.cassandra.repository.Query')
+    or pmd-java:typeIs('org.springframework.data.couchbase.repository.Query')
+    or pmd-java:typeIs('org.springframework.data.elasticsearch.annotations.Query')])]
+]]></value></property></properties>
+  </rule>

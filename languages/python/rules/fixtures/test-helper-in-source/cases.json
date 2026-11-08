@@ -1,0 +1,7 @@
+[
+  {
+    "tool": "python-rules",
+    "rule": "test-helper-in-source",
+    "mention": "tests folder"
+  }
+]

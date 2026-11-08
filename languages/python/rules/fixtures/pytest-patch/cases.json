@@ -1,0 +1,7 @@
+[
+  {
+    "tool": "ruff",
+    "rule": "PT008",
+    "mention": "return_value"
+  }
+]

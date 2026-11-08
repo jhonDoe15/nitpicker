@@ -56,7 +56,7 @@ function dependencyAnalyzer() {
 }
 
 describe('ESLint snapshot isolation and failures', () => {
-  it('uses prepared baseline dependencies without replacing them with head dependencies', () => {
+  it('uses prepared baseline dependencies without replacing them with head dependencies', async () => {
     const root = temporaryRoot('nitpicker-diff-');
     const projectRoot = path.join(root, 'base/project');
     const policyRoot = path.join(root, 'base/policy');
@@ -70,7 +70,7 @@ describe('ESLint snapshot isolation and failures', () => {
       'package.json': '{"name":"fixture","version":"2.0.0"}\n',
     });
 
-    const findings = runEslint(
+    const findings = await runEslint(
       parseArguments([
         '--analyzer-name',
         'eslint-lint',
@@ -99,6 +99,7 @@ describe('ESLint snapshot isolation and failures', () => {
         location: { line: 2, column: 3 },
         classification: 'enforceable',
         symbol: 'baseline',
+        anchor: { key: expect.stringMatching(/^count:/u) },
         ratchet: {
           key: 'count:`debugger` statement is not allowed',
           value: 1,

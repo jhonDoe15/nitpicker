@@ -5,6 +5,7 @@ import {
   CONTROL_FLOW_RULE,
 } from './flow/assertion-flow.mjs';
 import { focusedTests, FOCUSED_MESSAGE, FOCUSED_RULE } from './focused-tests.mjs';
+import { RETRY_MESSAGE, RETRY_RULE, retriesInTests } from './retries/retry-tests.mjs';
 import { DISABLED_MESSAGE, DISABLED_RULE, skippedTests } from './skipped-tests.mjs';
 
 function flowReports(scanned, suites) {
@@ -33,6 +34,7 @@ export function honestyReports(scanned, suites, project) {
   return [
     ...located(skippedTests(scanned, suites, project), DISABLED_RULE, DISABLED_MESSAGE),
     ...located(focusedTests(suites), FOCUSED_RULE, FOCUSED_MESSAGE),
+    ...located(retriesInTests(scanned, suites), RETRY_RULE, RETRY_MESSAGE),
     ...flowReports(scanned, suites),
   ];
 }

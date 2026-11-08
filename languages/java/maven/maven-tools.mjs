@@ -52,7 +52,15 @@ export function formatTool(javaStyle, pinned) {
 
 export function archunitTool(runsRules, pinned) {
   return runsRules
-    ? [{ name: 'archunit', coordinates: [`com.tngtech.archunit:archunit:${pinned.archunit}`] }]
+    ? [
+        {
+          name: 'archunit',
+          coordinates: [
+            `com.tngtech.archunit:archunit:${pinned.archunit}`,
+            `org.ow2.asm:asm-analysis:${pinned.asm}`,
+          ],
+        },
+      ]
     : [];
 }
 
@@ -85,9 +93,9 @@ export function toolDependencies(pinned, launcherVersions = [], extraTools = [])
       ]),
     ),
     ...Object.fromEntries(
-      extraTools.map(({ name, coordinates }) => [
+      extraTools.map(({ name, coordinates, exclusions }) => [
         name,
-        coordinates.map((entry) => dependency(entry)),
+        coordinates.map((entry) => dependency(entry, exclusions)),
       ]),
     ),
   };

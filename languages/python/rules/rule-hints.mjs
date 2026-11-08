@@ -1,11 +1,17 @@
 import { exceptionRoute } from '../../../shared/exceptions/rule-names.mjs';
 import { FUNCTION_EXCEPTION_RULES } from '../../../shared/policy.mjs';
+import { definedField } from '../../../shared/messages/messages.mjs';
 import { ASYNC_HINTS } from './hints/ast-async.mjs';
 import { STRUCTURE_HINTS } from './hints/ast-structure.mjs';
+import { TYPING_HINTS } from './hints/typing/ast-typing.mjs';
 import { SMELL_HINTS } from './hints/ast-smells.mjs';
+import { ORM_HINTS } from './hints/persistence/ast-orm.mjs';
 import { PYTEST_HINTS } from './hints/ruff-pytest.mjs';
+import { SIGNATURE_HINTS } from './hints/signatures/ast-signatures.mjs';
 import { SECURITY_HINTS } from './hints/security/ruff-security.mjs';
 import { RULES_SECURITY_HINTS } from './hints/security/rules-security.mjs';
+import { PITFALL_HINTS } from './hints/pitfalls/ruff-pitfalls.mjs';
+import { PERSISTENCE_HINTS } from './hints/persistence/orm-hints.mjs';
 import { STYLE_HINTS } from './hints/ruff-style.mjs';
 import { RULES_TOOL } from './hints/tool.mjs';
 import { DEFAULT_LIBRARIES } from './libraries/project-libraries.mjs';
@@ -21,10 +27,13 @@ const HINTED_TOOLS = [
   'coupling',
   'import-linter',
   'dependencies',
-  'test-runtime',
   'mutmut',
 ];
 
+const LIFTED_TEST_RUNTIME_RULES = new Set([
+  'no-production-runtime',
+  'type-only-production-dependency',
+]);
 const RULES_ROUTED_BY_A_SETTING = new Set(['no-import-outside-roots']);
 
 const FIX_TYPE = 'Fix the type; inline ignores are banned.';
@@ -34,12 +43,17 @@ const USE_REPLACEMENT =
 
 export const RULE_HINTS = [
   ...STYLE_HINTS,
+  ...PITFALL_HINTS,
   ...PYTEST_HINTS,
   ...SECURITY_HINTS,
   ...RULES_SECURITY_HINTS,
   ...STRUCTURE_HINTS,
+  ...TYPING_HINTS,
   ...ASYNC_HINTS,
   ...SMELL_HINTS,
+  ...SIGNATURE_HINTS,
+  ...ORM_HINTS,
+  ...PERSISTENCE_HINTS,
   { tool: 'mypy', rules: ['import-not-found', 'import-untyped'], allowed: INSTALL_PACKAGE },
   ...['pyright', 'basedpyright'].map((tool) => ({
     tool,
@@ -74,15 +88,25 @@ export function hintFor(finding) {
 
 const PYTHON_EXCEPTIONS_KEY = 'python.exceptions';
 
-export function describeRuleFinding(rule, subject, libraries = DEFAULT_LIBRARIES) {
+export function describeRuleFinding(
+  rule,
+  subject,
+  { libraries = DEFAULT_LIBRARIES, data = {} } = {},
+) {
   return RULE_HINTS.find((hint) => hint.tool === RULES_TOOL && hint.rules.includes(rule)).describe(
     subject,
     libraries,
+    data,
   );
 }
 
-function allowedText(hint, subject, libraries) {
-  return typeof hint.allowed === 'function' ? hint.allowed(subject, libraries) : hint.allowed;
+function allowedText(hint, finding, libraries) {
+  if (hint.allowedFor !== undefined) {
+    return hint.allowedFor(finding.data ?? hint.referenceData);
+  }
+  return typeof hint.allowed === 'function'
+    ? hint.allowed(finding.subject, libraries, finding.path)
+    : hint.allowed;
 }
 
 export const PYTHON_RULES_IDS = RULE_HINTS.filter(({ tool }) => tool === RULES_TOOL).flatMap(
@@ -91,7 +115,8 @@ export const PYTHON_RULES_IDS = RULE_HINTS.filter(({ tool }) => tool === RULES_T
 
 function canBeLifted(finding) {
   return (
-    HINTED_TOOLS.includes(finding.tool) &&
+    (HINTED_TOOLS.includes(finding.tool) ||
+      (finding.tool === 'test-runtime' && LIFTED_TEST_RUNTIME_RULES.has(finding.rule))) &&
     finding.classification === 'enforceable' &&
     typeof finding.rule === 'string' &&
     finding.rule !== '' &&
@@ -101,20 +126,27 @@ function canBeLifted(finding) {
 }
 
 export function withHint(finding, libraries = DEFAULT_LIBRARIES) {
-  const { subject, ...rest } = finding;
+  const { subject, hintData, ...rest } = finding;
   const hint = hintFor(rest);
   if (hint === undefined && !canBeLifted(rest)) {
     return rest;
   }
   const routed = hint?.exception === false || RULES_ROUTED_BY_A_SETTING.has(rest.rule);
+  const allowed =
+    hint?.allowed === undefined && hint?.allowedFor === undefined
+      ? undefined
+      : allowedText(hint, { subject, path: rest.path, data: hintData }, libraries);
+  const lifted = exceptionRoute({
+    rule: rest.rule,
+    path: rest.path,
+    key: hint?.exception === 'top-level' ? 'exceptions' : PYTHON_EXCEPTIONS_KEY,
+  });
   const sentences = [
     `${rest.message.replace(/\.$/, '')}.`,
-    ...(hint === undefined ? [] : [allowedText(hint, subject, libraries)]),
-    ...(routed
-      ? []
-      : [exceptionRoute({ rule: rest.rule, path: rest.path, key: PYTHON_EXCEPTIONS_KEY })]),
+    ...(allowed === undefined || rest.message.includes(allowed) ? [] : [allowed]),
+    ...(routed ? [] : [lifted]),
   ];
-  return { ...rest, message: sentences.join(' ') };
+  return { ...rest, message: sentences.join(' '), ...definedField('allowedForm', allowed) };
 }
 
 export function applyRuleHints(findings, libraries = DEFAULT_LIBRARIES) {

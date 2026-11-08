@@ -1,0 +1,7 @@
+[
+  {
+    "tool": "python-rules",
+    "rule": "catch-log-without-exception",
+    "mention": "logger.exception"
+  }
+]

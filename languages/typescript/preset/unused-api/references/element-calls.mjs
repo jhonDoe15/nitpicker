@@ -1,4 +1,4 @@
-import ts from 'typescript';
+import { ts } from '../../../typescript-api/typescript-api.mjs';
 import { allPasses, emptyPasses, objectPasses, unwrapExpression } from '../syntax/passes.mjs';
 import { consume, record, referencedComponent } from './state.mjs';
 

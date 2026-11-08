@@ -5,6 +5,7 @@ import { configurationFiles } from '../java-analyzer.mjs';
 
 const packageRoot = path.resolve(import.meta.dirname, '../../../..');
 const RULESETS = configurationFiles().filter((file) => file.endsWith('-ruleset.xml'));
+const PMD_VARIABLE = /\$\{(?:className|methodName|variableName|packageName)\}/gu;
 
 function attribute(attributes, name) {
   return new RegExp(String.raw`\b${name}="([^"]*)"`, 'u').exec(attributes)?.[1];
@@ -21,7 +22,7 @@ function messages(file) {
 }
 
 function withoutQuotes(message) {
-  return message.replaceAll("''", '').replaceAll("'{'", '');
+  return message.replaceAll("''", '').replaceAll("'{'", '').replaceAll(PMD_VARIABLE, '');
 }
 
 describe.each(RULESETS)('%s messages go through MessageFormat', (file) => {
@@ -36,7 +37,7 @@ describe.each(RULESETS)('%s messages go through MessageFormat', (file) => {
     expect(swallowed.map(({ name }) => name)).toEqual([]);
   });
 
-  it('quotes every brace except the {0} argument', () => {
+  it('quotes every brace except the {0} argument and the variables PMD fills in', () => {
     const unquoted = rules.filter(({ message }) => /\{(?!0\})/.test(withoutQuotes(message)));
     expect(unquoted.map(({ name }) => name)).toEqual([]);
   });

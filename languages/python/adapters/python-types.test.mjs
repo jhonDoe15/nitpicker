@@ -118,6 +118,7 @@ describe('running mypy', () => {
       '--strict',
       '--explicit-package-bases',
       '--show-error-codes',
+      '--show-column-numbers',
       '--no-error-summary',
       '--no-pretty',
       '--hide-error-context',

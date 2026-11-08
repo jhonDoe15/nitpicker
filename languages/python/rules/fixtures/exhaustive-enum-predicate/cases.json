@@ -1,0 +1,8 @@
+[
+  {
+    "name": "a partial enum predicate names assert_never",
+    "tool": "python-rules",
+    "rule": "exhaustive-enum-predicate",
+    "mention": "assert_never"
+  }
+]

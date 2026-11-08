@@ -1,5 +1,9 @@
 import { MINUTE_MS, vitestVersion, crapVersion, strykerVersion } from './constants.mjs';
-import { JAVASCRIPT_PRESET_FILE, CRAP_CONFIGURATION_FILES } from './policy-files.mjs';
+import {
+  JAVASCRIPT_PRESET_FILE,
+  CRAP_CONFIGURATION_FILES,
+  TEST_RUNNER_CONFIGURATION_FILES,
+} from './policy-files.mjs';
 import { DEFAULT_CRAP_SCORE_LIMIT } from '../../../../shared/policy.mjs';
 import { testConsoleCheckFor } from './test-console.mjs';
 
@@ -10,6 +14,7 @@ const COVERAGE_CONFIGURATION_FILES = [
   'shared/policy.mjs',
   'languages/typescript/adapters/test-runners/v8-coverage/loaded-sources.cjs',
   'languages/typescript/adapters/test-runners/vitest/test-timeouts-setup.mjs',
+  ...TEST_RUNNER_CONFIGURATION_FILES,
   'languages/typescript/preset/defaults/vitest.quality.config.ts',
   'languages/typescript/preset/layout.mjs',
   'languages/typescript/preset/head-policy.mjs',
@@ -20,6 +25,7 @@ const COVERAGE_CONFIGURATION_FILES = [
   'languages/typescript/preset/test-console/runners/mocha-capture.config.mjs',
   'languages/typescript/preset/test-console/runners/mocha-capture.mjs',
   'languages/typescript/preset/test-console/vitest-reporter.config.mjs',
+  'languages/typescript/preset/test-failures/vitest-failure-details.config.mjs',
   JAVASCRIPT_PRESET_FILE,
 ];
 
@@ -62,9 +68,11 @@ export function testExecutionChecksFor(exclusions) {
       timeoutMs: 30 * MINUTE_MS,
       configurationFiles: [
         'languages/typescript/preset/tool-configs.mjs',
+        'languages/typescript/preset/project-configs/typescript/typescript-project-options.mjs',
         'languages/typescript/preset/modules/selected-project-tsconfig.mjs',
         JAVASCRIPT_PRESET_FILE,
         'languages/typescript/preset/defaults/stryker.config.mjs',
+        'languages/typescript/preset/project-configs/stryker-project-config.mjs',
         'languages/typescript/preset/defaults/vitest.quality.config.ts',
         'languages/typescript/preset/defaults/tsconfig.stryker.json',
       ],

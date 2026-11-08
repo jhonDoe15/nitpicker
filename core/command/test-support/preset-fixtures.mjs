@@ -1,6 +1,7 @@
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { captureOutput } from '../../diff/reporting/test-support/output-capture.mjs';
+import { withoutHelpUris } from '../../diff/reporting/test-support/report-reading.mjs';
 import { useGitFixtures } from '../../diff/git/test-support/git-repository.mjs';
 
 const COMPARISON_BASE_REF = 'comparison-base';
@@ -43,7 +44,8 @@ export function usePresetFixtures({
     return {
       exitCode,
       reports,
-      json: (reportName) => JSON.parse(readFileSync(path.join(reports, reportName), 'utf8')),
+      json: (reportName) =>
+        withoutHelpUris(JSON.parse(readFileSync(path.join(reports, reportName), 'utf8'))),
       output: { out: output.stdoutText, err: output.stderrText },
       text: output.stdoutText + output.stderrText,
     };

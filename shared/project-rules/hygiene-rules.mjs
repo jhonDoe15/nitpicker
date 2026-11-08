@@ -4,6 +4,9 @@ export const HYGIENE_RULE_IDS = {
   committedBinary: 'committed-binary',
   largeFile: 'large-file',
   committedBuildOutput: 'committed-build-output',
+  migrationOrder: 'migration-order',
+  migrationHardcodedName: 'migration-hardcoded-name',
+  startSchemaPush: 'start-schema-push',
 };
 
 export const PACKAGE_RULE_IDS = {
@@ -17,8 +20,7 @@ export const PACKAGE_EXCEPTION_RULES = Object.values(PACKAGE_RULE_IDS);
 
 export const LARGE_FILE_BYTES = 1024 * 1024;
 
-const EVERY_LANGUAGE = { typescript: true, java: true, python: true, kotlin: true };
-const TYPESCRIPT_ONLY = { typescript: true, java: false, python: false, kotlin: false };
+const EVERY_LANGUAGE = { typescript: true, java: true, python: true, kotlin: true, go: true };
 const TYPESCRIPT_AND_PYTHON = { typescript: true, java: false, python: true, kotlin: false };
 
 export const HYGIENE_RULES = [
@@ -54,6 +56,27 @@ export const HYGIENE_RULES = [
     enforcedBy: EVERY_LANGUAGE,
   },
   {
+    id: HYGIENE_RULE_IDS.migrationOrder,
+    check: 'repository-hygiene',
+    limit:
+      'a migration the change adds whose version sorts before (or with) the newest migration of its folder on the base branch (Flyway, Prisma, Drizzle, Knex, Kysely, TypeORM, MikroORM, Sequelize, golang-migrate, goose), or an Alembic or Django migration that follows a parent which already has a child on the base branch (two heads)',
+    enforcedBy: EVERY_LANGUAGE,
+  },
+  {
+    id: HYGIENE_RULE_IDS.migrationHardcodedName,
+    check: 'repository-hygiene',
+    limit:
+      'a migration file that names the `public` schema (`public.table`), a database in `ALTER DATABASE` or a role in `OWNER TO`',
+    enforcedBy: EVERY_LANGUAGE,
+  },
+  {
+    id: HYGIENE_RULE_IDS.startSchemaPush,
+    check: 'repository-hygiene',
+    limit:
+      'a `start`, `prestart`, `serve` or `start:*` script (not `start:dev`, `start:local`, `start:watch`, `start:debug` or `start:test`) in `package.json`, or a script it runs, that pushes the ORM schema (`prisma db push`, `prisma migrate dev`, `drizzle-kit push`, `typeorm schema:sync`, `mikro-orm schema:update`)',
+    enforcedBy: EVERY_LANGUAGE,
+  },
+  {
     id: PACKAGE_RULE_IDS.unusedDependency,
     check: 'dead-code',
     limit:
@@ -71,7 +94,7 @@ export const HYGIENE_RULES = [
     id: PACKAGE_RULE_IDS.unresolvedImport,
     check: 'dead-code',
     limit: 'an import that resolves to no file and no package',
-    enforcedBy: TYPESCRIPT_ONLY,
+    enforcedBy: TYPESCRIPT_AND_PYTHON,
   },
 ];
 
@@ -102,7 +125,7 @@ export const CO_CHANGE_EXAMPLES = 3;
 
 const PERCENT = 100;
 const REPORTED_EVERYWHERE = Object.fromEntries(
-  ['typescript', 'javascript', 'java', 'python', 'kotlin'].map((language) => [
+  ['typescript', 'javascript', 'java', 'python', 'kotlin', 'go'].map((language) => [
     language,
     'reported',
   ]),

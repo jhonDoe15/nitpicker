@@ -3,6 +3,7 @@ import {
   braceDepths,
   closingIndex,
   enclosingOpen,
+  isCompositionRoot,
   lineOf,
   lineText,
   literalAt,
@@ -27,6 +28,22 @@ describe('scanKotlinSource', () => {
       ['block', ' one\n two '],
     ]);
     expect(literals.map(({ text, template }) => [text, template])).toEqual([['x // y', false]]);
+  });
+
+  it('keeps the code of a template expression in contextCode and blanks its text and comments', () => {
+    const source = 'val a = "id: ${row["order_id"] /* c */}"\nval b = "cost $`x` dollars"\n';
+    const { contextCode, literals } = scanKotlinSource(source);
+
+    expect(contextCode.split('\n')).toEqual([
+      'val a = "      row["        "]         "',
+      'val b = "                 "',
+      '',
+    ]);
+    expect(literals.map(({ text, template }) => [text, template])).toEqual([
+      ['id: ${row["order_id"] /* c */}', true],
+      ['order_id', false],
+      ['cost $`x` dollars', true],
+    ]);
   });
 
   it('reads templates, raw strings, nested comments, KDoc and character literals', () => {
@@ -87,5 +104,35 @@ describe('position helpers', () => {
     expect(closingIndex(scanned.code, body)).toBe(source.lastIndexOf('}'));
     expect(enclosingOpen(scanned.code, source.indexOf('g('))).toBe(body);
     expect(braceDepths(scanned.code)[source.indexOf('g(')]).toBe(1);
+  });
+});
+
+describe('isCompositionRoot', () => {
+  it.each([
+    ['a main function', 'fun main() {\n}\n'],
+    ['a main with arguments', 'fun main(args: Array<String>) = run(args)\n'],
+    [
+      'a static main in an object',
+      'object Cli {\n    @JvmStatic\n    fun main(args: Array<String>) {}\n}\n',
+    ],
+    [
+      'a static main in a companion',
+      'class Cli {\n    companion object {\n        @JvmStatic fun main(args: Array<String>) {}\n    }\n}\n',
+    ],
+    ['a Spring Boot application', '@SpringBootApplication\nclass ShopApplication\n'],
+    ['a Ktor module', 'fun Application.module() {\n}\n'],
+  ])('knows %s', (_name, source) => {
+    expect(isCompositionRoot(scanKotlinSource(source))).toBe(true);
+  });
+
+  it.each([
+    [
+      'a main without JvmStatic in an object',
+      'object Cli {\n    fun main(args: Array<String>) {}\n}\n',
+    ],
+    ['a member named main', 'class Shop {\n    fun main() {}\n}\n'],
+    ['a main in a comment', '// fun main() {}\nfun other() {}\n'],
+  ])('does not take %s for one', (_name, source) => {
+    expect(isCompositionRoot(scanKotlinSource(source))).toBe(false);
   });
 });

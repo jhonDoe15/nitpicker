@@ -2,6 +2,7 @@ import { spawnSync } from 'node:child_process';
 import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { filesUnder, pathInside } from '../filesystem.mjs';
+import { GIT_TIMEOUT_MS } from '../processes/deadlines.mjs';
 
 const MAX_LISTING_BYTES = 64 * 1024 * 1024;
 const SKIPPED_DIRECTORIES = new Set(['node_modules', '.git']);
@@ -10,7 +11,7 @@ function listedByGit(projectRoot, roots) {
   const listed = spawnSync(
     'git',
     ['ls-files', '-z', '--cached', '--others', '--exclude-standard', '--', ...roots],
-    { cwd: projectRoot, encoding: 'utf8', maxBuffer: MAX_LISTING_BYTES },
+    { cwd: projectRoot, encoding: 'utf8', maxBuffer: MAX_LISTING_BYTES, timeout: GIT_TIMEOUT_MS },
   );
   return listed.status === 0 ? listed.stdout.split('\0').filter(Boolean) : undefined;
 }

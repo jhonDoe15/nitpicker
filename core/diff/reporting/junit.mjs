@@ -1,3 +1,4 @@
+import { noteSectionLines } from './format/notes.mjs';
 import { singleLine } from './format/text.mjs';
 
 export function renderJunitReport(report) {
@@ -31,9 +32,16 @@ export function renderJunitReport(report) {
     '<?xml version="1.0" encoding="UTF-8"?>',
     `<testsuite name="quality.diff" tests="${String(tests)}" failures="${String(failures)}" errors="0" time="${(report.summary.elapsedMs / 1000).toFixed(3)}">`,
     ...testCases,
+    ...noteElement(report.notes),
     '</testsuite>',
     '',
   ].join('\n');
+}
+
+function noteElement(notes) {
+  return notes === undefined || notes.length === 0
+    ? []
+    : [`  <system-out>${escapeXml(noteSectionLines(notes).slice(1).join('\n'))}</system-out>`];
 }
 
 function escapeXml(value) {

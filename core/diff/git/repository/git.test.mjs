@@ -2,7 +2,7 @@ import { utimesSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { commit, fixtureGit, useGitFixtures } from '../test-support/git-repository.mjs';
-import { captureWorkingTree } from './git.mjs';
+import { captureWorkingTree, resolveComparison } from './git.mjs';
 
 const { createGitRepository } = useGitFixtures();
 
@@ -32,4 +32,40 @@ describe('captureWorkingTree', () => {
       expect(fixtureGit(repository.root, ['show', `${capturedSha}:a.txt`])).toBe('new\n');
     },
   );
+});
+
+describe('resolveComparison', () => {
+  it.each([
+    [
+      [],
+      'develop',
+      'The repository has no remote to fetch it from: pass a local branch, tag or commit that HEAD shares history with.',
+    ],
+    [
+      ['gitlab'],
+      'develop',
+      'No remote is named "origin" (remotes: gitlab). Fetch the branch from one and retry.',
+    ],
+    [
+      ['gitlab', 'github'],
+      'origin/develop',
+      'No remote is named "origin" (remotes: github, gitlab). Fetch the branch from one and retry.',
+    ],
+    [
+      ['gitlab'],
+      'release/1.x',
+      'No remote is named "release" or "origin" (remotes: gitlab). Fetch the branch from one and retry.',
+    ],
+    [['gitlab'], 'gitlab/develop', "Run `git fetch 'gitlab' 'develop'` and retry."],
+    [['origin'], 'release/1.x', "Run `git fetch 'origin' 'release/1.x'` and retry."],
+  ])('with remotes %j, says how to get a missing %s', (remotes, baseRef, advice) => {
+    const repository = createGitRepository();
+    for (const remote of remotes) {
+      fixtureGit(repository.root, ['remote', 'add', remote, path.join(repository.root, remote)]);
+    }
+
+    expect(() => resolveComparison(repository.root, baseRef)).toThrow(
+      new Error(`Cannot resolve base ref "${baseRef}". ${advice}`),
+    );
+  });
 });

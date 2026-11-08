@@ -1,5 +1,5 @@
 import path from 'node:path';
-import ts from 'typescript';
+import { ts } from '../../../typescript-api/typescript-api.mjs';
 import { cruise as runDependencyCruiser } from 'dependency-cruiser';
 import { linkPolicyFile } from '../../../../../core/tooling/policy-links.mjs';
 import { readLayout } from '../../head-policy.mjs';

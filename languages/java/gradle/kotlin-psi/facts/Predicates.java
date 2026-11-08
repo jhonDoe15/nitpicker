@@ -187,4 +187,64 @@ final class Predicates {
     membership(expression, selector.getValueArguments().get(0).getArgumentExpression(),
         expression.getReceiverExpression(), frame);
   }
+
+  private KtExpression single(KtExpression expression) {
+    KtExpression plain = KtPsiUtil.safeDeparenthesize(expression);
+    if (plain instanceof KtBlockExpression && ((KtBlockExpression) plain).getStatements().size() == 1) {
+      return KtPsiUtil.safeDeparenthesize(((KtBlockExpression) plain).getStatements().get(0));
+    }
+    return plain;
+  }
+
+  private Boolean constant(KtExpression expression) {
+    if (!(expression instanceof KtConstantExpression)) {
+      return null;
+    }
+    String text = expression.getText();
+    return "true".equals(text) ? Boolean.TRUE : "false".equals(text) ? Boolean.FALSE : null;
+  }
+
+  private Boolean yielded(KtExpression expression, boolean returned) {
+    KtExpression plain = expression == null ? null : single(expression);
+    if (!returned) {
+      return constant(plain);
+    }
+    return plain instanceof KtReturnExpression && ((KtReturnExpression) plain).getLabeledExpression() == null
+        ? constant(KtPsiUtil.safeDeparenthesize(((KtReturnExpression) plain).getReturnedExpression()))
+        : null;
+  }
+
+  void when(KtWhenExpression expression, Frame frame) {
+    KtExpression subject = expression.getSubjectExpression();
+    List<KtWhenEntry> entries = expression.getEntries();
+    KtWhenEntry fallback = entries.isEmpty() ? null : entries.get(entries.size() - 1);
+    if (state.test || subject == null || expression.getSubjectVariable() != null
+        || fallback == null || !fallback.isElse()) {
+      return;
+    }
+    boolean returned = single(fallback.getExpression()) instanceof KtReturnExpression;
+    Boolean otherwise = yielded(fallback.getExpression(), returned);
+    if (otherwise == null) {
+      return;
+    }
+    List<Object> elements = new ArrayList<>();
+    for (KtWhenEntry entry : entries) {
+      if (entry == fallback) {
+        continue;
+      }
+      if (entry.isElse() || !Boolean.valueOf(!otherwise).equals(yielded(entry.getExpression(), returned))) {
+        return;
+      }
+      for (KtWhenCondition condition : entry.getConditions()) {
+        if (!(condition instanceof KtWhenConditionWithExpression)) {
+          return;
+        }
+        elements.add(clip(((KtWhenConditionWithExpression) condition).getExpression()));
+      }
+    }
+    state.predicates.add(
+        m("kind", "when", "line", state.lineOf(expression.getTextRange().getStartOffset()),
+            "symbol", symbolAt(frame, expression), "holder", returned ? "return" : holder(expression),
+            "subject", clip(subject), "subjectStable", stable(subject), "elements", elements));
+  }
 }

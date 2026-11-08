@@ -1,6 +1,7 @@
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
+import { hash } from '../../../shared/rules/finding-helpers.mjs';
 import { functionBlocks, ingestMutmut, statusOfExitCode } from './mutmut.mjs';
 
 const recorded = JSON.parse(
@@ -51,8 +52,11 @@ describe('mutmut run data ingester', () => {
       identity: 'total|0→1#1',
       message:
         'Survived number: replacing `0` with `1` fails no test. Add an assertion that would. If no input can tell the two apart, simplify the code so this mutant disappears.',
+      allowedForm:
+        'Add an assertion that would. If no input can tell the two apart, simplify the code so this mutant disappears.',
       classification: 'enforceable',
       symbol: 'total',
+      anchor: { key: expect.stringMatching(/^mutant:0→1\|/u), requireUnchangedLine: true },
       location: { line: 6 },
     });
   });
@@ -71,8 +75,10 @@ describe('mutmut run data ingester', () => {
       path: 'src/shop/pricing.py',
       identity: 'fetch|1→2#1',
       message: 'NoCoverage number: no test runs this code. Add a test that reaches it.',
+      allowedForm: 'Add a test that reaches it.',
       classification: 'enforceable',
       symbol: 'fetch',
+      anchor: { key: expect.stringMatching(/^mutant:1→2\|/u), requireUnchangedLine: true },
       location: { line: 39 },
     });
   });
@@ -184,6 +190,7 @@ describe('mutmut run data ingester', () => {
         message: 'Timeout operator',
         classification: 'descriptive',
         symbol: 'f',
+        anchor: { key: `mutant:+→-|${hash('return a + b')}`, requireUnchangedLine: true },
         location: { line: 2 },
       },
       {
@@ -194,6 +201,7 @@ describe('mutmut run data ingester', () => {
         message: 'CompileError operator',
         classification: 'descriptive',
         symbol: 'f',
+        anchor: { key: `mutant:+→*|${hash('return a + b')}`, requireUnchangedLine: true },
         location: { line: 2 },
       },
     ]);
@@ -210,6 +218,8 @@ describe('mutmut run data ingester', () => {
         identity: 'f|?→?#1',
         message:
           'Survived mutation: no test fails when this code changes. Add an assertion that would. If no input can tell the two apart, simplify the code so this mutant disappears.',
+        allowedForm:
+          'Add an assertion that would. If no input can tell the two apart, simplify the code so this mutant disappears.',
         classification: 'enforceable',
         symbol: 'f',
       },
@@ -319,6 +329,58 @@ describe('mutmut run data ingester', () => {
       'Survived string',
       'Survived expression',
     ]);
+  });
+
+  it('leaves out the mutants of an assert_never the type checker proves unreachable', () => {
+    const match = (...arms) =>
+      ['def f(a):', '    match a:', '        case 1:', '            return 1', ...arms, ''].join(
+        '\n',
+      );
+    const never = ['        case _:', '            assert_never(a)'];
+    const two = ['        case 2:', '            return 2'];
+    const file = fileOf({
+      source: match(...two, ...never),
+      mutants: [
+        match(...two),
+        match(...two, '        case _:', '            assert_never(None)'),
+        match(...never),
+      ],
+      codes: [0, 0, 0],
+    });
+
+    expect(ingest([file]).map(({ location }) => location)).toEqual([{ line: 5 }]);
+  });
+
+  it.each([
+    [
+      'an arm with another statement',
+      ['    match a:', '        case _:', '            assert_never(a)', '            return 0'],
+      ['    match a:', '        case _:', '            assert_never(a)', '            return 1'],
+      5,
+    ],
+    [
+      'an arm with an argument that is not a name',
+      ['    match a:', '        case _:', '            assert_never(g(a))'],
+      ['    match a:', '        case _:', '            assert_never(g(None))'],
+      4,
+    ],
+    [
+      'an else branch',
+      ['    if a:', '        return 1', '    else:', '        assert_never(a)'],
+      ['    if a:', '        return 1', '    else:', '        assert_never(None)'],
+      5,
+    ],
+    [
+      'a conditional expression',
+      ['    assert_never(a) if a > 100 else print(a)'],
+      ['    assert_never(a) if a >= 100 else print(a)'],
+      2,
+    ],
+  ])('keeps the mutants of an assert_never in %s', (_, body, mutatedBody, line) => {
+    const lines = (rows) => ['def f(a):', ...rows, ''].join('\n');
+    const file = fileOf({ source: lines(body), mutants: [lines(mutatedBody)], codes: [0] });
+
+    expect(ingest([file]).map(({ location }) => location)).toEqual([{ line }]);
   });
 });
 

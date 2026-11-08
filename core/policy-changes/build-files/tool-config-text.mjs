@@ -1,6 +1,9 @@
+import { createRequire } from 'node:module';
 import path from 'node:path';
 import { globMatcher } from '../../../shared/paths/glob.mjs';
 import { codeExtensionNames } from '../../../languages/typescript/preset/layout.mjs';
+import { parseJsonc } from '../../../shared/jsonc/jsonc.mjs';
+import { TYPESCRIPT_API } from '../../../languages/typescript/typescript-api/api-selection.mjs';
 
 const EDITORCONFIG = '.editorconfig';
 const KOTLIN_FILES = ['A.kt', 'A.kts'];
@@ -13,6 +16,8 @@ const BLOCK_COMMENT = /^\/\*[\s\S]*?\*\//gmu;
 const XML_COMMENT = /<!--[\s\S]*?-->/gu;
 const HASH_FILES = new Set(['.yml', '.yaml', '.toml']);
 const MIXED_FILES = new Set(['.prettierrc', '.prettierignore']);
+const IGNORE_FILE = /^\.\w*ignore$/u;
+const SCRIPT_EXTENSIONS = new Set(['.js', '.mjs', '.cjs', '.ts', '.mts', '.cts']);
 
 function keptLines(text, isComment, trimStart = true) {
   return text
@@ -66,9 +71,15 @@ function scriptText(text) {
   return keptLines(text.replaceAll(BLOCK_COMMENT, ''), (trimmed) => SLASH_COMMENT.test(trimmed));
 }
 
-function jsonText(text) {
+function printedScript(file, text) {
+  const ts = createRequire(import.meta.url)(TYPESCRIPT_API.file);
+  const source = ts.createSourceFile(file, text, ts.ScriptTarget.Latest, false);
+  return ts.createPrinter({ removeComments: true }).printFile(source);
+}
+
+function jsonText(text, parse) {
   try {
-    return { kind: 'json', text: JSON.stringify(JSON.parse(text)) };
+    return { kind: 'json', text: JSON.stringify(parse(text)) };
   } catch {
     return { kind: 'malformed-json' };
   }
@@ -77,7 +88,8 @@ function jsonText(text) {
 export function toolConfigText(tool, file, text) {
   const name = path.posix.basename(file);
   const extension = path.posix.extname(file);
-  const json = extension === '.json' || name === '.prettierrc' ? jsonText(text) : undefined;
+  const parse = tool === 'typescript' ? parseJsonc : JSON.parse;
+  const json = extension === '.json' || name === '.prettierrc' ? jsonText(text, parse) : undefined;
   if (json?.kind === 'json') {
     return json.text;
   }
@@ -87,7 +99,14 @@ export function toolConfigText(tool, file, text) {
   if (extension === '.xml') {
     return xmlText(text);
   }
-  if (HASH_FILES.has(extension)) {
+  if (SCRIPT_EXTENSIONS.has(extension)) {
+    return printedScript(file, text);
+  }
+  return lineCommentText(name, extension, text);
+}
+
+function lineCommentText(name, extension, text) {
+  if (HASH_FILES.has(extension) || (IGNORE_FILE.test(name) && !MIXED_FILES.has(name))) {
     return keptLines(text, (trimmed) => HASH_COMMENT.test(trimmed), false);
   }
   if (MIXED_FILES.has(name)) {

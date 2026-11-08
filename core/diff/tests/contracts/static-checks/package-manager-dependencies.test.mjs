@@ -231,6 +231,7 @@ describe('dependency preparation for every package manager', () => {
       kind: 'installed',
       dependencyPath: path.join(projectRoot, 'node_modules'),
       memberPaths: [path.join(projectRoot, 'packages/web/node_modules')],
+      localPackagePaths: [],
     });
 
     removeSnapshotDependencies(dependencies);

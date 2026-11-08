@@ -78,7 +78,12 @@ describe('progress lines', () => {
   it('words the start and cached lines per phase', () => {
     expect(startLine({ label: 'head', total: 9 })).toBe('nitpicker: head: running 9 analyzers\n');
     expect(startLine({ label: 'base', total: 1 })).toBe('nitpicker: base: running 1 analyzer\n');
-    expect(cachedLine({ label: 'base', count: 7 })).toBe('nitpicker: base 7 analyzers cached\n');
+    expect(cachedLine({ label: 'base', count: 7, directory: '/project/cache' })).toBe(
+      'nitpicker: base 7 analyzers cached (/project/cache; use --no-cache to rerun)\n',
+    );
+    expect(cachedLine({ label: 'base', count: 1 })).toBe(
+      'nitpicker: base 1 analyzer cached (remote cache; use --no-cache to rerun)\n',
+    );
   });
 });
 

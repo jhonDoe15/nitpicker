@@ -7,6 +7,7 @@ import {
 } from '../../../../shared/ingest/common.mjs';
 
 const ENFORCEABLE_SEVERITIES = new Set(['error', 'warning']);
+const LINE_NUMBER = /\bline '?\d+'?/gu;
 
 export function ingestCheckstyle(xml, options = {}) {
   const report = parseXml(xml);
@@ -35,7 +36,7 @@ function fileFindings(file, options) {
       tool: options.tool ?? 'checkstyle',
       rule,
       path: filePath,
-      identity: unique(hashIdentity('checkstyle', [rule, filePath, message])),
+      identity: unique(hashIdentity('checkstyle', [rule, message.replace(LINE_NUMBER, 'line')])),
       message,
       classification: ENFORCEABLE_SEVERITIES.has(error.attrs.severity ?? 'error')
         ? 'enforceable'

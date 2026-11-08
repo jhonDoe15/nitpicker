@@ -35,6 +35,20 @@ describe('httpWithoutTimeout', () => {
     ['a URI read as a stream', ['val stream = uri.toURL().openStream()']],
     ['a plain RestTemplate', ['val template = RestTemplate()']],
     ['the default Apache client', ['val client = HttpClients.createDefault()']],
+    ['the default async Apache client', ['val client = HttpAsyncClients.createMinimal()']],
+    [
+      'an Apache builder without a request config',
+      ['val client = HttpClientBuilder.create().setMaxConnTotal(20).build()'],
+    ],
+    ['a JAX-RS client', ['val client = ClientBuilder.newClient().target(url)']],
+    [
+      'a request with a trailing comma',
+      ['val request = HttpRequest.newBuilder(', '    uri,', ').build()'],
+    ],
+    [
+      'a JAX-RS builder without a read timeout',
+      ['val client = ClientBuilder.newBuilder().connectTimeout(2, TimeUnit.SECONDS).build()'],
+    ],
   ])('flags %s', (_name, lines) => {
     expect(found(httpWithoutTimeout, lines)).toEqual([2]);
   });
@@ -87,6 +101,34 @@ describe('httpWithoutTimeout', () => {
     [
       'a configured Apache client',
       ['val client = HttpClients.custom().setDefaultRequestConfig(config).build()'],
+    ],
+    [
+      'an Apache client over a configured pool',
+      ['val client = HttpAsyncClients.custom().setConnectionManager(pool).build()'],
+    ],
+    ['an Apache client builder handed on', ['val builder = HttpClients.custom()']],
+    [
+      'a JAX-RS client with a read timeout property',
+      [
+        'val client = ClientBuilder.newClient()',
+        'client.property("jersey.config.client.readTimeout", 5_000)',
+      ],
+    ],
+    [
+      'a JAX-RS builder with a read timeout',
+      ['val client = ClientBuilder.newBuilder().readTimeout(5, TimeUnit.SECONDS).build()'],
+    ],
+    [
+      'a JAX-RS client handed to a helper',
+      ['val client = ClientBuilder.newClient()', 'withTimeouts(client)'],
+    ],
+    [
+      'an Apache client whose requests carry a config',
+      ['val client = HttpClients.createDefault()', 'get.setConfig(deadline)'],
+    ],
+    [
+      'a copied request, which keeps its timeout',
+      ['val copy = HttpRequest.newBuilder(original, { _, _ -> true }).build()'],
     ],
   ])('passes %s', (_name, lines) => {
     expect(found(httpWithoutTimeout, lines)).toEqual([]);

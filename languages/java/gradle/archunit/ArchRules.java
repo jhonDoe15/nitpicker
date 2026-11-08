@@ -30,8 +30,11 @@ public final class ArchRules {
       Layout.check(main, root, found);
     }
     if (usesSpring()) {
-      Layers.check(main, Roles.load(), found);
+      Roles roles = Roles.load();
+      Layers.check(main, roles, found);
+      RequestBodies.check(main, roles, found);
       Lifetimes.check(main, found);
+      RequestState.check(main, found);
       TestRules.check(unitTests, otherTests, found);
     }
     Aggregates.check(main, found);

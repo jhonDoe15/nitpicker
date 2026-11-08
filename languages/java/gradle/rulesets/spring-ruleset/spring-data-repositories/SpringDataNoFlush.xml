@@ -1,0 +1,13 @@
+  <rule name="SpringDataNoFlush" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
+        message="Let the transaction write changes at commit and remove this flush; in a batch loop, flush and then call entityManager.clear() every N entities. Any other early flush defeats JDBC batching and hides ordering bugs.">
+    <priority>2</priority>
+    <properties><property name="xpath"><value><![CDATA[
+//MethodCall[@MethodName = ('saveAndFlush', 'saveAllAndFlush', 'flush')]
+  [*[1][pmd-java:typeIs('org.springframework.data.repository.Repository') or (pmd-java:typeIs('jakarta.persistence.EntityManager') or pmd-java:typeIs('javax.persistence.EntityManager'))]]
+  [not(ancestor::*[self::ForStatement or self::ForeachStatement or self::WhileStatement or self::DoStatement
+    or self::LambdaExpression[parent::ArgumentList/parent::MethodCall[@MethodName = ('forEach', 'forEachOrdered', 'forEachRemaining', 'map', 'peek', 'flatMap', 'mapToObj')]
+      [*[1][pmd-java:typeIs('java.util.stream.BaseStream') or pmd-java:typeIs('java.lang.Iterable')
+        or pmd-java:typeIs('java.util.Map') or pmd-java:typeIs('java.util.Iterator')]]]][1]
+    //MethodCall[@MethodName = 'clear'][*[1][(pmd-java:typeIs('jakarta.persistence.EntityManager') or pmd-java:typeIs('javax.persistence.EntityManager'))]])]
+]]></value></property></properties>
+  </rule>

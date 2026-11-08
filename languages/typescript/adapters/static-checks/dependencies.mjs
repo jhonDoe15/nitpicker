@@ -4,6 +4,7 @@ import { detectPackageManager } from '../dependency-graph/package-managers/detec
 import { containedPath } from '../dependency-graph/package-managers/contained-path.mjs';
 import { missingDependenciesMessage } from '../dependency-graph/package-managers/install.mjs';
 import { linkMemberDependencies } from '../dependency-graph/package-managers/member-links.mjs';
+import { removeLocalPackages } from '../dependency-graph/local-packages.mjs';
 import {
   existsSync,
   readFileSync,
@@ -76,7 +77,7 @@ export function prepareSnapshotDependencies(options) {
   }
   switch (mode) {
     case 'install':
-      return dependencyHook.install(options.projectRoot);
+      return dependencyHook.install(options.projectRoot, liveProjectRoot);
     case 'link':
       return linkDependencies(options, dependencyHook);
     default:
@@ -168,6 +169,7 @@ function removeRootDependencies(dependencies) {
       );
     }
     rmSync(dependencies.dependencyPath, { recursive: true });
+    removeLocalPackages(dependencies.localPackagePaths);
     return;
   }
   if (

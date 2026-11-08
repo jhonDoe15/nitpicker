@@ -217,6 +217,15 @@ describe('unittest command', () => {
       '.',
     ]);
   });
+
+  it('starts in a top-level testing directory only when it holds tests', () => {
+    const helpers = { 'testing/__init__.py': '', 'testing/fakes.py': '' };
+
+    expect(testCommand(contextFor(project(helpers)))).toEqual(timed);
+    expect(
+      testCommand(contextFor(project({ ...helpers, 'testing/unit/test_cart.py': '' }))),
+    ).toEqual([...timed, '-s', 'testing', '-t', '.']);
+  });
 });
 
 describe('detecting a run without tests', () => {

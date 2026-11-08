@@ -1,4 +1,4 @@
-import ts from 'typescript';
+import { ts } from '../../../typescript-api/typescript-api.mjs';
 
 const MEMBER_KINDS = [
   ts.SyntaxKind.PropertySignature,

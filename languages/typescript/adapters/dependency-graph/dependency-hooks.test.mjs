@@ -84,6 +84,7 @@ describe('dependency hook install', () => {
       kind: 'installed',
       dependencyPath: path.join(projectRoot, 'node_modules'),
       memberPaths: [],
+      localPackagePaths: [],
     });
   });
 
@@ -115,6 +116,7 @@ describe('dependency hook install', () => {
       kind: 'installed',
       dependencyPath: path.join(repository, 'node_modules'),
       memberPaths: [],
+      localPackagePaths: [],
     });
   });
 
@@ -149,6 +151,38 @@ describe('dependency hook install', () => {
       ),
     );
     expect(existsSync(path.join(projectRoot, 'node_modules'))).toBe(false);
+  });
+
+  it('names the npm 10 crash on the optional peers of Vitest 4 and how to fix it', () => {
+    useFakeManagers();
+    const projectRoot = projectWith({
+      'package-lock.json': '{}',
+      'fake-failure.txt': "npm error Cannot read properties of null (reading 'edgesOut')\n",
+    });
+
+    expect(() => resolveDependencyHook().install(projectRoot)).toThrow(
+      new Error(
+        "Failed to install merge-base dependencies with npm: npm error Cannot read properties of null (reading 'edgesOut')\n" +
+          'npm 10 cannot resolve the optional peer dependencies of Vitest 4. Update npm with `npm install --global npm@11` and run nitpicker again.',
+      ),
+    );
+  });
+
+  it('names the local packages the base depends on that are missing', () => {
+    useFakeManagers();
+    const projectRoot = projectWith({
+      'package.json':
+        '{"name":"fixture","dependencies":{"lib":"file:../lib","packed":"file:packed.tgz"}}\n',
+      'package-lock.json': '{}',
+      'fake-failure.txt': 'npm error enoent\n',
+    });
+
+    expect(() => resolveDependencyHook().install(projectRoot)).toThrow(
+      new Error(
+        'Failed to install merge-base dependencies with npm: npm error enoent\n' +
+          'The base depends on local packages that nitpicker did not find for it: ../lib, packed.tgz.',
+      ),
+    );
   });
 
   it('names the signal that stopped the install', () => {
@@ -217,6 +251,7 @@ describe('dependency hook install', () => {
       kind: 'installed',
       dependencyPath: path.join(projectRoot, 'node_modules'),
       memberPaths: [],
+      localPackagePaths: [],
     });
     expect(existsSync(dependencies.dependencyPath)).toBe(true);
   });

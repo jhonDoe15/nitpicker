@@ -2,6 +2,7 @@ import { tmpdir } from 'node:os';
 import { afterEach, beforeEach, expect, vi } from 'vitest';
 import { exactText } from '../../../diff/reporting/test-support/output-expectations.mjs';
 import {
+  EMPTY_MUTATION_FACTS,
   fakeGradle,
   fakeGradleRun,
   spawnFakeGradle,
@@ -59,6 +60,7 @@ export function useGradleFixtures(runNitpickerCli) {
       fixtures.repository({
         'nitpicker.config.json': kotlinConfig(),
         'detekt.txt': 'Legacy magic number\n',
+        'kotlin-mutation-facts.json': EMPTY_MUTATION_FACTS,
         ...files,
       }),
     run: fixtures.run,
@@ -73,6 +75,17 @@ export function useGradleFixtures(runNitpickerCli) {
             gradleFailureMessage(
               `Java preset failed in ${snapshot}: Execution failed for task :compileJava`,
             ),
+        },
+      },
+      redBase: {
+        files: (suite) => ({ TESTS_FAIL: JSON.stringify({ '': suite }) }),
+        repair: { remove: ['TESTS_FAIL'] },
+        modules: {
+          files: (suite) => ({
+            TESTS_FAIL: JSON.stringify({ core: suite }),
+            'modules.txt': 'core\napi\n',
+          }),
+          repair: { remove: ['TESTS_FAIL'] },
         },
       },
       missingBinary: {
@@ -119,6 +132,15 @@ export function useMavenFixtures(runNitpickerCli) {
             `Maven failed in ${snapshot}:\n[ERROR] COMPILATION ERROR in A.java`,
         },
       },
+      redBase: {
+        files: (suite) => ({ 'test-results/test/TEST-demo.ATest.xml': suite }),
+        repair: {
+          write: {
+            'test-results/test/TEST-demo.ATest.xml':
+              '<testsuite name="demo.ATest"><testcase classname="demo.ATest" name="works"/></testsuite>',
+          },
+        },
+      },
       missingBinary: {
         stub: (binary) => vi.stubEnv('NITPICKER_MAVEN', binary),
         rule: 'maven-failure',
@@ -132,6 +154,23 @@ export function useMavenFixtures(runNitpickerCli) {
 export function unusedFieldMessage(name, file = 'src/main/java/demo/A.java') {
   const { fix } = readCatalog('pmd').UnusedPrivateField;
   return `Avoid unused field: ${name}. ${fix} ${exceptionHint('pmd/UnusedPrivateField', file)}`;
+}
+
+export function unusedFieldFields(file = 'src/main/java/demo/A.java') {
+  return {
+    allowedForm: readCatalog('pmd').UnusedPrivateField.fix,
+    exception: { rule: 'pmd/UnusedPrivateField', paths: [file], reason: '...' },
+    exceptionList: 'exceptions',
+  };
+}
+
+export function unusedFieldConsoleEntry(name, line, file = 'src/main/java/demo/A.java') {
+  const { fix } = readCatalog('pmd').UnusedPrivateField;
+  return [
+    `  pmd/UnusedPrivateField: Avoid unused field: ${name}. ${fix}`,
+    `    ${file}:${String(line)}`,
+    `    ${exceptionHint('pmd/UnusedPrivateField', file)}`,
+  ].join('\n');
 }
 
 export function gradleFailureMessage(detail) {

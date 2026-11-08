@@ -1,16 +1,17 @@
 import path from 'node:path';
-import { existsSync } from 'node:fs';
+import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
 import { resolveInside } from '../../../../shared/conventions/read-inside.mjs';
 import { precedenceLayers } from '../../../../shared/conventions/tool-precedence.mjs';
 import { JAVA_ASSERTION_HELPERS } from '../../conventions/java-conventions.mjs';
 import { PROJECT_TOOL_CONFIGS } from '../gradle-presets.mjs';
 import { mergeCheckstyleFiles } from './checkstyle/checkstyle-merge.mjs';
 import { pmdLayerFiles } from './layer-files.mjs';
+import { declaredToolChoices } from './declared/declared-choices.mjs';
 
 export function toolConfigChoices(projectRoot, policy = {}) {
   const { toolPrecedence = {}, policyRoot } = policy;
   const assertionHelpers = policy.conventions?.[JAVA_ASSERTION_HELPERS] ?? [];
-  return Object.fromEntries(
+  const configs = Object.fromEntries(
     [...PROJECT_TOOL_CONFIGS].map(([tool, file]) => {
       const precedence = toolPrecedence[tool] ?? ['nitpicker'];
       const projectConfig = resolveInside(policyRoot ?? projectRoot, file);
@@ -31,6 +32,7 @@ export function toolConfigChoices(projectRoot, policy = {}) {
       ];
     }),
   );
+  return { ...configs, ...declaredToolChoices(projectRoot, policy) };
 }
 
 function checkstyleProperties({ checkstyle, directory, checkstyleBase }) {
@@ -50,6 +52,15 @@ function checkstyleProperties({ checkstyle, directory, checkstyleBase }) {
   ];
 }
 
+function settingsProperty(tool, choice, file) {
+  if (choice === undefined) {
+    return [];
+  }
+  mkdirSync(path.dirname(file), { recursive: true });
+  writeFileSync(file, JSON.stringify(choice.arguments));
+  return [`-Pnitpicker.${tool}.settings=${file}`];
+}
+
 export function toolConfigProperties(projectRoot, policy = {}, { directory, checkstyleBase }) {
   const choices = toolConfigChoices(projectRoot, policy);
   const pmd = pmdLayerFiles({ ...choices.pmd, directory });
@@ -59,5 +70,10 @@ export function toolConfigProperties(projectRoot, policy = {}, { directory, chec
     ...(pmd.tests === undefined ? [] : [`-Pnitpicker.pmd.testRules=${pmd.tests}`]),
     ...(pmd.main === undefined ? [] : [`-Pnitpicker.pmd.mainRules=${pmd.main}`]),
     ...checkstyleProperties({ checkstyle: choices.checkstyle, directory, checkstyleBase }),
+    ...settingsProperty(
+      'spotbugs',
+      choices.spotbugs,
+      path.join(directory, 'spotbugs-settings.json'),
+    ),
   ];
 }

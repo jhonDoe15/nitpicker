@@ -1,11 +1,12 @@
 import { chainOf } from '../../shared/traversal.mjs';
 import { existsSync, readFileSync, realpathSync, statSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
-import { findPackageJSON } from 'node:module';
+import { findPackageJSON } from './package-lookup/package-json.mjs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { CONFIG_FILE_NAME } from '../../shared/config.mjs';
+import { GIT_TIMEOUT_MS } from '../../shared/processes/deadlines.mjs';
 
 export const PACKAGE_ROOT = realpathSync(path.resolve(import.meta.dirname, '../..'));
 const manifest = readManifest(path.join(PACKAGE_ROOT, 'package.json'));
@@ -16,6 +17,18 @@ export function resolveTool(name, { projectRoot, bin, packageRoot = PACKAGE_ROOT
   const { owningManifest, owningPeers, from } = owningTool(name, { projectRoot, packageRoot });
   const { root, installed } = installedTool(name, { owningManifest, owningPeers, from });
   return { root, version: installed.version, binPath: toolBinary(name, root, bin) };
+}
+
+export function isToolInstalled(name, { projectRoot, packageRoot = PACKAGE_ROOT } = {}) {
+  const { from } = owningTool(name, { projectRoot, packageRoot });
+  try {
+    return findPackageJSON(name, pathToFileURL(path.join(from, 'package.json')).href) !== undefined;
+  } catch (error) {
+    if (error?.code === 'ERR_MODULE_NOT_FOUND') {
+      return false;
+    }
+    throw error;
+  }
 }
 
 function owningTool(name, { projectRoot, packageRoot }) {
@@ -32,8 +45,9 @@ function owningTool(name, { projectRoot, packageRoot }) {
 
 function installedTool(name, { owningManifest, owningPeers, from }) {
   const packageFile = findPackageJSON(name, pathToFileURL(path.join(from, 'package.json')).href);
-  if (packageFile === undefined)
-    throw new Error(`Required tool ${name} is not installed from ${from}`);
+  if (packageFile === undefined) {
+    throw new Error(missingToolMessage(name, from));
+  }
   const root = realpathSync(path.dirname(packageFile));
   if (isAnalyzedSnapshotPath(packageFile) || isAnalyzedSnapshotPath(root))
     throw new Error(`Tool ${name} must not resolve from an analyzed snapshot`);
@@ -45,6 +59,19 @@ function installedTool(name, { owningManifest, owningPeers, from }) {
     isPeer: owningPeers.has(name),
   });
   return { root, installed };
+}
+
+const VITEST_PACKAGES = new Set(['vitest', '@vitest/coverage-v8']);
+
+export function missingToolMessage(name, from) {
+  const message = `Required tool ${name} is not installed from ${from}`;
+  if (!VITEST_PACKAGES.has(name)) {
+    return message;
+  }
+  return (
+    `${message}. If npm 10 failed to install it with "reading 'edgesOut'", install with npm 11 ` +
+    '(`npx npm@11 install`) or use Vitest 5'
+  );
 }
 
 function toolBinary(name, root, bin) {
@@ -93,6 +120,7 @@ export function resolveProjectRoot(cwd = process.cwd()) {
     execFileSync('git', ['rev-parse', '--show-toplevel'], {
       cwd: current,
       encoding: 'utf8',
+      timeout: GIT_TIMEOUT_MS,
     }).trim(),
   );
   const directories = chainOf(current, (directory) => {
@@ -105,7 +133,7 @@ export function resolveProjectRoot(cwd = process.cwd()) {
   if (projectRoot !== undefined) return projectRoot;
   throw new Error(
     `No package.json or ${CONFIG_FILE_NAME} found between ${current} and repository root ${repositoryRoot}. ` +
-      `For a Java, Kotlin or Python project, create ${CONFIG_FILE_NAME} with its preset, for example {"preset": "java"}.`,
+      `For a Java, Kotlin, Python or Go project, create ${CONFIG_FILE_NAME} with its preset, for example {"preset": "java"}.`,
   );
 }
 

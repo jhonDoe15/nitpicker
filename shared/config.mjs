@@ -1,7 +1,10 @@
 import path from 'node:path';
 import { FACT_RULE_SETTINGS, factRuleSettings } from './project-rules/fact-rules.mjs';
+import { suggestionOrAllowed } from './messages/closest-match.mjs';
 
 export const CONFIG_FILE_NAME = 'nitpicker.config.json';
+
+export const SCHEMA_KEY = '$schema';
 
 /** Thresholds a project can set; the file limits take whole numbers. */
 export const THRESHOLD_KEYS = [
@@ -17,13 +20,13 @@ export const THRESHOLD_KEYS = [
   'unitTestSeconds',
   'integrationTestSeconds',
 ];
-const THRESHOLD_PRESETS = {
-  folderDepth: ['typescript', 'javascript', 'java', 'kotlin', 'python'],
-  classMethods: ['java', 'kotlin', 'python'],
-  classFields: ['java', 'kotlin', 'python'],
+export const THRESHOLD_PRESETS = {
+  folderDepth: ['typescript', 'javascript', 'java', 'kotlin', 'python', 'go'],
+  classMethods: ['java', 'kotlin', 'python', 'go'],
+  classFields: ['java', 'kotlin', 'python', 'go'],
   inheritanceDepth: ['java', 'kotlin', 'python'],
 };
-const WHOLE_NUMBER_THRESHOLD_KEYS = new Set([
+export const WHOLE_NUMBER_THRESHOLD_KEYS = [
   'fileLines',
   'testFileLines',
   'lineLength',
@@ -32,7 +35,7 @@ const WHOLE_NUMBER_THRESHOLD_KEYS = new Set([
   'classMethods',
   'classFields',
   'inheritanceDepth',
-]);
+];
 
 export const FEATURE_LAYOUT_KEYS = ['sharedRoots', 'featureRoots'];
 
@@ -46,8 +49,33 @@ export function isNonEmptyString(value) {
   return typeof value === 'string' && value.length > 0;
 }
 
+export function isCount(value) {
+  return Number.isInteger(value) && value >= 0;
+}
+
+export function isStringList(value) {
+  return Array.isArray(value) && value.every((entry) => typeof entry === 'string');
+}
+
 export function isPlainObject(value) {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+export function listOf(value) {
+  if (value === undefined) {
+    return [];
+  }
+  return Array.isArray(value) ? value : [value];
+}
+
+export function picked(source, keys) {
+  return Object.fromEntries(
+    keys.filter((key) => source[key] !== undefined).map((key) => [key, source[key]]),
+  );
+}
+
+export function sameJson(left, right) {
+  return JSON.stringify(left) === JSON.stringify(right);
 }
 
 export function validateStringArray(value, name) {
@@ -63,7 +91,7 @@ export function validateThresholds(thresholds, preset = 'typescript') {
   for (const [key, value] of Object.entries(thresholds)) {
     if (!THRESHOLD_KEYS.includes(key)) {
       throw configError(
-        `unknown threshold "${key}". Allowed thresholds: ${THRESHOLD_KEYS.join(', ')}`,
+        `unknown threshold "${key}"${suggestionOrAllowed(key, THRESHOLD_KEYS, 'Allowed thresholds')}`,
       );
     }
     if (THRESHOLD_PRESETS[key] !== undefined && !THRESHOLD_PRESETS[key].includes(preset)) {
@@ -74,13 +102,21 @@ export function validateThresholds(thresholds, preset = 'typescript') {
     if (typeof value !== 'number' || !Number.isFinite(value) || value <= 0) {
       throw configError(`"thresholds.${key}" must be a positive number`);
     }
-    if (WHOLE_NUMBER_THRESHOLD_KEYS.has(key) && !Number.isInteger(value)) {
+    if (WHOLE_NUMBER_THRESHOLD_KEYS.includes(key) && !Number.isInteger(value)) {
       throw configError(`"thresholds.${key}" must be a whole number`);
     }
   }
 }
 
-const DUPLICATES_KEYS = ['skippedFolders'];
+export const DUPLICATES_KEYS = ['skippedFolders'];
+
+export const SKIPPED_FOLDER_NAME = /^[^/\\*?{}[\],]+$/u;
+
+export const DRIVE_LETTER = /^[A-Za-z]:/u;
+
+export const PARENT_SEGMENT = /(?:^|[/\\])\.\.(?:[/\\]|$)/u;
+
+export const GLOB_CHARACTER = /[*?{}[\]]/u;
 
 export function validateDuplicates(duplicates) {
   if (!isPlainObject(duplicates)) {
@@ -89,7 +125,7 @@ export function validateDuplicates(duplicates) {
   for (const key of Object.keys(duplicates)) {
     if (!DUPLICATES_KEYS.includes(key)) {
       throw configError(
-        `unknown duplicates key "${key}". Allowed duplicates keys: ${DUPLICATES_KEYS.join(', ')}`,
+        `unknown duplicates key "${key}"${suggestionOrAllowed(key, DUPLICATES_KEYS, 'Allowed duplicates keys')}`,
       );
     }
   }
@@ -101,7 +137,7 @@ export function validateDuplicates(duplicates) {
 function validateSkippedFolders(folders) {
   validateStringArray(folders, 'duplicates.skippedFolders');
   const invalid = folders.find(
-    (name) => !/^[^/\\*?{}[\],]+$/.test(name) || name.startsWith('!') || ['.', '..'].includes(name),
+    (name) => !SKIPPED_FOLDER_NAME.test(name) || name.startsWith('!') || ['.', '..'].includes(name),
   );
   if (invalid !== undefined) {
     throw configError(
@@ -118,7 +154,7 @@ export function validateProjectRelativePath(value, name) {
     throw configError(`"${name}" must be a non-empty string`);
   }
   const normalized = value.replaceAll('\\', '/');
-  if (path.isAbsolute(value) || /^[A-Za-z]:/.test(value) || normalized.split('/').includes('..')) {
+  if (path.isAbsolute(value) || DRIVE_LETTER.test(value) || PARENT_SEGMENT.test(normalized)) {
     throw configError(`"${name}" must be a path inside the project`);
   }
 }
@@ -144,19 +180,29 @@ function hasUnclosedBrace(glob) {
   return depth > 0;
 }
 
-const GLOB_PROBLEMS = [
-  [(glob) => glob.startsWith('./'), 'drop the leading "./": globs match from the project root'],
-  [(glob) => glob.endsWith('/'), 'drop the trailing "/": write {fix}'],
-  [
-    (glob) => glob.includes('(?'),
-    'regular expression flags such as (?i) are not supported: globs match case-sensitively, so list each spelling in braces, such as {README,readme}.md',
-  ],
-  [hasUnclosedBrace, 'a "{" is never closed'],
+export const GLOB_PROBLEMS = [
+  {
+    pattern: /^\.\//u,
+    problem: 'drop the leading "./": globs match from the project root',
+  },
+  { pattern: /\/$/u, problem: 'drop the trailing "/": write {fix}' },
+  {
+    pattern: /\(\?/u,
+    problem:
+      'regular expression flags such as (?i) are not supported: globs match case-sensitively, so list each spelling in braces, such as {README,readme}.md',
+  },
+  { matches: hasUnclosedBrace, problem: 'a "{" is never closed' },
 ];
+
+function globProblem(glob) {
+  return GLOB_PROBLEMS.find(({ pattern, matches }) =>
+    pattern === undefined ? matches(glob) : pattern.test(glob),
+  )?.problem;
+}
 
 export function validateGlobs(globs, label, fix) {
   for (const glob of globs) {
-    const [, problem] = GLOB_PROBLEMS.find(([matches]) => matches(glob)) ?? [];
+    const problem = globProblem(glob);
     if (problem !== undefined) {
       throw configError(
         `"${label}" glob ${JSON.stringify(glob)} can never match: ${problem.replace('{fix}', fix(glob))}`,
@@ -179,8 +225,8 @@ export function validateFolderGlobs(key, globs) {
     const normalized = glob.replaceAll('\\', '/');
     if (
       path.isAbsolute(normalized) ||
-      /^[A-Za-z]:/.test(normalized) ||
-      normalized.split('/').includes('..')
+      DRIVE_LETTER.test(normalized) ||
+      PARENT_SEGMENT.test(normalized)
     ) {
       throw configError(
         `"layout.${key}" entries must be folder globs inside the project, such as "**/shared": ${glob}`,
@@ -213,4 +259,8 @@ export function validateFactRuleSettings(config) {
   throw configError(
     `"${unsupported}" is not supported with "preset": "${language}": it configures ${rule}, which the ${language} preset does not run yet. Remove it`,
   );
+}
+
+export function shownSetting(value) {
+  return value === undefined ? 'not set' : JSON.stringify(value);
 }
