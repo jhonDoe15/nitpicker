@@ -25,16 +25,18 @@ const ROUTE =
 describe('Python regex pattern defects', () => {
   it.each([
     ['a duplicate alternative', 'a|b|a', '', 'regex-part-defect'],
-    ['a duplicate class member', '[\\w_]+', '', 'regex-part-defect'],
+    ['a duplicate class member under re.A', '[\\w_]+', 'a', 'regex-part-defect'],
     ['a duplicate range under re.I', '[a-zA-Z]', 'i', 'regex-part-defect'],
     ['an inline flag', '(?i)[a-zA-Z]', '', 'regex-part-defect'],
-    ['super-linear backtracking', '^(\\s*\\w+)*$', '', 'regex-backtracking'],
+    ['super-linear backtracking', '^(?:a*b+)*$', '', 'regex-backtracking'],
   ])('reports %s', (_name, pattern, flags, rule) => {
     expect(findings([site(pattern, flags)]).map((finding) => finding.rule)).toContain(rule);
   });
 
   it.each([
     ['a clean pattern', '^[a-z]+-\\d+$'],
+    ['a Unicode \\d without re.A', '\\d|[0-9]'],
+    ['a Unicode \\w without re.A', '[\\w_]+'],
     ['a named group', '(?P<id>a)|(?P=id)|a'],
     ['a verbose-only comment', '(?x)a|a  # twice'],
     ['a dollar before a newline', 'a$\\n|a$\\n'],

@@ -2,7 +2,10 @@ import {
   JVM_REGEX_RULES,
   jvmPatternFlags,
 } from '../../../../../../shared/rules/regex/jvm-patterns.mjs';
-import { patternDefects } from '../../../../../../core/tooling/regex-patterns/pattern-defects.mjs';
+import {
+  REGEX_DIALECTS,
+  patternDefects,
+} from '../../../../../../core/tooling/regex-patterns/pattern-defects.mjs';
 import { literalText, regexSites } from './regex-values.mjs';
 
 const REGEX_DEFECT_MESSAGES = {
@@ -20,12 +23,14 @@ function siteDefects(scanned, site) {
   if (pattern === undefined || flags === undefined) {
     return [];
   }
-  return (patternDefects(pattern, { flags }).defects ?? []).map((defect) => ({
-    rule: JVM_REGEX_RULES[defect.kind],
-    offset: site.start,
-    subject: `${defect.rule} ${pattern}`,
-    message: defect.message,
-  }));
+  return (patternDefects(pattern, { flags, dialect: REGEX_DIALECTS.java }).defects ?? []).map(
+    (defect) => ({
+      rule: JVM_REGEX_RULES[defect.kind],
+      offset: site.start,
+      subject: `${defect.rule} ${pattern}`,
+      message: defect.message,
+    }),
+  );
 }
 
 export function regexDefects(scanned) {

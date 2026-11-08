@@ -14,21 +14,29 @@ FLAG_POSITIONS = {
     "re.sub": 4,
     "re.subn": 4,
 }
+FLAG_NAMES = {
+    "I": "i",
+    "IGNORECASE": "i",
+    "M": "m",
+    "MULTILINE": "m",
+    "S": "s",
+    "DOTALL": "s",
+    "A": "a",
+    "ASCII": "a",
+    "U": "",
+    "UNICODE": "",
+    "NOFLAG": "",
+}
 FLAG_LETTERS = {
-    "re.I": "i",
-    "re.IGNORECASE": "i",
-    "re.M": "m",
-    "re.MULTILINE": "m",
-    "re.S": "s",
-    "re.DOTALL": "s",
-    "re.A": "",
-    "re.ASCII": "",
-    "re.U": "",
-    "re.UNICODE": "",
+    f"re.{prefix}{name}": letter
+    for prefix in ("", "RegexFlag.")
+    for name, letter in FLAG_NAMES.items()
 }
 
 
 def flag_names(node, aliases):
+    if isinstance(node, ast.Constant) and type(node.value) is int and node.value == 0:
+        return []
     if isinstance(node, ast.BinOp) and isinstance(node.op, ast.BitOr):
         left = flag_names(node.left, aliases)
         right = flag_names(node.right, aliases)

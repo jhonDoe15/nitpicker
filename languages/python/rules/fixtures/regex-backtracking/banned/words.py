@@ -1,3 +1,3 @@
 import re
 
-WORDS = re.compile(r"^(?:\s*\w+)*$")
+WORDS = re.compile(r"^(?: *[a-z]+)*$")
