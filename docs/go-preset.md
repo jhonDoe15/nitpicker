@@ -1,6 +1,6 @@
 # Go preset
 
-Status: slice GO1 (ticket #414) implemented. The remaining slices are listed under
+Status: slices GO1 (ticket #414) and GO7 (ticket #433) implemented. The remaining slices are listed under
 [Remaining slices](#remaining-slices).
 
 The Go preset gates a Go module (`go.mod` at the project root) with the same differential gate as
@@ -39,7 +39,7 @@ node core/cli.mjs go-analyzer --project-root <snapshot>   (per snapshot)
   -> inspect <module root> inspect.json           structure metrics (languages/go/inspect)
   -> <formatter> -l <files>                        format check, one per formatter
   -> go vet -json ./...                            compile errors and vet diagnostics
-  -> go test -vet=off -json -coverpkg=./... -coverprofile=coverage.out ./...
+  -> go test -vet=off -json -race -covermode=atomic -coverpkg=./... -coverprofile=coverage.out ./...
   -> readGoFindings -> applyFindingPolicy -> compareFindings(base, head)
 ```
 
@@ -69,6 +69,7 @@ it is GPL-3.0 licensed, so the preset runs the permissively licensed tools it bu
 | Compile errors         | `go vet`                  | `build/compile-error` at the position the compiler names                            |
 | Vet                    | `go vet` (all analyzers)  | `vet/<analyzer>`, for example `vet/printf`                                          |
 | Failing tests          | `go test -json`           | `tests/tests-failed` tool error quoting each failure                                |
+| Data races             | `go test -race`           | `race/data-race`, one per pair of conflicting functions                             |
 | No tests ran           | `go test -json`           | `tests/no-tests-ran`                                                                |
 | Slow tests             | `go test -json`           | `test-runtime/slow-test`                                                            |
 | Function limits        | metrics program           | `structure/function-*-limit`                                                        |
@@ -131,13 +132,27 @@ run that writes a coverage profile, so every test runs and its time is measured.
   failing subtest is listed, and a package that failed to build is not, because its compile error
   is already a finding.
 - A module where no test ran gets `tests/no-tests-ran`, unless a build failure stopped them.
+- **Data races.** The tests run under the race detector (`-race`, with `-covermode=atomic`, which
+  `-race` needs). Each race report becomes one `race/data-race` finding on the file of its first
+  access. The message names both conflicting accesses (read or write, the function and its
+  `file:line`, the first frame of each stack inside the module) and the test that found it. The
+  finding is keyed by the two functions, whichever access the detector printed first, so a race the
+  merge base already had is not new, and the same race found by several tests is one finding. A
+  test that failed only because of a race report is not listed in `tests/tests-failed`; one that
+  also failed an assertion is, without the race report in its output. A data race is never
+  intended, so the finding has no exception route.
+- **Without the race detector.** `-race` needs cgo (`CGO_ENABLED=1` and a C compiler on the
+  `PATH`) and a platform the detector supports. When `go test -race` reports that it cannot run,
+  the tests run again without it, and a descriptive `race/race-not-checked` finding says why, so a
+  report never claims races were checked when they were not.
 - **Slow tests** use the shared `slow-test` limits: a new or changed top-level test over the unit
   budget (5 s) fails, and an integration test gets the integration budget (30 s). A test counts as
   integration when it lives under an `integration`, `integration_tests`, `e2e` or `end_to_end`
   folder, its file ends in `_integration_test.go` or `_e2e_test.go`, the file has an `integration`
   or `e2e` build constraint, or the test skips under `testing.Short()`. A test over its budget is
   run again alone (`-run '^Name$' -count=1`) and the fastest time counts, so a busy machine does
-  not fail it. A test is "changed" when its function's text differs from the merge base.
+  not fail it. The rerun is without `-race`, so the race detector's slowdown never counts towards
+  the budget. A test is "changed" when its function's text differs from the merge base.
 
 ## Structure limits
 
@@ -203,7 +218,8 @@ with `"preset": "go"`, each naming its reason.
   `PATH` and skip without `NITPICKER_GO_E2E=1`). They build throwaway git repositories and run
   the real CLI on them: a clean change, gofmt, vet, a compile error, a nested function next to an
   untouched legacy one, exceptions, failing and slow tests, build tags, gofumpt from a golangci-lint
-  file, a change that adopts gofumpt, and a missing toolchain. CI runs them in the `go-e2e` workflow.
+  file, a change that adopts gofumpt, a missing toolchain, a new data race, a race the merge base
+  already had, and cgo turned off. CI runs them in the `go-e2e` workflow.
 
 ## Remaining slices
 
@@ -215,7 +231,7 @@ with `"preset": "go"`, each naming its reason.
 | GO4 | Coverage, CRAP and mutation (#417)              | changed-branch coverage and CRAP from the coverage profile; mutation testing.                                                                                                |
 | GO5 | Duplicates, coupling, dead code, modules (#418) | clones, package coupling and stability, unused code, and `go mod tidy -diff`.                                                                                                |
 | GO6 | Shared guards and test honesty (#419)           | the guards the other presets share (secrets in code, path joins, subprocess timeouts, test assertions), after GO3.                                                           |
-| GO7 | Race detector (#433)                            | `go test -race`, with each race a finding keyed by its stacks.                                                                                                               |
+| GO7 | Race detector (#433)                            | This document: done.                                                                                                                                                         |
 
 ## Known limits
 

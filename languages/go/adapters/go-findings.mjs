@@ -8,7 +8,9 @@ import { readFormatReport } from './go-steps.mjs';
 import { goStructureFindings } from './structure/go-structure.mjs';
 import { readInspect } from './structure/go-inspect.mjs';
 import { goSlowTestFindings } from './tests/go-slow-tests.mjs';
-import { readTestRun, testRunFindings } from './tests/go-test.mjs';
+import { readRaceCheck, readTestRun, testRunFindings } from './tests/go-test.mjs';
+import { readGoModule } from './execution/go-module.mjs';
+import { parseRaces, raceFindings, raceNotCheckedFinding } from './tests/race-reports.mjs';
 
 export function goRouteRule(finding) {
   return GO_LINT_TOOLS.includes(finding.tool)
@@ -22,6 +24,19 @@ function formatterFindings(context) {
   );
 }
 
+function raceCheckFindings(context, testRun) {
+  const check = readRaceCheck(context.reportRoot);
+  if (!check.checked) {
+    return [raceNotCheckedFinding(check.reason)];
+  }
+  const module = { root: context.projectRoot, path: readGoModule(context.projectRoot)?.module };
+  return raceFindings(
+    testRun.raceOutputs.flatMap(({ test, output }) =>
+      parseRaces(output, module).map((accesses) => ({ accesses, test })),
+    ),
+  );
+}
+
 export function readGoFindings(context, policy = {}) {
   const report = readInspect(context.reportRoot);
   const testRun = readTestRun(context.reportRoot);
@@ -32,6 +47,7 @@ export function readGoFindings(context, policy = {}) {
       readFileSync(path.join(context.reportRoot, VET_REPORT), 'utf8'),
     ),
     ...testRunFindings(testRun, context.snapshot),
+    ...raceCheckFindings(context, testRun),
     ...goSlowTestFindings(context, testRun, report),
     ...goStructureFindings(report, context.projectRoot, policy),
   ];

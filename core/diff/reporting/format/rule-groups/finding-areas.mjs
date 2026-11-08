@@ -40,7 +40,7 @@ const AREA_TOOLS = [
   ],
   ['structure', ['structure', 'duplicates', 'coupling', 'repository-hygiene', 'change-history']],
   ['other', []],
-  ['tests', ['tests', 'test-runtime', 'test-console']],
+  ['tests', ['tests', 'race', 'test-runtime', 'test-console']],
   ['coverage', ['coverage', 'jacoco', 'coverage-py']],
   ['crap', ['crap']],
   ['mutation', ['mutation', 'pit', 'mutmut']],

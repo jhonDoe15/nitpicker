@@ -84,6 +84,9 @@ Before you change code other packages use, or fix a bug, read
   as one). A package folder holds at most 6 files and 6 test files directly (`doc.go` does not
   count): split it into packages by what they do. A package sits at most 4 levels below the module
   root; `internal` does not count as a level.
+- The tests run under the race detector. A `race/data-race` finding names both accesses to the
+  same memory: guard it with a `sync.Mutex`, make it a `sync/atomic` value, or hand it over through
+  a channel. Run `go test -race ./...` yourself to reproduce it.
 - Every package with code has tests; a module where no test runs fails (`no-tests-ran`). Tests are
   table-driven where cases share a shape: `tests := []struct{...}{...}` and `t.Run(tt.name, ...)`.
 - A new or changed unit test runs in under 5 s (`slow-test`); an integration test in under 30 s.

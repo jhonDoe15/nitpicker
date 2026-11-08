@@ -7,7 +7,7 @@ import {
 } from '../../../../shared/rules/failing-tests/failing-tests.mjs';
 import { ANY_STATUS, failure, run } from '../execution/go-process.mjs';
 import { buildFlags } from '../build/go-vet.mjs';
-import { parseTestEvents } from './test-events.mjs';
+import { meaningfulLines, parseEventLines, parseTestEvents } from './test-events.mjs';
 
 const TEST_EVENTS = 'test-events.jsonl';
 const COVERAGE_PROFILE = 'coverage.out';
@@ -16,12 +16,18 @@ const NO_TESTS_RULE = 'no-tests-ran';
 const LISTED_TESTS = 20;
 const OUTPUT_LINES = 8;
 
-function testCommand(settings, reportRoot) {
+const RACE_REPORT = 'race.json';
+const RACE_FLAGS = ['-race', '-covermode=atomic'];
+const RACE_UNSUPPORTED = /-race requires cgo|-race is not supported on (?<platform>\S+)/u;
+const RACE_RUNTIME = new Set(['runtime/cgo', 'runtime/race']);
+
+function testCommand(settings, reportRoot, race) {
   return [
     'go',
     'test',
     '-vet=off',
     '-json',
+    ...(race ? RACE_FLAGS : []),
     ...buildFlags(settings),
     '-coverpkg=./...',
     `-coverprofile=${path.join(reportRoot, COVERAGE_PROFILE)}`,
@@ -29,29 +35,59 @@ function testCommand(settings, reportRoot) {
   ];
 }
 
+function runtimeBuildOutput(text) {
+  return parseEventLines(text)
+    .filter(({ Action, ImportPath }) => Action === 'build-output' && RACE_RUNTIME.has(ImportPath))
+    .map(({ Output }) => (Output ?? '').trim())
+    .filter((line) => line !== '' && !line.startsWith('#'));
+}
+
+export function raceUnavailable({ stdout = '', stderr = '' }) {
+  const unsupported = RACE_UNSUPPORTED.exec(`${stderr}\n${stdout}`);
+  if (unsupported !== null) {
+    return unsupported.groups.platform === undefined
+      ? 'go test -race needs cgo, which is off (CGO_ENABLED=0, or Go found no C compiler).'
+      : `the race detector does not support ${unsupported.groups.platform}.`;
+  }
+  const runtime = runtimeBuildOutput(stdout);
+  return runtime.length === 0
+    ? undefined
+    : `the race detector runtime did not build: ${runtime.join('; ')}.`;
+}
+
+function runTests(context, race) {
+  const command = testCommand(context.settings, context.reportRoot, race);
+  return {
+    command,
+    result: run(context, command, { rule: 'go-test-failed', accepted: ANY_STATUS }),
+  };
+}
+
 export function goTest(context) {
-  const command = testCommand(context.settings, context.reportRoot);
-  const result = run(context, command, { rule: 'go-test-failed', accepted: ANY_STATUS });
+  const raced = runTests(context, true);
+  const reason = raceUnavailable(raced.result);
+  const { command, result } = reason === undefined ? raced : runTests(context, false);
   const text = result.stdout ?? '';
   if (result.status !== 0 && parseTestEvents(text).events === 0) {
     throw failure({ command, result, rule: 'go-test-failed' });
   }
   writeFileSync(path.join(context.reportRoot, TEST_EVENTS), text);
+  writeFileSync(
+    path.join(context.reportRoot, RACE_REPORT),
+    JSON.stringify(reason === undefined ? { checked: true } : { checked: false, reason }),
+  );
+}
+
+export function readRaceCheck(reportRoot) {
+  return JSON.parse(readFileSync(path.join(reportRoot, RACE_REPORT), 'utf8'));
 }
 
 export function readTestRun(reportRoot) {
   return parseTestEvents(readFileSync(path.join(reportRoot, TEST_EVENTS), 'utf8'));
 }
 
-function outputLines(output) {
-  return output
-    .split(/\r?\n/u)
-    .map((line) => line.trim())
-    .filter((line) => line !== '' && !/^(?:=== |--- |FAIL\b|ok\b|PASS$)/u.test(line));
-}
-
 function failureLines({ id, output }) {
-  const lines = outputLines(output)
+  const lines = meaningfulLines(output)
     .slice(0, OUTPUT_LINES)
     .map((line) => `    ${line}`);
   return [`  ${id}`, ...lines];
@@ -74,7 +110,7 @@ function locatedLine(lines) {
 }
 
 function failureEntry({ id, output }) {
-  const lines = outputLines(output);
+  const lines = meaningfulLines(output);
   const located = locatedLine(lines);
   const errorLine = lines
     .find((line) => line.startsWith('Error:'))

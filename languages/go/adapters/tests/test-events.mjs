@@ -1,7 +1,10 @@
+import { WARNING, withoutRaceReports } from './race-reports.mjs';
+
 const OUTCOMES = { pass: 'passed', fail: 'failed', skip: 'skipped' };
+const RUNNER_LINE = /^(?:=== |--- |FAIL\b|ok\b|PASS$|coverage: )/u;
 const PACKAGE_SUFFIX = / \[[^\]]+\]$/u;
 
-function parseLines(text) {
+export function parseEventLines(text) {
   return text.split(/\r?\n/u).flatMap((line) => {
     if (!line.startsWith('{')) {
       return [];
@@ -57,16 +60,35 @@ function unfinishedOutput(events, outputs, packageName) {
     .join('');
 }
 
+export function meaningfulLines(output) {
+  return output
+    .split(/\r?\n/u)
+    .map((line) => line.trim())
+    .filter((line) => line !== '' && !RUNNER_LINE.test(line));
+}
+
 function failureOf(event, { events, outputs }) {
   const packageName = packageOf(event);
   const own = outputs.get(`${packageName}\0${event.Test ?? ''}`) ?? '';
+  const output =
+    event.Test === undefined ? `${unfinishedOutput(events, outputs, packageName)}${own}` : own;
   return {
     id: event.Test === undefined ? packageName : `${packageName}.${event.Test}`,
     package: packageName,
     test: event.Test,
-    output:
-      event.Test === undefined ? `${unfinishedOutput(events, outputs, packageName)}${own}` : own,
+    raced: output.includes(WARNING),
+    output: withoutRaceReports(output),
   };
+}
+
+function failedForMoreThanRace({ raced, output }) {
+  return !raced || meaningfulLines(output).length > 0;
+}
+
+function raceOutputs(outputs) {
+  return [...outputs]
+    .filter(([, output]) => output.includes(WARNING))
+    .map(([key, output]) => ({ test: key.slice(key.indexOf('\0') + 1), output }));
 }
 
 function hasFailingSubtest(failure, failures) {
@@ -80,7 +102,7 @@ function hasFailingSubtest(failure, failures) {
 }
 
 export function parseTestEvents(text) {
-  const events = parseLines(text);
+  const events = parseEventLines(text);
   const builds = failedBuilds(events);
   const outputs = outputsOf(events);
   const finished = events.filter(({ Action }) => Object.hasOwn(OUTCOMES, Action));
@@ -102,8 +124,10 @@ export function parseTestEvents(text) {
     tests,
     failures: failures
       .filter((failure) => !hasFailingSubtest(failure, failures))
+      .filter(failedForMoreThanRace)
       .map(({ id, package: packageName, output }) => ({ id, package: packageName, output })),
     buildFailures: [...builds].sort(),
+    raceOutputs: raceOutputs(outputs),
     testsRan: events.some(({ Action }) => Action === 'run'),
   };
 }

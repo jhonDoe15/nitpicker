@@ -65,6 +65,7 @@ export function createGoAnalyzer(settings = {}) {
       'vet',
       'build',
       'tests',
+      'race',
       'test-runtime',
       'structure',
     ],
