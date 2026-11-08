@@ -227,14 +227,43 @@ when the code is right, for example `{ "rule": "pmd/SpringDataNoSaveInLoop", "pa
   the first task). A `try` around the call whose `catch` or `finally` calls a method named like a
   release (`shutdown`, `close`, `stop`, `cancel`, `cleanup`, `abort`, ...) or whose `catch` does not rethrow
   passes. `start()` on a `Thread`, a `Matcher` or a `StopWatch` is not a failing call.
-- `SpringDataFilterInQuery` fires on `repository.findAll()` without arguments followed by
-  `.stream().filter/count/anyMatch/...`, `.size()` or `.isEmpty()`. On a reactive repository it
-  also fires on `filter`, `filterWhen`, `count`, `any`, `all`, `hasElements`, `next`, `take` and
-  `elementAt` of the `Flux`, on `collectList()` followed by `map`, `flatMap` or `filter` with
+- `SpringDataFilterInQuery` fires when the result of a repository query is filtered, counted,
+  sorted or totalled in memory. A result is what a repository method returns as an `Iterable`,
+  a `Stream` or a `Flux`: `findAll()`, `findAllById`, `findAll(spec)`, a declared `@Query` or
+  derived method, and the `getContent()` of a `Page` or `Slice`. Save, delete, count and exists
+  methods are not results. The rule fires on:
+  - a count or emptiness check: `size()`, `isEmpty()`, `stream().count()`, and `count()` or
+    `hasElements()` of a `Flux`;
+  - a total: `mapToInt`, `mapToLong` or `mapToDouble` followed by `sum`, `max`, `min`, `average`
+    or `summaryStatistics`, `map(...).reduce(..., Long::sum)` (or `add`, `max`, `min`),
+    `stream().max(comparator)` or `min(comparator)`, and `collect` with `counting()`,
+    `summingX`, `averagingX` or `groupingBy(key, counting())`;
+  - a sort: `stream().sorted(comparator)` or the `sort(comparator)` of a `Flux`;
+  - a filter: `stream().filter`, `anyMatch`, `allMatch` or `noneMatch`, and the `filter`, `any`
+    or `all` of a `Flux`.
+
+  For a total, a sort or a filter, the lambda or method reference must read only getters of the
+  row (`row.getStatus()`, `Row::getTotal`, also `row.getCustomer().getName()`), compared with
+  constants, parameters or locals through `==`, `equals`, `compareTo`, `isBefore`, `isAfter`,
+  `contains`, `startsWith`, `endsWith` or the `Comparator` factories. A call to anything else
+  (a service, a helper, `this`) leaves the line alone. Nitpicker then reads the `@Entity`,
+  `@Embeddable` and `@MappedSuperclass` sources of the project and keeps the finding only when
+  every getter maps to a field that is stored: a getter with no field behind it (a computed
+  property), a `@Transient` or `transient` field, and a type that is not an entity of the project
+  are not reported, since the database cannot evaluate them. A sort or a total is not reported on
+  a bounded result (a `Pageable` or `Limit` argument, a `Page` or `Slice`, or a
+  `findFirst`/`findTopN` method), and neither is a count, since sorting or counting one page is a
+  display concern; a filter on a page is reported, because it leaves the page short.
+
+  `findAll()` without arguments keeps its older, wider forms: any `stream().filter/count/anyMatch/
+  findFirst/...` and the `Flux` forms `filter`, `filterWhen`, `count`, `any`, `all`,
+  `hasElements`, `next`, `take` and `elementAt`, whatever the predicate reads. On a reactive
+  repository it also fires on `collectList()` followed by `map`, `flatMap` or `filter` with
   `List::size`, `List::isEmpty` or a lambda that calls `size()`, `isEmpty()` or `stream()` and a
   filter on the list, and on `collectList().block()` followed by the blocking forms. A local that
-  holds the result of `findAll()` counts as the call when the block that declares it reads it exactly once, in
+  holds a result counts as the call when the block that declares it reads it exactly once, in
   one of these forms; a local read more than once is left alone, since the method uses the rows.
+  Mapping each row to a DTO is not reported.
 - `SpringTransactionalCheckedRollback` reports the `throws` clause of a `@Transactional` method
   (or a public method of a `@Transactional` class) that names a checked exception, unless the
   annotation has `rollbackFor` or `readOnly = true`. `SpringTransactionalReadOnlyWrite` reports a
