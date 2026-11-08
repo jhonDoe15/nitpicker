@@ -196,8 +196,7 @@ function analyzeModule(options) {
     isArchunit,
     testRuntime: classpaths.testRuntime,
   });
-  const reactor = usesReactor(classpaths);
-  analyzeSources({ ...options, reportDir, spring, springArch, reactor });
+  analyzeSources({ ...options, reportDir, spring, springArch, reactor: usesReactor(classpaths) });
   if (failure === undefined) {
     runCoverageTools({ ...options, reportDir, testsRan, isArchunit });
   }

@@ -1,4 +1,4 @@
-function nodeModule(name) {
+export function nodeModule(name) {
   return [name, `node:${name}`];
 }
 
