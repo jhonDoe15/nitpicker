@@ -84,6 +84,10 @@ Before you change code other packages use, or fix a bug, read
   as one). A package folder holds at most 6 files and 6 test files directly (`doc.go` does not
   count): split it into packages by what they do. A package sits at most 4 levels below the module
   root; `internal` does not count as a level.
+- Test every outcome of each branch you write: both sides of an `if` (the body and the condition
+  false), every `case` and, without a `default`, a value no case matches, and every loop body
+  (`changed-branch-coverage`). A function's CRAP score (complexity and coverage) stays below 9:
+  test it, or split a branchy part into its own function.
 - Every package with code has tests; a module where no test runs fails (`no-tests-ran`). Tests are
   table-driven where cases share a shape: `tests := []struct{...}{...}` and `t.Run(tt.name, ...)`.
 - A new or changed unit test runs in under 5 s (`slow-test`); an integration test in under 30 s.

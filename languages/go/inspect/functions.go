@@ -124,6 +124,14 @@ func measureUnit(fileSet *token.FileSet, path, name string, signature *ast.FuncT
 		MaxControlNesting: walker.deepest,
 		Parameters:        parameterCount(signature),
 		Complexity:        walker.complexity,
+		Body:              position(fileSet, body.Lbrace),
+		Close:             position(fileSet, body.Rbrace),
+	}
+	for _, decision := range walker.decisions {
+		branch := decisionBranch(fileSet, decision)
+		branch.File = path
+		branch.Function = name
+		entry.Branches = append(entry.Branches, branch)
 	}
 	entry.Lines = entry.End - entry.Start + 1
 	entries := []Function{entry}

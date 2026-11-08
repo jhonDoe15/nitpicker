@@ -39,7 +39,7 @@ node core/cli.mjs go-analyzer --project-root <snapshot>   (per snapshot)
   -> inspect <module root> inspect.json           structure metrics (languages/go/inspect)
   -> <formatter> -l <files>                        format check, one per formatter
   -> go vet -json ./...                            compile errors and vet diagnostics
-  -> go test -vet=off -json -coverpkg=./... -coverprofile=coverage.out ./...
+  -> go test -vet=off -json -covermode=count -coverpkg=./... -coverprofile=coverage.out ./...
   -> readGoFindings -> applyFindingPolicy -> compareFindings(base, head)
 ```
 
@@ -71,6 +71,8 @@ it is GPL-3.0 licensed, so the preset runs the permissively licensed tools it bu
 | Failing tests          | `go test -json`           | `tests/tests-failed` tool error quoting each failure                                |
 | No tests ran           | `go test -json`           | `tests/no-tests-ran`                                                                |
 | Slow tests             | `go test -json`           | `test-runtime/slow-test`                                                            |
+| Branch coverage        | coverage profile          | `coverage/changed-branch-coverage`                                                  |
+| CRAP                   | coverage profile          | `crap/crap-score-limit`, `crap/crap-coverage-unknown`                               |
 | Function limits        | metrics program           | `structure/function-*-limit`                                                        |
 | Type limits            | metrics program           | `structure/class-methods-limit`, `class-fields-limit`                               |
 | File and folder limits | metrics program           | `file-lines-limit`, `line-length-limit`, `folder-files-limit`, `folder-depth-limit` |
@@ -122,7 +124,7 @@ behind those tags are built and checked.
 
 `go test` runs with `-json` over every package. `-vet=off` keeps it from failing a build on a vet
 finding (vet already ran), and `-coverpkg=./...` makes each package's coverage include what other
-packages' tests exercise; the coverage profile is what slice GO4 gates on. Go does not cache a
+packages' tests exercise; the coverage profile is what the coverage and CRAP checks read. Go does not cache a
 run that writes a coverage profile, so every test runs and its time is measured.
 
 - A failing test makes the snapshot a `tests/tests-failed` tool error (exit 1) that lists up to 50
@@ -138,6 +140,41 @@ run that writes a coverage profile, so every test runs and its time is measured.
   or `e2e` build constraint, or the test skips under `testing.Short()`. A test over its budget is
   run again alone (`-run '^Name$' -count=1`) and the fastest time counts, so a busy machine does
   not fail it. A test is "changed" when its function's text differs from the merge base.
+
+## Branch coverage and CRAP
+
+`go test -coverprofile` records statement blocks and how often each ran (`-covermode=count`), not
+branches. The metrics program lists every branch point of each function with `go/ast`, and the
+profile's blocks stand in for its outcomes:
+
+| Branch point          | Outcomes                                                              |
+| --------------------- | --------------------------------------------------------------------- |
+| `if`                  | the if body, and the else branch or, without one, the condition false |
+| `switch`, type switch | each case, and "no case matching" when there is no `default`          |
+| `select`              | each case                                                             |
+| `for`, `range`        | the loop body                                                         |
+
+An outcome with a block of its own (a body, an else branch, a case) is taken when its block ran. An
+outcome without one (the condition false, no case matching) is taken when the branch point was
+evaluated more often than its blocks ran: the count of the block holding the `if` or `switch`
+keyword minus the counts of its arms. A switch with a `fallthrough` gets no "no case matching"
+outcome, since the fallen-through case counts runs no match started. A loop's exit is not an
+outcome: it is taken whenever the loop ends. `&&` and `||` are not split into outcomes; the
+profile records no blocks inside a condition.
+
+- **`changed-branch-coverage`** fails a branch point with less than 95% of its outcomes taken, and
+  names the ones not taken (`Not taken: the if body (line 4)`). It is keyed by its function and the
+  trimmed source line, so only a branch point the change wrote or edited is new. Its exception names
+  the function, as in the other presets.
+- **`crap-score-limit`** scores each function and function literal: `complexity² × (1 − coverage)³
+  - complexity`, with the cyclomatic complexity from the metrics program and the coverage the lower
+of its statement coverage (statements of the blocks that ran, its literals left out) and its
+branch outcome coverage. A function over the limit (9, or `thresholds.crapLimit`) fails; an edited
+legacy function fails only when its score rose. **`crap-coverage-unknown`** fails a new or changed
+    function when no test wrote a profile at all.
+- A file the profile does not list (left out by a build constraint, for example `_windows.go` on
+  Linux) and the files of a package that did not build are not scored: the build error is already a
+  finding.
 
 ## Structure limits
 
@@ -177,7 +214,9 @@ Packages more than 4 levels below the module root fail `folder-depth-limit`, lik
 
 The top-level `exceptions` take a finding as it is printed, `<tool>/<rule>` (`vet/printf`), as in
 the Java preset, plus the shared rules (the function, type, file and folder limits, `slow-test`, and
-the repository checks). Every vet, limit and slow-test message ends with its exception entry, for
+the repository checks, and `changed-branch-coverage`, `crap-score-limit` and `crap-coverage-unknown`
+with the `function` they name). Every vet, limit, coverage, CRAP and slow-test message ends with its
+exception entry, for
 example `{"rule":"vet/printf","paths":["shop/label.go"],"reason":"..."}`. Format findings,
 compile errors and `no-tests-ran` have no exception route: run the formatter, fix the build, or
 add a test.
@@ -203,7 +242,9 @@ with `"preset": "go"`, each naming its reason.
   `PATH` and skip without `NITPICKER_GO_E2E=1`). They build throwaway git repositories and run
   the real CLI on them: a clean change, gofmt, vet, a compile error, a nested function next to an
   untouched legacy one, exceptions, failing and slow tests, build tags, gofumpt from a golangci-lint
-  file, a change that adopts gofumpt, and a missing toolchain. CI runs them in the `go-e2e` workflow.
+  file, a change that adopts gofumpt, a missing toolchain, a branch outcome no test takes, a tested
+  change next to an untested legacy function, a branch exception, and an untested branchy function's
+  CRAP score. CI runs them in the `go-e2e` workflow.
 
 ## Remaining slices
 
@@ -212,7 +253,7 @@ with `"preset": "go"`, each naming its reason.
 | GO1 | Base (#414)                                     | This document: done.                                                                                                                                                         |
 | GO2 | Linters (#415)                                  | staticcheck (every check, including the off-by-default ones that fit), revive, errcheck, gosec and the permissively licensed `go/analysis` linters, in one program.          |
 | GO3 | One-way rules (#416)                            | nitpicker's own analyzers for the forms Go still leaves open (error wrapping and comparison, constructors, receivers, loops, context), each message naming the allowed form. |
-| GO4 | Coverage, CRAP and mutation (#417)              | changed-branch coverage and CRAP from the coverage profile; mutation testing.                                                                                                |
+| GO4 | Coverage, CRAP and mutation (#417)              | Branch coverage and CRAP: done (this document). Mutation testing: next.                                                                                                      |
 | GO5 | Duplicates, coupling, dead code, modules (#418) | clones, package coupling and stability, unused code, and `go mod tidy -diff`.                                                                                                |
 | GO6 | Shared guards and test honesty (#419)           | the guards the other presets share (secrets in code, path joins, subprocess timeouts, test assertions), after GO3.                                                           |
 | GO7 | Race detector (#433)                            | `go test -race`, with each race a finding keyed by its stacks.                                                                                                               |

@@ -66,6 +66,8 @@ export function createGoAnalyzer(settings = {}) {
       'build',
       'tests',
       'test-runtime',
+      'coverage',
+      'crap',
       'structure',
     ],
     timeoutMs: ANALYZER_TIMEOUT_MS,

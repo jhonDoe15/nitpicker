@@ -205,19 +205,19 @@ const CATALOG = [
     id: RULE_IDS.crapScoreLimit,
     check: 'crap',
     limit: `CRAP score at or above ${String(DEFAULT_CRAP_SCORE_LIMIT)}; override with \`QUALITY_CRAP_SCORE_LIMIT\` (positive number) or \`thresholds.crapLimit\``,
-    enforcedBy: withKotlin(ALL, true),
+    enforcedBy: withGo(withKotlin(ALL, true)),
   },
   {
     id: RULE_IDS.crapCoverageUnknown,
     check: 'crap',
     limit: 'function with unknown coverage and no CRAP score',
-    enforcedBy: withKotlin(ALL, true),
+    enforcedBy: withGo(withKotlin(ALL, true)),
   },
   {
     id: RULE_IDS.changedBranchCoverage,
     check: 'coverage',
     limit: `a changed branch with coverage below ${String(MINIMUM_BRANCH_COVERAGE)}%`,
-    enforcedBy: withKotlin(ALL, true),
+    enforcedBy: withGo(withKotlin(ALL, true)),
   },
   {
     id: RULE_IDS.mutantSurvived,

@@ -64,6 +64,19 @@ than the others, and this skill teaches its rules before an agent writes Go.
   5 s / 30 s budgets and the integration markers (folders, file suffix, build tag,
   `testing.Short()`) cover the ways Go projects already separate their slow tests.
 
+- **Branch coverage from blocks.** `go test -coverprofile` records statement blocks, not branches.
+  Every arm of an `if`, `switch` or `select` and every loop body starts a block of its own, so its
+  block count says whether it ran. With `-covermode=count`, the outcomes that have no block (an `if`
+  without `else` whose condition was false, a switch where no case matched) are the evaluations of
+  the branch point minus its arms' counts, which makes an `if err != nil { return err }` count as two
+  outcomes, as it does in JaCoCo and coverage.py. Conditions with `&&` and `||` are not split, since
+  the profile has no blocks inside them; that is weaker than JaCoCo, which counts each operand.
+- **CRAP from the same profile.** The cyclomatic complexity comes from the metrics program (each
+  `if`, loop, case and `&&`/`||`), and the coverage is the lower of the statement and branch outcome
+  coverage, as in the Python preset.
+- **Files the build leaves out are not scored.** A file behind a build constraint the run does not
+  satisfy has no blocks; scoring it as unknown would fail every platform-specific file.
+
 ## Rejected ideas
 
 - **Running golangci-lint.** It is GPL-3.0 licensed, and nitpicker ships only permissively licensed
