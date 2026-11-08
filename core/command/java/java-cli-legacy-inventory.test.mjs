@@ -4,6 +4,7 @@ import { exactText } from '../../diff/reporting/test-support/output-expectations
 import { commit } from '../../diff/git/test-support/git-repository.mjs';
 import {
   unusedFieldConsoleEntry,
+  unusedFieldFields,
   unusedFieldMessage,
   useGradleFixtures,
   useMavenFixtures,
@@ -58,6 +59,7 @@ Full diagnostics: /tmp/nitpicker-java-out-${/[A-Za-z0-9]{6}/}/reports/report.txt
         path: 'src/main/java/demo/A.java',
         identity: 'fp:nitpicker/subject=Avoid unused field: other',
         message: unusedFieldMessage('other'),
+        ...unusedFieldFields(),
         classification: 'enforceable',
         location: { line: 5 },
       },
