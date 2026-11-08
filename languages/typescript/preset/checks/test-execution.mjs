@@ -73,6 +73,7 @@ export function testExecutionChecksFor(exclusions) {
         JAVASCRIPT_PRESET_FILE,
         'languages/typescript/preset/defaults/stryker.config.mjs',
         'languages/typescript/preset/project-configs/stryker-project-config.mjs',
+        'languages/typescript/preset/project-configs/config-module.mjs',
         'languages/typescript/preset/defaults/vitest.quality.config.ts',
         'languages/typescript/preset/defaults/tsconfig.stryker.json',
       ],
