@@ -1959,6 +1959,8 @@
                             "structure/inheritance-depth-limit",
                             "test-runtime/test-console-output",
                             "test-runtime/test-not-run",
+                            "kotlin-source/ChildCoroutineOutlivesResource",
+                            "kotlin-source/SuspendFunInFinallySection",
                             "kotlin-source/UnboundedFanOut",
                             "kotlin-source/UnboundedReactiveFanOut",
                             "kotlin-source/UnsafeCastOperator",
