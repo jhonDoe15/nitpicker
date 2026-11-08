@@ -862,6 +862,21 @@
             }
           }
         },
+        "pit": {
+          "description": "Settings of pit.",
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["precedence"],
+          "properties": {
+            "precedence": {
+              "description": "Which config pit uses: \"project\" is your own config file, \"nitpicker\" is the preset's. List each at most once.",
+              "type": "array",
+              "minItems": 1,
+              "uniqueItems": true,
+              "items": { "enum": ["project", "nitpicker"] }
+            }
+          }
+        },
         "ktlint": {
           "description": "Settings of ktlint.",
           "type": "object",
@@ -1201,6 +1216,7 @@
               "checkstyle": false,
               "spotbugs": false,
               "errorprone": false,
+              "pit": false,
               "ktlint": false,
               "ktfmt": false,
               "detekt": false,
@@ -1415,6 +1431,7 @@
               "checkstyle": false,
               "spotbugs": false,
               "errorprone": false,
+              "pit": false,
               "ktlint": false,
               "ktfmt": false,
               "detekt": false,
@@ -2202,6 +2219,7 @@
               "checkstyle": false,
               "spotbugs": false,
               "errorprone": false,
+              "pit": false,
               "ktlint": false,
               "ktfmt": false,
               "detekt": false,
@@ -2372,6 +2390,7 @@
               "checkstyle": false,
               "spotbugs": false,
               "errorprone": false,
+              "pit": false,
               "ktlint": false,
               "ktfmt": false,
               "detekt": false,

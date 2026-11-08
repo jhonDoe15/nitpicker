@@ -31,4 +31,5 @@ Kotlin classes (see [Mutation](mutation.md)), and jdeps reads every main class d
 or lower threshold the build declares for SpotBugs apply to this Java-only run (see
 [Settings the build declares](../usage.md#settings-the-build-declares-java-and-kotlin-presets)).
 `tools.errorprone` likewise lays the Error Prone and NullAway flags the build declares over nitpicker's
-for the Java sources Error Prone compiles.
+for the Java sources Error Prone compiles, and `tools.pit` passes the `pitest { }` settings to the PIT
+run of the Java and Kotlin classes (see [Mutation](#mutation-report-only-for-kotlin)).

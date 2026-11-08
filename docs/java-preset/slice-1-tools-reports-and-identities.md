@@ -126,6 +126,17 @@ the `src/main` sources checked. The run names every flag
 it left out. Findings of the checks the project adds go through the same messages, exemptions and
 `exceptions` as nitpicker's.
 
+**The project's PIT settings.** With `tools.pit.precedence` listing `"project"`, nitpicker reads the
+`pitest { }` block of the `info.solidsoft.pitest` Gradle plugin or the configuration of `pitest-maven`
+from the head checkout and passes the settings to its own PIT run (`nitpickerPit<Task>` on Gradle,
+`runPit` on Maven, and the Kotlin preset's PIT run, whose Kotlin mutants stay descriptive). Excluded
+classes, methods and test classes, the calls to avoid (after PIT's own logging classes) and the JVM
+arguments are added under every ordering that lists `"project"`, like the SpotBugs exclude filter. A
+timeout longer than PIT's default applies under every ordering, a shorter one never (a timed-out
+mutant counts as killed). The project's mutators are added to the mutators nitpicker names itself (its `--mutators` list is
+always passed), and its `threads` replace nitpicker's 2, only with the project first. The targets, the test classes, `features`, groups,
+reports, thresholds and history stay nitpicker's; the run names what it left out.
+
 **PMD rules tuned by nitpicker.** These rules of the rule set allow a narrower form than PMD's
 default, and their messages name it:
 
