@@ -37,7 +37,7 @@ const TSCONFIG = JSON.stringify({
   include: ['src', 'test'],
 });
 
-const PLACEHOLDER = `${'$'}{name}`;
+const PLACEHOLDER = ['$', '{name}'].join('');
 
 const BANNED = [
   [undefined, 'export const firsts = (values: readonly number[]) =>'],
