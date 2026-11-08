@@ -9,10 +9,10 @@ import {
 } from '../../../languages/typescript/preset/layout.mjs';
 
 const JSX_FILE = /\.[jt]sx$/u;
-const HEAD_NAMES = new Set(['HEAD', '@']);
+export const HEAD_NAMES = ['HEAD', '@'];
 
 export function rejectHeadBase(base) {
-  if (HEAD_NAMES.has(base)) {
+  if (HEAD_NAMES.includes(base)) {
     throw configError(
       `"base" cannot be "${base}": the change would be compared with itself. Name a branch such as "origin/main", or pass --base <ref>.`,
     );
@@ -33,18 +33,22 @@ function existingJsxFiles(projectRoot, root) {
     .filter((file) => JSX_FILE.test(file));
 }
 
-export function rejectUnreadableSources(config, projectRoot) {
-  if (config.preset !== 'javascript') {
-    return;
-  }
+export function firstJsxFile(config, projectRoot) {
   const roots = [
     ...(config.layout?.sourceRoots ?? defaultSourceRoots),
     ...(config.layout?.testRoots ?? defaultTestRoots),
   ];
   const excluded = (config.exclude ?? []).map(globMatcher);
-  const found = roots
+  return roots
     .flatMap((root) => existingJsxFiles(projectRoot, root))
     .find((file) => !excluded.some((matcher) => matcher.test(file)));
+}
+
+export function rejectUnreadableSources(config, projectRoot) {
+  if (config.preset !== 'javascript') {
+    return;
+  }
+  const found = firstJsxFile(config, projectRoot);
   if (found !== undefined) {
     throw configError(
       `"preset": "javascript" does not analyze .jsx and .tsx files, and ${found} is one. Use "preset": "typescript", which reads them, or list the path in "exclude".`,

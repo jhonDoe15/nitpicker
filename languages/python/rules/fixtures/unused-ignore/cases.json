@@ -1,0 +1,8 @@
+[
+  {
+    "name": "mypy unused ignore names deleting the comment",
+    "tool": "mypy",
+    "rule": "unused-ignore",
+    "mention": "delete the comment"
+  }
+]

@@ -31,6 +31,14 @@ One npm package (`nitpicker`) serves every language; the package root is the rep
 Source files carry no comments; formats and protocols that names cannot express are in
 [docs/internals.md](docs/internals.md).
 
+Test helpers go in one of two folders next to the tests that use them. `__tests__/` holds helpers
+that register Vitest hooks, such as `useJavaPresetProject()`, which builds a fixture project in
+`beforeAll` and removes it in `afterAll`. The lint rules treat the folder as test code, and the named timeout
+projects in `nitpicker.config.json` include the Java and Kotlin ones, so their hooks get the same
+limits as the tests. `test-support/` holds what the tests import without hooks: expected findings,
+fixture file contents, and helpers that run a build or summarize a report. Neither folder ships in
+the npm package.
+
 ## Running the checks
 
 Pull requests do not run CI on every push. Check your change locally before you push it and again
@@ -53,12 +61,12 @@ end-to-end behaviour also needs that language's suite (`npm run test:java`, `tes
 `kotlin-e2e`, `python-e2e` and `go-e2e` workflows, which follow the same triggers as the `typescript` workflow
 below (pushes to `main` that touch the paths they list, a manual run, and the `run-ci` label). The
 `github-action` workflow, which runs the composite action in `action.yml` on the sample project in
-`.github/sample-project`, follows them too; it is not a required check. On a pull request, each of
-these five workflows first runs a small `changes` job (`scripts/ci/affected-jobs.mjs`) that compares the
-pull request's changed files with the workflow's own push `paths`. When none of them matches, the
-workflow's other jobs are skipped and its summary job passes; when the files cannot be listed, all
-jobs run. Changing a shared path such as `core/`, `shared/`, `package.json` or `vitest.config.mts`
-runs them all.
+`.github/sample-project`, and the `platforms` workflow described below follow them too; neither is a
+required check. On a pull request, each of these six workflows first runs a small `changes` job
+(`scripts/ci/affected-jobs.mjs`) that compares the pull request's changed files with the workflow's own
+push `paths`. When none of them matches, the workflow's other jobs are skipped and its summary job
+passes; when the files cannot be listed, all jobs run. Changing a shared path such as `core/`, `shared/`,
+`package.json` or `vitest.config.mts` runs them all.
 The `typescript` workflow (the required `test` and `self-gate` checks) always runs in full, because
 its tests read the whole repository, documentation included. Keep a workflow's `paths` complete:
 on pull requests they now decide what runs, not only which pushes to `main` start a run.
@@ -68,6 +76,15 @@ under test. CI keeps `~/.m2` and `~/.gradle` between runs; locally they are your
 The TypeScript red-base test (`npm run test:typescript`, which runs real vitest through the CLI) is
 not in CI: run it after changing `core/diff/comparison/base-red/`, a test runner's failure report or how
 the Stryker report is read.
+
+The `platforms` workflow runs the CLI on the sample projects in `scripts/platforms/samples.mjs` on Linux,
+macOS and Windows, and the TypeScript sample under Deno. It fails when a run's findings differ from the
+Linux run under Node, except for the differences listed in `scripts/platforms/compare-runs.mjs`.
+Reproduce one sample with `node scripts/platforms/smoke.mjs typescript --output reports/platforms/local`
+(add `--runtime deno` for Deno), then compare two such directories with
+`node scripts/platforms/compare-runs.mjs <reference> <other>`. After changing a workflow's versions or the
+expected differences, run `npm run gen:checks` so that [docs/compatibility.md](docs/compatibility.md)
+matches; a test fails until it does.
 
 CI (the `typescript` workflow) runs:
 
@@ -82,13 +99,12 @@ before adding the label.
 
 When a pull request loosens `nitpicker.config.json` (for example an exception, exclude or entry
 point that covers a new code file; see the policy changes in [docs/usage.md](docs/usage.md)), the
-self-gate fails with a `nitpicker-config/policy-loosened` finding that names a 12-character digest.
-A repository admin who agrees with the loosening copies the digest from that CI run's log (a local
-run can give another digest, since CI checks the pull request merged into `main`), sets the
-repository variable `NITPICKER_ACCEPT_POLICY_CHANGE` to exactly that value (Settings > Secrets and
-variables > Actions > Variables), and runs the self-gate again by removing and re-adding the
-`run-ci` label. The digest covers those loosenings and the content of the files they hide, so a
-different loosening needs a new digest. Delete the variable once the pull request is merged. The
+self-gate fails with a `nitpicker-config/policy-loosened` finding. A maintainer who agrees with the
+loosening adds the `accept-policy-change` label. The
+[policy approval workflow](.github/workflows/nitpicker-policy-approval.yml) records the approval
+on the head commit as the `nitpicker/policy-accepted` status, removes the label and re-runs the
+failed jobs, so the self-gate passes for that commit. A later push is a new commit and needs the
+label again. Coding agents never add the label. The
 self-gate runs the pull request's own code and workflow, so changes to `.github/workflows/`,
 `core/`, `package.json` and `nitpicker.config.json` need a careful review whatever the gate says.
 
@@ -107,7 +123,9 @@ Java end-to-end CI uses 4 isolated runner shards and Kotlin uses 3, with files r
 each shard. Independent behavior groups have separate fixture trees; the full 102 Java and 98
 Kotlin cases remain selected. The final `java` or `kotlin` check passes only when all its shards
 pass. Reproduce a shard with `npm run test:java -- --shard=1/4` or
-`npm run test:kotlin -- --no-file-parallelism --shard=1/3`.
+`npm run test:kotlin -- --no-file-parallelism --shard=1/3`. A file that runs longer than about
+two minutes belongs in several files with their own fixtures, so the shards stay balanced;
+`scripts/test-shards/README.md` has the timings.
 
 Named `tools.tests.timeouts.projects` select the Java/Kotlin subject even though the harness is
 JavaScript. They inherit language declaration ceilings and repository execution defaults. JVM

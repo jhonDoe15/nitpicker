@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { ingestRulesReport } from './rules-report.mjs';
 import { FAN_OUT_SEPARATOR } from '../rules/hints/ast-smells.mjs';
+import { applyRuleHints } from '../rules/rule-hints.mjs';
 
 const entry = (overrides) => ({
   rule: 'frozen-dataclass',
@@ -106,6 +107,11 @@ describe('rules script report', () => {
       'process-env-access',
       'os.getenv',
       '`os.getenv` reads the process environment outside the composition root',
+    ],
+    [
+      'process-stream-access',
+      'sys.stdout',
+      '`sys.stdout` reaches a standard stream outside the composition root',
     ],
     [
       'clock-now',
@@ -365,6 +371,14 @@ describe('rules script report', () => {
     expect(ingestRulesReport(JSON.stringify(report)).map(({ message }) => message)).toEqual([
       'Option total.rate is never set. Remove it, or set it from a real call (tests do not count).',
       "Option total.cents is never set. Remove it, or set it from a real call (this package's own tests count).",
+    ]);
+    expect(
+      applyRuleHints(ingestRulesReport(JSON.stringify(report))).map(
+        ({ allowedForm }) => allowedForm,
+      ),
+    ).toEqual([
+      'Remove it, or set it from a real call (tests do not count).',
+      "Remove it, or set it from a real call (this package's own tests count).",
     ]);
   });
 });

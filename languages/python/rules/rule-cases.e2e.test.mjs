@@ -1,7 +1,9 @@
 import { describe, expect, it } from 'vitest';
-import { RULE_CASES } from './test-support/python-rule-cases.mjs';
+import { ruleCases } from './test-support/python-rule-cases.mjs';
 import { createRuleChecker } from './test-support/python-rule-harness.mjs';
 import { hintFor } from './rule-hints.mjs';
+
+const RULE_CASES = ruleCases();
 
 const enabled = process.env.NITPICKER_PYTHON_E2E === '1';
 

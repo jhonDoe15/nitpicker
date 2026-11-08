@@ -237,7 +237,11 @@ describe.skipIf(!enabled)('helper resolution', () => {
   it('resolves standard-library and installed names to themselves, not to a project module', () => {
     const files = {
       ...PACKAGES,
-      'shop/shared/json.py': lines('def loads(path):', '    return open(path).read()'),
+      'shop/shared/json.py': lines(
+        'def loads(path):',
+        '    with open(path) as handle:',
+        '        return handle.read()',
+      ),
       'shop/domain/pricing.py': lines(
         'import json',
         '',

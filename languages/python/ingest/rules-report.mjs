@@ -3,7 +3,7 @@ import { createIdentities } from './identities.mjs';
 
 const CHECK_FAILED_RULE = 'rules-check-failed';
 const SKIPPED_RULE = 'rules-skipped';
-const MINIMUM_PYTHON = '3.10';
+export const MINIMUM_PYTHON = '3.10';
 const TOO_DEEP_RULE = 'rules-too-deep';
 const TOO_DEEP_CHECKS = { file: 'some of the per-file checks', all: 'every check' };
 
@@ -34,6 +34,7 @@ function described({ rule, subject, data }, libraries) {
   return {
     message: describeRuleFinding(rule, subject, { libraries, data }),
     classification: 'enforceable',
+    ...(data === undefined ? {} : { hintData: data }),
   };
 }
 

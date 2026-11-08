@@ -31,17 +31,19 @@ base and fails only on **new enforceable findings**. Existing debt is baselined 
 
 ### Exit codes
 
-| Code | Meaning                                                                                                          |
-| ---- | ---------------------------------------------------------------------------------------------------------------- |
-| 0    | Completed with no new enforceable findings. Done, unless the run was narrowed with `--analyzer`.                 |
-| 1    | At least one new enforceable finding, even if a tool also errored. Fix and rerun.                                |
-| 2    | A tool error and no new enforceable findings, invalid arguments, invalid config, or any other failure to decide. |
+| Code | Meaning                                                                                                                                |
+| ---- | -------------------------------------------------------------------------------------------------------------------------------------- |
+| 0    | Completed with no new enforceable findings. Done, unless the run was narrowed with `--analyzer`.                                       |
+| 1    | At least one new enforceable finding or a failing head test, even if a tool also errored. Fix and rerun.                               |
+| 2    | A tool error and no new enforceable findings or failing head tests, invalid arguments, invalid config, or any other failure to decide. |
 
 A full run takes minutes and prints a progress line to stderr for each slow, failed or skipped analyzer. Wait for it: do
 not start a second run or kill it. A second run in the same project exits 2 at once with `another run is in progress`.
 
 Exit 2 is not a pass. Tool errors are listed and recorded even when the exit is 1. Read the tool errors, fix the cause (a missing peer such as `vitest` or
-`typescript`, a bad `nitpicker.config.json`, a wrong `--base`) and rerun.
+`typescript`, a bad `nitpicker.config.json`, a wrong `--base`) and rerun. `npx nitpicker init` lists
+the missing peers with the install command for the project's package manager; it never overwrites
+an existing file.
 
 ### Read the report
 
@@ -54,7 +56,10 @@ for `--all`):
 
 - `report.txt`: the readable report. Start here.
 - `new-findings.json`: the new findings that count against you. Each has a tool, rule, path,
-  location and message.
+  location and message, and where the rule states them, `allowedForm` (what to write instead) and
+  `exception` (the entry the message tells you to add to `exceptions`, with `exceptionList` naming
+  the config list). Use `allowedForm` to fix the code. Never add `exception` yourself (step 3
+  below).
 - `resolved-findings.json` and `changed-metrics.json`: informational.
 - `tool-errors.json`: the tool errors, whatever the exit code.
 - `notes.json`: notes such as a base whose tests fail, which the run reports but does not fail on.
@@ -77,7 +82,8 @@ and metric changes are reported but never fail.
    `@ts-expect-error`, edit the rule configuration, add to `exclude`, `disable` or `exceptions` in
    `nitpicker.config.json`, add to `nitpicker.legacy.json`, mark a file you wrote as generated
    (`@generated`, `DO NOT EDIT`), or delete or weaken tests to make the gate pass. Those overrides are listed in the report and change the policy hash, so they are
-   visible in review. Never pass `--accept-policy-change` or set `NITPICKER_ACCEPT_POLICY_CHANGE`:
-   a `nitpicker-config/policy-loosened` finding means stop and ask a person to review the change.
+   visible in review. Never pass `--accept-policy-change`, set `NITPICKER_ACCEPT_POLICY_CHANGE` or
+   add the `accept-policy-change` label: a `nitpicker-config/policy-loosened` finding means stop and
+   ask a person to review the change.
 4. If a finding looks wrong, or fixing it needs a decision you cannot make, stop and ask the
    maintainer. Do not work around it.

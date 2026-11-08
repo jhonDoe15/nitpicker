@@ -5,8 +5,8 @@ import { runScheduler } from './diff/execution/run-analyzers.mjs';
 import { runCacheCommand } from './command/cache.mjs';
 import { runExplainCommand, runRulesCommand } from './command/reference/reference.mjs';
 import { runBaseCommand } from './command/base.mjs';
-import { parseArguments, USAGE_TEXT } from './command/arguments.mjs';
-import { resolveProjectRoot } from './tooling/tool-resolution.mjs';
+import { missingPathHint, parseArguments } from './command/arguments.mjs';
+import { resolveRunTarget } from './scope/run-target.mjs';
 import { realpathSync } from 'node:fs';
 import {
   describeConfigOverrides,
@@ -28,13 +28,16 @@ import { resolveComparison } from './diff/git/repository/git.mjs';
 import { resolveBase } from './diff/git/repository/base-ref.mjs';
 import { detachLocalGitVariables } from './diff/git/environment/local-variables.mjs';
 import path from 'node:path';
-import { clearDiffReports } from './diff/reporting/reporters.mjs';
+import { clearDiffReports, outputRootFor } from './diff/reporting/reporters.mjs';
 import { selectComparisonAnalyzers } from './command/comparison/analyzers.mjs';
 import { runQualityDiff } from './diff/comparison/run-diff.mjs';
 import { fixWorkingTree } from './fix/run-fix.mjs';
 import { resolveCacheStore } from './diff/cache/cache-stores.mjs';
 import { runHistoryCli } from '../shared/history/runner.mjs';
 import { runHygieneCli } from '../shared/hygiene/runner.mjs';
+import { printedInformation } from './help/printed-information.mjs';
+import { runInitCommand } from './init/run-init.mjs';
+import { javascriptPresetHint } from './configuration/project-checks/preset-detection.mjs';
 import { GO_ANALYZER_COMMAND, runGoCli } from '../languages/go/adapters/go-runner.mjs';
 import { redirectToBundledTypeScriptApi } from '../languages/typescript/typescript-api/api-selection.mjs';
 import { describeError } from '../shared/messages/error-chain.mjs';
@@ -44,7 +47,13 @@ const CHECK_COMMANDS = {
   history: runHistoryCli,
   [GO_ANALYZER_COMMAND]: runGoCli,
 };
-const REFERENCE_COMMANDS = { explain: runExplainCommand, rules: runRulesCommand };
+const SUBCOMMANDS = {
+  cache: (cli, rest) => runCacheCommand({ ...cli, arguments_: rest }),
+  init: (cli, rest) => runInitCommand({ ...cli, arguments_: rest }),
+  base: (cli, rest) => runBaseCommand({ ...cli, arguments_: rest }),
+  explain: (cli, rest) => runExplainCommand({ ...cli, commandArguments: rest }),
+  rules: (cli, rest) => runRulesCommand({ ...cli, commandArguments: rest }),
+};
 
 export function runCli(options = {}) {
   detachLocalGitVariables(process.env);
@@ -99,40 +108,29 @@ function withCliDefaults(options) {
 }
 
 function runCommand(cli) {
-  if (cli.arguments_[0] === 'cache') {
-    return runCacheCommand({
-      arguments_: cli.arguments_.slice(1),
-      environment: cli.environment,
-      currentProjectRoot: cli.currentProjectRoot,
-      analyzers: cli.analyzers,
-      stdout: cli.stdout,
-      stderr: cli.stderr,
-      runTasks: cli.runTasks,
-    });
-  }
-  const referenceCommand = REFERENCE_COMMANDS[cli.arguments_[0]];
-  if (referenceCommand !== undefined) {
-    return referenceCommand({ ...cli, commandArguments: cli.arguments_.slice(1) });
-  }
-  if (cli.arguments_[0] === 'base') {
-    return runBaseCommand({ ...cli, arguments_: cli.arguments_.slice(1) });
+  const [name, ...rest] = cli.arguments_;
+  if (Object.hasOwn(SUBCOMMANDS, name)) {
+    return SUBCOMMANDS[name](cli, rest);
   }
   const options = parseArguments(cli.arguments_);
-  if (options.help) {
-    cli.stdout.write(USAGE_TEXT);
-    return 0;
+  return printedInformation(options, cli.stdout) ? 0 : runConfigured({ ...cli, options });
+}
+
+function writePresetHint(stderr, config, projectRoot) {
+  const hint = javascriptPresetHint(config, projectRoot);
+  if (hint !== undefined) {
+    stderr.write(`nitpicker: ${hint}\n`);
   }
-  return runConfigured({ ...cli, options });
 }
 
 function runConfigured(cli) {
   const { options, stdout, runTasks } = cli;
-  const currentProjectRoot =
-    cli.currentProjectRoot === undefined
-      ? resolveProjectRoot()
-      : realpathSync(cli.currentProjectRoot);
+  const { currentProjectRoot, scope } = resolveRunTarget({ ...cli, missingPathHint });
   const config = loadConfig(currentProjectRoot);
-  const headPolicy = resolveProjectHeadPolicy(config, currentProjectRoot);
+  writePresetHint(cli.stderr, config, currentProjectRoot);
+  const headPolicy = resolveProjectHeadPolicy(config, currentProjectRoot, {
+    maven: cli.environment.NITPICKER_MAVEN,
+  });
   const presetSet = presetAnalyzers(config, options.all ? cli.snapshotAnalyzers : cli.analyzers);
   const analyzers = configureAnalyzers(presetSet, config, headPolicy);
   for (const note of describeDisableCascade(presetSet, config)) {
@@ -152,6 +150,7 @@ function runConfigured(cli) {
         stderr: cli.stderr,
         environment: cli.environment,
         runTasks,
+        scope,
       });
     }
     return runComparisonCli({
@@ -161,6 +160,7 @@ function runConfigured(cli) {
       injectedAnalyzers: cli.analyzers,
       config,
       headPolicy,
+      scope,
     });
   });
 }
@@ -176,10 +176,7 @@ function runComparisonCli(cli) {
     configuredBase: config.base,
     environment: cli.environment,
   });
-  const outputRoot =
-    options.outputRoot === undefined
-      ? path.join(currentProjectRoot, 'reports/quality/diff')
-      : path.resolve(currentProjectRoot, options.outputRoot);
+  const outputRoot = outputRootFor(currentProjectRoot, options.outputRoot, 'diff');
   const { analyzers, partialRun } = selectComparisonAnalyzers(cli);
   clearDiffReports(outputRoot);
   const headPolicy = comparisonPolicy({ ...cli, repositoryRoot, base }, resolveComparison);
@@ -201,6 +198,7 @@ function runComparisonCli(cli) {
     resolveBaseSetup: baseSetupResolver(cli, config, headPolicy),
     describeNotices: noticeDescriber(config, headPolicy, currentProjectRoot),
     ...acceptanceOf(cli),
+    scope: cli.scope,
     progress: cli.progress,
     runTasks: cli.runTasks,
     warn: (message) => cli.stderr.write(`nitpicker: ${message}\n`),
@@ -230,6 +228,7 @@ function fixIfRequested(cli, repositoryRoot, base) {
     baseRef: base.baseRef,
     executeFixCommand: cli.executeFixCommand,
     headPolicy: cli.headPolicy,
+    scope: cli.scope,
   });
   cli.stdout.write(
     `Fixed files:\n${fixResult.fixedFiles.length === 0 ? '(none)\n' : `${fixResult.fixedFiles.join('\n')}\n`}`,

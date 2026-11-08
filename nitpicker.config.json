@@ -1,4 +1,5 @@
 {
+  "$schema": "./spec/config.schema.json",
   "preset": "typescript",
   "layout": {
     "sourceRoots": ["core", "languages", "shared", "scripts"],

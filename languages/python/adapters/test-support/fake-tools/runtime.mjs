@@ -97,6 +97,14 @@ function importScan(call) {
   return true;
 }
 
+function stringScan(call) {
+  if (!call.args.some((argument) => argument.endsWith('string-scan.py'))) {
+    return false;
+  }
+  out(call, readOr(call, 'string-scan.json', '{}'));
+  return true;
+}
+
 function distributionScan(call) {
   if (!call.args.some((argument) => argument.endsWith('distribution-scan.py'))) {
     return false;
@@ -155,6 +163,7 @@ const PYTHON_CALLS = [
   executablePath,
   mutmutProbe,
   importScan,
+  stringScan,
   distributionScan,
   importLinterProbe,
   distributionProbe,

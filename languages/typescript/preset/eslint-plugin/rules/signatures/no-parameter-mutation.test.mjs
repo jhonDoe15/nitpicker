@@ -12,6 +12,8 @@ writeFileSync(
   JSON.stringify({
     compilerOptions: {
       strict: true,
+      allowJs: true,
+      checkJs: true,
       module: 'esnext',
       moduleResolution: 'bundler',
       noEmit: true,
@@ -22,6 +24,15 @@ writeFileSync(
   }),
 );
 mkdirSync(path.join(root, 'src'));
+mkdirSync(path.join(root, 'node_modules/http-lib'), { recursive: true });
+writeFileSync(
+  path.join(root, 'node_modules/http-lib/index.d.ts'),
+  'export interface Request { user?: string; locals: { id?: string } }\nexport type Options = { retries?: number };\n',
+);
+writeFileSync(
+  path.join(root, 'node_modules/http-lib/package.json'),
+  JSON.stringify({ name: 'http-lib', types: 'index.d.ts' }),
+);
 
 afterAll(() => {
   rmSync(root, { recursive: true, force: true });
@@ -29,8 +40,8 @@ afterAll(() => {
 
 const tester = typescriptRuleTester({ project: './tsconfig.json', tsconfigRootDir: root });
 
-function typed(code, name) {
-  const file = path.join(root, `src/case-${randomUUID()}.ts`);
+function typed(code, name, extension = 'ts') {
+  const file = path.join(root, `src/case-${randomUUID()}.${extension}`);
   writeFileSync(file, code);
   return {
     filename: file,
@@ -46,7 +57,32 @@ tester.run('no-parameter-mutation', rule, {
     'export function add(items: string[], item: string) { const copy = [...items]; copy.push(item); return copy; }',
     'export function add(items: string[], item: string) { const copy = items.slice(); copy[0] = item; return copy; }',
     'export function add(items: string[]) { const local: string[] = []; local.push(items[0] ?? ""); return local; }',
-    'export function rename(user: { name: string }) { user.name = "x"; }',
+    'export function rename(user: { name: string }) { return { ...user, name: "x" }; }',
+    'export function rename(user: { name: string }) { const next = { ...user }; next.name = "x"; return next; }',
+    'export function rename(user: { name: string }) { user = { ...user }; user.name = "x"; return user; }',
+    'export function rename(user: { name: string }) { user = Object.assign({}, user); user.name = "x"; return user; }',
+    'export function fill(user: { name: string }) { return Object.assign({}, user, { name: "x" }); }',
+    'export function make(name: string) { const user = { name: "" }; user.name = name; return user; }',
+    'export class Account { name = ""; rename(name: string) { this.name = name; } }',
+    'export class Account { name = ""; }\nexport function rename(account: Account) { account.name = "x"; }',
+    'class Box<T> { value?: T; }\nexport function put(box: Box<string>) { box.value = "x"; }',
+    'export function reset(pattern: RegExp) { pattern.lastIndex = 0; }',
+    'export function wrap(error: Error) { error.message = "x"; }',
+    'import type { Request } from "http-lib";\nexport function login(request: Request) { request.user = "x"; }',
+    'import type { Request } from "http-lib";\nexport function login(request: Request) { request.locals.id = "x"; }',
+    'import type { Request } from "http-lib";\nexport function login(request: Request & { id?: string }) { request.id = "x"; }',
+    'import type { Request } from "http-lib";\ninterface Session extends Request { id?: string }\nexport function login(request: Session) { request.id = "x"; }',
+    'import type { Options } from "http-lib";\nexport function retry(options: Options) { options.retries = 1; }',
+    'function fill(user: { name: string }) { user.name = "x"; }',
+    'export function run(user: { name: string }) { const fill = (target: { name: string }) => { target.name = "x"; }; fill(user); }',
+    'export function rename(user: { name: string }) { let next = user; next = { ...next }; next.name = "x"; return next; }',
+    'export function count(input: { items: string[] }) { return input.items.length; }',
+    'export function fill(o: { size?: number }) { o = { ...o }; o.size ||= 1; return o; }',
+    'export class Counter { static count = 0; }\nexport function reset(counter: typeof Counter) { counter.count = 0; }',
+    'export enum Level { Low }\nexport function reset(level: typeof Level) { return level.Low; }',
+    'export function tag(run: { (): void; label?: string }) { run.label = "x"; }',
+    'export function wrap(error: Error | { message: string }) { error.message = "x"; }',
+    'export function touch(options: { size?: number }) { return Object.assign(options); }',
     'export function rename(state: { items: string[] }) { state.items.length; }',
     'export function total(items: number[]) { return items.reduce((sum, item) => sum + item, 0); }',
     'export function index(items: string[]) { return items.reduce((table: Record<string, number>, item) => { table[item] = 1; return table; }, {}); }',
@@ -103,6 +139,132 @@ tester.run('no-parameter-mutation', rule, {
     typed(
       'export function add(items: string[] | undefined) { items = items ?? []; items.push("x"); }',
       'items.push',
+    ),
+  ],
+});
+
+function written(code, name, extension = 'ts') {
+  return {
+    ...typed(code, undefined, extension),
+    errors: [{ messageId: 'propertyWrite', data: { name } }],
+  };
+}
+
+tester.run('no-parameter-mutation property writes', rule, {
+  valid: [
+    typed(
+      '/** @param {Error} error */\nexport function wrap(error) { error.message = "x"; }',
+      undefined,
+      'js',
+    ),
+    typed('export function wrap(options) { options.size = 1; }', undefined, 'js'),
+  ],
+  invalid: [
+    written('export function rename(user: { name: string }) { user.name = "x"; }', 'user.name'),
+    written('export function fill(o: { size?: number }) { o.size ??= 1; }', 'o.size'),
+    written('export function fill(o: { size?: number }) { o.size ||= 1; }', 'o.size'),
+    written('export function fill(o: { on?: boolean }) { o.on &&= false; }', 'o.on'),
+    written('export function grow(o: { size: number }) { o.size += 1; }', 'o.size'),
+    written('export function grow(o: { size: number }) { o.size++; }', 'o.size'),
+    written('export function grow(o: { size: number }) { o["size"] = 2; }', 'o["size"]'),
+    written('export function drop(o: { size?: number }) { delete o.size; }', 'o.size'),
+    written(
+      'export function set(o: { retry: { count: number } }) { o.retry.count = 3; }',
+      'o.retry.count',
+    ),
+    written(
+      'export function fill(o: { size?: number }) { Object.assign(o, { size: 1 }); }',
+      'Object.assign(o, …)',
+    ),
+    written(
+      'export function fill(o: { inner: { size?: number } }) { Object.assign(o.inner, { size: 1 }); }',
+      'Object.assign(o.inner, …)',
+    ),
+    written(
+      'export function f(o: { a: number }) { (o as { a: number }).a = 1; }',
+      '(o as { a: number }).a',
+    ),
+    written(
+      'export function f(o: { a: number }) { (o satisfies { a: number }).a = 1; }',
+      '(o satisfies { a: number }).a',
+    ),
+    written(
+      'export function f(o: { a: number }) { (<{ a: number }>o).a = 1; }',
+      '(<{ a: number }>o).a',
+    ),
+    written(
+      'export function f(o: { a: number }) { Object.assign(o as { a: number }, { a: 1 }); }',
+      'Object.assign(o, …)',
+    ),
+    written(
+      'export function fill(options: { size?: number }) { const o = options; Object.assign(o, { size: 1 }); }',
+      'Object.assign(o, …)',
+    ),
+    written(
+      'interface Options { length?: number }\nexport function fill(options: Options) { options.length ??= 8; }',
+      'options.length',
+    ),
+    written(
+      'type Message = { id?: string };\nexport function tag(message: Message) { message.id = "x"; }',
+      'message.id',
+    ),
+    written(
+      'interface Options { size: number }\nexport function fill(options: Partial<Options>) { options.size = 1; }',
+      'options.size',
+    ),
+    written(
+      'export function fill(options?: { size?: number }) { options = options ?? {}; options.size = 1; }',
+      'options.size',
+    ),
+    written(
+      'export function fill(options: { size?: number }) { const o = options; o.size = 1; }',
+      'o.size',
+    ),
+    written(
+      'export function fill(options?: { size?: number }) { const o = options ?? {}; o.size = 1; }',
+      'o.size',
+    ),
+    written(
+      'export function fill(options: { size?: number }) { const o = options as { size?: number }; o.size = 1; }',
+      'o.size',
+    ),
+    written(
+      'export function put(table: Record<string, number>) { table.total = 1; }',
+      'table.total',
+    ),
+    written(
+      'export function fill<T extends { size?: number }>(options: T) { options.size = 1; }',
+      'options.size',
+    ),
+    written(
+      'import type { Request } from "http-lib";\nexport function tag(input: { request: Request; id?: string }) { input.id = "x"; }',
+      'input.id',
+    ),
+    written(
+      '/** @param {{ size?: number }} options */\nexport function fill(options) { options.size = 1; }',
+      'options.size',
+      'js',
+    ),
+    written(
+      '/** @typedef {{ id?: string }} Message */\n/** @param {Message} message */\nexport function tag(message) { message.id = "x"; }',
+      'message.id',
+      'js',
+    ),
+    written(
+      'export class Store { save(record: { id?: string }) { record.id = "x"; } }',
+      'record.id',
+    ),
+    typed(
+      'export function add(input: { items: string[] }) { input.items.push("x"); }',
+      'input.items.push',
+    ),
+    typed(
+      'export function add(input: { items: string[] }) { input.items[0] = "x"; }',
+      'input.items[…]',
+    ),
+    typed(
+      'export function add(items: string[]) { const list = items; list.push("x"); }',
+      'list.push',
     ),
   ],
 });

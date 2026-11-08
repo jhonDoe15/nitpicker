@@ -1,5 +1,5 @@
 import { chainOf } from '../../analysis/ancestry.mjs';
-import { findVariable } from '../../analysis/constant-resolution.mjs';
+import { findVariable, resolveConstant } from '../../analysis/constant-resolution.mjs';
 import { bindingsOf, importedFunction } from '../imported-names.mjs';
 import { memberName, unwrapped } from '../security-values.mjs';
 import { configNodes, isCallback, isLocalUrl, lacksTimeout, typeNamed } from './http-config.mjs';
@@ -181,5 +181,47 @@ export function clientCall(scope, node) {
     checkAxios(scope, node) ??
     checkGot(scope, node) ??
     checkHttp(scope, node)
+  );
+}
+
+function createdClient(scope, callee) {
+  const holder = unwrapped(callee.type === 'MemberExpression' ? callee.object : callee);
+  const created =
+    holder.type === 'Identifier' ? unwrapped(resolveConstant(scope.context, holder)) : undefined;
+  if (created?.type !== 'CallExpression') {
+    return undefined;
+  }
+  if (importedFunction(scope.context, created.callee, scope.axios) === 'create') {
+    return 'axios';
+  }
+  return importedFunction(scope.context, created.callee, scope.got) === 'extend'
+    ? 'got'
+    : undefined;
+}
+
+function isDirectCall(callee, bindings) {
+  return callee.type === 'Identifier' && bindings.namespaces.has(callee.name);
+}
+
+function isInstanceCall(scope, callee) {
+  const method = callee.type === 'MemberExpression' ? memberName(callee) : undefined;
+  const instance = createdClient(scope, callee);
+  if (instance === 'axios') {
+    return method === undefined || axiosPosition(method) !== undefined;
+  }
+  return instance === 'got' && (method === undefined || GOT_CALLS.has(method));
+}
+
+export function isClientCall(scope, node) {
+  const { context } = scope;
+  const callee = unwrapped(node.callee);
+  return (
+    (scope.checkFetch && fetchClient(scope, node.callee) !== undefined) ||
+    isDirectCall(callee, scope.axios) ||
+    axiosPosition(importedFunction(context, callee, scope.axios)) !== undefined ||
+    isDirectCall(callee, scope.got) ||
+    GOT_CALLS.has(importedFunction(context, callee, scope.got)) ||
+    HTTP_METHODS.has(importedFunction(context, node.callee, scope.http)) ||
+    isInstanceCall(scope, callee)
   );
 }

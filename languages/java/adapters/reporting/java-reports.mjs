@@ -3,8 +3,7 @@ import path from 'node:path';
 import { buildViews } from '../kotlin/review-rules/build-view.mjs';
 import { ingestArchunit } from '../../ingest/archunit.mjs';
 import { ingestCrap } from '../../ingest/crap.mjs';
-import { readDuplicateFindings } from '../metrics/java-duplicates.mjs';
-import { readKotlinDuplicateFindings } from '../kotlin/kotlin-duplicates.mjs';
+import { readProjectDuplicateFindings } from '../kotlin/kotlin-duplicates.mjs';
 import {
   isEmptyModule,
   readMainCheckstyle,
@@ -28,6 +27,7 @@ import {
   structureFunctions,
 } from './function-locator.mjs';
 import { checkstyleFindings, formatFindings } from './format-findings.mjs';
+import { withoutMainMethodFindings } from './entry-point/main-method.mjs';
 import { readSlowTestFindings } from '../test-times/slow-tests.mjs';
 import { readTestConsoleFindings } from '../test-times/console-findings.mjs';
 import { readUnrunTestFindings } from '../test-runs/unrun-tests.mjs';
@@ -55,7 +55,7 @@ export function readJavaFindings(projectRoot, options = {}) {
   const { reportBase, report, preset = 'java', projectWide = true } = options;
   const kotlinPreset = preset === 'kotlin';
   const { modules, manifest } = report ?? readReportModules(reportBase, preset);
-  if (kotlinPreset) {
+  if (kotlinPreset && options.requireKotlin !== false) {
     requireKotlinManifest(manifest);
   }
   const kotlinBuild = buildViews();
@@ -70,8 +70,7 @@ export function readJavaFindings(projectRoot, options = {}) {
   const findings = applyRuleMessages(
     [
       ...moduleFindings,
-      ...readDuplicateFindings(reportBase, { projectRoot }),
-      ...(kotlinPreset ? readKotlinDuplicateFindings(reportBase, projectRoot) : []),
+      ...(projectWide ? readProjectDuplicateFindings(reportBase, { preset, projectRoot }) : []),
       ...(projectWide
         ? projectWideFindings(projectRoot, {
             projects: modules.map((module) => ({
@@ -79,6 +78,8 @@ export function readJavaFindings(projectRoot, options = {}) {
               qualifier: module.key === ROOT_MODULE ? '' : module.dir,
               sourceRoots: module.manifest.sourceRoots ?? [],
               kotlinSourceRoots: module.manifest.kotlinSourceRoots ?? [],
+              testSourceRoots: module.manifest.testSourceRoots ?? [],
+              kotlinTestSourceRoots: module.manifest.kotlinTestSourceRoots ?? [],
               resourceRoots: module.manifest.resourceRoots ?? [],
             })),
             mergedRoot: path.join(reportBase, 'project'),
@@ -99,7 +100,7 @@ export function readJavaFindings(projectRoot, options = {}) {
 function moduleContextFindings(projectRoot, module, { manifest, modules, options, kotlinBuild }) {
   const preset = options.preset ?? 'java';
   const { fileLimits: thresholds, exceptions, modulePath } = options;
-  return readModuleFindings(
+  const findings = readModuleFindings(
     {
       projectRoot,
       roots: projectRoots(projectRoot),
@@ -131,6 +132,7 @@ function moduleContextFindings(projectRoot, module, { manifest, modules, options
     },
     options.crapLimit,
   );
+  return withoutMainMethodFindings(findings, sourceTextReader(projectRoot));
 }
 
 function ifTested(jacoco, build) {
@@ -294,5 +296,6 @@ function branchFindings(context, jacoco) {
 function projectRoots(projectRoot) {
   const roots = new Set([path.resolve(projectRoot)]);
   roots.add(realpathSync(projectRoot));
+  roots.add(realpathSync.native(projectRoot));
   return [...roots];
 }

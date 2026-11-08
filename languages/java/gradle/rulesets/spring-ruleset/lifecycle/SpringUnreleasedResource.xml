@@ -1,0 +1,79 @@
+  <rule name="SpringUnreleasedResource" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
+        message="Release this resource when the context closes: shut it down, close it or cancel it in a @PreDestroy method (shutdown, then shutdownNow when awaitTermination times out), DisposableBean.destroy, AutoCloseable.close or SmartLifecycle.stop, or declare it as its own @Bean or as a ThreadPoolTaskExecutor bean, which Spring closes. Spring closes only the beans it created, so this one keeps its threads or connections after the context closes, and non-daemon threads keep the JVM running.">
+    <priority>2</priority>
+    <properties><property name="xpath"><value><![CDATA[
+let $resource := function($e) {
+  exists($e[pmd-java:typeIs('java.lang.AutoCloseable') or pmd-java:typeIs('java.util.concurrent.ExecutorService')
+      or pmd-java:typeIs('java.util.Timer') or pmd-java:typeIs('io.netty.util.concurrent.EventExecutorGroup')
+      or pmd-java:typeIs('org.springframework.beans.factory.DisposableBean')]
+    [not(pmd-java:typeIs('java.io.ByteArrayOutputStream') or pmd-java:typeIs('java.io.ByteArrayInputStream')
+      or pmd-java:typeIs('java.io.StringWriter') or pmd-java:typeIs('java.io.StringReader')
+      or pmd-java:typeIs('java.io.CharArrayWriter') or pmd-java:typeIs('java.io.CharArrayReader')
+      or pmd-java:typeIs('java.util.stream.BaseStream') or pmd-java:typeIs('java.net.http.HttpClient'))])
+},
+    $chain := function($e) {
+  $e/(*[1] | *[1]/*[1] | *[1]/*[1]/*[1] | *[1]/*[1]/*[1]/*[1] | *[1]/*[1]/*[1]/*[1]/*[1] | *[1]/*[1]/*[1]/*[1]/*[1]/*[1])
+},
+    $built := function($e) {
+  exists($e[self::ConstructorCall])
+  or exists($e[self::MethodCall][*[1][self::TypeExpression]]
+    [matches(@MethodName, '^(new|create|open|connect|build)')][not(@MethodName = 'newDirectExecutorService')])
+  or exists($e[self::MethodCall][@MethodName = ('build', 'create')]
+    [exists($chain(.)[self::TypeExpression or self::ConstructorCall])]
+    [empty($chain(.)[self::VariableAccess or self::FieldAccess or self::ThisExpression])])
+},
+    $fresh := function($e) {
+  $resource($e) and $built($e) and empty($e/ArgumentList/*[$resource(.)][not($built(.))])
+},
+    $owned := function($e) {
+  $fresh($e)
+  or exists($e[self::MethodCall or self::ConstructorCall][$resource(.)]/ArgumentList/*[$fresh(.)])
+  or exists($e[self::MethodCall][@MethodName = ('start', 'startVirtualThread')][pmd-java:typeIs('java.lang.Thread')])
+},
+    $field := function($n, $name) {
+  exists($n[self::FieldAccess[ThisExpression[not(*)]]
+    or self::VariableAccess[not(ancestor::*[self::MethodDeclaration or self::ConstructorDeclaration][1]//VariableId[@Name = $name])]]
+    [@Name = $name])
+},
+    $releases := ('shutdown', 'shutdownNow', 'close', 'shutdownGracefully', 'cancel', 'interrupt', 'stop', 'destroy',
+      'dispose', 'terminate', 'disconnect', 'release')
+return //ClassDeclaration[ModifierList/Annotation[
+    pmd-java:typeIs('org.springframework.stereotype.Component')
+    or pmd-java:typeIs('org.springframework.stereotype.Service')
+    or pmd-java:typeIs('org.springframework.stereotype.Repository')
+    or pmd-java:typeIs('org.springframework.stereotype.Controller')
+    or pmd-java:typeIs('org.springframework.web.bind.annotation.RestController')
+    or pmd-java:typeIs('org.springframework.web.bind.annotation.ControllerAdvice')
+    or pmd-java:typeIs('org.springframework.web.bind.annotation.RestControllerAdvice')
+    or pmd-java:typeIs('org.springframework.context.annotation.Configuration')
+    or pmd-java:typeIs('org.springframework.boot.autoconfigure.SpringBootApplication')
+    or pmd-java:typeIs('org.springframework.boot.autoconfigure.AutoConfiguration')]]
+  /ClassBody/FieldDeclaration[not(pmd-java:modifiers() = 'static')]
+  [let $name := VariableDeclarator/VariableId/@Name,
+       $body := ..,
+       $class := ../..,
+       $values := (VariableDeclarator/*[2],
+         $body//AssignmentExpression[@Operator = '='][$field(*[1], $name)]/*[2]),
+       $started := exists($body//MethodCall[@MethodName = 'start'][$field(*[1], $name)]),
+       $owners := $body/MethodDeclaration[
+         ModifierList/Annotation[pmd-java:typeIs('jakarta.annotation.PreDestroy') or pmd-java:typeIs('javax.annotation.PreDestroy')]
+         or (@Name = 'destroy' and @Arity = 0 and $class[pmd-java:typeIs('org.springframework.beans.factory.DisposableBean')])
+         or (@Name = 'close' and @Arity = 0 and $class[pmd-java:typeIs('java.lang.AutoCloseable')])
+         or (@Name = 'stop' and $class[pmd-java:typeIs('org.springframework.context.Lifecycle')])
+         or FormalParameters/FormalParameter[pmd-java:typeIs('org.springframework.context.event.ContextClosedEvent')]
+         or ModifierList/Annotation[pmd-java:typeIs('org.springframework.context.event.EventListener')]
+           //ClassLiteral/ClassType[pmd-java:typeIs('org.springframework.context.event.ContextClosedEvent')]
+         or (@Arity = 0 and @Name = //Annotation[pmd-java:typeIs('org.springframework.context.annotation.Bean')]
+           /AnnotationMemberList/MemberValuePair[@Name = 'destroyMethod']//StringLiteral/@ConstValue)],
+       $released := exists($owners) and (exists($body//MethodCall[
+         (@MethodName = $releases and $field(*[1], $name))
+         or (matches(@MethodName, 'shutdown|close|stop|terminate|dispose|destroy|release|cancel', 'i')
+           and exists(ArgumentList/*[$field(., $name)]))])
+         or exists($owners//MethodCall[$field(*[1], $name) or exists(ArgumentList/*[$field(., $name)])]))
+   return (some $value in $values satisfies
+       ($owned($value) or ($started and exists($value[self::ConstructorCall][pmd-java:typeIs('java.lang.Thread')]))))
+     and not($released)
+     and empty($body/MethodDeclaration[ModifierList/Annotation[pmd-java:typeIs('org.springframework.context.annotation.Bean')]]
+       //ReturnStatement/*[1][$field(., $name)])]
+]]></value></property></properties>
+  </rule>

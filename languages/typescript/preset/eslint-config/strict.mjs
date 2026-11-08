@@ -35,7 +35,8 @@ import {
   restrictedAdapterSyntax,
   strictAdaptersTypedConfig,
 } from './strict-adapters.mjs';
-import { strictTestConfigFor } from './strict-tests.mjs';
+import { strictTestConfigFor, testAreaGlobsFor } from './strict-tests.mjs';
+import { truthinessRules } from './truthiness/truthiness-rules.mjs';
 import { configFileGlobsFor, productionPolicyConfigFor } from './policy/production-policy.mjs';
 
 export function restrictedSyntaxFor(options = {}) {
@@ -114,6 +115,7 @@ export function strictSyntaxConfigFor(layout = defaultResolvedLayout, options = 
         ...sourceSyntaxBans(options),
         'nitpicker/no-self-recursion': 'error',
         'nitpicker/no-tri-state-boolean': 'error',
+        'nitpicker/no-unhandled-url-parse': 'error',
         'nitpicker/no-compatibility-shim': 'error',
       },
     },
@@ -148,7 +150,7 @@ export function strictSyntaxConfigFor(layout = defaultResolvedLayout, options = 
 
 export const strictSyntaxConfig = strictSyntaxConfigFor();
 
-function strictTypedConfigFor(layout, parserOptions) {
+function strictTypedConfigFor(layout, parserOptions, options = {}) {
   return [
     {
       files: layout.sourceGlobs,
@@ -158,6 +160,10 @@ function strictTypedConfigFor(layout, parserOptions) {
       rules: {
         ...typedDeclarationRules,
         ...controlFlowTypedRules,
+        'nitpicker/no-unhandled-void-promise': [
+          'error',
+          { runners: options.detachedWorkRunners ?? [] },
+        ],
         'nitpicker/exhaustive-union-predicate': 'error',
         'nitpicker/no-forwarding-wrapper': 'error',
         'nitpicker/no-falsy-default': 'error',
@@ -177,6 +183,13 @@ function strictTypedConfigFor(layout, parserOptions) {
       languageOptions: { parser: tseslint.parser, parserOptions },
       plugins: { functional: functionalPlugin, nitpicker: nitpickerRules },
       rules: domainTypeAwareFunctionalRules,
+    },
+    {
+      files: [...layout.sourceGlobs, ...testAreaGlobsFor(layout)],
+      ignores: layout.excludedGlobs,
+      languageOptions: { parser: tseslint.parser, parserOptions },
+      plugins: { nitpicker: nitpickerRules },
+      rules: truthinessRules,
     },
     ...strictAdaptersTypedConfig.map((entry) => ({
       ...entry,
@@ -209,7 +222,7 @@ export function strictPresetConfig(layout, parserOptions, options = {}) {
   return [
     ...productionPolicyConfigFor(layout, options),
     ...strictSyntaxConfigFor(layout, options),
-    ...strictTypedConfigFor(layout, parserOptions),
+    ...strictTypedConfigFor(layout, parserOptions, options),
     {
       files: layout.sourceGlobs,
       ...productionScope(layout),

@@ -5,12 +5,15 @@ import { forwardingWrapperFindings } from './main/forwarding-wrappers.mjs';
 import { loadEffectFindings } from './main/load-effects.mjs';
 import { recursiveMapUpdateFindings } from './main/map-updates/recursive-map-update.mjs';
 import { singularPluralFindings } from './main/member-names.mjs';
+import { timeoutFindings } from './main/timeouts/timeouts.mjs';
+import { unboundedPoolFindings } from './main/thread-pools/unbounded-pools.mjs';
 import { unusedOptionFindings } from './main/unused-options/unused-options.mjs';
 import { validationTargetFindings } from './validation/validation-targets.mjs';
 import { buildViews, javaMentions } from './build-view.mjs';
 import { productionTypeResolver } from './production-types.mjs';
 import { findingFactory } from './review-finding.mjs';
 import { springFindings } from './spring/spring-findings.mjs';
+import { subjectMockFindings } from './tests/mocks/subject-mocks.mjs';
 import { springContextFindings } from './tests/spring-context.mjs';
 import { testHonestyFindings } from './tests/test-honesty.mjs';
 import { testWaitFindings } from './tests/test-waits.mjs';
@@ -59,20 +62,24 @@ export function readKotlinReviewFindings(context) {
   if (own.length === 0) {
     return honesty;
   }
+  const isProduction = productionTypeResolver({ files: projectFiles, projectRoot, javaRoots });
   return [
     ...testWaitFindings(own, {
       finding,
       awaitility: hasAwaitility({ manifest, projectRoot }),
-      isProduction: productionTypeResolver({ files: projectFiles, projectRoot, javaRoots }),
+      isProduction,
     }),
     ...honesty,
+    ...subjectMockFindings(own, { finding, projectRoot, projectFiles, isProduction }),
     ...springContextFindings(own, { finding }),
     ...springFindings(own, { finding, manifest, projectFiles, projectRoot, javaRoots }),
     ...enumPredicateFindings(own, { finding, projectRoot, declaredIn: projectFiles }),
     ...forwardingWrapperFindings(own, { finding, declaredIn: projectFiles }),
     ...singularPluralFindings(own, { finding }),
+    ...timeoutFindings(own, { finding }),
     ...validationTargetFindings(own, { finding }),
     ...loadEffectFindings(own, { finding, declaredIn: projectFiles }),
+    ...unboundedPoolFindings(own, { finding }),
     ...recursiveMapUpdateFindings(own, { finding, declaredIn: projectFiles }),
     ...unusedOptionFindings(own, {
       finding,

@@ -17,10 +17,14 @@ import { ERROR_LEAK_RULES } from './web/error-leaks.mjs';
 import { SECURITY_RULES } from './web/security.mjs';
 import { WEB_RULES } from './web/web.mjs';
 import { WIRING_RULES } from './wiring/wiring.mjs';
+import { STARTUP_RULES } from './lifecycle/startup-cleanup.mjs';
+import { UNRELEASED_RULES } from './lifecycle/unreleased.mjs';
 
 const RULES = [
   ...BEAN_RULES,
   ...WIRING_RULES,
+  ...UNRELEASED_RULES,
+  ...STARTUP_RULES,
   ...CLIENT_RULES,
   ...CONFIGURATION_RULES,
   ...PROXY_RULES,
@@ -57,7 +61,15 @@ export function springFindings(
       .flatMap((rule) => rule(view, options))
       .toSorted((left, right) => left.line - right.line)
       .map(({ rule, line, symbol, key }) =>
-        finding({ rule, file: view.file.file, line, symbol, key, message: message(rule) }),
+        finding({
+          rule,
+          file: view.file.file,
+          line,
+          symbol,
+          key,
+          message: message(rule),
+          allowedForm: message(rule),
+        }),
       ),
   );
 }

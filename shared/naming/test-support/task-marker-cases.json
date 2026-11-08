@@ -1,0 +1,193 @@
+[
+  {
+    "name": "a bare TODO",
+    "text": "TODO fix this",
+    "reported": true
+  },
+  {
+    "name": "a TODO with a colon and no reference",
+    "text": "TODO: later",
+    "reported": true
+  },
+  {
+    "name": "a FIXME",
+    "text": "FIXME broken",
+    "reported": true
+  },
+  {
+    "name": "an XXX",
+    "text": "XXX revisit",
+    "reported": true
+  },
+  {
+    "name": "a HACK",
+    "text": "HACK works for now",
+    "reported": true
+  },
+  {
+    "name": "a STOPSHIP",
+    "text": "STOPSHIP remove",
+    "reported": true,
+    "engines": ["kotlin"]
+  },
+  {
+    "name": "a TODO with an empty reference",
+    "text": "TODO(): later",
+    "reported": true
+  },
+  {
+    "name": "a TODO with a name instead of a reference",
+    "text": "TODO(alice): later",
+    "reported": true
+  },
+  {
+    "name": "a TODO with a hash and no number",
+    "text": "TODO(#): handle refunds",
+    "reported": true
+  },
+  {
+    "name": "a TODO that names a standard, not an issue",
+    "text": "TODO(RFC-7231): follow it",
+    "reported": true
+  },
+  {
+    "name": "a TODO that names a hash function",
+    "text": "TODO: SHA-256 later",
+    "reported": true
+  },
+  {
+    "name": "a TODO with a colon after other words",
+    "text": "remove this: TODO: later",
+    "reported": true
+  },
+  {
+    "name": "a second marker without a reference",
+    "text": "TODO(#1) done here, FIXME: unreferenced second marker",
+    "reported": true
+  },
+  {
+    "name": "a bare marker after a referenced one on the next line",
+    "text": "TODO(#1) referenced\nTODO bare",
+    "reported": true
+  },
+  {
+    "name": "a referenced marker after a bare one on the next line",
+    "text": "TODO bare\nTODO(#1) referenced",
+    "reported": true
+  },
+  {
+    "name": "a TODO with a hash reference in parentheses",
+    "text": "TODO(#123): split this",
+    "reported": false
+  },
+  {
+    "name": "a TODO with issue zero",
+    "text": "TODO(#0): handle refunds",
+    "reported": false
+  },
+  {
+    "name": "a TODO with a hash reference after a colon",
+    "text": "TODO: #123 split this",
+    "reported": false
+  },
+  {
+    "name": "a TODO with a hash reference after a space",
+    "text": "TODO #123 split this",
+    "reported": false
+  },
+  {
+    "name": "a TODO with a ticket key in parentheses",
+    "text": "TODO(PROJ-123): split this",
+    "reported": false
+  },
+  {
+    "name": "a TODO with a ticket key after a space",
+    "text": "TODO PROJ-123 split this",
+    "reported": false
+  },
+  {
+    "name": "a FIXME with a link",
+    "text": "FIXME https://example.com/issues/9 broken",
+    "reported": false
+  },
+  {
+    "name": "a TODO with a link after a colon",
+    "text": "TODO: https://example.com/issues/1",
+    "reported": false
+  },
+  {
+    "name": "a TODO with a key that has digits",
+    "text": "TODO(AB2-45): later",
+    "reported": false
+  },
+  {
+    "name": "two markers that both name an issue",
+    "text": "TODO(#1) first\nFIXME(PROJ-2) second",
+    "reported": false
+  },
+  {
+    "name": "a lowercase todo, which is prose",
+    "text": "todo lists are kept elsewhere",
+    "reported": false
+  },
+  {
+    "name": "a lowercase todo with a colon",
+    "text": "todo: handle refunds",
+    "reported": false
+  },
+  {
+    "name": "a capitalized Todo",
+    "text": "Todo list items",
+    "reported": false
+  },
+  {
+    "name": "a capitalized Todo as a command",
+    "text": "Todo handle refunds",
+    "reported": false
+  },
+  {
+    "name": "a capitalized Fixme",
+    "text": "Fixme is a library name",
+    "reported": false
+  },
+  {
+    "name": "prose that starts with Hack",
+    "text": "Hack to embed the traceback text",
+    "reported": false
+  },
+  {
+    "name": "prose that starts with xxx",
+    "text": "xxx is a placeholder name here",
+    "reported": false
+  },
+  {
+    "name": "a word that contains the marker",
+    "text": "TODOS are tracked in the board",
+    "reported": false
+  },
+  {
+    "name": "a word that ends with the marker",
+    "text": "AUTODOC: later",
+    "reported": false
+  },
+  {
+    "name": "a marker in a path",
+    "text": "see docs/TODO.md for the plan",
+    "reported": false
+  },
+  {
+    "name": "a marker in a name",
+    "text": "the TODO-list parser",
+    "reported": false
+  },
+  {
+    "name": "a mention without a colon in the middle of a sentence",
+    "text": "the list of TODO items",
+    "reported": false
+  },
+  {
+    "name": "a trailing marker without a colon",
+    "text": "handle refunds later TODO",
+    "reported": false
+  }
+]

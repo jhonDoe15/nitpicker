@@ -4,7 +4,7 @@ import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { exceptionRoute } from '../../../shared/exceptions/rule-names.mjs';
 import { RUFF_CONFIG } from '../adapters/configuration/python-ruff-config.mjs';
-import { RULE_CASES } from './test-support/python-rule-cases.mjs';
+import { ruleCases } from './test-support/python-rule-cases.mjs';
 import {
   applyRuleHints,
   describeRuleFinding,
@@ -12,6 +12,8 @@ import {
   RULE_HINTS,
   withHint,
 } from './rule-hints.mjs';
+
+const RULE_CASES = ruleCases();
 
 const route = (rule) => exceptionRoute({ rule, path: 'src/a.py', key: 'python.exceptions' });
 
@@ -131,7 +133,9 @@ describe('hints', () => {
     expect(withHint(sample({ tool: 'ruff', rule: 'T201' }))).toEqual({
       ...sample({ tool: 'ruff', rule: 'T201' }),
       message:
-        'The base message. Use `logging`: `logger = logging.getLogger(__name__)`, then `logger.info(...)`. If this is intended, add {"rule":"T201","paths":["src/a.py"],"reason":"..."} to "python.exceptions" in nitpicker.config.json.',
+        'The base message. Use `logging`: `logger = logging.getLogger(__name__)`, then `logger.info(...)`. For program output, take a `TextIO` parameter and write with `out.write(...)` or `print(..., file=out)`; the entry point passes `sys.stdout`. If this is intended, add {"rule":"T201","paths":["src/a.py"],"reason":"..."} to "python.exceptions" in nitpicker.config.json.',
+      allowedForm:
+        'Use `logging`: `logger = logging.getLogger(__name__)`, then `logger.info(...)`. For program output, take a `TextIO` parameter and write with `out.write(...)` or `print(..., file=out)`; the entry point passes `sys.stdout`.',
     });
   });
 
@@ -194,7 +198,13 @@ describe('hints', () => {
   it('keep every other field of the finding', () => {
     const finding = sample({ tool: 'mypy', rule: 'return-value' });
 
-    expect(applyRuleHints([finding])).toEqual([{ ...finding, message: expect.any(String) }]);
+    expect(applyRuleHints([finding])).toEqual([
+      {
+        ...finding,
+        message: expect.any(String),
+        allowedForm: 'Fix the type; inline ignores are banned.',
+      },
+    ]);
   });
 
   it('describe a custom rule finding by its subject', () => {
@@ -205,6 +215,8 @@ describe('hints', () => {
 describe('hints follow the libraries of the project', () => {
   const advice = (rule, libraries, tool = 'ruff', subject) =>
     withHint({ ...sample({ tool, rule }), subject }, libraries).message;
+  const PROGRAM_OUTPUT =
+    'For program output, take a `TextIO` parameter and write with `out.write(...)` or `print(..., file=out)`; the entry point passes `sys.stdout`.';
   const expected = (rule, allowed) => `The base message. ${allowed} ${route(rule)}`;
 
   it.each([
@@ -231,7 +243,7 @@ describe('hints follow the libraries of the project', () => {
     ],
     ['loguru', 'Use loguru: `from loguru import logger`, then `logger.info(...)`.'],
   ])('send a print to %s', (logging, allowed) => {
-    expect(advice('T201', { logging })).toBe(expected('T201', allowed));
+    expect(advice('T201', { logging })).toBe(expected('T201', `${allowed} ${PROGRAM_OUTPUT}`));
   });
 
   it.each([
