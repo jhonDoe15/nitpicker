@@ -51,3 +51,7 @@ Part of the [nitpicker-javascript](../SKILL.md) skill. Write these forms from th
 - In a server project, dates use UTC or a named zone, never the server's own: `getUTCHours()`,
   `toISOString()`, `Date.UTC(...)`, `{ timeZone }` for `Intl.DateTimeFormat` and `toLocale*String`,
   luxon `{ zone }`, date-fns `{ in: tz(zone) }`, dayjs `.utc()` (`nitpicker/no-local-time-zone`).
+- In a server project, a number, boolean or date read from the query string, path, headers or a
+  form is converted in its schema, since the value arrives as text: `z.coerce.number()`, `z.stringbool()`,
+  valibot `v.pipe(v.string(), v.toNumber(), v.number())`. Never `z.coerce.boolean()`: it turns `"false"`
+  into true (`nitpicker/no-uncoerced-request-input`).
