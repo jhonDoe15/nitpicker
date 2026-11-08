@@ -98,6 +98,8 @@ const REVIEW_RULES = new Set([
   'SpringStartupCleanup',
   'HttpWithoutTimeout',
   'SpringNullOnlyConfigCheck',
+  'GeneratedMemberCycle',
+  'GeneratedEqualsSkipsSuperclass',
 ]);
 const roots = [];
 const RECEIPT_TEST_FILE = 'src/test/java/shop/ReceiptTest.java';
