@@ -86,7 +86,7 @@ function pmd(root, { release = '17', tests: testDirectories, pmdConfig, spring =
 
 const TEST_DIRECTORY = [['src/test/java', true]];
 
-function ruleset({ name, patterns, ref, skipped = [] }) {
+function ruleset({ name, patterns, ref, skipped = [], after = [] }) {
   return [
     '<?xml version="1.0" encoding="UTF-8"?>',
     `<ruleset name="${name}" xmlns="${RULESET}">`,
@@ -99,6 +99,7 @@ function ruleset({ name, patterns, ref, skipped = [] }) {
           ...skipped.map((rule) => `    <exclude name="${rule}"/>`),
           '  </rule>',
         ]),
+    ...after,
     '</ruleset>',
     '',
   ].join('\n');
@@ -121,7 +122,14 @@ describe.skipIf(process.platform === 'win32')('runPmd rulesets', () => {
     ['15', ['InstanceofThenCast', 'CollectorsToList']],
     ['16', []],
     ['17', []],
-  ])('skips the pattern matching rules for release %s: %j', (release, skipped) => {
+  ])('skips the pattern matching rules for release %s: %j', (release, pattern) => {
+    const beforeTen = Number(release) < 10;
+    const skipped = beforeTen ? [...pattern, 'OptionalGet'] : pattern;
+    const after = beforeTen
+      ? [
+          `  <rule ref="${GUARDS_RULES}/OptionalGet" message="Use orElse(...), orElseThrow(Supplier), map or ifPresent instead of Optional.get(), also after isPresent()."/>`,
+        ]
+      : [];
     const root = workspace();
     const run = pmd(root, { release, tests: TEST_DIRECTORY, pmdConfig: { nitpicker: true } });
 
@@ -131,6 +139,7 @@ describe.skipIf(process.platform === 'win32')('runPmd rulesets', () => {
         patterns: [`  <exclude-pattern>${run.testSourceRoots[0]}/.*</exclude-pattern>`],
         ref: GUARDS_RULES,
         skipped,
+        after,
       }),
     );
   });
