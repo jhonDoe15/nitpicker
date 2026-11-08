@@ -3,7 +3,7 @@
 Part of the [Kotlin preset guide](../kotlin-preset.md).
 
 Checks that detekt has no rule for, and in a Spring project the Java preset's Spring rules
-([Spring rules](#spring-rules)), run on a syntax tree of the Kotlin sources; the
+([Spring rules](review-rules.md#spring-rules)), run on a syntax tree of the Kotlin sources; the
 [test honesty](#test-honesty) rules run on the Kotlin test sources read as masked text. They use the rule
 ids and the exception route of the Java preset's PMD rules, so a finding reads the same in both
 languages and one `exceptions` entry style covers either.
@@ -30,6 +30,8 @@ skipped with a note on stderr.
 | `ServerOrContainerPerTest`                       | `review-rules/tests/setup/`                      | a container, server or process started for each test: a `@Container`, `@Rule` or `@RegisterExtension` property of a JUnit instance, a Kotest container extension in a per-test mode, a start in `@BeforeEach`, `@Before`, `beforeTest` or `beforeEach` on an object made for each test, the same start in two or more tests of a class                                                                                           |
 | `AssertionInControlFlow`                         | `review-rules/tests/honesty/`                    | an assertion that can be skipped: inside an `if` or a `when` whose branches do not all assert, a loop, a safe call, `&&`, `\|\|`, `?:`, a swallowing `try` or `runCatching`, or after an early return                                                                                                                                                                                                                            |
 | `CoroutineEscapesTest`                           | `review-rules/tests/coroutines/`                 | a `launch`, `async`, `launchIn`, `stateIn` or `shareIn` on a scope the test does not own (`CoroutineScope(...)`, a scope field, `viewModelScope`) that nothing joins, awaits or cancels                                                                                                                                                                                                                                          |
+| `MockedSubjectInTest`                            | `review-rules/tests/mocks/`                      | a mock of the class under test (`mockk<OrderService>()`, `mock<OrderService>()`, `mock(OrderService::class.java)`, `@MockK`, `@Mock`), or a spy of it whose own methods the test stubs (`spyk(...)`, `spy(...)`, `@SpyK`, `@Spy`, with `every`, `coEvery`, `justRun`, `whenever`, `` `when` ``, `given` or `stub`)                                                                                                               |
+| `StaticMockOfProjectType`                        | `review-rules/tests/mocks/`                      | `mockkObject`, `mockkStatic` (class, `"pkg.FileKt"` or `::function`), `mockkConstructor`, `mockStatic` or `mockConstruction` of code declared in the project's main sources                                                                                                                                                                                                                                                      |
 | `GlobalStateLeakInTest`                          | `review-rules/tests/global-state/`               | a test that changes process-wide state (a system property, the default `Locale` or `TimeZone`, `System.out`, a default handler, a security provider, `Dispatchers.setMain`, or a property or `set...` function of a project `object` or class) that nothing in the class puts back                                                                                                                                               |
 | `StaticForwardingWrapper`                        | `review-rules/main/forwarding-wrappers.mjs`      | a function whose body only passes its parameters, in order, to another function                                                                                                                                                                                                                                                                                                                                                  |
 | `SingularAndPluralMember`                        | `review-rules/main/member-names.mjs`             | a member and its plural form (`tag` and `tags`) in one class, or two defaulted parameters of a public function                                                                                                                                                                                                                                                                                                                   |
@@ -333,6 +335,15 @@ guessed at.
   assumption on a real condition depend on the environment and are not reported. Allowed: run the test,
   delete it, or limit it to the environment it needs.
 - `FocusedTest`: Kotest only (JUnit has no focus). Reported at the outermost focused registration.
+- `MockedSubjectInTest` and `StaticMockOfProjectType`: the Kotlin forms of the Java rules, read from the test
+  source text of files that import `io.mockk` or `org.mockito`. The class under test is the type of an
+  `@InjectMockKs` or `@InjectMocks` property, or else the test class name without `Test`, `Tests`, `IT` or
+  `Spec`; it must be declared in the project's main sources. A spy is reported only when the test stubs one of
+  its methods (a local spy, in the block that declares it); a spy that is only verified and a
+  `CALLS_REAL_METHODS` mock, the way to test an abstract class, are fine. `mockkStatic("java.time.LocalDate")`, `mockkObject` of a
+  library object and other library code are not reported. Allowed: pass the collaborators in through the
+  constructor and give the test fakes of them, test a helper through the public function that calls it, and
+  pass a function, an interface or a `Clock` instead of mocking an `object` or a top-level function.
 - `RetryInTest`: a retry set in test code, so a flaky test cannot pass on a later attempt. JVM forms, in
   any test source: JUnit Pioneer `@RetryingTest` and rerunner-jupiter `@RepeatedIfExceptionsTest` (also
   through an import alias or in an `@[...]` group; any retry annotation is reported, `@RetryingTest(1)`
@@ -462,7 +473,7 @@ line, so a moved block is not a new finding.
 In a Spring project (Spring on the compile classpath) the rules of the Java preset's
 `spring-ruleset.xml` that make sense in Kotlin run on the main Kotlin sources, with the same ids
 (`pmd/SpringProxySelfCall`), the same allowed form written the Kotlin way, and the same exception route.
-They live in `review-rules/spring/` and read the facts of [Review rules](#review-rules): annotations
+They live in `review-rules/spring/` and read the facts of [Review rules](review-rules.md): annotations
 with their arguments, calls with their receiver, chain and scope, catch clauses, `return null`, and the
 uses of an `@ExceptionHandler`'s exception.
 
@@ -482,7 +493,10 @@ Kotlin-specific choices:
 
 - Finality. Kotlin classes and functions are final unless `open`, and Spring cannot subclass a final
   class to proxy it. The build tells which classes the compiler opens: the init script reads the
-  `allopen` options of `compileKotlin` (`kotlin("plugin.spring")` is the `spring` preset, which opens
+  `allopen` options of `compileKotlin`, and on Maven nitpicker reads the `kotlin-maven-plugin`
+  configuration of the module (`<compilerPlugins><plugin>spring</plugin>` and `all-open:annotation=`
+  or `all-open:preset=` in `<pluginOptions>`; a Maven module always reports them)
+  (`kotlin("plugin.spring")` is the `spring` preset, which opens
   classes annotated with `@Component` or an annotation built on it, such as `@Service`, `@Configuration`
   or `@RestController`, and `@Async`, `@Transactional`, `@Cacheable`, `@SpringBootTest` or `@Validated`) into
   `manifest.kotlinAllOpen` (`{ annotations, presets }`). A proxied function in a class neither `open` nor opened by the plugin is
