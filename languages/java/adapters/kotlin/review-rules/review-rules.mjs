@@ -14,11 +14,14 @@ import { SPRING_UNUSED_CONTEXT_RULE } from './tests/spring-context.mjs';
 import { FIXED_SLEEP_RULE } from '../../../messages/wait-advice.mjs';
 import { HONESTY_RULES } from './tests/test-honesty.mjs';
 import { NEGATIVE_WAIT_RULE } from './tests/test-waits.mjs';
+import { MOCKED_SUBJECT_RULE, STATIC_MOCK_RULE } from '../../../messages/mocks/project-mocks.mjs';
 
 export const KOTLIN_REVIEW_EXCEPTION_RULES = [
   FIXED_SLEEP_RULE,
   NEGATIVE_WAIT_RULE,
   ...HONESTY_RULES,
+  MOCKED_SUBJECT_RULE,
+  STATIC_MOCK_RULE,
   SPRING_UNUSED_CONTEXT_RULE,
   ENUM_PREDICATE_RULE,
   FORWARDING_RULE,
