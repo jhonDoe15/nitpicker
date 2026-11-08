@@ -3,6 +3,7 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import { GRADLE_DIRECTORY } from '../java-build.mjs';
+import { withGuardChecks } from './checkstyle-config.mjs';
 import { scopedRuleset } from './pmd-rulesets.mjs';
 import { main, writeRules } from './write-rules.mjs';
 
@@ -57,7 +58,9 @@ describe('write-rules', () => {
 
     main(['checkstyle-guards', plan]);
 
-    expect(readFileSync(output, 'utf8')).toContain('ConstantName');
+    expect(readFileSync(output, 'utf8')).toBe(
+      withGuardChecks(readFileSync(source, 'utf8'), ['checkstyle-all.xml']),
+    );
   });
 
   it('rejects an unknown kind', () => {

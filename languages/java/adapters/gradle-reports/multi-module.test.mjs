@@ -284,9 +284,10 @@ describe('a Gradle build with several projects', () => {
 
     collect(root);
 
-    expect(JSON.parse(readFileSync(path.join(root, 'build/gradle-args.json'), 'utf8'))).toContain(
+    const args = JSON.parse(readFileSync(path.join(root, 'build/gradle-args.json'), 'utf8'));
+    expect(args.filter((argument) => argument.startsWith('-Pnitpicker.node='))).toEqual([
       `-Pnitpicker.node=${process.execPath}`,
-    );
+    ]);
   });
 
   it('names the project whose reports are missing', () => {
