@@ -61,21 +61,25 @@ describe.skipIf(!enabled)('boolean logic with an exact simpler form', () => {
     if (root !== undefined) rmSync(root, { recursive: true, force: true });
   });
 
-  it('reports each marked line in main and test sources, and none of the simpler forms', () => {
-    for (const role of ['main', 'test']) {
+  it.each(['main', 'test'])(
+    'reports each marked line in %s sources, and none of the simpler forms',
+    (role) => {
       expect(reportedLines(role)).toEqual(markedLines(role));
-    }
-    expect(reportedLines('main')).toHaveLength(14);
-  });
+      expect(reportedLines(role)).toHaveLength(14);
+    },
+  );
 
-  it('prints the simpler form in every message', () => {
-    for (const [rule, forms] of Object.entries(SIMPLER_FORMS)) {
-      const reported = findings.filter((finding) => finding.rule === rule);
+  it.each(Object.entries(SIMPLER_FORMS))(
+    'prints the simpler form in every %s message',
+    (rule, forms) => {
+      const messages = findings
+        .filter((finding) => finding.rule === rule)
+        .map(({ message }) => message);
 
-      expect(reported.length).toBeGreaterThan(0);
-      for (const { message } of reported) {
-        for (const form of forms) expect(message).toContain(form);
-      }
-    }
-  });
+      expect(messages.length).toBeGreaterThan(0);
+      expect(messages.filter((message) => !forms.every((form) => message.includes(form)))).toEqual(
+        [],
+      );
+    },
+  );
 });
