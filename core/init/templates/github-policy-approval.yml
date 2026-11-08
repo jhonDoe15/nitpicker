@@ -2,9 +2,10 @@ name: nitpicker policy approval
 
 # A person with write access accepts the nitpicker policy loosenings of a pull request by adding
 # the accept-policy-change label. This job checks their access, records the approval on the head
-# commit as the nitpicker/policy-accepted status, removes the label and re-runs the failed jobs of
-# the latest failed pull request run of each workflow on that commit. A later push is a new commit
-# and needs the label again. The job never checks out or runs the code of the pull request.
+# commit as the nitpicker/policy-accepted status for this pull request and its target branch,
+# removes the label and re-runs the failed jobs of the latest failed pull request run of each
+# workflow on that commit. A later push is a new commit and needs the label again. The job never
+# checks out or runs the code of the pull request.
 on:
   pull_request_target:
     types: [labeled]
@@ -39,12 +40,20 @@ jobs:
               return;
             }
             const sha = pull.head.sha;
+            const description = `Accepted by ${sender.login} for #${pull.number} into ${pull.base.ref}`;
+            if (description.length > 140) {
+              core.setFailed(
+                `"${description}" is longer than a commit status allows (140 characters). ` +
+                  'Accept with the NITPICKER_ACCEPT_POLICY_CHANGE digest instead.',
+              );
+              return;
+            }
             await github.rest.repos.createCommitStatus({
               ...repo,
               sha,
               state: 'success',
               context: 'nitpicker/policy-accepted',
-              description: `Policy loosenings accepted by ${sender.login}`,
+              description,
             });
             const runs = await github.paginate(github.rest.actions.listWorkflowRunsForRepo, {
               ...repo,

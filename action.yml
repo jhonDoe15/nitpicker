@@ -317,9 +317,12 @@ runs:
       uses: actions/github-script@v8.0.0
       env:
         HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        PULL_REQUEST: ${{ github.event.pull_request.number }}
+        TARGET_BRANCH: ${{ github.event.pull_request.base.ref }}
       with:
         script: |
           const sha = process.env.HEAD_SHA;
+          const scope = ` for #${process.env.PULL_REQUEST} into ${process.env.TARGET_BRANCH}`;
           try {
             const statuses = await github.paginate(github.rest.repos.listCommitStatusesForRef, {
               ...context.repo,
@@ -329,7 +332,8 @@ runs:
             const latest = statuses.find(
               (status) =>
                 status.context === 'nitpicker/policy-accepted' &&
-                status.creator?.login === 'github-actions[bot]',
+                status.creator?.login === 'github-actions[bot]' &&
+                status.description?.endsWith(scope) === true,
             );
             core.setOutput('approved-sha', latest?.state === 'success' ? sha : '');
           } catch (error) {

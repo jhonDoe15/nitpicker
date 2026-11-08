@@ -213,12 +213,14 @@ A person with write access accepts the loosenings of a pull request by adding th
 1. removes the label again, so it works like a button;
 2. checks that the person who added it has write, maintain or admin access, and fails otherwise;
 3. records the approval as the `nitpicker/policy-accepted` commit status of the pull request head,
-   which shows in the checks of the pull request with the name of the person;
+   which shows in the checks of the pull request with the name of the person, the pull request
+   number and its target branch;
 4. re-runs the failed jobs of the latest failed pull request run of each workflow on that commit.
 
 The action reads that status for the head it gates and accepts the loosenings of that commit
 (`NITPICKER_ACCEPT_POLICY_CHANGE=commit:<sha>`), also when the checkout is the merge commit GitHub
-makes for the pull request. A re-run on the same commit stays accepted; a push is a new commit, and
+makes for the pull request. The approval counts only for the same pull request and target branch,
+so another pull request with the same head, or a changed target branch, needs its own. A re-run on the same commit stays accepted; a push is a new commit, and
 needs the label again. The workflow runs on `pull_request_target`, so it is the version on the
 default branch that runs, also for a pull request from a fork; it never checks out the code of the
 pull request. Write access is the bar because whoever has it can change the workflows anyway.
