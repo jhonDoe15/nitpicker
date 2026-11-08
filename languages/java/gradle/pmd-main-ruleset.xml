@@ -1419,6 +1419,41 @@ return (
       </property>
     </properties>
   </rule>
+  <rule name="GeneratedEqualsSkipsSuperclass" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
+        message="This class extends a project class, which declares fields, but the equals and hashCode that Lombok generates ignore inherited fields unless callSuper is set, so two objects that differ only in those fields are equal. Write @EqualsAndHashCode(callSuper = true), or callSuper = false when ignoring them is intended.">
+    <priority>3</priority>
+    <properties>
+      <property name="xpath">
+        <value><![CDATA[
+//ClassDeclaration[@Interface = false()][ExtendsList]
+  [not(ClassBody/MethodDeclaration[@Name = ('equals', 'hashCode')])]
+  [let $annotations := ModifierList/Annotation
+   return exists($annotations[pmd-java:typeIs('lombok.EqualsAndHashCode')]
+                             [not(.//MemberValuePair[@Name = 'callSuper'])])
+     or (exists($annotations[pmd-java:typeIs('lombok.Data') or pmd-java:typeIs('lombok.Value')])
+         and empty($annotations[pmd-java:typeIs('lombok.EqualsAndHashCode')]))]
+  /ExtendsList
+]]></value>
+      </property>
+    </properties>
+  </rule>
+  <rule name="GeneratedMemberCycle" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
+        message="The generated toString, equals and hashCode can follow this field around a cycle of fields, so the first log line, HashSet or cache lookup of an object in the cycle recurses until StackOverflowError. Mark the back reference @ToString.Exclude and @EqualsAndHashCode.Exclude, or list the included fields with onlyExplicitlyIncluded = true. A field that only ever points down a tree, never back up, is the intended case.">
+    <priority>3</priority>
+    <properties>
+      <property name="xpath">
+        <value><![CDATA[
+//ClassDeclaration[@Interface = false()]
+  [ModifierList/Annotation[pmd-java:typeIs('lombok.Data') or pmd-java:typeIs('lombok.Value')
+                           or pmd-java:typeIs('lombok.ToString')
+                           or pmd-java:typeIs('lombok.EqualsAndHashCode')]]
+  /ClassBody/FieldDeclaration[not(pmd-java:modifiers() = 'static')][not(PrimitiveType)]
+    [not(ClassType[pmd-java:typeIsExactly('java.lang.String')])]
+  /VariableDeclarator/VariableId
+]]></value>
+      </property>
+    </properties>
+  </rule>
   <rule name="timeout-abandons-async-task" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
         message="{0}(...) on a CompletableFuture from supplyAsync or runAsync stops waiting, not the task: cancelling or completing a CompletableFuture never interrupts its task, so the task keeps running with its thread and side effects, and a retry overlaps it. Submit the work to an ExecutorService instead, wait with future.get(timeout, unit) and call cancel(true) on that Future when the TimeoutException arrives.">
     <priority>3</priority>

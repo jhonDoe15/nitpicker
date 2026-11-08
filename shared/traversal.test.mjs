@@ -26,23 +26,26 @@ describe('iterative tree traversal', () => {
     ).toEqual([]);
   });
 
-  it('folds a tree from the leaves up, handing each node the values of its children', () => {
-    const tree = { value: 1, children: [{ value: 2, children: [{ value: 3 }] }, { value: 4 }] };
-    const sum = foldTree(
-      tree,
-      (node) => node.children ?? [],
-      (node, values) => values.reduce((total, value) => total + value, node.value),
-    );
-    expect(sum).toBe(10);
+  it('folds children before their parent and passes each child the context its parent gives it', () => {
+    const tree = {
+      name: 'root',
+      children: [{ name: 'a', children: [{ name: 'b' }] }, { name: 'c' }],
+    };
+    const folded = foldTree(tree, 0, {
+      expand: (node, depth) => (node.children ?? []).map((child) => [child, depth + 1]),
+      combine: (node, depth, children) => `${node.name}${String(depth)}(${children.join(',')})`,
+    });
+    expect(folded).toBe('root0(a1(b2()),c1())');
   });
 
-  it('passes the depth so a fold can stop descending', () => {
-    const tree = { value: 1, children: [{ value: 2, children: [{ value: 3 }] }] };
-    const sum = foldTree(
-      tree,
-      (node, depth) => (depth < 1 ? (node.children ?? []) : []),
-      (node, values) => values.reduce((total, value) => total + value, node.value),
-    );
-    expect(sum).toBe(3);
+  it('folds a tree deeper than the JavaScript call stack', () => {
+    const deep = Array.from({ length: 20_000 }).reduce((child) => ({ children: [child] }), {
+      children: [],
+    });
+    const depth = foldTree(deep, undefined, {
+      expand: (node) => node.children.map((child) => [child]),
+      combine: (_node, _context, children) => 1 + (children[0] ?? 0),
+    });
+    expect(depth).toBe(20_001);
   });
 });

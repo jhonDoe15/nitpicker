@@ -21,6 +21,28 @@ export function* depthFirst(root, children) {
   }
 }
 
+function expandItem(item, expand, pending) {
+  const entries = expand(item.node, item.context);
+  pending.push({ ...item, entries });
+  for (const [node, context] of entries.toReversed()) {
+    pending.push({ node, context });
+  }
+}
+
+export function foldTree(root, context, { expand, combine }) {
+  const pending = [{ node: root, context }];
+  const results = [];
+  for (const item of stackIterator(pending)) {
+    if (item.entries === undefined) {
+      expandItem(item, expand, pending);
+    } else {
+      const childResults = results.splice(results.length - item.entries.length);
+      results.push(combine(item.node, item.context, childResults));
+    }
+  }
+  return results[0];
+}
+
 export function chainOf(start, next) {
   const nodes = start ? [start] : [];
   for (const node of nodes) {
@@ -36,28 +58,4 @@ export function objectChildren(node) {
     .filter(([key]) => key !== 'parent')
     .flatMap(([, value]) => (Array.isArray(value) ? value : [value]))
     .filter((value) => value !== null && typeof value === 'object');
-}
-
-export function foldTree(root, children, combine) {
-  const entries = [{ node: root, depth: 0, children: [] }];
-  for (const entry of entries) {
-    const nested = children(entry.node, entry.depth).map((node) => ({
-      node,
-      depth: entry.depth + 1,
-      children: [],
-    }));
-    entry.children.push(...nested);
-    entries.push(...nested);
-  }
-  const values = new Map();
-  for (const entry of entries.toReversed()) {
-    values.set(
-      entry,
-      combine(
-        entry.node,
-        entry.children.map((child) => values.get(child)),
-      ),
-    );
-  }
-  return values.get(entries[0]);
 }

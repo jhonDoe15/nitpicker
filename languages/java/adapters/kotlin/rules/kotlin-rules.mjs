@@ -69,6 +69,12 @@ export const ONE_WAY_RULES = [
   },
   { name: 'UseLet', ruleset: 'style' },
   {
+    name: 'CollapsibleIfStatements',
+    ruleset: 'style',
+    allowed:
+      'Merge them into one `if (a && b)`, with a condition that holds `||` in parentheses; nesting stays when the outer `if` has an `else` or other statements.',
+  },
+  {
     name: 'UnusedParameter',
     ruleset: 'style',
     mainOnly: true,
