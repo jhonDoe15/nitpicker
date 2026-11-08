@@ -115,6 +115,7 @@ export function strictSyntaxConfigFor(layout = defaultResolvedLayout, options = 
         'no-restricted-syntax': ['error', ...restrictedSyntax.source],
         ...sourceSyntaxBans(options),
         'nitpicker/no-self-recursion': 'error',
+        'nitpicker/no-task-outliving-resource': 'error',
         'nitpicker/no-tri-state-boolean': 'error',
         'nitpicker/no-unhandled-url-parse': 'error',
         'nitpicker/no-compatibility-shim': 'error',

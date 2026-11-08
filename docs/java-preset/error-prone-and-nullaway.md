@@ -582,6 +582,7 @@ The pairs:
 - class: `errorprone/DateFormatConstant` over `pmd/UnsynchronizedStaticFormatter`, `spotbugs/STCAL_INVOKE_ON_STATIC_DATE_FORMAT_INSTANCE`
 - field: `errorprone/DateFormatConstant` over `spotbugs/STCAL_STATIC_SIMPLE_DATE_FORMAT_INSTANCE`
 - line: `pmd/NonThreadSafeSingleton` over `spotbugs/LI_LAZY_INIT_STATIC`, `spotbugs/SING_SINGLETON_GETTER_NOT_SYNCHRONIZED`
+- line: `kotlin-source/ChildCoroutineOutlivesResource` over `pmd/CoroutineEscapesTest`
 
 ## Standard streams and the `main` method
 

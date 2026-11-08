@@ -152,7 +152,7 @@ final class Declarations {
     return names;
   }
 
-  Frame declareFunction(KtNamedFunction function, Frame frame) {
+  Frame declareFunction(KtNamedFunction function, Frame frame, boolean shielded) {
     Frame holder = frame;
     while (holder != null && !"class".equals(holder.kind()) && !"object".equals(holder.kind())) {
       holder = holder.parent;
@@ -178,7 +178,8 @@ final class Declarations {
             "emptyBody", body instanceof KtBlockExpression && ((KtBlockExpression) body).getStatements().isEmpty(),
             "expressionBody", body != null && !(body instanceof KtBlockExpression) ? Boolean.TRUE : null,
             "returns", body instanceof KtNameReferenceExpression ? nameOf(body) : null,
-            "forward", forward(function), "typeBounds", typeBounds(function.getTypeParameters())));
+            "forward", forward(function), "typeBounds", typeBounds(function.getTypeParameters()),
+            "shielded", shielded ? Boolean.TRUE : null));
     Map<String, Object> scope = m("k", "fun", "name", function.getName());
     if (function.getName() == null) {
       scope.putAll(Scopes.hostData(function));

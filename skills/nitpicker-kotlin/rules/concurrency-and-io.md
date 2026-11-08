@@ -4,6 +4,11 @@ Part of the [nitpicker-kotlin](../SKILL.md) skill. Write these forms from the st
 
 - Coroutines: no `GlobalScope`, no `runBlocking` (a call, however it is imported). Make the caller `suspend`
   (`suspend fun main()` for an entry point) and use `coroutineScope { launch { ... } }`; a test uses `runTest`.
+  Cleanup in `finally` (or after `catch (CancellationException)`) that suspends must run as
+  `withContext(NonCancellable) { withTimeout(5.seconds) { ... } }`, or be a plain blocking `close()`. Do not start
+  `scope.launch { ... }` from `x.use { }` with an outer scope while the child reads `x`: use `coroutineScope { }`
+  in the block, `join()` the launched job before it ends (not under an `if`), or open the resource inside the
+  child (`scope.launch { open().use { ... } }`).
 - A timeout stops waiting, not the work (`pmd/timeout-abandons-operation`): start the work inside
   `withTimeout(ms) { ... }`, or catch `TimeoutCancellationException` and `cancel()` the `Deferred`
   before rethrowing. `future.get(1, SECONDS)` needs `cancel(true)` on that future or a rethrow in

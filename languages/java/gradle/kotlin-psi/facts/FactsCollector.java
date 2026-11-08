@@ -13,6 +13,7 @@ import nitpicker.kotlinpsi.catches.Catches;
 import nitpicker.kotlinpsi.common.Frame;
 import nitpicker.kotlinpsi.facts.locking.Locking;
 import nitpicker.kotlinpsi.facts.updates.Updates;
+import nitpicker.kotlinpsi.facts.lifetimes.Lifetimes;
 import nitpicker.kotlinpsi.load.LoadCalls;
 import nitpicker.kotlinpsi.timeouts.Timeouts;
 import org.jetbrains.kotlin.com.intellij.psi.PsiElement;
@@ -29,6 +30,7 @@ public final class FactsCollector {
   private final Predicates predicates;
   private final Updates updates;
   private final Locking locking;
+  private final Lifetimes lifetimes;
   private final Bodies bodies;
   private final LoadCalls loads;
   private final Throwing throwing;
@@ -43,6 +45,7 @@ public final class FactsCollector {
     this.updates = new Updates(state::lineOf);
     this.throwing = new Throwing(nothing, file);
     this.locking = new Locking(file, state::lineOf);
+    this.lifetimes = new Lifetimes(file, state::lineOf);
     this.bodies = new Bodies(text, test, throwing, state.namesOf(HANDLER));
     this.loads = test ? null : new LoadCalls(file, state::lineOf);
   }
@@ -55,6 +58,12 @@ public final class FactsCollector {
     Map<String, Object> result = new LinkedHashMap<>(state.result());
     result.putAll(bodies.result());
     result.putAll(locking.result());
+    if (!lifetimes.cleanupCalls().isEmpty()) {
+      result.put("cleanupCalls", lifetimes.cleanupCalls());
+    }
+    if (!lifetimes.useLaunches().isEmpty()) {
+      result.put("useLaunches", lifetimes.useLaunches());
+    }
     if (loads != null) {
       result.putAll(loads.result());
     }
@@ -80,7 +89,8 @@ public final class FactsCollector {
 
   private Frame enter(PsiElement element, Frame frame) {
     if (element instanceof KtNamedFunction) {
-      Frame inner = declarations.declareFunction((KtNamedFunction) element, frame);
+      Frame inner = declarations.declareFunction(
+          (KtNamedFunction) element, frame, lifetimes.shieldsWholeBody((KtNamedFunction) element));
       bodies.function(inner, (KtNamedFunction) element);
       return inner;
     }
@@ -124,7 +134,10 @@ public final class FactsCollector {
       declarations.declareProperty((KtProperty) element, frame);
     } else if (element instanceof KtTypeAlias) {
       declarations.declareTypeAlias((KtTypeAlias) element);
+    } else if (element instanceof KtTryExpression) {
+      lifetimes.tryExpression((KtTryExpression) element, frame);
     } else if (element instanceof KtCallExpression) {
+      lifetimes.call((KtCallExpression) element, frame);
       calls.call((KtCallExpression) element, frame);
       timeouts.call((KtCallExpression) element, frame);
       locking.call((KtCallExpression) element, frame);
