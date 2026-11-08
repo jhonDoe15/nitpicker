@@ -1,4 +1,4 @@
-import { existsSync, writeFileSync } from 'node:fs';
+import { existsSync, rmSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { GRADLE_DIRECTORY } from '../../builds/java-build.mjs';
 import { javaCommand, runJava } from '../maven-command.mjs';
@@ -9,9 +9,12 @@ import { runJavacLint } from '../../builds/lint/javac-lint-runner.mjs';
 import { runDependencies } from './maven-dependencies.mjs';
 import { runCpd } from './maven-pmd.mjs';
 import { guardCompiler } from '../errorprone/maven-compiler.mjs';
+import { processorPath } from '../errorprone/maven-errorprone.mjs';
 import { toolCommand } from '../../builds/tools/tool-commands.mjs';
 
 function runForbiddenApis({ module, reportDir, tools, classpaths, spawn }) {
+  const report = path.join(reportDir, 'forbidden-apis.txt');
+  rmSync(report, { force: true });
   if (classFiles(module.outputDirectory).length === 0) {
     return;
   }
@@ -30,10 +33,10 @@ function runForbiddenApis({ module, reportDir, tools, classpaths, spawn }) {
     accept: ({ status }) => command.accepts(status),
     spawn,
   });
-  writeFileSync(path.join(reportDir, 'forbidden-apis.txt'), `${result.stdout}${result.stderr}`);
+  writeFileSync(report, `${result.stdout}${result.stderr}`);
 }
 
-function lintPlan({ module, classpaths, spawn }, projectRoot) {
+export function lintPlan({ module, classpaths, tools, spawn }, projectRoot) {
   const lintDirectory = path.join(module.buildDirectory, 'nitpicker-lint');
   return {
     root: projectRoot,
@@ -43,7 +46,7 @@ function lintPlan({ module, classpaths, spawn }, projectRoot) {
     generatedSources: [path.join(module.buildDirectory, 'generated-sources/annotations')],
     classDirectory: module.outputDirectory,
     classpath: classpaths.mainCompile,
-    processorPath: classpaths.mainCompile,
+    processorPath: processorPath(classpaths.mainCompile, module.compiler, tools),
     javac: javaCommand('javac'),
     compiler: guardCompiler(module.compiler),
     workDirectory: path.join(lintDirectory, 'work'),

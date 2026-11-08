@@ -12,7 +12,8 @@ import path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { GRADLE_DIRECTORY } from '../../builds/java-build.mjs';
 import { argumentFileToken } from '../../builds/lint/javac-options.mjs';
-import { runGuards } from './maven-guards.mjs';
+import { processorTool } from '../errorprone/maven-errorprone.mjs';
+import { lintPlan, runGuards } from './maven-guards.mjs';
 
 const roots = [];
 const TOOLS = { forbiddenapis: ['/tools/forbiddenapis.jar', '/tools/asm.jar'] };
@@ -65,8 +66,11 @@ function moduleOf(root, files) {
   };
 }
 
-function guards(root, { files, mainCompile }) {
+function guards(root, { files, mainCompile, stale = false }) {
   const { module, reportDir } = moduleOf(root, files);
+  if (stale) {
+    writeFileSync(path.join(reportDir, 'forbidden-apis.txt'), 'forbidden: from an earlier run\n');
+  }
   runGuards(
     { module, reportDir, tools: TOOLS, classpaths: { mainCompile, dependencies: [] } },
     { projectRoot: root, baselineRoot: undefined, reactor: [] },
@@ -166,5 +170,41 @@ describe.skipIf(process.platform === 'win32')('runGuards forbiddenapis', () => {
 
     expect(existsSync(path.join(reportDir, 'forbidden-apis.txt'))).toBe(false);
     expect(existsSync(path.join(root, 'java-arguments'))).toBe(false);
+  });
+
+  it('removes the report of an earlier run when the module has no classes now', () => {
+    const root = workspace();
+    fakeJava(root, 0);
+
+    const reportDir = guards(root, { files: [], mainCompile: [], stale: true });
+
+    expect(existsSync(path.join(reportDir, 'forbidden-apis.txt'))).toBe(false);
+  });
+});
+
+describe('lintPlan processor path', () => {
+  const classpaths = { mainCompile: ['/m2/lombok.jar', '/m2/guava.jar'] };
+
+  function plan(compiler, tools = {}) {
+    const root = workspace();
+    const { module } = moduleOf(root, []);
+    return lintPlan({ module: { ...module, compiler }, classpaths, tools }, root).processorPath;
+  }
+
+  it('takes the compile classpath when the pom names no processors', () => {
+    expect(plan({})).toEqual(classpaths.mainCompile);
+  });
+
+  it('takes only the configured processors when the pom names some', () => {
+    const compiler = { processorPaths: ['org.projectlombok:lombok:1.18.30'] };
+    const tools = {};
+    const { name } = processorTool(compiler);
+    tools[name] = ['/m2/lombok-processor.jar'];
+
+    expect(plan(compiler, tools)).toEqual(['/m2/lombok-processor.jar']);
+  });
+
+  it('takes no processor when annotation processing is off', () => {
+    expect(plan({ proc: 'none' })).toEqual([]);
   });
 });
