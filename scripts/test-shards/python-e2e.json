@@ -79,6 +79,7 @@
   "languages/python/rules/e2e/security/tls/tls.e2e.test.mjs": 1,
   "languages/python/rules/e2e/signatures/compatibility-shim.e2e.test.mjs": 2,
   "languages/python/rules/e2e/signatures/falsy-default.e2e.test.mjs": 2,
+  "languages/python/rules/e2e/signatures/number-truthiness.e2e.test.mjs": 2,
   "languages/python/rules/e2e/signatures/parameter-mutation.e2e.test.mjs": 2,
   "languages/python/rules/e2e/signatures/tri-state-boolean.e2e.test.mjs": 2,
   "languages/python/rules/e2e/smells/boolean-flag.e2e.test.mjs": 1,
