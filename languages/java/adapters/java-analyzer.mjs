@@ -9,7 +9,7 @@ import { INIT_SCRIPT, readPinnedTools } from '../builds/java-build.mjs';
 import { importClosure } from '../../../shared/import-closure.mjs';
 import { javaExecutionBudget } from './java-runner.mjs';
 import { javaCommand } from '../maven/maven-command.mjs';
-import { JVM_NOISE } from '../../../shared/messages/jvm-noise.mjs';
+import { JVM_NOISE } from '../../../shared/messages/jvm/jvm-noise.mjs';
 
 const packageRoot = path.resolve(import.meta.dirname, '../../..');
 const runnerPath = path.join(import.meta.dirname, 'java-runner.mjs');
