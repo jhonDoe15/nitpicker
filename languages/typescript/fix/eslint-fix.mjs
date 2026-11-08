@@ -101,11 +101,11 @@ function writeOutputs(projectRoot, before, outputs) {
       text: withFixedLineEndingsOf(before.get(name).toString('utf8'), output),
     }))
     .filter(({ name, text }) => text !== before.get(name).toString('utf8'));
-  const { written, changedMeanwhile } = writeTexts(
+  const { written, changedMeanwhile, unwritable } = writeTexts(
     projectRoot,
     planned.map(({ name, text }) => ({ name, bytes: before.get(name), text })),
   );
-  return { rewritten: written, changedMeanwhile };
+  return { rewritten: written, changedMeanwhile, unwritable };
 }
 
 function attemptEslintFix(settings, files, before) {
@@ -128,7 +128,14 @@ function attemptEslintFix(settings, files, before) {
       ),
     };
   } catch (error) {
-    return { linked, failure: error, rewritten: [], changedMeanwhile: [], unformattable: [] };
+    return {
+      linked,
+      failure: error,
+      rewritten: [],
+      changedMeanwhile: [],
+      unformattable: [],
+      unwritable: [],
+    };
   }
 }
 
@@ -154,6 +161,7 @@ export function eslintFixStep(settings, files) {
       rewritten: attempt.rewritten,
       changedMeanwhile: attempt.changedMeanwhile,
       unformattable: attempt.unformattable,
+      unwritable: attempt.unwritable,
       keptAsIs: [],
     }),
   };

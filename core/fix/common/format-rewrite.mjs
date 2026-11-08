@@ -77,7 +77,7 @@ export function rewriteFormatted({ projectRoot, repositoryRoot, mergeBaseSha, fi
     formatted: first.formatted,
     touchedLinesOnly: options.touchedLinesOnly === true,
   });
-  const { written: names } = writeTexts(
+  const { written: names, unwritable } = writeTexts(
     projectRoot,
     planned.map(({ name, text }) => ({ name, bytes: bytes.get(name), text })),
   );
@@ -86,8 +86,15 @@ export function rewriteFormatted({ projectRoot, repositoryRoot, mergeBaseSha, fi
     rewritten: written.filter(({ partly }) => !partly).map(({ name }) => name),
     partlyRewritten: written.filter(({ partly }) => partly).map(({ name }) => name),
     keptAsIs: namesOf(differing).filter((name) => !planned.some((entry) => entry.name === name)),
-    changedMeanwhile: planned.filter((entry) => !written.includes(entry)).map(({ name }) => name),
+    changedMeanwhile: planned
+      .filter(
+        (entry) =>
+          !written.includes(entry) &&
+          !unwritable.some((text) => text.startsWith(`${entry.name}: `)),
+      )
+      .map(({ name }) => name),
     unformattable: first.unformattable ?? [],
     undecodable,
+    ...(unwritable.length === 0 ? {} : { unwritable }),
   };
 }

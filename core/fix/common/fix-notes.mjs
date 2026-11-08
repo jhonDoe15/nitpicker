@@ -29,6 +29,7 @@ export function formatNotes(tool, outcome) {
     ),
     ...listed(outcome.unformattable, (names) => `${tool} could not parse ${names}`),
     ...undecodableNote(undecodable),
+    ...listed(outcome.unwritable ?? [], (entries) => `--fix could not write ${entries}`),
     ...listed(
       changedMeanwhile,
       (names) => `--fix left ${names} as is: the file changed while --fix ran`,

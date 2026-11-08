@@ -8,11 +8,10 @@ export function writeTexts(projectRoot, planned) {
     fix: { edits: [{ type: 'write', path: name, text }] },
   }));
   const { applied, changedMeanwhile, errors } = applyFixes(projectRoot, snapshot, entries);
-  if (errors.length > 0) {
-    throw new Error(`--fix could not write ${errors.join('; ')}`);
-  }
+  const stale = new Set(changedMeanwhile);
   return {
     written: applied.map(({ name }) => name),
-    changedMeanwhile,
+    changedMeanwhile: planned.map(({ name }) => name).filter((name) => stale.has(name)),
+    unwritable: errors,
   };
 }

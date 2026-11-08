@@ -387,8 +387,8 @@ nitpicker rules [--preset <name>] [--tool <name>]
   findings are per line, formats only the code around your change in such a file). ESLint,
   `ruff check --fix`, Prettier and the Python, Java and Kotlin formatters replace a file in one step (a temporary file
   renamed over it), leave alone a file that changed while they ran or is not UTF-8, and do not
-  follow symbolic links; each of these is named in a "Fix notes:" line. ESLint and the Python, Java
-  and Kotlin formatters keep CRLF line endings; a file Prettier rewrites gets the line endings of
+  follow symbolic links; each of these is named in a "Fix notes:" line. ESLint, `ruff check --fix`
+  and the Python, Java and Kotlin formatters keep CRLF line endings; a file Prettier rewrites gets the line endings of
   the gate's `prettier.endOfLine` convention, as its format check expects. Before the formatter,
   `--fix` applies nitpicker's own fix recipes for the preset (see [Fix recipes](#fix-recipes)) and
   lists each finding they fixed under "Fixed findings:". A fixer that fails is reported as a tool

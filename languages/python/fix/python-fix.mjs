@@ -89,10 +89,11 @@ function lintStep({ context, run, projectRoot, files }) {
     const text = result.status === 0 ? source : withFixedLineEndingsOf(source, result.stdout);
     return text === source ? [] : [{ name, bytes: before.get(name), text }];
   });
-  const { written, changedMeanwhile } = writeTexts(projectRoot, planned);
+  const { written, changedMeanwhile, unwritable } = writeTexts(projectRoot, planned);
   return formatNotes('ruff check --fix', {
     rewritten: written,
     changedMeanwhile,
+    unwritable,
     keptAsIs: [],
     unformattable: [],
   });
