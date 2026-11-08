@@ -32,6 +32,8 @@ describe('Python package depth', () => {
       { thresholds: {} },
     );
 
+    const form =
+      'Keep packages at most 4 levels below the root package: group by responsibility instead of nesting.';
     const fix =
       'Keep packages at most 4 levels below the root package: group by responsibility instead of nesting. If this is intended, add {"rule":"folder-depth-limit","paths":["src/app/a/b/c/d/e/**"],"reason":"..."} to "exceptions" in nitpicker.config.json.';
     expect(findings).toEqual([
@@ -41,11 +43,13 @@ describe('Python package depth', () => {
         path: deep,
         identity: 'folder-depth:source:5',
         message: `Package is 5 levels below the root package (limit 4). ${fix}`,
+        allowedForm: form,
         classification: 'enforceable',
         ratchet: {
           key: 'folder-depth:source',
           value: 5,
           worseMessage: `Package grew from {base} to 5 levels below the root package (limit 4). ${fix}`,
+          worseAllowedForm: form,
           heldMessage:
             'Package: 5 levels below the root package (limit 4), allowed because base was {base}; any increase fails.',
           pathIsFolder: true,

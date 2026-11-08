@@ -125,6 +125,8 @@ public final class FactsCollector {
       predicates.binary((KtBinaryExpression) element, frame);
     } else if (element instanceof KtDotQualifiedExpression) {
       predicates.containsForm((KtDotQualifiedExpression) element, frame);
+    } else if (element instanceof KtWhenExpression) {
+      predicates.when((KtWhenExpression) element, frame);
     } else if (element instanceof KtCallableReferenceExpression) {
       state.references.add(((KtCallableReferenceExpression) element).getCallableReference().getReferencedName());
     }

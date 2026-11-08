@@ -4,6 +4,7 @@ import { strictBoundaryRules } from './architecture/strict-boundary-rules.mjs';
 import { i18nRuleIds } from './eslint-config/i18n/i18n-rules.mjs';
 import { isUnusedParameterFinding } from './eslint-config/policy/unused-parameters.mjs';
 import { reactRuleIds, reactTestRuleIds } from './eslint-config/react/react-rules.mjs';
+import { serverRuleIds } from './eslint-config/server/server-rules.mjs';
 
 // eslint-plugin-functional (about a second of CPU), which would tax every start of the CLI.
 export const strictEslintRuleIds = [
@@ -26,43 +27,55 @@ export const strictEslintRuleIds = [
   'nitpicker/no-compatibility-shim',
   'nitpicker/no-default-export',
   'nitpicker/no-disabled-tls-verification',
+  'nitpicker/no-eager-relation',
   'nitpicker/no-falsy-default',
   'nitpicker/no-first-test-charged-setup',
   'nitpicker/no-git-repository-per-test',
   'nitpicker/no-forwarding-wrapper',
   'nitpicker/no-handwritten-boundary-guard',
   'nitpicker/no-magic-numbers',
+  'nitpicker/no-many-to-many-cascade-remove',
   'nitpicker/no-module-level-let',
   'nitpicker/no-module-level-mutable-state',
   'nitpicker/no-mutating-method-in-domain',
   'nitpicker/no-node-process-per-test',
   'nitpicker/no-parameter-mutation',
   'nitpicker/no-null',
+  'nitpicker/no-orm-query-logging',
+  'nitpicker/no-orm-schema-sync',
   'nitpicker/no-process-access-outside-composition-root',
   'nitpicker/no-process-globals-outside-main-guard',
   'nitpicker/no-promise-chain',
   'nitpicker/no-raised-test-timeout',
   'nitpicker/no-self-recursion',
   'nitpicker/no-server-or-worker-per-test',
+  'nitpicker/no-shared-stateful-regex',
   'nitpicker/no-shell-string-command',
   'nitpicker/no-silent-catch',
+  'nitpicker/no-singular-and-plural-prop',
   'nitpicker/no-sql-string-building',
+  'nitpicker/no-string-as-regex',
   'nitpicker/no-test-retry',
   'nitpicker/no-throw',
   'nitpicker/no-tri-state-boolean',
+  'nitpicker/no-unhandled-url-parse',
   'nitpicker/no-uninjectable-delay',
   'nitpicker/no-ui-framework-in-domain',
+  'nitpicker/no-unhandled-void-promise',
   'nitpicker/no-unknown-in-domain',
   'nitpicker/no-unsafe-deserialization',
   'nitpicker/no-unsafe-path-join',
   'nitpicker/no-unvalidated-schema-field',
   'nitpicker/no-weak-hash',
   'nitpicker/preserve-error-cause',
+  'nitpicker/require-error-listener',
   'nitpicker/require-http-timeout',
+  'nitpicker/require-process-timeout',
   'nitpicker/require-test-process-timeout',
   'nitpicker/test-tsconfig-pins-lib-and-types',
   'nitpicker/timeout-abandons-operation',
   'nitpicker/unbounded-fan-out',
+  'nitpicker/unbounded-reactive-fan-out',
   'no-duplicate-imports',
   'no-empty',
   'no-eval',
@@ -71,6 +84,7 @@ export const strictEslintRuleIds = [
   'no-restricted-properties',
   'no-restricted-syntax',
   'regexp/no-super-linear-backtracking',
+  'regexp/no-useless-flag',
 ];
 
 const PRETTIER_RULE = 'prettier/prettier';
@@ -85,6 +99,7 @@ const strictRuleIds = new Set([
   ...reactRuleIds,
   ...reactTestRuleIds,
   ...i18nRuleIds,
+  ...serverRuleIds,
   ...strictBoundaryRules.map(({ name }) => name),
 ]);
 

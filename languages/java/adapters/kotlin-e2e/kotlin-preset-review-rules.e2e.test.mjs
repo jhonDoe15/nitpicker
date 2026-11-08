@@ -2,12 +2,21 @@ import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import {
-  EXPECTED_REVIEW_FINDINGS,
+  EXPECTED_REVIEW_FINDINGS as RULE_FINDINGS,
   integrationSuiteFiles,
   publishedFiles,
   REVIEW_RULE_FILES,
   runtimeSerializationFiles,
 } from './test-support/review/kotlin-review-data.mjs';
+import { PLURAL_FINDINGS } from './test-support/review/kotlin-plural-data.mjs';
+import {
+  GLOBAL_STATE_FILES,
+  GLOBAL_STATE_FINDINGS,
+} from './test-support/review/kotlin-global-state-data.mjs';
+import {
+  mapUpdateFiles,
+  MAP_UPDATE_FINDINGS,
+} from './test-support/review/kotlin-map-update-data.mjs';
 import {
   commitBranch,
   commitFromBranch,
@@ -22,6 +31,7 @@ import { helpUriProblems } from '../../../../shared/reference/test-support/help-
 
 const REVIEW_TOOLS = new Set(['pmd']);
 const ORDERS_TESTS = 'src/test/kotlin/demo/orders/*';
+const ALL_FINDINGS = [...RULE_FINDINGS, ...MAP_UPDATE_FINDINGS, ...GLOBAL_STATE_FINDINGS].sort();
 
 function reviewFindings(findings) {
   return findings
@@ -35,17 +45,21 @@ describe.skipIf(!kotlinE2eEnabled)('Kotlin preset review rules end to end', () =
 
   beforeAll(() => {
     project = initializeProject();
-    commitBranch(project, 'review-rules', REVIEW_RULE_FILES);
+    commitBranch(project, 'review-rules', {
+      ...REVIEW_RULE_FILES,
+      ...mapUpdateFiles(),
+      ...GLOBAL_STATE_FILES,
+    });
   });
   afterAll(() => {
     removeProject(project);
   });
 
-  it('fails the sleeps, enum predicates, wrapper, plural member, unused option and unused context, and spares the allowed forms', () => {
+  it('fails the sleeps, enum predicates, wrapper, plural member, map updates, unused option and unused context, and spares the allowed forms', () => {
     const result = diffOf(project, 'review-rules');
 
     expect(result.failed).toBe(true);
-    expect(reviewFindings(result.newEnforceable)).toEqual(EXPECTED_REVIEW_FINDINGS);
+    expect(reviewFindings(result.newEnforceable)).toEqual(ALL_FINDINGS);
     expect(helpUriProblems(result.newFindings)).toEqual([]);
   });
 
@@ -55,6 +69,7 @@ describe.skipIf(!kotlinE2eEnabled)('Kotlin preset review rules end to end', () =
         ...kotlinPolicy,
         exceptions: [
           { rule: 'pmd/FixedSleepInTest', glob: ORDERS_TESTS },
+          { rule: 'pmd/GlobalStateLeakInTest', glob: ORDERS_TESTS },
           { rule: 'pmd/SpringUnusedContext', glob: ORDERS_TESTS },
           { rule: 'unused-option', glob: 'src/main/kotlin/demo/orders/*' },
           { rule: 'pmd/ClassLoadEffect', glob: 'src/main/kotlin/demo/orders/Inventory.kt' },
@@ -62,22 +77,27 @@ describe.skipIf(!kotlinE2eEnabled)('Kotlin preset review rules end to end', () =
       },
     });
 
-    expect(reviewFindings(result.newEnforceable)).toEqual([
-      'ExhaustiveEnumPredicate isLive',
-      'ExhaustiveEnumPredicate isOpen',
-      'ExhaustiveEnumPredicate isSettled',
-      'ExhaustiveEnumPredicate weight',
-      'SingularAndPluralMember Query.tags',
-      'StaticForwardingWrapper absOf',
-      'StaticForwardingWrapper total',
-      'timeout-abandons-operation awaitAllOutside:withTimeout:first',
-      'timeout-abandons-operation awaitAllOutside:withTimeout:second',
-      'timeout-abandons-operation awaitOutside:withTimeout:work',
-      'timeout-abandons-operation boundedAsync:orTimeout:supplyAsync',
-      'timeout-abandons-operation cancelAsyncTask:get:future',
-      'timeout-abandons-operation giveUp:get:future',
-      'timeout-abandons-operation shutDownLetsItFinish:get:future',
-    ]);
+    expect(reviewFindings(result.newEnforceable)).toEqual(
+      [
+        'ExhaustiveEnumPredicate isHandedOver',
+        'ExhaustiveEnumPredicate isLive',
+        'ExhaustiveEnumPredicate isOpen',
+        'ExhaustiveEnumPredicate isPending',
+        'ExhaustiveEnumPredicate isSettled',
+        'ExhaustiveEnumPredicate weight',
+        ...PLURAL_FINDINGS,
+        'StaticForwardingWrapper absOf',
+        'StaticForwardingWrapper total',
+        ...MAP_UPDATE_FINDINGS,
+        'timeout-abandons-operation awaitAllOutside:withTimeout:first',
+        'timeout-abandons-operation awaitAllOutside:withTimeout:second',
+        'timeout-abandons-operation awaitOutside:withTimeout:work',
+        'timeout-abandons-operation boundedAsync:orTimeout:supplyAsync',
+        'timeout-abandons-operation cancelAsyncTask:get:future',
+        'timeout-abandons-operation giveUp:get:future',
+        'timeout-abandons-operation shutDownLetsItFinish:get:future',
+      ].sort(),
+    );
   });
 
   it('skips data classes when a serialization library is only on the runtime classpath', () => {
@@ -91,7 +111,7 @@ describe.skipIf(!kotlinE2eEnabled)('Kotlin preset review rules end to end', () =
     const result = diffOf(project, 'runtime-serialization');
 
     expect(reviewFindings(result.newEnforceable)).toEqual(
-      EXPECTED_REVIEW_FINDINGS.filter((entry) => entry !== 'unused-option Envelope.retries'),
+      ALL_FINDINGS.filter((entry) => entry !== 'unused-option Envelope.retries'),
     );
   });
 
@@ -105,7 +125,7 @@ describe.skipIf(!kotlinE2eEnabled)('Kotlin preset review rules end to end', () =
     const result = diffOf(project, 'published');
 
     expect(reviewFindings(result.newEnforceable)).toEqual(
-      EXPECTED_REVIEW_FINDINGS.filter((entry) => entry !== 'unused-option price.discount'),
+      ALL_FINDINGS.filter((entry) => entry !== 'unused-option price.discount'),
     );
   });
 
@@ -118,6 +138,6 @@ describe.skipIf(!kotlinE2eEnabled)('Kotlin preset review rules end to end', () =
 
     const result = diffOf(project, 'integration-suite');
 
-    expect(reviewFindings(result.newFindings)).toEqual(EXPECTED_REVIEW_FINDINGS);
+    expect(reviewFindings(result.newFindings)).toEqual(ALL_FINDINGS);
   });
 });

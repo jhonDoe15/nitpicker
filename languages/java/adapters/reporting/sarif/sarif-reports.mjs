@@ -10,6 +10,7 @@ import { FIXED_SLEEP_RULE, withWaitAdvice } from '../../../messages/wait-advice.
 import { dropSleepsInFakes } from '../../../messages/latency-fakes.mjs';
 import { withFanOutDetails } from '../../../messages/fan-out/fan-out-details.mjs';
 import { withLoadEffectSubjects } from '../../../messages/load-effects.mjs';
+import { withSpringTransactionFilters } from '../../spring/transactions/transaction-filters.mjs';
 
 const LINE_NUMBER = /\bline \d+\b/g;
 const PRINTED_PMD_RULES = new Map([['timeout-abandons-async-task', 'timeout-abandons-operation']]);
@@ -56,10 +57,10 @@ export function sarifFindings(context) {
     ...withFanOutDetails(
       withWaitAdvice(
         dropSleepsInFakes(
-          dropInheritedVersions(ingestSarif(pmd, { tool: 'pmd' }).findings, {
-            projectRoot,
-            sourceRoots: allSourceRoots,
-          }),
+          dropInheritedVersions(
+            withSpringTransactionFilters(ingestSarif(pmd, { tool: 'pmd' }).findings, context),
+            { projectRoot, sourceRoots: allSourceRoots },
+          ),
           {
             rule: FIXED_SLEEP_RULE,
             projectRoot,
