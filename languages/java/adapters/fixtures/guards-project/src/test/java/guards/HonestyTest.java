@@ -94,21 +94,25 @@ class HonestyTest {
   @Test
   void constant() {
     assertTrue(true); // violation: pmd/TautologicalAssertion
-    assertTrue(false); // violation: pmd/AlwaysFailingAssertion
-    assertFalse(true, "unreachable"); // violation: pmd/AlwaysFailingAssertion
     assertTrue(names.contains("bob"));
   }
 
   @Test
   void mocks() {
     List<?> values = mock(List.class);
-    Object text = mock(String.class); // violation: pmd/MockedValueType
-    Object copy = spy(new ArrayList<String>()); // violation: pmd/MockedValueType
-    Object plain = spy(new Object());
     Runnable task = mock(Runnable.class);
     task.run();
     verify(task).run();
     assertEquals(0, values.size());
+  }
+
+  private static void neverRun() {
+    assertTrue(false); // violation: pmd/AlwaysFailingAssertion
+    assertFalse(true, "unreachable"); // violation: pmd/AlwaysFailingAssertion
+    Object text = mock(String.class); // violation: pmd/MockedValueType
+    Object copy = spy(new ArrayList<String>()); // violation: pmd/MockedValueType
+    Object plain = spy(new Object());
+    assertEquals(3, text.hashCode() + copy.hashCode() + plain.hashCode());
   }
 
   @Test

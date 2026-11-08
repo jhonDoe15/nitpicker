@@ -26,7 +26,14 @@ function acrossBuilds(findings) {
   return findings
     .filter(({ tool, rule }) => `${tool}/${rule}` !== 'test-runtime/slow-test')
     .map((finding) =>
-      BUILD_FILES.has(finding.path) ? { ...finding, path: 'build file', message: '' } : finding,
+      BUILD_FILES.has(finding.path)
+        ? {
+            ...finding,
+            path: 'build file',
+            message: '',
+            exception: { ...finding.exception, paths: ['build file'] },
+          }
+        : finding,
     );
 }
 
