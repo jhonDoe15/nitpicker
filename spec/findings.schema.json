@@ -9,6 +9,11 @@
     "findings": {
       "type": "array",
       "items": { "$ref": "#/$defs/finding" }
+    },
+    "moduleImports": {
+      "description": "Optional. Folder-level import edges between production files, published by language analyzers when history.coChange is on. Core joins them into co-change findings and drops them from the report.",
+      "type": "array",
+      "items": { "$ref": "#/$defs/moduleImport" }
     }
   },
   "$defs": {
@@ -16,6 +21,26 @@
       "type": "string",
       "minLength": 1,
       "pattern": "^[^\\u0000]+$"
+    },
+    "moduleImport": {
+      "type": "object",
+      "required": ["from", "to", "files"],
+      "additionalProperties": false,
+      "properties": {
+        "from": {
+          "$ref": "#/$defs/nonEmptyString",
+          "description": "Importing folder, project-relative."
+        },
+        "to": {
+          "$ref": "#/$defs/nonEmptyString",
+          "description": "Imported folder, project-relative."
+        },
+        "files": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Importing files in the from folder."
+        }
+      }
     },
     "finding": {
       "type": "object",

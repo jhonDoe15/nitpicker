@@ -4,6 +4,7 @@ import { adviceProblems } from '../../../shared/messages/finding-advice.mjs';
 
 const CLASSIFICATIONS = new Set(['enforceable', 'descriptive', 'tool-error']);
 const HTTP_URL = /^https?:\/\/\S+$/u;
+const MODULE_IMPORT_FIELDS = new Set(['from', 'to', 'files']);
 
 export function parseAnalyzerReport(value, analyzerName) {
   if (!isRecord(value) || !Array.isArray(value.findings)) {
@@ -14,6 +15,33 @@ export function parseAnalyzerReport(value, analyzerName) {
     findings: value.findings.map((finding, index) =>
       parseFinding(finding, `${analyzerName} findings[${String(index)}]`),
     ),
+    ...parseModuleImports(value.moduleImports, `${analyzerName} moduleImports`),
+  };
+}
+
+function parseModuleImports(value, context) {
+  if (value === undefined) {
+    return {};
+  }
+  if (!Array.isArray(value)) {
+    throw new TypeError(`${context} must be an array`);
+  }
+  return {
+    moduleImports: value.map((entry, index) => {
+      const where = `${context}[${String(index)}]`;
+      if (!isRecord(entry)) {
+        throw new TypeError(`${where} must be an object`);
+      }
+      const extra = Object.keys(entry).find((key) => !MODULE_IMPORT_FIELDS.has(key));
+      if (extra !== undefined) {
+        throw new TypeError(`${where}.${extra} is not a supported field`);
+      }
+      return {
+        from: normalizeFindingPath(requiredString(entry.from, `${where}.from`), `${where}.from`),
+        to: normalizeFindingPath(requiredString(entry.to, `${where}.to`), `${where}.to`),
+        files: positiveInteger(entry.files, `${where}.files`),
+      };
+    }),
   };
 }
 

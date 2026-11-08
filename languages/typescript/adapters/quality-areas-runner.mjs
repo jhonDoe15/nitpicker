@@ -6,7 +6,7 @@ import { parseArguments } from './quality-areas/arguments.mjs';
 import { applyAreaExceptions } from './exceptions/area-exceptions.mjs';
 import { hasProjectTests } from './test-runners/test-run.mjs';
 
-export async function runQualityArea(options) {
+export async function runQualityAreaReport(options) {
   const runner = QUALITY_AREA_RUNNERS.get(options.kind);
   if (runner === undefined) {
     throw new Error(`Unsupported quality area: ${options.kind}`);
@@ -15,25 +15,32 @@ export async function runQualityArea(options) {
     const layout = readLayout();
     const files = layout.projectCodeFiles(options.projectRoot);
     if (files.length === 0) {
-      return [];
+      return { findings: [] };
     }
     if (
       ['coupling', 'crap', 'mutation'].includes(options.kind) &&
       !files.some(layout.isSourceFile)
     ) {
-      return [];
+      return { findings: [] };
     }
     if (options.kind === 'test-runtime' && !files.some(layout.isRunnableTestFile)) {
-      return [];
+      return { findings: [] };
     }
     if (
       ['coverage', 'test-console', 'mutation'].includes(options.kind) &&
       !hasProjectTests(options, layout, files)
     ) {
-      return [];
+      return { findings: [] };
     }
   }
-  return applyAreaExceptions(await runner(options));
+  const result = await runner(options);
+  return Array.isArray(result)
+    ? { findings: applyAreaExceptions(result) }
+    : { ...result, findings: applyAreaExceptions(result.findings) };
+}
+
+export async function runQualityArea(options) {
+  return (await runQualityAreaReport(options)).findings;
 }
 
 const invokedPath = process.argv[1];
@@ -44,8 +51,8 @@ if (
 ) {
   try {
     const options = parseArguments(process.argv.slice(2));
-    const findings = await runQualityArea(options);
-    process.stdout.write(`${JSON.stringify({ findings })}\n`);
+    const report = await runQualityAreaReport(options);
+    process.stdout.write(`${JSON.stringify(report)}\n`);
   } catch (error) {
     process.stderr.write(
       `Quality area adapter failed: ${error instanceof Error ? error.message : String(error)}\n`,

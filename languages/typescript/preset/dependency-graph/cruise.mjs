@@ -157,3 +157,17 @@ export function internalEdges(graph, sourceRoot) {
     return { source, target, kind };
   });
 }
+
+export function projectImports(graph, isSourceFile) {
+  const modulePaths = new Set(graph.modules.map((module) => normalizePath(module.source)));
+  const isProjectSource = (file) => modulePaths.has(file) && isSourceFile(file);
+  return graph.modules.flatMap((module) => {
+    const from = normalizePath(module.source);
+    return isProjectSource(from)
+      ? (module.dependencies ?? [])
+          .filter((dependency) => typeof dependency.resolved === 'string')
+          .map((dependency) => ({ from, to: normalizePath(dependency.resolved) }))
+          .filter(({ to }) => isProjectSource(to))
+      : [];
+  });
+}

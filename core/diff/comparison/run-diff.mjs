@@ -209,6 +209,8 @@ function runAndCombine(context) {
     policyLoosenings: context.baseSetup.policyLoosenings,
     policyKinds: context.baseSetup.policyKinds,
     policyDigest: context.baseSetup.policyDigest,
+    headPolicy: settings.headPolicy,
+    basePolicy: context.baseSetup.headPolicy,
     acceptPolicyChange: settings.acceptPolicyChange,
     scope: settings.scope,
     policyAcceptanceSource: settings.policyAcceptanceSource,

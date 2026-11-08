@@ -28,6 +28,8 @@ import { runTestOnlyExports, runUnusedApi } from './unused-api.mjs';
 import { spawnedEntryFiles } from '../../dependency-graph/spawned-entries.mjs';
 import { baselinePathsOf } from '../../../../../shared/rules/facts/baseline.mjs';
 import { knipReport, withProjectKnipConfig } from '../knip/knip-run.mjs';
+import { projectImports } from '../../../preset/dependency-graph/cruise.mjs';
+import { moduleImportsSection } from '../../../../../shared/history/co-change/dependencies/module-imports.mjs';
 
 export async function runCodingStandards(options) {
   const checker = await importPolicyModule(
@@ -89,13 +91,14 @@ export async function runCoupling(options) {
     'languages/typescript/preset/coupling/analyze.mjs',
   );
   const { exceptions } = readHeadPolicy();
-  return perSourceRoot(options, layout, (root) =>
+  const findings = await perSourceRoot(options, layout, (root) =>
     normalizeCoupling(
       analyzeCoupling(graph, root, { layout, projectRoot: options.projectRoot }),
       options.analyzerName,
       exceptions,
     ),
   );
+  return { findings, ...moduleImportsSection(projectImports(graph, layout.isSourceFile)) };
 }
 
 export async function runTestRuntime(options) {
