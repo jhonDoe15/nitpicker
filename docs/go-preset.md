@@ -135,8 +135,11 @@ run that writes a coverage profile, so every test runs and its time is measured.
   budget (5 s) fails, and an integration test gets the integration budget (30 s). A test counts as
   integration when it lives under an `integration`, `integration_tests`, `e2e` or `end_to_end`
   folder, its file ends in `_integration_test.go` or `_e2e_test.go`, the file has an `integration`
-  or `e2e` build constraint, or the test skips under `testing.Short()`. A test over its budget is
-  run again alone (`-run '^Name$' -count=1`) and the fastest time counts, so a busy machine does
+  or `e2e` build constraint, or the test skips under `testing.Short()`: its first statement (after
+  `t.Parallel()` or `t.Helper()`) is `if testing.Short() { ... t.Skip(...) }` (or `t.Skipf`,
+  `t.SkipNow`, `return`), or its whole body sits in `if !testing.Short() { ... }`. Reading
+  `testing.Short()` anywhere else, such as to log or into `_`, does not count, because the slow
+  part still runs in short mode. A test over its budget is run again alone (`-run '^Name$' -count=1`) and the fastest time counts, so a busy machine does
   not fail it. A test is "changed" when its function's text differs from the merge base.
 
 ## Structure limits

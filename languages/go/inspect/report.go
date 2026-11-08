@@ -4,7 +4,7 @@ type Report struct {
 	Files     []File     `json:"files"`
 	Functions []Function `json:"functions"`
 	Types     []Type     `json:"types"`
-	Tests     []Function `json:"tests"`
+	Tests     []Test     `json:"tests"`
 	Errors    []string   `json:"errors"`
 }
 
