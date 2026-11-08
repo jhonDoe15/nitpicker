@@ -109,9 +109,12 @@ JPA and Spring Data:
   for large inputs), also through a helper, `saveAll(List.of(x))` or a `@Modifying` update per row.
   The one loop allowed is the JPA batch loop that calls `persist`, then `flush` and `clear` on the
   `EntityManager`. No other `flush` or `saveAndFlush`.
-- Filter and count in the query, not after `findAll()`: not with `stream()`, `size()`, a local
-  that holds the list, or a reactive `filter`, `count`, `any`, `hasElements`, `take` or
-  `collectList()`. Query text is constant (a text block) and
+- Filter, count, sort and total in the query, not on the rows a repository method returned
+  (`findAll()`, `findAllById`, a `@Query` method, a page's content): no `size()`, `isEmpty()` or
+  `count()` (use a count or exists query), no `filter`/`anyMatch` on stored fields (a where
+  clause), no `sorted(comparing(Row::getX))` (order by or a `Sort` argument), no `mapToLong(...)
+  .sum()`, `reduce` or `groupingBy(..., counting())` (an aggregate `@Query`), reactive `Flux`
+  forms included. Mapping rows to DTOs is fine. Query text is constant (a text block) and
   values are bind parameters, in JPQL and JDBC alike.
 - Native SQL only when JPQL can't express it, marked on that one method with
   `@SuppressWarnings("PMD.SpringDataNativeQuery")`, `EntityManager.createNativeQuery` too.
