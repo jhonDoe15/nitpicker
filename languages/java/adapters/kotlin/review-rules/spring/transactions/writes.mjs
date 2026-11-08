@@ -74,7 +74,7 @@ function modifying(view, type, name) {
     );
 }
 
-export function repositoryWrite(view, invocation) {
+function repositoryWrite(view, invocation) {
   const type = receiverType(view, invocation);
   const repository = type !== undefined && view.isRepository(type);
   return (

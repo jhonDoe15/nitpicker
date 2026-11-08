@@ -61,13 +61,12 @@ function loadedLocal(view, invocation) {
   if (local === undefined || notEntity(view, invocation.scope, local.name)) {
     return false;
   }
-  const sameFunction = (entry) => view.functionAt(entry.scope) === fn;
   const reassigned = view.file.invocations.some(
     (entry) =>
       entry.assign === true &&
       entry.receiver === undefined &&
       entry.name === local.name &&
-      sameFunction(entry),
+      view.functionAt(entry.scope) === fn,
   );
   return (
     !reassigned &&
