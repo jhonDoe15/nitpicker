@@ -1,0 +1,24 @@
+spring:
+  application:
+    name: shop
+  datasource:
+    url: jdbc:h2:mem:shop
+    user: sa
+  redis:
+    host: cache
+server:
+  port: 8080
+shop:
+  mail:
+    host: smtp.example.com
+    retry:
+      max-attempts: 3
+      max-atempts: 5
+  pricing:
+    currency: EUR
+    curency: USD
+    surcharges:
+      express: 5
+  feature-flag: true
+  audit:
+    sink: ${shop.feature-flag}
