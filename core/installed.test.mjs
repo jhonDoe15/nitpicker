@@ -19,6 +19,7 @@ import { supportsRedirect } from '../languages/typescript/typescript-api/api-red
 import { consumerCommands, eslintVersionOf } from './test-support/installed-consumer.mjs';
 import {
   checkoutOutput,
+  installedHelpText,
   expectedDirtyFindings,
   expectedDirtyOutput,
   expectedSnapshotOutput,
@@ -434,8 +435,7 @@ suite('packed nitpicker in a separate consumer', () => {
       });
       it('prints help that links the usage page at its own release tag', () => {
         expect(help.status, help.output).toBe(0);
-        expect(help.output).toContain(`Reference: ${links.tagRoot}/docs/usage.md\n`);
-        expect(help.output).not.toContain('/blob/main/');
+        expect(help.output).toBe(installedHelpText(links, root));
       });
       it('sets the consumer up with init from the packed files', () => {
         expect(initialized.status, initialized.output).toBe(0);

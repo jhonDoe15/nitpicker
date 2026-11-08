@@ -141,4 +141,3 @@ export function parseArguments(arguments_) {
   validateModes(options);
   return options;
 }
-

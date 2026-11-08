@@ -1,7 +1,7 @@
-import { describeError } from '../../shared/messages/error-chain.mjs';
-import { applyDisable } from '../configuration/config.mjs';
-import { presetAnalyzers } from '../configuration/preset-analyzers.mjs';
-import { DEFAULT_PRESET, nearestConfig } from '../command/reference/project-config.mjs';
+import { describeError } from '../../../shared/messages/error-chain.mjs';
+import { applyDisable } from '../../configuration/config.mjs';
+import { presetAnalyzers } from '../../configuration/preset-analyzers.mjs';
+import { DEFAULT_PRESET, nearestConfig } from '../reference/project-config.mjs';
 
 function analyzerNames(config) {
   const builtIn = applyDisable(presetAnalyzers(config), config).map(({ name }) => name);

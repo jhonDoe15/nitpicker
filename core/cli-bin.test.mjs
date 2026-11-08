@@ -3,7 +3,7 @@ import { mkdtempSync, readFileSync, rmSync, symlinkSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
-import { projectUsageText } from './help/printed-information.mjs';
+import { projectUsageText } from './command/information/printed-information.mjs';
 
 const temporaryRoots = [];
 const binEntry = path.join(import.meta.dirname, 'bin.mjs');
