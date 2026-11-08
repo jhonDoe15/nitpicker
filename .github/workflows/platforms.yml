@@ -165,6 +165,28 @@ jobs:
           overwrite: true
           if-no-files-found: warn
 
+  # The logic solver (shared/logic/decide.mjs) runs Z3 as WASM under a fixed resource limit, so it must give
+  # the same answers on x64 and arm64; its tests run on both.
+  logic-solver:
+    name: logic solver ${{ matrix.os }}
+    needs: changes
+    if: needs.changes.outputs.run == 'true'
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, ubuntu-24.04-arm]
+    steps:
+      - uses: actions/checkout@v7.0.1
+      - uses: actions/setup-node@v7.1.0
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: package-lock.json
+      - run: npm ci
+      - run: npx vitest run --config vitest.config.mts shared/logic/decide.test.mjs
+
   platforms:
     if: ${{ always() && (github.event_name != 'pull_request' || github.event.label.name == 'run-ci') }}
     needs: [changes, samples, runtimes]
