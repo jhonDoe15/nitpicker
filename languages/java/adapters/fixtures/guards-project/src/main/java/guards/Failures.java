@@ -49,6 +49,14 @@ public final class Failures implements Callable<String> {
     }
   }
 
+  public void waitAndStop(Object lock, Thread worker) {
+    try {
+      lock.wait();
+    } catch (InterruptedException e) { // violation: pmd/SwallowedInterruptedException
+      worker.interrupt();
+    }
+  }
+
   public void waitProperly(Object lock) {
     try {
       lock.wait();

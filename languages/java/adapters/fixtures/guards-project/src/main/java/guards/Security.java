@@ -33,6 +33,24 @@ public final class Security {
         || text.matches("(\\s*,\\s*)*");
   }
 
+  public boolean repeated(String text) {
+    return text.matches("(\\w+\\s?)+") // violation: pmd/NestedQuantifierRegex
+        || text.matches("(a|aa)+") // violation: pmd/NestedQuantifierRegex
+        || text.matches("(\\w+\\s)+")
+        || text.matches("(a|b)+");
+  }
+
+  public Path withSuffix(String name) {
+    return Path.of("/data").resolve(name + ".txt"); // violation: pmd/PathFromParameter
+  }
+
+  public Path prefixed(String name) {
+    if (name.startsWith("x")) {
+      return null;
+    }
+    return Path.of("/data", name); // violation: pmd/PathFromParameter
+  }
+
   public Path open(String name) {
     return Path.of("/data", name); // violation: pmd/PathFromParameter
   }

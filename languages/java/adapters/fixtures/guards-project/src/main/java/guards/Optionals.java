@@ -2,6 +2,7 @@ package guards;
 
 import java.util.List;
 import java.util.Optional;
+import java.util.function.Consumer;
 import org.apache.commons.lang3.StringUtils;
 
 public final class Optionals {
@@ -26,5 +27,24 @@ public final class Optionals {
 
   public List<String> names() {
     return List.of(plain);
+  }
+
+  public void tagged(Optional<List<String>> tags) { // violation: pmd/OptionalAsFieldOrParameter
+    tags.ifPresent(List::size);
+  }
+
+  public Optional<List<String>> maybeNames() { // violation: pmd/OptionalOfCollection
+    return Optional.of(names());
+  }
+
+  public String checked(Optional<String> value) { // violation: pmd/OptionalAsFieldOrParameter
+    return value.isPresent() ? value.get() : plain; // violation: pmd/OptionalGet
+  }
+
+  static final class Printing implements Consumer<Optional<String>> {
+    @Override
+    public void accept(Optional<String> value) {
+      value.ifPresent(System.out::println);
+    }
   }
 }

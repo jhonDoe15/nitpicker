@@ -1,12 +1,15 @@
 package guards;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.fail;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.verify;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.function.Supplier;
@@ -44,8 +47,13 @@ class HonestyTest {
     if (names.isEmpty()) { // violation: pmd/AssertionInControlFlow
       assertEquals(0, names.size());
     }
-    for (String name : names) {
+    for (String name : names) { // violation: pmd/AssertionInControlFlow
       assertEquals(3, name.length());
+    }
+    int index = 0;
+    while (index < names.size()) { // violation: pmd/AssertionInControlFlow
+      assertEquals(3, names.get(index).length());
+      index++;
     }
   }
 
@@ -86,12 +94,17 @@ class HonestyTest {
   @Test
   void constant() {
     assertTrue(true); // violation: pmd/TautologicalAssertion
+    assertTrue(false); // violation: pmd/AlwaysFailingAssertion
+    assertFalse(true, "unreachable"); // violation: pmd/AlwaysFailingAssertion
     assertTrue(names.contains("bob"));
   }
 
   @Test
   void mocks() {
-    List<?> values = mock(List.class); // violation: pmd/MockedValueType
+    List<?> values = mock(List.class);
+    Object text = mock(String.class); // violation: pmd/MockedValueType
+    Object copy = spy(new ArrayList<String>()); // violation: pmd/MockedValueType
+    Object plain = spy(new Object());
     Runnable task = mock(Runnable.class);
     task.run();
     verify(task).run();

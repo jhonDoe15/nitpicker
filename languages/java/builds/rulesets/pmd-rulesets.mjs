@@ -8,6 +8,14 @@ import { targetRelease } from '../lint/javac-options.mjs';
 const PATTERN_MATCHING_RULES = ['InstanceofThenCast', 'CollectorsToList'];
 const PATTERN_MATCHING_RELEASE = 16;
 const DEFAULT_RELEASE = 8;
+const RELEASE_MESSAGES = [
+  {
+    rule: 'OptionalGet',
+    release: 10,
+    message:
+      'Use orElse(...), orElseThrow(Supplier), map or ifPresent instead of Optional.get(), also after isPresent().',
+  },
+];
 
 function directoryPattern(kind, directory) {
   const pattern = `${escapeRegExp(directory + path.sep)}.*`;
@@ -37,14 +45,25 @@ function rulesetXml(name, { patterns, rules }) {
   ].join('\n');
 }
 
-export function scopedRuleset(name, ruleset, { directories, onlyThere = false, skipped = [] }) {
+function messageReference(ruleset, { rule, message }) {
+  return `  <rule ref="${escapeXml(`${ruleset}/${rule}`)}" message="${escapeXml(message)}"/>`;
+}
+
+export function scopedRuleset(
+  name,
+  ruleset,
+  { directories, onlyThere = false, skipped = [], messages = [] },
+) {
   const kind = onlyThere ? 'include' : 'exclude';
   return rulesetXml(name, {
     patterns: [
       ...(onlyThere ? ['  <exclude-pattern>.*</exclude-pattern>'] : []),
       ...directories.map((directory) => directoryPattern(kind, directory)),
     ],
-    rules: ruleReference(ruleset, skipped),
+    rules: [
+      ...ruleReference(ruleset, [...skipped, ...messages.map(({ rule }) => rule)]),
+      ...messages.map((message) => messageReference(ruleset, message)),
+    ],
   });
 }
 
@@ -66,11 +85,13 @@ function written(reportDir, file, content) {
 
 export function writeGuardRulesets({ reportDir, testDirectories, compiler }) {
   mkdirSync(reportDir, { recursive: true });
-  const skipped = javaRelease(compiler) < PATTERN_MATCHING_RELEASE ? PATTERN_MATCHING_RULES : [];
+  const release = javaRelease(compiler);
+  const skipped = release < PATTERN_MATCHING_RELEASE ? PATTERN_MATCHING_RULES : [];
+  const messages = RELEASE_MESSAGES.filter((entry) => release < entry.release);
   const guards = scopedRuleset(
     'nitpicker-guards-main',
     path.join(GRADLE_DIRECTORY, 'rules/guards-ruleset.xml'),
-    { directories: testDirectories, skipped },
+    { directories: testDirectories, skipped, messages },
   );
   const existingTests = testDirectories.filter((directory) => existsSync(directory));
   const honesty = scopedRuleset(
