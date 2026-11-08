@@ -1895,6 +1895,7 @@
                             "test-without-assertion",
                             "spring/open-in-view",
                             "spring/missing-enable",
+                            "spring/unbound-property",
                             "spring/ddl-auto",
                             "spring/risky-startup-flags",
                             "spring/actuator-exposure",
