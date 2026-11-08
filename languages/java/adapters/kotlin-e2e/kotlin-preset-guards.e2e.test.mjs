@@ -186,6 +186,8 @@ describe.skipIf(!kotlinE2eEnabled)(
       commitBranch(project, 'guards-banned', guardFiles(BANNED_GUARDS, BANNED_TESTS));
       commitBranch(project, 'guards-allowed', guardFiles(ALLOWED_GUARDS, ALLOWED_TESTS));
       banned = diffOf(project, 'guards-banned');
+    });
+    beforeAll(() => {
       allowed = diffOf(project, 'guards-allowed');
     });
     afterAll(() => {
@@ -194,7 +196,7 @@ describe.skipIf(!kotlinE2eEnabled)(
 
     it('fails every banned form with its own rule', () => {
       expect(summary(banned.newEnforceable)).toEqual(EXPECTED_BANNED);
-      expect(banned.newFindings.some(({ rule }) => rule === 'lint-not-run')).toBe(false);
+      expect(banned.newFindings.filter(({ rule }) => rule === 'lint-not-run')).toEqual([]);
     });
 
     it('lets every allowed form through, the composition root reading the environment among them', () => {

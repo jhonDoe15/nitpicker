@@ -1,4 +1,4 @@
-import { spawnSync } from 'node:child_process';
+import { spawnSyncWithOutputFile } from '../../../../core/tooling/output-file/output-file.mjs';
 import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
@@ -108,7 +108,7 @@ export function readConfigInChild({
   resolveRoots,
   timeoutMs = TIMEOUT_MS,
 }) {
-  const result = spawnSync(
+  const result = spawnSyncWithOutputFile(
     process.execPath,
     [import.meta.filename, configFile, projectRoot, ...resolveRoots],
     {
