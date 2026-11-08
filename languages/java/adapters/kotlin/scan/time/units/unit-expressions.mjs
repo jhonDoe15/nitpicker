@@ -44,6 +44,7 @@ const KEYWORDS = new Set([
 const CAST_TOKENS = 2;
 const NAMED_ARGUMENT_TOKENS = 2;
 const COMMA = new Set([',']);
+const NAVIGATING = new Set(['.', '?.']);
 const OPENING = new Set(['(', '[', '{']);
 const PRIMARY_CALLS = { delay: 'ms', withTimeout: 'ms', withTimeoutOrNull: 'ms' };
 
@@ -216,7 +217,7 @@ function primary(parser) {
   if (token.kind === 'op' && token.text === '(') {
     return group(parser);
   }
-  return token.kind !== 'id' || KEYWORDS.has(token.text) ? {} : called(parser, token);
+  return isName(token) ? called(parser, token) : {};
 }
 
 function called(parser, token) {
@@ -250,7 +251,8 @@ function identifier(parser, name) {
 function argumentsOf(parser) {
   const open = parser.position;
   parser.position = closingIndex(parser.tokens, open) + 1;
-  return parser.regions.get(open) ?? [];
+  const args = parser.regions.get(open);
+  return Array.isArray(args) ? args : [];
 }
 
 export function parseArguments(parser) {
@@ -282,7 +284,11 @@ function skipArgument(parser, close) {
   parser.position += 1;
 }
 
+function isName(token) {
+  return token?.kind === 'id' && (token.quoted || !KEYWORDS.has(token.text));
+}
+
 export function isCallOpen(tokens, open) {
   const before = tokens[open - 1];
-  return before?.kind === 'id' && !KEYWORDS.has(before.text);
+  return isName(before) || (before?.kind === 'id' && isOperator(tokens[open - 2], NAVIGATING));
 }
