@@ -65,7 +65,7 @@ describe.skipIf(!enabled)('boolean logic with an exact simpler form', () => {
     'reports each marked line in %s sources, and none of the simpler forms',
     (role) => {
       expect(reportedLines(role)).toEqual(markedLines(role));
-      expect(reportedLines(role)).toHaveLength(14);
+      expect(reportedLines(role)).toHaveLength(18);
     },
   );
 

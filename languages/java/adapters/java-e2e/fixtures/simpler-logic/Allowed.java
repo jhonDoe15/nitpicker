@@ -84,4 +84,18 @@ public class Allowed {
   public boolean negatedChain(boolean first, boolean second, boolean third) {
     return !first && !second && third;
   }
+  public boolean notBelowFloat(float left, float right) {
+    return !(left < right);
+  }
+
+  public boolean notAbove(Double left, Double right) {
+    return !(left > right);
+  }
+
+  public Boolean boxedReturn(boolean ready, Boolean cached) {
+    if (ready) {
+      return true;
+    }
+    return cached;
+  }
 }

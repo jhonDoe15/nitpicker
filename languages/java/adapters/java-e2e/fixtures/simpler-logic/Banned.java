@@ -73,4 +73,26 @@ public class Banned {
   public boolean notAll(boolean first, boolean second, boolean third) {
     return !first || (!second || !third); // violation: NegatedOperands
   }
+  public boolean notBoth(boolean first, boolean second) {
+    return !first || !second; // violation: NegatedOperands
+  }
+
+  public boolean negatedLiterals(boolean ready) {
+    if (!ready) { // violation: SimplifyBooleanReturns
+      return true;
+    } else {
+      return false;
+    }
+  }
+
+  public boolean negatedTernary(boolean ready) {
+    return !ready ? false : true; // violation: SimplifiedTernary
+  }
+
+  public boolean otherwise(boolean ready, boolean late) {
+    if (ready) { // violation: SimplifyBooleanReturns
+      return late;
+    }
+    return true;
+  }
 }

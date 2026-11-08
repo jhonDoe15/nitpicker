@@ -204,8 +204,8 @@
     "mayBeIntended": true
   },
   "CollapsibleIfStatements": {
-    "fix": "Nesting stays when the outer if has an else or other statements.",
-    "mayBeIntended": false
+    "fix": "Merge into if (a && b), with a condition that holds || in parentheses; nesting stays when the outer if has an else or other statements.",
+    "mayBeIntended": true
   },
   "CompareObjectsWithEquals": {
     "fix": "Compare objects with Objects.equals(a, b) or a.equals(b); use == only for primitives, enums and identity checks on purpose.",
@@ -220,7 +220,7 @@
     "mayBeIntended": false
   },
   "ConfusingTernary": {
-    "fix": "An if (a != b) with an else, and an else-if chain, are allowed.",
+    "fix": "Write if (c) B else A; an if (a != b) with an else, and an else-if chain, are allowed.",
     "mayBeIntended": true
   },
   "ConsecutiveAppendsShouldReuse": {
@@ -548,11 +548,11 @@
     "mayBeIntended": false
   },
   "SimplifiedTernary": {
-    "fix": "c ? true : false is c, and c ? false : true is !c.",
+    "fix": "c ? true : false is c, and c ? false : true is !c; wrap an operand that holds || or ?: in parentheses.",
     "mayBeIntended": false
   },
   "SimplifyBooleanExpressions": {
-    "fix": "For a Boolean that may be null, write Boolean.TRUE.equals(x) instead of x == true.",
+    "fix": "Wrap a compared expression in parentheses when negating it: (a != b) == false is !(a != b), or a == b. For a nullable Boolean, write Boolean.TRUE.equals(x).",
     "mayBeIntended": false
   },
   "SimplifyBooleanReturns": {
