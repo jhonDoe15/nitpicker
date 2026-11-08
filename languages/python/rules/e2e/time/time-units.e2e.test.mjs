@@ -33,6 +33,11 @@ describe.skipIf(!enabled)('time-unit-mismatch', () => {
         'import time\n\nMS_PER_SECOND = 1000\n\n\ndef ok(payload, ttl_seconds, started_ms, retries):\n    late = payload.get("exp") < time.time()\n    deadline = started_ms + ttl_seconds * MS_PER_SECOND\n    budget_ms = int(time.monotonic() * 1000) + started_ms\n    return late, deadline, budget_ms, retries + 1\n',
         [],
       ],
+      [
+        'an exp field outside a token, boolean flags and formatters named with a unit pass',
+        'import time\n\n\ndef ok(player, show_seconds, show_ms, format_seconds, format_millis):\n    ahead = player["exp"] < time.time() * 1000\n    differ = show_seconds != show_ms\n    return ahead, differ, format_seconds(1) + format_millis(2)\n',
+        [],
+      ],
     ]);
     expect(actual).toEqual(expected);
   });

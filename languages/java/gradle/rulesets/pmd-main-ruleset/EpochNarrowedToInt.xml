@@ -12,6 +12,8 @@ let $epochCall := function($e) {
     $epochName := function($e) {
       $e[self::VariableAccess or self::FieldAccess or self::MethodCall]
         [matches(string((@Name, @MethodName)[1]), 'epoch', 'i')]
+        [matches(string((@Name, @MethodName)[1]),
+                 '(Milli|Millis|Ms|Second|Seconds|Secs|_MILLI|_MILLIS|_MS|_SECOND|_SECONDS|_SECS|_milli|_millis|_ms|_second|_seconds|_secs)$')]
     },
     $direct := function($e) {
       exists($epochCall($e)) or exists($epochName($e))

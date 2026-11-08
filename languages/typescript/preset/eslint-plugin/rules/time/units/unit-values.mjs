@@ -1,4 +1,5 @@
-import { findVariable } from '../../analysis/constant-resolution.mjs';
+import { constantNumber, findVariable } from '../../analysis/constant-resolution.mjs';
+import { chainOf, foldTree } from '../../../../../../../shared/traversal.mjs';
 import {
   convertedUnit,
   isEpochName,
@@ -6,7 +7,7 @@ import {
   unitOfName,
 } from '../../../../../../../shared/naming/time-units/unit-names.mjs';
 
-const MAX_DEPTH = 4;
+const MAX_DEPTH = 8;
 const WRAPPERS = new Set([
   'TSAsExpression',
   'TSSatisfiesExpression',
@@ -15,6 +16,7 @@ const WRAPPERS = new Set([
   'ChainExpression',
 ]);
 const CLAIMS = new Set(['exp', 'iat', 'nbf', 'auth_time']);
+const CLAIMS_OWNER = /token|claim|payload|jwt|decode/iu;
 const ROUNDING = new Set(['floor', 'round', 'ceil', 'trunc', 'abs']);
 const NUMBER_WRAPPERS = new Set(['Number', 'parseInt', 'parseFloat', 'BigInt']);
 const EPOCH_CALLS = new Map([
@@ -28,9 +30,11 @@ const CLOCK_CALLS = new Map([
   ['hrtime.bigint', 'ns'],
 ]);
 const NARROWING = new Set(['|', '>>', '<<', '>>>', '^']);
+const ARITHMETIC = new Set(['*', '/', '+', '-']);
+const KEEPING_CALLS = new Set(['Math.max', 'Math.min']);
 
 export function unwrap(node) {
-  return WRAPPERS.has(node?.type) ? unwrap(node.expression) : node;
+  return chainOf(node, (link) => (WRAPPERS.has(link.type) ? link.expression : undefined)).at(-1);
 }
 
 export function propertyName(node) {
@@ -46,16 +50,13 @@ export function propertyName(node) {
 }
 
 export function calleeText(callee) {
-  const target = unwrap(callee);
-  if (target?.type === 'Identifier') {
-    return target.name;
-  }
-  const name = propertyName(target);
-  if (name === undefined) {
-    return undefined;
-  }
-  const owner = calleeText(target.object);
-  return owner === undefined ? name : `${owner}.${name}`;
+  const links = chainOf(unwrap(callee), (link) =>
+    propertyName(link) === undefined ? undefined : unwrap(link.object),
+  );
+  const names = links
+    .map((link) => (link.type === 'Identifier' ? link.name : propertyName(link)))
+    .filter((name) => name !== undefined);
+  return names.length === 0 ? undefined : names.toReversed().join('.');
 }
 
 function constInitializer(context, node) {
@@ -68,39 +69,8 @@ function constInitializer(context, node) {
     : undefined;
 }
 
-export function constantNumber(context, node, depth = 0) {
-  const target = unwrap(node);
-  if (target?.type === 'Literal' && typeof target.value === 'number') {
-    return target.value;
-  }
-  if (depth > MAX_DEPTH) {
-    return undefined;
-  }
-  if (target?.type === 'BinaryExpression' && target.operator === '*') {
-    const left = constantNumber(context, target.left, depth + 1);
-    const right = constantNumber(context, target.right, depth + 1);
-    return left === undefined || right === undefined ? undefined : left * right;
-  }
-  if (target?.type === 'Identifier' && unitOfName(target.name) === undefined) {
-    const init = constInitializer(context, target);
-    return init === undefined || init === null
-      ? undefined
-      : constantNumber(context, init, depth + 1);
-  }
-  return undefined;
-}
-
 function named(name, unit) {
   return unit === undefined ? undefined : { unit, epoch: isEpochName(name) };
-}
-
-function identifierUnit(context, node, depth) {
-  const own = named(node.name, unitOfName(node.name));
-  if (own !== undefined || depth > MAX_DEPTH) {
-    return own;
-  }
-  const init = constInitializer(context, node);
-  return init === undefined || init === null ? undefined : valueUnit(context, init, depth + 1);
 }
 
 function memberUnit(node) {
@@ -108,7 +78,7 @@ function memberUnit(node) {
   if (name === undefined) {
     return undefined;
   }
-  if (CLAIMS.has(name)) {
+  if (CLAIMS.has(name) && CLAIMS_OWNER.test(calleeText(node.object) ?? '')) {
     return { unit: 's', epoch: true };
   }
   return named(name, unitOfName(name));
@@ -122,32 +92,45 @@ function sameUnit(units) {
     : undefined;
 }
 
-function callUnit(context, node, depth) {
+function passesUnit(text, last) {
+  return (text.startsWith('Math.') && ROUNDING.has(last)) || NUMBER_WRAPPERS.has(text);
+}
+
+function clockUnit(text) {
+  return [...CLOCK_CALLS].find(([call]) => text === call || text.endsWith(`.${call}`))?.[1];
+}
+
+function callOperands(node) {
+  const text = calleeText(node.callee) ?? '';
+  if (passesUnit(text, text.split('.').at(-1))) {
+    return node.arguments.slice(0, 1);
+  }
+  return KEEPING_CALLS.has(text) ? node.arguments : [];
+}
+
+function callUnit(node, values) {
   const text = calleeText(node.callee) ?? '';
   const last = text.split('.').at(-1);
   if (EPOCH_CALLS.has(text)) {
     return { unit: EPOCH_CALLS.get(text), epoch: true };
   }
-  const clock = CLOCK_CALLS.get(text) ?? CLOCK_CALLS.get(text.split('.').slice(-2).join('.'));
+  const clock = clockUnit(text);
   if (clock !== undefined) {
     return { unit: clock, epoch: false };
   }
   if (last === 'getTime' && node.arguments.length === 0) {
     return { unit: 'ms', epoch: true };
   }
-  const passes = (text.startsWith('Math.') && ROUNDING.has(last)) || NUMBER_WRAPPERS.has(text);
-  if (passes && node.arguments.length > 0) {
-    return valueUnit(context, node.arguments[0], depth + 1);
+  if (passesUnit(text, last)) {
+    return values[0];
   }
-  if (text === 'Math.max' || text === 'Math.min') {
-    return sameUnit(node.arguments.map((argument) => valueUnit(context, argument, depth + 1)));
+  if (KEEPING_CALLS.has(text)) {
+    return sameUnit(values);
   }
   return last === undefined ? undefined : named(last, unitOfCallName(last));
 }
 
-function scaled(context, node, depth) {
-  const left = valueUnit(context, node.left, depth + 1);
-  const right = valueUnit(context, node.right, depth + 1);
+function scaled(context, node, [left, right]) {
   const leftFactor = constantNumber(context, node.left);
   const rightFactor = constantNumber(context, node.right);
   if (left !== undefined && right === undefined && rightFactor !== undefined) {
@@ -176,13 +159,8 @@ function isText(node) {
   );
 }
 
-function additive(context, node, depth) {
-  if (isText(node.left) || isText(node.right)) {
-    return undefined;
-  }
-  const left = valueUnit(context, node.left, depth + 1);
-  const right = valueUnit(context, node.right, depth + 1);
-  if (mismatch(left, right)) {
+function additive(context, node, [left, right]) {
+  if (isText(node.left) || isText(node.right) || mismatch(left, right)) {
     return undefined;
   }
   const unit = (left ?? right)?.unit;
@@ -196,47 +174,81 @@ function additive(context, node, depth) {
   return { unit, epoch };
 }
 
-function binaryUnit(context, node, depth) {
-  if (node.operator === '*' || node.operator === '/') {
-    const found = scaled(context, node, depth);
-    return found?.unit === undefined ? undefined : found;
-  }
-  if (node.operator === '+' || node.operator === '-') {
-    return additive(context, node, depth);
-  }
-  return NARROWING.has(node.operator) && constantNumber(context, node.right) === 0
-    ? valueUnit(context, node.left, depth + 1)
-    : undefined;
-}
-
-export function valueUnit(context, node, depth = 0) {
-  const target = unwrap(node);
-  if (target === undefined || target === null || depth > MAX_DEPTH * 2) {
-    return undefined;
-  }
-  switch (target.type) {
-    case 'Identifier':
-      return identifierUnit(context, target, depth);
-    case 'MemberExpression':
-      return memberUnit(target);
-    case 'CallExpression':
-      return callUnit(context, target, depth);
-    case 'BinaryExpression':
-      return binaryUnit(context, target, depth);
-    case 'ConditionalExpression':
-      return sameUnit([
-        valueUnit(context, target.consequent, depth + 1),
-        valueUnit(context, target.alternate, depth + 1),
-      ]);
-    default:
-      return undefined;
-  }
-}
-
 export function isNarrowing(context, node) {
   return (
     node.type === 'BinaryExpression' &&
     NARROWING.has(node.operator) &&
     constantNumber(context, node.right) === 0
+  );
+}
+
+function binaryOperands(context, node) {
+  if (ARITHMETIC.has(node.operator)) {
+    return [node.left, node.right];
+  }
+  return isNarrowing(context, node) ? [node.left] : [];
+}
+
+function binaryUnit(context, node, values) {
+  if (node.operator === '*' || node.operator === '/') {
+    const found = scaled(context, node, values);
+    return found?.unit === undefined ? undefined : found;
+  }
+  if (node.operator === '+' || node.operator === '-') {
+    return additive(context, node, values);
+  }
+  return values[0];
+}
+
+function identifierOperands(context, node) {
+  if (unitOfName(node.name) !== undefined) {
+    return [];
+  }
+  const init = constInitializer(context, node);
+  return init === undefined || init === null ? [] : [init];
+}
+
+function operands(context, node, depth) {
+  const target = unwrap(node);
+  if (target === undefined || target === null || depth > MAX_DEPTH) {
+    return [];
+  }
+  switch (target.type) {
+    case 'Identifier':
+      return identifierOperands(context, target);
+    case 'CallExpression':
+      return callOperands(target);
+    case 'BinaryExpression':
+      return binaryOperands(context, target);
+    case 'ConditionalExpression':
+      return [target.consequent, target.alternate];
+    default:
+      return [];
+  }
+}
+
+function combined(context, node, values) {
+  const target = unwrap(node);
+  switch (target?.type) {
+    case 'Identifier':
+      return named(target.name, unitOfName(target.name)) ?? values[0];
+    case 'MemberExpression':
+      return memberUnit(target);
+    case 'CallExpression':
+      return callUnit(target, values);
+    case 'BinaryExpression':
+      return binaryUnit(context, target, values);
+    case 'ConditionalExpression':
+      return sameUnit(values);
+    default:
+      return undefined;
+  }
+}
+
+export function valueUnit(context, node) {
+  return foldTree(
+    node,
+    (current, depth) => operands(context, current, depth),
+    (current, values) => combined(context, current, values),
   );
 }

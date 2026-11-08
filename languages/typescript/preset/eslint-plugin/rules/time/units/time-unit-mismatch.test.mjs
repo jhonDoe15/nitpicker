@@ -23,6 +23,10 @@ const FULL = {
 
 tester.run('time-unit-mismatch on arithmetic and comparisons', rule, {
   valid: [
+    'export const nowSeconds = () => (Date.now() / 1000) >>> 0;',
+    'export const ahead = (user: { exp: number }, timeoutMs: number) => user.exp > timeoutMs;',
+    'export const differ = (showSeconds: boolean, showMs: boolean) => showSeconds !== showMs;',
+    'declare function formatSeconds(seconds: number): string;\ndeclare function formatMillis(millis: number): string;\nexport const label = (s: number, m: number) => formatSeconds(s) + formatMillis(m);',
     'export const expired = (payload: { exp: number }) => payload.exp * 1000 < Date.now();',
     'export const deadline = (ttlSeconds: number) => Date.now() + ttlSeconds * 1000;',
     'export const deadline = (ttlMs: number) => Date.now() + ttlMs;',
@@ -119,7 +123,8 @@ tester.run('time-unit-mismatch on epoch times cut to 32 bits', rule, {
   invalid: [
     invalid('export const nowSeconds = () => (Date.now() / 1000) | 0;', 'epochNarrowed'),
     invalid('export const stamp = () => ~~Date.now();', 'epochNarrowed'),
-    invalid('export const issued = (token: { iat: number }) => token.iat >>> 0;', 'epochNarrowed'),
+    invalid('export const issued = (token: { iat: number }) => token.iat | 0;', 'epochNarrowed'),
+    invalid('export const stamp = () => Date.now() >>> 0;', 'epochNarrowed'),
   ],
 });
 
@@ -133,6 +138,7 @@ writeFileSync(
       moduleResolution: 'bundler',
       noEmit: true,
       types: [],
+      lib: ['ES2022'],
     },
     include: ['src'],
   }),

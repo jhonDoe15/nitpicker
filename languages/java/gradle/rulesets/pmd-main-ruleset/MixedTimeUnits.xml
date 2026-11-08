@@ -7,7 +7,7 @@
 let $scales := map { 'ns': 1, 'us': 1000, 'ms': 1000000, 's': 1000000000, 'min': 60000000000 },
     $named := function($names) {
       let $name := string($names[1])
-      return if (empty($names) or matches($name, '(Per|_per|_PER)([A-Z_]|$)')) then ()
+      return if (empty($names) or matches($name, '(Per|_per|_PER)([A-Z_]|$)|^_*(show|hide|include|display|enable|disable|use|should|can|allow)[A-Z_]')) then ()
       else if (matches($name, '^_*(NANOS|NANOSECONDS|nanos|nanoseconds)$|[a-z0-9](Nanoseconds|Nanos)$|_(NANOS|NANOSECONDS|nanos|nanoseconds)$')) then 'ns'
       else if (matches($name, '^_*(MICROS|MICROSECONDS|micros|microseconds)$|[a-z0-9](Microseconds|Micros)$|_(MICROS|MICROSECONDS|micros|microseconds)$')) then 'us'
       else if (matches($name, '^_*(EPOCHMILLI|MILLIS|MILLISECONDS|MS|epochMilli|epochmilli|millis|milliseconds|ms)$|[a-z0-9](Milliseconds|Millis|Ms|EpochMilli)$|_(EPOCH_MILLI|MILLIS|MILLISECONDS|MS|epoch_milli|millis|milliseconds|ms)$')) then 'ms'
@@ -16,7 +16,7 @@ let $scales := map { 'ns': 1, 'us': 1000, 'ms': 1000000, 's': 1000000000, 'min':
       else ()
     },
     $converter := function($names) {
-      matches(string($names[1]), '^_*(of|plus|minus|with|set|from|parse|sleep|truncated|multiplied|divided|is|has)([^a-z]|$)')
+      matches(string($names[1]), '^_*(of|plus|minus|with|set|from|parse|sleep|truncated|multiplied|divided|is|has|format)([^a-z]|$)')
     },
     $constant := function($name) {
       if ($name = ('NANOSECONDS', 'NANOS')) then 'ns'

@@ -165,4 +165,38 @@ public final class Signatures {
   public static long nextRefreshSeconds() {
     return Instant.now().getEpochSecond();
   }
+
+  public void pause(long pauseSeconds) throws InterruptedException {
+    Thread.sleep(pauseSeconds); // violation: MixedTimeUnits
+  }
+
+  public static String nextOrder(BlockingQueue<String> orders, long waitSeconds)
+      throws InterruptedException {
+    return orders.poll(waitSeconds, TimeUnit.MILLISECONDS); // violation: MixedTimeUnits
+  }
+
+  public static long expiresAtMillis(long lifetimeMillis) {
+    return System.currentTimeMillis() + lifetimeMillis;
+  }
+
+  public long sessionExpiry(long sessionSeconds) {
+    return expiresAtMillis(sessionSeconds); // violation: MixedTimeUnits
+  }
+
+  public static boolean late(long timeoutMillis) {
+    long started = System.nanoTime();
+    return started > timeoutMillis; // violation: MixedTimeUnits
+  }
+
+  public static int issuedAt() {
+    return Math.toIntExact(Instant.now().getEpochSecond()); // violation: EpochNarrowedToInt
+  }
+
+  public static boolean authExpired(int authTime, int maxAge) {
+    return authTime + maxAge < Instant.now().getEpochSecond(); // violation: EpochNarrowedToInt
+  }
+
+  public static long issuedAtSeconds() {
+    return Instant.now().getEpochSecond();
+  }
 }

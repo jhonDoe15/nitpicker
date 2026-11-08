@@ -1,4 +1,5 @@
 import ast
+import io
 
 from checks.common import dotted_name, finding
 from security.resolve.scopes import where_of
@@ -35,8 +36,24 @@ TIMEDELTA_POSITIONS = {1: "s", 2: "us", 3: "ms", 4: "min"}
 NARROWING = {"numpy.int32", "ctypes.c_int32", "ctypes.c_int", "numpy.uint32"}
 
 
+def source_lines(context):
+    key = ("time-units-lines", context.path)
+    return context.project.memo(key, lambda _: io.StringIO(context.text, newline="").readlines())
+
+
+def segment(node, context):
+    lines = source_lines(context)
+    last = getattr(node, "end_lineno", None)
+    if last is None or last > len(lines):
+        return ""
+    chunk = [line.encode() for line in lines[node.lineno - 1 : last]]
+    chunk[-1] = chunk[-1][: node.end_col_offset]
+    chunk[0] = chunk[0][node.col_offset :]
+    return b"".join(chunk).decode(errors="replace")
+
+
 def text_of(node, context):
-    raw = " ".join((ast.get_source_segment(context.text, node) or "").split())
+    raw = " ".join(segment(node, context).split())
     return raw if len(raw) <= MAX_TEXT else f"{raw[: MAX_TEXT - 3]}..."
 
 
