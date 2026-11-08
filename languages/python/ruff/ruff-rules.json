@@ -1319,6 +1319,15 @@
       "useInstead": "f\"{foo} {bar}\""
     },
     {
+      "code": "FURB192",
+      "name": "sorted-min-max",
+      "linter": "refurb",
+      "summary": "Prefer `min` over `sorted()` to compute the minimum value in a sequence",
+      "whatItDoes": "Checks for uses of `sorted()` to retrieve the minimum or maximum value in a sequence.",
+      "why": "Using `sorted()` to compute the minimum or maximum value in a sequence is inefficient and less readable than using `min()` or `max()` directly.",
+      "useInstead": "nums = [3, 1, 4, 1, 5]\nlowest = min(nums)\nhighest = max(nums)"
+    },
+    {
       "code": "G001",
       "name": "logging-string-format",
       "linter": "flake8-logging-format",

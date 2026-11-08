@@ -1,0 +1,20 @@
+  <rule name="SortForExtreme" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
+        message="This stream is sorted only to take its first element, which costs a full sort. Take it in one pass with min(comparator) or max(comparator) on the stream, or Collections.min and Collections.max on a collection. An exception fits only for a stream that always stays a handful of items.">
+    <priority>3</priority>
+    <properties>
+      <property name="xpath">
+        <value><![CDATA[
+let $sorted := function($call) {
+      $call/*[1][self::MethodCall[@MethodName = 'sorted'][*[1][pmd-java:typeIs('java.util.stream.Stream')]]]
+    },
+    $listed := function($call) {
+      $call/*[1][self::MethodCall[@MethodName = 'toList' and ArgumentList/@Size = 0
+                                  or @MethodName = 'collect' and ArgumentList/@Size = 1]][exists($sorted(.))]
+    }
+return //MethodCall[@MethodName = 'findFirst'][ArgumentList/@Size = 0][exists($sorted(.))]
+  | //MethodCall[@MethodName = 'get'][ArgumentList[@Size = 1]/NumericLiteral[@ValueAsInt = 0]][exists($listed(.))]
+  | //MethodCall[@MethodName = ('getFirst', 'getLast')][ArgumentList/@Size = 0][exists($listed(.))]
+]]></value>
+      </property>
+    </properties>
+  </rule>
