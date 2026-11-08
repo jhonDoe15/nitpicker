@@ -1,5 +1,5 @@
-import { append, compactType } from '../kotlin-facts.mjs';
-import { declaredNames, springManagedOwner } from '../spring/spring-names.mjs';
+import { append, compactType } from '../../kotlin-facts.mjs';
+import { declaredNames, springManagedOwner } from '../../spring/spring-names.mjs';
 
 export const FORWARDING_RULE = 'StaticForwardingWrapper';
 

@@ -8,7 +8,7 @@ import {
   routeOf,
   run,
   summary,
-} from '../test-support/facts.mjs';
+} from '../../test-support/facts.mjs';
 import { FORWARDING_RULE, forwardingWrapperFindings } from './forwarding-wrappers.mjs';
 
 const forward = (name, args, overrides = {}) => ({

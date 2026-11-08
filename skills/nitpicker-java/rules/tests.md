@@ -44,7 +44,7 @@ Part of the [nitpicker-java](../SKILL.md) skill. Write these forms from the star
 - Tests get the same PMD, Checkstyle, Error Prone and formatter checks as main code, plus the file
   (500 lines) and folder (6 files) limits. SpotBugs, the method limits, CRAP and duplicate detection
   read main sources only. In a test, use `assertThrows` instead of a try/catch. Spring rules apply
-  to main sources only, as do the enum predicate, forwarding wrapper, singular-and-plural and
-  class-load rules.
+  to main sources only, as do the enum predicate, forwarding wrapper, method alias, singular-and-plural
+  and class-load rules.
   If a PMD rule or an Error Prone check flags test code that is right, ask a human for a reviewed
   exception for `pmd/<rule>` or `errorprone/<Check>`.

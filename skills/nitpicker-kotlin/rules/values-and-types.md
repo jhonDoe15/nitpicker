@@ -42,7 +42,8 @@ Part of the [nitpicker-kotlin](../SKILL.md) skill. Write these forms from the st
   `else -> false` (`pmd/ExhaustiveEnumPredicate`).
 - No top-level or `object` function that only passes its parameters, in order, to another function
   with the same parameters (`pmd/StaticForwardingWrapper`); call that function. Factories named
-  `of` or `from` are fine.
+  `of` or `from` are fine. The same goes for a member that only passes its parameters to another
+  member of its class (`pmd/ForwardingMethodAlias`); when that member is less visible, rename it to the alias's name and delete the alias.
 - A data class, a `@ConfigurationProperties` class, the public properties of any class and the
   defaulted parameters of a public function have `tags` or `tag`, not both
   (`pmd/SingularAndPluralMember`); one item is a one-element list.

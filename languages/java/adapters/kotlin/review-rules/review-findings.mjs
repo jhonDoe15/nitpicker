@@ -2,7 +2,8 @@ import { hasAwaitility } from '../../../messages/wait-advice.mjs';
 import { swallowedHandlerFindings } from './handlers/swallowed-handlers.mjs';
 import { enumPredicateFindings } from './main/enum-predicates.mjs';
 import { fanOutFindings } from './main/fan-out/fan-out.mjs';
-import { forwardingWrapperFindings } from './main/forwarding-wrappers.mjs';
+import { forwardingWrapperFindings } from './main/forwarding/forwarding-wrappers.mjs';
+import { methodAliasFindings } from './main/forwarding/method-aliases.mjs';
 import { loadEffectFindings } from './main/load-effects.mjs';
 import { fieldLockingFindings } from './main/locking/field-locking.mjs';
 import { lockOrderFindings } from './main/locking/lock-order.mjs';
@@ -81,6 +82,7 @@ export function readKotlinReviewFindings(context) {
     ...springFindings(own, { finding, manifest, projectFiles, projectRoot, javaRoots }),
     ...enumPredicateFindings(own, { finding, projectRoot, declaredIn: projectFiles }),
     ...forwardingWrapperFindings(own, { finding, declaredIn: projectFiles }),
+    ...methodAliasFindings(own, { finding }),
     ...singularPluralFindings(own, { finding }),
     ...timeoutFindings(own, { finding }),
     ...suspendedUpdateFindings(own, { finding, declaredIn: projectFiles }),

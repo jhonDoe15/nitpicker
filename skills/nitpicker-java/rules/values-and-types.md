@@ -47,7 +47,8 @@ Part of the [nitpicker-java](../SKILL.md) skill. Write these forms from the star
   `switch` expression without `default`, or a field each constant declares (`PAID(true)`). Not
   `s == PAID || s == SHIPPED`, `Set.of(...).contains(s)` or a boolean `switch` with
   `default -> false` (`ExhaustiveEnumPredicate`).
-- No static method that only passes its parameters on to another method; call that method.
+- No static method, and no instance method (`ForwardingMethodAlias`), that only passes its
+  parameters on to another method of the same class; call that method (or, when it is less visible, rename it to the alias's name and delete the alias).
   Factories named `of` or `from` and copies such as `List.copyOf` are fine.
 - A record or `@ConfigurationProperties` class (and the classes nested in it) has `tags` or `tag`,
   not both; one item is a one-element list.

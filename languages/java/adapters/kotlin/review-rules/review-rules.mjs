@@ -4,7 +4,8 @@ import {
   SWALLOWED_INTERRUPT_RULE,
 } from './handlers/swallowed-handlers.mjs';
 import { LOAD_EFFECT_RULE } from '../../../messages/load-effects.mjs';
-import { FORWARDING_RULE } from './main/forwarding-wrappers.mjs';
+import { FORWARDING_RULE } from './main/forwarding/forwarding-wrappers.mjs';
+import { METHOD_ALIAS_RULE } from './main/forwarding/method-aliases.mjs';
 import { FIELD_LOCKING_RULE, LOCK_ORDER_RULE } from '../../../messages/locking/lock-evidence.mjs';
 import { SINGULAR_PLURAL_RULE } from './main/member-names.mjs';
 import { TIMEOUT_RULE } from './main/timeouts/timeouts.mjs';
@@ -32,6 +33,7 @@ export const KOTLIN_REVIEW_EXCEPTION_RULES = [
   SPRING_UNUSED_CONTEXT_RULE,
   ENUM_PREDICATE_RULE,
   FORWARDING_RULE,
+  METHOD_ALIAS_RULE,
   SINGULAR_PLURAL_RULE,
   TIMEOUT_RULE,
   SUSPENDED_UPDATE_RULE,

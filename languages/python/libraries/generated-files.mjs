@@ -17,3 +17,9 @@ export function isGeneratedPython(projectRoot, file) {
     ((GENERATED_LOOKING.test(file) && hasGeneratorMarker(text)) || hasGeneratorHeader(text))
   );
 }
+
+export function dropGeneratedFindings(findings, projectRoot, rules) {
+  return findings.filter(
+    ({ rule, path }) => !rules.includes(rule) || !isGeneratedPython(projectRoot, path),
+  );
+}

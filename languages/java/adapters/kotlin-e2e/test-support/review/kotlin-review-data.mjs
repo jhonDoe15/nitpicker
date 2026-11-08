@@ -63,6 +63,21 @@ fun absOf(value: Int) = Math.abs(value)
 fun total(cents: Int) = scaled(cents)
 
 fun scaled(cents: Int): Int = cents * 2
+
+class Cart {
+    fun sum(items: List<Int>): Int = items.size
+
+    fun count(items: List<Int>): Int = sum(items)
+
+    fun withFee(items: List<Int>): Int = sum(items) + 1
+
+    @JvmName("legacyTotal")
+    fun legacy(items: List<Int>): Int = sum(items)
+
+    private fun hidden(items: List<Int>): Int = items.size
+
+    fun visible(items: List<Int>): Int = hidden(items)
+}
 `;
 
 const FORMATTING = `package demo.orders
@@ -468,6 +483,8 @@ export const EXPECTED_REVIEW_FINDINGS = [
   'NonAtomicUpdateAcrossSuspension Ledger.total in addSavedBeforeLock',
   'NonAtomicUpdateAcrossSuspension Ledger.total in addTwoAtATime',
   'NonAtomicUpdateAcrossSuspension Ledger.total in addUnderLocalMutex',
+  'ForwardingMethodAlias Cart.count',
+  'ForwardingMethodAlias Cart.visible',
   ...PLURAL_FINDINGS,
   'SpringUnusedContext UnusedContextTest',
   'StaticForwardingWrapper absOf',
