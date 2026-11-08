@@ -23,8 +23,9 @@ const MANIFEST = new URL('../../package.json', import.meta.url);
 const PAIRED = { '--shard-count': ['--shard-index', '0'], '--shard-index': ['--shard-count', '2'] };
 const EXPECTED_USAGE = [
   'Usage: nitpicker [<path>...] [--base <ref>] [--output <dir>] [--all | --fix] [--analyzer <name>]...',
-  '                 [--rule <substring>]... [--details] [--shard-count <n> --shard-index <i>]',
-  '                 [--defer-exit] [--no-cache] [--accept-policy-change=<digest>] [--help] [--version]',
+  '                 [--rule <substring>]... [--details] [--quick] [--staged]',
+  '                 [--shard-count <n> --shard-index <i>] [--defer-exit] [--no-cache]',
+  '                 [--accept-policy-change=<digest>] [--help] [--version]',
   '       nitpicker init [--agents-md] [--ci github] [--help]',
   '       nitpicker aggregate --input-root <dir> --shard-count <n> [--output <dir>] [--policy-root <dir>] [--details]',
   '       nitpicker cache publish [--analyzer <name>]... [--shard-count <n> --shard-index <i>] [--help]',
@@ -48,6 +49,8 @@ const EXPECTED_USAGE = [
   '  --analyzer <name>                Run only this analyzer (repeatable).',
   '  --rule <substring>               List the findings whose rule matches (repeatable).',
   '  --details                        Print every new and held finding with its full message.',
+  '  --quick                          Run only the fast checks and skip the tests and what builds on them.',
+  '  --staged                         Judge the git index (what the next commit would contain), not the working tree.',
   '  --output <dir>                   Write the reports to this directory.',
   '  --shard-count <n>                Split the analyzers over n jobs (with --shard-index).',
   '  --shard-index <i>                Run shard i of the split (0 to n-1).',
