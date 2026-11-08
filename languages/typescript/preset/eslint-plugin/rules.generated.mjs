@@ -64,12 +64,14 @@ import { rule as ruleNoTestRetry } from './test-assertions/no-test-retry.mjs';
 import { rule as ruleNoThrow } from './rules/errors/no-throw.mjs';
 import { rule as ruleNoTriStateBoolean } from './rules/signatures/no-tri-state-boolean.mjs';
 import { rule as ruleNoUiFrameworkInDomain } from './rules/syntax/no-ui-framework-in-domain.mjs';
+import { rule as ruleNoUnboundedQueryArray } from './rules/queries/arrays/no-unbounded-query-array.mjs';
 import { rule as ruleNoUncollectedTests } from './test-isolation/no-uncollected-tests.mjs';
 import { rule as ruleNoUnhandledUrlParse } from './rules/parsing/no-unhandled-url-parse.mjs';
 import { rule as ruleNoUnhandledVoidPromise } from './rules/promises/no-unhandled-void-promise.mjs';
 import { rule as ruleNoUninjectableDelay } from './rules/testing/lifecycle/no-uninjectable-delay.mjs';
 import { rule as ruleNoUnknownInDomain } from './rules/boundaries/no-unknown-in-domain.mjs';
 import { rule as ruleNoUnknownMainFolder } from './rules/guards/no-unknown-main-folder.mjs';
+import { rule as ruleNoUnorderedQuery } from './rules/queries/order/no-unordered-query.mjs';
 import { rule as ruleNoUnownedAsyncAssertion } from './test-assertions/unowned-async/no-unowned-async-assertion.mjs';
 import { rule as ruleNoUnsafeDeserialization } from './rules/security/deserialization/no-unsafe-deserialization.mjs';
 import { rule as ruleNoUnsafePathJoin } from './rules/guards/no-unsafe-path-join.mjs';
@@ -169,12 +171,14 @@ export const directoryRules = {
   'no-throw': ruleNoThrow,
   'no-tri-state-boolean': ruleNoTriStateBoolean,
   'no-ui-framework-in-domain': ruleNoUiFrameworkInDomain,
+  'no-unbounded-query-array': ruleNoUnboundedQueryArray,
   'no-uncollected-tests': ruleNoUncollectedTests,
   'no-unhandled-url-parse': ruleNoUnhandledUrlParse,
   'no-unhandled-void-promise': ruleNoUnhandledVoidPromise,
   'no-uninjectable-delay': ruleNoUninjectableDelay,
   'no-unknown-in-domain': ruleNoUnknownInDomain,
   'no-unknown-main-folder': ruleNoUnknownMainFolder,
+  'no-unordered-query': ruleNoUnorderedQuery,
   'no-unowned-async-assertion': ruleNoUnownedAsyncAssertion,
   'no-unsafe-deserialization': ruleNoUnsafeDeserialization,
   'no-unsafe-path-join': ruleNoUnsafePathJoin,

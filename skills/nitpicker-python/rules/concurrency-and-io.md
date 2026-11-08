@@ -31,6 +31,12 @@ Part of the [nitpicker-python](../SKILL.md) skill. Write these forms from the st
 - Child processes: give every wait a deadline: `subprocess.run(args, timeout=30, check=True)`,
   `process.communicate(timeout=30)`, and asyncio process waits inside `async with asyncio.timeout(30):`
   (`subprocess-without-timeout`; a build wrapper that only runs a child to completion takes an exception).
+- Pages of rows: a query that takes a page (`limit`, `offset`, a queryset slice, SQL `LIMIT`) or builds an
+  `array_agg`/`json_agg` list orders on a unique key: `select(User).order_by(User.created.desc(), User.id).limit(20)`,
+  `Order.objects.order_by("-created", "id")[:20]`, `func.array_agg(aggregate_order_by(...))` (`unordered-query`).
+- A list in `in_(...)` or `insert(...).values(rows)` has an empty check first and goes in fixed-size chunks
+  (`for part in itertools.batched(ids, 1000):`), or goes as one array parameter; insert many rows with
+  `session.execute(insert(User), rows)` (`unbounded-query-array`).
 - Secrets: never put a secret in code (`password`, `token`, `api_key`, ... assigned a literal, also as the
   fallback of `os.getenv`); read it from the environment in the composition root. Never log, print,
   warn or raise with it: log that it is set (`token is not None`) or a masked tail.

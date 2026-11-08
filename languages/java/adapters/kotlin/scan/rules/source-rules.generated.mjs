@@ -3,6 +3,7 @@ import { kotlinSourceRules as rulesUnsafeCasts } from '../casts/unsafe-casts.mjs
 import { kotlinSourceRules as rulesRepeatedStrings } from '../literals/repeated-strings.mjs';
 import { kotlinSourceRules as rulesLogFormatRules } from '../logging/log-format-rules.mjs';
 import { kotlinSourceRules as rulesProcessWaits } from '../processes/process-waits.mjs';
+import { kotlinSourceRules as rulesQueryRules } from '../queries/query-rules.mjs';
 import { kotlinSourceRules as rulesRegexValues } from '../regexes/regex-values.mjs';
 import { kotlinSourceRules as rulesInlineCloseables } from '../resources/inline-closeables.mjs';
 import { kotlinSourceRules as rulesCalls } from './calls.mjs';
@@ -28,6 +29,7 @@ export const directoryRules = [
   rulesRepeatedStrings,
   rulesLogFormatRules,
   rulesProcessWaits,
+  rulesQueryRules,
   rulesRegexValues,
   rulesInlineCloseables,
   rulesCalls,

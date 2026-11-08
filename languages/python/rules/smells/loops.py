@@ -2,7 +2,7 @@ import ast
 
 from checks.common import dotted_name, finding
 from checks.loop_scope import COMPREHENSIONS, enclosing_loop
-from concurrency.bounds import callee_name, sized_collection
+from concurrency.bounds import callee_name, is_chunk_call, sized_collection
 from concurrency.fan_out import reported_work
 from concurrency.remote import is_task_call, remote_of
 from smells.io_index import IoScope, chain_names, io_index
@@ -102,6 +102,13 @@ def runs_each_item(call, loop):
     )
 
 
+def iterates_chunks(loop):
+    if isinstance(loop, (ast.For, ast.AsyncFor)):
+        return is_chunk_call(loop.iter, None)
+    generators = loop.generators if isinstance(loop, COMPREHENSIONS) else []
+    return any(is_chunk_call(generator.iter, None) for generator in generators)
+
+
 def exits_loop(statements):
     return any(
         isinstance(n, (ast.Return, ast.Break)) for s in statements for n in ast.walk(s)
@@ -164,6 +171,7 @@ def check(context):
             is_paging_loop(loop, scope)
             or is_retry_attempt(node, loop, parents)
             or runs_each_item(node, loop)
+            or iterates_chunks(loop)
         ):
             continue
         callee = ".".join(chain_names(node.func))
