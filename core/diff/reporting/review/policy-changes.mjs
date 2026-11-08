@@ -38,7 +38,7 @@ function acceptanceLine(digest) {
     'Only a person may accept exactly these changes, after reviewing them: ' +
     `--accept-policy-change=${digest} at an interactive terminal, ` +
     `NITPICKER_ACCEPT_POLICY_CHANGE=${digest} in CI, ` +
-    'or the accept-policy-change label on a GitHub pull request.'
+    'or the accept-policy-change label of a GitHub pull request, with the nitpicker approval workflow.'
   );
 }
 

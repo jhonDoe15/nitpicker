@@ -74,6 +74,14 @@ function agentsLines(agents, command, offered) {
   return [outcomes[agents.status]];
 }
 
+function approvalNote(approval) {
+  return approval.status === 'created'
+    ? [
+        'A person accepts a policy loosening with the accept-policy-change label; create it once: gh label create accept-policy-change',
+      ]
+    : [];
+}
+
 function ciLines(workflow, { approval, workflowFile, command, offered }) {
   if (workflow === undefined) {
     return offered ? [`To write ${workflowFile}, run: ${command} init --ci github`] : [];
@@ -81,7 +89,7 @@ function ciLines(workflow, { approval, workflowFile, command, offered }) {
   return [
     ...fileLines(workflow),
     ...(workflow.notes ?? []),
-    ...(approval === undefined ? [] : fileLines(approval)),
+    ...(approval === undefined ? [] : [...fileLines(approval), ...approvalNote(approval)]),
   ];
 }
 

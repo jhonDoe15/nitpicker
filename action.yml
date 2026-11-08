@@ -337,9 +337,9 @@ runs:
             );
             core.setOutput('approved-sha', latest?.state === 'success' ? sha : '');
           } catch (error) {
-            core.warning(
-              `Could not read the policy approval of ${sha} (${error.message}). Give the job the statuses: read permission.`,
-            );
+            const message = `Could not read the policy approval of ${sha} (${error.message}). Give the job the statuses: read permission.`;
+            core.info(message);
+            core.setOutput('unreadable', message);
           }
 
     - name: Bind the policy approval to the checkout
@@ -454,6 +454,10 @@ runs:
       shell: bash
       env:
         EXIT_CODE: ${{ steps.gate.outputs.exit-code }}
+        APPROVAL_UNREADABLE: ${{ steps.approval-status.outputs.unreadable }}
       run: |
+        if [ -n "$APPROVAL_UNREADABLE" ]; then
+          echo "::warning title=nitpicker::${APPROVAL_UNREADABLE} Without it, an accept-policy-change label approves nothing."
+        fi
         echo "nitpicker exited with code ${EXIT_CODE} (1: new enforceable findings or failing head tests, 2: a tool error or a failure to decide)."
         exit "$EXIT_CODE"

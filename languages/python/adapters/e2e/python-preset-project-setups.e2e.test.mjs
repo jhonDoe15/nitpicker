@@ -151,7 +151,7 @@ describe.skipIf(!pythonE2eEnabled)(
             'If the policy change is intended, stop and ask a person reviewing this change:',
             `only they accept exactly these loosenings, with --accept-policy-change=${digest}`,
             `at an interactive terminal, NITPICKER_ACCEPT_POLICY_CHANGE=${digest} in CI,`,
-            'or the accept-policy-change label on a GitHub pull request.',
+            'or the accept-policy-change label of a GitHub pull request, with the nitpicker approval workflow.',
           ].join(' '),
           allowedForm:
             'Removes matching files from the checks, so their findings are not reported. Remove the entry and fix the findings, or have a person confirm it.',

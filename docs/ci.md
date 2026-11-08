@@ -206,29 +206,35 @@ repository root, so the results of a project in a subfolder land on the right fi
 ### Accepting a policy change with a label
 
 A person with write access accepts the loosenings of a pull request by adding the
-`accept-policy-change` label to it. A small workflow, which `nitpicker init --ci github` writes as
+`accept-policy-change` label to it. Set it up once: create the label (`gh label create
+accept-policy-change`, or Issues > Labels > New label), and add the small workflow that
+`nitpicker init --ci github` writes as
 [`.github/workflows/nitpicker-policy-approval.yml`](../.github/workflows/nitpicker-policy-approval.yml)
-(copy it from there otherwise), then:
+(copy it from there otherwise) to the default branch. On each label, the workflow:
 
 1. removes the label again, so it works like a button;
 2. checks that the person who added it has write, maintain or admin access, and fails otherwise;
 3. records the approval as the `nitpicker/policy-accepted` commit status of the pull request head,
    which shows in the checks of the pull request with the name of the person, the pull request
    number and its target branch;
-4. re-runs the failed jobs of the latest failed pull request run of each workflow on that commit.
+4. waits up to 20 minutes for the pull request runs of that commit to finish, then re-runs the
+   failed jobs of the latest failed run of each workflow on that commit (also of workflows other
+   than the gate).
 
 The action reads that status for the head it gates and accepts the loosenings of that commit
 (`NITPICKER_ACCEPT_POLICY_CHANGE=commit:<sha>`), also when the checkout is the merge commit GitHub
 makes for the pull request. The approval counts only for the same pull request and target branch,
 so another pull request with the same head, or a changed target branch, needs its own. A re-run on the same commit stays accepted; a push is a new commit, and
-needs the label again. The workflow runs on `pull_request_target`, so it is the version on the
-default branch that runs, also for a pull request from a fork; it never checks out the code of the
-pull request. Write access is the bar because whoever has it can change the workflows anyway.
+needs the label again. The workflow runs on `pull_request_target`, so the version on the target
+branch of the pull request runs, also for a pull request from a fork, and the pull request that adds
+the workflow cannot use it yet; it never checks out the code of the pull request. Write access is the bar because whoever has it can change the workflows anyway.
 
 A run that the label cannot approve keeps the digest route: a merge queue, whose commits are not
 the pull request head, and a push. Map `accept-policy-change` from
 `vars.NITPICKER_ACCEPT_POLICY_CHANGE` there. A run that was still going when the label was added
-reads no approval; re-run it. Coding agents never add the label.
+reads no approval; the workflow re-runs it once it fails, or says to re-run it when it takes longer
+than the wait. Without `statuses: read` the action cannot see an approval, and says so when the
+gate fails. Coding agents never add the label.
 
 ### Without the action
 

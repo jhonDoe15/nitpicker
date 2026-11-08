@@ -173,9 +173,9 @@ jobs:
               );
               core.setOutput('approved-sha', latest?.state === 'success' ? sha : '');
             } catch (error) {
-              core.warning(
-                `Could not read the policy approval of ${sha} (${error.message}). Give the job the statuses: read permission.`,
-              );
+              const message = `Could not read the policy approval of ${sha} (${error.message}). Give the job the statuses: read permission.`;
+              core.info(message);
+              core.setOutput('unreadable', message);
             }
       - name: Bind the policy approval to the checkout
         id: approval

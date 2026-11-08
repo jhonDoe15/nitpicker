@@ -19,7 +19,7 @@ const ACCEPT =
   '  Only a person may accept exactly these changes, after reviewing them: ' +
   `--accept-policy-change=${DIGEST} at an interactive terminal, ` +
   `NITPICKER_ACCEPT_POLICY_CHANGE=${DIGEST} in CI, ` +
-  'or the accept-policy-change label on a GitHub pull request.';
+  'or the accept-policy-change label of a GitHub pull request, with the nitpicker approval workflow.';
 const DIAGNOSTICS = 'Full diagnostics: reports/quality/diff/combined/report.txt';
 const CODE_DEFECT = ['  eslint/no-console: Unexpected console statement', '    src/a.js:12:3'];
 const ACCEPT_ROUTE = [
@@ -27,7 +27,7 @@ const ACCEPT_ROUTE = [
   'only they accept exactly these loosenings,',
   `with --accept-policy-change=${DIGEST} at an interactive terminal,`,
   `NITPICKER_ACCEPT_POLICY_CHANGE=${DIGEST} in CI,`,
-  'or the accept-policy-change label on a GitHub pull request.',
+  'or the accept-policy-change label of a GitHub pull request, with the nitpicker approval workflow.',
 ].join(' ');
 
 function kindsOf(changes, kind = 'entry-point') {

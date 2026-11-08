@@ -28,7 +28,7 @@ describe('policy findings', () => {
         'If the policy change is intended, stop and ask a person reviewing this change:',
         'only they accept exactly these loosenings, with --accept-policy-change=d1e2f3a4b5c6',
         'at an interactive terminal, NITPICKER_ACCEPT_POLICY_CHANGE=d1e2f3a4b5c6 in CI,',
-        'or the accept-policy-change label on a GitHub pull request.',
+        'or the accept-policy-change label of a GitHub pull request, with the nitpicker approval workflow.',
       ].join(' '),
     );
   });

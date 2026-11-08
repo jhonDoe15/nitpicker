@@ -109,15 +109,17 @@ describe('the policy approval of action.yml', () => {
 
 afterEach(() => {
   vi.unstubAllEnvs();
+  vi.useRealTimers();
 });
 
 async function runScript(script, { github, payload = {}, environment = {} }) {
-  const calls = { outputs: {}, failed: [], warnings: [], info: [] };
+  const calls = { outputs: {}, failed: [], warnings: [], info: [], notices: [] };
   const core = {
     setOutput: (name, value) => (calls.outputs[name] = value),
     setFailed: (message) => calls.failed.push(message),
     warning: (message) => calls.warnings.push(message),
     info: (message) => calls.info.push(message),
+    notice: (message) => calls.notices.push(message),
   };
   for (const [name, value] of Object.entries(environment)) {
     vi.stubEnv(name, value);
@@ -209,16 +211,16 @@ describe('the policy approval workflow', () => {
 
   it('records the approval of a person with write access and re-runs the latest failed runs', async () => {
     const runs = [
-      { id: 3, workflow_id: 1, name: 'typescript', conclusion: 'skipped' },
-      { id: 2, workflow_id: 1, name: 'typescript', conclusion: 'failure' },
-      { id: 1, workflow_id: 1, name: 'typescript', conclusion: 'failure' },
-      { id: 5, workflow_id: 2, name: 'docs', conclusion: 'success' },
+      { id: 3, workflow_id: 1, name: 'typescript', status: 'completed', conclusion: 'skipped' },
+      { id: 2, workflow_id: 1, name: 'typescript', status: 'completed', conclusion: 'failure' },
+      { id: 1, workflow_id: 1, name: 'typescript', status: 'completed', conclusion: 'failure' },
+      { id: 5, workflow_id: 2, name: 'docs', status: 'completed', conclusion: 'success' },
     ];
     const github = fakeGithub({ permission: 'write', runs });
 
     const calls = await approve(github);
 
-    expect([calls.failed, calls.info]).toEqual([[], ['Re-ran the failed jobs of typescript.']]);
+    expect([calls.failed, calls.notices]).toEqual([[], ['Re-ran the failed jobs of typescript.']]);
     expect(callLog(github)).toEqual([
       ['removeLabel', { ...REPO, issue_number: 7, name: 'accept-policy-change' }],
       ['getCollaboratorPermissionLevel', { ...REPO, username: 'reviewer' }],
@@ -238,6 +240,45 @@ describe('the policy approval workflow', () => {
       ],
       ['reRunWorkflowFailedJobs', { ...REPO, run_id: 2 }],
     ]);
+  });
+
+  it('waits for a run that is still going, then re-runs it when it failed', async () => {
+    vi.useFakeTimers();
+    const github = fakeGithub({ permission: 'admin' });
+    const run = { id: 4, workflow_id: 1, name: 'nitpicker' };
+    github.rest.actions.listWorkflowRunsForRepo
+      .mockResolvedValueOnce([{ ...run, status: 'in_progress', conclusion: null }])
+      .mockResolvedValueOnce([{ ...run, status: 'completed', conclusion: 'failure' }]);
+
+    const pending = approve(github);
+    await vi.advanceTimersByTimeAsync(30_000);
+    const calls = await pending;
+
+    expect(calls.notices).toEqual(['Re-ran the failed jobs of nitpicker.']);
+    expect(github.rest.actions.reRunWorkflowFailedJobs.mock.calls).toEqual([
+      [{ ...REPO, run_id: 4 }],
+    ]);
+  });
+
+  it('says so when runs are still going after the wait, or nothing failed', async () => {
+    vi.useFakeTimers();
+    const going = fakeGithub({
+      permission: 'write',
+      runs: [{ id: 4, workflow_id: 1, name: 'nitpicker', status: 'queued', conclusion: null }],
+    });
+    const passed = fakeGithub({ permission: 'write' });
+    passed.rest.issues.removeLabel.mockRejectedValue(new Error('Label does not exist'));
+
+    const waiting = approve(going);
+    await vi.advanceTimersByTimeAsync(40 * 30_000);
+    const notices = [(await waiting).notices, (await approve(passed)).notices];
+
+    expect(notices).toEqual([
+      ['Some runs of this commit are still going; re-run any that fails.'],
+      ['Recorded the approval; no failed run of this commit to re-run.'],
+    ]);
+    expect(going.rest.actions.listWorkflowRunsForRepo.mock.calls).toHaveLength(41);
+    expect(passed.rest.repos.createCommitStatus.mock.calls).toHaveLength(1);
   });
 
   it('refuses an approval too long for a commit status instead of failing to record it', async () => {
@@ -314,11 +355,32 @@ describe('the approval read of action.yml', () => {
 
     const calls = await read({ github });
 
-    expect([calls.outputs, calls.warnings]).toEqual([
-      {},
-      [
-        `Could not read the policy approval of ${HEAD} (Resource not accessible). Give the job the statuses: read permission.`,
-      ],
+    const message = `Could not read the policy approval of ${HEAD} (Resource not accessible). Give the job the statuses: read permission.`;
+
+    expect([calls.outputs, calls.info, calls.warnings]).toEqual([
+      { unreadable: message },
+      [message],
+      [],
+    ]);
+  });
+
+  it('warns about an unreadable approval only when the gate fails', () => {
+    const root = temporaryRoot('nitpicker-action-runner-');
+    const fail = (environment) =>
+      executeStep({
+        step: actionStep('Fail when the gate failed'),
+        root,
+        cwd: root,
+        environment: { EXIT_CODE: '1', ...environment },
+        searchPath: process.env.PATH,
+      });
+
+    expect(fail({ APPROVAL_UNREADABLE: 'Could not read it.' }).stdout.split('\n')[0]).toBe(
+      '::warning title=nitpicker::Could not read it. Without it, an accept-policy-change label approves nothing.',
+    );
+    expect(fail({}).stdout.split('\n')).toEqual([
+      'nitpicker exited with code 1 (1: new enforceable findings or failing head tests, 2: a tool error or a failure to decide).',
+      '',
     ]);
   });
 });
