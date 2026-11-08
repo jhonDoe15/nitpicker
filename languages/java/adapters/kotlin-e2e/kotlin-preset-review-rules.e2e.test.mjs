@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { SWALLOWED_CANCELLATIONS } from './test-support/review/kotlin-cancellation-data.mjs';
+import { SWALLOWED_CANCELLATIONS } from './test-support/review/swallowed/kotlin-cancellation-data.mjs';
 import {
   EXPECTED_REVIEW_FINDINGS as RULE_FINDINGS,
   integrationSuiteFiles,
