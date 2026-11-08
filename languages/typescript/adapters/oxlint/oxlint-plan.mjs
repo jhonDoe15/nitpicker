@@ -3,9 +3,11 @@ import path from 'node:path';
 import { ESLint } from 'eslint';
 import { oxlintBinary, spawnJson } from './oxlint-process.mjs';
 import { PROBE_TIMEOUT_MS } from '../../../../shared/processes/deadlines.mjs';
+import { parsedTsconfig } from '../../preset/modules/tsconfig-files.mjs';
 
 const [projectRoot, ...patterns] = process.argv.slice(2);
 const wrapperConfigPath = path.join(import.meta.dirname, '..', 'eslint-wrapper.config.mjs');
+const DECORATOR_METADATA_RULES = ['@typescript-eslint/consistent-type-imports'];
 
 try {
   process.stdout.write(`${JSON.stringify(await lintPlan(projectRoot, patterns))}\n`);
@@ -36,7 +38,9 @@ async function filePlan(root, globs) {
     groups: new Map(),
     noInlineConfig: [],
     typedPluginRules: new Set(),
+    programRules: new Set(),
     ruleMessages: {},
+    metadataProjects: new Map(),
   };
   for (const file of candidateFiles(root, globs)) {
     const config = await lintedConfig(eslint, file);
@@ -48,6 +52,7 @@ async function filePlan(root, globs) {
     groups: [...plan.groups.values()],
     noInlineConfig: plan.noInlineConfig,
     typedPluginRules: [...plan.typedPluginRules],
+    programRules: [...plan.programRules],
     ruleMessages: plan.ruleMessages,
   };
 }
@@ -61,6 +66,11 @@ function addFile(plan, file, config) {
   });
   if (config.linterOptions?.noInlineConfig === true) plan.noInlineConfig.push(file);
   for (const ruleId of typedRulesOf(config, rules)) plan.typedPluginRules.add(ruleId);
+  if (emitsDecoratorMetadata(plan.metadataProjects, config)) {
+    for (const ruleId of DECORATOR_METADATA_RULES.filter((id) => id in rules)) {
+      plan.programRules.add(ruleId);
+    }
+  }
   addRuleMessages(plan.ruleMessages, config, rules);
 }
 
@@ -121,6 +131,20 @@ function typedRulesOf(config, rules) {
   return Object.keys(rules).filter(
     (ruleId) => ruleDefinition(config, ruleId)?.meta?.docs?.requiresTypeChecking === true,
   );
+}
+
+function emitsDecoratorMetadata(projects, config) {
+  const { project, tsconfigRootDir } = config.languageOptions?.parserOptions ?? {};
+  if (typeof project !== 'string' || typeof tsconfigRootDir !== 'string') return false;
+  const configFile = path.resolve(tsconfigRootDir, project);
+  if (!projects.has(configFile)) {
+    const { options } = parsedTsconfig(configFile);
+    projects.set(
+      configFile,
+      options.experimentalDecorators === true && options.emitDecoratorMetadata === true,
+    );
+  }
+  return projects.get(configFile);
 }
 
 function addRuleMessages(ruleMessages, config, rules) {

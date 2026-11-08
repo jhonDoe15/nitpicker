@@ -83,3 +83,68 @@ describe('convention-driven rules on the default oxlint engine', () => {
     ]);
   });
 });
+
+function decoratorPolicy() {
+  return `import tseslint from ${JSON.stringify(import.meta.resolve('typescript-eslint'))};
+
+export default [
+  {
+    files: ['src/**/*.ts'],
+    languageOptions: {
+      parser: tseslint.parser,
+      parserOptions: { project: './tsconfig.json', tsconfigRootDir: import.meta.dirname },
+    },
+    plugins: { '@typescript-eslint': tseslint.plugin },
+    rules: { '@typescript-eslint/consistent-type-imports': 'error' },
+  },
+];
+`;
+}
+
+async function decoratorRun(compilerOptions) {
+  const root = createProject('nitpicker-oxlint-decorators-', {
+    'policy.mjs': decoratorPolicy(),
+    'tsconfig.json': JSON.stringify({ compilerOptions, include: ['src'] }),
+    'src/store.ts': 'export type Store = { size: number };\n',
+    'src/cats.ts':
+      "import { Store } from './store';\nexport const size = (store: Store) => store.size;\n",
+  });
+  roots.push(root);
+  const residualRuns = [];
+  const results = await lintProject({
+    root,
+    patterns: ['src/**/*.ts'],
+    runEslintCli: (files, environment) => {
+      residualRuns.push({ files, rules: JSON.parse(environment.NITPICKER_DIFF_ESLINT_ONLY_RULES) });
+      return [];
+    },
+  });
+  const ruleIds = results.flatMap((result) => result.messages.map(({ ruleId }) => ruleId));
+  return { ruleIds, residualRuns };
+}
+
+describe('type imports where the compiler emits decorator metadata', () => {
+  it('runs the type import rule through ESLint, which knows the decorator metadata', async () => {
+    const run = await decoratorRun({ experimentalDecorators: true, emitDecoratorMetadata: true });
+
+    expect(run).toEqual({
+      ruleIds: [],
+      residualRuns: [
+        {
+          files: ['src/cats.ts', 'src/store.ts'],
+          rules: ['@typescript-eslint/consistent-type-imports'],
+        },
+      ],
+    });
+  });
+
+  it.each([{}, { experimentalDecorators: true }, { emitDecoratorMetadata: true }])(
+    'keeps the rule on oxlint with compiler options %j',
+    async (compilerOptions) => {
+      expect(await decoratorRun(compilerOptions)).toEqual({
+        ruleIds: ['@typescript-eslint/consistent-type-imports'],
+        residualRuns: [],
+      });
+    },
+  );
+});
