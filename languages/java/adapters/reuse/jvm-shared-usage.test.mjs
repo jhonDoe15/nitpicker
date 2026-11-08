@@ -2,7 +2,8 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
-import { exceptionHint } from '../../../../shared/rules/exceptions.mjs';
+import { MESSAGES, messageFields } from '../../../../shared/policy.mjs';
+import { exceptionText } from '../../../../shared/rules/exceptions.mjs';
 import { readJvmReuseFindings } from './jvm-reuse-facts.mjs';
 
 const RULE = 'shared-used-by-one-feature';
@@ -67,12 +68,15 @@ describe('shared-used-by-one-feature on Java and Kotlin', () => {
         rule: RULE,
         path: MONEY,
         identity: RULE,
-        message: expect.stringContaining(exceptionHint(RULE, MONEY)),
-        allowedForm: expect.any(String),
+        ...messageFields(MESSAGES.sharedUsedByOneFeature, {
+          path: MONEY,
+          feature: 'billing',
+          directory: `${JAVA_ROOT}/shop/features/billing/`,
+          exception: exceptionText(RULE, MONEY),
+        }),
         classification: 'enforceable',
       },
     ]);
-    expect(found[0].message).toContain(`${JAVA_ROOT}/shop/features/billing/`);
   });
 
   it('keeps a shared class that two features, or code outside any feature, use', () => {
