@@ -2,6 +2,7 @@ import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 import {
   cpSync,
+  existsSync,
   mkdirSync,
   mkdtempSync,
   readFileSync,
@@ -14,6 +15,7 @@ import { runCli } from '../../../../../core/cli.mjs';
 import { readConfigFile } from '../../../../../core/configuration/config.mjs';
 import { policyChangeFields } from '../../../../../core/policy-changes/describe-policy-changes.mjs';
 import { readPolicyScope } from '../../../../../core/policy-changes/policy-scope.mjs';
+import { schemaChecked } from '../../../../../core/diff/comparison/test-support/findings-schema-check.mjs';
 import { withoutHelpUris } from '../../../../../core/diff/reporting/test-support/report-reading.mjs';
 import { fileURLToPath } from 'node:url';
 
@@ -102,6 +104,9 @@ export function gate(root, branch, { extra = [], environment = {}, base = 'main'
       throw new Error(`${name} is outside the reports directory`);
     }
     return withoutHelpUris(JSON.parse(readFileSync(file, 'utf8')));
+  }
+  if (existsSync(path.join(reports, 'new-findings.json'))) {
+    schemaChecked({ newFindings: json('new-findings.json') });
   }
   return { exitCode, json, text: output.text, reports };
 }
