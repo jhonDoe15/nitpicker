@@ -39,12 +39,21 @@ describe('size limits on edited legacy functions', () => {
         identity: 'function:big:occurrence:1:source:after',
         message:
           'big has 78 statements; limit is 15. Split by responsibility and name each part for what it checks or does. If this is intended, add {"rule":"function-statements-limit","paths":["src/big.ts"],"function":"big","reason":"..."} to "exceptions" in nitpicker.config.json.',
+        allowedForm: 'Split by responsibility and name each part for what it checks or does.',
+        exception: {
+          rule: 'function-statements-limit',
+          paths: ['src/big.ts'],
+          function: 'big',
+          reason: '...',
+        },
+        exceptionList: 'exceptions',
         classification: 'enforceable',
         symbol: 'big',
         location: { line: 1 },
         ratchet: {
           key: 'function:big:occurrence:1:statements',
           value: 78,
+          worseAllowedForm: 'Put new code in a new function.',
           worseMessage:
             'big grew from {base} to 78 statements (limit 15). Put new code in a new function. If this is intended, add {"rule":"function-statements-limit","paths":["src/big.ts"],"function":"big","reason":"..."} to "exceptions" in nitpicker.config.json.',
           heldMessage:
@@ -64,12 +73,21 @@ describe('size limits on edited legacy functions', () => {
         identity: 'function:big:occurrence:1:source:after',
         message:
           'big grew from 80 to 81 statements (limit 15). Put new code in a new function. If this is intended, add {"rule":"function-statements-limit","paths":["src/big.ts"],"function":"big","reason":"..."} to "exceptions" in nitpicker.config.json.',
+        allowedForm: 'Put new code in a new function.',
+        exception: {
+          rule: 'function-statements-limit',
+          paths: ['src/big.ts'],
+          function: 'big',
+          reason: '...',
+        },
+        exceptionList: 'exceptions',
         classification: 'enforceable',
         symbol: 'big',
         location: { line: 1 },
         ratchet: {
           key: 'function:big:occurrence:1:statements',
           value: 81,
+          worseAllowedForm: 'Put new code in a new function.',
           worseMessage:
             'big grew from {base} to 81 statements (limit 15). Put new code in a new function. If this is intended, add {"rule":"function-statements-limit","paths":["src/big.ts"],"function":"big","reason":"..."} to "exceptions" in nitpicker.config.json.',
           heldMessage:

@@ -11,9 +11,9 @@ import { FORMATTERS } from '../formatting/go-formatters.mjs';
 import { suggestionOrAllowed } from '../../../../shared/messages/closest-match.mjs';
 
 export const GO_LINT_TOOLS = ['vet'];
-const GO_EXCEPTION_RULES = [...COMMON_EXCEPTION_RULES, ...GO_SIZE_RULES];
-const SETTING_KEYS = ['formatters', 'buildTags'];
-const BUILD_TAG = /^!?[\w.]+$/u;
+export const GO_EXCEPTION_RULES = [...COMMON_EXCEPTION_RULES, ...GO_SIZE_RULES];
+export const GO_SETTING_KEYS = ['formatters', 'buildTags'];
+export const BUILD_TAG = /^!?[\w.]+$/u;
 const TYPESCRIPT_REASON =
   'it describes the TypeScript source layout and React rules, which the Go preset does not have';
 const UNSUPPORTED_KEYS = new Map([
@@ -64,10 +64,10 @@ function validateSettings(settings) {
   if (!isPlainObject(settings)) {
     throw configError('"go" must be an object');
   }
-  const unknown = Object.keys(settings).find((key) => !SETTING_KEYS.includes(key));
+  const unknown = Object.keys(settings).find((key) => !GO_SETTING_KEYS.includes(key));
   if (unknown !== undefined) {
     throw configError(
-      `unknown key "${unknown}" in "go"${suggestionOrAllowed(unknown, SETTING_KEYS)}`,
+      `unknown key "${unknown}" in "go"${suggestionOrAllowed(unknown, GO_SETTING_KEYS)}`,
     );
   }
   if (settings.formatters !== undefined) {

@@ -3,6 +3,7 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 
 import { runJavaDiff } from '../../java-diff.mjs';
+import { schemaChecked } from '../../../../../core/diff/comparison/test-support/findings-schema-check.mjs';
 import { commitBranch, runGitIn } from '../../test-support/gradle-e2e.mjs';
 const enabled = process.env.NITPICKER_JAVA_E2E === '1';
 const gradle = process.env.NITPICKER_GRADLE ?? 'gradle';
@@ -63,6 +64,8 @@ const REVIEW_RULES = new Set([
   'FixedSleepInTest',
   'NegativeWaitInTest',
   'RetryInTest',
+  'MockedSubjectInTest',
+  'StaticMockOfProjectType',
   'GlobalStateLeakInTest',
   'ServerOrContainerPerTest',
   'ExhaustiveEnumPredicate',
@@ -112,6 +115,12 @@ const RECEIPT_CONSOLE_FINDING = {
   ].join(' '),
   classification: 'enforceable',
   tokens: ['receipt', 'total', 'drifted', 'by', '<n>', 'cents'],
+  exception: {
+    rule: 'test-runtime/test-console-output',
+    paths: [RECEIPT_TEST_FILE],
+    reason: '...',
+  },
+  exceptionList: 'exceptions',
 };
 const RECEIPT_TEST = `package shop;
 
@@ -171,8 +180,13 @@ function stableConsoleEmitters(findings) {
     if (file === undefined) {
       return finding;
     }
+    const exception = finding.exception && {
+      ...finding.exception,
+      paths: finding.exception.paths.map((entry) => (entry === file ? '<emitting source>' : entry)),
+    };
     return {
       ...finding,
+      ...(exception && { exception }),
       message: finding.message
         .replaceAll(file, '<emitting source>')
         .replace(/, test "[^"]*"/u, ', test "<emitting test>"'),
@@ -189,7 +203,9 @@ function consoleChange(build, ...left) {
     [RECEIPT_TEST_FILE]: RECEIPT_TEST,
     'src/test/java/shop/FilterTest.java': readFileSync(filterTest, 'utf8').replace('42', '43'),
   });
-  const result = runJavaDiff({ repositoryRoot: repository, requestedBaseRef: 'main', ...build });
+  const result = schemaChecked(
+    runJavaDiff({ repositoryRoot: repository, requestedBaseRef: 'main', ...build }),
+  );
   return result.newFindings.filter(({ rule }) => rule === 'test-console-output');
 }
 export {
