@@ -372,7 +372,7 @@ suite('packed nitpicker in a separate consumer', () => {
         expect(dirty.status, dirty.output).toBe(1);
         expect(summary('dirty').overallStatus).toBe('completed');
         expect(findings('dirty')).toEqual(expectedDirtyFindings(links));
-        expect(dirty.output).toEqual(expectedDirtyOutput(root));
+        expect(dirty.output).toEqual(expectedDirtyOutput());
       });
       it('records pinned owned tool versions and the installed TypeScript peer', () => {
         const versions = Object.fromEntries(
