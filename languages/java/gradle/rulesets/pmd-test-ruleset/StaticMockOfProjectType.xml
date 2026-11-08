@@ -1,0 +1,14 @@
+  <rule name="StaticMockOfProjectType" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
+        message="A static or constructor mock (mockStatic, mockConstruction) replaces a class of this project, for the whole thread, so the test runs a fake instead of the real code and depends on how that code is called. Pass the dependency in instead: an instance, a function or a Clock the test can replace. Keep static mocks for library types that cannot be passed in.">
+    <priority>2</priority>
+    <properties>
+      <property name="xpath">
+        <value><![CDATA[
+//MethodCall[pmd-java:matchesSig('org.mockito.Mockito#mockStatic(_*)')
+             or pmd-java:matchesSig('org.mockito.Mockito#mockConstruction(_*)')
+             or pmd-java:matchesSig('org.mockito.Mockito#mockConstructionWithAnswer(_*)')]
+  /ArgumentList/*[1][self::ClassLiteral]/ClassType
+]]></value>
+      </property>
+    </properties>
+  </rule>

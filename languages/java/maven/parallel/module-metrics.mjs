@@ -1,7 +1,7 @@
 import { existsSync } from 'node:fs';
 import path from 'node:path';
 import { javaCommand, runJava } from '../maven-command.mjs';
-import { relativeTo } from '../manifest/maven-manifest.mjs';
+import { relativeTo } from '../module/module-paths.mjs';
 import { GRADLE_DIRECTORY } from '../../builds/java-build.mjs';
 import { writeJdepsReports } from '../../builds/jdeps-reports.mjs';
 

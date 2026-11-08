@@ -3,8 +3,7 @@ import path from 'node:path';
 import { buildViews } from '../kotlin/review-rules/build-view.mjs';
 import { ingestArchunit } from '../../ingest/archunit.mjs';
 import { ingestCrap } from '../../ingest/crap.mjs';
-import { readDuplicateFindings } from '../metrics/java-duplicates.mjs';
-import { readKotlinDuplicateFindings } from '../kotlin/kotlin-duplicates.mjs';
+import { readProjectDuplicateFindings } from '../kotlin/kotlin-duplicates.mjs';
 import {
   isEmptyModule,
   readMainCheckstyle,
@@ -53,7 +52,7 @@ export function readJavaFindings(projectRoot, options = {}) {
   const { reportBase, report, preset = 'java', projectWide = true } = options;
   const kotlinPreset = preset === 'kotlin';
   const { modules, manifest } = report ?? readReportModules(reportBase, preset);
-  if (kotlinPreset) {
+  if (kotlinPreset && options.requireKotlin !== false) {
     requireKotlinManifest(manifest);
   }
   const kotlinBuild = buildViews();
@@ -68,8 +67,7 @@ export function readJavaFindings(projectRoot, options = {}) {
   const findings = applyRuleMessages(
     [
       ...moduleFindings,
-      ...readDuplicateFindings(reportBase, { projectRoot }),
-      ...(kotlinPreset ? readKotlinDuplicateFindings(reportBase, projectRoot) : []),
+      ...(projectWide ? readProjectDuplicateFindings(reportBase, { preset, projectRoot }) : []),
       ...(projectWide
         ? projectWideFindings(projectRoot, {
             projects: modules.map((module) => ({
@@ -289,5 +287,6 @@ function branchFindings(context, jacoco) {
 function projectRoots(projectRoot) {
   const roots = new Set([path.resolve(projectRoot)]);
   roots.add(realpathSync(projectRoot));
+  roots.add(realpathSync.native(projectRoot));
   return [...roots];
 }

@@ -9,6 +9,7 @@ import {
 import { copyTestResults, requireTestngRun } from '../results/maven-test-results.mjs';
 import { lifecycleArgs } from '../maven-project.mjs';
 import { jacocoPlugin } from '../maven-tools.mjs';
+import { relativeTo } from '../module/module-paths.mjs';
 import { moduleName } from '../../builds/test-failures.mjs';
 
 const OWN_JACOCO_EXEC = 'nitpicker-jacoco.exec';
@@ -40,7 +41,7 @@ export function jacocoExecFiles(module) {
 }
 
 function moduleNameOf(module, projectRoot) {
-  return moduleName(path.relative(projectRoot, module.basedir).replaceAll('\\', '/'));
+  return moduleName(relativeTo(projectRoot, module.basedir));
 }
 
 export function readTestRuns(context) {

@@ -131,7 +131,9 @@ function runConfigured(cli) {
   const { options, stdout, runTasks } = cli;
   const { currentProjectRoot, scope } = resolveRunTarget({ ...cli, missingPathHint });
   const config = loadConfig(currentProjectRoot);
-  const headPolicy = resolveProjectHeadPolicy(config, currentProjectRoot);
+  const headPolicy = resolveProjectHeadPolicy(config, currentProjectRoot, {
+    maven: cli.environment.NITPICKER_MAVEN,
+  });
   const presetSet = presetAnalyzers(config, options.all ? cli.snapshotAnalyzers : cli.analyzers);
   const setup = {
     ...applyRunProfile(configureAnalyzers(presetSet, config, headPolicy), options),
