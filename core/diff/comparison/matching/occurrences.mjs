@@ -1,4 +1,4 @@
-import { baseLineOf, canMapLines } from '../../git/patches/line-map.mjs';
+import { baseLineOf, canMapLines } from '../../git/patches/lines/line-map.mjs';
 import { comparisonKey } from '../fingerprint.mjs';
 
 const OCCURRENCE = /^(.*)#(\d+)$/s;

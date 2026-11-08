@@ -1,9 +1,9 @@
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { configurationFiles } from '../adapters/java-analyzer.mjs';
+import { configurationFiles } from '../../adapters/java-analyzer.mjs';
 
-const packageRoot = path.resolve(import.meta.dirname, '../../..');
+const packageRoot = path.resolve(import.meta.dirname, '../../../..');
 const JAVA_PACKAGE = 'languages/java/';
 const HAND_WRITTEN_ROUTE =
   /add an exception for|"exceptions" entry for|If it is right here|To allow it here|If this is intended, add|to "exceptions" in nitpicker/u;

@@ -176,6 +176,17 @@ function checkRatchetParts(ratchet, context) {
   }
 }
 
+function ratchetFlags(value, context) {
+  const flags = {};
+  for (const name of RATCHET_FLAGS.filter((flag) => value[flag] !== undefined)) {
+    if (typeof value[name] !== 'boolean') {
+      throw new TypeError(`${context}.${name} must be a boolean`);
+    }
+    flags[name] = value[name];
+  }
+  return flags;
+}
+
 function parseRatchet(value, context) {
   if (!isRecord(value)) {
     throw new TypeError(`${context} must be an object`);
@@ -192,12 +203,7 @@ function parseRatchet(value, context) {
   }
   Object.assign(ratchet, ratchetTexts(value, context));
   checkRatchetParts(ratchet, context);
-  for (const name of RATCHET_FLAGS.filter((flag) => value[flag] !== undefined)) {
-    if (typeof value[name] !== 'boolean') {
-      throw new TypeError(`${context}.${name} must be a boolean`);
-    }
-    ratchet[name] = value[name];
-  }
+  Object.assign(ratchet, ratchetFlags(value, context));
   if (value.mustKeepUnchangedLines !== undefined) {
     ratchet.mustKeepUnchangedLines = parseLineRanges(
       value.mustKeepUnchangedLines,

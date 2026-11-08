@@ -86,7 +86,11 @@ function mavenProject() {
 }
 
 function withoutRoute(findings) {
-  return findings.map(({ exception, exceptionList, ...rest }) => rest);
+  return findings.map((finding) =>
+    Object.fromEntries(
+      Object.entries(finding).filter(([key]) => key !== 'exception' && key !== 'exceptionList'),
+    ),
+  );
 }
 
 const summary = (findings) =>

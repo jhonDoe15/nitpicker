@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { parseChangedLines } from './changed-lines.mjs';
+import { parseChangedLines } from '../changed-lines.mjs';
 import { baseLineOf, canMapLines } from './line-map.mjs';
 
 const changed = parseChangedLines(

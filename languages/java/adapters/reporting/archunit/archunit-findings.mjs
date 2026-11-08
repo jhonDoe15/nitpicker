@@ -31,14 +31,14 @@ export function springArchFindings(context) {
 export function archunitFindings({ reportRoot, projectRoot, sourceRoots, manifest }) {
   const archunitRoot = path.join(reportRoot, 'archunit');
   const archunitReports = existsSync(archunitRoot)
-    ? readdirSync(archunitRoot)
-        .filter((name) => name.endsWith('.xml'))
-        .sort()
+    ? readdirSync(archunitRoot, { withFileTypes: true })
+        .filter((entry) => entry.name.endsWith('.xml'))
+        .toSorted((left, right) => left.name.localeCompare(right.name, 'en'))
     : [];
   const locate = classLocator({ projectRoot, sourceRoots, manifest });
   return archunitReports.flatMap(
-    (name) =>
-      ingestArchunit(readFileSync(path.join(archunitRoot, name), 'utf8'), {
+    (entry) =>
+      ingestArchunit(readFileSync(path.join(entry.parentPath, entry.name), 'utf8'), {
         resolvePath: (className, fileName) => sourceFileOf(locate, className, fileName),
       }).findings,
   );
