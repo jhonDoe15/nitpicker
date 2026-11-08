@@ -2,12 +2,14 @@ package shop.settings;
 
 import java.util.Objects;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.env.Environment;
 import org.springframework.util.StringUtils;
 
 @Configuration(proxyBeanMethods = false)
+@EnableConfigurationProperties(TokenProperties.class)
 public class TokenConfig {
   private final TokenProperties properties;
   private final String region;
