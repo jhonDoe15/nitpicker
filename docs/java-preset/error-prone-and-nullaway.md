@@ -232,7 +232,7 @@ Part of the [Java preset guide](../java-preset.md).
   parent under `spring-boot-starter-parent`, MapStruct's processor configured in the parent's
   `pluginManagement` with a property version, Lombok's appended in the child with no version, and a
   class compiled into `target/classes` before the regular compile), and
-  `maven/maven-preset.e2e.test.mjs` (the same findings, Error Prone's included, from a Maven and a
+  `maven/preset/maven-preset-parity.e2e.test.mjs` (the same findings, Error Prone's included, from a Maven and a
   Gradle build of the same sources). The JDK choice on Gradle was checked by hand: Gradle on JDK 17
   runs Error Prone on a JDK 21 launcher, and a project with a JDK 25 toolchain on a JDK 21 Gradle
   runs it on JDK 25.

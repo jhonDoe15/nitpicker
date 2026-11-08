@@ -124,6 +124,13 @@ together with a file of about 120. Each language workflow runs the verifier in i
 job; it lists tests without starting a JVM build or a Python project, and the aggregate check
 requires it.
 
+The verifier lists tests with `--no-isolate` and runs the four listings at once, which keeps the
+shard-plan job at about half a minute instead of about two. Sharing one module graph between
+files is safe here: `vitest list` imports the test files and collects their names but runs no
+test body or hook, each listing is a process of its own with one fixed set of flags, so a module
+that reads a flag at import time reads the same value for every file, and the listings with and
+without `--no-isolate` were compared and are identical.
+
 Four Python files (`ruff/ruff-rules`, `ruff/ruff-groups`, `adapters/formatting/format-scope` and
 `adapters/configuration/python-ruff-config`, six cases) were gated on the Python flag but selected
 by no script. They are now in `test:python` with a weight of one second each: they only run the

@@ -3,7 +3,7 @@
 Part of the [Java preset guide](../java-preset.md).
 
 Rules that carry review findings over from the TypeScript preset. Each works the same on Gradle
-and Maven: the PMD rules are in the shared rule set files, and `spring/java-spring.e2e.test.mjs`
+and Maven: the PMD rules are in the shared rule set files, and `spring/e2e/java-spring-review.e2e.test.mjs`
 builds one Spring project (`java-e2e/fixtures/review-rules`, every expected violation marked with
 `// violation: <rule>`) with both and asserts the same findings, and exactly the marked ones.
 Every message names the allowed form and the exception that keeps code that is right.
