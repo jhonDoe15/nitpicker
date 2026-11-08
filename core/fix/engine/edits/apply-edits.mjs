@@ -167,16 +167,24 @@ function prepare(snapshot, entries) {
   }));
 }
 
-function staleSources(context, prepared) {
-  const sources = prepared.flatMap(({ edits }) =>
-    edits.filter((edit) => !edit.isNew).map(sourceOf),
+function sourceState(context, name) {
+  try {
+    const file = checkRealPath(context.projectRoot, name);
+    return { name, stale: !holds(file, context.snapshot.entry(name)?.bytes) };
+  } catch (error) {
+    return { name, error };
+  }
+}
+
+function checkedSources(context, prepared) {
+  const sources = new Set(
+    prepared.flatMap(({ edits }) => edits.filter((edit) => !edit.isNew).map(sourceOf)),
   );
-  return new Set(
-    sources.filter(
-      (name) =>
-        !holds(checkRealPath(context.projectRoot, name), context.snapshot.entry(name)?.bytes),
-    ),
-  );
+  const states = [...sources].map((name) => sourceState(context, name));
+  return {
+    stale: new Set(states.filter(({ stale }) => stale === true).map(({ name }) => name)),
+    refused: states.filter(({ error }) => error !== undefined),
+  };
 }
 
 function settleOutcomes(outcomes, prepared, stale) {
@@ -193,16 +201,19 @@ function settleOutcomes(outcomes, prepared, stale) {
 export function applyFixes(projectRoot, snapshot, entries) {
   const context = { projectRoot, snapshot };
   const prepared = prepare(snapshot, entries);
-  const stale = staleSources(context, prepared);
-  const current = prepared.filter(({ edits }) => !edits.some((edit) => stale.has(sourceOf(edit))));
+  const { stale, refused } = checkedSources(context, prepared);
+  const blocked = new Set([...stale, ...refused.map(({ name }) => name)]);
+  const current = prepared.filter(
+    ({ edits }) => !edits.some((edit) => blocked.has(sourceOf(edit))),
+  );
   const outcomes = [...grouped(current)].map(([name, edits]) => attempt(context, name, edits));
   const { dropped, unwritten } = settleOutcomes(outcomes, current, stale);
-  const errors = outcomes.filter(({ error }) => error !== undefined);
+  const errors = [...refused, ...outcomes.filter(({ error }) => error !== undefined)];
   return {
     applied: current.filter((item) => !dropped.includes(item)).map(({ entry }) => entry),
     changedMeanwhile: [
       ...stale,
-      ...unwritten.filter((name) => !errors.some((e) => e.name === name)),
+      ...unwritten.filter((name) => !errors.some((failure) => failure.name === name)),
     ].sort(),
     errors: errors.map(({ name, error }) => `${name}: ${error.message}`),
   };
