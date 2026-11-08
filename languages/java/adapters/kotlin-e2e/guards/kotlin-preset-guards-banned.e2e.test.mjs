@@ -30,7 +30,7 @@ describe.skipIf(!kotlinE2eEnabled)('Kotlin preset banned source guards end to en
 
   it('fails every banned form with its own rule', () => {
     expect(summary(banned.newEnforceable)).toEqual(EXPECTED_BANNED);
-    expect(banned.newFindings.some(({ rule }) => rule === 'lint-not-run')).toBe(false);
+    expect(banned.newFindings.filter(({ rule }) => rule === 'lint-not-run')).toEqual([]);
   });
 
   it('ends each finding with the exception sentence of the rule it prints', () => {

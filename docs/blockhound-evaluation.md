@@ -113,7 +113,7 @@ project's own build for the project's tests to use it.
   on Gradle the test task's `jvmArgs`, system properties, heap sizes and argument providers other than
   JaCoCo's agent, on Maven the surefire `argLine` (an argument with an unresolved reference such as
   JaCoCo's `@{argLine}` left out) followed by surefire's system properties; the exact rules are in
-  [java-preset.md](java-preset.md#slice-7-mutation-with-pit). So the flag the project already sets for
+  [java-preset.md](java-preset/slice-7-mutation-with-pit.md). So the flag the project already sets for
   its tests reaches the minions with no further configuration. That forwarding is tested on both builds
   with system properties, quoted and comma-holding values and a heap size (and an argument provider on
   Gradle); it was not run together with BlockHound.

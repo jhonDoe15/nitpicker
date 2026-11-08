@@ -28,6 +28,7 @@ import { COVERAGE_REPORT } from './test-runs/test-step.mjs';
 import { testFailureFindings } from './test-runs/test-failures.mjs';
 import { readSlowTestFindings } from './test-runs/slow-tests.mjs';
 import { readCouplingFindings, readImportsReport } from './analysis/python-coupling.mjs';
+import { readTestRuntimeFindings } from './analysis/test-runtime/python-test-runtime.mjs';
 import { cycleFindings, outsideRootsFindings } from './imports/python-import-rules.mjs';
 import {
   pythonClassLimitFindings,
@@ -41,6 +42,8 @@ import { withUtf16Columns } from '../../../shared/ingest/columns/utf16-columns.m
 import { TYPES_REPORT } from './python-types.mjs';
 import { listProductionModules } from './analysis/python-sources.mjs';
 import { isGeneratedPython } from '../libraries/generated-files.mjs';
+import { readConsoleFindings } from './test-results/console-output.mjs';
+import { readFactFindings } from './facts/python-facts.mjs';
 
 const FORMATTER_TOOLS = { ruff: 'ruff-format', black: 'black' };
 const NO_TESTS_RULE = 'no-tests-ran';
@@ -65,6 +68,16 @@ function readRuffFindings({ reportRoot, roots, projectRoot, exceptions }) {
   });
 }
 
+function crapFindings({ reportRoot, coverage, projectRoot, roots, crapLimit }) {
+  return readPythonCrapFindings({
+    functions: readPythonFunctions(reportRoot),
+    coverage,
+    projectRoot,
+    roots,
+    crapLimit,
+  });
+}
+
 export function readPythonFindings({
   projectRoot,
   reportRoot,
@@ -86,13 +99,7 @@ export function readPythonFindings({
       ...ingestCoverageJson(coverage, { roots }).findings,
       ...readPythonStructureFindings(reportRoot, projectRoot),
       ...pythonFileLimitFindings(projectRoot, policy),
-      ...readPythonCrapFindings({
-        functions: readPythonFunctions(reportRoot),
-        coverage,
-        projectRoot,
-        roots,
-        crapLimit,
-      }),
+      ...crapFindings({ reportRoot, coverage, projectRoot, roots, crapLimit }),
       ...(manifest.testsRan === false ? [noTestsFinding()] : []),
       ...ingestCoverageBranches(readReport(reportRoot, COVERAGE_REPORT), {
         roots,
@@ -102,8 +109,11 @@ export function readPythonFindings({
       ...readDuplicateFindings(reportRoot, projectRoot),
       ...readCouplingFindings(reportRoot),
       ...readImportLinterFindings(reportRoot),
+      ...readTestRuntimeFindings({ reportRoot, projectRoot, runner: manifest.testRunner }),
       ...testFailureFindings(manifest, policy.snapshot),
       ...projectShapeFindings({ projectRoot, reportRoot, policy, imports, manifest }),
+      ...readConsoleFindings(reportRoot, { projectRoot, manifest }),
+      ...readFactFindings(reportRoot, policy),
     ],
     libraries,
   );

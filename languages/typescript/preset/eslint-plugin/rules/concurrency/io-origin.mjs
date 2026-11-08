@@ -212,11 +212,23 @@ function expandMember(env, pending, goal) {
   }
 }
 
+function injected(env, call, target) {
+  const angular = findVariable(env.context, target, target.name)?.defs[0]?.parent?.source?.value;
+  const [token] = call.arguments;
+  const ref = token?.type === 'Identifier' ? env.typeImports.get(token.name) : undefined;
+  const spec = ref === undefined ? undefined : env.clientSpec(ref.source);
+  return angular === '@angular/core' && spec !== undefined && matchesType(spec, ref.imported)
+    ? instance(env, ref, call)
+    : undefined;
+}
+
 function expandCall(env, pending, goal) {
   const call = skipped(goal.node);
   const target = skipped(call.callee);
   const site = { target, call };
-  if (target.type === 'MemberExpression') {
+  if (target.type === 'Identifier' && target.name === 'inject') {
+    goal.value = injected(env, call, target);
+  } else if (target.type === 'MemberExpression') {
     follow(pending, goal, { node: target.object, combine: (base) => madeBy(env, site, base) });
   } else {
     goal.value = madeBy(env, site, undefined);

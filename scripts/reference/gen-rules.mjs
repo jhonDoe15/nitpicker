@@ -1,12 +1,9 @@
-import { mkdirSync, realpathSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, realpathSync, renameSync, rmSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
-import {
-  formattedReferenceFiles,
-  formattedText,
-  referenceFiles,
-  staleReferenceFiles,
-} from '../../core/reference/generate.mjs';
+import { ESLINT_REGISTRY, eslintRegistrySource } from './eslint-registry.mjs';
+import { KOTLIN_SCAN_REGISTRY, kotlinScanRegistrySource } from './kotlin-scan-registry.mjs';
+import { pmdRulesetSources } from './pmd-rulesets.mjs';
 import {
   installedRuffRules,
   isOlderVersion,
@@ -22,14 +19,13 @@ import {
   toolTextFile,
 } from '../../languages/java/reference/tool-text/tool-text.mjs';
 import {
-  eslintInventoryPath,
   liveEslintInventory,
   writeEslintInventory,
 } from '../../languages/typescript/reference/eslint-inventory.mjs';
 
 const repositoryRoot = path.resolve(import.meta.dirname, '../..');
 
-async function refreshRuff(ruff, stderr) {
+async function refreshRuff(ruff, { stderr, formattedText }) {
   const snapshot = installedRuffRules(ruff);
   if (snapshot === undefined) {
     throw new Error(`ruff could not be run as ${ruff}: pass its path as --refresh-ruff=<path>`);
@@ -52,18 +48,11 @@ async function refreshRuff(ruff, stderr) {
   );
 }
 
-async function refreshEslint() {
-  const inventory = await liveEslintInventory();
-  writeEslintInventory(
-    await formattedText(
-      repositoryRoot,
-      eslintInventoryPath(repositoryRoot),
-      JSON.stringify(inventory),
-    ),
-  );
+async function buildEslintInventory() {
+  writeEslintInventory(`${JSON.stringify(await liveEslintInventory())}\n`);
 }
 
-async function refreshJvm() {
+async function refreshJvm({ formattedText }) {
   for (const tool of TOOL_TEXT_TOOLS) {
     const file = toolTextFile(tool);
     const snapshot = path.relative(repositoryRoot, fileURLToPath(file));
@@ -74,6 +63,17 @@ async function refreshJvm() {
   }
 }
 
+function replaceFile(temporary, target) {
+  try {
+    renameSync(temporary, target);
+  } catch (error) {
+    rmSync(temporary, { force: true });
+    if (error.code !== 'EPERM' || !existsSync(target)) {
+      throw error;
+    }
+  }
+}
+
 function writeGenerated(generated) {
   for (const [file, text] of generated) {
     const target = path.resolve(repositoryRoot, file);
@@ -81,49 +81,73 @@ function writeGenerated(generated) {
       throw new Error(`The generated file ${file} is outside the repository`);
     }
     mkdirSync(path.dirname(target), { recursive: true });
-    writeFileSync(target, text);
+    const temporary = path.resolve(repositoryRoot, `${file}.${String(process.pid)}.tmp`);
+    if (!temporary.startsWith(repositoryRoot + path.sep)) {
+      throw new Error(`The generated file ${file} is outside the repository`);
+    }
+    writeFileSync(temporary, text);
+    replaceFile(temporary, target);
   }
 }
 
-const FLAGS = ['--check', '--refresh-eslint', '--refresh-jvm'];
+const FLAGS = ['--check', '--data', '--refresh-jvm'];
 const RUFF_OPTION = /^--refresh-ruff(?:=(.+))?$/u;
 const USAGE =
-  'Usage: node scripts/reference/gen-rules.mjs [--check] [--refresh-eslint] [--refresh-jvm] [--refresh-ruff[=<path>]]\n';
+  'Usage: node scripts/reference/gen-rules.mjs [--check | --data] [--refresh-jvm] [--refresh-ruff[=<path>]]\n';
 
-async function refreshSnapshots(options, stderr) {
+async function refreshSnapshots(options, context) {
   const ruffOption = options.map((option) => RUFF_OPTION.exec(option)).find(Boolean);
   if (ruffOption !== undefined) {
-    await refreshRuff(ruffOption[1] ?? 'ruff', stderr);
-  }
-  if (options.includes('--refresh-eslint')) {
-    await refreshEslint();
+    await refreshRuff(ruffOption[1] ?? 'ruff', context);
   }
   if (options.includes('--refresh-jvm')) {
-    await refreshJvm();
+    await refreshJvm(context);
   }
+}
+
+function writeRequested(options, reference) {
+  if (options.includes('--data')) {
+    writeGenerated(reference.referenceDataFiles(repositoryRoot));
+    return 0;
+  }
+  writeGenerated(reference.referenceFiles(repositoryRoot));
+  return 0;
+}
+
+function reportStale(registry, reference, stderr) {
+  const generated = new Map([...registry, ...reference.referenceDataFiles(repositoryRoot)]);
+  const stale = reference.staleReferenceFiles(repositoryRoot, generated);
+  if (stale.length > 0) {
+    stderr.write(`Stale (run npm run gen:rules): ${stale.join(', ')}\n`);
+  }
+  return stale.length === 0 ? 0 : 1;
 }
 
 /**
- * Regenerates the rule reference, or with `--check` lists what is stale. `--refresh-ruff[=<path>]`
- * first rewrites the ruff snapshot from that ruff (`ruff` on the PATH by default),
- * `--refresh-eslint` the ESLint inventory from the preset configs, and `--refresh-jvm` the rule
- * texts of the pinned PMD, SpotBugs, Checkstyle, detekt and Error Prone, with Maven and Java.
+ * Regenerates the plugin rule map, the Kotlin scan module list, the PMD rulesets, the ESLint
+ * inventory, the data files and the uncommitted pages. `--check` lists stale registries and data
+ * files, `--data` writes only the data files. `--refresh-ruff[=<path>]` and `--refresh-jvm` first
+ * rewrite the ruff snapshot and the texts of the pinned JVM tools.
  */
 export async function main(options, { stderr }) {
   if (!options.every((option) => FLAGS.includes(option) || RUFF_OPTION.test(option))) {
     stderr.write(USAGE);
     return 2;
   }
-  await refreshSnapshots(options, stderr);
-  if (!options.includes('--check')) {
-    writeGenerated(await formattedReferenceFiles(repositoryRoot));
-    return 0;
+  const registry = new Map([
+    [ESLINT_REGISTRY, await eslintRegistrySource(repositoryRoot)],
+    [KOTLIN_SCAN_REGISTRY, await kotlinScanRegistrySource(repositoryRoot)],
+    ...pmdRulesetSources(repositoryRoot),
+  ]);
+  if (!options.includes('--check') && !options.includes('--data')) {
+    writeGenerated(registry);
   }
-  const stale = staleReferenceFiles(repositoryRoot, referenceFiles(repositoryRoot));
-  if (stale.length > 0) {
-    stderr.write(`Stale (run npm run gen:rules): ${stale.join(', ')}\n`);
-  }
-  return stale.length === 0 ? 0 : 1;
+  await buildEslintInventory();
+  const reference = await import('../../core/reference/generate.mjs');
+  await refreshSnapshots(options, { stderr, formattedText: reference.formattedText });
+  return options.includes('--check')
+    ? reportStale(registry, reference, stderr)
+    : writeRequested(options, reference);
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(realpathSync(process.argv[1])).href) {

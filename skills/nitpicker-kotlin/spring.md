@@ -32,6 +32,11 @@ Beans and configuration:
   event.
 - `@Configuration(proxyBeanMethods = false)`, `@Bean` functions take dependencies as parameters. No
   `@ComponentScan` or `scanBasePackages`.
+- A `@Bean` function that returns a `BeanPostProcessor` or `BeanFactoryPostProcessor`, or carries
+  `@ConfigurationPropertiesBinding`, sits in a `companion object` with `@JvmStatic` and takes only
+  `Environment` or `ObjectProvider<T>`.
+- Beans taken from an `ObjectProvider` go through `orderedStream()`, never a `for` loop, `forEach`,
+  `map`, `toList`, `stream()` or `iterator()` on the provider, which ignore `@Order`.
 - Configuration comes in through a `@ConfigurationProperties` data class: `data class
 RemoteProperties(val url: String, val timeout: Duration)`. `@Value` only in a `@Configuration`
   class (`"\${shop.token}"`); no `System.getProperty`, `Environment.getProperty` or `env["key"]` in
@@ -41,10 +46,17 @@ RemoteProperties(val url: String, val timeout: Duration)`. `@Value` only in a `@
 - HTTP clients are built once, from the injected `RestClient.Builder` or `RestTemplateBuilder`
   (`private val`, `init` or `@Bean`), with timeouts. No database or HTTP calls in `@PostConstruct`,
   `afterPropertiesSet` or a `@Bean(initMethod = ...)` function; use an `ApplicationRunner`.
+- Executors, schedulers, Netty event loops, clients and coroutine scopes are their own `@Bean` (a
+  `ThreadPoolTaskExecutor` with a queue capacity) so Spring closes them. A bean that builds one in a
+  property releases it in `@PreDestroy`: `shutdown()`, then `shutdownNow()` when `awaitTermination`
+  times out, or `scope.cancel()`. A startup function that binds a port or starts a server after
+  starting threads shuts them down in a `catch` and rethrows. Never `Executors.newCachedThreadPool()`.
 - `@Scheduled`, `@Async`, cache annotations, `@PreAuthorize` and `@Retryable` need their
   `@Enable...` on a `@Configuration` class.
 
-Proxies (`@Transactional`, `@Async`, `@Cacheable`, `@Retryable`, `@PreAuthorize`):
+Proxies (`@Transactional`, `@Async`, `@Cacheable`, `@Retryable`, `@PreAuthorize`, `@RolesAllowed`,
+Resilience4j, Micrometer `@Timed`, constraints in a `@Validated` class, and annotations of your own
+that carry one of these or that an `@Aspect` matches):
 
 - Spring subclasses the bean and Kotlin is final by default: apply `kotlin("plugin.spring")` or
   write `open class` and `open fun`. A proxied function is public and never in an `object` or
@@ -57,6 +69,13 @@ Proxies (`@Transactional`, `@Async`, `@Cacheable`, `@Retryable`, `@PreAuthorize`
   `onFailure` or `fold`.
 - `@Throws(IOException::class)` or a checked `throw` needs `rollbackFor = [Exception::class]`. A
   write under `readOnly = true` needs its own plain `@Transactional`.
+- A public service function that writes more than once (`save`, `delete`, a `@Modifying` query,
+  `jdbcTemplate.update`), also through its private helpers, is `@Transactional` or runs the writes in
+  `transactionTemplate.execute { }`.
+- Write caches after the commit (`TransactionSynchronization.afterCommit`, a
+  `@TransactionalEventListener`, or the caller), never inside a writing transaction: no Spring
+  `Cache.put`/`evict`, `@CachePut`, Caffeine or Guava `put`/`invalidate`, or a map property filled
+  with a just-saved row. A transaction-aware cache manager makes the Spring `Cache` calls fine.
 - `@Async("executorName")` returning `CompletableFuture`; `@Scheduled` with `fixedDelay` or `cron`,
   not `fixedRate`.
 
@@ -98,10 +117,11 @@ GenerationType.SEQUENCE)`. `@ManyToOne` and `@OneToOne` say `fetch = FetchType.L
 - Every repository function you declare has `@Query` with named parameters (`:status`) and constant
   JPQL text, a raw string when it spans lines, never joined with `+`. Inherited `findById` and
   `save` need nothing; no derived names (`findByEmailAndStatus`). `@Modifying(clearAutomatically =
-true, flushAutomatically = true)`.
+true, flushAutomatically = true)`, with `@Transactional` on the function or the repository interface.
 - Never `save` or `delete` one entity per iteration of a loop, `forEach` or `map`: call `saveAll`
   once, per chunk for large inputs. No `flush` or `saveAndFlush` except in the JPA batch loop: a
   `for` or `while` loop that calls `persist`, then `flush` and `clear` on the `EntityManager`.
-  Filter in the query, not `findAll().filter { ... }`. Native SQL only when JPQL can't express it,
+  Filter and count in the query, not after `findAll()`, a `Flux` or `Flow` one included
+  (`filter`, `count`, `firstOrNull`, `hasElements`, `take`, `toList().size`). Native SQL only when JPQL can't express it,
   marked on that one function with `@Suppress("PMD.SpringDataNativeQuery")`,
   `EntityManager.createNativeQuery` too.

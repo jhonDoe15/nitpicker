@@ -5,6 +5,8 @@ import { ingestSarif } from '../../../../shared/ingest/sarif.mjs';
 import { createGeneratedFilter } from '../../ingest/kotlin-mutants/generated-filter.mjs';
 import { KOTLIN_REPORTS } from '../kotlin/report-names/kotlin-report-names.mjs';
 import { readKotlinClassLimitFindings } from '../kotlin/kotlin-class-limits.mjs';
+import { withDetektCountRatchets } from '../kotlin/detekt/detekt-counts.mjs';
+import { functionUnitLocator } from './function-locator.mjs';
 import { readSarifReport } from './sarif/sarif-reports.mjs';
 import { kotlinFormatAdvice } from '../kotlin/style/kotlin-format-advice.mjs';
 import {
@@ -29,6 +31,9 @@ import {
   readKotlinReviewFindings,
 } from '../kotlin/review-rules/review-findings.mjs';
 import { withoutCoveredSourceFindings } from '../kotlin/review-rules/spring/spring-findings.mjs';
+import { readKotlinNotes } from './kotlin-notes.mjs';
+import { withoutTransactionAwareCacheWrites } from '../spring/transactions/transaction-aware.mjs';
+import { springRoots } from '../spring/transactions/transaction-filters.mjs';
 
 const DETEKT_TOOL = 'detekt';
 const DETEKT_REPORT = 'detekt.sarif';
@@ -42,7 +47,7 @@ const PACKAGE_DECLARATION = /^\s*package\s+([\w.`]+)/m;
 export function requireKotlinManifest(manifest) {
   if (manifest.kotlin !== true) {
     throw new Error(
-      'The kotlin preset needs a Gradle project that applies org.jetbrains.kotlin.jvm; this one does not',
+      'The kotlin preset needs a project that applies the Kotlin plugin (org.jetbrains.kotlin.jvm for Gradle, kotlin-maven-plugin for Maven); this one does not',
     );
   }
 }
@@ -131,21 +136,26 @@ export function readKotlinFindings(context, crapLimit) {
   const fanOut = readKotlinFanOutFindings(views);
   const testRoots = manifest.kotlinTestSourceRoots ?? [];
   const helpers = context.conventions?.['kotlin.assertionHelpers'] ?? [];
-  const ruleFindings = applyKotlinRuleMessages(
-    withoutCoveredCasts([
-      ...withFrameworkAllowances(detektFindings(reportRoot, formatAdvice), {
-        projectRoot,
-        spring: manifest.spring === true,
-        testRoots,
-      }),
-      ...readKotlinSourceFindings(projectRoot, manifest).filter(leftToFanOut(fanOut.calls)),
-      ...fanOut.findings,
-      ...readCompilerFindings(reportRoot, manifest.kotlinSourceRoots ?? [], testRoots),
-    ]),
+  const ruleFindings = withDetektCountRatchets(
+    applyKotlinRuleMessages(
+      withoutCoveredCasts([
+        ...withFrameworkAllowances(detektFindings(reportRoot, formatAdvice), {
+          projectRoot,
+          spring: manifest.spring === true,
+          testRoots,
+        }),
+        ...readKotlinSourceFindings(projectRoot, manifest).filter(leftToFanOut(fanOut.calls)),
+        ...fanOut.findings,
+        ...readCompilerFindings(reportRoot, manifest.kotlinSourceRoots ?? [], testRoots),
+      ]),
+    ),
+    metrics.detektCounts,
+    functionUnitLocator({ ...context, kotlin: true }),
   );
-  return withoutCoveredSourceFindings(
+  const findings = withoutCoveredSourceFindings(
     [
       ...ruleFindings,
+      ...readKotlinNotes(reportRoot),
       ...readSuppressionFindings(projectRoot, {
         sourceRoots: manifest.kotlinSourceRoots ?? [],
         testRoots,
@@ -165,6 +175,7 @@ export function readKotlinFindings(context, crapLimit) {
     ],
     context.classLimits,
   );
+  return withoutTransactionAwareCacheWrites(findings, { projectRoot, roots: springRoots(context) });
 }
 
 function subjectOf(text) {

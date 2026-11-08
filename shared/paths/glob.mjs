@@ -198,9 +198,17 @@ function compileGlob(glob) {
   };
 }
 
-export function globMatcher(glob) {
-  return { test: compileGlob(glob) };
+function compiledOnce(compile) {
+  const compiled = new Map();
+  return (glob) => {
+    if (!compiled.has(glob)) {
+      compiled.set(glob, compile(glob));
+    }
+    return compiled.get(glob);
+  };
 }
+
+export const globMatcher = compiledOnce((glob) => ({ test: compileGlob(glob) }));
 
 export function escapeRegExp(value) {
   return value.replace(/[$()*+.?[\\\]^{|}]/g, String.raw`\$&`);

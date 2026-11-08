@@ -1,0 +1,17 @@
+[
+  {
+    "tool": "ruff",
+    "rule": "PT010",
+    "mention": "name the expected exception"
+  },
+  {
+    "tool": "ruff",
+    "rule": "PT011",
+    "mention": "match the message"
+  },
+  {
+    "tool": "ruff",
+    "rule": "PT012",
+    "mention": "one statement"
+  }
+]

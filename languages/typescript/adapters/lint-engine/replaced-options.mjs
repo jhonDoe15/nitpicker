@@ -2,6 +2,7 @@ import { spawnSync } from 'node:child_process';
 import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { resolveHeadPolicy, withHeadPolicyFile } from '../../preset/head-policy.mjs';
+import { TOOL_TIMEOUT_MS } from '../../../../shared/processes/deadlines.mjs';
 
 const REPLACED_OPTIONS_REPORT = path.join(
   import.meta.dirname,
@@ -29,7 +30,7 @@ function spawned(policy, projectRoot) {
         policyFile,
         projectRoot,
       ],
-      { cwd: projectRoot, encoding: 'utf8', maxBuffer: MAX_OUTPUT_BYTES },
+      { cwd: projectRoot, encoding: 'utf8', maxBuffer: MAX_OUTPUT_BYTES, timeout: TOOL_TIMEOUT_MS },
     );
     return result.status === 0 && existsSync(reportFile)
       ? JSON.parse(readFileSync(reportFile, 'utf8'))

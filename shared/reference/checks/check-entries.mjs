@@ -15,13 +15,18 @@ import {
   PACKAGE_EXCEPTION_RULES,
 } from '../../project-rules/hygiene-rules.mjs';
 import { PYTHON_SIZE_RULES } from '../../project-rules/size-rules.mjs';
+import { UNUSED_API_RULE_IDS } from '../../unused-api/unused-api-policy.mjs';
 import { PRESETS, ruleEntry } from '../entry.mjs';
 import { QUALITY_NOTES } from './quality-notes.mjs';
 import { SIZE_NOTES } from './size-notes.mjs';
 import { STRUCTURE_NOTES } from './structure-notes.mjs';
 
 const NOTES = { ...SIZE_NOTES, ...QUALITY_NOTES, ...STRUCTURE_NOTES };
-const PYTHON_TOP_LEVEL = [...COMMON_EXCEPTION_RULES, ...PYTHON_SIZE_RULES];
+const PYTHON_TOP_LEVEL = [
+  ...COMMON_EXCEPTION_RULES,
+  ...PYTHON_SIZE_RULES,
+  UNUSED_API_RULE_IDS.unusedOption,
+];
 const NO_EXCEPTION = [RULE_IDS.baselineExpansion];
 const OTHER_TOOLS = {
   [RULE_IDS.baselineExpansion]: ['java', 'kotlin', 'python'],

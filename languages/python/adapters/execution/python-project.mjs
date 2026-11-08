@@ -53,9 +53,12 @@ const REQUIRES_PYTHON = [
 ];
 export const INSTALLED_DIRECTORIES = ['__pycache__', 'node_modules', 'site-packages'];
 export const DOCUMENTATION_DIRECTORIES = ['docs', 'doc', 'examples', 'scripts'];
+export const TEST_DIRECTORIES = ['tests', 'test'];
+export const TOP_LEVEL_TEST_DIRECTORIES = ['testing'];
+export const ROOT_TEST_DIRECTORIES = [...TEST_DIRECTORIES, ...TOP_LEVEL_TEST_DIRECTORIES];
+
 export const NON_SOURCE_DIRECTORIES = new Set([
-  'tests',
-  'test',
+  ...TEST_DIRECTORIES,
   ...DOCUMENTATION_DIRECTORIES,
   'build',
   'dist',
@@ -181,6 +184,7 @@ export function detectSourceRoots(projectRoot, setting) {
         entry.isDirectory() &&
         !entry.name.startsWith('.') &&
         !NON_SOURCE_DIRECTORIES.has(entry.name) &&
+        !TOP_LEVEL_TEST_DIRECTORIES.includes(entry.name) &&
         existsSync(path.join(projectRoot, entry.name, '__init__.py')),
     )
     .map((entry) => entry.name)

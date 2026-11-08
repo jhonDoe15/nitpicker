@@ -1,0 +1,7 @@
+[
+  {
+    "tool": "ruff",
+    "rule": "S507",
+    "mention": "rejectpolicy"
+  }
+]

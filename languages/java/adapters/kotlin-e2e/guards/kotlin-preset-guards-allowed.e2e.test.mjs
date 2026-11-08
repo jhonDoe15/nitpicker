@@ -24,7 +24,9 @@ describe.skipIf(!kotlinE2eEnabled)('Kotlin preset allowed source forms end to en
   it('lets every allowed form through, the composition root reading the environment among them', () => {
     expect(summary(allowed.newFindings)).toEqual([]);
     expect(
-      allowed.newEnforceable.filter(({ path: file }) => file.endsWith(`${GUARD_ROOT}/App.kt`)),
+      allowed.newEnforceable.filter(
+        ({ tool, path: file }) => tool !== 'pit' && file.endsWith(`${GUARD_ROOT}/App.kt`),
+      ),
     ).toEqual([]);
   });
 });

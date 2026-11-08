@@ -105,7 +105,7 @@ it('records the TypeScript version imported by structure instead of the consumer
   });
 
   expect(typecheck.resolveVersion(liveProjectRoot)).toBe(
-    `${consumerTypeScriptVersion};typescript-native@7.0.2;${importedTypeScriptVersion}`,
+    `${consumerTypeScriptVersion};@typescript/native@7.0.2;${importedTypeScriptVersion}`,
   );
   expect(report.summary.tools[0].version).toBe(importedTypeScriptVersion);
 });

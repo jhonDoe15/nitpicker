@@ -4,7 +4,7 @@ import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { exceptionRoute } from '../../../shared/exceptions/rule-names.mjs';
 import { RUFF_CONFIG } from '../adapters/configuration/python-ruff-config.mjs';
-import { RULE_CASES } from './test-support/python-rule-cases.mjs';
+import { ruleCases } from './test-support/python-rule-cases.mjs';
 import {
   applyRuleHints,
   describeRuleFinding,
@@ -13,14 +13,17 @@ import {
   withHint,
 } from './rule-hints.mjs';
 
+const RULE_CASES = ruleCases();
+
 const route = (rule) => exceptionRoute({ rule, path: 'src/a.py', key: 'python.exceptions' });
 
-const sample = ({ tool, rule }) => ({
+const sample = ({ tool, rule, data }) => ({
   tool,
   rule,
   path: 'src/a.py',
   identity: 'x',
-  message: 'The base message.',
+  message:
+    data === undefined ? 'The base message.' : describeRuleFinding(rule, 'total.rate', { data }),
   classification: 'enforceable',
 });
 
@@ -65,12 +68,22 @@ describe('every message names the allowed form', () => {
     expect(message.toLowerCase()).toContain(testCase.mention.toLowerCase());
   });
 
-  it.each(RULE_CASES.filter((testCase) => hintFor(sample(testCase)).exception !== false))(
+  it.each(RULE_CASES.filter((testCase) => hintFor(sample(testCase)).exception === undefined))(
     'tells how to add an exception for $tool $rule',
     (testCase) => {
       expect(withHint(sample(testCase)).message.endsWith(route(testCase.rule))).toBe(true);
     },
   );
+
+  it('sends unused-option to the top-level exceptions, in the wording every preset shares', () => {
+    const { message } = withHint(
+      sample({ tool: 'python-rules', rule: 'unused-option', data: { scope: 'private' } }),
+    );
+
+    expect(message).toBe(
+      'Option total.rate is never set. Remove it, or set it from a real call (tests do not count). If this is intended, add {"rule":"unused-option","paths":["src/a.py"],"reason":"..."} to "exceptions" in nitpicker.config.json.',
+    );
+  });
 
   it('sends a suppression comment to the exception of no-inline-suppression itself', () => {
     const { message } = withHint(sample({ tool: 'python-rules', rule: 'no-inline-suppression' }));
@@ -121,6 +134,8 @@ describe('hints', () => {
       ...sample({ tool: 'ruff', rule: 'T201' }),
       message:
         'The base message. Use `logging`: `logger = logging.getLogger(__name__)`, then `logger.info(...)`. If this is intended, add {"rule":"T201","paths":["src/a.py"],"reason":"..."} to "python.exceptions" in nitpicker.config.json.',
+      allowedForm:
+        'Use `logging`: `logger = logging.getLogger(__name__)`, then `logger.info(...)`.',
     });
   });
 
@@ -183,7 +198,13 @@ describe('hints', () => {
   it('keep every other field of the finding', () => {
     const finding = sample({ tool: 'mypy', rule: 'return-value' });
 
-    expect(applyRuleHints([finding])).toEqual([{ ...finding, message: expect.any(String) }]);
+    expect(applyRuleHints([finding])).toEqual([
+      {
+        ...finding,
+        message: expect.any(String),
+        allowedForm: 'Fix the type; inline ignores are banned.',
+      },
+    ]);
   });
 
   it('describe a custom rule finding by its subject', () => {

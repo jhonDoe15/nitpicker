@@ -20,7 +20,7 @@ export function assertGradleSucceeded(
       : [];
   if (failures.length > 0) {
     throw Object.defineProperty(
-      withGradleLog(failingTestsError(projectRoot, failures), result),
+      withGradleLog(failingTestsError(failures), result, { logLast: true }),
       'failures',
       {
         value: failures,

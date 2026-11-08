@@ -1,12 +1,12 @@
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { runtimeSerializationFiles } from '../test-support/review/kotlin-review-data.mjs';
 import {
-  EXPECTED_REVIEW_FINDINGS,
-  REVIEW_RULE_FILES,
-  runtimeSerializationFiles,
-} from '../test-support/review/kotlin-review-data.mjs';
-import { reviewFindings } from '../test-support/review/kotlin-review-findings.mjs';
+  ALL_FINDINGS,
+  reviewBranchFiles,
+  reviewFindings,
+} from '../test-support/review/kotlin-review-findings.mjs';
 import {
   commitBranch,
   commitFromBranch,
@@ -21,7 +21,7 @@ describe.skipIf(!kotlinE2eEnabled)('Kotlin preset review rule serialization end 
 
   beforeAll(() => {
     project = initializeProject();
-    commitBranch(project, 'review-rules', REVIEW_RULE_FILES);
+    commitBranch(project, 'review-rules', reviewBranchFiles());
   });
   afterAll(() => {
     removeProject(project);
@@ -38,7 +38,7 @@ describe.skipIf(!kotlinE2eEnabled)('Kotlin preset review rule serialization end 
     const result = diffOf(project, 'runtime-serialization');
 
     expect(reviewFindings(result.newEnforceable)).toEqual(
-      EXPECTED_REVIEW_FINDINGS.filter((entry) => entry !== 'unused-option Envelope.retries'),
+      ALL_FINDINGS.filter((entry) => entry !== 'unused-option Envelope.retries'),
     );
   });
 });

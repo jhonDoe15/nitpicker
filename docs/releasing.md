@@ -12,8 +12,11 @@ a maintainer.
   and a patch bump is fixes only. Move to 1.0.0 when the config keys, exit codes and report files
   are declared stable.
 - Tag format: `v<version>`, for example `v0.1.0`. One package serves every language, so the tag
-  carries no language prefix. The tag must equal `package.json` `version` and point at a commit on `main`. Tags are created only at
-  release time, never ahead of it.
+  carries no language prefix. The tag must equal `package.json` `version` and point at the release commit: a commit on top of a
+  commit on `main` that adds only the generated rule pages (`docs/rules/`), which `main` does not
+  commit. Tags are created only at release time, never ahead of it.
+- `latest` follows the newest release, pre-releases included, so the README, the guides and the
+  skills on `main` link to `blob/latest/docs/rules/`. It only moves forward, like the floating tags.
 - Pre-releases use a suffix (`v0.2.0-rc.1`) and are published with
   `npm publish --tag next`.
 - Floating tags let workflows follow a release line of the GitHub action (`action.yml`):
@@ -58,14 +61,19 @@ Work from a clean checkout of `main` with full history.
 4. **Dry run.** `npm pack --dry-run` from the repository root. Confirm `LICENSE`, `README.md`,
    `package.json`, `core/`, `shared/` and `languages/` are listed, and no tests, fixtures,
    `node_modules` or reports are. Then `npm publish --dry-run`.
-5. **Tag** the merged release commit and push the tag, and for a stable release move its floating
-   tag (`v0.<minor>` before 1.0, `v<major>` from 1.0) to the same commit:
+5. **Tag** a release commit that adds the rule pages on top of the merged commit, push the tag, move
+   `latest` to it, and for a stable release move its floating tag (`v0.<minor>` before 1.0,
+   `v<major>` from 1.0) to it too:
    ```sh
-   git tag v<new-version> <commit>
+   git checkout --detach <commit>
+   npm run gen:rules && git add --force docs/rules
+   git commit -m 'Rule reference pages for v<new-version>'
+   git tag v<new-version>
    git push origin v<new-version>
+   git tag -f latest && git push --force origin refs/tags/latest
    git fetch --no-tags origin '+refs/tags/v0.<minor>:refs/tags/v0.<minor>'  # skip if it does not exist yet
-   git merge-base --is-ancestor v0.<minor> <commit>   # must succeed: the tag only moves forward
-   git tag -f v0.<minor> <commit> && git push --force origin refs/tags/v0.<minor>
+   git merge-base --is-ancestor 'v0.<minor>^' <commit>   # must succeed: the tag only moves forward
+   git tag -f v0.<minor> && git push --force origin refs/tags/v0.<minor>
    ```
 6. **Publish** from the repository root:
    ```sh
@@ -91,8 +99,9 @@ Work from a clean checkout of `main` with full history.
    [Install from a GitHub release](usage.md#from-a-github-release) shows.
 
    The `github-release` workflow does the same from the Actions tab: run it with the full SHA of the
-   release commit on `main`. It creates the tag `v<version>` from that commit's `package.json`,
-   attaches the tarball and `SHA256SUMS`, moves the floating tag unless `prerelease` is set or
+   release commit on `main`. It commits the rule pages on top of it and tags that commit
+   `v<version>` from its `package.json`, attaches the tarball and `SHA256SUMS`, moves `latest`
+   unless a newer release holds it, moves the floating tag unless `prerelease` is set or
    the version has a suffix (the step runs after the release is created, so when it fails, for
    example because the tag would move backwards or a tag ruleset of the repository blocks the
    forced push, the release stays published and the floating tag is moved by hand as in step 5),

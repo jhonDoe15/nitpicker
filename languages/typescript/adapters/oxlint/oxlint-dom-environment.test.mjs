@@ -1,7 +1,7 @@
 import { mkdirSync, mkdtempSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
-import { afterAll, describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { compareFindings } from '../../../../core/diff/comparison/compare.mjs';
 import { rule } from '../../preset/eslint-plugin/rules/testing/environment/no-unused-dom-environment.mjs';
 import { normalizeEslintResults } from '../eslint/normalize.mjs';
@@ -40,7 +40,7 @@ afterAll(() => {
   for (const root of roots) rmSync(root, { recursive: true, force: true });
 });
 
-function lintProject(sources) {
+async function lintProject(sources) {
   const root = realpathSync(mkdtempSync(path.join(tmpdir(), 'nitpicker-oxlint-dom-environment-')));
   roots.push(root);
   writeFileSync(path.join(root, 'policy.mjs'), POLICY);
@@ -48,7 +48,7 @@ function lintProject(sources) {
     mkdirSync(path.dirname(path.join(root, relativePath)), { recursive: true });
     writeFileSync(path.join(root, relativePath), text);
   }
-  const results = lintWithOxlint({
+  const results = await lintWithOxlint({
     options: { projectRoot: root, patterns: ['src/**/*.ts'] },
     environment: {
       ...process.env,
@@ -80,7 +80,11 @@ const directiveMessage = (environment) =>
     .replace('{{directive}}', directive);
 
 describe('no-unused-dom-environment under the oxlint engine', () => {
-  const linted = lintProject(SOURCES);
+  let linted;
+
+  beforeAll(async () => {
+    linted = await lintProject(SOURCES);
+  });
 
   it('reports the full message and message id for a file that never uses the DOM', () => {
     expect(reportsOf(linted, 'src/pure.test.ts')).toEqual([
@@ -119,7 +123,11 @@ describe('a no-unused-dom-environment finding under the oxlint engine', () => {
     'src/directive.test.ts': `/** ${directive} jsdom */\n${LOGIC}`,
     'src/directive-with-import.test.ts': `import { format } from './format';\n/** ${directive} jsdom */\n${LOGIC}`,
   };
-  const linted = lintProject({ ...SOURCES, ...variants });
+  let linted;
+
+  beforeAll(async () => {
+    linted = await lintProject({ ...SOURCES, ...variants });
+  });
   const findingOf = (relativePath) =>
     normalizeEslintResults({
       value: linted.results.filter((entry) => entry.filePath.endsWith(relativePath)),

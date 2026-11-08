@@ -1,0 +1,7 @@
+[
+  {
+    "tool": "python-rules",
+    "rule": "test-without-assertion",
+    "mention": "assert result == expected"
+  }
+]

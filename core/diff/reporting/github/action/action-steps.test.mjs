@@ -436,7 +436,7 @@ describe('the publish and fail steps', () => {
 
     expect([status, stdout]).toEqual([
       2,
-      'nitpicker exited with code 2 (1: new enforceable findings, 2: a tool error or a failure to decide).\n',
+      'nitpicker exited with code 2 (1: new enforceable findings or failing head tests, 2: a tool error or a failure to decide).\n',
     ]);
   });
 });

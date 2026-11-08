@@ -63,10 +63,10 @@ afterAll(() => {
 });
 
 describe('nitpicker rule messages through the oxlint engine', () => {
-  it('keeps the doc comment, hard-coded color and wall-clock wait messages with their data', () => {
+  it('keeps the doc comment, hard-coded color and wall-clock wait messages with their data', async () => {
     const root = createProject('nitpicker-oxlint-messages-', { 'policy.mjs': POLICY, ...SOURCES });
     roots.push(root);
-    const results = lintProject({ root, patterns: ['src/**/*.{ts,tsx}'] });
+    const results = await lintProject({ root, patterns: ['src/**/*.{ts,tsx}'] });
 
     const messages = Object.fromEntries(
       Object.keys(EXPECTED).map((file) => [

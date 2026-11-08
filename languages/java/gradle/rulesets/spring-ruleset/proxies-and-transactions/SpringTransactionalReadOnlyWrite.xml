@@ -1,0 +1,19 @@
+  <rule name="SpringTransactionalReadOnlyWrite" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
+        message="Put @Transactional without readOnly on this method: a write inside a read-only transaction is skipped or fails.">
+    <priority>1</priority>
+    <properties><property name="xpath"><value><![CDATA[
+//MethodDeclaration[
+    ModifierList/Annotation[pmd-java:typeIs('org.springframework.transaction.annotation.Transactional')]
+      [AnnotationMemberList/MemberValuePair[@Name = 'readOnly']/BooleanLiteral[@True = true()]]
+    or (not(ModifierList/Annotation[pmd-java:typeIs('org.springframework.transaction.annotation.Transactional')
+          or pmd-java:typeIs('jakarta.transaction.Transactional') or pmd-java:typeIs('javax.transaction.Transactional')])
+        and ancestor::ClassDeclaration[1]/ModifierList/Annotation[pmd-java:typeIs('org.springframework.transaction.annotation.Transactional')]
+          [AnnotationMemberList/MemberValuePair[@Name = 'readOnly']/BooleanLiteral[@True = true()]])]
+  //(MethodCall | MethodReference)[
+    (@MethodName = ('save', 'saveAll', 'saveAndFlush', 'saveAllAndFlush', 'delete', 'deleteAll', 'deleteById',
+      'deleteAllById', 'deleteAllInBatch', 'persist', 'merge', 'remove')
+     and *[1][pmd-java:typeIs('org.springframework.data.repository.Repository') or (pmd-java:typeIs('jakarta.persistence.EntityManager') or pmd-java:typeIs('javax.persistence.EntityManager'))])
+    or (matches(@MethodName, '^(update|delete|remove|mark|set|rename|insert|upsert|increment|decrement|reset|clear|purge|archive|touch)([A-Z\d_]|$)')
+     and *[1][pmd-java:typeIs('org.springframework.data.repository.Repository')])]
+]]></value></property></properties>
+  </rule>

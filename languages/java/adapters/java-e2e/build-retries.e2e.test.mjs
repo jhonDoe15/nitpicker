@@ -47,12 +47,12 @@ describe.skipIf(!enabled)(
         try {
           collectJavaFindings(project, { gradle, policy: {} });
         } catch (error) {
-          message = error.message.replace(/^Full Gradle log: \S+\n/u, '');
+          message = error.message.replace(/\nFull Gradle log: \S+$/u, '');
         }
 
         expect(message).toEqual(
-          `Tests fail in ${project}; nitpicker needs a passing test suite for coverage and mutation ` +
-            `testing:\n  ${FAILURE}: first attempt ==> expected: <true> but was: <false>`,
+          '1 test fails; the build stopped, so no other check ran. Fix the tests and rerun:\n' +
+            `  demo/GreeterTest.java:22 > ${FAILURE}: first attempt ==> expected: <true> but was: <false>`,
         );
       },
       180_000,
@@ -62,8 +62,8 @@ describe.skipIf(!enabled)(
       const project = projectOf('maven');
 
       expect(() => collectJavaFindings(project, { maven, policy: {} })).toThrow(
-        `Tests fail in ${project}; nitpicker needs a passing test suite for coverage and mutation ` +
-          `testing:\n  ${FAILURE}: failed, then passed on a rerun (fix the flaky test; nitpicker counts a rerun as a failure): first attempt ==> ` +
+        '1 test fails; the build stopped, so no other check ran. Fix the tests and rerun:\n' +
+          `  demo/GreeterTest.java:22 > ${FAILURE}: failed, then passed on a rerun (fix the flaky test; nitpicker counts a rerun as a failure): first attempt ==> ` +
           'expected: <true> but was: <false>',
       );
     }, 180_000);

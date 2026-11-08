@@ -1,4 +1,5 @@
 import { ancestorsOf } from '../rules/analysis/ancestry.mjs';
+import { createWriteTracker } from './direct-writes/direct-writes.mjs';
 
 const RESTORING_HOOKS = new Set(['afterEach', 'afterAll', 'onTestFinished']);
 const USER_EVENT_PACKAGE = '@testing-library/user-event';
@@ -54,7 +55,10 @@ const RESTORE_TIMERS = 'Restore them: `afterEach(() => { vi.useRealTimers(); });
 export const rule = {
   meta: {
     type: 'problem',
-    docs: { description: 'Require fake timers, and stubs made in test files, to be restored' },
+    docs: {
+      description:
+        'Require fake timers, stubs, and writes to process.env or to globals made in test files, to be restored',
+    },
     schema: [
       {
         type: 'object',
@@ -67,6 +71,10 @@ export const rule = {
       unrestoredWithUserEvent: `Fake timers stay on for the tests that follow. ${RESTORE_TIMERS} With user-event, create the user with \`userEvent.setup({ advanceTimers: vi.advanceTimersByTime })\` or its clicks wait forever.`,
       unrestoredGlobal: `This stubbed global stays stubbed for the tests that follow. Restore it: \`afterEach(() => { vi.unstubAllGlobals(); });\`, or stub it once in a setup file.`,
       unrestoredEnv: `This stubbed environment variable stays set for the tests that follow. Restore it: \`afterEach(() => { vi.unstubAllEnvs(); });\`.`,
+      unrestoredEnvWrite:
+        'This write to `process.env` stays for the tests that follow, so they pass or fail depending on the order they run in. Use `vi.stubEnv(name, value)` with `afterEach(() => { vi.unstubAllEnvs(); })`, or save the old value and put it back in `afterEach` or `finally`.',
+      unrestoredGlobalWrite:
+        'This global override stays for the tests that follow, so they pass or fail depending on the order they run in. Use `vi.stubGlobal`, `vi.spyOn(object, name)` or `vi.useFakeTimers()` and restore them in `afterEach`, or save the old value and put it back in `afterEach` or `finally`.',
     },
   },
   create(context) {
@@ -80,6 +88,7 @@ export const rule = {
     const calls = [];
     const restored = new Set();
     const state = { usesUserEvent: false };
+    const writes = createWriteTracker(context.sourceCode, isRestoredByHookOrFinally);
     return {
       ImportDeclaration(node) {
         state.usesUserEvent ||= node.source.value === USER_EVENT_PACKAGE;
@@ -92,7 +101,10 @@ export const rule = {
           }
         }
       },
+      AssignmentExpression: writes.record,
+      UnaryExpression: writes.record,
       CallExpression(node) {
+        writes.call(node);
         const method = viMember(node.callee, aliases);
         if (checked.has(method)) {
           calls.push({ node, method });
@@ -106,6 +118,9 @@ export const rule = {
           if (!restored.has(RESTORES.get(method))) {
             context.report({ node, messageId: messageIdFor(method, state) });
           }
+        }
+        for (const { node, messageId } of writes.unrestored()) {
+          context.report({ node, messageId });
         }
       },
     };

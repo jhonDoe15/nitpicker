@@ -6,6 +6,7 @@ import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -22,7 +23,7 @@ public final class Prefetch {
   private static final List<String> MIRRORS = List.of("https://a.example", "https://b.example");
   private final HttpClient client;
   private final ExecutorService workers = Executors.newFixedThreadPool(8);
-  private final ExecutorService everyone = Executors.newCachedThreadPool();
+  private final ExecutorService everyone = Executors.newCachedThreadPool(); // violation: UnboundedThreadPool
   private final ExecutorService virtual = Executors.newVirtualThreadPerTaskExecutor();
   private final Semaphore permits = new Semaphore(8);
 
@@ -202,7 +203,7 @@ public final class Prefetch {
   }
 
   private HttpRequest request(String url) {
-    return HttpRequest.newBuilder(URI.create(url)).build();
+    return HttpRequest.newBuilder(URI.create(url)).timeout(Duration.ofSeconds(10)).build(); // violation: UriCreateDynamic
   }
 
   private String body(String url) {

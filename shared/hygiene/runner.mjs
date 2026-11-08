@@ -1,19 +1,40 @@
+import { existsSync } from 'node:fs';
 import { REPOSITORY_HYGIENE_TOOL, collectRepositoryFindings } from './files/repository-files.mjs';
 import { runCheckCli } from './cli.mjs';
+import { hardcodedNameFindings } from './migrations/hardcoded-names.mjs';
+import { migrationOrderFindings } from './migrations/migration-order.mjs';
 import { withoutExcepted, withoutExcluded } from './rules.mjs';
 import { trackedFiles } from './tracked-files.mjs';
 
+function collectRepositoryHygiene(context) {
+  return [
+    ...collectRepositoryFindings(context),
+    ...migrationOrderFindings(REPOSITORY_HYGIENE_TOOL, context),
+    ...hardcodedNameFindings(REPOSITORY_HYGIENE_TOOL, context),
+  ];
+}
+
 const CHECKS = {
-  [REPOSITORY_HYGIENE_TOOL]: collectRepositoryFindings,
+  [REPOSITORY_HYGIENE_TOOL]: collectRepositoryHygiene,
 };
 
-export function runHygieneCheck({ check, projectRoot, policy = {} }) {
+function baseFilesOf(baselineRoot, exclude) {
+  return baselineRoot === undefined || !existsSync(baselineRoot)
+    ? undefined
+    : withoutExcluded(trackedFiles(baselineRoot), exclude);
+}
+
+export function runHygieneCheck({ check, projectRoot, policy = {}, baselineRoot }) {
   const collect = CHECKS[check];
   if (collect === undefined) {
     throw new Error(`Unknown hygiene check: ${check}`);
   }
   const files = withoutExcluded(trackedFiles(projectRoot), policy.exclude);
-  return withoutExcepted(collect({ projectRoot, files }), policy.exceptions);
+  const baseFiles = baseFilesOf(baselineRoot, policy.exclude);
+  return withoutExcepted(
+    collect({ projectRoot, files, baselineRoot, baseFiles }),
+    policy.exceptions,
+  );
 }
 
 export function runHygieneCli(cli) {

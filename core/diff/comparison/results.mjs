@@ -5,12 +5,30 @@ import {
   policyFindings,
 } from '../reporting/review/policy-findings.mjs';
 import { compareAnalyzers } from './base-red/compare-analyzers.mjs';
+import { scopeNotes, scopeOutcomes, scopeSummary } from '../../scope/scope-findings.mjs';
 
 export function combineAnalyzerReports(context) {
   const { baseRun, headRun, additionalToolErrors } = context;
   const toolErrors = [...additionalToolErrors, ...baseRun.toolErrors, ...headRun.toolErrors];
-  const { outcomes, notes } = compareAnalyzers({ ...context, toolErrors });
+  const compared = compareAnalyzers({ ...context, toolErrors });
+  const outcomes = scopeOutcomes(compared.outcomes, context.scope);
+  const notes = scopeNotes(compared.notes, context.scope);
   return buildReport({ ...context, outcomes, notes, toolErrors });
+}
+
+export function noChangesReport(context) {
+  const report = buildReport({
+    ...context,
+    outcomes: [],
+    notes: [],
+    toolErrors: context.additionalToolErrors,
+    policyChanges: [],
+    policyLoosenings: [],
+    notices: [],
+    baseToHeadRenames: new Map(),
+    reportsPolicy: false,
+  });
+  return { ...report, summary: { ...report.summary, noChanges: true } };
 }
 
 function collect(outcomes, key) {
@@ -58,6 +76,10 @@ function buildReport(context) {
         ? {}
         : { policyAcceptanceSource: context.policyAcceptanceSource }),
       notices,
+      ...scopeSummary(
+        context.scope,
+        outcomes.reduce((total, { outside }) => total + outside, 0),
+      ),
       tools: outcomes.map(({ tool }) => tool),
       exclusions: declaredExclusions(analyzers),
       renamedPaths: context.baseToHeadRenames.size,

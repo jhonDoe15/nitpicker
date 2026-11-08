@@ -29,6 +29,7 @@ describe.skipIf(!enabled)('Java preset escape hatches without an opt-in', () => 
       'pmd AvoidCatchingGenericException SwallowingTest.java',
       'pmd UnitTestShouldIncludeAssert SwallowingTest.java',
       'structure line-length-limit SwallowingTest.java',
+      'test-runtime no-production-runtime SwallowingTest.java',
     ]);
   });
 });

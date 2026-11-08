@@ -30,6 +30,9 @@ export function withRuleClassOf(root, framework) {
 export function summary(findings) {
   return findings
     .filter(({ tool }) => tool !== 'coupling')
+    .filter(
+      ({ tool, classification }) => tool !== 'test-runtime' || classification !== 'descriptive',
+    )
     .map(({ tool, rule, path: file, identity, metric }) =>
       [tool, rule, file, identity, metric?.value].filter((part) => part !== undefined).join(' '),
     )

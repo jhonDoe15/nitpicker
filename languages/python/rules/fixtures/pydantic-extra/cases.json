@@ -1,0 +1,7 @@
+[
+  {
+    "tool": "python-rules",
+    "rule": "pydantic-extra-allow",
+    "mention": "extra=\"forbid\""
+  }
+]

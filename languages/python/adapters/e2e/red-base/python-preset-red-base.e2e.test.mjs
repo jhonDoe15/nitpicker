@@ -90,7 +90,7 @@ describe.skipIf(!pythonE2eEnabled)('Python preset on a base whose tests fail', (
   it('still fails when the head fails its tests too', () => {
     const result = gate(project, 'still-red', { base: 'red-base' });
 
-    expect(result.exitCode, result.text).toBe(2);
+    expect(result.exitCode, result.text).toBe(1);
     expect(result.json('notes.json')).toEqual([]);
     expect(
       result.json('tool-errors.json').map(({ snapshot, rule }) => `${snapshot} ${rule}`),

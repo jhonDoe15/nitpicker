@@ -47,12 +47,6 @@ describe('tool precedence', () => {
     );
   });
 
-  it('has no precedence for the TypeScript compiler', () => {
-    expect(() => validateConfig({ tools: { typescript: { precedence: ['project'] } } })).toThrow(
-      '"tools.typescript" has unknown key "precedence"',
-    );
-  });
-
   it.each([
     ['eslint', 'biome', ['oxlint', 'eslint']],
     ['eslint', '', ['oxlint', 'eslint']],

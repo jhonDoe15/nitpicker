@@ -52,7 +52,8 @@ public final class MutationFacts {
         "functions", functions.entries,
         "lambdas", lambdas.entries,
         "branching", branching.branchingLines(),
-        "casts", branching.castLines());
+        "casts", branching.castLines(),
+        "exhaustiveLastEntries", branching.exhaustiveLastEntryLines());
   }
 
   private void scan(PsiElement element, Branching branching, Lambdas lambdas) {

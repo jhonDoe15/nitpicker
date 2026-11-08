@@ -1,0 +1,8 @@
+[
+  {
+    "name": "print names logging",
+    "tool": "ruff",
+    "rule": "T201",
+    "mention": "logging.getLogger"
+  }
+]

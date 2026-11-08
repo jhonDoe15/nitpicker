@@ -8,7 +8,10 @@ export function readDurations(file = durationFile()) {
   return new Map(Object.entries(JSON.parse(readFileSync(file, 'utf8'))));
 }
 
-const weightOf = (durations, file) => durations.get(file) ?? UNMEASURED_SECONDS;
+/** The recorded seconds of `file`, or one second for a file the profile does not name. */
+export function weightOf(durations, file) {
+  return durations.get(file) ?? UNMEASURED_SECONDS;
+}
 
 export function heaviestFirst(files, durations) {
   return files.toSorted(

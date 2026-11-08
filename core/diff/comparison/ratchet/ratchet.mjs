@@ -1,7 +1,7 @@
 import { baseMoves, comparisonKey } from '../fingerprint.mjs';
 import { normalizeGitPath } from '../../git/normalize.mjs';
 import { folderMoves, mainDestination } from '../../git/patches/renames.mjs';
-import { insertBeforeRoute } from '../../../../shared/messages/exception-sentence.mjs';
+import { withGrowthAdvice, withWorseMessage } from '../../../../shared/messages/finding-advice.mjs';
 import { isInTouchedCode, isOnAddedLine } from './touched-code.mjs';
 
 const NO_MOVES = baseMoves(new Map());
@@ -54,7 +54,7 @@ function holdAgainst(headFindings, baseByRatchet, { touchedCode, matchedBase, ke
       continue;
     }
     if (headFinding.ratchet.value > baseFinding.ratchet.value) {
-      result.grew.push(grewFinding(headFinding, baseFinding.ratchet.value));
+      result.grew.push(withWorseMessage(headFinding, baseFinding.ratchet.value));
       continue;
     }
     candidates.splice(candidates.indexOf(baseFinding), 1);
@@ -81,7 +81,7 @@ function closestCandidate(candidates, value) {
   return pool.find((candidate) => candidate.ratchet.value === target);
 }
 
-export function withGrowthAdvice({ findings, baseFindings, moves }) {
+export function addGrowthAdvice({ findings, baseFindings, moves }) {
   const baseValues = new Map(
     baseFindings
       .filter((baseFinding) => baseFinding.ratchet !== undefined)
@@ -90,15 +90,7 @@ export function withGrowthAdvice({ findings, baseFindings, moves }) {
   return findings.map((finding) => {
     const advice = finding.ratchet?.growthAdvice;
     const baseValue = advice === undefined ? undefined : baseValues.get(ratchetKey(finding));
-    return baseValue === undefined
-      ? finding
-      : {
-          ...finding,
-          message: insertBeforeRoute(
-            finding.message,
-            advice.replaceAll('{base}', String(baseValue)),
-          ),
-        };
+    return baseValue === undefined ? finding : withGrowthAdvice(finding, baseValue);
   });
 }
 
@@ -121,13 +113,6 @@ function holdCandidatesFor(headFinding, baseByRatchet, { touchedCode, keyOf }) {
     isOnAddedLine(headFinding, touchedCode);
   const key = isNeverHeld ? undefined : keyOf(headFinding);
   return key === undefined ? undefined : baseByRatchet.get(key);
-}
-
-export function grewFinding(headFinding, baseValue) {
-  const { worseMessage } = headFinding.ratchet;
-  return worseMessage === undefined
-    ? headFinding
-    : { ...headFinding, message: worseMessage.replaceAll('{base}', String(baseValue)) };
 }
 
 function ratchetKey(finding, moves = NO_MOVES) {

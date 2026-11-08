@@ -46,10 +46,7 @@ describe.skipIf(process.env.NITPICKER_KOTLIN_E2E !== '1')(
           'ktlint ktlint.standard:function-signature Bad.kt',
           'ktlint ktlint.standard:function-signature Bad.kt',
           'ktlint ktlint.standard:function-signature Bad.kt',
-          'pit mutant-nocoverage Bad.kt',
-          'pit mutant-nocoverage Bad.kt',
-          'pit mutant-nocoverage Bad.kt',
-          'pit mutant-nocoverage Bad.kt',
+          ...Array.from({ length: 6 }, () => 'pit mutant-nocoverage Bad.kt'),
         ],
       },
     });

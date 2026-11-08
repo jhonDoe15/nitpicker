@@ -22,14 +22,14 @@ describe.skipIf(!enabled)('a failing integration task wired to check', () => {
     } catch (error) {
       runs.failure = error.message
         .replaceAll(project, '<project>')
-        .replace(/^Full Gradle log: \S+\n/u, '');
+        .replace(/\nFull Gradle log: \S+$/u, '');
     }
   }, 180_000);
 
   it('fail the build naming the failing cases of a checked integration task', () => {
     expect(runs.failure).toEqual(
-      'Tests fail in <project>; nitpicker needs a passing test suite for coverage and mutation testing:\n' +
-        '  demo.GreeterIT.saysGoodbye: expected: <Nope> but was: <Goodbye, Ada>',
+      '1 test fails; the build stopped, so no other check ran. Fix the tests and rerun:\n' +
+        '  demo/GreeterIT.java:10 > demo.GreeterIT.saysGoodbye: expected: <Nope> but was: <Goodbye, Ada>',
     );
   });
 });

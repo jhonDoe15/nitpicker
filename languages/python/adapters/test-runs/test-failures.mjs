@@ -1,18 +1,73 @@
 import {
   TESTS_FAILED_RULE,
   TESTS_NOT_RUN_RULE,
+  testsFailHeadline,
   testsFailOnBase,
 } from '../../../../shared/rules/finding-helpers.mjs';
+import {
+  failingTestEntries,
+  valuesInMessage,
+} from '../../../../shared/rules/failing-tests/failing-tests.mjs';
+import path from 'node:path';
 
 const TESTS_TOOL = 'tests';
 const UNITTEST_FAILURE = /^(?:FAIL|ERROR): (\S+) \(([\w.]+)\)/gmu;
-const LISTED_TESTS = 20;
 const LOAD_FAILURE_OWNER = '_FailedTest';
 
-export function unittestFailures(stderr) {
-  return [...stderr.matchAll(UNITTEST_FAILURE)].map(([, method, owner]) => {
+const BLOCK_END = /^(?:={20,}|-{20,})$/mu;
+const TRACEBACK_FILE = /^\s*File "(?<file>[^"]+)", line (?<line>\d+)/gmu;
+
+function projectPath(file, projectRoot) {
+  const relative = path.relative(projectRoot ?? '', file).replaceAll('\\', '/');
+  return projectRoot === undefined || relative.startsWith('..') || path.isAbsolute(relative)
+    ? path.basename(file)
+    : relative;
+}
+
+const FRAME_LINE = /^\s*File "/u;
+const INDENTED = /^\s/u;
+
+function exceptionLine(block) {
+  const lines = block.split('\n');
+  const lastFrame = lines.findLastIndex((line) => FRAME_LINE.test(line));
+  return lastFrame === -1
+    ? undefined
+    : lines.slice(lastFrame + 1).find((line) => line.trim() !== '' && !INDENTED.test(line));
+}
+
+function inTestModule(file, owner, projectRoot) {
+  const module = projectPath(file, projectRoot).replace(/\.py$/u, '').replaceAll('/', '.');
+  return `${owner}.`.startsWith(`${module}.`);
+}
+
+function tracebackFailure(block, { owner, projectRoot }) {
+  const frames = [...block.matchAll(TRACEBACK_FILE)].map(({ groups }) => groups);
+  const message = exceptionLine(block)?.trim();
+  const frame =
+    frames.findLast(({ file }) => inTestModule(file, owner, projectRoot)) ??
+    frames.findLast(({ file }) => !file.includes(`${path.sep}unittest${path.sep}`));
+  return {
+    ...(frame === undefined
+      ? {}
+      : { path: projectPath(frame.file, projectRoot), line: Number(frame.line) }),
+    ...(message === undefined ? {} : { message }),
+  };
+}
+
+export function unittestFailures(stderr, projectRoot) {
+  return [...stderr.matchAll(UNITTEST_FAILURE)].map((match) => {
+    const [header, method, owner] = match;
     const id = owner.endsWith(`.${method}`) ? owner : `${owner}.${method}`;
-    return { id, file: undefined, notRun: owner.includes(LOAD_FAILURE_OWNER) };
+    const rest = stderr.slice(match.index + header.length).replace(/^[^\n]*\n-{20,}\n/u, '');
+    const end = rest.search(BLOCK_END);
+    const block = end === -1 ? rest : rest.slice(0, end);
+    const failure = tracebackFailure(block, { owner, projectRoot });
+    return {
+      id,
+      file: undefined,
+      notRun: owner.includes(LOAD_FAILURE_OWNER),
+      ...(Object.keys(failure).length === 0 ? {} : { failure }),
+    };
   });
 }
 
@@ -24,10 +79,24 @@ function modulesOfFailures(failures) {
   return [...new Set(failures.map(({ file }) => file).filter(Boolean))].sort();
 }
 
+function entryOf({ id, file, failure = {} }) {
+  const where = failure.path ?? file;
+  const name = where !== undefined && id.startsWith(`${where}::`) ? id.slice(where.length + 2) : id;
+  return {
+    file: where,
+    name,
+    ...(failure.line === undefined ? {} : { line: failure.line }),
+    ...(failure.message === undefined ? {} : { message: failure.message }),
+    ...valuesInMessage(failure.message),
+  };
+}
+
 function listed(failures) {
-  const shown = failures.slice(0, LISTED_TESTS).map(({ id }) => `  ${id}`);
-  const more = failures.length - LISTED_TESTS;
-  return more > 0 ? [...shown, `  and ${String(more)} more`] : shown;
+  return failingTestEntries(failures.map(entryOf));
+}
+
+function listedIds(failures) {
+  return failingTestEntries(failures.map(({ id }) => ({ name: id })));
 }
 
 function mutationLine(failures, testRunner) {
@@ -40,9 +109,11 @@ function mutationLine(failures, testRunner) {
 
 function headMessage(testFailures, testRunner) {
   return [
-    `Tests fail in ${snapshotScope('head')}. Make each failing test pass:`,
+    testsFailHeadline(
+      testFailures.length,
+      'the static analyzers ran, and coverage and CRAP come from the tests that ran',
+    ),
     ...listed(testFailures),
-    'The static analyzers ran as usual; coverage and CRAP come from the tests that ran.',
     ...mutationLine(testFailures, testRunner),
   ].join('\n');
 }
@@ -50,7 +121,7 @@ function headMessage(testFailures, testRunner) {
 function notRunMessage(testFailures, snapshot) {
   return [
     `Tests could not run in ${snapshotScope(snapshot)}. Fix what stops them from loading:`,
-    ...listed(testFailures),
+    ...listedIds(testFailures),
   ].join('\n');
 }
 

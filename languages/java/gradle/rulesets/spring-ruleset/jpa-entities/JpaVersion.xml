@@ -1,0 +1,14 @@
+  <rule name="JpaVersion" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
+        message="Add a @Version field next to the @Id, so concurrent updates fail instead of overwriting each other. Mark entities that are never updated with @Immutable.">
+    <priority>2</priority>
+    <properties><property name="xpath"><value><![CDATA[
+//ClassDeclaration[ModifierList/Annotation[(pmd-java:typeIs('jakarta.persistence.Entity') or pmd-java:typeIs('javax.persistence.Entity')) or (pmd-java:typeIs('jakarta.persistence.MappedSuperclass') or pmd-java:typeIs('javax.persistence.MappedSuperclass'))]]
+  [(not(ExtendsList) and ModifierList/Annotation[(pmd-java:typeIs('jakarta.persistence.Entity') or pmd-java:typeIs('javax.persistence.Entity'))])
+   or ClassBody/(FieldDeclaration | MethodDeclaration)/ModifierList/Annotation[
+     (pmd-java:typeIs('jakarta.persistence.Id') or pmd-java:typeIs('javax.persistence.Id')) or (pmd-java:typeIs('jakarta.persistence.EmbeddedId') or pmd-java:typeIs('javax.persistence.EmbeddedId'))]]
+  [not(ModifierList/Annotation[pmd-java:typeIs('org.hibernate.annotations.Immutable')])]
+  [not(ClassBody/(FieldDeclaration | MethodDeclaration)/ModifierList/Annotation[(pmd-java:typeIs('jakarta.persistence.Version') or pmd-java:typeIs('javax.persistence.Version'))])]
+  /ModifierList/Annotation[(pmd-java:typeIs('jakarta.persistence.Entity') or pmd-java:typeIs('javax.persistence.Entity'))
+    or (pmd-java:typeIs('jakarta.persistence.MappedSuperclass') or pmd-java:typeIs('javax.persistence.MappedSuperclass'))]
+]]></value></property></properties>
+  </rule>

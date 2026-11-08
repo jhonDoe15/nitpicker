@@ -1,0 +1,8 @@
+[
+  {
+    "name": "except returning None names re-raising",
+    "tool": "python-rules",
+    "rule": "swallowed-exception",
+    "mention": "re-raise"
+  }
+]

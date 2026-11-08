@@ -32,6 +32,11 @@ export const ONE_WAY_VIOLATIONS = [
 export const HIDDEN_ERROR =
   'from typing import no_type_check\n\n\n@no_type_check\ndef hidden(value: int) -> str:\n    return value * 2\n';
 
+export const UNLINKED_TEST = 'def test_arithmetic():\n    assert 1 + 1 == 2\n';
+
+export const TYPE_ONLY_TEST =
+  'from typing import TYPE_CHECKING\n\nif TYPE_CHECKING:\n    from demo.greeter import greet\n\n\ndef test_arithmetic() -> None:\n    handler: greet | None = None\n    assert handler is None\n';
+
 export const WEAKENED_MYPY = `${readFileSync(path.join(fixture, 'pyproject.toml'), 'utf8')}\n[tool.mypy]\nignore_errors = true\ndisable_error_code = ["return-value"]\nexclude = ["src/demo/typed.py"]\n`;
 
 export const WEAKENED_PYRIGHT = JSON.stringify({
@@ -132,3 +137,29 @@ export const SIGN_NEGATIVE = ['sign_negative', 'signs.sign(-5) == -1'];
 export const CLAMP_LOW = ['clamp_low', 'signs.clamp(1) == 1'];
 
 export const CLAMP_HIGH = ['clamp_high', 'signs.clamp(50) == 10'];
+
+export const RUNTIME_TEST = [
+  'import logging',
+  'import time',
+  '',
+  'from demo.legacy import value',
+  '',
+  '',
+  'def test_value_is_cached():',
+  '    logging.getLogger("demo").warning("cache is cold for key %s", 42)',
+  '    time.sleep(0.3)',
+  '    assert value() == 1',
+  '',
+].join('\n');
+
+export const NOISY_TEST = [
+  'import sys',
+  '',
+  'from demo.legacy import clamp',
+  '',
+  '',
+  'def test_clamp_limits():',
+  '    sys.stderr.write("clamping above the limit\\n")',
+  '    assert clamp(30) == 10',
+  '',
+].join('\n');

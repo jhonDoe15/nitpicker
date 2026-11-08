@@ -1,5 +1,6 @@
 import { spawnSync } from 'node:child_process';
 import { environmentError } from './environment-error.mjs';
+import { PROBE_TIMEOUT_MS } from '../../../../../shared/processes/deadlines.mjs';
 
 export const INSTALL_HINTS = {
   uv: 'install uv with `curl -LsSf https://astral.sh/uv/install.sh | sh` or `pip install uv`',
@@ -12,7 +13,10 @@ export const INSTALL_HINTS = {
 };
 
 export function isMissing(binary) {
-  return spawnSync(binary, ['--version'], { stdio: 'ignore' }).error?.code === 'ENOENT';
+  return (
+    spawnSync(binary, ['--version'], { stdio: 'ignore', timeout: PROBE_TIMEOUT_MS }).error?.code ===
+    'ENOENT'
+  );
 }
 
 export function missingToolError(kind, purpose) {

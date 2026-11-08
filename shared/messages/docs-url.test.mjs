@@ -41,6 +41,19 @@ describe('docsUrl', () => {
     );
   });
 
+  it('points a rule page at the latest release from a checkout, since main does not commit the pages', () => {
+    const main = 'https://github.com/owner/nitpicker/blob/main';
+    const tag = 'https://github.com/owner/nitpicker/blob/v1.2.0';
+
+    expect(docsUrl('docs/rules/README.md', undefined, main)).toBe(
+      'https://github.com/owner/nitpicker/blob/latest/docs/rules/README.md',
+    );
+    expect(docsUrl('docs/rules/checks.md', 'structure', tag)).toBe(
+      `${tag}/docs/rules/checks.md#structure`,
+    );
+    expect(docsUrl('docs/usage.md', undefined, main)).toBe(`${main}/docs/usage.md`);
+  });
+
   it('adds the anchor as the fragment when there is one', () => {
     expect(docsUrl('docs/rules/checks.md', 'structure-function-lines-limit')).toBe(
       `${docsUrl('docs/rules/checks.md')}#structure-function-lines-limit`,

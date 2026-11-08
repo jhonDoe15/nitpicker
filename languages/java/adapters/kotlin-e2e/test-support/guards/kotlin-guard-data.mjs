@@ -13,11 +13,11 @@ const methods = Array.from(
 );
 
 const HTTP = `${PACKAGE}import java.net.URI\nimport java.net.http.HttpClient\nimport java.net.http.HttpRequest\nimport java.net.http.HttpResponse\nimport java.time.Duration\nimport java.util.concurrent.CompletableFuture\n`;
-const BODY = `    private fun body(url: String): String {\n        val request = HttpRequest.newBuilder(URI.create(url)).timeout(Duration.ofSeconds(5)).build()\n        return client.send(request, HttpResponse.BodyHandlers.ofString()).body()\n    }\n`;
+const BODY = `    private fun body(url: URI): String {\n        val request = HttpRequest.newBuilder(url).timeout(Duration.ofSeconds(5)).build()\n        return client.send(request, HttpResponse.BodyHandlers.ofString()).body()\n    }\n`;
 function prefetch(task, extra = '') {
-  return `${HTTP}${extra === '' ? '' : 'import java.util.concurrent.Semaphore\n'}\nclass Prefetch(private val client: HttpClient) {\n${extra === '' ? '' : '    private val permits = Semaphore(8)\n\n'}    fun pages(urls: List<String>): List<CompletableFuture<String>> =\n        urls.map { url -> CompletableFuture.supplyAsync { ${task}(url) } }\n\n${extra}${BODY}}\n`;
+  return `${HTTP}${extra === '' ? '' : 'import java.util.concurrent.Semaphore\n'}\nclass Prefetch(private val client: HttpClient) {\n${extra === '' ? '' : '    private val permits = Semaphore(8)\n\n'}    fun pages(urls: List<URI>): List<CompletableFuture<String>> =\n        urls.map { url -> CompletableFuture.supplyAsync { ${task}(url) } }\n\n${extra}${BODY}}\n`;
 }
-const LIMITED = `    private fun limited(url: String): String {\n        permits.acquire()\n        try {\n            return body(url)\n        } finally {\n            permits.release()\n        }\n    }\n\n`;
+const LIMITED = `    private fun limited(url: URI): String {\n        permits.acquire()\n        try {\n            return body(url)\n        } finally {\n            permits.release()\n        }\n    }\n\n`;
 
 export const GUARD_ROOT = 'src/main/kotlin/demo/guards';
 const GUARD_TEST_ROOT = 'src/test/kotlin/demo/guards';
@@ -32,9 +32,11 @@ const BANNED_GUARDS = {
   'Mutation.kt': `${PACKAGE}fun append(items: MutableList<String>) {\n    items.add("x")\n}\n`,
   'Legacy.kt': `${PACKAGE}@Deprecated("Use current")\nfun legacy(): Int = 1\n\nfun current(): Int = 2\n`,
   'Parser.kt': parser('logger.log(Level.WARNING, "parse failed")'),
+  'Formats.kt': `${LEVELS}class Formats(private val logger: Logger) {\n    fun loaded(count: Int) {\n        logger.log(Level.INFO, "loaded {0} of {1}", count)\n    }\n}\n`,
   'Secrets.kt': `${PACKAGE}val password = "hunter22x"\n`,
   'OrderHelper.kt': `${PACKAGE}class OrderHelper {\n    fun total(): Int = 1\n}\n`,
   'Commented.kt': `${PACKAGE}fun subtotal(): Int {\n    // val discount = compute(1)\n    return 1\n}\n`,
+  'StringUtils.kt': `${PACKAGE}fun trimmed(text: String): String = text.trim()\n`,
   'Marked.kt': `${PACKAGE}annotation class Generated\n\n@Generated\nfun keep(): Int = 1\n`,
   'Casts.kt': `${PACKAGE}@Deprecated("Use next")\nfun old(): Int = 1\n\nfun next(): Int = old()\n\n@Suppress("unused")\nfun names(value: Any): List<String> = value as List<String>\n\nfun same(value: String): String = value as String\n`,
   'Wide.kt': `${PACKAGE}class Wide {\n${methods.join('\n')}\n}\n`,
@@ -42,10 +44,16 @@ const BANNED_GUARDS = {
   'Literals.kt': `${PACKAGE}fun labels(): List<String> = listOf("shipping", "shipping", "shipping")\n`,
   'App.kt': `${PACKAGE}fun main() {\n    ProcessBuilder("serve", "--port", System.getenv("PORT")).inheritIO().start()\n}\n`,
   'Prefetch.kt': prefetch('body'),
+  'Links.kt': `${PACKAGE}import java.net.URI\n\nfun cover(path: String): URI = URI.create("https://shop.example/$path")\n`,
+  'Streams.kt': `${PACKAGE}import java.io.File\nimport java.util.jar.JarFile\n\nfun manifestOf(root: File): String = JarFile(root).name\n`,
+  'Routes.kt': `${PACKAGE}fun route(name: String): Regex = Regex("^/$name/")\n\nfun clean(text: String): String = text.replace(Regex("abc"), "")\n`,
+  'Exports.kt': `${PACKAGE}fun render(command: List<String>): Int = ProcessBuilder(command).start().waitFor()\n`,
+  'Versions.kt': `${PACKAGE}fun version(command: List<String>): String {\n    val process = ProcessBuilder(command).start()\n    return process.inputStream.bufferedReader().readText()\n}\n`,
 };
 
 const BANNED_TESTS = {
   'EmptyTest.kt': `${PACKAGE}class EmptyTest {\n    fun setUp() = Unit\n}\n`,
+  'StaleTest.kt': `${PACKAGE}import kotlin.test.Test\nimport kotlin.test.assertEquals\n\nclass StaleTest {\n    @Test\n    fun totals() {\n        // val before = subtotal()\n        assertEquals(1, subtotal())\n    }\n}\n`,
 };
 
 const ALLOWED_GUARDS = {
@@ -58,14 +66,21 @@ const ALLOWED_GUARDS = {
   'Mutation.kt': `${PACKAGE}fun append(items: List<String>): List<String> = items + "x"\n`,
   'Legacy.kt': `${PACKAGE}fun current(): Int = 2\n`,
   'Parser.kt': parser('logger.log(Level.WARNING, "parse failed", e)'),
+  'Formats.kt': `${LEVELS}class Formats(private val logger: Logger) {\n    fun loaded(count: Int, total: Int) {\n        logger.log(Level.INFO, "loaded {0} of {1}", arrayOf(count, total))\n    }\n}\n`,
   'Secrets.kt': `${PACKAGE}data class Credentials(val password: String)\n`,
   'PriceRounder.kt': `${PACKAGE}class PriceRounder {\n    fun round(cents: Int): Int = cents\n}\n`,
   'Commented.kt': `${PACKAGE}// Totals are in cents, so rounding stays exact.\nfun subtotal(): Int = 1\n`,
+  'StringTrimming.kt': `${PACKAGE}fun trimmed(text: String): String = text.trim()\n`,
   'Marked.kt': `${PACKAGE}fun keep(): Int = 1\n`,
   'Casts.kt': `${PACKAGE}fun next(): Int = 1\n\nfun names(value: Any): List<String> = (value as? List<*>).orEmpty().filterIsInstance<String>()\n\nfun same(value: String): String = value\n`,
   'Literals.kt': `${PACKAGE}private const val SHIPPING = "shipping"\n\nfun labels(): List<String> = listOf(SHIPPING, SHIPPING, SHIPPING)\n\nfun kind(text: String): Int = when (text) {\n    "shipping-pending" -> 1\n    "shipping-sent", "shipping-pending" -> 2\n    else -> 3\n}\n\nfun more(): Map<String, Int> = mapOf("shipping-pending" to 1)\n`,
   'App.kt': `${PACKAGE}fun main() {\n    ProcessBuilder("serve", "--port", System.getenv("PORT")).inheritIO().start()\n}\n`,
   'Prefetch.kt': prefetch('limited', LIMITED),
+  'Links.kt': `${PACKAGE}import java.net.URI\n\nfun cover(path: String): URI? = runCatching { URI.create("https://shop.example/$path") }.getOrNull()\n`,
+  'Streams.kt': `${PACKAGE}import java.io.File\nimport java.util.jar.JarFile\n\nfun manifestOf(root: File): String = JarFile(root).use { it.name }\n`,
+  'Routes.kt': `${PACKAGE}fun route(name: String): Regex = Regex("^/\${Regex.escape(name)}/")\n\nfun clean(text: String): String = text.replace("abc", "")\n`,
+  'Exports.kt': `${PACKAGE}import java.util.concurrent.TimeUnit\n\nprivate const val DEADLINE_SECONDS = 30L\n\nfun render(command: List<String>): Int {\n    val process = ProcessBuilder(command).start()\n    check(process.waitFor(DEADLINE_SECONDS, TimeUnit.SECONDS)) { "timed out: $command" }\n    return process.exitValue()\n}\n`,
+  'Versions.kt': `${PACKAGE}import java.util.concurrent.CompletableFuture\nimport java.util.concurrent.TimeUnit\n\nprivate const val VERSION_SECONDS = 30L\n\nfun version(command: List<String>): String {\n    val process = ProcessBuilder(command).start()\n    val output = CompletableFuture.supplyAsync { process.inputStream.bufferedReader().readText() }\n    check(process.waitFor(VERSION_SECONDS, TimeUnit.SECONDS)) { "timed out: $command" }\n    return output.join()\n}\n`,
 };
 
 const ALLOWED_TESTS = {
@@ -92,6 +107,7 @@ export const EXPECTED_BANNED = [
   'kotlin-source/ShellCommand Shell.kt',
   'kotlin-source/CatchOnlyLogsOrReturnsDefault Loader.kt',
   'detekt/catch-log-without-exception Parser.kt',
+  'kotlin-source/LogFormatArguments Formats.kt',
   'kotlin-source/BooleanFlagParameter Flags.kt',
   'kotlin-source/TriStateBoolean TriState.kt',
   'kotlin-source/ParameterMutation Mutation.kt',
@@ -100,10 +116,18 @@ export const EXPECTED_BANNED = [
   'kotlin-source/HardcodedSecret Secrets.kt',
   'kotlin-source/GenericTypeName OrderHelper.kt',
   'kotlin-source/CommentedOutCode Commented.kt',
+  'kotlin-source/GenericFileName StringUtils.kt',
+  'kotlin-source/CommentedOutCode StaleTest.kt',
   'kotlin-source/RepeatedStringLiteral Literals.kt',
   'kotlin-source/GeneratedOnHandWrittenCode Marked.kt',
   'kotlin-source/TestClassWithoutTestCases EmptyTest.kt',
   'kotlin-source/UnboundedFanOut Prefetch.kt',
+  'kotlin-source/UriCreateDynamic Links.kt',
+  'kotlin-source/UnclosedInlineResource Streams.kt',
+  'kotlin-source/UnquotedRegexValue Routes.kt',
+  'kotlin-source/PlainTextRegex Routes.kt',
+  'kotlin-source/ProcessWaitWithoutTimeout Exports.kt',
+  'kotlin-source/ProcessWaitWithoutTimeout Versions.kt',
   'kotlinc/deprecation Casts.kt',
   'kotlinc/unchecked Casts.kt',
   'kotlinc/cast Casts.kt',

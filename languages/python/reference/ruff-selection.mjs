@@ -2,6 +2,7 @@ import { spawnSync } from 'node:child_process';
 import { isStableRule } from '../adapters/configuration/python-ruff-config.mjs';
 import { RUFF_IGNORE, RUFF_SELECT } from '../adapters/configuration/python-rule-ids.mjs';
 import { paragraphsOf } from '../../../shared/reference/build/text.mjs';
+import { PROBE_TIMEOUT_MS } from '../../../shared/processes/deadlines.mjs';
 
 const CODE = /^([A-Z]+)(\d*)$/u;
 const MAXIMUM_OUTPUT = 64 * 1024 * 1024;
@@ -78,7 +79,7 @@ export function isOlderVersion(left, right) {
 }
 
 function ruffVersion(ruff) {
-  const result = spawnSync(ruff, ['--version'], { encoding: 'utf8' });
+  const result = spawnSync(ruff, ['--version'], { encoding: 'utf8', timeout: PROBE_TIMEOUT_MS });
   return result.status === 0 ? VERSION.exec(result.stdout)?.[1] : undefined;
 }
 
@@ -91,6 +92,7 @@ export function installedRuffRules(ruff) {
   const result = spawnSync(ruff, ['rule', '--all', '--output-format', 'json'], {
     encoding: 'utf8',
     maxBuffer: MAXIMUM_OUTPUT,
+    timeout: PROBE_TIMEOUT_MS,
   });
   const version = ruffVersion(ruff);
   return result.status === 0 && version !== undefined

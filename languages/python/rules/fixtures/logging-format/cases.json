@@ -1,0 +1,22 @@
+[
+  {
+    "tool": "ruff",
+    "rule": "G001",
+    "mention": "pass the values as arguments"
+  },
+  {
+    "tool": "ruff",
+    "rule": "G002",
+    "mention": "pass the values as arguments"
+  },
+  {
+    "tool": "ruff",
+    "rule": "G003",
+    "mention": "pass the values as arguments"
+  },
+  {
+    "tool": "ruff",
+    "rule": "G004",
+    "mention": "pass the values as arguments"
+  }
+]

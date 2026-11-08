@@ -5,6 +5,7 @@ import { afterEach, describe, expect, it } from 'vitest';
 import { applyFindingPolicy } from '../../../../shared/findings/finding-policy.mjs';
 import { readDuplicateFindings, runJavaDuplicates } from '../metrics/java-duplicates.mjs';
 import { readKotlinDuplicateFindings, runKotlinDuplicates } from '../kotlin/kotlin-duplicates.mjs';
+import { mergedRoots } from '../../builds/java-modules.mjs';
 
 const roots = [];
 
@@ -227,6 +228,48 @@ describe('duplicates in Kotlin sources', () => {
     expect(kotlinClones(projectRoot, ['target']).map(({ path: file }) => file)).toEqual([
       'src/main/kotlin/demo/build/One.kt',
     ]);
+  });
+});
+
+describe('duplicates across the modules of a Maven project', () => {
+  function reactor() {
+    const projectRoot = realpathSync(mkdtempSync(path.join(tmpdir(), 'nitpicker-reactor-clones-')));
+    roots.push(projectRoot);
+    const files = {
+      'app/src/main/java/demo/One.java': javaFile('One', '', BODY),
+      'app/src/main/java/demo/Two.java': javaFile('Two', '', BODY),
+      'core/src/main/kotlin/demo/One.kt': `package demo\n\n${KOTLIN_BODY}\n`,
+      'core/src/main/kotlin/demo/Two.kt': `package demo\n\n${KOTLIN_BODY}\n`,
+    };
+    for (const [name, manifest] of Object.entries({
+      app: { sourceRoots: ['src/main/java'] },
+      core: { sourceRoots: [], kotlinSourceRoots: ['src/main/kotlin'] },
+    })) {
+      files[`${name}/target/nitpicker/manifest.json`] = JSON.stringify(manifest);
+    }
+    for (const [relative, contents] of Object.entries(files)) {
+      mkdirSync(path.dirname(path.join(projectRoot, relative)), { recursive: true });
+      writeFileSync(path.join(projectRoot, relative), contents);
+    }
+    return projectRoot;
+  }
+
+  it('runs once from the project root over the roots of every module, Java and Kotlin alike', () => {
+    const projectRoot = reactor();
+    const reportRoot = path.join(projectRoot, 'target/nitpicker');
+    const manifest = mergedRoots(
+      projectRoot,
+      [path.join(projectRoot, 'app'), path.join(projectRoot, 'core')],
+      'target/nitpicker',
+    );
+    runJavaDuplicates(projectRoot, { reportRoot, manifest });
+    runKotlinDuplicates(projectRoot, { reportRoot, manifest });
+
+    expect(
+      [...readDuplicateFindings(reportRoot), ...readKotlinDuplicateFindings(reportRoot)]
+        .filter(({ rule }) => rule === 'duplicate-clone')
+        .map(({ path: file }) => file),
+    ).toEqual(['app/src/main/java/demo/One.java', 'core/src/main/kotlin/demo/One.kt']);
   });
 });
 

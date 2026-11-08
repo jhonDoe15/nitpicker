@@ -89,7 +89,7 @@ suite('packed nitpicker in a separate consumer', () => {
   });
 
   describe.runIf(supportsRedirect())('a consumer on TypeScript 7', () => {
-    const typeScript7 = manifest.dependencies['typescript-native'].replace('npm:typescript@', '');
+    const typeScript7 = manifest.dependencies['@typescript/native'].replace('npm:typescript@', '');
     const jsApi = manifest.dependencies['typescript-js-api'].replace('npm:typescript@', '');
     const twiceSource = (expression) =>
       `export function twice(value: number): number {\n  return ${expression};\n}\n`;
@@ -258,7 +258,6 @@ suite('packed nitpicker in a separate consumer', () => {
           'install',
           '--no-audit',
           '--no-fund',
-          '--prefer-offline',
           ...(strategy ? [`--install-strategy=${strategy}`] : []),
         ]);
         checked(root, 'git', ['add', '.']);
@@ -274,6 +273,7 @@ suite('packed nitpicker in a separate consumer', () => {
         checked(root, 'git', ['switch', '-c', 'feature']);
         packageLocation = path.join(root, 'node_modules/nitpicker');
         before = listing(packageLocation);
+        write(root, 'src/main/example.ts', cleanSource.replace('return 1', 'return 2'));
         clean = invoke([
           '--base',
           'main',

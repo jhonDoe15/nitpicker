@@ -95,6 +95,18 @@ describe('function findings matched by their text without the name', () => {
     ).toEqual({ added: [], kept: ['B.bar@10'], resolved: [] });
   });
 
+  it('keeps it when the rename rewrites the whole declaration line', () => {
+    const method = (name) => [`  ${name}() {`, ...BODY, 'return total;', '}'].join('\n');
+
+    expect(
+      compare({
+        base: structure(entry({ file: 'src/a.ts', name: 'K.run', start: 10, text: method('run') })),
+        head: structure(entry({ file: 'src/a.ts', name: 'K.go', start: 10, text: method('go') })),
+        changes: { 'src/a.ts': [[10, 10]] },
+      }),
+    ).toEqual({ added: [], kept: ['K.go@10'], resolved: [] });
+  });
+
   it('reports a copy under a new name while the original stays', () => {
     expect(
       compare({
@@ -219,6 +231,40 @@ describe('mutants and branches matched without their function', () => {
         inserted: {},
       }),
     ).toEqual({ added: ['A.bar@10'], kept: [], resolved: [] });
+  });
+
+  it('reports growth once when the renamed function takes the name of another legacy function', () => {
+    const crap = ({ name, value, anchor, line }) =>
+      crapFindings(
+        [
+          {
+            path: 'src/A.java',
+            name,
+            identity: `function:${name}:source:${anchor}`,
+            ratchetKey: `function:${name}:crap`,
+            anchor: `function:crap:text:${anchor}`,
+            line,
+            crap: value,
+          },
+        ],
+        { tool: 'crap' },
+      );
+    const base = [
+      ...crap({ name: 'A.foo', value: 20, anchor: 'x', line: 10 }),
+      ...crap({ name: 'A.bar', value: 35, anchor: 'y', line: 40 }),
+    ];
+    const head = crap({ name: 'A.bar', value: 30, anchor: 'x', line: 10 });
+    const touchedCode = touched({ 'src/A.java': [[10, 10]] }, {});
+
+    const result = compareFindings({ baseFindings: base, headFindings: head, touchedCode });
+
+    expect(result.newFindings.map(({ message }) => message)).toEqual([
+      'A.bar CRAP rose from 20 to 30 (limit 9). Put new code in a new function and cover it with tests. If this is intended, add {"rule":"crap-score-limit","paths":["src/A.java"],"function":"A.bar","reason":"..."} to "exceptions" in nitpicker.config.json.',
+    ]);
+    expect(result.newFindings[0].heldAtBase).toBeUndefined();
+    expect(result.unchangedFindings).toEqual([]);
+    expect(result.resolvedFindings.map(({ symbol }) => symbol)).toEqual(['A.bar']);
+    expect(result.resolvedFindings[0].ratchet.value).toBe(35);
   });
 
   it('keeps an uncovered branch when its function is renamed', () => {

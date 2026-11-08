@@ -1,7 +1,7 @@
 import { variableNamed } from '../../../analysis/ancestry.mjs';
 import { importedCalleeName, moduleBindings } from '../../../analysis/subprocess-calls.mjs';
 import { memberName } from '../../../analysis/test-code-analysis.mjs';
-import { lacksProcessTimeout } from './process-timeout-options.mjs';
+import { lacksProcessTimeout } from '../../../processes/process-timeout-options.mjs';
 
 const CHILD_PROCESS = new Set(['child_process', 'node:child_process']);
 const SYNC_METHODS = new Set(['spawnSync', 'execSync', 'execFileSync']);

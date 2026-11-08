@@ -225,10 +225,142 @@ describe('resolveBase', () => {
     });
   });
 
-  it('throws with the --base suggestion when no base is resolvable', () => {
+  it('names what it tried when a repository without a remote is on main', () => {
     const repositoryRoot = createRepository();
 
-    expect(() => resolveBase({ repositoryRoot, environment: {} })).toThrow(/--base/);
+    expect(() => resolveBase({ repositoryRoot, environment: {} })).toThrow(
+      new Error(
+        'No base found: no remote, and you are on main. Pass --base <ref>, set "base" in nitpicker.config.json, or run nitpicker --all to check the whole project.',
+      ),
+    );
+  });
+
+  it('compares a feature branch with the local main when there is no remote', () => {
+    const repositoryRoot = createRepository();
+    fixtureGit(repositoryRoot, ['checkout', '-q', '-b', 'feature']);
+
+    expect(resolveBase({ repositoryRoot, environment: {} })).toEqual({
+      baseRef: 'main',
+      source: 'local-branch',
+    });
+  });
+
+  it('uses a local master when there is no main, also from a detached HEAD', () => {
+    const repositoryRoot = createRepository();
+    fixtureGit(repositoryRoot, ['branch', '-q', '-m', 'master']);
+    fixtureGit(repositoryRoot, ['commit', '-q', '--allow-empty', '-m', 'next']);
+    fixtureGit(repositoryRoot, ['checkout', '-q', '--detach', 'HEAD~1']);
+
+    expect(resolveBase({ repositoryRoot, environment: {} })).toEqual({
+      baseRef: 'master',
+      source: 'local-branch',
+    });
+  });
+
+  it('does not compare a detached HEAD with the local main it sits on', () => {
+    const repositoryRoot = createRepository();
+    fixtureGit(repositoryRoot, ['checkout', '-q', '--detach']);
+
+    expect(() => resolveBase({ repositoryRoot, environment: {} })).toThrow(
+      'No base found: no remote, and you are on main.',
+    );
+  });
+
+  it('names the local branch so that a tag of the same name cannot shadow it', () => {
+    const repositoryRoot = createRepository();
+    fixtureGit(repositoryRoot, ['tag', 'main']);
+    fixtureGit(repositoryRoot, ['checkout', '-q', '-b', 'feature']);
+
+    expect(resolveBase({ repositoryRoot, environment: {} })).toEqual({
+      baseRef: 'heads/main',
+      source: 'local-branch',
+    });
+  });
+
+  it('does not compare master with main when master is checked out', () => {
+    const repositoryRoot = createRepository();
+    fixtureGit(repositoryRoot, ['checkout', '-q', '-b', 'master']);
+
+    expect(() => resolveBase({ repositoryRoot, environment: {} })).toThrow(
+      'No base found: no remote, and you are on master.',
+    );
+  });
+
+  it('prefers the branch upstream over a local main', () => {
+    const repositoryRoot = createRepository();
+    addRemote(repositoryRoot, 'gitlab');
+    setRemoteBranch(repositoryRoot, 'gitlab', 'develop');
+    fixtureGit(repositoryRoot, ['checkout', '-q', '-b', 'feature', '--track', 'gitlab/develop']);
+
+    expect(resolveBase({ repositoryRoot, environment: {} })).toEqual({
+      baseRef: 'gitlab/develop',
+      source: 'upstream',
+    });
+  });
+
+  it('uses a local branch the feature branch tracks', () => {
+    const repositoryRoot = createRepository();
+    fixtureGit(repositoryRoot, ['branch', '-q', '-m', 'trunk']);
+    fixtureGit(repositoryRoot, ['checkout', '-q', '-b', 'feature', '--track', 'trunk']);
+
+    expect(resolveBase({ repositoryRoot, environment: {} })).toEqual({
+      baseRef: 'trunk',
+      source: 'upstream',
+    });
+  });
+
+  it('skips an upstream that is the pushed copy of the same branch', () => {
+    const repositoryRoot = createRepository();
+    addRemote(repositoryRoot, 'origin');
+    fixtureGit(repositoryRoot, ['checkout', '-q', '-b', 'feature']);
+    setRemoteBranch(repositoryRoot, 'origin', 'feature');
+    fixtureGit(repositoryRoot, ['branch', '--set-upstream-to=origin/feature']);
+
+    expect(resolveBase({ repositoryRoot, environment: {} })).toEqual({
+      baseRef: 'main',
+      source: 'local-branch',
+    });
+  });
+
+  it('keeps the remote default branch ahead of an upstream and a local main', () => {
+    const repositoryRoot = createRepository();
+    addRemote(repositoryRoot, 'origin');
+    setRemoteHead(repositoryRoot, 'origin', 'main');
+    setRemoteBranch(repositoryRoot, 'origin', 'develop');
+    fixtureGit(repositoryRoot, ['checkout', '-q', '-b', 'feature', '--track', 'origin/develop']);
+
+    expect(resolveBase({ repositoryRoot, environment: {} })).toEqual({
+      baseRef: 'origin/main',
+      source: 'remote-head',
+    });
+  });
+
+  it.each([
+    ['origin', [], 'no origin/HEAD, origin/main or origin/master'],
+    ['upstream', [], 'no upstream/HEAD, origin/main or origin/master'],
+    ['gitlab', ['github'], 'no origin or upstream remote (remotes: github, gitlab)'],
+  ])('says which remote refs are missing with only %s', (remote, others, expected) => {
+    const repositoryRoot = createRepository();
+    for (const name of [remote, ...others]) {
+      addRemote(repositoryRoot, name);
+    }
+
+    expect(() => resolveBase({ repositoryRoot, environment: {} })).toThrow(
+      `No base found: ${expected}, and you are on main.`,
+    );
+  });
+
+  it('says the repository has no commits, even with an explicit base', () => {
+    const repositoryRoot = createRepository();
+    fixtureGit(repositoryRoot, ['checkout', '-q', '--orphan', 'empty']);
+    const message = new Error(
+      'This repository has no commits yet. Commit your files, then run nitpicker --all, or compare later changes against that commit.',
+    );
+
+    expect(() => resolveBase({ repositoryRoot, environment: {} })).toThrow(message);
+    expect(() => resolveBase({ repositoryRoot, explicitBase: 'main', environment: {} })).toThrow(
+      message,
+    );
   });
 });
 
