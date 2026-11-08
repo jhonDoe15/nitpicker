@@ -83,7 +83,7 @@ describe.skipIf(!goE2eEnabled)('Go preset project setups end to end', () => {
     const result = gate(project, 'gofumpt');
     expect(newFindings(result)).toEqual(['gofumpt/format shop/rounded.go']);
     expect(newMessages(result)).toEqual([
-      "File is not formatted with gofumpt (the project's formatter, from .golangci.yml). Run `gofumpt -w` on it.",
+      "File is not formatted with gofumpt (the project's formatter, from .golangci.yml). Run `gofumpt -w <file>` to format the file.",
     ]);
   });
 
