@@ -133,6 +133,12 @@ function writeJavaReports(module) {
       : '[]',
   );
   writeFileSync(moduleFile(module, 'classes.json'), '{"files":{},"classes":[]}');
+  writeFileSync(
+    moduleFile(module, 'errorprone.json'),
+    exists(run, inside(module, 'errorprone.json'))
+      ? bytes(run, inside(module, 'errorprone.json'))
+      : '[]\n',
+  );
 }
 
 function copyJdeps(module) {
