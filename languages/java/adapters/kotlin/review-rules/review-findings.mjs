@@ -4,6 +4,7 @@ import { fanOutFindings } from './main/fan-out/fan-out.mjs';
 import { forwardingWrapperFindings } from './main/forwarding-wrappers.mjs';
 import { loadEffectFindings } from './main/load-effects.mjs';
 import { recursiveMapUpdateFindings } from './main/map-updates/recursive-map-update.mjs';
+import { reusableObjectFindings } from './main/reusable-objects/reusable-objects.mjs';
 import { singularPluralFindings } from './main/member-names.mjs';
 import { timeoutFindings } from './main/timeouts/timeouts.mjs';
 import { unboundedPoolFindings } from './main/thread-pools/unbounded-pools.mjs';
@@ -81,6 +82,7 @@ export function readKotlinReviewFindings(context) {
     ...loadEffectFindings(own, { finding, declaredIn: projectFiles }),
     ...unboundedPoolFindings(own, { finding }),
     ...recursiveMapUpdateFindings(own, { finding, declaredIn: projectFiles }),
+    ...reusableObjectFindings(own, { finding, declaredIn: projectFiles }),
     ...unusedOptionFindings(own, {
       finding,
       build,

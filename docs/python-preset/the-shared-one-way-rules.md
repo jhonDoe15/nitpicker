@@ -43,6 +43,7 @@ are listed at the end.
 | Compatibility shims      | change every caller in the same change and delete the old name                                                                                                                       | `compatibility-shim` (script)                                                                                                                                                                                                              |
 | Values in regex patterns | `re.escape(value)` inside a pattern, `in`/`startswith`/`==` for plain text, `re.compile(pattern)` with a whole pattern                                                               | `regex-unescaped-value` (script)                                                                                                                                                                                                           |
 | Input or output per item | one batch call, or `asyncio.gather` bounded by a shared `asyncio.Semaphore`                                                                                                          | `io-in-loop` (script)                                                                                                                                                                                                                      |
+| Shareable objects        | build once at module level, in `__init__` or in a `functools.cache` factory                                                                                                          | `reusable-object-per-call` (script)                                                                                                                                                                                                        |
 | Concurrent remote calls  | `asyncio.Semaphore` acquired in the task, or chunks of fixed size, or one batch call                                                                                                 | `unbounded-fan-out` (script)                                                                                                                                                                                                               |
 | Task lifetimes           | open the resource around the whole task group, or inside the child; await the task first                                                                                             | `task-outlives-resource` (script)                                                                                                                                                                                                          |
 | Trio/AnyIO cleanup       | `with trio.CancelScope(deadline=trio.current_time() + 5, shield=True): await resource.aclose()`                                                                                      | `unshielded-cleanup-await` (script)                                                                                                                                                                                                        |
@@ -490,6 +491,14 @@ self.items.append(item)`), also through a package `__init__` that re-exports it 
   `token is not None` and `len(token)` are fine. Test files are skipped, as in the other presets. A
   module name used as a key of a documentation table (`'pwd': 'pwd#module-pwd'`) is a false
   positive; add an exception for the file.
+- `reusable-object-per-call` reports `pydantic.TypeAdapter(...)`, `jinja2.Environment(...)` and
+  `fastjsonschema.compile(...)` built inside a function that runs on every call, when no argument
+  reads a parameter or local of that function. Each is safe to share and costly to build (a schema
+  build, a template cache, a compiled validator). Allowed: module level, a class body, `__init__`
+  and `__post_init__`, `main`, a `functools.cache`/`lru_cache`/`cached_property` function, a
+  `return` of the object, and an assignment to an attribute or a `global`. `re.compile` and
+  `json.JSONEncoder` are not reported: `re` caches compiled patterns and `json.dumps` builds an
+  encoder per call itself. Test files are skipped.
 - `io-in-loop` reports an HTTP, database or repository call once per item of a `for`, `while` or
   comprehension; `asyncio.gather` over a comprehension, a call that `unbounded-fan-out` reports
   at the same site (so one remote call has one owner), a worker task started once per slot of a

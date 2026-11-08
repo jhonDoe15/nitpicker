@@ -16,6 +16,8 @@ Part of the [nitpicker-javascript](../SKILL.md) skill. Write these forms from th
   `path` (`[index, field]`) names the bad record: `issues.map((issue) => issue.path.join('.'))`.
   Parse a URL from runtime text with `URL.parse(text)` or after `URL.canParse(text)`; `new URL(text)`
   throws on text that is not a URL (`nitpicker/no-unhandled-url-parse`).
+- Build an `Intl` formatter or an `Ajv` instance with fixed options once, at module scope or in a
+  class field, not per call (`nitpicker/reusable-object-per-call`).
 - `domain/` is pure and takes parsed, typed values, never `unknown`. Decisions go here. No I/O or
   `process`; time, IDs and randomness are parameters. Code that drives injected async deps
   (retries, worker pools, abort) is `adapters/`; the decisions it needs are domain functions.

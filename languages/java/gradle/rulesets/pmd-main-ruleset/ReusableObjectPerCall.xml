@@ -1,0 +1,71 @@
+  <rule name="ReusableObjectPerCall" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
+        message="Build this object once and reuse it: it is safe to share between threads once built, and building it costs far more than using it. Keep it in a static final constant, a final field set in the constructor, or a @Bean.">
+    <priority>2</priority>
+    <properties><property name="xpath"><value><![CDATA[
+let $shared := ('ObjectMapper', 'JsonMapper', 'XmlMapper', 'YAMLMapper', 'Gson', 'GsonBuilder', 'JAXBContext',
+      'ValidatorFactory', 'Validator', 'ExpressionParser', 'SpelExpressionParser', 'PathPatternParser',
+      'DateTimeFormatter'),
+    $caches := ('computeIfAbsent', 'withInitial', 'memoize', 'memoizeWithExpiration'),
+    $onlyFrom := function($method, $callers) {
+  let $uses := $method/parent::ClassBody//(MethodCall[*[1][self::ArgumentList or self::ThisExpression[not(*)]]]
+      | MethodReference[*[1][self::ThisExpression[not(*)]]])[@MethodName = $method/@Name]
+  return $method/@Visibility = 'private' and exists($uses)
+    and (every $use in $uses satisfies exists($use/ancestor::* intersect $callers))
+},
+    $start := function($method) {
+  exists($method/ModifierList/Annotation[pmd-java:typeIs('org.springframework.context.annotation.Bean')
+    or pmd-java:typeIs('jakarta.annotation.PostConstruct') or pmd-java:typeIs('javax.annotation.PostConstruct')
+    or pmd-java:typeIs('jakarta.enterprise.inject.Produces') or pmd-java:typeIs('javax.enterprise.inject.Produces')])
+  or ($method/@Name = ('afterPropertiesSet', 'start') and not($method/FormalParameters/*))
+  or ($method/@Name = 'main' and $method[pmd-java:modifiers() = 'static'])
+  or exists($method/ClassType[@SimpleName = $shared])
+},
+    $setupMethod := function($method) {
+  let $body := $method/parent::ClassBody,
+      $starts := ($body/ConstructorDeclaration, $body/CompactConstructorDeclaration, $body/Initializer,
+        $body/FieldDeclaration, $body/MethodDeclaration[$start(.)]),
+      $helpers := $body/MethodDeclaration[$onlyFrom(., $starts)]
+  return exists($method intersect ($starts, $helpers, $body/MethodDeclaration[$onlyFrom(., ($starts, $helpers))]))
+},
+    $cached := function($node, $method) {
+  exists($node/ancestor::LambdaExpression[ancestor::MethodDeclaration[1] is $method]
+    [parent::ArgumentList/parent::MethodCall[@MethodName = $caches
+      or (@MethodName = 'get' and count(ArgumentList/*) = 2)]])
+},
+    $keptInField := function($node, $method) {
+  let $locals := $method//VariableId/@Name
+  return exists($node/ancestor::AssignmentExpression[ancestor::MethodDeclaration[1] is $method]
+    [*[1][self::FieldAccess or self::VariableAccess[not(@Name = $locals)]]]
+    [exists(*[2]/descendant-or-self::* intersect $node)])
+},
+    $perCall := function($node) {
+  let $method := $node/ancestor::MethodDeclaration[1]
+  return exists($method) and not($setupMethod($method)) and not($cached($node, $method))
+    and not($keptInField($node, $method))
+}
+return (
+  //ConstructorCall[pmd-java:typeIs('com.fasterxml.jackson.databind.ObjectMapper')
+    or pmd-java:typeIs('com.fasterxml.jackson.databind.json.JsonMapper')
+    or pmd-java:typeIs('com.fasterxml.jackson.dataformat.xml.XmlMapper')
+    or pmd-java:typeIs('com.fasterxml.jackson.dataformat.yaml.YAMLMapper')
+    or pmd-java:typeIs('tools.jackson.databind.ObjectMapper')
+    or pmd-java:typeIs('tools.jackson.databind.json.JsonMapper')
+    or pmd-java:typeIs('com.google.gson.Gson')
+    or pmd-java:typeIs('com.google.gson.GsonBuilder')
+    or pmd-java:typeIs('org.springframework.expression.spel.standard.SpelExpressionParser')
+    or pmd-java:typeIs('org.springframework.web.util.pattern.PathPatternParser')]
+  | //MethodCall[@MethodName = 'builder'][*[1][self::TypeExpression
+      and (pmd-java:typeIs('com.fasterxml.jackson.databind.json.JsonMapper')
+        or pmd-java:typeIs('com.fasterxml.jackson.dataformat.xml.XmlMapper')
+        or pmd-java:typeIs('com.fasterxml.jackson.dataformat.yaml.YAMLMapper')
+        or pmd-java:typeIs('tools.jackson.databind.json.JsonMapper'))]]
+  | //MethodCall[@MethodName = 'newInstance'][*[1][self::TypeExpression
+      and (pmd-java:typeIs('jakarta.xml.bind.JAXBContext') or pmd-java:typeIs('javax.xml.bind.JAXBContext'))]]
+  | //MethodCall[@MethodName = ('buildDefaultValidatorFactory', 'byDefaultProvider', 'byProvider')]
+      [*[1][self::TypeExpression
+        and (pmd-java:typeIs('jakarta.validation.Validation') or pmd-java:typeIs('javax.validation.Validation'))]]
+  | //MethodCall[pmd-java:matchesSig('java.time.format.DateTimeFormatter#ofPattern(_*)')]
+      [ArgumentList/*[1][@CompileTimeConstant = true()]]
+)[$perCall(.)]
+]]></value></property></properties>
+  </rule>

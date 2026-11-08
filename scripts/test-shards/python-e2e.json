@@ -82,6 +82,7 @@
   "languages/python/rules/e2e/signatures/tri-state-boolean.e2e.test.mjs": 2,
   "languages/python/rules/e2e/smells/boolean-flag.e2e.test.mjs": 1,
   "languages/python/rules/e2e/smells/regex-unescaped-value.e2e.test.mjs": 1,
+  "languages/python/rules/e2e/smells/reusable-object-per-call.e2e.test.mjs": 1,
   "languages/python/rules/e2e/smells/secrets.e2e.test.mjs": 1,
   "languages/python/rules/e2e/smells/smells.e2e.test.mjs": 2,
   "languages/python/rules/e2e/smells/task-markers.e2e.test.mjs": 1,
