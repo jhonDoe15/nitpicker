@@ -10,7 +10,6 @@ export const CATALOG_TOOLS = ['pmd', 'checkstyle', 'spotbugs'];
 const catalogs = lazy(() => new Map(CATALOG_TOOLS.map((tool) => [tool, readCatalog(tool)])));
 const ROUTED = new Set([
   ...CATALOG_TOOLS,
-  'errorprone',
   'javac',
   'forbiddenapis',
   'duplicates',
@@ -20,7 +19,6 @@ const ROUTED = new Set([
   'dependencies',
   'spring',
 ]);
-const certainBugs = lazy(() => readCertainBugs());
 const CHECKSTYLE_CHECK =
   /^com\.puppycrawl\.tools\.checkstyle\.checks\.(?:\w+\.)*(\w+?)(?:Check)?$/u;
 const SENTENCE_END = /[.!?;:]$/u;
@@ -41,11 +39,6 @@ export function readCatalog(tool) {
   return JSON.parse(readFileSync(new URL(`./${tool}.json`, import.meta.url), 'utf8'));
 }
 
-function readCertainBugs() {
-  const checks = new URL('../gradle/errorprone/checks.json', import.meta.url);
-  return new Set(JSON.parse(readFileSync(checks, 'utf8')).certainBugs);
-}
-
 function rulesetNames(file) {
   const text = readFileSync(new URL(`../gradle/${file}`, import.meta.url), 'utf8');
   return [...text.matchAll(/<rule name="([A-Za-z]+)"/gu)].map(([, name]) => name);
@@ -63,7 +56,7 @@ function layoutFix(javaStyle) {
   return `Run ${formatter} on the file; it fixes this layout. ${NOT_YOUR_JAVA_FORMATTER}`;
 }
 
-export function withRuleMessage(finding, { preset = 'java', testRoots = [], javaStyle } = {}) {
+export function withRuleMessage(finding, { preset = 'java', javaStyle } = {}) {
   if (!ROUTED.has(finding.tool) && !ROUTED.has(`${finding.tool}/${finding.rule}`)) {
     return finding;
   }
@@ -74,8 +67,7 @@ export function withRuleMessage(finding, { preset = 'java', testRoots = [], java
   const liftable =
     exceptionRule !== undefined &&
     finding.classification === 'enforceable' &&
-    entry?.mayBeIntended !== false &&
-    !isCertainBug({ ...finding, rule }, testRoots);
+    entry?.mayBeIntended !== false;
   return {
     ...finding,
     rule,
@@ -93,14 +85,6 @@ function exceptionRuleFor(finding, preset) {
     return javaSource || qualified === 'coupling/test-only-export' ? qualified : undefined;
   }
   return preset === 'java' && finding.tool !== 'detekt' ? qualified : undefined;
-}
-
-function isCertainBug(finding, testRoots) {
-  return (
-    finding.tool === 'errorprone' &&
-    certainBugs().has(finding.rule) &&
-    !testRoots.some((root) => finding.path.startsWith(`${root}/`))
-  );
 }
 
 export function applyRuleMessages(findings, options) {
