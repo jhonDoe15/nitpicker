@@ -52,6 +52,7 @@ describe('ingestErrorProne', () => {
         message:
           'The result of `evaluate()` must be used. Use the result, or make the method return void if ' +
           'callers do not need it. Did you mean to remove this line?',
+        allowedForm: 'Use the result, or make the method return void if callers do not need it.',
         classification: 'enforceable',
         location: { line: 16, column: 26 },
       },
@@ -61,6 +62,7 @@ describe('ingestErrorProne', () => {
         path: `${MAIN}/genericcalculator/ExpressionEvaluator.java`,
         identity: identity('NullAway', NULLAWAY),
         message: NULLAWAY,
+        allowedForm: NULLAWAY.replace(/^.*?(?=Annotate what may be null)/u, ''),
         classification: 'enforceable',
         location: { line: 20, column: 12 },
       },

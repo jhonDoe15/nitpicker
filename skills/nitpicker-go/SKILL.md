@@ -11,6 +11,13 @@ backstop. It fails only on findings your change adds, so leave code the task doe
 If your change edits a function, type, file or package that existed before it, read
 [editing-existing-code.md](editing-existing-code.md) before you edit.
 
+## Check one file or folder
+
+To look at one file or folder, for example before you change it, pass its path: `npx nitpicker --all
+internal/orders` lists every finding in it, and `npx nitpicker internal/orders/order.go` gates only
+your change to that file. Paths are read from the current folder. The analysis still covers the
+whole project, so it takes as long as a full run; finish with the plain run below.
+
 ## Finish with the gate
 
 1. Run the project's tests: `go test ./...` (with the build tags the project's
@@ -92,3 +99,8 @@ Stop and ask. The maintainer adds the entry the finding's message ends with to `
 `{ "rule": "vet/printf", "paths": ["shop/label.go"], "reason": "..." }`, or
 `{ "rule": "function-lines-limit", "paths": [...], "function": "Name", "reason": "..." }` for a
 structure limit. That change is a policy change a person accepts.
+
+The `$schema` line of `nitpicker.config.json`
+(`"$schema": "https://raw.githubusercontent.com/jhonDoe15/nitpicker/main/spec/config.schema.json"`)
+lets the editor flag a misspelled key or a value the run refuses; nitpicker ignores it. Keep it when
+you edit the file.
