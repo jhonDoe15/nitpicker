@@ -367,7 +367,7 @@
   {
     "tool": "ruff",
     "rule": "PLW1508",
-    "mention": "int(os.getenv(\"PORT\", \"8080\"))"
+    "mention": "int(os.getenv(\"PORT\") or \"8080\")"
   },
   {
     "tool": "ruff",

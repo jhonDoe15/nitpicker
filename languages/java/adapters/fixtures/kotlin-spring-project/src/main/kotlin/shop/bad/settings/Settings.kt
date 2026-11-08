@@ -4,6 +4,7 @@ import org.springframework.beans.factory.annotation.Value
 import org.springframework.boot.context.properties.ConfigurationProperties
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
+import org.springframework.core.env.Environment
 
 @ConfigurationProperties("shop.token")
 class TokenProperties(val issuerUri: String? = null, val signing: Signing = Signing()) {
@@ -35,5 +36,13 @@ class TokenConfig(
         val audiences = mutableListOf<String>()
         audience?.let { audiences.add(it) }
         return audiences.joinToString()
+    }
+
+    @Bean
+    fun tokenScope(environment: Environment): String {
+        if (environment.containsProperty("shop.scope")) {
+            return environment.getRequiredProperty("shop.scope")
+        }
+        return if (environment.getProperty("shop.realm") != null) "realm" else "all"
     }
 }

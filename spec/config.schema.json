@@ -2062,6 +2062,7 @@
                             "pmd/SpringTypedConfiguration",
                             "pmd/SpringValueSecretDefault",
                             "pmd/SpringProfileOnConfiguration",
+                            "pmd/SpringNullOnlyConfigCheck",
                             "pmd/SpringProxyMethodVisibility",
                             "pmd/SpringProxySelfCall",
                             "pmd/SpringTransactionalAnnotation",

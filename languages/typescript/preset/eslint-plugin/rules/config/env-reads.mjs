@@ -28,9 +28,13 @@ function isNamed(node, name) {
   return node.type === 'Identifier' && node.name === name;
 }
 
-function isProcess(node) {
+function isGlobal(context, node, name) {
+  return isNamed(node, name) && (findVariable(context, node, name)?.defs.length ?? 0) === 0;
+}
+
+function isProcess(context, node) {
   return (
-    isNamed(node, 'process') ||
+    isGlobal(context, node, 'process') ||
     (node.type === 'MemberExpression' &&
       node.object.type === 'Identifier' &&
       GLOBAL_OBJECTS.has(node.object.name) &&
@@ -38,20 +42,41 @@ function isProcess(node) {
   );
 }
 
-export function isEnvObject(node) {
+function constDefinition(context, node) {
+  const variable = findVariable(context, node, node.name);
+  const definition = variable?.defs.length === 1 ? variable.defs[0] : undefined;
+  return definition?.type === 'Variable' && definition.parent.kind === 'const'
+    ? definition
+    : undefined;
+}
+
+function isDirectEnvObject(context, node) {
   const plain = bare(node);
   if (plain.type !== 'MemberExpression' || propertyName(plain) !== 'env') {
     return false;
   }
   const owner = bare(plain.object);
   return (
-    isProcess(owner) ||
-    isNamed(owner, 'Bun') ||
+    isProcess(context, owner) ||
+    isGlobal(context, owner, 'Bun') ||
     (owner.type === 'MetaProperty' && owner.meta.name === 'import')
   );
 }
 
-function isDenoGet(node) {
+export function isEnvObject(context, node) {
+  const plain = bare(node);
+  if (plain.type !== 'Identifier') {
+    return isDirectEnvObject(context, plain);
+  }
+  const definition = constDefinition(context, plain);
+  return (
+    definition?.node.id.type === 'Identifier' &&
+    definition.node.init !== null &&
+    isDirectEnvObject(context, definition.node.init)
+  );
+}
+
+function isDenoGet(context, node) {
   const { callee } = node;
   return (
     node.type === 'CallExpression' &&
@@ -59,26 +84,26 @@ function isDenoGet(node) {
     propertyName(callee) === 'get' &&
     callee.object.type === 'MemberExpression' &&
     propertyName(callee.object) === 'env' &&
-    isNamed(callee.object.object, 'Deno') &&
+    isGlobal(context, callee.object.object, 'Deno') &&
     node.arguments.length === 1
   );
 }
 
-function envVariableOf(node) {
+function envVariableOf(context, node) {
   const plain = bare(node);
-  if (plain.type === 'MemberExpression' && isEnvObject(plain.object)) {
+  if (plain.type === 'MemberExpression' && isEnvObject(context, plain.object)) {
     return propertyName(plain);
   }
-  return plain.type === 'CallExpression' && isDenoGet(plain)
+  return plain.type === 'CallExpression' && isDenoGet(context, plain)
     ? stringValue(plain.arguments[0])
     : undefined;
 }
 
-function isEnvRead(node) {
-  return envVariableOf(node) !== undefined;
+export function destructuredKey(property) {
+  return keyName(property.computed, property.key);
 }
 
-function destructuredName(definition) {
+function destructuredName(context, definition) {
   const { node } = definition;
   if (node.type !== 'VariableDeclarator' || node.id.type !== 'ObjectPattern') {
     return undefined;
@@ -86,27 +111,26 @@ function destructuredName(definition) {
   const entry = node.id.properties.find(
     (property) => property.type === 'Property' && property.value === definition.name,
   );
-  return entry !== undefined && node.init !== null && isEnvObject(node.init)
-    ? keyName(entry.computed, entry.key)
+  return entry !== undefined && node.init !== null && isEnvObject(context, node.init)
+    ? destructuredKey(entry)
     : undefined;
 }
 
 function aliasedVariable(context, node) {
-  const variable = findVariable(context, node, node.name);
-  const definition = variable?.defs.length === 1 ? variable.defs[0] : undefined;
-  if (definition?.type !== 'Variable' || definition.parent.kind !== 'const') {
+  const definition = constDefinition(context, node);
+  if (definition === undefined) {
     return undefined;
   }
   if (definition.node.id.type === 'Identifier') {
-    return definition.node.init === null ? undefined : envVariableOf(definition.node.init);
+    return definition.node.init === null ? undefined : envVariableOf(context, definition.node.init);
   }
-  return destructuredName(definition);
+  return destructuredName(context, definition);
 }
 
 export function envSubject(context, node) {
   const plain = bare(node);
-  if (isEnvRead(plain)) {
-    return envVariableOf(plain);
-  }
-  return plain.type === 'Identifier' ? aliasedVariable(context, plain) : undefined;
+  return (
+    envVariableOf(context, plain) ??
+    (plain.type === 'Identifier' ? aliasedVariable(context, plain) : undefined)
+  );
 }

@@ -552,9 +552,15 @@ Kotlin-specific choices:
   read in that class by name or `this.name`, or through a value of that type in any project file
   (`properties.issuerUri`, `properties.signing.keyId`, typed through the same local, parameter and
   property types as the other Spring rules); a `String?` property with `@Value` read in its class;
-  or a `String?` function parameter with `@Value`. A test joined by `&&`/`||` with an emptiness test
-  of the same text (`isNotBlank()`, `isBlank()`, `isNotEmpty()`, `isEmpty()`, `isNullOrBlank()`,
-  `isNullOrEmpty()`, `ifBlank`, `length`, `trim`, `== ""`, `StringUtils.hasText(x)`) is not reported.
+  a `String?` function parameter with `@Value`; and `environment.getProperty(key)` on an
+  `Environment` or `PropertyResolver` outside stereotype classes, where `SpringTypedConfiguration`
+  reports the read itself. `environment.containsProperty(key)` is reported too. Companion members
+  and a local or parameter of the same name are other values. Not reported: a test joined by
+  `&&`/`||` with a test of the same text (any call on it, such as `isNotBlank()`, `isNullOrBlank()`,
+  `ifBlank`, `ifEmpty`, `length`, `trim` or `startsWith`, and `== ""`, `!= ""`,
+  `StringUtils.hasText(x)` or `hasLength(x)`), a null-safe conversion that gives `null` back
+  (`if (x != null) x.trim() else null`), and tests inside `equals`, `hashCode`, `toString` and
+  `compareTo`.
   The allowed forms are `if (props.issuerUri.isNullOrBlank())` and
   `props.issuerUri?.ifBlank { null } ?: fallback`; the Java rule of the same id reports the same
   mistake with `StringUtils.hasText`.

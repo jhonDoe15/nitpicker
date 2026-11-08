@@ -4,7 +4,7 @@ import {
   compositionRootOptionsSchema,
   isCompositionRootFile,
 } from '../boundaries/composition-root-files.mjs';
-import { bare, envSubject, isEnvObject } from './env-reads.mjs';
+import { bare, destructuredKey, envSubject, isEnvObject } from './env-reads.mjs';
 
 const EQUALITY = new Set(['===', '!==', '==', '!=']);
 const LOGICAL = new Set(['&&', '||']);
@@ -41,7 +41,7 @@ function comparedSubject(context, node) {
     : undefined;
 }
 
-function ownCheckSubject(node) {
+function ownCheckSubject(context, node) {
   const { callee } = node;
   if (
     callee.type !== 'MemberExpression' ||
@@ -51,10 +51,10 @@ function ownCheckSubject(node) {
     return undefined;
   }
   const [first, second] = node.arguments;
-  if (isEnvObject(callee.object) && callee.property.name === 'hasOwnProperty') {
+  if (isEnvObject(context, callee.object) && callee.property.name === 'hasOwnProperty') {
     return stringValue(first);
   }
-  return first !== undefined && isEnvObject(first) ? stringValue(second) : undefined;
+  return first !== undefined && isEnvObject(context, first) ? stringValue(second) : undefined;
 }
 
 function joinsConditions(node) {
@@ -126,6 +126,13 @@ function emptinessSubject(context, leaf) {
   if (plain.type === 'CallExpression' && plain.callee.type === 'Identifier') {
     return plain.callee.name === 'Boolean' ? envSubject(context, plain.arguments[0]) : undefined;
   }
+  const receiver =
+    plain.type === 'CallExpression' && plain.callee.type === 'MemberExpression'
+      ? measuredSubject(context, plain.callee.object)
+      : undefined;
+  if (receiver !== undefined) {
+    return receiver;
+  }
   if (plain.type === 'BinaryExpression') {
     return comparisonSubject(context, plain);
   }
@@ -142,6 +149,18 @@ function isHarmlessFallback(node) {
   return stringValue(node) === '' || isAbsent(node);
 }
 
+function defaultedKeys(context, node) {
+  if (node.id.type !== 'ObjectPattern' || node.init === null || !isEnvObject(context, node.init)) {
+    return [];
+  }
+  return node.id.properties.filter(
+    (property) =>
+      property.type === 'Property' &&
+      property.value.type === 'AssignmentPattern' &&
+      !isHarmlessFallback(property.value.right),
+  );
+}
+
 export const rule = {
   meta: {
     type: 'problem',
@@ -152,9 +171,9 @@ export const rule = {
     schema: compositionRootOptionsSchema,
     messages: {
       undefinedOnly:
-        "This test counts an empty `{{name}}` as set: `{{name}}=` gives `''`, which passes an `undefined` or `in` check, so the feature turns on with nothing to use. Test for a value: `if (!process.env.{{name}})`, `process.env.{{name}} === undefined || process.env.{{name}} === ''`, a `.length` check, or parse the environment with a schema that rejects empty strings (`z.string().min(1)`). An exception fits only when an empty value is a real setting here.",
+        "Test `{{name}}` for a value, not only for `undefined`: `{{name}}=` gives `''`, which passes this check, so the feature turns on with nothing to use. Write `if (!process.env.{{name}})`, add an `=== ''` test to the same condition, or parse the environment with a schema that rejects empty strings (`z.string().min(1)`). An exception fits only when an empty value is a real setting here.",
       nullishFallback:
-        "`??` keeps an empty `{{name}}`: `{{name}}=` gives `''`, and `??` replaces only `undefined`, so the fallback is skipped. Write `process.env.{{name}} || fallback`, or parse the environment with a schema that rejects empty strings (`z.string().min(1)`). An exception fits only when an empty value is a real setting here.",
+        "Write `process.env.{{name}} || fallback`: `{{name}}=` gives `''`, which `??` and a destructuring default keep, so the fallback is skipped. A schema that rejects empty strings (`z.string().min(1)`) works too. An exception fits only when an empty value is a real setting here.",
     },
   },
   create(context) {
@@ -170,16 +189,23 @@ export const rule = {
       BinaryExpression(node) {
         if (EQUALITY.has(node.operator)) {
           report(node, comparedSubject(context, node));
-        } else if (node.operator === 'in' && isEnvObject(node.right)) {
+        } else if (node.operator === 'in' && isEnvObject(context, node.right)) {
           report(node, stringValue(node.left));
         }
       },
       CallExpression(node) {
-        report(node, ownCheckSubject(node));
+        report(node, ownCheckSubject(context, node));
       },
-      'LogicalExpression[operator="??"]'(node) {
+      'LogicalExpression[operator="??"], AssignmentExpression[operator="??="]'(node) {
         if (!isHarmlessFallback(node.right) && !isCompositionRootFile(context)) {
           report(node, envSubject(context, node.left), 'nullishFallback');
+        }
+      },
+      VariableDeclarator(node) {
+        if (!isCompositionRootFile(context)) {
+          for (const property of defaultedKeys(context, node)) {
+            report(property, destructuredKey(property), 'nullishFallback');
+          }
         }
       },
     };

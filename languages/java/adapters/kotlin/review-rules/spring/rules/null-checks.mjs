@@ -1,27 +1,30 @@
 import { ancestorsOf, compactType } from '../../kotlin-facts.mjs';
 import { annotationIn, typeName } from '../spring-names.mjs';
 import { entriesOf, symbolOf } from '../spring-scopes.mjs';
-import { CONFIGURATION_PROPERTIES, VALUE } from '../spring-types.mjs';
+import { CONFIGURATION_PROPERTIES, PROPERTY_RESOLVERS, VALUE } from '../spring-types.mjs';
 import { lastSelector } from '../view/expressions.mjs';
 import { membersOfClass } from '../view/project-types.mjs';
+import { stereotype } from './configuration.mjs';
 
 const RULE = 'SpringNullOnlyConfigCheck';
 const NULLABLE_STRING = new Set(['String?', 'kotlin.String?', 'java.lang.String?']);
 const GUARDS = new Set(['let', 'also', 'run', 'apply']);
 const HARMLESS_FALLBACKS = new Set(['""', 'null']);
-const MEASURES =
-  '(?:isNotBlank|isNotEmpty|isBlank|isEmpty|isNullOrBlank|isNullOrEmpty|ifBlank|ifEmpty|length|trim)';
+const READ = 'getProperty(';
 
 function escaped(text) {
   return text.replaceAll(/[.*+?^${}()|[\]\\]/gu, String.raw`\$&`);
 }
 
 function testsEmptiness(condition, subject) {
-  const name = escaped(subject);
-  return new RegExp(
-    String.raw`${name}\s*\??\.\s*${MEASURES}\b|(?:hasText|hasLength)\(\s*${name}\s*\)|${name}\s*[!=]=\s*""|""\s*[!=]=\s*${name}`,
-    'u',
-  ).test(condition ?? '');
+  const name = String.raw`(?<![\w.$])${escaped(subject)}(?![\w$])`;
+  const forms = [
+    String.raw`${name}\s*\??\.\s*\w`,
+    String.raw`(?:hasText|hasLength)\(\s*${name}\s*\)`,
+    String.raw`${name}\s*[!=]=\s*""`,
+    String.raw`""\s*[!=]=\s*${name}`,
+  ];
+  return new RegExp(forms.join('|'), 'u').test(condition ?? '');
 }
 
 function isNullableString(entry) {
@@ -38,14 +41,22 @@ function boundClass(view, file, qualified) {
   );
 }
 
+function ownMembers(found) {
+  return membersOfClass(found).filter(
+    ({ owner }) => owner === undefined || owner === found.declared.qualified,
+  );
+}
+
 function ownMember(view, scope, name) {
   const declared = view.classAt(scope);
-  if (declared === undefined || view.declaresLocally(scope, name)) {
+  if (
+    declared === undefined ||
+    declared.kind === 'companion' ||
+    view.declaresLocally(scope, name)
+  ) {
     return undefined;
   }
-  const entry = membersOfClass({ file: view.file, declared }).find(
-    (member) => member.name === name,
-  );
+  const entry = ownMembers({ file: view.file, declared }).find((member) => member.name === name);
   const valued = annotationIn(view.resolve, entriesOf(entry ?? {}), VALUE) !== undefined;
   return isNullableString(entry) && (valued || boundClass(view, view.file, declared.qualified))
     ? `${declared.qualified}.${name}`
@@ -79,7 +90,7 @@ function classOf(view, scope, text) {
 function memberOfType(view, scope, { head, selector: name }) {
   const found = classOf(view, scope, head);
   const entry =
-    found === undefined ? undefined : membersOfClass(found).find((member) => member.name === name);
+    found === undefined ? undefined : ownMembers(found).find((member) => member.name === name);
   return isNullableString(entry) && boundClass(view, found.file, found.declared.qualified)
     ? `${found.declared.qualified}.${name}`
     : undefined;
@@ -97,15 +108,39 @@ function configString(view, scope, subject) {
   return memberOfType(view, scope, split);
 }
 
+function isResolver(view, scope, receiver) {
+  return (
+    !view.chain(scope).some(({ k, qualified }) => k === 'class' && stereotype(view, qualified)) &&
+    view.is(view.typeOf(scope, receiver), PROPERTY_RESOLVERS)
+  );
+}
+
+function readReceiver(subject) {
+  const call = subject.lastIndexOf(READ);
+  const key = subject.slice(call + READ.length, -1);
+  if (call < 0 || !subject.endsWith(')') || /[()]/u.test(key)) {
+    return undefined;
+  }
+  const head = subject.slice(0, call).trimEnd();
+  const receiver = head.endsWith('.') ? head.slice(0, -1).replace(/\?$/u, '').trimEnd() : '';
+  return receiver === '' ? undefined : receiver;
+}
+
+function resolverRead(view, scope, subject) {
+  const receiver = readReceiver(subject);
+  return receiver !== undefined && isResolver(view, scope, receiver);
+}
+
 function nullTestFindings(view) {
   return (view.file.nullTests ?? [])
     .filter(({ operator, fallback }) => operator !== '?:' || !HARMLESS_FALLBACKS.has(fallback))
     .filter(({ condition, subject }) => !testsEmptiness(condition, subject))
-    .flatMap(({ line, scope, subject }) =>
-      configString(view, scope, subject) === undefined
+    .flatMap(({ line, scope, subject }) => {
+      const name = resolverRead(view, scope, subject) ? 'getProperty' : subject;
+      return name === subject && configString(view, scope, subject) === undefined
         ? []
-        : [{ rule: RULE, line, symbol: symbolOf(view, scope, subject) }],
-    );
+        : [{ rule: RULE, line, symbol: symbolOf(view, scope, name) }];
+    });
 }
 
 function guardFindings(view) {
@@ -122,6 +157,15 @@ function guardFindings(view) {
     }));
 }
 
+function containsFindings(view) {
+  return view.file.invocations
+    .filter(
+      ({ name, receiver, scope }) =>
+        name === 'containsProperty' && receiver !== undefined && isResolver(view, scope, receiver),
+    )
+    .map(({ line, scope, name }) => ({ rule: RULE, line, symbol: symbolOf(view, scope, name) }));
+}
+
 export function nullOnlyConfigChecks(view) {
-  return [...nullTestFindings(view), ...guardFindings(view)];
+  return [...nullTestFindings(view), ...guardFindings(view), ...containsFindings(view)];
 }
