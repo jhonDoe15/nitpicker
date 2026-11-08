@@ -140,11 +140,11 @@ function entryOf({ tool, rule, fields }, texts) {
 }
 
 /** The entries of the PMD, Checkstyle and SpotBugs rules that have a message catalog. */
-export function catalogRuleEntries() {
+export function catalogRuleEntries({ skippedPmd = new Set() } = {}) {
   return CATALOG_TOOLS.flatMap((tool) => {
     const texts = readToolText(tool);
-    return Object.entries(readCatalog(tool)).map(([rule, fields]) =>
-      entryOf({ tool, rule, fields }, texts),
-    );
+    return Object.entries(readCatalog(tool))
+      .filter(([rule]) => tool !== 'pmd' || !skippedPmd.has(rule))
+      .map(([rule, fields]) => entryOf({ tool, rule, fields }, texts));
   });
 }

@@ -1,5 +1,6 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import {
+  ALL_FINDINGS,
   MAP_UPDATE_FINDINGS,
   PLURAL_FINDINGS,
   reviewBranchFiles,
@@ -13,6 +14,7 @@ import {
   kotlinPolicy,
   removeProject,
 } from '../test-support/kotlin-e2e-project.mjs';
+import { SWALLOWED_CANCELLATIONS } from '../test-support/review/swallowed/kotlin-cancellation-data.mjs';
 
 const ORDERS_TESTS = 'src/test/kotlin/demo/orders/*';
 
@@ -38,6 +40,7 @@ describe.skipIf(!kotlinE2eEnabled)('Kotlin preset review rule exceptions end to 
           { rule: 'pmd/MockedSubjectInTest', glob: ORDERS_TESTS },
           { rule: 'pmd/StaticMockOfProjectType', glob: ORDERS_TESTS },
           { rule: 'unused-option', glob: 'src/main/kotlin/demo/orders/*' },
+          { rule: 'pmd/SwallowedInterrupt', glob: 'src/main/kotlin/demo/orders/*' },
           { rule: 'pmd/ClassLoadEffect', glob: 'src/main/kotlin/demo/orders/Inventory.kt' },
         ],
       },
@@ -55,6 +58,8 @@ describe.skipIf(!kotlinE2eEnabled)('Kotlin preset review rule exceptions end to 
         'StaticForwardingWrapper absOf',
         'StaticForwardingWrapper total',
         ...MAP_UPDATE_FINDINGS,
+        ...ALL_FINDINGS.filter((entry) => entry.startsWith('NonAtomicUpdateAcrossSuspension ')),
+        ...SWALLOWED_CANCELLATIONS,
         'timeout-abandons-operation awaitAllOutside:withTimeout:first',
         'timeout-abandons-operation awaitAllOutside:withTimeout:second',
         'timeout-abandons-operation awaitOutside:withTimeout:work',

@@ -1,4 +1,8 @@
 import { ENUM_PREDICATE_RULE } from '../../review-rules/enum-predicates.mjs';
+import {
+  SWALLOWED_CANCELLATION_RULE,
+  SWALLOWED_INTERRUPT_RULE,
+} from './handlers/swallowed-handlers.mjs';
 import { LOAD_EFFECT_RULE } from '../../../messages/load-effects.mjs';
 import { FORWARDING_RULE } from './main/forwarding-wrappers.mjs';
 import { RECURSIVE_MAP_UPDATE_RULE } from './main/map-updates/recursive-map-update.mjs';
@@ -28,6 +32,8 @@ export const KOTLIN_REVIEW_EXCEPTION_RULES = [
   SINGULAR_PLURAL_RULE,
   TIMEOUT_RULE,
   SUSPENDED_UPDATE_RULE,
+  SWALLOWED_INTERRUPT_RULE,
+  SWALLOWED_CANCELLATION_RULE,
   VALIDATION_TARGET_RULE,
   LOAD_EFFECT_RULE,
   UNBOUNDED_POOL_RULE,

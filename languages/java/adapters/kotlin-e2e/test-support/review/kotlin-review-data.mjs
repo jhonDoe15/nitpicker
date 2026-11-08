@@ -1,3 +1,8 @@
+import {
+  CANCELLATION_FILES,
+  SWALLOWED_CANCELLATIONS,
+} from './swallowed/kotlin-cancellation-data.mjs';
+import { INTERRUPT_FILES, SWALLOWED_INTERRUPTS } from './swallowed/kotlin-interrupt-data.mjs';
 import { LIBRARY_STUBS, MOCK_REVIEW_FINDINGS, MOCK_RULE_FILES } from './kotlin-mock-data.mjs';
 import { PLURAL_FINDINGS, PLURALS } from './kotlin-plural-data.mjs';
 
@@ -429,6 +434,8 @@ export const REVIEW_RULE_FILES = {
   [`${MAIN}/Formatting.kt`]: FORMATTING,
   [`${MAIN}/Deadlines.kt`]: DEADLINES,
   [`${MAIN}/Ledger.kt`]: LEDGER,
+  ...CANCELLATION_FILES,
+  ...INTERRUPT_FILES,
   [`${MAIN}/Pricing.kt`]: PRICING,
   [`${TEST}/PricingTest.kt`]: PRICING_TEST,
   [`${MAIN}/Inventory.kt`]: INVENTORY,
@@ -448,6 +455,7 @@ export const EXPECTED_REVIEW_FINDINGS = [
   'ExhaustiveEnumPredicate isPending',
   'ExhaustiveEnumPredicate isSettled',
   'ExhaustiveEnumPredicate weight',
+  'FixedSleepInTest HandlersTest.pause',
   'FixedSleepInTest WaitingTest.iterates',
   'FixedSleepInTest WaitingTest.sleeps',
   'FixedSleepInTest WaitingTest.sleeps',
@@ -469,6 +477,8 @@ export const EXPECTED_REVIEW_FINDINGS = [
   'timeout-abandons-operation cancelAsyncTask:get:future',
   'timeout-abandons-operation giveUp:get:future',
   'timeout-abandons-operation shutDownLetsItFinish:get:future',
+  ...SWALLOWED_CANCELLATIONS,
+  ...SWALLOWED_INTERRUPTS,
   'unused-option Envelope.retries',
   'unused-option Mailer.retries',
   'unused-option Outbox.limit',
