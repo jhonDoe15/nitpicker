@@ -79,6 +79,22 @@ describe('configurationReads', () => {
     expect(found(`package demo\n\n${body}`)).toEqual([]);
   });
 
+  it('lets a Dagger provider without a module annotation read configuration', () => {
+    expect(
+      found(
+        'package demo\n\nimport dagger.Provides\n\nclass Wiring {\n    @Provides\n    fun port() = Integer.getInteger("shop.port")\n}\n',
+      ),
+    ).toEqual([]);
+  });
+
+  it('flags a file that imports a framework type without using it on a class or function', () => {
+    expect(
+      found(
+        'package demo\n\nimport org.springframework.context.annotation.Configuration\n\nclass Service {\n    fun mode() = System.getProperty("shop.mode")\n}\n',
+      ),
+    ).toEqual([[RULE, 6]]);
+  });
+
   it('still flags a file that only names a framework type in a string or comment', () => {
     expect(
       found(
