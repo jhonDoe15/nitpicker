@@ -8,7 +8,7 @@ import {
 } from './project-rules/size-rules.mjs';
 import { UNUSED_API_RULES, UNUSED_API_RULE_IDS } from './unused-api/unused-api-policy.mjs';
 import { reuseRules } from './project-rules/reuse-rules.mjs';
-import { testConsoleRule } from './project-rules/test-runtime-rules.mjs';
+import { NO_TYPE_ONLY, testConsoleRule } from './project-rules/test-runtime-rules.mjs';
 import {
   docCommentRule,
   SOURCE_RULE_IDS,
@@ -110,6 +110,7 @@ const FILE_EXCEPTION_RULES = [
 const PATH_EXCEPTION_RULES = [
   RULE_IDS.duplicateClone,
   RULE_IDS.stabilityDirection,
+  RULE_IDS.noProductionRuntime,
   ...FILE_EXCEPTION_RULES,
 ];
 
@@ -246,14 +247,17 @@ const CATALOG = [
   {
     id: RULE_IDS.noProductionRuntime,
     check: 'test-runtime',
-    limit: 'a test must exercise production runtime code',
-    enforcedBy: withKotlin(TYPESCRIPT_ONLY, false),
+    limit:
+      'a test file (Java and Kotlin: a test class) that runs no production code: nothing it imports or references, directly or through test helpers, is production code, and it starts no production process or framework context',
+    enforcedBy: withKotlin(ALL, true),
   },
   {
     id: RULE_IDS.typeOnlyProductionDependency,
     check: 'test-runtime',
-    limit: 'a test must exercise production runtime code',
-    enforcedBy: withKotlin(TYPESCRIPT_ONLY, false),
+    limit:
+      'a test file whose only link to production code is imports that exist only for the type checker (`import type`, `if TYPE_CHECKING:`)',
+    enforcedBy: withKotlin({ ...TYPESCRIPT_ONLY, python: true }, false),
+    notApplicable: { java: NO_TYPE_ONLY, kotlin: NO_TYPE_ONLY },
   },
   {
     id: RULE_IDS.baselineExpansion,
