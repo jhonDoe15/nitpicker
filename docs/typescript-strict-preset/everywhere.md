@@ -192,6 +192,25 @@ Part of the [TypeScript strict preset guide](../typescript-strict-preset.md).
   function that tests the duration, Prisma `{ emit: 'event', level: 'query' }` with a handler that
   filters by duration) or the database's own slow-query log. Both rules skip tests; a local script
   under the source roots takes an `exceptions` entry.
+- No query rows counted, filtered, sorted or aggregated in memory (`nitpicker/no-in-memory-query`,
+  the counterpart of the Spring rule `pmd/SpringDataFilterInQuery` and of the Python
+  `in-memory-query`). A query result is an awaited TypeORM `find`, `findBy`, `findByIds` or query
+  builder `getMany`, Prisma `findMany`, Sequelize and MikroORM `findAll` or `find`, or a Drizzle
+  `select().from(...)` (not one that already selects `count()` or groups), in a file that imports
+  the ORM (or Prisma through a receiver named `prisma`). It is reported when the result, directly
+  or through a `const` read once outside a loop or a nested function, is only used for its
+  `length` or lodash `size`/`isEmpty` (use `count`, `exists` or `findFirst`); `filter`, `some`,
+  `every`, `find`, `findIndex` or `findLast` (use `where`); `sort` or `toSorted` with a comparator
+  (use `order`/`orderBy`); or `reduce`, `Math.max`/`Math.min` over a `map`, `Object.groupBy`,
+  `Map.groupBy` and the lodash `sumBy`, `maxBy`, `minBy`, `meanBy`, `groupBy`, `countBy`, `sortBy`
+  and `orderBy` (use the ORM's aggregate or `groupBy`). The callback may only read row fields
+  (directly or destructured), compare them with constants, parameters and locals, and call
+  `localeCompare`, `getTime`, `valueOf`, `startsWith`, `endsWith`, `includes`, `toLowerCase` or
+  `toUpperCase` on a field, or `includes`/`has` on a list that does not depend on the row. A
+  callback that calls anything else, reads the row as a whole or by a computed key, or (with type
+  information) reads a getter or a method of the row type is left alone, and so is a result the
+  code also uses another way. Tests are skipped. A small fixed lookup list that is meant to be
+  loaded whole takes an `exceptions` entry.
 - `===` and `!==` only (`eqeqeq`). Braces on every `if`, `else` and loop body (`curly`). One import
   statement per module (`no-duplicate-imports`; a separate `import type` is fine).
 - Identifier casing (`nitpicker/naming-convention`, which wraps
