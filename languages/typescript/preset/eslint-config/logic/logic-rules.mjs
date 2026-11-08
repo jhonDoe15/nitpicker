@@ -1,4 +1,5 @@
 import tseslint from 'typescript-eslint';
+import { nitpickerRules } from '../../eslint-plugin/index.mjs';
 
 const SYNTAX_RULES = {
   'array-callback-return': ['error', { allowImplicit: false, checkForEach: false }],
@@ -10,6 +11,10 @@ const SYNTAX_RULES = {
   '@typescript-eslint/no-unused-private-class-members': 'error',
   'no-useless-concat': 'error',
   'no-useless-call': 'error',
+};
+
+const OWN_RULES = {
+  'nitpicker/no-operand-slip': 'error',
 };
 
 const TYPED_RULES = {
@@ -43,6 +48,12 @@ export function logicConfigFor(files, parserOptions) {
   const plugins = { '@typescript-eslint': tseslint.plugin };
   return [
     { files, languageOptions: { parser: tseslint.parser }, plugins, rules: SYNTAX_RULES },
+    {
+      files,
+      languageOptions: { parser: tseslint.parser },
+      plugins: { nitpicker: nitpickerRules },
+      rules: OWN_RULES,
+    },
     {
       files,
       languageOptions: { parser: tseslint.parser, parserOptions },
