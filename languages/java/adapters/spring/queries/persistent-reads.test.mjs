@@ -14,7 +14,7 @@ public class Invoice extends Audited {
 
   @Id @GeneratedValue private Long id;
   @Enumerated(EnumType.STRING) private Status status;
-  private long total;
+  private long total, tax;
   private boolean archived;
   @ManyToOne(fetch = FetchType.LAZY) private Customer customer;
   private java.util.Set<String> tags = new java.util.HashSet<>(java.util.List.of("a"));
@@ -63,8 +63,11 @@ const LINES = [
   'rows.forCustomer(n).stream().filter(i -> i.getTags().contains(n)).count();',
   'rows.findAll().stream().filter(p -> p.hashCode() > 0).count();',
   'rows.forCustomer(n).stream().filter(i -> i.getLabel().equals(n)).count();',
+  'rows.findAll().stream().filter(i -> i.isOverdue()).count();',
+  'rows.forCustomer(n).stream().filter(i -> i.getTax() > 0).map(Invoice::getLabel).toList();',
+  'loaded.stream().filter(i -> i.isOverdue()).count();',
 ];
-const SERVICE_SOURCE = `package shop;\n\nclass Reports {\n${LINES.map((line) => `  ${line}`).join('\n')}\n}\n`;
+const SERVICE_SOURCE = `package shop;\n\nclass Reports { List<Invoice> loaded = rows.findAll();\n${LINES.map((line) => `  ${line}`).join('\n')}\n}\n`;
 
 afterEach(removeProjects);
 
@@ -82,7 +85,7 @@ function kept(files) {
 }
 
 describe('rows read through computed or transient properties', () => {
-  it('keeps the findings that read only columns, and drops computed, transient and unknown reads, also a computed getter named like a field of another entity', () => {
+  it('keeps column reads, drops computed, transient and unknown ones, and leaves findAll() alone', () => {
     expect(
       kept({
         [ENTITY]: ENTITY_SOURCE,
@@ -99,6 +102,9 @@ describe('rows read through computed or transient properties', () => {
       'SpringDataFilterInQuery:10',
       'SpringDataFilterInQuery:11',
       'SpringDataFilterInQuery:12',
+      'SpringDataFilterInQuery:14',
+      'SpringDataFilterInQuery:15',
+      'SpringDataFilterInQuery:16',
       'SpringDataNoFlush:2',
     ]);
   });
@@ -108,6 +114,8 @@ describe('rows read through computed or transient properties', () => {
       'SpringDataFilterInQuery:8',
       'SpringDataFilterInQuery:10',
       'SpringDataFilterInQuery:12',
+      'SpringDataFilterInQuery:14',
+      'SpringDataFilterInQuery:16',
       'SpringDataNoFlush:2',
     ]);
   });

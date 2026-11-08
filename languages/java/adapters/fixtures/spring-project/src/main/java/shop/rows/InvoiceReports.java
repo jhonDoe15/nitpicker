@@ -7,6 +7,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.OptionalLong;
 import java.util.stream.Collectors;
+import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Flux;
@@ -99,6 +100,19 @@ public class InvoiceReports {
     return rows.stream() // violation: SpringDataFilterInQuery
         .filter(invoice -> invoice.getTotal() > limit)
         .findFirst();
+  }
+
+  public List<Invoice> heldPage(String name, Pageable request) {
+    Page<Invoice> page = invoices.pageFor(name, request);
+    return page.getContent().stream() // violation: SpringDataFilterInQuery
+        .filter(invoice -> invoice.getTotal() > 0)
+        .toList();
+  }
+
+  public long parallel(String name) {
+    return invoices.forCustomer(name).parallelStream() // violation: SpringDataFilterInQuery
+        .filter(invoice -> invoice.getTotal() > 0)
+        .count();
   }
 
   public Mono<Long> reactiveCount(String name) {

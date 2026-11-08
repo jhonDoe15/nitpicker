@@ -6,16 +6,17 @@ const ANNOTATION_ARGUMENTS = /@[\w.]+\s*\([^()]*\)/gu;
 const ANNOTATION = /@[\w.]+/gu;
 const TRANSIENT_ANNOTATION = /@(?:[\w.]*\.)?Transient\b/u;
 const SKIPPED_FIELD = /\b(?:static|transient)\b/u;
-const FIELD = /([A-Za-z_$][\w$.]*)(?:\s*<[^]*>)?(?:\s*\[\s*\])*\s+([A-Za-z_$][\w$]*)$/u;
+const FIELD = /([A-Za-z_$][\w$.]*)(?:\s*\[\s*\])*\s+([A-Za-z_$][\w$]*)$/u;
+const GENERICS = /<[^<>]*>/gu;
 const GETTER = /\b((?:get|is)\p{Lu}[\w$]*)\s*\(\s*\)/gu;
 
 function closingBrace(text, open) {
   let depth = 0;
-  for (let index = open; index < text.length; index += 1) {
-    depth += text[index] === '{' ? 1 : 0;
-    depth -= text[index] === '}' ? 1 : 0;
+  for (const [step, character] of [...text.slice(open)].entries()) {
+    depth += character === '{' ? 1 : 0;
+    depth -= character === '}' ? 1 : 0;
     if (depth === 0) {
-      return index;
+      return open + step;
     }
   }
   return text.length;
@@ -32,27 +33,52 @@ function memberText(body) {
   return kept;
 }
 
-function withoutAnnotations(text) {
-  let previous;
-  let current = text;
-  while (previous !== current) {
-    previous = current;
-    current = current.replaceAll(ANNOTATION_ARGUMENTS, ' ');
-  }
-  return current.replaceAll(ANNOTATION, ' ');
+function withoutNested(text, pattern, replacement) {
+  const depth = text.split('').filter((character) => character === '(' || character === '<');
+  return [...depth, ''].reduce((current) => current.replaceAll(pattern, replacement), text);
 }
 
-function field(declaration) {
+function withoutAnnotations(text) {
+  return withoutNested(text, ANNOTATION_ARGUMENTS, ' ').replaceAll(ANNOTATION, ' ');
+}
+
+function withoutGenerics(text) {
+  return withoutNested(text, GENERICS, '');
+}
+
+function topLevelParts(text) {
+  const parts = [''];
+  let depth = 0;
+  for (const character of text) {
+    depth += '([{'.includes(character) ? 1 : 0;
+    depth -= ')]}'.includes(character) ? 1 : 0;
+    if (depth === 0 && character === ',') {
+      parts.push('');
+    } else {
+      parts[parts.length - 1] += depth === 0 ? character : ' ';
+    }
+  }
+  return parts;
+}
+
+function fields(declaration) {
   if (TRANSIENT_ANNOTATION.test(declaration)) {
-    return undefined;
+    return [];
   }
-  const [head] = withoutAnnotations(declaration).split('=');
-  const plain = head.trim();
+  const parts = topLevelParts(withoutGenerics(withoutAnnotations(declaration))).map((part) =>
+    part.split('=')[0].trim(),
+  );
+  const plain = parts.join(',');
   if (plain === '' || plain.includes('(') || plain.includes('{') || SKIPPED_FIELD.test(plain)) {
-    return undefined;
+    return [];
   }
-  const match = FIELD.exec(plain);
-  return match === null ? undefined : [match[2], match[1].split('.').at(-1)];
+  const [first, ...others] = parts;
+  const match = FIELD.exec(first.trim());
+  if (match === null) {
+    return [];
+  }
+  const type = match[1].split('.').at(-1);
+  return [match[2], ...others.map((name) => name.trim())].map((name) => [name, type]);
 }
 
 function classesIn(text) {
@@ -62,18 +88,13 @@ function classesIn(text) {
     const members = memberText(body);
     return {
       name: match[1],
-      fields: new Map(
-        members
-          .split(/[;}]/u)
-          .map((declaration) => field(declaration))
-          .filter((entry) => entry !== undefined),
-      ),
+      fields: new Map(members.split(/[;}]/u).flatMap((declaration) => fields(declaration))),
       getters: [...members.matchAll(GETTER)].map((getter) => getter[1]),
     };
   });
 }
 
-export function propertyNames(getter) {
+function propertyNames(getter) {
   const rest = getter.replace(/^(?:get|is)/u, '');
   return [`${rest.charAt(0).toLowerCase()}${rest.slice(1)}`, getter];
 }
@@ -103,15 +124,19 @@ function walks(classes, declared, getters) {
   return true;
 }
 
+function persistentClasses(projectRoot, roots) {
+  const files = [...new Set(roots)].flatMap((root) =>
+    sourceFilesUnder(pathInside(projectRoot, root), ['.java']),
+  );
+  return new Map(
+    files
+      .flatMap((file) => classesIn(readJavaSource(file) ?? ''))
+      .map((declared) => [declared.name, declared]),
+  );
+}
+
 export function entityColumns(projectRoot, roots) {
-  const classes = new Map();
-  for (const root of new Set(roots)) {
-    for (const file of sourceFilesUnder(pathInside(projectRoot, root), ['.java'])) {
-      for (const declared of classesIn(readJavaSource(file) ?? '')) {
-        classes.set(declared.name, declared);
-      }
-    }
-  }
+  const classes = persistentClasses(projectRoot, roots);
   const computed = computedGetters([...classes.values()]);
   return {
     readsColumns: (getters) =>
