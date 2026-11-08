@@ -121,6 +121,19 @@ describe('permittedSubclasses', () => {
     ]);
   });
 
+  it('keeps the edge of a permitted subclass the sealed type uses in its own members', () => {
+    const memberOf = (classIndex) => ({
+      bytes: Buffer.concat([Buffer.from([10]), u2(classIndex), u2(0)]),
+      slots: 1,
+    });
+
+    expect(
+      permittedSubclasses(
+        classFile('demo/Shape', ['demo/a/Circle', 'demo/b/Square'], [memberOf(8)]),
+      ),
+    ).toEqual(['demo.Shape -> demo.b.Square']);
+  });
+
   it('decodes modified UTF-8 names with two-byte and three-byte characters', () => {
     expect(
       permittedSubclasses(

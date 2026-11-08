@@ -44,11 +44,14 @@ function readAttributes(reader, pool) {
   );
 }
 
-function referencesOf(pool) {
-  const names = [...pool.utf.values()].flatMap((text) =>
+function descriptorNamesOf(pool) {
+  return [...pool.utf.values()].flatMap((text) =>
     [...text.matchAll(DESCRIPTOR_NAME)].map(([, name]) => name),
   );
-  return new Set([...pool.classNames(), ...names]);
+}
+
+function referencesOf(pool) {
+  return new Set([...pool.classNames(), ...descriptorNamesOf(pool)]);
 }
 
 export function classSummary(buffer) {
@@ -67,6 +70,7 @@ export function classSummary(buffer) {
     interfaces,
     ...readAttributes(reader, pool),
     references: referencesOf(pool),
+    usedMembers: new Set([...pool.memberOwners(), ...descriptorNamesOf(pool)]),
   };
 }
 

@@ -43,13 +43,14 @@ describe('classSummary', () => {
 
     const summary = classSummary(readFileSync(path.join(classes, 'demo/Square.class')));
 
-    expect({ ...summary, references: undefined }).toEqual({
+    expect({ ...summary, references: undefined, usedMembers: undefined }).toEqual({
       name: 'demo/Square',
       superName: 'demo/Base',
       interfaces: ['demo/Named', 'java/lang/Comparable'],
       sourceFile: 'Shapes.java',
       permitted: [],
       references: undefined,
+      usedMembers: undefined,
     });
     expect(
       ['demo/Base', 'demo/Named', 'java/util/Map', 'java/util/List', 'java/time/Duration'].filter(
@@ -71,7 +72,21 @@ describe('classSummary', () => {
       sourceFile: 'Shape.java',
       permitted: ['demo/Circle'],
       references: new Set(['demo/Shape', 'java/lang/Object', 'demo/Circle']),
+      usedMembers: new Set(),
     });
+  });
+
+  it('lists the classes whose members a sealed type uses, apart from the permits attribute', () => {
+    const classes = compiled({
+      'demo/Shape.java':
+        'package demo;\npublic sealed interface Shape permits Circle, Square {\n  static Shape of() { return new Circle(); }\n}\n',
+      'demo/Circle.java': 'package demo;\nfinal class Circle implements Shape {}\n',
+      'demo/Square.java': 'package demo;\nfinal class Square implements Shape {}\n',
+    });
+
+    const { usedMembers } = classSummary(readFileSync(path.join(classes, 'demo/Shape.class')));
+
+    expect([usedMembers.has('demo/Circle'), usedMembers.has('demo/Square')]).toEqual([true, false]);
   });
 });
 
