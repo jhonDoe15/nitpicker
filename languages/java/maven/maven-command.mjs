@@ -2,7 +2,7 @@ import { spawnSyncWithOutputFile } from '../../../core/tooling/output-file/outpu
 import { existsSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
-import { JVM_NOISE } from '../../../shared/messages/jvm-noise.mjs';
+import { JVM_NOISE } from '../../../shared/messages/jvm/jvm-noise.mjs';
 import { wrapperTarget } from '../adapters/gradle-wrapper/gradle-command.mjs';
 
 const MAVEN_TIMEOUT_MS = 15 * 60 * 1000;

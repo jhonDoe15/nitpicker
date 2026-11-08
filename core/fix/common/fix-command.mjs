@@ -1,4 +1,4 @@
-import { withoutJvmNoise } from '../../../shared/messages/jvm-noise.mjs';
+import { withoutJvmNoise } from '../../../shared/messages/jvm/jvm-noise.mjs';
 
 export function failureText(result) {
   const detail = withoutJvmNoise(result.stderr ?? '').trim();
