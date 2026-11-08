@@ -69,6 +69,7 @@ describe('the policy approval of action.yml', () => {
     expect(workflow.jobs['self-gate'].permissions).toEqual({
       contents: 'read',
       statuses: 'read',
+      checks: 'read',
     });
   });
 
@@ -209,7 +210,7 @@ describe('the policy approval workflow', () => {
     expect(template.includes('${{')).toBe(false);
   });
 
-  it('records the approval of a person with write access and re-runs the latest failed runs', async () => {
+  it('records the approval of a person with write access and re-runs the latest runs that failed', async () => {
     const runs = [
       { id: 3, workflow_id: 1, name: 'typescript', status: 'completed', conclusion: 'skipped' },
       { id: 2, workflow_id: 1, name: 'typescript', status: 'completed', conclusion: 'failure' },
@@ -240,6 +241,22 @@ describe('the policy approval workflow', () => {
       ],
       ['reRunWorkflowFailedJobs', { ...REPO, run_id: 2 }],
     ]);
+  });
+
+  it('re-runs nothing for a workflow whose latest run passed after an earlier failure', async () => {
+    const runs = [
+      { id: 6, workflow_id: 1, name: 'typescript', status: 'completed', conclusion: 'success' },
+      { id: 2, workflow_id: 1, name: 'typescript', status: 'completed', conclusion: 'failure' },
+    ];
+    const github = fakeGithub({ permission: 'write', runs });
+
+    const calls = await approve(github);
+
+    expect([calls.failed, calls.notices]).toEqual([
+      [],
+      ['Recorded the approval; no failed run of this commit to re-run.'],
+    ]);
+    expect(github.rest.actions.reRunWorkflowFailedJobs.mock.calls).toEqual([]);
   });
 
   it('waits for a run that is still going, then re-runs it when it failed', async () => {

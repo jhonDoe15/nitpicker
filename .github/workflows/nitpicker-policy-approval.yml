@@ -4,9 +4,9 @@ name: nitpicker policy approval
 # the accept-policy-change label. This job checks their access, records the approval on the head
 # commit as the nitpicker/policy-accepted status for this pull request and its target branch, and
 # removes the label. It then waits up to 20 minutes for the pull request runs of that commit to
-# finish and re-runs the failed jobs of the latest failed run of each workflow. A later push is a
-# new commit and needs the label again. The job never checks out or runs the code of the pull
-# request. Create the label once: gh label create accept-policy-change
+# finish and re-runs the failed jobs of the latest run of each workflow when it failed. A later
+# push is a new commit and needs the label again. The job never checks out or runs the code of the
+# pull request. Create the label once: gh label create accept-policy-change
 on:
   pull_request_target:
     types: [labeled]
@@ -68,18 +68,19 @@ jobs:
               await new Promise((resolve) => setTimeout(resolve, 30_000));
               runs = await listRuns();
             }
-            const failed = new Map();
+            const latest = new Map();
             for (const run of runs) {
-              if (run.conclusion === 'failure' && !failed.has(run.workflow_id)) {
-                failed.set(run.workflow_id, run);
+              if (run.conclusion !== 'skipped' && !latest.has(run.workflow_id)) {
+                latest.set(run.workflow_id, run);
               }
             }
-            for (const run of failed.values()) {
+            const failed = [...latest.values()].filter((run) => run.conclusion === 'failure');
+            for (const run of failed) {
               await github.rest.actions.reRunWorkflowFailedJobs({ ...repo, run_id: run.id });
               core.notice(`Re-ran the failed jobs of ${run.name}.`);
             }
             if (runs.some((run) => run.status !== 'completed')) {
               core.notice('Some runs of this commit are still going; re-run any that fails.');
-            } else if (failed.size === 0) {
+            } else if (failed.length === 0) {
               core.notice('Recorded the approval; no failed run of this commit to re-run.');
             }
