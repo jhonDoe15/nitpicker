@@ -1,6 +1,6 @@
 import ast
 
-from checks.common import finding, last_name
+from checks.common import directories, dotted_name, finding, last_name
 from persistence.memory.fields import field_reads, key_fields
 from persistence.memory.models import model_columns
 from persistence.memory.results import MAPPING, listed, query_result
@@ -16,6 +16,9 @@ FIRST_CALL = "next"
 FILTER_CALL = "filter"
 SORT_METHOD = "sort"
 KEY = "key"
+MIGRATIONS = "migrations"
+DJANGO_TESTS = "tests.py"
+MODELS_MODULE = ".models."
 TESTS = (ast.If, ast.While, ast.IfExp, ast.Assert)
 LOOPS = (ast.For, ast.AsyncFor, ast.While, ast.comprehension)
 SCOPES = (ast.FunctionDef, ast.AsyncFunctionDef, ast.Lambda, ast.ClassDef)
@@ -140,6 +143,16 @@ def is_known(context, model, fields):
     return bool(fields) and fields <= columns
 
 
+def is_model(context, model):
+    dotted = dotted_name(ast.Name(id=model), context.aliases) or ""
+    return bool(model_columns(context, model)) or MODELS_MODULE in f".{dotted}"
+
+
+def is_skipped(context):
+    name = context.path.rsplit("/", 1)[-1]
+    return context.tests or name == DJANGO_TESTS or MIGRATIONS in directories(context.path)
+
+
 def query_findings(node, context):
     result = listed(node, context) or query_result(node, context)
     site = result_site(node, context) if result is not None else None
@@ -147,13 +160,14 @@ def query_findings(node, context):
     if found is None:
         return []
     report, shape, fields = found
-    if shape != COUNT and not is_known(context, result.model, fields):
+    known = is_model(context, result.model) if shape == COUNT else is_known(context, result.model, fields)
+    if not known:
         return []
     return [finding(context.path, RULE, f"{result.model} {shape}", report)]
 
 
 def check(context):
-    if context.tests:
+    if is_skipped(context):
         return []
     found = []
     for node in ast.walk(context.tree):

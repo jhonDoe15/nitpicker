@@ -661,8 +661,11 @@ self.items.append(item)`), also through a package `__init__` that re-exports it 
   columns that the project declares on the model (Django fields, SQLAlchemy `Mapped`,
   `mapped_column` and `Column`, SQLModel table fields, including those of base classes) and
   compare them with constants, parameters and locals; a property, a method call, a model the
-  project does not declare, and a value computed per row leave the code alone. Tests are skipped.
-  A small fixed lookup table that is meant to be loaded whole takes an `exceptions` entry.
+  project does not declare, and a value computed per row leave the code alone. A count needs a
+  model the project declares or one imported from a `models` module (`django.contrib.auth.models`).
+  `for` loops over the rows, `itertools.groupby` and `defaultdict` grouping are not followed.
+  Tests, a Django `tests.py` and `migrations` folders are skipped. A small fixed lookup table that
+  is meant to be loaded whole takes an `exceptions` entry.
 - `falsy-default` reports a parameter whose annotation can be falsy (`int`, `float`, `str`, `bytes`,
   `bool`, a list, dict, set or tuple type, a `Sequence`, `Mapping`, `Decimal`, `timedelta`) and is
   `None` by default or by its type, when the body writes `param or default` or

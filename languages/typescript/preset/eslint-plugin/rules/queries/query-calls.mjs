@@ -1,14 +1,18 @@
 import { chainOf } from '../analysis/ancestry.mjs';
-import { isFunctionNode } from '../analysis/constant-resolution.mjs';
+import { isFunctionNode, stringValue } from '../analysis/constant-resolution.mjs';
 import { DRIZZLE, moduleScope } from '../database/orm-modules.mjs';
-import { memberName, unwrapped } from '../security/security-values.mjs';
+import { memberName, staticKey, unwrapped } from '../security/security-values.mjs';
 
 const LIST_QUERIES = new Set(['find', 'findBy', 'findByIds', 'findMany', 'findAll', 'getMany']);
 const PRISMA_PACKAGE = '@prisma/';
-const PRISMA_NAME = /prisma/iu;
+const PRISMA_NAME = /^prisma(?:service|client)?$/iu;
 const DRIZZLE_FROM = 'from';
 const DRIZZLE_SELECTS = new Set(['select', 'selectDistinct']);
 const DRIZZLE_GROUPING = 'groupBy';
+const PAGES = new Set(['take', 'skip', 'limit', 'offset', 'cursor']);
+const RECEIVER_WORDS = /repo|manager|model|prisma|orm|entit/iu;
+const RECEIVER_NAMES = new Set(['em', 'db', 'tx', 'trx', 'query']);
+const MODEL_NAME = /^[A-Z]/u;
 
 function isPrismaSource({ source }) {
   return typeof source === 'string' && source.startsWith(PRISMA_PACKAGE);
@@ -61,13 +65,48 @@ function isDrizzleSelect(scope, call) {
   );
 }
 
-function mentionsPrisma(scope, call) {
-  return PRISMA_NAME.test(scope.context.sourceCode.getText(call.callee.object));
+function memberNameOf(step) {
+  return step.type === 'MemberExpression' ? memberName(step) : undefined;
+}
+
+function receiverNames(receiver) {
+  const steps = chainOf(unwrapped(receiver), (current) => {
+    if (current.type === 'CallExpression') {
+      return unwrapped(current.callee);
+    }
+    return current.type === 'MemberExpression' ? unwrapped(current.object) : undefined;
+  });
+  return steps
+    .map((step) => (step.type === 'Identifier' ? step.name : memberNameOf(step)))
+    .filter((name) => name !== undefined);
+}
+
+function isRepositoryLike(names) {
+  const [last] = names;
+  return (
+    (last !== undefined && MODEL_NAME.test(last)) ||
+    names.some((name) => RECEIVER_NAMES.has(name) || RECEIVER_WORDS.test(name))
+  );
+}
+
+function isPaged(call) {
+  const options = call.arguments.filter(
+    (argument) => unwrapped(argument).type === 'ObjectExpression',
+  );
+  const keys = options.flatMap((argument) => unwrapped(argument).properties.map(staticKey));
+  return keys.some((key) => PAGES.has(key)) || namesOf(call).some((name) => PAGES.has(name));
 }
 
 function isListQuery(scope, call) {
-  const name = memberName(call.callee);
-  return LIST_QUERIES.has(name) && (scope.orm || mentionsPrisma(scope, call));
+  const names = receiverNames(call.callee.object);
+  const prisma = names.some((name) => PRISMA_NAME.test(name));
+  const textual = stringValue(unwrapped(call.arguments[0])) !== undefined;
+  return (
+    LIST_QUERIES.has(memberName(call.callee)) &&
+    !textual &&
+    (scope.orm || prisma) &&
+    isRepositoryLike(names)
+  );
 }
 
 export function isQueryResult(scope, node) {
@@ -76,7 +115,7 @@ export function isQueryResult(scope, node) {
   if (call?.type !== 'CallExpression' || call.callee.type !== 'MemberExpression') {
     return false;
   }
-  if (call.arguments.some((argument) => isFunctionNode(unwrapped(argument)))) {
+  if (call.arguments.some((argument) => isFunctionNode(unwrapped(argument))) || isPaged(call)) {
     return false;
   }
   return isListQuery(scope, call) || isDrizzleSelect(scope, call);

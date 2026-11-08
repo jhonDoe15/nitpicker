@@ -66,6 +66,11 @@ describe.skipIf(!enabled)('in-memory-query on Django querysets', () => {
         ['in-memory-query:5 Order count'],
       ],
       [
+        'a model from an installed app counted',
+        'from django.contrib.auth.models import User\n\n\ndef has_staff():\n    return bool(User.objects.filter(is_staff=True))\n',
+        ['in-memory-query:5 User count'],
+      ],
+      [
         'a queryset as an if test',
         django(
           'def has_open():\n    if Order.objects.filter(status="open"):\n        return 1\n    return 0\n',
@@ -189,6 +194,24 @@ describe.skipIf(!enabled)('in-memory-query on Django querysets', () => {
       [
         'a list that is not a query',
         'def open_count(orders):\n    return len([o for o in orders if o.status == "open"])\n',
+        [],
+      ],
+      [
+        'a class attribute named objects that is not a model',
+        'class Cache:\n    objects = {}\n\n\ndef size():\n    return len(Cache.objects.all())\n',
+        [],
+      ],
+      [
+        'a data migration and a Django tests module',
+        {
+          files: {
+            'shop/models.py': DJANGO_MODELS,
+            'shop/migrations/0002_fill.py':
+              'def fill(apps, schema_editor):\n    Order = apps.get_model("shop", "Order")\n    return len(Order.objects.all())\n',
+            'shop/tests.py':
+              'from .models import Order\n\n\ndef test_count():\n    assert len(Order.objects.all()) == 2\n',
+          },
+        },
         [],
       ],
       [

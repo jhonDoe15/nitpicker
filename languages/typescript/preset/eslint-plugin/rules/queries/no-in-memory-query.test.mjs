@@ -12,6 +12,7 @@ const SEQUELIZE = 'import { Model } from "sequelize";';
 const MIKRO = 'import { EntityManager } from "@mikro-orm/core";';
 const DRIZZLE = 'import { eq } from "drizzle-orm";';
 const LODASH = 'import _ from "lodash";';
+const PRISMA = 'import { PrismaClient } from "@prisma/client";';
 const inService = (header, body) =>
   `${header} export async function run(repo, prisma, db, em, Order, id, ids) { ${body} }`;
 const errors = (messageId) => [{ messageId }];
@@ -64,6 +65,21 @@ tester.run('no-in-memory-query', rule, {
     ),
     inService(`${TYPEORM} ${LODASH}`, 'return _.map(await repo.find(), "id");'),
     inService(TYPEORM, 'const rows = await repo.find(); rows.length = 0; return rows;'),
+    inService(TYPEORM, 'const rows = await cache.find(); return rows.length;'),
+    inService(TYPEORM, 'return (await this.ldap.findAll()).length;'),
+    inService(TYPEORM, 'return (await glob.find("*.ts")).length;'),
+    inService('', 'return (await prismaCache.findMany()).length;'),
+    inService(
+      TYPEORM,
+      'const rows = await repo.find({ take: 100, skip: id }); return rows.length < 100;',
+    ),
+    inService(TYPEORM, 'return (await repo.find({ take: 10 })).filter((row) => row.a === 1);'),
+    inService(SEQUELIZE, 'return (await Order.findAll({ limit: 20 })).length;'),
+    inService('', 'return (await prisma.user.findMany({ take: 10 })).length;'),
+    inService(MIKRO, 'return (await em.find(Order, {}, { limit: 5 })).length;'),
+    inService(DRIZZLE, 'return (await db.select().from(orders).limit(5)).length;'),
+    inService(TYPEORM, 'return (await repo.createQueryBuilder("o").take(5).getMany()).length;'),
+    inService(TYPEORM, 'return (await repo.find()).filter((row) => typeof row.a === "string");'),
   ],
   invalid: [
     {
@@ -72,6 +88,18 @@ tester.run('no-in-memory-query', rule, {
     },
     {
       code: inService(TYPEORM, 'return (await repo.findBy({ status: "open" })).length === 0;'),
+      errors: errors('count'),
+    },
+    {
+      code: inService(TYPEORM, 'return (await this.ordersRepository.find()).length;'),
+      errors: errors('count'),
+    },
+    {
+      code: inService(PRISMA, 'return (await tx.order.findMany({ where: { id } })).length;'),
+      errors: errors('count'),
+    },
+    {
+      code: inService(DRIZZLE, 'return (await db.query.orders.findMany()).length;'),
       errors: errors('count'),
     },
     {
