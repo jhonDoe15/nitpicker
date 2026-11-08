@@ -1,0 +1,7 @@
+[
+  {
+    "tool": "python-rules",
+    "rule": "mocked-subject-in-test",
+    "mention": "collaborators in"
+  }
+]

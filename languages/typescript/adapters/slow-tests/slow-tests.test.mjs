@@ -113,6 +113,7 @@ describe('slow tests from a runner report', () => {
         identity: 'test:orders pays',
         location: { line: 2 },
         message: unitMessage({ seconds: '6.2', file: 'src/orders.test.ts', name: 'orders pays' }),
+        allowedForm: `${FIX}${MOVE}.`,
         classification: 'enforceable',
       },
     ]);
@@ -135,6 +136,7 @@ describe('slow tests from a runner report', () => {
           `is intended, add ` +
           `{"rule":"slow-test","paths":["test/integration/db.test.ts"],"reason":"..."} ` +
           `to "exceptions" in nitpicker.config.json.`,
+        allowedForm: `${FIX}.`,
         classification: 'enforceable',
       },
     ]);
