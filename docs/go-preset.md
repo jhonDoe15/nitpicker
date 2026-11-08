@@ -136,15 +136,28 @@ run that writes a coverage profile, so every test runs and its time is measured.
   `-race` needs). Each race report becomes one `race/data-race` finding on the file of its first
   access. The message names both conflicting accesses (read or write, the function and its
   `file:line`, the first frame of each stack inside the module) and the test that found it. The
-  finding is keyed by the two functions, whichever access the detector printed first, so a race the
-  merge base already had is not new, and the same race found by several tests is one finding. A
-  test that failed only because of a race report is not listed in `tests/tests-failed`; one that
-  also failed an assertion is, without the race report in its output. A data race is never
-  intended, so the finding has no exception route.
+  finding is keyed by the two functions (closures without their `func1`, `func2` numbers),
+  whichever access the detector printed first, so a race the merge base already had is not new,
+  and the same race found by several tests is one finding. A side whose stack the detector could
+  not restore, or that has no frame inside the module, is still named as well as the report allows.
+  A data race is never intended, so the finding has no exception route.
+- **Tests that fail only under `-race`.** The race detector fails every test that ran during a
+  race, parallel tests included, and slows tests 2 to 20 times. So when a package printed a race
+  report, timed out, hit the detector's goroutine limit or was killed, its failing tests run once
+  more without `-race` (`-run` with their names, `-count=1`). The ones that pass are left out of
+  `tests/tests-failed`: a race report is already a finding. A failure with no race report in its
+  package (a timeout under the slowdown) adds a descriptive `race/race-not-checked` finding naming
+  the tests. A test that fails without `-race` too stays a failing test, with the race report taken
+  out of its quoted output.
 - **Without the race detector.** `-race` needs cgo (`CGO_ENABLED=1` and a C compiler on the
-  `PATH`) and a platform the detector supports. When `go test -race` reports that it cannot run,
-  the tests run again without it, and a descriptive `race/race-not-checked` finding says why, so a
-  report never claims races were checked when they were not.
+  `PATH`) and a platform the detector supports. When `go test -race` reports that it cannot run
+  (cgo off, an unsupported platform, a race runtime that does not build, ThreadSanitizer refusing
+  the machine's memory layout) or does not finish within the tool time limit, the tests run again
+  without it, and a descriptive `race/race-not-checked` finding says why. Every
+  `race/race-not-checked` finding of head is listed under "Notices (not failing)" on every run, so a
+  report never claims races were checked when they were not. Whether cgo is on is part of the
+  analyzer version, so a cached merge base result from a machine with cgo is not compared with a
+  head run without it.
 - **Slow tests** use the shared `slow-test` limits: a new or changed top-level test over the unit
   budget (5 s) fails, and an integration test gets the integration budget (30 s). A test counts as
   integration when it lives under an `integration`, `integration_tests`, `e2e` or `end_to_end`
@@ -240,3 +253,9 @@ with `"preset": "go"`, each naming its reason.
 - Generated files are listed but not measured or format-checked; they still compile and vet.
 - The tools are built from the Go module proxy on first use, so the first run needs network access
   (or a `GOPROXY` the project sets) and takes longer.
+- The race detector finds only the races the tests exercise, on the interleavings that happen in
+  that run. A race the merge base has but its run did not hit shows as new on head. A base whose
+  tests failed treats head's races outside the changed lines as unknown on the base, as it does
+  coverage and slow tests.
+- A race is keyed by its functions and reported on the file of its first access, so moving one of
+  the racing functions to another file or package makes the race new.

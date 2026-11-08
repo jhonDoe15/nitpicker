@@ -91,7 +91,7 @@ describe('parseTestEvents', () => {
     ]);
   });
 
-  it('leaves out a test that failed only because the race detector found a race', () => {
+  it('strips race reports from failures and keeps each package and test that printed one', () => {
     const race = [
       '==================\n',
       'WARNING: DATA RACE\n',
@@ -115,13 +115,37 @@ describe('parseTestEvents', () => {
       ].join('\n'),
     );
     expect(raced.failures).toEqual([
+      { id: 'example.com/shop.TestCart/add', package: 'example.com/shop', output: '' },
       {
         id: 'example.com/shop.TestTotal',
         package: 'example.com/shop',
         output: '    cart_test.go:9: got 1, want 2\n',
       },
     ]);
-    expect(raced.raceOutputs.map(({ test }) => test)).toEqual(['TestCart/add', 'TestTotal']);
+    expect(raced.raceOutputs.map(({ package: name, test }) => `${name} ${test}`)).toEqual([
+      'example.com/shop TestCart/add',
+      'example.com/shop TestTotal',
+    ]);
+  });
+
+  it('keeps a parent test that failed on its own next to a failing subtest', () => {
+    const parsed = parseTestEvents(
+      [
+        event({ Action: 'run', Package: 'example.com/shop', Test: 'TestCart' }),
+        event({ Action: 'fail', Package: 'example.com/shop', Test: 'TestCart/add' }),
+        event({
+          Action: 'output',
+          Package: 'example.com/shop',
+          Test: 'TestCart',
+          Output: '    cart_test.go:20: parent check\n',
+        }),
+        event({ Action: 'fail', Package: 'example.com/shop', Test: 'TestCart' }),
+      ].join('\n'),
+    );
+    expect(parsed.failures.map(({ id }) => id)).toEqual([
+      'example.com/shop.TestCart/add',
+      'example.com/shop.TestCart',
+    ]);
   });
 
   it('turns failures into one tool error that quotes what each test printed', () => {

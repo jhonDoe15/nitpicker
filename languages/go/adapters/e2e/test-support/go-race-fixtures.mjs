@@ -11,9 +11,20 @@ func (t *Tally) Count() int { return t.count }
 
 const TALLY_TEST = `package shop
 
-import "testing"
+import (
+	"testing"
+	"time"
+)
+
+func TestTallyPeer(t *testing.T) {
+	t.Parallel()
+	t.Log("waiting next to the racing test")
+	time.Sleep(20 * time.Millisecond)
+}
 
 func TestTally(t *testing.T) {
+	t.Parallel()
+	t.Log("counting")
 	tally := &Tally{}
 	done := make(chan struct{})
 	go func() {
