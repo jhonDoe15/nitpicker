@@ -7,6 +7,7 @@ import { loadEffectFindings } from './main/load-effects.mjs';
 import { recursiveMapUpdateFindings } from './main/map-updates/recursive-map-update.mjs';
 import { singularPluralFindings } from './main/member-names.mjs';
 import { timeoutFindings } from './main/timeouts/timeouts.mjs';
+import { streamedRowsFindings } from './main/streamed-rows/streamed-rows.mjs';
 import { unboundedPoolFindings } from './main/thread-pools/unbounded-pools.mjs';
 import { unusedOptionFindings } from './main/unused-options/unused-options.mjs';
 import { validationTargetFindings } from './validation/validation-targets.mjs';
@@ -82,6 +83,7 @@ export function readKotlinReviewFindings(context) {
     ...loadEffectFindings(own, { finding, declaredIn: projectFiles }),
     ...unboundedPoolFindings(own, { finding }),
     ...recursiveMapUpdateFindings(own, { finding, declaredIn: projectFiles }),
+    ...streamedRowsFindings(own, { finding, declaredIn: projectFiles }),
     ...generatedMemberFindings(own, { finding, declaredIn: projectFiles }),
     ...unusedOptionFindings(own, {
       finding,

@@ -62,3 +62,5 @@ Part of the [nitpicker-kotlin](../SKILL.md) skill. Write these forms from the st
   collect them (`kotlin-source/ListUsedAsSet`), a map built once with `associateBy` before a loop
   instead of `find { it.key == key }` in it (`kotlin-source/LinearLookupInLoop`), and `minBy`/`maxBy`
   instead of `sortedBy { ... }.first()` (`kotlin-source/SortForExtreme`).
+- A `Stream` returned by a repository function is handled row by row in `forEach`, flushing a
+  fixed-size batch there, never collected with `toList()` or `collect` (`pmd/StreamedRowsCollected`).
