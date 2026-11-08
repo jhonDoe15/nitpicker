@@ -29,7 +29,7 @@ class HonestyTest {
   @Test
   @Order(1) // violation: pmd/TestOrderDependence
   void waits() throws InterruptedException {
-    Thread.sleep(1); // violation: pmd/TestSleep
+    Thread.sleep(1);
     assertEquals(2, names.size());
   }
 
@@ -79,7 +79,7 @@ class HonestyTest {
   @Test
   void compares() {
     String first = names.get(0);
-    assertTrue(first.equals("ada")); // violation: pmd/AssertTrueOnEquality
+    assertTrue(first.equals("ada"));
     assertEquals("ada", first);
   }
 

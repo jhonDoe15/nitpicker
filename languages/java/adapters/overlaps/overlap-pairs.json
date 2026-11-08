@@ -77,8 +77,7 @@
     "secondary": [
       "spotbugs/MS_FINAL_PKGPROTECT",
       "spotbugs/MS_SHOULD_BE_FINAL",
-      "errorprone/FieldCanBeFinal",
-      "pmd/NonFinalStaticField"
+      "errorprone/FieldCanBeFinal"
     ],
     "scope": "line"
   },
