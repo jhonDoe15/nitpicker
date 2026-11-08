@@ -27,7 +27,21 @@ const SAMPLE_PROPERTIES = [
   'spring.datasource.password=example-value',
   'app.client.token=${CLIENT_TOKEN:example-value}',
   'spring.datasource.url=jdbc:postgresql://user:example-value@database/app',
+  'spring.datasource.user=app',
+  'spring.redis.host=cache',
 ];
+const SAMPLE_METADATA = {
+  groups: [{ name: 'spring.datasource' }],
+  properties: [
+    { name: 'spring.datasource.url', type: 'java.lang.String' },
+    { name: 'spring.datasource.username', type: 'java.lang.String' },
+    { name: 'spring.datasource.password', type: 'java.lang.String' },
+    {
+      name: 'spring.redis.host',
+      deprecation: { level: 'error', replacement: 'spring.data.redis.host' },
+    },
+  ],
+};
 
 const SAMPLE_SOURCE = [
   'package example;',
@@ -58,13 +72,21 @@ function writeSampleProject(root) {
     `${SAMPLE_PROPERTIES.join('\n')}\n`,
   );
   writeFileSync(path.join(root, 'src/main/java/example/Sample.java'), SAMPLE_SOURCE);
+  mkdirSync(path.join(root, 'classes/META-INF'), { recursive: true });
+  writeFileSync(
+    path.join(root, 'classes/META-INF/spring-configuration-metadata.json'),
+    JSON.stringify(SAMPLE_METADATA),
+  );
 }
 
 function sampleFindings() {
   const root = mkdtempSync(path.join(tmpdir(), 'nitpicker-reference-spring-'));
   try {
     writeSampleProject(root);
-    return readSpringConfigFindings(root, { sourceRoots: ['src/main/java'] });
+    return readSpringConfigFindings(root, {
+      sourceRoots: ['src/main/java'],
+      springClasspath: [path.join(root, 'spring-boot-3.5.5.jar'), path.join(root, 'classes')],
+    });
   } finally {
     rmSync(root, { recursive: true, force: true });
   }
