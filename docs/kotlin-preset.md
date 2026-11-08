@@ -2,13 +2,15 @@
 
 Status: slices KT1 (ticket #176), KT2 (ticket #177), KT3 (ticket #178) and KT4 (ticket #179) implemented.
 
-The Kotlin preset gates a Gradle project with Kotlin JVM modules (`org.jetbrains.kotlin.jvm`),
-including modules that mix Java and Kotlin, with the same differential gate as the
+The Kotlin preset gates a Gradle project with Kotlin JVM modules (`org.jetbrains.kotlin.jvm`) or a
+Maven project that applies `kotlin-maven-plugin`, including modules that mix Java and Kotlin, with the same differential gate as the
 [Java preset](java-preset.md): run the tools on the merge base and on head, turn each report into
 findings, fail only on new enforceable findings. It is not a second implementation. It shares the
-Gradle init script, the runner, the ingesters, the failure policy and the cache with the Java
-preset, and adds Kotlin tools next to the Java ones. The JDK and Gradle a CI job needs, and recipes for
-GitHub Actions, GitLab CI and Jenkins, are in [nitpicker in CI](ci.md#toolchains-by-preset).
+Gradle init script or Maven runner, the ingesters, the failure policy and the cache with the Java
+preset, and adds Kotlin tools next to the Java ones. The build tool is detected, never configured: a
+project with a Gradle build runs through Gradle, one with only a `pom.xml` through Maven (see
+[Maven](kotlin-preset/maven.md)). The JDK and Gradle a CI job needs, and recipes for GitHub Actions, GitLab CI and
+Jenkins, are in [nitpicker in CI](ci.md#toolchains-by-preset).
 
 Every rule the preset can report has an entry in the [rule reference](https://github.com/jhonDoe15/nitpicker/blob/latest/docs/rules/README.md): [detekt](https://github.com/jhonDoe15/nitpicker/blob/latest/docs/rules/kotlin-detekt.md), [the Kotlin source checks, compiler warnings and format checks](https://github.com/jhonDoe15/nitpicker/blob/latest/docs/rules/kotlin-nitpicker.md), and the [Java rules](https://github.com/jhonDoe15/nitpicker/blob/latest/docs/rules/java-pmd.md) that run on Java sources. `nitpicker explain <tool/rule>` prints an entry.
 
@@ -35,6 +37,7 @@ Each topic has its own page, so two changes to different topics never edit the s
 - [CRAP](kotlin-preset/crap.md)
 - [Duplicates](kotlin-preset/duplicates.md)
 - [Coupling](kotlin-preset/coupling.md)
+- [Maven](kotlin-preset/maven.md)
 - [Failure policy](kotlin-preset/failure-policy.md)
 - [Config keys](kotlin-preset/config-keys.md)
 - [Slow tests](kotlin-preset/slow-tests.md)

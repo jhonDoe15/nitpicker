@@ -1,6 +1,11 @@
+import { mkdtempSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import path from 'node:path';
 import { runGit } from '../../../../core/diff/git/repository/command.mjs';
 import { readInside } from '../../../../shared/conventions/read-inside.mjs';
-import { kotlinFormatterOf } from '../kotlin/kotlin-tools.mjs';
+import { detectJavaBuild } from '../../builds/java-build.mjs';
+import { readEffectivePom } from '../../maven/configuration/effective-pom.mjs';
+import { kotlinFormatterOf, mavenKotlinFacts } from '../kotlin/kotlin-tools.mjs';
 import { springRolesFact } from '../spring-arch/spring-roles.mjs';
 
 const BUILD_FILE =
@@ -26,12 +31,30 @@ export function declaresSpring(projectRoot) {
   );
 }
 
-export function javaHeadFacts(projectRoot, config) {
+function effectivePomOf(projectRoot, { maven, spawn }) {
+  const work = mkdtempSync(path.join(tmpdir(), 'nitpicker-head-pom-'));
+  try {
+    return { text: readEffectivePom({ projectRoot, maven, work, spawn }) };
+  } catch (error) {
+    return { failure: error.message };
+  } finally {
+    rmSync(work, { recursive: true, force: true });
+  }
+}
+
+function kotlinFacts(projectRoot, config, host) {
+  const configured = config.kotlin?.formatter;
+  const { text: effectivePom } =
+    detectJavaBuild(projectRoot) === 'maven' ? effectivePomOf(projectRoot, host) : {};
+  return effectivePom === undefined
+    ? { formatter: kotlinFormatterOf(projectRoot, configured) }
+    : mavenKotlinFacts(projectRoot, configured, effectivePom);
+}
+
+export function javaHeadFacts(projectRoot, config, host = {}) {
   return {
     ...(declaresSpring(projectRoot) ? { spring: true } : {}),
     ...springRolesFact(config),
-    ...(config.preset === 'kotlin'
-      ? { kotlin: { formatter: kotlinFormatterOf(projectRoot, config.kotlin?.formatter) } }
-      : {}),
+    ...(config.preset === 'kotlin' ? { kotlin: kotlinFacts(projectRoot, config, host) } : {}),
   };
 }

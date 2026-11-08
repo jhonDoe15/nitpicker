@@ -53,7 +53,7 @@ are listed at the end.
 | Signatures               | `hmac.new(key, message, hashlib.sha256)`; HMAC-SHA1 where a protocol fixes it                                                                                                        | ruff `S324`, `S303`, `weak-hmac` (script)                                                                                                                                                                                                  |
 | Timeouts                 | `timeout=10` on every request, `urlopen` and plain `requests.Session` call; never `timeout=None`                                                                                     | ruff `S113`, `http-without-timeout` (script)                                                                                                                                                                                               |
 | Child processes          | `subprocess.run(args, timeout=30, check=True)`, `communicate(timeout=30)`, asyncio waits in `asyncio.timeout(30)`                                                                    |
-| Test honesty             | a reason on every skip, no sleeping, no tautologies, fixed time and seeded random values, no network, no leaked global state                                                         | ruff `PT`, `skipped-test-without-reason`, `sleep-in-test`, `negative-wait-in-test`, `tautological-assert`, `real-clock-in-test`, `random-in-test`, `network-in-test`, `server-or-container-per-test`, `global-state-leak-in-test` (script) |
+| Test honesty             | a reason on every skip, no sleeping, no tautologies, fixed time and seeded random values, no network, no leaked global state                                                         | ruff `PT`, `skipped-test-without-reason`, `sleep-in-test`, `negative-wait-in-test`, `mocked-subject-in-test`, `tautological-assert`, `real-clock-in-test`, `random-in-test`, `network-in-test`, `server-or-container-per-test`, `global-state-leak-in-test` (script) |
 | Test layout              | tests in files pytest collects; helpers in the tests folder                                                                                                                          | `uncollected-tests`, `test-helper-in-source` (script)                                                                                                                                                                                      |
 
 `type-cast` rejects `typing.cast` (and `typing_extensions.cast`) as a call or as a value
@@ -844,6 +844,19 @@ t)`, `asyncio.timeout(t)`, `fail_after(t)`, `wait(t)`) inside `pytest.raises` or
   `integration`, `e2e` and the like. `tautological-assert` covers `assert True`, `assert x == x`,
   `assert 1`, `assertTrue(True)`, `assertEqual(x, x)`, `assertGreaterEqual(x, x)`,
   `assertIsInstance(x, object)` and the like: asserts that cannot fail.
+- `mocked-subject-in-test` (Java and Kotlin: `MockedSubjectInTest`; TypeScript:
+  `nitpicker/no-mocking-subject-under-test`) reports a test that replaces the code it is named after.
+  The subject is the module a test file is named for (`tests/test_cart.py` or `cart_test.py` for the
+  one project module `cart.py` or `cart/__init__.py`, or the one of them the test imports). Reported:
+  `patch`, `mocker.patch`, `patch.multiple` or `monkeypatch.setattr` of a function or class the
+  subject module defines (`patch("shop.cart.total")`, `patch("shop.cart.Cart.total")`);
+  `patch.object` or `monkeypatch.setattr` on the subject module, on one of its classes, or on an
+  instance of one (built in the test or returned by a fixture of the file); a method of such an
+  instance replaced by a `Mock`; and `Mock(spec=Cart)` or `create_autospec(Cart)`. Patching what the
+  subject imports (`patch("shop.cart.requests.get")`, the usual Python seam), a module constant
+  (`patch("shop.cart.LIMIT", 1)`) or another module is not reported; #519 covers patch targets that
+  miss. Allowed: pass the collaborators in and give the test a fake of them, and test a helper
+  through the public function that calls it.
 - `global-state-leak-in-test` (Java and Kotlin: `GlobalStateLeakInTest`; TypeScript:
   `nitpicker/fake-timers-require-restore`) reports, in a test file, a direct change to process-wide state that nothing
   puts back: `os.environ[...] = ...`, `del os.environ[...]`, `os.environ.update`, `setdefault`, `pop`, `popitem` and
