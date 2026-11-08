@@ -52,7 +52,7 @@ function readsOf(chain) {
 
 function readsColumns(columns, { paths, references }) {
   return (
-    paths.every((getters) => getters.every((getter) => columns.isColumn(getter))) &&
+    paths.every((getters) => getters.length === 0 || columns.readsColumns(getters)) &&
     references.every(({ type, getter }) => columns.isColumnOf(type, getter))
   );
 }

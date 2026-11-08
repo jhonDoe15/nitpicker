@@ -2,8 +2,9 @@ import { typeName } from '../../spring-names.mjs';
 import { lambdaParts, normalized } from '../../view/expressions.mjs';
 import { simpleName } from '../../view/member-types.mjs';
 import { membersOfClass } from '../../view/project-types.mjs';
+import { COLUMN_HOLDERS } from '../data-types.mjs';
 
-const HOLDERS = new Set(['Entity', 'MappedSuperclass', 'Embeddable']);
+const HOLDERS = new Set([...COLUMN_HOLDERS].map((fqn) => simpleName(fqn)));
 const NEUTRAL_CALLS = new Set([
   'equals',
   'compareTo',
