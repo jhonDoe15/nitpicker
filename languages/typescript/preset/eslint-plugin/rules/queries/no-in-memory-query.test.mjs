@@ -63,7 +63,7 @@ tester.run('no-in-memory-query', rule, {
       'const rows = await db.select().from(orders).groupBy(orders.status); return rows.length;',
     ),
     inService(`${TYPEORM} ${LODASH}`, 'return _.map(await repo.find(), "id");'),
-    inService(`${TYPEORM}`, 'const rows = await repo.find(); rows.length = 0; return rows;'),
+    inService(TYPEORM, 'const rows = await repo.find(); rows.length = 0; return rows;'),
   ],
   invalid: [
     {

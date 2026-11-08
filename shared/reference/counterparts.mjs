@@ -18,18 +18,28 @@ function spring(rule) {
   };
 }
 
-function link(label, path, tool, rule) {
+function link({ label, path, tool, rule }) {
   return { label: `${label} counterpart \`${rule}\``, path, anchor: anchorOf(tool, rule) };
 }
 
-const JAVA_QUERY = link('Java and Kotlin', PMD_PAGE, 'pmd', IN_MEMORY_QUERY.java);
-const TYPESCRIPT_QUERY = link(
-  'TypeScript and JavaScript',
-  TYPESCRIPT_PAGE,
-  'eslint',
-  IN_MEMORY_QUERY.typescript,
-);
-const PYTHON_QUERY = link('Python', PYTHON_PAGE, 'python-rules', IN_MEMORY_QUERY.python);
+const JAVA_QUERY = link({
+  label: 'Java and Kotlin',
+  path: PMD_PAGE,
+  tool: 'pmd',
+  rule: IN_MEMORY_QUERY.java,
+});
+const TYPESCRIPT_QUERY = link({
+  label: 'TypeScript and JavaScript',
+  path: TYPESCRIPT_PAGE,
+  tool: 'eslint',
+  rule: IN_MEMORY_QUERY.typescript,
+});
+const PYTHON_QUERY = link({
+  label: 'Python',
+  path: PYTHON_PAGE,
+  tool: 'python-rules',
+  rule: IN_MEMORY_QUERY.python,
+});
 
 const COUNTERPARTS = new Map([
   ['nitpicker/no-orm-schema-sync', [spring('ddl-auto')]],
