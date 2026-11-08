@@ -17,6 +17,7 @@ runs at any point.
 | `report/`   | Canonical JSON, semantic hashes, cache keys, base/head diff, views, descriptive findings |
 | `fixtures/` | Hand-labeled synthetic cases, soundness regressions and their order contracts            |
 | `real/`     | The reviewed protocol for `lookUpCachedReport` and its seeded and unsupported variants   |
+| `census/`   | Runs the engine without contracts over every production function of this repository      |
 
 `analyze.mjs` is the entry (`analyzeSource({ file, text, entry, contracts, inputs, bounds })`),
 `evaluate.mjs` runs every evaluation, and `run.mjs` writes the artifacts.
@@ -227,6 +228,42 @@ value a guard forks on. These are synthetic or seeded cases, not precision or re
 The model and the views are larger than the source they describe. This measures what the summary
 retains; it is not a token or cost benchmark, and no token or cost savings are claimed.
 
+## Census of this repository
+
+`census/run.mjs` runs the engine, without contracts or input domains, on every top-level function
+declaration and function-valued `const` in the production `.mjs` files under `core/`, `shared/` and
+`languages/` (tests, fixtures, test support and e2e folders left out). It writes
+`reports/flow-model/census.json`. Each function falls in one class:
+
+- `complete`: no partial reason at all. Without contracts this only happens for functions that call
+  nothing the engine cannot see.
+- `contractsOnly`: partial only because of unknown calls, unknown dispatch, missing helpers or
+  guards on values without a declared domain. Contracts and input domains could make these
+  complete without new syntax.
+- `needsSyntax`: at least one unsupported form, loop, `async` function, call-depth or state-budget
+  limit.
+
+Measured on main (2026-11-08):
+
+| Measure                                             |          Count |
+| --------------------------------------------------- | -------------: |
+| Files / functions                                   | 1,419 / 10,437 |
+| Extraction errors                                   |              0 |
+| `complete`                                          |    47 (0.45 %) |
+| `contractsOnly`                                     | 1,483 (14.2 %) |
+| `needsSyntax`                                       | 8,907 (85.3 %) |
+| Functions with a closure (arrow function)           |          4,671 |
+| Functions with an array literal                     |          3,527 |
+| Functions with a binary operator (`??`, arithmetic) |          2,151 |
+| Functions with an optional chain                    |          1,454 |
+| Functions with a loop                               |          1,605 |
+
+The `complete` functions are trivial: none has a modeled effect, because no contract was supplied.
+The forms that block most functions are the everyday ones of this code base (callbacks passed to
+`map`/`filter`, array literals, `??`, optional chains, loops), not rare constructs. Supporting them
+means modelling closures, collections and iteration, which is a general interpreter, the universal
+framework this spike set out not to build.
+
 ## Limits
 
 - One function and its same-file helpers; imported implementations are not analyzed, only
@@ -252,6 +289,7 @@ retains; it is not a token or cost benchmark, and no token or cost savings are c
 ```sh
 node node_modules/vitest/vitest.mjs run --config vitest.config.mts evals/flow-model
 node evals/flow-model/run.mjs
+node evals/flow-model/census/run.mjs
 ```
 
 `run.mjs` prints the summary and regenerates `reports/flow-model/` (git-ignored): `summary.json`,
@@ -260,14 +298,22 @@ generated fixture and variant sources the findings point to.
 
 ## Decision
 
-Go for continuing as a report-only experiment; no-go for an enabled rule or a production analyzer.
-Within the supported subset the extraction is repeatable, every result carries source anchors,
-traversal is bounded and deterministic, and the static results agree with concrete execution on
-every complete case of the fixtures. That agreement covers only guards over declared finite domains;
-any other fork, mutation, unmodelled region, `async` code or unknown call makes the result partial,
-where the oracle can only check that no observed violation is missing, under stand-ins that never
-mutate or invoke effects. The oracle shares the checker's reading of the contracts, so it
-does not validate the contracts. The evidence is one real operation with one supplied contract and
-synthetic cases; it does not show precision on real code, and the model is larger than its source.
-The next step is a second real operation with an independently established contract, recording
-first how much of it this engine leaves partial, before adding syntax or proposing enforcement.
+No-go for a shared flow engine or an enabled rule; the spike is concluded. Within the supported
+subset the extraction is repeatable, every result carries source anchors, traversal is bounded and
+deterministic, and the static results agree with concrete execution on every complete case of the
+fixtures. That agreement covers only guards over declared finite domains; any other fork, mutation,
+unmodelled region, `async` code or unknown call makes the result partial, where the oracle can only
+check that no observed violation is missing, under stand-ins that never mutate or invoke effects.
+The oracle shares the checker's reading of the contracts, so it does not validate the contracts.
+
+The census settles the question the earlier decision left open: 85 % of this repository's
+production functions use syntax the engine does not model, and the forms responsible are ordinary
+callbacks, collections, operators and loops. Widening the subset to reach them is building a general
+JavaScript interpreter. The remaining 14 % could be completed with contracts alone, but a contract is
+hand-written per operation, so that path pays off only for a specific protocol with several
+consumers, and the one real protocol found here has a single exact call site.
+
+What stays useful: the code remains as a reference for focused, contract-driven checks. A focused
+rule that needs path-sensitive facts for one protocol (for example caller-owned protocols, #351, or
+effect ordering, #322) can reuse the extractor's binding resolution, the outcome forking and the
+oracle approach, scoped to that protocol, instead of waiting for a shared engine.
