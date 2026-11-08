@@ -4,7 +4,8 @@ name: platforms
 # fixture, a Gradle and a Maven Java project and a Python project, each with `--all` and then with a change that adds
 # one violation. The samples run on Linux, macOS and Windows, and the TypeScript sample also under Deno; every
 # run must give the same findings as the Linux run under Node, except the differences listed in
-# scripts/platforms/compare-runs.mjs, which docs/compatibility.md shows. Not a required check. It runs on a push to
+# scripts/platforms/compare-runs.mjs, which docs/compatibility.md shows. The logic solver's tests run on Linux x64
+# and arm64. Not a required check. It runs on a push to
 # main that touches the paths below, by hand from the Actions tab, and on a pull request when the `run-ci` label is
 # added and the pull request changes a file in the paths below, like the language end-to-end workflows.
 on:
@@ -165,9 +166,31 @@ jobs:
           overwrite: true
           if-no-files-found: warn
 
+  # The logic solver (shared/logic/decide.mjs) runs Z3 as WASM under a fixed resource limit, so it must give
+  # the same answers on x64 and arm64; its tests run on both.
+  logic-solver:
+    name: logic solver ${{ matrix.os }}
+    needs: changes
+    if: needs.changes.outputs.run == 'true'
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, ubuntu-24.04-arm]
+    steps:
+      - uses: actions/checkout@v7.0.1
+      - uses: actions/setup-node@v7.1.0
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: package-lock.json
+      - run: npm ci
+      - run: npx vitest run --config vitest.config.mts shared/logic/decide.test.mjs
+
   platforms:
     if: always()
-    needs: [changes, samples, runtimes]
+    needs: [changes, samples, runtimes, logic-solver]
     runs-on: ubuntu-latest
     timeout-minutes: 45
     permissions:
@@ -206,17 +229,18 @@ jobs:
             cat "$report"
             echo "::endgroup::"
           done
-      - name: Every sample and runtime job passed, or the selection skipped them
+      - name: Every sample, runtime and solver job passed, or the selection skipped them
         if: env.COPY_LAST_RESULT != 'true'
         env:
           CHANGES: ${{ needs.changes.result }}
           RUN: ${{ needs.changes.outputs.run }}
           SAMPLES: ${{ needs.samples.result }}
           RUNTIMES: ${{ needs.runtimes.result }}
+          SOLVER: ${{ needs.logic-solver.result }}
         run: |
           test "$CHANGES" = success
           if [ "$RUN" = false ]; then exit 0; fi
-          test "$SAMPLES" = success && test "$RUNTIMES" = success
+          test "$SAMPLES" = success && test "$RUNTIMES" = success && test "$SOLVER" = success
       - uses: actions/checkout@v7.0.1
         if: env.COPY_LAST_RESULT == 'true'
         with:

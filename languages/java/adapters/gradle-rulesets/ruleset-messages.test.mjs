@@ -50,6 +50,13 @@ describe('nitpicker messages on PMD rules it references', () => {
       'AvoidLiteralsInIfCondition',
       'AssignmentInOperand',
       'GuardLogStatement',
+      'SimplifyBooleanReturns',
+      'SimplifyBooleanExpressions',
+      'SimplifiedTernary',
+      'SimplifyConditional',
+      'CollapsibleIfStatements',
+      'LogicInversion',
+      'ConfusingTernary',
     ];
     const names = RULESETS.flatMap((file) => messages(file).map(({ name }) => name));
 

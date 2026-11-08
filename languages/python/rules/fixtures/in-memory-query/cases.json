@@ -1,0 +1,7 @@
+[
+  {
+    "tool": "python-rules",
+    "rule": "in-memory-query",
+    "mention": ".exists()"
+  }
+]
