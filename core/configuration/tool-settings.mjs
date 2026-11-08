@@ -1,10 +1,17 @@
 import path from 'node:path';
 import {
+  BUILD_DECLARED_TOOLS,
   GRADLE_PRESETS,
   PROJECT_TOOL_CONFIGS,
   styleToolsOf,
 } from '../../languages/java/adapters/gradle-presets.mjs';
-import { configError, isPlainObject } from '../../shared/config.mjs';
+import {
+  configError,
+  DRIVE_LETTER,
+  GLOB_CHARACTER,
+  isPlainObject,
+  PARENT_SEGMENT,
+} from '../../shared/config.mjs';
 import { TEST_RUNNERS } from '../../languages/typescript/preset/test-runner/runners.mjs';
 import { validateTestTimeouts } from '../../shared/test-timeouts/resolve.mjs';
 import { suggestionOrAllowed } from '../../shared/messages/closest-match.mjs';
@@ -16,8 +23,8 @@ const TOOL_SETTING_KEYS = new Map([
   ['knip', ['precedence']],
   ['dependency-cruiser', ['precedence']],
   ['eslint', ['engine', 'precedence']],
-  ['typescript', ['engine', 'project']],
-  ['tests', ['runner', 'timeouts']],
+  ['typescript', ['engine', 'project', 'precedence']],
+  ['tests', ['runner', 'timeouts', 'precedence']],
 ]);
 const ENGINES = new Map([
   [
@@ -62,20 +69,24 @@ const NITPICKER_FIRST_REJECTED = new Map([
     "black has no flag that switches string normalization back on, so nitpicker's quote style cannot win over the project's skip-string-normalization",
   ],
 ]);
-const ORDERED_PRECEDENCE_TOOLS = [
+export const ORDERED_PRECEDENCE_TOOLS = [
   'prettier',
   'jscpd',
   'stryker',
   'knip',
   'dependency-cruiser',
   'eslint',
+  'typescript',
+  'tests',
 ];
-const PRECEDENCE_LAYERS = ['project', 'nitpicker'];
+export const PRECEDENCE_LAYERS = ['project', 'nitpicker'];
 
-function toolSettingKeysOf(preset) {
+export function toolSettingKeysOf(preset) {
   if (GRADLE_PRESETS.includes(preset) || preset === 'python' || preset === 'go') {
     const names = [
-      ...(GRADLE_PRESETS.includes(preset) ? PROJECT_TOOL_CONFIGS.keys() : []),
+      ...(GRADLE_PRESETS.includes(preset)
+        ? [...PROJECT_TOOL_CONFIGS.keys(), ...BUILD_DECLARED_TOOLS]
+        : []),
       ...styleToolsOf(preset),
     ];
     const duplicateScan = preset === 'go' ? [] : ['jscpd'];
@@ -120,13 +131,27 @@ function validateToolSettings(name, settings, toolSettingKeys) {
   validatePrecedenceOrder(settings.precedence, name);
 }
 
+/** The engine setting of `tool`, as { key, values, meaning }; undefined for a tool without one. */
+export function engineOf(tool) {
+  return ENGINES.get(tool);
+}
+
+/** Why `tool` must list "project" before "nitpicker"; undefined when either order works. */
+export function nitpickerFirstReason(tool) {
+  return NITPICKER_FIRST_REJECTED.get(tool);
+}
+
 function validateEngineSettings(name, settings) {
   validateEngine(name, settings[ENGINES.get(name).key]);
   if (name === 'tests' && settings.timeouts !== undefined) {
     validateTestTimeouts(settings.timeouts);
   }
+  if (name === 'tests' && settings.precedence !== undefined) {
+    validatePrecedence(settings.precedence, name);
+  }
   if (name === 'typescript') {
     validateTypeScriptProject(settings.project);
+    validateTypeScriptPrecedence(settings);
   }
 }
 
@@ -167,6 +192,18 @@ function validatePrecedence(precedence, name) {
   }
 }
 
+function validateTypeScriptPrecedence(settings) {
+  if (settings.precedence === undefined) {
+    return;
+  }
+  validatePrecedence(settings.precedence, 'typescript');
+  if (settings.project !== undefined) {
+    throw configError(
+      '"tools.typescript.precedence" cannot be combined with "tools.typescript.project": the selected config already keeps its own compiler options and nitpicker adds no strict flags to it',
+    );
+  }
+}
+
 function validateTypeScriptProject(project) {
   if (project === undefined) {
     return;
@@ -176,9 +213,9 @@ function validateTypeScriptProject(project) {
     normalized.trim().length === 0 ||
     normalized.includes('\0') ||
     path.posix.isAbsolute(normalized) ||
-    /^[A-Za-z]:/.test(normalized) ||
-    normalized.split('/').includes('..') ||
-    /[*?{}[\]]/.test(normalized) ||
+    DRIVE_LETTER.test(normalized) ||
+    PARENT_SEGMENT.test(normalized) ||
+    GLOB_CHARACTER.test(normalized) ||
     !normalized.endsWith('.json')
   ) {
     throw configError('"tools.typescript.project" must name a JSON config file inside the project');

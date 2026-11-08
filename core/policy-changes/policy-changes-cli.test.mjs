@@ -84,7 +84,7 @@ function runWithHeadConfig({ extraArguments = [], environment = {}, ...repositor
 
 const HEADING = 'Policy changed in this change (nitpicker.config.json, head against base):';
 const ACCEPTED_HEADING =
-  'Policy changed in this change (nitpicker.config.json, head against base; loosening accepted by exact digest):';
+  'Policy changed in this change (nitpicker.config.json, head against base; loosening accepted):';
 
 function policyBlock(text, heading = HEADING) {
   const lines = text.split('\n');
@@ -169,7 +169,8 @@ describe('a change that loosens nitpicker.config.json', () => {
     expect(consoleLines.filter((line) => line.includes(policyDigest))).toEqual([
       '  Only a person may accept exactly these changes, after reviewing them: ' +
         `--accept-policy-change=${policyDigest} at an interactive terminal, ` +
-        `or NITPICKER_ACCEPT_POLICY_CHANGE=${policyDigest} in CI.`,
+        `NITPICKER_ACCEPT_POLICY_CHANGE=${policyDigest} in CI, ` +
+        'or the accept-policy-change label of a GitHub pull request, with the nitpicker approval workflow.',
     ]);
     expect(accepted.stdoutText.split('\n').filter((line) => line.includes('Unapproved'))).toEqual(
       [],
@@ -179,6 +180,55 @@ describe('a change that loosens nitpicker.config.json', () => {
       ACCEPTED_HEADING,
       ...expected.map((change) => `  ${change}`),
     ]);
+  });
+});
+
+describe('a loosening accepted for a commit', () => {
+  const baseConfig = { exclude: ['src/legacy/**'] };
+  const headConfig = { exclude: ['src/legacy/**', 'src/vendor/**'] };
+
+  function runAccepting(commitHead) {
+    const repository = prepareRepository({ baseConfig, headConfig });
+    if (commitHead) {
+      fixtureGit(repository, ['add', '-A']);
+      fixtureGit(repository, ['commit', '-q', '-m', 'loosen']);
+    }
+    const head = fixtureGit(repository, ['rev-parse', 'HEAD']).trim();
+    const outputRoot = path.join(temporaryRoot('nitpicker-policy-output-'), 'reports');
+    const exitCode = runCli({
+      arguments_: ['--base', 'comparison-base', '--output', outputRoot],
+      environment: { NO_COLOR: '1', CI: 'true', NITPICKER_ACCEPT_POLICY_CHANGE: `commit:${head}` },
+      currentProjectRoot: repository,
+      analyzers: [fakeAnalyzer()],
+      stdout: { write() {} },
+      stderr: { write() {} },
+      progress: { write() {} },
+      runTasks: runTasksInProcess,
+    });
+    return { exitCode, head, ...readReports(outputRoot) };
+  }
+
+  it('passes when the commit is the gated head', () => {
+    const run = runAccepting(true);
+
+    expect([run.exitCode, run.summary.headSha, run.summary.policyChangeAccepted]).toEqual([
+      0,
+      run.head,
+      true,
+    ]);
+  });
+
+  it('accepts nothing when uncommitted changes make another head, and says so', () => {
+    const run = runAccepting(false);
+    const expected = findingsFor(['exclude added: src/vendor/**'], run.summary.policyDigest, {
+      acceptedDigest: `commit:${run.head}`,
+      headSha: run.summary.headSha,
+      kinds: { 'exclude added: src/vendor/**': 'exclusion' },
+    });
+
+    expect([run.exitCode, run.summary.policyChangeAccepted]).toEqual([1, false]);
+    expect(run.summary.headSha).not.toBe(run.head);
+    expect(policyMessages(run.newFindings)).toEqual(expected.map(({ message }) => message));
   });
 });
 

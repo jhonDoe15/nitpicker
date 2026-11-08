@@ -35,7 +35,7 @@ const TEST_FRAMEWORK = new RegExp(
   'm',
 );
 
-export const TEST_MESSAGES = {
+const TEST_MESSAGES = {
   TestClassWithoutTestCases:
     'Add @Test functions to the class, or rename it if it is a helper (for example `TestInputGenerator` becomes `InputGenerator`): a test class without tests never runs.',
   DetachedTestCase:
@@ -107,3 +107,9 @@ export function testHelpersInSource(scanned) {
         },
       ];
 }
+
+export const kotlinSourceRules = {
+  messages: TEST_MESSAGES,
+  main: [testHelpersInSource],
+  test: [testClassesWithoutTests],
+};

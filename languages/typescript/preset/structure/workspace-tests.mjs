@@ -163,17 +163,21 @@ function hasTestScript(manifest) {
 
 function uncollectedFinding(analyzerName, packageDirectory, count) {
   const files = `${String(count)} test file${count === 1 ? '' : 's'}`;
-  const fix = `Add a \`test\` script to its package.json, or add the package to the root test config's \`projects\`. ${exceptionRoute({ rule: RULE, path: `${packageDirectory}/package.json` })}`;
+  const allowedForm =
+    "Add a `test` script to its package.json, or add the package to the root test config's `projects`.";
+  const fix = `${allowedForm} ${exceptionRoute({ rule: RULE, path: `${packageDirectory}/package.json` })}`;
   return {
     tool: analyzerName,
     rule: RULE,
     path: `${packageDirectory}/package.json`,
     identity: `uncollected-workspace-tests:${String(count)}`,
     message: `Nothing runs the ${files} of this workspace package: it has no \`test\` script and the root test config does not include it. ${fix}`,
+    allowedForm,
     classification: 'enforceable',
     ratchet: {
       key: 'uncollected-workspace-tests',
       value: count,
+      worseAllowedForm: allowedForm,
       worseMessage: `The test files of this workspace package that nothing runs grew from {base} to ${String(count)}: it has no \`test\` script and the root test config does not include it. ${fix}`,
       heldMessage: `Workspace package: ${files} that nothing runs, allowed because base had {base}; any new one fails.`,
     },

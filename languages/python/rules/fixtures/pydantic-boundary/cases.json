@@ -1,0 +1,8 @@
+[
+  {
+    "name": "pydantic in the domain names adapters",
+    "tool": "python-rules",
+    "rule": "pydantic-boundary",
+    "mention": "adapters/"
+  }
+]

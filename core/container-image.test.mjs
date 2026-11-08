@@ -14,9 +14,12 @@ const instructions = dockerfile
 
 const expectedCopyInstructions = [
   'COPY core/ /opt/nitpicker/core/',
+  'COPY docs/ /opt/nitpicker/docs/',
   'COPY languages/ /opt/nitpicker/languages/',
   'COPY package.json package-lock.json .npmrc LICENSE README.md /opt/nitpicker/',
+  'COPY scripts/reference/ /opt/nitpicker/scripts/reference/',
   'COPY shared/ /opt/nitpicker/shared/',
+  'COPY spec/ /opt/nitpicker/spec/',
 ];
 const expectedDockerignoreLines = [
   '',
@@ -30,7 +33,8 @@ const expectedDockerignoreLines = [
   '.claude',
   '.git',
   '.github',
-  'docs',
+  'languages/typescript/reference/eslint-inventory.json',
+  'shared/reference/rules',
 ];
 
 function instruction(name) {

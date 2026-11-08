@@ -11,6 +11,10 @@ const ALLOWED = {
     'Move this @Bean function into a companion object, mark it @JvmStatic and give it only Environment or ObjectProvider parameters. A post-processor or @ConfigurationPropertiesBinding bean is created before post-processing is ready, so an instance function creates its configuration class, and each parameter its bean, too early; those beans then miss proxies such as @Transactional and @Async.',
   SpringOrderedProvider:
     'Use orderedStream() on the ObjectProvider, so the beans come in @Order and Ordered order. Iterating the provider itself (a for loop, forEach, map, toList, stream() or iterator()) gives them in registration order.',
+  SpringUnreleasedResource:
+    'Release this resource when the context closes: shut it down, close it or cancel it in a @PreDestroy function (shutdown, then shutdownNow when awaitTermination times out), DisposableBean.destroy, AutoCloseable.close or SmartLifecycle.stop, or declare it as its own @Bean or as a ThreadPoolTaskExecutor bean, which Spring closes. Spring closes only the beans it created, so this one keeps its threads, coroutines or connections after the context closes, and non-daemon threads keep the JVM running.',
+  SpringStartupCleanup:
+    'Release what this startup function already started when this call fails: put the call in a try and shut the event loops, executors or servers down in its catch before rethrowing, or in a finally. Spring does not call @PreDestroy on a bean whose startup failed, so the started threads keep the JVM running and the application hangs instead of exiting.',
   SpringLiteConfiguration:
     'Write @Configuration(proxyBeanMethods = false) and take dependencies as @Bean function parameters instead of calling other @Bean functions.',
   SpringNoComponentScan:
@@ -30,7 +34,7 @@ const ALLOWED = {
   SpringProfileOnConfiguration:
     'Put @Profile only on a @Configuration class or a @Bean function, so profiles choose beans and never branch business code.',
   SpringProxyMethodVisibility:
-    'Make this proxied function public, and let Spring subclass it: apply the kotlin("plugin.spring") compiler plugin (or write open class and open fun), and keep it out of objects and companion objects. Spring never proxies private, final or static functions, and nitpicker keeps proxied functions public.',
+    'Make this proxied function public, and let Spring subclass it: apply the Kotlin spring compiler plugin (kotlin("plugin.spring") on Gradle, <compilerPlugins><plugin>spring</plugin> with the kotlin-maven-allopen dependency on Maven) or write open class and open fun, and keep it out of objects and companion objects. Spring never proxies private, final or static functions, and nitpicker keeps proxied functions public.',
   SpringProxySelfCall:
     "Move the annotated function to another bean and call it there. This call stays inside the class, so it skips the proxy and the called function's annotation does nothing.",
   SpringTransactionalAnnotation:

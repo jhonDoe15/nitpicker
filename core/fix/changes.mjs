@@ -4,6 +4,7 @@ import path from 'node:path';
 import { normalizeGitPath } from '../diff/git/normalize.mjs';
 import { resolveComparison } from '../diff/git/repository/git.mjs';
 import { runGit } from '../diff/git/repository/command.mjs';
+import { GIT_TIMEOUT_MS } from '../../shared/processes/deadlines.mjs';
 
 const MAX_OUTPUT_BYTES = 50 * 1024 * 1024;
 
@@ -89,6 +90,7 @@ export function readBaseFiles({ repositoryRoot, mergeBaseSha, files }) {
     cwd: repositoryRoot,
     input: `${objectNames.join('\n')}\n`,
     maxBuffer: MAX_OUTPUT_BYTES,
+    timeout: GIT_TIMEOUT_MS,
   });
   if (result.error !== undefined) {
     throw result.error;

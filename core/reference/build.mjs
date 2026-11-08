@@ -7,31 +7,25 @@ import { sharedCheckEntries } from '../../shared/reference/checks/check-entries.
 import { typescriptCheckEntries } from '../../shared/reference/checks/other-entries.mjs';
 import { PAGE_IDS } from '../../shared/reference/pages.mjs';
 import { coreRuleEntries } from './config-entries.mjs';
-
-const NOT_SLUG = /[^\p{L}\p{N}\s-]/gu;
+import { guideLink, headingAnchors } from '../../shared/reference/build/guide-pages.mjs';
 
 function duplicates(values) {
   const counts = Map.groupBy(values, (value) => value);
   return [...counts].filter(([, same]) => same.length > 1).map(([value]) => value);
 }
 
-function headingAnchors(text) {
-  return text
-    .split('\n')
-    .filter((line) => /^#{1,6} /u.test(line))
-    .map((line) =>
-      line
-        .replace(/^#+ /u, '')
-        .replaceAll('`', '')
-        .toLowerCase()
-        .replaceAll(NOT_SLUG, '')
-        .trim()
-        .replaceAll(/\s/gu, '-'),
-    );
+const RULE_PAGES = 'docs/rules/';
+
+function rulePageProblems(entry, { path: docsPath, anchor }, ruleTargets) {
+  const target = anchor === undefined ? docsPath : `${docsPath}#${anchor}`;
+  return ruleTargets.has(target) ? [] : [`${entry.id}: the reference has no ${target}`];
 }
 
-function docsProblems(entry, repositoryRoot) {
+function docsProblems(entry, repositoryRoot, ruleTargets) {
   return (entry.docs ?? []).flatMap(({ path: docsPath, anchor }) => {
+    if (docsPath.startsWith(RULE_PAGES)) {
+      return rulePageProblems(entry, { path: docsPath, anchor }, ruleTargets);
+    }
     const file = path.resolve(repositoryRoot, docsPath);
     if (!file.startsWith(repositoryRoot + path.sep)) {
       return [`${entry.id}: ${docsPath} is outside the repository`];
@@ -45,8 +39,17 @@ function docsProblems(entry, repositoryRoot) {
   });
 }
 
+function ruleTargets(entries) {
+  return new Set([
+    `${RULE_PAGES}README.md`,
+    ...PAGE_IDS.map((page) => `${RULE_PAGES}${page}.md`),
+    ...entries.map(({ page, anchor }) => `${RULE_PAGES}${page}.md#${anchor}`),
+  ]);
+}
+
 /** The problems of a set of entries: duplicate ids or anchors, unknown pages, broken guide links. */
 export function entryProblems(entries, repositoryRoot) {
+  const targets = ruleTargets(entries);
   return [
     ...duplicates(entries.map(({ id }) => id)).map((id) => `duplicate id ${id}`),
     ...duplicates(entries.map(({ anchor }) => anchor)).map(
@@ -55,8 +58,24 @@ export function entryProblems(entries, repositoryRoot) {
     ...entries
       .filter(({ page }) => !PAGE_IDS.includes(page))
       .map(({ id, page }) => `${id}: unknown page ${String(page)}`),
-    ...entries.flatMap((entry) => docsProblems(entry, repositoryRoot)),
+    ...entries.flatMap((entry) => docsProblems(entry, repositoryRoot, targets)),
   ];
+}
+
+function withGuidePages(entry) {
+  if (entry.docs === undefined) {
+    return entry;
+  }
+  return {
+    ...entry,
+    docs: entry.docs.map((doc) => {
+      const { path: guide, anchor, ...link } = doc;
+      if (guide === undefined) {
+        return link;
+      }
+      return guide.startsWith(RULE_PAGES) ? doc : { ...link, ...guideLink(guide, anchor) };
+    }),
+  };
 }
 
 /** Every entry of the reference, read from the rule catalogs, sorted by id. */
@@ -68,7 +87,9 @@ export function buildReference(repositoryRoot) {
     ...typescriptRuleEntries(),
     ...jvmRuleEntries(),
     ...pythonRuleEntries(),
-  ].toSorted((a, b) => a.id.localeCompare(b.id));
+  ]
+    .map(withGuidePages)
+    .toSorted((a, b) => a.id.localeCompare(b.id));
   const problems = entryProblems(entries, repositoryRoot);
   if (problems.length > 0) {
     throw new Error(`The rule reference has problems:\n${problems.join('\n')}`);

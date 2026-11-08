@@ -1,8 +1,11 @@
 # Test shard timings
 
 The duration sequencer assigns every selected file to exactly one shard, longest files first.
-Files without a measurement count as one second. The selected files always come from Vitest's
-package-script filters, so adding a test to a language suite does not require editing a shard list.
+Files without a measurement count as one second, so a new file, end-to-end ones included, needs
+no profile edit. The plan is rough until `record-durations` measures the file. With a suite flag such
+as `NITPICKER_JAVA_E2E=1` set, `vitest.config.mts` selects the test files that read that flag
+(`suiteFiles` in `e2e-gates.mjs`, itself or through a module it imports), so adding a test to a
+language suite edits neither a shard list nor the `test:<language>` script in `package.json`.
 
 `durations.json` describes ordinary `npm test` runs. `java-e2e.json` and `kotlin-e2e.json` describe
 the corresponding enabled end-to-end suites. Selection uses the same `NITPICKER_JAVA_E2E=1` or
@@ -95,11 +98,12 @@ cases its flag gates, so the expected cases are derived rather than counted by h
 file that a script leaves out fails. It checks the workflow wiring: the shard job runs the package
 script with `--shard`, the plan job runs this verifier for its language, and the one aggregate job
 always runs, needs both and checks both results. It resolves CLI shard options through Vitest and
-exercises the configured sequencer with the language's profile. It requires the profile to cover
-every selected file exactly and each matrix shard to be nonempty, with every selected file in
-exactly one shard. Vitest list itself does not apply sharding, so its `--shard` output alone is
-insufficient to verify the partition. The script's own main guard resolves `process.argv[1]`
-through `realpathSync`, so a run through a symlinked path checks rather than exiting silently.
+exercises the configured sequencer with the language's profile. It requires the profile to name
+only selected files (a new file may be missing from it) and each matrix shard to be nonempty,
+with every selected file in exactly one shard. Vitest list itself does not apply sharding, so its
+`--shard` output alone is insufficient to verify the partition. The script's own main guard
+resolves `process.argv[1]` through `realpathSync`, so a run through a symlinked path checks rather
+than exiting silently.
 
 Fixture Git trees, generated reports and build outputs remain local to each runner. The existing
 Maven/Gradle actions cache dependencies; mutable fixture builds are not shared between shards.
@@ -119,6 +123,13 @@ project-first detekt precedence gets the enforced layer last. The Kotlin review 
 together with a file of about 120. Each language workflow runs the verifier in its own shard-plan
 job; it lists tests without starting a JVM build or a Python project, and the aggregate check
 requires it.
+
+The verifier lists tests with `--no-isolate` and runs the four listings at once, which keeps the
+shard-plan job at about half a minute instead of about two. Sharing one module graph between
+files is safe here: `vitest list` imports the test files and collects their names but runs no
+test body or hook, each listing is a process of its own with one fixed set of flags, so a module
+that reads a flag at import time reads the same value for every file, and the listings with and
+without `--no-isolate` were compared and are identical.
 
 Four Python files (`ruff/ruff-rules`, `ruff/ruff-groups`, `adapters/formatting/format-scope` and
 `adapters/configuration/python-ruff-config`, six cases) were gated on the Python flag but selected

@@ -1,8 +1,11 @@
 package nitpicker.kotlinpsi.bodies;
 
+import static nitpicker.kotlinpsi.common.Psi.nameOf;
+
 import java.util.ArrayList;
 import java.util.List;
 import java.util.function.IntUnaryOperator;
+import java.util.regex.Pattern;
 import nitpicker.kotlinpsi.common.Lines;
 import org.jetbrains.kotlin.com.intellij.psi.PsiElement;
 import org.jetbrains.kotlin.com.intellij.psi.util.PsiTreeUtil;
@@ -10,7 +13,46 @@ import org.jetbrains.kotlin.lexer.KtTokens;
 import org.jetbrains.kotlin.psi.*;
 
 final class Positions {
+  private static final Pattern CLEANUP =
+      Pattern.compile("shutdown|close|stop|terminate|dispose|destroy|release|cancel|clean|abort", Pattern.CASE_INSENSITIVE);
+
   private Positions() {}
+
+  static Boolean guarded(PsiElement start) {
+    PsiElement child = start;
+    for (PsiElement up = start.getParent(); up != null && !(up instanceof KtDeclarationWithBody);
+        up = up.getParent()) {
+      if (up instanceof KtTryExpression && ((KtTryExpression) up).getTryBlock() == child
+          && cleansUp((KtTryExpression) up)) {
+        return Boolean.TRUE;
+      }
+      child = up;
+    }
+    return null;
+  }
+
+  private static boolean cleansUp(KtTryExpression attempt) {
+    List<PsiElement> handlers = new ArrayList<>();
+    for (KtCatchClause clause : attempt.getCatchClauses()) {
+      KtExpression body = clause.getCatchBody();
+      if (body != null && PsiTreeUtil.findChildOfType(body, KtThrowExpression.class) == null) {
+        return true;
+      }
+      handlers.add(body);
+    }
+    if (attempt.getFinallyBlock() != null) {
+      handlers.add(attempt.getFinallyBlock());
+    }
+    for (PsiElement handler : handlers) {
+      for (KtCallExpression call : PsiTreeUtil.collectElementsOfType(handler, KtCallExpression.class)) {
+        String name = nameOf(call.getCalleeExpression());
+        if (name != null && CLEANUP.matcher(name).find()) {
+          return true;
+        }
+      }
+    }
+    return false;
+  }
 
   static KtExpression settled(KtExpression outer) {
     KtExpression current = outer;

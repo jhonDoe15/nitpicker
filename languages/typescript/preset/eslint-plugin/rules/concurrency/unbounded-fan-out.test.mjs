@@ -20,6 +20,8 @@ tester.run('unbounded-fan-out', rule, {
     'const URLS = ["a", "b"]; await Promise.all(URLS.map((url) => fetch(url)));',
     'await Promise.all(Object.keys({ a: 1, b: 2 }).map((key) => fetch(key)));',
     'await Promise.all(urls.map((url) => url.trim()));',
+    'declare function load(url: string): Promise<string>; await Promise.all(urls.map((url) => load(url)));',
+    'declare function load(url: string): Promise<string>; await Promise.all(urls.map(load));',
     'await Promise.all(urls.map((url) => parse(url)));',
     'await Promise.all(rows.map((row) => db.load(row.id)));',
     'export async function run(urls, size) { for (let i = 0; i < urls.length; i += size) { await Promise.all(urls.slice(i, i + size).map((url) => fetch(url))); } }',

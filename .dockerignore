@@ -1,7 +1,8 @@
 .git
 .github
 .claude
-docs
+shared/reference/rules
+languages/typescript/reference/eslint-inventory.json
 **/node_modules
 **/reports
 **/coverage

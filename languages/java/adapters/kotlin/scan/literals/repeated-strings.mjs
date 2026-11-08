@@ -33,7 +33,7 @@ function repeatedMessage(subject) {
   return `${subject} is repeated three times or more in the file. ${ADVICE}`;
 }
 
-export const REPEATED_STRING_MESSAGE = repeatedMessage('A string');
+const REPEATED_STRING_MESSAGE = repeatedMessage('A string');
 
 function annotationRanges(code) {
   return [...code.matchAll(ANNOTATION)].map(({ index, 0: text }) => ({
@@ -158,3 +158,8 @@ export function repeatedStringLiterals(scanned) {
     })),
   );
 }
+
+export const kotlinSourceRules = {
+  messages: { RepeatedStringLiteral: REPEATED_STRING_MESSAGE },
+  main: [repeatedStringLiterals],
+};

@@ -1,4 +1,10 @@
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { stripAnsi } from '../../../../../shared/rules/console/ansi.mjs';
+import {
+  formattedValue,
+  valuesInMessage,
+} from '../../../../../shared/rules/failing-tests/failing-tests.mjs';
 
 const MAX_ASSERTION_LINE_LENGTH = 200;
 
@@ -121,4 +127,65 @@ export function withSnapshotAdvice(line) {
   return SNAPSHOT_MISMATCH.test(line)
     ? `${line}. A new snapshot must be committed: run \`vitest -u\` locally and commit the .snap file.`
     : line;
+}
+
+const FRAME_START = 'at ';
+const FRAME_END = /:(?<line>\d+):\d+$/u;
+const QUERY = /\?[^/]*$/u;
+
+function framePath(file) {
+  return file.startsWith('file://') && URL.canParse(file) && new URL(file).hostname === ''
+    ? fileURLToPath(file)
+    : file;
+}
+
+function frameLocation(text) {
+  const frame = text.trim();
+  if (!frame.startsWith(FRAME_START)) {
+    return undefined;
+  }
+  const open = frame.lastIndexOf(' (');
+  const site =
+    frame.endsWith(')') && open !== -1
+      ? frame.slice(open + 2, -1)
+      : frame.slice(FRAME_START.length);
+  const end = FRAME_END.exec(site);
+  return end === null
+    ? undefined
+    : {
+        file: framePath(site.slice(0, end.index).replace(QUERY, '')),
+        line: Number(end.groups.line),
+      };
+}
+
+function lineInFile(message, testFile, projectRoot) {
+  if (typeof message !== 'string' || typeof testFile !== 'string') {
+    return undefined;
+  }
+  return stripAnsi(message)
+    .split('\n')
+    .map((line) => frameLocation(line))
+    .find((frame) => frame !== undefined && path.resolve(projectRoot, frame.file) === testFile)
+    ?.line;
+}
+
+function detailValues(detail) {
+  const values = detail?.matcherResult ?? detail;
+  if (values === null || typeof values !== 'object' || !('expected' in values)) {
+    return undefined;
+  }
+  if (!('actual' in values)) {
+    return undefined;
+  }
+  return detail.formatted === true
+    ? { expected: values.expected, received: values.actual }
+    : { expected: formattedValue(values.expected), received: formattedValue(values.actual) };
+}
+
+export function assertionDetails(assertion, { testFile, projectRoot }) {
+  const [message] = (assertion.failureMessages ?? []).filter((text) => typeof text === 'string');
+  const details = Array.isArray(assertion.failureDetails) ? assertion.failureDetails : [];
+  const values = detailValues(details[0]) ?? valuesInMessage(stripAnsi(message ?? ''));
+  const line = lineInFile(message, testFile, projectRoot) ?? assertion.location?.line;
+  return { ...(Number.isInteger(line) ? { line } : {}), ...values };
 }

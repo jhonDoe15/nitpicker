@@ -13,7 +13,8 @@ export const POLICY_GUIDANCE = {
     `${VERIFY_INVOCATION} Other checks still apply.`,
   ].join(' '),
   'python-entry-point': [
-    'Matching files may read the process environment: process-env-access skips them.',
+    'Matching files may read the process environment and the standard streams and run effects at import:',
+    'process-env-access, process-stream-access and import-time-effect skip them.',
     `${VERIFY_INVOCATION} Other checks still apply.`,
   ].join(' '),
   exception: [
@@ -148,6 +149,11 @@ export const POLICY_GUIDANCE = {
   'spring-roles-shrank': [
     'Drops a Spring role mapping, so the classes it marked lose that role and its layering checks.',
     'Restore the mapping.',
+  ].join(' '),
+  'detached-work-runner-added': [
+    'Names a new detached-work runner, so `void` on its calls is no longer checked for an',
+    'unhandled rejection. Remove the name, or have a person check that the runner handles',
+    'every rejection.',
   ].join(' '),
 };
 

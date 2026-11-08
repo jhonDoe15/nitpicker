@@ -46,6 +46,11 @@ RemoteProperties(val url: String, val timeout: Duration)`. `@Value` only in a `@
 - HTTP clients are built once, from the injected `RestClient.Builder` or `RestTemplateBuilder`
   (`private val`, `init` or `@Bean`), with timeouts. No database or HTTP calls in `@PostConstruct`,
   `afterPropertiesSet` or a `@Bean(initMethod = ...)` function; use an `ApplicationRunner`.
+- Executors, schedulers, Netty event loops, clients and coroutine scopes are their own `@Bean` (a
+  `ThreadPoolTaskExecutor` with a queue capacity) so Spring closes them. A bean that builds one in a
+  property releases it in `@PreDestroy`: `shutdown()`, then `shutdownNow()` when `awaitTermination`
+  times out, or `scope.cancel()`. A startup function that binds a port or starts a server after
+  starting threads shuts them down in a `catch` and rethrows. Never `Executors.newCachedThreadPool()`.
 - `@Scheduled`, `@Async`, cache annotations, `@PreAuthorize` and `@Retryable` need their
   `@Enable...` on a `@Configuration` class.
 

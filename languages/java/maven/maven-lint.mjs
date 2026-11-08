@@ -17,6 +17,10 @@ import { writeRulesets } from '../adapters/tool-config/pmd-wrappers.mjs';
 import { layerCheckstyle } from '../adapters/tool-config/checkstyle/checkstyle-layers.mjs';
 import { unformattedCheckstyle } from '../adapters/tool-config/checkstyle/unformatted-checks.mjs';
 import { NITPICKER_RULESET } from '../adapters/tool-config/layer-files.mjs';
+import {
+  NITPICKER_SPOTBUGS,
+  spotbugsArguments,
+} from '../adapters/tool-config/declared/spotbugs-declared.mjs';
 
 const LAYOUT_SUPPRESSIONS = 'checkstyle-suppressions.xml';
 const UNFORMATTED_SUPPRESSIONS = 'checkstyle-suppressions-unformatted.xml';
@@ -54,7 +58,7 @@ export function runPmd(options) {
   const linted = [...module.sourceRoots, ...module.testSourceRoots].filter((root) =>
     existsSync(root),
   );
-  if (linted.length === 0) {
+  if (javaFiles(linted).length === 0) {
     writeFileSync(report, EMPTY_SARIF);
     return;
   }
@@ -99,7 +103,7 @@ export function runPmd(options) {
   });
 }
 
-export function runSpotbugs({ module, reportDir, tools, spawn }) {
+export function runSpotbugs({ module, reportDir, tools, configs, auxClasspath = [], spawn }) {
   const report = path.join(reportDir, 'spotbugs.sarif');
   const hasClasses =
     existsSync(module.outputDirectory) && readdirSync(module.outputDirectory).length > 0;
@@ -112,13 +116,18 @@ export function runSpotbugs({ module, reportDir, tools, spawn }) {
     classpath: tools.spotbugs,
     mainClass: 'edu.umd.cs.findbugs.FindBugs2',
     args: [
-      '-effort:default',
-      '-medium',
+      ...(configs?.spotbugs?.arguments ?? spotbugsArguments(NITPICKER_SPOTBUGS)),
       '-sarif',
       '-output',
       report,
       '-sourcepath',
       module.sourceRoots.filter((root) => existsSync(root)).join(path.delimiter),
+      ...(auxClasspath.length === 0
+        ? []
+        : [
+            '-auxclasspath',
+            auxClasspath.filter((entry) => existsSync(entry)).join(path.delimiter),
+          ]),
       module.outputDirectory,
     ],
     cwd: module.basedir,

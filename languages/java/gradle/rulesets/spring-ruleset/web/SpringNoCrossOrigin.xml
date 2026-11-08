@@ -1,0 +1,7 @@
+  <rule name="SpringNoCrossOrigin" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
+        message="Configure CORS once, in a CorsConfigurationSource bean with origins from configuration, instead of @CrossOrigin on controllers.">
+    <priority>2</priority>
+    <properties><property name="xpath"><value><![CDATA[
+//Annotation[pmd-java:typeIs('org.springframework.web.bind.annotation.CrossOrigin')]
+]]></value></property></properties>
+  </rule>

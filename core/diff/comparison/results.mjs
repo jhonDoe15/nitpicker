@@ -5,11 +5,14 @@ import {
   policyFindings,
 } from '../reporting/review/policy-findings.mjs';
 import { compareAnalyzers } from './base-red/compare-analyzers.mjs';
+import { scopeNotes, scopeOutcomes, scopeSummary } from '../../scope/scope-findings.mjs';
 
 export function combineAnalyzerReports(context) {
   const { baseRun, headRun, additionalToolErrors } = context;
   const toolErrors = [...additionalToolErrors, ...baseRun.toolErrors, ...headRun.toolErrors];
-  const { outcomes, notes } = compareAnalyzers({ ...context, toolErrors });
+  const compared = compareAnalyzers({ ...context, toolErrors });
+  const outcomes = scopeOutcomes(compared.outcomes, context.scope);
+  const notes = scopeNotes(compared.notes, context.scope);
   return buildReport({ ...context, outcomes, notes, toolErrors });
 }
 
@@ -44,19 +47,24 @@ function declaredExclusions(analyzers) {
   ].sort();
 }
 
+function policyReview(context, digest) {
+  const { policyLoosenings, acceptPolicyChange, comparison } = context;
+  const acceptance = { acceptedDigest: acceptPolicyChange, headSha: comparison.headSha };
+  const kinds = context.policyKinds;
+  return {
+    findings: context.reportsPolicy
+      ? policyFindings(policyLoosenings, digest, { ...acceptance, kinds })
+      : [],
+    accepted: isPolicyChangeAccepted(policyLoosenings, digest, acceptance),
+  };
+}
+
 function buildReport(context) {
   const { analyzers, outcomes, toolErrors, comparison, startedAt } = context;
-  const { configOverrides, policyChanges, policyLoosenings, acceptPolicyChange, notices } = context;
+  const { configOverrides, policyChanges, policyLoosenings, notices } = context;
   const digest = context.policyDigest ?? policyDigest({ loosenings: policyLoosenings });
-  const newFindings = [
-    ...collect(outcomes, 'newFindings'),
-    ...(context.reportsPolicy
-      ? policyFindings(policyLoosenings, digest, {
-          acceptedDigest: acceptPolicyChange,
-          kinds: context.policyKinds,
-        })
-      : []),
-  ];
+  const review = policyReview(context, digest);
+  const newFindings = [...collect(outcomes, 'newFindings'), ...review.findings];
   return {
     summary: {
       requestedBaseRef: comparison.requestedBaseRef,
@@ -68,11 +76,15 @@ function buildReport(context) {
       policyChanges,
       policyLoosenings,
       ...(policyLoosenings.length === 0 ? {} : { policyDigest: digest }),
-      policyChangeAccepted: isPolicyChangeAccepted(policyLoosenings, digest, acceptPolicyChange),
+      policyChangeAccepted: review.accepted,
       ...(context.policyAcceptanceSource === undefined
         ? {}
         : { policyAcceptanceSource: context.policyAcceptanceSource }),
       notices,
+      ...scopeSummary(
+        context.scope,
+        outcomes.reduce((total, { outside }) => total + outside, 0),
+      ),
       tools: outcomes.map(({ tool }) => tool),
       exclusions: declaredExclusions(analyzers),
       renamedPaths: context.baseToHeadRenames.size,

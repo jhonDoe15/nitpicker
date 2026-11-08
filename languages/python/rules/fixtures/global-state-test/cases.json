@@ -1,0 +1,7 @@
+[
+  {
+    "tool": "python-rules",
+    "rule": "global-state-leak-in-test",
+    "mention": "monkeypatch.setenv"
+  }
+]

@@ -1,4 +1,8 @@
-import { renderMessage, UNUSED_OPTION_TEXT } from '../../../../shared/messages/messages.mjs';
+import {
+  renderMessage,
+  UNUSED_OPTION_FIX,
+  UNUSED_OPTION_TEXT,
+} from '../../../../shared/messages/messages.mjs';
 import { RULES_TOOL } from './tool.mjs';
 import { UNUSED_OPTION_SCOPES } from '../../../../shared/unused-api/unused-api-policy.mjs';
 
@@ -114,6 +118,13 @@ export const STRUCTURE_HINTS = [
   },
   {
     tool: RULES_TOOL,
+    rules: ['process-stream-access'],
+    describe: (subject) => `\`${subject}\` reaches a standard stream outside the composition root`,
+    allowed:
+      'Take a `TextIO` parameter and write with `out.write(...)` or `print(..., file=out)`; the entry point (`main.py`, `cli.py`, a `[project.scripts]` target or the `if __name__ == "__main__":` block) passes `sys.stdout` or `sys.stderr`. For an entry point the gate does not recognize, list its file in `python.entryPoints`.',
+  },
+  {
+    tool: RULES_TOOL,
     rules: ['clock-now'],
     describe: (subject) =>
       isHelperChain(subject)
@@ -217,6 +228,8 @@ export const STRUCTURE_HINTS = [
         scope: UNUSED_OPTION_SCOPES.python[scope],
       }),
     referenceData: { scope: 'private' },
+    allowedFor: ({ scope }) =>
+      renderMessage(UNUSED_OPTION_FIX, { scope: UNUSED_OPTION_SCOPES.python[scope] }),
     exception: 'top-level',
   },
 ];

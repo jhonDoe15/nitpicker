@@ -2,6 +2,7 @@ import { spawnSync } from 'node:child_process';
 import { existsSync, lstatSync } from 'node:fs';
 import path from 'node:path';
 import { containedPath } from './contained-path.mjs';
+import { GIT_TIMEOUT_MS } from '../../../../../shared/processes/deadlines.mjs';
 
 const DEPENDENCY_DIRECTORY = 'node_modules';
 const MAX_LISTING_BYTES = 64 * 1024 * 1024;
@@ -10,7 +11,7 @@ export function manifestDirectories(root) {
   const result = spawnSync(
     'git',
     ['ls-files', '--cached', '--others', '--exclude-standard', '-z', '--', '*package.json'],
-    { cwd: root, encoding: 'utf8', maxBuffer: MAX_LISTING_BYTES },
+    { cwd: root, encoding: 'utf8', maxBuffer: MAX_LISTING_BYTES, timeout: GIT_TIMEOUT_MS },
   );
   if (result.error !== undefined || result.status !== 0) {
     return [];

@@ -9,7 +9,7 @@ const DIGEST = 'd1e2f3a4b5c6';
 const HEADING = 'Policy changed in this change (nitpicker.config.json, head against base):';
 const ACCEPTED_HEADING =
   'Policy changed in this change (nitpicker.config.json, head against base; ' +
-  'loosening accepted by exact digest):';
+  'loosening accepted):';
 const ENTRY_CHANGES = [
   'layout.entryPoints added: scripts/first.mjs',
   'layout.entryPoints added: scripts/second.mjs',
@@ -18,14 +18,16 @@ const TIGHTENED = 'threshold crapLimit lowered from 9 to 8';
 const ACCEPT =
   '  Only a person may accept exactly these changes, after reviewing them: ' +
   `--accept-policy-change=${DIGEST} at an interactive terminal, ` +
-  `or NITPICKER_ACCEPT_POLICY_CHANGE=${DIGEST} in CI.`;
+  `NITPICKER_ACCEPT_POLICY_CHANGE=${DIGEST} in CI, ` +
+  'or the accept-policy-change label of a GitHub pull request, with the nitpicker approval workflow.';
 const DIAGNOSTICS = 'Full diagnostics: reports/quality/diff/combined/report.txt';
 const CODE_DEFECT = ['  eslint/no-console: Unexpected console statement', '    src/a.js:12:3'];
 const ACCEPT_ROUTE = [
   'If the policy change is intended, stop and ask a person reviewing this change:',
   'only they accept exactly these loosenings,',
-  `with --accept-policy-change=${DIGEST} at an interactive terminal`,
-  `or NITPICKER_ACCEPT_POLICY_CHANGE=${DIGEST} in CI.`,
+  `with --accept-policy-change=${DIGEST} at an interactive terminal,`,
+  `NITPICKER_ACCEPT_POLICY_CHANGE=${DIGEST} in CI,`,
+  'or the accept-policy-change label of a GitHub pull request, with the nitpicker approval workflow.',
 ].join(' ');
 
 function kindsOf(changes, kind = 'entry-point') {

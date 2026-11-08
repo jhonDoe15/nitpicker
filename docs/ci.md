@@ -22,12 +22,16 @@ system:
    See [Exit codes](usage.md#exit-codes).
 
 Optional but worth having: a cache for the base side (the base is measured once per merge base;
-see [Findings cache](usage.md#findings-cache)), and the policy-acceptance variable below.
+see [Findings cache](usage.md#findings-cache)), and a way for a person to accept a policy change.
 
 **Accepting a loosening of `nitpicker.config.json`.** A change that loosens the policy fails with a
-`nitpicker-config/policy-loosened` finding that names a digest. A person who agrees sets
-`NITPICKER_ACCEPT_POLICY_CHANGE` to that digest, and the job is run again. The variable is honoured
-only when `CI` is set, and never by a coding agent. GitHub Actions, GitLab CI, Bitbucket Pipelines
+`nitpicker-config/policy-loosened` finding that names a digest. On a GitHub pull request, a person
+with write access adds the `accept-policy-change` label (see
+[Accepting a policy change with a label](#accepting-a-policy-change-with-a-label)). Elsewhere, a
+person who agrees sets `NITPICKER_ACCEPT_POLICY_CHANGE` to that digest, or to `commit:<sha>` of the
+commit they reviewed, and the job is run again. A digest accepts exactly those loosenings; a commit
+accepts the loosenings of that commit only, so a later push needs a new acceptance. The variable is
+honoured only when `CI` is set, and never by a coding agent. GitHub Actions, GitLab CI, Bitbucket Pipelines
 and Buildkite set `CI`; Jenkins and Azure Pipelines do not, so their recipes set `CI=true`. Map the
 variable from one that only an admin can change (a GitHub repository variable, a protected GitLab
 CI/CD variable, a Jenkins parameter of a job only admins can build with parameters), and never
@@ -41,6 +45,9 @@ write a digest into the pipeline file.
 name: nitpicker
 on:
   pull_request:
+permissions:
+  contents: read
+  statuses: read
 jobs:
   nitpicker:
     runs-on: ubuntu-latest
@@ -49,9 +56,9 @@ jobs:
         with:
           fetch-depth: 0
       - uses: jhonDoe15/nitpicker@v0.1
-        with:
-          accept-policy-change: ${{ vars.NITPICKER_ACCEPT_POLICY_CHANGE }}
 ```
+
+`statuses: read` lets the action see an approval from the `accept-policy-change` label (below).
 
 `v0.1` is a floating tag that moves to each stable 0.1.x release (see
 [Versioning and tags](releasing.md#versioning-and-tags)); it exists from the first stable release.
@@ -112,10 +119,14 @@ Inputs:
 - `cache-publish` (default `true`): On a push to the default branch, run `nitpicker cache publish`
   so later branches reuse its findings as their base. Needs `cache-url`. The comparison is skipped
   there, since the head is the base.
+- `policy-approval` (default `true`): Accept the policy loosenings of a pull request head that a
+  person approved with the `accept-policy-change` label, which the approval workflow of
+  `nitpicker init --ci github` records as the `nitpicker/policy-accepted` status of that commit. The
+  job needs the `statuses: read` permission. `false` ignores those approvals.
 - `accept-policy-change` (empty by default): The `NITPICKER_ACCEPT_POLICY_CHANGE` digest that
-  accepts a loosening of `nitpicker.config.json`. Map the repository variable
-  `vars.NITPICKER_ACCEPT_POLICY_CHANGE`, which only an admin can set; never write a digest into a
-  workflow.
+  accepts a loosening of `nitpicker.config.json`, for a run the label cannot approve, such as a
+  merge queue. Map the repository variable `vars.NITPICKER_ACCEPT_POLICY_CHANGE`, which only an
+  admin can set; never write a digest into a workflow.
 - `report-directory` (default `reports/quality/diff`): Where the reports are written, relative to
   `working-directory`.
 - `upload-sarif` (default `false`): Upload `report.sarif` to code scanning. The job needs the
@@ -129,8 +140,8 @@ Inputs:
 
 Outputs:
 
-- `exit-code`: The exit code of the gate: 0 passed, 1 new enforceable findings, 2 a tool error or a
-  failure to decide. Empty when the gate did not run.
+- `exit-code`: The exit code of the gate: 0 passed, 1 new enforceable findings or failing head
+  tests, 2 a tool error or a failure to decide. Empty when the gate did not run.
 - `report-directory`: The absolute path of the report directory.
 - `skipped`: `true` on a push to the default branch, where the head is the base and there is nothing
   to compare.
@@ -192,6 +203,39 @@ The annotations, the job summary, `report.sarif` and `codequality.json` name fil
 repository root, so the results of a project in a subfolder land on the right files (see
 [SARIF](usage.md#sarif)).
 
+### Accepting a policy change with a label
+
+A person with write access accepts the loosenings of a pull request by adding the
+`accept-policy-change` label to it. Set it up once: create the label (`gh label create
+accept-policy-change`, or Issues > Labels > New label), and add the small workflow that
+`nitpicker init --ci github` writes as
+[`.github/workflows/nitpicker-policy-approval.yml`](../.github/workflows/nitpicker-policy-approval.yml)
+(copy it from there otherwise) to the default branch. On each label, the workflow:
+
+1. removes the label again, so it works like a button;
+2. checks that the person who added it has write, maintain or admin access, and fails otherwise;
+3. records the approval as the `nitpicker/policy-accepted` commit status of the pull request head,
+   which shows in the checks of the pull request with the name of the person, the pull request
+   number and its target branch;
+4. waits up to 20 minutes for the pull request runs of that commit to finish, then re-runs the
+   failed jobs of the latest failed run of each workflow on that commit (also of workflows other
+   than the gate).
+
+The action reads that status for the head it gates and accepts the loosenings of that commit
+(`NITPICKER_ACCEPT_POLICY_CHANGE=commit:<sha>`), also when the checkout is the merge commit GitHub
+makes for the pull request. The approval counts only for the same pull request and target branch,
+so another pull request with the same head, or a changed target branch, needs its own. A re-run on the same commit stays accepted; a push is a new commit, and
+needs the label again. The workflow runs on `pull_request_target`, so the version on the target
+branch of the pull request runs, also for a pull request from a fork, and the pull request that adds
+the workflow cannot use it yet; it never checks out the code of the pull request. Write access is the bar because whoever has it can change the workflows anyway.
+
+A run that the label cannot approve keeps the digest route: a merge queue, whose commits are not
+the pull request head, and a push. Map `accept-policy-change` from
+`vars.NITPICKER_ACCEPT_POLICY_CHANGE` there. A run that was still going when the label was added
+reads no approval; the workflow re-runs it once it fails, or says to re-run it when it takes longer
+than the wait. Without `statuses: read` the action cannot see an approval, and says so when the
+gate fails. Coding agents never add the label.
+
 ### Without the action
 
 ```yaml
@@ -215,6 +259,7 @@ jobs:
           key: nitpicker-${{ runner.os }}-${{ runner.arch }}-${{ steps.base.outputs.sha }}-${{ hashFiles('nitpicker.config.json') }}
       - run: npx nitpicker --output reports/nitpicker
         env:
+          # A digest an admin set; the label route needs the two approval steps of action.yml.
           NITPICKER_ACCEPT_POLICY_CHANGE: ${{ vars.NITPICKER_ACCEPT_POLICY_CHANGE }}
       - uses: actions/cache/save@v6.1.0
         if: ${{ !cancelled() && steps.cache.outputs.cache-hit != 'true' }}

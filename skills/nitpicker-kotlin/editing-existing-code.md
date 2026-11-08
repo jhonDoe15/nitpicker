@@ -1,7 +1,7 @@
 # Editing existing code
 
 Read this when your change edits a function, class, file or package that existed before it.
-Everything in `SKILL.md` still applies to the lines you add.
+Everything in `SKILL.md` and the topic pages it links still applies to the lines you add.
 
 - A function already over a size limit may be edited but must not grow: the run notes the base
   value (`allowed because base was 64`) and fails any increase

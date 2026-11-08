@@ -4,6 +4,7 @@ import { strictBoundaryRules } from './architecture/strict-boundary-rules.mjs';
 import { i18nRuleIds } from './eslint-config/i18n/i18n-rules.mjs';
 import { isUnusedParameterFinding } from './eslint-config/policy/unused-parameters.mjs';
 import { reactRuleIds, reactTestRuleIds } from './eslint-config/react/react-rules.mjs';
+import { serverRuleIds } from './eslint-config/server/server-rules.mjs';
 
 // eslint-plugin-functional (about a second of CPU), which would tax every start of the CLI.
 export const strictEslintRuleIds = [
@@ -57,8 +58,10 @@ export const strictEslintRuleIds = [
   'nitpicker/no-test-retry',
   'nitpicker/no-throw',
   'nitpicker/no-tri-state-boolean',
+  'nitpicker/no-unhandled-url-parse',
   'nitpicker/no-uninjectable-delay',
   'nitpicker/no-ui-framework-in-domain',
+  'nitpicker/no-unhandled-void-promise',
   'nitpicker/no-unknown-in-domain',
   'nitpicker/no-unsafe-deserialization',
   'nitpicker/no-unsafe-path-join',
@@ -69,8 +72,11 @@ export const strictEslintRuleIds = [
   'nitpicker/require-http-timeout',
   'nitpicker/require-process-timeout',
   'nitpicker/require-test-process-timeout',
+  'nitpicker/strict-boolean-expressions',
   'nitpicker/test-tsconfig-pins-lib-and-types',
+  'nitpicker/timeout-abandons-operation',
   'nitpicker/unbounded-fan-out',
+  'nitpicker/unbounded-reactive-fan-out',
   'no-duplicate-imports',
   'no-empty',
   'no-eval',
@@ -94,6 +100,7 @@ const strictRuleIds = new Set([
   ...reactRuleIds,
   ...reactTestRuleIds,
   ...i18nRuleIds,
+  ...serverRuleIds,
   ...strictBoundaryRules.map(({ name }) => name),
 ]);
 

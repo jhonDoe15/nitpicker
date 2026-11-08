@@ -1,8 +1,8 @@
+import { LIBRARY_STUBS, MOCK_REVIEW_FINDINGS, MOCK_RULE_FILES } from './kotlin-mock-data.mjs';
 import { PLURAL_FINDINGS, PLURALS } from './kotlin-plural-data.mjs';
 
 const MAIN = 'src/main/kotlin/demo/orders';
 const TEST = 'src/test/kotlin/demo/orders';
-const SPRING = 'src/test/kotlin/org/springframework';
 
 const STATUS = `package demo.orders
 
@@ -96,11 +96,6 @@ internal class Outbox(private val dir: String, private val limit: Int = 10) {
 fun quote(): String = price(100).toString() + Quote(1).cents + QueueProperties().name + Outbox("d").path()
 `;
 
-const CONFIGURATION_PROPERTIES = `package org.springframework.boot.context.properties
-
-annotation class ConfigurationProperties(val prefix: String)
-`;
-
 const PRICING_TEST = `package demo.orders
 
 import kotlin.test.Test
@@ -191,16 +186,6 @@ class WaitingTest {
 }
 `;
 
-const SPRING_BOOT_TEST = `package org.springframework.boot.test.context
-
-annotation class SpringBootTest(val webEnvironment: String = "MOCK")
-`;
-
-const AUTOWIRED = `package org.springframework.beans.factory.annotation
-
-annotation class Autowired
-`;
-
 const CONTEXT_TEST = `package demo.orders
 
 import kotlin.test.Test
@@ -229,21 +214,137 @@ class UsedContextTest {
 }
 `;
 
+const DEADLINES = `package demo.orders
+
+import java.util.concurrent.Callable
+import java.util.concurrent.CompletableFuture
+import java.util.concurrent.ExecutorService
+import java.util.concurrent.Future
+import java.util.concurrent.TimeUnit
+import java.util.concurrent.TimeoutException
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.TimeoutCancellationException
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.cancelChildren
+import kotlinx.coroutines.withTimeout
+
+interface Lookup {
+    fun get(key: String, fallback: String): String
+}
+
+fun giveUp(future: Future<String>): String =
+    try {
+        future.get(1, TimeUnit.SECONDS)
+    } catch (e: TimeoutException) {
+        "late"
+    }
+
+fun cancelOnTimeout(future: Future<String>): String =
+    try {
+        future.get(1, TimeUnit.SECONDS)
+    } catch (e: TimeoutException) {
+        future.cancel(true)
+        "late"
+    }
+
+fun rethrowToTheOwner(future: Future<String>): String =
+    try {
+        future.get(1, TimeUnit.SECONDS)
+    } catch (e: TimeoutException) {
+        throw IllegalStateException(e)
+    }
+
+fun shutDownLetsItFinish(pool: ExecutorService, work: Callable<String>): String {
+    val future = pool.submit(work)
+    return try {
+        future.get(1, TimeUnit.SECONDS)
+    } catch (e: TimeoutException) {
+        pool.shutdown()
+        "late"
+    }
+}
+
+fun shutDownNow(pool: ExecutorService, work: Callable<String>): String {
+    val future = pool.submit(work)
+    return try {
+        future.get(1, TimeUnit.SECONDS)
+    } catch (e: TimeoutException) {
+        pool.shutdownNow()
+        "late"
+    }
+}
+
+fun cancelAsyncTask(work: () -> String): String {
+    val future = CompletableFuture.supplyAsync { work() }
+    return try {
+        future.get(1, TimeUnit.SECONDS)
+    } catch (e: TimeoutException) {
+        future.cancel(true)
+        "late"
+    }
+}
+
+fun lookUp(cache: Lookup): String =
+    try {
+        cache.get("key", "fallback")
+    } catch (e: TimeoutException) {
+        "late"
+    }
+
+fun boundedAsync(work: () -> String): CompletableFuture<String> =
+    CompletableFuture.supplyAsync { work() }.orTimeout(1, TimeUnit.SECONDS)
+
+fun boundedGiven(given: CompletableFuture<String>): CompletableFuture<String> =
+    given.orTimeout(1, TimeUnit.SECONDS)
+
+suspend fun awaitOutside(scope: CoroutineScope): String {
+    val work = scope.async { "done" }
+    return withTimeout(1000) { work.await() }
+}
+
+suspend fun awaitAllOutside(scope: CoroutineScope): List<String> {
+    val first = scope.async { "first" }
+    val second = scope.async { "second" }
+    return withTimeout(1000) { listOf(first, second).awaitAll() }
+}
+
+suspend fun cancelChildrenAfterTimeout(scope: CoroutineScope): String {
+    val work = scope.async { "done" }
+    try {
+        return withTimeout(1000) { work.await() }
+    } finally {
+        scope.coroutineContext.cancelChildren()
+    }
+}
+
+suspend fun cancelAfterTimeout(scope: CoroutineScope): String {
+    val work = scope.async { "done" }
+    try {
+        return withTimeout(1000) { work.await() }
+    } catch (e: TimeoutCancellationException) {
+        work.cancel()
+        throw e
+    }
+}
+
+suspend fun startInside(): String = withTimeout(1000) { async { "done" }.await() }
+`;
+
 export const REVIEW_RULE_FILES = {
   [`${MAIN}/Status.kt`]: STATUS,
   [`${MAIN}/Clock.kt`]: CLOCK,
   [`${MAIN}/Settlement.kt`]: SETTLEMENT,
   [`${MAIN}/Plurals.kt`]: PLURALS,
   [`${MAIN}/Formatting.kt`]: FORMATTING,
+  [`${MAIN}/Deadlines.kt`]: DEADLINES,
   [`${MAIN}/Pricing.kt`]: PRICING,
-  ['src/main/kotlin/org/springframework/boot/context/properties/ConfigurationProperties.kt']:
-    CONFIGURATION_PROPERTIES,
   [`${TEST}/PricingTest.kt`]: PRICING_TEST,
   [`${MAIN}/Inventory.kt`]: INVENTORY,
   [`${TEST}/WaitingTest.kt`]: WAITING_TEST,
   [`${TEST}/ContextTest.kt`]: CONTEXT_TEST,
-  [`${SPRING}/boot/test/context/SpringBootTest.kt`]: SPRING_BOOT_TEST,
-  [`${SPRING}/beans/factory/annotation/Autowired.kt`]: AUTOWIRED,
+  ...LIBRARY_STUBS,
+  ...MOCK_RULE_FILES,
 };
 
 export const EXPECTED_REVIEW_FINDINGS = [
@@ -263,12 +364,20 @@ export const EXPECTED_REVIEW_FINDINGS = [
   'SpringUnusedContext UnusedContextTest',
   'StaticForwardingWrapper absOf',
   'StaticForwardingWrapper total',
+  'timeout-abandons-operation awaitAllOutside:withTimeout:first',
+  'timeout-abandons-operation awaitAllOutside:withTimeout:second',
+  'timeout-abandons-operation awaitOutside:withTimeout:work',
+  'timeout-abandons-operation boundedAsync:orTimeout:supplyAsync',
+  'timeout-abandons-operation cancelAsyncTask:get:future',
+  'timeout-abandons-operation giveUp:get:future',
+  'timeout-abandons-operation shutDownLetsItFinish:get:future',
   'unused-option Envelope.retries',
   'unused-option Mailer.retries',
   'unused-option Outbox.limit',
   'unused-option pad.width',
   'unused-option price.discount',
-];
+  ...MOCK_REVIEW_FINDINGS,
+].toSorted();
 
 const EMPTY_JAR = Buffer.from([0x50, 0x4b, 0x05, 0x06, ...Array.from({ length: 18 }, () => 0)]);
 

@@ -1,49 +1,20 @@
-import { spawnSync } from 'node:child_process';
 import path from 'node:path';
-import { markedPayload } from '../../../../core/tooling/child-output.mjs';
 import { readHeadPolicy, readLayout } from '../head-policy.mjs';
 import { projectConfigFile } from './config-files.mjs';
 import { DEFAULT_ENVIRONMENT } from './environments.mjs';
-import { RESULT_MARKER } from './read-environment.mjs';
+import { readConfigInChild } from './read-environment.mjs';
 
 export const TEST_ENVIRONMENTS_VARIABLE = 'NITPICKER_TEST_ENVIRONMENTS';
 export const TEST_ENVIRONMENT_RULE = 'nitpicker/no-unused-dom-environment';
 export const LINT_CONFIG = 'languages/typescript/preset/defaults/eslint.config.mjs';
 
-const READER = path.join(import.meta.dirname, 'read-environment.mjs');
-const TIMEOUT_MS = 30_000;
-const MAX_OUTPUT_BYTES = 10 * 1024 * 1024;
 const UNKNOWN = { environment: undefined, scopes: [] };
 const WHOLE_PROJECT_GLOBS = new Set(['**', '**/*']);
 
-function runReader({ configFile, projectRoot, resolveRoots, timeoutMs }) {
-  const result = spawnSync(process.execPath, [READER, configFile, projectRoot, ...resolveRoots], {
-    cwd: projectRoot,
-    env: { ...process.env, VITEST: 'true', NODE_ENV: 'test' },
-    encoding: 'utf8',
-    input: '',
-    maxBuffer: MAX_OUTPUT_BYTES,
-    timeout: timeoutMs,
-    killSignal: 'SIGKILL',
-  });
-  if (result.error?.code === 'ETIMEDOUT')
-    return { failure: `it did not finish within ${String(timeoutMs)} ms` };
-  if (result.error !== undefined) return { failure: result.error.message };
-  return (
-    markedPayload(result.stdout, RESULT_MARKER) ?? {
-      failure: `the config ended the process with exit code ${String(result.status)}`,
-    }
-  );
-}
-
-export function loadTestEnvironments({
-  projectRoot,
-  liveProjectRoot = projectRoot,
-  timeoutMs = TIMEOUT_MS,
-}) {
+export function loadTestEnvironments({ projectRoot, liveProjectRoot = projectRoot, timeoutMs }) {
   const configFile = projectConfigFile(projectRoot);
   if (configFile === undefined) return { ...UNKNOWN, environment: DEFAULT_ENVIRONMENT };
-  const outcome = runReader({
+  const outcome = readConfigInChild({
     configFile,
     projectRoot,
     resolveRoots: [...new Set([projectRoot, liveProjectRoot])],

@@ -76,6 +76,15 @@ describe('one-way rule messages', () => {
     );
   });
 
+  it('tells the allowed form of each rule that has one as a field the message ends with', () => {
+    const told = ONE_WAY_RULES.filter(({ allowed }) => allowed !== undefined).map((rule) =>
+      withAllowedForm(detektFinding(rule.id, 'Found it.')),
+    );
+
+    expect(told.length).toBeGreaterThan(5);
+    expect(told.filter((finding) => !finding.message.endsWith(finding.allowedForm))).toEqual([]);
+  });
+
   it('gives a rule whose detekt message names the allowed form no second one', () => {
     const finding = detektFinding(
       'detekt.style.UseDataClass',

@@ -1,7 +1,8 @@
 name: github-release
 
 # Manual only: publishes a GitHub release for a commit on main, with the packed tarball and its
-# checksum attached. It never publishes to npm.
+# checksum attached. The tag points at a commit on top of it that adds the rule pages. It never
+# publishes to npm.
 on:
   workflow_dispatch:
     inputs:
@@ -39,6 +40,8 @@ jobs:
         run: |
           git merge-base --is-ancestor "$COMMIT" origin/main
           echo "tag=v$(node -p "require('./package.json').version")" >> "$GITHUB_OUTPUT"
+      # `npm pack` runs `prepack`, which builds the rule reference data with the dependencies.
+      - run: npm ci
       # The notes come from .github/release-notes/<tag>.md on main, or from the released commit.
       - name: Pack the tarball and checksum
         env:
@@ -48,22 +51,67 @@ jobs:
           npm pack --pack-destination release-assets
           (cd release-assets && shasum -a 256 nitpicker-*.tgz > SHA256SUMS)
           git show "origin/main:.github/release-notes/$TAG.md" > notes.md 2>/dev/null || cp ".github/release-notes/$TAG.md" notes.md
+      # main does not commit the rule pages (docs/rules), so the release commit adds them on top of
+      # the released commit, and the tag points at it. A rerun reuses a tag an earlier run pushed.
+      - name: Commit the rule pages and tag the release commit
+        id: release-commit
+        env:
+          TAG: ${{ steps.version.outputs.tag }}
+          COMMIT: ${{ inputs.commit }}
+        run: |
+          set -euo pipefail
+          npm run gen:rules
+          git add --force docs/rules
+          if [ -n "$(git ls-remote --tags origin "refs/tags/$TAG" | cut -f1)" ]; then
+            git fetch --no-tags origin "+refs/tags/$TAG:refs/tags/$TAG"
+            if [ "$(git rev-parse "refs/tags/$TAG^{commit}^")" != "$(git rev-parse "$COMMIT")" ]; then
+              echo "::error::$TAG already exists and is not the release commit of $COMMIT."
+              exit 1
+            fi
+            echo "sha=$(git rev-parse "refs/tags/$TAG^{commit}")" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          git -c user.name="github-actions[bot]" \
+            -c user.email="41898282+github-actions[bot]@users.noreply.github.com" \
+            commit --quiet --allow-empty -m "Rule reference pages for $TAG"
+          git tag "$TAG"
+          git push origin "refs/tags/$TAG"
+          echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
       - name: Create the release
         env:
           GH_TOKEN: ${{ github.token }}
           TAG: ${{ steps.version.outputs.tag }}
-          COMMIT: ${{ inputs.commit }}
           PRERELEASE: ${{ inputs.prerelease }}
         run: |
           flags=()
           if [ "$PRERELEASE" = "true" ]; then flags+=(--prerelease); fi
-          gh release create "$TAG" release-assets/* --target "$COMMIT" --title "$TAG" --notes-file notes.md "${flags[@]}"
+          gh release create "$TAG" release-assets/* --verify-tag --title "$TAG" --notes-file notes.md "${flags[@]}"
+      # `latest` follows the newest release, pre-releases included, so main can link to the rule pages.
+      - name: Move the latest tag
+        env:
+          COMMIT: ${{ inputs.commit }}
+          RELEASE_COMMIT: ${{ steps.release-commit.outputs.sha }}
+        run: |
+          set -euo pipefail
+          remote="$(git ls-remote --tags origin refs/tags/latest | cut -f1)"
+          if [ -n "$remote" ]; then
+            git fetch --no-tags origin "+refs/tags/latest:refs/tags/latest"
+            previous="$(git rev-parse "refs/tags/latest^{commit}")"
+            if git diff --quiet "$previous^" "$previous" -- . ':(exclude)docs/rules'; then previous="$previous^"; fi
+            if ! git merge-base --is-ancestor "$previous" "$COMMIT"; then
+              echo "::notice::latest points at a newer release than this one; it stays."
+              exit 0
+            fi
+          fi
+          git tag -f latest "$RELEASE_COMMIT"
+          git push --force origin refs/tags/latest
       # A stable release moves v0.<minor> (before 1.0) or v<major> so workflows can follow a line.
       - name: Move the floating tag
         if: ${{ !inputs.prerelease }}
         env:
           TAG: ${{ steps.version.outputs.tag }}
           COMMIT: ${{ inputs.commit }}
+          RELEASE_COMMIT: ${{ steps.release-commit.outputs.sha }}
         run: |
           set -euo pipefail
           version="${TAG#v}"
@@ -84,10 +132,12 @@ jobs:
           remote="$(git ls-remote --tags origin "refs/tags/$floating" | cut -f1)"
           if [ -n "$remote" ]; then
             git fetch --no-tags origin "+refs/tags/$floating:refs/tags/$floating"
-            if ! git merge-base --is-ancestor "refs/tags/$floating" "$COMMIT"; then
+            previous="$(git rev-parse "refs/tags/$floating^{commit}")"
+            if git diff --quiet "$previous^" "$previous" -- . ':(exclude)docs/rules'; then previous="$previous^"; fi
+            if ! git merge-base --is-ancestor "$previous" "$COMMIT"; then
               echo "::error::$floating points at a commit that $TAG does not contain; move it by hand if that is intended."
               exit 1
             fi
           fi
-          git tag -f "$floating" "$COMMIT"
+          git tag -f "$floating" "$RELEASE_COMMIT"
           git push --force origin "refs/tags/$floating"

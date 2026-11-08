@@ -18,7 +18,7 @@ export const kotlinGuardCases = [
     rule: 'detekt.style.ForbiddenMethodCall',
     message: forbidden(
       'kotlin.io.println',
-      'Log through the application logger (`logger.info(...)`) instead of printing to the console.',
+      'Log through the application logger (`logger.info(...)`) instead of printing to the console. For program output, write to an `Appendable`, `PrintStream` or `Writer` parameter that the file with `fun main` passes as `System.out`.',
     ),
     allowedForm: 'logger.info(',
     banned: 'fun show() {\n    println("shown")\n}\n',
@@ -136,5 +136,16 @@ export const kotlinGuardCases = [
     allowedForm: 'TODO(#123)',
     banned: '// TODO fix the rounding\nfun round(value: Double): Long = Math.round(value)\n',
     allowed: '// TODO(#12): fix the rounding\nfun round(value: Double): Long = Math.round(value)\n',
+  },
+  {
+    id: 'todoSecondMarker',
+    rule: 'detekt.style.ForbiddenComment',
+    message:
+      'A TODO or FIXME needs an issue reference: write `TODO(#123): ...` or `TODO PROJ-123: ...`, or do the work now.',
+    allowedForm: 'TODO(#123)',
+    banned:
+      '// TODO(#12) split this, FIXME: unreferenced second marker\nfun round(value: Double): Long = Math.round(value)\n',
+    allowed:
+      '// TODO(#12) split this, FIXME(#13) second marker\nfun round(value: Double): Long = Math.round(value)\n',
   },
 ];

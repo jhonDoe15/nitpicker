@@ -46,15 +46,15 @@ describe('ingestJacocoBranches', () => {
     expect(findings.map((f) => [f.location.line, f.message])).toEqual([
       [
         4,
-        'Branch coverage is 50.00%; minimum is 95%. To accept the file, add it to "exclude" in nitpicker.config.json.',
+        'Branch coverage is 50.00%; minimum is 95%. Add a test for each outcome it misses. To accept the file, add it to "exclude" in nitpicker.config.json.',
       ],
       [
         8,
-        'Branch coverage is 0.00%; minimum is 95%. To accept the file, add it to "exclude" in nitpicker.config.json.',
+        'Branch coverage is 0.00%; minimum is 95%. Add a test for each outcome it misses. To accept the file, add it to "exclude" in nitpicker.config.json.',
       ],
       [
         14,
-        'Branch coverage is 0.00%; minimum is 95%. To accept the file, add it to "exclude" in nitpicker.config.json.',
+        'Branch coverage is 0.00%; minimum is 95%. Add a test for each outcome it misses. To accept the file, add it to "exclude" in nitpicker.config.json.',
       ],
     ]);
     expect(
@@ -84,7 +84,7 @@ describe('ingestJacocoBranches', () => {
       [14, undefined],
     ]);
     expect(findings[1].message).toBe(
-      'Branch coverage is 0.00%; minimum is 95%. If this is intended, add {"rule":"changed-branch-coverage","paths":["src/main/java/com/acme/Pick.java"],"function":"Pick.pick","reason":"..."} to "exceptions" in nitpicker.config.json.',
+      'Branch coverage is 0.00%; minimum is 95%. Add a test for each outcome it misses. If this is intended, add {"rule":"changed-branch-coverage","paths":["src/main/java/com/acme/Pick.java"],"function":"Pick.pick","reason":"..."} to "exceptions" in nitpicker.config.json.',
     );
   });
 
@@ -97,7 +97,7 @@ describe('ingestJacocoBranches', () => {
       [14, 'Pick.x'],
     ]);
     expect(findings[0].message).toBe(
-      'Branch coverage is 50.00%; minimum is 95%. If this is intended, add {"rule":"changed-branch-coverage","paths":["src/main/java/com/acme/Pick.java"],"function":"Pick.a","reason":"..."} to "exceptions" in nitpicker.config.json.',
+      'Branch coverage is 50.00%; minimum is 95%. Add a test for each outcome it misses. If this is intended, add {"rule":"changed-branch-coverage","paths":["src/main/java/com/acme/Pick.java"],"function":"Pick.a","reason":"..."} to "exceptions" in nitpicker.config.json.',
     );
   });
 

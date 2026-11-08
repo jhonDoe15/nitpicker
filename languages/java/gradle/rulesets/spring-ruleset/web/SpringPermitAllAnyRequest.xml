@@ -1,0 +1,25 @@
+  <rule name="SpringPermitAllAnyRequest" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
+        message="Name the public paths in requestMatchers(...).permitAll(), or pathMatchers(...).permitAll() on WebFlux, and end with anyRequest().authenticated(), or anyExchange().authenticated(), so a new endpoint is protected by default.">
+    <priority>1</priority>
+    <properties><property name="xpath"><value><![CDATA[
+let $root := function($node) {
+  let $statement := $node/ancestor::*[self::ExpressionStatement or self::ReturnStatement or self::LocalVariableDeclaration][last()],
+      $chain := ($statement/VariableDeclarator/*[2], $statement/*[1])[1]
+  return string(($chain/descendant-or-self::*[not(*)]
+    [not(ancestor-or-self::*[exists(ancestor::*[. is $chain])][preceding-sibling::*])])[1]/@Name)
+}
+return (
+//MethodCall[@MethodName = 'permitAll']
+  [*[1][self::MethodCall[@MethodName = ('anyRequest', 'anyExchange')]
+    or self::MethodCall[@MethodName = ('requestMatchers', 'antMatchers', 'mvcMatchers', 'pathMatchers')]
+         [ArgumentList/StringLiteral[@ConstValue = ('/**', '/*', '**')]]
+         [not(ArgumentList/*[pmd-java:typeIs('org.springframework.http.HttpMethod')])]]]
+  [let $chain := $root(.)
+   return not(ancestor::MethodDeclaration[1]//MethodCall[@MethodName = ('securityMatcher', 'securityMatchers')][$root(.) = $chain])]
+|
+//MethodCall[@MethodName = ('requestMatchers', 'antMatchers', 'mvcMatchers')]
+  [*[1][self::MethodCall[@MethodName = 'ignoring']]]
+  [ArgumentList/StringLiteral[@ConstValue = ('/**', '/*', '**')]]
+)
+]]></value></property></properties>
+  </rule>

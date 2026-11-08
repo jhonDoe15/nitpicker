@@ -3,7 +3,13 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import { parse } from 'yaml';
-import { SUITES, classifyGates, gateCandidates, workflowProblems } from './e2e-gates.mjs';
+import {
+  SUITES,
+  classifyGates,
+  gateCandidates,
+  suiteFiles,
+  workflowProblems,
+} from './e2e-gates.mjs';
 
 const ENV = ['process', 'env'].join('.');
 const roots = [];
@@ -25,11 +31,15 @@ function repository(files) {
 }
 
 describe('the E2E gate candidates', () => {
-  it('are the .e2e.test. files and the tests that read a suite flag directly or through an import', () => {
+  it('are the .e2e.test. files and the tests that read a suite flag directly, through an import or its re-exports', () => {
     const root = repository({
       'languages/a/plain.e2e.test.mjs': "it('runs', () => {});\n",
       'languages/a/support.mjs': `export const on = ${ENV}.NITPICKER_JAVA_E2E === '1';\n`,
       'languages/a/gated.test.mjs': "import { on } from './support.mjs';\n",
+      'languages/a/project.mjs': "export { on } from './support.mjs';\n",
+      'languages/a/nested/deep.test.mjs': "import { on } from '../project.mjs';\n",
+      'languages/a/helper.mjs': "import { on } from './support.mjs';\nexport const size = 1;\n",
+      'languages/a/helper.test.mjs': "import { size } from './helper.mjs';\n",
       'languages/a/unit.test.mjs': "vi.stubEnv('NITPICKER_JAVA_E2E', '1');\n",
       'scripts/typo.test.mjs': `const on = ${ENV}['NITPICKER_JAAVA_E2E'] === '1';\n`,
       'docs/other.test.mjs': `const on = ${ENV}.NITPICKER_JAVA_E2E === '1';\n`,
@@ -37,9 +47,41 @@ describe('the E2E gate candidates', () => {
 
     expect(gateCandidates(root)).toEqual([
       { file: 'languages/a/gated.test.mjs', flags: ['NITPICKER_JAVA_E2E'] },
+      { file: 'languages/a/nested/deep.test.mjs', flags: ['NITPICKER_JAVA_E2E'] },
       { file: 'languages/a/plain.e2e.test.mjs', flags: [] },
       { file: 'scripts/typo.test.mjs', flags: ['NITPICKER_JAAVA_E2E'] },
     ]);
+  });
+});
+
+describe('the suite files', () => {
+  const files = {
+    'languages/a/java.e2e.test.mjs': `const on = ${ENV}.NITPICKER_JAVA_E2E === '1';\n`,
+    'languages/a/support.mjs': `export const on = ${ENV}.NITPICKER_KOTLIN_E2E === '1';\n`,
+    'languages/a/kotlin.test.mjs': "import { on } from './support.mjs';\n",
+    'languages/a/plain.e2e.test.mjs': "it('runs', () => {});\n",
+    'languages/a/unit.test.mjs': "it('runs', () => {});\n",
+  };
+
+  it('are the files that read the flag of a suite that is set, directly or through an import', () => {
+    const root = repository(files);
+
+    expect(suiteFiles(root, { NITPICKER_JAVA_E2E: '1' })).toEqual([
+      'languages/a/java.e2e.test.mjs',
+    ]);
+    expect(suiteFiles(root, { NITPICKER_KOTLIN_E2E: '1' })).toEqual([
+      'languages/a/kotlin.test.mjs',
+    ]);
+    expect(suiteFiles(root, { NITPICKER_JAVA_E2E: '1', NITPICKER_KOTLIN_E2E: '1' })).toEqual([
+      'languages/a/java.e2e.test.mjs',
+      'languages/a/kotlin.test.mjs',
+    ]);
+  });
+
+  it('are none when no suite flag is set to 1', () => {
+    const root = repository(files);
+
+    expect(suiteFiles(root, { NITPICKER_JAVA_E2E: '0' })).toEqual([]);
   });
 });
 

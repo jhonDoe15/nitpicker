@@ -81,19 +81,94 @@
       </property>
     </properties>
   </rule>
-  <rule name="LogStringConcatenation" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
-        message="Pass values as placeholders (LOG.info(&quot;user '{'}&quot;, user); '{'0} in System.Logger and java.util.logging), not a message built with + or String.format.">
+  <rule ref="category/java/performance.xml">
+    <exclude name="AvoidArrayLoops"/>
+    <exclude name="AvoidFileStream"/>
+    <exclude name="UseArraysAsList"/>
+    <!-- A loop that needs a distinct object per item is correct; hoisting changes it. -->
+    <exclude name="AvoidInstantiatingObjectsInLoops"/>
+    <!-- A small exhaustive switch is valid. -->
+    <exclude name="TooFewBranchesForSwitch"/>
+    <!-- A capacity hint is a micro-optimization; asking for one only adds magic numbers. -->
+    <exclude name="InsufficientStringBufferDeclaration"/>
+  </rule>
+  <rule ref="category/java/multithreading.xml">
+    <exclude name="DontCallThreadRun"/>
+    <!-- volatile is a valid visibility primitive. -->
+    <exclude name="AvoidUsingVolatile"/>
+    <!-- The J2EE container restriction does not apply to most applications. -->
+    <exclude name="DoNotUseThreads"/>
+    <!-- A Map declaration does not show concurrent access. -->
+    <exclude name="UseConcurrentHashMap"/>
+  </rule>
+  <rule ref="category/java/performance.xml/AvoidArrayLoops">
+    <properties>
+      <!-- A loop that subtracts the loop variable in an index (a reversed copy) has no
+           System.arraycopy form. -->
+      <property name="violationSuppressXPath">
+        <value><![CDATA[
+.//AssignmentExpression/ArrayAccess/*[2]/descendant-or-self::InfixExpression[@Operator = '-']
+  /*[2]/descendant-or-self::VariableAccess[not(parent::FieldAccess)]
+]]></value>
+      </property>
+    </properties>
+  </rule>
+  <rule ref="category/java/performance.xml/AvoidFileStream">
+    <properties>
+      <!-- Files has no form that wraps a FileDescriptor such as FileDescriptor.in. -->
+      <property name="violationSuppressXPath"
+                value="..[ArgumentList/*[1][pmd-java:typeIs('java.io.FileDescriptor')]]"/>
+    </properties>
+  </rule>
+  <rule ref="category/java/performance.xml/UseArraysAsList">
+    <properties>
+      <!-- Only a loop that adds every element and does nothing else is a copy: a loop that
+           filters, or steps by more than one, stays. -->
+      <property name="violationSuppressXPath">
+        <value><![CDATA[
+.[count(../../*) > 1
+  or ../../..[self::ForStatement][not(ForUpdate/StatementExpressionList/UnaryExpression[@Operator = '++'])]]
+]]></value>
+      </property>
+    </properties>
+  </rule>
+  <rule ref="category/java/multithreading.xml/DontCallThreadRun">
+    <properties>
+      <!-- super.run() in a Thread subclass's run() runs the parent body on the same thread. -->
+      <property name="violationSuppressXPath" value=".[*[1][self::SuperExpression]]"/>
+    </properties>
+  </rule>
+  <rule ref="category/java/design.xml/AvoidCatchingGenericException"/>
+  <rule name="GeneratedOnHandWrittenCode" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
+        message="Remove the annotation from hand-written code: JaCoCo skips code carrying an annotation whose name contains Generated, and PIT skips @Generated, so this is not measured. Put the JPA @GeneratedValue on the field.">
+    <priority>2</priority>
+    <properties>
+      <property name="xpath">
+        <value><![CDATA[
+//(ClassDeclaration | RecordDeclaration | EnumDeclaration | MethodDeclaration | ConstructorDeclaration | CompactConstructorDeclaration)
+  /ModifierList/Annotation[contains(@SimpleName, 'Generated')]
+]]></value>
+      </property>
+    </properties>
+  </rule>
+  <rule name="LogExceptionFirst" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
+        message="Pass the exception first (log.errorf(e, &quot;Cannot read %s&quot;, path)), or e.getMessage() when only the text is wanted. After the format, JBoss Logging never logs its stack trace.">
     <priority>3</priority>
     <properties>
       <property name="xpath">
         <value><![CDATA[
-//MethodCall[@MethodName = ('info', 'warn', 'error', 'log', 'config', 'warning', 'severe')]
-  [*[1][pmd-java:typeIs('org.slf4j.Logger') or pmd-java:typeIs('org.slf4j.spi.LoggingEventBuilder')
-    or pmd-java:typeIs('java.util.logging.Logger') or pmd-java:typeIs('java.lang.System.Logger')
-    or pmd-java:typeIs('org.apache.logging.log4j.Logger') or pmd-java:typeIs('org.apache.commons.logging.Log')]]
-  /ArgumentList/(*[1] | *[1][not(pmd-java:typeIs('java.lang.String'))]/following-sibling::*[1])
-  [(self::InfixExpression[@Operator = '+'] and not(@CompileTimeConstant = true()))
-    or self::MethodCall[@MethodName = ('format', 'formatted')]]
+let $levels := ('trace', 'debug', 'info', 'warn', 'error', 'fatal'),
+    $names := (for $level in $levels return (concat($level, 'f'), concat($level, 'v')), 'logf', 'logv')
+return //MethodCall[@MethodName = $names]
+  [*[1][pmd-java:typeIs('org.jboss.logging.BasicLogger') or pmd-java:typeIs('io.quarkus.logging.Log')]]
+  [let $arguments := ArgumentList/*,
+       $format := if (@MethodName = ('logf', 'logv'))
+         then (if ($arguments[1][pmd-java:typeIs('java.lang.String')]) then 4
+               else if ($arguments[2][pmd-java:typeIs('java.lang.Throwable')]) then 3 else 2)
+         else (if ($arguments[1][pmd-java:typeIs('java.lang.Throwable')]) then 2 else 1),
+       $rest := $arguments[position() > $format]
+   return exists($arguments[$format][pmd-java:typeIs('java.lang.String')])
+     and exists(($rest | $rest/ArrayInitializer/*)[not(self::NullLiteral)][pmd-java:typeIs('java.lang.Throwable')])]
 ]]></value>
       </property>
     </properties>
@@ -225,36 +300,19 @@ return $call[exists($format[pmd-java:typeIs('java.lang.String')])][
       </property>
     </properties>
   </rule>
-  <rule name="LogExceptionFirst" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
-        message="Pass the exception first (log.errorf(e, &quot;Cannot read %s&quot;, path)), or e.getMessage() when only the text is wanted. After the format, JBoss Logging never logs its stack trace.">
+  <rule name="LogStringConcatenation" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
+        message="Pass values as placeholders (LOG.info(&quot;user '{'}&quot;, user); '{'0} in System.Logger and java.util.logging), not a message built with + or String.format.">
     <priority>3</priority>
     <properties>
       <property name="xpath">
         <value><![CDATA[
-let $levels := ('trace', 'debug', 'info', 'warn', 'error', 'fatal'),
-    $names := (for $level in $levels return (concat($level, 'f'), concat($level, 'v')), 'logf', 'logv')
-return //MethodCall[@MethodName = $names]
-  [*[1][pmd-java:typeIs('org.jboss.logging.BasicLogger') or pmd-java:typeIs('io.quarkus.logging.Log')]]
-  [let $arguments := ArgumentList/*,
-       $format := if (@MethodName = ('logf', 'logv'))
-         then (if ($arguments[1][pmd-java:typeIs('java.lang.String')]) then 4
-               else if ($arguments[2][pmd-java:typeIs('java.lang.Throwable')]) then 3 else 2)
-         else (if ($arguments[1][pmd-java:typeIs('java.lang.Throwable')]) then 2 else 1),
-       $rest := $arguments[position() > $format]
-   return exists($arguments[$format][pmd-java:typeIs('java.lang.String')])
-     and exists(($rest | $rest/ArrayInitializer/*)[not(self::NullLiteral)][pmd-java:typeIs('java.lang.Throwable')])]
-]]></value>
-      </property>
-    </properties>
-  </rule>
-  <rule name="GeneratedOnHandWrittenCode" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
-        message="Remove the annotation from hand-written code: JaCoCo skips code carrying an annotation whose name contains Generated, and PIT skips @Generated, so this is not measured. Put the JPA @GeneratedValue on the field.">
-    <priority>2</priority>
-    <properties>
-      <property name="xpath">
-        <value><![CDATA[
-//(ClassDeclaration | RecordDeclaration | EnumDeclaration | MethodDeclaration | ConstructorDeclaration | CompactConstructorDeclaration)
-  /ModifierList/Annotation[contains(@SimpleName, 'Generated')]
+//MethodCall[@MethodName = ('info', 'warn', 'error', 'log', 'config', 'warning', 'severe')]
+  [*[1][pmd-java:typeIs('org.slf4j.Logger') or pmd-java:typeIs('org.slf4j.spi.LoggingEventBuilder')
+    or pmd-java:typeIs('java.util.logging.Logger') or pmd-java:typeIs('java.lang.System.Logger')
+    or pmd-java:typeIs('org.apache.logging.log4j.Logger') or pmd-java:typeIs('org.apache.commons.logging.Log')]]
+  /ArgumentList/(*[1] | *[1][not(pmd-java:typeIs('java.lang.String'))]/following-sibling::*[1])
+  [(self::InfixExpression[@Operator = '+'] and not(@CompileTimeConstant = true()))
+    or self::MethodCall[@MethodName = ('format', 'formatted')]]
 ]]></value>
       </property>
     </properties>
@@ -270,62 +328,5 @@ return //MethodCall[@MethodName = $names]
       </property>
     </properties>
   </rule>
-  <rule ref="category/java/performance.xml">
-    <exclude name="AvoidArrayLoops"/>
-    <exclude name="AvoidFileStream"/>
-    <exclude name="UseArraysAsList"/>
-    <!-- A loop that needs a distinct object per item is correct; hoisting changes it. -->
-    <exclude name="AvoidInstantiatingObjectsInLoops"/>
-    <!-- A small exhaustive switch is valid. -->
-    <exclude name="TooFewBranchesForSwitch"/>
-    <!-- A capacity hint is a micro-optimization; asking for one only adds magic numbers. -->
-    <exclude name="InsufficientStringBufferDeclaration"/>
-  </rule>
-  <rule ref="category/java/multithreading.xml">
-    <exclude name="DontCallThreadRun"/>
-    <!-- volatile is a valid visibility primitive. -->
-    <exclude name="AvoidUsingVolatile"/>
-    <!-- The J2EE container restriction does not apply to most applications. -->
-    <exclude name="DoNotUseThreads"/>
-    <!-- A Map declaration does not show concurrent access. -->
-    <exclude name="UseConcurrentHashMap"/>
-  </rule>
-  <rule ref="category/java/performance.xml/AvoidArrayLoops">
-    <properties>
-      <!-- A loop that subtracts the loop variable in an index (a reversed copy) has no
-           System.arraycopy form. -->
-      <property name="violationSuppressXPath">
-        <value><![CDATA[
-.//AssignmentExpression/ArrayAccess/*[2]/descendant-or-self::InfixExpression[@Operator = '-']
-  /*[2]/descendant-or-self::VariableAccess[not(parent::FieldAccess)]
-]]></value>
-      </property>
-    </properties>
-  </rule>
-  <rule ref="category/java/performance.xml/AvoidFileStream">
-    <properties>
-      <!-- Files has no form that wraps a FileDescriptor such as FileDescriptor.in. -->
-      <property name="violationSuppressXPath"
-                value="..[ArgumentList/*[1][pmd-java:typeIs('java.io.FileDescriptor')]]"/>
-    </properties>
-  </rule>
-  <rule ref="category/java/performance.xml/UseArraysAsList">
-    <properties>
-      <!-- Only a loop that adds every element and does nothing else is a copy: a loop that
-           filters, or steps by more than one, stays. -->
-      <property name="violationSuppressXPath">
-        <value><![CDATA[
-.[count(../../*) > 1
-  or ../../..[self::ForStatement][not(ForUpdate/StatementExpressionList/UnaryExpression[@Operator = '++'])]]
-]]></value>
-      </property>
-    </properties>
-  </rule>
-  <rule ref="category/java/multithreading.xml/DontCallThreadRun">
-    <properties>
-      <!-- super.run() in a Thread subclass's run() runs the parent body on the same thread. -->
-      <property name="violationSuppressXPath" value=".[*[1][self::SuperExpression]]"/>
-    </properties>
-  </rule>
-  <rule ref="category/java/design.xml/AvoidCatchingGenericException"/>
+  <!-- Built by npm run gen:rules from languages/java/gradle/rulesets/pmd-ruleset/: edit the rule files there. -->
 </ruleset>

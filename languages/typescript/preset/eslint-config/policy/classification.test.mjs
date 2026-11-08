@@ -29,6 +29,7 @@ const BRANCH_STRICT_RULES = [
   'nitpicker/no-weak-hash',
   'nitpicker/require-http-timeout',
   'nitpicker/unbounded-fan-out',
+  'nitpicker/unbounded-reactive-fan-out',
   'no-duplicate-imports',
   'no-eval',
   'no-param-reassign',

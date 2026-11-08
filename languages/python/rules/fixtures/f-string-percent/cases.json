@@ -1,0 +1,8 @@
+[
+  {
+    "name": "percent format names an f-string",
+    "tool": "ruff",
+    "rule": "UP031",
+    "mention": "f-string"
+  }
+]

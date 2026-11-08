@@ -1,8 +1,9 @@
 import assert from 'node:assert/strict';
-import { spawnSync } from 'node:child_process';
+import { execFile } from 'node:child_process';
 import { readFileSync, realpathSync } from 'node:fs';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
+import { promisify } from 'node:util';
 import { parse } from 'yaml';
 import { createVitest, parseCLI } from 'vitest/node';
 import {
@@ -13,7 +14,8 @@ import {
   suiteFlag,
   workflowProblems,
 } from './e2e-gates.mjs';
-import { assignShards, readDurations } from './sequencer.mjs';
+import { assignShards, readDurations, weightOf } from './sequencer.mjs';
+import { TOOL_RUN_CEILING_MS } from '../../shared/processes/deadlines.mjs';
 
 const root = path.resolve(import.meta.dirname, '../..');
 const VITEST_CONFIG = path.join(root, 'vitest.config.mts');
@@ -26,43 +28,55 @@ function suiteFile(base, name) {
   return full;
 }
 
-function listCases(args, flag) {
+const run = promisify(execFile);
+const MAX_LISTING_BYTES = 256 * 1024 * 1024;
+
+async function listCases(args, flag) {
   const unset = SUITES.flatMap((suite) => ['-u', suiteFlag(suite)]);
-  const result = spawnSync(
-    'env',
-    [
-      ...unset,
-      ...(flag === undefined ? [] : [`${flag}=1`]),
-      process.execPath,
-      path.join(root, 'node_modules/vitest/vitest.mjs'),
-      'list',
-      ...args,
-      '--json',
-    ],
-    { cwd: root, encoding: 'utf8' },
-  );
-  assert.equal(result.status, 0, result.stderr || result.stdout);
+  const command = [
+    ...unset,
+    ...(flag === undefined ? [] : [`${flag}=1`]),
+    process.execPath,
+    path.join(root, 'node_modules/vitest/vitest.mjs'),
+    'list',
+    ...args,
+    '--no-isolate',
+    '--json',
+  ];
+  let result;
+  try {
+    result = await run('env', command, {
+      cwd: root,
+      encoding: 'utf8',
+      maxBuffer: MAX_LISTING_BYTES,
+      timeout: TOOL_RUN_CEILING_MS,
+    });
+  } catch (failure) {
+    assert.fail(failure.stderr || failure.stdout || failure.message);
+  }
   return JSON.parse(result.stdout).map(({ file, name }) => ({
     file: path.relative(root, file).split(path.sep).join('/'),
     name,
   }));
 }
 
-function scriptCases(language) {
+async function scriptCases(language) {
   const pkg = JSON.parse(readFileSync(path.join(root, 'package.json'), 'utf8'));
   const command = pkg.scripts[`test:${language}`].split(' ');
   assert.equal(command[0], `${suiteFlag(language)}=1`, `test:${language} must set its E2E flag`);
-  return listCases(command.slice(command.indexOf('run') + 1), suiteFlag(language));
+  return await listCases(command.slice(command.indexOf('run') + 1), suiteFlag(language));
 }
 
-function suiteGates() {
+async function suiteGates() {
   const candidates = gateCandidates(root);
   const filters = ['--config', VITEST_CONFIG, ...candidates.map(({ file }) => file)];
+  const [baseline, ...listed] = await Promise.all([
+    listCases(filters),
+    ...SUITES.map((suite) => listCases(filters, suiteFlag(suite))),
+  ]);
   const listings = {
-    baseline: listCases(filters),
-    listed: Object.fromEntries(
-      SUITES.map((suite) => [suite, listCases(filters, suiteFlag(suite))]),
-    ),
+    baseline,
+    listed: Object.fromEntries(SUITES.map((suite, i) => [suite, listed[i]])),
   };
   const gates = classifyGates(candidates, listings);
   assert.deepEqual(
@@ -76,9 +90,9 @@ function suiteGates() {
 function readProfile(profile, files) {
   const durations = readDurations(profile);
   assert.deepEqual(
-    [...durations.keys()].toSorted(),
-    files,
-    'timing profile must cover every selected file',
+    [...durations.keys()].filter((file) => !files.includes(file)),
+    [],
+    'the timing profile must name only selected files',
   );
   return durations;
 }
@@ -115,8 +129,8 @@ async function assertShardPartition({ files, durations, shards, matrix }) {
   assert.deepEqual(selections.flat().toSorted(), files, 'every file must occur exactly once');
 }
 
-async function verifyLanguage(language, expected) {
-  const cases = scriptCases(language);
+async function verifyLanguage(language, gates) {
+  const [expected, cases] = await Promise.all([gates, scriptCases(language)]);
   assert.deepEqual(
     cases.map(caseId).toSorted(),
     expected[language],
@@ -127,7 +141,9 @@ async function verifyLanguage(language, expected) {
   const matrix = readMatrix(language);
   const shards = assignShards(files, durations, matrix.length);
   await assertShardPartition({ files, durations, shards, matrix });
-  const loads = shards.map((shard) => shard.reduce((sum, file) => sum + durations.get(file), 0));
+  const loads = shards.map((shard) =>
+    shard.reduce((sum, file) => sum + weightOf(durations, file), 0),
+  );
   return { cases, files, matrix, loads };
 }
 
@@ -140,9 +156,9 @@ function requestedLanguages(args) {
 
 if (process.argv[1] && import.meta.url === pathToFileURL(realpathSync(process.argv[1])).href) {
   const languages = requestedLanguages(process.argv.slice(2));
-  const expected = suiteGates();
+  const gates = suiteGates();
   for (const language of languages) {
-    const { cases, files, matrix, loads } = await verifyLanguage(language, expected);
+    const { cases, files, matrix, loads } = await verifyLanguage(language, gates);
     console.log(
       JSON.stringify({
         language,

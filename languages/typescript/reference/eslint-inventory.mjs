@@ -1,14 +1,14 @@
 import { execFile } from 'node:child_process';
-import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdtempSync, readFileSync, renameSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { promisify } from 'node:util';
+import { TOOL_TIMEOUT_MS } from '../../../shared/processes/deadlines.mjs';
 
 const run = promisify(execFile);
 const INVENTORY_FILE = new URL('./eslint-inventory.json', import.meta.url);
 const INVENTORY_OUTPUT = 'inventory.json';
-const ENVIRONMENT_FILE = 'eslint.env';
 const POLICY_FILE = 'policy.json';
 const CORE_PLUGIN = '@';
 const POLICIES = new URL('../preset/eslint-config/policies/', import.meta.url);
@@ -193,48 +193,40 @@ export function variantEnvironment(root) {
   };
 }
 
-function environmentFileText(root) {
-  return Object.entries(variantEnvironment(root))
-    .map(([name, value]) => `${name}=${JSON.stringify(value)}\n`)
-    .join('');
-}
-
 async function liveInventoryOf(variant) {
   const root = variantProject(variant);
   try {
-    const environmentFile = path.join(root, ENVIRONMENT_FILE);
-    writeFileSync(environmentFile, environmentFileText(root));
-    await run(
-      process.execPath,
-      [`--env-file=${environmentFile}`, fileURLToPath(import.meta.url), variant, root],
-      { cwd: root },
-    );
+    await run(process.execPath, [fileURLToPath(import.meta.url), variant, root], {
+      cwd: root,
+      env: variantEnvironment(root),
+      timeout: TOOL_TIMEOUT_MS,
+    });
     return JSON.parse(readFileSync(path.join(root, INVENTORY_OUTPUT), 'utf8'));
   } finally {
     rmSync(root, { recursive: true, force: true });
   }
 }
 
-/** The ESLint rules the presets enable, read from the configs one process per variant: `{ [variant]: inventory }`. */
+/**
+ * The ESLint rules the presets enable, read from the configs one process per variant whose
+ * environment holds only the variant's settings, so the caller's cannot change it.
+ */
 export async function liveEslintInventory() {
   const names = Object.keys(ESLINT_VARIANTS);
   const inventories = await Promise.all(names.map(liveInventoryOf));
   return Object.fromEntries(names.map((name, index) => [name, inventories[index]]));
 }
 
-/** The committed ESLint inventory that the reference is built from. */
+/** The ESLint inventory that the reference is built from, which `npm run gen:rules` builds. */
 export function readEslintInventory() {
   return JSON.parse(readFileSync(INVENTORY_FILE, 'utf8'));
 }
 
-/** Rewrites the committed ESLint inventory as `text`. */
+/** Writes the built ESLint inventory as `text`. */
 export function writeEslintInventory(text) {
-  writeFileSync(INVENTORY_FILE, text);
-}
-
-/** The path of the committed ESLint inventory, relative to `repositoryRoot`. */
-export function eslintInventoryPath(repositoryRoot) {
-  return path.relative(repositoryRoot, fileURLToPath(INVENTORY_FILE));
+  const temporary = new URL(`./eslint-inventory.${String(process.pid)}.tmp`, import.meta.url);
+  writeFileSync(temporary, text);
+  renameSync(temporary, INVENTORY_FILE);
 }
 
 if (process.argv[1] !== undefined && import.meta.url === pathToFileURL(process.argv[1]).href) {

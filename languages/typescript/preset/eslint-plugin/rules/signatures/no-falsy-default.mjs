@@ -1,5 +1,6 @@
 import { ts } from '../../../../typescript-api/typescript-api.mjs';
 import { ancestorsOf, variableNamed } from '../analysis/ancestry.mjs';
+import { partsOf } from '../analysis/narrowing/type-parts.mjs';
 
 const FUNCTIONS = new Set(['FunctionDeclaration', 'FunctionExpression', 'ArrowFunctionExpression']);
 const TEST_PARENTS = new Set([
@@ -35,10 +36,6 @@ function falsyClassOf(part) {
     [ts.TypeFlags.NumberLiteral, Number(part.value) === 0, 'number'],
   ];
   return narrow.find(([flag, falsy]) => flags & flag && falsy)?.[2];
-}
-
-function partsOf(type) {
-  return type.isUnion() ? type.types : [type];
 }
 
 function falsyClasses(type) {

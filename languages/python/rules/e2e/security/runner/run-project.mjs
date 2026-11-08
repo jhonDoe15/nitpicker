@@ -11,6 +11,7 @@ import {
 } from '../../../../adapters/analysis/python-ast-rules.mjs';
 import { ruffFindings } from '../../../../adapters/python-reports.mjs';
 import { RUFF_REPORT, createToolContext, lint } from '../../../../adapters/python-tools.mjs';
+import { PROBE_TIMEOUT_MS } from '../../../../../../shared/processes/deadlines.mjs';
 
 const RULES_DIR = path.resolve(import.meta.dirname, '../../..');
 
@@ -73,6 +74,7 @@ function python(roots, { command, files, lines }) {
   const run = spawnSync(command, ['-I', '-B', '-c', code.join('\n')], {
     cwd: projectRoot,
     encoding: 'utf8',
+    timeout: PROBE_TIMEOUT_MS,
   });
   return { ...run, projectRoot };
 }
@@ -108,7 +110,10 @@ export function interpreter(version) {
     ['uv', ['python', 'find', '--no-project', version]],
   ];
   for (const [command, args] of candidates) {
-    const run = spawnSync(command, args.length === 0 ? ['--version'] : args, { encoding: 'utf8' });
+    const run = spawnSync(command, args.length === 0 ? ['--version'] : args, {
+      encoding: 'utf8',
+      timeout: PROBE_TIMEOUT_MS,
+    });
     if (run.status === 0) {
       return args.length === 0 ? command : run.stdout.trim();
     }
