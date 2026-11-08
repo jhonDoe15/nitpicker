@@ -1,5 +1,5 @@
 import path from 'node:path';
-import { withoutAnsi } from '../../../shared/messages/terminal-text.mjs';
+import { withoutAnsi } from '../../../shared/messages/terminal/terminal-text.mjs';
 import { withMessage } from '../../../shared/messages/finding-advice.mjs';
 
 function escaped(text) {

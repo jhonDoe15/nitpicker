@@ -18,7 +18,7 @@ import {
   projectLayerValue,
 } from '../../languages/typescript/adapters/lint-engine/project-layer.mjs';
 import { spawnSync } from 'node:child_process';
-import { withoutAnsi } from '../../shared/messages/terminal-text.mjs';
+import { withoutAnsi } from '../../shared/messages/terminal/terminal-text.mjs';
 import { isInScope } from '../scope/scope-findings.mjs';
 import { TOOL_TIMEOUT_MS } from '../../shared/processes/deadlines.mjs';
 

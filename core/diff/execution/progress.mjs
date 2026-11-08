@@ -1,5 +1,5 @@
 import { writeSync } from 'node:fs';
-import { displayPath } from '../../../shared/messages/terminal-text.mjs';
+import { displayPath } from '../../../shared/messages/terminal/terminal-text.mjs';
 
 const PROGRESS_FD = 3;
 

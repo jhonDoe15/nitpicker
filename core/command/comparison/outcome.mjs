@@ -2,7 +2,7 @@ import { absoluteTextReportPath } from '../../diff/reporting/reporters.mjs';
 import { renderConsoleSummary } from '../../diff/reporting/summary.mjs';
 import { writeGithubOutput } from '../../diff/reporting/github/emit.mjs';
 import { renderClosingSections } from '../../exceptions/stale-exceptions.mjs';
-import { colorEnabled, displayPath } from '../../../shared/messages/terminal-text.mjs';
+import { colorEnabled, displayPath } from '../../../shared/messages/terminal/terminal-text.mjs';
 import { comparisonExitCode } from '../../diff/reporting/failing-tests/failing-tests.mjs';
 
 function consoleSummary({ cli, report, outputRoot }) {

@@ -1,5 +1,5 @@
 import { normalizeGitPath } from '../git/normalize.mjs';
-import { withoutAnsi } from '../../../shared/messages/terminal-text.mjs';
+import { withoutAnsi } from '../../../shared/messages/terminal/terminal-text.mjs';
 import { routeFields } from '../../../shared/messages/exception-sentence.mjs';
 import { adviceProblems } from '../../../shared/messages/finding-advice.mjs';
 
