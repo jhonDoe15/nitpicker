@@ -21,6 +21,7 @@ import { outputRootFor } from '../diff/reporting/reporters.mjs';
 import { assertHasCommit } from '../diff/git/repository/base-ref.mjs';
 import { partialRunField, partialRunOf } from '../diff/reporting/partial-run/partial-run.mjs';
 import { failingHeadTests } from '../diff/reporting/failing-tests/failing-tests.mjs';
+import { snapshotJson } from '../diff/reporting/json-output/json-output.mjs';
 
 function stderrWarning(stderr) {
   return (message) => stderr.write(`nitpicker: ${message}\n`);
@@ -32,6 +33,7 @@ export function runSnapshotCli({
   analyzers,
   headPolicy,
   stdout,
+  jsonOutput,
   stderr,
   environment,
   runTasks,
@@ -64,7 +66,9 @@ export function runSnapshotCli({
     projectPath: relativeProjectPath,
     repositoryRoot,
   });
-  stdout.write(renderSnapshotConsoleSummary(report, path.join(outputRoot, 'report.txt')));
+  if (jsonOutput === undefined) {
+    stdout.write(renderSnapshotConsoleSummary(report, path.join(outputRoot, 'report.txt')));
+  }
   stdout.write(renderSnapshotRuleFilterSection(report, options.ruleFilters));
   writeGithubOutput({
     kind: 'snapshot',
@@ -74,7 +78,9 @@ export function runSnapshotCli({
     stdout,
     stderr,
   });
-  return snapshotExitCode(report);
+  const exitCode = snapshotExitCode(report);
+  jsonOutput?.write(snapshotJson({ report, outputRoot, exitCode }));
+  return exitCode;
 }
 
 function snapshotExitCode({ summary, toolErrors }) {

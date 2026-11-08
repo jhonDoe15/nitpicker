@@ -10,6 +10,7 @@ const FLAGS = new Map([
   ['--details', { property: 'details', value: true }],
   ['--fix', { property: 'fix', value: true }],
   ['--help', { property: 'help', value: true }],
+  ['--json', { property: 'json', value: true }],
   ['--version', { property: 'version', value: true }],
   ['--no-cache', { property: 'cache', value: false }],
 ]);
@@ -92,6 +93,7 @@ function remainingOptions(arguments_) {
     details: false,
     fix: false,
     help: false,
+    json: false,
     version: false,
     cache: true,
     paths: [],
