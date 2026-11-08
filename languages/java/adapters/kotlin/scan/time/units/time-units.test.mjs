@@ -91,6 +91,11 @@ describe('timeUnitMismatches', () => {
       'flags named with a unit',
       'fun differ(showSeconds: Boolean, showMs: Boolean) = showSeconds != showMs',
     ],
+    [
+      'a backticked keyword call',
+      'fun joined(timeoutMs: Long) = Mono.`when`(mirrors.map { fetch(it) }).timeout(timeoutMs)',
+    ],
+    ['a keyword selector', 'fun next(ttlMs: Long) = flow.`in`(ttlMs) + `object`(ttlMs)'],
     ['unit text in a string', 'val hint = "timeoutMs = ttlSeconds"'],
     ['a named constant factor', 'fun ms(ttlSeconds: Long) = ttlSeconds * MILLIS_PER_SECOND'],
     ['division by a whole second', 'val nowSeconds = System.currentTimeMillis() / 1000'],

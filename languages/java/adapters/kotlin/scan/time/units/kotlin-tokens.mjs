@@ -59,7 +59,9 @@ function tokenOf(match) {
   if (kind === 'num') {
     return { ...token, value: numberValue(text) };
   }
-  return kind === 'id' ? { ...token, text: text.replaceAll('`', '') } : token;
+  return kind === 'id'
+    ? { ...token, text: text.replaceAll('`', ''), quoted: text.startsWith('`') }
+    : token;
 }
 
 function rawTokens(code) {
