@@ -1,6 +1,6 @@
 import { escapeRegExp } from '../../../../../../shared/paths/glob.mjs';
 import { sqlOrderGaps } from '../../../../../../shared/rules/queries/sql-order.mjs';
-import { splitArguments } from '../kotlin-source.mjs';
+import { lineAt, splitArguments } from '../kotlin-source.mjs';
 import {
   argumentName,
   argumentText,
@@ -46,11 +46,6 @@ function isSingleRow(scanned, name, open) {
     single: name === 'setMaxResults' && value === '1',
     first: name === 'setFirstResult' && value === '0',
   };
-}
-
-function lineAt(code, start) {
-  const end = code.indexOf('\n', start);
-  return code.slice(start, end === -1 ? undefined : end);
 }
 
 function statementStart(code, offset) {
