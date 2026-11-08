@@ -27,6 +27,29 @@ public final class Types {
     return 0;
   }
 
+  public int checked(Object value) {
+    if (value instanceof List<?>) {
+      List<String> names = (List<String>) value; // violation: javac/unchecked
+      return names.size();
+    }
+    return 0;
+  }
+
+  public int elsewhere(Object value, Object other) {
+    if (value instanceof String) {
+      return 1;
+    }
+    return ((String) other).length() + ((String) value).length();
+  }
+
+  public boolean blank(Object value) {
+    return value instanceof String && ((String) value).isEmpty(); // violation: pmd/InstanceofThenCast
+  }
+
+  public int length(Object value) {
+    return value instanceof String ? ((String) value).length() : 0; // violation: pmd/InstanceofThenCast
+  }
+
   public List<String> names(Object value) {
     if (value instanceof List) {
       return (List<String>) value; // violation: javac/unchecked

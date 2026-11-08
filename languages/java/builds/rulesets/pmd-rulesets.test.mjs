@@ -94,6 +94,25 @@ describe('writeGuardRulesets', () => {
     expect(readFileSync(rulesets[1], 'utf8')).toContain(`<include-pattern>`);
   });
 
+  it('words OptionalGet without the no-argument orElseThrow before Java 10 only', () => {
+    const root = mkdtempSync(path.join(tmpdir(), 'nitpicker-pmd-rulesets-'));
+    roots.push(root);
+    const messageOf = (target) =>
+      readFileSync(
+        writeGuardRulesets({
+          reportDir: path.join(root, target),
+          testDirectories: [],
+          compiler: { target, args: [] },
+        })[0],
+        'utf8',
+      );
+
+    expect(messageOf('8')).toMatch(
+      /<exclude name="OptionalGet"\/>[\s\S]*guards-ruleset\.xml\/OptionalGet" message="Use orElse\(\.\.\.\), orElseThrow\(Supplier\)/u,
+    );
+    expect(messageOf('17')).not.toContain('OptionalGet');
+  });
+
   it('writes only the main guards when no test directory exists', () => {
     const root = mkdtempSync(path.join(tmpdir(), 'nitpicker-pmd-rulesets-'));
     roots.push(root);

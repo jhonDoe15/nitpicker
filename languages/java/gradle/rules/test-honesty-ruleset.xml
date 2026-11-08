@@ -15,12 +15,14 @@
   </rule>
 
   <rule name="AssertionInControlFlow" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
-        message="Assert unconditionally. Replace the if or switch with separate tests or a parameterized test (@ParameterizedTest).">
+        message="Assert unconditionally. Replace the branch or loop with separate tests, a parameterized test (@ParameterizedTest) or assertAll.">
     <description>An assertion that may not run proves nothing.</description>
     <priority>3</priority>
     <properties><property name="xpath"><value><![CDATA[
-//MethodDeclaration[ModifierList/Annotation[@SimpleName = ('Test', 'ParameterizedTest', 'RepeatedTest', 'TestFactory', 'TestTemplate')]]//(IfStatement | SwitchStatement)
-  [not(ancestor::*[self::IfStatement or self::SwitchStatement])]
+//MethodDeclaration[ModifierList/Annotation[@SimpleName = ('Test', 'ParameterizedTest', 'RepeatedTest', 'TestFactory', 'TestTemplate')]]
+  //(IfStatement | SwitchStatement | SwitchExpression | ForStatement | ForeachStatement | WhileStatement | DoStatement | ConditionalExpression)
+  [not(ancestor::*[self::IfStatement or self::SwitchStatement or self::SwitchExpression or self::ForStatement
+    or self::ForeachStatement or self::WhileStatement or self::DoStatement or self::ConditionalExpression])]
   [.//MethodCall[starts-with(@MethodName, 'assert') or @MethodName = 'verify']]
 ]]></value></property></properties>
   </rule>
@@ -41,22 +43,40 @@
     <description>A constant assertion passes whatever the code does.</description>
     <priority>3</priority>
     <properties><property name="xpath"><value><![CDATA[
-//MethodCall[@MethodName = 'assertThat'][count(ArgumentList/*) = 1][ArgumentList/*[1][self::BooleanLiteral or self::NumericLiteral or self::StringLiteral or self::NullLiteral]]
+//MethodCall[@MethodName = 'assertThat'][count(ArgumentList/*) = 1][ArgumentList/*[1][self::BooleanLiteral[@True = true()] or self::NumericLiteral or self::StringLiteral or self::NullLiteral]]
 |
-//MethodCall[@MethodName = ('assertTrue', 'assertFalse')][ArgumentList/BooleanLiteral]
+//MethodCall[@MethodName = 'assertTrue'][ArgumentList/BooleanLiteral[@True = true()]]
+|
+//MethodCall[@MethodName = 'assertFalse'][ArgumentList/BooleanLiteral[@True = false()]]
 |
 //MethodCall[@MethodName = ('assertEquals', 'assertSame')][ArgumentList/*[1][self::BooleanLiteral or self::NumericLiteral or self::StringLiteral][@Image = ../*[2]/@Image]]
 ]]></value></property></properties>
   </rule>
 
+  <rule name="AlwaysFailingAssertion" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
+        message="This assertion always fails. Call fail(&quot;reason&quot;) if the test must not get here, or assert the value the code produces.">
+    <description>assertTrue(false) and assertFalse(true) are a disguised fail().</description>
+    <priority>3</priority>
+    <properties><property name="xpath"><value><![CDATA[
+//MethodCall[@MethodName = 'assertTrue'][ArgumentList/BooleanLiteral[@True = false()]]
+|
+//MethodCall[@MethodName = 'assertFalse'][ArgumentList/BooleanLiteral[@True = true()]]
+|
+//MethodCall[@MethodName = 'assertThat'][count(ArgumentList/*) = 1][ArgumentList/BooleanLiteral[@True = false()]]
+]]></value></property></properties>
+  </rule>
+
   <rule name="MockedValueType" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
-        message="Do not mock a value type (String, number, date, collection, Optional or record). Construct a real instance.">
+        message="Do not mock or spy a value type (String, number, date, Optional, record or a concrete collection). Construct a real instance. Mocking an interface such as List or Map is fine.">
     <description>A mocked value only tests the mock.</description>
     <priority>3</priority>
     <properties><property name="xpath"><value><![CDATA[
-//MethodCall[@MethodName = ('mock', 'spy')]/ArgumentList/ClassLiteral/ClassType[@SimpleName = ('String', 'Integer', 'Long', 'Double', 'Float', 'Short', 'Byte', 'Boolean', 'Character', 'BigDecimal', 'BigInteger', 'LocalDate', 'LocalDateTime', 'LocalTime', 'Instant', 'Duration', 'Period', 'ZonedDateTime', 'OffsetDateTime', 'UUID', 'Optional', 'List', 'Set', 'Map', 'Collection', 'ArrayList', 'HashMap', 'HashSet') or pmd-java:typeIs('java.lang.Record')]
+let $values := ('String', 'Integer', 'Long', 'Double', 'Float', 'Short', 'Byte', 'Boolean', 'Character', 'BigDecimal', 'BigInteger', 'LocalDate', 'LocalDateTime', 'LocalTime', 'Instant', 'Duration', 'Period', 'ZonedDateTime', 'OffsetDateTime', 'UUID', 'Optional', 'ArrayList', 'LinkedList', 'HashMap', 'LinkedHashMap', 'TreeMap', 'HashSet', 'LinkedHashSet', 'TreeSet') return
+(
+//MethodCall[@MethodName = ('mock', 'spy')]/ArgumentList/(ClassLiteral | ConstructorCall)/ClassType[@SimpleName = $values or pmd-java:typeIs('java.lang.Record')]
 |
-//FieldDeclaration[ModifierList/Annotation[@SimpleName = ('Mock', 'Spy')]]/ClassType[@SimpleName = ('String', 'Integer', 'Long', 'Double', 'Float', 'Short', 'Byte', 'Boolean', 'Character', 'BigDecimal', 'BigInteger', 'LocalDate', 'LocalDateTime', 'LocalTime', 'Instant', 'Duration', 'Period', 'ZonedDateTime', 'OffsetDateTime', 'UUID', 'Optional', 'List', 'Set', 'Map', 'Collection', 'ArrayList', 'HashMap', 'HashSet') or pmd-java:typeIs('java.lang.Record')]
+//(FieldDeclaration | FormalParameter)[ModifierList/Annotation[@SimpleName = ('Mock', 'Spy')]]/ClassType[@SimpleName = $values or pmd-java:typeIs('java.lang.Record')]
+)
 ]]></value></property></properties>
   </rule>
 

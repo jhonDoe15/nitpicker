@@ -34,7 +34,7 @@ const enabled = process.env.NITPICKER_JAVA_E2E === '1';
 const gradle = process.env.NITPICKER_GRADLE ?? 'gradle';
 const fixtures = path.join(import.meta.dirname, '..', 'adapters', 'fixtures');
 const optionalGetMessage = (file) =>
-  'Use orElseThrow(), orElse(...), map or ifPresent instead of Optional.get(). ' +
+  'Use orElseThrow(), orElse(...), map or ifPresent instead of Optional.get(), also after isPresent(). ' +
   exceptionHint('pmd/OptionalGet', file);
 const LINE_MARKER = /\/\/ violation: (.*)$/;
 const FILE_MARKER = /\/\/ file violation: (.*)$/;
@@ -70,6 +70,7 @@ const GUARD_RULES = new Set([
   'AssertionInControlFlow',
   'TryCatchInTest',
   'TautologicalAssertion',
+  'AlwaysFailingAssertion',
   'MockedValueType',
   'TestOrderDependence',
   'TestClassWithoutTestCases',

@@ -5,7 +5,7 @@
          xsi:schemaLocation="http://pmd.sourceforge.net/ruleset/2.0.0 https://pmd.sourceforge.io/ruleset_2_0_0.xsd">
   <description>Nitpicker's own PMD rules for main sources.</description>
   <rule name="OptionalGet" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
-        message="Use orElseThrow(), orElse(...), map or ifPresent instead of Optional.get().">
+        message="Use orElseThrow(), orElse(...), map or ifPresent instead of Optional.get(), also after isPresent().">
     <description>Optional.get() hides the empty case.</description>
     <priority>3</priority>
     <properties><property name="xpath"><value><![CDATA[
@@ -19,7 +19,8 @@
     <properties><property name="xpath"><value><![CDATA[
 (//FieldDeclaration | //RecordComponent
   | //FormalParameter[not(ModifierList/Annotation[@SimpleName = ('RequestParam', 'RequestHeader', 'PathVariable',
-      'CookieValue', 'RequestAttribute', 'SessionAttribute', 'MatrixVariable', 'RequestPart')])])
+      'CookieValue', 'RequestAttribute', 'SessionAttribute', 'MatrixVariable', 'RequestPart')])]
+      [not(ancestor::MethodDeclaration[1][@Overridden = true() or ModifierList/Annotation[@SimpleName = 'Override']])])
   /ClassType[@SimpleName = 'Optional']
 ]]></value></property></properties>
   </rule>
@@ -28,7 +29,8 @@
     <description>An empty collection already means nothing was found.</description>
     <priority>3</priority>
     <properties><property name="xpath"><value><![CDATA[
-//ClassType[@SimpleName = 'Optional']/TypeArguments/ClassType[@SimpleName = ('List', 'Set', 'Map', 'Collection', 'Iterable')]
+//ClassType[@SimpleName = 'Optional'][not(parent::*[self::FieldDeclaration or self::RecordComponent or self::FormalParameter])]
+  /TypeArguments/ClassType[@SimpleName = ('List', 'Set', 'Map', 'Collection', 'Iterable')]
 ]]></value></property></properties>
   </rule>
   <rule name="InstanceofThenCast" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
@@ -37,10 +39,11 @@
     <priority>3</priority>
     <properties><property name="xpath"><value><![CDATA[
 //InfixExpression[@Operator = 'instanceof'][TypeExpression/ClassType][VariableAccess]
-  [let $type := TypeExpression/ClassType/@SimpleName, $variable := VariableAccess/@Name,
-       $generic := exists(TypeExpression/ClassType/TypeArguments) return
-    ancestor::Block[1]/descendant::CastExpression[ClassType[@SimpleName = $type][$generic or not(TypeArguments)]]
-      [VariableAccess/@Name = $variable]]
+  [not(ancestor::UnaryExpression[@Operator = '!'])]
+  [let $instanceof := ., $type := TypeExpression/ClassType/@SimpleName, $variable := VariableAccess/@Name return
+    ancestor::*[self::IfStatement or self::ConditionalExpression or self::InfixExpression[@Operator = '&&']]
+      [*[1]/descendant-or-self::*[. is $instanceof]]/*[2]/descendant-or-self::*/CastExpression
+      [ClassType[@SimpleName = $type][not(TypeArguments/*[not(self::WildcardType)])]][VariableAccess/@Name = $variable]]
 ]]></value></property></properties>
   </rule>
   <rule name="SneakyThrows" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
@@ -57,7 +60,7 @@
     <priority>3</priority>
     <properties><property name="xpath"><value><![CDATA[
 //CatchClause[CatchParameter/(ClassType | UnionType/ClassType)[@SimpleName = 'InterruptedException']]
-  [not(.//MethodCall[@MethodName = 'interrupt'] or .//ThrowStatement)]
+  [not(.//MethodCall[@MethodName = 'interrupt'][*[1][self::MethodCall[@MethodName = 'currentThread']]] or .//ThrowStatement)]
 ]]></value></property></properties>
   </rule>
   <rule name="CollectorsToList" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
@@ -76,18 +79,23 @@
     <properties><property name="xpath"><value><![CDATA[
 //MethodCall[pmd-java:matchesSig('java.nio.file.Files#lines(_*)') or pmd-java:matchesSig('java.nio.file.Files#list(_*)')
     or pmd-java:matchesSig('java.nio.file.Files#walk(_*)') or pmd-java:matchesSig('java.nio.file.Files#find(_*)')]
-  [not(ancestor::Resource)][not(parent::ReturnStatement)]
-  [not(parent::VariableDeclarator[let $name := VariableId/@Name return
-    ancestor::Block[1]//Resource/VariableAccess[@Name = $name]])]
+  [not(ancestor::Resource)]
+  [let $top := ancestor-or-self::MethodCall[not(parent::MethodCall/*[1] is .)][1],
+       $scope := ancestor::*[self::MethodDeclaration or self::ConstructorDeclaration or self::Initializer
+         or self::LambdaExpression][1],
+       $name := ($top/parent::VariableDeclarator/VariableId/@Name, $top/parent::AssignmentExpression/VariableAccess[1]/@Name)[1]
+   return not($top[pmd-java:typeIs('java.util.stream.BaseStream')][parent::*[self::ReturnStatement or self::LambdaExpression]])
+     and not(exists($name) and ($scope//Resource/VariableAccess[@Name = $name]
+       or $scope//MethodCall[@MethodName = 'close'][*[1][self::VariableAccess[@Name = $name]]]))]
 ]]></value></property></properties>
   </rule>
   <rule name="ForEachSideEffect" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
-        message="Do not change a captured collection, array or field inside forEach or peek. Build the result with map(...) and collect or toList(), or use a for loop.">
+        message="Do not change a captured collection, array or field inside a stream forEach or peek. Build the result with map(...) and collect or toList(), or use a for loop.">
     <description>Side effects on shared state inside a stream pipeline are order-dependent and unsafe in parallel streams.</description>
     <priority>3</priority>
     <properties><property name="xpath"><value><![CDATA[
 let $mutators := ('add', 'addAll', 'put', 'putAll', 'putIfAbsent', 'append', 'offer', 'push', 'merge', 'compute', 'computeIfAbsent', 'computeIfPresent', 'remove', 'set', 'addFirst', 'addLast', 'increment', 'incrementAndGet', 'getAndIncrement') return
-//MethodCall[@MethodName = ('forEach', 'forEachOrdered', 'peek')]/ArgumentList/(
+//MethodCall[@MethodName = ('forEach', 'forEachOrdered', 'peek')][*[1][pmd-java:typeIs('java.util.stream.BaseStream')]]/ArgumentList/(
   LambdaExpression[let $lambda := . return (
     .//MethodCall[@MethodName = $mutators][*[1][self::VariableAccess or self::FieldAccess]]
       [not(*[1]/@Name = $lambda//VariableId/@Name)]
@@ -99,7 +107,7 @@ let $mutators := ('add', 'addAll', 'put', 'putAll', 'putIfAbsent', 'append', 'of
 ]]></value></property></properties>
   </rule>
   <rule name="SqlConcatenation" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
-        message="Pass values to the database as ? parameters of a PreparedStatement; never build SQL with + or String.format.">
+        message="Pass values to the database as ? parameters of a PreparedStatement; never build SQL with + or String.format. A table or column name checked against a fixed list can be intended.">
     <description>String-built SQL is open to injection.</description>
     <priority>3</priority>
     <properties><property name="xpath"><value><![CDATA[
@@ -114,7 +122,7 @@ let $mutators := ('add', 'addAll', 'put', 'putAll', 'putIfAbsent', 'append', 'of
 ]]></value></property></properties>
   </rule>
   <rule name="WeakHash" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
-        message="Use SHA-256 or stronger. MD5 and SHA-1 are broken; for passwords use a password encoder such as bcrypt or Argon2.">
+        message="Use SHA-256 or stronger; for passwords use a password encoder such as bcrypt or Argon2. MD5 and SHA-1 can be intended for a checksum or ETag that protects nothing.">
     <description>MD5 and SHA-1 collide and are fast to brute force.</description>
     <priority>3</priority>
     <properties><property name="xpath"><value><![CDATA[
@@ -125,7 +133,7 @@ let $mutators := ('add', 'addAll', 'put', 'putAll', 'putIfAbsent', 'append', 'of
 ]]></value></property></properties>
   </rule>
   <rule name="NestedQuantifierRegex" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
-        message="This regex can backtrack exponentially: a repeated group repeats a single quantified item, as in (a+)+. Remove the inner or the outer quantifier.">
+        message="This regex can backtrack exponentially: a repeated group repeats an item that is itself repeated, as in (a+)+ or (a|aa)+. Remove the inner or the outer quantifier.">
     <description>Nested quantifiers allow catastrophic backtracking (ReDoS).</description>
     <priority>3</priority>
     <properties><property name="xpath"><value><![CDATA[
@@ -133,7 +141,8 @@ let $mutators := ('add', 'addAll', 'put', 'putAll', 'putIfAbsent', 'append', 'of
     or pmd-java:matchesSig('java.lang.String#matches(_*)') or pmd-java:matchesSig('java.lang.String#replaceAll(_*)')
     or pmd-java:matchesSig('java.lang.String#replaceFirst(_*)') or pmd-java:matchesSig('java.lang.String#split(_*)')]
   /ArgumentList/*[1][self::StringLiteral]
-    [matches(@Image, '\((\?:)?(\\\\.|\[[^\]]*\]|[^()|\\\[\]*+?{}])[*+]\??\)([*+]|\{\d+,\})')]
+    [matches(@Image, '\((\?:)?(\\\\.|\[[^\]]*\]|[^()|\\\[\]*+?{}])[*+]\??((\\\\.|\[[^\]]*\]|[^()|\\\[\]*+?{}])[*?]\??)*\)([*+]|\{\d+,\})')
+      or matches(@Image, '\((\?:)?(\\\\.|\[[^\]]*\]|[^()|\\\[\]*+?{}])\|\2[*+]?\2?\)([*+]|\{\d+,\})')]
 ]]></value></property></properties>
   </rule>
   <rule name="PathFromParameter" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
@@ -147,8 +156,10 @@ let $mutators := ('add', 'addAll', 'put', 'putAll', 'putIfAbsent', 'append', 'of
   | //MethodCall[pmd-java:matchesSig('java.nio.file.Path#resolve(java.lang.String)')]
 )[let $method := ancestor::*[self::MethodDeclaration or self::ConstructorDeclaration][1] return
     $method/@Visibility != 'private'
-    and ArgumentList/VariableAccess[@Name = $method/FormalParameters/FormalParameter/VariableId/@Name]
-    and not($method//MethodCall[@MethodName = ('normalize', 'toRealPath', 'getCanonicalPath', 'getCanonicalFile', 'startsWith')])]
+    and ArgumentList/*[self::VariableAccess or self::InfixExpression]/descendant-or-self::VariableAccess
+      [@Name = $method/FormalParameters/FormalParameter/VariableId/@Name]
+    and not($method//MethodCall[@MethodName = ('normalize', 'toRealPath', 'getCanonicalPath', 'getCanonicalFile')
+      or @MethodName = 'startsWith' and *[1][pmd-java:typeIs('java.nio.file.Path')]])]
 ]]></value></property></properties>
   </rule>
   <rule name="SignatureDeclareThrowsException" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"

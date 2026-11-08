@@ -327,7 +327,8 @@ return $call[exists($format[pmd-java:typeIs('java.lang.String')])][
   [not(pmd-java:modifiers() = 'private' and VariableDeclarator/ConstructorCall[pmd-java:typeIs('java.util.concurrent.ConcurrentMap')
       or pmd-java:typeIs('java.util.concurrent.CopyOnWriteArrayList') or pmd-java:typeIs('java.util.concurrent.CopyOnWriteArraySet')
       or pmd-java:typeIs('java.util.concurrent.ConcurrentLinkedQueue') or pmd-java:typeIs('java.util.concurrent.ConcurrentLinkedDeque')
-      or pmd-java:typeIs('java.util.concurrent.ConcurrentSkipListSet')])]
+      or pmd-java:typeIs('java.util.concurrent.ConcurrentSkipListSet') or pmd-java:typeIs('java.util.concurrent.BlockingQueue')
+      or pmd-java:typeIs('java.util.concurrent.BlockingDeque')])]
   [let $name := VariableDeclarator/VariableId/@Name return
     pmd-java:modifiers() = 'public'
     or ancestor::ClassBody[1]//MethodCall[@MethodName = ('add', 'addAll', 'put', 'putAll', 'putIfAbsent', 'remove', 'clear', 'merge', 'compute', 'computeIfAbsent', 'offer', 'push', 'poll', 'pop', 'addFirst', 'addLast', 'removeIf', 'replaceAll', 'sort')]
