@@ -8,6 +8,8 @@ const CONTINUATION = { shift: 6, mask: 0x3f };
 const TWO_BYTES = { shift: 5, lead: 0b110, mask: 0x1f };
 const THREE_BYTES = { shift: 4, lead: 0b1110, mask: 0x0f };
 const CLASS = 7;
+const MEMBER_REFERENCES = new Set([9, 10, 11]);
+const NAME_AND_TYPE_BYTES = 2;
 const WIDE_CONSTANTS = new Set([5, 6]);
 const CONSTANT_SIZES = {
   3: 4,
@@ -75,6 +77,9 @@ function readConstant(reader, { pool, index }) {
     pool.utf.set(index, reader.utf());
   } else if (tag === CLASS) {
     pool.classes.set(index, reader.u2());
+  } else if (MEMBER_REFERENCES.has(tag)) {
+    pool.owners.add(reader.u2());
+    reader.skip(NAME_AND_TYPE_BYTES);
   } else {
     reader.skip(CONSTANT_SIZES[tag]);
   }
@@ -83,7 +88,7 @@ function readConstant(reader, { pool, index }) {
 
 export function readConstantPool(reader) {
   const count = reader.u2();
-  const pool = { utf: new Map(), classes: new Map() };
+  const pool = { utf: new Map(), classes: new Map(), owners: new Set() };
   const wideSlots = new Set();
   for (const index of Array.from({ length: count - 1 }, (_, slot) => slot + 1)) {
     if (!wideSlots.has(index) && readConstant(reader, { pool, index })) {
@@ -94,6 +99,10 @@ export function readConstantPool(reader) {
     utf: pool.utf,
     className: (index) => pool.utf.get(pool.classes.get(index)),
     classNames: () => [...pool.classes.values()].map((nameIndex) => pool.utf.get(nameIndex)),
+    memberOwners: () =>
+      [...pool.owners]
+        .map((index) => pool.utf.get(pool.classes.get(index)))
+        .filter((name) => name !== undefined),
   };
 }
 

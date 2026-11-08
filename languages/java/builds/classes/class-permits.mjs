@@ -2,10 +2,10 @@ import { writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { classSummaries, classSummary } from './class-summary.mjs';
 
-function permitsLines({ name, permitted }) {
-  return permitted.map(
-    (subclass) => `${name.replaceAll('/', '.')} -> ${subclass.replaceAll('/', '.')}`,
-  );
+function permitsLines({ name, permitted, usedMembers }) {
+  return permitted
+    .filter((subclass) => !usedMembers.has(subclass))
+    .map((subclass) => `${name.replaceAll('/', '.')} -> ${subclass.replaceAll('/', '.')}`);
 }
 
 export function permittedSubclasses(buffer) {
