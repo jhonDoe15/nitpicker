@@ -14,6 +14,12 @@ function kotlinOnlyRoots(module) {
   return (module.kotlin?.sourceRoots ?? []).filter((root) => !module.sourceRoots.includes(root));
 }
 
+function kotlinOnlyTestRoots(module) {
+  return (module.kotlin?.testSourceRoots ?? []).filter(
+    (root) => !module.testSourceRoots.includes(root),
+  );
+}
+
 export function moduleManifest({ module, classpaths, pinned }) {
   return {
     versions: pinned,
@@ -21,6 +27,7 @@ export function moduleManifest({ module, classpaths, pinned }) {
     sourceRoots: relativeRoots(module, module.sourceRoots),
     kotlinSourceRoots: relativeRoots(module, kotlinOnlyRoots(module)),
     testSourceRoots: relativeRoots(module, module.testSourceRoots),
+    kotlinTestSourceRoots: relativeRoots(module, kotlinOnlyTestRoots(module)),
     resourceRoots: relativeRoots(module, module.resourceRoots),
     ...springFacts(classpaths),
     guava: hasJar(classpaths.mainCompile, GUAVA_JAR),

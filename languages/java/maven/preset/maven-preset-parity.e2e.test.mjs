@@ -92,6 +92,7 @@ describe.skipIf(!enabled)('Java preset on Maven builds', () => {
       'pmd',
       'spotbugs',
       'structure',
+      'test-runtime',
     ]);
   }, 180_000);
   it('runs PIT with the JVM arguments the tests of either build need', () => {
