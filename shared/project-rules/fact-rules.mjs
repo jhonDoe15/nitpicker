@@ -24,6 +24,7 @@ export const FACT_RULE_LANGUAGES = {
   },
   'sibling-copy-edit': { ...TYPESCRIPT_AND_JAVASCRIPT, ...JVM, python: true },
   'shared-used-by-one-feature': { ...TYPESCRIPT_AND_JAVASCRIPT, ...JVM },
+  'public-alternative-bypass': { ...TYPESCRIPT_AND_JAVASCRIPT, python: true, kotlin: true },
   'test-only-export': {
     ...TYPESCRIPT_AND_JAVASCRIPT,
     java: true,
@@ -49,6 +50,7 @@ export const FACT_RULE_LISTS = {
   'exported-name-collision': ['modules', 'packages', 'definitions', 'imports'],
   'sibling-copy-edit': ['modules', 'packages', 'definitions'],
   'shared-used-by-one-feature': ['modules', 'imports'],
+  'public-alternative-bypass': ['modules', 'definitions', 'imports'],
   'test-only-export': ['modules', 'packages', 'definitions', 'imports'],
   'doc-comment-content': ['docComments'],
   'test-console-output': ['console'],

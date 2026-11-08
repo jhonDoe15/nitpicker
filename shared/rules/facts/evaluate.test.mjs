@@ -140,6 +140,7 @@ describe('the shared fact rules', () => {
       'duplicate-definition',
       'exported-name-collision',
       'sibling-copy-edit',
+      'public-alternative-bypass',
       'test-only-export',
       'doc-comment-content',
       CONSOLE,

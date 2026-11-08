@@ -259,6 +259,7 @@ A facts bundle is one JSON object. Each list is optional in the schema, but a ru
 | `exported-name-collision`    | `modules`, `packages`, `definitions`, `imports`                 |
 | `sibling-copy-edit`          | `modules`, `packages`, `definitions` (head; base `definitions`) |
 | `shared-used-by-one-feature` | `modules`, `imports`                                            |
+| `public-alternative-bypass`  | `modules`, `definitions`, `imports` (`reexport` edges)          |
 | `test-only-export`           | `modules`, `packages`, `definitions`, `imports`                 |
 | `doc-comment-content`        | `docComments`                                                   |
 | `test-console-output`        | `console`                                                       |

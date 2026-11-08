@@ -12,7 +12,8 @@ Part of the [nitpicker-python](../SKILL.md) skill. Write these forms from the st
   package must not depend on a less stable one (`stability-direction`).
 - A class has at most 20 methods and 10 fields, and at most 3 project base classes above it
   (`Exception` or `models.Model` add none). A package sits at most 4 levels below the root package. Modules and packages must not import
-  each other in a cycle, and production code imports only from the source roots.
+  each other in a cycle, and production code imports only from the source roots. When a package's `__init__.py` re-exports a
+  name, code outside the package imports it from the package (`from shop.billing import Invoice`), not from the module inside it.
 - A module stays within 300 lines (a test module 500) and a line within 120 characters. A folder
   holds at most 6 modules and 6 test modules directly: group the rest into packages by what they do.
 - Dependencies: every package production code imports is a production dependency of the project
