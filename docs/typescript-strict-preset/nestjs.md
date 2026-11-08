@@ -43,3 +43,6 @@ provider to inject. An `import type` of that class would break the injection, so
 `@typescript-eslint/consistent-type-imports` skips files with decorators there. The default oxlint
 engine does not read those compiler options, so in such a project the rule runs through ESLint
 instead, which does.
+
+The NestJS entry file is an entry point, so its `bootstrap()` call at module level is allowed: the
+file `nest-cli.json` names with `sourceRoot` and `entryFile`, `src/main.ts` by default.
