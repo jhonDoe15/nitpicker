@@ -32,11 +32,11 @@ export function folderImports(imports) {
     .sort(compareImports);
 }
 
-export function publishesModuleImports(environment = process.env) {
+function publishesModuleImports(environment) {
   return readHeadPolicyFile(environment).history?.coChange === true;
 }
 
-export function moduleImportsSection(imports, environment = process.env) {
+export function moduleImportsSection(imports, environment) {
   return imports !== undefined && publishesModuleImports(environment)
     ? { [MODULE_IMPORTS]: folderImports(imports) }
     : {};

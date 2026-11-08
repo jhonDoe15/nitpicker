@@ -9,9 +9,9 @@ import { withCoChangeDependencies } from '../../../shared/history/co-change/depe
 import { scopeNotes, scopeOutcomes, scopeSummary } from '../../scope/scope-findings.mjs';
 
 export function combineAnalyzerReports(context) {
-  const { additionalToolErrors, headPolicy } = context;
-  const baseRun = withCoChangeDependencies(context.baseRun, context.basePolicy ?? headPolicy);
-  const headRun = withCoChangeDependencies(context.headRun, headPolicy);
+  const { additionalToolErrors, policies = {} } = context;
+  const baseRun = withCoChangeDependencies(context.baseRun, policies.base);
+  const headRun = withCoChangeDependencies(context.headRun, policies.head);
   const toolErrors = [...additionalToolErrors, ...baseRun.toolErrors, ...headRun.toolErrors];
   const compared = compareAnalyzers({ ...context, baseRun, headRun, toolErrors });
   const outcomes = scopeOutcomes(compared.outcomes, context.scope);

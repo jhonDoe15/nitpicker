@@ -36,7 +36,7 @@ import { ingestJacoco } from '../../ingest/coverage-reports/jacoco.mjs';
 import { ingestPit } from '../../ingest/pit.mjs';
 import { ingestJacocoBranches } from '../../ingest/coverage-reports/jacoco-branches.mjs';
 import { sarifFindings } from './sarif/sarif-reports.mjs';
-import { projectWideReport } from '../../builds/project-wide.mjs';
+import { projectWideReport, reportModuleProjects } from '../../builds/project-wide.mjs';
 import { applyRuleMessages } from '../../messages/rule-messages.mjs';
 import {
   jacocoSourceRoots,
@@ -69,15 +69,7 @@ export function readJavaFindings(projectRoot, options = {}) {
     );
   const wide = projectWide
     ? projectWideReport(projectRoot, {
-        projects: modules.map((module) => ({
-          reportRoot: module.reportRoot,
-          qualifier: module.key === ROOT_MODULE ? '' : module.dir,
-          sourceRoots: module.manifest.sourceRoots ?? [],
-          kotlinSourceRoots: module.manifest.kotlinSourceRoots ?? [],
-          testSourceRoots: module.manifest.testSourceRoots ?? [],
-          kotlinTestSourceRoots: module.manifest.kotlinTestSourceRoots ?? [],
-          resourceRoots: module.manifest.resourceRoots ?? [],
-        })),
+        projects: reportModuleProjects(modules, ROOT_MODULE),
         mergedRoot: path.join(reportBase, 'project'),
         manifest,
         kotlin: kotlinPreset,

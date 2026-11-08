@@ -1,4 +1,4 @@
-import { existsSync, mkdtempSync, readFileSync, rmSync } from 'node:fs';
+import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import {
@@ -22,6 +22,7 @@ import { withoutOverlaps } from './overlaps/static-overlaps.mjs';
 import { toolConfigChoices } from './tool-config/tool-config-choices.mjs';
 import { readJavaFindings } from './reporting/java-reports.mjs';
 import { withJavaColumns } from './reporting/columns/java-columns.mjs';
+import { sourceTextReader } from './reporting/function-locator.mjs';
 import { readReportModules } from './gradle-reports/report-modules.mjs';
 import { runMavenPreset } from '../maven/maven-build.mjs';
 import { MAVEN_REPORT_DIRECTORY } from '../maven/module/maven-module.mjs';
@@ -129,15 +130,13 @@ function gradleFindings(projectRoot, options, reportBase) {
   if (preset === 'kotlin') {
     runKotlinDuplicates(projectRoot, duplicates);
   }
-  const read = readJavaFindings(projectRoot, {
-    ...readOptions(options.policy),
-    formatAdvice: kotlinRun?.advice,
-    reportBase,
-    report,
-  });
   return {
-    findings: read.findings,
-    imports: read.imports,
+    ...readJavaFindings(projectRoot, {
+      ...readOptions(options.policy),
+      formatAdvice: kotlinRun?.advice,
+      reportBase,
+      report,
+    }),
     testsFailures: withRootSourceRoots(testsFailures, report.modules),
   };
 }
@@ -173,12 +172,14 @@ function mavenFindings(projectRoot, options) {
   if (options.policy?.preset === 'kotlin') {
     runKotlinDuplicates(projectRoot, duplicates);
   }
-  const read = readModuleReport(projectRoot, moduleDirs, {
-    ...readOptions(options.policy),
-    formatAdvice,
-    reportDirectory: MAVEN_REPORT_DIRECTORY,
-  });
-  return { findings: read.findings, imports: read.imports, testsFailures };
+  return {
+    ...readModuleReport(projectRoot, moduleDirs, {
+      ...readOptions(options.policy),
+      formatAdvice,
+      reportDirectory: MAVEN_REPORT_DIRECTORY,
+    }),
+    testsFailures,
+  };
 }
 
 export function collectJavaFindings(root, options = {}) {
@@ -192,9 +193,7 @@ export function collectJavaReport(root, options = {}) {
       ? mavenFindings(projectRoot, options)
       : withGradleReports(projectRoot, options);
   const preset = options.policy?.preset ?? 'java';
-  function readSource(file) {
-    return sourceText(projectRoot, file);
-  }
+  const readSource = sourceTextReader(projectRoot);
   const parsed = parseAnalyzerReport(
     {
       findings: withJavaColumns(findings, { projectRoot, policy: options.policy, readSource }),
@@ -211,11 +210,6 @@ export function collectJavaReport(root, options = {}) {
     options.resolveOverlaps ?? ((reported) => withoutOverlaps(reported, { readSource })),
   );
   return { findings: withTestsFailures(policed, preset, testsFailures), imports };
-}
-
-function sourceText(projectRoot, file) {
-  const absolute = path.join(projectRoot, file);
-  return existsSync(absolute) ? readFileSync(absolute, 'utf8') : undefined;
 }
 
 function collectBothSnapshots({
