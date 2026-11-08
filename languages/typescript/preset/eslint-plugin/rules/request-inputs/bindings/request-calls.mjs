@@ -56,7 +56,7 @@ function honoAccessor(node) {
     : undefined;
 }
 
-export function transportSource(expression) {
+function transportSource(expression) {
   const node = expression === undefined ? undefined : unwrapped(expression);
   if (node === undefined) {
     return undefined;

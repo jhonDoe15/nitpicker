@@ -80,6 +80,17 @@ tester.run('no-uncoerced-request-input on request schemas', rule, {
       [['rejected', { field: 'size', source: 'multipart form' }]],
     ),
     invalid(
+      `${ZOD}const Base = z.object({ page: z.number(), size: z.number() });\nconst Extra = z.object({ size: z.coerce.number(), all: z.boolean() });\nexport const list = (req) => Base.merge(Extra).parse(req.query);`,
+      [
+        ['rejected', { field: 'page' }],
+        ['rejected', { field: 'all' }],
+      ],
+    ),
+    invalid(
+      `${ZOD}const Base = z.object({ page: z.number() });\nconst Extra = z.object({ page: z.coerce.number(), size: z.int() });\nexport const list = (req) => Base.extend(Extra.shape).pick({ size: true }).parse(req.query);`,
+      [['rejected', { field: 'size' }]],
+    ),
+    invalid(
       `${ZOD}export function list(c) { return z.object({ page: z.number() }).parse(c.req.query()); }`,
       [['rejected', { field: 'page' }]],
     ),

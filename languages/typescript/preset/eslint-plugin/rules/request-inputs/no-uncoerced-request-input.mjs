@@ -1,4 +1,5 @@
 import { ts } from '../../../../typescript-api/typescript-api.mjs';
+import { childrenOf } from '../../../crap/functions/own-nodes.mjs';
 import { handlerProblems } from './bindings/nest-handlers.mjs';
 import { callProblems, routeSchemaProblems } from './bindings/request-calls.mjs';
 import { sourceOf } from './bindings/ts-nodes.mjs';
@@ -44,14 +45,6 @@ const FIXES = {
 };
 
 const UNCHECKED = new Set(['param', 'type']);
-
-function childrenOf(node) {
-  const children = [];
-  ts.forEachChild(node, (child) => {
-    children.push(child);
-  });
-  return children;
-}
 
 function nodeProblems(node, checker) {
   if (ts.isMethodDeclaration(node)) {

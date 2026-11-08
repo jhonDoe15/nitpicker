@@ -35,7 +35,10 @@ tester.run('no-uncoerced-request-input on NestJS handlers', rule, {
     `${VALIDATOR}import { ToNumber } from './transforms';\nclass ListDto { @ToNumber() @IsInt() limit!: number; }\n${controller('@Get() list(@Query() query: ListDto) { return query; }')}`,
     `${VALIDATOR}class CreateDto { @IsInt() count!: number; }\n${controller('@Post() create(@Body() body: CreateDto) { return body; }')}`,
     `${ZOD}const ListSchema = z.object({ limit: z.coerce.number().int(), all: z.stringbool(), name: z.string() });\nclass ListDto extends createZodDto(ListSchema) {}\n${controller('@Get() list(@Query() query: ListDto) { return query; }')}`,
-    `${ZOD}${controller("@Get() list(@Query('limit', new ZodValidationPipe(z.coerce.number())) limit: number) { return limit; }")}`,
+    ZOD +
+      controller(
+        "@Get() list(@Query('limit', new ZodValidationPipe(z.coerce.number())) limit: number) { return limit; }",
+      ),
   ],
   invalid: [
     invalid(controller("@Get() list(@Query('limit') limit: number) { return limit; }"), [
@@ -89,7 +92,10 @@ tester.run('no-uncoerced-request-input on NestJS handlers', rule, {
       [['rejected', { field: 'page' }]],
     ),
     invalid(
-      `${VALIDATOR}${FILES}class UploadDto { @IsInt() duration!: number; }\n${controller("@Post() @UseInterceptors(FileInterceptor('file')) upload(@UploadedFile() file: unknown, @Body() body: UploadDto) { return body; }")}`,
+      `${VALIDATOR}${FILES}class UploadDto { @IsInt() duration!: number; }\n` +
+        controller(
+          "@Post() @UseInterceptors(FileInterceptor('file')) upload(@UploadedFile() file: unknown, @Body() body: UploadDto) { return body; }",
+        ),
       [['rejected', { field: 'duration', source: 'multipart form' }]],
     ),
     invalid(
@@ -105,7 +111,10 @@ tester.run('no-uncoerced-request-input on NestJS handlers', rule, {
       [['rejected', { field: 'page' }]],
     ),
     invalid(
-      `${ZOD}${controller("@Get() list(@Query('limit', new ZodValidationPipe(z.number().int())) limit: number) { return limit; }")}`,
+      ZOD +
+        controller(
+          "@Get() list(@Query('limit', new ZodValidationPipe(z.number().int())) limit: number) { return limit; }",
+        ),
       [['rejected', { field: 'limit', form: 'z.number()' }]],
     ),
     invalid(
