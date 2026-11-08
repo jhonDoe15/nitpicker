@@ -20,6 +20,7 @@ export const POLICY_FILES = [
   'languages/typescript/preset/eslint-config/strict.mjs',
   'languages/typescript/preset/eslint-config/strict/strict-control-flow.mjs',
   'languages/typescript/preset/eslint-config/truthiness/truthiness-rules.mjs',
+  'languages/typescript/preset/eslint-config/logic/logic-rules.mjs',
   'languages/typescript/preset/eslint-config/policy/production-policy.mjs',
   'languages/typescript/preset/eslint-config/policy/security-facts.mjs',
   'languages/typescript/preset/structure/reuse/reuse-paths.mjs',
