@@ -403,5 +403,10 @@
     "tool": "ruff",
     "rule": "PLW3301",
     "mention": "max(a, b, c)"
+  },
+  {
+    "tool": "ruff",
+    "rule": "PLR1711",
+    "mention": "Remove the `return`"
   }
 ]

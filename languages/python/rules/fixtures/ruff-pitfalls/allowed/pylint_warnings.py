@@ -51,3 +51,9 @@ def strip(lines):
 
 def largest(a, b, c):
     return max(a, b, c)
+
+
+def log(lines, line):
+    if not line:
+        return
+    lines.append(line)
