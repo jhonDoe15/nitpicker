@@ -168,8 +168,7 @@ describe('readSpringConfigFindings', () => {
     const { root, jar } = projects.write({ [PROPERTIES]: 'server.prot=8080\n' });
     const allowedForm =
       'server.prot binds to no property, so Spring ignores it; did you mean server.port? ' +
-      'A key that code reads in a way nitpicker cannot see belongs in ' +
-      'META-INF/additional-spring-configuration-metadata.json.';
+      'Declare a key that code reads by name in META-INF/additional-spring-configuration-metadata.json.';
     expect(
       readSpringConfigFindings(root, { sourceRoots: ['src/main/java'], springClasspath: [jar] }),
     ).toEqual([

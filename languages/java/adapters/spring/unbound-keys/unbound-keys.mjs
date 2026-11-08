@@ -9,7 +9,7 @@ import { referencedKeys, sourcesUnder } from './source-keys.mjs';
 import { testOverrideKeys } from './test-overrides.mjs';
 
 const UNDECLARED_ROUTE =
-  'A key that code reads in a way nitpicker cannot see belongs in META-INF/additional-spring-configuration-metadata.json.';
+  'Declare a key that code reads by name in META-INF/additional-spring-configuration-metadata.json.';
 
 export function judgedKey(written) {
   const relaxed = relaxKey(written.trim());

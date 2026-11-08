@@ -481,7 +481,8 @@ allprojects {
                     .collect { configurations.findByName(it) }.findAll { it != null && it.canBeResolved }
                 (sourceSets.main.compileClasspath.files + test.compileClasspath.files + test.runtimeClasspath.files
                     + development.collectMany { it.files }).collect { it.absolutePath }.unique()
-            } catch (Exception ignored) {
+            } catch (Exception failure) {
+                logger.warn("nitpicker: could not resolve the classpath of ${project.path} for spring/unbound-property: ${failure.message}")
                 []
             }
         }
