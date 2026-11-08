@@ -58,20 +58,31 @@ A Checkstyle rule prints as its check name, for example `checkstyle/MagicNumber`
 - **Narrowed rules.** `OptionalAsFieldOrParameter` skips parameters bound by Spring web
   annotations (`@RequestParam`, `@RequestHeader`, `@PathVariable`, `@CookieValue`,
   `@RequestAttribute`, `@SessionAttribute`, `@MatrixVariable`, `@RequestPart`), where an optional
-  request value is the framework's form. `StreamResourceNotClosed` skips a stream returned to the
-  caller or held in a variable that a later `try (lines)` closes. `InstanceofThenCast` skips a cast
-  that adds type arguments the `instanceof` cannot test (`o instanceof List`, then
-  `(List<String>) o`). `CollectorsToList` reports `collect(Collectors.toList())` only, not a downstream
+  request value is the framework's form, and overriding methods, whose signature is fixed.
+  `OptionalOfCollection` leaves fields, parameters and record components to
+  `OptionalAsFieldOrParameter`. `StreamResourceNotClosed` skips a stream, or a chain of calls that
+  ends in a stream, that is returned or is the body of a lambda (a `flatMap` closes what it
+  flattens), and a stream held in a variable that a `try (lines)` or a `close()` closes.
+  `ForEachSideEffect` reports `forEach`, `forEachOrdered` and `peek` on a stream only, not
+  `Iterable.forEach` or `Map.forEach`. `SwallowedInterruptedException` accepts
+  `Thread.currentThread().interrupt()` or a `throw`, not an `interrupt()` on another thread.
+  `InstanceofThenCast` reports a cast only inside the branch the test guards (the `if` body, the
+  right side of `&&`, the true side of `?:`) and not after a negated test; it skips a cast that adds
+  type arguments the `instanceof` cannot test (`o instanceof List`, then `(List<String>) o`). `CollectorsToList` reports `collect(Collectors.toList())` only, not a downstream
   `toList()` inside `groupingBy` or `mapping`. `NestedQuantifierRegex` reports a repeated group
-  whose whole body is one quantified item (`(a+)+`, `(\s*)*`, `([a-z]+)*`), not a group of
-  several items such as `([A-Z][a-z]+)+`. `PathFromParameter` reports non-private methods and
-  constructors only, so a private helper called with fixed names is fine.
+  that holds a repeated item followed only by optional ones (`(a+)+`, `(\w+\s?)+`, `(\w+\s*)+`)
+  and a group of an item and its repetition (`(a|aa)+`), not a group with a required item after
+  the repeated one, such as `([A-Z][a-z]+)+` or `(\s*,\s*)*`. `PathFromParameter` reports
+  non-private methods and constructors only, so a private helper called with fixed names is fine,
+  and names a parameter used on its own or in a `+` expression (`resolve(name + ".txt")`); only a
+  `normalize()`, a real-path call or a `startsWith` on a `Path` counts as the check, not
+  `name.startsWith("x")`.
   `SignatureDeclareThrowsException` skips overriding
   methods, a method that takes Spring Security's `HttpSecurity`, `WebSecurity`,
   `AuthenticationConfiguration` or `AuthenticationManagerBuilder` (whose methods declare
   `Exception`), `getObject()` of a `FactoryBean`, `main(String[])` and the methods of a
   `@FunctionalInterface` (a `Callable`-like type whose lambdas may throw anything).
-  `MutableStaticCollection` skips a private static concurrent collection used as a cache.
+  `MutableStaticCollection` skips a private static concurrent collection used as a cache, a blocking queue included.
 - **Checkstyle.** `rules/checkstyle-all.xml` (`ConstantName`) is added to the `google_checks.xml`
   rules for main and test sources; `rules/checkstyle-main.xml` (`MagicNumber` with `-1`, `0`, `1`
   and `2` allowed and `hashCode` and annotations ignored, `VisibilityModifier` with public final
