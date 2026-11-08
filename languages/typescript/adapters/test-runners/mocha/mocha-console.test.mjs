@@ -100,7 +100,7 @@ describe('test console output on a Mocha project', () => {
     ]);
   });
 
-  it('names the file of module and hook output and drops a timer that fires in another file', async () => {
+  it('names the file of module and hook output and keeps the file of a timer that fires later', async () => {
     const project = mochaProject({
       'test/a.test.js': testFile([
         "console.warn('while loading');",
@@ -109,6 +109,7 @@ describe('test console output on a Mocha project', () => {
         "  after(() => console.warn('in an after hook'));",
         "  it('one', () => {",
         "    setTimeout(() => console.error('fires in b'), 20);",
+        "    setTimeout(() => console.error('fires after the run'), 300);",
         "    assert.equal(pick(true), 'yes');",
         '  });',
         '});',
@@ -122,6 +123,8 @@ describe('test console output on a Mocha project', () => {
     });
 
     expect(await consoleOutput(project)).toEqual([
+      ['test-console-output', 'test/a.test.js', '"fires after the run" (test "a > one")'],
+      ['test-console-output', 'test/a.test.js', '"fires in b" (test "a > one")'],
       ['test-console-output', 'test/a.test.js', '"in a root before hook"'],
       ['test-console-output', 'test/a.test.js', '"in an after hook" (test "a")'],
       ['test-console-output', 'test/a.test.js', '"while loading"'],
@@ -171,6 +174,43 @@ describe('test console output on a Mocha project', () => {
       ]);
     },
   );
+
+  it('gives each running test what a server from a global setup fixture prints for it', async () => {
+    const callServer = (name) =>
+      testFile([
+        `it('${name}', async () => {`,
+        `  const response = await fetch(\`http://127.0.0.1:\${process.env.SERVER_PORT}/${name}\`);`,
+        '  assert.equal(response.status, 500);',
+        "  assert.equal(pick(true) + pick(false), 'yesno');",
+        '});',
+      ]);
+    const project = mochaProject({
+      '.mocharc.json': { require: ['./test/fixture.mjs'] },
+      'test/fixture.mjs': [
+        "import { createServer } from 'node:http';",
+        'let server;',
+        'export async function mochaGlobalSetup() {',
+        '  server = createServer((request, response) => {',
+        '    console.error(`handler failed for ${request.url}`);',
+        '    response.writeHead(500).end();',
+        '  });',
+        '  await new Promise((resolve) => server.listen(0, resolve));',
+        '  process.env.SERVER_PORT = String(server.address().port);',
+        '}',
+        'export async function mochaGlobalTeardown() {',
+        '  await new Promise((resolve) => server.close(resolve));',
+        '}',
+        '',
+      ].join('\n'),
+      'test/a.test.js': callServer('first'),
+      'test/b.test.js': callServer('second'),
+    });
+
+    expect(await consoleOutput(project)).toEqual([
+      ['test-console-output', 'test/a.test.js', '"handler failed for first" (test "first")'],
+      ['test-console-output', 'test/b.test.js', '"handler failed for second" (test "second")'],
+    ]);
+  });
 
   it('gives the running test of another file what a server from spec file top-level hooks prints', async () => {
     const project = mochaProject({
