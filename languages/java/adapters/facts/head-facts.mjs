@@ -1,8 +1,8 @@
 import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
-import { runGit } from '../../../../core/diff/git/repository/command.mjs';
 import { readInside } from '../../../../shared/conventions/read-inside.mjs';
+import { projectFilePaths } from '../../../../shared/project-files/project-files.mjs';
 import { detectJavaBuild } from '../../builds/java-build.mjs';
 import { readEffectivePom } from '../../maven/configuration/effective-pom.mjs';
 import { kotlinFormatterOf, mavenKotlinFacts } from '../kotlin/kotlin-tools.mjs';
@@ -14,19 +14,11 @@ const SPRING = /org\.springframework\b/u;
 const COMMENTS = /\/\*[\s\S]*?\*\/|<!--[\s\S]*?-->|(?:^|[ \t])(?:\/\/|#)[^\n]*/gmu;
 
 function buildFiles(projectRoot) {
-  try {
-    return {
-      files: runGit(projectRoot, ['ls-files', '-z', '--cached', '--others', '--exclude-standard'])
-        .split('\0')
-        .filter((file) => BUILD_FILE.test(file)),
-    };
-  } catch {
-    return { files: [] };
-  }
+  return projectFilePaths(projectRoot).filter((file) => BUILD_FILE.test(file));
 }
 
 export function declaresSpring(projectRoot) {
-  return buildFiles(projectRoot).files.some((file) =>
+  return buildFiles(projectRoot).some((file) =>
     SPRING.test(readInside(projectRoot, file, 'utf8')?.replaceAll(COMMENTS, ' ') ?? ''),
   );
 }
