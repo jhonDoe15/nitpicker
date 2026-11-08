@@ -1,6 +1,10 @@
 import { compareFindings } from '../compare.mjs';
 import { analyzerMetadata, analyzerName } from '../../reporting/report-model.mjs';
-import { TESTS_FAILED_RULE } from '../../../../shared/rules/finding-helpers.mjs';
+import {
+  COMPILE_FAILED_SKIPPED_RULE,
+  TESTS_FAILED_RULE,
+  TESTS_FAILED_RULES,
+} from '../../../../shared/rules/finding-helpers.mjs';
 import { baseFailuresOf, baseNoteOf, redBaseAnalyzers, unknownOnBaseFor } from './unknown-base.mjs';
 
 export function compareAnalyzers(context) {
@@ -60,20 +64,47 @@ function compareAnalyzer(context) {
   const { analyzer, index, baseRun, headRun, toolErrors } = context;
   const name = analyzerName(analyzer, index);
   const headReport = headRun.reports.get(name);
+  const stopped = stoppedAtCompileErrors(headReport);
   const baseFindings = baseFindingsOf({ ...context, name });
   const headFindings = withoutEmittedToolErrors(headReport?.findings ?? [], 'head', toolErrors);
   const unknownFailures = baseFailuresOf({ ...context, name });
   const comparable =
     (baseRun.reports.get(name) !== undefined || unknownFailures !== undefined) &&
     headReport !== undefined &&
-    !toolErrors.some((error) => error.tool === name);
+    !toolErrors.some((error) => blocksComparison(error, name, stopped));
+  const compared = stopped ? { baseFindings: [], unknownFailures: undefined } : {};
   const result = comparable
-    ? compareOrReportError({ ...context, name, baseFindings, headFindings, unknownFailures })
+    ? compareOrReportError({
+        ...context,
+        name,
+        baseFindings,
+        headFindings,
+        unknownFailures,
+        ...compared,
+      })
     : emptyComparison();
   return {
     result,
     tool: toolSummary({ ...context, name, baseFindings, headFindings, result, unknownFailures }),
   };
+}
+
+function stoppedAtCompileErrors(report) {
+  return (report?.findings ?? []).some(
+    ({ rule, classification }) =>
+      rule === COMPILE_FAILED_SKIPPED_RULE && classification === 'tool-error',
+  );
+}
+
+function blocksComparison(error, name, stopped) {
+  if (error.tool !== name) {
+    return false;
+  }
+  if (!stopped) {
+    return true;
+  }
+  const baseTestsFailed = error.snapshot === 'base' && TESTS_FAILED_RULES.includes(error.rule);
+  return error.rule !== COMPILE_FAILED_SKIPPED_RULE && !baseTestsFailed;
 }
 
 function compareOrReportError(context) {

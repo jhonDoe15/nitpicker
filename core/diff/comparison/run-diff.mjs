@@ -2,7 +2,7 @@ import {
   isStrictRule,
   mustMeetOnEditedLines,
 } from '../../../languages/typescript/preset/strict-rules.mjs';
-import { writeDiffReports } from '../reporting/reporters.mjs';
+import { LOG_DIRECTORY, writeDiffReports } from '../reporting/reporters.mjs';
 import { partialRunField } from '../reporting/partial-run/partial-run.mjs';
 import path from 'node:path';
 import { resolveComparison, captureWorkingTree, hasSameTree } from '../git/repository/git.mjs';
@@ -191,6 +191,7 @@ function runAndCombine(context) {
       snapshot: 'head',
       baselineRoot: roots.baseProjectRoot,
       baselineMovesFile,
+      logRoot: logRootOf(settings),
       runTasks: settings.runTasks,
     }),
   );
@@ -231,8 +232,13 @@ function runBaseAnalyzers(context, baseAnalyzers) {
     liveProjectRoot: settings.headProjectRoot,
     headPolicyFile: basePolicyFile,
     snapshot: 'base',
+    logRoot: logRootOf(settings),
     runTasks: settings.runTasks,
   });
+}
+
+function logRootOf({ outputRoot }) {
+  return outputRoot === undefined ? undefined : path.join(path.resolve(outputRoot), LOG_DIRECTORY);
 }
 
 function runBaseSide(context) {

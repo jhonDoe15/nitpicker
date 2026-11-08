@@ -90,3 +90,44 @@ describe('runAnalyzers tool errors', () => {
     expect(run.toolErrors.map(({ message }) => message)).toEqual([`failed in ${LIVE}`]);
   });
 });
+
+describe('runAnalyzers log folder', () => {
+  function invocationContext(logRoot) {
+    const seen = [];
+    runAnalyzers({
+      analyzers: [
+        {
+          ...analyzer,
+          createInvocation: (context) => {
+            seen.push(context);
+            return analyzer.createInvocation();
+          },
+        },
+      ],
+      projectRoot: WORKTREE,
+      policyRoot: WORKTREE,
+      toolRoot: WORKTREE,
+      liveProjectRoot: LIVE,
+      snapshot: 'head',
+      logRoot,
+      runTasks: () => ({ reports: [], errors: [], timings: [] }),
+    });
+    return seen[0];
+  }
+
+  it('names a log folder inside the live project by its relative path', () => {
+    const logRoot = path.join(LIVE, 'reports', 'quality', 'diff', 'logs');
+
+    expect(invocationContext(logRoot)).toMatchObject({
+      logRoot,
+      logLabel: 'reports/quality/diff/logs',
+    });
+  });
+
+  it('names a log folder outside the live project by its full path, and none when there is none', () => {
+    const logRoot = path.join(path.sep, 'tmp', 'out', 'logs');
+
+    expect(invocationContext(logRoot)).toMatchObject({ logRoot, logLabel: logRoot });
+    expect(invocationContext(undefined)).not.toHaveProperty('logRoot');
+  });
+});

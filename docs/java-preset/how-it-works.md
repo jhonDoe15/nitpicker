@@ -89,6 +89,11 @@ gradle -I languages/java/gradle/nitpicker.init.gradle nitpickerJava   (per snaps
   crashes, no `gradle` on the PATH, unreadable reports), nothing is silently skipped. `runJavaDiff`
   (the library entry) throws; the CLI path maps the failure to a `tool-error` finding, see slice 2:
   `tests-failed` when the test reports name failing tests (exit 1), `gradle-failure` otherwise.
+  A head that does not compile is not a tool failure: each compiler error (javac, Error Prone,
+  kotlinc; on Maven the compiler plugin's `[ERROR] file:[line,column]` lines) becomes a
+  `build/compile-error` finding at its file and line (exit 1), and one `compile-failed-skipped`
+  notice says the other checks did not run. The comparison then reports no base finding as
+  resolved. A base that does not compile stays a `gradle-failure` (or `maven-failure`).
   The one exception is a base snapshot whose test reports name failing tests while the head passes:
   that is a note and the run goes on (see [A base whose tests fail](../usage.md#a-base-whose-tests-fail)).
   A base that fails for another reason, or whose tests fail without a named failing test, still

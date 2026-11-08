@@ -13,6 +13,7 @@ export function runQualitySnapshot({
   headPolicy = {},
   runTasks,
   scope,
+  logRoot,
 }) {
   const { reports, toolErrors } = withHeadPolicyFile(headPolicy, (headPolicyFile) =>
     runAnalyzers({
@@ -23,6 +24,7 @@ export function runQualitySnapshot({
       liveProjectRoot,
       headPolicyFile,
       snapshot: 'head',
+      logRoot,
       runTasks,
     }),
   );

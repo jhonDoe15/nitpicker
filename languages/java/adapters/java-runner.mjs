@@ -6,6 +6,10 @@ import { parseJavaRunnerArguments } from './java-policy.mjs';
 import { javaStyle } from './style/java-style.mjs';
 import { gradleBudget } from './gradle-wrapper/gradle-budget.mjs';
 import { TESTS_FAILED_RULE } from '../../../shared/rules/finding-helpers.mjs';
+import {
+  compileErrorFindings,
+  compileErrorsOf,
+} from '../builds/compile-errors/compile-findings.mjs';
 
 export const GRADLE_FAILURE_RULE = 'gradle-failure';
 export const MAVEN_FAILURE_RULE = 'maven-failure';
@@ -38,6 +42,10 @@ export function analyzeJavaSnapshot(
       }),
     };
   } catch (error) {
+    const compileErrors = policy?.snapshot === 'base' ? [] : compileErrorsOf(error);
+    if (compileErrors.length > 0) {
+      return { findings: compileErrorFindings(compileErrors, policy?.preset ?? 'java') };
+    }
     const message = error instanceof Error ? error.message : String(error);
     const rule = failureRule(error, projectRoot);
     return {

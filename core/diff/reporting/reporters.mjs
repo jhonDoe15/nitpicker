@@ -68,8 +68,15 @@ export function writeReports(outputRoot, reports, { report, options }) {
   return written;
 }
 
+export const LOG_DIRECTORY = 'logs';
+
+export function clearLogs(outputRoot) {
+  rmSync(path.join(path.resolve(outputRoot), LOG_DIRECTORY), { recursive: true, force: true });
+}
+
 export function clearDiffReports(outputRoot) {
   clearReports(outputRoot, REPORT_FILE_NAMES);
+  clearLogs(outputRoot);
 }
 
 export function outputRootFor(projectRoot, outputOption, kind) {

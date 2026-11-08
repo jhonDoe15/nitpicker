@@ -20,8 +20,9 @@ run; finish with the plain run below.
 
 ## Finish with the gate
 
-1. Run the project's tests (`./gradlew test`, or `./mvnw test` on Maven). Failing tests or compile
-   errors make the gate exit 2.
+1. Run the project's tests (`./gradlew test`, or `./mvnw test` on Maven). Failing tests make the
+   gate exit 1, and so does a change that does not compile: each compile error is a
+   `build/compile-error` finding at its line, and the other checks wait until it builds.
 2. Format with the formatter the run names under "Following this project's conventions": the
    project's own formatter task, or google-java-format 1.25.2 with `--replace` (plus `--aosp` for
    the aosp style), or palantir-java-format with `--palantir --replace`. When the run says no
@@ -36,8 +37,8 @@ run; finish with the plain run below.
      and you run the gate again without it before you finish.
    - 1: fix the failing tests the summary leads with, every new finding (printed as
      `tool/rule path:line`) and any tool error listed below them, then rerun.
-   - 2: no new findings, but a tool failed (the build, a compile error). Fix the
-     cause it names and rerun. Exit 2 is never a pass. If another run is in progress, wait for
+   - 2: no new findings, but a tool failed (the build, or a base that does not compile). Fix
+     the cause it names and rerun. Exit 2 is never a pass. If another run is in progress, wait for
      it; never kill it.
 5. Never suppress: no `// NOPMD`, `@SuppressWarnings`, `@SuppressFBWarnings`, `CHECKSTYLE`
    comments, coverage or mutation markers (`@Generated`, `@ExcludeFromJacocoGeneratedReport`,

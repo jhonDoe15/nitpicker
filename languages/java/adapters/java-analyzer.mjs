@@ -9,6 +9,7 @@ import { INIT_SCRIPT, readPinnedTools } from '../builds/java-build.mjs';
 import { importClosure } from '../../../shared/import-closure.mjs';
 import { javaExecutionBudget } from './java-runner.mjs';
 import { JVM_NOISE, javaCommand } from '../maven/maven-command.mjs';
+import { COMPILE_ERROR_TOOL } from '../../../shared/rules/finding-helpers.mjs';
 
 const packageRoot = path.resolve(import.meta.dirname, '../../..');
 const runnerPath = path.join(import.meta.dirname, 'java-runner.mjs');
@@ -96,7 +97,7 @@ function hashConfiguration() {
 }
 
 const KOTLIN_TOOLS = ['detekt', 'ktlint', 'ktfmt', 'kotlin-source', 'kotlinc'];
-const JVM_ANALYZER_TOOLS = [...JAVA_TOOLS, DOC_COMMENT_TOOL];
+const JVM_ANALYZER_TOOLS = [...JAVA_TOOLS, DOC_COMMENT_TOOL, COMPILE_ERROR_TOOL];
 
 export function createJavaAnalyzer({ kotlin = false } = {}) {
   const budget = javaExecutionBudget();
