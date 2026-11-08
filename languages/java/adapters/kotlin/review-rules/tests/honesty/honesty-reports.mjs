@@ -4,7 +4,7 @@ import {
   CONTROL_FLOW_MESSAGE,
   CONTROL_FLOW_RULE,
 } from './flow/assertion-flow.mjs';
-import { loopScope } from './flow/loop-scope.mjs';
+import { loopScope } from './flow/loops/loop-scope.mjs';
 import { focusedTests, FOCUSED_MESSAGE, FOCUSED_RULE } from './focused-tests.mjs';
 import { RETRY_MESSAGE, RETRY_RULE, retriesInTests } from './retries/retry-tests.mjs';
 import { DISABLED_MESSAGE, DISABLED_RULE, skippedTests } from './skipped-tests.mjs';
@@ -24,7 +24,7 @@ function flowReports(scanned, suites) {
       rule: CONTROL_FLOW_RULE,
       offset: entry.from,
       symbol: test.symbol,
-      key: `${test.symbol}:${entry.helper}:loop`,
+      key: `${entry.helper}:loop`,
       message: CONTROL_FLOW_MESSAGE,
     })),
   ]);

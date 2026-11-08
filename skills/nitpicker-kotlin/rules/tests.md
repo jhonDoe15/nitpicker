@@ -61,14 +61,13 @@ Part of the [nitpicker-kotlin](../SKILL.md) skill. Write these forms from the st
   and `@BeforeEach`, `beforeTest` or `beforeEach` does not create and start one; two tests do not
   make the same start. Start it in `@BeforeAll` or a spec-level extension and reset its state.
 - Assert unconditionally (`pmd/AssertionInControlFlow`): no assertion that can be skipped, inside an `if`,
-  a `when`, any loop that can run zero times (also over results, and in a helper the test calls), a
-  safe call (`?.let`), `takeIf`, `&&`, `||`, `?:`, a `try` that
-  swallows the failure, a `runCatching`, or after an early `return`. An `if`/`else` or `when` whose every
-  branch asserts or fails is fine, and so are Kotest `checkAll` and `forAll`, `repeat(3)`, a literal
-  range such as `for (i in 1..3)`, and `do { } while`. Split the cases into separate
-  tests or a parameterized test (`@ParameterizedTest` with `@MethodSource` or `@CsvSource`, Kotest
-  `withData`), assert a whole collection at once, and narrow with `assertNotNull`, `assertIs` or
-  `?: fail(...)` instead of an `if`.
+  a `when`, any loop that can run zero times (also over results, and in a helper the test calls), a safe
+  call (`?.let`), `takeIf`, `&&`, `||`, `?:`, a `try` that swallows the failure, a `runCatching`, or after
+  an early `return`. An `if`/`else` or `when` whose every branch asserts or fails is fine, and so are
+  Kotest `checkAll` and `forAll`, `repeat(3)`, a literal range such as `for (i in 1..3)`, and
+  `do { } while`. Split the cases into separate tests or a parameterized test (`@ParameterizedTest` with
+  `@MethodSource` or `@CsvSource`, Kotest `withData`), assert a whole collection at once, and narrow with
+  `assertNotNull`, `assertIs` or `?: fail(...)` instead of an `if`.
 - A test owns the coroutines it starts (`pmd/CoroutineEscapesTest`): do not `launch`, `async`, `launchIn`,
   `stateIn` or `shareIn` on `CoroutineScope(...)`, a scope field, a scope a helper returns,
   `viewModelScope`, or a `TestScope` outside `runTest` and leave it running; `with`, `run`, `apply` or
