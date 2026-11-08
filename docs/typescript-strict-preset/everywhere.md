@@ -207,7 +207,7 @@ Part of the [TypeScript strict preset guide](../typescript-strict-preset.md).
   (`@typescript-eslint/no-unused-private-class-members`); `'a' + 'b'` (`no-useless-concat`) and
   `fn.call(undefined, x)` (`no-useless-call`). `no-promise-executor-return` and `no-loop-func` stay
   off: their reports were almost all harmless forms such as `(resolve) => server.listen(port,
-  resolve)` and handlers that share a flag on purpose, and `for...of` with `const` bindings already
+resolve)` and handlers that share a flag on purpose, and `for...of` with `const` bindings already
   removes the late-binding bug `no-loop-func` exists for. Python's counterparts are ruff `PLE0101`,
   `B023` and `PLR1711`; in Java and Kotlin a missing return does not compile and the existing
   unused-member checks already report an unused private member.
