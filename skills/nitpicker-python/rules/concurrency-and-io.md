@@ -11,11 +11,14 @@ Part of the [nitpicker-python](../SKILL.md) skill. Write these forms from the st
   `asyncio.create_subprocess_exec`, and `await asyncio.to_thread(...)` for other blocking calls. No
   `timeout` parameter: the caller wraps the call in `async with asyncio.timeout(...)`, and the scope
   holds an `await`. Wait on an `asyncio.Event`, not a sleep loop.
-- Output: the project's logger (`logging.getLogger(__name__)`, structlog or loguru), never `print`;
-  a `domain` package returns a result instead and leaves logging to `adapters/`. A
-  log in an `except` keeps the traceback (`logger.exception(...)` or `exc_info=True`); passing the
-  error as an argument or `str(error)` drops it. Logging alone is not handling: also re-raise the
-  error or return a failure that carries it.
+- Output: the project's logger (`logging.getLogger(__name__)`, structlog or loguru) for diagnostics,
+  never bare `print`; a `domain` package returns a result instead and leaves logging to `adapters/`.
+  A program's own output (what a command prints) goes through a `TextIO` parameter: `out.write(...)`
+  or `print(..., file=out)`. Only the entry point (`main.py`, `cli.py`, a `[project.scripts]` target
+  or the `if __name__ == "__main__":` block) names `sys.stdout` / `sys.stderr` and passes it in
+  (`process-stream-access`). A log in an `except` keeps the traceback (`logger.exception(...)` or
+  `exc_info=True`); passing the error as an argument or `str(error)` drops it. Logging alone is not
+  handling: also re-raise the error or return a failure that carries it.
 - Loggers: `logging.getLogger(__name__)`, never `logging.Logger(...)` or the root `logging.info(...)`;
   `logger.exception(...)` only inside an `except`, `logging.WARNING` rather than `WARN`.
 - Time: aware datetimes only: `datetime(2026, 1, 1, tzinfo=timezone.utc)`,

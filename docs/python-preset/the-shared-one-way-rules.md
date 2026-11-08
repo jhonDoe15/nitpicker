@@ -13,6 +13,7 @@ are listed at the end.
 | ------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | Logging                  | `logger.info("Loaded %s", count)`, `logger.warning`, `logger.exception` (structlog, loguru: see below)                                                                               | ruff `G001`-`G004`, `G010`, `G101`, `G201`, `G202`, `TRY400`, `TRY401`                                                                                                                                                                     |
 | Environment              | read once in a composition root, pass values in                                                                                                                                      | `process-env-access` (script)                                                                                                                                                                                                              |
+| Program output           | a `TextIO` parameter: `out.write(...)` or `print(..., file=out)`; the entry point passes `sys.stdout`                                                                                | ruff `T201`, `T203`, `process-stream-access` (script)                                                                                                                                                                                      |
 | Shell                    | a list: `subprocess.run(["git", "status"], check=True)`                                                                                                                              | `shell-command` (script), ruff `S602`, `S604`, `S605`, `S609`                                                                                                                                                                              |
 | SQL                      | parameters: `cursor.execute("select * from t where id = %s", (id,))`; placeholder lists, fixed lookups, `Literal`/`Enum` names, `sql.Identifier`                                     | `sql-string-formatting` (script), ruff `S610`, `S611`                                                                                                                                                                                      |
 | Path traversal           | `target = (base / name).resolve()`, then `target.is_relative_to(base)`                                                                                                               | `unsafe-path-join` (script)                                                                                                                                                                                                                |
@@ -108,6 +109,18 @@ Details that are decisions rather than the table:
   `[project.entry-points]`, poetry scripts and plugins, flit), `setup.cfg` or `setup.py`; or a file
   matched by `python.entryPoints`.
   Nothing under a `domain` folder is a composition root.
+- `process-stream-access` reports `sys.stdout`, `sys.stderr`, `sys.__stdout__` and `sys.__stderr__`,
+  also through `from sys import stdout`, import aliases, `getattr(sys, "stdout")` and
+  `sys.modules["sys"]`, and `from sys import *` itself, once per site in every non-test file that is not a composition root, as
+  defined for `process-env-access` above. Code under an `if __name__ == "__main__":` guard is exempt
+  too, in any file. Every reference counts, including read-only facts such as
+  `sys.stdout.isatty()` or `sys.stdout.encoding`: take them from the writer the entry point passes in.
+  A name counts only when the file imports it from `sys`, so a parameter or class called `sys`
+  in a file that does not import the module is not reported. `sys.stdin` is not reported. The allowed form is a `TextIO` parameter written with `out.write(...)`
+  or `print(..., file=out)`, which ruff `T201` accepts; the entry point passes `sys.stdout` or
+  `sys.stderr`. A function that only forwards the real stream is covered by a test that passes
+  `io.StringIO()` or pytest's `capsys`; the passing line itself sits in the entry point or the
+  `__main__` guard, which the coverage step leaves out.
 - `shell-command` reports running a command through a shell: `shell=True` or a `shell=` value that
   is not a literal (also from `**{"shell": True}`), a list starting with `sh`, `bash`, `cmd`,
   `powershell` and the other shells followed by `-c`, `/c` or a similar flag, and the `subprocess`,

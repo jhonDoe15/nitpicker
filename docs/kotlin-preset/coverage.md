@@ -8,6 +8,12 @@ paths to files). `line-coverage` and `uncovered-method` are descriptive. Kover i
 is applied by the init script whatever the project uses, so a Kover-only project still gets coverage;
 reading Kover's own report is a follow-up only if it is wanted.
 
+The entry point needs no exclusion. A `fun main` (top-level or `@JvmStatic`) that builds the objects and passes
+`System.out` has no branch for `changed-branch-coverage` to count, `line-coverage` and
+`uncovered-method` are descriptive, and the PIT mutants of Kotlin classes never fail the gate (see
+[Mutation](#mutation-report-only-for-kotlin)). A branch in `main` itself (an `if` on `args`) is a
+changed branch like any other: move it into a function the tests call.
+
 ## Changed-branch coverage (`changed-branch-coverage`)
 
 The rule and its differential mechanics are the Java ones (see
