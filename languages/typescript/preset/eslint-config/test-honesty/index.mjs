@@ -68,6 +68,7 @@ function honestyRulesBlock(layout, { files, assertionFunctionNames }) {
       'nitpicker/no-float-equality-in-tests': 'error',
       'nitpicker/no-assertion-in-loop': ['error', { assertionFunctionNames }],
       'nitpicker/no-unowned-async-assertion': 'error',
+      'nitpicker/no-weak-assertion': 'error',
       'vitest/no-restricted-matchers': ['error', restrictedMatchers],
       'vitest/prefer-called-with': 'error',
       'vitest/require-to-throw-message': 'error',
