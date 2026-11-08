@@ -15,8 +15,7 @@ Part of the [Java preset guide](../java-preset.md).
   the jdeps output in memory: Gradle splits it line by line as jdeps writes it, Maven writes it to
   a file in the report directory and splits that in 1 MB chunks, so a module of any size works.
   jdeps comes with the JDK that runs Gradle; nothing is downloaded and no version is pinned. The
-  task lives in `languages/java/gradle/tasks/jdeps-task.gradle`, and its arguments come from the
-  `jdeps` entry of `languages/java/builds/tools/tool-commands.json`.
+  `nitpickerJdeps` task lives in `languages/java/gradle/nitpicker.init.gradle`.
 - **Conversion.** `languages/java/adapters/metrics/java-coupling.mjs` parses the class graph, folds nested classes
   into their top-level class, keeps only edges between two main classes, computes the metrics and
   hands the neutral report to `evaluateCoupling` in `shared/rules/coupling.mjs`. The findings are

@@ -2,8 +2,7 @@ import { mkdirSync, mkdtempSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
-import { GRADLE_DIRECTORY } from '../java-build.mjs';
-import { javaRelease, scopedRuleset, writePmdRulesets } from './pmd-rulesets.mjs';
+import { javaRelease, scopedRuleset, writeGuardRulesets } from './pmd-rulesets.mjs';
 
 const roots = [];
 const tests = path.join('/work', 'my.app', 'src', 'test', 'java');
@@ -74,48 +73,38 @@ describe('javaRelease', () => {
   });
 });
 
-describe('writePmdRulesets', () => {
-  it('writes the test-class rule for every directory but the main ones, before the spring wrapper', () => {
+describe('writeGuardRulesets', () => {
+  it('creates the report directory and writes the guard rulesets, with honesty only for existing tests', () => {
     const root = mkdtempSync(path.join(tmpdir(), 'nitpicker-pmd-rulesets-'));
     roots.push(root);
-    const main = path.join(root, 'src/main/java');
     const test = path.join(root, 'src/test/java');
     mkdirSync(test, { recursive: true });
-    const reportDir = path.join(root, 'report');
+    const reportDir = path.join(root, 'report', 'nested');
 
-    const rulesets = writePmdRulesets({
+    const rulesets = writeGuardRulesets({
       reportDir,
-      mainDirectories: [main],
-      testDirectories: [test],
+      testDirectories: [test, path.join(root, 'missing')],
       compiler: { target: '21', args: [] },
-      spring: true,
-      nitpicker: true,
-      project: undefined,
     });
 
     expect(rulesets).toEqual([
-      path.join(GRADLE_DIRECTORY, 'pmd-ruleset.xml'),
       path.join(reportDir, 'pmd-guards-main.xml'),
       path.join(reportDir, 'pmd-test-honesty.xml'),
-      path.join(reportDir, 'pmd-tests.xml'),
-      path.join(reportDir, 'pmd-spring-main.xml'),
     ]);
-    expect(readFileSync(path.join(reportDir, 'pmd-tests.xml'), 'utf8')).toBe(
-      [
-        '<?xml version="1.0" encoding="UTF-8"?>',
-        '<ruleset name="nitpicker-tests" xmlns="http://pmd.sourceforge.net/ruleset/2.0.0">',
-        '  <description>nitpicker-tests</description>',
-        `  <exclude-pattern>${main}/.*</exclude-pattern>`,
-        '  <rule ref="category/java/errorprone.xml/TestClassWithoutTestCases">',
-        '    <properties>',
-        '      <property name="testClassPattern"',
-        '                value="^(?:.*\\.)?Test[^\\.]*$|^(?:.*\\.)?.*(?&lt;!Arch|Architecture)Tests?$|' +
-          '^(?:.*\\.)?.*TestCase$"/>',
-        '    </properties>',
-        '  </rule>',
-        '</ruleset>',
-        '',
-      ].join('\n'),
-    );
+    expect(readFileSync(rulesets[1], 'utf8')).toContain(`<include-pattern>`);
+  });
+
+  it('writes only the main guards when no test directory exists', () => {
+    const root = mkdtempSync(path.join(tmpdir(), 'nitpicker-pmd-rulesets-'));
+    roots.push(root);
+
+    const rulesets = writeGuardRulesets({
+      reportDir: path.join(root, 'report'),
+      testDirectories: [path.join(root, 'missing')],
+      compiler: { target: '8', args: [] },
+    });
+
+    expect(rulesets).toEqual([path.join(root, 'report', 'pmd-guards-main.xml')]);
+    expect(readFileSync(rulesets[0], 'utf8')).toContain('<exclude name="InstanceofThenCast"/>');
   });
 });

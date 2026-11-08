@@ -29,6 +29,28 @@ function linesContaining(text) {
   return LINES.filter((line) => line.includes(text)).map((line) => line.trim());
 }
 
+describe('the Gradle init script node runner', () => {
+  it('reports a node that cannot start as clearly as a node that exits non-zero', () => {
+    expect(
+      blockStartingWith('def runNode = { File script, List<String> arguments, String failure ->'),
+    ).toEqual([
+      'def runNode = { File script, List<String> arguments, String failure ->',
+      'def process',
+      'try {',
+      'process = new ProcessBuilder([nodeCommand, script.absolutePath] + arguments)',
+      '.redirectErrorStream(true).start()',
+      '} catch (IOException error) {',
+      'throw new GradleException("${failure}: could not run ${nodeCommand}: ${error.message}")',
+      '}',
+      "def log = process.inputStream.getText('UTF-8')",
+      'if (process.waitFor() != 0) {',
+      'throw new GradleException("${failure}: ${log.trim()}")',
+      '}',
+      '}',
+    ]);
+  });
+});
+
 describe('the Gradle init script and the formatter style', () => {
   it('reads the style and the indentation from project properties, google and two spaces by default', () => {
     expect(linesContaining("nitpickerArgument('nitpicker.java.")).toEqual([

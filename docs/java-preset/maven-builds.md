@@ -122,17 +122,13 @@ by field. Per snapshot:
   must then resolve every module its descriptor `requires`; it stops on a plain jar ("Unable to
   derive module descriptor"), a missing module or a split package. Both builds run jdeps on such a
   module exactly as on one without a descriptor, with no module path: over a temporary copy of the
-  class files of the modular class directories, without `module-info.class`, made in the build
-  directory (`target/` on Maven, Gradle's build directory) and removed afterwards
-  (`languages/java/maven/coupling/maven-jdeps.mjs`, and `tasks/jdeps-task.gradle`). The copy and
+  class files of the modular class directories, without `module-info.class`, made in a
+  temporary directory and removed afterwards (`languages/java/builds/classes/jdeps-reports.mjs` on
+  Maven, the `nitpickerJdeps` task in `languages/java/gradle/nitpicker.init.gradle` on Gradle). The copy and
   `jdeps-classes.txt` take regular `.class` files only, so a symbolic link inside a class directory,
   to a file or a folder, is left out of both (a class directory that is itself a link is read
-  through it), and on Maven it goes to the system
-  temporary directory when the class directory is the build directory or holds it, since a copy
-  into itself is impossible. A class directory without a descriptor is read in place. Only the
-  edges between the module's own classes are read, so coupling is the same. When jdeps fails, the error gives its exit code and up to 10
-  lines of its stderr, the `Error`, `Exception` and `Caused by` lines first, without the JVM's
-  `Picked up ...` notes.
+  through it). A class directory without a descriptor is read in place. Only the
+  edges between the module's own classes are read, so coupling is the same. When jdeps fails, the error gives its exit code and its stderr.
 - **Guards.** The [guards](#guards) run on Maven too, outside Maven and per module
   (`languages/java/maven/guards/`), writing the same reports in `target/nitpicker/`. The javac
   lint pass reads the `maven-compiler-plugin` settings from the effective POM (`release`, `source`,

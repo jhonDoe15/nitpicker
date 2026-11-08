@@ -44,6 +44,7 @@ describe('Java analyzer configuration files', () => {
       'languages/java/gradle/rules',
       'languages/java/gradle/tasks',
       'languages/java/guards',
+      'languages/java/adapters/gradle-reports',
       'languages/java/builds/lint',
       'languages/java/builds/classes',
       'languages/java/builds/rulesets',

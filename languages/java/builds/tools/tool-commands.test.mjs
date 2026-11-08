@@ -70,46 +70,6 @@ describe('toolCommand', () => {
     ]);
     expect([0, 1, 2].map((status) => command.accepts(status))).toEqual([true, true, false]);
   });
-
-  it('accepts a PMD run by its report, whatever its exit', () => {
-    const root = mkdtempSync(path.join(tmpdir(), 'nitpicker-tool-commands-'));
-    roots.push(root);
-    const values = {
-      report: path.join(root, 'pmd.sarif'),
-      rulesets: ['/r/main.xml', '/r/tests.xml'],
-      auxClasspath: '/r/aux.txt',
-      directories: ['/p/main', '/p/test'],
-    };
-    const command = toolCommand('pmd', values);
-    const missing = command.accepts(4);
-    writeFileSync(values.report, '{}');
-
-    expect(command.args).toEqual([
-      'check',
-      '--no-cache',
-      '--no-progress',
-      '--format',
-      'sarif',
-      '--report-file',
-      values.report,
-      '--rulesets',
-      '/r/main.xml,/r/tests.xml',
-      '--aux-classpath',
-      'file:/r/aux.txt',
-      '--suppress-marker',
-      'NITPICKER-NO-INLINE-SUPPRESSION',
-      '--dir',
-      '/p/main,/p/test',
-    ]);
-    expect([missing, command.accepts(4), command.accepts(1)]).toEqual([false, true, true]);
-  });
-
-  it('lists the jdeps class directories last and accepts only a clean exit', () => {
-    const command = toolCommand('jdeps', { classDirectories: ['/p/classes'] });
-
-    expect(command.args).toEqual(['-verbose:class', '-filter:none', '/p/classes']);
-    expect([0, 1].map((status) => command.accepts(status))).toEqual([true, false]);
-  });
 });
 
 describe('the tool-commands command line', () => {
@@ -130,11 +90,6 @@ describe('the tool-commands command line', () => {
         args: ['-d', '/p/classes', '-c', '/l/a.jar', '-f', '/s.txt', '--allowmissingclasses'],
         accept: { exits: [0, 1] },
       },
-    ],
-    [
-      'jdeps',
-      { classDirectories: ['/p/classes'] },
-      { args: ['-verbose:class', '-filter:none', '/p/classes'], accept: { exits: [0] } },
     ],
   ])(
     'writes the %s command line and what it accepts for the Gradle tasks',

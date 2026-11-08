@@ -70,6 +70,7 @@ function runJavaPreset(
       ...GRADLE_FLAGS,
       ...(policy.snapshot === 'base' ? ['--continue'] : []),
       `-Pnitpicker.reportDir=${reportBase}`,
+      `-Pnitpicker.node=${process.execPath}`,
       ...lintBaselineProperties(policy),
       ...kotlinArguments,
     ];
