@@ -78,7 +78,7 @@ project also needs `@vitest/coverage-v8` at its Vitest version.
 
 The TypeScript preset assumes a feature-folder [layout](docs/typescript-strict-preset/layout-and-boundaries.md).
 For another language, `init` puts the preset in `nitpicker.config.json`, for example
-`{ "preset": "python" }`; then run `npx nitpicker`. Each guide lists what your project provides.
+`{ "preset": "python" }`; then run `npx nitpicker`. Each guide lists what your project provides. A `$schema` line in that file gives your editor completion and inline errors; see [Editor support](docs/usage.md#editor-support).
 
 | Language                                                              | Preset                 | Agent skill            |
 | --------------------------------------------------------------------- | ---------------------- | ---------------------- |

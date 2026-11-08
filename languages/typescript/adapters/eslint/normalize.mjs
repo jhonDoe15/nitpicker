@@ -16,11 +16,11 @@ import {
   nodeChain,
 } from './syntax.mjs';
 import {
-  growthAdviceFor,
-  metricWorseMessage,
-  routedEslintMessage,
+  metricGrowth,
+  routedEslintFields,
   withoutFatalDirectives,
 } from '../hints/eslint-hints.mjs';
+import { growthAdviceFor } from '../hints/growth-advice.mjs';
 import { requiredString, positiveInteger } from './arguments.mjs';
 import { withoutSupersededMessages } from '../lint-engine/overlapping-reports.mjs';
 
@@ -114,7 +114,7 @@ function withRatchets(findings, plans) {
       return finding;
     }
     if (plan.kind === 'count') {
-      const growthAdvice = growthAdviceFor(finding.rule);
+      const growth = growthAdviceFor(finding.rule);
       return {
         ...finding,
         ...anchorOf(plan, plan.key),
@@ -122,7 +122,7 @@ function withRatchets(findings, plans) {
           key: `count:${plan.key}`,
           value: counts.get(countGroupOf(finding, plan)),
           existingCodeOnly: true,
-          ...(growthAdvice === undefined ? {} : { growthAdvice }),
+          ...growth,
         },
       };
     }
@@ -135,7 +135,7 @@ function withRatchets(findings, plans) {
       ratchet: {
         key: `metric:occurrence:${String(occurrence)}`,
         value: plan.value,
-        worseMessage: metricWorseMessage(finding, plan),
+        ...metricGrowth(finding, plan),
       },
     };
   });
@@ -162,7 +162,7 @@ function normalizeMessage({ message, context, analyzerName, relativePath, source
       `syntax:${report.syntax}`,
       ...(metric === undefined ? [] : [`value:${String(metric.value)}`]),
     ].join('|'),
-    message: hintedMessage({
+    ...hintedMessage({
       ruleId,
       messageText,
       relativePath,
@@ -206,7 +206,7 @@ function locateReport(sourceFile, { sourcePosition, endPosition }) {
 }
 
 function hintedMessage({ ruleId, messageText, relativePath, comment, locatedNode, sourceFile }) {
-  return routedEslintMessage({
+  return routedEslintFields({
     ruleId,
     text: messageText,
     relativePath,

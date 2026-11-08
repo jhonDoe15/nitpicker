@@ -1,4 +1,4 @@
-import { MESSAGES, renderMessage } from '../../policy.mjs';
+import { MESSAGES, messageFields } from '../../policy.mjs';
 import { UNUSED_API_RULE_IDS } from '../../unused-api/unused-api-policy.mjs';
 import { exceptionText } from '../exceptions.mjs';
 
@@ -39,7 +39,7 @@ function testOnlyFinding(item, { analyzerName, messages }) {
     rule: RULE,
     path: file,
     identity: `${category}:${entry.name}`,
-    message: renderMessage(templateFor(item, messages), {
+    ...messageFields(templateFor(item, messages), {
       name: entry.name,
       reexporter: reexportedBy,
       exception: exceptionText(RULE, file),
