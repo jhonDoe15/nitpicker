@@ -8,6 +8,8 @@ const collected = (name) => ({ messageId: 'collectedStream', data: { name } });
 
 tester.run('no-collected-stream-rows', rule, {
   valid: [
+    'async function f(repo) { const page = []; for await (const a of repo.streamAssets()) { page.push(a); if (page.length >= 10) break; } return page; }',
+    'async function f(repo) { const page = []; for await (const a of repo.streamAssets()) { page.push(a); if (page.length >= 10) return page; } return page; }',
     'async function f(repo) { const batch = []; for await (const a of repo.streamAssets()) { batch.push(a); if (batch.length >= 500) { await queue(batch.splice(0)); } } await queue(batch); }',
     'async function f(repo) { let batch = []; for await (const a of repo.streamAssets()) { batch.push(a); if (batch.length >= 500) { await queue(batch); batch = []; } } await queue(batch); }',
     'async function f(repo) { const batch = []; for await (const a of repo.streamAssets()) { batch.push(a); if (batch.length >= 500) { await queue(batch); batch.length = 0; } } await queue(batch); }',
@@ -23,6 +25,10 @@ tester.run('no-collected-stream-rows', rule, {
     'async function f(repo) { const out = []; for await (const a of repo.streamAssets()) { a.children.forEach((c) => out.push(c)); } return out; }',
   ].map((code) => ({ filename, code })),
   invalid: [
+    {
+      code: 'async function f(repo) { const all = []; for await (const a of repo.streamAssets()) { for (const t of a.tags) { if (t) break; } all.push(a); } return all; }',
+      errors: [collected('all')],
+    },
     {
       code: 'async function f(repo) { const jobs = []; for await (const asset of repo.streamAssets()) { jobs.push({ id: asset.id }); } await queue(jobs); }',
       errors: [collected('jobs')],

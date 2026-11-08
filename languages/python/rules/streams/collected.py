@@ -43,7 +43,9 @@ def is_drained(loop, name):
         }:
             return True
         if isinstance(node, ast.Delete) and any(
-            isinstance(t, ast.Subscript) and isinstance(t.value, ast.Name) and t.value.id == name
+            isinstance(t, ast.Subscript)
+            and isinstance(t.value, ast.Name)
+            and t.value.id == name
             for t in node.targets
         ):
             return True
@@ -54,14 +56,47 @@ def is_drained(loop, name):
     return False
 
 
+def is_new_list(value):
+    if isinstance(value, (ast.List, ast.ListComp)):
+        return True
+    return (
+        isinstance(value, ast.Call)
+        and isinstance(value.func, ast.Name)
+        and value.func.id == "list"
+        and not value.args
+    )
+
+
+def bound_targets(node):
+    if isinstance(node, ast.Assign):
+        return node.targets
+    if isinstance(node, ast.AnnAssign) and node.value is not None:
+        return [node.target]
+    return []
+
+
 def is_bound_before(function, name, loop):
     return any(
-        isinstance(node, ast.Assign)
+        any(isinstance(t, ast.Name) and t.id == name for t in bound_targets(node))
         and node.lineno < loop.lineno
-        and any(isinstance(t, ast.Name) and t.id == name for t in node.targets)
-        and isinstance(node.value, (ast.List, ast.ListComp))
+        and is_new_list(node.value)
         for node in own_nodes(function)
     )
+
+
+def exits_early(loop):
+    pending = list(loop.body)
+    while pending:
+        node = pending.pop()
+        if isinstance(node, (ast.Break, ast.Return)):
+            return True
+        if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef, ast.Lambda)):
+            continue
+        if isinstance(node, (ast.For, ast.AsyncFor, ast.While)):
+            pending.extend(n for n in ast.walk(node) if isinstance(n, ast.Return))
+            continue
+        pending.extend(ast.iter_child_nodes(node))
+    return False
 
 
 def joined(node, parents):
@@ -90,6 +125,8 @@ def loop_findings(context, function, cursors):
     for loop in own_nodes(function):
         if not (isinstance(loop, LOOPS) and is_stream_source(loop.iter, cursors)):
             continue
+        if exits_early(loop):
+            continue
         for name, node in appended_names(loop).items():
             if (
                 is_bound_before(function, name, loop)
@@ -104,7 +141,9 @@ def whole_findings(context, function, cursors):
         if isinstance(node, COMPREHENSIONS) and is_stream_source(
             node.generators[0].iter, cursors
         ):
-            yield finding(context.path, RULE, ast.unparse(node.generators[0].iter), node)
+            yield finding(
+                context.path, RULE, ast.unparse(node.generators[0].iter), node
+            )
         if (
             isinstance(node, ast.Call)
             and isinstance(node.func, ast.Name)

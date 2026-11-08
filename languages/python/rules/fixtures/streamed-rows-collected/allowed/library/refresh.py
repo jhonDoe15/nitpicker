@@ -30,3 +30,12 @@ def small(rows):
     for row in rows:
         out.append(row.id)
     return out
+
+
+def first_page(assets):
+    page = []
+    for asset in assets.iterator():
+        page.append(asset)
+        if len(page) >= 10:
+            break
+    return page

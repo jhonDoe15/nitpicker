@@ -4,6 +4,14 @@ import { isStreamSource, unwrapped } from './stream-sources.mjs';
 
 const FUNCTIONS = new Set(['FunctionDeclaration', 'FunctionExpression', 'ArrowFunctionExpression']);
 const APPENDS = new Set(['push', 'unshift']);
+const BREAK_TARGETS = new Set([
+  'ForStatement',
+  'ForInStatement',
+  'ForOfStatement',
+  'WhileStatement',
+  'DoWhileStatement',
+  'SwitchStatement',
+]);
 const DRAINS = new Set(['splice', 'pop', 'shift']);
 const ASSEMBLERS = new Set(['concat', 'join']);
 const ASSEMBLER_TYPES = new Set(['Blob', 'Buffer', 'File', 'Uint8Array']);
@@ -18,8 +26,8 @@ function childrenOf(node) {
     .filter((child) => typeof child?.type === 'string');
 }
 
-function identifiersIn(node) {
-  return [...depthFirst(node, childrenOf)].filter((child) => child.type === 'Identifier');
+function identifiersIn(node, types = ['Identifier']) {
+  return [...depthFirst(node, childrenOf)].filter((child) => types.includes(child.type));
 }
 
 function memberCall(identifier) {
@@ -40,6 +48,23 @@ function ownLoopCode(node, loop) {
   return ancestorsOf(node)
     .slice(0, ancestorsOf(node).indexOf(loop))
     .every((ancestor) => !FUNCTIONS.has(ancestor.type));
+}
+
+function exitsLoop(statement, loop) {
+  if (statement.type === 'ReturnStatement') {
+    return true;
+  }
+  if (statement.type !== 'BreakStatement') {
+    return false;
+  }
+  const target = ancestorsOf(statement).find((ancestor) => BREAK_TARGETS.has(ancestor.type));
+  return statement.label !== null || target === loop;
+}
+
+function exitsEarly(loop) {
+  return identifiersIn(loop.body, ['ReturnStatement', 'BreakStatement']).some(
+    (statement) => ownLoopCode(statement, loop) && exitsLoop(statement, loop),
+  );
 }
 
 function isArrayLiteral(init) {
@@ -148,24 +173,23 @@ export const rule = {
     }
     return {
       'ForOfStatement[await=true]'(loop) {
-        if (!isStreamSource(sourceCode, loop.right)) {
+        if (!isStreamSource(sourceCode, loop.right) || exitsEarly(loop)) {
           return;
         }
-        const reported = new Set();
-        identifiersIn(loop.body)
-          .map((identifier) => ({ identifier, variable: appendedArray(loop, identifier) }))
-          .filter(({ variable }) => variable !== undefined)
-          .forEach(({ identifier, variable }) => {
-            if (reported.has(variable)) {
-              return;
-            }
-            reported.add(variable);
-            context.report({
-              node: identifier,
-              messageId: 'collectedStream',
-              data: { name: identifier.name },
-            });
+        const firstAppends = new Map();
+        for (const identifier of identifiersIn(loop.body)) {
+          const variable = appendedArray(loop, identifier);
+          if (variable !== undefined && !firstAppends.has(variable)) {
+            firstAppends.set(variable, identifier);
+          }
+        }
+        for (const identifier of firstAppends.values()) {
+          context.report({
+            node: identifier,
+            messageId: 'collectedStream',
+            data: { name: identifier.name },
           });
+        }
       },
     };
   },

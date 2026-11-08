@@ -81,10 +81,11 @@ Part of the [TypeScript strict preset guide](../typescript-strict-preset.md).
 - `nitpicker/no-collected-stream-rows`: every item of a stream, async generator or cursor
   collected into one array, in all production code (not in tests). It reports `push`, `unshift` or
   `xs = [...xs, x]` inside `for await (const x of source)`, where `source` is not an array (an array
-  literal, an array method or `Array.from`, `Promise.all` and the like, or a value typed as an array
-  are left alone), `xs` is an array literal declared before the loop, the loop never drains it
+  literal, an array method or `Array.from`, `Promise.all` and the like, or, with type information, a
+  value typed as an array are left alone), `xs` is an array literal declared before the loop, the loop never drains it
   (`splice`, `pop`, `shift`, `length = 0` or a reassignment) and code after the loop reads it. Bytes
-  that are joined after the loop (`Buffer.concat`, `join`, `new Blob`) are left alone. Allowed form:
+  that are joined after the loop (`Buffer.concat`, `join`, `new Blob`) and a loop that can `break`
+  or `return` early (a first page) are left alone. Allowed form:
   flush a fixed-size batch inside the loop (`if (batch.length >= 500) await save(batch.splice(0))`)
   and the rest once after it. An exception fits only for a source that always stays small. The same
   form runs as `streamed-rows-collected` (Python) and `pmd/StreamedRowsCollected` (Java and Kotlin).

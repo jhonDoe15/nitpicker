@@ -7,7 +7,8 @@
 let $steps := ('map', 'filter', 'peek', 'distinct', 'sorted', 'flatMap', 'mapToObj', 'mapToInt', 'mapToLong',
                'mapToDouble', 'boxed', 'skip', 'dropWhile', 'parallel', 'sequential', 'unordered', 'onClose'),
     $collectors := ('toList', 'toUnmodifiableList', 'toSet', 'toUnmodifiableSet', 'toMap', 'toUnmodifiableMap',
-                    'toConcurrentMap', 'groupingBy', 'groupingByConcurrent', 'partitioningBy', 'toCollection'),
+                    'toConcurrentMap', 'toCollection'),
+    $groupings := ('groupingBy', 'groupingByConcurrent', 'partitioningBy'),
     $queried := function($node) {
       exists($node[self::MethodCall][pmd-java:typeIs('java.util.stream.Stream')]
         [*[1][pmd-java:typeIs('org.springframework.data.repository.Repository')]
@@ -22,7 +23,8 @@ let $steps := ('map', 'filter', 'peek', 'distinct', 'sorted', 'flatMap', 'mapToO
         (let $name := $access/@Name
          return exists($access/ancestor::*[self::Block or self::TryStatement]
            /(LocalVariableDeclaration/VariableDeclarator | ResourceList/Resource/LocalVariableDeclaration/VariableDeclarator)
-           [VariableId/@Name = $name][$queried(*[2])]))
+           [VariableId/@Name = $name][$queried(*[2])])
+           and empty($access/ancestor::MethodDeclaration//AssignmentExpression[*[1][self::VariableAccess[@Name = $name]]]))
     },
     $fromQuery := function($sink) {
       some $root in $sink/*[1]/descendant-or-self::*[$queried(.) or $held(.)] satisfies
@@ -35,7 +37,8 @@ let $steps := ('map', 'filter', 'peek', 'distinct', 'sorted', 'flatMap', 'mapToO
     }
 return (
   //MethodCall[@MethodName = 'toList' and ArgumentList/@Size = 0 or @MethodName = 'toArray']
-  | //MethodCall[@MethodName = 'collect'][ArgumentList[@Size = 3 or *[1][self::MethodCall[@MethodName = $collectors]]]]
+  | //MethodCall[@MethodName = 'collect'][ArgumentList[@Size = 1]/MethodCall
+      [@MethodName = $collectors or @MethodName = $groupings and ArgumentList/@Size = 1]]
   | //MethodCall[@MethodName = ('forEach', 'forEachOrdered')][ArgumentList[@Size = 1][$appends(*[1])]]
 )[$fromQuery(.)]
 ]]></value>
