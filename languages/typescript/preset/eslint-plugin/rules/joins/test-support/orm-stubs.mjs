@@ -75,16 +75,23 @@ export class Invoice extends Model {
 `;
 
 function write(root, file, text) {
-  mkdirSync(path.dirname(path.join(root, file)), { recursive: true });
-  writeFileSync(path.join(root, file), text);
+  const target = path.resolve(root, file);
+  if (!target.startsWith(root + path.sep)) {
+    throw new Error(`${file} is outside ${root}`);
+  }
+  mkdirSync(path.dirname(target), { recursive: true });
+  writeFileSync(target, text);
 }
 
-export function ormProject() {
+export function ormProject(extra = {}) {
   const root = realpathSync(mkdtempSync(path.join(tmpdir(), 'nitpicker-collection-joins-')));
   write(root, 'node_modules/typeorm/index.d.ts', TYPEORM);
   write(root, 'node_modules/@mikro-orm/core/index.d.ts', MIKRO_ORM);
   write(root, 'node_modules/sequelize/index.d.ts', SEQUELIZE);
   write(root, 'src/entities.ts', ENTITIES);
+  for (const [file, text] of Object.entries(extra)) {
+    write(root, file, text);
+  }
   write(
     root,
     'tsconfig.json',

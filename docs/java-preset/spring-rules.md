@@ -247,8 +247,8 @@ when the code is right, for example `{ "rule": "pmd/SpringDataNoSaveInLoop", "pa
   `MultipleBagFetchException` for two lists). It reads JPQL with two `join fetch` of to-many fields
   in `@Query`, `@NamedQuery` and `createQuery`/`createSelectionQuery` (a literal or a constant of the
   class), an `@EntityGraph(attributePaths = ...)` of a repository or a `@NamedEntityGraph` with two
-  collection attributes, and Criteria `fetch` calls on a `Root`, `Fetch` or `Join` in one method or
-  `Specification` lambda. A field is a collection when its type is a JDK collection or it carries
+  collection attributes, and Criteria `fetch` calls on one `Root` (and the `Fetch` or `Join` taken
+  from it) in one method or `Specification` lambda. A field is a collection when its type is a JDK collection or it carries
   `@OneToMany`, `@ManyToMany` or `@ElementCollection`; entities are found by class name or
   `@Entity(name)` under the source roots, superclasses included. A chain along one collection
   (`join fetch o.lines l join fetch l.parts`), a collection next to to-one relations, and plain

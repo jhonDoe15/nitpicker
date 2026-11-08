@@ -36,8 +36,8 @@ Part of the [nitpicker-typescript](../SKILL.md) skill. Write these forms from th
   instead of `.sort`, and the ORM's aggregate or `groupBy` instead of `reduce`, `Math.max(...rows.map(...))`
   or `groupBy` (`nitpicker/no-in-memory-query`).
 - Join at most one to-many relation into a query: TypeORM `relationLoadStrategy: 'query'` or a query
-  per collection, Sequelize `separate: true` on the other `hasMany` includes, MikroORM's default
-  select-in `populate` (`nitpicker/no-multiple-collection-joins`).
+  per collection, Sequelize `separate: true` on the other `hasMany` includes, and
+  `strategy: 'select-in'` on a MikroORM `populate` (`nitpicker/no-multiple-collection-joins`).
 - Each finding names the allowed form. A deliberate exception goes in `nitpicker.config.json`
   `exceptions` (rule, paths, reason), never inline.
 - The `$schema` line of `nitpicker.config.json`

@@ -1,6 +1,7 @@
 import { findJoins } from './find-options.mjs';
 import { builderJoins, isQueryBuilder } from './query-builders.mjs';
-import { crossedCollections, relationTypes } from './relation-types.mjs';
+import { crossedCollections } from '../../../../../../shared/joins/crossed-collections.mjs';
+import { relationTypes } from './relation-types.mjs';
 import { includeJoins } from './sequelize-includes.mjs';
 
 const PRODUCT =

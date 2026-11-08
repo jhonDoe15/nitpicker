@@ -84,23 +84,6 @@ export function graphFetches(entity, paths, relationOf) {
   return joined;
 }
 
-function isNested(outer, inner) {
-  return inner.startsWith(`${outer}.`);
-}
-
-export function crossedCollections(joined) {
-  const collections = [...joined].filter(([, many]) => many).map(([key]) => key);
-  for (const [index, first] of collections.entries()) {
-    const second = collections
-      .slice(index + 1)
-      .find((other) => !isNested(first, other) && !isNested(other, first));
-    if (second !== undefined) {
-      return { first, second };
-    }
-  }
-  return undefined;
-}
-
 const COLLECTION_TYPES = new Set([
   'Collection',
   'List',
@@ -124,6 +107,7 @@ const COLLECTION_TYPES = new Set([
   'MutableCollection',
 ]);
 const TO_MANY = /^(?:OneToMany|ManyToMany|ElementCollection)$/u;
+const TO_ONE = /^(?:ManyToOne|OneToOne|Embedded|EmbeddedId)$/u;
 
 function simpleName(type) {
   return type
@@ -136,7 +120,9 @@ function simpleName(type) {
 export function fieldRelation(type, annotations) {
   const compact = type.replaceAll(/\s+/gu, '');
   const head = simpleName(compact);
-  const many = COLLECTION_TYPES.has(head) || annotations.some((name) => TO_MANY.test(name));
+  const toOne = annotations.some((name) => TO_ONE.test(name));
+  const many =
+    !toOne && (COLLECTION_TYPES.has(head) || annotations.some((name) => TO_MANY.test(name)));
   const element = many ? (typeArguments(compact).at(-1) ?? '') : compact;
   return { many, target: simpleName(element.replace(/^(?:out|in)\s*/u, '')) };
 }

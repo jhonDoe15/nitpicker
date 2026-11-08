@@ -28,4 +28,14 @@ class InvoiceLoads(private val entityManager: EntityManager) {
         invoice.fetch<Invoice, Any>("customer")
         return entityManager.createQuery(query).resultList
     }
+
+    fun twoQueries(): Int {
+        val first = entityManager.criteriaBuilder.createQuery(Invoice::class.java)
+        val withLines = first.from(Invoice::class.java)
+        withLines.fetch<Invoice, Any>("lines")
+        val second = entityManager.criteriaBuilder.createQuery(Invoice::class.java)
+        val withTags = second.from(Invoice::class.java)
+        withTags.fetch<Invoice, Any>("tags")
+        return entityManager.createQuery(first).resultList.size + entityManager.createQuery(second).resultList.size
+    }
 }

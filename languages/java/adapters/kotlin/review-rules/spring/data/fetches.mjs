@@ -1,5 +1,5 @@
+import { crossedCollections } from '../../../../../../../shared/joins/crossed-collections.mjs';
 import {
-  crossedCollections,
   fieldRelation,
   graphFetches,
   jpqlFetches,
@@ -30,50 +30,48 @@ const FROM = 'from';
 const NAMED_QUERY = /NamedQuery\s*\(/u;
 const CHAINED_FETCH = /^([\w$]+)\.fetch(?:<[^>]*>)?\(\s*"([\w$]+)"/u;
 const MAX_SUPERS = 4;
-const INDEXES = new WeakMap();
+
+function membersOf(file, declared) {
+  return [
+    ...declared.primaryParameters.filter(({ property }) => property !== undefined),
+    ...file.properties.filter(({ owner }) => owner === declared.qualified),
+  ];
+}
+
+function namesOf(declared) {
+  const entity = declared.annotations.find(({ name }) => name === 'Entity');
+  const named = stringValue(argumentOf(entity ?? { arguments: [] }, 'name', { positional: true }));
+  return [...new Set([declared.name, named].filter(Boolean))];
+}
 
 function entityIndex(projectFiles) {
-  const index = new Map();
-  for (const file of projectFiles) {
-    for (const declared of file.classes) {
-      const members = [
-        ...declared.primaryParameters.filter(({ property }) => property !== undefined),
-        ...file.properties.filter(({ owner }) => owner === declared.qualified),
-      ];
-      const entity = declared.annotations.find(({ name }) => name === 'Entity');
-      const names = [
-        declared.name,
-        stringValue(argumentOf(entity ?? { arguments: [] }, 'name', { positional: true })),
-      ];
-      for (const name of new Set(names.filter(Boolean))) {
-        index.set(name, [...(index.get(name) ?? []), { declared, members }]);
-      }
-    }
-  }
-  return index;
+  const entries = projectFiles.flatMap((file) =>
+    file.classes.flatMap((declared) =>
+      namesOf(declared).map((name) => [name, { declared, members: membersOf(file, declared) }]),
+    ),
+  );
+  return Map.groupBy(entries, ([name]) => name);
 }
 
 function relations(projectFiles) {
-  if (!INDEXES.has(projectFiles)) {
-    INDEXES.set(projectFiles, entityIndex(projectFiles));
-  }
-  const index = INDEXES.get(projectFiles);
-  function relationOf(entity, field, depth = 0) {
-    const found = index.get(entity) ?? [];
-    if (found.length !== 1 || depth > MAX_SUPERS) {
-      return undefined;
+  const index = entityIndex(projectFiles);
+  return function relationOf(entity, field) {
+    const pending = [entity];
+    for (const current of pending) {
+      const found = index.get(current) ?? [];
+      if (found.length === 1) {
+        const [[, { declared, members }]] = found;
+        const member = members.find(({ name }) => name === field);
+        if (member !== undefined) {
+          const annotations = entriesOf(member).map(({ name }) => name);
+          return fieldRelation(member.type ?? member.initializer ?? '', annotations);
+        }
+        const supers = declared.supers.map((name) => typeName(name).split('.').at(-1));
+        pending.push(...(pending.length > MAX_SUPERS ? [] : supers));
+      }
     }
-    const [{ declared, members }] = found;
-    const member = members.find(({ name }) => name === field);
-    if (member !== undefined) {
-      const annotations = entriesOf(member).map(({ name }) => name);
-      return fieldRelation(member.type ?? member.initializer ?? '', annotations);
-    }
-    return declared.supers
-      .map((name) => relationOf(typeName(name).split('.').at(-1), field, depth + 1))
-      .find((relation) => relation !== undefined);
-  }
-  return relationOf;
+    return undefined;
+  };
 }
 
 function crossed(joined, node, symbol) {
@@ -117,16 +115,19 @@ function argumentText({ name, text }) {
   return name === undefined ? text : `${name} = ${text}`;
 }
 
+function argumentsText(entry) {
+  return entry.arguments.map(argumentText).join(', ');
+}
+
 function classFetches(view, relationOf) {
   return view.file.classes.flatMap((declared) => {
     const named = annotationIn(view.resolve, declared.annotations, NAMED_QUERIES);
     const graph = annotationIn(view.resolve, declared.annotations, NAMED_GRAPHS);
-    const text = (entry) => entry.arguments.map(argumentText).join(', ');
     const entity =
       annotationIn(view.resolve, declared.annotations, ENTITY) === undefined
         ? undefined
         : declared.name;
-    const queries = named === undefined ? [] : text(named).split(NAMED_QUERY);
+    const queries = named === undefined ? [] : argumentsText(named).split(NAMED_QUERY);
     return [
       ...queries
         .flatMap((query) =>
@@ -140,7 +141,7 @@ function classFetches(view, relationOf) {
       ...(graph === undefined || entity === undefined
         ? []
         : crossed(
-            graphFetches(entity, namedGraphPaths(text(graph)), relationOf),
+            graphFetches(entity, namedGraphPaths(argumentsText(graph)), relationOf),
             declared,
             declared.qualified,
           )),
@@ -177,45 +178,54 @@ function fetchStart(view, invocation, aliases) {
   const entity = typeName(typeArguments(type).at(-1) ?? '')
     .split('.')
     .at(-1);
-  return { entity, key: entity };
+  return { entity, key: invocation.receiver };
 }
 
-function step(owner, field, relationOf, joined) {
-  const relation = owner === undefined ? undefined : relationOf(owner.entity, field);
-  if (relation === undefined) {
-    return undefined;
-  }
-  const key = `${owner.key}.${field}`;
-  joined.set(key, relation.many);
-  return { entity: relation.target, key };
+function stepper(relationOf, joined) {
+  return (owner, field) => {
+    const relation = owner === undefined ? undefined : relationOf(owner.entity, field);
+    if (relation === undefined) {
+      return undefined;
+    }
+    const key = `${owner.key}.${field}`;
+    joined.set(key, relation.many);
+    return { entity: relation.target, key };
+  };
 }
 
 function fromRoot(invocation) {
   const entity = /^([\w$.]+)::class(?:\.java)?$/u.exec(invocation.arguments[0]?.text ?? '')?.[1];
   return entity === undefined || invocation.assignedTo === undefined
     ? undefined
-    : [invocation.assignedTo, { entity: entity.split('.').at(-1), key: entity.split('.').at(-1) }];
+    : [invocation.assignedTo, { entity: entity.split('.').at(-1), key: invocation.assignedTo }];
+}
+
+function fetchEnd(view, invocation, { aliases, step }) {
+  const start = fetchStart(view, invocation, aliases);
+  const owner = start?.chainedField === undefined ? start : step(start, start.chainedField);
+  const field = stringValue(invocation.arguments[0]?.text);
+  return field === undefined ? undefined : step(owner, field);
+}
+
+function sameRoot(joined, key) {
+  const root = key.split('.')[0];
+  return new Map([...joined].filter(([other]) => other.split('.')[0] === root));
 }
 
 function functionCriteria(view, invocations, relationOf) {
   const aliases = new Map();
   const joined = new Map();
+  const state = { aliases, step: stepper(relationOf, joined) };
   for (const invocation of invocations) {
     const root = invocation.name === FROM ? fromRoot(invocation) : undefined;
     if (root !== undefined) {
       aliases.set(...root);
     }
-    const start = invocation.name === FETCH ? fetchStart(view, invocation, aliases) : undefined;
-    const owner =
-      start?.chainedField === undefined
-        ? start
-        : step(start, start.chainedField, relationOf, joined);
-    const field = stringValue(invocation.arguments[0]?.text);
-    const end = field === undefined ? undefined : step(owner, field, relationOf, joined);
+    const end = invocation.name === FETCH ? fetchEnd(view, invocation, state) : undefined;
     if (end !== undefined && invocation.assignedTo !== undefined) {
       aliases.set(invocation.assignedTo, end);
     }
-    if (end !== undefined && crossedCollections(joined) !== undefined) {
+    if (end !== undefined && crossedCollections(sameRoot(joined, end.key)) !== undefined) {
       return [report(RULE, invocation, symbolOf(view, invocation.scope, FETCH))];
     }
   }

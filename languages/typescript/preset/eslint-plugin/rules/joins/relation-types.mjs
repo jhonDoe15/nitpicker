@@ -12,7 +12,7 @@ export function relationTypes(context) {
   return { services, checker: services.program.getTypeChecker() };
 }
 
-export function typeOf(types, node) {
+function typeOf(types, node) {
   return types.services.getTypeAtLocation(node);
 }
 
@@ -28,21 +28,42 @@ function parts(type) {
   return type.isIntersection() || type.isUnion() ? type.types : [type];
 }
 
-function relationOf(types, type, depth) {
-  const plain = types.checker.getNonNullableType(type);
-  for (const part of parts(plain)) {
-    if (types.checker.isArrayType(part)) {
-      return { many: true, target: typeArguments(types, part)[0] };
-    }
-    if (COLLECTIONS.has(nameOf(part))) {
-      return { many: true, target: part.aliasTypeArguments?.[0] ?? typeArguments(types, part)[0] };
-    }
-    const inner = part.aliasTypeArguments?.[0] ?? typeArguments(types, part)[0];
-    if (WRAPPERS.has(nameOf(part)) && inner !== undefined && depth < MAX_UNWRAP) {
-      return relationOf(types, inner, depth + 1);
-    }
+function firstArgument(types, type) {
+  return type.aliasTypeArguments?.[0] ?? typeArguments(types, type)[0];
+}
+
+function partRelation(types, part) {
+  if (types.checker.isArrayType(part)) {
+    return { many: true, target: typeArguments(types, part)[0] };
   }
-  return { many: false, target: parts(plain)[0] };
+  if (COLLECTIONS.has(nameOf(part))) {
+    return { many: true, target: firstArgument(types, part) };
+  }
+  return undefined;
+}
+
+function unwrappedPart(types, part) {
+  return WRAPPERS.has(nameOf(part)) ? firstArgument(types, part) : undefined;
+}
+
+function relationOf(types, type) {
+  const pending = [types.checker.getNonNullableType(type)];
+  for (const plain of pending) {
+    const found = parts(plain)
+      .map((part) => partRelation(types, part))
+      .find(Boolean);
+    if (found !== undefined) {
+      return found;
+    }
+    const inner = parts(plain)
+      .map((part) => unwrappedPart(types, part))
+      .find(Boolean);
+    if (inner === undefined || pending.length > MAX_UNWRAP) {
+      return { many: false, target: parts(plain)[0] };
+    }
+    pending.push(types.checker.getNonNullableType(inner));
+  }
+  return undefined;
 }
 
 function declaredType(types, symbol) {
@@ -57,7 +78,7 @@ function declaredType(types, symbol) {
 
 export function relationNamed(types, owner, name) {
   const symbol = owner === undefined ? undefined : types.checker.getPropertyOfType(owner, name);
-  return symbol === undefined ? undefined : relationOf(types, declaredType(types, symbol), 0);
+  return symbol === undefined ? undefined : relationOf(types, declaredType(types, symbol));
 }
 
 export function relationsTo(types, owner, target) {
@@ -67,7 +88,7 @@ export function relationsTo(types, owner, target) {
   }
   return types.checker
     .getPropertiesOfType(owner)
-    .map((symbol) => [symbol.getName(), relationOf(types, declaredType(types, symbol), 0)])
+    .map((symbol) => [symbol.getName(), relationOf(types, declaredType(types, symbol))])
     .filter(([, relation]) => relation.target?.getSymbol() === wanted);
 }
 
@@ -80,18 +101,28 @@ export function instanceOf(types, node) {
   return signature?.getReturnType();
 }
 
-function listElement(types, type) {
-  const plain = types.checker.getNonNullableType(type);
+function innerList(types, plain) {
   if (types.checker.isTupleType(plain)) {
-    return listElement(types, typeArguments(types, plain)[0]);
-  }
-  if (types.checker.isArrayType(plain)) {
     return typeArguments(types, plain)[0];
   }
   const rows = types.checker.getPropertyOfType(plain, 'rows');
-  return rows === undefined
-    ? parts(plain)[0]
-    : listElement(types, types.checker.getTypeOfSymbol(rows));
+  return rows === undefined ? undefined : types.checker.getTypeOfSymbol(rows);
+}
+
+function listElement(types, type) {
+  const pending = [type];
+  for (const current of pending) {
+    const plain = types.checker.getNonNullableType(current);
+    if (types.checker.isArrayType(plain)) {
+      return typeArguments(types, plain)[0];
+    }
+    const inner = innerList(types, plain);
+    if (inner === undefined || pending.length > MAX_UNWRAP) {
+      return parts(plain)[0];
+    }
+    pending.push(inner);
+  }
+  return undefined;
 }
 
 export function resultEntity(types, call) {
@@ -104,23 +135,6 @@ export function declaredInPackage(types, call, packages) {
   const file = types.checker.getResolvedSignature(node)?.getDeclaration()?.getSourceFile().fileName;
   const normalized = file?.replaceAll('\\', '/') ?? '';
   return packages.some((name) => normalized.includes(`/node_modules/${name}/`));
-}
-
-function isNested(outer, inner) {
-  return inner.startsWith(`${outer}.`);
-}
-
-export function crossedCollections(joined) {
-  const collections = [...joined].filter(([, many]) => many).map(([key]) => key);
-  for (const [index, first] of collections.entries()) {
-    const second = collections
-      .slice(index + 1)
-      .find((other) => !isNested(first, other) && !isNested(other, first));
-    if (second !== undefined) {
-      return { first, second };
-    }
-  }
-  return undefined;
 }
 
 export function joinPaths(types, root, paths) {
