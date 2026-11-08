@@ -527,6 +527,35 @@ return (
   /ClassType[pmd-java:typeIs('java.util.List') or pmd-java:typeIsExactly('java.util.Collection')]
 ]]></value></property></properties>
   </rule>
+  <rule name="JpaMultipleCollectionFetch" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
+        message="Load at most one collection per query with join fetch or an entity graph, and the others in their own query or with @BatchSize or @Fetch(FetchMode.SUBSELECT): two fetched collections return one row for every pair of their elements, and Hibernate throws MultipleBagFetchException for two lists.">
+    <priority>2</priority>
+    <properties><property name="xpath"><value><![CDATA[
+//Annotation[pmd-java:typeIs('org.springframework.data.jpa.repository.Query')
+    or (pmd-java:typeIs('jakarta.persistence.NamedQuery') or pmd-java:typeIs('javax.persistence.NamedQuery'))]
+  [count(tokenize(lower-case(string-join(.//StringLiteral/@ConstValue, ' ')), 'join\s+fetch\s')) > 2]
+|
+//MethodCall[@MethodName = ('createQuery', 'createSelectionQuery')]
+  [let $first := ArgumentList/*[1],
+       $constant := ancestor::ClassBody[last()]/FieldDeclaration
+         /VariableDeclarator[VariableId/@Name = $first[self::VariableAccess]/@Name]
+   return count(tokenize(lower-case(string-join(
+     ($first/descendant-or-self::StringLiteral, $constant//StringLiteral)/@ConstValue, ' ')),
+     'join\s+fetch\s')) > 2]
+|
+//Annotation[pmd-java:typeIs('org.springframework.data.jpa.repository.EntityGraph')]
+  [count(AnnotationMemberList/MemberValuePair[@Name = 'attributePaths']//StringLiteral) > 1]
+|
+//Annotation[pmd-java:typeIs('jakarta.persistence.NamedEntityGraph') or pmd-java:typeIs('javax.persistence.NamedEntityGraph')]
+  [count(.//Annotation[pmd-java:typeIs('jakarta.persistence.NamedAttributeNode')
+    or pmd-java:typeIs('javax.persistence.NamedAttributeNode')]) > 1]
+|
+(//MethodDeclaration | //LambdaExpression[not(ancestor::MethodDeclaration)])
+  /(descendant::MethodCall[@MethodName = 'fetch']
+    [*[1][pmd-java:typeIs('jakarta.persistence.criteria.FetchParent')
+      or pmd-java:typeIs('javax.persistence.criteria.FetchParent')]])[2]
+]]></value></property></properties>
+  </rule>
   <rule name="JpaSequenceIds" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
         message="Generate ids with GenerationType.SEQUENCE (or UUID). IDENTITY and TABLE ids disable JDBC insert batching.">
     <priority>2</priority>
