@@ -26,7 +26,7 @@ function references(value) {
   return found;
 }
 
-function unpinnedActions(text) {
+export function unpinnedActions(text) {
   return references(parse(text)).filter(
     (reference) =>
       typeof reference !== 'string' ||
@@ -44,7 +44,7 @@ export function actionPinProblems(root) {
     ...new Set(
       globSync(['**/*.{yml,yaml,md}', '.github/**/*.{yml,yaml,md}'], {
         cwd: root,
-        exclude: ['**/node_modules/**', '.git/**', 'reports/**'],
+        exclude: ['**/node_modules/**', '.git/**', 'reports/**', 'core/init/templates/**'],
       }),
     ),
   ].sort();
