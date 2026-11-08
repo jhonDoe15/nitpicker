@@ -544,8 +544,14 @@
       "pmd/AvoidCalendarDateCreation",
       "pmd/SimpleDateFormatNeedsLocale",
       "errorprone/DefaultLocale",
-      "errorprone/DateFormatConstant"
+      "errorprone/DateFormatConstant",
+      "forbiddenapis/legacy-date-time"
     ],
+    "scope": "line"
+  },
+  {
+    "primary": ["pmd/DefaultTimeZone"],
+    "secondary": ["forbiddenapis/legacy-date-time"],
     "scope": "line"
   },
   {

@@ -472,7 +472,7 @@ The pairs:
 - line: `errorprone/IntLongMath` over `errorprone/NarrowCalculation`
 - line: `errorprone/InfiniteRecursion` over `spotbugs/IL_INFINITE_RECURSIVE_LOOP`
 - line: `errorprone/ComparisonOutOfRange` over `spotbugs/INT_BAD_COMPARISON_WITH_SIGNED_BYTE`
-- line: `errorprone/NonFinalStaticField` over `spotbugs/MS_FINAL_PKGPROTECT`, `spotbugs/MS_SHOULD_BE_FINAL`, `errorprone/FieldCanBeFinal`, `pmd/NonFinalStaticField`
+- line: `errorprone/NonFinalStaticField` over `spotbugs/MS_FINAL_PKGPROTECT`, `spotbugs/MS_SHOULD_BE_FINAL`, `errorprone/FieldCanBeFinal`
 - line: `errorprone/MutablePublicArray` over `spotbugs/MS_MUTABLE_ARRAY`, `spotbugs/MS_PKGPROTECT`
 - line: `errorprone/NullAway` over `pmd/NullAssignment`, `pmd/ReturnEmptyCollectionRatherThanNull`
 - line: `errorprone/InvalidPatternSyntax` over `spotbugs/RE_BAD_SYNTAX_FOR_REGULAR_EXPRESSION`
@@ -551,7 +551,8 @@ The pairs:
 - line: `errorprone/JdkObsolete` over `errorprone/StringCharset`
 - line: `errorprone/NonOverridingEquals` over `pmd/SuspiciousEqualsMethodName`
 - line: `errorprone/DefaultLocale` over `pmd/SimpleDateFormatNeedsLocale`
-- line: `pmd/LegacyCalendarApi` over `pmd/AvoidCalendarDateCreation`, `pmd/SimpleDateFormatNeedsLocale`, `errorprone/DefaultLocale`, `errorprone/DateFormatConstant`
+- line: `pmd/LegacyCalendarApi` over `pmd/AvoidCalendarDateCreation`, `pmd/SimpleDateFormatNeedsLocale`, `errorprone/DefaultLocale`, `errorprone/DateFormatConstant`, `forbiddenapis/legacy-date-time`
+- line: `pmd/DefaultTimeZone` over `forbiddenapis/legacy-date-time`
 - line: `pmd/UnclosedInlineResource` over `spotbugs/OS_OPEN_STREAM`, `spotbugs/ODR_OPEN_DATABASE_RESOURCE`, `spotbugs/OBL_UNSATISFIED_OBLIGATION`
 - line: `pmd/UseLocaleWithCaseConversions` over `errorprone/StringCaseLocaleUsage`
 - line: `spotbugs/ST_WRITE_TO_STATIC_FROM_INSTANCE_METHOD` over `errorprone/StaticAssignmentInConstructor`, `pmd/AssignmentToNonFinalStatic`

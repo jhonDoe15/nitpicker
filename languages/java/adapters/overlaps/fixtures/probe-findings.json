@@ -29,6 +29,7 @@
     "src/main/java/probe/G6Named.java": "package probe;\n\nclass Misnamed {\n  int one() {\n    return 1;\n  }\n}\n",
     "src/main/java/probe/G7Flag.java": "package probe;\n\npublic class G7Flag {\n  public int pick(boolean flag) {\n    boolean b;\n    if (b = flag) {\n      return 1;\n    }\n    return b ? 2 : 3;\n  }\n}\n",
     "src/main/java/probe/G9Loop.java": "package probe;\n\nimport java.util.Iterator;\nimport java.util.List;\n\npublic class G9Loop {\n  public int sum(List<Integer> items) {\n    int total = 0;\n    for (Iterator<Integer> it = items.iterator(); it.hasNext(); ) {\n      total += it.next();\n    }\n    return total;\n  }\n}\n",
+    "src/main/java/probe/GuardOverlaps.java": "package probe;\n\nimport java.io.IOException;\nimport java.io.InputStream;\nimport java.io.ObjectInputStream;\nimport java.nio.file.Files;\nimport java.nio.file.Path;\nimport java.time.LocalDate;\nimport java.util.Calendar;\nimport java.util.Date;\nimport java.util.TimeZone;\n\npublic class GuardOverlaps {\n  long lines(Path path) throws IOException {\n    return Files.lines(path).count();\n  }\n\n  String trimmed(Object value) {\n    if (value instanceof String) {\n      return ((String) value).trim();\n    }\n    return \"\";\n  }\n\n  void fail() {\n    throw new RuntimeException(\"failed\");\n  }\n\n  Date created() {\n    return new Date();\n  }\n\n  LocalDate today() {\n    return LocalDate.now();\n  }\n\n  void pause() throws InterruptedException {\n    Thread.sleep(10);\n  }\n\n  Object read(InputStream input) throws IOException, ClassNotFoundException {\n    return new ObjectInputStream(input).readObject();\n  }\n\n  TimeZone zone() {\n    return TimeZone.getDefault();\n  }\n\n  Calendar calendar() {\n    return Calendar.getInstance();\n  }\n}\n",
     "src/main/java/probe/HashOnly.java": "package probe;\n\npublic class HashOnly {\n  @Override\n  public int hashCode() {\n    return 1;\n  }\n}\n",
     "src/main/java/probe/Hiding.java": "package probe;\n\npublic class Hiding extends Fields {\n  public String name = \"h\";\n  private String inner;\n\n  public static class Base {\n    public String name = \"b\";\n  }\n\n  public static class Sub extends Base {\n    public String name = \"s\";\n\n    @Override\n    public String toString() {\n      return null;\n    }\n  }\n\n  public String inner() {\n    return inner;\n  }\n}\n",
     "src/main/java/probe/Immut.java": "package probe;\n\nimport java.math.BigDecimal;\nimport java.math.BigInteger;\n\npublic class Immut {\n  public void ops(BigDecimal d, BigInteger i, String s) {\n    d.add(BigDecimal.ONE);\n    i.add(BigInteger.ONE);\n    s.trim();\n  }\n}\n",
@@ -40,7 +41,6 @@
     "src/main/java/probe/NullColl.java": "package probe;\n\nimport java.util.List;\nimport org.jspecify.annotations.Nullable;\n\npublic class NullColl {\n  public List<String> none(int x) {\n    if (x > 0) {\n      return List.of();\n    }\n    return null;\n  }\n\n  public @Nullable List<String> maybe(int x) {\n    if (x > 0) {\n      return List.of();\n    }\n    return null;\n  }\n}\n",
     "src/main/java/probe/Numbers.java": "package probe;\n\nimport java.util.Random;\n\npublic class Numbers {\n  public long all(int x, byte b, int y) {\n    int s = x << 32;\n    int r = (int) Math.random();\n    int m = new Random().nextInt() % 5;\n    boolean big = b == 200;\n    long mul = x * y;\n    int abs = Math.abs(new Random().nextInt());\n    return s + r + m + (big ? 1 : 0) + mul + abs;\n  }\n}\n",
     "src/main/java/probe/Obsolete.java": "package probe;\n\nimport java.util.Hashtable;\nimport java.util.LinkedList;\nimport java.util.Stack;\nimport java.util.Vector;\n\npublic class Obsolete {\n  public int sizes() {\n    Vector<String> v = new Vector<>();\n    Hashtable<String, String> h = new Hashtable<>();\n    Stack<String> s = new Stack<>();\n    LinkedList<String> l = new LinkedList<>();\n    StringBuffer b = new StringBuffer();\n    return v.size() + h.size() + s.size() + l.size() + b.length();\n  }\n}\n",
-    "src/main/java/probe/other/G1Reader.java": "package probe.other;\n\nimport probe.G1Mutable;\n\npublic class G1Reader {\n  public int count() {\n    return G1Mutable.NAMES.length;\n  }\n}\n",
     "src/main/java/probe/P2Eq.java": "package probe;\n\npublic class P2Eq {\n  private int a;\n\n  public boolean equals(P2Eq o) {\n    return o.a == a;\n  }\n}\n",
     "src/main/java/probe/P2Inner.java": "package probe;\n\nimport java.text.SimpleDateFormat;\n\npublic class P2Inner {\n  public static String[] names = {\"a\"};\n  private static SimpleDateFormat format = new SimpleDateFormat(\"yyyy\");\n\n  public int one() {\n    return new Helper().one() + format.toPattern().length() + names.length;\n  }\n\n  private class Helper {\n    int one() {\n      return 1;\n    }\n  }\n}\n",
     "src/main/java/probe/P2Strings.java": "package probe;\n\nimport java.io.ByteArrayOutputStream;\nimport java.io.IOException;\nimport java.io.OutputStreamWriter;\nimport java.io.Writer;\n\npublic class P2Strings {\n  public String all(byte[] b, int[] arr, int x, int y) throws IOException {\n    String u = \"A\";\n    String s = new String(b, \"UTF-8\");\n    Writer w = new OutputStreamWriter(new ByteArrayOutputStream(), \"UTF-8\");\n    w.close();\n    long sum = x + y;\n    float div = x / y;\n    if (x > y);\n    return u + s + arr.toString() + String.format(\"%s %s\", \"x\") + sum + div;\n  }\n\n  public Object make(Class<?> c) throws ReflectiveOperationException {\n    return c.newInstance();\n  }\n\n  public void sleep() {\n    try {\n      Thread.sleep(5);\n    } catch (Exception e) {\n      throw new IllegalStateException(e);\n    }\n  }\n}\n",
@@ -59,6 +59,7 @@
     "src/main/java/probe/V2Docs.java": "package probe;\n\npublic class V2Docs {\n  /**\n   * Adds.\n   *\n   * @param a first\n   * @param missing not a parameter\n   * @return sum\n   * @throws\n   */\n  public int add(int a) {\n    return a;\n  }\n\n  /** Returns the value. */\n  public int value() {\n    /** Not javadoc. */\n    return 1;\n  }\n\n  enum Color {\n    RED,\n    GREEN\n  }\n\n  public int color(Color c) {\n    switch (c) {\n      case RED:\n        return 1;\n    }\n    return 0;\n  }\n}\n",
     "src/main/java/probe/V3Unused.java": "package probe;\n\npublic class V3Unused {\n  public int compute(int used, int unusedParam) {\n    int dead = 3;\n    dead = 4;\n    return used;\n  }\n\n  private void neverCalled() {}\n}\n",
     "src/main/java/probe/Volatile.java": "package probe;\n\npublic class Volatile {\n  private volatile int v;\n  private final Object lock = new Object();\n  private Object inst;\n\n  public void inc() {\n    v++;\n  }\n\n  public void await() throws InterruptedException {\n    synchronized (lock) {\n      lock.wait();\n    }\n  }\n\n  public Object get() {\n    if (inst == null) {\n      synchronized (this) {\n        if (inst == null) {\n          inst = new Object();\n        }\n      }\n    }\n    return inst;\n  }\n}\n",
+    "src/main/java/probe/other/G1Reader.java": "package probe.other;\n\nimport probe.G1Mutable;\n\npublic class G1Reader {\n  public int count() {\n    return G1Mutable.NAMES.length;\n  }\n}\n",
     "src/test/java/probe/OldTest.java": "package probe;\n\nimport static org.junit.Assert.assertTrue;\n\nimport org.junit.Test;\n\npublic class OldTest {\n  public void setUp() {}\n\n  public void tearDown() {}\n\n  @Test\n  public void works() {\n    assertTrue(new Recur() != null);\n  }\n}\n"
   },
   "findings": [
@@ -73,6 +74,12 @@
       "rule": "FallThrough",
       "path": "src/main/java/probe/C4Switches.java",
       "line": 22
+    },
+    {
+      "tool": "checkstyle",
+      "rule": "MagicNumber",
+      "path": "src/main/java/probe/C4Switches.java",
+      "line": 26
     },
     {
       "tool": "checkstyle",
@@ -97,6 +104,12 @@
       "rule": "MethodName",
       "path": "src/main/java/probe/C7Names.java",
       "line": 17
+    },
+    {
+      "tool": "checkstyle",
+      "rule": "ConstantName",
+      "path": "src/main/java/probe/C7Names.java",
+      "line": 4
     },
     {
       "tool": "checkstyle",
@@ -136,9 +149,63 @@
     },
     {
       "tool": "checkstyle",
+      "rule": "MagicNumber",
+      "path": "src/main/java/probe/G7Flag.java",
+      "line": 9
+    },
+    {
+      "tool": "checkstyle",
+      "rule": "MagicNumber",
+      "path": "src/main/java/probe/GuardOverlaps.java",
+      "line": 38
+    },
+    {
+      "tool": "checkstyle",
+      "rule": "VisibilityModifier",
+      "path": "src/main/java/probe/Hiding.java",
+      "line": 12
+    },
+    {
+      "tool": "checkstyle",
+      "rule": "VisibilityModifier",
+      "path": "src/main/java/probe/Hiding.java",
+      "line": 4
+    },
+    {
+      "tool": "checkstyle",
+      "rule": "VisibilityModifier",
+      "path": "src/main/java/probe/Hiding.java",
+      "line": 8
+    },
+    {
+      "tool": "checkstyle",
       "rule": "JavadocMethod",
       "path": "src/main/java/probe/Misc.java",
       "line": 16
+    },
+    {
+      "tool": "checkstyle",
+      "rule": "MagicNumber",
+      "path": "src/main/java/probe/Numbers.java",
+      "line": 10
+    },
+    {
+      "tool": "checkstyle",
+      "rule": "MagicNumber",
+      "path": "src/main/java/probe/Numbers.java",
+      "line": 7
+    },
+    {
+      "tool": "checkstyle",
+      "rule": "MagicNumber",
+      "path": "src/main/java/probe/Numbers.java",
+      "line": 9
+    },
+    {
+      "tool": "checkstyle",
+      "rule": "VisibilityModifier",
+      "path": "src/main/java/probe/P2Inner.java",
+      "line": 6
     },
     {
       "tool": "checkstyle",
@@ -148,15 +215,81 @@
     },
     {
       "tool": "checkstyle",
+      "rule": "MagicNumber",
+      "path": "src/main/java/probe/P2Strings.java",
+      "line": 26
+    },
+    {
+      "tool": "checkstyle",
+      "rule": "VisibilityModifier",
+      "path": "src/main/java/probe/P3Fields.java",
+      "line": 5
+    },
+    {
+      "tool": "checkstyle",
+      "rule": "VisibilityModifier",
+      "path": "src/main/java/probe/P3Fields.java",
+      "line": 7
+    },
+    {
+      "tool": "checkstyle",
+      "rule": "MagicNumber",
+      "path": "src/main/java/probe/Skip.java",
+      "line": 8
+    },
+    {
+      "tool": "checkstyle",
+      "rule": "MagicNumber",
+      "path": "src/main/java/probe/StaticCtor.java",
+      "line": 7
+    },
+    {
+      "tool": "checkstyle",
+      "rule": "MagicNumber",
+      "path": "src/main/java/probe/Types.java",
+      "line": 7
+    },
+    {
+      "tool": "checkstyle",
+      "rule": "MagicNumber",
+      "path": "src/main/java/probe/Types.java",
+      "line": 7
+    },
+    {
+      "tool": "checkstyle",
       "rule": "ArrayTypeStyle",
       "path": "src/main/java/probe/V1Style.java",
       "line": 10
     },
     {
       "tool": "checkstyle",
+      "rule": "VisibilityModifier",
+      "path": "src/main/java/probe/V1Style.java",
+      "line": 10
+    },
+    {
+      "tool": "checkstyle",
+      "rule": "MagicNumber",
+      "path": "src/main/java/probe/V1Style.java",
+      "line": 118
+    },
+    {
+      "tool": "checkstyle",
       "rule": "OneTopLevelClass",
       "path": "src/main/java/probe/V1Style.java",
       "line": 123
+    },
+    {
+      "tool": "checkstyle",
+      "rule": "MagicNumber",
+      "path": "src/main/java/probe/V1Style.java",
+      "line": 13
+    },
+    {
+      "tool": "checkstyle",
+      "rule": "MagicNumber",
+      "path": "src/main/java/probe/V1Style.java",
+      "line": 33
     },
     {
       "tool": "checkstyle",
@@ -211,6 +344,18 @@
       "rule": "JavadocMethod",
       "path": "src/main/java/probe/V2Docs.java",
       "line": 8
+    },
+    {
+      "tool": "checkstyle",
+      "rule": "MagicNumber",
+      "path": "src/main/java/probe/V3Unused.java",
+      "line": 5
+    },
+    {
+      "tool": "checkstyle",
+      "rule": "MagicNumber",
+      "path": "src/main/java/probe/V3Unused.java",
+      "line": 6
     },
     {
       "tool": "errorprone",
@@ -655,6 +800,48 @@
       "rule": "ForEachIterable",
       "path": "src/main/java/probe/G9Loop.java",
       "line": 9
+    },
+    {
+      "tool": "errorprone",
+      "rule": "StreamResourceLeak",
+      "path": "src/main/java/probe/GuardOverlaps.java",
+      "line": 15
+    },
+    {
+      "tool": "errorprone",
+      "rule": "PatternMatchingInstanceof",
+      "path": "src/main/java/probe/GuardOverlaps.java",
+      "line": 19
+    },
+    {
+      "tool": "errorprone",
+      "rule": "ThrowSpecificExceptions",
+      "path": "src/main/java/probe/GuardOverlaps.java",
+      "line": 26
+    },
+    {
+      "tool": "errorprone",
+      "rule": "JavaUtilDate",
+      "path": "src/main/java/probe/GuardOverlaps.java",
+      "line": 30
+    },
+    {
+      "tool": "errorprone",
+      "rule": "JavaTimeDefaultTimeZone",
+      "path": "src/main/java/probe/GuardOverlaps.java",
+      "line": 34
+    },
+    {
+      "tool": "errorprone",
+      "rule": "PreferJavaTimeOverload",
+      "path": "src/main/java/probe/GuardOverlaps.java",
+      "line": 38
+    },
+    {
+      "tool": "errorprone",
+      "rule": "BanSerializableRead",
+      "path": "src/main/java/probe/GuardOverlaps.java",
+      "line": 42
     },
     {
       "tool": "errorprone",
@@ -1335,6 +1522,246 @@
       "line": 8
     },
     {
+      "tool": "forbiddenapis",
+      "rule": "legacy-date-time",
+      "path": "src/main/java/probe/C1Arrays.java",
+      "line": 20
+    },
+    {
+      "tool": "forbiddenapis",
+      "rule": "legacy-date-time",
+      "path": "src/main/java/probe/C1Arrays.java",
+      "line": 24
+    },
+    {
+      "tool": "forbiddenapis",
+      "rule": "legacy-date-time",
+      "path": "src/main/java/probe/C1Arrays.java",
+      "line": 8
+    },
+    {
+      "tool": "forbiddenapis",
+      "rule": "thread-sleep",
+      "path": "src/main/java/probe/C4Switches.java",
+      "line": 33
+    },
+    {
+      "tool": "forbiddenapis",
+      "rule": "thread-sleep",
+      "path": "src/main/java/probe/C7Names.java",
+      "line": 10
+    },
+    {
+      "tool": "forbiddenapis",
+      "rule": "new-thread",
+      "path": "src/main/java/probe/G12Worker.java",
+      "line": 8
+    },
+    {
+      "tool": "forbiddenapis",
+      "rule": "legacy-date-time",
+      "path": "src/main/java/probe/GuardOverlaps.java",
+      "line": 29
+    },
+    {
+      "tool": "forbiddenapis",
+      "rule": "legacy-date-time",
+      "path": "src/main/java/probe/GuardOverlaps.java",
+      "line": 30
+    },
+    {
+      "tool": "forbiddenapis",
+      "rule": "clock-now",
+      "path": "src/main/java/probe/GuardOverlaps.java",
+      "line": 34
+    },
+    {
+      "tool": "forbiddenapis",
+      "rule": "thread-sleep",
+      "path": "src/main/java/probe/GuardOverlaps.java",
+      "line": 38
+    },
+    {
+      "tool": "forbiddenapis",
+      "rule": "java-deserialization",
+      "path": "src/main/java/probe/GuardOverlaps.java",
+      "line": 42
+    },
+    {
+      "tool": "forbiddenapis",
+      "rule": "legacy-date-time",
+      "path": "src/main/java/probe/GuardOverlaps.java",
+      "line": 45
+    },
+    {
+      "tool": "forbiddenapis",
+      "rule": "legacy-date-time",
+      "path": "src/main/java/probe/GuardOverlaps.java",
+      "line": 46
+    },
+    {
+      "tool": "forbiddenapis",
+      "rule": "legacy-date-time",
+      "path": "src/main/java/probe/GuardOverlaps.java",
+      "line": 49
+    },
+    {
+      "tool": "forbiddenapis",
+      "rule": "legacy-date-time",
+      "path": "src/main/java/probe/GuardOverlaps.java",
+      "line": 50
+    },
+    {
+      "tool": "forbiddenapis",
+      "rule": "legacy-date-time",
+      "path": "src/main/java/probe/Locales.java",
+      "line": 9
+    },
+    {
+      "tool": "forbiddenapis",
+      "rule": "legacy-date-time",
+      "path": "src/main/java/probe/Locales.java",
+      "line": 9
+    },
+    {
+      "tool": "forbiddenapis",
+      "rule": "legacy-date-time",
+      "path": "src/main/java/probe/Locks.java",
+      "line": 11
+    },
+    {
+      "tool": "forbiddenapis",
+      "rule": "legacy-date-time",
+      "path": "src/main/java/probe/Locks.java",
+      "line": 17
+    },
+    {
+      "tool": "forbiddenapis",
+      "rule": "legacy-date-time",
+      "path": "src/main/java/probe/P2Inner.java",
+      "line": 10
+    },
+    {
+      "tool": "forbiddenapis",
+      "rule": "legacy-date-time",
+      "path": "src/main/java/probe/P2Inner.java",
+      "line": 7
+    },
+    {
+      "tool": "forbiddenapis",
+      "rule": "thread-sleep",
+      "path": "src/main/java/probe/P2Strings.java",
+      "line": 26
+    },
+    {
+      "tool": "forbiddenapis",
+      "rule": "legacy-date-time",
+      "path": "src/main/java/probe/Shared.java",
+      "line": 10
+    },
+    {
+      "tool": "forbiddenapis",
+      "rule": "legacy-date-time",
+      "path": "src/main/java/probe/Shared.java",
+      "line": 11
+    },
+    {
+      "tool": "forbiddenapis",
+      "rule": "legacy-date-time",
+      "path": "src/main/java/probe/Shared.java",
+      "line": 15
+    },
+    {
+      "tool": "forbiddenapis",
+      "rule": "legacy-date-time",
+      "path": "src/main/java/probe/Shared.java",
+      "line": 16
+    },
+    {
+      "tool": "forbiddenapis",
+      "rule": "legacy-date-time",
+      "path": "src/main/java/probe/Shared.java",
+      "line": 20
+    },
+    {
+      "tool": "forbiddenapis",
+      "rule": "legacy-date-time",
+      "path": "src/main/java/probe/Shared.java",
+      "line": 23
+    },
+    {
+      "tool": "forbiddenapis",
+      "rule": "legacy-date-time",
+      "path": "src/main/java/probe/Shared.java",
+      "line": 24
+    },
+    {
+      "tool": "forbiddenapis",
+      "rule": "legacy-date-time",
+      "path": "src/main/java/probe/Shared.java",
+      "line": 27
+    },
+    {
+      "tool": "forbiddenapis",
+      "rule": "legacy-date-time",
+      "path": "src/main/java/probe/Shared.java",
+      "line": 28
+    },
+    {
+      "tool": "forbiddenapis",
+      "rule": "legacy-date-time",
+      "path": "src/main/java/probe/Shared.java",
+      "line": 28
+    },
+    {
+      "tool": "forbiddenapis",
+      "rule": "legacy-date-time",
+      "path": "src/main/java/probe/Shared.java",
+      "line": 32
+    },
+    {
+      "tool": "forbiddenapis",
+      "rule": "legacy-date-time",
+      "path": "src/main/java/probe/Shared.java",
+      "line": 32
+    },
+    {
+      "tool": "forbiddenapis",
+      "rule": "legacy-date-time",
+      "path": "src/main/java/probe/Shared.java",
+      "line": 9
+    },
+    {
+      "tool": "forbiddenapis",
+      "rule": "legacy-date-time",
+      "path": "src/main/java/probe/Stamps.java",
+      "line": 10
+    },
+    {
+      "tool": "forbiddenapis",
+      "rule": "legacy-date-time",
+      "path": "src/main/java/probe/Stamps.java",
+      "line": 11
+    },
+    {
+      "tool": "forbiddenapis",
+      "rule": "legacy-date-time",
+      "path": "src/main/java/probe/Stamps.java",
+      "line": 8
+    },
+    {
+      "tool": "forbiddenapis",
+      "rule": "thread-sleep",
+      "path": "src/main/java/probe/V1Style.java",
+      "line": 111
+    },
+    {
+      "tool": "forbiddenapis",
+      "rule": "thread-sleep",
+      "path": "src/main/java/probe/V1Style.java",
+      "line": 46
+    },
+    {
       "tool": "pmd",
       "rule": "UseVarargs",
       "path": "src/main/java/probe/Arrays1.java",
@@ -1427,6 +1854,12 @@
     {
       "tool": "pmd",
       "rule": "EmptyCatchBlock",
+      "path": "src/main/java/probe/C4Switches.java",
+      "line": 34
+    },
+    {
+      "tool": "pmd",
+      "rule": "SwallowedInterruptedException",
       "path": "src/main/java/probe/C4Switches.java",
       "line": 34
     },
@@ -1555,6 +1988,36 @@
       "rule": "ForLoopCanBeForeach",
       "path": "src/main/java/probe/G9Loop.java",
       "line": 9
+    },
+    {
+      "tool": "pmd",
+      "rule": "StreamResourceNotClosed",
+      "path": "src/main/java/probe/GuardOverlaps.java",
+      "line": 15
+    },
+    {
+      "tool": "pmd",
+      "rule": "InstanceofThenCast",
+      "path": "src/main/java/probe/GuardOverlaps.java",
+      "line": 19
+    },
+    {
+      "tool": "pmd",
+      "rule": "AvoidThrowingRawExceptionTypes",
+      "path": "src/main/java/probe/GuardOverlaps.java",
+      "line": 26
+    },
+    {
+      "tool": "pmd",
+      "rule": "DefaultTimeZone",
+      "path": "src/main/java/probe/GuardOverlaps.java",
+      "line": 46
+    },
+    {
+      "tool": "pmd",
+      "rule": "LegacyCalendarApi",
+      "path": "src/main/java/probe/GuardOverlaps.java",
+      "line": 50
     },
     {
       "tool": "pmd",
@@ -1948,6 +2411,12 @@
     },
     {
       "tool": "pmd",
+      "rule": "SwallowedInterruptedException",
+      "path": "src/main/java/probe/V1Style.java",
+      "line": 47
+    },
+    {
+      "tool": "pmd",
       "rule": "AvoidPrintStackTrace",
       "path": "src/main/java/probe/V1Style.java",
       "line": 48
@@ -1981,6 +2450,18 @@
       "rule": "MissingOverride",
       "path": "src/main/java/probe/V1Style.java",
       "line": 80
+    },
+    {
+      "tool": "pmd",
+      "rule": "OptionalAsFieldOrParameter",
+      "path": "src/main/java/probe/V1Style.java",
+      "line": 84
+    },
+    {
+      "tool": "pmd",
+      "rule": "OptionalAsFieldOrParameter",
+      "path": "src/main/java/probe/V1Style.java",
+      "line": 84
     },
     {
       "tool": "pmd",
