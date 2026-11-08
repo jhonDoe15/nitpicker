@@ -30,7 +30,7 @@ export function springArchFindings(context) {
 
 function archunitReportText(archunitRoot, name) {
   const file = path.resolve(archunitRoot, name);
-  if (path.dirname(file) !== path.resolve(archunitRoot)) {
+  if (!file.startsWith(path.resolve(archunitRoot) + path.sep)) {
     throw new Error(`ArchUnit report ${name} is outside ${archunitRoot}.`);
   }
   return readFileSync(file, 'utf8');
