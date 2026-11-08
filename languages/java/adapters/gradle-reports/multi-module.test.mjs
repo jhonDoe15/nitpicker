@@ -279,6 +279,16 @@ describe('a Gradle build with several projects', () => {
     expect(existsSync(path.join(root, 'build/nitpicker'))).toBe(false);
   });
 
+  it('hands Gradle the node that runs nitpicker, so the init script never depends on the daemon PATH', () => {
+    const root = project({});
+
+    collect(root);
+
+    expect(JSON.parse(readFileSync(path.join(root, 'build/gradle-args.json'), 'utf8'))).toContain(
+      `-Pnitpicker.node=${process.execPath}`,
+    );
+  });
+
   it('names the project whose reports are missing', () => {
     const base = project({
       'modules.json': JSON.stringify([

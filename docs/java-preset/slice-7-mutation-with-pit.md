@@ -8,7 +8,7 @@ Part of the [Java preset guide](../java-preset.md).
   `org.example` targets `org.example.*`. PIT refuses `org.*` because it matches PIT's own classes,
   so classes directly in `org` are named one by one), against the project's own tests. The only
   profile can produce enforceable findings.
-- **What runs.** `nitpickerPit` (`languages/java/gradle/tasks/pit-task.gradle`) runs the pinned `pitest-command-line` (1.17.4) with the test
+- **What runs.** `nitpickerPit` (`languages/java/gradle/nitpicker.init.gradle`) runs the pinned `pitest-command-line` (1.17.4) with the test
   plugins the project's framework needs (`pitest-junit5-plugin` 1.2.1, `pitest-testng-plugin`
   1.0.0, both pinned, added on the conditions below), nitpicker's mutator list (see
   [Mutators](../mutation-testing.md#java-and-kotlin-mutators)), XML output, two threads, to

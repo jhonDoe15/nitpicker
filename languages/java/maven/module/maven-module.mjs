@@ -10,7 +10,6 @@ import { moduleName } from '../../builds/test-failures.mjs';
 import { runErrorProne } from '../errorprone/maven-errorprone.mjs';
 import { analyzeKotlinModule } from '../kotlin/kotlin-module.mjs';
 import { relativeTo } from './module-paths.mjs';
-import { runJdeps as runGuardJdeps } from '../coupling/maven-jdeps.mjs';
 import { runGuards } from '../guards/maven-guards.mjs';
 import { runJdepsMetrics, runStructure } from '../metrics/maven-metrics.mjs';
 
@@ -93,7 +92,6 @@ function analyzeSources(options) {
   runSourceTools({ ...options, kotlin: { ...kotlin, spring: options.spring } });
   runStructure(module, reportDir, options.spawn);
   runJdepsMetrics(module, reportDir, options.spawn);
-  runGuardJdeps(module, reportDir, options.spawn);
   runGuards({ ...options, module, reportDir }, options.project);
   runArchitecture({ ...options, module: kotlin.coverageModule });
   return kotlin;
