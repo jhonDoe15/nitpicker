@@ -536,6 +536,25 @@ Part of the [TypeScript strict preset guide](../typescript-strict-preset.md).
   fallback of `undefined` or `null`, a condition (`if (a || b)`), and a value that is not a
   parameter. In the JavaScript preset the type comes from JSDoc; without JSDoc types the rule sees
   nothing.
+- `nitpicker/strict-boolean-expressions` (type-aware, wraps typescript-eslint's
+  `strict-boolean-expressions`; production and test files): a number tested for truthiness
+  (`if (count)`, `retry ? a : b`, `!id`, `index && ...`, `cells[0] || ''`, `end - start ? a : b`, a
+  `filter` callback that returns a number), where `0` reads as false or missing. Write the
+  comparison: `count > 0`, `index !== -1`, `items.length > 0`, `id !== undefined` for an optional
+  number, and `value ?? fallback` for a default. A union that mixes a number with another type
+  (`string | number`) is reported too. Strings, objects, `any`/`unknown` and nullable booleans and
+  strings stay allowed (`allowString`, `allowNullableString`, `allowNullableObject`,
+  `allowNullableBoolean`, `allowAny`): a nullable boolean is only wrong when `false` carries a
+  meaning of its own, so it is left out for now rather than reported everywhere. Not reported: a
+  link of a sort comparator chain (`a.rank - b.rank || a.name.localeCompare(b.name)`, a `compare...`
+  call), when the chain ends in another comparison rather than a literal; a bit test
+  (`flags & MASK`); an operand whose `||` chain falls back to `0` (`count || 0`, `(ready && count) ||
+0`), which gives the same result as `?? 0`; and a condition that is always true or always false,
+  which `@typescript-eslint/no-unnecessary-condition` reports. A number on an optional parameter
+  with a non-zero `||` default is also reported by `nitpicker/no-falsy-default`; the fix is the
+  same. When `0` must take the same path as a missing value, add an exception for the rule. In the
+  JavaScript preset the type comes from JSDoc and inference (`checkJs`); an untyped value is `any`
+  and is not reported.
 - `nitpicker/no-shared-stateful-regex`: a regex with the `g` or `y` flag keeps `lastIndex` between
   calls, so `test()` and `exec()` on one that is reused start where the previous call stopped and
   return order-dependent results. Reported: `test()` or `exec()` (and, for a `y` regex without `g`,
