@@ -46,6 +46,12 @@ Part of the [nitpicker-kotlin](../SKILL.md) skill. Write these forms from the st
 - A data class, a `@ConfigurationProperties` class, the public properties of any class and the
   defaulted parameters of a public function have `tags` or `tag`, not both
   (`pmd/SingularAndPluralMember`); one item is a one-element list.
+- Do not update a `var` property of the class or file from a value read before a suspend call of
+  the same function (`total += repository.fetch()`, or `val current = total` before the call and
+  `total = current + delta` after it): call the suspend function into a local first and then
+  update the property, or hold one shared `Mutex` (a property, not a local) around the whole
+  read-modify-write; a `launch` inside the lock does not hold it
+  (`pmd/NonAtomicUpdateAcrossSuspension`).
 - The lambda passed to `computeIfAbsent`, `compute`, `computeIfPresent`, `merge`, or `getOrPut`
   on a `ConcurrentMap`, never changes the same map, not even from a callback it starts
   (`pmd/RecursiveMapUpdate`). Attach the cleanup to the result:

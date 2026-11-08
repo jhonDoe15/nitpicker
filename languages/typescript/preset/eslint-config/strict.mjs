@@ -35,6 +35,7 @@ import {
   restrictedAdapterSyntax,
   strictAdaptersTypedConfig,
 } from './strict-adapters.mjs';
+import { atomicUpdateConfigFor } from './concurrency/atomic-updates.mjs';
 import { strictTestConfigFor, testAreaGlobsFor } from './strict-tests.mjs';
 import { truthinessRules } from './truthiness/truthiness-rules.mjs';
 import { configFileGlobsFor, productionPolicyConfigFor } from './policy/production-policy.mjs';
@@ -229,6 +230,7 @@ export function strictPresetConfig(layout, parserOptions, options = {}) {
       plugins: { nitpicker: nitpickerRules },
       rules: strictProductionRules,
     },
+    atomicUpdateConfigFor(layout),
     ...strictTestConfigFor(layout),
   ];
 }
