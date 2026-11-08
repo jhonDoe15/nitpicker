@@ -142,4 +142,3 @@ export function parseArguments(arguments_) {
   return options;
 }
 
-export { USAGE_TEXT } from '../help/usage-text.mjs';

@@ -86,6 +86,12 @@ export function runCli(options = {}) {
   }
 }
 
+const HELP_ALIAS = '-h';
+
+function helpFlag(argument) {
+  return argument === HELP_ALIAS ? '--help' : argument;
+}
+
 function isTerminal(stream) {
   return stream.isTTY === true;
 }
@@ -95,7 +101,7 @@ function withCliDefaults(options) {
   const progress = options.progress ?? stderr;
   return {
     ...options,
-    arguments_: options.arguments_ ?? process.argv.slice(2),
+    arguments_: (options.arguments_ ?? process.argv.slice(2)).map(helpFlag),
     environment: options.environment ?? process.env,
     interactive:
       options.interactive ?? [process.stdin, options.stdout ?? process.stdout].every(isTerminal),
@@ -113,7 +119,7 @@ function runCommand(cli) {
     return SUBCOMMANDS[name](cli, rest);
   }
   const options = parseArguments(cli.arguments_);
-  return printedInformation(options, cli.stdout) ? 0 : runConfigured({ ...cli, options });
+  return printedInformation(options, cli) ? 0 : runConfigured({ ...cli, options });
 }
 
 function writePresetHint(stderr, config, projectRoot) {

@@ -15,13 +15,14 @@ import {
   FLAGS,
   INIT_FLAGS,
   INIT_USAGE_TEXT,
-  USAGE_TEXT,
 } from './usage-text.mjs';
+import { docsUrl } from '../../shared/messages/docs-url.mjs';
 
 const { temporaryRoot } = useGitFixtures();
 const MANIFEST = new URL('../../package.json', import.meta.url);
 const PAIRED = { '--shard-count': ['--shard-index', '0'], '--shard-index': ['--shard-count', '2'] };
-const EXPECTED_USAGE = [
+const USAGE_LINK = docsUrl('docs/usage.md');
+const EXPECTED_USAGE_HEAD = [
   'Usage: nitpicker [<path>...] [--base <ref>] [--output <dir>] [--all | --fix] [--analyzer <name>]...',
   '                 [--rule <substring>]... [--details] [--shard-count <n> --shard-index <i>]',
   '                 [--defer-exit] [--no-cache] [--accept-policy-change=<digest>] [--help] [--version]',
@@ -32,7 +33,7 @@ const EXPECTED_USAGE = [
   '       nitpicker explain <tool/rule>...',
   '       nitpicker rules [--preset <name>] [--tool <name>]',
   '',
-  'Commands:',
+  'Commands (nitpicker <command> --help lists its options):',
   '  nitpicker                Compare your changes with the merge base and fail on the problems they add.',
   '  nitpicker init           Detect the project and set it up: config, install command, agent skill.',
   '  nitpicker aggregate      Combine the reports of sharded runs into one result.',
@@ -57,33 +58,46 @@ const EXPECTED_USAGE = [
   '  --help                           Print this help.',
   '  --version                        Print the installed nitpicker version.',
   '',
-  'Options of nitpicker init:',
-  '  --agents-md  Append the agent guidance snippet to AGENTS.md (CLAUDE.md if only that exists).',
-  '  --ci github  Write a GitHub Actions workflow that runs nitpicker on pull requests.',
-  '  --help       Print this help.',
-  '',
-  'Options of nitpicker aggregate:',
-  '  --input-root <dir>   Read the shard reports from <dir>/0 to <dir>/n-1.',
-  '  --shard-count <n>    The number of shards the run was split into.',
-  '  --output <dir>       Write the combined reports here (default reports/quality/diff/combined).',
-  '  --policy-root <dir>  Read the analyzer configuration from this folder, not the head commit.',
-  '  --details            Print every new and held finding with its full message.',
-  '  --help               Print this help.',
-  '',
-  'Options of nitpicker cache publish:',
-  '  --analyzer <name>  Publish only this analyzer (repeatable).',
-  '  --shard-count <n>  Split the analyzers over n jobs (with --shard-index).',
-  '  --shard-index <i>  Publish shard i of the split (0 to n-1).',
-  '  --help             Print this help.',
-  '',
-  'Paths (files or folders, relative to the current folder) limit the findings that are shown',
-  'and gate the run; the analysis still covers the whole project. Examples:',
-  '  nitpicker src/orders/order.ts    gate your change to one file',
-  '  nitpicker --all src/orders       show every finding in one folder',
-  '',
-  'Start a new project with nitpicker init. Reference: https://github.com/jhonDoe15/nitpicker/blob/main/docs/usage.md',
-  '',
-].join('\n');
+];
+
+function exampleLines(analyzer) {
+  const rows = [
+    ['nitpicker', 'check your change against the detected base'],
+    ['nitpicker --base origin/release', 'check it against a given base'],
+    ['nitpicker --fix', 'apply the fixes nitpicker knows, then check'],
+    [`nitpicker --analyzer ${analyzer}`, 'iterate on one analyzer; finish with a plain nitpicker'],
+    ['nitpicker src/orders/order.ts', 'gate your change to one file'],
+    ['nitpicker --all src/orders', 'show every finding in one folder'],
+  ];
+  const width = Math.max(...rows.map(([command]) => command.length));
+  return rows.map(([command, text]) => `  ${command.padEnd(width)}  ${text}`);
+}
+
+function expectedUsage(analyzerLines, analyzer) {
+  return [
+    ...EXPECTED_USAGE_HEAD,
+    ...analyzerLines,
+    '',
+    'Exit codes: 0 pass; 1 new findings or failing tests; 2 tool error or invalid input (not a pass).',
+    'Reports: reports/quality/diff/ (--all: reports/quality/snapshot/, or --output <dir>). Read',
+    'new-findings.json (--all: findings.json) first, then report.txt.',
+    '',
+    'Examples:',
+    ...exampleLines(analyzer),
+    'Paths limit the findings shown and gate the run; the analysis still covers the whole project.',
+    '',
+    `Start a new project with nitpicker init. Reference: ${USAGE_LINK}`,
+    '',
+  ].join('\n');
+}
+
+const TYPESCRIPT_ANALYZERS = [
+  'Analyzers of the typescript preset (for --analyzer):',
+  '  eslint-lint, eslint-errors, eslint-logging, eslint-module-effects, entry-points, prettier-format,',
+  '  typescript-typecheck, dependency-architecture, coding-standards, coupling, test-runtime,',
+  '  structure, duplicates, dead-code, coverage, test-console, crap, mutation, repository-hygiene',
+];
+const EXPECTED_USAGE = expectedUsage(TYPESCRIPT_ANALYZERS, 'eslint-lint');
 const EXPECTED_INIT_USAGE = [
   'Usage: nitpicker init [--agents-md] [--ci github] [--help]',
   '',
@@ -129,15 +143,26 @@ const EXPECTED_CACHE_PUBLISH_USAGE = [
   '',
 ].join('\n');
 
-function run(...cliArguments) {
+function runIn(currentProjectRoot, ...cliArguments) {
   let stdoutText = '';
   let stderrText = '';
   const exitCode = runCli({
     arguments_: cliArguments,
+    currentProjectRoot,
     stdout: { write: (text) => (stdoutText += text) },
     stderr: { write: (text) => (stderrText += text) },
   });
   return { exitCode, stdoutText, stderrText };
+}
+
+function projectWith(config) {
+  const root = temporaryRoot('nitpicker-help-');
+  writeFiles(root, config === undefined ? {} : { 'nitpicker.config.json': config });
+  return root;
+}
+
+function run(...cliArguments) {
+  return runIn(projectWith(), ...cliArguments);
 }
 
 function flagNames(rows) {
@@ -154,9 +179,60 @@ function sampleArguments(flag) {
 }
 
 describe('nitpicker --help', () => {
-  it('prints the usage of every command, every command and every flag, and exits 0', () => {
+  it('prints the usage, commands, flags, analyzers, exit codes, reports and examples, and exits 0', () => {
     expect(run('--help')).toEqual({ exitCode: 0, stdoutText: EXPECTED_USAGE, stderrText: '' });
-    expect(USAGE_TEXT).toBe(EXPECTED_USAGE);
+  });
+
+  it('takes -h as --help, for every command', () => {
+    expect(run('-h')).toEqual(run('--help'));
+    for (const command of [
+      ['init'],
+      ['aggregate'],
+      ['cache', 'publish'],
+      ['base'],
+      ['explain'],
+      ['rules'],
+    ]) {
+      expect(run(...command, '-h')).toEqual(run(...command, '--help'));
+      expect(run(...command, '-h').exitCode).toBe(0);
+    }
+  });
+
+  it('lists the analyzers of the preset the config names, and uses one in the example', () => {
+    const root = projectWith('{ "preset": "java" }');
+    const java = ['Analyzers of the java preset (for --analyzer):', '  java, repository-hygiene'];
+
+    expect(runIn(root, '--help').stdoutText).toBe(expectedUsage(java, 'java'));
+  });
+
+  it('leaves out disabled analyzers and lists custom ones', () => {
+    const root = projectWith(
+      JSON.stringify({
+        preset: 'go',
+        disable: ['repository-hygiene'],
+        analyzers: [{ name: 'house-rules', command: './scripts/house-rules' }],
+      }),
+    );
+    const go = ['Analyzers of the go preset (for --analyzer):', '  go, house-rules'];
+
+    expect(runIn(root, '--help').stdoutText).toBe(expectedUsage(go, 'go'));
+  });
+
+  it('still prints the help when the config cannot be read, and says why the analyzers are missing', () => {
+    const root = projectWith('{ "preset": ');
+    const { exitCode, stdoutText } = runIn(root, '--help');
+
+    const analyzerLine = stdoutText.split('\n').find((line) => line.startsWith('Analyzers'));
+
+    expect(exitCode).toBe(0);
+    expect(analyzerLine).toMatch(
+      /^Analyzers: not listed, the config could not be read: nitpicker\.config\.json is not valid JSON: ./u,
+    );
+    expect(stdoutText).toBe(expectedUsage([analyzerLine], '<name>'));
+  });
+
+  it('links the usage page of the docs the package version ships', () => {
+    expect(USAGE_LINK).toMatch(/\/blob\/main\/docs\/usage\.md$/u);
   });
 
   it('lists every command with its description', () => {
@@ -244,5 +320,6 @@ describe('nitpicker --version', () => {
   it('is accepted next to other flags and loses to --help', () => {
     expect(run('--all', '--version').stdoutText).toBe(`${packageVersion()}\n`);
     expect(run('--help', '--version').stdoutText).toBe(EXPECTED_USAGE);
+    expect(run('-h', '--version').stdoutText).toBe(EXPECTED_USAGE);
   });
 });

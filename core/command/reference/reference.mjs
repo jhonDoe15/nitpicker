@@ -1,6 +1,4 @@
-import { existsSync, realpathSync } from 'node:fs';
-import path from 'node:path';
-import { CONFIG_FILE_NAME, configError } from '../../../shared/config.mjs';
+import { configError } from '../../../shared/config.mjs';
 import { PRESET_TITLES, PRESETS } from '../../../shared/reference/entry.mjs';
 import {
   entryFacts,
@@ -16,14 +14,13 @@ import {
   readReferenceEntries,
   referenceUrl,
 } from '../../../shared/reference/store.mjs';
-import { applyDisable, readConfigFile } from '../../configuration/config.mjs';
+import { applyDisable } from '../../configuration/config.mjs';
 import { presetAnalyzers } from '../../configuration/preset-analyzers.mjs';
-import { chainOf } from '../../../shared/traversal.mjs';
 import { docsRootUrl } from '../../../shared/messages/docs-url.mjs';
+import { DEFAULT_PRESET, nearestConfig } from './project-config.mjs';
 
 const EXPLAIN_USAGE = 'Usage: nitpicker explain <tool/rule>...\n';
 const RULES_USAGE = `Usage: nitpicker rules [--preset <${PRESETS.join('|')}>] [--tool <name>]\n`;
-const DEFAULT_PRESET = 'typescript';
 const FIRST_SENTENCE = /^.*?[.!?](?=\s|$)/su;
 const INDENT = '  ';
 const CHECKS_PAGE = 'checks';
@@ -134,14 +131,6 @@ function readRulesOptions(commandArguments) {
   return { options };
 }
 
-function configRootFrom(start) {
-  const directories = chainOf(start, (directory) => {
-    const parent = path.dirname(directory);
-    return parent === directory ? undefined : parent;
-  });
-  return directories.find((directory) => existsSync(path.join(directory, CONFIG_FILE_NAME)));
-}
-
 function enabledAnalyzers(preset, config) {
   const analyzers = presetAnalyzers({ ...config, preset });
   const configured = config.preset === preset ? config : {};
@@ -167,8 +156,7 @@ function listedEntries(preset, config, tool) {
 }
 
 function rulesPreset(options, currentProjectRoot) {
-  const configRoot = configRootFrom(realpathSync(currentProjectRoot ?? process.cwd()));
-  const config = configRoot === undefined ? {} : readConfigFile(configRoot);
+  const config = nearestConfig(currentProjectRoot);
   const preset = options.preset ?? config.preset ?? DEFAULT_PRESET;
   if (!PRESETS.includes(preset)) {
     throw configError(`unknown preset "${preset}". Presets: ${PRESETS.join(', ')}`);
