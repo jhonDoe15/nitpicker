@@ -203,6 +203,10 @@
     "fix": "Open the resource in a try-with-resources header so it is closed on every path, including exceptions.",
     "mayBeIntended": true
   },
+  "CollapsibleIfStatements": {
+    "fix": "Nesting stays when the outer if has an else or other statements.",
+    "mayBeIntended": false
+  },
   "CompareObjectsWithEquals": {
     "fix": "Compare objects with Objects.equals(a, b) or a.equals(b); use == only for primitives, enums and identity checks on purpose.",
     "mayBeIntended": true
@@ -214,6 +218,10 @@
   "ConfusingArgumentToVarargsMethod": {
     "fix": "Pass an explicit array of the right type (new Object[] {x}) or cast the null so the intended varargs call is made.",
     "mayBeIntended": false
+  },
+  "ConfusingTernary": {
+    "fix": "An if (a != b) with an else, and an else-if chain, are allowed.",
+    "mayBeIntended": true
   },
   "ConsecutiveAppendsShouldReuse": {
     "fix": "Chain the appends on the same builder in one statement: sb.append(a).append(b).",
@@ -415,6 +423,10 @@
     "fix": "Put the literal first: \"yes\".equals(value), so a null value cannot throw.",
     "mayBeIntended": false
   },
+  "LogicInversion": {
+    "fix": "!(a <= b) is a > b, and !(a != b) is a == b. Floating-point order comparisons are not reported: NaN makes !(a < b) and a >= b differ.",
+    "mayBeIntended": false
+  },
   "LooseCoupling": {
     "fix": "Declare the type as the interface (List, Map, Set, Deque), not ArrayList, HashMap or LinkedList.",
     "mayBeIntended": false
@@ -533,6 +545,22 @@
   },
   "SimplifiableTestAssertion": {
     "fix": "Use the assertion the message names, such as assertEquals, assertNull or assertFalse, in place of assertTrue on a comparison or negation.",
+    "mayBeIntended": false
+  },
+  "SimplifiedTernary": {
+    "fix": "c ? true : false is c, and c ? false : true is !c.",
+    "mayBeIntended": false
+  },
+  "SimplifyBooleanExpressions": {
+    "fix": "For a Boolean that may be null, write Boolean.TRUE.equals(x) instead of x == true.",
+    "mayBeIntended": false
+  },
+  "SimplifyBooleanReturns": {
+    "fix": "The other one-literal pairs: false then x is !c && x, x then true is !c || x, x then false is c && x; swapped literals are return !c;.",
+    "mayBeIntended": true
+  },
+  "SimplifyConditional": {
+    "fix": "To use the cast value, write if (x instanceof Foo foo) and use foo.",
     "mayBeIntended": false
   },
   "SingleMethodSingleton": {

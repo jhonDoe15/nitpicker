@@ -80,6 +80,7 @@ describe.skipIf(!enabled)('Java preset on Maven builds', () => {
     const tools = new Set(fromMaven.map((finding) => finding.tool));
 
     expect(comparable(fromMaven)).toEqual(comparable(fromGradle));
+    expect(fromMaven.some(({ rule }) => rule === 'CollapsibleIfStatements')).toBe(true);
     expect([...tools].sort()).toEqual([
       'archunit',
       'checkstyle',
