@@ -32,6 +32,16 @@ describe('regexDefects', () => {
       'regexp/no-dupe-characters-character-class',
     ],
     [
+      'a named options argument',
+      'val word = Regex("[a-zA-Z]", options = setOf(RegexOption.IGNORE_CASE))',
+      'regexp/no-dupe-characters-character-class',
+    ],
+    [
+      'Pattern.compile with flags 0',
+      'val word = Pattern.compile("a|b|a", 0)',
+      'regexp/no-dupe-disjunctions',
+    ],
+    [
       'an inline case-insensitive flag',
       'val word = Regex("(?i)[a-zA-Z]")',
       'regexp/no-dupe-characters-character-class',

@@ -1,5 +1,8 @@
 import { RULES_TOOL } from '../hints/tool.mjs';
-import { patternDefects } from '../../../../core/tooling/regex-patterns/pattern-defects.mjs';
+import {
+  REGEX_DIALECTS,
+  patternDefects,
+} from '../../../../core/tooling/regex-patterns/pattern-defects.mjs';
 
 const SITE_RULE = 'regex-pattern';
 const REGEX_PART_RULE = 'regex-part-defect';
@@ -8,13 +11,16 @@ const RULES = { part: REGEX_PART_RULE, backtracking: REGEX_BACKTRACKING_RULE };
 
 function defectEntries(entry) {
   const { pattern, flags } = entry.data;
-  return (patternDefects(pattern, { flags }).defects ?? []).map((defect) => ({
-    rule: RULES[defect.kind],
-    path: entry.path,
-    subject: `${defect.rule} ${pattern}`,
-    line: entry.line,
-    data: { description: defect.description, hint: defect.hint },
-  }));
+  const dialect = flags.includes('a') ? REGEX_DIALECTS.pythonAscii : REGEX_DIALECTS.python;
+  return (patternDefects(pattern, { flags: flags.replace('a', ''), dialect }).defects ?? []).map(
+    (defect) => ({
+      rule: RULES[defect.kind],
+      path: entry.path,
+      subject: `${defect.rule} ${pattern}`,
+      line: entry.line,
+      data: { description: defect.description, hint: defect.hint },
+    }),
+  );
 }
 
 export function withRegexDefects(entries) {

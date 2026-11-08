@@ -2,7 +2,10 @@ import { existsSync, readFileSync } from 'node:fs';
 import { pathInside } from '../../../../shared/filesystem.mjs';
 import { hash, nextOccurrence } from '../../../../shared/rules/finding-helpers.mjs';
 import { JVM_REGEX_RULES, jvmPatternFlags } from '../../../../shared/rules/regex/jvm-patterns.mjs';
-import { patternDefects } from '../../../../core/tooling/regex-patterns/pattern-defects.mjs';
+import {
+  REGEX_DIALECTS,
+  patternDefects,
+} from '../../../../core/tooling/regex-patterns/pattern-defects.mjs';
 import { withProjectEnumPredicates } from '../review-rules/enum-predicates.mjs';
 import { offsetOf } from '../review-rules/java-sources.mjs';
 
@@ -87,29 +90,34 @@ function patternAt(projectRoot, finding) {
   return flags === undefined ? undefined : { pattern: literal.value, flags };
 }
 
-function defectFindings(finding, projectRoot) {
+function defectFindings(finding, { projectRoot, occurrences }) {
   const site = patternAt(projectRoot, finding);
   if (site === undefined) {
     return [];
   }
-  const occurrences = new Map();
-  return (patternDefects(site.pattern, { flags: site.flags }).defects ?? [])
+  const { defects = [] } = patternDefects(site.pattern, {
+    flags: site.flags,
+    dialect: REGEX_DIALECTS.java,
+  });
+  return defects
     .filter((defect) => defect.kind === KINDS.get(finding.rule))
     .map((defect) => {
-      const occurrence = nextOccurrence(occurrences, defect.rule);
+      const key = `${defect.rule}\0${site.pattern}`;
+      const occurrence = nextOccurrence(occurrences, `${finding.path}\0${key}`);
       const suffix = occurrence === 1 ? '' : `#${String(occurrence)}`;
       return {
         ...finding,
-        identity: `${finding.identity}:${hash(defect.rule)}${suffix}`,
+        identity: `${finding.rule}:${hash(key)}${suffix}`,
         message: defect.message,
       };
     });
 }
 
 export function withRegexDefects(findings, projectRoot) {
+  const occurrences = new Map();
   return findings.flatMap((finding) =>
     finding.tool === 'pmd' && KINDS.has(finding.rule) && finding.path.endsWith('.java')
-      ? defectFindings(finding, projectRoot)
+      ? defectFindings(finding, { projectRoot, occurrences })
       : [finding],
   );
 }

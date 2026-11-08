@@ -9,17 +9,18 @@ afterAll(() => {
   rmSync(root, { recursive: true, force: true });
 });
 
-function candidates(line, rules = ['RegexPartDefect', 'BacktrackingRegex']) {
+function candidates(code, { from = 0 } = {}) {
   const file = 'Patterns.java';
-  writeFileSync(path.join(root, file), `class Patterns {\n${line}\n}\n`);
-  const column = line.indexOf('"') + 1;
-  const findings = rules.map((rule) => ({
+  const text = `class Patterns {\n${code}\n}\n`;
+  writeFileSync(path.join(root, file), text);
+  const before = text.slice(0, text.indexOf('"', text.indexOf(code) + from)).split('\n');
+  const findings = ['RegexPartDefect', 'BacktrackingRegex'].map((rule) => ({
     tool: 'pmd',
     rule,
     path: file,
     identity: `id-${rule}`,
     message: 'generic',
-    location: { line: 2, column },
+    location: { line: before.length, column: before.at(-1).length + 1 },
   }));
   return withRegexDefects(findings, root);
 }
@@ -45,6 +46,12 @@ describe('Java regex pattern defects', () => {
       '  String[] s(String s) { return s.split("x{1}"); }',
       'Unexpected useless quantifier',
     ],
+    ['flags 0', '  Pattern P = Pattern.compile("a|b|a", 0);', 'Unexpected duplicate alternative'],
+    [
+      'CASE_INSENSITIVE with UNICODE_CASE',
+      '  Pattern P = Pattern.compile("[a-zA-Z]", Pattern.CASE_INSENSITIVE | Pattern.UNICODE_CASE);',
+      'Unexpected duplicate',
+    ],
     [
       'a CASE_INSENSITIVE flag',
       '  Pattern P = Pattern.compile("[a-zA-Z]", Pattern.CASE_INSENSITIVE);',
@@ -62,6 +69,23 @@ describe('Java regex pattern defects', () => {
       'RegexPartDefect',
     ]);
     expect(new Set(found.map(({ identity }) => identity)).size).toBe(found.length);
+  });
+
+  it('reads the literal PMD points at, not an earlier string on the line', () => {
+    const line = '  String[] s(String s) { return s.replace("a|a", "b").split("x{1}"); }';
+
+    expect(
+      candidates(line, { from: line.indexOf('split') }).map(({ message }) => message.split('.')[0]),
+    ).toEqual(['Unexpected useless quantifier']);
+  });
+
+  it('keys the identity on the pattern, so a site above does not change it', () => {
+    const line = '  boolean m(String s) { return s.matches("a|b|a"); }';
+    const [alone] = candidates(line);
+    const code = `  Pattern Q = Pattern.compile("^[a-z]+$");\n${line}`;
+    const [below] = candidates(code, { from: code.indexOf('matches') });
+
+    expect(below.identity).toBe(alone.identity);
   });
 
   it.each([

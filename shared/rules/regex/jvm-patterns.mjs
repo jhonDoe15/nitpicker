@@ -4,8 +4,10 @@ const JVM_FLAGS = new Map([
   ['MULTILINE', 'm'],
   ['DOTALL', 's'],
   ['DOT_MATCHES_ALL', 's'],
+  ['UNICODE_CASE', ''],
+  ['0', ''],
 ]);
-const SEPARATORS = /\bsetOf\s*\(|[(),|]|\bor\b/gu;
+const SEPARATORS = /\bsetOf\s*\(|\boptions?\s*=(?!=)|[(),|]|\bor\b/gu;
 const QUALIFIER = /^(?:[\w$]+\.)*/u;
 
 export function jvmPatternFlags(options) {

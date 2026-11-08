@@ -716,15 +716,15 @@ self.items.append(item)`), also through a package `__init__` that re-exports it 
   the pinned ruff, so it is not selected yet.
 - `regex-part-defect` reports a literal pattern of `re.compile`, `match`, `search`, `fullmatch`,
   `findall`, `finditer`, `split`, `sub` or `subn` with a part that never changes what it matches
-  (`a|b|a`, `[\w_]`, an empty group), that does not do what it looks like (`a\bb`, which can never
+  (`a|b|a`, `[_a-z_]`, an empty group), that does not do what it looks like (`a\bb`, which can never
   match), or that has a shorter form with the same meaning (`x{1}`, `(?:ab)c`). `regex-backtracking`
-  reports one with nested or overlapping quantifiers that backtrack super-linearly (`^(\s*\w+)*$`).
+  reports one with nested or overlapping quantifiers that backtrack super-linearly (`^( *[a-z]+)*$`).
   Both run the checks of the TypeScript preset's `regexp/` rules on the pattern, with `re.I`,
-  `re.M`, `re.S` or a leading `(?i)`, `(?m)` or `(?s)` read as flags, and the message names the
+  `re.M`, `re.S`, `re.A` or a leading `(?i)`, `(?m)` or `(?s)` read as flags, and the message names the
   part. A pattern outside the syntax Python and JavaScript share is skipped, never misreported:
   `(?P<name>...)`, `(?x)` and `re.VERBOSE`, `\A`, `\Z`, a `$` before the end (Python's `$` also
-  matches before a final newline), `\p`, a character above ASCII (Python's `\w`, `\d` and `\s`
-  cover Unicode), a flags value that is not one of those constants, and `bytes` patterns. The
+  matches before a final newline), `\p`, a character above ASCII, `\w`, `\d`, `\s` and `\b` without `re.ASCII` (they
+  cover Unicode in Python), a lookbehind, a flags value that is not one of those constants, and `bytes` patterns. The
   `regex` module is not read. The Java preset reports the same as `RegexPartDefect` and
   `BacktrackingRegex`, the Kotlin preset as `kotlin-source/RegexPartDefect` and
   `kotlin-source/BacktrackingRegex`.

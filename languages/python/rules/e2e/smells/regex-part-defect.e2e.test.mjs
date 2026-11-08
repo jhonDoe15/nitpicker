@@ -39,10 +39,12 @@ describe.skipIf(!enabled)('regex-part-defect', () => {
   it.each([
     ['re.compile', 'WORD = re.compile(r"a|b|a")', 'regexp/no-dupe-disjunctions'],
     [
-      're.match with a string',
-      'def f(s):\n    return re.match("[\\\\w_]+", s)',
+      're.match with a string and re.ASCII',
+      'def f(s):\n    return re.match("[\\\\w_]+", s, re.ASCII)',
       'regexp/no-dupe-characters-character-class',
     ],
+    ['flags=0', 'WORD = re.compile(r"a|b|a", flags=0)', 'regexp/no-dupe-disjunctions'],
+    ['re.NOFLAG', 'WORD = re.compile(r"a|b|a", re.NOFLAG)', 'regexp/no-dupe-disjunctions'],
     ['re.sub', 'def f(s):\n    return re.sub(r"x{1}", "", s)', 'regexp/no-useless-quantifier'],
     [
       're.I as a keyword',
@@ -65,6 +67,7 @@ describe.skipIf(!enabled)('regex-part-defect', () => {
     ['an f-string', 'def f(x):\n    return re.compile(f"{x}|a|a")'],
     ['a named group', 'WORD = re.compile(r"(?P<a>x)|(?P<b>x)")'],
     ['bytes', 'WORD = re.compile(rb"a|a")'],
+    ['a Unicode class', 'WORD = re.compile(r"\\d|[0-9]")'],
     ['the regex module', 'import regex\nWORD = regex.compile(r"a|a")'],
   ])('leaves %s alone', (_name, code) => {
     expect(defects(code)).toEqual([]);
