@@ -9,6 +9,7 @@
   "languages/java/adapters/java-e2e/integration/integration-skipped.e2e.test.mjs": 66,
   "languages/java/adapters/java-e2e/integration/integration-suite.e2e.test.mjs": 95,
   "languages/java/adapters/java-e2e/integration/integration-tasks-and-maven.e2e.test.mjs": 102,
+  "languages/java/adapters/java-e2e/init/init-java.e2e.test.mjs": 120,
   "languages/java/adapters/java-e2e/multi-project.e2e.test.mjs": 70,
   "languages/java/adapters/java-e2e/overlap-probe.e2e.test.mjs": 330,
   "languages/java/adapters/java-e2e/pit-targets.e2e.test.mjs": 9,

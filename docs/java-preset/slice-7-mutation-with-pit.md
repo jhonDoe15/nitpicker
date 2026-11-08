@@ -60,6 +60,18 @@ other check ran. Fix the tests and rerun:`) instead of Gradle's own failure outp
   `compareTo` boundary, a discarded lambda return, a field set to the value it already has, a
   redundant `trim()` or `sorted()`) and the way out: simplify the code, or add an
   exception for `pit/mutant-survived`.
+- **The `main` method.** A `mutant-nocoverage` on a line inside the body of a
+  `static void main(String[])` method is dropped (`adapters/reporting/main-method.mjs`, after
+  every report is read, so it is the same on Gradle and Maven): the method only hands the real
+  standard streams to code that tests reach through a writer, so no test runs it. Only that method
+  and only the not-covered status: a `main` that a test does run keeps its survived mutants, and
+  every other method is mutated as before. The same filter drops the `errorprone/SystemOut` and
+  `pmd/SystemPrintln` findings of a line in that body (see
+  [Error Prone and NullAway](#error-prone-and-nullaway)). The method is found with the brace-depth
+  scan the entry-point detection of the review rules uses (`mainMethodLines` in
+  `review-rules/source-declarations.mjs`): any `void main` declared with no parameter or one
+  `String[]` parameter, in any modifier order, so the JDK 25 launch-protocol forms count and
+  `main(int)` does not. Java files only: Kotlin sources have their own rules.
 - **Ingester.** `languages/java/ingest/pit.mjs` (`ingestPit`). PIT statuses map to the names the
   Stryker-based area uses: `SURVIVED` and `NO_COVERAGE` give enforceable `mutant-survived` and
   `mutant-nocoverage`; `TIMED_OUT`, `MEMORY_ERROR`/`RUN_ERROR`, `NON_VIABLE` and `STARTED` give

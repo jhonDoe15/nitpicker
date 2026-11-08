@@ -4,7 +4,9 @@ Part of the [Kotlin preset guide](../kotlin-preset.md).
 
 Spring is detected from the compile classpath (`spring-context` or `spring-boot`), Ktor from the
 source (`fun Application.module()`). What they require is not flagged: the composition root (the file
-with `fun main`, the `@SpringBootApplication` class or a Ktor module) may read `System.getenv`;
+with `fun main`, a `@JvmStatic fun main` in an `object` or companion object, the `@SpringBootApplication`
+class or a Ktor module) may read `System.getenv` and
+reference `System.out` and `System.err` (`show(System.out)`, `items.forEach(System.out::println)`);
 `runApplication<App>(*args)` and `SpringApplication.run(App::class.java, *args)` are not
 `SpreadOperator` findings in a Spring project; JPA and Spring Data entities are not asked to become
 data classes; parameters with an annotation (`@RequestParam`, `@PathVariable`) are not boolean flags.

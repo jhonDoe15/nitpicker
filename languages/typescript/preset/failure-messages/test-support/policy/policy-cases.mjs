@@ -104,6 +104,16 @@ export const policyFailureMessageCases = [
     'AbortSignal.timeout',
   ),
   adapterCase(
+    'timeout race names the abort controller',
+    'const rejectAfter = (ms) => new Promise((_, reject) => setTimeout(reject, ms));\nexport const run = () => Promise.race([sendPayment(), rejectAfter(10)]);',
+    'AbortController',
+  ),
+  adapterCase(
+    'timeout race names the signal option',
+    'const rejectAfter = (ms) => new Promise((_, reject) => setTimeout(reject, ms));\nexport const run = () => Promise.race([sendPayment(), rejectAfter(10)]);',
+    '{ signal: controller.signal }',
+  ),
+  adapterCase(
     'unsafe deserialization names JSON.parse',
     "import { unserialize } from 'node-serialize'; export const read = (text) => unserialize(text);",
     'JSON.parse',

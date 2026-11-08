@@ -3,7 +3,7 @@ import { takeOptionValue, unknownArgumentError } from '../comparison/cli.mjs';
 const OPTION_NAMES = ['--input-root', '--output', '--shard-count', '--policy-root'];
 const HELP = '--help';
 
-const AGGREGATE_OPTIONS = [...OPTION_NAMES, HELP];
+export const AGGREGATE_OPTIONS = [...OPTION_NAMES, '--details', HELP];
 
 function collectOptionValues(arguments_) {
   const values = {};

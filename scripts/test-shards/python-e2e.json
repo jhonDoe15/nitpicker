@@ -6,6 +6,7 @@
   "languages/python/adapters/e2e/gates/python-gates-lint-and-types.e2e.test.mjs": 62,
   "languages/python/adapters/e2e/gates/python-gates-test-run.e2e.test.mjs": 20,
   "languages/python/adapters/e2e/gates/python-gates-type-checker-config.e2e.test.mjs": 69,
+  "languages/python/adapters/e2e/init/init-python.e2e.test.mjs": 15,
   "languages/python/adapters/e2e/python-preset-branch-coverage.e2e.test.mjs": 57,
   "languages/python/adapters/e2e/python-preset-errors-and-structure.e2e.test.mjs": 104,
   "languages/python/adapters/e2e/python-preset-layering.e2e.test.mjs": 48,

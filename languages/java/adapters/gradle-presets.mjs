@@ -7,6 +7,8 @@ export const PROJECT_TOOL_CONFIGS = new Map([
   ['checkstyle', 'config/checkstyle/checkstyle.xml'],
 ]);
 
+export const BUILD_DECLARED_TOOLS = ['spotbugs'];
+
 const STYLE_TOOLS = new Map([
   ['python', ['ruff', 'black', 'pyright', 'mypy', 'mutmut', 'coverage']],
   ['kotlin', ['ktlint', 'ktfmt', 'detekt']],
@@ -22,7 +24,7 @@ function styleToolNames() {
 }
 
 export function precedenceToolNames() {
-  return [...PROJECT_TOOL_CONFIGS.keys(), ...styleToolNames()];
+  return [...PROJECT_TOOL_CONFIGS.keys(), ...BUILD_DECLARED_TOOLS, ...styleToolNames()];
 }
 
 export const JAVA_TOOLS = [
