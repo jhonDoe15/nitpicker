@@ -17,6 +17,11 @@ export function fixIfRequested(cli, repositoryRoot, base) {
   cli.stdout.write(
     `Fixed files:\n${fixResult.fixedFiles.length === 0 ? '(none)\n' : `${fixResult.fixedFiles.join('\n')}\n`}`,
   );
+  if (fixResult.fixedFindings?.length > 0) {
+    cli.stdout.write(
+      `Fixed findings:\n${fixResult.fixedFindings.map((line) => `  ${line}\n`).join('')}`,
+    );
+  }
   if (fixResult.notes?.length > 0) {
     cli.stdout.write(`Fix notes:\n${fixResult.notes.map((note) => `  ${note}\n`).join('')}`);
   }

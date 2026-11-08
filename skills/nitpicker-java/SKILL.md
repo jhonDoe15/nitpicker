@@ -17,7 +17,8 @@ forms below from the start; the gate is a backstop.
 2. Run `npx nitpicker --fix` as a background command you wait on, without a pipe: you need its exit
    code. It first rewrites the changed Java files with the formatter the run names under
    "Following this project's conventions" (google-java-format 1.25.2, `--aosp` for the aosp style,
-   or palantir-java-format) and lists them under "Fixed files:"; re-read a file it lists before you
+   or palantir-java-format) and lists them under "Fixed files:", after its fix recipes, which list
+   each finding they fixed under "Fixed findings:"; re-read a file it lists before you
    edit it again. When the run says no Java formatter runs, it leaves the files alone; keep the
    layout by hand. Then it runs the build on the merge base and on head, which takes minutes, with
    the project's `./gradlew` or `./mvnw` when there is one, otherwise `gradle` or `mvn` from the

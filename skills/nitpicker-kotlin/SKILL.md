@@ -17,7 +17,8 @@ it with `npx skills add jhonDoe15/nitpicker --skill nitpicker-java`.
 2. When the change is complete, run `npx nitpicker --fix` as a background command you wait on,
    without a pipe: you need its exit code. It first rewrites the changed Kotlin and Java files with
    the formatter named at the start of the run (ktlint or ktfmt, google-java-format for Java) and
-   lists them under "Fixed files:"; re-read those files before you edit them again. When a "Fix
+   lists them under "Fixed files:", after its fix recipes, which list each finding they fixed
+   under "Fixed findings:"; re-read those files before you edit them again. When a "Fix
    notes:" line says no formatter was found, keep the layout by hand. Then it runs Gradle on the
    merge base and on head, with the project's `./gradlew` when there is one, otherwise `gradle`
    from the PATH (`NITPICKER_GRADLE` overrides both). It takes minutes and prints a progress line

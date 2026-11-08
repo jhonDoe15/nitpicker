@@ -389,8 +389,10 @@ nitpicker rules [--preset <name>] [--tool <name>]
   renamed over it), leave alone a file that changed while they ran or is not UTF-8, and do not
   follow symbolic links; each of these is named in a "Fix notes:" line. ESLint and the Python, Java
   and Kotlin formatters keep CRLF line endings; a file Prettier rewrites gets the line endings of
-  the gate's `prettier.endOfLine` convention, as its format check expects. A fixer that fails is reported as a tool error; the
-  other fixers and the comparison still run. Cannot be combined with `--all`.
+  the gate's `prettier.endOfLine` convention, as its format check expects. Before the formatter,
+  `--fix` applies nitpicker's own fix recipes for the preset (see [Fix recipes](#fix-recipes)) and
+  lists each finding they fixed under "Fixed findings:". A fixer that fails is reported as a tool
+  error; the other fixers and the comparison still run. Cannot be combined with `--all`.
 - `--base <ref>`: the ref to compare against.
 - `--analyzer <name>`: run only this analyzer and the analyzers it depends on (repeatable). Cannot
   be combined with sharding. A narrowed run says so: the console, `report.txt` and the GitHub step
@@ -1098,6 +1100,23 @@ the built-in finding schema and carries `tool` equal to the entry's `name`. Find
 fingerprinted and classified exactly like built-in ones. A non-zero exit, invalid JSON or a schema
 violation is a tool error. A name must not clash with a built-in analyzer. The command and its
 arguments are part of the policy hash.
+
+## Fix recipes
+
+A fix recipe rewrites the code a single rule flags, where one rewrite is correct in every case the
+rule reports. Recipes run with `--fix` on the changed files, before the formatter, so they never
+format. Each listed finding reads `<path>:<line> <tool>/<rule> (<recipe>)`.
+
+| Preset | Rule | Recipe | What it does |
+| --- | --- | --- | --- |
+| java | `checkstyle/UpperEll` | `java-upper-ell` | turns the `l` suffix of a `long` literal into `L`, outside strings, text blocks and comments |
+| kotlin | `detekt/detekt.style.NewLineAtEndOfFile` | `kotlin-final-newline` | ends a file with a line break, CRLF when the file uses CRLF |
+
+A recipe edits a file only when it still holds the bytes the recipe read. A file that changed in the
+meantime is left as it is and named in a "Fix notes:" line. When two fixes overlap, the later one is
+skipped and planned again on the new text. Recipes repeat until nothing changes, up to three passes,
+and a fix still left after that is named in a "Fix notes:" line. A recipe that fails is reported as
+a tool error, and the other recipes still run.
 
 ## Java preset
 
