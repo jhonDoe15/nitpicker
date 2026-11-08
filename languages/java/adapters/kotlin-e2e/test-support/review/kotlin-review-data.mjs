@@ -1,4 +1,7 @@
-import { CANCELLATION_FILES, SWALLOWED_CANCELLATIONS } from './swallowed/kotlin-cancellation-data.mjs';
+import {
+  CANCELLATION_FILES,
+  SWALLOWED_CANCELLATIONS,
+} from './swallowed/kotlin-cancellation-data.mjs';
 import { INTERRUPT_FILES, SWALLOWED_INTERRUPTS } from './swallowed/kotlin-interrupt-data.mjs';
 import { LIBRARY_STUBS, MOCK_REVIEW_FINDINGS, MOCK_RULE_FILES } from './kotlin-mock-data.mjs';
 import { PLURAL_FINDINGS, PLURALS } from './kotlin-plural-data.mjs';
