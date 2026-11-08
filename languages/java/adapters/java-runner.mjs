@@ -5,12 +5,30 @@ import { detectJavaBuild } from '../builds/java-build.mjs';
 import { parseJavaRunnerArguments } from './java-policy.mjs';
 import { javaStyle } from './style/java-style.mjs';
 import { gradleBudget, mavenBudget } from './gradle-wrapper/gradle-budget.mjs';
+import {
+  TROUBLESHOOTING_ANCHORS,
+  failureText,
+  troubleshootingLinkOf,
+} from '../../../shared/messages/troubleshooting.mjs';
 import { TESTS_FAILED_RULE } from '../../../shared/rules/finding-helpers.mjs';
 
 export const GRADLE_FAILURE_RULE = 'gradle-failure';
 export const MAVEN_FAILURE_RULE = 'maven-failure';
 const MAX_MESSAGE_LENGTH = 4000;
 const MAX_TESTS_FAILED_LENGTH = 40_000;
+
+function truncated(message, rule) {
+  const limit = rule === TESTS_FAILED_RULE ? MAX_TESTS_FAILED_LENGTH : MAX_MESSAGE_LENGTH;
+  if (message.length <= limit) {
+    return message;
+  }
+  const link = troubleshootingLinkOf(message);
+  const kept = message
+    .replace(link ?? '', '')
+    .trimEnd()
+    .slice(0, limit);
+  return `${kept}...${link === undefined ? '' : `\n${link}`}`;
+}
 
 export function javaExecutionBudget(environment = process.env) {
   const gradle = gradleBudget(environment);
@@ -49,8 +67,11 @@ export function analyzeJavaSnapshot(
       }),
     };
   } catch (error) {
-    const message = error instanceof Error ? error.message : String(error);
     const rule = failureRule(error, projectRoot);
+    const anchor =
+      rule === MAVEN_FAILURE_RULE
+        ? TROUBLESHOOTING_ANCHORS.mavenFails
+        : TROUBLESHOOTING_ANCHORS.gradleFails;
     return {
       findings: [
         {
@@ -58,7 +79,7 @@ export function analyzeJavaSnapshot(
           rule,
           path: '.',
           identity: rule,
-          message: cappedMessage(message, rule),
+          message: truncated(failureText(error, anchor), rule),
           classification: 'tool-error',
         },
       ],
@@ -77,11 +98,6 @@ export function withHeadPolicy(policy, headPolicy) {
     kotlinFormatter: kotlin?.formatter ?? policy.kotlinFormatter,
     ...(kotlin === undefined ? {} : { kotlinFacts: kotlin }),
   };
-}
-
-function cappedMessage(message, rule) {
-  const limit = rule === TESTS_FAILED_RULE ? MAX_TESTS_FAILED_LENGTH : MAX_MESSAGE_LENGTH;
-  return message.length > limit ? `${message.slice(0, limit)}...` : message;
 }
 
 function failureRule(error, projectRoot) {

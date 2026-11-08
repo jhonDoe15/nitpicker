@@ -285,7 +285,7 @@ Full diagnostics: ${repository.outputRoot}/report.txt
 
     expect(exitCode).toBe(2);
     expect(output.stderrText).toEqual(
-      'nitpicker failed: Unknown --analyzer: does-not-exist. Known analyzers: fake-quality-analyzer\n',
+      `nitpicker failed: Unknown --analyzer: does-not-exist. Known analyzers: fake-quality-analyzer\n`,
     );
   });
   it('prints a drill-down section for findings matching --rule', () => {
@@ -353,7 +353,7 @@ fake-quality-analyzer/match-me src/main/stable.ts:1 Fixture finding
 
     expect(exitCode).toBe(2);
     expect(output.stderrText).toEqual(
-      'nitpicker failed: No quality analyzers are configured. The comparison framework is ready, but real analyzer adapters are a later phase.\n',
+      `nitpicker failed: No quality analyzers are configured. The comparison framework is ready, but real analyzer adapters are a later phase.\n`,
     );
   });
 });

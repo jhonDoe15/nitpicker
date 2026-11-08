@@ -8,11 +8,11 @@ import { captureOutput } from '../diff/reporting/test-support/output-capture.mjs
 import { commit, fixtureGit } from '../diff/git/test-support/git-repository.mjs';
 import { crashingAnalyzer, fakeAnalyzer, useCliFixtures } from './test-support/cli-harness.mjs';
 import { writeFiles } from '../diff/git/test-support/fixture-files.mjs';
+import { linkSentence } from '../../shared/messages/test-support/link-sentence.mjs';
 import { docsUrl } from '../../shared/messages/docs-url.mjs';
-
 const { createRepository, makeOutputRoot, makeTemporaryRoot, runCli } =
   useCliFixtures(nitpickerCli);
-
+const CRASH = `crashing-analyzer crashed with exit 2: no diagnostic output. ${linkSentence('analyzerCrashed')}`;
 describe('nitpicker CLI', () => {
   it('fails comparison for a finding in an untracked file and identifies an argument base', () => {
     const repository = createRepository({
@@ -335,7 +335,7 @@ Full diagnostics: /tmp/nitpicker-cli-output-${/[A-Za-z0-9]{6}/}/reports/report.t
         'fake-quality-analyzer: total=0 enforceable=0 descriptive=0',
         '',
         'Tool errors:',
-        'fake-quality-analyzer (head): fake-quality-analyzer crashed with exit 2: fake analyzer crash',
+        `fake-quality-analyzer (head): fake-quality-analyzer crashed with exit 2: fake analyzer crash. ${linkSentence('analyzerCrashed')}`,
         '',
       ].join('\n'),
     );
@@ -389,7 +389,7 @@ Full diagnostics: /tmp/nitpicker-cli-output-${/[A-Za-z0-9]{6}/}/reports/report.t
             'fake-quality-analyzer/fixture-rule src/main/new.ts:1 Fixture finding',
             '',
             'Tool errors:',
-            'crashing-analyzer (head): crashing-analyzer crashed with exit 2: no diagnostic output',
+            `crashing-analyzer (head): ${CRASH}`,
             '',
           ].join('\n')
         : expect.stringMatching(exactText`Base: comparison-base (argument)
@@ -399,8 +399,8 @@ Quality gate summary
   fake-quality-analyzer/fixture-rule: Fixture finding
     src/main/new.ts:1:4
 ✖ 2 tool errors
-  crashing-analyzer (base): crashing-analyzer crashed with exit 2: no diagnostic output
-  crashing-analyzer (head): crashing-analyzer crashed with exit 2: no diagnostic output
+  crashing-analyzer (base): ${CRASH}
+  crashing-analyzer (head): ${CRASH}
 Full diagnostics: /tmp/nitpicker-cli-output-${/[A-Za-z0-9]{6}/}/reports/report.txt
 `);
     it('exits 1 for findings plus a tool error and still lists the error', () => {
