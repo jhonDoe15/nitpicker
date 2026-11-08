@@ -30,9 +30,8 @@ The gate can't check these; reviewers keep catching them.
 - Reproduce the failure through the path that broke (the CLI runner, the web test client, the
   adapter's parse function), not by calling the inner function you changed.
 - Test collections with two or more items, a duplicate, and an item whose nested field is `None`.
-- Round-trip values that need escaping: `assert parse(render(value)) == value` for text with
-  quotes, commas, newlines and non-ASCII; for a pydantic model,
-  `Order.model_validate_json(order.model_dump_json()) == order`.
+- In a round-trip test, use text with quotes, commas, newlines and non-ASCII. Round-trip a pydantic
+  model too, which the gate does not check: `Order.model_validate_json(order.model_dump_json()) == order`.
 - Test a limit or timeout with the production constant (`from shop.limits import MAX_ITEMS`), not
   a copy of its value. The magic-number check skips test files.
 - Build fixtures from what the real producer returns (a recorded response saved under

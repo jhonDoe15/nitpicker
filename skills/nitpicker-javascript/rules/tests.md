@@ -47,3 +47,6 @@ Part of the [nitpicker-javascript](../SKILL.md) skill. Write these forms from th
   `*.integration.test.js`, folders counted under the test roots). Use fake timers instead of waits
   and fakes instead of network or disk. A test over budget is run again alone without coverage and
   fails only if it is still over. A slow test you did not touch stays baselined.
+- Test each exported inverse pair on its own output (`nitpicker/untested-round-trip`): for
+  `encodeToken`/`decodeToken` or `Order.toJson`/`Order.fromJson`, one test calls both,
+  `expect(decodeToken(encodeToken(value))).toEqual(value)`.

@@ -3,6 +3,7 @@ import { FUNCTION_EXCEPTION_RULES } from '../../../shared/policy.mjs';
 import { definedField } from '../../../shared/messages/messages.mjs';
 import { ASYNC_HINTS } from './hints/ast-async.mjs';
 import { STRUCTURE_HINTS } from './hints/ast-structure.mjs';
+import { ROUND_TRIP_HINTS } from './hints/tests/round-trip-hints.mjs';
 import { TYPING_HINTS } from './hints/typing/ast-typing.mjs';
 import { SMELL_HINTS } from './hints/ast-smells.mjs';
 import { ORM_HINTS } from './hints/persistence/ast-orm.mjs';
@@ -48,6 +49,7 @@ export const RULE_HINTS = [
   ...SECURITY_HINTS,
   ...RULES_SECURITY_HINTS,
   ...STRUCTURE_HINTS,
+  ...ROUND_TRIP_HINTS,
   ...TYPING_HINTS,
   ...ASYNC_HINTS,
   ...SMELL_HINTS,

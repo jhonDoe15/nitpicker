@@ -12,6 +12,11 @@ import { javaFormatMessage } from '../adapters/reporting/format-findings.mjs';
 import { INLINE_SUPPRESSION_MESSAGES } from '../adapters/suppressions/java-suppressions.mjs';
 import { JVM_ANALYZERS, JVM_BUILDS } from './catalog-rules.mjs';
 import { springConfigForms } from './spring-config-messages.mjs';
+import {
+  ROUND_TRIP_EXCEPTION_RULE,
+  ROUND_TRIP_RULE,
+} from '../adapters/review-rules/round-trips/round-trips.mjs';
+import { roundTripMessage } from '../../../shared/rules/round-trips/round-trips.mjs';
 
 const GUIDE = 'docs/java-preset.md';
 const JVM = { page: 'java-nitpicker', analyzers: JVM_ANALYZERS, builds: JVM_BUILDS };
@@ -156,12 +161,31 @@ function unrunTestEntry() {
   });
 }
 
+function roundTripEntry() {
+  return ruleEntry({
+    ...JVM,
+    tool: 'pmd',
+    rule: ROUND_TRIP_RULE,
+    summary:
+      'Two public methods of one main-source class or file that turn values into each other (`toJson`/`fromJson`, `encode`/`decode`), with no test that calls both.',
+    why: 'A field that one half drops or garbles passes every test that checks each half alone. Nitpicker computes it over the sources of every module and prints it as a PMD rule, like the other test honesty rules.',
+    allowed: roundTripMessage({
+      first: '<Owner>.<encode>',
+      second: '<Owner>.<decode>',
+      example: 'assertEquals(value, <Owner>.<decode>(<Owner>.<encode>(value)))',
+    }),
+    exception: { key: 'exceptions', rule: ROUND_TRIP_EXCEPTION_RULE },
+    docs: [{ label: 'Java preset guide', path: GUIDE, anchor: 'round-trip-tests' }],
+  });
+}
+
 /** The entries of the rules nitpicker itself adds to the Java and Kotlin presets. */
 export function jvmNitpickerEntries() {
   return [
     ...archunitEntries(),
     ...springConfigEntries(),
     unrunTestEntry(),
+    roundTripEntry(),
     formatEntry('google'),
     formatEntry('palantir'),
     ...suppressionEntries(),

@@ -117,6 +117,7 @@ export function strictSyntaxConfigFor(layout = defaultResolvedLayout, options = 
         'nitpicker/no-tri-state-boolean': 'error',
         'nitpicker/no-unhandled-url-parse': 'error',
         'nitpicker/no-compatibility-shim': 'error',
+        'nitpicker/untested-round-trip': 'error',
       },
     },
     {

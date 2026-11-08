@@ -8,6 +8,7 @@ import { inModule } from './module-path.mjs';
 import { readTestOnlyClassFindings } from '../adapters/review-rules/test-only-classes.mjs';
 import { readTestRuntimeFindings } from '../adapters/test-runtime/test-runtime-findings.mjs';
 import { readJvmReuseFindings } from '../adapters/reuse/jvm-reuse-facts.mjs';
+import { readRoundTripFindings } from '../adapters/review-rules/round-trips/round-trips.mjs';
 
 const JDEPS_REPORT = 'jdeps.txt';
 const JDEPS_CLASSES = 'jdeps-classes.txt';
@@ -144,5 +145,6 @@ export function projectWideFindings(
     ...readTestOnlyClassFindings(projectRoot, { projects }),
     ...readTestRuntimeFindings(projectRoot, { projects }),
     ...readJvmReuseFindings(projectRoot, { projects, kotlin, policy }),
+    ...readRoundTripFindings(projectRoot, { projects, kotlin, policy }),
   ];
 }
