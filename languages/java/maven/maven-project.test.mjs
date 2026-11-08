@@ -1,14 +1,9 @@
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import { lifecycleArgs, readReactor } from './maven-project.mjs';
-import {
-  inBuild,
-  plugin,
-  raw,
-  reactor,
-  removeReactors,
-  soloModule,
-} from './test-support/maven-project-sources.mjs';
+import { inBuild, plugin, raw, reactorKit } from './test-support/maven-project-sources.mjs';
+
+const { reactor, soloModule, removeReactors } = reactorKit();
 
 function effective(root) {
   return `<?xml version="1.0"?>
