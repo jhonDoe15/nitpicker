@@ -9,6 +9,7 @@ export const UNKNOWN = 'unknown';
 
 const TIMEOUT_TEXT = /statement_timeout|query_timeout/u;
 const MAX_SPREADS = 4;
+const SPREAD_ROUNDS = Array.from({ length: MAX_SPREADS }, (_, round) => round);
 
 export function either(states) {
   if (states.includes(SET)) {
@@ -33,19 +34,32 @@ export function textState(context, node, unknownText) {
   return TIMEOUT_TEXT.test(text) ? SET : MISSING;
 }
 
-function flatEntries(context, node, depth) {
-  const object = resolvedValue(context, node);
-  if (object?.type !== 'ObjectExpression' || depth > MAX_SPREADS) {
+function spreadItems(context, items, options) {
+  return items.flatMap((entry) => {
+    if (entry.type !== 'SpreadElement') {
+      return [entry];
+    }
+    const inner = resolvedValue(context, entry.argument);
+    if (inner?.type === 'ObjectExpression') {
+      return inner.properties;
+    }
+    options.opaque = true;
+    return [];
+  });
+}
+
+export function optionsOf(context, node) {
+  const object = node === undefined ? undefined : resolvedValue(context, node);
+  if (object?.type !== 'ObjectExpression') {
     return undefined;
   }
-  const options = { entries: [], opaque: false };
-  for (const entry of object.properties) {
-    const inner =
-      entry.type === 'SpreadElement' ? flatEntries(context, entry.argument, depth + 1) : undefined;
-    if (inner !== undefined) {
-      options.entries.push(...inner.entries);
-      options.opaque ||= inner.opaque;
-    } else if (entry.type === 'Property' && staticKey(entry) !== undefined) {
+  const options = { context, entries: [], opaque: false };
+  const items = SPREAD_ROUNDS.reduce(
+    (current) => spreadItems(context, current, options),
+    object.properties,
+  );
+  for (const entry of items) {
+    if (entry.type === 'Property' && staticKey(entry) !== undefined) {
       options.entries.push(entry);
     } else {
       options.opaque = true;
@@ -54,34 +68,32 @@ function flatEntries(context, node, depth) {
   return options;
 }
 
-export function optionsOf(context, node) {
-  return node === undefined ? undefined : flatEntries(context, node, 0);
-}
-
 export function valueOf(options, key) {
   return options.entries.findLast((entry) => staticKey(entry) === key)?.value;
 }
 
-export function absentState(options) {
+function absentState(options) {
   return options.opaque ? UNKNOWN : MISSING;
 }
 
-export function keyState(context, options, key) {
+export function keyState(options, key) {
   const value = valueOf(options, key);
   if (value === undefined) {
     return absentState(options);
   }
-  return isAbsent(context, value) ? MISSING : SET;
+  return isAbsent(options.context, value) ? MISSING : SET;
 }
 
-export function textKeyState(context, options, key, unknownText) {
+function textKeyState(options, key, unknownText) {
   const value = valueOf(options, key);
-  return value === undefined ? absentState(options) : textState(context, value, unknownText);
+  return value === undefined
+    ? absentState(options)
+    : textState(options.context, value, unknownText);
 }
 
-export function nestedState(context, options, key, judge) {
+export function nestedState(options, key, judge) {
   const value = valueOf(options, key);
-  return value === undefined ? absentState(options) : judge(context, value);
+  return value === undefined ? absentState(options) : judge(options.context, value);
 }
 
 export function postgresOptionsState(context, node) {
@@ -97,9 +109,9 @@ export function postgresOptionsState(context, node) {
     return UNKNOWN;
   }
   return either([
-    keyState(context, options, 'statement_timeout'),
-    keyState(context, options, 'query_timeout'),
-    textKeyState(context, options, 'options', UNKNOWN),
-    textKeyState(context, options, 'connectionString', MISSING),
+    keyState(options, 'statement_timeout'),
+    keyState(options, 'query_timeout'),
+    textKeyState(options, 'options', UNKNOWN),
+    textKeyState(options, 'connectionString', MISSING),
   ]);
 }
