@@ -8,7 +8,7 @@ import {
   SETUP_ANNOTATIONS,
   SETUP_METHODS,
 } from '../../../../../messages/reuse/reusable-objects.mjs';
-import { annotationIn, stringValue, typeName } from '../../spring/spring-names.mjs';
+import { annotationIn, stringValue } from '../../spring/spring-names.mjs';
 import { entriesOf, setupScopes, symbolOf } from '../../spring/spring-scopes.mjs';
 import { springViews } from '../../spring/view/spring-view.mjs';
 
