@@ -207,6 +207,11 @@ describe('rules script report', () => {
       '0.3',
       '`0.3` is compared exactly in a test, so rounding makes it fail',
     ],
+    [
+      'weak-assertion',
+      'assert len(rows) > 0',
+      '`assert len(rows) > 0` passes for almost any value',
+    ],
     ['real-clock-in-test', 'time.time', '`time.time()` reads the real clock in a test'],
     ['random-in-test', 'random.random', '`random.random()` draws random values in a test'],
     ['network-in-test', 'requests.get', '`requests.get` reaches the network in a unit test'],

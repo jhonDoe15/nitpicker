@@ -81,6 +81,7 @@ import { rule as ruleNoUnsafePathJoin } from './rules/guards/no-unsafe-path-join
 import { rule as ruleNoUnusedDomEnvironment } from './rules/testing/environment/no-unused-dom-environment.mjs';
 import { rule as ruleNoUnvalidatedSchemaField } from './rules/boundaries/no-unvalidated-schema-field.mjs';
 import { rule as ruleNoWaitForWithFakeTimers } from './rules/testing/assertions/no-wait-for-with-fake-timers.mjs';
+import { rule as ruleNoWeakAssertion } from './test-assertions/weak-assertion/no-weak-assertion.mjs';
 import { rule as ruleNoWeakHash } from './rules/security/hash/no-weak-hash.mjs';
 import { rule as rulePreserveErrorCause } from './rules/errors/preserve-error-cause.mjs';
 import { rule as ruleReactControlledInput } from './rules/react/forms/react-controlled-input.mjs';
@@ -192,6 +193,7 @@ export const directoryRules = {
   'no-unused-dom-environment': ruleNoUnusedDomEnvironment,
   'no-unvalidated-schema-field': ruleNoUnvalidatedSchemaField,
   'no-wait-for-with-fake-timers': ruleNoWaitForWithFakeTimers,
+  'no-weak-assertion': ruleNoWeakAssertion,
   'no-weak-hash': ruleNoWeakHash,
   'preserve-error-cause': rulePreserveErrorCause,
   'react-controlled-input': ruleReactControlledInput,
