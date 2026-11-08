@@ -169,6 +169,7 @@ function strictTypedConfigFor(layout, parserOptions, options = {}) {
         'nitpicker/exhaustive-union-predicate': 'error',
         'nitpicker/no-forwarding-method-alias': 'error',
         'nitpicker/no-forwarding-wrapper': 'error',
+        'nitpicker/no-service-locator': ['error', { entryPoints: layout.entryPoints ?? [] }],
         'nitpicker/no-falsy-default': 'error',
         'nitpicker/no-string-as-regex': 'error',
       },

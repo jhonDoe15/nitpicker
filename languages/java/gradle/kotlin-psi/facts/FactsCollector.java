@@ -10,6 +10,7 @@ import java.util.Set;
 import nitpicker.kotlinpsi.bodies.Bodies;
 import nitpicker.kotlinpsi.bodies.Throwing;
 import nitpicker.kotlinpsi.catches.Catches;
+import nitpicker.kotlinpsi.bodies.Initializers;
 import nitpicker.kotlinpsi.common.Frame;
 import nitpicker.kotlinpsi.facts.locking.Locking;
 import nitpicker.kotlinpsi.facts.updates.Updates;
@@ -32,6 +33,7 @@ public final class FactsCollector {
   private final Locking locking;
   private final Lifetimes lifetimes;
   private final Bodies bodies;
+  private int frames;
   private final LoadCalls loads;
   private final Throwing throwing;
 
@@ -73,15 +75,18 @@ public final class FactsCollector {
   private void walk(PsiElement element, Frame frame) {
     if (element instanceof KtEnumEntry
         || (element instanceof KtObjectDeclaration && ((KtObjectDeclaration) element).isObjectLiteral())) {
-      descend(element, declarations.literal((KtClassOrObject) element, frame));
+      descend(element, frame, declarations.literal((KtClassOrObject) element, frame));
     } else if (element instanceof KtClassOrObject) {
-      descend(element, declarations.declareClass((KtClassOrObject) element, frame));
+      descend(element, frame, declarations.declareClass((KtClassOrObject) element, frame));
     } else {
-      descend(element, enter(element, frame));
+      descend(element, frame, enter(element, frame));
     }
   }
 
-  private void descend(PsiElement element, Frame inner) {
+  private void descend(PsiElement element, Frame outer, Frame inner) {
+    if (inner != outer && inner != null) {
+      inner.data.put("frameId", ++frames);
+    }
     for (PsiElement child : element.getChildren()) {
       walk(child, inner);
     }
@@ -131,7 +136,14 @@ public final class FactsCollector {
       loads.observe(element);
     }
     if (element instanceof KtProperty) {
-      declarations.declareProperty((KtProperty) element, frame);
+      KtProperty property = (KtProperty) element;
+      KtExpression initializer =
+          property.getInitializer() != null ? property.getInitializer() : Initializers.lazyValue(property);
+      declarations.typed(property.getName(), property.getTypeReference(), initializer, frame);
+      declarations.declareProperty(property, frame);
+    } else if (element instanceof KtParameter) {
+      KtParameter parameter = (KtParameter) element;
+      declarations.typed(parameter.getName(), parameter.getTypeReference(), null, frame);
     } else if (element instanceof KtTypeAlias) {
       declarations.declareTypeAlias((KtTypeAlias) element);
     } else if (element instanceof KtTryExpression) {
@@ -164,6 +176,7 @@ public final class FactsCollector {
       predicates.when((KtWhenExpression) element, frame);
     } else if (element instanceof KtCallableReferenceExpression) {
       state.references.add(((KtCallableReferenceExpression) element).getCallableReference().getReferencedName());
+      calls.reference((KtCallableReferenceExpression) element, frame);
     }
   }
 }

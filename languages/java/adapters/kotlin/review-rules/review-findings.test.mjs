@@ -288,6 +288,7 @@ describe('Kotlin exception rules for the review rules', () => {
       'pmd/SwallowedCancellation',
       'pmd/LockOrderInversion',
       'pmd/InconsistentFieldLocking',
+      'pmd/ServiceLocatorLookup',
       'pmd/ValidationAnnotationTarget',
       'pmd/ClassLoadEffect',
       'pmd/UnboundedThreadPool',

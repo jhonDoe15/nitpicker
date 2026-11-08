@@ -1,6 +1,7 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import {
   ALL_FINDINGS,
+  EXPECTED_LOOKUP_FINDINGS,
   MAP_UPDATE_FINDINGS,
   PLURAL_FINDINGS,
   reviewBranchFiles,
@@ -23,7 +24,7 @@ describe.skipIf(!kotlinE2eEnabled)('Kotlin preset review rule exceptions end to 
 
   beforeAll(() => {
     project = initializeProject();
-    commitBranch(project, 'review-rules', reviewBranchFiles());
+    commitBranch(project, 'review-rules', reviewBranchFiles(project.root));
   });
   afterAll(() => {
     removeProject(project);
@@ -54,6 +55,7 @@ describe.skipIf(!kotlinE2eEnabled)('Kotlin preset review rule exceptions end to 
         'ExhaustiveEnumPredicate isPending',
         'ExhaustiveEnumPredicate isSettled',
         'ExhaustiveEnumPredicate weight',
+        ...EXPECTED_LOOKUP_FINDINGS,
         ...PLURAL_FINDINGS,
         'StaticForwardingWrapper absOf',
         'StaticForwardingWrapper total',

@@ -15,6 +15,8 @@ java {
 dependencies {
     implementation platform('org.springframework.boot:spring-boot-dependencies:3.5.5')
     implementation 'org.springframework.boot:spring-boot-starter'
+    compileOnly 'com.google.inject:guice:7.0.0'
+    compileOnly 'jakarta.enterprise:jakarta.enterprise.cdi-api:4.0.1'
     implementation 'io.projectreactor:reactor-core'
     implementation 'org.springframework:spring-web'
     implementation 'org.apache.httpcomponents.client5:httpclient5'

@@ -21,7 +21,7 @@ describe.skipIf(!kotlinE2eEnabled)('Kotlin preset review rule serialization end 
 
   beforeAll(() => {
     project = initializeProject();
-    commitBranch(project, 'review-rules', reviewBranchFiles());
+    commitBranch(project, 'review-rules', reviewBranchFiles(project.root));
   });
   afterAll(() => {
     removeProject(project);

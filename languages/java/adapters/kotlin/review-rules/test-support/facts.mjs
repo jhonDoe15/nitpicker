@@ -18,6 +18,8 @@ export function file(overrides = {}) {
     handlers: [],
     calls: [],
     references: [],
+    lookups: [],
+    typed: [],
     loads: [],
     bindings: [],
     ...overrides,

@@ -11,6 +11,7 @@ import { singularPluralFindings } from './main/member-names.mjs';
 import { timeoutFindings } from './main/timeouts/timeouts.mjs';
 import { suspendedUpdateFindings } from './main/suspension/suspended-updates.mjs';
 import { recursiveMapUpdateFindings } from './main/map-updates/recursive-map-update.mjs';
+import { serviceLookupFindings } from './main/service-lookups/service-lookups.mjs';
 import { unboundedPoolFindings } from './main/thread-pools/unbounded-pools.mjs';
 import { unusedOptionFindings } from './main/unused-options/unused-options.mjs';
 import { validationTargetFindings } from './validation/validation-targets.mjs';
@@ -91,6 +92,7 @@ export function readKotlinReviewFindings(context) {
     ...fieldLockingFindings(own, { finding, declaredIn: projectFiles }),
     ...suspendCleanupFindings(own, { finding, declaredIn: projectFiles }),
     ...childLifetimeFindings(own, { finding }),
+    ...serviceLookupFindings(own, { finding, declaredIn: projectFiles }),
     ...validationTargetFindings(own, { finding }),
     ...loadEffectFindings(own, { finding, declaredIn: projectFiles }),
     ...unboundedPoolFindings(own, { finding }),

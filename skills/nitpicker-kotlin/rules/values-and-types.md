@@ -53,6 +53,15 @@ Part of the [nitpicker-kotlin](../SKILL.md) skill. Write these forms from the st
   update the property, or hold one shared `Mutex` (a property, not a local) around the whole
   read-modify-write; a `launch` inside the lock does not hold it
   (`pmd/NonAtomicUpdateAcrossSuspension`).
+- Take a dependency as a constructor parameter; never look it up where it is used with Koin
+  `get()`/`inject()`, a Guice `Injector`, `CDI.current()` or JNDI (`pmd/ServiceLocatorLookup`). With
+  Koin, pass it as a constructor parameter in the module definition (`single { Orders(get()) }`), and
+  take a `Lazy<T>` or a function type for a deferred lookup. Compose and Android: a
+  `koinViewModel()` or `koinInject()` default parameter value and Android components (Activity,
+  Fragment, Service, BroadcastReceiver, ContentProvider, Application) are fine. Only `main`, Koin
+  definitions and functions taking a Koin `Scope`, a Guice `Module`'s `configure`,
+  `@Provides`/`@Produces` functions and `@Bean` functions of a `@Configuration` class look
+  dependencies up.
 - The lambda passed to `computeIfAbsent`, `compute`, `computeIfPresent`, `merge`, or `getOrPut`
   on a `ConcurrentMap`, never changes the same map, not even from a callback it starts
   (`pmd/RecursiveMapUpdate`). Attach the cleanup to the result:
