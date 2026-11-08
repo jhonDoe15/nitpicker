@@ -378,8 +378,8 @@ off (a PR that adds or removes React keeps linting on both sides); a misspelled 
   else a library forces is an exception for `nitpicker/no-null` on those paths (promise chains a
   library forces: `nitpicker/no-promise-chain`).
 
-`eslint-plugin-regexp` (MIT) supplies `regexp/no-super-linear-backtracking` and
-`regexp/no-useless-flag` (for the `g` and `y` flags only) in every project, React or not.
+`eslint-plugin-regexp` (MIT) supplies the `regexp/` rules (super-linear backtracking, the `g` and
+`y` flags, and dead or redundant pattern parts) in every project, React or not.
 
 The plugins are `eslint-plugin-react-hooks`, `eslint-plugin-react-x`, `eslint-plugin-react-dom` and
 `eslint-plugin-react-web-api` (the last three are eslint-react, MIT, pinned to one version),
