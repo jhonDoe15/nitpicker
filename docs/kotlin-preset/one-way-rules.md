@@ -170,7 +170,7 @@ the TypeScript preset, `{ "rule", "paths", "reason" }`, all required:
 `kotlinc/unchecked` or `kotlinc/cast`, one of the [review rules](review-rules.md) (`pmd/FixedSleepInTest`,
 `pmd/NegativeWaitInTest`, `pmd/DisabledTest`, `pmd/FocusedTest`, `pmd/RetryInTest`, `pmd/ServerOrContainerPerTest`, `pmd/AssertionInControlFlow`,
 `pmd/CoroutineEscapesTest`, `pmd/GlobalStateLeakInTest`, `pmd/MockedSubjectInTest`, `pmd/StaticMockOfProjectType`, `pmd/SpringUnusedContext`, `pmd/ExhaustiveEnumPredicate`,
-`pmd/StaticForwardingWrapper`, `pmd/SingularAndPluralMember`, `pmd/NonAtomicUpdateAcrossSuspension`, `pmd/LockOrderInversion`, `pmd/InconsistentFieldLocking`, `pmd/ValidationAnnotationTarget`, `pmd/timeout-abandons-operation`, `pmd/ClassLoadEffect`, `pmd/RecursiveMapUpdate`, `pmd/SwallowedCancellation`, `pmd/SwallowedInterrupt`, `unused-option`, `kotlin-source/SuspendFunInFinallySection`, `kotlin-source/ChildCoroutineOutlivesResource`), a class limit, a file
+`pmd/StaticForwardingWrapper`, `pmd/SingularAndPluralMember`, `pmd/ServiceLocatorLookup`, `pmd/NonAtomicUpdateAcrossSuspension`, `pmd/LockOrderInversion`, `pmd/InconsistentFieldLocking`, `pmd/ValidationAnnotationTarget`, `pmd/timeout-abandons-operation`, `pmd/ClassLoadEffect`, `pmd/RecursiveMapUpdate`, `pmd/SwallowedCancellation`, `pmd/SwallowedInterrupt`, `unused-option`, `kotlin-source/SuspendFunInFinallySection`, `kotlin-source/ChildCoroutineOutlivesResource`), a class limit, a file
 limit or `test-runtime/slow-test`; for the [structure](structure-limits.md), [CRAP](crap.md) and [coverage](coverage.md) findings,
 `function-lines-limit`, `function-statements-limit`, `function-control-nesting-limit`,
 `function-parameters-limit`, `crap-score-limit`, `crap-coverage-unknown` or `changed-branch-coverage`

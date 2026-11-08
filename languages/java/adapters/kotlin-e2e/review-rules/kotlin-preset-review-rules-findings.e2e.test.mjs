@@ -3,6 +3,7 @@ import {
   integrationSuiteFiles,
   publishedFiles,
 } from '../test-support/review/kotlin-review-data.mjs';
+import { lookupBuild } from '../test-support/review/lookups/kotlin-lookup-data.mjs';
 import {
   ALL_FINDINGS,
   reviewBranchFiles,
@@ -31,7 +32,7 @@ describe.skipIf(!kotlinE2eEnabled)('Kotlin preset review rules end to end', () =
 
   beforeAll(() => {
     project = initializeProject();
-    commitBranch(project, 'review-rules', reviewBranchFiles());
+    commitBranch(project, 'review-rules', reviewBranchFiles(project.root));
   });
   afterAll(() => {
     removeProject(project);
@@ -73,7 +74,7 @@ describe.skipIf(!kotlinE2eEnabled)('Kotlin preset review rules end to end', () =
     commitFromBranch(project, {
       name: 'published',
       from: 'review-rules',
-      files: publishedFiles(git(project, 'show', 'main:build.gradle.kts')),
+      files: publishedFiles(lookupBuild(git(project, 'show', 'main:build.gradle.kts'))),
     });
 
     const result = diffOf(project, 'published');
@@ -87,7 +88,7 @@ describe.skipIf(!kotlinE2eEnabled)('Kotlin preset review rules end to end', () =
     commitFromBranch(project, {
       name: 'integration-suite',
       from: 'review-rules',
-      files: integrationSuiteFiles(git(project, 'show', 'main:build.gradle.kts')),
+      files: integrationSuiteFiles(lookupBuild(git(project, 'show', 'main:build.gradle.kts'))),
     });
 
     const result = diffOf(project, 'integration-suite');

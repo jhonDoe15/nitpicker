@@ -13,6 +13,7 @@ import org.jetbrains.kotlin.psi.KtProperty;
 
 final class State {
   final boolean test;
+  final boolean locators;
   final List<Object> classes = new ArrayList<>();
   final List<Object> functions = new ArrayList<>();
   final List<Object> properties = new ArrayList<>();
@@ -22,9 +23,15 @@ final class State {
   final List<Object> predicates = new ArrayList<>();
   final List<Object> updates = new ArrayList<>();
   final List<Object> handlers = new ArrayList<>();
+  final List<Object> lookups = new ArrayList<>();
+  final List<Object> typed = new ArrayList<>();
   final Set<String> calls = new LinkedHashSet<>();
   final Set<String> references = new LinkedHashSet<>();
   final List<Object> typeAliases = new ArrayList<>();
+  private static final List<String> LOCATOR_PACKAGES =
+      List.of(
+          "org.koin.", "com.google.inject.", "jakarta.enterprise.", "javax.enterprise.", "javax.naming.",
+          "org.springframework.jndi.");
   private final KtFile file;
   private final String relative;
   private final Lines lines;
@@ -35,6 +42,7 @@ final class State {
     this.relative = relative;
     this.test = test;
     this.lines = new Lines(text);
+    this.locators = !test && LOCATOR_PACKAGES.stream().anyMatch(text::contains);
     for (KtImportDirective directive : file.getImportDirectives()) {
       var path = directive.getImportPath();
       if (path != null && !path.isAllUnder()) {
@@ -72,7 +80,7 @@ final class State {
         "imports", imports(), "classes", classes, "functions", functions, "properties", properties,
         "globals", globals, "waits", waits, "timeouts", timeouts, "predicates", predicates,
         "handlers", handlers, "updates", updates, "topLevelProperties", topLevelProperties(),
-        "typeAliases", typeAliases,
+        "typeAliases", typeAliases, "lookups", lookups, "typed", lookups.isEmpty() ? List.of() : typed,
         "calls", new ArrayList<Object>(calls.stream().map(Json.Raw::new).toList()),
         "references", new ArrayList<Object>(references));
   }

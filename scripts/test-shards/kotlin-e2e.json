@@ -14,6 +14,8 @@
   "languages/java/adapters/kotlin-e2e/guards/kotlin-preset-guards-exception.e2e.test.mjs": 23,
   "languages/java/adapters/kotlin-e2e/init/init-kotlin.e2e.test.mjs": 60,
   "languages/java/adapters/kotlin-e2e/kotest.e2e.test.mjs": 99,
+  "languages/java/adapters/kotlin-e2e/review/kotlin-lookup-facts.e2e.test.mjs": 37,
+  "languages/java/adapters/kotlin-e2e/review/kotlin-preset-review-rules.e2e.test.mjs": 170,
   "languages/java/adapters/kotlin-e2e/kotlin-preset-toolchain.e2e.test.mjs": 110,
   "languages/java/adapters/kotlin-e2e/kotlin-spring-arch.e2e.test.mjs": 120,
   "languages/java/adapters/kotlin-e2e/kotlin-spring-rules.e2e.test.mjs": 144,

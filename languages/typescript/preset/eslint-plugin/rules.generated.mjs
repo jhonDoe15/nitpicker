@@ -52,6 +52,7 @@ import { rule as ruleNoRealTimeRandomOrNetwork } from './test-isolation/no-real-
 import { rule as ruleNoRuntimeExclusivePropsCheck } from './rules/react-props/no-runtime-exclusive-props-check.mjs';
 import { rule as ruleNoSelfRecursion } from './rules/control/no-self-recursion.mjs';
 import { rule as ruleNoServerOrWorkerPerTest } from './rules/testing/processes/no-server-or-worker-per-test.mjs';
+import { rule as ruleNoServiceLocator } from './rules/service-locator/no-service-locator.mjs';
 import { rule as ruleNoSharedStatefulRegex } from './rules/regex/no-shared-stateful-regex.mjs';
 import { rule as ruleNoSharedTestState } from './test-quality/no-shared-test-state.mjs';
 import { rule as ruleNoShellStringCommand } from './rules/guards/no-shell-string-command.mjs';
@@ -160,6 +161,7 @@ export const directoryRules = {
   'no-runtime-exclusive-props-check': ruleNoRuntimeExclusivePropsCheck,
   'no-self-recursion': ruleNoSelfRecursion,
   'no-server-or-worker-per-test': ruleNoServerOrWorkerPerTest,
+  'no-service-locator': ruleNoServiceLocator,
   'no-shared-stateful-regex': ruleNoSharedStatefulRegex,
   'no-shared-test-state': ruleNoSharedTestState,
   'no-shell-string-command': ruleNoShellStringCommand,

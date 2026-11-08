@@ -1,10 +1,11 @@
 import { exceptionRoute } from '../../../shared/exceptions/rule-names.mjs';
 import { FUNCTION_EXCEPTION_RULES } from '../../../shared/policy.mjs';
 import { definedField } from '../../../shared/messages/messages.mjs';
-import { ASYNC_HINTS } from './hints/ast-async.mjs';
-import { STRUCTURE_HINTS } from './hints/ast-structure.mjs';
+import { LOCATOR_HINTS } from './hints/ast/locators.mjs';
+import { ASYNC_HINTS } from './hints/ast/ast-async.mjs';
+import { STRUCTURE_HINTS } from './hints/ast/ast-structure.mjs';
 import { TYPING_HINTS } from './hints/typing/ast-typing.mjs';
-import { SMELL_HINTS } from './hints/ast-smells.mjs';
+import { SMELL_HINTS } from './hints/ast/ast-smells.mjs';
 import { ORM_HINTS } from './hints/persistence/ast-orm.mjs';
 import { PYTEST_HINTS } from './hints/ruff-pytest.mjs';
 import { SIGNATURE_HINTS } from './hints/signatures/ast-signatures.mjs';
@@ -49,6 +50,7 @@ export const RULE_HINTS = [
   ...RULES_SECURITY_HINTS,
   ...STRUCTURE_HINTS,
   ...TYPING_HINTS,
+  ...LOCATOR_HINTS,
   ...ASYNC_HINTS,
   ...SMELL_HINTS,
   ...SIGNATURE_HINTS,
