@@ -17,6 +17,10 @@ Part of the [nitpicker-python](../SKILL.md) skill. Write these forms from the st
   (`@pytest.mark.skipif(sys.platform == "win32", reason="...")`, `pytest.importorskip`); a
   permanent `skip`, a literal `skipif(True)` (or `1 == 1`, `"1"`, a constant) or a non-strict
   `xfail` is `switched-off-test`: delete the test, fix it, or use `xfail(strict=True)`.
+- Never patch the module a test is named after (`mocked-subject-in-test`): in `test_cart.py`, no
+  `patch("shop.cart.total")`, no `patch.object(cart, "helper")` on a `Cart`, no `Mock(spec=Cart)`.
+  Pass the collaborators in and fake them, test a helper through the public function that calls
+  it, and patch only what the module imports (`patch("shop.cart.requests.get")`).
 - Tests put back what they change for the whole process (`global-state-leak-in-test`): set environment
   variables and attributes with `monkeypatch.setenv`/`monkeypatch.setattr` or `mock.patch.dict(os.environ, ...)`,
   not `os.environ[...] =`, `settings.DEBUG = True`, `time.tzset()` or `locale.setlocale(...)`; or restore the old
