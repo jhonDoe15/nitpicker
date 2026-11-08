@@ -9,8 +9,8 @@ Part of the [Kotlin preset guide](../kotlin-preset.md).
 `kotlin.detektConfig` are new and valid only with this preset. `exceptions` lifts any detekt rule,
 the [one-way rules](one-way-rules.md), the [source checks](source-checks.md), the
 [source scans](source-scans.md) (`catch-log-without-exception` and `test-without-assertion`), the
-[compiler warnings](compiler-warnings.md), the six `pmd/` ids and `unused-option` of the
-[review rules](review-rules.md), the [class limits](structure-limits.md#class-limits), the file limits
+[compiler warnings](compiler-warnings.md), the `pmd/` ids, `unused-option` and the two `kotlin-source/` coroutine
+rules of the [review rules](review-rules.md), the [class limits](structure-limits.md#class-limits), the file limits
 `file-lines-limit` and `folder-files-limit`, `slow-test` (or `test-runtime/slow-test`),
 `test-runtime/test-not-run` (a test source set no test task runs, see
 [java-preset.md](../java-preset/tests-that-never-run.md)), the

@@ -158,6 +158,7 @@ describe('readKotlinSourceFindings', () => {
       [
         'BooleanFlagParameter',
         'CatchOnlyLogsOrReturnsDefault',
+        'ChildCoroutineOutlivesResource',
         'CommentedOutCode',
         'CompatibilityShim',
         'CredentialLiteral',
@@ -185,6 +186,7 @@ describe('readKotlinSourceFindings', () => {
         'ShellCommand',
         'SqlStringBuilding',
         'StandardStreamOutsideEntryPoint',
+        'SuspendFunInFinallySection',
         'TestClassWithoutTestCases',
         'TestHelperInSource',
         'TlsVerificationOff',

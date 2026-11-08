@@ -148,3 +148,108 @@ export const LOAD_FINDINGS = [
   'Singletons.kt Pool.constructor 30',
   'Singletons.kt Made.init 38',
 ];
+
+export const LIFETIMES = `package demo.lifetimes
+
+import java.io.Closeable
+import kotlinx.coroutines.*
+import kotlinx.coroutines.NonCancellable as Shield
+import kotlinx.coroutines.sync.Mutex
+
+class Holder(private val scope: CoroutineScope, private val gate: Mutex) : CoroutineScope by scope {
+    suspend fun cleanup(job: Job) {
+        try {
+            work()
+        } finally {
+            delay(1)
+            job.join()
+            gate.lock()
+            withContext(Shield) { delay(2) }
+            scope.launch { delay(3) }
+            runCatching { yield() }
+        }
+    }
+
+    suspend fun cancelled() {
+        try {
+            work()
+        } catch (e: CancellationException) {
+            delay(4)
+        }
+    }
+
+    suspend fun timed() {
+        try {
+            withTimeout(1) { work() }
+        } catch (e: CancellationException) {
+            delay(5)
+        }
+    }
+
+    suspend fun shielded() {
+        withContext(NonCancellable) {
+            try {
+                work()
+            } finally {
+                delay(6)
+            }
+        }
+    }
+
+    private suspend fun shieldedRelease() = withContext(Shield) { delay(8) }
+
+    suspend fun releases() {
+        try {
+            work()
+        } finally {
+            shieldedRelease()
+        }
+    }
+
+    suspend fun uses(resource: Closeable, other: CoroutineScope) {
+        resource.use { reader -> other.launch { reader.close() } }
+        resource.use { launch { println(it) } }
+        resource.use { reader -> other.launch { reader.close() }.join() }
+        resource.use { reader -> runBlocking { launch { reader.close() } } }
+        resource.use { reader -> val inner = CoroutineScope(Dispatchers.IO); inner.launch { reader.close() } }
+        resource.use { reader -> other.launch { println("done") } }
+        resource.use { reader -> val job = other.launch { reader.close() }; job.join() }
+        resource.use { reader -> val job = other.launch { reader.close() }; if (reader.hashCode() > 0) { job.join() } }
+    }
+
+    private fun work() {}
+}
+`;
+
+export const LIFETIME_FACTS = {
+  cleanupCalls: [
+    'finally cleanup delay',
+    'finally cleanup join Job',
+    'finally cleanup lock Mutex',
+    'finally cleanup launch CoroutineScope',
+    'finally cleanup runCatching',
+    'finally cleanup yield',
+    'catch cancelled delay',
+    'finally releases shieldedRelease',
+  ],
+  shielded: ['shielded', 'shieldedRelease'],
+  useLaunches: [
+    'uses reader resource other CoroutineScope',
+    'uses it resource class',
+    'uses reader resource other CoroutineScope',
+  ],
+};
+
+export function lifetimeFacts(file) {
+  return {
+    cleanupCalls: file.cleanupCalls.map(
+      ({ section, function: name, name: callee, receiverType }) =>
+        `${section} ${name} ${callee}${receiverType === undefined ? '' : ` ${receiverType}`}`,
+    ),
+    shielded: file.functions.filter(({ shielded }) => shielded).map(({ name }) => name),
+    useLaunches: file.useLaunches.map(
+      ({ function: name, resource, opened, scope, scopeType, implicit }) =>
+        `${name} ${resource} ${opened} ${scope ?? implicit} ${scopeType ?? ''}`.trim(),
+    ),
+  };
+}

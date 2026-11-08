@@ -16,6 +16,9 @@ Part of the [nitpicker-java](../SKILL.md) skill. Write these forms from the star
   `if`; `-1`, `0`, `1` and `2` are fine.
 - Parameters and loops: never reassign a parameter or a catch variable; copy to a local. Use
   for-each where the index is unused. Remove unused fields, locals, private methods, assignments.
+  Wait for a task that uses a resource inside its try block, after starting it and not under an `if` or loop
+  (`get()`/`join()`, `awaitTermination`, `take()`, a latch `await()`, or declare the executor as a later
+  resource); `pmd/TaskOutlivesTryResource` reports a task that can outlive the close.
 - Utility classes: a `final` class of static methods with a `private` empty constructor.
 - Javadoc is optional; when you write it, the first sentence is a real summary (not `@return`),
   every `@param`/`@return` has a description, in that order, and paragraphs start with `<p>`.

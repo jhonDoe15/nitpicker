@@ -24,6 +24,8 @@ Part of the [nitpicker-javascript](../SKILL.md) skill. Write these forms from th
 - Remove a parameter the body does not read. One that a callback or override signature requires
   starts with `_` (`_event`).
 - `async`/`await`, never `.then()`. No floating promises.
+  Await every task that uses a `using` or `finally`-closed resource before its block ends (no `void` call,
+  timer callback or un-awaited async call on it): `nitpicker/no-task-outliving-resource`.
 - A timeout does not stop the work it races: `Promise.race([op(), rejectAfter(ms)])` leaves `op` running
   (`timeout-abandons-operation`). Give `op` the `AbortSignal` the timeout aborts (`{ signal: controller.signal }`,
   or `AbortSignal.timeout(ms)` straight to an API that takes `signal`) and drop the race.

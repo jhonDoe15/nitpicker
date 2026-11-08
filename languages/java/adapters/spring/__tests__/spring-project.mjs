@@ -90,6 +90,7 @@ const REVIEW_RULES = new Set([
   'LockOrderInversion',
   'InconsistentFieldLocking',
   'SpringUnusedContext',
+  'TaskOutlivesTryResource',
   'SpringProxySelfCall',
   'SpringProxyMethodVisibility',
   'TestClassWithoutTestCases',
