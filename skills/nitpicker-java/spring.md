@@ -140,3 +140,8 @@ and local or dev ones where noted, are exempt):
   key names and credentials in URLs.
 - Profiles come from `SPRING_PROFILES_ACTIVE`, not the main file. No show-sql, bind logging, H2
   console or `always` actuator details (local and dev may).
+- Every key binds to a property, also in test resources and test overrides (`@SpringBootTest`
+  `properties`, `@TestPropertySource`, `withPropertyValues`, `DynamicPropertyRegistry.add`): use the
+  name the Spring Boot metadata or your `@ConfigurationProperties` class defines
+  (`spring.datasource.username`, not `user`); declare a key only code reads by name in
+  `META-INF/additional-spring-configuration-metadata.json`.
