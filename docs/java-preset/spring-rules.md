@@ -242,6 +242,8 @@ when the code is right, for example `{ "rule": "pmd/SpringDataNoSaveInLoop", "pa
   - a filter: `stream().filter`, `anyMatch`, `allMatch` or `noneMatch`, and the `filter`, `any`
     or `all` of a `Flux`.
 
+  `parallelStream()` counts as `stream()`, and a returned `Stream` is used directly.
+
   For a total, a sort or a filter, the lambda or method reference must read only getters of the
   row (`row.getStatus()`, `Row::getTotal`, also `row.getCustomer().getName()`), compared with
   constants, parameters or locals through `==`, `equals`, `compareTo`, `isBefore`, `isAfter`,

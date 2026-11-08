@@ -21,7 +21,7 @@ let $initializer := function($node) {
     $content := function($node) {
   $queried($node)
   or exists($node[self::MethodCall[@MethodName = ('getContent', 'toList')][not(ArgumentList/*)]]
-    [*[1][pmd-java:typeIs('org.springframework.data.domain.Slice')][$queried(.)]])
+    [*[1][pmd-java:typeIs('org.springframework.data.domain.Slice')][$queried($origin(.))]])
 },
     $bounded := function($node) {
   some $call in ($node/descendant-or-self::MethodCall,
@@ -41,7 +41,7 @@ let $initializer := function($node) {
     $list := function($node) { $rows($node) or $collected($node, $rows) },
     $legacyList := function($node) { $legacy($node) or $collected($node, $legacy) },
     $stream := function($node) {
-  exists($node[self::MethodCall[@MethodName = 'stream'][not(ArgumentList/*)]][$list(*[1])])
+  exists($node[self::MethodCall[@MethodName = ('stream', 'parallelStream')][not(ArgumentList/*)]][$list(*[1])])
   or ($rows($node) and exists($node[pmd-java:typeIs('java.util.stream.Stream')]))
 },
     $flux := function($node) { $rows($node) and exists($node[pmd-java:typeIs('reactor.core.publisher.Flux')]) },

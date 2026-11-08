@@ -88,7 +88,7 @@ function rowsOf(view, invocation) {
   return { entity, bounded };
 }
 
-function stepCall(view, invocation, steps, index) {
+function stepCall(view, { invocation, steps, index }) {
   const previous = index === 0 ? invocation.name : steps[index - 1];
   return view.file.invocations.find(
     (candidate) =>
@@ -102,39 +102,47 @@ function stepCall(view, invocation, steps, index) {
   );
 }
 
-function inMemory(view, invocation, rows) {
+function operationOf(view, invocation, rows) {
   const steps = invocation.after ?? [];
   const index = steps.findIndex((step) => !PASSING.has(step));
   if (index < 0) {
-    return false;
+    return undefined;
   }
-  const step = steps[index];
-  const bounded = rows.bounded || steps.slice(0, index).includes('content');
-  const call = stepCall(view, invocation, steps, index);
-  const [argument] = call?.arguments ?? [];
-  const counts =
-    SIZES.has(step) || (EMPTY_ONLY.has(step) && call !== undefined && argument === undefined);
-  if (counts) {
-    return !bounded;
-  }
-  if (rows.entity === undefined || argument === undefined) {
-    return false;
-  }
+  const call = stepCall(view, { invocation, steps, index });
+  return {
+    step: steps[index],
+    next: steps[index + 1],
+    call,
+    argument: call?.arguments[0],
+    bounded: rows.bounded || steps.slice(0, index).includes('content'),
+  };
+}
+
+function readsRows(view, entity, { step, next, argument, bounded }) {
   if (FILTERS.has(step)) {
-    return keyReadsColumns(view, rows.entity, argument);
+    return keyReadsColumns(view, entity, argument);
   }
   if (bounded) {
     return false;
   }
-  if (KEYS.has(step)) {
-    return keyReadsColumns(view, rows.entity, argument);
-  }
   if (COMPARATORS.has(step)) {
-    return comparatorReadsColumns(view, rows.entity, argument);
+    return comparatorReadsColumns(view, entity, argument);
+  }
+  const keyed = KEYS.has(step) || FOLLOWED.get(step)?.has(next) === true;
+  return keyed && keyReadsColumns(view, entity, argument);
+}
+
+function inMemory(view, invocation, rows) {
+  const operation = operationOf(view, invocation, rows);
+  if (operation === undefined) {
+    return false;
+  }
+  const { step, call, argument, bounded } = operation;
+  if (SIZES.has(step) || (EMPTY_ONLY.has(step) && call !== undefined && argument === undefined)) {
+    return !bounded;
   }
   return (
-    FOLLOWED.get(step)?.has(steps[index + 1]) === true &&
-    keyReadsColumns(view, rows.entity, argument)
+    rows.entity !== undefined && argument !== undefined && readsRows(view, rows.entity, operation)
   );
 }
 

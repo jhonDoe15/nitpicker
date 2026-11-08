@@ -26,7 +26,7 @@ const COMPARATOR_CALLS = new Set([
 const REJECTED = new Set(['if', 'when', 'val', 'var', 'return', 'as', 'this', 'fun']);
 const STRINGS = /"(?:[^"\\]|\\.)*"/gu;
 const REFERENCE = /(?<![\w$.])([A-Z][\w$.]*)\s*::\s*([a-z_$][\w$]*)/gu;
-const CALL = /(?<![\w$])([A-Za-z_$][\w$]*)\s*(?:<[^<>()]*>)?\s*\(/gu;
+const CALL = /(?<![\w$])([A-Za-z_$][\w$]*)\s*(?:<[^<>()]*>\s*)?\(/gu;
 const NAME_CHAIN = /(?<![\w$.])([A-Za-z_$][\w$]*)((?:\s*\.\s*[A-Za-z_$][\w$]*)*)/gu;
 
 function isHolder(found) {
@@ -38,9 +38,8 @@ function holderOf(view, type) {
   return found !== undefined && isHolder(found) ? found : undefined;
 }
 
-function columnsOf(view, found, seen = new Set()) {
-  seen.add(found);
-  const own = membersOfClass(found).filter(
+function storedMembers(found) {
+  return membersOfClass(found).filter(
     (member) =>
       member.computed !== true &&
       member.delegated !== true &&
@@ -49,11 +48,17 @@ function columnsOf(view, found, seen = new Set()) {
         ({ type, name }) => simpleName(type ?? name) === 'Transient',
       ),
   );
-  const inherited = found.declared.supers
-    .map((type) => holderOf(view, type))
-    .filter((base) => base !== undefined && !seen.has(base))
-    .flatMap((base) => columnsOf(view, base, seen));
-  return [...own, ...inherited];
+}
+
+function columnsOf(view, found) {
+  const pending = [found];
+  for (const current of pending) {
+    const bases = current.declared.supers
+      .map((type) => holderOf(view, type))
+      .filter((base) => base !== undefined && !pending.includes(base));
+    pending.push(...bases);
+  }
+  return pending.flatMap((holder) => storedMembers(holder));
 }
 
 function readsColumns(view, entity, path) {
