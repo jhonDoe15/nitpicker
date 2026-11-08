@@ -8,12 +8,7 @@ import {
   registeredFactRules,
   sharedFactExceptionRules,
 } from '../../project-rules/fact-rules.mjs';
-import {
-  exception,
-  fixtureFindings,
-  rows,
-  withLanguageRegistered,
-} from './test-support/fact-fixtures.mjs';
+import { exception, fixtureFindings, rows } from './test-support/fact-fixtures.mjs';
 
 const CONSOLE = 'test-console-output';
 
