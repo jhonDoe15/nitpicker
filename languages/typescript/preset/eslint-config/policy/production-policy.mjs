@@ -1,6 +1,7 @@
 import regexp from 'eslint-plugin-regexp';
 import tseslint from 'typescript-eslint';
 import { nitpickerRules } from '../../eslint-plugin/index.mjs';
+import { regexpRules } from '../regexp/regexp-rules.mjs';
 import { domainGlobsFor } from '../strict/strict-domain.mjs';
 import {
   SECURITY_RULES,
@@ -88,8 +89,7 @@ function productionRules({ react, routeHandlers }) {
         ignoreTypeIndexes: true,
       },
     ],
-    'regexp/no-super-linear-backtracking': 'error',
-    'regexp/no-useless-flag': ['error', { ignore: ['i', 'm', 's'] }],
+    ...regexpRules(),
   };
 }
 

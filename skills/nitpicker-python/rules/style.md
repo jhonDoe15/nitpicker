@@ -24,6 +24,9 @@ Part of the [nitpicker-python](../SKILL.md) skill. Write these forms from the st
 - Records: `@dataclass(frozen=True)`, and `dataclasses.replace` for a changed copy. The project's
   validation library (pydantic by default) only in an `adapters/` package, where untrusted input is
   parsed once; pass frozen dataclasses on from there.
+- A back reference in a record (a child's `parent`, an item's `order`) is
+  `field(compare=False)` (`attrs.field(eq=False)`), or the generated `==` and `hash()` recurse
+  until `RecursionError` (`generated-member-cycle`).
 - Constants: a fixed set of strings is an `enum.StrEnum` (`class X(str, Enum)` before Python 3.11),
   not `STATUS_ACTIVE = "active"` constants or a class holding them. Settings like `DB_HOST` are fine.
 - Names and comments: name files, packages and classes for their job (`price_rounding.py`), never
