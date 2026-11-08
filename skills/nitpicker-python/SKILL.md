@@ -26,9 +26,12 @@ project, so it takes as long as a full run; finish with the plain run below.
 1. Run the project's tests with its own runner (pytest, unittest, `manage.py test` or nose2).
    Failing tests are a tool error that names them; coverage and CRAP then come only from the tests
    that pass, and mutation testing leaves the failing modules out.
-2. When the change is complete, run `npx nitpicker` as a background command you wait on, without a
-   pipe: you need its exit code. It has no `--fix` for Python; format with the "Format with ..." command
-   printed at the start of the run (the gate does not read the project's formatter config). It takes minutes and prints a progress line for each slow analyzer.
+2. When the change is complete, run `npx nitpicker --fix` as a background command you wait on,
+   without a pipe: you need its exit code. It first applies `ruff check --fix` and the formatter
+   named in the "Format with ..." line (with the project's formatter config only when
+   `tools.<formatter>.precedence` in `nitpicker.config.json` lists `"project"`, as the gate does) to
+   the changed files and lists the rewritten ones under "Fixed files:"; re-read those files before
+   you edit them again. It takes minutes and prints a progress line for each slow analyzer.
 3. Act on the exit code:
    - 0: done, unless you narrowed the run with `--analyzer`: then the summary says `Ran only: ...`
      and you run the gate again without it before you finish.

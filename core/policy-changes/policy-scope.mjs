@@ -161,7 +161,7 @@ export function createPolicyScope({
   };
 }
 
-export function listedFiles(projectRoot) {
+function listedFiles(projectRoot) {
   return existsSync(projectRoot)
     ? runGit(projectRoot, ['ls-files', '-z', '--cached', '--others', '--exclude-standard'])
         .split('\0')

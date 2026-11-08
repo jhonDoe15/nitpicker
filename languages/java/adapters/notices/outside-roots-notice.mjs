@@ -11,6 +11,21 @@ function isUnder(file, root) {
   return file === root || file.startsWith(`${root}/`);
 }
 
+export function inJvmSourceSets(file, declaredRoots = []) {
+  const normal = file.replaceAll('\\', '/');
+  return (
+    !HIDDEN_FOLDER.test(normal) &&
+    !BUILD_OUTPUT.test(normal) &&
+    (CONVENTIONAL_SOURCE_SET.test(normal) || declaredRoots.some((root) => isUnder(normal, root)))
+  );
+}
+
+function outsideSourceSets(file, declaredRoots) {
+  return (
+    !HIDDEN_FOLDER.test(file) && !BUILD_OUTPUT.test(file) && !inJvmSourceSets(file, declaredRoots)
+  );
+}
+
 export function jvmOutsideRootsNotices(changedFiles, project) {
   const { preset, declaredRoots = [], exclude = [] } = project;
   const excluded = exclude.map((glob) => globMatcher(glob));
@@ -19,11 +34,8 @@ export function jvmOutsideRootsNotices(changedFiles, project) {
     .filter(
       (file) =>
         EXTENSIONS[preset].test(file) &&
-        !HIDDEN_FOLDER.test(file) &&
-        !BUILD_OUTPUT.test(file) &&
         !excluded.some((matcher) => matcher.test(file)) &&
-        !CONVENTIONAL_SOURCE_SET.test(file) &&
-        !declaredRoots.some((root) => isUnder(file, root)),
+        outsideSourceSets(file, declaredRoots),
     );
   return outsideRootsNotice({
     files: outside,
