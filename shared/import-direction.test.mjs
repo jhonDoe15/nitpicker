@@ -8,7 +8,7 @@ const packageRoot = path.resolve(sharedRoot, '..');
 
 // Static `import ... from 'x'` and `export ... from 'x'` specifiers.
 const SPECIFIER =
-  /(?:^|\n)\s*(?:import|export)\b[^'";]*?\bfrom\s*['"]([^'"]+)['"]|(?<![\w-])import\s*['"]([^'"]+)['"]/g;
+  /(?:^|\n)\s*(?:import|export)\b[^'";]*?\bfrom\s*['"]([^'"]+)['"]|(?<![\w'"-])import\s*['"]([^'"]+)['"]/g;
 
 function sharedModules() {
   return [...filesUnder(sharedRoot)].filter(

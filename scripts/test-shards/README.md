@@ -165,6 +165,14 @@ The ruff lint precedence file (`adapters/project-tools/ruff/ruff-lint`, ten case
 `test:python` with a planning weight of 15 seconds: it runs only the installed ruff on small
 projects, and took about six seconds locally.
 
+The touched-lines files run one gate over a legacy project after a helper extraction, a formatter
+run, an added repeat and an edited line: `java-preset-touched-lines` (Gradle) and
+`maven-preset-touched-lines` (Maven) share their scenario, and the Kotlin and Python files mirror
+it; the Python one runs the real `ruff format` over a file with 400 legacy findings. With them the
+suites list 124 Java, 110 Kotlin and 952 Python cases. Their weights (65, 78, 66 and 18 seconds)
+were recorded locally with `record-durations.mjs` on warm Gradle, Maven and uv caches, one file at
+a time; CI measurements should replace them.
+
 The shard counts were later lowered twice so that more pull request runs fit into the account's
 concurrent job limit at once. The loads, targets and measurements earlier in this file describe
 the previous split; this paragraph replaces them. The unit `test` job went from eight shards to
