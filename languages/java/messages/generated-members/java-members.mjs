@@ -247,8 +247,18 @@ function skipped(state, token, offset) {
   state.skip += token === '{' ? 1 : 0;
   state.skip -= token === '}' ? 1 : 0;
   if (state.skip === 0) {
-    state.skip = undefined;
     reset(state.frames.at(-1), offset + 1);
+  }
+}
+
+function step(state, token, offset) {
+  if (state.skip > 0) {
+    skipped(state, token, offset);
+    return;
+  }
+  const frame = state.frames.at(-1);
+  if (frame !== undefined) {
+    HANDLERS[token](state, frame, offset);
   }
 }
 
@@ -258,17 +268,10 @@ export function javaClasses(text) {
     starts: lineStarts(text),
     classes: [],
     frames: [frameOf(undefined, 0)],
-    skip: undefined,
+    skip: 0,
   };
   for (const match of text.matchAll(TOKEN)) {
-    if (state.skip !== undefined) {
-      skipped(state, match[0], match.index);
-    } else {
-      const frame = state.frames.at(-1);
-      if (frame !== undefined) {
-        HANDLERS[match[0]](state, frame, match.index);
-      }
-    }
+    step(state, match[0], match.index);
   }
   return state.classes;
 }

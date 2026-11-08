@@ -28,23 +28,28 @@ function selfCycles(edges) {
   });
 }
 
+function opens(edge, { path, seen, start, rank }) {
+  return (
+    !seen.has(edge.to) &&
+    (rank.get(edge.to) ?? -1) > rank.get(start) &&
+    path.length + 1 < MAX_CYCLE_CLASSES
+  );
+}
+
 function cyclesFrom(start, { from, rank }) {
   const cycles = [];
-  const pending = [{ path: [], seen: new Set([start]) }];
+  const pending = (from.get(start) ?? [])
+    .filter((edge) => opens(edge, { path: [], seen: new Set([start]), start, rank }))
+    .map((edge) => ({ path: [edge], seen: new Set([start, edge.to]) }));
   for (const { path, seen } of pending) {
-    const head = path.length === 0 ? start : path.at(-1).to;
-    for (const edge of from.get(head) ?? []) {
-      if (edge.to === start && path.length > 0) {
-        cycles.push([...path, edge]);
-      } else if (
-        !seen.has(edge.to) &&
-        (rank.get(edge.to) ?? -1) > rank.get(start) &&
-        path.length + 1 < MAX_CYCLE_CLASSES &&
-        pending.length < MAX_PATHS
-      ) {
-        pending.push({ path: [...path, edge], seen: new Set([...seen, edge.to]) });
-      }
-    }
+    const next = from.get(path.at(-1).to) ?? [];
+    cycles.push(...next.filter((edge) => edge.to === start).map((edge) => [...path, edge]));
+    const open = next.filter((edge) => opens(edge, { path, seen, start, rank }));
+    pending.push(
+      ...open
+        .slice(0, Math.max(0, MAX_PATHS - pending.length))
+        .map((edge) => ({ path: [...path, edge], seen: new Set([...seen, edge.to]) })),
+    );
   }
   return cycles;
 }
