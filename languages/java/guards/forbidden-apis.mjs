@@ -92,6 +92,14 @@ function conversionsOn(lines, line, reported) {
   );
 }
 
+function keptConstructions(lines, line) {
+  const text = lines[line - 1] ?? '';
+  return (
+    countOf(/\bnew\s+(?:java\.util\.)?Date\s*\(/g, text) -
+    countOf(/\bnew\s+(?:java\.util\.)?Date\s*\([^()]*\)\s*\.toInstant\(\)/g, text)
+  );
+}
+
 function isLegacyDateUse(use) {
   return use.signature === LEGACY_DATE && use.declaration === undefined;
 }
@@ -105,12 +113,12 @@ function withoutConvertedDates(uses, source) {
     }
     const key = `${use.file}\0${String(use.line)}`;
     if (!left.has(key)) {
-      const reported = new Set(
-        uses
-          .filter((other) => other.file === use.file && isLegacyDateUse(other))
-          .map((other) => other.line),
-      );
-      left.set(key, conversionsOn(text.split('\n'), use.line, reported));
+      const onFile = uses.filter((other) => other.file === use.file && isLegacyDateUse(other));
+      const reported = new Set(onFile.map((other) => other.line));
+      const lines = text.split('\n');
+      const onLine = onFile.filter((other) => other.line === use.line).length;
+      const cancellable = Math.max(0, onLine - keptConstructions(lines, use.line));
+      left.set(key, Math.min(conversionsOn(lines, use.line, reported), cancellable));
     }
     left.set(key, left.get(key) - 1);
     return left.get(key) < 0;
