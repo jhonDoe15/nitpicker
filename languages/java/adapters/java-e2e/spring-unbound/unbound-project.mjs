@@ -5,7 +5,6 @@ import { collectJavaFindings } from '../../java-diff.mjs';
 
 const FIXTURE = path.resolve(import.meta.dirname, '../../fixtures/spring-unbound-project');
 const BUILD_FILES = { gradle: ['build.gradle.kts', 'settings.gradle.kts'], maven: ['pom.xml'] };
-const roots = [];
 
 export const UNBOUND_FINDINGS = [
   'src/main/resources/application.yml:14 shop.mail.hots',
@@ -21,7 +20,7 @@ export const UNBOUND_FINDINGS = [
   'src/test/resources/application-test.properties:2 server.prot',
 ];
 
-export function unboundFindings(build, options) {
+function copyFixture(roots, build) {
   const root = mkdtempSync(path.join(tmpdir(), `nitpicker-unbound-${build}-`));
   roots.push(root);
   cpSync(FIXTURE, root, { recursive: true });
@@ -29,14 +28,23 @@ export function unboundFindings(build, options) {
   for (const file of BUILD_FILES[other]) {
     rmSync(path.join(root, file));
   }
-  return collectJavaFindings(root, options)
-    .filter(({ rule }) => rule === 'unbound-property')
-    .map(({ path: file, location, identity }) => `${file}:${String(location?.line)} ${identity}`)
-    .sort();
+  return root;
 }
 
-export function removeUnboundProjects() {
-  for (const root of roots.splice(0)) {
-    rmSync(root, { recursive: true, force: true });
-  }
+export function unboundProjects() {
+  const roots = [];
+  return {
+    findings: (build, options) =>
+      collectJavaFindings(copyFixture(roots, build), options)
+        .filter(({ rule }) => rule === 'unbound-property')
+        .map(
+          ({ path: file, location, identity }) => `${file}:${String(location?.line)} ${identity}`,
+        )
+        .sort(),
+    remove: () => {
+      for (const root of roots.splice(0)) {
+        rmSync(root, { recursive: true, force: true });
+      }
+    },
+  };
 }

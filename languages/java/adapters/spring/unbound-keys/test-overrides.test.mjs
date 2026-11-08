@@ -1,10 +1,13 @@
 import { afterEach, describe, expect, it } from 'vitest';
-import { problemsIn, removeProjects } from './test-support/unbound-project.mjs';
+import { scratchProjects } from './test-support/unbound-project.mjs';
 
 const JAVA_TEST = 'src/test/java/shop/ShopTest.java';
 const KOTLIN_TEST = 'src/test/kotlin/shop/ShopTest.kt';
 
-afterEach(removeProjects);
+const projects = scratchProjects();
+const { problemsIn } = projects;
+
+afterEach(projects.remove);
 
 function keysIn(file, lines) {
   return problemsIn({ [file]: lines.join('\n') }).map((problem) => problem.split(' binds')[0]);

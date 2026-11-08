@@ -4,6 +4,7 @@ import {
   blankLiterals,
   sourceFilesUnder,
 } from '../../review-rules/java-sources.mjs';
+import { valueOr } from '../spring-config-files.mjs';
 import { closingIndex, stringLiterals } from './classes/source-structure.mjs';
 
 const SOURCE_EXTENSIONS = ['.java', '.kt'];
@@ -11,22 +12,14 @@ const RESOURCE_EXTENSIONS = ['.properties', '.yml', '.yaml', '.xml', '.json', '.
 const PLACEHOLDER = /\$\{([^}:]+)/gu;
 const LOGGING_SOURCE = /\bsource\s*=\s*"([^"]+)"/gu;
 const READ_CALL =
-  /\b(?:getProperty|getRequiredProperty|containsProperty)\s*(?:<[^>]*>)?\s*\(\s*"([^"]+)"\s*([,)+])/gu;
-const BIND_CALL = /\.\s*bind\s*(?:<[^>]*>)?\s*\(\s*"([^"]+)"/gu;
+  /\b(?:getProperty|getRequiredProperty|containsProperty)(?:<[^>]*>)?\s*\(\s*"([^"]+)"\s*([,)+])/gu;
+const BIND_CALL = /\.\s*bind(?:<[^>]*>)?\s*\(\s*"([^"]+)"/gu;
 const CONDITION = /@(?:[\w.]*\.)?ConditionalOn\w*Property\s*\(/gu;
 const ENDPOINT =
   /@(?:[\w.]*\.)?(?:\w*Endpoint|ConditionalOnEnabled\w+)\s*\(\s*(?:id\s*=\s*|value\s*=\s*)?"([^"]+)"/gu;
 
-function attempt(fallback, action) {
-  try {
-    return action();
-  } catch {
-    return fallback;
-  }
-}
-
 export function readSource(file) {
-  const raw = attempt('', () => readFileSync(file, 'utf8'));
+  const raw = valueOr('', () => readFileSync(file, 'utf8'));
   const text = blankComments(raw);
   return { file, text, code: blankLiterals(raw), kotlin: file.endsWith('.kt') };
 }
@@ -89,7 +82,7 @@ function sourceKeys({ text, code }) {
 }
 
 function resourceKeys(file) {
-  const text = attempt('', () => readFileSync(file, 'utf8'));
+  const text = valueOr('', () => readFileSync(file, 'utf8'));
   return [...text.matchAll(PLACEHOLDER), ...text.matchAll(LOGGING_SOURCE)].map(([, key]) => key);
 }
 

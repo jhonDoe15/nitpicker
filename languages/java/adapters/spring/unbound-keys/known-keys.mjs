@@ -14,6 +14,7 @@ const MIN_TYPO_SEGMENT = 5;
 const LONG_SEGMENT = 10;
 const CLOSEST_SHARE = 3;
 const CLOSEST_MINIMUM = 3;
+const MIN_SHARED_START = 3;
 
 function parentsOf(key) {
   const segments = key.split('.');
@@ -28,16 +29,15 @@ function addMetadata(index, { properties, groups }) {
   for (const group of groups) {
     index.owned.add(relaxKey(group));
   }
-  for (const { name, type, removed, replacement } of properties) {
+  for (const { name, replacement } of properties.filter(({ removed }) => removed)) {
+    index.removed.set(relaxKey(name), replacement);
+  }
+  for (const { name, type } of properties.filter(({ removed }) => !removed)) {
     const key = relaxKey(name);
-    if (removed) {
-      index.removed.set(key, replacement);
-    } else {
-      index.display.set(key, name);
-      index.exact.add(key);
-      if (opensSuffixes(type)) {
-        index.open.add(key);
-      }
+    index.display.set(key, name);
+    index.exact.add(key);
+    if (opensSuffixes(type)) {
+      index.open.add(key);
     }
   }
 }
@@ -82,7 +82,7 @@ function matchesDynamic(key) {
   );
 }
 
-export function isBound(index, key) {
+function isBound(index, key) {
   return (
     index.nodes.has(key) ||
     [key, ...parentsOf(key)].some((prefix) => index.open.has(prefix)) ||
@@ -135,7 +135,9 @@ function displayed(index, key) {
 }
 
 function sharesStart(written, known) {
-  return written.length >= 3 && (known.startsWith(written) || written.startsWith(known));
+  return (
+    written.length >= MIN_SHARED_START && (known.startsWith(written) || written.startsWith(known))
+  );
 }
 
 function parentOf(key) {

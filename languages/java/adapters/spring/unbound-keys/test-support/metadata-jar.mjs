@@ -1,40 +1,57 @@
 import { writeFileSync } from 'node:fs';
 import { crc32, deflateRawSync } from 'node:zlib';
 
+const LOCAL = {
+  size: 30,
+  signature: 0x04_03_4b_50,
+  version: 4,
+  method: 8,
+  crc: 14,
+  compressed: 18,
+};
+const CENTRAL = { size: 46, signature: 0x02_01_4b_50, made: 4, version: 6, method: 10, crc: 16 };
+const END = { size: 22, signature: 0x06_05_4b_50, diskCount: 8, count: 10, length: 12, offset: 16 };
+const LOCAL_SIZES = { uncompressed: 22, name: 26 };
+const CENTRAL_SIZES = { compressed: 20, uncompressed: 24, name: 28, local: 42 };
+const END_COMMENT = 20;
+const ZIP_VERSION = 20;
+const STORED = 0;
+const DEFLATED = 8;
+
 function localHeader(name, entry) {
-  const header = Buffer.alloc(30);
-  header.writeUInt32LE(0x04_03_4b_50, 0);
-  header.writeUInt16LE(20, 4);
-  header.writeUInt16LE(entry.method, 8);
-  header.writeUInt32LE(entry.crc, 14);
-  header.writeUInt32LE(entry.data.length, 18);
-  header.writeUInt32LE(entry.size, 22);
-  header.writeUInt16LE(name.length, 26);
+  const header = Buffer.alloc(LOCAL.size);
+  header.writeUInt32LE(LOCAL.signature, 0);
+  header.writeUInt16LE(ZIP_VERSION, LOCAL.version);
+  header.writeUInt16LE(entry.method, LOCAL.method);
+  header.writeUInt32LE(entry.crc, LOCAL.crc);
+  header.writeUInt32LE(entry.data.length, LOCAL.compressed);
+  header.writeUInt32LE(entry.size, LOCAL_SIZES.uncompressed);
+  header.writeUInt16LE(name.length, LOCAL_SIZES.name);
   return Buffer.concat([header, name]);
 }
 
 function centralHeader(name, entry) {
-  const header = Buffer.alloc(46);
-  header.writeUInt32LE(0x02_01_4b_50, 0);
-  header.writeUInt16LE(20, 4);
-  header.writeUInt16LE(20, 6);
-  header.writeUInt16LE(entry.method, 10);
-  header.writeUInt32LE(entry.crc, 16);
-  header.writeUInt32LE(entry.data.length, 20);
-  header.writeUInt32LE(entry.size, 24);
-  header.writeUInt16LE(name.length, 28);
-  header.writeUInt32LE(entry.offset, 42);
+  const header = Buffer.alloc(CENTRAL.size);
+  header.writeUInt32LE(CENTRAL.signature, 0);
+  header.writeUInt16LE(ZIP_VERSION, CENTRAL.made);
+  header.writeUInt16LE(ZIP_VERSION, CENTRAL.version);
+  header.writeUInt16LE(entry.method, CENTRAL.method);
+  header.writeUInt32LE(entry.crc, CENTRAL.crc);
+  header.writeUInt32LE(entry.data.length, CENTRAL_SIZES.compressed);
+  header.writeUInt32LE(entry.size, CENTRAL_SIZES.uncompressed);
+  header.writeUInt16LE(name.length, CENTRAL_SIZES.name);
+  header.writeUInt32LE(entry.offset, CENTRAL_SIZES.local);
   return Buffer.concat([header, name]);
 }
 
 function endRecord(count, size, offset, comment) {
-  const record = Buffer.alloc(22);
-  record.writeUInt32LE(0x06_05_4b_50, 0);
-  record.writeUInt16LE(count, 8);
-  record.writeUInt16LE(count, 10);
-  record.writeUInt32LE(size, 12);
-  record.writeUInt32LE(offset, 16);
-  record.writeUInt16LE(comment.length, 20);
+  const record = Buffer.alloc(END.size);
+  record.writeUInt32LE(END.signature, 0);
+  record.writeUInt16LE(count, END.diskCount);
+  record.writeUInt16LE(count, END.count);
+  record.writeUInt32LE(size, END.length);
+  record.writeUInt32LE(offset, END.offset);
+  record.writeUInt16LE(comment.length, END_COMMENT);
   return Buffer.concat([record, comment]);
 }
 
@@ -46,7 +63,7 @@ export function writeJar(file, files, { stored = false, comment = '' } = {}) {
     const name = Buffer.from(entryName);
     const content = Buffer.from(text);
     const entry = {
-      method: stored ? 0 : 8,
+      method: stored ? STORED : DEFLATED,
       crc: crc32(content),
       size: content.length,
       data: stored ? content : deflateRawSync(content),

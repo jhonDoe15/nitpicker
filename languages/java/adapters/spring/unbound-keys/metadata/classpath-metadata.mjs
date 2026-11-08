@@ -1,5 +1,6 @@
 import { readFileSync, statSync } from 'node:fs';
 import path from 'node:path';
+import { valueOr } from '../../spring-config-files.mjs';
 import { readJarEntries } from './jar-entries.mjs';
 
 const METADATA_FILES = [
@@ -8,32 +9,26 @@ const METADATA_FILES = [
 ];
 const BOOT_JAR = /^spring-boot-\d[^/]*\.jar$/u;
 
-function attempt(fallback, action) {
-  try {
-    return action();
-  } catch {
-    return fallback;
-  }
-}
-
 function directoryTexts(directory) {
-  return METADATA_FILES.flatMap((name) =>
-    attempt([], () => [readFileSync(path.join(directory, name), 'utf8')]),
-  );
+  const texts = [];
+  for (const name of METADATA_FILES) {
+    texts.push(...valueOr([], () => [readFileSync(path.join(directory, name), 'utf8')]));
+  }
+  return texts;
 }
 
 function entryTexts(entry) {
-  const stats = attempt(undefined, () => statSync(entry));
+  const stats = valueOr(undefined, () => statSync(entry));
   if (stats?.isDirectory()) {
     return directoryTexts(entry);
   }
   return stats?.isFile() && entry.endsWith('.jar')
-    ? attempt([], () => readJarEntries(entry, METADATA_FILES).map(({ text }) => text))
+    ? valueOr([], () => readJarEntries(entry, METADATA_FILES).map(({ text }) => text))
     : [];
 }
 
 function parsed(text) {
-  return attempt({}, () => JSON.parse(text));
+  return valueOr({}, () => JSON.parse(text));
 }
 
 function propertyOf(property) {

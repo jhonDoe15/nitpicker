@@ -108,7 +108,7 @@ function unboundFindings(projectRoot, { sourceRoots, resources, options, occurre
     ...(options.kotlinTestSourceRoots ?? []),
   ];
   const problems = unboundPropertyProblems(projectRoot, {
-    classpath: options.classpath ?? [],
+    classpath: options.springClasspath ?? [],
     sourceRoots,
     testSourceRoots: [...new Set(testSourceRoots)],
     resourceRoots: resources,
