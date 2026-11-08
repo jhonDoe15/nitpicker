@@ -99,7 +99,7 @@ function wrappedList(names) {
 function analyzerBlock(analyzers) {
   return analyzers.error === undefined
     ? `Analyzers of the ${analyzers.preset} preset (for --analyzer):\n${wrappedList(analyzers.names)}`
-    : `Analyzers: not listed, the config could not be read: ${analyzers.error}\n`;
+    : `Analyzers: not listed (${analyzers.error})\n`;
 }
 
 function examples(analyzers) {

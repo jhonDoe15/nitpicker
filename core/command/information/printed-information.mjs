@@ -5,21 +5,21 @@ import { usageText } from '../../help/usage-text.mjs';
 
 const USAGE_PAGE = 'docs/usage.md';
 
-/** The help of the project at or above `currentProjectRoot`, with the docs of this package's version. */
-export function projectUsageText(currentProjectRoot) {
+/** The help for the project a run with `options` would check, linking this package version's docs. */
+export function projectUsageText(cli = { options: {} }) {
   return usageText({
-    analyzers: projectAnalyzers(currentProjectRoot),
+    analyzers: projectAnalyzers(cli),
     referenceUrl: docsUrl(USAGE_PAGE),
   });
 }
 
-export function printedInformation(options, { stdout, currentProjectRoot }) {
+export function printedInformation(options, cli) {
   if (options.help) {
-    stdout.write(projectUsageText(currentProjectRoot));
+    cli.stdout.write(projectUsageText({ ...cli, options }));
     return true;
   }
   if (options.version) {
-    stdout.write(`${packageVersion()}\n`);
+    cli.stdout.write(`${packageVersion()}\n`);
     return true;
   }
   return false;

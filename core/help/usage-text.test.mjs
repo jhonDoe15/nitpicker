@@ -1,4 +1,5 @@
 import { readFileSync } from 'node:fs';
+import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { runCli } from '../cli.mjs';
 import { COMPARISON_OPTIONS, parseArguments } from '../command/arguments.mjs';
@@ -18,7 +19,7 @@ import {
 } from './usage-text.mjs';
 import { docsUrl } from '../../shared/messages/docs-url.mjs';
 
-const { temporaryRoot } = useGitFixtures();
+const { temporaryRoot, createGitRepository } = useGitFixtures();
 const MANIFEST = new URL('../../package.json', import.meta.url);
 const PAIRED = { '--shard-count': ['--shard-index', '0'], '--shard-index': ['--shard-count', '2'] };
 const USAGE_LINK = docsUrl('docs/usage.md');
@@ -144,11 +145,15 @@ const EXPECTED_CACHE_PUBLISH_USAGE = [
 ].join('\n');
 
 function runIn(currentProjectRoot, ...cliArguments) {
+  return runWith({ currentProjectRoot }, ...cliArguments);
+}
+
+function runWith(cli, ...cliArguments) {
   let stdoutText = '';
   let stderrText = '';
   const exitCode = runCli({
+    ...cli,
     arguments_: cliArguments,
-    currentProjectRoot,
     stdout: { write: (text) => (stdoutText += text) },
     stderr: { write: (text) => (stderrText += text) },
   });
@@ -222,6 +227,20 @@ describe('nitpicker --help', () => {
     expect(runIn(root, '--help').stdoutText).toBe(expectedUsage(go, 'go'));
   });
 
+  it('lists the analyzers of the project a run would check, not of a config further up', () => {
+    const { root } = createGitRepository({
+      'nitpicker.config.json': '{ "preset": "go" }',
+      'packages/app/package.json': '{}',
+    });
+    const go = ['Analyzers of the go preset (for --analyzer):', '  go, repository-hygiene'];
+
+    expect({
+      top: runIn(root, '--help').stdoutText,
+      app: runIn(path.join(root, 'packages/app'), '--help').stdoutText,
+      byPath: runWith({ workingDirectory: root }, 'packages/app', '--help').stdoutText,
+    }).toEqual({ top: expectedUsage(go, 'go'), app: EXPECTED_USAGE, byPath: EXPECTED_USAGE });
+  });
+
   it('still prints the help when the config cannot be read, and says why the analyzers are missing', () => {
     const root = projectWith('{ "preset": ');
     const { exitCode, stdoutText } = runIn(root, '--help');
@@ -231,10 +250,7 @@ describe('nitpicker --help', () => {
     expect({ exitCode, stdoutText }).toEqual({
       exitCode: 0,
       stdoutText: expectedUsage(
-        [
-          'Analyzers: not listed, the config could not be read: ' +
-            `nitpicker.config.json is not valid JSON: ${reason}`,
-        ],
+        [`Analyzers: not listed (nitpicker.config.json is not valid JSON: ${reason})`],
         '<name>',
       ),
     });
