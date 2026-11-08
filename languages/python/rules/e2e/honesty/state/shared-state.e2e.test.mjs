@@ -132,6 +132,32 @@ class TestCart:
     expect(sharedOf(code)).toEqual([]);
   });
 
+  it('follows nested items and tuple targets, and leaves instance attributes alone', () => {
+    const code = `import collections
+
+CACHE = collections.defaultdict(list)
+PAIR = [0, 0]
+
+
+class TestCart:
+    items = []
+
+    def test_rebinds_first(self):
+        self.items = []
+        self.items.append("a")
+        assert self.items == ["a"]
+
+
+def test_nested():
+    CACHE["a"].append(1)
+    PAIR[0], PAIR[1] = 1, 2
+    keep = lambda CACHE: CACHE.append(1)
+    assert keep
+`;
+
+    expect(sharedOf(code)).toEqual([at(17, 'CACHE'), at(18, 'PAIR'), at(18, 'PAIR')]);
+  });
+
   it('leaves modules that are not tests alone', () => {
     const code = `SEEN = []
 

@@ -922,7 +922,7 @@ t)`, `asyncio.timeout(t)`, `fail_after(t)`, `wait(t)`) inside `pytest.raises` or
   in a test module, a change to state that every test of the module or class shares: a call of `append`, `extend`,
   `insert`, `remove`, `pop`, `clear`, `update`, `add`, `discard`, `setdefault`, `sort` and the like, an item
   assignment or `del` on a module-level list, dict or set (a literal, a comprehension, `list()`, `dict()`, `set()`,
-  `collections.defaultdict`, `OrderedDict`, `Counter` or `deque`), a rebinding of a module name through `global`, the
+  `bytearray()`, `collections.defaultdict`, `OrderedDict`, `Counter` or `deque`), a rebinding of a module name through `global`, the
   same changes to a mutable class attribute of a test class through `self`, `cls`, the class name or `type(self)`,
   and a rebinding of a class attribute through the class (`TestCart.count += 1`). It is reported in a test function or
   method, in `setup_method`, `setUp`, `setup_function` and their teardown pairs, in a function-scoped fixture, and in

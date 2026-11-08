@@ -53,8 +53,14 @@ function qualifiedFine(qualifier, holder) {
 }
 
 function shadowed(scanned, name, from, offset) {
+  const own = escaped(name);
   const pattern = new RegExp(
-    String.raw`(?<![\w.\x60])(?:(?:val|var)\s+${escaped(name)}(?![\w\x60])|${escaped(name)}\s*(?:->|,[^\n]*->)|for\s*\(\s*${escaped(name)}\s+in\b|${escaped(name)}\s*:\s*[A-Z(])`,
+    [
+      String.raw`(?<![\w.\x60])(?:(?:val|var)\s+${own}(?![\w\x60])`,
+      String.raw`${own}\s*(?:->|,[^\n]*->)`,
+      String.raw`for\s*\(\s*${own}\s+in\b`,
+      String.raw`${own}\s*:\s*[A-Z(])`,
+    ].join('|'),
     'u',
   );
   return pattern.test(scanned.code.slice(from, offset));
@@ -171,5 +177,8 @@ export function writeSites(scanned, scope, tests) {
   const testHelpers = calledFrom(scanned, scope, testRanges).filter(
     (helper) => !hooks.some((hook) => hook.start === helper.start),
   );
-  return { resets: [...hooks, ...hookHelpers], writes: [...testRanges, ...testHelpers, ...hooks] };
+  return {
+    resets: [...hooks, ...hookHelpers],
+    writes: [...testRanges, ...testHelpers, ...hooks, ...hookHelpers],
+  };
 }

@@ -108,7 +108,8 @@ classpath) and `published` (a library module that is deployed, see `test-only-ex
 - `SharedTestState` follows a field only by its simple name (or `this.`/`Outer.` before it) in the class that
   declares it or a nested class, so a field of a superclass, of another test class or reached through a variable
   is not checked, and a local variable of the same name in the method hides the field. The collection, map and
-  atomic forms match by resolved type. A project-wide `junit.jupiter.testinstance.lifecycle.default = per_class`
+  atomic forms match by resolved type. A method counts as called only through an unqualified or `this.` call, so a write in a method that nothing
+  calls is not reported. A project-wide `junit.jupiter.testinstance.lifecycle.default = per_class`
   in `junit-platform.properties` is not read: annotate the class. The Kotlin preset has the same rule id, and the
   TypeScript (`nitpicker/no-shared-test-state`) and Python (`shared-test-state`) presets the same check.
 - `ServerOrContainerPerTest` matches by resolved type, so the library must be on the test

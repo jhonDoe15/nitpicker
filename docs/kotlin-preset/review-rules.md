@@ -381,13 +381,16 @@ guessed at.
   (set in the spec, or project-wide in an `AbstractProjectConfig` the scan reads). Reported: an assignment,
   `+=`, `++` or `--` of a `var`, and an element write (`totals["a"] = 1`), `+=` or mutating call (`add`, `put`,
   `remove`, `clear`, `getOrPut`, `incrementAndGet` and the like) on a mutable collection, in a test body, in a
-  function of the class a test calls, or in a per-test hook (`@BeforeEach`, `@AfterEach`, `@Before`, `@After`,
-  `beforeTest { }`, `beforeEach { }`, `afterTest { }`, `afterEach { }`). Not reported: a property that a per-test
+  function of the class a test or per-test hook calls, or in a per-test hook (`@BeforeEach`, `@AfterEach`, `@Before`,
+  `@After`, `@BeforeMethod`, `@AfterMethod`, `kotlin.test` `@BeforeTest` and `@AfterTest`, `beforeTest { }`,
+  `beforeEach { }`, `beforeAny { }` and their `after` pairs). Not reported: a property that a per-test
   hook (or a function it calls) assigns or resets (`clear()`, `set(...)`, `reset()`, `setLength(...)`), code
   that runs once (`@BeforeAll`, `beforeSpec`, a Kotest container body or the spec body), a property annotated
   with anything but `@JvmField`, `@JvmStatic` or `@Volatile` (`@MockK`, `@Autowired`), a local of the same name,
   a named argument, and a property reached through another object. The scan reads text, so a property of a
-  superclass or a project-wide JUnit `per_class` default is not followed.
+  superclass or a project-wide JUnit `per_class` default is not followed. A file that imports TestNG's `@Test`
+  treats its classes as single-instance, like the Java preset; TestNG's own `@BeforeTest` shares the name of the
+  `kotlin.test` one, so it counts as a per-test hook here.
 - `ServerOrContainerPerTest`: a container, server or process started for each test, the Kotlin
   side of the Java rule. Reported: a property annotated `@Container` (Testcontainers) or
   `@RegisterExtension` holding a `WireMockExtension`, declared in a class body (not a companion
