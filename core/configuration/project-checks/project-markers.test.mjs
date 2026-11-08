@@ -63,9 +63,7 @@ describe('the preset against the build files of its folder', () => {
     expect(loadConfig(root).preset).toBe(preset);
   });
 
-  it('leaves the script presets alone', () => {
-    for (const preset of ['typescript', 'javascript']) {
-      expect(loadConfig(project(preset, {})).preset).toBe(preset);
-    }
+  it.each(['typescript', 'javascript'])('leaves the %s preset alone', (preset) => {
+    expect(loadConfig(project(preset, {})).preset).toBe(preset);
   });
 });
