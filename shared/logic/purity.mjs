@@ -23,6 +23,8 @@ const OPERATORS = new Set([
   '>>>',
 ]);
 
+const NEVER_THROWING = new Set(['!', 'typeof', '===', '!==']);
+
 const PURE_NAMESPACES = new Set(['Math', 'Character', 'StrictMath']);
 
 const PURE_STATIC_CALLS = new Set([
@@ -88,7 +90,7 @@ export function cannotThrow(root) {
       return true;
     }
     if (node.kind === 'unary' || node.kind === 'binary') {
-      return OPERATORS.has(node.value) && children.every(Boolean);
+      return NEVER_THROWING.has(node.value) && children.every(Boolean);
     }
     return (node.kind === 'logical' || node.kind === 'conditional') && children.every(Boolean);
   });

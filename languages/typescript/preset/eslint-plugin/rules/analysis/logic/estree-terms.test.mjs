@@ -76,13 +76,32 @@ describe('TypeScript terms in normal form', () => {
     ['a short-circuit chain in a value position', 'b || a', {}],
     ['a negated comparison, which is not its flipped comparison for NaN', '!(a < b)', {}],
     ['a nullish chain mixed with another operator', '(a ?? b) || c', inCondition],
+    ['an equality with no negation to flip', 'a !== b', {}],
+    ['a chain whose comparison can throw, so its order stays', 'ready || b < a', inCondition],
+    ['an assignment passed to a call', 'f((a = b))', {}],
+    ['a power whose base is negated', '(-a) ** b', {}],
+    ['a power of a power', '(a ** b) ** c', {}],
+    ['a method called on an integer', '(1).toFixed()', {}],
+    ['a chain that is already grouped from the left', 'a && b && load()', {}],
+    ['a ternary whose test is not negated', 'ready ? b : a', {}],
   ])('leaves %s as written', (_case, code, options) => {
     expect(simplified(expressionTerm(code), options)).toEqual({ form: code, rewrites: [] });
   });
 
-  it('keeps an else branch that declares a block-scoped name', () => {
-    const code = 'if (a) { return 1; } else { const b = 2; go(b); }';
+  it.each([
+    ['an outer if with an else branch', 'if (a) { if (b) go(); } else { stop(); }'],
+    ['an inner if with an else branch', 'if (a) { if (b) go(); else stop(); }'],
+    ['two branches that return the same literal', 'if (a) return true; return true;'],
+    ['a branch that returns something other than a literal', 'if (a) return b; return false;'],
+  ])('leaves %s as written', (_case, code) => {
+    expect(simplified(bodyTerm(code)).rewrites).toEqual([]);
+  });
 
+  it.each([
+    ['a constant', 'if (a) { return 1; } else { const b = 2; go(b); }'],
+    ['a type alias', 'if (a) { return 1; } else { type T = number; go(); }'],
+    ['an interface', 'if (a) { return 1; } else { interface T { b: number } go(); }'],
+  ])('keeps an else branch that declares %s', (_case, code) => {
     expect(simplified(bodyTerm(code)).rewrites).toEqual([]);
   });
 
@@ -102,8 +121,8 @@ describe('TypeScript terms in normal form', () => {
   it('compares conditions after normalizing both', () => {
     expect(
       sameCondition(
-        expressionTerm('limit > count && !!ready'),
-        expressionTerm('ready && count < limit'),
+        expressionTerm('limit !== count && !!ready'),
+        expressionTerm('ready && count !== limit'),
       ),
     ).toBe(true);
     expect(sameCondition(expressionTerm('!(a < b)'), expressionTerm('a >= b'))).toBe(false);
@@ -123,5 +142,12 @@ describe('TypeScript terms in normal form', () => {
     const ternary = expressionTerm('ready ? true : false', { isBoolean });
 
     expect(simplified(ternary)).toEqual({ form: 'ready', rewrites: ['boolean-literal-ternary'] });
+  });
+
+  it('marks the expressions the caller knows to be integers', () => {
+    const isInteger = (node) => node.type === 'Identifier' && node.name === 'count';
+    const [count, limit] = expressionTerm('count < limit', { isInteger }).children;
+
+    expect([count.integer, limit.integer]).toEqual([true, undefined]);
   });
 });
