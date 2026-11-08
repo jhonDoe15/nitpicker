@@ -65,8 +65,9 @@ decides what counts as a literal secret, and `java-spring.mjs` applies the rules
 | `unbound-property`     | a key in an `application*` file (main or test resources) or a test override (`@SpringBootTest` and slice `properties`, `@TestPropertySource(properties)`, `TestPropertyValues`, `withPropertyValues`, `DynamicPropertyRegistry.add`) that binds to no known property, under a group that is described; see below                                                                                                                                                                                    | none             |
 
 - **Unbound properties.** Spring Boot projects only: the classpath the build records
-  (`springClasspath` in `manifest.json`: the test runtime and compile classpaths plus
-  `developmentOnly` on Gradle, the test runtime classpath on Maven) must hold a `spring-boot-<version>.jar`.
+  (`springClasspath` in `manifest.json`: the main compile, test compile and test runtime classpaths,
+  plus `developmentOnly` on Gradle) must hold a `spring-boot-<version>.jar`; without one the rule
+  does not run, and Gradle logs a warning when it cannot resolve that classpath.
   Known keys come from `META-INF/spring-configuration-metadata.json` and
   `additional-spring-configuration-metadata.json` in every jar and directory of that classpath and in
   the resource roots; from the project's `@ConfigurationProperties` classes, read from Java and Kotlin
@@ -84,7 +85,7 @@ decides what counts as a literal secret, and `java-spring.mjs` applies the rules
   without metadata) is not judged, unless one of its segments is a near miss of a known segment at the
   same place (`spring.datsource`: one edit for five or more letters, two for ten or more; digits and a
   plural `s` do not count). The message names the nearest known key, or the replacement the metadata
-  gives for a removed key. A key that code reads in a way the scan cannot see belongs in
+  gives for a removed key. Declare a key that code reads by name, in a way the scan cannot see, in
   `META-INF/additional-spring-configuration-metadata.json`, which also documents it for IDEs.
 - **Literal secrets.** The last key segment, split into words at `-`, `_` and case changes, must
   end in `password`, `passwd`, `passphrase`, `secret`, `token`, `credential(s)`, `api-key` (or `apikey`), `private-key`,

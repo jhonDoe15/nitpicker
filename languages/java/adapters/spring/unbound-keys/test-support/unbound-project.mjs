@@ -85,7 +85,8 @@ function problemsIn(roots, files, options) {
     testSourceRoots: ['src/test/java', 'src/test/kotlin'],
     resourceRoots: ['src/main/resources'],
   }).map(
-    ({ path: file, line, message }) => `${file}:${String(line)} ${message.split(' A key that')[0]}`,
+    ({ path: file, line, message }) =>
+      `${file}:${String(line)} ${message.split(' Declare a key')[0]}`,
   );
 }
 

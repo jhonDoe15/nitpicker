@@ -35,7 +35,7 @@ export function moduleManifest({ module, classpaths, pinned }) {
     kotlinTestSourceRoots: relativeRoots(module, kotlinOnlyTestRoots(module)),
     resourceRoots: relativeRoots(module, module.resourceRoots),
     ...spring,
-    ...(spring.spring ? { springClasspath: springClasspath(classpaths) } : {}),
+    springClasspath: springClasspath(classpaths),
     guava: hasJar(classpaths.mainCompile, GUAVA_JAR),
     testGuava: hasJar(classpaths.testCompile, GUAVA_JAR),
     testAwaitility: hasJar(classpaths.testCompile, AWAITILITY_JAR),
