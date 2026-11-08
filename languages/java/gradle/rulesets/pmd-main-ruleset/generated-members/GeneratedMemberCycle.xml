@@ -1,0 +1,17 @@
+  <rule name="GeneratedMemberCycle" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
+        message="The generated toString, equals and hashCode can follow this field around a cycle of fields, so the first log line, HashSet or cache lookup of an object in the cycle recurses until StackOverflowError. Mark the back reference @ToString.Exclude and @EqualsAndHashCode.Exclude, or list the included fields with onlyExplicitlyIncluded = true. A field that only ever points down a tree, never back up, is the intended case.">
+    <priority>3</priority>
+    <properties>
+      <property name="xpath">
+        <value><![CDATA[
+//ClassDeclaration[@Interface = false()]
+  [ModifierList/Annotation[pmd-java:typeIs('lombok.Data') or pmd-java:typeIs('lombok.Value')
+                           or pmd-java:typeIs('lombok.ToString')
+                           or pmd-java:typeIs('lombok.EqualsAndHashCode')]]
+  /ClassBody/FieldDeclaration[not(pmd-java:modifiers() = 'static')][not(PrimitiveType)]
+    [not(ClassType[pmd-java:typeIsExactly('java.lang.String')])]
+  /VariableDeclarator/VariableId
+]]></value>
+      </property>
+    </properties>
+  </rule>

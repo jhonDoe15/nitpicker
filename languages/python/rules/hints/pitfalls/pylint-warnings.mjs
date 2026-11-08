@@ -107,4 +107,9 @@ export const PYLINT_WARNING_HINTS = [
     rules: ['PLW3301'],
     allowed: 'Call one `max` or `min` with all the arguments: `max(a, b, c)`.',
   },
+  {
+    tool: 'ruff',
+    rules: ['PLR1711'],
+    allowed: 'Remove the `return`: the function ends there anyway.',
+  },
 ];

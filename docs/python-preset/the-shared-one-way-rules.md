@@ -38,6 +38,7 @@ are listed at the end.
 | Tri-state booleans       | an enum that names the three states, or a keyword-only `bool` with a default (`*, urgent=False`)                                                                                     | `tri-state-boolean` (script)                                                                                                                                                                                                               |
 | ORM schema at startup    | migrations: Alembic `alembic upgrade head` in the deploy step, Django migrations, Aerich                                                                                             | `orm-schema-sync` (script)                                                                                                                                                                                                                 |
 | ORM query logging        | `echo` and the query loggers off; slow queries logged from cursor events or by the database                                                                                          | `orm-query-logging` (script)                                                                                                                                                                                                               |
+| Query rows in memory     | `.count()`, `.exists()`, `.filter()`, `.order_by()`, `.aggregate()` (Django); `where`, `order_by`, `func.count`/`func.sum` (SQLAlchemy)                                              | `in-memory-query` (script)                                                                                                                                                                                                                 |
 | Defaulting parameters    | `limit if limit is not None else DEFAULT_LIMIT`                                                                                                                                      | `falsy-default` (script)                                                                                                                                                                                                                   |
 | Testing numbers          | `count > 0`, `index != -1`, `count is not None`                                                                                                                                      | `number-truthiness` (script)                                                                                                                                                                                                               |
 | Changing an argument     | build and return a new value, or copy the argument first                                                                                                                             | `parameter-mutation` (script)                                                                                                                                                                                                              |
@@ -664,6 +665,26 @@ self.items.append(item)`), also through a package `__init__` that re-exports it 
   levels in a `LOGGING` dict (also as `"DEBUG" if DEBUG else "INFO"`). A value the check cannot
   resolve, such as `echo=settings.DEBUG`, is not reported. The allowed form logs slow queries only
   (SQLAlchemy cursor events, or the database's slow-query log).
+- `in-memory-query` (the counterpart of the Spring rule `pmd/SpringDataFilterInQuery` and of
+  `nitpicker/no-in-memory-query`) reports query rows loaded only to be counted, filtered, sorted or
+  aggregated in Python. A query result is a Django queryset (`Model.objects` followed by `all`,
+  `filter`, `exclude`, `order_by` and the other queryset methods, or `in_bulk`) or a SQLAlchemy
+  `.all()` list (`session.query(Model)`, `session.scalars(select(Model))`,
+  `session.execute(select(Model)).scalars()`, Flask-SQLAlchemy `Model.query`), used directly or
+  through a local that the function assigns once and reads once, outside a loop or a nested
+  function. It is reported when that one use is `len()`, `bool()`, `not` or a truth test (use
+  `.count()` or `.exists()`); a comprehension with an `if`, `filter()`, `any()`, `all()` or
+  `next()` (use the query's filter); `sorted()`, `.sort()`, `max()` or `min()` with a `key`
+  (use `order_by`); or `sum()`, `max()`, `min()` or `Counter` over the rows (use `aggregate`,
+  `annotate` or `func.sum` with `group_by`). Conditions, keys and aggregated values may only read
+  columns that the project declares on the model (Django fields, SQLAlchemy `Mapped`,
+  `mapped_column` and `Column`, SQLModel table fields, including those of base classes) and
+  compare them with constants, parameters and locals; a property, a method call, a model the
+  project does not declare, and a value computed per row leave the code alone. A count needs a
+  model the project declares or one imported from a `models` module (`django.contrib.auth.models`).
+  `for` loops over the rows, `itertools.groupby` and `defaultdict` grouping are not followed.
+  Tests, a Django `tests.py` and `migrations` folders are skipped. A small fixed lookup table that
+  is meant to be loaded whole takes an `exceptions` entry.
 - `falsy-default` reports a parameter whose annotation can be falsy (`int`, `float`, `str`, `bytes`,
   `bool`, a list, dict, set or tuple type, a `Sequence`, `Mapping`, `Decimal`, `timedelta`) and is
   `None` by default or by its type, when the body writes `param or default` or

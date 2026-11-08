@@ -58,7 +58,7 @@ function summary(findings) {
 
 function slowTests(findings) {
   return findings
-    .filter(({ tool }) => tool === 'test-runtime')
+    .filter(({ rule }) => rule === 'slow-test')
     .map(({ path: file, identity, location }) => ({ file, identity, location }))
     .sort((left, right) => left.identity.localeCompare(right.identity));
 }
