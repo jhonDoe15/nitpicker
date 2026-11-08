@@ -1,3 +1,5 @@
+import { listNames } from '../../shared/messages/messages.mjs';
+
 const SKILLS_ADD = 'npx skills add jhonDoe15/nitpicker --skill';
 
 function runCommandOf(project) {
@@ -29,12 +31,27 @@ function fileLines(result) {
   ];
 }
 
+function uninstalledSentence(names) {
+  return `${listNames(names)} ${names.length > 1 ? 'are' : 'is'} in package.json but not installed`;
+}
+
+function installHeading({ missing, uninstalled }) {
+  if (missing.length === 0) {
+    return `${uninstalledSentence(uninstalled)}. Install ${uninstalled.length > 1 ? 'them' : 'it'}:`;
+  }
+  const declared =
+    uninstalled.length === 0
+      ? ''
+      : `; ${uninstalledSentence(uninstalled)}, which this installs too`;
+  return `Install what nitpicker needs from your project (missing: ${missing.join(', ')}${declared}):`;
+}
+
 function installLines(peers) {
-  if (peers.missing.length === 0) {
+  if (peers.missing.length === 0 && peers.uninstalled.length === 0) {
     return ['Nothing to install: every peer nitpicker needs is already there.'];
   }
   return [
-    `Install what nitpicker needs from your project (missing: ${peers.missing.join(', ')}):`,
+    installHeading(peers),
     `  ${peers.command}`,
     ...(peers.advice === undefined ? [] : [peers.advice]),
   ];

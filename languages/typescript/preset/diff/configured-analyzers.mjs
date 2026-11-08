@@ -158,7 +158,8 @@ export function applyLayout(analyzers, headPolicy) {
   );
 }
 
-const TEST_RUNNER_ANALYZERS = new Set(['coverage', 'mutation', 'test-console']);
+export const TEST_RUNNER_ANALYZERS = new Set(['coverage', 'mutation', 'test-console']);
+export const TYPESCRIPT_FREE_ANALYZERS = new Set(['prettier-format', 'duplicates', 'dead-code']);
 
 export function applyTestRunner(analyzers, headPolicy = {}) {
   const configured = headPolicy.tools?.tests?.runner;
