@@ -19,13 +19,13 @@ function ruff(rule, subject, lines) {
   }));
 }
 
-function touched(hunks, sources) {
-  const diff = ['diff --git a/src/mod.py b/src/mod.py', '--- a/src/mod.py', '+++ b/src/mod.py'];
+function touched(hunks, sources, file = 'src/mod.py') {
+  const diff = [`diff --git a/${file} b/${file}`, `--- a/${file}`, `+++ b/${file}`];
   return {
     changedLines: parseChangedLines(
       [...diff, ...hunks.flat()].join('\n'),
       '.',
-      () => new Map([['src/mod.py', sources]]),
+      () => new Map([[file, sources]]),
     ),
     isStrictRule: isPythonTouchedRule,
   };
@@ -176,5 +176,212 @@ describe('findings that share a message on deleted, moved and added lines', () =
     expect(lineOf(pair(heads.toReversed()).newFindings).toSorted((a, b) => a - b)).toEqual(
       lines(600).slice(500),
     );
+  });
+});
+
+const BRANCH = 'Branch coverage is 50.00%; minimum is 95%.';
+const REPEATED = [
+  ['Python branch coverage', 'coverage.py', 'src/mod.py', '    if x:'],
+  ['Java branch coverage', 'jacoco', 'src/main/java/demo/Mod.java', '        if (x) {'],
+  ['Kotlin branch coverage', 'jacoco', 'src/main/kotlin/demo/Mod.kt', '        if (x) {'],
+  ['an ESLint finding', 'eslint', 'src/mod.ts', '  if (x) {'],
+];
+const [PYTHON] = REPEATED;
+
+function repeated([, tool, file, condition], lines, rule = 'changed-branch-coverage') {
+  return lines.map((line, index) => ({
+    tool,
+    rule,
+    path: file,
+    identity: `${condition.trim()}${index === 0 ? '' : `#${String(index + 1)}`}`,
+    message: BRANCH,
+    classification: 'enforceable',
+    location: { line },
+  }));
+}
+
+function source([, , , condition], conditions, { result = 1, length = 22 } = {}) {
+  return lines(length, (line) => {
+    if (conditions.includes(line)) {
+      return condition;
+    }
+    return line === 6
+      ? `    return ${String(result)}`
+      : `    value${String(line)} = ${String(line)}`;
+  });
+}
+
+function lines(length, text) {
+  return `${Array.from({ length }, (_, index) => text(index + 1)).join('\n')}\n`;
+}
+
+function editLine6(shape, conditions, file = shape[2]) {
+  return touched(
+    [['@@ -6 +6 @@', '-    return 1', '+    return 2']],
+    { base: source(shape, conditions), head: source(shape, conditions, { result: 2 }) },
+    file,
+  );
+}
+
+describe('a repeated finding that appears on a line the change leaves alone', () => {
+  it.each(REPEATED)('is new for %s, and the legacy one elsewhere is resolved', (...shape) => {
+    const result = compareFindings({
+      baseFindings: repeated(shape, [2]),
+      headFindings: repeated(shape, [4]),
+      touchedCode: editLine6(shape, [2, 4]),
+    });
+
+    expect(lineOf(result.newFindings)).toEqual([4]);
+    expect(lineOf(result.resolvedFindings)).toEqual([2]);
+    expect(result.unchangedFindings).toEqual([]);
+  });
+
+  it.each(REPEATED)('is new for %s next to a legacy one that stays', (...shape) => {
+    const result = compareFindings({
+      baseFindings: repeated(shape, [2, 20]),
+      headFindings: repeated(shape, [2, 4]),
+      touchedCode: editLine6(shape, [2, 4, 20]),
+    });
+
+    expect(lineOf(result.newFindings)).toEqual([4]);
+    expect(lineOf(result.unchangedFindings)).toEqual([2]);
+    expect(lineOf(result.resolvedFindings)).toEqual([20]);
+  });
+
+  it('is new when its line differs from the legacy one only in spacing', () => {
+    const spaced = (text) => text.replace('    if x:\n    value3', '    if  x :\n    value3');
+    const result = compareFindings({
+      baseFindings: repeated(PYTHON, [2]),
+      headFindings: repeated(PYTHON, [4]),
+      touchedCode: touched([['@@ -6 +6 @@', '-    return 1', '+    return 2']], {
+        base: spaced(source(PYTHON, [2, 4])),
+        head: spaced(source(PYTHON, [2, 4], { result: 2 })),
+      }),
+    });
+
+    expect(lineOf(result.newFindings)).toEqual([4]);
+  });
+
+  it('compares from the reported column when the findings carry one', () => {
+    const shape = ['ESLint', 'eslint', 'src/mod.ts', '  const a = foo(1);'];
+    const code = (result) =>
+      source(shape, [2], { result })
+        .replace('value4 = 4', 'return foo(1);')
+        .replace('    r', '  r');
+    const at = (line, column) => ({ ...repeated(shape, [line])[0], location: { line, column } });
+    const result = compareFindings({
+      baseFindings: [at(2, 13)],
+      headFindings: [at(4, 10)],
+      touchedCode: touched(
+        [['@@ -6 +6 @@', '-    return 1', '+    return 2']],
+        {
+          base: code(1),
+          head: code(2),
+        },
+        shape[2],
+      ),
+    });
+
+    expect(lineOf(result.newFindings)).toEqual([4]);
+  });
+
+  it('is new in a renamed file too', () => {
+    const result = compareFindings({
+      baseFindings: repeated(PYTHON, [2]).map((finding) => ({ ...finding, path: 'src/old.py' })),
+      headFindings: repeated(PYTHON, [4]),
+      baseToHeadRenames: new Map([['src/old.py', 'src/mod.py']]),
+      touchedCode: editLine6(PYTHON, [2, 4]),
+    });
+
+    expect(lineOf(result.newFindings)).toEqual([4]);
+    expect(lineOf(result.resolvedFindings)).toEqual([2]);
+  });
+});
+
+describe('a repeated finding the analyzer reports on another line of unchanged code', () => {
+  it('still pairs in a file the change does not touch', () => {
+    const result = compareFindings({
+      baseFindings: repeated(PYTHON, [10]),
+      headFindings: repeated(PYTHON, [12]),
+      touchedCode: editLine6(PYTHON, [10, 12], 'src/other.py'),
+    });
+
+    expect(lineOf(result.unchangedFindings)).toEqual([12]);
+  });
+
+  it('still pairs when the line it moved to holds other code', () => {
+    const result = compareFindings({
+      baseFindings: repeated(PYTHON, [2]),
+      headFindings: repeated(PYTHON, [5]),
+      touchedCode: editLine6(PYTHON, [2]),
+    });
+
+    expect(lineOf(result.unchangedFindings)).toEqual([5]);
+    expect(result.newFindings).toEqual([]);
+  });
+
+  it('still pairs without the source text of the file', () => {
+    const result = compareFindings({
+      baseFindings: repeated(PYTHON, [2]),
+      headFindings: repeated(PYTHON, [4]),
+      touchedCode: touched([['@@ -6 +6 @@', '-    return 1', '+    return 2']]),
+    });
+
+    expect(lineOf(result.unchangedFindings)).toEqual([4]);
+  });
+
+  it('still pairs in a file whose language has no source tokens', () => {
+    const shape = ['plain text', 'vale', 'docs/notes.txt', 'if x:'];
+    const result = compareFindings({
+      baseFindings: repeated(shape, [2]),
+      headFindings: repeated(shape, [4]),
+      touchedCode: editLine6(shape, [2, 4]),
+    });
+
+    expect(lineOf(result.unchangedFindings)).toEqual([4]);
+  });
+
+  it('still pairs when the base had another finding of the same tool on that line', () => {
+    const result = compareFindings({
+      baseFindings: [...repeated(PYTHON, [2]), ...repeated(PYTHON, [4], 'other-rule')],
+      headFindings: repeated(PYTHON, [4]),
+      touchedCode: editLine6(PYTHON, [2, 4]),
+    });
+
+    expect(lineOf(result.unchangedFindings)).toEqual([4]);
+    expect(lineOf(result.resolvedFindings)).toEqual([4]);
+  });
+
+  it('still pairs when the change deletes the legacy twin it was reported on', () => {
+    const base = source(PYTHON, [10, 20]).split('\n');
+    const deleted = base.slice(8, 12);
+    const result = compareFindings({
+      baseFindings: repeated(PYTHON, [10]),
+      headFindings: repeated(PYTHON, [16]),
+      touchedCode: touched([['@@ -9,4 +8,0 @@', ...deleted.map((text) => `-${text}`)]], {
+        base: base.join('\n'),
+        head: base.toSpliced(8, 4).join('\n'),
+      }),
+    });
+
+    expect(lineOf(result.unchangedFindings)).toEqual([16]);
+    expect(result.newFindings).toEqual([]);
+  });
+
+  it('still pairs a finding on a line the change only reformats', () => {
+    const result = compareFindings({
+      baseFindings: repeated(PYTHON, [2]),
+      headFindings: repeated(PYTHON, [4]),
+      touchedCode: touched(
+        [['@@ -4 +4 @@', "-    if x :  print( 'b' )", '+    if x: print("b")']],
+        {
+          base: "def f(x):\n    if x: print('a')\n    y = 1\n    if x :  print( 'b' )\n",
+          head: 'def f(x):\n    if x: print(\'a\')\n    y = 1\n    if x: print("b")\n',
+        },
+      ),
+    });
+
+    expect(lineOf(result.unchangedFindings)).toEqual([4]);
+    expect(result.newFindings).toEqual([]);
   });
 });
