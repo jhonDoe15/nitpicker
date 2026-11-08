@@ -43,6 +43,12 @@ Part of the [nitpicker-kotlin](../SKILL.md) skill. Write these forms from the st
   `@RepeatedTest` are fine.
 - Use a production constant by name, never a copy of its value (`pmd/CopiedConstantInTest`):
   `Limits.MAX_LENGTH + 1`, not `65`. Pin a contract value as `assertEquals(64, Limits.MAX_LENGTH)`.
+- Never mock the class under test (`pmd/MockedSubjectInTest`): no `mockk<OrderService>()`,
+  `mock<OrderService>()` or `@MockK` of it in `OrderServiceTest`, and no `spyk`/`@SpyK` of it with
+  `every { subject.helper() }`. Pass its collaborators in through the constructor with fakes or mocks
+  of them, and test a helper through the public function that calls it. No `mockkObject`,
+  `mockkStatic`, `mockkConstructor` or `mockStatic` of the project's own code
+  (`pmd/StaticMockOfProjectType`): pass a function, an interface or a `Clock` instead.
 - A test puts back the process-wide state it changes (`pmd/GlobalStateLeakInTest`): a system property, the default
   `Locale` or `TimeZone`, `System.out`, `Dispatchers.setMain`, or a property of a project `object`. Restore it in
   `finally`, an `@AfterEach`/`@AfterTest` function or Kotest `afterTest { }` (`Dispatchers.resetMain()`), or use an

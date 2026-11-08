@@ -26,6 +26,11 @@ Part of the [nitpicker-java](../SKILL.md) skill. Write these forms from the star
   delay, isolate shared state. `@RepeatedTest` is fine, since every repetition must pass.
 - Use a production constant by name, never a copy of its value (`pmd/CopiedConstantInTest`):
   `Limits.MAX_LENGTH + 1`, not `65`. Pin a contract value as `assertEquals(64, Limits.MAX_LENGTH)`.
+- Never mock the class under test (`MockedSubjectInTest`): no `mock(OrderService.class)` or `@Mock`
+  of it in `OrderServiceTest`, and no `spy`/`@Spy` of it whose own methods you stub. Pass its
+  collaborators in through the constructor with fakes or mocks of them, and test a helper through
+  the public method that calls it. No `mockStatic`/`mockConstruction` of the project's own classes
+  (`StaticMockOfProjectType`): inject an instance, a function or a `Clock` instead.
 - A test puts back the process-wide state it changes (`GlobalStateLeakInTest`): a system property, the default
   `Locale` or `TimeZone`, `System.out`/`err`/`in`, a default handler or security provider, or a static field or static
   setter of a project class. Set it through junit-pioneer (`@SetSystemProperty`, `@RestoreSystemProperties`,

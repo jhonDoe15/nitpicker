@@ -102,6 +102,25 @@ Part of the [Kotlin preset guide](../kotlin-preset.md).
 - `languages/java/adapters/kotlin-e2e/kotlin-preset-guards.e2e.test.mjs`: real Gradle on the source
   checks, the compiler warnings and the class limits, banned and allowed, with their exception route
   and an exception for one path.
+- `languages/java/adapters/kotlin-e2e/maven/*.e2e.test.mjs`: real Maven, behind `NITPICKER_KOTLIN_E2E=1` (part of
+  `npm run test:kotlin`; `NITPICKER_MAVEN` overrides the `mvn` on the PATH). They run on the fixture
+  `languages/java/maven/fixtures/kotlin-single` (the same sources as the Gradle fixture, with a
+  `kotlin-maven-plugin` POM that generates `Api.kt` into `target/generated-sources`) and repeat the
+  Gradle suites' cases with the same data modules: detekt, ktlint and ktfmt (by override and by
+  detection from the POM), the detekt config layering, a Kotlin-only module, the Java tools on the
+  Java files of a Kotlin module, changed-branch coverage (one-sided, multi-line, generated
+  branches), structure, CRAP, clone and stability rules in one diff, init blocks, a compile error as
+  `kotlin/maven-failure`, and every one-way rule case. One test runs the Gradle and the Maven
+  fixture on the same sources and asserts the findings are equal. Another runs the reactor
+  `fixtures/kotlin-multi-module` (two Kotlin modules and a Java-only one) with a slow-test
+  threshold of -1, and one runs the Kotlin Spring project of `kotlin-spring-rules.e2e.test.mjs` on
+  Maven and expects the same findings as on Gradle. `kotlin-maven-build-config.e2e.test.mjs` covers what the build declares: a formatter named
+  by a Spotless step next to a Java formatter, a Java test that calls a Kotlin test helper, and a
+  folder the build does not compile. `kotlin-maven-test-frameworks.e2e.test.mjs` runs the Kotest,
+  JUnit 4 and TestNG fixtures (`fixtures/kotlin-kotest`, `kotlin-junit4`, `kotlin-testng`) for
+  coverage, mutants, slow tests and ArchUnit rules, and the lint file binds the ktlint and detekt
+  Maven plugins to the build to show that nitpicker skips them. The one-way rule cases are split into
+  banned, allowed and hostile-config files, as on Gradle.
 - `kotlin-psi` on a fixture (units, lambda properties, package, multifile parts, byte
   order mark, parse error, very deep nesting, test roots) is tested in the same opt-in suite, so a bump of
   the pinned compiler is checked

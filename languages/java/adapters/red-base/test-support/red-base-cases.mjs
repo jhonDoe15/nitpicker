@@ -17,9 +17,9 @@ function contained(base, name) {
   return full;
 }
 
-export function createRepository({ fixture, preset, ignored, files }) {
+export function createRepository({ fixture, preset, ignored, files, fixtureRoot = fixtures }) {
   const root = mkdtempSync(path.join(tmpdir(), 'nitpicker-red-base-e2e-'));
-  cpSync(contained(fixtures, fixture), root, { recursive: true });
+  cpSync(contained(fixtureRoot, fixture), root, { recursive: true });
   writeFileSync(path.join(root, '.gitignore'), ignored);
   writeFileSync(path.join(root, 'nitpicker.config.json'), `${JSON.stringify({ preset })}\n`);
   for (const [file, content] of Object.entries(files)) {
@@ -41,9 +41,9 @@ export function addRedBaseBranches(root, { testPath, bad }) {
   commitBranch(root, 'repaired-with-violation', bad, 'repaired');
 }
 
-function diffOf(root, branch, { gradle, policy }) {
+function diffOf(root, branch, { gradle, maven, policy }) {
   runGitIn(root, 'checkout', '-q', branch);
-  return runJavaDiff({ repositoryRoot: root, requestedBaseRef: 'red-base', gradle, policy });
+  return runJavaDiff({ repositoryRoot: root, requestedBaseRef: 'red-base', gradle, maven, policy });
 }
 
 export function gateRedBase({ root, branch, base = 'red-base', environment }) {
@@ -64,7 +64,7 @@ export function gateRedBase({ root, branch, base = 'red-base', environment }) {
   return { exitCode, json, reports };
 }
 
-export function redBaseCases({ setup, gradle, environment, policy, expected }) {
+export function redBaseCases({ setup, gradle, maven, environment, policy, expected }) {
   let root;
 
   beforeAll(() => {
@@ -76,7 +76,7 @@ export function redBaseCases({ setup, gradle, environment, policy, expected }) {
   });
 
   it('does not block a change that repairs the failing base tests, and keeps comparing the other checks with the base', () => {
-    const result = diffOf(root, 'repaired', { gradle, policy });
+    const result = diffOf(root, 'repaired', { gradle, maven, policy });
 
     expect({
       failed: result.failed,
@@ -95,7 +95,8 @@ export function redBaseCases({ setup, gradle, environment, policy, expected }) {
     const result = gateRedBase({
       root,
       branch: 'repaired',
-      environment: { ...environment, NITPICKER_GRADLE: gradle },
+      environment:
+        gradle === undefined ? environment : { ...environment, NITPICKER_GRADLE: gradle },
     });
 
     expect({
@@ -121,7 +122,7 @@ export function redBaseCases({ setup, gradle, environment, policy, expected }) {
   });
 
   it('still fails a new violation next to a failing base', () => {
-    const result = diffOf(root, 'repaired-with-violation', { gradle, policy });
+    const result = diffOf(root, 'repaired-with-violation', { gradle, maven, policy });
 
     expect({ failed: result.failed, newEnforceable: summarize(result.newEnforceable) }).toEqual({
       failed: true,
