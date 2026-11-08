@@ -847,6 +847,21 @@
             }
           }
         },
+        "errorprone": {
+          "description": "Settings of errorprone.",
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["precedence"],
+          "properties": {
+            "precedence": {
+              "description": "Which config errorprone uses: \"project\" is your own config file, \"nitpicker\" is the preset's. List each at most once.",
+              "type": "array",
+              "minItems": 1,
+              "uniqueItems": true,
+              "items": { "enum": ["project", "nitpicker"] }
+            }
+          }
+        },
         "ktlint": {
           "description": "Settings of ktlint.",
           "type": "object",
@@ -1185,6 +1200,7 @@
               "pmd": false,
               "checkstyle": false,
               "spotbugs": false,
+              "errorprone": false,
               "ktlint": false,
               "ktfmt": false,
               "detekt": false,
@@ -1398,6 +1414,7 @@
               "pmd": false,
               "checkstyle": false,
               "spotbugs": false,
+              "errorprone": false,
               "ktlint": false,
               "ktfmt": false,
               "detekt": false,
@@ -2184,6 +2201,7 @@
               "pmd": false,
               "checkstyle": false,
               "spotbugs": false,
+              "errorprone": false,
               "ktlint": false,
               "ktfmt": false,
               "detekt": false,
@@ -2353,6 +2371,7 @@
               "pmd": false,
               "checkstyle": false,
               "spotbugs": false,
+              "errorprone": false,
               "ktlint": false,
               "ktfmt": false,
               "detekt": false,

@@ -85,7 +85,9 @@ Checkstyle tasks after the build script runs, so a `checkstyle { configFile = ..
 project's build does not replace it either. The same holds for the SpotBugs settings a build
 declares (an exclude filter, effort, threshold): nitpicker runs its own SpotBugs task and SpotBugs
 jar, so a `spotbugs { }` block or `spotbugs-maven-plugin` configuration changes nothing until
-`tools.spotbugs` opts in, and the run says it ignored them.
+`tools.spotbugs` opts in, and the run says it ignored them. Error Prone flags in
+`options.errorprone`, a `nullaway { }` block or `maven-compiler-plugin`'s `compilerArgs` are ignored
+the same way until `tools.errorprone` opts in: nitpicker's runner compiles with its own flags only.
 
 **Test sources are linted too.** PMD, Checkstyle (`checkstyleTest`, reported in
 `checkstyle-test.xml`), Error Prone, google-java-format and the inline suppression scan cover
