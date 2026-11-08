@@ -1,4 +1,5 @@
 import path from 'node:path';
+import { escapeRegExp } from '../../../../../../shared/paths/glob.mjs';
 import {
   REPOSITORY_WRITES,
   WRITE_VERB,
@@ -19,10 +20,6 @@ const WRITING = /@(?:[\w.]*\.)?(?:Modifying|Procedure)\b|\bdefault\b/u;
 const BOUNDARY = /[;{}][^;{}]*$/u;
 const EXTENSIONS = ['.java', '.kt'];
 
-function escaped(name) {
-  return name.replaceAll('$', String.raw`\$`);
-}
-
 function calledAt(text, location) {
   const start = offsetOf(text, { line: location?.line ?? 1, column: location?.column ?? 1 });
   const match = CALL.exec(text.slice(start));
@@ -31,19 +28,21 @@ function calledAt(text, location) {
 
 function declaredType(text, name) {
   const declaration = new RegExp(
-    String.raw`\b([A-Z][\w$]*)(?:<[^;{}()]*>)?\s+${escaped(name)}\s*[;,)=]`,
+    String.raw`\b([A-Z][\w$]*)(?:<[^;{}()]*>)?\s+${escapeRegExp(name)}\s*[;,)=]`,
     'u',
   );
   return declaration.exec(text)?.[1];
 }
 
 function interfaceBody(text, type) {
-  const header = new RegExp(String.raw`\binterface\s+${escaped(type)}\b[^{;]*\{`, 'u').exec(text);
+  const header = new RegExp(String.raw`\binterface\s+${escapeRegExp(type)}\b[^{;]*\{`, 'u').exec(
+    text,
+  );
   return header === null ? undefined : text.slice(header.index + header[0].length);
 }
 
 function declarationsOf(body, name) {
-  const call = new RegExp(String.raw`(?<![\w$.])${escaped(name)}\s*\(`, 'gu');
+  const call = new RegExp(String.raw`(?<![\w$.])${escapeRegExp(name)}\s*\(`, 'gu');
   let depth = 0;
   let scanned = 0;
   const prefixes = [];
