@@ -59,6 +59,42 @@ func TestSkipsOtherRunner(t *testing.T) {
 	}
 }
 
+func TestSkipsOnEither(t *testing.T) {
+	if testing.Short() || len("ci") == 0 {
+		t.Logf("integration")
+		t.Skipf("needs %s", "a database")
+	}
+}
+
+func TestSkipsOnBoth(t *testing.T) {
+	if testing.Short() && len("ci") == 0 {
+		t.Skip("integration")
+	}
+}
+
+func TestRunsBeforeReturn(t *testing.T) {
+	if testing.Short() {
+		t.Run("slow", func(t *testing.T) {})
+		return
+	}
+}
+
+func TestWrapsWithSkip(t *testing.T) {
+	if !testing.Short() {
+		t.Log("slow part")
+	} else {
+		t.SkipNow()
+	}
+}
+
+func TestWrapsWithWork(t *testing.T) {
+	if !testing.Short() {
+		t.Log("slow part")
+	} else {
+		t.Run("slow", func(t *testing.T) {})
+	}
+}
+
 func TestSkipsWithInit(t *testing.T) {
 	if short := testing.Short(); short {
 		t.Skip("init form")
@@ -100,8 +136,10 @@ func TestMarksOnlyTestsThatSkipUnderShortMode(t *testing.T) {
 	want := map[string]bool{
 		"TestSkips": true, "TestReturns": true, "TestWraps": true, "TestLogsOnly": false,
 		"TestThrowsAway": false, "TestSkipsLate": false, "TestWrapsPart": false,
-		"TestSkipsOtherRunner": false, "TestSkipsWithInit": false,
-		"TestAliased": true, "TestOtherShort": false,
+		"TestSkipsOtherRunner": false, "TestSkipsWithInit": false, "TestSkipsOnEither": true,
+		"TestSkipsOnBoth": false, "TestRunsBeforeReturn": false, "TestWrapsWithSkip": true,
+		"TestWrapsWithWork": false,
+		"TestAliased":       true, "TestOtherShort": false,
 	}
 	if got := shortSkips(report); !reflect.DeepEqual(got, want) {
 		t.Fatalf("got %v, want %v", got, want)

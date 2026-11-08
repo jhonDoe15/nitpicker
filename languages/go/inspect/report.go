@@ -36,3 +36,8 @@ type Type struct {
 	Methods int    `json:"methods"`
 	Fields  int    `json:"fields"`
 }
+
+type Test struct {
+	Function
+	ShortSkip bool `json:"shortSkip"`
+}
