@@ -10,7 +10,14 @@ describe('side-effect-free operands', () => {
   it.each([
     ['a local', name('count'), true, true],
     ['a literal', text('a'), true, true],
-    ['arithmetic on locals', binary('*', name('a'), number(2)), true, true],
+    [
+      'arithmetic on locals, which throws when it mixes BigInt and number',
+      binary('*', name('a'), number(2)),
+      true,
+      false,
+    ],
+    ['a strict equality of locals', binary('===', name('a'), name('b')), true, true],
+    ['a negated local', not(name('done')), true, true],
     ['a field read', member(name('user'), 'name'), true, false],
     ['a pure library call', math('abs', name('a')), true, false],
     ['a string read', call(member(name('label'), 'startsWith'), text('x')), true, false],

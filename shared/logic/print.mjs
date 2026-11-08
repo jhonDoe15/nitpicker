@@ -20,6 +20,7 @@ const BINARY_PRECEDENCE = new Map([
   ['+', 11],
   ['-', 11],
   ['*', 12],
+  ['**', 13],
   ['/', 12],
   ['%', 12],
 ]);
@@ -56,7 +57,7 @@ function precedence(node) {
       return POSTFIX;
     }
     case 'opaque': {
-      return 0;
+      return node.loose === true ? 0 : UNARY;
     }
     default: {
       return LEAF;
@@ -73,17 +74,37 @@ function needsGroup(parent, child, minimum) {
   return mixesNullish || precedence(child) < minimum;
 }
 
+const INTEGER_TEXT = /^\d+$/u;
+const POWER = 13;
+const ARGUMENT = 1;
+
+function isIntegerReceiver(parent, index) {
+  const child = parent.children[index];
+  const postfix = parent.kind === 'member' || parent.kind === 'index';
+  return (
+    postfix && index === 0 && child.kind === 'literal' && INTEGER_TEXT.test(String(child.value))
+  );
+}
+
 function grouped(parent, index, texts) {
   const minimum = operandPrecedence(parent, index);
-  return needsGroup(parent, parent.children[index], minimum) ? `(${texts[index]})` : texts[index];
+  const group =
+    needsGroup(parent, parent.children[index], minimum) || isIntegerReceiver(parent, index);
+  return group ? `(${texts[index]})` : texts[index];
 }
 
 function operandPrecedence(parent, index) {
   if (parent.kind === 'conditional') {
     return index === 0 ? 2 : 1;
   }
+  if (parent.kind === 'binary' && parent.value === '**') {
+    return index === 0 ? UNARY + 1 : POWER;
+  }
   if (parent.kind === 'binary' || parent.kind === 'logical') {
     return precedence(parent) + index;
+  }
+  if (parent.kind === 'call' && index > 0) {
+    return ARGUMENT;
   }
   return parent.kind === 'unary' ? UNARY : POSTFIX;
 }
@@ -116,7 +137,8 @@ function printExpression(node, texts) {
       return `${grouped(node, 0, texts)}[${texts[1]}]`;
     }
     case 'call': {
-      return `${grouped(node, 0, texts)}(${texts.slice(1).join(', ')})`;
+      const args = texts.slice(1).map((_text, index) => grouped(node, index + 1, texts));
+      return `${grouped(node, 0, texts)}(${args.join(', ')})`;
     }
     case 'this': {
       return 'this';

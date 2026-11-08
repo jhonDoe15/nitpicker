@@ -9,12 +9,11 @@ const TRANSPARENT = new Set([
   'TSInstantiationExpression',
 ]);
 
-const DECLARATIONS = new Set([
-  'VariableDeclaration',
-  'FunctionDeclaration',
-  'ClassDeclaration',
-  'TSEnumDeclaration',
-  'TSModuleDeclaration',
+const LOOSE = new Set([
+  'SequenceExpression',
+  'AssignmentExpression',
+  'ArrowFunctionExpression',
+  'YieldExpression',
 ]);
 
 const OPERATORS = new Map([
@@ -54,6 +53,9 @@ function isModeled(node) {
     }
     case 'TemplateLiteral': {
       return node.expressions.length === 0;
+    }
+    case 'Literal': {
+      return node.regex === undefined;
     }
     default: {
       return true;
@@ -164,10 +166,13 @@ function leaf(node, sourceCode) {
 }
 
 function opaque(node, text) {
-  if (node.type.endsWith('Statement') || node.type.endsWith('Declaration')) {
-    return term(DECLARATIONS.has(node.type) ? 'declaration' : 'statement', text);
+  if (node.type.endsWith('Declaration')) {
+    return term('declaration', text);
   }
-  return term('opaque', text);
+  if (node.type.endsWith('Statement')) {
+    return term('statement', text);
+  }
+  return LOOSE.has(node.type) ? { ...term('opaque', text), loose: true } : term('opaque', text);
 }
 
 function composite(node, children) {
@@ -199,17 +204,25 @@ function composite(node, children) {
   }
 }
 
-function made(node, children, { sourceCode, isBoolean }) {
+function never() {
+  return false;
+}
+
+function made(node, children, { sourceCode, isBoolean, isInteger }) {
   if (TRANSPARENT.has(node.type)) {
     return children[0];
   }
   const shape = isComposite(node) ? composite(node, children) : leaf(node, sourceCode);
   const placed = withRange(shape, node.range);
-  return isBoolean(node) ? { ...placed, boolean: true } : placed;
+  return {
+    ...placed,
+    ...(isBoolean(node) ? { boolean: true } : {}),
+    ...(isInteger(node) ? { integer: true } : {}),
+  };
 }
 
-export function toTerm(root, sourceCode, { isBoolean = () => false } = {}) {
-  const options = { sourceCode, isBoolean };
+export function toTerm(root, sourceCode, { isBoolean = never, isInteger = never } = {}) {
+  const options = { sourceCode, isBoolean, isInteger };
   return foldTree(root, undefined, {
     expand: (node) => parts(node).map((child) => [child]),
     combine: (node, _context, children) => made(node, children, options),

@@ -1,8 +1,10 @@
+import { isSideEffectFree } from './purity.mjs';
 import { foldTerm, isBooleanLiteral, isComparison, isLogical, isNot, key } from './terms.mjs';
 
 const DEFAULT_RESOURCE_LIMIT = 2_000_000;
 
 const INTEGER = /^-?\d+$/u;
+const DECIMAL = /^-?\d+(?:\.\d+)?$/u;
 const ARITHMETIC = new Set(['+', '-', '*']);
 const STRICT_EQUALITY = new Set(['===', '!==']);
 
@@ -22,8 +24,14 @@ function loadOnce(load) {
   };
 }
 
-function isInteger(node) {
-  return node.kind === 'literal' && INTEGER.test(node.value);
+function isIntegerLiteral(node) {
+  return (
+    node.kind === 'literal' && INTEGER.test(node.value) && Number.isSafeInteger(Number(node.value))
+  );
+}
+
+function isExactNumber(node) {
+  return DECIMAL.test(node.value) && (!INTEGER.test(node.value) || isIntegerLiteral(node));
 }
 
 function isArithmeticOperator(node) {
@@ -33,6 +41,13 @@ function isArithmeticOperator(node) {
   );
 }
 
+function isIntegral(node, children) {
+  if (isIntegerLiteral(node) || node.integer === true) {
+    return true;
+  }
+  return isArithmeticOperator(node) && children.every((child) => child.integral);
+}
+
 function memo(map, name, create) {
   if (!map.has(name)) {
     map.set(name, create(map.size));
@@ -40,21 +55,29 @@ function memo(map, name, create) {
   return map.get(name);
 }
 
+function isStable(encoding, node) {
+  if (node.kind === 'opaque') {
+    return false;
+  }
+  return encoding.sameCalls || isSideEffectFree(node);
+}
+
 function atom(encoding, sort, node) {
-  return memo(encoding.atoms, `${sort}:${key(node)}`, (index) =>
-    sort === 'value'
-      ? encoding.z3.Int.const(`a${String(index)}`)
-      : encoding.z3.Bool.const(`a${String(index)}`),
+  const { z3 } = encoding;
+  const identity = isStable(encoding, node)
+    ? key(node)
+    : `occurrence ${String(encoding.atoms.size)}`;
+  return memo(encoding.atoms, `${sort}:${identity}`, (index) =>
+    sort === 'value' ? z3.Real.const(`a${String(index)}`) : z3.Bool.const(`a${String(index)}`),
   );
 }
 
 function literalValue(encoding, node) {
-  if (isInteger(node)) {
-    return memo(encoding.integers, node.value, () => encoding.z3.Int.val(BigInt(node.value)));
+  const { z3 } = encoding;
+  if (isExactNumber(node)) {
+    return memo(encoding.literals, node.value, () => z3.Real.val(node.value));
   }
-  return memo(encoding.constants, node.value, (index) =>
-    encoding.z3.Int.const(`c${String(index)}`),
-  );
+  return memo(encoding.literals, node.value, (index) => z3.Real.const(`c${String(index)}`));
 }
 
 function arithmeticValue(node, [left, right]) {
@@ -67,21 +90,42 @@ function arithmeticValue(node, [left, right]) {
   return node.value === '-' ? left.value.sub(right.value) : left.value.mul(right.value);
 }
 
-function encodeValue(encoding, { node, children, arithmetic }) {
+function encodeValue(encoding, { node, children, integral }) {
   if (node.kind === 'literal') {
     return literalValue(encoding, node);
   }
-  return arithmetic && isArithmeticOperator(node)
-    ? arithmeticValue(node, children)
-    : atom(encoding, 'value', node);
+  if (integral && isArithmeticOperator(node)) {
+    return arithmeticValue(node, children);
+  }
+  const value = atom(encoding, 'value', node);
+  if (integral) {
+    encoding.facts.push(encoding.z3.IsInt(value));
+  }
+  return value;
 }
 
-function comparison(encoding, node, [left, right]) {
-  if (!left.arithmetic || !right.arithmetic) {
+function encodeNotANumber(encoding, { node, integral }) {
+  return node.kind === 'literal' || integral
+    ? encoding.z3.Bool.val(false)
+    : atom(encoding, 'not-a-number', node);
+}
+
+function isNumber(operand) {
+  return operand.node.kind !== 'literal' || isExactNumber(operand.node);
+}
+
+function numeric(encoding, [left, right], relation) {
+  const { z3 } = encoding;
+  return z3.And(z3.Not(left.notANumber), z3.Not(right.notANumber), relation);
+}
+
+function comparison(encoding, node, children) {
+  if (!children.every(isNumber)) {
     return atom(encoding, 'truth', node);
   }
+  const [left, right] = children;
   const compare = { '<': 'lt', '<=': 'le', '>': 'gt', '>=': 'ge' }[node.value];
-  return left.value[compare](right.value);
+  return numeric(encoding, children, left.value[compare](right.value));
 }
 
 function connective(z3, node, [first, second, third]) {
@@ -104,7 +148,7 @@ function relation(encoding, node, children) {
   if (node.kind !== 'binary' || !STRICT_EQUALITY.has(node.value)) {
     return undefined;
   }
-  const equal = children[0].value.eq(children[1].value);
+  const equal = numeric(encoding, children, children[0].value.eq(children[1].value));
   return node.value === '===' ? equal : encoding.z3.Not(equal);
 }
 
@@ -119,26 +163,21 @@ function encodeTruth(encoding, { node, children }) {
   );
 }
 
-function isArithmetic(node, children) {
-  if (node.kind === 'literal') {
-    return isInteger(node);
-  }
-  return !isArithmeticOperator(node) || children.every((child) => child.arithmetic);
-}
-
 function encode(encoding, root) {
   return foldTerm(root, (node, children) => {
-    const encoded = { node, children, arithmetic: isArithmetic(node, children) };
+    const encoded = { node, children, integral: isIntegral(node, children) };
     return {
-      arithmetic: encoded.arithmetic,
+      node,
+      integral: encoded.integral,
       value: encodeValue(encoding, encoded),
+      notANumber: encodeNotANumber(encoding, encoded),
       truth: encodeTruth(encoding, encoded),
     };
   }).truth;
 }
 
 function distinctLiterals(encoding) {
-  const literals = [...encoding.constants.values(), ...encoding.integers.values()];
+  const literals = [...encoding.literals.values()];
   return literals.length > 1 ? [encoding.z3.Distinct(...literals)] : [];
 }
 
@@ -149,12 +188,13 @@ function satisfiable(z3, assertions, resourceLimit) {
   return solver.check();
 }
 
-export async function decide(conditions, query, { resourceLimit = DEFAULT_RESOURCE_LIMIT } = {}) {
+export async function decide(conditions, query, options = {}) {
+  const { resourceLimit = DEFAULT_RESOURCE_LIMIT, sameCalls = false } = options;
   const z3 = await solverContext();
-  const encoding = { z3, atoms: new Map(), constants: new Map(), integers: new Map() };
+  const encoding = { z3, sameCalls, atoms: new Map(), literals: new Map(), facts: [] };
   const path = conditions.map((condition) => encode(encoding, condition));
   const asked = encode(encoding, query);
-  const facts = [...distinctLiterals(encoding), ...path];
+  const facts = [...distinctLiterals(encoding), ...encoding.facts, ...path];
   const canHold = await satisfiable(z3, [...facts, asked], resourceLimit);
   const canFail = await satisfiable(z3, [...facts, z3.Not(asked)], resourceLimit);
   if (canHold === 'unsat' && canFail === 'unsat') {
