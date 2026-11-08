@@ -4,7 +4,7 @@ import { readBaseFiles } from '../changes.mjs';
 import { containedPath } from './contained-path.mjs';
 import { keepingLineEndings } from './rewrite/line-endings.mjs';
 import { touchedLinesFormatted } from './rewrite/line-hunks.mjs';
-import { replaceIfUnchanged } from './rewrite/safe-write.mjs';
+import { writeTexts } from '../engine/write-texts.mjs';
 
 function namesOf(files) {
   return files.map(({ path: name }) => name);
@@ -77,9 +77,11 @@ export function rewriteFormatted({ projectRoot, repositoryRoot, mergeBaseSha, fi
     formatted: first.formatted,
     touchedLinesOnly: options.touchedLinesOnly === true,
   });
-  const written = planned.filter(({ name, text }) =>
-    replaceIfUnchanged(containedPath(projectRoot, name), bytes.get(name), text),
+  const { written: names } = writeTexts(
+    projectRoot,
+    planned.map(({ name, text }) => ({ name, bytes: bytes.get(name), text })),
   );
+  const written = planned.filter(({ name }) => names.includes(name));
   return {
     rewritten: written.filter(({ partly }) => !partly).map(({ name }) => name),
     partlyRewritten: written.filter(({ partly }) => partly).map(({ name }) => name),

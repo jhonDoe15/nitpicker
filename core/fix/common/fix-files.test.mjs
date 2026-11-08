@@ -7,7 +7,6 @@ import {
   collectFixFiles,
   excludedBy,
   readBytes,
-  rewrittenBy,
   rewrittenPaths,
   splitByEncoding,
 } from './fix-files.mjs';
@@ -76,19 +75,6 @@ describe('rewritten paths', () => {
     writeFileSync(path.join(repository.root, 'b.txt'), 'changed\n');
 
     expect(rewrittenPaths(repository.root, files, before)).toEqual(['b.txt']);
-  });
-  it('observes what an action rewrites', () => {
-    const repository = createGitRepository({ 'a.txt': 'a\n', 'b.txt': 'b\n' });
-
-    const rewritten = rewrittenBy(repository.root, [{ path: 'a.txt' }, { path: 'b.txt' }], () => {
-      writeFileSync(path.join(repository.root, 'a.txt'), 'a2\n');
-      writeFileSync(path.join(repository.root, 'b.txt'), 'b\n');
-    });
-
-    expect([rewritten, readFileSync(path.join(repository.root, 'a.txt'), 'utf8')]).toEqual([
-      ['a.txt'],
-      'a2\n',
-    ]);
   });
 });
 

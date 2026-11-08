@@ -1,6 +1,3 @@
-import { readFileSync, writeFileSync } from 'node:fs';
-import { containedPath } from '../../../../core/fix/common/contained-path.mjs';
-
 const PARSE_FAILURES = {
   'ruff-format-fix': {
     status: 2,
@@ -26,15 +23,12 @@ export function fakePythonTools({
 } = {}) {
   const calls = [];
   function lint(invocation) {
-    const separator = invocation.args.indexOf('--');
-    for (const file of invocation.args.slice(separator + 1)) {
-      const target = containedPath(invocation.cwd, file);
-      const edited = lintEdit?.(file, readFileSync(target, 'utf8'));
-      if (edited !== undefined) {
-        writeFileSync(target, edited);
-      }
+    const file = invocation.args.find((arg) => arg.startsWith('--stdin-filename=')).slice(17);
+    const edited = lintEdit?.(file, invocation.input) ?? invocation.input;
+    if (lintStatus !== 0) {
+      return { status: lintStatus, stdout: '', stderr: 'ruff exploded' };
     }
-    return { status: lintStatus, stdout: '', stderr: lintStatus === 0 ? '' : 'ruff exploded' };
+    return { status: edited === invocation.input ? 0 : 1, stdout: edited, stderr: '' };
   }
   function format(invocation) {
     if (missingFormatter) {

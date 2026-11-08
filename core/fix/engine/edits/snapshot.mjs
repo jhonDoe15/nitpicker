@@ -31,3 +31,15 @@ export function createSnapshot(projectRoot, names) {
     isRead: (name) => entries.get(name) !== undefined,
   };
 }
+
+export function snapshotOf(bytesByName) {
+  const entries = new Map(
+    [...bytesByName].map(([name, bytes]) => [name, { bytes, text: bytes.toString('utf8') }]),
+  );
+  return {
+    files: [...entries].map(([name, { text }]) => ({ path: name, text })),
+    read: (name) => entries.get(name)?.text,
+    entry: (name) => entries.get(name),
+    isRead: (name) => entries.has(name),
+  };
+}

@@ -3,18 +3,19 @@ import {
   collectFixFiles,
   excludedBy,
   readBytes,
-  rewrittenBy,
   rewrittenPaths,
   splitByEncoding,
 } from '../../../core/fix/common/fix-files.mjs';
 import { rewriteFormatted } from '../../../core/fix/common/format-rewrite.mjs';
-import { formatNotes, linkNote, rewrittenNote } from '../../../core/fix/common/fix-notes.mjs';
+import { formatNotes, linkNote } from '../../../core/fix/common/fix-notes.mjs';
+import { withFixedLineEndingsOf } from '../../../core/fix/common/rewrite/line-endings.mjs';
+import { writeTexts } from '../../../core/fix/engine/write-texts.mjs';
 import { failure } from '../adapters/execution/python-process.mjs';
 import { onlyUnparsableFiles } from '../adapters/python-tools.mjs';
 import {
   FORMAT_FAILURE_STATUS,
   formatStdinCommand,
-  lintFixCommand,
+  lintFixCommands,
 } from './python-fix-commands.mjs';
 import { commandRunner, withPythonFixContext } from './python-fix-session.mjs';
 
@@ -75,20 +76,26 @@ function stdinFormatter(context, run, skipped) {
 
 function lintStep({ context, run, projectRoot, files }) {
   const decodable = splitByEncoding(projectRoot, files).files;
-  const paths = decodable.map(({ path: name }) => name);
-  if (paths.length === 0) {
-    return [];
-  }
-  return rewrittenNote(
-    'ruff check --fix',
-    rewrittenBy(projectRoot, decodable, () => {
-      run({
-        operation: 'ruff-fix',
-        command: lintFixCommand(context, paths),
-        acceptedStatuses: [0, 1],
-      });
-    }),
-  );
+  const before = readBytes(projectRoot, decodable);
+  const commandFor = decodable.length === 0 ? undefined : lintFixCommands(context);
+  const planned = decodable.flatMap(({ path: name }) => {
+    const source = before.get(name).toString('utf8');
+    const result = run({
+      operation: 'ruff-fix',
+      command: commandFor(name),
+      acceptedStatuses: [0, 1],
+      input: source,
+    });
+    const text = result.status === 0 ? source : withFixedLineEndingsOf(source, result.stdout);
+    return text === source ? [] : [{ name, bytes: before.get(name), text }];
+  });
+  const { written, changedMeanwhile } = writeTexts(projectRoot, planned);
+  return formatNotes('ruff check --fix', {
+    rewritten: written,
+    changedMeanwhile,
+    keptAsIs: [],
+    unformattable: [],
+  });
 }
 
 function formatStep({ context, run, settings, files, mergeBaseSha }) {

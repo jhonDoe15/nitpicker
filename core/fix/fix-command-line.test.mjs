@@ -74,6 +74,7 @@ describe('nitpicker --fix for a Python project', () => {
     expect(tools.operations()).toEqual([
       'python-probe',
       'ruff-fix',
+      'ruff-fix',
       'ruff-format-fix',
       'ruff-format-fix',
       'ruff-format-fix',

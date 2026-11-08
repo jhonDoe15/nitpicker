@@ -46,12 +46,6 @@ export function rewrittenPaths(projectRoot, files, before) {
     .map(({ path: name }) => name);
 }
 
-export function rewrittenBy(projectRoot, files, action) {
-  const before = readBytes(projectRoot, files);
-  action();
-  return rewrittenPaths(projectRoot, files, before);
-}
-
 export function splitByEncoding(projectRoot, files) {
   const bytes = readBytes(projectRoot, files);
   return {

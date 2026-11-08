@@ -385,7 +385,7 @@ nitpicker rules [--preset <name>] [--tool <name>]
   Kotlin and Python sections). Only files whose bytes changed are listed under "Fixed files:", and a
   formatter leaves alone a file that already failed its format check on the base (ktlint, whose
   findings are per line, formats only the code around your change in such a file). ESLint,
-  Prettier and the Python, Java and Kotlin formatters replace a file in one step (a temporary file
+  `ruff check --fix`, Prettier and the Python, Java and Kotlin formatters replace a file in one step (a temporary file
   renamed over it), leave alone a file that changed while they ran or is not UTF-8, and do not
   follow symbolic links; each of these is named in a "Fix notes:" line. ESLint and the Python, Java
   and Kotlin formatters keep CRLF line endings; a file Prettier rewrites gets the line endings of
@@ -1324,8 +1324,9 @@ error.
 
 `--fix` runs inside that environment, on the changed `.py`, `.pyi` and `.ipynb` files, the files
 the gate's ruff and format checks cover: `ruff check --fix` with nitpicker's selected rules and
-ruff's safe fixes, then the formatter the run names (ruff format or black) with the options of the
-"Format with ..." command. `ruff check --fix` honours `# noqa` comments, so code you suppressed is
+ruff's safe fixes, one file at a time over stdin so that nitpicker writes the result the same safe
+way it writes formatter output, then the formatter the run names (ruff format or black) with the
+options of the "Format with ..." command. `ruff check --fix` honours `# noqa` comments, so code you suppressed is
 never deleted (the gate's check ignores them, but only on the lines you change). Like ESLint on
 TypeScript, it fixes the whole changed file, not only the changed lines. Notebooks go to Black too,
 which formats them, as the gate checks them, only when its `jupyter` extra (`black[jupyter]`) is
