@@ -82,7 +82,7 @@ describe('static differential adapters', () => {
         path: 'src/main/auth/drift.ts',
         identity: 'format-diff:9f7a98502a664a32843099ca',
         message:
-          'These lines are not formatted with Prettier. Run `nitpicker --fix` to format the changed files.',
+          'These lines are not formatted with Prettier. Run `nitpicker --fix` to format the changed files; it skips a file that was already unformatted on the base, so format such lines by hand.',
         classification: 'enforceable',
         location: { line: 1, endLine: 2 },
       },
@@ -92,7 +92,7 @@ describe('static differential adapters', () => {
         path: 'src/main/auth/logic.ts',
         identity: 'format-diff:30a09f8cdd43aeffcc325cbc',
         message:
-          'These lines are not formatted with Prettier. Run `nitpicker --fix` to format the changed files.',
+          'These lines are not formatted with Prettier. Run `nitpicker --fix` to format the changed files; it skips a file that was already unformatted on the base, so format such lines by hand.',
         classification: 'enforceable',
         location: { line: 1, endLine: 3 },
       },
@@ -120,7 +120,7 @@ describe('static differential adapters', () => {
         path: driftPath,
         identity: 'format-diff:9f7a98502a664a32843099ca',
         message:
-          'These lines are not formatted with Prettier. Run `nitpicker --fix` to format the changed files.',
+          'These lines are not formatted with Prettier. Run `nitpicker --fix` to format the changed files; it skips a file that was already unformatted on the base, so format such lines by hand.',
         classification: 'enforceable',
         location: { line: 1, endLine: 2 },
       },

@@ -20,7 +20,7 @@ export function installedHelpUri(links, id) {
 }
 
 const PRETTIER_MESSAGE =
-  'These lines are not formatted with Prettier. Run `nitpicker --fix` to format the changed files.';
+  'These lines are not formatted with Prettier. Run `nitpicker --fix` to format the changed files; it skips a file that was already unformatted on the base, so format such lines by hand.';
 const DEBUGGER_MESSAGE =
   '`debugger` statement is not allowed. If this is intended, add {"rule":"no-debugger",' +
   '"paths":["src/main/example.ts"],"reason":"..."} to "exceptions" in nitpicker.config.json.';

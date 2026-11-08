@@ -3,7 +3,9 @@ import { FIX_COMMAND, formatAdvice } from './format-advice.mjs';
 
 describe('formatAdvice', () => {
   it('names nitpicker --fix where it formats the file', () => {
-    expect(formatAdvice()).toBe('Run `nitpicker --fix` to format the changed files.');
+    expect(formatAdvice()).toBe(
+      'Run `nitpicker --fix` to format the changed files; it skips a file that was already unformatted on the base, so format such lines by hand.',
+    );
     expect(FIX_COMMAND).toBe('nitpicker --fix');
   });
 
