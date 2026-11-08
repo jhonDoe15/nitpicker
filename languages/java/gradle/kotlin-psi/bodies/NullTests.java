@@ -42,7 +42,7 @@ final class NullTests {
 
   private static boolean inObjectMethod(KtExpression expression) {
     KtNamedFunction function = PsiTreeUtil.getParentOfType(expression, KtNamedFunction.class);
-    return function != null && OBJECT_METHODS.contains(function.getName());
+    return function != null && function.getName() != null && OBJECT_METHODS.contains(function.getName());
   }
 
   private static boolean nullSafe(KtExpression expression, boolean equal) {
