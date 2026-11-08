@@ -625,6 +625,20 @@ Part of the [TypeScript strict preset guide](../typescript-strict-preset.md).
   `eslint-plugin-regexp`, on for `g` and `y` only), so the two rules do not overlap. Allowed: create
   the regex where it is used, drop `g` when one match is enough, or `text.matchAll(pattern)` for
   every match.
+- Regular expressions with a part that never changes what they match (`eslint-plugin-regexp`, in
+  production code). A part that can never match, always matches or repeats another part is either
+  a bug or dead weight, and tests seldom reach the input that tells which: an assertion that always
+  accepts or always rejects (`/a\bb/`), an alternative or quantifier an assertion rules out, a
+  duplicate alternative (`/a|b|a/`) or class member (`[\w_]`), an empty group, alternative or
+  lookaround, a lazy quantifier at the end of the pattern, a backreference that is always empty, a
+  zero quantifier, a capturing group that captures less than it reads, a set operand that never
+  changes the set, `[\b]`, a `$2` replacement with one group and a `replaceAll`/`matchAll` regex
+  without `g`. Forms with a shorter equivalent are reported too, with the fix: `a{1}`, `a{2,2}`,
+  `(?:a+)*`, `\w+\d*`, `(?:ab)c`, `[a]`, `[a-ab]`, `a{3}?`, `(?=(?=b))`, `a(?!\w)` (`\b`), and a
+  range such as `[ -~]` whose characters are not obvious (write `[\x20-\x7E]`). The rules are the
+  `regexp/` ids listed in `eslint-config/regexp/regexp-rules.mjs`. `regexp/no-super-linear-move` is
+  off: it reports the common trailing trim `replace(/\/+$/u, '')` and cannot tell bounded input
+  from attacker-controlled input.
 - `nitpicker/no-string-as-regex` (type-aware): `match()`, `matchAll()` and `search()` compile a
   string argument as a regex, so a string-typed argument on a string receiver is reported (also a
   literal: `text.match('a.b')`); use `includes`, `startsWith`, `indexOf` or `===` for plain text, or
