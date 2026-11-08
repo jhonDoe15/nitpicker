@@ -92,9 +92,9 @@ export function toolDependencies(pinned, launcherVersions = [], extraTools = [])
       ]),
     ),
     ...Object.fromEntries(
-      extraTools.map(({ name, coordinates }) => [
+      extraTools.map(({ name, coordinates, exclusions }) => [
         name,
-        coordinates.map((entry) => dependency(entry)),
+        coordinates.map((entry) => dependency(entry, exclusions)),
       ]),
     ),
   };
