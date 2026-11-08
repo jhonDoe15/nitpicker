@@ -1331,12 +1331,14 @@ file is a root hook too, which runs once for the whole run: what it prints belon
 what the work it started prints later belongs to whichever test is running then, in any file, so a
 timer such a hook leaves running is reported against the test it fires in. With `--parallel` each
 file runs alone with its own root hooks, so their work stays with their file. Other work a spec file
-started, such as a test's timer or a server from a `describe`'s `before`, keeps that file and the
-test or suite that started it, also when it prints while a later file runs or after the run, as long
-as the process lives. A `mochaGlobalSetup` fixture belongs to no file, like a root hook from a
-`--require` file, so what a server it started prints belongs to the test running then; with
-`--parallel` the fixture runs in the main process, outside the workers, and is not seen, as with
-Vitest's and Jest's `globalSetup`.
+started, such as a test's timer or a server from a `describe`'s `before`, keeps that file, also when
+it prints while a later file runs or after the run, as long as the process lives: within its file it
+names the test running then, outside it the test or suite that started it. A client or pool that a
+test creates on first use and later files share keeps that test's file, so start shared work in a
+top-level `before` or a fixture instead. A `mochaGlobalSetup`
+fixture belongs to no file, like a root hook from a `--require` file, so what a server it started
+prints belongs to the test running then; with `--parallel` the fixture runs in the main process,
+outside the workers, and is not seen.
 
 It does not see:
 
