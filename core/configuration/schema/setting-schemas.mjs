@@ -113,12 +113,14 @@ export const history = {
   dependencies: Object.fromEntries(HISTORY_THRESHOLD_KEYS.map((key) => [key, ['coChange']])),
 };
 
-const memberNames = (description) => ({
-  description,
-  type: 'array',
-  minItems: 1,
-  items: { type: 'string', minLength: 1 },
-});
+function memberNames(description) {
+  return {
+    description,
+    type: 'array',
+    minItems: 1,
+    items: { type: 'string', minLength: 1 },
+  };
+}
 
 export const protocols = {
   description:
