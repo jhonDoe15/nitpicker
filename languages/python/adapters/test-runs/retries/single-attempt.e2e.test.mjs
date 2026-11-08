@@ -142,10 +142,15 @@ describe.skipIf(!pythonE2eEnabled)('a test that passes only on a retry', () => {
   it('reports a failure without a retry as it is', () => {
     const outcome = run(['pytest_rerunfailures'], FAILS_ONCE('@pytest.mark.flaky(reruns=0)', 2));
 
-    expect(outcome.status).toBe(1);
-    expect(
-      outcome.failures.map(({ test, firstFailureShown }) => ({ test, firstFailureShown })),
-    ).toEqual([{ test: 'tests.test_orders.test_total', firstFailureShown: false }]);
-    expect(outcome.failures[0].message).toMatch(/^assert 1 >= 2\n/u);
+    expect(outcome).toEqual({
+      status: 1,
+      failures: [
+        {
+          test: 'tests.test_orders.test_total',
+          message: 'assert 1 >= 2\n +  where 1 = len([1])',
+          firstFailureShown: false,
+        },
+      ],
+    });
   });
 });
