@@ -7,7 +7,7 @@ import { unreachableFindings } from './go-deadcode.mjs';
 const root = mkdtempSync(path.join(tmpdir(), 'nitpicker-go-deadcode-'));
 const FILES = {
   'internal/store/store.go':
-    'package store\n\nfunc unused() {}\n\nfunc OnlyTests() {}\n\nfunc Windows() {}\n',
+    'package store\n\nfunc unused() {}\n\nfunc OnlyTests() {}\n\nfunc Windows() {}\n\n//export hook\nfunc hook() {}\n',
   'internal/store/store_windows.go':
     'package store\n\nfunc init() { Windows() }\n\nfunc winOnly() {}\n',
   'api/api.go': 'package api\n\nfunc Public() {}\n\nfunc private() {}\n',
@@ -27,6 +27,10 @@ const REPORT = {
     { path: 'internal/store/store_windows.go', package: 'store', test: false, constrained: true },
     { path: 'api/api.go', package: 'api', test: false, constrained: false },
   ],
+  definitions: [
+    { file: 'internal/store/store.go', name: 'unused', entry: false },
+    { file: 'internal/store/store.go', name: 'hook', entry: true },
+  ],
 };
 
 function dead(file, line, name) {
@@ -40,6 +44,7 @@ const DEADCODE = [
       dead('internal/store/store.go', 3, 'unused'),
       dead('internal/store/store.go', 5, 'OnlyTests'),
       dead('internal/store/store.go', 7, 'Windows'),
+      dead('internal/store/store.go', 10, 'hook'),
       dead('internal/store/store_windows.go', 5, 'winOnly'),
     ],
   },
@@ -50,7 +55,7 @@ const DEADCODE = [
 ];
 
 describe('deadcode findings', () => {
-  it('keeps functions no build of the module reaches and that other modules cannot call', () => {
+  it('keeps functions no build reaches, that other modules and cgo cannot call', () => {
     const findings = unreachableFindings(root, DEADCODE, {
       report: REPORT,
       module: 'example.com/shop',

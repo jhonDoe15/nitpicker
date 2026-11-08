@@ -17,6 +17,8 @@ export const GO_EXCEPTION_RULES = [
   ...GO_SIZE_RULES,
   RULE_IDS.duplicateClone,
   RULE_IDS.stabilityDirection,
+  RULE_IDS.testOnlyExport,
+  RULE_IDS.sharedUsedByOneFeature,
   PACKAGE_RULE_IDS.unusedDependency,
   PACKAGE_RULE_IDS.unlistedDependency,
 ];

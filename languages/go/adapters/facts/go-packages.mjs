@@ -13,12 +13,28 @@ function isFetchable(module) {
   return module.split('/')[0].includes('.');
 }
 
-function packageNames(files) {
-  const names = new Map();
-  for (const file of files.filter(({ test }) => !test)) {
-    names.set(directoryOf(file.path), file.package);
+function mostCommon(values) {
+  const counts = new Map();
+  for (const value of values) {
+    counts.set(value, (counts.get(value) ?? 0) + 1);
   }
-  return names;
+  return [...counts].toSorted(([, left], [, right]) => right - left)[0]?.[0];
+}
+
+function packageNames(files) {
+  const byDirectory = Map.groupBy(
+    files.filter(({ test }) => !test),
+    ({ path: file }) => directoryOf(file),
+  );
+  return new Map(
+    [...byDirectory].map(([directory, members]) => {
+      const built = members.filter(({ constrained }) => !constrained);
+      return [
+        directory,
+        mostCommon((built.length > 0 ? built : members).map((file) => file.package)),
+      ];
+    }),
+  );
 }
 
 export function goPackages(report, module = '') {

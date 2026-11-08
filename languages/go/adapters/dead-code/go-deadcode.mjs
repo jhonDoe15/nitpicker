@@ -1,6 +1,6 @@
-import { readFileSync, writeFileSync } from 'node:fs';
+import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
-import { buildFlags, readVetFindings } from '../build/go-vet.mjs';
+import { buildFlags, readVetFindings, VET_REPORT } from '../build/go-vet.mjs';
 import { run } from '../execution/go-process.mjs';
 import { toolCommand } from '../execution/go-tools.mjs';
 import { diagnosticFindings } from '../build/diagnostics.mjs';
@@ -16,10 +16,16 @@ function writeReport(context, packages) {
   writeFileSync(path.join(context.reportRoot, DEADCODE_REPORT), JSON.stringify(packages));
 }
 
+function compiles(context) {
+  return (
+    existsSync(path.join(context.reportRoot, VET_REPORT)) &&
+    readVetFindings(context).every(({ rule }) => rule !== COMPILE_RULE)
+  );
+}
+
 export function deadcode(context) {
   const report = readInspect(context.reportRoot);
-  const compiles = readVetFindings(context).every(({ rule }) => rule !== COMPILE_RULE);
-  if (goPackages(report, context.module).mains.length === 0 || !compiles) {
+  if (goPackages(report, context.module).mains.length === 0 || !compiles(context)) {
     writeReport(context, []);
     return;
   }
@@ -55,13 +61,19 @@ function constrainedReferences(report, facts) {
   };
 }
 
-function isKept(entry, { packages, constrained, referenced, reported }) {
+function entryPoints(report) {
+  return new Set(
+    report.definitions.filter(({ entry }) => entry).map(({ file, name }) => `${file}\0${name}`),
+  );
+}
+
+function isKept(entry, { packages, constrained, referenced, reported, entries }) {
   const { file, name } = entry;
+  const key = `${file}\0${name}`;
   return (
     !(packages.isPublished(directoryOf(file)) && isExported(name)) &&
     !constrained.has(file) &&
-    !referenced.has(`${file}\0${name}`) &&
-    !reported.has(`${file}\0${name}`)
+    ![referenced, reported, entries].some((keys) => keys.has(key))
   );
 }
 
@@ -89,6 +101,7 @@ export function unreachableFindings(
     packages: goPackages(report, module),
     ...constrainedReferences(report, facts),
     reported: new Set(testOnly.map(({ path: file, symbol }) => `${file}\0${symbol}`)),
+    entries: entryPoints(report),
   };
   return diagnosticFindings(
     projectRoot,

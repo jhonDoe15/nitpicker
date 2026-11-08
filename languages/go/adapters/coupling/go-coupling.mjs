@@ -12,12 +12,21 @@ function unitOf(directory) {
   return directory === '' ? ROOT_PACKAGE : directory;
 }
 
+function anchorRank(file) {
+  if (path.posix.basename(file.path) === PACKAGE_DOC) {
+    return 0;
+  }
+  return file.generated ? 2 : 1;
+}
+
 function anchors(files) {
   const byPackage = new Map();
-  for (const file of files.toSorted((left, right) => left.path.localeCompare(right.path))) {
+  const ranked = files.toSorted(
+    (left, right) => anchorRank(left) - anchorRank(right) || left.path.localeCompare(right.path),
+  );
+  for (const file of ranked) {
     const unit = unitOf(directoryOf(file.path));
-    const current = byPackage.get(unit);
-    if (current === undefined || path.posix.basename(file.path) === PACKAGE_DOC) {
+    if (!byPackage.has(unit)) {
       byPackage.set(unit, file.path);
     }
   }
