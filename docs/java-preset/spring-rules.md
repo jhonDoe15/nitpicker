@@ -396,7 +396,7 @@ pattern held in a variable (`var all = "/**"`) or an `access(...)` that allows e
 variable within one method. Layering, entities in controller signatures and test placement need a
 cross-class view, which PMD does not have; they are nitpicker's own ArchUnit rules, described next.
 
-**Tests.** `spring/java-spring.e2e.test.mjs` (gated like the other Java e2e tests and part of
+**Tests.** `spring/e2e/java-spring-rules.e2e.test.mjs` (gated like the other Java e2e tests and part of
 `npm run test:java`) runs PMD through the init script on `adapters/fixtures/spring-project`, whose
 sources mark every expected violation with a `// violation: <rule>` comment, and asserts the
 reported set equals the marked set. The fixture also holds the legitimate forms each rule must
