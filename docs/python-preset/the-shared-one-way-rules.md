@@ -56,7 +56,7 @@ are listed at the end.
 | Timeouts                 | `timeout=10` on every request, `urlopen` and plain `requests.Session` call; never `timeout=None`                                                                                     | ruff `S113`, `http-without-timeout` (script)                                                                                                                                                                                               |
 | Abandoned work           | `asyncio.wait_for`, `asyncio.timeout` or a `TaskGroup`; cancel or hand off `pending` after `asyncio.wait(..., timeout=)`                                                             | `timeout-abandons-operation` (script)                                                                                                                                                                                                      |
 | Child processes          | `subprocess.run(args, timeout=30, check=True)`, `communicate(timeout=30)`, asyncio waits in `asyncio.timeout(30)`                                                                    |
-| Test honesty             | a reason on every skip, no sleeping, no tautologies, fixed time and seeded random values, no network, no leaked global state                                                         | ruff `PT`, `skipped-test-without-reason`, `sleep-in-test`, `negative-wait-in-test`, `mocked-subject-in-test`, `tautological-assert`, `real-clock-in-test`, `random-in-test`, `network-in-test`, `server-or-container-per-test`, `global-state-leak-in-test` (script) |
+| Test honesty             | a reason on every skip, no sleeping, no tautologies, fixed time and seeded random values, no network, no leaked global state                                                         | ruff `PT`, `skipped-test-without-reason`, `sleep-in-test`, `negative-wait-in-test`, `retry-in-test`, `mocked-subject-in-test`, `tautological-assert`, `real-clock-in-test`, `random-in-test`, `network-in-test`, `server-or-container-per-test`, `global-state-leak-in-test` (script) |
 | Test layout              | tests in files pytest collects; helpers in the tests folder                                                                                                                          | `uncollected-tests`, `test-helper-in-source` (script)                                                                                                                                                                                      |
 
 `type-cast` rejects `typing.cast` (and `typing_extensions.cast`) as a call or as a value
@@ -890,6 +890,17 @@ t)`, `asyncio.timeout(t)`, `fail_after(t)`, `wait(t)`) inside `pytest.raises` or
   `integration`, `e2e` and the like. `tautological-assert` covers `assert True`, `assert x == x`,
   `assert 1`, `assertTrue(True)`, `assertEqual(x, x)`, `assertGreaterEqual(x, x)`,
   `assertIsInstance(x, object)` and the like: asserts that cannot fail.
+- `retry-in-test` (Java and Kotlin: `RetryInTest`; TypeScript: `nitpicker/no-test-retry`) reports a
+  retry set in test code: the `flaky` mark of pytest-rerunfailures, pytest-retry and the `flaky`
+  package (`@pytest.mark.flaky(reruns=3)`, `@pytest.mark.flaky(retries=2)`, a bare
+  `@pytest.mark.flaky`, in `pytestmark`, in `pytest.param(..., marks=...)` or added with
+  `add_marker`), the `flaky` package's `@flaky` decorator, and a tenacity, backoff or stamina retry
+  decorator on a test function or method. A literal `reruns=0`, `retries=0` or `max_runs=1` is not
+  a retry. A retry decorator on a helper that polls is not reported. The marks override the
+  `-o reruns=0` pin, so the test run backs the rule up: a test that fails and then passes on a
+  later attempt (a `rerun` or `retried` report, or a second setup or call of the same test)
+  counts as failed, with the first failure in the message. pytest-rerunfailures, pytest-retry and
+  the `flaky` plugin are covered, also under xdist.
 - `mocked-subject-in-test` (Java and Kotlin: `MockedSubjectInTest`; TypeScript:
   `nitpicker/no-mocking-subject-under-test`) reports a test that replaces the code it is named after.
   The subject is the module a test file is named for (`tests/test_cart.py` or `cart_test.py` for the

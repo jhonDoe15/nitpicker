@@ -9,6 +9,9 @@ Part of the [nitpicker-python](../SKILL.md) skill. Write these forms from the st
   instead of `time.sleep` and fake network, database and disk access. A test over budget is run
   again alone without coverage and fails only if it is still over. Lift a legitimate one in the
   top-level `exceptions` with `{ "rule": "slow-test", "paths": [...], "reason": "..." }`.
+- No retries in test code (`retry-in-test`): no `@pytest.mark.flaky` (pytest-rerunfailures,
+  pytest-retry), no `@flaky` from the flaky package, no tenacity or backoff retry on a test. A test
+  that passes only on a later attempt counts as failed. Fix the flaky cause instead.
 - Never patch the module a test is named after (`mocked-subject-in-test`): in `test_cart.py`, no
   `patch("shop.cart.total")`, no `patch.object(cart, "helper")` on a `Cart`, no `Mock(spec=Cart)`.
   Pass the collaborators in and fake them, test a helper through the public function that calls
