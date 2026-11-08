@@ -6,6 +6,7 @@ const DEFAULTS = {
   details: false,
   fix: false,
   help: false,
+  version: false,
   cache: true,
   quick: false,
   staged: false,
@@ -54,8 +55,8 @@ describe('--quick and --staged arguments', () => {
   });
 
   it('lists both flags in the usage text', () => {
-    expect(USAGE_TEXT.split('\n')[0]).toBe(
-      'Usage: nitpicker [<path>...] [--base <ref>] [--output <dir>] [--all | --fix] [--analyzer <name>]... [--rule <substring>]... [--details] [--quick] [--staged] [--shard-count <n> --shard-index <i>] [--defer-exit] [--no-cache] [--accept-policy-change=<digest>] [--help]',
-    );
+    expect(USAGE_TEXT).toContain('[--details] [--quick] [--staged]');
+    expect(USAGE_TEXT).toContain('  --quick  ');
+    expect(USAGE_TEXT).toContain('  --staged  ');
   });
 });
