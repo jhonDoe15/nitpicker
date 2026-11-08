@@ -15,6 +15,22 @@ const ENFORCEMENT_TEXT = {
   partial: 'partial',
   reported: 'report-only',
 };
+const NOT_APPLICABLE = 'does not apply';
+
+function cellText(rule, language) {
+  return rule.notApplicable?.[language] === undefined
+    ? ENFORCEMENT_TEXT[String(rule.enforcedBy[language])]
+    : NOT_APPLICABLE;
+}
+
+function notApplicableNotes() {
+  const notes = RULES.flatMap((rule) =>
+    Object.entries(rule.notApplicable ?? {}).map(
+      ([language, reason]) => `- \`${rule.id}\`, ${LANGUAGE_TITLES[language]}: ${reason}`,
+    ),
+  );
+  return notes.length === 0 ? '' : `\nWhere a rule does not apply:\n\n${notes.join('\n')}\n`;
+}
 
 export const GENERATED_BLOCK_START = '<!-- generated:custom-rules begin (npm run gen:checks) -->';
 export const GENERATED_BLOCK_END = '<!-- generated:custom-rules end -->';
@@ -31,14 +47,14 @@ export function renderCustomRulesTable() {
     `\`${rule.id}\``,
     `\`${rule.check}\``,
     rule.limit,
-    ...LANGUAGES.map((language) => ENFORCEMENT_TEXT[String(rule.enforcedBy[language])]),
+    ...LANGUAGES.map((language) => cellText(rule, language)),
   ]);
   const widths = header.map((title, column) =>
     Math.max(title.length, ...body.map((row) => row[column].length)),
   );
   const line = (cells) => `| ${cells.map((cell, i) => cell.padEnd(widths[i])).join(' | ')} |`;
   const separator = `| ${widths.map((width) => '-'.repeat(width)).join(' | ')} |`;
-  return `${[line(header), separator, ...body.map(line)].join('\n')}\n`;
+  return `${[line(header), separator, ...body.map(line)].join('\n')}\n${notApplicableNotes()}`;
 }
 
 /** Replaces the generated block of a `spec/checks.md` text; throws when the markers are missing. */
