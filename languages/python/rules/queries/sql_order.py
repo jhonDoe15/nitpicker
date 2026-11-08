@@ -7,13 +7,16 @@ AGGREGATES = {"array_agg", "json_agg", "jsonb_agg"}
 MASKED = re.compile(r"--[^\n]*|/\*.*?\*/|'(?:[^']|'')*'|\"(?:[^\"]|\"\")*\"|`[^`]*`", re.S)
 SELECT = re.compile(r"\bselect\b")
 ORDER_BY = re.compile(r"\border\s+by\b")
-PAGE_CLAUSE = re.compile(r"\b(?:limit|offset)\b(?:\s+(?:\d+|\x00))?|\bfetch\s+(?:first|next)\b")
+PAGE_CLAUSE = re.compile(
+    r"(?<![\w$:.])(?:limit|offset)\s+(?:\d+|\x00|\?|:\w+|\$\d+|%s)|\bfetch\s+(?:first|next)\b"
+)
+FROM = re.compile(r"\bfrom\b")
 SINGLE_ROW = re.compile(r"\blimit\s+1\b|\bfetch\s+(?:first|next)\s+(?:1\s+)?rows?\b")
 SELECTION = re.compile(
     r"\bselect\s+(?:all\s+|distinct\s+)?(.*?)(?:\b(?:from|limit|fetch)\b|\Z)", re.S
 )
 CONSTANT_ITEM = re.compile(
-    r"(?:\d+|true|false|null|''|count\s*\(\)|exists\s*\(\)|\x00)(?:\s+(?:as\s+)?[\w$]+)?"
+    r"(?:\d+|true|false|null|''|(?:count|exists|max|min|sum|avg)\s*\(\)|\x00)(?:\s+(?:as\s+)?[\w$]+)?"
 )
 VALUE_BEFORE = re.compile(
     r"(?:[=<>!+\-*/%,(|]|\b(?:like|ilike|in|between|and|or|not|is|limit|offset|where|on|having"
@@ -45,7 +48,12 @@ def constant_selection(text):
 
 def page_gap(scope):
     clause = PAGE_CLAUSE.search(scope.text)
-    if clause is None or scope.opaque or not SELECT.search(scope.text):
+    if (
+        clause is None
+        or scope.opaque
+        or not SELECT.search(scope.text)
+        or not FROM.search(scope.text)
+    ):
         return []
     if ORDER_BY.search(scope.text):
         return []
@@ -82,7 +90,8 @@ def sql_order_gaps(text):
         elif character == ")" and len(stack) > 1:
             close_scope(stack, gaps)
         elif character == DYNAMIC:
-            scope.opaque = scope.opaque or VALUE_BEFORE.search(scope.text) is None
+            value = VALUE_BEFORE.search(scope.text) or (len(stack) > 1 and not scope.text.strip())
+            scope.opaque = scope.opaque or not value
             scope.text += DYNAMIC
         else:
             scope.text += character

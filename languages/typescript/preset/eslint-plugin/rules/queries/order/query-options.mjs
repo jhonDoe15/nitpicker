@@ -6,7 +6,8 @@ const ORDER_KEYS = new Set(['orderBy', 'order']);
 const NESTED_KEYS = new Set(['include', 'select', 'with']);
 const ANY_LIBRARY = new Set(['findMany']);
 const ORM_FINDERS = new Set(['find', 'findAndCount', 'findAll', 'findAndCountAll']);
-const ORM_MODULES = /^(?:typeorm|@nestjs\/typeorm|sequelize|sequelize-typescript|@sequelize\/core|@nestjs\/sequelize|@mikro-orm\/.+)$/u;
+const ORM_MODULES =
+  /^(?:typeorm|@nestjs\/typeorm|sequelize|sequelize-typescript|@sequelize\/core|@nestjs\/sequelize|@mikro-orm\/.+)$/u;
 
 function properties(object) {
   return object.properties.filter((property) => property.type === 'Property');
@@ -51,7 +52,10 @@ function relationPages(object, depth = 0) {
 }
 
 function usesOrm(scope) {
-  return [...scope.bindings.values()].some(({ source }) => ORM_MODULES.test(source)) || scope.libraries.has(QUERY_BUILDER);
+  return (
+    [...scope.bindings.values()].some(({ source }) => ORM_MODULES.test(source)) ||
+    scope.libraries.has(QUERY_BUILDER)
+  );
 }
 
 function finderName(call) {
@@ -67,7 +71,9 @@ export function unorderedOptionPages(scope, call) {
   if (!isFinder) {
     return [];
   }
-  const objects = call.arguments.map((argument) => unwrapped(argument)).filter((value) => value?.type === 'ObjectExpression');
+  const objects = call.arguments
+    .map((argument) => unwrapped(argument))
+    .filter((value) => value?.type === 'ObjectExpression');
   return objects.flatMap((object) => {
     const page = topLevel ? unorderedPage(object) : undefined;
     return [...(page === undefined ? [] : [page]), ...relationPages(object)];

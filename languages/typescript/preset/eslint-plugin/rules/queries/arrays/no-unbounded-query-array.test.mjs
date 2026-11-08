@@ -11,6 +11,12 @@ const TYPEORM = 'import { In, Repository } from "typeorm";';
 
 tester.run('no-unbounded-query-array', rule, {
   valid: [
+    `${KYSELY} export async function f(db, ids) { if (ids.length === 0) { return []; } return db.selectFrom("a").selectAll().where("id", "in", ids.map(String)).execute(); }`,
+    `${KYSELY} export async function f(db, ids) { if (ids.length === 0) { return []; } return db.selectFrom("a").selectAll().where("id", "in", [...ids]).execute(); }`,
+    `${KYSELY} export async function f(db, rows) { if (rows.length === 0) { return; } await db.insertInto("a").values(rows.map((r) => ({ a: r.a }))).execute(); }`,
+    `${KYSELY} export async function f(db, ids) { const s = new Set(ids); if (s.size === 0) { return []; } return db.selectFrom("a").selectAll().where("id", "in", [...s]).execute(); }`,
+    `${KYSELY} export async function f(db, ids) { if (isEmpty(ids)) { return []; } return db.selectFrom("a").selectAll().where("id", "in", ids).execute(); }`,
+    `${TYPEORM} export const f = (cache, x) => cache.insert(x.map((a) => a));`,
     `${KYSELY} export async function f(db, ids) { if (ids.length === 0) { return []; } return db.selectFrom("asset").selectAll().where("id", "in", ids).execute(); }`,
     `${KYSELY} export const f = (db, ids) => ids.length > 0 ? db.selectFrom("asset").selectAll().where("id", "in", ids).execute() : [];`,
     `${KYSELY} export const f = (db) => db.selectFrom("asset").selectAll().where("status", "in", ["a", "b"]).execute();`,

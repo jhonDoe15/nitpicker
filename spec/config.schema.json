@@ -1987,6 +1987,8 @@
                             "kotlin-source/LogFormatArguments",
                             "kotlin-source/LogExceptionFirst",
                             "kotlin-source/ProcessWaitWithoutTimeout",
+                            "kotlin-source/UnorderedQuery",
+                            "kotlin-source/UnboundedQueryArray",
                             "kotlin-source/UnquotedRegexValue",
                             "kotlin-source/PlainTextRegex",
                             "kotlin-source/UnclosedInlineResource",

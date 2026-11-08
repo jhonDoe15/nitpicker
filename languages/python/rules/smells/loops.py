@@ -102,11 +102,24 @@ def runs_each_item(call, loop):
     )
 
 
-def iterates_chunks(loop):
+def splits_in_chunks(node):
+    if not is_chunk_call(node, None):
+        return False
+    size = node.args[1]
+    return not (
+        isinstance(size, ast.Constant)
+        and isinstance(size.value, int)
+        and size.value < 2
+    )
+
+
+def iterates_chunks(loop, parents):
+    if enclosing_loop(loop, parents) is not None:
+        return False
     if isinstance(loop, (ast.For, ast.AsyncFor)):
-        return is_chunk_call(loop.iter, None)
+        return splits_in_chunks(loop.iter)
     generators = loop.generators if isinstance(loop, COMPREHENSIONS) else []
-    return any(is_chunk_call(generator.iter, None) for generator in generators)
+    return any(splits_in_chunks(generator.iter) for generator in generators)
 
 
 def exits_loop(statements):
@@ -171,7 +184,7 @@ def check(context):
             is_paging_loop(loop, scope)
             or is_retry_attempt(node, loop, parents)
             or runs_each_item(node, loop)
-            or iterates_chunks(loop)
+            or iterates_chunks(loop, parents)
         ):
             continue
         callee = ".".join(chain_names(node.func))

@@ -12,7 +12,13 @@ afterEach(cleanup);
 const RULE = 'unordered-query';
 const RULES_ROOT = fileURLToPath(new URL('../../', import.meta.url));
 const CASES = JSON.parse(
-  readFileSync(new URL('../../../../../shared/rules/queries/test-support/sql-order-cases.json', import.meta.url), 'utf8'),
+  readFileSync(
+    new URL(
+      '../../../../../shared/rules/queries/test-support/sql-order-cases.json',
+      import.meta.url,
+    ),
+    'utf8',
+  ),
 );
 const PORT = [
   'import json, sys',
@@ -21,8 +27,10 @@ const PORT = [
   'texts = json.load(sys.stdin)',
   'print(json.dumps([[f"{kind}:{form}" for _, kind, form in sql_order_gaps(text)] for text in texts]))',
 ].join('\n');
-const SA = 'from sqlalchemy import func, select\nfrom sqlalchemy.orm import Session\n\nfrom shop.models import User\n\n\n';
-const MODELS = 'from django.db import models\n\n\nclass Order(models.Model):\n    total = models.IntegerField()\n\n\nclass Invoice(models.Model):\n    total = models.IntegerField()\n\n    class Meta:\n        ordering = ["id"]\n';
+const SA =
+  'from sqlalchemy import func, select\nfrom sqlalchemy.orm import Session\n\nfrom shop.models import User\n\n\n';
+const MODELS =
+  'from django.db import models\n\n\nclass Order(models.Model):\n    total = models.IntegerField()\n\n\nclass Invoice(models.Model):\n    total = models.IntegerField()\n\n    class Meta:\n        ordering = ["id"]\n';
 
 function outcomes(rows) {
   const [actual, expected] = allOutcomes(rows);
@@ -35,8 +43,13 @@ function outcomes(rows) {
 describe.skipIf(!enabled)('unordered-query', () => {
   it('reads SQL text the way the shared analyzer does', () => {
     const texts = [...CASES.reports.map(([text]) => text), ...CASES.allows];
-    const result = spawnSync('python3', ['-I', '-c', PORT, RULES_ROOT], { input: JSON.stringify(texts), encoding: 'utf8' });
-    const expected = texts.map((text) => sqlOrderGaps(text).map(({ kind, form }) => `${kind}:${form}`));
+    const result = spawnSync('python3', ['-I', '-c', PORT, RULES_ROOT], {
+      input: JSON.stringify(texts),
+      encoding: 'utf8',
+    });
+    const expected = texts.map((text) =>
+      sqlOrderGaps(text).map(({ kind, form }) => `${kind}:${form}`),
+    );
     expect(JSON.parse(result.stdout)).toEqual(expected);
   });
 
@@ -64,6 +77,16 @@ describe.skipIf(!enabled)('unordered-query', () => {
   it('allows ordered pages, existence checks and builders it cannot follow', () => {
     const [actual, expected] = outcomes([
       [
+        'prose that names a limit or an offset, and a parameter named limit',
+        'MSG = "Select a rate limit for this key"\n\n\ndef note(n):\n    return f"Select the page size limit {n}"\n\n\nQ = "select a from account a where a.balance > :limit"\n',
+        [],
+      ],
+      [
+        'a max with limit(1), a no-argument limit and a Django get or first',
+        `${SA}def newest(session: Session):\n    return session.scalar(select(func.max(User.id)).limit(1))\n\n\ndef cleared(session: Session):\n    return select(User).limit()\n`,
+        [],
+      ],
+      [
         'ordered SQL text and a constant LIMIT 1',
         'RECENT = "select id from account order by created_at desc, id limit 20"\nTAKEN = "select 1 from account where name = %s limit 1"\nNOTE = "Shows at most 20 rows; raise the limit in settings."\n',
         [],
@@ -89,10 +112,11 @@ describe.skipIf(!enabled)('unordered-query', () => {
         {
           files: {
             'shop/models.py': MODELS,
-            'shop/views.py': 'from shop.models import Invoice, Order\n\n\ndef recent():\n    return list(Order.objects.filter(total__gt=0)[:20])\n\n\ndef ordered():\n    return list(Order.objects.order_by("-total", "id")[:20])\n\n\ndef invoices():\n    return list(Invoice.objects.all()[:20])\n\n\ndef held():\n    orders = Order.objects.filter(total__gt=0)\n    return list(orders[20:40])\n',
+            'shop/views.py':
+              'from shop.models import Invoice, Order\n\n\ndef name():\n    return Order.objects.get(pk=1).total_label[:10], Order.objects.first().note[:3]\n\n\ndef recent():\n    return list(Order.objects.filter(total__gt=0)[:20])\n\n\ndef ordered():\n    return list(Order.objects.order_by("-total", "id")[:20])\n\n\ndef invoices():\n    return list(Invoice.objects.all()[:20])\n\n\ndef held():\n    orders = Order.objects.filter(total__gt=0)\n    return list(orders[20:40])\n',
           },
         },
-        [`${RULE}:5 [:20]`, `${RULE}:18 [20:40]`],
+        [`${RULE}:9 [:20]`, `${RULE}:22 [20:40]`],
       ],
       [
         'ArrayAgg with and without an order',

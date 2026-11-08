@@ -7,11 +7,12 @@ const AGGREGATES = new Set(['array_agg', 'json_agg', 'jsonb_agg']);
 const MASKED = /--[^\n]*|\/\*[\s\S]*?\*\/|'(?:[^']|'')*'|"(?:[^"]|"")*"|`[^`]*`/gu;
 const SELECT = /\bselect\b/u;
 const ORDER_BY = /\border\s+by\b/u;
-const PAGE_CLAUSE = /\b(?:limit|offset)\b(?:\s+(?:\d+|\u0000))?|\bfetch\s+(?:first|next)\b/u;
+const PAGE_CLAUSE = /(?<![\w$:.])(?:limit|offset)\s+(?:\d+|\u0000|\?|:\w+|\$\d+|%s)|\bfetch\s+(?:first|next)\b/u;
+const FROM = /\bfrom\b/u;
 const SINGLE_ROW = /\blimit\s+1\b|\bfetch\s+(?:first|next)\s+(?:1\s+)?rows?\b/u;
 const SELECTION = /\bselect\s+(?:all\s+|distinct\s+)?([\s\S]*?)(?:\b(?:from|limit|fetch)\b|$)/u;
 const CONSTANT_ITEM =
-  /^(?:\d+|true|false|null|''|count\s*\(\)|exists\s*\(\)|\u0000)(?:\s+(?:as\s+)?[\w$]+)?$/u;
+  /^(?:\d+|true|false|null|''|(?:count|exists|max|min|sum|avg)\s*\(\)|\u0000)(?:\s+(?:as\s+)?[\w$]+)?$/u;
 const VALUE_BEFORE =
   /(?:[=<>!+\-*/%,(|]|\b(?:like|ilike|in|between|and|or|not|is|limit|offset|where|on|having|when|then|else|values|any|all|first|next|by|select|set|distinct))\s*$/u;
 const FUNCTION_NAME = /([\w$]+)\s*$/u;
@@ -36,7 +37,7 @@ function isConstantSelection(text) {
 
 function pageGap(scope) {
   const clause = PAGE_CLAUSE.exec(scope.text);
-  if (clause === null || scope.opaque || !SELECT.test(scope.text) || ORDER_BY.test(scope.text)) {
+  if (clause === null || scope.opaque || !SELECT.test(scope.text) || !FROM.test(scope.text) || ORDER_BY.test(scope.text)) {
     return [];
   }
   const existence = SINGLE_ROW.test(scope.text) && isConstantSelection(scope.text);
@@ -70,8 +71,8 @@ function openScope(stack, index) {
   stack.push(newScope(index, name));
 }
 
-function addDynamic(scope) {
-  scope.opaque ||= !VALUE_BEFORE.test(scope.text);
+function addDynamic(scope, nested) {
+  scope.opaque ||= !VALUE_BEFORE.test(scope.text) && !(nested && scope.text.trim() === '');
   scope.text += DYNAMIC;
 }
 
@@ -90,7 +91,7 @@ export function sqlOrderGaps(text) {
     } else if (character === ')' && stack.length > 1) {
       closeScope(stack, gaps);
     } else if (character === DYNAMIC) {
-      addDynamic(stack.at(-1));
+      addDynamic(stack.at(-1), stack.length > 1);
     } else {
       stack.at(-1).text += character;
     }

@@ -6,11 +6,20 @@ export const IN = 'in';
 export const INSERT = 'insert';
 
 const IN_OPERATORS = new Set(['in', 'not in']);
-const KNEX_IN = new Set(['whereIn', 'whereNotIn', 'orWhereIn', 'orWhereNotIn', 'andWhereIn', 'havingIn', 'havingNotIn']);
+const KNEX_IN = new Set([
+  'whereIn',
+  'whereNotIn',
+  'orWhereIn',
+  'orWhereNotIn',
+  'andWhereIn',
+  'havingIn',
+  'havingNotIn',
+]);
 const ID_IN = new Set(['whereInIds', 'andWhereInIds', 'orWhereInIds']);
 const DRIZZLE_IN = new Set(['inArray', 'notInArray']);
 const TYPEORM_MODULES = new Set(['typeorm', '@nestjs/typeorm']);
 const INSERT_ROOTS = new Set(['insertInto', 'insert', 'replaceInto']);
+const REPOSITORY_NAME = /repo(?:sitory)?$/iu;
 
 function calleeOf(call) {
   return unwrapped(call.callee);
@@ -30,12 +39,17 @@ function importedAs(scope, call, sources, names) {
 function operatorSink(scope, call) {
   const operator = stringValue(unwrapped(call.arguments[1]))?.toLowerCase();
   const usesBuilder = scope.libraries.has(KYSELY) || scope.libraries.has(KNEX);
-  return call.arguments.length === 3 && IN_OPERATORS.has(operator) && usesBuilder ? call.arguments[2] : undefined;
+  return call.arguments.length === 3 && IN_OPERATORS.has(operator) && usesBuilder
+    ? call.arguments[2]
+    : undefined;
 }
 
 function builderSink(scope, call) {
   const name = stepName(call);
-  if (KNEX_IN.has(name) && (scope.libraries.has(KNEX) || queryChain(scope, call)?.library === KNEX)) {
+  if (
+    KNEX_IN.has(name) &&
+    (scope.libraries.has(KNEX) || queryChain(scope, call)?.library === KNEX)
+  ) {
     return call.arguments[1];
   }
   return ID_IN.has(name) && scope.libraries.has(QUERY_BUILDER) ? call.arguments[0] : undefined;
@@ -63,13 +77,19 @@ function insertSink(scope, call) {
   if (chain?.library === KNEX) {
     return call.arguments[0];
   }
-  const repository = scope.libraries.has(QUERY_BUILDER) && steps.length === 1;
+  const receiver = unwrapped(call.callee.object);
+  const named = REPOSITORY_NAME.test(
+    receiver.type === 'MemberExpression' ? memberName(receiver) : (receiver.name ?? ''),
+  );
+  const repository =
+    scope.libraries.has(QUERY_BUILDER) && steps.length === 1 && (named || chain !== undefined);
   return repository ? call.arguments.at(-1) : undefined;
 }
 
 /** The runtime array a query call expands into one bound parameter per element, and how. */
 export function arraySink(scope, call) {
-  const expanded = operatorSink(scope, call) ?? builderSink(scope, call) ?? functionSink(scope, call);
+  const expanded =
+    operatorSink(scope, call) ?? builderSink(scope, call) ?? functionSink(scope, call);
   if (expanded !== undefined) {
     return { kind: IN, array: expanded };
   }

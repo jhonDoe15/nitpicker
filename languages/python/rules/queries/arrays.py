@@ -69,9 +69,20 @@ def assignments(name, scope, context):
     return found
 
 
+def fixed_iterable(node):
+    if isinstance(node, (ast.List, ast.Tuple, ast.Set, ast.Constant)):
+        return True
+    if isinstance(node, ast.Call) and isinstance(node.func, ast.Name) and node.func.id == "range":
+        return all(isinstance(item, ast.Constant) for item in node.args)
+    name = node.id if isinstance(node, ast.Name) else getattr(node, "attr", "")
+    return name[:1].isupper()
+
+
 def made_from(value):
     """The names a runtime collection is made from, or None when the value is not one."""
     if isinstance(value, COMPREHENSIONS):
+        if all(fixed_iterable(generator.iter) for generator in value.generators):
+            return None
         return {
             node.id
             for generator in value.generators
@@ -79,9 +90,7 @@ def made_from(value):
             if isinstance(node, ast.Name)
         }
     if isinstance(value, ast.Call) and isinstance(value.func, ast.Name) and value.func.id in MAKERS:
-        if value.args and not isinstance(
-            value.args[-1], (ast.List, ast.Tuple, ast.Set, ast.Constant)
-        ):
+        if value.args and not fixed_iterable(value.args[-1]):
             return {node.id for node in ast.walk(value.args[-1]) if isinstance(node, ast.Name)}
     return None
 
@@ -91,7 +100,7 @@ def runtime_sources(node, context, needs_evidence):
     if isinstance(node, COMPREHENSIONS):
         return made_from(node)
     if isinstance(node, ast.Attribute) and not needs_evidence:
-        return {node.value.id} if isinstance(node.value, ast.Name) else None
+        return {ast.unparse(node)} if isinstance(node.value, ast.Name) else None
     if not isinstance(node, ast.Name):
         return None
     scope = scope_of(node, context)
@@ -111,19 +120,26 @@ def runtime_sources(node, context, needs_evidence):
     return {node.id} if annotation_name(declared.annotation) in COLLECTIONS | {"tuple"} else None
 
 
-def tests_size(node, names):
+def operands(test):
+    pending = [test]
+    while pending:
+        item = pending.pop()
+        if isinstance(item, ast.BoolOp):
+            pending.extend(item.values)
+        elif isinstance(item, ast.UnaryOp) and isinstance(item.op, ast.Not):
+            pending.append(item.operand)
+        elif isinstance(item, ast.Compare):
+            pending.extend([item.left, *item.comparators])
+        else:
+            yield item
+
+
+def tests_size(node, sources):
     if isinstance(node, ast.Call) and isinstance(node.func, ast.Name) and node.func.id == "len":
-        return any(isinstance(item, ast.Name) and item.id in names for item in node.args)
-    test = (
-        getattr(node, "test", None)
-        if isinstance(node, (ast.If, ast.While, ast.IfExp, ast.Assert))
-        else None
-    )
-    if isinstance(test, ast.UnaryOp) and isinstance(test.op, ast.Not):
-        test = test.operand
-    if isinstance(test, ast.BoolOp):
-        return any(isinstance(item, ast.Name) and item.id in names for item in test.values)
-    return isinstance(test, ast.Name) and test.id in names
+        return any(ast.unparse(item) in sources for item in node.args)
+    tested = (ast.If, ast.While, ast.IfExp, ast.Assert)
+    test = node.test if isinstance(node, tested) else None
+    return test is not None and any(ast.unparse(item) in sources for item in operands(test))
 
 
 def chunk_loop(name, node, context):
@@ -156,7 +172,7 @@ def chunk_loop(name, node, context):
 
 
 def bounded(node, sources, context):
-    if isinstance(node, ast.Name) and chunk_loop(node.id, node, context):
+    if any(chunk_loop(name, node, context) for name in sources):
         return True
     scope = scope_of(node, context)
     while scope is not None:

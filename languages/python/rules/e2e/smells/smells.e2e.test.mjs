@@ -265,6 +265,11 @@ describe.skipIf(!enabled)('io-in-loop', () => {
         [],
       ],
       ['a test file', inFile('tests/test_a.py', loop('repo.find_by_id(item)', '')), []],
+      [
+        'chunks inside a per-user loop, and chunks of one',
+        'import itertools\n\n\ndef f(repo, users, ids):\n    for user in users:\n        for part in itertools.batched(ids, 10):\n            repo.delete_many(part)\n    for part in itertools.batched(ids, 1):\n        repo.delete_many(part)\n',
+        ['io-in-loop:7 repo.delete_many()', 'io-in-loop:9 repo.delete_many()'],
+      ],
     ]);
     expect(actual).toEqual(expected);
   });

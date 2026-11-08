@@ -36,7 +36,10 @@ export const rule = {
           return;
         }
         const needsEvidence = sink.kind !== IN;
-        if (!isRuntimeArray(context, sink.array, { needsEvidence }) || isBounded(context, node, sink.array)) {
+        if (
+          !isRuntimeArray(context, sink.array, { needsEvidence }) ||
+          isBounded(context, node, sink.array)
+        ) {
           return;
         }
         context.report({

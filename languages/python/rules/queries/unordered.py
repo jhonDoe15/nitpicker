@@ -16,7 +16,17 @@ RULE = "unordered-query"
 GUARDED = True
 PAGE_STEPS = {"limit", "offset", "slice", "fetch", "paginate"}
 SINGLE_STEPS = {"limit", "fetch"}
-COUNT_OR_CONSTANT = {"count", "literal", "literal_column", "true", "exists"}
+COUNT_OR_CONSTANT = {
+    "count",
+    "literal",
+    "literal_column",
+    "true",
+    "exists",
+    "max",
+    "min",
+    "sum",
+    "avg",
+}
 ORM_AGGREGATES = {"array_agg", "json_agg", "jsonb_agg"}
 ORM_FUNC_PREFIXES = ("sqlalchemy.func.", "sqlalchemy.sql.func.", "sqlalchemy.sql.functions.func.")
 PG_AGGREGATES = {"sqlalchemy.dialects.postgresql.array_agg"}
@@ -24,6 +34,26 @@ DJANGO_AGGREGATES = {"ArrayAgg", "JSONBAgg"}
 DJANGO_AGGREGATE_MODULE = "django.contrib.postgres"
 DJANGO_ORDER_KEYWORDS = {"ordering", "order_by"}
 SUBJECT_LENGTH = 30
+QUERYSET_STEPS = {
+    "all",
+    "filter",
+    "exclude",
+    "annotate",
+    "alias",
+    "select_related",
+    "prefetch_related",
+}
+QUERYSET_STEPS |= {
+    "only",
+    "defer",
+    "values",
+    "values_list",
+    "distinct",
+    "using",
+    "order_by",
+    "reverse",
+}
+QUERYSET_STEPS |= {"select_for_update", "extra"}
 
 
 def text_parts(node):
@@ -115,9 +145,16 @@ def selects_count_or_constant(root, context):
     return bool(root.args) and all(constant(item) for item in root.args)
 
 
+def page_step(step):
+    name, node = step
+    if name == "[]":
+        return isinstance(node.slice, ast.Slice)
+    return name in PAGE_STEPS and node is not None and bool(node.args or node.keywords)
+
+
 def orm_page(node, context):
     _, own = chain_of(node)
-    pages = [step for step in own if step[0] in PAGE_STEPS and step[1] is not None]
+    pages = [step for step in own if page_step(step)]
     if not pages:
         return None
     chains = expanded(node, context)
@@ -132,6 +169,15 @@ def orm_page(node, context):
     return finding(context.path, RULE, short(f".{name}({arguments})"), call)
 
 
+def querysets_until_slice(steps):
+    for name, node in steps:
+        if name == "[]":
+            return isinstance(node.slice, ast.Slice)
+        if name not in QUERYSET_STEPS or node is None:
+            return False
+    return False
+
+
 def django_slice(node, context):
     _, own = chain_of(node)
     slices = [step for step in own if step[0] == "[]" and isinstance(step[1].slice, ast.Slice)]
@@ -142,6 +188,7 @@ def django_slice(node, context):
         if root is None:
             continue
         managed = isinstance(root, ast.Name) and steps and steps[0][0] == MANAGER
+        managed = managed and querysets_until_slice(steps[1:])
         if not managed or not unordered_model(root.id, context.project):
             return None
     subscript = slices[0][1]
