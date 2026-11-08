@@ -35,7 +35,8 @@ import {
   restrictedAdapterSyntax,
   strictAdaptersTypedConfig,
 } from './strict-adapters.mjs';
-import { strictTestConfigFor } from './strict-tests.mjs';
+import { strictTestConfigFor, testAreaGlobsFor } from './strict-tests.mjs';
+import { truthinessRules } from './truthiness/truthiness-rules.mjs';
 import { configFileGlobsFor, productionPolicyConfigFor } from './policy/production-policy.mjs';
 
 export function restrictedSyntaxFor(options = {}) {
@@ -182,6 +183,13 @@ function strictTypedConfigFor(layout, parserOptions, options = {}) {
       languageOptions: { parser: tseslint.parser, parserOptions },
       plugins: { functional: functionalPlugin, nitpicker: nitpickerRules },
       rules: domainTypeAwareFunctionalRules,
+    },
+    {
+      files: [...layout.sourceGlobs, ...testAreaGlobsFor(layout)],
+      ignores: layout.excludedGlobs,
+      languageOptions: { parser: tseslint.parser, parserOptions },
+      plugins: { nitpicker: nitpickerRules },
+      rules: truthinessRules,
     },
     ...strictAdaptersTypedConfig.map((entry) => ({
       ...entry,
