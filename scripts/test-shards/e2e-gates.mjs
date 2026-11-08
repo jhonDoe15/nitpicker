@@ -6,6 +6,7 @@ const E2E_NAME = '.e2e.test.';
 export const TEST_FILES = ['{core,shared,languages,scripts}/**/*.test.mjs', 'evals/**/*.test.mjs'];
 const FLAG_READ = /process\.env(?:\.|\[\s*['"])(NITPICKER_\w+?_E2E)\b/gu;
 const RELATIVE_IMPORT = /(?:from|import)[\s(]*['"](\.{1,2}\/[^'"]+)['"]/gu;
+const RELATIVE_RE_EXPORT = /export\s*(?:\*|\{[^}]*\})\s*from\s*['"](\.{1,2}\/[^'"]+)['"]/gu;
 
 export function suiteFlag(language) {
   return `NITPICKER_${language.toUpperCase()}_E2E`;
@@ -21,20 +22,35 @@ function relativeImports(file) {
     .filter((imported) => existsSync(imported));
 }
 
+function reExports(file) {
+  return [...readFileSync(file, 'utf8').matchAll(RELATIVE_RE_EXPORT)]
+    .map((match) => path.resolve(path.dirname(file), match[1]))
+    .filter((exported) => existsSync(exported));
+}
+
+function withReExports(modules) {
+  const pending = [...new Set(modules)];
+  for (const module of pending) {
+    pending.push(...reExports(module).filter((exported) => !pending.includes(exported)));
+  }
+  return pending;
+}
+
 export function gateCandidates(root) {
   return globSync(TEST_FILES, { cwd: root })
     .map((file) => file.split(path.sep).join('/'))
     .toSorted()
     .flatMap((file) => {
       const absolute = path.join(root, file);
-      const flags = [...new Set([absolute, ...relativeImports(absolute)].flatMap(flagsRead))];
+      const modules = withReExports([absolute, ...relativeImports(absolute)]);
+      const flags = [...new Set(modules.flatMap(flagsRead))];
       return file.includes(E2E_NAME) || flags.length > 0 ? [{ file, flags: flags.toSorted() }] : [];
     });
 }
 
 /**
  * The test files of the suites whose flags are set in `environment`: each file that reads one of
- * their flags itself or through a module it imports.
+ * their flags itself, through a module it imports, or through the modules that module re-exports.
  */
 export function suiteFiles(root, environment) {
   const flags = SUITES.map(suiteFlag).filter((flag) => environment[flag] === '1');
