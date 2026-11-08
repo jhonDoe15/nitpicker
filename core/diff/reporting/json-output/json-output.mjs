@@ -94,10 +94,11 @@ function findingEntry(finding) {
 
 function toolErrorEntry(error) {
   const [firstLine] = String(error.message).split('\n');
+  const headline = printable(error.rule === undefined ? errorHeadline(error.message) : firstLine);
   return {
     tool: error.tool,
     ...present('snapshot', error.snapshot),
     ...present('rule', error.rule),
-    headline: printable(error.rule === undefined ? errorHeadline(error.message) : firstLine),
+    headline: headline === '' ? `${error.tool} failed with no message` : headline,
   };
 }

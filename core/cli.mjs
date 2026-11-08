@@ -81,7 +81,7 @@ export function runCli(options = {}) {
     redirectToBundledTypeScriptApi(cli.environment);
     return runCommand(cli);
   } catch (error) {
-    const description = describeError(error);
+    const description = describeError(error) || 'unknown error';
     cli.stderr.write(`nitpicker failed: ${description}\n`);
     if (wantsJson(cli.arguments_)) {
       cli.stdout.write(`${JSON.stringify({ status: 'error', exitCode: 2, error: description })}\n`);

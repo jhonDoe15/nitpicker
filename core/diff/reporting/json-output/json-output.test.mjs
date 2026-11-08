@@ -306,6 +306,53 @@ describe('nitpicker --json', () => {
     });
   });
 
+  it('folds unreached mutants and names the analyzers a narrowed run left out', () => {
+    const repository = changedRepository();
+    const mutant = (line) =>
+      finding({
+        tool: 'mutation',
+        rule: 'mutant-nocoverage',
+        path: 'src/main/pricing.ts',
+        symbol: 'price',
+        identity: `mutant-${String(line)}`,
+        message: `Mutant on line ${String(line)} is not covered by any test`,
+        location: { line },
+      });
+    writeFiles(repository.root, {
+      'findings/mutation.json': JSON.stringify({ findings: [mutant(4), mutant(5)] }),
+    });
+
+    const { exitCode, result, outputRoot } = runJson(
+      repository,
+      ['--base', repository.baseRef, '--analyzer', 'mutation'],
+      { analyzers: [...TOOL_ANALYZERS, toolAnalyzer('mutation')] },
+    );
+
+    expect(exitCode).toBe(1);
+    expect(result).toEqual({
+      mode: 'diff',
+      status: 'failed',
+      exitCode: 1,
+      base: { ref: repository.baseRef, source: 'argument' },
+      counts: { failing: 2, byArea: { mutation: 2 }, reportOnly: 0, held: 0 },
+      findings: [
+        {
+          tool: 'mutation',
+          rule: 'mutant-nocoverage',
+          path: 'src/main/pricing.ts',
+          line: 4,
+          message:
+            'price: 2 mutants on lines 4 to 5 that no test runs. Add a test that reaches this code.',
+          helpUri: helpUri('mutation', 'mutant-nocoverage'),
+          folded: true,
+        },
+      ],
+      toolErrors: [],
+      partialRun: { ran: ['mutation'], skipped: ['eslint-lint', 'pmd', 'ruff'] },
+      reports: path.resolve(outputRoot),
+    });
+  });
+
   it('prints the error that stops the run as an object', () => {
     const repository = createRepository({ 'quality-policy.json': policy() });
 
