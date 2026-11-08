@@ -14,6 +14,10 @@ import {
   STORING_CALLS,
 } from '../../../../../messages/reuse/reusable-objects.mjs';
 
+function byText(left, right) {
+  return left.localeCompare(right);
+}
+
 const RULE_FILE = path.resolve(
   import.meta.dirname,
   `../../../../../gradle/rulesets/pmd-main-ruleset/${REUSABLE_OBJECT_RULE}.xml`,
@@ -27,7 +31,7 @@ function section(from, to) {
 }
 
 function typesIn(text) {
-  return [...text.matchAll(/typeIs\('([^']+)'\)/gu)].map(([, type]) => type).sort();
+  return [...text.matchAll(/typeIs\('([^']+)'\)/gu)].map(([, type]) => type).sort(byText);
 }
 
 function listOf(name) {
@@ -50,7 +54,7 @@ function factoryPairs() {
     .flatMap((part) =>
       typesIn(part).flatMap((type) => methodNames(part).map((name) => `${type}#${name}`)),
     )
-    .sort();
+    .sort(byText);
 }
 
 describe('ReusableObjectPerCall: the Java rule and the shared type list agree', () => {
@@ -60,14 +64,14 @@ describe('ReusableObjectPerCall: the Java rule and the shared type list agree', 
 
   it('builds the listed constructors', () => {
     expect(typesIn(section('//ConstructorCall', '| //MethodCall'))).toEqual(
-      [...REUSABLE_CONSTRUCTORS].sort(),
+      [...REUSABLE_CONSTRUCTORS].sort(byText),
     );
   });
 
   it('calls the listed factories', () => {
     const expected = REUSABLE_FACTORIES.flatMap(([type, names]) =>
       names.map((name) => `${type}#${name}`),
-    ).sort();
+    ).sort(byText);
 
     expect(factoryPairs()).toEqual(expected);
   });
@@ -84,7 +88,9 @@ describe('ReusableObjectPerCall: the Java rule and the shared type list agree', 
     expect(listOf('shared')).toEqual(REUSABLE_RESULT_TYPES);
     expect(listOf('caches')).toEqual(CACHING_CALLS);
     expect(listOf('stores')).toEqual(STORING_CALLS);
-    expect(typesIn(section('$start :=', '$setupMethod :='))).toEqual([...SETUP_ANNOTATIONS].sort());
+    expect(typesIn(section('$start :=', '$setupMethod :='))).toEqual(
+      [...SETUP_ANNOTATIONS].sort(byText),
+    );
     const named = /\$method\/@Name = \(([^)]*)\)/u.exec(section('$start :=', '$setupMethod :='));
 
     expect([...named[1].matchAll(/'([^']+)'/gu)].map(([, name]) => name)).toEqual(SETUP_METHODS);

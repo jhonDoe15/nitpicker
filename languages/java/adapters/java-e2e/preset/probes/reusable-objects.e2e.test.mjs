@@ -13,6 +13,10 @@ import {
   REUSABLE_OBJECT_RULE,
 } from '../../../../messages/reuse/reusable-objects.mjs';
 
+function byText(left, right) {
+  return left.localeCompare(right);
+}
+
 const enabled = process.env.NITPICKER_JAVA_E2E === '1';
 const gradle = process.env.NITPICKER_GRADLE ?? 'gradle';
 const PACKAGE = 'java/shop/reuse';
@@ -30,7 +34,7 @@ function markedLines(role) {
           MARKER.test(line) ? [`src/${role}/${PACKAGE}/${name}:${String(index + 1)}`] : [],
         ),
     )
-    .sort();
+    .sort(byText);
 }
 
 function reportedLines(role) {
@@ -39,7 +43,7 @@ function reportedLines(role) {
       ({ rule, path: file }) => rule === REUSABLE_OBJECT_RULE && file.startsWith(`src/${role}/`),
     )
     .map(({ path: file, location }) => `${file}:${String(location.line)}`)
-    .sort();
+    .sort(byText);
 }
 
 describe.skipIf(!enabled)(
