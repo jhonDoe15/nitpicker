@@ -154,8 +154,23 @@ The shard counts were later lowered twice so that more pull request runs fit int
 concurrent job limit at once. The loads, targets and measurements earlier in this file describe
 the previous split; this paragraph replaces them. The unit `test` job went from eight shards to
 two, Java from 16 to four, Kotlin from ten to three, Python from four to two and Go from two to one.
-Fewer runners also repeat the per-job setup (checkout, `npm ci`, toolchains) fewer times. With the
-current profiles the sequencer's estimated loads per shard are about 1,334 seconds for the unit
-suite (run with one worker per vCPU, so roughly six to nine minutes of wall time), 971–975 seconds
-for Java, 905–929 seconds for Kotlin, 707 seconds for Python and 70 seconds for Go, before setup.
-Every load stays well inside its job's `timeout-minutes`.
+Fewer runners also repeat the per-job setup (checkout, `npm ci`, toolchains) fewer times. The
+unit suite's estimated load is about 1,334 seconds per shard (run with one worker per vCPU, so
+roughly six to nine minutes of wall time) and Go's about 70 seconds, before setup.
+
+The Java, Kotlin and Python profiles now hold measured weights, which replace every planning
+estimate and earlier measurement named above. Each weight is the median, rounded up to whole
+seconds, of the file's duration in the default reporter's per-file line (`✓ <file> (N tests) Xms`)
+of the shard job logs. That duration covers the file's hooks: the gaps between consecutive lines'
+timestamps match it. The sample is every Java, Kotlin and Python shard job that finished on
+2026-11-08, on main and on pull requests, giving nine to thirteen samples per file. Files that
+exist only on pull request branches were left out. The Kotlin-on-Maven files that failed on every
+sampled run keep the median of their failing runs, since their builds still ran before the
+failing assertion. Before the change the sequencer predicted equal loads, but the measured times
+of the files it assigned gave slowest shards of about 1,918 seconds for Kotlin (against 1,032 for
+the fastest), 935 for Java and 633 for Python. With the measured weights the predicted loads are
+1,546–1,550 seconds for Kotlin, 804–805 for Java and 598–599 for Python. No single file sets the
+floor: the longest, `kotlin-maven-lint` at about 501 seconds, is a third of a Kotlin shard. Python
+shards run two files at once, so their file sums exceed the shard's wall time. Every load stays
+well inside its job's `timeout-minutes`. To refresh the weights, take the same per-file medians
+from recent successful shard logs.
