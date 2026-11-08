@@ -31,7 +31,7 @@ describe('datasource-without-timeout', () => {
       timeouts({
         [resource('application.properties')]: `server.port=8080\n${URL}`,
         [resource('application-prod.yml')]:
-          'spring:\n  datasource:\n    hikari:\n      jdbc-url: ${DATABASE_URL}\n',
+          `spring:\n  datasource:\n    hikari:\n      jdbc-url: \${DATABASE_URL}\n`,
         [resource('application-test.properties')]: 'spring.transaction.default-timeout=5s',
       }),
     ).toEqual([
@@ -44,7 +44,7 @@ describe('datasource-without-timeout', () => {
     'spring.jpa.properties.jakarta.persistence.query.timeout=30000',
     'spring.jpa.properties.javax.persistence.query.timeout=30000',
     'spring.transaction.default-timeout=30s',
-    'spring.transaction.defaultTimeout=${TX_TIMEOUT}',
+    `spring.transaction.defaultTimeout=\${TX_TIMEOUT}`,
     'spring.jdbc.template.query-timeout=30s',
     'spring.datasource.hikari.data-source-properties.socketTimeout=30',
     'spring.datasource.hikari.data-source-properties.options=-c statement_timeout=30000',
@@ -62,7 +62,7 @@ describe('datasource-without-timeout', () => {
     'jdbc:mysql://db/shop?connectTimeout=5000&socketTimeout=30000',
     'jdbc:postgresql://db/shop?options=-c%20statement_timeout=30000',
     'jdbc:h2:mem:shop',
-    '${DB_URL:jdbc:h2:mem:shop}',
+    `\${DB_URL:jdbc:h2:mem:shop}`,
     'jdbc:h2:file:./data/shop',
     'jdbc:tc:postgresql:16:///shop',
   ])('accepts the URL %s', (url) => {

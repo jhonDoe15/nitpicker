@@ -25,8 +25,6 @@ const TEXT_KEYS = new Set(
   ].map(relaxKey),
 );
 const TEXT_TIMEOUTS = ['statement_timeout', 'max_execution_time', 'sockettimeout', 'querytimeout'];
-const SEPARATORS = new Set([' ', '\t', '=', ':', "'", '"']);
-const VALUE_END = /[^\w.]/u;
 const NO_TIME = /^(?:-1[a-z]*|0+(?:\.0+)?[a-z]*|PT0+S)?$/iu;
 const EMBEDDED_URL = /^jdbc:(?:h2:|hsqldb:|derby:|sqlite:|tc:)/iu;
 
@@ -37,30 +35,21 @@ function valueOf(entry) {
   return placeholderDefault(entry.value.trim());
 }
 
-function valueAfter(text, start) {
-  let index = start;
-  while (index < text.length && SEPARATORS.has(text[index])) {
-    index += 1;
-  }
-  const rest = text.slice(index);
-  const end = rest.search(VALUE_END);
-  return end === -1 ? rest : rest.slice(0, end);
-}
+const LEADING_SEPARATORS = /^[ \t=:'"]*/u;
+const SETTING_VALUE = /^[\w.]*/u;
 
-function settingValues(text, key) {
-  const values = [];
-  let start = text.indexOf(key);
-  while (start !== -1) {
-    values.push(valueAfter(text, start + key.length));
-    start = text.indexOf(key, start + key.length);
-  }
-  return values;
+function valueAfter(rest) {
+  const value = rest.replace(LEADING_SEPARATORS, '');
+  return SETTING_VALUE.exec(value)?.[0] ?? '';
 }
 
 function carriesTimeout(value) {
   const text = value.toLowerCase().replaceAll('%3d', '=').replaceAll('%20', ' ');
   return TEXT_TIMEOUTS.some((key) =>
-    settingValues(text, key).some((found) => !NO_TIME.test(found)),
+    text
+      .split(key)
+      .slice(1)
+      .some((rest) => !NO_TIME.test(valueAfter(rest))),
   );
 }
 
