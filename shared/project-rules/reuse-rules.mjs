@@ -1,3 +1,16 @@
+const NO_REEXPORT =
+  'the language has no re-exports: a class is imported only from the package that declares it, and a package that its module does not export cannot be imported at all';
+
+export function entryPointRule(ids, enforcedBy) {
+  return {
+    id: ids.publicAlternativeBypass,
+    check: 'entry-points',
+    limit: 'none: importing around a public entry point fails',
+    enforcedBy,
+    notApplicable: { java: NO_REEXPORT },
+  };
+}
+
 export function reuseRules(ids, reactEnforcedBy) {
   return [
     {
