@@ -64,6 +64,7 @@
   "languages/python/rules/e2e/resources/inline-resources.e2e.test.mjs": 2,
   "languages/python/rules/e2e/review/enum-predicate.e2e.test.mjs": 5,
   "languages/python/rules/e2e/review/forwarding-wrapper.e2e.test.mjs": 4,
+  "languages/python/rules/e2e/review/members/member-cycle.e2e.test.mjs": 3,
   "languages/python/rules/e2e/review/project-rules.e2e.test.mjs": 7,
   "languages/python/rules/e2e/review/review-rules.e2e.test.mjs": 4,
   "languages/python/rules/e2e/security/runner/allowances.e2e.test.mjs": 1,
