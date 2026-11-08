@@ -480,6 +480,9 @@ line; here it is spread out:
   `partialRun: { ran, skipped }`.
 - A run that stops before it has a result, such as on an unknown argument, prints
   `{"status":"error","exitCode":2,"error":"..."}`.
+- `--fix` lists the fixed files on stderr. A shard job prints the result of its shard; the JSON of
+  the whole run is not printed by `nitpicker aggregate`, which reads the shard reports. `--help` and
+  `--version` print as usual.
 
 The schema is [`spec/json-output.schema.json`](../spec/json-output.schema.json), also exported by
 the package as `nitpicker/spec/json-output.schema.json`.
