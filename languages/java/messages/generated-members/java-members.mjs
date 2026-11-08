@@ -1,3 +1,5 @@
+import { lineAt, lineStarts } from '../../adapters/doc-comments/doc-scopes.mjs';
+
 const CLASS_HEADER =
   /(?<![\w$.])(class|interface|enum|record|@interface)\s+([A-Za-z_$][\w$]*)(?![\w$])/u;
 const TOKEN = /(?<![=!<>+\-*/%&|^])=(?!=)|[(){};]/gu;
@@ -24,53 +26,47 @@ const EXTENDS = /\bextends\s+([A-Za-z_$][\w$]*(?:\s*\.\s*[A-Za-z_$][\w$]*)*)/u;
 const GENERIC_DEPTH = { '<': 1, '>': -1 };
 const PAREN_DEPTH = { '(': 1, ')': -1 };
 
-export function lineStarts(text) {
-  const starts = [0];
-  for (const [index, character] of [...text].entries()) {
-    if (character === '\n') {
-      starts.push(index + 1);
-    }
-  }
-  return starts;
-}
-
-export function lineAt(starts, offset) {
-  return starts.findLastIndex((start) => start <= offset) + 1;
-}
-
 function balancedEnd(text, open) {
   let depth = 0;
-  for (let index = open; index < text.length; index += 1) {
-    depth += PAREN_DEPTH[text[index]] ?? 0;
+  for (const [index, character] of [...text.slice(open)].entries()) {
+    depth += PAREN_DEPTH[character] ?? 0;
     if (depth === 0) {
-      return index + 1;
+      return open + index + 1;
     }
   }
   return text.length;
 }
 
-export function leadingAnnotations(text, from) {
+function annotationAt(text, index) {
+  ANNOTATION_START.lastIndex = index;
+  const match = ANNOTATION_START.exec(text);
+  if (match === null || match[1] === 'interface') {
+    return undefined;
+  }
+  const after = index + match[0].length;
+  const end = text[after] === '(' ? balancedEnd(text, after) : after;
+  return {
+    name: match[1].replaceAll(/\s+/gu, ''),
+    start: index,
+    end,
+    argumentsStart: text[after] === '(' ? after + 1 : undefined,
+    argumentsEnd: text[after] === '(' ? end - 1 : undefined,
+  };
+}
+
+function leadingAnnotations(text, from) {
   const annotations = [];
-  let index = from;
-  for (;;) {
-    while (/\s/u.test(text[index] ?? '')) {
-      index += 1;
-    }
-    ANNOTATION_START.lastIndex = index;
-    const match = ANNOTATION_START.exec(text);
-    if (match === null || match[1] === 'interface') {
+  const positions = [from];
+  for (const position of positions) {
+    const index = position + (/^\s*/u.exec(text.slice(position))?.[0].length ?? 0);
+    const annotation = annotationAt(text, index);
+    if (annotation === undefined) {
       return { annotations, end: index };
     }
-    const after = index + match[0].length;
-    const end = text[after] === '(' ? balancedEnd(text, after) : after;
-    annotations.push({
-      name: match[1].replaceAll(/\s+/gu, ''),
-      start: index,
-      argumentsStart: text[after] === '(' ? after + 1 : undefined,
-      argumentsEnd: text[after] === '(' ? end - 1 : undefined,
-    });
-    index = end;
+    annotations.push(annotation);
+    positions.push(annotation.end);
   }
+  return { annotations, end: from };
 }
 
 function splitTopLevel(text) {
@@ -88,16 +84,14 @@ function splitTopLevel(text) {
 }
 
 function withoutModifiers(words) {
-  let rest = words;
-  const modifiers = [];
-  for (;;) {
-    const word = /^(\S+)\s+/u.exec(rest);
-    if (word === null || !MODIFIERS.has(word[1])) {
-      return { modifiers, rest };
-    }
-    modifiers.push(word[1]);
-    rest = rest.slice(word[0].length);
-  }
+  const parts = words.split(/\s+/u);
+  const count = parts.findIndex((part) => !MODIFIERS.has(part));
+  const modifiers = parts.slice(0, Math.max(count, 0));
+  const rest = modifiers.reduce(
+    (text, modifier) => text.slice(text.indexOf(modifier) + modifier.length),
+    words,
+  );
+  return { modifiers, rest: rest.trim() };
 }
 
 function declaratorName(text) {
@@ -151,7 +145,8 @@ function methodOf(header) {
 function newClass(state, { header, headerStart, bodyStart, kind, name }) {
   const owner = state.frames.at(-1).klass;
   const { annotations } = leadingAnnotations(state.text, headerStart);
-  const superclass = kind === 'class' ? EXTENDS.exec(header.split(/\bimplements\b/u)[0]) : null;
+  const superclass =
+    kind === 'class' ? (EXTENDS.exec(header.split(/\bimplements\b/u)[0]) ?? undefined) : undefined;
   const klass = {
     name: owner === undefined ? name : `${owner.name}.${name}`,
     simple: name,
@@ -232,13 +227,13 @@ function onCloseBrace(state, frame, offset) {
 }
 
 const HANDLERS = {
-  '(': (state, frame) => {
+  '(': (_state, frame) => {
     frame.parentheses += 1;
   },
-  ')': (state, frame) => {
+  ')': (_state, frame) => {
     frame.parentheses -= 1;
   },
-  '=': (state, frame, offset) => {
+  '=': (_state, frame, offset) => {
     if (frame.parentheses === 0 && frame.equals < 0) {
       frame.equals = offset;
     }
@@ -268,8 +263,11 @@ export function javaClasses(text) {
   for (const match of text.matchAll(TOKEN)) {
     if (state.skip !== undefined) {
       skipped(state, match[0], match.index);
-    } else if (state.frames.length > 0) {
-      HANDLERS[match[0]](state, state.frames.at(-1), match.index);
+    } else {
+      const frame = state.frames.at(-1);
+      if (frame !== undefined) {
+        HANDLERS[match[0]](state, frame, match.index);
+      }
     }
   }
   return state.classes;

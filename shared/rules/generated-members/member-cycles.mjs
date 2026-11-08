@@ -1,4 +1,5 @@
 const MAX_CYCLE_CLASSES = 6;
+const MAX_PATHS = 5000;
 
 function byPosition(left, right) {
   return left.file.localeCompare(right.file) || left.line - right.line;
@@ -27,12 +28,10 @@ function selfCycles(edges) {
   });
 }
 
-function longerCycles(edges) {
-  const from = outgoing(edges.filter((edge) => edge.from !== edge.to));
-  const order = [...from.keys()].sort();
-  const rank = new Map(order.map((name, index) => [name, index]));
+function cyclesFrom(start, { from, rank }) {
   const cycles = [];
-  function walk(start, path, seen) {
+  const pending = [{ path: [], seen: new Set([start]) }];
+  for (const { path, seen } of pending) {
     const head = path.length === 0 ? start : path.at(-1).to;
     for (const edge of from.get(head) ?? []) {
       if (edge.to === start && path.length > 0) {
@@ -40,16 +39,21 @@ function longerCycles(edges) {
       } else if (
         !seen.has(edge.to) &&
         (rank.get(edge.to) ?? -1) > rank.get(start) &&
-        path.length + 1 < MAX_CYCLE_CLASSES
+        path.length + 1 < MAX_CYCLE_CLASSES &&
+        pending.length < MAX_PATHS
       ) {
-        walk(start, [...path, edge], new Set([...seen, edge.to]));
+        pending.push({ path: [...path, edge], seen: new Set([...seen, edge.to]) });
       }
     }
   }
-  for (const start of order) {
-    walk(start, [], new Set([start]));
-  }
   return cycles;
+}
+
+function longerCycles(edges) {
+  const from = outgoing(edges.filter((edge) => edge.from !== edge.to));
+  const order = [...from.keys()].sort();
+  const rank = new Map(order.map((name, index) => [name, index]));
+  return order.flatMap((start) => cyclesFrom(start, { from, rank }));
 }
 
 export function memberCycles(edges) {

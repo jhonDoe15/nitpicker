@@ -1,5 +1,15 @@
 import { describe, expect, it } from 'vitest';
-import { file, fn, klass, parameter, property, routeOf, run, summary } from '../../test-support/facts.mjs';
+import {
+  file,
+  fn,
+  klass,
+  parameter,
+  property,
+  routed,
+  routeOf,
+  run,
+  summary,
+} from '../../test-support/facts.mjs';
 import {
   MEMBER_CYCLE_RULE,
   SKIPPED_SUPER_RULE,
@@ -21,8 +31,11 @@ describe('generated members of Kotlin data classes over a cycle', () => {
     ]);
 
     expect(summary(findings)).toEqual([`${MEMBER_CYCLE_RULE} Line.order 7`]);
-    expect(findings[0].message).toContain(
-      'The generated toString, equals and hashCode of data class `Line` can follow `order` around the cycle Order.lines -> Line.order -> Order,',
+    expect(findings[0].message).toBe(
+      routed(
+        'The generated toString, equals and hashCode of data class `Line` can follow `order` around the cycle Order.lines -> Line.order -> Order, so the first log line, HashSet or cache lookup of an object in the cycle recurses until StackOverflowError. Move the back reference out of the primary constructor into the class body (`var order: ... = null`), where the generated members do not read it. A property that only ever points down a tree, never back up, is the intended case.',
+        MEMBER_CYCLE_RULE,
+      ),
     );
     expect(routeOf(findings[0].message)).toBe(
       'If this is intended, add {"rule":"pmd/GeneratedMemberCycle","paths":["src/main/kotlin/demo/Sample.kt"],"reason":"..."} to "exceptions" in nitpicker.config.json.',
@@ -38,7 +51,10 @@ describe('generated members of Kotlin data classes over a cycle', () => {
   it.each([
     ['a tree of children', [val('children', 'List<Node>')]],
     ['a linked list', [val('next', 'Node?')]],
-    ['a constructor parameter that is no property', [parameter('parent', 'Node?'), val('children', 'List<Node>')]],
+    [
+      'a constructor parameter that is no property',
+      [parameter('parent', 'Node?'), val('children', 'List<Node>')],
+    ],
     ['a function type', [val('parent', '() -> Node'), val('children', 'List<Node>')]],
   ])('allows %s', (_name, parameters) => {
     expect(findingsFor([data('Node', parameters)])).toEqual([]);
@@ -50,7 +66,9 @@ describe('generated members of Kotlin data classes over a cycle', () => {
     const plainLine = klass('Line', { primaryParameters: [val('order', 'Order')] });
 
     expect(
-      findingsFor([order, bodyLine], { properties: [property('order', 'Line', { type: 'Order?', var: true })] }),
+      findingsFor([order, bodyLine], {
+        properties: [property('order', 'Line', { type: 'Order?', var: true })],
+      }),
     ).toEqual([]);
     expect(findingsFor([order, plainLine])).toEqual([]);
   });
@@ -61,7 +79,12 @@ describe('generated members of Kotlin data classes over a cycle', () => {
       { functions: [fn('toString', { owner: 'Line' })] },
     );
 
-    expect(findings[0].message).toContain('The generated equals and hashCode of data class `Line`');
+    expect(findings[0].message).toBe(
+      routed(
+        'The generated equals and hashCode of data class `Line` can follow `order` around the cycle Order.lines -> Line.order -> Order, so the first log line, HashSet or cache lookup of an object in the cycle recurses until StackOverflowError. Move the back reference out of the primary constructor into the class body (`var order: ... = null`), where the generated members do not read it. A property that only ever points down a tree, never back up, is the intended case.',
+        MEMBER_CYCLE_RULE,
+      ),
+    );
   });
 
   it('resolves nested, imported and aliased classes, and skips classes it cannot resolve', () => {
@@ -75,9 +98,15 @@ describe('generated members of Kotlin data classes over a cycle', () => {
       file: 'src/main/kotlin/shop/items/Item.kt',
       package: 'shop.items',
       imports: [{ path: 'shop.orders', alias: null, all: true }],
-      classes: [klass('Item'), data('Line', [val('order', 'Order', 5)], { qualified: 'Item.Line' })],
+      classes: [
+        klass('Item'),
+        data('Line', [val('order', 'Order', 5)], { qualified: 'Item.Line' }),
+      ],
     });
-    const other = file({ package: 'other', classes: [data('Order', [val('line', 'shop.items.Item.Line')])] });
+    const other = file({
+      package: 'other',
+      classes: [data('Order', [val('line', 'shop.items.Item.Line')])],
+    });
 
     expect(summary(run(generatedMemberFindings, [order, item]))).toEqual([
       `${MEMBER_CYCLE_RULE} Item.Line.order 5`,
@@ -87,7 +116,10 @@ describe('generated members of Kotlin data classes over a cycle', () => {
 
   it('reports a cycle only in the module that declares its closing property', () => {
     const order = file({ classes: [data('Order', [val('lines', 'List<Line>')])] });
-    const line = file({ file: 'src/main/kotlin/demo/Line.kt', classes: [data('Line', [val('order', 'Order')])] });
+    const line = file({
+      file: 'src/main/kotlin/demo/Line.kt',
+      classes: [data('Line', [val('order', 'Order')])],
+    });
     const finding = run(generatedMemberFindings, [order], { declaredIn: [order, line] });
 
     expect(finding).toEqual([]);
@@ -107,13 +139,19 @@ describe('Kotlin data classes that extend a class with state', () => {
     );
 
     expect(summary(findings)).toEqual([`${SKIPPED_SUPER_RULE} Invoice 4`]);
-    expect(findings[0].message).toContain(
-      'Data class `Invoice` extends `Audited`, which declares `createdAt`, `tenant`,',
+    expect(findings[0].message).toBe(
+      routed(
+        'Data class `Invoice` extends `Audited`, which declares `createdAt`, `tenant`, but the generated equals and hashCode read only the primary-constructor properties of `Invoice`, so two objects that differ only in inherited properties are equal. Declare them abstract in `Audited` and override them in the primary constructor, or write equals and hashCode.',
+        SKIPPED_SUPER_RULE,
+      ),
     );
   });
 
   it.each([
-    ['overrides every inherited property', [val('createdAt', 'Instant', 1, { annotations: [] }), val('total', 'Long')]],
+    [
+      'overrides every inherited property',
+      [val('createdAt', 'Instant', 1, { annotations: [] }), val('total', 'Long')],
+    ],
   ])('allows a data class that %s', (_name, parameters) => {
     expect(findingsFor([base, data('Invoice', parameters, { superClass: 'Audited' })])).toEqual([]);
   });
@@ -127,7 +165,9 @@ describe('Kotlin data classes that extend a class with state', () => {
     ];
     const invoice = data('Invoice', [val('total', 'Long')], { superClass: 'Audited' });
 
-    expect(findingsFor([stateless, data('Square', [], { superClass: 'Shape' })], { properties })).toEqual([]);
+    expect(
+      findingsFor([stateless, data('Square', [], { superClass: 'Shape' })], { properties }),
+    ).toEqual([]);
     expect(
       findingsFor([base, invoice], {
         functions: [

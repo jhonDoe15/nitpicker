@@ -101,7 +101,7 @@ def longer_cycles(edges):
 
 def closing_edge(cycle):
     single = [edge for edge in cycle if not edge.many]
-    return sorted(single or cycle, key=Edge.position)[-1]
+    return max(single or cycle, key=Edge.position)
 
 
 def cycle_text(cycle, edge):
@@ -113,7 +113,11 @@ def cycle_text(cycle, edge):
 
 def member_cycle_findings(index):
     classes = generated_classes(index)
-    edges = [edge for source in classes.values() for edge in class_edges(index, classes, source)]
+    edges = [
+        edge
+        for source in classes.values()
+        for edge in class_edges(index, classes, source)
+    ]
     found = {}
     for cycle in self_cycles(edges) + longer_cycles(edges):
         edge = closing_edge(cycle)

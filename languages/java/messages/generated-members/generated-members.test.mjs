@@ -66,11 +66,16 @@ function reported(entries, rule = MEMBER_CYCLE_RULE) {
 }
 
 function summary(findings) {
-  return findings.map(({ path: file, location }) => `${path.basename(file)}:${String(location.line)}`);
+  return findings.map(
+    ({ path: file, location }) => `${path.basename(file)}:${String(location.line)}`,
+  );
 }
 
 const ORDER = javaFile('Order', '@Data\npublic class Order {\n  private List<Item> items;\n}');
-const ITEM = javaFile('Item', '@Data\npublic class Item {\n  private String sku;\n  private Order order;\n}');
+const ITEM = javaFile(
+  'Item',
+  '@Data\npublic class Item {\n  private String sku;\n  private Order order;\n}',
+);
 
 describe('generated members over a cycle of Lombok fields', () => {
   it('reports the back reference of a parent and child pair once, naming the cycle', () => {
@@ -112,7 +117,10 @@ describe('generated members over a cycle of Lombok fields', () => {
   });
 
   it.each([
-    ['both exclusions', '@Data\npublic class Item {\n  @ToString.Exclude @EqualsAndHashCode.Exclude private Order order;\n}'],
+    [
+      'both exclusions',
+      '@Data\npublic class Item {\n  @ToString.Exclude @EqualsAndHashCode.Exclude private Order order;\n}',
+    ],
     [
       'exclude lists',
       '@Data\n@ToString(exclude = "order")\n@EqualsAndHashCode(exclude = {"order"})\npublic class Item {\n  private Order order;\n}',
@@ -136,10 +144,15 @@ describe('generated members over a cycle of Lombok fields', () => {
   });
 
   it('keeps a transient back reference in toString only', () => {
-    const item = javaFile('Item', '@Data\npublic class Item {\n  private transient Order order;\n}');
+    const item = javaFile(
+      'Item',
+      '@Data\npublic class Item {\n  private transient Order order;\n}',
+    );
     const [finding] = reported([ORDER, item]);
 
-    expect(finding.message).toContain('The generated toString can follow');
+    expect(finding.message).toBe(
+      'The generated toString can follow this field around the cycle Order.items -> Item.order -> Order. Mark the back reference @ToString.Exclude.',
+    );
   });
 
   it('follows a cycle through three classes and reports it on one field', () => {
@@ -173,13 +186,22 @@ describe('generated members over a cycle of Lombok fields', () => {
     const item = javaFile('Item', '@Data\npublic class Item {\n  private other.Order order;\n}');
 
     expect(summary(reported([other, item]))).toEqual(['Item.java:8']);
-    expect(reported([other, javaFile('Item', '@Data\npublic class Item {\n  private Order order;\n}')])).toEqual([]);
+    expect(
+      reported([other, javaFile('Item', '@Data\npublic class Item {\n  private Order order;\n}')]),
+    ).toEqual([]);
   });
 
   it('honours lombok.config and ignores annotations that are not Lombok', () => {
     const config = ['lombok.config', 'lombok.toString.onlyExplicitlyIncluded = true\n'];
-    const item = javaFile('Item', '@Data\npublic class Item {\n  @EqualsAndHashCode.Exclude private Order order;\n}');
-    const notLombok = javaFile('Item', '@Data\npublic class Item {\n  private Order order;\n}', 'import java.util.List;\nimport other.Data;\n');
+    const item = javaFile(
+      'Item',
+      '@Data\npublic class Item {\n  @EqualsAndHashCode.Exclude private Order order;\n}',
+    );
+    const notLombok = javaFile(
+      'Item',
+      '@Data\npublic class Item {\n  private Order order;\n}',
+      'import java.util.List;\nimport other.Data;\n',
+    );
 
     expect(reported([config, ORDER, item])).toEqual([]);
     expect(reported([ORDER, notLombok])).toEqual([]);
@@ -187,7 +209,13 @@ describe('generated members over a cycle of Lombok fields', () => {
 
   it('leaves other rules and test sources alone', () => {
     const files = Object.fromEntries([ORDER, ITEM]);
-    const other = { tool: 'pmd', rule: 'Other', path: ORDER[0], message: 'm', location: { line: 1 } };
+    const other = {
+      tool: 'pmd',
+      rule: 'Other',
+      path: ORDER[0],
+      message: 'm',
+      location: { line: 1 },
+    };
 
     expect(withGeneratedMembers([other], { projectRoot: project(files) })).toEqual([other]);
     const testFiles = Object.fromEntries(
@@ -201,7 +229,10 @@ describe('generated equals that skips the superclass', () => {
   const base = javaFile('Base', 'public class Base {\n  protected String tenant;\n}', '');
 
   it('reports @Data on a subclass of a project class with fields, naming that class', () => {
-    const child = javaFile('Child', '@Data\npublic class Child extends Base {\n  private String name;\n}');
+    const child = javaFile(
+      'Child',
+      '@Data\npublic class Child extends Base {\n  private String name;\n}',
+    );
     const findings = reported([base, child], SKIPPED_SUPER_RULE);
 
     expect(summary(findings)).toEqual(['Child.java:7']);
@@ -212,13 +243,21 @@ describe('generated equals that skips the superclass', () => {
     const middle = javaFile('Middle', 'public abstract class Middle extends Base {\n}', '');
     const child = javaFile('Child', '@EqualsAndHashCode\npublic class Child extends Middle {\n}');
 
-    expect(reported([base, middle, child], SKIPPED_SUPER_RULE)[0].message).toContain('extends Base,');
+    expect(reported([base, middle, child], SKIPPED_SUPER_RULE)[0].message).toBe(
+      'This class extends Base, which declares fields.',
+    );
   });
 
   it.each([
-    ['an explicit callSuper', '@Data\n@EqualsAndHashCode(callSuper = false)\npublic class Child extends Base {\n}'],
+    [
+      'an explicit callSuper',
+      '@Data\n@EqualsAndHashCode(callSuper = false)\npublic class Child extends Base {\n}',
+    ],
     ['a superclass outside the project', '@Data\npublic class Child extends java.util.Date {\n}'],
-    ['hand-written equals', '@Data\npublic class Child extends Base {\n  public boolean equals(Object o) { return false; }\n}'],
+    [
+      'hand-written equals',
+      '@Data\npublic class Child extends Base {\n  public boolean equals(Object o) { return false; }\n}',
+    ],
     ['no generated equals', '@ToString\npublic class Child extends Base {\n}'],
   ])('allows %s', (_name, body) => {
     expect(reported([base, javaFile('Child', body)], SKIPPED_SUPER_RULE)).toEqual([]);

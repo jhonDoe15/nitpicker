@@ -9,16 +9,17 @@ function qualifiedOf(file, klass) {
 }
 
 export function kotlinClasses(files) {
-  const classes = new Map();
-  for (const file of files.filter(({ test }) => !test)) {
-    for (const klass of file.classes.filter(({ local }) => !local)) {
-      const qualified = qualifiedOf(file, klass);
-      if (!classes.has(qualified)) {
-        classes.set(qualified, { klass, file, qualified });
-      }
-    }
-  }
-  return classes;
+  const entries = files
+    .filter(({ test }) => !test)
+    .flatMap((file) =>
+      file.classes
+        .filter(({ local }) => !local)
+        .map((klass) => [
+          qualifiedOf(file, klass),
+          { klass, file, qualified: qualifiedOf(file, klass) },
+        ]),
+    );
+  return new Map(entries.toReversed());
 }
 
 function baseCandidates(first, file, owner) {
@@ -26,9 +27,7 @@ function baseCandidates(first, file, owner) {
   const nested = ancestorsOf(owner)
     .toReversed()
     .flatMap((scope) =>
-      scope.split('.').at(-1) === first
-        ? [`${prefix}${scope}`]
-        : [`${prefix}${scope}.${first}`],
+      scope.split('.').at(-1) === first ? [`${prefix}${scope}`] : [`${prefix}${scope}.${first}`],
     );
   const imported = file.imports
     .filter(({ all, alias, path }) => !all && (alias ?? path.split('.').at(-1)) === first)

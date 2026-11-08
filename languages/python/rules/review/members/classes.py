@@ -10,8 +10,17 @@ ATTRS = {
     for module in ("attr", "attrs")
     for name in ("s", "attrs", "define", "frozen", "mutable", "dataclass")
 }
-DATACLASS_FIELDS = {"dataclasses.field", "field", "pydantic.Field", "pydantic.fields.Field"}
-ATTRS_FIELDS = {f"{module}.{name}" for module in ("attr", "attrs") for name in ("ib", "attrib", "field")}
+DATACLASS_FIELDS = {
+    "dataclasses.field",
+    "field",
+    "pydantic.Field",
+    "pydantic.fields.Field",
+}
+ATTRS_FIELDS = {
+    f"{module}.{name}"
+    for module in ("attr", "attrs")
+    for name in ("ib", "attrib", "field")
+}
 NOT_FIELDS = {"ClassVar", "InitVar"}
 SINGLE_WRAPPERS = {"Optional", "Union", "Final", "Required", "NotRequired", "ReadOnly"}
 ANNOTATED = "Annotated"

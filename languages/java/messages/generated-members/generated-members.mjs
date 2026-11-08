@@ -1,6 +1,9 @@
 import path from 'node:path';
 import { lazy } from '../../../../shared/rules/finding-helpers.mjs';
-import { cycleText, memberCycles } from '../../../../shared/rules/generated-members/member-cycles.mjs';
+import {
+  cycleText,
+  memberCycles,
+} from '../../../../shared/rules/generated-members/member-cycles.mjs';
 import { offsetOf } from '../../adapters/review-rules/java-sources.mjs';
 import {
   fieldDeclaringClass,
@@ -10,8 +13,9 @@ import {
 } from './java-project.mjs';
 import { MEMBERS, equalsWithoutSuper, generatedMember } from './lombok-members.mjs';
 
-export const MEMBER_CYCLE_RULE = 'GeneratedMemberCycle';
-export const SKIPPED_SUPER_RULE = 'GeneratedEqualsSkipsSuperclass';
+import { MEMBER_CYCLE_RULE, SKIPPED_SUPER_RULE } from './rule-names.mjs';
+
+export { MEMBER_CYCLE_RULE, SKIPPED_SUPER_RULE };
 export const GENERIC_CYCLE = 'a cycle of fields';
 export const GENERIC_MEMBERS = 'The generated toString, equals and hashCode';
 export const GENERIC_EXCLUDE = '@ToString.Exclude and @EqualsAndHashCode.Exclude';

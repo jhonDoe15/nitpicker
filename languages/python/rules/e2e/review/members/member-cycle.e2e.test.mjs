@@ -43,7 +43,10 @@ describe.skipIf(!enabled)('generated-member-cycle', () => {
       'a back reference left out of the comparison',
       '@dataclass\nclass Node:\n    parent: Node | None = field(default=None, compare=False)\n    children: list[Node] = field(default_factory=list)\n',
     ],
-    ['no generated eq', '@dataclass(eq=False)\nclass Node:\n    parent: Node | None\n    children: list[Node]\n'],
+    [
+      'no generated eq',
+      '@dataclass(eq=False)\nclass Node:\n    parent: Node | None\n    children: list[Node]\n',
+    ],
     [
       'a class variable and a callable',
       'from typing import Callable, ClassVar\n\n\n@dataclass\nclass Node:\n    root: ClassVar[Node]\n    parent: Callable[[], Node]\n    children: list[Node]\n',

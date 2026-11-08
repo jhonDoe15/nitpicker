@@ -36,28 +36,33 @@ function qualifiedOf(source, klass) {
   return source.packageName === '' ? klass.name : `${source.packageName}.${klass.name}`;
 }
 
+function classIndex(sources) {
+  const entries = sources.flatMap((source) =>
+    source.classes.map((klass) => {
+      const qualified = qualifiedOf(source, klass);
+      return [qualified, { ...klass, qualified, source }];
+    }),
+  );
+  return new Map(entries.toReversed());
+}
+
 export function readJavaProject(projectRoot) {
   const config = lombokConfig(projectRoot);
   const sources = sourceFilesUnder(projectRoot, ['.java'])
-    .filter((absolute) => !NOT_MAIN.test(path.relative(projectRoot, absolute).replaceAll('\\', '/')))
+    .filter(
+      (absolute) => !NOT_MAIN.test(path.relative(projectRoot, absolute).replaceAll('\\', '/')),
+    )
     .map((absolute) => readFile(projectRoot, absolute))
     .map((source) => ({ ...source, config: config(source.file) }));
-  const classes = new Map();
-  for (const source of sources) {
-    for (const klass of source.classes) {
-      const qualified = qualifiedOf(source, klass);
-      if (!classes.has(qualified)) {
-        classes.set(qualified, { ...klass, qualified, source });
-      }
-    }
-  }
-  return { sources, classes };
+  return { sources, classes: classIndex(sources) };
 }
 
 function ownerChain(klass) {
-  const chain = [];
-  for (let current = klass; current !== undefined; current = current.owner) {
-    chain.push(current);
+  const chain = [klass];
+  for (const current of chain) {
+    if (current.owner !== undefined) {
+      chain.push(current.owner);
+    }
   }
   return chain;
 }
@@ -87,42 +92,55 @@ export function resolveClass(name, { project, source, klass }) {
     .find((qualified) => project.classes.has(qualified));
 }
 
-export function typeReferences(type) {
-  const references = [];
+function genericDepths(type) {
   const outer = [];
+  const depths = new Map();
   let last;
-  let index = 0;
-  for (const match of type.matchAll(TYPE_NAME)) {
-    for (const character of type.slice(index, match.index)) {
-      if (character === '<') {
-        outer.push(last);
-      } else if (character === '>') {
-        outer.pop();
-      }
+  for (const match of type.matchAll(/[<>]|[A-Za-z_$][\w$]*(?:\s*\.\s*[A-Za-z_$][\w$]*)*/gu)) {
+    if (match[0] === '<') {
+      outer.push(last);
+    } else if (match[0] === '>') {
+      outer.pop();
+    } else {
+      depths.set(match.index, [...outer]);
+      last = match[0].split('.').at(-1).trim();
     }
-    index = match.index + match[0].length;
-    if (KEYWORDS.has(match[0])) {
-      continue;
-    }
-    last = match[0].split('.').at(-1).trim();
-    const wrapped = outer.length === 1 && SINGLE_WRAPPERS.has(outer[0]);
-    const many = (outer.length > 0 && !wrapped) || (outer.length === 0 && type.endsWith(']'));
-    references.push({ name: match[0], many });
   }
-  return references;
+  return depths;
+}
+
+function isMany(outer, type) {
+  if (outer.length === 0) {
+    return type.endsWith(']');
+  }
+  return !(outer.length === 1 && SINGLE_WRAPPERS.has(outer[0]));
+}
+
+export function typeReferences(type) {
+  const depths = genericDepths(type);
+  return [...type.matchAll(TYPE_NAME)]
+    .filter((match) => !KEYWORDS.has(match[0]))
+    .map((match) => ({ name: match[0], many: isMany(depths.get(match.index) ?? [], type) }));
+}
+
+function superclassOf(klass, project) {
+  if (klass.extendsName === undefined) {
+    return undefined;
+  }
+  const parent = resolveClass(klass.extendsName, { project, source: klass.source, klass });
+  return parent === undefined ? undefined : project.classes.get(parent);
 }
 
 export function fieldDeclaringClass(qualified, project) {
-  let current = project.classes.get(qualified);
-  for (let depth = 0; current !== undefined && depth < MAX_SUPERCLASSES; depth += 1) {
-    if (current.fields.some((field) => !field.modifiers.includes('static'))) {
-      return current;
+  const chain = [project.classes.get(qualified)].filter((klass) => klass !== undefined);
+  for (const klass of chain) {
+    if (klass.fields.some((field) => !field.modifiers.includes('static'))) {
+      return klass;
     }
-    const parent =
-      current.extendsName === undefined
-        ? undefined
-        : resolveClass(current.extendsName, { project, source: current.source, klass: current });
-    current = parent === undefined ? undefined : project.classes.get(parent);
+    const parent = superclassOf(klass, project);
+    if (parent !== undefined && !chain.includes(parent) && chain.length < MAX_SUPERCLASSES) {
+      chain.push(parent);
+    }
   }
   return undefined;
 }

@@ -8,7 +8,7 @@ const ARGUMENT = /([A-Za-z_$][\w$]*)\s*=\s*(\{[^{}]*\}|[^,]+)/gu;
 const STRING = /"((?:\\.|[^"\\])*)"/gu;
 const CONFIG_LINE = /^\s*([\w.]+)\s*=\s*(\S+)\s*$/u;
 const STOP_BUBBLING = 'config.stopbubbling';
-export const CALL_SUPER_KEY = 'lombok.equalsandhashcode.callsuper';
+const CALL_SUPER_KEY = 'lombok.equalsandhashcode.callsuper';
 const ONLY_INCLUDED_TO_STRING_KEY = 'lombok.tostring.onlyexplicitlyincluded';
 
 export const MEMBERS = {
@@ -47,11 +47,11 @@ function lombokName(annotation, imported) {
   return imported.has(parts[0]) || imported.has('*') ? annotation.name : undefined;
 }
 
-export function lombokAnnotation(annotations, name, imported) {
+function lombokAnnotation(annotations, name, imported) {
   return annotations.find((annotation) => lombokName(annotation, imported) === name);
 }
 
-export function annotationArguments(annotation, raw) {
+function annotationArguments(annotation, raw) {
   if (annotation?.argumentsStart === undefined) {
     return new Map();
   }
@@ -138,18 +138,19 @@ export function lombokConfig(projectRoot) {
     return byDirectory.get(directory);
   }
   const root = path.resolve(projectRoot);
-  return (sourceFile) => (key) => {
-    let directory = path.dirname(path.resolve(root, sourceFile));
-    for (;;) {
-      const settings = settingsIn(directory);
-      if (settings.has(key)) {
-        return settings.get(key);
-      }
+  return (sourceFile) => {
+    const directories = [path.dirname(path.resolve(root, sourceFile))];
+    for (const directory of directories) {
       const parent = path.dirname(directory);
-      if (settings.get(STOP_BUBBLING) === 'true' || directory === root || parent === directory) {
-        return undefined;
+      const stops = settingsIn(directory).get(STOP_BUBBLING) === 'true';
+      if (!stops && directory !== root && parent !== directory) {
+        directories.push(parent);
       }
-      directory = parent;
     }
+    return (key) =>
+      directories
+        .map(settingsIn)
+        .find((settings) => settings.has(key))
+        ?.get(key);
   };
 }

@@ -2,10 +2,14 @@ import {
   cycleText,
   memberCycles,
 } from '../../../../../../../shared/rules/generated-members/member-cycles.mjs';
+import {
+  MEMBER_CYCLE_RULE,
+  SKIPPED_SUPER_RULE,
+} from '../../../../../messages/generated-members/rule-names.mjs';
 import { kotlinClasses, kotlinTypeReferences, resolveKotlinClass } from './kotlin-types.mjs';
 
-export const MEMBER_CYCLE_RULE = 'GeneratedMemberCycle';
-export const SKIPPED_SUPER_RULE = 'GeneratedEqualsSkipsSuperclass';
+export { MEMBER_CYCLE_RULE, SKIPPED_SUPER_RULE };
+
 const MAX_SUPERCLASSES = 10;
 const MEMBERS = {
   toString: { label: 'toString', declared: [['toString', 0]] },
@@ -128,26 +132,29 @@ function finalEquals(entry) {
   );
 }
 
+function parentOf(classes, entry) {
+  const { superClass, qualified } = entry.klass;
+  if (typeof superClass !== 'string') {
+    return undefined;
+  }
+  const name = resolveKotlinClass(superClass, { classes, file: entry.file, owner: qualified });
+  return name === undefined ? undefined : classes.get(name);
+}
+
 function inheritedState(classes, entry) {
-  const overridden = new Set(entry.klass.primaryParameters.filter(isProperty).map(({ name }) => name));
+  const overridden = new Set(
+    entry.klass.primaryParameters.filter(isProperty).map(({ name }) => name),
+  );
+  const chain = [entry];
   const found = [];
-  let current = entry;
-  for (let depth = 0; depth < MAX_SUPERCLASSES; depth += 1) {
-    const parentName =
-      current.klass.superClass === undefined || current.klass.superClass === null
-        ? undefined
-        : resolveKotlinClass(current.klass.superClass, {
-            classes,
-            file: current.file,
-            owner: current.klass.qualified,
-          });
-    const parent = parentName === undefined ? undefined : classes.get(parentName);
-    if (parent === undefined || finalEquals(parent)) {
+  for (const current of chain) {
+    const parent = parentOf(classes, current);
+    if (parent === undefined || finalEquals(parent) || chain.length > MAX_SUPERCLASSES) {
       return found;
     }
     const names = stateOf(parent).filter((name) => !overridden.has(name));
     found.push(...names.map((name) => ({ name, parent })));
-    current = parent;
+    chain.push(parent);
   }
   return found;
 }
