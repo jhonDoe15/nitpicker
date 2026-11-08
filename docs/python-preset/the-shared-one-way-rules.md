@@ -61,6 +61,7 @@ are listed at the end.
 | Abandoned work           | `asyncio.wait_for`, `asyncio.timeout` or a `TaskGroup`; cancel or hand off `pending` after `asyncio.wait(..., timeout=)`                                                             | `timeout-abandons-operation` (script)                                                                                                                                                                                                                                |
 | Child processes          | `subprocess.run(args, timeout=30, check=True)`, `communicate(timeout=30)`, asyncio waits in `asyncio.timeout(30)`                                                                    |
 | Test honesty             | a reason on every skip, no sleeping, no tautologies, fixed time and seeded random values, no network, no leaked global state                                                         | ruff `PT`, `skipped-test-without-reason`, `sleep-in-test`, `negative-wait-in-test`, `mocked-subject-in-test`, `tautological-assert`, `real-clock-in-test`, `random-in-test`, `network-in-test`, `server-or-container-per-test`, `global-state-leak-in-test` (script) |
+| Float checks in tests    | `assert total == pytest.approx(0.3)`, `math.isclose`, `assertAlmostEqual`                                                                                                            | `float-equality-in-test` (script)                                                                                                                                                                                                                                    |
 | Test layout              | tests in files pytest collects; helpers in the tests folder                                                                                                                          | `uncollected-tests`, `test-helper-in-source` (script)                                                                                                                                                                                                                |
 
 `type-cast` rejects `typing.cast` (and `typing_extensions.cast`) as a call or as a value
@@ -1015,7 +1016,12 @@ t)`, `asyncio.timeout(t)`, `fail_after(t)`, `wait(t)`) inside `pytest.raises` or
   `responses`, `respx`, `requests_mock` and similar or patch the client, and tests under
   `integration`, `e2e` and the like. `tautological-assert` covers `assert True`, `assert x == x`,
   `assert 1`, `assertTrue(True)`, `assertEqual(x, x)`, `assertGreaterEqual(x, x)`,
-  `assertIsInstance(x, object)` and the like: asserts that cannot fail.
+  `assertIsInstance(x, object)` and the like: asserts that cannot fail. `float-equality-in-test`
+  reports a non-integral float literal (`0.3`, `-2.5`, `1e-3`) on one side of `==` or `!=` in an
+  `assert`, in `assertTrue`/`assertFalse`, or in `assertEqual`, `assertNotEqual` and the typed
+  `assert*Equal` forms, also inside a list, tuple or dict literal (the forms `pytest.approx` takes).
+  Integral literals (`1.0`) and infinities are exact and stay allowed, and a side wrapped in
+  `approx(...)` is not checked.
 - `mocked-subject-in-test` (Java and Kotlin: `MockedSubjectInTest`; TypeScript:
   `nitpicker/no-mocking-subject-under-test`) reports a test that replaces the code it is named after.
   The subject is the module a test file is named for (`tests/test_cart.py` or `cart_test.py` for the

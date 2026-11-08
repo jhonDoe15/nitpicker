@@ -63,6 +63,7 @@ const REVIEW_MARKER = /\/\/ violation: ([\w-]+(?:, [\w-]+)*)/u;
 const REVIEW_RULES = new Set([
   'FixedSleepInTest',
   'NegativeWaitInTest',
+  'FloatEqualityInTest',
   'RetryInTest',
   'MockedSubjectInTest',
   'StaticMockOfProjectType',
