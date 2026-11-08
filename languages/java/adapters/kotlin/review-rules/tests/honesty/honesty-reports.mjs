@@ -4,20 +4,30 @@ import {
   CONTROL_FLOW_MESSAGE,
   CONTROL_FLOW_RULE,
 } from './flow/assertion-flow.mjs';
+import { loopScope } from './flow/loop-scope.mjs';
 import { focusedTests, FOCUSED_MESSAGE, FOCUSED_RULE } from './focused-tests.mjs';
 import { RETRY_MESSAGE, RETRY_RULE, retriesInTests } from './retries/retry-tests.mjs';
 import { DISABLED_MESSAGE, DISABLED_RULE, skippedTests } from './skipped-tests.mjs';
 
 function flowReports(scanned, suites) {
-  return testBodies(scanned, suites).flatMap((test) =>
-    assertionsInControlFlow(scanned, test).map((entry) => ({
+  const tests = testBodies(scanned, suites);
+  const scope = loopScope(scanned, tests);
+  return tests.flatMap((test) => [
+    ...assertionsInControlFlow(scanned, test, scope).map((entry) => ({
       rule: CONTROL_FLOW_RULE,
       offset: entry.from,
       symbol: test.symbol,
       key: `${test.symbol}:${entry.construct}`,
       message: CONTROL_FLOW_MESSAGE,
     })),
-  );
+    ...scope.helperLoops(test).map((entry) => ({
+      rule: CONTROL_FLOW_RULE,
+      offset: entry.from,
+      symbol: test.symbol,
+      key: `${test.symbol}:${entry.helper}:loop`,
+      message: CONTROL_FLOW_MESSAGE,
+    })),
+  ]);
 }
 
 function located(entries, rule, message) {
