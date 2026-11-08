@@ -9,7 +9,8 @@ const CONTRACT_REASONS = new Set([
   'missing-semantics',
   'unknown-guard',
 ]);
-const OUTSIDE_PRODUCTION = /\.test\.mjs$|(?:^|\/)(?:fixtures|test-support|e2e)\//u;
+const OUTSIDE_PRODUCTION =
+  /\.test\.mjs$|(?:^|\/)(?:fixtures|test-support|__tests__|e2e|[a-z]+-e2e)\//u;
 const TOP_SYNTAX = 12;
 
 export function isCensusFile(file) {
