@@ -295,7 +295,10 @@ describe.skipIf(!enabled)('hardcoded-secret, credential-shape and secret-in-log'
       ['a print', 'def f(token):\n    print("using", token)\n', ['secret-in-log:2 token']],
       [
         'a write to stderr',
-        'import sys\n\n\ndef f(token):\n    sys.stderr.write(f"token={token}")\n',
+        inFile(
+          'main.py',
+          'import sys\n\n\ndef f(token):\n    sys.stderr.write(f"token={token}")\n',
+        ),
         ['secret-in-log:5 token'],
       ],
       [
