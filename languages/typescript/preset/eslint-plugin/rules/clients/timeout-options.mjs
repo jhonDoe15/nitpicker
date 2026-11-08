@@ -7,7 +7,9 @@ export const SET = 'set';
 export const MISSING = 'missing';
 export const UNKNOWN = 'unknown';
 
-const TIMEOUT_TEXT = /statement_timeout|query_timeout/u;
+const TIMEOUT_KEYS = ['statement_timeout', 'query_timeout'];
+const ZERO_VALUE = /^0+(?:ms|s)?$/u;
+const SEPARATORS = new Set([' ', '\t', '=', ':', "'", '"']);
 const MAX_SPREADS = 4;
 const SPREAD_ROUNDS = Array.from({ length: MAX_SPREADS }, (_, round) => round);
 
@@ -18,20 +20,68 @@ export function either(states) {
   return states.includes(UNKNOWN) ? UNKNOWN : MISSING;
 }
 
-export function textOf(context, node) {
-  const value = resolvedValue(context, node);
-  if (value?.type === 'TemplateLiteral') {
-    return value.quasis.map((quasi) => quasi.value.cooked ?? '').join(' ');
+function isConcatenation(node) {
+  return node?.type === 'BinaryExpression' && node.operator === '+';
+}
+
+function pieceText(piece) {
+  if (piece?.type === 'TemplateLiteral') {
+    const text = piece.quasis.map((quasi) => quasi.value.cooked ?? '').join(' ');
+    return { text, complete: piece.expressions.length === 0 };
   }
-  return stringValue(value);
+  const text = stringValue(piece);
+  return { text: text ?? '', complete: text !== undefined };
+}
+
+function visibleText(context, node) {
+  const pieces = SPREAD_ROUNDS.reduce(
+    (current) =>
+      current.flatMap((piece) =>
+        isConcatenation(piece)
+          ? [resolvedValue(context, piece.left), resolvedValue(context, piece.right)]
+          : [piece],
+      ),
+    [resolvedValue(context, node)],
+  ).map(pieceText);
+  return {
+    text: pieces.map((piece) => piece.text).join(''),
+    complete: pieces.every((piece) => piece.complete),
+  };
+}
+
+export function textOf(context, node) {
+  const visible = visibleText(context, node);
+  return visible.complete ? visible.text : undefined;
+}
+
+function settingValue(text, start) {
+  const rest = text.slice(start).replaceAll(/%3D/giu, '=');
+  const first = [...rest].findIndex((char) => !SEPARATORS.has(char));
+  return first === -1 ? '' : (/^[\w.]*/u.exec(rest.slice(first))?.[0] ?? '');
+}
+
+function keyEnds(text, key) {
+  const ends = [];
+  let at = text.indexOf(key);
+  while (at !== -1) {
+    ends.push(at + key.length);
+    at = text.indexOf(key, at + key.length);
+  }
+  return ends;
+}
+
+export function carriesTimeout(text) {
+  return TIMEOUT_KEYS.some((key) =>
+    keyEnds(text, key).some((end) => !ZERO_VALUE.test(settingValue(text, end))),
+  );
 }
 
 export function textState(context, node, unknownText) {
-  const text = textOf(context, node);
-  if (text === undefined) {
-    return unknownText;
+  const visible = visibleText(context, node);
+  if (carriesTimeout(visible.text)) {
+    return SET;
   }
-  return TIMEOUT_TEXT.test(text) ? SET : MISSING;
+  return visible.complete ? MISSING : unknownText;
 }
 
 function spreadItems(context, items, options) {
@@ -100,8 +150,7 @@ export function postgresOptionsState(context, node) {
   if (node === undefined || isEnvRead(node)) {
     return MISSING;
   }
-  const text = textOf(context, node);
-  if (text !== undefined) {
+  if (textOf(context, node) !== undefined) {
     return textState(context, node, MISSING);
   }
   const options = optionsOf(context, node);

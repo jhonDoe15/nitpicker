@@ -246,11 +246,15 @@ ssl._create_unverified_context`; `check_hostname = False` and `verify_mode = ssl
   `command_timeout` (or `command_timeout=None`) or `server_settings={"statement_timeout": ...}`;
   `create_engine` and `create_async_engine` (also SQLModel's) on a `postgresql` URL (a string or
   `URL.create("postgresql+...")`) whose `connect_args` set none of them; and a Django `DATABASES` entry with
-  the PostgreSQL `ENGINE` whose `OPTIONS` set no `options` string with `statement_timeout`. A DSN or URL
-  text that carries `statement_timeout`, `query_timeout` or `command_timeout` counts; one read from the
-  environment does not. A call with `**kwargs` whose keys are unknown, and an engine whose URL is not
-  known to be PostgreSQL, are not reported. boto3 clients are left out: botocore bounds each attempt with
-  a 60 second connect and read timeout.
+  a PostgreSQL or PostGIS `ENGINE` whose `OPTIONS` set no `options` string with `statement_timeout`. A DSN
+  or URL text that carries a non-zero `statement_timeout`, `query_timeout` or `command_timeout` counts; a
+  zero value or `None` sets no limit, and a DSN read from the environment does not count, since the code
+  cannot show that it carries a timeout. Not reported: a call with `**kwargs` whose keys are unknown, an
+  engine whose URL is not known to be PostgreSQL, a connection with a setup hook (asyncpg `setup` or
+  `init`, a `psycopg_pool` `configure`, a SQLAlchemy `event.listen` or `listens_for` in the same file), and
+  a `DATABASES` that the module changes after the literal. When the timeout comes from `PGOPTIONS` or the
+  database role (`ALTER ROLE ... SET statement_timeout`), add an exception. boto3 clients are left out:
+  botocore bounds each attempt with a 60 second connect and read timeout.
 - `timeout-abandons-operation` reports a timeout that returns control while the work it bounded keeps
   running. Two asyncio forms are modeled, in any function, through `import` aliases and `from asyncio
 import`: `done, pending = await asyncio.wait(tasks, timeout=...)` (or a `return_when` other than

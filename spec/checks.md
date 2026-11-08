@@ -88,7 +88,9 @@ client (node-postgres, postgres.js, TypeORM, Sequelize, Knex) without a statemen
 v3 client without a request handler timeout. The Python preset runs it as `client-without-timeout`
 (psycopg, psycopg2, psycopg_pool, asyncpg, SQLAlchemy engines on a PostgreSQL URL, Django `DATABASES`),
 and the Java and Kotlin presets as `spring/datasource-without-timeout`, a Spring configuration check
-that reports a database server URL while no live profile sets a query deadline. Clients whose defaults
+that reports a database server URL while no live profile sets a query deadline (a DataSource built in
+code, such as a `HikariConfig` or `DataSourceBuilder`, is left out: its URL and settings are usually
+read from configuration the check cannot follow). Clients whose defaults
 already bound each wait (boto3, the AWS SDK for Java, nodemailer, ImapFlow) are left out; the Go preset
 has no rule engine of its own yet.
 

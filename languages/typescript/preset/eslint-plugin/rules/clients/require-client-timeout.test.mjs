@@ -46,8 +46,37 @@ tester.run('require-client-timeout', rule, {
     'import knex from "knex"; export const db = knex({ client: "pg", connection: process.env.URL, pool: { afterCreate: (conn, done) => conn.query("SET statement_timeout = 30000", done) } });',
     'import knex from "knex"; export const db = knex({ client: "mysql2", connection: process.env.URL });',
     'export const theme = { type: "postgres", label: "Postgres" };',
+    `${PG} export const pool = new Pool({ max: 10 }); pool.on("connect", (client) => client.query("SET statement_timeout = 30000"));`,
+    `${PG} export function make(Pool) { return new Pool({}); }`,
+    `${PG} export const pool = new Pool({ connectionString: "postgres://db/app?" + "statement_timeout=30000" });`,
+    `${TYPEORM} export const db = new DataSource({ type: "postgres", url: "postgres://db/app?options=-c%20statement_timeout%3D30000" });`,
+    'import knex from "knex"; import { setTimeouts } from "./db.js"; export const db = knex({ client: "pg", connection: process.env.URL, pool: { afterCreate: setTimeouts } });',
   ],
   invalid: [
+    {
+      code: 'import { S3 } from "@aws-sdk/client-s3"; export const s3 = new S3({});',
+      errors: aws('S3'),
+    },
+    {
+      code: 'import pkg from "pg"; const { Pool } = pkg; export const pool = new Pool({ max: 10 });',
+      errors: database('pg Pool'),
+    },
+    {
+      code: 'import pg from "pg"; export const pool = new pg.native.Pool({ max: 10 });',
+      errors: database('pg Pool'),
+    },
+    {
+      code: `${PG} export const pool = new Pool({ options: "-c statement_timeout=0" });`,
+      errors: database('pg Pool'),
+    },
+    {
+      code: `${PG} import { buildUrl } from "./db.js"; export const pool = new Pool({ connectionString: buildUrl() });`,
+      errors: database('pg Pool'),
+    },
+    {
+      code: 'import knex from "knex"; export const db = knex({ client: "pg", connection: process.env.URL, pool: { afterCreate: (conn, done) => done(null, conn) } });',
+      errors: database('Knex'),
+    },
     {
       code: `${S3} export const s3 = new S3Client({ region: "eu-west-1" });`,
       errors: aws('S3Client'),

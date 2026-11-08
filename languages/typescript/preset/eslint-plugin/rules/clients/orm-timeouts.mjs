@@ -1,4 +1,4 @@
-import { findVariable } from '../analysis/constant-resolution.mjs';
+import { findVariable, isFunctionNode } from '../analysis/constant-resolution.mjs';
 import { constructedName, SEQUELIZE, TYPEORM } from '../database/orm-modules.mjs';
 import {
   either,
@@ -7,6 +7,7 @@ import {
   optionsOf,
   postgresOptionsState,
   SET,
+  carriesTimeout,
   textOf,
   textState,
   UNKNOWN,
@@ -36,10 +37,23 @@ function isSpreadSource(context, object) {
 
 function knexState(context, options) {
   const pool = optionsOf(context, valueOf(options, 'pool'));
-  if (pool !== undefined && valueOf(pool, 'afterCreate') !== undefined) {
+  const hook = pool === undefined ? undefined : valueOf(pool, 'afterCreate');
+  const connection = nestedState(options, 'connection', postgresOptionsState);
+  if (hook === undefined) {
+    return connection;
+  }
+  if (carriesTimeout(context.sourceCode.getText(hook))) {
     return SET;
   }
-  return nestedState(options, 'connection', postgresOptionsState);
+  return isFunctionNode(hook) ? connection : either([UNKNOWN, connection]);
+}
+
+function typeOrmState(context, options) {
+  const url = valueOf(options, 'url');
+  return either([
+    nestedState(options, 'extra', postgresOptionsState),
+    url === undefined ? MISSING : textState(context, url, MISSING),
+  ]);
 }
 
 function ormKind(scope, options) {
@@ -49,7 +63,7 @@ function ormKind(scope, options) {
   if (isTypeOrm && TYPEORM_POSTGRES.has(keyText(context, options, 'type'))) {
     return {
       name: 'TypeORM',
-      judge: () => nestedState(options, 'extra', postgresOptionsState),
+      judge: () => typeOrmState(context, options),
     };
   }
   if (scope.families.has(SEQUELIZE) && keyText(context, options, 'dialect') === 'postgres') {

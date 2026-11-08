@@ -47,7 +47,7 @@ const TIMEOUT_ALLOWED =
   'Pass a timeout in seconds: `urllib.request.urlopen(url, timeout=10)`, `session.get(url, timeout=10)`, or set `socket.setdefaulttimeout(10)` once at startup for `urllib`; an `httpx` client keeps its 5 second default unless you pass another number (`httpx.Client(timeout=10)`), never `timeout=None`.';
 
 const CLIENT_TIMEOUT_ALLOWED =
-  'Set a statement timeout once for the connection: `psycopg.connect(dsn, options="-c statement_timeout=30000")`, `ConnectionPool(dsn, kwargs={"options": "-c statement_timeout=30000"})`, `asyncpg.create_pool(dsn, command_timeout=30)`, `create_engine(url, connect_args={"options": "-c statement_timeout=30000"})` (asyncpg engines: `connect_args={"command_timeout": 30}`), or Django `"OPTIONS": {"options": "-c statement_timeout=30000"}`. An exception fits only for a connection that is meant to wait without a limit, such as a migration runner.';
+  'Set a statement timeout where the connection is made: `options="-c statement_timeout=30000"` for psycopg (in `connect_args` for a SQLAlchemy engine, in `OPTIONS` for Django), `command_timeout=30` for asyncpg. An exception fits only for a connection meant to wait without a limit, such as a migration runner, or when the database role sets the timeout.';
 
 const LOADING = [
   [
