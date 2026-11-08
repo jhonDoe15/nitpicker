@@ -75,6 +75,16 @@ same rule runs as `subprocess-without-timeout` in the Python preset, `pmd/Proces
 in the Java preset and `kotlin-source/ProcessWaitWithoutTimeout` in the Kotlin preset; tests keep
 `nitpicker/require-test-process-timeout` (TypeScript) or their runner's own limits.
 
+Costly collection forms: `nitpicker/no-costly-collection-form` (production source, in `eslint-lint`)
+reports three forms with a cheaper equivalent: an array that is appended to and searched with
+`includes`, `indexOf` or an identity `some` inside a loop, callback or nested function (a `Set`); a
+`find`, `findIndex` or `some` by one property of the item, in a loop, iteration callback or listener,
+over a binding that does not change (a `Map` built once); and a sort that keeps only its first or last
+element (one pass). The same forms run as `list-used-as-set`, `linear-lookup-in-loop` and ruff
+`FURB192` in the Python preset, `pmd/ListUsedAsSet`, `pmd/LinearLookupInLoop` and `pmd/SortForExtreme`
+in the Java preset (main sources, Gradle and Maven) and `kotlin-source/` rules of the same names in the
+Kotlin preset. The Go preset has no own rule engine yet.
+
 HTTP deadlines: `nitpicker/require-http-timeout` (strict preset, production source) reports an outbound
 HTTP call that has no timeout, so a server that accepts the connection and never answers hangs it. The same
 rule runs as `http-without-timeout` in the Python preset, `pmd/HttpWithoutTimeout` in the Java preset (main
