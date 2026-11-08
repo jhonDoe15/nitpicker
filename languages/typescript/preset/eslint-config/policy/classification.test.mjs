@@ -20,6 +20,7 @@ const BRANCH_STRICT_RULES = [
   'nitpicker/no-in-memory-query',
   'nitpicker/no-magic-numbers',
   'nitpicker/no-module-level-mutable-state',
+  'nitpicker/no-multiple-collection-joins',
   'nitpicker/no-orm-query-logging',
   'nitpicker/no-orm-schema-sync',
   'nitpicker/no-process-access-outside-composition-root',
