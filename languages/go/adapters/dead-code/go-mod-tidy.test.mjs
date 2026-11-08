@@ -16,6 +16,11 @@ writeFileSync(
     '\tgithub.com/old/thing v1.2.0',
     '\tgolang.org/x/sync v0.10.0 // indirect',
     '\tgolang.org/x/text v0.20.0 // indirect',
+    '\tgithub.com/pinned/lib v1.0.0 // pinned for CVE-1',
+    ')',
+    '',
+    'exclude (',
+    '\tgithub.com/bad/release v0.9.0',
     ')',
     '',
   ].join('\n'),
@@ -42,6 +47,11 @@ const DIFF = [
   '+\tgolang.org/x/sync v0.10.0',
   '+\tgolang.org/x/net v0.30.0 // indirect',
   ' \tgolang.org/x/text v0.20.0 // indirect',
+  '-\tgithub.com/pinned/lib v1.0.0 // pinned for CVE-1',
+  ' )',
+  ' ',
+  ' exclude (',
+  '-\tgithub.com/bad/release v0.9.0',
   ' )',
   '',
   'diff current/go.sum tidy/go.sum',
@@ -53,7 +63,7 @@ const DIFF = [
 ].join('\n');
 
 describe('go mod tidy findings', () => {
-  it('reports requirements tidy removes and direct ones it adds, not indirect markers or go.sum', () => {
+  it('reports requirements tidy removes and direct ones it adds, not markers, excludes or go.sum', () => {
     expect(tidyFindings(root, DIFF)).toEqual([
       {
         tool: 'dependencies',
@@ -64,6 +74,16 @@ describe('go mod tidy findings', () => {
           'go.mod requires github.com/old/thing, but no package of the module needs it. Run `go mod tidy`.',
         classification: 'enforceable',
         location: { line: 6 },
+      },
+      {
+        tool: 'dependencies',
+        rule: 'unused-dependency',
+        path: 'go.mod',
+        identity: 'unused-dependency:github.com/pinned/lib',
+        message:
+          'go.mod requires github.com/pinned/lib, but no package of the module needs it. Run `go mod tidy`.',
+        classification: 'enforceable',
+        location: { line: 9 },
       },
       {
         tool: 'dependencies',

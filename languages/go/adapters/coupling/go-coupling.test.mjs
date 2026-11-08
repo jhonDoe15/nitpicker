@@ -82,4 +82,16 @@ describe('Go package coupling', () => {
         .map(({ identity, metric }) => `${identity} ${String(metric.value)}`),
     ).toEqual(['package:.:fanIn 0', 'package:adapters:fanIn 2', 'package:core:fanIn 1']);
   });
+
+  it('anchors a package on its doc.go, else its first file that is not generated', () => {
+    const report = {
+      files: [...REPORT.files, { ...file('adapters/a_gen.go'), generated: true }],
+      usages: [...REPORT.usages, importing('adapters/a_gen.go')],
+    };
+    expect(
+      goCouplingFindings(report, 'shop')
+        .filter(({ identity }) => identity === 'module:fanIn')
+        .map(({ path: anchor }) => anchor),
+    ).toEqual(['main.go', 'adapters/db.go', 'core/doc.go']);
+  });
 });

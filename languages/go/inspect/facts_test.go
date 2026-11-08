@@ -114,3 +114,18 @@ func TestMarksFilesThatOnlySomeBuildsCompile(t *testing.T) {
 		t.Fatalf("skipped %v", report.Skipped)
 	}
 }
+
+func TestListsNoDefinitionsOfAFileThatDoesNotParse(t *testing.T) {
+	report := inspected(t, map[string]string{
+		"go.mod":     "module example.com/shop\n",
+		"lib/ok.go":  "package lib\n\nfunc Ok() {}\n",
+		"lib/bad.go": "package lib\n\nfunc Fine() {}\n\nfunc Broken( {\n}\n",
+	})
+	var names []string
+	for _, definition := range report.Definitions {
+		names = append(names, definition.File+" "+definition.Name)
+	}
+	if !reflect.DeepEqual(names, []string{"lib/ok.go Ok"}) || len(report.Errors) == 0 {
+		t.Fatalf("definitions %v, errors %v", names, report.Errors)
+	}
+}

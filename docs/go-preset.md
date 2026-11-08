@@ -213,8 +213,9 @@ runs it again over a copy with names, strings, runes and numbers normalized, as 
 presets: a clone of at least 100 tokens fails even when every name was changed. Import blocks,
 composite literals that hold only data, and code that only repeats Go boilerplate (struct fields,
 `if err != nil {`, `return nil, err`, constructors that assign fields, getters) do not count.
-`_test.go` files never count, `testdata` and `vendor` are skipped by default
-(`duplicates.skippedFolders` replaces that list), and folders the go tool skips are skipped too. A
+`_test.go` files never count. Folders the go tool skips (`testdata`, `vendor`, names that start
+with `.` or `_`, nested modules) are always skipped, and `duplicates.skippedFolders` (default
+`testdata` and `vendor`) names more. A
 project's `.jscpd.json` applies with `"tools": { "jscpd": { "precedence": ["project"] } }`.
 
 ## Coupling and features
@@ -222,7 +223,7 @@ project's `.jscpd.json` applies with `"tools": { "jscpd": { "precedence": ["proj
 `stability-direction` runs on the package graph: one unit per package folder, an edge for each
 import of another package of the module by a non-test file. Every file counts whatever its build
 constraints, because a dependency in `poll_windows.go` is still a dependency of the package. A
-package that depends on a less stable package fails, on its `doc.go` (else its first file), and the
+package that depends on a less stable package fails, on its `doc.go` (else its first file that is not generated), and the
 message suggests an interface the stable package owns.
 
 `layout.featureRoots` and `layout.sharedRoots` (defaults `**/features` and `**/shared`) feed
@@ -239,12 +240,14 @@ tests do not count. It is dropped when:
 
 - the function is exported and its package is published (another module may call it);
 - `test-only-export` already reports it;
+- it is marked `//export` (cgo) or `//go:linkname`;
 - its file has build constraints (`//go:build`, or a `_linux.go`-style name), or a file with build
   constraints uses it: `deadcode` sees one platform and set of tags, and that code may be live on
   another.
 
 A module without a `main` package is a library: its exported API is its entry point and `deadcode`
-does not run. A method only a constrained file calls can still be reported; add an exception for it.
+does not run. A folder's package is named after its files without build constraints, so a
+`//go:build ignore` generator in `package main` does not turn a library folder into a `main` package. A method only a constrained file calls can still be reported; add an exception for it.
 `deadcode` runs only when the code compiles.
 
 ## Module requirements
@@ -255,7 +258,8 @@ does not run. A method only a constrained file calls can still be reported; add 
 A change of only the `// indirect` marker, of the `go` line or of `go.sum` is not a finding.
 `unresolved-import` does not apply to Go: the compiler rejects an import no package provides, which
 is a `build/compile-error`. When `go mod tidy` fails without printing a diff (for example when it
-cannot reach the module proxy), the snapshot is a `go/go-mod-tidy-failed` tool error.
+cannot reach the module proxy, or Go is older than 1.23), the snapshot is a `go/go-mod-tidy-failed`
+tool error and, as with any step that fails, holds no other findings.
 
 ## Exceptions
 

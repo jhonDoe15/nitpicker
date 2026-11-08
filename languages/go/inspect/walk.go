@@ -98,8 +98,11 @@ func inspectModule(root string) (Report, error) {
 			report.Errors = append(report.Errors, err.Error())
 		}
 		report.Usages = append(report.Usages, fileUsage(fileSet, file))
-		if !generated {
-			parsed = append(parsed, file)
+		if generated {
+			continue
+		}
+		parsed = append(parsed, file)
+		if err == nil {
 			report.Definitions = append(report.Definitions, fileDefinitions(fileSet, file)...)
 		}
 	}
