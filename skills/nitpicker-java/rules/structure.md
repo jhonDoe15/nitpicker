@@ -16,6 +16,12 @@ Part of the [nitpicker-java](../SKILL.md) skill. Write these forms from the star
   other (`sibling-copy-edit`). Keep one and call it. Don't give two classes one name and use both in
   one file, one fully qualified (`exported-name-collision`): rename one.
 - A main class only tests use belongs in the test sources (`coupling/test-only-export`).
+- Read environment variables and system properties (`System.getenv`, `System.getProperty`, `Integer.getInteger`,
+  `Long.getLong`, `Boolean.getBoolean`) once in the composition root: the class with `main`, a Guice or Dagger
+  module, a CDI producer or Micronaut `@Factory`, or the framework's typed configuration (Spring or Micronaut
+  `@ConfigurationProperties`, Quarkus `@ConfigMapping`). Put the values in a record and pass it in through
+  constructors (`pmd/ConfigurationReadOutsideCompositionRoot`; with Spring, `SpringTypedConfiguration`). JVM keys
+  such as `java.*` and `user.*` are fine.
 - With jMolecules (`AggregateRoot`, `Entity`, `ValueObject` or their annotations), an aggregate holds
   another aggregate only by its identifier or an `Association<T, ID>`, an entity sits in one
   aggregate, and a value object holds identifiers, not entities (`archunit/ddd-...`).

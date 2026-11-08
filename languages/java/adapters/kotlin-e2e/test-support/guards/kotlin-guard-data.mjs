@@ -50,6 +50,7 @@ const BANNED_GUARDS = {
   'Routes.kt': `${PACKAGE}fun route(name: String): Regex = Regex("^/$name/")\n\nfun clean(text: String): String = text.replace(Regex("abc"), "")\n`,
   'Exports.kt': `${PACKAGE}fun render(command: List<String>): Int = ProcessBuilder(command).start().waitFor()\n`,
   'Versions.kt': `${PACKAGE}fun version(command: List<String>): String {\n    val process = ProcessBuilder(command).start()\n    return process.inputStream.bufferedReader().readText()\n}\n`,
+  'Settings.kt': `${PACKAGE}fun batch(): String = System.getProperty("shop.batch", "50")\n`,
 };
 
 const BANNED_TESTS = {
@@ -76,7 +77,7 @@ const ALLOWED_GUARDS = {
   'Marked.kt': `${PACKAGE}fun keep(): Int = 1\n`,
   'Casts.kt': `${PACKAGE}fun next(): Int = 1\n\nfun names(value: Any): List<String> = (value as? List<*>).orEmpty().filterIsInstance<String>()\n\nfun same(value: String): String = value\n`,
   'Literals.kt': `${PACKAGE}private const val SHIPPING = "shipping"\n\nfun labels(): List<String> = listOf(SHIPPING, SHIPPING, SHIPPING)\n\nfun kind(text: String): Int = when (text) {\n    "shipping-pending" -> 1\n    "shipping-sent", "shipping-pending" -> 2\n    else -> 3\n}\n\nfun more(): Map<String, Int> = mapOf("shipping-pending" to 1)\n`,
-  'App.kt': `${PACKAGE}fun main() {\n    ProcessBuilder("serve", "--port", System.getenv("PORT")).inheritIO().start()\n    show(System.out)\n}\n`,
+  'App.kt': `${PACKAGE}fun main() {\n    val batch = System.getProperty("shop.batch", "50")\n    ProcessBuilder("serve", "--port", System.getenv("PORT"), "--batch", batch).inheritIO().start()\n    show(System.out)\n}\n`,
   'Prefetch.kt': prefetch('limited', LIMITED),
   'Links.kt': `${PACKAGE}import java.net.URI\n\nfun cover(path: String): URI? = runCatching { URI.create("https://shop.example/$path") }.getOrNull()\n`,
   'Streams.kt': `${PACKAGE}import java.io.File\nimport java.util.jar.JarFile\n\nfun manifestOf(root: File): String = JarFile(root).use { it.name }\n`,
@@ -131,6 +132,7 @@ export const EXPECTED_BANNED = [
   'kotlin-source/PlainTextRegex Routes.kt',
   'kotlin-source/ProcessWaitWithoutTimeout Exports.kt',
   'kotlin-source/ProcessWaitWithoutTimeout Versions.kt',
+  'kotlin-source/ConfigurationReadOutsideCompositionRoot Settings.kt',
   'kotlinc/deprecation Casts.kt',
   'kotlinc/unchecked Casts.kt',
   'kotlinc/cast Casts.kt',

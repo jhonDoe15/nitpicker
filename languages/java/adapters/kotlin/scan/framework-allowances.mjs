@@ -3,7 +3,8 @@ import path from 'node:path';
 import { pathInside } from '../../../../../shared/filesystem.mjs';
 import { listEntriesOf, MERGED_LISTS } from '../detekt/detekt-lists.mjs';
 import { ONE_WAY_RULES } from '../rules/kotlin-rules.mjs';
-import { isCompositionRoot, lineText, scanKotlinSource } from './kotlin-source.mjs';
+import { lineText, scanKotlinSource } from './kotlin-source.mjs';
+import { isConfigurationRoot } from './configuration/configuration-roots.mjs';
 import { hasCallbackAnnotation, UNUSED_PARAMETER_RULE } from './parameters/declaration-header.mjs';
 
 const FORBIDDEN_CALL = 'detekt.style.ForbiddenMethodCall';
@@ -68,7 +69,7 @@ function sourceReader(projectRoot) {
 function isAllowed(finding, source, spring) {
   if (finding.rule === FORBIDDEN_CALL && finding.message.includes(ENVIRONMENT)) {
     const scanned = source(finding.path);
-    return scanned !== undefined && isCompositionRoot(scanned);
+    return scanned !== undefined && isConfigurationRoot(scanned);
   }
   if (finding.rule === UNUSED_PARAMETER_RULE && finding.location?.line !== undefined) {
     const scanned = source(finding.path);

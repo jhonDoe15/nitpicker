@@ -8,8 +8,10 @@ Part of the [nitpicker-kotlin](../SKILL.md) skill. Write these forms from the st
   test. A test asserts on the specific exception (`assertFailsWith<IllegalStateException> { ... }`)
   instead of catching `Exception`, whatever the variable is called.
 - Design for a fixed clock and a seeded random: take a `java.time.Clock` and a `kotlin.random.Random`
-  as constructor parameters, and read environment variables once where `fun main` (or the
-  `@SpringBootApplication` class, or the Ktor module) builds the objects, into a config class passed in.
+  as constructor parameters, and read environment variables and system properties (`System.getProperty`,
+  `Integer.getInteger`) once where `fun main` (or the `@SpringBootApplication` class, the Ktor module, a
+  Micronaut `@Factory`, a Dagger or Guice module) builds the objects, into a config class passed in
+  (`kotlin-source/ConfigurationReadOutsideCompositionRoot`). JVM keys such as `java.*` and `user.*` are fine.
 - Program output: no `print` or `println`, and no `System.out` or `System.err` outside the file with
   `fun main` (`kotlin-source/StandardStreamOutsideEntryPoint`). Code takes an `Appendable`,
   `PrintStream` or `Writer` parameter and writes to it; `fun main` passes `System.out` or `System.err`.
