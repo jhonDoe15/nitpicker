@@ -33,6 +33,7 @@ skipped with a note on stderr.
 | `MockedSubjectInTest`                            | `review-rules/tests/mocks/`                      | a mock of the class under test (`mockk<OrderService>()`, `mock<OrderService>()`, `mock(OrderService::class.java)`, `@MockK`, `@Mock`), or a spy of it whose own methods the test stubs (`spyk(...)`, `spy(...)`, `@SpyK`, `@Spy`, with `every`, `coEvery`, `justRun`, `whenever`, `` `when` ``, `given` or `stub`)                                                                                                               |
 | `StaticMockOfProjectType`                        | `review-rules/tests/mocks/`                      | `mockkObject`, `mockkStatic` (class, `"pkg.FileKt"` or `::function`), `mockkConstructor`, `mockStatic` or `mockConstruction` of code declared in the project's main sources                                                                                                                                                                                                                                                      |
 | `GlobalStateLeakInTest`                          | `review-rules/tests/global-state/`               | a test that changes process-wide state (a system property, the default `Locale` or `TimeZone`, `System.out`, a default handler, a security provider, `Dispatchers.setMain`, or a property or `set...` function of a project `object` or class) that nothing in the class puts back                                                                                                                                               |
+| `SharedTestState`                                | `review-rules/tests/shared-state/`               | a test that changes a property all tests of the class share: a `var` or mutable collection at the top level of a test file or in a companion object, any such property of a `@TestInstance(PER_CLASS)` class, or of a Kotest spec in the default single-instance mode                                                                                                                                                            |
 | `StaticForwardingWrapper`                        | `review-rules/main/forwarding-wrappers.mjs`      | a function whose body only passes its parameters, in order, to another function                                                                                                                                                                                                                                                                                                                                                  |
 | `SingularAndPluralMember`                        | `review-rules/main/member-names.mjs`             | a member and its plural form (`tag` and `tags`) in one class, or two defaulted parameters of a public function                                                                                                                                                                                                                                                                                                                   |
 | `ValidationAnnotationTarget`                     | `review-rules/validation/validation-targets.mjs` | a Bean Validation annotation (`jakarta.validation.constraints`, `javax.validation.constraints`, `org.hibernate.validator.constraints`, or `@Valid`) on a primary-constructor `val` or `var` of a main source without a `field:`, `get:` or `all:` use-site target; Kotlin puts it on the constructor parameter, where Bean Validation does not look. Kotlin-only: a Java record carries the annotation to its field and accessor |
@@ -372,6 +373,21 @@ guessed at.
   `withSystemProperty { }`, `withSystemProperties { }`, `captureStandardOut { }`, `restoreSystemProperties { }` or a
   system-stubs `execute { }`. Outside a test class (a helper object), a restore anywhere in the file counts. The scan
   reads text, so a restore in a superclass or another file is not followed.
+- `SharedTestState`: the same rule id as the Java preset. A shared property is a `var`, or a `val` holding a
+  mutable collection, map, array, `StringBuilder` or atomic (`mutableListOf()`, `ArrayList()`, `AtomicInteger()`,
+  or a `MutableList<...>` type), declared at the top level of a test file with tests, in a companion object of a
+  test class, in the body of a `@TestInstance(PER_CLASS)` class, or in a Kotest spec (its class body, constructor
+  lambda or `init` block) whose isolation mode is not `InstancePerTest`, `InstancePerLeaf` or `InstancePerRoot`
+  (set in the spec, or project-wide in an `AbstractProjectConfig` the scan reads). Reported: an assignment,
+  `+=`, `++` or `--` of a `var`, and an element write (`totals["a"] = 1`), `+=` or mutating call (`add`, `put`,
+  `remove`, `clear`, `getOrPut`, `incrementAndGet` and the like) on a mutable collection, in a test body, in a
+  function of the class a test calls, or in a per-test hook (`@BeforeEach`, `@AfterEach`, `@Before`, `@After`,
+  `beforeTest { }`, `beforeEach { }`, `afterTest { }`, `afterEach { }`). Not reported: a property that a per-test
+  hook (or a function it calls) assigns or resets (`clear()`, `set(...)`, `reset()`, `setLength(...)`), code
+  that runs once (`@BeforeAll`, `beforeSpec`, a Kotest container body or the spec body), a property annotated
+  with anything but `@JvmField`, `@JvmStatic` or `@Volatile` (`@MockK`, `@Autowired`), a local of the same name,
+  a named argument, and a property reached through another object. The scan reads text, so a property of a
+  superclass or a project-wide JUnit `per_class` default is not followed.
 - `ServerOrContainerPerTest`: a container, server or process started for each test, the Kotlin
   side of the Java rule. Reported: a property annotated `@Container` (Testcontainers) or
   `@RegisterExtension` holding a `WireMockExtension`, declared in a class body (not a companion

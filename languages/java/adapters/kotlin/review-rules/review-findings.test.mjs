@@ -239,6 +239,7 @@ describe('Kotlin exception rules for the review rules', () => {
       'pmd/AssertionInControlFlow',
       'pmd/CoroutineEscapesTest',
       'pmd/GlobalStateLeakInTest',
+      'pmd/SharedTestState',
       'pmd/MockedSubjectInTest',
       'pmd/StaticMockOfProjectType',
       'pmd/SpringUnusedContext',
