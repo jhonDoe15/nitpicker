@@ -83,12 +83,15 @@ describe.skipIf(!goE2eEnabled)('Go preset project setups end to end', () => {
     ]);
   });
 
-  it('holds a test behind an integration build tag to the integration budget', () => {
-    expect(newFindings(gate(project, 'slow-integration'))).toEqual([]);
-  });
-
-  it('holds a test that skips under testing.Short() to the integration budget', () => {
-    expect(newFindings(gate(project, 'short-skip'))).toEqual([]);
+  it.each([
+    ['holds a test behind an integration build tag to the integration budget', 'slow-integration'],
+    ['holds a test that skips under testing.Short() to the integration budget', 'short-skip'],
+    [
+      'checks the merge base with the formatter the change adopts, so untouched files stay quiet',
+      'adopt-gofumpt',
+    ],
+  ])('%s', (_title, branch) => {
+    expect(newFindings(gate(project, branch))).toEqual([]);
   });
 
   it('keeps the unit budget for a test that reads testing.Short() without skipping', () => {
@@ -104,10 +107,6 @@ describe.skipIf(!goE2eEnabled)('Go preset project setups end to end', () => {
     expect(newMessages(result)).toEqual([
       "File is not formatted with gofumpt (the project's formatter, from .golangci.yml). Run `gofumpt -w` on it.",
     ]);
-  });
-
-  it('checks the merge base with the formatter the change adopts, so untouched files stay quiet', () => {
-    expect(newFindings(gate(project, 'adopt-gofumpt'))).toEqual([]);
   });
 
   it('reports a missing Go toolchain as a tool error', () => {
