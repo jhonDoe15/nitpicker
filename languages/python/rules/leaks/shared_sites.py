@@ -5,6 +5,8 @@ from silent_tests.calls import is_fixture, is_test_class, is_test_function
 
 DEFINITIONS = (ast.FunctionDef, ast.AsyncFunctionDef)
 PER_TEST_HOOKS = {
+    "setup",
+    "teardown",
     "setup_method",
     "teardown_method",
     "setUp",

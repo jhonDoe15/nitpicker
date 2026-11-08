@@ -208,6 +208,23 @@ object ProjectConfig : AbstractProjectConfig() {
     expect(shared(spec, flagsFor([spec, config]))).toEqual([]);
   });
 
+  it('leaves a top-level var alone where a class property of the same name hides it', () => {
+    const text = `${JUNIT}var counter = 0
+
+class HiddenTest(private var total: Int = 0) {
+    private var counter = 0
+
+    @Test
+    fun counts() {
+        counter++
+        total++
+    }
+}
+`;
+
+    expect(shared(text)).toEqual([]);
+  });
+
   it('leaves instance state of a JUnit class and annotated properties alone', () => {
     const text = `${JUNIT}import io.mockk.impl.annotations.MockK
 

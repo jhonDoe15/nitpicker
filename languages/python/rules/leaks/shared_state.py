@@ -1,6 +1,7 @@
 import ast
 
 from checks.common import call_name, finding
+from checks.state import MUTATING_METHODS as MUTATORS
 from leaks.shared_sites import site_functions
 
 RULE = "shared-test-state"
@@ -13,28 +14,6 @@ MUTABLE_CALLS = {
     "collections.OrderedDict",
     "collections.Counter",
     "collections.deque",
-}
-MUTATORS = {
-    "append",
-    "extend",
-    "insert",
-    "remove",
-    "pop",
-    "clear",
-    "update",
-    "add",
-    "discard",
-    "setdefault",
-    "popitem",
-    "sort",
-    "reverse",
-    "appendleft",
-    "extendleft",
-    "popleft",
-    "rotate",
-    "difference_update",
-    "intersection_update",
-    "symmetric_difference_update",
 }
 MUTABLE_NODES = (ast.List, ast.Dict, ast.Set, ast.ListComp, ast.DictComp, ast.SetComp)
 
@@ -71,7 +50,45 @@ def local_names(function):
     for node in ast.walk(function):
         if isinstance(node, ast.Name) and isinstance(node.ctx, ast.Store):
             names.add(node.id)
+        elif isinstance(node, (ast.MatchAs, ast.MatchStar)) and node.name:
+            names.add(node.name)
     return names - global_names(function)
+
+
+def lambda_names(function):
+    hidden = {}
+    for node in ast.walk(function):
+        if isinstance(node, ast.Lambda):
+            names = {item.arg for item in node.args.posonlyargs + node.args.args + node.args.kwonlyargs}
+            for part in ast.walk(node.body):
+                hidden.setdefault(id(part), set()).update(names)
+    return hidden
+
+
+def self_bound(function):
+    return {
+        target.attr
+        for node in ast.walk(function)
+        if isinstance(node, ast.Assign)
+        for target in node.targets
+        if isinstance(target, ast.Attribute)
+        and isinstance(target.value, ast.Name)
+        and target.value.id == "self"
+    }
+
+
+def container_of(node):
+    while isinstance(node, ast.Subscript):
+        node = node.value
+    return node
+
+
+def flat_targets(targets):
+    for target in targets:
+        if isinstance(target, (ast.Tuple, ast.List)):
+            yield from flat_targets(target.elts)
+        else:
+            yield target
 
 
 def holder_of(node, locals_, owner):
@@ -98,9 +115,9 @@ def whole_slice(target):
 
 def target_writes(node, locals_, owner):
     targets = node.targets if hasattr(node, "targets") else [node.target]
-    for target in targets:
+    for target in flat_targets(targets):
         if isinstance(target, ast.Subscript):
-            holder = holder_of(target.value, locals_, owner)
+            holder = holder_of(container_of(target.value), locals_, owner)
             kind = "replace" if whole_slice(target) else "element"
         else:
             holder = holder_of(target, locals_, owner)
@@ -111,10 +128,21 @@ def target_writes(node, locals_, owner):
 
 def writes_in(function, owner):
     locals_ = local_names(function)
+    instance = self_bound(function)
+    hidden = lambda_names(function)
+    for holder, kind, node in own_writes(function, locals_, owner):
+        if holder[2] and kind != "bind" and holder[1] in instance:
+            continue
+        if holder[0] == "module" and holder[1] in hidden.get(id(node), ()):
+            continue
+        yield holder, kind, node
+
+
+def own_writes(function, locals_, owner):
     for node in ast.walk(function):
         if isinstance(node, ast.Call) and isinstance(node.func, ast.Attribute):
-            holder = holder_of(node.func.value, locals_, owner)
-            if holder is not None and node.func.attr in MUTATORS:
+            holder = holder_of(container_of(node.func.value), locals_, owner)
+            if holder is not None and (node.func.attr in MUTATORS or node.func.attr == "rotate"):
                 kind = "reset" if node.func.attr == "clear" else "call"
                 yield holder, kind, node
         elif isinstance(node, (ast.Assign, ast.AugAssign, ast.Delete)):

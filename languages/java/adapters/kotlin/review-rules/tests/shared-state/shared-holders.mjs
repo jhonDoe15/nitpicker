@@ -2,7 +2,7 @@ import { classesOf, enclosingClasses, headerBefore } from '../discovery/declarat
 import { enclosingHosts } from '../discovery/hosts.mjs';
 import { isSpecType, specBodies } from '../discovery/kotest/kotest-specs.mjs';
 import { lineStartOf, remembered } from '../discovery/text-scan.mjs';
-import { expressionEnd } from '../setup/start-kinds.mjs';
+import { expressionEnd, imports } from '../setup/start-kinds.mjs';
 
 const PROPERTY = /(?<![\w.`])(val|var)\s+([A-Za-z_]\w*)\s*(?::\s*([^=\n]+?))?\s*(=|by\b)?/gu;
 const COLLECTION_NAMES = [
@@ -49,9 +49,11 @@ export function projectIsolated(files) {
   );
 }
 
-function isPerClass(klass) {
-  return klass.annotations.some(
-    ({ name, args }) => name === 'TestInstance' && args.includes('PER_CLASS'),
+function isPerClass(scanned, klass) {
+  return (
+    klass.annotations.some(
+      ({ name, args }) => name === 'TestInstance' && args.includes('PER_CLASS'),
+    ) || imports(scanned, 'org.testng.annotations.Test')
   );
 }
 
@@ -85,8 +87,8 @@ function holderOf(scanned, offset, project) {
   if (inBody && owner.kind === 'object' && owner.modifiers.has('companion')) {
     return { scope: 'class', klass: enclosingClasses(classes, owner.offset).at(-1) };
   }
-  if (inBody && owner.kind === 'class' && (isPerClass(owner) || isSpec(owner))) {
-    return isPerClass(owner) || specShares(scanned, owner, project)
+  if (inBody && owner.kind === 'class' && (isPerClass(scanned, owner) || isSpec(owner))) {
+    return isPerClass(scanned, owner) || specShares(scanned, owner, project)
       ? { scope: 'class', klass: owner }
       : undefined;
   }

@@ -34,7 +34,8 @@ let $testMarks := ('Test', 'ParameterizedTest', 'RepeatedTest', 'TestFactory', '
           $member := $ref/ancestor::*[self::MethodDeclaration or self::ConstructorDeclaration
                                       or self::Initializer or self::LambdaExpression][last()]
       return
-        if ($ref/self::FieldAccess and not($qualifier[self::ThisExpression or self::TypeExpression])) then ()
+        if ($ref/self::FieldAccess and not($qualifier[self::ThisExpression
+              or self::TypeExpression[ClassType/@SimpleName = $ref/ancestor::ClassDeclaration/@SimpleName]])) then ()
         else if ($ref/self::VariableAccess and exists($member//VariableId[@Name = $name][@Field = false()])) then ()
         else ($ref/ancestor::ClassBody/FieldDeclaration[VariableDeclarator/VariableId/@Name = $name])[last()] },
     $writes := (
@@ -68,7 +69,7 @@ $writes
                        $marked($call/ancestor::MethodDeclaration[last()], $onceMarks))
           return exists($site)
             and not($marked($site, $onceMarks))
-            and not($onceOnly and not($marked($site, ($testMarks, $perTestMarks))))
+            and ($marked($site, ($testMarks, $perTestMarks)) or (exists($callers) and not($onceOnly)))
             and empty($resets))]
   /(parent::MethodCall | parent::AssignmentExpression | parent::UnaryExpression
     | parent::ArrayAccess/(parent::AssignmentExpression | parent::UnaryExpression))
