@@ -6,7 +6,7 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
 public final class State {
-  private static int counter; // violation: pmd/NonFinalStaticField
+  private static int counter;
   private static final List<String> SEEN = new ArrayList<>(); // violation: pmd/MutableStaticCollection
   private static final List<String> KNOWN = List.of("a");
   private static final Map<String, String> CACHE = new ConcurrentHashMap<>();

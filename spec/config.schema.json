@@ -1337,6 +1337,7 @@
                     "mutant-nocoverage",
                     "duplicate-clone",
                     "stability-direction",
+                    "package-cycle",
                     "no-production-runtime",
                     "type-only-production-dependency",
                     "baseline-expansion",
@@ -1538,6 +1539,7 @@
                     "mutant-nocoverage",
                     "duplicate-clone",
                     "stability-direction",
+                    "package-cycle",
                     "no-production-runtime",
                     "type-only-production-dependency",
                     "baseline-expansion",
@@ -1746,7 +1748,7 @@
                           ]
                         },
                         {
-                          "pattern": "^(?:pmd|spotbugs|errorprone|archunit|google-java-format|palantir-java-format|jacoco|checkstyle|crap|duplicates|pit|structure|coupling|spring|test-runtime)/[\\s\\S]"
+                          "pattern": "^(?:pmd|spotbugs|errorprone|archunit|google-java-format|palantir-java-format|jacoco|checkstyle|crap|duplicates|pit|structure|coupling|javac|forbiddenapis|dependencies|spring|test-runtime)/[\\s\\S]"
                         }
                       ]
                     }
@@ -2114,7 +2116,7 @@
                         },
                         { "pattern": "^detekt\\.[a-z-]+\\.[A-Z][A-Za-z0-9]*$" },
                         {
-                          "pattern": "^(?:pmd|spotbugs|errorprone|archunit|google-java-format|palantir-java-format|jacoco|checkstyle|crap|duplicates|pit|structure|coupling|spring|test-runtime)/[\\s\\S]"
+                          "pattern": "^(?:pmd|spotbugs|errorprone|archunit|google-java-format|palantir-java-format|jacoco|checkstyle|crap|duplicates|pit|structure|coupling|javac|forbiddenapis|dependencies|spring|test-runtime)/[\\s\\S]"
                         }
                       ]
                     }
@@ -2662,6 +2664,7 @@
         "duplicates/duplicate-clone",
         "stability-direction",
         "coupling/stability-direction",
+        "package-cycle",
         "no-production-runtime",
         "test-runtime/no-production-runtime",
         "type-only-production-dependency",
