@@ -27,7 +27,11 @@ import { resolveHeadPolicy } from '../../../languages/typescript/preset/head-pol
 import { renderConsoleSummary } from '../reporting/summary.mjs';
 import { writeGithubOutput } from '../reporting/github/emit.mjs';
 import { describeError } from '../../../shared/messages/error-chain.mjs';
-import { colorEnabled, displayPath, withoutAnsi } from '../../../shared/messages/terminal/terminal-text.mjs';
+import {
+  colorEnabled,
+  displayPath,
+  withoutAnsi,
+} from '../../../shared/messages/terminal/terminal-text.mjs';
 import { comparisonExitCode } from '../reporting/failing-tests/failing-tests.mjs';
 
 function resolvePolicyRoot({ policyRoot, optionsPolicyRoot, currentProjectRoot }) {
