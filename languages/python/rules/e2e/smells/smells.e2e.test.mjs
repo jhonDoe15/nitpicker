@@ -259,6 +259,11 @@ describe.skipIf(!enabled)('io-in-loop', () => {
         'def f(repo):\n    cursor = ""\n    while cursor is not None:\n        page = repo.find_page(cursor)\n        cursor = page.next\n',
         [],
       ],
+      [
+        'a loop over fixed-size chunks',
+        'import itertools\n\n\ndef f(repo, ids):\n    for part in itertools.batched(ids, 1000):\n        repo.delete_many(part)\n    return [repo.find_many(part) for part in itertools.batched(ids, 1000)]\n',
+        [],
+      ],
       ['a test file', inFile('tests/test_a.py', loop('repo.find_by_id(item)', '')), []],
     ]);
     expect(actual).toEqual(expected);
