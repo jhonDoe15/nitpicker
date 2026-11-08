@@ -28,6 +28,9 @@ Part of the [nitpicker-python](../SKILL.md) skill. Write these forms from the st
   Domain code takes the clock as a parameter; tests pass a fixed aware datetime or freeze the time.
 - Debugging and processes: remove debugger imports and breakpoints before committing. Pass
   `check=True` to `subprocess.run`, or `check=False` and handle `returncode`.
+- A future that a callback completes also gets a failure path: `register(reply.set_result, reply.set_exception)`,
+  or an `except` in the callback that calls `set_exception`; better, await `loop.run_in_executor(...)` or
+  `asyncio.to_thread(...)`, which raise by themselves (`future-without-exception`).
 - Child processes: give every wait a deadline: `subprocess.run(args, timeout=30, check=True)`,
   `process.communicate(timeout=30)`, and asyncio process waits inside `async with asyncio.timeout(30):`
   (`subprocess-without-timeout`; a build wrapper that only runs a child to completion takes an exception).

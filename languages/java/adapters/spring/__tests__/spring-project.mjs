@@ -81,6 +81,7 @@ const REVIEW_RULES = new Set([
   'UnquotedRegexValue',
   'PlainTextRegex',
   'ProcessWaitWithoutTimeout',
+  'FutureWithoutException',
   'LogFormatArguments',
   'LogExceptionFirst',
   'RecursiveMapUpdate',

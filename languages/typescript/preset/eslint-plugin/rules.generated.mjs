@@ -78,6 +78,7 @@ import { rule as ruleNoUnvalidatedSchemaField } from './rules/boundaries/no-unva
 import { rule as ruleNoWaitForWithFakeTimers } from './rules/testing/assertions/no-wait-for-with-fake-timers.mjs';
 import { rule as ruleNoWeakHash } from './rules/security/hash/no-weak-hash.mjs';
 import { rule as rulePreserveErrorCause } from './rules/errors/preserve-error-cause.mjs';
+import { rule as rulePromiseWaitDeadline } from './rules/promises/executors/promise-wait-deadline.mjs';
 import { rule as ruleReactControlledInput } from './rules/react/forms/react-controlled-input.mjs';
 import { rule as ruleReactFieldHasLabel } from './rules/react/forms/react-field-has-label.mjs';
 import { rule as ruleReactNoDirectDom } from './rules/react/render/react-no-direct-dom.mjs';
@@ -92,6 +93,7 @@ import { rule as ruleReportModuleLoadEffects } from './rules/modules/report-modu
 import { rule as ruleRequireErrorListener } from './rules/events/require-error-listener.mjs';
 import { rule as ruleRequireHttpTimeout } from './rules/security/http/require-http-timeout.mjs';
 import { rule as ruleRequireProcessTimeout } from './rules/processes/require-process-timeout.mjs';
+import { rule as ruleRequirePromiseReject } from './rules/promises/executors/require-promise-reject.mjs';
 import { rule as ruleRequireTestProcessTimeout } from './rules/testing/processes/timeouts/require-test-process-timeout.mjs';
 import { rule as ruleStrictBooleanExpressions } from './rules/wrapped/strict-boolean-expressions.mjs';
 import { rule as ruleStructuredCatchLogging } from './rules/errors/structured-catch-logging.mjs';
@@ -183,6 +185,7 @@ export const directoryRules = {
   'no-wait-for-with-fake-timers': ruleNoWaitForWithFakeTimers,
   'no-weak-hash': ruleNoWeakHash,
   'preserve-error-cause': rulePreserveErrorCause,
+  'promise-wait-deadline': rulePromiseWaitDeadline,
   'react-controlled-input': ruleReactControlledInput,
   'react-field-has-label': ruleReactFieldHasLabel,
   'react-no-direct-dom': ruleReactNoDirectDom,
@@ -197,6 +200,7 @@ export const directoryRules = {
   'require-error-listener': ruleRequireErrorListener,
   'require-http-timeout': ruleRequireHttpTimeout,
   'require-process-timeout': ruleRequireProcessTimeout,
+  'require-promise-reject': ruleRequirePromiseReject,
   'require-test-process-timeout': ruleRequireTestProcessTimeout,
   'strict-boolean-expressions': ruleStrictBooleanExpressions,
   'structured-catch-logging': ruleStructuredCatchLogging,

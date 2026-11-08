@@ -1,0 +1,28 @@
+  <rule name="FutureWithoutException" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
+        message="Complete the future on the failure path too: call future.completeExceptionally(error) from the listener's error callback, or catch the failure in the callback and pass it on, or use an API that returns a CompletableFuture itself, such as CompletableFuture.supplyAsync(task, executor) or HttpClient.sendAsync. This future is completed only with complete(...) from a callback, so when the work behind the callback fails it never completes and whoever waits on it waits forever.">
+    <priority>3</priority>
+    <properties>
+      <property name="xpath">
+        <value><![CDATA[
+//VariableDeclarator
+  [*[2][self::ConstructorCall][pmd-java:typeIs('java.util.concurrent.CompletableFuture')]]
+  [let $name := VariableId/@Name,
+       $scope := ancestor::*[self::MethodDeclaration or self::ConstructorDeclaration or self::Initializer][1]
+   return exists($scope)
+     and exists(
+       $scope//MethodCall[@MethodName = 'complete'][*[1][self::VariableAccess[@Name = $name]]]
+         [ancestor::*[self::LambdaExpression or self::AnonymousClassDeclaration][. >> $scope]]
+       | $scope//MethodReference[@MethodName = 'complete'][*[1][self::VariableAccess[@Name = $name]]])
+     and not(
+       $scope//MethodCall
+         [@MethodName = ('completeExceptionally', 'cancel', 'obtrudeException', 'orTimeout', 'completeOnTimeout')]
+         [*[1][self::VariableAccess[@Name = $name]]]
+       | $scope//MethodReference
+         [@MethodName = ('completeExceptionally', 'cancel', 'obtrudeException')]
+         [*[1][self::VariableAccess[@Name = $name]]]
+       | $scope//VariableAccess[@Name = $name]
+         [parent::ArgumentList or parent::AssignmentExpression or parent::ArrayInitializer])]
+]]></value>
+      </property>
+    </properties>
+  </rule>

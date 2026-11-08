@@ -52,4 +52,12 @@ export const ASYNC_HINTS = [
     allowed:
       'Pass a timeout: `subprocess.run(args, timeout=30, check=True)`, `process.communicate(timeout=30)` or `process.wait(timeout=30)` (then kill the child on `TimeoutExpired`). Wrap an asyncio wait in `async with asyncio.timeout(30):` or `asyncio.wait_for(process.wait(), 30)`. A program whose purpose is to run the child to completion, such as a build wrapper, takes an exception.',
   },
+  {
+    tool: RULES_TOOL,
+    rules: ['future-without-exception'],
+    describe: (subject) =>
+      `\`${subject}\` is completed only by \`set_result\` from a callback, so when the work behind the callback fails the future never completes and whoever awaits it waits forever`,
+    allowed:
+      'Give the callback a failure path that calls `set_exception` (`register(reply.set_result, reply.set_exception)`, or `except Exception as error: reply.set_exception(error)` around the work), or await a coroutine API that raises by itself, such as `loop.run_in_executor(...)` or `asyncio.to_thread(...)`.',
+  },
 ];

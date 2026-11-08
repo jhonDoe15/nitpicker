@@ -24,6 +24,8 @@ import { growthAdviceFor } from '../hints/growth-advice.mjs';
 import { requiredString, positiveInteger } from './arguments.mjs';
 import { withoutSupersededMessages } from '../lint-engine/overlapping-reports.mjs';
 
+const REPORT_ONLY_RULES = new Set(['nitpicker/promise-wait-deadline']);
+
 export function normalizeEslintResults({ value, projectRoot, analyzerName }) {
   if (!Array.isArray(value)) {
     throw new TypeError('ESLint JSON output must be an array');
@@ -171,7 +173,7 @@ function normalizeMessage({ message, context, analyzerName, relativePath, source
       sourceFile,
     }),
     location: { line: positions.line, column: positions.column },
-    classification: 'enforceable',
+    classification: REPORT_ONLY_RULES.has(ruleId) ? 'descriptive' : 'enforceable',
   };
   if (symbol !== undefined) {
     finding.symbol = symbol;
