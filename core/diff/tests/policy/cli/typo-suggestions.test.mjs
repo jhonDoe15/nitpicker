@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { parseArguments } from '../../../../command/arguments.mjs';
+import { missingPathHint, parseArguments } from '../../../../command/arguments.mjs';
 import { runBaseCommand } from '../../../../command/base.mjs';
 import { runCacheCommand } from '../../../../command/cache.mjs';
 import { parseArguments as parseAggregateArguments } from '../../../sharding/arguments.mjs';
@@ -15,19 +15,28 @@ describe('argument typos', () => {
       `Unknown argument: --analyser. Did you mean --analyzer? ${HELP}`,
     ],
     [['--defer-exits'], `Unknown argument: --defer-exits. Did you mean --defer-exit? ${HELP}`],
-    [['caches'], `Unknown argument: caches. Did you mean cache? ${HELP}`],
-    [['agregate'], `Unknown argument: agregate. Did you mean aggregate? ${HELP}`],
-    [['all'], `Unknown argument: all. Did you mean --all? ${HELP}`],
     [['--verbose'], `Unknown argument: --verbose. ${HELP}`],
     [['--cache'], `Unknown argument: --cache. ${HELP}`],
     [
       ['--fix', 'base'],
       `Unknown argument: base. A subcommand goes first, as in nitpicker base. ${HELP}`,
     ],
-    [['report'], `Unknown argument: report. ${HELP}`],
   ])('names the closest option for %j', (arguments_, message) => {
     expect(() => parseArguments(arguments_)).toThrow(message);
   });
+
+  it.each([
+    ['caches', '. Did you mean cache? Run nitpicker --help for the options.'],
+    ['agregate', '. Did you mean aggregate? Run nitpicker --help for the options.'],
+    ['all', '. Did you mean --all? Run nitpicker --help for the options.'],
+    ['report', ''],
+  ])(
+    'reads the word %s as a path and hints at the closest option when it matches no file',
+    (word, hint) => {
+      expect(parseArguments([word]).paths).toEqual([word]);
+      expect(missingPathHint(word)).toBe(hint);
+    },
+  );
 
   it('suggests the aggregate options', () => {
     expect(() => parseAggregateArguments(['--input-rot', 'reports'])).toThrow(

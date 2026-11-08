@@ -10,6 +10,14 @@ Checkstyle, google-java-format, JaCoCo, CRAP, PIT mutation testing, jscpd and si
 only on findings your change adds, so leave code the task doesn't need alone. Write the allowed
 forms of the topic pages under "Write it this way" from the start; the gate is a backstop.
 
+## Check one file or folder
+
+To look at one file or folder, for example before you change it, pass its path: `npx nitpicker --all
+src/main/java/com/example/orders` lists every finding in it, and `npx nitpicker
+src/main/java/com/example/orders/Order.java` gates only your change to that file. Paths are read
+from the current folder. The analysis still covers the whole project, so it takes as long as a full
+run; finish with the plain run below.
+
 ## Finish with the gate
 
 1. Run the project's tests (`./gradlew test`, or `./mvnw test` on Maven). Failing tests or compile
@@ -83,6 +91,10 @@ The allowed forms are on one page per topic. Before you write code, read the pag
   reason. A structure, CRAP, changed-branch coverage, duplicate or coupling finding ends with its
   own entry. Never add one, nor a config `exclude`, `disable`, `thresholds` or legacy entry, nor a
   weaker test, to get past the gate yourself: stop and ask.
+- The `$schema` line of `nitpicker.config.json`
+  (`"$schema": "https://raw.githubusercontent.com/jhonDoe15/nitpicker/main/spec/config.schema.json"`)
+  lets the editor flag a misspelled key or a value the run refuses; nitpicker ignores it. Keep it
+  when you edit the file.
 - A violated ArchUnit rule is a finding (`archunit/<rule>`) on the offending class. Run the
   `*ArchTest` class with the build's test task to read the full violation, and fix the code. In a Spring
   project nitpicker's own `archunit/spring-...` rules apply too; their message says what to change
