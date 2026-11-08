@@ -5,10 +5,8 @@ const SYNTAX_RULES = {
   'no-unreachable-loop': 'error',
   'no-unmodified-loop-condition': 'error',
   'no-template-curly-in-string': 'error',
-  'no-promise-executor-return': ['error', { allowVoid: true }],
   'no-constructor-return': 'error',
   'no-useless-return': 'error',
-  '@typescript-eslint/no-loop-func': 'error',
   '@typescript-eslint/no-unused-private-class-members': 'error',
   'no-useless-concat': 'error',
   'no-useless-call': 'error',
@@ -27,14 +25,10 @@ export const logicRuleHints = {
   'no-unmodified-loop-condition':
     ' Change what the condition reads inside the loop, or iterate the items with `for...of`.',
   'no-template-curly-in-string':
-    ' Write it as a template literal (backticks) so the value is filled in. An exception fits only when a library fills the placeholder itself.',
-  'no-promise-executor-return':
-    ' The executor return value is ignored: call `resolve(value)`, and write a timer with a block body, `(resolve) => { setTimeout(resolve, ms); }`.',
+    ' Write it as a template literal (backticks) so the value is filled in. An exception fits only when another tool fills the placeholder: a template library, or shell, CI or Kotlin source written as a string.',
   'no-constructor-return':
     ' Set the fields and return nothing; build a different object in a factory function.',
   'no-useless-return': ' Remove the `return;`: the function ends there anyway.',
-  '@typescript-eslint/no-loop-func':
-    ' Copy the value into a `const` inside the loop and close over that, or build the callbacks with `items.map(...)`.',
   '@typescript-eslint/no-unused-private-class-members': ' Remove it, or use it.',
   'no-useless-concat': ' Write the literals as one string.',
   'no-useless-call': ' Call the function directly: `run(value)`, not `run.call(undefined, value)`.',
