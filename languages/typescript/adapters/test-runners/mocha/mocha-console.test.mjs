@@ -191,7 +191,7 @@ describe('test console output on a Mocha project', () => {
         'let server;',
         'export async function mochaGlobalSetup() {',
         '  server = createServer((request, response) => {',
-        '    console.error(`handler failed for ${request.url}`);',
+        "    console.error('handler failed for ' + request.url);",
         '    response.writeHead(500).end();',
         '  });',
         '  await new Promise((resolve) => server.listen(0, resolve));',
