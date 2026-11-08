@@ -14,6 +14,8 @@ const OWN_PMD_RULESETS = [
   'rules/test-honesty-ruleset.xml',
 ];
 const OWN_PMD_RULE = /<rule (?:name="(\w+)"|ref="category\/java\/\w+\.xml\/(\w+)")/gu;
+const OWN_CHECKSTYLE_FRAGMENTS = ['rules/checkstyle-all.xml', 'rules/checkstyle-main.xml'];
+const OWN_CHECKSTYLE_MODULE = /<module name="(?!SuppressionXpathSingleFilter)(\w+)">/gu;
 const SIGNATURES = path.resolve(import.meta.dirname, '../../gradle/rules/forbidden-apis.txt');
 const SIGNATURE_TAG = /^@defaultMessage ([a-z-]+):/gmu;
 const KNOWN_RULES = [
@@ -24,6 +26,13 @@ const KNOWN_RULES = [
         OWN_PMD_RULE,
       ),
     ].map(([, name, ref]) => `pmd/${name ?? ref}`),
+  ),
+  ...OWN_CHECKSTYLE_FRAGMENTS.flatMap((file) =>
+    [
+      ...readFileSync(path.resolve(import.meta.dirname, '../../gradle', file), 'utf8').matchAll(
+        OWN_CHECKSTYLE_MODULE,
+      ),
+    ].map(([, name]) => `checkstyle/${name}`),
   ),
   ...JSON.parse(readFileSync(CHECKS, 'utf8')).suppressible.map((check) => `errorprone/${check}`),
   ...[...readFileSync(SIGNATURES, 'utf8').matchAll(SIGNATURE_TAG)].map(
