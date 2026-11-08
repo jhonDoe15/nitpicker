@@ -251,6 +251,8 @@ describe('Kotlin exception rules for the review rules', () => {
       'pmd/UnboundedThreadPool',
       'pmd/RecursiveMapUpdate',
       'pmd/ReusableObjectPerCall',
+      'pmd/GeneratedMemberCycle',
+      'pmd/GeneratedEqualsSkipsSuperclass',
       ...SPRING_RULES.map((rule) => `pmd/${rule}`),
       'pmd/SpringQueryConcatenation',
       'unused-option',
