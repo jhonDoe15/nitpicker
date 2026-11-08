@@ -2,7 +2,7 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterAll, describe, expect, it } from 'vitest';
-import { readSlowTestFindings, testCasesOf } from './slow-tests.mjs';
+import { readSlowTestFindings } from './slow-tests.mjs';
 import { ADDS_SPEC, ORDER_SOURCE } from './test-support/test-sources.mjs';
 
 const TEST_ROOT = 'src/test/java';
@@ -15,6 +15,7 @@ const INTEGRATION_FORM = `${WAITS}.`;
 const MOVE_FORM = `${WAITS}, or if it is an integration test, name it *IT or move it to an integration test source set.`;
 const temporaryRoots = [];
 const GROOVY_ROOT = 'src/test/groovy';
+const CONTAINERS = (task) => `test-results/${task}/nitpicker-containers.json`;
 
 function directoryWith(files) {
   const root = mkdtempSync(path.join(tmpdir(), 'nitpicker-slow-tests-'));
@@ -41,14 +42,18 @@ function findingsFor({
   snapshot = 'head',
   modulePath,
   testRoots = [TEST_ROOT],
+  containers = {},
 }) {
-  const reportRoot = directoryWith(
-    Object.fromEntries(
+  const reportRoot = directoryWith({
+    ...Object.fromEntries(
       Object.entries(results).flatMap(([task, xml]) =>
         [xml].flat().map((text, index) => [`test-results/${task}/TEST-${String(index)}.xml`, text]),
       ),
     ),
-  );
+    ...Object.fromEntries(
+      Object.entries(containers).map(([task, list]) => [CONTAINERS(task), JSON.stringify(list)]),
+    ),
+  });
   const baseline = { snapshot, baselineRoot: base === undefined ? undefined : directoryWith(base) };
   return readSlowTestFindings({
     reportRoot,
@@ -64,29 +69,6 @@ afterAll(() => {
   for (const root of temporaryRoots.splice(0)) {
     rmSync(root, { recursive: true, force: true });
   }
-});
-
-describe('testCasesOf', () => {
-  it('reads Gradle and Surefire testcases with their time in seconds', () => {
-    const xml = `<testsuites>${suite('shop.OrderTest', [
-      ['[1] 1', '0.25'],
-      ['positive(int)[2]', '1,234.5'],
-    ])}</testsuites>`.replace('<?xml version="1.0" encoding="UTF-8"?>\n', '');
-
-    expect(testCasesOf(xml, 'test')).toEqual([
-      { task: 'test', className: 'shop.OrderTest', name: '[1] 1', seconds: 0.25 },
-      { task: 'test', className: 'shop.OrderTest', name: 'positive(int)[2]', seconds: 1234.5 },
-    ]);
-  });
-});
-
-describe('testCasesOf with reruns', () => {
-  it('does not time a case that failed and passed on a rerun', () => {
-    const xml =
-      '<testsuite name="shop.OrderTest"><testcase name="a" classname="shop.OrderTest" time="9"><flakyFailure message="no"/></testcase><testcase name="b" classname="shop.OrderTest" time="1"/></testsuite>';
-
-    expect(testCasesOf(xml, 'test').map(({ name }) => name)).toEqual(['b']);
-  });
 });
 
 describe('readSlowTestFindings', () => {
@@ -393,6 +375,29 @@ describe('readSlowTestFindings', () => {
     expect(
       run('7').map(({ path: file, identity, location }) => ({ file, identity, location })),
     ).toEqual([{ file: spec, identity: 'test:shop.CalcSpec#doubles', location: undefined }]);
+  });
+
+  it('gives a Kotest test in a context the whole path on Gradle, as Maven names it, and no other test', () => {
+    const sources = {
+      'src/test/kotlin/shop/CalcSpec.kt': 'class CalcSpec : FunSpec({ context("a") { } })',
+      [`${TEST_ROOT}/shop/OrderTest.java`]: ORDER_SOURCE,
+    };
+    const identities = (className, name, inside) =>
+      findingsFor({
+        sources,
+        results: { test: suite(className, [[name, '9']]) },
+        containers: { test: inside.length === 0 ? [] : [{ className, name, containers: inside }] },
+        testRoots: ['src/test/kotlin', TEST_ROOT],
+      }).map((finding) => finding.identity);
+    expect([
+      identities('shop.CalcSpec', 'doubles', ['twice']),
+      identities('shop.CalcSpec', 'twice/doubles', []),
+      identities('shop.OrderTest', '[1] 1', ['totals(int)']),
+    ]).toEqual([
+      ['test:shop.CalcSpec#twice/doubles'],
+      ['test:shop.CalcSpec#twice/doubles'],
+      ['test:shop.OrderTest#[1] 1'],
+    ]);
   });
 
   it('gives Spock integration specifications the integration budget', () => {

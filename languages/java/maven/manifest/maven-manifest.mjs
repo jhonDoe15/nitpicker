@@ -1,18 +1,11 @@
 import { writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { springFacts } from '../spring/arch-rules-gate.mjs';
+import { relativeRoots } from '../module/module-paths.mjs';
 
 const GUAVA_JAR = /^guava-\d.*\.jar$/u;
 const AWAITILITY_JAR = /^awaitility-\d.*\.jar$/u;
 const REACTOR_JAR = /^reactor-core-.*\.jar$/u;
-
-export function relativeTo(basedir, file) {
-  return path.relative(basedir, file).replaceAll('\\', '/');
-}
-
-function relativeRoots(module, roots) {
-  return roots.map((root) => relativeTo(module.basedir, root));
-}
 
 function hasJar(classpath, jar) {
   return classpath.some((entry) => jar.test(path.basename(entry)));
@@ -22,12 +15,16 @@ export function usesReactor(classpaths) {
   return hasJar(classpaths.mainCompile, REACTOR_JAR);
 }
 
+function kotlinOnlyRoots(module) {
+  return (module.kotlin?.sourceRoots ?? []).filter((root) => !module.sourceRoots.includes(root));
+}
+
 export function moduleManifest({ module, classpaths, pinned }) {
   return {
     versions: pinned,
     build: 'maven',
     sourceRoots: relativeRoots(module, module.sourceRoots),
-    kotlinSourceRoots: relativeRoots(module, module.kotlinSourceRoots ?? []),
+    kotlinSourceRoots: relativeRoots(module, kotlinOnlyRoots(module)),
     testSourceRoots: relativeRoots(module, module.testSourceRoots),
     resourceRoots: relativeRoots(module, module.resourceRoots),
     ...springFacts(classpaths),

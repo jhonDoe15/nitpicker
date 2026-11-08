@@ -8,10 +8,13 @@ import {
 import { KOTLIN_LINE_LENGTH } from '../../conventions/kotlin-conventions.mjs';
 import {
   BUILD_FILES,
-  buildText,
+  declaredKtfmtStyle,
   detectFormatter,
+  isMavenFacts,
   kotlinFilesOf,
   ktfmtStyle,
+  mavenBuildFacts,
+  POM,
 } from './style/kotlin-build-text.mjs';
 import {
   isolatedWorkspace,
@@ -100,20 +103,39 @@ function detektLayerSettings({ configRoot, detektConfig, snapshot, toolPrecedenc
   return { detektConfig: found, detektNitpickerFirst: layers.nitpickerFirst };
 }
 
-export function kotlinFormatterOf(projectRoot, configured) {
-  return configured ?? detectFormatter(kotlinFilesOf(projectRoot));
+export function kotlinFormatterOf(projectRoot, configured, effectivePom) {
+  return configured ?? detectFormatter(kotlinFilesOf(projectRoot, effectivePom));
+}
+
+export function mavenKotlinFacts(projectRoot, configured, effectivePom) {
+  return mavenBuildFacts(kotlinFilesOf(projectRoot, effectivePom), configured);
+}
+
+function declaredStyleOf({ configRoot, effectivePom, facts }) {
+  return isMavenFacts(facts)
+    ? facts.ktfmtStyle
+    : declaredKtfmtStyle(kotlinFilesOf(configRoot, effectivePom));
 }
 
 export function resolveKotlinTools(
   projectRoot,
-  { formatter, detektConfig, snapshot, conventions = {}, policyRoot, toolPrecedence = {} } = {},
+  {
+    formatter,
+    detektConfig,
+    snapshot,
+    conventions = {},
+    policyRoot,
+    toolPrecedence = {},
+    effectivePom,
+    facts,
+  } = {},
 ) {
   const configRoot = policyRoot ?? projectRoot;
-  const chosen = kotlinFormatterOf(projectRoot, formatter);
-  const build = buildText(configRoot);
+  const chosen = kotlinFormatterOf(projectRoot, formatter, effectivePom);
+  const declared = declaredStyleOf({ configRoot, effectivePom, facts });
   return {
     formatter: chosen,
-    ktfmtStyle: ktfmtStyle({ build, conventions }),
+    ktfmtStyle: ktfmtStyle({ declared, conventions }),
     ktfmtMaxWidth: chosen === 'ktfmt' ? conventions[KOTLIN_LINE_LENGTH] : undefined,
     ...projectStyle(chosen, configRoot, toolPrecedence),
     ...detektLayerSettings({ configRoot, detektConfig, snapshot, toolPrecedence }),
@@ -215,7 +237,9 @@ export function kotlinStyleFiles({ tools = {}, kotlin = {} }, policyRoot) {
     ['ktlint', 'ktfmt'].includes(formatter) && optedIn(toolPrecedence, formatter);
   return [
     ...(editorconfigs ? projectEditorconfigs(policyRoot).files : []),
-    ...(formatter === 'ktfmt' && editorconfigs ? existingInside(policyRoot, BUILD_FILES) : []),
+    ...(formatter === 'ktfmt' && editorconfigs
+      ? existingInside(policyRoot, [...BUILD_FILES, POM])
+      : []),
     ...(optedIn(toolPrecedence, 'detekt') ? existingInside(policyRoot, DETEKT_CONFIGS) : []),
     ...(kotlin.detektConfig === undefined ? [] : existingInside(policyRoot, [kotlin.detektConfig])),
   ];

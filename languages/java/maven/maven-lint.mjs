@@ -75,7 +75,7 @@ export function runPmd(options) {
   const linted = [...module.sourceRoots, ...module.testSourceRoots].filter((root) =>
     existsSync(root),
   );
-  if (linted.length === 0) {
+  if (javaFiles(linted).length === 0) {
     writeFileSync(report, EMPTY_SARIF);
     return;
   }
@@ -105,7 +105,7 @@ export function runPmd(options) {
   });
 }
 
-export function runSpotbugs({ module, reportDir, tools, spawn }) {
+export function runSpotbugs({ module, reportDir, tools, auxClasspath = [], spawn }) {
   const report = path.join(reportDir, 'spotbugs.sarif');
   const hasClasses =
     existsSync(module.outputDirectory) && readdirSync(module.outputDirectory).length > 0;
@@ -125,6 +125,12 @@ export function runSpotbugs({ module, reportDir, tools, spawn }) {
       report,
       '-sourcepath',
       module.sourceRoots.filter((root) => existsSync(root)).join(path.delimiter),
+      ...(auxClasspath.length === 0
+        ? []
+        : [
+            '-auxclasspath',
+            auxClasspath.filter((entry) => existsSync(entry)).join(path.delimiter),
+          ]),
       module.outputDirectory,
     ],
     cwd: module.basedir,

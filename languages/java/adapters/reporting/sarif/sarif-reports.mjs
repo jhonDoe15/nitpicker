@@ -10,6 +10,7 @@ import { FIXED_SLEEP_RULE, withWaitAdvice } from '../../../messages/wait-advice.
 import { dropSleepsInFakes } from '../../../messages/latency-fakes.mjs';
 import { withFanOutDetails } from '../../../messages/fan-out/fan-out-details.mjs';
 import { withLoadEffectSubjects } from '../../../messages/load-effects.mjs';
+import { withProjectTypeMocks } from '../../../messages/mocks/project-mocks.mjs';
 import { withSpringTransactionFilters } from '../../spring/transactions/transaction-filters.mjs';
 
 const LINE_NUMBER = /\bline \d+\b/g;
@@ -38,19 +39,19 @@ export function sarifFindings(context) {
     { projectRoot },
   );
   const spotbugs = preparedReport('spotbugs.sarif', context, spotbugsSubject);
+  const mainRoots = [...(allSourceRoots ?? []), ...(context.manifest?.kotlinSourceRoots ?? [])];
   return [
     ...withFanOutDetails(
       withWaitAdvice(
         dropSleepsInFakes(
-          dropInheritedVersions(
-            withSpringTransactionFilters(ingestSarif(pmd, { tool: 'pmd' }).findings, context),
-            { projectRoot, sourceRoots: allSourceRoots },
+          withProjectTypeMocks(
+            dropInheritedVersions(
+              withSpringTransactionFilters(ingestSarif(pmd, { tool: 'pmd' }).findings, context),
+              { projectRoot, sourceRoots: allSourceRoots },
+            ),
+            { projectRoot, mainRoots },
           ),
-          {
-            rule: FIXED_SLEEP_RULE,
-            projectRoot,
-            mainRoots: [...(allSourceRoots ?? []), ...(context.manifest?.kotlinSourceRoots ?? [])],
-          },
+          { rule: FIXED_SLEEP_RULE, projectRoot, mainRoots },
         ),
         { manifest: context.manifest, projectRoot },
       ),
