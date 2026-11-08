@@ -62,6 +62,7 @@ are listed at the end.
 | Child processes          | `subprocess.run(args, timeout=30, check=True)`, `communicate(timeout=30)`, asyncio waits in `asyncio.timeout(30)`                                                                    |
 | Test honesty             | a reason on every skip, no sleeping, no tautologies, fixed time and seeded random values, no network, no leaked global state                                                         | ruff `PT`, `skipped-test-without-reason`, `sleep-in-test`, `negative-wait-in-test`, `mocked-subject-in-test`, `tautological-assert`, `real-clock-in-test`, `random-in-test`, `network-in-test`, `server-or-container-per-test`, `global-state-leak-in-test` (script) |
 | Float checks in tests    | `assert total == pytest.approx(0.3)`, `math.isclose`, `assertAlmostEqual`                                                                                                            | `float-equality-in-test` (script)                                                                                                                                                                                                                                    |
+| Test assertions          | the exact value, length or call arguments, not a presence, non-empty or called-only check                                                                                            | `weak-assertion` (script)                                                                                                                                                                                                                                            |
 | Test layout              | tests in files pytest collects; helpers in the tests folder                                                                                                                          | `uncollected-tests`, `test-helper-in-source` (script)                                                                                                                                                                                                                |
 
 `type-cast` rejects `typing.cast` (and `typing_extensions.cast`) as a call or as a value
@@ -1022,6 +1023,17 @@ t)`, `asyncio.timeout(t)`, `fail_after(t)`, `wait(t)`) inside `pytest.raises` or
   `assert*Equal` forms, also inside a list, tuple or dict literal (the forms `pytest.approx` takes).
   Integral literals (`1.0`) and infinities are exact and stay allowed, and a side wrapped in
   `approx(...)` is not checked.
+- `weak-assertion` covers the asserts that pass for almost any value, in test files: a presence
+  check (`assert x`, `assert not x`, `assert x is not None`, `assert x != None`, `assertTrue(x)`,
+  `assertFalse(x)`, `assertIsNotNone(x)`) on a name, attribute or subscript, where a predicate call
+  such as `assert path.exists()` is not reported; a non-empty check (`assert len(x) > 0`,
+  `len(x) >= 1`, `len(x) != 0` in either order, `assert len(x)`, `assert x != []`,
+  `assertGreater(len(x), 0)`, `assertNotEqual(len(x), 0)`); and a call check that pins no arguments (`assert m.called`,
+  `assert m.call_count > 0`, `m.assert_called()`, `m.assert_awaited()`, and `assert_called_with`
+  and its siblings when every argument is `ANY`). A positive presence check is not reported when
+  the same expression is used again later in the same function, because it narrows the type for
+  the lines that follow. `assert not m.called` and `assert_called_once()` are not reported. The
+  allowed form asserts the exact value, length or call arguments.
 - `mocked-subject-in-test` (Java and Kotlin: `MockedSubjectInTest`; TypeScript:
   `nitpicker/no-mocking-subject-under-test`) reports a test that replaces the code it is named after.
   The subject is the module a test file is named for (`tests/test_cart.py` or `cart_test.py` for the

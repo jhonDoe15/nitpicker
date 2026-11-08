@@ -9,6 +9,9 @@ Part of the [nitpicker-python](../SKILL.md) skill. Write these forms from the st
   instead of `time.sleep` and fake network, database and disk access. A test over budget is run
   again alone without coverage and fails only if it is still over. Lift a legitimate one in the
   top-level `exceptions` with `{ "rule": "slow-test", "paths": [...], "reason": "..." }`.
+- Assert the value, not that something is there (`weak-assertion`): no `assert x`, `assert x is not None`
+  or `assert len(x) > 0` as the whole check, and no `m.assert_called()` or `assert_called_with(ANY)`; assert
+  the exact value, contents or length and the call's arguments. A not-null check is fine when the test uses `x` afterwards.
 - Never patch the module a test is named after (`mocked-subject-in-test`): in `test_cart.py`, no
   `patch("shop.cart.total")`, no `patch.object(cart, "helper")` on a `Cart`, no `Mock(spec=Cart)`.
   Pass the collaborators in and fake them, test a helper through the public function that calls

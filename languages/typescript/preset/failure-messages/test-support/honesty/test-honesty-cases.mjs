@@ -31,6 +31,26 @@ const HONESTY_ROWS = [
     '{"rule":"vitest/no-restricted-matchers","paths":["test/orders.test.ts"],"reason":"..."}',
   ],
   [
+    'not.toBe(null) names toEqual',
+    "it('x', () => { expect(load()).not.toBe(null); });",
+    'Assert the value itself with `toBe` or `toEqual`, such as `expect(user).toEqual({ id: 1 })`',
+  ],
+  [
+    'a length above zero names the exact length',
+    "it('x', () => { expect(load().length).toBeGreaterThan(0); });",
+    '`expect(rows).toHaveLength(3)`',
+  ],
+  [
+    'assert.ok on a length names deepStrictEqual',
+    "it('x', () => { assert.ok(load().length > 0); });",
+    '`assert.deepStrictEqual(rows, [...])`',
+  ],
+  [
+    'wildcard-only call arguments name the expected arguments',
+    "it('x', () => { expect(spy).toHaveBeenCalledWith(expect.anything()); });",
+    '`expect(spy).toHaveBeenCalledWith(orderId)`',
+  ],
+  [
     'bare toHaveBeenCalled names the expected arguments',
     "it('x', () => { expect(spy).toHaveBeenCalled(); });",
     'toHaveBeenCalledWith',

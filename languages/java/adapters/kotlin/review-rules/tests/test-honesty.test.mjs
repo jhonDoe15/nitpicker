@@ -85,6 +85,7 @@ describe('testHonestyFindings', () => {
       'AssertionInControlFlow',
       'CoroutineEscapesTest',
       'FloatEqualityInTest',
+      'WeakAssertionInTest',
       'GlobalStateLeakInTest',
     ]);
   });

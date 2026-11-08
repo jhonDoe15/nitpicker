@@ -532,7 +532,7 @@
     "mayBeIntended": false
   },
   "SimplifiableTestAssertion": {
-    "fix": "Use the assertion the message names, such as assertEquals, assertNull or assertFalse, in place of assertTrue on a comparison or negation.",
+    "fix": "Use the named assertion. For assertTrue(x != null) or assertTrue(!c.isEmpty()), assertNotNull or assertFalse(isEmpty()) is weak too: assert the exact value.",
     "mayBeIntended": false
   },
   "SingleMethodSingleton": {
