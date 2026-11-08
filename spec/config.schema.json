@@ -2045,6 +2045,8 @@
                             "pmd/ClassLoadEffect",
                             "pmd/UnboundedThreadPool",
                             "pmd/RecursiveMapUpdate",
+                            "pmd/GeneratedMemberCycle",
+                            "pmd/GeneratedEqualsSkipsSuperclass",
                             "pmd/SpringConstructorInjection",
                             "pmd/SpringImmutableBeans",
                             "pmd/SpringNoServiceLocator",
