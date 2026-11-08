@@ -129,6 +129,9 @@ jobs:
     if: github.ref != 'refs/heads/main' && (github.event_name != 'pull_request' || github.event.label.name == 'run-ci')
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    permissions:
+      contents: read
+      statuses: read
     steps:
       - uses: actions/checkout@v7.0.1
         with:
@@ -140,14 +143,57 @@ jobs:
           cache: npm
           cache-dependency-path: package-lock.json
       - run: npm ci
+      # A loosening of nitpicker.config.json passes only when a person with write access adds the
+      # accept-policy-change label (nitpicker-policy-approval.yml records it on the head commit), or
+      # when an admin sets the Actions variable NITPICKER_ACCEPT_POLICY_CHANGE to the digest the
+      # finding names. These two steps are the ones of action.yml, which a test keeps in step.
+      - name: Read the policy approval
+        id: approval-status
+        if: github.event.pull_request.head.sha != ''
+        uses: actions/github-script@v8.0.0
+        env:
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        with:
+          script: |
+            const sha = process.env.HEAD_SHA;
+            try {
+              const statuses = await github.paginate(github.rest.repos.listCommitStatusesForRef, {
+                ...context.repo,
+                ref: sha,
+                per_page: 100,
+              });
+              const latest = statuses.find(
+                (status) =>
+                  status.context === 'nitpicker/policy-accepted' &&
+                  status.creator?.login === 'github-actions[bot]',
+              );
+              core.setOutput('approved-sha', latest?.state === 'success' ? sha : '');
+            } catch (error) {
+              core.warning(
+                `Could not read the policy approval of ${sha} (${error.message}). Give the job the statuses: read permission.`,
+              );
+            }
+      - name: Bind the policy approval to the checkout
+        id: approval
+        if: ${{ steps.approval-status.outputs.approved-sha != '' }}
+        shell: bash
+        env:
+          APPROVED_SHA: ${{ steps.approval-status.outputs.approved-sha }}
+        run: |
+          set -euo pipefail
+          head="$(git rev-parse HEAD)"
+          merged="$(git rev-parse --verify --quiet 'HEAD^2' || true)"
+          if [ "$head" = "$APPROVED_SHA" ] || { [ "$head" = "$GITHUB_SHA" ] && [ "$merged" = "$APPROVED_SHA" ]; }; then
+            echo "acceptance=commit:$head" >> "$GITHUB_OUTPUT"
+          else
+            echo "::warning title=nitpicker::The policy approval is for ${APPROVED_SHA}, but the checkout is ${head}, so it accepts nothing in this run."
+          fi
       # The CLI takes the base from GITHUB_BASE_REF on a pull request and origin/main on a manual run;
       # policy is nitpicker.config.json.
-      # A loosening of nitpicker.config.json passes only when a repository admin sets the Actions
-      # variable NITPICKER_ACCEPT_POLICY_CHANGE to the digest the finding names.
       - name: nitpicker on itself
         run: node core/cli.mjs --output reports/nitpicker
         env:
-          NITPICKER_ACCEPT_POLICY_CHANGE: ${{ vars.NITPICKER_ACCEPT_POLICY_CHANGE }}
+          NITPICKER_ACCEPT_POLICY_CHANGE: ${{ steps.approval.outputs.acceptance || vars.NITPICKER_ACCEPT_POLICY_CHANGE }}
       - uses: actions/upload-artifact@v7.0.2
         if: failure()
         with:

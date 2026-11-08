@@ -126,8 +126,10 @@ Java 21 or Python for those presets: from `.python-version`, else the lower boun
 [GitHub Action](ci.md#with-the-action) at the tag of the running version
 (`jhonDoe15/nitpicker@v<version>`), with `node-version: ''` and `install-command: none` so it keeps
 the Node.js and dependencies of the steps before it, `working-directory` for a project in a
-subfolder, `package: nitpicker@<version>` for a project without a `package.json`, and
-`accept-policy-change` mapped from the repository variable `vars.NITPICKER_ACCEPT_POLICY_CHANGE`.
+subfolder, and `package: nitpicker@<version>` for a project without a `package.json`. Next to it,
+init writes `.github/workflows/nitpicker-policy-approval.yml`, once per repository, which lets a
+person accept a policy loosening with the `accept-policy-change` label (see
+[Accepting a policy change with a label](ci.md#accepting-a-policy-change-with-a-label)).
 The action adds the findings cache, the job summary and annotations. Python 3.10 is the oldest one the python-rules,
 mutmut and dependency checks run on; when `.python-version` or a range that leaves 3.10 out asks
 for an older one, init prints a note that those checks report that they were skipped:
@@ -619,7 +621,12 @@ nitpicker rules [--preset <name>] [--tool <name>]
   `NITPICKER_ACCEPT_POLICY_CHANGE=<digest>` instead, and that variable is ignored anywhere else. An
   ignored acceptance is named on stderr and the run still fails. The digest covers every loosening
   in full and the content (git blob id) of each file it names, and `summary.json` records it as
-  `policyDigest`: editing a named file or adding a loosening changes it and fails again.
+  `policyDigest`: editing a named file or adding a loosening changes it and fails again. Both also
+  take `commit:<sha>`, the full SHA of the commit the person reviewed, which accepts whatever that
+  commit loosens and is honoured only when it is the head the run gates; uncommitted changes make
+  another head, so they are never accepted this way. On a GitHub pull request the
+  `accept-policy-change` label sets it (see
+  [Accepting a policy change with a label](ci.md#accepting-a-policy-change-with-a-label)).
 - `--help`: list the commands and the flags of each with a one-line description, and exit 0.
   `nitpicker init --help`, `nitpicker aggregate --help`, `nitpicker cache publish --help`,
   `nitpicker explain --help` and `nitpicker rules --help` print the help of that command.
@@ -722,8 +729,8 @@ the acceptance command. `report.txt` and `new-findings.json` keep one finding pe
 its guidance and the acceptance route. The first response is to undo the change and fix the code
 until it passes. If the change is intended, a coding agent stops and asks a person reviewing it, who
 accepts it by the digest (`--accept-policy-change=<digest>` or, in CI,
-`NITPICKER_ACCEPT_POLICY_CHANGE=<digest>`; the routes are described under
-[Command line](#command-line)). A local run and CI can print different digests, because CI may
+`NITPICKER_ACCEPT_POLICY_CHANGE=<digest>`), or on a GitHub pull request with the
+`accept-policy-change` label; the routes are described under [Command line](#command-line). A local run and CI can print different digests, because CI may
 check the pull request merged into its target branch. A project's first `nitpicker.config.json` is
 compared with the defaults. These changes are loosening:
 
@@ -2733,7 +2740,9 @@ jobs:
 
 `NITPICKER_ACCEPT_POLICY_CHANGE` comes from a repository variable that only an admin can set, so a
 person accepts a loosening of `nitpicker.config.json` by setting it to the digest the finding
-names; the container needs `CI` too, since the variable is honoured only in CI.
+names; the container needs `CI` too, since the variable is honoured only in CI. For the label route,
+add the two approval steps of `action.yml` before the run and pass their `acceptance` output instead
+(see [Accepting a policy change with a label](ci.md#accepting-a-policy-change-with-a-label)).
 
 ## Sharding in CI
 

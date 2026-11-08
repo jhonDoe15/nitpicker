@@ -5,6 +5,7 @@ on:
 
 permissions:
   contents: read
+  statuses: read
 
 jobs:
   nitpicker:
@@ -25,4 +26,3 @@ jobs:
           '{{GATE_INPUTS}}': ''
           node-version: ''
           install-command: none
-          accept-policy-change: ${{ vars.NITPICKER_ACCEPT_POLICY_CHANGE }}

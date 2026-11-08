@@ -4,7 +4,7 @@ import { policyKindGuidance } from './policy-guidance.mjs';
 
 const HEADING = 'Policy changed in this change (nitpicker.config.json, head against base):';
 const ACCEPTED_HEADING =
-  'Policy changed in this change (nitpicker.config.json, head against base; loosening accepted by exact digest):';
+  'Policy changed in this change (nitpicker.config.json, head against base; loosening accepted):';
 const GUIDANCE_INDENT = 2;
 
 function indentedLine(change) {
@@ -37,7 +37,8 @@ function acceptanceLine(digest) {
   return (
     'Only a person may accept exactly these changes, after reviewing them: ' +
     `--accept-policy-change=${digest} at an interactive terminal, ` +
-    `or NITPICKER_ACCEPT_POLICY_CHANGE=${digest} in CI.`
+    `NITPICKER_ACCEPT_POLICY_CHANGE=${digest} in CI, ` +
+    'or the accept-policy-change label on a GitHub pull request.'
   );
 }
 

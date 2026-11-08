@@ -6,7 +6,11 @@ import { placeFile } from './place-file.mjs';
 import { workflowParts, yamlScalar } from './ci-steps.mjs';
 
 const TEMPLATE = fileURLToPath(new URL('../templates/github-workflow.yml', import.meta.url));
+const APPROVAL_TEMPLATE = fileURLToPath(
+  new URL('../templates/github-policy-approval.yml', import.meta.url),
+);
 const WORKFLOWS = '.github/workflows';
+export const APPROVAL_WORKFLOW = `${WORKFLOWS}/nitpicker-policy-approval.yml`;
 const TOKEN = /'\{\{(\w+)\}\}'/u;
 const PLAIN_SEGMENT = /^[a-z0-9]+(?:[._-][a-z0-9]+)*$/u;
 const SEGMENT_SEPARATOR = '--';
@@ -88,4 +92,12 @@ export function placeWorkflow(projectRoot, context) {
     content,
   });
   return notes.length === 0 ? placed : { ...placed, notes };
+}
+
+export function placeApprovalWorkflow(repository) {
+  return placeFile({
+    root: repository,
+    relative: APPROVAL_WORKFLOW,
+    content: readFileSync(APPROVAL_TEMPLATE, 'utf8'),
+  });
 }
