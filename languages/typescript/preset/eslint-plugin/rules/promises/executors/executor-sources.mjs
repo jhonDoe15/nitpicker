@@ -1,7 +1,7 @@
 import { resolveConstant, stringValue } from '../../analysis/constant-resolution.mjs';
 import { memberName } from '../../analysis/test-code-analysis.mjs';
 
-export const LISTENERS = new Set([
+const LISTENERS = new Set([
   'on',
   'once',
   'addListener',
@@ -17,6 +17,12 @@ const TIMERS = new Set([
   'nextTick',
   'requestAnimationFrame',
   'requestIdleCallback',
+  'IntersectionObserver',
+  'MutationObserver',
+  'ResizeObserver',
+  'PerformanceObserver',
+  'debounce',
+  'throttle',
 ]);
 const IN_PLACE = new Set([
   'forEach',
@@ -42,15 +48,31 @@ const IN_PLACE = new Set([
   'set',
   'splice',
 ]);
-const SAFE_EVENTS = new Set(['abort', 'exit', 'beforeExit', 'DOMContentLoaded']);
+const SAFE_EVENTS = new Set([
+  'abort',
+  'exit',
+  'beforeExit',
+  'DOMContentLoaded',
+  'readystatechange',
+  'visibilitychange',
+]);
+const PAGE_GLOBALS = new Set(['window', 'document', 'globalThis', 'self']);
 const CALLS = new Set(['CallExpression', 'NewExpression']);
 const MAX_TEXT = 40;
+
+export function isListenerCall(node) {
+  return (
+    node?.type === 'CallExpression' &&
+    node.callee.type === 'MemberExpression' &&
+    LISTENERS.has(memberName(node.callee))
+  );
+}
 
 export function isFunctionExpression(node) {
   return node?.type === 'ArrowFunctionExpression' || node?.type === 'FunctionExpression';
 }
 
-export function isPromiseConstruction(node) {
+function isPromiseConstruction(node) {
   return (
     node?.type === 'NewExpression' &&
     node.callee.type === 'Identifier' &&
@@ -90,45 +112,74 @@ function calleeName(callee) {
 }
 
 function isSafeEvent(event, receiver) {
+  const global = receiver.type === 'Identifier' ? receiver.name : undefined;
   return (
     event !== undefined &&
     (SAFE_EVENTS.has(event) ||
-      (event.startsWith('SIG') && receiver.type === 'Identifier' && receiver.name === 'process'))
+      (event.startsWith('SIG') && global === 'process') ||
+      (event === 'load' && PAGE_GLOBALS.has(global)))
   );
 }
 
-function listenerSource(context, call) {
+function mentionsSettler(context, node, settlers) {
+  return nodesInside(context, node).some(
+    (inner) => inner.type === 'Identifier' && settlers.has(inner.name),
+  );
+}
+
+function isSettler(node, settlers) {
+  return node?.type === 'Identifier' && settlers.has(node.name);
+}
+
+function settlingArgument(context, argument, settlers) {
+  if (isSettler(argument, settlers)) {
+    return true;
+  }
+  if (isFunctionExpression(argument)) {
+    return mentionsSettler(context, argument.body, settlers);
+  }
+  return CALLS.has(argument.type) && argument.arguments.some((inner) => isSettler(inner, settlers));
+}
+
+function listenerSource(context, call, settlers) {
   const event = stringValue(resolveConstant(context, call.arguments[0]));
-  if (isSafeEvent(event, call.callee.object)) {
+  if (
+    isSafeEvent(event, call.callee.object) ||
+    !call.arguments.slice(1).some((argument) => settlingArgument(context, argument, settlers))
+  ) {
     return undefined;
   }
-  const receiver = shortText(context, call.callee.object);
+  const receiver = context.sourceCode.getText(call.callee.object);
   const name = event === undefined ? '...' : `'${event}'`;
-  return { kind: 'listener', call, text: `\`${receiver}.${memberName(call.callee)}(${name})\`` };
+  const shown = `${shortText(context, call.callee.object)}.${memberName(call.callee)}(${name})`;
+  return { kind: 'listener', call, event, receiver, text: `\`${shown}\`` };
 }
 
-function passesCallback(call, settlers) {
-  return call.arguments.some(
-    (argument) =>
-      isFunctionExpression(argument) ||
-      (argument.type === 'Identifier' && settlers.has(argument.name)),
-  );
+function pipeSource(context, call, settlers) {
+  return call.arguments.some((argument) => mentionsSettler(context, argument, settlers))
+    ? {
+        kind: 'pipe',
+        call,
+        receiver: context.sourceCode.getText(call.callee.object),
+        text: `\`${shortText(context, call.callee.object)}.pipe(...)\``,
+      }
+    : undefined;
 }
 
 function sourceOf(context, call, settlers) {
   const name = calleeName(call.callee);
   if (call.callee.type === 'MemberExpression' && LISTENERS.has(name)) {
-    return listenerSource(context, call);
+    return listenerSource(context, call, settlers);
   }
   if (call.callee.type === 'MemberExpression' && name === 'pipe') {
-    return { kind: 'pipe', call, text: `\`${shortText(context, call.callee.object)}.pipe(...)\`` };
+    return pipeSource(context, call, settlers);
   }
   if (
     isPromiseConstruction(call) ||
     TIMERS.has(name) ||
     IN_PLACE.has(name) ||
     settlers.has(name) ||
-    !passesCallback(call, settlers)
+    !call.arguments.some((argument) => settlingArgument(context, argument, settlers))
   ) {
     return undefined;
   }
@@ -139,7 +190,7 @@ function sourceOf(context, call, settlers) {
   };
 }
 
-export function executorSources(context, executor, settlers) {
+function executorSources(context, executor, settlers) {
   return nodesInside(context, executor.body)
     .filter((node) => CALLS.has(node.type))
     .map((call) => sourceOf(context, call, settlers))

@@ -35,8 +35,22 @@ tester.run('require-promise-reject', rule, {
     'export function outer() { return new Promise((resolve, reject) => { const inner = new Promise((done) => done(1)); inner.then(resolve, reject); }); }',
     'export function run(executor) { return new Promise(executor); }',
     'export function never() { return new Promise(() => {}); }',
+    `export function loads(src) { return new Promise((resolve) => { const image = new Image(); image.addEventListener('load', () => resolve(true)); image.addEventListener('error', () => resolve(false)); image.src = src; }); }`,
+    `export function drain(s) { return new Promise((resolve) => { s.on('error', () => resolve(null)); s.on('end', () => resolve(1)); }); }`,
+    `export function exists(fs, p) { return new Promise((resolve) => fs.access(p, (err) => resolve(!err))); }`,
+    `export function probe(exec, cmd) { return new Promise((resolve) => exec(cmd, (error, stdout) => resolve({ error, stdout }))); }`,
+    `export function parsed(a) { return new Promise((resolve) => { resolve(JSON.parse(a, (key, value) => value)); }); }`,
+    `export function grouped(items) { return new Promise((resolve) => { const groups = groupBy(items, (item) => item.kind); resolve(groups); }); }`,
+    `export function ended(s, log) { return new Promise((resolve, reject) => { log.info(() => 'x'); s.on('end', () => resolve(1)); s.on('error', reject); }); }`,
+    `export function seen(el) { return new Promise((resolve) => { new IntersectionObserver(() => resolve()).observe(el); }); }`,
+    `export function loaded() { return new Promise((resolve) => window.addEventListener('load', resolve)); }`,
+    `export function shown() { return new Promise((resolve) => document.addEventListener('visibilitychange', () => resolve())); }`,
   ],
   invalid: [
+    {
+      code: 'export function body(s) { const chunks = []; return new Promise((resolve) => { s.on("data", (chunk) => chunks.push(chunk)); s.on("end", () => resolve(chunks)); }); }',
+      errors: [{ messageId: 'missingReject', data: { source: "`s.on('end')`" } }],
+    },
     {
       code: 'export function collect(body) { return new Promise((resolve) => body.pipe(concat(resolve))); }',
       errors: [{ messageId: 'missingReject', data: { source: '`body.pipe(...)`' } }],

@@ -64,11 +64,20 @@ function isUnread(context, fn, parameter) {
   return variable !== undefined && variable.references.length === 0;
 }
 
-function callbackFinding(context, services, fn, callee) {
+export function readsError(context, services, fn) {
+  const [parameter] = fn.params;
+  return (
+    parameter?.type === 'Identifier' &&
+    isErrorParameter(services, parameter) &&
+    !isUnread(context, fn, parameter)
+  );
+}
+
+function callbackFinding({ context, services, callee }, fn) {
   const [parameter] = fn.params;
   if (parameter === undefined) {
     return services !== undefined && contextualErrorFirst(services, fn)
-      ? { node: fn, messageId: 'ignoredError', data: { name: 'error', callee } }
+      ? { node: fn, messageId: 'missingErrorParameter', data: { callee } }
       : undefined;
   }
   return parameter.type === 'Identifier' &&
@@ -81,7 +90,7 @@ function callbackFinding(context, services, fn, callee) {
 function argumentFinding({ context, services, resolve, callee }, argument) {
   if (isFunctionExpression(argument)) {
     return settlesInside(argument, resolve)
-      ? callbackFinding(context, services, argument, callee)
+      ? callbackFinding({ context, services, callee }, argument)
       : undefined;
   }
   return argument.type === 'Identifier' &&

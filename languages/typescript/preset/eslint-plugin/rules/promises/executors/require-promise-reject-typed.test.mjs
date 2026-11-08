@@ -59,7 +59,7 @@ tester.run('require-promise-reject (typed)', rule, {
     ),
     typed(
       'export const read = (p: string) => new Promise<void>((resolve, reject) => { rl.question(p, reject); readFile(p, () => resolve()); });',
-      [{ messageId: 'ignoredError', data: { name: 'error', callee: 'readFile' } }],
+      [{ messageId: 'missingErrorParameter', data: { callee: 'readFile' } }],
     ),
     typed(
       'export const stop = () => new Promise<unknown>((resolve, reject) => { rl.question("?", reject); server.close(resolve); });',

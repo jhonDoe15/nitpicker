@@ -12,6 +12,8 @@
      and exists(
        $scope//MethodCall[@MethodName = 'complete'][*[1][self::VariableAccess[@Name = $name]]]
          [ancestor::*[self::LambdaExpression or self::AnonymousClassDeclaration][. >> $scope]]
+         [not(ancestor::LambdaExpression[1]/parent::ArgumentList/parent::MethodCall
+                [@MethodName = ('schedule', 'scheduleAtFixedRate', 'scheduleWithFixedDelay')])]
        | $scope//MethodReference[@MethodName = 'complete'][*[1][self::VariableAccess[@Name = $name]]])
      and not(
        $scope//MethodCall

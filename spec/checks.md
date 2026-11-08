@@ -23,7 +23,8 @@ The limits of the custom rules and the languages that enforce them come from
 ## ESLint checks
 
 Each runs ESLint with a different config. Every ESLint message becomes an **enforceable** finding
-(`rule` is the ESLint rule id). No numeric threshold: any new message fails.
+(`rule` is the ESLint rule id), except the report-only `nitpicker/promise-wait-deadline`, which is a
+design note. No numeric threshold: any new enforceable message fails.
 
 A message is identified by its rule, message and the syntax it points at. A message on a whole
 function is identified by the function's signature, not its body. A message inside a named

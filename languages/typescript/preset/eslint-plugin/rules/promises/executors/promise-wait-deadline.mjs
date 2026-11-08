@@ -5,8 +5,8 @@ import { partsOf } from '../../analysis/narrowing/type-parts.mjs';
 import { memberName } from '../../analysis/test-code-analysis.mjs';
 import { typeServices } from '../../security/security-values.mjs';
 import {
-  LISTENERS,
   isFunctionExpression,
+  isListenerCall,
   nodesInside,
   promiseExecutor,
   shortText,
@@ -47,12 +47,13 @@ function typeNames(checker, type) {
 }
 
 function emitterOf(call) {
-  const receiver = call.callee.object;
-  return receiver.type === 'CallExpression' &&
-    receiver.callee.type === 'MemberExpression' &&
-    LISTENERS.has(memberName(receiver.callee))
-    ? emitterOf(receiver)
-    : receiver;
+  const chain = [call.callee.object];
+  for (const receiver of chain) {
+    if (isListenerCall(receiver)) {
+      chain.push(receiver.callee.object);
+    }
+  }
+  return chain.at(-1);
 }
 
 function isNetwork(services, receiver) {
@@ -88,7 +89,7 @@ function hasDeadline(context, construction) {
 }
 
 const MESSAGE =
-  "This promise settles only from events on `{{receiver}}`, a network stream or socket, and nothing bounds the wait: a peer that stops sending keeps it pending forever. Add a deadline: a timer that rejects, `AbortSignal.timeout(ms)` passed as `signal`, or the socket's `setTimeout` with a `'timeout'` listener that destroys it. This is a design note for review and does not fail the change.";
+  "Add a deadline to this wait, such as a timer that rejects, `AbortSignal.timeout(ms)` passed as `signal`, or the socket's `setTimeout` with a `'timeout'` listener that destroys it: the promise settles only from events on `{{receiver}}`, a network stream or socket, so a peer that stops sending keeps it pending forever. This is a design note for review and does not fail the change.";
 
 function waitedListeners({ settlers, sources }) {
   const listeners = sources.filter(({ kind }) => kind === 'listener');

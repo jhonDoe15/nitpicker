@@ -110,32 +110,47 @@ Part of the [TypeScript strict preset guide](../typescript-strict-preset.md).
   constructor function outside a `class` are not read, and a variable assigned twice counts a
   listener on either value for both.
 - A rejection path in every `new Promise` that waits on something that can fail
-  (`nitpicker/require-promise-reject`, production code). When the executor registers a listener
-  (`on`, `once`, `addListener`, `prependListener`, `addEventListener`), pipes a stream or passes a
-  callback to a call (an inline function, or `resolve` itself as in `server.listen(port, resolve)`
-  or `task.then(resolve)`), it must take `reject` and use it: called, passed as a listener or
-  callback, or stored (`{ resolve, reject }`). Otherwise the `'error'` event or the error a callback
-  reports never settles the promise and the caller waits forever. Inside an executor that does take
+  (`nitpicker/require-promise-reject`, production code). When the executor settles through a
+  listener (`on`, `once`, `addListener`, `prependListener`, `prependOnceListener`, `addEventListener`
+  whose handler is `resolve` or calls it), a pipe into something that holds `resolve`
+  (`body.pipe(concat(resolve))`) or a callback passed to a call (an inline function that calls
+  `resolve`, `resolve` itself as in `server.listen(port, resolve)` or `task.then(resolve)`, or a call
+  that receives it, as in `concat(resolve)`), it must take `reject` and use it: called, passed as a
+  listener or callback, or stored (`{ resolve, reject }`). Otherwise the `'error'` event or the error a
+  callback reports never settles the promise and the caller waits forever. An executor without
+  `reject` passes when every such source already settles on failure: an `'error'` listener on the same
+  receiver settles it (`image.addEventListener('error', () => resolve(false))`), or the callback reads
+  its error argument (`fs.access(p, (err) => resolve(!err))`). The message names the first source that
+  does not. Callbacks that never reach `resolve` (`JSON.parse(text, (key, value) => value)`) are not
+  sources. Inside an executor that does take
   `reject`, a node-style callback that calls `resolve` must read its error argument (a first
-  parameter named `err`, `error`, `e`, `ex` or `...Error`, or typed as an `Error` in TypeScript
+  parameter named `err`, `error`, `e`, `ex`, `exc`, `exception` or `...Err`/`...Error`, with or without
+  leading underscores, or typed as an `Error` in TypeScript
   files): `if (error) { reject(error); return; }`. With type information a callback that declares
-  no parameters where the callee passes an error first (`readFile(p, () => resolve())`), and
+  no parameters where the callee passes an error first (`readFile(p, () => resolve())`, reported as
+  a missing error parameter), and
   `resolve` passed straight where the callee passes an error first (`server.close(resolve)`), are
   reported too. The forms that reject by themselves are the allowed alternative: `once` from
   `node:events`, `pipeline` and `finished` from `node:stream/promises`, and `util.promisify`.
   Timers (`setTimeout(resolve, ms)`, `setImmediate`, `process.nextTick`, `queueMicrotask`),
-  in-place callbacks (`map`, `forEach`, `replace`), queues (`waiters.push(resolve)`, `add`, `set`),
-  events that cannot fail (`'abort'`, `'exit'`, `'beforeExit'`, `'DOMContentLoaded'`, `process`
-  signals) and `.then`/`.catch`/`.finally` callbacks for the error check are not reported. An
+  the DOM observers (`IntersectionObserver`, `MutationObserver`, `ResizeObserver`,
+  `PerformanceObserver`), `debounce`/`throttle`, in-place callbacks (`map`, `forEach`, `replace`), queues (`waiters.push(resolve)`, `add`, `set`),
+  events that cannot fail (`'abort'`, `'exit'`, `'beforeExit'`, `'DOMContentLoaded'`,
+  `'readystatechange'`, `'visibilitychange'`, `'load'` on `window`, `document`, `globalThis` or
+  `self`, and `process` signals) and `.then`/`.catch`/`.finally` callbacks for the error check are not reported. An
   executor passed by name (`new Promise(executor)`) is not read. A design note, which does not fail
   the change, goes with it (`nitpicker/promise-wait-deadline`): an executor that takes `reject` but
   settles only from listeners on a network stream or socket (`Socket`, `TLSSocket`,
   `IncomingMessage`, `ClientRequest`, `WebSocket` and the HTTP/2 streams by type, or a receiver
-  named like `socket`, `ws`, `conn`, `req` or `res` without types) when the enclosing function has
-  no deadline: no `setTimeout`, no `signal`, no `'timeout'` listener and no name with `timeout`,
-  `deadline` or `race` in it. A peer that stops sending keeps such a promise pending; a timer that
+  named `socket`, `sock`, `tlsSocket`, `ws`, `webSocket`, `websocket`, `conn`, `connection`, `req`,
+  `request`, `res`, `response` or `upstream` without types) when the enclosing function has
+  no deadline: no `'timeout'` literal and no identifier that contains `signal`, `timeout` or `deadline` (any
+  case, so `setTimeout`, `AbortSignal` and `withTimeout` count) or is exactly `race`. A peer that stops sending keeps such a promise pending; a timer that
   rejects, `AbortSignal.timeout(ms)` or the socket's `setTimeout` bounds it. It stays a note because
-  only the author knows whether the wait is meant to be open-ended.
+  the noise is structural: the code cannot tell a peer that may stay silent for good (a long-lived
+  subscription, a server push channel) from one that must answer, so no exception would make the
+  finding right. The adapter (`REPORT_ONLY_RULES` in `languages/typescript/adapters/eslint/normalize.mjs`)
+  records it as a design note for review.
 - Bounded fan-out (`nitpicker/unbounded-fan-out`): `Promise.all`, `allSettled`, `any` and `race`
   (also through a `const P = Promise` alias) over `xs.map(...)`, `xs.flatMap(...)`,
   `Array.from(xs, ...)`, `Array.from({ length: xs.length }, ...)`, a `const` holding one of those,
