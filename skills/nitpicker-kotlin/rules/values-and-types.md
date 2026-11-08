@@ -50,6 +50,11 @@ Part of the [nitpicker-kotlin](../SKILL.md) skill. Write these forms from the st
   on a `ConcurrentMap`, never changes the same map, not even from a callback it starts
   (`pmd/RecursiveMapUpdate`). Attach the cleanup to the result:
   `map.computeIfAbsent(key) { start(it) }.whenComplete { r, _ -> map.remove(key, r) }`.
+- A data class keeps a back reference (a child's `parent`, a line's `order`) out of its primary
+  constructor, as a body property, so the generated `toString`, `equals` and `hashCode` do not
+  recurse (`pmd/GeneratedMemberCycle`). A data class does not extend a class with state it leaves
+  out of `equals`: declare those properties `abstract` and override them in the primary constructor
+  (`pmd/GeneratedEqualsSkipsSuperclass`).
 - A validation annotation on a constructor property takes the field target:
   `data class OrderRequest(@field:NotBlank val item: String)`, not `@NotBlank val item`, which
   lands on the constructor parameter where `@Valid` never looks (`pmd/ValidationAnnotationTarget`).
