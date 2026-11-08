@@ -35,9 +35,10 @@ Part of the [nitpicker-javascript](../SKILL.md) skill. Write these forms from th
 - A child process you wait for gets a deadline: `{ timeout: 30_000 }` on `execFileSync`/`spawnSync`, or a
   `timeout` or `signal: AbortSignal.timeout(30_000)` on `execFile` and an awaited `spawn` or `execa`
   (`nitpicker/require-process-timeout`; a build wrapper that only runs a child to completion takes an exception).
-- A database or AWS SDK client gets a timeout once, where it is built: `new Pool({ statement_timeout: 30_000 })`,
-  `extra: { statement_timeout: 30_000 }` on a TypeORM data source, `requestHandler: { requestTimeout: 30_000,
-throwOnRequestTimeout: true }` on an AWS SDK client (`nitpicker/require-client-timeout`).
+- A database or AWS SDK client gets a timeout once, where it is built:
+  `new Pool({ statement_timeout: 30_000 })`, `extra: { statement_timeout: 30_000 }` on a TypeORM data source,
+  `requestHandler: { requestTimeout: 30_000, throwOnRequestTimeout: true }` on an AWS SDK client
+  (`nitpicker/require-client-timeout`).
 - Named exports only (`export function`, `export { x } from`); no `export default`. No comments;
   JSDoc type tags are the exception.
 - Signatures: a value with three states is a union of string literals, not `{boolean|undefined}`,

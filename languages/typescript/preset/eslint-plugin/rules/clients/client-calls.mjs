@@ -1,5 +1,6 @@
 import { calleeLabel, constructedName } from '../database/orm-modules.mjs';
-import { memberName, resolvedValue, unwrapped } from '../security/security-values.mjs';
+import { findVariable, stringValue } from '../analysis/constant-resolution.mjs';
+import { memberName, resolvedValue, staticKey, unwrapped } from '../security/security-values.mjs';
 import {
   either,
   keyState,
@@ -14,11 +15,43 @@ import {
 const AWS_MODULE = /^@aws-sdk\/client-/u;
 const PG_MODULES = new Set(['pg', 'pg-pool']);
 const PG_CLASSES = new Set(['Pool', 'Client']);
+const MODULE_SCOPES = new Set(['module', 'global']);
+const CLASS_NAME = /^[A-Z]/u;
+const NOT_CLIENT = /(?:Command|Exception|Input|Output)$/u;
 const HANDLERS = new Set(['NodeHttpHandler', 'NodeHttp2Handler', 'FetchHttpHandler']);
+
+function moduleBinding(scope, target) {
+  const variable = findVariable(scope.context, target, target.name);
+  const definition = variable?.defs[0];
+  if (variable === undefined || !MODULE_SCOPES.has(variable.scope.type)) {
+    return undefined;
+  }
+  const pattern = definition?.node?.id;
+  const init = unwrapped(definition?.node?.init);
+  const fromNamespace =
+    definition?.type === 'Variable' &&
+    pattern?.type === 'ObjectPattern' &&
+    init?.type === 'Identifier';
+  const namespace = fromNamespace ? scope.bindings.get(init.name) : undefined;
+  if (namespace?.imported === '*') {
+    const property = pattern.properties.find(
+      (entry) => entry.type === 'Property' && entry.value?.name === target.name,
+    );
+    return { source: namespace.source, imported: staticKey(property) };
+  }
+  return scope.bindings.get(target.name);
+}
 
 function bindingOf(scope, node) {
   const target = unwrapped(node);
-  return target?.type === 'Identifier' ? scope.bindings.get(target.name) : undefined;
+  return target?.type === 'Identifier' ? moduleBinding(scope, target) : undefined;
+}
+
+function namespaceOwner(scope, node) {
+  const target = unwrapped(node);
+  const owner =
+    target?.type === 'MemberExpression' && memberName(target) === 'native' ? target.object : target;
+  return bindingOf(scope, owner);
 }
 
 function constructed(scope, callee) {
@@ -27,12 +60,35 @@ function constructed(scope, callee) {
     const binding = bindingOf(scope, target);
     return binding === undefined ? undefined : { ...binding, name: binding.imported };
   }
-  const owner = target.type === 'MemberExpression' ? bindingOf(scope, target.object) : undefined;
+  const owner =
+    target.type === 'MemberExpression' ? namespaceOwner(scope, target.object) : undefined;
   return owner?.imported === '*' ? { ...owner, name: memberName(target) } : undefined;
 }
 
 function isAwsClient(made) {
-  return AWS_MODULE.test(made.source) && made.name?.endsWith('Client') === true;
+  return (
+    AWS_MODULE.test(made.source) &&
+    CLASS_NAME.test(made.name ?? '') &&
+    !NOT_CLIENT.test(made.name ?? '')
+  );
+}
+
+function listensOnConnect(context, node) {
+  const declarator = node.parent;
+  if (declarator?.type !== 'VariableDeclarator' || declarator.id.type !== 'Identifier') {
+    return false;
+  }
+  const variable = findVariable(context, declarator.id, declarator.id.name);
+  return (variable?.references ?? []).some((reference) => {
+    const member = reference.identifier.parent;
+    const call = member?.parent;
+    return (
+      member?.type === 'MemberExpression' &&
+      memberName(member) === 'on' &&
+      call?.type === 'CallExpression' &&
+      stringValue(call.arguments[0]) === 'connect'
+    );
+  });
 }
 
 function isPgClient(made) {
@@ -101,7 +157,8 @@ export function clientTimeout(scope, node) {
   }
   if (node.type === 'NewExpression' && isPgClient(made)) {
     const name = made.name === '*' ? 'Pool' : made.name;
-    return { kind: 'database', name: `pg ${name}`, state: postgresOptionsState(context, config) };
+    const state = listensOnConnect(context, node) ? UNKNOWN : postgresOptionsState(context, config);
+    return { kind: 'database', name: `pg ${name}`, state };
   }
   if (node.type === 'CallExpression' && made.source === 'postgres' && made.name === '*') {
     return {

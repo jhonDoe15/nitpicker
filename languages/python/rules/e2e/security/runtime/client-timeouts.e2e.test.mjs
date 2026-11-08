@@ -43,6 +43,15 @@ describe.skipIf(!enabled)('client-without-timeout', () => {
         'DATABASES = {\n    "default": {\n        "ENGINE": "django.db.backends.postgresql",\n        "NAME": "app",\n    },\n    "cache": {"ENGINE": "django.db.backends.sqlite3", "NAME": "cache.db"},\n}\n',
         [`${RULE}:3 DATABASES['default']`],
       ],
+      [
+        'a zero timeout, asyncpg keys on psycopg, an annotated and a PostGIS Django database',
+        'import psycopg\n\n\ndef open_all(dsn):\n    psycopg.connect(dsn, options="-c statement_timeout=0")\n    return psycopg.connect(dsn, command_timeout=30)\n\n\nDATABASES: dict = {\n    "default": {"ENGINE": "django.contrib.gis.db.backends.postgis", "NAME": "geo"},\n}\n',
+        [
+          `${RULE}:5 psycopg.connect`,
+          `${RULE}:6 psycopg.connect`,
+          `${RULE}:10 DATABASES['default']`,
+        ],
+      ],
     ]);
     expect(actual).toEqual(expected);
   });
@@ -57,6 +66,11 @@ describe.skipIf(!enabled)('client-without-timeout', () => {
       [
         'a Django database with a statement timeout in OPTIONS',
         'DATABASES = {\n    "default": {\n        "ENGINE": "django.db.backends.postgresql",\n        "OPTIONS": {"options": "-c statement_timeout=30000"},\n    }\n}\n',
+        [],
+      ],
+      [
+        'connection hooks and OPTIONS set after the DATABASES literal',
+        'import asyncpg\nfrom psycopg_pool import ConnectionPool\nfrom sqlalchemy import create_engine, event\n\n\nasync def open_all(dsn, setup, configure):\n    await asyncpg.create_pool(dsn, setup=setup)\n    ConnectionPool(dsn, configure=configure)\n    engine = create_engine("postgresql+psycopg://db/app")\n    event.listen(engine, "connect", configure)\n    return engine\n\n\nDATABASES = {"default": {"ENGINE": "django.db.backends.postgresql"}}\nDATABASES["default"]["OPTIONS"] = {"options": "-c statement_timeout=30000"}\n',
         [],
       ],
       [

@@ -49,6 +49,10 @@ describe('datasource-without-timeout', () => {
     'spring.datasource.hikari.data-source-properties.socketTimeout=30',
     'spring.datasource.hikari.data-source-properties.options=-c statement_timeout=30000',
     'spring.datasource.hikari.connection-init-sql=SET SESSION max_execution_time=30000',
+    'spring.datasource.hikari.data-source-properties.oracle.jdbc.ReadTimeout=30000',
+    'spring.datasource.dbcp2.default-query-timeout=30',
+    'spring.datasource.tomcat.connection-properties=socketTimeout=30000',
+    'spring.datasource.tomcat.init-sql=SET statement_timeout = 30000',
   ])('accepts %s', (line) => {
     expect(timeouts({ [resource('application.properties')]: `${URL}\n${line}` })).toEqual([]);
   });
@@ -59,10 +63,23 @@ describe('datasource-without-timeout', () => {
     'jdbc:postgresql://db/shop?options=-c%20statement_timeout=30000',
     'jdbc:h2:mem:shop',
     '${DB_URL:jdbc:h2:mem:shop}',
+    'jdbc:h2:file:./data/shop',
+    'jdbc:tc:postgresql:16:///shop',
   ])('accepts the URL %s', (url) => {
     expect(
       timeouts({ [resource('application.properties')]: `spring.datasource.url=${url}` }),
     ).toEqual([]);
+  });
+
+  it.each([
+    'spring.datasource.url=jdbc:postgresql://db/shop?socketTimeout=0',
+    `${URL}\nspring.transaction.default-timeout=PT0S`,
+    `${URL}\nspring.datasource.hikari.data-source-properties.options=-c statement_timeout=0`,
+    `${URL}\nspring.datasource.dbcp2.default-query-timeout=-1`,
+  ])('reports a zero deadline in %s', (text) => {
+    expect(timeouts({ [resource('application.properties')]: text })).toEqual([
+      urlFinding(MAIN_PROPERTIES, 1),
+    ]);
   });
 
   it('takes a timeout from a profile file, and ignores one set to zero', () => {
