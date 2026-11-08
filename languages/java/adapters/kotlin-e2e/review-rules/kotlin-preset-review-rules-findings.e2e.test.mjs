@@ -19,6 +19,12 @@ import {
 } from '../test-support/kotlin-e2e-project.mjs';
 import { helpUriProblems } from '../../../../../shared/reference/test-support/help-uris.mjs';
 
+const INTERNAL_OPTIONS = new Set([
+  'unused-option Envelope.retries',
+  'unused-option Mailer.retries',
+  'unused-option Outbox.limit',
+]);
+
 describe.skipIf(!kotlinE2eEnabled)('Kotlin preset review rules end to end', () => {
   let project;
 
@@ -52,7 +58,7 @@ describe.skipIf(!kotlinE2eEnabled)('Kotlin preset review rules end to end', () =
     );
   });
 
-  it('keeps judging public functions of an unpublished module that has an integration test suite', () => {
+  it('withholds internal but judges public functions of an unpublished module with an integration suite', () => {
     commitFromBranch(project, {
       name: 'integration-suite',
       from: 'review-rules',
@@ -61,6 +67,11 @@ describe.skipIf(!kotlinE2eEnabled)('Kotlin preset review rules end to end', () =
 
     const result = diffOf(project, 'integration-suite');
 
-    expect(reviewFindings(result.newFindings)).toEqual(ALL_FINDINGS);
+    expect(reviewFindings(result.newFindings)).toEqual(
+      [
+        ...ALL_FINDINGS.filter((entry) => !INTERNAL_OPTIONS.has(entry)),
+        'unused-option callers-not-analyzed',
+      ].sort(),
+    );
   });
 });
