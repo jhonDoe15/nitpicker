@@ -51,6 +51,9 @@ Part of the [nitpicker-kotlin](../SKILL.md) skill. Write these forms from the st
   of them, and test a helper through the public function that calls it. No `mockkObject`,
   `mockkStatic`, `mockkConstructor` or `mockStatic` of the project's own code
   (`pmd/StaticMockOfProjectType`): pass a function, an interface or a `Clock` instead.
+- No relaxed mock of a project class (`pmd/RelaxedMockInTest`): no `mockk<Mailer>(relaxed = true)` or
+  `@RelaxedMockK`. Stub the calls the test needs (`every { mailer.send(any()) } returns Receipt(...)`), or use
+  `relaxUnitFun = true` when only `Unit` calls are left out.
 - A test puts back the process-wide state it changes (`pmd/GlobalStateLeakInTest`): a system property, the default
   `Locale` or `TimeZone`, `System.out`, `Dispatchers.setMain`, or a property of a project `object`. Restore it in
   `finally`, an `@AfterEach`/`@AfterTest` function or Kotest `afterTest { }` (`Dispatchers.resetMain()`), or use an

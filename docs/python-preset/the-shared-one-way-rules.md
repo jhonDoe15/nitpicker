@@ -56,7 +56,7 @@ are listed at the end.
 | Timeouts                 | `timeout=10` on every request, `urlopen` and plain `requests.Session` call; never `timeout=None`                                                                                     | ruff `S113`, `http-without-timeout` (script)                                                                                                                                                                                               |
 | Abandoned work           | `asyncio.wait_for`, `asyncio.timeout` or a `TaskGroup`; cancel or hand off `pending` after `asyncio.wait(..., timeout=)`                                                             | `timeout-abandons-operation` (script)                                                                                                                                                                                                      |
 | Child processes          | `subprocess.run(args, timeout=30, check=True)`, `communicate(timeout=30)`, asyncio waits in `asyncio.timeout(30)`                                                                    |
-| Test honesty             | a reason on every skip, no sleeping, no tautologies, fixed time and seeded random values, no network, no leaked global state                                                         | ruff `PT`, `skipped-test-without-reason`, `sleep-in-test`, `negative-wait-in-test`, `mocked-subject-in-test`, `tautological-assert`, `real-clock-in-test`, `random-in-test`, `network-in-test`, `server-or-container-per-test`, `global-state-leak-in-test` (script) |
+| Test honesty             | a reason on every skip, no sleeping, no tautologies, fixed time and seeded random values, no network, no leaked global state                                                         | ruff `PT`, `skipped-test-without-reason`, `sleep-in-test`, `negative-wait-in-test`, `mocked-subject-in-test`, `mock-without-spec`, `patch-misses-lookup`, `tautological-assert`, `real-clock-in-test`, `random-in-test`, `network-in-test`, `server-or-container-per-test`, `global-state-leak-in-test` (script) |
 | Test layout              | tests in files pytest collects; helpers in the tests folder                                                                                                                          | `uncollected-tests`, `test-helper-in-source` (script)                                                                                                                                                                                      |
 
 `type-cast` rejects `typing.cast` (and `typing_extensions.cast`) as a call or as a value
@@ -900,9 +900,34 @@ t)`, `asyncio.timeout(t)`, `fail_after(t)`, `wait(t)`) inside `pytest.raises` or
   instance of one (built in the test or returned by a fixture of the file); a method of such an
   instance replaced by a `Mock`; and `Mock(spec=Cart)` or `create_autospec(Cart)`. Patching what the
   subject imports (`patch("shop.cart.requests.get")`, the usual Python seam), a module constant
-  (`patch("shop.cart.LIMIT", 1)`) or another module is not reported; #519 covers patch targets that
-  miss. Allowed: pass the collaborators in and give the test a fake of them, and test a helper
-  through the public function that calls it.
+  (`patch("shop.cart.LIMIT", 1)`) or another module is not reported; `patch-misses-lookup` covers
+  patch targets that miss. Allowed: pass the collaborators in and give the test a fake of them, and
+  test a helper through the public function that calls it.
+- `mock-without-spec` (Kotlin: `RelaxedMockInTest`) reports, in a test file, a mock of project code
+  that accepts any call. A `Mock`, `MagicMock`, `AsyncMock`, `NonCallableMock` or
+  `NonCallableMagicMock` with no spec (no first argument, `spec`, `spec_set` or `wraps`), passed
+  where a project class is expected: an argument of a call to a project function, class or class
+  method whose parameter (or dataclass field) is annotated with a project class (`Mailer`,
+  `Mailer | None`, `Optional["Mailer"]`), passed straight, through a local name or `self.` attribute
+  bound to it, or through a fixture of the file that returns it. Also `patch`, `patch.object`,
+  `mocker.patch` and `mocker.patch.object` whose target is a project function, class or method
+  (followed through `from ... import`), with none of `autospec`, `spec`, `spec_set`, `new` or
+  `new_callable` (`autospec=False` counts as none). A mock of a library type, and a mock of the
+  module the test is named after (`mocked-subject-in-test` reports that), are not reported. Allowed:
+  `Mock(spec=Mailer)`, `create_autospec(Mailer, instance=True)`, `patch(..., autospec=True)`, a
+  `new=` value, or a hand-written fake. TypeScript, JavaScript and Java have no counterpart: a
+  `vi.fn()` is one function rather than an object that grows attributes, TypeScript checks a mock
+  against the type it is passed as, and a Mockito mock is always made from a class.
+- `patch-misses-lookup` reports a patch of a name where it is defined (`patch("shop.mailer.send")`,
+  `mocker.patch`, `monkeypatch.setattr("shop.mailer.send", ...)`, `patch.object(mailer, "send")`),
+  when a production module the test imports bound the name at import time with
+  `from shop.mailer import send`: that module keeps the original, so the patch does not reach the
+  code under test. Not reported when the file also patches the name in that module, when the
+  module imports the name inside a function (looked up at call time), or for the module the test
+  is named after. Allowed: patch where the name is looked up (`patch("shop.checkout.send")`), or
+  have the module import the module (`from shop import mailer`, then `mailer.send(...)`). The
+  other presets have no counterpart: ES module imports are live bindings, and the JVM has no
+  module-level names.
 - `global-state-leak-in-test` (Java and Kotlin: `GlobalStateLeakInTest`; TypeScript:
   `nitpicker/fake-timers-require-restore`) reports, in a test file, a direct change to process-wide state that nothing
   puts back: `os.environ[...] = ...`, `del os.environ[...]`, `os.environ.update`, `setdefault`, `pop`, `popitem` and
