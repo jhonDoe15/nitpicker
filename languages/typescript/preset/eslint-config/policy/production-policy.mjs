@@ -102,6 +102,7 @@ function productionGuardRules({ react, security }) {
     'nitpicker/no-orm-schema-sync': 'error',
     'nitpicker/no-shell-string-command': 'error',
     'nitpicker/require-process-timeout': 'error',
+    'nitpicker/no-sync-node-api-in-async': 'error',
     'nitpicker/no-unsafe-path-join': 'error',
     'nitpicker/timeout-abandons-operation': ['error', httpClientOptions({ react, security })],
     'nitpicker/require-error-listener': 'error',
@@ -176,6 +177,10 @@ export function productionPolicyConfigFor(layout, options = {}) {
     {
       files: [...(layout.entryPoints ?? []), ...configFileGlobsFor(layout)],
       rules: { 'nitpicker/no-process-access-outside-composition-root': 'off' },
+    },
+    {
+      files: configFileGlobsFor(layout),
+      rules: { 'nitpicker/no-sync-node-api-in-async': 'off' },
     },
   ];
 }

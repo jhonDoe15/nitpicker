@@ -5,7 +5,12 @@ import { importPolicyModule, relativeProjectPath, runNodeTool, policyFile } from
 import path from 'node:path';
 import { normalizeMutation, withUnreachedMutantsUncovered } from '../reporting/tests.mjs';
 import { withMutationSourceHashes } from '../reporting/source-hashes.mjs';
-import { rmSync, readFileSync, writeFileSync, existsSync } from 'node:fs';
+import { readFileSync, writeFileSync, existsSync } from 'node:fs';
+import { rm } from 'node:fs/promises';
+import {
+  TYPECHECK_FAILED_SKIPPED_RULE,
+  TESTS_FAILED_SKIPPED_RULE,
+} from '../../../../../shared/rules/finding-helpers.mjs';
 import { toolErrorFinding } from '../reporting/test-report.mjs';
 import { mutationSkipFor } from './skips/mutation-skips.mjs';
 import { layoutTransformFor } from '../../../preset/tool-configs.mjs';
@@ -79,9 +84,7 @@ async function mutationReport(options, targets) {
       ),
     };
   } finally {
-    for (const filePath of createdFiles.reverse()) {
-      rmSync(filePath, { force: true });
-    }
+    await Promise.all(createdFiles.map((filePath) => rm(filePath, { force: true })));
   }
 }
 

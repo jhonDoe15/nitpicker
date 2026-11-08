@@ -4,10 +4,11 @@ Part of the [Kotlin preset guide](../kotlin-preset.md).
 
 Checks that detekt has no rule for, and in a Spring project the Java preset's Spring rules
 ([Spring rules](review-rules.md#spring-rules)), run on a syntax tree of the Kotlin sources; the
-[test honesty](#test-honesty) rules run on the Kotlin test sources read as masked text. All but two use the
+[test honesty](#test-honesty) rules run on the Kotlin test sources read as masked text. All but four use the
 rule ids and the exception route of the Java preset's PMD rules (`pmd/<RuleId>`), so a finding reads the same in
-both languages and one `exceptions` entry style covers either. The two coroutine rules,
-`kotlin-source/SuspendFunInFinallySection` and `kotlin-source/ChildCoroutineOutlivesResource`, are Kotlin-only ids
+both languages and one `exceptions` entry style covers either. The four coroutine rules,
+`kotlin-source/SuspendFunInFinallySection`, `kotlin-source/ChildCoroutineOutlivesResource`,
+`kotlin-source/BlockingCallInCoroutine` and `kotlin-source/TimeoutWithoutSuspension`, are Kotlin-only ids
 with their own route (see the notes under the table below).
 
 How it works: task `nitpickerKotlinPsi` compiles the sources of `languages/java/gradle/kotlin-psi/` with the `javac`
@@ -32,6 +33,8 @@ skipped with a note on stderr.
 | `ServerOrContainerPerTest`                              | `review-rules/tests/setup/`                            | a container, server or process started for each test: a `@Container`, `@Rule` or `@RegisterExtension` property of a JUnit instance, a Kotest container extension in a per-test mode, a start in `@BeforeEach`, `@Before`, `beforeTest` or `beforeEach` on an object made for each test, the same start in two or more tests of a class                                                                                           |
 | `AssertionInControlFlow`                                | `review-rules/tests/honesty/`                          | an assertion that can be skipped: inside an `if` or a `when` whose branches do not all assert, a loop, a safe call, `&&`, `\|\|`, `?:`, a swallowing `try` or `runCatching`, or after an early return                                                                                                                                                                                                                            |
 | `CoroutineEscapesTest`                                  | `review-rules/tests/coroutines/`                       | a `launch`, `async`, `launchIn`, `stateIn` or `shareIn` on a scope the test does not own (`CoroutineScope(...)`, a scope field, `viewModelScope`) that nothing joins, awaits or cancels                                                                                                                                                                                                                                          |
+| `BlockingCallInCoroutine` (tool `kotlin-source`)        | `review-rules/blocking/`                               | a blocking call in coroutine code that nothing offloads: `Files.*`, file, JDBC, `Future.get()`, `latch.await()`, `queue.take()`, `Mono.block()`                                                                                                                                                                                                                                                                                  |
+| `TimeoutWithoutSuspension` (tool `kotlin-source`)       | `review-rules/blocking/`                               | a `withTimeout` block with no suspension point, which can never time out                                                                                                                                                                                                                                                                                                                                                         |
 | `MockedSubjectInTest`                                   | `review-rules/tests/mocks/`                            | a mock of the class under test (`mockk<OrderService>()`, `mock<OrderService>()`, `mock(OrderService::class.java)`, `@MockK`, `@Mock`), or a spy of it whose own methods the test stubs (`spyk(...)`, `spy(...)`, `@SpyK`, `@Spy`, with `every`, `coEvery`, `justRun`, `whenever`, `` `when` ``, `given` or `stub`)                                                                                                               |
 | `StaticMockOfProjectType`                               | `review-rules/tests/mocks/`                            | `mockkObject`, `mockkStatic` (class, `"pkg.FileKt"` or `::function`), `mockkConstructor`, `mockStatic` or `mockConstruction` of code declared in the project's main sources                                                                                                                                                                                                                                                      |
 | `GlobalStateLeakInTest`                                 | `review-rules/tests/global-state/`                     | a test that changes process-wide state (a system property, the default `Locale` or `TimeZone`, `System.out`, a default handler, a security provider, `Dispatchers.setMain`, or a property or `set...` function of a project `object` or class) that nothing in the class puts back                                                                                                                                               |
@@ -326,6 +329,66 @@ Thread.currentThread(); t.interrupt()`) or hands the exception off through a lam
   a semaphore only with one permit. Java has no suspension inside an expression; the nearest Java
   hazard, a non-atomic update of a `volatile` field, is `errorprone/NonAtomicVolatileUpdate` in the
   [Java preset](../java-preset.md).
+- Blocking calls in coroutines (`BlockingCallInCoroutine`): the facts step records the calls that run in
+  coroutine code: the body of a `suspend` function, the lambdas of `launch`, `async`, `produce`, `actor`,
+  `coroutineScope`, `supervisorScope`, `withTimeout` and `withContext` inside it (also a `launch` without a
+  receiver inside such code), and the body of a `flow { }`, `channelFlow { }` or `callbackFlow { }` builder
+  imported from `kotlinx.coroutines.flow` (it runs on the collector's dispatcher). It looks through `let`,
+  `run`, `apply`, `also`, `with`, `use`, `forEach` and `repeat`, and through the inline collection operators
+  (`map`, `filter`, `onEach`, `flatMap`, `associateBy`, `sumOf`, `first`, ...) when their receiver is known to be
+  a collection: a parameter, property or local declared as `List`, `Set`, `Map`, `Sequence`, `Array`, ..., a
+  `listOf(...)`-style factory, a range, or a chain of such operators on one (a `Flow` has operators of the same
+  names whose lambdas run elsewhere, so an unknown receiver is not looked through). The lambda parameter of
+  such an operator (`it`, or a single untyped name) gets the element type of a receiver declared as
+  `List<File>`. A call is not recorded when the dispatcher of a `withContext(...)`, `launch(...)` or `flowOn(...)`
+  (the nearest `flowOn` after the builder) moves it off the caller's thread: an injected dispatcher (a
+  parameter or property of type `CoroutineDispatcher`, or any context value whose type is not known),
+  `Dispatchers.IO` or an executor dispatcher. `Dispatchers.Default`, `Main` and `Unconfined` do not move
+  blocking work off a shared thread, and a context that holds no dispatcher (`NonCancellable`,
+  `CoroutineName(...)`, `Job()`, `SupervisorJob()`, `EmptyCoroutineContext`, a value declared as `Job`, or a `+`
+  of those) keeps the caller's dispatcher; in a `+` the rightmost dispatcher decides. `runInterruptible`
+  counts as offloaded. A `launch` or `async` on an explicit receiver (`scope.launch { ... }`) in a plain
+  function is not coroutine code, because the scope's dispatcher is unknown. The call is matched by
+  evidence: an import-resolved static owner (`Files.readString`, `DriverManager.getConnection`,
+  `InetAddress.getByName`), a receiver whose declared type (parameter, property or local with a type, or a
+  short chain such as `file.toPath()`) is in the table of blocking types (`File`, `Path` with `kotlin.io.path`,
+  `URL`, file streams and readers, JDBC connection, statement and result set, `Future`, `CountDownLatch`,
+  `BlockingQueue`, `Semaphore`, `Lock`, `Process`, `Thread.join`, `HttpClient.send`, `HttpURLConnection`,
+  `Socket`, OkHttp `Call`, the request methods of `RestClient`, and any call on `JdbcTemplate`, `JdbcClient`,
+  `RestTemplate`, `RestOperations` or `EntityManager`), the names `executeQuery`, `executeUpdate` and `block`
+  in a file that imports `java.sql`, `javax.sql`, JPA, Spring JDBC or Reactor, `readLine`/`readln` with no
+  argument when the project declares no function of that name, and a call on an interface of the project
+  that extends a blocking Spring Data repository (`Repository`, `CrudRepository`, `JpaRepository`,
+  `MongoRepository`, `QueryByExampleExecutor`, ..., not the reactive, coroutine or R2DBC ones) and declares no
+  `suspend` function or function returning `Flow`, `Mono`, `Flux` or `Deferred` of that name. Type names
+  resolve as Kotlin does (explicit import, then a class of the file's package or a star-imported package the
+  project declares, then the default imports), so a project class named `Process` or `Thread` is not
+  `java.lang.Process`. The table, the Spring groups (`spring-types.mjs`) and the name resolver
+  (`spring-names.mjs`) are shared with the Spring rules, and the table is the one the Java preset's Reactor
+  rule uses (a test keeps the two in step; Kotlin adds the stdlib extension functions such as `readText`).
+  The message names the basis. `Thread.sleep` and `TimeUnit.sleep` are not in the table: detekt reports them
+  (`SleepInsteadOfDelay` is on in the default config the preset builds upon, and `ForbiddenMethodCall` bans
+  both in main sources), so nothing is reported twice. The allowed form is
+  `withContext(ioDispatcher) { ... }` (or `runInterruptible(ioDispatcher) { ... }` for an interruptible wait)
+  with the `CoroutineDispatcher` injected through the constructor, not `Dispatchers.IO` written at the call
+  site, which detekt's `InjectDispatcher` reports. A suspending client (`Mono.awaitSingle()` from
+  `kotlinx-coroutines-reactor` instead of `block()`, a coroutine repository) is the other way out. The finding
+  is identified by the class, the function and the call (`Archive.load.Files.readString`). Test sources are
+  not checked. Kotlin projects on Maven are not supported by the Kotlin preset (a tool error says so), so
+  this rule runs on Gradle builds; a Java module of the same build gets the Reactor rules of the
+  [Java preset](java-preset.md).
+- Timeout blocks (`TimeoutWithoutSuspension`): `withTimeout(OrNull)`, also through an import alias, in a
+  file that imports `kotlinx.coroutines`. The block is reported only when every call in it is known not to
+  suspend (a blocking call of the table above, a function the project declares only without `suspend`, a
+  constructor of the project, or a short list of standard functions such as `println`, `listOf`, `let`,
+  `map`, `use`) and at least one is blocking or a project function; any other call (`delay`, `await`,
+  `withContext`, `runInterruptible`, `launch`, `ensureActive`, `yield`, a library call) may suspend or
+  check for cancellation, so the block is left alone. A reference to `isActive` or `coroutineContext` and a
+  `for` over something that is not a range also end the check. The blocking calls inside a reported timeout
+  block are reported once, as the timeout. The allowed forms are `withContext(ioDispatcher) { ... }` or
+  `runInterruptible(ioDispatcher) { ... }` inside the block, with an injected dispatcher, or `ensureActive()`
+  in the loop that does the work. Calls are matched by name across the project, so an overloaded `suspend`
+  and non-suspend function of one name is treated as possibly suspending.
 - Spring context: any injected or mock bean, `MockMvc`, `WebTestClient`, `TestRestTemplate`,
   `CapturedOutput`, `ApplicationEvents`, `ApplicationContext` or a `webEnvironment` with a random or defined
   port counts as use.
@@ -671,8 +734,8 @@ test instead of disabling it", "Assert unconditionally"), and an `exceptions` en
 in both presets.
 
 Every message names the allowed form and ends with the exception route. For the pmd-id rules it is
-`exceptions` with `pmd/<RuleId>` and a path glob; for the two coroutine rules it is `exceptions` with
-`kotlin-source/SuspendFunInFinallySection` or `kotlin-source/ChildCoroutineOutlivesResource`; for `unused-option` it is
+`exceptions` with `pmd/<RuleId>` and a path glob; for the four coroutine rules it is `exceptions` with
+`kotlin-source/SuspendFunInFinallySection`, `kotlin-source/ChildCoroutineOutlivesResource`, `kotlin-source/BlockingCallInCoroutine` or `kotlin-source/TimeoutWithoutSuspension`; for `unused-option` it is
 `exceptions` with `unused-option`, as in the TypeScript preset. Identities follow the symbol, not the
 line, so a moved block is not a new finding.
 

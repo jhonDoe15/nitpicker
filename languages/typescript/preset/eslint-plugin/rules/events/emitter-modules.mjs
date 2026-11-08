@@ -1,6 +1,4 @@
-function nodeModule(name) {
-  return [name, `node:${name}`];
-}
+import { nodeModule } from '../analysis/node/node-sync-modules.mjs';
 
 function source(modules, { factories = [], constructors = [], servers = [] }) {
   return {

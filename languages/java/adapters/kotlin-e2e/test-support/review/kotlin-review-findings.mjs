@@ -1,5 +1,6 @@
 import { GLOBAL_STATE_FILES, GLOBAL_STATE_FINDINGS } from './kotlin-global-state-data.mjs';
 import { mapUpdateFiles, MAP_UPDATE_FINDINGS } from './kotlin-map-update-data.mjs';
+import { BLOCKING_RULES } from '../../../kotlin/review-rules/blocking/blocking-findings.mjs';
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import {
@@ -34,7 +35,12 @@ export function reviewBranchFiles(projectRoot) {
 
 export function reviewFindings(findings) {
   return findings
-    .filter(({ tool, rule }) => REVIEW_TOOLS.has(tool) || rule === 'unused-option')
+    .filter(
+      ({ tool, rule }) =>
+        REVIEW_TOOLS.has(tool) ||
+        rule === 'unused-option' ||
+        (tool === 'kotlin-source' && BLOCKING_RULES.includes(rule)),
+    )
     .map(({ rule, symbol }) => `${rule} ${symbol}`)
     .sort();
 }

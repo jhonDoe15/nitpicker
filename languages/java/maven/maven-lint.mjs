@@ -60,8 +60,18 @@ function pmdRulesets(context) {
 }
 
 export function runPmd(options) {
-  const { module, reportDir, tools, classpaths, configs, spring, springRules, spawn, timeoutMs } =
-    options;
+  const {
+    module,
+    reportDir,
+    tools,
+    classpaths,
+    configs,
+    spring,
+    springRules,
+    reactor,
+    spawn,
+    timeoutMs,
+  } = options;
   const report = path.join(reportDir, 'pmd.sarif');
   const linted = [...module.sourceRoots, ...module.testSourceRoots].filter((root) =>
     existsSync(root),
@@ -71,7 +81,7 @@ export function runPmd(options) {
     return;
   }
   const auxClasspath = writeAuxClasspath({ module, reportDir, classpaths });
-  const rulesets = pmdRulesets({ module, reportDir, configs, spring, springRules });
+  const rulesets = pmdRulesets({ module, reportDir, configs, spring, springRules, reactor });
   runJava({
     tool: 'PMD',
     classpath: tools.pmd,
