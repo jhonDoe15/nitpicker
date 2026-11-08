@@ -22,6 +22,10 @@ function invalid(code, errors) {
 
 tester.run('no-uncoerced-request-input on NestJS handlers', rule, {
   valid: [
+    `${VALIDATOR}import { PickType } from '@nestjs/swagger';\nclass BaseDto { @IsInt() page!: number; @IsString() name!: string; }\nclass ListDto extends PickType(BaseDto, ['name'] as const) {}\n` +
+      controller('@Get() list(@Query() query: ListDto) { return query; }'),
+    `${VALIDATOR}import { Type as As } from 'class-transformer';\nclass ListDto { @As(() => Number) @IsInt() page!: number; }\n` +
+      controller('@Get() list(@Query() query: ListDto) { return query; }'),
     controller("@Get() list(@Query('limit', ParseIntPipe) limit: number) { return limit; }"),
     controller(
       "@Get() list(@Query('limit', new DefaultValuePipe(10), ParseIntPipe) limit: number) { return limit; }",
@@ -41,6 +45,18 @@ tester.run('no-uncoerced-request-input on NestJS handlers', rule, {
       ),
   ],
   invalid: [
+    invalid(
+      "import { Controller, Query as Q } from '@nestjs/common';\n@Controller() export class A { list(@Q('page') page: number) { return page; } }",
+      [['unconverted', { field: 'page' }]],
+    ),
+    invalid(controller("@Get() list(@Query('ids') ids: number[]) { return ids; }"), [
+      ['unconverted', { field: 'ids', fix: 'new ParseArrayPipe({ items: Number })' }],
+    ]),
+    invalid(
+      `${VALIDATOR}import { PickType } from '@nestjs/swagger';\nclass BaseDto { @IsInt() page!: number; @IsString() name!: string; }\nclass ListDto extends PickType(BaseDto, ['page'] as const) {}\n` +
+        controller('@Get() list(@Query() query: ListDto) { return query; }'),
+      [['rejected', { field: 'page' }]],
+    ),
     invalid(controller("@Get() list(@Query('limit') limit: number) { return limit; }"), [
       [
         'unconverted',
@@ -62,7 +78,10 @@ tester.run('no-uncoerced-request-input on NestJS handlers', rule, {
       ['unconverted', { field: 'id', source: 'path' }],
     ]),
     invalid(controller("@Get() list(@Headers('x-all') all: boolean | undefined) { return all; }"), [
-      ['unconverted', { field: 'x-all', source: 'headers', fix: 'ParseBoolPipe' }],
+      [
+        'unconverted',
+        { field: 'x-all', source: 'headers', fix: 'new ParseBoolPipe({ optional: true })' },
+      ],
     ]),
     invalid(
       controller('@Get() list(@Query() query: { limit: number; name: string }) { return query; }'),
@@ -101,7 +120,7 @@ tester.run('no-uncoerced-request-input on NestJS handlers', rule, {
     invalid(
       `${ZOD}const ListSchema = z.object({ limit: z.int().optional(), all: z.coerce.boolean(), ids: z.array(z.number()), name: z.string() });\nclass ListDto extends createZodDto(ListSchema) {}\n${controller('@Get() list(@Query() query: ListDto) { return query; }')}`,
       [
-        ['rejected', { field: 'limit', form: 'z.int()', fix: 'z.coerce.number()' }],
+        ['rejected', { field: 'limit', form: 'z.int()', fix: 'z.coerce.number().int()' }],
         ['booleanCast', { field: 'all', form: 'z.coerce.boolean()' }],
         ['rejected', { field: 'ids', form: 'z.number()' }],
       ],

@@ -67,15 +67,24 @@ function transportSource(expression) {
   return ts.isCallExpression(node) ? honoAccessor(node) : undefined;
 }
 
+function calleeName(call) {
+  const callee = call.expression;
+  if (ts.isPropertyAccessExpression(callee)) {
+    return callee.name.text;
+  }
+  return ts.isIdentifier(callee) ? callee.text : undefined;
+}
+
 function parsed(call) {
+  if (!PARSE_METHODS.has(calleeName(call))) {
+    return undefined;
+  }
   const found = libraryCall(call);
   if (found !== undefined) {
-    return PARSE_METHODS.has(found.name)
-      ? { schema: call.arguments[0], source: transportSource(call.arguments[1]) }
-      : undefined;
+    return { schema: call.arguments[0], source: transportSource(call.arguments[1]) };
   }
   const callee = call.expression;
-  return ts.isPropertyAccessExpression(callee) && PARSE_METHODS.has(callee.name.text)
+  return ts.isPropertyAccessExpression(callee)
     ? { schema: callee.expression, source: transportSource(call.arguments[0]) }
     : undefined;
 }
@@ -84,6 +93,9 @@ function honoValidator(call) {
   const callee = call.expression;
   const [target, schema] = call.arguments;
   if (!ts.isIdentifier(callee) || target === undefined || !ts.isStringLiteralLike(target)) {
+    return undefined;
+  }
+  if (!Object.hasOwn(HONO_TARGETS, target.text)) {
     return undefined;
   }
   return importOf(callee) !== undefined && isFromPackage(callee, HONO_VALIDATORS)

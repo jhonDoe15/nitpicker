@@ -78,6 +78,16 @@ tester.run('no-uncoerced-request-input across files', rule, {
   invalid: [
     typed(
       controller(
+        "import * as dto from './dto';\ntype Listing = dto.ListDto;",
+        '@Get() list(@Query() query: dto.ListDto, @Query() other: Listing) { return [query, other]; }',
+      ),
+      [
+        ['rejected', { field: 'limit' }],
+        ['rejected', { field: 'limit' }],
+      ],
+    ),
+    typed(
+      controller(
         "import { ListDto } from './dto';",
         '@Get() list(@Query() query: ListDto) { return query; }',
       ),

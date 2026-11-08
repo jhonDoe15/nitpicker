@@ -106,11 +106,65 @@ function statementBinding(statement, name) {
     .find((found) => found !== undefined);
 }
 
+function declaredNames(statement) {
+  if (
+    (ts.isClassDeclaration(statement) || ts.isTypeAliasDeclaration(statement)) &&
+    statement.name !== undefined
+  ) {
+    return [[statement.name.text, statement]];
+  }
+  return ts.isVariableStatement(statement)
+    ? statement.declarationList.declarations.map((entry) => [nameOf(entry.name), entry])
+    : [];
+}
+
+function topLevelImport(file, name) {
+  for (const statement of file.statements) {
+    const binding = statementBinding(statement, name);
+    if (binding !== undefined) {
+      return binding;
+    }
+  }
+  return undefined;
+}
+
+function topLevelDeclaration(file, name) {
+  for (const statement of file.statements) {
+    const found = declaredNames(statement).find(([declared]) => declared === name);
+    if (found !== undefined) {
+      return found[1];
+    }
+  }
+  return undefined;
+}
+
 export function importOf(identifier) {
-  const file = identifier.getSourceFile();
-  return file.statements
-    .map((statement) => statementBinding(statement, identifier.text))
-    .find((found) => found !== undefined);
+  return isShadowed(identifier)
+    ? undefined
+    : topLevelImport(identifier.getSourceFile(), identifier.text);
+}
+
+function declaresName(node, name) {
+  const parameters = ts.isFunctionLike(node) ? node.parameters : [];
+  if (parameters.some((parameter) => nameOf(parameter.name) === name)) {
+    return true;
+  }
+  const statements = ts.isBlock(node) ? node.statements : [];
+  return statements.some(
+    (statement) =>
+      ts.isVariableStatement(statement) &&
+      statement.declarationList.declarations.some((entry) => nameOf(entry.name) === name),
+  );
+}
+
+function isShadowed(identifier) {
+  const ancestors = [identifier.parent];
+  for (const node of ancestors) {
+    if (node !== undefined && !ts.isSourceFile(node)) {
+      ancestors.push(node.parent);
+    }
+  }
+  return ancestors.some((node) => node !== undefined && declaresName(node, identifier.text));
 }
 
 export function isFromPackage(identifier, packages) {
@@ -122,26 +176,9 @@ export function isFromPackage(identifier, packages) {
 }
 
 function localDeclaration(identifier) {
-  for (const statement of identifier.getSourceFile().statements) {
-    const declaration = ts.isExportDeclaration(statement) ? undefined : statement;
-    if (
-      declaration !== undefined &&
-      ts.isClassDeclaration(declaration) &&
-      declaration.name?.text === identifier.text
-    ) {
-      return declaration;
-    }
-    const variable =
-      declaration !== undefined && ts.isVariableStatement(declaration)
-        ? declaration.declarationList.declarations.find(
-            (entry) => nameOf(entry.name) === identifier.text,
-          )
-        : undefined;
-    if (variable !== undefined) {
-      return variable;
-    }
-  }
-  return undefined;
+  return isShadowed(identifier)
+    ? undefined
+    : topLevelDeclaration(identifier.getSourceFile(), identifier.text);
 }
 
 function checkedDeclaration(checker, identifier) {
@@ -151,19 +188,16 @@ function checkedDeclaration(checker, identifier) {
       ? checker.getAliasedSymbol(symbol)
       : symbol;
   return (target?.declarations ?? []).find(
-    (declaration) => ts.isClassDeclaration(declaration) || ts.isVariableDeclaration(declaration),
+    (declaration) =>
+      ts.isClassDeclaration(declaration) ||
+      ts.isVariableDeclaration(declaration) ||
+      ts.isTypeAliasDeclaration(declaration),
   );
 }
 
 export function declarationOf(identifier, checker) {
-  if (identifier.getSourceFile() === undefined) {
-    return undefined;
-  }
-  const local = localDeclaration(identifier);
-  if (local !== undefined || checker === undefined) {
-    return local;
-  }
-  return checkedDeclaration(checker, identifier);
+  const checked = checker === undefined ? undefined : checkedDeclaration(checker, identifier);
+  return checked ?? localDeclaration(identifier);
 }
 
 function isWrapper(node) {
@@ -207,10 +241,17 @@ export function decoratorsOf(node) {
   return ts.canHaveDecorators(node) ? (ts.getDecorators(node) ?? []) : [];
 }
 
+function exportedName(identifier) {
+  const imported = ts.isIdentifier(identifier) ? importOf(identifier)?.imported : undefined;
+  return imported === undefined || imported === '*' || imported === 'default'
+    ? nameOf(identifier)
+    : imported;
+}
+
 export function decoratorCall(decorator) {
   const { expression } = decorator;
   const callee = ts.isCallExpression(expression) ? expression.expression : expression;
-  const name = ts.isPropertyAccessExpression(callee) ? callee.name.text : nameOf(callee);
+  const name = ts.isPropertyAccessExpression(callee) ? callee.name.text : exportedName(callee);
   return {
     name,
     base: baseIdentifier(callee),

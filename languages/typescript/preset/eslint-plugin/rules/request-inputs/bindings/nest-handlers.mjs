@@ -15,6 +15,18 @@ const FILE_INTERCEPTORS = new Set([
 const FILE_PARAMETERS = new Set(['UploadedFile', 'UploadedFiles']);
 const PASSIVE_PIPES = new Set(['DefaultValuePipe', 'ParseUUIDPipe']);
 const ZOD_PIPES = new Set(['ZodValidationPipe']);
+const ARRAY_PIPES = {
+  number: 'new ParseArrayPipe({ items: Number })',
+  bigint: 'a pipe that splits the text and calls BigInt on each item',
+  date: 'a pipe that splits the text and builds a Date from each item',
+  boolean: "a pipe that splits the text and compares each item with 'true'",
+};
+const OPTIONAL_PIPES = {
+  number: 'new ParseIntPipe({ optional: true }) or new ParseFloatPipe({ optional: true })',
+  bigint: 'a pipe that calls BigInt when the value is present',
+  date: 'new ParseDatePipe({ optional: true })',
+  boolean: 'new ParseBoolPipe({ optional: true })',
+};
 const NULLISH = new Set([
   ts.SyntaxKind.UndefinedKeyword,
   ts.SyntaxKind.NullKeyword,
@@ -123,9 +135,34 @@ function typeProblem(type) {
 
 function literalMembers(type) {
   return type.members.flatMap((member) => {
-    const problem = ts.isPropertySignature(member) ? typeProblem(member.type) : undefined;
+    const named = ts.isPropertySignature(member) && nameOf(member.name) !== undefined;
+    const problem = named ? typeProblem(member.type) : undefined;
     return problem === undefined ? [] : [{ field: nameOf(member.name), node: member, problem }];
   });
+}
+
+function typeParts(type) {
+  const pending = type === undefined ? [] : [type];
+  for (const current of pending) {
+    if (ts.isUnionTypeNode(current)) {
+      pending.push(...current.types);
+    }
+    if (ts.isParenthesizedTypeNode(current)) {
+      pending.push(current.type);
+    }
+  }
+  return pending;
+}
+
+function pipeFix(kind, parameter) {
+  const parts = typeParts(parameter.type);
+  if (parts.some((part) => ts.isArrayTypeNode(part))) {
+    return ARRAY_PIPES[kind];
+  }
+  const optional =
+    parameter.questionToken !== undefined ||
+    parts.some((part) => part.kind === ts.SyntaxKind.UndefinedKeyword);
+  return optional ? OPTIONAL_PIPES[kind] : undefined;
 }
 
 function singleProblems({ name, pipes, parameter }, checker) {
@@ -140,7 +177,13 @@ function singleProblems({ name, pipes, parameter }, checker) {
   const problem = typeProblem(parameter.type);
   return problem === undefined
     ? []
-    : [{ field: name, node: parameter, problem: { ...problem, library: 'param' } }];
+    : [
+        {
+          field: name,
+          node: parameter,
+          problem: { ...problem, library: 'param', fix: pipeFix(problem.kind, parameter) },
+        },
+      ];
 }
 
 function objectProblems(pipes, parameter, checker) {
@@ -152,7 +195,7 @@ function objectProblems(pipes, parameter, checker) {
   if (type !== undefined && ts.isTypeLiteralNode(type)) {
     return literalMembers(type);
   }
-  return type !== undefined && ts.isTypeReferenceNode(type) && ts.isIdentifier(type.typeName)
+  return type !== undefined && ts.isTypeReferenceNode(type)
     ? (classProblems(type.typeName, checker) ?? [])
     : [];
 }
