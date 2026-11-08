@@ -19,6 +19,7 @@ export const POLICY_FILES = [
   'languages/typescript/preset/eslint-config/policies/error-wrapping-policy.mjs',
   'languages/typescript/preset/eslint-config/strict.mjs',
   'languages/typescript/preset/eslint-config/strict/strict-control-flow.mjs',
+  'languages/typescript/preset/eslint-config/truthiness/truthiness-rules.mjs',
   'languages/typescript/preset/eslint-config/policy/production-policy.mjs',
   'languages/typescript/preset/eslint-config/policy/security-facts.mjs',
   'languages/typescript/preset/structure/reuse/reuse-paths.mjs',
@@ -200,6 +201,7 @@ export const POLICY_FILES = [
   'languages/typescript/preset/eslint-plugin/rules/wrapped/no-magic-numbers.mjs',
   'languages/typescript/preset/eslint-plugin/rules/wrapped/naming-convention.mjs',
   'languages/typescript/preset/eslint-plugin/rules/wrapped/report-filter.mjs',
+  'languages/typescript/preset/eslint-plugin/rules/wrapped/strict-boolean-expressions.mjs',
 ];
 
 export const DEPENDENCY_GRAPH_FILES = [
