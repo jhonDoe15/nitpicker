@@ -68,6 +68,7 @@ export function createToolContext({
   spawn,
   pytestAddopts,
   analyzerDeadlineMs,
+  quick = false,
 }) {
   const launcher = openSnapshotEnvironment({
     projectRoot,
@@ -95,6 +96,7 @@ export function createToolContext({
     duplicateSkippedFolders,
     pytestAddopts,
     analyzerDeadlineMs,
+    quick,
     project: projectSettings({ projectRoot, liveRoot, policyRoot, settings, sourceRoots }),
     env: {
       PYTHONPATH: pythonPath,
@@ -109,8 +111,7 @@ export function runPythonTools(context) {
   const steps = [
     lint,
     format,
-    test,
-    retimeSlowTests,
+    ...(context.quick ? [] : [test, retimeSlowTests]),
     typeCheck,
     checkRules,
     structure,
@@ -146,6 +147,7 @@ export function runPythonTools(context) {
       formatter: context.project.formatter,
       formatterDetected: context.project.formatterDetected,
       sourceRoots: context.project.sourceRoots,
+      ...(context.quick ? { quick: true } : {}),
       testsRan: outcome.testsRan,
       testFailures: outcome.testFailures ?? [],
       testRunner: context.project.testRunner,

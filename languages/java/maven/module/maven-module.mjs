@@ -1,84 +1,20 @@
-import { existsSync } from 'node:fs';
 import path from 'node:path';
-import { javaCommand, runJava } from '../maven-command.mjs';
 import { runCheckstyle, runFormat, runPmd, runSpotbugs } from '../maven-lint.mjs';
-import { archunitMatcher, collectTestResults, runJacocoReport, runPit } from '../maven-tests.mjs';
-import { copyTestResults, requireTestngRun } from '../results/maven-test-results.mjs';
+import { archunitMatcher } from '../maven-tests.mjs';
 import { runSpringArch } from '../spring/maven-spring-arch.mjs';
 import { withDeclaredSpring } from '../spring/arch-rules-gate.mjs';
 import { moduleManifest, writeManifest } from '../manifest/maven-manifest.mjs';
 import { ownSourceRoots } from '../../adapters/red-base/tests-failed.mjs';
-import { moduleName } from '../../builds/test-failures.mjs';
 import { runErrorProne } from '../errorprone/maven-errorprone.mjs';
 import { analyzeKotlinModule } from '../kotlin/kotlin-module.mjs';
-import { relativeTo } from './module-paths.mjs';
-import { GRADLE_DIRECTORY } from '../../builds/java-build.mjs';
-import { writeJdepsReports } from '../../builds/jdeps-reports.mjs';
+import { runToolsConcurrently } from '../parallel/concurrent-tools.mjs';
+import { runJdeps, runStructure } from '../parallel/module-metrics.mjs';
+import { readTestRuns, runCoverageTools } from '../quick/maven-test-phase.mjs';
 
 export const MAVEN_REPORT_DIRECTORY = 'target/nitpicker';
-export const OWN_JACOCO_EXEC = 'nitpicker-jacoco.exec';
-
-export function jacocoExecFiles(module) {
-  return [path.join(module.buildDirectory, OWN_JACOCO_EXEC), ...module.jacocoDestFiles];
-}
-
-function runStructure(module, reportDir, { spawn, timeoutMs }) {
-  const roots = module.sourceRoots
-    .filter((root) => existsSync(root))
-    .map((root) => relativeTo(module.basedir, root));
-  runJava({
-    tool: 'StructureMetrics',
-    args: [
-      path.join(GRADLE_DIRECTORY, 'StructureMetrics.java'),
-      path.join(reportDir, 'structure.json'),
-      path.join(reportDir, 'classes.json'),
-      module.basedir,
-      ...roots,
-    ],
-    cwd: module.basedir,
-    accept: (result) => result.status === 0,
-    spawn,
-    timeoutMs,
-  });
-}
-
-function runJdeps(module, reportDir, spawn) {
-  writeJdepsReports({
-    command: javaCommand('jdeps'),
-    cwd: module.basedir,
-    mainDirectory: module.outputDirectory,
-    testDirectory: module.testOutputDirectory,
-    reportDir,
-    spawn,
-  });
-}
-
-function moduleNameOf(module, projectRoot) {
-  return moduleName(relativeTo(projectRoot, module.basedir));
-}
-
-function readTestRuns(context) {
-  const { module, reportDir, since, isArchunit, testRuntime, tolerateFailures } = context;
-  const results = collectTestResults({
-    module,
-    reportDir,
-    since,
-    isArchunit,
-    tolerateFailures,
-    moduleName: moduleNameOf(module, context.projectRoot),
-  });
-  requireTestngRun({ module, since, isArchunit, testRuntime });
-  copyTestResults({ module, reportDir, since, isArchunit });
-  return results;
-}
-
-function runCoverageTools(options) {
-  const { module, reportDir, tools, classpaths, since, testsRan, isArchunit, configs } = options;
-  const run = { spawn: options.spawn, timeoutMs: options.timeoutMs };
-  const execFiles = jacocoExecFiles(module);
-  runJacocoReport({ module, reportDir, tools, execFiles, since, testsRan, ...run });
-  runPit({ module, reportDir, tools, classpaths, isArchunit, configs, ...run });
-}
+const LINT_URL = new URL('../maven-lint.mjs', import.meta.url).href;
+const ERRORPRONE_URL = new URL('../errorprone/maven-errorprone.mjs', import.meta.url).href;
+const METRICS_URL = new URL('../parallel/module-metrics.mjs', import.meta.url).href;
 
 function runArchitecture(options) {
   const { module, reportDir, tools, classpaths, pinned, springArch, springRoles } = options;
@@ -97,37 +33,49 @@ function runArchitecture(options) {
 
 function runSourceTools(options) {
   const { module, reportDir, tools, classpaths, configs, pinned, kotlin, style } = options;
-  const run = { spawn: options.spawn, timeoutMs: options.timeoutMs };
-  const { springRules } = options;
-  runPmd({
-    module,
-    reportDir,
-    tools,
-    classpaths,
-    configs,
-    spring: kotlin.spring,
-    springRules,
-    ...run,
-  });
-  runSpotbugs({
-    module: kotlin.spotbugsModule,
-    reportDir,
-    tools,
-    configs,
-    auxClasspath: kotlin.auxClasspath,
-    ...run,
-  });
-  runErrorProne({ module, reportDir, tools, classpaths, configs, ...run });
-  runFormat({ module, reportDir, tools, javaStyle: style.javaStyle, ...run });
-  runCheckstyle({ module, reportDir, tools, configs, pinned, style, ...run });
+  const run = { timeoutMs: options.timeoutMs };
+  const tasks = [
+    [
+      runPmd,
+      LINT_URL,
+      {
+        module,
+        reportDir,
+        tools,
+        classpaths,
+        configs,
+        spring: kotlin.spring,
+        springRules: options.springRules,
+      },
+    ],
+    [
+      runSpotbugs,
+      LINT_URL,
+      {
+        module: kotlin.spotbugsModule,
+        reportDir,
+        tools,
+        configs,
+        auxClasspath: kotlin.auxClasspath,
+      },
+    ],
+    [runErrorProne, ERRORPRONE_URL, { module, reportDir, tools, classpaths, configs }],
+    [runFormat, LINT_URL, { module, reportDir, tools, javaStyle: style.javaStyle }],
+    [runCheckstyle, LINT_URL, { module, reportDir, tools, configs, pinned, style }],
+    [runStructure, METRICS_URL, { module, reportDir }],
+    [runJdeps, METRICS_URL, { module, reportDir }],
+  ].map(([tool, url, toolOptions]) => ({
+    run: tool,
+    url,
+    name: tool.name,
+    options: { ...toolOptions, ...run },
+  }));
+  runToolsConcurrently(tasks, { spawn: options.spawn, concurrent: options.quick === true });
 }
 
 function analyzeSources(options) {
-  const { module, reportDir } = options;
   const kotlin = analyzeKotlinModule({ ...options, options: options.kotlinOptions });
   runSourceTools({ ...options, kotlin: { ...kotlin, spring: options.spring } });
-  runStructure(module, reportDir, options);
-  runJdeps(module, reportDir, options.spawn);
   runArchitecture({ ...options, module: kotlin.coverageModule });
   return kotlin;
 }
