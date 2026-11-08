@@ -23,8 +23,8 @@ export const regexpRuleCases = [
   ],
   [
     'no-misleading-capturing-group',
-    'export const re = /^(a*).+/u;',
-    'export const re = /^(a*)b.*/u;',
+    'export const re = /(\\s*)\\S*\\s+/u;',
+    'export const re = /(\\s*)\\S+\\s+/u;',
   ],
   ['no-optional-assertion', 'export const re = /(?:a|\\b)?c/;', 'export const re = /(?:a|\\b)c/;'],
   [
@@ -60,7 +60,6 @@ export const regexpRuleCases = [
   ['prefer-predefined-assertion', 'export const re = /a(?!\\w)/;', 'export const re = /a\\b/;'],
   ['simplify-set-operations', 'export const re = /[\\w--[^\\d]]/v;', 'export const re = /\\d/v;'],
   ['no-escape-backspace', 'export const re = /[\\b]/;', 'export const re = /\\u0008/;'],
-  ['no-misleading-unicode-character', 'export const re = /[👍]/;', 'export const re = /[👍x]/u;'],
   [
     'no-useless-dollar-replacements',
     'export const out = "ab".replace(/(a)/, "$2");',

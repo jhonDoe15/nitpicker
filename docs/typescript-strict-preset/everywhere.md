@@ -625,8 +625,8 @@ Part of the [TypeScript strict preset guide](../typescript-strict-preset.md).
   `eslint-plugin-regexp`, on for `g` and `y` only), so the two rules do not overlap. Allowed: create
   the regex where it is used, drop `g` when one match is enough, or `text.matchAll(pattern)` for
   every match.
-- Regular expressions with a part that never changes what they match (`eslint-plugin-regexp`, in
-  production code). A part that can never match, always matches or repeats another part is either
+- Regular expressions with a part that never changes what they match or does not do what it looks
+  like (`eslint-plugin-regexp`, in production code). A part that can never match, always matches or repeats another part is either
   a bug or dead weight, and tests seldom reach the input that tells which: an assertion that always
   accepts or always rejects (`/a\bb/`), an alternative or quantifier an assertion rules out, a
   duplicate alternative (`/a|b|a/`) or class member (`[\w_]`), an empty group, alternative or
