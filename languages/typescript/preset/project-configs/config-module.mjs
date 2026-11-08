@@ -24,8 +24,8 @@ const REPORT_PREAMBLE = [
   '};',
   'const failureOf = (error) => {',
   '  if (!(error instanceof Error)) return String(error);',
-  '  const cause = error.cause instanceof Error ? `: ${error.cause.message}` : "";',
-  '  return `${error.message}${cause}`;',
+  '  const cause = error.cause instanceof Error ? [error.cause.message] : [];',
+  "  return [error.message, ...cause].join(': ');",
   '};',
 ];
 
