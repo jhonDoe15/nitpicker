@@ -5,6 +5,7 @@ import { describe, expect, it } from 'vitest';
 import { runCli as nitpickerCli } from '../../../cli.mjs';
 import { PACKAGE_ROOT } from '../../../tooling/tool-resolution.mjs';
 import { finding, policy } from '../../execution/test-support/analyzer-findings.mjs';
+import { helpUriFor, referenceLinks } from '../../../../shared/reference/store.mjs';
 import { captureOutput } from '../test-support/output-capture.mjs';
 import { writeFiles } from '../../git/test-support/fixture-files.mjs';
 import {
@@ -101,6 +102,10 @@ const CHANGED_FILES = {
   ),
 };
 
+function helpUri(tool, rule) {
+  return helpUriFor(referenceLinks(), { tool, rule });
+}
+
 const FAILING_FINDINGS = [
   {
     tool: 'eslint-lint',
@@ -115,7 +120,7 @@ const FAILING_FINDINGS = [
       paths: ['src/main/pricing.ts'],
       reason: '...',
     },
-    helpUri: expect.stringMatching(/^https:\/\/\S+no-magic-numbers/u),
+    helpUri: helpUri('eslint-lint', 'nitpicker/no-magic-numbers'),
   },
   {
     tool: 'pmd',
@@ -123,7 +128,7 @@ const FAILING_FINDINGS = [
     path: 'src/main/java/shop/Order.java',
     line: 7,
     message: 'Avoid unused private fields such as total.',
-    helpUri: expect.stringMatching(/^https:\/\/\S+/u),
+    helpUri: helpUri('pmd', 'UnusedPrivateField'),
   },
   {
     tool: 'ruff',
@@ -134,14 +139,27 @@ const FAILING_FINDINGS = [
     message: 'Magic value used in comparison, consider replacing 3 with a constant variable.',
     exception: { rule: 'PLR2004', paths: ['app/orders.py'], reason: '...' },
     exceptionList: 'python.exceptions',
-    helpUri: expect.stringMatching(/^https:\/\/\S+/u),
+    helpUri: helpUri('ruff', 'PLR2004'),
   },
 ];
 
 const CRASH = {
   tool: 'crashing-analyzer',
-  headline: expect.stringContaining('crashing-analyzer'),
+  headline: 'crashing-analyzer crashed with exit 2: no diagnostic output',
 };
+
+const ANNOTATIONS = [
+  ...['base', 'head'].map(
+    (snapshot) =>
+      `::error title=nitpicker tool error%3A crashing-analyzer (${snapshot})::${CRASH.headline}`,
+  ),
+  `::error file=src/main/pricing.ts,line=4,col=20,title=eslint-lint/nitpicker/no-magic-numbers::${TOOL_FINDINGS['eslint-lint'][0].message}`,
+  `::error file=src/main/java/shop/Order.java,line=7,title=pmd/UnusedPrivateField::${TOOL_FINDINGS.pmd[0].message}`,
+  `::error file=app/orders.py,line=2,col=8,title=ruff/PLR2004::${TOOL_FINDINGS.ruff[0].message}`,
+  '',
+];
+
+const UNKNOWN_ARGUMENT = 'Unknown argument: --bogus. Run nitpicker --help for the options.';
 
 function changedRepository() {
   const repository = createRepository({
@@ -200,8 +218,7 @@ describe('nitpicker --json', () => {
       ],
       reports: path.resolve(outputRoot),
     });
-    expect(stderrText).toContain('::error file=src/main/pricing.ts');
-    expect(stderrText).not.toContain('Quality gate summary');
+    expect(stderrText).toBe(ANNOTATIONS.join('\n'));
   });
 
   it('prints the findings of --all in the same shape, without base and held counts', () => {
@@ -228,45 +245,65 @@ describe('nitpicker --json', () => {
     });
     writeFiles(repository.root, { 'src/main/edited.ts': 'export const edited = true;\n' });
 
-    const { exitCode, result } = runJson(repository, ['--base', repository.baseRef]);
+    const { exitCode, result, outputRoot } = runJson(repository, ['--base', repository.baseRef]);
 
     expect(exitCode).toBe(2);
-    expect(result).toMatchObject({
+    expect(result).toEqual({
+      mode: 'diff',
       status: 'error',
       exitCode: 2,
+      base: { ref: repository.baseRef, source: 'argument' },
       counts: { failing: 0, byArea: {}, reportOnly: 0, held: 0 },
       findings: [],
       toolErrors: [
         { ...CRASH, snapshot: 'base' },
         { ...CRASH, snapshot: 'head' },
       ],
+      reports: path.resolve(outputRoot),
     });
   });
 
   it('keeps the gate status and exits 0 with --defer-exit', () => {
     const repository = changedRepository();
 
-    const { exitCode, result } = runJson(
+    const { exitCode, result, outputRoot } = runJson(
       repository,
       ['--base', repository.baseRef, '--defer-exit'],
-      {
-        analyzers: TOOL_ANALYZERS,
-      },
+      { analyzers: TOOL_ANALYZERS },
     );
 
     expect(exitCode).toBe(0);
-    expect(result).toMatchObject({ status: 'failed', exitCode: 0, toolErrors: [] });
+    expect({ ...result, findings: byTool(result.findings) }).toEqual({
+      mode: 'diff',
+      status: 'failed',
+      exitCode: 0,
+      base: { ref: repository.baseRef, source: 'argument' },
+      counts: { failing: 3, byArea: { lint: 3 }, reportOnly: 1, held: 0 },
+      findings: FAILING_FINDINGS,
+      toolErrors: [],
+      reports: path.resolve(outputRoot),
+    });
   });
 
   it('marks a change with nothing to check', () => {
     const repository = createRepository({ 'quality-policy.json': policy() });
 
-    const { exitCode, result } = runJson(repository, ['--base', repository.baseRef], {
+    const { exitCode, result, outputRoot } = runJson(repository, ['--base', repository.baseRef], {
       analyzers: [fakeAnalyzer()],
     });
 
     expect(exitCode).toBe(0);
-    expect(result).toMatchObject({ status: 'passed', noChanges: true, findings: [] });
+    expect(result).toEqual({
+      mode: 'diff',
+      status: 'passed',
+      exitCode: 0,
+      base: { ref: repository.baseRef, source: 'argument' },
+      noChanges: true,
+      counts: { failing: 0, byArea: {}, reportOnly: 0, held: 0 },
+      findings: [],
+      toolErrors: [],
+      reports: path.resolve(outputRoot),
+    });
   });
 
   it('prints the error that stops the run as an object', () => {
@@ -278,8 +315,8 @@ describe('nitpicker --json', () => {
     expect(result).toEqual({
       status: 'error',
       exitCode: 2,
-      error: expect.stringContaining('Unknown argument: --bogus'),
+      error: UNKNOWN_ARGUMENT,
     });
-    expect(stderrText).toContain('nitpicker failed: Unknown argument: --bogus');
+    expect(stderrText).toBe(`nitpicker failed: ${UNKNOWN_ARGUMENT}\n`);
   });
 });

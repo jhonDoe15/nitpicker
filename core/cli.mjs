@@ -90,8 +90,8 @@ export function runCli(options = {}) {
   }
 }
 
-function wantsJson(arguments_) {
-  return !Object.hasOwn(SUBCOMMANDS, arguments_[0]) && arguments_.includes('--json');
+function wantsJson(commandLine) {
+  return !Object.hasOwn(SUBCOMMANDS, commandLine[0]) && commandLine.includes('--json');
 }
 
 function isTerminal(stream) {
