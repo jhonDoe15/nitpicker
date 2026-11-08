@@ -55,6 +55,12 @@ Part of the [nitpicker-kotlin](../SKILL.md) skill. Write these forms from the st
   `Locale` or `TimeZone`, `System.out`, `Dispatchers.setMain`, or a property of a project `object`. Restore it in
   `finally`, an `@AfterEach`/`@AfterTest` function or Kotest `afterTest { }` (`Dispatchers.resetMain()`), or use an
   extension that restores it (junit-pioneer `@RestoreSystemProperties`, Kotest `withSystemProperty { }`).
+- A test does not depend on the real clock, on unseeded randomness or on a remote host. Give the subject a
+  `Clock.fixed(...)` and call `now(clock)` (`pmd/RealClockInTest`; measuring elapsed time with `System.nanoTime()` or a
+  subtracted start time is fine), use fixed values or `Random(42)`, `list.random(random)` and a fixed
+  `UUID.fromString(...)` (`pmd/RandomInTest`), and point a unit test at a fake client or a local stub such as
+  MockWebServer, WireMock or a Ktor `MockEngine` instead of a real URL (`pmd/NetworkInTest`; integration tests may use
+  the network).
 - Start a container, server or process once, not for each test (`pmd/ServerOrContainerPerTest`): a
   `@Container` or WireMock `@RegisterExtension` property lives in a companion object, a Kotest
   container extension uses the spec lifecycle (not `ContainerLifecycleMode.Test` or `perTest()`),

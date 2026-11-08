@@ -1,3 +1,4 @@
+import { integrationTestFiles } from '../../../../messages/isolation/unit-tests.mjs';
 import { readInside } from '../../../../../../shared/conventions/read-inside.mjs';
 import { lineOf } from '../../scan/kotlin-source.mjs';
 import { kotlinFiles } from '../../rules/kotlin-suppressions.mjs';
@@ -10,6 +11,7 @@ import { FOCUSED_RULE } from './honesty/focused-tests.mjs';
 import { honestyReports } from './honesty/honesty-reports.mjs';
 import { RETRY_RULE } from './honesty/retries/retry-tests.mjs';
 import { DISABLED_RULE } from './honesty/skipped-tests.mjs';
+import { ISOLATION_RULES, isolationReports } from './isolation/isolation.mjs';
 import { projectFlags } from './project-flags.mjs';
 import {
   PER_TEST_START_MESSAGE,
@@ -25,6 +27,7 @@ export const HONESTY_RULES = [
   CONTROL_FLOW_RULE,
   ESCAPING_RULE,
   GLOBAL_STATE_RULE,
+  ...ISOLATION_RULES,
 ];
 
 const CONTEXT_MARKERS = new RegExp(
@@ -47,12 +50,13 @@ function scannedFiles(projectRoot, files, keep = () => true) {
   });
 }
 
-export function fileReports(scanned, project) {
+export function fileReports(scanned, project, options = {}) {
   const suites = discoverSuites(scanned);
   return [
     ...honestyReports(scanned, suites, project),
     ...coroutineReports(scanned, suites, project),
     ...globalStateReports(scanned, suites),
+    ...isolationReports(scanned, options),
     ...perTestStarts(scanned, suites).map((entry) => ({
       ...entry,
       rule: PER_TEST_START_RULE,
@@ -68,8 +72,9 @@ export function testHonestyFindings({ projectRoot, testRoots = [], contextRoots 
   const others = filesUnder(projectRoot, contextRoots).filter((file) => !own.has(file));
   const context = scannedFiles(projectRoot, others, (text) => CONTEXT_MARKERS.test(text));
   const project = projectFlags([...files, ...context]);
+  const isIntegration = integrationTestFiles(projectRoot, testRoots);
   return files.flatMap(({ file, scanned }) =>
-    fileReports(scanned, project).map((report) =>
+    fileReports(scanned, project, { network: !isIntegration(file) }).map((report) =>
       finding({
         rule: report.rule,
         file,

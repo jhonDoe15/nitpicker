@@ -246,6 +246,190 @@ return
       </property>
     </properties>
   </rule>
+  <rule name="NetworkInTest" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
+        message="This unit test calls a real remote host, so it fails without the network and depends on that service. Give the subject a fake client, or point it at a local stub: MockWebServer, WireMock or MockRestServiceServer on localhost. A test that needs the real service is an integration test: an IT class, an integration source set or @SpringBootTest.">
+    <priority>2</priority>
+    <properties>
+      <property name="xpath">
+        <value><![CDATA[
+let $loopback := '^(localhost|[^/:@]*\.localhost|127\.[0-9.]+|0\.0\.0\.0|\[::1\]|::1|host\.docker\.internal)$',
+    $hostOf := function($url) {
+      let $authority := tokenize(replace($url, '^[a-zA-Z]+://([^/?#]+).*$', '$1'), '@')[last()]
+      return if (starts-with($authority, '[')) then concat(substring-before($authority, ']'), ']')
+             else tokenize($authority, ':')[1] },
+    $remoteUrl := function($s) {
+      let $v := lower-case(string($s/@ConstValue))
+      return matches($v, '^(https?|wss?)://[^/?#]') and not(matches(lower-case($hostOf($v)), $loopback)) },
+    $remoteHost := function($s) {
+      let $v := string($s/@ConstValue)
+      return matches($v, '^[A-Za-z0-9][A-Za-z0-9.-]*$') and not(matches(lower-case($v), $loopback)) },
+    $initializers := function($n) {
+      let $names := $n/descendant-or-self::*[self::VariableAccess or self::AmbiguousName]/@Name
+      return $n/ancestor::CompilationUnit//VariableDeclarator[VariableId/@Name = $names]/*[last()] },
+    $literal := function($n) { exists($n/descendant-or-self::StringLiteral[$remoteUrl(.)]) },
+    $once := function($n) { $literal($n) or (some $i in $initializers($n) satisfies $literal($i)) },
+    $remote := function($n) { $once($n) or (some $i in $initializers($n) satisfies $once($i)) },
+    $mockMarks := ('Mock', 'MockBean', 'MockitoBean', 'Spy', 'SpyBean', 'MockitoSpyBean'),
+    $mocked := function($call) {
+      let $name := string($call/*[1]/descendant-or-self::*[self::VariableAccess or self::FieldAccess or self::AmbiguousName][1]/@Name),
+          $declarators := $call/ancestor::CompilationUnit//VariableDeclarator[VariableId/@Name = $name]
+      return $name != ''
+        and (some $d in $declarators satisfies
+               ($d/../ModifierList/Annotation/@SimpleName = $mockMarks
+                or $d/*[last()][self::MethodCall][@MethodName = ('mock', 'spy')])) },
+    $unit := function($n) { $n/ancestor::CompilationUnit },
+    $realJdkClient := function($n) {
+      exists($unit($n)//MethodCall[pmd-java:matchesSig('java.net.http.HttpClient#newHttpClient()')
+                                   or pmd-java:matchesSig('java.net.http.HttpClient#newBuilder()')]) },
+    $realOkHttp := function($n) {
+      exists($unit($n)//ConstructorCall[pmd-java:typeIs('okhttp3.OkHttpClient')
+                                        or pmd-java:typeIs('okhttp3.OkHttpClient$Builder')]) },
+    $realApache := function($n) {
+      exists($unit($n)//MethodCall[*[1][pmd-java:typeIs('org.apache.hc.client5.http.impl.classic.HttpClients')
+                                        or pmd-java:typeIs('org.apache.http.impl.client.HttpClients')
+                                        or pmd-java:typeIs('org.apache.hc.client5.http.impl.classic.HttpClientBuilder')
+                                        or pmd-java:typeIs('org.apache.http.impl.client.HttpClientBuilder')]]) },
+    $fakeTransport := function($n) {
+      exists($unit($n)//MethodCall[@MethodName = ('exchangeFunction', 'requestFactory', 'clientConnector')]) },
+    $stubbed := function($call) {
+      exists($call/ancestor::ArgumentList/parent::MethodCall
+               [@MethodName = ('when', 'given', 'verify', 'then', 'thenReturn', 'willReturn', 'doReturn')]) }
+return
+(
+  //MethodCall[@MethodName = ('openConnection', 'openStream', 'getContent')][*[1][pmd-java:typeIs('java.net.URL')]]
+    [$remote(*[1])]
+  | //MethodCall[pmd-java:matchesSig('java.net.http.HttpRequest#newBuilder(java.net.URI)')
+                 or pmd-java:matchesSig('java.net.http.HttpRequest$Builder#uri(java.net.URI)')]
+      [$realJdkClient(.)][$remote(ArgumentList/*[1])]
+  | //MethodCall[@MethodName = 'url'][*[1][pmd-java:typeIs('okhttp3.Request$Builder')]]
+      [$realOkHttp(.)][$remote(ArgumentList/*[1])]
+  | //ConstructorCall[pmd-java:typeIs('org.apache.hc.client5.http.classic.methods.HttpUriRequestBase')
+                      or pmd-java:typeIs('org.apache.http.client.methods.HttpRequestBase')]
+      [$realApache(.)][$remote(ArgumentList/*[1])]
+  | //MethodCall[pmd-java:matchesSig('org.springframework.web.reactive.function.client.WebClient#create(java.lang.String)')
+                 or pmd-java:matchesSig('org.springframework.web.client.RestClient#create(java.lang.String)')
+                 or pmd-java:matchesSig('org.springframework.web.client.RestClient#create(java.net.URI)')
+                 or (@MethodName = 'baseUrl'
+                     and *[1][pmd-java:typeIs('org.springframework.web.reactive.function.client.WebClient$Builder')
+                              or pmd-java:typeIs('org.springframework.web.client.RestClient$Builder')
+                              or pmd-java:typeIs('retrofit2.Retrofit$Builder')])
+                 or (@MethodName = 'rootUri' and *[1][pmd-java:typeIs('org.springframework.boot.web.client.RestTemplateBuilder')])
+                 or (@MethodName = 'uri'
+                     and *[1][pmd-java:typeIs('org.springframework.web.reactive.function.client.WebClient$UriSpec')
+                              or pmd-java:typeIs('org.springframework.web.client.RestClient$UriSpec')])]
+      [not($fakeTransport(.))][$remote(ArgumentList/*[1])]
+  | //MethodCall[pmd-java:matchesSig('org.jsoup.Jsoup#connect(java.lang.String)')
+                 or (@MethodName = ('getForObject', 'getForEntity', 'postForObject', 'postForEntity', 'postForLocation',
+                                    'exchange', 'put', 'delete', 'patchForObject', 'headForHeaders', 'optionsForAllow',
+                                    'execute')
+                     and *[1][pmd-java:typeIs('org.springframework.web.client.RestOperations')
+                              or pmd-java:typeIs('org.springframework.boot.test.web.client.TestRestTemplate')])]
+      [$remote(ArgumentList/*[1])]
+  | //ConstructorCall[pmd-java:typeIsExactly('java.net.Socket')]
+      [ArgumentList/@Size = 2][ArgumentList/*[1][self::StringLiteral][$remoteHost(.)]]
+)
+  [not($mocked(.) or $stubbed(.))]
+  [not(ancestor::CompilationUnit//ClassType[@SimpleName = ('MockRestServiceServer', 'MockServerRestTemplateCustomizer')])]
+]]></value>
+      </property>
+    </properties>
+  </rule>
+  <rule name="RandomInTest" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
+        message="This test draws unseeded random values, so it can pass on one run and fail on the next. Use fixed values, or a seeded generator the subject takes: new Random(42), or Collections.shuffle(list, random) with that generator. Compare a fixed UUID (UUID.fromString(...)), not UUID.randomUUID().">
+    <priority>2</priority>
+    <properties>
+      <property name="xpath">
+        <value><![CDATA[
+let $expecting := ('assertEquals', 'assertSame', 'assertArrayEquals', 'assertIterableEquals', 'isEqualTo', 'isSameAs',
+                    'hasToString'),
+    $faked := function($n, $types) {
+      $n/ancestor::CompilationUnit//MethodCall[@MethodName = 'mockStatic']
+        /ArgumentList/ClassLiteral/ClassType/@SimpleName = $types }
+return
+(
+  //ConstructorCall[pmd-java:typeIsExactly('java.util.Random') or pmd-java:typeIsExactly('java.util.SplittableRandom')]
+    [ArgumentList/@Size = 0
+     or ArgumentList/*[1][pmd-java:matchesSig('java.lang.System#nanoTime()')
+                          or pmd-java:matchesSig('java.lang.System#currentTimeMillis()')]]
+  | //MethodCall[pmd-java:matchesSig('java.lang.Math#random()') or pmd-java:matchesSig('java.lang.StrictMath#random()')]
+      [not($faked(., ('Math', 'StrictMath')))]
+  | //MethodCall[pmd-java:matchesSig('java.util.concurrent.ThreadLocalRandom#current()')]
+      [not($faked(., 'ThreadLocalRandom'))]
+  | //MethodCall[pmd-java:matchesSig('java.util.Collections#shuffle(java.util.List)')]
+  | //MethodCall[pmd-java:matchesSig('java.util.UUID#randomUUID()')]
+      [ancestor-or-self::*[not(parent::MethodCall and not(preceding-sibling::*))][1]
+         /parent::ArgumentList/parent::MethodCall[@MethodName = $expecting]]
+      [not($faked(., 'UUID'))]
+)
+]]></value>
+      </property>
+    </properties>
+  </rule>
+  <rule name="RealClockInTest" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
+        message="This test reads the real clock, so its result depends on when it runs. Pass a fixed time in: a Clock.fixed(...) the subject takes, now(clock) with that clock, or a fixed Instant. Measuring elapsed time or a polling deadline is allowed: System.nanoTime(), a start time subtracted later, or now() compared in a loop.">
+    <priority>2</priority>
+    <properties>
+      <property name="xpath">
+        <value><![CDATA[
+let $timeTypes := ('Instant', 'LocalDate', 'LocalDateTime', 'LocalTime', 'ZonedDateTime', 'OffsetDateTime',
+                   'OffsetTime', 'Year', 'YearMonth', 'MonthDay', 'Clock', 'InstantSource', 'System', 'Date'),
+    $measures := ('isBefore', 'isAfter', 'compareTo', 'until', 'between'),
+    $measuring := function($call) {
+      $call[@MethodName = ('isBefore', 'isAfter', 'compareTo')
+            or *[1][pmd-java:typeIs('java.time.Duration') or pmd-java:typeIs('java.time.temporal.TemporalUnit')
+                    or pmd-java:typeIs('java.time.temporal.Temporal')]] },
+    $top := function($n) {
+      $n/ancestor-or-self::*[not((parent::MethodCall[not(@MethodName = $measures)] and not(preceding-sibling::*))
+                                 or parent::InfixExpression[@Operator = '+'])][1] },
+    $inCondition := function($n) {
+      some $a in $n/ancestor-or-self::* satisfies
+        ($a/parent::WhileStatement and $a is $a/../*[1])
+        or ($a/parent::DoStatement and $a is $a/../*[last()])
+        or ($a/parent::ForStatement and not($a/self::ForInit or $a/self::ForUpdate) and not($a is $a/../*[last()])) },
+    $measured := function($n) {
+      let $t := $top($n)
+      return exists($t/parent::InfixExpression[@Operator = ('<', '>', '<=', '>=')])
+        or exists($t/parent::InfixExpression[@Operator = '-'][not(*[not(. is $t)][self::NumericLiteral or self::FieldAccess
+                                                                     or self::MethodCall[not(@MethodName = ('now', 'currentTimeMillis', 'nanoTime', 'millis', 'toEpochMilli'))]])])
+        or exists($t/parent::MethodCall[@MethodName = $measures][$measuring(.)])
+        or exists($t/parent::ArgumentList/parent::MethodCall[@MethodName = $measures][$measuring(.)])
+        or $inCondition($t) },
+    $local := function($n) {
+      let $t := $top($n),
+          $declarator := $t/parent::VariableDeclarator[parent::LocalVariableDeclaration],
+          $name := string($declarator/VariableId/@Name),
+          $scope := $declarator/ancestor::*[self::Block or self::LambdaExpression][1],
+          $uses := $scope//VariableAccess[@Name = $name]
+      return $name != '' and exists($uses) and (every $use in $uses satisfies $measured($use)) }
+return
+(
+  //MethodCall[pmd-java:matchesSig('java.time.Instant#now()')
+    or pmd-java:matchesSig('java.time.LocalDate#now()') or pmd-java:matchesSig('java.time.LocalDate#now(java.time.ZoneId)')
+    or pmd-java:matchesSig('java.time.LocalDateTime#now()')
+    or pmd-java:matchesSig('java.time.LocalDateTime#now(java.time.ZoneId)')
+    or pmd-java:matchesSig('java.time.LocalTime#now()') or pmd-java:matchesSig('java.time.LocalTime#now(java.time.ZoneId)')
+    or pmd-java:matchesSig('java.time.ZonedDateTime#now()')
+    or pmd-java:matchesSig('java.time.ZonedDateTime#now(java.time.ZoneId)')
+    or pmd-java:matchesSig('java.time.OffsetDateTime#now()')
+    or pmd-java:matchesSig('java.time.OffsetDateTime#now(java.time.ZoneId)')
+    or pmd-java:matchesSig('java.time.OffsetTime#now()') or pmd-java:matchesSig('java.time.OffsetTime#now(java.time.ZoneId)')
+    or pmd-java:matchesSig('java.time.Year#now()') or pmd-java:matchesSig('java.time.Year#now(java.time.ZoneId)')
+    or pmd-java:matchesSig('java.time.YearMonth#now()') or pmd-java:matchesSig('java.time.YearMonth#now(java.time.ZoneId)')
+    or pmd-java:matchesSig('java.time.MonthDay#now()') or pmd-java:matchesSig('java.time.MonthDay#now(java.time.ZoneId)')
+    or pmd-java:matchesSig('java.lang.System#currentTimeMillis()')
+    or pmd-java:matchesSig('java.time.Clock#systemUTC()')
+    or pmd-java:matchesSig('java.time.Clock#systemDefaultZone()')
+    or pmd-java:matchesSig('java.time.Clock#system(java.time.ZoneId)')
+    or pmd-java:matchesSig('java.time.InstantSource#system()')]
+  | //ConstructorCall[pmd-java:typeIsExactly('java.util.Date')][ArgumentList/@Size = 0]
+)
+  [not($measured(.) or $local(.))]
+  [not(ancestor::CompilationUnit//MethodCall[@MethodName = 'mockStatic']
+         /ArgumentList/ClassLiteral/ClassType/@SimpleName = $timeTypes)]
+]]></value>
+      </property>
+    </properties>
+  </rule>
   <rule name="RetryInTest" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
         message="Remove the retry: a test that passes on a later attempt hides a flaky or racy test. Fix the cause, such as waiting on the condition instead of a fixed delay or isolating shared state.">
     <priority>2</priority>
