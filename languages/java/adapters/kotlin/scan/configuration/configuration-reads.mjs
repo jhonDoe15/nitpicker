@@ -2,8 +2,16 @@ import { CONFIGURATION_READ_RULE } from '../../../spring/configuration/covered-r
 import { inImport, literalAt, splitArguments } from '../kotlin-source.mjs';
 import { isConfigurationRoot } from './configuration-roots.mjs';
 
-const READ =
-  /(?<![\w.])(?:java\s*\.\s*lang\s*\.\s*)?(?:System\s*\.\s*getProperty|Integer\s*\.\s*getInteger|Long\s*\.\s*getLong|Boolean\s*\.\s*getBoolean)\s*\(/gu;
+const READS = [
+  'System\\s*\\.\\s*getProperty',
+  'Integer\\s*\\.\\s*getInteger',
+  'Long\\s*\\.\\s*getLong',
+  'Boolean\\s*\\.\\s*getBoolean',
+];
+const READ = new RegExp(
+  `(?<![\\w.])(?:java\\s*\\.\\s*lang\\s*\\.\\s*)?(?:${READS.join('|')})\\s*\\(`,
+  'gu',
+);
 const REFERENCE = /(?<![\w.])(?:java\s*\.\s*lang\s*\.\s*)?System\s*::\s*getProperty(?!\w)/gu;
 const JVM_KEY = /^(?:java|user|os|file|line|path|javax|jdk|sun|com\.sun|http|https|ftp)\.|^socks/u;
 const CONFIGURATION_MESSAGES = {
