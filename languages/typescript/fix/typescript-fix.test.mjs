@@ -13,6 +13,7 @@ import { fixtureGit, useGitFixtures } from '../../../core/diff/git/test-support/
 import { writeFiles } from '../../../core/diff/git/test-support/fixture-files.mjs';
 import { fixWorkingTree } from '../../../core/fix/run-fix.mjs';
 import { resolveHeadPolicy } from '../preset/head-policy.mjs';
+import { linkSentence } from '../../../shared/messages/test-support/link-sentence.mjs';
 
 const { createGitRepository } = useGitFixtures();
 
@@ -96,7 +97,11 @@ describe('fixTypeScript', () => {
 
     expect(read(repository, 'src/a.ts')).toBe('export const a = 1;\n');
     expect(result.toolErrors).toEqual([
-      { tool: 'eslint-fix', snapshot: 'fix', message: 'ESLint returned invalid JSON' },
+      {
+        tool: 'eslint-fix',
+        snapshot: 'fix',
+        message: `ESLint returned invalid JSON. ${linkSentence('fixersFail')}`,
+      },
     ]);
     expect(result.notes).toEqual(['prettier rewrote src/a.ts']);
   });
@@ -154,7 +159,7 @@ describe('fixTypeScript', () => {
       {
         tool: 'eslint-fix',
         snapshot: 'fix',
-        message: `ESLint reported a file it was not given: ${path.join(repository.root, 'src/other.ts')}`,
+        message: `ESLint reported a file it was not given: ${path.join(repository.root, 'src/other.ts')}. ${linkSentence('fixersFail')}`,
       },
     ]);
   });

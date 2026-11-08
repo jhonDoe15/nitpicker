@@ -6,6 +6,7 @@ import { writeFiles } from '../../../core/diff/git/test-support/fixture-files.mj
 import { fixWorkingTree } from '../../../core/fix/run-fix.mjs';
 import { BLACK_DEFAULT_EXCLUDES } from './python-fix-commands.mjs';
 import { fakePythonTools } from './test-support/fake-python-fix.mjs';
+import { linkSentence } from '../../../shared/messages/test-support/link-sentence.mjs';
 
 const { createGitRepository } = useGitFixtures();
 const PYPROJECT = '[project]\nname = "demo"\nversion = "1"\nrequires-python = ">=3.9"\n';
@@ -237,7 +238,7 @@ describe('--fix for Python', () => {
         tool: 'ruff-fix',
         snapshot: 'fix',
         rule: 'fix-failed',
-        message: 'ruff-fix failed: ruff check exited 2 in the PATH environment:\nruff exploded',
+        message: `ruff-fix failed: ruff check exited 2 in the PATH environment:\nruff exploded\n${linkSentence('fixersFail')}`,
       },
     ]);
   });
@@ -253,8 +254,7 @@ describe('--fix for Python', () => {
         tool: 'ruff-format-fix',
         snapshot: 'fix',
         rule: 'fix-failed',
-        message:
-          'ruff-format-fix failed: ruff format exited 2 in the PATH environment:\nerror: invalid value for --line-length',
+        message: `ruff-format-fix failed: ruff format exited 2 in the PATH environment:\nerror: invalid value for --line-length\n${linkSentence('fixersFail')}`,
       },
     ]);
   });
@@ -271,7 +271,7 @@ describe('--fix for Python', () => {
         tool: 'python-fix',
         snapshot: 'fix',
         rule: 'fix-failed',
-        message: `No Python environment at ${missing} (${path.join(missing, 'bin')} does not exist): create it, or set "python.environment"`,
+        message: `No Python environment at ${missing} (${path.join(missing, 'bin')} does not exist): create it, or set "python.environment". ${linkSentence('pythonEnvironment')}`,
       },
     ]);
     expect(tools.operations()).toEqual([]);
@@ -362,8 +362,7 @@ describe('--fix for Python', () => {
         tool: 'ruff-format-fix',
         snapshot: 'fix',
         rule: 'fix-failed',
-        message:
-          'ruff-format-fix failed: ruff was not found in the PATH environment: install it there (for example as a dev dependency), or set "python.environment" to the environment that has it',
+        message: `ruff-format-fix failed: ruff was not found in the PATH environment: install it there (for example as a dev dependency), or set "python.environment" to the environment that has it. ${linkSentence('pythonToolMissing')}`,
       },
     ]);
   });
