@@ -52,11 +52,7 @@ function firstPythonFile(projectRoot) {
 }
 
 function hasPythonFile(projectRoot) {
-  try {
-    return firstPythonFile(projectRoot) !== undefined;
-  } catch {
-    return false;
-  }
+  return firstPythonFile(projectRoot) !== undefined;
 }
 
 function listed(names) {
