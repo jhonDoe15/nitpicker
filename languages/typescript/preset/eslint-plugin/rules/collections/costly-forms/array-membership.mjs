@@ -1,6 +1,7 @@
 import {
   equalitySides,
   methodCallOn,
+  numberValue,
   outerOf,
   referencesName,
   repeatedRole,
@@ -39,14 +40,6 @@ function isArrayLiteral(init) {
     value.callee.name === 'Array' &&
     value.arguments.length === 0
   );
-}
-
-function numberValue(node) {
-  if (node.type === 'UnaryExpression' && node.operator === '-') {
-    const inner = numberValue(node.argument);
-    return inner === undefined ? undefined : -inner;
-  }
-  return node.type === 'Literal' && typeof node.value === 'number' ? node.value : undefined;
 }
 
 function isPresenceTest(call) {
@@ -116,11 +109,18 @@ function useOf(reference, name) {
   return method === undefined ? 'neutral' : memberUse(method);
 }
 
+function isExported(declarator) {
+  return declarator.parent.parent?.type === 'ExportNamedDeclaration';
+}
+
 export function arrayMembership(sourceCode, declarator) {
   if (declarator.id.type !== 'Identifier' || !isArrayLiteral(declarator.init)) {
     return undefined;
   }
   const [variable] = sourceCode.getDeclaredVariables(declarator);
+  if (variable.defs[0]?.node !== declarator || isExported(declarator)) {
+    return undefined;
+  }
   const uses = variable.references
     .filter((reference) => !reference.init)
     .map((reference) => ({ reference, use: useOf(reference, declarator.id.name) }));
@@ -130,7 +130,7 @@ export function arrayMembership(sourceCode, declarator) {
   const test = uses.find(
     ({ reference, use }) =>
       use === 'test' &&
-      repeatedRole(reference.identifier, declarator.parent, { anyFunction: true }) !== undefined,
+      repeatedRole(reference.identifier, declarator.parent, { recursion: true }) !== undefined,
   );
   if (test === undefined) {
     return undefined;

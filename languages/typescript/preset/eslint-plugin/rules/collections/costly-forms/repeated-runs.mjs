@@ -1,4 +1,9 @@
-import { ancestorsOf } from '../../analysis/ancestry.mjs';
+import { depthFirst } from '../../../../../../../shared/traversal.mjs';
+import { ancestorsOf, chainOf, contains } from '../../analysis/ancestry.mjs';
+import { memberName } from '../../analysis/test-code-analysis.mjs';
+import { unwrapped } from '../../regex/regex-bindings.mjs';
+
+export { contains, memberName, unwrapped };
 
 const WRAPPERS = new Set([
   'ChainExpression',
@@ -7,11 +12,7 @@ const WRAPPERS = new Set([
   'TSNonNullExpression',
   'TSTypeAssertion',
 ]);
-const FUNCTIONS = new Set([
-  'FunctionDeclaration',
-  'FunctionExpression',
-  'ArrowFunctionExpression',
-]);
+const FUNCTIONS = new Set(['FunctionDeclaration', 'FunctionExpression', 'ArrowFunctionExpression']);
 const ITERATION_METHODS = new Set([
   'every',
   'filter',
@@ -38,25 +39,10 @@ const LISTENER_METHODS = new Set([
   'subscribe',
 ]);
 
-export function unwrapped(node) {
-  return WRAPPERS.has(node.type) ? unwrapped(node.expression) : node;
-}
-
 export function outerOf(node) {
-  return WRAPPERS.has(node.parent?.type) ? outerOf(node.parent) : node;
-}
-
-export function contains(outer, inner) {
-  return outer.range[0] <= inner.range[0] && inner.range[1] <= outer.range[1];
-}
-
-export function memberName(member) {
-  if (!member.computed) {
-    return member.property.type === 'Identifier' ? member.property.name : undefined;
-  }
-  return member.property.type === 'Literal' && typeof member.property.value === 'string'
-    ? member.property.value
-    : undefined;
+  return chainOf(node, (current) =>
+    WRAPPERS.has(current.parent?.type) ? current.parent : undefined,
+  ).at(-1);
 }
 
 export function calledMember(call) {
@@ -106,25 +92,40 @@ function repeatsChild(loop, child) {
   }
 }
 
-function roleOf(node, child, anyFunction) {
+function functionName(fn) {
+  if (fn.id !== null && fn.id !== undefined) {
+    return fn.id.name;
+  }
+  const declarator = outerOf(fn).parent;
+  return declarator?.type === 'VariableDeclarator' && declarator.id.type === 'Identifier'
+    ? declarator.id.name
+    : undefined;
+}
+
+function isRecursive(fn) {
+  const name = functionName(fn);
+  return name !== undefined && referencesName(fn.body, name);
+}
+
+function roleOf(node, child, recursion) {
   if (repeatsChild(node, child)) {
     return 'loop';
   }
   if (!isFunction(node)) {
     return undefined;
   }
-  return callbackRole(node) ?? (anyFunction ? 'function' : undefined);
+  return callbackRole(node) ?? (recursion && isRecursive(node) ? 'recursion' : undefined);
 }
 
-export function repeatedRole(node, boundary, { anyFunction = false } = {}) {
+export function repeatedRole(node, boundary, { recursion = false } = {}) {
   const chain = [node, ...ancestorsOf(node)];
   const index = chain.findIndex((ancestor, position) => {
     if (position === 0 || contains(ancestor, boundary)) {
       return false;
     }
-    return roleOf(ancestor, chain[position - 1], anyFunction) !== undefined;
+    return roleOf(ancestor, chain[position - 1], recursion) !== undefined;
   });
-  return index === -1 ? undefined : roleOf(chain[index], chain[index - 1], anyFunction);
+  return index === -1 ? undefined : roleOf(chain[index], chain[index - 1], recursion);
 }
 
 function isNameSlot(node, key) {
@@ -134,18 +135,15 @@ function isNameSlot(node, key) {
   );
 }
 
+function codeChildren(node) {
+  return Object.entries(node)
+    .filter(([key]) => key !== 'parent' && !isNameSlot(node, key))
+    .flatMap(([, value]) => (Array.isArray(value) ? value : [value]))
+    .filter((child) => typeof child?.type === 'string');
+}
+
 export function someNode(node, predicate) {
-  return (
-    predicate(node) ||
-    Object.entries(node).some(
-      ([key, value]) =>
-        key !== 'parent' &&
-        !isNameSlot(node, key) &&
-        (Array.isArray(value) ? value : [value]).some(
-          (child) => typeof child?.type === 'string' && someNode(child, predicate),
-        ),
-    )
-  );
+  return [...depthFirst(node, codeChildren)].some(predicate);
 }
 
 export function referencesName(node, name) {
@@ -162,8 +160,7 @@ export function returnedExpression(fn) {
 
 export function singleParameter(fn) {
   const [parameter] = fn?.params ?? [];
-  const isCallback =
-    fn?.type === 'ArrowFunctionExpression' || fn?.type === 'FunctionExpression';
+  const isCallback = fn?.type === 'ArrowFunctionExpression' || fn?.type === 'FunctionExpression';
   return isCallback && parameter?.type === 'Identifier' ? parameter.name : undefined;
 }
 
@@ -172,4 +169,14 @@ export function equalitySides(expression) {
   return body?.type === 'BinaryExpression' && ['===', '=='].includes(body.operator)
     ? [body.left, body.right]
     : undefined;
+}
+
+export function numberValue(node) {
+  const value = unwrapped(node);
+  const negated = value.type === 'UnaryExpression' && value.operator === '-';
+  const literal = negated ? unwrapped(value.argument) : value;
+  if (literal.type !== 'Literal' || typeof literal.value !== 'number') {
+    return undefined;
+  }
+  return negated ? -literal.value : literal.value;
 }

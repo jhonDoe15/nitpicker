@@ -1,18 +1,31 @@
 import { variableNamed } from '../../analysis/ancestry.mjs';
-import { calledMember, memberName, methodCallOn, outerOf, unwrapped } from './repeated-runs.mjs';
+import {
+  calledMember,
+  memberName,
+  methodCallOn,
+  numberValue,
+  outerOf,
+  unwrapped,
+} from './repeated-runs.mjs';
 
 const SORTS = new Set(['sort', 'toSorted']);
 const ENDS = new Set(['pop', 'shift']);
 const FIRST = 0;
 const LAST = -1;
 
-function numberValue(node) {
-  const value = unwrapped(node);
-  if (value.type === 'UnaryExpression' && value.operator === '-') {
-    const inner = numberValue(value.argument);
-    return inner === undefined ? undefined : -inner;
-  }
-  return value.type === 'Literal' && typeof value.value === 'number' ? value.value : undefined;
+function isIndexZero(property) {
+  const value = unwrapped(property);
+  return numberValue(value) === FIRST || (value.type === 'Literal' && value.value === '0');
+}
+
+function isFirstElementRead(member) {
+  const outer = outerOf(member);
+  const { parent } = outer;
+  const written =
+    (parent.type === 'AssignmentExpression' && parent.left === outer) ||
+    (parent.type === 'UpdateExpression' && parent.argument === outer) ||
+    (parent.type === 'UnaryExpression' && parent.operator === 'delete');
+  return member.computed && !written && isIndexZero(member.property);
 }
 
 function takesEnd(call) {
@@ -20,11 +33,15 @@ function takesEnd(call) {
   const { parent } = outer;
   if (parent.type === 'VariableDeclarator' && parent.init === outer) {
     const { id } = parent;
-    return id.type === 'ArrayPattern' && id.elements.length === 1 && id.elements[0]?.type !== 'RestElement';
+    return (
+      id.type === 'ArrayPattern' &&
+      id.elements.length === 1 &&
+      id.elements[0]?.type !== 'RestElement'
+    );
   }
   const method = methodCallOn(call);
   if (method?.member !== undefined) {
-    return method.member.computed && numberValue(method.member.property) === FIRST;
+    return isFirstElementRead(method.member);
   }
   if (method?.call === undefined) {
     return false;
@@ -33,9 +50,7 @@ function takesEnd(call) {
   if (ENDS.has(method.name)) {
     return args.length === 0;
   }
-  return (
-    method.name === 'at' && args.length === 1 && [FIRST, LAST].includes(numberValue(args[0]))
-  );
+  return method.name === 'at' && args.length === 1 && [FIRST, LAST].includes(numberValue(args[0]));
 }
 
 function isLaterRead(sourceCode, identifier, call) {

@@ -25,3 +25,27 @@ def first_seen(routes):
         if route.path not in seen:
             seen.append(route.path)
     return seen[0]
+
+
+def callback(routes):
+    seen = []
+
+    def remember(path):
+        if path not in seen:
+            seen.append(path)
+
+    return remember
+
+
+def shadowed(routes):
+    seen = []
+    seen.append(routes[0].path)
+
+    def fresh(paths):
+        seen = set()
+        for path in paths:
+            if path not in seen:
+                seen.add(path)
+        return seen
+
+    return fresh

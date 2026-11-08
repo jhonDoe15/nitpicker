@@ -28,3 +28,14 @@ def grown(routes, paths):
         if not any(route.path == path for route in routes):
             routes.append(path)
     return routes
+
+
+
+def collector(paths, incoming):
+    rows = []
+
+    def lookup_all():
+        return [next((r for r in rows if r.path == p), None) for p in paths]
+
+    rows.extend(incoming)
+    return lookup_all

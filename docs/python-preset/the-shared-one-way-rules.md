@@ -498,15 +498,17 @@ self.items.append(item)`), also through a package `__init__` that re-exports it 
   count (`for _ in range(workers)`), a paging loop (the condition reads a variable the body
   assigns) and a retry (a `try` in the loop that returns on success) are not. A remote call in a
   task that is bounded or awaited one at a time keeps this finding, with the batching remedy.
-- `list-used-as-set` reports a local list made with `[]` or `list()` that gets `append` (or `+=`)
-  and is tested with `in` or `not in` inside a loop, a comprehension or a nested function such as a
-  recursive visitor; a list also used by position (`[i]`, `insert`, `pop`, `index`, `sort`,
+- `list-used-as-set` reports a list made with `[]` or `list()` (annotated or not, in a function or
+  at module level) that gets `append` (or `+=`) and is tested with `in` or `not in` inside a loop, a
+  comprehension, a `lambda` passed to `map`, `filter`, `sorted`, `min` or `max`, or a recursive
+  function such as a visitor; a list also used by position (`[i]`, `insert`, `pop`, `index`, `sort`,
   `reverse`) or bound twice is left alone. `linear-lookup-in-loop` reports `next(x for x in xs if
-  x.key == value)` and `any(x.key == value for x in xs)` inside a loop or comprehension, where the
+  x.key == value)` and `any(x.key == value for x in xs)` inside a loop, comprehension or such a `lambda`, where the
   key is an attribute or a constant subscript of the item, the value is not a constant, and `xs` is
-  a parameter, a name bound once outside the loop or a `self` attribute that only `__init__` sets,
+  a parameter or a local name bound once outside the loop (not a module or closure name), or a
+  `self` attribute that only `__init__` sets,
   and nothing appends to, removes from, sorts or assigns into it. Ruff's `FURB192` reports
-  `sorted(xs)[0]` and `sorted(xs)[-1]`. Test files are skipped. The same rules run as
+  `sorted(xs)[0]` and `sorted(xs)[-1]`, in tests too; the two script rules skip test files. The same rules run as
   `nitpicker/no-costly-collection-form` (TypeScript), `pmd/ListUsedAsSet`, `pmd/LinearLookupInLoop`
   and `pmd/SortForExtreme` (Java) and `kotlin-source/` rules of the same names (Kotlin).
 - `unbounded-fan-out` reports `asyncio.gather`, `asyncio.wait` and `asyncio.as_completed` over a

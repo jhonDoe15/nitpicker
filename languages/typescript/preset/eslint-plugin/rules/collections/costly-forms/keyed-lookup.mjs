@@ -1,4 +1,4 @@
-import { ancestorsOf, variableNamed } from '../../analysis/ancestry.mjs';
+import { ancestorsOf, chainOf, variableNamed } from '../../analysis/ancestry.mjs';
 import {
   contains,
   equalitySides,
@@ -28,27 +28,21 @@ const MUTATORS = new Set([
 const CLASS_TYPES = new Set(['ClassBody']);
 
 function keyPath(node, parameter) {
-  const value = unwrapped(node);
-  if (value.type !== 'MemberExpression') {
+  const chain = chainOf(unwrapped(node), (current) =>
+    current.type === 'MemberExpression' ? unwrapped(current.object) : undefined,
+  );
+  const root = chain.at(-1);
+  const keys = chain.slice(0, -1).map(memberName).reverse();
+  if (chain.length < 2 || root.type !== 'Identifier' || root.name !== parameter) {
     return undefined;
   }
-  const key = memberName(value);
-  const object = unwrapped(value.object);
-  if (key === undefined) {
-    return undefined;
-  }
-  if (object.type === 'Identifier') {
-    return object.name === parameter ? key : undefined;
-  }
-  const inner = keyPath(object, parameter);
-  return inner === undefined ? undefined : `${inner}.${key}`;
+  return keys.includes(undefined) ? undefined : keys.join('.');
 }
 
 function isConstantValue(node) {
   const value = unwrapped(node);
   return (
-    value.type === 'Literal' ||
-    (value.type === 'TemplateLiteral' && value.expressions.length === 0)
+    value.type === 'Literal' || (value.type === 'TemplateLiteral' && value.expressions.length === 0)
   );
 }
 

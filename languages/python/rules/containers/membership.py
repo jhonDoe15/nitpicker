@@ -1,9 +1,11 @@
 import ast
+from collections import namedtuple
 
 from checks.common import finding, functions_of, own_nodes
 from checks.loop_scope import ancestors
 from containers.scope import (
     FUNCTIONS,
+    binds_locally,
     contains,
     is_name,
     method_calls,
@@ -12,6 +14,7 @@ from containers.scope import (
 )
 
 RULE = "list-used-as-set"
+Binding = namedtuple("Binding", ["name", "node"])
 APPENDS = {"append"}
 POSITIONAL = {"insert", "pop", "index", "sort", "reverse"}
 
@@ -28,13 +31,24 @@ def is_new_list(value):
 
 def list_bindings(function):
     for node in own_nodes(function):
+        targets = node.targets if isinstance(node, ast.Assign) else []
+        if isinstance(node, ast.AnnAssign) and node.value is not None:
+            targets = [node.target]
         if (
-            isinstance(node, ast.Assign)
-            and len(node.targets) == 1
-            and isinstance(node.targets[0], ast.Name)
+            len(targets) == 1
+            and isinstance(targets[0], ast.Name)
             and is_new_list(node.value)
         ):
-            yield node.targets[0].id, node
+            yield targets[0].id, node
+
+
+def binding_count(function, name):
+    augmented = {
+        id(node.target)
+        for node in own_nodes(function)
+        if isinstance(node, ast.AugAssign)
+    }
+    return sum(id(store) not in augmented for store in name_stores(function, name))
 
 
 def membership_tests(function, name):
@@ -69,30 +83,44 @@ def appends(function, name):
     return calls + augmented
 
 
-def runs_repeatedly(test, binding, function, parents):
-    if any(
-        not contains(scope, binding) for scope in repeating_scopes(test, parents)
-    ):
-        return True
+def is_recursive(function):
+    return not isinstance(function, ast.Lambda) and any(
+        isinstance(node, ast.Name) and node.id == function.name
+        for node in ast.walk(function)
+    )
+
+
+def nested_functions(test, function, parents):
     chain = ancestors(test, parents)
     nested = chain[1 : chain.index(function)] if function in chain else []
-    return any(isinstance(node, FUNCTIONS) for node in nested)
+    return [node for node in nested if isinstance(node, FUNCTIONS)]
+
+
+def runs_repeatedly(test, binding, function, parents):
+    nested = nested_functions(test, function, parents)
+    if any(binds_locally(node, binding.name) for node in nested):
+        return False
+    if any(
+        not contains(scope, binding.node) for scope in repeating_scopes(test, parents)
+    ):
+        return True
+    return any(is_recursive(node) for node in nested)
 
 
 def check(context):
     if context.tests:
         return []
     found = []
-    for function in functions_of(context.tree):
-        for name, binding in list_bindings(function):
-            if len(name_stores(function, name)) != 1:
+    for function in [context.tree, *functions_of(context.tree)]:
+        for name, node in list_bindings(function):
+            if binding_count(function, name) != 1:
                 continue
             if not appends(function, name) or is_positional(function, name):
                 continue
             repeated = [
                 test
                 for test in membership_tests(function, name)
-                if runs_repeatedly(test, binding, function, context.parents)
+                if runs_repeatedly(test, Binding(name, node), function, context.parents)
             ]
             if repeated:
                 found.append(finding(context.path, RULE, name, repeated[0]))

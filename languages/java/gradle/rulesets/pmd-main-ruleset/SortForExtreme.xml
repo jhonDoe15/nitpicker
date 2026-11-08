@@ -1,5 +1,5 @@
   <rule name="SortForExtreme" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
-        message="This stream is sorted only to take its first element, which costs a full sort. Take it in one pass with min(comparator) or max(comparator) on the stream, or Collections.min and Collections.max on a collection. An exception fits only for a stream that always stays a handful of items.">
+        message="This stream is sorted only to take its first or last element, which costs a full sort. Take it in one pass with min(comparator) or max(comparator) on the stream, or Collections.min and Collections.max on a collection. An exception fits only for a stream that always stays a handful of items.">
     <priority>3</priority>
     <properties>
       <property name="xpath">

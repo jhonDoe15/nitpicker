@@ -39,6 +39,11 @@ tester.run('no-costly-collection-form', rule, {
     'const second = rows.toSorted(byDate)[1];',
     'const [first, second] = rows.toSorted(byDate);',
     'const top = rows.toSorted(byDate).slice(0, 3);',
+    'const seen = []; function add(x) { if (!seen.includes(x)) seen.push(x); }',
+    'const seen = []; const add = (x) => { const inner = () => !seen.includes(x) && seen.push(x); inner(); };',
+    'export const seen = []; for (const x of xs) { if (!seen.includes(x)) seen.push(x); }',
+    'rows.toSorted(byDate)[0] = first;',
+    'delete rows.toSorted(byDate)[0];',
   ].map((code) => ({ filename, code })),
   invalid: [
     {
@@ -52,6 +57,38 @@ tester.run('no-costly-collection-form', rule, {
     {
       code: 'let ids: string[] = []; rows.forEach((row) => { if (!ids.some((id) => id === row.id)) ids = [...ids, row.id]; });',
       errors: [SET('ids', 'some')],
+    },
+    {
+      code: 'var ids = []; var ids = []; for (const r of rows) { if (!ids.includes(r)) ids.push(r); }',
+      errors: [SET('ids', 'includes')],
+    },
+    {
+      code: 'const ids = new Array(); for (const r of rows) { if (ids.indexOf(r) < 0) ids.unshift(r); }',
+      errors: [SET('ids', 'indexOf')],
+    },
+    {
+      code: 'const rows = load(); for (const e of events) { use(rows.findLast((r) => r.id == e.id)); }',
+      errors: [MAP('rows', 'findLast', 'id')],
+    },
+    {
+      code: 'const rows = load(); for (const e of events) { use(rows.findLastIndex((r) => r.id === e.id)); }',
+      errors: [MAP('rows', 'findLastIndex', 'id')],
+    },
+    {
+      code: 'const rows = load(); node.addEventListener("x", (e) => rows.find((r) => r.id === e.id));',
+      errors: [MAP('rows', 'find', 'id')],
+    },
+    {
+      code: 'const rows = load(); bus.prependListener("x", (e) => rows.some((r) => r.id === e.id));',
+      errors: [MAP('rows', 'some', 'id')],
+    },
+    {
+      code: 'const first = rows.toSorted(byDate).at(0);',
+      errors: [SORT('toSorted')],
+    },
+    {
+      code: 'const first = rows.toSorted(byDate)["0"];',
+      errors: [SORT('toSorted')],
     },
     {
       code: 'const handlers = load(); for (const event of events) { handlers.find((h) => h.message === event.type)?.run(event); }',
