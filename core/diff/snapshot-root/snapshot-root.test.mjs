@@ -1,6 +1,9 @@
+import { existsSync, mkdirSync, mkdtempSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { runAnalyzers } from '../execution/run-analyzers.mjs';
+import { clearDiffReports } from '../reporting/reporters.mjs';
 import { withoutSnapshotRoot } from './snapshot-root.mjs';
 
 const WORKTREE = path.join(path.sep, 'tmp', 'nitpicker-diff-Ab.c1', 'head');
@@ -118,16 +121,38 @@ describe('runAnalyzers log folder', () => {
   it('names a log folder inside the live project by its relative path', () => {
     const logRoot = path.join(LIVE, 'reports', 'quality', 'diff', 'logs');
 
-    expect(invocationContext(logRoot)).toMatchObject({
-      logRoot,
-      logLabel: 'reports/quality/diff/logs',
-    });
+    const { logLabel } = invocationContext(logRoot);
+
+    expect(logLabel).toBe('reports/quality/diff/logs');
   });
 
   it('names a log folder outside the live project by its full path, and none when there is none', () => {
     const logRoot = path.join(path.sep, 'tmp', 'out', 'logs');
 
-    expect(invocationContext(logRoot)).toMatchObject({ logRoot, logLabel: logRoot });
-    expect(invocationContext(undefined)).not.toHaveProperty('logRoot');
+    const outside = invocationContext(logRoot);
+
+    expect([outside.logRoot, outside.logLabel]).toEqual([logRoot, logRoot]);
+    expect('logRoot' in invocationContext(undefined)).toBe(false);
+  });
+});
+
+describe('clearing the log folder', () => {
+  it('removes only the build logs a run wrote, and the folder once it is empty', () => {
+    const output = mkdtempSync(path.join(tmpdir(), 'nitpicker-logs-clear-'));
+    const logs = path.join(output, 'logs');
+    mkdirSync(logs);
+    for (const name of ['java-head-gradle.log', 'kotlin-base-gradle.log', 'server.log']) {
+      writeFileSync(path.join(logs, name), 'x');
+    }
+    try {
+      clearDiffReports(output);
+      expect(readdirSync(logs)).toEqual(['server.log']);
+      rmSync(path.join(logs, 'server.log'));
+      writeFileSync(path.join(logs, 'java-head-gradle.log'), 'x');
+      clearDiffReports(output);
+      expect(existsSync(logs)).toBe(false);
+    } finally {
+      rmSync(output, { recursive: true, force: true });
+    }
   });
 });

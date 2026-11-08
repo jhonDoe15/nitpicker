@@ -5,7 +5,7 @@ import {
   writeSnapshotReports,
   renderRuleFilterSection as renderSnapshotRuleFilterSection,
 } from '../snapshot/reporters.mjs';
-import { selectAnalyzers } from '../diff/execution/run-analyzers.mjs';
+import { analyzerRunOptions, selectAnalyzers } from '../diff/execution/run-analyzers.mjs';
 import { withTemporaryWorktree } from '../diff/git/repository/worktree.mjs';
 import {
   prepareSnapshotDependencies,
@@ -17,7 +17,7 @@ import { realpathSync } from 'node:fs';
 import { runGit } from '../diff/git/repository/command.mjs';
 import { writeGithubOutput } from '../diff/reporting/github/emit.mjs';
 import { captureWorkingTree } from '../diff/git/repository/git.mjs';
-import { LOG_DIRECTORY, outputRootFor } from '../diff/reporting/reporters.mjs';
+import { outputRootFor } from '../diff/reporting/reporters.mjs';
 import { assertHasCommit } from '../diff/git/repository/base-ref.mjs';
 import { partialRunField, partialRunOf } from '../diff/reporting/partial-run/partial-run.mjs';
 import { failingHeadTests } from '../diff/reporting/failing-tests/failing-tests.mjs';
@@ -52,9 +52,8 @@ export function runSnapshotCli({
       selectedAnalyzers,
       currentProjectRoot,
       headPolicy,
-      runTasks,
       scope,
-      logRoot: path.join(path.resolve(outputRoot), LOG_DIRECTORY),
+      ...analyzerRunOptions({ outputRoot, runTasks }),
     }),
   );
   Object.assign(
@@ -90,9 +89,8 @@ function runInSnapshotWorktree({
   selectedAnalyzers,
   currentProjectRoot,
   headPolicy,
-  runTasks,
   scope,
-  logRoot,
+  ...execution
 }) {
   const needsDependencies = selectedAnalyzers.some((analyzer) => analyzer.requiresDependencies);
   const dependencies = needsDependencies
@@ -110,9 +108,8 @@ function runInSnapshotWorktree({
       toolRoot: PACKAGE_ROOT,
       liveProjectRoot: currentProjectRoot,
       headPolicy,
-      runTasks,
       scope,
-      logRoot,
+      ...execution,
     });
   } finally {
     removeSnapshotDependencies(dependencies);

@@ -27,7 +27,11 @@ export function compileErrorCases({
 
   beforeAll(() => {
     root = setup();
-    const working = readFileSync(path.join(root, source), 'utf8');
+    const file = path.resolve(root, source);
+    if (!file.startsWith(`${root}${path.sep}`)) {
+      throw new Error(`${source} is outside ${root}`);
+    }
+    const working = readFileSync(file, 'utf8');
     commitBranch(root, 'broken', { [source]: broken }, 'main');
     commitBranch(root, 'fixed', { [source]: working }, 'broken');
   });

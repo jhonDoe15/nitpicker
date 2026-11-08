@@ -28,6 +28,7 @@ describe.each([
       GRADLE_FAIL:
         'src/main/java/demo/A.java:3: error: cannot find symbol\n  symbol:   class Missing',
     },
+    'gradle-failure',
   ],
   [
     'a Maven build',
@@ -36,8 +37,9 @@ describe.each([
       MAVEN_FAIL:
         'src/main/java/demo/A.java:[3,8] cannot find symbol\n[ERROR]   symbol:   class Missing',
     },
+    'maven-failure',
   ],
-])('a Java change that does not compile on %s', (_name, useFixtures, broken) => {
+])('a Java change that does not compile on %s', (_name, useFixtures, broken, failureRule) => {
   const { run, ...fixtures } = useFixtures(nitpickerCli);
   const repository = (files = {}) => fixtures.repository({ ...EMPTY_JDEPS, ...files });
 
@@ -66,10 +68,12 @@ describe.each([
         message: SKIPPED('1 compile error', 'Java'),
       },
     ]);
-    expect(result.output.out).toContain('build/compile-error');
+    expect(result.output.out.split('\n').filter((line) => line.startsWith('  build/'))).toEqual([
+      `  build/compile-error: cannot find symbol (class Missing). ${HINT}`,
+    ]);
   });
 
-  it('keeps a base that does not compile a tool error', () => {
+  it('reports no finding but a tool error when the base does not compile either', () => {
     const root = repository(broken);
     writeFiles(root, { 'notes.txt': 'edited\n' });
     commit(root, 'edit notes');
@@ -80,7 +84,7 @@ describe.each([
     expect(result.json('new-findings.json')).toEqual([]);
     expect(
       result.json('tool-errors.json').map(({ snapshot, rule }) => `${snapshot} ${rule}`),
-    ).toEqual(expect.arrayContaining([expect.stringMatching(/^base (?:gradle|maven)-failure$/u)]));
+    ).toEqual(['head compile-failed-skipped', `base ${failureRule}`]);
   });
 });
 
@@ -106,6 +110,7 @@ describe('a change that does not compile next to a base whose tests fail', () =>
   it('reports a Kotlin compile error on Gradle the same way', () => {
     const root = kotlinRepository();
     writeFiles(root, {
+      'src/main/kotlin/demo/A.kt': 'package demo\n\nclass A {\n    val x = missing()\n}\n',
       GRADLE_FAIL: "e: src/main/kotlin/demo/A.kt:4:9 Unresolved reference 'missing'.",
     });
     commit(root, 'break the build');

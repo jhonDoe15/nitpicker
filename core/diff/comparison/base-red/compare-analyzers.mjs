@@ -69,7 +69,7 @@ function compareAnalyzer(context) {
   const headFindings = withoutEmittedToolErrors(headReport?.findings ?? [], 'head', toolErrors);
   const unknownFailures = baseFailuresOf({ ...context, name });
   const comparable =
-    (baseRun.reports.get(name) !== undefined || unknownFailures !== undefined) &&
+    (stopped || baseRun.reports.get(name) !== undefined || unknownFailures !== undefined) &&
     headReport !== undefined &&
     !toolErrors.some((error) => blocksComparison(error, name, stopped));
   const compared = stopped ? { baseFindings: [], unknownFailures: undefined } : {};

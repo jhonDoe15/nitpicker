@@ -1,3 +1,6 @@
+import { mkdtempSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import {
   compileErrorFindings,
@@ -24,11 +27,16 @@ describe('compileErrorFindings', () => {
         classification: 'enforceable',
         location: { line: 5, column: 12 },
       },
-      expect.objectContaining({
+      {
+        tool: 'build',
+        rule: 'compile-error',
         path: 'src/A.java',
         identity: expect.stringMatching(/^compile-error:[0-9a-f]{24}#2$/u),
+        message:
+          'cannot find symbol (method missing()). The code does not compile; fix it before anything else is checked.',
+        classification: 'enforceable',
         location: { line: 9 },
-      }),
+      },
       {
         tool: 'java',
         rule: 'compile-failed-skipped',
@@ -53,7 +61,14 @@ describe('compileErrorFindings', () => {
 
 describe('the compile errors of a failed build', () => {
   it('travel with the error through the errors that wrap it', () => {
-    const failed = withCompileErrors(new Error('Gradle failed'), '/p/A.java:3: error: oops', '/p');
+    const root = realpathSync(mkdtempSync(path.join(tmpdir(), 'nitpicker-compile-findings-')));
+    writeFileSync(path.join(root, 'A.java'), '\n');
+    const failed = withCompileErrors(
+      new Error('Gradle failed'),
+      `${root}/A.java:3: error: oops`,
+      root,
+    );
+    rmSync(root, { recursive: true, force: true });
     const wrapped = new Error('wrapped', { cause: new Error('again', { cause: failed }) });
 
     expect(compileErrorsOf(wrapped)).toEqual([{ path: 'A.java', line: 3, message: 'oops' }]);

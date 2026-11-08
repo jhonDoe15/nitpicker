@@ -2,7 +2,7 @@ import {
   isStrictRule,
   mustMeetOnEditedLines,
 } from '../../../languages/typescript/preset/strict-rules.mjs';
-import { LOG_DIRECTORY, writeDiffReports } from '../reporting/reporters.mjs';
+import { writeDiffReports } from '../reporting/reporters.mjs';
 import { partialRunField } from '../reporting/partial-run/partial-run.mjs';
 import path from 'node:path';
 import { resolveComparison, captureWorkingTree, hasSameTree } from '../git/repository/git.mjs';
@@ -16,7 +16,7 @@ import { readChangedLines } from '../git/patches/changed-lines.mjs';
 import { readRemovesTests } from '../git/patches/test-removal.mjs';
 import { withTemporaryWorktree, withNamedTemporaryWorktree } from '../git/repository/worktree.mjs';
 import { withHeadPolicyFile } from '../../../languages/typescript/preset/head-policy.mjs';
-import { runAnalyzers } from '../execution/run-analyzers.mjs';
+import { analyzerRunOptions, runAnalyzers } from '../execution/run-analyzers.mjs';
 import { withMovesFile } from '../git/patches/moves-file.mjs';
 import { PACKAGE_ROOT } from '../../tooling/tool-resolution.mjs';
 import { combineAnalyzerReports, noChangesReport } from './results.mjs';
@@ -191,8 +191,7 @@ function runAndCombine(context) {
       snapshot: 'head',
       baselineRoot: roots.baseProjectRoot,
       baselineMovesFile,
-      logRoot: logRootOf(settings),
-      runTasks: settings.runTasks,
+      ...analyzerRunOptions(settings),
     }),
   );
   return combineAnalyzerReports({
@@ -232,13 +231,8 @@ function runBaseAnalyzers(context, baseAnalyzers) {
     liveProjectRoot: settings.headProjectRoot,
     headPolicyFile: basePolicyFile,
     snapshot: 'base',
-    logRoot: logRootOf(settings),
-    runTasks: settings.runTasks,
+    ...analyzerRunOptions(settings),
   });
-}
-
-function logRootOf({ outputRoot }) {
-  return outputRoot === undefined ? undefined : path.join(path.resolve(outputRoot), LOG_DIRECTORY);
 }
 
 function runBaseSide(context) {

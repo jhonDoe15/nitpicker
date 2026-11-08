@@ -1,4 +1,4 @@
-import path from 'node:path';
+import { withoutSnapshotRoot } from '../../../../../core/diff/snapshot-root/snapshot-root.mjs';
 import { compileErrorsIn } from '../../../builds/compile-errors/compiler-output.mjs';
 
 const TOOL_NOISE = [
@@ -50,16 +50,22 @@ function chainEntries(lines) {
   });
 }
 
+function isLeaf(entries, index) {
+  return entries[index].depth >= 0 && !(entries[index + 1]?.depth > entries[index].depth);
+}
+
 function causeOf(lines) {
   const entries = chainEntries(lines);
-  const chained = entries.filter(({ depth }) => depth >= 0);
-  if (chained.length === 0) {
+  if (entries.every(({ depth }) => depth < 0)) {
     return entries.map(({ text }) => text);
   }
-  const deepest = chained.reduce((best, entry) => (entry.depth >= best.depth ? entry : best));
-  const at = entries.lastIndexOf(deepest);
-  const parent = entries.slice(0, at).findLast(({ depth }) => depth < deepest.depth);
-  return [...(parent === undefined ? [] : [parent.text]), `> ${deepest.text}`];
+  return entries.flatMap((entry, index) => {
+    if (!isLeaf(entries, index)) {
+      return [];
+    }
+    const parent = entries.slice(0, index).findLast(({ depth }) => depth < entry.depth);
+    return [...(parent === undefined ? [] : [parent.text]), `> ${entry.text}`];
+  });
 }
 
 function failureLines(lines) {
@@ -78,7 +84,7 @@ function compilerLines(text, projectRoot) {
 }
 
 function withoutProjectRoot(line, projectRoot) {
-  return line.replaceAll(`${projectRoot}${path.sep}`, '').replaceAll(projectRoot, '.');
+  return withoutSnapshotRoot(line, { projectRoot, snapshot: '.' });
 }
 
 function fitted(lines, projectRoot) {

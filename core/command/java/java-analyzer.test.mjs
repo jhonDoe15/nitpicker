@@ -181,6 +181,23 @@ describe('Gradle failure diagnostics', () => {
       );
     },
   );
+  it('keeps the log line of a message that only the long log path makes overlong', () => {
+    const root = temporaryRoot('nitpicker-gradle-long-');
+    const logRoot = path.join(temporaryRoot('nitpicker-gradle-logs-'), 'logs');
+    const lines = Array.from({ length: 20 }, (_, index) => `${String(index)}${'x'.repeat(400)}`);
+    writeFiles(root, { GRADLE_FAIL: lines.join('\n') });
+    const logLabel = 'l'.repeat(600);
+
+    const { message } = analyzeJavaSnapshot(root, {
+      ...fakeGradleRun,
+      policy: { logRoot, logLabel },
+    }).findings[0];
+
+    expect(message.split('\n').at(-1)).toBe(`Full Gradle log: ${logLabel}/java-head-gradle.log`);
+    expect(message.length).toBeGreaterThan(4000);
+    expect(message).not.toContain('...');
+  });
+
   it('keeps the cause and saves the full output under the report folder on both sides', () => {
     const failure = [
       'warning: ordinary compiler noise\n'.repeat(300),
