@@ -22,3 +22,10 @@ export function readKotlinDuplicateFindings(reportRoot, projectRoot) {
       })
     : [];
 }
+
+export function readProjectDuplicateFindings(reportRoot, { preset, projectRoot }) {
+  return [
+    ...readDuplicateFindings(reportRoot, { projectRoot }),
+    ...(preset === 'kotlin' ? readKotlinDuplicateFindings(reportRoot, projectRoot) : []),
+  ];
+}
