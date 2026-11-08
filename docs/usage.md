@@ -232,7 +232,8 @@ error that names how to get it (`corepack enable pnpm` or `npm install --global 
 `npm install --global bun`; Node.js no longer bundles Corepack from version 25, so install it
 first there). A lockfile that does not match its `package.json` fails the frozen install and the
 tool error carries the manager's message. Installing the base is not supported on native Windows
-(run nitpicker in WSL).
+(run nitpicker in WSL); [compatibility](compatibility.md#operating-systems) lists the other
+Windows limits.
 
 Local packages (`file:`, `link:` and `portal:` dependencies) resolve against the temporary
 worktree, so a package outside the repository (`file:../shared-lib`, `file:../nitpicker-0.1.0.tgz`)
