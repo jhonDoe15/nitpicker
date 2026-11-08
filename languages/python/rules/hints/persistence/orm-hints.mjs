@@ -32,6 +32,6 @@ export const PERSISTENCE_HINTS = [
       return `\`${model}\` rows are ${work} in Python after a query loaded them all, when the database could do it`;
     },
     allowed:
-      'Ask the database: `.count()` or `.exists()` instead of `len()` or a truth test; `.filter()`/`.exclude()` (Django) or `.where()` (SQLAlchemy) instead of a comprehension, `filter()`, `any()`, `all()` or `next()`; `.order_by()` instead of `sorted()`, `.sort()` or `max(key=)`; `.aggregate()`/`.annotate()` (Django) or `func.sum`/`func.count` with `group_by` (SQLAlchemy) instead of `sum()`, `max()`, `min()` or `Counter`. An exception fits only for a small fixed lookup table that is meant to be loaded whole.',
+      'Ask the database: `.count()` or `.exists()` instead of `len()` or a truth test; `.filter()`/`.exclude()` (Django) or `.where()` (SQLAlchemy) instead of a comprehension, `filter()` or `next()`, and `.filter(...).exists()` instead of `any()` or `all()`; `.order_by()` instead of `sorted()`, `.sort()` or `max(key=)`; `.aggregate()`/`.annotate()` (Django) or `func.sum`/`func.count` with `group_by` (SQLAlchemy) instead of `sum()`, `max()`, `min()` or `Counter`. An exception fits only for a small fixed lookup table that is meant to be loaded whole.',
   },
 ];

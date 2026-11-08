@@ -15,7 +15,7 @@ const FIELD_METHODS = new Set([
 ]);
 const MEMBERSHIP_METHODS = new Set(['includes', 'has']);
 const COMPUTED = ts.SymbolFlags.GetAccessor | ts.SymbolFlags.Method;
-const SIDE_EFFECTS = new Set(['delete']);
+const SIDE_EFFECTS = new Set(['delete', 'typeof']);
 
 function newState(elements, accumulators) {
   return { elements, accumulators, destructured: new Map(), fields: [], valid: true };
