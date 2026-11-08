@@ -12,13 +12,15 @@ export function relaxedMessage(type) {
 
 function relaxedSites(code, file, isProduction) {
   const subjects = subjectsOf(code);
-  return mockSites(code).filter(
-    (site) =>
-      site.relaxed === true &&
-      !site.spy &&
-      !subjects.has(site.type) &&
-      isProduction(site.type, file),
-  );
+  return mockSites(code)
+    .filter(
+      (site) =>
+        site.relaxed === true &&
+        !site.spy &&
+        !subjects.has(site.type) &&
+        isProduction(site.type, file),
+    )
+    .toSorted((left, right) => left.offset - right.offset);
 }
 
 export function relaxedMockFindings(files, { finding, projectRoot, isProduction }) {

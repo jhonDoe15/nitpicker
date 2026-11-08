@@ -22,7 +22,7 @@ export const MOCK_HINTS = [
     rules: ['mock-without-spec'],
     describe: specDescription,
     allowed:
-      'Give the mock the shape of what it replaces: `Mock(spec=Mailer)`, `create_autospec(Mailer, instance=True)`, `patch("shop.checkout.send", autospec=True)`, or pass a hand-written fake.',
+      'Give the stand-in the shape of what it replaces: `Mock(spec=Mailer)` or `create_autospec(Mailer, instance=True)` for a mock, `patch("shop.checkout.send", autospec=True)` or `new=` with a fake for a patch, or pass a hand-written fake.',
   },
   {
     tool: RULES_TOOL,

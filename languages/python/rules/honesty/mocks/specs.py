@@ -2,6 +2,7 @@ import ast
 
 from checks.common import call_name, finding
 from honesty.mocks.arguments import unspecced_mocks
+from honesty.mocks.lookup import missed_lookups
 from honesty.mocks.targets import (
     PATCH,
     PATCH_OBJECT,
@@ -34,9 +35,10 @@ def is_specced(node, name):
 
 
 def unspecced_patches(context, subject):
+    missed = {id(node) for node, _ in missed_lookups(context)}
     for node in ast.walk(context.tree):
         name = mock_name(call_name(node, context.aliases) or "")
-        if name not in NEW_POSITIONS or is_specced(node, name):
+        if name not in NEW_POSITIONS or id(node) in missed or is_specced(node, name):
             continue
         target = patch_target(node, name, context.aliases)
         found = resolve(context.project, target) if target else None

@@ -115,6 +115,41 @@ describe.skipIf(!enabled)('patch-misses-lookup', () => {
     expect(lookups(test, { 'shop/late.py': late })).toEqual(expected);
   });
 
+  it('follows a plain dotted import and skips imports for type checking only', () => {
+    const typed = lines(
+      'from typing import TYPE_CHECKING',
+      '',
+      'if TYPE_CHECKING:',
+      '    from shop.mailer import send',
+    );
+    const test = lines(
+      'import shop.checkout',
+      'from shop import typed',
+      'from unittest.mock import patch',
+      '',
+      '@patch("shop.mailer.send", autospec=True)',
+      'def test_a(send):',
+      '    shop.checkout.pay()',
+    );
+
+    expect(lookups(test, { 'shop/typed.py': typed })).toEqual([
+      `${RULE} tests/test_orders.py:5 shop.mailer.send (looked up as shop.checkout.send)`,
+    ]);
+  });
+
+  it('does not count a package that re-exports the name when the test imports a module of it', () => {
+    const test = lines(
+      'from shop import mailer',
+      'from unittest.mock import patch',
+      '',
+      '@patch("shop.mailer.Mailer", autospec=True)',
+      'def test_a(sender):',
+      '    mailer.Mailer()',
+    );
+
+    expect(lookups(test, { 'shop/__init__.py': 'from shop.mailer import Mailer\n' })).toEqual([]);
+  });
+
   it('leaves the module a test is named after to mocked-subject-in-test', () => {
     const test = lines(
       'from unittest.mock import patch',

@@ -168,6 +168,38 @@ describe.skipIf(!enabled)('mock-without-spec', () => {
     expect(specs('', { 'tests/test_mailer.py': test })).toEqual([]);
   });
 
+  it('follows annotated bindings and skips names bound twice', () => {
+    const test = lines(
+      'from unittest.mock import Mock',
+      'from shop.checkout import Checkout',
+      'from shop.mailer import Mailer',
+      '',
+      'def test_a():',
+      '    typed: Mailer = Mock()',
+      '    Checkout(typed)',
+      '',
+      'def test_b():',
+      '    fake = Mock()',
+      '    fake = Mailer()',
+      '    Checkout(fake)',
+    );
+
+    expect(specs(test)).toEqual([`${RULE} tests/test_orders.py:6 Mock() for shop.mailer.Mailer`]);
+  });
+
+  it('leaves a patch that misses the lookup to patch-misses-lookup', () => {
+    const test = lines(
+      'from unittest.mock import patch',
+      'from shop.checkout import notify',
+      '',
+      '@patch("shop.mailer.send")',
+      'def test_a(send):',
+      '    notify(None, None)',
+    );
+
+    expect(specs(test)).toEqual([]);
+  });
+
   it('does not check production code', () => {
     const code = lines(
       'from unittest.mock import Mock',
