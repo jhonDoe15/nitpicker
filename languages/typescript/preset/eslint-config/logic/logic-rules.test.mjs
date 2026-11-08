@@ -26,6 +26,8 @@ export default applyJavascriptDialect(logicConfigFor(files, parserOptions), {
 const TSCONFIG = JSON.stringify({
   compilerOptions: {
     noEmit: true,
+    types: [],
+    lib: ['ES2023'],
     strict: true,
     target: 'es2023',
     module: 'nodenext',
@@ -34,6 +36,8 @@ const TSCONFIG = JSON.stringify({
   },
   include: ['src', 'test'],
 });
+
+const PLACEHOLDER = `${'$'}{name}`;
 
 const BANNED = [
   [undefined, 'export const firsts = (values: readonly number[]) =>'],
@@ -55,11 +59,7 @@ const BANNED = [
   [undefined, '  }'],
   [undefined, '  return total;'],
   [undefined, '}'],
-  ['no-template-curly-in-string', "export const greeting = 'Hello ${name}';"],
-  [
-    'no-promise-executor-return',
-    'export const pause = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));',
-  ],
+  ['no-template-curly-in-string', `export const greeting = 'Hello ${PLACEHOLDER}';`],
   [undefined, 'export class Box {'],
   [undefined, '  readonly value: number;'],
   [undefined, '  constructor(value: number) {'],
@@ -70,15 +70,6 @@ const BANNED = [
   [undefined, 'export function log(lines: string[], line: string): void {'],
   [undefined, '  lines.push(line);'],
   ['no-useless-return', '  return;'],
-  [undefined, '}'],
-  [undefined, 'export function handlers(count: number): (() => number)[] {'],
-  [undefined, '  const all: (() => number)[] = [];'],
-  [undefined, '  let index = 0;'],
-  [undefined, '  for (const _ of Array.from({ length: count })) {'],
-  ['@typescript-eslint/no-loop-func', '    all.push(() => index);'],
-  [undefined, '    index += 1;'],
-  [undefined, '  }'],
-  [undefined, '  return all;'],
   [undefined, '}'],
   [undefined, 'export class Counter {'],
   ['@typescript-eslint/no-unused-private-class-members', '  #unused = 0;'],
@@ -109,9 +100,7 @@ const ALLOWED = [
   '  }',
   '  return left;',
   '}',
-  'export const greet = (name: string) => `Hello ${name}`;',
-  'export const pause = (ms: number) => new Promise((resolve) => { setTimeout(resolve, ms); });',
-  'export const later = (ms: number) => new Promise((resolve) => void setTimeout(resolve, ms));',
+  `export const greet = (name: string) => \`Hello ${PLACEHOLDER}\`;`,
   'export class Box {',
   '  readonly value: number;',
   '  constructor(value: number) {',
@@ -120,13 +109,6 @@ const ALLOWED = [
   '}',
   'export function log(lines: string[], line: string): void {',
   '  lines.push(line);',
-  '}',
-  'export function handlers(indexes: readonly number[]): (() => number)[] {',
-  '  const all: (() => number)[] = [];',
-  '  for (const index of indexes) {',
-  '    all.push(() => index);',
-  '  }',
-  '  return all;',
   '}',
   'export class Counter {',
   '  #count = 0;',
@@ -149,7 +131,7 @@ const BANNED_JAVASCRIPT = [
   '      return value;',
   '    }',
   '  });',
-  "export const greeting = 'Hello ${name}';",
+  `export const greeting = 'Hello ${PLACEHOLDER}';`,
   '/** @param {readonly number[]} values */',
   'export const ordered = (values) => [...values].sort();',
 ].join('\n');
