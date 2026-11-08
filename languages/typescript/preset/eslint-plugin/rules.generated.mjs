@@ -65,6 +65,7 @@ import { rule as ruleNoTestRetry } from './test-assertions/no-test-retry.mjs';
 import { rule as ruleNoThrow } from './rules/errors/no-throw.mjs';
 import { rule as ruleNoTriStateBoolean } from './rules/signatures/no-tri-state-boolean.mjs';
 import { rule as ruleNoUiFrameworkInDomain } from './rules/syntax/no-ui-framework-in-domain.mjs';
+import { rule as ruleNoUncoercedRequestInput } from './rules/request-inputs/no-uncoerced-request-input.mjs';
 import { rule as ruleNoUncollectedTests } from './test-isolation/no-uncollected-tests.mjs';
 import { rule as ruleNoUnhandledUrlParse } from './rules/parsing/no-unhandled-url-parse.mjs';
 import { rule as ruleNoUnhandledVoidPromise } from './rules/promises/no-unhandled-void-promise.mjs';
@@ -171,6 +172,7 @@ export const directoryRules = {
   'no-throw': ruleNoThrow,
   'no-tri-state-boolean': ruleNoTriStateBoolean,
   'no-ui-framework-in-domain': ruleNoUiFrameworkInDomain,
+  'no-uncoerced-request-input': ruleNoUncoercedRequestInput,
   'no-uncollected-tests': ruleNoUncollectedTests,
   'no-unhandled-url-parse': ruleNoUnhandledUrlParse,
   'no-unhandled-void-promise': ruleNoUnhandledVoidPromise,
