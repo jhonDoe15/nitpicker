@@ -30,6 +30,7 @@ import { i18nRuleIds } from '../eslint-config/i18n/i18n-rules.mjs';
 import { i18nScopeConfigFor, isI18nProject } from '../eslint-config/i18n/i18n-scope.mjs';
 import { isServerProject, serverScopeConfigFor } from '../eslint-config/server/server-scope.mjs';
 import { serverRuleIds } from '../eslint-config/server/server-rules.mjs';
+import { isNestProject, nestScopeConfigFor } from '../eslint-config/nest/nest-scope.mjs';
 import { readHeadPolicy, readLayout } from '../head-policy.mjs';
 import { precedenceLayers } from '../../../../shared/conventions/tool-precedence.mjs';
 import { existingRoots } from '../layout.mjs';
@@ -58,6 +59,7 @@ const i18n = isI18nProject({
 });
 const security = securityFactsFor(analyzedProjectRoot(), (file) => layout.isSourceFile(file));
 const server = isServerProject(analyzedProjectRoot());
+const nest = isNestProject(analyzedProjectRoot());
 const { sourceGlobs, testGlobs, excludedGlobs, unitTestGlobs } = layout;
 const parserOptions = {
   project: './tsconfig.quality.json',
@@ -109,6 +111,7 @@ const presetConfig = defineConfig(
   },
   ...strictPresetConfig(layout, parserOptions, {
     react,
+    nest,
     routeHandlers,
     security,
     frameworkDefaultExports: policy.frameworks.defaultExports,
@@ -126,6 +129,7 @@ const presetConfig = defineConfig(
   ...(react ? await reactScopeConfigFor(layout, policy.react) : []),
   ...(i18n ? await i18nScopeConfigFor(layout, policy.i18n) : []),
   ...(server ? serverScopeConfigFor(layout, { browser: react || security.browser }) : []),
+  ...(nest ? nestScopeConfigFor(selectedFiles) : []),
   {
     // eslint-errors reports this rule for all production code; reporting it here too lists every
     files: productionFiles,
