@@ -1,5 +1,11 @@
 import { append, compactType } from '../kotlin-facts.mjs';
 import { declaredNames, springManagedOwner } from '../spring/spring-names.mjs';
+import {
+  declarationOf,
+  functionKind,
+  qualifiedReach,
+  visibleFrom,
+} from './unused-options/call-reach.mjs';
 
 export const FORWARDING_RULE = 'StaticForwardingWrapper';
 
@@ -17,7 +23,7 @@ const SKIPPED_MODIFIERS = new Set([
 ]);
 const COPY_PREFIX = /^(?:copyOf|unmodifiable|synchronized|checked)/u;
 const TYPE_NAME = String.raw`[A-Z][A-Z0-9_]*[a-z]\w*`;
-const TYPE_QUALIFIER = new RegExp(`^${TYPE_NAME}(?:\\.${TYPE_NAME})*$`, 'u');
+const TYPE_QUALIFIER = new RegExp(`^(?:[a-z_]\\w*\\.)*${TYPE_NAME}(?:\\.${TYPE_NAME})*$`, 'u');
 const STATIC_OWNERS = new Set(['object', 'companion']);
 
 function ownerKinds(file, declared) {
@@ -75,10 +81,17 @@ function targetsOf(files, declared) {
     for (const fn of file.functions.filter(
       (entry) => !entry.local && isStaticLike(entry, owners),
     )) {
-      append(targets, fn.name, fn);
+      const kind = functionKind(file, fn.owner);
+      append(targets, fn.name, { fn, declaration: declarationOf(file, { ...fn, kind }) });
     }
   }
   return targets;
+}
+
+function reachable(file, qualifier, { declaration }) {
+  return qualifier === undefined
+    ? visibleFrom(file, declaration)
+    : qualifiedReach(file, qualifier, declaration);
 }
 
 function sameSignature(fn, target) {
@@ -95,19 +108,14 @@ function sameSignature(fn, target) {
   );
 }
 
-function ownerNames(target) {
-  const parts = target.owner.split('.');
-  return parts.at(-1) === 'Companion' ? [parts.slice(0, -1).at(-1), 'Companion'] : [parts.at(-1)];
-}
-
-function forwardsTo(fn, targets) {
-  const qualifier = fn.forward.qualifier?.split('.').at(-1);
-  const named = (targets.get(fn.forward.name) ?? []).filter(
-    (target) => qualifier === undefined || ownerNames(target).includes(qualifier),
+function forwardsTo(fn, file, targets) {
+  const { qualifier } = fn.forward;
+  const named = (targets.get(fn.forward.name) ?? []).filter((target) =>
+    reachable(file, qualifier, target),
   );
   return qualifier !== undefined && named.length === 0
     ? true
-    : named.some((target) => sameSignature(fn, target));
+    : named.some((target) => sameSignature(fn, target.fn));
 }
 
 export function forwardingWrapperFindings(files, { finding, declaredIn = files }) {
@@ -120,7 +128,7 @@ export function forwardingWrapperFindings(files, { finding, declaredIn = files }
   return main.flatMap((file) => {
     const owners = ownerKinds(file, declared);
     return file.functions
-      .filter((fn) => candidate(fn, owners) && passesInOrder(fn) && forwardsTo(fn, targets))
+      .filter((fn) => candidate(fn, owners) && passesInOrder(fn) && forwardsTo(fn, file, targets))
       .map((fn) => {
         const symbol = [fn.owner, fn.name].filter(Boolean).join('.');
         return finding({
