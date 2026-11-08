@@ -18,9 +18,9 @@ function transcript({ fixed, outputRoot, baseRef }) {
   return `${FORMAT_LINE}
 ${fixed}Base: ${baseRef} (argument)
 
-\u001b[1m\u001b[32mQuality gate summary\u001b[0m
-\u001b[32m✓ No new enforceable violations\u001b[0m
-\u001b[2mFull diagnostics: ${outputRoot}/report.txt\u001b[0m
+Quality gate summary
+✓ No new enforceable violations
+Full diagnostics: ${outputRoot}/report.txt
 `;
 }
 
