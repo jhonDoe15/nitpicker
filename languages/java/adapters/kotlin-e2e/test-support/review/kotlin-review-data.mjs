@@ -3,6 +3,7 @@ import {
   SWALLOWED_CANCELLATIONS,
 } from './swallowed/kotlin-cancellation-data.mjs';
 import { INTERRUPT_FILES, SWALLOWED_INTERRUPTS } from './swallowed/kotlin-interrupt-data.mjs';
+import { LOCKING_FILES, LOCKING_FINDINGS } from './kotlin-locking-data.mjs';
 import { LIBRARY_STUBS, MOCK_REVIEW_FINDINGS, MOCK_RULE_FILES } from './kotlin-mock-data.mjs';
 import { PLURAL_FINDINGS, PLURALS } from './kotlin-plural-data.mjs';
 
@@ -441,6 +442,7 @@ export const REVIEW_RULE_FILES = {
   [`${MAIN}/Inventory.kt`]: INVENTORY,
   [`${TEST}/WaitingTest.kt`]: WAITING_TEST,
   [`${TEST}/ContextTest.kt`]: CONTEXT_TEST,
+  ...LOCKING_FILES,
   ...LIBRARY_STUBS,
   ...MOCK_RULE_FILES,
 };
@@ -484,6 +486,7 @@ export const EXPECTED_REVIEW_FINDINGS = [
   'unused-option Outbox.limit',
   'unused-option pad.width',
   'unused-option price.discount',
+  ...LOCKING_FINDINGS,
   ...MOCK_REVIEW_FINDINGS,
 ].toSorted();
 

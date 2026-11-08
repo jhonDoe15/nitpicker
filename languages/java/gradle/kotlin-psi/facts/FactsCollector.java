@@ -11,6 +11,7 @@ import nitpicker.kotlinpsi.bodies.Bodies;
 import nitpicker.kotlinpsi.bodies.Throwing;
 import nitpicker.kotlinpsi.catches.Catches;
 import nitpicker.kotlinpsi.common.Frame;
+import nitpicker.kotlinpsi.facts.locking.Locking;
 import nitpicker.kotlinpsi.facts.updates.Updates;
 import nitpicker.kotlinpsi.load.LoadCalls;
 import nitpicker.kotlinpsi.timeouts.Timeouts;
@@ -27,6 +28,7 @@ public final class FactsCollector {
   private final Timeouts timeouts;
   private final Predicates predicates;
   private final Updates updates;
+  private final Locking locking;
   private final Bodies bodies;
   private final LoadCalls loads;
   private final Throwing throwing;
@@ -40,6 +42,7 @@ public final class FactsCollector {
     this.predicates = new Predicates(state);
     this.updates = new Updates(state::lineOf);
     this.throwing = new Throwing(nothing, file);
+    this.locking = new Locking(file, state::lineOf);
     this.bodies = new Bodies(text, test, throwing, state.namesOf(HANDLER));
     this.loads = test ? null : new LoadCalls(file, state::lineOf);
   }
@@ -51,6 +54,7 @@ public final class FactsCollector {
   public Map<String, Object> result() {
     Map<String, Object> result = new LinkedHashMap<>(state.result());
     result.putAll(bodies.result());
+    result.putAll(locking.result());
     if (loads != null) {
       result.putAll(loads.result());
     }
@@ -123,17 +127,21 @@ public final class FactsCollector {
     } else if (element instanceof KtCallExpression) {
       calls.call((KtCallExpression) element, frame);
       timeouts.call((KtCallExpression) element, frame);
+      locking.call((KtCallExpression) element, frame);
     } else if (element instanceof KtSuperTypeCallEntry) {
       KtSuperTypeCallEntry entry = (KtSuperTypeCallEntry) element;
       calls.delegation(element, nameOf(entry.getCalleeExpression()), entry.getValueArguments(), List.of());
     } else if (element instanceof KtConstructorDelegationCall) {
       calls.constructorDelegation((KtConstructorDelegationCall) element, frame);
     } else if (element instanceof KtBinaryExpression) {
+      locking.assignment((KtBinaryExpression) element, frame);
       Map<String, Object> update = updates.assignment((KtBinaryExpression) element, frame);
       if (update != null) {
         state.updates.add(update);
       }
       predicates.binary((KtBinaryExpression) element, frame);
+    } else if (element instanceof KtUnaryExpression) {
+      locking.step((KtUnaryExpression) element, frame);
     } else if (element instanceof KtDotQualifiedExpression) {
       predicates.containsForm((KtDotQualifiedExpression) element, frame);
     } else if (element instanceof KtTryExpression) {

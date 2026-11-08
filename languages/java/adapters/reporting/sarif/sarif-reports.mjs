@@ -10,6 +10,7 @@ import { FIXED_SLEEP_RULE, withWaitAdvice } from '../../../messages/wait-advice.
 import { dropSleepsInFakes } from '../../../messages/latency-fakes.mjs';
 import { withFanOutDetails } from '../../../messages/fan-out/fan-out-details.mjs';
 import { withLoadEffectSubjects } from '../../../messages/load-effects.mjs';
+import { withLockEvidence } from '../../../messages/locking/lock-evidence.mjs';
 import { withProjectTypeMocks } from '../../../messages/mocks/project-mocks.mjs';
 import { withSpringTransactionFilters } from '../../spring/transactions/transaction-filters.mjs';
 
@@ -45,13 +46,16 @@ function preparedReport(file, { reportRoot, roots, sourceRoots, projectRoot }, i
 
 export function sarifFindings(context) {
   const { allSourceRoots, projectRoot } = context;
-  const pmd = withPrintedRules(
-    withLoadEffectSubjects(
-      preparedReport('pmd.sarif', context, (result) =>
-        result.message?.text?.replace(LINE_NUMBER, 'line'),
+  const pmd = withLockEvidence(
+    withPrintedRules(
+      withLoadEffectSubjects(
+        preparedReport('pmd.sarif', context, (result) =>
+          result.message?.text?.replace(LINE_NUMBER, 'line'),
+        ),
+        { projectRoot },
       ),
-      { projectRoot },
     ),
+    { projectRoot },
   );
   const spotbugs = preparedReport('spotbugs.sarif', context, spotbugsSubject);
   const mainRoots = [...(allSourceRoots ?? []), ...(context.manifest?.kotlinSourceRoots ?? [])];
