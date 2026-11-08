@@ -20,7 +20,8 @@ Part of the [nitpicker-java](../SKILL.md) skill. Write these forms from the star
   `false`; `ready` and `!ready`, not `ready == true`; `c || x` and `c && x`, not a ternary with a
   `true` or `false` branch; `a != b`, not `!(a == b)`; one `if (a && b)`, not an `if` alone inside
   another; `x instanceof Foo` with no null check before it; `if (c) A else B`, not
-  `if (!c) B else A`; `!(a || b)`, not `!a && !b`.
+  `if (!c) B else A` (and `c ? b : a`, not `!c ? a : b`); `!(a || b)`, not `!a && !b`. These stay:
+  `if (a != b)` with an else, an else-if chain, and `!(a < b)` on a `float` or `double` (NaN).
 - Utility classes: a `final` class of static methods with a `private` empty constructor.
 - Javadoc is optional; when you write it, the first sentence is a real summary (not `@return`),
   every `@param`/`@return` has a description, in that order, and paragraphs start with `<p>`.
