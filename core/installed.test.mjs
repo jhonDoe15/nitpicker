@@ -224,6 +224,7 @@ suite('packed nitpicker in a separate consumer', () => {
       let initialized;
       let rules;
       let explanation;
+      let help;
       let packageLocation;
       const reports = (name) => path.join(root, 'reports', name);
       const invoke = (args, cwd = root) =>
@@ -333,6 +334,7 @@ suite('packed nitpicker in a separate consumer', () => {
         ]);
         rules = invoke(['rules', '--preset', 'java']);
         explanation = invoke(['explain', ...explained]);
+        help = invoke(['-h']);
         fixed = invoke([
           '--base',
           'main',
@@ -429,6 +431,11 @@ suite('packed nitpicker in a separate consumer', () => {
           installedHelpUri(links, 'prettier-format/prettier/prettier'),
           installedHelpUri(links, 'prettier-format/prettier/prettier'),
         ]);
+      });
+      it('prints help that links the usage page at its own release tag', () => {
+        expect(help.status, help.output).toBe(0);
+        expect(help.output).toContain(`Reference: ${links.tagRoot}/docs/usage.md\n`);
+        expect(help.output).not.toContain('/blob/main/');
       });
       it('sets the consumer up with init from the packed files', () => {
         expect(initialized.status, initialized.output).toBe(0);
