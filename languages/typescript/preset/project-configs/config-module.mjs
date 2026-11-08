@@ -16,10 +16,12 @@ const BYTES_PER_MB = 1024 * 1024;
 const MAX_RESULT_BYTES = MAX_RESULT_MB * BYTES_PER_MB;
 const REPORT_PREAMBLE = [
   `for (const name of ${JSON.stringify(HOST_CI_OUTPUT_VARIABLES)}) delete process.env[name];`,
-  "const { writeFileSync } = await import('node:fs');",
+  "const { renameSync, writeFileSync } = await import('node:fs');",
   'const [resultFile] = process.argv.splice(1, 1);',
   'const report = (payload) => {',
-  '  writeFileSync(resultFile, JSON.stringify(payload));',
+  "  const partial = resultFile + '.partial';",
+  '  writeFileSync(partial, JSON.stringify(payload));',
+  '  renameSync(partial, resultFile);',
   '  process.exit(0);',
   '};',
   'const failureOf = (error) => {',
