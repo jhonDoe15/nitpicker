@@ -1188,9 +1188,8 @@ allprojects {
                     }.sort()
                 }
                 def kotlinExcludedFiles = {
-                    ['main', 'test'].collectMany {
-                        project.ext.nitpickerKotlinSourceFiles(project.kotlin.sourceSets.findByName(it)).excluded
-                    }
+                    def mainAndTest = ['main', 'test'].collect { project.kotlin.sourceSets.findByName(it) }
+                    project.ext.nitpickerKotlinExcluded(mainAndTest)
                 }
                 def kotlinSourceDirs = { kotlinSourceDirsOf('main') }
                 def kotlinLintedDirs = { (kotlinSourceDirs() + kotlinSourceDirsOf('test')).unique() }
@@ -1492,7 +1491,7 @@ allprojects {
                         manifest.kotlin = true
                         manifest.kotlinSourceRoots = kotlinSourceDirs().collect { relative(it) }
                         manifest.kotlinTestSourceRoots = kotlinSourceDirsOf('test').collect { relative(it) }
-                        manifest.kotlinExcludedFiles = kotlinExcludedFiles().collect { relative(it) }.unique().sort()
+                        manifest.kotlinExcludedFiles = kotlinExcludedFiles().collect { relative(it) }
                         manifest.kotlinFormatter = kotlinFormatter()
                         def buildFacts = kotlinCallerGaps(project.rootProject)
                         manifest.kotlinCallerGaps = buildFacts.gaps

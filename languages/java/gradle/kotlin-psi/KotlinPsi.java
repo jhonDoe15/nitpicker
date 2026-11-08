@@ -43,8 +43,9 @@ import org.jetbrains.kotlin.psi.KtFile;
  * <pre>java -Dnitpicker.kotlinCompiler=VERSION -cp COMPILER_JARS:CLASSES nitpicker.kotlinpsi.KotlinPsi
  *     METRICS.json FACTS.json PROJECT_DIR ROOT...</pre>
  *
- * A root prefixed {@code test:} holds test sources. The system property {@code nitpicker.kotlinPsi.excluded} names a
- * file of paths relative to PROJECT_DIR, one per line, that the build excludes from its source sets: they are not read. The metrics report (functions, class names and types, see
+ * A root prefixed {@code test:} holds test sources. The system property {@code nitpicker.kotlinPsi.excluded}
+ * names a file of paths relative to PROJECT_DIR, one per line, that the build excludes from its source sets:
+ * they are not read. The metrics report (functions, class names and types, see
  * {@link MetricsCollector} and {@link Types}) covers the other roots only; its detekt counts
  * ({@link DetektCounts}) and the facts report ({@link FactsCollector}) cover all.
  * A syntax error ends the run: the sources compiled, so the pinned compiler does not read them.
@@ -172,8 +173,8 @@ public final class KotlinPsi {
     Set<Path> excluded = new HashSet<>();
     if (list != null && Files.isRegularFile(Path.of(list))) {
       for (String line : Files.readAllLines(Path.of(list), StandardCharsets.UTF_8)) {
-        if (!line.isBlank()) {
-          excluded.add(projectDir.resolve(line.strip()).normalize());
+        if (!line.isEmpty()) {
+          excluded.add(projectDir.resolve(line).normalize());
         }
       }
     }

@@ -14,13 +14,20 @@ def kotlinSourceFiles = { kotlinSourceSet ->
     }
     [dirs: dirs, files: present.findAll { kept.contains(it) }, excluded: present.findAll { !kept.contains(it) }]
 }
-project.ext.nitpickerKotlinSourceFiles = kotlinSourceFiles
+def excludedFrom = { Collection found ->
+    def kept = found.collectMany { it.files } as Set
+    found.collectMany { it.excluded }.unique().findAll { !kept.contains(it) }.sort()
+}
+project.ext.nitpickerKotlinExcluded = { Collection kotlinSourceSets ->
+    excludedFrom(kotlinSourceSets.collect { kotlinSourceFiles(it) })
+}
 
 def writeExcluded = { File list, Collection<File> excluded ->
     list.parentFile.mkdirs()
-    list.text = excluded.collect { relative(it) + '\n' }.unique().sort().join('')
+    list.setText(excluded.collect { relative(it) + '\n' }.unique().sort().join(''), 'UTF-8')
 }
 project.ext.nitpickerWriteKotlinExcluded = writeExcluded
+def testSet = { String name -> name.startsWith('test') || name.contains('Test') }
 
 afterEvaluate {
     if (!shared.selected(project)) {
@@ -32,14 +39,12 @@ afterEvaluate {
         : layout.buildDirectory.dir('nitpicker')
     shared.modules << [key: moduleKey, path: project.path, dir: relative(projectDir)]
 
-    def sourceSets = { boolean tests ->
-        project.kotlin.sourceSets.findAll { it.name.toLowerCase().contains('test') == tests }.sort { it.name }
-    }
     def sourcesOf = { boolean tests ->
-        def found = sourceSets(tests).collect { kotlinSourceFiles(it) }
-        [dirs: found.collectMany { it.dirs }.unique(), files: found.collectMany { it.files }.unique(),
-         excluded: found.collectMany { it.excluded }.unique()]
+        def found = project.kotlin.sourceSets.sort { it.name }.findAll { testSet(it.name) == tests }
+            .collect { kotlinSourceFiles(it) }
+        [dirs: found.collectMany { it.dirs }.unique(), files: found.collectMany { it.files }.unique()]
     }
+    def excluded = { excludedFrom(project.kotlin.sourceSets.collect { kotlinSourceFiles(it) }) }
 
     configurations {
         nitpickerKotlinCompiler { canBeConsumed = false }
@@ -65,8 +70,8 @@ afterEvaluate {
             directory.mkdirs()
             def main = sourcesOf(false)
             def test = sourcesOf(true)
-            def excluded = new File(temporaryDir, 'excluded.txt')
-            writeExcluded(excluded, main.excluded + test.excluded)
+            def excludedList = new File(temporaryDir, 'excluded.txt')
+            writeExcluded(excludedList, excluded())
             def metrics = new File(directory, 'kotlin-metrics.json')
             def facts = new File(directory, 'kotlin-facts.json')
             if (main.files.isEmpty() && test.files.isEmpty()) {
@@ -80,7 +85,7 @@ afterEvaluate {
             def roots = main.dirs.collect { relative(it) } + test.dirs.collect { 'test:' + relative(it) }
             shared.runProcess('KotlinPsi', [new File(System.getProperty('java.home'), 'bin/java').absolutePath,
                     '-Djava.awt.headless=true', "-Dnitpicker.kotlinCompiler=${shared.pinned.kotlinCompiler}".toString(),
-                    "-Dnitpicker.kotlinPsi.excluded=${excluded.absolutePath}".toString(), '-cp',
+                    "-Dnitpicker.kotlinPsi.excluded=${excludedList.absolutePath}".toString(), '-cp',
                     compiler + File.pathSeparator + classes.absolutePath, 'nitpicker.kotlinpsi.KotlinPsi',
                     metrics.absolutePath, facts.absolutePath, analysisRoot.absolutePath] + roots,
                 projectDir)
@@ -97,10 +102,15 @@ afterEvaluate {
             ['pmd.sarif', 'spotbugs.sarif', 'detekt.sarif', 'ktlint.sarif'].each { empty[it] = emptySarif }
             ['format.txt', 'ktfmt.txt', 'jdeps.txt', 'jdeps-test.txt', 'jdeps-classes.txt'].each { empty[it] = '' }
             empty.each { name, text -> new File(directory, name).text = text }
+            new File(directory, 'kotlin-notes.json').setText(groovy.json.JsonOutput.toJson([
+                "The Android or Multiplatform project ${project.path} gets the source checks only: detekt, the " +
+                    'format check, the kotlinc lint, coverage, mutation and its tests do not run, and its .java ' +
+                    'files are not checked.']), 'UTF-8')
             def main = sourcesOf(false)
             def test = sourcesOf(true)
             def buildFacts = shared.buildFacts(project.rootProject)
-            def declared = configurations.collectMany { it.dependencies }.collect { "${it.group}:${it.name}".toString() }
+            def declared = configurations.collectMany { it.dependencies }
+                .collect { "${it.group}:${it.name}".toString() }
             new File(directory, 'manifest.json').text = groovy.json.JsonOutput.toJson([
                 versions             : shared.pinned,
                 moduleKey            : moduleKey,
@@ -111,7 +121,7 @@ afterEvaluate {
                 kotlinSourceModule   : true,
                 kotlinSourceRoots    : main.dirs.collect { relative(it) },
                 kotlinTestSourceRoots: test.dirs.collect { relative(it) },
-                kotlinExcludedFiles  : (main.excluded + test.excluded).collect { relative(it) }.unique().sort(),
+                kotlinExcludedFiles  : excluded().collect { relative(it) },
                 kotlinFormatter      : shared.formatter?.toString() ?: 'none',
                 kotlinCallerGaps     : buildFacts.gaps,
                 projectDependencies  : buildFacts.dependencies[project.path],

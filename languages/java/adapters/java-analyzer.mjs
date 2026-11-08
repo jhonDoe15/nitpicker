@@ -31,6 +31,7 @@ const RESOURCE_FILES = [
   'languages/java/gradle/StructureMetrics.java',
   'languages/java/gradle/errorprone/error-prone.gradle',
   'languages/java/gradle/kotlin/kotlin-lint.gradle',
+  'languages/java/gradle/kotlin/kotlin-source-modules.gradle',
   'languages/java/gradle/errorprone/checks.json',
   'languages/java/adapters/overlaps/overlap-pairs.json',
   'languages/java/gradle/errorprone/ErrorProneReport.java',

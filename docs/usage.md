@@ -1471,7 +1471,8 @@ error with this preset; `layout` is an error too until the Java preset runs the 
 ## Kotlin preset
 
 Set `"preset": "kotlin"` for a Gradle project with Kotlin JVM modules or a Maven project that applies
-`kotlin-maven-plugin`, including modules that mix Java and Kotlin. The build tool is detected, as for
+`kotlin-maven-plugin`, including modules that mix Java and Kotlin. Kotlin Multiplatform and Android modules of a Gradle
+build get the source checks only (see [Known limits](kotlin-preset/known-limits.md)). The build tool is detected, as for
 the Java preset, and never configured. It runs everything the Java preset runs on the Java sources, plus detekt and a
 format check (ktlint or ktfmt, whichever the project uses, and none for a project that uses
 neither; `"kotlin": { "formatter": "ktfmt" }` overrides the detection) on the Kotlin sources,

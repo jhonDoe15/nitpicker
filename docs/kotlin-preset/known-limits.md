@@ -18,17 +18,21 @@ Part of the [Kotlin preset guide](../kotlin-preset.md).
 - `inline` functions are not measured by CRAP (see [CRAP](crap.md)); their structure limits still apply.
 - Kotlin Multiplatform and Android modules (a Gradle project with a `kotlin` extension and without the
   `java` plugin: `org.jetbrains.kotlin.multiplatform`, `org.jetbrains.kotlin.android`) get the steps that read
-  sources only: the review rules, the source checks, the test honesty rules, structure and class limits and
-  duplicates, on every Kotlin source set of the project (`commonMain`, `jvmMain`, `androidMain`, `main`, a
-  variant's `debug`, ...; a source set whose name has `test` holds tests, such as `commonTest`, `jvmTest`,
-  `test` and `androidTest`). detekt, the format check, the kotlinc lint, coverage, CRAP, mutation and the
+  sources only, among them the review rules, the source checks, the test honesty rules, structure and class
+  limits and duplicates, on every Kotlin source set of the project (`commonMain`, `jvmMain`, `androidMain`,
+  `main`, a variant's `debug`, ...; a source set whose name starts with `test` or has `Test` holds tests, such
+  as `commonTest`, `jvmTest`, `test`, `testDebug` and `androidTest`). A descriptive `kotlin/build-note`
+  finding names each such project and what did not run on it. detekt, the format check, the kotlinc lint, coverage, CRAP, mutation and the
   tests of such a project do not run (they need the compiled classes and the classpath of a target or
   variant), and its `.java` files are not checked. A Multiplatform project that applies the `java` plugin
   (`withJava()`) is a Java project with its Kotlin sources not read. The end-to-end tests build a
   Multiplatform project with a JVM target and an Android library with Android Gradle Plugin 8.
 - Source-set excludes: a `.kt` file under a Kotlin source directory that the build leaves out of its
-  source set (`kotlin.exclude("**/Legacy*.kt")`) is not read by the review rules, and no finding of any
-  tool is reported on it. On Maven, `kotlin-maven-plugin` has no excludes and every file is read.
+  source set (`kotlin.exclude("**/Legacy*.kt")`) and that no other source set keeps is not read by the review
+  rules, duplicates and the reuse checks, and no finding of any tool is reported on it. A Kotlin JVM module reads
+  the excludes of its `main` and `test` source sets, the ones its Kotlin steps check; an Android or
+  Multiplatform module those of every source set. On Maven, `kotlin-maven-plugin` has no excludes and every file
+  is read.
 - When `settings.gradle(.kts)` sets `repositoriesMode` to `FAIL_ON_PROJECT_REPOS`, nitpicker adds no
   repository to the projects and resolves its tools from the repositories the settings declare, which then
   must include Maven Central or a mirror of it.

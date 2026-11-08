@@ -40,6 +40,7 @@ function mergeManifests(modules) {
         [...new Set(modules.flatMap(({ manifest }) => manifest[list] ?? []))],
       ]),
     ),
+    kotlinExcludedFiles: modules.flatMap(({ manifest }) => manifest.kotlinExcludedFiles ?? []),
     spring: modules.some(({ manifest }) => manifest.spring === true),
     kotlin: modules.some(({ manifest }) => manifest.kotlin === true),
   };
