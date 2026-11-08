@@ -8,7 +8,7 @@ import {
 } from './project-rules/size-rules.mjs';
 import { UNUSED_API_RULES, UNUSED_API_RULE_IDS } from './unused-api/unused-api-policy.mjs';
 import { reuseRules } from './project-rules/reuse-rules.mjs';
-import { testConsoleRule } from './project-rules/test-runtime-rules.mjs';
+import { NO_TYPE_ONLY, testConsoleRule } from './project-rules/test-runtime-rules.mjs';
 import {
   docCommentRule,
   SOURCE_RULE_IDS,
@@ -171,8 +171,6 @@ export const HELD_MESSAGES = { ...BASE_HELD_MESSAGES, ...SIZE_HELD_MESSAGES };
 const ALL = { typescript: true, java: true, python: true };
 const TYPESCRIPT_ONLY = { typescript: true, java: false, python: false };
 const withKotlin = (enforcedBy, kotlin) => ({ ...enforcedBy, kotlin });
-const JVM_HAS_NO_TYPE_ONLY_IMPORTS =
-  'the language has no import that exists only for the type checker: a production type that a test names only as an erased generic argument leaves no reference in the bytecode, so the test is reported as `no-production-runtime`';
 
 function withGo(enforcedBy) {
   return { ...enforcedBy, go: true };
@@ -259,10 +257,7 @@ const CATALOG = [
     limit:
       'a test file whose only link to production code is imports that exist only for the type checker (`import type`, `if TYPE_CHECKING:`)',
     enforcedBy: withKotlin({ ...TYPESCRIPT_ONLY, python: true }, false),
-    notApplicable: {
-      java: JVM_HAS_NO_TYPE_ONLY_IMPORTS,
-      kotlin: JVM_HAS_NO_TYPE_ONLY_IMPORTS,
-    },
+    notApplicable: { java: NO_TYPE_ONLY, kotlin: NO_TYPE_ONLY },
   },
   {
     id: RULE_IDS.baselineExpansion,
