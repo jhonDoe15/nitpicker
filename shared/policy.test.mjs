@@ -64,6 +64,15 @@ describe('shared policy', () => {
       RULES.map((rule) => [rule.id, [...LANGUAGES].sort()]),
     );
   });
+
+  it('gives a reason only for languages that do not enforce the rule', () => {
+    const misplaced = RULES.flatMap((rule) =>
+      Object.entries(rule.notApplicable ?? {})
+        .filter(([language, reason]) => rule.enforcedBy[language] !== false || reason === '')
+        .map(([language]) => `${rule.id}: ${language}`),
+    );
+    expect(misplaced).toEqual([]);
+  });
 });
 
 describe('generated files', () => {
