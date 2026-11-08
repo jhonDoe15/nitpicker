@@ -1,6 +1,6 @@
 import path from 'node:path';
 import { filesUnder } from '../../../../../shared/filesystem.mjs';
-import { MESSAGES, RULE_IDS, renderMessage } from '../../../../../shared/policy.mjs';
+import { MESSAGES, RULE_IDS, messageFields } from '../../../../../shared/policy.mjs';
 import { exceptionMatcher, exceptionText } from '../../../../../shared/rules/exceptions.mjs';
 import { isJavascriptPolicy } from '../../../../javascript/preset/javascript-preset.mjs';
 import { codeExtensionNames } from '../../layout.mjs';
@@ -49,7 +49,7 @@ export function javascriptFileFindings({
       path: file,
       identity: RULE,
       location: { line: 1 },
-      message: renderMessage(MESSAGES.javascriptInTypescriptProject, {
+      ...messageFields(MESSAGES.javascriptInTypescriptProject, {
         path: file,
         typescript: typescriptName(file),
         exception: exceptionText(RULE, file),

@@ -10,7 +10,7 @@ import { useKotlinCoverageProject } from '../__tests__/kotlin-coverage-project.m
 
 describe.skipIf(!kotlinE2eEnabled)('Kotlin preset one-sided branch coverage end to end', () => {
   const fixture = useKotlinCoverageProject();
-  it('fails a changed Kotlin branch that no test takes together with its surviving mutant', () => {
+  it('fails a changed Kotlin branch that no test takes together with its surviving mutants', () => {
     const result = diffOf(fixture.project, 'one-sided-branch');
 
     expect(result.failed).toBe(true);
@@ -23,10 +23,13 @@ describe.skipIf(!kotlinE2eEnabled)('Kotlin preset one-sided branch coverage end 
         .map(({ message, location }) => ({ message, location })),
     ).toEqual([
       {
-        message: `Branch coverage is 50.00%; minimum is 95%. ${exceptionRoute({ rule: 'changed-branch-coverage', path: `${kotlinSources}/Label.kt`, function: 'Label.larger' })}`,
+        message: `Branch coverage is 50.00%; minimum is 95%. Add a test for each outcome it misses. ${exceptionRoute({ rule: 'changed-branch-coverage', path: `${kotlinSources}/Label.kt`, function: 'Label.larger' })}`,
         location: { line: 4 },
       },
     ]);
-    expect(fromTool(result.newEnforceable, 'pit')).toEqual(['pit mutant-survived Label.kt']);
+    expect(fromTool(result.newEnforceable, 'pit')).toEqual([
+      'pit mutant-survived Label.kt',
+      'pit mutant-survived Label.kt',
+    ]);
   });
 });

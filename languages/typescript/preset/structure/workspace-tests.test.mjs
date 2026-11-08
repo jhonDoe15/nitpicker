@@ -43,6 +43,8 @@ function findings(files, exceptions = []) {
   });
 }
 
+const ALLOWED_FORM =
+  "Add a `test` script to its package.json, or add the package to the root test config's `projects`.";
 const fix =
   'Add a `test` script to its package.json, or add the package to the root test config\'s `projects`. If this is intended, add {"rule":"nitpicker/no-uncollected-tests","paths":["packages/web/package.json"],"reason":"..."} to "exceptions" in nitpicker.config.json.';
 
@@ -55,10 +57,12 @@ describe('workspace packages whose tests nothing runs', () => {
         path: 'packages/web/package.json',
         identity: 'uncollected-workspace-tests:2',
         message: `Nothing runs the 2 test files of this workspace package: it has no \`test\` script and the root test config does not include it. ${fix}`,
+        allowedForm: ALLOWED_FORM,
         classification: 'enforceable',
         ratchet: {
           key: 'uncollected-workspace-tests',
           value: 2,
+          worseAllowedForm: ALLOWED_FORM,
           worseMessage: `The test files of this workspace package that nothing runs grew from {base} to 2: it has no \`test\` script and the root test config does not include it. ${fix}`,
           heldMessage:
             'Workspace package: 2 test files that nothing runs, allowed because base had {base}; any new one fails.',

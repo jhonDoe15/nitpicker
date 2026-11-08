@@ -1,3 +1,4 @@
+import { counterpartsOf } from '../../../shared/reference/counterparts.mjs';
 import { ruleEntry } from '../../../shared/reference/entry.mjs';
 import { reactRuleIds, reactTestRuleIds } from '../preset/eslint-config/react/react-rules.mjs';
 import { i18nRuleIds } from '../preset/eslint-config/i18n/i18n-rules.mjs';
@@ -94,6 +95,7 @@ function docsOf(id) {
   const anchor = guideAnchorOf(id);
   return [
     { label: 'Strict preset guide', path: GUIDE, ...(anchor === undefined ? {} : { anchor }) },
+    ...counterpartsOf(id),
   ];
 }
 

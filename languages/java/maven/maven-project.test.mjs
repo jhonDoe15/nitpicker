@@ -100,13 +100,13 @@ function defaultModule(basedir, coordinates, packaging) {
     outputDirectory: path.join(target, 'classes'),
     testOutputDirectory: path.join(target, 'test-classes'),
     sourceRoots: [path.join(basedir, 'src/main/java')],
-    kotlinSourceRoots: [],
     testSourceRoots: [path.join(basedir, 'src/test/java')],
     resourceRoots: [],
     surefireReports: path.join(target, 'surefire-reports'),
     failsafeReports: path.join(target, 'failsafe-reports'),
     runsFailsafe: false,
     testJvmArgs: [],
+    integrationTestJvmArgs: [],
     published: false,
     jacocoDestFiles: [],
     archunitIncludes: undefined,
@@ -138,13 +138,13 @@ describe('readReactor', () => {
       outputDirectory: `${root}/core/out/classes`,
       testOutputDirectory: `${root}/core/out/test-classes`,
       sourceRoots: [`${root}/core/src/main/java`, path.join(root, 'core/src/generated/java')],
-      kotlinSourceRoots: [],
       testSourceRoots: [`${root}/core/src/test/java`],
       resourceRoots: [`${root}/core/src/main/resources`],
       surefireReports: `${root}/core/out/tests`,
       failsafeReports: `${root}/core/out/it-tests`,
       runsFailsafe: true,
       testJvmArgs: [],
+      integrationTestJvmArgs: [],
       published: false,
       jacocoDestFiles: [`${root}/core/out/mine.exec`],
       archunitIncludes: '**/*Rules.class',
@@ -254,6 +254,18 @@ describe('testJvmArgs', () => {
 
     expect(soloModule(inBuild(plugin('maven-surefire-plugin', executions))).testJvmArgs).toEqual([
       '-Dfrom=default',
+    ]);
+  });
+
+  it('reads the Failsafe integration-test system properties apart from the Surefire ones', () => {
+    const properties =
+      '<configuration><systemPropertyVariables><spring.aot.enabled>true</spring.aot.enabled>' +
+      '</systemPropertyVariables></configuration>';
+    const module = soloModule(inBuild(failsafe(`<execution>${IT_GOAL}${properties}</execution>`)));
+
+    expect([module.testJvmArgs, module.integrationTestJvmArgs]).toEqual([
+      [],
+      ['-Dspring.aot.enabled=true'],
     ]);
   });
 });

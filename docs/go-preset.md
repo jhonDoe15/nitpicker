@@ -8,7 +8,9 @@ the other presets: run the tools on the merge base and on head, turn each report
 and fail only on new enforceable findings.
 
 Go already settles more than most languages: gofmt fixes the layout, the compiler rejects unused
-imports and variables, and `go vet` ships with the toolchain. What is left open is how a function
+imports and variables, and `go vet` ships with the toolchain. A condition must be a `bool`, so
+`if count {` cannot hide a zero; the TypeScript and Python presets report that slip as
+`nitpicker/strict-boolean-expressions` and `number-truthiness`. What is left open is how a function
 is shaped, how errors are handled, which of several equivalent forms to write, how tests are
 written, and the mistakes `go vet` does not look for. The preset is smaller than the others, and
 its later slices add the linters and one-way rules for that remaining room.
@@ -123,8 +125,9 @@ finding (vet already ran), and `-coverpkg=./...` makes each package's coverage i
 packages' tests exercise; the coverage profile is what slice GO4 gates on. Go does not cache a
 run that writes a coverage profile, so every test runs and its time is measured.
 
-- A failing test makes the snapshot a `tests/tests-failed` tool error (exit 2) that lists up to 20
-  failing tests with the first lines each printed, as in the Python preset. Only the deepest
+- A failing test makes the snapshot a `tests/tests-failed` tool error (exit 1) that lists up to 50
+  failing tests with the `file_test.go:line` and message they printed (and testify's expected and
+  actual values), as in the other presets. Only the deepest
   failing subtest is listed, and a package that failed to build is not, because its compile error
   is already a finding.
 - A module where no test ran gets `tests/no-tests-ran`, unless a build failure stopped them.

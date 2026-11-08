@@ -90,7 +90,7 @@ describe.skipIf(!enabled)('Java preset on TestNG and Spock test frameworks', () 
           ? mavenFrameworkFindings(projectOf('spock', build), { maven, policy })
           : findingsOf('spock', build, policy);
       const slow = findings
-        .filter(({ tool }) => tool === 'test-runtime')
+        .filter(({ rule }) => rule === 'slow-test')
         .map(({ path: file, identity, location }) => ({ file, identity, location }));
 
       expect(summary(findings.filter(({ tool }) => tool !== 'test-runtime'))).toEqual(

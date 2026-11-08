@@ -6,7 +6,7 @@ import { crapFindings } from './crap.mjs';
 import { evaluateDuplicates } from './duplicates.mjs';
 import { mutantFindings } from './mutation.mjs';
 import { evaluateStructure } from './structure.mjs';
-import { evaluateTestRuntime } from './test-runtime.mjs';
+import { evaluateTestRuntime } from './test-runtime/evaluate.mjs';
 
 const byRule = (findings, rule) => findings.filter((finding) => finding.rule === rule);
 
@@ -192,7 +192,8 @@ describe('test-runtime rule on neutral findings', () => {
       rule: 'no-production-runtime',
       path: 'test/AT.java',
       identity: 'test:test/AT.java:source:h1',
-      message: 'Test has no production runtime',
+      message:
+        'Test runs no production code: nothing it imports or references, directly or through test helpers, is production code. Test the production code it is about, or delete the test',
     });
     expect(failures[1].identity).toMatch(/^test:test\/BT\.java:source:[0-9a-f]{24}$/);
   });
@@ -295,6 +296,7 @@ describe('crapFindings', () => {
         identity: 'function:f',
         message:
           'f has CRAP 9.00; score must be below 9. Test its uncovered branches, or split a branchy part into its own function. If this is intended, add {"rule":"crap-score-limit","paths":["a.ts"],"function":"f","reason":"..."} to "exceptions" in nitpicker.config.json.',
+        allowedForm: 'Test its uncovered branches, or split a branchy part into its own function.',
         classification: 'enforceable',
         symbol: 'f',
         location: { line: 3 },
@@ -347,7 +349,7 @@ describe('branchCoverageFindings', () => {
     expect(findings[0]).toMatchObject({
       rule: 'changed-branch-coverage',
       message:
-        'Branch coverage is 50.00%; minimum is 95%. To accept the file, add it to "exclude" in nitpicker.config.json.',
+        'Branch coverage is 50.00%; minimum is 95%. Add a test for each outcome it misses. To accept the file, add it to "exclude" in nitpicker.config.json.',
       classification: 'enforceable',
       location: { line: 1 },
     });
@@ -363,6 +365,23 @@ describe('branchCoverageFindings', () => {
       'Branch coverage is 50.00%; minimum is 95%. Not taken: the exit. Test it, or remove it if it can\'t happen. If this is intended, add {"rule":"changed-branch-coverage","paths":["src/a.py"],"function":"Store.save","reason":"..."} to "exceptions" in nitpicker.config.json.',
     );
     expect(finding.symbol).toBe('Store.save');
+  });
+
+  it('gives each finding the allowed form its message states', () => {
+    const findings = branchCoverageFindings(
+      [
+        { path: 'a', key: 'k', percent: 50 },
+        { path: 'a', key: 'j', percent: 50, arms: ['the exit'] },
+      ],
+      { tool: 'cov', identify },
+    );
+
+    expect(
+      findings.map(({ message, allowedForm }) => [allowedForm, message.includes(allowedForm)]),
+    ).toEqual([
+      ['Add a test for each outcome it misses.', true],
+      ["Test it, or remove it if it can't happen.", true],
+    ]);
   });
 
   it('passes a branch at the minimum', () => {

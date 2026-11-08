@@ -1,5 +1,13 @@
 import { nitpickerCheckstyleConfig } from './configuration/checkstyle-config.mjs';
-import { chmodSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import {
+  chmodSync,
+  mkdirSync,
+  mkdtempSync,
+  readdirSync,
+  readFileSync,
+  rmSync,
+  writeFileSync,
+} from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it, vi } from 'vitest';
@@ -253,7 +261,7 @@ describe('runFormat', () => {
 });
 
 describe.skipIf(process.platform === 'win32')('runPmd', () => {
-  function pmdRun(spring) {
+  function pmdRun(spring, springRules) {
     const basedir = mkdtempSync(path.join(tmpdir(), 'nitpicker-maven-pmd-'));
     roots.push(basedir);
     const java = path.join(basedir, 'jdk/bin/java');
@@ -277,6 +285,7 @@ describe.skipIf(process.platform === 'win32')('runPmd', () => {
     for (const directory of [mainRoot, testRoot, reportDir]) {
       mkdirSync(directory, { recursive: true });
     }
+    writeFileSync(path.join(mainRoot, 'Demo.java'), 'class Demo {}\n');
     const module = { basedir, sourceRoots: [mainRoot], testSourceRoots: [testRoot] };
     const classpaths = { mainCompile: [], testCompile: [] };
     runPmd({
@@ -286,6 +295,7 @@ describe.skipIf(process.platform === 'win32')('runPmd', () => {
       classpaths,
       configs: { pmd: {} },
       spring,
+      springRules,
     });
     const args = JSON.parse(readFileSync(path.join(basedir, 'arguments.json'), 'utf8'));
     const refs = (name) =>
@@ -317,6 +327,13 @@ describe.skipIf(process.platform === 'win32')('runPmd', () => {
     ]);
   });
 
+  it('takes the Spring rule set written for the project when it names annotations of its own', () => {
+    const own = path.join(tmpdir(), 'spring-ruleset-project.xml');
+
+    expect(pmdRun(true, own).mainRules).toEqual([shipped('pmd-main-ruleset.xml'), own]);
+    expect(pmdRun(false, own).mainRules).toEqual([shipped('pmd-main-ruleset.xml')]);
+  });
+
   it('leaves the Spring rule sets out of a module without Spring', () => {
     const run = pmdRun(false);
 
@@ -324,5 +341,29 @@ describe.skipIf(process.platform === 'win32')('runPmd', () => {
       main: [shipped('pmd-main-ruleset.xml')],
       tests: [shipped('pmd-test-ruleset.xml')],
     });
+  });
+
+  it('writes an empty report and runs nothing for a module whose roots hold no Java file', () => {
+    const basedir = mkdtempSync(path.join(tmpdir(), 'nitpicker-maven-pmd-'));
+    roots.push(basedir);
+    const mainRoot = path.join(basedir, 'src/main/java');
+    const reportDir = path.join(basedir, 'report');
+    for (const directory of [mainRoot, reportDir]) {
+      mkdirSync(directory, { recursive: true });
+    }
+    writeFileSync(path.join(mainRoot, 'Demo.kt'), 'class Demo\n');
+    runPmd({
+      module: { basedir, sourceRoots: [mainRoot], testSourceRoots: [] },
+      reportDir,
+      tools: { pmd: ['pmd.jar'] },
+      classpaths: { mainCompile: [], testCompile: [] },
+      configs: { pmd: {} },
+      spring: false,
+    });
+
+    expect(readdirSync(reportDir)).toEqual(['pmd.sarif']);
+    expect(readFileSync(path.join(reportDir, 'pmd.sarif'), 'utf8')).toBe(
+      '{"version":"2.1.0","runs":[]}',
+    );
   });
 });

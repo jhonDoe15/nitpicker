@@ -1,9 +1,10 @@
 import { toolNameForPath, resolveTool } from '../../../../core/tooling/tool-resolution.mjs';
-import { spawnSync } from 'node:child_process';
+import { spawnSyncWithOutputFile } from '../../../../core/tooling/output-file/output-file.mjs';
 import { realpathSync, lstatSync, statSync } from 'node:fs';
 import path from 'node:path';
 import { normalizedRelativePath } from './arguments.mjs';
 import { createHash } from 'node:crypto';
+import { TOOL_RUN_CEILING_MS } from '../../../../shared/processes/deadlines.mjs';
 
 const MAX_OUTPUT_BYTES = 50 * 1024 * 1024;
 
@@ -13,10 +14,11 @@ export function runNodeTool({ options, relativeToolPath, arguments_, acceptedSta
     projectRoot: options.liveProjectRoot,
     bin: relativeToolPath.slice(name.length + 1),
   }).binPath;
-  const result = spawnSync(process.execPath, [toolPath, ...arguments_], {
+  const result = spawnSyncWithOutputFile(process.execPath, [toolPath, ...arguments_], {
     cwd: options.projectRoot,
     encoding: 'utf8',
     maxBuffer: MAX_OUTPUT_BYTES,
+    timeout: TOOL_RUN_CEILING_MS,
   });
   if (result.error !== undefined) {
     throw result.error;

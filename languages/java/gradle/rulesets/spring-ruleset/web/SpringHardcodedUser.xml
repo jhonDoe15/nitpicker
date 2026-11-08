@@ -1,0 +1,13 @@
+  <rule name="SpringHardcodedUser" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
+        message="Load users from a UserDetailsService backed by the database, with passwords hashed by the delegating encoder. Do not put a user password in source code.">
+    <priority>1</priority>
+    <properties><property name="xpath"><value><![CDATA[
+//MethodCall[@MethodName = 'password']
+  [*[1][pmd-java:typeIs('org.springframework.security.core.userdetails.User$UserBuilder')
+        or pmd-java:typeIs('org.springframework.security.config.annotation.authentication.configurers.provisioning.UserDetailsManagerConfigurer$UserDetailsBuilder')]]
+  [(ArgumentList/*, ArgumentList/MethodCall[@MethodName = 'encode']/ArgumentList/*)[
+     self::StringLiteral
+     or self::VariableAccess[@Name = (ancestor::MethodDeclaration[1]//VariableDeclarator[StringLiteral]/VariableId/@Name,
+       ancestor::ClassBody[last()]/FieldDeclaration/VariableDeclarator[StringLiteral]/VariableId/@Name)]]]
+]]></value></property></properties>
+  </rule>

@@ -105,7 +105,6 @@ export function createConsumer({
     'install',
     '--no-audit',
     '--no-fund',
-    '--prefer-offline',
     ...(strategy ? [`--install-strategy=${strategy}`] : []),
   ]);
   checked(root, 'git', ['add', '.']);

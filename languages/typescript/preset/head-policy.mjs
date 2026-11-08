@@ -4,6 +4,7 @@ import path from 'node:path';
 import { resolveJscpdPolicy } from '../../../core/tooling/jscpd/config.mjs';
 import {
   readHeadPolicyFile,
+  readHeadPolicySource,
   resolveHeadPolicy as resolveSharedHeadPolicy,
 } from '../../../shared/head-policy.mjs';
 import {
@@ -82,7 +83,7 @@ function withProjectFacts(policy, config, projectRoot) {
   const tools = withProjectToolConfigs(
     withHeadToolConfigs(
       jscpd === undefined ? policy.tools : { ...policy.tools, jscpd },
-      config,
+      { policy, config },
       projectRoot,
     ),
     projectRoot,
@@ -186,7 +187,7 @@ function headToolFacts(policy, headPolicy) {
       };
     }
   }
-  for (const tool of ['jscpd', 'stryker', ...projectConfigTools()]) {
+  for (const tool of ['jscpd', 'stryker', 'typescript', 'tests', ...projectConfigTools()]) {
     if (usesProjectConfig(tools[tool]?.precedence ?? [])) {
       tools[tool] = headCapturedFacts(tools[tool], headPolicy.tools?.[tool]);
     }
@@ -265,7 +266,25 @@ export function readHeadPolicy(environment = process.env) {
   };
 }
 
+function lastResolved() {
+  const resolved = new Map();
+  return (key, resolve) => {
+    if (!resolved.has(key)) {
+      resolved.clear();
+      resolved.set(key, resolve());
+    }
+    return resolved.get(key);
+  };
+}
+
+const layoutForPolicy = lastResolved();
+
 export function readLayout(environment = process.env) {
+  const { policyFile, text } = readHeadPolicySource(environment);
+  return layoutForPolicy(JSON.stringify([policyFile, text]), () => resolvedLayout(environment));
+}
+
+function resolvedLayout(environment) {
   const policy = readHeadPolicy(environment);
   return {
     ...resolveLayoutFor({ ...policy, layout: readHeadPolicyFile(environment).layout }),
