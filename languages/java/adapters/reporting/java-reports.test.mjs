@@ -80,6 +80,7 @@ function projectWithReports({ shift = 0 } = {}) {
       ]),
     ),
   );
+  writeFileSync(path.join(reports, 'errorprone.json'), '[]');
   writeFileSync(
     path.join(reports, 'spotbugs.sarif'),
     JSON.stringify(
