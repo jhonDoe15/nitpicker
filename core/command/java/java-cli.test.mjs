@@ -254,7 +254,7 @@ Full diagnostics: ${tmpdir()}/nitpicker-java-out-${/[A-Za-z0-9]{6}/}/reports/rep
         snapshot: 'head',
         rule: build.failure.error.rule,
         path: '.',
-        message: build.failure.error.message('head'),
+        message: build.failure.error.message('head', result.reports),
       },
     ]);
   });
@@ -273,7 +273,7 @@ Full diagnostics: ${tmpdir()}/nitpicker-java-out-${/[A-Za-z0-9]{6}/}/reports/rep
         snapshot: 'base',
         rule: build.failure.error.rule,
         path: '.',
-        message: build.failure.error.message('base'),
+        message: build.failure.error.message('base', result.reports),
       },
     ]);
   });
@@ -403,7 +403,7 @@ Full diagnostics: ${tmpdir()}/nitpicker-java-out-${/[A-Za-z0-9]{6}/}/reports/rep
       snapshot: 'base',
       rule: build.missingBinary.rule,
       path: '.',
-      message: build.missingBinary.message(binary),
+      message: build.missingBinary.message(binary, result.reports),
     });
   });
   it('gates a snapshot with --all', () => {

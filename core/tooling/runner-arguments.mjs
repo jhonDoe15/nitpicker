@@ -2,7 +2,8 @@ import { realpathSync } from 'node:fs';
 
 const BASE_USAGE =
   ' --project-root <directory> [--snapshot base|head] [--policy-root <directory>]' +
-  ' [--baseline-root <directory>] [--crap-limit <number>] [--exclude <glob>]... [--exception <json>]... [--legacy-inventory <path>]' +
+  ' [--baseline-root <directory>] [--log-root <directory> --log-label <path>]' +
+  ' [--crap-limit <number>] [--exclude <glob>]... [--exception <json>]... [--legacy-inventory <path>]' +
   ' [--kotlin-detekt-config <path>] [--file-limits <json>] [--test-seconds <json>] [--test-console-allow <json array>] [--duplicate-skipped-folders <json array>]';
 
 function usageOf(runner, choices, precedenceTools) {
@@ -105,6 +106,8 @@ export function parseRunnerArguments(
       legacyInventory: values.get('--legacy-inventory'),
       policyRoot: realpathOptional(values.get('--policy-root')),
       baselineRoot: realpathOptional(values.get('--baseline-root')),
+      logRoot: values.get('--log-root'),
+      logLabel: values.get('--log-label'),
       snapshot: values.get('--snapshot') ?? 'head',
       preset: values.get('--preset'),
       kotlinFormatter: values.get('--kotlin-formatter'),
@@ -135,6 +138,8 @@ const RUNNER_OPTIONS = [
   '--snapshot',
   '--policy-root',
   '--baseline-root',
+  '--log-root',
+  '--log-label',
   '--crap-limit',
   '--exclude',
   '--exception',

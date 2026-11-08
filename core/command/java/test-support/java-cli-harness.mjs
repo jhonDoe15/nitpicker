@@ -1,6 +1,4 @@
-import { tmpdir } from 'node:os';
-import { afterEach, beforeEach, expect, vi } from 'vitest';
-import { exactText } from '../../../diff/reporting/test-support/output-expectations.mjs';
+import { afterEach, beforeEach, vi } from 'vitest';
 import {
   EMPTY_MUTATION_FACTS,
   fakeGradle,
@@ -71,10 +69,12 @@ export function useGradleFixtures(runNitpickerCli) {
         files: { GRADLE_FAIL: 'Execution failed for task :compileJava\n' },
         error: {
           rule: 'gradle-failure',
-          message: (snapshot) =>
-            gradleFailureMessage(
-              `Java preset failed in ${snapshot}: Execution failed for task :compileJava`,
-            ),
+          message: (snapshot, reports) =>
+            [
+              `Java preset failed ${snapshot === 'base' ? 'on the base' : 'on your change'}: ` +
+                'Execution failed for task :compileJava',
+              `Full Gradle log: ${reports}/logs/java-${snapshot}-gradle.log`,
+            ].join('\n'),
         },
       },
       redBase: {
@@ -91,10 +91,8 @@ export function useGradleFixtures(runNitpickerCli) {
       missingBinary: {
         stub: (binary) => vi.stubEnv('NITPICKER_GRADLE', binary),
         rule: 'gradle-failure',
-        message: (binary) =>
-          expect.stringMatching(
-            exactText`Full Gradle log: ${tmpdir()}/nitpicker-gradle-failure-${/[A-Za-z0-9]{6}/}/gradle.log\nspawnSync ${binary} ENOENT`,
-          ),
+        message: (binary, reports) =>
+          `spawnSync ${binary} ENOENT\nFull Gradle log: ${reports}/logs/java-base-gradle.log`,
       },
     },
   };
@@ -171,10 +169,4 @@ export function unusedFieldConsoleEntry(name, line, file = 'src/main/java/demo/A
     `    ${file}:${String(line)}`,
     `    ${exceptionHint('pmd/UnusedPrivateField', file)}`,
   ].join('\n');
-}
-
-export function gradleFailureMessage(detail) {
-  const suffix = /[A-Za-z0-9]{6}/;
-  return expect.stringMatching(exactText`Full Gradle log: ${tmpdir()}/nitpicker-gradle-failure-${suffix}/gradle.log
-${detail}`);
 }

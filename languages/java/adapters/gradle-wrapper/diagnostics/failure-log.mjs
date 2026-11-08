@@ -1,22 +1,29 @@
-import { mkdtempSync, writeFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { mkdirSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 
-export function withGradleLog(error, result, { logLast = false } = {}) {
+export function gradleLog({ logRoot, logLabel, preset = 'java', snapshot = 'head' } = {}) {
+  if (logRoot === undefined) {
+    return undefined;
+  }
+  const name = `${preset}-${snapshot}-gradle.log`;
+  return {
+    file: path.join(logRoot, name),
+    label: logLabel === undefined ? path.join(logRoot, name) : `${logLabel}/${name}`,
+  };
+}
+
+export function withGradleLog(error, result, log) {
+  if (log === undefined) {
+    return error;
+  }
   try {
-    const directory = mkdtempSync(path.join(tmpdir(), 'nitpicker-gradle-failure-'));
-    const file = path.join(directory, 'gradle.log');
+    mkdirSync(path.dirname(log.file), { recursive: true });
     writeFileSync(
-      file,
+      log.file,
       `=== stdout ===\n${result.stdout ?? ''}\n=== stderr ===\n${result.stderr ?? ''}`,
-      {
-        mode: 0o600,
-      },
+      { mode: 0o600 },
     );
-    const log = `Full Gradle log: ${file}`;
-    return new Error(logLast ? `${error.message}\n${log}` : `${log}\n${error.message}`, {
-      cause: error,
-    });
+    return new Error(`${error.message}\nFull Gradle log: ${log.label}`, { cause: error });
   } catch (logError) {
     return new AggregateError(
       [error, logError],

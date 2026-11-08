@@ -82,6 +82,7 @@ function runJavaPreset(
         reportBase,
         since,
         checkTests: testsFailedModules.length === 0,
+        policy,
         spawn,
       });
     }

@@ -17,7 +17,7 @@ import { realpathSync } from 'node:fs';
 import { runGit } from '../diff/git/repository/command.mjs';
 import { writeGithubOutput } from '../diff/reporting/github/emit.mjs';
 import { captureWorkingTree } from '../diff/git/repository/git.mjs';
-import { outputRootFor } from '../diff/reporting/reporters.mjs';
+import { LOG_DIRECTORY, outputRootFor } from '../diff/reporting/reporters.mjs';
 import { assertHasCommit } from '../diff/git/repository/base-ref.mjs';
 import { partialRunField, partialRunOf } from '../diff/reporting/partial-run/partial-run.mjs';
 import { failingHeadTests } from '../diff/reporting/failing-tests/failing-tests.mjs';
@@ -54,6 +54,7 @@ export function runSnapshotCli({
       headPolicy,
       runTasks,
       scope,
+      logRoot: path.join(path.resolve(outputRoot), LOG_DIRECTORY),
     }),
   );
   Object.assign(
@@ -91,6 +92,7 @@ function runInSnapshotWorktree({
   headPolicy,
   runTasks,
   scope,
+  logRoot,
 }) {
   const needsDependencies = selectedAnalyzers.some((analyzer) => analyzer.requiresDependencies);
   const dependencies = needsDependencies
@@ -110,6 +112,7 @@ function runInSnapshotWorktree({
       headPolicy,
       runTasks,
       scope,
+      logRoot,
     });
   } finally {
     removeSnapshotDependencies(dependencies);

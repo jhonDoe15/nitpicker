@@ -1,6 +1,6 @@
 import { scopeLine } from '../scope/scope-findings.mjs';
 import { renderSnapshotSarifReport } from '../diff/reporting/sarif.mjs';
-import { clearReports, json, writeReports } from '../diff/reporting/reporters.mjs';
+import { clearLogs, clearReports, json, writeReports } from '../diff/reporting/reporters.mjs';
 import { designNoteLines } from '../diff/reporting/format/design-notes.mjs';
 import { partialRunLines } from '../diff/reporting/partial-run/partial-run.mjs';
 import { ruleReferenceLines } from '../diff/reporting/text.mjs';
@@ -30,6 +30,7 @@ export const SNAPSHOT_REPORT_FILE_NAMES = SNAPSHOT_REPORTS.map(({ name }) => nam
 
 export function clearSnapshotReports(outputRoot) {
   clearReports(outputRoot, SNAPSHOT_REPORT_FILE_NAMES);
+  clearLogs(outputRoot);
 }
 
 export function writeSnapshotReports(outputRoot, report, { projectPath, repositoryRoot } = {}) {
