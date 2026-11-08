@@ -1983,6 +1983,7 @@
                             "kotlin-source/UnboundedFanOut",
                             "kotlin-source/UnboundedReactiveFanOut",
                             "kotlin-source/UnsafeCastOperator",
+                            "kotlin-source/FutureWithoutException",
                             "kotlin-source/RepeatedStringLiteral",
                             "kotlin-source/LogFormatArguments",
                             "kotlin-source/LogExceptionFirst",

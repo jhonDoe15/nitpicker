@@ -13,6 +13,9 @@ Part of the [nitpicker-kotlin](../SKILL.md) skill. Write these forms from the st
   `chunked(n)`, or `flatMapMerge(concurrency = n)`; never `items.map { async { client.get(it) } }.awaitAll()` over a
   runtime collection. `limitedParallelism(n)` caps threads, not suspending calls in flight. Reactor: pass a limit
   (`flatMap({ fetch(it) }, 8)`) or use `concatMap`; never `Mono.zip(items.map { fetch(it) })`.
+- A continuation or future that a callback resumes also gets the failure path: `continuation.resumeWithException(error)`
+  or `deferred.completeExceptionally(error)` from the error callback, or a suspending API that throws by itself
+  (`kotlin-source/FutureWithoutException`).
 - Child processes: wait with a deadline, `if (!process.waitFor(30, TimeUnit.SECONDS)) process.destroyForcibly()`,
   and read the output on another thread first; never `waitFor()` or `inputStream.readBytes()` alone
   (`kotlin-source/ProcessWaitWithoutTimeout`; a build wrapper that only runs a child to completion takes an exception).

@@ -540,6 +540,10 @@ Kotlin-specific choices:
   `.waitFor()` call without arguments on any receiver counts, since `Process` is the class that declares it; a
   project's own `fun waitFor()` called without a receiver does not. A program whose purpose is to run a child to
   completion (a build wrapper) takes an exception.
+- `FutureWithoutException` is a text scan (the Java preset's `pmd/FutureWithoutException` matches `CompletableFuture`
+  by type): it reads the block of `suspendCancellableCoroutine`/`suspendCoroutine` and the block that declares a
+  `CompletableDeferred()` or `CompletableFuture()` local, so a resume or completion in a function called from there is
+  not seen, and a future held in a property is not read.
 - Exceptions for `pmd/SpringQueryConcatenation` are accepted, since PMD still checks the Java sources of
   a mixed project with it.
 - `System.getenv` is not part of `SpringTypedConfiguration` here: detekt's `ForbiddenMethodCall`

@@ -21,6 +21,12 @@ Part of the [nitpicker-typescript](../SKILL.md) skill. Write these forms from th
   `match`, `matchAll` and `search` compile a string argument as a regex: use `includes` or
   `startsWith` for text, and escape a parameter before building it into `new RegExp(...)`
   (`nitpicker/no-string-as-regex`).
+- A `new Promise` that waits on a listener, a stream or a callback takes `reject` and wires the
+  failure to it: `new Promise((resolve, reject) => { source.once('error', reject); ... })`, and a
+  node-style callback branches first: `if (error) { reject(error); return; }`. Better, use a form
+  that rejects by itself: `once` from `node:events`, `pipeline`/`finished` from
+  `node:stream/promises`, or `util.promisify` (`nitpicker/require-promise-reject`). A wait on a
+  socket or network stream also gets a deadline: a timer that rejects or `AbortSignal.timeout(ms)`.
 - A child process you wait for gets a deadline: `{ timeout: 30_000 }` on `execFileSync`/`spawnSync`, or a
   `timeout` or `signal: AbortSignal.timeout(30_000)` on `execFile` and an awaited `spawn` or `execa`
   (`nitpicker/require-process-timeout`; a build wrapper that only runs a child to completion takes an exception).

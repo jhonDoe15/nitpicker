@@ -50,6 +50,7 @@ const BANNED_GUARDS = {
   'Routes.kt': `${PACKAGE}fun route(name: String): Regex = Regex("^/$name/")\n\nfun clean(text: String): String = text.replace(Regex("abc"), "")\n`,
   'Exports.kt': `${PACKAGE}fun render(command: List<String>): Int = ProcessBuilder(command).start().waitFor()\n`,
   'Versions.kt': `${PACKAGE}fun version(command: List<String>): String {\n    val process = ProcessBuilder(command).start()\n    return process.inputStream.bufferedReader().readText()\n}\n`,
+  'Replies.kt': `${PACKAGE}import java.util.concurrent.CompletableFuture\n\nfun interface Listener {\n    fun accept(value: String)\n}\n\nfun interface Channel {\n    fun onReply(listener: Listener)\n}\n\nfun reply(channel: Channel): CompletableFuture<String> {\n    val reply = CompletableFuture<String>()\n    channel.onReply { reply.complete(it) }\n    return reply\n}\n`,
 };
 
 const BANNED_TESTS = {
@@ -83,6 +84,7 @@ const ALLOWED_GUARDS = {
   'Routes.kt': `${PACKAGE}fun route(name: String): Regex = Regex("^/\${Regex.escape(name)}/")\n\nfun clean(text: String): String = text.replace("abc", "")\n`,
   'Exports.kt': `${PACKAGE}import java.util.concurrent.TimeUnit\n\nprivate const val DEADLINE_SECONDS = 30L\n\nfun render(command: List<String>): Int {\n    val process = ProcessBuilder(command).start()\n    check(process.waitFor(DEADLINE_SECONDS, TimeUnit.SECONDS)) { "timed out: $command" }\n    return process.exitValue()\n}\n`,
   'Versions.kt': `${PACKAGE}import java.util.concurrent.CompletableFuture\nimport java.util.concurrent.TimeUnit\n\nprivate const val VERSION_SECONDS = 30L\n\nfun version(command: List<String>): String {\n    val process = ProcessBuilder(command).start()\n    val output = CompletableFuture.supplyAsync { process.inputStream.bufferedReader().readText() }\n    check(process.waitFor(VERSION_SECONDS, TimeUnit.SECONDS)) { "timed out: $command" }\n    return output.join()\n}\n`,
+  'Replies.kt': `${PACKAGE}import java.util.concurrent.CompletableFuture\n\nfun interface Listener {\n    fun accept(value: String)\n}\n\nfun interface Failures {\n    fun accept(error: Throwable)\n}\n\ninterface Channel {\n    fun onReply(listener: Listener)\n\n    fun onFailure(listener: Failures)\n}\n\nfun reply(channel: Channel): CompletableFuture<String> {\n    val reply = CompletableFuture<String>()\n    channel.onReply { reply.complete(it) }\n    channel.onFailure { reply.completeExceptionally(it) }\n    return reply\n}\n`,
 };
 
 const ALLOWED_TESTS = {
@@ -131,6 +133,7 @@ export const EXPECTED_BANNED = [
   'kotlin-source/PlainTextRegex Routes.kt',
   'kotlin-source/ProcessWaitWithoutTimeout Exports.kt',
   'kotlin-source/ProcessWaitWithoutTimeout Versions.kt',
+  'kotlin-source/FutureWithoutException Replies.kt',
   'kotlinc/deprecation Casts.kt',
   'kotlinc/unchecked Casts.kt',
   'kotlinc/cast Casts.kt',

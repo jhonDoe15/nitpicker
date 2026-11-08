@@ -28,6 +28,12 @@ Part of the [nitpicker-javascript](../SKILL.md) skill. Write these forms from th
   (`timeout-abandons-operation`). Give `op` the `AbortSignal` the timeout aborts (`{ signal: controller.signal }`,
   or `AbortSignal.timeout(ms)` straight to an API that takes `signal`) and drop the race.
 - Fan-out: bound concurrent remote or message calls. Run each call through a limiter created outside the loop (`pLimit(8)`, p-queue `concurrency`, Bottleneck `maxConcurrent`) or work through fixed-size chunks. RxJS: `mergeMap(fn, 8)` or `concatMap`, never `forkJoin(items.map(load))`. Never `Promise.all(items.map(send))` over a runtime collection.
+- A `new Promise` that waits on a listener, a stream or a callback takes `reject` and wires the
+  failure to it: `new Promise((resolve, reject) => { source.once('error', reject); ... })`, and a
+  node-style callback branches first: `if (error) { reject(error); return; }`. Better, use a form
+  that rejects by itself: `once` from `node:events`, `pipeline`/`finished` from
+  `node:stream/promises`, or `util.promisify` (`nitpicker/require-promise-reject`). A wait on a
+  socket or network stream also gets a deadline: a timer that rejects or `AbortSignal.timeout(ms)`.
 - A child process you wait for gets a deadline: `{ timeout: 30_000 }` on `execFileSync`/`spawnSync`, or a
   `timeout` or `signal: AbortSignal.timeout(30_000)` on `execFile` and an awaited `spawn` or `execa`
   (`nitpicker/require-process-timeout`; a build wrapper that only runs a child to completion takes an exception).

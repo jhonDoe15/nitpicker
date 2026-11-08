@@ -158,6 +158,7 @@ describe('readKotlinSourceFindings', () => {
         'CredentialLiteral',
         'DefaultTimeZone',
         'DetachedTestCase',
+        'FutureWithoutException',
         'GeneratedOnHandWrittenCode',
         'GenericFileName',
         'GenericPackageName',

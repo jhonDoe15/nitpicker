@@ -75,6 +75,17 @@ same rule runs as `subprocess-without-timeout` in the Python preset, `pmd/Proces
 in the Java preset and `kotlin-source/ProcessWaitWithoutTimeout` in the Kotlin preset; tests keep
 `nitpicker/require-test-process-timeout` (TypeScript) or their runner's own limits.
 
+Promises and futures with no failure path: `nitpicker/require-promise-reject` (production source, in
+`eslint-lint`) reports a `new Promise` executor that waits on a listener, a piped stream or a callback
+and never rejects, and a node-style callback in such an executor that resolves without reading its
+error argument; `nitpicker/promise-wait-deadline` adds a design note, which does not fail the change,
+for an executor that waits only on network stream or socket events with no deadline. The same mistake
+runs as `future-without-exception` in the Python preset (an `asyncio` or `concurrent.futures` future
+completed only by `set_result` from a callback), `pmd/FutureWithoutException` in the Java preset (a
+`CompletableFuture` completed only by `complete` from a callback) and `kotlin-source/FutureWithoutException`
+in the Kotlin preset (also `suspendCancellableCoroutine` without `resumeWithException`). The Go preset has
+no rule engine of its own yet, so a result channel written only on success is not reported there.
+
 HTTP deadlines: `nitpicker/require-http-timeout` (strict preset, production source) reports an outbound
 HTTP call that has no timeout, so a server that accepts the connection and never answers hangs it. The same
 rule runs as `http-without-timeout` in the Python preset, `pmd/HttpWithoutTimeout` in the Java preset (main
