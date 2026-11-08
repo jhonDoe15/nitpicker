@@ -28,7 +28,7 @@ skipped with a note on stderr.
 | `FocusedTest`                                    | `review-rules/tests/honesty/`                    | a Kotest focus that runs only part of the suite: the `f:` name prefix, `ftest`, `fcontext`, `fdescribe`, `fit`, `fshould`, `fgiven`                                                                                                                                                                                                                                                                                              |
 | `RetryInTest`                                    | `review-rules/tests/honesty/retries/`            | a retry set in test code: `@RetryingTest`, `@RepeatedIfExceptionsTest`, TestNG `retryAnalyzer`, `IRetryAnalyzer`, `RetryAnalyzerCount`, `setRetryAnalyzer`, Kotest `retries`                                                                                                                                                                                                                                                     |
 | `ServerOrContainerPerTest`                       | `review-rules/tests/setup/`                      | a container, server or process started for each test: a `@Container`, `@Rule` or `@RegisterExtension` property of a JUnit instance, a Kotest container extension in a per-test mode, a start in `@BeforeEach`, `@Before`, `beforeTest` or `beforeEach` on an object made for each test, the same start in two or more tests of a class                                                                                           |
-| `AssertionInControlFlow`                         | `review-rules/tests/honesty/`                    | an assertion that can be skipped: inside an `if` or a `when` whose branches do not all assert, a loop, a safe call, `&&`, `\|\|`, `?:`, a swallowing `try` or `runCatching`, or after an early return                                                                                                                                                                                                                            |
+| `AssertionInControlFlow`                         | `review-rules/tests/honesty/`                    | an assertion that can be skipped: inside an `if` or a `when` whose branches do not all assert, a loop that can run zero times (also in a helper the test calls), a safe call, `&&`, `\|\|`, `?:`, a swallowing `try` or `runCatching`, or after an early return                                                                                                                                                                                                                            |
 | `CoroutineEscapesTest`                           | `review-rules/tests/coroutines/`                 | a `launch`, `async`, `launchIn`, `stateIn` or `shareIn` on a scope the test does not own (`CoroutineScope(...)`, a scope field, `viewModelScope`) that nothing joins, awaits or cancels                                                                                                                                                                                                                                          |
 | `MockedSubjectInTest`                            | `review-rules/tests/mocks/`                      | a mock of the class under test (`mockk<OrderService>()`, `mock<OrderService>()`, `mock(OrderService::class.java)`, `@MockK`, `@Mock`), or a spy of it whose own methods the test stubs (`spyk(...)`, `spy(...)`, `@SpyK`, `@Spy`, with `every`, `coEvery`, `justRun`, `whenever`, `` `when` ``, `given` or `stub`)                                                                                                               |
 | `StaticMockOfProjectType`                        | `review-rules/tests/mocks/`                      | `mockkObject`, `mockkStatic` (class, `"pkg.FileKt"` or `::function`), `mockkConstructor`, `mockStatic` or `mockConstruction` of code declared in the project's main sources                                                                                                                                                                                                                                                      |
@@ -413,8 +413,8 @@ guessed at.
   same apart from comments and spacing. A start in a helper that tests (not hooks) call is not
   followed.
 - `AssertionInControlFlow`: an assertion inside a construct that can skip it, in a JUnit test or a Kotest
-  test body: an `if` or `else`, a `when`, any loop (`for`, `while`, `do`, `repeat`, `forEach`,
-  `forEachIndexed`, `onEach` and the other iteration calls), a safe call (`?.let`, `?.also`, `?.run`,
+  test body: an `if` or `else`, a `when`, any loop that can run zero times (`for`, `while`, `repeat`,
+  `forEach`, `forEachIndexed`, `onEach` and the other iteration calls), a safe call (`?.let`, `?.also`, `?.run`,
   `?.apply`), `takeIf` or `takeUnless`, the right side of `&&`, `||` or `?:`, a `try` whose `catch` swallows
   the failure (`Throwable`, `Error`, `Exception`, `RuntimeException`, `AssertionError` without a rethrow), a
   `runCatching` not followed by `getOrThrow`, and an `if` that returns early before the assertions. An
@@ -427,7 +427,14 @@ guessed at.
   loop, `withData`). Allowed form: separate tests or `@ParameterizedTest` with `@MethodSource` or
   `@CsvSource`, Kotest `withData`, one assertion on the whole collection, and `assertNotNull`, `assertIs` or
   `?: fail(...)` to narrow a type instead of an `if` or a safe call. Unlike the Java guard, a loop over the
-  results of the code under test is reported too: an empty result checks nothing.
+  results of the code under test is reported too: an empty result checks nothing. A loop that always
+  runs is allowed, as in the TypeScript and Python presets: `repeat(3)` with a positive literal count,
+  `for` over a literal range that is not empty (`1..3`, `0 until 3`, `0..<3`, `3 downTo 1`, with or
+  without `step`), the same range with `.forEach { }` or another iteration call, and `do { } while`.
+  Loops in the helpers a test calls are reported too: a function of the same file (top level or a
+  member, not a test itself) that the test calls, directly or through other helpers, whose loop holds
+  an assertion. A loop in the test that calls such an asserting helper counts as a loop that asserts.
+  Each helper loop is reported once, under the first test that reaches it.
 - `CoroutineEscapesTest`: in a test body, a `launch`, `async` or `future`, and a `launchIn`,
   `produceIn`, `stateIn` or `shareIn`, on a scope the test does not own: `CoroutineScope(...)`,
   `MainScope()`, a name declared in the file as a `CoroutineScope` (a field, `lateinit var`, local or
