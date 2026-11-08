@@ -1,4 +1,4 @@
-import { ancestorsOf } from '../analysis/ancestry.mjs';
+import { ancestorsOf, chainOf } from '../analysis/ancestry.mjs';
 import { findVariable, isFunctionNode, resolveConstant } from '../analysis/constant-resolution.mjs';
 
 const INTL_TYPES = new Set([
@@ -128,14 +128,15 @@ function isStoreCall(node, value) {
 }
 
 function handedOut(node, fn) {
-  const { parent } = node;
-  if (parent.type === 'ReturnStatement' || (parent === fn && fn.body === node)) {
-    return true;
-  }
-  if (parent.type === 'Property' && parent.value === node) {
-    return handedOut(parent.parent, fn);
-  }
-  return isStoreCall(parent, node);
+  const value = chainOf(node, (link) =>
+    link.parent.type === 'Property' && link.parent.value === link ? link.parent.parent : undefined,
+  ).at(-1);
+  const { parent } = value;
+  return (
+    parent.type === 'ReturnStatement' ||
+    (parent === fn && fn.body === value) ||
+    isStoreCall(parent, value)
+  );
 }
 
 function inReturnedFunction(identifier, fn) {
