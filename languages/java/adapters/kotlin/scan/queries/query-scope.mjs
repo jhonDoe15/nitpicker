@@ -25,8 +25,8 @@ function literalFrom(scanned, offset) {
 
 function declaredValue(scanned, name, scope) {
   const declaration = new RegExp(String.raw`(?<![\w$])va[lr]\s+${name}\s*(?::\s*String\s*)?=`, 'g');
-  const local = scope === undefined ? null : declaration.exec(scope.text);
-  if (local !== null) {
+  const local = scope === undefined ? undefined : (declaration.exec(scope.text) ?? undefined);
+  if (local !== undefined) {
     return scope.start + local.index + local[0].length;
   }
   declaration.lastIndex = 0;

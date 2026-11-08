@@ -4,6 +4,7 @@ import { QUERY_BUILDER } from '../query-chains.mjs';
 const PAGE_KEYS = new Set(['take', 'skip', 'cursor', 'limit', 'offset']);
 const ORDER_KEYS = new Set(['orderBy', 'order']);
 const NESTED_KEYS = new Set(['include', 'select', 'with']);
+const MAX_NESTING = 3;
 const ANY_LIBRARY = new Set(['findMany']);
 const ORM_FINDERS = new Set(['find', 'findAndCount', 'findAll', 'findAndCountAll']);
 const ORM_MODULES =
@@ -41,14 +42,21 @@ function nestedObjects(object) {
     .filter((value) => value?.type === 'ObjectExpression');
 }
 
-function relationPages(object, depth = 0) {
-  if (depth > 3) {
-    return [];
-  }
-  return nestedObjects(object).flatMap((relation) => {
+function relationPages(object) {
+  const pending = nestedObjects(object).map((relation) => ({ relation, depth: 0 }));
+  const pages = [];
+  for (const { relation, depth } of pending) {
     const page = unorderedPage(relation);
-    return [...(page === undefined ? [] : [page]), ...relationPages(relation, depth + 1)];
-  });
+    if (page !== undefined) {
+      pages.push(page);
+    }
+    if (depth < MAX_NESTING) {
+      pending.push(
+        ...nestedObjects(relation).map((child) => ({ relation: child, depth: depth + 1 })),
+      );
+    }
+  }
+  return pages;
 }
 
 function usesOrm(scope) {

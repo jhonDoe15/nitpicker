@@ -1,11 +1,10 @@
 import { findVariable, stringValue } from '../analysis/constant-resolution.mjs';
-import { moduleScope } from '../database/orm-modules.mjs';
+import { DRIZZLE, moduleScope } from '../database/orm-modules.mjs';
 import { memberName, typeServices, unwrapped } from '../security/security-values.mjs';
 
 export const KYSELY = 'kysely';
 export const KNEX = 'knex';
 export const QUERY_BUILDER = 'query-builder';
-export const DRIZZLE = 'drizzle';
 
 const LIBRARIES = [
   [KYSELY, (source) => source === 'kysely' || source.startsWith('kysely/')],
@@ -73,12 +72,15 @@ function stepOf(node) {
 
 export function chainSteps(node) {
   const steps = [];
-  let current = unwrapped(node);
-  for (let step = stepOf(current); step !== undefined; step = stepOf(current)) {
-    steps.unshift(step);
-    current = step.object;
+  const pending = [unwrapped(node)];
+  for (const current of pending) {
+    const step = stepOf(current);
+    if (step !== undefined) {
+      steps.unshift(step);
+      pending.push(step.object);
+    }
   }
-  return { root: current, steps };
+  return { root: pending.at(-1), steps };
 }
 
 export function isOutermostStep(node) {
@@ -173,11 +175,13 @@ function referenceChain(reference) {
   if (member.parent?.type !== 'CallExpression' || member.parent.callee !== member) {
     return { root: identifier, steps: [] };
   }
-  let top = member.parent;
-  while (!isOutermostStep(top)) {
-    top = top.parent.parent;
+  const calls = [member.parent];
+  for (const call of calls) {
+    if (!isOutermostStep(call)) {
+      calls.push(call.parent.parent);
+    }
   }
-  return chainSteps(top);
+  return chainSteps(calls.at(-1));
 }
 
 function variableChains(variable) {

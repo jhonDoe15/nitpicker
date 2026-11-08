@@ -1,83 +1,21 @@
 {
   "reports": [
-    [
-      "select * from users limit 20",
-      [
-        "page:LIMIT 20"
-      ]
-    ],
-    [
-      "SELECT id FROM users OFFSET 40",
-      [
-        "page:OFFSET 40"
-      ]
-    ],
-    [
-      "select id from users fetch first 10 rows only",
-      [
-        "page:FETCH FIRST"
-      ]
-    ],
-    [
-      "select id from users where org = \u0000 limit \u0000",
-      [
-        "page:LIMIT ?"
-      ]
-    ],
-    [
-      "select * from (select id from users order by id) u limit 5",
-      [
-        "page:LIMIT 5"
-      ]
-    ],
+    ["select * from users limit 20", ["page:LIMIT 20"]],
+    ["SELECT id FROM users OFFSET 40", ["page:OFFSET 40"]],
+    ["select id from users fetch first 10 rows only", ["page:FETCH FIRST"]],
+    ["select id from users where org = \u0000 limit \u0000", ["page:LIMIT ?"]],
+    ["select * from (select id from users order by id) u limit 5", ["page:LIMIT 5"]],
     [
       "select id from users where id in (select uid from posts limit 3) order by id",
-      [
-        "page:LIMIT 3"
-      ]
+      ["page:LIMIT 3"]
     ],
-    [
-      "select id from users where active limit 1",
-      [
-        "page:LIMIT 1"
-      ]
-    ],
-    [
-      "select a.id, array_agg(t.name) from a join t on t.a = a.id",
-      [
-        "aggregate:array_agg(...)"
-      ]
-    ],
-    [
-      "select json_agg(p) as photos from photos p",
-      [
-        "aggregate:json_agg(...)"
-      ]
-    ],
-    [
-      "select jsonb_agg(distinct tag) from tags",
-      [
-        "aggregate:jsonb_agg(...)"
-      ]
-    ],
-    [
-      "select id from users where org = ? limit :size",
-      [
-        "page:LIMIT :SIZE"
-      ]
-    ],
-    [
-      "select * from t where id in (\u0000) limit 5",
-      [
-        "page:LIMIT 5"
-      ]
-    ],
-    [
-      "select array_agg(x) from t where id in (\u0000)",
-      [
-        "aggregate:array_agg(...)"
-      ]
-    ]
+    ["select id from users where active limit 1", ["page:LIMIT 1"]],
+    ["select a.id, array_agg(t.name) from a join t on t.a = a.id", ["aggregate:array_agg(...)"]],
+    ["select json_agg(p) as photos from photos p", ["aggregate:json_agg(...)"]],
+    ["select jsonb_agg(distinct tag) from tags", ["aggregate:jsonb_agg(...)"]],
+    ["select id from users where org = ? limit :size", ["page:LIMIT :SIZE"]],
+    ["select * from t where id in (\u0000) limit 5", ["page:LIMIT 5"]],
+    ["select array_agg(x) from t where id in (\u0000)", ["aggregate:array_agg(...)"]]
   ],
   "allows": [
     "select * from users order by created_at desc, id limit 20",
@@ -100,6 +38,7 @@
     "Select one of the options to set the limit",
     "select max(id) from users limit 1",
     "select a.limit, a.offset from plans a",
-    "select 1 limit 1"
+    "select 1 limit 1",
+    "select id from a where exists (select id from u where u.a = a.id limit 1)"
   ]
 }

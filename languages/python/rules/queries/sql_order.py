@@ -51,6 +51,7 @@ def page_gap(scope):
     if (
         clause is None
         or scope.opaque
+        or scope.name == "exists"
         or not SELECT.search(scope.text)
         or not FROM.search(scope.text)
     ):

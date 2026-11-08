@@ -46,6 +46,7 @@ describe.skipIf(!enabled)('unordered-query', () => {
     const result = spawnSync('python3', ['-I', '-c', PORT, RULES_ROOT], {
       input: JSON.stringify(texts),
       encoding: 'utf8',
+      timeout: 60_000,
     });
     const expected = texts.map((text) =>
       sqlOrderGaps(text).map(({ kind, form }) => `${kind}:${form}`),
