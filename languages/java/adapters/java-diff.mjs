@@ -23,9 +23,10 @@ import { toolConfigChoices } from './tool-config/tool-config-choices.mjs';
 import { readJavaFindings } from './reporting/java-reports.mjs';
 import { withJavaColumns } from './reporting/columns/java-columns.mjs';
 import { readReportModules } from './gradle-reports/report-modules.mjs';
-import { runMavenPreset, MAVEN_REPORT_DIRECTORY } from '../maven/maven-build.mjs';
+import { runMavenPreset } from '../maven/maven-build.mjs';
+import { MAVEN_REPORT_DIRECTORY } from '../maven/module/maven-module.mjs';
 import { detectJavaBuild, INIT_SCRIPT } from '../builds/java-build.mjs';
-import { moduleReport, readModuleFindings } from '../builds/java-modules.mjs';
+import { mergedRoots, readModuleFindings } from '../builds/java-modules.mjs';
 import { resolveKotlinRun } from './kotlin/kotlin-run.mjs';
 import { runGradleStage } from './red-base/gradle-stage.mjs';
 import {
@@ -154,24 +155,27 @@ function withGradleReports(projectRoot, options) {
 }
 
 function mavenFindings(projectRoot, options) {
-  const { moduleDirs, testsFailures } = runMavenPreset(projectRoot, {
+  const { moduleDirs, testsFailures, formatAdvice } = runMavenPreset(projectRoot, {
     maven: options.maven,
     timeoutMs: options.budget?.mavenCommandTimeoutMs,
     spawn: options.spawn,
     policy: options.policy,
     configs: toolConfigChoices(projectRoot, options.policy),
+    environment: options.environment,
   });
-  for (const moduleDir of moduleDirs) {
-    const { reportBase, report } = moduleReport(moduleDir, MAVEN_REPORT_DIRECTORY);
-    runJavaDuplicates(moduleDir, {
-      reportRoot: reportBase,
-      manifest: report.manifest,
-      skippedFolders: options.policy?.duplicateSkippedFolders,
-    });
+  const duplicates = {
+    reportRoot: path.join(projectRoot, MAVEN_REPORT_DIRECTORY),
+    manifest: mergedRoots(projectRoot, moduleDirs, MAVEN_REPORT_DIRECTORY),
+    skippedFolders: options.policy?.duplicateSkippedFolders,
+  };
+  runJavaDuplicates(projectRoot, duplicates);
+  if (options.policy?.preset === 'kotlin') {
+    runKotlinDuplicates(projectRoot, duplicates);
   }
   return {
     findings: readModuleFindings(projectRoot, moduleDirs, {
       ...readOptions(options.policy),
+      formatAdvice,
       reportDirectory: MAVEN_REPORT_DIRECTORY,
     }),
     testsFailures,
