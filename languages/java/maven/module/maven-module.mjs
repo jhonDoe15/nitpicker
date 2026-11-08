@@ -3,7 +3,7 @@ import { runCheckstyle, runFormat, runPmd, runSpotbugs } from '../maven-lint.mjs
 import { archunitMatcher } from '../maven-tests.mjs';
 import { runSpringArch } from '../spring/maven-spring-arch.mjs';
 import { withDeclaredSpring } from '../spring/arch-rules-gate.mjs';
-import { moduleManifest, writeManifest } from '../manifest/maven-manifest.mjs';
+import { moduleManifest, usesReactor, writeManifest } from '../manifest/maven-manifest.mjs';
 import { ownSourceRoots } from '../../adapters/red-base/tests-failed.mjs';
 import { runErrorProne } from '../errorprone/maven-errorprone.mjs';
 import { analyzeKotlinModule } from '../kotlin/kotlin-module.mjs';
@@ -46,6 +46,7 @@ function runSourceTools(options) {
         configs,
         spring: kotlin.spring,
         springRules: options.springRules,
+        reactor: options.reactor,
       },
     ],
     [
@@ -95,7 +96,8 @@ export function analyzeModule(options) {
     isArchunit,
     testRuntime: classpaths.testRuntime,
   });
-  const kotlin = analyzeSources({ ...options, reportDir, spring, springArch });
+  const reactor = usesReactor(classpaths);
+  const kotlin = analyzeSources({ ...options, reportDir, spring, springArch, reactor });
   if (failure === undefined) {
     runCoverageTools({
       ...options,

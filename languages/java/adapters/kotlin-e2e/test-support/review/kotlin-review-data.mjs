@@ -95,6 +95,70 @@ internal data class Envelope(val id: String, val retries: Int = 3)
 fun report(): String = pad(1) + label(2) + Mailer("h").send() + label(3, "m") + Envelope("e").id
 `;
 
+const ARCHIVE = `package demo.orders
+
+import java.io.File
+import java.nio.file.Files
+import java.nio.file.Path
+import java.util.concurrent.Future
+import kotlin.time.Duration.Companion.seconds
+import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.NonCancellable
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.flow.flowOn
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.runInterruptible
+import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeout
+
+class Process(private val id: String) {
+    fun waitFor(): Int = id.length
+}
+
+class Archive(
+    private val index: File,
+    private val pending: Future<String>,
+    private val ioDispatcher: CoroutineDispatcher,
+) {
+    suspend fun loadsOnTheCaller(path: Path): String = Files.readString(path)
+
+    suspend fun waitsOnAFuture(): String = pending.get()
+
+    suspend fun timesOutBlockingWork(path: Path): String = withTimeout(1.seconds) { Files.readString(path) }
+
+    suspend fun shieldsWithoutMoving(path: Path): String = withContext(NonCancellable) { Files.readString(path) }
+
+    suspend fun readsEach(paths: List<Path>): List<String> = paths.map { Files.readString(it) }
+
+    fun streamsOnTheCollector(path: Path): Flow<String> = flow { emit(Files.readString(path)) }
+
+    fun streamsOnTheInjectedDispatcher(path: Path): Flow<String> =
+        flow { emit(Files.readString(path)) }.flowOn(ioDispatcher)
+
+    suspend fun offloaded(path: Path): String = withContext(ioDispatcher) { Files.readString(path) }
+
+    suspend fun interruptible(): String = runInterruptible(ioDispatcher) { pending.get() }
+
+    suspend fun timesOutOffloadedWork(path: Path): String =
+        withTimeout(1.seconds) { withContext(ioDispatcher) { Files.readString(path) } }
+
+    suspend fun timesOutAfterADelay(path: Path): Path = withTimeout(1.seconds) { delay(10); path }
+
+    suspend fun waitsForAProjectProcess(process: Process): Int = process.waitFor()
+
+    fun readsOutsideACoroutine(path: Path): String = Files.readString(path)
+
+    fun launchesOnTheInjectedDispatcher(scope: CoroutineScope, path: Path) {
+        scope.launch(ioDispatcher) { Files.readString(path) }
+    }
+
+    fun sizeOfTheIndex(): Long = index.length()
+}
+`;
+
 const PRICING = `package demo.orders
 
 import org.springframework.boot.context.properties.ConfigurationProperties
@@ -441,6 +505,7 @@ suspend fun cancelAfterTimeout(scope: CoroutineScope): String {
 
 suspend fun startInside(): String = withTimeout(1000) { async { "done" }.await() }
 `;
+export const ARCHIVE_FILE = `${MAIN}/Archive.kt`;
 
 export const REVIEW_RULE_FILES = {
   [`${MAIN}/Status.kt`]: STATUS,
@@ -452,6 +517,7 @@ export const REVIEW_RULE_FILES = {
   [`${MAIN}/Ledger.kt`]: LEDGER,
   ...CANCELLATION_FILES,
   ...INTERRUPT_FILES,
+  [ARCHIVE_FILE]: ARCHIVE,
   [`${MAIN}/Pricing.kt`]: PRICING,
   [`${TEST}/PricingTest.kt`]: PRICING_TEST,
   [`${MAIN}/Inventory.kt`]: INVENTORY,
@@ -463,6 +529,11 @@ export const REVIEW_RULE_FILES = {
 };
 
 export const EXPECTED_REVIEW_FINDINGS = [
+  'BlockingCallInCoroutine Archive.loadsOnTheCaller.Files.readString',
+  'BlockingCallInCoroutine Archive.readsEach.Files.readString',
+  'BlockingCallInCoroutine Archive.shieldsWithoutMoving.Files.readString',
+  'BlockingCallInCoroutine Archive.streamsOnTheCollector.Files.readString',
+  'BlockingCallInCoroutine Archive.waitsOnAFuture.Future.get',
   'ClassLoadEffect Inventory.workers',
   'ClassLoadEffect Shelf.present',
   'ClassLoadEffect seeded',
@@ -498,6 +569,7 @@ export const EXPECTED_REVIEW_FINDINGS = [
   'timeout-abandons-operation shutDownLetsItFinish:get:future',
   ...SWALLOWED_CANCELLATIONS,
   ...SWALLOWED_INTERRUPTS,
+  'TimeoutWithoutSuspension Archive.timesOutBlockingWork.withTimeout',
   'unused-option Envelope.retries',
   'unused-option Mailer.retries',
   'unused-option Outbox.limit',

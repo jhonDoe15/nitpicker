@@ -7,6 +7,11 @@ Part of the [nitpicker-python](../SKILL.md) skill. Write these forms from the st
   child task, never in a `with` inside the group that hands it to `start_soon`/`create_task`
   (`task-outlives-resource`). In Trio and AnyIO, an `await` in `finally:` or a cancellation handler
   needs `with trio.CancelScope(deadline=trio.current_time() + 5, shield=True):` around it (`unshielded-cleanup-await`).
+- Timeouts: every path through a `trio.fail_after`, `move_on_after`, `anyio.fail_after`,
+  `asyncio.timeout` or `CancelScope(deadline=...)` block must reach a checkpoint. A branch that runs
+  blocking or CPU work without an `await` cannot be interrupted: `await asyncio.to_thread(work)`
+  (`trio.to_thread.run_sync`) or add `await asyncio.sleep(0)` first
+  (`timeout-scope-path-without-checkpoint`).
 - Async: inside `async def`, `await asyncio.sleep(...)`, an async client (`httpx.AsyncClient`),
   `asyncio.create_subprocess_exec`, and `await asyncio.to_thread(...)` for other blocking calls. No
   `timeout` parameter: the caller wraps the call in `async with asyncio.timeout(...)`, and the scope

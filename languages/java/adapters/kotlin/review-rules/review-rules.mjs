@@ -1,3 +1,4 @@
+import { BLOCKING_RULES } from './blocking/blocking-findings.mjs';
 import { ENUM_PREDICATE_RULE } from '../../review-rules/enum-predicates.mjs';
 import {
   SWALLOWED_CANCELLATION_RULE,
@@ -54,4 +55,5 @@ export const KOTLIN_REVIEW_EXCEPTION_RULES = [
   .concat(UNUSED_OPTION_RULE)
   .concat(
     [SUSPEND_CLEANUP_RULE, CHILD_OUTLIVES_RESOURCE_RULE].map((rule) => `${SOURCE_TOOL}/${rule}`),
-  );
+  )
+  .concat(BLOCKING_RULES.map((rule) => `${SOURCE_TOOL}/${rule}`));
