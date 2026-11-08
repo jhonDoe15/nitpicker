@@ -40,6 +40,8 @@ describe('Python console output', () => {
         message:
           'Tests print new console output: "WARNING shop.cart: cart <n> has no owner at cart.py" (test "TestCart::test_add"). Fix the cause (for example a timer that outlives the test), or allow a third-party message in "testConsole.allow" of nitpicker.config.json. If this is intended, add {"rule":"test-console-output","paths":["tests/test_cart.py"],"reason":"..."} to "exceptions" in nitpicker.config.json.',
         classification: 'enforceable',
+        allowedForm:
+          'Fix the cause (for example a timer that outlives the test), or allow a third-party message in "testConsole.allow" of nitpicker.config.json.',
         tokens: ['WARNING', 'shop.cart:', 'cart', '<n>', 'has', 'no', 'owner', 'at', 'cart.py'],
       },
     ]);
