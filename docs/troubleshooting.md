@@ -773,7 +773,7 @@ wrapper helps.
 ### Gradle or Maven times out
 
 **Symptom.** `Gradle did not finish within 15 minutes and was stopped. Set NITPICKER_GRADLE_TIMEOUT_MINUTES
-to allow more time`, `Maven did not finish in <dir> within 15 minutes and was stopped`, or
+to give each Gradle command more time`, `Maven did not finish in <dir> within 15 minutes and was stopped`, or
 `NITPICKER_GRADLE_TIMEOUT_MINUTES must be a whole number from 1 to 17895 (minutes)`.
 
 **Cause.** Each Gradle command has a 15 minute budget (two commands per analyzer, the optional

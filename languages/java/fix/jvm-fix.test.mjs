@@ -5,6 +5,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { fixtureGit, useGitFixtures } from '../../../core/diff/git/test-support/git-repository.mjs';
 import { writeFiles } from '../../../core/diff/git/test-support/fixture-files.mjs';
 import { fixWorkingTree } from '../../../core/fix/run-fix.mjs';
+import { linkSentence } from '../../../shared/messages/test-support/link-sentence.mjs';
 import { JAVAC_EXPORTS } from '../maven/maven-lint.mjs';
 import { fakeJvmTools } from './test-support/fake-jvm-tools.mjs';
 
@@ -269,7 +270,7 @@ describe('--fix for Java', () => {
       {
         tool: 'java-format-fix',
         snapshot: 'fix',
-        message: 'google-java-format failed: Exception in thread main',
+        message: `google-java-format failed: Exception in thread main. ${linkSentence('fixersFail')}`,
       },
     ]);
   });
@@ -290,8 +291,7 @@ describe('--fix for Java', () => {
       {
         tool: 'fix-tools',
         snapshot: 'fix',
-        message:
-          'fix-tools failed: Could not resolve artifact (nitpicker resolves the formatter jars in its own build at <tools>, from Maven Central, since the project declares no repositories)',
+        message: `fix-tools failed: Could not resolve artifact (nitpicker resolves the formatter jars in its own build at <tools>, from Maven Central, since the project declares no repositories). ${linkSentence('fixersFail')}`,
       },
     ]);
     expect(result.fixedFiles).toEqual([]);
@@ -487,8 +487,7 @@ describe('--fix for Kotlin', () => {
       {
         tool: 'kotlin-format-fix',
         snapshot: 'fix',
-        message:
-          '"kotlin.detektConfig" is missing.yml, which does not exist: create it, or change or remove "kotlin.detektConfig"',
+        message: `"kotlin.detektConfig" is missing.yml, which does not exist: create it, or change or remove "kotlin.detektConfig". ${linkSentence('projectToolConfigMissing')}`,
       },
     ]);
   });

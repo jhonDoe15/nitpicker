@@ -208,7 +208,7 @@ describe('failure messages', () => {
     });
 
     expect(error.message).toBe(
-      'coverage run timed out after 90 minutes in the virtualenv environment',
+      `coverage run timed out after 90 minutes in the virtualenv environment. ${linkSentence('analyzerTimeout')}`,
     );
   });
 });
