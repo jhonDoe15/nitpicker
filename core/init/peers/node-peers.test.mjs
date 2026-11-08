@@ -192,6 +192,8 @@ describe('Node peer needs', () => {
   it.each([
     ['a declared range that admits a supported version', '^4', []],
     ['a declared range below the supported one', '~4.0.5', ['vitest']],
+    ['a workspace protocol range', 'workspace:^1.2.3', []],
+    ['an npm alias below the supported range', 'npm:vitest@^3.2.0', ['vitest']],
   ])('judges %s by its major and minor version', (_name, range, add) => {
     const root = project({
       'package.json': JSON.stringify({ devDependencies: { vitest: range } }),

@@ -158,8 +158,16 @@ export function applyLayout(analyzers, headPolicy) {
   );
 }
 
-export const TEST_RUNNER_ANALYZERS = new Set(['coverage', 'mutation', 'test-console']);
-export const TYPESCRIPT_FREE_ANALYZERS = new Set(['prettier-format', 'duplicates', 'dead-code']);
+const TEST_RUNNER_ANALYZERS = new Set(['coverage', 'mutation', 'test-console']);
+const TYPESCRIPT_FREE_ANALYZERS = new Set(['prettier-format', 'duplicates', 'dead-code']);
+
+export function runsProjectTests(analyzerName) {
+  return TEST_RUNNER_ANALYZERS.has(analyzerName);
+}
+
+export function needsProjectTypeScript(analyzerName) {
+  return !TYPESCRIPT_FREE_ANALYZERS.has(analyzerName);
+}
 
 export function applyTestRunner(analyzers, headPolicy = {}) {
   const configured = headPolicy.tools?.tests?.runner;

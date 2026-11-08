@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { runCli } from '../../cli.mjs';
 import { useCliFixtures } from '../../command/test-support/cli-harness.mjs';
 import { captureOutput } from '../../diff/reporting/test-support/output-capture.mjs';
-import { useProjects, withPeers } from '../../init/test-support/projects.mjs';
+import { useProjects, withPeers } from '../test-support/projects.mjs';
 import { assertProjectPeers } from './project-peers.mjs';
 
 const project = useProjects();
@@ -13,7 +13,7 @@ const PRESET = ['eslint-lint', 'coverage', 'prettier-format'].map((name) => ({
 }));
 const VITEST = { vitest: '4.1.11', '@vitest/coverage-v8': '4.1.11' };
 
-function check(root, analyzers = PRESET, configuredRunner = undefined) {
+function check(root, analyzers = PRESET, configuredRunner) {
   return () => {
     assertProjectPeers({ projectRoot: root, analyzers, configuredRunner });
   };
@@ -51,6 +51,14 @@ describe('the project peers a run needs', () => {
 
     expect(check(root)).toThrow(
       `vitest and @vitest/coverage-v8 are not installed in ${root}. Run ${add} vitest @vitest/coverage-v8.`,
+    );
+  });
+
+  it('says the command to add also installs the peers package.json declares', () => {
+    const root = project({ 'package.json': '{"devDependencies":{"typescript":"^6"}}' });
+
+    expect(check(root)).toThrow(
+      `typescript, vitest and @vitest/coverage-v8 are not installed in ${root}. Run npm install --save-dev vitest @vitest/coverage-v8 (it also installs typescript from package.json).`,
     );
   });
 

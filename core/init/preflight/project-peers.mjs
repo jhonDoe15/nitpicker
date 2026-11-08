@@ -1,12 +1,12 @@
 import {
-  TEST_RUNNER_ANALYZERS,
-  TYPESCRIPT_FREE_ANALYZERS,
+  needsProjectTypeScript,
+  runsProjectTests,
 } from '../../../languages/typescript/preset/diff/configured-analyzers.mjs';
 import { testRunnerFor } from '../../../languages/typescript/preset/test-runner/detect-runner.mjs';
 import { listNames } from '../../../shared/messages/messages.mjs';
-import { describePackageManager } from '../../init/detection/package-manager.mjs';
-import { nodePeerNeeds, runnerPeers } from '../../init/peers/node-peers.mjs';
-import { installCommand } from '../../init/peers/peer-plan.mjs';
+import { describePackageManager } from '../detection/package-manager.mjs';
+import { nodePeerNeeds, runnerPeers } from '../peers/node-peers.mjs';
+import { installCommand } from '../peers/peer-plan.mjs';
 
 const TYPESCRIPT = 'typescript';
 
@@ -16,8 +16,8 @@ function neededPeers(projectRoot, analyzers, configuredRunner) {
       .filter((analyzer) => analyzer.policyFromPackage === true)
       .map((analyzer) => analyzer.name),
   );
-  const needsTypeScript = [...names].some((name) => !TYPESCRIPT_FREE_ANALYZERS.has(name));
-  const runsTests = [...TEST_RUNNER_ANALYZERS].some((name) => names.has(name));
+  const needsTypeScript = [...names].some(needsProjectTypeScript);
+  const runsTests = [...names].some(runsProjectTests);
   const runner = runsTests ? testRunnerFor(projectRoot, configuredRunner).runner : undefined;
   return [
     ...(needsTypeScript ? [TYPESCRIPT] : []),
@@ -42,11 +42,16 @@ function problems(projectRoot, { absent, outdated }) {
 }
 
 function remedy(needs, manager) {
-  if (needs.add.length > 0) {
-    return installCommand(manager.add, needs.add);
+  const { add, uninstalled } = needs;
+  const pronoun = uninstalled.length > 1 ? 'they' : 'it';
+  if (add.length === 0) {
+    return `${manager.install} (${pronoun} ${verb(uninstalled)} in package.json)`;
   }
-  const pronoun = needs.uninstalled.length > 1 ? 'they' : 'it';
-  return `${manager.install} (${pronoun} ${verb(needs.uninstalled)} in package.json)`;
+  const declared =
+    uninstalled.length === 0
+      ? ''
+      : ` (it also installs ${listNames(uninstalled)} from package.json)`;
+  return `${installCommand(manager.add, add)}${declared}`;
 }
 
 export function assertProjectPeers({ projectRoot, analyzers, configuredRunner, nodeVersion }) {

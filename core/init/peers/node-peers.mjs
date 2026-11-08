@@ -52,6 +52,11 @@ function versionParts(text) {
     .map(Number);
 }
 
+function declaredVersionParts(declared) {
+  const protocol = /^(?<name>[\w+-]+):/u.exec(String(declared))?.groups.name;
+  return protocol === undefined || protocol === 'npm' ? versionParts(declared).slice(0, 2) : [];
+}
+
 function isAtLeast(version, minimum) {
   const index = version.findIndex((part, position) => part !== (minimum[position] ?? 0));
   return index === -1 || version[index] > (minimum[index] ?? 0);
@@ -64,7 +69,7 @@ function supportedRange(name) {
 function isSupported(name, { installed, declared }) {
   const minimum = versionParts(supportedRange(name));
   const version =
-    installed === undefined ? versionParts(declared).slice(0, 2) : versionParts(installed);
+    installed === undefined ? declaredVersionParts(declared) : versionParts(installed);
   return version.length === 0 || minimum.length === 0 || isAtLeast(version, minimum);
 }
 
