@@ -6,6 +6,12 @@ import pytest
 import pytest_console
 
 MARKS_PROPERTY = "nitpicker_marks"
+OUTCOMES = {"passed", "failed", "skipped"}
+REPEATED_PHASES = {"setup", "call"}
+RETRIED = (
+    "Passed only on a later attempt, so it counts as failed: a retry (a flaky mark, a retry plugin or "
+    "a retry decorator) hides a flaky or racy test. Remove the retry and fix the cause."
+)
 
 
 def covered_seconds(intervals):
@@ -65,9 +71,33 @@ class FunctionSetupTimes:
             outcome.get_result().duration = self.seconds(item.nodeid)
 
 
+class SingleAttempt:
+    def __init__(self):
+        self.phases = {}
+        self.retried = set()
+        self.first_failure = {}
+
+    def note(self, report):
+        phases = self.phases.setdefault(report.nodeid, set())
+        if report.when in REPEATED_PHASES and report.when in phases or report.outcome not in OUTCOMES:
+            self.retried.add(report.nodeid)
+        phases.add(report.when)
+        if report.outcome not in OUTCOMES or report.failed:
+            self.first_failure.setdefault(report.nodeid, str(report.longrepr or ""))
+
+    @pytest.hookimpl(hookwrapper=True)
+    def pytest_runtest_logreport(self, report):
+        self.note(report)
+        if report.nodeid in self.retried and report.when == "call" and report.passed:
+            first = self.first_failure.get(report.nodeid, "")
+            report.outcome = "failed"
+            report.longrepr = f"{RETRIED}\n\nFirst failure:\n{first}" if first else RETRIED
+        yield
+
+
 def main(arguments):
     sys.path[0] = os.getcwd()
-    return pytest.main(arguments, plugins=[FunctionSetupTimes(), pytest_console])
+    return pytest.main(arguments, plugins=[FunctionSetupTimes(), SingleAttempt(), pytest_console])
 
 
 if __name__ == "__main__":
