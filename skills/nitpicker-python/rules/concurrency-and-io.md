@@ -26,6 +26,10 @@ Part of the [nitpicker-python](../SKILL.md) skill. Write these forms from the st
   `%z`, `.replace(tzinfo=...)` for a known zone, or `date.fromisoformat(text)` for a date-only
   string. A date is `datetime.now(tz=zone).date()` in the zone it is meant in, not `date.today()`.
   Domain code takes the clock as a parameter; tests pass a fixed aware datetime or freeze the time.
+- Let the database count, filter, sort and aggregate: `.count()`/`.exists()` instead of `len()` or a
+  truth test on a queryset or `.all()` list, `.filter()`/`.where()` instead of a comprehension with an
+  `if`, `any()` or `next()`, `.order_by()` instead of `sorted()`, and `.aggregate()`/`func.sum` instead
+  of `sum()`, `max()` or `Counter` over the rows (`in-memory-query`).
 - Debugging and processes: remove debugger imports and breakpoints before committing. Pass
   `check=True` to `subprocess.run`, or `check=False` and handle `returncode`.
 - A future that a callback completes also gets a failure path: `register(reply.set_result, reply.set_exception)`,

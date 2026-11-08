@@ -235,6 +235,8 @@ when the code is right, for example `{ "rule": "pmd/SpringDataNoSaveInLoop", "pa
   filter on the list, and on `collectList().block()` followed by the blocking forms. A local that
   holds the result of `findAll()` counts as the call when the block that declares it reads it exactly once, in
   one of these forms; a local read more than once is left alone, since the method uses the rows.
+  The TypeScript and JavaScript counterpart is `nitpicker/no-in-memory-query` and the Python one is
+  `in-memory-query`; both also report sorts and aggregates computed in memory.
 - `SpringTransactionalCheckedRollback` reports the `throws` clause of a `@Transactional` method
   (or a public method of a `@Transactional` class) that names a checked exception, unless the
   annotation has `rollbackFor` or `readOnly = true`. `SpringTransactionalReadOnlyWrite` reports a
