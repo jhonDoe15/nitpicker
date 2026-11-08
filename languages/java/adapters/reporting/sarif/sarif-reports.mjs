@@ -7,6 +7,7 @@ import { dropSleepsInFakes } from '../../../messages/latency-fakes.mjs';
 import { withFanOutDetails } from '../../../messages/fan-out/fan-out-details.mjs';
 import { withLoadEffectSubjects } from '../../../messages/load-effects.mjs';
 import { withProjectTypeMocks } from '../../../messages/mocks/project-mocks.mjs';
+import { withGeneratedMembers } from '../../../messages/generated-members/generated-members.mjs';
 import { withSpringTransactionFilters } from '../../spring/transactions/transaction-filters.mjs';
 
 const LINE_NUMBER = /\bline \d+\b/g;
@@ -57,7 +58,10 @@ export function sarifFindings(context) {
         dropSleepsInFakes(
           withProjectTypeMocks(
             dropInheritedVersions(
-              withSpringTransactionFilters(ingestSarif(pmd, { tool: 'pmd' }).findings, context),
+              withGeneratedMembers(
+                withSpringTransactionFilters(ingestSarif(pmd, { tool: 'pmd' }).findings, context),
+                { projectRoot },
+              ),
               { projectRoot, sourceRoots: allSourceRoots },
             ),
             { projectRoot, mainRoots },

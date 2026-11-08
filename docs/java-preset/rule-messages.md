@@ -6,7 +6,9 @@ PMD, Checkstyle and SpotBugs messages say what is wrong, rarely how to fix it, a
 code that is right as it is. `languages/java/messages/` holds one catalog per tool (`pmd.json`,
 `checkstyle.json`, `spotbugs.json`) with an entry for every rule the preset can report: the
 errorprone, bestpractices, performance, multithreading and security PMD categories (the rules the
-preset leaves out too, for a project that turns one back on) plus `AvoidCatchingGenericException`, every check in
+preset leaves out too, for a project that turns one back on) plus `AvoidCatchingGenericException`, the boolean
+simplification rules (`SimplifyBooleanReturns`, `SimplifyBooleanExpressions`, `SimplifiedTernary`,
+`SimplifyConditional`, `CollapsibleIfStatements`, `LogicInversion`, `ConfusingTernary`), every check in
 `google_checks.xml`, and every SpotBugs pattern. Each entry has:
 
 - `fix`: one sentence, in our words, naming the allowed form (`null` when the tool's message already

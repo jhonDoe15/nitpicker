@@ -555,6 +555,18 @@ allprojects {
             sourceSets.main.compileClasspath.files.any { it.name ==~ /jmolecules-ddd-.*\.jar/ }
         }
         def runsArchRules = { usesSpring() || usesJmolecules() }
+        def springClasspath = {
+            try {
+                def test = sourceSets.findByName('test') ?: sourceSets.main
+                def development = ['developmentOnly', 'testAndDevelopmentOnly']
+                    .collect { configurations.findByName(it) }.findAll { it != null && it.canBeResolved }
+                (sourceSets.main.compileClasspath.files + test.compileClasspath.files + test.runtimeClasspath.files
+                    + development.collectMany { it.files }).collect { it.absolutePath }.unique()
+            } catch (Exception failure) {
+                logger.warn("nitpicker: could not resolve the classpath of ${project.path} for spring/unbound-property: ${failure.message}")
+                []
+            }
+        }
         def hasGuava = { sourceSet -> sourceSet.compileClasspath.files.any { it.name ==~ /guava-\d.*\.jar/ } }
         def hasAwaitility = { sourceSets.test.compileClasspath.files.any { it.name ==~ /awaitility-\d.*\.jar/ } }
 
@@ -1157,6 +1169,7 @@ allprojects {
                     spring         : usesSpring(),
                     testsFailed    : testsFailed,
                     springArch     : runsArchRules(),
+                    springClasspath: usesSpring() ? springClasspath() : [],
                     guava          : hasGuava(sourceSets.main),
                     testGuava      : hasGuava(sourceSets.test),
                     testAwaitility : hasAwaitility(),
