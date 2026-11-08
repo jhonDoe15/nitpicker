@@ -29,11 +29,15 @@ export function springArchFindings(context) {
 }
 
 function archunitReportText(archunitRoot, name) {
-  const file = realpathSync(path.resolve(archunitRoot, name));
-  if (!file.startsWith(realpathSync(archunitRoot) + path.sep)) {
+  const resolved = path.resolve(archunitRoot, name);
+  if (!resolved.startsWith(path.resolve(archunitRoot) + path.sep)) {
     throw new Error(`ArchUnit report ${name} is outside ${archunitRoot}.`);
   }
-  return readFileSync(file, 'utf8');
+  const real = realpathSync(resolved);
+  if (!real.startsWith(realpathSync(archunitRoot) + path.sep)) {
+    throw new Error(`ArchUnit report ${name} is outside ${archunitRoot}.`);
+  }
+  return readFileSync(real, 'utf8');
 }
 
 export function archunitFindings({ reportRoot, projectRoot, sourceRoots, manifest }) {

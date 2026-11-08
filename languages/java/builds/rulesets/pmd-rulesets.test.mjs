@@ -2,9 +2,17 @@ import { mkdirSync, mkdtempSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
+import { GRADLE_DIRECTORY } from '../java-build.mjs';
 import { javaRelease, scopedRuleset, writeGuardRulesets } from './pmd-rulesets.mjs';
 
 const roots = [];
+const GUARDS = path.join(GRADLE_DIRECTORY, 'rules/guards-ruleset.xml');
+const HONESTY = path.join(GRADLE_DIRECTORY, 'rules/test-honesty-ruleset.xml');
+const OPTIONAL_GET_BEFORE_10 = {
+  rule: 'OptionalGet',
+  message:
+    'Use orElse(...), orElseThrow(Supplier), map or ifPresent instead of Optional.get(), also after isPresent().',
+};
 const tests = path.join('/work', 'my.app', 'src', 'test', 'java');
 const quoted = String.raw`/work/my\.app/src/test/java/`;
 
@@ -91,13 +99,15 @@ describe('writeGuardRulesets', () => {
       path.join(reportDir, 'pmd-guards-main.xml'),
       path.join(reportDir, 'pmd-test-honesty.xml'),
     ]);
-    expect(readFileSync(rulesets[1], 'utf8')).toContain(`<include-pattern>`);
+    expect(readFileSync(rulesets[1], 'utf8')).toBe(
+      scopedRuleset('nitpicker-test-honesty', HONESTY, { directories: [test], onlyThere: true }),
+    );
   });
 
   it('words OptionalGet without the no-argument orElseThrow before Java 10 only', () => {
     const root = mkdtempSync(path.join(tmpdir(), 'nitpicker-pmd-rulesets-'));
     roots.push(root);
-    const messageOf = (target) =>
+    const written = (target) =>
       readFileSync(
         writeGuardRulesets({
           reportDir: path.join(root, target),
@@ -107,10 +117,14 @@ describe('writeGuardRulesets', () => {
         'utf8',
       );
 
-    expect(messageOf('8')).toMatch(
-      /<exclude name="OptionalGet"\/>[\s\S]*guards-ruleset\.xml\/OptionalGet" message="Use orElse\(\.\.\.\), orElseThrow\(Supplier\)/u,
+    expect(written('8')).toBe(
+      scopedRuleset('nitpicker-guards-main', GUARDS, {
+        directories: [],
+        skipped: ['InstanceofThenCast', 'CollectorsToList'],
+        messages: [OPTIONAL_GET_BEFORE_10],
+      }),
     );
-    expect(messageOf('17')).not.toContain('OptionalGet');
+    expect(written('17')).toBe(scopedRuleset('nitpicker-guards-main', GUARDS, { directories: [] }));
   });
 
   it('writes only the main guards when no test directory exists', () => {
@@ -124,6 +138,12 @@ describe('writeGuardRulesets', () => {
     });
 
     expect(rulesets).toEqual([path.join(root, 'report', 'pmd-guards-main.xml')]);
-    expect(readFileSync(rulesets[0], 'utf8')).toContain('<exclude name="InstanceofThenCast"/>');
+    expect(readFileSync(rulesets[0], 'utf8')).toBe(
+      scopedRuleset('nitpicker-guards-main', GUARDS, {
+        directories: [path.join(root, 'missing')],
+        skipped: ['InstanceofThenCast', 'CollectorsToList'],
+        messages: [OPTIONAL_GET_BEFORE_10],
+      }),
+    );
   });
 });
