@@ -13,13 +13,16 @@ import {
 } from '../test-support/kotlin-e2e-project.mjs';
 
 // Each file gets its own fixture tree and retains the original setup and cleanup.
-export function useKotlinOneWayProject(scenario) {
+export function useKotlinOneWayProject(
+  scenario,
+  { initialize = initializeProject, run = diffOf } = {},
+) {
   let project;
   let bannedResult;
   let allowedResult;
   let hostileConfigResult;
   beforeAll(() => {
-    project = initializeProject();
+    project = initialize();
     commitBranch(project, 'one-way-banned', ruleFixtures('banned'));
     commitBranch(project, 'one-way-allowed', ruleFixtures('allowed'));
     commitBranch(project, 'one-way-hostile-config', {
@@ -33,13 +36,13 @@ export function useKotlinOneWayProject(scenario) {
       ),
     });
     if (scenario === 'banned') {
-      bannedResult = diffOf(project, 'one-way-banned');
+      bannedResult = run(project, 'one-way-banned');
     }
     if (scenario === 'allowed') {
-      allowedResult = diffOf(project, 'one-way-allowed');
+      allowedResult = run(project, 'one-way-allowed');
     }
     if (scenario === 'hostile-config') {
-      hostileConfigResult = diffOf(project, 'one-way-hostile-config', {
+      hostileConfigResult = run(project, 'one-way-hostile-config', {
         policy: kotlinPolicyWithProjectDetekt,
       });
     }
