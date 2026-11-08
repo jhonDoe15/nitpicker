@@ -22,13 +22,12 @@ afterEach(() => {
 });
 
 const defaultsDirectory = path.join(path.dirname(fileURLToPath(import.meta.url)), '../../defaults');
-let importCount = 0;
 
 async function presetRulesFor(manifest, file) {
-  vi.stubEnv('NITPICKER_DIFF_ESLINT_PROJECT_ROOT', projectWith(manifest));
-  importCount += 1;
+  const root = projectWith(manifest);
+  vi.stubEnv('NITPICKER_DIFF_ESLINT_PROJECT_ROOT', root);
   const configUrl = pathToFileURL(path.join(defaultsDirectory, 'eslint.config.mjs'));
-  const { default: config } = await import(`${configUrl.href}?nest=${String(importCount)}`);
+  const { default: config } = await import(`${configUrl.href}?nest=${encodeURIComponent(root)}`);
   const eslint = new ESLint({
     cwd: defaultsDirectory,
     overrideConfigFile: true,
