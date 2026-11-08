@@ -104,9 +104,7 @@ function isMeasuredLocal(scanned, read) {
   return (
     !isTemplated(scanned, local, scope) &&
     uses.length > 0 &&
-    uses.every((offset) =>
-      isMeasuringSpan(scanned, offset, offset + local.name.length),
-    )
+    uses.every((offset) => isMeasuringSpan(scanned, offset, offset + local.name.length))
   );
 }
 

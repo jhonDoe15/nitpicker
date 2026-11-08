@@ -9,9 +9,9 @@ const CLOCK_FORMS = [
 ].join('|');
 const CLOCK_HEAD = new RegExp(String.raw`^(?:[a-z]\w*\s*\.\s*)*(?:${CLOCK_FORMS})`, 'u');
 const CLOCK_TAIL = new RegExp(String.raw`(?:${CLOCK_FORMS})(?:\s*\.\s*\w+\s*\([^()]*\))*$`, 'u');
-const COMPARISON_BEFORE = /[\w)\]"}]\s*(?:<=|>=|(?<![-<])<|(?<![->])>)$/u;
+const COMPARISON_BEFORE = /[\w)\]"}]\s*[<>]=?$/u;
 const COMPARISON_AFTER = /\s*(?:<=|>=|<(?!<)|>(?!>))/uy;
-const MINUS_BEFORE = /[\w)\]"}]\s*(?<![-<>=])-$/u;
+const MINUS_BEFORE = /[\w)\]"}]\s*-$/u;
 const MINUS_AFTER = /\s*-(?![->=])\s*/uy;
 const NUMBER_TAIL = /(?<![\w.])\d[\w.]*$/u;
 const METHOD_TAIL = /(?<![\w.)])[a-z_]\w*(?:\s*\.\s*\w+)+\s*\(\s*\)$/u;
