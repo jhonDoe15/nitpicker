@@ -47,6 +47,7 @@ export function knownKeys({ metadata, classes, references }) {
     exact: new Set(),
     open: new Set(),
     owned: new Set(),
+    claimed: new Set(),
     removed: new Map(),
     display: new Map(),
   };
@@ -60,10 +61,10 @@ export function knownKeys({ metadata, classes, references }) {
     index.open.add(relaxKey(name));
   }
   for (const name of classes.owned) {
-    index.owned.add(relaxKey(name));
+    index.claimed.add(relaxKey(name));
   }
   index.nodes = new Set(
-    [...index.exact, ...index.owned].flatMap((key) => [key, ...parentsOf(key)]),
+    [...index.exact, ...index.owned, ...index.claimed].flatMap((key) => [key, ...parentsOf(key)]),
   );
   for (const retired of [...index.removed.keys()].flatMap(parentsOf)) {
     if (retired.includes('.') && !index.nodes.has(retired)) {

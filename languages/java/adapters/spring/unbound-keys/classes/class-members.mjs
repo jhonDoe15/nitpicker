@@ -3,7 +3,8 @@ import { closingIndex, memberText, topLevelParts } from './source-structure.mjs'
 const DECLARATION =
   /(?<![@\w.])(class|record|enum|interface|object)\s+(?!(?:class|interface)\b)([A-Za-z_]\w*)/gu;
 const KOTLIN_ENUM = /\benum\s+$/u;
-const ANNOTATION = /@[\w.]+(?:\s*\((?:[^()]|\([^()]*\))*\))?/gu;
+const ANNOTATION = /@(?:\w+:)?(?:\[[^\]]*\]|[\w.]+(?:\s*\((?:[^()]|\([^()]*\))*\))?)/gu;
+const RENAMED = /@(?:\w+:)?(?:[\w.]*\.)?Name\s*\(/u;
 const JAVA_MODIFIERS = /^(?:(?:private|protected|public|final|transient|volatile|static)\s+)*/u;
 const JAVA_TYPE = String.raw`[\w.]+(?:\s*<[\s\S]*>)?(?:\s*\[\s*\])*`;
 const JAVA_FIELD = new RegExp(String.raw`^(${JAVA_TYPE})\s+(\w+)$`, 'u');
@@ -117,12 +118,19 @@ function javaMember(segment, className) {
     const open = constructor[0].length - 1;
     return parameterMembers(text.slice(open + 1, closingIndex(text, open)), false);
   }
-  const declaration = text.split('=')[0].trim();
+  const [declaration, ...others] = topLevelParts(text, [',']).map((part) =>
+    part.text.split('=')[0].trim(),
+  );
   if (/\bstatic\b/u.test(declaration) || (text.includes('{') && !text.includes('='))) {
     return [];
   }
   const field = JAVA_FIELD.exec(declaration.replace(JAVA_MODIFIERS, ''));
-  return field === null ? [] : [{ name: field[2], type: field[1] }];
+  return field === null
+    ? []
+    : [field[2], ...others.filter((name) => /^\w+$/u.test(name))].map((name) => ({
+        name,
+        type: field[1],
+      }));
 }
 
 function kotlinMember(segment) {
@@ -159,6 +167,7 @@ export function classesIn({ code, kotlin }) {
       kind,
       offset: match.index,
       superclass: superclassOf(header, kotlin),
+      renamed: RENAMED.test(`${parameters ?? ''} ${memberText(body)}`),
       members:
         kind === 'enum' || kind === 'interface'
           ? []
