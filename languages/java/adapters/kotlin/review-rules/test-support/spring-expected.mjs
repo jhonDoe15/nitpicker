@@ -245,4 +245,9 @@ export const EXPECTED = [
   'bad/Wiring.kt:45 SpringOrderedProvider Decorators.unordered.for',
   'bad/Wiring.kt:48 SpringOrderedProvider Decorators.unordered.iterator',
   'bad/Wiring.kt:49 SpringOrderedProvider Decorators.unordered.map',
+  'bad/settings/Settings.kt:12 SpringNullOnlyConfigCheck TokenProperties.sslEnabled.bundle',
+  'bad/settings/Settings.kt:24 SpringNullOnlyConfigCheck TokenConfig.tokenIssuer.properties.issuerUri',
+  'bad/settings/Settings.kt:31 SpringNullOnlyConfigCheck TokenConfig.tokenKey.region',
+  'bad/settings/Settings.kt:31 SpringNullOnlyConfigCheck TokenConfig.tokenKey.properties.signing.keyId',
+  'bad/settings/Settings.kt:36 SpringNullOnlyConfigCheck TokenConfig.tokenAudience.audience',
 ];

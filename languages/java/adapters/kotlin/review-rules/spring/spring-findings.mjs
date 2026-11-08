@@ -7,6 +7,7 @@ import { QUERY_RULES } from './data/queries.mjs';
 import { BEAN_RULES } from './rules/beans.mjs';
 import { CLIENT_RULES } from './rules/clients.mjs';
 import { CONFIGURATION_RULES } from './rules/configuration.mjs';
+import { nullOnlyConfigChecks } from './rules/null-checks.mjs';
 import { PROXY_RULES } from './rules/proxies.mjs';
 import { TRANSACTION_RULES } from './rules/transactions.mjs';
 import { CACHE_WRITE_RULES } from './transactions/cache-writes.mjs';
@@ -27,6 +28,7 @@ const RULES = [
   ...STARTUP_RULES,
   ...CLIENT_RULES,
   ...CONFIGURATION_RULES,
+  nullOnlyConfigChecks,
   ...PROXY_RULES,
   ...TRANSACTION_RULES,
   ...UNGUARDED_WRITE_RULES,

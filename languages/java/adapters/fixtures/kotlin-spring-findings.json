@@ -276,5 +276,10 @@
   "src/main/kotlin/shop/bad/Wiring.kt:44 SpringOrderedProvider Decorators.unordered.stream",
   "src/main/kotlin/shop/bad/Wiring.kt:45 SpringOrderedProvider Decorators.unordered.for",
   "src/main/kotlin/shop/bad/Wiring.kt:48 SpringOrderedProvider Decorators.unordered.iterator",
-  "src/main/kotlin/shop/bad/Wiring.kt:49 SpringOrderedProvider Decorators.unordered.map"
+  "src/main/kotlin/shop/bad/Wiring.kt:49 SpringOrderedProvider Decorators.unordered.map",
+  "src/main/kotlin/shop/bad/settings/Settings.kt:12 SpringNullOnlyConfigCheck TokenProperties.sslEnabled.bundle",
+  "src/main/kotlin/shop/bad/settings/Settings.kt:24 SpringNullOnlyConfigCheck TokenConfig.tokenIssuer.properties.issuerUri",
+  "src/main/kotlin/shop/bad/settings/Settings.kt:31 SpringNullOnlyConfigCheck TokenConfig.tokenKey.properties.signing.keyId",
+  "src/main/kotlin/shop/bad/settings/Settings.kt:31 SpringNullOnlyConfigCheck TokenConfig.tokenKey.region",
+  "src/main/kotlin/shop/bad/settings/Settings.kt:36 SpringNullOnlyConfigCheck TokenConfig.tokenAudience.audience"
 ]

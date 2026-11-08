@@ -13,6 +13,7 @@ are listed at the end.
 | ------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | Logging                  | `logger.info("Loaded %s", count)`, `logger.warning`, `logger.exception` (structlog, loguru: see below)                                                                               | ruff `G001`-`G004`, `G010`, `G101`, `G201`, `G202`, `TRY400`, `TRY401`                                                                                                                                                                     |
 | Environment              | read once in a composition root, pass values in                                                                                                                                      | `process-env-access` (script)                                                                                                                                                                                                              |
+| Environment values       | a truth test: `if not os.environ.get("X"):`, `os.environ.get("X") or default`                                                                                                        | `env-none-only-check` (script)                                                                                                                                                                                                             |
 | Program output           | a `TextIO` parameter: `out.write(...)` or `print(..., file=out)`; the entry point passes `sys.stdout`                                                                                | ruff `T201`, `T203`, `process-stream-access` (script)                                                                                                                                                                                      |
 | Shell                    | a list: `subprocess.run(["git", "status"], check=True)`                                                                                                                              | `shell-command` (script), ruff `S602`, `S604`, `S605`, `S609`                                                                                                                                                                              |
 | SQL                      | parameters: `cursor.execute("select * from t where id = %s", (id,))`; placeholder lists, fixed lookups, `Literal`/`Enum` names, `sql.Identifier`                                     | `sql-string-formatting` (script), ruff `S610`, `S611`                                                                                                                                                                                      |
@@ -109,6 +110,22 @@ Details that are decisions rather than the table:
   `[project.entry-points]`, poetry scripts and plugins, flit), `setup.cfg` or `setup.py`; or a file
   matched by `python.entryPoints`.
   Nothing under a `domain` folder is a composition root.
+- `env-none-only-check` reports an environment variable tested only for being missing, which
+  counts an empty value as set: `API_URL=` gives `""`, which passes the test, so the feature turns
+  on with nothing to use. Reported, in every non-test file: `is None`, `is not None`, `== None` and
+  `!= None` on `os.environ.get("X")` or `os.getenv("X")` (also through `from os import ...` and
+  aliases, and on a name assigned once from one, such as a module constant
+  `API_URL = os.getenv("API_URL")`); `"X" in os.environ` and `not in`; and a default argument
+  (`os.getenv("PORT", "8000")`, `os.environ.get("HOST", default="localhost")`), which an empty value
+  skips. A default of `""` or `None` gives the same result and passes, and so does a `None` test
+  joined by `and`/`or` with an emptiness test of the same variable (`url is not None and
+url.strip() != ""`, `len(...)`, `bool(...)` or the value itself). The allowed form tests the value
+  for truth: `if not os.environ.get("API_URL"):`, `os.environ.get("PORT") or "8000"`, `.strip()`
+  first when blanks count as empty. When an empty value is a real setting, add an exception for
+  the rule. Ruff `PLW1508` (a default that is not a string) is dropped on the same line: the `or`
+  form fixes both. The TypeScript preset reports the same mistake as
+  `nitpicker/no-undefined-only-env-check`, and the Java and Kotlin presets on Spring configuration
+  as `pmd/SpringNullOnlyConfigCheck`.
 - `process-stream-access` reports `sys.stdout`, `sys.stderr`, `sys.__stdout__` and `sys.__stderr__`,
   also through `from sys import stdout`, import aliases, `getattr(sys, "stdout")` and
   `sys.modules["sys"]`, and `from sys import *` itself, once per site in every non-test file that is not a composition root, as
@@ -780,7 +797,7 @@ __getattr__` that warns or maps removed names to new ones (a PEP 562 lazy import
   `real-clock-in-test` line, so the one finding left names one fix (inject the clock, or freeze
   it); `ASYNC110` on the `while` loop around a `sleep-in-test` call; `PLE1507`, `PLW1507` and
   `PLW1508` on a `process-env-access` line (read the environment in the composition root, where
-  these report with their own forms); and `PLW0129` on a `tautological-assert` line. Among ruff's
+  these report with their own forms), and `PLW1508` on an `env-none-only-check` line; and `PLW0129` on a `tautological-assert` line. Among ruff's
   own rules, `LOG015` owns the `G010` of `logging.warn`, `ASYNC230` and `ASYNC240` own the `PTH`
   finding of the same call, and `PLE0115` owns the `PLW0602`/`PLW0603` of its `global`.
   `ASYNC251` is not reported in test files, where `sleep-in-test` owns sleeping. The rules script

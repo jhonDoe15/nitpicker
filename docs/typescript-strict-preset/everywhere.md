@@ -542,6 +542,23 @@ Part of the [TypeScript strict preset guide](../typescript-strict-preset.md).
   reported; `new URL(url.href)` passes. The Java and Kotlin presets report `URI.create(text)` the
   same way (`pmd/UriCreateDynamic`, `kotlin-source/UriCreateDynamic`); Python has no counterpart,
   since `urllib.parse` does not raise on such text.
+- `nitpicker/no-undefined-only-env-check` (production code): an environment variable tested only
+  for being missing counts an empty value as set. `API_URL=` gives `''`, which passes
+  `process.env.API_URL !== undefined`, so the feature turns on with nothing to use. Reported: an
+  `===`, `!==`, `==` or `!=` against `undefined`, `null` or `void 0`, `typeof ... === 'undefined'`,
+  `'API_URL' in process.env`, `Object.hasOwn(process.env, 'API_URL')` and
+  `process.env.hasOwnProperty('API_URL')`, on `process.env.X` (also `process.env['X']` and
+  `globalThis.process.env.X`), `import.meta.env.X`, `Bun.env.X`, `Deno.env.get('X')`, or a `const`
+  holding one (`const url = process.env.API_URL`, `const { API_URL } = process.env`). Also reported:
+  `process.env.X ?? fallback`, where `??` keeps the empty value and skips the fallback; a fallback of
+  `''` or `undefined` gives the same result and passes, and so does a `??` in a composition root,
+  which `nitpicker/no-branch-in-composition-root` already reports. The allowed forms test for a
+  value: `if (!process.env.API_URL)`, `process.env.API_URL || fallback`, a `.length` or `=== ''`
+  test of the same variable in the same condition (`url !== undefined && url !== ''`), or a schema
+  that rejects empty strings (`z.string().min(1)`). The rule reads no types. When an empty value is
+  a real setting, add an exception for the rule. The Java and Kotlin presets report the same mistake
+  on Spring configuration (`pmd/SpringNullOnlyConfigCheck`) and the Python preset on `os.environ`
+  (`env-none-only-check`).
 - `nitpicker/no-parameter-mutation` (type-aware): a mutating method (`push`, `pop`, `splice`,
   `sort`, `reverse`, `add`, `set`, `delete`, `clear` and the other array, `Set`, `Map` mutators of
   `no-mutating-method-in-domain`) called on a parameter, or an assignment, `++` or `delete` on an
