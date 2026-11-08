@@ -1,5 +1,6 @@
 import path from 'node:path';
 import { withoutAnsi } from '../../../shared/messages/terminal-text.mjs';
+import { withMessage } from '../../../shared/messages/finding-advice.mjs';
 
 function escaped(text) {
   return text.replaceAll(/[\\^$.*+?()[\]{}|]/gu, String.raw`\$&`);
@@ -20,7 +21,10 @@ export function withoutSnapshotRoot(text, snapshotRoot) {
 
 function namedFinding(finding, snapshotRoot) {
   return finding?.classification === 'tool-error' && typeof finding.message === 'string'
-    ? { ...finding, message: withoutSnapshotRoot(finding.message, snapshotRoot) }
+    ? withMessage(finding, {
+        message: withoutSnapshotRoot(finding.message, snapshotRoot),
+        allowedForm: withoutSnapshotRoot(finding.allowedForm, snapshotRoot),
+      })
     : finding;
 }
 

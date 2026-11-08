@@ -2,7 +2,9 @@ import { insideClass, simpleTypeName } from '../kotlin-facts.mjs';
 
 export const SPRING_UNUSED_CONTEXT_RULE = 'SpringUnusedContext';
 
-const MESSAGE = `This @SpringBootTest starts the whole application context but uses nothing from it: no injected or mock bean, no MockMvc, WebTestClient, TestRestTemplate, CapturedOutput or ApplicationEvents, and no web server port. Make it a unit test that creates the class with its constructor, or use a slice such as @WebMvcTest for one layer; @SpringBootTest is for integration and component tests.`;
+const ALLOWED_FORM =
+  'Make this @SpringBootTest a unit test that creates the class with its constructor, or use a slice such as @WebMvcTest for one layer; @SpringBootTest is for integration and component tests.';
+const MESSAGE = `${ALLOWED_FORM} This one starts the whole application context but uses nothing from it: no injected or mock bean, no MockMvc, WebTestClient, TestRestTemplate, CapturedOutput or ApplicationEvents, and no web server port.`;
 
 const SPRING_BOOT_TEST = 'org.springframework.boot.test.context';
 const MOCK_BEANS = new Set([
@@ -128,6 +130,7 @@ export function springContextFindings(files, { finding }) {
             line: klass.line,
             symbol: klass.qualified,
             message: MESSAGE,
+            allowedForm: ALLOWED_FORM,
           }),
         ),
     );
