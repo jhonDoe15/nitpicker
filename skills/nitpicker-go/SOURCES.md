@@ -112,3 +112,12 @@ Two adversarial reviews of the first version changed these rules:
 - **`layout` and `duplicates` are config errors with their reason**, not silently ignored.
 - **The project's `GOFLAGS` is read with `go env`**, so `go env -w` settings apply, and the tools
   build from a neutral environment so the project's `GOOS` or `GOFLAGS` cannot break them.
+- **Race detector review.** Two reviews of the first version changed it: parallel tests the
+  detector failed next to a race, and race-only tests that logged with `t.Log`, were still listed as
+  failing, so a failing test whose package raced or timed out is now rerun without `-race` instead
+  of judged by its output; a parent test's own failure is no longer hidden by a failing subtest; a
+  path with a space no longer loses the race; a report with one restorable stack is still a
+  finding; only blocks that start with `WARNING: DATA RACE` are cut from quoted output; the "not
+  checked" notice shows on every run, not only when it is new; cgo is part of the analyzer version
+  for the findings cache; and a timeout, ThreadSanitizer crash or goroutine limit under `-race`
+  falls back instead of failing the snapshot.

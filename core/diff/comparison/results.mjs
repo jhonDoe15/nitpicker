@@ -31,6 +31,22 @@ export function noChangesReport(context) {
   return { ...report, summary: { ...report.summary, noChanges: true } };
 }
 
+const SKIPPED_CHECK_RULES = new Set(['race-not-checked', 'mutation-skipped']);
+
+function skippedCheckNotices(outcomes) {
+  const findings = [...collect(outcomes, 'newFindings'), ...collect(outcomes, 'unchangedFindings')];
+  return [
+    ...new Set(
+      findings
+        .filter(
+          ({ rule, classification }) =>
+            classification === 'descriptive' && SKIPPED_CHECK_RULES.has(rule),
+        )
+        .map(({ tool, rule, message }) => `${tool}/${rule}: ${message}`),
+    ),
+  ];
+}
+
 function collect(outcomes, key) {
   return outcomes.flatMap(({ result }) => result[key]);
 }
@@ -80,7 +96,7 @@ function buildReport(context) {
       ...(context.policyAcceptanceSource === undefined
         ? {}
         : { policyAcceptanceSource: context.policyAcceptanceSource }),
-      notices,
+      notices: [...notices, ...skippedCheckNotices(outcomes)],
       ...scopeSummary(
         context.scope,
         outcomes.reduce((total, { outside }) => total + outside, 0),

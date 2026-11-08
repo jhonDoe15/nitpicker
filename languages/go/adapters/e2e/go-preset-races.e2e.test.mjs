@@ -62,12 +62,18 @@ describe.skipIf(!goE2eEnabled)('Go preset race detector end to end', () => {
     expect(result.exitCode).toBe(0);
   });
 
-  it('says that races were not checked when cgo is off', () => {
+  it('says in the notices that races were not checked when cgo is off', () => {
     vi.stubEnv('CGO_ENABLED', '0');
     const result = gate(project, 'new-race');
     expect(toolErrors(result)).toEqual([]);
     expect(newFindings(result)).toEqual([]);
-    expect(raceFindings(result)).toEqual(['race/race-not-checked descriptive']);
+    expect(raceFindings(result)).toEqual([]);
+    expect(result.json('summary.json').notices).toEqual([
+      'race/race-not-checked: Data races were not checked: go test -race needs cgo, which is off (CGO_ENABLED=0, or Go found no C compiler). Enable cgo (CGO_ENABLED=1 with a C compiler such as gcc on the PATH) on a platform the race detector supports to run the tests with -race.',
+    ]);
+    expect(result.text.split('\n').filter((line) => line.includes('Notices'))).toEqual([
+      'Notices (not failing):',
+    ]);
     expect(result.exitCode).toBe(0);
   });
 });
