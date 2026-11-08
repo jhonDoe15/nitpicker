@@ -415,7 +415,7 @@ it('fails on purpose', () => {
 
     it('fails when the edit touches the line of a legacy violation', () => {
       const { exitCode, stdoutText } = runDifference('touched', (text) =>
-        text.replace('empty = null', 'empty  =  null'),
+        text.replace('empty = null', 'unset = null'),
       );
 
       expect(stdoutText).toBe(
@@ -425,7 +425,7 @@ it('fails on purpose', () => {
           'Quality gate summary',
           '✖ 1 new enforceable violation',
           '  eslint-lint/nitpicker/no-null: Use `undefined` for an absent value, and an optional field or parameter (`value?: T`) where it may be missing. `null` is only for strict comparison with a library value and the `JSON.stringify` replacer argument. An exception fits only when a framework or library requires it.',
-          '    src/main/legacy.js:2:24',
+          '    src/main/legacy.js:2:22',
           '    If this is intended, add {"rule":"nitpicker/no-null","paths":["src/main/legacy.js"],"reason":"..."} to "exceptions" in nitpicker.config.json.',
           'Ran only: eslint-lint. Run nitpicker without --analyzer before you finish.',
           `Full diagnostics: ${sharedRoot}/reports/diff/report.txt`,

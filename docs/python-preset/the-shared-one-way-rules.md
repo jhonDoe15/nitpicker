@@ -923,7 +923,9 @@ t)`, `asyncio.timeout(t)`, `fail_after(t)`, `wait(t)`) inside `pytest.raises` or
   `S602`, `S604`, `S605`, `T201`, `T203`) are strict: a finding on a line the change adds or edits
   is new even when the base had a finding of the same rule in that file, so code that is touched
   is held to the rule while untouched legacy stays baselined. The repeats of one subject in a file
-  are numbered `#2`, `#3`, so a new site never hides behind an old one.
+  are numbered `#2`, `#3`, and base and head repeats are paired by line, so a new site never hides
+  behind an old one and the new one is the one on the added line. A line ruff format or black only
+  reformatted is not an edited line.
 - Deprecation: mypy runs with `--enable-error-code deprecated` when it is version 1.14 or later (the
   code does not exist before), and the generated pyright config sets `reportDeprecated` to
   `error`, so using an API marked `@deprecated` is a finding in each checker.
