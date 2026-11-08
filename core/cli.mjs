@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 import { runAggregateCli } from './diff/sharding/aggregate-shards.mjs';
 import { reportingProgress } from './diff/execution/progress.mjs';
-import { runScheduler } from './diff/execution/run-analyzers.mjs';
+import { runScheduler, selectAnalyzers } from './diff/execution/run-analyzers.mjs';
 import { runCacheCommand } from './command/cache.mjs';
 import { runExplainCommand, runRulesCommand } from './command/reference/reference.mjs';
 import { runBaseCommand } from './command/base.mjs';
@@ -16,6 +16,7 @@ import {
 import { resolveProjectHeadPolicy } from './conventions/project-head-policy.mjs';
 import { configureAnalyzers } from './configuration/configure-analyzers.mjs';
 import { presetAnalyzers } from './configuration/preset-analyzers.mjs';
+import { assertProjectPeers } from './configuration/peer-check/project-peers.mjs';
 import { withRunLock } from './command/run-lock.mjs';
 import { runSnapshotCli } from './command/snapshot.mjs';
 import { writeComparisonOutcome } from './command/comparison/outcome.mjs';
@@ -136,6 +137,11 @@ function runConfigured(cli) {
   for (const note of describeDisableCascade(presetSet, config)) {
     cli.stderr.write(`nitpicker: ${note}\n`);
   }
+  assertProjectPeers({
+    projectRoot: currentProjectRoot,
+    analyzers: selectAnalyzers(analyzers, options.analyzerNames),
+    configuredRunner: config.tools?.tests?.runner,
+  });
   return withRunLock({ projectRoot: currentProjectRoot, stderr: cli.stderr }, () => {
     if (options.all) {
       for (const note of historyAvailabilityNotes(config, headPolicy, currentProjectRoot)) {

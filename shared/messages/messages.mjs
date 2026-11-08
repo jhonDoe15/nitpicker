@@ -6,6 +6,10 @@ const ALLOWED_OPEN = '\u27E6';
 const ALLOWED_CLOSE = '\u27E7';
 const ALLOWED_SPAN = /\u27E6([^\u27E7]*)\u27E7/gu;
 
+export function listNames(names) {
+  return names.length > 1 ? `${names.slice(0, -1).join(', ')} and ${names.at(-1)}` : names[0];
+}
+
 export function allowedForm(text) {
   return `${ALLOWED_OPEN}${text}${ALLOWED_CLOSE}`;
 }

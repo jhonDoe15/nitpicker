@@ -7,6 +7,7 @@ import {
   readFileSync,
   readdirSync,
   realpathSync,
+  renameSync,
   rmSync,
   writeFileSync,
 } from 'node:fs';
@@ -225,6 +226,7 @@ suite('packed nitpicker in a separate consumer', () => {
       let rules;
       let explanation;
       let packageLocation;
+      let withoutTypeScript;
       const reports = (name) => path.join(root, 'reports', name);
       const invoke = (args, cwd = root) =>
         command(cwd, 'npx', ['--no-install', 'nitpicker', ...args]);
@@ -342,6 +344,10 @@ suite('packed nitpicker in a separate consumer', () => {
           '--output',
           reports('fixed'),
         ]);
+        const typeScript = path.join(root, 'node_modules/typescript');
+        renameSync(typeScript, `${typeScript}-aside`);
+        withoutTypeScript = invoke(['--base', 'main', '--analyzer', 'eslint-lint']);
+        renameSync(`${typeScript}-aside`, typeScript);
         initialized = invoke(['init', '--agents-md', '--ci', 'github']);
       }, 600_000);
       afterAll(() => {
@@ -395,6 +401,12 @@ suite('packed nitpicker in a separate consumer', () => {
             JSON.parse(readFileSync(path.join(root, 'node_modules', peer, 'package.json'))).version,
         );
         expect(installedVersions).toEqual(peers.map((peer) => manifest.devDependencies[peer]));
+      });
+      it('stops in one line, before any analyzer, when typescript is missing from node_modules', () => {
+        expect(withoutTypeScript).toEqual({
+          status: 2,
+          output: `nitpicker failed: typescript is not installed in ${realpathSync(root)}. Run npm install (it is in package.json).\n`,
+        });
       });
       it('keeps the policy hash stable across two runs', () => {
         expect(second.status, second.output).toBe(1);

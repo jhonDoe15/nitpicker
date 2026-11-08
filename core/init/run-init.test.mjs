@@ -5,7 +5,7 @@ import { packageVersion } from '../help/package-version.mjs';
 import { INIT_USAGE_TEXT } from '../help/usage-text.mjs';
 import { readSnippet } from './files/agents-md.mjs';
 import { unifiedDiff } from './files/line-diff.mjs';
-import { init, initWith, readText, useProjects } from './test-support/projects.mjs';
+import { init, initWith, readText, useProjects, withPeers } from './test-support/projects.mjs';
 
 const createProject = useProjects();
 const TYPESCRIPT = { 'package.json': '{}', 'src/index.ts': 'export const value = 1;\n' };
@@ -107,7 +107,7 @@ describe('nitpicker init', () => {
   it('writes the config and reports the setup of a TypeScript project', () => {
     const root = project({
       ...TYPESCRIPT,
-      'package.json': '{"devDependencies":{"typescript":"6"}}',
+      ...withPeers({ typescript: '6.0.3' }),
       'pnpm-lock.yaml': '',
     });
 
@@ -131,7 +131,7 @@ describe('nitpicker init', () => {
     const deps = { nitpicker: '1', typescript: '6', '@types/node': '25', jest: '30' };
     const root = project({
       ...TYPESCRIPT,
-      'package.json': JSON.stringify({ scripts: { test: 'jest' }, devDependencies: deps }),
+      ...withPeers(deps, { scripts: { test: 'jest' } }),
     });
 
     expect(init(root).stdoutText).toBe(

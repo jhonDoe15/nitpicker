@@ -8,10 +8,10 @@ import { globMatcher } from '../../../shared/paths/glob.mjs';
 import { hasProjectFile, insideProject } from '../support/inside-project.mjs';
 
 const COMMANDS = {
-  npm: { add: 'npm install --save-dev', run: 'npx nitpicker' },
-  pnpm: { add: 'pnpm add --save-dev', run: 'pnpm exec nitpicker' },
-  yarn: { add: 'yarn add --dev', run: 'yarn nitpicker' },
-  bun: { add: 'bun add --dev', run: 'bunx nitpicker' },
+  npm: { add: 'npm install --save-dev', install: 'npm install', run: 'npx nitpicker' },
+  pnpm: { add: 'pnpm add --save-dev', install: 'pnpm install', run: 'pnpm exec nitpicker' },
+  yarn: { add: 'yarn add --dev', install: 'yarn install', run: 'yarn nitpicker' },
+  bun: { add: 'bun add --dev', install: 'bun install', run: 'bunx nitpicker' },
 };
 const LOCKFILES = {
   npm: ['package-lock.json', 'npm-shrinkwrap.json'],
@@ -123,6 +123,7 @@ export function describePackageManager(projectRoot) {
     locked,
     declaration,
     add: addCommand(projectRoot, manager),
+    install: COMMANDS[manager.name].install,
     run: COMMANDS[manager.name].run,
   };
 }
