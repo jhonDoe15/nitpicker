@@ -1035,6 +1035,45 @@
         }
       }
     },
+    "protocols": {
+      "description": "Lifecycle contracts for the protocol-contract rule: a type whose open member must be followed by a close member on every exit.",
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["type", "open", "close"],
+        "properties": {
+          "type": {
+            "description": "The class or interface name, such as \"Session\".",
+            "type": "string",
+            "minLength": 1
+          },
+          "open": {
+            "description": "Members that start the lifecycle.",
+            "type": "array",
+            "minItems": 1,
+            "items": { "type": "string", "minLength": 1 }
+          },
+          "close": {
+            "description": "Members that end the lifecycle; one must run on every exit.",
+            "type": "array",
+            "minItems": 1,
+            "items": { "type": "string", "minLength": 1 }
+          },
+          "steps": {
+            "description": "Members that must come after an open member.",
+            "type": "array",
+            "minItems": 1,
+            "items": { "type": "string", "minLength": 1 }
+          },
+          "reason": {
+            "description": "Why the contract exists.",
+            "type": "string",
+            "pattern": "\\S"
+          }
+        }
+      }
+    },
     "kotlin": {
       "description": "Kotlin preset settings.",
       "type": "object",
@@ -1357,7 +1396,16 @@
                     "unresolved-import",
                     "co-change",
                     "test-console-output",
-                    "doc-comment-content"
+                    "doc-comment-content",
+                    "mutable-state-escape",
+                    "context-threading",
+                    "caller-protocol",
+                    "protocol-contract",
+                    "forwarding-chain",
+                    "disjoint-consumer-groups",
+                    "data-clump",
+                    "repeated-policy-decision",
+                    "foreign-state-decision"
                   ]
                 }
               }
@@ -1557,7 +1605,16 @@
                     "unresolved-import",
                     "co-change",
                     "test-console-output",
-                    "doc-comment-content"
+                    "doc-comment-content",
+                    "mutable-state-escape",
+                    "context-threading",
+                    "caller-protocol",
+                    "protocol-contract",
+                    "forwarding-chain",
+                    "disjoint-consumer-groups",
+                    "data-clump",
+                    "repeated-policy-decision",
+                    "foreign-state-decision"
                   ]
                 }
               }
@@ -1753,7 +1810,8 @@
           "i18n": false,
           "python": false,
           "kotlin": false,
-          "go": false
+          "go": false,
+          "protocols": false
         },
         "allOf": [
           {
@@ -2116,7 +2174,8 @@
           "react": false,
           "i18n": false,
           "python": false,
-          "go": false
+          "go": false,
+          "protocols": false
         },
         "allOf": [
           {
@@ -2290,7 +2349,8 @@
           "i18n": false,
           "kotlin": false,
           "go": false,
-          "spring": false
+          "spring": false,
+          "protocols": false
         },
         "allOf": [
           {
@@ -2446,7 +2506,8 @@
           "kotlin": false,
           "duplicates": false,
           "spring": false,
-          "testConsole": false
+          "testConsole": false,
+          "protocols": false
         },
         "allOf": [
           {
@@ -2709,7 +2770,16 @@
         "change-history/co-change",
         "test-console-output",
         "doc-comment-content",
-        "facts/doc-comment-content"
+        "facts/doc-comment-content",
+        "mutable-state-escape",
+        "context-threading",
+        "caller-protocol",
+        "protocol-contract",
+        "forwarding-chain",
+        "disjoint-consumer-groups",
+        "data-clump",
+        "repeated-policy-decision",
+        "foreign-state-decision"
       ]
     }
   }
