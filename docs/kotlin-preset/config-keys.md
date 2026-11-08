@@ -2,7 +2,7 @@
 
 Part of the [Kotlin preset guide](../kotlin-preset.md).
 
-`base`, `disable`, `analyzers`, `thresholds`, `exclude`, `duplicates`, `legacyInventory` and `history` (the opt-in
+`base`, `disable`, `analyzers`, `analyzerTimeoutMinutes`, `thresholds`, `exclude`, `duplicates`, `legacyInventory` and `history` (the opt-in
 [change history](../usage.md#change-history) check) as for the Java preset
 (legacy inventory sources are the findings' `identity`, for example
 `fp:nitpicker/subject=This expression contains a magic number. ...`). `kotlin.formatter` and

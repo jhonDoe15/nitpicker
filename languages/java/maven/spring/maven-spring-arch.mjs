@@ -58,7 +58,7 @@ function publish(staging, classes) {
   }
 }
 
-function compileRules({ classes, sources, libraries, cwd, spawn }) {
+function compileRules({ classes, sources, libraries, cwd, spawn, timeoutMs }) {
   if (existsSync(classes)) {
     return;
   }
@@ -73,6 +73,7 @@ function compileRules({ classes, sources, libraries, cwd, spawn }) {
       args: sources,
       cwd,
       spawn,
+      timeoutMs,
       accept: (result) => result.status === 0,
     });
   } catch (error) {
@@ -86,7 +87,8 @@ function existing(entries) {
   return entries.filter((entry) => existsSync(entry));
 }
 
-function runRules({ module, classpaths, libraries, locations, springRoles, spawn }) {
+function runRules(options) {
+  const { module, classpaths, libraries, locations, springRoles, spawn, timeoutMs } = options;
   const { classes, output } = locations;
   const projectPath = [
     module.outputDirectory,
@@ -102,6 +104,7 @@ function runRules({ module, classpaths, libraries, locations, springRoles, spawn
     args: [output, module.outputDirectory, module.testOutputDirectory],
     cwd: module.basedir,
     spawn,
+    timeoutMs,
     accept: (result) => result.status === 0,
   });
 }
@@ -116,6 +119,7 @@ export function runSpringArch(options) {
     archRules,
     springRoles,
     spawn = spawnSync,
+    timeoutMs,
   } = options;
   if (!archRules) {
     return;
@@ -130,6 +134,14 @@ export function runSpringArch(options) {
     cacheKey({ sources, versions: `${pinned.archunit}|${pinned.asm}`, spawn }),
   );
   const libraries = existing(tools.archunit);
-  compileRules({ classes, sources, libraries, cwd: module.basedir, spawn });
-  runRules({ module, classpaths, libraries, springRoles, locations: { classes, output }, spawn });
+  compileRules({ classes, sources, libraries, cwd: module.basedir, spawn, timeoutMs });
+  runRules({
+    module,
+    classpaths,
+    libraries,
+    springRoles,
+    locations: { classes, output },
+    spawn,
+    timeoutMs,
+  });
 }

@@ -147,7 +147,7 @@ export function cacheDirectory(name) {
   return path.join(root, name);
 }
 
-export function resolveToolSet({ projectRoot, maven, tools, spawn }) {
+export function resolveToolSet({ projectRoot, maven, tools, spawn, timeoutMs }) {
   const directory = cacheDirectory(`maven-tools-${toolsKey(tools)}`);
   const cached = readClasspaths(directory, Object.keys(tools));
   if (missing(cached).length === 0) {
@@ -158,6 +158,7 @@ export function resolveToolSet({ projectRoot, maven, tools, spawn }) {
     projectRoot,
     maven,
     spawn,
+    timeoutMs,
     args: [
       '--quiet',
       '--file',
@@ -176,11 +177,20 @@ export function resolveToolSet({ projectRoot, maven, tools, spawn }) {
   return resolved;
 }
 
-export function resolveTools({ projectRoot, maven, pinned, launcherVersions, extraTools, spawn }) {
+export function resolveTools({
+  projectRoot,
+  maven,
+  pinned,
+  launcherVersions,
+  extraTools,
+  spawn,
+  timeoutMs,
+}) {
   return resolveToolSet({
     projectRoot,
     maven,
     tools: toolDependencies(pinned, launcherVersions, extraTools),
     spawn,
+    timeoutMs,
   });
 }

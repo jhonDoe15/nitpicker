@@ -9,7 +9,7 @@ flags the TypeScript-only keys this preset refuses. A Python project has no `nod
 points at the published file: `"$schema": "https://raw.githubusercontent.com/jhonDoe15/nitpicker/main/spec/config.schema.json"`. nitpicker ignores the line; see
 [Editor support](usage.md#editor-support).
 
-Config keys with this preset: `base`, `disable` (the analyzer names are `python` and `mutation`), `analyzers`, the keys shared by all languages,
+Config keys with this preset: `base`, `disable` (the analyzer names are `python` and `mutation`), `analyzers`, `analyzerTimeoutMinutes`, the keys shared by all languages,
 `thresholds` (`crapLimit`, enforced from slice 3, the file limits `fileLines`, `testFileLines`,
 `lineLength` and `folderFiles`, the size limits `folderDepth`, `classMethods`, `classFields` and
 `inheritanceDepth`, and the [slow test](slow-tests.md) budgets `unitTestSeconds` and

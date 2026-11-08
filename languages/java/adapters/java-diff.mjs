@@ -156,11 +156,9 @@ function withGradleReports(projectRoot, options) {
 
 function mavenFindings(projectRoot, options) {
   const { moduleDirs, testsFailures, formatAdvice } = runMavenPreset(projectRoot, {
-    maven: options.maven,
-    spawn: options.spawn,
-    policy: options.policy,
+    ...options,
+    timeoutMs: options.budget?.mavenCommandTimeoutMs,
     configs: toolConfigChoices(projectRoot, options.policy),
-    environment: options.environment,
   });
   const duplicates = {
     reportRoot: path.join(projectRoot, MAVEN_REPORT_DIRECTORY),

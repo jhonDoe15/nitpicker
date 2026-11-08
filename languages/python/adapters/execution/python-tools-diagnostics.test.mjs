@@ -198,6 +198,21 @@ describe('failure messages', () => {
       'coverage run timed out after 25 minutes in the virtualenv environment',
     );
   });
+
+  it('follows a configured analyzer deadline', () => {
+    const { context } = contextFor(project());
+
+    const error = failure({
+      context: { ...context, analyzerDeadlineMs: 90 * 60_000 },
+      command: ['coverage', 'run'],
+      result: { error: { code: 'ETIMEDOUT' } },
+      rule: 'x',
+    });
+
+    expect(error.message).toBe(
+      'coverage run timed out after 90 minutes in the virtualenv environment',
+    );
+  });
 });
 describe('tool versions', () => {
   it('lists the versions of the tools in use', () => {

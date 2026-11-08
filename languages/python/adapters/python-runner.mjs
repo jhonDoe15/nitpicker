@@ -15,6 +15,7 @@ import { mutationFindings } from './mutation/python-mutation.mjs';
 import { applyRuleHints } from '../rules/rule-hints.mjs';
 import { readPythonFindings } from './python-reports.mjs';
 import { createToolContext, runPythonTools } from './python-tools.mjs';
+import { analyzerDeadlineMs } from '../../../shared/analyzer-timeouts/analyzer-timeouts.mjs';
 
 const UNEXPECTED_FAILURE_RULES = {
   [PYTHON_ANALYZER_NAME]: 'python-failed',
@@ -48,6 +49,7 @@ function toolContext({ projectRoot, liveRoot, settings, policy, spawn }, reportR
     policyRoot: policy?.policyRoot,
     toolPrecedence: policy?.toolPrecedence,
     pytestAddopts: process.env.PYTEST_ADDOPTS,
+    analyzerDeadlineMs: analyzerDeadlineMs(process.env),
   });
 }
 

@@ -53,8 +53,19 @@ function writeAuxClasspath({ module, reportDir, classpaths }) {
   return file;
 }
 
+function pmdRulesets(context) {
+  const { mainRuleset, testsRuleset, layers } = writeRulesets(context);
+  return [
+    layers.nitpicker ?? NITPICKER_RULESET,
+    ...(layers.project === undefined ? [] : [layers.project]),
+    testsRuleset,
+    mainRuleset,
+  ].join(',');
+}
+
 export function runPmd(options) {
-  const { module, reportDir, tools, classpaths, configs, spring, springRules, spawn } = options;
+  const { module, reportDir, tools, classpaths, configs, spring, springRules, spawn, timeoutMs } =
+    options;
   const report = path.join(reportDir, 'pmd.sarif');
   const linted = [...module.sourceRoots, ...module.testSourceRoots].filter((root) =>
     existsSync(root),
@@ -64,19 +75,7 @@ export function runPmd(options) {
     return;
   }
   const auxClasspath = writeAuxClasspath({ module, reportDir, classpaths });
-  const { mainRuleset, testsRuleset, layers } = writeRulesets({
-    module,
-    reportDir,
-    configs,
-    spring,
-    springRules,
-  });
-  const rulesets = [
-    layers.nitpicker ?? NITPICKER_RULESET,
-    ...(layers.project === undefined ? [] : [layers.project]),
-    testsRuleset,
-    mainRuleset,
-  ];
+  const rulesets = pmdRulesets({ module, reportDir, configs, spring, springRules });
   runJava({
     tool: 'PMD',
     classpath: tools.pmd,
@@ -90,7 +89,7 @@ export function runPmd(options) {
       '--report-file',
       report,
       '--rulesets',
-      rulesets.join(','),
+      rulesets,
       '--aux-classpath',
       `file:${auxClasspath}`,
       '--suppress-marker',
@@ -101,10 +100,19 @@ export function runPmd(options) {
     cwd: module.basedir,
     accept: () => existsSync(report),
     spawn,
+    timeoutMs,
   });
 }
 
-export function runSpotbugs({ module, reportDir, tools, configs, auxClasspath = [], spawn }) {
+export function runSpotbugs({
+  module,
+  reportDir,
+  tools,
+  configs,
+  auxClasspath = [],
+  spawn,
+  timeoutMs,
+}) {
   const report = path.join(reportDir, 'spotbugs.sarif');
   const hasClasses =
     existsSync(module.outputDirectory) && readdirSync(module.outputDirectory).length > 0;
@@ -134,10 +142,11 @@ export function runSpotbugs({ module, reportDir, tools, configs, auxClasspath = 
     cwd: module.basedir,
     accept: () => existsSync(report),
     spawn,
+    timeoutMs,
   });
 }
 
-export function runFormat({ module, reportDir, tools, javaStyle = 'google', spawn }) {
+export function runFormat({ module, reportDir, tools, javaStyle = 'google', spawn, timeoutMs }) {
   const report = path.join(reportDir, 'format.txt');
   const files = javaFiles([...module.sourceRoots, ...module.testSourceRoots]);
   const formatter = JAVA_FORMATTERS[javaStyle];
@@ -153,6 +162,7 @@ export function runFormat({ module, reportDir, tools, javaStyle = 'google', spaw
     args: [...formatter.flags, '--dry-run', ...files],
     cwd: module.basedir,
     spawn,
+    timeoutMs,
   });
   writeFileSync(report, result.stdout);
 }
@@ -225,7 +235,8 @@ export function writeCheckstyleSetup({
   return { config, properties };
 }
 
-function checkstyleReport({ module, setup, tools, pinned, roots, report, always, spawn }) {
+function checkstyleReport(options) {
+  const { module, setup, tools, pinned, roots, report, always, spawn, timeoutMs } = options;
   const files = javaFiles(roots);
   if (files.length === 0) {
     if (always) {
@@ -241,15 +252,18 @@ function checkstyleReport({ module, setup, tools, pinned, roots, report, always,
     cwd: module.basedir,
     accept: () => existsSync(report),
     spawn,
+    timeoutMs,
   });
 }
 
-export function runCheckstyle({ module, reportDir, tools, configs, pinned, style, spawn }) {
+export function runCheckstyle(options) {
+  const { module, reportDir, tools, configs, pinned, style, spawn, timeoutMs } = options;
   const context = {
     module,
     tools,
     pinned,
     spawn,
+    timeoutMs,
     setup: checkstyleSetup({ reportDir, tools, configs, pinned, style, spawn }),
   };
   checkstyleReport({
