@@ -26,6 +26,10 @@ import { presetAnalyzers } from '../../configuration/preset-analyzers.mjs';
 import { resolveHeadPolicy } from '../../../languages/typescript/preset/head-policy.mjs';
 import { renderConsoleSummary } from '../reporting/summary.mjs';
 import { AGGREGATE_USAGE_TEXT } from '../../help/usage-text.mjs';
+import {
+  TROUBLESHOOTING_ANCHORS,
+  withTroubleshooting,
+} from '../../../shared/messages/troubleshooting.mjs';
 import { writeGithubOutput } from '../reporting/github/emit.mjs';
 import { describeError } from '../../../shared/messages/error-chain.mjs';
 import {
@@ -188,9 +192,13 @@ export function runAggregateCli({
     if (outputRoot !== undefined) {
       clearDiffReports(outputRoot);
     }
-    stderr.write(`Quality shard aggregation failed: ${describeError(error)}\n`);
+    stderr.write(`Quality shard aggregation failed: ${aggregationFailure(error)}\n`);
     return 2;
   }
+}
+
+function aggregationFailure(error) {
+  return withTroubleshooting(describeError(error), TROUBLESHOOTING_ANCHORS.shardAggregationFails);
 }
 
 function analyzerExclusions(analyzers) {

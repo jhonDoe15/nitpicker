@@ -39,6 +39,7 @@ whole project, so it takes as long as a full run; finish with the plain run belo
    - 2: no new findings, but a tool failed. Fix the cause it names (usually a module that does not load,
      or Go missing from the `PATH`) and rerun. Exit 2 is never a pass. If it
      says another run is in progress, wait for that run; never kill it.
+     When the message links to [troubleshooting](https://github.com/jhonDoe15/nitpicker/blob/main/docs/troubleshooting.md), the fix is there.
 5. Never suppress: no `//nolint`, `//lint:ignore`, build tags that hide a file from the checks,
    config `exclude`/`exceptions`, legacy entries, or weakened tests (`t.Skip` added to get past a
    failure). If a finding seems wrong, stop and ask. Never pass `--accept-policy-change`, set `NITPICKER_ACCEPT_POLICY_CHANGE`

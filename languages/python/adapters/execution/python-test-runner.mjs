@@ -3,6 +3,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { projectFilePaths } from '../../../../shared/project-files/project-files.mjs';
 import { environmentError } from './python-environment.mjs';
+import { TROUBLESHOOTING_ANCHORS } from '../../../../shared/messages/troubleshooting.mjs';
 import { probe, probeVersion, VERSION_PATTERN } from './python-process.mjs';
 import {
   readOptional,
@@ -176,6 +177,7 @@ export function pytestCommand(context) {
   if (probe === undefined) {
     throw environmentError(
       `pytest is used by this project but cannot be imported in the ${context.launcher.description} environment: install it there, or set "python.testRunner" to "unittest"`,
+      TROUBLESHOOTING_ANCHORS.pythonToolMissing,
     );
   }
   return [
@@ -234,6 +236,7 @@ function requireRunner(context, runner) {
   if (runnerVersion(context, runner) === 'missing') {
     throw environmentError(
       `${RUNNER_DISTRIBUTIONS[runner]} runs the tests of this project but is not installed in the ${context.launcher.description} environment: install it there, or set "python.testRunner" to the runner the tests use`,
+      TROUBLESHOOTING_ANCHORS.pythonToolMissing,
     );
   }
 }
@@ -242,6 +245,7 @@ function djangoCommand(context) {
   if (readDjangoScript(context.projectRoot) === undefined) {
     throw environmentError(
       `the tests run with Django's manage.py test, but there is no manage.py at ${path.join(context.projectRoot, DJANGO_SCRIPT)} or one directory below it: add it there, or set "python.testRunner" to the runner the tests use`,
+      TROUBLESHOOTING_ANCHORS.pythonToolMissing,
     );
   }
   requireRunner(context, 'django');

@@ -22,6 +22,7 @@ import {
   runJacocoReport,
   runPit,
 } from './maven-tests.mjs';
+import { explainedError } from '../../../shared/messages/troubleshooting.mjs';
 import { readPitMutators } from '../builds/java-build.mjs';
 
 const roots = [];
@@ -195,7 +196,7 @@ describe('collectTestResults', () => {
         isArchunit: archunitMatcher(),
       });
     }).toThrow(
-      new Error(
+      explainedError(
         [
           '12 tests fail; the build stopped, so no other check ran. Fix the tests and rerun:',
           ...listed,
@@ -218,7 +219,7 @@ describe('collectTestResults', () => {
       });
     };
     const failing = (...lines) =>
-      new Error(
+      explainedError(
         [
           `${String(lines.length)} ${lines.length === 1 ? 'test fails' : 'tests fail'}; ` +
             'the build stopped, so no other check ran. Fix the tests and rerun:',
