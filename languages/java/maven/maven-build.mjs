@@ -133,8 +133,7 @@ export function runMavenPreset(
   }
   const pinned = readPinnedTools();
   const work = mkdtempSync(path.join(tmpdir(), 'nitpicker-maven-'));
-  const quick = policy.quick === true;
-  const run = { projectRoot, maven, spawn, pinned, quick };
+  const run = { projectRoot, maven, spawn, pinned, quick: policy.quick === true };
   try {
     const { modules, effectivePom } = readModules({ ...run, work });
     const kotlin = kotlinSetup({ ...run, policy, modules, effectivePom, work, environment });
@@ -146,7 +145,7 @@ export function runMavenPreset(
     }));
     const tools = resolveTools({
       ...run,
-      launcherVersions: quick ? [] : missingLauncherVersions(analyzed),
+      launcherVersions: run.quick ? [] : missingLauncherVersions(analyzed),
       extraTools: extraTools({ modules, analyzed, policy, pinned, kotlin }),
     });
     const testsFailures = analyzeAll({
