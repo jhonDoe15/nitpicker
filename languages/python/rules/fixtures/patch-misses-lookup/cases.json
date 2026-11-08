@@ -1,0 +1,7 @@
+[
+  {
+    "tool": "python-rules",
+    "rule": "patch-misses-lookup",
+    "mention": "looks it up"
+  }
+]
