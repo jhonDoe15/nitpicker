@@ -1,8 +1,8 @@
+import { LIBRARY_STUBS, MOCK_REVIEW_FINDINGS, MOCK_RULE_FILES } from './kotlin-mock-data.mjs';
 import { PLURAL_FINDINGS, PLURALS } from './kotlin-plural-data.mjs';
 
 const MAIN = 'src/main/kotlin/demo/orders';
 const TEST = 'src/test/kotlin/demo/orders';
-const SPRING = 'src/test/kotlin/org/springframework';
 
 const STATUS = `package demo.orders
 
@@ -96,11 +96,6 @@ internal class Outbox(private val dir: String, private val limit: Int = 10) {
 fun quote(): String = price(100).toString() + Quote(1).cents + QueueProperties().name + Outbox("d").path()
 `;
 
-const CONFIGURATION_PROPERTIES = `package org.springframework.boot.context.properties
-
-annotation class ConfigurationProperties(val prefix: String)
-`;
-
 const PRICING_TEST = `package demo.orders
 
 import kotlin.test.Test
@@ -191,16 +186,6 @@ class WaitingTest {
 }
 `;
 
-const SPRING_BOOT_TEST = `package org.springframework.boot.test.context
-
-annotation class SpringBootTest(val webEnvironment: String = "MOCK")
-`;
-
-const AUTOWIRED = `package org.springframework.beans.factory.annotation
-
-annotation class Autowired
-`;
-
 const CONTEXT_TEST = `package demo.orders
 
 import kotlin.test.Test
@@ -236,14 +221,12 @@ export const REVIEW_RULE_FILES = {
   [`${MAIN}/Plurals.kt`]: PLURALS,
   [`${MAIN}/Formatting.kt`]: FORMATTING,
   [`${MAIN}/Pricing.kt`]: PRICING,
-  ['src/main/kotlin/org/springframework/boot/context/properties/ConfigurationProperties.kt']:
-    CONFIGURATION_PROPERTIES,
   [`${TEST}/PricingTest.kt`]: PRICING_TEST,
   [`${MAIN}/Inventory.kt`]: INVENTORY,
   [`${TEST}/WaitingTest.kt`]: WAITING_TEST,
   [`${TEST}/ContextTest.kt`]: CONTEXT_TEST,
-  [`${SPRING}/boot/test/context/SpringBootTest.kt`]: SPRING_BOOT_TEST,
-  [`${SPRING}/beans/factory/annotation/Autowired.kt`]: AUTOWIRED,
+  ...LIBRARY_STUBS,
+  ...MOCK_RULE_FILES,
 };
 
 export const EXPECTED_REVIEW_FINDINGS = [
@@ -268,7 +251,8 @@ export const EXPECTED_REVIEW_FINDINGS = [
   'unused-option Outbox.limit',
   'unused-option pad.width',
   'unused-option price.discount',
-];
+  ...MOCK_REVIEW_FINDINGS,
+].toSorted();
 
 const EMPTY_JAR = Buffer.from([0x50, 0x4b, 0x05, 0x06, ...Array.from({ length: 18 }, () => 0)]);
 
