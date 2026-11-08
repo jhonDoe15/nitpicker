@@ -245,16 +245,30 @@ when the code is right, for example `{ "rule": "pmd/SpringDataNoSaveInLoop", "pa
 - `SpringTransactionalCheckedRollback` reports the `throws` clause of a `@Transactional` method
   (or a public method of a `@Transactional` class) that names a checked exception, unless the
   annotation has `rollbackFor` or `readOnly = true`. `SpringTransactionalReadOnlyWrite` reports a
-  repository or `EntityManager` write (a call or a method reference such as `forEach(repo::save)`,
-  and repository methods named with a write verb, as above) in a method under `readOnly = true`,
-  set on the method or inherited from the class; any `@Transactional` on the method, the jakarta
-  one included, overrides the class. `SpringProxySelfCall` also reports `this::method` references.
+  write from the shared list below (a call or a method reference such as `forEach(repo::save)`) in
+  a method under `readOnly = true`, set on the method or inherited from the class; any
+  `@Transactional` on the method, the jakarta one included, overrides the class. It also reports a
+  setter call or field write on an entity the same method loaded into a local from a repository
+  `find...`, `get...`, `read...`, `query...`, `search...`, `load...` or `fetch...` method (unwrapped
+  with `orElseThrow()`, `orElse`, `orElseGet` or `get()`) or from `EntityManager.find`,
+  `getReference` or `merge`: dirty checking would write it in a normal transaction and drops it under
+  `readOnly`. Map the entity to a DTO when the change only shapes the response. `SpringProxySelfCall` also reports `this::method` references.
   `SpringNoSwallowedTransactionException` also covers a private or package-private helper of a
   `@Transactional` class, and a helper that a `@Transactional` method of the same class calls.
 - Writes and transactions share one list of writes: a repository or `EntityManager` write named as
   above (a verb name counts when the verb is followed by an uppercase letter, a digit, `_` or
   nothing, so `updatedSince` is a read), `JdbcTemplate` or `NamedParameterJdbcTemplate` `update` and `batchUpdate`, `JdbcClient`
-  `update()` and `Query.executeUpdate()`. `SpringDataWriteWithoutTransaction` reports a method
+  `update()` and `Query.executeUpdate()`, `execute` on either JDBC template when its SQL (a literal
+  or a string constant of the same file) starts with `insert`, `update`, `delete`, `merge`,
+  `upsert`, `replace` or `truncate`, a jOOQ `insertInto`, `update`, `deleteFrom` or `mergeInto`
+  chain that runs (`execute`, `executeAsync` or a `fetch...` after `returning`), the
+  `DSLContext` `executeInsert`, `executeUpdate` and `executeDelete` calls, and `store`, `insert`,
+  `update`, `delete` or `merge` on a jOOQ `TableRecord`. A repository call that returns `int`,
+  `Integer` or `void` counts as a `@Modifying` query whatever its name, unless the name starts like
+  a read (`find`, `get`, `count`, `exists`, `sum`, `total`, `max` and the like); for
+  `SpringTransactionalReadOnlyWrite`, Nitpicker then drops the finding when the repository interface
+  in the project sources declares that method with `@Query` and without `@Modifying` or
+  `@Procedure`. `SpringDataWriteWithoutTransaction` reports a method
   declared on a Spring Data repository that is annotated `@Modifying`, or named as a derived delete
   (`deleteBy...`, `removeAllBy...`) on a `JpaRepository`, when neither the method nor the interface
   carries `@Transactional` (Spring Data opens transactions only for the methods it inherits).
