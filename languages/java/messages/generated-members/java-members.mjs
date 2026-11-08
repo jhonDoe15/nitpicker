@@ -5,22 +5,10 @@ const CLASS_HEADER =
 const TOKEN = /(?<![=!<>+\-*/%&|^])=(?!=)|[(){};]/gu;
 const IDENTIFIER = /^[A-Za-z_$][\w$]*$/u;
 const ANNOTATION_START = /@\s*([A-Za-z_$][\w$]*(?:\s*\.\s*[A-Za-z_$][\w$]*)*)\s*/uy;
-const MODIFIERS = new Set([
-  'public',
-  'protected',
-  'private',
-  'static',
-  'final',
-  'transient',
-  'volatile',
-  'abstract',
-  'synchronized',
-  'native',
-  'strictfp',
-  'default',
-  'sealed',
-  'non-sealed',
-]);
+const MODIFIERS = new Set(
+  `public protected private static final transient volatile abstract
+  synchronized native strictfp default sealed non-sealed`.split(/\s+/u),
+);
 const METHOD_NAME = /([A-Za-z_$][\w$]*)\s*\(([^()]*)\)\s*(?:throws\b[^{;]*)?$/u;
 const EXTENDS = /\bextends\s+([A-Za-z_$][\w$]*(?:\s*\.\s*[A-Za-z_$][\w$]*)*)/u;
 const GENERIC_DEPTH = { '<': 1, '>': -1 };
