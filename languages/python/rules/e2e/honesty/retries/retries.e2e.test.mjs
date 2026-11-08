@@ -11,7 +11,7 @@ const retries = (code, file = TEST_FILE) =>
   single(code, file).filter((finding) => finding.startsWith(`${RULE} `));
 const at = (line, subject) => `${RULE} ${TEST_FILE}:${String(line)} ${subject}`;
 
-describe.skipIf(!enabled)(RULE, () => {
+describe.skipIf(!enabled)('retry-in-test', () => {
   it.each([
     [
       'a pytest-rerunfailures mark',
@@ -44,6 +44,21 @@ describe.skipIf(!enabled)(RULE, () => {
       [at(3, 'pytest.mark.flaky')],
     ],
     [
+      'a mark added by its name',
+      'def test_a(request):\n    request.applymarker("flaky")\n',
+      [at(2, 'pytest.mark.flaky')],
+    ],
+    [
+      'a mark kept in a name, once where it is made and once where it is used',
+      'import pytest\nretried = pytest.mark.flaky\n@retried\ndef test_a():\n    pass\n',
+      [at(2, 'pytest.mark.flaky'), at(3, 'pytest.mark.flaky')],
+    ],
+    [
+      'a retrying decorator on a test',
+      'from retrying import retry\n@retry(stop_max_attempt_number=3)\ndef test_a():\n    pass\n',
+      [at(2, 'retrying.retry on test_a')],
+    ],
+    [
       'the flaky package decorator',
       'from flaky import flaky\n@flaky\ndef test_a():\n    pass\n',
       [at(2, 'flaky.flaky')],
@@ -68,9 +83,18 @@ describe.skipIf(!enabled)(RULE, () => {
   });
 
   it.each([
-    ['reruns switched off', 'import pytest\n@pytest.mark.flaky(reruns=0)\ndef test_a():\n    pass\n'],
-    ['retries switched off', 'import pytest\n@pytest.mark.flaky(retries=0)\ndef test_a():\n    pass\n'],
-    ['a single flaky run', 'from flaky import flaky\n@flaky(max_runs=1)\ndef test_a():\n    pass\n'],
+    [
+      'reruns switched off',
+      'import pytest\n@pytest.mark.flaky(reruns=0)\ndef test_a():\n    pass\n',
+    ],
+    [
+      'retries switched off',
+      'import pytest\n@pytest.mark.flaky(retries=0)\ndef test_a():\n    pass\n',
+    ],
+    [
+      'a single flaky run',
+      'from flaky import flaky\n@flaky(max_runs=1)\ndef test_a():\n    pass\n',
+    ],
     [
       'a tenacity retry on a helper that polls',
       'from tenacity import retry\n@retry\ndef wait_ready():\n    pass\ndef test_a():\n    wait_ready()\n',

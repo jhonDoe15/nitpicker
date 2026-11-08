@@ -87,6 +87,9 @@ class SingleAttempt:
 
     @pytest.hookimpl(hookwrapper=True)
     def pytest_runtest_logreport(self, report):
+        if type(report) is not pytest.TestReport:
+            yield
+            return
         self.note(report)
         if report.nodeid in self.retried and report.when == "call" and report.passed:
             first = self.first_failure.get(report.nodeid, "")

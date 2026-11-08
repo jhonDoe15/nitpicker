@@ -11,7 +11,10 @@ TEST_DECORATORS = {
     "backoff.on_exception",
     "backoff.on_predicate",
     "stamina.retry",
+    "retry.retry",
+    "retrying.retry",
 }
+MARKER_METHODS = {"add_marker", "applymarker"}
 
 
 def literal(node):
@@ -31,7 +34,18 @@ def switched_off(call, off_position):
     return False
 
 
+def named_marker(call):
+    target = call.func
+    if isinstance(target, ast.Attribute) and target.attr in MARKER_METHODS and call.args:
+        return literal(call.args[0]) == "flaky"
+    return False
+
+
 def marker_retry(node, context):
+    if isinstance(node, ast.Name) and not isinstance(node.ctx, ast.Load):
+        return None
+    if isinstance(node, ast.Call) and named_marker(node):
+        return FLAKY_MARK
     if isinstance(node, ast.Call):
         target, call = node.func, node
     else:
