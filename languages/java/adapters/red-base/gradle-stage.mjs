@@ -7,6 +7,14 @@ import { failingTestsOf } from '../gradle-reports/failing-tests.mjs';
 import { failingTestsError } from '../../builds/test-failures.mjs';
 
 const MAX_FAILURE_LENGTH = 3500;
+const MINUTE_MS = 60_000;
+
+function gradleTimeout(projectRoot, timeoutMs) {
+  return new Error(
+    `Gradle did not finish in ${projectRoot} within ${String(timeoutMs / MINUTE_MS)} minutes and was stopped. ` +
+      'Set NITPICKER_GRADLE_TIMEOUT_MINUTES to give each Gradle command more time',
+  );
+}
 
 export function assertGradleSucceeded(
   result,
@@ -54,5 +62,11 @@ export function runGradleStage({
     target.args,
     gradleOptions(target, { projectRoot, budget, spawn }),
   );
-  assertGradleSucceeded(result, projectRoot, { reportBase, since, checkTests });
+  assertGradleSucceeded(
+    result.error?.code === 'ETIMEDOUT'
+      ? { ...result, error: gradleTimeout(projectRoot, budget.commandTimeoutMs) }
+      : result,
+    projectRoot,
+    { reportBase, since, checkTests },
+  );
 }

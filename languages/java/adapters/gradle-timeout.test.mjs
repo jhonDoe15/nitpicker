@@ -1,5 +1,5 @@
 import { spawnSync } from 'node:child_process';
-import { mkdtempSync, readFileSync, rmSync } from 'node:fs';
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it, vi } from 'vitest';
@@ -35,6 +35,15 @@ function runGradle() {
   expect(message).toBe(`Full Gradle log: ${logFile}\n${error.message}`);
   expect(readFileSync(logFile, 'utf8')).toBe('=== stdout ===\n\n=== stderr ===\n');
   return JSON.parse(vi.mocked(spawnSync).mock.calls[0][2].input).options.timeout;
+}
+
+function runMavenBuild() {
+  const root = mkdtempSync(path.join(tmpdir(), 'nitpicker-maven-timeout-'));
+  roots.push(root);
+  writeFileSync(path.join(root, 'pom.xml'), '<project/>');
+  vi.mocked(spawnSync).mockReturnValue({ status: 1, stdout: '', stderr: 'stop' });
+  expect(analyzeJavaSnapshot(root, { maven: 'mvn' }).findings[0].rule).toBe('maven-failure');
+  return vi.mocked(spawnSync).mock.calls[0][2].timeout;
 }
 
 describe('the Gradle execution budget', () => {
@@ -78,4 +87,65 @@ describe('the Gradle execution budget', () => {
       expect(spawnSync).not.toHaveBeenCalled();
     },
   );
+});
+
+describe('a Gradle command that runs out of time', () => {
+  it('names the variable that gives it more time', () => {
+    vi.stubEnv(BUDGET_VARIABLE, '7');
+    const root = mkdtempSync(path.join(tmpdir(), 'nitpicker-gradle-timeout-'));
+    roots.push(root);
+    vi.mocked(spawnSync).mockReturnValue({ error: { code: 'ETIMEDOUT', message: 'ETIMEDOUT' } });
+
+    const message = analyzeJavaSnapshot(root, { gradle: 'gradle' }).findings[0].message;
+    roots.push(path.dirname(message.split('\n')[0].slice('Full Gradle log: '.length)));
+
+    expect(message.split('\n').slice(1)).toEqual([
+      `Gradle did not finish in ${root} within 7 minutes and was stopped. ` +
+        'Set NITPICKER_GRADLE_TIMEOUT_MINUTES to give each Gradle command more time',
+    ]);
+  });
+});
+
+describe('the Maven execution budget', () => {
+  const MAVEN_VARIABLE = 'NITPICKER_MAVEN_TIMEOUT_MINUTES';
+
+  it('keeps 15 minutes per Maven command by default', () => {
+    vi.stubEnv(MAVEN_VARIABLE, undefined);
+    vi.stubEnv(BUDGET_VARIABLE, undefined);
+
+    expect(runMavenBuild()).toBe(15 * MINUTE_MS);
+    expect(createJavaAnalyzer().timeoutMs).toBe(31 * MINUTE_MS);
+  });
+
+  it('uses the Maven variable for each command and widens the Java/Kotlin deadline', () => {
+    vi.stubEnv(MAVEN_VARIABLE, '45');
+    vi.stubEnv(BUDGET_VARIABLE, '10');
+
+    expect(runMavenBuild()).toBe(45 * MINUTE_MS);
+    expect([
+      createJavaAnalyzer().timeoutMs,
+      createJavaAnalyzer({ kotlin: true }).timeoutMs,
+    ]).toEqual([91 * MINUTE_MS, 91 * MINUTE_MS]);
+  });
+
+  it.each(['0', '', '1.5', '45m', '17896'])('rejects invalid minutes %j', (value) => {
+    vi.stubEnv(MAVEN_VARIABLE, value);
+
+    expect(() => createJavaAnalyzer()).toThrow(/NITPICKER_MAVEN_TIMEOUT_MINUTES/);
+  });
+});
+
+describe('a configured analyzer deadline inside the Java runner', () => {
+  it('lifts the Gradle and Maven command defaults, unless a build variable is set', () => {
+    vi.stubEnv('NITPICKER_ANALYZER_TIMEOUT_MS', String(90 * MINUTE_MS));
+    vi.stubEnv(BUDGET_VARIABLE, undefined);
+    vi.stubEnv('NITPICKER_MAVEN_TIMEOUT_MINUTES', undefined);
+
+    expect(runGradle()).toBe(90 * MINUTE_MS);
+    vi.mocked(spawnSync).mockClear();
+    expect(runMavenBuild()).toBe(90 * MINUTE_MS);
+    vi.stubEnv('NITPICKER_MAVEN_TIMEOUT_MINUTES', '20');
+    vi.mocked(spawnSync).mockClear();
+    expect(runMavenBuild()).toBe(20 * MINUTE_MS);
+  });
 });
