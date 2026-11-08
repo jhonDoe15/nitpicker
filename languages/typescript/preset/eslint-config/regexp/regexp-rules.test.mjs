@@ -41,8 +41,8 @@ describe('regular expression rules', () => {
     expect(regexpRuleIds.filter((rule) => !isStrictRule(rule))).toEqual([]);
   });
 
-  it.each(cases)('%s rejects the banned form in %s', (rule, _language, filename, banned) => {
-    expect(ruleIds(filename, banned)).toContain(rule);
+  it.each(cases)('%s alone rejects the banned form in %s', (rule, _language, filename, banned) => {
+    expect([...new Set(ruleIds(filename, banned))]).toEqual([rule]);
   });
 
   it.each(cases)(

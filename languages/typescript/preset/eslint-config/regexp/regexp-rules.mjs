@@ -15,7 +15,6 @@ const JAVASCRIPT_HINTS = new Map([
 
 const SELF_EXPLAINING_RULES = [
   'regexp/no-escape-backspace',
-  'regexp/no-misleading-unicode-character',
   'regexp/no-useless-dollar-replacements',
 ];
 
