@@ -202,10 +202,10 @@ Where a rule does not apply:
 
 - `type-only-production-dependency`, Java: the language has no import that exists only for the type checker: a production type that a test names only as an erased generic argument leaves no reference in the bytecode, so the test is reported as `no-production-runtime`
 - `type-only-production-dependency`, Kotlin: the language has no import that exists only for the type checker: a production type that a test names only as an erased generic argument leaves no reference in the bytecode, so the test is reported as `no-production-runtime`
-- `public-alternative-bypass`, Java: the language has no re-exports: a class is imported only from the package that declares it, and a package that its module does not export cannot be imported at all
+- `public-alternative-bypass`, Java: the language has no re-exports: a class has one importable name, in the package that declares it, so there is no public path to the same class to go around (a facade is a different class)
 - `unused-option`, Java: the language has no default parameter values or optional properties: an input a caller may leave out is a separate overload or builder method, not an option of one function
-- `unresolved-import`, Java: an import that resolves to no class is a compile error, so the build fails and reports it before any analyzer runs
-- `unresolved-import`, Kotlin: an import that resolves to no class is a compile error, so the build fails and reports it before any analyzer runs
+- `unresolved-import`, Java: an import that resolves to no class is a compile error in the source sets the build compiles, which are the ones nitpicker reads, so the build fails and reports it before any analyzer runs
+- `unresolved-import`, Kotlin: an import that resolves to no class is a compile error in the source sets the build compiles, which are the ones nitpicker reads, so the build fails and reports it before any analyzer runs
 
 <!-- generated:custom-rules end -->
 

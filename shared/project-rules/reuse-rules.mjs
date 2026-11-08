@@ -1,5 +1,5 @@
 const NO_REEXPORT =
-  'the language has no re-exports: a class is imported only from the package that declares it, and a package that its module does not export cannot be imported at all';
+  'the language has no re-exports: a class has one importable name, in the package that declares it, so there is no public path to the same class to go around (a facade is a different class)';
 
 export function entryPointRule(ids, enforcedBy) {
   return {
