@@ -42,7 +42,8 @@ Part of the [Kotlin preset guide](../kotlin-preset.md).
   would end the run on them. The price is that a misspelled key is not reported.
 - **Type resolution.** The task passes `--classpath` and `--jdk-home`, so rules that need types run.
   `--jdk-home` is the JDK of the project's Gradle Java toolchain (`java.toolchain`, `kotlin { jvmToolchain(17) }`)
-  when it declares one, otherwise the JDK that runs Gradle. The classpath is
+  when it declares one, otherwise the JDK that runs Gradle; on Maven it is the JDK of the build's
+  toolchain when it names one, otherwise `JAVA_HOME`, or the JDK of the `java` on the PATH. The classpath is
   the module's compile classpath, its compiled Java classes, and the Kotlin standard library that
   detekt itself embeds (2.0.21, pinned as `detektKotlin`), in place of the project's own. detekt 1.23
   cannot read the metadata of a newer standard library, and then no call to it resolves, so

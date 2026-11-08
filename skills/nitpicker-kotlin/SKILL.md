@@ -20,22 +20,23 @@ run; finish with the plain run below.
 
 ## Finish with the gate
 
-1. Run the project's tests (`./gradlew test`). Failing tests stop coverage, CRAP and mutation from
-   running.
+1. Run the project's tests (`./gradlew test`, or `./mvnw test` on Maven). Failing tests stop
+   coverage, CRAP and mutation from running.
 2. When the change is complete, run `npx nitpicker --fix` as a background command you wait on,
    without a pipe: you need its exit code. It first rewrites the changed Kotlin and Java files with
    the formatter named at the start of the run (ktlint or ktfmt, google-java-format for Java) and
    lists them under "Fixed files:"; re-read those files before you edit them again. When a "Fix
-   notes:" line says no formatter was found, keep the layout by hand. Then it runs Gradle on the
-   merge base and on head, with the project's `./gradlew` when there is one, otherwise `gradle`
-   from the PATH (`NITPICKER_GRADLE` overrides both). It takes minutes and prints a progress line
-   for each slow analyzer.
+   notes:" line says no formatter was found, keep the layout by hand. Then it runs the project's
+   build (Gradle, or Maven with `kotlin-maven-plugin`) on the merge base and on head, with the
+   project's `./gradlew` or `./mvnw` when there is one, otherwise `gradle` or `mvn` from the PATH
+   (`NITPICKER_GRADLE` or `NITPICKER_MAVEN` overrides both). It takes minutes and prints a progress
+   line for each slow analyzer.
 3. Act on the exit code:
    - 0: done, unless you narrowed the run with `--analyzer`: then the summary says `Ran only: ...`
      and you run the gate again without it before you finish.
    - 1: fix the failing tests the summary leads with, every new finding and any tool error listed
      below them, then rerun.
-   - 2: no new findings, but a tool failed. Fix the cause it names (usually a Gradle error) and rerun. Exit 2 is never a pass. If it says another run is in progress, wait
+   - 2: no new findings, but a tool failed. Fix the cause it names (usually a Gradle or Maven error) and rerun. Exit 2 is never a pass. If it says another run is in progress, wait
      for that run; never kill it.
 4. Never suppress: no `@Suppress` of a detekt or ktlint rule, coverage or mutation markers
    (`@Generated`, `@ExcludeFromJacocoGeneratedReport`, `@DoNotMutate`), config `exclude`/`disable`/`exceptions`, legacy
@@ -76,6 +77,10 @@ The allowed forms are on one page per topic. Before you write code, read the pag
   (`{ "rule": "function-lines-limit", "paths": [...], "function": "name", "reason": "..." }`);
   switching a one-way rule off in
   `detekt.yml` has no effect. Generated code belongs in `exclude`: ask the maintainer to add it.
+- The `$schema` line of `nitpicker.config.json`
+  (`"$schema": "https://raw.githubusercontent.com/jhonDoe15/nitpicker/main/spec/config.schema.json"`)
+  lets the editor flag a misspelled key or a value the run refuses; nitpicker ignores it. Keep it
+  when you edit the file.
 - A project may add forbidden calls to `ForbiddenMethodCall.methods` in its `detekt.yml`; they join
   the preset's. Do not call anything the project lists there.
 
