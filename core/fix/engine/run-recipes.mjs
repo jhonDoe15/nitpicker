@@ -6,34 +6,47 @@ import { activeRecipes, ruleName } from './recipes.mjs';
 
 export const MAX_PASSES = 3;
 
-function planRecipe(recipe, snapshot, settings) {
-  const planned = recipe.plan({ files: snapshot.files, read: snapshot.read });
+function changesText(edit, snapshot) {
+  if (edit.type === 'replace') {
+    return snapshot.read(edit.path).slice(edit.start, edit.end) !== edit.text;
+  }
+  return edit.type !== 'write' || snapshot.read(edit.path) !== edit.text;
+}
+
+function selectedFixes(planned, recipe, run) {
   if (!Array.isArray(planned?.fixes)) {
     throw new Error(`recipe ${recipe.id} returned no fixes list`);
   }
-  const fixes = planned.fixes.filter(
-    ({ finding } = {}) =>
-      settings.selected.size === 0 || settings.selected.has(ruleName(finding ?? {})),
+  return planned.fixes.filter(
+    ({ finding } = {}) => run.selected.size === 0 || run.selected.has(ruleName(finding ?? {})),
   );
+}
+
+function planRecipe(recipe, snapshot, run) {
+  const planned = recipe.plan({ files: snapshot.files, read: snapshot.read });
+  const fixes = selectedFixes(planned, recipe, run);
   for (const fix of fixes) {
-    checkFix(fix, recipe, { ...settings, snapshot });
+    checkFix(fix, recipe, { ...run.settings, snapshot, changed: new Set(run.state.names) });
   }
   return {
-    entries: [...fixes].sort(fixOrder).map((fix) => ({ recipe: recipe.id, fix })),
-    notes: planned?.notes ?? [],
+    entries: fixes
+      .filter(({ edits }) => edits.some((edit) => changesText(edit, snapshot)))
+      .sort(fixOrder)
+      .map((fix) => ({ recipe: recipe.id, fix })),
+    notes: planned.notes ?? [],
   };
 }
 
-function planPass(recipes, snapshot, settings, failed) {
+function planPass(run, snapshot) {
   const entries = [];
   const notes = [];
-  for (const recipe of recipes.filter(({ id }) => !failed.has(id))) {
+  for (const recipe of run.active.filter(({ id }) => !run.failed.has(id))) {
     try {
-      const planned = planRecipe(recipe, snapshot, settings);
+      const planned = planRecipe(recipe, snapshot, run);
       entries.push(...planned.entries);
       notes.push(...planned.notes);
     } catch (error) {
-      failed.set(recipe.id, fixerError(`fix-recipe ${recipe.id}`, error));
+      run.failed.set(recipe.id, fixerError(`fix-recipe ${recipe.id}`, error));
     }
   }
   return { entries, notes };
@@ -58,7 +71,7 @@ function leftNote(entry) {
 }
 
 function closingNotes(state, leftovers) {
-  const changed = [...state.changedMeanwhile];
+  const changed = [...state.changedMeanwhile].sort();
   return [
     ...(changed.length === 0
       ? []
@@ -67,52 +80,63 @@ function closingNotes(state, leftovers) {
   ];
 }
 
-function runPass(active, settings, state, failed) {
-  const snapshot = createSnapshot(settings.projectRoot, state.names);
-  const changed = new Set(state.names);
-  const planned = planPass(active, snapshot, { ...settings, changed }, failed);
-  const { accepted, skipped } = acceptFixes(planned.entries);
-  const { applied, changedMeanwhile } = applyFixes(settings.projectRoot, snapshot, accepted);
-  changedMeanwhile.forEach((name) => state.changedMeanwhile.add(name));
+function runPass(run) {
+  const { state } = run;
+  const snapshot = createSnapshot(run.settings.projectRoot, state.names);
+  const planned = planPass(run, snapshot);
+  const { accepted } = acceptFixes(planned.entries);
+  const { applied, changedMeanwhile, errors } = applyFixes(
+    run.settings.projectRoot,
+    snapshot,
+    accepted,
+  );
+  for (const name of changedMeanwhile) {
+    state.changedMeanwhile.add(name);
+  }
+  state.applyErrors.push(...errors);
   state.fixed.push(...applied);
   state.names = movedNames(state.names, applied);
   state.notes = planned.notes;
-  return { applied, skipped };
+  return applied.length > 0;
 }
 
-function remaining(active, settings, state, failed) {
-  const snapshot = createSnapshot(settings.projectRoot, state.names);
-  const changed = new Set(state.names);
-  return planPass(active, snapshot, { ...settings, changed }, failed).entries;
-}
-
-function settle(active, settings, state, failed) {
-  for (let pass = 0; pass < MAX_PASSES; pass += 1) {
-    const { applied, skipped } = runPass(active, settings, state, failed);
-    if (applied.length === 0) {
-      return skipped;
+function settle(run) {
+  for (const _pass of Array.from({ length: MAX_PASSES })) {
+    if (!runPass(run)) {
+      return [];
     }
   }
-  return remaining(active, settings, state, failed);
+  return planPass(run, createSnapshot(run.settings.projectRoot, run.state.names)).entries;
+}
+
+function applyError(messages) {
+  return messages.length === 0
+    ? []
+    : [fixerError('fix-apply', new Error(`--fix could not write ${messages.join('; ')}`))];
 }
 
 export function runRecipes({ projectRoot, files, recipes, preset, selectedRules = [], accepts }) {
-  const active = activeRecipes(recipes, { preset, selectedRules });
-  const settings = { projectRoot, accepts, selected: new Set(selectedRules) };
-  const failed = new Map();
-  const state = {
-    names: files.map(({ path: name }) => name),
-    fixed: [],
-    changedMeanwhile: new Set(),
-    notes: [],
+  const run = {
+    active: activeRecipes(recipes, { preset, selectedRules }),
+    settings: { projectRoot, accepts },
+    selected: new Set(selectedRules),
+    failed: new Map(),
+    state: {
+      names: files.map(({ path: name }) => name),
+      fixed: [],
+      changedMeanwhile: new Set(),
+      applyErrors: [],
+      notes: [],
+    },
   };
-  const leftovers = active.length === 0 ? [] : settle(active, settings, state, failed);
+  const leftovers = run.active.length === 0 ? [] : settle(run);
+  const { state } = run;
   return {
     fixedFindings: state.fixed.map(findingText),
     files: files.map((file, index) =>
       state.names[index] === file.path ? file : { ...file, path: state.names[index] },
     ),
-    toolErrors: [...failed.values()],
+    toolErrors: [...run.failed.values(), ...applyError(state.applyErrors)],
     notes: [...new Set(state.notes), ...closingNotes(state, leftovers)],
   };
 }

@@ -39,7 +39,7 @@ describe('applyFixes', () => {
 
     expect(read(root, 'a.txt')).toBe('1 +two 3');
     expect(statSync(path.join(root, 'a.txt')).mode & 0o777).toBe(0o755);
-    expect(result).toEqual({ applied: fixes, changedMeanwhile: [] });
+    expect(result).toEqual({ applied: fixes, changedMeanwhile: [], errors: [] });
   });
   it('drops every fix on a file that changed after the snapshot', () => {
     const { root, snapshot } = project({ 'a.txt': 'old', 'b.txt': 'b' });
@@ -52,7 +52,7 @@ describe('applyFixes', () => {
     const result = applyFixes(root, snapshot, [both]);
 
     expect([read(root, 'a.txt'), read(root, 'b.txt')]).toEqual(['edited', 'b']);
-    expect(result).toEqual({ applied: [], changedMeanwhile: ['a.txt'] });
+    expect(result).toEqual({ applied: [], changedMeanwhile: ['a.txt'], errors: [] });
   });
   it('does not replace a file that appeared where a fix creates or moves one', () => {
     const { root, snapshot } = project({ 'a.txt': 'a' });
@@ -68,7 +68,7 @@ describe('applyFixes', () => {
       'theirs',
       'a',
     ]);
-    expect(result).toEqual({ applied: [], changedMeanwhile: ['a.txt', 'new.txt'] });
+    expect(result).toEqual({ applied: [], changedMeanwhile: ['a.txt', 'new.txt'], errors: [] });
   });
   it('moves and deletes files that still hold the snapshot bytes', () => {
     const { root, snapshot } = project({ 'a.txt': 'a', 'b.txt': 'b' });
@@ -83,5 +83,22 @@ describe('applyFixes', () => {
       false,
     ]);
     expect(read(root, 'dir/a.txt')).toBe('a');
+  });
+  it('undoes every write of a fix when one of its paths fails, and reports the failure', () => {
+    const { root, snapshot } = project({ 'a.txt': 'aa', blocker: 'file' });
+    const fix = entry(
+      { type: 'replace', path: 'a.txt', start: 0, end: 1, text: 'Z' },
+      { type: 'write', path: 'blocker/n.txt', text: 'n' },
+    );
+    const other = entry({ type: 'replace', path: 'a.txt', start: 1, end: 2, text: 'Y' });
+
+    const result = applyFixes(root, snapshot, [fix, other]);
+
+    expect(read(root, 'a.txt')).toBe('aa');
+    expect(result).toEqual({
+      applied: [],
+      changedMeanwhile: [],
+      errors: [`blocker/n.txt: blocker/n.txt is inside blocker, which is not a folder`],
+    });
   });
 });

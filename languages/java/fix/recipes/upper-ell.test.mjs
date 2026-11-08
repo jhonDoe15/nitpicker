@@ -28,6 +28,17 @@ describe('lowercaseEllOffsets', () => {
 
     expect(lowercaseEllOffsets(source)).toEqual([]);
   });
+  it('finds literals after operators and brackets, and not after letters of any script', () => {
+    expect(fixed('f(-1l, x-2l, [3l], a ? 4l : 5l, 0l);')).toBe(
+      'f(-1L, x-2L, [3L], a ? 4L : 5L, 0L);',
+    );
+    expect(lowercaseEllOffsets('x\u03011l + \u{1D482}1l + \u00E91l + $1l + 1ll + 1l_')).toEqual([]);
+  });
+  it('skips text blocks with escaped quotes and comments that hold quotes or other comments', () => {
+    expect(
+      fixed('String t = """\n  \\""" 1l\n  """; /* \" // */ long a = 2l; // "\nlong b = 3l;'),
+    ).toBe('String t = """\n  \\""" 1l\n  """; /* \" // */ long a = 2L; // "\nlong b = 3L;');
+  });
   it('keeps scanning after an unterminated string ends at its line', () => {
     expect(fixed('String s = "open\nlong a = 2l;')).toBe('String s = "open\nlong a = 2L;');
   });

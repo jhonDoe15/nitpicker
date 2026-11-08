@@ -1,4 +1,4 @@
-import { existsSync, readFileSync, writeFileSync } from 'node:fs';
+import { existsSync, readFileSync, symlinkSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { useGitFixtures } from '../../diff/git/test-support/git-repository.mjs';
@@ -170,15 +170,8 @@ describe('runRecipes', () => {
     const result = run(root, [outside, unchanged, recipe({ id: 'kept', plan: shout.plan })]);
 
     expect(result.toolErrors).toEqual([
-      expect.objectContaining({
-        tool: 'fix-recipe outside',
-        snapshot: 'fix',
-        message: expect.stringMatching(/outside/u),
-      }),
-      expect.objectContaining({
-        tool: 'fix-recipe unchanged',
-        message: 'b.txt is not a changed file',
-      }),
+      { tool: 'fix-recipe outside', snapshot: 'fix', message: `../escape.txt is outside ${root}` },
+      { tool: 'fix-recipe unchanged', snapshot: 'fix', message: 'b.txt is not a changed file' },
     ]);
     expect(existsSync(path.join(root, '..', 'escape.txt'))).toBe(false);
     expect([read(root, 'a.txt'), read(root, 'b.txt')]).toEqual(['LOUD\n', 'quiet\n']);
@@ -256,7 +249,52 @@ describe('runRecipes', () => {
       false,
     ]);
     expect([read(root, 'dir/b.txt'), read(root, 'new.txt')]).toEqual(['LOUD\n', 'n\n']);
-    expect(result.files).toEqual([{ path: 'dir/b.txt' }, { path: 'old.txt' }]);
-    expect(result.fixedFindings).toHaveLength(4);
+    expect(result).toEqual({
+      fixedFindings: [
+        'a.txt:1 demo/shout (demo)',
+        'new.txt:1 demo/shout (demo)',
+        'old.txt:1 demo/shout (demo)',
+        'dir/b.txt:1 demo/shout (then)',
+      ],
+      files: [{ path: 'dir/b.txt' }, { path: 'old.txt' }],
+      toolErrors: [],
+      notes: [],
+    });
+  });
+  it('counts no fix that leaves the text as it is', () => {
+    const root = project({ 'a.txt': 'quiet\n' });
+    const same = recipe({ plan: (context) => wordFixes('quiet', 'quiet', context) });
+
+    expect(run(root, [same])).toEqual({
+      fixedFindings: [],
+      files: [{ path: 'a.txt' }],
+      toolErrors: [],
+      notes: [],
+    });
+  });
+  it('refuses a write through a symbolic link to a folder outside the project', () => {
+    const root = project({ 'a.txt': 'quiet\n' });
+    const elsewhere = temporaryRoot('nitpicker-recipes-elsewhere-');
+    symlinkSync(elsewhere, path.join(root, 'link'));
+    const escape = recipe({
+      scope: 'project',
+      plan: () => ({
+        fixes: [
+          {
+            finding: { ...RULE, path: 'a.txt', line: 1 },
+            edits: [{ type: 'write', path: 'link/New.java', text: 'x' }],
+          },
+        ],
+      }),
+    });
+
+    expect(run(root, [escape]).toolErrors).toEqual([
+      {
+        tool: 'fix-recipe demo',
+        snapshot: 'fix',
+        message: `link/New.java is outside ${root} through a symbolic link`,
+      },
+    ]);
+    expect(existsSync(path.join(elsewhere, 'New.java'))).toBe(false);
   });
 });

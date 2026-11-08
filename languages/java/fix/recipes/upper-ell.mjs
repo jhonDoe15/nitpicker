@@ -1,71 +1,22 @@
 const JAVA_FILE = /\.java$/u;
-const IDENTIFIER_PART = /[\p{L}\p{N}_$]/u;
-const LONG_LITERAL = /(?:0[xX][\da-fA-F_]+|0[bB][01_]+|\d[\d_]*)l/uy;
-const TEXT_BLOCK = '"""';
-
-function skipQuoted(text, start, quote) {
-  let index = start + 1;
-  while (index < text.length && text[index] !== quote && text[index] !== '\n') {
-    index += text[index] === '\\' ? 2 : 1;
-  }
-  return index + 1;
-}
-
-function skipTextBlock(text, start) {
-  let index = start + TEXT_BLOCK.length;
-  while (index < text.length && !text.startsWith(TEXT_BLOCK, index)) {
-    index += text[index] === '\\' ? 2 : 1;
-  }
-  return index + TEXT_BLOCK.length;
-}
-
-function skipped(text, index) {
-  if (text.startsWith('//', index)) {
-    const end = text.indexOf('\n', index);
-    return end === -1 ? text.length : end;
-  }
-  if (text.startsWith('/*', index)) {
-    const end = text.indexOf('*/', index + 2);
-    return end === -1 ? text.length : end + 2;
-  }
-  if (text.startsWith(TEXT_BLOCK, index)) {
-    return skipTextBlock(text, index);
-  }
-  if (text[index] === '"' || text[index] === "'") {
-    return skipQuoted(text, index, text[index]);
-  }
-  return undefined;
-}
-
-function literalEnd(text, index) {
-  if (index > 0 && (IDENTIFIER_PART.test(text[index - 1]) || text[index - 1] === '.')) {
-    return undefined;
-  }
-  LONG_LITERAL.lastIndex = index;
-  const match = LONG_LITERAL.exec(text);
-  if (match === null) {
-    return undefined;
-  }
-  const end = index + match[0].length;
-  return end < text.length && IDENTIFIER_PART.test(text[end]) ? undefined : end;
-}
+const NAME_CHARACTER = String.raw`\p{L}\p{N}\p{M}\p{Pc}\p{Sc}`;
+const TOKENS = new RegExp(
+  [
+    String.raw`\/\/[^\n]*`,
+    String.raw`\/\*[\s\S]*?(?:\*\/|$)`,
+    String.raw`"""(?:\\[\s\S]|[\s\S])*?(?:"""|$)`,
+    String.raw`"(?:\\.|[^"\\\n])*"?`,
+    String.raw`'(?:\\.|[^'\\\n])*'?`,
+    String.raw`(?<long>(?<![${NAME_CHARACTER}.])(?:0[xX][\da-fA-F_]+|0[bB][01_]+|\d[\d_]*)l(?![${NAME_CHARACTER}]))`,
+    `[${NAME_CHARACTER}]+`,
+  ].join('|'),
+  'gu',
+);
 
 export function lowercaseEllOffsets(text) {
-  const offsets = [];
-  let index = 0;
-  while (index < text.length) {
-    const next = skipped(text, index);
-    if (next !== undefined) {
-      index = next;
-      continue;
-    }
-    const end = /\d/u.test(text[index]) ? literalEnd(text, index) : undefined;
-    if (end !== undefined) {
-      offsets.push(end - 1);
-    }
-    index = end ?? index + 1;
-  }
-  return offsets;
+  return [...text.matchAll(TOKENS)]
+    .filter(({ groups }) => groups.long !== undefined)
+    .map((match) => match.index + match[0].length - 1);
 }
 
 function lineAt(text, offset) {

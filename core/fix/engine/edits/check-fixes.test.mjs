@@ -48,6 +48,11 @@ describe('checkFix', () => {
       'would replace b.txt',
     ],
     ['a path outside the project', fixOf([{ type: 'delete', path: '../a.txt' }]), 'is outside'],
+    [
+      'a new file inside a file',
+      fixOf([{ type: 'write', path: 'b.txt/c.txt', text: '' }]),
+      'which is not a folder',
+    ],
     ['overlapping edits', fixOf([replace(0, 3), replace(2, 4)]), 'overlap'],
     ['two inserts at one offset', fixOf([replace(2, 2), replace(2, 2)]), 'overlap'],
     [
@@ -56,30 +61,33 @@ describe('checkFix', () => {
       'overlap',
     ],
   ])('refuses %s', (_, fix, message) => {
-    expect(() => checkFix(fix, RECIPE, settingsFor(files))).toThrow(message);
+    expect(() => {
+      checkFix(fix, RECIPE, settingsFor(files));
+    }).toThrow(message);
   });
   it('refuses a write over a file the plan did not read', () => {
     const unread = settingsFor({ 'a.txt': 'a', 'c.txt': 'c' });
     const snapshot = createSnapshot(unread.projectRoot, ['a.txt']);
 
-    expect(() =>
+    expect(() => {
       checkFix(
         fixOf([{ type: 'write', path: 'c.txt', text: '' }]),
         { ...RECIPE, scope: 'project' },
         { ...unread, snapshot },
-      ),
-    ).toThrow('replaces a file the plan did not read');
+      );
+    }).toThrow('replaces a file the plan did not read');
   });
   it('accepts adjacent ranges and a new file from a project recipe', () => {
     const settings = settingsFor(files);
-    expect(() => checkFix(fixOf([replace(0, 2), replace(2, 4)]), RECIPE, settings)).not.toThrow();
-    expect(() =>
+
+    expect(() => {
+      checkFix(fixOf([replace(0, 2), replace(2, 4)]), RECIPE, settings);
       checkFix(
         fixOf([{ type: 'write', path: 'new/c.txt', text: 'c' }]),
         { ...RECIPE, scope: 'project' },
         settings,
-      ),
-    ).not.toThrow();
+      );
+    }).not.toThrow();
   });
 });
 

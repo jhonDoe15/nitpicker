@@ -1,69 +1,88 @@
 import { existsSync } from 'node:fs';
-import { containedPath } from '../../common/contained-path.mjs';
+import { checkRealPath } from './real-paths.mjs';
 
 const WHOLE = 'whole';
 
-function pathsOf(edit) {
+export function pathsOf(edit) {
   return edit.type === 'move' ? [edit.from, edit.to] : [edit.path];
+}
+
+export function sourceOf(edit) {
+  return edit.type === 'move' ? edit.from : edit.path;
 }
 
 function fail(message) {
   throw new Error(message);
 }
 
-function checkRange(edit, text) {
-  const { start, end } = edit;
-  if (!Number.isInteger(start) || !Number.isInteger(end) || start < 0 || start > end) {
-    fail(`edit range ${start}-${end} in ${edit.path} is not a range`);
-  }
-  if (end > text.length) {
-    fail(`edit range ${start}-${end} is past the end of ${edit.path}`);
-  }
-}
-
-function checkEdit(edit, { projectRoot, snapshot, accepts, changed, scope }) {
+function checkPaths(edit, { projectRoot, accepts }) {
   for (const name of pathsOf(edit)) {
     if (typeof name !== 'string') {
       fail(`a ${edit.type} edit has no path`);
     }
-    containedPath(projectRoot, name);
+    checkRealPath(projectRoot, name);
     if (!accepts(name)) {
       fail(`${name} is outside the files --fix covers`);
     }
   }
-  const source = edit.type === 'move' ? edit.from : edit.path;
-  if (scope === 'file' && !changed.has(source)) {
-    fail(`${source} is not a changed file`);
+}
+
+function checkReplace(edit, { snapshot }) {
+  const { start, end } = edit;
+  if (typeof edit.text !== 'string' || !snapshot.isRead(edit.path)) {
+    fail(`a replace edit on ${edit.path} needs text and a file the plan read`);
   }
-  if (edit.type === 'replace') {
-    if (typeof edit.text !== 'string' || !snapshot.isRead(edit.path)) {
-      fail(`a replace edit on ${edit.path} needs text and a file the plan read`);
-    }
-    checkRange(edit, snapshot.read(edit.path));
-  } else if (edit.type === 'write') {
-    if (typeof edit.text !== 'string') {
-      fail(`a write edit on ${edit.path} has no text`);
-    }
-    if (!snapshot.isRead(edit.path) && existsSync(containedPath(projectRoot, edit.path))) {
-      fail(`a write edit on ${edit.path} replaces a file the plan did not read`);
-    }
-  } else if (edit.type === 'move' || edit.type === 'delete') {
-    if (!snapshot.isRead(source)) {
-      fail(`a ${edit.type} edit on ${source} needs a file the plan read`);
-    }
-    if (edit.type === 'move' && existsSync(containedPath(projectRoot, edit.to))) {
-      fail(`a move edit would replace ${edit.to}`);
-    }
-  } else {
-    fail(`unknown edit type ${edit.type}`);
+  if (!Number.isInteger(start) || !Number.isInteger(end) || start < 0 || start > end) {
+    fail(`edit range ${start}-${end} in ${edit.path} is not a range`);
+  }
+  if (end > snapshot.read(edit.path).length) {
+    fail(`edit range ${start}-${end} is past the end of ${edit.path}`);
   }
 }
 
-function overlaps(left, right) {
-  if (left === WHOLE || right === WHOLE) {
-    return true;
+function checkWrite(edit, { projectRoot, snapshot }) {
+  if (typeof edit.text !== 'string') {
+    fail(`a write edit on ${edit.path} has no text`);
   }
-  if (left.start === right.start) {
+  if (!snapshot.isRead(edit.path) && existsSync(checkRealPath(projectRoot, edit.path))) {
+    fail(`a write edit on ${edit.path} replaces a file the plan did not read`);
+  }
+}
+
+function checkRead(edit, { snapshot }) {
+  if (!snapshot.isRead(sourceOf(edit))) {
+    fail(`a ${edit.type} edit on ${sourceOf(edit)} needs a file the plan read`);
+  }
+}
+
+function checkMove(edit, settings) {
+  checkRead(edit, settings);
+  if (existsSync(checkRealPath(settings.projectRoot, edit.to))) {
+    fail(`a move edit would replace ${edit.to}`);
+  }
+}
+
+const EDIT_CHECKS = {
+  replace: checkReplace,
+  write: checkWrite,
+  move: checkMove,
+  delete: checkRead,
+};
+
+function checkEdit(edit, settings) {
+  const check = EDIT_CHECKS[edit?.type];
+  if (check === undefined) {
+    fail(`unknown edit type ${edit?.type}`);
+  }
+  checkPaths(edit, settings);
+  if (settings.scope === 'file' && !settings.changed.has(sourceOf(edit))) {
+    fail(`${sourceOf(edit)} is not a changed file`);
+  }
+  check(edit, settings);
+}
+
+function overlaps(left, right) {
+  if (left === WHOLE || right === WHOLE || left.start === right.start) {
     return true;
   }
   return left.start < right.end && right.start < left.end;
@@ -92,14 +111,18 @@ function selfOverlapping(claims) {
   );
 }
 
-export function checkFix(fix, recipe, settings) {
-  const { finding, edits } = fix ?? {};
+function checkFinding(finding, recipe) {
   const listed = recipe.rules.some(
     ({ tool, rule }) => tool === finding?.tool && rule === finding?.rule,
   );
   if (!listed || typeof finding.path !== 'string' || !Number.isInteger(finding.line)) {
     fail(`a fix names a finding outside the rules of recipe ${recipe.id}`);
   }
+}
+
+export function checkFix(fix, recipe, settings) {
+  const { finding, edits } = fix ?? {};
+  checkFinding(finding, recipe);
   if (!Array.isArray(edits) || edits.length === 0) {
     fail(`a fix for ${finding.path}:${finding.line} has no edits`);
   }

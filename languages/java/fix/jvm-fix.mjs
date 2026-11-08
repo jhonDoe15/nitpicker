@@ -140,11 +140,14 @@ export function fixJvm(settings) {
   const excluded = excludedBy(headPolicy.exclude);
   const withKotlin = config.preset === 'kotlin';
   const roots = declaredSourceRoots(projectRoot);
-  const accepts = (name) =>
-    (JAVA_FILE.test(name) || (withKotlin && KOTLIN_FILE.test(name))) &&
-    !excluded(name) &&
-    inJvmSourceSets(name, roots) &&
-    !isGeneratedJvm(projectRoot, name);
+  function accepts(name) {
+    return (
+      (JAVA_FILE.test(name) || (withKotlin && KOTLIN_FILE.test(name))) &&
+      !excluded(name) &&
+      inJvmSourceSets(name, roots) &&
+      !isGeneratedJvm(projectRoot, name)
+    );
+  }
   const { comparison, files, links } = collectFixFiles({
     repositoryRoot,
     projectRoot,
