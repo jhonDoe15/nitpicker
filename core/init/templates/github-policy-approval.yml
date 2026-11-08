@@ -1,0 +1,64 @@
+name: nitpicker policy approval
+
+# A person with write access accepts the nitpicker policy loosenings of a pull request by adding
+# the accept-policy-change label. This job checks their access, records the approval on the head
+# commit as the nitpicker/policy-accepted status, removes the label and re-runs the failed jobs of
+# the latest failed pull request run of each workflow on that commit. A later push is a new commit
+# and needs the label again. The job never checks out or runs the code of the pull request.
+on:
+  pull_request_target:
+    types: [labeled]
+
+permissions: {}
+
+jobs:
+  approve:
+    if: github.event.label.name == 'accept-policy-change'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      actions: write
+      pull-requests: write
+      statuses: write
+    steps:
+      - uses: actions/github-script@v8.0.0
+        with:
+          script: |
+            const { pull_request: pull, sender, label } = context.payload;
+            const repo = context.repo;
+            await github.rest.issues
+              .removeLabel({ ...repo, issue_number: pull.number, name: label.name })
+              .catch(() => undefined);
+            const access = await github.rest.repos
+              .getCollaboratorPermissionLevel({ ...repo, username: sender.login })
+              .then(({ data }) => data.permission, () => 'no');
+            if (!['admin', 'write'].includes(access)) {
+              core.setFailed(
+                `${sender.login} has ${access} access. Only a person with write access accepts a policy loosening.`,
+              );
+              return;
+            }
+            const sha = pull.head.sha;
+            await github.rest.repos.createCommitStatus({
+              ...repo,
+              sha,
+              state: 'success',
+              context: 'nitpicker/policy-accepted',
+              description: `Policy loosenings accepted by ${sender.login}`,
+            });
+            const runs = await github.paginate(github.rest.actions.listWorkflowRunsForRepo, {
+              ...repo,
+              head_sha: sha,
+              event: 'pull_request',
+              per_page: 100,
+            });
+            const failed = new Map();
+            for (const run of runs) {
+              if (run.conclusion === 'failure' && !failed.has(run.workflow_id)) {
+                failed.set(run.workflow_id, run);
+              }
+            }
+            for (const run of failed.values()) {
+              await github.rest.actions.reRunWorkflowFailedJobs({ ...repo, run_id: run.id });
+              core.info(`Re-ran the failed jobs of ${run.name}.`);
+            }

@@ -40,8 +40,8 @@ project, so it takes as long as a full run; finish with the plain run below.
 4. Never suppress: no `# noqa`, `# type: ignore`, `# pragma: no mutate`, `do_not_mutate`, config
    `exclude`/`disable`/`exceptions`, legacy entries, or weakened tests (`-x`, `-k`, `--deselect` and
    reruns in `addopts` are ignored anyway). If a finding seems wrong, stop and ask. Never pass
-   `--accept-policy-change` or set `NITPICKER_ACCEPT_POLICY_CHANGE`: a
-   `nitpicker-config/policy-loosened` finding is for a person to accept.
+   `--accept-policy-change`, set `NITPICKER_ACCEPT_POLICY_CHANGE` or add the `accept-policy-change`
+   label: a `nitpicker-config/policy-loosened` finding is for a person to accept.
 
 To learn why a rule is on and what form it allows before you write or change code, run `npx nitpicker explain <tool/rule>` with the name a finding prints, or read the [rule reference](https://github.com/jhonDoe15/nitpicker/blob/latest/docs/rules/README.md). `npx nitpicker rules` lists the rules of this project's preset.
 

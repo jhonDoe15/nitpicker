@@ -150,7 +150,8 @@ describe.skipIf(!pythonE2eEnabled)(
             'Remove the entry and fix the findings, or have a person confirm it.',
             'If the policy change is intended, stop and ask a person reviewing this change:',
             `only they accept exactly these loosenings, with --accept-policy-change=${digest}`,
-            `at an interactive terminal or NITPICKER_ACCEPT_POLICY_CHANGE=${digest} in CI.`,
+            `at an interactive terminal, NITPICKER_ACCEPT_POLICY_CHANGE=${digest} in CI,`,
+            'or the accept-policy-change label on a GitHub pull request.',
           ].join(' '),
           allowedForm:
             'Removes matching files from the checks, so their findings are not reported. Remove the entry and fix the findings, or have a person confirm it.',
