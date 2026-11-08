@@ -43,3 +43,6 @@ Part of the [nitpicker-python](../SKILL.md) skill. Write these forms from the st
 - Pick the cheaper collection form: a `set()` for items you test with `in` while you collect them
   (`list-used-as-set`), a `dict` built once before a loop instead of `next(x for x in xs if x.key == key)`
   in it (`linear-lookup-in-loop`), and `min`/`max` instead of `sorted(xs)[0]` (ruff `FURB192`).
+- Rows from `.iterator()`, `yield_per`, `stream_results` or a server-side cursor are handled as they
+  arrive, flushing a fixed-size batch inside the loop, never appended to one list of every row
+  (`streamed-rows-collected`).

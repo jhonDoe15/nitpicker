@@ -250,6 +250,7 @@ describe('Kotlin exception rules for the review rules', () => {
       'pmd/ClassLoadEffect',
       'pmd/UnboundedThreadPool',
       'pmd/RecursiveMapUpdate',
+      'pmd/StreamedRowsCollected',
       'pmd/GeneratedMemberCycle',
       'pmd/GeneratedEqualsSkipsSuperclass',
       ...SPRING_RULES.map((rule) => `pmd/${rule}`),

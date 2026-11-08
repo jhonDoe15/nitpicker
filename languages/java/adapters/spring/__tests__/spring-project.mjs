@@ -100,6 +100,7 @@ const REVIEW_RULES = new Set([
   'ListUsedAsSet',
   'LinearLookupInLoop',
   'SortForExtreme',
+  'StreamedRowsCollected',
   'GeneratedMemberCycle',
   'GeneratedEqualsSkipsSuperclass',
 ]);

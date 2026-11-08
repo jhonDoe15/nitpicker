@@ -7,6 +7,7 @@ import {
 } from './main/generated-members/generated-members.mjs';
 import { RECURSIVE_MAP_UPDATE_RULE } from './main/map-updates/recursive-map-update.mjs';
 import { SINGULAR_PLURAL_RULE } from './main/member-names.mjs';
+import { STREAMED_ROWS_RULE } from './main/streamed-rows/streamed-rows.mjs';
 import { TIMEOUT_RULE } from './main/timeouts/timeouts.mjs';
 import { UNBOUNDED_POOL_RULE } from './main/thread-pools/unbounded-pools.mjs';
 import { UNUSED_OPTION_RULE } from './main/unused-options/unused-options.mjs';
@@ -34,6 +35,7 @@ export const KOTLIN_REVIEW_EXCEPTION_RULES = [
   LOAD_EFFECT_RULE,
   UNBOUNDED_POOL_RULE,
   RECURSIVE_MAP_UPDATE_RULE,
+  STREAMED_ROWS_RULE,
   MEMBER_CYCLE_RULE,
   SKIPPED_SUPER_RULE,
   ...SPRING_RULES,

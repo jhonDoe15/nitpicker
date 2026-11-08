@@ -45,6 +45,7 @@ are listed at the end.
 | Values in regex patterns | `re.escape(value)` inside a pattern, `in`/`startswith`/`==` for plain text, `re.compile(pattern)` with a whole pattern                                                               | `regex-unescaped-value` (script)                                                                                                                                                                                                           |
 | Input or output per item | one batch call, or `asyncio.gather` bounded by a shared `asyncio.Semaphore`                                                                                                          | `io-in-loop` (script)                                                                                                                                                                                                                      |
 | Lists used as sets       | a `set()` (or a `dict` as an ordered set); a `dict` built once for a lookup by key; `min`/`max` instead of `sorted(xs)[0]`                                                           | `list-used-as-set`, `linear-lookup-in-loop` (script), ruff `FURB192`                                                                                                                                                                       |
+| Streamed rows            | a fixed-size batch flushed inside the loop over a streamed query or server-side cursor                                                                                               | `streamed-rows-collected` (script)                                                                                                                                                                                                         |
 | Concurrent remote calls  | `asyncio.Semaphore` acquired in the task, or chunks of fixed size, or one batch call                                                                                                 | `unbounded-fan-out` (script)                                                                                                                                                                                                               |
 | Task lifetimes           | open the resource around the whole task group, or inside the child; await the task first                                                                                             | `task-outlives-resource` (script)                                                                                                                                                                                                          |
 | Trio/AnyIO cleanup       | `with trio.CancelScope(deadline=trio.current_time() + 5, shield=True): await resource.aclose()`                                                                                      | `unshielded-cleanup-await` (script)                                                                                                                                                                                                        |
@@ -511,6 +512,14 @@ self.items.append(item)`), also through a package `__init__` that re-exports it 
   `sorted(xs)[0]` and `sorted(xs)[-1]`, in tests too; the two script rules skip test files. The same rules run as
   `nitpicker/no-costly-collection-form` (TypeScript), `pmd/ListUsedAsSet`, `pmd/LinearLookupInLoop`
   and `pmd/SortForExtreme` (Java) and `kotlin-source/` rules of the same names (Kotlin).
+- `streamed-rows-collected` reports a list that collects every row of a streamed query: a loop
+  over `qs.iterator()`, `yield_per(...)`, `stream()`, `stream_scalars()`, `partitions()`, an
+  `execution_options(stream_results=True)` query, a named or server-side cursor, or a name bound to
+  one, that appends to a list declared before the loop and never cleared in it, and the same
+  collection with a comprehension, `list(...)` or `sorted(...)`. Allowed form: flush a fixed-size
+  batch inside the loop and the rest once after it. Test files are skipped. The same form runs as
+  `nitpicker/no-collected-stream-rows` (TypeScript) and `pmd/StreamedRowsCollected` (Java and
+  Kotlin).
 - `unbounded-fan-out` reports `asyncio.gather`, `asyncio.wait` and `asyncio.as_completed` over a
   generator, a list comprehension, `map(f, xs)`, a name bound to one, or a list filled by
   `append` in a `for` loop, and `asyncio.create_task`, `ensure_future`, `tg.create_task` and
