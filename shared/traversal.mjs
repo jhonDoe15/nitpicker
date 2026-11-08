@@ -11,6 +11,17 @@ function stackIterator(items) {
   };
 }
 
+export function whileHolds(value, holds) {
+  return {
+    [Symbol.iterator]() {
+      return this;
+    },
+    next() {
+      return holds(value) ? { done: false, value } : { done: true, value: undefined };
+    },
+  };
+}
+
 export function* depthFirst(root, children) {
   const pending = [root];
   for (const node of stackIterator(pending)) {

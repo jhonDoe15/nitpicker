@@ -4,7 +4,9 @@ import { matchSimilarFindings } from './similar/match.mjs';
 import { matchAnchoredFindings } from './anchored/match.mjs';
 import { addGrowthAdvice, holdRatchetedFindings } from './ratchet/ratchet.mjs';
 import { withWorseMessage } from '../../../shared/messages/finding-advice.mjs';
-import { isInTouchedCode, isOnAddedLine } from './ratchet/touched-code.mjs';
+import { isHeldOnTouchedLine } from './ratchet/touched-code.mjs';
+import { pairedKeys } from './positions/occurrences.mjs';
+import { withEditedLineReason } from './positions/touched-lines.mjs';
 
 export function compareFindings({
   baseFindings,
@@ -15,8 +17,12 @@ export function compareFindings({
   unknownOnBase,
 }) {
   const moves = baseMoves(baseToHeadRenames, baseToHeadDirectories);
-  const baseByKey = indexFindings({ findings: baseFindings, moves, snapshot: 'base' });
-  const headByKey = indexFindings({ findings: headFindings, snapshot: 'head' });
+  const { baseByKey, headByKey } = indexSnapshots({
+    baseFindings,
+    headFindings,
+    moves,
+    touchedCode,
+  });
   const present = classifyHeadFindings({ headByKey, baseByKey, touchedCode, unknownOnBase });
   const withoutExactMatch = [...baseByKey]
     .filter(([key]) => !headByKey.has(key))
@@ -46,6 +52,14 @@ export function compareFindings({
     resolvedFindings: sortFindings(resolvedFindings),
     unchangedFindings: sortFindings(present.unchangedFindings),
     changedMetrics: present.changedMetrics.sort(compareDisplayOrder),
+  };
+}
+
+function indexSnapshots({ baseFindings, headFindings, moves, touchedCode }) {
+  const keys = pairedKeys({ baseFindings, headFindings, moves, touchedCode });
+  return {
+    baseByKey: indexFindings({ findings: baseFindings, moves, snapshot: 'base' }),
+    headByKey: indexFindings({ findings: headFindings, snapshot: 'head', keys }),
   };
 }
 
@@ -120,9 +134,9 @@ function classify(headFinding, baseFinding, { touchedCode, isUnknown }) {
   if (hasChangedMetric(baseFinding, headFinding)) {
     return { bucket: 'changedMetrics', entry: changedMetricOf(baseFinding, headFinding) };
   }
-  const isNew =
-    isInTouchedCode(headFinding, touchedCode) || isOnAddedLine(headFinding, touchedCode);
-  return { bucket: isNew ? 'newFindings' : 'unchangedFindings', entry: headFinding };
+  return isHeldOnTouchedLine(headFinding, touchedCode)
+    ? { bucket: 'newFindings', entry: withEditedLineReason(headFinding, touchedCode) }
+    : { bucket: 'unchangedFindings', entry: headFinding };
 }
 
 function changedMetricOf(baseFinding, headFinding) {
@@ -140,10 +154,10 @@ function changedMetricOf(baseFinding, headFinding) {
   };
 }
 
-function indexFindings({ findings, moves, snapshot }) {
+function indexFindings({ findings, moves, snapshot, keys = new Map() }) {
   const indexed = new Map();
   for (const finding of findings) {
-    const key = comparisonKey(finding, moves);
+    const key = keys.get(finding) ?? comparisonKey(finding, moves);
     if (indexed.has(key)) {
       throw new Error(
         `${snapshot} analyzer output contains duplicate stable identity for ${finding.tool}/${finding.rule} at ${finding.path}`,
