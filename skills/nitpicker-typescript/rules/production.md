@@ -33,6 +33,10 @@ Part of the [nitpicker-typescript](../SKILL.md) skill. Write these forms from th
 - In a server project, dates use UTC or a named zone, never the server's own: `getUTCHours()`,
   `toISOString()`, `Date.UTC(...)`, `{ timeZone }` for `Intl.DateTimeFormat` and `toLocale*String`,
   luxon `{ zone }`, date-fns `{ in: tz(zone) }`, dayjs `.utc()` (`nitpicker/no-local-time-zone`).
+- Let the database count, filter, sort and aggregate: `count`/`exists`/`findFirst` instead of
+  `(await repo.find()).length`, `where` instead of `.filter`/`.some`/`.find` on the rows, `order`/`orderBy`
+  instead of `.sort`, and the ORM's aggregate or `groupBy` instead of `reduce`, `Math.max(...rows.map(...))`
+  or `groupBy` (`nitpicker/no-in-memory-query`).
 - Each finding names the allowed form. A deliberate exception goes in `nitpicker.config.json`
   `exceptions` (rule, paths, reason), never inline.
 - The `$schema` line of `nitpicker.config.json`
