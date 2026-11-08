@@ -29,7 +29,7 @@ export function loadTestEnvironments({ projectRoot, liveProjectRoot = projectRoo
 
 function noticeFor(error) {
   const reason = error instanceof Error ? error.message : String(error);
-  return `The DOM-environment check only uses per-file directives: ${reason}.`;
+  return `The DOM-environment check only uses per-file directives: ${reason.replace(/\.$/u, '')}.`;
 }
 
 function ruleIsExcepted(exceptions) {

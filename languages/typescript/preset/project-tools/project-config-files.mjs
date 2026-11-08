@@ -54,6 +54,7 @@ export const PROJECT_TOOL_FILES = [
     'project-tool-policy.mjs',
   ].map((name) => `languages/typescript/preset/project-tools/${name}`),
   'languages/typescript/preset/project-configs/config-module.mjs',
+  'core/tooling/host-environment.mjs',
 ];
 
 export function projectConfigTools() {
