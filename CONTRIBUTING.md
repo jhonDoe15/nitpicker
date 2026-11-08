@@ -99,13 +99,12 @@ before adding the label.
 
 When a pull request loosens `nitpicker.config.json` (for example an exception, exclude or entry
 point that covers a new code file; see the policy changes in [docs/usage.md](docs/usage.md)), the
-self-gate fails with a `nitpicker-config/policy-loosened` finding that names a 12-character digest.
-A repository admin who agrees with the loosening copies the digest from that CI run's log (a local
-run can give another digest, since CI checks the pull request merged into `main`), sets the
-repository variable `NITPICKER_ACCEPT_POLICY_CHANGE` to exactly that value (Settings > Secrets and
-variables > Actions > Variables), and runs the self-gate again by removing and re-adding the
-`run-ci` label. The digest covers those loosenings and the content of the files they hide, so a
-different loosening needs a new digest. Delete the variable once the pull request is merged. The
+self-gate fails with a `nitpicker-config/policy-loosened` finding. A maintainer who agrees with the
+loosening adds the `accept-policy-change` label. The
+[policy approval workflow](.github/workflows/nitpicker-policy-approval.yml) records the approval
+on the head commit as the `nitpicker/policy-accepted` status, removes the label and re-runs the
+failed jobs, so the self-gate passes for that commit. A later push is a new commit and needs the
+label again. Coding agents never add the label. The
 self-gate runs the pull request's own code and workflow, so changes to `.github/workflows/`,
 `core/`, `package.json` and `nitpicker.config.json` need a careful review whatever the gate says.
 

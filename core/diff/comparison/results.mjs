@@ -47,19 +47,24 @@ function declaredExclusions(analyzers) {
   ].sort();
 }
 
+function policyReview(context, digest) {
+  const { policyLoosenings, acceptPolicyChange, comparison } = context;
+  const acceptance = { acceptedDigest: acceptPolicyChange, headSha: comparison.headSha };
+  const kinds = context.policyKinds;
+  return {
+    findings: context.reportsPolicy
+      ? policyFindings(policyLoosenings, digest, { ...acceptance, kinds })
+      : [],
+    accepted: isPolicyChangeAccepted(policyLoosenings, digest, acceptance),
+  };
+}
+
 function buildReport(context) {
   const { analyzers, outcomes, toolErrors, comparison, startedAt } = context;
-  const { configOverrides, policyChanges, policyLoosenings, acceptPolicyChange, notices } = context;
+  const { configOverrides, policyChanges, policyLoosenings, notices } = context;
   const digest = context.policyDigest ?? policyDigest({ loosenings: policyLoosenings });
-  const newFindings = [
-    ...collect(outcomes, 'newFindings'),
-    ...(context.reportsPolicy
-      ? policyFindings(policyLoosenings, digest, {
-          acceptedDigest: acceptPolicyChange,
-          kinds: context.policyKinds,
-        })
-      : []),
-  ];
+  const review = policyReview(context, digest);
+  const newFindings = [...collect(outcomes, 'newFindings'), ...review.findings];
   return {
     summary: {
       requestedBaseRef: comparison.requestedBaseRef,
@@ -71,7 +76,7 @@ function buildReport(context) {
       policyChanges,
       policyLoosenings,
       ...(policyLoosenings.length === 0 ? {} : { policyDigest: digest }),
-      policyChangeAccepted: isPolicyChangeAccepted(policyLoosenings, digest, acceptPolicyChange),
+      policyChangeAccepted: review.accepted,
       ...(context.policyAcceptanceSource === undefined
         ? {}
         : { policyAcceptanceSource: context.policyAcceptanceSource }),

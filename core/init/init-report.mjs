@@ -74,14 +74,27 @@ function agentsLines(agents, command, offered) {
   return [outcomes[agents.status]];
 }
 
-function ciLines(workflow, { workflowFile, command, offered }) {
+function approvalNote(approval) {
+  return approval.status === 'created'
+    ? [
+        'A person accepts a policy loosening with the accept-policy-change label; create it once: gh label create accept-policy-change',
+      ]
+    : [];
+}
+
+function ciLines(workflow, { approval, workflowFile, command, offered }) {
   if (workflow === undefined) {
     return offered ? [`To write ${workflowFile}, run: ${command} init --ci github`] : [];
   }
-  return [...fileLines(workflow), ...(workflow.notes ?? [])];
+  return [
+    ...fileLines(workflow),
+    ...(workflow.notes ?? []),
+    ...(approval === undefined ? [] : [...fileLines(approval), ...approvalNote(approval)]),
+  ];
 }
 
-export function renderReport({ project, peers, config, workflow, workflowFile, agents, offers }) {
+export function renderReport(placed) {
+  const { project, peers, config, workflow, approval, workflowFile, agents, offers } = placed;
   const command = runCommandOf(project);
   const sections = [
     [headline(project), ...project.notes],
@@ -90,7 +103,7 @@ export function renderReport({ project, peers, config, workflow, workflowFile, a
     skillLines(project),
     [
       ...agentsLines(agents, command, offers.agents),
-      ...ciLines(workflow, { workflowFile, command, offered: offers.workflow }),
+      ...ciLines(workflow, { approval, workflowFile, command, offered: offers.workflow }),
     ],
     [
       `Then run \`${command}\` to check a change, or \`${command} --all\` to survey the whole project.`,

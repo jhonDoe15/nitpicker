@@ -3,7 +3,12 @@ import { packageVersion } from '../help/package-version.mjs';
 import { INIT_USAGE_TEXT } from '../help/usage-text.mjs';
 import { detectProject } from './detection/detect-project.mjs';
 import { appendSnippet, hasSnippet, INSTRUCTION_FILES } from './files/agents-md.mjs';
-import { placeWorkflow, workflowPath } from './files/ci-workflow.mjs';
+import {
+  APPROVAL_WORKFLOW,
+  placeApprovalWorkflow,
+  placeWorkflow,
+  workflowPath,
+} from './files/ci-workflow.mjs';
 import { placeConfig } from './files/config-file.mjs';
 import { parseInitArguments } from './init-arguments.mjs';
 import { renderReport } from './init-report.mjs';
@@ -25,12 +30,18 @@ export function runInitCommand(cli) {
   const peers = planPeers(projectRoot, project, nodeVersion);
   const files = placeFiles(projectRoot, options, { project, peers, repository });
   cli.stdout.write(renderReport({ project, peers, ...files }));
-  return [files.config, files.workflow].some((result) => result?.status === 'differs') ? 1 : 0;
+  const placed = [files.config, files.workflow, files.approval];
+  return placed.some((result) => result?.status === 'differs') ? 1 : 0;
 }
 
 function checkTargets(projectRoot, options, { repository, workflowFile }) {
   const targets = [
-    ...(options.ci.length === 0 ? [] : [[repository, workflowFile]]),
+    ...(options.ci.length === 0
+      ? []
+      : [
+          [repository, workflowFile],
+          [repository, APPROVAL_WORKFLOW],
+        ]),
     ...(options.agentsMd ? INSTRUCTION_FILES.map((name) => [projectRoot, name]) : []),
   ];
   for (const [root, relative] of targets) {
@@ -45,6 +56,7 @@ function placeFiles(projectRoot, options, { project, peers, repository }) {
   return {
     config: placeConfig(projectRoot, project.preset),
     workflow: options.ci.length === 0 ? undefined : placeWorkflow(projectRoot, context),
+    approval: options.ci.length === 0 ? undefined : placeApprovalWorkflow(repository),
     workflowFile,
     agents: options.agentsMd ? appendSnippet(projectRoot) : undefined,
     offers: {

@@ -16,7 +16,7 @@ export function coreRuleEntries() {
       why: 'A change that loosens the policy it is judged by would pass itself, so a person has to accept it.',
       allowed: POLICY_ALLOWED,
       exception: {
-        note: 'It has no `exceptions` entry. Only a person reviewing the change accepts exactly these loosenings, with `--accept-policy-change=<digest>` at an interactive terminal or `NITPICKER_ACCEPT_POLICY_CHANGE=<digest>` in CI.',
+        note: 'It has no `exceptions` entry. Only a person reviewing the change accepts exactly these loosenings, with `--accept-policy-change=<digest>` at an interactive terminal, `NITPICKER_ACCEPT_POLICY_CHANGE=<digest>` in CI, or the `accept-policy-change` label of a GitHub pull request, with the nitpicker approval workflow.',
       },
       docs: [{ label: 'Usage guide', path: 'docs/usage.md' }],
     }),

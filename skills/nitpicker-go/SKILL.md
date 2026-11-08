@@ -41,8 +41,8 @@ whole project, so it takes as long as a full run; finish with the plain run belo
      says another run is in progress, wait for that run; never kill it.
 5. Never suppress: no `//nolint`, `//lint:ignore`, build tags that hide a file from the checks,
    config `exclude`/`exceptions`, legacy entries, or weakened tests (`t.Skip` added to get past a
-   failure). If a finding seems wrong, stop and ask. Never pass `--accept-policy-change` or set
-   `NITPICKER_ACCEPT_POLICY_CHANGE`: a `nitpicker-config/policy-loosened` finding is for a person
+   failure). If a finding seems wrong, stop and ask. Never pass `--accept-policy-change`, set `NITPICKER_ACCEPT_POLICY_CHANGE`
+   or add the `accept-policy-change` label: a `nitpicker-config/policy-loosened` finding is for a person
    to accept.
 
 Before you change code other packages use, or fix a bug, read

@@ -1,11 +1,17 @@
-import { symlinkSync } from 'node:fs';
+import { symlinkSync, writeFileSync } from 'node:fs';
 import { parse } from 'yaml';
 import { describe, expect, it } from 'vitest';
 import { unpinnedActions } from '../../../scripts/action-pins/action-pins.mjs';
 import { describePackageManager } from '../detection/package-manager.mjs';
 import { readText, useProjects } from '../test-support/projects.mjs';
 import { unifiedDiff } from './line-diff.mjs';
-import { placeWorkflow, renderWorkflow, workflowPath } from './ci-workflow.mjs';
+import {
+  APPROVAL_WORKFLOW,
+  placeApprovalWorkflow,
+  placeWorkflow,
+  renderWorkflow,
+  workflowPath,
+} from './ci-workflow.mjs';
 
 const project = useProjects();
 const VERSION = '1.2.3';
@@ -16,7 +22,6 @@ const PYTHON_PEERS = "coverage mypy pytest 'mutmut>=3,<4'";
 const ALL_PYTHON_PEERS = `python -m pip install ${PYTHON_PEERS}`;
 const ACTION = 'jhonDoe15/nitpicker@v1.2.3';
 const PINNED = { package: 'nitpicker@1.2.3' };
-const POLICY = '${{ vars.NITPICKER_ACCEPT_POLICY_CHANGE }}';
 
 function gateStep(inputs) {
   return {
@@ -26,7 +31,6 @@ function gateStep(inputs) {
       ...inputs,
       'node-version': '',
       'install-command': 'none',
-      'accept-policy-change': POLICY,
     },
   };
 }
@@ -65,7 +69,7 @@ describe('workflow for Node projects', () => {
 
     expect(workflow.name).toBe('nitpicker');
     expect(workflow.on).toEqual({ pull_request: null });
-    expect(workflow.permissions).toEqual({ contents: 'read' });
+    expect(workflow.permissions).toEqual({ contents: 'read', statuses: 'read' });
     expect(workflow.jobs.nitpicker['runs-on']).toBe('ubuntu-latest');
     expect(workflow.jobs.nitpicker.steps.slice(0, 2)).toEqual([
       { uses: 'actions/checkout@v7.0.1', with: { 'fetch-depth': 0 } },
@@ -431,6 +435,16 @@ describe('workflow location', () => {
       }),
     });
     expect(readText(root, ROOT_WORKFLOW)).toBe(existing);
+  });
+
+  it('writes the policy approval workflow once per repository and keeps a changed one', () => {
+    const root = project({}, { repository: true });
+
+    expect(placeApprovalWorkflow(root)).toEqual({ relative: APPROVAL_WORKFLOW, status: 'created' });
+    expect(placeApprovalWorkflow(root).status).toBe('unchanged');
+    writeFileSync(`${root}/${APPROVAL_WORKFLOW}`, 'name: mine\n');
+    expect(placeApprovalWorkflow(root).status).toBe('differs');
+    expect(readText(root, APPROVAL_WORKFLOW)).toBe('name: mine\n');
   });
 
   it('refuses to write through a .github folder that links outside the repository', () => {

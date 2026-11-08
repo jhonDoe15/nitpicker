@@ -41,7 +41,7 @@ run; finish with the plain run below.
    entries, or weakened tests. In Java files the Java rules apply: `@SuppressFBWarnings` and
    `@SuppressWarnings("PMD")` are findings, and a project's own PMD or Checkstyle config is used
    only when `nitpicker.config.json` opts in under `tools`. If a finding seems wrong, stop and ask.
-   Never pass `--accept-policy-change` or set `NITPICKER_ACCEPT_POLICY_CHANGE`: a
+   Never pass `--accept-policy-change`, set `NITPICKER_ACCEPT_POLICY_CHANGE` or add the `accept-policy-change` label: a
    `nitpicker-config/policy-loosened` finding is for a person to accept.
 
 With Spring on the classpath, also follow [spring.md](spring.md).
