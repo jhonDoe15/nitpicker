@@ -148,7 +148,7 @@ def selects_count_or_constant(root, context):
 def page_step(step):
     name, node = step
     if name == "[]":
-        return isinstance(node.slice, ast.Slice)
+        return is_window(node.slice)
     return name in PAGE_STEPS and node is not None and bool(node.args or node.keywords)
 
 
@@ -169,10 +169,14 @@ def orm_page(node, context):
     return finding(context.path, RULE, short(f".{name}({arguments})"), call)
 
 
+def is_window(node):
+    return isinstance(node, ast.Slice) and (node.lower is not None or node.upper is not None)
+
+
 def querysets_until_slice(steps):
     for name, node in steps:
         if name == "[]":
-            return isinstance(node.slice, ast.Slice)
+            return is_window(node.slice)
         if name not in QUERYSET_STEPS or node is None:
             return False
     return False
@@ -180,9 +184,11 @@ def querysets_until_slice(steps):
 
 def django_slice(node, context):
     _, own = chain_of(node)
-    slices = [step for step in own if step[0] == "[]" and isinstance(step[1].slice, ast.Slice)]
+    slices = [step for step in own if step[0] == "[]" and is_window(step[1].slice)]
     chains = expanded(node, context) if slices else None
     if not chains or any(ordered(steps) for _, steps in chains):
+        return None
+    if all(root is None for root, _ in chains):
         return None
     for root, steps in chains:
         if root is None:
