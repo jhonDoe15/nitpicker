@@ -1,4 +1,5 @@
 import { hasAwaitility } from '../../../messages/wait-advice.mjs';
+import { swallowedHandlerFindings } from './handlers/swallowed-handlers.mjs';
 import { enumPredicateFindings } from './main/enum-predicates.mjs';
 import { fanOutFindings } from './main/fan-out/fan-out.mjs';
 import { forwardingWrapperFindings } from './main/forwarding-wrappers.mjs';
@@ -79,6 +80,7 @@ export function readKotlinReviewFindings(context) {
     ...singularPluralFindings(own, { finding }),
     ...timeoutFindings(own, { finding }),
     ...suspendedUpdateFindings(own, { finding, declaredIn: projectFiles }),
+    ...swallowedHandlerFindings(own, { finding, declaredIn: projectFiles }),
     ...validationTargetFindings(own, { finding }),
     ...loadEffectFindings(own, { finding, declaredIn: projectFiles }),
     ...unboundedPoolFindings(own, { finding }),

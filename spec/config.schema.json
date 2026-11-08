@@ -2082,6 +2082,8 @@
                             "pmd/SingularAndPluralMember",
                             "pmd/timeout-abandons-operation",
                             "pmd/NonAtomicUpdateAcrossSuspension",
+                            "pmd/SwallowedInterrupt",
+                            "pmd/SwallowedCancellation",
                             "pmd/ValidationAnnotationTarget",
                             "pmd/ClassLoadEffect",
                             "pmd/UnboundedThreadPool",

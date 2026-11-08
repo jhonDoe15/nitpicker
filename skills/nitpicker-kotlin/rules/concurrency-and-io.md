@@ -9,6 +9,14 @@ Part of the [nitpicker-kotlin](../SKILL.md) skill. Write these forms from the st
   before rethrowing. `future.get(1, SECONDS)` needs `cancel(true)` on that future or a rethrow in
   its `TimeoutException` handler; a `supplyAsync` future never interrupts its task (`get`, `orTimeout`
   or `cancel(true)`), so run that work as a coroutine or on an `ExecutorService`.
+- Do not wrap suspending work in `runCatching`: it captures cancellation. Call directly or catch
+  only an expected specific failure. Non-suspending `runCatching` is allowed.
+- In a suspend function or coroutine, a `catch` of `CancellationException` rethrows it (`throw e`) or calls
+  `ensureActive()`; a `catch` of `InterruptedException` rethrows or calls `Thread.currentThread().interrupt()`.
+  Logging or returning a default swallows it (`pmd/SwallowedCancellation`, `pmd/SwallowedInterrupt`).
+- Inject a dispatcher (`dispatcher: CoroutineDispatcher = Dispatchers.IO`) instead of naming `Dispatchers.IO`
+  in main code; no `suspend` on a function that never suspends or returns a `Flow`; no `suspend`
+  `CoroutineScope` extension; `delay`, never `Thread.sleep`, in a `suspend` function.
 - Fan-out: bound concurrent remote or message calls. One `Semaphore(8)` with `withPermit { ... }` around each call,
   `chunked(n)`, or `flatMapMerge(concurrency = n)`; never `items.map { async { client.get(it) } }.awaitAll()` over a
   runtime collection. `limitedParallelism(n)` caps threads, not suspending calls in flight. Reactor: pass a limit

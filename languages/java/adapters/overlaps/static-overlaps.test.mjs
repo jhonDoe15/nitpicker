@@ -43,6 +43,19 @@ const SOURCE = [
   'class C {}',
   '/** D. */',
   'class D {}',
+  'class E {',
+  '  void m() {',
+  '    try {',
+  '      run();',
+  '    } catch (InterruptedException',
+  '        e) {',
+  '    }',
+  '    try {',
+  '      run();',
+  '    } catch (IllegalStateException e) {',
+  '    }',
+  '  }',
+  '}',
 ].join('\n');
 
 function at(printedRule, line, extra = {}) {
@@ -61,6 +74,7 @@ const SCOPED = {
   member: { primary: 5, covered: { line: 6 }, apart: { line: 9 } },
   class: { primary: 5, covered: { line: 9 }, apart: { line: 13 } },
   javadoc: { primary: 16, covered: { line: 15 }, apart: { line: 19 } },
+  catch: { primary: 25, covered: { line: 26 }, apart: { line: 30 } },
   file: { primary: 5, covered: { line: 13 }, apart: { line: 5, path: 'src/Other.java' } },
   field: { primary: 3, covered: { symbol: 'demo.A.f' }, apart: { symbol: 'demo.B.f' } },
 };

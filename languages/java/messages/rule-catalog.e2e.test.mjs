@@ -19,7 +19,7 @@ const RULE_FILES = [
   'google_checks.xml',
   'findbugs.xml',
 ];
-const EXTRA_PMD_RULES = ['AvoidCatchingGenericException'];
+const EXTRA_PMD_RULES = ['AvoidCatchingGenericException', 'SwallowedInterrupt'];
 const EXTRA_CHECKSTYLE_RULES = ['UnusedImports'];
 const CHECKSTYLE_INFRASTRUCTURE = /^(?:Checker|TreeWalker)$|Filter$|^Suppress/u;
 
