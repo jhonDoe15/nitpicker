@@ -113,7 +113,7 @@ function runSourceTools(options) {
     auxClasspath: kotlin.auxClasspath,
     spawn,
   });
-  runErrorProne({ module, reportDir, tools, classpaths, spawn });
+  runErrorProne({ module, reportDir, tools, classpaths, configs, spawn });
   runFormat({ module, reportDir, tools, javaStyle: style.javaStyle, spawn });
   runCheckstyle({ module, reportDir, tools, configs, pinned, style, spawn });
 }

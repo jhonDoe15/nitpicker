@@ -30,3 +30,5 @@ Kotlin classes (see [Mutation](mutation.md)), and jdeps reads every main class d
 `tools.spotbugs` works as in the Java preset: with `"project"` listed, the exclude filters and the higher effort
 or lower threshold the build declares for SpotBugs apply to this Java-only run (see
 [Settings the build declares](../usage.md#settings-the-build-declares-java-and-kotlin-presets)).
+`tools.errorprone` likewise lays the Error Prone and NullAway flags the build declares over nitpicker's
+for the Java sources Error Prone compiles.

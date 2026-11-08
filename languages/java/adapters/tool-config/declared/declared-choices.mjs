@@ -6,9 +6,10 @@ import {
 } from '../../../../../shared/conventions/tool-precedence.mjs';
 import { BUILD_DECLARED_TOOLS } from '../../gradle-presets.mjs';
 import { directorySource, readDeclaredBuild } from './declared-build.mjs';
+import { ERRORPRONE } from './errorprone-declared.mjs';
 import { SPOTBUGS } from './spotbugs-declared.mjs';
 
-const TOOLS = { spotbugs: SPOTBUGS };
+const TOOLS = { spotbugs: SPOTBUGS, errorprone: ERRORPRONE };
 
 function requireReadablePoms(build) {
   const broken = build.poms.find((pom) => pom.failure !== undefined);
