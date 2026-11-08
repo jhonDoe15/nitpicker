@@ -24,8 +24,8 @@ the catalog does not know, from a project's own config) the exception route with
 path:
 
 ```
-Usage of System.out/err. Write through a logger, or take a PrintStream as a parameter so callers
-choose the stream. If this is intended, add {"rule":"pmd/SystemPrintln","paths":["src/main/java/demo/Cli.java"],"reason":"..."}
+Usage of System.out/err. Use a logger, or write to a PrintStream, Writer or Appendable parameter; only static void main passes
+System.out. An exception fits only without a main method. If this is intended, add {"rule":"pmd/SystemPrintln","paths":["src/main/java/demo/Cli.java"],"reason":"..."}
 to "exceptions" in nitpicker.config.json.
 ```
 

@@ -1,0 +1,7 @@
+[
+  {
+    "tool": "python-rules",
+    "rule": "process-stream-access",
+    "mention": "print(..., file=out)"
+  }
+]

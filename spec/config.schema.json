@@ -1993,6 +1993,7 @@
                             "kotlin-source/LogStringConcatenation",
                             "kotlin-source/ShellCommand",
                             "kotlin-source/IoCallInLoop",
+                            "kotlin-source/StandardStreamOutsideEntryPoint",
                             "kotlin-source/CatchOnlyLogsOrReturnsDefault",
                             "kotlin-source/BooleanFlagParameter",
                             "kotlin-source/MutableModuleState",

@@ -6,7 +6,10 @@ Part of the [nitpicker-java](../SKILL.md) skill. Write these forms from the star
   (`lock()` right before `try`, `unlock()` in `finally`) and wait on a `Condition` from it
   (`await()` in a loop, `signalAll()`).
 - Output: no `System.out`/`System.err` and no `printStackTrace()`. Log with
-  `System.getLogger(Foo.class.getName())`, or the project's logger.
+  `System.getLogger(Foo.class.getName())`, or the project's logger. A command-line program takes a
+  `PrintStream`, `Writer` or `Appendable` parameter and writes to it; only `static void main`
+  passes `System.out`/`System.err` (`new Cli(System.out).run(args)`, `System.out::print`), and
+  that hop is not a finding and needs no test; branches in `main` still count.
 - Fan-out: bound concurrent remote or message calls. Run the tasks on a fixed pool
   (`Executors.newFixedThreadPool(8)`), take a `Semaphore` permit around each call, or work through
   fixed-size batches; never `supplyAsync` per element on the default pool or a cached or
