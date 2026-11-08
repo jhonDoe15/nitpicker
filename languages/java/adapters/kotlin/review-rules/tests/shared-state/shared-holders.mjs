@@ -29,8 +29,8 @@ const ARRAYS = '(?:Int|Long|Double|Float|Short|Byte|Char|Boolean)?Array';
 const MUTABLE_INIT = new RegExp(
   [
     String.raw`^\s*(?:(?:mutable(?:List|Set|Map)|arrayList|hashMap|hashSet|linkedMap|linkedSet|sortedMap|sortedSet`,
-    String.raw`|(?:int|long|double|float|short|byte|char|boolean)?[aA]rray)Of\s*(?:<[^=]*?>)?\s*\(`,
-    String.raw`|(?:java\.util\.(?:concurrent\.(?:atomic\.)?)?)?(?:${COLLECTION_NAMES}|${ARRAYS})\s*(?:<[^=]*?>)?\s*\()`,
+    String.raw`|(?:int|long|double|float|short|byte|char|boolean)?[aA]rray)Of(?:\s*<[^=(]*>)?\s*\(`,
+    String.raw`|(?:java\.util\.(?:concurrent\.(?:atomic\.)?)?)?(?:${COLLECTION_NAMES}|${ARRAYS})(?:\s*<[^=(]*>)?\s*\()`,
   ].join(''),
   'u',
 );

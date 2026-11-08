@@ -30,11 +30,14 @@ const MUTATORS = [
 ].join('|');
 const RESETTERS = new Set(['clear', 'set', 'reset', 'setLength']);
 const QUALIFIER = String.raw`((?:this|Companion|[A-Z]\w*(?:\s*\.\s*Companion)?)\s*\.\s*)?`;
-const INDEX = String.raw`(\s*\[[^\]\n]*\])?`;
+const INDEX = String.raw`(\[[^\]\n]*\]\s*)?`;
 const TAIL = new RegExp(
-  String.raw`^${INDEX}\s*(?:([-+*/%]?)=(?!=)|(\+\+|--)|(?:!!)?\s*\??\.\s*(${MUTATORS})\s*[({])`,
+  String.raw`^\s*${INDEX}(?:([-+*/%]?)=(?!=)|(\+\+|--)|(?:!!\s*)?\??\.\s*(${MUTATORS})\s*[({])`,
   'u',
 );
+const DECLARED_BEFORE = /(?:val|var)\s+$/u;
+const DECLARATION_WINDOW = 8;
+const STEP = 2;
 
 function refPattern(name) {
   return new RegExp(String.raw`(?<![\w.\x60])${QUALIFIER}${escaped(name)}(?![\w\x60])`, 'gu');
@@ -52,7 +55,7 @@ function qualifiedFine(qualifier, holder) {
   return ['this.', 'Companion.', `${name}.`, `${name}.Companion.`].includes(text);
 }
 
-function shadowed(scanned, name, from, offset) {
+function shadowed(scanned, name, { from, offset }) {
   const own = escaped(name);
   const pattern = new RegExp(
     [
@@ -66,32 +69,37 @@ function shadowed(scanned, name, from, offset) {
   return pattern.test(scanned.code.slice(from, offset));
 }
 
-function hitOf(scanned, holder, match) {
-  const after = match.index + match[0].length;
-  const tail = TAIL.exec(scanned.code.slice(after));
-  const before = scanned.code.slice(Math.max(0, match.index - 2), match.index);
-  const prefixed = before === '++' || before === '--';
-  if (/(?:val|var)\s+$/u.test(scanned.code.slice(Math.max(0, match.index - 8), match.index))) {
-    return undefined;
+function kindOf({ index, operator, call }) {
+  if (call !== undefined) {
+    return 'call';
   }
+  if (index !== undefined) {
+    return 'element';
+  }
+  if (operator === undefined) {
+    return 'step';
+  }
+  return operator === '' ? 'assign' : 'compound';
+}
+
+function skipped(scanned, match, operator) {
+  const declared = scanned.code.slice(Math.max(0, match.index - DECLARATION_WINDOW), match.index);
+  const named = operator === '' && '(,'.includes(previousSignificant(scanned, match.index) ?? ' ');
+  return named || DECLARED_BEFORE.test(declared);
+}
+
+function hitOf(scanned, holder, match) {
+  const tail = TAIL.exec(scanned.code.slice(match.index + match[0].length));
+  const before = scanned.code.slice(Math.max(0, match.index - STEP), match.index);
+  const prefixed = before === '++' || before === '--';
   if ((tail === null && !prefixed) || !qualifiedFine(match[1], holder)) {
     return undefined;
   }
   const [, index, operator, , call] = tail ?? [];
-  const named = operator === '' && '(,'.includes(previousSignificant(scanned, match.index) ?? ' ');
-  if (named) {
+  if (skipped(scanned, match, operator)) {
     return undefined;
   }
-  const kind =
-    call !== undefined
-      ? 'call'
-      : index !== undefined
-        ? 'element'
-        : operator === ''
-          ? 'assign'
-          : operator !== undefined
-            ? 'compound'
-            : 'step';
+  const kind = kindOf({ index, operator, call });
   return { offset: match.index, kind, call, counts: counts(holder, kind) };
 }
 
@@ -109,7 +117,10 @@ export function hitsIn(scanned, holder, range) {
   const text = scanned.code.slice(range.start, range.end);
   return [...text.matchAll(refPattern(holder.name))]
     .map((match) => ({ ...match, index: match.index + range.start }))
-    .filter((match) => !shadowed(scanned, holder.name, range.from ?? range.start, match.index))
+    .filter(
+      (match) =>
+        !shadowed(scanned, holder.name, { from: range.from ?? range.start, offset: match.index }),
+    )
     .map((match) => hitOf(scanned, holder, match))
     .filter((hit) => hit !== undefined && hit.counts);
 }
