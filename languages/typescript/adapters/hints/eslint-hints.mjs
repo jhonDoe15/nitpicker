@@ -202,7 +202,7 @@ function appendHint(hint) {
 }
 
 function sentenceHint(hint) {
-  return ({ text }) => hinted(text.replace(/\.?$/u, '.'), hint);
+  return ({ text }) => hinted(text.trimEnd().replace(/(?<![.!?])$/u, '.'), hint);
 }
 
 function nodeTestMessage({ text }) {
