@@ -2,7 +2,7 @@ import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { pathInside } from '../../../../../shared/filesystem.mjs';
 import { hash, nextOccurrence } from '../../../../../shared/rules/finding-helpers.mjs';
-import { braceDepths, lineOf, lineText, scanKotlinSource } from './kotlin-source.mjs';
+import { lineOf, lineText, scanKotlinSource } from './kotlin-source.mjs';
 import { kotlinDeclarations } from './security/sql-values.mjs';
 import { generatedFile } from './rules/markers.mjs';
 import { directoryRules } from './rules/source-rules.generated.mjs';
@@ -21,12 +21,6 @@ export const KOTLIN_SOURCE_RULES = Object.keys(KOTLIN_SOURCE_MESSAGES).map(
 const MAIN_RULES = directoryRules.flatMap(({ main = [] }) => main);
 const TEST_RULES = directoryRules.flatMap(({ test = [] }) => test);
 
-const TOP_LEVEL_MAIN = /(?<![\w.])fun\s+main\s*\(/g;
-const ROOT_MARKERS = [
-  /@(?:[\w.]+\.)?SpringBootApplication\b/,
-  /(?<![\w.])fun\s+Application\s*\.\s*\w+\s*\(/,
-];
-
 function kotlinFiles(projectRoot, sourceRoots) {
   const files = sourceRoots.flatMap((sourceRoot) => {
     const directory = pathInside(projectRoot, sourceRoot);
@@ -42,14 +36,6 @@ function kotlinFiles(projectRoot, sourceRoots) {
   });
   const byFile = new Map(files.map((entry) => [entry.file, entry]));
   return [...byFile.values()].toSorted((left, right) => (left.file < right.file ? -1 : 1));
-}
-
-export function isCompositionRoot(scanned) {
-  const depths = braceDepths(scanned.code);
-  const declaresMain = [...scanned.code.matchAll(TOP_LEVEL_MAIN)].some(
-    ({ index }) => depths[index] === 0,
-  );
-  return declaresMain || ROOT_MARKERS.some((marker) => marker.test(scanned.code));
 }
 
 function finding({ file, scanned, occurrences }, reported) {

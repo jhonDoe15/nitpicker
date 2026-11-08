@@ -4,5 +4,11 @@
     "tool": "ruff",
     "rule": "T201",
     "mention": "logging.getLogger"
+  },
+  {
+    "name": "print names the writer parameter for program output",
+    "tool": "ruff",
+    "rule": "T201",
+    "mention": "file=out"
   }
 ]

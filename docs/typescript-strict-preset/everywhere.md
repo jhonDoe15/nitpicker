@@ -312,6 +312,53 @@ Part of the [TypeScript strict preset guide](../typescript-strict-preset.md).
     reported, and `axios.getUri` sends nothing. `fetch` is not checked in browser projects (React,
     Preact, Vue, Svelte, Solid, Angular, read from `package.json`). Allowed:
     `fetch(url, { signal: AbortSignal.timeout(10_000) })`.
+  - `nitpicker/timeout-abandons-operation`: `Promise.race([operation(...), timeout])` where one
+    entry is a timeout and a losing entry is a call that gets no abort signal. `Promise.race` settles
+    with the first entry and never cancels the others, so when the timeout wins the operation keeps
+    running, holds its connection or lock and repeats its side effect if the caller retries. A
+    timeout entry is a timer that rejects: a `new Promise` whose executor passes its `reject`
+    parameter to `setTimeout` (also `globalThis.setTimeout` or `window.setTimeout`), a call to a
+    function of the same file that does nothing but wait and rejects (through such an executor, a
+    `throw` after an awaited timer in an `async` function, or `Promise.reject`), an imported helper
+    named `rejectAfter`, `rejectAfterTimeout`, `rejectOnTimeout`, `timeoutAfter` or `timeoutPromise`,
+    a constant bound to one of these, and a `.then()`, `.catch()` or `.finally()` chain on one. A
+    timer that only resolves (`new Promise((resolve) => setTimeout(resolve, ms))`, `setTimeout` from
+    `node:timers/promises`, `once(AbortSignal.timeout(ms), 'abort')`) is a hedge or a sleep, not a
+    timeout, and is not reported; it becomes one when a `.then()` on it throws or returns
+    `Promise.reject(...)`. The race is `Promise.race` on the global `Promise`, also through
+    `globalThis.Promise` or a constant (`const P = Promise`); `const { race } = Promise` is not
+    recognized, since calling it unbound throws a `TypeError` before any race starts. The losing
+    operation is each call among the other entries, looking through a `const` that holds the call,
+    a `.then()` chain, both branches of a `? :`, the calls a `new Promise` executor makes, the
+    callbacks of `Promise.resolve().then(...)`, and `Promise.all`, `allSettled`, `race` and `any`
+    lists; a loser that is itself a timer is skipped. The call passes when an argument is, or
+    resolves to, an object with a `signal`, `abortSignal` or `cancelToken` key (an object with a
+    spread counts, since its keys are unknown), a value named `signal`, `controller`,
+    `abortController`, `cancelToken` or `*Signal`, `x.signal`, `AbortSignal.timeout(...)`,
+    `AbortSignal.any(...)` or `AbortSignal.abort(...)`; an argument named `options`, `opts`, `init`
+    or `settings` is unknown and passes. A `timeout` key on an unknown function does not pass, since
+    nothing says the callee stops on it. It also passes when the callee is a function of the same
+    file that uses such a signal from its enclosing scope, or when `.abort()`, `.cancel()`,
+    `.destroy()`, `.kill()`, `.terminate()` or `.dispose()` is called on the operation's receiver or
+    one of its arguments anywhere in the function holding the race, or on anything in the timeout
+    path: the `catch` or `finally` of a `try` around the race, a `.catch()`, `.then()` or
+    `.finally()` callback on the race, or the timeout entry itself. A callee of the same file that
+    has a signal parameter (by name, or typed `AbortSignal`) the call leaves out gets the second
+    message, which names the parameter. HTTP client calls that `nitpicker/require-http-timeout`
+    recognizes (`fetch`, `axios` and an `axios.create(...)` instance, `got` and a `got.extend(...)`
+    instance, `http`/`https`) are left to that rule: without a timeout it reports them, so the code
+    gets one finding, and with one (`axios.get(url, { timeout })`, `axios.create({ timeout })`, a
+    project default) the call has its own deadline. A browser project's `fetch`, which that rule
+    does not check, is checked here. Allowed: create an `AbortController`, abort it in the timeout
+    path and pass `{ signal: controller.signal }`, or pass `AbortSignal.timeout(ms)` to an API that
+    takes `signal` and remove the race. Production source only: tests, stories and support files are
+    not checked. Not recognized (so never reported): a race built from a spread or a computed array,
+    an operation held in a parameter or a `let`, an inline async function, a timeout helper that is
+    imported under another name, a timer that resolves with a sentinel the caller then checks
+    (`sleep(ms).then(() => TIMEOUT)`), and a race on `Promise.any`. Whether a callee honours a signal
+    it receives, and whether a losing call is pure (`parse(text)`), are not checked: a pure loser is
+    reported like any other, and needs an exception. An intentional background task needs an
+    exception for the rule with its paths and a reason.
   - `nitpicker/no-unsafe-deserialization`: `node-serialize`, `funcster` and `cryo` (they rebuild
     functions, also through `import x = require(...)` and `import()`), `v8.deserialize` (and the
     `v8.deserialize(v8.serialize(x))` copy, whose allowed form is `structuredClone(x)`),
@@ -372,8 +419,25 @@ Part of the [TypeScript strict preset guide](../typescript-strict-preset.md).
   local binding of the same name. Any other condition, such as `import.meta.env.DEV`, a bare
   `import.meta.url`, a call or a comma expression inside the comparison, is still reported.
 
-- `nitpicker/no-production-console` also reports `console['error']` and, outside the composition
-  root, `process.stdout.write` and `process.stderr.write`.
+- `nitpicker/no-production-console` reports every reference to `console`, not only calls:
+  `console.log()`, `console['error']()`, `const log = console.log`, `const { log } = console`,
+  `items.forEach(console.log)`, `const c = console` and `globalThis.console`. `typeof console` and a
+  local binding named `console` are not findings.
+  It also reports every reference to `process.stdout` and `process.stderr` outside the composition
+  root, not only `.write()`: an alias (`const out = process.stdout`, `const p = process`,
+  `const g = globalThis`), a destructured `stdout`/`stderr` (also nested, assigned, or through a
+  `...rest`), an import or re-export from `node:process` (`export * from "node:process"` too), a
+  `require` or `await import()`, `globalThis.process`, a `as`, `satisfies`, `!` or `<T>` wrapper
+  around `process`, and an argument handed to a helper. A local binding named `process` is not the
+  global one, and type-only imports and exports are not findings. Code outside the root takes a
+  `{ write(text: string): void }` parameter; the composition root passes `process.stdout` and
+  `process.stderr` (or writes to them), and that line is not a finding. Files listed in
+  `layout.entryPoints` (and the detected framework entry) may reference the streams the same way;
+  `console.*` stays a finding there. Reading `isTTY`, `columns`, `rows` or `hasColors()` is a
+  reference too: the root reads the fact once and passes it down as a value, like the environment.
+  The JavaScript preset runs the same rule. The hop needs no coverage or mutation exemption: a test
+  calls the exported `main` with `vi.spyOn(process.stdout, 'write')` (as the eval fixtures do), so the
+  arrow that forwards to the stream is covered and killed.
 - Named functions use the `function` keyword; arrow functions only as callbacks.
 - `type`, never `interface`, except in a `declare module` or `declare global` augmentation, or at
   the top level of a global declaration file with no imports or exports (such as `ImportMetaEnv` in

@@ -13,7 +13,7 @@ of the JVM that runs Gradle, once per build into the root project's `build/tmp/n
 once per module with the pinned Kotlin compiler's parser. Gradle must run on a JDK (Java 21): on a Java runtime
 without `javac` the task fails and says so. One parse
 of the main and test source roots writes `kotlin-metrics.json` (main only: structure, CRAP, coupling) and
-`kotlin-facts.json` (main and test: classes, functions, properties, calls, type aliases, waits and
+`kotlin-facts.json` (main and test: classes, functions, properties, calls, type aliases, waits, timeouts and
 comparison chains; for main sources also the calls that run while a file or object loads, and the type or
 initializer of each property). The rules are evaluated in Node (`languages/java/adapters/kotlin/review-rules/`) from the
 facts, so they have no type resolution. A name is matched through the file's imports and the project's own
@@ -38,6 +38,7 @@ skipped with a note on stderr.
 | `ValidationAnnotationTarget`                     | `review-rules/validation/validation-targets.mjs` | a Bean Validation annotation (`jakarta.validation.constraints`, `javax.validation.constraints`, `org.hibernate.validator.constraints`, or `@Valid`) on a primary-constructor `val` or `var` of a main source without a `field:`, `get:` or `all:` use-site target; Kotlin puts it on the constructor parameter, where Bean Validation does not look. Kotlin-only: a Java record carries the annotation to its field and accessor |
 | `SpringUnusedContext`                            | `review-rules/tests/spring-context.mjs`          | a `@SpringBootTest` class that uses nothing from the context                                                                                                                                                                                                                                                                                                                                                                     |
 | `ExhaustiveEnumPredicate`                        | `review-rules/main/enum-predicates.mjs`          | a test that lists only some constants of an enum (`==` chains, `in setOf(...)`, `listOf(...).contains(s)`, a `when (s)` whose branches yield one Boolean and whose `else` yields the other), so a constant added later falls into the other case                                                                                                                                                                                 |
+| `timeout-abandons-operation`                     | `review-rules/main/timeouts/timeouts.mjs`        | a timeout that stops waiting but leaves the work running: `future.get(timeout, unit)` without a cancel or rethrow, `get`, `orTimeout` or `completeOnTimeout` on `supplyAsync`/`runAsync`, `withTimeout { work.await() }` on a coroutine started in an outside scope                                                                                                                                                              |
 | `unused-option` (tool `structure`)               | `review-rules/main/unused-options/`              | a defaulted parameter that no call sets, of a public top-level, `object` or companion function or a private or internal function or constructor                                                                                                                                                                                                                                                                                  |
 | `ClassLoadEffect`                                | `review-rules/main/load-effects.mjs`             | a call with an external effect (database, network, files, processes, threads and pools, JVM-wide settings) that runs while a file, `object`, companion object or enum class loads                                                                                                                                                                                                                                                |
 | `UnboundedThreadPool`                            | `review-rules/main/thread-pools/`                | `Executors.newCachedThreadPool()` (also imported) and a `ThreadPoolExecutor(...)` whose maximum pool size is `Int.MAX_VALUE`; the allowed form is a bounded pool or `Dispatchers.IO.limitedParallelism(n)`                                                                                                                                                                                                                       |
@@ -77,6 +78,35 @@ Limits, all chosen to flag less rather than guess:
   stereotype (`@Component`, `@Service`, `@Repository`, `@Controller`, `@RestController`, `@ControllerAdvice`,
   `@RestControllerAdvice`, `@Configuration`, `@SpringBootApplication`, `@AutoConfiguration`,
   `@TestConfiguration`), resolved through the imports or written fully qualified, as in the Spring rules.
+- Timeouts (`pmd/timeout-abandons-operation`, main sources only, the Kotlin form of the rule every preset
+  has under that name; the facts come from `kotlin-psi/timeouts/`): `withTimeout` and `withTimeoutOrNull`
+  cancel the coroutines they start, so they pass. Three forms are reported, with the Java rule's
+  semantics. `x.get(timeout, unit)` inside a `try` that catches `TimeoutException`, when the second
+  argument is a `TimeUnit` constant (`TimeUnit.SECONDS`, or `SECONDS` imported from
+  `java.util.concurrent.TimeUnit`, also under an alias or a star import; the facts carry no types, so
+  the catch and the unit identify `Future.get`, and `cache.get("key", "fallback")` is not read as one),
+  when a timeout handler neither throws (a `throw` inside a lambda or a local function does not count)
+  nor passes `x` to a call other than a log or print call, and the function never stops the work:
+  `cancel(...)` on `x` unless its argument is `false`, `shutdownNow()` on the executor `x` comes from
+  (`val x = pool.submit(...)`, or a call that receives `x`), or `interrupt()` on a local
+  `val t = Thread(x)`; for an `x` of unknown origin (a parameter or a property) `shutdownNow()` or
+  `interrupt()` on any named receiver counts. `shutdown()` and `Thread.currentThread().interrupt()`
+  never count. A `get` on a future that `CompletableFuture.supplyAsync(...)` or `runAsync(...)`
+  started is reported whatever the handler cancels, as is `orTimeout` or `completeOnTimeout` on a
+  chain that starts there, directly or through a local `val`, because cancelling or completing a
+  `CompletableFuture` never interrupts its task; only a rethrow, a hand-off or `shutdownNow()` on the
+  executor passed to `supplyAsync` lets that `get` pass. And a `withTimeout`/`withTimeoutOrNull` block
+  (imported from `kotlinx.coroutines`, also under an alias or a star import) whose lambda calls
+  `await()` or `join()` on a local `val`, or `awaitAll`/`joinAll` with it (`awaitAll(a, b)`,
+  `listOf(a, b).awaitAll()`), that `<scope>.async` or `<scope>.launch` started before the block with
+  an explicit receiver (`GlobalScope`, a stored `CoroutineScope`), when neither the value nor that
+  scope is cancelled (`cancel`, `cancelAndJoin`, `cancelChildren`, also through
+  `scope.coroutineContext.cancelChildren()`) anywhere in the function. An `async` without a receiver
+  is a child of the enclosing `coroutineScope` and is cancelled with it, a `Deferred` from a
+  parameter, a property or a function result has an unknown owner, and neither is reported. The
+  identity is `<owner>.<function>:<form>:<name>` (the enclosing class and function, the form, and the
+  waited variable or the call it is chained on), so it holds no source text and an edit elsewhere
+  does not renumber it.
 - Singular and plural: both members must have the same element type (the plural a list, set,
   collection or array of it). Inspected: the primary-constructor properties of a `data class`, the
   properties of a `@ConfigurationProperties` class, the public and internal primary-constructor

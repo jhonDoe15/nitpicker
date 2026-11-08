@@ -109,6 +109,7 @@ function runSourceTools(options) {
     module: kotlin.spotbugsModule,
     reportDir,
     tools,
+    configs,
     auxClasspath: kotlin.auxClasspath,
     spawn,
   });

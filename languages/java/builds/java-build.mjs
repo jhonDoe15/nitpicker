@@ -24,6 +24,10 @@ export function readPinnedTools(initScript = INIT_SCRIPT) {
   return pinned;
 }
 
+export function buildRunsPreset(buildTool, preset) {
+  return buildTool === 'gradle' || preset !== 'kotlin';
+}
+
 const PIT_MUTATOR = /^'[A-Z_]+'$/u;
 
 export function readPitMutators(initScript = INIT_SCRIPT) {

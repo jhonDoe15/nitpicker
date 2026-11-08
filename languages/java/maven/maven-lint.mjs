@@ -17,6 +17,10 @@ import { writeRulesets } from '../adapters/tool-config/pmd-wrappers.mjs';
 import { layerCheckstyle } from '../adapters/tool-config/checkstyle/checkstyle-layers.mjs';
 import { unformattedCheckstyle } from '../adapters/tool-config/checkstyle/unformatted-checks.mjs';
 import { NITPICKER_RULESET } from '../adapters/tool-config/layer-files.mjs';
+import {
+  NITPICKER_SPOTBUGS,
+  spotbugsArguments,
+} from '../adapters/tool-config/declared/spotbugs-declared.mjs';
 
 const LAYOUT_SUPPRESSIONS = 'checkstyle-suppressions.xml';
 const UNFORMATTED_SUPPRESSIONS = 'checkstyle-suppressions-unformatted.xml';
@@ -99,7 +103,7 @@ export function runPmd(options) {
   });
 }
 
-export function runSpotbugs({ module, reportDir, tools, auxClasspath = [], spawn }) {
+export function runSpotbugs({ module, reportDir, tools, configs, auxClasspath = [], spawn }) {
   const report = path.join(reportDir, 'spotbugs.sarif');
   const hasClasses =
     existsSync(module.outputDirectory) && readdirSync(module.outputDirectory).length > 0;
@@ -112,8 +116,7 @@ export function runSpotbugs({ module, reportDir, tools, auxClasspath = [], spawn
     classpath: tools.spotbugs,
     mainClass: 'edu.umd.cs.findbugs.FindBugs2',
     args: [
-      '-effort:default',
-      '-medium',
+      ...(configs?.spotbugs?.arguments ?? spotbugsArguments(NITPICKER_SPOTBUGS)),
       '-sarif',
       '-output',
       report,

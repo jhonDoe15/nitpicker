@@ -13,6 +13,7 @@ import {
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { readSnippet } from './init/files/agents-md.mjs';
 import { PACKAGE_ROOT } from './tooling/tool-resolution.mjs';
 import { supportsRedirect } from '../languages/typescript/typescript-api/api-redirect.mjs';
 import { consumerCommands, eslintVersionOf } from './test-support/installed-consumer.mjs';
@@ -39,6 +40,10 @@ const violation = 'export function example(){\n  debugger;\n  return 1\n}\n';
 
 const expectedEslintVersion = eslintVersionOf(manifest);
 const { command, checked } = consumerCommands({ ...process.env, NO_COLOR: '1' });
+
+function withoutSlowAnalyzerLines(output) {
+  return output.replaceAll(/^nitpicker: (?:base|head) [\w-]+ done \([^)]*\), \d+ of \d+\n/gmu, '');
+}
 
 function write(root, relative, contents) {
   const target = path.join(root, relative);
@@ -216,6 +221,7 @@ suite('packed nitpicker in a separate consumer', () => {
       let subfolder;
       let snapshot;
       let fixed;
+      let initialized;
       let rules;
       let explanation;
       let packageLocation;
@@ -336,6 +342,7 @@ suite('packed nitpicker in a separate consumer', () => {
           '--output',
           reports('fixed'),
         ]);
+        initialized = invoke(['init', '--agents-md', '--ci', 'github']);
       }, 600_000);
       afterAll(() => {
         if (root) rmSync(root, { recursive: true, force: true });
@@ -372,7 +379,7 @@ suite('packed nitpicker in a separate consumer', () => {
         expect(dirty.status, dirty.output).toBe(1);
         expect(summary('dirty').overallStatus).toBe('completed');
         expect(findings('dirty')).toEqual(expectedDirtyFindings(links));
-        expect(dirty.output).toEqual(expectedDirtyOutput(root));
+        expect(withoutSlowAnalyzerLines(dirty.output)).toEqual(expectedDirtyOutput(root));
       });
       it('records pinned owned tool versions and the installed TypeScript peer', () => {
         const versions = Object.fromEntries(
@@ -407,7 +414,7 @@ suite('packed nitpicker in a separate consumer', () => {
       });
       it('supports --all with the packed prettier analyzer', () => {
         expect(snapshot.status, snapshot.output).toBe(1);
-        expect(snapshot.output).toEqual(expectedSnapshotOutput(links));
+        expect(withoutSlowAnalyzerLines(snapshot.output)).toEqual(expectedSnapshotOutput(links));
       });
       it('lists and explains rules from the reference data the package ships, linking the release tag', () => {
         expect(rules.status, rules.output).toBe(0);
@@ -422,6 +429,16 @@ suite('packed nitpicker in a separate consumer', () => {
           installedHelpUri(links, 'prettier-format/prettier/prettier'),
           installedHelpUri(links, 'prettier-format/prettier/prettier'),
         ]);
+      });
+      it('sets the consumer up with init from the packed files', () => {
+        expect(initialized.status, initialized.output).toBe(0);
+        expect(readFileSync(path.join(root, 'nitpicker.config.json'), 'utf8')).toBe(
+          '{ "preset": "typescript" }\n',
+        );
+        expect(readFileSync(path.join(root, 'AGENTS.md'), 'utf8')).toBe(
+          `${readSnippet(packageLocation)}\n`,
+        );
+        expect(existsSync(path.join(root, '.github/workflows/nitpicker.yml'))).toBe(true);
       });
       it('fixes the consumer Prettier violation with --fix', () => {
         expect(fixed.status, fixed.output).toBe(0);

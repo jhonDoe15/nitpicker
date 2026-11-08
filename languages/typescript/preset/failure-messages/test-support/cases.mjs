@@ -44,6 +44,13 @@ export const failureMessageCases = [
     banned: 'console.log("started");',
     allowed: 'application logger',
   },
+  {
+    name: 'standard stream names the write port',
+    config: loggingConfig,
+    filename: 'src/service.ts',
+    banned: 'export const out = process.stdout;',
+    allowed: 'write(text: string)',
+  },
   ...[
     ['as assertion names narrowing', 'const value = input as string;', 'narrow'],
     ['angle-bracket assertion names narrowing', 'const value = <string>input;', 'narrow'],

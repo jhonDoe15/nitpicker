@@ -99,28 +99,29 @@ through the real tools.
   check that fails on a file is reported as a `python-rules/rules-check-failed` tool error naming the check
   and the file; that file has no findings of that check, and every other check and file still runs.
 
-| Allowed form                                    | Banned form                                                                  | Rule                                                       |
-| ----------------------------------------------- | ---------------------------------------------------------------------------- | ---------------------------------------------------------- |
-| `pathlib.Path`                                  | `os.path`, `open()`, `os.getcwd()`, ...                                      | ruff `PTH*`                                                |
-| f-strings                                       | `"...".format()`, `"..." % x`, `"".join` of a fixed list                     | ruff `UP031`, `UP032`, `FLY002`                            |
-| `None` default, value built in the function     | a mutable default argument                                                   | ruff `B006`                                                |
-| catch and handle a specific error, or re-raise  | bare `except:`, `except Exception:`                                          | ruff `E722`, `BLE001`                                      |
-| re-raise, return a failure value or a default   | `except X:` that only passes, continues, logs, returns or assigns a constant | `swallowed-exception`                                      |
-| `contextlib.suppress(SpecificError)`            | `contextlib.suppress(Exception)`, `BaseException` or no argument             | `blind-suppress`                                           |
-| explicit imports                                | `from module import *`                                                       | ruff `F403`                                                |
-| `logging` (or the project's structlog, loguru)  | `print`, `pprint`                                                            | ruff `T201`, `T203`                                        |
-| log the caught exception itself                 | logging only `str(error)` or an f-string with it in an `except`              | `catch-log-without-exception`                              |
-| a test that asserts                             | a test function with no assertion                                            | `test-without-assertion`                                   |
-| `@dataclass(frozen=True)`                       | `@dataclass` without `frozen=True`, outside tests                            | `frozen-dataclass`                                         |
-| the validation library in `adapters/` only      | importing pydantic (or the declared library) elsewhere                       | `pydantic-boundary`                                        |
-| an `enum.Enum` / `StrEnum`                      | a plain class of two string constants, or three `X_*`                        | `enum-string-constants`                                    |
-| fixing the code                                 | `# type: ignore`, `# noqa`, `# pyright: ignore`, ...                         | `no-inline-suppression`                                    |
-| annotated code the checkers read                | `@no_type_check`, `if not TYPE_CHECKING:`, a stub beside                     | `no-type-check`, `not-type-checking`, `stub-beside-source` |
-| a docstring that says what the name cannot      | a docstring that restates the name, or over 5 lines                          | `doc-comment-content` (top-level `exceptions`)             |
-| one plural input, a one-element list            | optional `tag` beside optional `tags: list[...]`                             | `singular-and-plural-field`                                |
-| `match` or `if`/`elif` ending in `assert_never` | `x == E.A or x == E.B` over some members of an enum                          | `exhaustive-enum-predicate`                                |
-| calling (or importing) the target directly      | a module-level function that only forwards to another                        | `forwarding-wrapper`                                       |
-| a parameter some real call passes               | an optional parameter (with a default) that no call passes                   | `unused-option`                                            |
+| Allowed form                                                     | Banned form                                                                  | Rule                                                       |
+| ---------------------------------------------------------------- | ---------------------------------------------------------------------------- | ---------------------------------------------------------- |
+| `pathlib.Path`                                                   | `os.path`, `open()`, `os.getcwd()`, ...                                      | ruff `PTH*`                                                |
+| f-strings                                                        | `"...".format()`, `"..." % x`, `"".join` of a fixed list                     | ruff `UP031`, `UP032`, `FLY002`                            |
+| `None` default, value built in the function                      | a mutable default argument                                                   | ruff `B006`                                                |
+| catch and handle a specific error, or re-raise                   | bare `except:`, `except Exception:`                                          | ruff `E722`, `BLE001`                                      |
+| re-raise, return a failure value or a default                    | `except X:` that only passes, continues, logs, returns or assigns a constant | `swallowed-exception`                                      |
+| `contextlib.suppress(SpecificError)`                             | `contextlib.suppress(Exception)`, `BaseException` or no argument             | `blind-suppress`                                           |
+| explicit imports                                                 | `from module import *`                                                       | ruff `F403`                                                |
+| `logging` (or the project's structlog, loguru)                   | `print`, `pprint`                                                            | ruff `T201`, `T203`                                        |
+| a `TextIO` parameter, `out.write(...)` or `print(..., file=out)` | `sys.stdout`, `sys.stderr` outside the entry point                           | `process-stream-access`                                    |
+| log the caught exception itself                                  | logging only `str(error)` or an f-string with it in an `except`              | `catch-log-without-exception`                              |
+| a test that asserts                                              | a test function with no assertion                                            | `test-without-assertion`                                   |
+| `@dataclass(frozen=True)`                                        | `@dataclass` without `frozen=True`, outside tests                            | `frozen-dataclass`                                         |
+| the validation library in `adapters/` only                       | importing pydantic (or the declared library) elsewhere                       | `pydantic-boundary`                                        |
+| an `enum.Enum` / `StrEnum`                                       | a plain class of two string constants, or three `X_*`                        | `enum-string-constants`                                    |
+| fixing the code                                                  | `# type: ignore`, `# noqa`, `# pyright: ignore`, ...                         | `no-inline-suppression`                                    |
+| annotated code the checkers read                                 | `@no_type_check`, `if not TYPE_CHECKING:`, a stub beside                     | `no-type-check`, `not-type-checking`, `stub-beside-source` |
+| a docstring that says what the name cannot                       | a docstring that restates the name, or over 5 lines                          | `doc-comment-content` (top-level `exceptions`)             |
+| one plural input, a one-element list                             | optional `tag` beside optional `tags: list[...]`                             | `singular-and-plural-field`                                |
+| `match` or `if`/`elif` ending in `assert_never`                  | `x == E.A or x == E.B` over some members of an enum                          | `exhaustive-enum-predicate`                                |
+| calling (or importing) the target directly                       | a module-level function that only forwards to another                        | `forwarding-wrapper`                                       |
+| a parameter some real call passes                                | an optional parameter (with a default) that no call passes                   | `unused-option`                                            |
 
 Details that are decisions rather than the table:
 

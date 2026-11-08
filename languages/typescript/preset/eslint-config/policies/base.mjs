@@ -9,12 +9,17 @@ import { applyMatchingRuleExceptions } from '../exceptions.mjs';
 const { sourceGlobs, testGlobs, excludedGlobs, sourceTestDirectoryGlobs, entryPoints } =
   readLayout();
 const ignores = [...excludedGlobs, ...sourceTestDirectoryGlobs, ...testGlobs, '.stryker-tmp/**'];
-const entryPointScripts =
-  entryPoints.length > 0
-    ? [{ files: entryPoints, rules: { 'nitpicker/report-module-load-effects': 'off' } }]
-    : [];
 
-export function productionPolicyConfig(rules) {
+export function productionPolicyConfig(rules, entryPointRules = {}) {
+  const entryPointScripts =
+    entryPoints.length > 0
+      ? [
+          {
+            files: entryPoints,
+            rules: { 'nitpicker/report-module-load-effects': 'off', ...entryPointRules },
+          },
+        ]
+      : [];
   const config = defineConfig(
     { ignores },
     {

@@ -59,11 +59,10 @@ The allowed forms are on one page per topic. Before you write code, read the pag
 
 - Every rule, also one the pages do not spell out (environment access, the domain, paths, shell and SQL,
   test honesty) reports the allowed form in its message: follow the form the message names.
-- A finding that flags legitimate code (a command line entry point that prints) is lifted in
-  `nitpicker.config.json`. A ruff, type-checker, `python-rules`, import-linter, duplicate or coupling
-  finding goes under `python.exceptions`, with an entry such as
-  `{ "rule": "T201", "paths": ["src/cli/**"], "reason": "..." }`, the rule being the id in the
-  message. A function, CRAP, changed-branch coverage, mutation, file or size finding, and
+- A finding that flags legitimate code is lifted in `nitpicker.config.json`. A ruff, type-checker,
+  `python-rules`, import-linter, duplicate or coupling finding goes under `python.exceptions`, with
+  an entry such as `{ "rule": "PERF203", "paths": ["src/jobs/**"], "reason": "..." }`, the rule being
+  the id in the message. A function, CRAP, changed-branch coverage, mutation, file or size finding, and
   `slow-test`, `test-console-output`, `unused-option` and the other rules every preset shares, go
   under the top-level `exceptions`
   (`{ "rule": "function-lines-limit", "paths": [...], "function": "name", "reason": "..." }`), and

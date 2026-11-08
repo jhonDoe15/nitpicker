@@ -568,6 +568,17 @@ The pairs:
 - field: `errorprone/DateFormatConstant` over `spotbugs/STCAL_STATIC_SIMPLE_DATE_FORMAT_INSTANCE`
 - line: `pmd/NonThreadSafeSingleton` over `spotbugs/LI_LAZY_INIT_STATIC`, `spotbugs/SING_SINGLETON_GETTER_NOT_SYNCHRONIZED`
 
+## Standard streams and the `main` method
+
+`SystemOut` (and PMD's `SystemPrintln`, so the rule holds if the overlap above changes) flags every
+`System.out` / `System.err` use. The one allowed form is a writer: code outside the entry point takes
+a `PrintStream`, `Writer` or `Appendable` parameter and writes to it, and only the body of a
+`static void main(String[])` method passes `System.out` / `System.err` (`new Cli(System.out).run(args)`,
+`System.out::print`). A finding of either rule on a line inside that body is dropped; the same
+method-level scan drops its `mutant-nocoverage` findings; branch coverage still applies. Nothing else
+in the class is spared. `SystemOut` also reports `printStackTrace()`, which Error Prone gives the
+same message as `System.out`; a line of the body that calls `printStackTrace()` stays a finding.
+
 ## Checks spared in annotated classes
 
 `classExemptions` in `checks.json`; a unit test checks that this table lists exactly its checks.
