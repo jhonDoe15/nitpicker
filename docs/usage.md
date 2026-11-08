@@ -598,8 +598,11 @@ nitpicker rules [--preset <name>] [--tool <name>]
 - `--all`: report every finding in the current checkout, with no baseline. Exits 1 on any violation.
   Cannot be combined with `--base`, `--fix`, sharding or `--defer-exit`.
 - `--fix`: apply ESLint and Prettier fixes to the changed files in your checkout, using the gate's
-  own configs, then run the comparison. A fixer that fails is reported as a tool error; the other
-  fixer and the comparison still run. Cannot be combined with `--all`.
+  own configs, then run the comparison. Each fixer touches only the changed files its check covers:
+  ESLint the files `eslint-lint` lints, Prettier the files `prettier-format` checks, so a changed
+  `src/README.md` or a script outside the source and test roots is left as it is. A fixer that
+  fails is reported as a tool error; the other fixer and the comparison still run. Cannot be
+  combined with `--all`.
 - `--base <ref>`: the ref to compare against.
 - `--analyzer <name>`: run only this analyzer and the analyzers it depends on (repeatable). Cannot
   be combined with sharding. A narrowed run says so: the console, `report.txt` and the GitHub step
