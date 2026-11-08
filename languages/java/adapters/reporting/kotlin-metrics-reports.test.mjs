@@ -118,7 +118,7 @@ describe('readJavaFindings with the kotlin preset: metrics and errors', () => {
     const root = projectWithKotlinReports({ manifest: { kotlin: undefined } });
 
     expect(() => readJavaFindings(root, { preset: 'kotlin' })).toThrow(
-      'applies org.jetbrains.kotlin.jvm',
+      'The kotlin preset needs a project that applies the Kotlin plugin (org.jetbrains.kotlin.jvm for Gradle, kotlin-maven-plugin for Maven); this one does not',
     );
   });
   it.each(['kotlin', 'java'])(

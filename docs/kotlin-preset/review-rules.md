@@ -3,7 +3,7 @@
 Part of the [Kotlin preset guide](../kotlin-preset.md).
 
 Checks that detekt has no rule for, and in a Spring project the Java preset's Spring rules
-([Spring rules](#spring-rules)), run on a syntax tree of the Kotlin sources; the
+([Spring rules](review-rules.md#spring-rules)), run on a syntax tree of the Kotlin sources; the
 [test honesty](#test-honesty) rules run on the Kotlin test sources read as masked text. They use the rule
 ids and the exception route of the Java preset's PMD rules, so a finding reads the same in both
 languages and one `exceptions` entry style covers either.
@@ -435,7 +435,7 @@ line, so a moved block is not a new finding.
 In a Spring project (Spring on the compile classpath) the rules of the Java preset's
 `spring-ruleset.xml` that make sense in Kotlin run on the main Kotlin sources, with the same ids
 (`pmd/SpringProxySelfCall`), the same allowed form written the Kotlin way, and the same exception route.
-They live in `review-rules/spring/` and read the facts of [Review rules](#review-rules): annotations
+They live in `review-rules/spring/` and read the facts of [Review rules](review-rules.md): annotations
 with their arguments, calls with their receiver, chain and scope, catch clauses, `return null`, and the
 uses of an `@ExceptionHandler`'s exception.
 
@@ -455,7 +455,10 @@ Kotlin-specific choices:
 
 - Finality. Kotlin classes and functions are final unless `open`, and Spring cannot subclass a final
   class to proxy it. The build tells which classes the compiler opens: the init script reads the
-  `allopen` options of `compileKotlin` (`kotlin("plugin.spring")` is the `spring` preset, which opens
+  `allopen` options of `compileKotlin`, and on Maven nitpicker reads the `kotlin-maven-plugin`
+  configuration of the module (`<compilerPlugins><plugin>spring</plugin>` and `all-open:annotation=`
+  or `all-open:preset=` in `<pluginOptions>`; a Maven module always reports them)
+  (`kotlin("plugin.spring")` is the `spring` preset, which opens
   classes annotated with `@Component` or an annotation built on it, such as `@Service`, `@Configuration`
   or `@RestController`, and `@Async`, `@Transactional`, `@Cacheable`, `@SpringBootTest` or `@Validated`) into
   `manifest.kotlinAllOpen` (`{ annotations, presets }`). A proxied function in a class neither `open` nor opened by the plugin is
