@@ -93,6 +93,7 @@ describe('nitpicker --fix for a Python project', () => {
       'pyproject.toml': PYPROJECT,
       'quality-policy.json': policy(),
     });
+    writeFiles(repository.root, { 'notes.txt': 'a note\n' });
     const tools = fakePythonTools();
 
     const fixed = run(repository, ['--fix'], tools);
