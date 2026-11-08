@@ -236,6 +236,19 @@ Part of the [TypeScript strict preset guide](../typescript-strict-preset.md).
   bindings already removes the late-binding bug `no-loop-func` exists for. Python's counterparts are ruff `PLE0101`,
   `B023` and `PLR1711`; in Java and Kotlin a missing return does not compile and the existing
   unused-member checks already report an unused private member.
+- Copy slips in operands (`nitpicker/no-operand-slip`, production code and tests of both presets,
+  both lint engines). Reported: the same side-effect-free operand on both sides of a comparison,
+  `-`, `/`, `%`, `&`, `|` or `^`, or twice in one `&&`/`||` chain
+  (`element.endArrowhead || element.endArrowhead`). Operands are compared in the shared logic
+  normal form, so `a.b === c && c === a.b` and `!(x && y) || !x` count. Also reported: two
+  comparisons of one operand against constants that cannot both hold (`x < 3 && x > 5`), that
+  always hold together (`x !== 1 || x !== 2`), or where one already decides the other
+  (`x > 5 && x > 3`, `x === 1 || x >= 1`); `x * 0` and `x & 0`; and `a += a + b`. `x !== x` names
+  `Number.isNaN(x)`. Operands after a call that may change state are not compared with those before
+  it. Java reports the same slips through Error Prone (`IdentityBinaryExpression`, `SelfComparison`,
+  `SelfEquals`, `ComparisonOutOfRange`). Python covers a name compared with itself and repeated
+  `==` comparisons of one name (ruff `PLR0124`, `PLR1714`), not the arithmetic, erasing or
+  contradicting-constant forms. Kotlin has no counterpart yet.
 - Identifier casing (`nitpicker/naming-convention`, which wraps
   `@typescript-eslint/naming-convention`): types and type parameters in PascalCase; functions,
   variables and parameters in camelCase; constants may be UPPER_CASE; a leading underscore is
