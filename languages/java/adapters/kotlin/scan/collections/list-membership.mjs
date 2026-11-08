@@ -43,22 +43,25 @@ function offsetsOf(scope, body) {
   return matchesIn(scope, body).map((match) => ({ offset: match.index }));
 }
 
+function arityOf(code, { open }) {
+  return splitArguments(code, open).parts.length;
+}
+
 function usesIn(scope) {
   const { code } = scope;
   const name = escapeRegExp(scope.name);
   const adds = callsOn(scope, ['add']);
-  const arity = ({ open }) => splitArguments(code, open).parts.length;
   const inTests = matchesIn(scope, String.raw`(?<![\w.])!?in\s+${name}\b(?!\s*[.[(])`).filter(
     ({ index }) => !FOR_HEADER.test(code.slice(lineStart(code, index), index)),
   );
   return {
     appends: [
-      ...adds.filter((add) => arity(add) === 1),
+      ...adds.filter((add) => arityOf(code, add) === 1),
       ...offsetsOf(scope, String.raw`(?<![\w.])${name}\s*\+=`),
     ],
     positional: [
       ...callsOn(scope, POSITIONAL),
-      ...adds.filter((add) => arity(add) > 1),
+      ...adds.filter((add) => arityOf(code, add) > 1),
       ...offsetsOf(scope, String.raw`(?<![\w.])${name}\s*\[`),
     ],
     tests: [...callsOn(scope, ['contains']), ...inTests.map((match) => ({ offset: match.index }))],
