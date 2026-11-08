@@ -62,10 +62,7 @@ function requestTimeoutState(context, node) {
   const options = optionsOf(context, node);
   return options === undefined
     ? UNKNOWN
-    : either([
-        keyState(context, options, 'requestTimeout'),
-        keyState(context, options, 'socketTimeout'),
-      ]);
+    : either([keyState(options, 'requestTimeout'), keyState(options, 'socketTimeout')]);
 }
 
 function awsState(context, config) {
@@ -73,14 +70,12 @@ function awsState(context, config) {
     return MISSING;
   }
   const options = optionsOf(context, config);
-  return options === undefined
-    ? UNKNOWN
-    : nestedState(context, options, 'requestHandler', handlerState);
+  return options === undefined ? UNKNOWN : nestedState(options, 'requestHandler', handlerState);
 }
 
 function connectionState(context, node) {
   const options = optionsOf(context, node);
-  return options === undefined ? UNKNOWN : keyState(context, options, 'statement_timeout');
+  return options === undefined ? UNKNOWN : keyState(options, 'statement_timeout');
 }
 
 function postgresJsState(context, args) {
@@ -91,7 +86,7 @@ function postgresJsState(context, args) {
   if (settings === undefined) {
     return args.length > 1 && first === undefined ? either([urlState, UNKNOWN]) : urlState;
   }
-  return either([urlState, nestedState(context, settings, 'connection', connectionState)]);
+  return either([urlState, nestedState(settings, 'connection', connectionState)]);
 }
 
 export function clientTimeout(scope, node) {

@@ -21,6 +21,12 @@ const productionRestrictedProperties = [
 
 const UNUSED_PARAMETERS = { args: 'all', argsIgnorePattern: '^_', ignoreRestSiblings: true };
 
+const SUPPORT_OFF_RULES = [
+  ...SECURITY_RULES,
+  'nitpicker/timeout-abandons-operation',
+  'nitpicker/require-client-timeout',
+];
+
 const DESTRUCTURED_FORMATS = ['camelCase', 'PascalCase', 'UPPER_CASE', 'snake_case'];
 
 function withReactFormat(formats, react) {
@@ -154,13 +160,7 @@ export function productionPolicyConfigFor(layout, options = {}) {
     {
       files: securitySupportGlobs(),
       plugins: { nitpicker: nitpickerRules },
-      rules: Object.fromEntries(
-        [
-          ...SECURITY_RULES,
-          'nitpicker/timeout-abandons-operation',
-          'nitpicker/require-client-timeout',
-        ].map((rule) => [rule, 'off']),
-      ),
+      rules: Object.fromEntries(SUPPORT_OFF_RULES.map((rule) => [rule, 'off'])),
     },
     {
       files: layout.sourceGlobs,

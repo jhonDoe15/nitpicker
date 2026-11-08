@@ -39,7 +39,7 @@ function knexState(context, options) {
   if (pool !== undefined && valueOf(pool, 'afterCreate') !== undefined) {
     return SET;
   }
-  return nestedState(context, options, 'connection', postgresOptionsState);
+  return nestedState(options, 'connection', postgresOptionsState);
 }
 
 function ormKind(scope, options) {
@@ -49,13 +49,13 @@ function ormKind(scope, options) {
   if (isTypeOrm && TYPEORM_POSTGRES.has(keyText(context, options, 'type'))) {
     return {
       name: 'TypeORM',
-      judge: () => nestedState(context, options, 'extra', postgresOptionsState),
+      judge: () => nestedState(options, 'extra', postgresOptionsState),
     };
   }
   if (scope.families.has(SEQUELIZE) && keyText(context, options, 'dialect') === 'postgres') {
     return {
       name: 'Sequelize',
-      judge: () => nestedState(context, options, 'dialectOptions', postgresOptionsState),
+      judge: () => nestedState(options, 'dialectOptions', postgresOptionsState),
     };
   }
   const isKnex = valueOf(options, 'connection') !== undefined;
@@ -85,7 +85,7 @@ function sequelizeUrlState(context, args) {
     textState(context, args[0], MISSING),
     settings === undefined
       ? MISSING
-      : nestedState(context, settings, 'dialectOptions', postgresOptionsState),
+      : nestedState(settings, 'dialectOptions', postgresOptionsState),
   ]);
 }
 
