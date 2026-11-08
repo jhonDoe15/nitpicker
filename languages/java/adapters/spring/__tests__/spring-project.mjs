@@ -71,6 +71,7 @@ const REVIEW_RULES = new Set([
   'ExhaustiveEnumPredicate',
   'StaticForwardingWrapper',
   'ForwardingMethodAlias',
+  'ServiceLocatorLookup',
   'SingularAndPluralMember',
   'timeout-abandons-operation',
   'TriStateBoolean',

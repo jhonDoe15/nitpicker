@@ -79,3 +79,37 @@ export function compilePsiProgram({ java, classpath, workspace }) {
   expect(result.status, result.stderr).toBe(0);
   return output;
 }
+
+export function prepareKotlinPsi(workspace, project, gradle) {
+  const { javaHome, classpath } = gradleClasspath({ gradle, project, workspace });
+  return {
+    javaHome,
+    classpath,
+    classes: compilePsiProgram({ java: javaHome, classpath, workspace }),
+  };
+}
+
+export function runKotlinPsi(psi, project, roots = ['src']) {
+  const metricsOutput = path.join(project, 'metrics.json');
+  const factsOutput = path.join(project, 'facts.json');
+  const result = spawnSync(
+    path.join(psi.javaHome, 'bin/java'),
+    [
+      `-Dnitpicker.kotlinCompiler=${pinnedKotlinCompiler()}`,
+      '-cp',
+      `${psi.classpath}${path.delimiter}${psi.classes}`,
+      'nitpicker.kotlinpsi.KotlinPsi',
+      metricsOutput,
+      factsOutput,
+      project,
+      ...roots,
+    ],
+    { cwd: project, encoding: 'utf8', timeout: 180_000 },
+  );
+  return {
+    status: result.status,
+    log: result.stdout + result.stderr,
+    metrics: result.status === 0 ? JSON.parse(readFileSync(metricsOutput, 'utf8')) : undefined,
+    facts: result.status === 0 ? JSON.parse(readFileSync(factsOutput, 'utf8')) : undefined,
+  };
+}

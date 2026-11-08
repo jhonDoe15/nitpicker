@@ -41,6 +41,7 @@ skipped with a note on stderr.
 | `NonAtomicUpdateAcrossSuspension`                       | `review-rules/main/suspension/suspended-updates.mjs`   | a `var` property updated from a value read before a suspend call (`total += balances.fetch()`), so a concurrent coroutine's update is overwritten                                                                                                                                                                                                                                                                                |
 | `LockOrderInversion`                                    | `review-rules/main/locking/lock-order.mjs`             | two locks of one class taken in opposite orders (`synchronized`, `@Synchronized`, `withLock`), so two threads can each hold one and wait for the other; see [Lock discipline](../../spec/checks.md#lock-discipline)                                                                                                                                                                                                              |
 | `InconsistentFieldLocking`                              | `review-rules/main/locking/field-locking.mjs`          | a field written while a lock is held in one place and with no lock in another; see [Lock discipline](../../spec/checks.md#lock-discipline)                                                                                                                                                                                                                                                                                       |
+| `ServiceLocatorLookup`                                  | `review-rules/main/service-lookups/`                   | a dependency looked up from a container where it is used: Koin `get()`, `inject()`, `by inject()`, `getKoin()`, `GlobalContext.get()`, `KoinJavaComponent`, `koinInject()`; Guice `getInstance`; CDI `CDI.current()` and `BeanManager.getReference`; JNDI and Spring `JndiTemplate` `lookup`; also as a method reference                                                                                                         |
 | `ValidationAnnotationTarget`                            | `review-rules/validation/validation-targets.mjs`       | a Bean Validation annotation (`jakarta.validation.constraints`, `javax.validation.constraints`, `org.hibernate.validator.constraints`, or `@Valid`) on a primary-constructor `val` or `var` of a main source without a `field:`, `get:` or `all:` use-site target; Kotlin puts it on the constructor parameter, where Bean Validation does not look. Kotlin-only: a Java record carries the annotation to its field and accessor |
 | `SpringUnusedContext`                                   | `review-rules/tests/spring-context.mjs`                | a `@SpringBootTest` class that uses nothing from the context                                                                                                                                                                                                                                                                                                                                                                     |
 | `ExhaustiveEnumPredicate`                               | `review-rules/main/enum-predicates.mjs`                | a test that lists only some constants of an enum (`==` chains, `in setOf(...)`, `listOf(...).contains(s)`, a `when (s)` whose branches yield one Boolean and whose `else` yields the other), so a constant added later falls into the other case                                                                                                                                                                                 |
@@ -236,6 +237,37 @@ Thread.currentThread(); t.interrupt()`) or hands the exception off through a lam
   later one is reported. Spring
   stereotype classes are checked like any other class. Generated sources are dropped for every Kotlin
   review rule, and the finding identity is the rule and `Owner.name`, so moving lines keeps it baselined.
+- Service lookups: resolved by import and declared type, never by the bare name `get`. A bare
+  `get`, `getOrNull`, `inject`, `injectOrNull`, `getKoin`, `koinInject` or `koinViewModel` counts when an
+  import (by path, alias or wildcard) names it in Koin's component, Android, Ktor or Compose packages and
+  the call has Koin's shape: no positional argument but a qualifier (`named(...)`), only Koin's named
+  arguments, and a trailing lambda only for `parametersOf(...)`, so a class's own `operator fun get` and a
+  Ktor route's `get("/path") { }` are left alone. `getKoin()` counts inside a `KoinComponent` or
+  `KoinScopeComponent`. A qualified call or a method reference (`injector::getInstance`) counts on
+  `GlobalContext`, `KoinPlatform`, `KoinJavaComponent` and `CDI`, imported or written fully qualified, and
+  on a receiver whose declared type or initializer is Koin's `Koin` or `Scope`, Guice's `Injector` (also
+  `Guice.createInjector(...)` and `by lazy { Guice.createInjector(...) }`), a `BeanManager`, a `CDI`, an
+  `InitialContext` or plain JNDI `Context`, or Spring's `JndiTemplate` or `JndiLocatorDelegate`. A receiver
+  is typed by the nearest declaration of its name in scope (a parameter, a local, a property of the
+  enclosing class or a top-level property), a qualified receiver (`other.injector`) by the class
+  properties of that name, and a type alias by its target. `DirContext` and `LdapContext` lookups read
+  directory entries and are not reported. A chain such as `GlobalContext.get().get<T>()` is one finding.
+  Allowed, and only these places: a lambda of `module`, `single`, `factory`, `scoped`, `scope`,
+  `viewModel`, `worker`, `startKoin`, `koinApplication` or `koinConfiguration`; a function with a Koin
+  `Scope` receiver or parameter (a definition helper called as `single { create(this) }`); a default
+  parameter value (`viewModel: OrdersViewModel = koinViewModel()`, Compose's recommended form); a class
+  below an Android component (`Activity`, `Fragment`, `Service`, `BroadcastReceiver`, `ContentProvider`,
+  `Application`, also through project classes), which cannot take constructor parameters, and a CDI
+  `Extension`; the entry `main` (top-level, or `@JvmStatic` in an object or companion, with no parameters
+  or `Array<String>`); a `fun Application.module()` of Ktor; a Guice module's `configure()` (a class or
+  object below `AbstractModule`, `Module`, `PrivateModule` or `ServletModule`, also through project
+  classes); a function annotated `@Provides` or `@Produces`; and a `@Bean` function of a `@Configuration`
+  or `@SpringBootApplication` class. The rest of those classes and files is reported. Inside a
+  `@Composable` function, `koinInject()` and `koinViewModel()` are reported with a message asking for a
+  parameter with that call as its default value; other Koin lookups name Koin's forms (a constructor
+  parameter passed in the module definition, or a `Lazy<T>` or function type for a lookup that must wait).
+  Test files are not read. Types that only a compiler knows (a lookup receiver returned by another
+  function) are left alone.
 - Singular and plural: both members must have the same element type (the plural a list, set,
   collection or array of it). Inspected: the primary-constructor properties of a `data class`, the
   properties of a `@ConfigurationProperties` class, the public and internal primary-constructor

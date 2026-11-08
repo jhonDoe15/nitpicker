@@ -13,6 +13,7 @@ import { SUSPENDED_UPDATE_RULE } from './main/suspension/suspended-updates.mjs';
 import { RECURSIVE_MAP_UPDATE_RULE } from './main/map-updates/recursive-map-update.mjs';
 import { CHILD_OUTLIVES_RESOURCE_RULE } from './coroutines/resource-lifetime.mjs';
 import { SUSPEND_CLEANUP_RULE } from './coroutines/suspend-cleanup.mjs';
+import { SERVICE_LOOKUP_RULE } from './main/service-lookups/service-lookups.mjs';
 import { UNBOUNDED_POOL_RULE } from './main/thread-pools/unbounded-pools.mjs';
 import { UNUSED_OPTION_RULE } from './main/unused-options/unused-options.mjs';
 import { VALIDATION_TARGET_RULE } from './validation/validation-targets.mjs';
@@ -41,6 +42,7 @@ export const KOTLIN_REVIEW_EXCEPTION_RULES = [
   SWALLOWED_CANCELLATION_RULE,
   LOCK_ORDER_RULE,
   FIELD_LOCKING_RULE,
+  SERVICE_LOOKUP_RULE,
   VALIDATION_TARGET_RULE,
   LOAD_EFFECT_RULE,
   UNBOUNDED_POOL_RULE,

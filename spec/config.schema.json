@@ -2089,6 +2089,7 @@
                             "pmd/SwallowedCancellation",
                             "pmd/LockOrderInversion",
                             "pmd/InconsistentFieldLocking",
+                            "pmd/ServiceLocatorLookup",
                             "pmd/ValidationAnnotationTarget",
                             "pmd/ClassLoadEffect",
                             "pmd/UnboundedThreadPool",

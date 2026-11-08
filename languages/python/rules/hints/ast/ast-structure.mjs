@@ -2,9 +2,9 @@ import {
   renderMessage,
   UNUSED_OPTION_FIX,
   UNUSED_OPTION_TEXT,
-} from '../../../../shared/messages/messages.mjs';
-import { RULES_TOOL } from './tool.mjs';
-import { UNUSED_OPTION_SCOPES } from '../../../../shared/unused-api/unused-api-policy.mjs';
+} from '../../../../../shared/messages/messages.mjs';
+import { RULES_TOOL } from '../tool.mjs';
+import { UNUSED_OPTION_SCOPES } from '../../../../../shared/unused-api/unused-api-policy.mjs';
 
 const HELPER_CHAIN = ' -> ';
 
