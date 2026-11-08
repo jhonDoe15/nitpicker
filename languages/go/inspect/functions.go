@@ -76,7 +76,7 @@ func addDeclaration(report *Report, fileSet *token.FileSet, file parsedFile, fun
 	if !file.test {
 		report.Functions = append(report.Functions, entries...)
 	} else if isTestFunction(function) {
-		report.Tests = append(report.Tests, entries[0])
+		report.Tests = append(report.Tests, Test{Function: entries[0], ShortSkip: skipsWhenShort(file.syntax, function)})
 	}
 }
 

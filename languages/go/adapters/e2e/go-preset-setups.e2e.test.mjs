@@ -18,6 +18,9 @@ import {
   BASE_FILES,
   DISCOUNT,
   GOFUMPT_ONLY,
+  SHORT_DISCARDED_TEST,
+  SHORT_LOGGED_TEST,
+  SHORT_SKIPPED_TEST,
   SLOW_INTEGRATION_TEST,
   SLOW_TEST,
 } from './test-support/go-fixtures.mjs';
@@ -49,6 +52,11 @@ describe.skipIf(!goE2eEnabled)('Go preset project setups end to end', () => {
       'shop/slow_integration_test.go': SLOW_INTEGRATION_TEST,
       'nitpicker.config.json': '{ "preset": "go", "go": { "buildTags": ["integration"] } }\n',
     });
+    commitBranch(project, 'short-skip', { 'shop/skipped_test.go': SHORT_SKIPPED_TEST });
+    commitBranch(project, 'short-no-skip', {
+      'shop/logged_test.go': SHORT_LOGGED_TEST,
+      'shop/discarded_test.go': SHORT_DISCARDED_TEST,
+    });
     commitBranch(project, 'gofumpt', {
       '.golangci.yml': 'version: "2"\nformatters:\n  enable: [gofumpt]\n',
       'shop/rounded.go': GOFUMPT_ONLY,
@@ -77,6 +85,17 @@ describe.skipIf(!goE2eEnabled)('Go preset project setups end to end', () => {
 
   it('holds a test behind an integration build tag to the integration budget', () => {
     expect(newFindings(gate(project, 'slow-integration'))).toEqual([]);
+  });
+
+  it('holds a test that skips under testing.Short() to the integration budget', () => {
+    expect(newFindings(gate(project, 'short-skip'))).toEqual([]);
+  });
+
+  it('keeps the unit budget for a test that reads testing.Short() without skipping', () => {
+    expect(newFindings(gate(project, 'short-no-skip'))).toEqual([
+      'test-runtime/slow-test shop/discarded_test.go',
+      'test-runtime/slow-test shop/logged_test.go',
+    ]);
   });
 
   it('follows gofumpt when the golangci-lint config enables it', () => {
