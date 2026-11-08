@@ -20,6 +20,10 @@ run; finish with the plain run below.
 
 ## Finish with the gate
 
+While you iterate, run `npx nitpicker --quick`: it skips the tests and the checks built on them;
+read the printed skipped list for what it left out. A quick run is never a pass; finish with the
+full run below.
+
 1. Run the project's tests (`./gradlew test`, or `./mvnw test` on Maven). Failing tests or compile
    errors make the gate exit 2.
 2. Run `npx nitpicker --fix` as a background command you wait on, without a pipe: you need its exit

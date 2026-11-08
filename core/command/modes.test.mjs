@@ -116,12 +116,12 @@ Full diagnostics: /tmp/nitpicker-cli-output-${/[A-Za-z0-9]{6}/}/reports/report.t
         exclusions: [],
         renamedPaths: 0,
         elapsedMs: expect.any(Number),
+        mode: 'full',
         overallStatus: 'completed',
         newEnforceableFindings: 0,
         noChanges: true,
       });
-      expect(read('new-findings.json')).toEqual([]);
-      expect(read('tool-errors.json')).toEqual([]);
+      expect([read('new-findings.json'), read('tool-errors.json')]).toEqual([[], []]);
     });
     it('skips the run when the working tree undoes the committed change', () => {
       const repository = createRepository({ 'src/main/clean.ts': 'export const clean = true;\n' });

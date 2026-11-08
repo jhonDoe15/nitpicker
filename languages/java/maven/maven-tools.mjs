@@ -4,6 +4,7 @@ import { homedir } from 'node:os';
 import path from 'node:path';
 import { JAVA_FORMATTERS } from '../adapters/style/jvm-formatters.mjs';
 import { runMaven } from './maven-command.mjs';
+import { withoutTestTools } from './quick/maven-quick.mjs';
 
 export const MAVEN_PLUGINS = {
   dependency: 'org.apache.maven.plugins:maven-dependency-plugin:3.8.1',
@@ -185,11 +186,13 @@ export function resolveTools({
   extraTools,
   spawn,
   timeoutMs,
+  quick = false,
 }) {
+  const all = toolDependencies(pinned, launcherVersions, extraTools);
   return resolveToolSet({
     projectRoot,
     maven,
-    tools: toolDependencies(pinned, launcherVersions, extraTools),
+    tools: quick ? withoutTestTools(all) : all,
     spawn,
     timeoutMs,
   });

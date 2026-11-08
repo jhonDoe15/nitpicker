@@ -8,6 +8,7 @@ import { designNoteLines } from './format/design-notes.mjs';
 import { areaCountLine } from './format/rule-groups/finding-areas.mjs';
 import { byFixOrder, ruleGroupLines, withoutRoute } from './format/rule-groups/rule-groups.mjs';
 import { appendReviewSummary } from './review/notices.mjs';
+import { quickLines } from '../../quick/summary.mjs';
 import { scopeLine } from '../../scope/scope-findings.mjs';
 import { partialRunLines } from './partial-run/partial-run.mjs';
 import { failingHeadTests, failingTestLines } from './failing-tests/failing-tests.mjs';
@@ -71,7 +72,7 @@ function renderGateSummary(
   lines.push(...designNoteLines(report.newFindings, diagnosticsPath));
   appendNoteSummary(lines, report.notes, color);
   appendToolErrorSummary(lines, otherErrors, color);
-  for (const line of partialRunLines(report.summary)) {
+  for (const line of [...partialRunLines(report.summary), ...quickLines(report.summary)]) {
     lines.push(style(line, [ANSI.bold, ANSI.yellow], color));
   }
   lines.push(style(`Full diagnostics: ${diagnosticsPath}`, [ANSI.dim], color));

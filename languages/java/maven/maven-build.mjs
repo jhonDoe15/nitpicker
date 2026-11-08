@@ -3,21 +3,10 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { readEffectivePom } from './configuration/effective-pom.mjs';
 import { runMaven, TEST_RERUNS_OFF } from './maven-command.mjs';
-import {
-  lifecycleArgs,
-  moduleClasspaths,
-  parseDependencyList,
-  readReactor,
-} from './maven-project.mjs';
+import { moduleClasspaths, parseDependencyList, readReactor } from './maven-project.mjs';
 import { missingLauncherVersions } from './maven-tests.mjs';
 import { checkstyleIndentation } from '../adapters/style/java-style.mjs';
-import {
-  archunitTool,
-  formatTool,
-  jacocoPlugin,
-  MAVEN_PLUGINS,
-  resolveTools,
-} from './maven-tools.mjs';
+import { archunitTool, formatTool, MAVEN_PLUGINS, resolveTools } from './maven-tools.mjs';
 import { buildRunsArchRules, springAotSkip } from './spring/arch-rules-gate.mjs';
 import { writeSpringRoles } from '../adapters/spring-arch/spring-roles.mjs';
 import { writeSpringRuleset } from '../adapters/spring/proxies/proxy-ruleset.mjs';
@@ -25,12 +14,8 @@ import { MAVEN_PRESETS } from '../adapters/gradle-presets.mjs';
 import { processorTool } from './errorprone/maven-errorprone.mjs';
 import { readPinnedTools } from '../builds/java-build.mjs';
 import { kotlinSetup } from './kotlin/kotlin-setup.mjs';
-import {
-  analyzeModule,
-  jacocoExecFiles,
-  MAVEN_REPORT_DIRECTORY,
-  OWN_JACOCO_EXEC,
-} from './module/maven-module.mjs';
+import { analyzeModule, MAVEN_REPORT_DIRECTORY } from './module/maven-module.mjs';
+import { buildGoals, jacocoExecFiles } from './quick/maven-test-phase.mjs';
 
 const PROJECT_CHECKS_OFF = [
   '-Dcheckstyle.skip=true',
@@ -47,7 +32,16 @@ function dependencyFile(work, module) {
   return path.join(work, 'dependencies', groupId, `${artifactId}.txt`);
 }
 
-export function buildAndTest({ projectRoot, maven, work, pinned, modules, spawn, timeoutMs }) {
+export function buildAndTest({
+  projectRoot,
+  maven,
+  work,
+  pinned,
+  modules,
+  spawn,
+  timeoutMs,
+  quick,
+}) {
   runMaven({
     projectRoot,
     maven,
@@ -55,9 +49,7 @@ export function buildAndTest({ projectRoot, maven, work, pinned, modules, spawn,
     timeoutMs,
     args: [
       '--quiet',
-      `${jacocoPlugin(pinned)}:prepare-agent`,
-      `-Djacoco.destFile=\${project.build.directory}/${OWN_JACOCO_EXEC}`,
-      ...lifecycleArgs(modules),
+      ...buildGoals({ quick, pinned, modules }),
       `${MAVEN_PLUGINS.dependency}:list`,
       `-DoutputFile=${path.join(work, 'dependencies', '${project.groupId}', '${project.artifactId}.txt')}`,
       '-DoutputAbsoluteArtifactFilename=true',
@@ -151,7 +143,7 @@ export function runMavenPreset(
   }
   const pinned = readPinnedTools();
   const work = mkdtempSync(path.join(tmpdir(), 'nitpicker-maven-'));
-  const run = { projectRoot, maven, spawn, timeoutMs, pinned };
+  const run = { projectRoot, maven, spawn, timeoutMs, pinned, quick: policy.quick === true };
   try {
     const { modules, effectivePom } = readModules({ ...run, work });
     const kotlin = kotlinSetup({ ...run, policy, modules, effectivePom, work, environment });
@@ -163,7 +155,7 @@ export function runMavenPreset(
     }));
     const tools = resolveTools({
       ...run,
-      launcherVersions: missingLauncherVersions(analyzed),
+      launcherVersions: run.quick ? [] : missingLauncherVersions(analyzed),
       extraTools: extraTools({ modules, analyzed, policy, pinned, kotlin }),
     });
     const testsFailures = analyzeAll({
