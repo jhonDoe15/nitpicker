@@ -361,6 +361,26 @@ class Ledger(private val balances: Balances, private val scope: CoroutineScope) 
 }
 `;
 
+const FLOAT_TEST = `package demo.orders
+
+import kotlin.test.Test
+import kotlin.test.assertEquals
+import kotlin.test.assertTrue
+
+class FloatTest {
+    @Test
+    fun compares() {
+        val total = 0.5 + 0.25
+        assertEquals(0.75, total)
+        assertTrue(total == 0.75)
+        assertEquals(0.75, total, absoluteTolerance = 1e-9)
+        assertEquals(1.0, total + 0.25)
+        assertTrue(total < 1.0)
+        assertTrue(total + 0.25 == 1.0)
+    }
+}
+`;
+
 const CONTEXT_TEST = `package demo.orders
 
 import kotlin.test.Test
@@ -524,6 +544,7 @@ export const REVIEW_RULE_FILES = {
   [`${TEST}/WaitingTest.kt`]: WAITING_TEST,
   [`${TEST}/ContextTest.kt`]: CONTEXT_TEST,
   ...LOCKING_FILES,
+  [`${TEST}/FloatTest.kt`]: FLOAT_TEST,
   ...LIBRARY_STUBS,
   ...MOCK_RULE_FILES,
 };
@@ -556,6 +577,8 @@ export const EXPECTED_REVIEW_FINDINGS = [
   'NonAtomicUpdateAcrossSuspension Ledger.total in addUnderLocalMutex',
   'ForwardingMethodAlias Cart.count',
   'ForwardingMethodAlias Cart.visible',
+  'FloatEqualityInTest FloatTest.compares',
+  'FloatEqualityInTest FloatTest.compares',
   ...PLURAL_FINDINGS,
   'SpringUnusedContext UnusedContextTest',
   'StaticForwardingWrapper absOf',

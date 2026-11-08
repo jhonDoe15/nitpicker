@@ -29,6 +29,13 @@ Part of the [nitpicker-java](../SKILL.md) skill. Write these forms from the star
   `retryAnalyzer`, `IRetryAnalyzer` or `RetryAnalyzerCount`, nor `setRetryAnalyzer(...)`. A test that
   passes on a later attempt hides a flaky or racy test: wait on the condition instead of a fixed
   delay, isolate shared state. `@RepeatedTest` is fine, since every repetition must pass.
+- Compare floating-point numbers with a tolerance (`FloatEqualityInTest`): no `assertEquals`,
+  `assertNotEquals`, AssertJ `isEqualTo` or Hamcrest `is(...)`/`equalTo(...)` against a fractional
+  literal such as `0.1`. Use `assertEquals(expected, actual, 1e-9)`,
+  `assertThat(actual).isCloseTo(expected, within(1e-9))` or `closeTo(expected, 1e-9)`; the same goes
+  for `assertTrue(x == 0.1)` and `assertThat(x == 0.1).isTrue()`, which need
+  `Math.abs(x - 0.1) < 1e-9` or `isCloseTo`. An AssertJ `using...Comparator(...)` is fine. An
+  integral literal such as `1.0` is exact and fine.
 - Never mock the class under test (`MockedSubjectInTest`): no `mock(OrderService.class)` or `@Mock`
   of it in `OrderServiceTest`, and no `spy`/`@Spy` of it whose own methods you stub. Pass its
   collaborators in through the constructor with fakes or mocks of them, and test a helper through
