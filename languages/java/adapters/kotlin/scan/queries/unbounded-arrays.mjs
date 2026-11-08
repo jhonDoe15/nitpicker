@@ -1,6 +1,6 @@
 import { functionAround } from './query-scope.mjs';
 
-export const UNBOUNDED_RULE = 'UnboundedQueryArray';
+const UNBOUNDED_RULE = 'UnboundedQueryArray';
 
 const VALUE = String.raw`([A-Za-z_]\w*)\s*[,)]`;
 const SINKS = [
@@ -16,8 +16,10 @@ const SINKS = [
 ];
 const COLLECTION_TYPE = String.raw`(?:Mutable)?(?:List|Set|Collection|Iterable)\s*<`;
 const COLLECTION_CALLS = String.raw`\.\s*(?:map|mapNotNull|filter|filterNot|flatMap|toList|toSet|toMutableList|toMutableSet|distinct|sorted|sortedBy)\b`;
-const FIXED =
-  /(?<![\w$])(?:listOf|setOf|mutableListOf|emptyList|emptySet|listOfNotNull)\s*\(|(?<![\w$])EnumSet\s*\.\s*(?:allOf|of|noneOf|range)\s*\(|\.\s*(?:take|chunked|windowed|subList)\s*\(/u;
+const FIXED_MAKERS = String.raw`(?<![\w$])(?:listOf|setOf|mutableListOf|emptyList|emptySet|listOfNotNull)\s*\(`;
+const ENUM_SETS = String.raw`(?<![\w$])EnumSet\s*\.\s*(?:allOf|of|noneOf|range)\s*\(`;
+const WINDOWS = String.raw`\.\s*(?:take|chunked|windowed|subList)\s*\(`;
+const FIXED = new RegExp(`${FIXED_MAKERS}|${ENUM_SETS}|${WINDOWS}`, 'u');
 
 export const QUERY_ARRAY_MESSAGES = {
   [UNBOUNDED_RULE]:

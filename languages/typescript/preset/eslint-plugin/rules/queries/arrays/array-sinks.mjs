@@ -3,7 +3,7 @@ import { memberName, unwrapped } from '../../security/security-values.mjs';
 import { chainSteps, KNEX, KYSELY, QUERY_BUILDER, queryChain } from '../query-chains.mjs';
 
 export const IN = 'in';
-export const INSERT = 'insert';
+const INSERT = 'insert';
 
 const IN_OPERATORS = new Set(['in', 'not in']);
 const KNEX_IN = new Set([
@@ -18,6 +18,8 @@ const KNEX_IN = new Set([
 const ID_IN = new Set(['whereInIds', 'andWhereInIds', 'orWhereInIds']);
 const DRIZZLE_IN = new Set(['inArray', 'notInArray']);
 const TYPEORM_MODULES = new Set(['typeorm', '@nestjs/typeorm']);
+const OPERATOR_ARGUMENTS = 3;
+const TYPEORM_IN = new Set(['In']);
 const INSERT_ROOTS = new Set(['insertInto', 'insert', 'replaceInto']);
 const REPOSITORY_NAME = /repo(?:sitory)?$/iu;
 
@@ -30,16 +32,24 @@ function stepName(call) {
   return callee.type === 'MemberExpression' ? memberName(callee) : undefined;
 }
 
-function importedAs(scope, call, sources, names) {
+function importedAs(scope, call, { sources, names }) {
   const callee = calleeOf(call);
   const binding = callee.type === 'Identifier' ? scope.bindings.get(callee.name) : undefined;
   return binding !== undefined && sources(binding.source) && names.has(binding.imported);
 }
 
+function isTypeormModule(source) {
+  return TYPEORM_MODULES.has(source);
+}
+
+function isDrizzleModule(source) {
+  return source === 'drizzle-orm' || source.startsWith('drizzle-orm/');
+}
+
 function operatorSink(scope, call) {
   const operator = stringValue(unwrapped(call.arguments[1]))?.toLowerCase();
   const usesBuilder = scope.libraries.has(KYSELY) || scope.libraries.has(KNEX);
-  return call.arguments.length === 3 && IN_OPERATORS.has(operator) && usesBuilder
+  return call.arguments.length === OPERATOR_ARGUMENTS && IN_OPERATORS.has(operator) && usesBuilder
     ? call.arguments[2]
     : undefined;
 }
@@ -56,11 +66,12 @@ function builderSink(scope, call) {
 }
 
 function functionSink(scope, call) {
-  if (importedAs(scope, call, (source) => TYPEORM_MODULES.has(source), new Set(['In']))) {
+  if (importedAs(scope, call, { sources: isTypeormModule, names: TYPEORM_IN })) {
     return call.arguments[0];
   }
-  const drizzle = (source) => source === 'drizzle-orm' || source.startsWith('drizzle-orm/');
-  return importedAs(scope, call, drizzle, DRIZZLE_IN) ? call.arguments[1] : undefined;
+  return importedAs(scope, call, { sources: isDrizzleModule, names: DRIZZLE_IN })
+    ? call.arguments[1]
+    : undefined;
 }
 
 function insertSink(scope, call) {

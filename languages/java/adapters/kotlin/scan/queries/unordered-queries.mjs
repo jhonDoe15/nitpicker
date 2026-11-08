@@ -1,3 +1,4 @@
+import { escapeRegExp } from '../../../../../../shared/paths/glob.mjs';
 import { sqlOrderGaps } from '../../../../../../shared/rules/queries/sql-order.mjs';
 import { splitArguments } from '../kotlin-source.mjs';
 import {
@@ -8,9 +9,10 @@ import {
   literalText,
 } from './query-scope.mjs';
 
-export const UNORDERED_RULE = 'UnorderedQuery';
+const UNORDERED_RULE = 'UnorderedQuery';
 
-const STATEMENT_START = /^\s*\(?\s*(?:select|with)\b/iu;
+const STATEMENT_START = /^\s*(?:\(\s*)?(?:select|with)\b/iu;
+const FIND_ALL_WINDOW = 40;
 const PAGE_CALL = /\.\s*(setMaxResults|setFirstResult)\s*\(/g;
 const CREATE_CALL = /(?<![\w$])(?:createQuery|createNativeQuery)\s*\(/g;
 const ORDERED = /\border\s+by\b/iu;
@@ -46,20 +48,30 @@ function isSingleRow(scanned, name, open) {
   };
 }
 
+function lineAt(code, start) {
+  const end = code.indexOf('\n', start);
+  return code.slice(start, end === -1 ? undefined : end);
+}
+
 function statementStart(code, offset) {
-  let start = code.lastIndexOf('\n', offset - 1) + 1;
-  while (start > 0 && CONTINUED.test(code.slice(start, code.indexOf('\n', start)))) {
-    start = code.lastIndexOf('\n', start - 2) + 1;
+  const starts = [code.lastIndexOf('\n', offset - 1) + 1];
+  for (const start of starts) {
+    if (start > 0 && CONTINUED.test(lineAt(code, start))) {
+      starts.push(code.lastIndexOf('\n', start - 2) + 1);
+    }
   }
-  return start;
+  return starts.at(-1);
 }
 
 function statementEnd(code, offset) {
-  let end = code.indexOf('\n', offset);
-  while (end !== -1 && CONTINUED.test(code.slice(end + 1, code.indexOf('\n', end + 1)))) {
-    end = code.indexOf('\n', end + 1);
+  const ends = [code.indexOf('\n', offset)];
+  for (const end of ends) {
+    if (end !== -1 && CONTINUED.test(lineAt(code, end + 1))) {
+      ends.push(code.indexOf('\n', end + 1));
+    }
   }
-  return end === -1 ? code.length : end;
+  const last = ends.at(-1);
+  return last === -1 ? code.length : last;
 }
 
 function createdQuery(code, match, scope) {
@@ -75,7 +87,12 @@ function createdQuery(code, match, scope) {
       : [
           ...scope.text
             .slice(0, match.index - scope.start)
-            .matchAll(new RegExp(String.raw`(?<![\w$])va[lr]\s+${held}\s*(?::[^=\n]+)?=`, 'gu')),
+            .matchAll(
+              new RegExp(
+                String.raw`(?<![\w$])va[lr]\s+${escapeRegExp(held)}\s*(?::[^=\n]+)?=`,
+                'gu',
+              ),
+            ),
         ];
   const declared = declarations.at(-1);
   if (declared === undefined) {
@@ -112,37 +129,30 @@ function pageCalls(scanned) {
   );
 }
 
-function passedToFindAll(code, offset, close, scope) {
+function passedToFindAll(code, offset, { close, scope }) {
   if (/^\s*\.\s*withSort\b/u.test(code.slice(close + 1))) {
     return false;
   }
   const open = enclosingParenBefore(code, offset);
-  if (open !== -1 && FIND_ALL.test(code.slice(Math.max(0, open - 40), open))) {
+  if (open !== -1 && FIND_ALL.test(code.slice(Math.max(0, open - FIND_ALL_WINDOW), open))) {
     return true;
   }
   const held = HELD.exec(code.slice(code.lastIndexOf('\n', offset) + 1, offset))?.[1];
   const passed = new RegExp(
-    String.raw`findAll\s*\([^()]*(?<![\w$])${held}(?![\w$])(?!\s*\.\s*withSort)`,
+    String.raw`findAll\s*\([^()]*(?<![\w$])${escapeRegExp(held ?? '')}(?![\w$])(?!\s*\.\s*withSort)`,
     'u',
   );
   return held !== undefined && passed.test(scope.text);
 }
 
 function enclosingParenBefore(code, offset) {
+  const start = Math.max(code.lastIndexOf('\n', offset - 1), code.lastIndexOf(';', offset - 1)) + 1;
   let depth = 0;
-  for (
-    let index = offset - 1;
-    index >= 0 && code[index] !== '\n' && code[index] !== ';';
-    index -= 1
-  ) {
-    if (code[index] === ')') {
-      depth += 1;
-    } else if (code[index] === '(') {
-      if (depth === 0) {
-        return index;
-      }
-      depth -= 1;
+  for (const [position, character] of [...[...code.slice(start, offset)].entries()].toReversed()) {
+    if (character === '(' && depth === 0) {
+      return start + position;
     }
+    depth += Number(character === ')') - Number(character === '(');
   }
   return -1;
 }
@@ -153,7 +163,9 @@ function unsortedPageRequests(scanned) {
     const { parts, close } = splitArguments(scanned.code, open);
     const sized = match[0].includes('ofSize') || parts.length === 2;
     const scope = functionAround(scanned.code, match.index);
-    return sized && passedToFindAll(scanned.code, match.index, close, scope) ? [match.index] : [];
+    return sized && passedToFindAll(scanned.code, match.index, { close, scope })
+      ? [match.index]
+      : [];
   });
 }
 

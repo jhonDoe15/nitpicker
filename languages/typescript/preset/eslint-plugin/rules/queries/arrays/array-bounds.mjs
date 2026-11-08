@@ -30,6 +30,7 @@ const ITERATING = new Set(['map', 'forEach', 'flatMap', 'reduce', 'every', 'some
 const ARRAY_ANNOTATIONS = new Set(['TSArrayType']);
 const ARRAY_TYPE_NAMES = new Set(['Array', 'ReadonlyArray']);
 const SIZE_MEMBERS = new Set(['length', 'size']);
+const MAX_SOURCES = 6;
 const EMPTY_CHECKS = new Set(['isEmpty', 'isNotEmpty', 'isNonEmpty', 'isEmptyArray']);
 const QUERY_STEPS = new Set(['selectFrom', 'select', 'from', 'createQueryBuilder', 'subQuery']);
 
@@ -145,14 +146,15 @@ function sameSizeSource(node) {
 }
 
 function sourcesOf(context, node) {
-  const texts = new Set();
-  let current = unwrapped(node);
-  for (let depth = 0; depth < 6 && current !== undefined; depth += 1) {
-    texts.add(context.sourceCode.getText(current));
-    const held = current.type === 'Identifier' ? constInit(context, current) : undefined;
-    current = current.type === 'Identifier' ? held : sameSizeSource(current);
+  const pending = [unwrapped(node)];
+  for (const current of pending) {
+    const next =
+      current.type === 'Identifier' ? constInit(context, current) : sameSizeSource(current);
+    if (next !== undefined && pending.length < MAX_SOURCES) {
+      pending.push(next);
+    }
   }
-  return texts;
+  return new Set(pending.map((current) => context.sourceCode.getText(current)));
 }
 
 function enclosingFunctions(node) {
