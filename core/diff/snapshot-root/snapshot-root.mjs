@@ -1,4 +1,5 @@
 import path from 'node:path';
+import { withoutAnsi } from '../../../shared/messages/terminal/terminal-text.mjs';
 import { withMessage } from '../../../shared/messages/finding-advice.mjs';
 
 function escaped(text) {
@@ -30,7 +31,7 @@ function namedFinding(finding, snapshotRoot) {
 export function namedToolErrors(toolErrors, snapshotRoot) {
   return toolErrors.map((error) => ({
     ...error,
-    message: withoutSnapshotRoot(error.message, snapshotRoot),
+    message: withoutAnsi(withoutSnapshotRoot(error.message, snapshotRoot)),
   }));
 }
 
