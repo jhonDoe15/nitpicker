@@ -45,6 +45,12 @@ Part of the [nitpicker-kotlin](../SKILL.md) skill. Write these forms from the st
   package config, `TestConfig(retries = n)`). A test that passes on a later attempt hides a flaky or
   racy test: wait on the condition instead of a fixed delay, isolate shared state. `retries = 0` and
   `@RepeatedTest` are fine.
+- Never mock the class under test (`pmd/MockedSubjectInTest`): no `mockk<OrderService>()`,
+  `mock<OrderService>()` or `@MockK` of it in `OrderServiceTest`, and no `spyk`/`@SpyK` of it with
+  `every { subject.helper() }`. Pass its collaborators in through the constructor with fakes or mocks
+  of them, and test a helper through the public function that calls it. No `mockkObject`,
+  `mockkStatic`, `mockkConstructor` or `mockStatic` of the project's own code
+  (`pmd/StaticMockOfProjectType`): pass a function, an interface or a `Clock` instead.
 - A test puts back the process-wide state it changes (`pmd/GlobalStateLeakInTest`): a system property, the default
   `Locale` or `TimeZone`, `System.out`, `Dispatchers.setMain`, or a property of a project `object`. Restore it in
   `finally`, an `@AfterEach`/`@AfterTest` function or Kotest `afterTest { }` (`Dispatchers.resetMain()`), or use an
