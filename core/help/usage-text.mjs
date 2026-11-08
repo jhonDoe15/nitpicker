@@ -18,6 +18,7 @@ export const FLAGS = [
   ['--analyzer <name>', 'Run only this analyzer (repeatable).'],
   ['--rule <substring>', 'List the findings whose rule matches (repeatable).'],
   ['--details', 'Print every new and held finding with its full message.'],
+  ['--json', 'Print one compact JSON result on stdout instead of the summary.'],
   ['--output <dir>', 'Write the reports to this directory.'],
   ['--shard-count <n>', 'Split the analyzers over n jobs (with --shard-index).'],
   ['--shard-index <i>', 'Run shard i of the split (0 to n-1).'],
@@ -61,7 +62,7 @@ const CACHE_PUBLISH_USAGE =
   'nitpicker cache publish [--analyzer <name>]... [--shard-count <n> --shard-index <i>] [--help]';
 const USAGE_LINES = [
   'nitpicker [<path>...] [--base <ref>] [--output <dir>] [--all | --fix] [--analyzer <name>]...',
-  '          [--rule <substring>]... [--details] [--shard-count <n> --shard-index <i>]',
+  '          [--rule <substring>]... [--details] [--json] [--shard-count <n> --shard-index <i>]',
   '          [--defer-exit] [--no-cache] [--accept-policy-change=<digest>] [--help] [--version]',
   INIT_USAGE,
   AGGREGATE_USAGE,
