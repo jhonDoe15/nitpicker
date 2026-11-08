@@ -7,8 +7,8 @@ Part of the [Java preset guide](../java-preset.md).
   splits the edges by the side that declares the source class: `jdeps.txt` in the report directory
   (main classes), `jdeps-classes.txt` (the main classes, one binary name per line) and
   `jdeps-test.txt` (test classes), which only the [test-only class check](review-rules.md) reads. A
-  test source set is one a `Test` task runs or one whose name contains `test` (`integrationTest`,
-  `testFixtures`) and that is not generated (Spring Boot's `aotTest`, see Spring AOT); the task
+  test source set is one a `Test` task runs or one whose name has the word `it` or a word
+  starting with `test` (`integrationTest`, `testFixtures`, not `latest`) and that is not generated (Spring Boot's `aotTest`, see Spring AOT); the task
   compiles only those, so a `jmh` or `benchmark` source set is neither compiled for it nor counted
   as a test. Maven runs the same single jdeps call over
   `target/classes` and `target/test-classes` (`builds/jdeps-reports.mjs`). Neither build holds
