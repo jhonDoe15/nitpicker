@@ -61,7 +61,7 @@ describe.skipIf(!enabled)('configuration reads outside the composition root with
 
   it('reports the marked reads and leaves main, modules, factories and typed configuration alone', () => {
     expect(reportedLines('main')).toEqual(markedLines('main'));
-    expect(reportedLines('main')).toHaveLength(10);
+    expect(reportedLines('main')).toHaveLength(11);
   });
 
   it('leaves test sources alone, where a test sets up its own process', () => {

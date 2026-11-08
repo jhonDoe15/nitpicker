@@ -21,8 +21,8 @@
 )
 [not(ArgumentList/*[1][self::StringLiteral]
   [matches(@ConstValue, '^(java|user|os|file|line|path|javax|jdk|sun|com\.sun|http|https|ftp)\.|^socks')])]
-[not(ancestor::CompilationUnit//MethodDeclaration[@Name = 'main'][VoidType]
-  [count(FormalParameters/FormalParameter) <= 1])]
+[not(ancestor::CompilationUnit//MethodDeclaration[@Name = 'main'][VoidType][pmd-java:modifiers() = 'static']
+  [count(FormalParameters/FormalParameter) = 1])]
 [not(ancestor::*/ModifierList/Annotation[
   pmd-java:typeIs('org.springframework.context.annotation.Configuration')
   or pmd-java:typeIs('org.springframework.boot.autoconfigure.SpringBootApplication')
