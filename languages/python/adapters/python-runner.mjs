@@ -83,31 +83,31 @@ function collectPythonFindings({ projectRoot, liveRoot, settings, policy, spawn 
       toolContext({ projectRoot, liveRoot, settings, policy, spawn }, reportRoot),
     );
     if (failures.length > 0) {
-      return failures.map((failure) => toolError(failure));
+      return { findings: failures.map((failure) => toolError(failure)) };
     }
-    const { findings } = readPythonFindings({
+    const { findings, ...sections } = readPythonFindings({
       projectRoot,
       reportRoot,
       crapLimit: policy.crapLimit,
       policy,
       exceptions: settings.exceptions,
     });
-    return applyFindingPolicy(applyPythonExceptions(findings, settings.exceptions), {
-      ...policy,
-      inventoryTool: PYTHON_ANALYZER_NAME,
-      routeRule: pythonRouteRule,
-    });
+    return {
+      findings: applyFindingPolicy(applyPythonExceptions(findings, settings.exceptions), {
+        ...policy,
+        inventoryTool: PYTHON_ANALYZER_NAME,
+        routeRule: pythonRouteRule,
+      }),
+      ...sections,
+    };
   });
 }
 
 export function analyzePythonSnapshot({ part = PYTHON_ANALYZER_NAME, ...options }) {
   try {
-    return {
-      findings:
-        part === MUTATION_ANALYZER_NAME
-          ? collectMutationFindings(options)
-          : collectPythonFindings(options),
-    };
+    return part === MUTATION_ANALYZER_NAME
+      ? { findings: collectMutationFindings(options) }
+      : collectPythonFindings(options);
   } catch (error) {
     return {
       findings: [

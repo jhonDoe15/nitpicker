@@ -1233,7 +1233,7 @@ releases change modules together on purpose. Read a finding as a question:
 
 - Do they share knowledge such as a format, a constant or a schema? Give it one owner.
 - Does one module use the internals of the other? Put what it needs behind one smaller interface
-  that the other owns. The finding cannot tell which way the dependency goes (see the limits).
+  that the other owns. The finding says which way the imports go, see below.
 - Do they only ever change as one unit? Merge them into one module.
 
 A pair that is fine as it is takes an `exceptions` entry for `co-change` with a `<module>/**` glob
@@ -1267,9 +1267,22 @@ PATH, `change-history` reports nothing and the summary (`--all` runs print it on
 notice with the reason, quoting git's own error when the history cannot be read. In GitHub Actions,
 check out with `fetch-depth: 0` to enable it.
 
-Limits: nitpicker does not read imports for this check (they come from per-language tools, and this
-analyzer has no import graph), so a finding cannot say whether one module depends on the other. A
-module is a folder, so two folders of one component show up as a pair and a flat project has few
+The finding also says how the two modules depend on each other, from the imports the language
+analyzers already read: `src/billing imports src/invoicing in 3 files`, both directions when they
+import each other, or that neither imports the other, in which case what they share (a format, a
+constant, a schema) is not visible as a dependency and the first question above is the likely one.
+The imports are those between production files: the TypeScript and JavaScript `coupling` analyzer
+(the dependency-cruiser graph, with path aliases resolved), the Python facts step (its import scan) and
+the Java and Kotlin analyzers (the source references of every module of the Gradle or Maven build).
+A file under a `featureRoots` folder counts for its feature, as for the pair itself. The analyzers
+collect them only when `history.coChange` is on. When none ran or published imports (the `go` preset,
+an analyzer that failed or was turned off with `disable`), the finding says the dependency is
+unknown rather than claiming there is none. The direction is evidence for the reading, not a
+verdict: an import can be the right shape and still change in step.
+
+Limits: an import that the language analyzer cannot resolve (a dynamic import, reflection,
+dependency injection by name) is not seen, so "neither imports the other" means no import nitpicker
+found. A module is a folder, so two folders of one component show up as a pair and a flat project has few
 modules. The analysis sees only the history it is given, so a squash-merge workflow yields few, large
 commits. The head side reads the merge base at the project's head path, so a project whose folder
 moved in the change has no head evidence until the move is merged.

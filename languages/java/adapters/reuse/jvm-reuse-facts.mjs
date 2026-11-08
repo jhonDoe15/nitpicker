@@ -117,9 +117,13 @@ function baselineOf(projectRoot, policy) {
   return onHead ? { readFile: baselineReader(projectRoot, policy) } : undefined;
 }
 
-export function readJvmReuseFindings(projectRoot, { projects, kotlin = false, policy = {} }) {
+export function readJvmReuseFindings(projectRoot, options) {
+  return readJvmReuse(projectRoot, options).findings;
+}
+
+export function readJvmReuse(projectRoot, { projects, kotlin = false, policy = {} }) {
   const facts = jvmReuseFacts(projectRoot, { projects, kotlin, exclude: policy.exclude });
-  return sharedFactFindings(facts, {
+  const findings = sharedFactFindings(facts, {
     language: kotlin ? 'kotlin' : 'java',
     analyzerName: REUSE_TOOL,
     rules: REUSE_RULES,
@@ -127,4 +131,5 @@ export function readJvmReuseFindings(projectRoot, { projects, kotlin = false, po
     baseline: baselineOf(projectRoot, policy),
     collisionFixFor: (importer) => (importer.endsWith('.java') ? JAVA_COLLISION_FIX : undefined),
   });
+  return { findings, imports: facts.imports };
 }

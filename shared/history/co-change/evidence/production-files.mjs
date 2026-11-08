@@ -8,6 +8,7 @@ import {
 } from '../../../conventions/generator-marker.mjs';
 import { DEFAULT_FEATURE_LAYOUT, featureRoles } from '../../../rules/features/feature-roles.mjs';
 
+const FOLDER_MEMBER = 'module';
 const CODE_FILE = /\.(?:tsx?|mts|cts|jsx?|mjs|cjs|py|java|kts?|go)$/u;
 const DECLARATION_FILE = /\.d\.[cm]?ts$/u;
 const BUILD_FILE = new RegExp(
@@ -109,14 +110,23 @@ function isProductionCode(file) {
   return CODE_FILE.test(file) && !DECLARATION_FILE.test(file) && !BUILD_FILE.test(file);
 }
 
+function moduleRoles(policy) {
+  return featureRoles({
+    sharedRoots: [],
+    featureRoots: policy.layout?.featureRoots ?? DEFAULT_FEATURE_LAYOUT.featureRoots,
+  });
+}
+
+export function folderModuleResolver(policy = {}) {
+  const roleOf = moduleRoles(policy);
+  return (folder) => moduleFolder(`${folder}/${FOLDER_MEMBER}`, roleOf);
+}
+
 export function moduleResolver({ projectRoot, files, policy = {} }) {
   const tracked = new Set(files);
   const generated = new Set(policy.generatedFiles ?? []);
   const testRoots = policy.layout?.testRoots ?? [];
-  const roleOf = featureRoles({
-    sharedRoots: [],
-    featureRoots: policy.layout?.featureRoots ?? DEFAULT_FEATURE_LAYOUT.featureRoots,
-  });
+  const roleOf = moduleRoles(policy);
   const resolved = new Map();
   function resolve(file) {
     const production =

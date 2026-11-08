@@ -1,6 +1,7 @@
 import { realpathSync } from 'node:fs';
 import { readHeadPolicyFile } from '../../../shared/head-policy.mjs';
-import { collectJavaFindings } from './java-diff.mjs';
+import { collectJavaReport } from './java-diff.mjs';
+import { moduleImportsSection } from '../../../shared/history/co-change/dependencies/module-imports.mjs';
 import { detectJavaBuild } from '../builds/java-build.mjs';
 import { parseJavaRunnerArguments } from './java-policy.mjs';
 import { javaStyle } from './style/java-style.mjs';
@@ -27,16 +28,15 @@ export function analyzeJavaSnapshot(
   } = {},
 ) {
   try {
-    return {
-      findings: collectJavaFindings(projectRoot, {
-        gradle: gradle || undefined,
-        maven: maven || undefined,
-        environment,
-        policy,
-        spawn,
-        budget: javaExecutionBudget(),
-      }),
-    };
+    const { findings, imports } = collectJavaReport(projectRoot, {
+      gradle: gradle || undefined,
+      maven: maven || undefined,
+      environment,
+      policy,
+      spawn,
+      budget: javaExecutionBudget(),
+    });
+    return { findings, ...moduleImportsSection(imports, environment) };
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     const rule = failureRule(error, projectRoot);
