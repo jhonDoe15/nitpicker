@@ -1,0 +1,60 @@
+  <rule name="MockedSubjectInTest" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
+        message="This test mocks the class it tests, so it checks the mock instead of the code: a mock of it, or a spy whose own methods are stubbed. Test the real object: pass fakes or mocks of its collaborators in through the constructor, and test a helper through the public method that calls it.">
+    <priority>2</priority>
+    <properties>
+      <property name="xpath">
+        <value><![CDATA[
+let $injected := //FieldDeclaration[ModifierList/Annotation[pmd-java:typeIs('org.mockito.InjectMocks')]]
+                     /ClassType/@SimpleName,
+    $named := for $name in /CompilationUnit/ClassDeclaration/@SimpleName[matches(., '^.+(Tests?|IT|Spec)$')]
+                return replace($name, '^(.+?)(Tests|Test|IT|Spec)$', '$1'),
+    $subjects := if (exists($injected)) then $injected else $named,
+    $mockCalls := //MethodCall[pmd-java:matchesSig('org.mockito.Mockito#mock(_*)')]
+                    [not(ArgumentList//*[@Name = 'CALLS_REAL_METHODS'])],
+    $spyCalls := //MethodCall[pmd-java:matchesSig('org.mockito.Mockito#spy(_*)')],
+    $mockAnnotated := //(FieldDeclaration | FormalParameter)
+      [ModifierList/Annotation[pmd-java:typeIs('org.mockito.Mock')
+         or pmd-java:typeIs('org.springframework.test.context.bean.override.mockito.MockitoBean')
+         or pmd-java:typeIs('org.springframework.boot.test.mock.mockito.MockBean')]]
+      [not(ModifierList/Annotation//*[@Name = 'CALLS_REAL_METHODS'])],
+    $spyAnnotated := //(FieldDeclaration | FormalParameter)
+      [ModifierList/Annotation[pmd-java:typeIs('org.mockito.Spy')
+         or pmd-java:typeIs('org.springframework.test.context.bean.override.mockito.MockitoSpyBean')
+         or pmd-java:typeIs('org.springframework.boot.test.mock.mockito.SpyBean')]],
+    $stubs := (
+      //MethodCall[pmd-java:matchesSig('org.mockito.Mockito#when(_)')
+                   or pmd-java:matchesSig('org.mockito.BDDMockito#given(_)')]
+        /ArgumentList/MethodCall/*[1][self::VariableAccess or self::FieldAccess],
+      //MethodCall[pmd-java:matchesSig('org.mockito.stubbing.Stubber#when(_)')
+                   or pmd-java:matchesSig('org.mockito.stubbing.LenientStubber#when(_)')
+                   or pmd-java:matchesSig('org.mockito.BDDMockito$BDDStubber#given(_)')]
+        /ArgumentList/*[1][self::VariableAccess or self::FieldAccess]),
+    $fieldStubs := $stubs[self::FieldAccess or not(ancestor::Block//LocalVariableDeclaration
+                                                     /VariableDeclarator/VariableId/@Name = @Name)]/@Name,
+    $fields := //FieldDeclaration
+return
+  $mockCalls
+    /(ArgumentList/ClassLiteral/ClassType
+      | self::*[not(ArgumentList/ClassLiteral)]/parent::VariableDeclarator/../ClassType)
+    [@SimpleName = $subjects]
+  | $mockAnnotated/ClassType[@SimpleName = $subjects]
+  | $spyAnnotated[(VariableDeclarator/VariableId | VariableId)/@Name = $fieldStubs]
+      /ClassType[@SimpleName = $subjects]
+  | $spyCalls/parent::VariableDeclarator[parent::LocalVariableDeclaration]
+      [let $name := VariableId/@Name, $block := ancestor::Block[1]
+       return some $stub in $stubs satisfies
+         ($stub[self::VariableAccess]/@Name = $name and $stub/ancestor::Block[. is $block])]
+      /((../ClassType | *[last()]/ArgumentList/*[1]/(self::ConstructorCall | self::ClassLiteral)/ClassType)
+         [@SimpleName = $subjects][1])
+  | $spyCalls/parent::VariableDeclarator[parent::FieldDeclaration][VariableId/@Name = $fieldStubs]
+      /((../ClassType | *[last()]/ArgumentList/*[1]/(self::ConstructorCall | self::ClassLiteral)/ClassType)
+         [@SimpleName = $subjects][1])
+  | $spyCalls[parent::AssignmentExpression/*[1]/@Name = $fieldStubs]
+      /(let $name := ../*[1]/@Name
+        return (ArgumentList/*[1]/(self::ConstructorCall | self::ClassLiteral)/ClassType
+                | $fields[VariableDeclarator/VariableId/@Name = $name]/ClassType)
+               [@SimpleName = $subjects][1])
+]]></value>
+      </property>
+    </properties>
+  </rule>
