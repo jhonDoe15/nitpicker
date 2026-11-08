@@ -18,6 +18,7 @@ import {
   FAILING_TEST,
   LEGACY_TOUCHED,
   NESTED,
+  NESTED_TEST,
   PRINTF,
   UNFORMATTED,
 } from './test-support/go-fixtures.mjs';
@@ -49,10 +50,15 @@ describe.skipIf(!goE2eEnabled)('Go preset gates end to end', () => {
     commitBranch(project, 'unformatted', { 'shop/shipping.go': UNFORMATTED });
     commitBranch(project, 'printf', { 'shop/label.go': PRINTF });
     commitBranch(project, 'broken', { 'shop/broken.go': BROKEN });
-    commitBranch(project, 'nested', { 'shop/grade.go': NESTED, 'shop/legacy.go': LEGACY_TOUCHED });
+    commitBranch(project, 'nested', {
+      'shop/grade.go': NESTED,
+      'shop/grade_test.go': NESTED_TEST,
+      'shop/legacy.go': LEGACY_TOUCHED,
+    });
     commitBranch(project, 'excepted', {
       'shop/label.go': PRINTF,
       'shop/grade.go': NESTED,
+      'shop/grade_test.go': NESTED_TEST,
       'nitpicker.config.json': EXCEPTING_CONFIG,
     });
     commitBranch(project, 'failing', { 'shop/broken_test.go': FAILING_TEST });

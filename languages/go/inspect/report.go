@@ -5,7 +5,28 @@ type Report struct {
 	Functions []Function `json:"functions"`
 	Types     []Type     `json:"types"`
 	Tests     []Function `json:"tests"`
+	Branches  []Branch   `json:"branches"`
 	Errors    []string   `json:"errors"`
+}
+
+type Position struct {
+	Line   int `json:"line"`
+	Column int `json:"column"`
+}
+
+type Arm struct {
+	Label string   `json:"label"`
+	From  Position `json:"from"`
+	To    Position `json:"to"`
+}
+
+type Branch struct {
+	File     string   `json:"file"`
+	Function string   `json:"function"`
+	Kind     string   `json:"kind"`
+	At       Position `json:"at"`
+	Arms     []Arm    `json:"arms"`
+	Implicit string   `json:"implicit,omitempty"`
 }
 
 type File struct {
@@ -16,15 +37,18 @@ type File struct {
 }
 
 type Function struct {
-	File              string `json:"file"`
-	Name              string `json:"name"`
-	Start             int    `json:"start"`
-	End               int    `json:"end"`
-	Lines             int    `json:"lines"`
-	Statements        int    `json:"statements"`
-	MaxControlNesting int    `json:"maxControlNesting"`
-	Parameters        int    `json:"parameters"`
-	Complexity        int    `json:"complexity"`
+	File              string   `json:"file"`
+	Name              string   `json:"name"`
+	Start             int      `json:"start"`
+	End               int      `json:"end"`
+	Lines             int      `json:"lines"`
+	Statements        int      `json:"statements"`
+	MaxControlNesting int      `json:"maxControlNesting"`
+	Parameters        int      `json:"parameters"`
+	Complexity        int      `json:"complexity"`
+	Body              Position `json:"body"`
+	Close             Position `json:"close"`
+	Branches          []Branch `json:"-"`
 }
 
 type Type struct {
