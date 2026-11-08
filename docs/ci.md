@@ -218,8 +218,8 @@ accept-policy-change`, or Issues > Labels > New label), and add the small workfl
    which shows in the checks of the pull request with the name of the person, the pull request
    number and its target branch;
 4. waits up to 20 minutes for the pull request runs of that commit to finish, then re-runs the
-   failed jobs of the latest run of each workflow on that commit when it failed (also of workflows
-   other than the gate).
+   failed jobs of each failed run of that commit, oldest first (also of workflows other than the
+   gate).
 
 The action reads that status for the head it gates and accepts the loosenings of that commit
 (`NITPICKER_ACCEPT_POLICY_CHANGE=commit:<sha>`), also when the checkout is the merge commit GitHub
