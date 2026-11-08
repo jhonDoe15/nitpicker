@@ -1,77 +1,76 @@
 const OPENERS = { '(': ')', '{': '}', '[': ']', '<': '>' };
 const CLOSERS = new Set([')', '}', ']', '>']);
 
+function depthChange(character, { open, close }) {
+  if (character === open) {
+    return 1;
+  }
+  return character === close ? -1 : 0;
+}
+
 export function closingIndex(text, start) {
-  const open = text[start];
-  const close = OPENERS[open];
+  const pair = { open: text[start], close: OPENERS[text[start]] };
   let depth = 0;
-  for (let index = start; index < text.length; index += 1) {
-    if (text[index] === open) {
-      depth += 1;
-    } else if (text[index] === close) {
-      depth -= 1;
-      if (depth === 0) {
-        return index;
-      }
+  for (const [offset, character] of [...text.slice(start)].entries()) {
+    depth += depthChange(character, pair);
+    if (depth === 0) {
+      return start + offset;
     }
   }
   return text.length;
+}
+
+function isCloser(text, index, angles) {
+  const character = text[index];
+  if (character === '>') {
+    return angles && text[index - 1] !== '-';
+  }
+  return CLOSERS.has(character);
 }
 
 export function topLevelParts(text, separators, { angles = true } = {}) {
   const parts = [{ start: 0, text: '' }];
   let depth = 0;
   for (const [index, character] of [...text].entries()) {
-    const counted = angles || (character !== '<' && character !== '>');
-    if (counted && character in OPENERS) {
-      depth += 1;
-    } else if (
-      counted &&
-      CLOSERS.has(character) &&
-      !(character === '>' && text[index - 1] === '-')
-    ) {
-      depth = Math.max(0, depth - 1);
-    }
+    const opens = character in OPENERS && (angles || character !== '<');
+    depth = Math.max(0, depth + (opens ? 1 : 0) - (isCloser(text, index, angles) ? 1 : 0));
     if (depth === 0 && separators.includes(character)) {
       parts.push({ start: index + 1, text: '' });
     } else {
-      parts[parts.length - 1].text += character;
+      parts.at(-1).text += character;
     }
   }
   return parts.filter((part) => part.text.trim() !== '');
 }
 
 export function lineAt(text, offset) {
-  let line = 1;
-  for (let index = 0; index < offset; index += 1) {
-    if (text[index] === '\n') {
-      line += 1;
-    }
-  }
-  return line;
+  return text.slice(0, offset).split('\n').length;
 }
 
 export function stringLiterals(text) {
   return [...text.matchAll(/"((?:\\.|[^"\\\n])*)"/gu)].map((match) => ({
     value: match[1],
     offset: match.index,
-    continued: /\+\s*$/u.test(text.slice(0, match.index)),
+    continued: text.slice(0, match.index).trimEnd().endsWith('+'),
   }));
+}
+
+function memberCharacter(character, depth) {
+  if (character === '{') {
+    return depth === 0 ? '{};' : '';
+  }
+  if (character === '}') {
+    return depth === 1 ? ';' : '';
+  }
+  return depth === 0 ? character : '';
 }
 
 export function memberText(body) {
   let depth = 0;
   let kept = '';
   for (const character of body) {
-    if (character === '{') {
-      depth += 1;
-      kept += depth === 1 ? '{};' : '';
-    } else if (character === '}') {
-      depth = Math.max(0, depth - 1);
-      kept += depth === 0 ? ';' : '';
-    } else if (depth === 0) {
-      kept += character;
-    }
+    kept += memberCharacter(character, depth);
+    depth = Math.max(0, depth + depthChange(character, { open: '{', close: '}' }));
   }
   return kept;
 }

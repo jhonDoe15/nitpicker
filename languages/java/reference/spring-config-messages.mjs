@@ -85,7 +85,7 @@ function sampleFindings() {
     writeSampleProject(root);
     return readSpringConfigFindings(root, {
       sourceRoots: ['src/main/java'],
-      classpath: [path.join(root, 'spring-boot-3.5.5.jar'), path.join(root, 'classes')],
+      springClasspath: [path.join(root, 'spring-boot-3.5.5.jar'), path.join(root, 'classes')],
     });
   } finally {
     rmSync(root, { recursive: true, force: true });

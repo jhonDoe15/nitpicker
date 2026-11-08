@@ -1,12 +1,15 @@
 import { afterEach, describe, expect, it } from 'vitest';
 import { readSpringConfigFindings } from '../java-spring.mjs';
 import { judgedKey } from './unbound-keys.mjs';
-import { problemsIn, removeProjects, writeProject } from './test-support/unbound-project.mjs';
+import { scratchProjects } from './test-support/unbound-project.mjs';
 
 const YAML = 'src/main/resources/application.yml';
 const PROPERTIES = 'src/main/resources/application.properties';
 
-afterEach(removeProjects);
+const projects = scratchProjects();
+const { problemsIn } = projects;
+
+afterEach(projects.remove);
 
 describe('spring/unbound-property in configuration files', () => {
   it('reports a misspelled key under a group the metadata owns, with the nearest known key', () => {
@@ -162,19 +165,27 @@ describe('judgedKey', () => {
 
 describe('readSpringConfigFindings', () => {
   it('reports unbound-property findings with the exception route and the relaxed key as identity', () => {
-    const { root, jar } = writeProject({ [PROPERTIES]: 'server.prot=8080\n' });
-    const [finding] = readSpringConfigFindings(root, {
-      sourceRoots: ['src/main/java'],
-      classpath: [jar],
-    }).filter(({ rule }) => rule === 'unbound-property');
-    expect(finding).toMatchObject({
-      tool: 'spring',
-      path: PROPERTIES,
-      identity: 'server.prot',
-      location: { line: 1 },
-    });
-    expect(finding.message).toContain(
-      '{"rule":"spring/unbound-property","paths":["src/main/resources/application.properties"]',
-    );
+    const { root, jar } = projects.write({ [PROPERTIES]: 'server.prot=8080\n' });
+    const allowedForm =
+      'server.prot binds to no property, so Spring ignores it; did you mean server.port? ' +
+      'A key that code reads in a way nitpicker cannot see belongs in ' +
+      'META-INF/additional-spring-configuration-metadata.json.';
+    expect(
+      readSpringConfigFindings(root, { sourceRoots: ['src/main/java'], springClasspath: [jar] }),
+    ).toEqual([
+      {
+        tool: 'spring',
+        rule: 'unbound-property',
+        path: PROPERTIES,
+        identity: 'server.prot',
+        message:
+          `${allowedForm} If this is intended, add ` +
+          '{"rule":"spring/unbound-property","paths":["src/main/resources/application.properties"],' +
+          '"reason":"..."} to "exceptions" in nitpicker.config.json.',
+        allowedForm,
+        classification: 'enforceable',
+        location: { line: 1 },
+      },
+    ]);
   });
 });

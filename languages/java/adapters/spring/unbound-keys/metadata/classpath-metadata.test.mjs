@@ -23,17 +23,17 @@ function scratch() {
 }
 
 describe('readJarEntries', () => {
-  it('reads deflated and stored entries by name, after an archive comment', () => {
-    const root = scratch();
+  it.each([
+    ['deflated', {}],
+    ['stored, after an archive comment', { stored: true, comment: 'built' }],
+  ])('reads %s entries by name', (_, options) => {
+    const jar = path.join(scratch(), 'library.jar');
     const files = { 'a.txt': 'alpha', [MAIN]: '{"properties":[]}', 'b/c.txt': 'gamma'.repeat(100) };
-    writeJar(path.join(root, 'deflated.jar'), files);
-    writeJar(path.join(root, 'stored.jar'), files, { stored: true, comment: 'built' });
-    for (const jar of ['deflated.jar', 'stored.jar']) {
-      expect(readJarEntries(path.join(root, jar), [MAIN, 'b/c.txt'])).toEqual([
-        { name: MAIN, text: '{"properties":[]}' },
-        { name: 'b/c.txt', text: 'gamma'.repeat(100) },
-      ]);
-    }
+    writeJar(jar, files, options);
+    expect(readJarEntries(jar, [MAIN, 'b/c.txt'])).toEqual([
+      { name: MAIN, text: '{"properties":[]}' },
+      { name: 'b/c.txt', text: 'gamma'.repeat(100) },
+    ]);
   });
 
   it('finds nothing in a file that is not an archive', () => {
