@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import { exceptionRoute } from '../../../shared/exceptions/rule-names.mjs';
-import { describeRuleFinding, withHint } from './rule-hints.mjs';
-import { route, sample } from './test-support/hint-samples.mjs';
+import { exceptionRoute } from '../../../../shared/exceptions/rule-names.mjs';
+import { describeRuleFinding, withHint } from '../rule-hints.mjs';
+import { route, sample } from '../test-support/hint-samples.mjs';
 
 describe('hints follow the libraries of the project', () => {
   const advice = (rule, libraries, tool = 'ruff', subject) =>

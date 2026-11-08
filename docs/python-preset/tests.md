@@ -86,7 +86,7 @@ Part of the [Python preset guide](../python-preset.md).
   a lowered `unitTestSeconds` and two tests that log a warning or print to standard error fails
   `slow-test`, `sleep-in-test` and `test-console-output`, and passes once `python.exceptions`,
   `testConsole.allow` and top-level exceptions lift them.
-- Slice 2: `languages/python/rules/rule-hints.test.mjs` (always on) checks that every rule has a
+- Slice 2: `languages/python/rules/rule-hint-tests/rule-hints.test.mjs` (always on) checks that every rule has a
   banned and an allowed fixture directory and that its message names the allowed form and the
   exception route; `type-check.test.mjs`, `rules-report.test.mjs`, `python-types.test.mjs`,
   `python-ast-rules.test.mjs` and `python-exceptions.test.mjs` cover the ingesters, the two new
