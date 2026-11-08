@@ -9,6 +9,6 @@ def page(limit: int | None = None, label: str | None = None) -> tuple[int, str]:
 
 
 def either(first: int | None, second: int | None) -> bool:
-    if first or second:
+    if first is not None or second is not None:
         return True
     return False
