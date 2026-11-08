@@ -12,6 +12,8 @@ Part of the [nitpicker-kotlin](../SKILL.md) skill. Write these forms from the st
   members and parameters (an override, a function with a framework annotation and a name starting
   `ignored` or `unused` are skipped). A public function's `Boolean` parameter that picks a behavior
   becomes two functions or an enum (`BooleanFlagParameter`).
+- Merge an `if` that sits alone inside another `if` into one `if (a && b)`
+  (`CollapsibleIfStatements`); nesting stays when the outer `if` has an `else` or other statements.
 - Names and comments (`kotlin-source` rules): name packages, files and types for their job
   (`PriceRounding.kt`), never `Utils`, `Helpers`, `Managers`, `Common`, `Misc` or `Miscellaneous`,
   also not before `Mixin`, `Module` or `Base` (`HelperMixin`); a framework role such as

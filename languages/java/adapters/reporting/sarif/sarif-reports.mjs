@@ -11,6 +11,7 @@ import { dropSleepsInFakes } from '../../../messages/latency-fakes.mjs';
 import { withFanOutDetails } from '../../../messages/fan-out/fan-out-details.mjs';
 import { withLoadEffectSubjects } from '../../../messages/load-effects.mjs';
 import { withProjectTypeMocks } from '../../../messages/mocks/project-mocks.mjs';
+import { withGeneratedMembers } from '../../../messages/generated-members/generated-members.mjs';
 import { dropComputedReads } from '../../spring/queries/persistent-reads.mjs';
 import {
   springRoots,
@@ -65,9 +66,12 @@ export function sarifFindings(context) {
         dropSleepsInFakes(
           withProjectTypeMocks(
             dropInheritedVersions(
-              dropComputedReads(
-                withSpringTransactionFilters(ingestSarif(pmd, { tool: 'pmd' }).findings, context),
-                { projectRoot, roots: springRoots(context) },
+              withGeneratedMembers(
+                dropComputedReads(
+                  withSpringTransactionFilters(ingestSarif(pmd, { tool: 'pmd' }).findings, context),
+                  { projectRoot, roots: springRoots(context) },
+                ),
+                { projectRoot },
               ),
               { projectRoot, sourceRoots: allSourceRoots },
             ),

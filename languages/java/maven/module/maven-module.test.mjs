@@ -45,7 +45,11 @@ describe('moduleManifest', () => {
     expect(
       moduleManifest({
         module: singleModule(),
-        classpaths: { mainCompile: ['/m2/spring-boot-3.3.5.jar'], testCompile: [] },
+        classpaths: {
+          mainCompile: ['/m2/spring-boot-3.3.5.jar'],
+          testCompile: ['/m2/spring-boot-test-3.3.5.jar'],
+          testRuntime: ['target/test-classes', 'target/classes', '/m2/spring-boot-3.3.5.jar'],
+        },
         pinned,
       }),
     ).toEqual({
@@ -58,6 +62,12 @@ describe('moduleManifest', () => {
       resourceRoots: ['src/main/resources'],
       spring: true,
       springArch: true,
+      springClasspath: [
+        'target/test-classes',
+        'target/classes',
+        '/m2/spring-boot-3.3.5.jar',
+        '/m2/spring-boot-test-3.3.5.jar',
+      ],
       guava: false,
       testGuava: false,
       testAwaitility: false,
