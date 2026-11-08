@@ -7,6 +7,7 @@
   <properties>
     <kotlin.version>2.4.21</kotlin.version>
     <maven.compiler.release>21</maven.compiler.release>
+    <kotlin.compiler.jvmTarget>21</kotlin.compiler.jvmTarget>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
   </properties>
   <dependencies>
