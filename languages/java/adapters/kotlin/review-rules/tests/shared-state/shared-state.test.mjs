@@ -24,6 +24,76 @@ import io.kotest.matchers.shouldBe
 
 `;
 
+const RESET_BY_HOOKS = `${JUNIT}class ResetTest {
+    @BeforeEach
+    fun reset() {
+        calls = 0
+        counter.set(0)
+        prepare()
+    }
+
+    @AfterEach
+    fun clean() = seen.clear()
+
+    private fun prepare() {
+        totals.clear()
+    }
+
+    @Test
+    fun writes() {
+        calls++
+        seen.add("a")
+        counter.incrementAndGet()
+        totals["a"] = 1
+    }
+
+    companion object {
+        private var calls = 0
+        private val seen = mutableListOf<String>()
+        private val counter = AtomicInteger()
+        private val totals = HashMap<String, Int>()
+    }
+}
+`;
+
+const HIDDEN_BY_MEMBERS = `${JUNIT}var counter = 0
+
+class HiddenTest(private var total: Int = 0) {
+    private var counter = 0
+
+    @Test
+    fun counts() {
+        counter++
+        total++
+    }
+}
+`;
+
+const INSTANCE_STATE = `${JUNIT}import io.mockk.impl.annotations.MockK
+
+class PlainTest {
+    private val seen = mutableListOf<String>()
+    private var count = 0
+
+    @Test
+    fun writes() {
+        seen.add("a")
+        count++
+        Mocks.recorded.add("b")
+    }
+
+    companion object {
+        @MockK
+        lateinit var repository: MutableList<String>
+    }
+
+    @Test
+    fun usesTheMock() {
+        repository.add("x")
+    }
+}
+`;
+
 describe('Kotlin state that the tests of a class share', () => {
   it('reports writes from tests to companion, top-level and per-class state', () => {
     const text = `${JUNIT}var hits = 0
@@ -105,42 +175,6 @@ class SingleTest {
     ]);
   });
 
-  it('accepts state that a per-test hook assigns or clears', () => {
-    const text = `${JUNIT}class ResetTest {
-    @BeforeEach
-    fun reset() {
-        calls = 0
-        counter.set(0)
-        prepare()
-    }
-
-    @AfterEach
-    fun clean() = seen.clear()
-
-    private fun prepare() {
-        totals.clear()
-    }
-
-    @Test
-    fun writes() {
-        calls++
-        seen.add("a")
-        counter.incrementAndGet()
-        totals["a"] = 1
-    }
-
-    companion object {
-        private var calls = 0
-        private val seen = mutableListOf<String>()
-        private val counter = AtomicInteger()
-        private val totals = HashMap<String, Int>()
-    }
-}
-`;
-
-    expect(shared(text)).toEqual([]);
-  });
-
   it('reports a var of a Kotest spec in the default single-instance mode', () => {
     const text = `${KOTEST}class CartSpec : FunSpec({
     var total = 0
@@ -208,49 +242,11 @@ object ProjectConfig : AbstractProjectConfig() {
     expect(shared(spec, flagsFor([spec, config]))).toEqual([]);
   });
 
-  it('leaves a top-level var alone where a class property of the same name hides it', () => {
-    const text = `${JUNIT}var counter = 0
-
-class HiddenTest(private var total: Int = 0) {
-    private var counter = 0
-
-    @Test
-    fun counts() {
-        counter++
-        total++
-    }
-}
-`;
-
-    expect(shared(text)).toEqual([]);
-  });
-
-  it('leaves instance state of a JUnit class and annotated properties alone', () => {
-    const text = `${JUNIT}import io.mockk.impl.annotations.MockK
-
-class PlainTest {
-    private val seen = mutableListOf<String>()
-    private var count = 0
-
-    @Test
-    fun writes() {
-        seen.add("a")
-        count++
-        Mocks.recorded.add("b")
-    }
-
-    companion object {
-        @MockK
-        lateinit var repository: MutableList<String>
-    }
-
-    @Test
-    fun usesTheMock() {
-        repository.add("x")
-    }
-}
-`;
-
+  it.each([
+    ['state that a per-test hook assigns or clears', RESET_BY_HOOKS],
+    ['a top-level var that a class property of the same name hides', HIDDEN_BY_MEMBERS],
+    ['instance state of a JUnit class and annotated properties', INSTANCE_STATE],
+  ])('leaves %s alone', (_name, text) => {
     expect(shared(text)).toEqual([]);
   });
 });
