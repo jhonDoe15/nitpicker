@@ -3,7 +3,7 @@ import { checkRealPath } from './real-paths.mjs';
 
 const WHOLE = 'whole';
 
-export function pathsOf(edit) {
+function pathsOf(edit) {
   return edit.type === 'move' ? [edit.from, edit.to] : [edit.path];
 }
 

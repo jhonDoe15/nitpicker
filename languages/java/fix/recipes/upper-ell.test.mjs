@@ -36,8 +36,8 @@ describe('lowercaseEllOffsets', () => {
   });
   it('skips text blocks with escaped quotes and comments that hold quotes or other comments', () => {
     expect(
-      fixed('String t = """\n  \\""" 1l\n  """; /* \" // */ long a = 2l; // "\nlong b = 3l;'),
-    ).toBe('String t = """\n  \\""" 1l\n  """; /* \" // */ long a = 2L; // "\nlong b = 3L;');
+      fixed('String t = """\n  \\""" 1l\n  """; /* " // */ long a = 2l; // "\nlong b = 3l;'),
+    ).toBe('String t = """\n  \\""" 1l\n  """; /* " // */ long a = 2L; // "\nlong b = 3L;');
   });
   it('keeps scanning after an unterminated string ends at its line', () => {
     expect(fixed('String s = "open\nlong a = 2l;')).toBe('String s = "open\nlong a = 2L;');

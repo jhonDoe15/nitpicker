@@ -3,7 +3,10 @@ import path from 'node:path';
 import { containedPath } from '../../common/contained-path.mjs';
 
 function nearestExisting(full) {
-  return existsSync(full) ? full : nearestExisting(path.dirname(full));
+  const parts = full.split(path.sep);
+  return parts
+    .map((_, index) => parts.slice(0, parts.length - index).join(path.sep) || path.sep)
+    .find((candidate) => existsSync(candidate));
 }
 
 function isLink(full) {

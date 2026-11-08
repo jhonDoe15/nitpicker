@@ -43,8 +43,12 @@ function backupOf(file) {
   );
   renameSync(file, backup);
   return {
-    undo: () => renameSync(backup, file),
-    commit: () => rmSync(backup, { force: true }),
+    undo: () => {
+      renameSync(backup, file);
+    },
+    commit: () => {
+      rmSync(backup, { force: true });
+    },
   };
 }
 
@@ -73,7 +77,12 @@ function replaced(file, expected, text) {
 function created(file, text) {
   mkdirSync(path.dirname(file), { recursive: true });
   writeFileSync(file, text, { flag: 'wx' });
-  return { undo: () => rmSync(file, { force: true }), commit: () => undefined };
+  return {
+    undo: () => {
+      rmSync(file, { force: true });
+    },
+    commit: () => undefined,
+  };
 }
 
 function removed({ projectRoot, file, expected }, edit) {
@@ -116,10 +125,29 @@ function attempt(context, name, edits) {
   }
 }
 
-function dropClosure(entries, failed) {
-  const dropped = entries.filter(({ edits }) => edits.some((edit) => failed.has(sourceOf(edit))));
-  const grown = new Set([...failed, ...dropped.flatMap(({ edits }) => edits.map(sourceOf))]);
-  return grown.size === failed.size ? { dropped, failed } : dropClosure(entries, grown);
+function newlyFailed(entries, name, state) {
+  const touching = entries.filter(
+    (item) => !state.dropped.has(item) && item.edits.some((edit) => sourceOf(edit) === name),
+  );
+  const names = [...new Set(touching.flatMap(({ edits }) => edits.map(sourceOf)))].filter(
+    (source) => !state.failed.has(source),
+  );
+  for (const item of touching) {
+    state.dropped.add(item);
+  }
+  for (const source of names) {
+    state.failed.add(source);
+  }
+  return names;
+}
+
+function dropClosure(entries, initial) {
+  const state = { failed: new Set(initial), dropped: new Set() };
+  const pending = [...state.failed];
+  for (const name of pending) {
+    pending.push(...newlyFailed(entries, name, state));
+  }
+  return { dropped: [...state.dropped], failed: state.failed };
 }
 
 function grouped(entries) {

@@ -101,10 +101,9 @@ function runPass(run) {
 }
 
 function settle(run) {
-  for (const _pass of Array.from({ length: MAX_PASSES })) {
-    if (!runPass(run)) {
-      return [];
-    }
+  const settled = Array.from({ length: MAX_PASSES }).some(() => !runPass(run));
+  if (settled) {
+    return [];
   }
   return planPass(run, createSnapshot(run.settings.projectRoot, run.state.names)).entries;
 }
