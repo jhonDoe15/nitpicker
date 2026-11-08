@@ -246,6 +246,7 @@ describe('Kotlin exception rules for the review rules', () => {
       'pmd/StaticForwardingWrapper',
       'pmd/SingularAndPluralMember',
       'pmd/timeout-abandons-operation',
+      'pmd/NonAtomicUpdateAcrossSuspension',
       'pmd/ValidationAnnotationTarget',
       'pmd/ClassLoadEffect',
       'pmd/UnboundedThreadPool',

@@ -85,6 +85,7 @@ export const strictEslintRuleIds = [
   'no-restricted-properties',
   'no-restricted-syntax',
   'regexp/no-super-linear-backtracking',
+  'nitpicker/require-atomic-updates',
   'regexp/no-useless-flag',
 ];
 

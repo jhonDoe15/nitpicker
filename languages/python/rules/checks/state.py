@@ -1,6 +1,12 @@
 import ast
 
-from checks.common import dotted_name, finding, functions_of, own_nodes
+from checks.common import (
+    dotted_name,
+    finding,
+    functions_of,
+    own_nodes,
+    parameter_names,
+)
 from index.tables import assigned_pairs, tables_of
 
 MUTATING_METHODS = {
@@ -30,12 +36,7 @@ SELF_NAMES = {"self", "cls"}
 
 
 def local_names(function):
-    arguments = function.args
-    names = {
-        argument.arg
-        for argument in arguments.args + arguments.kwonlyargs + arguments.posonlyargs
-    }
-    names.update(a.arg for a in (arguments.vararg, arguments.kwarg) if a)
+    names = parameter_names(function)
     declared = set()
     for node in ast.walk(function):
         if isinstance(node, (ast.Global, ast.Nonlocal)):

@@ -223,6 +223,7 @@ final class Declarations {
             "delegated", property.getDelegate() != null, "computed", computed(property),
             "annotations", annotationNames(property),
             "annotationEntries", annotationEntries(property), "initializer", Initializers.callee(property),
+            "argument", Initializers.argument(property),
             "literal", Initializers.literal(property), "literalText", Initializers.literalText(property),
             "abstract", isAbstract(property) ? Boolean.TRUE : null,
             "initializerQualifier", Initializers.qualifier(property.getInitializer()),
