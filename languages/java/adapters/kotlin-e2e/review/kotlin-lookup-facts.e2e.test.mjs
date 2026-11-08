@@ -9,7 +9,7 @@ import { prepareKotlinPsi, runKotlinPsi } from '../../test-support/kotlin/kotlin
 import {
   EXPECTED_LOOKUP_FACT_FINDINGS,
   LOOKUP_FACT_SOURCES,
-} from '../test-support/review/kotlin-lookup-facts-data.mjs';
+} from '../test-support/review/lookups/kotlin-lookup-facts-data.mjs';
 
 const enabled = process.env.NITPICKER_KOTLIN_E2E === '1';
 const gradle = process.env.NITPICKER_GRADLE ?? 'gradle';

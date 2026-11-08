@@ -5,7 +5,7 @@ import {
   EXPECTED_LOOKUP_FINDINGS,
   LOOKUP_FILES,
   lookupBuild,
-} from '../test-support/review/kotlin-lookup-data.mjs';
+} from '../test-support/review/lookups/kotlin-lookup-data.mjs';
 import {
   EXPECTED_REVIEW_FINDINGS as RULE_FINDINGS,
   integrationSuiteFiles,
