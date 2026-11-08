@@ -2017,6 +2017,7 @@
                             "pmd/SpringUnusedContext",
                             "pmd/ExhaustiveEnumPredicate",
                             "pmd/StaticForwardingWrapper",
+                            "pmd/ForwardingMethodAlias",
                             "pmd/SingularAndPluralMember",
                             "pmd/ValidationAnnotationTarget",
                             "pmd/ClassLoadEffect",
