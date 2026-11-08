@@ -1,5 +1,5 @@
 import { runScopedMutation } from '../test-weakening/scoped-mutation.mjs';
-import { MUTATION_REPORT_PATH } from './mutation-scope.mjs';
+import { configuredTargets, MUTATION_REPORT_PATH } from './mutation-scope.mjs';
 import { readHeadPolicy, readLayout } from '../../../preset/head-policy.mjs';
 import { importPolicyModule, relativeProjectPath, runNodeTool, policyFile } from './tooling.mjs';
 import path from 'node:path';
@@ -62,6 +62,12 @@ async function mutationReport(options, targets) {
   const sourceConfig = (
     await importPolicyModule(options, STRYKER_CONFIG_PATH, `?run=${Date.now().toString()}`)
   ).default;
+  return targets !== undefined && configuredTargets(targets, sourceConfig.mutate).length === 0
+    ? { report: { files: {} } }
+    : strykerReport(options, { sourceConfig, targets, testRunner });
+}
+
+async function strykerReport(options, { sourceConfig, targets, testRunner }) {
   const configPath = path.join(options.projectRoot, '.nitpicker-diff-stryker.config.mjs');
   const createdFiles = [];
   try {
@@ -156,7 +162,7 @@ async function writeStrykerConfig({
 export function strykerRunConfig(sourceConfig, { snapshot, targets, ...files }) {
   return {
     ...(Object.keys(files).length === 0 ? sourceConfig : rebaseMutationConfig(sourceConfig, files)),
-    ...(targets === undefined ? {} : { mutate: targets }),
+    ...(targets === undefined ? {} : { mutate: configuredTargets(targets, sourceConfig.mutate) }),
     ...(snapshot === 'base' ? { checkers: [] } : {}),
     reporters: ['json'],
     jsonReporter: { fileName: MUTATION_REPORT_PATH },

@@ -67,6 +67,7 @@ export function createToolContext({
   probes = new Map(),
   spawn,
   pytestAddopts,
+  mutationScope,
 }) {
   const launcher = openSnapshotEnvironment({
     projectRoot,
@@ -92,6 +93,7 @@ export function createToolContext({
     exclude,
     duplicateSkippedFolders,
     pytestAddopts,
+    mutationScope,
     project: projectSettings({ projectRoot, liveRoot, policyRoot, settings, sourceRoots }),
     env: {
       PYTHONPATH: pythonPath,

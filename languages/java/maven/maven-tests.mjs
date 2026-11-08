@@ -12,6 +12,7 @@ import { globMatcher } from '../../../shared/paths/glob.mjs';
 import { runJava } from './maven-command.mjs';
 import { failedCaseEntries, failingTestsError, freshReports } from '../builds/test-failures.mjs';
 import { readPitMutators } from '../builds/java-build.mjs';
+import { pitRunTargets } from './module/pit-scope.mjs';
 
 const DEFAULT_ARCHUNIT_INCLUDES = '**/*ArchTest.class,**/*ArchitectureTest.class';
 const JUNIT_ENGINE_JAR = /^junit-platform-engine-.+\.jar$/u;
@@ -145,34 +146,6 @@ export function runJacocoReport({ module, reportDir, tools, execFiles, since, te
   });
 }
 
-export function pitTargets(classDirectory) {
-  const targets = new Set();
-  const pending = [{ directory: classDirectory, prefix: '' }];
-  for (const { directory, prefix } of pending) {
-    const entries = readdirSync(directory, { withFileTypes: true });
-    const classes = entries
-      .filter((entry) => entry.isFile() && entry.name.endsWith('.class'))
-      .map((entry) => `${prefix}${entry.name.replace(/\.class$/u, '')}`);
-    const wholePackage = classes.length > 0 && !'org.pitest.'.startsWith(prefix);
-    if (wholePackage) {
-      targets.add(`${prefix}*`);
-      continue;
-    }
-    for (const name of classes) {
-      targets.add(name);
-    }
-    pending.push(
-      ...entries
-        .filter((entry) => entry.isDirectory())
-        .map((entry) => ({
-          directory: path.join(directory, entry.name),
-          prefix: `${prefix}${entry.name}.`,
-        })),
-    );
-  }
-  return [...targets].sort();
-}
-
 function topLevelClasses(classDirectory) {
   return [
     ...new Set(
@@ -232,7 +205,22 @@ function pitArgLine(pitDir, args) {
   return ['--argLine', `${quote}@${file}${quote}`];
 }
 
-export function runPit({ module, reportDir, tools, classpaths, isArchunit, spawn }) {
+function pitArguments({ module, classpaths, isArchunit }, { pitDir, targets }) {
+  return [
+    ...['--reportDir', pitDir, '--targetClasses', targets.join(',')],
+    ...['--targetTests', pitTests(module.testOutputDirectory, isArchunit).join(',')],
+    ...['--sourceDirs', module.sourceRoots.filter((root) => existsSync(root)).join(',')],
+    '--classPath',
+    [...new Set(classpaths.testRuntime)].filter((entry) => existsSync(entry)).join(','),
+    ...['--mutableCodePaths', module.outputDirectory, '--mutators', readPitMutators().join(',')],
+    ...['--outputFormats', 'XML', '--timestampedReports', 'false', '--threads', '2'],
+    ...['--failWhenNoMutations', 'false', '--verbose', 'false'],
+    ...pitArgLine(pitDir, module.testJvmArgs),
+  ];
+}
+
+export function runPit(options) {
+  const { module, reportDir, tools, classpaths, spawn, scope } = options;
   const pitDir = path.join(reportDir, 'pit');
   rmSync(pitDir, { recursive: true, force: true });
   mkdirSync(pitDir, { recursive: true });
@@ -240,41 +228,18 @@ export function runPit({ module, reportDir, tools, classpaths, isArchunit, spawn
   if (classFiles(module.outputDirectory).length === 0) {
     return;
   }
-  runJava({
-    tool: 'PIT',
-    classpath: pitClasspath(tools, classpaths.testRuntime),
-    mainClass: 'org.pitest.mutationtest.commandline.MutationCoverageReport',
-    args: [
-      '--reportDir',
-      pitDir,
-      '--targetClasses',
-      pitTargets(module.outputDirectory).join(','),
-      '--targetTests',
-      pitTests(module.testOutputDirectory, isArchunit).join(','),
-      '--sourceDirs',
-      module.sourceRoots.filter((root) => existsSync(root)).join(','),
-      '--classPath',
-      [...new Set(classpaths.testRuntime)].filter((entry) => existsSync(entry)).join(','),
-      '--mutableCodePaths',
-      module.outputDirectory,
-      '--mutators',
-      readPitMutators().join(','),
-      '--outputFormats',
-      'XML',
-      '--timestampedReports',
-      'false',
-      '--threads',
-      '2',
-      '--failWhenNoMutations',
-      'false',
-      '--verbose',
-      'false',
-      ...pitArgLine(pitDir, module.testJvmArgs),
-    ],
-    cwd: module.basedir,
-    accept: (result) => result.status === 0,
-    spawn,
-  });
+  const targets = pitRunTargets(module, scope);
+  if (targets.length > 0) {
+    runJava({
+      tool: 'PIT',
+      classpath: pitClasspath(tools, classpaths.testRuntime),
+      mainClass: 'org.pitest.mutationtest.commandline.MutationCoverageReport',
+      args: pitArguments(options, { pitDir, targets }),
+      cwd: module.basedir,
+      accept: (result) => result.status === 0,
+      spawn,
+    });
+  }
   if (!existsSync(report)) {
     writeFileSync(report, '<mutations/>');
   }

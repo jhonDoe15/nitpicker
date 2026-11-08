@@ -1,4 +1,4 @@
-import { mkdirSync } from 'node:fs';
+import { mkdirSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { javaStyleProperties } from '../style/java-style.mjs';
 import { toolConfigChoices, toolConfigProperties } from '../tool-config/tool-config-choices.mjs';
@@ -7,6 +7,7 @@ import { writeSpringRuleset } from '../spring/proxies/proxy-ruleset.mjs';
 
 const MAX_OUTPUT_BYTES = 50 * 1024 * 1024;
 const CHECKSTYLE_EXPORT = 'checkstyle-nitpicker.xml';
+const MUTATION_SCOPE_FILE = 'mutation-scope.json';
 
 function exportArguments(common, { initScript, directory, policy }) {
   mkdirSync(directory, { recursive: true });
@@ -43,6 +44,15 @@ function headFactProperties(projectRoot, policy, directory) {
   ];
 }
 
+function mutationScopeProperties({ mutationScope }, directory) {
+  if (mutationScope === undefined) {
+    return [];
+  }
+  const file = path.join(directory, MUTATION_SCOPE_FILE);
+  writeFileSync(file, JSON.stringify(mutationScope));
+  return [`-Pnitpicker.mutationScope=${file}`];
+}
+
 export function gradleStages(
   common,
   { projectRoot, initScript, policy, directory, testsFailedModules = [] },
@@ -58,6 +68,7 @@ export function gradleStages(
         : []),
       ...toolConfigProperties(projectRoot, policy, { directory, checkstyleBase }),
       ...headFactProperties(projectRoot, policy, directory),
+      ...mutationScopeProperties(policy, directory),
       '-I',
       initScript,
       'nitpickerJava',

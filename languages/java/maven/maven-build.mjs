@@ -125,6 +125,7 @@ function analyzeAll({ analyzed, policy, kotlin, work, ...shared }) {
         spring: policy.spring,
         springRoles,
         springRules,
+        mutationScope: policy.mutationScope,
       }),
     )
     .filter((failure) => failure !== undefined);

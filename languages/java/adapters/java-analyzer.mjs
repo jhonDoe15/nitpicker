@@ -9,6 +9,7 @@ import { INIT_SCRIPT, readPinnedTools } from '../builds/java-build.mjs';
 import { importClosure } from '../../../shared/import-closure.mjs';
 import { javaExecutionBudget } from './java-runner.mjs';
 import { JVM_NOISE, javaCommand } from '../maven/maven-command.mjs';
+import { mutationScopeArguments } from '../../../core/tooling/runner-arguments.mjs';
 
 const packageRoot = path.resolve(import.meta.dirname, '../../..');
 const runnerPath = path.join(import.meta.dirname, 'java-runner.mjs');
@@ -30,6 +31,7 @@ const RESOURCE_FILES = [
   'languages/java/gradle/spring-test-ruleset.xml',
   'languages/java/gradle/StructureMetrics.java',
   'languages/java/gradle/errorprone/error-prone.gradle',
+  'languages/java/gradle/pit/pit-scope.gradle',
   'languages/java/gradle/kotlin/kotlin-lint.gradle',
   'languages/java/gradle/errorprone/checks.json',
   'languages/java/adapters/overlaps/overlap-pairs.json',
@@ -112,7 +114,7 @@ export function createJavaAnalyzer({ kotlin = false } = {}) {
     exclusions: [],
     reportedTools: kotlin ? [...JVM_ANALYZER_TOOLS, ...KOTLIN_TOOLS] : JVM_ANALYZER_TOOLS,
     timeoutMs: budget.analyzerTimeoutMs,
-    createInvocation({ projectRoot, toolRoot }) {
+    createInvocation({ projectRoot, toolRoot, mutationScope }) {
       return {
         command: process.execPath,
         args: [
@@ -120,6 +122,7 @@ export function createJavaAnalyzer({ kotlin = false } = {}) {
           '--project-root',
           projectRoot,
           ...(kotlin ? ['--preset', 'kotlin'] : []),
+          ...mutationScopeArguments(mutationScope),
         ],
         cwd: toolRoot,
       };

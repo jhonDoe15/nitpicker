@@ -69,6 +69,7 @@ export function runAnalyzers({
   baselineMovesFile,
   liveProjectRoot,
   headPolicyFile,
+  mutationScope,
   runTasks = runScheduler,
 }) {
   if (typeof liveProjectRoot !== 'string' || liveProjectRoot.length === 0) {
@@ -83,6 +84,7 @@ export function runAnalyzers({
     baselineRoot,
     baselineMovesFile,
     liveProjectRoot,
+    mutationScope,
   });
 
   const scheduled = scheduleTasks(tasks, { runTasks, headPolicyFile, snapshot });
@@ -212,6 +214,7 @@ function createTask(analyzer, context) {
     baselineRoot: context.baselineRoot,
     baselineMovesFile: context.baselineMovesFile,
     liveProjectRoot,
+    ...(context.mutationScope === undefined ? {} : { mutationScope: context.mutationScope }),
   });
   validateInvocation(analyzer.name, invocation);
   return {
