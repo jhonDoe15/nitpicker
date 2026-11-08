@@ -33,7 +33,7 @@ export const logicRuleHints = {
   'no-useless-concat': ' Write the literals as one string.',
   'no-useless-call': ' Call the function directly: `run(value)`, not `run.call(undefined, value)`.',
   '@typescript-eslint/require-array-sort-compare':
-    ' Pass a compare function: `values.toSorted((left, right) => left - right)` for numbers, `names.toSorted((left, right) => left.localeCompare(right))` for text.',
+    ' Pass a compare function: `values.toSorted((left, right) => left - right)` for numbers, `names.toSorted((left, right) => left.localeCompare(right))` for text. An untyped JavaScript array of strings passes once it has a JSDoc type: `/** @param {readonly string[]} names */`.',
 };
 
 export const logicRuleIds = Object.keys(logicRuleHints);
