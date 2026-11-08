@@ -40,7 +40,7 @@ const QUERY_FACTORY = /^\w+\.create(?:Native|Named)?Query\(/u;
 const JDBC_CLIENT_CHAIN = /^\w+\.sql\(/u;
 const ROOT = /^\w+/u;
 const DML = /^"{1,3}\s*(?:insert|update|delete|merge|upsert|replace|truncate)\s/iu;
-const JOOQ_CHAIN = /^\w+\s*\.\s*(?:insertInto|update|deleteFrom|delete|mergeInto)\s*\(/u;
+const JOOQ_CHAIN = /^\w+\s*\.\s*(?:insertInto|update|deleteFrom|delete|mergeInto|truncate)\s*\(/u;
 const JOOQ_RUNS = new Set([
   'execute',
   'executeAsync',

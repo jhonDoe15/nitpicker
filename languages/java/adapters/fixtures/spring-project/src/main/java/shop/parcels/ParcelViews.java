@@ -48,6 +48,17 @@ public class ParcelViews {
     return view;
   }
 
+  public List<ParcelView> shadowed(Long id, List<ParcelView> views) {
+    {
+      Parcel parcel = parcels.findById(id).orElseThrow();
+      ParcelView first = new ParcelView();
+      first.setStatus(parcel.getStatus());
+      views.add(first);
+    }
+    views.forEach(parcel -> parcel.setStatus("SEEN"));
+    return views;
+  }
+
   @Transactional
   public void markSeen(Long id) {
     Parcel parcel = parcels.findById(id).orElseThrow();

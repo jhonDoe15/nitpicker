@@ -46,18 +46,28 @@ function notEntity(view, scope, name) {
 
 function initializes(entry, local) {
   return entry.assignedTo === undefined
-    ? entry.elvis !== undefined && entry.line === local.line
+    ? entry.elvis !== undefined && entry.line === local.line && local.alias === undefined
     : entry.assignedTo === local.name && entry.line >= local.line;
+}
+
+function nearestLocal(view, scopeId, name) {
+  for (const scope of view.chain(scopeId)) {
+    const local = (view.file.locals ?? []).findLast(
+      (entry) => entry.scope === scope.id && entry.name === name,
+    );
+    if (local !== undefined || (scope.params ?? []).some((entry) => entry.name === name)) {
+      return local;
+    }
+  }
+  return undefined;
 }
 
 function loadedLocal(view, invocation) {
   const fn = view.functionAt(invocation.scope);
-  const local = (view.file.locals ?? []).find(
-    (entry) =>
-      entry.name === invocation.receiver &&
-      view.chain(invocation.scope).some(({ id }) => id === entry.scope) &&
-      view.functionAt(entry.scope) === fn,
-  );
+  const local = nearestLocal(view, invocation.scope, invocation.receiver);
+  if (local !== undefined && view.functionAt(local.scope) !== fn) {
+    return false;
+  }
   if (local === undefined || notEntity(view, invocation.scope, local.name)) {
     return false;
   }

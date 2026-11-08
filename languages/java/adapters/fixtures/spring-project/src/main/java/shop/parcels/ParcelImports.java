@@ -22,11 +22,6 @@ public class ParcelImports {
     dsl.insertInto(DSL.table("parcel_log")).values(id).execute();
   }
 
-  public void loseTwice(Long id) { // violation: SpringMultiWriteWithoutTransaction
-    parcels.lose(id);
-    parcels.loseAll("SENT");
-  }
-
   public int countTwice() {
     return parcels.countInStatus("SENT") + parcels.countInStatus("LOST");
   }

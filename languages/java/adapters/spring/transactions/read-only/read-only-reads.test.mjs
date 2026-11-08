@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it } from 'vitest';
 import { project, removeProjects } from '../../test-support/spring-config-projects.mjs';
-import { withoutQueryReads } from './query-reads.mjs';
+import { withoutReadOnlyReads } from './read-only-reads.mjs';
 
 const SERVICE = 'src/main/java/shop/Reports.java';
 const REPOSITORY = `package shop;
@@ -50,7 +50,7 @@ function kept(files, type, receiver) {
     call,
   }));
   const other = { tool: 'pmd', rule: 'SpringMultiWriteWithoutTransaction', path: SERVICE };
-  return withoutQueryReads([...findings, other], {
+  return withoutReadOnlyReads([...findings, other], {
     projectRoot: project({ ...files, [SERVICE]: service(receiver, type) }),
     roots: ['src/main/java', 'src/main/kotlin'],
   }).map((finding) => finding.call ?? finding.rule);
@@ -87,5 +87,43 @@ describe('read-only writes that call a repository query', () => {
 
   it('keeps calls whose receiver type is not a project interface', () => {
     expect(kept({}, 'JdbcTemplate', 'jdbc')).toHaveLength(CALLS.length + 1);
+  });
+});
+
+const ENTITY = 'package shop;\n\n@Entity\npublic class Parcel {\n  public String status;\n}\n';
+const SUMMARY = 'package shop;\n\npublic class Summary {\n  public String status;\n}\n';
+const CHANGES = [
+  'parcel.setStatus("SEEN");',
+  'parcel.status = "SEEN";',
+  'summary.setStatus("SEEN");',
+  'summary.status = "SEEN";',
+  'this.parcels.tally("SENT");',
+  'other.forEach(parcels::tally);',
+];
+
+function changed() {
+  const body = CHANGES.map((line) => `    ${line}`).join('\n');
+  const text = `package shop;\n\nclass Reports {\n  private final ParcelRepository parcels;\n\n  void run(Parcel parcel, Summary summary) {\n${body}\n  }\n}\n`;
+  const findings = CHANGES.map((line, index) => ({
+    tool: 'pmd',
+    rule: 'SpringTransactionalReadOnlyWrite',
+    path: SERVICE,
+    location: { line: 7 + index, column: line.startsWith('other') ? 19 : 5 },
+    line,
+  }));
+  return withoutReadOnlyReads(findings, {
+    projectRoot: project({
+      'src/main/java/shop/ParcelRepository.java': REPOSITORY,
+      'src/main/java/shop/Parcel.java': ENTITY,
+      'src/main/java/shop/Summary.java': SUMMARY,
+      [SERVICE]: text,
+    }),
+    roots: ['src/main/java'],
+  }).map((finding) => finding.line);
+}
+
+describe('read-only writes that change a loaded object', () => {
+  it('keeps changes to an entity and drops changes to a project class without @Entity', () => {
+    expect(changed()).toEqual(['parcel.setStatus("SEEN");', 'parcel.status = "SEEN";']);
   });
 });

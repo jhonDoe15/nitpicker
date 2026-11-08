@@ -13,11 +13,6 @@ let $readOnly := function($annotations) {
      or (pmd-java:typeIs('jakarta.persistence.EntityManager') or pmd-java:typeIs('javax.persistence.EntityManager'))]))
   or (matches($call/@MethodName, '^(update|delete|remove|mark|set|rename|insert|upsert|increment|decrement|reset|clear|purge|archive|touch)([A-Z\d_]|$)')
    and exists($call/*[1][pmd-java:typeIs('org.springframework.data.repository.Repository')]))
-  or (exists($call[self::MethodCall]
-      [pmd-java:typeIs('int') or pmd-java:typeIs('java.lang.Integer') or pmd-java:typeIs('void')])
-   and not(matches($call/@MethodName,
-     '^(find|read|get|query|search|stream|count|exists|load|fetch|list|select|lookup|is|has|sum|total|max|min|avg|average|number|size|flush)([A-Z\d_]|$)'))
-   and exists($call/*[1][pmd-java:typeIs('org.springframework.data.repository.Repository')]))
   or ($call/@MethodName = ('update', 'batchUpdate')
    and exists($call/*[1][pmd-java:typeIs('org.springframework.jdbc.core.JdbcOperations')
      or pmd-java:typeIs('org.springframework.jdbc.core.namedparam.NamedParameterJdbcOperations')]))
@@ -35,13 +30,19 @@ let $readOnly := function($annotations) {
    and exists($call/*[1][pmd-java:typeIs('jakarta.persistence.Query') or pmd-java:typeIs('javax.persistence.Query')]))
   or ($call/@MethodName = ('execute', 'executeAsync', 'fetch', 'fetchOne', 'fetchSingle', 'fetchOptional', 'fetchInto')
    and exists($call/*[1][pmd-java:typeIs('org.jooq.Insert') or pmd-java:typeIs('org.jooq.Update')
-     or pmd-java:typeIs('org.jooq.Delete') or pmd-java:typeIs('org.jooq.Merge')
+     or pmd-java:typeIs('org.jooq.Delete') or pmd-java:typeIs('org.jooq.Merge') or pmd-java:typeIs('org.jooq.Truncate')
      or pmd-java:typeIs('org.jooq.InsertResultStep') or pmd-java:typeIs('org.jooq.UpdateResultStep')
      or pmd-java:typeIs('org.jooq.DeleteResultStep')]))
   or ($call/@MethodName = ('executeInsert', 'executeUpdate', 'executeDelete')
    and exists($call/*[1][pmd-java:typeIs('org.jooq.DSLContext')]))
   or ($call/@MethodName = ('store', 'insert', 'update', 'delete', 'merge')
    and exists($call/*[1][pmd-java:typeIs('org.jooq.TableRecord')]))
+},
+    $queryLike := function($call) {
+  exists($call[pmd-java:typeIs('int') or pmd-java:typeIs('java.lang.Integer') or pmd-java:typeIs('void')]
+    [not(matches(@MethodName,
+      '^(find|read|get|query|search|stream|count|exists|load|fetch|list|select|lookup|is|has|sum|total|max|min|avg|average|number|size|flush|hashCode)([A-Z\d_]|$)'))]
+    [*[1][pmd-java:typeIs('org.springframework.data.repository.Repository')]])
 },
     $found := function($value) {
   let $source := if ($value[self::MethodCall][@MethodName = ('orElseThrow', 'orElse', 'orElseGet', 'get')]
@@ -56,6 +57,8 @@ let $readOnly := function($annotations) {
   let $method := $access/ancestor::MethodDeclaration[1],
       $declared := $method//LocalVariableDeclaration/VariableDeclarator[VariableId/@Name = $access/@Name]
   return count($declared) = 1 and $found($declared/*[2])
+    and exists($declared/ancestor::Block[1] intersect $access/ancestor::Block)
+    and not($method//(LambdaParameter | CatchParameter | FormalParameter)/VariableId[@Name = $access/@Name])
     and not($declared/VariableId[pmd-java:typeIs('java.lang.Iterable') or pmd-java:typeIs('java.util.Map')
       or pmd-java:typeIs('java.util.Optional') or pmd-java:typeIs('java.util.stream.Stream')
       or pmd-java:typeIs('org.springframework.data.domain.Slice')])
@@ -67,7 +70,7 @@ return
     or (not(ModifierList/Annotation[pmd-java:typeIs('org.springframework.transaction.annotation.Transactional')
           or pmd-java:typeIs('jakarta.transaction.Transactional') or pmd-java:typeIs('javax.transaction.Transactional')])
         and $readOnly(ancestor::ClassDeclaration[1]/ModifierList/Annotation))]
-  //((MethodCall | MethodReference)[$write(.)]
+  //((MethodCall | MethodReference)[$write(.)] | MethodCall[$queryLike(.)]
     | MethodCall[matches(@MethodName, '^set\p{Lu}')][*[1][self::VariableAccess][$loaded(.)]]
     | AssignmentExpression[*[1][self::FieldAccess][*[1][self::VariableAccess][$loaded(.)]]])
 ]]></value></property></properties>
