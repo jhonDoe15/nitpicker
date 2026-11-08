@@ -16,7 +16,10 @@ try {
 }
 
 async function lintPlan(root, globs) {
-  const [nativeRules, plan] = await Promise.all([listNativeRules(process.env), filePlan(root, globs)]);
+  const [nativeRules, plan] = await Promise.all([
+    listNativeRules(process.env),
+    filePlan(root, globs),
+  ]);
   return { ...plan, nativeRules };
 }
 
