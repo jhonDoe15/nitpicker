@@ -109,7 +109,7 @@ function visible(candidates, owner) {
   return scoped.length === 1 ? scoped : [];
 }
 
-function resolvedCalls(scanned, index, range, owner) {
+function resolvedCalls({ scanned, index }, range, owner) {
   const text = scanned.code.slice(range.start, range.end);
   const local = new Set(
     functionsOf(scanned)
@@ -125,7 +125,7 @@ function resolvedCalls(scanned, index, range, owner) {
 function assertingHelpers(scanned, index) {
   const { helpers } = index;
   const callees = new Map(
-    helpers.map((fn) => [fn, resolvedCalls(scanned, index, fn.body, fn.owner)]),
+    helpers.map((fn) => [fn, resolvedCalls({ scanned, index }, fn.body, fn.owner)]),
   );
   const asserting = new Set(helpers.filter((fn) => assertsIn(scanned, fn.body.start, fn.body.end)));
   repeatUntil(helpers.length + 1, () => {
@@ -188,13 +188,15 @@ export function loopScope(scanned, tests) {
   const owners = functionOwners(scanned);
   const reported = new Set();
   function callsAsserting(range, owner) {
-    return resolvedCalls(scanned, index, range, owner).some((fn) => found.asserting.has(fn));
+    return resolvedCalls({ scanned, index }, range, owner).some((fn) => found.asserting.has(fn));
   }
   function helperLoops(test) {
     const owner = ownerOfTest(owners, test);
-    const entries = reachedHelpers(found, resolvedCalls(scanned, index, test.body, owner)).flatMap(
-      (fn) =>
-        loopsIn(scanned, fn, callsAsserting).map((loop) => ({ ...loop, helper: helperName(fn) })),
+    const entries = reachedHelpers(
+      found,
+      resolvedCalls({ scanned, index }, test.body, owner),
+    ).flatMap((fn) =>
+      loopsIn(scanned, fn, callsAsserting).map((loop) => ({ ...loop, helper: helperName(fn) })),
     );
     const fresh = entries.filter((loop) => !reported.has(loop.from));
     for (const loop of fresh) {
