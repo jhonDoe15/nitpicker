@@ -3,6 +3,7 @@ import { appendSentence } from '../../../../shared/messages/exception-sentence.m
 import { definedField } from '../../../../shared/messages/messages.mjs';
 import { readLayout } from '../../preset/head-policy.mjs';
 import { UNUSED_PARAMETER_HINT } from '../../preset/eslint-config/policy/unused-parameters.mjs';
+import { regexpRuleHints } from '../../preset/eslint-config/regexp/regexp-rules.mjs';
 import { immutableTypesParts } from './immutable-types-hint.mjs';
 import { withStatedForm } from './stated-form.mjs';
 import { restrictedMatchers } from '../../preset/eslint-config/test-honesty/restricted-matchers.mjs';
@@ -90,10 +91,6 @@ const PARAM_REASSIGN_HINT = ` Declare a new const with another name instead of r
 const CURLY_HINT = ` Wrap the body in braces: \`if (done) { return; }\`.`;
 
 const NAMING_HINT = `. Types are PascalCase; functions, variables and parameters are camelCase; constants may be UPPER_CASE; a schema constant may be PascalCase (\`const Order = z.object(...)\`). An exception fits only when an external API forces the name.`;
-
-const REGEXP_HINT = ` Rewrite the pattern without nested or overlapping quantifiers, or use a string method. An exception fits only when the input is bounded and trusted.`;
-
-const USELESS_FLAG_HINT = ` Remove the flag: a \`g\` or \`y\` regex keeps \`lastIndex\` between calls, so a reused one gives order-dependent results.`;
 
 const RETURN_TYPE_TEXT = /^Missing return type on function\.?$/u;
 
@@ -231,8 +228,7 @@ const MESSAGE_REWRITERS = new Map([
   ['@typescript-eslint/no-unused-vars', unusedVariableMessage],
   ['curly', appendHint(CURLY_HINT)],
   ['no-duplicate-imports', appendHint(DUPLICATE_IMPORT_HINT)],
-  ['regexp/no-super-linear-backtracking', appendHint(REGEXP_HINT)],
-  ['regexp/no-useless-flag', appendHint(USELESS_FLAG_HINT)],
+  ...regexpRuleHints().map(([rule, hint]) => [rule, appendHint(hint)]),
   ['@typescript-eslint/no-deprecated', appendHint(DEPRECATED_HINT)],
   ['no-unused-vars', unusedVariableMessage],
 ]);

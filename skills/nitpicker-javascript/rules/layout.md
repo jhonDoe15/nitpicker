@@ -23,6 +23,9 @@ Part of the [nitpicker-javascript](../SKILL.md) skill. Write these forms from th
   (`nitpicker/no-shared-stateful-regex`); use `includes` or `startsWith` instead of `match` or
   `search` with a string, and escape a parameter before building it into `new RegExp(...)`
   (`nitpicker/no-string-as-regex`).
+  A pattern part that never changes the match (an assertion that always accepts, a duplicate
+  alternative, `[\w_]`, an empty group) is a `regexp/` finding: remove it or fix what was meant;
+  a form with a shorter equivalent (`a{1}`, `(?:ab)c`, `[a]`) takes the shorter one.
 - `src/main/composition-root.mjs` (or `main`/`server`) only passes things in, through named
   functions. A new feature is a new directory, never a new `if`, `?:` or `??` in a shared entry
   point: lookups and their missing-value checks go in the feature's `adapters/`.

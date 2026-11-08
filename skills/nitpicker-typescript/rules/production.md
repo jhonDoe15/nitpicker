@@ -21,6 +21,9 @@ Part of the [nitpicker-typescript](../SKILL.md) skill. Write these forms from th
   `match`, `matchAll` and `search` compile a string argument as a regex: use `includes` or
   `startsWith` for text, and escape a parameter before building it into `new RegExp(...)`
   (`nitpicker/no-string-as-regex`).
+  A pattern part that never changes the match (an assertion that always accepts, a duplicate
+  alternative, `[\w_]`, an empty group) is a `regexp/` finding: remove it or fix what was meant;
+  a form with a shorter equivalent (`a{1}`, `(?:ab)c`, `[a]`) takes the shorter one.
 - A child process you wait for gets a deadline: `{ timeout: 30_000 }` on `execFileSync`/`spawnSync`, or a
   `timeout` or `signal: AbortSignal.timeout(30_000)` on `execFile` and an awaited `spawn` or `execa`
   (`nitpicker/require-process-timeout`; a build wrapper that only runs a child to completion takes an exception).
