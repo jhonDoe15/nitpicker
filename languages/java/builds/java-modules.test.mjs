@@ -85,6 +85,10 @@ function mavenProject() {
   return root;
 }
 
+function withoutRoute(findings) {
+  return findings.map(({ exception, exceptionList, ...rest }) => rest);
+}
+
 const summary = (findings) =>
   findings
     .filter(({ tool }) => tool !== 'coupling')
@@ -140,7 +144,7 @@ describe('readModuleFindings', () => {
         'function:Raw.value:occurrence:1:source:096551d15cee352ad0d88e80',
       ],
     ]);
-    expect(parseAnalyzerReport({ findings }, 'java').findings).toEqual(findings);
+    expect(withoutRoute(parseAnalyzerReport({ findings }, 'java').findings)).toEqual(findings);
   });
 
   it('rejects structure sources outside the trusted reactor root', () => {
@@ -288,6 +292,7 @@ describe('readModuleFindings', () => {
     const root = realpathSync(mkdtempSync(path.join(tmpdir(), 'nitpicker-java-reactor-')));
     const outside = realpathSync(mkdtempSync(path.join(tmpdir(), 'nitpicker-java-elsewhere-')));
     temporaryRoots.push(root, outside);
+    writeProjectDuplicates(root);
     const files = ['X', 'Y'].map((name) => path.join(outside, `src/p/${name}.java`));
     for (const file of files) {
       write(
@@ -306,7 +311,7 @@ describe('readModuleFindings', () => {
     const findings = readModuleFindings(root, [platform], { reportDirectory: REPORT_DIRECTORY });
 
     expect(findings.filter(({ tool }) => ['duplicates', 'javac'].includes(tool))).toEqual([]);
-    expect(parseAnalyzerReport({ findings }, 'java').findings).toEqual(findings);
+    expect(withoutRoute(parseAnalyzerReport({ findings }, 'java').findings)).toEqual(findings);
   });
 
   it('places the source roots of a failed Maven module under its folder before it scopes them', () => {
@@ -420,6 +425,7 @@ function cpdModule(moduleDir, outcome) {
 function reactor(modules, sourceRootsOf) {
   const root = realpathSync(mkdtempSync(path.join(tmpdir(), 'nitpicker-java-reactor-')));
   temporaryRoots.push(root);
+  writeProjectDuplicates(root);
   for (const [module, outcome] of Object.entries(modules)) {
     cpdModule(path.join(root, module), outcome);
     if (sourceRootsOf !== undefined) {

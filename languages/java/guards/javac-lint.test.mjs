@@ -118,6 +118,10 @@ describe('parseLintWarnings', () => {
   });
 });
 
+function withoutRoute(findings) {
+  return findings.map(({ exception, exceptionList, ...rest }) => rest);
+}
+
 describe('readLintFindings', () => {
   const files = ['src/main/java/demo/Raw.java', 'src/main/java/demo/Old.java'];
 
@@ -192,7 +196,7 @@ describe('readLintFindings', () => {
     });
 
     expect(findings.map(({ notRunScope }) => notRunScope)).toEqual([['app']]);
-    expect(parseAnalyzerReport({ findings }, 'java').findings).toEqual(findings);
+    expect(withoutRoute(parseAnalyzerReport({ findings }, 'java').findings)).toEqual(findings);
   });
 
   it('keeps comparing the project when the failed module compiles only sources outside it', () => {
@@ -213,7 +217,9 @@ describe('readLintFindings', () => {
     expect(baseFindings.map(({ toolNotRun, notRunScope }) => [toolNotRun, notRunScope])).toEqual([
       [undefined, undefined],
     ]);
-    expect(parseAnalyzerReport({ findings: baseFindings }, 'java').findings).toEqual(baseFindings);
+    expect(withoutRoute(parseAnalyzerReport({ findings: baseFindings }, 'java').findings)).toEqual(
+      baseFindings,
+    );
     expect(
       compareFindings({ baseFindings, headFindings }).newFindings.map(
         (finding) => finding.classification,

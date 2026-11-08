@@ -38,6 +38,7 @@ function pmd(root, { release = '17', tests: testDirectories, pmdConfig, spring =
   const basedir = path.join(root, 'app');
   const main = path.join(basedir, 'src/main/java');
   mkdirSync(main, { recursive: true });
+  writeFileSync(path.join(main, 'A.java'), 'class A {}\n');
   for (const [directory, created] of testDirectories) {
     if (created) {
       mkdirSync(path.join(basedir, directory), { recursive: true });
