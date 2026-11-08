@@ -2011,6 +2011,7 @@
                             "pmd/ServerOrContainerPerTest",
                             "pmd/AssertionInControlFlow",
                             "pmd/CoroutineEscapesTest",
+                            "pmd/WeakAssertionInTest",
                             "pmd/GlobalStateLeakInTest",
                             "pmd/MockedSubjectInTest",
                             "pmd/StaticMockOfProjectType",
