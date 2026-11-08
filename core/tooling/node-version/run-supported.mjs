@@ -13,7 +13,9 @@ async function loadCli() {
 }
 
 export async function runSupported(stderr) {
-  const manifest = JSON.parse(readFileSync(new URL('../../../package.json', import.meta.url), 'utf8'));
+  const manifest = JSON.parse(
+    readFileSync(new URL('../../../package.json', import.meta.url), 'utf8'),
+  );
   const nodeVersion = process.versions.node;
   const unsupported = unsupportedNodeMessage(nodeVersion, manifest.engines.node);
   if (unsupported !== undefined) {
