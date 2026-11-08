@@ -140,6 +140,7 @@ describe.skipIf(!enabled)('Java preset escape hatches', () => {
       'pmd AvoidCatchingGenericException SwallowingTest.java',
       'pmd UnitTestShouldIncludeAssert SwallowingTest.java',
       'structure line-length-limit SwallowingTest.java',
+      'test-runtime no-production-runtime SwallowingTest.java',
     ]);
   }, 180_000);
 

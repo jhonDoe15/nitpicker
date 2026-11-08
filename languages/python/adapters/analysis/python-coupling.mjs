@@ -41,7 +41,7 @@ function parentOf(name) {
   return name.slice(0, Math.max(0, name.lastIndexOf('.')));
 }
 
-function longestKnownPrefix(name, known) {
+export function longestKnownPrefix(name, known) {
   const parts = name.split('.');
   return parts
     .map((_, index) => parts.slice(0, parts.length - index).join('.'))
@@ -59,7 +59,7 @@ function relativeBase(importer, { level, module }) {
     .join('.');
 }
 
-function importedModules(importer, statement, known) {
+export function importedModules(importer, statement, known) {
   if (statement.level === 0 && statement.module === null) {
     return statement.names.map((name) => longestKnownPrefix(name, known));
   }

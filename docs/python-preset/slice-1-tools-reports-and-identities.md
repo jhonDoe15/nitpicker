@@ -79,7 +79,7 @@ directory>` or `test-runs/unittest_timings.py <report> discover` (unittest's own
   findings; on the base alone it is a note, see [A base whose tests fail](../usage.md#a-base-whose-tests-fail)),
   `tests-not-run` (a test run that exits 1 without naming a failing test, or whose failures are all
   collection or load errors, or exits with any other status; it stops the analyzer, also on the base), `coverage-failed`, `types-failed` and `rules-failed` (slice 2), `structure-failed`, `environment-failed`,
-  `duplicates-failed`, `coupling-failed`, `import-linter-failed` (slice 5), `mutation-failed` (slice 6)
+  `duplicates-failed`, `coupling-failed`, `test-runtime-failed` (the string and fixture scan of the test files), `import-linter-failed` (slice 5), `mutation-failed` (slice 6)
   and `python-failed` for anything unexpected. An environment that cannot be found at all (no
   `.venv` at the configured directory, no `uv sync`, poetry has none) is caught earlier, while the
   tool versions are read, and is reported as a plain tool error of each analyzer for each snapshot. Every failing step is reported, with the end of the tool output. The CLI
