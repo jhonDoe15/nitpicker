@@ -88,7 +88,7 @@ function translateGroup(group, context) {
   for (const [ruleId, setting] of Object.entries(group.rules)) {
     const translated = translateRule(ruleId, context);
     const needsProgram = translated.plugin !== undefined && context.typedPluginRules.has(ruleId);
-    if (needsProgram || context.programRules.has(ruleId)) {
+    if (needsProgram || (group.programRules ?? []).includes(ruleId)) {
       residualRules.push(ruleId);
       continue;
     }
@@ -115,7 +115,6 @@ export function translatePlan(plan, { nativeRules, bridgedRules }) {
     nativeRules,
     bridgedRules,
     typedPluginRules: new Set(plan.typedPluginRules),
-    programRules: new Set(plan.programRules ?? []),
     ruleNames: new Map(),
     plugins: new Map(),
     typeAware: { value: false },

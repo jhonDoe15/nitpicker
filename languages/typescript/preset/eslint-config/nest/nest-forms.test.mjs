@@ -45,6 +45,14 @@ const ALLOWED_FORMS = {
     'export class Picked extends PickType(Cat, ["name"]) { @IsInt() age!: number; }',
   'HTTP exception': 'export class CatMissing extends NotFoundException {}',
   'qualified exception': 'export class CatGone extends common.HttpException {}',
+  'qualified decorator': '@common.Injectable() export class Cats { run() { return 1; } }',
+  'qualified interface':
+    'export class Guard implements common.CanActivate { canActivate() { return true; } }',
+  'third decorator':
+    '@UseGuards(A) @SetMetadata("k", 1) @Controller() export class Cats { list() { return []; } }',
+  'custom validator': '@ValidatorConstraint() export class Unique { validate() { return true; } }',
+  scalar:
+    "@Scalar('Date') export class DateScalar implements CustomScalar { parseValue() { return 1; } }",
 };
 
 const BANNED_FORMS = {
@@ -59,6 +67,13 @@ const BANNED_FORMS = {
   'other decorator': '@Entity() export class Cat { run() { return 1; } }',
   'other interface': 'export class Cats implements OnModuleInit { onModuleInit() { return 1; } }',
   'class expression': 'export const Cats = class { run() { return 1; } };',
+  'class with a decorated method': 'export class Cats { @Injectable() run() { return 1; } }',
+  'class with a decorated parameter':
+    'export class Cats { run(@Catch() id: number) { return id; } }',
+  'class holding a NestJS class':
+    'export class Cats { run() { @Injectable() class Inner {} return Inner; } }',
+  'class holding a guard':
+    'export class Cats { run() { return class implements CanActivate { canActivate() { return true; } }; } }',
 };
 
 describe('NestJS class forms', () => {
@@ -77,6 +92,10 @@ describe('NestJS class forms', () => {
       messages.map(({ message }) => message.startsWith('Classes are only for `Error`')),
     ).toEqual([true]);
     expect(messages[0].message).not.toBe(nestClassMessage);
+  });
+
+  it('keeps exception subclasses out of domain/', () => {
+    expect(restricted(ALLOWED_FORMS['HTTP exception'], { file: DOMAIN })).toHaveLength(1);
   });
 
   it('keeps the class ban when the project does not use NestJS', () => {
@@ -131,11 +150,18 @@ describe('dependencies of NestJS classes', () => {
     },
   );
 
-  it('reports ModuleRef service location', () => {
-    const code =
-      '@Injectable()\nexport class Cats {\n  constructor(private readonly refs: ModuleRef) {}\n}';
+  it('reports ModuleRef service location in a constructor and in a function', () => {
+    const code = [
+      '@Injectable()',
+      'export class Cats {',
+      '  constructor(private readonly refs: ModuleRef) {}',
+      '}',
+      'export function lookUp(refs: ModuleRef) { return refs; }',
+    ].join('\n');
 
-    expect(linesNaming(code, 'Inject the provider you need through the constructor')).toEqual([3]);
+    expect(linesNaming(code, 'Inject the provider you need through the constructor')).toEqual([
+      3, 5,
+    ]);
   });
 
   it('leaves the dependency rules out of projects without NestJS', () => {
