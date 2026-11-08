@@ -97,6 +97,7 @@ const REVIEW_RULES = new Set([
   'SpringUnreleasedResource',
   'SpringStartupCleanup',
   'HttpWithoutTimeout',
+  'SpringDataFilterInQuery',
 ]);
 const roots = [];
 const RECEIPT_TEST_FILE = 'src/test/java/shop/ReceiptTest.java';
