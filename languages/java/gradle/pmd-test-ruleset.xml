@@ -171,6 +171,66 @@ return
       </property>
     </properties>
   </rule>
+  <rule name="MockedSubjectInTest" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
+        message="This test mocks the class it tests, so it checks the mock instead of the code: a mock of it, or a spy whose own methods are stubbed. Test the real object: pass fakes or mocks of its collaborators in through the constructor, and test a helper through the public method that calls it.">
+    <priority>2</priority>
+    <properties>
+      <property name="xpath">
+        <value><![CDATA[
+let $injected := //FieldDeclaration[ModifierList/Annotation[pmd-java:typeIs('org.mockito.InjectMocks')]]
+                     /ClassType/@SimpleName,
+    $named := for $name in /CompilationUnit/ClassDeclaration/@SimpleName[matches(., '^.+(Tests?|IT|Spec)$')]
+                return replace($name, '^(.+?)(Tests|Test|IT|Spec)$', '$1'),
+    $subjects := if (exists($injected)) then $injected else $named,
+    $mockCalls := //MethodCall[pmd-java:matchesSig('org.mockito.Mockito#mock(_*)')]
+                    [not(ArgumentList//*[@Name = 'CALLS_REAL_METHODS'])],
+    $spyCalls := //MethodCall[pmd-java:matchesSig('org.mockito.Mockito#spy(_*)')],
+    $mockAnnotated := //(FieldDeclaration | FormalParameter)
+      [ModifierList/Annotation[pmd-java:typeIs('org.mockito.Mock')
+         or pmd-java:typeIs('org.springframework.test.context.bean.override.mockito.MockitoBean')
+         or pmd-java:typeIs('org.springframework.boot.test.mock.mockito.MockBean')]]
+      [not(ModifierList/Annotation//*[@Name = 'CALLS_REAL_METHODS'])],
+    $spyAnnotated := //(FieldDeclaration | FormalParameter)
+      [ModifierList/Annotation[pmd-java:typeIs('org.mockito.Spy')
+         or pmd-java:typeIs('org.springframework.test.context.bean.override.mockito.MockitoSpyBean')
+         or pmd-java:typeIs('org.springframework.boot.test.mock.mockito.SpyBean')]],
+    $stubs := (
+      //MethodCall[pmd-java:matchesSig('org.mockito.Mockito#when(_)')
+                   or pmd-java:matchesSig('org.mockito.BDDMockito#given(_)')]
+        /ArgumentList/MethodCall/*[1][self::VariableAccess or self::FieldAccess],
+      //MethodCall[pmd-java:matchesSig('org.mockito.stubbing.Stubber#when(_)')
+                   or pmd-java:matchesSig('org.mockito.stubbing.LenientStubber#when(_)')
+                   or pmd-java:matchesSig('org.mockito.BDDMockito$BDDStubber#given(_)')]
+        /ArgumentList/*[1][self::VariableAccess or self::FieldAccess]),
+    $fieldStubs := $stubs[self::FieldAccess or not(ancestor::Block//LocalVariableDeclaration
+                                                     /VariableDeclarator/VariableId/@Name = @Name)]/@Name,
+    $fields := //FieldDeclaration
+return
+  $mockCalls
+    /(ArgumentList/ClassLiteral/ClassType
+      | self::*[not(ArgumentList/ClassLiteral)]/parent::VariableDeclarator/../ClassType)
+    [@SimpleName = $subjects]
+  | $mockAnnotated/ClassType[@SimpleName = $subjects]
+  | $spyAnnotated[(VariableDeclarator/VariableId | VariableId)/@Name = $fieldStubs]
+      /ClassType[@SimpleName = $subjects]
+  | $spyCalls/parent::VariableDeclarator[parent::LocalVariableDeclaration]
+      [let $name := VariableId/@Name, $block := ancestor::Block[1]
+       return some $stub in $stubs satisfies
+         ($stub[self::VariableAccess]/@Name = $name and $stub/ancestor::Block[. is $block])]
+      /((../ClassType | *[last()]/ArgumentList/*[1]/(self::ConstructorCall | self::ClassLiteral)/ClassType)
+         [@SimpleName = $subjects][1])
+  | $spyCalls/parent::VariableDeclarator[parent::FieldDeclaration][VariableId/@Name = $fieldStubs]
+      /((../ClassType | *[last()]/ArgumentList/*[1]/(self::ConstructorCall | self::ClassLiteral)/ClassType)
+         [@SimpleName = $subjects][1])
+  | $spyCalls[parent::AssignmentExpression/*[1]/@Name = $fieldStubs]
+      /(let $name := ../*[1]/@Name
+        return (ArgumentList/*[1]/(self::ConstructorCall | self::ClassLiteral)/ClassType
+                | $fields[VariableDeclarator/VariableId/@Name = $name]/ClassType)
+               [@SimpleName = $subjects][1])
+]]></value>
+      </property>
+    </properties>
+  </rule>
   <rule name="NegativeWaitInTest" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
         message="Do not prove that something does not happen by waiting out a delay: after(ms).never() and during(...) pass only after the full wait, so the test is slow and depends on the timing. Give the code a Clock or a scheduler the test controls, move it past the delay and assert at once.">
     <priority>2</priority>
@@ -322,88 +382,16 @@ return (
       </property>
     </properties>
   </rule>
-  <rule name="WeakAssertionInTest" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
-        message="This check passes for almost any value: a not-null, non-empty or size-above-0 check, or a verify with only any() arguments. Assert the exact value, contents or length, such as assertEquals(List.of(&quot;a&quot;, &quot;b&quot;), items), and the call arguments. An exception fits only when the value cannot be pinned.">
+  <rule name="StaticMockOfProjectType" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
+        message="A static or constructor mock (mockStatic, mockConstruction) replaces a class of this project, for the whole thread, so the test runs a fake instead of the real code and depends on how that code is called. Pass the dependency in instead: an instance, a function or a Clock the test can replace. Keep static mocks for library types that cannot be passed in.">
     <priority>2</priority>
     <properties>
       <property name="xpath">
         <value><![CDATA[
-(
-  //MethodCall[@MethodName = 'assertNotNull']
-    [pmd-java:matchesSig('org.junit.Assert#assertNotNull(_*)')
-     or pmd-java:matchesSig('org.junit.jupiter.api.Assertions#assertNotNull(_*)')
-     or pmd-java:matchesSig('org.testng.Assert#assertNotNull(_*)')]
-  | //MethodCall[@MethodName = 'isNotNull'][not(parent::MethodCall)]
-      [*[1][pmd-java:typeIs('org.assertj.core.api.Assert')]]
-  | //MethodCall[@MethodName = 'assertThat']
-      [pmd-java:matchesSig('org.hamcrest.MatcherAssert#assertThat(_*)')
-       or pmd-java:matchesSig('org.junit.Assert#assertThat(_*)')]
-      [let $matcher := ArgumentList/*[last()],
-           $unwrapped := $matcher/self::MethodCall[@MethodName = 'is']/ArgumentList/*[1]
-       return exists(($matcher | $unwrapped)/self::MethodCall
-         [@MethodName = 'notNullValue'
-          or (@MethodName = 'not' and ArgumentList/MethodCall[@MethodName = 'nullValue'])
-          or (@MethodName = 'not' and ArgumentList/MethodCall
-              [@MethodName = ('empty', 'emptyString', 'emptyArray', 'emptyIterable', 'emptyCollectionOf',
-                              'emptyIterableOf', 'isEmptyString', 'isEmptyOrNullString')])])]
-  | //MethodCall[@MethodName = 'assertTrue']
-      [pmd-java:matchesSig('org.junit.Assert#assertTrue(_*)')
-       or pmd-java:matchesSig('org.junit.jupiter.api.Assertions#assertTrue(_*)')
-       or pmd-java:matchesSig('org.testng.Assert#assertTrue(_*)')]
-      [ArgumentList/InfixExpression
-        [let $left := *[1], $right := *[2],
-             $leftSize := exists($left[self::MethodCall[@MethodName = ('size', 'length')][ArgumentList[@Size = 0]]
-                                       or self::FieldAccess[@Name = 'length']]),
-             $rightSize := exists($right[self::MethodCall[@MethodName = ('size', 'length')][ArgumentList[@Size = 0]]
-                                         or self::FieldAccess[@Name = 'length']])
-         return ($leftSize and $right/self::NumericLiteral
-                 and ((@Operator = '>' and $right/@ValueAsInt = 0)
-                      or (@Operator = '>=' and $right/@ValueAsInt = 1)))
-             or ($rightSize and $left/self::NumericLiteral
-                 and ((@Operator = '<' and $left/@ValueAsInt = 0)
-                      or (@Operator = '<=' and $left/@ValueAsInt = 1)))]]
-  | //MethodCall[@MethodName = 'assertFalse']
-      [pmd-java:matchesSig('org.junit.Assert#assertFalse(_*)')
-       or pmd-java:matchesSig('org.junit.jupiter.api.Assertions#assertFalse(_*)')
-       or pmd-java:matchesSig('org.testng.Assert#assertFalse(_*)')]
-      [ArgumentList/MethodCall[@MethodName = ('isEmpty', 'isBlank')][ArgumentList[@Size = 0]]]
-  | //MethodCall[@MethodName = 'assertNotEquals']
-      [pmd-java:matchesSig('org.junit.Assert#assertNotEquals(_*)')
-       or pmd-java:matchesSig('org.junit.jupiter.api.Assertions#assertNotEquals(_*)')
-       or pmd-java:matchesSig('org.testng.Assert#assertNotEquals(_*)')]
-      [ArgumentList[NumericLiteral[@ValueAsInt = 0]]
-        [MethodCall[@MethodName = ('size', 'length')][ArgumentList[@Size = 0]] or FieldAccess[@Name = 'length']]]
-  | //MethodCall[@MethodName = ('isNotEmpty', 'isNotBlank')][not(parent::MethodCall)]
-      [*[1][pmd-java:typeIs('org.assertj.core.api.Assert')]]
-  | //MethodCall[@MethodName = 'hasSizeGreaterThan'][not(parent::MethodCall)]
-      [*[1][pmd-java:typeIs('org.assertj.core.api.Assert')]]
-      [ArgumentList/NumericLiteral[@ValueAsInt = 0]]
-  | //MethodCall[@MethodName = 'hasSizeGreaterThanOrEqualTo'][not(parent::MethodCall)]
-      [*[1][pmd-java:typeIs('org.assertj.core.api.Assert')]]
-      [ArgumentList/NumericLiteral[@ValueAsInt = 1]]
-  | //MethodCall[@MethodName = ('isPositive', 'isNotZero', 'isGreaterThan', 'isGreaterThanOrEqualTo', 'isNotEqualTo')]
-      [not(parent::MethodCall)]
-      [*[1][pmd-java:typeIs('org.assertj.core.api.Assert')]
-           [self::MethodCall[@MethodName = 'assertThat']/ArgumentList/*[1]
-             [self::MethodCall[@MethodName = ('size', 'length')][ArgumentList[@Size = 0]]
-              or self::FieldAccess[@Name = 'length']]]]
-      [@MethodName = ('isPositive', 'isNotZero')
-       or (@MethodName = ('isGreaterThan', 'isNotEqualTo') and ArgumentList/NumericLiteral[@ValueAsInt = 0])
-       or (@MethodName = 'isGreaterThanOrEqualTo' and ArgumentList/NumericLiteral[@ValueAsInt = 1])]
-  | //MethodCall
-      [ArgumentList[exists(*)]
-        [not(*[not(self::MethodCall[@MethodName = ('any', 'anyString', 'anyInt', 'anyLong', 'anyDouble',
-                                                    'anyFloat', 'anyBoolean', 'anyByte', 'anyShort', 'anyChar',
-                                                    'anyList', 'anyMap', 'anySet', 'anyCollection',
-                                                    'anyIterable')])])]]
-      [*[1][self::MethodCall]
-        [(@MethodName = 'verify'
-          and (pmd-java:matchesSig('org.mockito.Mockito#verify(_*)')
-               or pmd-java:matchesSig('org.mockito.InOrder#verify(_*)')))
-         or (@MethodName = 'should' and pmd-java:matchesSig('org.mockito.BDDMockito$Then#should(_*)'))]
-        [not(ArgumentList/MethodCall[@MethodName = ('never', 'atMost', 'atMostOnce')]
-             or ArgumentList/MethodCall[@MethodName = 'times'][ArgumentList/NumericLiteral[@ValueAsInt = 0]])]]
-)
+//MethodCall[pmd-java:matchesSig('org.mockito.Mockito#mockStatic(_*)')
+             or pmd-java:matchesSig('org.mockito.Mockito#mockConstruction(_*)')
+             or pmd-java:matchesSig('org.mockito.Mockito#mockConstructionWithAnswer(_*)')]
+  /ArgumentList/*[1][self::ClassLiteral]/ClassType
 ]]></value>
       </property>
     </properties>
