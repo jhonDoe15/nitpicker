@@ -126,6 +126,7 @@ true, flushAutomatically = true)`, with `@Transactional` on the function or the 
   included: no `size`, `isEmpty()` or `count()` (a count or exists query), no `filter`, `any` or
   `first { }` on stored properties (a where clause), no `sortedBy`/`sortedWith(compareBy(...))`
   (order by or a `Sort` argument), no `sumOf`, `maxOf` or `groupingBy { }.eachCount()` (an
-  aggregate `@Query`). Mapping rows to DTOs is fine. Native SQL only when JPQL can't express it,
+  aggregate `@Query`). Mapping rows to DTOs is fine. A local holding the rows is not followed, but
+  write the same in the query there too. Native SQL only when JPQL can't express it,
   marked on that one function with `@Suppress("PMD.SpringDataNativeQuery")`,
   `EntityManager.createNativeQuery` too.

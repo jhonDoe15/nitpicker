@@ -6,7 +6,7 @@ import { repositoryReceiver } from '../loops/loop-scopes.mjs';
 import { comparatorReadsColumns, keyReadsColumns } from './column-reads.mjs';
 
 const RULE = 'SpringDataFilterInQuery';
-const NOT_QUERIES = /^(?:save|delete|remove|count|exists|flush)/u;
+const NOT_QUERIES = /^(?:save|delete|remove|count|exists|flush)(?:\p{Lu}|$)/u;
 const LIMITED = /^[a-z]+(?:First|Top)\d*(?:By|$)/u;
 const STREAMS = new Set(['Flux', 'Flow']);
 const BOUNDS = new Set(['Pageable', 'PageRequest', 'Limit']);

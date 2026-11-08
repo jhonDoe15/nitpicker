@@ -6,7 +6,8 @@ const ANNOTATION_ARGUMENTS = /@[\w.]+\s*\([^()]*\)/gu;
 const ANNOTATION = /@[\w.]+/gu;
 const TRANSIENT_ANNOTATION = /@(?:[\w.]*\.)?Transient\b/u;
 const SKIPPED_FIELD = /\b(?:static|transient)\b/u;
-const FIELD_NAME = /([A-Za-z_$][\w$]*)$/u;
+const FIELD = /([A-Za-z_$][\w$.]*)(?:\s*<[^]*>)?(?:\s*\[\s*\])*\s+([A-Za-z_$][\w$]*)$/u;
+const GETTER = /\b((?:get|is)\p{Lu}[\w$]*)\s*\(\s*\)/gu;
 
 function closingBrace(text, open) {
   let depth = 0;
@@ -41,7 +42,7 @@ function withoutAnnotations(text) {
   return current.replaceAll(ANNOTATION, ' ');
 }
 
-function fieldName(declaration) {
+function field(declaration) {
   if (TRANSIENT_ANNOTATION.test(declaration)) {
     return undefined;
   }
@@ -50,7 +51,8 @@ function fieldName(declaration) {
   if (plain === '' || plain.includes('(') || plain.includes('{') || SKIPPED_FIELD.test(plain)) {
     return undefined;
   }
-  return FIELD_NAME.exec(plain)?.[1];
+  const match = FIELD.exec(plain);
+  return match === null ? undefined : [match[2], match[1].split('.').at(-1)];
 }
 
 function classesIn(text) {
@@ -60,12 +62,13 @@ function classesIn(text) {
     const members = memberText(body);
     return {
       name: match[1],
-      fields: new Set(
+      fields: new Map(
         members
           .split(/[;}]/u)
-          .map((declaration) => fieldName(declaration))
-          .filter((name) => name !== undefined),
+          .map((declaration) => field(declaration))
+          .filter((entry) => entry !== undefined),
       ),
+      getters: [...members.matchAll(GETTER)].map((getter) => getter[1]),
     };
   });
 }
@@ -73,6 +76,31 @@ function classesIn(text) {
 export function propertyNames(getter) {
   const rest = getter.replace(/^(?:get|is)/u, '');
   return [`${rest.charAt(0).toLowerCase()}${rest.slice(1)}`, getter];
+}
+
+function columnType(declared, getter) {
+  const name = propertyNames(getter).find((candidate) => declared.fields.has(candidate));
+  return name === undefined ? undefined : declared.fields.get(name);
+}
+
+function computedGetters(classes) {
+  return new Set(
+    classes.flatMap((declared) =>
+      declared.getters.filter((getter) => columnType(declared, getter) === undefined),
+    ),
+  );
+}
+
+function walks(classes, declared, getters) {
+  let current = declared;
+  for (const getter of getters) {
+    const type = current === undefined ? undefined : columnType(current, getter);
+    if (type === undefined) {
+      return false;
+    }
+    current = classes.get(type);
+  }
+  return true;
 }
 
 export function entityColumns(projectRoot, roots) {
@@ -84,14 +112,12 @@ export function entityColumns(projectRoot, roots) {
       }
     }
   }
-  const columns = new Set([...classes.values()].flatMap(({ fields }) => [...fields]));
+  const computed = computedGetters([...classes.values()]);
   return {
-    isColumn: (getter) => propertyNames(getter).some((name) => columns.has(name)),
-    isColumnOf: (type, getter) => {
-      const declared = classes.get(type.split('.').at(-1));
-      return (
-        declared !== undefined && propertyNames(getter).some((name) => declared.fields.has(name))
-      );
-    },
+    readsColumns: (getters) =>
+      getters.every((getter) => !computed.has(getter)) &&
+      [...classes.values()].some((declared) => walks(classes, declared, getters)),
+    isColumnOf: (type, getter) =>
+      !computed.has(getter) && walks(classes, classes.get(type.split('.').at(-1)), [getter]),
   };
 }

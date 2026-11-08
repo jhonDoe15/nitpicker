@@ -44,11 +44,15 @@ public class InvoiceReports {
   }
 
   public OptionalLong largest(String name) {
-    return invoices.forCustomer(name).stream().mapToLong(invoice -> invoice.getTotal()).max(); // violation: SpringDataFilterInQuery
+    return invoices.forCustomer(name).stream() // violation: SpringDataFilterInQuery
+        .mapToLong(invoice -> invoice.getTotal())
+        .max();
   }
 
   public Long reduced(String name) {
-    return invoices.forCustomer(name).stream().map(Invoice::getTotal).reduce(0L, Long::sum); // violation: SpringDataFilterInQuery
+    return invoices.forCustomer(name).stream() // violation: SpringDataFilterInQuery
+        .map(Invoice::getTotal)
+        .reduce(0L, Long::sum);
   }
 
   public Map<Invoice.Status, Long> perStatus(String name) {
@@ -57,7 +61,8 @@ public class InvoiceReports {
   }
 
   public Optional<Invoice> latest(String name) {
-    return invoices.forCustomer(name).stream().max(Comparator.comparing(Invoice::getDueOn)); // violation: SpringDataFilterInQuery
+    return invoices.forCustomer(name).stream() // violation: SpringDataFilterInQuery
+        .max(Comparator.comparing(Invoice::getDueOn));
   }
 
   public List<Invoice> sorted(String name) {
@@ -79,7 +84,8 @@ public class InvoiceReports {
   }
 
   public boolean due(String name, LocalDate day) {
-    return invoices.forCustomer(name).stream().anyMatch(invoice -> invoice.getDueOn().isBefore(day)); // violation: SpringDataFilterInQuery
+    return invoices.forCustomer(name).stream() // violation: SpringDataFilterInQuery
+        .anyMatch(invoice -> invoice.getDueOn().isBefore(day));
   }
 
   public List<Invoice> paged(String name, Pageable page) {
@@ -90,7 +96,9 @@ public class InvoiceReports {
 
   public Optional<Invoice> firstLarge(String name, long limit) {
     List<Invoice> rows = invoices.forCustomer(name);
-    return rows.stream().filter(invoice -> invoice.getTotal() > limit).findFirst(); // violation: SpringDataFilterInQuery
+    return rows.stream() // violation: SpringDataFilterInQuery
+        .filter(invoice -> invoice.getTotal() > limit)
+        .findFirst();
   }
 
   public Mono<Long> reactiveCount(String name) {
@@ -98,10 +106,12 @@ public class InvoiceReports {
   }
 
   public Flux<Invoice> reactiveOpen(String name) {
-    return reactive.forCustomer(name).filter(invoice -> invoice.getStatus() == Invoice.Status.OPEN); // violation: SpringDataFilterInQuery
+    return reactive.forCustomer(name) // violation: SpringDataFilterInQuery
+        .filter(invoice -> invoice.getStatus() == Invoice.Status.OPEN);
   }
 
   public Flux<Invoice> reactiveSorted(String name) {
-    return reactive.forCustomer(name).sort(Comparator.comparing(Invoice::getTotal)); // violation: SpringDataFilterInQuery
+    return reactive.forCustomer(name) // violation: SpringDataFilterInQuery
+        .sort(Comparator.comparing(Invoice::getTotal));
   }
 }

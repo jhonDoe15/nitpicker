@@ -1224,7 +1224,7 @@ let $initializer := function($node) {
 },
     $queried := function($node) {
   exists($node[self::MethodCall][*[1][pmd-java:typeIs('org.springframework.data.repository.Repository')]]
-    [not(matches(@MethodName, '^(save|delete|remove|count|exists|flush)'))]
+    [not(matches(@MethodName, '^(save|delete|remove|count|exists|flush)(\p{Lu}|$)'))]
     [pmd-java:typeIs('java.lang.Iterable') or pmd-java:typeIs('java.util.stream.Stream')
       or pmd-java:typeIs('reactor.core.publisher.Flux')])
 },

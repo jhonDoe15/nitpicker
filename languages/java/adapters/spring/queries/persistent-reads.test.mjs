@@ -29,6 +29,7 @@ public class Invoice extends Audited {
   public long getReminders() { return reminders; }
   public long getCached() { return cached; }
   public boolean isOverdue() { return status == Status.OPEN; }
+  public String getLabel() { return status.name(); }
 }
 `;
 const BASE_SOURCE = `package shop;
@@ -45,6 +46,7 @@ const CUSTOMER_SOURCE = `package shop;
 public class Customer {
   @Id private Long id;
   private String name;
+  private String label;
 }
 `;
 const LINES = [
@@ -60,6 +62,7 @@ const LINES = [
   'rows.forCustomer(n).collectList().map(all -> all.isEmpty());',
   'rows.forCustomer(n).stream().filter(i -> i.getTags().contains(n)).count();',
   'rows.findAll().stream().filter(p -> p.hashCode() > 0).count();',
+  'rows.forCustomer(n).stream().filter(i -> i.getLabel().equals(n)).count();',
 ];
 const SERVICE_SOURCE = `package shop;\n\nclass Reports {\n${LINES.map((line) => `  ${line}`).join('\n')}\n}\n`;
 
@@ -79,7 +82,7 @@ function kept(files) {
 }
 
 describe('rows read through computed or transient properties', () => {
-  it('keeps the findings that read only columns, and drops computed, transient and unknown reads', () => {
+  it('keeps the findings that read only columns, and drops computed, transient and unknown reads, also a computed getter named like a field of another entity', () => {
     expect(
       kept({
         [ENTITY]: ENTITY_SOURCE,

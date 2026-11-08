@@ -248,9 +248,11 @@ when the code is right, for example `{ "rule": "pmd/SpringDataNoSaveInLoop", "pa
   `contains`, `startsWith`, `endsWith` or the `Comparator` factories. A call to anything else
   (a service, a helper, `this`) leaves the line alone. Nitpicker then reads the `@Entity`,
   `@Embeddable` and `@MappedSuperclass` sources of the project and keeps the finding only when
-  every getter maps to a field that is stored: a getter with no field behind it (a computed
-  property), a `@Transient` or `transient` field, and a type that is not an entity of the project
-  are not reported, since the database cannot evaluate them. A sort or a total is not reported on
+  every getter maps to a field that is stored, following a chain such as `getCustomer().getName()`
+  through the field types: a getter with no field behind it (a computed property) in any entity,
+  a `@Transient` or `transient` field, a `record` and a type that is not an entity of the project
+  are not reported, since the database cannot evaluate them. The Kotlin preset applies the same
+  rule to Kotlin entities; it does not follow a local that holds the rows. A sort or a total is not reported on
   a bounded result (a `Pageable` or `Limit` argument, a `Page` or `Slice`, or a
   `findFirst`/`findTopN` method), and neither is a count, since sorting or counting one page is a
   display concern; a filter on a page is reported, because it leaves the page short.
