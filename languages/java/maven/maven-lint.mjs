@@ -48,6 +48,26 @@ function writeAuxClasspath({ module, reportDir, classpaths }) {
   return file;
 }
 
+function pmdArguments({ report, rulesets, auxClasspath, linted }) {
+  return [
+    'check',
+    '--no-cache',
+    '--no-progress',
+    '--format',
+    'sarif',
+    '--report-file',
+    report,
+    '--rulesets',
+    rulesets.join(','),
+    '--aux-classpath',
+    `file:${auxClasspath}`,
+    '--suppress-marker',
+    'NITPICKER-NO-INLINE-SUPPRESSION',
+    '--dir',
+    linted.join(','),
+  ];
+}
+
 export function runPmd(options) {
   const { module, reportDir, tools, classpaths, configs, spring, springRules, reactor, spawn } =
     options;
@@ -78,23 +98,7 @@ export function runPmd(options) {
     tool: 'PMD',
     classpath: tools.pmd,
     mainClass: 'net.sourceforge.pmd.cli.PmdCli',
-    args: [
-      'check',
-      '--no-cache',
-      '--no-progress',
-      '--format',
-      'sarif',
-      '--report-file',
-      report,
-      '--rulesets',
-      rulesets.join(','),
-      '--aux-classpath',
-      `file:${auxClasspath}`,
-      '--suppress-marker',
-      'NITPICKER-NO-INLINE-SUPPRESSION',
-      '--dir',
-      linted.join(','),
-    ],
+    args: pmdArguments({ report, rulesets, auxClasspath, linted }),
     cwd: module.basedir,
     accept: () => existsSync(report),
     spawn,
