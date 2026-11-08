@@ -8,13 +8,14 @@ import {
 } from '../bindings/ts-nodes.mjs';
 
 const MAX_DEPTH = 4;
+const MAX_LEAF_STEPS = 16;
 
 const NUMBER = 'number';
 const BIGINT = 'bigint';
 const BOOLEAN = 'boolean';
 const DATE = 'date';
 
-export const SCHEMA_LIBRARIES = [
+const SCHEMA_LIBRARIES = [
   {
     id: 'zod',
     packages: ['zod', 'nestjs-zod'],
@@ -58,9 +59,29 @@ export const SCHEMA_LIBRARIES = [
 
 const PICKERS = new Set(['pick', 'omit']);
 const MERGERS = new Set(['extend', 'safeExtend', 'merge']);
+const SHAPE_OPERATIONS = new Set([...PICKERS, ...MERGERS]);
 
 function libraryOf(identifier) {
   return SCHEMA_LIBRARIES.find((library) => isFromPackage(identifier, library.packages));
+}
+
+function namespaceCall(callee, library) {
+  const owner = callee.expression;
+  if (ts.isIdentifier(owner)) {
+    return { library, name: callee.name.text, display: `${owner.text}.${callee.name.text}()` };
+  }
+  const isCoerce =
+    ts.isPropertyAccessExpression(owner) &&
+    ts.isIdentifier(owner.expression) &&
+    owner.name.text === 'coerce';
+  return isCoerce
+    ? {
+        library,
+        name: callee.name.text,
+        coerce: true,
+        display: `${owner.expression.text}.coerce.${callee.name.text}()`,
+      }
+    : undefined;
 }
 
 export function libraryCall(node) {
@@ -77,23 +98,7 @@ export function libraryCall(node) {
     const imported = importOf(callee)?.imported;
     return imported === '*' || imported === 'default' ? undefined : { library, name: imported };
   }
-  if (!ts.isPropertyAccessExpression(callee)) {
-    return undefined;
-  }
-  const owner = callee.expression;
-  if (ts.isIdentifier(owner)) {
-    return { library, name: callee.name.text, display: `${owner.text}.${callee.name.text}()` };
-  }
-  return ts.isPropertyAccessExpression(owner) &&
-    ts.isIdentifier(owner.expression) &&
-    owner.name.text === 'coerce'
-    ? {
-        library,
-        name: callee.name.text,
-        coerce: true,
-        display: `${owner.expression.text}.coerce.${callee.name.text}()`,
-      }
-    : undefined;
+  return ts.isPropertyAccessExpression(callee) ? namespaceCall(callee, library) : undefined;
 }
 
 function isMethodCall(node) {
@@ -129,26 +134,29 @@ function callProblem(call, found) {
   return kind === undefined ? undefined : { kind, form, library: found.library.id };
 }
 
+function leafStep(node) {
+  if (isMethodCall(node)) {
+    return { next: node.expression.expression };
+  }
+  const found = libraryCall(node);
+  if (found === undefined) {
+    return {};
+  }
+  return !found.coerce && found.library.wrappers.includes(found.name)
+    ? { next: node.arguments[0] }
+    : { problem: callProblem(node, found) };
+}
+
 export function leafProblem(expression, checker) {
   const pending = [expression];
   for (const current of pending) {
     const node = resolvedExpression(current, checker);
-    if (node === undefined || pending.length > MAX_DEPTH * 4) {
-      return undefined;
+    const step = node === undefined || pending.length > MAX_LEAF_STEPS ? {} : leafStep(node);
+    if (step.next !== undefined) {
+      pending.push(step.next);
+    } else {
+      return step.problem;
     }
-    if (isMethodCall(node)) {
-      pending.push(node.expression.expression);
-      continue;
-    }
-    const found = libraryCall(node);
-    if (found === undefined) {
-      return undefined;
-    }
-    if (!found.coerce && found.library.wrappers.includes(found.name)) {
-      pending.push(node.arguments[0]);
-      continue;
-    }
-    return callProblem(node, found);
   }
   return undefined;
 }
@@ -177,62 +185,108 @@ function keyNames(argument) {
     : undefined;
 }
 
-function picked(fields, method, argument) {
-  const keys = keyNames(argument);
-  if (fields === undefined || keys === undefined) {
-    return fields;
-  }
-  return fields.filter(({ name }) => keys.has(name) === (method === 'pick'));
-}
-
-function methodShape(node, checker, depth) {
-  const method = node.expression.name.text;
-  const receiver = shapeFields(node.expression.expression, checker, depth + 1);
+function applied(fields, { method, argument }, checker) {
   if (PICKERS.has(method)) {
-    return picked(receiver, method, node.arguments[0]);
+    const keys = keyNames(argument);
+    return keys === undefined
+      ? fields
+      : fields.filter(({ name }) => keys.has(name) === (method === 'pick'));
   }
-  if (!MERGERS.has(method) || receiver === undefined) {
-    return receiver;
-  }
-  const added =
-    literalFields(resolvedExpression(node.arguments[0], checker)) ??
-    shapeFields(node.arguments[0], checker, depth + 1) ??
-    [];
-  const names = new Set(added.map(({ name }) => name));
-  return [...receiver.filter(({ name }) => !names.has(name)), ...added];
-}
-
-export function shapeFields(expression, checker, depth = 0) {
-  const node = depth > MAX_DEPTH ? undefined : resolvedExpression(expression, checker);
-  if (node === undefined) {
+  const added = addedFields(argument, checker);
+  if (added === undefined) {
     return undefined;
   }
+  const names = new Set(added.map(({ name }) => name));
+  return [...fields.filter(({ name }) => !names.has(name)), ...added];
+}
+
+function shapeStep(node) {
   if (isMethodCall(node)) {
-    return methodShape(node, checker, depth);
+    const method = node.expression.name.text;
+    const operation = SHAPE_OPERATIONS.has(method)
+      ? { method, argument: node.arguments[0] }
+      : undefined;
+    return { next: node.expression.expression, operation };
   }
   const found = libraryCall(node);
   if (found === undefined || found.coerce) {
-    return undefined;
+    return {};
   }
   if (found.library.objects.includes(found.name)) {
-    return literalFields(resolvedExpression(node.arguments[0], checker));
+    return { shape: node.arguments[0] };
   }
-  return found.library.wrappers.includes(found.name)
-    ? shapeFields(node.arguments[0], checker, depth + 1)
+  return found.library.wrappers.includes(found.name) ? { next: node.arguments[0] } : {};
+}
+
+function shapeRoot(expression, checker) {
+  const pending = [expression];
+  const operations = [];
+  for (const current of pending) {
+    const node = resolvedExpression(current, checker);
+    const step = node === undefined || pending.length > MAX_LEAF_STEPS ? {} : shapeStep(node);
+    if (step.operation !== undefined) {
+      operations.unshift(step.operation);
+    }
+    if (step.next !== undefined) {
+      pending.push(step.next);
+    } else {
+      return step.shape === undefined ? undefined : { shape: step.shape, operations };
+    }
+  }
+  return undefined;
+}
+
+function addedFields(argument, checker) {
+  const direct = literalFields(resolvedExpression(argument, checker));
+  if (direct !== undefined || argument === undefined) {
+    return direct;
+  }
+  const isShape = ts.isPropertyAccessExpression(argument) && argument.name.text === 'shape';
+  const root = shapeRoot(isShape ? argument.expression : argument, checker);
+  return root !== undefined && root.operations.length === 0
+    ? literalFields(resolvedExpression(root.shape, checker))
     : undefined;
 }
 
-export function schemaProblems(expression, checker, prefix = '', depth = 0) {
+function shapeFields(expression, checker) {
+  const root = shapeRoot(expression, checker);
+  const initial =
+    root === undefined ? undefined : literalFields(resolvedExpression(root.shape, checker));
+  return (root?.operations ?? []).reduce(
+    (fields, operation) => (fields === undefined ? undefined : applied(fields, operation, checker)),
+    initial,
+  );
+}
+
+function fieldProblems({ fields, prefix, depth }, checker) {
+  const problems = [];
+  const nested = [];
+  for (const { name, value } of fields) {
+    const field = `${prefix}${name}`;
+    const problem = leafProblem(value, checker);
+    const inner =
+      problem === undefined && depth < MAX_DEPTH ? shapeFields(value, checker) : undefined;
+    if (problem !== undefined) {
+      problems.push({ field, node: value, problem });
+    }
+    if (inner !== undefined) {
+      nested.push({ fields: inner, prefix: `${field}.`, depth: depth + 1 });
+    }
+  }
+  return { problems, nested };
+}
+
+export function schemaProblems(expression, checker) {
   const fields = shapeFields(expression, checker);
   if (fields === undefined) {
     return undefined;
   }
-  return fields.flatMap(({ name, value }) => {
-    const field = `${prefix}${name}`;
-    const problem = leafProblem(value, checker);
-    if (problem !== undefined) {
-      return [{ field, node: value, problem }];
-    }
-    return depth < MAX_DEPTH ? (schemaProblems(value, checker, `${field}.`, depth + 1) ?? []) : [];
-  });
+  const pending = [{ fields, prefix: '', depth: 0 }];
+  const problems = [];
+  for (const level of pending) {
+    const found = fieldProblems(level, checker);
+    problems.push(...found.problems);
+    pending.push(...found.nested);
+  }
+  return problems;
 }

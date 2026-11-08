@@ -182,17 +182,21 @@ function aliasTarget(identifier, checker) {
     : undefined;
 }
 
+function nextExpression(node, checker, depth) {
+  if (isWrapper(node)) {
+    return node.expression;
+  }
+  return ts.isIdentifier(node) && depth <= MAX_ALIAS_DEPTH * 2
+    ? aliasTarget(node, checker)
+    : undefined;
+}
+
 export function resolvedExpression(node, checker) {
   const chain = node === undefined ? [] : [node];
   for (const current of chain) {
-    if (isWrapper(current)) {
-      chain.push(current.expression);
-    } else if (ts.isIdentifier(current) && chain.length <= MAX_ALIAS_DEPTH * 2) {
-      const target = aliasTarget(current, checker);
-      if (target === undefined) {
-        return undefined;
-      }
-      chain.push(target);
+    const next = nextExpression(current, checker, chain.length);
+    if (next !== undefined) {
+      chain.push(next);
     }
   }
   const last = chain.at(-1);

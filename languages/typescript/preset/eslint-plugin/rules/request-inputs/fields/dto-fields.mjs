@@ -9,7 +9,7 @@ import {
 } from '../bindings/ts-nodes.mjs';
 import { schemaProblems } from './schema-fields.mjs';
 
-const MAX_DEPTH = 4;
+const MAX_CLASSES = 8;
 const CLASS_VALIDATOR = ['class-validator'];
 const CLASS_TRANSFORMER = ['class-transformer'];
 const NEUTRAL_PACKAGES = [
@@ -33,13 +33,27 @@ const VALIDATOR_KINDS = {
 };
 const KIND_ORDER = ['boolean', 'date', 'number'];
 const MAPPED_TYPES = new Set(['PartialType', 'PickType', 'OmitType', 'IntersectionType']);
+const KEY_PICKERS = new Set(['PickType', 'OmitType']);
 const ZOD_DTO_FACTORIES = new Set(['createZodDto']);
 
 function returnsBoolean(argument) {
-  if (argument === undefined || !ts.isArrowFunction(argument)) {
-    return false;
+  return (
+    argument !== undefined &&
+    ts.isArrowFunction(argument) &&
+    ts.isIdentifier(argument.body) &&
+    argument.body.text === 'Boolean'
+  );
+}
+
+function transformerRole(call) {
+  if (call.name === 'Transform') {
+    return { coerces: true };
   }
-  return ts.isIdentifier(argument.body) && argument.body.text === 'Boolean';
+  if (call.name !== 'Type') {
+    return {};
+  }
+  const castsBoolean = returnsBoolean(call.arguments[0]);
+  return { castsBoolean, coerces: !castsBoolean };
 }
 
 function decoratorRole(decorator) {
@@ -51,72 +65,56 @@ function decoratorRole(decorator) {
     return { kind: VALIDATOR_KINDS[call.name], form: `@${call.name}()` };
   }
   if (isFromPackage(call.base, CLASS_TRANSFORMER)) {
-    if (call.name === 'Transform') {
-      return { coerces: true };
-    }
-    return call.name === 'Type'
-      ? {
-          castsBoolean: returnsBoolean(call.arguments[0]),
-          coerces: !returnsBoolean(call.arguments[0]),
-        }
-      : {};
+    return transformerRole(call);
   }
   return isFromPackage(call.base, NEUTRAL_PACKAGES) ? {} : { coerces: true };
 }
 
-export function propertyProblem(property) {
+function propertyProblem(property) {
   const roles = decoratorsOf(property).map((decorator) => decoratorRole(decorator));
   const kinds = roles.filter((role) => role.kind !== undefined);
   const kind = KIND_ORDER.find((name) => kinds.some((role) => role.kind === name));
   if (kind === undefined || roles.some((role) => role.coerces)) {
     return undefined;
   }
-  const form = kinds.find((role) => role.kind === kind).form;
-  const cast = kind === 'boolean' && roles.some((role) => role.castsBoolean);
-  return cast
-    ? { kind, cast, form: '@Type(() => Boolean)', library: 'class-validator' }
+  const { form } = kinds.find((role) => role.kind === kind);
+  return kind === 'boolean' && roles.some((role) => role.castsBoolean)
+    ? { kind, cast: true, form: '@Type(() => Boolean)', library: 'class-validator' }
     : { kind, form, library: 'class-validator' };
 }
 
-function keyFilter(call) {
-  const keys = call.arguments[1];
-  if (call.name === 'PartialType' || call.name === 'IntersectionType' || keys === undefined) {
-    return () => true;
-  }
-  if (!ts.isArrayLiteralExpression(keys)) {
+function keyFilter(name, keys) {
+  if (!KEY_PICKERS.has(name) || keys === undefined || !ts.isArrayLiteralExpression(keys)) {
     return () => true;
   }
   const names = new Set(keys.elements.map((element) => nameOf(element)));
-  return (name) => names.has(name) === (call.name === 'PickType');
+  return (field) => names.has(field) === (name === 'PickType');
 }
 
-function heritageProblems(declaration, checker, depth) {
+function both(first, second) {
+  return (field) => first(field) && second(field);
+}
+
+function heritageBase(declaration) {
   const clause = declaration.heritageClauses?.find(
     (entry) => entry.token === ts.SyntaxKind.ExtendsKeyword,
   );
-  const base = clause?.types[0]?.expression;
-  if (base === undefined) {
-    return [];
-  }
-  if (ts.isIdentifier(base)) {
-    return classProblems(base, checker, depth + 1) ?? [];
-  }
+  return clause?.types[0]?.expression;
+}
+
+function mappedSources(base) {
   if (!ts.isCallExpression(base) || !ts.isIdentifier(base.expression)) {
-    return [];
+    return { name: undefined, sources: [] };
   }
   const name = importOf(base.expression)?.imported ?? base.expression.text;
   if (ZOD_DTO_FACTORIES.has(name)) {
-    return schemaProblems(base.arguments[0], checker) ?? [];
+    return { name, schema: base.arguments[0], sources: [] };
   }
   if (!MAPPED_TYPES.has(name)) {
-    return [];
+    return { name, sources: [] };
   }
-  const keep = keyFilter({ name, arguments: base.arguments });
   const sources = name === 'IntersectionType' ? base.arguments : base.arguments.slice(0, 1);
-  return sources
-    .filter((argument) => ts.isIdentifier(argument))
-    .flatMap((argument) => classProblems(argument, checker, depth + 1) ?? [])
-    .filter(({ field }) => keep(field));
+  return { name, sources: sources.filter((argument) => ts.isIdentifier(argument)) };
 }
 
 function ownProperties(declaration) {
@@ -125,22 +123,62 @@ function ownProperties(declaration) {
   );
 }
 
-function ownProblems(declaration) {
+function visible(entry, field) {
+  return !entry.hidden.has(field) && entry.keep(field);
+}
+
+function ownProblems(declaration, entry) {
   return ownProperties(declaration).flatMap((member) => {
-    const problem = propertyProblem(member);
-    return problem === undefined ? [] : [{ field: nameOf(member.name), node: member, problem }];
+    const field = nameOf(member.name);
+    const problem = visible(entry, field) ? propertyProblem(member) : undefined;
+    return problem === undefined ? [] : [{ field, node: member, problem }];
   });
 }
 
-export function classProblems(identifier, checker, depth = 0) {
-  const declaration = depth > MAX_DEPTH ? undefined : declarationOf(identifier, checker);
-  if (declaration === undefined || !ts.isClassDeclaration(declaration)) {
+function inheritedEntries(declaration, entry) {
+  const base = heritageBase(declaration);
+  const hidden = new Set([
+    ...entry.hidden,
+    ...ownProperties(declaration).map((m) => nameOf(m.name)),
+  ]);
+  if (base === undefined) {
+    return { entries: [] };
+  }
+  if (ts.isIdentifier(base)) {
+    return { entries: [{ identifier: base, hidden, keep: entry.keep }] };
+  }
+  const mapped = mappedSources(base);
+  const filter = keyFilter(mapped.name, ts.isCallExpression(base) ? base.arguments[1] : undefined);
+  const keep = both(entry.keep, filter);
+  return {
+    entries: mapped.sources.map((identifier) => ({ identifier, hidden, keep })),
+    schema: mapped.schema === undefined ? undefined : { expression: mapped.schema, hidden, keep },
+  };
+}
+
+function schemaEntryProblems(schema, checker) {
+  return (schemaProblems(schema.expression, checker) ?? []).filter(({ field }) =>
+    visible(schema, field),
+  );
+}
+
+export function classProblems(identifier, checker) {
+  const first = declarationOf(identifier, checker);
+  if (first === undefined || !ts.isClassDeclaration(first)) {
     return undefined;
   }
-  const own = ownProblems(declaration);
-  const names = new Set(ownProperties(declaration).map((member) => nameOf(member.name)));
-  const inherited = heritageProblems(declaration, checker, depth).filter(
-    ({ field }) => !names.has(field),
-  );
-  return [...own, ...inherited];
+  const pending = [{ identifier, hidden: new Set(), keep: () => true }];
+  const problems = [];
+  for (const entry of pending) {
+    const declaration = declarationOf(entry.identifier, checker);
+    if (declaration !== undefined && ts.isClassDeclaration(declaration)) {
+      const inherited = inheritedEntries(declaration, entry);
+      problems.push(...ownProblems(declaration, entry));
+      problems.push(
+        ...(inherited.schema === undefined ? [] : schemaEntryProblems(inherited.schema, checker)),
+      );
+      pending.push(...inherited.entries.slice(0, Math.max(0, MAX_CLASSES - pending.length)));
+    }
+  }
+  return problems;
 }

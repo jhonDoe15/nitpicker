@@ -80,30 +80,41 @@ function literalKind(type) {
   return isBoolean ? 'boolean' : undefined;
 }
 
-function typeKind(type) {
-  if (type === undefined) {
-    return undefined;
-  }
+function partKind(type) {
   if (KEYWORD_KINDS.has(type.kind)) {
-    return KEYWORD_KINDS.get(type.kind);
+    return { kind: KEYWORD_KINDS.get(type.kind) };
   }
-  if (ts.isArrayTypeNode(type) || ts.isParenthesizedTypeNode(type)) {
-    return typeKind(ts.isArrayTypeNode(type) ? type.elementType : type.type);
+  if (ts.isArrayTypeNode(type)) {
+    return { inner: [type.elementType] };
+  }
+  if (ts.isParenthesizedTypeNode(type)) {
+    return { inner: [type.type] };
+  }
+  if (ts.isUnionTypeNode(type)) {
+    return { inner: type.types.filter((part) => !isNullish(part)) };
   }
   if (ts.isLiteralTypeNode(type)) {
-    return literalKind(type);
+    return { kind: literalKind(type) };
   }
-  if (ts.isTypeReferenceNode(type)) {
-    return nameOf(type.typeName) === 'Date' ? 'date' : undefined;
+  const isDate = ts.isTypeReferenceNode(type) && nameOf(type.typeName) === 'Date';
+  return { kind: isDate ? 'date' : undefined };
+}
+
+function typeKind(type) {
+  const pending = type === undefined ? [] : [type];
+  const kinds = new Set();
+  for (const current of pending) {
+    const part = partKind(current);
+    if (part.inner === undefined) {
+      kinds.add(part.kind);
+    } else {
+      pending.push(...part.inner);
+    }
   }
-  if (!ts.isUnionTypeNode(type)) {
-    return undefined;
-  }
-  const kinds = new Set(type.types.filter((part) => !isNullish(part)).map(typeKind));
   return kinds.size === 1 ? [...kinds][0] : undefined;
 }
 
-export function typeProblem(type) {
+function typeProblem(type) {
   const kind = typeKind(type);
   return kind === undefined
     ? undefined
@@ -117,7 +128,7 @@ function literalMembers(type) {
   });
 }
 
-function singleProblems(name, pipes, parameter, checker) {
+function singleProblems({ name, pipes, parameter }, checker) {
   const zodPipe = pipes.find((pipe) => ZOD_PIPES.has(calledName(pipe)));
   if (zodPipe !== undefined) {
     const problem = leafProblem(zodPipe.arguments?.[0], checker);
@@ -154,7 +165,7 @@ function parameterProblems(parameter, multipart, checker) {
   const [first, ...rest] = transport.arguments;
   const single = first !== undefined && ts.isStringLiteralLike(first);
   const found = single
-    ? singleProblems(first.text, rest, parameter, checker)
+    ? singleProblems({ name: first.text, pipes: rest, parameter }, checker)
     : objectProblems(transport.arguments, parameter, checker);
   return found.map((entry) => ({ ...entry, source: transport.source, binding: parameter }));
 }
