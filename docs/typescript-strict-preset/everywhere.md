@@ -385,6 +385,21 @@ Part of the [TypeScript strict preset guide](../typescript-strict-preset.md).
   hangs the program. A program whose purpose is to run a child to completion, such as a build
   wrapper, takes an exception. The rule reads no types, so it behaves the same in the JavaScript
   preset.
+- Time values in one unit meet only values in the same unit (`nitpicker/time-unit-mismatch`, production
+  files). Units come from the API (`Date.now()`, `getTime()`, `Date.parse`, `Date.UTC` and `performance.now()`
+  in milliseconds, `process.uptime()` in seconds, `process.hrtime.bigint()` in nanoseconds, the JWT claims
+  `exp`, `iat`, `nbf` and `auth_time` in seconds) and from name suffixes (`Ms`, `Millis`, `Milliseconds`,
+  `Seconds`, `Secs`, `Nanos`, `Micros`, `Minutes`, in camel case, `snake_case` or `UPPER_CASE`; a ratio
+  such as `MS_PER_SECOND` has no unit). A `const` takes the unit of its initializer, and `* 1000`, `/ 1000`
+  (also through a unit-less `const`), `Math.floor` and the like convert or keep it. Reported: a `+`, `-` or
+  comparison of two units; a variable, property, class field, default or destructured name in one unit that
+  gets a value in another; an argument of one unit where the call takes another (`setTimeout` and
+  `setInterval` delays, `node:timers/promises` `setTimeout`, `AbortSignal.timeout`, `new Date(epochMs)`,
+  a function of the same file, or, with type information, any function whose parameter is named with a
+  unit); and an epoch time cut to 32 bits (`| 0`, `>> 0`, `>>> 0`, `~~`). The message names both units,
+  the factor and the conversion. A name with the wrong unit is fixed by renaming it. The same rule runs as
+  `time-unit-mismatch` (Python), `pmd/MixedTimeUnits` and `pmd/EpochNarrowedToInt` (Java) and
+  `kotlin-source/TimeUnitMismatch` (Kotlin).
 - Named exports list their names: no `export *`, which makes every internal export of a feature's
   `index.ts` public (`export { name } from './domain/x.js'`).
 - Cognitive complexity of at most 15 per function, tests included (`nitpicker/cognitive-complexity`).

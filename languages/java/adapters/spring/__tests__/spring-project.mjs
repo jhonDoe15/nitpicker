@@ -85,6 +85,8 @@ const REVIEW_RULES = new Set([
   'LogExceptionFirst',
   'RecursiveMapUpdate',
   'DefaultTimeZone',
+  'MixedTimeUnits',
+  'EpochNarrowedToInt',
   'ClassLoadEffect',
   'SpringUnusedContext',
   'SpringProxySelfCall',

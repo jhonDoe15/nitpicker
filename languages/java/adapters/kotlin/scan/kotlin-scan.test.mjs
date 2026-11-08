@@ -182,6 +182,7 @@ describe('readKotlinSourceFindings', () => {
         'StandardStreamOutsideEntryPoint',
         'TestClassWithoutTestCases',
         'TestHelperInSource',
+        'TimeUnitMismatch',
         'TlsVerificationOff',
         'TriStateBoolean',
         'UnboundedFanOut',

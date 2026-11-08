@@ -20,6 +20,7 @@ import { kotlinSourceRules as rulesCompatibilityShims } from '../signatures/comp
 import { kotlinSourceRules as rulesParameterMutation } from '../signatures/parameter-mutation.mjs';
 import { kotlinSourceRules as rulesTriState } from '../signatures/tri-state.mjs';
 import { kotlinSourceRules as rulesDefaultTimeZone } from '../time/default-time-zone.mjs';
+import { kotlinSourceRules as rulesTimeUnits } from '../time/units/time-units.mjs';
 import { kotlinSourceRules as rulesUriParsing } from '../uris/uri-parsing.mjs';
 
 export const directoryRules = [
@@ -45,5 +46,6 @@ export const directoryRules = [
   rulesParameterMutation,
   rulesTriState,
   rulesDefaultTimeZone,
+  rulesTimeUnits,
   rulesUriParsing,
 ];

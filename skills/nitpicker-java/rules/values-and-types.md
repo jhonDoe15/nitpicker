@@ -29,6 +29,10 @@ Part of the [nitpicker-java](../SKILL.md) skill. Write these forms from the star
   `new GregorianCalendar()` and `new SimpleDateFormat(...)` without a time zone are flagged
   (`pmd/LegacyCalendarApi`), and so are `ZoneId.systemDefault()` and `TimeZone.getDefault()`
   (`pmd/DefaultTimeZone`).
+- Time units: name a time value with its unit (`timeoutMillis`, `ttlSeconds`) and let it meet only the same
+  unit: convert once where it enters (`TimeUnit.SECONDS.toMillis(ttlSeconds)`, `Duration.ofSeconds(s).toMillis()`)
+  and pass a `TimeUnit` that matches the value (`pmd/MixedTimeUnits`). Keep epoch times in a `long` or an
+  `Instant`, never `(int) (System.currentTimeMillis() / 1000)` (`pmd/EpochNarrowedToInt`).
 - URIs from runtime text: build them with an encoding builder
   (`UriComponentsBuilder...encode().build().toUri()`, `new URI(scheme, host, path, fragment)`), or
   parse where the failure is handled (`URI.create(text)` in a `try` that catches

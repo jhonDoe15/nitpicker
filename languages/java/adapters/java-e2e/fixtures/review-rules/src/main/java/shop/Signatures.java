@@ -1,6 +1,8 @@
 package shop;
 
 import java.text.SimpleDateFormat;
+import java.time.Duration;
+import java.time.Instant;
 import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -12,6 +14,7 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.TimeZone;
 import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.TimeUnit;
 
 public final class Signatures {
   private Signatures() {}
@@ -136,5 +139,30 @@ public final class Signatures {
     SimpleDateFormat format = new SimpleDateFormat("yyyy-MM-dd", Locale.ROOT);
     format.setTimeZone(TimeZone.getTimeZone("UTC"));
     return format;
+  }
+
+  public static boolean loginFailureExpired(long lastFailureMillis, long maxDeltaTimeSeconds) {
+    return System.currentTimeMillis() - maxDeltaTimeSeconds > lastFailureMillis; // violation: MixedTimeUnits
+  }
+
+  public static long lockWaitTimeout(Duration wait) {
+    long lockWaitTimeoutMillis = wait.toSeconds(); // violation: MixedTimeUnits
+    return lockWaitTimeoutMillis;
+  }
+
+  public static boolean expired(long issuedAtSeconds, long lifetimeSeconds) {
+    return issuedAtSeconds + lifetimeSeconds < System.currentTimeMillis() / 1000;
+  }
+
+  public static long deadlineMillis(long lifetimeSeconds) {
+    return System.currentTimeMillis() + TimeUnit.SECONDS.toMillis(lifetimeSeconds);
+  }
+
+  public static int nextRefresh() {
+    return (int) (System.currentTimeMillis() / 1000); // violation: EpochNarrowedToInt
+  }
+
+  public static long nextRefreshSeconds() {
+    return Instant.now().getEpochSecond();
   }
 }
