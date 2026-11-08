@@ -34,6 +34,7 @@ export const strictEslintRuleIds = [
   'nitpicker/no-git-repository-per-test',
   'nitpicker/no-forwarding-wrapper',
   'nitpicker/no-handwritten-boundary-guard',
+  'nitpicker/no-in-memory-query',
   'nitpicker/no-magic-numbers',
   'nitpicker/no-many-to-many-cascade-remove',
   'nitpicker/no-module-level-let',
