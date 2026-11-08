@@ -13,6 +13,7 @@ export function file(overrides = {}) {
     functions: [],
     properties: [],
     waits: [],
+    timeouts: [],
     predicates: [],
     calls: [],
     references: [],

@@ -97,6 +97,7 @@ import { rule as ruleStrictBooleanExpressions } from './rules/wrapped/strict-boo
 import { rule as ruleStructuredCatchLogging } from './rules/errors/structured-catch-logging.mjs';
 import { rule as ruleTestMustUseProductionRuntime } from './rules/testing/assertions/test-must-use-production-runtime.mjs';
 import { rule as ruleTestTsconfigPinsLibAndTypes } from './rules/testing/types/test-tsconfig-pins-lib-and-types.mjs';
+import { rule as ruleTimeoutAbandonsOperation } from './rules/async/timeout-abandons-operation.mjs';
 import { rule as ruleUnboundedFanOut } from './rules/concurrency/unbounded-fan-out.mjs';
 import { rule as ruleUnboundedReactiveFanOut } from './rules/concurrency/reactive/unbounded-reactive-fan-out.mjs';
 
@@ -201,6 +202,7 @@ export const directoryRules = {
   'structured-catch-logging': ruleStructuredCatchLogging,
   'test-must-use-production-runtime': ruleTestMustUseProductionRuntime,
   'test-tsconfig-pins-lib-and-types': ruleTestTsconfigPinsLibAndTypes,
+  'timeout-abandons-operation': ruleTimeoutAbandonsOperation,
   'unbounded-fan-out': ruleUnboundedFanOut,
   'unbounded-reactive-fan-out': ruleUnboundedReactiveFanOut,
 };

@@ -91,6 +91,13 @@ describe.skipIf(!kotlinE2eEnabled)('Kotlin preset review rules end to end', () =
         'StaticForwardingWrapper absOf',
         'StaticForwardingWrapper total',
         ...MAP_UPDATE_FINDINGS,
+        'timeout-abandons-operation awaitAllOutside:withTimeout:first',
+        'timeout-abandons-operation awaitAllOutside:withTimeout:second',
+        'timeout-abandons-operation awaitOutside:withTimeout:work',
+        'timeout-abandons-operation boundedAsync:orTimeout:supplyAsync',
+        'timeout-abandons-operation cancelAsyncTask:get:future',
+        'timeout-abandons-operation giveUp:get:future',
+        'timeout-abandons-operation shutDownLetsItFinish:get:future',
       ].sort(),
     );
   });
