@@ -2,6 +2,7 @@ import { hasAwaitility } from '../../../messages/wait-advice.mjs';
 import { enumPredicateFindings } from './main/enum-predicates.mjs';
 import { fanOutFindings } from './main/fan-out/fan-out.mjs';
 import { forwardingWrapperFindings } from './main/forwarding-wrappers.mjs';
+import { generatedMemberFindings } from './main/generated-members/generated-members.mjs';
 import { loadEffectFindings } from './main/load-effects.mjs';
 import { recursiveMapUpdateFindings } from './main/map-updates/recursive-map-update.mjs';
 import { reusableObjectFindings } from './main/reusable-objects/reusable-objects.mjs';
@@ -83,6 +84,7 @@ export function readKotlinReviewFindings(context) {
     ...unboundedPoolFindings(own, { finding }),
     ...recursiveMapUpdateFindings(own, { finding, declaredIn: projectFiles }),
     ...reusableObjectFindings(own, { finding, declaredIn: projectFiles }),
+    ...generatedMemberFindings(own, { finding, declaredIn: projectFiles }),
     ...unusedOptionFindings(own, {
       finding,
       build,

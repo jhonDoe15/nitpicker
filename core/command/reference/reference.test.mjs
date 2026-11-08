@@ -104,7 +104,11 @@ describe('nitpicker explain', () => {
       'pmd/UnusedLocalVariable',
       'pmd/UnusedLocalVariable',
       'Java and Kotlin',
-      '{"rule":"pmd/UnusedLocalVariable","paths":["<path>"],"reason":"..."} to "exceptions" in nitpicker.config.json. The message gives no exception route because the flagged code is a defect; an entry still lifts it if a reviewer agrees.',
+      [
+        '{"rule":"pmd/UnusedLocalVariable","paths":["<path>"],"reason":"..."} to "exceptions" in nitpicker.config.json.',
+        'The message gives no exception route because the flagged code is a defect or has one exact fix;',
+        'an entry still lifts it if a reviewer agrees.',
+      ].join(' '),
       ['java-pmd', 'pmd-unusedlocalvariable'],
     ],
     [
