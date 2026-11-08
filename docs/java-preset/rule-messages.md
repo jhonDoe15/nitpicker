@@ -30,7 +30,8 @@ to "exceptions" in nitpicker.config.json.
 ```
 
 The Kotlin preset, which runs the same tools on a mixed module's Java files, gets the fix but not
-the exception route: its `exceptions` only lift detekt rules. An `exceptions` entry that names a
+the exception route: its `exceptions` lift detekt rules, the configuration checks (`spring/<rule>`)
+and the Kotlin Spring rules (`pmd/<Rule>`, as for Java). An `exceptions` entry that names a
 Checkstyle check by class (`checkstyle/com.puppycrawl...IndentationCheck`) is a config error that
 gives the name to write instead.
 

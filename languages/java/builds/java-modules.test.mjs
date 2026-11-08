@@ -52,6 +52,7 @@ function writeModule(moduleDir, { className, lines, methods = 0 }) {
     ]),
   );
   write(path.join(reports, 'spotbugs.sarif'), sarif());
+  write(path.join(reports, 'errorprone.json'), '[]');
   write(path.join(reports, 'format.txt'), '');
   write(path.join(reports, 'jacoco.xml'), '<report name="demo"></report>');
   write(path.join(reports, 'checkstyle.xml'), '<checkstyle version="10.21.1"></checkstyle>');
@@ -69,11 +70,16 @@ function writeModule(moduleDir, { className, lines, methods = 0 }) {
   write(path.join(reports, 'duplicates.json'), JSON.stringify({ runs: [] }));
 }
 
+function writeProjectDuplicates(root) {
+  write(path.join(root, REPORT_DIRECTORY, 'duplicates.json'), JSON.stringify({ runs: [] }));
+}
+
 function mavenProject() {
   const root = realpathSync(mkdtempSync(path.join(tmpdir(), 'nitpicker-java-modules-')));
   temporaryRoots.push(root);
   writeModule(path.join(root, 'core'), { className: 'Adder', lines: 320 });
   writeModule(path.join(root, 'app'), { className: 'Main', lines: 10, methods: 21 });
+  writeProjectDuplicates(root);
   return root;
 }
 
@@ -162,6 +168,7 @@ describe('readModuleFindings', () => {
     temporaryRoots.push(root);
     writeModule(path.join(root, 'core'), { className: 'Same', lines: 5 });
     writeModule(path.join(root, 'app'), { className: 'Same', lines: 5 });
+    writeProjectDuplicates(root);
     write(path.join(root, 'app', REPORT_DIRECTORY, 'jdeps-classes.txt'), 'demo.Same\ndemo.Main\n');
     write(path.join(root, 'app', REPORT_DIRECTORY, 'jdeps.txt'), '   demo.Main -> demo.Same app\n');
 

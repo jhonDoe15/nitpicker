@@ -189,6 +189,14 @@ export const SMELL_HINTS = [
   },
   {
     tool: RULES_TOOL,
+    rules: ['mocked-subject-in-test'],
+    describe: (subject) =>
+      `\`${subject}\` is part of the module this test is named after, so the test replaces the code it should check`,
+    allowed:
+      'Run the real code: pass its collaborators in (a parameter, a constructor argument or a fixture) and give the test a fake of them, test a helper through the public function that calls it, and patch only what the module imports (`patch("shop.cart.requests.get")`).',
+  },
+  {
+    tool: RULES_TOOL,
     rules: ['negative-wait-in-test'],
     describe: (subject) =>
       `\`${subject}\` proves that nothing happens by waiting out its timeout, so the test is slow and depends on the delay`,
