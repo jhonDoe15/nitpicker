@@ -995,7 +995,7 @@ return (
     </properties>
   </rule>
   <rule name="UnboundedQueryArray" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
-        message="This collection is bound as one query parameter per element (an in list): an empty collection renders in (), which some databases reject, and PostgreSQL takes at most 65,535 bound parameters in one statement, so the query works in tests and fails on a large account. Return early when it is empty, and bound its size or split it into chunks first (for (List&lt;Long&gt; chunk : Lists.partition(ids, 1000)), or the project's chunking helper), or send it as one array parameter (where id = any(:ids) with a SQL array). An exception fits only a collection that its callers bound, such as a request field with a maximum size.">
+        message="This collection is bound as one query parameter per element (an in list): an empty collection renders in (), which some databases reject, and PostgreSQL takes at most 65,535 bound parameters in one statement, so the query works in tests and fails on a large account. Return early when it is empty, and bound its size or split it into chunks first (for (List&lt;Long&gt; chunk : Lists.partition(ids, 1000)), or the project''s chunking helper), or send it as one array parameter (where id = any(:ids) with a SQL array). An exception fits only a collection that its callers bound, such as a request field with a maximum size.">
     <priority>3</priority>
     <properties>
       <property name="xpath">
@@ -1004,12 +1004,18 @@ let $collection := function($node) { exists($node[pmd-java:typeIs('java.util.Col
     $scope := function($node) {
   $node/ancestor::*[self::MethodDeclaration or self::ConstructorDeclaration or self::Initializer][1]
 },
-    $initial := function($access) { ($scope($access)//VariableDeclarator[VariableId/@Name = $access/@Name])[1]/*[2] },
+    $initial := function($access) {
+  ($scope($access)//VariableDeclarator[VariableId/@Name = $access/@Name],
+   $access/ancestor::ClassBody[1]/FieldDeclaration[pmd-java:modifiers() = 'final']
+     /VariableDeclarator[VariableId/@Name = $access/@Name])[1]/*[2]
+},
     $fixed := function($value) {
   exists($value/self::MethodCall[@MethodName = ('of', 'asList', 'singleton', 'singletonList', 'emptyList', 'emptySet')]
     [*[1][self::TypeExpression/ClassType[@SimpleName = ('List', 'Set', 'Arrays', 'Collections')]]]
     [not(count(ArgumentList/*) = 1 and ArgumentList/VariableAccess[pmd-java:typeIs('java.lang.Object[]')])])
-  or exists($value/self::MethodCall[@MethodName = ('subList', 'partition', 'limit')])
+  or exists($value/self::MethodCall[@MethodName = ('of', 'allOf', 'noneOf', 'range')]
+    [*[1][self::TypeExpression/ClassType[@SimpleName = 'EnumSet']]])
+  or exists($value/descendant-or-self::MethodCall[@MethodName = ('subList', 'partition', 'limit')])
 },
     $guarded := function($argument) {
   let $name := ($argument/self::VariableAccess/@Name, $argument/self::MethodCall[not(ArgumentList/*)]/@MethodName)[1],
@@ -1275,10 +1281,14 @@ let $plus := function($node) { exists($node/self::InfixExpression[@Operator = '+
 },
     $dynamic := function($text) { contains($text, '&#xa4;') },
     $ordered := function($text) { matches($text, '(^|\W)order\s+by\s', 'i') },
-    $countOrConstant := function($text) { matches($text, '^\s*select\s+(count\s*\(|1\s|true\s|exists\s*\()', 'i') },
+    $countOrConstant := function($text) {
+  matches($text, '^\s*select\s+((count|max|min|sum|avg|exists)\s*\(|(1|true)(\s|$))', 'i')
+},
     $unorderedSql := function($text) {
-  matches($text, '^\s*\(?\s*(select|with)\s', 'i') and not($dynamic($text)) and not($ordered($text))
-  and ((matches($text, '(^|\W)(limit|offset)(\W|$)|(^|\W)fetch\s+(first|next)\s', 'i')
+  matches($text, '^\s*\(?\s*(select\s|with\s+(recursive\s+)?\w+(\s*\([^)]*\))?\s+as\s*\()', 'i')
+  and not($dynamic($text)) and not($ordered($text))
+  and ((matches($text, '(^|\W)from\s', 'i')
+        and matches($text, '(^|[^\w:.])(limit|offset)\s+(\d|\?|:\w|\$\d|%s)|(^|\W)fetch\s+(first|next)\s', 'i')
         and not($countOrConstant($text)
                 and matches($text, '(^|\W)limit\s+1(\W|$)|(^|\W)fetch\s+first\s+(1\s+)?rows?\s+only', 'i')
                 and not(matches($text, '(^|\W)offset(\W|$)', 'i'))))
@@ -1301,7 +1311,8 @@ let $plus := function($node) { exists($node/self::InfixExpression[@Operator = '+
     and not($call/@MethodName = 'setFirstResult' and $call/ArgumentList/NumericLiteral/@Image = '0')
     and (if (not($dynamic($text))) then not($ordered($text)) and not($single and $countOrConstant($text))
          else exists($criteria)
-              and not($call/ancestor::*[self::MethodDeclaration or self::ConstructorDeclaration][1]//MethodCall[@MethodName = 'orderBy']))
+              and not($call/ancestor::*[self::MethodDeclaration or self::ConstructorDeclaration][1]
+                       //MethodCall[@MethodName = 'orderBy'][*[1][self::VariableAccess/@Name = $argument/@Name]]))
 },
     $toFindAll := function($page) {
   exists($page/parent::ArgumentList/parent::MethodCall[@MethodName = 'findAll'])

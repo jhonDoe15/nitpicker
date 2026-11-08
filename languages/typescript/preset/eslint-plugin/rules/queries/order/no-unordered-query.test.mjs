@@ -13,6 +13,13 @@ const SEQUELIZE = 'import { Model } from "sequelize";';
 
 tester.run('no-unordered-query', rule, {
   valid: [
+    'export const m = "Select all users, then limit to 5";',
+    'export const m = "Select a rate limit for this key";',
+    'export const q = "select id from account where balance > :limit";',
+    `${KYSELY} export const f = (db) => db.selectFrom("user").select((eb) => eb.fn.max("id").as("m")).limit(1).executeTakeFirst();`,
+    `${KYSELY} export const f = (db) => db.selectFrom("a").selectAll().where((eb) => eb.exists(db.selectFrom("b").select("id").limit(1))).execute();`,
+    `${KNEX} export const f = (g) => Iterator.from(g).take(5);`,
+    `${DRIZZLE} export const f = (g) => g.select().limit(5);`,
     `${KYSELY} export const f = (db) => db.selectFrom("asset").selectAll().orderBy("createdAt", "desc").orderBy("id").limit(20).execute();`,
     `${KYSELY} export const f = (db, id) => db.selectFrom("user").select(sql\`1\`.as("one")).where("id", "=", id).limit(1).executeTakeFirst();`,
     `${KYSELY} export const f = (db) => db.selectFrom("user").select((eb) => eb.fn.countAll().as("n")).limit(1).executeTakeFirst();`,
@@ -106,7 +113,7 @@ tester.run('no-unordered-query', rule, {
     },
     {
       code: 'export const f = (pool) => pool.query("select id from users limit $1", [10]);',
-      errors: page('LIMIT'),
+      errors: page('LIMIT $1'),
     },
     {
       code: 'export const QUERY = `SELECT id, name FROM place WHERE name ILIKE $1 OFFSET 10`;',

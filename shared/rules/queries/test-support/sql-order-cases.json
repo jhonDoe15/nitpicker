@@ -59,6 +59,24 @@
       [
         "aggregate:jsonb_agg(...)"
       ]
+    ],
+    [
+      "select id from users where org = ? limit :size",
+      [
+        "page:LIMIT :SIZE"
+      ]
+    ],
+    [
+      "select * from t where id in (\u0000) limit 5",
+      [
+        "page:LIMIT 5"
+      ]
+    ],
+    [
+      "select array_agg(x) from t where id in (\u0000)",
+      [
+        "aggregate:array_agg(...)"
+      ]
     ]
   ],
   "allows": [
@@ -77,6 +95,11 @@
     "select id from users \u0000 limit 10",
     "select id from users where active = true \u0000 limit 10",
     "select json_agg(t) from photos t \u0000",
-    "limit 10"
+    "limit 10",
+    "select id from users where balance > :limit",
+    "Select one of the options to set the limit",
+    "select max(id) from users limit 1",
+    "select a.limit, a.offset from plans a",
+    "select 1 limit 1"
   ]
 }

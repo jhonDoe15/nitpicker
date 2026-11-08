@@ -1,6 +1,6 @@
 import { AGGREGATE } from '../../../../../../../shared/rules/queries/sql-order.mjs';
 import { stringValue } from '../../analysis/constant-resolution.mjs';
-import { unwrapped } from '../../security/security-values.mjs';
+import { memberName, unwrapped } from '../../security/security-values.mjs';
 import {
   chainSteps,
   isOpaque,
@@ -18,7 +18,7 @@ const PAGE_STEPS = new Set(['limit', 'offset', 'take', 'skip']);
 const SELECTION_STEPS = new Set(['select', 'selectAll', 'addSelect', 'columns']);
 const COUNT_STEPS = new Set(['count', 'countAll', 'countDistinct']);
 const CONSTANT_SELECTION =
-  /\bcount(?:All|Distinct)?\s*\(|\.lit\s*\(|\bexists\s*\(|\bsql(?:<[^>]*>)?\s*`\s*1\s*`|^['"`]\s*1\s*(?:as\s+\w+)?['"`]$/u;
+  /\b(?:count(?:All|Distinct)?|max|min|sum|avg)\s*\(|\.lit\s*\(|\bexists\s*\(|\bsql(?:<[^>]*>)?\s*`\s*1\s*`|^['"`]\s*1\s*(?:as\s+\w+)?['"`]$/u;
 const AGGREGATE_NAMES = new Set(['array_agg', 'json_agg', 'jsonb_agg']);
 const AGGREGATE_STEPS = new Set(['jsonAgg']);
 const FORM_LENGTH = 40;
@@ -35,18 +35,24 @@ function stepForm(context, step) {
 function isSingleRow(steps) {
   const pages = steps.filter((step) => PAGE_STEPS.has(step.name));
   const value = pages.length === 1 ? unwrapped(pages[0].call.arguments[0]) : undefined;
-  return ['limit', 'take'].includes(pages[0]?.name) && value?.type === 'Literal' && value.value === 1;
+  return (
+    ['limit', 'take'].includes(pages[0]?.name) && value?.type === 'Literal' && value.value === 1
+  );
 }
 
 function isConstantSelection(context, steps) {
-  const selections = steps.filter((step) => SELECTION_STEPS.has(step.name) || COUNT_STEPS.has(step.name));
+  const selections = steps.filter(
+    (step) => SELECTION_STEPS.has(step.name) || COUNT_STEPS.has(step.name),
+  );
   return (
     selections.length > 0 &&
     selections.every(
       (step) =>
         COUNT_STEPS.has(step.name) ||
         (step.call.arguments.length > 0 &&
-          step.call.arguments.every((argument) => CONSTANT_SELECTION.test(context.sourceCode.getText(argument)))),
+          step.call.arguments.every((argument) =>
+            CONSTANT_SELECTION.test(context.sourceCode.getText(argument)),
+          )),
     )
   );
 }
@@ -58,6 +64,16 @@ function unorderedPageStep(context, chain) {
   const page = chain.steps.find((step) => PAGE_STEPS.has(step.name));
   const existence = isSingleRow(chain.steps) && isConstantSelection(context, chain.steps);
   return page === undefined || existence ? undefined : page;
+}
+
+function insideExists(node) {
+  const call = node.parent;
+  const callee =
+    call?.type === 'CallExpression' && call.arguments.includes(node)
+      ? unwrapped(call.callee)
+      : undefined;
+  const name = callee?.type === 'MemberExpression' ? memberName(callee) : callee?.name;
+  return name === 'exists' || name === 'notExists';
 }
 
 function isAggregateStep(step) {
@@ -74,7 +90,9 @@ function unorderedAggregateStep(steps) {
 function isJsonArrayFrom(scope, call) {
   const callee = unwrapped(call.callee);
   const binding = callee.type === 'Identifier' ? scope.bindings.get(callee.name) : undefined;
-  return binding?.source.startsWith('kysely/helpers/') === true && binding.imported === 'jsonArrayFrom';
+  return (
+    binding?.source.startsWith('kysely/helpers/') === true && binding.imported === 'jsonArrayFrom'
+  );
 }
 
 function unorderedSubquery(argument) {
@@ -109,12 +127,14 @@ export const rule = {
     }
 
     function checkChain(node) {
-      const chain = queryChain(scope, node);
+      const chain = insideExists(node) ? undefined : queryChain(scope, node);
       const page = chain === undefined ? undefined : unorderedPageStep(context, chain);
       if (page !== undefined) {
         report(page.call.callee.property, 'page', stepForm(context, page));
       }
-      const aggregate = scope.libraries.has(KYSELY) ? unorderedAggregateStep(chainSteps(node).steps) : undefined;
+      const aggregate = scope.libraries.has(KYSELY)
+        ? unorderedAggregateStep(chainSteps(node).steps)
+        : undefined;
       if (aggregate !== undefined) {
         report(aggregate.call.callee.property, 'aggregate', stepForm(context, aggregate));
       }

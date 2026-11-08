@@ -39,7 +39,8 @@ function templateText(context, template, depth = 0) {
   return template.quasis
     .map((quasi, index) => {
       const value = template.expressions[index];
-      const spliced = value === undefined || depth > MAX_DEPTH ? undefined : rawText(context, value, depth);
+      const spliced =
+        value === undefined || depth > MAX_DEPTH ? undefined : rawText(context, value, depth);
       return (quasi.value.cooked ?? '') + (value === undefined ? '' : (spliced ?? DYNAMIC));
     })
     .join('');
@@ -60,7 +61,9 @@ function consumedAsSql(context, node) {
  */
 export function sqlTextOf(context, node) {
   if (node.type === 'TaggedTemplateExpression') {
-    return isSqlTemplate(node) && !isInsideSqlTemplate(node) ? templateText(context, node.quasi) : undefined;
+    return isSqlTemplate(node) && !isInsideSqlTemplate(node)
+      ? templateText(context, node.quasi)
+      : undefined;
   }
   if (node.parent?.type === 'TaggedTemplateExpression' || isInsideSqlTemplate(node)) {
     return undefined;

@@ -6,7 +6,8 @@ const { cleanup, outcomes: allOutcomes } = createScripts();
 afterEach(cleanup);
 
 const RULE = 'unbounded-query-array';
-const SA = 'import itertools\n\nfrom sqlalchemy import insert, select\nfrom sqlalchemy.orm import Session\n\nfrom shop.models import User\n\n\n';
+const SA =
+  'import itertools\n\nfrom sqlalchemy import insert, select\nfrom sqlalchemy.orm import Session\n\nfrom shop.models import User\n\n\n';
 
 function outcomes(rows) {
   const [actual, expected] = allOutcomes(rows);
@@ -38,6 +39,11 @@ describe.skipIf(!enabled)('unbounded-query-array', () => {
       [
         'an empty check, a size check and chunks',
         `${SA}def by_ids(session: Session, ids: list[int]):\n    if not ids:\n        return []\n    return session.scalars(select(User).where(User.id.in_(ids))).all()\n\n\ndef capped(session: Session, ids: list[int]):\n    assert len(ids) <= 1000\n    return session.scalars(select(User).where(User.id.in_(ids))).all()\n\n\ndef chunked(session: Session, ids: list[int]):\n    for part in itertools.batched(ids, 1000):\n        session.execute(select(User).where(User.id.in_(part)))\n`,
+        [],
+      ],
+      [
+        'guards in other forms, a chunked comprehension and fixed comprehensions',
+        `${SA}def a(session: Session, ids: list[int], org):\n    if not ids or not org:\n        return []\n    return session.scalars(select(User).where(User.id.in_(ids))).all()\n\n\ndef b(session: Session, ids: list[int]):\n    if ids == []:\n        return []\n    return session.scalars(select(User).where(User.id.in_(ids))).all()\n\n\ndef c(session: Session, o):\n    if not o.ids:\n        return []\n    return session.scalars(select(User).where(User.id.in_(o.ids))).all()\n\n\ndef d(session: Session, rows: list[User]):\n    for part in itertools.batched(rows, 100):\n        session.execute(insert(User).values([{"a": r.a} for r in part]))\n\n\ndef e(session: Session):\n    return session.scalars(select(User).where(User.status.in_([s.value for s in Status]))).all()\n`,
         [],
       ],
       [

@@ -6,13 +6,31 @@ import { memberName, typeServices, unwrapped } from '../../security/security-val
 import { chainSteps } from '../query-chains.mjs';
 
 const CHUNK_NAME = /chunk|batch|partition|paginat/iu;
-const ARRAY_MAKERS = new Set(['map', 'filter', 'flatMap', 'flat', 'concat', 'split', 'toSorted', 'toReversed']);
+const ARRAY_MAKERS = new Set([
+  'map',
+  'filter',
+  'flatMap',
+  'flat',
+  'concat',
+  'split',
+  'toSorted',
+  'toReversed',
+]);
 const ARRAY_STATICS = new Set(['from', 'keys', 'values', 'entries']);
-const SIZE_KEEPING = new Set(['map', 'filter', 'flatMap', 'toSorted', 'toReversed', 'sort', 'reverse']);
+const SIZE_KEEPING = new Set([
+  'map',
+  'filter',
+  'flatMap',
+  'toSorted',
+  'toReversed',
+  'sort',
+  'reverse',
+]);
 const ITERATING = new Set(['map', 'forEach', 'flatMap', 'reduce', 'every', 'some']);
 const ARRAY_ANNOTATIONS = new Set(['TSArrayType']);
 const ARRAY_TYPE_NAMES = new Set(['Array', 'ReadonlyArray']);
 const SIZE_MEMBERS = new Set(['length', 'size']);
+const EMPTY_CHECKS = new Set(['isEmpty', 'isNotEmpty', 'isNonEmpty', 'isEmptyArray']);
 const QUERY_STEPS = new Set(['selectFrom', 'select', 'from', 'createQueryBuilder', 'subQuery']);
 
 function typeKind(context, node) {
@@ -25,7 +43,9 @@ function typeKind(context, node) {
   if (checker.isTupleType(type)) {
     return 'tuple';
   }
-  const array = checker.isArrayType(type) || (type.isUnion() && type.types.some((member) => checker.isArrayType(member)));
+  const array =
+    checker.isArrayType(type) ||
+    (type.isUnion() && type.types.some((member) => checker.isArrayType(member)));
   return array ? 'array' : undefined;
 }
 
@@ -48,7 +68,9 @@ function hasArrayAnnotation(context, identifier) {
 function constInit(context, identifier) {
   const definition = findVariable(context, identifier, identifier.name)?.defs[0];
   const declarator = definition?.type === 'Variable' ? definition.node : undefined;
-  return declarator?.id.type === 'Identifier' && definition.parent.kind === 'const' ? unwrapped(declarator.init) : undefined;
+  return declarator?.id.type === 'Identifier' && definition.parent.kind === 'const'
+    ? unwrapped(declarator.init)
+    : undefined;
 }
 
 function isArrayMaking(node) {
@@ -91,7 +113,9 @@ export function isRuntimeArray(context, node, { needsEvidence }) {
     return kind === 'array';
   }
   if (!needsEvidence) {
-    return ['Identifier', 'MemberExpression', 'CallExpression', 'ArrayExpression'].includes(target.type);
+    return ['Identifier', 'MemberExpression', 'CallExpression', 'ArrayExpression'].includes(
+      target.type,
+    );
   }
   if (target.type === 'Identifier') {
     return hasArrayAnnotation(context, target) || isArrayMaking(constInit(context, target));
@@ -99,19 +123,36 @@ export function isRuntimeArray(context, node, { needsEvidence }) {
   return isArrayMaking(target);
 }
 
-function sourcesOf(context, node) {
-  const texts = [context.sourceCode.getText(unwrapped(node))];
-  let current = unwrapped(node);
-  for (let depth = 0; depth < 4 && current?.type === 'Identifier'; depth += 1) {
-    const init = constInit(context, current);
-    const callee = init?.type === 'CallExpression' ? unwrapped(init.callee) : undefined;
-    const keeps = callee?.type === 'MemberExpression' && SIZE_KEEPING.has(memberName(callee));
-    current = keeps ? unwrapped(callee.object) : undefined;
-    if (current !== undefined) {
-      texts.push(context.sourceCode.getText(current));
-    }
+function sameSizeSource(node) {
+  if (node?.type === 'CallExpression') {
+    const callee = unwrapped(node.callee);
+    return callee.type === 'MemberExpression' && SIZE_KEEPING.has(memberName(callee))
+      ? unwrapped(callee.object)
+      : undefined;
   }
-  return new Set(texts);
+  if (
+    node?.type === 'ArrayExpression' &&
+    node.elements.length === 1 &&
+    node.elements[0]?.type === 'SpreadElement'
+  ) {
+    return unwrapped(node.elements[0].argument);
+  }
+  const set =
+    node?.type === 'NewExpression' &&
+    node.callee.type === 'Identifier' &&
+    node.callee.name === 'Set';
+  return set ? unwrapped(node.arguments[0]) : undefined;
+}
+
+function sourcesOf(context, node) {
+  const texts = new Set();
+  let current = unwrapped(node);
+  for (let depth = 0; depth < 6 && current !== undefined; depth += 1) {
+    texts.add(context.sourceCode.getText(current));
+    const held = current.type === 'Identifier' ? constInit(context, current) : undefined;
+    current = current.type === 'Identifier' ? held : sameSizeSource(current);
+  }
+  return texts;
 }
 
 function enclosingFunctions(node) {
@@ -121,9 +162,13 @@ function enclosingFunctions(node) {
 function checksSize(context, fn, texts) {
   return [...descendants(fn.body)].some(
     (child) =>
-      child.type === 'MemberExpression' &&
-      SIZE_MEMBERS.has(memberName(child)) &&
-      texts.has(context.sourceCode.getText(unwrapped(child.object))),
+      (child.type === 'MemberExpression' &&
+        SIZE_MEMBERS.has(memberName(child)) &&
+        texts.has(context.sourceCode.getText(unwrapped(child.object)))) ||
+      (child.type === 'CallExpression' &&
+        EMPTY_CHECKS.has(callName(child)) &&
+        child.arguments.length === 1 &&
+        texts.has(context.sourceCode.getText(unwrapped(child.arguments[0])))),
   );
 }
 
@@ -153,11 +198,15 @@ function chunkedCallback(context, fn) {
     return false;
   }
   const owner = unwrapped(callee.object);
-  return isChunkCall(owner) || (owner.type === 'Identifier' && isChunkCall(constInit(context, owner)));
+  return (
+    isChunkCall(owner) || (owner.type === 'Identifier' && isChunkCall(constInit(context, owner)))
+  );
 }
 
 function chunkedLoop(node) {
-  return ancestorsOf(node).some((ancestor) => ancestor.type === 'ForOfStatement' && isChunkCall(ancestor.right));
+  return ancestorsOf(node).some(
+    (ancestor) => ancestor.type === 'ForOfStatement' && isChunkCall(ancestor.right),
+  );
 }
 
 function decorated(fn) {

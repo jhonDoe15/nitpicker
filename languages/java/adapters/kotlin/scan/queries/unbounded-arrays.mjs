@@ -4,13 +4,20 @@ export const UNBOUNDED_RULE = 'UnboundedQueryArray';
 
 const VALUE = String.raw`([A-Za-z_]\w*)\s*[,)]`;
 const SINKS = [
-  new RegExp(String.raw`\.\s*(?:setParameter|setParameterList|addValue|param)\s*\(\s*(?:"[^"\n]*"|\d+)\s*,\s*${VALUE}`, 'g'),
+  new RegExp(
+    String.raw`\.\s*(?:setParameter|setParameterList|addValue|param)\s*\(\s*(?:"[^"\n]*"|\d+)\s*,\s*${VALUE}`,
+    'g',
+  ),
   new RegExp(String.raw`(?<![\w$])MapSqlParameterSource\s*\(\s*"[^"\n]*"\s*,\s*${VALUE}`, 'g'),
-  new RegExp(String.raw`\.\s*(?:findAllById|deleteAllByIdInBatch|deleteAllInBatch)\s*\(\s*${VALUE}`, 'g'),
+  new RegExp(
+    String.raw`\.\s*(?:findAllById|deleteAllByIdInBatch|deleteAllInBatch)\s*\(\s*${VALUE}`,
+    'g',
+  ),
 ];
 const COLLECTION_TYPE = String.raw`(?:Mutable)?(?:List|Set|Collection|Iterable)\s*<`;
 const COLLECTION_CALLS = String.raw`\.\s*(?:map|mapNotNull|filter|filterNot|flatMap|toList|toSet|toMutableList|toMutableSet|distinct|sorted|sortedBy)\b`;
-const FIXED = /(?<![\w$])(?:listOf|setOf|mutableListOf|emptyList|emptySet|listOfNotNull)\s*\(|\.\s*(?:take|chunked|windowed|subList)\s*\(/u;
+const FIXED =
+  /(?<![\w$])(?:listOf|setOf|mutableListOf|emptyList|emptySet|listOfNotNull)\s*\(|(?<![\w$])EnumSet\s*\.\s*(?:allOf|of|noneOf|range)\s*\(|\.\s*(?:take|chunked|windowed|subList)\s*\(/u;
 
 export const QUERY_ARRAY_MESSAGES = {
   [UNBOUNDED_RULE]:
@@ -18,22 +25,30 @@ export const QUERY_ARRAY_MESSAGES = {
 };
 
 function declaredCollection(scope, name) {
-  const parameter = new RegExp(String.raw`(?<![\w$.])${name}\s*:\s*${COLLECTION_TYPE}`, 'u');
-  const local = new RegExp(String.raw`(?<![\w$])va[lr]\s+${name}\s*(?::\s*${COLLECTION_TYPE}[^=\n]*)?=([^\n]*)`, 'u');
+  const parameter = new RegExp(
+    String.raw`(?<![\w$.])${name}\s*:\s*${COLLECTION_TYPE}(?![^(){}\n]*->)`,
+    'u',
+  );
+  const local = new RegExp(
+    String.raw`(?<![\w$])va[lr]\s+${name}\s*(?::\s*${COLLECTION_TYPE}[^=\n]*)?=([^\n]*)`,
+    'u',
+  );
   const declared = local.exec(scope);
   if (declared !== null) {
     const typed = new RegExp(String.raw`^\s*va[lr]\s+${name}\s*:`, 'u').test(declared[0]);
-    return !FIXED.test(declared[1]) && (typed || new RegExp(COLLECTION_CALLS, 'u').test(declared[1]));
+    return (
+      !FIXED.test(declared[1]) && (typed || new RegExp(COLLECTION_CALLS, 'u').test(declared[1]))
+    );
   }
   return parameter.test(scope);
 }
 
 function isBounded(scope, name) {
   const checks = new RegExp(
-    String.raw`(?<![\w$.])${name}\s*\??\.\s*(?:size\b|isEmpty\s*\(|isNotEmpty\s*\(|count\s*\(|ifEmpty\b|chunked\s*\(|windowed\s*\()`,
+    String.raw`(?<![\w$.])${name}\s*\??\.\s*(?:size\b|isEmpty\s*\(|isNotEmpty\s*\(|isNullOrEmpty\s*\(|count\s*\(|ifEmpty\b|chunked\s*\(|windowed\s*\()`,
     'u',
   );
-  return checks.test(scope) || new RegExp(String.raw`isNullOrEmpty\s*\(\s*\)`, 'u').test(scope.replaceAll(/\s+/gu, ''));
+  return checks.test(scope);
 }
 
 export function unboundedQueryArrays(scanned) {

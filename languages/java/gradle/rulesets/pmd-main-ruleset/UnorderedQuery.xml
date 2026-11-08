@@ -34,10 +34,14 @@ let $plus := function($node) { exists($node/self::InfixExpression[@Operator = '+
 },
     $dynamic := function($text) { contains($text, '&#xa4;') },
     $ordered := function($text) { matches($text, '(^|\W)order\s+by\s', 'i') },
-    $countOrConstant := function($text) { matches($text, '^\s*select\s+(count\s*\(|1\s|true\s|exists\s*\()', 'i') },
+    $countOrConstant := function($text) {
+  matches($text, '^\s*select\s+((count|max|min|sum|avg|exists)\s*\(|(1|true)(\s|$))', 'i')
+},
     $unorderedSql := function($text) {
-  matches($text, '^\s*\(?\s*(select|with)\s', 'i') and not($dynamic($text)) and not($ordered($text))
-  and ((matches($text, '(^|\W)(limit|offset)(\W|$)|(^|\W)fetch\s+(first|next)\s', 'i')
+  matches($text, '^\s*\(?\s*(select\s|with\s+(recursive\s+)?\w+(\s*\([^)]*\))?\s+as\s*\()', 'i')
+  and not($dynamic($text)) and not($ordered($text))
+  and ((matches($text, '(^|\W)from\s', 'i')
+        and matches($text, '(^|[^\w:.])(limit|offset)\s+(\d|\?|:\w|\$\d|%s)|(^|\W)fetch\s+(first|next)\s', 'i')
         and not($countOrConstant($text)
                 and matches($text, '(^|\W)limit\s+1(\W|$)|(^|\W)fetch\s+first\s+(1\s+)?rows?\s+only', 'i')
                 and not(matches($text, '(^|\W)offset(\W|$)', 'i'))))
@@ -60,7 +64,8 @@ let $plus := function($node) { exists($node/self::InfixExpression[@Operator = '+
     and not($call/@MethodName = 'setFirstResult' and $call/ArgumentList/NumericLiteral/@Image = '0')
     and (if (not($dynamic($text))) then not($ordered($text)) and not($single and $countOrConstant($text))
          else exists($criteria)
-              and not($call/ancestor::*[self::MethodDeclaration or self::ConstructorDeclaration][1]//MethodCall[@MethodName = 'orderBy']))
+              and not($call/ancestor::*[self::MethodDeclaration or self::ConstructorDeclaration][1]
+                       //MethodCall[@MethodName = 'orderBy'][*[1][self::VariableAccess/@Name = $argument/@Name]]))
 },
     $toFindAll := function($page) {
   exists($page/parent::ArgumentList/parent::MethodCall[@MethodName = 'findAll'])

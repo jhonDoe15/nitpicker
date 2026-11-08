@@ -41,6 +41,15 @@ const WRITE_STEPS = new Set([
   'relation',
 ]);
 const SELECT_STEPS = new Set(['select', 'selectDistinct', 'selectDistinctOn', 'from', 'distinct']);
+const BUILTIN_ROOTS = new Set([
+  'Array',
+  'Iterator',
+  'Object',
+  'Promise',
+  'Buffer',
+  'Observable',
+  'Readable',
+]);
 
 function libraryOf(source) {
   return LIBRARIES.find(([, matches]) => matches(source))?.[0];
@@ -121,9 +130,11 @@ function stepLibrary(scope, root, names) {
   if (names.has('createQueryBuilder')) {
     return QUERY_BUILDER;
   }
-  const selects = [...names].some((name) => SELECT_STEPS.has(name));
+  if (isKnexHandle(root) && [...names].some((name) => SELECT_STEPS.has(name))) {
+    return KNEX;
+  }
   const imported = [DRIZZLE, KNEX].find((library) => scope.libraries.has(library));
-  return selects ? (imported ?? (isKnexHandle(root) ? KNEX : undefined)) : undefined;
+  return names.has('from') && !BUILTIN_ROOTS.has(rootName(root)) ? imported : undefined;
 }
 
 function chainLibrary(scope, root, names) {
@@ -211,7 +222,9 @@ export function queryChain(scope, node) {
   }
   const names = new Set([...chain.steps, ...chain.related].map((step) => step.name));
   const library = chainLibrary(scope, chain.root, names);
-  return library === undefined ? undefined : { library, steps: chain.steps, names, root: chain.root };
+  return library === undefined
+    ? undefined
+    : { library, steps: chain.steps, names, root: chain.root };
 }
 
 export function isOrdered(chain) {

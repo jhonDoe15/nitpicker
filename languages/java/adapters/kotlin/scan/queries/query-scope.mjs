@@ -23,24 +23,31 @@ function literalFrom(scanned, offset) {
   return literalAt(scanned, skipped);
 }
 
-function declaredValue(scanned, name) {
+function declaredValue(scanned, name, scope) {
   const declaration = new RegExp(String.raw`(?<![\w$])va[lr]\s+${name}\s*(?::\s*String\s*)?=`, 'g');
+  const local = scope === undefined ? null : declaration.exec(scope.text);
+  if (local !== null) {
+    return scope.start + local.index + local[0].length;
+  }
+  declaration.lastIndex = 0;
   const found = declaration.exec(scanned.code);
   return found === null ? undefined : found.index + found[0].length;
 }
 
 /** The text of the first argument of the call whose `(` is at `open`: a literal, or a `val` that holds one. */
-export function argumentText(scanned, open) {
+export function argumentText(scanned, open, scope) {
   const first = splitArguments(scanned.code, open).parts[0];
   if (first === undefined) {
     return undefined;
   }
   const direct = literalFrom(scanned, first.start);
   if (direct !== undefined) {
-    return scanned.code.slice(direct.end, first.end).trim() === '' ? literalText(direct) : undefined;
+    return scanned.code.slice(direct.end, first.end).trim() === ''
+      ? literalText(direct)
+      : undefined;
   }
   const name = scanned.code.slice(first.start, first.end).trim();
-  const value = /^[A-Za-z_]\w*$/u.test(name) ? declaredValue(scanned, name) : undefined;
+  const value = /^[A-Za-z_]\w*$/u.test(name) ? declaredValue(scanned, name, scope) : undefined;
   const held = value === undefined ? undefined : literalFrom(scanned, value);
   return held === undefined ? undefined : literalText(held);
 }
@@ -51,8 +58,8 @@ export function argumentName(scanned, open) {
   return /^[A-Za-z_]\w*$/u.test(name) ? name : undefined;
 }
 
-export function declarationOf(scanned, name) {
-  const value = declaredValue(scanned, name);
+export function declarationOf(scanned, name, scope) {
+  const value = declaredValue(scanned, name, scope);
   if (value === undefined) {
     return undefined;
   }
