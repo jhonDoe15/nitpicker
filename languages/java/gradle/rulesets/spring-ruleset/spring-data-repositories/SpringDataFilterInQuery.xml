@@ -1,23 +1,79 @@
   <rule name="SpringDataFilterInQuery" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
-        message="Filter and count in the database, with an @Query that has a where clause, a count query or an exists query, instead of loading the whole table with findAll().">
+        message="Move the filter, count, sort or total into the query instead of doing it on the loaded rows: a where clause or an exists query for a filter, a count or exists query for a size or emptiness check, order by or a Sort argument for a sort, and an aggregate @Query (sum, max, group by) for a total.">
     <priority>2</priority>
     <properties><property name="xpath"><value><![CDATA[
-let $loaded := function($node) {
+let $initializer := function($node) {
+  for $access in $node[self::VariableAccess]
+  return ($access/ancestor::Block/LocalVariableDeclaration/VariableDeclarator[VariableId/@Name = $access/@Name]
+    [count(ancestor::Block[1]//VariableAccess[@Name = $access/@Name]) = 1]/*[2])[1]
+},
+    $origin := function($node) { if ($node[self::VariableAccess]) then $initializer($node) else $node },
+    $loaded := function($node) {
   exists($node[self::MethodCall[@MethodName = 'findAll'][not(ArgumentList/*)]
     [*[1][pmd-java:typeIs('org.springframework.data.repository.Repository')]]])
 },
-    $held := function($node) {
-  some $access in $node[self::VariableAccess] satisfies
-    (let $name := $access/@Name
-     return some $block in $access/ancestor::Block satisfies
-       (exists($block/LocalVariableDeclaration/VariableDeclarator[VariableId/@Name = $name][$loaded(*[2])])
-        and count($block//VariableAccess[@Name = $name]) = 1))
+    $queried := function($node) {
+  exists($node[self::MethodCall][*[1][pmd-java:typeIs('org.springframework.data.repository.Repository')]]
+    [not(matches(@MethodName, '^(save|delete|remove|count|exists|flush)'))]
+    [pmd-java:typeIs('java.lang.Iterable') or pmd-java:typeIs('java.util.stream.Stream')
+      or pmd-java:typeIs('reactor.core.publisher.Flux')])
 },
-    $source := function($node) { $loaded($node) or $held($node) },
-    $list := function($node) {
-  $source($node)
-  or exists($node[self::MethodCall[@MethodName = 'block']
-    [*[1][self::MethodCall[@MethodName = 'collectList'][$source(*[1])]]]])
+    $content := function($node) {
+  $queried($node)
+  or exists($node[self::MethodCall[@MethodName = ('getContent', 'toList')][not(ArgumentList/*)]]
+    [*[1][pmd-java:typeIs('org.springframework.data.domain.Slice')][$queried(.)]])
+},
+    $bounded := function($node) {
+  some $call in ($node/descendant-or-self::MethodCall,
+      $initializer($node/descendant-or-self::VariableAccess)/descendant-or-self::MethodCall)
+  satisfies exists($call[*[1][pmd-java:typeIs('org.springframework.data.repository.Repository')]]
+    [pmd-java:typeIs('org.springframework.data.domain.Slice')
+      or ArgumentList/*[pmd-java:typeIs('org.springframework.data.domain.Pageable')
+        or pmd-java:typeIs('org.springframework.data.domain.Limit')]
+      or matches(@MethodName, '^[a-z]+(First|Top)[0-9]*(By|$)')])
+},
+    $legacy := function($node) { $loaded($origin($node)) },
+    $rows := function($node) { $content($origin($node)) },
+    $collected := function($node, $source) {
+  exists($node[self::MethodCall[@MethodName = 'block']]
+    [*[1][self::MethodCall[@MethodName = 'collectList'][$source(*[1])]]])
+},
+    $list := function($node) { $rows($node) or $collected($node, $rows) },
+    $legacyList := function($node) { $legacy($node) or $collected($node, $legacy) },
+    $stream := function($node) {
+  exists($node[self::MethodCall[@MethodName = 'stream'][not(ArgumentList/*)]][$list(*[1])])
+  or ($rows($node) and exists($node[pmd-java:typeIs('java.util.stream.Stream')]))
+},
+    $flux := function($node) { $rows($node) and exists($node[pmd-java:typeIs('reactor.core.publisher.Flux')]) },
+    $getter := function($call) {
+  exists($call[self::MethodCall][matches(@MethodName, '^(get|is)\p{Lu}')][not(ArgumentList/*)])
+},
+    $neutral := ('equals', 'equalsIgnoreCase', 'compareTo', 'compare', 'isBefore', 'isAfter', 'isEqual',
+      'contains', 'startsWith', 'endsWith', 'isNull', 'nonNull', 'comparing', 'comparingInt', 'comparingLong',
+      'comparingDouble', 'thenComparing', 'thenComparingInt', 'thenComparingLong', 'thenComparingDouble',
+      'reversed', 'reverseOrder', 'naturalOrder', 'nullsFirst', 'nullsLast'),
+    $columns := function($expr) {
+  let $params := $expr/descendant-or-self::LambdaExpression/LambdaParameterList/LambdaParameter/VariableId/@Name,
+      $calls := $expr/descendant-or-self::MethodCall,
+      $references := $expr/descendant-or-self::MethodReference
+  return exists($expr)
+    and empty($expr/descendant-or-self::ConstructorCall)
+    and (every $call in $calls satisfies
+      ($getter($call) and exists($call/*[1][self::VariableAccess[@Name = $params] or self::MethodCall]))
+      or $call/@MethodName = $neutral)
+    and (every $access in $expr/descendant-or-self::VariableAccess[@Name = $params] satisfies
+      exists($access[not(preceding-sibling::*)]/parent::MethodCall[$getter(.)]))
+    and (every $reference in $references satisfies
+      exists($reference[matches(@MethodName, '^(get|is)\p{Lu}')][TypeExpression]))
+    and (exists($calls[$getter(.)][*[1][self::VariableAccess[@Name = $params]]]) or exists($references))
+},
+    $summed := ('summingInt', 'summingLong', 'summingDouble', 'averagingInt', 'averagingLong', 'averagingDouble'),
+    $collector := function($call) {
+  exists($call[self::MethodCall[@MethodName = 'counting'][not(ArgumentList/*)]])
+  or exists($call[self::MethodCall[@MethodName = $summed]][$columns(ArgumentList/*[1])])
+  or exists($call[self::MethodCall[@MethodName = 'groupingBy'][count(ArgumentList/*) = 2]]
+    [$columns(ArgumentList/*[1])][ArgumentList/*[2][self::MethodCall[@MethodName = ('counting', $summed)]]
+      [not(ArgumentList/*) or $columns(ArgumentList/*[1])]])
 },
     $streamFilters := ('filter', 'count', 'anyMatch', 'allMatch', 'noneMatch', 'findFirst', 'findAny'),
     $readsList := function($lambda) {
@@ -27,13 +83,27 @@ let $loaded := function($node) {
       [*[1][self::MethodCall[@MethodName = 'stream'][*[1][self::VariableAccess[@Name = $param]]]]])
 }
 return (
-  //MethodCall[@MethodName = $streamFilters][*[1][self::MethodCall[@MethodName = 'stream'][$list(*[1])]]]
-  | //MethodCall[@MethodName = ('size', 'isEmpty')][$list(*[1])]
+  //MethodCall[@MethodName = $streamFilters][*[1][self::MethodCall[@MethodName = 'stream'][$legacyList(*[1])]]]
   | //MethodCall[@MethodName = ('filter', 'filterWhen', 'count', 'any', 'all', 'hasElements', 'next', 'take', 'elementAt')]
-      [$source(*[1])]
+      [$legacy(*[1])]
+  | //MethodCall[@MethodName = ('size', 'isEmpty')][not(ArgumentList/*)][$list(*[1])][not($bounded(*[1]))]
+  | //MethodCall[@MethodName = 'count'][not(ArgumentList/*)][$stream(*[1])][not($bounded(*[1]))]
+  | //MethodCall[@MethodName = ('count', 'hasElements')][not(ArgumentList/*)][$flux(*[1])][not($bounded(*[1]))]
   | //MethodCall[@MethodName = ('map', 'flatMap', 'filter')]
-      [*[1][self::MethodCall[@MethodName = 'collectList'][$source(*[1])]]]
+      [*[1][self::MethodCall[@MethodName = 'collectList'][$rows(*[1])][not($bounded(*[1]))]]]
       [ArgumentList/*[1][self::MethodReference[@MethodName = ('size', 'isEmpty')] or self::LambdaExpression[$readsList(.)]]]
+  | //MethodCall[@MethodName = ('filter', 'anyMatch', 'allMatch', 'noneMatch')][$stream(*[1])]
+      [$columns(ArgumentList/*[1])]
+  | //MethodCall[@MethodName = ('filter', 'any', 'all')][$flux(*[1])][$columns(ArgumentList/*[1])]
+  | //MethodCall[@MethodName = ('sorted', 'max', 'min')][$stream(*[1])][not($bounded(*[1]))]
+      [$columns(ArgumentList/*[1])]
+  | //MethodCall[@MethodName = 'sort'][$flux(*[1])][not($bounded(*[1]))][$columns(ArgumentList/*[1])]
+  | //MethodCall[@MethodName = ('sum', 'max', 'min', 'average', 'summaryStatistics')][not(ArgumentList/*)]
+      [*[1][self::MethodCall[@MethodName = ('mapToInt', 'mapToLong', 'mapToDouble')][$columns(ArgumentList/*[1])]
+        [$stream(*[1])][not($bounded(*[1]))]]]
+  | //MethodCall[@MethodName = 'reduce'][ArgumentList/*[last()][self::MethodReference[@MethodName = ('sum', 'add', 'max', 'min')]]]
+      [*[1][self::MethodCall[@MethodName = 'map'][$columns(ArgumentList/*[1])][$stream(*[1])][not($bounded(*[1]))]]]
+  | //MethodCall[@MethodName = 'collect'][$stream(*[1])][not($bounded(*[1]))][$collector(ArgumentList/*[1])]
 )
 ]]></value></property></properties>
   </rule>
