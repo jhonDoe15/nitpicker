@@ -1,4 +1,4 @@
-import { MESSAGES, RULE_IDS, renderMessage } from '../../policy.mjs';
+import { MESSAGES, RULE_IDS, messageFields } from '../../policy.mjs';
 import { exceptionText } from '../exceptions.mjs';
 
 function importersByTarget(imports) {
@@ -57,7 +57,7 @@ export function sharedUsageFindings(entries, { analyzerName, isExcepted }) {
       rule,
       path: entry.source,
       identity: rule,
-      message: renderMessage(MESSAGES.sharedUsedByOneFeature, {
+      ...messageFields(MESSAGES.sharedUsedByOneFeature, {
         path: entry.source,
         feature: entry.feature,
         directory: entry.directory,
