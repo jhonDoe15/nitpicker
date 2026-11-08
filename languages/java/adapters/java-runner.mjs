@@ -37,8 +37,9 @@ export function javaExecutionBudget(environment = process.env) {
 export function analyzeJavaSnapshot(
   projectRoot,
   {
-    gradle = process.env.NITPICKER_GRADLE,
-    maven = process.env.NITPICKER_MAVEN,
+    environment = process.env,
+    gradle = environment.NITPICKER_GRADLE,
+    maven = environment.NITPICKER_MAVEN,
     policy,
     spawn,
   } = {},
@@ -48,6 +49,7 @@ export function analyzeJavaSnapshot(
       findings: collectJavaFindings(projectRoot, {
         gradle: gradle || undefined,
         maven: maven || undefined,
+        environment,
         policy,
         spawn,
         budget: javaExecutionBudget(),
@@ -74,6 +76,19 @@ export function analyzeJavaSnapshot(
   }
 }
 
+export function withHeadPolicy(policy, headPolicy) {
+  const { conventions, spring, springRoles, kotlin } = headPolicy;
+  return {
+    ...policy,
+    conventions,
+    javaStyle: javaStyle(conventions),
+    ...(spring === true ? { spring } : {}),
+    ...(springRoles === undefined ? {} : { springRoles }),
+    kotlinFormatter: kotlin?.formatter ?? policy.kotlinFormatter,
+    ...(kotlin === undefined ? {} : { kotlinFacts: kotlin }),
+  };
+}
+
 function failureRule(error, projectRoot) {
   if (error?.failures?.length > 0) {
     return TESTS_FAILED_RULE;
@@ -83,23 +98,12 @@ function failureRule(error, projectRoot) {
 
 export function readRunnerPolicy(runnerArguments, environment = process.env) {
   const { projectRoot, policy } = parseJavaRunnerArguments(runnerArguments);
-  const { conventions, spring, springRoles, kotlin } = readHeadPolicyFile(environment);
-  return {
-    projectRoot,
-    policy: {
-      ...policy,
-      conventions,
-      javaStyle: javaStyle(conventions),
-      ...(spring === true ? { spring } : {}),
-      ...(springRoles === undefined ? {} : { springRoles }),
-      kotlinFormatter: kotlin?.formatter ?? policy.kotlinFormatter,
-    },
-  };
+  return { projectRoot, policy: withHeadPolicy(policy, readHeadPolicyFile(environment)) };
 }
 
 export function runJava(runnerArguments, { spawn } = {}) {
   const { projectRoot, policy } = readRunnerPolicy(runnerArguments);
-  return analyzeJavaSnapshot(realpathSync(projectRoot), { policy, spawn });
+  return analyzeJavaSnapshot(realpathSync.native(projectRoot), { policy, spawn });
 }
 
 function main(runnerArguments) {
