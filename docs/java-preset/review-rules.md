@@ -267,6 +267,9 @@ classpath) and `published` (a library module that is deployed, see `test-only-ex
   which asks for the annotation; once added, `CompatibilityShim` reports it, so the two together
   forbid both forms. A call of a deprecated API is reported by the compiler's deprecation lint. Java
   has no alias declaration, so the TypeScript `export const Old = New` form has no counterpart.
+- A number tested for truth (`if (count)`), which the TypeScript preset reports as
+  `nitpicker/strict-boolean-expressions` and the Python preset as `number-truthiness`, has no
+  counterpart: a Java condition must be a `boolean`, so the compiler rejects it.
 - `UnclosedInlineResource` covers the closeables that have no variable, which PMD's `CloseResource`
   (it tracks locals) never sees and SpotBugs reports only for some types. Run by hand on the
   rule's review-rules fixture (`shop/resources/Leaks.java`), SpotBugs 4.9.3 (`OS_OPEN_STREAM`,
