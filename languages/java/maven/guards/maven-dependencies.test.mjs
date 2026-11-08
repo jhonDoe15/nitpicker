@@ -30,7 +30,7 @@ const POM = `<project>
     ${dependency('org.springframework', 'spring-web', 'provided')}
     ${dependency('org.slf4j', 'slf4j-simple', 'runtime')}
     ${dependency('org.junit.jupiter', 'junit-jupiter', 'test')}
-    ${dependency('${project.groupId}', 'core')}
+    ${dependency(`\${project.groupId}`, 'core')}
     ${dependency('org.mapstruct', 'mapstruct-processor')}
     <dependency><groupId>com.h2database</groupId><artifactId>h2</artifactId><optional>true</optional></dependency>
   </dependencies>
@@ -71,7 +71,7 @@ describe('declaredDependencies', () => {
     expect(declaredDependencies(POM).map(({ group, name }) => `${group}:${name}`)).toEqual([
       'org.apache.commons:commons-lang3',
       'org.apache.commons:commons-text',
-      '${project.groupId}:core',
+      `\${project.groupId}:core`,
       'org.mapstruct:mapstruct-processor',
     ]);
   });
@@ -153,7 +153,7 @@ describe('dependencyReport', () => {
       declared: [
         entryOf('commons-lang3', { group: 'org.apache.commons', archives: [], used: false }),
         entryOf('commons-text', { group: 'org.apache.commons', archives: [], used: false }),
-        entryOf('core', { group: '${project.groupId}', archives: [], used: false }),
+        entryOf('core', { group: `\${project.groupId}`, archives: [], used: false }),
         entryOf('mapstruct-processor', { group: 'org.mapstruct', archives: [], used: false }),
       ],
     });
@@ -184,11 +184,11 @@ describe('dependencyReport', () => {
     ]);
   });
 
-  it('takes the group of a ${project.groupId} dependency from the resolved artifact', () => {
+  it(`takes the group of a \${project.groupId} dependency from the resolved artifact`, () => {
     const root = workspace();
     const core = jar(root, 'core-1.0.jar', ['demo/core/Core.class']);
     const resolved = [{ groupId: 'demo', artifactId: 'core', scope: 'compile', file: core }];
-    const pom = pomOf(dependency('${project.groupId}', 'core'));
+    const pom = pomOf(dependency(`\${project.groupId}`, 'core'));
 
     expect(
       dependencyReport({ module: module(root, { pom }), resolved, reactor: [] }).declared,

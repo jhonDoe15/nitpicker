@@ -101,7 +101,7 @@ function expectedViolations(root) {
           ...markers(line, FILE_MARKER).map((rule) => `${file} ${rule}`),
         ]),
     )
-    .sort();
+    .sort((left, right) => left.localeCompare(right));
 }
 
 function isGuard({ tool, rule, classification }) {

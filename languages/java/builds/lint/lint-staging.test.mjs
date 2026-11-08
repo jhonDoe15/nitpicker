@@ -120,7 +120,7 @@ describe('stageSources', () => {
     expect(
       readdirSync(staged, { recursive: true })
         .filter((file) => file.endsWith('lombok.config'))
-        .sort(),
+        .sort((left, right) => left.localeCompare(right)),
     ).toEqual(['lombok.config', 'tree/lombok.config', 'tree/repo/lombok.config']);
   });
 

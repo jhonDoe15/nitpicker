@@ -281,7 +281,11 @@ describe('readCpdFindings', () => {
     const both = identities(logic, branches);
 
     expect(new Set(both).size).toBe(2);
-    expect([...identities(logic), ...identities(branches)].sort()).toEqual([...both].sort());
+    expect(
+      [...identities(logic), ...identities(branches)].sort((left, right) =>
+        left.localeCompare(right),
+      ),
+    ).toEqual([...both].sort((left, right) => left.localeCompare(right)));
   });
 
   it('marks a jscpd clone of the same lines as covered, in either order', () => {

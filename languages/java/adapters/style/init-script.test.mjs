@@ -40,11 +40,11 @@ describe('the Gradle init script node runner', () => {
       'process = new ProcessBuilder([nodeCommand, script.absolutePath] + arguments)',
       '.redirectErrorStream(true).start()',
       '} catch (IOException error) {',
-      'throw new GradleException("${failure}: could not run ${nodeCommand}: ${error.message}")',
+      `throw new GradleException("\${failure}: could not run \${nodeCommand}: \${error.message}")`,
       '}',
       "def log = process.inputStream.getText('UTF-8')",
       'if (process.waitFor() != 0) {',
-      'throw new GradleException("${failure}: ${log.trim()}")',
+      `throw new GradleException("\${failure}: \${log.trim()}")`,
       '}',
       '}',
     ]);
