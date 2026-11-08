@@ -44,6 +44,14 @@ export const SIGNATURE_HINTS = [
   },
   {
     tool: RULES_TOOL,
+    rules: ['number-truthiness'],
+    describe: (subject) =>
+      `\`${subject}\` is a number tested for truth, so \`0\` reads as false or missing`,
+    allowed:
+      'Compare the number: `count > 0`, `count != 0`, `index != -1`; test an optional number with `count is not None`, and default it with `count if count is not None else DEFAULT`. An exception fits only when `0` must take the same path as a missing value.',
+  },
+  {
+    tool: RULES_TOOL,
     rules: ['parameter-mutation'],
     describe: mutationDescription,
     allowed:
