@@ -6,6 +6,7 @@ import { projectFilesUnder } from '../../../../shared/project-files/project-file
 const CONFIG_FILE = /^application(?:-(.+))?\.(properties|ya?ml)$/;
 const MAIN_FILES = ['application.properties', 'application.yml', 'application.yaml'];
 const PROFILE_SEPARATORS = /[,|&!() ]/;
+const SOURCE_EXTENSIONS = ['.java', '.kt'];
 const PERSISTENCE_IMPORT = /^\s*import\s+(?:jakarta|javax)\.persistence\./m;
 
 export function stripBracketsAndQuotes(text) {
@@ -87,13 +88,15 @@ function documentProfiles(entries, fileProfile) {
   return { profiles: fileProfile === undefined ? [] : [fileProfile.toLowerCase()], negated: false };
 }
 
-function javaFiles(directory) {
-  return projectFilesUnder(directory).filter((file) => file.endsWith('.java'));
+function sourceFiles(directory) {
+  return projectFilesUnder(directory).filter((file) =>
+    SOURCE_EXTENSIONS.some((extension) => file.endsWith(extension)),
+  );
 }
 
 export function usesJpa(projectRoot, sourceRoots) {
   return sourceRoots.some((root) =>
-    javaFiles(path.join(projectRoot, root)).some((file) =>
+    sourceFiles(path.join(projectRoot, root)).some((file) =>
       PERSISTENCE_IMPORT.test(readText(file) ?? ''),
     ),
   );
