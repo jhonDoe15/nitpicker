@@ -342,7 +342,7 @@ return
     </properties>
   </rule>
   <rule name="FutureWithoutException" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
-        message="Complete the future on the failure path too: call future.completeExceptionally(error) from the listener's error callback, or catch the failure in the callback and pass it on, or use an API that returns a CompletableFuture itself, such as CompletableFuture.supplyAsync(task, executor) or HttpClient.sendAsync. This future is completed only with complete(...) from a callback, so when the work behind the callback fails it never completes and whoever waits on it waits forever.">
+        message="Complete the future on the failure path too: call future.completeExceptionally(error) from the error callback of the listener, or catch the failure in the callback and pass it on, or use an API that returns a CompletableFuture itself, such as CompletableFuture.supplyAsync(task, executor) or HttpClient.sendAsync. This future is completed only with complete(...) from a callback, so when the work behind the callback fails it never completes and whoever waits on it waits forever.">
     <priority>3</priority>
     <properties>
       <property name="xpath">
