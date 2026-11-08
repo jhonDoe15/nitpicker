@@ -82,7 +82,10 @@ neighbors. The init script reads its `nitpicker.*` Gradle properties from the co
 so a `gradle.properties` entry cannot opt in on the project's behalf (`nitpicker.archunit.includes`
 is the exception: it only picks which test classes run). It sets the Checkstyle config on the
 Checkstyle tasks after the build script runs, so a `checkstyle { configFile = ... }` block in the
-project's build does not replace it either.
+project's build does not replace it either. The same holds for the SpotBugs settings a build
+declares (an exclude filter, effort, threshold): nitpicker runs its own SpotBugs task and SpotBugs
+jar, so a `spotbugs { }` block or `spotbugs-maven-plugin` configuration changes nothing until
+`tools.spotbugs` opts in, and the run says it ignored them.
 
 **Test sources are linted too.** PMD, Checkstyle (`checkstyleTest`, reported in
 `checkstyle-test.xml`), Error Prone, google-java-format and the inline suppression scan cover
