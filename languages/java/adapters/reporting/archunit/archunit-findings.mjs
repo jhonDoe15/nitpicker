@@ -28,17 +28,25 @@ export function springArchFindings(context) {
   });
 }
 
+function archunitReportText(archunitRoot, name) {
+  const file = path.resolve(archunitRoot, name);
+  if (path.dirname(file) !== path.resolve(archunitRoot)) {
+    throw new Error(`ArchUnit report ${name} is outside ${archunitRoot}.`);
+  }
+  return readFileSync(file, 'utf8');
+}
+
 export function archunitFindings({ reportRoot, projectRoot, sourceRoots, manifest }) {
   const archunitRoot = path.join(reportRoot, 'archunit');
   const archunitReports = existsSync(archunitRoot)
-    ? readdirSync(archunitRoot, { withFileTypes: true })
-        .filter((entry) => entry.name.endsWith('.xml'))
-        .toSorted((left, right) => left.name.localeCompare(right.name, 'en'))
+    ? readdirSync(archunitRoot)
+        .filter((name) => name.endsWith('.xml'))
+        .toSorted((left, right) => left.localeCompare(right, 'en'))
     : [];
   const locate = classLocator({ projectRoot, sourceRoots, manifest });
   return archunitReports.flatMap(
-    (entry) =>
-      ingestArchunit(readFileSync(path.join(entry.parentPath, entry.name), 'utf8'), {
+    (name) =>
+      ingestArchunit(archunitReportText(archunitRoot, name), {
         resolvePath: (className, fileName) => sourceFileOf(locate, className, fileName),
       }).findings,
   );
