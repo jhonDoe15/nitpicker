@@ -54,6 +54,8 @@ describe('the policy approval of action.yml', () => {
     );
     expect(steps['approval-status'].env).toEqual({
       HEAD_SHA: '${{ github.event.pull_request.head.sha }}',
+      PULL_REQUEST: '${{ github.event.pull_request.number }}',
+      TARGET_BRANCH: '${{ github.event.pull_request.base.ref }}',
     });
     expect(steps.approval.if).toBe("${{ steps.approval-status.outputs.approved-sha != '' }}");
   });
@@ -165,7 +167,7 @@ function callLog(github) {
 
 const HEAD = 'c'.repeat(40);
 const LABELED = {
-  pull_request: { number: 7, head: { sha: HEAD } },
+  pull_request: { number: 7, head: { sha: HEAD }, base: { ref: 'main' } },
   sender: { login: 'reviewer' },
   label: { name: 'accept-policy-change' },
 };
@@ -227,7 +229,7 @@ describe('the policy approval workflow', () => {
           sha: HEAD,
           state: 'success',
           context: 'nitpicker/policy-accepted',
-          description: 'Policy loosenings accepted by reviewer',
+          description: 'Accepted by reviewer for #7 into main',
         },
       ],
       [
@@ -235,6 +237,24 @@ describe('the policy approval workflow', () => {
         { ...REPO, head_sha: HEAD, event: 'pull_request', per_page: 100 },
       ],
       ['reRunWorkflowFailedJobs', { ...REPO, run_id: 2 }],
+    ]);
+  });
+
+  it('refuses an approval too long for a commit status instead of failing to record it', async () => {
+    const github = fakeGithub({ permission: 'admin' });
+    const long = { ...LABELED.pull_request, base: { ref: 'b'.repeat(120) } };
+
+    const calls = await runScript(job.steps[0].with.script, {
+      github,
+      payload: { ...LABELED, pull_request: long },
+    });
+
+    expect(calls.failed).toEqual([
+      `"Accepted by reviewer for #7 into ${'b'.repeat(120)}" is longer than a commit status allows (140 characters). Accept with the NITPICKER_ACCEPT_POLICY_CHANGE digest instead.`,
+    ]);
+    expect(callLog(github).map(([name]) => name)).toEqual([
+      'removeLabel',
+      'getCollaboratorPermissionLevel',
     ]);
   });
 
@@ -258,18 +278,25 @@ describe('the policy approval workflow', () => {
 
 describe('the approval read of action.yml', () => {
   const script = stepsById(readAction().runs.steps)['approval-status'].with.script;
-  const read = (options) => runScript(script, { ...options, environment: { HEAD_SHA: HEAD } });
-  const status = (state, login = 'github-actions[bot]', context = 'nitpicker/policy-accepted') => ({
+  const environment = { HEAD_SHA: HEAD, PULL_REQUEST: '7', TARGET_BRANCH: 'main' };
+  const read = (options) => runScript(script, { ...options, environment });
+  const status = (state, changes = {}) => ({
     state,
-    context,
-    creator: { login },
+    context: 'nitpicker/policy-accepted',
+    description: 'Accepted by reviewer for #7 into main',
+    creator: { login: 'github-actions[bot]' },
+    ...changes,
   });
+  const forPullRequest = (description) => status('success', { description });
 
   it.each([
     ['the latest approval succeeded', [status('success'), status('failure')], HEAD],
     ['the latest approval failed', [status('failure'), status('success')], ''],
-    ['someone else set the status', [status('success', 'someone')], ''],
-    ['the status is another one', [status('success', undefined, 'ci/other')], ''],
+    ['someone else set the status', [status('success', { creator: { login: 'someone' } })], ''],
+    ['the status is another one', [status('success', { context: 'ci/other' })], ''],
+    ['it is for another pull request', [forPullRequest('Accepted by r for #17 into main')], ''],
+    ['it is for another target branch', [forPullRequest('Accepted by r for #7 into release')], ''],
+    ['it has no description', [status('success', { description: null })], ''],
     ['there is no status', [], ''],
   ])('approves the head only when %s', async (_name, statuses, approved) => {
     const github = fakeGithub({ statuses });
