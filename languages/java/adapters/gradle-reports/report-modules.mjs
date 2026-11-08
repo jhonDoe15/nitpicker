@@ -14,6 +14,7 @@ const ROOT_LISTS = [
   'resourceRoots',
   'kotlinSourceRoots',
   'kotlinTestSourceRoots',
+  'springClasspath',
 ];
 
 function readJson(file) {
