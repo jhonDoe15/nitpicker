@@ -3,6 +3,7 @@ import {
   isPlainObject,
   configError,
   isNonEmptyString,
+  SCHEMA_KEY,
   validateStringArray,
   validateThresholds,
   validateDuplicates,
@@ -70,15 +71,19 @@ export const KEYS = [
   'history',
 ];
 
-const REACT_KEYS = ['enabled', 'styling'];
+export const REACT_KEYS = ['enabled', 'styling'];
 
-const I18N_KEYS = ['enabled', 'functionNames', 'componentNames'];
+export const I18N_KEYS = ['enabled', 'functionNames', 'componentNames'];
 
-const CUSTOM_ANALYZER_KEYS = ['name', 'command', 'args'];
+export const CUSTOM_ANALYZER_KEYS = ['name', 'command', 'args'];
 
 const NITPICKER_RULE_IDS = new Set(RULES.map(({ id }) => id));
 
+export const NITPICKER_RULES = [...NITPICKER_RULE_IDS];
+
 const TYPESCRIPT_RULE_NAMES = new Map([['doc-comment-content', 'nitpicker/no-comments']]);
+
+export const RENAMED_TYPESCRIPT_RULES = [...TYPESCRIPT_RULE_NAMES.keys()];
 
 export function validateConfig(config) {
   if (!isPlainObject(config)) {
@@ -99,9 +104,12 @@ export function validateConfig(config) {
 
 function validateKeys(config) {
   for (const key of Object.keys(config)) {
-    if (!KEYS.includes(key)) {
-      throw configError(`unknown key "${key}"${suggestionOrAllowed(key, KEYS)}`);
+    if (!KEYS.includes(key) && key !== SCHEMA_KEY) {
+      throw configError(`unknown key "${key}"${suggestionOrAllowed(key, [SCHEMA_KEY, ...KEYS])}`);
     }
+  }
+  if (config[SCHEMA_KEY] !== undefined && typeof config[SCHEMA_KEY] !== 'string') {
+    throw configError(`"${SCHEMA_KEY}" must be a string`);
   }
 }
 

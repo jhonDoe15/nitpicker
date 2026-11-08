@@ -32,7 +32,7 @@ describe.skipIf(!kotlinE2eEnabled)('Kotlin preset on a Kotest project', () => {
         .map(({ path: file, identity, location }) => ({ file, identity, location }))
         .sort((left, right) => left.identity.localeCompare(right.identity)),
     ).toEqual(
-      ['calls plusOne', 'doubles the value'].map((name) => ({
+      ['calls plusOne', 'twice/doubles the value'].map((name) => ({
         file: 'src/test/kotlin/demo/CalcSpec.kt',
         identity: `test:demo.CalcSpec#${name}`,
         location: undefined,

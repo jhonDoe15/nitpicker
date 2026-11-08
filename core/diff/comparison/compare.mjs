@@ -2,7 +2,8 @@ import { changedByDiff } from './base-red/unknown-base.mjs';
 import { baseMoves, comparisonKey } from './fingerprint.mjs';
 import { matchSimilarFindings } from './similar/match.mjs';
 import { matchAnchoredFindings } from './anchored/match.mjs';
-import { grewFinding, holdRatchetedFindings, withGrowthAdvice } from './ratchet/ratchet.mjs';
+import { addGrowthAdvice, holdRatchetedFindings } from './ratchet/ratchet.mjs';
+import { withWorseMessage } from '../../../shared/messages/finding-advice.mjs';
 import { isHeldOnTouchedLine } from './ratchet/touched-code.mjs';
 import { pairedKeys } from './positions/occurrences.mjs';
 import { withEditedLineReason } from './positions/touched-lines.mjs';
@@ -40,7 +41,7 @@ export function compareFindings({
     touchedCode,
   });
   present.newFindings = [
-    ...withGrowthAdvice({ findings: ratcheted.newFindings, baseFindings, moves }),
+    ...addGrowthAdvice({ findings: ratcheted.newFindings, baseFindings, moves }),
     ...anchored.grown,
   ];
   present.unchangedFindings.push(...ratcheted.heldFindings);
@@ -86,7 +87,7 @@ function moveAnchoredFindings(present, { baseFindings, snapshots, renames, touch
   const grown = [];
   for (const { head, base } of pairs) {
     if (head.ratchet !== undefined && head.ratchet.value > (base.ratchet?.value ?? Infinity)) {
-      grown.push(grewFinding(head, base.ratchet.value));
+      grown.push(withWorseMessage(head, base.ratchet.value));
       continue;
     }
     const { bucket, entry } = classify(head, base, { touchedCode, isUnknown: false });
