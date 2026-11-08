@@ -15,6 +15,7 @@ const SAME_LINE_OVERLAPS = {
   ASYNC230: /^PTH/u,
   ASYNC240: /^PTH/u,
   PLE0115: /^PLW060[23]$/u,
+  RET501: /^PLR1711$/u,
 };
 
 function isAllowedNumber(message) {

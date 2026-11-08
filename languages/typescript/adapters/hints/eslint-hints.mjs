@@ -6,6 +6,7 @@ import { UNUSED_PARAMETER_HINT } from '../../preset/eslint-config/policy/unused-
 import { immutableTypesParts } from './immutable-types-hint.mjs';
 import { withStatedForm } from './stated-form.mjs';
 import { restrictedMatchers } from '../../preset/eslint-config/test-honesty/restricted-matchers.mjs';
+import { logicRuleHints } from '../../preset/eslint-config/logic/logic-rules.mjs';
 
 const IMMUTABLE_TYPES_PREFIX =
   /^(Variable|Parameter|Return type|Property) should have an immutability of at least/u;
@@ -200,6 +201,10 @@ function appendHint(hint) {
   return ({ text }) => hinted(text, hint);
 }
 
+function sentenceHint(hint) {
+  return ({ text }) => hinted(text.replace(/\.?$/u, '.'), hint);
+}
+
 function nodeTestMessage({ text }) {
   return hinted(text, NODE_TEST_HINT);
 }
@@ -235,6 +240,7 @@ const MESSAGE_REWRITERS = new Map([
   ['regexp/no-useless-flag', appendHint(USELESS_FLAG_HINT)],
   ['@typescript-eslint/no-deprecated', appendHint(DEPRECATED_HINT)],
   ['no-unused-vars', unusedVariableMessage],
+  ...Object.entries(logicRuleHints).map(([rule, hint]) => [rule, sentenceHint(hint)]),
 ]);
 
 const NO_ROUTE_RULES = new Set([
