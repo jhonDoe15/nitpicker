@@ -38,6 +38,12 @@ tester.run('no-undefined-only-env-check', rule, {
     allowed('let url = process.env.API_URL; url = "x"; export const set = url !== undefined;'),
     allowed('export const port = process.env.PORT ?? "3000";', 'src/main.ts'),
     allowed('export const mode = import.meta.env.MODE === "production";'),
+    allowed('export function f(process: NodeJS.Process) { return process.env.A !== undefined; }'),
+    allowed(
+      'export const ok = process.env.API_URL !== undefined && process.env.API_URL.startsWith("https");',
+    ),
+    allowed('const { API_URL = "" } = process.env; export const api = API_URL;'),
+    allowed('const { PORT = "3000" } = process.env; export const port = PORT;', 'src/main.ts'),
   ],
   invalid: [
     flagged('export const set = process.env.API_URL !== undefined;'),
@@ -63,5 +69,9 @@ tester.run('no-undefined-only-env-check', rule, {
       'nullishFallback',
     ),
     flagged('export const api = process.env.NEXT_PUBLIC_API ?? "/api";', 'nullishFallback'),
+    flagged('const env = process.env; export const set = env.API_URL !== undefined;'),
+    flagged('const env = process.env; export const set = "API_URL" in env;'),
+    flagged('export function f() { process.env.PORT ??= "3000"; }', 'nullishFallback'),
+    flagged('const { PORT = "3000" } = process.env; export const port = PORT;', 'nullishFallback'),
   ],
 });

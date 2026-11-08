@@ -113,17 +113,19 @@ Details that are decisions rather than the table:
 - `env-none-only-check` reports an environment variable tested only for being missing, which
   counts an empty value as set: `API_URL=` gives `""`, which passes the test, so the feature turns
   on with nothing to use. Reported, in every non-test file: `is None`, `is not None`, `== None` and
-  `!= None` on `os.environ.get("X")` or `os.getenv("X")` (also through `from os import ...` and
-  aliases, and on a name assigned once from one, such as a module constant
-  `API_URL = os.getenv("API_URL")`); `"X" in os.environ` and `not in`; and a default argument
-  (`os.getenv("PORT", "8000")`, `os.environ.get("HOST", default="localhost")`), which an empty value
-  skips. A default of `""` or `None` gives the same result and passes, and so does a `None` test
-  joined by `and`/`or` with an emptiness test of the same variable (`url is not None and
-url.strip() != ""`, `len(...)`, `bool(...)` or the value itself). The allowed form tests the value
-  for truth: `if not os.environ.get("API_URL"):`, `os.environ.get("PORT") or "8000"`, `.strip()`
-  first when blanks count as empty. When an empty value is a real setting, add an exception for
-  the rule. Ruff `PLW1508` (a default that is not a string) is dropped on the same line: the `or`
-  form fixes both. The TypeScript preset reports the same mistake as
+  `!= None` on `os.environ.get("X")` or `os.getenv("X")` (also `key="X"`, through
+  `from os import ...` and aliases, through a walrus, and on a name assigned once from one, such as
+  a module constant `API_URL = os.getenv("API_URL")`; a parameter, `except` name, function, class
+  or import of the same name is another name); `"X" in os.environ` and `not in`; and a string
+  default (`os.getenv("PORT", "8000")`, `os.environ.get("HOST", default="localhost")`, or a name
+  holding one), which an empty value skips. A default of `""` or `None` gives the same result and
+  passes, and a default that is not a string is left to ruff `PLW1508`. Not reported either: a
+  `None` test joined by `and`/`or` with a test of the value itself (`url is not None and
+  url.strip() != ""`, `len(...)`, `bool(...)`, the value, or any method call on it), and a line
+  where `process-env-access` (outside the composition root) or `hardcoded-secret` already
+  reports, whose fix removes the read or the default. The allowed form tests the value for truth:
+  `if not os.environ.get("API_URL"):`, `os.environ.get("PORT") or "8000"`, `.strip()` first when
+  blanks count as empty. When an empty value is a real setting, add an exception for the rule. The TypeScript preset reports the same mistake as
   `nitpicker/no-undefined-only-env-check`, and the Java and Kotlin presets on Spring configuration
   as `pmd/SpringNullOnlyConfigCheck`.
 - `process-stream-access` reports `sys.stdout`, `sys.stderr`, `sys.__stdout__` and `sys.__stderr__`,
@@ -797,7 +799,7 @@ __getattr__` that warns or maps removed names to new ones (a PEP 562 lazy import
   `real-clock-in-test` line, so the one finding left names one fix (inject the clock, or freeze
   it); `ASYNC110` on the `while` loop around a `sleep-in-test` call; `PLE1507`, `PLW1507` and
   `PLW1508` on a `process-env-access` line (read the environment in the composition root, where
-  these report with their own forms), and `PLW1508` on an `env-none-only-check` line; and `PLW0129` on a `tautological-assert` line. Among ruff's
+  these report with their own forms); and `PLW0129` on a `tautological-assert` line. Among ruff's
   own rules, `LOG015` owns the `G010` of `logging.warn`, `ASYNC230` and `ASYNC240` own the `PTH`
   finding of the same call, and `PLE0115` owns the `PLW0602`/`PLW0603` of its `global`.
   `ASYNC251` is not reported in test files, where `sleep-in-test` owns sleeping. The rules script

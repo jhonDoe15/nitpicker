@@ -4,9 +4,10 @@ import java.util.Objects;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.core.env.Environment;
 import org.springframework.util.StringUtils;
 
-@Configuration
+@Configuration(proxyBeanMethods = false)
 public class TokenConfig {
   private final TokenProperties properties;
   private final String region;
@@ -30,5 +31,13 @@ public class TokenConfig {
       return properties.getSigning().getKeyId();
     }
     return Objects.requireNonNullElse(region, "eu"); // violation: SpringNullOnlyConfigCheck
+  }
+
+  @Bean
+  public String tokenAudience(Environment environment) {
+    if (environment.containsProperty("shop.audience")) { // violation: SpringNullOnlyConfigCheck
+      return environment.getRequiredProperty("shop.audience");
+    }
+    return "all";
   }
 }

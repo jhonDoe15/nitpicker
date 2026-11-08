@@ -41,7 +41,7 @@ function configurationClass(view, qualified) {
   );
 }
 
-function stereotype(view, qualified) {
+export function stereotype(view, qualified) {
   const declared = view.classes.get(qualified);
   return (
     declared !== undefined &&

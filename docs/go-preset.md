@@ -224,3 +224,8 @@ with `"preset": "go"`, each naming its reason.
 - Generated files are listed but not measured or format-checked; they still compile and vet.
 - The tools are built from the Go module proxy on first use, so the first run needs network access
   (or a `GOPROXY` the project sets) and takes longer.
+- No rule yet for an environment variable tested only for being set
+  (`v, ok := os.LookupEnv("X"); if ok {`), which counts an empty value as set; the other presets
+  report it (`nitpicker/no-undefined-only-env-check`, `env-none-only-check`,
+  `pmd/SpringNullOnlyConfigCheck`). It belongs to the one-way rules of GO3 (#416);
+  `os.Getenv("X") != ""` is the allowed form.

@@ -245,11 +245,12 @@ return //MethodDeclaration[ModifierList/Annotation[pmd-java:typeIs('org.springfr
 ]]></value></property></properties>
   </rule>
   <rule name="SpringNullOnlyConfigCheck" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
-        message="Use StringUtils.hasText (or hasLength, or isBlank next to the null test) to test this configuration string, not only a null check. A property set to an empty value binds as an empty string, which passes a null check, so the feature turns on with nothing to use; requireNonNullElse and Optional.orElse keep the empty value too. An exception fits only when an empty value is a real setting here.">
+        message="Use StringUtils.hasText (or hasLength, or isBlank next to the null test) to test this configuration string, not only a null check. A property set to an empty value binds as an empty string, which passes a null check, so the feature turns on with nothing to use; requireNonNullElse, Optional.orElse and Environment.containsProperty count the empty value as set too. An exception fits only when an empty value is a real setting here.">
     <priority>2</priority>
     <properties><property name="xpath"><value><![CDATA[
 let $configuration := 'org.springframework.boot.context.properties.ConfigurationProperties',
     $value := 'org.springframework.beans.factory.annotation.Value',
+    $resolver := 'org.springframework.core.env.PropertyResolver',
     $string := function($declaration) {
   exists($declaration/ClassType[pmd-java:typeIsExactly('java.lang.String')])
 },
@@ -275,9 +276,9 @@ let $configuration := 'org.springframework.boot.context.properties.Configuration
   let $type := $target/ancestor::*[self::ClassDeclaration or self::RecordDeclaration or self::EnumDeclaration][1],
       $names := $fields($type),
       $record := exists($type/self::RecordDeclaration),
-      $method := $target/ancestor::*[self::MethodDeclaration or self::ConstructorDeclaration or self::LambdaExpression][1],
-      $locals := ($method/FormalParameters/FormalParameter/VariableId/@Name,
-        $method//LocalVariableDeclaration/VariableDeclarator/VariableId/@Name)
+      $member := $target/ancestor::*[self::MethodDeclaration or self::ConstructorDeclaration or self::Initializer
+        or self::FieldDeclaration][1],
+      $locals := $member//VariableId[not(parent::VariableDeclarator/parent::FieldDeclaration)]/@Name
   return ($target/self::VariableAccess[@Name = $names][not(@Name = $locals)]
     or $target/self::FieldAccess[ThisExpression][@Name = $names]
     or $target/self::MethodCall[ArgumentList[count(*) = 0]][not(*[1][not(self::ArgumentList or self::ThisExpression)])]
@@ -290,7 +291,8 @@ let $configuration := 'org.springframework.boot.context.properties.Configuration
     $propertiesRoot := function($root) {
   let $name := $root/self::*[self::VariableAccess or self::FieldAccess[ThisExpression]]/@Name
   return exists($root/ancestor::CompilationUnit//(FieldDeclaration[VariableDeclarator/VariableId/@Name = $name]
-      | FormalParameter[VariableId/@Name = $name] | LocalVariableDeclaration[VariableDeclarator/VariableId/@Name = $name]
+      | FormalParameter[VariableId/@Name = $name]
+      | LocalVariableDeclaration[VariableDeclarator/VariableId/@Name = $name]
       | RecordComponent[VariableId/@Name = $name])
     /ClassType[matches(@SimpleName, '.Properties$')][not(pmd-java:typeIs('java.util.Properties'))])
 },
@@ -300,12 +302,25 @@ let $configuration := 'org.springframework.boot.context.properties.Configuration
     [not(*[1]/descendant-or-self::MethodCall[ArgumentList/*])]
     [$propertiesRoot(*[1]/descendant-or-self::*[self::VariableAccess or self::FieldAccess][last()])])
 },
+    $stereotyped := function($node) {
+  exists($node/ancestor::ClassDeclaration/ModifierList/Annotation[
+    pmd-java:typeIs('org.springframework.stereotype.Component')
+    or pmd-java:typeIs('org.springframework.stereotype.Service')
+    or pmd-java:typeIs('org.springframework.stereotype.Repository')
+    or pmd-java:typeIs('org.springframework.stereotype.Controller')
+    or pmd-java:typeIs('org.springframework.web.bind.annotation.RestController')])
+},
+    $lookup := function($target) {
+  exists($target/self::MethodCall[@MethodName = 'getProperty'][ArgumentList[count(*) = 1]]
+    [*[1][pmd-java:typeIs($resolver)]][not($stereotyped(.))])
+},
     $configured := function($target) {
-  $own($target) or $parameter($target) or $read($target)
+  $own($target) or $parameter($target) or $read($target) or $lookup($target)
 },
     $key := function($target) {
-  string-join(for $part in $target/descendant-or-self::*[self::VariableAccess or self::FieldAccess or self::MethodCall]
-    return string(($part/@Name, $part/@MethodName)[1]), '.')
+  string-join(for $part in $target/descendant-or-self::*[self::VariableAccess or self::FieldAccess or self::MethodCall
+      or self::StringLiteral]
+    return string(($part/@Name, $part/@MethodName, $part/@ConstValue)[1]), '.')
 },
     $bare := function($target) {
   if ($target/self::MethodCall[@MethodName = ('trim', 'strip')][ArgumentList[count(*) = 0]])
@@ -313,8 +328,7 @@ let $configuration := 'org.springframework.boot.context.properties.Configuration
 },
     $emptiness := function($root, $wanted) {
   some $call in $root/descendant-or-self::MethodCall satisfies (
-    ($call[@MethodName = ('isEmpty', 'isBlank', 'length')][ArgumentList[count(*) = 0]]
-      and $key($bare($call/*[1])) = $wanted)
+    ($call/*[1][not(self::ArgumentList)] and $key($bare($call/*[1])) = $wanted)
     or ($call[@MethodName = ('hasText', 'hasLength', 'isEmpty', 'isBlank', 'isNotEmpty', 'isNotBlank', 'isNullOrEmpty')]
       [ArgumentList[count(*) = 1]] and $key($bare($call/ArgumentList/*[1])) = $wanted)
     or ($call[@MethodName = 'equals'][ArgumentList[count(*) = 1]]
@@ -352,7 +366,10 @@ return
   [not(ArgumentList/*[2][self::NullLiteral or self::StringLiteral[@ConstValue = '']])]
   [$configured(ArgumentList/*[1])]
 |
-//MethodCall[@MethodName = 'orElse'][ArgumentList[count(*) = 1]]
+//MethodCall[@MethodName = 'containsProperty'][ArgumentList[count(*) = 1]][*[1][pmd-java:typeIs($resolver)]][$plain(.)]
+  [not($stereotyped(.))]
+|
+//MethodCall[@MethodName = ('orElse', 'orElseGet')][ArgumentList[count(*) = 1]]
   [not(ArgumentList/*[1][self::NullLiteral or self::StringLiteral[@ConstValue = '']])]
   [*[1][self::MethodCall][pmd-java:matchesSig('java.util.Optional#ofNullable(_)')]]
   [$configured(*[1]/ArgumentList/*[1])]

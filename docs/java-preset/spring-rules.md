@@ -342,13 +342,18 @@ true)` class in the same file converts, directly or through a generic base class
   parameter; a `@Value` `String` parameter in its method; and a no-argument `String` getter chain on
   a field, parameter or local whose declared type is named `...Properties` (not
   `java.util.Properties`), such as `properties.getJwt().getIssuerUri()`, which needs the project's
-  classes on the classpath to know the getter returns `String`. The tests are `== null`, `!= null`,
-  `Objects.isNull`/`nonNull` and `Optional.ofNullable(x).isPresent()`/`isEmpty()`, and the
-  fallbacks `Objects.requireNonNullElse(x, fallback)` and `Optional.ofNullable(x).orElse(fallback)`,
-  which keep an empty value too (a fallback of `""` or `null` passes). Not reported: a test
-  joined by `&&`/`||` with an emptiness test of the same value (`StringUtils.hasText(x)`,
-  `hasLength`, `x.isEmpty()`, `x.isBlank()`, `x.trim().isEmpty()`, `x.length()`, `"".equals(x)`,
-  Apache `isNotBlank`, Guava `isNullOrEmpty`), a null-safe conversion that gives `null` back
+  classes on the classpath to know the getter returns `String`; and `environment.getProperty(key)`
+  on an `Environment` or `PropertyResolver` outside `@Component`, `@Service`, `@Repository`,
+  `@Controller` and `@RestController` classes, where `SpringTypedConfiguration` reports the read
+  itself. A parameter, local, lambda parameter, `catch` parameter or pattern variable of the same
+  name is another value. The tests are `== null`, `!= null`, `Objects.isNull`/`nonNull`,
+  `Optional.ofNullable(x).isPresent()`/`isEmpty()` and `environment.containsProperty(key)`, and the
+  fallbacks `Objects.requireNonNullElse(x, fallback)` and
+  `Optional.ofNullable(x).orElse(fallback)`/`orElseGet`, which keep an empty value too (a fallback
+  of `""` or `null` passes). Not reported: a test joined by `&&`/`||` with a test of the value
+  itself (`StringUtils.hasText(x)`, `hasLength`, `x.isEmpty()`, `x.isBlank()`,
+  `x.trim().isEmpty()`, `"".equals(x)`, Apache `isNotBlank`, Guava `isNullOrEmpty`, or any method
+  call on it, such as `x.startsWith("https")`), a null-safe conversion that gives `null` back
   (`x == null ? null : x.trim()`), and tests inside `equals`, `hashCode`, `toString` and
   `compareTo`. The allowed form is `StringUtils.hasText(x)` (or `hasLength`, or `isBlank` next to
   the null test). When an empty value is a real setting, add an exception for the rule. The

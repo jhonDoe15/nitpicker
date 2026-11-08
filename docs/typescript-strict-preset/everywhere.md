@@ -549,13 +549,17 @@ Part of the [TypeScript strict preset guide](../typescript-strict-preset.md).
   `'API_URL' in process.env`, `Object.hasOwn(process.env, 'API_URL')` and
   `process.env.hasOwnProperty('API_URL')`, on `process.env.X` (also `process.env['X']` and
   `globalThis.process.env.X`), `import.meta.env.X`, `Bun.env.X`, `Deno.env.get('X')`, or a `const`
-  holding one (`const url = process.env.API_URL`, `const { API_URL } = process.env`). Also reported:
-  `process.env.X ?? fallback`, where `??` keeps the empty value and skips the fallback; a fallback of
-  `''` or `undefined` gives the same result and passes, and so does a `??` in a composition root,
-  which `nitpicker/no-branch-in-composition-root` already reports. The allowed forms test for a
-  value: `if (!process.env.API_URL)`, `process.env.API_URL || fallback`, a `.length` or `=== ''`
-  test of the same variable in the same condition (`url !== undefined && url !== ''`), or a schema
-  that rejects empty strings (`z.string().min(1)`). The rule reads no types. When an empty value is
+  holding one (`const url = process.env.API_URL`, `const { API_URL } = process.env`, or `env.X`
+  after `const env = process.env`); a local named `process`, `Bun` or `Deno` is not the global.
+  Also reported: `process.env.X ?? fallback`, `process.env.X ??= fallback` and a destructuring
+  default (`const { PORT = '3000' } = process.env`), which keep the empty value and skip the
+  fallback; a fallback of `''`, `undefined`, `null` or `void 0` gives the same result and passes,
+  and so do these fallbacks in a composition root, which `nitpicker/no-branch-in-composition-root`
+  already reports. The allowed forms test for a value: `if (!process.env.API_URL)`,
+  `process.env.API_URL || fallback`, or a test of the value next to the missing-value test in the
+  same `&&`/`||` condition (`url !== undefined && url !== ''`, `.length`, `Boolean(url)`, `url`
+  itself, `.trim()` first, or any method call on it, such as `url.startsWith('https')`), or a
+  schema that rejects empty strings (`z.string().min(1)`). The rule reads no types. When an empty value is
   a real setting, add an exception for the rule. The Java and Kotlin presets report the same mistake
   on Spring configuration (`pmd/SpringNullOnlyConfigCheck`) and the Python preset on `os.environ`
   (`env-none-only-check`).
