@@ -21,6 +21,28 @@ export function* depthFirst(root, children) {
   }
 }
 
+function expandItem(item, expand, pending) {
+  const entries = expand(item.node, item.context);
+  pending.push({ ...item, entries });
+  for (const [node, context] of entries.toReversed()) {
+    pending.push({ node, context });
+  }
+}
+
+export function foldTree(root, context, { expand, combine }) {
+  const pending = [{ node: root, context }];
+  const results = [];
+  for (const item of stackIterator(pending)) {
+    if (item.entries === undefined) {
+      expandItem(item, expand, pending);
+    } else {
+      const childResults = results.splice(results.length - item.entries.length);
+      results.push(combine(item.node, item.context, childResults));
+    }
+  }
+  return results[0];
+}
+
 export function chainOf(start, next) {
   const nodes = start ? [start] : [];
   for (const node of nodes) {
