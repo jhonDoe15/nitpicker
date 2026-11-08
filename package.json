@@ -27,7 +27,7 @@
     "url": "https://github.com/jhonDoe15/nitpicker/issues"
   },
   "bin": {
-    "nitpicker": "core/cli.mjs"
+    "nitpicker": "core/bin.mjs"
   },
   "type": "module",
   "engines": {

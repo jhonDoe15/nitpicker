@@ -16,7 +16,8 @@ npm install --save-dev nitpicker vitest @vitest/coverage-v8 typescript @types/no
 with `npx nitpicker`, `pnpm exec nitpicker`, `yarn nitpicker` or `bunx nitpicker`.
 
 Requirements: Node.js 22.14 or newer (22.19 or newer for a project on TypeScript 7, see
-[Type check engine](#type-check-engine)), a Git repository, and a project whose dependencies are
+[Type check engine](#type-check-engine); on an older Node.js `nitpicker` stops with exit code 2 and
+names the version it needs), a Git repository, and a project whose dependencies are
 installed in `node_modules` by npm, pnpm, Yarn (Yarn Plug'n'Play is not supported: set
 `nodeLinker: node-modules`) or Bun. The base's own install supports all four managers; nitpicker
 itself is tested end to end with npm projects. nitpicker brings its own pinned ESLint, Prettier, dependency-cruiser, knip, jscpd,
