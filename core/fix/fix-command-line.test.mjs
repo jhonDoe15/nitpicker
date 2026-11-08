@@ -24,6 +24,13 @@ ${fixed}Base: ${baseRef} (argument)
 `;
 }
 
+function unchangedTranscript({ fixed, repository }) {
+  const sha = fixtureGit(repository.root, ['rev-parse', repository.baseRef]).trim().slice(0, 12);
+  return `${FORMAT_LINE}
+${fixed}No changes since ${repository.baseRef} (${sha}); nothing to check.
+`;
+}
+
 const PYPROJECT = '[project]\nname = "demo"\nversion = "1"\nrequires-python = ">=3.9"\n';
 
 function pythonRepository() {
@@ -93,22 +100,15 @@ describe('nitpicker --fix for a Python project', () => {
       'pyproject.toml': PYPROJECT,
       'quality-policy.json': policy(),
     });
-    writeFiles(repository.root, { 'notes.txt': 'a note\n' });
     const tools = fakePythonTools();
 
     const fixed = run(repository, ['--fix'], tools);
     const plain = run(repository, [], tools);
 
     expect(fixed.output.stdoutText).toBe(
-      transcript({
-        fixed: 'Fixed files:\n(none)\n',
-        outputRoot: fixed.outputRoot,
-        baseRef: repository.baseRef,
-      }),
+      unchangedTranscript({ fixed: 'Fixed files:\n(none)\n', repository }),
     );
-    expect(plain.output.stdoutText).toBe(
-      transcript({ fixed: '', outputRoot: plain.outputRoot, baseRef: repository.baseRef }),
-    );
+    expect(plain.output.stdoutText).toBe(unchangedTranscript({ fixed: '', repository }));
     expect(tools.calls).toEqual([]);
   });
   it('refuses --fix together with --all', () => {
