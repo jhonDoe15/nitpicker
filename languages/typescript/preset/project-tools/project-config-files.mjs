@@ -46,12 +46,15 @@ const TOOLS = new Map([
 ]);
 
 export const PROJECT_TOOL_FILES = [
-  'config-loader.mjs',
-  'config-values.mjs',
-  'dependency-cruiser-loader.mjs',
-  'project-config-files.mjs',
-  'project-tool-policy.mjs',
-].map((name) => `languages/typescript/preset/project-tools/${name}`);
+  ...[
+    'config-loader.mjs',
+    'config-values.mjs',
+    'dependency-cruiser-loader.mjs',
+    'project-config-files.mjs',
+    'project-tool-policy.mjs',
+  ].map((name) => `languages/typescript/preset/project-tools/${name}`),
+  'languages/typescript/preset/project-configs/config-module.mjs',
+];
 
 export function projectConfigTools() {
   return [...TOOLS.keys()];
