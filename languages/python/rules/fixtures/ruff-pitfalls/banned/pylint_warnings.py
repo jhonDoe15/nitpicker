@@ -80,3 +80,8 @@ def strip(lines):
 
 def largest(a, b, c):
     return max(a, max(b, c))
+
+
+def log(lines, line):
+    lines.append(line)
+    return
