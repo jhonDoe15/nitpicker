@@ -64,7 +64,8 @@ const CACHE_PUBLISH_USAGE =
 const USAGE_LINES = [
   'nitpicker [<path>...] [--base <ref>] [--output <dir>] [--all | --fix] [--analyzer <name>]...',
   '          [--rule <substring>]... [--details] [--quick] [--staged]',
-  '          [--shard-count <n> --shard-index <i>] [--defer-exit] [--no-cache] [--accept-policy-change=<digest>] [--help] [--version]',
+  '          [--shard-count <n> --shard-index <i>] [--defer-exit] [--no-cache]',
+  '          [--accept-policy-change=<digest>] [--help] [--version]',
   INIT_USAGE,
   AGGREGATE_USAGE,
   CACHE_PUBLISH_USAGE,
