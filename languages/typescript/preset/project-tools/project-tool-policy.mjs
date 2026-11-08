@@ -80,7 +80,10 @@ function fileConfig(tool, projectRoot, { file, timeout }) {
     throw new Error(`${file} must be a file inside the project`);
   }
   const loaded = inProcessConfig(tool, projectRoot, { full, file });
-  return objectConfig(loaded?.config ?? spawnedConfig(tool, projectRoot, { full, file, timeout }), file);
+  return objectConfig(
+    loaded?.config ?? spawnedConfig(tool, projectRoot, { full, file, timeout }),
+    file,
+  );
 }
 
 function sectionConfig(tool, projectRoot, section) {

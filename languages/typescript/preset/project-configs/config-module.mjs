@@ -4,7 +4,7 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { isPlainObject } from '../../../../shared/config.mjs';
 import { isRealPathInside, resolveInside } from '../../../../shared/conventions/read-inside.mjs';
-import { withoutHostCiOutputs } from '../../../../core/tooling/host-environment.mjs';
+import { HOST_CI_OUTPUT_VARIABLES } from '../../../../core/tooling/host-environment.mjs';
 import {
   trackTemporaryPath,
   untrackTemporaryPath,
@@ -15,6 +15,7 @@ const MAX_RESULT_MB = 10;
 const BYTES_PER_MB = 1024 * 1024;
 const MAX_RESULT_BYTES = MAX_RESULT_MB * BYTES_PER_MB;
 const REPORT_PREAMBLE = [
+  `for (const name of ${JSON.stringify(HOST_CI_OUTPUT_VARIABLES)}) delete process.env[name];`,
   "const { writeFileSync } = await import('node:fs');",
   'const [resultFile] = process.argv.splice(1, 1);',
   'const report = (payload) => {',
@@ -83,14 +84,13 @@ function reportedOutcome(name, result, { resultFile, timeoutMs }) {
   return JSON.parse(readFileSync(resultFile, 'utf8'));
 }
 
-function spawnedOutcome({ script, args, name, projectRoot, timeoutMs, env }, directory) {
+function spawnedOutcome({ script, args, name, projectRoot, timeoutMs }, directory) {
   const resultFile = path.join(directory, 'result.json');
   const result = spawnSync(
     process.execPath,
     ['--no-warnings', '--input-type=module', '--eval', script, resultFile, ...args],
     {
       cwd: projectRoot,
-      env: withoutHostCiOutputs({ ...process.env, ...env }),
       stdio: 'ignore',
       timeout: timeoutMs,
       killSignal: 'SIGKILL',
@@ -99,12 +99,12 @@ function spawnedOutcome({ script, args, name, projectRoot, timeoutMs, env }, dir
   return reportedOutcome(name, result, { resultFile, timeoutMs });
 }
 
-export function loadInChild({ timeoutMs = LOAD_TIMEOUT_MS, env = {}, ...load }) {
+export function loadInChild({ timeoutMs = LOAD_TIMEOUT_MS, ...load }) {
   const directory = trackTemporaryPath(
     mkdtempSync(path.join(tmpdir(), 'nitpicker-project-config-')),
   );
   try {
-    const outcome = spawnedOutcome({ ...load, timeoutMs, env }, directory);
+    const outcome = spawnedOutcome({ ...load, timeoutMs }, directory);
     if (outcome.failure !== undefined) {
       throw new Error(`${load.name} could not be loaded: ${outcome.failure}`);
     }

@@ -100,14 +100,20 @@ describe('project tool configs in the head policy', () => {
     );
     const nested = 'export default { ignoreDependencies: [() => 1], paths: { a: new Set() } };';
     expect(failure(project({ 'knip.js': nested }))).toBe(
-      unread('knip.js', `knip.js could not be loaded: ignoreDependencies[0] is a function; ${ONLY_DATA}`),
+      unread(
+        'knip.js',
+        `knip.js could not be loaded: ignoreDependencies[0] is a function; ${ONLY_DATA}`,
+      ),
     );
     expect(failure(project({ 'knip.js': 'export default { tags: new Date(0) };' }))).toBe(
       unread('knip.js', `knip.js could not be loaded: tags is a Date; ${ONLY_DATA}`),
     );
     const thrown = project({ 'knip.js': 'throw new Error("boom");' });
     expect(failure(thrown)).toBe(
-      unread('knip.js', `knip.js could not be loaded: Error loading ${path.join(thrown, 'knip.js')}: boom`),
+      unread(
+        'knip.js',
+        `knip.js could not be loaded: Error loading ${path.join(thrown, 'knip.js')}: boom`,
+      ),
     );
     expect(failure(project({ 'knip.js': 'process.exit(0);' }))).toBe(
       unread('knip.js', 'knip.js could not be loaded: it ended the process with exit code 0'),
