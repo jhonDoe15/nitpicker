@@ -3,7 +3,6 @@ import {
   CONSTANT_PATTERN_FACTORIES,
   REUSABLE_CONSTRUCTORS,
   REUSABLE_FACTORIES,
-  REUSABLE_OBJECT_MESSAGE,
   REUSABLE_OBJECT_RULE,
   REUSABLE_RESULT_TYPES,
   SETUP_ANNOTATIONS,
@@ -13,14 +12,14 @@ import { annotationIn, stringValue, typeName } from '../../spring/spring-names.m
 import { entriesOf, setupScopes, symbolOf } from '../../spring/spring-scopes.mjs';
 import { springViews } from '../../spring/view/spring-view.mjs';
 
-export const KOTLIN_CONSTRUCTORS = [
+const KOTLIN_CONSTRUCTORS = [
   'com.fasterxml.jackson.module.kotlin.jacksonObjectMapper',
   'com.fasterxml.jackson.module.kotlin.jacksonMapperBuilder',
   'com.fasterxml.jackson.module.kotlin.jsonMapper',
   'kotlinx.serialization.json.Json',
 ];
-export const KOTLIN_PATTERN_CONSTRUCTORS = ['kotlin.text.Regex'];
-export const KOTLIN_PATTERN_FACTORIES = [['java.util.regex.Pattern', ['compile']]];
+const KOTLIN_PATTERN_CONSTRUCTORS = ['kotlin.text.Regex'];
+const KOTLIN_PATTERN_FACTORIES = [['java.util.regex.Pattern', ['compile']]];
 
 const CONSTRUCTED = new Set([...REUSABLE_CONSTRUCTORS, ...KOTLIN_CONSTRUCTORS]);
 const PATTERN_CONSTRUCTED = new Set(KOTLIN_PATTERN_CONSTRUCTORS);
@@ -31,7 +30,11 @@ const PATTERN_FACTORIES = [...CONSTANT_PATTERN_FACTORIES, ...KOTLIN_PATTERN_FACT
 const RESULT_TYPES = new Set([...REUSABLE_RESULT_TYPES, 'Regex', 'Pattern', 'Json']);
 const SETUP = new Set(SETUP_ANNOTATIONS);
 const SETUP_NAMES = new Set(SETUP_METHODS);
-const CACHING_HOSTS = new Set([...CACHING_CALLS, 'lazy', 'getOrPut']);
+const CACHING_HOSTS = new Set([...CACHING_CALLS, 'lazy', 'getOrPut', 'remember']);
+export const KOTLIN_REUSABLE_OBJECT_MESSAGE =
+  'Build this once and reuse it: once built it is safe to share between threads, and building it costs far more than using it. Keep it in a top-level or companion val, a property, a by lazy delegate, or a @Bean.';
+const WORD = /\w+/gu;
+const IDENTIFIER = /^[a-z_]\w*$/u;
 const CONSTANT_NAME = /^[A-Z][A-Z\d_]*$/u;
 const PACKAGE = /^[a-z_]\w*(?:\.[a-z_]\w*)*$/u;
 const THIS = /^this\./u;
@@ -41,7 +44,9 @@ function calledName(invocation) {
   if (invocation.receiver === undefined) {
     return invocation.name;
   }
-  return PACKAGE.test(invocation.receiver) ? `${invocation.receiver}.${invocation.name}` : undefined;
+  return PACKAGE.test(invocation.receiver)
+    ? `${invocation.receiver}.${invocation.name}`
+    : undefined;
 }
 
 function constant(text) {
@@ -52,7 +57,9 @@ function constant(text) {
 function factory(view, invocation, factories) {
   return (
     invocation.receiver !== undefined &&
-    factories.some(([fqns, names]) => names.includes(invocation.name) && view.is(invocation.receiver, fqns))
+    factories.some(
+      ([fqns, names]) => names.includes(invocation.name) && view.is(invocation.receiver, fqns),
+    )
   );
 }
 
@@ -84,7 +91,7 @@ function builds(view, invocation) {
 }
 
 function returnsShared(fn) {
-  return fn.returnType !== undefined && RESULT_TYPES.has(typeName(fn.returnType).split('.').at(-1));
+  return (fn.returnType ?? '').match(WORD)?.some((word) => RESULT_TYPES.has(word)) === true;
 }
 
 function isStart(view, fn) {
@@ -102,9 +109,7 @@ function cached(view, invocation) {
     .chain(invocation.scope)
     .some(
       (scope) =>
-        scope.k === 'lambda' &&
-        CACHING_HOSTS.has(scope.host) &&
-        view.functionAt(scope.id) === fn,
+        scope.k === 'lambda' && CACHING_HOSTS.has(scope.host) && view.functionAt(scope.id) === fn,
     );
 }
 
@@ -118,6 +123,23 @@ function keptInProperty(view, invocation) {
   return ownProperty || (fn !== undefined && !view.declaresLocally(invocation.scope, target));
 }
 
+function returnedByFactory(view, invocation) {
+  const fn = view.functionAt(invocation.scope);
+  return (
+    fn !== undefined &&
+    (fn.returnType ?? undefined) === undefined &&
+    invocation.returned === true &&
+    (invocation.after ?? []).length === 0
+  );
+}
+
+function fromCall(view, invocation) {
+  return invocation.arguments.some(
+    ({ text }) =>
+      IDENTIFIER.test((text ?? '').trim()) && view.declaresLocally(invocation.scope, text.trim()),
+  );
+}
+
 function perCallObjects(view) {
   if (view.file.test) {
     return [];
@@ -129,7 +151,9 @@ function perCallObjects(view) {
       (invocation) =>
         !setup(invocation.scope) &&
         !cached(view, invocation) &&
-        !keptInProperty(view, invocation),
+        !keptInProperty(view, invocation) &&
+        !returnedByFactory(view, invocation) &&
+        !fromCall(view, invocation),
     )
     .map((invocation) => ({
       line: invocation.line,
@@ -146,7 +170,7 @@ export function reusableObjectFindings(files, { finding, declaredIn = files }) {
           file: view.file.file,
           line,
           symbol,
-          message: REUSABLE_OBJECT_MESSAGE,
+          message: KOTLIN_REUSABLE_OBJECT_MESSAGE,
         }),
       ),
   );

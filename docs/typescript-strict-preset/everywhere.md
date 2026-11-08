@@ -549,8 +549,9 @@ Part of the [TypeScript strict preset guide](../typescript-strict-preset.md).
   call. Building one loads locale data or compiles schemas each time, and with fixed options one
   shared instance does the same work. Allowed: module scope, a class field, a static block, a
   constructor, a module-level IIFE, a `useMemo`, `useState`, `once`, `memoize` or `lazy` callback, a
-  function that returns it, `??=`/`||=`, an assignment to a member or an outer variable, and
-  `map.set(key, ...)`. Arguments that read a parameter or local (a locale from the request) are not
+  function that returns it (also inside a returned object literal, or through a local that a returned
+  object or function uses), `??=`/`||=`, an assignment to a member or an outer variable, and
+  `map.set(key, ...)` (also of a local, the get-or-create cache). Arguments that read a parameter or local (a locale from the request) are not
   reported. `new RegExp(constant)` is not reported: engines cache compiled patterns, and
   `nitpicker/no-shared-stateful-regex` wants a `g` or `y` regex created where it is used. The Java,
   Kotlin and Python presets report the same mistake as `pmd/ReusableObjectPerCall` and

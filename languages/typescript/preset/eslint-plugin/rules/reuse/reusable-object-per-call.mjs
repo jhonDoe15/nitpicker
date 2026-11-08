@@ -27,7 +27,11 @@ function globalName(context, node, name) {
 }
 
 function intlType(context, callee) {
-  if (callee.type !== 'MemberExpression' || callee.computed || callee.property.type !== 'Identifier') {
+  if (
+    callee.type !== 'MemberExpression' ||
+    callee.computed ||
+    callee.property.type !== 'Identifier'
+  ) {
     return undefined;
   }
   const owner = callee.object;
@@ -85,7 +89,8 @@ function leafConstant(context, node) {
 function constantArguments(context, node) {
   const pending = [...node.arguments];
   for (const current of pending) {
-    const value = current === undefined || current === null ? undefined : resolveConstant(context, current);
+    const value =
+      current === undefined || current === null ? undefined : resolveConstant(context, current);
     if (value === undefined || !leafConstant(context, value) || pending.length > MAX_PARTS) {
       return false;
     }
@@ -106,45 +111,75 @@ function runsOnce(fn) {
 }
 
 function declaredOutside(context, target, fn) {
-  const variable = target.type === 'Identifier' ? findVariable(context, target, target.name) : undefined;
+  const variable =
+    target.type === 'Identifier' ? findVariable(context, target, target.name) : undefined;
   const declaration = variable?.defs.at(0)?.node;
   return declaration !== undefined && !ancestorsOf(declaration).includes(fn) && declaration !== fn;
 }
 
-function kept(context, node, fn) {
+function isStoreCall(node, value) {
+  return (
+    node.type === 'CallExpression' &&
+    node.callee.type === 'MemberExpression' &&
+    !node.callee.computed &&
+    node.callee.property.name === 'set' &&
+    node.arguments.includes(value)
+  );
+}
+
+function handedOut(node, fn) {
   const { parent } = node;
   if (parent.type === 'ReturnStatement' || (parent === fn && fn.body === node)) {
     return true;
+  }
+  if (parent.type === 'Property' && parent.value === node) {
+    return handedOut(parent.parent, fn);
+  }
+  return isStoreCall(parent, node);
+}
+
+function inReturnedFunction(identifier, fn) {
+  return ancestorsOf(identifier).some(
+    (ancestor) => isFunctionNode(ancestor) && ancestor !== fn && handedOut(ancestor, fn),
+  );
+}
+
+function escapes(context, target, fn) {
+  const variable =
+    target.type === 'Identifier' ? findVariable(context, target, target.name) : undefined;
+  return (variable?.references ?? []).some(
+    ({ identifier }) => handedOut(identifier, fn) || inReturnedFunction(identifier, fn),
+  );
+}
+
+function kept(context, node, fn) {
+  const { parent } = node;
+  if (handedOut(node, fn)) {
+    return true;
+  }
+  if (parent.type === 'VariableDeclarator' && parent.init === node) {
+    return escapes(context, parent.id, fn);
   }
   if (parent.type === 'AssignmentExpression' && parent.right === node) {
     return (
       KEEPING_OPERATORS.has(parent.operator) ||
       parent.left.type === 'MemberExpression' ||
-      declaredOutside(context, parent.left, fn)
+      declaredOutside(context, parent.left, fn) ||
+      escapes(context, parent.left, fn)
     );
   }
-  return (
-    parent.type === 'CallExpression' &&
-    parent.callee.type === 'MemberExpression' &&
-    !parent.callee.computed &&
-    parent.callee.property.name === 'set' &&
-    parent.arguments.includes(node)
-  );
+  return false;
+}
+
+function isIife(fn) {
+  return fn.parent.type === 'CallExpression' && fn.parent.callee === fn;
 }
 
 function enclosingFunction(node) {
-  for (const ancestor of ancestorsOf(node)) {
-    if (ONCE_PLACES.has(ancestor.type)) {
-      return undefined;
-    }
-    if (isFunctionNode(ancestor)) {
-      const iife = ancestor.parent.type === 'CallExpression' && ancestor.parent.callee === ancestor;
-      if (!iife) {
-        return ancestor;
-      }
-    }
-  }
-  return undefined;
+  const place = ancestorsOf(node).find(
+    (ancestor) => ONCE_PLACES.has(ancestor.type) || (isFunctionNode(ancestor) && !isIife(ancestor)),
+  );
+  return place !== undefined && isFunctionNode(place) ? place : undefined;
 }
 
 function perCall(context, node) {

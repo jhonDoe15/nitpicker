@@ -1,9 +1,9 @@
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { REUSABLE_OBJECT_MESSAGE } from '../../../../../messages/reuse/reusable-objects.mjs';
-import { run } from '../../test-support/facts.mjs';
-import { reusableObjectFindings } from './reusable-objects.mjs';
+import { REUSABLE_OBJECT_RULE } from '../../../../../messages/reuse/reusable-objects.mjs';
+import { routed, run } from '../../test-support/facts.mjs';
+import { KOTLIN_REUSABLE_OBJECT_MESSAGE, reusableObjectFindings } from './reusable-objects.mjs';
 
 const PROJECT = path.resolve(
   import.meta.dirname,
@@ -35,10 +35,12 @@ describe('ReusableObjectPerCall on Kotlin sources', () => {
       `Formats.words.Regex ${String(lineOf('fun words'))}`,
       `Formats.digits.toRegex ${String(lineOf('fun digits'))}`,
       `Formats.quoted.compile ${String(lineOf('fun quoted'))}`,
-      `Formats.unmarshal.newInstance ${String(lineOf('JAXBContext.newInstance(type).create'))}`,
+      `Formats.unmarshal.newInstance ${String(lineOf('JAXBContext.newInstance(Formats::class.java)'))}`,
       `Formats.Companion.shared.ObjectMapper ${String(lineOf('fun shared'))}`,
     ]);
-    expect(findings[0].message).toContain(REUSABLE_OBJECT_MESSAGE);
+    expect(findings[0].message).toBe(
+      routed(KOTLIN_REUSABLE_OBJECT_MESSAGE, REUSABLE_OBJECT_RULE, FILE),
+    );
   });
 
   it.each([
@@ -54,6 +56,9 @@ describe('ReusableObjectPerCall on Kotlin sources', () => {
     ['a @PostConstruct function', 'started = jacksonObjectMapper()'],
     ['a companion property', 'val COMPANION'],
     ['main', 'println(ObjectMapper()'],
+    ['a type from a parameter', 'JAXBContext.newInstance(type)'],
+    ['a factory with an inferred type', 'fun inferred()'],
+    ['a function that returns a supplier', 'fun supplier()'],
   ])('leaves %s alone', (_, fragment) => {
     const first = fragment.split('\n')[0];
     const line = lines.findIndex((text) => text.includes(first)) + 1;

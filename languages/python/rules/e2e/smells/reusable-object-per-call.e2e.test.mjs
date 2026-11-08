@@ -2,7 +2,7 @@ import { afterEach, describe, expect, it } from 'vitest';
 import { createScripts } from '../../test-support/python-script-helpers.mjs';
 
 const enabled = process.env.NITPICKER_PYTHON_E2E === '1';
-const { cleanup, outcomes } = createScripts({ hidden: ['pydantic-boundary'] });
+const { cleanup, outcomes } = createScripts({ hidden: ['pydantic-boundary', 'parameter-mutation'] });
 afterEach(cleanup);
 
 const ADAPTER = 'from pydantic import TypeAdapter\n\n\n';
@@ -62,6 +62,21 @@ describe.skipIf(!enabled)('reusable-object-per-call', () => {
       [
         'lazy set on an attribute or a global',
         `${ADAPTER}_NUMBERS = None\n\n\ndef numbers() -> object:\n    global _NUMBERS\n    if _NUMBERS is None:\n        _NUMBERS = TypeAdapter(list[int])\n    return _NUMBERS\n`,
+        [],
+      ],
+      [
+        'a default argument and a decorator argument',
+        `${ADAPTER}def register(adapter: object) -> object:\n    return adapter\n\n\n@register(TypeAdapter(int))\ndef parse(data: bytes, adapter: object = TypeAdapter(list[int])) -> object:\n    return adapter\n`,
+        [],
+      ],
+      [
+        'a dict cache, a tuple of attributes and a returned wrapper',
+        `${ADAPTER}class Reader:\n    def warm(self, cache: dict) -> dict:\n        cache["numbers"] = TypeAdapter(list[int])\n        self.words, self.count = TypeAdapter(list[str]), 1\n        return {"numbers": TypeAdapter(list[int])}\n`,
+        [],
+      ],
+      [
+        'a type declared in the function or in an outer one',
+        `${ADAPTER}def parse(data: bytes) -> object:\n    class Row:\n        pass\n\n    return TypeAdapter(list[Row]).validate_json(data)\n\n\ndef outer(kind: type) -> object:\n    def inner(data: bytes) -> object:\n        return TypeAdapter(kind).validate_json(data)\n\n    return inner\n`,
         [],
       ],
       [
