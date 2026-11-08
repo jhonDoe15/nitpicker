@@ -10,8 +10,8 @@ import {
 import path from 'node:path';
 import { globMatcher } from '../../../shared/paths/glob.mjs';
 import { runJava } from './maven-command.mjs';
+import { nitpickerPitArguments } from '../adapters/tool-config/declared/pit-declared.mjs';
 import { failedCaseEntries, failingTestsError, freshReports } from '../builds/test-failures.mjs';
-import { readPitMutators } from '../builds/java-build.mjs';
 
 const DEFAULT_ARCHUNIT_INCLUDES = '**/*ArchTest.class,**/*ArchitectureTest.class';
 const JUNIT_ENGINE_JAR = /^junit-platform-engine-.+\.jar$/u;
@@ -232,7 +232,7 @@ function pitArgLine(pitDir, args) {
   return ['--argLine', `${quote}@${file}${quote}`];
 }
 
-export function runPit({ module, reportDir, tools, classpaths, isArchunit, spawn }) {
+export function runPit({ module, reportDir, tools, classpaths, isArchunit, configs, spawn }) {
   const pitDir = path.join(reportDir, 'pit');
   rmSync(pitDir, { recursive: true, force: true });
   mkdirSync(pitDir, { recursive: true });
@@ -257,14 +257,11 @@ export function runPit({ module, reportDir, tools, classpaths, isArchunit, spawn
       [...new Set(classpaths.testRuntime)].filter((entry) => existsSync(entry)).join(','),
       '--mutableCodePaths',
       module.outputDirectory,
-      '--mutators',
-      readPitMutators().join(','),
       '--outputFormats',
       'XML',
       '--timestampedReports',
       'false',
-      '--threads',
-      '2',
+      ...(configs?.pit?.arguments ?? nitpickerPitArguments()),
       '--failWhenNoMutations',
       'false',
       '--verbose',

@@ -820,12 +820,11 @@ allprojects {
                           '--sourceDirs', mainSources.files.findAll { it.exists() }.join(','),
                           '--classPath', pitClasspath.join(','),
                           '--mutableCodePaths', classDirs.collect { it.absolutePath }.join(','),
-                          '--mutators', pitMutators.join(','),
                           '--outputFormats', 'XML',
                           '--timestampedReports', 'false',
-                          '--threads', '2',
                           '--failWhenNoMutations', 'false',
-                          '--verbose', 'false'])
+                          '--verbose', 'false'] +
+                        nitpickerSettings('pit', ['--threads', '2', '--mutators', pitMutators.join(',')]))
                     def testJvmArgs = (source.jvmArgs ?: []) +
                         source.systemProperties.collect { key, value ->
                             (value == null ? "-D${key}" : "-D${key}=${value}").toString() } +

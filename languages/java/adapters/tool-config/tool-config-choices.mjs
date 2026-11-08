@@ -80,5 +80,6 @@ export function toolConfigProperties(projectRoot, policy = {}, { directory, chec
       choices.errorprone,
       path.join(directory, 'errorprone-settings.json'),
     ),
+    ...settingsProperty('pit', choices.pit, path.join(directory, 'pit-settings.json')),
   ];
 }
