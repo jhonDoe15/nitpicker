@@ -1,4 +1,4 @@
-import { withoutAnsi } from './terminal-text.mjs';
+import { withoutAnsi } from './terminal/terminal-text.mjs';
 
 const MAX_CAUSE_DEPTH = 3;
 const MAX_CAUSE_LINES = 10;
