@@ -368,6 +368,14 @@
                         "structure/exported-name-collision",
                         "sibling-copy-edit",
                         "structure/sibling-copy-edit",
+                        "shared-used-by-one-feature",
+                        "coupling/shared-used-by-one-feature",
+                        "feature-internal-import",
+                        "coupling/feature-internal-import",
+                        "shared-imports-feature",
+                        "coupling/shared-imports-feature",
+                        "feature-cycle",
+                        "coupling/feature-cycle",
                         "test-only-export",
                         "dead-code/test-only-export",
                         "coupling/test-only-export",
@@ -1336,6 +1344,9 @@
                     "class-fields-limit",
                     "inheritance-depth-limit",
                     "shared-used-by-one-feature",
+                    "feature-internal-import",
+                    "shared-imports-feature",
+                    "feature-cycle",
                     "duplicate-definition",
                     "sibling-copy-edit",
                     "exported-name-collision",
@@ -1536,6 +1547,9 @@
                     "class-fields-limit",
                     "inheritance-depth-limit",
                     "shared-used-by-one-feature",
+                    "feature-internal-import",
+                    "shared-imports-feature",
+                    "feature-cycle",
                     "duplicate-definition",
                     "sibling-copy-edit",
                     "exported-name-collision",
@@ -1710,6 +1724,14 @@
                             "structure/exported-name-collision",
                             "sibling-copy-edit",
                             "structure/sibling-copy-edit",
+                            "shared-used-by-one-feature",
+                            "coupling/shared-used-by-one-feature",
+                            "feature-internal-import",
+                            "coupling/feature-internal-import",
+                            "shared-imports-feature",
+                            "coupling/shared-imports-feature",
+                            "feature-cycle",
+                            "coupling/feature-cycle",
                             "test-only-export",
                             "dead-code/test-only-export",
                             "coupling/test-only-export",
@@ -1943,6 +1965,14 @@
                             "structure/exported-name-collision",
                             "sibling-copy-edit",
                             "structure/sibling-copy-edit",
+                            "shared-used-by-one-feature",
+                            "coupling/shared-used-by-one-feature",
+                            "feature-internal-import",
+                            "coupling/feature-internal-import",
+                            "shared-imports-feature",
+                            "coupling/shared-imports-feature",
+                            "feature-cycle",
+                            "coupling/feature-cycle",
                             "test-only-export",
                             "dead-code/test-only-export",
                             "coupling/test-only-export",
@@ -2145,8 +2175,7 @@
               "sourceRoots": false,
               "testRoots": false,
               "excludedGlobs": false,
-              "entryPoints": false,
-              "sharedRoots": false
+              "entryPoints": false
             }
           },
           "tools": {
@@ -2250,6 +2279,14 @@
                         "structure/exported-name-collision",
                         "sibling-copy-edit",
                         "structure/sibling-copy-edit",
+                        "shared-used-by-one-feature",
+                        "coupling/shared-used-by-one-feature",
+                        "feature-internal-import",
+                        "coupling/feature-internal-import",
+                        "shared-imports-feature",
+                        "coupling/shared-imports-feature",
+                        "feature-cycle",
+                        "coupling/feature-cycle",
                         "test-only-export",
                         "dead-code/test-only-export",
                         "coupling/test-only-export",
@@ -2291,23 +2328,7 @@
           "kotlin": false,
           "go": false,
           "spring": false
-        },
-        "allOf": [
-          {
-            "if": {
-              "not": {
-                "required": ["history"],
-                "properties": {
-                  "history": {
-                    "required": ["coChange"],
-                    "properties": { "coChange": { "const": true } }
-                  }
-                }
-              }
-            },
-            "then": { "properties": { "layout": { "properties": { "featureRoots": false } } } }
-          }
-        ]
+        }
       }
     },
     {
@@ -2405,6 +2426,14 @@
                             "structure/exported-name-collision",
                             "sibling-copy-edit",
                             "structure/sibling-copy-edit",
+                            "shared-used-by-one-feature",
+                            "coupling/shared-used-by-one-feature",
+                            "feature-internal-import",
+                            "coupling/feature-internal-import",
+                            "shared-imports-feature",
+                            "coupling/shared-imports-feature",
+                            "feature-cycle",
+                            "coupling/feature-cycle",
                             "test-only-export",
                             "dead-code/test-only-export",
                             "coupling/test-only-export",
@@ -2667,6 +2696,12 @@
         "structure/inheritance-depth-limit",
         "shared-used-by-one-feature",
         "coupling/shared-used-by-one-feature",
+        "feature-internal-import",
+        "coupling/feature-internal-import",
+        "shared-imports-feature",
+        "coupling/shared-imports-feature",
+        "feature-cycle",
+        "coupling/feature-cycle",
         "duplicate-definition",
         "structure/duplicate-definition",
         "sibling-copy-edit",
