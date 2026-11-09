@@ -22,7 +22,7 @@
     "src/main/java/probe/G10Finally.java": "package probe;\n\npublic class G10Finally {\n  public int pick() {\n    try {\n      return 1;\n    } finally {\n      return 2;\n    }\n  }\n\n  public void fail() {\n    try {\n      System.getProperty(\"a\");\n    } finally {\n      throw new IllegalStateException(\"x\");\n    }\n  }\n}\n",
     "src/main/java/probe/G11Catch.java": "package probe;\n\nimport java.io.IOException;\n\npublic class G11Catch {\n  public void read() {\n    try {\n      load();\n    } catch (IOException e) {\n      throw new IllegalStateException(\"failed\");\n    }\n  }\n\n  private void load() throws IOException {\n    throw new IOException(\"x\");\n  }\n}\n",
     "src/main/java/probe/G12Worker.java": "package probe;\n\npublic class G12Worker {\n  public static final G12Worker SHARED = new G12Worker();\n  private final String label;\n\n  public G12Worker() {\n    new Thread(G12Worker::work).start();\n    label = \"worker\";\n  }\n\n  public String label() {\n    return label;\n  }\n\n  private static void work() {}\n}\n",
-    "src/main/java/probe/G13Guards.java": "package probe;\n\nimport java.sql.Connection;\nimport java.sql.PreparedStatement;\nimport java.sql.SQLException;\nimport java.sql.Statement;\nimport java.util.List;\nimport java.util.Optional;\n\npublic class G13Guards {\n  boolean find(Connection connection, String name) throws SQLException {\n    try (Statement statement = connection.createStatement()) {\n      return statement.execute(\"select * from users where name = '\" + name + \"'\");\n    }\n  }\n\n  boolean prepare(Connection connection, String name) throws SQLException {\n    try (PreparedStatement statement =\n        connection.prepareStatement(\"select * from users where name = '\" + name + \"'\")) {\n      return statement.execute();\n    }\n  }\n\n  boolean big(int size) {\n    if (size == 42) {\n      return true;\n    }\n    return false;\n  }\n\n  int tags(Optional<List<String>> tags) {\n    return tags.map(List::size).orElse(0);\n  }\n}\n",
+    "src/main/java/probe/G13Guards.java": "package probe;\n\nimport java.sql.Connection;\nimport java.sql.PreparedStatement;\nimport java.sql.SQLException;\nimport java.sql.Statement;\nimport java.util.List;\nimport java.util.Optional;\n\npublic class G13Guards {\n  boolean find(Connection connection, String name) throws SQLException {\n    try (Statement statement = connection.createStatement()) {\n      return statement.execute(\"select * from users where name = '\" + name + \"'\");\n    }\n  }\n\n  boolean prepare(Connection connection, String name) throws SQLException {\n    try (PreparedStatement statement =\n        connection.prepareStatement(\"select * from users where name = '\" + name + \"'\")) {\n      return statement.execute();\n    }\n  }\n\n  boolean big(int size) {\n    boolean exact = false;\n    if (size == 42) {\n      exact = true;\n    }\n    return exact;\n  }\n\n  int tags(Optional<List<String>> tags) {\n    return tags.map(List::size).orElse(0);\n  }\n}\n",
     "src/main/java/probe/G1Mutable.java": "package probe;\n\npublic class G1Mutable {\n  public static final String[] NAMES = {\"a\", \"b\"};\n  public static final int[] LOCAL = {1, 2};\n\n  public static int local() {\n    return LOCAL.length;\n  }\n}\n",
     "src/main/java/probe/G2Stored.java": "package probe;\n\npublic class G2Stored {\n  private String[] names;\n  private int[] values;\n\n  public G2Stored(String[] names) {\n    this.names = names;\n  }\n\n  public void setValues(int[] values) {\n    this.values = values;\n  }\n\n  public int count() {\n    return names.length + values.length;\n  }\n}\n",
     "src/main/java/probe/G3Tags.java": "package probe;\n\npublic class G3Tags {\n  /**\n   * Adds.\n   *\n   * @param a\n   * @return\n   */\n  public int add(int a) {\n    return a;\n  }\n}\n",
@@ -122,7 +122,7 @@
       "tool": "checkstyle",
       "rule": "MagicNumber",
       "path": "src/main/java/probe/G13Guards.java",
-      "line": 25
+      "line": 26
     },
     {
       "tool": "checkstyle",
@@ -1976,13 +1976,13 @@
       "tool": "pmd",
       "rule": "AvoidLiteralsInIfCondition",
       "path": "src/main/java/probe/G13Guards.java",
-      "line": 25
+      "line": 26
     },
     {
       "tool": "pmd",
       "rule": "OptionalAsFieldOrParameter",
       "path": "src/main/java/probe/G13Guards.java",
-      "line": 31
+      "line": 32
     },
     {
       "tool": "pmd",

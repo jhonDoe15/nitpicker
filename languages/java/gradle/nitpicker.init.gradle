@@ -342,6 +342,7 @@ allprojects {
         }
         def kotlinPreset = nitpickerArgument('nitpicker.kotlin') == 'true'
         project.ext.nitpickerReportDir = reportDir
+        project.ext.nitpickerGeneratedSourceSet = { sourceSet -> generatedSourceSet(project, sourceSet) }
         project.ext.nitpickerRelativeToRoot = relativeToRoot
         project.ext.nitpickerAnalysisRoot = analysisRoot
         project.ext.nitpickerCompilerOf = compilerOf
