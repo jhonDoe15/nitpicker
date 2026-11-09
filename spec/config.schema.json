@@ -1016,6 +1016,21 @@
               "items": { "enum": ["project", "nitpicker"] }
             }
           }
+        },
+        "staticcheck": {
+          "description": "Settings of staticcheck.",
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["precedence"],
+          "properties": {
+            "precedence": {
+              "description": "Which config staticcheck uses: \"project\" is your own config file, \"nitpicker\" is the preset's. List each at most once.",
+              "type": "array",
+              "minItems": 1,
+              "uniqueItems": true,
+              "items": { "enum": ["project", "nitpicker"] }
+            }
+          }
         }
       }
     },
@@ -1197,7 +1212,8 @@
               "mutmut": false,
               "coverage": false,
               "gofumpt": false,
-              "goimports": false
+              "goimports": false,
+              "staticcheck": false
             }
           },
           "conventions": {
@@ -1411,7 +1427,8 @@
               "mutmut": false,
               "coverage": false,
               "gofumpt": false,
-              "goimports": false
+              "goimports": false,
+              "staticcheck": false
             }
           },
           "conventions": {
@@ -1625,7 +1642,8 @@
               "mutmut": false,
               "coverage": false,
               "gofumpt": false,
-              "goimports": false
+              "goimports": false,
+              "staticcheck": false
             }
           },
           "conventions": {
@@ -1811,7 +1829,8 @@
               "mutmut": false,
               "coverage": false,
               "gofumpt": false,
-              "goimports": false
+              "goimports": false,
+              "staticcheck": false
             }
           },
           "conventions": {
@@ -1982,6 +2001,7 @@
                             "kotlin-source/RepeatedStringLiteral",
                             "kotlin-source/LogFormatArguments",
                             "kotlin-source/LogExceptionFirst",
+                            "kotlin-source/OperandSlip",
                             "kotlin-source/ProcessWaitWithoutTimeout",
                             "kotlin-source/UnquotedRegexValue",
                             "kotlin-source/PlainTextRegex",
@@ -2171,7 +2191,8 @@
               "ktfmt": false,
               "detekt": false,
               "gofumpt": false,
-              "goimports": false
+              "goimports": false,
+              "staticcheck": false
             }
           },
           "conventions": {
@@ -2431,7 +2452,7 @@
                             "structure/class-fields-limit"
                           ]
                         },
-                        { "pattern": "^(?:vet)/[\\s\\S]" }
+                        { "pattern": "^(?:vet|staticcheck|errcheck|modernize)/[\\s\\S]" }
                       ]
                     }
                   }
