@@ -34,8 +34,17 @@ function baseClassOrm(symbol) {
   )?.[2];
 }
 
+function unseenBases(checker, type, seen) {
+  const fresh = (checker.getBaseTypes(type) ?? []).filter((base) => !seen.has(base));
+  for (const base of fresh) {
+    seen.add(base);
+  }
+  return fresh;
+}
+
 function classOrm(checker, type) {
   const chain = [type];
+  const seen = new Set(chain);
   for (const current of chain) {
     const symbol = current.getSymbol();
     const orm =
@@ -44,7 +53,7 @@ function classOrm(checker, type) {
       return orm;
     }
     if (current.isClassOrInterface()) {
-      chain.push(...(checker.getBaseTypes(current) ?? []).filter((base) => !chain.includes(base)));
+      chain.push(...unseenBases(checker, current, seen));
     }
   }
   return undefined;

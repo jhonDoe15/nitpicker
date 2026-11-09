@@ -96,7 +96,10 @@ function contains(range, offset) {
 function innermost(candidates, offset) {
   return candidates
     .filter(({ range }) => contains(range, offset))
-    .toSorted((left, right) => right.range.start - left.range.start)[0];
+    .reduce(
+      (best, entry) => (best === undefined || entry.range.start > best.range.start ? entry : best),
+      undefined,
+    );
 }
 
 function symbolFinder(scanned, suites) {

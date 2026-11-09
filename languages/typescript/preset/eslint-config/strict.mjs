@@ -161,6 +161,24 @@ export function strictSyntaxConfigFor(layout = defaultResolvedLayout, options = 
 
 export const strictSyntaxConfig = strictSyntaxConfigFor();
 
+function typedProductionRules(layout, options) {
+  return {
+    ...typedDeclarationRules,
+    ...controlFlowTypedRules,
+    'nitpicker/no-unhandled-void-promise': [
+      'error',
+      { runners: options.detachedWorkRunners ?? [] },
+    ],
+    'nitpicker/exhaustive-union-predicate': 'error',
+    'nitpicker/no-forwarding-method-alias': 'error',
+    'nitpicker/no-forwarding-wrapper': 'error',
+    'nitpicker/no-service-locator': ['error', { entryPoints: layout.entryPoints ?? [] }],
+    'nitpicker/no-falsy-default': 'error',
+    'nitpicker/no-string-as-regex': 'error',
+    'nitpicker/no-unmapped-exception': 'error',
+  };
+}
+
 function strictTypedConfigFor(layout, parserOptions, options = {}) {
   return [
     {
@@ -168,21 +186,7 @@ function strictTypedConfigFor(layout, parserOptions, options = {}) {
       ...productionScope(layout),
       languageOptions: { parser: tseslint.parser, parserOptions },
       plugins: { '@typescript-eslint': tseslint.plugin, nitpicker: nitpickerRules },
-      rules: {
-        ...typedDeclarationRules,
-        ...controlFlowTypedRules,
-        'nitpicker/no-unhandled-void-promise': [
-          'error',
-          { runners: options.detachedWorkRunners ?? [] },
-        ],
-        'nitpicker/exhaustive-union-predicate': 'error',
-        'nitpicker/no-forwarding-method-alias': 'error',
-        'nitpicker/no-forwarding-wrapper': 'error',
-        'nitpicker/no-service-locator': ['error', { entryPoints: layout.entryPoints ?? [] }],
-        'nitpicker/no-falsy-default': 'error',
-        'nitpicker/no-string-as-regex': 'error',
-        'nitpicker/no-unmapped-exception': 'error',
-      },
+      rules: typedProductionRules(layout, options),
     },
     {
       files: layout.sourceGlobs,

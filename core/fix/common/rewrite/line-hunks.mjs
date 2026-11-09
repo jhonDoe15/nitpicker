@@ -121,12 +121,20 @@ function moves(left, right) {
   );
 }
 
-function withMovedLines(entries, touching) {
-  const kept = [...touching];
-  for (const entry of kept) {
-    kept.push(...entries.filter((other) => !kept.includes(other) && moves(entry, other)));
+function movedInto(kept, entry, other) {
+  if (moves(entry, other)) {
+    kept.add(other);
   }
-  return kept;
+}
+
+function withMovedLines(entries, touching) {
+  const kept = new Set(touching);
+  for (const entry of kept) {
+    for (const other of entries.filter((candidate) => !kept.has(candidate))) {
+      movedInto(kept, entry, other);
+    }
+  }
+  return [...kept];
 }
 
 export function touchedLinesFormatted({ base, live, formatted }) {

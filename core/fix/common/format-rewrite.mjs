@@ -77,13 +77,14 @@ export function rewriteFormatted({ projectRoot, repositoryRoot, mergeBaseSha, fi
     formatted: first.formatted,
     touchedLinesOnly: options.touchedLinesOnly === true,
   });
+  const plannedNames = new Set(planned.map(({ name }) => name));
   const written = planned.filter(({ name, text }) =>
     replaceIfUnchanged(containedPath(projectRoot, name), bytes.get(name), text),
   );
   return {
     rewritten: written.filter(({ partly }) => !partly).map(({ name }) => name),
     partlyRewritten: written.filter(({ partly }) => partly).map(({ name }) => name),
-    keptAsIs: namesOf(differing).filter((name) => !planned.some((entry) => entry.name === name)),
+    keptAsIs: namesOf(differing).filter((name) => !plannedNames.has(name)),
     changedMeanwhile: planned.filter((entry) => !written.includes(entry)).map(({ name }) => name),
     unformattable: first.unformattable ?? [],
     undecodable,
