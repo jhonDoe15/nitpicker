@@ -242,6 +242,7 @@ describe('Kotlin exception rules for the review rules', () => {
       'pmd/RealClockInTest',
       'pmd/RandomInTest',
       'pmd/NetworkInTest',
+      'pmd/SharedTestState',
       'pmd/MockedSubjectInTest',
       'pmd/StaticMockOfProjectType',
       'pmd/SpringUnusedContext',

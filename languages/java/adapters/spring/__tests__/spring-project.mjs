@@ -71,6 +71,7 @@ const REVIEW_RULES = new Set([
   'RandomInTest',
   'NetworkInTest',
   'ServerOrContainerPerTest',
+  'SharedTestState',
   'ExhaustiveEnumPredicate',
   'StaticForwardingWrapper',
   'SingularAndPluralMember',
@@ -100,6 +101,9 @@ const REVIEW_RULES = new Set([
   'SpringUnreleasedResource',
   'SpringStartupCleanup',
   'HttpWithoutTimeout',
+  'ListUsedAsSet',
+  'LinearLookupInLoop',
+  'SortForExtreme',
   'GeneratedMemberCycle',
   'GeneratedEqualsSkipsSuperclass',
 ]);
