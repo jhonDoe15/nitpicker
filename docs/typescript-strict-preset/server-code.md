@@ -39,3 +39,38 @@ user's browser.
   `{ zone }`, `{ in: tz(zone) }`, `.tz(zone)`. A command-line tool that prints local time on
   purpose needs an exception for the rule in `nitpicker.config.json`. An exception for it is
   skipped while the scope is off.
+- `nitpicker/no-uncoerced-request-input`: a number, bigint, boolean or date field read from the
+  query string, path parameters, headers or a multipart form without converting the text. These
+  values always arrive as strings, so a validator that expects a number rejects every request that
+  sets the field, and a cast to boolean turns `"false"` into true. It reads the inputs bound by
+  NestJS `@Query()`, `@Param()` and `@Headers()` (from `@nestjs/common`), `@Body()` in a handler
+  with `FileInterceptor`, `FilesInterceptor`, `AnyFilesInterceptor`, `FileFieldsInterceptor` or an
+  `@UploadedFile(s)` parameter, a zod or valibot schema that parses `req.query`, `req.params` or
+  `req.headers` (also `request`, `ctx`, `ctx.request` and Hono's `c.req.query()`, `param()` and
+  `header()`), a Hono `zValidator` or `vValidator` for `query`, `param`, `header` or `form`, and
+  a Fastify route `schema` whose `querystring`, `params` or `headers` is a zod or valibot schema
+  (a JSON schema passes, since Fastify's Ajv converts by default). It reports a class-validator
+  DTO field with `@IsInt`, `@IsNumber`, `@IsPositive`, `@IsNegative`, `@Min`, `@Max`,
+  `@IsDivisibleBy`, `@IsBoolean`, `@IsDate`, `@MinDate` or `@MaxDate` and no `@Type` or
+  `@Transform`; a zod `number`, `int`, `int32`, `uint32`, `float32`, `float64`, `int64`,
+  `uint64`, `bigint`, `boolean`, `date` or non-string `literal` field (through `optional`,
+  `nullable`, `array`, chained checks and constants; `.or()`, `.and()` and `.catch()` let the
+  field pass, since they accept or replace the text), and the valibot `number`, `bigint`,
+  `boolean` and `date` fields (through `pipe` and the wrappers); `z.coerce.boolean()` and
+  `@Type(() => Boolean)`; and a single NestJS parameter (`@Query('limit') limit: number`) or a
+  type literal parameter typed `number`, `bigint`, `boolean` or `Date` without a pipe that
+  converts it. DTOs built with `createZodDto`, `PartialType`, `PickType`, `OmitType`,
+  `IntersectionType` (key lists also `as const`) or `extends` are followed, and so are type
+  aliases and namespace-qualified names, in other files too when type information is available
+  (otherwise only in the same file). The allowed forms are a conversion at the declaration:
+  `z.coerce.number()` (`z.coerce.number().int()` for `z.int()`), `z.coerce.date()`,
+  `z.stringbool()` (zod 4) or
+  `z.enum(['true', 'false']).transform((value) => value === 'true')`,
+  `v.pipe(v.string(), v.toNumber(), v.number())`, `@Type(() => Number)`, `@Type(() => Date)`,
+  `@Transform(({ value }) => value === 'true')`, and `ParseIntPipe`, `ParseFloatPipe`,
+  `ParseBoolPipe` or `ParseDatePipe` on a single parameter (`{ optional: true }` when it may be
+  missing, `new ParseArrayPipe({ items: Number })` for an array). A property decorator from another
+  package and a pipe the rule does not know (other than `DefaultValuePipe` and `ParseUUIDPipe`)
+  count as converting. A global `ValidationPipe` with `transform` or `enableImplicitConversion`
+  does not make a field pass: it is not visible at the declaration, and implicit conversion turns
+  `"false"` into true.

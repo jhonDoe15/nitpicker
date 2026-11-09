@@ -1,0 +1,7 @@
+[
+  {
+    "tool": "python-rules",
+    "rule": "list-used-as-set",
+    "mention": "set()"
+  }
+]

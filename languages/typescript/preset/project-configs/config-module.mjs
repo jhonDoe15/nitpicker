@@ -1,22 +1,33 @@
 import { spawnSync } from 'node:child_process';
-import { readFileSync } from 'node:fs';
+import { existsSync, mkdtempSync, readFileSync, rmSync, statSync } from 'node:fs';
+import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { isPlainObject } from '../../../../shared/config.mjs';
 import { isRealPathInside, resolveInside } from '../../../../shared/conventions/read-inside.mjs';
 import { HOST_CI_OUTPUT_VARIABLES } from '../../../../core/tooling/host-environment.mjs';
-import { markedPayload } from '../../../../core/tooling/child-output.mjs';
+import {
+  trackTemporaryPath,
+  untrackTemporaryPath,
+} from '../../../../core/tooling/temporary-files.mjs';
 
-const RESULT_MARKER = 'NITPICKER_PROJECT_CONFIG_RESULT ';
-const LOAD_TIMEOUT_MS = 30_000;
-const MAX_OUTPUT_MB = 10;
+const LOAD_TIMEOUT_MS = 60_000;
+const MAX_RESULT_MB = 10;
 const BYTES_PER_MB = 1024 * 1024;
-const MAX_OUTPUT_BYTES = MAX_OUTPUT_MB * BYTES_PER_MB;
+const MAX_RESULT_BYTES = MAX_RESULT_MB * BYTES_PER_MB;
 const REPORT_PREAMBLE = [
-  `const marker = ${JSON.stringify(RESULT_MARKER)};`,
   `for (const name of ${JSON.stringify(HOST_CI_OUTPUT_VARIABLES)}) delete process.env[name];`,
+  "const { renameSync, writeFileSync } = await import('node:fs');",
+  'const [resultFile] = process.argv.splice(1, 1);',
   'const report = (payload) => {',
-  '  const line = `\\n${marker}${JSON.stringify(payload)}\\n`;',
-  '  process.stdout.write(line, () => process.exit(0));',
+  "  const partial = resultFile + '.partial';",
+  '  writeFileSync(partial, JSON.stringify(payload));',
+  '  renameSync(partial, resultFile);',
+  '  process.exit(0);',
+  '};',
+  'const failureOf = (error) => {',
+  '  if (!(error instanceof Error)) return String(error);',
+  '  const cause = error.cause instanceof Error ? [error.cause.message] : [];',
+  "  return [error.message, ...cause].join(': ');",
   '};',
 ];
 
@@ -26,7 +37,7 @@ export function loaderScript(...body) {
     'try {',
     ...body.map((line) => `  ${line}`),
     '} catch (error) {',
-    '  report({ failure: String(error?.message ?? error) });',
+    '  report({ failure: failureOf(error) });',
     '}',
   ].join('\n');
 }
@@ -53,39 +64,57 @@ function parsedJson(file, name) {
   }
 }
 
-function loadFailure(name, result, timeoutMs) {
-  if (result.error?.code === 'ETIMEDOUT') {
-    return `${name} did not finish loading within ${String(timeoutMs / 1000)} s`;
+function endedReason(result) {
+  if (result.error !== undefined) {
+    return result.error.message;
   }
-  if (result.error?.code === 'ENOBUFS') {
-    return `${name} printed more than ${String(MAX_OUTPUT_MB)} MB while loading`;
-  }
-  const reason = result.error?.message ?? `it ended the process with exit code ${result.status}`;
-  return `${name} could not be loaded: ${reason}`;
+  return result.signal === null
+    ? `it ended the process with exit code ${String(result.status)}`
+    : `it ended the process with ${result.signal}`;
 }
 
-export function loadInChild({ script, args, name, projectRoot, timeoutMs = LOAD_TIMEOUT_MS }) {
+function reportedOutcome(name, result, { resultFile, timeoutMs }) {
+  if (result.error?.code === 'ETIMEDOUT') {
+    throw new Error(`${name} did not finish loading within ${String(timeoutMs / 1000)} s`);
+  }
+  if (result.error !== undefined || !existsSync(resultFile)) {
+    throw new Error(`${name} could not be loaded: ${endedReason(result)}`);
+  }
+  if (statSync(resultFile).size > MAX_RESULT_BYTES) {
+    throw new Error(`${name} returned more than ${String(MAX_RESULT_MB)} MB of config`);
+  }
+  return JSON.parse(readFileSync(resultFile, 'utf8'));
+}
+
+function spawnedOutcome({ script, args, name, projectRoot, timeoutMs }, directory) {
+  const resultFile = path.join(directory, 'result.json');
   const result = spawnSync(
     process.execPath,
-    ['--no-warnings', '--input-type=module', '--eval', script, ...args],
+    ['--no-warnings', '--input-type=module', '--eval', script, resultFile, ...args],
     {
       cwd: projectRoot,
-      encoding: 'utf8',
-      input: '',
-      maxBuffer: MAX_OUTPUT_BYTES,
+      stdio: 'ignore',
       timeout: timeoutMs,
       killSignal: 'SIGKILL',
     },
   );
-  const outcome =
-    result.error === undefined ? markedPayload(result.stdout, RESULT_MARKER) : undefined;
-  if (outcome === undefined) {
-    throw new Error(loadFailure(name, result, timeoutMs));
+  return reportedOutcome(name, result, { resultFile, timeoutMs });
+}
+
+export function loadInChild({ timeoutMs = LOAD_TIMEOUT_MS, ...load }) {
+  const directory = trackTemporaryPath(
+    mkdtempSync(path.join(tmpdir(), 'nitpicker-project-config-')),
+  );
+  try {
+    const outcome = spawnedOutcome({ ...load, timeoutMs }, directory);
+    if (outcome.failure !== undefined) {
+      throw new Error(`${load.name} could not be loaded: ${outcome.failure}`);
+    }
+    return outcome.value;
+  } finally {
+    rmSync(directory, { recursive: true, force: true });
+    untrackTemporaryPath(directory);
   }
-  if (outcome.failure !== undefined) {
-    throw new Error(`${name} could not be loaded: ${outcome.failure}`);
-  }
-  return outcome.value;
 }
 
 export function readConfigObject(projectRoot, name, timeoutMs = LOAD_TIMEOUT_MS) {
