@@ -7,7 +7,7 @@ export function crossedCollections(joined) {
   for (const [index, first] of collections.entries()) {
     const second = collections
       .slice(index + 1)
-      .find((other) => !isNested(first, other) && !isNested(other, first));
+      .find((other) => !(isNested(first, other) || isNested(other, first)));
     if (second !== undefined) {
       return { first, second };
     }
