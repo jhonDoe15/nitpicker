@@ -136,6 +136,8 @@ final class Declarations {
         "property", parameter.hasValOrVar() ? (parameter.isMutable() ? "var" : "val") : null,
         "visibility", parameter.hasValOrVar() ? memberVisibility(parameter) : null,
         "line", state.lineOf(parameter.getTextOffset()), "annotations", annotationNames(parameter),
+        "inlining", parameter.hasModifier(KtTokens.CROSSINLINE_KEYWORD) ? "crossinline"
+            : parameter.hasModifier(KtTokens.NOINLINE_KEYWORD) ? "noinline" : null,
         "annotationEntries", annotationEntries(parameter));
   }
 
@@ -210,7 +212,8 @@ final class Declarations {
       state.globals.add(
           m(
               "name", property.getName(), "line", state.lineOf(property.getTextOffset()),
-              "type", clip(property.getTypeReference()), "initializer", Initializers.callee(property)));
+              "type", clip(property.getTypeReference()), "initializer", Initializers.callee(property),
+              "literalText", Initializers.literalText(property)));
     }
     if (!member || property.getName() == null) {
       return;
