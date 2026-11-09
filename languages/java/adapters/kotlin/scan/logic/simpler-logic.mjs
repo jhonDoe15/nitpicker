@@ -1,8 +1,11 @@
 import { closingIndex } from '../kotlin-source.mjs';
+import { ends, isBlockStatement, standsFree } from './kotlin-context.mjs';
 import {
+  bare,
   chainOperator,
   chainParts,
   flippedComparison,
+  foldable,
   negated,
   negatedOperand,
   printed,
@@ -16,8 +19,7 @@ const NEGATED_GROUP = /(?<![\w)\]!])!\s*\(/g;
 const GROUP = /\(/g;
 const RETURN_VALUE = /(?<![\w.@])return\s+([^\n;{}]+)/g;
 const ASSIGNED_VALUE = /(?<![=!<>+\-*/%])=(?!=)\s*([^\n;{}]+)/g;
-const CONTINUED = /^\s*(?:&&|\|\||\?:|\?\.|\.|[+\-*/%<>=!]|(?:as|is|in)\b)/;
-const ELSE = /^\s*else\b/;
+const ELSE = /^\s*else\b(?!\s*->)/;
 const ELSE_IF = /^\s*else\s+if\b/;
 const LITERAL_BRANCH = /^\s*(\{\s*)?(return\s+)?(true|false)\b/;
 const NEXT_RETURN = /^\s*(?:;\s*)?return\s+(true|false)\b/;
@@ -46,10 +48,6 @@ function report(offset, form, swapped = false) {
   };
 }
 
-function ends(code) {
-  return !CONTINUED.test(code);
-}
-
 function literalBranch(code) {
   const match = LITERAL_BRANCH.exec(code);
   if (match === null) {
@@ -67,7 +65,7 @@ function literalBranch(code) {
   };
 }
 
-function literalPair(code, close) {
+function literalPair(code, { start, close }) {
   const rest = code.slice(close + 1);
   const first = literalBranch(rest);
   const afterFirst = first === undefined ? '' : rest.slice(first.length);
@@ -77,21 +75,35 @@ function literalPair(code, close) {
     const second = literalBranch(tail);
     const valid =
       second !== undefined && second.returns === first.returns && ends(tail.slice(second.length));
-    return valid ? { first, second, returns: first.returns } : undefined;
+    const end = code.length - tail.length + (second?.length ?? 0);
+    return valid ? { first, second, returns: first.returns, end } : undefined;
   }
-  const next = first?.returns === true ? (NEXT_RETURN.exec(afterFirst) ?? undefined) : undefined;
+  const next =
+    first?.returns === true && isBlockStatement(code, start)
+      ? (NEXT_RETURN.exec(afterFirst) ?? undefined)
+      : undefined;
   return next !== undefined && ends(afterFirst.slice(next[0].length))
     ? { first, second: { literal: next[1] }, returns: true }
     : undefined;
 }
 
-function booleanReturn(scanned, open, close) {
-  const pair = literalPair(scanned.code, close);
-  if (pair === undefined || pair.first.literal === pair.second.literal) {
+function simplest(condition) {
+  const operand = negatedOperand(condition);
+  return operand === undefined ? printed(condition) : negated(bare(operand));
+}
+
+function booleanReturn(scanned, { start, open, close }) {
+  const pair = literalPair(scanned.code, { start, close });
+  const condition = view(scanned, open + 1, close);
+  if (
+    pair === undefined ||
+    pair.first.literal === pair.second.literal ||
+    !foldable(condition) ||
+    (!pair.returns && !standsFree(scanned.code, start, pair.end))
+  ) {
     return undefined;
   }
-  const condition = view(scanned, open + 1, close);
-  const value = pair.first.literal === 'true' ? printed(condition) : negated(condition);
+  const value = pair.first.literal === 'true' ? simplest(condition) : negated(condition);
   return report(open, pair.returns ? `return ${value}` : value);
 }
 
@@ -109,12 +121,13 @@ function thenBranchEnd(code, close) {
 function swappedIf(scanned, open, close) {
   const { code } = scanned;
   const operand = negatedOperand(view(scanned, open + 1, close));
-  const branch = operand === undefined ? undefined : thenBranchEnd(code, close);
+  const branch =
+    operand === undefined || !foldable(operand) ? undefined : thenBranchEnd(code, close);
   const rest = branch === undefined ? '' : code.slice(branch.end);
   if (!ELSE.test(rest) || ELSE_IF.test(rest)) {
     return undefined;
   }
-  const head = `if (${printed(operand)})`;
+  const head = `if (${printed(bare(operand))})`;
   return report(open, branch.block ? `${head} { … } else { … }` : `${head} … else …`, true);
 }
 
@@ -122,16 +135,26 @@ function ifFindings(scanned) {
   return [...scanned.code.matchAll(IF_HEAD)].flatMap((match) => {
     const open = match.index + match[0].length - 1;
     const close = closingIndex(scanned.code, open);
-    const found = booleanReturn(scanned, open, close) ?? swappedIf(scanned, open, close);
-    return found === undefined ? [] : [{ ...found, offset: match.index }];
+    const found =
+      booleanReturn(scanned, { start: match.index, open, close }) ??
+      swappedIf(scanned, open, close);
+    return found === undefined ? [] : [{ found: { ...found, offset: match.index }, open, close }];
   });
 }
 
-function comparisonFindings(scanned) {
+function comparisonFindings(scanned, conditions) {
   return [...scanned.code.matchAll(NEGATED_GROUP)].flatMap((match) => {
     const open = match.index + match[0].length - 1;
-    const form = flippedComparison(view(scanned, open + 1, closingIndex(scanned.code, open)));
-    return form === undefined ? [] : [report(match.index, form)];
+    const close = closingIndex(scanned.code, open);
+    const group = view(scanned, open + 1, close);
+    const form =
+      foldable(group) && standsFree(scanned.code, match.index, close + 1)
+        ? flippedComparison(group)
+        : undefined;
+    const inReported = conditions.some(
+      (condition) => condition.open < open && open < condition.close,
+    );
+    return form === undefined || inReported ? [] : [report(match.index, form)];
   });
 }
 
@@ -144,7 +167,7 @@ function unwrapped(piece, operator) {
 }
 
 function factored(piece) {
-  const operator = chainOperator(piece);
+  const operator = foldable(piece) ? chainOperator(piece) : undefined;
   const operands = operator === undefined ? [] : chainParts(piece, operator).map(negatedOperand);
   if (operands.length === 0 || operands.includes(undefined)) {
     return undefined;
@@ -196,7 +219,12 @@ function withoutComments(source, comments) {
 /** Boolean logic with a strictly simpler exact form, each finding printing that form. */
 export function simplerBooleanLogic(scanned) {
   const withText = { ...scanned, printable: withoutComments(scanned.source, scanned.comments) };
-  return [...ifFindings(withText), ...comparisonFindings(withText), ...factoredFindings(withText)];
+  const conditions = ifFindings(withText);
+  return [
+    ...conditions.map(({ found }) => found),
+    ...comparisonFindings(withText, conditions),
+    ...factoredFindings(withText),
+  ];
 }
 
 export const kotlinSourceRules = {

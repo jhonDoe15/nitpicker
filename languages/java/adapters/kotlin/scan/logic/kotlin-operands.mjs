@@ -2,7 +2,7 @@ import { closingIndex } from '../kotlin-source.mjs';
 
 const OPENERS = new Set(['(', '[', '{']);
 const LOOSE_OPERATOR =
-  /&&|\|\||[=!]==?|<=?|>=?|\?:|\.\.|[+\-*/%]|(?<![\w.])(?:is|in|as|to|until|downTo|step|and|or|xor|shl|shr)\b/;
+  /[,;]|&&|\|\||[=!]==?|<=?|>=?|\?:|\.\.|[+\-*/%]|(?<![\w.])(?:is|in|as|to|until|downTo|step|and|or|xor|shl|shr)\b/;
 const EQUALITY = /[=!]==?|(?<![\w.])!?(?:is|in)\b/g;
 const FLIPPED = new Map([
   ['==', '!='],
@@ -41,6 +41,20 @@ function topLevel(code) {
   }
   pieces.push(code.slice(cursor));
   return pieces.join('');
+}
+
+/** False when folding the piece onto one line could change it: a raw string or a block across lines. */
+export function foldable(piece) {
+  const { code, text } = trimmed(piece);
+  return !code.includes('\n') || (!text.includes('"""') && !code.includes('{'));
+}
+
+/** The piece without one pair of parentheses around all of it. */
+export function bare(piece) {
+  const whole = trimmed(piece);
+  const grouped =
+    whole.code.startsWith('(') && closingIndex(whole.code, 0) === whole.code.length - 1;
+  return grouped ? trimmed(cut(whole, 1, whole.code.length - 1)) : whole;
 }
 
 export function printed(piece) {
@@ -110,7 +124,7 @@ export function chainParts(piece, operator) {
 export function negated(piece) {
   const operand = negatedOperand(piece);
   if (operand !== undefined) {
-    return printed(operand);
+    return printed(bare(operand));
   }
   if (isTight(piece)) {
     return `!${printed(piece)}`;

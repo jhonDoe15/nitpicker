@@ -81,6 +81,21 @@ describe('simplerBooleanLogic', () => {
       'fun f(a: String): Boolean {\n    return !a.startsWith("x") && !a.endsWith("y")\n}\n',
       [simpler('!(a.startsWith("x") || a.endsWith("y"))', 2)],
     ],
+    [
+      'a negated grouped condition once, without its parentheses',
+      'fun f(a: Int, b: Int) {\n    if (!(a == b)) x() else y()\n}\n',
+      [swapped('if (a == b) … else …', 2)],
+    ],
+    [
+      'a returned negated equality as the flipped equality',
+      'fun f(a: Int, b: Int): Boolean {\n    if (!(a == b)) return true else return false\n}\n',
+      [simpler('return a != b', 2)],
+    ],
+    [
+      'a negated equality passed to a call',
+      'fun f(a: Int, b: Int) = g(!(a == b), 1)\n',
+      [simpler('a != b')],
+    ],
   ])('reports %s', (_name, source, expected) => {
     expect(found(source)).toEqual(expected);
   });
@@ -122,6 +137,36 @@ describe('simplerBooleanLogic', () => {
     ['the form in a comment', 'fun f() = 1 // !(a == b)\n'],
     ['a non-null assertion', 'fun f(a: Int?, x: Int?) = a!!.plus(1) != 2 && x!! == 1\n'],
     ['a negated type check of a negation', 'fun f(a: Boolean) = if (!a is Boolean) 1 else 2\n'],
+    ['a negated equality with a call after it', 'fun f(a: Int, b: Int) = !(a == b).not()\n'],
+    ['a negated equality with a cast after it', 'fun f(a: Any, b: Any) = !(a == b) as Boolean\n'],
+    ['a negated equality after an elvis', 'fun f(c: Boolean?, a: Int, b: Int) = c ?: !(a == b)\n'],
+    ['a negated equality compared again', 'fun f(c: Boolean, a: Int, b: Int) = c == !(a == b)\n'],
+    [
+      'an if expression before an infix call',
+      'fun f(a: Boolean, b: Boolean) = if (a) true else false and b\n',
+    ],
+    [
+      'a raw string across lines',
+      'fun f(a: String): Boolean {\n    if (a == """x\n    y""") return false else return true\n}\n',
+    ],
+    ['a lambda across lines', 'fun f(a: Int) = !(a.let { log()\n    it } == 1)\n'],
+    [
+      'an if that is the body of a loop',
+      'fun f(xs: List<Int>): Boolean {\n    for (x in xs) if (x > 0) return true\n    return false\n}\n',
+    ],
+    [
+      'an if after an else',
+      'fun f(a: Boolean, c: Boolean): Boolean {\n    if (a) log() else if (c) return true\n    return false\n}\n',
+    ],
+    [
+      'an if in a when branch before the else branch',
+      'fun f(a: Boolean, c: Boolean) {\n    when {\n        c -> if (!a) x()\n        else -> y()\n    }\n}\n',
+    ],
+    ['an and of negations next to a comma', 'fun f(a: Boolean, b: Boolean) = g(!a&&!b,1)\n'],
+    [
+      'a chain that goes on with an infix call',
+      'fun f(a: Boolean, b: Boolean, c: Boolean) {\n    val x = !a || !b\n        and c\n}\n',
+    ],
   ])('leaves %s alone', (_name, source) => {
     expect(found(source)).toEqual([]);
   });
