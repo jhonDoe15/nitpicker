@@ -1,0 +1,7 @@
+[
+  {
+    "tool": "ruff",
+    "rule": "FURB192",
+    "mention": "min(xs)"
+  }
+]

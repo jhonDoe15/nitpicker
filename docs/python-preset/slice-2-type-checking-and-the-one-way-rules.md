@@ -61,7 +61,7 @@ through the real tools.
   `Ignoring [tool.pyright] in pyproject.toml except its environment keys; opt in with ...` once. The code is in
   `languages/python/adapters/project-tools/`.
 - **Lint rules.** `languages/python/ruff/nitpicker-ruff.toml` selects, besides slice 1's rules,
-  `PTH`, `UP031`, `UP032`, `FLY002` and `BLE001`, and ignores `F405`
+  `PTH`, `UP031`, `UP032`, `FLY002`, `FURB192` and `BLE001`, and ignores `F405`
   (the star import itself is `F403`), `SIM105` (the `swallowed-exception` rule below covers that
   form) and `RUF100` (every `noqa` is already a finding). `S110` and `S112` are not selected:
   `swallowed-exception` reports what they did, and more, once and under one id. The shared
