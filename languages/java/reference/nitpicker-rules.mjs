@@ -39,6 +39,7 @@ const SAMPLE_DETAILS = {
   'ddd-value-object-reference': '<Entity>',
   'spring-request-state': '<field>:<mutator>:<request source>',
   'spring-typed-request-field': '<Type>.<field>:field:<Controller>.<method>',
+  'spring-unmapped-exception': '<method>:<Exception>:<Service>.<method>',
 };
 const TEST_RULES = new Set(['spring-test-placement', 'spring-no-dirties-context']);
 const DDD_PREFIX = 'ddd-';

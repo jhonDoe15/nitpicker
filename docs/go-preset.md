@@ -1,7 +1,8 @@
 # Go preset
 
-Status: slices GO1 (ticket #414) and GO7 (ticket #433) implemented. The remaining slices are listed under
-[Remaining slices](#remaining-slices).
+Status: slices GO1 (ticket #414) and GO7 (ticket #433) implemented, and the first part of slice GO2
+(#415): staticcheck, errcheck, modernize and the extra `golang.org/x/tools` passes. The remaining
+slices are listed under [Remaining slices](#remaining-slices).
 
 The Go preset gates a Go module (`go.mod` at the project root) with the same differential gate as
 the other presets: run the tools on the merge base and on head, turn each report into findings,
@@ -26,10 +27,11 @@ The project provides Go on the `PATH` (`go version` must work). Its `GOTOOLCHAIN
 `go env -w` counts too, and nitpicker adds only `-buildvcs=false` to it, because a snapshot is not
 always a git checkout. A missing toolchain is a `go/go-missing` tool error (exit 2), not a crash.
 
-The pinned gofumpt and goimports need Go 1.26 or later to build. An older `go` with the default
-`GOTOOLCHAIN=auto` downloads that toolchain for the build; with `GOTOOLCHAIN=local` the build fails
-as a `go/go-tool-install-failed` tool error. A project that pins the formatter with a `tool`
-directive runs its own version instead.
+The pinned gofumpt and goimports need Go 1.26 or later to build, and the lint program Go 1.27
+(see [How it works](#how-it-works)). An older `go` with the default `GOTOOLCHAIN=auto` downloads
+that toolchain for the build; with `GOTOOLCHAIN=local` the build fails as a
+`go/go-tool-install-failed` tool error (`go/go-lint-build-failed` for the lint program). A project
+that pins the formatter with a `tool` directive runs its own version instead.
 
 ## How it works
 
@@ -39,6 +41,7 @@ node core/cli.mjs go-analyzer --project-root <snapshot>   (per snapshot)
   -> inspect <module root> inspect.json           structure metrics (languages/go/inspect)
   -> <formatter> -l <files>                        format check, one per formatter
   -> go vet -json ./...                            compile errors and vet diagnostics
+  -> lint ./...                                    staticcheck, errcheck, modernize (languages/go/lint)
   -> go test -vet=off -json -race -covermode=atomic -coverpkg=./... -coverprofile=coverage.out ./...
   -> readGoFindings -> applyFindingPolicy -> compareFindings(base, head)
 ```
@@ -61,6 +64,16 @@ module's files and measures every function, function literal and type. golangci-
 it is GPL-3.0 licensed, so the preset runs the permissively licensed tools it bundles directly
 (slice GO2).
 
+**Lint program.** `languages/go/lint` is a second Go program that loads the module's packages once
+(`golang.org/x/tools/go/packages`, test files included) and runs every linter in
+[Linters](#linters) over them. Its module pins staticcheck 2026.2.2 (`honnef.co/go/tools` v0.8.2,
+MIT), errcheck v1.30.0 (MIT) and `golang.org/x/tools` v0.52.0 (BSD-3-Clause) in its `go.sum`, and
+it needs Go 1.27 to build: with an older `go` and the default `GOTOOLCHAIN=auto` the build downloads
+Go 1.27, and with `GOTOOLCHAIN=local` it fails as a `go/go-lint-build-failed` tool error. When the
+project's own toolchain (`go env GOVERSION`) is newer than Go 1.27, the program is built with that
+toolchain, so its type checker reads every language feature the project may use. It is built once
+per source hash and toolchain into the nitpicker cache.
+
 ## What runs
 
 | Check                  | Tool                      | Finding                                                                             |
@@ -68,6 +81,10 @@ it is GPL-3.0 licensed, so the preset runs the permissively licensed tools it bu
 | Format                 | gofmt, gofumpt, goimports | `<formatter>/format`, one per file                                                  |
 | Compile errors         | `go vet`                  | `build/compile-error` at the position the compiler names                            |
 | Vet                    | `go vet` (all analyzers)  | `vet/<analyzer>`, for example `vet/printf`                                          |
+| More vet passes        | lint program              | `vet/<analyzer>`, for example `vet/nilness`                                         |
+| staticcheck            | lint program              | `staticcheck/<check>`, for example `staticcheck/SA4006`                             |
+| Unchecked errors       | lint program (errcheck)   | `errcheck/unchecked`                                                                |
+| Modern forms           | lint program (modernize)  | `modernize/<analyzer>`, for example `modernize/rangeint`                            |
 | Failing tests          | `go test -json`           | `tests/tests-failed` tool error quoting each failure                                |
 | Data races             | `go test -race`           | `race/data-race`, one per pair of conflicting functions                             |
 | No tests ran           | `go test -json`           | `tests/no-tests-ran`                                                                |
@@ -208,11 +225,80 @@ Packages more than 4 levels below the module root fail `folder-depth-limit`, lik
 `testdata` and `vendor` folders, folders starting with `.` or `_`, and folders with their own
 `go.mod` (another module) are skipped, as the go tool skips them.
 
+## Linters
+
+The lint program runs these, each message followed by the allowed form where the tool's own
+message does not already name it, and by its exception entry:
+
+- **staticcheck**: every check in SA, S, ST and QF, and U1000 (unused code), including the ones
+  staticcheck leaves off by default (SA9003 empty branches, ST1000 package comments, ST1003 names,
+  ST1016 receiver names, ST1020 to ST1022 doc comments). The QF checks are the forms gopls offers as
+  quick fixes (tagged switches, `strings.ReplaceAll`, `time.Time.Equal`, declaring a variable from
+  its condition), so each one narrows a choice to one form. ST1013 has no allowed status codes:
+  every status is written with its `http.Status...` constant, 200 and 404 included. ST1000 is a
+  finding on the package folder, not on whichever file staticcheck picks, so adding a file does
+  not make it new.
+- **errcheck** with blank assignments (`_ = f()`) and type assertions (`x.(T)` without `, ok`)
+  checked: every error is returned, handled or joined into a named error result
+  (`defer func() { err = errors.Join(err, file.Close()) }()`).
+- **modernize**: the suite `go fix` applies (`any`, `for range n`, `min`/`max`, `slices.Contains`,
+  `maps.Copy`, `strings.Cut`, `t.Context()`, `WaitGroup.Go` and the rest). Each applies only
+  where the file's Go version allows the new form; `go fix ./...` rewrites them.
+- **More `golang.org/x/tools` passes** that `go vet` leaves out: deepequalerrors, gofixdirective,
+  httpmux, inline (calls to functions marked `//go:fix inline`), nilness, reflectvaluecompare,
+  scannererr, sqlrowserr and unusedwrite.
+
+The linters skip generated files (`// Code generated ... DO NOT EDIT.`), as staticcheck does; a
+package of only generated files needs no package comment. An analyzer that fails on a package that
+builds is a `go/go-lint-failed` tool error, never a silent pass. `//lint:ignore` and `//nolint`
+comments do nothing: the only way past a finding is an
+`exceptions` entry a person accepts.
+
+**Off, with the reason.** Each of these reports the same problem as a check that runs:
+
+| Check                                                                  | Reason                                                                                                                            |
+| ---------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------- |
+| SA1014, SA1017, SA2000, SA2002, SA4018, SA4021, SA5009, SA5010, SA9006 | `go vet` reports the same code (unmarshal, sigchanyzer, waitgroup, testinggoroutine, assign, appends, printf, ifaceassert, shift) |
+| S1029                                                                  | SA6003 reports the same loop                                                                                                      |
+| ST1023                                                                 | QF1011 reports the same declaration                                                                                               |
+| SA5005                                                                 | never reports on current Go versions; `runtime.AddCleanup` replaces finalizers                                                    |
+| vet `sortslice`                                                        | SA1028 reports the same call                                                                                                      |
+| vet `shadow`                                                           | flags the idiomatic `if err := f(); err != nil` inside a function with an outer `err`                                             |
+| vet `fieldalignment`, `atomicalign`                                    | memory layout, not one way to write code; SA1027 covers 32-bit atomics                                                            |
+| modernize `appendclipped`, `bloop`, `fmtappendf`, `slicesdelete`       | left out of the suite upstream (not nil-preserving, or less clear)                                                                |
+
+**Overlaps on one line.** When two checks report the same line, the more specific one stays:
+
+| Kept                                 | Dropped                            |
+| ------------------------------------ | ---------------------------------- |
+| SA4011 (break in a switch in a loop) | S1023 (redundant break)            |
+| S1037 (elaborate sleep)              | S1000 (single-case select)         |
+| SA4010 (append result unused)        | SA4006 (value never used)          |
+| SA4031, SA5000                       | vet `nilness`                      |
+| SA5001, SA9001 (defer Close)         | errcheck                           |
+| S1018 (sliding copy loop)            | modernize `rangeint`               |
+| vet `gofixdirective`                 | vet `inline` on the same directive |
+| `go vet` printf                      | SA1006 (Go 1.24 and later modules) |
+
+**Project config.** `staticcheck.conf` files are read only when the project opts in with
+`"tools": { "staticcheck": { "precedence": ["project"] } }`. Then each package's merged
+configuration decides which checks report there (its `checks` list, as staticcheck reads it) and
+its initialisms, dot-import and status-code lists apply, and every `staticcheck.conf` in the
+repository counts as policy, so editing one is a policy change a person accepts. A file that does
+not parse is a `go/go-lint-failed` tool error that names it.
+
+**Fixtures.** `languages/go/lint/fixtures` holds, for every check that runs, a file with a line
+that fails (marked `// want <check>`) and the allowed form, which must pass every check. The lint
+program's Go test fails when a marked line is not reported, when any other line is, or when a
+check has no fixture. `fixtures/legacy` (Go 1.14) and `fixtures/next` (Go 1.27) hold the checks
+that apply only before or after a Go version.
+
 ## Exceptions
 
 The top-level `exceptions` take a finding as it is printed, `<tool>/<rule>` (`vet/printf`), as in
 the Java preset, plus the shared rules (the function, type, file and folder limits, `slow-test`, and
-the repository checks). Every vet, limit and slow-test message ends with its exception entry, for
+the repository checks). Every vet, staticcheck, errcheck, modernize, limit and slow-test message
+ends with its exception entry, for
 example `{"rule":"vet/printf","paths":["shop/label.go"],"reason":"..."}`. Format findings,
 compile errors and `no-tests-ran` have no exception route: run the formatter, fix the build, or
 add a test.
@@ -224,6 +310,7 @@ add a test.
 | `go.formatters`                                          | `gofmt`, `gofumpt` and/or `goimports`; pins the format check |
 | `go.buildTags`                                           | build tags passed as `-tags` to vet and the tests            |
 | `tools.gofumpt.precedence`, `tools.goimports.precedence` | read the formatter's options from the golangci-lint config   |
+| `tools.staticcheck.precedence`                           | read the project's `staticcheck.conf` files                  |
 | `thresholds`, `exclude`, `exceptions`, `legacyInventory` | shared with every preset                                     |
 
 `react` and `i18n` (TypeScript only), `layout` (Go packages follow the module, so there are no
@@ -232,34 +319,39 @@ with `"preset": "go"`, each naming its reason.
 
 ## Tests of the preset
 
-- Unit tests next to the adapters (`languages/go/adapters/**.test.mjs`) and the metrics program's
-  own Go tests (`languages/go/inspect/inspect_test.go`).
+- Unit tests next to the adapters (`languages/go/adapters/**.test.mjs`), the metrics program's
+  own Go tests (`languages/go/inspect/inspect_test.go`) and the lint program's fixture tests
+  (`languages/go/lint/lint_test.go`).
 - End-to-end suites in `languages/go/adapters/e2e/`, run with `npm run test:go` (they need Go on the
   `PATH` and skip without `NITPICKER_GO_E2E=1`). They build throwaway git repositories and run
   the real CLI on them: a clean change, gofmt, vet, a compile error, a nested function next to an
   untouched legacy one, exceptions, failing and slow tests, build tags, gofumpt from a golangci-lint
-  file, a change that adopts gofumpt, a missing toolchain, a new data race, a race the merge base
-  already had, and cgo turned off. CI runs them in the `go-e2e` workflow.
+  file, a change that adopts gofumpt, a missing toolchain, the linters' findings and messages, a
+  `staticcheck.conf` that is ignored until the project opts in, a new data race, a race the merge
+  base already had, and cgo turned off. CI runs them in the `go-e2e` workflow.
 
 ## Remaining slices
 
-| #   | Slice                                           | Scope                                                                                                                                                                        |
-| --- | ----------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| GO1 | Base (#414)                                     | This document: done.                                                                                                                                                         |
-| GO2 | Linters (#415)                                  | staticcheck (every check, including the off-by-default ones that fit), revive, errcheck, gosec and the permissively licensed `go/analysis` linters, in one program.          |
-| GO3 | One-way rules (#416)                            | nitpicker's own analyzers for the forms Go still leaves open (error wrapping and comparison, constructors, receivers, loops, context), each message naming the allowed form. |
-| GO4 | Coverage, CRAP and mutation (#417)              | changed-branch coverage and CRAP from the coverage profile; mutation testing.                                                                                                |
-| GO5 | Duplicates, coupling, dead code, modules (#418) | clones, package coupling and stability, unused code, and `go mod tidy -diff`.                                                                                                |
-| GO6 | Shared guards and test honesty (#419)           | the guards the other presets share (secrets in code, path joins, subprocess timeouts, test assertions), after GO3.                                                           |
-| GO7 | Race detector (#433)                            | This document: done.                                                                                                                                                         |
+| #   | Slice                                           | Scope                                                                                                                                                                                                            |
+| --- | ----------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| GO1 | Base (#414)                                     | This document: done.                                                                                                                                                                                             |
+| GO2 | Linters (#415)                                  | Part 1 done: staticcheck, errcheck, modernize and the extra `golang.org/x/tools` passes (see [Linters](#linters)). Next: revive, gosec and the permissively licensed `go/analysis` linters, in the same program. |
+| GO3 | One-way rules (#416)                            | nitpicker's own analyzers for the forms Go still leaves open (error wrapping and comparison, constructors, receivers, loops, context), each message naming the allowed form.                                     |
+| GO4 | Coverage, CRAP and mutation (#417)              | changed-branch coverage and CRAP from the coverage profile; mutation testing.                                                                                                                                    |
+| GO5 | Duplicates, coupling, dead code, modules (#418) | clones, package coupling and stability, unused code, and `go mod tidy -diff`.                                                                                                                                    |
+| GO6 | Shared guards and test honesty (#419)           | the guards the other presets share (secrets in code, path joins, subprocess timeouts, test assertions), after GO3.                                                                                               |
+| GO7 | Race detector (#433)                            | This document: done.                                                                                                                                                                                             |
 
 ## Known limits
 
 - One module per run: the module at the project root. A nested module (its own `go.mod`) and a
   `go.work` workspace's other modules are not analyzed.
-- Generated files are listed but not measured or format-checked; they still compile and vet.
+- Generated files are listed but not measured, format-checked or linted; they still compile and vet.
 - The tools are built from the Go module proxy on first use, so the first run needs network access
-  (or a `GOPROXY` the project sets) and takes longer.
+  (or a `GOPROXY` the project sets) and takes longer. The lint program needs Go 1.27, so a project
+  on an older toolchain downloads it once with `GOTOOLCHAIN=auto`.
+- The linters run on the whole module for both snapshots; a finding is new when its message and
+  line text are new, as for vet.
 - The race detector finds only the races the tests exercise, on the interleavings that happen in
   that run. A race the merge base has but its run did not hit shows as new on head. A base whose
   tests failed treats head's races outside the changed lines as unknown on the base, as it does

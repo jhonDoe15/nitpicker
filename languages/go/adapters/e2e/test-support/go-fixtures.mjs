@@ -86,7 +86,7 @@ export const NESTED = `package shop
 
 func Grade(score int, bonus int) string {
 	if score > 0 {
-		for i := 0; i < bonus; i++ {
+		for i := range bonus {
 			if score+i > 90 {
 				return "A"
 			}

@@ -57,8 +57,11 @@ Limits, all chosen to flag less rather than guess:
   `supplyAsync`, `startVirtualThread`, `newThread`, `timer`, `fixedRateTimer` or a mock answer (`thenAnswer`,
   `doAnswer`, `answers`, `coAnswers`), in a `run` override of a `Thread`, or in a test fake that implements or extends a class of the project's main sources
   (in any module of the build) is allowed. A sleep in an inline lambda (`run`, `let`, `also`, `apply`, `with`,
-  `repeat`, `takeIf`, `takeUnless`, `use`, `synchronized`, `forEach`, `forEachIndexed`, `onEach`) is judged by
-  the loop or body around that lambda. A `for` over a collection is not a polling loop, as in the Java rule.
+  `repeat`, `takeIf`, `takeUnless`, `use`, `synchronized`, `forEach`, `forEachIndexed`, `onEach`), or in the
+  lambda of an `inline` function declared in the project whose lambda parameters are neither `crossinline`
+  nor `noinline` (when every project function of that name is one, and the name is not one of the hosts
+  above), is judged by the loop or body around that lambda. A `for` over a collection is not a polling loop,
+  as in the Java rule.
   `delay` is judged inside `runBlocking`, and inside a block that leaves the test scheduler (see
   [Test honesty](#test-honesty)); `runTest` runs it in virtual time. Only test sources are
   read: a sleep in main sources is `detekt.style.ForbiddenMethodCall` (see [One-way rules](one-way-rules.md)).
@@ -72,8 +75,11 @@ Limits, all chosen to flag less rather than guess:
 - Forwarding wrappers: the body is one call that passes every parameter, in order and by name or position
   and without a default, vararg, spread or lambda, to a function with the same parameter types. The target is
   a top-level, `object` or `companion` function declared in the project (matched by name, owner and
-  parameter types; imports are not checked), or any function called through a type name
-  (`Math.abs(x)`, `Foo.make(x)` for a companion), whose signature cannot be verified. Skipped:
+  parameter types; a top-level target counts when the wrapper's file can see it, through the same package,
+  an import of it or of its package with `*`, and an `object` or `companion` target unless the call names
+  another type), or any other function called through a type name, also written with its package
+  (`Math.abs(x)`, `java.util.Objects.requireNonNull(x)`, `Foo.make(x)` for a companion), whose
+  signature cannot be verified. Skipped:
   functions with a receiver, type parameters, annotations, defaults, varargs, no parameters, local
   functions, `override`, `operator`, `infix`, `inline`, `open`, `abstract`, `actual` and `expect`; the names
   `main`, `valueOf`, `fromString`, `of`, `from`, `invoke` and `copy`; copies such as `copyOf`,
@@ -134,8 +140,14 @@ Limits, all chosen to flag less rather than guess:
   body of a property getter, or the condition of an `if` that has an `else` and is itself one of those.
   Backticked constants (``Status.`in` ``) are matched by their name. A test in a property initializer is
   named after the property (`Holder.isOpen`), as it is in a getter.
-- Unused option: a defaulted parameter that no call sets by name or position (matched by name and through
-  an import alias). A call that cannot match the signature is ignored, a call with a spread sets every
+- Unused option: a defaulted parameter that no call sets by name or position. A call counts when its name
+  matches and its receiver fits. A call through an import alias of the function always counts. A top-level
+  function or extension counts only from a file that can see it (the same package, an import of it or of its
+  package with `*`), and a top-level function that is not an extension only without a receiver or through
+  its package. A function of an `object` or companion counts without a receiver and through any receiver
+  except another type name (`Other.pad(...)`, also written with its package); a type name that is the object
+  (by its name, an import alias or a typealias) counts, and so does `this`. A call that cannot match the
+  signature is ignored, a call with a spread sets every
   parameter, and a `copy(name = ...)` call sets that parameter of a data class. Functions that are
   `override`, `open`, `abstract`, `operator`, `infix`, `main` or annotated are never judged, nor are names
   with a callable reference or that a Java file mentions. Two kinds of declarations are judged:

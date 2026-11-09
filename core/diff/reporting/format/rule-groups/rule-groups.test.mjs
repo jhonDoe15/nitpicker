@@ -356,7 +356,19 @@ describe('finding areas', () => {
       'coverage-py',
       'mutmut',
     ],
-    go: ['gofmt', 'gofumpt', 'goimports', 'build', 'vet', 'tests', 'race', 'facts'],
+    go: [
+      'gofmt',
+      'gofumpt',
+      'goimports',
+      'build',
+      'vet',
+      'staticcheck',
+      'errcheck',
+      'modernize',
+      'tests',
+      'race',
+      'facts',
+    ],
   };
 
   it.each(Object.entries(PRESET_TOOLS))(
