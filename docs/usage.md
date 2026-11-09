@@ -414,6 +414,83 @@ exception entries. `--details` prints every finding with its full message instea
 `report.txt`, the JSON reports and SARIF always keep. `--all` prints `report.txt` itself, so
 `--details` changes nothing there.
 
+### JSON output
+
+`--json` prints one JSON object on stdout instead of the console summary, for agents and scripts.
+Progress, warnings and GitHub annotations go to stderr, the reports are written as usual, and the
+exit codes stay the same. It works for comparison runs and `--all`. The object is printed on one
+line; here it is spread out:
+
+```json
+{
+  "mode": "diff",
+  "status": "failed",
+  "exitCode": 1,
+  "base": { "ref": "origin/main", "source": "remote-head" },
+  "counts": { "failing": 2, "byArea": { "lint": 1, "coverage": 1 }, "reportOnly": 0, "held": 3 },
+  "findings": [
+    {
+      "tool": "eslint-lint",
+      "rule": "nitpicker/no-magic-numbers",
+      "path": "src/main/pricing.ts",
+      "line": 4,
+      "column": 20,
+      "message": "No magic number: 3. Name it with a module-level constant.",
+      "allowedForm": "Name it with a module-level constant.",
+      "exception": {
+        "rule": "nitpicker/no-magic-numbers",
+        "paths": ["src/main/pricing.ts"],
+        "reason": "..."
+      },
+      "helpUri": "https://github.com/jhonDoe15/nitpicker/blob/latest/docs/rules/typescript-nitpicker.md#eslint-nitpicker-no-magic-numbers"
+    },
+    {
+      "tool": "coverage",
+      "rule": "changed-branch-coverage",
+      "path": "src/main/pricing.ts",
+      "line": 4,
+      "message": "Branch coverage is 0.00%; minimum is 95%. Test it, or remove it if it can't happen. Not taken: the true arm of the if at 4:5.",
+      "allowedForm": "Test it, or remove it if it can't happen.",
+      "exception": {
+        "rule": "changed-branch-coverage",
+        "paths": ["src/main/pricing.ts"],
+        "function": "price",
+        "reason": "..."
+      },
+      "helpUri": "https://github.com/jhonDoe15/nitpicker/blob/latest/docs/rules/checks.md#coverage-changed-branch-coverage"
+    }
+  ],
+  "toolErrors": [],
+  "reports": "/work/shop/reports/quality/diff"
+}
+```
+
+- `status` is `passed` (exit 0), `failed` (exit 1: failing findings or failing tests) or `error`
+  (exit 2: a tool error left the run incomplete). `exitCode` is the exit code of the process, 0
+  with `--defer-exit`.
+- `findings` lists the failing findings only, each message on one line. When `exception` carries
+  the entry that accepts a finding, the message leaves out the sentence that names it;
+  `exceptionList` is set when the entry goes to `python.exceptions`. `line`, `column`,
+  `allowedForm`, `exception` and `helpUri` are left out when the finding has none. Mutants fold as
+  in the console summary: one entry per function for the mutants no test runs and at most three
+  surviving ones, each folded entry marked `"folded": true`, while `counts.failing` counts every
+  mutant.
+- `counts.byArea` counts the failing findings per area, in the order to fix them. Report-only and
+  held findings are counts only; the files in `reports` list them.
+- `toolErrors` gives each error's `tool`, `snapshot` (`head` or `base`), `rule` when it has one
+  (such as failing tests) and `headline`, its first line.
+- A comparison run has `base`, and `"noChanges": true` when nothing changed since the merge base.
+  `--all` has no `base` and no `counts.held`. A run narrowed with `--analyzer` adds
+  `partialRun: { ran, skipped }`.
+- A run that stops before it has a result, such as on an unknown argument, prints
+  `{"status":"error","exitCode":2,"error":"..."}`.
+- `--fix` lists the fixed files on stderr. A shard job prints the result of its shard; the JSON of
+  the whole run is not printed by `nitpicker aggregate`, which reads the shard reports. `--help` and
+  `--version` print as usual.
+
+The schema is [`spec/json-output.schema.json`](../spec/json-output.schema.json), also exported by
+the package as `nitpicker/spec/json-output.schema.json`.
+
 ### Reports
 
 A comparison run writes these files to `reports/quality/diff/`:
@@ -584,7 +661,7 @@ automatically.
 
 ```text
 nitpicker [<path>...] [--base <ref>] [--output <dir>] [--all | --fix]
-          [--analyzer <name>]... [--rule <substring>]... [--details]
+          [--analyzer <name>]... [--rule <substring>]... [--details] [--json]
           [--shard-count <n> --shard-index <i>] [--defer-exit] [--no-cache]
           [--accept-policy-change=<digest>] [--help] [--version]
 nitpicker init [--agents-md] [--ci github] [--help]
@@ -602,8 +679,11 @@ nitpicker rules [--preset <name>] [--tool <name>]
 - `--all`: report every finding in the current checkout, with no baseline. Exits 1 on any violation.
   Cannot be combined with `--base`, `--fix`, sharding or `--defer-exit`.
 - `--fix`: apply ESLint and Prettier fixes to the changed files in your checkout, using the gate's
-  own configs, then run the comparison. A fixer that fails is reported as a tool error; the other
-  fixer and the comparison still run. Cannot be combined with `--all`.
+  own configs, then run the comparison. Each fixer touches only the changed files its check covers:
+  ESLint the files `eslint-lint` lints, Prettier the files `prettier-format` checks, so a changed
+  `src/README.md` or a script outside the source and test roots is left as it is. A fixer that
+  fails is reported as a tool error; the other fixer and the comparison still run. Cannot be
+  combined with `--all`.
 - `--base <ref>`: the ref to compare against.
 - `--analyzer <name>`: run only this analyzer and the analyzers it depends on (repeatable). Cannot
   be combined with sharding. A narrowed run says so: the console, `report.txt` and the GitHub step
@@ -614,6 +694,8 @@ nitpicker rules [--preset <name>] [--tool <name>]
 - `--rule <substring>`: list the findings whose rule matches, after the summary (repeatable).
 - `--details`: print every new finding with its full message, and every held finding, in the
   console summary (see [Console summary](#console-summary)).
+- `--json`: print one compact JSON object on stdout instead of the console summary (see
+  [JSON output](#json-output)).
 - `--output <dir>`: where reports go.
 - `--shard-count <n>`, `--shard-index <i>` and `--defer-exit`: run one shard of a split run; see
   [Sharding in CI](#sharding-in-ci).
@@ -632,9 +714,11 @@ nitpicker rules [--preset <name>] [--tool <name>]
   another head, so they are never accepted this way. On a GitHub pull request the
   `accept-policy-change` label sets it (see
   [Accepting a policy change with a label](ci.md#accepting-a-policy-change-with-a-label)).
-- `--help`: list the commands and the flags of each with a one-line description, and exit 0.
-  `nitpicker init --help`, `nitpicker aggregate --help`, `nitpicker cache publish --help`,
-  `nitpicker explain --help` and `nitpicker rules --help` print the help of that command.
+- `--help` (or `-h`): print one screen and exit 0: the commands and flags with a one-line
+  description, the analyzers `--analyzer` takes in the project a run would check (the preset of its
+  `nitpicker.config.json`, `typescript` without one, minus `disable`, plus custom analyzers), the
+  exit codes, the report files to read first, a few example runs and a link to this page for the
+  installed version. `nitpicker <command> --help` (or `-h`) prints the options of that command.
 - `--version`: print the version of the installed nitpicker.
 
 The other commands:
