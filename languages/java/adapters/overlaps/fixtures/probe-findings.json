@@ -1498,6 +1498,12 @@
     },
     {
       "tool": "pmd",
+      "rule": "ConfigurationReadOutsideCompositionRoot",
+      "path": "src/main/java/probe/G10Finally.java",
+      "line": 14
+    },
+    {
+      "tool": "pmd",
       "rule": "DoNotThrowExceptionInFinally",
       "path": "src/main/java/probe/G10Finally.java",
       "line": 15
