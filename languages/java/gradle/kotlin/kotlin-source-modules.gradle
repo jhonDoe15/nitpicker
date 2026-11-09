@@ -63,6 +63,8 @@ afterEvaluate {
         }
     }
 
+    def published = { project.extensions.findByName('publishing')?.publications?.isEmpty() == false }
+
     tasks.register('nitpickerKotlinPsi') {
         group = 'nitpicker'
         doLast {
@@ -85,7 +87,8 @@ afterEvaluate {
             def roots = main.dirs.collect { relative(it) } + test.dirs.collect { 'test:' + relative(it) }
             shared.runProcess('KotlinPsi', [new File(System.getProperty('java.home'), 'bin/java').absolutePath,
                     '-Djava.awt.headless=true', "-Dnitpicker.kotlinCompiler=${shared.pinned.kotlinCompiler}".toString(),
-                    "-Dnitpicker.kotlinPsi.excluded=${excludedList.absolutePath}".toString(), '-cp',
+                    "-Dnitpicker.kotlinPsi.excluded=${excludedList.absolutePath}".toString(),
+                    "-Dnitpicker.published=${published()}".toString(), '-cp',
                     compiler + File.pathSeparator + classes.absolutePath, 'nitpicker.kotlinpsi.KotlinPsi',
                     metrics.absolutePath, facts.absolutePath, analysisRoot.absolutePath] + roots,
                 projectDir)
@@ -119,6 +122,7 @@ afterEvaluate {
                 resourceRoots        : [],
                 kotlin               : true,
                 kotlinSourceModule   : true,
+                published            : published(),
                 kotlinSourceRoots    : main.dirs.collect { relative(it) },
                 kotlinTestSourceRoots: test.dirs.collect { relative(it) },
                 kotlinExcludedFiles  : excluded().collect { relative(it) },

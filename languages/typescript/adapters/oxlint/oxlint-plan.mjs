@@ -1,8 +1,7 @@
 import { globSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { ESLint } from 'eslint';
-import { oxlintBinary, spawnJson } from './oxlint-process.mjs';
-import { PROBE_TIMEOUT_MS } from '../../../../shared/processes/deadlines.mjs';
+import { listNativeRules } from './plan/rule-listing.mjs';
 import { parsedTsconfig } from '../../preset/modules/tsconfig-files.mjs';
 
 const [projectRoot, ...patterns] = process.argv.slice(2);
@@ -19,17 +18,11 @@ try {
   process.exitCode = 2;
 }
 
-function listedNativeRules() {
-  return spawnJson([oxlintBinary(), '--rules', '--format', 'json', import.meta.filename], {
-    cwd: import.meta.dirname,
-    env: process.env,
-    context: 'oxlint --rules',
-    timeoutMs: PROBE_TIMEOUT_MS,
-  });
-}
-
 async function lintPlan(root, globs) {
-  const [nativeRules, plan] = await Promise.all([listedNativeRules(), filePlan(root, globs)]);
+  const [nativeRules, plan] = await Promise.all([
+    listNativeRules(process.env),
+    filePlan(root, globs),
+  ]);
   return { ...plan, nativeRules };
 }
 

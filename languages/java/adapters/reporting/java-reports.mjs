@@ -16,8 +16,10 @@ import { readErrorProneFindings } from '../errorprone/java-errorprone.mjs';
 import { readInlineSuppressionFindings } from '../suppressions/java-suppressions.mjs';
 import { readSpringConfigFindings } from '../spring/java-spring.mjs';
 import { readSpringArchFindings } from '../spring-arch/spring-arch.mjs';
+import { featureFaceMatcher } from '../spring-arch/contract-types.mjs';
 import { exceptionMatcher } from '../../../../shared/rules/exceptions.mjs';
 import { inModule } from '../../builds/module-path.mjs';
+import { testRunFindings } from '../test-runs/test-run-findings.mjs';
 import { readJavaStructureFindings } from '../metrics/java-structure.mjs';
 import { methodText } from '../../../../shared/ingest/structure-report.mjs';
 import { readClassLimitFindings } from '../size/class-limits.mjs';
@@ -30,9 +32,6 @@ import {
 } from './function-locator.mjs';
 import { checkstyleFindings, formatFindings } from './format-findings.mjs';
 import { withoutMainMethodFindings } from './entry-point/main-method.mjs';
-import { readSlowTestFindings } from '../test-times/slow-tests.mjs';
-import { readTestConsoleFindings } from '../test-times/console-findings.mjs';
-import { readUnrunTestFindings } from '../test-runs/unrun-tests.mjs';
 import { readDocCommentFindings } from '../doc-comments/doc-comment-findings.mjs';
 import { ingestJacoco } from '../../ingest/coverage-reports/jacoco.mjs';
 import { ingestPit } from '../../ingest/pit.mjs';
@@ -118,13 +117,18 @@ function moduleContextFindings(projectRoot, module, { manifest, modules, options
       conventions: options.conventions,
       javaStyle: options.javaStyle,
       classLimits: { thresholds, exceptions, modulePath },
-      jacoco: module.manifest.testsFailed === true ? undefined : readModuleJacoco(module, preset),
+      quick: options.quick === true,
+      jacoco:
+        options.quick === true || module.manifest.testsFailed === true
+          ? undefined
+          : readModuleJacoco(module, preset),
       mainCheckstyle: readMainCheckstyle(projectRoot, module, preset),
       testTimes: {
         limits: options.testSeconds,
         baseline: options.baseline,
         modulePath,
       },
+      featureLayout: { layout: options.featureLayout, modulePath },
       testConsole: {
         allow: options.testConsoleAllow,
         exceptions: options.exceptions,
@@ -157,20 +161,13 @@ function readModuleFindings(context, crapLimit) {
     ...archunitFindings(context),
     ...springArchFindings(context),
     ...ifTested(jacoco, (report) => crapFindings(context, report, crapLimit)),
-    ...pitFindings(context),
+    ...(context.quick ? [] : pitFindings(context)),
     ...readJavaStructureFindings(reportRoot, projectRoot),
     ...readDocCommentFindings({ projectRoot, manifest: context.manifest, kotlin }),
     ...readClassLimitFindings(reportRoot, context.classLimits),
     ...ifTested(jacoco, (report) => branchFindings(context, report)),
     ...(kotlin ? readKotlinFindings(context, crapLimit) : []),
-    ...readSlowTestFindings({ reportRoot, projectRoot, testRoots, ...context.testTimes }),
-    ...readTestConsoleFindings({ reportRoot, projectRoot, testRoots }, context.testConsole),
-    ...readUnrunTestFindings({
-      reportRoot,
-      projectRoot,
-      manifest: context.manifest,
-      modulePath: context.testTimes.modulePath,
-    }),
+    ...testRunFindings(context, { reportRoot, projectRoot, testRoots }),
   ];
 }
 
@@ -223,6 +220,8 @@ function springArchFindings(context) {
   const matches = exceptionMatcher(exceptions);
   return readSpringArchFindings(context.reportRoot, {
     resolvePath: (className, fileName) => sourceFileOf(locate, className, fileName),
+    spring: context.manifest.spring === true,
+    isFeatureFace: featureFaceMatcher(context.featureLayout),
     isExcepted: (rule, file) => file !== undefined && matches(rule, inModule(modulePath, file)),
   });
 }
