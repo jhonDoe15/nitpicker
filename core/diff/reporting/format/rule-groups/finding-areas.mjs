@@ -34,6 +34,7 @@ const AREA_TOOLS = [
       'staticcheck',
       'errcheck',
       'modernize',
+      'revive',
       'coding-standards',
       'entry-points',
       'dependency-architecture',

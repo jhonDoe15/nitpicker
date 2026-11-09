@@ -34,16 +34,18 @@ describe.skipIf(!goE2eEnabled)('Go preset linters end to end', () => {
     removeWorkspace(workspace);
   });
 
-  it('fails staticcheck, errcheck and modernize findings with the allowed form', () => {
+  it('fails staticcheck, errcheck, modernize and revive findings with the allowed form', () => {
     const result = gate(project, 'lint');
     expect(newFindings(result)).toEqual([
       'errcheck/unchecked shop/lookup.go',
       'modernize/any shop/lookup.go',
+      'revive/enforce-map-style shop/lookup.go',
       'staticcheck/S1003 shop/lookup.go',
     ]);
     expect(newMessages(result)).toEqual([
       'unchecked error. Handle the error: return it (wrapped with `%w`), or join it into a named error result in a deferred call, `defer func() { err = errors.Join(err, file.Close()) }()`. Assign a type assertion to two values, `value, ok := x.(T)`. If this is intended, add {"rule":"errcheck/unchecked","paths":["shop/lookup.go"],"reason":"..."} to "exceptions" in nitpicker.config.json.',
       'interface{} can be replaced by any. `go fix ./...` applies this rewrite. If this is intended, add {"rule":"modernize/any","paths":["shop/lookup.go"],"reason":"..."} to "exceptions" in nitpicker.config.json.',
+      'use map[type]type{} instead of make(map[type]type). Write `map[K]V{}`; keep `make` only with a size: `make(map[K]V, n)`. If this is intended, add {"rule":"revive/enforce-map-style","paths":["shop/lookup.go"],"reason":"..."} to "exceptions" in nitpicker.config.json.',
       'should use strings.Contains(name, "-") instead. If this is intended, add {"rule":"staticcheck/S1003","paths":["shop/lookup.go"],"reason":"..."} to "exceptions" in nitpicker.config.json.',
     ]);
   });
@@ -52,6 +54,7 @@ describe.skipIf(!goE2eEnabled)('Go preset linters end to end', () => {
     expect(newFindings(gate(project, 'conf-ignored'))).toEqual([
       'errcheck/unchecked shop/lookup.go',
       'modernize/any shop/lookup.go',
+      'revive/enforce-map-style shop/lookup.go',
       'staticcheck/S1003 shop/lookup.go',
     ]);
   });
@@ -63,6 +66,7 @@ describe.skipIf(!goE2eEnabled)('Go preset linters end to end', () => {
       'modernize/any shop/lookup.go',
       'nitpicker-config/policy-loosened nitpicker.config.json',
       'nitpicker-config/policy-loosened nitpicker.config.json',
+      'revive/enforce-map-style shop/lookup.go',
     ]);
     expect(
       newMessages(result)
