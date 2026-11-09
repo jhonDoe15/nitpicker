@@ -31,6 +31,7 @@ import { stylingApproaches } from '../../languages/typescript/preset/eslint-conf
 import { i18nRuleIds } from '../../languages/typescript/preset/eslint-config/i18n/i18n-rules.mjs';
 import { validateScope, validateTestConsole } from './scopes/scope-settings.mjs';
 import { validateHistory } from './scopes/history-settings.mjs';
+import { validateProtocols } from './scopes/protocols/protocol-settings.mjs';
 import { TYPESCRIPT_PRESETS, validateLayout } from './scopes/layout-settings.mjs';
 import { didYouMean, suggestionOrAllowed } from '../../shared/messages/closest-match.mjs';
 
@@ -67,6 +68,7 @@ export const KEYS = [
   'python',
   'tools',
   'testConsole',
+  'protocols',
   'kotlin',
   'spring',
   'conventions',
@@ -99,6 +101,7 @@ export function validateConfig(config) {
   validateReact(config.react);
   validateI18n(config.i18n);
   validateTestConsole(config.testConsole);
+  validateProtocols(config.protocols);
   validateHistory(config.history);
   validateOptional(config);
   validateProjectConventions(config);
