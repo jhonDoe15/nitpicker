@@ -1,10 +1,12 @@
-import { existsSync, readFileSync, readdirSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
+import { projectFilePaths } from '../../../../../shared/project-files/project-files.mjs';
 import { readManifest } from '../../eslint-config/scope-support.mjs';
 import { globMatcher } from '../../layout.mjs';
 import { pnpmPackagePatterns } from './pnpm-workspace.mjs';
 
 const PNPM_WORKSPACE = 'pnpm-workspace.yaml';
+const MANIFEST = 'package.json';
 const MAX_WORKSPACE_DEPTH = 4;
 const PUBLISH_FIELDS = ['main', 'exports', 'bin', 'files', 'publishConfig'];
 
@@ -41,19 +43,14 @@ function isSkippedDirectory(relative, layout) {
   );
 }
 
-function childDirectories(root, { relative, depth }, layout) {
-  if (depth >= MAX_WORKSPACE_DEPTH) return [];
-  return readdirSync(path.join(root, relative), { withFileTypes: true })
-    .filter((entry) => entry.isDirectory())
-    .map((entry) => (relative === '' ? entry.name : `${relative}/${entry.name}`))
-    .filter((child) => !isSkippedDirectory(child, layout))
-    .map((child) => ({ relative: child, depth: depth + 1 }));
-}
-
 function directoriesUnder(root, layout) {
-  const found = [{ relative: '', depth: 0 }];
-  for (const directory of found) found.push(...childDirectories(root, directory, layout));
-  return found.slice(1).map(({ relative }) => relative);
+  const manifests = projectFilePaths(root, {
+    skipDirectory: (absolute) =>
+      isSkippedDirectory(path.relative(root, absolute).split(path.sep).join('/'), layout),
+  }).filter((file) => path.posix.basename(file) === MANIFEST);
+  return [...new Set(manifests.map((file) => path.posix.dirname(file)))].filter(
+    (directory) => directory !== '.' && directory.split('/').length <= MAX_WORKSPACE_DEPTH,
+  );
 }
 
 function memberDirectories(root, layout) {

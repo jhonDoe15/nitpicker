@@ -29,6 +29,7 @@
     "src/main/java/probe/G6Named.java": "package probe;\n\nclass Misnamed {\n  int one() {\n    return 1;\n  }\n}\n",
     "src/main/java/probe/G7Flag.java": "package probe;\n\npublic class G7Flag {\n  public int pick(boolean flag) {\n    boolean b;\n    if (b = flag) {\n      return 1;\n    }\n    return b ? 2 : 3;\n  }\n}\n",
     "src/main/java/probe/G9Loop.java": "package probe;\n\nimport java.util.Iterator;\nimport java.util.List;\n\npublic class G9Loop {\n  public int sum(List<Integer> items) {\n    int total = 0;\n    for (Iterator<Integer> it = items.iterator(); it.hasNext(); ) {\n      total += it.next();\n    }\n    return total;\n  }\n}\n",
+    "src/main/java/probe/Guarded.java": "package probe;\n\npublic class Guarded {\n  private int count;\n\n  public synchronized void add() {\n    count++;\n  }\n\n  public synchronized void twice() {\n    count += 2;\n  }\n\n  public synchronized int count() {\n    return count;\n  }\n\n  public void reset() {\n    count = 0;\n  }\n}\n",
     "src/main/java/probe/HashOnly.java": "package probe;\n\npublic class HashOnly {\n  @Override\n  public int hashCode() {\n    return 1;\n  }\n}\n",
     "src/main/java/probe/Hiding.java": "package probe;\n\npublic class Hiding extends Fields {\n  public String name = \"h\";\n  private String inner;\n\n  public static class Base {\n    public String name = \"b\";\n  }\n\n  public static class Sub extends Base {\n    public String name = \"s\";\n\n    @Override\n    public String toString() {\n      return null;\n    }\n  }\n\n  public String inner() {\n    return inner;\n  }\n}\n",
     "src/main/java/probe/Immut.java": "package probe;\n\nimport java.math.BigDecimal;\nimport java.math.BigInteger;\n\npublic class Immut {\n  public void ops(BigDecimal d, BigInteger i, String s) {\n    d.add(BigDecimal.ONE);\n    i.add(BigInteger.ONE);\n    s.trim();\n  }\n}\n",
@@ -1432,6 +1433,12 @@
     },
     {
       "tool": "pmd",
+      "rule": "SwallowedInterrupt",
+      "path": "src/main/java/probe/C4Switches.java",
+      "line": 34
+    },
+    {
+      "tool": "pmd",
       "rule": "OneDeclarationPerLine",
       "path": "src/main/java/probe/C4Switches.java",
       "line": 39
@@ -1561,6 +1568,30 @@
       "rule": "ForLoopCanBeForeach",
       "path": "src/main/java/probe/G9Loop.java",
       "line": 9
+    },
+    {
+      "tool": "pmd",
+      "rule": "AvoidSynchronizedAtMethodLevel",
+      "path": "src/main/java/probe/Guarded.java",
+      "line": 10
+    },
+    {
+      "tool": "pmd",
+      "rule": "AvoidSynchronizedAtMethodLevel",
+      "path": "src/main/java/probe/Guarded.java",
+      "line": 14
+    },
+    {
+      "tool": "pmd",
+      "rule": "InconsistentFieldLocking",
+      "path": "src/main/java/probe/Guarded.java",
+      "line": 19
+    },
+    {
+      "tool": "pmd",
+      "rule": "AvoidSynchronizedAtMethodLevel",
+      "path": "src/main/java/probe/Guarded.java",
+      "line": 6
     },
     {
       "tool": "pmd",
@@ -1951,6 +1982,12 @@
       "rule": "DoNotTerminateVM",
       "path": "src/main/java/probe/V1Style.java",
       "line": 41
+    },
+    {
+      "tool": "pmd",
+      "rule": "SwallowedInterrupt",
+      "path": "src/main/java/probe/V1Style.java",
+      "line": 47
     },
     {
       "tool": "pmd",
@@ -2402,6 +2439,13 @@
       "path": "src/main/java/probe/G2Stored.java",
       "line": 8,
       "symbol": "new probe.G2Stored(String[])#names"
+    },
+    {
+      "tool": "spotbugs",
+      "rule": "IS2_INCONSISTENT_SYNC",
+      "path": "src/main/java/probe/Guarded.java",
+      "line": 19,
+      "symbol": "probe.Guarded.count"
     },
     {
       "tool": "spotbugs",

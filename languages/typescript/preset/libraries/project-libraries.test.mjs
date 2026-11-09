@@ -2,9 +2,15 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
+import {
+  nestedCheckout,
+  useGitCheckouts,
+} from '../../../../core/diff/git/test-support/git-checkout.mjs';
 import { resolveHeadPolicy, withHeadCheckoutFacts } from '../head-policy.mjs';
 import { librariesForFile } from './file-libraries.mjs';
 import { detectLibraries, loggerShapes, validationBehavior } from './project-libraries.mjs';
+
+const { gitCheckout } = useGitCheckouts();
 
 const roots = [];
 
@@ -66,6 +72,21 @@ describe('library detection', () => {
         },
       },
     });
+  });
+
+  it('skips manifests in git-ignored folders and nested checkouts of a Git project', () => {
+    const manifest = JSON.stringify({ dependencies: { zod: '4.0.0' } });
+    const root = gitCheckout(
+      {
+        'package.json': JSON.stringify({ dependencies: { valibot: '1.0.0' } }),
+        'packages/api/package.json': manifest,
+        'scratch/app/package.json': manifest,
+        ...nestedCheckout('agent', { 'packages/web/package.json': manifest }),
+      },
+      ['scratch/'],
+    );
+
+    expect(Object.keys(detectLibraries(root).packages)).toEqual(['.', 'packages/api']);
   });
 });
 

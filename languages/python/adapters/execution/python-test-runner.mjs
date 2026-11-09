@@ -1,7 +1,9 @@
 import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { projectFilePaths } from '../../../../shared/project-files/project-files.mjs';
 import { environmentError } from './python-environment.mjs';
+import { TROUBLESHOOTING_ANCHORS } from '../../../../shared/messages/troubleshooting.mjs';
 import { probe, probeVersion, VERSION_PATTERN } from './python-process.mjs';
 import {
   readOptional,
@@ -38,18 +40,18 @@ const DJANGO_IMPORT = /^\s*(?:from|import)\s+django\b/m;
 const NOSE2_DEPENDENCY = /(?:^|[\s"'=])nose2(?![\w.-])/m;
 const NOSE2_SECTION = '[unittest]';
 
+function isTestScope(file) {
+  const parts = file.split('/');
+  const inTestDirectory = parts.length > 1 && ROOT_TEST_DIRECTORIES.includes(parts[0]);
+  return (parts.length === 1 || inTestDirectory) && TEST_FILE_NAME.test(parts.at(-1));
+}
+
 function existingTestFiles(projectRoot) {
-  const directories = ROOT_TEST_DIRECTORIES.filter((name) =>
-    existsSync(path.join(projectRoot, name)),
-  );
-  return [
-    ...readdirSync(projectRoot).filter((name) => TEST_FILE_NAME.test(name)),
-    ...directories.flatMap((directory) =>
-      readdirSync(path.join(projectRoot, directory), { recursive: true })
-        .filter((name) => TEST_FILE_NAME.test(path.basename(name)))
-        .map((name) => path.join(directory, name)),
-    ),
-  ];
+  const top = path.resolve(projectRoot);
+  return projectFilePaths(top, {
+    skipDirectory: (absolute) =>
+      path.dirname(absolute) === top && !ROOT_TEST_DIRECTORIES.includes(path.basename(absolute)),
+  }).filter((file) => isTestScope(file));
 }
 
 function hasPytestFile(projectRoot) {
@@ -175,6 +177,7 @@ export function pytestCommand(context) {
   if (probe === undefined) {
     throw environmentError(
       `pytest is used by this project but cannot be imported in the ${context.launcher.description} environment: install it there, or set "python.testRunner" to "unittest"`,
+      TROUBLESHOOTING_ANCHORS.pythonToolMissing,
     );
   }
   return [
@@ -233,6 +236,7 @@ function requireRunner(context, runner) {
   if (runnerVersion(context, runner) === 'missing') {
     throw environmentError(
       `${RUNNER_DISTRIBUTIONS[runner]} runs the tests of this project but is not installed in the ${context.launcher.description} environment: install it there, or set "python.testRunner" to the runner the tests use`,
+      TROUBLESHOOTING_ANCHORS.pythonToolMissing,
     );
   }
 }
@@ -241,6 +245,7 @@ function djangoCommand(context) {
   if (readDjangoScript(context.projectRoot) === undefined) {
     throw environmentError(
       `the tests run with Django's manage.py test, but there is no manage.py at ${path.join(context.projectRoot, DJANGO_SCRIPT)} or one directory below it: add it there, or set "python.testRunner" to the runner the tests use`,
+      TROUBLESHOOTING_ANCHORS.pythonToolMissing,
     );
   }
   requireRunner(context, 'django');
