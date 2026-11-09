@@ -100,7 +100,7 @@ export function readPythonFindings({
       ...pythonFileLimitFindings(projectRoot, policy),
       ...testRunFindings({ manifest, reportRoot, projectRoot, roots, crapLimit }),
       ...readDuplicateFindings(reportRoot, projectRoot),
-      ...readCouplingFindings(reportRoot),
+      ...readCouplingFindings(reportRoot, { layout: policy.layout }),
       ...readImportLinterFindings(reportRoot),
       ...readTestRuntimeFindings({ reportRoot, projectRoot, runner: manifest.testRunner }),
       ...(manifest.quick ? [] : testFailureFindings(manifest, policy.snapshot)),

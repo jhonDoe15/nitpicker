@@ -102,7 +102,7 @@ describe('coupling report', () => {
     const typeOnly = analyzeCoupling(graphWith(['type-only']), 'src/main');
 
     expect(runtime.stabilityDirection.map(({ source, target }) => [source, target])).toEqual([
-      ['stable', 'volatile'],
+      ['src/main/stable', 'src/main/volatile'],
     ]);
     expect(typeOnly.stabilityDirection).toEqual([]);
     expect(typeOnly.packages).toEqual(runtime.packages);
