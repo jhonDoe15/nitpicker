@@ -17,3 +17,6 @@ Part of the [nitpicker-kotlin](../SKILL.md) skill. Write these forms from the st
   the `archunit/ddd-...` rules hold aggregate boundaries: refer to another aggregate's root by its
   identifier or an `Association`, keep each entity in one aggregate, and keep entities and roots out of
   value objects.
+- A project exception a Spring controller can throw maps to a status: an `@ExceptionHandler` for it (or
+  a base class) in a `@RestControllerAdvice`, or `@ResponseStatus` on the class
+  (`archunit/spring-unmapped-exception`).

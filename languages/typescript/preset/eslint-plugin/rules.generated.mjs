@@ -71,6 +71,7 @@ import { rule as ruleNoUnhandledVoidPromise } from './rules/promises/no-unhandle
 import { rule as ruleNoUninjectableDelay } from './rules/testing/lifecycle/no-uninjectable-delay.mjs';
 import { rule as ruleNoUnknownInDomain } from './rules/boundaries/no-unknown-in-domain.mjs';
 import { rule as ruleNoUnknownMainFolder } from './rules/guards/no-unknown-main-folder.mjs';
+import { rule as ruleNoUnmappedException } from './rules/errors/unmapped/no-unmapped-exception.mjs';
 import { rule as ruleNoUnownedAsyncAssertion } from './test-assertions/unowned-async/no-unowned-async-assertion.mjs';
 import { rule as ruleNoUnsafeDeserialization } from './rules/security/deserialization/no-unsafe-deserialization.mjs';
 import { rule as ruleNoUnsafePathJoin } from './rules/guards/no-unsafe-path-join.mjs';
@@ -177,6 +178,7 @@ export const directoryRules = {
   'no-uninjectable-delay': ruleNoUninjectableDelay,
   'no-unknown-in-domain': ruleNoUnknownInDomain,
   'no-unknown-main-folder': ruleNoUnknownMainFolder,
+  'no-unmapped-exception': ruleNoUnmappedException,
   'no-unowned-async-assertion': ruleNoUnownedAsyncAssertion,
   'no-unsafe-deserialization': ruleNoUnsafeDeserialization,
   'no-unsafe-path-join': ruleNoUnsafePathJoin,
