@@ -1,12 +1,8 @@
-import { chainOf } from '../../shared/traversal.mjs';
-import { existsSync, readFileSync, realpathSync, statSync } from 'node:fs';
-import { execFileSync } from 'node:child_process';
+import { readFileSync, realpathSync, statSync } from 'node:fs';
 import { findPackageJSON } from './package-lookup/package-json.mjs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { CONFIG_FILE_NAME } from '../../shared/config.mjs';
-import { GIT_TIMEOUT_MS } from '../../shared/processes/deadlines.mjs';
 
 export const PACKAGE_ROOT = realpathSync(path.resolve(import.meta.dirname, '../..'));
 const manifest = readManifest(path.join(PACKAGE_ROOT, 'package.json'));
@@ -110,31 +106,6 @@ function declaredPackage(name, specifier) {
 export function toolNameForPath(relativeToolPath) {
   const parts = relativeToolPath.split('/');
   return parts[0].startsWith('@') ? parts.slice(0, 2).join('/') : parts[0];
-}
-
-const PROJECT_MARKERS = ['package.json', CONFIG_FILE_NAME];
-
-export function resolveProjectRoot(cwd = process.cwd()) {
-  const current = realpathSync(cwd);
-  const repositoryRoot = realpathSync(
-    execFileSync('git', ['rev-parse', '--show-toplevel'], {
-      cwd: current,
-      encoding: 'utf8',
-      timeout: GIT_TIMEOUT_MS,
-    }).trim(),
-  );
-  const directories = chainOf(current, (directory) => {
-    const parent = path.dirname(directory);
-    return directory === repositoryRoot || directory === parent ? undefined : parent;
-  });
-  const projectRoot = directories.find((directory) =>
-    PROJECT_MARKERS.some((marker) => existsSync(path.join(directory, marker))),
-  );
-  if (projectRoot !== undefined) return projectRoot;
-  throw new Error(
-    `No package.json or ${CONFIG_FILE_NAME} found between ${current} and repository root ${repositoryRoot}. ` +
-      `For a Java, Kotlin, Python or Go project, create ${CONFIG_FILE_NAME} with its preset, for example {"preset": "java"}.`,
-  );
 }
 
 function isAnalyzedSnapshotPath(candidate) {

@@ -58,3 +58,7 @@ Part of the [nitpicker-kotlin](../SKILL.md) skill. Write these forms from the st
 - A validation annotation on a constructor property takes the field target:
   `data class OrderRequest(@field:NotBlank val item: String)`, not `@NotBlank val item`, which
   lands on the constructor parameter where `@Valid` never looks (`pmd/ValidationAnnotationTarget`).
+- Pick the cheaper collection form: a `mutableSetOf()` for items you test with `in` while you
+  collect them (`kotlin-source/ListUsedAsSet`), a map built once with `associateBy` before a loop
+  instead of `find { it.key == key }` in it (`kotlin-source/LinearLookupInLoop`), and `minBy`/`maxBy`
+  instead of `sortedBy { ... }.first()` (`kotlin-source/SortForExtreme`).

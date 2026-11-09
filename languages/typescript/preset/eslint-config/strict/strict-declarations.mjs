@@ -1,4 +1,9 @@
 import { SYNTAX_EXCEPTION_HINT } from '../rule-hints.mjs';
+import {
+  nestClassExclusions,
+  nestClassMessage,
+  nestExceptionSuperclass,
+} from '../nest/nest-forms.mjs';
 
 const nonErrorSuperclass =
   ':not([superClass.name=/Error$/]):not([superClass.property.name=/Error$/])';
@@ -15,10 +20,14 @@ const classSelector = {
     'Classes are only for `Error` subclasses (`class NameError extends Error`). Use a `type` for data and `function` declarations for behavior; construct dependencies in the composition root.',
 };
 
-const reactClassSelector = {
-  ...classSelector,
-  selector: classSelectorExcluding(`${nonErrorSuperclass}${nonComponentSuperclass}`),
-};
+function frameworkClassSelector({ react, nest }) {
+  const component = react ? nonComponentSuperclass : '';
+  const nestForms = nest ? `${nestExceptionSuperclass}${nestClassExclusions}` : '';
+  return {
+    message: nest ? nestClassMessage : classSelector.message,
+    selector: classSelectorExcluding(`${nonErrorSuperclass}${component}${nestForms}`),
+  };
+}
 
 const declarationSelectors = [
   {
@@ -59,9 +68,9 @@ const declarationSelectors = [
   },
 ];
 
-export function declarationSelectorsFor({ react = false } = {}) {
+export function declarationSelectorsFor({ react = false, nest = false } = {}) {
   return declarationSelectors.map((entry) =>
-    react && entry === classSelector ? reactClassSelector : entry,
+    (react || nest) && entry === classSelector ? frameworkClassSelector({ react, nest }) : entry,
   );
 }
 
