@@ -16,6 +16,7 @@
     <dependency><groupId>org.springframework</groupId><artifactId>spring-tx</artifactId><version>6.2.10</version><scope>provided</scope></dependency>
     <dependency><groupId>org.springframework</groupId><artifactId>spring-web</artifactId><version>6.2.10</version><scope>provided</scope></dependency>
     <dependency><groupId>org.springframework</groupId><artifactId>spring-webflux</artifactId><version>6.2.10</version><scope>provided</scope></dependency>
+    <dependency><groupId>org.jetbrains.kotlinx</groupId><artifactId>kotlinx-coroutines-core</artifactId><version>1.10.2</version><scope>provided</scope></dependency>
     <dependency><groupId>org.springframework</groupId><artifactId>spring-jdbc</artifactId><version>6.2.10</version><scope>provided</scope></dependency>
     <dependency><groupId>org.springframework.data</groupId><artifactId>spring-data-jpa</artifactId><version>3.5.3</version><scope>provided</scope></dependency>
     <dependency><groupId>org.springframework.boot</groupId><artifactId>spring-boot</artifactId><version>3.5.5</version><scope>provided</scope></dependency>
@@ -31,6 +32,12 @@
     <dependency><groupId>jakarta.validation</groupId><artifactId>jakarta.validation-api</artifactId><version>3.0.2</version><scope>provided</scope></dependency>
     <dependency><groupId>jakarta.transaction</groupId><artifactId>jakarta.transaction-api</artifactId><version>2.0.1</version><scope>provided</scope></dependency>
     <dependency><groupId>org.slf4j</groupId><artifactId>slf4j-api</artifactId><version>2.0.17</version><scope>provided</scope></dependency>
+    <dependency><groupId>io.netty</groupId><artifactId>netty-transport</artifactId><version>4.1.124.Final</version><scope>provided</scope></dependency>
+    <dependency><groupId>org.apache.kafka</groupId><artifactId>kafka-clients</artifactId><version>3.9.1</version><scope>provided</scope></dependency>
+    <dependency><groupId>io.github.resilience4j</groupId><artifactId>resilience4j-annotations</artifactId><version>2.2.0</version><scope>provided</scope></dependency>
+    <dependency><groupId>io.micrometer</groupId><artifactId>micrometer-core</artifactId><version>1.15.3</version><scope>provided</scope></dependency>
+    <dependency><groupId>org.aspectj</groupId><artifactId>aspectjrt</artifactId><version>1.9.24</version><scope>provided</scope></dependency>
+    <dependency><groupId>com.github.ben-manes.caffeine</groupId><artifactId>caffeine</artifactId><version>3.2.2</version><scope>provided</scope></dependency>
   </dependencies>
   <build>
     <plugins>
