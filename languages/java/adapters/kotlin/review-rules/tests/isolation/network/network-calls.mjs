@@ -168,6 +168,6 @@ export function networkCalls(scanned) {
     ...viaKtor(scanned, mocks),
   ].filter(({ literal }) => literal !== undefined && isRemoteUrl(literal));
   return [...urls, ...viaSockets(scanned)]
-    .filter((found) => !isStubbed(scanned, found.offset) && !receiverMocked(scanned, found, mocks))
+    .filter((found) => !(isStubbed(scanned, found.offset) || receiverMocked(scanned, found, mocks)))
     .toSorted((left, right) => left.offset - right.offset);
 }

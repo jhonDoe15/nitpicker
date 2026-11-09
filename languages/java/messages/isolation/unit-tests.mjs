@@ -50,8 +50,8 @@ export function integrationTestFiles(projectRoot, testRoots) {
   const known = new Map();
   return (file) => {
     if (!known.has(file)) {
-      const inside = !path.isAbsolute(file) && !file.split(/[\\/]/u).includes('..');
-      const text = inside ? readJavaSource(pathInside(projectRoot, file)) : undefined;
+      const outside = path.isAbsolute(file) || file.split(/[\\/]/u).includes('..');
+      const text = outside ? undefined : readJavaSource(pathInside(projectRoot, file));
       known.set(
         file,
         text !== undefined && isIntegrationTestFile({ file, text, projectRoot, locate }),
