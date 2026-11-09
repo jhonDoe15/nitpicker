@@ -38,6 +38,7 @@ are listed at the end.
 | ORM schema at startup    | migrations: Alembic `alembic upgrade head` in the deploy step, Django migrations, Aerich                                                                                             | `orm-schema-sync` (script)                                                                                                                                                                                                                 |
 | ORM query logging        | `echo` and the query loggers off; slow queries logged from cursor events or by the database                                                                                          | `orm-query-logging` (script)                                                                                                                                                                                                               |
 | Query rows in memory     | `.count()`, `.exists()`, `.filter()`, `.order_by()`, `.aggregate()` (Django); `where`, `order_by`, `func.count`/`func.sum` (SQLAlchemy)                                              | `in-memory-query` (script)                                                                                                                                                                                                                 |
+| Foreign key indexes      | `index=True` on the foreign-key column, an `Index` that starts with it; Django keeps `db_index`                                                                                      | `unindexed-foreign-key` (script)                                                                                                                                                                                                           |
 | Defaulting parameters    | `limit if limit is not None else DEFAULT_LIMIT`                                                                                                                                      | `falsy-default` (script)                                                                                                                                                                                                                   |
 | Testing numbers          | `count > 0`, `index != -1`, `count is not None`                                                                                                                                      | `number-truthiness` (script)                                                                                                                                                                                                               |
 | Changing an argument     | build and return a new value, or copy the argument first                                                                                                                             | `parameter-mutation` (script)                                                                                                                                                                                                              |
@@ -666,6 +667,21 @@ self.items.append(item)`), also through a package `__init__` that re-exports it 
   `for` loops over the rows, `itertools.groupby` and `defaultdict` grouping are not followed.
   Tests, a Django `tests.py` and `migrations` folders are skipped. A small fixed lookup table that
   is meant to be loaded whole takes an `exceptions` entry.
+- `unindexed-foreign-key` (the model-side partner of the `foreign-key-index` repository rule, and
+  the counterpart of `nitpicker/no-unindexed-foreign-key`) reports a foreign-key column with no
+  index that starts with it: only MySQL indexes a foreign-key column by itself. It reads SQLAlchemy
+  `mapped_column`/`Column` with a `ForeignKey`, SQLModel `Field(foreign_key=...)` (also through
+  `sa_column`), core `Table(...)` columns and `ForeignKeyConstraint` in `__table_args__`. A column is
+  covered by `index=True` or `unique=True`, by being the first primary-key column, or by an `Index`,
+  `UniqueConstraint` or `PrimaryKeyConstraint` (in `__table_args__`, in the `Table`, or a
+  module-level `Index("ix", Model.column)`) whose first column is it; a partial index
+  (`postgresql_where`) does not count. Django indexes foreign keys itself, so only a `ForeignKey`
+  with `db_index=False` is reported, unless `Meta.indexes`, `unique_together`, `index_together` or a
+  `UniqueConstraint` lists the field (or `<field>_id`) first; a conditional index does not count,
+  and `db_constraint=False` passes. A project whose manifests name only MySQL or MariaDB drivers, or
+  whose settings use `django.db.backends.mysql` without PostgreSQL, is left alone. SQLAlchemy
+  models are left to the migrations when the project has an Alembic `versions/` folder next to an
+  `env.py`; `foreign-key-index` then checks the revisions. Tests are skipped.
 - `falsy-default` reports a parameter whose annotation can be falsy (`int`, `float`, `str`, `bytes`,
   `bool`, a list, dict, set or tuple type, a `Sequence`, `Mapping`, `Decimal`, `timedelta`) and is
   `None` by default or by its type, when the body writes `param or default` or
