@@ -9,9 +9,15 @@ describe('the go preset config', () => {
       go({
         go: { formatters: ['gofumpt', 'goimports'], buildTags: ['integration'] },
         thresholds: { folderDepth: 5, classMethods: 30, lineLength: 100 },
-        tools: { goimports: { precedence: ['project', 'nitpicker'] } },
+        tools: {
+          goimports: { precedence: ['project', 'nitpicker'] },
+          staticcheck: { precedence: ['project'] },
+        },
         exceptions: [
           { rule: 'vet/printf', paths: ['internal/log/*.go'], reason: 'custom printf wrapper' },
+          { rule: 'staticcheck/ST1003', paths: ['api/*.go'], reason: 'generated names' },
+          { rule: 'errcheck/unchecked', paths: ['cmd/main.go'], reason: 'best effort' },
+          { rule: 'modernize/rangeint', paths: ['old/*.go'], reason: 'kept as is' },
           {
             rule: 'function-lines-limit',
             paths: ['cmd/main.go'],
@@ -42,7 +48,7 @@ describe('the go preset config', () => {
     [{ tools: { prettier: { precedence: ['project'] } } }, 'unknown tool "prettier"'],
     [{ tools: { jscpd: { precedence: ['project'] } } }, 'unknown tool "jscpd"'],
     [
-      { exceptions: [{ rule: 'staticcheck/SA1019', paths: ['a.go'], reason: 'not run yet' }] },
+      { exceptions: [{ rule: 'golint/naming', paths: ['a.go'], reason: 'not run' }] },
       'must name a finding as it is printed, "<tool>/<rule>" (for example "vet/printf")',
     ],
   ])('rejects %j', (extra, message) => {
