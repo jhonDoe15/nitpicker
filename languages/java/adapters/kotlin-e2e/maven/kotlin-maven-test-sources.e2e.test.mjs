@@ -24,7 +24,11 @@ const mavenDiffOf = mavenDiffRunner(maven);
 const TESTS = 'src/test/kotlin/demo';
 
 const ofFile = (findings, file) =>
-  summarize(findings.filter((finding) => path.basename(finding.path) === file));
+  summarize(
+    findings.filter(
+      (finding) => path.basename(finding.path) === file && finding.tool !== 'test-runtime',
+    ),
+  );
 
 describe.skipIf(!kotlinE2eEnabled)('Kotlin preset on Maven: test sources', () => {
   let project;
@@ -57,6 +61,15 @@ describe.skipIf(!kotlinE2eEnabled)('Kotlin preset on Maven: test sources', () =>
       'ktlint ktlint.standard:indent ShoutingTest.kt',
       'ktlint ktlint.standard:indent ShoutingTest.kt',
     ]);
+  });
+
+  it('reports each changed test that runs no production code', () => {
+    expect(
+      result.newEnforceable
+        .filter(({ rule }) => rule === 'no-production-runtime')
+        .map(({ path: file }) => path.basename(file))
+        .sort(),
+    ).toEqual(['ParsingTest.kt', 'ShoutingTest.kt', 'SuppressedTest.kt']);
   });
 
   it('keeps a legacy test finding baselined when its line moves', () => {
