@@ -21,6 +21,7 @@ dependencies {
     compileOnly("org.springframework:spring-webflux:6.2.10")
     compileOnly("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.10.2")
     compileOnly("org.springframework:spring-jdbc:6.2.10")
+    compileOnly("org.jooq:jooq:3.19.39")
     compileOnly("org.springframework.data:spring-data-jpa:3.5.3")
     compileOnly("org.springframework.boot:spring-boot:3.5.5")
     compileOnly("org.springframework.boot:spring-boot-autoconfigure:3.5.5")

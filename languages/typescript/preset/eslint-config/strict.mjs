@@ -177,6 +177,7 @@ function strictTypedConfigFor(layout, parserOptions, options = {}) {
         'nitpicker/no-forwarding-wrapper': 'error',
         'nitpicker/no-falsy-default': 'error',
         'nitpicker/no-string-as-regex': 'error',
+        'nitpicker/no-unmapped-exception': 'error',
       },
     },
     {
@@ -198,7 +199,7 @@ function strictTypedConfigFor(layout, parserOptions, options = {}) {
       ignores: layout.excludedGlobs,
       languageOptions: { parser: tseslint.parser, parserOptions },
       plugins: { nitpicker: nitpickerRules },
-      rules: truthinessRules,
+      rules: { ...truthinessRules, 'nitpicker/simpler-boolean-logic': 'error' },
     },
     ...strictAdaptersTypedConfig.map((entry) => ({
       ...entry,
