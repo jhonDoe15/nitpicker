@@ -39,6 +39,7 @@ const SAMPLE_DETAILS = {
   'ddd-value-object-reference': '<Entity>',
   'spring-request-state': '<field>:<mutator>:<request source>',
   'spring-typed-request-field': '<Type>.<field>:field:<Controller>.<method>',
+  'spring-unmapped-exception': '<method>:<Exception>:<Service>.<method>',
 };
 const TEST_RULES = new Set(['spring-test-placement', 'spring-no-dirties-context']);
 const DDD_PREFIX = 'ddd-';
@@ -84,6 +85,15 @@ function archunitEntries() {
   ];
 }
 
+const SPRING_CONFIG_WHY = {
+  default:
+    'Nitpicker reads the Spring configuration files of a Spring project (`application.properties`, `application.yml` and their profile variants) for settings that are unsafe outside a test or local profile.',
+  'missing-enable':
+    'An annotation such as `@Scheduled` or `@Async` does nothing until the matching `@Enable...` is present, and Spring raises no error when it is missing.',
+  'unbound-property':
+    'Spring ignores a key that binds to no property, so a misspelled or removed setting silently never takes effect.',
+};
+
 function springConfigEntries() {
   return [...springConfigForms()].map(([rule, forms]) =>
     ruleEntry({
@@ -91,7 +101,7 @@ function springConfigEntries() {
       tool: 'spring',
       rule,
       summary: asSentence(guideCell(GUIDE, rule, 'fires on')),
-      why: 'Nitpicker reads the Spring configuration files of a Spring project (`application.properties`, `application.yml` and their profile variants) for settings that are unsafe outside a test or local profile.',
+      why: SPRING_CONFIG_WHY[rule] ?? SPRING_CONFIG_WHY.default,
       scope: SPRING_ONLY,
       forms,
       exception: { key: 'exceptions', rule: `spring/${rule}` },

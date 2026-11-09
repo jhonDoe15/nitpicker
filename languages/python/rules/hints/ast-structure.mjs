@@ -61,6 +61,14 @@ export const STRUCTURE_HINTS = [
   { tool: 'ruff', rules: ['E722', 'BLE001'], allowed: HANDLE_EXCEPTION },
   {
     tool: RULES_TOOL,
+    rules: ['unmapped-exception'],
+    describe: (subject) =>
+      `${subject}, and no exception handler maps it to a status, so the client gets a 500`,
+    allowed:
+      'Register a handler for it (`@app.exception_handler(OrderNotFound)` returning a 404) or derive it from `HTTPException` with the status that fits. A handler for `Exception` counts when it checks the class with `isinstance`. An exception fits a class that only signals a server fault.',
+  },
+  {
+    tool: RULES_TOOL,
     rules: ['swallowed-exception'],
     describe: (subject) =>
       `\`${subject}\` swallows the error: it only logs it or returns a default, and carries on`,
@@ -209,6 +217,15 @@ export const STRUCTURE_HINTS = [
     referenceData: { union: '<enum>' },
     allowed:
       'Classify every member with a `match` that ends in `case _: assert_never(value)` (or an `if`/`elif` chain that ends in `else: assert_never(value)`), so the type checker fails when a member is added.',
+  },
+  {
+    tool: RULES_TOOL,
+    rules: ['generated-member-cycle'],
+    describe: (subject, _libraries, { cycle }) =>
+      `The generated \`==\` and \`hash()\` can follow \`${subject}\` around the cycle ${cycle}, so comparing or hashing two objects of the cycle recurses until RecursionError`,
+    referenceData: { cycle: '<Class>.<field> -> <Other>.<back> -> <Class>' },
+    allowed:
+      'Leave the back reference out of the comparison: `field(compare=False)` in a dataclass, `attrs.field(eq=False)` in an attrs class. A field that only ever points down a tree, never back up, is the intended case.',
   },
   {
     tool: RULES_TOOL,

@@ -68,6 +68,7 @@ const REVIEW_RULES = new Set([
   'StaticMockOfProjectType',
   'GlobalStateLeakInTest',
   'ServerOrContainerPerTest',
+  'SharedTestState',
   'ExhaustiveEnumPredicate',
   'StaticForwardingWrapper',
   'SingularAndPluralMember',
@@ -98,6 +99,11 @@ const REVIEW_RULES = new Set([
   'SpringStartupCleanup',
   'HttpWithoutTimeout',
   'ConfigurationReadOutsideCompositionRoot',
+  'ListUsedAsSet',
+  'LinearLookupInLoop',
+  'SortForExtreme',
+  'GeneratedMemberCycle',
+  'GeneratedEqualsSkipsSuperclass',
 ]);
 const roots = [];
 const RECEIPT_TEST_FILE = 'src/test/java/shop/ReceiptTest.java';

@@ -60,8 +60,10 @@ class, and annotations of your own that carry one of these or that an `@Aspect` 
 - `@Transactional` goes on services, not controllers. Avoid `Propagation.REQUIRES_NEW`. Inside a
   transactional method, don't catch and swallow `Exception`, `RuntimeException` or persistence
   exceptions; let them propagate.
-- A checked `throws` needs `rollbackFor = Exception.class`; a write under `readOnly = true` needs its
-  own plain `@Transactional`.
+- A checked `throws` needs `rollbackFor = Exception.class`; a write under `readOnly = true` (a
+  repository write or `@Modifying` query, DML through `JdbcTemplate`, `JdbcClient` or jOOQ, or a setter
+  on an entity the method loaded) needs its own plain `@Transactional`. To shape a response from an
+  entity, map it to a DTO instead of changing it.
 - A public service method that writes more than once (`save`, `delete`, a `@Modifying` query,
   `JdbcTemplate.update`), also through its private helpers, is `@Transactional` or runs the writes in
   `TransactionTemplate.execute`.
@@ -138,3 +140,8 @@ and local or dev ones where noted, are exempt):
   key names and credentials in URLs.
 - Profiles come from `SPRING_PROFILES_ACTIVE`, not the main file. No show-sql, bind logging, H2
   console or `always` actuator details (local and dev may).
+- Every key binds to a property, also in test resources and test overrides (`@SpringBootTest`
+  `properties`, `@TestPropertySource`, `withPropertyValues`, `DynamicPropertyRegistry.add`): use the
+  name the Spring Boot metadata or your `@ConfigurationProperties` class defines
+  (`spring.datasource.username`, not `user`); declare a key only code reads by name in
+  `META-INF/additional-spring-configuration-metadata.json`.

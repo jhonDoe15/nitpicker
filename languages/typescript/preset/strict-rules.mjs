@@ -3,6 +3,7 @@ import { isPythonTouchedRule } from '../../python/rules/touched-rules.mjs';
 import { strictBoundaryRules } from './architecture/strict-boundary-rules.mjs';
 import { i18nRuleIds } from './eslint-config/i18n/i18n-rules.mjs';
 import { isUnusedParameterFinding } from './eslint-config/policy/unused-parameters.mjs';
+import { regexpRuleIds } from './eslint-config/regexp/regexp-rules.mjs';
 import { reactRuleIds, reactTestRuleIds } from './eslint-config/react/react-rules.mjs';
 import { serverRuleIds } from './eslint-config/server/server-rules.mjs';
 
@@ -22,6 +23,7 @@ export const strictEslintRuleIds = [
   'nitpicker/hermetic-git-in-tests',
   'nitpicker/naming-convention',
   'nitpicker/no-accumulating-spread',
+  'nitpicker/no-costly-collection-form',
   'nitpicker/no-branch-in-composition-root',
   'nitpicker/no-comments',
   'nitpicker/no-compatibility-shim',
@@ -66,6 +68,7 @@ export const strictEslintRuleIds = [
   'nitpicker/no-unknown-in-domain',
   'nitpicker/no-unsafe-deserialization',
   'nitpicker/no-unsafe-path-join',
+  'nitpicker/no-unmapped-exception',
   'nitpicker/no-unvalidated-schema-field',
   'nitpicker/no-weak-hash',
   'nitpicker/preserve-error-cause',
@@ -85,8 +88,7 @@ export const strictEslintRuleIds = [
   'no-restricted-globals',
   'no-restricted-properties',
   'no-restricted-syntax',
-  'regexp/no-super-linear-backtracking',
-  'regexp/no-useless-flag',
+  ...regexpRuleIds,
 ];
 
 const PRETTIER_RULE = 'prettier/prettier';
