@@ -17,6 +17,9 @@ export const UNUSED_OPTION_SCOPES = {
   },
 };
 
+const NO_OPTIONAL_INPUTS =
+  'the language has no default parameter values or optional properties: an input a caller may leave out is a separate overload or builder method, not an option of one function';
+
 const TYPESCRIPT_ONLY = {
   typescript: true,
   javascript: false,
@@ -51,6 +54,7 @@ export const UNUSED_API_RULES = [
       'defaulted parameter of a public top-level, object or companion function (not members or constructors, ' +
       "built by reflection) or of a private or internal function or constructor (its module's calls and tests)",
     enforcedBy: { ...TYPESCRIPT_AND_KOTLIN, python: true },
+    notApplicable: { java: NO_OPTIONAL_INPUTS },
   },
   {
     id: UNUSED_API_RULE_IDS.testOnlyExport,
