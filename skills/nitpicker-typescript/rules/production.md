@@ -31,6 +31,11 @@ Part of the [nitpicker-typescript](../SKILL.md) skill. Write these forms from th
 - In a server project, dates use UTC or a named zone, never the server's own: `getUTCHours()`,
   `toISOString()`, `Date.UTC(...)`, `{ timeZone }` for `Intl.DateTimeFormat` and `toLocale*String`,
   luxon `{ zone }`, date-fns `{ in: tz(zone) }`, dayjs `.utc()` (`nitpicker/no-local-time-zone`).
+- In a server project, a number, boolean or date read from the query string, path, headers or a
+  multipart form is converted where it is declared, since the value arrives as text: `z.coerce.number()`,
+  `z.stringbool()`, `@Type(() => Number)` with class-validator, `@Transform(({ value }) => value === 'true')`
+  for a boolean, `ParseIntPipe`/`ParseBoolPipe` on a single NestJS parameter. Never `z.coerce.boolean()`
+  or `@Type(() => Boolean)`: they turn `"false"` into true (`nitpicker/no-uncoerced-request-input`).
 - Let the database count, filter, sort and aggregate: `count`/`exists`/`findFirst` instead of
   `(await repo.find()).length`, `where` instead of `.filter`/`.some`/`.find` on the rows, `order`/`orderBy`
   instead of `.sort`, and the ORM's aggregate or `groupBy` instead of `reduce`, `Math.max(...rows.map(...))`

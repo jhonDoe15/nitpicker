@@ -126,7 +126,7 @@ the TypeScript preset, `{ "rule", "paths", "reason" }`, all required:
 `kotlin-source/<Rule>` of the [source checks](source-checks.md), `kotlinc/deprecation`,
 `kotlinc/unchecked` or `kotlinc/cast`, one of the [review rules](review-rules.md) (`pmd/FixedSleepInTest`,
 `pmd/NegativeWaitInTest`, `pmd/DisabledTest`, `pmd/FocusedTest`, `pmd/RetryInTest`, `pmd/ServerOrContainerPerTest`, `pmd/AssertionInControlFlow`,
-`pmd/CoroutineEscapesTest`, `pmd/GlobalStateLeakInTest`, `pmd/MockedSubjectInTest`, `pmd/StaticMockOfProjectType`, `pmd/SpringUnusedContext`, `pmd/ExhaustiveEnumPredicate`,
+`pmd/CoroutineEscapesTest`, `pmd/GlobalStateLeakInTest`, `pmd/SharedTestState`, `pmd/MockedSubjectInTest`, `pmd/StaticMockOfProjectType`, `pmd/SpringUnusedContext`, `pmd/ExhaustiveEnumPredicate`,
 `pmd/StaticForwardingWrapper`, `pmd/SingularAndPluralMember`, `pmd/ValidationAnnotationTarget`, `pmd/timeout-abandons-operation`, `pmd/ClassLoadEffect`, `pmd/RecursiveMapUpdate`, `unused-option`), a class limit, a file
 limit or `test-runtime/slow-test`; for the [structure](structure-limits.md), [CRAP](crap.md) and [coverage](coverage.md) findings,
 `function-lines-limit`, `function-statements-limit`, `function-control-nesting-limit`,

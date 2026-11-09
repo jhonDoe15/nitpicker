@@ -943,6 +943,20 @@ t)`, `asyncio.timeout(t)`, `fail_after(t)`, `wait(t)`) inside `pytest.raises` or
   function decorated with `@mock.patch.dict(...)`, in a `pytest_*` hook, or at the top level of a module (it runs
   once, at import) is not reported, and in a test-support module without tests a restore anywhere in the module
   counts. `process-env-access` does not run on tests, so it does not overlap.
+- `shared-test-state` (Java and Kotlin: `SharedTestState`; TypeScript: `nitpicker/no-shared-test-state`) reports,
+  in a test module, a change to state that every test of the module or class shares: a call of `append`, `extend`,
+  `insert`, `remove`, `pop`, `clear`, `update`, `add`, `discard`, `setdefault`, `sort` and the like, an item
+  assignment or `del` on a module-level list, dict or set (a literal, a comprehension, `list()`, `dict()`, `set()`,
+  `bytearray()`, `collections.defaultdict`, `OrderedDict`, `Counter` or `deque`), a rebinding of a module name through `global`, the
+  same changes to a mutable class attribute of a test class through `self`, `cls`, the class name or `type(self)`,
+  and a rebinding of a class attribute through the class (`TestCart.count += 1`). It is reported in a test function or
+  method, in `setup_method`, `setUp`, `setup_function` and their teardown pairs, in a function-scoped fixture, and in
+  a function of the module (or a method of the class) that a test calls. Not reported: state that one of those
+  hooks or a function-scoped fixture resets before or after every test (`.clear()`, `[:] = ...`, a `global`
+  rebinding, or `self.items = []`, which gives each test its own attribute), writes in `setup_module`,
+  `setup_class`, `setUpClass` and session, module or class fixtures (set-up done once), a local of the same name,
+  and modules without tests. A `self.count = 1` in a test sets an attribute of that test's own instance, so it is
+  not reported.
 - `server-or-container-per-test` (Java and Kotlin: `ServerOrContainerPerTest`; TypeScript:
   `nitpicker/no-server-or-worker-per-test` and `nitpicker/no-node-process-per-test`) reports a
   container, server, process or git repository started for each test: a `testcontainers` class
