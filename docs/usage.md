@@ -98,9 +98,13 @@ left for you:
 3. **Writes `nitpicker.config.json`** with the preset only, `{ "preset": "python" }`, formatted as
    Prettier formats it. Everything else (React, the test runner, the formatter, the build tool) is
    detected at run time, so init never writes it.
-4. **Prints the skill to install**, for example
-   `npx skills add jhonDoe15/nitpicker --skill nitpicker-python` (`nitpicker-kotlin` and, with Java
-   sources, `nitpicker-java`).
+4. **Prints the skill to install**, from the same version as the gate. With nitpicker in the
+   project's `node_modules` (or a workspace root's), it installs from that package:
+   `npx skills add ./node_modules/nitpicker --skill nitpicker-typescript`. Otherwise it installs
+   from the release tag of the running version, for example
+   `npx skills add jhonDoe15/nitpicker#v0.1.0 --skill nitpicker-python` (`nitpicker-kotlin` and,
+   with Java sources, `nitpicker-java`). Each skill's opening paragraph names the version it was
+   written for, so an agent can see a mismatch with `npx nitpicker --version`.
 5. **Offers the agent guidance and the CI job**, and does them only when asked.
 
 ```sh
