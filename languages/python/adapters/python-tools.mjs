@@ -56,14 +56,6 @@ function launcherFor({ projectRoot, liveRoot, settings, spawn }) {
   return openSnapshotEnvironment({ projectRoot, liveRoot, setting: settings.environment, spawn });
 }
 
-function pythonSources({ projectRoot, configured, inherited }) {
-  const sourceRoots = detectSourceRoots(projectRoot, configured);
-  const pythonPath = [...importRoots(projectRoot, sourceRoots), inherited]
-    .filter((entry) => entry !== undefined && entry !== '')
-    .join(path.delimiter);
-  return { sourceRoots, pythonPath };
-}
-
 function toolEnvironment({ pythonPath, reportRoot }) {
   return {
     PYTHONPATH: pythonPath,
@@ -92,11 +84,10 @@ export function createToolContext({
   quick = false,
 }) {
   const launcher = launcherFor({ projectRoot, liveRoot, settings, spawn });
-  const { sourceRoots, pythonPath } = pythonSources({
-    projectRoot,
-    configured: settings.sourceRoots,
-    inherited: process.env.PYTHONPATH,
-  });
+  const sourceRoots = detectSourceRoots(projectRoot, settings.sourceRoots);
+  const pythonPath = [...importRoots(projectRoot, sourceRoots), process.env.PYTHONPATH]
+    .filter((entry) => entry !== undefined && entry !== '')
+    .join(path.delimiter);
   return {
     projectRoot,
     reportRoot,
