@@ -70,7 +70,7 @@ afterEvaluate {
             directory.mkdirs()
             def main = sourcesOf(false)
             def test = sourcesOf(true)
-            def excludedList = new File(temporaryDir, 'excluded.txt')
+            def excludedList = new File(directory, 'kotlin-excluded.txt')
             writeExcluded(excludedList, excluded())
             def metrics = new File(directory, 'kotlin-metrics.json')
             def facts = new File(directory, 'kotlin-facts.json')
