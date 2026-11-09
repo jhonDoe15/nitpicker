@@ -105,6 +105,18 @@ before the entry is stored and takes no key). The Java and Kotlin presets report
 `pmd/RecursiveMapUpdate`: a change to a map inside the function passed to its `computeIfAbsent`,
 `compute`, `computeIfPresent` or `merge` (Kotlin: also `getOrPut` on a `ConcurrentMap`).
 
+Generated `toString`, `equals` and `hashCode` over a cycle of fields have no TypeScript or
+JavaScript check: neither language generates equality or a string form from the fields. The Java
+preset reports `pmd/GeneratedMemberCycle` on Lombok classes (`@Data`, `@Value`, `@ToString`,
+`@EqualsAndHashCode`), the Kotlin preset on data classes, and the Python preset reports
+`generated-member-cycle` on dataclasses and attrs classes (only `==` and `hash()`, since their
+generated `repr` guards against recursion). Each reports a cycle once, on the single reference that
+points back: a class that holds itself both as one reference and in a collection, or classes that
+refer to each other; a tree or a list is not a cycle. `pmd/GeneratedEqualsSkipsSuperclass` reports
+Lombok's `equals` without `callSuper` on a subclass of a project class with fields (Java) and a data
+class whose superclass has state it does not override in its primary constructor (Kotlin). Python
+dataclasses include the fields of dataclass bases, so it has no Python counterpart.
+
 ## Entry points
 
 | Check          | Rule                        | Threshold                                         | Status      |

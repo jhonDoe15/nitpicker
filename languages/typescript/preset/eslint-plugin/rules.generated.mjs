@@ -25,6 +25,7 @@ import { rule as ruleNoFixedSleepSynchronization } from './rules/testing/lifecyc
 import { rule as ruleNoForwardingWrapper } from './rules/api-shape/no-forwarding-wrapper.mjs';
 import { rule as ruleNoGitRepositoryPerTest } from './rules/testing/processes/no-git-repository-per-test.mjs';
 import { rule as ruleNoHandwrittenBoundaryGuard } from './rules/boundaries/no-handwritten-boundary-guard.mjs';
+import { rule as ruleNoInMemoryQuery } from './rules/queries/no-in-memory-query.mjs';
 import { rule as ruleNoInternalModuleMocks } from './rules/testing/assertions/no-internal-module-mocks.mjs';
 import { rule as ruleNoIntervalPollingInTests } from './rules/testing/lifecycle/no-interval-polling-in-tests.mjs';
 import { rule as ruleNoLocalTimeZone } from './rules/time/no-local-time-zone.mjs';
@@ -131,6 +132,7 @@ export const directoryRules = {
   'no-forwarding-wrapper': ruleNoForwardingWrapper,
   'no-git-repository-per-test': ruleNoGitRepositoryPerTest,
   'no-handwritten-boundary-guard': ruleNoHandwrittenBoundaryGuard,
+  'no-in-memory-query': ruleNoInMemoryQuery,
   'no-internal-module-mocks': ruleNoInternalModuleMocks,
   'no-interval-polling-in-tests': ruleNoIntervalPollingInTests,
   'no-local-time-zone': ruleNoLocalTimeZone,
