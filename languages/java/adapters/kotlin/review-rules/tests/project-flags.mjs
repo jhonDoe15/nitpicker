@@ -3,6 +3,7 @@ import { functionOwners, functionsOf } from './discovery/functions.mjs';
 import { importsOf, packageOf, typeAliasesOf } from './discovery/imports.mjs';
 import { escaped } from './discovery/text-scan.mjs';
 import { constantValues, DISABLING_BASE } from './honesty/skip-constants.mjs';
+import { projectIsolated } from './shared-state/shared-holders.mjs';
 
 const MAIN_SET = /\bsetMain\s*\(/u;
 const MAIN_RULE_NAMES = [
@@ -133,6 +134,7 @@ export function projectFlags(files) {
     topLevel: topLevelFunctions(files),
     disabling: projectDisabling(files),
     constants: mergedConstants(files),
+    kotestIsolated: projectIsolated(files),
   };
 }
 

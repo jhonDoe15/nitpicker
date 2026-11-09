@@ -2,7 +2,7 @@ import { realpathSync } from 'node:fs';
 import { loadConfig } from '../configuration/config.mjs';
 import { resolveBase } from '../diff/git/repository/base-ref.mjs';
 import { runGit } from '../diff/git/repository/command.mjs';
-import { resolveProjectRoot } from '../tooling/tool-resolution.mjs';
+import { resolveProjectRoot } from '../configuration/project-checks/project-root.mjs';
 import { takeOptionValue, unknownArgumentError } from '../diff/comparison/cli.mjs';
 
 function explicitBaseOf(commandArguments) {
