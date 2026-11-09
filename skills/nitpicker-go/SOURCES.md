@@ -43,8 +43,9 @@ than the others, and this skill teaches its rules before an agent writes Go.
   gocheckcompilerdirectives, perfsprint, usestdlibvars and spancheck (MIT), musttag and sloglint
   (MPL-2.0, weak copyleft, used unmodified). OpenTelemetry's trace package is only a dependency
   of the spancheck fixtures.
-  go-critic (MIT), with go-ruleguard and gogrep (BSD-3-Clause), the go-toolsmith packages,
-  quasilyte regex syntax and stdinfo (MIT) that it builds on.
+  Style and bug checks: go-critic (MIT), with go-ruleguard and gogrep (BSD-3-Clause), the
+  go-toolsmith packages, quasilyte regex syntax and stdinfo (MIT), and go-cmp (BSD-3-Clause)
+  that it builds on.
 
 ## Rules and their reasoning
 
@@ -250,3 +251,17 @@ Two adversarial reviews of the other catalog linters changed these rules:
   QF1010 and QF1012 keep the line.
 - **Hints fit every message**: musttag names the tag the message names, spancheck covers a span
   that is never assigned, and sloglint's key-value message names the attribute form.
+
+Two adversarial reviews of go-critic changed these rules:
+
+- **`%q` is not a quoting form for every target.** sprintfQuotedString is off: `%q` writes Go
+  escapes, which an HTTP header, SQL or a shell line does not read.
+- **A rooted join passes.** `filepath.Join("/", path)`, which keeps a path inside the root, is
+  not a filepathJoin finding.
+- **A descending sort keeps `i` on the left.** sortSlice asks for `xs[i] > xs[j]` rather than
+  `xs[j] < xs[i]`, and its hint follows the message, so following it never flips the order.
+- **captLocal checks parameters only.** On every local it flagged math and type names such as
+  `T` and `D` that read as they should.
+- **Overlaps settled**: exhaustive keeps a one-case enum switch over singleCaseSwitch, QF1012
+  keeps the writes it reports over preferFprint, and revive's `useless-fallthrough` keeps the
+  tagged switches over emptyFallthrough, which still covers untagged ones.

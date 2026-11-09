@@ -60,9 +60,7 @@ func supersededBy() map[string][]string {
 		"badCall":                   {"SA1018"},
 		"badLock":                   {"SA2001", "SA2003"},
 		"boolExprSimplify":          {"SA4013"},
-		"caseOrder":                 {"SA4020"},
 		"sloppyLen":                 {"SA4024"},
-		"badSorting":                {"SA4029"},
 		"equalFold":                 {"SA6005"},
 		"unnecessaryDefer":          {"SA9010"},
 		"redundantSprint":           {"S1025", "S1039", "string-format"},
@@ -71,7 +69,9 @@ func supersededBy() map[string][]string {
 		"sqlclosecheck":             {"sqlQuery"},
 		"rowserrcheck":              {"sqlQuery"},
 		"ifElseChain":               {"QF1003"},
-		"singleCaseSwitch":          {"unnecessary-stmt"},
+		"singleCaseSwitch":          {"unnecessary-stmt", "exhaustive"},
+		"emptyFallthrough":          {"useless-fallthrough"},
+		"preferFprint":              {"QF1012"},
 		"dupCase":                   {"identical-switch-conditions"},
 	}
 }

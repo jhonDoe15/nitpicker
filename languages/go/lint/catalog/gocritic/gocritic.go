@@ -30,8 +30,7 @@ var registered = sync.OnceValues(func() ([]*linter.CheckerInfo, error) {
 
 var selected []*linter.CheckerInfo
 
-// Configure picks the enabled checkers and sets the parameters that differ from go-critic's
-// defaults. It fails when go-critic registers a checker this preset has not decided on, or
+// Configure picks the enabled checkers. It fails when go-critic registers a checker this preset has not decided on, or
 // no longer registers one it has.
 func Configure() error {
 	all, err := registered()
@@ -45,9 +44,6 @@ func Configure() error {
 	for _, info := range all {
 		if !slices.Contains(Enabled, info.Name) {
 			continue
-		}
-		for name, value := range parameters[info.Name] {
-			info.Params[name].Value = value
 		}
 		selected = append(selected, info)
 	}
@@ -86,6 +82,9 @@ func run(pass *analysis.Pass) (any, error) {
 		context.SetFileInfo(filepath.Base(pass.Fset.Position(file.Pos()).Filename), file)
 		for _, checker := range running {
 			for _, warning := range checker.Check(file) {
+				if !kept(checker.Info.Name, warning) {
+					continue
+				}
 				pass.Report(analysis.Diagnostic{
 					Pos: warning.Pos, Category: checker.Info.Name, Message: warning.Text,
 				})

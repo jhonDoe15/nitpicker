@@ -20,7 +20,7 @@ func Label(status Status) string {
 
 func IgnoredLabel(status Status) string {
 	//exhaustive:ignore
-	switch status { // want exhaustive singleCaseSwitch
+	switch status { // want exhaustive
 	case Active:
 		return "active"
 	}
