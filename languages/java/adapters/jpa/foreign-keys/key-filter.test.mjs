@@ -98,6 +98,23 @@ describe('withUnindexedForeignKeys', () => {
       'a project whose migrations declare foreign keys, which the hygiene check reads',
       { 'src/main/resources/db/migration/V1__init.sql': MIGRATION_WITH_KEY },
     ],
+    [
+      'a project whose Liquibase YAML changelog declares foreign keys',
+      {
+        'src/main/resources/db/changelog/orders.yaml': [
+          'databaseChangeLog:',
+          '  - changeSet:',
+          '      id: 1',
+          '      changes:',
+          '        - addForeignKeyConstraint:',
+          '            baseTableName: orders',
+          '            baseColumnNames: customer_id',
+          '            referencedTableName: customers',
+          '            referencedColumnNames: id',
+          '',
+        ].join('\n'),
+      },
+    ],
     ['a MySQL-only project', { 'build.gradle': MYSQL_BUILD }],
     [
       'a project that names MySQL in its version catalog',

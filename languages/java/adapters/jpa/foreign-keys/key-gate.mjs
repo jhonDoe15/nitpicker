@@ -3,6 +3,7 @@ import path from 'node:path';
 import { filesUnder } from '../../../../../shared/filesystem.mjs';
 import { databaseKinds } from '../../../../../shared/hygiene/schema/database-kind.mjs';
 import { migratesForeignKeys } from '../../../../../shared/hygiene/schema/foreign-key-index.mjs';
+import { yamlDocuments } from '../../../../../core/tooling/yaml/yaml-documents.mjs';
 
 export const FOREIGN_KEY_RULE = 'JpaUnindexedForeignKey';
 
@@ -23,7 +24,7 @@ function projectFiles(projectRoot) {
 
 function gateOf(projectRoot) {
   const files = projectFiles(projectRoot);
-  if (migratesForeignKeys(projectRoot, files)) {
+  if (migratesForeignKeys(projectRoot, files, yamlDocuments)) {
     return () => false;
   }
   const kindOf = databaseKinds(projectRoot, files);
