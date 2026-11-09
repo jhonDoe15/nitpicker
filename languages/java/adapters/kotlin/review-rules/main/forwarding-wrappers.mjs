@@ -3,8 +3,8 @@ import { declaredNames, springManagedOwner } from '../spring/spring-names.mjs';
 import {
   declarationOf,
   functionKind,
-  qualifiedReach,
-  visibleFrom,
+  reaches,
+  typeAliasNames,
 } from './unused-options/call-reach.mjs';
 
 export const FORWARDING_RULE = 'StaticForwardingWrapper';
@@ -88,12 +88,6 @@ function targetsOf(files, declared) {
   return targets;
 }
 
-function reachable(file, qualifier, { declaration }) {
-  return qualifier === undefined
-    ? visibleFrom(file, declaration)
-    : qualifiedReach(file, qualifier, declaration);
-}
-
 function sameSignature(fn, target) {
   return (
     target !== fn &&
@@ -108,10 +102,10 @@ function sameSignature(fn, target) {
   );
 }
 
-function forwardsTo(fn, file, targets) {
+function forwardsTo(fn, file, { targets, typeAliases }) {
   const { qualifier } = fn.forward;
-  const named = (targets.get(fn.forward.name) ?? []).filter((target) =>
-    reachable(file, qualifier, target),
+  const named = (targets.get(fn.forward.name) ?? []).filter(({ declaration }) =>
+    reaches({ file, qualifier, typeAliases }, declaration),
   );
   return qualifier !== undefined && named.length === 0
     ? true
@@ -121,10 +115,13 @@ function forwardsTo(fn, file, targets) {
 export function forwardingWrapperFindings(files, { finding, declaredIn = files }) {
   const main = files.filter(({ test }) => !test);
   const declared = declaredNames(declaredIn);
-  const targets = targetsOf(
-    declaredIn.filter(({ test }) => !test),
-    declared,
-  );
+  const targets = {
+    targets: targetsOf(
+      declaredIn.filter(({ test }) => !test),
+      declared,
+    ),
+    typeAliases: typeAliasNames(declaredIn),
+  };
   return main.flatMap((file) => {
     const owners = ownerKinds(file, declared);
     return file.functions
