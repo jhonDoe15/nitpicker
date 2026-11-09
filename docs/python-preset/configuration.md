@@ -15,8 +15,8 @@ Config keys with this preset: `base`, `disable` (the analyzer names are `python`
 `inheritanceDepth`, and the [slow test](slow-tests.md) budgets `unitTestSeconds` and
 `integrationTestSeconds`), `testConsole` (see [new console output](new-console-output-from-tests.md)), `exclude` (findings under the globs are dropped) and
 `legacyInventory` (same format and `baseline-expansion` rule as for Java), `history` (the opt-in
-[change history](../usage.md#change-history) check), and the `python` object below. `layout.featureRoots` and `layout.sharedRoots` place the [feature folders](feature-folders.md), and
-`featureRoots` also names the feature folders `co-change` reads (the other `layout` keys describe
+[change history](../usage.md#change-history) check), and the `python` object below. `layout.featureRoots` and `layout.sharedRoots` place the [feature folders](feature-folders.md), which
+`contract-infrastructure-type` reads too, and `featureRoots` also names the feature folders `co-change` reads (the other `layout` keys describe
 TypeScript sources and are an error). The
 top-level `exceptions` is accepted only for the rules shared with the other languages: the [feature folder rules](feature-folders.md), the file and size limits
 (`file-lines-limit`, `line-length-limit`, `folder-files-limit`, `slow-test`, `folder-depth-limit`,

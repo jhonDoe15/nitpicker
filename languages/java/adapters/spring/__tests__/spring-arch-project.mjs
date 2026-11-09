@@ -14,6 +14,15 @@ export const SPRING_ARCH_ROLES = {
 };
 
 export const SPRING_ARCH_VIOLATIONS = [
+  'contract-infrastructure-type shop.accounts.AccountController controller|persistence|export:java.sql.ResultSet',
+  'contract-infrastructure-type shop.accounts.AccountService service|persistence|entities:jakarta.persistence.EntityManager',
+  'contract-infrastructure-type shop.accounts.AccountService service|persistence|repository:shop.accounts.AccountRepository',
+  'contract-infrastructure-type shop.accounts.AccountService service|persistence|rows:java.sql.Connection',
+  'contract-infrastructure-type shop.accounts.AccountService service|persistence|rows:java.sql.ResultSet',
+  'contract-infrastructure-type shop.accounts.Accounts feature|persistence|Batch.run:java.sql.Connection',
+  'contract-infrastructure-type shop.accounts.Accounts feature|transport|respond:jakarta.servlet.http.HttpServletResponse',
+  'contract-infrastructure-type shop.accounts.Accounts feature|transport|view:org.springframework.http.ResponseEntity',
+  'contract-infrastructure-type shop.accounts.internal.AccountJdbc package|persistence|rows:java.sql.ResultSet',
   'ddd-aggregate-reference shop.sales.LineItem shop.sales.Product',
   'ddd-aggregate-reference shop.sales.Order shop.sales.Cart',
   'ddd-aggregate-reference shop.sales.Order shop.sales.Customer',
@@ -31,6 +40,7 @@ export const SPRING_ARCH_VIOLATIONS = [
   'spring-controller-entity shop.orders.OrdersApiController list:shop.orders.Order',
   'spring-controller-entity shop.orders.ReportController base:shop.orders.Order',
   'spring-controller-entity shop.orders.ReportController model:shop.orders.Order',
+  'spring-controller-repository shop.accounts.AccountController org.springframework.jdbc.core.JdbcTemplate',
   'spring-controller-repository shop.carts.CartController shop.catalog.internal.CatalogRepository',
   'spring-controller-repository shop.customers.CustomerController shop.orders.OrderRepository',
   'spring-controller-repository shop.customers.CustomerReport jakarta.persistence.EntityManager',
@@ -80,6 +90,7 @@ export const SPRING_ARCH_VIOLATIONS = [
   'spring-scope-capture shop.wiring.WiringService request:shop.wiring.Token',
   'spring-scope-capture shop.wiring.WiringService request:shop.wiring.Wallet',
   'spring-scope-capture shop.wiring.WiringService session:shop.wiring.Ledger',
+  'spring-service-web shop.accounts.AccountService jakarta.servlet.http.HttpServletRequest',
   'spring-service-web shop.billing.BillingService org.springframework.http.ResponseEntity',
   'spring-service-web shop.billing.Refunds org.springframework.http.server.reactive.ServerHttpRequest',
   'spring-service-web shop.billing.Refunds org.springframework.web.server.ResponseStatusException',

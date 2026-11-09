@@ -12,6 +12,10 @@ import { listProductionModules, testFileMatcher } from './python-sources.mjs';
 import { entryFilesOf } from '../../rules/libraries/entry-modules.mjs';
 import { boundaryRoots, detectLibraries } from '../../rules/libraries/project-libraries.mjs';
 import { dropGeneratedFindings } from '../../libraries/generated-files.mjs';
+import {
+  featureRoleContract,
+  PUBLIC_FACES,
+} from '../../../../shared/rules/features/feature-roles.mjs';
 
 export const RULES_REPORT = 'rules.json';
 export const ALLOWANCES_REPORT = 'rules-allowances.json';
@@ -53,7 +57,17 @@ export function pythonSources(context) {
     .filter((file) => file !== undefined);
 }
 
-function rulesOptions({ projectRoot, project }, sources, pytestConfig) {
+export function contractFaces(sources, layout) {
+  const roleOf = featureRoleContract(layout, PUBLIC_FACES.python);
+  return Object.fromEntries(
+    sources.flatMap((file) => {
+      const role = roleOf(file);
+      return role.kind === 'feature' && role.isPublic ? [[file, role.directory]] : [];
+    }),
+  );
+}
+
+function rulesOptions({ projectRoot, project, layout }, sources, pytestConfig) {
   const modules = listProductionModules(projectRoot, project.sourceRoots);
   return {
     sourceRoots: project.sourceRoots,
@@ -65,6 +79,7 @@ function rulesOptions({ projectRoot, project }, sources, pytestConfig) {
     entryFiles: entryFilesOf(sources, project.entryPoints),
     boundaryRoots: boundaryRoots(detectLibraries(projectRoot)),
     modules: Object.fromEntries(modules.map(({ file, module }) => [file, module])),
+    contractFaces: contractFaces(sources, layout),
     ...readPackageFacts(projectRoot),
   };
 }

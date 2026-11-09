@@ -17,6 +17,8 @@ rules of the [review rules](review-rules.md), the [class limits](structure-limit
 [dependency and repository checks](../usage.md#dependency-and-repository-checks), `co-change` of the
 [change history](../usage.md#change-history) check (with a `<module>/**` glob), stability, and the
 mutants of Java and Kotlin classes per path, and the structure, CRAP and coverage rules per function. Java rule
-ids are accepted for the Java sources of the project. `layout` takes only `featureRoots`, and only
-once `history.coChange` is on (it names the feature folders `co-change` reads); its other keys stay
-a config error until the Kotlin preset runs the rule that reads them (`shared-used-by-one-feature`).
+ids are accepted for the Java sources of the project. `layout` takes only `sharedRoots` and
+`featureRoots`, which `archunit/contract-infrastructure-type` reads (see
+[contract types](../java-preset/spring-architecture-rules.md#contract-types)) and `co-change` reads once `history.coChange` is on
+(`featureRoots` names its feature folders); its other keys stay a config error until the Kotlin
+preset runs the rule that reads them (`shared-used-by-one-feature`).
