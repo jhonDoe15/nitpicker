@@ -52,14 +52,41 @@ describe('loading a project config module', () => {
     );
   });
 
-  it('stops a config that prints too much', () => {
+  it('loads a config that prints a lot to both output streams', () => {
     const root = projectWith({
-      'stryker.config.mjs':
-        "for (let line = 0; line < 400; line += 1) console.log('x'.repeat(100_000));",
+      'stryker.config.mjs': [
+        'const line = "x".repeat(100_000);',
+        'for (let index = 0; index < 200; index += 1) {',
+        '  console.log(line);',
+        '  console.error(line);',
+        '}',
+        'export default { concurrency: 3 };',
+      ].join('\n'),
+    });
+
+    expect(readConfigObject(root, 'stryker.config.mjs')).toEqual({ concurrency: 3 });
+  });
+
+  it('stops a config that returns too much', () => {
+    const root = projectWith({
+      'stryker.config.mjs': 'export default { plugins: Array(120).fill("x".repeat(100_000)) };',
     });
 
     expect(() => readConfigObject(root, 'stryker.config.mjs')).toThrow(
-      'stryker.config.mjs printed more than 10 MB while loading',
+      'stryker.config.mjs returned more than 10 MB of config',
+    );
+  });
+
+  it('explains a config that crashes after it starts loading', () => {
+    const root = projectWith({
+      'stryker.config.mjs': [
+        'setTimeout(() => { throw new Error("late"); }, 0);',
+        'await new Promise(() => setInterval(() => undefined, 1000));',
+      ].join('\n'),
+    });
+
+    expect(() => readConfigObject(root, 'stryker.config.mjs')).toThrow(
+      'stryker.config.mjs could not be loaded: it ended the process with exit code 1',
     );
   });
 
