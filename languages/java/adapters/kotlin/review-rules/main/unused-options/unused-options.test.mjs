@@ -263,3 +263,114 @@ describe('unused option in Kotlin', () => {
     ).toEqual([]);
   });
 });
+
+describe('the calls that can reach a Kotlin function', () => {
+  const pad = (overrides = {}) =>
+    fn('pad', {
+      visibility: 'internal',
+      parameters: [parameter('text', 'String'), parameter('width', 'Int', { default: true })],
+      ...overrides,
+    });
+  const declaring = (functions, classes = []) => file({ package: 'demo.text', functions, classes });
+  const caller = (calls, overrides = {}) =>
+    file({ file: 'src/main/kotlin/demo/app/App.kt', package: 'demo.app', calls, ...overrides });
+  const setsWidth = (overrides = {}) =>
+    call('pad', { positional: 1, named: ['width'], ...overrides });
+  const plain = call('pad', { positional: 1 });
+
+  it('does not count a call with a receiver for a top-level function that is not an extension', () => {
+    const files = [declaring([pad()], []), caller([setsWidth({ qualifier: 'title' })])];
+    files[0].calls = [plain];
+
+    expect(summary(findingsFor(files))).toEqual([`${UNUSED_OPTION_RULE} pad.width 1`]);
+  });
+
+  it('does not count an unqualified call from a package that neither is nor imports the function', () => {
+    const files = [declaring([pad()]), caller([setsWidth()])];
+    files[0].calls = [plain];
+
+    expect(summary(findingsFor(files))).toEqual([`${UNUSED_OPTION_RULE} pad.width 1`]);
+  });
+
+  it.each([
+    ['an import of the function', { imports: [{ path: 'demo.text.pad', all: false }] }, {}],
+    ['a star import of its package', { imports: [{ path: 'demo.text', all: true }] }, {}],
+    ['the same package', { package: 'demo.text' }, {}],
+    ['a package-qualified call', {}, { qualifier: 'demo.text' }],
+  ])('counts a call through %s', (_name, callerOverrides, callOverrides) => {
+    const files = [declaring([pad()]), caller([setsWidth(callOverrides)], callerOverrides)];
+    files[0].calls = [plain];
+
+    expect(findingsFor(files)).toEqual([]);
+  });
+
+  it('counts a call with any receiver for an extension that the caller imports', () => {
+    const extension = pad({ receiver: 'String', parameters: [pad().parameters[1]] });
+    const imported = { imports: [{ path: 'demo.text.pad', all: false }] };
+    const files = [
+      declaring([extension]),
+      caller([call('pad', { named: ['width'], qualifier: 'title' })], imported),
+    ];
+    files[0].calls = [call('pad', { qualifier: '"x"' })];
+
+    expect(findingsFor(files)).toEqual([]);
+  });
+
+  it('counts a call of an object member through any receiver but another type', () => {
+    const texts = klass('Texts', { kind: 'object' });
+    const member = pad({ owner: 'Texts' });
+    const imported = { imports: [{ path: 'demo.text.Texts', all: false }] };
+    const run = (qualifier, overrides = imported) => {
+      const files = [declaring([member], [texts]), caller([setsWidth({ qualifier })], overrides)];
+      files[0].calls = [call('pad', { positional: 1, qualifier: 'Texts' })];
+      return findingsFor(files).length;
+    };
+
+    expect([
+      run('Texts'),
+      run('demo.text.Texts', {}),
+      run('this'),
+      run('this@Texts'),
+      run('texts'),
+      run(undefined, {}),
+      run('Other'),
+      run('demo.other.Texts'),
+    ]).toEqual([0, 0, 0, 0, 0, 0, 1, 1]);
+    expect(run('T', { imports: [{ path: 'demo.text.Texts', alias: 'T', all: false }] })).toBe(0);
+    expect(run('U', { typeAliases: [{ name: 'U', target: 'Texts', line: 1 }] })).toBe(0);
+    expect(run('Texts', {})).toBe(1);
+  });
+
+  it('counts a named companion through its class and a nested object through an aliased outer class', () => {
+    const run = (owner, kind, qualifier) => {
+      const files = [
+        declaring(
+          [pad({ owner })],
+          [klass('Outer'), klass(owner.split('.')[1], { qualified: owner, kind })],
+        ),
+        caller([setsWidth({ qualifier })], {
+          imports: [{ path: 'demo.text.Outer', alias: 'O', all: false }],
+        }),
+      ];
+      files[0].calls = [call('pad', { positional: 1, qualifier: owner })];
+      return findingsFor(files).length;
+    };
+
+    expect([
+      run('Outer.Factory', 'companion', 'O'),
+      run('Outer.Inner', 'object', 'O.Inner'),
+      run('Outer.Inner', 'object', 'O.Other'),
+    ]).toEqual([0, 0, 1]);
+  });
+
+  it('counts a call of a class member through any receiver', () => {
+    const owner = klass('Formatter');
+    const files = [
+      declaring([pad({ owner: 'Formatter' })], [owner]),
+      caller([setsWidth({ qualifier: 'formatter' })]),
+    ];
+    files[0].calls = [plain];
+
+    expect(findingsFor(files)).toEqual([]);
+  });
+});

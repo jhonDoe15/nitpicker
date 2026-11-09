@@ -189,6 +189,13 @@ export const SMELL_HINTS = [
   },
   {
     tool: RULES_TOOL,
+    rules: ['retry-in-test'],
+    describe: (subject) => `\`${subject}\` runs a failing test again`,
+    allowed:
+      'Remove the retry: a test that passes on a later attempt hides a flaky or racy test. Fix the cause, such as waiting on the condition instead of a fixed delay or isolating shared state.',
+  },
+  {
+    tool: RULES_TOOL,
     rules: ['mocked-subject-in-test'],
     describe: (subject) =>
       `\`${subject}\` is part of the module this test is named after, so the test replaces the code it should check`,
@@ -238,6 +245,14 @@ export const SMELL_HINTS = [
       `\`${subject}\` changes process-wide state in a test and nothing puts it back, so the tests after it depend on the order they run in`,
     allowed:
       'Let pytest undo it: `monkeypatch.setenv`, `monkeypatch.setattr` or `mock.patch.dict(os.environ, ...)`, or save the old value and restore it in `finally`, after `yield` in a fixture, or in `tearDown`.',
+  },
+  {
+    tool: RULES_TOOL,
+    rules: ['shared-test-state'],
+    describe: (subject) =>
+      `a test changes \`${subject}\`, which every test of the module or class shares, so the tests depend on the order they run in`,
+    allowed:
+      'Build the state in the test or in a function-scoped fixture, or reset it before every test: `.clear()` or reassign it in an `autouse` fixture, `setup_method` or `setUp`. State built once in a session or module fixture is fine while the tests only read it.',
   },
   {
     tool: RULES_TOOL,
