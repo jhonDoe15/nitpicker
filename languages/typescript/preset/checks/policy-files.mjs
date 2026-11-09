@@ -62,6 +62,11 @@ export const POLICY_FILES = [
   'languages/typescript/preset/eslint-plugin/rules/control/no-self-recursion.mjs',
   'languages/typescript/preset/eslint-plugin/rules/collections/accumulating-spread-messages.mjs',
   'languages/typescript/preset/eslint-plugin/rules/collections/no-accumulating-spread.mjs',
+  'languages/typescript/preset/eslint-plugin/rules/collections/costly-forms/array-membership.mjs',
+  'languages/typescript/preset/eslint-plugin/rules/collections/costly-forms/keyed-lookup.mjs',
+  'languages/typescript/preset/eslint-plugin/rules/collections/costly-forms/no-costly-collection-form.mjs',
+  'languages/typescript/preset/eslint-plugin/rules/collections/costly-forms/repeated-runs.mjs',
+  'languages/typescript/preset/eslint-plugin/rules/collections/costly-forms/sorted-extreme.mjs',
   'languages/typescript/preset/eslint-plugin/rules/errors/no-throw.mjs',
   'languages/typescript/preset/eslint-plugin/rules/boundaries/no-unknown-in-domain.mjs',
   'languages/typescript/preset/eslint-plugin/rules/boundaries/no-unvalidated-schema-field.mjs',
@@ -208,6 +213,12 @@ export const POLICY_FILES = [
   'languages/typescript/preset/eslint-plugin/rules/time/date-calls.mjs',
   'languages/typescript/preset/eslint-plugin/rules/time/library-calls.mjs',
   'languages/typescript/preset/eslint-plugin/rules/time/no-local-time-zone.mjs',
+  'languages/typescript/preset/eslint-plugin/rules/request-inputs/no-uncoerced-request-input.mjs',
+  'languages/typescript/preset/eslint-plugin/rules/request-inputs/bindings/nest-handlers.mjs',
+  'languages/typescript/preset/eslint-plugin/rules/request-inputs/bindings/request-calls.mjs',
+  'languages/typescript/preset/eslint-plugin/rules/request-inputs/bindings/ts-nodes.mjs',
+  'languages/typescript/preset/eslint-plugin/rules/request-inputs/fields/dto-fields.mjs',
+  'languages/typescript/preset/eslint-plugin/rules/request-inputs/fields/schema-fields.mjs',
   'languages/typescript/preset/eslint-plugin/rules/wrapped/no-magic-numbers.mjs',
   'languages/typescript/preset/eslint-plugin/rules/wrapped/naming-convention.mjs',
   'languages/typescript/preset/eslint-plugin/rules/wrapped/report-filter.mjs',
@@ -224,7 +235,7 @@ export const DEPENDENCY_GRAPH_FILES = [
 ];
 
 export const TEST_RUNNER_CONFIGURATION_FILES = [
-  'core/tooling/child-output.mjs',
+  'core/tooling/host-environment.mjs',
   'shared/conventions/read-inside.mjs',
   'shared/conventions/tool-precedence.mjs',
   'languages/typescript/preset/project-configs/config-module.mjs',
