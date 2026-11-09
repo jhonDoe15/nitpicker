@@ -2,7 +2,7 @@ import { existsSync } from 'node:fs';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import { parsePythonArguments } from '../python-runner.mjs';
-import { createToolContext, runPythonTools } from '../python-tools.mjs';
+import { MANIFEST_REPORT, createToolContext, runPythonTools } from '../python-tools.mjs';
 import { readPythonFindings } from '../python-reports.mjs';
 import {
   callsLog,
@@ -40,11 +40,11 @@ describe('python quick mode', () => {
 
     expect(runPythonTools(context)).toEqual([]);
 
-    expect(calls('ruff', 'check').length).toBeGreaterThan(0);
+    expect(calls('ruff', 'check')).toHaveLength(2);
     expect(calls('coverage', 'run')).toEqual([]);
     expect(calls('coverage', 'json')).toEqual([]);
     expect(existsSync(path.join(reportRoot, 'coverage.json'))).toBe(false);
-    expect(JSON.parse(readReport(reportRoot, 'manifest.json'))).toEqual({
+    expect(JSON.parse(readReport(reportRoot, MANIFEST_REPORT))).toEqual({
       formatter: 'ruff',
       formatterDetected: true,
       quick: true,
@@ -63,7 +63,7 @@ describe('python quick mode', () => {
     runPythonTools(context);
 
     expect(calls('coverage', 'run')).toHaveLength(1);
-    expect(JSON.parse(readReport(reportRoot, 'manifest.json')).quick).toBeUndefined();
+    expect(JSON.parse(readReport(reportRoot, MANIFEST_REPORT)).quick).toBeUndefined();
   });
 
   it('reads the static findings and none of the test-driven ones', () => {

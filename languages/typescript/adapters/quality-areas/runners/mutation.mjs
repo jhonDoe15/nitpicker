@@ -7,10 +7,6 @@ import { normalizeMutation, withUnreachedMutantsUncovered } from '../reporting/t
 import { withMutationSourceHashes } from '../reporting/source-hashes.mjs';
 import { readFileSync, writeFileSync, existsSync } from 'node:fs';
 import { rm } from 'node:fs/promises';
-import {
-  TYPECHECK_FAILED_SKIPPED_RULE,
-  TESTS_FAILED_SKIPPED_RULE,
-} from '../../../../../shared/rules/finding-helpers.mjs';
 import { toolErrorFinding } from '../reporting/test-report.mjs';
 import { mutationSkipFor } from './skips/mutation-skips.mjs';
 import { layoutTransformFor } from '../../../preset/tool-configs.mjs';

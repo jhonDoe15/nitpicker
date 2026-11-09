@@ -1,5 +1,5 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { changeRepositories, lines } from './test-support/changes-between.mjs';
+import { changeRepositories, lines } from './test-support/projects/changes-between.mjs';
 import { lineMapOf } from './unchanged-lines.mjs';
 
 const repositories = changeRepositories();

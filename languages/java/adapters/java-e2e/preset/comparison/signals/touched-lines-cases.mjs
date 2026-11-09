@@ -1,6 +1,6 @@
 import path from 'node:path';
 import { expect, it } from 'vitest';
-import { EDITED_LINE_SENTENCE } from '../../../../../../core/diff/comparison/positions/touched-lines.mjs';
+import { EDITED_LINE_SENTENCE } from '../../../../../../../core/diff/comparison/positions/touched-lines.mjs';
 
 const sources = 'src/main/java/demo';
 const EDITED_BRANCH_LINE = 5;

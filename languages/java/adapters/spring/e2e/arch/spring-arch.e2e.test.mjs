@@ -3,13 +3,13 @@ import { cpSync, mkdtempSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { INIT_SCRIPT } from '../../../builds/java-build.mjs';
+import { INIT_SCRIPT } from '../../../../builds/java-build.mjs';
 import {
   SPRING_ARCH_FIXTURE as fixture,
   SPRING_ARCH_ROLES,
   SPRING_ARCH_VIOLATIONS,
-} from '../__tests__/spring-arch-project.mjs';
-import { writeSpringRoles } from '../../spring-arch/spring-roles.mjs';
+} from '../../__tests__/spring-arch-project.mjs';
+import { writeSpringRoles } from '../../../spring-arch/spring-roles.mjs';
 
 const enabled = process.env.NITPICKER_JAVA_E2E === '1';
 const gradle = process.env.NITPICKER_GRADLE ?? 'gradle';

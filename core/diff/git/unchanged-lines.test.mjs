@@ -1,5 +1,5 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { changeRepositories, lines, pick } from './test-support/changes-between.mjs';
+import { changeRepositories, lines, pick } from './test-support/projects/changes-between.mjs';
 import { parseChangedLines } from './patches/changed-lines.mjs';
 import { lineMapOf } from './unchanged-lines.mjs';
 

@@ -8,7 +8,11 @@ describe('gradleSpawnFailure', () => {
   it('explains a timeout and names the setting that raises it, which is the whole fix', () => {
     const cause = Object.assign(new Error('spawnSync ./gradlew ETIMEDOUT'), { code: 'ETIMEDOUT' });
 
-    const error = gradleSpawnFailure(cause, { command: './gradlew', budget, projectRoot: '/project' });
+    const error = gradleSpawnFailure(cause, {
+      command: './gradlew',
+      budget,
+      projectRoot: '/project',
+    });
 
     expect(error.message).toBe(
       'Gradle did not finish in /project within 15 minutes and was stopped. ' +

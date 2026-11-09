@@ -433,7 +433,7 @@ describe('spec/findings.schema.json', () => {
     expect(parseFinding(finding)).toEqual(finding);
     expect(validate({ findings: [finding] })).toEqual([]);
     expect(() => parseFinding(countless)).toThrow(TypeError);
-    expect(validate({ findings: [countless] })).not.toEqual([]);
+    expect(validate({ findings: [countless] })).toHaveLength(1);
   });
 
   const linkedFinding = {
