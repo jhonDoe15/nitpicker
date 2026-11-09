@@ -2,6 +2,10 @@ import { THRESHOLDS } from '../thresholds.mjs';
 import { skeletonKey } from './skeleton.mjs';
 import { bagOverlap, lcsLength, similarEnough } from './tokens.mjs';
 
+export function partnerLimit(size) {
+  return size > THRESHOLDS.fullBucket ? THRESHOLDS.bucketNeighbours : size;
+}
+
 function similar(left, right) {
   const percent = THRESHOLDS.minSharedPercent;
   const lengths = [left.tokens.length, right.tokens.length];
@@ -35,7 +39,7 @@ function* groupPairs(units, group) {
     (left, right) => lengthOf.get(left) - lengthOf.get(right) || left - right,
   );
   for (const [at, shorter] of order.entries()) {
-    const longer = order.slice(at + 1);
+    const longer = order.slice(at + 1, at + 1 + partnerLimit(order.length));
     const end = longer.findIndex(
       (other) => !lengthsFits(lengthOf.get(shorter), lengthOf.get(other)),
     );

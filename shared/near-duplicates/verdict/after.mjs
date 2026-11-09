@@ -46,10 +46,20 @@ function repeats(tree, block) {
   return found?.repeated === true;
 }
 
+function readBeforeWritten(accesses) {
+  return new Set(
+    accesses.flatMap(({ reads }, index) =>
+      [...reads].filter((name) => !accesses.slice(0, index).some(({ writes }) => writes.has(name))),
+    ),
+  );
+}
+
 export function valuesUsedAfter(tree, block, statements) {
-  const defined = new Set(statements.flatMap((statement) => [...accessesOf(statement).writes]));
+  const accesses = statements.map((statement) => accessesOf(statement));
+  const defined = new Set(accesses.flatMap(({ writes }) => [...writes]));
   const reads = readsAround(tree, new Set(statements));
-  const loop = repeats(tree, block);
-  return [...defined].filter((name) => reads.after.has(name) || (loop && reads.before.has(name)))
-    .length;
+  const carried = repeats(tree, block)
+    ? new Set([...reads.before, ...readBeforeWritten(accesses)])
+    : new Set();
+  return [...defined].filter((name) => reads.after.has(name) || carried.has(name)).length;
 }

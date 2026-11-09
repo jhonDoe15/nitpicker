@@ -175,6 +175,10 @@ function memberOf(source, get) {
     : node('member', source, [get(source.object)], { value: source.property.name });
 }
 
+function elementsOf(source, get) {
+  return source.elements.map((element) => optional(element, get));
+}
+
 function grouped(value, source, children) {
   return node('expression', source, children, { value });
 }
@@ -206,13 +210,13 @@ const EXPRESSIONS = {
   MemberExpression: memberOf,
   ArrowFunctionExpression: lambdaOf,
   FunctionExpression: lambdaOf,
-  ArrayExpression: (source, get) => grouped('array', source, source.elements.map(get)),
+  ArrayExpression: (source, get) => grouped('array', source, elementsOf(source, get)),
   ObjectExpression: (source, get) => grouped('object', source, source.properties.map(get)),
   Property: (source, get) =>
     grouped(`property:${source.key.name ?? source.key.value}`, source, [get(source.value)]),
   TemplateLiteral: (source, get) =>
     grouped('template', source, [...source.quasis.map(get), ...source.expressions.map(get)]),
-  ArrayPattern: (source, get) => grouped('array-pattern', source, source.elements.map(get)),
+  ArrayPattern: (source, get) => grouped('array-pattern', source, elementsOf(source, get)),
   ObjectPattern: (source, get) => grouped('object-pattern', source, source.properties.map(get)),
   TemplateElement: (source) =>
     node('literal', source, [], { literal: 'string', value: source.value.raw }),

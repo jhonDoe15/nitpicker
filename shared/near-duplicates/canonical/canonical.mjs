@@ -3,19 +3,25 @@ import { parameterPositions, shapeMode } from '../tree/keys.mjs';
 import { categoryOf, rebuild, sameTree, withChildren } from '../tree/nodes.mjs';
 import { normalizeTree } from '../tree/shape.mjs';
 import { escapingNames } from './effects.mjs';
-import { markConditions, rewriteExpression, withConditions } from './expressions.mjs';
+import {
+  chainInteriors,
+  markConditions,
+  rewriteExpression,
+  withConditions,
+} from './expressions.mjs';
 import { canonicalOrder } from './order.mjs';
 import { rewriteStatements } from './statements.mjs';
 
 const MAX_ROUNDS = 8;
 
 function rewrite(root, context) {
+  const interiors = chainInteriors(root);
   return rebuild(root, (node, children) => {
     const rebuilt = withConditions(node, children);
     if (rebuilt.kind === 'block') {
       return withChildren(rebuilt, canonicalOrder(rewriteStatements(children), context));
     }
-    return categoryOf(rebuilt) === 'expression'
+    return categoryOf(rebuilt) === 'expression' && !interiors.has(node)
       ? rewriteExpression(rebuilt, context.mode)
       : rebuilt;
   });

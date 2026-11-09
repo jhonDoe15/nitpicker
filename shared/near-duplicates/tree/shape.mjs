@@ -1,3 +1,4 @@
+import { appendAll } from './nodes.mjs';
 const ARITY = {
   function: 3,
   parameter: 2,
@@ -69,8 +70,11 @@ export function normalizeTree(root) {
   const top = { node: root, children: [] };
   const order = [top];
   for (const entry of order) {
+    if (typeof entry.node?.kind !== 'string') {
+      throw new Error('near-duplicate tree: every node needs a kind');
+    }
     entry.children = (entry.node.children ?? []).map((node) => ({ node, children: [] }));
-    order.push(...entry.children);
+    appendAll(order, entry.children);
   }
   for (const entry of order.toReversed()) {
     entry.built = copyOf(

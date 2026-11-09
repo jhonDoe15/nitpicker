@@ -10,54 +10,82 @@ function movable(statement, escaping) {
   return isBound(name) && !escaping.has(name.value) && isStable(value, escaping);
 }
 
-function overlaps(left, right) {
-  return [...left].some((name) => right.has(name));
-}
-
-function depends(earlier, later) {
-  return (
-    (!earlier.movable && !later.movable) ||
-    overlaps(earlier.writes, later.reads) ||
-    overlaps(earlier.writes, later.writes) ||
-    overlaps(later.writes, earlier.reads)
-  );
-}
-
-function describe(statement, index, { escaping, mode }) {
+function describe(statement, index, escaping) {
   const { reads, writes } = accessesOf(statement);
-  return {
-    statement,
-    index,
-    reads,
-    writes,
-    movable: movable(statement, escaping),
-    key: keyOf(statement, mode),
-    before: [],
-  };
+  return { statement, index, reads, writes, movable: movable(statement, escaping) };
 }
 
-function precedes(left, right) {
-  return (
-    compareText(left.key, right.key) < 0 || (left.key === right.key && left.index < right.index)
-  );
+function listed(map, names) {
+  return [...names].flatMap((name) => map.get(name) ?? []);
 }
 
-function linkDependencies(items) {
-  for (const later of items) {
-    later.before = items.slice(0, later.index).filter((earlier) => depends(earlier, later));
+function remember(map, names, item) {
+  for (const name of names) {
+    if (!map.has(name)) {
+      map.set(name, []);
+    }
+    map.get(name).push(item);
   }
 }
 
-function firstReady(items, placed) {
-  const ready = items.filter(
-    (item) => !placed.has(item) && item.before.every((earlier) => placed.has(earlier)),
-  );
-  return ready.reduce((best, item) => (precedes(item, best) ? item : best));
+function linkDependencies(items) {
+  const writers = new Map();
+  const readers = new Map();
+  let fixed;
+  for (const item of items) {
+    const earlier = [
+      ...(item.movable || fixed === undefined ? [] : [fixed]),
+      ...listed(writers, item.reads),
+      ...listed(writers, item.writes),
+      ...listed(readers, item.writes),
+    ];
+    const distinct = new Set(earlier);
+    item.waiting = distinct.size;
+    for (const other of distinct) {
+      other.after.push(item);
+    }
+    remember(writers, item.writes, item);
+    remember(readers, item.reads, item);
+    fixed = item.movable ? fixed : item;
+  }
 }
 
-export function canonicalOrder(statements, context) {
-  const items = statements.map((statement, index) => describe(statement, index, context));
+function ranked(items, mode) {
+  const keys = items.map((item) => keyOf(item.statement, mode));
+  const order = items.toSorted(
+    (left, right) => compareText(keys[left.index], keys[right.index]) || left.index - right.index,
+  );
+  for (const [rank, item] of order.entries()) {
+    item.rank = rank;
+  }
+}
+
+function placeNext(ready) {
+  const next = ready.reduce((best, item) => (item.rank < best.rank ? item : best));
+  ready.splice(ready.indexOf(next), 1);
+  for (const later of next.after) {
+    later.waiting -= 1;
+    if (later.waiting === 0) {
+      ready.push(later);
+    }
+  }
+  return next;
+}
+
+function placeAll(items) {
+  const ready = items.filter((item) => item.waiting === 0);
+  return items.map(() => placeNext(ready));
+}
+
+export function canonicalOrder(statements, { escaping, mode }) {
+  if (statements.length < 2 || !statements.some((statement) => movable(statement, escaping))) {
+    return statements;
+  }
+  const items = statements.map((statement, index) => ({
+    ...describe(statement, index, escaping),
+    after: [],
+  }));
   linkDependencies(items);
-  const placed = items.reduce((done) => done.add(firstReady(items, done)), new Set());
-  return [...placed].map((item) => item.statement);
+  ranked(items, mode);
+  return placeAll(items).map((item) => item.statement);
 }

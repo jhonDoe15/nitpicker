@@ -1,5 +1,6 @@
 import { leavesRun } from '../canonical/effects.mjs';
-import { alignLists } from '../align/align.mjs';
+import { alignLists, alignPair } from '../align/align.mjs';
+import { createState } from '../align/state.mjs';
 import { KEY_MODES } from '../tree/keys.mjs';
 import { blocksOf } from '../tree/nodes.mjs';
 import { THRESHOLDS } from '../thresholds.mjs';
@@ -24,6 +25,9 @@ function runLengths(left, right) {
 }
 
 function commonStretches(left, right) {
+  if (left.length * right.length > THRESHOLDS.maxListCells) {
+    return [];
+  }
   const { table, width } = runLengths(left, right);
   const stretches = [];
   for (const [i, j] of cells([...left.keys()], [...right.keys()])) {
@@ -37,37 +41,62 @@ function commonStretches(left, right) {
 }
 
 function acceptable(side, statements) {
+  return valuesUsedAfter(side.tree, side.block, statements) <= THRESHOLDS.maxValuesAfterRun;
+}
+
+function sideStatements(side, { offset, length }) {
+  return side.block.children.slice(side.from + offset, side.from + offset + length);
+}
+
+function broken(state) {
   return (
-    !leavesRun(statements) &&
-    valuesUsedAfter(side.tree, side.block, statements) <= THRESHOLDS.maxValuesAfterRun
+    state.conflicts > 0 ||
+    state.gaps.length > 0 ||
+    state.holes.length > THRESHOLDS.maxParameters ||
+    controlFlowHole(state.holes)
   );
 }
 
-function tryWindow({ left, right, cachedKey }, { offset, length }) {
-  const xs = left.block.children.slice(left.from + offset, left.from + offset + length);
-  const ys = right.block.children.slice(right.from + offset, right.from + offset + length);
+function tryWindow({ left, right, cachedKey }, window) {
+  const xs = sideStatements(left, window);
+  const ys = sideStatements(right, window);
+  if (!acceptable(left, xs) || !acceptable(right, ys)) {
+    return undefined;
+  }
   const { state, template } = alignLists([xs, ys], cachedKey);
-  const passes =
-    state.conflicts === 0 &&
-    state.gaps.length === 0 &&
-    state.holes.length <= THRESHOLDS.maxParameters &&
-    state.shared >= THRESHOLDS.minRunNodes &&
-    !controlFlowHole(state.holes) &&
-    acceptable(left, xs) &&
-    acceptable(right, ys);
-  return passes ? { state, template, statements: [xs, ys] } : undefined;
+  return broken(state) || state.shared < THRESHOLDS.minRunNodes
+    ? undefined
+    : { state, template, statements: [xs, ys] };
 }
 
-function countDown(from, to) {
-  return Array.from({ length: from - to + 1 }, (_, index) => from - index);
+function countUp(from, to) {
+  return Array.from({ length: Math.max(to - from + 1, 0) }, (_, index) => from + index);
 }
 
-function* windows(length) {
-  for (const size of countDown(length, THRESHOLDS.minRunStatements)) {
-    for (const offset of countDown(length - size, 0).toReversed()) {
-      yield { offset, length: size };
+function alignStatement(state, pair) {
+  alignPair(state, pair);
+  return state;
+}
+
+function windowsFrom(placed, stretch, offset) {
+  const state = createState(placed.cachedKey);
+  const found = [];
+  for (const length of countUp(1, stretch.length - offset)) {
+    const window = { offset, length };
+    const [xs, ys] = [sideStatements(placed.left, window), sideStatements(placed.right, window)];
+    const pair = [xs.at(-1), ys.at(-1)];
+    if (leavesRun([pair[0]]) || leavesRun([pair[1]]) || broken(alignStatement(state, pair))) {
+      break;
+    }
+    if (length >= THRESHOLDS.minRunStatements && state.shared >= THRESHOLDS.minRunNodes) {
+      found.push({ ...window, shared: state.shared });
     }
   }
+  return found;
+}
+
+function byShared(left, right) {
+  return right.shared - left.shared || right.length - left.length || left.offset - right.offset;
 }
 
 function bestWindow(sides, stretch) {
@@ -76,7 +105,10 @@ function bestWindow(sides, stretch) {
     left: { ...sides.left, from: stretch.i },
     right: { ...sides.right, from: stretch.j },
   };
-  for (const window of windows(stretch.length)) {
+  const candidates = countUp(0, stretch.length - THRESHOLDS.minRunStatements)
+    .flatMap((offset) => windowsFrom(placed, stretch, offset))
+    .sort(byShared);
+  for (const window of candidates) {
     const found = tryWindow(placed, window);
     if (found !== undefined) {
       return found;

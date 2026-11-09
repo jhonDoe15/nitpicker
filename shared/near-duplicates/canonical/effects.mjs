@@ -1,4 +1,4 @@
-import { contains, isBound, isJump, isLoop, isSwitch, nodesOf } from '../tree/nodes.mjs';
+import { appendAll, contains, isBound, isJump, isLoop, isSwitch, nodesOf } from '../tree/nodes.mjs';
 
 const PURE_BINARY = new Set([
   '+',
@@ -63,7 +63,10 @@ export function escapingNames(tree) {
   );
 }
 
-function targetRole(node, index) {
+function targetRole(node, index, role) {
+  if (node.kind === 'expression' && role !== 'read') {
+    return role;
+  }
   if (DECLARING.has(node.kind) && index === 1) {
     return 'write';
   }
@@ -89,10 +92,11 @@ export function accessesOf(root) {
     if (isBound(entry.node)) {
       record(access, entry);
     }
-    pending.push(
-      ...entry.node.children.map((child, index) => ({
+    appendAll(
+      pending,
+      entry.node.children.map((child, index) => ({
         node: child,
-        role: targetRole(entry.node, index),
+        role: targetRole(entry.node, index, entry.role),
       })),
     );
   }
@@ -126,7 +130,7 @@ function leaves(entries, exitsHere) {
     if (exitsHere(entry)) {
       return true;
     }
-    pending.push(...innerEntries(entry));
+    appendAll(pending, innerEntries(entry));
   }
   return false;
 }

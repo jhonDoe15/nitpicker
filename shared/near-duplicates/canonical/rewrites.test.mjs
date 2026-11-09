@@ -101,6 +101,21 @@ describe('canonical rewrites before alignment', () => {
       ].join(' '),
     ],
     [
+      'the first operand of a logical chain',
+      `let total = 0; if (ready && options.enabled) { total = consume(items); }`,
+      `let total = 0; if (options.enabled) { total = consume(items); }`,
+    ],
+    [
+      'a for loop whose closures capture the loop variable apart from a while loop',
+      `let total = 0; for (let i = 0; i < items.length; i++) { total = keep(() => i); }`,
+      `let total = 0; let i = 0; while (i < items.length) { total = keep(() => i); i++; }`,
+    ],
+    [
+      'a declaration in place across a destructuring write of what it reads',
+      `let total = 0; [limit, items] = [items, limit]; const max = limit + 1; total = consume(max);`,
+      `let total = 0; const max = limit + 1; [limit, items] = [items, limit]; total = consume(max);`,
+    ],
+    [
       'operands with calls in their written order',
       `let total = 0; if (ready(items) && options.enabled) { total = consume(items); }`,
       `let total = 0; if (options.enabled && ready(items)) { total = consume(items); }`,

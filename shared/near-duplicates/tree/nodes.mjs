@@ -41,6 +41,13 @@ const COMPARED = ['kind', 'value', 'binding', 'literal', 'commutes'];
 
 const TYPE_SLOTS = { function: 0, parameter: 0, declare: 0, foreach: 0 };
 
+export function appendAll(target, items) {
+  for (const item of items) {
+    target.push(item);
+  }
+  return target;
+}
+
 export const NONE = Object.freeze({ kind: 'none', children: Object.freeze([]) });
 
 export function categoryOf(node) {
@@ -92,7 +99,7 @@ export function nodesOf(root) {
 function levelOrder(root) {
   const order = [root];
   for (const node of order) {
-    order.push(...node.children);
+    appendAll(order, node.children);
   }
   return order;
 }
@@ -118,7 +125,7 @@ export function contains(root, predicate, skip = () => false) {
       return true;
     }
     if (!skip(node)) {
-      pending.push(...node.children);
+      appendAll(pending, node.children);
     }
   }
   return false;
@@ -133,7 +140,10 @@ export function sameTree(left, right) {
     if (differs) {
       return false;
     }
-    pending.push(...one.children.map((child, index) => [child, other.children[index]]));
+    appendAll(
+      pending,
+      one.children.map((child, index) => [child, other.children[index]]),
+    );
   }
   return true;
 }

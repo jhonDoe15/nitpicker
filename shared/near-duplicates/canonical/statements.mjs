@@ -1,5 +1,5 @@
 import { KEY_MODES, keyOf } from '../tree/keys.mjs';
-import { NONE, isBound, isJump, make, withChildren } from '../tree/nodes.mjs';
+import { NONE, contains, isBound, isJump, make, withChildren } from '../tree/nodes.mjs';
 import { accessesOf, continuesLoop, isPure } from './effects.mjs';
 import { negationOf } from './expressions.mjs';
 
@@ -36,7 +36,7 @@ function plainAssignment(statements) {
 
 function loopAsWhile(statement) {
   const [init, condition, update, body] = statement.children;
-  if (continuesLoop(body)) {
+  if (continuesLoop(body) || contains(statement, (node) => node.kind === 'lambda')) {
     return [statement];
   }
   const test = condition.kind === 'none' ? TRUE : condition;

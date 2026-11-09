@@ -1,6 +1,6 @@
 import { THRESHOLDS } from '../thresholds.mjs';
 import { statementHashes } from './hashes.mjs';
-import { similarityPairs } from './similarity.mjs';
+import { partnerLimit, similarityPairs } from './similarity.mjs';
 
 const INDEX = { minNodes: THRESHOLDS.indexMinNodes, window: THRESHOLDS.minRunStatements };
 
@@ -19,8 +19,9 @@ function buckets(units) {
 }
 
 function* bucketPairs(members) {
+  const limit = partnerLimit(members.length);
   for (const [offset, first] of members.entries()) {
-    for (const second of members.slice(offset + 1)) {
+    for (const second of members.slice(offset + 1, offset + 1 + limit)) {
       yield [first, second];
     }
   }
