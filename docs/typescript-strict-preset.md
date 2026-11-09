@@ -42,6 +42,7 @@ Each topic has its own page, so two changes to different topics never edit the s
 - [React](typescript-strict-preset/react.md)
 - [Internationalized messages](typescript-strict-preset/internationalized-messages.md)
 - [Server code](typescript-strict-preset/server-code.md)
+- [NestJS](typescript-strict-preset/nestjs.md)
 - [No prop, option or export without a caller](typescript-strict-preset/no-prop-option-or-export-without-a-caller.md)
 - [How it is enforced](typescript-strict-preset/how-it-is-enforced.md)
 - [Enforcement sources](typescript-strict-preset/enforcement-sources.md)

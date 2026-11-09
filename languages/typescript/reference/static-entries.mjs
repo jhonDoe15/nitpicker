@@ -47,7 +47,8 @@ const OTHER_ROWS = [
     rule: 'prettier/prettier',
     summary: 'Lines that Prettier would format differently.',
     why: 'One layout for every file, so that reviews are about the code and not its formatting.',
-    allowed: 'Run Prettier on the file; `nitpicker fix` does it for the files a change touched.',
+    allowed:
+      "Run `nitpicker --fix`: it formats the changed files that were formatted on the base, with the gate's Prettier config.",
     exception: { key: 'exceptions', rule: 'prettier/prettier' },
   },
   {
