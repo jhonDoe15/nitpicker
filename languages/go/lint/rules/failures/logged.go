@@ -2,6 +2,7 @@ package failures
 
 import (
 	"go/ast"
+	"go/token"
 	"go/types"
 
 	"github.com/jhonDoe15/nitpicker/languages/go/lint/rules/support"
@@ -24,6 +25,9 @@ func runLogged(pass *analysis.Pass) (any, error) {
 	nodes := []ast.Node{(*ast.BlockStmt)(nil), (*ast.CaseClause)(nil), (*ast.CommClause)(nil)}
 	for cursor := range support.Root(pass).Preorder(nodes...) {
 		statements := statementsOf(cursor.Node())
+		if support.InTestFile(pass, cursor.Node()) {
+			continue
+		}
 		for index, statement := range statements {
 			if !logs(pass.TypesInfo, statement) {
 				continue
@@ -58,7 +62,8 @@ func errorsIn(info *types.Info, node ast.Node) map[types.Object]bool {
 		if !ok {
 			return true
 		}
-		if variable, isVar := info.Uses[ident].(*types.Var); isVar && types.Implements(variable.Type(), errorType) {
+		if variable, isVar := info.Uses[ident].(*types.Var); isVar && local(variable) &&
+			types.Implements(variable.Type(), errorType) {
 			values[variable] = true
 		}
 		return true
@@ -66,17 +71,61 @@ func errorsIn(info *types.Info, node ast.Node) map[types.Object]bool {
 	return values
 }
 
+func local(variable *types.Var) bool {
+	return !variable.IsField() && variable.Pkg() != nil && variable.Parent() != variable.Pkg().Scope()
+}
+
 func returnsLater(info *types.Info, statements []ast.Stmt, value types.Object) bool {
 	for _, statement := range statements {
-		result, ok := statement.(*ast.ReturnStmt)
-		if !ok {
-			continue
+		if result, ok := statement.(*ast.ReturnStmt); ok {
+			return returns(info, result, value)
 		}
-		for _, expression := range result.Results {
-			if errorsIn(info, expression)[value] {
-				return true
-			}
+		if assigns(info, statement, value) || branches(statement) {
+			return false
 		}
 	}
 	return false
+}
+
+func returns(info *types.Info, result *ast.ReturnStmt, value types.Object) bool {
+	for _, expression := range result.Results {
+		if errorsIn(info, expression)[value] {
+			return true
+		}
+	}
+	return false
+}
+
+func assigns(info *types.Info, statement ast.Stmt, value types.Object) bool {
+	found := false
+	ast.Inspect(statement, func(node ast.Node) bool {
+		switch each := node.(type) {
+		case *ast.AssignStmt:
+			for _, target := range each.Lhs {
+				if ident, ok := target.(*ast.Ident); ok && info.ObjectOf(ident) == value {
+					found = true
+				}
+			}
+		case *ast.UnaryExpr:
+			if ident, ok := each.X.(*ast.Ident); ok && each.Op == token.AND && info.Uses[ident] == value {
+				found = true
+			}
+		}
+		return !found
+	})
+	return found
+}
+
+func branches(statement ast.Stmt) bool {
+	found := false
+	ast.Inspect(statement, func(node ast.Node) bool {
+		switch node.(type) {
+		case *ast.FuncLit:
+			return false
+		case *ast.ReturnStmt, *ast.BranchStmt:
+			found = true
+		}
+		return !found
+	})
+	return found
 }

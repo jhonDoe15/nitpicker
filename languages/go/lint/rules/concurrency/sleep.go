@@ -2,6 +2,7 @@ package concurrency
 
 import (
 	"go/ast"
+	"go/types"
 
 	"github.com/jhonDoe15/nitpicker/languages/go/lint/rules/support"
 	"golang.org/x/tools/go/analysis"
@@ -40,8 +41,27 @@ func startsBefore(pass *analysis.Pass, function inspector.Cursor, call *ast.Call
 		if !starts(pass, each.Node()) {
 			continue
 		}
-		if inner, ok := support.EnclosingFunc(each); ok && inner == function {
+		if inner, ok := support.EnclosingFunc(each); ok && inner == function && reaches(each, call) {
 			return true
+		}
+	}
+	return false
+}
+
+func reaches(start inspector.Cursor, call *ast.CallExpr) bool {
+	for each := range start.Enclosing() {
+		statement, isStatement := each.Node().(ast.Stmt)
+		if !isStatement {
+			continue
+		}
+		switch each.Parent().Node().(type) {
+		case *ast.BlockStmt, *ast.CaseClause, *ast.CommClause:
+			parent := each.Parent().Node()
+			if statement.End() <= call.Pos() && parent.Pos() <= call.Pos() && call.End() <= parent.End() {
+				return true
+			}
+		case *ast.FuncDecl, *ast.FuncLit:
+			return false
 		}
 	}
 	return false
@@ -56,5 +76,10 @@ func starts(pass *analysis.Pass, node ast.Node) bool {
 	if !ok || selector.Sel.Name != "Go" {
 		return false
 	}
-	return owner(pass.TypesInfo.TypeOf(selector.X))
+	selection := pass.TypesInfo.Selections[selector]
+	if selection == nil {
+		return false
+	}
+	method, _ := selection.Obj().(*types.Func)
+	return method != nil && owner(method.Signature().Recv().Type())
 }

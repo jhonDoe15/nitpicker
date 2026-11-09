@@ -55,3 +55,21 @@ func Remove(name string) error {
 	}
 	return nil
 }
+
+func LoadAgain(name string) ([]byte, error) {
+	data, err := os.ReadFile(name)
+	if err != nil {
+		slog.Warn("first read failed, retrying", "error", err)
+		data, err = os.ReadFile(name)
+	}
+	return data, err
+}
+
+type Attempt struct {
+	err error
+}
+
+func Compare(first, second Attempt) error {
+	slog.Info("first attempt", "error", first.err)
+	return second.err
+}

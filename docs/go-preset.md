@@ -1,7 +1,8 @@
 # Go preset
 
 Status: slice GO1 (ticket #414) implemented, and the first part of slice GO2 (#415): staticcheck,
-errcheck, modernize and the extra `golang.org/x/tools` passes. The remaining slices are listed
+errcheck, modernize and the extra `golang.org/x/tools` passes, and the first part of slice GO3
+(#416): nitpicker's own rules for errors and concurrency. The remaining slices are listed
 under [Remaining slices](#remaining-slices).
 
 The Go preset gates a Go module (`go.mod` at the project root) with the same differential gate as
@@ -41,7 +42,7 @@ node core/cli.mjs go-analyzer --project-root <snapshot>   (per snapshot)
   -> inspect <module root> inspect.json           structure metrics (languages/go/inspect)
   -> <formatter> -l <files>                        format check, one per formatter
   -> go vet -json ./...                            compile errors and vet diagnostics
-  -> lint ./...                                    staticcheck, errcheck, modernize (languages/go/lint)
+  -> lint ./...                                    staticcheck, errcheck, modernize, go-rules (languages/go/lint)
   -> go test -vet=off -json -coverpkg=./... -coverprofile=coverage.out ./...
   -> readGoFindings -> applyFindingPolicy -> compareFindings(base, head)
 ```
@@ -271,16 +272,17 @@ that apply only before or after a Go version.
 nitpicker's own analyzers run in the lint program as the `go-rules` tool, for the forms no linter
 above settles. Each message names the allowed form and ends with its exception entry. They follow
 the project's choices and never flag them: `testing` or testify assertions, the logger (`log/slog`,
-zap, zerolog, logrus and the others are all recognised), table-driven or separate tests, and the
+zap, zerolog, logrus, go-kit log, klog, logr, hclog, charmbracelet log and apex log are
+recognised by package), table-driven or separate tests, and the
 `cmd/`, `internal/`, `pkg/` layout.
 
 | Rule                    | Reports                                                                                                                                                                                                               | Allowed form                                                                                    |
 | ----------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------- |
-| `panic-for-failure`     | `panic` outside `main` (in package main), `init` and functions named `Must...`, in non-test files; re-panicking a `recover()` value is allowed                                                                        | return an error                                                                                 |
-| `logged-and-returned`   | a logger call that takes an error, followed in the same block by a `return` of that error, as is or wrapped                                                                                                           | return it wrapped with `%w` and log it where it is handled, or log it and handle it             |
+| `panic-for-failure`     | `panic` in a non-test file outside `main` (in package main), `init`, a `default` clause and functions named `Must` or `MustX` (also `must`, `mustX`); re-panicking a `recover()` value, wrapped or not, is allowed    | return an error                                                                                 |
+| `logged-and-returned`   | in a non-test file, a logger call that takes a local error variable, followed in the same block by a `return` of that error (as is or wrapped) with no assignment to it, `return` or `break` in between               | return it wrapped with `%w` and log it where it is handled, or log it and handle it             |
 | `unowned-goroutine`     | a `go` statement in a non-test file whose function neither takes nor uses a `sync.WaitGroup`, errgroup, channel or `context.Context`, directly, through its receiver's fields or in the body of the function it calls | `wg.Go(...)`, an errgroup's `Go`, or a context the caller cancels or a channel the caller reads |
 | `context-outside-entry` | `context.Background()` or `context.TODO()` in a non-test file of a package other than `main`                                                                                                                          | take `ctx context.Context` first and pass it on                                                 |
-| `sleep-to-wait`         | `time.Sleep` in a non-test function that started a goroutine (`go`, `wg.Go`, an errgroup's `Go`) before it                                                                                                            | wait on the WaitGroup, errgroup, channel or context                                             |
+| `sleep-to-wait`         | `time.Sleep` in a non-test function that started a goroutine (`go`, `wg.Go`, an errgroup's `Go`) on a path that reaches it                                                                                            | wait on the WaitGroup, errgroup, channel or context                                             |
 
 Left to linters, so not rebuilt here (the ones not listed under [Linters](#linters) come with
 GO2's next parts, #975 to #977): `%w` and `errors.Is`/`errors.As`

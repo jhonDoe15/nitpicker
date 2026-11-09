@@ -51,3 +51,31 @@ func Guard(run func()) (err error) {
 	run()
 	return errors.New("not reached")
 }
+
+func Mustang(text string) int {
+	if text == "" {
+		panic("empty") // want panic-for-failure
+	}
+	return len(text)
+}
+
+func Direction(sign int) string {
+	switch {
+	case sign < 0:
+		return "down"
+	case sign > 0:
+		return "up"
+	default:
+		panic("unreachable: sign is not zero here")
+	}
+}
+
+func Wrapped(run func()) {
+	defer func() {
+		var recovered = recover()
+		if recovered != nil {
+			panic(fmt.Sprintf("wrapped: %v", recovered))
+		}
+	}()
+	run()
+}

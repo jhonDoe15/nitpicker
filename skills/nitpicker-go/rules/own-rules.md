@@ -7,12 +7,14 @@ the allowed form and ends with its exception entry.
 ## Errors
 
 - Return an error for an ordinary failure; never `panic` (`go-rules/panic-for-failure`). `panic`
-  is for `main`, `init` and a `MustX` function whose input the program itself wrote, such as a
-  pattern for `regexp.MustCompile`. Re-panicking a value from `recover()` is fine.
+  is for `main`, `init`, a `default` clause that cannot be reached, and a `MustX` function whose
+  input the program itself wrote, such as a pattern for `regexp.MustCompile`. Re-panicking a value
+  from `recover()` is fine.
 - Log an error or return it, never both (`go-rules/logged-and-returned`). Return it wrapped,
   `fmt.Errorf("load order %s: %w", id, err)`, and let the caller that handles it log it once; or
-  log it and handle it (fall back, retry, return `nil`). Any logger counts: `log`, `log/slog`, zap,
-  zerolog, logrus and the others.
+  log it and handle it (fall back, retry, return `nil`). The common logging packages count: `log`,
+  `log/slog`, zap, zerolog, logrus, go-kit log, klog, logr, hclog and the others listed in the
+  preset's docs.
 
 ## Goroutines and contexts
 
