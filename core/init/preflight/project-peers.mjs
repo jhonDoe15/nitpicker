@@ -4,6 +4,7 @@ import {
 } from '../../../languages/typescript/preset/diff/configured-analyzers.mjs';
 import { testRunnerFor } from '../../../languages/typescript/preset/test-runner/detect-runner.mjs';
 import { listNames } from '../../../shared/messages/messages.mjs';
+import { PACKAGE_ROOT } from '../../tooling/tool-resolution.mjs';
 import { describePackageManager } from '../detection/package-manager.mjs';
 import { nodePeerNeeds, runnerPeers } from '../peers/node-peers.mjs';
 import { installCommand } from '../peers/peer-plan.mjs';
@@ -54,9 +55,10 @@ function remedy(needs, manager) {
   return `${installCommand(manager.add, add)}${declared}`;
 }
 
-export function assertProjectPeers({ projectRoot, analyzers, configuredRunner, nodeVersion }) {
+export function assertProjectPeers(run) {
+  const { projectRoot, analyzers, configuredRunner, packageRoot = PACKAGE_ROOT } = run;
   const names = neededPeers(projectRoot, analyzers, configuredRunner);
-  const needs = nodePeerNeeds(projectRoot, names, nodeVersion);
+  const needs = nodePeerNeeds(projectRoot, names, { loadedFrom: { [TYPESCRIPT]: packageRoot } });
   if (needs.add.length === 0 && needs.uninstalled.length === 0) {
     return;
   }

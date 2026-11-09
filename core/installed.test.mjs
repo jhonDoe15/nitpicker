@@ -344,7 +344,11 @@ suite('packed nitpicker in a separate consumer', () => {
           '--output',
           reports('fixed'),
         ]);
-        const typeScript = path.join(root, 'node_modules/typescript');
+        const typeScript = path.dirname(
+          realpathSync(
+            createRequire(packageLocation + path.sep).resolve('typescript/package.json'),
+          ),
+        );
         renameSync(typeScript, `${typeScript}-aside`);
         withoutTypeScript = invoke(['--base', 'main', '--analyzer', 'eslint-lint']);
         renameSync(`${typeScript}-aside`, typeScript);

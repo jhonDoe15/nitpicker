@@ -73,8 +73,9 @@ function isSupported(name, { installed, declared }) {
   return version.length === 0 || minimum.length === 0 || isAtLeast(version, minimum);
 }
 
-function peerStatus(projectRoot, manifest, name) {
-  const installed = installedManifest(projectRoot, name)?.version;
+function peerStatus(projectRoot, manifest, { name, loadedFrom }) {
+  const found = installedManifest(projectRoot, name);
+  const installed = (found ?? (loadedFrom && installedManifest(loadedFrom, name)))?.version;
   const declared = declaredSpecifier(manifest, name);
   return { name, installed, declared, supported: isSupported(name, { installed, declared }) };
 }
@@ -83,10 +84,11 @@ function needsAdding({ installed, declared, supported }) {
   return !supported || (installed === undefined && declared === undefined);
 }
 
-export function nodePeerNeeds(projectRoot, names, nodeVersion = process.versions.node) {
+export function nodePeerNeeds(projectRoot, names, options = {}) {
+  const { nodeVersion = process.versions.node, loadedFrom = {} } = options;
   const manifest = readManifest(projectRoot);
   const statuses = names
-    .map((name) => peerStatus(projectRoot, manifest, name))
+    .map((name) => peerStatus(projectRoot, manifest, { name, loadedFrom: loadedFrom[name] }))
     .filter(({ installed, supported }) => installed === undefined || !supported);
   const added = statuses.filter(needsAdding);
   return {
@@ -136,5 +138,5 @@ export function assertTypeScriptNode(projectRoot, nodeVersion = process.versions
 }
 
 export function missingNodePeers(projectRoot, testRunner, nodeVersion = process.versions.node) {
-  return nodePeerNeeds(projectRoot, requiredNodePeers(testRunner), nodeVersion);
+  return nodePeerNeeds(projectRoot, requiredNodePeers(testRunner), { nodeVersion });
 }
