@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { chainOf, depthFirst } from './traversal.mjs';
+import { chainOf, depthFirst, foldTree } from './traversal.mjs';
 
 describe('iterative tree traversal', () => {
   it('visits children before the next sibling in their original order', () => {
@@ -24,5 +24,28 @@ describe('iterative tree traversal', () => {
         throw new Error('unexpected successor');
       }),
     ).toEqual([]);
+  });
+
+  it('folds children before their parent and passes each child the context its parent gives it', () => {
+    const tree = {
+      name: 'root',
+      children: [{ name: 'a', children: [{ name: 'b' }] }, { name: 'c' }],
+    };
+    const folded = foldTree(tree, 0, {
+      expand: (node, depth) => (node.children ?? []).map((child) => [child, depth + 1]),
+      combine: (node, depth, children) => `${node.name}${String(depth)}(${children.join(',')})`,
+    });
+    expect(folded).toBe('root0(a1(b2()),c1())');
+  });
+
+  it('folds a tree deeper than the JavaScript call stack', () => {
+    const deep = Array.from({ length: 20_000 }).reduce((child) => ({ children: [child] }), {
+      children: [],
+    });
+    const depth = foldTree(deep, undefined, {
+      expand: (node) => node.children.map((child) => [child]),
+      combine: (_node, _context, children) => 1 + (children[0] ?? 0),
+    });
+    expect(depth).toBe(20_001);
   });
 });
