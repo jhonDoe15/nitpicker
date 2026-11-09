@@ -5,6 +5,7 @@ import {
   EXPECTED_REVIEW_FINDINGS,
   REVIEW_RULE_FILES,
 } from '../test-support/review/kotlin-review-data.mjs';
+import { PLURAL_FINDINGS } from '../test-support/review/kotlin-plural-data.mjs';
 import {
   commitBranch,
   commitFromBranch,
@@ -66,21 +67,34 @@ describe.skipIf(!kotlinE2eEnabled)('Kotlin preset review rules on Maven end to e
         exceptions: [
           { rule: 'pmd/FixedSleepInTest', glob: ORDERS_TESTS },
           { rule: 'pmd/SpringUnusedContext', glob: ORDERS_TESTS },
+          { rule: 'pmd/MockedSubjectInTest', glob: ORDERS_TESTS },
+          { rule: 'pmd/StaticMockOfProjectType', glob: ORDERS_TESTS },
           { rule: 'unused-option', glob: 'src/main/kotlin/demo/orders/*' },
           { rule: 'pmd/ClassLoadEffect', glob: 'src/main/kotlin/demo/orders/Inventory.kt' },
         ],
       },
     });
 
-    expect(reviewFindings(result.newEnforceable)).toEqual([
-      'ExhaustiveEnumPredicate isLive',
-      'ExhaustiveEnumPredicate isOpen',
-      'ExhaustiveEnumPredicate isSettled',
-      'ExhaustiveEnumPredicate weight',
-      'SingularAndPluralMember Query.tags',
-      'StaticForwardingWrapper absOf',
-      'StaticForwardingWrapper total',
-    ]);
+    expect(reviewFindings(result.newEnforceable)).toEqual(
+      [
+        'ExhaustiveEnumPredicate isHandedOver',
+        'ExhaustiveEnumPredicate isLive',
+        'ExhaustiveEnumPredicate isOpen',
+        'ExhaustiveEnumPredicate isPending',
+        'ExhaustiveEnumPredicate isSettled',
+        'ExhaustiveEnumPredicate weight',
+        ...PLURAL_FINDINGS,
+        'StaticForwardingWrapper absOf',
+        'StaticForwardingWrapper total',
+        'timeout-abandons-operation awaitAllOutside:withTimeout:first',
+        'timeout-abandons-operation awaitAllOutside:withTimeout:second',
+        'timeout-abandons-operation awaitOutside:withTimeout:work',
+        'timeout-abandons-operation boundedAsync:orTimeout:supplyAsync',
+        'timeout-abandons-operation cancelAsyncTask:get:future',
+        'timeout-abandons-operation giveUp:get:future',
+        'timeout-abandons-operation shutDownLetsItFinish:get:future',
+      ].sort(),
+    );
   });
 
   it('skips data classes when a serialization library is only on the runtime classpath', () => {
