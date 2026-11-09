@@ -33,7 +33,7 @@ export function erasingReport(node, sourceCode) {
   const operand = sides.find(({ term }) => !isZeroTerm(term));
   const isErasable =
     operand !== undefined && !isConstantTerm(operand.term) && isEffectFree(operand.term);
-  if (!erased || !isErasable) {
+  if (!(erased && isErasable)) {
     return undefined;
   }
   const data = { operand: shown(operand.side, sourceCode), operator: node.operator };
@@ -71,7 +71,7 @@ function isRepeatedTarget(node, operator, sourceCode) {
 export function assignmentReport(node, sourceCode) {
   const operator = node.operator.slice(0, -1);
   const isCompound = REASSOCIATED.has(operator) || LOGICAL.has(operator);
-  if (!isCompound || !isChainOf(node.right, operator)) {
+  if (!(isCompound && isChainOf(node.right, operator))) {
     return undefined;
   }
   if (!isRepeatedTarget(node, operator, sourceCode)) {
