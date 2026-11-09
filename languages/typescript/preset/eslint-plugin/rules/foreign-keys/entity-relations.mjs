@@ -140,12 +140,15 @@ function isIndexedMember(sourceCode, member) {
   );
 }
 
+function sharesName(sourceCode, other, names) {
+  return memberNames(sourceCode, other).some((name) => names.has(name));
+}
+
 function isCovered(sourceCode, { member, classNode }) {
   const names = new Set(memberNames(sourceCode, member));
-  const matches = (other) => memberNames(sourceCode, other).some((name) => names.has(name));
   const members = classNode.body.body;
   const primary = members.find((other) => isPrimary(sourceCode, other));
-  if (primary !== undefined && matches(primary)) {
+  if (primary !== undefined && sharesName(sourceCode, primary, names)) {
     return true;
   }
   const leading = decoratorsOf(sourceCode, classNode, CLASS_INDEXES)
@@ -153,7 +156,9 @@ function isCovered(sourceCode, { member, classNode }) {
     .map(({ call }) => leadingColumn(sourceCode, call));
   return (
     leading.some((name) => names.has(name)) ||
-    members.some((other) => matches(other) && isIndexedMember(sourceCode, other))
+    members.some(
+      (other) => sharesName(sourceCode, other, names) && isIndexedMember(sourceCode, other),
+    )
   );
 }
 

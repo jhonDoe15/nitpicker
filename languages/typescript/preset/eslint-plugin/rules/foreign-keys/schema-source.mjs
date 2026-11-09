@@ -43,28 +43,37 @@ function migrationFolder(directory, entry) {
   return MIGRATION_FOLDERS.has(entry.name) || MIGRATION_FOLDERS.has(path.basename(directory));
 }
 
+function isMigrationEntry(root, directory, entry) {
+  const relative = path.relative(root, path.join(directory, entry.name)).split(path.sep).join('/');
+  return (
+    entry.isFile() && MIGRATION_FOLDERS.has(path.basename(directory)) && isMigrationFile(relative)
+  );
+}
+
+function isWalked({ directory, depth }, entry) {
+  const walked = entry.isDirectory() && depth < MAX_DEPTH && !entry.name.startsWith('.');
+  return (
+    walked &&
+    !SKIPPED_FOLDERS.has(entry.name) &&
+    (depth < MAX_DEPTH - 1 || migrationFolder(directory, entry))
+  );
+}
+
 function hasMigrations(root) {
   const pending = [{ directory: root, depth: 0 }];
-  for (const { directory, depth } of pending) {
-    for (const entry of readdirSync(directory, { withFileTypes: true })) {
-      const absolute = path.join(directory, entry.name);
-      const relative = path.relative(root, absolute).split(path.sep).join('/');
-      if (
-        entry.isFile() &&
-        MIGRATION_FOLDERS.has(path.basename(directory)) &&
-        isMigrationFile(relative)
-      ) {
-        return true;
-      }
-      const walked = entry.isDirectory() && depth < MAX_DEPTH && !entry.name.startsWith('.');
-      if (
-        walked &&
-        !SKIPPED_FOLDERS.has(entry.name) &&
-        (depth < MAX_DEPTH - 1 || migrationFolder(directory, entry))
-      ) {
-        pending.push({ directory: absolute, depth: depth + 1 });
-      }
+  for (const frame of pending) {
+    const entries = readdirSync(frame.directory, { withFileTypes: true });
+    if (entries.some((entry) => isMigrationEntry(root, frame.directory, entry))) {
+      return true;
     }
+    pending.push(
+      ...entries
+        .filter((entry) => isWalked(frame, entry))
+        .map((entry) => ({
+          directory: path.join(frame.directory, entry.name),
+          depth: frame.depth + 1,
+        })),
+    );
   }
   return false;
 }
