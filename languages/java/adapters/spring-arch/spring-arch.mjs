@@ -61,6 +61,11 @@ export const SPRING_ARCH_MESSAGES = {
       ? `Declare the properties ${handler} accepts as typed fields instead of collecting unknown keys with @JsonAnySetter on ${member}: it takes any key and value a client sends, unvalidated.`
       : `Type ${member} with a record or an enum and validate it: ${handler} binds it from the request, and an Object, JsonNode or Map<String, Object> field, or a collection of those, skips validation and lets a client send any shape. A Map with typed values, such as Map<String, String>, is fine.`;
   },
+  'spring-unmapped-exception': ({ simple, detail }) => {
+    const [method, error, path] = detail.split(':');
+    const through = path === '' ? '' : ` (through ${path.split(',').join(', ')})`;
+    return `Map ${error} to a status: ${simple}.${method} can throw it${through}, and no @ExceptionHandler, @ResponseStatus or ResponseStatusException maps it, so the client gets a 500. Add an @ExceptionHandler for it (or a base class) in a @RestControllerAdvice, or annotate it with @ResponseStatus. An exception fits a class that only signals a server fault.`;
+  },
   'spring-test-placement': ({ simple }) =>
     `Test ${simple} with new and mocks, or run it as an integration test: name it ${simple.replace(/Tests?$/u, '')}IT (Failsafe runs *IT on Maven) or put it in an integration test source set. Both keep its package, so package-private classes stay visible; a package named integration or it also counts.`,
   'spring-no-dirties-context': ({ simple }) =>
@@ -72,7 +77,8 @@ export const SPRING_ARCH_RULES = Object.keys(SPRING_ARCH_MESSAGES);
 const PLACEMENT = 'spring-test-placement';
 const REQUEST_STATE = 'spring-request-state';
 const TYPED_FIELD = 'spring-typed-request-field';
-const VERBATIM_DETAILS = new Set([REQUEST_STATE, TYPED_FIELD]);
+const UNMAPPED = 'spring-unmapped-exception';
+const VERBATIM_DETAILS = new Set([REQUEST_STATE, TYPED_FIELD, UNMAPPED]);
 const BOUNDARY = 'spring-feature-boundary';
 const DEPENDENCY_RULES = new Set([
   'spring-controller-repository',
@@ -103,6 +109,9 @@ function shortDetail(rule, detail) {
 }
 
 function identityDetail(rule, short) {
+  if (rule === UNMAPPED) {
+    return short.split(':').slice(0, 2).join(':');
+  }
   return VERBATIM_DETAILS.has(rule) ? short.split(':')[0] : short;
 }
 

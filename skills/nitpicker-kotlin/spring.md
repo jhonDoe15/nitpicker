@@ -68,7 +68,10 @@ that carry one of these or that an `@Aspect` matches):
   persistence exception, no `runCatching` without `getOrThrow()` or a throwing `getOrElse`,
   `onFailure` or `fold`.
 - `@Throws(IOException::class)` or a checked `throw` needs `rollbackFor = [Exception::class]`. A
-  write under `readOnly = true` needs its own plain `@Transactional`.
+  write under `readOnly = true` (a repository write or `@Modifying` query, DML through
+  `JdbcTemplate`, `JdbcClient` or jOOQ, or an assignment to an entity the function loaded) needs its
+  own plain `@Transactional`. To shape a response from an entity, map it to a DTO instead of
+  changing it.
 - A public service function that writes more than once (`save`, `delete`, a `@Modifying` query,
   `jdbcTemplate.update`), also through its private helpers, is `@Transactional` or runs the writes in
   `transactionTemplate.execute { }`.
