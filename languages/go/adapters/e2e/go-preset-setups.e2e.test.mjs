@@ -29,6 +29,7 @@ const goE2eEnabled = process.env.NITPICKER_GO_E2E === '1';
 const GO_NOT_FOUND =
   'go was not found on the PATH: install Go (https://go.dev/dl/) or put its bin folder on the PATH';
 const INSPECT_SOURCE = path.resolve(import.meta.dirname, '../../inspect');
+const LINT_SOURCE = path.resolve(import.meta.dirname, '../../lint');
 
 function pathWithoutGo(workspace) {
   const bin = temporaryDirectory(workspace, 'bin-');
@@ -120,6 +121,13 @@ describe.skipIf(!goE2eEnabled)('Go preset project setups end to end', () => {
     const output = command(INSPECT_SOURCE, 'go', ['test', '-count=1', './...']);
     expect(output.replace(/\t\S+\n$/u, '\n')).toBe(
       'ok  \tgithub.com/jhonDoe15/nitpicker/languages/go/inspect\n',
+    );
+  });
+
+  it('ships a lint program whose fixtures fail and pass as marked', () => {
+    const output = command(LINT_SOURCE, 'go', ['test', '-count=1', '.']);
+    expect(output.replace(/\t\S+\n$/u, '\n')).toBe(
+      'ok  \tgithub.com/jhonDoe15/nitpicker/languages/go/lint\n',
     );
   });
 });
