@@ -153,7 +153,7 @@ function isBoilerplate(clone) {
 function distinctClones(clones) {
   const kept = [];
   for (const clone of clones) {
-    if (!overlaps(clone.first, clone.second) && !kept.some((other) => sameClone(clone, other))) {
+    if (!(overlaps(clone.first, clone.second) || kept.some((other) => sameClone(clone, other)))) {
       kept.push(clone);
     }
   }

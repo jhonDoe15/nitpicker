@@ -51,7 +51,7 @@ describe('Java analyzer configuration files', () => {
       'languages/java/builds/tools',
     ]
       .flatMap((directory) => resourceFiles(directory))
-      .filter((file) => !file.endsWith('.test.mjs') && !file.includes('test-support'))
+      .filter((file) => !(file.endsWith('.test.mjs') || file.includes('test-support')))
       .filter((file) => !configurationFiles().includes(file));
 
     expect(unhashed).toEqual([]);

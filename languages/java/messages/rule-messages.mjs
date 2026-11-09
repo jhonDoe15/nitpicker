@@ -57,7 +57,7 @@ function layoutFix(javaStyle) {
 }
 
 export function withRuleMessage(finding, { preset = 'java', javaStyle } = {}) {
-  if (!ROUTED.has(finding.tool) && !ROUTED.has(`${finding.tool}/${finding.rule}`)) {
+  if (!(ROUTED.has(finding.tool) || ROUTED.has(`${finding.tool}/${finding.rule}`))) {
     return finding;
   }
   const catalog = catalogs().get(finding.tool) ?? {};
@@ -97,7 +97,7 @@ function ruleMessage(finding, entry, { liftable, javaStyle, exceptionRule }) {
     return { message };
   }
   const fix = entry?.layout === true ? layoutFix(javaStyle) : entry?.fix;
-  if (!catalogs().has(finding.tool) && !liftable) {
+  if (!(catalogs().has(finding.tool) || liftable)) {
     return { message: finding.message };
   }
   const sentence = SENTENCE_END.test(message) ? message : `${message}.`;

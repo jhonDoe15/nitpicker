@@ -260,7 +260,9 @@ describe('the Gradle hand-off', () => {
     collectJavaFindings(root, { ...fakeGradleRun, policy });
     return JSON.parse(readFileSync(path.join(root, 'build/gradle-args.json'), 'utf8')).filter(
       (argument) =>
-        !argument.startsWith('-Pnitpicker.reportDir=') && !argument.startsWith('-Pnitpicker.node='),
+        !(
+          argument.startsWith('-Pnitpicker.reportDir=') || argument.startsWith('-Pnitpicker.node=')
+        ),
     );
   };
   const styleFileOf = (root) =>
