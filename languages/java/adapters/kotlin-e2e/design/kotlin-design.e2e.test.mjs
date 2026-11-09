@@ -4,7 +4,7 @@ import path from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { validateFacts } from '../../../../../shared/rules/facts/schema.mjs';
 import { kotlinDesignBundle } from '../../kotlin/review-rules/design/kotlin-design.mjs';
-import { DEEP_CHAIN } from '../../test-support/kotlin-metrics-sources.mjs';
+import { DEEP_CHAIN } from '../../test-support/kotlin/kotlin-metrics-sources.mjs';
 import {
   prepareCompiler,
   runPsiProgram,
