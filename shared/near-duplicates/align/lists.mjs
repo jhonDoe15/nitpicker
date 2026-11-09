@@ -1,6 +1,7 @@
 import { chainOf } from '../../traversal.mjs';
+import { THRESHOLDS } from '../thresholds.mjs';
 import { KEY_MODES } from '../tree/keys.mjs';
-import { categoryOf, isTypeSlot } from '../tree/nodes.mjs';
+import { appendAll, categoryOf, isTypeSlot } from '../tree/nodes.mjs';
 
 function slotLabel(node, child, index) {
   if (isTypeSlot(node, index)) {
@@ -43,7 +44,16 @@ function lcsStep(left, right, { table, width }) {
   };
 }
 
+function diagonalPairs(left, right) {
+  return [...left.keys()]
+    .filter((index) => index < right.length && left[index] === right[index])
+    .map((index) => [index, index]);
+}
+
 function lcsPairs(left, right) {
+  if (left.length * right.length > THRESHOLDS.maxListCells) {
+    return diagonalPairs(left, right);
+  }
   const step = lcsStep(left, right, suffixTable(left, right));
   return chainOf({ i: 0, j: 0 }, step)
     .filter(({ i, j }) => i < left.length && j < right.length && left[i] === right[j])
@@ -65,7 +75,7 @@ function statementPairs(xs, ys, cachedKey) {
   const pairs = [];
   let from = [0, 0];
   for (const anchor of [...anchors, [xs.length, ys.length]]) {
-    pairs.push(...segmentPairs([xs, ys], from, anchor));
+    appendAll(pairs, segmentPairs([xs, ys], from, anchor));
     pairs.push(anchor);
     from = [anchor[0] + 1, anchor[1] + 1];
   }
@@ -76,8 +86,14 @@ export function alignedSlots(xs, ys, cachedKey) {
   const slots = [];
   const next = [0, 0];
   for (const [left, right] of statementPairs(xs, ys, cachedKey)) {
-    slots.push(...xs.slice(next[0], left).map((node) => ({ side: 'a', node })));
-    slots.push(...ys.slice(next[1], right).map((node) => ({ side: 'b', node })));
+    appendAll(
+      slots,
+      xs.slice(next[0], left).map((node) => ({ side: 'a', node })),
+    );
+    appendAll(
+      slots,
+      ys.slice(next[1], right).map((node) => ({ side: 'b', node })),
+    );
     if (left < xs.length) {
       slots.push({ pair: [xs[left], ys[right]] });
     }

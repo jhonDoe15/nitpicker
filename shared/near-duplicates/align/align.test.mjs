@@ -24,37 +24,39 @@ describe('aligning two trees into a template', () => {
     expect(finding.renames.map(({ a, b }) => [a.text, b.text])).toEqual([['entry', 'found']]);
   });
 
-  it('turns a differing literal into one value parameter, however often it is used', () => {
-    const finding = proveSource(copies(BODY, BODY.replaceAll('LABEL', "'user'")));
-
-    expect(holeSummary(finding)).toEqual([
-      { kind: 'value', deferred: false, values: ["'user'", 'LABEL'] },
-    ]);
-  });
-
-  it('turns a differing free name into a parameter, not a rename', () => {
-    const finding = proveSource(copies(BODY, BODY.replace('cache.lookup', 'store.lookup')));
-
-    expect(finding.verdict).toBe('parameterizable');
-    expect(holeSummary(finding)).toEqual([
-      { kind: 'value', deferred: false, values: ['cache', 'store'] },
-    ]);
-  });
-
-  it('marks a differing expression as deferred when it is evaluated conditionally', () => {
+  it('passes a differing literal eagerly, as one parameter however often it is used', () => {
     const finding = proveSource(
-      copies(
-        BODY,
-        BODY.replace('new MissingEntry(key, LABEL)', 'new MissingEntry(describe(key), LABEL)'),
-      ),
+      copies(BODY.replaceAll('LABEL', "'a'"), BODY.replaceAll('LABEL', "'b'")),
     );
 
     expect(holeSummary(finding)).toEqual([
-      { kind: 'value', deferred: true, values: ['call', 'key'] },
+      { kind: 'value', deferred: false, values: ["'a'", "'b'"] },
     ]);
   });
 
-  it('marks a differing expression as deferred when it is evaluated more than once', () => {
+  it.each([
+    ['a literal against a free name', BODY.replaceAll('LABEL', "'user'"), ["'user'", 'LABEL']],
+    ['a differing free name', BODY.replace('cache.lookup', 'store.lookup'), ['cache', 'store']],
+    [
+      'an expression evaluated conditionally',
+      BODY.replace('new MissingEntry(key, LABEL)', 'new MissingEntry(describe(key), LABEL)'),
+      ['call', 'key'],
+    ],
+    [
+      'a call that runs once, since earlier statements may change what it sees',
+      BODY.replace('cache.lookup(key, LABEL)', 'cache.lookup(key, label())'),
+      ['LABEL', 'call'],
+    ],
+  ])('defers %s', (_, changed, values) => {
+    const finding = proveSource(copies(BODY, changed));
+
+    expect([finding.verdict, holeSummary(finding)]).toEqual([
+      'parameterizable',
+      [{ kind: 'value', deferred: true, values }],
+    ]);
+  });
+
+  it('defers a differing expression evaluated more than once', () => {
     const loop = `
   let total = 0;
   for (const item of key) { total = total + price(item, rate()); }
@@ -65,16 +67,6 @@ describe('aligning two trees into a template', () => {
 
     expect(holeSummary(finding)).toEqual([
       { kind: 'value', deferred: true, values: ['call', 'rate'] },
-    ]);
-  });
-
-  it('keeps a differing call eager when it runs once and reads no local', () => {
-    const finding = proveSource(
-      copies(BODY, BODY.replace('cache.lookup(key, LABEL)', 'cache.lookup(key, label())')),
-    );
-
-    expect(holeSummary(finding)).toEqual([
-      { kind: 'value', deferred: false, values: ['LABEL', 'call'] },
     ]);
   });
 
@@ -106,6 +98,23 @@ describe('aligning two trees into a template', () => {
 
     expect(finding?.verdict).not.toBe('same');
     expect(finding?.verdict).not.toBe('parameterizable');
+  });
+
+  it.each([
+    [
+      'a destructuring target that writes another name',
+      `[lastSeen, count] = pair(key, LABEL);`,
+      `[lastSent, count] = pair(key, LABEL);`,
+    ],
+    ['a method called on its receiver', `entries.add(key, LABEL);`, `entries.push(key, LABEL);`],
+  ])('declines %s', (_, first, second) => {
+    const tail = `
+  const stamp = clock.now(key, LABEL);
+  audit.record(stamp, key, LABEL);
+  audit.close(stamp, key, LABEL);
+  return stamp;`;
+
+    expect(proveSource(copies(first + tail, second + tail))).toBeUndefined();
   });
 });
 

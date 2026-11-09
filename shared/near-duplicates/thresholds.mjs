@@ -7,4 +7,7 @@ export const THRESHOLDS = Object.freeze({
   minRunNodes: 30,
   maxValuesAfterRun: 1,
   maxRunWindow: 64,
+  maxListCells: 4_000_000,
+  fullBucket: 16,
+  bucketNeighbours: 4,
 });

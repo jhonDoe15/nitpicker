@@ -1,6 +1,6 @@
 import { depthFirst } from '../../traversal.mjs';
 import { compareText, keyOf } from '../tree/keys.mjs';
-import { make, rebuild, withChildren } from '../tree/nodes.mjs';
+import { make, nodesOf, rebuild, withChildren } from '../tree/nodes.mjs';
 import { isPure } from './effects.mjs';
 
 const EQUALITY = new Set(['==', '!=', '===', '!==']);
@@ -28,11 +28,9 @@ function chain(node, { sortable, mode }) {
   if (sortable && operands.every(isPure)) {
     operands.sort(shapeOrder(mode));
   }
-  return operands
-    .slice(1)
-    .reduce((left, right) =>
-      make('binary', [left, right], { value: node.value, commutes: node.commutes }),
-    );
+  return operands.reduce((left, right) =>
+    make('binary', [left, right], { value: node.value, commutes: node.commutes }),
+  );
 }
 
 function swapped(node, mode) {
@@ -54,6 +52,16 @@ function binary(node, mode) {
     return swapped(node, mode);
   }
   return node;
+}
+
+export function chainInteriors(root) {
+  return new Set(
+    nodesOf(root).flatMap((node) =>
+      node.kind === 'binary' && (LOGICAL.has(node.value) || BITWISE.has(node.value))
+        ? node.children.filter((child) => sameOperator(node, child))
+        : [],
+    ),
+  );
 }
 
 export function negationOf(node) {

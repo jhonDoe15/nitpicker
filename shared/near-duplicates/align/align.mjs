@@ -1,7 +1,7 @@
 import { depthFirst } from '../../traversal.mjs';
 import { createKeyCache } from '../tree/keys.mjs';
 import { NONE, categoryOf, isBound } from '../tree/nodes.mjs';
-import { ROOT_CONTEXT, childContext, readContext } from './context.mjs';
+import { ROOT_CONTEXT, childContext, patternContext } from './context.mjs';
 import { alignedSlots } from './lists.mjs';
 import { addConflict, addGap, addHole, createState, mapBound, sharedNode } from './state.mjs';
 
@@ -18,13 +18,13 @@ function leaf(template) {
   return { template, next: [] };
 }
 
-function descend(state, entry, context = entry.context) {
+function descend(state, entry, pattern = false) {
   const { left, right } = entry;
   const template = sharedNode(state, left);
   const next = left.children.map((child, slot) => ({
     left: child,
     right: right.children[slot],
-    context: childContext(left, slot, context),
+    context: pattern ? patternContext(childContext(left, slot)) : childContext(left, slot),
     into: template,
     slot,
   }));
@@ -49,13 +49,18 @@ function alignTarget(state, entry) {
   if (!sameHead(left, right)) {
     return leaf(addConflict(state));
   }
-  return descend(state, entry, readContext(entry.context));
+  return descend(state, entry, left.kind === 'expression');
 }
 
-function valueHole(state, entry) {
-  return leaf(
-    addHole(state, { kind: 'value', pair: [entry.left, entry.right], context: entry.context }),
-  );
+function boundMethod(node) {
+  return node.kind === 'member' || node.kind === 'index';
+}
+
+function valueHole(state, { left, right, context }) {
+  if (context.callee && (boundMethod(left) || boundMethod(right))) {
+    return leaf(addConflict(state));
+  }
+  return leaf(addHole(state, { kind: 'value', pair: [left, right] }));
 }
 
 function alignExpression(state, entry) {
@@ -71,7 +76,7 @@ function alignExpression(state, entry) {
 }
 
 function alignType(state, entry) {
-  const { left, right, context } = entry;
+  const { left, right } = entry;
   if (left.kind === 'none' || right.kind === 'none') {
     return leaf(NONE);
   }
@@ -81,14 +86,14 @@ function alignType(state, entry) {
   if (left.value === right.value) {
     return leaf(sharedNode(state, left));
   }
-  return leaf(addHole(state, { kind: 'type', pair: [left, right], context }));
+  return leaf(addHole(state, { kind: 'type', pair: [left, right] }));
 }
 
 function alignBlock(state, entry) {
   const template = sharedNode(state, entry.left, 0);
   const next = [];
   for (const slot of alignedSlots(entry.left.children, entry.right.children, state.cachedKey)) {
-    if (slot.pair === undefined) {
+    if ('node' in slot) {
       template.children.push(addGap(state, slot));
     } else {
       const [left, right] = slot.pair;
@@ -145,11 +150,15 @@ function run(state, start) {
   }
 }
 
+export function alignPair(state, [left, right]) {
+  const root = { children: [NONE] };
+  run(state, { left, right, context: ROOT_CONTEXT, into: root, slot: 0 });
+  return root.children[0];
+}
+
 export function alignTrees(left, right, cachedKey = createKeyCache()) {
   const state = createState(cachedKey);
-  const root = { children: [undefined] };
-  run(state, { left, right, context: ROOT_CONTEXT, into: root, slot: 0 });
-  return { state, template: root.children[0] };
+  return { state, template: alignPair(state, [left, right]) };
 }
 
 function blockOf(children) {

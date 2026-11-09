@@ -1,5 +1,5 @@
 import { KEY_MODES } from '../tree/keys.mjs';
-import { contains, isBound, sizeOf } from '../tree/nodes.mjs';
+import { sizeOf } from '../tree/nodes.mjs';
 
 const TEMPLATE_FIELDS = ['value', 'binding', 'literal', 'commutes'];
 
@@ -54,20 +54,6 @@ export function mapBound(state, [left, right]) {
   return boundTemplate(state, left);
 }
 
-function simple(node) {
-  return node.kind === 'literal' || (node.kind === 'name' && !isBound(node));
-}
-
-function delayed([left, right], context) {
-  return (
-    context.conditional ||
-    context.repeated ||
-    context.lambda ||
-    contains(left, isBound) ||
-    contains(right, isBound)
-  );
-}
-
 function holeOf(state, kind, [left, right]) {
   const key = `${state.cachedKey(left, KEY_MODES.own)}\u0000${state.cachedKey(right, KEY_MODES.own)}`;
   if (!state.holeKeys.has(key)) {
@@ -78,11 +64,10 @@ function holeOf(state, kind, [left, right]) {
   return state.holeKeys.get(key);
 }
 
-export function addHole(state, { kind, pair, context }) {
+export function addHole(state, { kind, pair }) {
   const hole = holeOf(state, kind, pair);
   hole.uses += 1;
-  const lazy = kind === 'value' && !(simple(pair[0]) && simple(pair[1]));
-  hole.deferred = lazy && (hole.deferred || hole.uses > 1 || delayed(pair, context));
+  hole.deferred = kind === 'value' && !pair.every((node) => node.kind === 'literal');
   return { kind: 'hole', value: `${kind}:${hole.index}`, children: [] };
 }
 

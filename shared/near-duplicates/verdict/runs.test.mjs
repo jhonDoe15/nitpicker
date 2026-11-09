@@ -102,4 +102,25 @@ describe('partly shared statement runs', () => {
     expect(proveSource(functions(...sides.map(straight))).verdict).toBe('partial-run');
     expect(proveSource(functions(...sides.map(loop)))?.verdict).not.toBe('partial-run');
   });
+
+  it.each([
+    ['two values', 'b', undefined],
+    ['one value', 'c', 'partial-run'],
+  ])(
+    'counts %s the run carries to its next pass, read before it writes them',
+    (_, name, verdict) => {
+      const run = `
+      a = advance(a, b, options.width, options.height, name);
+      ${name} = refine(a, b, options.format, options.locale, name);
+      trace(a, ${name}, options.limit, options.offset, name);`;
+      const finding = proveSource(
+        functions(
+          `\n    let a = start(request); let b = 0; let c = 0;\n    while (request.open) {${run}\n    }\n    close(request);`,
+          `\n    let c = 2; let b = 1; let a = other(options, 3);\n    if (options.enabled) { while (request.open) {${run}\n    } }\n    return b;`,
+        ),
+      );
+
+      expect(finding?.verdict).toBe(verdict);
+    },
+  );
 });
