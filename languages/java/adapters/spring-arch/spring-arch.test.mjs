@@ -160,6 +160,22 @@ describe('readSpringArchFindings messages', () => {
       'Declare the properties ProfileController.update accepts as typed fields instead of collecting unknown keys with @JsonAnySetter on Profile.put: it takes any key and value a client sends, unvalidated.',
     ],
     [
+      violation(
+        'spring-unmapped-exception',
+        'com.shop.orders.OrderController',
+        'find:OrderNotFound:OrderService.find,OrderStore.load',
+      ),
+      'Map OrderNotFound to a status: OrderController.find can throw it (through OrderService.find, OrderStore.load), and no @ExceptionHandler, @ResponseStatus or ResponseStatusException maps it, so the client gets a 500. Add an @ExceptionHandler for it (or a base class) in a @RestControllerAdvice, or annotate it with @ResponseStatus. An exception fits a class that only signals a server fault.',
+    ],
+    [
+      violation(
+        'spring-unmapped-exception',
+        'com.shop.orders.OrderController',
+        'cancel:OrderLocked:',
+      ),
+      'Map OrderLocked to a status: OrderController.cancel can throw it, and no @ExceptionHandler, @ResponseStatus or ResponseStatusException maps it, so the client gets a 500. Add an @ExceptionHandler for it (or a base class) in a @RestControllerAdvice, or annotate it with @ResponseStatus. An exception fits a class that only signals a server fault.',
+    ],
+    [
       violation('spring-test-placement', 'com.shop.orders.FlowTest'),
       'Test FlowTest with new and mocks, or run it as an integration test: name it FlowIT (Failsafe runs *IT on Maven) or put it in an integration test source set. Both keep its package, so package-private classes stay visible; a package named integration or it also counts.',
     ],
@@ -255,6 +271,20 @@ describe('readSpringArchFindings findings', () => {
     ]);
     expect(identities('CreateOrder.attributes:field:BulkController.bulk')).toEqual(
       identities('CreateOrder.attributes:field:OrderController.create'),
+    );
+  });
+
+  it('keys an unmapped exception by its handler and class, so another call path keeps the finding', () => {
+    const identities = (detail) =>
+      read([violation('spring-unmapped-exception', 'com.shop.orders.OrderController', detail)]).map(
+        (finding) => finding.identity,
+      );
+
+    expect(identities('find:OrderNotFound:OrderService.find')).toEqual([
+      'OrderController|find:OrderNotFound',
+    ]);
+    expect(identities('find:OrderNotFound:')).toEqual(
+      identities('find:OrderNotFound:OrderService.find'),
     );
   });
 
