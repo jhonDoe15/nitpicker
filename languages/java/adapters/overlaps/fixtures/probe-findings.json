@@ -1402,6 +1402,12 @@
     },
     {
       "tool": "pmd",
+      "rule": "RegexPartDefect",
+      "path": "src/main/java/probe/C2Strings.java",
+      "line": 37
+    },
+    {
+      "tool": "pmd",
       "rule": "CompareObjectsWithEquals",
       "path": "src/main/java/probe/C2Strings.java",
       "line": 9
