@@ -98,7 +98,7 @@ describe('the Mocha console tracking', () => {
     expect([setupPlace, place()]).toEqual([NO_PLACE, { file: '/p/test/b.test.js', test: '' }]);
   });
 
-  it('drops a call from a timer another file started', async () => {
+  it('keeps the file and test of a timer another file started', async () => {
     const { runner, place } = tracked();
     const root = suite('', { root: true });
     const first = suite('a', { file: '/p/test/a.test.js', parent: root });
@@ -118,7 +118,7 @@ describe('the Mocha console tracking', () => {
     expect(await sameFile).toEqual({ file: '/p/test/a.test.js', test: 'a > one' });
     runner.emit('test', test('two', second));
 
-    expect(await fromFirst).toEqual(NO_PLACE);
+    expect(await fromFirst).toEqual({ file: '/p/test/a.test.js', test: 'a > one' });
     expect(place()).toEqual({ file: '/p/test/b.test.js', test: 'b > two' });
   });
 
@@ -165,11 +165,11 @@ describe('the Mocha console tracking', () => {
   }
 
   it.each([
-    ['describe-level before hook', (root, first) => ({ parent: first, file: first.file }), 2],
-    ['root hook of the only file a parallel worker loaded', (root) => ({ parent: root }), 1],
+    ['describe-level before hook', (root, first) => ({ parent: first, file: first.file }), 2, 'a'],
+    ['root hook of the only file a parallel worker loaded', (root) => ({ parent: root }), 1, ''],
   ])(
-    'drops a call from work that a %s started once another file runs',
-    async (_name, hookIn, fileCount) => {
+    'keeps the place of a %s for what its work prints once another file runs',
+    async (_name, hookIn, fileCount, title) => {
       const tracking = tracked();
       const root = tracking.mocha.suite;
       Object.assign(root, { root: true, _beforeEach: [], _afterEach: [], titlePath: () => [] });
@@ -178,7 +178,10 @@ describe('the Mocha console tracking', () => {
       const hook = hookIn(root, first);
       loaded(tracking.mocha, ['/p/test/a.test.js', '/p/test/b.test.js'].slice(0, fileCount), hook);
 
-      expect((await laterFileCall(tracking, hook, test('two', second)))[1]).toEqual(NO_PLACE);
+      expect((await laterFileCall(tracking, hook, test('two', second)))[1]).toEqual({
+        file: '/p/test/a.test.js',
+        test: title,
+      });
     },
   );
 
@@ -194,7 +197,7 @@ describe('the Mocha console tracking', () => {
 
     expect(await laterFileCall(tracking, eachHook, test('two', second))).toEqual([
       { file: '/p/test/a.test.js', test: 'a > one' },
-      NO_PLACE,
+      { file: '/p/test/a.test.js', test: 'a > one' },
     ]);
   });
 
@@ -219,6 +222,52 @@ describe('the Mocha console tracking', () => {
       { file: '/p/test/a.test.js', test: '' },
       { file: '/p/test/b.test.js', test: 'api > reports a broken route' },
     ]);
+  });
+
+  it('gives the run end to no file and a later call to the test that started it', async () => {
+    const { runner, place } = tracked();
+    const root = suite('', { root: true });
+    const last = suite('z', { file: '/p/test/z.test.js', parent: root });
+    const places = [];
+    runner.on('end', () => {
+      places.push(place());
+    });
+
+    runner.emit('test', test('last', last));
+    const afterRun = new Promise((resolve) => {
+      setTimeout(() => {
+        resolve(place());
+      }, 5);
+    });
+    runner.emit('end');
+
+    expect([...places, place(), await afterRun]).toEqual([
+      NO_PLACE,
+      NO_PLACE,
+      { file: '/p/test/z.test.js', test: 'z > last' },
+    ]);
+  });
+
+  it('leaves no loaded file as the origin of what runs after the loading', async () => {
+    const Mocha = fakeMocha();
+    Mocha.prototype.loadFiles = function loadFiles() {
+      for (const file of ['/p/test/a.test.js', '/p/test/b.test.js']) {
+        this.suite.emit('pre-require', {}, file);
+      }
+    };
+    const place = trackMocha(Mocha, new AsyncLocalStorage());
+    new Mocha().loadFiles();
+    const fromSetup = new Promise((resolve) => {
+      setTimeout(() => {
+        resolve(place());
+      }, 5);
+    });
+    const runner = new Mocha.Runner();
+    runner.run();
+    const root = suite('', { root: true });
+    runner.emit('test', test('one', suite('a', { file: '/p/test/a.test.js', parent: root })));
+
+    expect(await fromSetup).toEqual({ file: '/p/test/a.test.js', test: 'a > one' });
   });
 
   it('captures nothing without the lines file or a Mocha to find', async () => {

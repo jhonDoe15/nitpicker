@@ -8,16 +8,17 @@ const MAX_PASSES = 100;
 const PASSES = Array.from({ length: MAX_PASSES }, (_, index) => index);
 
 const ON_EXPRESSIONS = [...EXPRESSION_REWRITES, ...ORDERING_REWRITES];
+const ALL_REWRITES = { expressions: ON_EXPRESSIONS, statements: STATEMENT_REWRITES };
 
 export const REWRITE_NAMES = [
   ...new Set([...ON_EXPRESSIONS, ...STATEMENT_REWRITES].map(({ name }) => name)),
 ];
 
-export function normalize(node, { booleanContext = false } = {}) {
+export function normalize(node, { booleanContext = false, rewrites = ALL_REWRITES } = {}) {
   const applied = [];
   const wrapped = isStatement(node) && node.kind !== 'block';
   const root = wrapped ? withRange(term('block', undefined, [node]), node.range) : node;
-  const normal = toFixedPoint(root, booleanContext, applied);
+  const normal = toFixedPoint(root, { booleanContext, rewrites }, applied);
   const result = wrapped && normal.children.length === 1 ? normal.children[0] : normal;
   return { term: result, key: key(result), rewrites: applied };
 }
@@ -26,11 +27,11 @@ export function sameCondition(a, b) {
   return normalize(a, { booleanContext: true }).key === normalize(b, { booleanContext: true }).key;
 }
 
-function toFixedPoint(root, booleanContext, applied) {
+function toFixedPoint(root, { booleanContext, rewrites }, applied) {
   let current = root;
   for (const pass of PASSES) {
     const before = applied.length;
-    current = rewritePass(current, booleanContext, applied);
+    current = rewritePass(current, booleanContext, { rewrites, applied });
     if (applied.length === before || pass === MAX_PASSES - 1) {
       break;
     }
@@ -38,12 +39,11 @@ function toFixedPoint(root, booleanContext, applied) {
   return current;
 }
 
-function rewritePass(root, booleanContext, applied) {
+function rewritePass(root, booleanContext, run) {
   return foldTree(root, booleanContext, {
     expand: (node, context) =>
       node.children.map((child, index) => [child, childContext(node, index, context)]),
-    combine: (node, context, children) =>
-      rewriteOnce(withChildren(node, children), context, applied),
+    combine: (node, context, children) => rewriteOnce(withChildren(node, children), context, run),
   });
 }
 
@@ -67,15 +67,15 @@ function childContext(node, index, booleanContext) {
   }
 }
 
-function rewriteOnce(node, booleanContext, applied) {
+function rewriteOnce(node, booleanContext, { rewrites, applied }) {
   if (node.kind === 'block') {
-    const found = firstRewrite(STATEMENT_REWRITES, node, undefined);
+    const found = firstRewrite(rewrites.statements, node, undefined);
     return record(found, node, applied);
   }
   if (isStatement(node)) {
     return node;
   }
-  const found = firstRewrite(ON_EXPRESSIONS, node, { booleanContext });
+  const found = firstRewrite(rewrites.expressions, node, { booleanContext });
   return record(
     found && { name: found.name, result: { node: found.result, range: node.range } },
     node,
