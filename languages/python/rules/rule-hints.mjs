@@ -1,5 +1,5 @@
 import { exceptionRoute } from '../../../shared/exceptions/rule-names.mjs';
-import { FUNCTION_EXCEPTION_RULES } from '../../../shared/policy.mjs';
+import { COMMON_EXCEPTION_RULES } from '../../../shared/policy.mjs';
 import { definedField } from '../../../shared/messages/messages.mjs';
 import { LOCATOR_HINTS } from './hints/ast/locators.mjs';
 import { ASYNC_HINTS } from './hints/ast/ast-async.mjs';
@@ -124,7 +124,7 @@ function canBeLifted(finding) {
     finding.classification === 'enforceable' &&
     typeof finding.rule === 'string' &&
     finding.rule !== '' &&
-    !FUNCTION_EXCEPTION_RULES.includes(finding.rule) &&
+    !COMMON_EXCEPTION_RULES.includes(finding.rule) &&
     finding.path !== '.'
   );
 }

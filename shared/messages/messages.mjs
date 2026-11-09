@@ -14,6 +14,9 @@ export const UNUSED_OPTION_FIX = 'Remove it, or set it from a real call ({scope}
 
 export const UNUSED_OPTION_TEXT = `Option {name} is never set. ${allowedForm(UNUSED_OPTION_FIX)}`;
 
+const SHARED_IMPORTS_FEATURE_FORM =
+  'Move what it needs into a shared root, pass it in from the composition root, or move {importer} into {feature}.';
+
 export const BASE_MESSAGES = {
   functionStructure: '{name} has {value} {metric}; limit is {limit}',
   functionStatements: `{name} has {value} statements; limit is {limit}. ${allowedForm('Split by responsibility and name each part for what it checks or does.')}`,
@@ -35,6 +38,9 @@ export const BASE_MESSAGES = {
   longDocComment: `This doc comment's description is {lines} lines (limit {limit}). ${allowedForm('Keep the non-obvious point, a unit, a limit or an edge case, and put the rest in names and types.')} ${EXCEPTION_HINT}`,
   slowTest: `{name} took {seconds} s; {kind} test may take {limit} s. ${allowedForm('{fix}.')} ${EXCEPTION_HINT}`,
   sharedUsedByOneFeature: `{path} is used only by feature {feature}. ${allowedForm('Move it into {directory}.')} ${EXCEPTION_HINT}`,
+  featureInternalImport: `Import feature {feature} only through {face}: {importer} imports its internal module {target}. ${allowedForm('Expose what it needs there, or move the code both use to a shared root.')} ${EXCEPTION_HINT}`,
+  sharedImportsFeature: `Shared code imports only shared code: {importer} is shared and imports feature {feature} ({targets}). ${allowedForm(SHARED_IMPORTS_FEATURE_FORM)} ${EXCEPTION_HINT}`,
+  featureCycle: `Keep feature dependencies one-way: {importer} in {source} imports {feature} ({targets}), which depends back on {source} (cycle: {cycle}). ${allowedForm('Move what both need to a shared root, or invert this import behind an interface.')} ${EXCEPTION_HINT}`,
   duplicateDefinition: `{name} is also defined with {same} in {others}. ${allowedForm('{fix}')} ${EXCEPTION_HINT}`,
   siblingCopyEdit: `{name} is edited here but not in {others}, where it has almost the same code. ${allowedForm('Edit it there too, or merge the copies.')} ${EXCEPTION_HINT}`,
   exportedNameCollision: `{name} is also exported by {others}; {importer} imports both. ${allowedForm('{fix}')} ${EXCEPTION_HINT}`,

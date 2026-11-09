@@ -70,7 +70,9 @@ The allowed forms are on one page per topic. Before you write code, read the pag
 - A finding that flags legitimate code is lifted in `nitpicker.config.json`. A ruff, type-checker,
   `python-rules`, import-linter, duplicate or coupling finding goes under `python.exceptions`, with
   an entry such as `{ "rule": "PERF203", "paths": ["src/jobs/**"], "reason": "..." }`, the rule being
-  the id in the message. A function, CRAP, changed-branch coverage, mutation, file or size finding, and
+  the id in the message. A function, CRAP, changed-branch coverage, mutation, file, size or feature folder
+  (`feature-internal-import`, `shared-imports-feature`, `feature-cycle`,
+  `shared-used-by-one-feature`) finding, and
   `slow-test`, `test-console-output`, `unused-option` and the other rules every preset shares, go
   under the top-level `exceptions`
   (`{ "rule": "function-lines-limit", "paths": [...], "function": "name", "reason": "..." }`), and

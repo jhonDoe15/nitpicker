@@ -9,6 +9,10 @@ import { pythonOutsideRootsNotices } from '../../../languages/python/adapters/no
 import { testFileMatcher } from '../../../languages/python/adapters/analysis/python-sources.mjs';
 import { detectSourceRoots } from '../../../languages/python/adapters/execution/python-project.mjs';
 import { outsideRootsNotices } from '../../../languages/typescript/preset/notices/outside-roots-notice.mjs';
+import {
+  LAYOUT_ROOT_KEYS,
+  unmatchedLayoutRootNotices,
+} from '../../../shared/notices/layout-roots-notice.mjs';
 
 const TYPESCRIPT_PRESETS = new Set([undefined, 'typescript']);
 
@@ -39,6 +43,12 @@ function languageDescriber(config, headPolicy, projectRoot) {
     : undefined;
 }
 
+function layoutDescriber(layout, projectRoot) {
+  return LAYOUT_ROOT_KEYS.some((key) => layout?.[key] !== undefined)
+    ? () => unmatchedLayoutRootNotices(layout, listedFiles(projectRoot))
+    : undefined;
+}
+
 function runsCoChange(config) {
   return config.history?.coChange === true && !(config.disable ?? []).includes(CHANGE_HISTORY_TOOL);
 }
@@ -59,6 +69,7 @@ export function noticeDescriber(config, headPolicy, projectRoot) {
   const describers = [
     languageDescriber(config, headPolicy, projectRoot),
     coChangeDescriber(config, headPolicy, projectRoot),
+    layoutDescriber(headPolicy.layout, projectRoot),
   ].filter((describer) => describer !== undefined);
   return describers.length === 0
     ? undefined
