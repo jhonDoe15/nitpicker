@@ -33,6 +33,7 @@ skipped with a note on stderr.
 | `MockedSubjectInTest`                            | `review-rules/tests/mocks/`                      | a mock of the class under test (`mockk<OrderService>()`, `mock<OrderService>()`, `mock(OrderService::class.java)`, `@MockK`, `@Mock`), or a spy of it whose own methods the test stubs (`spyk(...)`, `spy(...)`, `@SpyK`, `@Spy`, with `every`, `coEvery`, `justRun`, `whenever`, `` `when` ``, `given` or `stub`)                                                                                                               |
 | `StaticMockOfProjectType`                        | `review-rules/tests/mocks/`                      | `mockkObject`, `mockkStatic` (class, `"pkg.FileKt"` or `::function`), `mockkConstructor`, `mockStatic` or `mockConstruction` of code declared in the project's main sources                                                                                                                                                                                                                                                      |
 | `GlobalStateLeakInTest`                          | `review-rules/tests/global-state/`               | a test that changes process-wide state (a system property, the default `Locale` or `TimeZone`, `System.out`, a default handler, a security provider, `Dispatchers.setMain`, or a property or `set...` function of a project `object` or class) that nothing in the class puts back                                                                                                                                               |
+| `SharedTestState`                                | `review-rules/tests/shared-state/`               | a test that changes a property all tests of the class share: a `var` or mutable collection at the top level of a test file or in a companion object, any such property of a `@TestInstance(PER_CLASS)` class, or of a Kotest spec in the default single-instance mode                                                                                                                                                            |
 | `StaticForwardingWrapper`                        | `review-rules/main/forwarding-wrappers.mjs`      | a function whose body only passes its parameters, in order, to another function                                                                                                                                                                                                                                                                                                                                                  |
 | `SingularAndPluralMember`                        | `review-rules/main/member-names.mjs`             | a member and its plural form (`tag` and `tags`) in one class, or two defaulted parameters of a public function                                                                                                                                                                                                                                                                                                                   |
 | `ValidationAnnotationTarget`                     | `review-rules/validation/validation-targets.mjs` | a Bean Validation annotation (`jakarta.validation.constraints`, `javax.validation.constraints`, `org.hibernate.validator.constraints`, or `@Valid`) on a primary-constructor `val` or `var` of a main source without a `field:`, `get:` or `all:` use-site target; Kotlin puts it on the constructor parameter, where Bean Validation does not look. Kotlin-only: a Java record carries the annotation to its field and accessor |
@@ -56,8 +57,11 @@ Limits, all chosen to flag less rather than guess:
   `supplyAsync`, `startVirtualThread`, `newThread`, `timer`, `fixedRateTimer` or a mock answer (`thenAnswer`,
   `doAnswer`, `answers`, `coAnswers`), in a `run` override of a `Thread`, or in a test fake that implements or extends a class of the project's main sources
   (in any module of the build) is allowed. A sleep in an inline lambda (`run`, `let`, `also`, `apply`, `with`,
-  `repeat`, `takeIf`, `takeUnless`, `use`, `synchronized`, `forEach`, `forEachIndexed`, `onEach`) is judged by
-  the loop or body around that lambda. A `for` over a collection is not a polling loop, as in the Java rule.
+  `repeat`, `takeIf`, `takeUnless`, `use`, `synchronized`, `forEach`, `forEachIndexed`, `onEach`), or in the
+  lambda of an `inline` function declared in the project whose lambda parameters are neither `crossinline`
+  nor `noinline` (when every project function of that name is one, and the name is not one of the hosts
+  above), is judged by the loop or body around that lambda. A `for` over a collection is not a polling loop,
+  as in the Java rule.
   `delay` is judged inside `runBlocking`, and inside a block that leaves the test scheduler (see
   [Test honesty](#test-honesty)); `runTest` runs it in virtual time. Only test sources are
   read: a sleep in main sources is `detekt.style.ForbiddenMethodCall` (see [One-way rules](one-way-rules.md)).
@@ -71,8 +75,11 @@ Limits, all chosen to flag less rather than guess:
 - Forwarding wrappers: the body is one call that passes every parameter, in order and by name or position
   and without a default, vararg, spread or lambda, to a function with the same parameter types. The target is
   a top-level, `object` or `companion` function declared in the project (matched by name, owner and
-  parameter types; imports are not checked), or any function called through a type name
-  (`Math.abs(x)`, `Foo.make(x)` for a companion), whose signature cannot be verified. Skipped:
+  parameter types; a top-level target counts when the wrapper's file can see it, through the same package,
+  an import of it or of its package with `*`, and an `object` or `companion` target unless the call names
+  another type), or any other function called through a type name, also written with its package
+  (`Math.abs(x)`, `java.util.Objects.requireNonNull(x)`, `Foo.make(x)` for a companion), whose
+  signature cannot be verified. Skipped:
   functions with a receiver, type parameters, annotations, defaults, varargs, no parameters, local
   functions, `override`, `operator`, `infix`, `inline`, `open`, `abstract`, `actual` and `expect`; the names
   `main`, `valueOf`, `fromString`, `of`, `from`, `invoke` and `copy`; copies such as `copyOf`,
@@ -133,8 +140,14 @@ Limits, all chosen to flag less rather than guess:
   body of a property getter, or the condition of an `if` that has an `else` and is itself one of those.
   Backticked constants (``Status.`in` ``) are matched by their name. A test in a property initializer is
   named after the property (`Holder.isOpen`), as it is in a getter.
-- Unused option: a defaulted parameter that no call sets by name or position (matched by name and through
-  an import alias). A call that cannot match the signature is ignored, a call with a spread sets every
+- Unused option: a defaulted parameter that no call sets by name or position. A call counts when its name
+  matches and its receiver fits. A call through an import alias of the function always counts. A top-level
+  function or extension counts only from a file that can see it (the same package, an import of it or of its
+  package with `*`), and a top-level function that is not an extension only without a receiver or through
+  its package. A function of an `object` or companion counts without a receiver and through any receiver
+  except another type name (`Other.pad(...)`, also written with its package); a type name that is the object
+  (by its name, an import alias or a typealias) counts, and so does `this`. A call that cannot match the
+  signature is ignored, a call with a spread sets every
   parameter, and a `copy(name = ...)` call sets that parameter of a data class. Functions that are
   `override`, `open`, `abstract`, `operator`, `infix`, `main` or annotated are never judged, nor are names
   with a callable reference or that a Java file mentions. Two kinds of declarations are judged:
@@ -385,6 +398,24 @@ guessed at.
   `withSystemProperty { }`, `withSystemProperties { }`, `captureStandardOut { }`, `restoreSystemProperties { }` or a
   system-stubs `execute { }`. Outside a test class (a helper object), a restore anywhere in the file counts. The scan
   reads text, so a restore in a superclass or another file is not followed.
+- `SharedTestState`: the same rule id as the Java preset. A shared property is a `var`, or a `val` holding a
+  mutable collection, map, array, `StringBuilder` or atomic (`mutableListOf()`, `ArrayList()`, `AtomicInteger()`,
+  or a `MutableList<...>` type), declared at the top level of a test file with tests, in a companion object of a
+  test class, in the body of a `@TestInstance(PER_CLASS)` class, or in a Kotest spec (its class body, constructor
+  lambda or `init` block) whose isolation mode is not `InstancePerTest`, `InstancePerLeaf` or `InstancePerRoot`
+  (set in the spec, or project-wide in an `AbstractProjectConfig` the scan reads). Reported: an assignment,
+  `+=`, `++` or `--` of a `var`, and an element write (`totals["a"] = 1`), `+=` or mutating call (`add`, `put`,
+  `remove`, `clear`, `getOrPut`, `incrementAndGet` and the like) on a mutable collection, in a test body, in a
+  function of the class a test or per-test hook calls, or in a per-test hook (`@BeforeEach`, `@AfterEach`, `@Before`,
+  `@After`, `@BeforeMethod`, `@AfterMethod`, `kotlin.test` `@BeforeTest` and `@AfterTest`, `beforeTest { }`,
+  `beforeEach { }`, `beforeAny { }` and their `after` pairs). Not reported: a property that a per-test
+  hook (or a function it calls) assigns or resets (`clear()`, `set(...)`, `reset()`, `setLength(...)`), code
+  that runs once (`@BeforeAll`, `beforeSpec`, a Kotest container body or the spec body), a property annotated
+  with anything but `@JvmField`, `@JvmStatic` or `@Volatile` (`@MockK`, `@Autowired`), a local of the same name,
+  a named argument, and a property reached through another object. The scan reads text, so a property of a
+  superclass or a project-wide JUnit `per_class` default is not followed. A file that imports TestNG's `@Test`
+  treats its classes as single-instance, like the Java preset; TestNG's own `@BeforeTest` shares the name of the
+  `kotlin.test` one, so it counts as a per-test hook here.
 - `ServerOrContainerPerTest`: a container, server or process started for each test, the Kotlin
   side of the Java rule. Reported: a property annotated `@Container` (Testcontainers) or
   `@RegisterExtension` holding a `WireMockExtension`, declared in a class body (not a companion

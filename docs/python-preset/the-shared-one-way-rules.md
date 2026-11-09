@@ -38,12 +38,14 @@ are listed at the end.
 | ORM schema at startup    | migrations: Alembic `alembic upgrade head` in the deploy step, Django migrations, Aerich                                                                                             | `orm-schema-sync` (script)                                                                                                                                                                                                                 |
 | ORM query logging        | `echo` and the query loggers off; slow queries logged from cursor events or by the database                                                                                          | `orm-query-logging` (script)                                                                                                                                                                                                               |
 | Query rows in memory     | `.count()`, `.exists()`, `.filter()`, `.order_by()`, `.aggregate()` (Django); `where`, `order_by`, `func.count`/`func.sum` (SQLAlchemy)                                              | `in-memory-query` (script)                                                                                                                                                                                                                 |
+| Foreign key indexes      | `index=True` on the foreign-key column, an `Index` that starts with it; Django keeps `db_index`                                                                                      | `unindexed-foreign-key` (script)                                                                                                                                                                                                           |
 | Defaulting parameters    | `limit if limit is not None else DEFAULT_LIMIT`                                                                                                                                      | `falsy-default` (script)                                                                                                                                                                                                                   |
 | Testing numbers          | `count > 0`, `index != -1`, `count is not None`                                                                                                                                      | `number-truthiness` (script)                                                                                                                                                                                                               |
 | Changing an argument     | build and return a new value, or copy the argument first                                                                                                                             | `parameter-mutation` (script)                                                                                                                                                                                                              |
 | Compatibility shims      | change every caller in the same change and delete the old name                                                                                                                       | `compatibility-shim` (script)                                                                                                                                                                                                              |
 | Values in regex patterns | `re.escape(value)` inside a pattern, `in`/`startswith`/`==` for plain text, `re.compile(pattern)` with a whole pattern                                                               | `regex-unescaped-value` (script)                                                                                                                                                                                                           |
 | Input or output per item | one batch call, or `asyncio.gather` bounded by a shared `asyncio.Semaphore`                                                                                                          | `io-in-loop` (script)                                                                                                                                                                                                                      |
+| Lists used as sets       | a `set()` (or a `dict` as an ordered set); a `dict` built once for a lookup by key; `min`/`max` instead of `sorted(xs)[0]`                                                           | `list-used-as-set`, `linear-lookup-in-loop` (script), ruff `FURB192`                                                                                                                                                                       |
 | Concurrent remote calls  | `asyncio.Semaphore` acquired in the task, or chunks of fixed size, or one batch call                                                                                                 | `unbounded-fan-out` (script)                                                                                                                                                                                                               |
 | Task lifetimes           | open the resource around the whole task group, or inside the child; await the task first                                                                                             | `task-outlives-resource` (script)                                                                                                                                                                                                          |
 | Trio/AnyIO cleanup       | `with trio.CancelScope(deadline=trio.current_time() + 5, shield=True): await resource.aclose()`                                                                                      | `unshielded-cleanup-await` (script)                                                                                                                                                                                                        |
@@ -497,6 +499,19 @@ self.items.append(item)`), also through a package `__init__` that re-exports it 
   count (`for _ in range(workers)`), a paging loop (the condition reads a variable the body
   assigns) and a retry (a `try` in the loop that returns on success) are not. A remote call in a
   task that is bounded or awaited one at a time keeps this finding, with the batching remedy.
+- `list-used-as-set` reports a list made with `[]` or `list()` (annotated or not, in a function or
+  at module level) that gets `append` (or `+=`) and is tested with `in` or `not in` inside a loop, a
+  comprehension, a `lambda` passed to `map`, `filter`, `sorted`, `min` or `max`, or a recursive
+  function such as a visitor; a list also used by position (`[i]`, `insert`, `pop`, `index`, `sort`,
+  `reverse`) or bound twice is left alone. `linear-lookup-in-loop` reports `next(x for x in xs if
+  x.key == value)` and `any(x.key == value for x in xs)` inside a loop, comprehension or such a `lambda`, where the
+  key is an attribute or a constant subscript of the item, the value is not a constant, and `xs` is
+  a parameter or a local name bound once outside the loop (not a module or closure name), or a
+  `self` attribute that only `__init__` sets,
+  and nothing appends to, removes from, sorts or assigns into it. Ruff's `FURB192` reports
+  `sorted(xs)[0]` and `sorted(xs)[-1]`, in tests too; the two script rules skip test files. The same rules run as
+  `nitpicker/no-costly-collection-form` (TypeScript), `pmd/ListUsedAsSet`, `pmd/LinearLookupInLoop`
+  and `pmd/SortForExtreme` (Java) and `kotlin-source/` rules of the same names (Kotlin).
 - `unbounded-fan-out` reports `asyncio.gather`, `asyncio.wait` and `asyncio.as_completed` over a
   generator, a list comprehension, `map(f, xs)`, a name bound to one, or a list filled by
   `append` in a `for` loop, and `asyncio.create_task`, `ensure_future`, `tg.create_task` and
@@ -666,6 +681,24 @@ self.items.append(item)`), also through a package `__init__` that re-exports it 
   `for` loops over the rows, `itertools.groupby` and `defaultdict` grouping are not followed.
   Tests, a Django `tests.py` and `migrations` folders are skipped. A small fixed lookup table that
   is meant to be loaded whole takes an `exceptions` entry.
+- `unindexed-foreign-key` (the model-side partner of the `foreign-key-index` repository rule, and
+  the counterpart of `nitpicker/no-unindexed-foreign-key`) reports a foreign-key column with no
+  index that starts with it: only MySQL indexes a foreign-key column by itself. It reads SQLAlchemy
+  `mapped_column`/`Column` with a `ForeignKey`, SQLModel `Field(foreign_key=...)` (also through
+  `sa_column`), core `Table(...)` columns and `ForeignKeyConstraint` in `__table_args__`. A column is
+  covered by `index=True` or `unique=True`, by being the first primary-key column, or by an `Index`,
+  `UniqueConstraint` or `PrimaryKeyConstraint` (in `__table_args__`, in the `Table`, or a
+  module-level `Index("ix", Model.column)`, also with `.desc()`) whose first column is it; a
+  partial index (`postgresql_where`) does not count. `__table_args__` may be a literal, a sum of
+  tuples or a `declared_attr` function. Columns of a mixin or abstract base defined in the same
+  module are judged with the class that inherits them. Django indexes foreign keys itself, so only a `ForeignKey`
+  with `db_index=False` is reported, unless `Meta.indexes`, `unique_together`, `index_together` or a
+  `UniqueConstraint` lists the field (or `<field>_id`) first; a conditional index does not count,
+  and `db_constraint=False` passes. A project whose manifests name only MySQL or MariaDB drivers, or
+  whose settings use `django.db.backends.mysql` without PostgreSQL, is left alone. SQLAlchemy
+  models are left to the migrations when the project has an Alembic `versions/` folder with a
+  revision (`down_revision = ...`) next to an `env.py`; `foreign-key-index` then checks the
+  revisions. Manifests are read from the project root and `requirements/`. Tests are skipped.
 - `falsy-default` reports a parameter whose annotation can be falsy (`int`, `float`, `str`, `bytes`,
   `bool`, a list, dict, set or tuple type, a `Sequence`, `Mapping`, `Decimal`, `timedelta`) and is
   `None` by default or by its type, when the body writes `param or default` or
@@ -918,6 +951,20 @@ t)`, `asyncio.timeout(t)`, `fail_after(t)`, `wait(t)`) inside `pytest.raises` or
   function decorated with `@mock.patch.dict(...)`, in a `pytest_*` hook, or at the top level of a module (it runs
   once, at import) is not reported, and in a test-support module without tests a restore anywhere in the module
   counts. `process-env-access` does not run on tests, so it does not overlap.
+- `shared-test-state` (Java and Kotlin: `SharedTestState`; TypeScript: `nitpicker/no-shared-test-state`) reports,
+  in a test module, a change to state that every test of the module or class shares: a call of `append`, `extend`,
+  `insert`, `remove`, `pop`, `clear`, `update`, `add`, `discard`, `setdefault`, `sort` and the like, an item
+  assignment or `del` on a module-level list, dict or set (a literal, a comprehension, `list()`, `dict()`, `set()`,
+  `bytearray()`, `collections.defaultdict`, `OrderedDict`, `Counter` or `deque`), a rebinding of a module name through `global`, the
+  same changes to a mutable class attribute of a test class through `self`, `cls`, the class name or `type(self)`,
+  and a rebinding of a class attribute through the class (`TestCart.count += 1`). It is reported in a test function or
+  method, in `setup_method`, `setUp`, `setup_function` and their teardown pairs, in a function-scoped fixture, and in
+  a function of the module (or a method of the class) that a test calls. Not reported: state that one of those
+  hooks or a function-scoped fixture resets before or after every test (`.clear()`, `[:] = ...`, a `global`
+  rebinding, or `self.items = []`, which gives each test its own attribute), writes in `setup_module`,
+  `setup_class`, `setUpClass` and session, module or class fixtures (set-up done once), a local of the same name,
+  and modules without tests. A `self.count = 1` in a test sets an attribute of that test's own instance, so it is
+  not reported.
 - `server-or-container-per-test` (Java and Kotlin: `ServerOrContainerPerTest`; TypeScript:
   `nitpicker/no-server-or-worker-per-test` and `nitpicker/no-node-process-per-test`) reports a
   container, server, process or git repository started for each test: a `testcontainers` class
