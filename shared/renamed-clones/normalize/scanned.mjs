@@ -30,8 +30,8 @@ const JAVA_KEYWORDS = new Set(
 );
 const GO_KEYWORDS = new Set(
   (
-    'break case chan const continue default defer else fallthrough for func go goto if import ' +
-    'interface map package range return select struct switch type var any bool byte error ' +
+    'break case chan const continue default defer else fallthrough for func go goto if ' +
+    'import interface map package range return select struct switch type var any bool byte error ' +
     'float32 float64 int int8 int16 int32 int64 rune string uint uint8 uint16 uint32 uint64 ' +
     'nil true false'
   ).split(' '),
