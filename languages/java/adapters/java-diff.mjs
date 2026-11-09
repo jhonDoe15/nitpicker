@@ -19,7 +19,7 @@ import { javaRouteRule } from './java-policy.mjs';
 import { withoutFollowedImports } from './imports/followed-imports.mjs';
 import { withoutGeneratedSources } from './generated/generated-sources.mjs';
 import { withoutOverlaps } from './overlaps/static-overlaps.mjs';
-import { readOptions } from './java-read-options.mjs';
+import { readOptions } from './options/java-read-options.mjs';
 import { toolConfigChoices } from './tool-config/tool-config-choices.mjs';
 import { readJavaFindings } from './reporting/java-reports.mjs';
 import { withJavaColumns } from './reporting/columns/java-columns.mjs';

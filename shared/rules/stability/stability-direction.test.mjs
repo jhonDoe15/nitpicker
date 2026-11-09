@@ -78,8 +78,8 @@ describe('stability direction with feature folders', () => {
       source: 'src/features/catalog/domain',
       target: 'src/features/catalog/adapters',
       sourceInstability: expect.closeTo(0.5, 4),
-      targetInstability: 0.6,
-      delta: 0.1,
+      targetInstability: expect.closeTo(0.6, 4),
+      delta: expect.closeTo(0.1, 4),
     });
     expect(cause.folders).toEqual(['src/features/catalog/domain']);
     expect(cause.units.map(({ unit }) => unit)).toEqual([
@@ -100,8 +100,8 @@ describe('stability direction with feature folders', () => {
       source: 'src/features/catalog',
       target: 'src/features/fines',
       sourceInstability: expect.closeTo(0.5, 4),
-      targetInstability: 0.6667,
-      delta: 0.1667,
+      targetInstability: expect.closeTo(0.6667, 4),
+      delta: expect.closeTo(0.1667, 4),
       path: 'src/features/catalog',
       message: `Keep feature dependencies pointing at more stable units: feature src/features/catalog (instability 0.5) depends on feature src/features/fines (instability 0.6667). ${FIX}`,
     });

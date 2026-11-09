@@ -15,13 +15,12 @@ import {
   collectTestResults,
   junitLauncherVersion,
   pitClasspath,
-  javaArgumentFile,
   pitTargets,
   pitTests,
   freshExecFiles,
   runJacocoReport,
-  runPit,
 } from './maven-tests.mjs';
+import { javaArgumentFile, runPit } from './pit/maven-pit.mjs';
 import { explainedError } from '../../../shared/messages/troubleshooting.mjs';
 import { readPitMutators } from '../builds/java-build.mjs';
 

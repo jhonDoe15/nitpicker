@@ -52,10 +52,12 @@ function projectSettings({ projectRoot, liveRoot, policyRoot, settings, sourceRo
   };
 }
 
-function pythonPathFor(projectRoot, sourceRoots) {
-  return [...importRoots(projectRoot, sourceRoots), process.env.PYTHONPATH]
-    .filter((entry) => entry !== undefined && entry !== '')
-    .join(path.delimiter);
+function toolEnvironment({ pythonPath, reportRoot }) {
+  return {
+    PYTHONPATH: pythonPath,
+    PYTHONDONTWRITEBYTECODE: '1',
+    ...(reportRoot === undefined ? {} : { COVERAGE_FILE: path.join(reportRoot, COVERAGE_DATA) }),
+  };
 }
 
 export function createToolContext({
@@ -84,7 +86,9 @@ export function createToolContext({
     spawn,
   });
   const sourceRoots = detectSourceRoots(projectRoot, settings.sourceRoots);
-  const pythonPath = pythonPathFor(projectRoot, sourceRoots);
+  const pythonPath = [...importRoots(projectRoot, sourceRoots), process.env.PYTHONPATH]
+    .filter((entry) => entry !== undefined && entry !== '')
+    .join(path.delimiter);
   return {
     projectRoot,
     reportRoot,
@@ -104,11 +108,7 @@ export function createToolContext({
     analyzerDeadlineMs,
     quick,
     project: projectSettings({ projectRoot, liveRoot, policyRoot, settings, sourceRoots }),
-    env: {
-      PYTHONPATH: pythonPath,
-      PYTHONDONTWRITEBYTECODE: '1',
-      ...(reportRoot === undefined ? {} : { COVERAGE_FILE: path.join(reportRoot, COVERAGE_DATA) }),
-    },
+    env: toolEnvironment({ pythonPath, reportRoot }),
   };
 }
 
