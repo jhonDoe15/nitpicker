@@ -82,6 +82,7 @@ function productionRules({ react, routeHandlers }) {
     'no-restricted-properties': ['error', ...productionRestrictedProperties],
     'nitpicker/naming-convention': namingConvention({ react, routeHandlers }),
     'nitpicker/no-accumulating-spread': 'error',
+    'nitpicker/no-costly-collection-form': 'error',
     'nitpicker/no-magic-numbers': [
       'error',
       {

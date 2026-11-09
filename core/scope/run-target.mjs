@@ -1,7 +1,7 @@
 import { existsSync, realpathSync, statSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
 import path from 'node:path';
-import { resolveProjectRoot } from '../tooling/tool-resolution.mjs';
+import { resolveProjectRoot } from '../configuration/project-checks/project-root.mjs';
 
 const GIT_OUTPUT_LIMIT_BYTES = 64 * 1024 * 1024;
 const GIT_TIMEOUT_MS = 10 * 60 * 1000;

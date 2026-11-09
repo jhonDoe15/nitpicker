@@ -75,6 +75,17 @@ same rule runs as `subprocess-without-timeout` in the Python preset, `pmd/Proces
 in the Java preset and `kotlin-source/ProcessWaitWithoutTimeout` in the Kotlin preset; tests keep
 `nitpicker/require-test-process-timeout` (TypeScript) or their runner's own limits.
 
+Costly collection forms: `nitpicker/no-costly-collection-form` (production source, in `eslint-lint`)
+reports three forms with a cheaper equivalent: an array that is appended to and searched with
+`includes`, `indexOf` or an identity `some` inside a loop, callback or recursive function (a `Set`); a
+`find`, `findIndex` or `some` by one property of the item, in a loop, iteration callback or listener,
+over a binding that does not change (a `Map` built once); and a sort that keeps only its first or last
+element (one pass). The same forms run as `list-used-as-set`, `linear-lookup-in-loop` and ruff
+`FURB192` in the Python preset, `pmd/ListUsedAsSet`, `pmd/LinearLookupInLoop` and `pmd/SortForExtreme`
+in the Java preset (main sources, Gradle and Maven) and `kotlin-source/` rules of the same names in the
+Kotlin preset. The other presets read `contains` or `in` only, and the Java and Kotlin rules read
+loops and iterating lambdas, not recursion or listeners. The Go preset has no own rule engine yet.
+
 HTTP deadlines: `nitpicker/require-http-timeout` (strict preset, production source) reports an outbound
 HTTP call that has no timeout, so a server that accepts the connection and never answers hangs it. The same
 rule runs as `http-without-timeout` in the Python preset, `pmd/HttpWithoutTimeout` in the Java preset (main
@@ -93,6 +104,14 @@ code, such as a `HikariConfig` or `DataSourceBuilder`, is left out: its URL and 
 read from configuration the check cannot follow). Clients whose defaults
 already bound each wait (boto3, the AWS SDK for Java, nodemailer, ImapFlow) are left out; the Go preset
 has no rule engine of its own yet.
+
+Exceptions mapped to a status: `nitpicker/no-unmapped-exception` (TypeScript strict preset, type-aware)
+reports a NestJS handler that can throw a project exception class no exception filter in scope maps, so
+the client gets a 500. The Python preset runs it as `unmapped-exception` for FastAPI and Starlette routes
+and their exception handlers, and the Java and Kotlin presets as `archunit/spring-unmapped-exception` for
+Spring MVC and WebFlux controllers, `@ExceptionHandler` and `@ResponseStatus`. Each follows calls four
+levels deep and skips code inside a `try` that catches. The JavaScript preset has no type information to
+follow calls with, Django, Flask and Go handlers are not checked yet.
 
 Recursive map updates have no TypeScript or JavaScript check: `Map` has no method that runs a
 callback while it updates an entry, so a callback cannot change the map in the middle of an update.
