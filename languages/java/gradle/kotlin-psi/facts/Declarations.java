@@ -201,7 +201,8 @@ final class Declarations {
       state.globals.add(
           m(
               "name", property.getName(), "line", state.lineOf(property.getTextOffset()),
-              "type", clip(property.getTypeReference()), "initializer", Initializers.callee(property)));
+              "type", clip(property.getTypeReference()), "initializer", Initializers.callee(property),
+              "literalText", Initializers.literalText(property)));
     }
     if (!member || property.getName() == null) {
       return;

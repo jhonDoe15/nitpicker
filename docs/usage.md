@@ -635,7 +635,10 @@ nitpicker rules [--preset <name>] [--tool <name>]
   gate's own configs, then run the comparison: ESLint and Prettier for TypeScript and JavaScript;
   `ruff check --fix` (safe fixes, nitpicker's rules only) and ruff format or black for Python;
   google-java-format or palantir-java-format for Java; ktlint or ktfmt for Kotlin (see the Java,
-  Kotlin and Python sections). Only files whose bytes changed are listed under "Fixed files:", and a
+  Kotlin and Python sections). The TypeScript and JavaScript fixers touch only the changed files
+  their check covers: ESLint the files `eslint-lint` lints, Prettier the files `prettier-format`
+  checks, so a changed `src/README.md` or a script outside the source and test roots is left as it
+  is. Only files whose bytes changed are listed under "Fixed files:", and a
   formatter leaves alone a file that already failed its format check on the base (ktlint, whose
   findings are per line, formats only the code around your change in such a file). ESLint,
   Prettier and the Python, Java and Kotlin formatters replace a file in one step (a temporary file
@@ -708,9 +711,11 @@ nitpicker rules [--preset <name>] [--tool <name>]
   another head, so they are never accepted this way. On a GitHub pull request the
   `accept-policy-change` label sets it (see
   [Accepting a policy change with a label](ci.md#accepting-a-policy-change-with-a-label)).
-- `--help`: list the commands and the flags of each with a one-line description, and exit 0.
-  `nitpicker init --help`, `nitpicker aggregate --help`, `nitpicker cache publish --help`,
-  `nitpicker explain --help` and `nitpicker rules --help` print the help of that command.
+- `--help` (or `-h`): print one screen and exit 0: the commands and flags with a one-line
+  description, the analyzers `--analyzer` takes in the project a run would check (the preset of its
+  `nitpicker.config.json`, `typescript` without one, minus `disable`, plus custom analyzers), the
+  exit codes, the report files to read first, a few example runs and a link to this page for the
+  installed version. `nitpicker <command> --help` (or `-h`) prints the options of that command.
 - `--version`: print the version of the installed nitpicker.
 
 The other commands:

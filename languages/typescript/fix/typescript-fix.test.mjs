@@ -112,7 +112,6 @@ describe('fixTypeScript', () => {
       path.join(repository.root, 'src/latin.ts'),
       Buffer.from([0x2f, 0x2f, 0xe9, 0x0a]),
     );
-    writeFileSync(path.join(repository.root, 'src/latin.md'), Buffer.from([0xe9, 0x0a]));
     const result = fix(repository);
 
     expect(read(repository, 'src/target.ts')).toBe('export const t=1\n');
@@ -123,7 +122,7 @@ describe('fixTypeScript', () => {
       fixedFiles: [],
       toolErrors: [],
       notes: [
-        '--fix left src/latin.md, src/latin.ts as is: not UTF-8 text',
+        '--fix left src/latin.ts as is: not UTF-8 text',
         '--fix left src/link.ts as is: symbolic links are not followed',
       ],
       operations: [],

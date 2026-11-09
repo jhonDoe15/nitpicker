@@ -147,5 +147,3 @@ export function parseArguments(arguments_) {
   validateRunProfile(options);
   return options;
 }
-
-export { USAGE_TEXT } from '../help/usage-text.mjs';
