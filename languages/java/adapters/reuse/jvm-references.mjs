@@ -1,8 +1,11 @@
+import path from 'node:path';
 import { namesOf } from './source/jvm-tokens.mjs';
 
 const TYPE_KINDS = new Set(['class', 'interface', 'enum', 'type']);
 const MEMBER_SEPARATORS = new Set(['.', '::']);
 const CALL_SEPARATORS = new Set(['.', '?.', '::']);
+const JVM_NAME = ['@', 'file', ':', 'JvmName', '('];
+const COMPANION = 'Companion';
 
 export function isCallSeparator(text) {
   return CALL_SEPARATORS.has(text);
@@ -49,12 +52,34 @@ function addDefinition(index, { file, parsed, module }, { name, kind, owner }) {
   }
 }
 
+function facadeName({ file, parsed }) {
+  const { tokens, headerEnd } = parsed;
+  const at = tokens
+    .slice(0, headerEnd)
+    .findIndex((_, index) =>
+      JVM_NAME.every((text, offset) => tokens[index + offset]?.text === text),
+    );
+  const named = tokens[at + JVM_NAME.length];
+  if (at !== -1 && named?.kind === 'string') {
+    return named.text.slice(1, -1);
+  }
+  const stem = path.basename(file, '.kt');
+  return `${stem.charAt(0).toUpperCase()}${stem.slice(1)}Kt`;
+}
+
+function fileFacade(entry) {
+  const topLevel = entry.parsed.definitions.some(
+    ({ owner, kind }) => owner === undefined && !TYPE_KINDS.has(kind) && kind !== 'class',
+  );
+  return entry.file.endsWith('.kt') && topLevel ? [{ name: facadeName(entry), kind: 'class' }] : [];
+}
+
 export function projectIndex(files) {
   const index = { types: new Map(), packages: new Map(), members: new Set() };
   for (const entry of files) {
     const { packageName } = entry.parsed;
     index.packages.set(packageName, index.packages.get(packageName) ?? new Map());
-    for (const definition of entry.parsed.definitions) {
+    for (const definition of [...entry.parsed.definitions, ...fileFacade(entry)]) {
       addDefinition(index, entry, definition);
     }
   }
@@ -83,8 +108,17 @@ function packageBindings(index, { packageName, file, own, module }) {
     .filter(([, targets]) => targets.length > 0);
 }
 
-function memberImport(index, { parent, name, local, module }) {
-  if (!index.types.has(parent)) {
+function memberOwner(index, parent) {
+  if (index.types.has(parent)) {
+    return parent;
+  }
+  const outer = parentOf(parent);
+  return lastSegment(parent) === COMPANION && index.types.has(outer) ? outer : undefined;
+}
+
+function memberImport(index, { parent: imported, name, local, module }) {
+  const parent = memberOwner(index, imported);
+  if (parent === undefined) {
     return [];
   }
   const owner = lastSegment(parent);

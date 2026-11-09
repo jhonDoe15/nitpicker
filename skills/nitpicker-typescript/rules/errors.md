@@ -10,4 +10,7 @@ Part of the [nitpicker-typescript](../SKILL.md) skill. Write these forms from th
   the call that throws:
   `try { return schema.safeParse(JSON.parse(text)); } catch { return { kind: 'malformed-json' }; }`.
 - With no caught error, throw `new XError(message)` without `cause`.
+- A NestJS exception a handler can throw maps to a status: extend `HttpException` or a subclass
+  (`class OrderNotFound extends NotFoundException {}`), or catch it in a filter registered through
+  `APP_FILTER` (`nitpicker/no-unmapped-exception`).
 - Handle malformed input only as the ticket says; don't silently drop entries.
