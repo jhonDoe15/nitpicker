@@ -47,6 +47,7 @@ import {
   sourceLocator,
 } from './kotlin-reports.mjs';
 import { withJavaCountRatchets } from './counts/java-counts.mjs';
+import { foreignKeyGate } from '../jpa/foreign-keys/key-gate.mjs';
 
 const MODULE_IDENTITY_SEPARATOR = '@';
 const ROOT_MODULE = 'root';
@@ -59,11 +60,18 @@ export function readJavaFindings(projectRoot, options = {}) {
     requireKotlinManifest(manifest);
   }
   const kotlinBuild = buildViews();
+  const foreignKeys = foreignKeyGate(projectRoot);
   const moduleFindings = modules
     .filter((module) => !isEmptyModule(projectRoot, module))
     .flatMap((module) =>
       withModuleIdentity(
-        moduleContextFindings(projectRoot, module, { manifest, modules, options, kotlinBuild }),
+        moduleContextFindings(projectRoot, module, {
+          manifest,
+          modules,
+          options,
+          kotlinBuild,
+          foreignKeys,
+        }),
         module,
       ),
     );
@@ -97,7 +105,11 @@ export function readJavaFindings(projectRoot, options = {}) {
   return { findings: withJavaCountRatchets(findings, locate) };
 }
 
-function moduleContextFindings(projectRoot, module, { manifest, modules, options, kotlinBuild }) {
+function moduleContextFindings(
+  projectRoot,
+  module,
+  { manifest, modules, options, kotlinBuild, foreignKeys },
+) {
   const preset = options.preset ?? 'java';
   const { fileLimits: thresholds, exceptions, modulePath } = options;
   const findings = readModuleFindings(
@@ -111,6 +123,7 @@ function moduleContextFindings(projectRoot, module, { manifest, modules, options
       allSourceRoots: manifest.sourceRoots,
       modules,
       kotlinBuild,
+      foreignKeys,
       kotlin: preset === 'kotlin' && module.manifest.kotlin === true,
       formatAdvice: options.formatAdvice,
       conventions: options.conventions,

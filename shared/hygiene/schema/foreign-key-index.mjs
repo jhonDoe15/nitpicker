@@ -99,6 +99,10 @@ function prismaFinding(relation) {
   });
 }
 
+export function migratesForeignKeys(projectRoot, files) {
+  return migrationSchemas(projectRoot, files).some(({ schema }) => schema.foreignKeys.length > 0);
+}
+
 export function foreignKeyIndexFindings(tool, { projectRoot, files }) {
   const kindOf = databaseKinds(projectRoot, files);
   const checked = files.filter((file) => kindOf(file) !== MYSQL);

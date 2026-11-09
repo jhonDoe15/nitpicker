@@ -1,22 +1,29 @@
-import { runGit } from '../../../../../core/diff/git/repository/command.mjs';
-import { isMigrationFile } from '../../../../../shared/hygiene/migrations/migration-files.mjs';
+import { existsSync } from 'node:fs';
+import path from 'node:path';
+import { filesUnder } from '../../../../../shared/filesystem.mjs';
 import { databaseKinds } from '../../../../../shared/hygiene/schema/database-kind.mjs';
+import { migratesForeignKeys } from '../../../../../shared/hygiene/schema/foreign-key-index.mjs';
 
-const LISTING = ['ls-files', '-z', '--cached', '--others', '--exclude-standard'];
+export const FOREIGN_KEY_RULE = 'JpaUnindexedForeignKey';
+
+const SKIPPED = new Set(['node_modules', 'build', 'target', 'out', 'dist', 'bin', 'vendor']);
+
+function isSkipped(_, entry) {
+  return entry.name.startsWith('.') || SKIPPED.has(entry.name);
+}
 
 function projectFiles(projectRoot) {
-  try {
-    return runGit(projectRoot, LISTING)
-      .split('\0')
-      .filter((file) => file.length > 0);
-  } catch {
+  if (!existsSync(projectRoot)) {
     return [];
   }
+  return [...filesUnder(projectRoot, { skipDirectory: isSkipped })].map((file) =>
+    path.relative(projectRoot, file).split(path.sep).join('/'),
+  );
 }
 
 function gateOf(projectRoot) {
   const files = projectFiles(projectRoot);
-  if (files.some((file) => isMigrationFile(file))) {
+  if (migratesForeignKeys(projectRoot, files)) {
     return () => false;
   }
   const kindOf = databaseKinds(projectRoot, files);

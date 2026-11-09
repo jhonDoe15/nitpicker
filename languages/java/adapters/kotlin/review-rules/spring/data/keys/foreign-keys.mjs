@@ -1,5 +1,6 @@
 import { annotationIn, argumentOf, stringValue } from '../../spring-names.mjs';
-import { entriesOf, report } from '../../spring-scopes.mjs';
+import { report } from '../../spring-scopes.mjs';
+import { FOREIGN_KEY_RULE } from '../../../../../jpa/foreign-keys/key-gate.mjs';
 import { simpleName } from '../../view/member-types.mjs';
 import { annotatedWith, membersOf } from '../entities.mjs';
 import {
@@ -12,8 +13,6 @@ import {
   TABLE,
 } from '../data-types.mjs';
 
-export const FOREIGN_KEY_RULE = 'JpaUnindexedForeignKey';
-
 const MAX_ANCESTORS = 12;
 const SPACING = /[_\s`"[\]]/gu;
 const STRING = String.raw`"(?:[^"\\$]|\\.)*"`;
@@ -21,11 +20,15 @@ const INDEX_CALL = /\bIndex\s*\(/gu;
 const COLUMN_LIST = new RegExp(String.raw`\bcolumnList\s*=\s*(${STRING})`, 'gu');
 const UNIQUE_CALL = /\bUniqueConstraint\s*\(/gu;
 const COLUMN_NAMES = new RegExp(
-  String.raw`\bcolumnNames\s*=\s*(?:\[|arrayOf\s*\()?\s*(${STRING})`,
+  String.raw`\bcolumnNames\s*=\s*(?:\[\s*|arrayOf\s*\(\s*)?(${STRING})`,
   'gu',
 );
 const ARRAY = /^\s*(?:\[|arrayOf\s*\()/u;
-const JOIN_NAME = /\bname\s*=\s*([^,)]+)/u;
+const RAW_STRING = '"""';
+const NESTED_CALL = /\b\w+\s*\([^()]*\)/gu;
+const CALL_START = /^[^(]*\(/u;
+const NAMED_ARGUMENT = /^\s*(\w+)\s*=(.*)$/su;
+const NO_CONSTRAINT = /\bNO_CONSTRAINT\b/u;
 const OWN_TABLES = /\b(?:JOINED|TABLE_PER_CLASS)\b/u;
 
 function normalized(name) {
@@ -39,6 +42,9 @@ function firstColumn(list) {
 function leadsOf(text, call, values) {
   if (text === undefined) {
     return [];
+  }
+  if (text.includes(RAW_STRING)) {
+    return undefined;
   }
   const found = [...text.matchAll(values)].map(([, literal]) => stringValue(literal));
   const calls = [...text.matchAll(call)].length;
@@ -57,24 +63,42 @@ function tableLeads(view, declared) {
     : [...indexes.map(firstColumn), ...uniques.map(normalized)];
 }
 
+function joinFrom(args, raw) {
+  if (args.table !== undefined || args.unique === 'true' || NO_CONSTRAINT.test(raw)) {
+    return { covered: true };
+  }
+  const name = args.name === undefined ? undefined : stringValue(args.name);
+  const referenced =
+    args.referencedColumnName === undefined ? 'id' : stringValue(args.referencedColumnName);
+  if ((args.name !== undefined && name === undefined) || referenced === undefined) {
+    return { covered: true };
+  }
+  return {
+    name: name === undefined ? undefined : normalized(name),
+    suffix: normalized(referenced),
+  };
+}
+
+function argumentsIn(text) {
+  return Object.fromEntries(
+    text
+      .split(',')
+      .map((part) => NAMED_ARGUMENT.exec(part))
+      .filter((match) => match !== null)
+      .map(([, name, value]) => [name, value.trim()]),
+  );
+}
+
 function joinColumnOf(view, member) {
   const single = annotatedWith(view, member, JOIN_COLUMN);
   if (single !== undefined) {
-    return argumentOf(single, 'unique') === 'true'
-      ? { unique: true }
-      : columnFrom(argumentOf(single, 'name'));
+    const named = single.arguments.filter(({ name }) => name !== undefined);
+    const raw = single.arguments.map(({ text }) => text).join(',');
+    return joinFrom(Object.fromEntries(named.map(({ name, text }) => [name, text])), raw);
   }
-  const several = annotatedWith(view, member, JOIN_COLUMNS);
-  const first = several?.arguments[0]?.text.split(')')[0] ?? '';
-  return columnFrom(JOIN_NAME.exec(first)?.[1]);
-}
-
-function columnFrom(text) {
-  if (text === undefined) {
-    return {};
-  }
-  const name = stringValue(text);
-  return name === undefined ? { unknown: true } : { name: normalized(name) };
+  const raw = annotatedWith(view, member, JOIN_COLUMNS)?.arguments[0]?.text ?? '';
+  const first = raw.replace(CALL_START, '').replaceAll(NESTED_CALL, '').split(')')[0];
+  return joinFrom(argumentsIn(first), raw.split(')')[0]);
 }
 
 function firstKey(view, members) {
@@ -85,13 +109,10 @@ function firstKey(view, members) {
 }
 
 function isIndexed(member, { leads, key, join }) {
-  if (join.unknown === true || join.unique === true || member.name === key) {
+  if (join.covered === true || member.name === key) {
     return true;
   }
-  const field = normalized(member.name);
-  return leads.some((lead) =>
-    join.name === undefined ? lead.startsWith(field) : lead === join.name,
-  );
+  return leads.includes(join.name ?? `${normalized(member.name)}${join.suffix}`);
 }
 
 function classesByName(projectFiles) {
@@ -107,9 +128,10 @@ function annotated(declared, name) {
 }
 
 function sharesParentTable(classes, declared) {
-  const pending = [classes.get(simpleName(declared.superClass ?? ''))];
+  const first = classes.get(simpleName(declared.superClass ?? ''));
+  const pending = first === undefined ? [] : [first];
   let entityParent = false;
-  for (const parent of pending.filter((found) => found !== undefined)) {
+  for (const parent of pending) {
     const inheritance = annotated(parent, 'Inheritance');
     if (
       inheritance !== undefined &&
@@ -118,8 +140,9 @@ function sharesParentTable(classes, declared) {
       return false;
     }
     entityParent ||= annotated(parent, 'Entity') !== undefined;
-    if (pending.length < MAX_ANCESTORS && parent.superClass !== undefined) {
-      pending.push(classes.get(simpleName(parent.superClass)));
+    const next = classes.get(simpleName(parent.superClass ?? ''));
+    if (next !== undefined && pending.length < MAX_ANCESTORS) {
+      pending.push(next);
     }
   }
   return entityParent;

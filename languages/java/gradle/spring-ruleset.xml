@@ -559,14 +559,20 @@ return
        $uniques := $table//Annotation[pmd-java:typeIs('jakarta.persistence.UniqueConstraint') or pmd-java:typeIs('javax.persistence.UniqueConstraint')]
          /AnnotationMemberList/MemberValuePair[@Name = 'columnNames']/(StringLiteral | MemberValueArrayInitializer/*[1]),
        $leads := ($lists[self::StringLiteral]/@ConstValue ! $first(.), $uniques[self::StringLiteral]/@ConstValue ! $norm(.)),
-       $column := $named/StringLiteral/@ConstValue ! $norm(.)
+       $referenced := $join/AnnotationMemberList/MemberValuePair[@Name = 'referencedColumnName'],
+       $column := if (exists($named))
+         then $named/StringLiteral/@ConstValue ! $norm(.)
+         else $norm($field) || (if (exists($referenced)) then $referenced/StringLiteral/@ConstValue ! $norm(.) else 'id')
    return not(
      exists($lists[not(self::StringLiteral)]) or exists($uniques[not(self::StringLiteral)])
-     or exists($named[not(StringLiteral)])
+     or exists(($named, $referenced)[not(StringLiteral)])
+     or exists($join/AnnotationMemberList/MemberValuePair[@Name = 'table'])
      or exists($join/AnnotationMemberList/MemberValuePair[@Name = 'unique'][BooleanLiteral[@True = true()]])
+     or exists($join//*[@Name = 'NO_CONSTRAINT'])
      or $field = min($ids)
-     or (if (exists($column)) then $leads = $column else some $lead in $leads satisfies starts-with($lead, $norm($field)))
+     or $leads = $column
    )]
+  /ModifierList/Annotation[pmd-java:typeIs('jakarta.persistence.ManyToOne') or pmd-java:typeIs('javax.persistence.ManyToOne')]
 ]]></value></property></properties>
   </rule>
   <rule name="JpaVersion" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"

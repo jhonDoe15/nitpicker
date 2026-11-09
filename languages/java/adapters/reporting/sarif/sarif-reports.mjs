@@ -68,7 +68,7 @@ export function sarifFindings(context) {
                   withSpringTransactionFilters(ingestSarif(pmd, { tool: 'pmd' }).findings, context),
                   { projectRoot },
                 ),
-                { projectRoot, sourceRoots: allSourceRoots },
+                { projectRoot, sourceRoots: allSourceRoots, checks: context.foreignKeys },
               ),
               { projectRoot, sourceRoots: allSourceRoots },
             ),

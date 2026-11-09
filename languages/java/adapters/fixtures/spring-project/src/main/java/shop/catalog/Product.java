@@ -29,8 +29,8 @@ public class Product {
 
   @ManyToOne private Supplier supplier; // violation: JpaLazyFetching, JpaUnindexedForeignKey
 
-  @ManyToOne(fetch = FetchType.EAGER) // violation: JpaLazyFetching
-  private Supplier backupSupplier; // violation: JpaUnindexedForeignKey
+  @ManyToOne(fetch = FetchType.EAGER) // violation: JpaLazyFetching, JpaUnindexedForeignKey
+  private Supplier backupSupplier;
 
   @ManyToOne(fetch = FetchType.LAZY)
   private Supplier preferredSupplier;

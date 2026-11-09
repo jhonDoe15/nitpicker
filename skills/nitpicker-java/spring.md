@@ -90,9 +90,10 @@ JPA and Spring Data:
   `@OneToOne` says `fetch = FetchType.LAZY`; nothing is `EAGER`. `@ManyToMany` is a `Set` and never
   cascades `ALL` or `REMOVE`. Enum fields and enum element collections say `@Enumerated(EnumType.STRING)`. `hashCode` never uses
   the generated id: return `getClass().hashCode()` or hash an immutable business key.
-- Every `@ManyToOne` join column leads an index of the entity's `@Table(indexes = @Index(columnList
-= "customer_id"))` (`JpaUnindexedForeignKey`); PostgreSQL does not index foreign keys itself. With
-  migrations, the index goes in the migration instead (`foreign-key-index`).
+- Every `@ManyToOne` join column leads an index of the entity's `@Table`, for example
+  `@Table(indexes = @Index(columnList = "customer_id"))` (`JpaUnindexedForeignKey`); PostgreSQL
+  does not index foreign keys itself. With migrations, the index goes in the migration instead
+  (`foreign-key-index`).
 - Every repository method you declare has `@Query` (JPQL in a text block for JPA) with named parameters
   (`:email`); inherited methods such as `findById` and `save` need nothing. No derived names like
   `findByEmailAndStatus`.

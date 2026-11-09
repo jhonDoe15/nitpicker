@@ -48,14 +48,15 @@ function sourceOf(classes, overrides = {}) {
   });
 }
 
-function reported(files, options = {}) {
+function reported(files, { checksForeignKeys = () => true } = {}) {
   return springFindings(files, {
     finding: findingFactory(),
     manifest: { spring: true },
     projectFiles: files,
     projectRoot: '/nonexistent',
     javaRoots: [],
-    rules: FOREIGN_KEY_RULES.map((rule) => (view, given) => rule(view, { ...given, ...options })),
+    checksForeignKeys,
+    rules: FOREIGN_KEY_RULES,
   }).map(({ symbol, location }) => `${symbol}:${String(location.line)}`);
 }
 
@@ -87,6 +88,30 @@ describe('JpaUnindexedForeignKey in Kotlin entities', () => {
     ]);
   });
 
+  it('takes the default join column as the field name and the referenced column, not any prefix', () => {
+    const order = entity('Order', {
+      table: {
+        indexes:
+          '[Index(columnList = "user_name"), Index(columnList = "buyer_code"), Index(columnList = "a_id")]',
+      },
+      columns: [
+        column('user', 2, []),
+        column('buyer', 3, [entry('JoinColumn', { referencedColumnName: '"code"' })]),
+        column('secondary', 4, [entry('JoinColumn', { table: '"order_extra"' })]),
+        column('loose', 5, [
+          entry('JoinColumn', { foreignKey: 'ForeignKey(ConstraintMode.NO_CONSTRAINT)' }),
+        ]),
+        column('nested', 6, [
+          entry('JoinColumns', {
+            '': '[JoinColumn(foreignKey = ForeignKey(name = "fk_x"), name = "a_id")]',
+          }),
+        ]),
+      ],
+    });
+
+    expect(reported([sourceOf([order])])).toEqual(['Order.user:2']);
+  });
+
   it('counts the alphabetically first @Id as the primary key index of a composite key', () => {
     const line = entity('Line', {
       columns: [column('order', 2, [entry('Id')]), column('product', 3, [entry('Id')])],
@@ -104,8 +129,12 @@ describe('JpaUnindexedForeignKey in Kotlin entities', () => {
       table: { indexes: '[Index(columnList = "$PREFIX")]' },
       columns: [column('customer', 2, [])],
     });
+    const raw = entity('Receipt', {
+      table: { indexes: '[Index(columnList = """customer_id""")]' },
+      columns: [column('customer', 2, [])],
+    });
 
-    expect(reported([sourceOf([order, templated])])).toEqual([]);
+    expect(reported([sourceOf([order, templated, raw])])).toEqual([]);
   });
 
   it('leaves a single-table subclass to the root table and checks a joined one', () => {
@@ -123,6 +152,21 @@ describe('JpaUnindexedForeignKey in Kotlin entities', () => {
     });
 
     expect(reported([sourceOf([root, card, joined, savings])])).toEqual(['Savings.customer:3']);
+  });
+
+  it('follows the hierarchy past a mapped superclass to the root entity and its strategy', () => {
+    const mapped = (name, superClass) =>
+      klass(name, { annotations: [entry('MappedSuperclass')], superClass });
+    const root = entity('Base', { columns: [] });
+    const order = entity('Order', { superClass: 'Middle', columns: [column('customer', 2, [])] });
+    const joinedRoot = klass('Root', {
+      annotations: [entry('Entity'), entry('Inheritance', { strategy: 'InheritanceType.JOINED' })],
+    });
+    const middle = entity('Step', { superClass: 'Root', columns: [] });
+    const invoice = entity('Invoice', { superClass: 'Step', columns: [column('customer', 3, [])] });
+
+    expect(reported([sourceOf([root, mapped('Middle', 'Base'), order])])).toEqual([]);
+    expect(reported([sourceOf([joinedRoot, middle, invoice])])).toEqual(['Invoice.customer:3']);
   });
 
   it('is quiet where the project gate says the database indexes keys itself or migrations own them', () => {
