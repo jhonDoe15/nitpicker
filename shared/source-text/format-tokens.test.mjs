@@ -66,7 +66,7 @@ describe('source text without what a formatter rewrites', () => {
     ['a.ts', 'if (x); f()', 'if (x) f()'],
     ['a.ts', lines('return x.y'), lines('return', 'x.y')],
     ['a.ts', lines('a', ';(function () {})()'), lines('a', '(function () {})()')],
-    ['a.ts', 'x = `a  ${b}  c`', 'x = `a ${b} c`'],
+    ['a.ts', `x = \`a  \${b}  c\``, `x = \`a \${b} c\``],
     ['a.ts', 'x = /a  b/', 'x = /a b/'],
     ['a.ts', 'x = [,]', 'x = []'],
     ['a.ts', 'x = [a,,]', 'x = [a,]'],
@@ -83,7 +83,7 @@ describe('source text without what a formatter rewrites', () => {
     ['A.kt', lines('return', 'a'), lines('return a')],
     ['A.kt', lines('val x = a', '-1'), lines('val x = a - 1')],
     ['A.kt', lines('foo()', '{ x }'), lines('foo() { x }')],
-    ['A.kt', 'val s = """a  ${b}"""', 'val s = """a ${b}"""'],
+    ['A.kt', `val s = """a  \${b}"""`, `val s = """a \${b}"""`],
     ['A.kt', '1.toString()', '1.tostring()'],
   ])('tells a real edit of %s apart from formatting', (filePath, before, after) => {
     expect(tokensOf(filePath, before)).not.toEqual(tokensOf(filePath, after));

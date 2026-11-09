@@ -1,5 +1,6 @@
 import path from 'node:path';
 import { isTable, tomlTable } from '../../configuration/project-files.mjs';
+import { byText } from '../../../../../shared/text-order/by-text.mjs';
 
 const PRIVATE_CLASSIFIER = 'Private :: Do Not Upload';
 
@@ -48,7 +49,7 @@ function pyprojectName(root) {
 }
 
 export function designDistributions(projectRoot, files) {
-  const roots = [...new Set(files.flatMap((file) => ancestors(file)))].sort();
+  const roots = [...new Set(files.flatMap((file) => ancestors(file)))].sort(byText);
   const distributions = [];
   for (const root of roots) {
     const table = tomlTable(projectRoot, pyprojectName(root));

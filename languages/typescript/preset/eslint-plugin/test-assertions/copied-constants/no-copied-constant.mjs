@@ -8,6 +8,7 @@ import { resolveModuleSpecifier } from '../../../modules/module-resolution.mjs';
 import { isTestFunctionName, registrationRoot } from '../../rules/analysis/test-code-analysis.mjs';
 import { chainOf } from '../../../../../../shared/traversal.mjs';
 import { exportedConstants } from './exported-constants.mjs';
+import { byText } from '../../../../../../shared/text-order/by-text.mjs';
 
 const PIN = 'expect({name}).toBe({value})';
 const MORE_TEST_FUNCTIONS = new Set(['context', 'specify', 'bench']);
@@ -165,8 +166,8 @@ export const rule = {
       if (entries === undefined || namesConstant(context, literal.node, entries)) {
         return;
       }
-      const names = [...new Set(entries.map(({ name }) => name))].toSorted();
-      const owners = [...new Set(entries.map(({ owner }) => owner))].toSorted();
+      const names = [...new Set(entries.map(({ name }) => name))].toSorted(byText);
+      const owners = [...new Set(entries.map(({ owner }) => owner))].toSorted(byText);
       context.report({
         node: literal.node,
         messageId: literal.value.kind === 'number' ? 'copiedNumber' : 'copiedString',

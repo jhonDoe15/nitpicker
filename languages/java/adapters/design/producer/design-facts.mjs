@@ -12,6 +12,7 @@ import path from 'node:path';
 import { isGeneratedJvm } from '../../generated/generated-sources.mjs';
 import { compileDesignProgram, runDesignProgram } from './design-program.mjs';
 import { resolveInside } from '../../../../../shared/conventions/read-inside.mjs';
+import { byText } from '../../../../../shared/text-order/by-text.mjs';
 
 const SKIPPED_FILES = new Set(['module-info.java', 'package-info.java']);
 
@@ -32,7 +33,7 @@ export function designSourceFiles(projectRoot, modules) {
       module.sourceRoots.flatMap((root) => javaFilesUnder(projectRoot, root)),
     ),
   );
-  return [...files].filter((file) => !isGeneratedJvm(projectRoot, file)).toSorted();
+  return [...files].filter((file) => !isGeneratedJvm(projectRoot, file)).toSorted(byText);
 }
 
 export function designPackages(modules) {

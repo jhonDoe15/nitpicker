@@ -9,6 +9,7 @@ import {
   read,
   root,
 } from '../test-support/troubleshooting-page.mjs';
+import { byText } from '../../text-order/by-text.mjs';
 
 const EVERY_PRESET = [
   'exit-code-2-and-tool-errors',
@@ -48,7 +49,7 @@ function expectedIndex({ sections, without = [], others }) {
     .filter(({ section }) => sections.includes(section))
     .map(({ slug }) => slug)
     .filter((slug) => !without.includes(slug));
-  return [...new Set([...inSections, ...others, ...EVERY_PRESET])].toSorted();
+  return [...new Set([...inSections, ...others, ...EVERY_PRESET])].toSorted(byText);
 }
 
 describe('the links to the page from the documentation', () => {
@@ -92,7 +93,7 @@ describe('the troubleshooting section of each preset guide', () => {
     const section = read(preset.guide.replace(/\.md$/u, '/troubleshooting.md'));
     const listed = [...new Set([...section.matchAll(SECTION_LINK)].map(([, anchor]) => anchor))];
 
-    expect(listed.toSorted()).toEqual(expectedIndex(preset));
+    expect(listed.toSorted(byText)).toEqual(expectedIndex(preset));
   });
 
   it('is where the usage guide sends each preset, instead of a list of its own', () => {
@@ -101,10 +102,10 @@ describe('the troubleshooting section of each preset guide', () => {
       ([, target]) => target,
     );
 
-    expect([...new Set(sent)].toSorted()).toEqual(
+    expect([...new Set(sent)].toSorted(byText)).toEqual(
       PRESET_GUIDES.map(({ guide }) =>
         path.join(path.basename(guide, '.md'), 'troubleshooting.md'),
-      ).toSorted(),
+      ).toSorted(byText),
     );
   });
 });

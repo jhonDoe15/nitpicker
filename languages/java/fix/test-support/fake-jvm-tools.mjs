@@ -1,6 +1,7 @@
 import { existsSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { containedPath } from '../../../../core/fix/common/contained-path.mjs';
+import { byText } from '../../../../shared/text-order/by-text.mjs';
 
 const MARKER = 'nitpicker-fix-tool';
 const TOOL_PROPERTY = '-Pnitpicker.fix.tools=';
@@ -85,7 +86,7 @@ export function fakeJvmTools({ transform = squeezed, failure = {}, unparsable = 
       operation: invocation.operation,
       cwd: invocation.cwd,
       ...launch,
-      layout: readdirSync(workspaceOf(invocation.cwd), { recursive: true }).sort(),
+      layout: readdirSync(workspaceOf(invocation.cwd), { recursive: true }).sort(byText),
       defaults:
         defaults === undefined
           ? undefined

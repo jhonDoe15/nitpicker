@@ -1,5 +1,6 @@
 import { configError, isPlainObject } from '../config.mjs';
 import { explainedError } from '../messages/troubleshooting.mjs';
+import { byText } from '../text-order/by-text.mjs';
 
 export const ANALYZER_TIMEOUT_KEY = 'analyzerTimeoutMinutes';
 export const ANALYZER_TIMEOUT_VARIABLE = 'NITPICKER_ANALYZER_TIMEOUT_MS';
@@ -56,7 +57,7 @@ export function applyAnalyzerTimeouts(analyzers, timeouts, knownNames) {
   const unknown = Object.keys(timeouts).filter((name) => !known.has(name));
   if (unknown.length > 0) {
     throw configError(
-      `"${ANALYZER_TIMEOUT_KEY}" names unknown analyzers: ${unknown.join(', ')}. Known analyzers: ${[...known].sort().join(', ')}`,
+      `"${ANALYZER_TIMEOUT_KEY}" names unknown analyzers: ${unknown.join(', ')}. Known analyzers: ${[...known].sort(byText).join(', ')}`,
     );
   }
   return analyzers.map((analyzer) => withConfiguredTimeout(analyzer, timeouts));

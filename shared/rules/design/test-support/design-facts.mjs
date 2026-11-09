@@ -1,4 +1,5 @@
 import { sharedFactFindings } from '../../facts/evaluate.mjs';
+import { byText } from '../../../text-order/by-text.mjs';
 
 export function owner(file, name, extra = {}) {
   return {
@@ -32,7 +33,7 @@ export function fn(owned, name, extra = {}) {
 }
 
 export function designFacts({ types = [], callables = [], tests = [], packages = [] }) {
-  const files = [...new Set([...types, ...callables].map(({ file }) => file))].sort();
+  const files = [...new Set([...types, ...callables].map(({ file }) => file))].sort(byText);
   return {
     modules: files.map((file) => ({ file, role: tests.includes(file) ? 'test' : 'production' })),
     packages,

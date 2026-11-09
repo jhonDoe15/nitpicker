@@ -8,6 +8,7 @@ import {
   read,
   stringConstants,
 } from '../test-support/troubleshooting-page.mjs';
+import { byText } from '../../text-order/by-text.mjs';
 
 const LINKING_CALLS = new Set([
   'withTroubleshooting',
@@ -140,9 +141,9 @@ describe('each message that links to the troubleshooting page', () => {
     const relinking = sites.filter(({ clauses }) => clauses.length === 0);
 
     expect(sites.length).toBeGreaterThan(40);
-    expect([...new Set(relinking.map(({ where }) => where.split(':')[0]))].toSorted()).toEqual(
-      MESSAGES_BUILT_ELSEWHERE,
-    );
+    expect(
+      [...new Set(relinking.map(({ where }) => where.split(':')[0]))].toSorted(byText),
+    ).toEqual(MESSAGES_BUILT_ELSEWHERE);
   });
 
   it('is quoted in the symptom of the entry it links to, so the two cannot drift apart', () => {

@@ -1,4 +1,5 @@
 import { partsOf } from '../../../../../shared/rules/stability/test-support/library-project.mjs';
+import { byText } from '../../../../../shared/text-order/by-text.mjs';
 
 const PART_CLASSES = { face: 'Api', domain: 'domain.Model', adapters: 'adapters.Store' };
 const ROOT_CLASSES = { shared: 'library.shared.Ids', main: 'library.App' };
@@ -18,7 +19,7 @@ export function libraryJdeps(uses) {
 
 export function libraryClasses(uses, { sourceRoot, extension }) {
   return {
-    classes: [...new Set(uses.flat().map(libraryClass))].sort(),
+    classes: [...new Set(uses.flat().map(libraryClass))].sort(byText),
     fileOf: (name) => `${sourceRoot}/${name.replaceAll('.', '/')}.${extension}`,
   };
 }

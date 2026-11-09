@@ -98,7 +98,7 @@ describe('the Maven build in a quick run', () => {
     ]);
     expect(buildGoals({ quick: false, pinned, modules: [{ runsFailsafe: false }] })).toEqual([
       `org.jacoco:jacoco-maven-plugin:${pinned.jacoco}:prepare-agent`,
-      '-Djacoco.destFile=${project.build.directory}/nitpicker-jacoco.exec',
+      `-Djacoco.destFile=\${project.build.directory}/nitpicker-jacoco.exec`,
       'test',
     ]);
   });

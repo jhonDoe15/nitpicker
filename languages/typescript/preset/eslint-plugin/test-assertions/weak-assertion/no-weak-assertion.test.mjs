@@ -53,7 +53,7 @@ tester.run('no-weak-assertion presence', rule, {
     'it("a", () => { assert.ok(user != null); use(user); });',
     'it("a", () => { assert.strict.ok(order.id != null); send(order.id); });',
     'it("a", () => { assert(null !== user); expect(user?.name).toBe("a"); });',
-    'it("a", () => { assert(user != null); if (ready) { check(`${user}`); } });',
+    `it("a", () => { assert(user != null); if (ready) { check(\`\${user}\`); } });`,
   ],
   invalid: [
     presence('expect(user).not.toBe(null);', 'expect(…).not.toBe(null)', 'null'),

@@ -1,4 +1,5 @@
 import { partsOf } from '../../../../../shared/rules/stability/test-support/library-project.mjs';
+import { byText } from '../../../../../shared/text-order/by-text.mjs';
 
 export const LIBRARY_ROOT = 'src';
 
@@ -12,7 +13,7 @@ function fileOf(reference) {
 }
 
 export function libraryGraph(uses) {
-  const files = [...new Set(uses.flat().map(fileOf))].sort();
+  const files = [...new Set(uses.flat().map(fileOf))].sort(byText);
   return {
     modules: files.map((source) => ({
       source,

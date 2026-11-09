@@ -1,4 +1,5 @@
 import { whileHolds } from '../traversal.mjs';
+import { byText } from '../text-order/by-text.mjs';
 
 const SPACE = /[^\S\n]+/uy;
 const NUMBER = /(?:\d|\.\d)[\p{L}\p{N}_]*(?:(?:(?<=[eE])[+-]|\.)\d[\p{L}\p{N}_]*)*/uy;
@@ -169,7 +170,7 @@ function canonicalString(raw, { prefix, opener, kind }) {
   const body = raw.slice(start, terminated ? raw.length - kind.close.length : raw.length);
   const quote = kind.block === true ? '"""' : '"';
   const value = kind.block === true || /r/iu.test(prefix) ? body : unescapedQuotes(body);
-  const letters = [...prefix.toLowerCase()].filter((letter) => letter !== 'u').toSorted();
+  const letters = [...prefix.toLowerCase()].filter((letter) => letter !== 'u').toSorted(byText);
   return `${letters.join('')}${quote}${value}${terminated ? quote : '\0'}`;
 }
 
@@ -198,7 +199,8 @@ function readString(cursor) {
   if (match === null) {
     return false;
   }
-  const [whole, prefix, opener] = match;
+  const [whole] = match;
+  const { prefix = '', opener } = match.groups;
   const kind = stringKind(cursor.language, prefix, opener);
   const end = delimitedEnd(cursor.text, cursor.at + whole.length, kind);
   pushString(cursor, { raw: cursor.text.slice(cursor.at, end), prefix, opener, kind });

@@ -2,6 +2,7 @@ import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { JAVA_FORMATTERS, KOTLIN_FORMATTERS, javaFormatterCommand } from './jvm-formatters.mjs';
+import { byText } from '../../../../shared/text-order/by-text.mjs';
 
 const INIT_SCRIPT = readFileSync(
   path.resolve(import.meta.dirname, '../../gradle/nitpicker.init.gradle'),
@@ -26,8 +27,8 @@ function initScriptMainClasses() {
 
 describe('the formatter table', () => {
   it('names the jars the Gradle init script resolves for the format checks', () => {
-    expect(initScriptCoordinates().sort()).toEqual(
-      [...new Set(FORMATTERS.map(({ coordinates }) => coordinates(GROOVY_PINNED)))].sort(),
+    expect(initScriptCoordinates().sort(byText)).toEqual(
+      [...new Set(FORMATTERS.map(({ coordinates }) => coordinates(GROOVY_PINNED)))].sort(byText),
     );
   });
   it('names main classes the Gradle init script runs', () => {

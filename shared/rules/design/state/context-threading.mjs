@@ -1,6 +1,7 @@
 import { DESIGN_RULE_IDS } from '../../../project-rules/design/design-rules.mjs';
 import { quoted } from '../design-finding.mjs';
 import { displayName, listSites } from '../design-index.mjs';
+import { byText } from '../../../text-order/by-text.mjs';
 
 const RULE = DESIGN_RULE_IDS.contextThreading;
 const MIN_FIELDS = 5;
@@ -54,7 +55,9 @@ function threadOf(start, type, index) {
   for (const step of pending) {
     pending.push(...visitStep(step, { type, index, thread }));
   }
-  return thread.complete ? { fields: [...thread.fields].sort(), passes: thread.passes } : undefined;
+  return thread.complete
+    ? { fields: [...thread.fields].sort(byText), passes: thread.passes }
+    : undefined;
 }
 
 function visitStep(step, { type, index, thread }) {

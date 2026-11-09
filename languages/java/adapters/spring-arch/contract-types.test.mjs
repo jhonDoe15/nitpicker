@@ -4,6 +4,7 @@ import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import { readSpringArchFindings, SPRING_ARCH_REPORT } from './spring-arch.mjs';
 import { CONTRACT_RULE, featureFaceMatcher } from './contract-types.mjs';
+import { byText } from '../../../../shared/text-order/by-text.mjs';
 
 const RULE = CONTRACT_RULE;
 const temporaryRoots = [];
@@ -158,7 +159,7 @@ function quotedNames(file, start, end) {
   const text = readFileSync(path.resolve(import.meta.dirname, file), 'utf8');
   const from = text.indexOf(start);
   const block = text.slice(from, text.indexOf(end, from));
-  return [...block.matchAll(/"([a-z]+)"/gu)].map(([, name]) => name).sort();
+  return [...block.matchAll(/"([a-z]+)"/gu)].map(([, name]) => name).sort(byText);
 }
 
 describe('infrastructure package names', () => {
