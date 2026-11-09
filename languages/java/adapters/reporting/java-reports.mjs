@@ -59,19 +59,12 @@ export function readJavaFindings(projectRoot, options = {}) {
   if (kotlinPreset && options.requireKotlin !== false) {
     requireKotlinManifest(manifest);
   }
-  const kotlinBuild = buildViews();
-  const foreignKeys = foreignKeyGate(projectRoot);
+  const run = { kotlinBuild: buildViews(), foreignKeys: foreignKeyGate(projectRoot) };
   const moduleFindings = modules
     .filter((module) => !isEmptyModule(projectRoot, module))
     .flatMap((module) =>
       withModuleIdentity(
-        moduleContextFindings(projectRoot, module, {
-          manifest,
-          modules,
-          options,
-          kotlinBuild,
-          foreignKeys,
-        }),
+        moduleContextFindings(projectRoot, module, { manifest, modules, options, ...run }),
         module,
       ),
     );
@@ -105,11 +98,7 @@ export function readJavaFindings(projectRoot, options = {}) {
   return { findings: withJavaCountRatchets(findings, locate) };
 }
 
-function moduleContextFindings(
-  projectRoot,
-  module,
-  { manifest, modules, options, kotlinBuild, foreignKeys },
-) {
+function moduleContextFindings(projectRoot, module, { manifest, modules, options, ...run }) {
   const preset = options.preset ?? 'java';
   const { fileLimits: thresholds, exceptions, modulePath } = options;
   const findings = readModuleFindings(
@@ -122,8 +111,7 @@ function moduleContextFindings(
       lintedRoots: lintedRoots(module.manifest),
       allSourceRoots: manifest.sourceRoots,
       modules,
-      kotlinBuild,
-      foreignKeys,
+      ...run,
       kotlin: preset === 'kotlin' && module.manifest.kotlin === true,
       formatAdvice: options.formatAdvice,
       conventions: options.conventions,
@@ -152,13 +140,10 @@ function ifTested(jacoco, build) {
   return jacoco === undefined ? [] : build(jacoco);
 }
 
-function testRootsOf(manifest) {
-  return [...(manifest.testSourceRoots ?? []), ...(manifest.kotlinTestSourceRoots ?? [])];
-}
-
 function readModuleFindings(context, crapLimit) {
   const { reportRoot, projectRoot, kotlin, jacoco } = context;
-  const testRoots = testRootsOf(context.manifest);
+  const { testSourceRoots = [], kotlinTestSourceRoots = [] } = context.manifest;
+  const testRoots = [...testSourceRoots, ...kotlinTestSourceRoots];
   return [
     ...sarifFindings(context),
     ...readErrorProneFindings(context),
