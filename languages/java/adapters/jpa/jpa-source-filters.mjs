@@ -1,5 +1,6 @@
-import { existsSync, readdirSync, readFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
+import { projectFilesUnder } from '../../../../shared/project-files/project-files.mjs';
 
 const EXPOSURE_RULES = ['EI_EXPOSE_REP', 'EI_EXPOSE_REP2'];
 const MAX_ANCESTORS = 12;
@@ -48,14 +49,9 @@ export function dropEntityAssociations(log, projectRoot) {
 }
 
 function javaFilesUnder(projectRoot, sourceRoots) {
-  return sourceRoots.flatMap((root) => {
-    const directory = path.join(projectRoot, root);
-    return existsSync(directory)
-      ? readdirSync(directory, { recursive: true })
-          .filter((name) => name.endsWith('.java'))
-          .map((name) => path.join(directory, name))
-      : [];
-  });
+  return sourceRoots.flatMap((root) =>
+    projectFilesUnder(path.join(projectRoot, root)).filter((file) => file.endsWith('.java')),
+  );
 }
 
 function classIndex(projectRoot, sourceRoots) {

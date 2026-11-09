@@ -2,10 +2,11 @@ import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { CATALOG_TOOLS, readCatalog } from '../../messages/rule-messages.mjs';
+import { KOTLIN_REVIEW_EXCEPTION_RULES } from '../kotlin/review-rules/review-rules.mjs';
 import { OVERLAP_PAIRS, matchesRule, withoutOverlaps } from './static-overlaps.mjs';
 
 const CHECKS = path.resolve(import.meta.dirname, '../../gradle/errorprone/checks.json');
-const OWN_PMD_RULESETS = [
+const NITPICKER_RULESETS = [
   'pmd-ruleset.xml',
   'pmd-main-ruleset.xml',
   'pmd-test-ruleset.xml',
@@ -13,17 +14,18 @@ const OWN_PMD_RULESETS = [
   'rules/guards-ruleset.xml',
   'rules/test-honesty-ruleset.xml',
 ];
-const OWN_PMD_RULE = /<rule (?:name="(\w+)"|ref="category\/java\/\w+\.xml\/(\w+)")/gu;
+const PMD_RULE = /<rule (?:name="(\w+)"|ref="category\/java\/\w+\.xml\/(\w+)")/gu;
 const OWN_CHECKSTYLE_FRAGMENTS = ['rules/checkstyle-all.xml', 'rules/checkstyle-main.xml'];
 const OWN_CHECKSTYLE_MODULE = /<module name="(?!SuppressionXpathSingleFilter)(\w+)">/gu;
 const SIGNATURES = path.resolve(import.meta.dirname, '../../gradle/rules/forbidden-apis.txt');
 const SIGNATURE_TAG = /^@defaultMessage ([a-z-]+):/gmu;
 const KNOWN_RULES = [
   'errorprone/NullAway',
-  ...OWN_PMD_RULESETS.flatMap((file) =>
+  ...KOTLIN_REVIEW_EXCEPTION_RULES,
+  ...NITPICKER_RULESETS.flatMap((file) =>
     [
       ...readFileSync(path.resolve(import.meta.dirname, '../../gradle', file), 'utf8').matchAll(
-        OWN_PMD_RULE,
+        PMD_RULE,
       ),
     ].map(([, name, ref]) => `pmd/${name ?? ref}`),
   ),
@@ -43,7 +45,7 @@ const KNOWN_RULES = [
   ),
 ];
 const TOOLS =
-  /^(?:(?:pmd|spotbugs|errorprone|checkstyle)\/[A-Za-z0-9_*]+|forbiddenapis\/[a-z-]+)$/u;
+  /^(?:(?:pmd|spotbugs|errorprone|checkstyle|kotlin-source)\/[A-Za-z0-9_*]+|forbiddenapis\/[a-z-]+)$/u;
 const SOURCE = [
   'package demo;',
   'public class A {',
@@ -65,6 +67,19 @@ const SOURCE = [
   'class C {}',
   '/** D. */',
   'class D {}',
+  'class E {',
+  '  void m() {',
+  '    try {',
+  '      run();',
+  '    } catch (InterruptedException',
+  '        e) {',
+  '    }',
+  '    try {',
+  '      run();',
+  '    } catch (IllegalStateException e) {',
+  '    }',
+  '  }',
+  '}',
 ].join('\n');
 
 function at(printedRule, line, extra = {}) {
@@ -83,6 +98,7 @@ const SCOPED = {
   member: { primary: 5, covered: { line: 6 }, apart: { line: 9 } },
   class: { primary: 5, covered: { line: 9 }, apart: { line: 13 } },
   javadoc: { primary: 16, covered: { line: 15 }, apart: { line: 19 } },
+  catch: { primary: 25, covered: { line: 26 }, apart: { line: 30 } },
   file: { primary: 5, covered: { line: 13 }, apart: { line: 5, path: 'src/Other.java' } },
   field: { primary: 3, covered: { symbol: 'demo.A.f' }, apart: { symbol: 'demo.B.f' } },
 };
@@ -97,7 +113,7 @@ const cases = OVERLAP_PAIRS.flatMap(({ primary, secondary, scope }) =>
 );
 
 describe('overlap pairs', () => {
-  it('name printed rules of the five tools, in known scopes, with no rule depending on itself', () => {
+  it('name printed rules of the tools, in known scopes, with no rule depending on itself', () => {
     const rules = OVERLAP_PAIRS.flatMap(({ primary, secondary }) => [...primary, ...secondary]);
     const coveredBy = (rule) =>
       OVERLAP_PAIRS.filter(({ secondary }) => matchesRule(secondary, rule)).flatMap(

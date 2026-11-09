@@ -44,7 +44,7 @@ public final class Failures implements Callable<String> {
   public void waitFor(Object lock) {
     try {
       lock.wait();
-    } catch (InterruptedException e) { // violation: pmd/SwallowedInterruptedException
+    } catch (InterruptedException e) {
       sneaky();
     }
   }
@@ -52,7 +52,7 @@ public final class Failures implements Callable<String> {
   public void waitAndStop(Object lock, Thread worker) {
     try {
       lock.wait();
-    } catch (InterruptedException e) { // violation: pmd/SwallowedInterruptedException
+    } catch (InterruptedException e) {
       worker.interrupt();
     }
   }

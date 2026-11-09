@@ -16,6 +16,7 @@ import { readSpringConfigFindings } from '../spring/java-spring.mjs';
 import { readGuardFindings } from '../../guards/index.mjs';
 import { archunitFindings, springArchFindings } from './archunit/archunit-findings.mjs';
 import { javaMethodText, readJavaStructureFindings } from '../metrics/java-structure.mjs';
+import { testRunFindings } from '../test-runs/test-run-findings.mjs';
 import { readClassLimitFindings } from '../size/class-limits.mjs';
 import {
   declarationUnits,
@@ -26,9 +27,6 @@ import {
 } from './function-locator.mjs';
 import { checkstyleFindings, formatFindings } from './format-findings.mjs';
 import { withoutMainMethodFindings } from './entry-point/main-method.mjs';
-import { readSlowTestFindings } from '../test-times/slow-tests.mjs';
-import { readTestConsoleFindings } from '../test-times/console-findings.mjs';
-import { readUnrunTestFindings } from '../test-runs/unrun-tests.mjs';
 import { readDocCommentFindings } from '../doc-comments/doc-comment-findings.mjs';
 import { ingestJacoco } from '../../ingest/coverage-reports/jacoco.mjs';
 import { ingestPit } from '../../ingest/pit.mjs';
@@ -126,13 +124,18 @@ function moduleContextFindings(projectRoot, module, { manifest, modules, options
       conventions: options.conventions,
       javaStyle: options.javaStyle,
       classLimits: { thresholds, exceptions, modulePath },
-      jacoco: module.manifest.testsFailed === true ? undefined : readModuleJacoco(module, preset),
+      quick: options.quick === true,
+      jacoco:
+        options.quick === true || module.manifest.testsFailed === true
+          ? undefined
+          : readModuleJacoco(module, preset),
       mainCheckstyle: readMainCheckstyle(projectRoot, module, preset),
       testTimes: {
         limits: options.testSeconds,
         baseline: options.baseline,
         modulePath,
       },
+      featureLayout: { layout: options.featureLayout, modulePath },
       testConsole: {
         allow: options.testConsoleAllow,
         exceptions: options.exceptions,
@@ -165,7 +168,7 @@ function readModuleFindings(context, crapLimit) {
     ...archunitFindings(context),
     ...springArchFindings(context),
     ...ifTested(jacoco, (report) => crapFindings(context, report, crapLimit)),
-    ...pitFindings(context),
+    ...(context.quick ? [] : pitFindings(context)),
     ...readJavaStructureFindings(reportRoot, projectRoot, context.reactorRoot),
     ...readDocCommentFindings({ projectRoot, manifest: context.manifest, kotlin }),
     ...readClassLimitFindings(reportRoot, context.classLimits),
@@ -175,14 +178,7 @@ function readModuleFindings(context, crapLimit) {
       ...context,
       locate: sourceLocator(projectRoot, lintedRoots(context.manifest)),
     }),
-    ...readSlowTestFindings({ reportRoot, projectRoot, testRoots, ...context.testTimes }),
-    ...readTestConsoleFindings({ reportRoot, projectRoot, testRoots }, context.testConsole),
-    ...readUnrunTestFindings({
-      reportRoot,
-      projectRoot,
-      manifest: context.manifest,
-      modulePath: context.testTimes.modulePath,
-    }),
+    ...testRunFindings(context, { reportRoot, projectRoot, testRoots }),
   ];
 }
 

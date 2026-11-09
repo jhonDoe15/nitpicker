@@ -19,8 +19,8 @@ import { javaRouteRule } from './java-policy.mjs';
 import { withoutFollowedImports } from './imports/followed-imports.mjs';
 import { withoutGeneratedSources } from './generated/generated-sources.mjs';
 import { withoutOverlaps } from './overlaps/static-overlaps.mjs';
+import { readOptions } from './options/java-read-options.mjs';
 import { toolConfigChoices } from './tool-config/tool-config-choices.mjs';
-import { javaFindingOptions } from './reporting/finding-options.mjs';
 import { readJavaFindings } from './reporting/java-reports.mjs';
 import { withJavaColumns } from './reporting/columns/java-columns.mjs';
 import { readReportModules } from './gradle-reports/report-modules.mjs';
@@ -39,6 +39,7 @@ import { isJavaTouchedRule } from './touched-rules.mjs';
 import { withProjectEnumPredicates } from './review-rules/enum-predicates.mjs';
 import { gradleBudget } from './gradle-wrapper/gradle-budget.mjs';
 import { gradleStages } from './gradle-wrapper/gradle-stages.mjs';
+import { gradleDesignFindings, mavenDesignFindings } from './design/design-modules.mjs';
 
 const CLOCK_SLACK_MS = 2000;
 const GRADLE_FLAGS = ['--console=plain', '--quiet', '--no-configuration-cache'];
@@ -119,13 +120,14 @@ function gradleFindings(projectRoot, options, reportBase) {
   if (preset === 'kotlin') {
     runKotlinDuplicates(projectRoot, duplicates);
   }
+  const { findings } = readJavaFindings(projectRoot, {
+    ...readOptions(options.policy),
+    formatAdvice: kotlinRun?.advice,
+    reportBase,
+    report,
+  });
   return {
-    findings: readJavaFindings(projectRoot, {
-      ...javaFindingOptions(options.policy),
-      formatAdvice: kotlinRun?.advice,
-      reportBase,
-      report,
-    }).findings,
+    findings: [...findings, ...gradleDesignFindings({ projectRoot, report, options, reportBase })],
     testsFailures: withRootSourceRoots(testsFailures, report.modules),
   };
 }
@@ -146,11 +148,9 @@ function withGradleReports(projectRoot, options) {
 
 function mavenFindings(projectRoot, options) {
   const { moduleDirs, testsFailures, formatAdvice } = runMavenPreset(projectRoot, {
-    maven: options.maven,
-    spawn: options.spawn,
-    policy: options.policy,
+    ...options,
+    timeoutMs: options.budget?.mavenCommandTimeoutMs,
     configs: toolConfigChoices(projectRoot, options.policy),
-    environment: options.environment,
   });
   const duplicates = {
     reportRoot: path.join(projectRoot, MAVEN_REPORT_DIRECTORY),
@@ -161,12 +161,13 @@ function mavenFindings(projectRoot, options) {
   if (options.policy?.preset === 'kotlin') {
     runKotlinDuplicates(projectRoot, duplicates);
   }
+  const findings = readModuleFindings(projectRoot, moduleDirs, {
+    ...readOptions(options.policy),
+    formatAdvice,
+    reportDirectory: MAVEN_REPORT_DIRECTORY,
+  });
   return {
-    findings: readModuleFindings(projectRoot, moduleDirs, {
-      ...javaFindingOptions(options.policy),
-      formatAdvice,
-      reportDirectory: MAVEN_REPORT_DIRECTORY,
-    }),
+    findings: [...findings, ...mavenDesignFindings(projectRoot, moduleDirs, options.policy)],
     testsFailures,
   };
 }

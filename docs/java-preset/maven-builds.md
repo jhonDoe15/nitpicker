@@ -48,7 +48,8 @@ by field. Per snapshot:
    directories). The versions are read from the init script's `pinned` map, so both builds always
    run the same tools.
    A module that uses Spring (`spring-context` or `spring-boot` on its main compile classpath) or
-   jMolecules (`jmolecules-ddd`) also runs the Spring architecture rules: ArchUnit is resolved with
+   jMolecules (`jmolecules-ddd`), or any module when the head checkout has a feature folder (see
+   [Contract types](spring-architecture-rules.md#contract-types)), also runs the Spring architecture rules: ArchUnit is resolved with
    the other tools, but only when some module runs them, and the rule classes are compiled once into
    `$XDG_CACHE_HOME/nitpicker/spring-arch/<hash>` (else `~/.cache/nitpicker/spring-arch/<hash>`, private
    to the user; the hash is computed like Gradle's, but the cache is separate from Gradle's) and run in

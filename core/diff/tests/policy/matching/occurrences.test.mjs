@@ -32,7 +32,13 @@ function touchedBy(hunks) {
             .filter(({ newCount }) => newCount > 0)
             .map(({ newStart, newCount }) => [newStart, newStart + newCount - 1]),
           inserted: [],
-          hunks,
+          hunks: hunks.map(({ oldStart, oldCount, newStart, newCount }) => [
+            oldStart,
+            oldCount,
+            newStart,
+            newCount,
+          ]),
+          carried: [],
         },
       ],
     ]),

@@ -30,7 +30,18 @@ function changedFile(hunks) {
   const ranges = hunks
     .filter(({ newCount }) => newCount > 0)
     .map(({ newStart, newCount }) => [newStart, newStart + newCount - 1]);
-  return { added: false, ranges, inserted: [], hunks };
+  return {
+    added: false,
+    ranges,
+    inserted: [],
+    hunks: hunks.map(({ oldStart, oldCount, newStart, newCount }) => [
+      oldStart,
+      oldCount,
+      newStart,
+      newCount,
+    ]),
+    carried: [],
+  };
 }
 
 function compared(baseFindings, headFindings, files) {

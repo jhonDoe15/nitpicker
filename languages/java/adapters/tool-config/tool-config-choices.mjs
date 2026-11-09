@@ -1,7 +1,10 @@
 import path from 'node:path';
 import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
 import { resolveInside } from '../../../../shared/conventions/read-inside.mjs';
-import { precedenceLayers } from '../../../../shared/conventions/tool-precedence.mjs';
+import {
+  missingProjectConfig,
+  precedenceLayers,
+} from '../../../../shared/conventions/tool-precedence.mjs';
 import { JAVA_ASSERTION_HELPERS } from '../../conventions/java-conventions.mjs';
 import { PROJECT_TOOL_CONFIGS } from '../gradle-presets.mjs';
 import { mergeCheckstyleFiles } from './checkstyle/checkstyle-merge.mjs';
@@ -19,7 +22,7 @@ export function toolConfigChoices(projectRoot, policy = {}) {
         precedence.includes('project') &&
         (projectConfig === undefined || !existsSync(projectConfig))
       ) {
-        throw new Error(`"tools.${tool}.precedence" lists "project" but ${file} is missing`);
+        throw new Error(missingProjectConfig(tool, file));
       }
       const layers = precedenceLayers(precedence);
       return [
@@ -75,5 +78,11 @@ export function toolConfigProperties(projectRoot, policy = {}, { directory, chec
       choices.spotbugs,
       path.join(directory, 'spotbugs-settings.json'),
     ),
+    ...settingsProperty(
+      'errorprone',
+      choices.errorprone,
+      path.join(directory, 'errorprone-settings.json'),
+    ),
+    ...settingsProperty('pit', choices.pit, path.join(directory, 'pit-settings.json')),
   ];
 }

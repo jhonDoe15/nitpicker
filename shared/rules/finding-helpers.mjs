@@ -124,15 +124,6 @@ export function summaryMetrics(analyzerName, summary = {}, rule, ignored = []) {
   return findings;
 }
 
-const LISTED_MEMBERS = 5;
-
-export function listed(members) {
-  const shown = members.slice(0, LISTED_MEMBERS).join(', ');
-  return members.length > LISTED_MEMBERS
-    ? `${shown} and ${String(members.length - LISTED_MEMBERS)} more`
-    : shown;
-}
-
 /** The name of the narrowest function of `file` (`{ file, name, start, end }[]`) that holds `line`. */
 export function enclosingFunctionName(functions, file, line) {
   return enclosingFunction(functions, file, line)?.name;
