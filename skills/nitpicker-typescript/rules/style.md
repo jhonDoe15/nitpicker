@@ -5,7 +5,7 @@ Part of the [nitpicker-typescript](../SKILL.md) skill. Write these forms from th
 - `function` declarations for named functions, nested helpers too; arrows only as callbacks, with a block body when
   they return nothing: `(line) => { out.push(line); }`.
 - `type`, never `interface`; string-literal unions, never `enum`; no classes except `Error`
-  subclasses.
+  subclasses and, with NestJS, [its class forms](nestjs.md).
 - No `as`, `any` or `!`, and no `null` in your own types or values: read a library's `null` with
   `regex.exec(s)?.[0]` in one expression or a strict `!== null` check. Narrow with checks, and
   don't add `??`, `?.` or checks the types already rule out. Indexing (`list[0]`, `record[key]`)

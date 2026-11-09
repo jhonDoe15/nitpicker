@@ -48,12 +48,56 @@ class RestoredStateTest {
 }
 `;
 
+const SHARED_STATE_TEST = `package demo.orders
+
+import kotlin.test.BeforeTest
+import kotlin.test.Test
+import kotlin.test.assertEquals
+
+class SharedStateTest {
+    @Test
+    fun countsEveryOrder() {
+        orders++
+        priced.add(3L)
+        assertEquals(true, orders > 0)
+    }
+
+    companion object {
+        private var orders = 0
+        private val priced = mutableListOf<Long>()
+    }
+}
+
+class ResetStateTest {
+    private val priced = mutableListOf<Long>()
+
+    @BeforeTest
+    fun startEmpty() {
+        totals.clear()
+    }
+
+    @Test
+    fun addsToFreshState() {
+        totals.add(3L)
+        priced.add(3L)
+        assertEquals(listOf(3L), totals)
+    }
+
+    companion object {
+        private val totals = mutableListOf<Long>()
+    }
+}
+`;
+
 export const GLOBAL_STATE_FILES = {
   'src/main/kotlin/demo/orders/Rounding.kt': ROUNDING,
   'src/test/kotlin/demo/orders/GlobalStateTest.kt': GLOBAL_STATE_TEST,
+  'src/test/kotlin/demo/orders/SharedStateTest.kt': SHARED_STATE_TEST,
 };
 
 export const GLOBAL_STATE_FINDINGS = [
   'GlobalStateLeakInTest GlobalStateTest.leaksAProperty',
   'GlobalStateLeakInTest GlobalStateTest.leaksTheRounding',
+  'SharedTestState SharedStateTest.countsEveryOrder',
+  'SharedTestState SharedStateTest.countsEveryOrder',
 ];

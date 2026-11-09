@@ -33,6 +33,7 @@ skipped with a note on stderr.
 | `MockedSubjectInTest`                            | `review-rules/tests/mocks/`                      | a mock of the class under test (`mockk<OrderService>()`, `mock<OrderService>()`, `mock(OrderService::class.java)`, `@MockK`, `@Mock`), or a spy of it whose own methods the test stubs (`spyk(...)`, `spy(...)`, `@SpyK`, `@Spy`, with `every`, `coEvery`, `justRun`, `whenever`, `` `when` ``, `given` or `stub`)                                                                                                               |
 | `StaticMockOfProjectType`                        | `review-rules/tests/mocks/`                      | `mockkObject`, `mockkStatic` (class, `"pkg.FileKt"` or `::function`), `mockkConstructor`, `mockStatic` or `mockConstruction` of code declared in the project's main sources                                                                                                                                                                                                                                                      |
 | `GlobalStateLeakInTest`                          | `review-rules/tests/global-state/`               | a test that changes process-wide state (a system property, the default `Locale` or `TimeZone`, `System.out`, a default handler, a security provider, `Dispatchers.setMain`, or a property or `set...` function of a project `object` or class) that nothing in the class puts back                                                                                                                                               |
+| `SharedTestState`                                | `review-rules/tests/shared-state/`               | a test that changes a property all tests of the class share: a `var` or mutable collection at the top level of a test file or in a companion object, any such property of a `@TestInstance(PER_CLASS)` class, or of a Kotest spec in the default single-instance mode                                                                                                                                                            |
 | `StaticForwardingWrapper`                        | `review-rules/main/forwarding-wrappers.mjs`      | a function whose body only passes its parameters, in order, to another function                                                                                                                                                                                                                                                                                                                                                  |
 | `SingularAndPluralMember`                        | `review-rules/main/member-names.mjs`             | a member and its plural form (`tag` and `tags`) in one class, or two defaulted parameters of a public function                                                                                                                                                                                                                                                                                                                   |
 | `ValidationAnnotationTarget`                     | `review-rules/validation/validation-targets.mjs` | a Bean Validation annotation (`jakarta.validation.constraints`, `javax.validation.constraints`, `org.hibernate.validator.constraints`, or `@Valid`) on a primary-constructor `val` or `var` of a main source without a `field:`, `get:` or `all:` use-site target; Kotlin puts it on the constructor parameter, where Bean Validation does not look. Kotlin-only: a Java record carries the annotation to its field and accessor |
@@ -43,6 +44,8 @@ skipped with a note on stderr.
 | `ClassLoadEffect`                                | `review-rules/main/load-effects.mjs`             | a call with an external effect (database, network, files, processes, threads and pools, JVM-wide settings) that runs while a file, `object`, companion object or enum class loads                                                                                                                                                                                                                                                |
 | `UnboundedThreadPool`                            | `review-rules/main/thread-pools/`                | `Executors.newCachedThreadPool()` (also imported) and a `ThreadPoolExecutor(...)` whose maximum pool size is `Int.MAX_VALUE`; the allowed form is a bounded pool or `Dispatchers.IO.limitedParallelism(n)`                                                                                                                                                                                                                       |
 | `RecursiveMapUpdate`                             | `review-rules/main/map-updates/`                 | a change to a map inside the lambda passed to that same map's `computeIfAbsent`, `compute`, `computeIfPresent`, `merge`, or `getOrPut` on a `ConcurrentMap`, also in a callback created there or a same-class function it calls or references; see the limits below                                                                                                                                                              |
+| `GeneratedMemberCycle`                           | `review-rules/main/generated-members/`           | a primary-constructor property of a data class that closes a cycle of data classes: a class that holds itself both as a single property and in a collection (a parent and its children), or data classes that refer to each other; the generated `toString`, `equals` and `hashCode` then recurse. See the limits below                                                                                                          |
+| `GeneratedEqualsSkipsSuperclass`                 | `review-rules/main/generated-members/`           | a data class that extends a project class with state (a `val`/`var` constructor property or a body property with a backing field) that it does not override in its primary constructor, so the generated `equals` and `hashCode` ignore it                                                                                                                                                                                       |
 | `UnboundedFanOut` (tool `kotlin-source`)         | `review-rules/main/fan-out/`                     | a task started for every element of a collection (`async`, `launch`, `supplyAsync`, `thread`) whose work makes a remote or message call; see the limits below                                                                                                                                                                                                                                                                    |
 | `UnboundedReactiveFanOut` (tool `kotlin-source`) | `review-rules/main/reactive-fan-out/`            | a Reactor `flatMap` over a collection without a concurrency argument, `Mono.zip`/`Mono.when`/`Flux.merge` over a list built per element, or `flatMapMerge(Int.MAX_VALUE)`, whose element work makes a remote or message call; see the limits below                                                                                                                                                                               |
 
@@ -213,6 +216,17 @@ Limits, all chosen to flag less rather than guess:
   (`the companion object of Registry loads and creates a Registry (in load, which init calls)`), and
   the identity is the owner, member and call name, with no line number. Kotlin builds with Maven are
   not supported by the Kotlin preset; their Java files get the PMD rule through the Java preset.
+- Generated members: `GeneratedMemberCycle` and `GeneratedEqualsSkipsSuperclass` are the Java rules
+  of the same names. Only data classes count, since only they generate the members; a class that
+  writes `toString`, or both `equals` and `hashCode`, leaves that member out. A property type is
+  followed through its type arguments (`List<Line>`, `Map<String, Line>`), resolved by nesting,
+  explicit and aliased imports, the same package and star imports; an explicit import shadows a
+  same-package class, and a `vararg` counts as a collection. A type that contains a function type
+  is not followed, nor is a `typealias`, since the facts keep no type arguments for it.
+  A class that holds itself only in a collection (a tree) or only as one property (a list) is not a
+  cycle, and the two-class form also reports a menu whose items hold submenus, which is the intended
+  case the message names. The superclass check follows Kotlin superclasses up to ten levels and
+  stops at a `final override fun equals`; a Java superclass is not read.
 - Map updates: `RecursiveMapUpdate` is the Java rule of the same name. A change is `put`, `putAll`,
   `putIfAbsent`, `remove`, `clear`, `compute*`, `merge`, `replace`, `replaceAll`, `getOrPut`,
   `map[key] = value`, `+=` and `-=` on the map, or `remove`, `removeIf`, `removeAll`, `retainAll`,
@@ -372,6 +386,24 @@ guessed at.
   `withSystemProperty { }`, `withSystemProperties { }`, `captureStandardOut { }`, `restoreSystemProperties { }` or a
   system-stubs `execute { }`. Outside a test class (a helper object), a restore anywhere in the file counts. The scan
   reads text, so a restore in a superclass or another file is not followed.
+- `SharedTestState`: the same rule id as the Java preset. A shared property is a `var`, or a `val` holding a
+  mutable collection, map, array, `StringBuilder` or atomic (`mutableListOf()`, `ArrayList()`, `AtomicInteger()`,
+  or a `MutableList<...>` type), declared at the top level of a test file with tests, in a companion object of a
+  test class, in the body of a `@TestInstance(PER_CLASS)` class, or in a Kotest spec (its class body, constructor
+  lambda or `init` block) whose isolation mode is not `InstancePerTest`, `InstancePerLeaf` or `InstancePerRoot`
+  (set in the spec, or project-wide in an `AbstractProjectConfig` the scan reads). Reported: an assignment,
+  `+=`, `++` or `--` of a `var`, and an element write (`totals["a"] = 1`), `+=` or mutating call (`add`, `put`,
+  `remove`, `clear`, `getOrPut`, `incrementAndGet` and the like) on a mutable collection, in a test body, in a
+  function of the class a test or per-test hook calls, or in a per-test hook (`@BeforeEach`, `@AfterEach`, `@Before`,
+  `@After`, `@BeforeMethod`, `@AfterMethod`, `kotlin.test` `@BeforeTest` and `@AfterTest`, `beforeTest { }`,
+  `beforeEach { }`, `beforeAny { }` and their `after` pairs). Not reported: a property that a per-test
+  hook (or a function it calls) assigns or resets (`clear()`, `set(...)`, `reset()`, `setLength(...)`), code
+  that runs once (`@BeforeAll`, `beforeSpec`, a Kotest container body or the spec body), a property annotated
+  with anything but `@JvmField`, `@JvmStatic` or `@Volatile` (`@MockK`, `@Autowired`), a local of the same name,
+  a named argument, and a property reached through another object. The scan reads text, so a property of a
+  superclass or a project-wide JUnit `per_class` default is not followed. A file that imports TestNG's `@Test`
+  treats its classes as single-instance, like the Java preset; TestNG's own `@BeforeTest` shares the name of the
+  `kotlin.test` one, so it counts as a per-test hook here.
 - `ServerOrContainerPerTest`: a container, server or process started for each test, the Kotlin
   side of the Java rule. Reported: a property annotated `@Container` (Testcontainers) or
   `@RegisterExtension` holding a `WireMockExtension`, declared in a class body (not a companion

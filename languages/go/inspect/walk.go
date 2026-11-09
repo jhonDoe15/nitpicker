@@ -55,7 +55,7 @@ func goFiles(root string) ([]string, error) {
 }
 
 func inspectModule(root string) (Report, error) {
-	report := Report{Files: []File{}, Functions: []Function{}, Types: []Type{}, Tests: []Function{}, Branches: []Branch{}, Errors: []string{}}
+	report := Report{Files: []File{}, Functions: []Function{}, Types: []Type{}, Tests: []Test{}, Branches: []Branch{}, Errors: []string{}}
 	paths, err := goFiles(root)
 	if err != nil {
 		return report, err

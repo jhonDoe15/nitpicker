@@ -1,0 +1,18 @@
+  <rule name="GeneratedEqualsSkipsSuperclass" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
+        message="This class extends a project class, which declares fields, but the equals and hashCode that Lombok generates ignore inherited fields unless callSuper is set, so two objects that differ only in those fields are equal. Write @EqualsAndHashCode(callSuper = true), or callSuper = false when ignoring them is intended.">
+    <priority>3</priority>
+    <properties>
+      <property name="xpath">
+        <value><![CDATA[
+//ClassDeclaration[@Interface = false()][ExtendsList]
+  [not(ClassBody/MethodDeclaration[@Name = ('equals', 'hashCode')])]
+  [let $annotations := ModifierList/Annotation
+   return exists($annotations[pmd-java:typeIs('lombok.EqualsAndHashCode')]
+                             [not(.//MemberValuePair[@Name = 'callSuper'])])
+     or (exists($annotations[pmd-java:typeIs('lombok.Data') or pmd-java:typeIs('lombok.Value')])
+         and empty($annotations[pmd-java:typeIs('lombok.EqualsAndHashCode')]))]
+  /ExtendsList
+]]></value>
+      </property>
+    </properties>
+  </rule>
