@@ -13,6 +13,19 @@ const JVM_REUSE_RULES_ONLY = {
 const JVM_FACT_RULES_NOT_RUN = {
   'shared-used-by-one-feature': JVM_REUSE_RULES_ONLY,
 };
+const GO_REGISTERED_FACT_RULES_ONLY = {
+  file: 'languages/go/adapters/facts/go-fact-findings.mjs',
+  evidence: /rules: registeredFactRules\(LANGUAGE\)/u,
+};
+const GO_FACT_RULES_NOT_RUN = Object.fromEntries(
+  [
+    'duplicate-definition',
+    'exported-name-collision',
+    'sibling-copy-edit',
+    'doc-comment-content',
+    'test-console-output',
+  ].map((rule) => [rule, GO_REGISTERED_FACT_RULES_ONLY]),
+);
 const JVM_RUNTIME_EDGES_ONLY = {
   file: 'languages/java/adapters/test-runtime/test-graph.mjs',
   evidence: /kind: EDGE_KINDS\.RUNTIME/u,
@@ -33,6 +46,7 @@ const NOT_ENFORCED_ALTHOUGH_EMITTED = {
     'type-only-production-dependency': JVM_RUNTIME_EDGES_ONLY,
   },
   go: {
+    ...GO_FACT_RULES_NOT_RUN,
     'inheritance-depth-limit': {
       file: 'languages/go/adapters/configuration/go-config.mjs',
       evidence: /Go has no inheritance/u,
