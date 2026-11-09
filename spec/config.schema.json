@@ -2448,7 +2448,7 @@
                           ]
                         },
                         {
-                          "pattern": "^(?:vet|staticcheck|errcheck|modernize|bodyclose|rowserrcheck|sqlclosecheck|noctx|errorlint|nilerr|nilnil|errname|contextcheck|containedctx|fatcontext)/[\\s\\S]"
+                          "pattern": "^(?:vet|staticcheck|errcheck|modernize|bodyclose|rowserrcheck|sqlclosecheck|noctx|errorlint|nilerr|nilnil|errname|contextcheck|containedctx|fatcontext|exhaustive|recvcheck|durationcheck|makezero|reassign|unconvert|wastedassign)/[\\s\\S]"
                         }
                       ]
                     }

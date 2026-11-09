@@ -106,6 +106,19 @@ const HINTS = new Map([
   ],
   ['containedctx', 'Pass the context as the first parameter of each method that needs it.'],
   ['fatcontext', 'Assign the derived context to a new variable inside the loop.'],
+  ['exhaustive', 'Add a case for each missing constant; a `default` case does not count.'],
+  [
+    'recvcheck',
+    'Give every method of the type a pointer receiver, or every method a value receiver.',
+  ],
+  ['durationcheck', 'Multiply a duration by a number: `time.Duration(seconds) * time.Second`.'],
+  [
+    'makezero',
+    'Make the slice with length 0 and a capacity, `make([]T, 0, n)`, or assign by index.',
+  ],
+  ['reassign', "Leave the other package's variable as it is; declare a variable of your own."],
+  ['unconvert', 'Remove the conversion; the value already has that type.'],
+  ['wastedassign', 'Remove the assignment, or use the value before it is assigned again.'],
 ]);
 
 const RULE_NAMES = new Map([['errcheck', 'unchecked']]);

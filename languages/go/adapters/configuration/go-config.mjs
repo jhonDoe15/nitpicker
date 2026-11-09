@@ -22,6 +22,13 @@ const GO_CATALOG_TOOLS = [
   'contextcheck',
   'containedctx',
   'fatcontext',
+  'exhaustive',
+  'recvcheck',
+  'durationcheck',
+  'makezero',
+  'reassign',
+  'unconvert',
+  'wastedassign',
 ];
 export const GO_LINT_TOOLS = ['vet', 'staticcheck', 'errcheck', 'modernize', ...GO_CATALOG_TOOLS];
 export const GO_EXCEPTION_RULES = [...COMMON_EXCEPTION_RULES, ...GO_SIZE_RULES];
