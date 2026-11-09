@@ -27,7 +27,11 @@ export function createProject(prefix, files) {
   return root;
 }
 
-export function lintProject({ root, patterns, projectConfigName }) {
+function noResidualRun() {
+  throw new Error('no rule needs ESLint here');
+}
+
+export function lintProject({ root, patterns, projectConfigName, runEslintCli = noResidualRun }) {
   const projectConfigPath =
     projectConfigName === undefined ? undefined : path.join(root, projectConfigName);
   return lintWithOxlint({
@@ -41,8 +45,6 @@ export function lintProject({ root, patterns, projectConfigName }) {
         ? {}
         : { NITPICKER_DIFF_ESLINT_PROJECT_CONFIG: projectConfigPath }),
     },
-    runEslintCli: () => {
-      throw new Error('no rule needs ESLint here');
-    },
+    runEslintCli,
   });
 }
