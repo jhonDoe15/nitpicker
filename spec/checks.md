@@ -90,7 +90,8 @@ HTTP deadlines: `nitpicker/require-http-timeout` (strict preset, production sour
 HTTP call that has no timeout, so a server that accepts the connection and never answers hangs it. The same
 rule runs as `http-without-timeout` in the Python preset, `pmd/HttpWithoutTimeout` in the Java preset (main
 sources, with or without Spring; the clients Spring builds stay with `pmd/SpringHttpClientTimeouts` and
-`pmd/SpringHttpClientPerCall`) and `kotlin-source/HttpWithoutTimeout` in the Kotlin preset; each preset's
+`pmd/SpringHttpClientPerCall`), `kotlin-source/HttpWithoutTimeout` in the Kotlin preset and
+`go-rules/http-without-timeout` in the Go preset; each preset's
 document lists the clients it knows.
 
 Exceptions mapped to a status: `nitpicker/no-unmapped-exception` (TypeScript strict preset, type-aware)

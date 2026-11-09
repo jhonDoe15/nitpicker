@@ -50,8 +50,8 @@ Before you change code other packages use, or fix a bug, read
 
 The linters' allowed forms (errors, names and doc comments, simplifications, modern forms): read
 [rules/linters.md](rules/linters.md) before you write Go. nitpicker's own rules (panics, logged
-errors, goroutine owners, root contexts, sleeps, package state, interfaces, `any`, names): read
-[rules/own-rules.md](rules/own-rules.md).
+errors, goroutine owners, root contexts, sleeps, package state, interfaces, `any`, names, HTTP
+timeouts, I/O in loops): read [rules/own-rules.md](rules/own-rules.md).
 
 ## Write it this way
 

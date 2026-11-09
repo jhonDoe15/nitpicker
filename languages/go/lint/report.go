@@ -41,6 +41,7 @@ func supersededBy() map[string][]string {
 		"nilness":               {"SA4031", "SA5000"},
 		"errcheck":              {"SA5001", "SA9001"},
 		"context-outside-entry": {"contextcheck"},
+		"noctx":                 {"http-without-timeout"},
 	}
 }
 
