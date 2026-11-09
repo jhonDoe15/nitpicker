@@ -178,6 +178,7 @@ describe('readKotlinSourceFindings', () => {
         'RepeatedStringLiteral',
         'SecretInLog',
         'ShellCommand',
+        'SimplerBooleanLogic',
         'SqlStringBuilding',
         'StandardStreamOutsideEntryPoint',
         'TestClassWithoutTestCases',
