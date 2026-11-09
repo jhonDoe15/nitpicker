@@ -13,6 +13,7 @@ describe('the init report', () => {
       workflowFile: '.github/workflows/nitpicker.yml',
       agents: undefined,
       offers: { agents: false, workflow: false },
+      skillSource: './node_modules/nitpicker',
     });
 
     expect(report).toBe(
@@ -24,7 +25,7 @@ describe('the init report', () => {
         'nitpicker.config.json is already set up',
         '',
         'Install the agent skill:',
-        '  npx skills add jhonDoe15/nitpicker --skill nitpicker-python',
+        '  npx skills add ./node_modules/nitpicker --skill nitpicker-python',
         '',
         'created .github/workflows/nitpicker.yml',
         NOTE,

@@ -23,6 +23,7 @@ import {
 import { consumerCommands, eslintVersionOf } from './test-support/installed-consumer.mjs';
 import {
   checkoutOutput,
+  installedHelpText,
   expectedDirtyFindings,
   expectedDirtyOutput,
   expectedSnapshotOutput,
@@ -228,6 +229,7 @@ suite('packed nitpicker in a separate consumer', () => {
       let initialized;
       let rules;
       let explanation;
+      let help;
       let packageLocation;
       let withoutTypeScript;
       const reports = (name) => path.join(root, 'reports', name);
@@ -338,6 +340,7 @@ suite('packed nitpicker in a separate consumer', () => {
         ]);
         rules = invoke(['rules', '--preset', 'java']);
         explanation = invoke(['explain', ...explained]);
+        help = invoke(['-h']);
         fixed = invoke([
           '--base',
           'main',
@@ -455,6 +458,10 @@ suite('packed nitpicker in a separate consumer', () => {
           installedHelpUri(links, 'prettier-format/prettier/prettier'),
           installedHelpUri(links, 'prettier-format/prettier/prettier'),
         ]);
+      });
+      it('prints help that links the usage page at its own release tag', () => {
+        expect(help.status, help.output).toBe(0);
+        expect(help.output).toBe(installedHelpText(links, root));
       });
       it('sets the consumer up with init from the packed files', () => {
         expect(initialized.status, initialized.output).toBe(0);

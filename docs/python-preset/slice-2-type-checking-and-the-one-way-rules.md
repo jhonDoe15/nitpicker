@@ -207,6 +207,20 @@ Details that are decisions rather than the table:
   from the checkers: `@no_type_check` on a function or class, an `if not TYPE_CHECKING:` branch,
   and a `.pyi` beside a `.py` of the same stem in the sources (mypy then ignores the `.py` body).
   `typing.cast` is allowed.
+- `unmapped-exception` flags a FastAPI or Starlette route (a function decorated with a route
+  method of a `FastAPI`, `APIRouter` or `Starlette` object) that can raise a project exception
+  class no exception handler maps, so the client gets a 500. The walk follows calls into project
+  functions and methods four levels deep, and the message names the call path; a `raise` inside a
+  `try` that has an `except` or a `with contextlib.suppress(...)` is not followed. Apps built in a
+  factory function count. A class is mapped when it or a project superclass
+  derives from `HTTPException`, `WebSocketException` or FastAPI's `RequestValidationError`, or from
+  a library class the rule cannot read, or a handler is registered for it or a
+  superclass anywhere in the project: `@app.exception_handler(E)`,
+  `app.add_exception_handler(E, handler)` (also in a loop over a literal tuple) or
+  `FastAPI(exception_handlers={E: handler})` (also a dict in a variable). A handler for `Exception`
+  maps only the classes it checks with `isinstance` (a class or a tuple of classes). Built-in and library
+  exceptions and `raise error` of a variable are left out; Django and Flask views are not checked
+  yet.
 - `swallowed-exception` flags an `except` handler whose body does nothing with the error (a handler
   of an asyncio, Trio or AnyIO cancellation inside `async def` is judged by
   `cancellation-not-propagated` instead, see [Cancellation propagation](cancellation-propagation.md)): every
