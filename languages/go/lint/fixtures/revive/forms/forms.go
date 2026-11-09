@@ -65,3 +65,13 @@ func Spaced() int {
 	//no space // want comment-spacings
 	return 1
 }
+
+func Zero() int {
+	var count int = 0 // want QF1011 var-declaration
+	return count + 1
+}
+
+func Declared() int {
+	var count int
+	return count + 1
+}

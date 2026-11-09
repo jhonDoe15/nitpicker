@@ -58,8 +58,8 @@ allowed form and ends with its exception entry.
   `GetX` function returns something, a Unix timestamp variable ends in `Sec`, `Milli` and so on.
 - File names are lower case with underscores, a package is named after its folder, and never
   `util`, `common` or a standard package name.
-- Unused parameters and receivers are named `_` (or the receiver left unnamed); `context.Context`
-  is the first parameter; a `bool` parameter that picks the branch means two functions.
+- An unused parameter is named `_`; an unused receiver is left unnamed, `func (Box) Name()`
+  (ST1006 rejects `_`). `context.Context` is the first parameter; a `bool` parameter that picks the branch means two functions.
 - A struct field's type is a named type, not an inline `struct { ... }`.
 - `os.Exit` and `log.Fatal` only in `main` or `init`; `fmt.Print` instead of the `print` builtin;
   no `runtime.GC()`; `t.Equal(u)` for times; `_, found := m[key]` instead of a loop over the keys;

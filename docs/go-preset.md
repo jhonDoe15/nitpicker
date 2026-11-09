@@ -245,7 +245,7 @@ message does not already name it, and by its exception entry:
   unnecessary-format, unnecessary-if, unnecessary-stmt, unused-parameter, unused-receiver,
   use-fmt-print, useless-break, useless-fallthrough and var-declaration. revive's own confidence
   floor (0.8) applies, as its command line applies it. `package-naming` is a finding on the package
-  folder, like ST1000. revive type-checks from the toolchain's export data, as its command line
+  folder, like ST1000, because revive reports it from whichever file it reads first. revive type-checks from the toolchain's export data, as its command line
   does, so the few rules that need types (time-equal, unexported-return, epoch-naming and others)
   see standard-library types but not those of third-party modules.
 
@@ -286,27 +286,28 @@ person accepts.
 
 **Overlaps on one line.** When two checks report the same line, the more specific one stays:
 
-| Kept                                 | Dropped                                    |
-| ------------------------------------ | ------------------------------------------ |
-| SA4011 (break in a switch in a loop) | S1023 (redundant break)                    |
-| S1037 (elaborate sleep)              | S1000 (single-case select)                 |
-| SA4010 (append result unused)        | SA4006 (value never used)                  |
-| SA4031, SA5000                       | vet `nilness`                              |
-| SA5001, SA9001 (defer Close)         | errcheck                                   |
-| S1018 (sliding copy loop)            | modernize `rangeint`                       |
-| vet `gofixdirective`                 | vet `inline` on the same directive         |
-| `go vet` printf                      | SA1006 (Go 1.24 and later modules)         |
-| S1002                                | revive `bool-literal-in-expr`              |
-| SA5003, SA9001, SA9010               | revive `defer`                             |
-| SA5002, SA9003                       | revive `empty-block`                       |
-| ST1015                               | revive `enforce-switch-style`              |
-| SA4005                               | revive `modifies-value-receiver`           |
-| QF1009                               | revive `time-equal`                        |
-| S1039                                | revive `unnecessary-format`                |
-| S1023, SA4011                        | revive `unnecessary-stmt`, `useless-break` |
-| QF1011                               | revive `var-declaration`                   |
+| Kept                                 | Dropped                                          |
+| ------------------------------------ | ------------------------------------------------ |
+| SA4011 (break in a switch in a loop) | S1023 (redundant break)                          |
+| S1037 (elaborate sleep)              | S1000 (single-case select)                       |
+| SA4010 (append result unused)        | SA4006 (value never used)                        |
+| SA4031, SA5000                       | vet `nilness`                                    |
+| SA5001, SA9001 (defer Close)         | errcheck                                         |
+| S1018 (sliding copy loop)            | modernize `rangeint`                             |
+| vet `gofixdirective`                 | vet `inline` on the same directive               |
+| `go vet` printf                      | SA1006 (Go 1.24 and later modules)               |
+| S1002                                | revive `bool-literal-in-expr` at the same column |
+| SA5003, SA9001, SA9010               | revive `defer`                                   |
+| SA5002, SA9003                       | revive `empty-block`                             |
+| ST1015                               | revive `enforce-switch-style`                    |
+| SA4005                               | revive `modifies-value-receiver`                 |
+| QF1009                               | revive `time-equal`                              |
+| S1039                                | revive `unnecessary-format`                      |
+| S1023, SA4011                        | revive `unnecessary-stmt`, `useless-break`       |
+| QF1011                               | revive `var-declaration` at the same column      |
 
-revive keeps the rules staticcheck lacks in the same areas: `bool-literal-in-expr` also flags
+Those two compare the column too, because one line can hold a second, different problem
+(`found == true || ready && false`). revive keeps the rules staticcheck lacks in the same areas: `bool-literal-in-expr` also flags
 `found && true`, `empty-block` an empty `switch`, `useless-break` a `break` that ends a `select`
 case, `modifies-value-receiver` a changed receiver that is read again, and `defer` a deferred call
 chain.
