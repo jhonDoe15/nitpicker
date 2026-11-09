@@ -43,6 +43,9 @@ Part of the [nitpicker-typescript](../SKILL.md) skill. Write these forms from th
 - Join at most one to-many relation into a query: TypeORM `relationLoadStrategy: 'query'` or a query
   per collection, Sequelize `separate: true` on the other `hasMany` includes, and
   `strategy: 'select-in'` on a MikroORM `populate` (`nitpicker/no-multiple-collection-joins`).
+- Index every foreign key: `@Index()` on a TypeORM `@ManyToOne` (or a class `@Index` that starts with it),
+  `index: true` on a MikroORM `@ManyToOne`, `index().on(t.orderId)` in a Drizzle `pgTable`
+  (`nitpicker/no-unindexed-foreign-key`; with migrations, a `CREATE INDEX` there, `foreign-key-index`).
 - Pick the cheaper collection form: a `Set` (`add`, `has`) for items you search while you collect
   them, a `Map` built once before a loop or handler instead of `find((x) => x.key === key)` in it,
   and one `reduce` pass instead of `sort(...)[0]` or `toSorted(...).at(-1)`
