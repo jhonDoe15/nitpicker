@@ -1,10 +1,12 @@
 import { ARCHITECTURE_CONFIG, POLICY_TYPESCRIPT_CONFIG } from '../dependency-graph/cruise.mjs';
 import { PROJECT_TOOL_FILES } from '../project-tools/project-config-files.mjs';
 import { CRAP_CHECK_FILES } from '../crap/check-files.mjs';
+import { QUERY_RULE_FILES } from '../../../../shared/rules/queries/query-rule-files.mjs';
 
 export const JAVASCRIPT_PRESET_FILE = 'languages/javascript/preset/javascript-preset.mjs';
 
 export const POLICY_FILES = [
+  ...QUERY_RULE_FILES,
   'shared/test-timeouts/resolve.mjs',
   'shared/paths/glob.mjs',
   'shared/head-policy.mjs',
@@ -102,14 +104,6 @@ export const POLICY_FILES = [
   'languages/typescript/preset/eslint-plugin/rules/persistence/orm-bindings.mjs',
   'languages/typescript/preset/eslint-plugin/rules/persistence/relation-shapes.mjs',
   'languages/typescript/preset/eslint-plugin/rules/persistence/sequelize-scopes.mjs',
-  'languages/typescript/preset/eslint-plugin/rules/queries/arrays/array-bounds.mjs',
-  'languages/typescript/preset/eslint-plugin/rules/queries/arrays/array-sinks.mjs',
-  'languages/typescript/preset/eslint-plugin/rules/queries/arrays/no-unbounded-query-array.mjs',
-  'languages/typescript/preset/eslint-plugin/rules/queries/order/no-unordered-query.mjs',
-  'languages/typescript/preset/eslint-plugin/rules/queries/order/query-options.mjs',
-  'languages/typescript/preset/eslint-plugin/rules/queries/query-chains.mjs',
-  'languages/typescript/preset/eslint-plugin/rules/queries/query-texts.mjs',
-  'shared/rules/queries/sql-order.mjs',
   'languages/typescript/preset/eslint-plugin/rules/testing/assertions/no-wait-for-with-fake-timers.mjs',
   'languages/typescript/preset/eslint-plugin/rules/testing/lifecycle/container-pause-requires-finally-unpause.mjs',
   'languages/typescript/preset/eslint-plugin/rules/testing/lifecycle/bounded-container-teardown.mjs',
@@ -219,10 +213,6 @@ export const POLICY_FILES = [
   'languages/typescript/preset/eslint-plugin/rules/foreign-keys/entity-relations.mjs',
   'languages/typescript/preset/eslint-plugin/rules/foreign-keys/no-unindexed-foreign-key.mjs',
   'languages/typescript/preset/eslint-plugin/rules/foreign-keys/schema-source.mjs',
-  'languages/typescript/preset/eslint-plugin/rules/queries/no-in-memory-query.mjs',
-  'languages/typescript/preset/eslint-plugin/rules/queries/query-calls.mjs',
-  'languages/typescript/preset/eslint-plugin/rules/queries/result-uses.mjs',
-  'languages/typescript/preset/eslint-plugin/rules/queries/row-callbacks.mjs',
   'languages/typescript/preset/eslint-plugin/rules/concurrency/bounds.mjs',
   'languages/typescript/preset/eslint-plugin/rules/concurrency/client-modules.mjs',
   'languages/typescript/preset/eslint-plugin/rules/concurrency/collections/fixed-collections.mjs',
