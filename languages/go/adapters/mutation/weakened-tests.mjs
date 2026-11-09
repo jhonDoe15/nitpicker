@@ -1,4 +1,3 @@
-import path from 'node:path';
 import { mutantRuleId } from '../../../../shared/policy.mjs';
 import { hash } from '../../../../shared/rules/finding-helpers.mjs';
 import { baselineRun, packagesOf, runMutant, testersOf } from './mutation-run.mjs';
@@ -13,6 +12,7 @@ function keyed(mutants, lineText) {
   return mutants.map((mutant) => {
     const base = [
       mutant.file,
+      mutant.function ?? '',
       mutant.operator,
       mutant.original,
       mutant.replacement,
@@ -25,29 +25,29 @@ function keyed(mutants, lineText) {
   });
 }
 
-function candidatesOf(scope, results) {
-  return results.filter(
-    (mutant) =>
-      !onChangedLine(scope, mutant) &&
-      scope.testedFolders.has(path.posix.dirname(mutant.file)) &&
-      ESCAPED.has(mutant.status),
-  );
+function escaped(scope, mutant) {
+  return !onChangedLine(scope, mutant) && ESCAPED.has(mutant.status);
 }
 
-function baseTwins(context, { scope, candidates }) {
+function baseTwins(context, { scope, results, whole }) {
   const root = context.baselineRoot;
   const packages = packagesOf(context, root);
   const all = generateMutants(context, {
     root,
     scope: { ...scope, changed: new Map() },
     compiledFiles: new Set(packages.files.keys()),
+    whole,
   });
   const byKey = new Map(keyed(all, lineReader(root)).map(({ mutant, key }) => [key, mutant]));
-  const headKeys = keyed(candidates, lineReader(context.projectRoot));
+  const wholeFiles = new Set(whole);
+  const headKeys = keyed(
+    results.filter(({ file }) => wholeFiles.has(file)),
+    lineReader(context.projectRoot),
+  );
   return {
     packages,
     pairs: headKeys.flatMap(({ mutant, key }) =>
-      byKey.has(key) ? [{ head: mutant, base: byKey.get(key), key }] : [],
+      escaped(scope, mutant) && byKey.has(key) ? [{ head: mutant, base: byKey.get(key), key }] : [],
     ),
   };
 }
@@ -76,12 +76,11 @@ function weakenedFinding({ head, key }) {
   };
 }
 
-export function weakenedTestFindings(context, { scope, results, seconds }) {
-  const candidates = candidatesOf(scope, results);
-  if (candidates.length === 0) {
+export function weakenedTestFindings(context, { scope, results, seconds, whole }) {
+  if (!results.some((mutant) => whole.includes(mutant.file) && escaped(scope, mutant))) {
     return [];
   }
-  const { packages, pairs } = baseTwins(context, { scope, candidates });
+  const { packages, pairs } = baseTwins(context, { scope, results, whole });
   const testers = testersOf(context, context.baselineRoot);
   function testersOfPair({ base }) {
     return testers.get(packages.files.get(base.file)) ?? [];

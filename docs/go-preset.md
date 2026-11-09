@@ -216,11 +216,16 @@ checkout.
 **Scope.** As in the TypeScript preset, head mutates only the lines the change adds or edits in
 non-test files, so every surviving mutant it reports is new; `--all` (or a run without a base)
 mutates every file. When the change edits or deletes a `_test.go` file, the non-test files of that
-folder are mutated whole. A mutant there that survives (or that no test runs) is run again against
+folder are mutated whole (at most 10 files; a `tested-modules-capped` note names the rest, as in
+the TypeScript preset; a rename that keeps the content does not count). A mutant there that survives (or that no test runs) is run again against
 the base checkout's tests, and it fails only if the base tests caught it: "This change weakened the
 tests of `shop/rate.go`: the base tests caught this EqualityOperator mutant (`>` replaced with
-`>=`), but it survives now." Generated files, test files and files the build leaves out are not
-mutated.
+`>=`), but it survives now." A head mutant is paired with its base twin by file, function,
+operator, replacement, the trimmed line text and column, and its place among equal mutants of the
+same function. Generated files, test files, files the build leaves out and `exclude` globs are not
+mutated, and neither are type parameters, array lengths, struct tags or raw strings with a carriage
+return (the parser drops it, so the mutant would not compile). A mutation that spans lines, such as
+a removed multi-line call, is in scope when any of its lines changed.
 
 **Each mutant** runs the tests of every package whose test binary imports its package
 (`go list -test`), with `-failfast` and a timeout of five times their baseline time (30 s at
@@ -231,9 +236,10 @@ least):
 - `mutant-nocoverage` (enforceable): no test package imports the package, or the coverage profile
   says the mutant's block never ran. Such a mutant is not run.
 - `mutant-timeout` (descriptive): the tests ran past the timeout, which usually means the mutant
-  made a loop endless.
-- A mutant that does not compile (an unused variable after a removed call, for example) is
-  dropped, and a killed one is the goal.
+  made a loop endless. The run's whole output is read for Go's timeout panic, since with
+  `t.Parallel` it can land on another test than the one that hung.
+- A mutant that does not compile (an unused variable after a removed call, for example) is not a
+  finding, only a count in the `mutation-summary` metrics; a killed one is the goal.
 
 A mutant whose test packages fail on head is skipped, and a `mutation-skipped` note counts them and
 names the failing packages; the failing tests are already a tool error of the `go` analyzer.

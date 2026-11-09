@@ -6,6 +6,7 @@ import { diffFromBase } from '../../../../core/tooling/git/base-diff.mjs';
 import { run } from '../execution/go-process.mjs';
 import { inspectCommand } from '../execution/go-tools.mjs';
 import { moduleFileText } from '../execution/go-module.mjs';
+import { globMatcher } from '../../../../shared/paths/glob.mjs';
 
 const GO_SOURCE = /(?<!_test)\.go$/u;
 const GO_TEST = /_test\.go$/u;
@@ -16,7 +17,7 @@ function weakenedFolders(diff) {
   const folders = new Set();
   for (const section of diff.split(/^(?=diff --git )/mu)) {
     const header = SECTION_HEADER.exec(section)?.groups;
-    if (header === undefined || /^new file mode/mu.test(section)) {
+    if (header === undefined || /^(?:new file mode|similarity index 100%)/mu.test(section)) {
       continue;
     }
     for (const file of [header.from, header.to].filter((name) => GO_TEST.test(name))) {
@@ -48,18 +49,25 @@ export function onChangedLine(scope, mutant) {
   return (
     scope.all ||
     (scope.changed.get(mutant.file) ?? []).some(
-      ([first, last]) => first <= mutant.line && mutant.line <= last,
+      ([first, last]) => first <= (mutant.endLine ?? mutant.line) && mutant.line <= last,
     )
   );
 }
 
-function targetsOf(scope, compiledFiles) {
+export const MAX_TESTED_FILES = 10;
+
+export function testedFiles(context, { scope, compiledFiles }) {
+  const files = [...compiledFiles]
+    .filter((file) => scope.testedFolders.has(path.posix.dirname(file)))
+    .filter((file) => moduleFileText(context.baselineRoot, file) !== undefined)
+    .toSorted((left, right) => left.localeCompare(right));
+  return { files: files.slice(0, MAX_TESTED_FILES), capped: files.slice(MAX_TESTED_FILES) };
+}
+
+function targetsOf(scope, whole) {
   if (scope.all) {
     return { all: true, files: {} };
   }
-  const whole = [...compiledFiles].filter((file) =>
-    scope.testedFolders.has(path.posix.dirname(file)),
-  );
   return {
     all: false,
     files: {
@@ -69,16 +77,25 @@ function targetsOf(scope, compiledFiles) {
   };
 }
 
-export function generateMutants(context, { root = context.projectRoot, scope, compiledFiles }) {
+function excludedBy(context) {
+  const matchers = (context.exclude ?? []).map((glob) => globMatcher(glob));
+  return (file) => matchers.some((matcher) => matcher.test(file));
+}
+
+export function generateMutants(
+  context,
+  { root = context.projectRoot, scope, compiledFiles, whole },
+) {
   const name = root === context.projectRoot ? 'head' : 'base';
   const targetsFile = path.join(context.reportRoot, `mutation-targets-${name}.json`);
   const mutantsFile = path.join(context.reportRoot, `mutants-${name}.json`);
-  writeFileSync(targetsFile, JSON.stringify(targetsOf(scope, compiledFiles)));
+  writeFileSync(targetsFile, JSON.stringify(targetsOf(scope, whole)));
   run(context, [inspectCommand(context), 'mutants', root, targetsFile, mutantsFile], {
     rule: 'mutation-failed',
   });
-  return JSON.parse(readFileSync(mutantsFile, 'utf8')).filter(({ file }) =>
-    compiledFiles.has(file),
+  const excluded = excludedBy(context);
+  return JSON.parse(readFileSync(mutantsFile, 'utf8')).filter(
+    ({ file }) => compiledFiles.has(file) && !excluded(file),
   );
 }
 

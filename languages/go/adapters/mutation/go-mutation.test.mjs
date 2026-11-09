@@ -4,6 +4,7 @@ import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import { createGoAnalyzers } from '../go-analyzer.mjs';
 import { readMutationFindings } from './go-mutation.mjs';
+import { runMutant } from './mutation-run.mjs';
 import { onChangedLine } from './mutation-scope.mjs';
 
 const roots = [];
@@ -144,6 +145,7 @@ describe('Go mutation findings', () => {
       ),
     ).toEqual([true, false, false]);
     expect(onChangedLine({ all: true }, mutant({ line: 6 }))).toBe(true);
+    expect(onChangedLine(scope, mutant({ line: 2, endLine: 4 }))).toBe(true);
   });
 
   it('runs mutation as an analyzer of its own after the go analyzer, so it can be disabled', () => {
@@ -160,6 +162,49 @@ describe('Go mutation findings', () => {
       '/p',
       '--part',
       'mutation',
+    ]);
+  });
+
+  it('reads a timeout from any test of the run, since parallel tests print the panic elsewhere', () => {
+    const context = snapshot([]);
+    const events = [
+      { Action: 'run', Package: 'example.com/shop/shop', Test: 'TestSpin' },
+      {
+        Action: 'output',
+        Package: 'example.com/shop/shop',
+        Test: 'TestSpin',
+        Output: 'panic: test timed out after 30s\n',
+      },
+      { Action: 'pass', Package: 'example.com/shop/shop', Test: 'TestSpin' },
+      { Action: 'fail', Package: 'example.com/shop/shop' },
+    ];
+    const calls = [];
+    const spawn = (program, args) => {
+      calls.push(args.filter((arg) => !arg.startsWith('-overlay=')));
+      return { status: 1, stdout: events.map((event) => JSON.stringify(event)).join('\n') };
+    };
+    const status = runMutant(
+      { ...context, spawn, environment: {}, settings: {} },
+      {
+        mutant: mutant({}),
+        directory: '0',
+        packages: ['example.com/shop/shop'],
+        seconds: new Map([['example.com/shop/shop', 10]]),
+      },
+    );
+    expect([status, calls]).toEqual([
+      'Timeout',
+      [
+        [
+          'test',
+          '-json',
+          '-vet=off',
+          '-count=1',
+          '-failfast',
+          '-timeout=50s',
+          'example.com/shop/shop',
+        ],
+      ],
     ]);
   });
 });
