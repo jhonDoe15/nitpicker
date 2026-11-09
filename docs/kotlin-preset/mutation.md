@@ -35,7 +35,8 @@ arguments. They reach PIT through a Java argument file, so spaces, quotes and co
 what is left out. The ingester finds a class's source file under both kinds of source root from
 PIT's `sourceFile` (also when the directory does not match the package, as for coverage). PIT's
 built-in `FKOTLIN` filter (on by default) removes only mutants at line 0 of a `.kt` file, which is
-not enough.
+not enough. In a comparison, head starts from the PIT results of the base run, as for Java (see
+[Mutation in a comparison](../java-preset/mutation-in-a-comparison.md)).
 
 **The filter.** The `kotlin-psi` program that already writes `kotlin-metrics.json` and
 `kotlin-facts.json` (one parse of the sources, see [Structure limits](structure-limits.md)) writes a
