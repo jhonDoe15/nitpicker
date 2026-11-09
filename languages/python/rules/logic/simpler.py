@@ -1,4 +1,6 @@
 import ast
+import copy
+import re
 
 from checks.common import finding
 
@@ -6,10 +8,15 @@ RULE = "simpler-boolean-logic"
 SWAPPED = "swap "
 ELIDED = ast.Expr(ast.Constant(Ellipsis))
 FLIPPED = {ast.And: ast.Or, ast.Or: ast.And}
+LINE_BREAK = re.compile(r"\r\n|\r|\n")
 
 
 def is_not(node):
     return isinstance(node, ast.UnaryOp) and isinstance(node.op, ast.Not)
+
+
+def single_not(node):
+    return is_not(node) and not is_not(node.operand)
 
 
 def is_elif(node, lines):
@@ -20,18 +27,22 @@ def is_elif(node, lines):
 
 
 def swapped_if(node, lines):
-    if not is_not(node.test) or not node.orelse or is_elif(node, lines):
+    if not single_not(node.test) or not node.orelse or is_elif(node, lines):
         return None
     form = ast.If(test=node.test.operand, body=[ELIDED], orelse=[ELIDED])
     return SWAPPED + " ".join(ast.unparse(form).split()).replace("...", "…")
 
 
 def swapped_ternary(node):
-    if not is_not(node.test) or isinstance(node.orelse, ast.IfExp):
+    branches = (node.body, node.orelse)
+    if not single_not(node.test) or any(
+        isinstance(branch, ast.IfExp) for branch in branches
+    ):
         return None
     if ast.dump(node.orelse) == ast.dump(node.test.operand):
         return None
     form = ast.IfExp(test=node.test.operand, body=node.orelse, orelse=node.body)
+    form = copy.deepcopy(form)
     return SWAPPED + ast.unparse(form)
 
 
@@ -41,12 +52,24 @@ def operands_of(node, operator):
     return [node]
 
 
+def is_negated_chain(node):
+    return isinstance(node, ast.BoolOp) and all(is_not(value) for value in node.values)
+
+
 def factored(node):
-    if not all(is_not(value) for value in node.values):
+    if not is_negated_chain(node) or any(
+        is_negated_chain(value.operand) for value in node.values
+    ):
         return None
     operator = FLIPPED[type(node.op)]
-    values = [inner for value in node.values for inner in operands_of(value.operand, operator)]
-    return ast.unparse(ast.UnaryOp(op=ast.Not(), operand=ast.BoolOp(op=operator(), values=values)))
+    values = [
+        copy.deepcopy(inner)
+        for value in node.values
+        for inner in operands_of(value.operand, operator)
+    ]
+    return ast.unparse(
+        ast.UnaryOp(op=ast.Not(), operand=ast.BoolOp(op=operator(), values=values))
+    )
 
 
 def simpler_form(node, lines):
@@ -58,7 +81,7 @@ def simpler_form(node, lines):
 
 
 def check(context):
-    lines = context.text.splitlines()
+    lines = LINE_BREAK.split(context.text)
     found = []
     for node in ast.walk(context.tree):
         form = simpler_form(node, lines)
