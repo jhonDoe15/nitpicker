@@ -129,3 +129,6 @@ true, flushAutomatically = true)`, with `@Transactional` on the function or the 
   (`filter`, `count`, `firstOrNull`, `hasElements`, `take`, `toList().size`). Native SQL only when JPQL can't express it,
   marked on that one function with `@Suppress("PMD.SpringDataNativeQuery")`,
   `EntityManager.createNativeQuery` too.
+- Index every foreign key in the Flyway or Liquibase migration that adds it:
+  `CREATE INDEX ON orders (customer_id)`, or an index or primary key that starts with the column.
+  PostgreSQL does not create one (`foreign-key-index`).
