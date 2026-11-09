@@ -31,14 +31,11 @@ function vitestRetry(projectRoot, { liveRoot }) {
     projectRoot,
     resolveRoots: [...new Set([projectRoot, liveRoot])],
   });
-  if (loaded.result === undefined) {
-    throw new Error(`${name} could not be loaded: ${loaded.failure}`);
-  }
   return {
     file: name,
     files: [name],
-    ignored: loaded.result.projectRetries ?? [],
-    ...checkedRetry(loaded.result.retry, `test.retry in ${name}`, true),
+    ignored: loaded.projectRetries ?? [],
+    ...checkedRetry(loaded.retry, `test.retry in ${name}`, true),
   };
 }
 

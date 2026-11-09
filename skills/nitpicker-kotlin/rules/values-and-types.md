@@ -44,6 +44,10 @@ Part of the [nitpicker-kotlin](../SKILL.md) skill. Write these forms from the st
   `when` without `else` (adding an entry then fails to compile), or a `Boolean` each entry
   declares. Not `s == PAID || s == SHIPPED`, `s in setOf(PAID, SHIPPED)` or a `when` with
   `else -> false` (`pmd/ExhaustiveEnumPredicate`).
+- Operands: no copied operand (`kotlin-source/OperandSlip`). Not `a == a`, `x - x` or `a and a`
+  (a NaN test on a `Double` is `x.isNaN()`), the same operand twice in one `&&`/`||` chain, comparisons of
+  one value that contradict or repeat each other (`x < 3 && x > 5`, `x > 5 && x > 3`), `x * 0`, or
+  `a += a + b`. Tests may apply an operator to one value twice to exercise it.
 - No top-level or `object` function that only passes its parameters, in order, to another function
   with the same parameters (`pmd/StaticForwardingWrapper`); call that function. Factories named
   `of` or `from` are fine.
@@ -62,3 +66,7 @@ Part of the [nitpicker-kotlin](../SKILL.md) skill. Write these forms from the st
 - A validation annotation on a constructor property takes the field target:
   `data class OrderRequest(@field:NotBlank val item: String)`, not `@NotBlank val item`, which
   lands on the constructor parameter where `@Valid` never looks (`pmd/ValidationAnnotationTarget`).
+- Pick the cheaper collection form: a `mutableSetOf()` for items you test with `in` while you
+  collect them (`kotlin-source/ListUsedAsSet`), a map built once with `associateBy` before a loop
+  instead of `find { it.key == key }` in it (`kotlin-source/LinearLookupInLoop`), and `minBy`/`maxBy`
+  instead of `sortedBy { ... }.first()` (`kotlin-source/SortForExtreme`).

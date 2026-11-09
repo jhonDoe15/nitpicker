@@ -1,0 +1,7 @@
+[
+  {
+    "tool": "python-rules",
+    "rule": "linear-lookup-in-loop",
+    "mention": "dict"
+  }
+]
