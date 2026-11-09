@@ -72,18 +72,10 @@ function runJavaPreset(
       directory: path.join(reportBase, 'tool-config'),
       testsFailedModules,
     });
+    const checkTests = testsFailedModules.length === 0;
+    const options = { projectRoot, gradle, budget, reportBase, since, checkTests, policy, spawn };
     for (const stage of stages) {
-      runGradleStage({
-        args: stage(),
-        projectRoot,
-        gradle,
-        budget,
-        reportBase,
-        since,
-        checkTests: testsFailedModules.length === 0,
-        policy,
-        spawn,
-      });
+      runGradleStage({ args: stage(), ...options });
     }
   });
 }
