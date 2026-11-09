@@ -91,16 +91,20 @@ For another language, `init` puts the preset in `nitpicker.config.json`, for exa
 | [Go](docs/go-preset.md)                                               | `go`                   | `nitpicker-go`         |
 
 Then teach your agent the allowed forms. Install the skill for your preset with
-[skills](https://skills.sh), which works with Claude Code, Cursor, Codex and other agents:
+[skills](https://skills.sh), which works with Claude Code, Cursor, Codex and other agents. Install
+it from the nitpicker you installed, so the skill matches the rules your gate runs:
 
 ```sh
-npx skills add jhonDoe15/nitpicker --skill nitpicker-typescript
+npx skills add ./node_modules/nitpicker --skill nitpicker-typescript
 ```
 
-It asks which agents to install for and whether to install into this project (commit the result
-to share it) or for your user; `-a claude-code` and `-g` answer those up front. To match the
-version you installed from npm, install from the package instead:
-`npx skills add ./node_modules/nitpicker --skill nitpicker-typescript`. A Kotlin project with Java
+Without a `node_modules` install (a Python, Java, Kotlin or Go project run through `npx`), install
+it from the release tag of your version, for example
+`npx skills add jhonDoe15/nitpicker#v0.1.0 --skill nitpicker-python`. `npx nitpicker init` prints
+the right one. `npx skills add jhonDoe15/nitpicker --skill nitpicker-typescript` installs the skill
+from the default branch, which can describe rules your version does not run yet. `skills` asks which
+agents to install for and whether to install into this project (commit the result to share it) or
+for your user; `-a claude-code` and `-g` answer those up front. A Kotlin project with Java
 sources adds `nitpicker-java` too. For an agent without skills, add the
 [agent snippet](docs/agents-snippet.md) to your `AGENTS.md`.
 
