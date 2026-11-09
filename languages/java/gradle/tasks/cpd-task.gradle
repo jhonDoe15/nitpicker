@@ -1,15 +1,17 @@
 def reportDir = project.ext.nitpickerReportDir
 def toolCommand = project.ext.nitpickerToolCommand
+def generatedSourceSet = project.ext.nitpickerGeneratedSourceSet
 
 tasks.register('nitpickerCpd') {
     group = 'nitpicker'
     def report = reportDir.map { it.file('cpd.xml') }
     def failure = reportDir.map { it.file('cpd-failed.txt') }
     def skipped = reportDir.map { it.file('cpd-skipped.txt') }
+    def writtenSourceSets = { sourceSets.findAll { !generatedSourceSet(it) } }
     def sourceDirectories = {
-        sourceSets.collectMany { it.allJava.sourceDirectories.files }.unique().findAll { it.exists() }
+        writtenSourceSets().collectMany { it.allJava.sourceDirectories.files }.unique().findAll { it.exists() }
     }
-    inputs.files({ sourceSets*.allJava }).withPropertyName('sources')
+    inputs.files({ writtenSourceSets()*.allJava }).withPropertyName('sources')
     inputs.files(configurations.nitpickerPmd).withPropertyName('pmd')
     inputs.file(project.ext.nitpickerToolLauncher('cpd')).withPropertyName('launcher')
     inputs.files(project.ext.nitpickerToolCommandInputs).withPropertyName('toolCommands')

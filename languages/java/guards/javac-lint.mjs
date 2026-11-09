@@ -9,7 +9,7 @@ const LINT_REPORT = 'javac-lint.txt';
 const LINT_FAILURE = 'javac-lint-failed.txt';
 const LINT_NOT_RUN = 'lint-not-run';
 const WARNING = /^(.+\.java):(\d+): warning: \[(\w+)\] (.+)$/;
-const ADVICE = {
+export const LINT_ADVICE = {
   rawtypes: 'Add the type arguments, as in List<String>.',
   unchecked:
     'Use a typed API, a checked conversion or a generic method instead of the unchecked operation.',
@@ -19,7 +19,7 @@ const ADVICE = {
 };
 
 function warningFinding({ file, line, rule, text }, identity) {
-  const advice = ADVICE[rule] ?? 'Fix the warning.';
+  const advice = LINT_ADVICE[rule] ?? 'Fix the warning.';
   return {
     tool: LINT_TOOL,
     rule,
