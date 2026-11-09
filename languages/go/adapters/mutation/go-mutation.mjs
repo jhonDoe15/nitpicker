@@ -5,7 +5,14 @@ import { mutantFindings } from '../../../../shared/rules/mutation.mjs';
 import { readGoModule } from '../execution/go-module.mjs';
 import { GO_MUTATION_ANALYZER_NAME } from '../go-analyzer.mjs';
 import { baselineRun, packagesOf, runMutant, testersOf, uncovered } from './mutation-run.mjs';
-import { changeScope, generateMutants, lineReader, onChangedLine } from './mutation-scope.mjs';
+import {
+  changeScope,
+  generateMutants,
+  lineReader,
+  MAX_TESTED_FILES,
+  onChangedLine,
+  testedFiles,
+} from './mutation-scope.mjs';
 import { weakenedTestFindings } from './weakened-tests.mjs';
 
 const MUTATION_REPORT = 'mutation.json';
@@ -35,21 +42,7 @@ function writeReport(context, report) {
   writeFileSync(path.join(context.reportRoot, MUTATION_REPORT), JSON.stringify(report));
 }
 
-export function mutate(context) {
-  if (context.snapshot === 'base') {
-    writeReport(context, { results: [], weakened: [] });
-    return;
-  }
-  const scope = changeScope(context);
-  const packages = packagesOf(context);
-  const mutants = generateMutants(context, {
-    scope,
-    compiledFiles: new Set(packages.files.keys()),
-  });
-  if (mutants.length === 0) {
-    writeReport(context, { results: [], weakened: [] });
-    return;
-  }
+function testedMutants(context, { scope, packages, mutants, tested }) {
   const baseline = baselineRun(context, {
     packages: ['./...'],
     modulePath: readGoModule(context.projectRoot)?.module,
@@ -60,13 +53,39 @@ export function mutate(context) {
     ...statusOf(context, { mutant, index, packages, testers, baseline }),
   }));
   const weakened =
-    scope.all || scope.testedFolders.size === 0
+    tested.files.length === 0
       ? []
-      : weakenedTestFindings(context, { scope, results, seconds: baseline.seconds });
-  writeReport(context, {
+      : weakenedTestFindings(context, {
+          scope,
+          results,
+          seconds: baseline.seconds,
+          whole: tested.files,
+        });
+  return {
     results: results.map((result) => ({ ...result, changed: onChangedLine(scope, result) })),
     weakened,
-  });
+    capped: tested.capped,
+  };
+}
+
+export function mutate(context) {
+  if (context.snapshot === 'base') {
+    writeReport(context, { results: [], weakened: [], capped: [] });
+    return;
+  }
+  const scope = changeScope(context);
+  const packages = packagesOf(context);
+  const compiledFiles = new Set(packages.files.keys());
+  const tested = scope.all
+    ? { files: [], capped: [] }
+    : testedFiles(context, { scope, compiledFiles });
+  const mutants = generateMutants(context, { scope, compiledFiles, whole: tested.files });
+  writeReport(
+    context,
+    mutants.length === 0
+      ? { results: [], weakened: [], capped: tested.capped }
+      : testedMutants(context, { scope, packages, mutants, tested }),
+  );
 }
 
 function neutralMutants(results, textOf) {
@@ -109,6 +128,20 @@ function skippedFinding(skipped) {
   };
 }
 
+function cappedFinding(capped) {
+  const named = capped.slice(0, LISTED_PACKAGES).join(', ');
+  const more =
+    capped.length > LISTED_PACKAGES ? ` and ${String(capped.length - LISTED_PACKAGES)} more` : '';
+  return {
+    tool: GO_MUTATION_ANALYZER_NAME,
+    rule: 'tested-modules-capped',
+    path: capped[0],
+    identity: `tested-modules-capped|${hash(capped.join('\n'))}`,
+    message: `The changed tests sit next to more than ${String(MAX_TESTED_FILES)} files, so weaker tests were not checked in ${named}${more}. Run \`nitpicker --all\` to mutate every file.`,
+    classification: 'descriptive',
+  };
+}
+
 function addSummaries(findings, results) {
   const counts = new Map();
   for (const { status } of results) {
@@ -128,9 +161,11 @@ function addSummaries(findings, results) {
 }
 
 export function readMutationFindings(context) {
-  const { results, weakened } = JSON.parse(
-    readFileSync(path.join(context.reportRoot, MUTATION_REPORT), 'utf8'),
-  );
+  const {
+    results,
+    weakened,
+    capped = [],
+  } = JSON.parse(readFileSync(path.join(context.reportRoot, MUTATION_REPORT), 'utf8'));
   const reported = results.filter(({ status, changed }) => REPORTED.has(status) && changed);
   const skipped = results.filter(({ status }) => status === SKIPPED);
   const findings = [
@@ -139,6 +174,7 @@ export function readMutationFindings(context) {
     }),
     ...weakened,
     ...(skipped.length === 0 ? [] : [skippedFinding(skipped)]),
+    ...(capped.length === 0 ? [] : [cappedFinding(capped)]),
   ];
   addSummaries(
     findings,

@@ -27,6 +27,7 @@ export function createGoContext({
     snapshot: policy.snapshot ?? 'head',
     baselineRoot: policy.baselineRoot,
     testSeconds: policy.testSeconds,
+    exclude: policy.exclude ?? [],
     toolPrecedence: policy.toolPrecedence,
     policyRoot: policy.policyRoot ?? projectRoot,
     formatting: detectFormatters(policy.policyRoot ?? projectRoot, settings.formatters),

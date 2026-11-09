@@ -136,3 +136,11 @@ Two adversarial reviews of the first version changed these rules:
 - **`layout` and `duplicates` are config errors with their reason**, not silently ignored.
 - **The project's `GOFLAGS` is read with `go env`**, so `go env -w` settings apply, and the tools
   build from a neutral environment so the project's `GOOS` or `GOFLAGS` cannot break them.
+- **Mutation review (two passes).** Weakened-test pairing counted equal mutants over different sets
+  on base and head, so a look-alike line in another function could be reported as weakened: the
+  key now holds the function and counts over every mutant of the file on both sides. A rename of a
+  test file no longer mutates its folder, and the folder is capped at 10 files as in the
+  TypeScript preset. A timeout under `t.Parallel` was read as killed, because the panic text lands
+  on another test: the whole run output is read now. Raw strings with a carriage return, type
+  parameters and array lengths gave mutants that cannot compile and are skipped. A multi-line
+  mutation is in scope when any of its lines changed. `exclude` globs are not mutated.

@@ -22,11 +22,41 @@ ${checks.map((check) => `\tif ${check} {\n\t\tt.Fatal("wrong rate")\n\t}`).join(
 const RATE_TEST = rateTest(['Rate(20) != 2', 'Rate(10) != 1', 'Rate(5) != 1']);
 export const WEAKER_RATE_TEST = rateTest(['Rate(20) != 2', 'Rate(5) != 1']);
 
+const POSITIVE = `package shop
+
+func Above(n int) int {
+	if n > 0 {
+		return 1
+	}
+	return 0
+}
+
+func Bonus(n int) int {
+	if n > 0 {
+		return 2
+	}
+	return 0
+}
+`;
+
+export const POSITIVE_TEST = `package shop
+
+import "testing"
+
+func TestPositive(t *testing.T) {
+	if Above(1) != 1 || Above(0) != 0 || Bonus(5) != 2 {
+		t.Fatal("wrong value")
+	}
+}
+`;
+
 export const MUTATION_BASE = {
   'go.mod': 'module example.com/shop\n\ngo 1.22\n',
   'nitpicker.config.json': '{ "preset": "go" }\n',
   'shop/rate.go': RATE,
   'shop/rate_test.go': RATE_TEST,
+  'shop/positive.go': POSITIVE,
+  'shop/positive_test.go': POSITIVE_TEST,
   'shop/legacy.go': `package shop
 
 func Legacy(a, b int) int {

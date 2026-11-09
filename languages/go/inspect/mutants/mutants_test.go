@@ -93,3 +93,25 @@ func TestGeneratesOnlyOnWantedLines(t *testing.T) {
 		t.Fatalf("got %#v\nwant %#v", got, want)
 	}
 }
+
+func TestLeavesTypesAloneAndSpansLines(t *testing.T) {
+	source := "package demo\n\nfunc Sum[T int | float64](a, b T, grid [2 * 2]T) T {\n\tprintln(a,\n\t\tb)\n\treturn a\n}\n\nvar raw = `x\r\ny`\n"
+	fileSet := token.NewFileSet()
+	file, err := parser.ParseFile(fileSet, "demo.go", source, parser.ParseComments)
+	if err != nil {
+		t.Fatal(err)
+	}
+	name := func(function *ast.FuncDecl) string { return function.Name.Name }
+	got := []string{}
+	for _, mutant := range Generate(fileSet, "demo.go", file, []byte(source), func(line int) bool { return line == 5 }, name) {
+		got = append(got, mutant.Operator+" "+mutant.Original+" "+mutant.Replacement)
+	}
+	want := []string{"RemovedCall println(a,\n\t\tb) "}
+	if !reflect.DeepEqual(got, want) {
+		t.Fatalf("got %q, want %q", got, want)
+	}
+	all := Generate(fileSet, "demo.go", file, []byte(source), func(int) bool { return true }, name)
+	if len(all) != 1 || all[0].EndLine != 5 {
+		t.Fatalf("got %#v", all)
+	}
+}

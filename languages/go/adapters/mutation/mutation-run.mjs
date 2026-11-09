@@ -112,7 +112,7 @@ function statusOf(result) {
   if (events.buildFailures.length > 0 || events.events === 0) {
     return 'CompileError';
   }
-  return events.failures.some(({ output }) => TIMED_OUT.test(output)) ? 'Timeout' : 'Killed';
+  return TIMED_OUT.test(result.stdout ?? '') ? 'Timeout' : 'Killed';
 }
 
 function inside(root, relative) {
@@ -169,7 +169,7 @@ export function runMutant(context, { mutant, directory, packages, seconds, root 
 }
 
 export function uncovered(mutant, profile) {
-  const block = blockAt(profile.files.get(mutant.file) ?? [], {
+  const block = blockAt(profile?.files.get(mutant.file) ?? [], {
     line: mutant.line,
     column: mutant.column,
   });

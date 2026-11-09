@@ -15,6 +15,7 @@ import {
   FEE_HALF_TEST,
   FEE_TEST,
   MUTATION_BASE,
+  POSITIVE_TEST,
   WEAKER_RATE_TEST,
 } from './test-support/go-mutation-fixtures.mjs';
 
@@ -32,6 +33,9 @@ describe.skipIf(!goE2eEnabled)('Go preset mutation testing end to end', () => {
     });
     commitBranch(project, 'tested', { 'shop/fee.go': FEE, 'shop/fee_test.go': FEE_TEST });
     commitBranch(project, 'weakened', { 'shop/rate_test.go': WEAKER_RATE_TEST });
+    commitBranch(project, 'test-comment', {
+      'shop/positive_test.go': `${POSITIVE_TEST}\n// Bonus(0) is covered elsewhere.\n`,
+    });
     commitBranch(project, 'failing', {
       'shop/fee.go': FEE,
       'shop/fee_test.go': FEE_HALF_TEST,
@@ -65,6 +69,13 @@ describe.skipIf(!goE2eEnabled)('Go preset mutation testing end to end', () => {
     expect(newMessages(result)).toEqual([
       'This change weakened the tests of shop/rate.go: the base tests caught this EqualityOperator mutant (`>` replaced with `>=`), but it survives now. Restore the assertion that caught it, or add one. If this is intended, add {"rule":"mutant-survived","paths":["shop/rate.go"],"function":"Rate","reason":"..."} to "exceptions" in nitpicker.config.json.',
     ]);
+  });
+
+  it('pairs each escaped mutant with its own base twin, not a look-alike line in another function', () => {
+    const result = gate(project, 'test-comment');
+    expect(toolErrors(result)).toEqual([]);
+    expect(newFindings(result)).toEqual([]);
+    expect(result.exitCode).toBe(0);
   });
 
   it('skips the mutants whose package tests fail on head, and says so', () => {

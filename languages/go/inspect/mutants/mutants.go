@@ -1,6 +1,7 @@
 package mutants
 
 import (
+	"bytes"
 	"go/ast"
 	"go/token"
 )
@@ -8,6 +9,7 @@ import (
 type Mutant struct {
 	File        string `json:"file"`
 	Line        int    `json:"line"`
+	EndLine     int    `json:"endLine"`
 	Column      int    `json:"column"`
 	Start       int    `json:"start"`
 	End         int    `json:"end"`
@@ -82,8 +84,8 @@ func Generate(fileSet *token.FileSet, path string, file *ast.File, source []byte
 			g.function = nameOf(function)
 		}
 		ast.Inspect(declaration, func(node ast.Node) bool {
-			if field, ok := node.(*ast.Field); ok && field.Tag != nil {
-				skipped[field.Tag] = true
+			for _, typeOnly := range typeOnlyParts(node) {
+				skip(skipped, typeOnly)
 			}
 			if node != nil && !skipped[node] {
 				g.visit(node)
@@ -94,17 +96,61 @@ func Generate(fileSet *token.FileSet, path string, file *ast.File, source []byte
 	return g.mutants
 }
 
+func typeOnlyParts(node ast.Node) []ast.Node {
+	switch typed := node.(type) {
+	case *ast.Field:
+		if typed.Tag != nil {
+			return []ast.Node{typed.Tag}
+		}
+	case *ast.FuncType:
+		if typed.TypeParams != nil {
+			return []ast.Node{typed.TypeParams}
+		}
+	case *ast.TypeSpec:
+		if typed.TypeParams != nil {
+			return []ast.Node{typed.TypeParams}
+		}
+	case *ast.InterfaceType:
+		return []ast.Node{typed.Methods}
+	case *ast.ArrayType:
+		if typed.Len != nil {
+			return []ast.Node{typed.Len}
+		}
+	}
+	return nil
+}
+
+func skip(skipped map[ast.Node]bool, root ast.Node) {
+	ast.Inspect(root, func(node ast.Node) bool {
+		if node != nil {
+			skipped[node] = true
+		}
+		return true
+	})
+}
+
+func (g *generator) anyWanted(first, last int) bool {
+	for line := first; line <= last; line++ {
+		if g.wanted(line) {
+			return true
+		}
+	}
+	return false
+}
+
 func (g *generator) add(operator string, start, end token.Pos, replacement string) {
 	position := g.fileSet.PositionFor(start, false)
-	if !g.wanted(position.Line) {
+	last := g.fileSet.PositionFor(end, false)
+	if !g.anyWanted(position.Line, last.Line) {
 		return
 	}
-	finish := g.fileSet.PositionFor(end, false).Offset
-	if string(g.source[position.Offset:finish]) == replacement {
+	finish := last.Offset
+	original := g.source[position.Offset:finish]
+	if string(original) == replacement || (len(original) > 0 && original[0] == '`' && bytes.IndexByte(original, '\r') >= 0) {
 		return
 	}
 	g.mutants = append(g.mutants, Mutant{
-		File: g.path, Line: position.Line, Column: position.Column,
+		File: g.path, Line: position.Line, EndLine: last.Line, Column: position.Column,
 		Start: position.Offset, End: finish, Operator: operator,
 		Original: string(g.source[position.Offset:finish]), Replacement: replacement,
 		Function: g.function,
