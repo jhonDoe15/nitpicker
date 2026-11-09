@@ -42,7 +42,7 @@ function containerPackages(program) {
           .getSourceFiles()
           .filter(
             (source) =>
-              !source.isDeclarationFile && !program.isSourceFileFromExternalLibrary(source),
+              !(source.isDeclarationFile || program.isSourceFileFromExternalLibrary(source)),
           )
           .flatMap((source) => importedModules(source).filter((name) => isModeledPackage(name))),
       ),

@@ -111,7 +111,7 @@ export const rule = {
   },
   create(context) {
     const program = context.sourceCode.parserServices?.program;
-    if (!FEATURE_INDEX.test(context.filename.replaceAll('\\', '/')) || !program) {
+    if (!(FEATURE_INDEX.test(context.filename.replaceAll('\\', '/')) && program)) {
       return {};
     }
     const checker = program.getTypeChecker();

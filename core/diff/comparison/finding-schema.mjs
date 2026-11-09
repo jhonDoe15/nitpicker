@@ -209,7 +209,7 @@ function parseTokens(value, context) {
 }
 
 function parseCause(value, context) {
-  if (!isRecord(value) || !Array.isArray(value.units)) {
+  if (!(isRecord(value) && Array.isArray(value.units))) {
     throw new TypeError(`${context} must be { folders, units }`);
   }
   return {

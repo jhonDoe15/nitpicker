@@ -45,7 +45,7 @@ function isRegistrationCall(checker, call) {
 
 function isFactoryHolderArgument(checker, literal) {
   const call = literal.parent;
-  if (!ts.isCallExpression(call) || !call.arguments.includes(literal)) {
+  if (!(ts.isCallExpression(call) && call.arguments.includes(literal))) {
     return false;
   }
   const name = calleeName(call);
@@ -147,7 +147,7 @@ function collectRegistered(context) {
   const sources = program
     .getSourceFiles()
     .filter(
-      (source) => !source.isDeclarationFile && !program.isSourceFileFromExternalLibrary(source),
+      (source) => !(source.isDeclarationFile || program.isSourceFileFromExternalLibrary(source)),
     );
   return new Set(
     sources.flatMap((source) =>

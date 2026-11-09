@@ -50,7 +50,7 @@ function enumMemberName(scope, node) {
 }
 
 function equalityArm(scope, node) {
-  if (!ts.isBinaryExpression(node) || !EQUALITY.has(node.operatorToken.kind)) {
+  if (!(ts.isBinaryExpression(node) && EQUALITY.has(node.operatorToken.kind))) {
     return undefined;
   }
   const right = constantOf(scope, node.right);

@@ -43,7 +43,7 @@ function ownEntries(directory) {
     hasRepositoryMarker(path.join(directory, ...relative.split('/'))),
   );
   return [...new Set(nullSeparated(listed.stdout))].filter(
-    (file) => !file.endsWith('/') && !isNested(path.posix.dirname(file)),
+    (file) => !(file.endsWith('/') || isNested(path.posix.dirname(file))),
   );
 }
 

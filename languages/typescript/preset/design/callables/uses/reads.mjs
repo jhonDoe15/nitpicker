@@ -82,7 +82,10 @@ function readOf(scope, node) {
   if (base === undefined || base.kind === ts.SyntaxKind.ThisKeyword || isPlainAssignment(node)) {
     return undefined;
   }
-  if (!ts.isIdentifier(base) && !(ts.isPropertyAccessExpression(base) && ownFieldOf(scope, base))) {
+  if (!(
+    ts.isIdentifier(base) ||
+    (ts.isPropertyAccessExpression(base) && ownFieldOf(scope, base))
+  )) {
     return undefined;
   }
   const value = valueOf(scope, base);

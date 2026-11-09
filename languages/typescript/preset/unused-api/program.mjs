@@ -126,7 +126,7 @@ function compilerOptions({ parsed, packages, projectRoot, layout }) {
 
 function keepsFile({ projectRoot, layout, withoutTests }, file) {
   const relative = path.relative(projectRoot, file).split(path.sep).join('/');
-  return !withoutTests || !(layout.isTestFile(relative) || layout.isTestFixture(`/${relative}`));
+  return !(withoutTests && (layout.isTestFile(relative) || layout.isTestFixture(`/${relative}`)));
 }
 
 /**

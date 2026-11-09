@@ -20,6 +20,6 @@ export function isGeneratedPython(projectRoot, file) {
 
 export function dropGeneratedFindings(findings, projectRoot, rules) {
   return findings.filter(
-    ({ rule, path }) => !rules.includes(rule) || !isGeneratedPython(projectRoot, path),
+    ({ rule, path }) => !(rules.includes(rule) && isGeneratedPython(projectRoot, path)),
   );
 }

@@ -104,8 +104,10 @@ export function withFrameworkAllowances(findings, { projectRoot, spring = false,
   const sleepLines = sleepLinesIn(findings);
   return findings.filter(
     (finding) =>
-      !isMainOnlyInTest(finding, testRoots) &&
-      !isAllowed(finding, source, spring) &&
-      !isRepeatedSleep(finding, sleepLines),
+      !(
+        isMainOnlyInTest(finding, testRoots) ||
+        isAllowed(finding, source, spring) ||
+        isRepeatedSleep(finding, sleepLines)
+      ),
   );
 }

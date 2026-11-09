@@ -78,7 +78,7 @@ function featureEnds(pair, context) {
 
 function featureWording(pair, { context, sourceInstability, targetInstability }) {
   const [sourceIsFeature, targetIsFeature] = featureEnds(pair, context);
-  if (!sourceIsFeature && !targetIsFeature) {
+  if (!(sourceIsFeature || targetIsFeature)) {
     return {};
   }
   const message = renderMessage(MESSAGES.stabilityDirectionFeature, {
