@@ -7,6 +7,7 @@ import { kotlinModules, readKotlinMetrics } from '../adapters/kotlin/kotlin-metr
 import { inModule } from './module-path.mjs';
 import { readTestOnlyClassFindings } from '../adapters/review-rules/test-only-classes.mjs';
 import { readTestRuntimeFindings } from '../adapters/test-runtime/test-runtime-findings.mjs';
+import { readCopiedConstantFindings } from '../adapters/review-rules/copied-constants/copied-constants.mjs';
 import { readJvmReuseFindings } from '../adapters/reuse/jvm-reuse-facts.mjs';
 
 const JDEPS_REPORT = 'jdeps.txt';
@@ -144,5 +145,6 @@ export function projectWideFindings(
     ...readTestOnlyClassFindings(projectRoot, { projects }),
     ...readTestRuntimeFindings(projectRoot, { projects }),
     ...readJvmReuseFindings(projectRoot, { projects, kotlin, policy }),
+    ...readCopiedConstantFindings(projectRoot, { projects, kotlin, policy }),
   ];
 }

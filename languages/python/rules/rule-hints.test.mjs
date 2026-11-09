@@ -380,6 +380,17 @@ describe('hints follow the libraries of the project', () => {
     expect(describeRuleFinding('catch-log-without-exception', 'logger.error(...)')).toBe(
       '`logger.error(...)` logs a caught error without its traceback',
     );
+    expect(describeRuleFinding('copied-constant-in-test', 'MAX_ITEMS from shop.limits')).toBe(
+      'This literal copies MAX_ITEMS from shop.limits: when the constant changes, the test keeps checking the old value or stops testing the case it was written for',
+    );
+    expect(
+      advice('copied-constant-in-test', undefined, 'python-rules', 'MAX_ITEMS from shop.limits'),
+    ).toBe(
+      expected(
+        'copied-constant-in-test',
+        'Use `MAX_ITEMS` (or an expression on it, such as `MAX_ITEMS + 1`). If the value is a contract the test pins on purpose, assert it next to the constant (`assert MAX_ITEMS == <value>`).',
+      ),
+    );
     expect(describeRuleFinding('test-without-assertion', 'TestOrders.test_total')).toBe(
       'Test `TestOrders.test_total` has no assertion',
     );
