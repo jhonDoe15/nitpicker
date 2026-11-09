@@ -1,6 +1,8 @@
 package catalog
 
 import (
+	"go/ast"
+
 	"4d63.com/gocheckcompilerdirectives/checkcompilerdirectives"
 	"github.com/breml/bidichk/pkg/bidichk"
 	perfsprint "github.com/catenacyber/perfsprint/analyzer"
@@ -19,22 +21,24 @@ var PerfsprintChecks = []string{
 }
 
 var standardValues = []string{
-	usestdlibvars.TimeWeekdayFlag, usestdlibvars.TimeMonthFlag, usestdlibvars.TimeLayoutFlag,
-	usestdlibvars.CryptoHashFlag, usestdlibvars.RPCDefaultPathFlag, usestdlibvars.SQLIsolationLevelFlag,
-	usestdlibvars.TLSSignatureSchemeFlag, usestdlibvars.ConstantKindFlag, usestdlibvars.TimeDateMonthFlag,
+	usestdlibvars.TimeLayoutFlag, usestdlibvars.RPCDefaultPathFlag, usestdlibvars.TimeDateMonthFlag,
 }
 
 var (
+	directives         = checkcompilerdirectives.Analyzer()
+	compilerDirectives = &analysis.Analyzer{
+		Name: directives.Name,
+		Doc:  directives.Doc,
+		Run:  reportDirectives,
+	}
 	spans        = spancheck.NewAnalyzerWithConfig(spancheck.NewDefaultConfig())
 	formatting   = perfsprint.New()
 	stdlibValues = usestdlibvars.New()
-	logCalls     = sloglint.New(&sloglint.Options{
-		ContextOnly: "scope", StaticMessage: true, AttributesOnly: true,
-	})
+	logCalls     = sloglint.New(&sloglint.Options{ContextOnly: "scope", AttributesOnly: true})
 	otherLinters = []Linter{
 		{Tool: "asciicheck", Analyzers: []*analysis.Analyzer{asciicheck.NewAnalyzer()}},
 		{Tool: "bidichk", Analyzers: []*analysis.Analyzer{bidichk.NewAnalyzer()}},
-		{Tool: "gocheckcompilerdirectives", Analyzers: []*analysis.Analyzer{checkcompilerdirectives.Analyzer()}},
+		{Tool: "gocheckcompilerdirectives", Analyzers: []*analysis.Analyzer{compilerDirectives}},
 		{Tool: "canonicalheader", Analyzers: []*analysis.Analyzer{canonicalheader.New()}},
 		{Tool: "musttag", Analyzers: []*analysis.Analyzer{musttag.New()}},
 		{Tool: "perfsprint", Analyzers: []*analysis.Analyzer{formatting}, Checks: PerfsprintChecks},
@@ -56,4 +60,22 @@ func configureOthers() error {
 		}
 	}
 	return nil
+}
+
+func reportDirectives(pass *analysis.Pass) (any, error) {
+	padded := *pass
+	padded.Files = make([]*ast.File, 0, len(pass.Files))
+	for _, file := range pass.Files {
+		copied := *file
+		copied.Comments = make([]*ast.CommentGroup, 0, len(file.Comments))
+		for _, group := range file.Comments {
+			lines := make([]*ast.Comment, 0, len(group.List))
+			for _, line := range group.List {
+				lines = append(lines, &ast.Comment{Slash: line.Slash, Text: line.Text + " "})
+			}
+			copied.Comments = append(copied.Comments, &ast.CommentGroup{List: lines})
+		}
+		padded.Files = append(padded.Files, &copied)
+	}
+	return directives.Run(&padded)
 }

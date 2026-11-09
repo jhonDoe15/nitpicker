@@ -98,7 +98,15 @@ describe('Go lint messages', () => {
         rule: 'spancheck',
         message: 'span.End is not called on all paths, possible memory leak',
       },
-      'span.End is not called on all paths, possible memory leak. End the span in a deferred call right after starting it: `defer span.End()`.',
+      'span.End is not called on all paths, possible memory leak. Assign the span and end it in a deferred call right after `tracer.Start`: `defer span.End()`.',
+    ],
+    [
+      { tool: 'sloglint', rule: 'sloglint', message: 'key-value pairs should not be used' },
+      'key-value pairs should not be used. Pass typed attributes: `slog.String("name", name)`, `slog.Any("order", order)`.',
+    ],
+    [
+      { tool: 'sloglint', rule: 'sloglint', message: 'use slog.DiscardHandler instead' },
+      'use slog.DiscardHandler instead.',
     ],
     [
       {
