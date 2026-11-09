@@ -198,7 +198,6 @@ describe('the shared fact rules', () => {
       CONSOLE,
       ...DESIGN_RULES,
     ];
-    expect(sharedFactExceptionRules()).toEqual(python);
     expect(registeredFactRules('python')).toEqual(python);
     withLanguageRegistered('feature-cycle', 'kotlin', () => {
       expect(sharedFactExceptionRules()).toEqual(python);

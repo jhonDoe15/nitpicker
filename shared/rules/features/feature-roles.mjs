@@ -25,7 +25,7 @@ export function featureLayout(layout = {}) {
   return {
     sharedRoots: layout.sharedRoots ?? DEFAULT_FEATURE_LAYOUT.sharedRoots,
     featureRoots: layout.featureRoots ?? DEFAULT_FEATURE_LAYOUT.featureRoots,
-    sharedInsideFeatures: layout.sharedRoots !== undefined,
+    sharedInsideFeatures: layout.sharedInsideFeatures ?? layout.sharedRoots !== undefined,
   };
 }
 

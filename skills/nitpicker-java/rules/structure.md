@@ -16,6 +16,9 @@ Part of the [nitpicker-java](../SKILL.md) skill. Write these forms from the star
   other (`sibling-copy-edit`). Keep one and call it. Don't give two classes one name and use both in
   one file, one fully qualified (`exported-name-collision`): rename one.
 - A main class only tests use belongs in the test sources (`coupling/test-only-export`).
+- A class in a `shared` package that only one feature (a package under `features`) uses belongs in
+  that feature (`coupling/shared-used-by-one-feature`); `layout.sharedRoots` and
+  `layout.featureRoots` name other folders.
 - With jMolecules (`AggregateRoot`, `Entity`, `ValueObject` or their annotations), an aggregate holds
   another aggregate only by its identifier or an `Association<T, ID>`, an entity sits in one
   aggregate, and a value object holds identifiers, not entities (`archunit/ddd-...`).

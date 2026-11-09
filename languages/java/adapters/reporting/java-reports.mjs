@@ -195,11 +195,10 @@ function baselineRootOf({ baseline, modulePath }) {
 function springFindings(projectRoot, manifest, options) {
   return manifest.spring === true
     ? readSpringConfigFindings(projectRoot, {
+        ...manifest,
         sourceRoots: [
           ...new Set([...(manifest.sourceRoots ?? []), ...(manifest.kotlinSourceRoots ?? [])]),
         ],
-        resourceRoots: manifest.resourceRoots,
-        testSourceRoots: manifest.testSourceRoots,
         baselineRoot: baselineRootOf(options),
       })
     : [];

@@ -220,6 +220,15 @@ export const STRUCTURE_HINTS = [
   },
   {
     tool: RULES_TOOL,
+    rules: ['generated-member-cycle'],
+    describe: (subject, _libraries, { cycle }) =>
+      `The generated \`==\` and \`hash()\` can follow \`${subject}\` around the cycle ${cycle}, so comparing or hashing two objects of the cycle recurses until RecursionError`,
+    referenceData: { cycle: '<Class>.<field> -> <Other>.<back> -> <Class>' },
+    allowed:
+      'Leave the back reference out of the comparison: `field(compare=False)` in a dataclass, `attrs.field(eq=False)` in an attrs class. A field that only ever points down a tree, never back up, is the intended case.',
+  },
+  {
+    tool: RULES_TOOL,
     rules: ['forwarding-wrapper'],
     describe: (subject, _libraries, { target }) =>
       `\`${subject}\` only forwards its parameters to \`${target}\`, with the same parameter and return types`,

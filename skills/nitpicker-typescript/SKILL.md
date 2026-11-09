@@ -68,3 +68,4 @@ The allowed forms are on one page per topic. Before you write code, read the pag
 - [Errors](rules/errors.md): failures as unions, what a catch returns, error causes, malformed input.
 - [Tests](rules/tests.md): branch coverage and mutants, console output, fakes, globals, whole-output assertions, shared helpers, test roots, waits, child processes, fast tests.
 - [React](rules/react.md): component tests, hooks and the other React rules, when `react` is in `package.json`.
+- [NestJS](rules/nestjs.md): the allowed class forms and constructor injection, when `@nestjs/core` is in `package.json`.

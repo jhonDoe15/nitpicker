@@ -209,6 +209,17 @@ export const kotlinRuleCases = [
     allowed: 'fun describe(text: String?): String? = text?.let { "Text: $it" }\n',
   },
   {
+    id: 'collapsibleIf',
+    rule: 'detekt.style.CollapsibleIfStatements',
+    message:
+      'Two if statements which could be collapsed were detected. These statements can be merged to improve readability.',
+    allowedForm: 'if (a && b)',
+    banned:
+      'fun ready(count: Int, open: Boolean): Boolean {\n    if (count > 0) {\n        if (open) {\n            return true\n        }\n    }\n    return false\n}\n',
+    allowed:
+      'fun ready(count: Int, open: Boolean): Boolean {\n    if (count > 0 && open) {\n        return true\n    }\n    return false\n}\n',
+  },
+  {
     id: 'recordClass',
     rule: 'detekt.style.UseDataClass',
     message:
