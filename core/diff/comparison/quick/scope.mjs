@@ -2,6 +2,7 @@ import { createHash } from 'node:crypto';
 import { existsSync } from 'node:fs';
 import path from 'node:path';
 import { globMatcher } from '../../../../shared/paths/glob.mjs';
+import { byText } from '../../../../shared/text-order/by-text.mjs';
 
 const FILE_LOCAL_ANALYZERS = new Set([
   'prettier-format',
@@ -72,7 +73,7 @@ function scopedAnalyzer(analyzer, { paths, digest }) {
 }
 
 export function scopeToTouchedFiles(analyzers, touchedPaths) {
-  const paths = [...touchedPaths].sort();
+  const paths = [...touchedPaths].sort(byText);
   const digest = createHash('sha256').update(JSON.stringify(paths)).digest('hex');
   return analyzers.map((analyzer) =>
     FILE_LOCAL_ANALYZERS.has(analyzer.name) && analyzer.custom !== true

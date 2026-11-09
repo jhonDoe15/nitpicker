@@ -76,7 +76,7 @@ describe('float equality in a JUnit or kotlin.test body', () => {
           '// assertEquals(0.1, total)',
           '/* assertEquals(0.1, total) */',
           'val note = "assertEquals(0.1, total)"',
-          'assertEquals(name, "v${0.1}")',
+          `assertEquals(name, "v\${0.1}")`,
         ),
       ),
     ).toEqual([]);

@@ -1,4 +1,5 @@
 import { partsOf } from '../../../../../shared/rules/stability/test-support/library-project.mjs';
+import { byText } from '../../../../../shared/text-order/by-text.mjs';
 
 const PART_MODULES = { face: '', domain: '.domain.model', adapters: '.adapters.store' };
 const ROOT_MODULES = { shared: 'app.shared.ids', main: 'app.main' };
@@ -23,7 +24,7 @@ export function libraryModules(features, uses) {
   const named = [...new Set(uses.flat().map(moduleOf))];
   const featurePackages = new Set(features.map((feature) => moduleOf(`${feature}:face`)));
   const packages = new Set([...named.flatMap(packagesOf), ...featurePackages]);
-  const modules = [...new Set([...packages, ...named])].sort().map((name) => ({
+  const modules = [...new Set([...packages, ...named])].sort(byText).map((name) => ({
     module: name,
     file: fileOf(name, packages.has(name)),
     isPackage: packages.has(name),

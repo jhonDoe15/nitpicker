@@ -7,6 +7,7 @@ import {
   useGitCheckouts,
 } from '../../../../core/diff/git/test-support/git-checkout.mjs';
 import { ENUM_PREDICATE_RULE, readEnums, withProjectEnumPredicates } from './enum-predicates.mjs';
+import { byText } from '../../../../shared/text-order/by-text.mjs';
 
 const { gitCheckout } = useGitCheckouts();
 
@@ -293,6 +294,6 @@ describe('readEnums', () => {
       ['src/main/generated/', 'build/', 'node_modules/'],
     );
 
-    expect([...readEnums(root).keys()].toSorted()).toEqual(['Generated', 'Status']);
+    expect([...readEnums(root).keys()].toSorted(byText)).toEqual(['Generated', 'Status']);
   });
 });

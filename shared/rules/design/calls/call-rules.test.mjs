@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { designFacts, designRun, fn, owner, summaries } from '../test-support/design-facts.mjs';
+import { byText } from '../../../text-order/by-text.mjs';
 
 const api = owner('src/api/orders.ts');
 const service = owner('src/orders/service.ts');
@@ -144,7 +145,7 @@ describe('caller-protocol', () => {
       caller('src/d/six.ts', 'six', reversed),
     ]);
     const identities = designRun(facts, 'caller-protocol').map(({ identity }) => identity);
-    expect(identities.toSorted()).toEqual([
+    expect(identities.toSorted(byText)).toEqual([
       'src/db/session.ts#Session|begin>write>rollback>commit',
       'src/db/session.ts#Session|commit>write>begin',
     ]);
@@ -159,7 +160,7 @@ describe('caller-protocol', () => {
       caller('src/c/four.ts', 'four', sequence),
     ]);
     const identities = designRun(facts, 'caller-protocol').map(({ identity }) => identity);
-    expect(identities.toSorted()).toEqual([
+    expect(identities.toSorted(byText)).toEqual([
       'src/db/session.ts#Session|begin>write>commit',
       'src/db/session.ts#Session|begin>write>rollback>commit',
     ]);

@@ -10,6 +10,7 @@ import {
 } from '../policy.mjs';
 import { DESIGN_RULES } from '../project-rules/design/design-rules.mjs';
 import { HYGIENE_RULE_IDS, PACKAGE_RULE_IDS } from '../project-rules/hygiene-rules.mjs';
+import { byText } from '../text-order/by-text.mjs';
 
 const repositoryRoot = path.resolve(import.meta.dirname, '../..');
 const IGNORED_FOLDERS = new Set(['fixtures', 'test-support', '__tests__', 'e2e', '__pycache__']);
@@ -183,7 +184,7 @@ function scanLanguage(language) {
   function emitters(id) {
     const mentioning = files.filter(([, text]) => NEEDLES.get(id).test(text)).map(([file]) => file);
     const calling = callSites.filter(({ rules }) => rules.includes(id)).map(({ file }) => file);
-    return [...new Set([...mentioning, ...calling])].sort();
+    return [...new Set([...mentioning, ...calling])].sort(byText);
   }
   return new Map(RULES.map(({ id }) => [id, emitters(id)]));
 }

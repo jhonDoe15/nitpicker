@@ -14,6 +14,7 @@ import {
   projectWith,
   useDeclaredProjects,
 } from './__tests__/declared-projects.mjs';
+import { byText } from '../../../../../shared/text-order/by-text.mjs';
 
 const HOLDER = `package demo;
 
@@ -140,7 +141,7 @@ function errorproneChecks(root, precedence, tools) {
     ...new Set(
       report.map(({ file, message }) => `${path.basename(file)} ${/^\[(\w+)\]/u.exec(message)[1]}`),
     ),
-  ].sort();
+  ].sort(byText);
 }
 
 describe.skipIf(!enabled)('Error Prone with the flags a build declares', () => {

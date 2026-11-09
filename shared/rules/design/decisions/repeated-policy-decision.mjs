@@ -1,6 +1,7 @@
 import { DESIGN_RULE_IDS } from '../../../project-rules/design/design-rules.mjs';
 import { quoted } from '../design-finding.mjs';
 import { displayName, listSites } from '../design-index.mjs';
+import { byText } from '../../../text-order/by-text.mjs';
 
 const RULE = DESIGN_RULE_IDS.repeatedPolicyDecision;
 const MIN_GROUP = 2;
@@ -20,7 +21,7 @@ function subjectOwner(subject, index) {
 
 function classGroups(decision, cases) {
   return decision.groups
-    .map((group) => [...new Set(group)].sort())
+    .map((group) => [...new Set(group)].sort(byText))
     .filter((group) => group.length >= MIN_GROUP)
     .filter((group) => cases === undefined || group.length < cases.length);
 }

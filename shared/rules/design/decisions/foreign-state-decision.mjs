@@ -1,6 +1,7 @@
 import { DESIGN_RULE_IDS } from '../../../project-rules/design/design-rules.mjs';
 import { quoted } from '../design-finding.mjs';
 import { listSites, siteText } from '../design-index.mjs';
+import { byText } from '../../../text-order/by-text.mjs';
 
 const RULE = DESIGN_RULE_IDS.foreignStateDecision;
 const MIN_FIELDS = 2;
@@ -26,7 +27,7 @@ function decidedReads(callable, index) {
     byType.set(type.id, { ...known, decided: [...known.decided, ...(read.decided ?? [])] });
   }
   return [...byType.values()]
-    .map((read) => ({ ...read, decided: [...new Set(read.decided)].sort() }))
+    .map((read) => ({ ...read, decided: [...new Set(read.decided)].sort(byText) }))
     .filter(({ decided }) => decided.length >= MIN_FIELDS);
 }
 

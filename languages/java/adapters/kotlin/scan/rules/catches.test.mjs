@@ -32,7 +32,7 @@ describe('catchOnlyLogs', () => {
     ['the exception passed on', ['failures.add(e)']],
     ['an error response', ['return ResponseEntity.status(500).build<String>().toString()']],
     ['an empty catch, which detekt reports', []],
-    ['a failing call that returns Nothing', ['error("load failed: ${e.message}")']],
+    ['a failing call that returns Nothing', [`error("load failed: \${e.message}")`]],
     ['a TODO', ['TODO()']],
     ['an assertion failure', ['fail("load failed")']],
     ['a cancellation check', ['currentCoroutineContext().ensureActive()']],

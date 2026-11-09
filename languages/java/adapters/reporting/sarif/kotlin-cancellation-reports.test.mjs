@@ -108,6 +108,6 @@ it('fails the build step when detekt, type resolution included, ends with an err
   expect(lines).toEqual([
     "'--classpath', typeResolutionClasspath,",
     'if (!(code in [0, 2]) || !report.get().asFile.exists()) {',
-    'throw new GradleException("detekt failed with exit code ${code}: ${log.toString(\'UTF-8\').trim()}")',
+    `throw new GradleException("detekt failed with exit code \${code}: \${log.toString('UTF-8').trim()}")`,
   ]);
 });

@@ -1,4 +1,5 @@
 import { addTo, folderOf, remembered } from './graph-maps.mjs';
+import { byText } from '../../text-order/by-text.mjs';
 
 const SAMPLED_FILES = 3;
 const LISTED_FOLDERS = 10;
@@ -22,11 +23,11 @@ function membersBy(modules, keyOf) {
 }
 
 function foldersOf(members, fileOf) {
-  return [...new Set([...members].map((module) => folderOf(fileOf(module))))].sort();
+  return [...new Set([...members].map((module) => folderOf(fileOf(module))))].sort(byText);
 }
 
 function unitSummary(members, { label, fileOf }) {
-  const files = [...members].map(fileOf).sort();
+  const files = [...members].map(fileOf).sort(byText);
   return {
     unit: label,
     folders: foldersOf(members, fileOf).slice(0, LISTED_FOLDERS),

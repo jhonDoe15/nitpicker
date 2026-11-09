@@ -5,6 +5,7 @@ import {
 } from '../../messages/exception-sentence.mjs';
 import { MESSAGES, renderMessage } from '../../policy.mjs';
 import { folderOf } from './graph-maps.mjs';
+import { byText } from '../../text-order/by-text.mjs';
 
 const LISTED_FILES = 3;
 
@@ -41,7 +42,7 @@ export function withUntouchedCause(findings, touchedCode) {
   if (touchedCode === undefined) {
     return findings;
   }
-  const changedFiles = [...touchedCode.changedLines.keys()].sort();
+  const changedFiles = [...touchedCode.changedLines.keys()].sort(byText);
   return findings.map((finding) =>
     finding.cause === undefined || changedIn(finding.cause.folders, changedFiles).length > 0
       ? finding

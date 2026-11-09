@@ -133,7 +133,7 @@ describe('no-copied-constant', () => {
         "  const options = { 'eu-west-1': true };",
         "  type Region = 'eu-west-1';",
         "  vi.mock('eu-west-1');",
-        '  expect(cap()).toBe(`${MAX_ITEMS}`);',
+        `  expect(cap()).toBe(\`\${MAX_ITEMS}\`);`,
         '});',
       ].join('\n'),
     );
