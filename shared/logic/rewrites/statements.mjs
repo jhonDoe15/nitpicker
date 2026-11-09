@@ -35,7 +35,7 @@ function spanning(first, last) {
   return first.range && last.range ? [first.range[0], last.range[1]] : first.range;
 }
 
-function findRewrite(block, rewriteAt) {
+export function findRewrite(block, rewriteAt) {
   for (const [index, statement] of block.children.entries()) {
     const replacement = rewriteAt(statement, block.children[index + 1]);
     if (replacement !== undefined) {
