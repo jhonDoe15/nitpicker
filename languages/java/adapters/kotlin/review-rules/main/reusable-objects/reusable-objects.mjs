@@ -140,6 +140,16 @@ function fromCall(view, invocation) {
   );
 }
 
+function allowed(view, setup, invocation) {
+  return (
+    setup(invocation.scope) ||
+    cached(view, invocation) ||
+    keptInProperty(view, invocation) ||
+    returnedByFactory(view, invocation) ||
+    fromCall(view, invocation)
+  );
+}
+
 function perCallObjects(view) {
   if (view.file.test) {
     return [];
@@ -147,14 +157,7 @@ function perCallObjects(view) {
   const setup = setupScopes(view, (fn) => isStart(view, fn));
   return view.file.invocations
     .filter((invocation) => builds(view, invocation))
-    .filter(
-      (invocation) =>
-        !setup(invocation.scope) &&
-        !cached(view, invocation) &&
-        !keptInProperty(view, invocation) &&
-        !returnedByFactory(view, invocation) &&
-        !fromCall(view, invocation),
-    )
+    .filter((invocation) => !allowed(view, setup, invocation))
     .map((invocation) => ({
       line: invocation.line,
       symbol: symbolOf(view, invocation.scope, invocation.name),
