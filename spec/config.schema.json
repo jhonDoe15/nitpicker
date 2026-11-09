@@ -2105,6 +2105,7 @@
                             "pmd/JpaVersion",
                             "pmd/JpaSequenceIds",
                             "pmd/JpaEnumString",
+                            "pmd/JpaUnindexedForeignKey",
                             "pmd/JpaIdentityHashCode",
                             "pmd/SpringDataDerivedQuery",
                             "pmd/SpringDataNativeQuery",

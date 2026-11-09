@@ -121,3 +121,10 @@ export const LIST_TYPES = group([
   'listOf',
   'emptyList',
 ]);
+
+export const MANY_TO_ONE = persistence('ManyToOne');
+export const JOIN_COLUMN = persistence('JoinColumn');
+export const JOIN_COLUMNS = persistence('JoinColumns');
+export const SHARED_KEYS = persistence('MapsId', 'JoinTable');
+export const PRIMARY_KEY = persistence('Id');
+export const TABLE = persistence('Table');

@@ -118,6 +118,9 @@ GenerationType.SEQUENCE)`. `@ManyToOne` and `@OneToOne` say `fetch = FetchType.L
   `EAGER`. `@ManyToMany` is a `Set` and never cascades `ALL` or `REMOVE`. Enums say
   `@Enumerated(EnumType.STRING)`. `hashCode` never reads the generated id: `override fun hashCode()
 = javaClass.hashCode()`, or an immutable business key.
+- Every `@ManyToOne` join column leads an index of the entity's `@Table(indexes = [Index(columnList
+= "customer_id")])` (`JpaUnindexedForeignKey`); PostgreSQL does not index foreign keys itself.
+  With migrations, the index goes in the migration instead (`foreign-key-index`).
 - Every repository function you declare has `@Query` with named parameters (`:status`) and constant
   JPQL text, a raw string when it spans lines, never joined with `+`. Inherited `findById` and
   `save` need nothing; no derived names (`findByEmailAndStatus`). `@Modifying(clearAutomatically =
