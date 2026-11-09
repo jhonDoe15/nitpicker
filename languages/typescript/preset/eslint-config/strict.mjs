@@ -189,7 +189,7 @@ function strictTypedConfigFor(layout, parserOptions, options = {}) {
       ignores: layout.excludedGlobs,
       languageOptions: { parser: tseslint.parser, parserOptions },
       plugins: { nitpicker: nitpickerRules },
-      rules: truthinessRules,
+      rules: { ...truthinessRules, 'nitpicker/simpler-boolean-logic': 'error' },
     },
     ...strictAdaptersTypedConfig.map((entry) => ({
       ...entry,
