@@ -16,6 +16,7 @@ import {
   REBATE_TEST,
   REFUND,
   ROUNDING,
+  ROUNDING_TEST,
 } from './test-support/go-app-fixtures.mjs';
 
 const goE2eEnabled = process.env.NITPICKER_GO_E2E === '1';
@@ -34,7 +35,11 @@ describe.skipIf(!goE2eEnabled)('Go preset duplicates and dead code end to end', 
       'internal/billing/rebate.go': REBATE,
       'internal/billing/rebate_test.go': REBATE_TEST,
     });
-    commitBranch(project, 'unreachable', { 'internal/billing/rounding.go': ROUNDING });
+    commitBranch(project, 'unused', { 'internal/billing/rounding.go': ROUNDING });
+    commitBranch(project, 'unreachable', {
+      'internal/billing/rounding.go': ROUNDING,
+      'internal/billing/rounding_test.go': ROUNDING_TEST,
+    });
   });
   afterAll(() => {
     removeWorkspace(workspace);
@@ -52,7 +57,13 @@ describe.skipIf(!goE2eEnabled)('Go preset duplicates and dead code end to end', 
     expect(newFindings(result)).toEqual(['facts/test-only-export internal/billing/rebate.go']);
   });
 
-  it('fails a function no main package reaches', () => {
+  it('reports a function nothing calls once, as staticcheck U1000', () => {
+    const result = gate(project, 'unused');
+    expect(toolErrors(result)).toEqual([]);
+    expect(newFindings(result)).toEqual(['staticcheck/U1000 internal/billing/rounding.go']);
+  });
+
+  it('fails a function only tests call, which no main package reaches', () => {
     const result = gate(project, 'unreachable');
     expect(toolErrors(result)).toEqual([]);
     expect(newFindings(result)).toEqual(['deadcode/unreachable-func internal/billing/rounding.go']);
