@@ -81,9 +81,17 @@ export function runCli(options = {}) {
     redirectToBundledTypeScriptApi(cli.environment);
     return runCommand(cli);
   } catch (error) {
-    cli.stderr.write(`nitpicker failed: ${describeError(error)}\n`);
+    const description = describeError(error) || 'unknown error';
+    cli.stderr.write(`nitpicker failed: ${description}\n`);
+    if (wantsJson(cli.arguments_)) {
+      cli.stdout.write(`${JSON.stringify({ status: 'error', exitCode: 2, error: description })}\n`);
+    }
     return 2;
   }
+}
+
+function wantsJson(commandLine) {
+  return !Object.hasOwn(SUBCOMMANDS, commandLine[0]) && commandLine.includes('--json');
 }
 
 const HELP_ALIAS = '-h';
@@ -119,7 +127,14 @@ function runCommand(cli) {
     return SUBCOMMANDS[name](cli, rest);
   }
   const options = parseArguments(cli.arguments_);
-  return printedInformation(options, cli) ? 0 : runConfigured({ ...cli, options });
+  if (printedInformation(options, cli)) {
+    return 0;
+  }
+  return runConfigured(
+    options.json
+      ? { ...cli, options, stdout: cli.stderr, jsonOutput: cli.stdout }
+      : { ...cli, options },
+  );
 }
 
 function writePresetHint(stderr, config, projectRoot) {
@@ -153,6 +168,7 @@ function runConfigured(cli) {
         analyzers,
         headPolicy: snapshotPolicy({ config, currentProjectRoot, headPolicy, stdout }),
         stdout,
+        jsonOutput: cli.jsonOutput,
         stderr: cli.stderr,
         environment: cli.environment,
         runTasks,
