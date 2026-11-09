@@ -24,4 +24,5 @@ Kotlin and Java sources together, the way the Java preset runs them (see "Reuse 
 `java-preset.md`): top-level functions and properties, the members of `object`s and companion
 objects, and top-level classes are compared within one Gradle module; an `import ... as` alias or a
 fully qualified name that keeps two different classes of one name apart is a collision, and same-named functions, which
-overload, are not.
+overload, are not. `shared-used-by-one-feature` reads the same uses: a file under `layout.sharedRoots` that only one
+feature under `layout.featureRoots` uses is reported, as in the Java preset.

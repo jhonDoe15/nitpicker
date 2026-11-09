@@ -87,7 +87,8 @@ function translateGroup(group, context) {
   const residualRules = [];
   for (const [ruleId, setting] of Object.entries(group.rules)) {
     const translated = translateRule(ruleId, context);
-    if (translated.plugin !== undefined && context.typedPluginRules.has(ruleId)) {
+    const needsProgram = translated.plugin !== undefined && context.typedPluginRules.has(ruleId);
+    if (needsProgram || (group.programRules ?? []).includes(ruleId)) {
       residualRules.push(ruleId);
       continue;
     }

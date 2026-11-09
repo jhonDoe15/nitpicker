@@ -46,6 +46,8 @@ def nitpickerStyle = {
 
 def analysisRoot = gradle.startParameter.currentDir
 def reportBase = nitpickerArgument('nitpicker.reportDir')
+def pitHistoryRecorded = nitpickerArgument('nitpicker.pit.recordHistory') == 'true'
+def pitHistoryRoot = nitpickerArgument('nitpicker.pit.historyRoot')
 def javaModules = []
 
 def relativeToRoot = { File file ->
@@ -929,6 +931,18 @@ allprojects {
                           '--threads', '2',
                           '--failWhenNoMutations', 'false',
                           '--verbose', 'false'])
+                    def historyFile = project.layout.buildDirectory
+                        .file("nitpicker-pit-history/${source.name}.history").get().asFile
+                    if (pitHistoryRecorded) {
+                        args '--historyOutputLocation', historyFile.absolutePath
+                    }
+                    def baseRoot = pitHistoryRoot == null ? null : new File(pitHistoryRoot.toString()).canonicalFile
+                    def sameDrive = historyFile.toPath().root == analysisRoot.toPath().root
+                    def recorded = baseRoot == null || !sameDrive ? null
+                        : new File(baseRoot, relativeToRoot(historyFile)).canonicalFile
+                    if (recorded?.isFile() && recorded.path.startsWith(baseRoot.path + File.separator)) {
+                        args '--historyInputLocation', recorded.absolutePath
+                    }
                     def testJvmArgs = (source.jvmArgs ?: []) +
                         source.systemProperties.collect { key, value ->
                             (value == null ? "-D${key}" : "-D${key}=${value}").toString() } +

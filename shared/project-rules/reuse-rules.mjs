@@ -1,4 +1,16 @@
 const COUPLING = 'coupling';
+const NO_REEXPORT =
+  'the language has no re-exports: a class has one importable name, in the package that declares it, so there is no public path to the same class to go around (a facade is a different class)';
+
+export function entryPointRule(ids, enforcedBy) {
+  return {
+    id: ids.publicAlternativeBypass,
+    check: 'entry-points',
+    limit: 'none: importing around a public entry point fails',
+    enforcedBy,
+    notApplicable: { java: NO_REEXPORT },
+  };
+}
 
 export function reuseRules(ids, reactEnforcedBy) {
   return [
