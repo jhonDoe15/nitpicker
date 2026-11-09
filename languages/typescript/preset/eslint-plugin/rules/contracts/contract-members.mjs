@@ -1,4 +1,4 @@
-import ts from 'typescript';
+import { ts } from '../../../../typescript-api/typescript-api.mjs';
 import { isNestController } from './decorators.mjs';
 import { infrastructureOf } from './infrastructure-types.mjs';
 import { callSignatureTypes, findInType, typeSymbols } from './type-walk.mjs';
