@@ -43,6 +43,9 @@ Part of the [nitpicker-typescript](../SKILL.md) skill. Write these forms from th
 - Index every foreign key in the migration that adds it (`CREATE INDEX ON orders (customer_id)`, or an index
   that starts with the column) and give Prisma relations an `@@index([authorId])`: PostgreSQL does not create
   one (`foreign-key-index`).
+- Index every foreign key: `@Index()` on a TypeORM `@ManyToOne` (or a class `@Index` that starts with it),
+  `index: true` on a MikroORM `@ManyToOne`, `index().on(t.orderId)` in a Drizzle `pgTable`
+  (`nitpicker/no-unindexed-foreign-key`; with migrations, a `CREATE INDEX` there, `foreign-key-index`).
 - Pick the cheaper collection form: a `Set` (`add`, `has`) for items you search while you collect
   them, a `Map` built once before a loop or handler instead of `find((x) => x.key === key)` in it,
   and one `reduce` pass instead of `sort(...)[0]` or `toSorted(...).at(-1)`

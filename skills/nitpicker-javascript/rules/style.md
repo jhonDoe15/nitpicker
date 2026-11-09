@@ -11,6 +11,11 @@ Part of the [nitpicker-javascript](../SKILL.md) skill. Write these forms from th
   the value you got.
 - `===` only. Early returns, no `else` after `return`, no nested ternaries, exhaustive `switch`
   over unions, with no `default`.
+- Boolean logic in its simplest exact form (`nitpicker/simpler-boolean-logic`): `return a < b;`, not an `if`
+  that returns `true` and `false`; one `if (a && b)`, not an `if` that only holds another `if`; `if (c) {B} else {A}`,
+  not `if (!c) {A} else {B}` (and `c ? b : a`, not `!c ? a : b`); `a !== b`, not `!(a === b)`; `!(a || b)`,
+  not `!a && !b`; a boolean `c` itself, not `c ? true : false` or `!!c`, and `c && x`, `c || x`, `!c && x`,
+  `!c || x` for a ternary with one `true`/`false` branch and a boolean other branch.
 - `const` or `let`, never `var`. Rest parameters (`...args`) instead of `arguments[i]`, and spread
   instead of `.apply`.
 - Template literals take strings only: `${String(count)}`.
@@ -35,6 +40,9 @@ Part of the [nitpicker-javascript](../SKILL.md) skill. Write these forms from th
 - Index every foreign key in the migration that adds it (`CREATE INDEX ON orders (customer_id)`, or an index
   that starts with the column) and give Prisma relations an `@@index([authorId])`: PostgreSQL does not create
   one (`foreign-key-index`).
+- Index every foreign key: `@Index()` on a TypeORM `@ManyToOne` (or a class `@Index` that starts with it),
+  `index: true` on a MikroORM `@ManyToOne`, `index().on(t.orderId)` in a Drizzle `pgTable`
+  (`nitpicker/no-unindexed-foreign-key`; with migrations, a `CREATE INDEX` there, `foreign-key-index`).
 - Pick the cheaper collection form: a `Set` (`add`, `has`) for items you search while you collect
   them, a `Map` built once before a loop or handler instead of `find((x) => x.key === key)` in it,
   and one `reduce` pass instead of `sort(...)[0]` or `toSorted(...).at(-1)`
