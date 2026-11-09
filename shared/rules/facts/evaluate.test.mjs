@@ -8,12 +8,7 @@ import {
   registeredFactRules,
   sharedFactExceptionRules,
 } from '../../project-rules/fact-rules.mjs';
-import {
-  exception,
-  fixtureFindings,
-  rows,
-  withLanguageRegistered,
-} from './test-support/fact-fixtures.mjs';
+import { exception, fixtureFindings, rows } from './test-support/fact-fixtures.mjs';
 
 const CONSOLE = 'test-console-output';
 
@@ -149,15 +144,12 @@ describe('the shared fact rules', () => {
       'doc-comment-content',
       CONSOLE,
     ];
-    expect(sharedFactExceptionRules()).toEqual(python);
     expect(registeredFactRules('python')).toEqual(python);
-    withLanguageRegistered('shared-used-by-one-feature', 'kotlin', () => {
-      expect(sharedFactExceptionRules()).toEqual([
-        ...python.slice(0, 3),
-        'shared-used-by-one-feature',
-        ...python.slice(3),
-      ]);
-    });
+    expect(sharedFactExceptionRules()).toEqual([
+      ...python.slice(0, 3),
+      'shared-used-by-one-feature',
+      ...python.slice(3),
+    ]);
   });
 });
 

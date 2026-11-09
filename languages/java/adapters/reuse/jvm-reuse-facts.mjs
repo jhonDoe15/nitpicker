@@ -9,6 +9,8 @@ import { fileBindings, importFacts, projectIndex, referenceScope } from './jvm-r
 import { readJvmDefinitions } from './source/jvm-definitions.mjs';
 
 const REUSE_TOOL = 'structure';
+const COUPLING_TOOL = 'coupling';
+const SHARED_USAGE_RULES = ['shared-used-by-one-feature'];
 const REUSE_RULES = ['duplicate-definition', 'exported-name-collision', 'sibling-copy-edit'];
 const OUTSIDE_SOURCES = /^(?:\.\.(?:\/|$))|(?:^|\/)build(?:\/|$)/u;
 const JAVA_COLLISION_FIX = 'Rename one, or use both by their fully qualified names.';
@@ -119,12 +121,22 @@ function baselineOf(projectRoot, policy) {
 
 export function readJvmReuseFindings(projectRoot, { projects, kotlin = false, policy = {} }) {
   const facts = jvmReuseFacts(projectRoot, { projects, kotlin, exclude: policy.exclude });
-  return sharedFactFindings(facts, {
-    language: kotlin ? 'kotlin' : 'java',
-    analyzerName: REUSE_TOOL,
-    rules: REUSE_RULES,
-    policy: { exceptions: policy.exceptions ?? [] },
-    baseline: baselineOf(projectRoot, policy),
-    collisionFixFor: (importer) => (importer.endsWith('.java') ? JAVA_COLLISION_FIX : undefined),
-  });
+  const language = kotlin ? 'kotlin' : 'java';
+  const exceptions = policy.exceptions ?? [];
+  return [
+    ...sharedFactFindings(facts, {
+      language,
+      analyzerName: REUSE_TOOL,
+      rules: REUSE_RULES,
+      policy: { exceptions },
+      baseline: baselineOf(projectRoot, policy),
+      collisionFixFor: (importer) => (importer.endsWith('.java') ? JAVA_COLLISION_FIX : undefined),
+    }),
+    ...sharedFactFindings(facts, {
+      language,
+      analyzerName: COUPLING_TOOL,
+      rules: SHARED_USAGE_RULES,
+      policy: { exceptions, ...(policy.layout === undefined ? {} : { layout: policy.layout }) },
+    }),
+  ];
 }
