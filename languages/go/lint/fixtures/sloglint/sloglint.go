@@ -12,7 +12,6 @@ func Started(ctx context.Context, logger *slog.Logger) {
 }
 
 func Stopped(logger *slog.Logger, name string) {
-	logger.Info("stopped " + name) // want sloglint
 	logger.Info("stopped", slog.String("name", name))
 }
 

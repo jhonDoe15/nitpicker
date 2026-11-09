@@ -1,7 +1,12 @@
 package compilerdirectives
 
 //go:noinlined // want gocheckcompilerdirectives
-func Sum(left, right int) int {
+func Difference(left, right int) int {
+	return left - right
+}
+
+//go:nosplitt
+func Sum(left, right int) int { // want-at 8 gocheckcompilerdirectives
 	return left + right
 }
 

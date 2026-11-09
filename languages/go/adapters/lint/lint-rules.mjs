@@ -139,10 +139,21 @@ const HINTS = new Map([
   ],
   [
     'musttag',
-    'Tag every exported field, such as `json:"id"`, so renaming a field leaves the encoded form as it is.',
+    'Give each exported field the tag the message names, such as `json:"id"`, so renaming a field ' +
+      'leaves the encoded form as it is.',
   ],
-  ['spancheck', 'End the span in a deferred call right after starting it: `defer span.End()`.'],
+  [
+    'spancheck',
+    'Assign the span and end it in a deferred call right after `tracer.Start`: `defer span.End()`.',
+  ],
 ]);
+const MESSAGE_HINTS = [
+  [
+    'sloglint',
+    /^key-value pairs/u,
+    'Pass typed attributes: `slog.String("name", name)`, `slog.Any("order", order)`.',
+  ],
+];
 
 const RULE_NAMES = new Map([['errcheck', 'unchecked']]);
 const VARYING_PARTS = new Map([
@@ -170,8 +181,10 @@ function sentence(message) {
   return /[.?!]$/u.test(text) ? text : `${text}.`;
 }
 
-function hintOf(tool, rule) {
-  const hint = HINTS.get(rule);
+function hintOf(tool, rule, message) {
+  const hint =
+    HINTS.get(rule) ??
+    MESSAGE_HINTS.find(([name, pattern]) => name === rule && pattern.test(message))?.[2];
   if (tool !== 'modernize') {
     return hint;
   }
@@ -179,7 +192,7 @@ function hintOf(tool, rule) {
 }
 
 export function lintMessage({ tool, rule, message }) {
-  const hint = hintOf(tool, rule);
+  const hint = hintOf(tool, rule, message);
   const text = sentence(stable(rule, message));
   return hint === undefined ? text : `${text} ${hint}`;
 }
