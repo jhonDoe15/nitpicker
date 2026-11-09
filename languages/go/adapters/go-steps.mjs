@@ -6,6 +6,7 @@ import { detectFormatters } from './formatting/go-formatters.mjs';
 import { unformattedFiles } from './formatting/go-format.mjs';
 import { inspect, readInspect } from './structure/go-inspect.mjs';
 import { goTest } from './tests/go-test.mjs';
+import { mutate } from './mutation/go-mutation.mjs';
 
 const FORMAT_REPORT = 'format.json';
 
@@ -58,7 +59,10 @@ function toolchain(context) {
   context.projectGoFlags = flags.stdout.trim();
 }
 
-const STEPS = [toolchain, inspect, format, vet, goTest];
+const STEPS = {
+  go: [toolchain, inspect, format, vet, goTest],
+  mutation: [toolchain, mutate],
+};
 const PREREQUISITES = new Set([toolchain, inspect]);
 
 function attempt(step, context) {
@@ -73,9 +77,9 @@ function attempt(step, context) {
   }
 }
 
-export function runGoSteps(context) {
+export function runGoSteps(context, part = 'go') {
   const failures = [];
-  for (const step of STEPS) {
+  for (const step of STEPS[part]) {
     const failure = attempt(step, context);
     failures.push(...(failure === undefined ? [] : [failure]));
     if (failure !== undefined && PREREQUISITES.has(step)) {

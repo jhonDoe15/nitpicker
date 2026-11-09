@@ -26,6 +26,7 @@ import {
 const goE2eEnabled = process.env.NITPICKER_GO_E2E === '1';
 const EXCEPTING_CONFIG = JSON.stringify({
   preset: 'go',
+  disable: ['mutation'],
   exceptions: [
     { rule: 'vet/printf', paths: ['shop/label.go'], reason: 'fixture' },
     {

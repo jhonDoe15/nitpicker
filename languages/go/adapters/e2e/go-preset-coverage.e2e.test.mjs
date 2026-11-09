@@ -44,7 +44,11 @@ describe.skipIf(!goE2eEnabled)('Go preset coverage and CRAP end to end', () => {
     commitBranch(project, 'excepted', {
       'shop/discount.go': DISCOUNT,
       'shop/discount_test.go': DISCOUNT_HALF_TEST,
-      'nitpicker.config.json': JSON.stringify({ preset: 'go', exceptions: [EXCEPTION] }),
+      'nitpicker.config.json': JSON.stringify({
+        preset: 'go',
+        disable: ['mutation'],
+        exceptions: [EXCEPTION],
+      }),
     });
     commitBranch(project, 'branchy', { 'shop/size.go': BRANCHY });
     commitBranch(project, 'panicking', {

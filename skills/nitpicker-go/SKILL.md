@@ -88,6 +88,11 @@ Before you change code other packages use, or fix a bug, read
   false), every `case` and, without a `default`, a value no case matches, and every loop body
   (`changed-branch-coverage`). A function's CRAP score (complexity and coverage) stays below 9:
   test it, or split a branchy part into its own function.
+- Assert on the values your code computes, so a test fails when a line you changed is mutated: a
+  boundary (`>` to `>=`), an operator, a removed call or an emptied `case` that no test notices is a
+  `mutant-survived` finding, and code no test runs is `mutant-nocoverage`. Test the boundary value
+  itself (`Fee(100)` next to `Fee(200)`). Editing a test must not drop an assertion the base tests
+  had: a mutant the old tests caught and the new ones miss fails too.
 - Every package with code has tests; a module where no test runs fails (`no-tests-ran`). Tests are
   table-driven where cases share a shape: `tests := []struct{...}{...}` and `t.Run(tt.name, ...)`.
 - A new or changed unit test runs in under 5 s (`slow-test`); an integration test in under 30 s.
