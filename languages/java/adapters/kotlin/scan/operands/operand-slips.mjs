@@ -5,6 +5,7 @@ import {
   isEffectFree,
   isStable,
   nodeKey,
+  nodeSize,
   expressionNodes,
   nodeText,
   unwrapped,
@@ -18,7 +19,8 @@ const ZEROS = new Set(['0', '0L']);
 const CHAINS = new Set(['&&', '||']);
 const COMMUTATIVE = new Set(['+', '*']);
 const PLAIN = /^[\w.?!`]+$/;
-const NAN_NAME = /^[\w.`]+$/;
+const NAN_NAME = /^[\w`]+(?:\.[\w`]+)*$/;
+const MAX_COMPARED = 16;
 const FIX_COPY = 'One side was probably copied: fix the operand that was meant to differ.';
 
 const MESSAGES = {
@@ -35,6 +37,7 @@ function sameOperandMessage(forest, node) {
   const checked = SELF_OPERATORS.has(node.operator) || EQUALITIES.has(node.operator);
   if (
     !checked ||
+    nodeSize(forest, node.left) !== nodeSize(forest, node.right) ||
     !isStable(forest, node.left) ||
     nodeKey(forest, node.left) !== nodeKey(forest, node.right)
   ) {
@@ -42,7 +45,7 @@ function sameOperandMessage(forest, node) {
   }
   const operand = nodeText(forest, node.left);
   if ((node.operator === '==' || node.operator === '!=') && NAN_NAME.test(operand)) {
-    return `\`${operand}\` is compared with itself. To test for NaN, write \`${operand}.isNaN()\`. ${FIX_COPY}`;
+    return `\`${operand}\` is compared with itself. If this is a NaN test on a \`Double\` or \`Float\`, write \`${operand}.isNaN()\`. ${FIX_COPY}`;
   }
   return `\`${operand}\` is on both sides of \`${node.operator}\`. ${FIX_COPY}`;
 }
@@ -74,7 +77,7 @@ function erasingMessage(forest, node) {
   }
   const text = nodeText(forest, kept);
   const operand = PLAIN.test(text) ? text : `(${text})`;
-  return `\`${node.operator} 0\` erases \`${operand}\`: the result is 0 whatever it holds (or -0.0 or NaN for a \`Double\`). Write the value meant, or fix the operand.`;
+  return `\`${node.operator} 0\` erases \`${operand}\`: a number times 0 is 0 whatever it holds (or -0.0 or NaN for a \`Double\`). Write the value meant, or fix the operand.`;
 }
 
 function operatorFindings(forest, root, sources) {
@@ -140,6 +143,13 @@ function comparisonMessages(forest, operator, run) {
   const comparisons = run
     .map((operand) => constantComparison(forest, operand))
     .filter((comparison) => comparison !== undefined);
+  const bySubject = Map.groupBy(comparisons, ({ subjectKey }) => subjectKey);
+  return [...bySubject.values()].flatMap((group) =>
+    subjectMessages(operator, group.slice(0, MAX_COMPARED)),
+  );
+}
+
+function subjectMessages(operator, comparisons) {
   return comparisons.flatMap((first, index) =>
     comparisons
       .slice(index + 1)

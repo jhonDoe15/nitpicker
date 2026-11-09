@@ -1,3 +1,5 @@
+import { chainOf } from '../../../../../../shared/traversal.mjs';
+
 const STATEMENT_KEYWORDS = new Set([
   'val',
   'var',
@@ -54,20 +56,18 @@ const LINE_ENDS = new Set([
   'in',
   '!in',
 ]);
+const LABELLED = new Set(['this', 'super']);
 const MEMBER_MARKS = new Set(['.', '?.', '::']);
 const LINE_STARTS = new Set(['.', '?.', '?:', '&&', '||', '::']);
 
 function groupItems(closes, { from, to }) {
-  const items = [];
-  let next = from;
-  for (const index of Array.from({ length: to - from }, (_, step) => from + step)) {
-    const close = index >= next ? closes.get(index) : undefined;
-    if (index >= next) {
-      items.push(close === undefined ? { token: index } : { token: index, close });
-      next = (close ?? index) + 1;
-    }
+  if (from >= to) {
+    return [];
   }
-  return items;
+  return chainOf({ token: from, close: closes.get(from) }, (item) => {
+    const next = (item.close ?? item.token) + 1;
+    return next < to ? { token: next, close: closes.get(next) } : undefined;
+  });
 }
 
 function isSeparator(tokens, item) {
@@ -79,7 +79,7 @@ function isSeparator(tokens, item) {
   return (
     SEPARATORS.has(text) ||
     COMPOUND.has(text) ||
-    kind === 'at' ||
+    (kind === 'at' && !LABELLED.has(tokens[item.token - 1]?.text)) ||
     (STATEMENT_KEYWORDS.has(text) && !isMember)
   );
 }
@@ -158,8 +158,9 @@ export function expressionRanges(tokens, closes) {
     })),
   ];
   return groups.flatMap((group) => {
-    const ranges = splitItems(tokens, groupItems(closes, group), group.opener);
-    if (ranges.length === 1) {
+    const items = groupItems(closes, group);
+    const ranges = splitItems(tokens, items, group.opener);
+    if (ranges.length === 1 && ranges[0].items.length === items.length) {
       ranges[0].group = group.open;
     }
     return ranges;
