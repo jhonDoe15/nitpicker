@@ -75,14 +75,12 @@ export function toolVersions() {
 
 const UNBUILT_FOLDERS = new Set(['fixtures', 'testdata']);
 
-function programFiles(source, folder = '') {
-  return readdirSync(path.join(source, folder), { withFileTypes: true }).flatMap((entry) => {
-    const relative = folder === '' ? entry.name : `${folder}/${entry.name}`;
-    if (entry.isDirectory()) {
-      return UNBUILT_FOLDERS.has(entry.name) ? [] : programFiles(source, relative);
-    }
-    return entry.isFile() && !entry.name.endsWith('_test.go') ? [relative] : [];
-  });
+function programFiles(source) {
+  return readdirSync(source, { recursive: true, withFileTypes: true })
+    .filter((entry) => entry.isFile() && !entry.name.endsWith('_test.go'))
+    .map((entry) => path.relative(source, path.join(entry.parentPath, entry.name)).split(path.sep))
+    .filter((parts) => !parts.some((part) => UNBUILT_FOLDERS.has(part)))
+    .map((parts) => parts.join('/'));
 }
 
 export function sourceHash(source, extra) {
