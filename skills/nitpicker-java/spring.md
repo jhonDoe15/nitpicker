@@ -60,8 +60,10 @@ class, and annotations of your own that carry one of these or that an `@Aspect` 
 - `@Transactional` goes on services, not controllers. Avoid `Propagation.REQUIRES_NEW`. Inside a
   transactional method, don't catch and swallow `Exception`, `RuntimeException` or persistence
   exceptions; let them propagate.
-- A checked `throws` needs `rollbackFor = Exception.class`; a write under `readOnly = true` needs its
-  own plain `@Transactional`.
+- A checked `throws` needs `rollbackFor = Exception.class`; a write under `readOnly = true` (a
+  repository write or `@Modifying` query, DML through `JdbcTemplate`, `JdbcClient` or jOOQ, or a setter
+  on an entity the method loaded) needs its own plain `@Transactional`. To shape a response from an
+  entity, map it to a DTO instead of changing it.
 - A public service method that writes more than once (`save`, `delete`, a `@Modifying` query,
   `JdbcTemplate.update`), also through its private helpers, is `@Transactional` or runs the writes in
   `TransactionTemplate.execute`.
