@@ -2093,6 +2093,7 @@
                             "pmd/JpaLazyFetching",
                             "pmd/JpaEntityClass",
                             "pmd/JpaManyToManyCascade",
+                            "pmd/JpaMultipleCollectionFetch",
                             "pmd/JpaManyToManySet",
                             "pmd/JpaVersion",
                             "pmd/JpaSequenceIds",
