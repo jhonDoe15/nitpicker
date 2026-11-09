@@ -3,6 +3,7 @@ import { nitpickerRules } from '../eslint-plugin/index.mjs';
 import { functionalPlugin } from '../eslint-plugin/type-identity/functional-plugin.mjs';
 import { defaultResolvedLayout } from '../layout.mjs';
 import { errorWrappingPolicy } from './policies/error-wrapping-policy.mjs';
+import { nestSelectors } from './nest/nest-forms.mjs';
 import {
   escapeHatchLinterOptions,
   escapeHatchRules,
@@ -39,19 +40,27 @@ import { strictTestConfigFor, testAreaGlobsFor } from './strict-tests.mjs';
 import { truthinessRules } from './truthiness/truthiness-rules.mjs';
 import { configFileGlobsFor, productionPolicyConfigFor } from './policy/production-policy.mjs';
 
-export function restrictedSyntaxFor(options = {}) {
-  const everywhereSelectors = [...escapeHatchSelectors, ...declarationSelectorsFor(options)];
-  const productionSelectors = [
-    ...everywhereSelectors,
+function everywhereSelectorsFor(options) {
+  return [...escapeHatchSelectors, ...declarationSelectorsFor(options)];
+}
+
+function productionSelectorsFor(options) {
+  return [
+    ...everywhereSelectorsFor(options),
     ...typeDefinitionSelectors,
     ...moduleSurfaceSelectors,
     ...controlFlowSelectors,
+    ...(options.nest === true ? nestSelectors : []),
   ];
+}
+
+export function restrictedSyntaxFor(options = {}) {
+  const productionSelectors = productionSelectorsFor(options);
   return {
-    configFile: everywhereSelectors,
+    configFile: everywhereSelectorsFor(options),
     source: productionSelectors,
     domain: [
-      ...productionSelectors.filter(
+      ...productionSelectorsFor({ ...options, nest: false }).filter(
         (selector) => ![...loopSelectors, ...forEachSelectors].includes(selector),
       ),
       ...domainRestrictedSyntax,
@@ -168,6 +177,7 @@ function strictTypedConfigFor(layout, parserOptions, options = {}) {
         'nitpicker/no-forwarding-wrapper': 'error',
         'nitpicker/no-falsy-default': 'error',
         'nitpicker/no-string-as-regex': 'error',
+        'nitpicker/no-unmapped-exception': 'error',
       },
     },
     {

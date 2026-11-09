@@ -68,6 +68,7 @@ const REVIEW_RULES = new Set([
   'StaticMockOfProjectType',
   'GlobalStateLeakInTest',
   'ServerOrContainerPerTest',
+  'SharedTestState',
   'ExhaustiveEnumPredicate',
   'StaticForwardingWrapper',
   'SingularAndPluralMember',
@@ -98,6 +99,9 @@ const REVIEW_RULES = new Set([
   'SpringStartupCleanup',
   'HttpWithoutTimeout',
   'SpringNullOnlyConfigCheck',
+  'ListUsedAsSet',
+  'LinearLookupInLoop',
+  'SortForExtreme',
   'GeneratedMemberCycle',
   'GeneratedEqualsSkipsSuperclass',
 ]);

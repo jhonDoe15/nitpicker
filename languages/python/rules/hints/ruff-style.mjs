@@ -92,6 +92,12 @@ export const STYLE_HINTS = [
   },
   {
     tool: 'ruff',
+    rules: ['FURB192'],
+    allowed:
+      'Take the smallest or largest in one pass: `min(xs)`, `max(xs)`, or `min(xs, key=...)` instead of `sorted(xs)[0]`.',
+  },
+  {
+    tool: 'ruff',
     rules: ['B006'],
     allowed:
       'Default to `None` and create the value inside the function, or use an immutable default such as a tuple.',
