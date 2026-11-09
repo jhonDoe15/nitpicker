@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { ingestRulesReport } from './rules-report.mjs';
-import { FAN_OUT_SEPARATOR } from '../rules/hints/ast-smells.mjs';
+import { FAN_OUT_SEPARATOR } from '../rules/hints/ast/ast-smell-advice.mjs';
 import { applyRuleHints } from '../rules/rule-hints.mjs';
 
 const entry = (overrides) => ({
@@ -138,6 +138,21 @@ describe('rules script report', () => {
     ],
     ['module-level-mutable-state', 'ITEMS', '`ITEMS` changes a module-level collection'],
     [
+      'atomic-update-across-await',
+      'self.total',
+      '`self.total` is updated from a value read before an `await`: another task can change it while this one is suspended, and the write then overwrites that change',
+    ],
+    [
+      'lock-order-inversion',
+      '`report` takes `self.a` while it holds `self.b`, and `transfer` takes `self.b` while it holds `self.a`',
+      '`report` takes `self.a` while it holds `self.b`, and `transfer` takes `self.b` while it holds `self.a`: two threads or tasks that run both can each hold one lock and wait forever for the other, a deadlock that no test reliably shows',
+    ],
+    [
+      'inconsistent-attribute-locking',
+      '`reset` writes `self.count` without a lock, while `add` writes it holding `self.lock`',
+      '`reset` writes `self.count` without a lock, while `add` writes it holding `self.lock`: a thread or task that writes here races with the locked writer, so an update is lost or another reader sees a stale value',
+    ],
+    [
       'unsafe-path-join',
       'read',
       '`read()` builds a file path from its input without a containment check',
@@ -174,6 +189,11 @@ describe('rules script report', () => {
       'await stream.aclose() in finally',
       '`await stream.aclose() in finally` can be cancelled before the cleanup finishes, so the resource may stay open',
     ],
+    [
+      'timeout-scope-path-without-checkpoint',
+      'trio.fail_after: render()',
+      '`trio.fail_after` has a path that runs `render()` without reaching a checkpoint (an `await` that suspends, `async with` or `async for`), so its timeout or cancellation cannot interrupt that path',
+    ],
     ['todo-without-issue', 'TODO: later', 'The task marker `TODO: later` has no issue'],
     [
       'skipped-test-without-reason',
@@ -181,7 +201,23 @@ describe('rules script report', () => {
       '`pytest.mark.skip` skips a test without a reason',
     ],
     ['sleep-in-test', 'time.sleep', '`time.sleep` waits for real time in a test'],
+    ['switched-off-test', 'pytest.mark.skip', '`pytest.mark.skip` switches a test off for good'],
+    [
+      'conditional-assertion-in-test',
+      'test_total: for',
+      'Test `test_total` asserts inside a `for` loop',
+    ],
     ['tautological-assert', 'assert', '`assert` can never fail'],
+    [
+      'float-equality-in-test',
+      '0.3',
+      '`0.3` is compared exactly in a test, so rounding makes it fail',
+    ],
+    [
+      'weak-assertion',
+      'assert len(rows) > 0',
+      '`assert len(rows) > 0` passes for almost any value',
+    ],
     ['real-clock-in-test', 'time.time', '`time.time()` reads the real clock in a test'],
     ['random-in-test', 'random.random', '`random.random()` draws random values in a test'],
     ['network-in-test', 'requests.get', '`requests.get` reaches the network in a unit test'],

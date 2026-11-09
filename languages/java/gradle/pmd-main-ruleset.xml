@@ -341,6 +341,84 @@ return
       </property>
     </properties>
   </rule>
+  <rule name="ForwardingMethodAlias" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
+        message="This method only passes its parameters, in order, to another method of the same class. Call that method directly and delete the alias. Overrides, annotated methods (a deprecated alias) and factories named of or from are allowed.">
+    <priority>3</priority>
+    <properties>
+      <property name="xpath">
+        <value><![CDATA[
+//MethodDeclaration[parent::*[self::ClassBody or self::EnumBody or self::RecordBody]/parent::*[self::ClassDeclaration[not(@Interface = true())] or self::EnumDeclaration or self::RecordDeclaration]]
+  [not(pmd-java:modifiers() = ('static', 'abstract', 'synchronized', 'native', 'strictfp'))]
+  [not(ModifierList/Annotation)][not(FormalParameters/FormalParameter/ModifierList/Annotation)][not(TypeParameters)]
+  [not(@Name = ('of', 'from'))][not(@Overridden = true())]
+  [FormalParameters/@Size > 0]
+  [let $method := .,
+       $parameters := FormalParameters/FormalParameter/VariableId/@Name,
+       $call := Block[count(*) = 1]/(ReturnStatement | ExpressionStatement[$method/VoidType])/MethodCall,
+       $type := function($t) { string-join(($t/descendant-or-self::*/(@SimpleName | @Kind | @ArrayDepth)) ! string(.), '|') },
+       $key := function($m) {
+         string-join((for $t in $m/FormalParameters/FormalParameter/(ClassType | PrimitiveType | ArrayType) return $type($t),
+                      for $v in $m/FormalParameters/FormalParameter[@Varargs = true()] return 'varargs',
+                      for $r in $m/(ClassType | PrimitiveType | ArrayType | VoidType) return local-name($r) || $type($r),
+                      for $e in $m/ThrowsList/* return $e/@SimpleName), ',') },
+       $targets := ../MethodDeclaration[@Name = $call/@MethodName][not(pmd-java:modifiers() = ('static', 'abstract'))],
+       $wider := exists($method[pmd-java:modifiers() = 'public']) and exists($targets[not(pmd-java:modifiers() = 'public')])
+         or exists($method[pmd-java:modifiers() = 'protected']) and exists($targets[not(pmd-java:modifiers() = ('public', 'protected'))])
+         or exists($method[not(pmd-java:modifiers() = ('public', 'protected', 'private'))]) and exists($targets[pmd-java:modifiers() = 'private'])
+     return exists($call)
+       and not($wider)
+       and not($call/TypeArguments)
+       and ($call/*[1][self::ArgumentList] or $call/*[1][self::ThisExpression][not(*)])
+       and $call/@MethodName != $method/@Name
+       and $call/ArgumentList/@Size = count($parameters)
+       and (every $i in 1 to count($parameters)
+            satisfies $call/ArgumentList/*[$i][self::VariableAccess]/@Name = $parameters[$i])
+       and count(../MethodDeclaration[@Name = $call/@MethodName]) = 1
+       and count(../MethodDeclaration[@Name = $method/@Name]) = 1
+       and exists($targets[not(TypeParameters)][$key(.) = $key($method)])]
+]]></value>
+      </property>
+    </properties>
+  </rule>
+  <rule name="ForwardingMethodAliasRename" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
+        message="This method only passes its parameters, in order, to a less visible method of the same class. Rename that method to this method''s name and delete the alias. Overrides, annotated methods (a deprecated alias) and factories named of or from are allowed.">
+    <priority>3</priority>
+    <properties>
+      <property name="xpath">
+        <value><![CDATA[
+//MethodDeclaration[parent::*[self::ClassBody or self::EnumBody or self::RecordBody]/parent::*[self::ClassDeclaration[not(@Interface = true())] or self::EnumDeclaration or self::RecordDeclaration]]
+  [not(pmd-java:modifiers() = ('static', 'abstract', 'synchronized', 'native', 'strictfp'))]
+  [not(ModifierList/Annotation)][not(FormalParameters/FormalParameter/ModifierList/Annotation)][not(TypeParameters)]
+  [not(@Name = ('of', 'from'))][not(@Overridden = true())]
+  [FormalParameters/@Size > 0]
+  [let $method := .,
+       $parameters := FormalParameters/FormalParameter/VariableId/@Name,
+       $call := Block[count(*) = 1]/(ReturnStatement | ExpressionStatement[$method/VoidType])/MethodCall,
+       $type := function($t) { string-join(($t/descendant-or-self::*/(@SimpleName | @Kind | @ArrayDepth)) ! string(.), '|') },
+       $key := function($m) {
+         string-join((for $t in $m/FormalParameters/FormalParameter/(ClassType | PrimitiveType | ArrayType) return $type($t),
+                      for $v in $m/FormalParameters/FormalParameter[@Varargs = true()] return 'varargs',
+                      for $r in $m/(ClassType | PrimitiveType | ArrayType | VoidType) return local-name($r) || $type($r),
+                      for $e in $m/ThrowsList/* return $e/@SimpleName), ',') },
+       $targets := ../MethodDeclaration[@Name = $call/@MethodName][not(pmd-java:modifiers() = ('static', 'abstract'))],
+       $wider := exists($method[pmd-java:modifiers() = 'public']) and exists($targets[not(pmd-java:modifiers() = 'public')])
+         or exists($method[pmd-java:modifiers() = 'protected']) and exists($targets[not(pmd-java:modifiers() = ('public', 'protected'))])
+         or exists($method[not(pmd-java:modifiers() = ('public', 'protected', 'private'))]) and exists($targets[pmd-java:modifiers() = 'private'])
+     return exists($call)
+       and $wider
+       and not($call/TypeArguments)
+       and ($call/*[1][self::ArgumentList] or $call/*[1][self::ThisExpression][not(*)])
+       and $call/@MethodName != $method/@Name
+       and $call/ArgumentList/@Size = count($parameters)
+       and (every $i in 1 to count($parameters)
+            satisfies $call/ArgumentList/*[$i][self::VariableAccess]/@Name = $parameters[$i])
+       and count(../MethodDeclaration[@Name = $call/@MethodName]) = 1
+       and count(../MethodDeclaration[@Name = $method/@Name]) = 1
+       and exists($targets[not(TypeParameters)][$key(.) = $key($method)])]
+]]></value>
+      </property>
+    </properties>
+  </rule>
   <rule name="HttpWithoutTimeout" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
         message="Give the call a deadline: HttpRequest.newBuilder(uri).timeout(Duration.ofSeconds(10)) for java.net.http, setConnectTimeout and setReadTimeout on an HttpURLConnection, setDefaultRequestConfig(RequestConfig.custom().setResponseTimeout(...)) on the Apache client builder, connectTimeout and readTimeout on a JAX-RS ClientBuilder, or OkHttp, which sets timeouts by default. This HTTP call has no timeout, so a server that never answers hangs it for good.">
     <priority>2</priority>
@@ -736,6 +814,77 @@ return (
                 empty($helper//VariableId[@Name = $name])
                 and (some $call in $helper//MethodCall satisfies $written($call)/@Name = $name))]
 )
+]]></value>
+      </property>
+    </properties>
+  </rule>
+  <rule name="ServiceLocatorLookup" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
+        message="Take the dependency as a constructor parameter (a Provider or Instance parameter when it is optional or created per use) instead of looking it up from a Guice Injector, CDI, a BeanManager or a JNDI context where it is used: the lookup hides what the class needs. The main method, the configure method of a Guice Module, @Provides and @Produces methods, @Bean methods of a @Configuration class and CDI extensions may look dependencies up.">
+    <priority>3</priority>
+    <properties>
+      <property name="xpath">
+        <value><![CDATA[
+(
+  //MethodCall
+    [pmd-java:matchesSig('com.google.inject.Injector#getInstance(_*)')
+     or pmd-java:matchesSig('com.google.inject.Injector#getProvider(_*)')
+     or pmd-java:matchesSig('com.google.inject.Injector#getBinding(_*)')
+     or pmd-java:matchesSig('com.google.inject.Injector#getExistingBinding(_*)')
+     or pmd-java:matchesSig('jakarta.enterprise.inject.spi.BeanContainer#getReference(_*)')
+     or pmd-java:matchesSig('jakarta.enterprise.inject.spi.BeanContainer#createInstance()')
+     or pmd-java:matchesSig('jakarta.enterprise.inject.spi.BeanManager#getInjectableReference(_*)')
+     or pmd-java:matchesSig('javax.enterprise.inject.spi.BeanManager#getReference(_*)')
+     or pmd-java:matchesSig('javax.enterprise.inject.spi.BeanManager#getInjectableReference(_*)')
+     or pmd-java:matchesSig('javax.enterprise.inject.spi.BeanManager#createInstance()')
+     or pmd-java:matchesSig('jakarta.enterprise.inject.spi.CDI#current()')
+     or pmd-java:matchesSig('javax.enterprise.inject.spi.CDI#current()')
+     or (@MethodName = 'select'
+         and *[1][not(self::MethodCall[@MethodName = 'current'])]
+                  [pmd-java:typeIs('jakarta.enterprise.inject.spi.CDI')
+                   or pmd-java:typeIs('javax.enterprise.inject.spi.CDI')])
+     or ((pmd-java:matchesSig('javax.naming.Context#lookup(_*)')
+          or pmd-java:matchesSig('javax.naming.Context#lookupLink(_*)'))
+         and not(*[1][pmd-java:typeIs('javax.naming.directory.DirContext')]))
+     or pmd-java:matchesSig('org.springframework.jndi.JndiTemplate#lookup(_*)')
+     or pmd-java:matchesSig('org.springframework.jndi.JndiLocatorDelegate#lookup(_*)')]
+  | //MethodReference
+    [(@MethodName = ('getInstance', 'getProvider', 'getBinding', 'getExistingBinding')
+      and *[1][pmd-java:typeIs('com.google.inject.Injector')])
+     or (@MethodName = ('getReference', 'getInjectableReference', 'createInstance')
+         and *[1][pmd-java:typeIs('jakarta.enterprise.inject.spi.BeanContainer')
+                  or pmd-java:typeIs('javax.enterprise.inject.spi.BeanContainer')
+                  or pmd-java:typeIs('javax.enterprise.inject.spi.BeanManager')])
+     or (@MethodName = 'current'
+         and *[1][pmd-java:typeIs('jakarta.enterprise.inject.spi.CDI')
+                  or pmd-java:typeIs('javax.enterprise.inject.spi.CDI')])
+     or (@MethodName = ('lookup', 'lookupLink')
+         and *[1][pmd-java:typeIs('javax.naming.Context')]
+                 [not(pmd-java:typeIs('javax.naming.directory.DirContext'))])
+     or (@MethodName = 'lookup'
+         and *[1][pmd-java:typeIs('org.springframework.jndi.JndiTemplate')
+                  or pmd-java:typeIs('org.springframework.jndi.JndiLocatorDelegate')])]
+)
+  [not(ancestor::ClassDeclaration
+         [pmd-java:typeIs('jakarta.enterprise.inject.spi.Extension')
+          or pmd-java:typeIs('javax.enterprise.inject.spi.Extension')])]
+  [not(ancestor::MethodDeclaration[1]
+         [(@Name = 'main' and @Void = true()
+           and (FormalParameters/@Size = 0
+                or FormalParameters[@Size = 1]/FormalParameter
+                     [ArrayType[ClassType[pmd-java:typeIsExactly('java.lang.String')]][count(ArrayDimensions/*) = 1]
+                      or ClassType[pmd-java:typeIsExactly('java.lang.String')][count(../VariableId/ArrayDimensions/*) = 1]]))
+          or (@Name = 'configure' and FormalParameters/@Size = 0
+              and (../.. | ../../self::AnonymousClassDeclaration/..)
+                    [pmd-java:typeIs('com.google.inject.Module')])
+          or ModifierList/Annotation
+               [pmd-java:typeIs('jakarta.enterprise.inject.Produces')
+                or pmd-java:typeIs('javax.enterprise.inject.Produces')
+                or pmd-java:typeIs('com.google.inject.Provides')]
+          or (ModifierList/Annotation[pmd-java:typeIs('org.springframework.context.annotation.Bean')]
+              and ../../ModifierList/Annotation
+                    [pmd-java:typeIs('org.springframework.context.annotation.Configuration')
+                     or pmd-java:typeIs('org.springframework.boot.SpringBootConfiguration')
+                     or pmd-java:typeIs('org.springframework.boot.autoconfigure.SpringBootApplication')])])]
 ]]></value>
       </property>
     </properties>
