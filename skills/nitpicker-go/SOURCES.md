@@ -34,6 +34,9 @@ than the others, and this skill teaches its rules before an agent writes Go.
   errorlint, nilerr, nilnil, errname, containedctx, fatcontext and rowserrcheck (MIT),
   contextcheck (Apache-2.0). Their shared helpers (gostaticanalysis analysisutil and comment) are
   MIT.
+  Types and values: exhaustive (BSD-2-Clause), recvcheck, reassign and wastedassign (MIT),
+  durationcheck and makezero (Apache-2.0), unconvert (BSD-3-Clause, the analyzer form
+  golangci-lint maintains).
 
 ## Rules and their reasoning
 
@@ -99,6 +102,11 @@ than the others, and this skill teaches its rules before an agent writes Go.
   struct are logic bugs, and each linter's allowed form is the one the Go wiki and the standard
   library document. Each runs under its own tool name, so its exception entry reads as the
   linter is known.
+- **Catalog linters for types and values.** An enum switch that misses a constant, a type with
+  mixed receivers, a duration squared, an append after `make([]T, n)` and an assignment never
+  read are bugs or a second form of the same code. exhaustive does not count a `default` case,
+  so adding a constant fails every switch that forgot it; map literals and type switches are
+  left out because a partial lookup map is common and an interface's implementations are open.
 - **A fixture for every check.** Each enabled check has a failing line and the allowed form in
   `languages/go/lint/fixtures`; the harness fails on a missing or unexpected report, so a tool
   upgrade that changes what a check reports is caught before release.
@@ -120,6 +128,7 @@ than the others, and this skill teaches its rules before an agent writes Go.
   an outer `err`, which would push code away from Go's own convention.
 - **vet `fieldalignment` and `atomicalign`.** Field order for memory layout is a performance
   choice, not a second way to write the same code; SA1027 still catches misaligned 64-bit atomics.
+- **forcetypeassert.** errcheck `-assert` already reports every one-value type assertion.
 - **err113 and wrapcheck.** err113 rejects every `errors.New` inside a function, and wrapcheck
   every unwrapped error from another package, the module's own included; both need per-project
   lists to stop flagging correct code. errorlint's `%w` and comparison checks cover the part that

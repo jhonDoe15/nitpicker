@@ -233,12 +233,19 @@ message does not already name it, and by its exception entry:
   - contexts: contextcheck (a function with a context passes it on instead of calling one that
     makes a new one; follows calls across the module's packages, not into dependencies),
     containedctx (no context in a struct field), fatcontext (no context derived from itself in a
-    loop).
+    loop);
+  - types and values: exhaustive (a switch on an enum lists every constant; a `default` case
+    does not count), recvcheck (a type's methods all have pointer or all have value receivers),
+    durationcheck (no duration times duration), makezero (no append to a slice made with a
+    length), reassign (no assigning another package's `Err...` or `EOF` variables), unconvert (no
+    conversion to the type a value already has), wastedassign (no value assigned and then
+    assigned again unread).
 
 The linters skip generated files (`// Code generated ... DO NOT EDIT.`), as staticcheck does; a
 package of only generated files needs no package comment. An analyzer that fails on a package that
 builds is a `go/go-lint-failed` tool error, never a silent pass. `//lint:ignore` and `//nolint`
-comments do nothing, including the ones nilerr and contextcheck read themselves, and a
+comments do nothing, including the ones nilerr and contextcheck read themselves, exhaustive's
+`//exhaustive:ignore` and makezero's `// nozero`, and a
 `//bodyclose:handled` directive is a finding of its own: the only way past a finding is an
 `exceptions` entry a person accepts.
 
@@ -258,11 +265,13 @@ comments do nothing, including the ones nilerr and contextcheck read themselves,
 
 **Catalog linters considered and left out**, with the reason:
 
-| Linter                    | Reason                                                                                                                               |
-| ------------------------- | ------------------------------------------------------------------------------------------------------------------------------------ |
-| err113                    | flags every `errors.New` inside a function, though a one-off error nobody compares is fine; its `==` check duplicates errorlint      |
-| wrapcheck                 | flags every error returned from another package unwrapped, the module's own included; it needs per-project ignore lists to be usable |
-| nilnil `-detect-opposite` | a value with a non-nil error is the `io.Reader` contract (`n, err`), not a second form                                               |
+| Linter                            | Reason                                                                                                                               |
+| --------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------ |
+| err113                            | flags every `errors.New` inside a function, though a one-off error nobody compares is fine; its `==` check duplicates errorlint      |
+| wrapcheck                         | flags every error returned from another package unwrapped, the module's own included; it needs per-project ignore lists to be usable |
+| forcetypeassert                   | errcheck `-assert` reports the same one-value type assertions                                                                        |
+| exhaustive maps and type switches | a lookup map keyed by an enum is often partial on purpose, and a type switch over an interface cannot know every implementation      |
+| nilnil `-detect-opposite`         | a value with a non-nil error is the `io.Reader` contract (`n, err`), not a second form                                               |
 
 **Overlaps on one line.** When two checks report the same line, the more specific one stays:
 
@@ -278,6 +287,7 @@ comments do nothing, including the ones nilerr and contextcheck read themselves,
 | `go vet` printf                      | SA1006 (Go 1.24 and later modules) |
 | nilerr                               | nilnil on `return nil, nil`        |
 | sqlclosecheck (Close not deferred)   | errcheck                           |
+| SA4006, SA4010                       | wastedassign                       |
 | ST1012 (sentinel error names)        | errname                            |
 | SA1005 (`exec.Command` shell line)   | noctx                              |
 

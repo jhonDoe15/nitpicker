@@ -68,3 +68,21 @@ func load(ctx context.Context) error {
 	return ctx.Err()
 }
 `;
+
+export const STATUS = `package shop
+
+type Status int
+
+const (
+	Open Status = iota
+	Shipped
+)
+
+func Label(status Status) string {
+	switch status {
+	case Open:
+		return "open"
+	}
+	return ""
+}
+`;
