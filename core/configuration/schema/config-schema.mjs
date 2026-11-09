@@ -12,7 +12,7 @@ import { KEYS, NITPICKER_RULES, SUPPORTED_PRESETS } from '../validate.mjs';
 import { HEAD_NAMES } from '../project-checks/project-config.mjs';
 import { LAYOUT_KEYS, layoutKeysFor } from '../scopes/layout-settings.mjs';
 import * as areas from './area-schemas.mjs';
-import { conventionProperties, history, spring } from './setting-schemas.mjs';
+import { conventionProperties, history, protocols, spring } from './setting-schemas.mjs';
 import {
   exceptionDefinitions,
   exceptionList,
@@ -91,6 +91,7 @@ const TOP_LEVEL = {
   python: areas.python,
   tools,
   testConsole: areas.testConsole,
+  protocols,
   kotlin: areas.kotlin,
   go: areas.go,
   spring,
@@ -109,6 +110,7 @@ function unavailableKeys(preset) {
     ...(preset === 'go' ? ['layout', 'duplicates'] : ['go']),
     ...(GRADLE_PRESETS.includes(preset) ? [] : ['spring']),
     ...(factRuleSettings(preset).includes('testConsole') ? [] : ['testConsole']),
+    ...(factRuleSettings(preset).includes('protocols') ? [] : ['protocols']),
   ];
 }
 
