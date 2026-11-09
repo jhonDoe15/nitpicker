@@ -32,3 +32,7 @@ Part of the [nitpicker-python](../SKILL.md) skill. Write these forms from the st
   (`server-or-container-per-test`): a fixture that starts one and serves several tests takes
   `scope="session"` or `scope="module"` and resets its state between tests; `setup_method`,
   `setUp` and `setup_function` do not start one; two tests do not make the same start.
+- Tests do not change state that other tests of the module see (`shared-test-state`): no `append`, `update`,
+  `add`, item assignment or `global` rebinding of a module-level list, dict or set, and no change to a class
+  attribute from a test method. Build the state in the test or in a function-scoped fixture, or reset it in an
+  `autouse` fixture or `setup_method`.

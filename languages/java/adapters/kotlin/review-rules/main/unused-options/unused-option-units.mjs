@@ -1,4 +1,5 @@
 import { springManagedOwner } from '../../spring/spring-names.mjs';
+import { declarationOf, functionKind } from './call-reach.mjs';
 
 const LIMITED = new Set(['private', 'internal']);
 const SKIPPED_MODIFIERS = new Set([
@@ -37,6 +38,12 @@ function unitOf(file, fn, limited) {
     internal: fn.visibility === 'internal',
     parameters: fn.parameters,
     line: fn.line,
+    declaration: declarationOf(file, {
+      owner: fn.owner,
+      name: fn.name,
+      kind: functionKind(file, fn.owner),
+      extension: fn.receiver !== undefined,
+    }),
   };
 }
 
@@ -103,6 +110,11 @@ function constructorUnits(file, classes, serialization) {
       data: klass.data,
       parameters: klass.primaryParameters,
       line: klass.line,
+      declaration: declarationOf(file, {
+        owner: klass.qualified,
+        name: klass.name,
+        kind: 'constructor',
+      }),
     }));
   const secondary = file.functions
     .filter(
@@ -118,6 +130,7 @@ function constructorUnits(file, classes, serialization) {
       data: false,
       parameters: fn.parameters,
       line: fn.line,
+      declaration: declarationOf(file, { owner: fn.owner, name: fn.name, kind: 'constructor' }),
     }));
   return [...primary, ...secondary];
 }

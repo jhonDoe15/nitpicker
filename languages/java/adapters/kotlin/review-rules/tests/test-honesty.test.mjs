@@ -87,6 +87,7 @@ describe('testHonestyFindings', () => {
       'FloatEqualityInTest',
       'WeakAssertionInTest',
       'GlobalStateLeakInTest',
+      'SharedTestState',
     ]);
   });
 

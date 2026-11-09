@@ -19,4 +19,6 @@ Part of the [nitpicker-python](../SKILL.md) skill. Write these forms from the st
   a different error consumes cancellation (`cancellation-not-propagated`). Keep intentional
   cancellation boundaries in the backend's timeout or cancellation scope. Awaiting a task you
   cancelled yourself (`task.cancel()` then `await task`) is the one handler that may stay quiet.
+- A project exception a FastAPI route can raise maps to a status: derive it from `HTTPException`
+  or register `@app.exception_handler(OrderNotFound)` (`unmapped-exception`).
 - A `try` inside a loop is flagged (PERF203): move it out, or extract the loop body into a function.

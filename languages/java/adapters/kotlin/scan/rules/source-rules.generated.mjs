@@ -2,6 +2,7 @@ import { kotlinSourceRules as rulesResourceLifetime } from '../../review-rules/c
 import { kotlinSourceRules as rulesSuspendCleanup } from '../../review-rules/coroutines/suspend-cleanup.mjs';
 import { kotlinSourceRules as rulesFanOut } from '../../review-rules/main/fan-out/fan-out.mjs';
 import { kotlinSourceRules as rulesUnsafeCasts } from '../casts/unsafe-casts.mjs';
+import { kotlinSourceRules as rulesCostlyCollections } from '../collections/costly-collections.mjs';
 import { kotlinSourceRules as rulesRepeatedStrings } from '../literals/repeated-strings.mjs';
 import { kotlinSourceRules as rulesLogFormatRules } from '../logging/log-format-rules.mjs';
 import { kotlinSourceRules as rulesProcessWaits } from '../processes/process-waits.mjs';
@@ -29,6 +30,7 @@ export const directoryRules = [
   rulesSuspendCleanup,
   rulesFanOut,
   rulesUnsafeCasts,
+  rulesCostlyCollections,
   rulesRepeatedStrings,
   rulesLogFormatRules,
   rulesProcessWaits,

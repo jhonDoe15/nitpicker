@@ -34,7 +34,8 @@ Part of the [TypeScript strict preset guide](../typescript-strict-preset.md).
   "Internationalized messages" above and `docs/internals.md`. Its rules are strict rules too
   (`i18n-rules.mjs` lists them).
 - The server scope lives in `languages/typescript/preset/eslint-config/server/server-scope.mjs`; see
-  "Server code" above. Its rule, `nitpicker/no-local-time-zone`, is a strict rule too.
+  "Server code" above. Its rules, `nitpicker/no-local-time-zone` and
+  `nitpicker/no-uncoerced-request-input`, are strict rules too.
 - The test rules live in `languages/typescript/preset/eslint-config/strict-tests.mjs` (`strictTestConfigFor(layout)`),
   which `strictPresetConfig()` includes. They follow the layout's test roots and are strict rules,
   so the differential gate holds touched test code to them. The test `no-restricted-syntax` list

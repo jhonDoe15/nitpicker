@@ -2,6 +2,7 @@ import { existsSync, mkdirSync, rmSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { runJava } from '../maven-command.mjs';
 import { nitpickerPitArguments } from '../../adapters/tool-config/declared/pit-declared.mjs';
+import { pitHistoryArguments } from '../../builds/pit-history/pit-history.mjs';
 import { classFiles, pitClasspath, pitTargets, pitTests } from '../maven-tests.mjs';
 
 export function javaArgumentFile(args) {
@@ -27,7 +28,7 @@ function pitArgLine(pitDir, args) {
   return ['--argLine', `${quote}@${file}${quote}`];
 }
 
-function pitArguments({ module, pitDir, classpaths, isArchunit, configs }) {
+function pitArguments({ module, pitDir, classpaths, isArchunit, configs, history }) {
   return [
     '--reportDir',
     pitDir,
@@ -51,6 +52,7 @@ function pitArguments({ module, pitDir, classpaths, isArchunit, configs }) {
     '--verbose',
     'false',
     ...pitArgLine(pitDir, module.testJvmArgs),
+    ...pitHistoryArguments(history, module.buildDirectory),
   ];
 }
 
@@ -61,6 +63,7 @@ export function runPit({
   classpaths,
   isArchunit,
   configs,
+  history,
   spawn,
   timeoutMs,
 }) {
@@ -75,7 +78,7 @@ export function runPit({
     tool: 'PIT',
     classpath: pitClasspath(tools, classpaths.testRuntime),
     mainClass: 'org.pitest.mutationtest.commandline.MutationCoverageReport',
-    args: pitArguments({ module, pitDir, classpaths, isArchunit, configs }),
+    args: pitArguments({ module, pitDir, classpaths, isArchunit, configs, history }),
     cwd: module.basedir,
     accept: (result) => result.status === 0,
     spawn,

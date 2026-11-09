@@ -18,7 +18,7 @@ import {
 } from '../reporting/reporters.mjs';
 import { parseArguments } from './arguments.mjs';
 import { GitCommandError, runGit } from '../git/repository/command.mjs';
-import { resolveProjectRoot } from '../../tooling/tool-resolution.mjs';
+import { resolveProjectRoot } from '../../configuration/project-checks/project-root.mjs';
 import { pathToFileURL } from 'node:url';
 import { loadConfig, describeConfigOverrides } from '../../configuration/config.mjs';
 import { configureAnalyzers } from '../../configuration/configure-analyzers.mjs';

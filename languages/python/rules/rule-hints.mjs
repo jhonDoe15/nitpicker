@@ -4,6 +4,7 @@ import { definedField } from '../../../shared/messages/messages.mjs';
 import { LOCATOR_HINTS } from './hints/ast/locators.mjs';
 import { ASYNC_HINTS } from './hints/ast/ast-async.mjs';
 import { STRUCTURE_HINTS } from './hints/ast/ast-structure.mjs';
+import { CONTAINER_HINTS } from './hints/containers/containers.mjs';
 import { TYPING_HINTS } from './hints/typing/ast-typing.mjs';
 import { SMELL_HINTS } from './hints/ast/ast-smells.mjs';
 import { ORM_HINTS } from './hints/persistence/ast-orm.mjs';
@@ -60,6 +61,7 @@ export const RULE_HINTS = [
   ...TEST_SWITCH_HINTS,
   ...ORM_HINTS,
   ...PERSISTENCE_HINTS,
+  ...CONTAINER_HINTS,
   { tool: 'mypy', rules: ['import-not-found', 'import-untyped'], allowed: INSTALL_PACKAGE },
   ...['pyright', 'basedpyright'].map((tool) => ({
     tool,

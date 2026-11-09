@@ -71,5 +71,6 @@ export function runCoverageTools(options) {
   const run = { spawn: options.spawn, timeoutMs: options.timeoutMs };
   const execFiles = jacocoExecFiles(module);
   runJacocoReport({ module, reportDir, tools, execFiles, since, testsRan, ...run });
-  runPit({ module, reportDir, tools, classpaths, isArchunit, configs, ...run });
+  const history = options.pitHistory;
+  runPit({ module, reportDir, tools, classpaths, isArchunit, configs, history, ...run });
 }

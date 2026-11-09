@@ -5,11 +5,13 @@ import { existsSync, readFileSync } from 'node:fs';
 import { validateConfig, KEYS } from './validate.mjs';
 import { rejectUnreadableSources } from './project-checks/project-config.mjs';
 import { rejectUndeclaredPreset } from './project-checks/preset-detection.mjs';
+import { rejectMissingBuildFiles } from './project-checks/project-markers.mjs';
 
 export function loadConfig(projectRoot) {
   const config = readConfigFile(projectRoot);
   rejectUnreadableSources(config, projectRoot);
   rejectUndeclaredPreset(config, projectRoot);
+  rejectMissingBuildFiles(config, projectRoot);
   return config;
 }
 

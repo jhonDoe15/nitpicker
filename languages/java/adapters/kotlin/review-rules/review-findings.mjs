@@ -83,6 +83,7 @@ export function readKotlinReviewFindings(context) {
       finding,
       awaitility: hasAwaitility({ manifest, projectRoot }),
       isProduction,
+      declaredIn: projectFiles,
     }),
     ...honesty,
     ...subjectMockFindings(own, { finding, projectRoot, projectFiles, isProduction }),

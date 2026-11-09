@@ -62,3 +62,8 @@ Part of the [nitpicker-java](../SKILL.md) skill. Write these forms from the star
   `BeanManager` or JNDI (`ServiceLocatorLookup`). Only `main`, a Guice `Module`'s `configure`,
   `@Provides`/`@Produces` methods, `@Bean` methods of a `@Configuration` class and CDI extensions
   look dependencies up.
+- Pick the cheaper collection form: a `HashSet` (or `LinkedHashSet`) for items you test with
+  `contains` while you collect them (`pmd/ListUsedAsSet`), a `Map` built once with
+  `Collectors.toMap` before a loop instead of `stream().filter(x -> x.getKey().equals(key)).findFirst()`
+  in it (`pmd/LinearLookupInLoop`), and `min(comparator)`/`max(comparator)` instead of
+  `sorted(...).findFirst()` (`pmd/SortForExtreme`).
