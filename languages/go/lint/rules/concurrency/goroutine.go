@@ -49,7 +49,11 @@ func owned(info *types.Info, call *ast.CallExpr, bodies map[types.Object]*ast.Bl
 	if selector, ok := ast.Unparen(call.Fun).(*ast.SelectorExpr); ok && holdsOwner(info.TypeOf(selector.X)) {
 		return true
 	}
-	body := bodies[typeutil.Callee(info, call)]
+	callee, ok := typeutil.Callee(info, call).(*types.Func)
+	if !ok {
+		return false
+	}
+	body := bodies[callee.Origin()]
 	return body != nil && mentionsOwner(info, body)
 }
 

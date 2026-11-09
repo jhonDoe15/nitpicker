@@ -83,7 +83,7 @@ func analyzers() []*analysis.Analyzer {
 	var selected []*analysis.Analyzer
 	for _, each := range groups() {
 		for _, analyzer := range each.analyzers {
-			if !off[analyzer.Name] {
+			if !off[ruleName(analyzer)] {
 				selected = append(selected, analyzer)
 			}
 		}
