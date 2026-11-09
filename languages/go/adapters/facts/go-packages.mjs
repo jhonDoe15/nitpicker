@@ -39,7 +39,9 @@ function packageNames(files) {
 
 export function goPackages(report, module = '') {
   const names = packageNames(report.files);
-  const directories = [...new Set(report.files.map(({ path: file }) => directoryOf(file)))].sort();
+  const directories = [
+    ...new Set(report.files.map(({ path: file }) => directoryOf(file))),
+  ].toSorted((left, right) => left.localeCompare(right));
   function importPathOf(directory) {
     return directory === ROOT ? module : `${module}/${directory}`;
   }

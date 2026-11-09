@@ -96,7 +96,9 @@ function importFacts(report, packages, roleOf) {
   return [...edges.values()].map(({ from, to, names }) => ({
     from,
     to,
-    names: [...names].sort().map((name) => ({ name })),
+    names: [...names]
+      .toSorted((left, right) => left.localeCompare(right))
+      .map((name) => ({ name })),
     role: roleOf(from),
   }));
 }

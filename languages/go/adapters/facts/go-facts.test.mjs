@@ -95,7 +95,7 @@ describe('Go facts', () => {
       {
         from: 'internal/store/store_test.go',
         to: 'internal/store/helper.go',
-        names: [{ name: 'OnlyTests' }, { name: 'helper' }],
+        names: [{ name: 'helper' }, { name: 'OnlyTests' }],
         role: 'test',
       },
       {

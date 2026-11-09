@@ -49,7 +49,7 @@ function goCouplingReport(report, module) {
       }),
     );
   const coupling = buildCouplingReport({
-    modules: [...anchorOf.keys()].sort(),
+    modules: [...anchorOf.keys()].toSorted((left, right) => left.localeCompare(right)),
     edges,
     packageOf: (unit) => unit,
     fileOf: (unit) => anchorOf.get(unit),
