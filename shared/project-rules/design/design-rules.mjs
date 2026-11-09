@@ -23,7 +23,7 @@ export const DESIGN_RULE_LANGUAGES = {
   javascript: 'partial',
   java: false,
   python: false,
-  kotlin: false,
+  kotlin: true,
   go: false,
 };
 
