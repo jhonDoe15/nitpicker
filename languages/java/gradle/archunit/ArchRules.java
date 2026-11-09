@@ -33,6 +33,7 @@ public final class ArchRules {
       Roles roles = Roles.load();
       Layers.check(main, roles, found);
       RequestBodies.check(main, roles, found);
+      UnmappedExceptions.check(main, roles, found);
       Lifetimes.check(main, found);
       RequestState.check(main, found);
       TestRules.check(unitTests, otherTests, found);

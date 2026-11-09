@@ -368,6 +368,8 @@
                         "structure/exported-name-collision",
                         "sibling-copy-edit",
                         "structure/sibling-copy-edit",
+                        "shared-used-by-one-feature",
+                        "coupling/shared-used-by-one-feature",
                         "test-only-export",
                         "dead-code/test-only-export",
                         "coupling/test-only-export",
@@ -1014,6 +1016,21 @@
               "items": { "enum": ["project", "nitpicker"] }
             }
           }
+        },
+        "staticcheck": {
+          "description": "Settings of staticcheck.",
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["precedence"],
+          "properties": {
+            "precedence": {
+              "description": "Which config staticcheck uses: \"project\" is your own config file, \"nitpicker\" is the preset's. List each at most once.",
+              "type": "array",
+              "minItems": 1,
+              "uniqueItems": true,
+              "items": { "enum": ["project", "nitpicker"] }
+            }
+          }
         }
       }
     },
@@ -1195,7 +1212,8 @@
               "mutmut": false,
               "coverage": false,
               "gofumpt": false,
-              "goimports": false
+              "goimports": false,
+              "staticcheck": false
             }
           },
           "conventions": {
@@ -1408,7 +1426,8 @@
               "mutmut": false,
               "coverage": false,
               "gofumpt": false,
-              "goimports": false
+              "goimports": false,
+              "staticcheck": false
             }
           },
           "conventions": {
@@ -1599,8 +1618,7 @@
               "sourceRoots": false,
               "testRoots": false,
               "excludedGlobs": false,
-              "entryPoints": false,
-              "sharedRoots": false
+              "entryPoints": false
             }
           },
           "tools": {
@@ -1622,7 +1640,8 @@
               "mutmut": false,
               "coverage": false,
               "gofumpt": false,
-              "goimports": false
+              "goimports": false,
+              "staticcheck": false
             }
           },
           "conventions": {
@@ -1729,6 +1748,8 @@
                             "structure/exported-name-collision",
                             "sibling-copy-edit",
                             "structure/sibling-copy-edit",
+                            "shared-used-by-one-feature",
+                            "coupling/shared-used-by-one-feature",
                             "test-only-export",
                             "dead-code/test-only-export",
                             "coupling/test-only-export",
@@ -1773,23 +1794,7 @@
           "python": false,
           "kotlin": false,
           "go": false
-        },
-        "allOf": [
-          {
-            "if": {
-              "not": {
-                "required": ["history"],
-                "properties": {
-                  "history": {
-                    "required": ["coChange"],
-                    "properties": { "coChange": { "const": true } }
-                  }
-                }
-              }
-            },
-            "then": { "properties": { "layout": { "properties": { "featureRoots": false } } } }
-          }
-        ]
+        }
       }
     },
     {
@@ -1802,8 +1807,7 @@
               "sourceRoots": false,
               "testRoots": false,
               "excludedGlobs": false,
-              "entryPoints": false,
-              "sharedRoots": false
+              "entryPoints": false
             }
           },
           "tools": {
@@ -1822,7 +1826,8 @@
               "mutmut": false,
               "coverage": false,
               "gofumpt": false,
-              "goimports": false
+              "goimports": false,
+              "staticcheck": false
             }
           },
           "conventions": {
@@ -1965,6 +1970,8 @@
                             "structure/exported-name-collision",
                             "sibling-copy-edit",
                             "structure/sibling-copy-edit",
+                            "shared-used-by-one-feature",
+                            "coupling/shared-used-by-one-feature",
                             "test-only-export",
                             "dead-code/test-only-export",
                             "coupling/test-only-export",
@@ -1984,6 +1991,9 @@
                             "kotlin-source/UnboundedFanOut",
                             "kotlin-source/UnboundedReactiveFanOut",
                             "kotlin-source/UnsafeCastOperator",
+                            "kotlin-source/ListUsedAsSet",
+                            "kotlin-source/LinearLookupInLoop",
+                            "kotlin-source/SortForExtreme",
                             "kotlin-source/RepeatedStringLiteral",
                             "kotlin-source/LogFormatArguments",
                             "kotlin-source/LogExceptionFirst",
@@ -2035,6 +2045,7 @@
                             "pmd/AssertionInControlFlow",
                             "pmd/CoroutineEscapesTest",
                             "pmd/GlobalStateLeakInTest",
+                            "pmd/SharedTestState",
                             "pmd/MockedSubjectInTest",
                             "pmd/StaticMockOfProjectType",
                             "pmd/RelaxedMockInTest",
@@ -2144,23 +2155,7 @@
           "i18n": false,
           "python": false,
           "go": false
-        },
-        "allOf": [
-          {
-            "if": {
-              "not": {
-                "required": ["history"],
-                "properties": {
-                  "history": {
-                    "required": ["coChange"],
-                    "properties": { "coChange": { "const": true } }
-                  }
-                }
-              }
-            },
-            "then": { "properties": { "layout": { "properties": { "featureRoots": false } } } }
-          }
-        ]
+        }
       }
     },
     {
@@ -2192,7 +2187,8 @@
               "ktfmt": false,
               "detekt": false,
               "gofumpt": false,
-              "goimports": false
+              "goimports": false,
+              "staticcheck": false
             }
           },
           "conventions": {
@@ -2278,6 +2274,8 @@
                         "structure/exported-name-collision",
                         "sibling-copy-edit",
                         "structure/sibling-copy-edit",
+                        "shared-used-by-one-feature",
+                        "coupling/shared-used-by-one-feature",
                         "test-only-export",
                         "dead-code/test-only-export",
                         "coupling/test-only-export",
@@ -2434,6 +2432,8 @@
                             "structure/exported-name-collision",
                             "sibling-copy-edit",
                             "structure/sibling-copy-edit",
+                            "shared-used-by-one-feature",
+                            "coupling/shared-used-by-one-feature",
                             "test-only-export",
                             "dead-code/test-only-export",
                             "coupling/test-only-export",
@@ -2448,7 +2448,7 @@
                             "structure/class-fields-limit"
                           ]
                         },
-                        { "pattern": "^(?:vet)/[\\s\\S]" }
+                        { "pattern": "^(?:vet|staticcheck|errcheck|modernize)/[\\s\\S]" }
                       ]
                     }
                   }

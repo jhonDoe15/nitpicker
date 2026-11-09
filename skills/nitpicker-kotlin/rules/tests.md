@@ -63,6 +63,11 @@ Part of the [nitpicker-kotlin](../SKILL.md) skill. Write these forms from the st
   container extension uses the spec lifecycle (not `ContainerLifecycleMode.Test` or `perTest()`),
   and `@BeforeEach`, `beforeTest` or `beforeEach` does not create and start one; two tests do not
   make the same start. Start it in `@BeforeAll` or a spec-level extension and reset its state.
+- Tests do not change state that other tests of the class see (`pmd/SharedTestState`): no write from a test to a
+  `var` or mutable collection in a companion object or top-level property, to a property of a
+  `@TestInstance(PER_CLASS)` class, or to a `var` or mutable collection in a Kotest spec body (one spec instance
+  runs all its tests). Create the state in the test, assign or `clear()` it in `@BeforeEach` or `beforeTest { }`,
+  or give the spec `isolationMode = IsolationMode.InstancePerTest` (or `InstancePerLeaf`).
 - Assert unconditionally (`pmd/AssertionInControlFlow`): no assertion that can be skipped, inside an `if`,
   a `when`, any loop (also over results), a safe call (`?.let`), `takeIf`, `&&`, `||`, `?:`, a `try` that
   swallows the failure, a `runCatching`, or after an early `return`. An `if`/`else` or `when` whose every
