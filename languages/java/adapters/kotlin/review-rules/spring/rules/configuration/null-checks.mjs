@@ -1,9 +1,9 @@
-import { ancestorsOf, compactType } from '../../kotlin-facts.mjs';
-import { annotationIn, typeName } from '../spring-names.mjs';
-import { entriesOf, symbolOf } from '../spring-scopes.mjs';
-import { CONFIGURATION_PROPERTIES, PROPERTY_RESOLVERS, VALUE } from '../spring-types.mjs';
-import { lastSelector } from '../view/expressions.mjs';
-import { membersOfClass } from '../view/project-types.mjs';
+import { ancestorsOf, compactType } from '../../../kotlin-facts.mjs';
+import { annotationIn, typeName } from '../../spring-names.mjs';
+import { entriesOf, symbolOf } from '../../spring-scopes.mjs';
+import { CONFIGURATION_PROPERTIES, PROPERTY_RESOLVERS, VALUE } from '../../spring-types.mjs';
+import { lastSelector } from '../../view/expressions.mjs';
+import { membersOfClass } from '../../view/project-types.mjs';
 import { stereotype } from './configuration.mjs';
 
 const RULE = 'SpringNullOnlyConfigCheck';
