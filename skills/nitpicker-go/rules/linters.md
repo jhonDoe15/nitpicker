@@ -93,6 +93,14 @@ allowed form and ends with its exception entry.
 - Write header keys in canonical form, `"Content-Type"` (canonicalheader); keep identifiers ASCII
   (asciicheck), source free of bidirectional control characters (bidichk), and every `//go:`
   directive one the compiler knows (gocheckcompilerdirectives).
+- Write the one form go-critic asks for: `s == ""` for an empty string, `x += y`, `else if`,
+  a `switch {}` over an if-else chain of three or more branches, a type switch over repeated type
+  assertions, `if` for a one-case switch, `0o644` and lower-case hex, `http.NoBody`,
+  `strings.EqualFold`, `a + b` over `strings.Join` of two strings, `f` over
+  `func(x int) int { return f(x) }`, methods after their type, lower-case local names, and no
+  label, braces, parentheses or `[:]` that change nothing. Delete commented-out code, give every
+  `TODO` its detail, keep a mutex in an unexported field, and call `regexp.MustCompile` for a
+  constant pattern (gocritic, printed as `gocritic/<checker>`).
 
 ## What does not work
 

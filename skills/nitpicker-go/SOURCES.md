@@ -43,6 +43,8 @@ than the others, and this skill teaches its rules before an agent writes Go.
   gocheckcompilerdirectives, perfsprint, usestdlibvars and spancheck (MIT), musttag and sloglint
   (MPL-2.0, weak copyleft, used unmodified). OpenTelemetry's trace package is only a dependency
   of the spancheck fixtures.
+  go-critic (MIT), with go-ruleguard and gogrep (BSD-3-Clause), the go-toolsmith packages,
+  quasilyte regex syntax and stdinfo (MIT) that it builds on.
 
 ## Rules and their reasoning
 
@@ -130,6 +132,16 @@ than the others, and this skill teaches its rules before an agent writes Go.
   rather than key-value pairs, because `LogAttrs` takes only attributes, so it is the form every
   call accepts, and a key-value list can pair a key with the wrong value. usestdlibvars's checks for bare words (`\"May\"`, `\"MD5\"`) and sloglint's constant-message check stay off: both flag correct code (a type-name table, a logging wrapper) that has no other form. predeclared is left
   out because revive's `redefines-builtin-id` reports the same names.
+- **go-critic, checker by checker.** Its checkers are a mix of bug finders, one-form rules,
+  performance thresholds and opinions, so the preset decides each of the 108 on its own rather
+  than by go-critic's tags. Bug finders run. A style or performance checker runs when it names
+  one form (`s == ""`, `a += b`, `bytes.Index(data, ...)`, a type switch over repeated
+  assertions); thresholds (`hugeParam`, `rangeValCopy`, `tooManyResultsChecker`) stay off because
+  a size limit is not a form. A checker that staticcheck, revive, vet or another catalog linter
+  already reports stays off, so one problem is one finding, and `timeExprSimplify` stays off
+  because its rewrites change the value. The lint program runs go-critic's checkers through its
+  own analyzer, which reports each finding under the checker's name and reads the file's Go
+  version, and it fails when a go-critic upgrade adds a checker nobody decided on.
 - **A fixture for every check.** Each enabled check has a failing line and the allowed form in
   `languages/go/lint/fixtures`; the harness fails on a missing or unexpected report, so a tool
   upgrade that changes what a check reports is caught before release.

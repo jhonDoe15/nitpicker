@@ -7,6 +7,8 @@ func Describe(value any) string {
 		if ok {
 			return text
 		}
+	case error:
+		return "error"
 	}
 	return ""
 }
@@ -15,6 +17,8 @@ func DescribeBound(value any) string {
 	switch typed := value.(type) {
 	case string:
 		return typed
+	case error:
+		return typed.Error()
 	}
 	return ""
 }
