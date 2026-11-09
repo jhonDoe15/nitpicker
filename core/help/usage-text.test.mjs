@@ -169,9 +169,12 @@ function parseError(text) {
   throw new Error(`${text} parsed`);
 }
 
-function projectWith(config) {
+function projectWith(config, markers = {}) {
   const root = temporaryRoot('nitpicker-help-');
-  writeFiles(root, config === undefined ? {} : { 'nitpicker.config.json': config });
+  writeFiles(
+    root,
+    config === undefined ? markers : { ...markers, 'nitpicker.config.json': config },
+  );
   return root;
 }
 
@@ -208,7 +211,7 @@ describe('nitpicker --help', () => {
   );
 
   it('lists the analyzers of the preset the config names, and uses one in the example', () => {
-    const root = projectWith('{ "preset": "java" }');
+    const root = projectWith('{ "preset": "java" }', { 'pom.xml': '<project/>' });
     const java = ['Analyzers of the java preset (for --analyzer):', '  java, repository-hygiene'];
 
     expect(runIn(root, '--help').stdoutText).toBe(expectedUsage(java, 'java'));
@@ -221,6 +224,7 @@ describe('nitpicker --help', () => {
         disable: ['repository-hygiene'],
         analyzers: [{ name: 'house-rules', command: './scripts/house-rules' }],
       }),
+      { 'go.mod': 'module app\n' },
     );
     const go = ['Analyzers of the go preset (for --analyzer):', '  go, house-rules'];
 
@@ -230,6 +234,7 @@ describe('nitpicker --help', () => {
   it('lists the analyzers of the project a run would check, not of a config further up', () => {
     const { root } = createGitRepository({
       'nitpicker.config.json': '{ "preset": "go" }',
+      'go.mod': 'module app\n',
       'packages/app/package.json': '{}',
     });
     const go = ['Analyzers of the go preset (for --analyzer):', '  go, repository-hygiene'];
