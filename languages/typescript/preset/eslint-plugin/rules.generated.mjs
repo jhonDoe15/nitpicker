@@ -73,6 +73,7 @@ import { rule as ruleNoUnhandledVoidPromise } from './rules/promises/no-unhandle
 import { rule as ruleNoUninjectableDelay } from './rules/testing/lifecycle/no-uninjectable-delay.mjs';
 import { rule as ruleNoUnknownInDomain } from './rules/boundaries/no-unknown-in-domain.mjs';
 import { rule as ruleNoUnknownMainFolder } from './rules/guards/no-unknown-main-folder.mjs';
+import { rule as ruleNoUnmappedException } from './rules/errors/unmapped/no-unmapped-exception.mjs';
 import { rule as ruleNoUnownedAsyncAssertion } from './test-assertions/unowned-async/no-unowned-async-assertion.mjs';
 import { rule as ruleNoUnsafeDeserialization } from './rules/security/deserialization/no-unsafe-deserialization.mjs';
 import { rule as ruleNoUnsafePathJoin } from './rules/guards/no-unsafe-path-join.mjs';
@@ -96,6 +97,7 @@ import { rule as ruleRequireErrorListener } from './rules/events/require-error-l
 import { rule as ruleRequireHttpTimeout } from './rules/security/http/require-http-timeout.mjs';
 import { rule as ruleRequireProcessTimeout } from './rules/processes/require-process-timeout.mjs';
 import { rule as ruleRequireTestProcessTimeout } from './rules/testing/processes/timeouts/require-test-process-timeout.mjs';
+import { rule as ruleSimplerBooleanLogic } from './rules/control/simpler-boolean-logic.mjs';
 import { rule as ruleStrictBooleanExpressions } from './rules/wrapped/strict-boolean-expressions.mjs';
 import { rule as ruleStructuredCatchLogging } from './rules/errors/structured-catch-logging.mjs';
 import { rule as ruleTestMustUseProductionRuntime } from './rules/testing/assertions/test-must-use-production-runtime.mjs';
@@ -181,6 +183,7 @@ export const directoryRules = {
   'no-uninjectable-delay': ruleNoUninjectableDelay,
   'no-unknown-in-domain': ruleNoUnknownInDomain,
   'no-unknown-main-folder': ruleNoUnknownMainFolder,
+  'no-unmapped-exception': ruleNoUnmappedException,
   'no-unowned-async-assertion': ruleNoUnownedAsyncAssertion,
   'no-unsafe-deserialization': ruleNoUnsafeDeserialization,
   'no-unsafe-path-join': ruleNoUnsafePathJoin,
@@ -204,6 +207,7 @@ export const directoryRules = {
   'require-http-timeout': ruleRequireHttpTimeout,
   'require-process-timeout': ruleRequireProcessTimeout,
   'require-test-process-timeout': ruleRequireTestProcessTimeout,
+  'simpler-boolean-logic': ruleSimplerBooleanLogic,
   'strict-boolean-expressions': ruleStrictBooleanExpressions,
   'structured-catch-logging': ruleStructuredCatchLogging,
   'test-must-use-production-runtime': ruleTestMustUseProductionRuntime,
