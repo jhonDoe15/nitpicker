@@ -3,38 +3,32 @@ import { exceptionText } from '../exceptions.mjs';
 
 const ANY_NAME = '*';
 
-function folderOf(file) {
+export function folderOf(file) {
   return file.slice(0, file.lastIndexOf('/') + 1);
 }
 
-function exportedNames(definitions) {
-  const names = new Map();
-  for (const { file, name, exported, exportNames } of definitions) {
-    const listed = exportNames ?? (exported === false ? [] : [name]);
-    names.set(file, [...(names.get(file) ?? []), ...listed]);
-  }
-  return names;
+function publicNamesOf(record, entry) {
+  const listed = new Set(entry.publicNames);
+  return record.names
+    .filter(({ name, alias }) => name !== ANY_NAME && listed.has(alias ?? name))
+    .map(({ name, alias }) => ({ name, publicName: alias ?? name }));
 }
 
-function reexportedNames({ to, names }, exported) {
-  return names.flatMap(({ name, alias }) => {
-    if (name !== ANY_NAME) {
-      return [{ name, publicName: alias ?? name }];
-    }
-    return alias === undefined
-      ? (exported.get(to) ?? []).map((each) => ({ name: each, publicName: each }))
-      : [];
-  });
+function reexportedNames(record, modules) {
+  const entry = modules.get(record.from);
+  return record.reexport === true &&
+    entry?.role === 'production' &&
+    Array.isArray(entry.publicNames)
+    ? publicNamesOf(record, entry).map((listed) => ({ ...listed, record }))
+    : [];
 }
 
-function reexportIndex(imports, { definitions, isProduction }) {
-  const exported = exportedNames(definitions);
+function reexportIndex(imports, modules) {
   const index = new Map();
-  for (const record of imports.filter(({ reexport, from }) => reexport && isProduction(from))) {
-    for (const { name, publicName } of reexportedNames(record, exported)) {
-      const key = `${record.to}\0${name}`;
-      index.set(key, [...(index.get(key) ?? []), { entry: record.from, name: publicName }]);
-    }
+  const reexported = imports.flatMap((record) => reexportedNames(record, modules));
+  for (const { name, publicName, record } of reexported) {
+    const key = `${record.to}\0${name}`;
+    index.set(key, [...(index.get(key) ?? []), { entry: record.from, name: publicName }]);
   }
   return index;
 }
@@ -53,41 +47,57 @@ function entriesOf(index, start) {
   return found;
 }
 
-function closestEntry(entries, { from, to }) {
+function outermostEntry(entries, { from, to }) {
   return entries
-    .map(({ entry }) => ({ entry, folder: folderOf(entry) }))
+    .map((entry) => ({ ...entry, folder: folderOf(entry.entry) }))
     .filter(
       ({ entry, folder }) =>
         folder !== '' && entry !== to && to.startsWith(folder) && !from.startsWith(folder),
     )
-    .toSorted((left, right) => left.folder.length - right.folder.length)[0]?.entry;
+    .toSorted((left, right) => left.folder.length - right.folder.length)[0];
 }
 
-function bypassesOf(record, { index, isProduction }) {
-  if (record.conditional === true || !isProduction(record.from) || !isProduction(record.to)) {
+function isJudged(record, modules) {
+  const importer = modules.get(record.from);
+  return (
+    importer?.role === 'production' &&
+    modules.get(record.to)?.role === 'production' &&
+    importer.entry !== true &&
+    importer.compositionRoot !== true &&
+    ![record.reexport, record.conditional, record.typeOnly, record.local].includes(true)
+  );
+}
+
+function bypassesOf(record, { index, modules }) {
+  if (!isJudged(record, modules)) {
     return [];
   }
   const byEntry = new Map();
   for (const { name } of record.names.filter(({ name: each }) => each !== ANY_NAME)) {
-    const entry = closestEntry(entriesOf(index, { file: record.to, name }), record);
-    if (entry !== undefined) {
-      byEntry.set(entry, [...(byEntry.get(entry) ?? []), name]);
+    const found = outermostEntry(entriesOf(index, { file: record.to, name }), record);
+    if (found !== undefined) {
+      byEntry.set(found.entry, [...(byEntry.get(found.entry) ?? []), [name, found.name]]);
     }
   }
-  return [...byEntry].map(([entry, names]) => ({
+  return [...byEntry].map(([entry, pairs]) => ({
     source: record.from,
     target: record.to,
     entry,
-    names: [...new Set(names)].toSorted((left, right) => left.localeCompare(right)),
+    entryName: modules.get(entry).entryName ?? entry,
+    names: unique(pairs.map(([name]) => name)),
+    publicNames: unique(pairs.map(([, publicName]) => publicName)),
   }));
 }
 
-export function publicAlternativeBypasses({ modules, definitions = [], imports }) {
-  const production = new Set(modules.filter(({ role }) => role !== 'test').map(({ file }) => file));
-  function isProduction(file) {
-    return production.has(file);
-  }
-  const context = { index: reexportIndex(imports, { definitions, isProduction }), isProduction };
+function unique(names) {
+  return [...new Set(names)].toSorted((left, right) => left.localeCompare(right));
+}
+
+export function publicAlternativeBypasses({ modules, imports }) {
+  const context = {
+    index: reexportIndex(imports, new Map(modules.map((module) => [module.file, module]))),
+    modules: new Map(modules.map((module) => [module.file, module])),
+  };
   return imports
     .flatMap((record) => bypassesOf(record, context))
     .toSorted(
@@ -108,7 +118,8 @@ export function publicAlternativeFindings(bypasses, { analyzerName, isExcepted }
       ...messageFields(MESSAGES.publicAlternativeBypass, {
         names: bypass.names.join(', '),
         target: bypass.target,
-        entry: bypass.entry,
+        entry: bypass.entryName,
+        publicNames: bypass.publicNames.join(', '),
         exception: exceptionText(rule, bypass.source),
       }),
       classification: 'enforceable',

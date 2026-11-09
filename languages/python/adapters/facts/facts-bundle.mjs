@@ -115,6 +115,7 @@ function mergedStatements(entries, statement, { file, role }) {
     line: statement.line,
     typeOnly: statement.typeOnly,
     ...(statement.conditional ? { conditional: true } : {}),
+    ...(statement.local ? { local: true } : {}),
   }));
 }
 

@@ -53,15 +53,19 @@ members is not reported.
   `Config`) and every definition of a convention module (`admin.py`, `apps.py`, `urls.py`,
   `signals.py`, `settings`, `wsgi.py`, `asgi.py`, `templatetags/`, `management/commands/`) are
   never compared; an entry point never is.
-- `public-alternative-bypass` reads the same scan: a production module that imports a name from
-  inside a package (`from shop.billing.invoice import Invoice`) although the package's
-  `__init__.py` re-exports it (`from .invoice import Invoice`, listed in `__all__` when the package
-  has one, or any public `from` import when it has none) is reported, and the message names the
-  `__init__.py` to import from. A re-export chain is followed, and the finding names the outermost
-  package the importer is outside of. Code inside the package, tests, imports in a `try` that
-  catches `ImportError`, a name the package does not re-export and a module imported whole
-  (`import shop.billing.invoice`) are left alone. When the import goes around the package on purpose,
-  for example to break an import cycle, an exception with the importing file lifts it.
+- `public-alternative-bypass` reads the same scan, with the components of the TypeScript rule: each
+  top-level package, or each subpackage of it when the source root holds one top-level package
+  (`src/shop/billing`), leaving out `shared` and `utils`. When a component's `__init__.py` lists a
+  name in `__all__` and imports it (`from .invoice import Invoice`), a production module outside
+  the component that imports the name from inside it (`from shop.billing.invoice import Invoice`)
+  is reported, and the message names the import to use (`Import Invoice from shop.billing.`).
+  Packages without `__all__` declare no public API, so they are not judged. Code inside the
+  component, tests, entry modules and the `main.py`, `server.py` and `composition_root.py` of a
+  top-level package (they wire the internals together), imports under `if TYPE_CHECKING:`, imports
+  inside a function or in a `try` that catches `ImportError`, and a module imported whole are left
+  alone; a function-local or type-checking import is how a cycle through the package is broken.
+  Any other import that goes around the package on purpose takes an exception for the importing
+  file.
 - `test-only-export`, `duplicate-definition` and `exported-name-collision` read the same scan.
   `duplicate-definition` compares the whole project, whatever the distribution. A module Django
   loads by convention (the list above, in a Django application) and its names are production code.

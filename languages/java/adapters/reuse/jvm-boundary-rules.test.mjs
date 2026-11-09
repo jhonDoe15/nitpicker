@@ -215,7 +215,7 @@ describe('public-alternative-bypass on Kotlin type aliases', () => {
           'package shop.billing\n\nimport shop.billing.internal.Invoice\n\nfun refund() = Invoice(3)\n',
       }),
     ).toEqual([
-      ['entry-points', cart, `target:${INTERNAL_INVOICE}`, `Import it from ${BILLING_ALIASES}.`],
+      ['entry-points', cart, `target:${INTERNAL_INVOICE}`, 'Import Invoice from shop.billing.'],
     ]);
   });
 
@@ -228,6 +228,7 @@ describe('public-alternative-bypass on Kotlin type aliases', () => {
         'import shop.billing.internal.Invoice',
         '',
         'private typealias Hidden = shop.billing.internal.Invoice',
+        'internal typealias Inside = shop.billing.internal.Invoice',
         'typealias Invoices = List<Invoice>',
         '',
       ].join('\n'),
@@ -247,5 +248,27 @@ describe('public-alternative-bypass on Kotlin type aliases', () => {
         ),
       }),
     ).toEqual([]);
+  });
+
+  it('names a renamed alias, and leaves an alias of a class in its own package alone', () => {
+    const cart = `${KOTLIN_ROOT}/shop/orders/Cart.kt`;
+    const importer =
+      'package shop.orders\n\nimport shop.billing.internal.Invoice\n\nfun bill() = Invoice(1)\n';
+    const renamed = {
+      ...ALIASED_BILLING,
+      [BILLING_ALIASES]: 'package shop.billing\n\ntypealias Bill = shop.billing.internal.Invoice\n',
+      [cart]: importer,
+    };
+    const sameFolder = {
+      [INTERNAL_INVOICE]: ALIASED_BILLING[INTERNAL_INVOICE],
+      [`${KOTLIN_ROOT}/shop/billing/internal/Names.kt`]:
+        'package shop.billing.internal\n\ntypealias Bill = Invoice\n',
+      [cart]: importer,
+    };
+
+    expect(bypasses(renamed).map(([, , , allowedForm]) => allowedForm)).toEqual([
+      'Import Bill from shop.billing.',
+    ]);
+    expect(bypasses(sameFolder)).toEqual([]);
   });
 });
