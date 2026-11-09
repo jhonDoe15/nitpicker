@@ -53,22 +53,26 @@ function entityIndex(projectFiles) {
   return Map.groupBy(entries, ([name]) => name);
 }
 
+function memberRelation({ declared, members }, field) {
+  const member = members.find(({ name }) => name === field);
+  if (member === undefined) {
+    return { supers: declared.supers.map((name) => typeName(name).split('.').at(-1)) };
+  }
+  const annotations = entriesOf(member).map(({ name }) => name);
+  return { relation: fieldRelation(member.type ?? member.initializer ?? '', annotations) };
+}
+
 function relations(projectFiles) {
   const index = entityIndex(projectFiles);
   return function relationOf(entity, field) {
     const pending = [entity];
     for (const current of pending) {
       const found = index.get(current) ?? [];
-      if (found.length === 1) {
-        const [[, { declared, members }]] = found;
-        const member = members.find(({ name }) => name === field);
-        if (member !== undefined) {
-          const annotations = entriesOf(member).map(({ name }) => name);
-          return fieldRelation(member.type ?? member.initializer ?? '', annotations);
-        }
-        const supers = declared.supers.map((name) => typeName(name).split('.').at(-1));
-        pending.push(...(pending.length > MAX_SUPERS ? [] : supers));
+      const own = found.length === 1 ? memberRelation(found[0][1], field) : {};
+      if (own.relation !== undefined) {
+        return own.relation;
       }
+      pending.push(...(pending.length > MAX_SUPERS ? [] : (own.supers ?? [])));
     }
     return undefined;
   };

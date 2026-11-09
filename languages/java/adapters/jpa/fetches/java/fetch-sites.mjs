@@ -117,7 +117,10 @@ function enclosingBody(prepared, at) {
   const opens = enclosingOpens(prepared, at);
   const kinds = opens.map((open) => headerKind(blanked, open));
   const chosen =
-    opens[kinds.indexOf('method')] ?? opens[kinds.indexOf('lambda')] ?? opens.at(-2) ?? opens[0];
+    opens[kinds.indexOf('method')] ??
+    opens[kinds.indexOf('lambda')] ??
+    opens[opens.length - 2] ??
+    opens[0];
   return chosen === undefined
     ? ''
     : source.slice(headerStart(blanked, chosen), closingOf(blanked, chosen, BRACES) + 1);
@@ -151,13 +154,8 @@ function joinedAt(prepared, site, relationOf) {
 }
 
 export function crossedFetchAt(prepared, line, relationOf) {
-  for (const site of sitesAt(prepared, line)) {
-    for (const joined of joinedAt(prepared, site, relationOf)) {
-      const crossed = crossedCollections(joined);
-      if (crossed !== undefined) {
-        return crossed;
-      }
-    }
-  }
-  return undefined;
+  return sitesAt(prepared, line)
+    .flatMap((site) => joinedAt(prepared, site, relationOf))
+    .map((joined) => crossedCollections(joined))
+    .find((crossed) => crossed !== undefined);
 }
