@@ -82,6 +82,14 @@ sources, with or without Spring; the clients Spring builds stay with `pmd/Spring
 `pmd/SpringHttpClientPerCall`) and `kotlin-source/HttpWithoutTimeout` in the Kotlin preset; each preset's
 document lists the clients it knows.
 
+Exceptions mapped to a status: `nitpicker/no-unmapped-exception` (TypeScript strict preset, type-aware)
+reports a NestJS handler that can throw a project exception class no exception filter in scope maps, so
+the client gets a 500. The Python preset runs it as `unmapped-exception` for FastAPI and Starlette routes
+and their exception handlers, and the Java and Kotlin presets as `archunit/spring-unmapped-exception` for
+Spring MVC and WebFlux controllers, `@ExceptionHandler` and `@ResponseStatus`. Each follows calls four
+levels deep and skips code inside a `try` that catches. The JavaScript preset has no type information to
+follow calls with, Django, Flask and Go handlers are not checked yet.
+
 Recursive map updates have no TypeScript or JavaScript check: `Map` has no method that runs a
 callback while it updates an entry, so a callback cannot change the map in the middle of an update.
 The same holds for Python's `dict` (`setdefault` takes a value, and a `defaultdict` factory runs

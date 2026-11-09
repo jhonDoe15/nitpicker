@@ -537,6 +537,20 @@ Part of the [TypeScript strict preset guide](../typescript-strict-preset.md).
   are not. JavaScript files carry no type annotations, so there only the schema entries are checked.
   Two members whose meanings differ (`owner?: User` for the main owner beside `owners?: User[]` for
   the co-owners) are the case for an exception with a reason.
+- `nitpicker/no-unmapped-exception` (type-aware, TypeScript preset only): a NestJS handler (a
+  method with a route or GraphQL decorator such as `@Get` or `@Query` in a `@Controller` or
+  `@Resolver` class) that can throw a project exception class no exception filter in scope maps, so
+  the client gets a 500. The walk follows calls into project functions and methods, resolved by the
+  type checker, four levels deep, and the message names the call path. A `throw` inside a `try`
+  that has a `catch`, or in the promise chain before a `.catch(...)`, is not followed, and neither is
+  a function stored in a variable (a callback passed to a call is followed). A class is mapped when it or a superclass is a framework
+  status class (`HttpException` and its subclasses, `RpcException`, `WsException`, `GraphQLError`,
+  `ApolloError`) or a filter in scope catches it or a superclass: `@UseFilters` on the method or
+  the class, `app.useGlobalFilters(...)`, or an `APP_FILTER` provider. A `@Catch()` or
+  `@Catch(Error)` filter maps only the classes it checks with `instanceof`, since the rest fall
+  through to a generic response. Exceptions from libraries, `throw error` of a variable, plain
+  `Error` and a class whose base is a call (a mixin) are left out. The JavaScript preset does not run it, since it has no type information. Allowed:
+  `class OrderNotFound extends NotFoundException {}`.
 - `nitpicker/no-forwarding-wrapper` (type-aware): a module-level named function or `const` arrow
   whose body is one `return` (or an expression body) of a call that passes exactly its own
   parameters, in order, unchanged (`export const loadUser = (id: string) => fetchUser(id)`; an
