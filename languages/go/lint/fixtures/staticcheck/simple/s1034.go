@@ -1,6 +1,6 @@
 package simple
 
-func Describe(value any) string {
+func Describe(value any) string { // want any-in-exported-signature
 	switch value.(type) { // want S1034
 	case string:
 		text, ok := value.(string)
@@ -11,7 +11,7 @@ func Describe(value any) string {
 	return ""
 }
 
-func DescribeBound(value any) string {
+func DescribeBound(value any) string { // want any-in-exported-signature
 	switch typed := value.(type) {
 	case string:
 		return typed

@@ -27,3 +27,25 @@ the allowed form and ends with its exception entry.
 - Never `time.Sleep` to wait for a goroutine you started (`go-rules/sleep-to-wait`): wait on its
   WaitGroup, errgroup, channel or context. A sleep between retries, with no goroutine started
   before it, is fine.
+
+## Package state and design
+
+- Keep state in values, not in package variables (`go-rules/mutable-package-state`): a package
+  variable that any function assigns, increments, writes into (`cache[key] = value`) or locks is
+  shared by every caller. Put it in a struct the caller creates and passes in. A lazy value is
+  `var config = sync.OnceValue(load)`; sentinel errors (`var ErrNotFound = errors.New(...)`) and
+  tables that are never changed are fine.
+- `init` does not register, print, connect or start anything (`go-rules/init-side-effect`): write a
+  setup function that `main` or a constructor calls, and initialize variables in their declaration.
+- Return concrete types (`go-rules/lone-interface`): `func NewStore() *Store`, not an interface that
+  only `Store` implements. Declare the interface in the package that consumes it, with only the
+  methods that package calls. A sealed interface (one with an unexported method, as in functional
+  options) is fine.
+- No `any` where a type fits (`go-rules/any-in-exported-signature`): an exported function returns
+  its concrete type or a type parameter, and a parameter it type-switches on becomes a type
+  parameter with a constraint, or one function per type. `...any` for fmt- and slog-style
+  arguments and a value passed straight to encoding or reflection are fine.
+- Name a package for what it provides (`go-rules/generic-package-name`): never `util`, `common`,
+  `misc`, `helpers` or `interfaces`.
+- A getter is named after the value (`go-rules/get-prefixed-getter`): `Owner()`, never
+  `GetOwner()`.
