@@ -18,6 +18,9 @@ import {
   BASE_FILES,
   DISCOUNT,
   GOFUMPT_ONLY,
+  SHORT_DISCARDED_TEST,
+  SHORT_LOGGED_TEST,
+  SHORT_SKIPPED_TEST,
   SLOW_INTEGRATION_TEST,
   SLOW_TEST,
 } from './test-support/go-fixtures.mjs';
@@ -49,6 +52,11 @@ describe.skipIf(!goE2eEnabled)('Go preset project setups end to end', () => {
       'shop/slow_integration_test.go': SLOW_INTEGRATION_TEST,
       'nitpicker.config.json': '{ "preset": "go", "go": { "buildTags": ["integration"] } }\n',
     });
+    commitBranch(project, 'short-skip', { 'shop/skipped_test.go': SHORT_SKIPPED_TEST });
+    commitBranch(project, 'short-no-skip', {
+      'shop/logged_test.go': SHORT_LOGGED_TEST,
+      'shop/discarded_test.go': SHORT_DISCARDED_TEST,
+    });
     commitBranch(project, 'gofumpt', {
       '.golangci.yml': 'version: "2"\nformatters:\n  enable: [gofumpt]\n',
       'shop/rounded.go': GOFUMPT_ONLY,
@@ -71,12 +79,26 @@ describe.skipIf(!goE2eEnabled)('Go preset project setups end to end', () => {
     expect(
       newMessages(result).map((message) => message.replace(/took \d+\.\d s/u, 'took N s')),
     ).toEqual([
-      'TestSlow took N s; a unit test may take 5 s. Remove time.Sleep and other waits (inject the clock, or wait on a channel or sync.WaitGroup) and fake network, database and disk access with an interface or httptest, or move it to an integration test (an integration or e2e folder, a *_integration_test.go file, an integration or e2e build tag, or a test that skips under testing.Short()) if it is one. If this is intended, add {"rule":"slow-test","paths":["shop/slow_test.go"],"reason":"..."} to "exceptions" in nitpicker.config.json.',
+      'TestSlow took N s; a unit test may take 5 s. Remove time.Sleep and other waits (inject the clock, or wait on a channel or sync.WaitGroup) and fake network, database and disk access with an interface or httptest, or move it to an integration test (an integration or e2e folder, a *_integration_test.go file, an integration or e2e build tag, or a first statement if testing.Short() { t.Skip(...) }) if it is one. If this is intended, add {"rule":"slow-test","paths":["shop/slow_test.go"],"reason":"..."} to "exceptions" in nitpicker.config.json.',
     ]);
   });
 
-  it('holds a test behind an integration build tag to the integration budget', () => {
-    expect(newFindings(gate(project, 'slow-integration'))).toEqual([]);
+  it.each([
+    ['holds a test behind an integration build tag to the integration budget', 'slow-integration'],
+    ['holds a test that skips under testing.Short() to the integration budget', 'short-skip'],
+    [
+      'checks the merge base with the formatter the change adopts, so untouched files stay quiet',
+      'adopt-gofumpt',
+    ],
+  ])('%s', (_title, branch) => {
+    expect(newFindings(gate(project, branch))).toEqual([]);
+  });
+
+  it('keeps the unit budget for a test that reads testing.Short() without skipping', () => {
+    expect(newFindings(gate(project, 'short-no-skip'))).toEqual([
+      'test-runtime/slow-test shop/discarded_test.go',
+      'test-runtime/slow-test shop/logged_test.go',
+    ]);
   });
 
   it('follows gofumpt when the golangci-lint config enables it', () => {
@@ -85,10 +107,6 @@ describe.skipIf(!goE2eEnabled)('Go preset project setups end to end', () => {
     expect(newMessages(result)).toEqual([
       "File is not formatted with gofumpt (the project's formatter, from .golangci.yml). Run `gofumpt -w` on it.",
     ]);
-  });
-
-  it('checks the merge base with the formatter the change adopts, so untouched files stay quiet', () => {
-    expect(newFindings(gate(project, 'adopt-gofumpt'))).toEqual([]);
   });
 
   it('reports a missing Go toolchain as a tool error', () => {
