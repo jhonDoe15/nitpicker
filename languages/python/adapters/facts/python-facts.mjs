@@ -11,6 +11,7 @@ import { ROOT_TEST_DIRECTORIES } from '../execution/python-project.mjs';
 import { readPythonDependencies } from '../../libraries/python-dependencies.mjs';
 import { factsBundle } from './facts-bundle.mjs';
 import { sharedFactFindings } from '../../../../shared/rules/facts/evaluate.mjs';
+import { DESIGN_RULES } from '../../../../shared/project-rules/design/design-rules.mjs';
 import { registeredFactRules } from '../../../../shared/project-rules/fact-rules.mjs';
 import { FEATURE_RULES } from '../imports/python-feature-facts.mjs';
 import { RULE_IDS } from '../../../../shared/policy.mjs';
@@ -124,7 +125,10 @@ export function readFactFindings(reportRoot, { exceptions = [], baselineMovesFil
   }
   const baseFacts = readReport(path.join(reportRoot, BASE_FACTS_REPORT));
   const rules = registeredFactRules('python').filter(
-    (rule) => rule !== RULE_IDS.testConsoleOutput && !FEATURE_RULES.includes(rule),
+    (rule) =>
+      rule !== RULE_IDS.testConsoleOutput &&
+      !FEATURE_RULES.includes(rule) &&
+      !DESIGN_RULES.includes(rule),
   );
   return sharedFactFindings(facts, {
     language: 'python',
