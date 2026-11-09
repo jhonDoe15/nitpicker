@@ -52,7 +52,11 @@ than the others, and this skill teaches its rules before an agent writes Go.
   panic"), the Uber guide (goroutine lifetimes, "handle errors once") and the Google guide
   (contexts). `Must` functions and `main`/`init` keep `panic`, as in the standard library. Sleeps in
   tests and goroutines tests leave behind are left to the test-honesty rules (#419), so a test line
-  is not reported twice.
+  is not reported twice. Package state, `init` side effects, producer-side interfaces ("accept
+  interfaces, return structs"), `any` in APIs, package names such as `util` and `GetX` getters come
+  from Go Code Review Comments, Effective Go ("Getters", "Package names") and the Go blog's
+  "Package names"; a sealed interface is exempt because it is the Uber guide's functional-options
+  form.
 - **Configuration read once in `main`; clocks, randomness and writers passed in.** Matches the
   composition-root rule of the other presets and makes tests deterministic.
 - **`context.Context` first, never stored.** From Go Code Review Comments and the Google guide.

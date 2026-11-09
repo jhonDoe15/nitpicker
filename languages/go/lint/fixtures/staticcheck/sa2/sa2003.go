@@ -3,7 +3,7 @@ package sa2
 import "sync"
 
 var (
-	registryLock sync.Mutex
+	registryLock sync.Mutex // want mutable-package-state
 	registry     = map[string]string{}
 )
 
