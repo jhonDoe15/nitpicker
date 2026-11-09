@@ -187,7 +187,7 @@ describe('the symptoms of the troubleshooting page', () => {
   });
 
   it('catches a quote that no string can produce', () => {
-    const code = sourceStringsOf('`Required tool ${name} is not installed from ${from}`');
+    const code = sourceStringsOf(`\`Required tool \${name} is not installed from \${from}\``);
 
     expect(producedBy(quotedTokens('Required tool vitest is not installed from <dir>'), code)).toBe(
       true,

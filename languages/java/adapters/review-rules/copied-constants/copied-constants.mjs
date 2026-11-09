@@ -14,7 +14,7 @@ import { testLiterals } from './test-literals.mjs';
 export const COPIED_CONSTANT_RULE = 'CopiedConstantInTest';
 export const COPIED_CONSTANT_EXCEPTION_RULE = `pmd/${COPIED_CONSTANT_RULE}`;
 export const COPIED_CONSTANT_PIN = 'assertEquals({value}, {name})';
-const OUTSIDE_SOURCES = /^(?:\.\.(?:\/|$))|(?:^|\/)build(?:\/|$)/u;
+const OUTSIDE_SOURCES = /^\.\.(?:\/|$)|(?:^|\/)build(?:\/|$)/u;
 const NOTHING_SKIPPED = new Set();
 
 function rootsOf(project, { kotlin, test }) {

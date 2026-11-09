@@ -4,6 +4,7 @@ import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import { collectJavaFindings } from '../java-diff.mjs';
 import { fakeGradleRun } from '../test-support/in-process-gradle.mjs';
+import { byText } from '../../../../shared/text-order/by-text.mjs';
 
 const roots = [];
 
@@ -71,7 +72,7 @@ describe.each(['java', 'kotlin'])('the %s preset on a Gradle build', (preset) =>
     const quickTools = toolsOf(collect(project(), { preset, quick: true }));
     const fullTools = toolsOf(collect(project(), { preset }));
 
-    expect(fullTools.filter((tool) => ['pit', 'pmd'].includes(tool)).sort()).toEqual([
+    expect(fullTools.filter((tool) => ['pit', 'pmd'].includes(tool)).sort(byText)).toEqual([
       'pit',
       'pmd',
     ]);

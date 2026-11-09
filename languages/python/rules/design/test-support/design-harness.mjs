@@ -5,6 +5,7 @@ import path from 'node:path';
 import { validateFacts } from '../../../../../shared/rules/facts/schema.mjs';
 import { testFileMatcher } from '../../../adapters/analysis/python-sources.mjs';
 import { designDistributions } from '../../../adapters/analysis/design/design-distributions.mjs';
+import { byText } from '../../../../../shared/text-order/by-text.mjs';
 
 const RUN_SCRIPT = path.resolve(import.meta.dirname, '../run.py');
 const FIXTURES = path.resolve(import.meta.dirname, '../fixtures');
@@ -14,7 +15,7 @@ function pythonFiles(root) {
   return readdirSync(root, { recursive: true })
     .filter((file) => file.endsWith('.py'))
     .map((file) => file.split(path.sep).join('/'))
-    .sort();
+    .sort(byText);
 }
 
 function runDesignScript(projectRoot, { entryFiles = [] } = {}) {

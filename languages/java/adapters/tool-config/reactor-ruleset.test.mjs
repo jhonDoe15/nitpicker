@@ -11,6 +11,7 @@ import {
 } from '../kotlin/review-rules/blocking/blocking-catalog.mjs';
 import { guidePages, guideText } from '../../../../shared/reference/build/guide-pages.mjs';
 import { ALLOWED_FORM_FIRST } from '../spring/test-support/allowed-form.mjs';
+import { byText } from '../../../../shared/text-order/by-text.mjs';
 
 const root = path.resolve(import.meta.dirname, '../../../..');
 const ruleset = readFileSync(path.join(root, 'languages/java/gradle/reactor-ruleset.xml'), 'utf8');
@@ -41,7 +42,7 @@ function javaMemberCalls() {
       const names = named === null ? ['*'] : quoted(named[1]);
       return types.flatMap((type) => names.map((name) => `${type}#${name}`));
     })
-    .sort();
+    .sort(byText);
 }
 
 function kotlinMemberCalls() {
@@ -51,13 +52,13 @@ function kotlinMemberCalls() {
         names === EVERY ? [`${type}#*`] : names.map((name) => `${type}#${name}`),
       ),
     )
-    .sort();
+    .sort(byText);
 }
 
 function javaStaticCalls() {
   return [...blockingBody.matchAll(/matchesSig\('([^#]+)#(\w+)\(_\*\)'\)/gu)]
     .map(([, owner, name]) => `${owner}#${name === '_' ? '*' : name}`)
-    .sort();
+    .sort(byText);
 }
 
 function kotlinStaticCalls() {
@@ -65,7 +66,7 @@ function kotlinStaticCalls() {
     owners.flatMap((owner) =>
       names === EVERY ? [`${owner}#*`] : names.map((name) => `${owner}#${name}`),
     ),
-  ).sort();
+  ).sort(byText);
 }
 
 describe('reactor-ruleset.xml', () => {
@@ -118,7 +119,7 @@ describe('the blocking calls of the Reactor rule and of the Kotlin coroutine rul
       [
         ...kotlinStaticCalls().filter((call) => !KOTLIN_ONLY_STATIC.includes(call)),
         ...JAVA_ONLY_STATIC,
-      ].sort(),
+      ].sort(byText),
     );
   });
 

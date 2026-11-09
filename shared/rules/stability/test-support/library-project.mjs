@@ -1,3 +1,4 @@
+import { byText } from '../../../text-order/by-text.mjs';
 const LIBRARY_FEATURES = ['catalog', 'loans', 'members'];
 
 function featureUses(name, { adaptersImplementFace }) {
@@ -49,7 +50,7 @@ export function libraryGraph(uses) {
     kind: 'runtime',
   }));
   return {
-    modules: [...new Set(edges.flatMap(({ source, target }) => [source, target]))].sort(),
+    modules: [...new Set(edges.flatMap(({ source, target }) => [source, target]))].sort(byText),
     edges,
     packageOf: (file) => file.slice(0, file.lastIndexOf('/')),
   };

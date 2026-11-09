@@ -1,5 +1,6 @@
 import { MESSAGES, RULE_IDS, renderMessage } from '../../policy.mjs';
 import { exceptionText } from '../exceptions.mjs';
+import { byText } from '../../text-order/by-text.mjs';
 
 const LISTED = 5;
 
@@ -24,7 +25,10 @@ export function groupedByImporter(entries) {
     group.targets.add(entry.target);
     groups.set(key, group);
   }
-  return [...groups.values()].map((group) => ({ ...group, targets: [...group.targets].sort() }));
+  return [...groups.values()].map((group) => ({
+    ...group,
+    targets: [...group.targets].sort(byText),
+  }));
 }
 
 export function featureFinding(rule, entry, { analyzerName, isExcepted }) {

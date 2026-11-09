@@ -1,5 +1,6 @@
 import path from 'node:path';
 import { runGit } from '../diff/git/repository/command.mjs';
+import { byText } from '../../shared/text-order/by-text.mjs';
 
 const CONFIG_FILE_NAMES = new Set([
   'nitpicker.config.json',
@@ -52,7 +53,7 @@ export function stagedConfigDrift(repositoryRoot, indexFile) {
       }),
     ),
   ];
-  return [...new Set(changed.filter(isConfigFile))].sort();
+  return [...new Set(changed.filter(isConfigFile))].sort(byText);
 }
 
 export function stagedConfigNotice(files) {

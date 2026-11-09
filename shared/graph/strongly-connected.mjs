@@ -1,3 +1,4 @@
+import { byText } from '../text-order/by-text.mjs';
 function adjacency(nodes, edges) {
   const next = new Map(nodes.map((node) => [node, new Set()]));
   for (const { source, target } of edges.filter((edge) => next.has(edge.target))) {
@@ -25,11 +26,11 @@ export function stronglyConnected(nodes, edges) {
   );
   const assigned = new Set();
   const components = [];
-  for (const node of [...nodes].sort()) {
+  for (const node of [...nodes].sort(byText)) {
     if (assigned.has(node)) {
       continue;
     }
-    const component = [...reachable(node, previous, reachable(node, next))].sort();
+    const component = [...reachable(node, previous, reachable(node, next))].sort(byText);
     for (const member of component) {
       assigned.add(member);
     }

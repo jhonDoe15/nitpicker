@@ -2,6 +2,7 @@ import { existsSync, lstatSync } from 'node:fs';
 import path from 'node:path';
 import { neutralGit } from './git-command.mjs';
 import { hasRepositoryMarker, inheritedRule, posixRelative } from './tree-walk.mjs';
+import { byText } from '../text-order/by-text.mjs';
 
 const SUBMODULES_FILE = '.gitmodules';
 const SUBMODULE_PATHS = String.raw`^submodule\..*\.path$`;
@@ -92,7 +93,7 @@ export function loadTree(top) {
   }
   const entries = present.flat();
   return {
-    files: entries.map(({ file }) => file).toSorted(),
+    files: entries.map(({ file }) => file).toSorted(byText),
     links: new Set(entries.filter(({ kind }) => kind === 'link').map(({ file }) => file)),
     submodules,
     gitPaths,

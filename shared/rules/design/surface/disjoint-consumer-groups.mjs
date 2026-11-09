@@ -1,6 +1,7 @@
 import { DESIGN_RULE_IDS } from '../../../project-rules/design/design-rules.mjs';
 import { quoted } from '../design-finding.mjs';
 import { listSites } from '../design-index.mjs';
+import { byText } from '../../../text-order/by-text.mjs';
 
 const RULE = DESIGN_RULE_IDS.disjointConsumerGroups;
 const MIN_USED_MEMBERS = 4;
@@ -34,7 +35,7 @@ function componentOf(start, { links, seen }) {
     }
     group.push(...next);
   }
-  return group.sort();
+  return group.sort(byText);
 }
 
 function linkedGroups(ids) {
@@ -103,8 +104,8 @@ function joinByResources(used, index, sets) {
 }
 
 function groupText(group, { consumers, index }) {
-  const names = group.map((id) => index.callable(id).name).sort();
-  const files = [...new Set(group.flatMap((id) => [...consumers.get(id)]))].sort();
+  const names = group.map((id) => index.callable(id).name).sort(byText);
+  const files = [...new Set(group.flatMap((id) => [...consumers.get(id)]))].sort(byText);
   return `${quoted(names)} (used by ${listSites(files, MAX_LISTED_FILES)})`;
 }
 
@@ -113,7 +114,7 @@ function ownerGroups(owner, index) {
     .members(owner.id)
     .filter(({ exported, entry, kind }) => exported && entry !== true && kind !== 'constructor');
   const consumers = consumersByMember(owner, members, index);
-  const used = [...consumers.keys()].sort();
+  const used = [...consumers.keys()].sort(byText);
   if (used.length < MIN_USED_MEMBERS) {
     return { groups: [], consumers };
   }
@@ -132,7 +133,7 @@ export function disjointConsumerGroupFindings(index, finding) {
     if (groups.length < 2) {
       return [];
     }
-    const described = groups.map((group) => groupText(group, { consumers, index })).sort();
+    const described = groups.map((group) => groupText(group, { consumers, index })).sort(byText);
     return finding({
       rule: RULE,
       path: owner.file,

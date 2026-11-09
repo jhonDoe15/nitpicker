@@ -34,7 +34,7 @@ tester.run('no-switched-off-tests', noSwitchedOffTests, {
     "it.skipIf(typeof window === 'undefined')('x', () => {});",
     "it.runIf(flag && true)('x', () => {});",
     "it.skipIf(a === 1)('x', () => {});",
-    "it.skipIf(`${flag}`)('x', () => {});",
+    `it.skipIf(\`\${flag}\`)('x', () => {});`,
     "it.skipIf(...flags)('x', () => {});",
   ],
   invalid: [
