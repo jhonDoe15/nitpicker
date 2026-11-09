@@ -1,9 +1,11 @@
+import { decideByTruthTable, needsValues } from '../../../../../../shared/logic/propositional.mjs';
 import { decideSync } from '../../../../../../shared/logic/sync/decide-sync.mjs';
-import { depthFirst, objectChildren } from '../../../../../../shared/traversal.mjs';
+import { key } from '../../../../../../shared/logic/terms.mjs';
+import { depthFirst } from '../../../../../../shared/traversal.mjs';
 import { conditionTerm, fact, mutableNames } from './facts.mjs';
 import { conditionChecks } from './statement-flow.mjs';
+import { outsideFunctions } from './syntax.mjs';
 
-const FUNCTIONS = new Set(['FunctionDeclaration', 'FunctionExpression', 'ArrowFunctionExpression']);
 const CHAINS = new Set(['&&', '||']);
 const MAX_FACTS = 24;
 const REASON_TRIES = 6;
@@ -12,27 +14,42 @@ const VERDICTS = new Map([
   ['false', 'alwaysFalse'],
 ]);
 
+function sharesName(known, reached) {
+  return [...known.names].some((name) => reached.has(name));
+}
+
 function relevant(facts, names) {
   const reached = new Set(names);
   const kept = new Set();
-  for (let grown = true; grown;) {
-    grown = false;
-    for (const known of facts.filter((candidate) => !kept.has(candidate))) {
-      if ([...known.names].some((name) => reached.has(name))) {
-        kept.add(known);
-        for (const name of known.names) reached.add(name);
-        grown = true;
-      }
+  const rounds = [facts];
+  for (const round of rounds) {
+    const joined = round.filter((known) => !kept.has(known) && sharesName(known, reached));
+    for (const known of joined) {
+      kept.add(known);
+      known.names.forEach((name) => reached.add(name));
+    }
+    if (joined.length > 0) {
+      rounds.push(facts);
     }
   }
   return facts.filter((known) => kept.has(known)).slice(-MAX_FACTS);
+}
+
+function solve(conditions, query) {
+  const quick = decideByTruthTable(conditions, query);
+  if (quick !== 'open' && quick !== undefined) {
+    return quick;
+  }
+  return quick === undefined || needsValues(conditions, query)
+    ? decideSync(conditions, query)
+    : 'open';
 }
 
 function reasonFor(facts, query, verdict) {
   const single = facts
     .toReversed()
     .slice(0, REASON_TRIES)
-    .find((known) => decideSync([known.term], query) === verdict);
+    .find((known) => solve([known.term], query) === verdict);
   return single ?? { reason: 'the conditions before it decide it together', origin: 'path' };
 }
 
@@ -40,7 +57,7 @@ function verdictOf(facts, condition) {
   if (facts.length === 0) {
     return undefined;
   }
-  const result = decideSync(
+  const result = solve(
     facts.map(({ term }) => term),
     condition.term,
   );
@@ -59,18 +76,11 @@ function isValueRead(node) {
   return !isObject && !isProperty && !isCallee;
 }
 
-/**
- * Whether TypeScript sees the same: every value the condition reads has a type that is not a
- * union. A union-typed read (`boolean`, `T | undefined`, a tag union) means the check may still be
- * needed to narrow the type, even though the value is decided.
- */
 function isNarrowed(node, services) {
   if (services?.program === null || services?.program === undefined) {
     return true;
   }
-  const reads = [
-    ...depthFirst(node, (child) => (FUNCTIONS.has(child.type) ? [] : objectChildren(child))),
-  ].filter(isValueRead);
+  const reads = [...outsideFunctions(node)].filter(isValueRead);
   return reads.every((read) => !services.getTypeAtLocation(read).isUnion());
 }
 
@@ -85,9 +95,7 @@ function chainOperands(chain) {
 }
 
 function sitesIn(expression) {
-  return [
-    ...depthFirst(expression, (node) => (FUNCTIONS.has(node.type) ? [] : objectChildren(node))),
-  ].filter(
+  return [...outsideFunctions(expression)].filter(
     (node) =>
       node.type === 'ConditionalExpression' ||
       (node.type === 'LogicalExpression' &&
@@ -113,11 +121,7 @@ export const rule = {
   },
   create(context) {
     const { sourceCode } = context;
-    const state = { mutable: undefined };
-    function flowContext() {
-      state.mutable ??= mutableNames(sourceCode);
-      return { sourceCode, mutable: state.mutable };
-    }
+    const flow = { sourceCode, mutable: mutableNames(sourceCode), effects: new WeakMap() };
     function report(node, facts, verdict, query) {
       const { reason } = reasonFor(facts, query, verdict);
       const condition = sourceCode.getText(node);
@@ -141,8 +145,13 @@ export const rule = {
         return;
       }
       const left = [];
+      const repeated = new Set();
       for (const operand of chainOperands(node)) {
-        check(operand, [...facts, ...left]);
+        const operandKey = key(conditionTerm(operand, sourceCode));
+        if (!repeated.has(operandKey)) {
+          check(operand, [...facts, ...left]);
+        }
+        repeated.add(operandKey);
         left.push(
           fact(operand, sourceCode, {
             holds: node.operator === '&&',
@@ -152,7 +161,7 @@ export const rule = {
       }
     }
     function analyze(statements) {
-      for (const found of conditionChecks(statements, flowContext())) {
+      for (const found of conditionChecks(statements, flow)) {
         if (found.condition !== undefined) {
           checkChain(found.condition, found.facts);
         } else {

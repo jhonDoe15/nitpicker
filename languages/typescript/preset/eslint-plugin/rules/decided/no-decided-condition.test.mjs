@@ -10,7 +10,14 @@ const root = realpathSync(mkdtempSync(path.join(tmpdir(), 'nitpicker-decided-con
 writeFileSync(
   path.join(root, 'tsconfig.json'),
   JSON.stringify({
-    compilerOptions: { strict: true, allowJs: true, checkJs: true, noEmit: true, types: [] },
+    compilerOptions: {
+      strict: true,
+      allowJs: true,
+      checkJs: true,
+      noEmit: true,
+      types: [],
+      lib: ['ES2022'],
+    },
     include: ['src'],
   }),
 );
@@ -45,6 +52,7 @@ tester.run('no-decided-condition', rule, {
     'declare function load(): void; export function f(n: number) { let i = n; while (i > 0) { i -= 1; if (i > 0) { load(); } } return i; }',
     'type Hover = { type: "arrow"; anchor: number } | { type: "text" }; export function same(a: Hover, b: Hover) { if (a.type !== b.type) return false; return a.type !== "arrow" || b.type !== "arrow" || a.anchor === b.anchor; }',
     'export function f(a: boolean, b: boolean) { if (!a && !b) return 0; if (a) return 1; if (b) return 2; return 3; }',
+    'export function f(a: { b: boolean }) { if (a.b || a.b) return 1; return 0; }',
   ].map((code) => typed(code)),
   invalid: [
     typed(
@@ -72,5 +80,13 @@ tester.run('no-decided-condition', rule, {
     typed('export function f(ready: boolean) { if (ready) { return ready ? 1 : 2; } return 0; }', [
       error('alwaysTrue', 'ready', 'it is inside the `if (ready)` on line 1'),
     ]),
+    typed(
+      'export const f = (ready: boolean) => { if (ready) { return 1; } return ready ? 2 : 3; };',
+      [error('alwaysFalse', 'ready', 'line 1 returns when `ready` is true')],
+    ),
+    typed(
+      'export function f(kind: string) { if (kind === "a") { return kind === "b" ? 1 : 2; } return 0; }',
+      [error('alwaysFalse', 'kind === "b"', 'it is inside the `if (kind === "a")` on line 1')],
+    ),
   ],
 });
