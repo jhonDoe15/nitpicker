@@ -1,5 +1,5 @@
-import { Linter } from 'eslint';
-import regexp from 'eslint-plugin-regexp';
+import { createRequire } from 'node:module';
+import { lazy } from '../../../shared/rules/finding-helpers.mjs';
 import { patternRuleHints } from '../../../shared/rules/regex/pattern-rules.mjs';
 
 const BACKTRACKING_RULE = 'regexp/no-super-linear-backtracking';
@@ -38,16 +38,19 @@ export const REGEX_DIALECTS = {
 };
 
 const hints = new Map(patternRuleHints());
-const linter = new Linter();
-const lintConfig = [
-  {
-    plugins: { regexp },
-    rules: Object.fromEntries([
-      [VALIDITY_RULE, 'error'],
-      ...[...hints.keys()].map((rule) => [rule, 'error']),
-    ]),
-  },
-];
+const load = createRequire(import.meta.url);
+const engine = lazy(() => ({
+  linter: new (load('eslint').Linter)(),
+  config: [
+    {
+      plugins: { regexp: load('eslint-plugin-regexp') },
+      rules: Object.fromEntries([
+        [VALIDITY_RULE, 'error'],
+        ...[...hints.keys()].map((rule) => [rule, 'error']),
+      ]),
+    },
+  ],
+}));
 
 function withInlineFlags(pattern, flags) {
   const inline = INLINE_FLAGS.exec(pattern);
@@ -144,7 +147,8 @@ function kept(message, { lineAnchor, loopedGroup }) {
 
 function lint({ pattern, lineAnchor }, flags) {
   const source = `new RegExp(${JSON.stringify(pattern)}, ${JSON.stringify(`u${flags}`)});`;
-  const messages = linter.verify(source, lintConfig);
+  const { linter, config } = engine();
+  const messages = linter.verify(source, config);
   if (messages.some(({ ruleId }) => !hints.has(ruleId))) {
     return { skipped: 'syntax outside the shared subset' };
   }
