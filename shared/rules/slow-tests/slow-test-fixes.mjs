@@ -17,5 +17,5 @@ export const SLOW_TEST_MOVES = {
   unittest: ', or move it to an integration test (an integration or e2e folder) if it is one',
   go:
     ', or move it to an integration test (an integration or e2e folder, a *_integration_test.go file, ' +
-    'an integration or e2e build tag, or a test that skips under testing.Short()) if it is one',
+    'an integration or e2e build tag, or a first statement if testing.Short() { t.Skip(...) }) if it is one',
 };
