@@ -18,6 +18,7 @@ import { rule as ruleNoCompatibilityShim } from './rules/signatures/no-compatibi
 import { rule as ruleNoCopiedConstant } from './test-assertions/copied-constants/no-copied-constant.mjs';
 import { rule as ruleNoCopyPastedTests } from './test-quality/no-copy-pasted-tests.mjs';
 import { rule as ruleNoCostlyCollectionForm } from './rules/collections/costly-forms/no-costly-collection-form.mjs';
+import { rule as ruleNoDecidedCondition } from './rules/decided/no-decided-condition.mjs';
 import { rule as ruleNoDefaultExport } from './rules/syntax/no-default-export.mjs';
 import { rule as ruleNoDevDependencyInProduction } from './rules/dependencies/no-dev-dependency-in-production.mjs';
 import { rule as ruleNoDisabledTlsVerification } from './rules/security/tls/no-disabled-tls-verification.mjs';
@@ -138,6 +139,7 @@ export const directoryRules = {
   'no-copied-constant': ruleNoCopiedConstant,
   'no-copy-pasted-tests': ruleNoCopyPastedTests,
   'no-costly-collection-form': ruleNoCostlyCollectionForm,
+  'no-decided-condition': ruleNoDecidedCondition,
   'no-default-export': ruleNoDefaultExport,
   'no-dev-dependency-in-production': ruleNoDevDependencyInProduction,
   'no-disabled-tls-verification': ruleNoDisabledTlsVerification,
