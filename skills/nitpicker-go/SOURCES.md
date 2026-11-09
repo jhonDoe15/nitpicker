@@ -73,7 +73,9 @@ than the others, and this skill teaches its rules before an agent writes Go.
 
 - **Branch coverage from blocks.** `go test -coverprofile` records statement blocks, not branches.
   Every arm of an `if`, `switch` or `select` and every loop body starts a block of its own, so its
-  block count says whether it ran; an empty body's block starts one column after its brace. The
+  block count says whether it ran. The block starts between the arm's brace (or case colon) and its
+  first statement: Go 1.24 starts it at the brace, Go 1.27 at the first statement, and an empty
+  body's block one column after the brace, so an arm takes the block that starts in that span. The
   outcomes that have no block (an `if` without `else` whose condition was false, a switch where no
   case matched) are the evaluations of the branch point minus the entries into its arms, which makes
   an `if err != nil { return err }` count as two outcomes, as it does in JaCoCo and coverage.py. A
