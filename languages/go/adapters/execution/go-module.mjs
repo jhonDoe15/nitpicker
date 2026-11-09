@@ -1,4 +1,4 @@
-import { existsSync, readFileSync } from 'node:fs';
+import { existsSync, readFileSync, statSync } from 'node:fs';
 import path from 'node:path';
 import { pathInside } from '../../../../shared/filesystem.mjs';
 
@@ -65,7 +65,7 @@ export function readGoModule(projectRoot) {
 
 export function moduleFileText(root, file) {
   const absolute = pathInside(root, file);
-  return absolute !== undefined && existsSync(absolute)
+  return absolute !== undefined && existsSync(absolute) && statSync(absolute).isFile()
     ? readFileSync(absolute, 'utf8')
     : undefined;
 }

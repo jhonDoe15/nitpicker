@@ -45,6 +45,7 @@
   "languages/java/adapters/kotlin-e2e/review-rules/kotlin-preset-review-rules-exceptions.e2e.test.mjs": 69,
   "languages/java/adapters/kotlin-e2e/review-rules/kotlin-preset-review-rules-findings.e2e.test.mjs": 175,
   "languages/java/adapters/kotlin-e2e/review-rules/kotlin-preset-review-rules-serialization.e2e.test.mjs": 62,
+  "languages/java/adapters/kotlin-e2e/review-rules/kotlin-psi-call-facts.e2e.test.mjs": 40,
   "languages/java/adapters/kotlin-e2e/style/kotlin-style-files.e2e.test.mjs": 24,
   "languages/java/adapters/kotlin-e2e/test-sources/kotlin-test-sources.e2e.test.mjs": 101,
   "languages/java/adapters/kotlin-metrics.e2e.test.mjs": 48
