@@ -674,14 +674,17 @@ self.items.append(item)`), also through a package `__init__` that re-exports it 
   `sa_column`), core `Table(...)` columns and `ForeignKeyConstraint` in `__table_args__`. A column is
   covered by `index=True` or `unique=True`, by being the first primary-key column, or by an `Index`,
   `UniqueConstraint` or `PrimaryKeyConstraint` (in `__table_args__`, in the `Table`, or a
-  module-level `Index("ix", Model.column)`) whose first column is it; a partial index
-  (`postgresql_where`) does not count. Django indexes foreign keys itself, so only a `ForeignKey`
+  module-level `Index("ix", Model.column)`, also with `.desc()`) whose first column is it; a
+  partial index (`postgresql_where`) does not count. `__table_args__` may be a literal, a sum of
+  tuples or a `declared_attr` function. Columns of a mixin or abstract base defined in the same
+  module are judged with the class that inherits them. Django indexes foreign keys itself, so only a `ForeignKey`
   with `db_index=False` is reported, unless `Meta.indexes`, `unique_together`, `index_together` or a
   `UniqueConstraint` lists the field (or `<field>_id`) first; a conditional index does not count,
   and `db_constraint=False` passes. A project whose manifests name only MySQL or MariaDB drivers, or
   whose settings use `django.db.backends.mysql` without PostgreSQL, is left alone. SQLAlchemy
-  models are left to the migrations when the project has an Alembic `versions/` folder next to an
-  `env.py`; `foreign-key-index` then checks the revisions. Tests are skipped.
+  models are left to the migrations when the project has an Alembic `versions/` folder with a
+  revision (`down_revision = ...`) next to an `env.py`; `foreign-key-index` then checks the
+  revisions. Manifests are read from the project root and `requirements/`. Tests are skipped.
 - `falsy-default` reports a parameter whose annotation can be falsy (`int`, `float`, `str`, `bytes`,
   `bool`, a list, dict, set or tuple type, a `Sequence`, `Mapping`, `Decimal`, `timedelta`) and is
   `None` by default or by its type, when the body writes `param or default` or

@@ -12,7 +12,7 @@ def findings(context, models):
     return [
         finding(context.path, RULE, f"{model.name}.{label}", node)
         for model in models
-        for node, label, _ in unindexed(model)
+        for node, label in unindexed(model)
     ]
 
 

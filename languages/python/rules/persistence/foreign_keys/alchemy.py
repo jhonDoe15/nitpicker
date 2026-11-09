@@ -1,7 +1,7 @@
 import ast
 
 from checks.common import dotted_name, string_value
-from persistence.foreign_keys.keys import Column, Model
+from persistence.foreign_keys.keys import Column, Model, with_bases
 
 ROOTS = ("sqlalchemy.", "flask_sqlalchemy.", "sqlmodel.")
 DB_RECEIVER = "db"
@@ -16,6 +16,8 @@ INDEX, UNIQUE, PRIMARY, FOREIGN = (
 )
 PARTIAL_SUFFIX = "_where"
 TABLE_ARGS = "__table_args__"
+ORDERS = {"asc", "desc", "nulls_first", "nulls_last"}
+COLUMN_KWARGS = "sa_column_kwargs"
 
 
 def kind(node, context):
@@ -37,13 +39,34 @@ def keyword_value(call, name):
 
 
 def column_name(node):
+    if isinstance(node, ast.Call) and isinstance(node.func, ast.Attribute) and node.func.attr in ORDERS:
+        node = node.func.value
+    if isinstance(node, ast.Name):
+        return node.id
     text = string_value(node)
     if text is not None:
         return text
     return node.attr if isinstance(node, ast.Attribute) else None
 
 
+def dict_true(node, name):
+    if not isinstance(node, ast.Dict):
+        return False
+    return any(
+        string_value(key) == name and isinstance(value, ast.Constant) and value.value is True
+        for key, value in zip(node.keys, node.values)
+    )
+
+
+def is_indexed(call):
+    extra = keyword_value(call, COLUMN_KWARGS)
+    names = ("index", "unique")
+    return any(keyword_true(call, name) or dict_true(extra, name) for name in names)
+
+
 def column_of(call, attribute, context):
+    if not isinstance(call, ast.Call):
+        return None
     called = kind(call, context)
     inner = keyword_value(call, "sa_column")
     if called == FIELD and kind(inner, context) in COLUMNS:
@@ -56,13 +79,15 @@ def column_of(call, attribute, context):
         return None
     named = string_value(call.args[0]) if call.args else None
     flags = {"foreign"} if foreign else set()
-    flags |= {"indexed"} if keyword_true(call, "index") or keyword_true(call, "unique") else set()
+    flags |= {"indexed"} if is_indexed(call) else set()
     flags |= {"primary"} if keyword_true(call, "primary_key") else set()
     names = {name for name in (attribute, named) if name}
     return Column(attribute or named, names, call, flags)
 
 
 def constraint(model, call, context):
+    if not isinstance(call, ast.Call):
+        return
     called = kind(call, context)
     partial = any((item.arg or "").endswith(PARTIAL_SUFFIX) for item in call.keywords)
     if called == INDEX and not partial:
@@ -73,9 +98,22 @@ def constraint(model, call, context):
         model.keys.append((call, [column_name(item) for item in call.args[0].elts]))
 
 
+def args_entries(value):
+    pending, entries = [value], []
+    for node in pending:
+        if isinstance(node, ast.BinOp):
+            pending.extend([node.left, node.right])
+        elif isinstance(node, (ast.Tuple, ast.List)):
+            entries.extend(node.elts)
+        elif isinstance(node, ast.FunctionDef):
+            pending.extend(item.value for item in ast.walk(node) if isinstance(item, ast.Return) and item.value)
+        else:
+            entries.append(node)
+    return entries
+
+
 def table_args(model, value, context):
-    entries = value.elts if isinstance(value, (ast.Tuple, ast.List)) else [value]
-    for entry in entries:
+    for entry in args_entries(value):
         if isinstance(entry, ast.Call):
             constraint(model, entry, context)
 
@@ -92,8 +130,14 @@ def assigned(item):
 
 def class_model(node, context):
     model = Model(node.name)
+    model.bases = [base.id for base in node.bases if isinstance(base, ast.Name)]
     for item in node.body:
         name, value = assigned(item)
+        if isinstance(item, ast.FunctionDef) and item.name == TABLE_ARGS:
+            name, value = TABLE_ARGS, item
+        if isinstance(item, ast.Expr) and kind(item.value, context) == INDEX:
+            constraint(model, item.value, context)
+            continue
         if name == TABLE_ARGS:
             table_args(model, value, context)
             continue
@@ -128,7 +172,9 @@ def module_indexes(context, models):
     for node in ast.walk(context.tree):
         if kind(node, context) != INDEX or not node.args[1:]:
             continue
-        if isinstance(context.parents.get(id(node)), (ast.Tuple, ast.List, ast.Call)):
+        parent = context.parents.get(id(node))
+        nested = isinstance(parent, (ast.Tuple, ast.List, ast.Call))
+        if nested or isinstance(context.parents.get(id(parent)), ast.ClassDef):
             continue
         owner = by_name.get(index_owner(node.args[1]))
         if owner is not None:
@@ -143,4 +189,4 @@ def alchemy_models(context):
         elif kind(node, context) == TABLE:
             models.append(table_model(node, context))
     module_indexes(context, models)
-    return models
+    return with_bases(models)
