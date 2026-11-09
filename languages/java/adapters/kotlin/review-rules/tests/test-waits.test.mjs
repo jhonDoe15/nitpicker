@@ -125,6 +125,43 @@ describe('fixed sleeps in Kotlin tests', () => {
     ]);
   });
 
+  it('looks through the lambda of a project inline function unless it may run elsewhere', () => {
+    const block = (inlining) => [
+      { name: 'block', type: '() -> Unit', ...(inlining ? { inlining } : {}) },
+    ];
+    const helpers = file({
+      functions: [
+        fn('retrying', { modifiers: ['inline'], parameters: block() }),
+        fn('later', { modifiers: ['inline'], parameters: block('crossinline') }),
+        fn('plain', { parameters: block() }),
+        fn('kept', { modifiers: ['inline'], parameters: block('noinline') }),
+        fn('mixed', { modifiers: ['inline'], parameters: block() }),
+        fn('mixed', { owner: 'Other', parameters: block() }),
+        fn('thread', { modifiers: ['inline'], parameters: block() }),
+      ],
+    });
+    const clocked = loop('true', true);
+    const waits = ['retrying', 'later', 'plain', 'kept', 'mixed'].map((host, index) =>
+      wait('sleep', { scopes: scopes(lambda(host), clocked), line: index + 1 }),
+    );
+    waits.push(wait('sleep', { scopes: scopes(lambda('thread')), line: 6 }));
+    const files = [
+      testFile({ classes: [klass('SampleTest')], functions: [testMethod()], waits }),
+      helpers,
+    ];
+
+    const findings = run(testWaitFindings, files, {
+      isProduction: productionTypeResolver({ files, projectRoot: '/nonexistent' }),
+    });
+
+    expect(summary(findings)).toEqual([
+      `${FIXED_SLEEP_RULE} SampleTest.waits 2`,
+      `${FIXED_SLEEP_RULE} SampleTest.waits 3`,
+      `${FIXED_SLEEP_RULE} SampleTest.waits 4`,
+      `${FIXED_SLEEP_RULE} SampleTest.waits 5`,
+    ]);
+  });
+
   it('allows a sleep in a mock answer or a thread body and reports it in other lambdas', () => {
     const findings = waitsIn([
       wait('sleep', { scopes: scopes(lambda('answers')), line: 1 }),

@@ -45,7 +45,8 @@ import { PYTHON_TOOLS, pythonConfigEntries } from './python-tool-configs.mjs';
 
 const PACKAGE_JSON = 'package.json';
 const KOTLIN_TOOLS = ['detekt', 'ktlint', 'ktfmt'];
-const GO_TOOLS = ['gofumpt', 'goimports'];
+const GO_TOOLS = ['gofumpt', 'goimports', 'staticcheck'];
+const STATICCHECK_CONFIG = 'staticcheck.conf';
 const SCRIPT_PRESETS = new Set([undefined, 'typescript', 'javascript']);
 const SCRIPT_TOOL_FILES = new Map([
   ['prettier', () => PRETTIER_PROJECT_FILES],
@@ -120,6 +121,12 @@ function styleFilesOf(tool, side) {
   }
 }
 
+function goToolFiles(tool, files) {
+  return tool === 'staticcheck'
+    ? files.filter((file) => path.posix.basename(file) === STATICCHECK_CONFIG)
+    : GOLANGCI_FILES;
+}
+
 function kotlinFiles(tool, side) {
   return styleFilesOf(tool, side)
     .files.filter((file) => tool === 'detekt' || path.basename(file) === '.editorconfig')
@@ -140,7 +147,7 @@ function candidates(tool, side) {
     return config.preset === 'kotlin' ? kotlinFiles(tool, side) : [];
   }
   if (GO_TOOLS.includes(tool)) {
-    return config.preset === 'go' ? GOLANGCI_FILES : [];
+    return config.preset === 'go' ? goToolFiles(tool, files) : [];
   }
   if (SCRIPT_TOOL_FILES.has(tool) || tool === 'eslint' || isProjectConfigTool(tool)) {
     return SCRIPT_PRESETS.has(config.preset) ? scriptCandidates(tool, side) : [];
