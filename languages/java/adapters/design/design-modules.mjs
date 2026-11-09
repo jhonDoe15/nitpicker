@@ -1,7 +1,7 @@
 import { existsSync } from 'node:fs';
 import path from 'node:path';
 import { moduleProject } from '../../builds/java-modules.mjs';
-import { MAVEN_REPORT_DIRECTORY } from '../../maven/maven-build.mjs';
+import { MAVEN_REPORT_DIRECTORY } from '../../maven/module/maven-module.mjs';
 import { resolveInside } from '../../../../shared/conventions/read-inside.mjs';
 import { DESIGN_FACTS_FILE, designFindings } from './design-findings.mjs';
 
