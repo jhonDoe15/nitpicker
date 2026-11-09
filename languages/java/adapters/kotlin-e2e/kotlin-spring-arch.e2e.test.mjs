@@ -53,6 +53,7 @@ const EXPECTED = [
   'spring-typed-request-field shop.intake.Freeform Freeform.points:field:IntakeController.shapes Intake.kt',
   'spring-typed-request-field shop.intake.OrderLine OrderLine.options:field:IntakeController.create Intake.kt',
   'spring-typed-request-field shop.intake.Profile Profile.put:any-setter:IntakeController.profile Intake.kt',
+  'spring-unmapped-exception shop.returns.ReturnController show:ReturnNotFound:ReturnService.find Returns.kt',
 ];
 
 describe.skipIf(!enabled)('Spring architecture rules on a Kotlin Spring project', () => {

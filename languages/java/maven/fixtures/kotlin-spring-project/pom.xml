@@ -21,6 +21,7 @@
     <dependency><groupId>org.springframework.data</groupId><artifactId>spring-data-jpa</artifactId><version>3.5.3</version><scope>provided</scope></dependency>
     <dependency><groupId>org.springframework.boot</groupId><artifactId>spring-boot</artifactId><version>3.5.5</version><scope>provided</scope></dependency>
     <dependency><groupId>org.springframework.boot</groupId><artifactId>spring-boot-autoconfigure</artifactId><version>3.5.5</version><scope>provided</scope></dependency>
+    <dependency><groupId>org.jooq</groupId><artifactId>jooq</artifactId><version>3.19.39</version><scope>provided</scope></dependency>
     <dependency><groupId>org.springframework.security</groupId><artifactId>spring-security-config</artifactId><version>6.5.3</version><scope>provided</scope></dependency>
     <dependency><groupId>org.springframework.security</groupId><artifactId>spring-security-web</artifactId><version>6.5.3</version><scope>provided</scope></dependency>
     <dependency><groupId>org.springframework.security</groupId><artifactId>spring-security-core</artifactId><version>6.5.3</version><scope>provided</scope></dependency>

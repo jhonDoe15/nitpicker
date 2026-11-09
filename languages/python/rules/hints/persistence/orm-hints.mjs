@@ -25,6 +25,14 @@ export const PERSISTENCE_HINTS = [
   },
   {
     tool: RULES_TOOL,
+    rules: ['unindexed-foreign-key'],
+    describe: (subject) =>
+      `The foreign key \`${subject}\` has no index that starts with it, so every delete of a referenced row and every lookup by it scans the table`,
+    allowed:
+      'Add `index=True` to the column (SQLAlchemy `mapped_column`/`Column`, SQLModel `Field`), an `Index` whose first column is it, or drop `db_index=False` (Django) or list the field first in `Meta.indexes`. Only MySQL indexes a foreign-key column by itself; PostgreSQL, SQL Server and SQLite do not. An exception fits only when the table is known to stay small.',
+  },
+  {
+    tool: RULES_TOOL,
     rules: ['in-memory-query'],
     describe: (subject) => {
       const [model, shape] = subject.split(' ');
