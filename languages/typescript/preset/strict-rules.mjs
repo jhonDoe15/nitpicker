@@ -3,6 +3,7 @@ import { isPythonTouchedRule } from '../../python/rules/touched-rules.mjs';
 import { strictBoundaryRules } from './architecture/strict-boundary-rules.mjs';
 import { i18nRuleIds } from './eslint-config/i18n/i18n-rules.mjs';
 import { isUnusedParameterFinding } from './eslint-config/policy/unused-parameters.mjs';
+import { regexpRuleIds } from './eslint-config/regexp/regexp-rules.mjs';
 import { reactRuleIds, reactTestRuleIds } from './eslint-config/react/react-rules.mjs';
 import { serverRuleIds } from './eslint-config/server/server-rules.mjs';
 
@@ -35,6 +36,7 @@ export const strictEslintRuleIds = [
   'nitpicker/no-forwarding-method-alias',
   'nitpicker/no-forwarding-wrapper',
   'nitpicker/no-handwritten-boundary-guard',
+  'nitpicker/no-in-memory-query',
   'nitpicker/no-magic-numbers',
   'nitpicker/no-many-to-many-cascade-remove',
   'nitpicker/no-module-level-let',
@@ -89,9 +91,8 @@ export const strictEslintRuleIds = [
   'no-restricted-globals',
   'no-restricted-properties',
   'no-restricted-syntax',
-  'regexp/no-super-linear-backtracking',
   'nitpicker/require-atomic-updates',
-  'regexp/no-useless-flag',
+  ...regexpRuleIds,
 ];
 
 const PRETTIER_RULE = 'prettier/prettier';

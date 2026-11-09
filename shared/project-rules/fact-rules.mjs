@@ -43,7 +43,7 @@ export const FACT_RULE_LANGUAGES = {
     python: true,
   },
   'sibling-copy-edit': { ...TYPESCRIPT_AND_JAVASCRIPT, ...JVM, python: true },
-  'shared-used-by-one-feature': { ...TYPESCRIPT_AND_JAVASCRIPT, python: true },
+  'shared-used-by-one-feature': { ...TYPESCRIPT_AND_JAVASCRIPT, ...JVM, python: true },
   'feature-internal-import': { ...FEATURE_BOUNDARY_LANGUAGES },
   'shared-imports-feature': { ...FEATURE_BOUNDARY_LANGUAGES },
   'feature-cycle': { ...FEATURE_BOUNDARY_LANGUAGES },
