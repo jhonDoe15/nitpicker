@@ -41,6 +41,8 @@ func supersededBy() map[string][]string {
 		"nilness":  {"SA4031", "SA5000"},
 		"errcheck": {"SA5001", "SA9001"},
 		"SA1019":   {"G506", "G507"},
+		"G118":     {"lostcancel"},
+		"G115":     {"G109"},
 	}
 }
 
@@ -86,8 +88,8 @@ func analyze(directory string, settings options, patterns []string) (Result, err
 	for found := range objects.findings() {
 		seen[found] = true
 	}
-	findings, err := selected(handWritten(kept(seen), sources(loaded)), settings.project)
-	result.Findings = findings
+	chosen, err := selected(slices.Collect(maps.Keys(seen)), settings.project)
+	result.Findings = handWritten(kept(present(chosen)), sources(loaded))
 	return result, err
 }
 
@@ -202,6 +204,14 @@ func kept(seen map[Finding]bool) []Finding {
 			cmp.Compare(left.Message, right.Message))
 	})
 	return findings
+}
+
+func present(findings []Finding) map[Finding]bool {
+	set := map[Finding]bool{}
+	for _, found := range findings {
+		set[found] = true
+	}
+	return set
 }
 
 func lineKey(found Finding) string {

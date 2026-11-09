@@ -44,11 +44,13 @@ allowed form and ends with its exception entry.
 - Random values an attacker must not guess come from crypto/rand (`rand.Text()`, `rand.Read`);
   math/rand needs an exception that says why (simulations, jitter).
 - SQL takes values as query parameters, never through `fmt.Sprintf` or `+`.
-- Files are written with 0o600 or less and folders created with 0o750 or less; open a new file with
+- Files are written with 0o600 (or fewer bits) and folders created with 0o750 (or fewer bits); open a new file with
   `os.OpenFile(path, os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0o600)` instead of `os.Create`. Temporary
   files come from `os.CreateTemp`.
 - Paths, commands, URLs, redirects and templates from request input go through a fixed root
-  (`os.Root`), a fixed list or escaping; log request values as structured `slog` fields.
+  (`os.Root`), a fixed map (`commands[key]`) or a `url.URL` built on a fixed host; log request
+  values as structured `slog` fields. Archives are extracted through an `os.Root`, and
+  decompression copies through `io.LimitReader`. These checks apply to test files too.
 - Servers set `ReadHeaderTimeout` (`http.Server{...}.ListenAndServe()`, never
   `http.ListenAndServe`), cookies set `Secure`, `HttpOnly` and `SameSite`, TLS keeps certificate
   checks on with `MinVersion: tls.VersionTLS12`, and RSA keys have at least 2048 bits.

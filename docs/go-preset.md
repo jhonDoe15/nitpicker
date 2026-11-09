@@ -222,13 +222,16 @@ message does not already name it, and by its exception entry:
   httpmux, inline (calls to functions marked `//go:fix inline`), nilness, reflectvaluecompare,
   scannererr, sqlrowserr and unusedwrite.
 - **gosec**: every rule, the AST rules (G1xx to G6xx) and the SSA and taint analyzers (G113, G115,
-  G118 to G124, G407, G408, G602, G701 to G710), except the four in the table below. The file
-  permission rules share one limit: G302, G306 and G307 want 0o600 or less (gosec's own G307
-  default, 0o666, never reports `os.Create`), and G301 wants 0o750 or less for folders. G601
+  G118 to G124, G407, G408, G602, G701 to G710), except the five in the table below, on test
+  files too. The file permission rules share one limit, set explicitly so a gosec upgrade cannot
+  move it: G302, G306 and G307 accept 0o600 or a mode with fewer bits (gosec's own G307 default,
+  0o666, never reports `os.Create`), and G301 accepts 0o750 or fewer bits for folders. G601
   (taking the address of a range variable) reports only in files whose Go version is below 1.22,
-  where the variable is still shared between iterations. Rules that can flag legitimate code (G101
-  hardcoded credentials, G103 `unsafe`, G203 `template.HTML`, G404 `math/rand`) say in their
-  message when an exception with a reason is the right answer. `#nosec` comments do nothing.
+  where the variable is still shared between iterations. Rules that can flag legitimate code
+  (hardcoded credentials, `unsafe`, `template.HTML`, `math/rand`, weak hashes used as checksums,
+  readable file modes, SQL identifiers, script-readable cookies, and the taint rules, which accept
+  no validation) say in their message when an exception with a reason is the right answer.
+  `#nosec` comments do nothing.
 
 The linters skip generated files (`// Code generated ... DO NOT EDIT.`), as staticcheck does; a
 package of only generated files needs no package comment. An analyzer that fails on a package that
@@ -238,18 +241,19 @@ and `#nosec` comments do nothing: the only way past a finding is an
 
 **Off, with the reason.** Each of these reports the same problem as a check that runs:
 
-| Check                                                                  | Reason                                                                                                                             |
-| ---------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------- |
-| SA1014, SA1017, SA2000, SA2002, SA4018, SA4021, SA5009, SA5010, SA9006 | `go vet` reports the same code (unmarshal, sigchanyzer, waitgroup, testinggoroutine, assign, appends, printf, ifaceassert, shift)  |
-| S1029                                                                  | SA6003 reports the same loop                                                                                                       |
-| ST1023                                                                 | QF1011 reports the same declaration                                                                                                |
-| SA5005                                                                 | never reports on current Go versions; `runtime.AddCleanup` replaces finalizers                                                     |
-| vet `sortslice`                                                        | SA1028 reports the same call                                                                                                       |
-| vet `shadow`                                                           | flags the idiomatic `if err := f(); err != nil` inside a function with an outer `err`                                              |
-| vet `fieldalignment`, `atomicalign`                                    | memory layout, not one way to write code; SA1027 covers 32-bit atomics                                                             |
-| modernize `appendclipped`, `bloop`, `fmtappendf`, `slicesdelete`       | left out of the suite upstream (not nil-preserving, or less clear)                                                                 |
-| gosec G104                                                             | errcheck reports every unchecked error, blank assignments included                                                                 |
-| gosec G107, G204, G304                                                 | G704, G702 and G703 report the same URL, command and path problems by following request input; these flag every non-constant value |
+| Check                                                                  | Reason                                                                                                                                                                                                                     |
+| ---------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| SA1014, SA1017, SA2000, SA2002, SA4018, SA4021, SA5009, SA5010, SA9006 | `go vet` reports the same code (unmarshal, sigchanyzer, waitgroup, testinggoroutine, assign, appends, printf, ifaceassert, shift)                                                                                          |
+| S1029                                                                  | SA6003 reports the same loop                                                                                                                                                                                               |
+| ST1023                                                                 | QF1011 reports the same declaration                                                                                                                                                                                        |
+| SA5005                                                                 | never reports on current Go versions; `runtime.AddCleanup` replaces finalizers                                                                                                                                             |
+| vet `sortslice`                                                        | SA1028 reports the same call                                                                                                                                                                                               |
+| vet `shadow`                                                           | flags the idiomatic `if err := f(); err != nil` inside a function with an outer `err`                                                                                                                                      |
+| vet `fieldalignment`, `atomicalign`                                    | memory layout, not one way to write code; SA1027 covers 32-bit atomics                                                                                                                                                     |
+| modernize `appendclipped`, `bloop`, `fmtappendf`, `slicesdelete`       | left out of the suite upstream (not nil-preserving, or less clear)                                                                                                                                                         |
+| gosec G104                                                             | errcheck reports every unchecked error, blank assignments included                                                                                                                                                         |
+| gosec G107, G204, G304                                                 | flag every non-constant URL, command or path; G704, G702 and G703 report the ones that come from request data, program arguments, the environment or stdin. Values from parameters or configuration are no longer reported |
+| gosec G504                                                             | the `net/http/cgi` weakness it names was fixed in Go 1.6.3, so it only flags working code                                                                                                                                  |
 
 **Overlaps on one line.** When two checks report the same line, the more specific one stays:
 
@@ -264,6 +268,8 @@ and `#nosec` comments do nothing: the only way past a finding is an
 | vet `gofixdirective`                 | vet `inline` on the same directive |
 | `go vet` printf                      | SA1006 (Go 1.24 and later modules) |
 | gosec G506, G507 (weak hash import)  | SA1019 (deprecated import)         |
+| vet `lostcancel`                     | gosec G118 (cancel not called)     |
+| gosec G109 (`strconv.Atoi` result)   | gosec G115 (integer conversion)    |
 
 **Project config.** `staticcheck.conf` files are read only when the project opts in with
 `"tools": { "staticcheck": { "precedence": ["project"] } }`. Then each package's merged
