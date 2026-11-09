@@ -21,6 +21,8 @@ export const PACKAGE_EXCEPTION_RULES = Object.values(PACKAGE_RULE_IDS);
 export const LARGE_FILE_BYTES = 1024 * 1024;
 
 const EVERY_LANGUAGE = { typescript: true, java: true, python: true, kotlin: true, go: true };
+const IMPORTS_COMPILE =
+  'an import that resolves to no class is a compile error in the source sets the build compiles, which are the ones nitpicker reads, so the build fails and reports it before any analyzer runs';
 const TYPESCRIPT_AND_PYTHON = { typescript: true, java: false, python: true, kotlin: false };
 const GO_RESOLVES_IMPORTS =
   'the compiler rejects an import that no package provides, so it is a `build/compile-error` finding';
@@ -97,7 +99,7 @@ export const HYGIENE_RULES = [
     check: 'dead-code',
     limit: 'an import that resolves to no file and no package',
     enforcedBy: TYPESCRIPT_AND_PYTHON,
-    notApplicable: { go: GO_RESOLVES_IMPORTS },
+    notApplicable: { java: IMPORTS_COMPILE, kotlin: IMPORTS_COMPILE, go: GO_RESOLVES_IMPORTS },
   },
 ];
 

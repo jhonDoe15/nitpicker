@@ -4,7 +4,7 @@ type Report struct {
 	Files     []File     `json:"files"`
 	Functions []Function `json:"functions"`
 	Types     []Type     `json:"types"`
-	Tests     []Function `json:"tests"`
+	Tests     []Test     `json:"tests"`
 	Errors    []string   `json:"errors"`
 
 	Definitions []Definition `json:"definitions"`
@@ -40,4 +40,9 @@ type Type struct {
 	End     int    `json:"end"`
 	Methods int    `json:"methods"`
 	Fields  int    `json:"fields"`
+}
+
+type Test struct {
+	Function
+	ShortSkip bool `json:"shortSkip"`
 }

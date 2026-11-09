@@ -10,7 +10,8 @@ const FILES = {
     'package store\n\nfunc unused() {}\n\nfunc OnlyTests() {}\n\nfunc Windows() {}\n\n//export hook\nfunc hook() {}\n',
   'internal/store/store_windows.go':
     'package store\n\nfunc init() { Windows() }\n\nfunc winOnly() {}\n',
-  'api/api.go': 'package api\n\nfunc Public() {}\n\nfunc private() {}\n',
+  'api/api.go':
+    'package api\n\nfunc Public() {}\n\nfunc private() {}\n\nfunc unusedEverywhere() {}\n',
 };
 for (const [file, text] of Object.entries(FILES)) {
   mkdirSync(path.join(root, path.dirname(file)), { recursive: true });
@@ -50,7 +51,11 @@ const DEADCODE = [
   },
   {
     Path: 'example.com/shop/api',
-    Funcs: [dead('api/api.go', 3, 'Public'), dead('api/api.go', 5, 'private')],
+    Funcs: [
+      dead('api/api.go', 3, 'Public'),
+      dead('api/api.go', 5, 'private'),
+      dead('api/api.go', 7, 'unusedEverywhere'),
+    ],
   },
 ];
 
@@ -69,6 +74,7 @@ describe('deadcode findings', () => {
         ],
       },
       testOnly: [{ path: 'internal/store/store.go', symbol: 'OnlyTests' }],
+      unused: [{ path: 'api/api.go', location: { line: 7 } }],
     });
     expect(
       findings.map(({ rule, path: file, location, message }) => [

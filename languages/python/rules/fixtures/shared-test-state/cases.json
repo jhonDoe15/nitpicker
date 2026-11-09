@@ -1,0 +1,7 @@
+[
+  {
+    "tool": "python-rules",
+    "rule": "shared-test-state",
+    "mention": "function-scoped fixture"
+  }
+]

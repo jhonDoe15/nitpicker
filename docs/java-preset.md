@@ -11,6 +11,10 @@ findings. The comparison is the language-neutral core (`compareFindings`, rename
 which the conformance suite in [`spec/conformance`](../spec/conformance/README.md) covers. The Java
 side contributes only two things: producing reports, and converting them into findings.
 
+In a comparison, PIT mutates every class on both sides, and head starts from the PIT results of the
+base run, so it runs again only the mutants of changed classes and of classes whose tests changed;
+see [Mutation in a comparison](java-preset/mutation-in-a-comparison.md).
+
 Every rule the preset can report has an entry in the [rule reference](https://github.com/jhonDoe15/nitpicker/blob/latest/docs/rules/README.md): [PMD](https://github.com/jhonDoe15/nitpicker/blob/latest/docs/rules/java-pmd.md), [Checkstyle](https://github.com/jhonDoe15/nitpicker/blob/latest/docs/rules/java-checkstyle.md), [SpotBugs](https://github.com/jhonDoe15/nitpicker/blob/latest/docs/rules/java-spotbugs.md), [Error Prone](https://github.com/jhonDoe15/nitpicker/blob/latest/docs/rules/java-errorprone.md) and [nitpicker's own rules](https://github.com/jhonDoe15/nitpicker/blob/latest/docs/rules/java-nitpicker.md), with the allowed form and the `exceptions` entry of each. `nitpicker explain <tool/rule>` prints an entry.
 
 The JDK, Gradle or Maven a CI job needs, and recipes for GitHub Actions, GitLab CI and Jenkins, are in
@@ -25,6 +29,7 @@ Each topic has its own page, so two changes to different topics never edit the s
 - [Slices](java-preset/slices.md)
 - [Slice 4: ArchUnit](java-preset/slice-4-archunit.md)
 - [Slice 7: mutation with PIT](java-preset/slice-7-mutation-with-pit.md)
+- [Mutation in a comparison](java-preset/mutation-in-a-comparison.md)
 - [Test frameworks](java-preset/test-frameworks.md)
 - [Slice 2: CLI and reporter integration](java-preset/slice-2-cli-and-reporter-integration.md)
 - [Slice 1: tools, reports and identities](java-preset/slice-1-tools-reports-and-identities.md)

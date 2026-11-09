@@ -8,11 +8,14 @@ import { readGoDuplicateFindings } from './duplicates/go-duplicates.mjs';
 import { goFactFindings, readGoFacts } from './facts/go-fact-findings.mjs';
 import { GO_LINT_TOOLS } from './configuration/go-config.mjs';
 import { formatFindings } from './formatting/go-format.mjs';
+import { lintFindings } from './lint/go-lint.mjs';
 import { readFormatReport } from './go-steps.mjs';
 import { goStructureFindings } from './structure/go-structure.mjs';
 import { readInspect } from './structure/go-inspect.mjs';
 import { goSlowTestFindings } from './tests/go-slow-tests.mjs';
 import { readTestRun, testRunFindings } from './tests/go-test.mjs';
+
+const UNUSED_LINT_RULE = 'U1000';
 
 export function goRouteRule(finding) {
   return GO_LINT_TOOLS.includes(finding.tool)
@@ -22,17 +25,18 @@ export function goRouteRule(finding) {
 
 function formatterFindings(context) {
   return Object.entries(readFormatReport(context.reportRoot)).flatMap(([formatter, files]) =>
-    formatFindings({ formatter, from: context.formatting.from, files }),
+    formatFindings(context, { formatter, files }),
   );
 }
 
-function deadCodeFindings(context, policy) {
+function deadCodeFindings(context, { policy, lint }) {
   const facts = readGoFacts(context);
   const factFindings = goFactFindings(facts, policy);
   const testOnly = factFindings.filter(({ rule }) => rule === UNUSED_API_RULE_IDS.testOnlyExport);
+  const unused = lint.filter(({ rule }) => rule === UNUSED_LINT_RULE);
   return [
     ...factFindings,
-    ...readDeadcodeFindings(context, { facts, testOnly }),
+    ...readDeadcodeFindings(context, { facts, testOnly, unused }),
     ...readTidyFindings(context),
   ];
 }
@@ -40,14 +44,16 @@ function deadCodeFindings(context, policy) {
 export function readGoFindings(context, policy = {}) {
   const report = readInspect(context.reportRoot);
   const testRun = readTestRun(context.reportRoot);
+  const lint = lintFindings(context);
   return [
     ...formatterFindings(context),
     ...readVetFindings(context),
+    ...lint,
     ...testRunFindings(testRun, context.snapshot),
     ...goSlowTestFindings(context, testRun, report),
     ...goStructureFindings(report, context.projectRoot, policy),
     ...readGoDuplicateFindings(context.reportRoot, context.projectRoot),
     ...goCouplingFindings(report, context.module),
-    ...deadCodeFindings(context, policy),
+    ...deadCodeFindings(context, { policy, lint }),
   ];
 }
