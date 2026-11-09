@@ -198,17 +198,17 @@ func TestRecordsEachBranchWithItsArms(t *testing.T) {
 	fallthroughAt := at(14, 3)
 	want := []Branch{
 		{File: "grade.go", Function: "Grade", Kind: "if", At: at(4, 2), Arms: []Arm{
-			{Label: "the if body", From: at(4, 16), To: at(4, 17)},
+			{Label: "the if body", From: at(4, 16), To: at(5, 3)},
 			{Label: "the else branch", From: at(6, 3), To: at(6, 9)},
 		}},
 		{File: "grade.go", Function: "Grade", Kind: "if", At: at(6, 9), Arms: []Arm{
-			{Label: "the if body", From: at(6, 23), To: at(6, 24)},
+			{Label: "the if body", From: at(6, 23), To: at(7, 3)},
 		}, Implicit: "the condition false (the if body skipped)"},
 		{File: "grade.go", Function: "Grade", Kind: "range", At: at(9, 2), Arms: []Arm{
-			{Label: "the loop body", From: at(9, 27), To: at(9, 28)},
+			{Label: "the loop body", From: at(9, 27), To: at(10, 3)},
 		}},
 		{File: "grade.go", Function: "Grade", Kind: "switch", At: at(12, 2), Arms: []Arm{
-			{Label: "case 1, 2", From: at(13, 12), To: at(13, 12), Fallthrough: &fallthroughAt},
+			{Label: "case 1, 2", From: at(13, 12), To: at(14, 3), Fallthrough: &fallthroughAt},
 			{Label: "case 3", From: at(15, 9), To: at(15, 9)},
 		}, Implicit: "no case matching"},
 		{File: "grade.go", Function: "Grade", Kind: "select", At: at(17, 2), Arms: []Arm{
