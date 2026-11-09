@@ -11,8 +11,10 @@ from silent_tests.calls import (
     is_fixture,
     is_test_function,
     terminal_call,
+    test_cases,
     test_functions,
 )
+from silent_tests.body import analyze, local_scan, methods_of
 
 SUPPORT_STEM = re.compile(r"(?:^|_)(?:testing|assertions?|asserts?)(?:_|$)")
 MIN_TEST_FILES = 3
@@ -84,3 +86,24 @@ def build_helpers(project):
 
 def assertion_helpers(project):
     return project.memo("assertion-helpers", build_helpers)
+
+
+class Case:
+    def __init__(self, subject, function, owner, records):
+        self.subject = subject
+        self.function = function
+        self.owner = owner
+        self.records = records
+
+
+def build_cases(context):
+    scan = local_scan(context, assertion_helpers(context.project))
+    cases = []
+    for subject, function, owner in test_cases(context.tree):
+        scan.methods = methods_of(owner, scan)
+        cases.append(Case(subject, function, owner, analyze(function, scan)))
+    return cases
+
+
+def analyzed_cases(context):
+    return context.project.memo(("test-cases", context.path), lambda _: build_cases(context))

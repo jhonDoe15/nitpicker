@@ -49,10 +49,34 @@ Part of the [nitpicker-kotlin](../SKILL.md) skill. Write these forms from the st
   `a += a + b`. Tests may apply an operator to one value twice to exercise it.
 - No top-level or `object` function that only passes its parameters, in order, to another function
   with the same parameters (`pmd/StaticForwardingWrapper`); call that function. Factories named
-  `of` or `from` are fine.
+  `of` or `from` are fine. The same goes for a member that only passes its parameters to another
+  member of its class (`pmd/ForwardingMethodAlias`); when that member is less visible, rename it to the alias's name and delete the alias.
+- Blocking calls (`Files.readString`, `File.readText`, JDBC, `Future.get()`, `latch.await()`,
+  `queue.take()`, `Mono.block()`) in a `suspend` function, coroutine builder or `flow { }` go through
+  `withContext(ioDispatcher) { ... }` (or `flowOn(ioDispatcher)`), or `runInterruptible(ioDispatcher) { ... }`
+  for an interruptible one, with the `CoroutineDispatcher` injected through the constructor, never
+  `Dispatchers.IO` at the call site (detekt `InjectDispatcher`); `withContext(NonCancellable)` does not
+  move the call (`kotlin-source/BlockingCallInCoroutine`). A `withTimeout` block needs a suspension point:
+  `withTimeout(1.seconds) { blocking() }` never times out, so offload the blocking call inside it
+  (`kotlin-source/TimeoutWithoutSuspension`).
 - A data class, a `@ConfigurationProperties` class, the public properties of any class and the
   defaulted parameters of a public function have `tags` or `tag`, not both
   (`pmd/SingularAndPluralMember`); one item is a one-element list.
+- Do not update a `var` property of the class or file from a value read before a suspend call of
+  the same function (`total += repository.fetch()`, or `val current = total` before the call and
+  `total = current + delta` after it): call the suspend function into a local first and then
+  update the property, or hold one shared `Mutex` (a property, not a local) around the whole
+  read-modify-write; a `launch` inside the lock does not hold it
+  (`pmd/NonAtomicUpdateAcrossSuspension`).
+- Take a dependency as a constructor parameter; never look it up where it is used with Koin
+  `get()`/`inject()`, a Guice `Injector`, `CDI.current()` or JNDI (`pmd/ServiceLocatorLookup`). With
+  Koin, pass it as a constructor parameter in the module definition (`single { Orders(get()) }`), and
+  take a `Lazy<T>` or a function type for a deferred lookup. Compose and Android: a
+  `koinViewModel()` or `koinInject()` default parameter value and Android components (Activity,
+  Fragment, Service, BroadcastReceiver, ContentProvider, Application) are fine. Only `main`, Koin
+  definitions and functions taking a Koin `Scope`, a Guice `Module`'s `configure`,
+  `@Provides`/`@Produces` functions and `@Bean` functions of a `@Configuration` class look
+  dependencies up.
 - The lambda passed to `computeIfAbsent`, `compute`, `computeIfPresent`, `merge`, or `getOrPut`
   on a `ConcurrentMap`, never changes the same map, not even from a callback it starts
   (`pmd/RecursiveMapUpdate`). Attach the cleanup to the result:
