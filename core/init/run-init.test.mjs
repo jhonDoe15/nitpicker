@@ -23,9 +23,9 @@ const PYTHON_ARGUMENTS = "coverage mypy pytest 'mutmut>=3,<4'";
 const WORKFLOW_PATH = '.github/workflows/nitpicker.yml';
 const APPROVAL_PATH = '.github/workflows/nitpicker-policy-approval.yml';
 const TEMPLATES = path.join(import.meta.dirname, 'templates');
-const LABEL_NOTE =
+const LABEL =
   'A person accepts a policy loosening with the accept-policy-change label; create it once: gh label create accept-policy-change';
-const NOTES = [LABEL_NOTE, 'Public repo: allow pull_request_target for it in Actions > Policies'];
+const NOTES = [LABEL, 'Public repo: allow pull_request_target in Settings > Actions > Policies'];
 const CREATED = ['created nitpicker.config.json'];
 const SET_UP = ['nitpicker.config.json is already set up'];
 const YARN_WORKFLOW = [
