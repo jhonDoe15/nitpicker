@@ -201,6 +201,18 @@ val sum = ${Array.from({ length: 3000 }, () => '1').join(' + ')}
 fun nested() = ${'run { '.repeat(800)}1${' }'.repeat(800)}
 `;
 
+export const CALLEE_NOT_A_NAME = `package demo.callee
+
+fun make(): () -> Int = { 1 }
+
+fun twice(): Int {
+    if (make()() > 0) {
+        return make()()
+    }
+    return (make())()
+}
+`;
+
 export const PREDICATE_SYMBOLS = `package demo.symbols
 
 enum class Phase { NEW, \`in\`, DONE }

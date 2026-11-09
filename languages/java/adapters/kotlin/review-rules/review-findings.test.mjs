@@ -5,8 +5,8 @@ import { afterEach, describe, expect, it } from 'vitest';
 import { parseAnalyzerReport } from '../../../../../core/diff/comparison/finding-schema.mjs';
 import { KOTLIN_EXCEPTION_RULES, validateKotlinOptions } from '../kotlin-options.mjs';
 import { buildViews } from './build-view.mjs';
-import { readKotlinFacts } from './kotlin-facts.mjs';
 import { withoutCoveredFindings } from './review-finding.mjs';
+import { readKotlinFacts } from './report/kotlin-report.mjs';
 import { readKotlinReviewFindings } from './review-findings.mjs';
 import { KOTLIN_REVIEW_EXCEPTION_RULES } from './review-rules.mjs';
 import { SPRING_RULES } from './spring/spring-messages.mjs';
@@ -37,7 +37,10 @@ function projectWith(facts) {
   const reportRoot = path.join(root, 'build/nitpicker');
   mkdirSync(reportRoot, { recursive: true });
   if (facts !== undefined) {
-    writeFileSync(path.join(reportRoot, 'kotlin-facts.json'), JSON.stringify(facts));
+    writeFileSync(
+      path.join(reportRoot, 'kotlin-facts.json'),
+      JSON.stringify({ design: { modules: [], types: [], callables: [] }, ...facts }),
+    );
   }
   return { root, reportRoot };
 }
@@ -116,6 +119,19 @@ describe('readKotlinReviewFindings for coroutine lifetimes', () => {
     expect(findings.map(({ tool, rule }) => `${tool}/${rule}`).sort()).toEqual([
       'kotlin-source/ChildCoroutineOutlivesResource',
       'kotlin-source/SuspendFunInFinallySection',
+    ]);
+  });
+});
+
+describe('readKotlinReviewFindings design facts', () => {
+  it('adds a tool error when the facts report lacks the design facts of its files', () => {
+    const { root, reportRoot } = projectWith({ files: [file()] });
+    writeFileSync(path.join(reportRoot, 'kotlin-facts.json'), JSON.stringify({ files: [file()] }));
+
+    const findings = readKotlinReviewFindings({ reportRoot, projectRoot: root, manifest: {} });
+
+    expect(findings.map(({ rule, classification }) => `${rule} ${classification}`)).toEqual([
+      'design-facts tool-error',
     ]);
   });
 });

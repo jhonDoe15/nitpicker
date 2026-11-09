@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { LANGUAGES, RULES } from '../../policy.mjs';
+import { DESIGN_RULES } from '../../project-rules/design/design-rules.mjs';
 import { exceptionHint } from '../exceptions.mjs';
 import { sharedFactFindings } from './evaluate.mjs';
 import {
@@ -195,13 +196,15 @@ describe('the shared fact rules', () => {
       'test-only-export',
       'doc-comment-content',
       CONSOLE,
+      ...DESIGN_RULES,
     ];
+    const withoutDesign = python.filter((rule) => !DESIGN_RULES.includes(rule));
     expect(sharedFactExceptionRules()).toEqual(python);
-    expect(registeredFactRules('python')).toEqual(python);
+    expect(registeredFactRules('python')).toEqual(withoutDesign);
     withLanguageRegistered('feature-cycle', 'kotlin', () => {
       expect(sharedFactExceptionRules()).toEqual(python);
       expect(registeredFactRules('kotlin').includes('feature-cycle')).toBe(true);
-      expect(registeredFactRules('python')).toEqual(python);
+      expect(registeredFactRules('python')).toEqual(withoutDesign);
     });
   });
 });

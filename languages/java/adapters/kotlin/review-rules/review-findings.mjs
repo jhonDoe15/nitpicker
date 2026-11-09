@@ -15,6 +15,7 @@ import { recursiveMapUpdateFindings } from './main/map-updates/recursive-map-upd
 import { serviceLookupFindings } from './main/service-lookups/service-lookups.mjs';
 import { unboundedPoolFindings } from './main/thread-pools/unbounded-pools.mjs';
 import { unusedOptionFindings } from './main/unused-options/unused-options.mjs';
+import { kotlinDesignFindings } from './design/kotlin-design.mjs';
 import { validationTargetFindings } from './validation/validation-targets.mjs';
 import { buildViews, javaMentions } from './build-view.mjs';
 import { childLifetimeFindings } from './coroutines/resource-lifetime.mjs';
@@ -59,7 +60,7 @@ export function readKotlinFanOutFindings(context) {
 }
 
 export function readKotlinReviewFindings(context) {
-  const { manifest, projectRoot, modules = [] } = context;
+  const { manifest, projectRoot, reportRoot, modules = [] } = context;
   const { own, projectFiles, javaRoots, build } = projectView(context);
   const finding = findingFactory();
   const honesty = testHonestyFindings({
@@ -99,10 +100,11 @@ export function readKotlinReviewFindings(context) {
     ...loadEffectFindings(own, { finding, declaredIn: projectFiles }),
     ...unboundedPoolFindings(own, { finding }),
     ...recursiveMapUpdateFindings(own, { finding, declaredIn: projectFiles }),
+    ...kotlinDesignFindings(reportRoot, { environment: context.environment }),
     ...unusedOptionFindings(own, {
       finding,
       build,
-      reportRoot: context.reportRoot,
+      reportRoot,
       serialization: manifest.kotlinSerialization === true,
       mentionedInJava: javaMentions(projectRoot, [manifest]),
     }),

@@ -17,6 +17,11 @@ function insideOf(base, name) {
 }
 
 const PSI_SOURCES = path.resolve(import.meta.dirname, '../../../gradle/kotlin-psi');
+const CLASSPATH_VARIABLE = 'NITPICKER_KOTLIN_COMPILER_CLASSPATH';
+
+function javaTool(javaHome, name) {
+  return javaHome === undefined ? name : path.join(javaHome, 'bin', name);
+}
 
 const PRINT_CLASSPATH = `allprojects {
     plugins.withId('org.jetbrains.kotlin.jvm') {
@@ -72,7 +77,7 @@ export function compilePsiProgram({ java, classpath, workspace }) {
     .filter((entry) => entry.endsWith('.java'))
     .map((entry) => path.join(PSI_SOURCES, entry));
   const result = spawnSync(
-    path.join(java, 'bin/javac'),
+    javaTool(java, 'javac'),
     ['-proc:none', '-d', output, '-cp', classpath, ...sources],
     { encoding: 'utf8', timeout: 180_000 },
   );
@@ -80,24 +85,30 @@ export function compilePsiProgram({ java, classpath, workspace }) {
   return output;
 }
 
-export function prepareKotlinPsi(workspace, project, gradle) {
-  const { javaHome, classpath } = gradleClasspath({ gradle, project, workspace });
+export function prepareCompiler({ workspace, project, gradle, environment }) {
+  const named = environment[CLASSPATH_VARIABLE];
+  const { javaHome, classpath } = named
+    ? { javaHome: environment.JAVA_HOME || undefined, classpath: named }
+    : gradleClasspath({ gradle, project, workspace });
   return {
     javaHome,
     classpath,
     classes: compilePsiProgram({ java: javaHome, classpath, workspace }),
+    pinned: pinnedKotlinCompiler(),
   };
 }
 
-export function runKotlinPsi(psi, project, roots = ['src']) {
+export function runPsiProgram(compiler, project, roots = ['src'], properties = []) {
   const metricsOutput = path.join(project, 'metrics.json');
   const factsOutput = path.join(project, 'facts.json');
   const result = spawnSync(
-    path.join(psi.javaHome, 'bin/java'),
+    javaTool(compiler.javaHome, 'java'),
     [
-      `-Dnitpicker.kotlinCompiler=${pinnedKotlinCompiler()}`,
+      `-Dnitpicker.kotlinCompiler=${compiler.pinned}`,
+      ...properties.map((property) => `-D${property}`),
+      ...(compiler.published === true ? ['-Dnitpicker.published=true'] : []),
       '-cp',
-      `${psi.classpath}${path.delimiter}${psi.classes}`,
+      `${compiler.classpath}${path.delimiter}${compiler.classes}`,
       'nitpicker.kotlinpsi.KotlinPsi',
       metricsOutput,
       factsOutput,
@@ -112,4 +123,12 @@ export function runKotlinPsi(psi, project, roots = ['src']) {
     metrics: result.status === 0 ? JSON.parse(readFileSync(metricsOutput, 'utf8')) : undefined,
     facts: result.status === 0 ? JSON.parse(readFileSync(factsOutput, 'utf8')) : undefined,
   };
+}
+
+export function prepareKotlinPsi(workspace, project, gradle) {
+  return prepareCompiler({ workspace, project, gradle, environment: {} });
+}
+
+export function runKotlinPsi(psi, project, roots = ['src']) {
+  return runPsiProgram(psi, project, roots);
 }
