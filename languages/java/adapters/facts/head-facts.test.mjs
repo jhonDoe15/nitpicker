@@ -206,11 +206,13 @@ describe('javaHeadFacts', () => {
     const directory = realpathSync(mkdtempSync(path.join(tmpdir(), 'nitpicker-head-facts-')));
     roots.push(directory);
     const file = path.join(directory, 'policy.json');
+    const layout = { sharedRoots: ['**/common'], featureRoots: ['**/modules'] };
     writeFileSync(
       file,
       JSON.stringify({
         spring: true,
         kotlin: { formatter: 'ktlint' },
+        layout,
         history: { coChange: true },
       }),
     );
@@ -219,9 +221,10 @@ describe('javaHeadFacts', () => {
     });
     const unset = readRunnerPolicy(['--project-root', '/p', '--kotlin-formatter', 'none'], {});
 
-    expect([policy.spring, policy.kotlinFormatter, policy.history]).toEqual([
+    expect([policy.spring, policy.kotlinFormatter, policy.layout, policy.history]).toEqual([
       true,
       'ktlint',
+      layout,
       { coChange: true },
     ]);
     expect([unset.policy.kotlinFormatter, unset.policy.history]).toEqual(['none', undefined]);
