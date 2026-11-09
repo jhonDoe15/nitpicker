@@ -62,7 +62,9 @@ than the others, and this skill teaches its rules before an agent writes Go.
   function's text with its own name masked): a rename that leaves the body as it was keeps them.
 - **Table-driven tests and the slow-test limits.** Table-driven tests are the Go convention; the
   5 s / 30 s budgets and the integration markers (folders, file suffix, build tag,
-  `testing.Short()`) cover the ways Go projects already separate their slow tests.
+  `testing.Short()`) cover the ways Go projects already separate their slow tests. The
+  `testing.Short()` marker counts only as a skip guard at the top of the test (read from the
+  syntax tree), because a text match let `_ = testing.Short()` lift any test to 30 s (#707).
 
 ## Rejected ideas
 
