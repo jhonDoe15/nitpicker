@@ -2,12 +2,14 @@ import { absoluteTextReportPath } from '../../diff/reporting/reporters.mjs';
 import { renderConsoleSummary } from '../../diff/reporting/summary.mjs';
 import { writeGithubOutput } from '../../diff/reporting/github/emit.mjs';
 import { renderClosingSections } from '../../exceptions/stale-exceptions.mjs';
+import { colorEnabled, displayPath } from '../../../shared/messages/terminal/terminal-text.mjs';
+import { stagedHeader } from '../../quick/summary.mjs';
 import { comparisonExitCode } from '../../diff/reporting/failing-tests/failing-tests.mjs';
 import { comparisonJson } from '../../diff/reporting/json-output/json-output.mjs';
 
 function consoleSummary({ cli, report, outputRoot }) {
-  const color = cli.environment.NO_COLOR === undefined;
-  const diagnosticsPath = absoluteTextReportPath(outputRoot);
+  const color = colorEnabled(cli.stdout, cli.environment);
+  const diagnosticsPath = displayPath(absoluteTextReportPath(outputRoot));
   return renderConsoleSummary(report, { color, details: cli.options.details, diagnosticsPath });
 }
 
@@ -38,7 +40,7 @@ export function writeComparisonOutcome({ cli, report, base, outputRoot }) {
 function writeConsoleOutcome({ cli, report, base, outputRoot }) {
   const unchanged = report.summary.noChanges === true;
   if (!unchanged) {
-    cli.stdout.write(`Base: ${base.baseRef} (${base.source})\n`);
+    cli.stdout.write(`Base: ${base.baseRef} (${base.source})\n${stagedHeader(report.summary)}`);
   }
   cli.stdout.write(consoleSummary({ cli, report, outputRoot }));
   if (!unchanged) {

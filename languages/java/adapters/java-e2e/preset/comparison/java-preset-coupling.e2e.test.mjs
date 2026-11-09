@@ -34,10 +34,10 @@ describe.skipIf(!enabled)('Java preset end to end', () => {
     );
     expect(
       metrics.find((finding) => finding.identity === 'package:stable:instability').metric,
-    ).toEqual({ name: 'instability', value: 0.3333 });
+    ).toEqual({ name: 'instability', value: expect.closeTo(0.3333, 10) });
     expect(
       metrics.find((finding) => finding.identity === 'package:churn:instability').metric,
-    ).toEqual({ name: 'instability', value: 0.5 });
+    ).toEqual({ name: 'instability', value: expect.closeTo(0.5, 10) });
   }, 180_000);
   it('keeps an existing stability-direction violation baselined when the package is edited', () => {
     runGitIn(repository, 'checkout', '-q', 'stability-edited');

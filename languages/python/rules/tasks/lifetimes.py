@@ -83,22 +83,27 @@ class Lifetimes:
         self.findings = []
 
     def scan(self, statements, stack, closures):
-        for statement in statements:
-            if isinstance(statement, DEFINITIONS):
-                resources = {e.name for e in stack if e.kind != "group"}
+        pending = [(iter(statements), stack)]
+        while pending:
+            items, current = pending[-1]
+            statement = next(items, None)
+            if statement is None:
+                pending.pop()
+            elif isinstance(statement, DEFINITIONS):
+                resources = {e.name for e in current if e.kind != "group"}
                 closures[statement.name] = free_names(statement) & resources
             elif isinstance(statement, WITHS):
-                inner = stack + entries_of(statement, self.aliases, self.bindings)
-                self.scan(statement.body, inner, closures)
+                inner = current + entries_of(statement, self.aliases, self.bindings)
+                pending.append((iter(statement.body), inner))
             elif not isinstance(statement, SCOPES):
-                self.statement(statement, stack, closures)
+                self.statement(statement, current, closures)
+                blocks = list(blocks_of(statement))
+                pending.extend((iter(block), current) for block in reversed(blocks))
 
     def statement(self, statement, stack, closures):
         for call in calls_in(statement):
             self.group_spawn(call, statement, stack, closures)
         self.bare_task(statement, stack)
-        for block in blocks_of(statement):
-            self.scan(block, stack, closures)
 
     def group_spawn(self, call, statement, stack, closures):
         func = call.func

@@ -1,0 +1,7 @@
+[
+  {
+    "tool": "python-rules",
+    "rule": "handler-entity-type",
+    "mention": "schema, not an entity"
+  }
+]
