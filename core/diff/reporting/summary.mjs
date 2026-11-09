@@ -245,7 +245,7 @@ const ERROR_HEADLINE_LIMIT = 300;
 
 const ERROR_LINE_PATTERN = /error TS\d+|Error:|ERR_|Cannot find|not found|ENOENT/u;
 
-function errorHeadline(message) {
+export function errorHeadline(message) {
   const link = troubleshootingLinkOf(String(message));
   const text = singleLine(String(message).replace(link ?? '', ''));
   const start = Math.max(text.search(ERROR_LINE_PATTERN), 0);

@@ -1,9 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import { parseArguments, USAGE_TEXT } from '../command/arguments.mjs';
+import { parseArguments } from '../command/arguments.mjs';
+import { usageText } from '../help/usage-text.mjs';
 
 const DEFAULTS = {
   all: false,
   details: false,
+  json: false,
   fix: false,
   help: false,
   version: false,
@@ -55,10 +57,11 @@ describe('--quick and --staged arguments', () => {
   });
 
   it('lists both flags in the usage text', () => {
-    const flagged = USAGE_TEXT.split('\n').filter((line) => /--(?:quick|staged)\b/u.test(line));
+    const text = usageText({ analyzers: { preset: 'typescript', names: [] } });
+    const flagged = text.split('\n').filter((line) => /--(?:quick|staged)\b/u.test(line));
 
     expect(flagged.map((line) => line.trim().split(/\s{2,}/u)[0])).toEqual([
-      '[--rule <substring>]... [--details] [--quick] [--staged]',
+      '[--rule <substring>]... [--details] [--json] [--quick] [--staged]',
       '--quick',
       '--staged',
     ]);

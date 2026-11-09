@@ -22,24 +22,14 @@ import { outputRootFor } from '../diff/reporting/reporters.mjs';
 import { assertHasCommit } from '../diff/git/repository/base-ref.mjs';
 import { partialRunField, partialRunOf } from '../diff/reporting/partial-run/partial-run.mjs';
 import { failingHeadTests } from '../diff/reporting/failing-tests/failing-tests.mjs';
+import { snapshotJson } from '../diff/reporting/json-output/json-output.mjs';
 
 function stderrWarning(stderr) {
   return (message) => stderr.write(`nitpicker: ${message}\n`);
 }
 
-export function runSnapshotCli({
-  options,
-  currentProjectRoot,
-  analyzers,
-  quick,
-  captureHead = captureWorkingTree,
-  headPolicy,
-  stdout,
-  stderr,
-  environment,
-  runTasks,
-  scope,
-}) {
+export function runSnapshotCli(cli) {
+  const { options, currentProjectRoot, analyzers, headPolicy, stderr, runTasks, scope } = cli;
   const outputRoot = outputRootFor(currentProjectRoot, options.outputRoot, 'snapshot');
   const selectedAnalyzers = selectAnalyzers(analyzers, options.analyzerNames);
   if (selectedAnalyzers.length === 0) {
@@ -49,7 +39,7 @@ export function runSnapshotCli({
 
   const { repositoryRoot, relativeProjectPath, capturedSha } = captureSnapshot(
     currentProjectRoot,
-    captureHead,
+    cli.captureHead ?? captureWorkingTree,
   );
   const snapshot = { commitSha: capturedSha, warn: stderrWarning(stderr) };
   const report = withTemporaryWorktree(repositoryRoot, snapshot, (worktreeRoot) =>
@@ -65,31 +55,32 @@ export function runSnapshotCli({
   Object.assign(
     report.summary,
     partialRunField(partialRunOf(options.analyzerNames, analyzers, selectedAnalyzers)),
-    runProfileSummary({ quick, staged: options.staged }),
+    runProfileSummary({ quick: cli.quick, staged: options.staged }),
   );
-  publishSnapshot(report, {
-    outputRoot,
+  report.text = writeSnapshotReports(outputRoot, report, {
     projectPath: relativeProjectPath,
     repositoryRoot,
-    options,
-    cli: { currentProjectRoot, environment, stdout, stderr },
   });
-  return snapshotExitCode(report);
+  return writeSnapshotOutcome(cli, report, outputRoot);
 }
 
-function publishSnapshot(report, { outputRoot, projectPath, repositoryRoot, options, cli }) {
-  const { currentProjectRoot, environment, stdout, stderr } = cli;
-  report.text = writeSnapshotReports(outputRoot, report, { projectPath, repositoryRoot });
-  stdout.write(renderSnapshotConsoleSummary(report, path.join(outputRoot, 'report.txt')));
-  stdout.write(renderSnapshotRuleFilterSection(report, options.ruleFilters));
+function writeSnapshotOutcome(cli, report, outputRoot) {
+  const { stdout, jsonOutput } = cli;
+  if (jsonOutput === undefined) {
+    stdout.write(renderSnapshotConsoleSummary(report, path.join(outputRoot, 'report.txt')));
+  }
+  stdout.write(renderSnapshotRuleFilterSection(report, cli.options.ruleFilters));
   writeGithubOutput({
     kind: 'snapshot',
     report,
-    projectRoot: currentProjectRoot,
-    environment,
+    projectRoot: cli.currentProjectRoot,
+    environment: cli.environment,
     stdout,
-    stderr,
+    stderr: cli.stderr,
   });
+  const exitCode = snapshotExitCode(report);
+  jsonOutput?.write(snapshotJson({ report, outputRoot, exitCode }));
+  return exitCode;
 }
 
 function snapshotExitCode({ summary, toolErrors }) {

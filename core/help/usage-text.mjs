@@ -20,6 +20,7 @@ export const FLAGS = [
   ['--analyzer <name>', 'Run only this analyzer (repeatable).'],
   ['--rule <substring>', 'List the findings whose rule matches (repeatable).'],
   ['--details', 'Print every new and held finding with its full message.'],
+  ['--json', 'Print one compact JSON result on stdout instead of the summary.'],
   ['--quick', 'Run only the fast checks and skip the tests and what builds on them.'],
   ['--staged', 'Judge the git index (what the next commit would contain), not the working tree.'],
   ['--output <dir>', 'Write the reports to this directory.'],
@@ -65,7 +66,7 @@ const CACHE_PUBLISH_USAGE =
   'nitpicker cache publish [--analyzer <name>]... [--shard-count <n> --shard-index <i>] [--help]';
 const USAGE_LINES = [
   'nitpicker [<path>...] [--base <ref>] [--output <dir>] [--all | --fix] [--analyzer <name>]...',
-  '          [--rule <substring>]... [--details] [--quick] [--staged]',
+  '          [--rule <substring>]... [--details] [--json] [--quick] [--staged]',
   '          [--shard-count <n> --shard-index <i>] [--defer-exit] [--no-cache]',
   '          [--accept-policy-change=<digest>] [--help] [--version]',
   INIT_USAGE,
