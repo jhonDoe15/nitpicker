@@ -25,7 +25,7 @@ const PAIRED = { '--shard-count': ['--shard-index', '0'], '--shard-index': ['--s
 const USAGE_LINK = docsUrl('docs/usage.md');
 const EXPECTED_USAGE_HEAD = [
   'Usage: nitpicker [<path>...] [--base <ref>] [--output <dir>] [--all | --fix] [--analyzer <name>]...',
-  '                 [--rule <substring>]... [--details] [--shard-count <n> --shard-index <i>]',
+  '                 [--rule <substring>]... [--details] [--json] [--shard-count <n> --shard-index <i>]',
   '                 [--defer-exit] [--no-cache] [--accept-policy-change=<digest>] [--help] [--version]',
   '       nitpicker init [--agents-md] [--ci github] [--help]',
   '       nitpicker aggregate --input-root <dir> --shard-count <n> [--output <dir>] [--policy-root <dir>] [--details]',
@@ -50,6 +50,7 @@ const EXPECTED_USAGE_HEAD = [
   '  --analyzer <name>                Run only this analyzer (repeatable).',
   '  --rule <substring>               List the findings whose rule matches (repeatable).',
   '  --details                        Print every new and held finding with its full message.',
+  '  --json                           Print one compact JSON result on stdout instead of the summary.',
   '  --output <dir>                   Write the reports to this directory.',
   '  --shard-count <n>                Split the analyzers over n jobs (with --shard-index).',
   '  --shard-index <i>                Run shard i of the split (0 to n-1).',
@@ -169,12 +170,12 @@ function parseError(text) {
   throw new Error(`${text} parsed`);
 }
 
-function projectWith(config, markers = {}) {
+function projectWith(config, projectFiles = {}) {
   const root = temporaryRoot('nitpicker-help-');
-  writeFiles(
-    root,
-    config === undefined ? markers : { ...markers, 'nitpicker.config.json': config },
-  );
+  writeFiles(root, {
+    ...projectFiles,
+    ...(config === undefined ? {} : { 'nitpicker.config.json': config }),
+  });
   return root;
 }
 
@@ -211,7 +212,7 @@ describe('nitpicker --help', () => {
   );
 
   it('lists the analyzers of the preset the config names, and uses one in the example', () => {
-    const root = projectWith('{ "preset": "java" }', { 'pom.xml': '<project/>' });
+    const root = projectWith('{ "preset": "java" }', { 'pom.xml': '<project/>\n' });
     const java = ['Analyzers of the java preset (for --analyzer):', '  java, repository-hygiene'];
 
     expect(runIn(root, '--help').stdoutText).toBe(expectedUsage(java, 'java'));
@@ -224,7 +225,7 @@ describe('nitpicker --help', () => {
         disable: ['repository-hygiene'],
         analyzers: [{ name: 'house-rules', command: './scripts/house-rules' }],
       }),
-      { 'go.mod': 'module app\n' },
+      { 'go.mod': 'module example.com/help\n' },
     );
     const go = ['Analyzers of the go preset (for --analyzer):', '  go, house-rules'];
 
@@ -234,7 +235,7 @@ describe('nitpicker --help', () => {
   it('lists the analyzers of the project a run would check, not of a config further up', () => {
     const { root } = createGitRepository({
       'nitpicker.config.json': '{ "preset": "go" }',
-      'go.mod': 'module app\n',
+      'go.mod': 'module example.com/help\n',
       'packages/app/package.json': '{}',
     });
     const go = ['Analyzers of the go preset (for --analyzer):', '  go, repository-hygiene'];
