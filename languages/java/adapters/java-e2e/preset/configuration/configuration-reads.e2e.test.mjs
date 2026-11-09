@@ -5,7 +5,7 @@ import {
   preparePmdProbe,
   readPmdProbeFindings,
   runPmdProbe,
-} from '../../test-support/pmd-probe.mjs';
+} from '../../test-support/pmd/pmd-probe.mjs';
 import { exceptionRoute } from '../../../../../../shared/exceptions/rule-names.mjs';
 import { appendSentence } from '../../../../../../shared/messages/exception-sentence.mjs';
 
