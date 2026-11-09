@@ -1448,7 +1448,7 @@ allprojects {
                         def classes = kotlinPsiClasses(project, compiler)
                         def roots = kotlinSourceDirs().collect { relative(it) } +
                             kotlinSourceDirsOf('test').collect { 'test:' + relative(it) }
-                        def excluded = new File(temporaryDir, 'excluded.txt')
+                        def excluded = reportDir.get().file('kotlin-excluded.txt').asFile
                         project.ext.nitpickerWriteKotlinExcluded(excluded, kotlinExcludedFiles())
                         runProcess('KotlinPsi', [new File(home, 'java').absolutePath, '-Djava.awt.headless=true',
                                 "-Dnitpicker.kotlinCompiler=${pinned.kotlinCompiler}".toString(),
