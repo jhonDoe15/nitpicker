@@ -102,17 +102,23 @@ describe('project tool configs in the head policy', () => {
     );
     const nested = 'export default { ignoreDependencies: [() => 1], paths: { a: new Set() } };';
     expect(failure(project({ 'knip.js': nested }))).toBe(
-      unread('knip.js', `knip.js: ignoreDependencies[0] is a function; ${ONLY_DATA}`),
+      unread(
+        'knip.js',
+        `knip.js could not be loaded: ignoreDependencies[0] is a function; ${ONLY_DATA}`,
+      ),
     );
     expect(failure(project({ 'knip.js': 'export default { tags: new Date(0) };' }))).toBe(
-      unread('knip.js', `knip.js: tags is a Date; ${ONLY_DATA}`),
+      unread('knip.js', `knip.js could not be loaded: tags is a Date; ${ONLY_DATA}`),
     );
     const thrown = project({ 'knip.js': 'throw new Error("boom");' });
     expect(failure(thrown)).toBe(
-      unread('knip.js', `Error loading ${path.join(thrown, 'knip.js')}: boom`),
+      unread(
+        'knip.js',
+        `knip.js could not be loaded: Error loading ${path.join(thrown, 'knip.js')}: boom`,
+      ),
     );
     expect(failure(project({ 'knip.js': 'process.exit(0);' }))).toBe(
-      unread('knip.js', 'the config exited (code 0) before it finished loading'),
+      unread('knip.js', 'knip.js could not be loaded: it ended the process with exit code 0'),
     );
     expect(() => projectToolLayer('knip', { precedence: ['project'] })).toThrow(
       'The head policy holds no project knip config',
@@ -124,7 +130,7 @@ describe('project tool configs in the head policy', () => {
       'knip.ts': 'export default new Promise(() => setInterval(() => undefined, 1000));',
     });
     expect(failure(root, { timeout: 3000 })).toBe(
-      unread('knip.ts', 'the config did not finish loading within 3 seconds'),
+      unread('knip.ts', 'knip.ts did not finish loading within 3 s'),
     );
   });
 
@@ -234,7 +240,7 @@ describe('dependency-cruiser configs in the head policy', () => {
     expect(settingsOf(viaExtends).projectConfigError).toBe(
       unreadCruiser(
         '.dependency-cruiser.json',
-        `"extends": "${shared}" in .dependency-cruiser.json is outside the project`,
+        `.dependency-cruiser.json could not be loaded: "extends": "${shared}" in .dependency-cruiser.json is outside the project`,
       ),
     );
     const viaRequire = project({
@@ -243,7 +249,7 @@ describe('dependency-cruiser configs in the head policy', () => {
     expect(settingsOf(viaRequire).projectConfigError).toBe(
       unreadCruiser(
         '.dependency-cruiser.cjs',
-        `${shared} in .dependency-cruiser.cjs is outside the project`,
+        `.dependency-cruiser.cjs could not be loaded: ${shared} in .dependency-cruiser.cjs is outside the project`,
       ),
     );
   });
