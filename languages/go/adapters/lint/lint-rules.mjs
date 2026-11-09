@@ -1,4 +1,4 @@
-import { GOCRITIC_HINTS } from './gocritic-hints.mjs';
+import { GOCRITIC_HINTS, GOCRITIC_MESSAGE_HINTS } from './gocritic-hints.mjs';
 
 function deferredClose(value) {
   return `\`defer func() { err = errors.Join(err, ${value}.Close()) }()\``;
@@ -156,6 +156,7 @@ const MESSAGE_HINTS = [
     /^key-value pairs/u,
     'Pass typed attributes: `slog.String("name", name)`, `slog.Any("order", order)`.',
   ],
+  ...GOCRITIC_MESSAGE_HINTS,
 ];
 
 const RULE_NAMES = new Map([['errcheck', 'unchecked']]);

@@ -103,6 +103,8 @@ func double(value int) int { return value * 2 }
 func Ordered(names, others []string) {
 	sort.Slice(names, func(i, j int) bool { return others[i] < others[j] }) // want sortSlice
 	slices.Sort(names)
+	sort.Slice(names, func(i, j int) bool { return names[j] < names[i] }) // want sortSlice
+	sort.Slice(others, func(i, j int) bool { return others[i] > others[j] })
 }
 
 var () // want emptyDecl

@@ -3,6 +3,7 @@ package gocritic
 import (
 	"bytes"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"strings"
@@ -65,12 +66,18 @@ func ShownOnce(name Name) string {
 	return name.String()
 }
 
-func Quoted(name string) string {
-	return fmt.Sprintf(`"%s" is missing`, name) // want sprintfQuotedString
+func Header(name string) string {
+	return fmt.Sprintf("attachment; filename=\"%s\"", name)
 }
 
-func QuotedOnce(name string) string {
-	return fmt.Sprintf("%q is missing", name)
+func Report(writer io.Writer, count int) error {
+	_, err := io.WriteString(writer, fmt.Sprintf("%d items", count)) // want preferFprint
+	return err
+}
+
+func ReportOnce(writer io.Writer, count int) error {
+	_, err := fmt.Fprintf(writer, "%d items", count)
+	return err
 }
 
 func Path(dir, file string) string {

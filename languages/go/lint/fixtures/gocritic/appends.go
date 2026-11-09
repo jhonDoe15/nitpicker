@@ -1,9 +1,15 @@
 package gocritic
 
+import "slices"
+
 type Basket struct{ items []int }
 
 func (basket *Basket) Joined(source []int) {
 	basket.items = append(source, 1) // want appendAssign
+}
+
+func Clamped(prefix []int, value int) []int {
+	return append(slices.Clip(prefix), value)
 }
 
 func Extended(first []int) []int {

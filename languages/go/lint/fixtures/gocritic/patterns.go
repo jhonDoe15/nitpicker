@@ -27,6 +27,10 @@ func ConfigFile(dir string) string {
 	return filepath.Join(dir, "config.yaml")
 }
 
+func Rooted(path string) string {
+	return filepath.Join("/", path)
+}
+
 var Limits = map[string]int{
 	"small ": 1, // want mapKey
 	"large":  2,

@@ -7,9 +7,8 @@ func Doubled(total int) int {
 }
 
 func Scaled(Factor int) int { // want captLocal
-	Result := Factor * 2 // want captLocal
-	result := Result + 1
-	return result
+	result := Factor * 2
+	return result + 1
 }
 
 func Deferred(release func(int), work func()) {
@@ -113,6 +112,38 @@ loop: // want unlabelStmt
 		total += value
 	}
 	return total
+}
+
+func Matched(rows [][]int, target int) int {
+	found := 0
+outer:
+	for _, row := range rows {
+		for _, value := range row {
+			if value == target {
+				found++
+				continue outer // want unlabelStmt
+			}
+		}
+	}
+	return found
+}
+
+func Untagged(score int) string {
+	switch {
+	case score > 90:
+		fallthrough // want emptyFallthrough
+	case score > 80:
+		return "high"
+	}
+	return "low"
+}
+
+func UntaggedOnce(score int) string {
+	switch {
+	case score > 90, score > 80:
+		return "high"
+	}
+	return "low"
 }
 
 func Scoped(values []int) int {
