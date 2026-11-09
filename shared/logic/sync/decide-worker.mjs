@@ -13,10 +13,15 @@ async function answer({ id, conditions, query, options }, { signal, replies }) {
 }
 
 async function drain(queue, channels) {
-  for (const request of queue) {
-    await answer(request, channels);
+  try {
+    for (const request of queue) {
+      await answer(request, channels);
+    }
+  } catch (error) {
+    channels.replies.postMessage({ id: 0, result: 'open', failure: String(error) });
+  } finally {
+    queue.length = 0;
   }
-  queue.length = 0;
 }
 
 /**
