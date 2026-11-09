@@ -43,6 +43,7 @@ func supersededBy() map[string][]string {
 		"errcheck":     {"SA5001", "SA9001", "sqlclosecheck"},
 		"nilnil":       {"nilerr"},
 		"wastedassign": {"SA4006", "SA4010"},
+		"usetesting":   {"testingcontext"},
 		"errname":      {"ST1012"},
 		"noctx":        {"SA1005"},
 	}
@@ -81,8 +82,9 @@ func analyze(directory string, settings options, patterns []string) (Result, err
 			continue
 		}
 		for _, diagnostic := range action.Diagnostics {
-			found := finding(action.Package.Fset, diagnostic.Pos, names[action.Analyzer.Name], action.Analyzer.Name)
-			found.Message = diagnostic.Message
+			rule, message := catalog.Rule(action.Analyzer.Name, diagnostic)
+			found := finding(action.Package.Fset, diagnostic.Pos, names[action.Analyzer.Name], rule)
+			found.Message = message
 			seen[found] = true
 		}
 		objects.add(action.Result)

@@ -121,6 +121,12 @@ const HINTS = new Map([
   ],
   ['reassign', "Leave the other package's variable as it is; declare a variable of your own."],
   ['unconvert', 'Remove the conversion; the value already has that type.'],
+  ['useless-assert', 'Assert the value under test against the expected value.'],
+  [
+    'go-require',
+    'Use assert in the goroutine, or send the error back and require it in the test goroutine.',
+  ],
+  ['suite-broken-parallel', 'Remove the `t.Parallel()` call; suites run their tests in order.'],
   ['wastedassign', 'Remove the assignment, or use the value before it is assigned again.'],
 ]);
 

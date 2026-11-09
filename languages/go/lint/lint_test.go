@@ -1,6 +1,7 @@
 package main
 
 import (
+	"github.com/jhonDoe15/nitpicker/languages/go/lint/catalog"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -138,8 +139,14 @@ func TestEveryEnabledRuleHasAFailingFixture(t *testing.T) {
 	}
 	var uncovered []string
 	for _, analyzer := range analyzers() {
-		if !covered[analyzer.Name] {
-			uncovered = append(uncovered, analyzer.Name)
+		rules := catalog.Checks(analyzer.Name)
+		if rules == nil {
+			rules = []string{analyzer.Name}
+		}
+		for _, rule := range rules {
+			if !covered[rule] {
+				uncovered = append(uncovered, rule)
+			}
 		}
 	}
 	if len(uncovered) > 0 {

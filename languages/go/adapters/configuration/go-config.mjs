@@ -29,6 +29,10 @@ const GO_CATALOG_TOOLS = [
   'reassign',
   'unconvert',
   'wastedassign',
+  'thelper',
+  'tparallel',
+  'testifylint',
+  'usetesting',
 ];
 export const GO_LINT_TOOLS = ['vet', 'staticcheck', 'errcheck', 'modernize', ...GO_CATALOG_TOOLS];
 export const GO_EXCEPTION_RULES = [...COMMON_EXCEPTION_RULES, ...GO_SIZE_RULES];
