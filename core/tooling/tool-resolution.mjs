@@ -1,8 +1,8 @@
 import { readFileSync, realpathSync, statSync } from 'node:fs';
 import { findPackageJSON } from './package-lookup/package-json.mjs';
-import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
+import { realTemporaryDirectory } from './temporary-files.mjs';
 
 export const PACKAGE_ROOT = realpathSync(path.resolve(import.meta.dirname, '../..'));
 const manifest = readManifest(path.join(PACKAGE_ROOT, 'package.json'));
@@ -109,7 +109,7 @@ export function toolNameForPath(relativeToolPath) {
 }
 
 function isAnalyzedSnapshotPath(candidate) {
-  const relative = path.relative(realpathSync(tmpdir()), path.resolve(candidate));
+  const relative = path.relative(realTemporaryDirectory(), path.resolve(candidate));
   const isInsideTemporaryRoot =
     relative !== '..' && !relative.startsWith(`..${path.sep}`) && !path.isAbsolute(relative);
   return (
