@@ -138,10 +138,10 @@ function defect(message) {
   };
 }
 
-function kept(message, { lineAnchor, loopedGroup }) {
+function dialectDependent({ ruleId }, { lineAnchor, loopedGroup }) {
   return (
-    !(lineAnchor && LINE_ASSERTION_RULES.has(message.ruleId)) &&
-    !(loopedGroup && BACKREFERENCE_RULES.has(message.ruleId))
+    (lineAnchor && LINE_ASSERTION_RULES.has(ruleId)) ||
+    (loopedGroup && BACKREFERENCE_RULES.has(ruleId))
   );
 }
 
@@ -154,7 +154,9 @@ function lint({ pattern, lineAnchor }, flags) {
   }
   const loopedGroup = QUANTIFIED_GROUP.test(pattern);
   return {
-    defects: messages.filter((message) => kept(message, { lineAnchor, loopedGroup })).map(defect),
+    defects: messages
+      .filter((message) => !dialectDependent(message, { lineAnchor, loopedGroup }))
+      .map(defect),
   };
 }
 
