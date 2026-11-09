@@ -29,6 +29,11 @@ describe.skipIf(!enabled)('simpler-boolean-logic', () => {
         ['simpler-boolean-logic:2 not (a or b or c)'],
       ],
       [
+        'a chain that holds a chain of negations, reported inside first',
+        'def run(a, b, c):\n    return not a and not (not b and not c)\n',
+        ['simpler-boolean-logic:2 not (b or c)'],
+      ],
+      [
         'an or of negations that holds an and',
         'def run(a, b, c):\n    return not a or not (b and c)\n',
         ['simpler-boolean-logic:2 not (a and b and c)'],
@@ -53,6 +58,21 @@ describe.skipIf(!enabled)('simpler-boolean-logic', () => {
       [
         'a chain with an operand that is not negated',
         'def run(a, b):\n    return not a and b\n',
+        [],
+      ],
+      [
+        'an elif after a form feed in a comment',
+        '# page\fbreak\ndef run(a, b, x, y):\n    if not a:\n        x()\n    elif b:\n        y()\n',
+        [],
+      ],
+      [
+        'a double negation, which ruff SIM208 reports',
+        'def run(a, x, y):\n    if not not a:\n        x()\n    else:\n        y()\n    return 1 if not not a else 2\n',
+        [],
+      ],
+      [
+        'a ternary with a ternary in its first branch',
+        'def run(a, p):\n    return (1 if p else 2) if not a else 3\n',
         [],
       ],
       [
