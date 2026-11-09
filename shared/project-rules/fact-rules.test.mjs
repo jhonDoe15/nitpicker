@@ -5,8 +5,8 @@ const LAYOUT = ['layout.sharedRoots', 'layout.featureRoots'];
 
 describe('factRuleSettings', () => {
   it.each([
-    ['java', ['testConsole', 'protocols', ...LAYOUT]],
-    ['kotlin', ['testConsole', 'protocols', ...LAYOUT]],
+    ['java', [...LAYOUT, 'testConsole', 'protocols']],
+    ['kotlin', [...LAYOUT, 'testConsole', 'protocols']],
   ])(
     'gives %s the feature layout keys that contract-infrastructure-type reads',
     (language, keys) => {

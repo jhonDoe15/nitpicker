@@ -103,7 +103,12 @@ only; the rules each category leaves out are listed under "Additional PMD catego
 assertion style the TypeScript preset does not have,
 plus design's `AvoidCatchingGenericException` (no `catch (Exception e)`, `RuntimeException` or
 `NullPointerException`; errorprone already covers `Throwable`), as the TypeScript and Python presets
-forbid broad catches (the message says that a test uses `assertThrows`, as Checkstyle's `EmptyCatchBlock` message does). A test with no assertion still fails (`UnitTestShouldIncludeAssert`, which
+forbid broad catches (the message says that a test uses `assertThrows`, as Checkstyle's `EmptyCatchBlock` message does),
+and the rules for boolean logic with an exact simpler form, whose messages print that form: design's
+`SimplifyBooleanReturns`, `SimplifyBooleanExpressions`, `SimplifiedTernary`, `SimplifyConditional`,
+`CollapsibleIfStatements` and `LogicInversion`, codestyle's `ConfusingTernary` for a negated condition
+with an else, and nitpicker's `NegatedOperands` (see "PMD rules tuned by nitpicker" in
+[Slice 1](slice-1-tools-reports-and-identities.md)), as the Python preset's ruff `SIM` rules do. A test with no assertion still fails (`UnitTestShouldIncludeAssert`, which
 also counts MockMvc's `andExpect` and `andExpectAll`, BDDMockito's `then(...).should()`,
 `WebTestClient`'s `expectStatus`/`expectBody`/`expectHeader` and `StepVerifier`'s `expectNext`,
 `verifyComplete` and friends), and a class in test sources named like a test but without test
@@ -237,6 +242,8 @@ when the code is right, for example `{ "rule": "pmd/SpringDataNoSaveInLoop", "pa
   filter on the list, and on `collectList().block()` followed by the blocking forms. A local that
   holds the result of `findAll()` counts as the call when the block that declares it reads it exactly once, in
   one of these forms; a local read more than once is left alone, since the method uses the rows.
+  The TypeScript and JavaScript counterpart is `nitpicker/no-in-memory-query` and the Python one is
+  `in-memory-query`; both also report sorts and aggregates computed in memory.
 - `SpringTransactionalCheckedRollback` reports the `throws` clause of a `@Transactional` method
   (or a public method of a `@Transactional` class) that names a checked exception, unless the
   annotation has `rollbackFor` or `readOnly = true`. `SpringTransactionalReadOnlyWrite` reports a

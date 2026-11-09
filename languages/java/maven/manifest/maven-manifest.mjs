@@ -25,7 +25,12 @@ function kotlinOnlyTestRoots(module) {
   );
 }
 
+function springClasspath({ testRuntime = [], mainCompile, testCompile = [] }) {
+  return [...new Set([...testRuntime, ...mainCompile, ...testCompile])];
+}
+
 export function moduleManifest({ module, classpaths, pinned }) {
+  const spring = springFacts(classpaths);
   return {
     versions: pinned,
     build: 'maven',
@@ -34,7 +39,8 @@ export function moduleManifest({ module, classpaths, pinned }) {
     testSourceRoots: relativeRoots(module, module.testSourceRoots),
     kotlinTestSourceRoots: relativeRoots(module, kotlinOnlyTestRoots(module)),
     resourceRoots: relativeRoots(module, module.resourceRoots),
-    ...springFacts(classpaths),
+    ...spring,
+    springClasspath: springClasspath(classpaths),
     guava: hasJar(classpaths.mainCompile, GUAVA_JAR),
     testGuava: hasJar(classpaths.testCompile, GUAVA_JAR),
     testAwaitility: hasJar(classpaths.testCompile, AWAITILITY_JAR),

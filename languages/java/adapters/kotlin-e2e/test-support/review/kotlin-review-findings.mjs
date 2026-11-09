@@ -11,6 +11,10 @@ import {
   LOOKUP_FILES,
   lookupBuild,
 } from './lookups/kotlin-lookup-data.mjs';
+import {
+  GENERATED_MEMBER_FILES,
+  GENERATED_MEMBER_FINDINGS,
+} from './members/kotlin-generated-member-data.mjs';
 import { EXPECTED_REVIEW_FINDINGS, REVIEW_RULE_FILES } from './kotlin-review-data.mjs';
 import { PLURAL_FINDINGS } from './kotlin-plural-data.mjs';
 
@@ -21,6 +25,7 @@ export const ALL_FINDINGS = [
   ...EXPECTED_LOOKUP_FINDINGS,
   ...MAP_UPDATE_FINDINGS,
   ...GLOBAL_STATE_FINDINGS,
+  ...GENERATED_MEMBER_FINDINGS,
 ].sort();
 
 export { EXPECTED_LOOKUP_FINDINGS, MAP_UPDATE_FINDINGS, PLURAL_FINDINGS };
@@ -33,6 +38,7 @@ export function reviewBranchFiles(projectRoot) {
     'build.gradle.kts': lookupBuild(build),
     ...mapUpdateFiles(),
     ...GLOBAL_STATE_FILES,
+    ...GENERATED_MEMBER_FILES,
   };
 }
 

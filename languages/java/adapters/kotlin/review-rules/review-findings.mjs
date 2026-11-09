@@ -5,6 +5,7 @@ import { enumPredicateFindings } from './main/enum-predicates.mjs';
 import { fanOutFindings } from './main/fan-out/fan-out.mjs';
 import { forwardingWrapperFindings } from './main/forwarding/forwarding-wrappers.mjs';
 import { methodAliasFindings } from './main/forwarding/method-aliases.mjs';
+import { generatedMemberFindings } from './main/generated-members/generated-members.mjs';
 import { loadEffectFindings } from './main/load-effects.mjs';
 import { fieldLockingFindings } from './main/locking/field-locking.mjs';
 import { lockOrderFindings } from './main/locking/lock-order.mjs';
@@ -105,6 +106,7 @@ export function readKotlinReviewFindings(context) {
     ...unboundedPoolFindings(own, { finding }),
     ...recursiveMapUpdateFindings(own, { finding, declaredIn: projectFiles }),
     ...kotlinDesignFindings(reportRoot, { environment: context.environment }),
+    ...generatedMemberFindings(own, { finding, declaredIn: projectFiles }),
     ...unusedOptionFindings(own, {
       finding,
       build,

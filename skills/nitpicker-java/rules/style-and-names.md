@@ -19,6 +19,12 @@ Part of the [nitpicker-java](../SKILL.md) skill. Write these forms from the star
   Wait for a task that uses a resource inside its try block, after starting it and not under an `if` or loop
   (`get()`/`join()`, `awaitTermination`, `take()`, a latch `await()`, or declare the executor as a later
   resource); `pmd/TaskOutlivesTryResource` reports a task that can outlive the close.
+- Boolean logic in its shortest exact form: `return a == b;`, not an `if` that returns `true` or
+  `false`; `ready` and `!ready`, not `ready == true`; `c || x` and `c && x`, not a ternary with a
+  `true` or `false` branch; `a != b`, not `!(a == b)`; one `if (a && b)`, not an `if` alone inside
+  another; `x instanceof Foo` with no null check before it; `if (c) A else B`, not
+  `if (!c) B else A` (and `c ? b : a`, not `!c ? a : b`); `!(a || b)`, not `!a && !b`. These stay:
+  `if (a != b)` with an else, an else-if chain, and `!(a < b)` on a `float` or `double` (NaN).
 - Utility classes: a `final` class of static methods with a `private` empty constructor.
 - Javadoc is optional; when you write it, the first sentence is a real summary (not `@return`),
   every `@param`/`@return` has a description, in that order, and paragraphs start with `<p>`.
@@ -26,6 +32,6 @@ Part of the [nitpicker-java](../SKILL.md) skill. Write these forms from the star
   name, and keeps the description to 5 lines, tags and `<pre>` blocks not counted
   (`doc-comment-content`).
 - nitpicker runs its own PMD rules (errorprone, bestpractices, performance, multithreading,
-  security and a broad-catch rule) and Google checks. A project's `config/pmd/ruleset.xml` or
+  security, a broad-catch rule and the boolean simplification rules) and Google checks. A project's `config/pmd/ruleset.xml` or
   `config/checkstyle/checkstyle.xml` counts only when `nitpicker.config.json` opts in under
   `tools`; then read it too.

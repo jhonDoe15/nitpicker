@@ -7,6 +7,7 @@ import {
   reviewBranchFiles,
   reviewFindings,
 } from '../test-support/review/kotlin-review-findings.mjs';
+import { GENERATED_MEMBER_EXCEPTIONS } from '../test-support/review/members/kotlin-generated-member-data.mjs';
 import {
   commitBranch,
   diffOf,
@@ -46,6 +47,7 @@ describe.skipIf(!kotlinE2eEnabled)('Kotlin preset review rule exceptions end to 
           { rule: 'pmd/SwallowedInterrupt', glob: 'src/main/kotlin/demo/orders/*' },
           { rule: 'kotlin-source/BlockingCallInCoroutine', glob: ARCHIVE_FILE },
           { rule: 'pmd/ClassLoadEffect', glob: 'src/main/kotlin/demo/orders/Inventory.kt' },
+          ...GENERATED_MEMBER_EXCEPTIONS,
         ],
       },
     });

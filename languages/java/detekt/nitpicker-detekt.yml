@@ -279,6 +279,12 @@ style:
     excludes: []
     ignoreAnnotated: []
     includes: []
+  CollapsibleIfStatements:
+    active: true
+    severity: warning
+    excludes: []
+    ignoreAnnotated: []
+    includes: []
   UseDataClass:
     active: true
     severity: warning

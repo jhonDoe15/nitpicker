@@ -8,6 +8,10 @@ import { LOAD_EFFECT_RULE } from '../../../messages/load-effects.mjs';
 import { FORWARDING_RULE } from './main/forwarding/forwarding-wrappers.mjs';
 import { METHOD_ALIAS_RULE } from './main/forwarding/method-aliases.mjs';
 import { FIELD_LOCKING_RULE, LOCK_ORDER_RULE } from '../../../messages/locking/lock-evidence.mjs';
+import {
+  MEMBER_CYCLE_RULE,
+  SKIPPED_SUPER_RULE,
+} from './main/generated-members/generated-members.mjs';
 import { SINGULAR_PLURAL_RULE } from './main/member-names.mjs';
 import { TIMEOUT_RULE } from './main/timeouts/timeouts.mjs';
 import { SUSPENDED_UPDATE_RULE } from './main/suspension/suspended-updates.mjs';
@@ -48,6 +52,8 @@ export const KOTLIN_REVIEW_EXCEPTION_RULES = [
   LOAD_EFFECT_RULE,
   UNBOUNDED_POOL_RULE,
   RECURSIVE_MAP_UPDATE_RULE,
+  MEMBER_CYCLE_RULE,
+  SKIPPED_SUPER_RULE,
   ...SPRING_RULES,
   JAVA_ONLY_SPRING_RULE,
 ]
