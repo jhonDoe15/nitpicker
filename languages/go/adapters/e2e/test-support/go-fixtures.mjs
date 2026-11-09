@@ -123,7 +123,7 @@ func TestBroken(t *testing.T) {
 }
 `;
 
-function sleepingTest(header, name, seconds) {
+function sleepingTest(header, name, seconds, guard = '') {
   return `${header}package shop
 
 import (
@@ -132,7 +132,7 @@ import (
 )
 
 func ${name}(t *testing.T) {
-	time.Sleep(${String(seconds)} * time.Second)
+${guard}	time.Sleep(${String(seconds)} * time.Second)
 }
 `;
 }
@@ -142,6 +142,24 @@ export const SLOW_INTEGRATION_TEST = sleepingTest(
   '//go:build integration\n\n',
   'TestSlowIntegration',
   6,
+);
+export const SHORT_SKIPPED_TEST = sleepingTest(
+  '',
+  'TestSlowSkipped',
+  6,
+  '\tif testing.Short() {\n\t\tt.Skip("integration")\n\t}\n',
+);
+export const SHORT_LOGGED_TEST = sleepingTest(
+  '',
+  'TestSlowLogged',
+  6,
+  '\tif testing.Short() {\n\t\tt.Log("short")\n\t}\n',
+);
+export const SHORT_DISCARDED_TEST = sleepingTest(
+  '',
+  'TestSlowDiscarded',
+  6,
+  '\t_ = testing.Short()\n',
 );
 
 export const GOFUMPT_ONLY = `package shop

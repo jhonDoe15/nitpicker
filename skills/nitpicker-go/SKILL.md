@@ -94,7 +94,9 @@ Before you change code other packages use, or fix a bug, read
   No `time.Sleep` in a test: wait on a channel or a `sync.WaitGroup`, inject the clock, and fake
   network, database and disk access behind an interface or with `httptest`. A test is integration
   when it lives under an `integration` or `e2e` folder, its file ends in `_integration_test.go`, it
-  has an `integration` or `e2e` build tag, or it calls `t.Skip` under `testing.Short()`.
+  has an `integration` or `e2e` build tag, or it starts with `if testing.Short() { t.Skip(...) }`
+  (only a skip, or a `return`, as the first statement counts; logging under `testing.Short()` does
+  not).
 
 ## When a rule flags legitimate code
 
