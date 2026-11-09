@@ -69,6 +69,15 @@ describe('Go lint messages', () => {
       'prefer not to defer chains of function calls. Keep the returned function and defer that: `stop := start(); defer stop()`.',
     ],
     [
+      {
+        tool: 'revive',
+        rule: 'package-directory-mismatch',
+        message:
+          'package name "api" does not match directory name "v2" or parent directory name "head"',
+      },
+      'package name "api" does not match directory name "v2". Name the package after its folder, or after the parent folder for a version folder such as `v2`.',
+    ],
+    [
       { tool: 'revive', rule: 'defer', message: 'return in a defer function has no effect' },
       'return in a defer function has no effect.',
     ],

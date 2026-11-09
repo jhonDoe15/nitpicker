@@ -56,6 +56,10 @@ func reviveSuperseded() map[string][]string {
 	}
 }
 
+func reviveSupersededByColumn() map[string]bool {
+	return map[string]bool{"bool-literal-in-expr": true, "var-declaration": true}
+}
+
 func configuredRules() ([]lint.Rule, error) {
 	settings := reviveSettings()
 	rules := reviveRules()

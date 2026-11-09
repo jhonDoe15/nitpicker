@@ -3,7 +3,10 @@ const OWN_TYPE = 'Declare the inner struct as a named type of its own.';
 
 const HINTS = new Map([
   ['bare-return', 'Name every value in the return statement: `return size, nil`.'],
-  ['blank-imports', 'Import the package for its side effect in the main package or a test that needs it.'],
+  [
+    'blank-imports',
+    'Import the package for its side effect in the main package or a test that needs it.',
+  ],
   ['call-to-gc', 'Remove the call; the runtime schedules garbage collection itself.'],
   ['comment-spacings', 'Put a space after `//`: `// text`.'],
   [
@@ -21,7 +24,10 @@ const HINTS = new Map([
     'Name the file in lower case with underscores between words: `order_items.go`.',
   ],
   ['flag-parameter', 'Split the function in two, one for each value of the flag.'],
-  ['get-return', 'Return the value, or name the function for what it does, such as `IncrementCount`.'],
+  [
+    'get-return',
+    'Return the value, or name the function for what it does, such as `IncrementCount`.',
+  ],
   ['identical-branches', 'Drop the condition and keep one copy of the code.'],
   ['identical-ifelseif-branches', MERGE_BRANCHES],
   ['identical-switch-branches', MERGE_BRANCHES],
@@ -38,7 +44,10 @@ const HINTS = new Map([
     'Assign before the `if` and test the result: `data, err := read(path)`, then `if err != nil`.',
   ],
   ['nested-structs', OWN_TYPE],
-  ['package-directory-mismatch', 'Name the package after its folder.'],
+  [
+    'package-directory-mismatch',
+    'Name the package after its folder, or after the parent folder for a version folder such as `v2`.',
+  ],
   [
     'package-naming',
     'Name the package for what it provides, such as `orders`, not `util` or a standard package name.',
@@ -49,6 +58,7 @@ const HINTS = new Map([
   ],
   ['redefines-builtin-id', 'Rename the variable, such as `length` for `len`.'],
   ['redundant-import-alias', 'Drop the alias.'],
+  ['unused-receiver', 'Leave the receiver unnamed, `func (Box) Name()`; ST1006 rejects `_`.'],
   ['unexported-return', 'Export the type, or return an exported interface it implements.'],
   ['useless-break', 'Remove the break; a case ends without it.'],
 ]);
@@ -59,13 +69,18 @@ const MESSAGE_HINTS = [
     /chains of function calls/u,
     'Keep the returned function and defer that: `stop := start(); defer stop()`.',
   ],
-  ['defer', /inside loops/u, 'Move the loop body into a function, so each defer runs when it returns.'],
+  [
+    'defer',
+    /inside loops/u,
+    'Move the loop body into a function, so each defer runs when it returns.',
+  ],
 ];
 
 export const REVIVE_VARYING_PARTS = new Map([
   ['identical-ifelseif-branches', / \(lines \d+ and \d+\)/u],
   ['identical-switch-branches', / \(lines \d+ and \d+\)/u],
   ['identical-switch-conditions', / at line \d+/u],
+  ['package-directory-mismatch', / or parent directory name "[^"]*"/u],
 ]);
 
 export function reviveHint(rule, message) {

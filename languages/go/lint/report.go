@@ -190,16 +190,22 @@ func finding(files *token.FileSet, at token.Pos, tool, rule string) Finding {
 func kept(seen map[Finding]bool) []Finding {
 	rulesAt := map[string]map[string]bool{}
 	for found := range seen {
-		key := lineKey(found)
-		if rulesAt[key] == nil {
-			rulesAt[key] = map[string]bool{}
+		for _, key := range []string{lineKey(found), columnKey(found)} {
+			if rulesAt[key] == nil {
+				rulesAt[key] = map[string]bool{}
+			}
+			rulesAt[key][found.Rule] = true
 		}
-		rulesAt[key][found.Rule] = true
 	}
 	findings := []Finding{}
 	replacements := supersededBy()
+	byColumn := reviveSupersededByColumn()
 	for found := range seen {
-		if found.Tool != vetTool && !superseded(found, rulesAt[lineKey(found)], replacements) {
+		key := lineKey(found)
+		if byColumn[found.Rule] {
+			key = columnKey(found)
+		}
+		if found.Tool != vetTool && !superseded(found, rulesAt[key], replacements) {
 			findings = append(findings, found)
 		}
 	}
@@ -213,6 +219,10 @@ func kept(seen map[Finding]bool) []Finding {
 
 func lineKey(found Finding) string {
 	return found.File + ":" + strconv.Itoa(found.Line)
+}
+
+func columnKey(found Finding) string {
+	return lineKey(found) + ":" + strconv.Itoa(found.Column)
 }
 
 func superseded(found Finding, rules map[string]bool, replacements map[string][]string) bool {

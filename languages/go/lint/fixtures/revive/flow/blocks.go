@@ -45,3 +45,7 @@ func Reset(builder *strings.Builder) {
 	reset := Chained(builder)
 	defer reset()
 }
+
+func Mixed(found, ready bool) bool {
+	return found == true || ready && false // want S1002 bool-literal-in-expr
+}

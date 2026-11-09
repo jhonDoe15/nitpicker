@@ -14,10 +14,11 @@ import (
 )
 
 const (
-	reviveTool       = "revive"
-	reviveConfidence = 0.8
-	internalCategory = "REVIVE_INTERNAL"
-	validityCategory = "validity"
+	reviveTool        = "revive"
+	reviveConfidence  = 0.8
+	internalCategory  = "REVIVE_INTERNAL"
+	validityCategory  = "validity"
+	packageNamingRule = "package-naming"
 )
 
 var reviveDirective = regexp.MustCompile(`//([ \t]*)revive:`)
@@ -58,10 +59,12 @@ func reviveFindings(loaded []*packages.Package) ([]Finding, error) {
 	}
 	linter := lint.New(withoutDirectives, 0)
 	config := lint.Config{Confidence: reviveConfidence, Rules: lint.RulesConfig{}}
-	failures, err := linter.Lint(reviveFiles(loaded), rules, config)
+	files := reviveFiles(loaded)
+	failures, err := linter.Lint(files, rules, config)
 	if err != nil {
 		return nil, err
 	}
+	first := firstFiles(files)
 	findings := []Finding{}
 	var problems []string
 	for failure := range failures {
@@ -70,7 +73,7 @@ func reviveFindings(loaded []*packages.Package) ([]Finding, error) {
 			problems = append(problems, "revive: "+failure.Failure)
 		case validityCategory:
 		default:
-			findings = append(findings, reviveFinding(failure))
+			findings = append(findings, reviveFinding(failure, first))
 		}
 	}
 	if len(problems) > 0 {
@@ -79,10 +82,25 @@ func reviveFindings(loaded []*packages.Package) ([]Finding, error) {
 	return findings, nil
 }
 
-func reviveFinding(failure lint.Failure) Finding {
+func firstFiles(groups [][]string) map[string]string {
+	first := map[string]string{}
+	for _, files := range groups {
+		directory := filepath.Dir(files[0])
+		if current, found := first[directory]; !found || files[0] < current {
+			first[directory] = files[0]
+		}
+	}
+	return first
+}
+
+func reviveFinding(failure lint.Failure, first map[string]string) Finding {
 	start := failure.Position.Start
-	return Finding{
+	found := Finding{
 		Tool: reviveTool, Rule: failure.RuleName, File: start.Filename,
 		Line: start.Line, Column: start.Column, Message: failure.Failure,
 	}
+	if found.Rule == packageNamingRule {
+		found.File, found.Line, found.Column = first[filepath.Dir(found.File)], 1, 1
+	}
+	return found
 }
