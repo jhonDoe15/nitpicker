@@ -265,8 +265,10 @@ Using a coding agent? Copy the [agent guidance snippet](agents-snippet.md) into 
   weakened the tests of ..."). Python's mutmut
   works per function, not per line: head reuses the base results for the modules the change did
   not edit and that import no edited module, and runs every other mutant (all of them when a test
-  or any other file changed). Only mutants that are new on head fail, whichever way the results
-  were obtained. `--all` mutates every source file.
+  or any other file changed). Go works like TypeScript: head mutates the changed lines, and a
+  change that edits or deletes a `_test.go` file mutates that folder's other files whole, failing
+  only the mutants the base tests caught. Only mutants that are new on head fail, whichever way the
+  results were obtained. `--all` mutates every source file.
 
 ### A base whose tests fail
 
@@ -909,8 +911,8 @@ These are the analyzer names you can pass to `disable` and `--analyzer`.
 The built-in set: `eslint-lint`, `eslint-errors`, `eslint-logging`, `eslint-module-effects`,
 `entry-points`, `prettier-format`, `typescript-typecheck`, `dependency-architecture`,
 `coding-standards`, `coupling`, `test-runtime`, `structure`, `duplicates`, `dead-code`, `coverage`,
-`test-console`, `crap` and `mutation`. The Java and Kotlin presets have one analyzer each, and the Python preset has
-two, `python` and `mutation`. Every preset also runs `repository-hygiene`, and `change-history` once `history.coChange` is on.
+`test-console`, `crap` and `mutation`. The Java and Kotlin presets have one analyzer each, the Python preset has
+two, `python` and `mutation`, and the Go preset two, `go` and `mutation`. Every preset also runs `repository-hygiene`, and `change-history` once `history.coChange` is on.
 
 ### Editor support
 
@@ -1508,7 +1510,8 @@ gofumpt or goimports, detected from `go.mod` tool directives and the golangci-li
 with `"go": { "formatters": ["gofumpt"] }`; gofmt when there is no signal), `go vet` (compile
 errors are `build/compile-error` findings, vet diagnostics `vet/<analyzer>`), `go test -json` over
 every package (failing tests are a tool error, plus `no-tests-ran` and the shared slow-test
-limits), changed-branch coverage and CRAP from the test run's coverage profile, and the
+limits), changed-branch coverage and CRAP from the test run's coverage profile, mutation testing
+of the changed lines (the `mutation` analyzer, which `"disable": ["mutation"]` turns off), and the
 structure, type, file and folder limits from a small `go/ast` program that ships with nitpicker. Tools nitpicker pins (gofumpt, goimports) are built once into
 `~/.cache/nitpicker`; a `tool` directive in the project's `go.mod` for the same tool wins.
 Build tags for the tests go in `"go": { "buildTags": ["integration"] }`. Exceptions name a finding

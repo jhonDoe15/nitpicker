@@ -41,6 +41,11 @@ node core/cli.mjs go-analyzer --project-root <snapshot>   (per snapshot)
   -> go vet -json ./...                            compile errors and vet diagnostics
   -> go test -vet=off -json -covermode=atomic -coverpkg=./... -coverprofile=coverage.out ./...
   -> readGoFindings -> applyFindingPolicy -> compareFindings(base, head)
+
+node core/cli.mjs go-analyzer --part mutation --project-root <snapshot>   (head only, after go)
+  -> inspect mutants <module root> targets.json mutants.json      mutants of the changed lines
+  -> go test -json -covermode=atomic -coverpkg=./... ./...         baseline, coverage, timings
+  -> go test -json -failfast -overlay=<mutant> <test packages>     once per mutant
 ```
 
 The analyzer runs as a `nitpicker` subcommand, the way the repository-hygiene analyzer does,
@@ -63,20 +68,21 @@ it is GPL-3.0 licensed, so the preset runs the permissively licensed tools it bu
 
 ## What runs
 
-| Check                  | Tool                      | Finding                                                                             |
-| ---------------------- | ------------------------- | ----------------------------------------------------------------------------------- |
-| Format                 | gofmt, gofumpt, goimports | `<formatter>/format`, one per file                                                  |
-| Compile errors         | `go vet`                  | `build/compile-error` at the position the compiler names                            |
-| Vet                    | `go vet` (all analyzers)  | `vet/<analyzer>`, for example `vet/printf`                                          |
-| Failing tests          | `go test -json`           | `tests/tests-failed` tool error quoting each failure                                |
-| No tests ran           | `go test -json`           | `tests/no-tests-ran`                                                                |
-| Slow tests             | `go test -json`           | `test-runtime/slow-test`                                                            |
-| Branch coverage        | coverage profile          | `coverage/changed-branch-coverage`                                                  |
-| CRAP                   | coverage profile          | `crap/crap-score-limit`, `crap/crap-coverage-unknown`                               |
-| Function limits        | metrics program           | `structure/function-*-limit`                                                        |
-| Type limits            | metrics program           | `structure/class-methods-limit`, `class-fields-limit`                               |
-| File and folder limits | metrics program           | `file-lines-limit`, `line-length-limit`, `folder-files-limit`, `folder-depth-limit` |
-| Repository hygiene     | shared                    | committed secrets, binaries, build output, large files                              |
+| Check                  | Tool                       | Finding                                                                             |
+| ---------------------- | -------------------------- | ----------------------------------------------------------------------------------- |
+| Format                 | gofmt, gofumpt, goimports  | `<formatter>/format`, one per file                                                  |
+| Compile errors         | `go vet`                   | `build/compile-error` at the position the compiler names                            |
+| Vet                    | `go vet` (all analyzers)   | `vet/<analyzer>`, for example `vet/printf`                                          |
+| Failing tests          | `go test -json`            | `tests/tests-failed` tool error quoting each failure                                |
+| No tests ran           | `go test -json`            | `tests/no-tests-ran`                                                                |
+| Slow tests             | `go test -json`            | `test-runtime/slow-test`                                                            |
+| Branch coverage        | coverage profile           | `coverage/changed-branch-coverage`                                                  |
+| CRAP                   | coverage profile           | `crap/crap-score-limit`, `crap/crap-coverage-unknown`                               |
+| Mutation testing       | metrics program, `go test` | `mutation/mutant-survived`, `mutation/mutant-nocoverage`, `mutation/mutant-timeout` |
+| Function limits        | metrics program            | `structure/function-*-limit`                                                        |
+| Type limits            | metrics program            | `structure/class-methods-limit`, `class-fields-limit`                               |
+| File and folder limits | metrics program            | `file-lines-limit`, `line-length-limit`, `folder-files-limit`, `folder-depth-limit` |
+| Repository hygiene     | shared                     | committed secrets, binaries, build output, large files                              |
 
 ## Format check: following the project
 
@@ -180,6 +186,60 @@ split into outcomes; the profile records no blocks inside a condition.
   - the files of a package whose test binary crashed (a panic, a timeout, `os.Exit`). Such a binary
     writes no profile, and the failing test is already a finding.
 
+## Mutation testing
+
+Mutation testing is the `mutation` analyzer, which runs after the `go` analyzer on the head
+snapshot; `"disable": ["mutation"]` turns it off, as in the Python preset. No Go mutation tool fits:
+go-mutesting is unmaintained and rewrites files in place, and gremlins mutates the whole module with
+a fixed operator set. So the metrics program writes the mutants (`inspect mutants`) and each one
+runs through `go test -overlay`, which compiles the mutated copy of the file without touching the
+checkout.
+
+**Operators**, named after Stryker's where the mutation is the same, so the messages read alike in every preset:
+
+| Operator                | Mutation                                                                    |
+| ----------------------- | --------------------------------------------------------------------------- |
+| `ArithmeticOperator`    | `+` and `-`, `*` and `/`, `%` to `*`                                        |
+| `EqualityOperator`      | `==` and `!=`; `<` to `<=` and `>=`, and the other comparisons the same way |
+| `LogicalOperator`       | `&&` and `\|\|`                                                             |
+| `BitwiseOperator`       | `&` and `\|`, `^` and `&^` to `&`, `<<` and `>>`                            |
+| `UnaryOperator`         | removes `-`, `!` or `^`                                                     |
+| `UpdateOperator`        | `++` and `--`                                                               |
+| `AssignmentOperator`    | `+=` and `-=`, `*=` and `/=`, and the other compound assignments            |
+| `BooleanLiteral`        | `true` and `false`                                                          |
+| `StringLiteral`         | a non-empty string to `""` (import paths and struct tags are left alone)    |
+| `ConditionalExpression` | an `if` condition to `true` and to `false`, a `for` condition to `false`    |
+| `RemovedCall`           | removes a call statement                                                    |
+| `LoopControl`           | an unlabelled `break` and `continue` swapped                                |
+| `SwitchCase`            | empties a case body                                                         |
+
+**Scope.** As in the TypeScript preset, head mutates only the lines the change adds or edits in
+non-test files, so every surviving mutant it reports is new; `--all` (or a run without a base)
+mutates every file. When the change edits or deletes a `_test.go` file, the non-test files of that
+folder are mutated whole. A mutant there that survives (or that no test runs) is run again against
+the base checkout's tests, and it fails only if the base tests caught it: "This change weakened the
+tests of `shop/rate.go`: the base tests caught this EqualityOperator mutant (`>` replaced with
+`>=`), but it survives now." Generated files, test files and files the build leaves out are not
+mutated.
+
+**Each mutant** runs the tests of every package whose test binary imports its package
+(`go list -test`), with `-failfast` and a timeout of five times their baseline time (30 s at
+least):
+
+- `mutant-survived` (enforceable): the tests pass with the mutant. The message shows the
+  replacement.
+- `mutant-nocoverage` (enforceable): no test package imports the package, or the coverage profile
+  says the mutant's block never ran. Such a mutant is not run.
+- `mutant-timeout` (descriptive): the tests ran past the timeout, which usually means the mutant
+  made a loop endless.
+- A mutant that does not compile (an unused variable after a removed call, for example) is
+  dropped, and a killed one is the goal.
+
+A mutant whose test packages fail on head is skipped, and a `mutation-skipped` note counts them and
+names the failing packages; the failing tests are already a tool error of the `go` analyzer.
+Findings are keyed by function, operator and replacement, so they survive line moves; their
+exceptions name the function, as in the other presets.
+
 ## Structure limits
 
 The metrics program measures each function and method:
@@ -218,8 +278,8 @@ Packages more than 4 levels below the module root fail `folder-depth-limit`, lik
 
 The top-level `exceptions` take a finding as it is printed, `<tool>/<rule>` (`vet/printf`), as in
 the Java preset, plus the shared rules (the function, type, file and folder limits, `slow-test`, and
-the repository checks, and `changed-branch-coverage`, `crap-score-limit` and `crap-coverage-unknown`
-with the `function` they name). Every vet, limit, coverage, CRAP and slow-test message ends with its
+the repository checks, and `changed-branch-coverage`, `crap-score-limit`, `crap-coverage-unknown`,
+`mutant-survived` and `mutant-nocoverage` with the `function` they name). Every vet, limit, coverage, CRAP and slow-test message ends with its
 exception entry, for
 example `{"rule":"vet/printf","paths":["shop/label.go"],"reason":"..."}`. Format findings,
 compile errors and `no-tests-ran` have no exception route: run the formatter, fix the build, or
@@ -241,14 +301,15 @@ with `"preset": "go"`, each naming its reason.
 ## Tests of the preset
 
 - Unit tests next to the adapters (`languages/go/adapters/**.test.mjs`) and the metrics program's
-  own Go tests (`languages/go/inspect/inspect_test.go`).
+  own Go tests (`languages/go/inspect/inspect_test.go`, `languages/go/inspect/mutants/`).
 - End-to-end suites in `languages/go/adapters/e2e/`, run with `npm run test:go` (they need Go on the
   `PATH` and skip without `NITPICKER_GO_E2E=1`). They build throwaway git repositories and run
   the real CLI on them: a clean change, gofmt, vet, a compile error, a nested function next to an
   untouched legacy one, exceptions, failing and slow tests, build tags, gofumpt from a golangci-lint
   file, a change that adopts gofumpt, a missing toolchain, a branch outcome no test takes, a tested
-  change next to an untested legacy function, a branch exception, and an untested branchy function's
-  CRAP score. CI runs them in the `go-e2e` workflow.
+  change next to an untested legacy function, a branch exception, an untested branchy function's
+  CRAP score, a surviving mutant on a changed line, a change whose tests kill every mutant, a test
+  change that lets a mutant the base caught survive, and mutants skipped because their tests fail. CI runs them in the `go-e2e` workflow.
 
 ## Remaining slices
 
@@ -257,7 +318,7 @@ with `"preset": "go"`, each naming its reason.
 | GO1 | Base (#414)                                     | This document: done.                                                                                                                                                         |
 | GO2 | Linters (#415)                                  | staticcheck (every check, including the off-by-default ones that fit), revive, errcheck, gosec and the permissively licensed `go/analysis` linters, in one program.          |
 | GO3 | One-way rules (#416)                            | nitpicker's own analyzers for the forms Go still leaves open (error wrapping and comparison, constructors, receivers, loops, context), each message naming the allowed form. |
-| GO4 | Coverage, CRAP and mutation (#417)              | Branch coverage and CRAP: done (this document). Mutation testing: next.                                                                                                      |
+| GO4 | Coverage, CRAP and mutation (#417)              | Done (this document).                                                                                                                                                        |
 | GO5 | Duplicates, coupling, dead code, modules (#418) | clones, package coupling and stability, unused code, and `go mod tidy -diff`.                                                                                                |
 | GO6 | Shared guards and test honesty (#419)           | the guards the other presets share (secrets in code, path joins, subprocess timeouts, test assertions), after GO3.                                                           |
 | GO7 | Race detector (#433)                            | `go test -race`, with each race a finding keyed by its stacks.                                                                                                               |
@@ -267,6 +328,11 @@ with `"preset": "go"`, each naming its reason.
 - One module per run: the module at the project root. A nested module (its own `go.mod`) and a
   `go.work` workspace's other modules are not analyzed.
 - Generated files are listed but not measured or format-checked; they still compile and vet.
+- Mutants run one after another, each a `go test` of its test packages, so mutation testing costs
+  roughly one test run of those packages per mutant on the changed lines. Go's build cache keeps the
+  unchanged packages compiled.
+- A weakened test is found only in its own folder: a test that tests another package through its
+  API (a black-box test in another folder) does not get that package mutated whole.
 - A branch point under a `//line` directive that moves it to another line or file is not measured,
   because its profile blocks name the directive's position.
 - Branch and CRAP findings are keyed by their file and function. Moving a function to another file,

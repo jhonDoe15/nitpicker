@@ -47,7 +47,8 @@ describe.skipIf(!goE2eEnabled)('Go preset project setups end to end', () => {
     commitBranch(project, 'slow', { 'shop/slow_test.go': SLOW_TEST });
     commitBranch(project, 'slow-integration', {
       'shop/slow_integration_test.go': SLOW_INTEGRATION_TEST,
-      'nitpicker.config.json': '{ "preset": "go", "go": { "buildTags": ["integration"] } }\n',
+      'nitpicker.config.json':
+        '{ "preset": "go", "disable": ["mutation"], "go": { "buildTags": ["integration"] } }\n',
     });
     commitBranch(project, 'gofumpt', {
       '.golangci.yml': 'version: "2"\nformatters:\n  enable: [gofumpt]\n',
@@ -100,8 +101,12 @@ describe.skipIf(!goE2eEnabled)('Go preset project setups end to end', () => {
 
   it('ships a metrics program whose own Go tests pass', () => {
     const output = command(INSPECT_SOURCE, 'go', ['test', '-count=1', './...']);
-    expect(output.replace(/\t\S+\n$/u, '\n')).toBe(
-      'ok  \tgithub.com/jhonDoe15/nitpicker/languages/go/inspect\n',
+    expect(output.replaceAll(/\t\S+$/gmu, '')).toBe(
+      [
+        'ok  \tgithub.com/jhonDoe15/nitpicker/languages/go/inspect',
+        'ok  \tgithub.com/jhonDoe15/nitpicker/languages/go/inspect/mutants',
+        '',
+      ].join('\n'),
     );
   });
 });

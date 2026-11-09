@@ -84,6 +84,24 @@ than the others, and this skill teaches its rules before an agent writes Go.
 - **A crashed test binary measures nothing.** A test binary that panics, times out or calls
   `os.Exit` writes no profile, so every block of its package reads 0. Its files are not scored;
   the failing test is already a finding.
+- **Our own mutator instead of a Go mutation tool.** go-mutesting (MIT) is unmaintained and
+  rewrites the files in place, and gremlins (Apache-2.0) mutates a whole module with a smaller
+  operator set and cannot limit itself to changed lines. The metrics program already parses every
+  file, so it writes the mutants with `go/ast`, and `go test -overlay` compiles each mutated file
+  without touching the checkout. The operators take Stryker's names where the mutation is the same
+  (arithmetic, equality, logical, unary, update, assignment, boolean, string, conditional), skip
+  the ones with no Go form (optional chaining, regex literals, arrow functions), and add
+  `RemovedCall` (PIT's void call removal), `BitwiseOperator`, `LoopControl` and `SwitchCase` for
+  Go's own statements.
+- **Changed lines, like Stryker in the TypeScript preset.** Mutating only the lines a change
+  writes keeps the run proportional to the change, and every surviving mutant is the change's own.
+  Python's mutmut reuses base results instead because it can only mutate whole functions.
+- **Weakened tests.** A test edit can drop the assertion that killed a legacy mutant. Mutating the
+  edited test's folder whole on head and rerunning only the escaped mutants on the base checkout
+  finds exactly those, at the cost of one more test run per escaped mutant, as in the TypeScript
+  preset.
+- **A mutant of a failing package is skipped, not killed.** Its tests already fail, so a run would
+  "kill" every mutant; the note names the failing packages.
 - **Files the build leaves out are not scored.** A file behind a build constraint the run does not
   satisfy has no blocks; scoring it as unknown would fail every platform-specific file.
 

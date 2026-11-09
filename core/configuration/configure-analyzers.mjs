@@ -59,7 +59,7 @@ function applyJavaConfig(analyzers, config) {
     ...GRADLE_PRESETS,
     PYTHON_ANALYZER_NAME,
     GO_ANALYZER_NAME,
-    ...(config.preset === 'python' ? [MUTATION_ANALYZER_NAME] : []),
+    ...(['python', 'go'].includes(config.preset) ? [MUTATION_ANALYZER_NAME] : []),
   ];
   return analyzers.map((analyzer) =>
     names.includes(analyzer.name)

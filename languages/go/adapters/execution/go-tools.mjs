@@ -73,9 +73,11 @@ export function toolVersions() {
 
 function inspectHash() {
   const hash = createHash('sha256');
-  for (const file of readdirSync(INSPECT_SOURCE)
-    .filter((name) => !name.endsWith('_test.go'))
-    .sort()) {
+  const files = readdirSync(INSPECT_SOURCE, { recursive: true })
+    .map((name) => name.split(path.sep).join('/'))
+    .filter((name) => /\.(?:go|mod|sum)$/u.test(name) && !name.endsWith('_test.go'))
+    .toSorted((left, right) => left.localeCompare(right));
+  for (const file of files) {
     hash.update(`${file}\0`).update(readFileSync(path.join(INSPECT_SOURCE, file)));
   }
   return hash.digest('hex').slice(0, HASH_LENGTH);

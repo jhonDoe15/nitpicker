@@ -1,5 +1,5 @@
 const GO_MOD = 'module example.com/shop\n\ngo 1.22\n';
-const CONFIG = '{ "preset": "go" }\n';
+const CONFIG = '{ "preset": "go", "disable": ["mutation"] }\n';
 
 const PRICE = `package shop
 

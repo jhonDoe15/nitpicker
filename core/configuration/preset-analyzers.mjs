@@ -4,7 +4,7 @@ import { createHygieneAnalyzers } from '../../shared/hygiene/analyzers.mjs';
 import { GRADLE_PRESETS } from '../../languages/java/adapters/gradle-presets.mjs';
 import { createJavaAnalyzer } from '../../languages/java/adapters/java-analyzer.mjs';
 import { createPythonAnalyzers } from '../../languages/python/adapters/python-analyzer.mjs';
-import { createGoAnalyzer } from '../../languages/go/adapters/go-analyzer.mjs';
+import { createGoAnalyzers } from '../../languages/go/adapters/go-analyzer.mjs';
 import {
   configuredAnalyzers,
   javascriptAnalyzers,
@@ -23,7 +23,7 @@ function languageAnalyzers(config) {
     return createPythonAnalyzers(config.python);
   }
   if (config.preset === 'go') {
-    return [createGoAnalyzer(config.go)];
+    return createGoAnalyzers(config.go);
   }
   if (GRADLE_PRESETS.includes(config.preset)) {
     return [createJavaAnalyzer({ kotlin: config.preset === 'kotlin' })];

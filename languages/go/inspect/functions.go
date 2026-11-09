@@ -16,6 +16,13 @@ func receiverName(declaration *ast.FuncDecl) string {
 	return baseTypeName(declaration.Recv.List[0].Type)
 }
 
+func functionName(function *ast.FuncDecl) string {
+	if receiver := receiverName(function); receiver != "" {
+		return receiver + "." + function.Name.Name
+	}
+	return function.Name.Name
+}
+
 func baseTypeName(expression ast.Expr) string {
 	switch typed := expression.(type) {
 	case *ast.StarExpr:
@@ -68,10 +75,7 @@ func addDeclaration(report *Report, fileSet *token.FileSet, file parsedFile, fun
 	if function.Body == nil {
 		return
 	}
-	name := function.Name.Name
-	if receiver := receiverName(function); receiver != "" {
-		name = receiver + "." + name
-	}
+	name := functionName(function)
 	entries := measureUnit(fileSet, file.path, name, function.Type, function.Body, function.Pos())
 	if !file.test {
 		report.Functions = append(report.Functions, entries...)
