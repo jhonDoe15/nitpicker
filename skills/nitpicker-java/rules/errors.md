@@ -13,5 +13,8 @@ Part of the [nitpicker-java](../SKILL.md) skill. Write these forms from the star
   `shutdown()`) or rethrow. A `supplyAsync` or `runAsync` future never interrupts its task, with
   `get`, `orTimeout`, `completeOnTimeout` or `cancel(true)`: submit the work to an `ExecutorService`
   and cancel the `Future` it returns.
+- A project exception a controller can throw maps to a status: an `@ExceptionHandler` for it (or a
+  base class) in a `@RestControllerAdvice`, or `@ResponseStatus` on the class
+  (`archunit/spring-unmapped-exception`).
 - Expected failures are values: a `sealed interface` result returning
   `new QuantityParse.Invalid(text)` beats throwing.
