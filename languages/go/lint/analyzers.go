@@ -71,6 +71,7 @@ func groups() []group {
 		{tool: "vet", analyzers: passes()},
 		{tool: "errcheck", analyzers: []*analysis.Analyzer{errcheck.Analyzer}},
 		{tool: modernizeTool, analyzers: modernize.Suite},
+		{tool: gosecTool, analyzers: []*analysis.Analyzer{gosecAnalyzer}},
 	}
 }
 
@@ -92,6 +93,25 @@ func toolNames() map[string]string {
 	for _, each := range groups() {
 		for _, analyzer := range each.analyzers {
 			names[analyzer.Name] = each.tool
+		}
+	}
+	return names
+}
+
+func ruleOf(analyzer *analysis.Analyzer, diagnostic analysis.Diagnostic) string {
+	if analyzer == gosecAnalyzer {
+		return diagnostic.Category
+	}
+	return analyzer.Name
+}
+
+func ruleNames() []string {
+	var names []string
+	for _, analyzer := range analyzers() {
+		if analyzer == gosecAnalyzer {
+			names = append(names, gosecRules()...)
+		} else {
+			names = append(names, analyzer.Name)
 		}
 	}
 	return names

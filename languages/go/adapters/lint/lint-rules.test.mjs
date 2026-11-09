@@ -1,5 +1,23 @@
+import { readdirSync, readFileSync } from 'node:fs';
+import path from 'node:path';
 import { describe, expect, it } from 'vitest';
+import { GOSEC_HINTS } from './gosec-hints.mjs';
 import { lintMessage, lintRule } from './lint-rules.mjs';
+
+const LINT_FIXTURES = path.join(import.meta.dirname, '../../lint/fixtures');
+
+function gosecFixtureRules() {
+  const files = readdirSync(LINT_FIXTURES, { recursive: true }).filter((file) =>
+    file.endsWith('.go'),
+  );
+  return new Set(
+    files.flatMap((file) =>
+      [
+        ...readFileSync(path.join(LINT_FIXTURES, file), 'utf8').matchAll(/\/\/ want\S* .*/gu),
+      ].flatMap(([marker]) => marker.match(/\bG\d{3}\b/gu) ?? []),
+    ),
+  );
+}
 
 describe('Go lint messages', () => {
   it.each([
@@ -40,6 +58,18 @@ describe('Go lint messages', () => {
       'impossible assertion: wrong type.',
     ],
     [
+      { tool: 'gosec', rule: 'G404', message: 'Use of weak random number generator' },
+      'Use of weak random number generator. Use crypto/rand (`rand.Text()`, `rand.Read`) for anything an attacker must not guess. For simulations, jitter or sampling, add an exception for this rule with the reason.',
+    ],
+    [
+      {
+        tool: 'gosec',
+        rule: 'G303',
+        message: 'File creation in shared tmp directory without using ioutil.Tempfile',
+      },
+      'File created at a fixed path in a shared temporary folder. Create the file with `os.CreateTemp("", "name-*")`, or in a folder from `os.MkdirTemp`.',
+    ],
+    [
       {
         tool: 'staticcheck',
         rule: 'ST1016',
@@ -58,5 +88,11 @@ describe('Go lint messages', () => {
       'SA1000',
       'nilness',
     ]);
+  });
+
+  it('names an allowed form for every gosec rule with a fixture', () => {
+    const hinted = new Set(GOSEC_HINTS.map(([rule]) => rule));
+    expect([...gosecFixtureRules()].filter((rule) => !hinted.has(rule))).toEqual([]);
+    expect(hinted.size).toBe(GOSEC_HINTS.length);
   });
 });

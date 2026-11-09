@@ -1,3 +1,5 @@
+import { GOSEC_HINTS, GOSEC_MESSAGES } from './gosec-hints.mjs';
+
 const GO_FIX = '`go fix ./...` applies this rewrite.';
 const KEEP_OR_DROP = 'Use the value or remove the assignment.';
 const TAGGED_SWITCH = 'Write a tagged switch, `switch value { case 1: ... }`.';
@@ -87,6 +89,7 @@ const HINTS = new Map([
   ['embedlit', 'Set the promoted fields directly in the literal.'],
   ['stringsbuilder', 'Build the string with a `strings.Builder`.'],
   ['stringsseq', 'Range over `strings.SplitSeq` or `strings.FieldsSeq`.'],
+  ...GOSEC_HINTS,
 ]);
 
 const RULE_NAMES = new Map([['errcheck', 'unchecked']]);
@@ -112,6 +115,7 @@ function hintOf(tool, rule) {
 export function lintMessage({ tool, rule, message }) {
   const hint = hintOf(tool, rule);
   const varying = VARYING_PARTS.get(rule);
-  const text = sentence(varying === undefined ? message : message.replace(varying, ''));
+  const own = tool === 'gosec' ? (GOSEC_MESSAGES.get(rule) ?? message) : message;
+  const text = sentence(varying === undefined ? own : own.replace(varying, ''));
   return hint === undefined ? text : `${text} ${hint}`;
 }

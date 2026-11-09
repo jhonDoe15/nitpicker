@@ -2447,7 +2447,7 @@
                             "structure/class-fields-limit"
                           ]
                         },
-                        { "pattern": "^(?:vet|staticcheck|errcheck|modernize)/[\\s\\S]" }
+                        { "pattern": "^(?:vet|staticcheck|errcheck|modernize|gosec)/[\\s\\S]" }
                       ]
                     }
                   }
