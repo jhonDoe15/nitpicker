@@ -1,6 +1,10 @@
-import { depthFirst, objectChildren } from '../../../../../../shared/traversal.mjs';
-import { findVariable, isFunctionNode, resolveConstant } from '../analysis/constant-resolution.mjs';
-import { memberName, unwrapped } from '../security/security-values.mjs';
+import { depthFirst, objectChildren } from '../../../../../../../shared/traversal.mjs';
+import {
+  findVariable,
+  isFunctionNode,
+  resolveConstant,
+} from '../../analysis/constant-resolution.mjs';
+import { memberName, unwrapped } from '../../security/security-values.mjs';
 
 const GLOBAL_OBJECTS = new Set(['globalThis', 'window', 'self', 'global']);
 

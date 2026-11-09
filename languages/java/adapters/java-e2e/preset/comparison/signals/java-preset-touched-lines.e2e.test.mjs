@@ -2,8 +2,8 @@ import { cpSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterAll, beforeAll, describe } from 'vitest';
-import { runJavaDiff } from '../../../java-diff.mjs';
-import { commitBranch, runGitIn } from '../../../test-support/gradle-e2e.mjs';
+import { runJavaDiff } from '../../../../java-diff.mjs';
+import { commitBranch, runGitIn } from '../../../../test-support/gradle-e2e.mjs';
 import { TOUCHED_BASE, TOUCHED_HEAD, touchedLineCases } from './touched-lines-cases.mjs';
 
 const enabled = process.env.NITPICKER_JAVA_E2E === '1';
@@ -17,7 +17,7 @@ describe.skipIf(!enabled)(
 
     beforeAll(() => {
       repository = mkdtempSync(path.join(tmpdir(), 'nitpicker-java-touched-'));
-      cpSync(path.resolve(import.meta.dirname, '../../../fixtures/gradle-project'), repository, {
+      cpSync(path.resolve(import.meta.dirname, '../../../../fixtures/gradle-project'), repository, {
         recursive: true,
       });
       writeFileSync(path.join(repository, '.gitignore'), 'build/\n.gradle/\n');

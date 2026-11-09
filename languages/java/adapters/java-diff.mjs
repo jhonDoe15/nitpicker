@@ -19,6 +19,7 @@ import { javaRouteRule } from './java-policy.mjs';
 import { withoutFollowedImports } from './imports/followed-imports.mjs';
 import { withoutGeneratedSources } from './generated/generated-sources.mjs';
 import { withoutOverlaps } from './overlaps/static-overlaps.mjs';
+import { readOptions } from './java-read-options.mjs';
 import { toolConfigChoices } from './tool-config/tool-config-choices.mjs';
 import { readJavaFindings } from './reporting/java-reports.mjs';
 import { withJavaColumns } from './reporting/columns/java-columns.mjs';
@@ -92,26 +93,6 @@ function withoutReportBase(error, reportBase) {
   return error instanceof Error && error.message.includes(reportBase)
     ? new Error(error.message.replaceAll(reportBase, '<report directory>'), { cause: error })
     : error;
-}
-
-function readOptions(policy = {}) {
-  return {
-    crapLimit: policy.crapLimit,
-    quick: policy.quick,
-    preset: policy.preset ?? 'java',
-    conventions: policy.conventions,
-    fileLimits: policy.fileLimits,
-    exclude: policy.exclude,
-    exceptions: policy.exceptions,
-    layout: policy.layout,
-    testSeconds: policy.testSeconds,
-    testConsoleAllow: policy.testConsoleAllow,
-    javaStyle: policy.javaStyle,
-    featureLayout: policy.layout,
-    baselineRoot: policy.baselineRoot,
-    baselineMovesFile: policy.baselineMovesFile,
-    baseline: { snapshot: policy.snapshot, baselineRoot: policy.baselineRoot },
-  };
 }
 
 function gradleFindings(projectRoot, options, reportBase) {

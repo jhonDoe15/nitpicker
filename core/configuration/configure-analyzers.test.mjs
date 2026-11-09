@@ -1,7 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import { configuredAnalyzers } from '../../languages/typescript/preset/diff/configured-analyzers.mjs';
 import { resolveHeadPolicy } from '../../languages/typescript/preset/head-policy.mjs';
-import { createPythonAnalyzers } from '../../languages/python/adapters/python-analyzer.mjs';
+import {
+  MUTATION_ANALYZER_NAME,
+  PYTHON_ANALYZER_NAME,
+  createPythonAnalyzers,
+} from '../../languages/python/adapters/python-analyzer.mjs';
 import { createJavaAnalyzer } from '../../languages/java/adapters/java-analyzer.mjs';
 import { createGoAnalyzer } from '../../languages/go/adapters/go-analyzer.mjs';
 import { configureAnalyzers } from './configure-analyzers.mjs';
@@ -168,7 +172,7 @@ describe('analyzer timeouts', () => {
     expect(timeouts['prettier-format']).toBe(timeoutsOf({})['prettier-format']);
     expect(
       timeoutsOf(
-        { preset: 'python', analyzerTimeoutMinutes: { python: 90 } },
+        { preset: 'python', analyzerTimeoutMinutes: { [PYTHON_ANALYZER_NAME]: 90 } },
         createPythonAnalyzers(),
       ).python,
     ).toBe(90 * MINUTE_MS);
@@ -186,7 +190,10 @@ describe('analyzer timeouts', () => {
 
   it('accepts a disabled analyzer and rejects an unknown one', () => {
     expect(
-      timeoutsOf({ disable: ['mutation'], analyzerTimeoutMinutes: { mutation: 90 } }).mutation,
+      timeoutsOf({
+        disable: ['mutation'],
+        analyzerTimeoutMinutes: { [MUTATION_ANALYZER_NAME]: 90 },
+      })[MUTATION_ANALYZER_NAME],
     ).toBeUndefined();
     expect(() => timeoutsOf({ analyzerTimeoutMinutes: { eslnt: 5 } })).toThrow(
       /"analyzerTimeoutMinutes" names unknown analyzers: eslnt\. Known analyzers: .*eslint-lint/,

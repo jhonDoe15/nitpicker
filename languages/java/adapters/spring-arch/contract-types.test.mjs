@@ -3,9 +3,9 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import { readSpringArchFindings, SPRING_ARCH_REPORT } from './spring-arch.mjs';
-import { featureFaceMatcher } from './contract-types.mjs';
+import { CONTRACT_RULE, featureFaceMatcher } from './contract-types.mjs';
 
-const RULE = 'contract-infrastructure-type';
+const RULE = CONTRACT_RULE;
 const temporaryRoots = [];
 
 afterEach(() => {

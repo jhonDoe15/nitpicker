@@ -1,9 +1,9 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import {
-  ARCHIVE_FILE,
   integrationSuiteFiles,
   publishedFiles,
-} from '../test-support/review/kotlin-review-data.mjs';
+} from '../test-support/review/kotlin-build-files-data.mjs';
+import { ARCHIVE_FILE } from '../test-support/review/kotlin-review-data.mjs';
 import { lookupBuild } from '../test-support/review/lookups/kotlin-lookup-data.mjs';
 import {
   ALL_FINDINGS,

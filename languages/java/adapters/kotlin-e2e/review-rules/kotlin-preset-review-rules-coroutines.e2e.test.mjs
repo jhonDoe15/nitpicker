@@ -2,7 +2,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import {
   COROUTINE_FILES,
   EXPECTED_COROUTINE_FINDINGS,
-} from '../test-support/review/kotlin-coroutine-data.mjs';
+} from '../test-support/review/concurrency/kotlin-coroutine-data.mjs';
 import {
   commitBranch,
   diffOf,

@@ -1,16 +1,16 @@
 import { mkdirSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { beforeAll, describe, expect, it } from 'vitest';
-import { libraryProject } from '../../../../../../shared/rules/stability/test-support/library-project.mjs';
-import { collectJavaFindings } from '../../../java-diff.mjs';
+import { libraryProject } from '../../../../../../../shared/rules/stability/test-support/library-project.mjs';
+import { collectJavaFindings } from '../../../../java-diff.mjs';
 import {
   enabled,
   gradle,
   maven,
   twinProjects,
   useMavenPresetProject,
-} from '../../../../maven/__tests__/maven-preset-project.mjs';
-import { librarySources } from '../../test-support/library-sources.mjs';
+} from '../../../../../maven/__tests__/maven-preset-project.mjs';
+import { librarySources } from '../../../test-support/library-sources.mjs';
 
 function withLibrary(root) {
   for (const [file, text] of Object.entries(

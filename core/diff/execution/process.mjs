@@ -121,9 +121,7 @@ function createTaskController(child, task) {
     forceKillTimeout: undefined,
   };
   const timeout = setTimeout(() => {
-    terminate(
-      troubleshootingError(timeoutMessage(task), TROUBLESHOOTING_ANCHORS.analyzerTimeout),
-    );
+    terminate(troubleshootingError(timeoutMessage(task), TROUBLESHOOTING_ANCHORS.analyzerTimeout));
   }, task.timeoutMs);
   function terminate(error) {
     if (errors.has('termination')) return;

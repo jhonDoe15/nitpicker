@@ -3,10 +3,10 @@ import { mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { expect } from 'vitest';
-import { ingestSarifText } from '../../../../../shared/ingest/sarif.mjs';
-import { applyRuleMessages } from '../../../messages/rule-messages.mjs';
-import { INIT_SCRIPT } from '../../../builds/java-build.mjs';
-import { writeRulesets } from '../../tool-config/pmd-wrappers.mjs';
+import { ingestSarifText } from '../../../../../../shared/ingest/sarif.mjs';
+import { applyRuleMessages } from '../../../../messages/rule-messages.mjs';
+import { INIT_SCRIPT } from '../../../../builds/java-build.mjs';
+import { writeRulesets } from '../../../tool-config/pmd-wrappers.mjs';
 
 const ruleset = path.resolve(import.meta.dirname, '../../../gradle/pmd-ruleset.xml');
 

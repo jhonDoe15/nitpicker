@@ -1,11 +1,11 @@
-import { ancestorsOf } from '../analysis/ancestry.mjs';
+import { ancestorsOf } from '../../analysis/ancestry.mjs';
 import {
   isFunctionNode,
   resolveConstant,
   resolveFunction,
-} from '../analysis/constant-resolution.mjs';
-import { configState } from '../security/http/http-config.mjs';
-import { memberName, unwrapped } from '../security/security-values.mjs';
+} from '../../analysis/constant-resolution.mjs';
+import { configState } from '../../security/http/http-config.mjs';
+import { memberName, unwrapped } from '../../security/security-values.mjs';
 import { settlementChain } from './race-operations.mjs';
 import { globalMemberCall, nodesIn } from './syntax-nodes.mjs';
 
