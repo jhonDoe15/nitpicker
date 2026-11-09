@@ -468,6 +468,7 @@ The pairs:
 - line: `errorprone/NullAway` over `pmd/NullAssignment`, `pmd/ReturnEmptyCollectionRatherThanNull`
 - line: `errorprone/InvalidPatternSyntax` over `spotbugs/RE_BAD_SYNTAX_FOR_REGULAR_EXPRESSION`
 - line: `errorprone/BareDotMetacharacter` over `spotbugs/RE_POSSIBLE_UNINTENDED_PATTERN`
+- line: `pmd/RegexPartDefect` over `spotbugs/RE_POSSIBLE_UNINTENDED_PATTERN`
 - line: `errorprone/RandomCast` over `spotbugs/RV_01_TO_INT`
 - line: `errorprone/MathAbsoluteNegative` over `spotbugs/RV_ABSOLUTE_VALUE_OF_RANDOM_INT`
 - line: `errorprone/DeadException` over `spotbugs/RV_EXCEPTION_NOT_THROWN`
