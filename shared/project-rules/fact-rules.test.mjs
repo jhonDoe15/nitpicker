@@ -4,10 +4,13 @@ import { factRuleSettings } from './fact-rules.mjs';
 const LAYOUT = ['layout.sharedRoots', 'layout.featureRoots'];
 
 describe('factRuleSettings', () => {
-  it.each([['java'], ['kotlin']])(
+  it.each([
+    ['java', ['testConsole', ...LAYOUT]],
+    ['kotlin', ['testConsole', 'protocols', ...LAYOUT]],
+  ])(
     'gives %s the feature layout keys that contract-infrastructure-type reads',
-    (language) => {
-      expect(factRuleSettings(language)).toEqual(['testConsole', ...LAYOUT]);
+    (language, keys) => {
+      expect(factRuleSettings(language)).toEqual(keys);
     },
   );
 
