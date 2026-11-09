@@ -1,4 +1,3 @@
-import { parseAllDocuments } from 'yaml';
 import { sqlSchema } from './sql-statements.mjs';
 
 const BLANKED = /<!--[\s\S]*?-->|<rollback\b[\s\S]*?<\/rollback>/gu;
@@ -205,10 +204,8 @@ const YAML_CHANGES = new Map([
   ['sql', yamlSql],
 ]);
 
-function parsedDocuments(text) {
-  return parseAllDocuments(text)
-    .filter((document) => document.errors.length === 0)
-    .map((document) => document.toJS());
+function parsedDocuments(text, parseYaml) {
+  return parseYaml === undefined ? [] : parseYaml(text);
 }
 
 function isObject(value) {
@@ -228,10 +225,10 @@ function childEntries(node) {
   return isObject(node) ? Object.entries(node).filter(([key]) => key !== 'rollback') : [];
 }
 
-export function yamlSchema(text) {
+export function yamlSchema(text, parseYaml) {
   const schema = { foreignKeys: [], indexes: [] };
   const context = { schema, text, cursor: { at: 0 } };
-  const pending = parsedDocuments(text);
+  const pending = parsedDocuments(text, parseYaml);
   for (const node of pending) {
     for (const [key, value] of childEntries(node).filter((entry) => isChecked(entry[1]))) {
       YAML_CHANGES.get(key)?.(value, context);

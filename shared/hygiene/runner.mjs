@@ -26,7 +26,7 @@ function baseFilesOf(baselineRoot, exclude) {
     : withoutExcluded(trackedFiles(baselineRoot), exclude);
 }
 
-export function runHygieneCheck({ check, projectRoot, policy = {}, baselineRoot }) {
+export function runHygieneCheck({ check, projectRoot, policy = {}, baselineRoot, parseYaml }) {
   const collect = CHECKS[check];
   if (collect === undefined) {
     throw new Error(`Unknown hygiene check: ${check}`);
@@ -34,11 +34,15 @@ export function runHygieneCheck({ check, projectRoot, policy = {}, baselineRoot 
   const files = withoutExcluded(trackedFiles(projectRoot), policy.exclude);
   const baseFiles = baseFilesOf(baselineRoot, policy.exclude);
   return withoutExcepted(
-    collect({ projectRoot, files, baselineRoot, baseFiles }),
+    collect({ projectRoot, files, baselineRoot, baseFiles, parseYaml }),
     policy.exceptions,
   );
 }
 
 export function runHygieneCli(cli) {
-  return runCheckCli({ ...cli, runCheck: runHygieneCheck, label: 'Hygiene' });
+  return runCheckCli({
+    ...cli,
+    runCheck: (options) => runHygieneCheck({ ...options, parseYaml: cli.parseYaml }),
+    label: 'Hygiene',
+  });
 }
