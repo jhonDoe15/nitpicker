@@ -52,3 +52,16 @@ func (cents *Cents) Scan(source any) error {
 }
 
 var _ sql.Scanner = (*Cents)(nil)
+
+type hidden struct{}
+
+func (hidden) Exported(value any) string {
+	if text, ok := value.(string); ok {
+		return text
+	}
+	return ""
+}
+
+func Hidden(value any) string {
+	return hidden{}.Exported(value)
+}

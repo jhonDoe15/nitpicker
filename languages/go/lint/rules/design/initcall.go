@@ -2,9 +2,12 @@ package design
 
 import (
 	"go/ast"
+	"go/types"
+	"strings"
 
 	"github.com/jhonDoe15/nitpicker/languages/go/lint/rules/support"
 	"golang.org/x/tools/go/analysis"
+	"golang.org/x/tools/go/types/typeutil"
 )
 
 var initAnalyzer = &analysis.Analyzer{
@@ -37,10 +40,24 @@ func reportEffects(pass *analysis.Pass, body *ast.BlockStmt) {
 		switch node.(type) {
 		case *ast.FuncLit:
 			return false
-		case *ast.ExprStmt, *ast.GoStmt, *ast.DeferStmt, *ast.SendStmt:
+		case *ast.ExprStmt:
+			if !registers(pass, node.(*ast.ExprStmt)) {
+				pass.Reportf(node.Pos(), "%s", initMessage)
+			}
+			return false
+		case *ast.GoStmt, *ast.DeferStmt, *ast.SendStmt:
 			pass.Reportf(node.Pos(), "%s", initMessage)
 			return false
 		}
 		return true
 	})
+}
+
+func registers(pass *analysis.Pass, statement *ast.ExprStmt) bool {
+	call, ok := ast.Unparen(statement.X).(*ast.CallExpr)
+	if !ok {
+		return false
+	}
+	callee, isFunc := typeutil.Callee(pass.TypesInfo, call).(*types.Func)
+	return isFunc && (strings.HasPrefix(callee.Name(), "Register") || strings.HasPrefix(callee.Name(), "MustRegister"))
 }

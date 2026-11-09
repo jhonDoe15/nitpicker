@@ -4,6 +4,7 @@ import (
 	"go/ast"
 	"go/token"
 	"go/types"
+	"slices"
 
 	"github.com/jhonDoe15/nitpicker/languages/go/lint/rules/support"
 	"golang.org/x/tools/go/analysis"
@@ -24,9 +25,11 @@ func runState(pass *analysis.Pass) (any, error) {
 	variables := packageVariables(pass)
 	changed := map[*types.Var]bool{}
 	root := support.Root(pass)
-	nodes := []ast.Node{(*ast.AssignStmt)(nil), (*ast.IncDecStmt)(nil), (*ast.UnaryExpr)(nil), (*ast.CallExpr)(nil)}
+	nodes := []ast.Node{
+		(*ast.AssignStmt)(nil), (*ast.IncDecStmt)(nil), (*ast.UnaryExpr)(nil), (*ast.CallExpr)(nil), (*ast.RangeStmt)(nil),
+	}
 	for cursor := range root.Preorder(nodes...) {
-		if _, inFunction := support.EnclosingFunc(cursor); !inFunction {
+		if !changesAfterInit(pass, cursor) {
 			continue
 		}
 		for _, target := range targets(pass.TypesInfo, cursor) {
@@ -39,6 +42,14 @@ func runState(pass *analysis.Pass) (any, error) {
 		pass.Reportf(variables[variable].Pos(), stateMessage, variable.Name())
 	}
 	return nil, nil
+}
+
+func changesAfterInit(pass *analysis.Pass, cursor inspector.Cursor) bool {
+	if _, inFunction := support.EnclosingFunc(cursor); !inFunction || support.InTestFile(pass, cursor.Node()) {
+		return false
+	}
+	decl, found := support.EnclosingDecl(cursor)
+	return !found || decl.Recv != nil || decl.Name.Name != "init"
 }
 
 func packageVariables(pass *analysis.Pass) map[*types.Var]*ast.Ident {
@@ -55,7 +66,7 @@ func packageVariables(pass *analysis.Pass) map[*types.Var]*ast.Ident {
 			for _, spec := range general.Specs {
 				for _, name := range spec.(*ast.ValueSpec).Names {
 					variable, isVar := pass.TypesInfo.Defs[name].(*types.Var)
-					if isVar && name.Name != "_" && !support.IsNamed(variable.Type(), "sync", "Pool") {
+					if isVar && name.Name != "_" {
 						variables[variable] = name
 					}
 				}
@@ -80,6 +91,10 @@ func targets(info *types.Info, cursor inspector.Cursor) []ast.Expr {
 		}
 	case *ast.CallExpr:
 		return callTargets(info, node)
+	case *ast.RangeStmt:
+		if node.Tok == token.ASSIGN {
+			return slices.DeleteFunc([]ast.Expr{node.Key, node.Value}, func(each ast.Expr) bool { return each == nil })
+		}
 	}
 	return nil
 }
@@ -97,10 +112,9 @@ func callTargets(info *types.Info, call *ast.CallExpr) []ast.Expr {
 	if selection == nil || selection.Kind() != types.MethodVal {
 		return nil
 	}
-	method, _ := selection.Obj().(*types.Func)
-	_, pointerReceiver := method.Signature().Recv().Type().(*types.Pointer)
-	_, pointerValue := types.Unalias(info.TypeOf(selector.X)).(*types.Pointer)
-	if pointerReceiver && !pointerValue {
+	receiver := info.TypeOf(selector.X)
+	_, pointerValue := types.Unalias(receiver).(*types.Pointer)
+	if !pointerValue && (support.IsNamed(receiver, "sync", "Once") || support.IsNamed(receiver, "sync", "WaitGroup")) {
 		return []ast.Expr{selector.X}
 	}
 	return nil

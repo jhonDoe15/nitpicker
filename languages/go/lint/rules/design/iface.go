@@ -27,7 +27,7 @@ func runInterface(pass *analysis.Pass) (any, error) {
 			continue
 		}
 		face, isInterface := object.Type().Underlying().(*types.Interface)
-		if !isInterface || !returned[object] || !face.IsMethodSet() || face.NumMethods() == 0 || sealed(face) {
+		if !isInterface || !returned[object] || !face.IsMethodSet() || face.NumMethods() == 0 || sealed(pass.Pkg, face) {
 			continue
 		}
 		implementations := implementing(concrete, face)
@@ -60,9 +60,9 @@ func inTestFile(pass *analysis.Pass, object types.Object) bool {
 	return support.InTestFile(pass, &ast.Ident{NamePos: object.Pos()})
 }
 
-func sealed(face *types.Interface) bool {
+func sealed(pkg *types.Package, face *types.Interface) bool {
 	for method := range face.Methods() {
-		if !method.Exported() {
+		if !method.Exported() || private(pkg, method.Signature()) {
 			return true
 		}
 	}
@@ -77,7 +77,7 @@ func concreteTypes(pass *analysis.Pass) []*types.Named {
 			continue
 		}
 		named, isNamed := object.Type().(*types.Named)
-		if isNamed && named.TypeParams().Len() == 0 && !types.IsInterface(named) {
+		if isNamed && !types.IsInterface(named) {
 			found = append(found, named)
 		}
 	}
@@ -87,9 +87,48 @@ func concreteTypes(pass *analysis.Pass) []*types.Named {
 func implementing(concrete []*types.Named, face *types.Interface) []*types.Named {
 	var found []*types.Named
 	for _, named := range concrete {
-		if types.Implements(named, face) || types.Implements(types.NewPointer(named), face) {
+		if named.TypeParams().Len() > 0 && hasMethodNames(named, face) ||
+			types.Implements(named, face) || types.Implements(types.NewPointer(named), face) {
 			found = append(found, named)
 		}
 	}
 	return found
+}
+
+func hasMethodNames(named *types.Named, face *types.Interface) bool {
+	methods := types.NewMethodSet(types.NewPointer(named))
+	for method := range face.Methods() {
+		if methods.Lookup(method.Pkg(), method.Name()) == nil {
+			return false
+		}
+	}
+	return true
+}
+
+func localType(pkg *types.Package, typ types.Type) bool {
+	for {
+		switch each := types.Unalias(typ).(type) {
+		case *types.Pointer:
+			typ = each.Elem()
+		case *types.Slice:
+			typ = each.Elem()
+		case *types.Map:
+			typ = each.Elem()
+		case *types.Named:
+			return each.Obj().Pkg() == pkg && !each.Obj().Exported()
+		default:
+			return false
+		}
+	}
+}
+
+func private(pkg *types.Package, signature *types.Signature) bool {
+	for _, tuple := range []*types.Tuple{signature.Params(), signature.Results()} {
+		for variable := range tuple.Variables() {
+			if localType(pkg, variable.Type()) {
+				return true
+			}
+		}
+	}
+	return false
 }
