@@ -64,6 +64,16 @@ const MAVEN_SYSTEM_PROPERTIES =
   '<nitpicker.provided>yes</nitpicker.provided></systemPropertyVariables></configuration>' +
   '</plugin></plugins></build>';
 
+const FEATURE_FILES = {
+  'src/main/java/demo/shared/Money.java':
+    'package demo.shared;\n\npublic final class Money {\n  private Money() {}\n\n' +
+    '  public static long cents(long units) {\n    return units * 100;\n  }\n}\n',
+  'src/main/java/demo/features/billing/Invoice.java':
+    'package demo.features.billing;\n\nimport demo.shared.Money;\n\npublic final class Invoice {\n' +
+    '  private Invoice() {}\n\n  public static long total(long units) {\n' +
+    '    return Money.cents(units);\n  }\n}\n',
+};
+
 function appendTo(file, text) {
   writeFileSync(file, `${readFileSync(file, 'utf8')}${text}`);
 }
@@ -74,12 +84,21 @@ describe.skipIf(!enabled)('Java preset on Maven builds', () => {
     const [gradleProject, mavenProject] = twinProjects();
     for (const root of [gradleProject, mavenProject]) {
       writeFileSync(path.join(root, 'src/main/java/demo/Dated.java'), DATED);
+      for (const [file, text] of Object.entries(FEATURE_FILES)) {
+        mkdirSync(path.dirname(path.join(root, file)), { recursive: true });
+        writeFileSync(path.join(root, file), text);
+      }
     }
     const fromGradle = collectJavaFindings(gradleProject, { gradle, policy: {} });
     const fromMaven = collectJavaFindings(mavenProject, { maven, policy: {} });
     const tools = new Set(fromMaven.map((finding) => finding.tool));
 
     expect(comparable(fromMaven)).toEqual(comparable(fromGradle));
+    expect(
+      fromMaven
+        .filter(({ rule }) => rule === 'shared-used-by-one-feature')
+        .map(({ tool, path: file }) => `${tool} ${file}`),
+    ).toEqual(['coupling src/main/java/demo/shared/Money.java']);
     expect(fromMaven.some(({ rule }) => rule === 'CollapsibleIfStatements')).toBe(true);
     expect([...tools].sort()).toEqual([
       'archunit',

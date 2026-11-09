@@ -6,6 +6,7 @@ export function javaFindingOptions(policy = {}) {
     fileLimits: policy.fileLimits,
     exclude: policy.exclude,
     exceptions: policy.exceptions,
+    layout: policy.layout,
     testSeconds: policy.testSeconds,
     testConsoleAllow: policy.testConsoleAllow,
     javaStyle: policy.javaStyle,

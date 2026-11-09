@@ -63,7 +63,6 @@ function runJavaPreset(
   } = {},
 ) {
   const withKotlin = kotlinRun?.withArguments ?? ((run) => run([]));
-  const directory = path.join(reportBase, 'tool-config');
   const since = Date.now() - CLOCK_SLACK_MS;
   withKotlin((kotlinArguments) => {
     const common = [
@@ -78,7 +77,7 @@ function runJavaPreset(
       projectRoot,
       initScript,
       policy,
-      directory,
+      directory: path.join(reportBase, 'tool-config'),
       testsFailedModules,
     });
     for (const stage of stages) {
