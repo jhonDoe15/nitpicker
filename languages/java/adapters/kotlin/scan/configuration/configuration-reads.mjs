@@ -41,7 +41,7 @@ export function configurationReads(scanned) {
     return [];
   }
   const calls = [...scanned.code.matchAll(READ)].filter(
-    (match) => !inImport(scanned.code, match.index) && !readsJvmKey(scanned, match),
+    (match) => !(inImport(scanned.code, match.index) || readsJvmKey(scanned, match)),
   );
   const references = [...scanned.code.matchAll(REFERENCE)].filter(
     (match) => !inImport(scanned.code, match.index),
