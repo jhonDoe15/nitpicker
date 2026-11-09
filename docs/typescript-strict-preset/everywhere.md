@@ -56,6 +56,28 @@ Part of the [TypeScript strict preset guide](../typescript-strict-preset.md).
   reducer and a callback with one or three parameters are not reported either. A spread in `map`
   that adds a field (`items.map((item) => ({ ...item, done: true }))`) is the allowed immutable
   update and is not reported: copying one element per step is linear.
+- `nitpicker/no-costly-collection-form`: a collection form with a cheaper equivalent, in all
+  production code (not in tests). It reports an array declared with an array literal that gets
+  `push`, `unshift` or `xs = [...xs, x]` and is searched with `includes`, `indexOf(x) === -1` (or
+  another test against `-1` or `0`) or `some((y) => y === x)` inside a loop, a callback or a
+  recursive function such as a visitor; an array also used by position (`xs[i]`, `splice`, `sort`,
+  `pop`, `shift`, `at`, a positional `indexOf`) is left alone. Allowed form: a `Set` (`add`, `has`;
+  `[...set]` keeps insertion order). It reports `find`, `findIndex`, `findLast`,
+  `findLastIndex` or `some` whose callback only compares a property of the item with `===` or `==`
+  to a value that is not a literal (`handlers.find((h) => h.message === event.type)`), inside a
+  loop, an iteration callback (`map`, `forEach`, `filter`, `reduce` and the like) or a listener
+  (`on`, `once`, `addListener`, `prependListener`, `addEventListener`, `subscribe`), on a binding declared outside it that is never
+  reassigned or changed in place (`push`, `splice`, `sort` and the like), or a `this` field that
+  only the constructor assigns. Allowed form: a `Map` built once, before the loop or handler. It
+  reports `sort(...)` or `toSorted(...)` followed by `[0]`, `.at(0)`, `.at(-1)`, `.pop()`, `.shift()`
+  or a one-element destructuring (`const [first] = xs.toSorted(cmp)`); `xs.sort()` on a binding read
+  again later, or on a property, keeps the sorted array and is left alone. Allowed form: one pass
+  with `reduce`, or `Math.min`/`Math.max` for a few numbers. An exception fits only for a list that
+  always stays a handful of items. The rule reads no types, so it behaves the same in the
+  JavaScript preset; it reads local arrays only, not class fields or exported arrays. The same rules run as `list-used-as-set`, `linear-lookup-in-loop` and ruff
+  `FURB192` (Python), `pmd/ListUsedAsSet`, `pmd/LinearLookupInLoop` and `pmd/SortForExtreme` (Java)
+  and `kotlin-source/` rules of the same names (Kotlin). Only this rule also reads `indexOf`
+  and identity `some` as membership tests and listeners as repeated runs.
 - `async`/`await` and `Promise.all`. No `.then()`, `.catch()` or `.finally()` chains, and no promise
   left without being awaited (`@typescript-eslint/no-floating-promises`). Deliberate
   fire-and-forget is written `void job();`, typescript-eslint's own form; `.then()` and `.catch()`
@@ -218,6 +240,24 @@ Part of the [TypeScript strict preset guide](../typescript-strict-preset.md).
   `exceptions` entry.
 - `===` and `!==` only (`eqeqeq`). Braces on every `if`, `else` and loop body (`curly`). One import
   statement per module (`no-duplicate-imports`; a separate `import type` is fine).
+- Logic mistakes the bundled rules catch, in production code and tests of both presets
+  (`eslint-config/logic/logic-rules.mjs`): a `map`, `filter`, `find` or `reduce` callback with a
+  path that returns nothing (`array-callback-return`; `forEach` is banned anyway); `sort()` or
+  `toSorted()` on numbers without a compare function, which sorts them as strings
+  (`@typescript-eslint/require-array-sort-compare`, type-aware; a string array is fine, and an
+  untyped JavaScript one passes once JSDoc types it); a loop whose body always leaves on the first
+  pass (`no-unreachable-loop`); a loop condition nothing in the loop
+  changes (`no-unmodified-loop-condition`, for the loops config files and exceptions allow);
+  `${...}` inside a plain string (`no-template-curly-in-string`; an exception fits text another
+  tool fills, such as shell, CI or Kotlin source); a constructor that returns a value (`no-constructor-return`); a bare
+  `return;` at the end of a function (`no-useless-return`); a private class member nothing reads
+  (`@typescript-eslint/no-unused-private-class-members`); `'a' + 'b'` (`no-useless-concat`) and
+  `fn.call(undefined, x)` (`no-useless-call`). `no-promise-executor-return` and `no-loop-func` stay
+  off: their reports were almost all harmless forms such as an executor that returns
+  `server.listen(...)` and handlers that share a flag on purpose, and `for...of` with `const`
+  bindings already removes the late-binding bug `no-loop-func` exists for. Python's counterparts are ruff `PLE0101`,
+  `B023` and `PLR1711`; in Java and Kotlin a missing return does not compile and the existing
+  unused-member checks already report an unused private member.
 - Identifier casing (`nitpicker/naming-convention`, which wraps
   `@typescript-eslint/naming-convention`): types and type parameters in PascalCase; functions,
   variables and parameters in camelCase; constants may be UPPER_CASE; a leading underscore is
@@ -519,6 +559,20 @@ Part of the [TypeScript strict preset guide](../typescript-strict-preset.md).
   are not. JavaScript files carry no type annotations, so there only the schema entries are checked.
   Two members whose meanings differ (`owner?: User` for the main owner beside `owners?: User[]` for
   the co-owners) are the case for an exception with a reason.
+- `nitpicker/no-unmapped-exception` (type-aware, TypeScript preset only): a NestJS handler (a
+  method with a route or GraphQL decorator such as `@Get` or `@Query` in a `@Controller` or
+  `@Resolver` class) that can throw a project exception class no exception filter in scope maps, so
+  the client gets a 500. The walk follows calls into project functions and methods, resolved by the
+  type checker, four levels deep, and the message names the call path. A `throw` inside a `try`
+  that has a `catch`, or in the promise chain before a `.catch(...)`, is not followed, and neither is
+  a function stored in a variable (a callback passed to a call is followed). A class is mapped when it or a superclass is a framework
+  status class (`HttpException` and its subclasses, `RpcException`, `WsException`, `GraphQLError`,
+  `ApolloError`) or a filter in scope catches it or a superclass: `@UseFilters` on the method or
+  the class, `app.useGlobalFilters(...)`, or an `APP_FILTER` provider. A `@Catch()` or
+  `@Catch(Error)` filter maps only the classes it checks with `instanceof`, since the rest fall
+  through to a generic response. Exceptions from libraries, `throw error` of a variable, plain
+  `Error` and a class whose base is a call (a mixin) are left out. The JavaScript preset does not run it, since it has no type information. Allowed:
+  `class OrderNotFound extends NotFoundException {}`.
 - `nitpicker/no-forwarding-wrapper` (type-aware): a module-level named function or `const` arrow
   whose body is one `return` (or an expression body) of a call that passes exactly its own
   parameters, in order, unchanged (`export const loadUser = (id: string) => fetchUser(id)`; an
@@ -649,6 +703,20 @@ Part of the [TypeScript strict preset guide](../typescript-strict-preset.md).
   `eslint-plugin-regexp`, on for `g` and `y` only), so the two rules do not overlap. Allowed: create
   the regex where it is used, drop `g` when one match is enough, or `text.matchAll(pattern)` for
   every match.
+- Regular expressions with a part that never changes what they match or does not do what it looks
+  like (`eslint-plugin-regexp`, in production code). A part that can never match, always matches or repeats another part is either
+  a bug or dead weight, and tests seldom reach the input that tells which: an assertion that always
+  accepts or always rejects (`/a\bb/`), an alternative or quantifier an assertion rules out, a
+  duplicate alternative (`/a|b|a/`) or class member (`[\w_]`), an empty group, alternative or
+  lookaround, a lazy quantifier at the end of the pattern, a backreference that is always empty, a
+  zero quantifier, a capturing group that captures less than it reads, a set operand that never
+  changes the set, `[\b]`, a `$2` replacement with one group and a `replaceAll`/`matchAll` regex
+  without `g`. Forms with a shorter equivalent are reported too, with the fix: `a{1}`, `a{2,2}`,
+  `(?:a+)*`, `\w+\d*`, `(?:ab)c`, `[a]`, `[a-ab]`, `a{3}?`, `(?=(?=b))`, `a(?!\w)` (`\b`), and a
+  range such as `[ -~]` whose characters are not obvious (write `[\x20-\x7E]`). The rules are the
+  `regexp/` ids listed in `eslint-config/regexp/regexp-rules.mjs`. `regexp/no-super-linear-move` is
+  off: it reports the common trailing trim `replace(/\/+$/u, '')` and cannot tell bounded input
+  from attacker-controlled input.
 - `nitpicker/no-string-as-regex` (type-aware): `match()`, `matchAll()` and `search()` compile a
   string argument as a regex, so a string-typed argument on a string receiver is reported (also a
   literal: `text.match('a.b')`); use `includes`, `startsWith`, `indexOf` or `===` for plain text, or

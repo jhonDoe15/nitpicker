@@ -17,6 +17,6 @@ the [one-way rules](one-way-rules.md), the [source checks](source-checks.md), th
 [dependency and repository checks](../usage.md#dependency-and-repository-checks), `co-change` of the
 [change history](../usage.md#change-history) check (with a `<module>/**` glob), stability, and the
 mutants of Java and Kotlin classes per path, and the structure, CRAP and coverage rules per function. Java rule
-ids are accepted for the Java sources of the project. `layout` takes only `featureRoots`, and only
-once `history.coChange` is on (it names the feature folders `co-change` reads); its other keys stay
-a config error until the Kotlin preset runs the rule that reads them (`shared-used-by-one-feature`).
+ids are accepted for the Java sources of the project. `layout` takes `sharedRoots` and
+`featureRoots`, which `shared-used-by-one-feature` reads (and `co-change` too, for `featureRoots`);
+its TypeScript source-folder keys are a config error.

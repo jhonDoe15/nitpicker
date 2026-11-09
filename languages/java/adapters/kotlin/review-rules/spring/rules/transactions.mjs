@@ -2,7 +2,7 @@ import { annotationIn, argumentOf, isTrue, typeName } from '../spring-names.mjs'
 import { acceptsArguments, entriesOf, isSelfCall, ownerOf, symbolOf } from '../spring-scopes.mjs';
 import { PERSISTENCE_EXCEPTIONS } from '../spring-types.mjs';
 import { transactionOf } from '../transactions/scope.mjs';
-import { repositoryWrite } from '../transactions/writes.mjs';
+import { readOnlyWrites } from './read-only-writes.mjs';
 
 const BROAD = new Set([
   'kotlin.Exception',
@@ -188,32 +188,6 @@ function checkedRollback(view, { projectFiles }) {
             rule: 'SpringTransactionalCheckedRollback',
             line: fn.line,
             symbol: `${fn.owner}.${fn.name}`,
-          },
-        ]
-      : [];
-  });
-}
-
-function readOnly(annotation) {
-  return annotation !== undefined && isTrue(argumentOf(annotation, 'readOnly'));
-}
-
-function readOnlyWrites(view) {
-  return view.file.invocations.flatMap((invocation) => {
-    const fn = view.functionAt(invocation.scope);
-    if (fn === undefined) {
-      return [];
-    }
-    const { own, jakarta, inherited } = transactionOf(view, fn);
-    const underReadOnly =
-      readOnly(own) || (own === undefined && jakarta === undefined && readOnly(inherited));
-    const write = repositoryWrite(view, invocation);
-    return underReadOnly && write
-      ? [
-          {
-            rule: 'SpringTransactionalReadOnlyWrite',
-            line: invocation.line,
-            symbol: symbolOf(view, invocation.scope, invocation.name),
           },
         ]
       : [];

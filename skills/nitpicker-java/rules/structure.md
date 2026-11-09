@@ -22,6 +22,9 @@ Part of the [nitpicker-java](../SKILL.md) skill. Write these forms from the star
   `@ConfigurationProperties`, Quarkus `@ConfigMapping`). Put the values in a record and pass it in through
   constructors (`pmd/ConfigurationReadOutsideCompositionRoot`; with Spring, `SpringTypedConfiguration`). JVM keys
   such as `java.*` and `user.*` are fine.
+- A class in a `shared` package that only one feature (a package under `features`) uses belongs in
+  that feature (`coupling/shared-used-by-one-feature`); `layout.sharedRoots` and
+  `layout.featureRoots` name other folders.
 - With jMolecules (`AggregateRoot`, `Entity`, `ValueObject` or their annotations), an aggregate holds
   another aggregate only by its identifier or an `Association<T, ID>`, an entity sits in one
   aggregate, and a value object holds identifiers, not entities (`archunit/ddd-...`).

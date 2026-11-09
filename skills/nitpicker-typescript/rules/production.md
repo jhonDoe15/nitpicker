@@ -21,16 +21,29 @@ Part of the [nitpicker-typescript](../SKILL.md) skill. Write these forms from th
   `match`, `matchAll` and `search` compile a string argument as a regex: use `includes` or
   `startsWith` for text, and escape a parameter before building it into `new RegExp(...)`
   (`nitpicker/no-string-as-regex`).
+  A pattern part that never changes the match or does not do what it looks like (an assertion that
+  always accepts, a duplicate alternative, `[\w_]`, an empty group) is a `regexp/` finding: remove it
+  or fix what was meant; a form with a shorter equivalent (`a{1}`, `(?:ab)c`, `[a]`) takes the
+  shorter one.
 - A child process you wait for gets a deadline: `{ timeout: 30_000 }` on `execFileSync`/`spawnSync`, or a
   `timeout` or `signal: AbortSignal.timeout(30_000)` on `execFile` and an awaited `spawn` or `execa`
   (`nitpicker/require-process-timeout`; a build wrapper that only runs a child to completion takes an exception).
 - In a server project, dates use UTC or a named zone, never the server's own: `getUTCHours()`,
   `toISOString()`, `Date.UTC(...)`, `{ timeZone }` for `Intl.DateTimeFormat` and `toLocale*String`,
   luxon `{ zone }`, date-fns `{ in: tz(zone) }`, dayjs `.utc()` (`nitpicker/no-local-time-zone`).
+- In a server project, a number, boolean or date read from the query string, path, headers or a
+  multipart form is converted where it is declared, since the value arrives as text: `z.coerce.number()`,
+  `z.stringbool()`, `@Type(() => Number)` with class-validator, `@Transform(({ value }) => value === 'true')`
+  for a boolean, `ParseIntPipe`/`ParseBoolPipe` on a single NestJS parameter. Never `z.coerce.boolean()`
+  or `@Type(() => Boolean)`: they turn `"false"` into true (`nitpicker/no-uncoerced-request-input`).
 - Let the database count, filter, sort and aggregate: `count`/`exists`/`findFirst` instead of
   `(await repo.find()).length`, `where` instead of `.filter`/`.some`/`.find` on the rows, `order`/`orderBy`
   instead of `.sort`, and the ORM's aggregate or `groupBy` instead of `reduce`, `Math.max(...rows.map(...))`
   or `groupBy` (`nitpicker/no-in-memory-query`).
+- Pick the cheaper collection form: a `Set` (`add`, `has`) for items you search while you collect
+  them, a `Map` built once before a loop or handler instead of `find((x) => x.key === key)` in it,
+  and one `reduce` pass instead of `sort(...)[0]` or `toSorted(...).at(-1)`
+  (`nitpicker/no-costly-collection-form`).
 - Each finding names the allowed form. A deliberate exception goes in `nitpicker.config.json`
   `exceptions` (rule, paths, reason), never inline.
 - The `$schema` line of `nitpicker.config.json`

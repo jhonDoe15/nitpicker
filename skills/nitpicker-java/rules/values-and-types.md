@@ -41,6 +41,11 @@ Part of the [nitpicker-java](../SKILL.md) skill. Write these forms from the star
   changes the same map, not even from a callback it starts (`pmd/RecursiveMapUpdate`). Attach the
   cleanup to the returned value:
   `map.computeIfAbsent(key, k -> start(k)).whenComplete((r, e) -> map.remove(key, r))`.
+- Lombok: a back reference (a child's `parent`, an item's `order`) carries `@ToString.Exclude` and
+  `@EqualsAndHashCode.Exclude`, or the generated members recurse until `StackOverflowError`
+  (`pmd/GeneratedMemberCycle`). `@Data` or `@EqualsAndHashCode` on a subclass of a class with fields
+  states `callSuper = true`, or `callSuper = false` when the inherited fields do not count
+  (`pmd/GeneratedEqualsSkipsSuperclass`).
 - Data and results: `record` for data, a `sealed interface` of records for an outcome, and an
   exhaustive `switch` expression over it. A `switch` statement needs `default`.
 - Enums: to sort the constants of one of your enums into two groups, classify every constant: a
@@ -51,3 +56,8 @@ Part of the [nitpicker-java](../SKILL.md) skill. Write these forms from the star
   Factories named `of` or `from` and copies such as `List.copyOf` are fine.
 - A record or `@ConfigurationProperties` class (and the classes nested in it) has `tags` or `tag`,
   not both; one item is a one-element list.
+- Pick the cheaper collection form: a `HashSet` (or `LinkedHashSet`) for items you test with
+  `contains` while you collect them (`pmd/ListUsedAsSet`), a `Map` built once with
+  `Collectors.toMap` before a loop instead of `stream().filter(x -> x.getKey().equals(key)).findFirst()`
+  in it (`pmd/LinearLookupInLoop`), and `min(comparator)`/`max(comparator)` instead of
+  `sorted(...).findFirst()` (`pmd/SortForExtreme`).

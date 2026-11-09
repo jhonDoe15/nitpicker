@@ -9,7 +9,7 @@ import { resolveLayoutFor } from '../../languages/typescript/preset/layout.mjs';
 import { collectWorkingTreeChanges, readBaseFiles } from './changes.mjs';
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
-import { prettierExtensions, prettierExclusions, typescriptExtensions } from './extensions.mjs';
+import { fixTargets } from '../../languages/typescript/fix/fix-targets.mjs';
 import { linkPolicyFile } from '../tooling/policy-links.mjs';
 import { PACKAGE_ROOT, resolveTool } from '../tooling/tool-resolution.mjs';
 import { layoutTransformFor } from '../../languages/typescript/preset/tool-configs.mjs';
@@ -45,25 +45,14 @@ function fixWithPolicy(settings) {
   const before = new Map(
     files.map(({ path: name }) => [name, readFileSync(path.join(projectRoot, name))]),
   );
-  const eslintFiles = files.filter(({ path: name }) =>
-    eslintExtensionsFor(layout).has(path.posix.extname(name).toLowerCase()),
-  );
-  const prettierFiles = files.filter(
-    ({ path: name }) =>
-      prettierExtensions.has(path.posix.extname(name).toLowerCase()) &&
-      !prettierExclusions.some((pattern) => pattern.test(name)),
-  );
+  const { isEslintFile, isPrettierFile } = fixTargets(layout);
+  const eslintFiles = files.filter(({ path: name }) => isEslintFile(name));
+  const prettierFiles = files.filter(({ path: name }) => isPrettierFile(name));
   const toolErrors = [
     ...eslintFixErrors(settings, eslintFiles),
     ...prettierFixErrors(settings, prettierFiles, comparison.mergeBaseSha),
   ];
   return { fixedFiles: changedPaths(files, before, projectRoot), toolErrors };
-}
-
-function eslintExtensionsFor(layout) {
-  return layout.javascript
-    ? new Set(layout.extensions.map((extension) => `.${extension}`))
-    : typescriptExtensions;
 }
 
 function changedPaths(files, before, projectRoot) {
