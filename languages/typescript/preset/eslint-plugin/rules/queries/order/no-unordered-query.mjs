@@ -1,4 +1,4 @@
-import { AGGREGATE } from '../../../../../../../shared/rules/queries/sql-order.mjs';
+import { AGGREGATE_GAP } from '../../../../../../../shared/rules/queries/sql-order.mjs';
 import { stringValue } from '../../analysis/constant-resolution.mjs';
 import { memberName, unwrapped } from '../../security/security-values.mjs';
 import {
@@ -142,7 +142,7 @@ export const rule = {
 
     function checkText(node) {
       for (const gap of sqlGaps(context, node)) {
-        report(node, gap.kind === AGGREGATE ? 'aggregate' : 'page', gap.form);
+        report(node, gap.kind === AGGREGATE_GAP ? 'aggregate' : 'page', gap.form);
       }
     }
 

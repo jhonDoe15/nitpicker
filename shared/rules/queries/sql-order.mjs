@@ -1,7 +1,7 @@
 import { DYNAMIC } from '../security/sql-text.mjs';
 
 const PAGE = 'page';
-export const AGGREGATE = 'aggregate';
+export const AGGREGATE_GAP = 'aggregate';
 
 const AGGREGATES = new Set(['array_agg', 'json_agg', 'jsonb_agg']);
 const MASKED = /--[^\n]*|\/\*[\s\S]*?\*\/|'(?:[^']|'')*'|"(?:[^"]|"")*"|`[^`]*`/gu;
@@ -117,7 +117,7 @@ function closeScope(scope, parent, gaps) {
   parent.childOrdered ||= isOrderedSelect(scope);
   const unordered = AGGREGATES.has(scope.name) && !scope.opaque && !ORDER_BY.test(scope.text);
   if (unordered) {
-    parent.aggregates.push({ kind: AGGREGATE, form: `${scope.name}(...)`, index: scope.start });
+    parent.aggregates.push({ kind: AGGREGATE_GAP, form: `${scope.name}(...)`, index: scope.start });
   }
 }
 

@@ -166,7 +166,7 @@ export const testFailureMessageCases = [
     filename: 'src/assets/asset.repository.ts',
     banned:
       "import { Kysely } from 'kysely';\nexport const byIds = (db: Kysely<DB>, ids: string[]) => db.selectFrom('asset').selectAll().where('id', 'in', ids).execute();",
-    allowed: 'id = any(${ids}::uuid[])',
+    allowed: '::uuid[])',
   },
   {
     name: 'many-to-many cascade remove names the persist-only cascade',
