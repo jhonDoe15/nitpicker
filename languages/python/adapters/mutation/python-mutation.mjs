@@ -73,7 +73,7 @@ function runMutmut(context, ignored = []) {
   return run(context, ['mutmut', 'run'], {
     accepted: finishedRun,
     rule: MUTATION_FAILED_RULE,
-    timeoutMs: MUTATION_TIMEOUT_MS,
+    timeoutMs: context.analyzerDeadlineMs ?? MUTATION_TIMEOUT_MS,
     ...mutmutEnvironment(context, ignored),
   });
 }

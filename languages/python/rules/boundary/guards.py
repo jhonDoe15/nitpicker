@@ -1,6 +1,13 @@
 import ast
 
-from checks.common import dotted_name, finding, functions_of, own_nodes, type_text
+from checks.common import (
+    dotted_name,
+    finding,
+    functions_of,
+    own_nodes,
+    root_name,
+    type_text,
+)
 
 PARSE_CALLS = {
     "json.loads",
@@ -115,25 +122,15 @@ def is_source(node, context, functions):
     return (located if located else (context.path, name)) in functions
 
 
-def root_name(node):
-    while True:
-        node = unwrap(node)
-        if isinstance(node, ast.Subscript):
-            node = node.value
-        elif isinstance(node, ast.Call) and isinstance(node.func, ast.Attribute):
-            node = node.func.value
-        elif isinstance(node, ast.Attribute):
-            node = node.value
-        else:
-            return node.id if isinstance(node, ast.Name) else None
-
-
 def target_names(target):
     return {n.id for n in ast.walk(target) if isinstance(n, ast.Name)}
 
 
 def is_untrusted(node, names, context, functions):
-    return is_source(node, context, functions) or root_name(node) in names
+    return (
+        is_source(node, context, functions)
+        or root_name(node, through_calls=True) in names
+    )
 
 
 def scope_names(scope, context, functions, inherited):
@@ -160,7 +157,7 @@ def subject_name(node, context):
     if isinstance(node, ast.Call) and isinstance(node.func, (ast.Name, ast.Attribute)):
         if isinstance(node.func, ast.Name) or parse_call(node, context.aliases):
             return f"{type_text(node.func)}()"
-    return root_name(node) or "expression"
+    return root_name(node, through_calls=True) or "expression"
 
 
 def call_findings(node, names, context, functions):

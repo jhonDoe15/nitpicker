@@ -8,10 +8,10 @@ import {
   gradleClasspath,
   pinnedKotlinCompiler,
   writeSources,
-} from '../../test-support/kotlin-psi/kotlin-psi-program.mjs';
+} from '../../test-support/kotlin/kotlin-psi-program.mjs';
 import { findingFactory } from '../../kotlin/review-rules/review-finding.mjs';
 import { unusedOptionFindings } from '../../kotlin/review-rules/main/unused-options/unused-options.mjs';
-import { forwardingWrapperFindings } from '../../kotlin/review-rules/main/forwarding-wrappers.mjs';
+import { forwardingWrapperFindings } from '../../kotlin/review-rules/main/forwarding/forwarding-wrappers.mjs';
 
 const enabled = process.env.NITPICKER_KOTLIN_E2E === '1';
 const gradle = process.env.NITPICKER_GRADLE ?? 'gradle';

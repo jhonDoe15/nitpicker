@@ -36,8 +36,10 @@ function withoutSchemaKey(config) {
   return Object.fromEntries(Object.entries(config).filter(([key]) => key !== SCHEMA_KEY));
 }
 
+const RUN_SETTINGS = new Set(['analyzerTimeoutMinutes']);
+
 export function describeConfigOverrides(config) {
-  return KEYS.filter((key) => config[key] !== undefined).flatMap((key) =>
+  return KEYS.filter((key) => config[key] !== undefined && !RUN_SETTINGS.has(key)).flatMap((key) =>
     key === 'python' ? describePythonOverrides(config.python) : describeOverride(config, key),
   );
 }
