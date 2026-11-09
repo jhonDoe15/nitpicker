@@ -22,5 +22,6 @@ export const SKIP_S1003 = 'checks = ["all", "-S1003"]\n';
 
 export const PROJECT_STATICCHECK = JSON.stringify({
   preset: 'go',
+  disable: ['mutation'],
   tools: { staticcheck: { precedence: ['project'] } },
 });
