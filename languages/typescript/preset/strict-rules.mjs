@@ -68,6 +68,7 @@ export const strictEslintRuleIds = [
   'nitpicker/no-unknown-in-domain',
   'nitpicker/no-unsafe-deserialization',
   'nitpicker/no-unsafe-path-join',
+  'nitpicker/no-unmapped-exception',
   'nitpicker/no-unvalidated-schema-field',
   'nitpicker/no-weak-hash',
   'nitpicker/preserve-error-cause',

@@ -178,6 +178,7 @@ function strictTypedConfigFor(layout, parserOptions, options = {}) {
         'nitpicker/no-forwarding-wrapper': 'error',
         'nitpicker/no-falsy-default': 'error',
         'nitpicker/no-string-as-regex': 'error',
+        'nitpicker/no-unmapped-exception': 'error',
       },
     },
     {
