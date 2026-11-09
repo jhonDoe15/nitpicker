@@ -35,7 +35,6 @@ import { fixWorkingTree } from './fix/run-fix.mjs';
 import { resolveCacheStore } from './diff/cache/cache-stores.mjs';
 import { runHistoryCli } from '../shared/history/runner.mjs';
 import { runHygieneCli } from '../shared/hygiene/runner.mjs';
-import { yamlDocuments } from './tooling/yaml/yaml-documents.mjs';
 import { printedInformation } from './command/information/printed-information.mjs';
 import { runInitCommand } from './init/run-init.mjs';
 import { javascriptPresetHint } from './configuration/project-checks/preset-detection.mjs';
@@ -44,7 +43,10 @@ import { redirectToBundledTypeScriptApi } from '../languages/typescript/typescri
 import { describeError } from '../shared/messages/error-chain.mjs';
 
 const CHECK_COMMANDS = {
-  hygiene: (cli) => runHygieneCli({ ...cli, parseYaml: yamlDocuments }),
+  hygiene: async (cli) => {
+    const { yamlDocuments } = await import('./tooling/yaml/yaml-documents.mjs');
+    return runHygieneCli({ ...cli, parseYaml: yamlDocuments });
+  },
   history: runHistoryCli,
   [GO_ANALYZER_COMMAND]: runGoCli,
 };
@@ -259,5 +261,5 @@ function resolveRunCacheStore(cli) {
 const invokedPath = process.argv[1];
 
 if (invokedPath !== undefined && realpathSync(invokedPath) === import.meta.filename) {
-  process.exitCode = runCli();
+  process.exitCode = await runCli();
 }
