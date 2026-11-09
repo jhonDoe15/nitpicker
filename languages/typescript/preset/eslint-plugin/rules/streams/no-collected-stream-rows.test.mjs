@@ -8,6 +8,7 @@ const collected = (name) => ({ messageId: 'collectedStream', data: { name } });
 
 tester.run('no-collected-stream-rows', rule, {
   valid: [
+    'async function f(cursor) { let paths = []; for await (const row of cursor) { paths = [...paths, row.path]; } return paths; }',
     'async function f(repo) { const page = []; for await (const a of repo.streamAssets()) { page.push(a); if (page.length >= 10) break; } return page; }',
     'async function f(repo) { const page = []; for await (const a of repo.streamAssets()) { page.push(a); if (page.length >= 10) return page; } return page; }',
     'async function f(repo) { const batch = []; for await (const a of repo.streamAssets()) { batch.push(a); if (batch.length >= 500) { await queue(batch.splice(0)); } } await queue(batch); }',
@@ -32,10 +33,6 @@ tester.run('no-collected-stream-rows', rule, {
     {
       code: 'async function f(repo) { const jobs = []; for await (const asset of repo.streamAssets()) { jobs.push({ id: asset.id }); } await queue(jobs); }',
       errors: [collected('jobs')],
-    },
-    {
-      code: 'async function f(cursor) { let paths = []; for await (const row of cursor) { paths = [...paths, row.path]; } return paths; }',
-      errors: [collected('paths')],
     },
     {
       code: 'async function f(walk) { const files: string[] = []; for await (const entry of walk(root)) { if (entry.isFile()) { files.push(entry.path); } } return files.length; }',

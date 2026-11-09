@@ -93,8 +93,10 @@ The same form runs as `streamed-rows-collected` in the Python preset (`.iterator
 `stream_results=True`, a named or server-side cursor) and as `pmd/StreamedRowsCollected` in the Java
 preset (a `Stream` from a Spring Data repository, `getResultStream()`, `queryForStream` or a Hibernate
 `stream()`, collected with `toList()`, `collect` or `forEach(list::add)`) and the Kotlin preset (a
-`Stream` returned by a repository function, collected in the same chain). The Go preset has no own
-rule engine yet.
+`Stream` returned by a repository function, collected in the same chain). A `limit`, an early `break` or
+`return`, and a Kotlin `Stream` collected inside `use { }` are left alone. A Kotlin `Flow` is not read:
+it is the default return type of a coroutine repository, so `toList()` on it is the usual read of a
+small result. The Go preset has no own rule engine yet.
 
 HTTP deadlines: `nitpicker/require-http-timeout` (strict preset, production source) reports an outbound
 HTTP call that has no timeout, so a server that accepts the connection and never answers hangs it. The same
