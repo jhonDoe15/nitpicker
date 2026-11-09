@@ -25,6 +25,7 @@ import { MAVEN_PRESETS } from '../adapters/gradle-presets.mjs';
 import { processorTool } from './errorprone/maven-errorprone.mjs';
 import { readPinnedTools } from '../builds/java-build.mjs';
 import { kotlinSetup } from './kotlin/kotlin-setup.mjs';
+import { pitHistoryOf } from '../builds/pit-history/pit-history.mjs';
 import {
   analyzeModule,
   jacocoExecFiles,
@@ -121,6 +122,7 @@ function analyzeAll({ analyzed, policy, kotlin, work, ...shared }) {
         classpaths,
         style,
         tolerateFailures: policy.snapshot === 'base',
+        pitHistory: pitHistoryOf(policy, shared.projectRoot),
         kotlinOptions: kotlin.options,
         spring: policy.spring,
         springRoles,

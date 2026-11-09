@@ -76,7 +76,16 @@ function runCoverageTools(options) {
   const execFiles = jacocoExecFiles(module);
   runJacocoReport({ module, reportDir, tools, execFiles, since, testsRan, spawn });
   const scope = { projectRoot: options.projectRoot, mutationScope: options.mutationScope };
-  runPit({ module, reportDir, tools, classpaths, isArchunit, spawn, scope });
+  runPit({
+    module,
+    reportDir,
+    tools,
+    classpaths,
+    isArchunit,
+    spawn,
+    scope,
+    history: options.pitHistory,
+  });
 }
 
 function runArchitecture(options) {

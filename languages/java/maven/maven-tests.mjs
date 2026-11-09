@@ -13,6 +13,7 @@ import { runJava } from './maven-command.mjs';
 import { failedCaseEntries, failingTestsError, freshReports } from '../builds/test-failures.mjs';
 import { readPitMutators } from '../builds/java-build.mjs';
 import { pitRunTargets } from './module/pit-scope.mjs';
+import { pitHistoryArguments } from '../builds/pit-history/pit-history.mjs';
 
 const DEFAULT_ARCHUNIT_INCLUDES = '**/*ArchTest.class,**/*ArchitectureTest.class';
 const JUNIT_ENGINE_JAR = /^junit-platform-engine-.+\.jar$/u;
@@ -205,7 +206,7 @@ function pitArgLine(pitDir, args) {
   return ['--argLine', `${quote}@${file}${quote}`];
 }
 
-function pitArguments({ module, classpaths, isArchunit }, { pitDir, targets }) {
+function pitArguments({ module, classpaths, isArchunit, history }, { pitDir, targets }) {
   return [
     ...['--reportDir', pitDir, '--targetClasses', targets.join(',')],
     ...['--targetTests', pitTests(module.testOutputDirectory, isArchunit).join(',')],
@@ -216,6 +217,7 @@ function pitArguments({ module, classpaths, isArchunit }, { pitDir, targets }) {
     ...['--outputFormats', 'XML', '--timestampedReports', 'false', '--threads', '2'],
     ...['--failWhenNoMutations', 'false', '--verbose', 'false'],
     ...pitArgLine(pitDir, module.testJvmArgs),
+    ...pitHistoryArguments(history, module.buildDirectory),
   ];
 }
 
