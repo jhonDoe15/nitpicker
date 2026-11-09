@@ -11,7 +11,7 @@ import (
 
 func reviveOff() map[string]string {
 	return map[string]string{
-		"add-constant":                  "flags every literal but 0 and 1",
+		"add-constant":                  "flags every numeric literal",
 		"argument-limit":                "shared parameter limit",
 		"atomic":                        "vet atomic",
 		"banned-characters":             "needs a project list",
@@ -23,12 +23,10 @@ func reviveOff() map[string]string {
 		"cyclomatic":                    "shared structure limits and CRAP",
 		"dot-imports":                   "ST1001",
 		"duplicated-imports":            "ST1019",
-		"empty-lines":                   "formatter",
 		"error-naming":                  "ST1012",
 		"error-return":                  "ST1008",
 		"error-strings":                 "ST1005",
 		"errorf":                        "S1028",
-		"exported":                      "ST1020 to ST1022",
 		"file-header":                   "needs a project header",
 		"file-length-limit":             "shared file limit",
 		"function-length":               "shared function limits",
@@ -51,13 +49,12 @@ func reviveOff() map[string]string {
 		"unchecked-type-assertion":      "errcheck",
 		"unconditional-recursion":       "SA5007",
 		"unhandled-error":               "errcheck",
-		"unreachable-code":              "vet unreachable",
-		"unsecure-url-scheme":           "flags identifiers such as XML namespaces",
+		"unsecure-url-scheme":           "flags every http literal, XML namespaces included",
 		"use-any":                       "modernize any",
 		"use-errors-new":                "unnecessary-format",
 		"use-slices-concat":             "not nil-preserving, like modernize appendclipped",
 		"use-slices-sort":               "modernize slicessort",
-		"use-waitgroup-go":              "modernize waitgroup",
+		"use-waitgroup-go":              "modernize waitgroupgo",
 		"var-naming":                    "ST1003",
 		"waitgroup-by-value":            "vet copylocks",
 	}
@@ -100,5 +97,21 @@ func TestReviveDirectivesAreIgnored(t *testing.T) {
 	want := "package p\n\n//review:disable\n// review:enable-line:bare-return\nvar url = \"//x\"\n"
 	if string(read) != want {
 		t.Fatalf("got %q", read)
+	}
+}
+
+func TestTheDocsNameEveryReviveRule(t *testing.T) {
+	docs, err := os.ReadFile("../../../docs/go-preset.md")
+	if err != nil {
+		t.Fatal(err)
+	}
+	var missing []string
+	for _, each := range config.AllRules() {
+		if !strings.Contains(string(docs), each.Name()) {
+			missing = append(missing, each.Name())
+		}
+	}
+	if len(missing) > 0 {
+		t.Fatalf("docs/go-preset.md does not name: %s", strings.Join(missing, " "))
 	}
 }

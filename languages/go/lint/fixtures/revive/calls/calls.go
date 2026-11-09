@@ -65,3 +65,13 @@ func Counted() int {
 	wg.Wait()
 	return result
 }
+
+func Returned() {
+	return
+	Collect()
+}
+
+func Quit(code int) {
+	os.Exit(code) // want deep-exit unreachable-code
+	Collect()
+}

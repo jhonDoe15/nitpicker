@@ -1,7 +1,7 @@
 # Go preset
 
-Status: slice GO1 (ticket #414) implemented, and the first part of slice GO2 (#415): staticcheck,
-errcheck, modernize and the extra `golang.org/x/tools` passes. The remaining slices are listed
+Status: slice GO1 (ticket #414) implemented, and the first two parts of slice GO2 (#415):
+staticcheck, errcheck, modernize, the extra `golang.org/x/tools` passes and revive. The remaining slices are listed
 under [Remaining slices](#remaining-slices).
 
 The Go preset gates a Go module (`go.mod` at the project root) with the same differential gate as
@@ -41,7 +41,7 @@ node core/cli.mjs go-analyzer --project-root <snapshot>   (per snapshot)
   -> inspect <module root> inspect.json           structure metrics (languages/go/inspect)
   -> <formatter> -l <files>                        format check, one per formatter
   -> go vet -json ./...                            compile errors and vet diagnostics
-  -> lint ./...                                    staticcheck, errcheck, modernize (languages/go/lint)
+  -> lint ./...                                    staticcheck, errcheck, modernize, revive (languages/go/lint)
   -> go test -vet=off -json -coverpkg=./... -coverprofile=coverage.out ./...
   -> readGoFindings -> applyFindingPolicy -> compareFindings(base, head)
 ```
@@ -223,18 +223,19 @@ message does not already name it, and by its exception entry:
   that narrows a choice to one form or catches a mistake the other tools miss. The configurable
   ones get one setting each:
 
-  | Rule                              | Setting                                | Why                                                                  |
-  | --------------------------------- | -------------------------------------- | -------------------------------------------------------------------- |
-  | `enforce-map-style`               | `literal`: `map[K]V{}`                 | `make` stays for a sized map, `make(map[K]V, n)`, where it says more |
-  | `enforce-slice-style`             | `literal`: `[]T{}`                     | the same form as maps; `var items []T` stays for a nil slice         |
-  | `enforce-repeated-arg-type-style` | `short`: `first, second string`        | the form gofumpt writes                                              |
-  | `enforce-switch-style`            | `default` last, a switch may have none | ST1015 allows first or last; one place is enough                     |
-  | `filename-format`                 | `^[a-z0-9]+(_[a-z0-9]+)*\.go$`         | lower case with underscores, the form the go tool's own suffixes use |
-  | `defer`                           | every case, chains included            | `stop := start(); defer stop()` over `defer start()()`               |
+  | Rule                              | Setting                                      | Why                                                                  |
+  | --------------------------------- | -------------------------------------------- | -------------------------------------------------------------------- |
+  | `enforce-map-style`               | `literal`: `map[K]V{}`                       | `make` stays for a sized map, `make(map[K]V, n)`, where it says more |
+  | `enforce-slice-style`             | `literal`: `[]T{}`                           | the same form as maps; `var items []T` stays for a nil slice         |
+  | `enforce-repeated-arg-type-style` | `short`: `first, second string`              | the form gofumpt's `-extra` mode writes                              |
+  | `enforce-switch-style`            | `default` last, a switch may have none       | ST1015 allows first or last; one place is enough                     |
+  | `filename-format`                 | `^[a-z0-9]+(_[a-z0-9]+)*\.go$`               | lower case with underscores, the form the go tool's own suffixes use |
+  | `exported`                        | only the stutter check (`orders.OrdersList`) | ST1020 to ST1022 check doc comments; a doc comment is not required   |
 
   The rules on: bare-return, blank-imports, bool-literal-in-expr, call-to-gc, comment-spacings,
-  confusing-results, context-as-argument, datarace, deep-exit, defer, early-return, empty-block,
-  the four `enforce-*` styles, epoch-naming, filename-format, flag-parameter,
+  confusing-results, context-as-argument, datarace, deep-exit, defer (deferred call chains too:
+  `stop := start(); defer stop()`, not `defer start()()`), early-return, empty-block, empty-lines,
+  the four `enforce-*` styles, exported (stutter only), epoch-naming, filename-format, flag-parameter,
   forbidden-call-in-wg-go, get-return, identical-branches, identical-ifelseif-branches,
   identical-switch-branches, identical-switch-conditions, if-return, import-alias-naming,
   import-shadowing, increment-decrement, indent-error-flow, inefficient-map-lookup,
@@ -242,12 +243,17 @@ message does not already name it, and by its exception entry:
   package-directory-mismatch, package-naming, range-val-address (Go before 1.22),
   redefines-builtin-id, redundant-import-alias, redundant-test-main-exit, struct-tag,
   superfluous-else, time-date, time-equal, unexported-naming, unexported-return,
-  unnecessary-format, unnecessary-if, unnecessary-stmt, unused-parameter, unused-receiver,
-  use-fmt-print, useless-break, useless-fallthrough and var-declaration. revive's own confidence
+  unnecessary-format, unnecessary-if, unnecessary-stmt, unreachable-code (only after `os.Exit`,
+  `log.Fatal` and the like; `go vet` reports code after `return` and `panic`), unused-parameter,
+  unused-receiver, use-fmt-print, useless-break, useless-fallthrough and var-declaration. revive's own confidence
   floor (0.8) applies, as its command line applies it. `package-naming` is a finding on the package
-  folder, like ST1000, because revive reports it from whichever file it reads first. revive
-  type-checks from the toolchain's export data, as its command line does, so the few rules that need types (time-equal, unexported-return, epoch-naming and others)
-  see standard-library types but not those of third-party modules.
+  folder, like ST1000, because revive reports it from whichever file it reads first. The rules
+  that need types (epoch-naming, inefficient-map-lookup, time-equal, unexported-return and
+  others) get them from the program's own package load, so third-party and sibling-package types
+  are known. revive's command line type-checks each package on its own and loses every type in a
+  package that imports anything outside the standard library. With gofumpt as the formatter,
+  `comment-spacings` and `empty-lines` can report a line the format finding also covers; running
+  the formatter clears both.
 
 The linters skip generated files (`// Code generated ... DO NOT EDIT.`), as staticcheck does; a
 package of only generated files needs no package comment. An analyzer that fails on a package that
@@ -257,32 +263,31 @@ person accepts.
 
 **Off, with the reason.** Each of these reports the same problem as a check that runs:
 
-| Check                                                                                                                                                                       | Reason                                                                                                                                                  |
-| --------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| SA1014, SA1017, SA2000, SA2002, SA4018, SA4021, SA5009, SA5010, SA9006                                                                                                      | `go vet` reports the same code (unmarshal, sigchanyzer, waitgroup, testinggoroutine, assign, appends, printf, ifaceassert, shift)                       |
-| S1029                                                                                                                                                                       | SA6003 reports the same loop                                                                                                                            |
-| ST1023                                                                                                                                                                      | QF1011 reports the same declaration                                                                                                                     |
-| SA5005                                                                                                                                                                      | never reports on current Go versions; `runtime.AddCleanup` replaces finalizers                                                                          |
-| vet `sortslice`                                                                                                                                                             | SA1028 reports the same call                                                                                                                            |
-| vet `shadow`                                                                                                                                                                | flags the idiomatic `if err := f(); err != nil` inside a function with an outer `err`                                                                   |
-| vet `fieldalignment`, `atomicalign`                                                                                                                                         | memory layout, not one way to write code; SA1027 covers 32-bit atomics                                                                                  |
-| modernize `appendclipped`, `bloop`, `fmtappendf`, `slicesdelete`                                                                                                            | left out of the suite upstream (not nil-preserving, or less clear)                                                                                      |
-| revive `atomic`, `range-val-in-closure`, `string-of-int`, `unreachable-code`, `waitgroup-by-value`                                                                          | `go vet` reports the same code (atomic, loopclosure, stringintconv, unreachable, copylocks)                                                             |
-| revive `constant-logical-expr`, `identical-ifelseif-conditions`, `unconditional-recursion`, `context-keys-type`                                                             | SA4000, SA4014, SA5007 and SA1029 report the same code                                                                                                  |
-| revive `dot-imports`, `duplicated-imports`, `error-naming`, `error-return`, `error-strings`, `exported`, `package-comments`, `receiver-naming`, `time-naming`, `var-naming` | ST1001, ST1019, ST1012, ST1008, ST1005, ST1020 to ST1022, ST1000, ST1006 and ST1016, ST1011, ST1003                                                     |
-| revive `errorf`, `range`                                                                                                                                                    | S1028, S1005                                                                                                                                            |
-| revive `unhandled-error`, `unchecked-type-assertion`                                                                                                                        | errcheck, with blank assignments and type assertions checked                                                                                            |
-| revive `redundant-build-tag`, `use-any`, `use-slices-sort`, `use-waitgroup-go`                                                                                              | modernize `plusbuild`, `any`, `slicessort`, `waitgroup`                                                                                                 |
-| revive `use-errors-new`                                                                                                                                                     | `unnecessary-format` reports the same call on every Go version                                                                                          |
-| revive `use-slices-concat`                                                                                                                                                  | not nil-preserving, the reason modernize leaves out `appendclipped`                                                                                     |
-| revive `argument-limit`, `cognitive-complexity`, `cyclomatic`, `file-length-limit`, `function-length`, `line-length-limit`, `max-control-nesting`                           | the shared limits measure parameters, statements, lines, nesting, file length and line length, and CRAP covers complexity                               |
-| revive `function-result-limit`, `max-public-structs`                                                                                                                        | a size limit no other preset has; `confusing-results` covers same-typed results                                                                         |
-| revive `banned-characters`, `comments-density`, `file-header`, `imports-blocklist`, `string-format`                                                                         | only useful with a project's own list or threshold                                                                                                      |
-| revive `add-constant`                                                                                                                                                       | flags every literal other than 0 and 1, so it fires on most correct code                                                                                |
-| revive `confusing-naming`                                                                                                                                                   | reports whichever of the two names it reads last, which changes between runs                                                                            |
-| revive `modifies-parameter`, `optimize-operands-order`                                                                                                                      | report only below revive's 0.8 confidence floor (they cannot tell a parameter from a shadowing variable, or a cheap operand from one with side effects) |
-| revive `empty-lines`                                                                                                                                                        | formatting is the formatter's job; gofumpt removes these lines                                                                                          |
-| revive `unsecure-url-scheme`                                                                                                                                                | flags `http://` strings that are identifiers, such as XML namespaces; transport security is gosec's job                                                 |
+| Check                                                                                                                                                           | Reason                                                                                                                                                  |
+| --------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| SA1014, SA1017, SA2000, SA2002, SA4018, SA4021, SA5009, SA5010, SA9006                                                                                          | `go vet` reports the same code (unmarshal, sigchanyzer, waitgroup, testinggoroutine, assign, appends, printf, ifaceassert, shift)                       |
+| S1029                                                                                                                                                           | SA6003 reports the same loop                                                                                                                            |
+| ST1023                                                                                                                                                          | QF1011 reports the same declaration                                                                                                                     |
+| SA5005                                                                                                                                                          | never reports on current Go versions; `runtime.AddCleanup` replaces finalizers                                                                          |
+| vet `sortslice`                                                                                                                                                 | SA1028 reports the same call                                                                                                                            |
+| vet `shadow`                                                                                                                                                    | flags the idiomatic `if err := f(); err != nil` inside a function with an outer `err`                                                                   |
+| vet `fieldalignment`, `atomicalign`                                                                                                                             | memory layout, not one way to write code; SA1027 covers 32-bit atomics                                                                                  |
+| modernize `appendclipped`, `bloop`, `fmtappendf`, `slicesdelete`                                                                                                | left out of the suite upstream (not nil-preserving, or less clear)                                                                                      |
+| revive `atomic`, `range-val-in-closure`, `string-of-int`, `waitgroup-by-value`                                                                                  | `go vet` reports the same code (atomic, loopclosure, stringintconv, copylocks)                                                                          |
+| revive `constant-logical-expr`, `identical-ifelseif-conditions`, `unconditional-recursion`, `context-keys-type`                                                 | SA4000, SA4014, SA5007 and SA1029 report the same code                                                                                                  |
+| revive `dot-imports`, `duplicated-imports`, `error-naming`, `error-return`, `error-strings`, `package-comments`, `receiver-naming`, `time-naming`, `var-naming` | ST1001, ST1019, ST1012, ST1008, ST1005, ST1000, ST1006 and ST1016, ST1011, ST1003                                                                       |
+| revive `errorf`, `range`                                                                                                                                        | S1028, S1005                                                                                                                                            |
+| revive `unhandled-error`, `unchecked-type-assertion`                                                                                                            | errcheck, with blank assignments and type assertions checked                                                                                            |
+| revive `redundant-build-tag`, `use-any`, `use-slices-sort`, `use-waitgroup-go`                                                                                  | modernize `plusbuild`, `any`, `slicessort`, `waitgroupgo`                                                                                               |
+| revive `use-errors-new`                                                                                                                                         | `unnecessary-format` reports the same call on every Go version                                                                                          |
+| revive `use-slices-concat`                                                                                                                                      | not nil-preserving, the reason modernize leaves out `appendclipped`                                                                                     |
+| revive `argument-limit`, `cognitive-complexity`, `cyclomatic`, `file-length-limit`, `function-length`, `line-length-limit`, `max-control-nesting`               | the shared limits measure parameters, statements, lines, nesting, file length and line length, and CRAP covers complexity                               |
+| revive `function-result-limit`, `max-public-structs`                                                                                                            | a size limit no other preset has; `confusing-results` covers same-typed results                                                                         |
+| revive `banned-characters`, `comments-density`, `file-header`, `imports-blocklist`, `string-format`                                                             | only useful with a project's own list or threshold                                                                                                      |
+| revive `add-constant`                                                                                                                                           | flags every numeric literal, so it fires on most correct code                                                                                           |
+| revive `confusing-naming`                                                                                                                                       | reports whichever of the two names it reads last, which changes between runs                                                                            |
+| revive `modifies-parameter`, `optimize-operands-order`                                                                                                          | report only below revive's 0.8 confidence floor (they cannot tell a parameter from a shadowing variable, or a cheap operand from one with side effects) |
+| revive `unsecure-url-scheme`                                                                                                                                    | flags every `http://` string, XML namespaces and documentation links included; transport security belongs to the gosec slice (#976)                     |
 
 **Overlaps on one line.** When two checks report the same line, the more specific one stays:
 
@@ -297,6 +302,7 @@ person accepts.
 | vet `gofixdirective`                 | vet `inline` on the same directive               |
 | `go vet` printf                      | SA1006 (Go 1.24 and later modules)               |
 | S1002                                | revive `bool-literal-in-expr` at the same column |
+| SA5008, `go vet` structtag           | revive `struct-tag`                              |
 | SA5003, SA9001, SA9010               | revive `defer`                                   |
 | SA5002, SA9003                       | revive `empty-block`                             |
 | ST1015                               | revive `enforce-switch-style`                    |

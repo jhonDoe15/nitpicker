@@ -18,7 +18,8 @@ allowed form and ends with its exception entry.
 ## Names and comments
 
 - Every package has a package comment, `// Package orders ...`, in one file, usually `doc.go`
-  (ST1000). Every exported name has a doc comment that starts with the name (ST1020 to ST1022).
+  (ST1000). A doc comment on an exported name starts with the name (ST1020 to ST1022). An exported
+  name does not repeat its package: `orders.List`, not `orders.OrdersList` (revive `exported`).
 - Names use MixedCaps with upper-case initialisms: `userID`, `ServeHTTP`, `parseURL` (ST1003).
 - A receiver is named after its type (`account` or `a`, never `this` or `self`), and every method
   of a type uses the same name (ST1006, ST1016).
@@ -61,11 +62,13 @@ allowed form and ends with its exception entry.
 - An unused parameter is named `_`; an unused receiver is left unnamed, `func (Box) Name()`
   (ST1006 rejects `_`). `context.Context` is the first parameter; a `bool` parameter that picks the branch means two functions.
 - A struct field's type is a named type, not an inline `struct { ... }`.
-- `os.Exit` and `log.Fatal` only in `main` or `init`; `fmt.Print` instead of the `print` builtin;
+- `os.Exit` and `log.Fatal` only in `main` or `init`; `fmt.Fprintln(os.Stderr, ...)` instead of the `print`
+  and `println` builtins; nothing after an `os.Exit` or `log.Fatal` call;
   no `runtime.GC()`; `t.Equal(u)` for times; `_, found := m[key]` instead of a loop over the keys;
   no `wg.Done()` or `panic` inside `wg.Go`; `m.Run()` in `TestMain` without `os.Exit`.
 - A blank import (`import _ "image/png"`) belongs in the main package or a test.
-- A comment has a space after `//`, except directives such as `//go:build`.
+- A comment has a space after `//`, except directives such as `//go:build`, and a block has no
+  empty line at its start or end.
 
 ## What does not work
 

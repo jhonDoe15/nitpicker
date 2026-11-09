@@ -38,7 +38,7 @@ func reviveFiles(loaded []*packages.Package) [][]string {
 			continue
 		}
 		for _, file := range pkg.GoFiles {
-			key := filepath.Dir(file) + "\x00" + pkg.Name
+			key := groupKey(file, pkg.Name)
 			if groups[key] == nil {
 				groups[key] = map[string]bool{}
 			}
@@ -53,10 +53,11 @@ func reviveFiles(loaded []*packages.Package) [][]string {
 }
 
 func reviveFindings(loaded []*packages.Package) ([]Finding, error) {
-	rules, err := configuredRules()
+	configured, err := configuredRules()
 	if err != nil {
 		return nil, err
 	}
+	rules, shared := withTypes(configured, loaded)
 	linter := lint.New(withoutDirectives, 0)
 	config := lint.Config{Confidence: reviveConfidence, Rules: lint.RulesConfig{}}
 	files := reviveFiles(loaded)
@@ -78,6 +79,9 @@ func reviveFindings(loaded []*packages.Package) ([]Finding, error) {
 	}
 	if len(problems) > 0 {
 		return nil, errors.New(strings.Join(problems, "\n"))
+	}
+	if err := shared.err(); err != nil {
+		return nil, err
 	}
 	return findings, nil
 }

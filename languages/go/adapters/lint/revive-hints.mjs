@@ -5,14 +5,10 @@ const HINTS = new Map([
   ['bare-return', 'Name every value in the return statement: `return size, nil`.'],
   [
     'blank-imports',
-    'Import the package for its side effect in the main package or a test that needs it.',
+    'Import the package for its side effect in the main package or a test that needs it, or say on the import line what the side effect is.',
   ],
   ['call-to-gc', 'Remove the call; the runtime schedules garbage collection itself.'],
   ['comment-spacings', 'Put a space after `//`: `// text`.'],
-  [
-    'datarace',
-    'Return the value from the goroutine over a channel, or assign it after the goroutine is joined.',
-  ],
   ['deep-exit', 'Return an error and let main decide how the program exits.'],
   ['empty-block', 'Remove the block, or put the code it was meant to run in it.'],
   ['enforce-map-style', 'Write `map[K]V{}`; keep `make` only with a size: `make(map[K]V, n)`.'],
@@ -50,17 +46,16 @@ const HINTS = new Map([
   ],
   [
     'package-naming',
-    'Name the package for what it provides, such as `orders`, not `util` or a standard package name.',
+    'Name the package in lower case, one word, for what it provides, such as `orders`; not `util` or a standard package name.',
   ],
   [
     'range-val-address',
     'Take the address of the element, `&values[index]`, or copy the value into a new variable first.',
   ],
-  ['redefines-builtin-id', 'Rename the variable, such as `length` for `len`.'],
+  ['redefines-builtin-id', 'Rename it, such as `length` for `len`.'],
   ['redundant-import-alias', 'Drop the alias.'],
   ['unused-receiver', 'Leave the receiver unnamed, `func (Box) Name()`; ST1006 rejects `_`.'],
   ['unexported-return', 'Export the type, or return an exported interface it implements.'],
-  ['useless-break', 'Remove the break; a case ends without it.'],
 ]);
 
 const MESSAGE_HINTS = [
@@ -73,6 +68,38 @@ const MESSAGE_HINTS = [
     'defer',
     /inside loops/u,
     'Move the loop body into a function, so each defer runs when it returns.',
+  ],
+  ['defer', /^return in a defer/u, 'Remove the return; a deferred function result is discarded.'],
+  [
+    'defer',
+    /recover/u,
+    'Call recover inside a deferred function: `defer func() { if r := recover(); r != nil { ... } }()`.',
+  ],
+  [
+    'defer',
+    /pointer receiver/u,
+    'Use a pointer receiver, or defer a function literal that reads the value when it runs.',
+  ],
+  [
+    'datarace',
+    /range value/u,
+    'Pass the value to the goroutine as an argument: `go func(item T) { ... }(item)`.',
+  ],
+  [
+    'datarace',
+    /return value/u,
+    'Send the value back over a channel, or assign the result after the goroutine is joined.',
+  ],
+  [
+    'useless-break',
+    /enclosing/u,
+    'To leave the loop, use a labelled `break` or `return`; otherwise remove the break.',
+  ],
+  ['useless-break', /./u, 'Remove the break; a case ends without it.'],
+  [
+    'marshal-receiver',
+    /use a value receiver/u,
+    'Use a value receiver; a type that holds a lock keeps it behind a pointer, `mu *sync.Mutex`, so the copy is safe.',
   ],
 ];
 

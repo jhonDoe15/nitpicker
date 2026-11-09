@@ -2,10 +2,25 @@ package main
 
 import (
 	"fmt"
+	"go/ast"
+	"slices"
 
 	"github.com/mgechev/revive/lint"
 	"github.com/mgechev/revive/rule"
 )
+
+const unreachableRule = "unreachable-code"
+
+type exitCallsOnly struct {
+	lint.Rule
+}
+
+func (rule exitCallsOnly) Apply(file *lint.File, arguments lint.Arguments) []lint.Failure {
+	return slices.DeleteFunc(rule.Rule.Apply(file, arguments), func(failure lint.Failure) bool {
+		_, call := failure.Node.(*ast.ExprStmt)
+		return !call
+	})
+}
 
 const fileNameFormat = `^[a-z0-9]+(_[a-z0-9]+)*\.go$`
 
@@ -16,12 +31,16 @@ func reviveSettings() map[string]lint.Arguments {
 		"enforce-repeated-arg-type-style": {"short"},
 		"enforce-switch-style":            {"allowNoDefault"},
 		"filename-format":                 {fileNameFormat},
+		"exported": {
+			"disableChecksOnConstants", "disableChecksOnFunctions", "disableChecksOnMethods",
+			"disableChecksOnTypes", "disableChecksOnVariables",
+		},
 	}
 }
 
 func reviveRules() []lint.Rule {
 	return []lint.Rule{
-		&rule.BareReturnRule{}, &rule.BlankImportsRule{}, &rule.BoolLiteralRule{}, &rule.CallToGCRule{},
+		&rule.BareReturnRule{}, &rule.ExportedRule{}, &rule.EmptyLinesRule{}, &rule.UnreachableCodeRule{}, &rule.BlankImportsRule{}, &rule.BoolLiteralRule{}, &rule.CallToGCRule{},
 		&rule.CommentSpacingsRule{}, &rule.ConfusingResultsRule{}, &rule.ContextAsArgumentRule{},
 		&rule.DataRaceRule{}, &rule.DeepExitRule{}, &rule.DeferRule{}, &rule.EarlyReturnRule{},
 		&rule.EmptyBlockRule{}, &rule.EnforceMapStyleRule{}, &rule.EnforceRepeatedArgTypeStyleRule{},
@@ -44,6 +63,7 @@ func reviveRules() []lint.Rule {
 func reviveSuperseded() map[string][]string {
 	return map[string][]string{
 		"bool-literal-in-expr":    {"S1002"},
+		"struct-tag":              {"SA5008", "structtag"},
 		"defer":                   {"SA5003", "SA9001", "SA9010"},
 		"empty-block":             {"SA5002", "SA9003"},
 		"enforce-switch-style":    {"ST1015"},
@@ -70,6 +90,11 @@ func configuredRules() ([]lint.Rule, error) {
 		}
 		if err := configurable.Configure(settings[each.Name()]); err != nil {
 			return nil, fmt.Errorf("revive %s: %w", each.Name(), err)
+		}
+	}
+	for index, each := range rules {
+		if each.Name() == unreachableRule {
+			rules[index] = exitCallsOnly{Rule: each}
 		}
 	}
 	return rules, nil

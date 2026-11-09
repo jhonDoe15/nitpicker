@@ -79,7 +79,7 @@ describe('Go lint messages', () => {
     ],
     [
       { tool: 'revive', rule: 'defer', message: 'return in a defer function has no effect' },
-      'return in a defer function has no effect.',
+      'return in a defer function has no effect. Remove the return; a deferred function result is discarded.',
     ],
     [
       {
