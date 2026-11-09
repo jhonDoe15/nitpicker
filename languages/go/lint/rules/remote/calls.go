@@ -21,10 +21,10 @@ var queries = []string{
 }
 
 var clients = []client{
-	{path: "database/sql", types: []string{"DB", "Tx", "Conn", "Stmt"}, methods: queries},
+	{path: "database/sql", types: []string{"DB", "Tx", "Conn"}, methods: queries},
 	{path: "net/http", types: []string{"Client"}, methods: []string{"Do", "Get", "Post", "Head", "PostForm"}},
-	{path: "github.com/jackc/pgx", methods: []string{"Query", "QueryRow", "Exec", "CopyFrom"}},
-	{path: "github.com/jmoiron/sqlx", methods: append([]string{
+	{path: "github.com/jackc/pgx", types: []string{"Conn", "Tx", "Pool"}, methods: []string{"Query", "QueryRow", "Exec"}},
+	{path: "github.com/jmoiron/sqlx", types: []string{"DB", "Tx", "Conn"}, methods: append([]string{
 		"Get", "GetContext", "Select", "SelectContext", "Queryx", "QueryRowx", "NamedExec", "NamedExecContext",
 		"NamedQuery", "NamedQueryContext",
 	}, queries...)},
@@ -34,10 +34,8 @@ var clients = []client{
 }
 
 func remoteCall(info *types.Info, call *ast.CallExpr) bool {
-	for _, name := range defaultClientFunctions {
-		if support.IsFunc(info, call, "net/http", name) {
-			return true
-		}
+	if defaultClientCall(info, call) {
+		return true
 	}
 	method, ok := typeutil.Callee(info, call).(*types.Func)
 	if !ok || method.Signature().Recv() == nil {

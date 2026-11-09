@@ -56,11 +56,11 @@ the allowed form and ends with its exception entry.
 ## HTTP and databases
 
 - Every outbound HTTP call has a deadline (`go-rules/http-without-timeout`): never `http.Get`,
-  `http.Post` or `http.DefaultClient`, and never `&http.Client{}` without a timeout. Build
-  `&http.Client{Timeout: 10 * time.Second}` once and pass it in, and send requests with
-  `http.NewRequestWithContext` and a context from `context.WithTimeout` where one call needs its
-  own deadline.
+  `http.Post` or `http.DefaultClient`, and never an `http.Client` without a non-zero `Timeout`.
+  Build `&http.Client{Timeout: 10 * time.Second}` once and pass it in. A request that needs a
+  shorter deadline adds `http.NewRequestWithContext` with a context from `context.WithTimeout`.
 - No database or HTTP call per item of a loop (`go-rules/io-in-loop`): read or write the items in one
-  batch (`WHERE id = ANY($1)`, `IN (...)`, `COPY`, a bulk endpoint), or run the calls concurrently
-  under an errgroup with `SetLimit`. A loop over a fixed list (migrations), a retry loop over a
-  count and a loop over a channel are fine.
+  batch (`WHERE id = ANY($1)`, `IN (...)`, `COPY`, `pgx.Batch`, a bulk endpoint), or run the calls
+  concurrently under an errgroup with `SetLimit`. Inside one transaction, prepare the statement
+  once and execute it per item. A loop over a fixed list (migrations), a retry loop over a count, a
+  loop over a channel and a loop that stops at the first success are fine.
