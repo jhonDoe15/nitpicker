@@ -1,5 +1,6 @@
 import { normalizeGitPath } from '../git/normalize.mjs';
 import { withoutAnsi } from '../../../shared/messages/terminal/terminal-text.mjs';
+import { isRecord } from '../../../shared/rules/facts/checks.mjs';
 import { routeFields } from '../../../shared/messages/exception-sentence.mjs';
 import { adviceProblems } from '../../../shared/messages/advice/finding-advice.mjs';
 
@@ -265,8 +266,4 @@ function normalizeFindingPath(value, context) {
     throw new TypeError(`${context} must stay within the analyzed project`);
   }
   return normalizedPath;
-}
-
-function isRecord(value) {
-  return typeof value === 'object' && value !== null && !Array.isArray(value);
 }

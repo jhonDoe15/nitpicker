@@ -1,3 +1,10 @@
+import {
+  DESIGN_RULE_LANGUAGES,
+  DESIGN_RULE_LISTS,
+  DESIGN_RULE_SETTINGS,
+  DESIGN_RULES,
+} from './design/design-rules.mjs';
+
 const TYPESCRIPT_AND_JAVASCRIPT = {
   typescript: true,
   javascript: true,
@@ -58,6 +65,7 @@ export const FACT_RULE_LANGUAGES = {
     kotlin: true,
     python: true,
   },
+  ...Object.fromEntries(DESIGN_RULES.map((rule) => [rule, { ...DESIGN_RULE_LANGUAGES }])),
 };
 
 export const FACT_RULE_LISTS = {
@@ -71,6 +79,7 @@ export const FACT_RULE_LISTS = {
   'test-only-export': ['modules', 'packages', 'definitions', 'imports'],
   'doc-comment-content': ['docComments'],
   'test-console-output': ['console'],
+  ...DESIGN_RULE_LISTS,
 };
 
 export const FACT_RULE_SETTINGS = {
@@ -79,6 +88,7 @@ export const FACT_RULE_SETTINGS = {
   'shared-imports-feature': FEATURE_LAYOUT_SETTINGS,
   'feature-cycle': FEATURE_LAYOUT_SETTINGS,
   'test-console-output': ['testConsole'],
+  ...DESIGN_RULE_SETTINGS,
 };
 
 const NATIVE_LANGUAGES = new Set(['typescript', 'javascript']);
