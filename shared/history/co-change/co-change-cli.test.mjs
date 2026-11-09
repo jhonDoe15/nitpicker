@@ -146,7 +146,7 @@ describe('co-change dependencies in a gate run', () => {
   }
 
   it('names the import an analyzer published between the two modules', () => {
-    const publisher = importsPublisher([{ from: 'src/billing', to: 'src/invoicing', files: 1 }]);
+    const publisher = importsPublisher([{ from: 'src/billing/invoice.ts', to: 'src/invoicing' }]);
 
     expect(
       dependencySentence(repositories.alone, [...createHistoryAnalyzers(ENTRY), publisher]),

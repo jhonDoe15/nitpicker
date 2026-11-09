@@ -76,7 +76,9 @@ describe('project imports from the dependency graph', () => {
     writeFileSync(policyFile, JSON.stringify({}));
     const disabled = await coupling(projectRoot);
 
-    expect(enabled.moduleImports).toEqual([{ from: 'src/billing', to: 'src/invoicing', files: 1 }]);
+    expect(enabled.moduleImports).toEqual([
+      { from: 'src/billing/invoice.ts', to: 'src/invoicing' },
+    ]);
     expect(disabled).not.toHaveProperty('moduleImports');
     expect(disabled.findings).toEqual(enabled.findings);
   });

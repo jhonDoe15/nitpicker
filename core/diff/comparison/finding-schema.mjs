@@ -4,7 +4,7 @@ import { adviceProblems } from '../../../shared/messages/finding-advice.mjs';
 
 const CLASSIFICATIONS = new Set(['enforceable', 'descriptive', 'tool-error']);
 const HTTP_URL = /^https?:\/\/\S+$/u;
-const MODULE_IMPORT_FIELDS = new Set(['from', 'to', 'files']);
+const MODULE_IMPORT_FIELDS = new Set(['from', 'to']);
 
 export function parseAnalyzerReport(value, analyzerName) {
   if (!isRecord(value) || !Array.isArray(value.findings)) {
@@ -39,7 +39,6 @@ function parseModuleImports(value, context) {
       return {
         from: normalizeFindingPath(requiredString(entry.from, `${where}.from`), `${where}.from`),
         to: normalizeFindingPath(requiredString(entry.to, `${where}.to`), `${where}.to`),
-        files: positiveInteger(entry.files, `${where}.files`),
       };
     }),
   };

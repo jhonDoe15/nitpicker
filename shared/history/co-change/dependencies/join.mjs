@@ -1,3 +1,4 @@
+import path from 'node:path';
 import { CHANGE_HISTORY_TOOL, HISTORY_RULE_IDS } from '../../../project-rules/hygiene-rules.mjs';
 import { folderModuleResolver } from '../evidence/production-files.mjs';
 import { CO_CHANGE_ADVICE } from '../findings.mjs';
@@ -17,16 +18,17 @@ function publishedImports(reports) {
 
 function moduleEdges(imports, policy) {
   const moduleOf = folderModuleResolver(policy);
-  const edges = new Map();
-  for (const { from, to, files } of imports) {
-    const source = moduleOf(from);
+  const importers = new Map();
+  for (const { from, to } of imports) {
+    const folder = path.posix.dirname(from);
+    const source = folder === '.' ? undefined : moduleOf(folder);
     const target = moduleOf(to);
     if (source !== undefined && target !== undefined && source !== target) {
       const key = `${source}\0${target}`;
-      edges.set(key, (edges.get(key) ?? 0) + files);
+      importers.set(key, (importers.get(key) ?? new Set()).add(from));
     }
   }
-  return edges;
+  return new Map([...importers].map(([key, files]) => [key, files.size]));
 }
 
 function importClause(edges, importer, imported) {
