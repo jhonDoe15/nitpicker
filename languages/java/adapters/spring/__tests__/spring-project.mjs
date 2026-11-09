@@ -68,6 +68,7 @@ const REVIEW_RULES = new Set([
   'StaticMockOfProjectType',
   'GlobalStateLeakInTest',
   'ServerOrContainerPerTest',
+  'SharedTestState',
   'ExhaustiveEnumPredicate',
   'StaticForwardingWrapper',
   'SingularAndPluralMember',
