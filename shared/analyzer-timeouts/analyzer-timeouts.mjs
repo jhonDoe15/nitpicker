@@ -35,7 +35,9 @@ export function minutesSetting(environment, variable, { fallbackMs, maxMinutes }
     return fallbackMs;
   }
   if (!WHOLE_NUMBER.test(value) || Number(value) > maxMinutes) {
-    throw explainedError(`${variable} must be a whole number from 1 to ${String(maxMinutes)} (minutes)`);
+    throw explainedError(
+      `${variable} must be a whole number from 1 to ${String(maxMinutes)} (minutes)`,
+    );
   }
   return Number(value) * MINUTE_MS;
 }

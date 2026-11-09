@@ -3,14 +3,14 @@ import { cpSync, existsSync, mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { INIT_SCRIPT } from '../../../builds/java-build.mjs';
-import { readSpringArchFindings } from '../../spring-arch/spring-arch.mjs';
-import { featureFaceMatcher } from '../../spring-arch/contract-types.mjs';
+import { INIT_SCRIPT } from '../../../../builds/java-build.mjs';
+import { SPRING_ARCH_REPORT, readSpringArchFindings } from '../../../spring-arch/spring-arch.mjs';
+import { featureFaceMatcher } from '../../../spring-arch/contract-types.mjs';
 
 const enabled = process.env.NITPICKER_JAVA_E2E === '1';
 const gradle = process.env.NITPICKER_GRADLE ?? 'gradle';
-const fixture = path.resolve(import.meta.dirname, '../../fixtures/contracts-project');
-const REPORT = path.join('build', 'nitpicker', 'spring-arch.json');
+const fixture = path.resolve(import.meta.dirname, '../../../fixtures/contracts-project');
+const REPORT = path.join('build', 'nitpicker', SPRING_ARCH_REPORT);
 
 function runRules(projectRoot, properties) {
   const result = spawnSync(

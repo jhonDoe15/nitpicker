@@ -4,7 +4,7 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { createJavaAnalyzer } from './java-analyzer.mjs';
-import { analyzeJavaSnapshot } from './java-runner.mjs';
+import { MAVEN_FAILURE_RULE, analyzeJavaSnapshot } from './java-runner.mjs';
 import { linkSentence } from '../../../shared/messages/test-support/link-sentence.mjs';
 
 vi.mock('node:child_process', async (importOriginal) => ({
@@ -45,7 +45,7 @@ function runMavenBuild() {
   roots.push(root);
   writeFileSync(path.join(root, 'pom.xml'), '<project/>');
   vi.mocked(spawnSync).mockReturnValue({ status: 1, stdout: '', stderr: 'stop' });
-  expect(analyzeJavaSnapshot(root, { maven: 'mvn' }).findings[0].rule).toBe('maven-failure');
+  expect(analyzeJavaSnapshot(root, { maven: 'mvn' }).findings[0].rule).toBe(MAVEN_FAILURE_RULE);
   return vi.mocked(spawnSync).mock.calls[0][2].timeout;
 }
 

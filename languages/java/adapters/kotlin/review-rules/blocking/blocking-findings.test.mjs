@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { findingFactory } from '../review-finding.mjs';
+import { SOURCE_TOOL, findingFactory } from '../review-finding.mjs';
 import { file, fn, klass, sourceRouted, summary } from '../test-support/facts.mjs';
 import { BLOCKING_RULE, blockingFindings, blockingMessage } from './blocking-findings.mjs';
 import { TIMEOUT_RULE, timeoutMessage } from './timeouts.mjs';
@@ -47,7 +47,7 @@ describe('blocking calls in Kotlin coroutine code', () => {
     const findings = findingsFor({ calls: [filesCall()], timeouts: [] });
 
     expect(summary(findings)).toEqual([`${BLOCKING_RULE} Store.load.Files.readString 5`]);
-    expect(findings[0].tool).toBe('kotlin-source');
+    expect(findings[0].tool).toBe(SOURCE_TOOL);
     expect(findings[0].message).toBe(
       sourceRouted(
         blockingMessage('Files.readString', 'Files is a blocking API', 'Store.load'),

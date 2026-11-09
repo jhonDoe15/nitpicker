@@ -1,5 +1,8 @@
-import { GLOBAL_STATE_FILES, GLOBAL_STATE_FINDINGS } from './kotlin-global-state-data.mjs';
-import { mapUpdateFiles, MAP_UPDATE_FINDINGS } from './kotlin-map-update-data.mjs';
+import {
+  GLOBAL_STATE_FILES,
+  GLOBAL_STATE_FINDINGS,
+} from './concurrency/kotlin-global-state-data.mjs';
+import { mapUpdateFiles, MAP_UPDATE_FINDINGS } from './concurrency/kotlin-map-update-data.mjs';
 import { BLOCKING_RULES } from '../../../kotlin/review-rules/blocking/blocking-findings.mjs';
 import { readFileSync } from 'node:fs';
 import path from 'node:path';

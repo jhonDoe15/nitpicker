@@ -5,7 +5,7 @@ import { afterEach, describe, expect, it } from 'vitest';
 import { parseAnalyzerReport } from '../../../../../core/diff/comparison/finding-schema.mjs';
 import { KOTLIN_EXCEPTION_RULES, validateKotlinOptions } from '../kotlin-options.mjs';
 import { buildViews } from './build-view.mjs';
-import { withoutCoveredFindings } from './review-finding.mjs';
+import { REVIEW_TOOL, SOURCE_TOOL, withoutCoveredFindings } from './review-finding.mjs';
 import { readKotlinFacts } from './report/kotlin-report.mjs';
 import { readKotlinReviewFindings } from './review-findings.mjs';
 import { KOTLIN_REVIEW_EXCEPTION_RULES } from './review-rules.mjs';
@@ -156,7 +156,7 @@ describe('readKotlinReviewFindings on the test sources', () => {
 
     expect(
       findings.map(({ tool, rule, path: file, location }) => [tool, rule, file, location.line]),
-    ).toEqual([['pmd', 'DisabledTest', 'src/test/kotlin/SkippedTest.kt', 3]]);
+    ).toEqual([[REVIEW_TOOL, 'DisabledTest', 'src/test/kotlin/SkippedTest.kt', 3]]);
     expect(() => parseAnalyzerReport({ findings }, 'kotlin')).not.toThrow();
   });
 });
@@ -361,12 +361,12 @@ describe('withoutCoveredFindings', () => {
 
   it('keeps one finding when a Spring rule names the allowed form for the same client or loop', () => {
     const findings = [
-      at('kotlin-source', 'HttpWithoutTimeout', 3),
-      at('pmd', 'SpringHttpClientPerCall', 3),
-      at('kotlin-source', 'HttpWithoutTimeout', 9),
-      at('kotlin-source', 'IoCallInLoop', 3),
-      at('kotlin-source', 'IoCallInLoop', 7),
-      at('pmd', 'SpringDataNoSaveInLoop', 7),
+      at(SOURCE_TOOL, 'HttpWithoutTimeout', 3),
+      at(REVIEW_TOOL, 'SpringHttpClientPerCall', 3),
+      at(SOURCE_TOOL, 'HttpWithoutTimeout', 9),
+      at(SOURCE_TOOL, 'IoCallInLoop', 3),
+      at(SOURCE_TOOL, 'IoCallInLoop', 7),
+      at(REVIEW_TOOL, 'SpringDataNoSaveInLoop', 7),
     ];
 
     expect(withoutCoveredFindings(findings)).toEqual([
@@ -379,8 +379,8 @@ describe('withoutCoveredFindings', () => {
 
   it('keeps the Kotlin finding when an exception lifts the Spring finding on that line', () => {
     const findings = [
-      at('kotlin-source', 'HttpWithoutTimeout', 3),
-      at('pmd', 'SpringHttpClientPerCall', 3),
+      at(SOURCE_TOOL, 'HttpWithoutTimeout', 3),
+      at(REVIEW_TOOL, 'SpringHttpClientPerCall', 3),
     ];
     const exceptions = [{ rule: 'pmd/SpringHttpClientPerCall', glob: 'app/A.kt' }];
 
@@ -392,13 +392,13 @@ describe('withoutCoveredFindings', () => {
 
   it('keeps one finding for a swallowed cancellation or interrupt and for a fixed sleep in a test', () => {
     const findings = [
-      at('kotlin-source', 'CatchOnlyLogsOrReturnsDefault', 4),
-      at('pmd', 'SwallowedInterrupt', 4),
-      at('kotlin-source', 'CatchOnlyLogsOrReturnsDefault', 8),
-      at('pmd', 'SwallowedCancellation', 8),
-      at('kotlin-source', 'CatchOnlyLogsOrReturnsDefault', 12),
+      at(SOURCE_TOOL, 'CatchOnlyLogsOrReturnsDefault', 4),
+      at(REVIEW_TOOL, 'SwallowedInterrupt', 4),
+      at(SOURCE_TOOL, 'CatchOnlyLogsOrReturnsDefault', 8),
+      at(REVIEW_TOOL, 'SwallowedCancellation', 8),
+      at(SOURCE_TOOL, 'CatchOnlyLogsOrReturnsDefault', 12),
       at('detekt', 'detekt.coroutines.SleepInsteadOfDelay', 15),
-      at('pmd', 'FixedSleepInTest', 15),
+      at(REVIEW_TOOL, 'FixedSleepInTest', 15),
       at('detekt', 'detekt.coroutines.SleepInsteadOfDelay', 20),
     ];
 

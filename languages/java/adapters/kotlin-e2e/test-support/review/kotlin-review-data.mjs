@@ -3,9 +3,10 @@ import {
   SWALLOWED_CANCELLATIONS,
 } from './swallowed/kotlin-cancellation-data.mjs';
 import { INTERRUPT_FILES, SWALLOWED_INTERRUPTS } from './swallowed/kotlin-interrupt-data.mjs';
-import { LOCKING_FILES, LOCKING_FINDINGS } from './kotlin-locking-data.mjs';
+import { LOCKING_FILES, LOCKING_FINDINGS } from './concurrency/kotlin-locking-data.mjs';
 import { LIBRARY_STUBS, MOCK_REVIEW_FINDINGS, MOCK_RULE_FILES } from './kotlin-mock-data.mjs';
 import { PLURAL_FINDINGS, PLURALS } from './kotlin-plural-data.mjs';
+import { DEADLINES } from './kotlin-deadlines-data.mjs';
 
 const MAIN = 'src/main/kotlin/demo/orders';
 const TEST = 'src/test/kotlin/demo/orders';
@@ -409,122 +410,6 @@ class UsedContextTest {
 }
 `;
 
-const DEADLINES = `package demo.orders
-
-import java.util.concurrent.Callable
-import java.util.concurrent.CompletableFuture
-import java.util.concurrent.ExecutorService
-import java.util.concurrent.Future
-import java.util.concurrent.TimeUnit
-import java.util.concurrent.TimeoutException
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.TimeoutCancellationException
-import kotlinx.coroutines.async
-import kotlinx.coroutines.awaitAll
-import kotlinx.coroutines.cancelChildren
-import kotlinx.coroutines.withTimeout
-
-interface Lookup {
-    fun get(key: String, fallback: String): String
-}
-
-fun giveUp(future: Future<String>): String =
-    try {
-        future.get(1, TimeUnit.SECONDS)
-    } catch (e: TimeoutException) {
-        "late"
-    }
-
-fun cancelOnTimeout(future: Future<String>): String =
-    try {
-        future.get(1, TimeUnit.SECONDS)
-    } catch (e: TimeoutException) {
-        future.cancel(true)
-        "late"
-    }
-
-fun rethrowToTheOwner(future: Future<String>): String =
-    try {
-        future.get(1, TimeUnit.SECONDS)
-    } catch (e: TimeoutException) {
-        throw IllegalStateException(e)
-    }
-
-fun shutDownLetsItFinish(pool: ExecutorService, work: Callable<String>): String {
-    val future = pool.submit(work)
-    return try {
-        future.get(1, TimeUnit.SECONDS)
-    } catch (e: TimeoutException) {
-        pool.shutdown()
-        "late"
-    }
-}
-
-fun shutDownNow(pool: ExecutorService, work: Callable<String>): String {
-    val future = pool.submit(work)
-    return try {
-        future.get(1, TimeUnit.SECONDS)
-    } catch (e: TimeoutException) {
-        pool.shutdownNow()
-        "late"
-    }
-}
-
-fun cancelAsyncTask(work: () -> String): String {
-    val future = CompletableFuture.supplyAsync { work() }
-    return try {
-        future.get(1, TimeUnit.SECONDS)
-    } catch (e: TimeoutException) {
-        future.cancel(true)
-        "late"
-    }
-}
-
-fun lookUp(cache: Lookup): String =
-    try {
-        cache.get("key", "fallback")
-    } catch (e: TimeoutException) {
-        "late"
-    }
-
-fun boundedAsync(work: () -> String): CompletableFuture<String> =
-    CompletableFuture.supplyAsync { work() }.orTimeout(1, TimeUnit.SECONDS)
-
-fun boundedGiven(given: CompletableFuture<String>): CompletableFuture<String> =
-    given.orTimeout(1, TimeUnit.SECONDS)
-
-suspend fun awaitOutside(scope: CoroutineScope): String {
-    val work = scope.async { "done" }
-    return withTimeout(1000) { work.await() }
-}
-
-suspend fun awaitAllOutside(scope: CoroutineScope): List<String> {
-    val first = scope.async { "first" }
-    val second = scope.async { "second" }
-    return withTimeout(1000) { listOf(first, second).awaitAll() }
-}
-
-suspend fun cancelChildrenAfterTimeout(scope: CoroutineScope): String {
-    val work = scope.async { "done" }
-    try {
-        return withTimeout(1000) { work.await() }
-    } finally {
-        scope.coroutineContext.cancelChildren()
-    }
-}
-
-suspend fun cancelAfterTimeout(scope: CoroutineScope): String {
-    val work = scope.async { "done" }
-    try {
-        return withTimeout(1000) { work.await() }
-    } catch (e: TimeoutCancellationException) {
-        work.cancel()
-        throw e
-    }
-}
-
-suspend fun startInside(): String = withTimeout(1000) { async { "done" }.await() }
-`;
 export const ARCHIVE_FILE = `${MAIN}/Archive.kt`;
 
 export const REVIEW_RULE_FILES = {
@@ -601,52 +486,3 @@ export const EXPECTED_REVIEW_FINDINGS = [
   ...LOCKING_FINDINGS,
   ...MOCK_REVIEW_FINDINGS,
 ].toSorted();
-
-const EMPTY_JAR = Buffer.from([0x50, 0x4b, 0x05, 0x06, ...Array.from({ length: 18 }, () => 0)]);
-
-export function runtimeSerializationFiles(build) {
-  return {
-    'build.gradle.kts': `${build}
-dependencies {
-    runtimeOnly(files("libs/jackson-module-kotlin-2.17.2.jar"))
-}
-`,
-    'libs/jackson-module-kotlin-2.17.2.jar': EMPTY_JAR,
-  };
-}
-
-export function publishedFiles(build) {
-  return {
-    'build.gradle.kts': `${build.replace('kotlin("jvm") version', '`maven-publish`\n    kotlin("jvm") version')}
-publishing {
-    publications {
-        create<MavenPublication>("library") {
-            from(components["java"])
-        }
-    }
-}
-`,
-  };
-}
-
-export function integrationSuiteFiles(build) {
-  return {
-    'build.gradle.kts': `${build}
-testing {
-    suites {
-        register<JvmTestSuite>("integrationTest") {
-            dependencies {
-                implementation(project())
-            }
-        }
-    }
-}
-`,
-    'src/integrationTest/kotlin/demo/orders/PricingCheck.kt': `package demo.orders
-
-object PricingCheck {
-    fun discounted(): Int = price(100, 10)
-}
-`,
-  };
-}

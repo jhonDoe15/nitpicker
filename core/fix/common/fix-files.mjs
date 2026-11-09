@@ -16,7 +16,9 @@ export function collectFixFiles({ repositoryRoot, projectRoot, baseRef, accepts,
     projectRoot,
     baseRef,
   });
-  const wanted = (name) => accepts(name) && isInScope(name, scope);
+  function wanted(name) {
+    return accepts(name) && isInScope(name, scope);
+  }
   return {
     comparison,
     files: changes.filter(({ isFile, path: name }) => isFile && wanted(name)),

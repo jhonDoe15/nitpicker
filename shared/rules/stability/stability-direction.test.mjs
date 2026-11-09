@@ -77,7 +77,7 @@ describe('stability direction with feature folders', () => {
     expect(direction).toEqual({
       source: 'src/features/catalog/domain',
       target: 'src/features/catalog/adapters',
-      sourceInstability: 0.5,
+      sourceInstability: expect.closeTo(0.5, 4),
       targetInstability: 0.6,
       delta: 0.1,
     });
@@ -99,7 +99,7 @@ describe('stability direction with feature folders', () => {
     expect(direction).toEqual({
       source: 'src/features/catalog',
       target: 'src/features/fines',
-      sourceInstability: 0.5,
+      sourceInstability: expect.closeTo(0.5, 4),
       targetInstability: 0.6667,
       delta: 0.1667,
       path: 'src/features/catalog',

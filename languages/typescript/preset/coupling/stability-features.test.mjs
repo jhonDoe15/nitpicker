@@ -35,7 +35,7 @@ describe('stability direction over TypeScript features, with the default source 
     expect(direction).toEqual({
       source: 'src/main/shared',
       target: 'src/main/features/members',
-      sourceInstability: 0.1111,
+      sourceInstability: expect.closeTo(0.1111, 4),
       targetInstability: 0.2,
       delta: 0.0889,
       message: `Keep feature dependencies pointing at more stable units: folder src/main/shared (instability 0.1111) depends on feature src/main/features/members (instability 0.2). ${FIX}`,

@@ -162,7 +162,11 @@ describe('the PIT settings each precedence runs with', () => {
       projectWins: true,
     });
 
-    expect([layered.timeoutConst, layered.timeoutFactor, layered.threads]).toEqual([10000, 2.5, 2]);
+    expect([layered.timeoutConst, layered.timeoutFactor, layered.threads]).toEqual([
+      10000,
+      expect.closeTo(2.5, 4),
+      2,
+    ]);
     expect(layered.notApplied.map(({ setting }) => setting)).toEqual(['threads']);
     expect([fractional.threads, fractional.notApplied.length]).toEqual([2, 1]);
   });

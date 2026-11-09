@@ -52,6 +52,12 @@ function projectSettings({ projectRoot, liveRoot, policyRoot, settings, sourceRo
   };
 }
 
+function pythonPathFor(projectRoot, sourceRoots) {
+  return [...importRoots(projectRoot, sourceRoots), process.env.PYTHONPATH]
+    .filter((entry) => entry !== undefined && entry !== '')
+    .join(path.delimiter);
+}
+
 export function createToolContext({
   projectRoot,
   liveRoot,
@@ -78,9 +84,7 @@ export function createToolContext({
     spawn,
   });
   const sourceRoots = detectSourceRoots(projectRoot, settings.sourceRoots);
-  const pythonPath = [...importRoots(projectRoot, sourceRoots), process.env.PYTHONPATH]
-    .filter((entry) => entry !== undefined && entry !== '')
-    .join(path.delimiter);
+  const pythonPath = pythonPathFor(projectRoot, sourceRoots);
   return {
     projectRoot,
     reportRoot,

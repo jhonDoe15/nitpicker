@@ -55,8 +55,12 @@ describe('--quick and --staged arguments', () => {
   });
 
   it('lists both flags in the usage text', () => {
-    expect(USAGE_TEXT).toContain('[--details] [--quick] [--staged]');
-    expect(USAGE_TEXT).toContain('  --quick  ');
-    expect(USAGE_TEXT).toContain('  --staged  ');
+    const flagged = USAGE_TEXT.split('\n').filter((line) => /--(?:quick|staged)\b/u.test(line));
+
+    expect(flagged.map((line) => line.trim().split(/\s{2,}/u)[0])).toEqual([
+      '[--rule <substring>]... [--details] [--quick] [--staged]',
+      '--quick',
+      '--staged',
+    ]);
   });
 });

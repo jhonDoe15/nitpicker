@@ -47,8 +47,8 @@ function conditionalAllowed(subject) {
     return BOOLEAN_ALLOWED;
   }
   const unit = OUTCOMES.has(kind) ? 'outcome' : 'case';
-  const form = unittest ? UNITTEST_CASES : PYTEST_CASES;
-  const lead = unittest ? `Write each ${unit}` : `Give each ${unit} its own test`;
+  const form = unittest !== undefined ? UNITTEST_CASES : PYTEST_CASES;
+  const lead = unittest !== undefined ? `Write each ${unit}` : `Give each ${unit} its own test`;
   return `${lead} ${form}${kind === 'subTest' ? SUBTEST_ALLOWED : ''}`;
 }
 

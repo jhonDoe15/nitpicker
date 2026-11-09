@@ -31,11 +31,15 @@ function runArchitecture(options) {
   });
 }
 
+function sourceTask(tool, url, toolOptions, shared) {
+  return { run: tool, url, name: tool.name, options: { ...toolOptions, ...shared } };
+}
+
 function runSourceTools(options) {
   const { module, reportDir, tools, classpaths, configs, pinned, kotlin, style } = options;
   const run = { timeoutMs: options.timeoutMs };
   const tasks = [
-    [
+    sourceTask(
       runPmd,
       LINT_URL,
       {
@@ -48,8 +52,9 @@ function runSourceTools(options) {
         springRules: options.springRules,
         reactor: options.reactor,
       },
-    ],
-    [
+      run,
+    ),
+    sourceTask(
       runSpotbugs,
       LINT_URL,
       {
@@ -59,18 +64,19 @@ function runSourceTools(options) {
         configs,
         auxClasspath: kotlin.auxClasspath,
       },
-    ],
-    [runErrorProne, ERRORPRONE_URL, { module, reportDir, tools, classpaths, configs }],
-    [runFormat, LINT_URL, { module, reportDir, tools, javaStyle: style.javaStyle }],
-    [runCheckstyle, LINT_URL, { module, reportDir, tools, configs, pinned, style }],
-    [runStructure, METRICS_URL, { module, reportDir }],
-    [runJdeps, METRICS_URL, { module, reportDir }],
-  ].map(([tool, url, toolOptions]) => ({
-    run: tool,
-    url,
-    name: tool.name,
-    options: { ...toolOptions, ...run },
-  }));
+      run,
+    ),
+    sourceTask(
+      runErrorProne,
+      ERRORPRONE_URL,
+      { module, reportDir, tools, classpaths, configs },
+      run,
+    ),
+    sourceTask(runFormat, LINT_URL, { module, reportDir, tools, javaStyle: style.javaStyle }, run),
+    sourceTask(runCheckstyle, LINT_URL, { module, reportDir, tools, configs, pinned, style }, run),
+    sourceTask(runStructure, METRICS_URL, { module, reportDir }, run),
+    sourceTask(runJdeps, METRICS_URL, { module, reportDir }, run),
+  ];
   runToolsConcurrently(tasks, { spawn: options.spawn, concurrent: options.quick === true });
 }
 

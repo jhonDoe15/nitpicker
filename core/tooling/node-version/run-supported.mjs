@@ -1,9 +1,9 @@
-import { readFileSync } from 'node:fs';
+import { readFile } from 'node:fs/promises';
 import { unloadableNodeMessage, unsupportedNodeMessage } from './node-version.mjs';
 
-async function loadCli() {
+async function loadCli(load) {
   try {
-    return await import('../../cli.mjs');
+    return await load();
   } catch (error) {
     if (error instanceof SyntaxError) {
       return { loadError: error };
@@ -12,9 +12,9 @@ async function loadCli() {
   }
 }
 
-export async function runSupported(stderr) {
+export async function runSupported(stderr, load) {
   const manifest = JSON.parse(
-    readFileSync(new URL('../../../package.json', import.meta.url), 'utf8'),
+    await readFile(new URL('../../../package.json', import.meta.url), 'utf8'),
   );
   const nodeVersion = process.versions.node;
   const unsupported = unsupportedNodeMessage(nodeVersion, manifest.engines.node);
@@ -22,7 +22,7 @@ export async function runSupported(stderr) {
     stderr.write(`${unsupported}\n`);
     return 2;
   }
-  const cli = await loadCli();
+  const cli = await loadCli(load);
   if (cli.loadError !== undefined) {
     stderr.write(`${unloadableNodeMessage(nodeVersion, manifest.engines.node, cli.loadError)}\n`);
     return 2;

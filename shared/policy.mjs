@@ -8,7 +8,7 @@ import {
 } from './project-rules/size-rules.mjs';
 import { UNUSED_API_RULES, UNUSED_API_RULE_IDS } from './unused-api/unused-api-policy.mjs';
 import { reuseRules } from './project-rules/reuse-rules.mjs';
-import { NO_TYPE_ONLY, testConsoleRule } from './project-rules/test-runtime-rules.mjs';
+import { NO_TYPE_ONLY, slowTest, testConsoleRule } from './project-rules/test-runtime-rules.mjs';
 import {
   docCommentRule,
   SOURCE_RULE_IDS,
@@ -280,12 +280,7 @@ const CATALOG = [
   ...sizeRules({ all: ALL, withKotlin, withGo }),
   ...reuseRules(RULE_IDS, withKotlin(TYPESCRIPT_ONLY, false)),
   ...sourceRules(RULE_IDS, withKotlin(TYPESCRIPT_ONLY, false)),
-  {
-    id: RULE_IDS.slowTest,
-    check: 'test-runtime',
-    limit: `a test the change adds or edits taking more than ${String(TEST_TIME_DEFAULTS.unitTestSeconds)} s (unit) or ${String(TEST_TIME_DEFAULTS.integrationTestSeconds)} s (integration); override with \`thresholds.unitTestSeconds\` and \`thresholds.integrationTestSeconds\``,
-    enforcedBy: withGo(withKotlin(ALL, true)),
-  },
+  slowTest(RULE_IDS, TEST_TIME_DEFAULTS, withGo(withKotlin(ALL, true))),
   ...HYGIENE_RULES,
   ...HISTORY_RULES,
   testConsoleRule(RULE_IDS),

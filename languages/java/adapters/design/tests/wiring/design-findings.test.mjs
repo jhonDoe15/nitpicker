@@ -23,7 +23,13 @@ const work = [];
 
 function recorder() {
   const calls = [];
-  return { calls, evaluate: (...args) => calls.push(args) && [] };
+  return {
+    calls,
+    evaluate: (...args) => {
+      calls.push(args);
+      return [];
+    },
+  };
 }
 
 function brokenProject(source) {

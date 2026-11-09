@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { runtimeSerializationFiles } from '../test-support/review/kotlin-review-data.mjs';
+import { runtimeSerializationFiles } from '../test-support/review/kotlin-build-files-data.mjs';
 import {
   ALL_FINDINGS,
   reviewBranchFiles,

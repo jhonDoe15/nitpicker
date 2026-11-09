@@ -3,9 +3,9 @@ import {
   isFunctionNode,
   resolveConstant,
   resolveFunction,
-} from '../analysis/constant-resolution.mjs';
-import { bindingsOf, importedFunction } from '../security/imported-names.mjs';
-import { memberName, unwrapped } from '../security/security-values.mjs';
+} from '../../analysis/constant-resolution.mjs';
+import { bindingsOf, importedFunction } from '../../security/imported-names.mjs';
+import { memberName, unwrapped } from '../../security/security-values.mjs';
 import { returnedValues } from './race-operations.mjs';
 import {
   globalMemberCall,

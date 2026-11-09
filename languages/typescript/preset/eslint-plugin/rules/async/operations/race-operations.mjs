@@ -1,6 +1,6 @@
-import { chainOf } from '../analysis/ancestry.mjs';
-import { isFunctionNode, resolveConstant } from '../analysis/constant-resolution.mjs';
-import { memberName, unwrapped } from '../security/security-values.mjs';
+import { chainOf } from '../../analysis/ancestry.mjs';
+import { isFunctionNode, resolveConstant } from '../../analysis/constant-resolution.mjs';
+import { memberName, unwrapped } from '../../security/security-values.mjs';
 import { globalMemberCall, isPromiseConstruction, ownNodesIn } from './syntax-nodes.mjs';
 
 const CHAIN_METHODS = new Set(['then', 'catch', 'finally']);

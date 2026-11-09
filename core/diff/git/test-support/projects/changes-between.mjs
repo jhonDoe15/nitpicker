@@ -1,9 +1,9 @@
 import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
-import { writeFiles } from './fixture-files.mjs';
-import { commit, copyGitTemplate, createGitTemplate, fixtureGit } from './git-repository.mjs';
-import { readChangedLines } from '../patches/changed-lines.mjs';
+import { writeFiles } from '../fixture-files.mjs';
+import { commit, copyGitTemplate, createGitTemplate, fixtureGit } from '../git-repository.mjs';
+import { readChangedLines } from '../../patches/changed-lines.mjs';
 
 export function lines(...text) {
   return `${text.join('\n')}\n`;

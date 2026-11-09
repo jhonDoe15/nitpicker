@@ -59,16 +59,20 @@ export function readKotlinFanOutFindings(context) {
   return fanOutFindings({ own, projectFiles, projectRoot, javaRoots });
 }
 
-export function readKotlinReviewFindings(context) {
-  const { manifest, projectRoot, reportRoot, modules = [] } = context;
-  const { own, projectFiles, javaRoots, build } = projectView(context);
-  const finding = findingFactory();
-  const honesty = testHonestyFindings({
+function honestyFindings({ manifest, projectRoot, modules = [] }, finding) {
+  return testHonestyFindings({
     projectRoot,
     testRoots: manifest.kotlinTestSourceRoots,
     contextRoots: contextRoots(manifest, modules),
     finding,
   });
+}
+
+export function readKotlinReviewFindings(context) {
+  const { manifest, projectRoot, reportRoot } = context;
+  const { own, projectFiles, javaRoots, build } = projectView(context);
+  const finding = findingFactory();
+  const honesty = honestyFindings(context, finding);
   if (own.length === 0) {
     return honesty;
   }
