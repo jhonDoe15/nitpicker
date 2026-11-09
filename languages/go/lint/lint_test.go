@@ -138,8 +138,8 @@ func TestEveryEnabledRuleHasAFailingFixture(t *testing.T) {
 	}
 	var uncovered []string
 	for _, analyzer := range analyzers() {
-		if !covered[analyzer.Name] {
-			uncovered = append(uncovered, analyzer.Name)
+		if !covered[ruleName(analyzer)] {
+			uncovered = append(uncovered, ruleName(analyzer))
 		}
 	}
 	if len(uncovered) > 0 {

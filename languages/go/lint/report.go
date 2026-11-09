@@ -75,7 +75,7 @@ func analyze(directory string, settings options, patterns []string) (Result, err
 			continue
 		}
 		for _, diagnostic := range action.Diagnostics {
-			found := finding(action.Package.Fset, diagnostic.Pos, names[action.Analyzer.Name], action.Analyzer.Name)
+			found := finding(action.Package.Fset, diagnostic.Pos, names[action.Analyzer.Name], ruleName(action.Analyzer))
 			found.Message = diagnostic.Message
 			seen[found] = true
 		}
