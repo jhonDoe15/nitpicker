@@ -6,6 +6,7 @@ require (
 	codeberg.org/polyfloyd/go-errorlint v1.9.0
 	github.com/Antonboom/errname v1.1.2
 	github.com/Antonboom/nilnil v1.1.2
+	github.com/Antonboom/testifylint v1.6.4
 	github.com/ashanbrown/makezero/v2 v2.2.1
 	github.com/charithe/durationcheck v0.0.11
 	github.com/curioswitch/go-reassign v0.3.0
@@ -15,6 +16,9 @@ require (
 	github.com/jingyugao/rowserrcheck v1.1.1
 	github.com/kisielk/errcheck v1.30.0
 	github.com/kkHAIKE/contextcheck v1.1.6
+	github.com/kulti/thelper v0.7.1
+	github.com/ldez/usetesting v0.5.0
+	github.com/moricho/tparallel v0.3.2
 	github.com/nishanths/exhaustive v0.17.1
 	github.com/raeperd/recvcheck v0.3.2
 	github.com/ryanrolds/sqlclosecheck v0.6.0

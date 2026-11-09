@@ -4,7 +4,7 @@ Part of the [nitpicker-go](../SKILL.md) skill. The gate runs staticcheck (every 
 check, and U1000), errcheck, the modernize suite, more `golang.org/x/tools` passes and catalog
 linters (bodyclose, sqlclosecheck, rowserrcheck, noctx, errorlint, nilerr, nilnil, errname,
 contextcheck, containedctx, fatcontext, exhaustive, recvcheck, durationcheck, makezero,
-reassign, unconvert, wastedassign) on every package, test files included. Write these forms from the start; each finding's message names the
+reassign, unconvert, wastedassign, thelper, tparallel, usetesting, testifylint) on every package, test files included. Write these forms from the start; each finding's message names the
 allowed form and ends with its exception entry.
 
 ## Errors
@@ -38,6 +38,17 @@ allowed form and ends with its exception entry.
   `go func() { work(ctx) }()`. A context is the first parameter, never a struct field
   (containedctx). In a loop, derive each iteration's context into a new variable, not into the
   loop's own (fatcontext).
+
+## Tests
+
+- A test helper takes `t *testing.T` first and starts with `t.Helper()` (thelper).
+- When subtests call `t.Parallel()`, the test calls it too (tparallel).
+- Use `t.TempDir()`, `t.Setenv()`, `t.Chdir()` and `t.Context()`, never `os.MkdirTemp`,
+  `os.Setenv`, `os.Chdir` or `context.Background()` in a test (usetesting).
+- With testify, use the specific assertion (`assert.Len`, `assert.Empty`, `assert.ErrorIs`,
+  `assert.JSONEq`, `assert.InDelta` for floats), `require.NoError` for errors, the expected value
+  first, `assert.Equalf` when the message has format arguments, `s.Equal` and `s.Run` inside a
+  suite, and `require` only in the test's own goroutine (testifylint).
 
 ## Names and comments
 
