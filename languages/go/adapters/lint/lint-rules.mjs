@@ -1,3 +1,5 @@
+import { GOCRITIC_HINTS } from './gocritic-hints.mjs';
+
 function deferredClose(value) {
   return `\`defer func() { err = errors.Join(err, ${value}.Close()) }()\``;
 }
@@ -128,6 +130,7 @@ const HINTS = new Map([
   ],
   ['suite-broken-parallel', 'Remove the `t.Parallel()` call; suites run their tests in order.'],
   ['wastedassign', 'Remove the assignment, or use the value before it is assigned again.'],
+  ...GOCRITIC_HINTS,
   ['asciicheck', 'Rename it with ASCII letters only.'],
   [
     'bidichk',
