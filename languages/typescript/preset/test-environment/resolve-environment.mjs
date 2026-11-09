@@ -14,24 +14,22 @@ const WHOLE_PROJECT_GLOBS = new Set(['**', '**/*']);
 export function loadTestEnvironments({ projectRoot, liveProjectRoot = projectRoot, timeoutMs }) {
   const configFile = projectConfigFile(projectRoot);
   if (configFile === undefined) return { ...UNKNOWN, environment: DEFAULT_ENVIRONMENT };
-  const outcome = readConfigInChild({
-    configFile,
-    projectRoot,
-    resolveRoots: [...new Set([projectRoot, liveProjectRoot])],
-    timeoutMs,
-  });
-  if (outcome.result === undefined) {
+  try {
+    return readConfigInChild({
+      configFile,
+      projectRoot,
+      resolveRoots: [...new Set([projectRoot, liveProjectRoot])],
+      timeoutMs,
+    });
+  } catch (error) {
     const configPath = path.relative(projectRoot, configFile).split(path.sep).join('/');
-    return {
-      ...UNKNOWN,
-      notice: { path: configPath, message: noticeFor(configPath, outcome.failure) },
-    };
+    return { ...UNKNOWN, notice: { path: configPath, message: noticeFor(error) } };
   }
-  return outcome.result;
 }
 
-function noticeFor(configPath, reason) {
-  return `The project's test config ${configPath} could not be read (${reason}), so the DOM-environment check only uses per-file directives.`;
+function noticeFor(error) {
+  const reason = error instanceof Error ? error.message : String(error);
+  return `The DOM-environment check only uses per-file directives: ${reason.replace(/\.$/u, '')}.`;
 }
 
 function ruleIsExcepted(exceptions) {

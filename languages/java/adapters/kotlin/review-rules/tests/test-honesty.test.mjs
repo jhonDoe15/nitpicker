@@ -88,6 +88,7 @@ describe('testHonestyFindings', () => {
       'RealClockInTest',
       'RandomInTest',
       'NetworkInTest',
+      'SharedTestState',
     ]);
   });
 
