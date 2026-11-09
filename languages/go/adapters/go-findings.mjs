@@ -4,6 +4,7 @@ import { sharedRouteRule } from '../../../shared/exceptions/routes.mjs';
 import { VET_REPORT, vetFindings } from './build/go-vet.mjs';
 import { GO_LINT_TOOLS } from './configuration/go-config.mjs';
 import { formatFindings } from './formatting/go-format.mjs';
+import { lintFindings } from './lint/go-lint.mjs';
 import { readFormatReport } from './go-steps.mjs';
 import { goStructureFindings } from './structure/go-structure.mjs';
 import { readInspect } from './structure/go-inspect.mjs';
@@ -18,7 +19,7 @@ export function goRouteRule(finding) {
 
 function formatterFindings(context) {
   return Object.entries(readFormatReport(context.reportRoot)).flatMap(([formatter, files]) =>
-    formatFindings({ formatter, from: context.formatting.from, files }),
+    formatFindings(context, { formatter, files }),
   );
 }
 
@@ -31,6 +32,7 @@ export function readGoFindings(context, policy = {}) {
       context.projectRoot,
       readFileSync(path.join(context.reportRoot, VET_REPORT), 'utf8'),
     ),
+    ...lintFindings(context),
     ...testRunFindings(testRun, context.snapshot),
     ...goSlowTestFindings(context, testRun, report),
     ...goStructureFindings(report, context.projectRoot, policy),

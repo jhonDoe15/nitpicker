@@ -3,6 +3,7 @@ import { FUNCTION_EXCEPTION_RULES } from '../../../shared/policy.mjs';
 import { definedField } from '../../../shared/messages/messages.mjs';
 import { ASYNC_HINTS } from './hints/ast-async.mjs';
 import { STRUCTURE_HINTS } from './hints/ast-structure.mjs';
+import { CONTAINER_HINTS } from './hints/containers/containers.mjs';
 import { TYPING_HINTS } from './hints/typing/ast-typing.mjs';
 import { SMELL_HINTS } from './hints/ast-smells.mjs';
 import { ORM_HINTS } from './hints/persistence/ast-orm.mjs';
@@ -56,6 +57,7 @@ export const RULE_HINTS = [
   ...ORM_HINTS,
   ...PERSISTENCE_HINTS,
   ...QUERY_HINTS,
+  ...CONTAINER_HINTS,
   { tool: 'mypy', rules: ['import-not-found', 'import-untyped'], allowed: INSTALL_PACKAGE },
   ...['pyright', 'basedpyright'].map((tool) => ({
     tool,

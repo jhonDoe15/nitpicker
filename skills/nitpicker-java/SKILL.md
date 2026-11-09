@@ -5,6 +5,9 @@ description: Use before writing or changing Java in a project that runs nitpicke
 
 # nitpicker for Java
 
+Written for nitpicker 0.1.0-rc.1. If `npx nitpicker --version` prints another version, reinstall
+this skill with the command `npx nitpicker init` prints.
+
 nitpicker gates a Gradle or Maven project (Java 21) with PMD, SpotBugs, Error Prone with NullAway,
 Checkstyle, google-java-format, JaCoCo, CRAP, PIT mutation testing, jscpd and size limits. It fails
 only on findings your change adds, so leave code the task doesn't need alone. Write the allowed
@@ -103,5 +106,5 @@ The allowed forms are on one page per topic. Before you write code, read the pag
 ## Kotlin projects
 
 Under the kotlin preset the Java sources get the same checks. Kotlin sources follow the
-`nitpicker-kotlin` skill; if it isn't installed, install it with
-`npx skills add jhonDoe15/nitpicker --skill nitpicker-kotlin`.
+`nitpicker-kotlin` skill; if it isn't installed, install it with the
+command `npx nitpicker init` prints, with `--skill nitpicker-kotlin`.
