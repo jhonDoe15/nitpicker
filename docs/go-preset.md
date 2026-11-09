@@ -248,7 +248,19 @@ message does not already name it, and by its exception entry:
     `os.Chdir`, `context.Background()` and `context.TODO()`), testifylint (every
     check, printed under its own name such as `testifylint/bool-compare`: the specific
     assertion, `require` for errors, expected before actual, format strings that match their
-    arguments, suite methods instead of the package functions).
+    arguments, suite methods instead of the package functions);
+  - other forms: asciicheck (ASCII identifiers), bidichk (no bidirectional control characters,
+    which make code read differently from how it compiles), gocheckcompilerdirectives (every
+    `//go:` directive is one the compiler knows), canonicalheader (`http.Header` keys in
+    canonical form), musttag (a struct passed to an encoder or decoder has a
+    tag on each field, so renaming a field does not change the encoded form; `json`, `xml`, `yaml`, `toml`, `mapstructure` and sqlx `db` calls), perfsprint (no
+    `fmt.Sprintf` where `strconv`, `hex.EncodeToString`, `errors.New` or `+` does the same, printed
+    under each check's name such as `perfsprint/integer-format`), usestdlibvars (the standard
+    library's constants for HTTP methods and statuses, months, weekdays, time layouts, hashes and
+    the rest, including the checks it leaves off by default), sloglint (the `...Context` form when
+    the function takes a context or request, constant messages, typed attributes such as
+    `slog.String("name", name)` instead of key-value pairs, `slog.DiscardHandler`), spancheck
+    (`span.End()` on every path after `tracer.Start`).
 
 The linters skip generated files (`// Code generated ... DO NOT EDIT.`), as staticcheck does; a
 package of only generated files needs no package comment. An analyzer that fails on a package that
@@ -271,17 +283,25 @@ comments do nothing, including the ones nilerr and contextcheck read themselves,
 | vet `shadow`                                                           | flags the idiomatic `if err := f(); err != nil` inside a function with an outer `err`                                             |
 | vet `fieldalignment`, `atomicalign`                                    | memory layout, not one way to write code; SA1027 covers 32-bit atomics                                                            |
 | modernize `appendclipped`, `bloop`, `fmtappendf`, `slicesdelete`       | left out of the suite upstream (not nil-preserving, or less clear)                                                                |
+| perfsprint `concat-loop`                                               | modernize `stringsbuilder` reports the same loop                                                                                  |
+| perfsprint `fiximports`                                                | an edit to the import block that goes with the other fixes, not a finding                                                         |
+| sloglint `no-mixed-args`                                               | attributes-only reports every key-value pair, mixed or not                                                                        |
 
 **Catalog linters considered and left out**, with the reason:
 
-| Linter                            | Reason                                                                                                                                                                             |
-| --------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| err113                            | flags every `errors.New` inside a function, though a one-off error nobody compares is fine; its `==` check duplicates errorlint                                                    |
-| wrapcheck                         | flags every error returned from another package unwrapped, the module's own included; it needs per-project ignore lists to be usable                                               |
-| paralleltest                      | requires `t.Parallel()` in every test, which `t.Setenv` and `t.Chdir` forbid and tests with shared fixtures cannot use; tparallel keeps a test and its subtests consistent instead |
-| forcetypeassert                   | errcheck `-assert` reports the same one-value type assertions                                                                                                                      |
-| exhaustive maps and type switches | a lookup map keyed by an enum is often partial on purpose, and a type switch over an interface cannot know every implementation                                                    |
-| nilnil `-detect-opposite`         | a value with a non-nil error is the `io.Reader` contract (`n, err`), not a second form                                                                                             |
+| Linter                                         | Reason                                                                                                                                                                             |
+| ---------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| err113                                         | flags every `errors.New` inside a function, though a one-off error nobody compares is fine; its `==` check duplicates errorlint                                                    |
+| wrapcheck                                      | flags every error returned from another package unwrapped, the module's own included; it needs per-project ignore lists to be usable                                               |
+| paralleltest                                   | requires `t.Parallel()` in every test, which `t.Setenv` and `t.Chdir` forbid and tests with shared fixtures cannot use; tparallel keeps a test and its subtests consistent instead |
+| forcetypeassert                                | errcheck `-assert` reports the same one-value type assertions                                                                                                                      |
+| exhaustive maps and type switches              | a lookup map keyed by an enum is often partial on purpose, and a type switch over an interface cannot know every implementation                                                    |
+| nilnil `-detect-opposite`                      | a value with a non-nil error is the `io.Reader` contract (`n, err`), not a second form                                                                                             |
+| predeclared                                    | revive's `redefines-builtin-id` reports the same names                                                                                                                             |
+| sloglint `kv-only`                             | flags every `LogAttrs` call, which takes only attributes; attributes-only works with every call and keeps keys and values typed                                                    |
+| sloglint other options                         | the default logger, constant keys, message style and key case are choices each project makes, and no one form is Go's                                                              |
+| spancheck `set-status`, `record-error`         | a project that records errors in a helper cannot name it without config, so every such span would be a finding                                                                     |
+| usestdlibvars `os-dev-null`, `syslog-priority` | deprecated upstream                                                                                                                                                                |
 
 **Overlaps on one line.** When two checks report the same line, the more specific one stays:
 
@@ -303,6 +323,11 @@ comments do nothing, including the ones nilerr and contextcheck read themselves,
 | thelper                              | testifylint `suite-thelper`        |
 | ST1012 (sentinel error names)        | errname                            |
 | SA1005 (`exec.Command` shell line)   | noctx                              |
+| SA1006, QF1010, S1028, S1039         | perfsprint `string-format`         |
+| QF1012 (`fmt.Fprintf` to a builder)  | perfsprint `integer-format`        |
+| SA9009 (space in a directive)        | gocheckcompilerdirectives          |
+| ST1013 (HTTP status constants)       | usestdlibvars                      |
+| ST1018 (format characters in text)   | bidichk                            |
 
 **Project config.** `staticcheck.conf` files are read only when the project opts in with
 `"tools": { "staticcheck": { "precedence": ["project"] } }`. Then each package's merged

@@ -7,5 +7,5 @@ func PrintBytes(data []byte) string {
 }
 
 func PrintText(data []byte) string {
-	return fmt.Sprint(string(data))
+	return fmt.Sprint(string(data), len(data))
 }
