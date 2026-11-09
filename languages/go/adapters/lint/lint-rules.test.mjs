@@ -68,6 +68,14 @@ describe('Go lint messages', () => {
       },
       "Function `refresh` should pass the context parameter. Take a `ctx context.Context` parameter and pass the caller's context down, or derive one from it; a goroutine uses a context made before the `go` statement.",
     ],
+    [
+      {
+        tool: 'exhaustive',
+        rule: 'exhaustive',
+        message: 'missing cases in expression switch: Paused, Closed',
+      },
+      'missing cases in expression switch. Add a case for each missing constant, or a `default` case that handles the rest.',
+    ],
   ])('names the allowed form for %j', (entry, message) => {
     expect(lintMessage(entry)).toBe(message);
   });

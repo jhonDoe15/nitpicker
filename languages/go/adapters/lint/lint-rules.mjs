@@ -106,7 +106,10 @@ const HINTS = new Map([
   ],
   ['containedctx', 'Pass the context as the first parameter of each method that needs it.'],
   ['fatcontext', 'Assign the derived context to a new variable inside the loop.'],
-  ['exhaustive', 'Add a case for each missing constant; a `default` case does not count.'],
+  [
+    'exhaustive',
+    'Add a case for each missing constant, or a `default` case that handles the rest.',
+  ],
   [
     'recvcheck',
     'Give every method of the type a pointer receiver, or every method a value receiver.',
@@ -126,6 +129,8 @@ const VARYING_PARTS = new Map([
   ['ST1016', / \(seen [^)]*\)$/u],
   ['nilerr', / \(lines? [^)]*\)/u],
   ['contextcheck', /->[^`]*/u],
+  ['exhaustive', /: .*$/u],
+  ['durationcheck', /: `.*`$/u],
 ]);
 
 export function lintRule(rule) {

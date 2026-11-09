@@ -78,7 +78,7 @@ describe.skipIf(!goE2eEnabled)('Go preset linters end to end', () => {
     const result = gate(project, 'catalog-values');
     expect(newFindings(result)).toEqual(['exhaustive/exhaustive shop/status.go']);
     expect(newMessages(result)).toEqual([
-      'missing cases in expression switch: Shipped. Add a case for each missing constant; a `default` case does not count. If this is intended, add {"rule":"exhaustive/exhaustive","paths":["shop/status.go"],"reason":"..."} to "exceptions" in nitpicker.config.json.',
+      'missing cases in expression switch. Add a case for each missing constant, or a `default` case that handles the rest. If this is intended, add {"rule":"exhaustive/exhaustive","paths":["shop/status.go"],"reason":"..."} to "exceptions" in nitpicker.config.json.',
     ]);
   });
 

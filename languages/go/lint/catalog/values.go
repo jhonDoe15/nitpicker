@@ -14,6 +14,13 @@ import (
 	"golang.org/x/tools/go/analysis"
 )
 
+// valueMethods are the interface methods a type implements with a value receiver even when its
+// other methods take a pointer, so that values and pointers both satisfy the interface.
+var valueMethods = []string{
+	"*.String", "*.GoString", "*.Format", "*.Error", "*.Value",
+	"*.MarshalJSON", "*.MarshalText", "*.MarshalBinary", "*.MarshalYAML", "*.MarshalXML",
+}
+
 var (
 	appendsToLength = &analysis.Analyzer{
 		Name: "makezero",
@@ -27,7 +34,7 @@ var (
 	}
 	valueLinters = []Linter{
 		{Tool: "exhaustive", Analyzers: []*analysis.Analyzer{exhaustive.Analyzer}},
-		{Tool: "recvcheck", Analyzers: []*analysis.Analyzer{recvcheck.NewAnalyzer(recvcheck.Settings{})}},
+		{Tool: "recvcheck", Analyzers: []*analysis.Analyzer{recvcheck.NewAnalyzer(recvcheck.Settings{Exclusions: valueMethods})}},
 		{Tool: "durationcheck", Analyzers: []*analysis.Analyzer{durationcheck.Analyzer}},
 		{Tool: "makezero", Analyzers: []*analysis.Analyzer{appendsToLength}},
 		{Tool: "reassign", Analyzers: []*analysis.Analyzer{reassign.NewAnalyzer()}},
@@ -54,15 +61,26 @@ func reportAppendsToLength(pass *analysis.Pass) (any, error) {
 }
 
 func reportConversions(pass *analysis.Pass) (any, error) {
-	files := map[string]*token.File{}
+	parentheses := map[token.Position]token.Pos{}
 	for _, file := range pass.Files {
-		each := pass.Fset.File(file.Package)
-		files[each.Name()] = each
+		ast.Inspect(file, func(node ast.Node) bool {
+			if call, ok := node.(*ast.CallExpr); ok {
+				position := pass.Fset.Position(call.Lparen)
+				position.Offset = 0
+				parentheses[position] = call.Lparen
+			}
+			return true
+		})
 	}
 	for _, position := range unconvert.Run(pass) {
-		if file, found := files[position.Filename]; found {
-			pass.Reportf(file.LineStart(position.Line)+token.Pos(position.Column-1), "unnecessary conversion")
+		position.Offset = 0
+		if at, found := parentheses[position]; found {
+			pass.Reportf(at, "unnecessary conversion")
 		}
 	}
 	return nil, nil
+}
+
+func configureValues() error {
+	return exhaustive.Analyzer.Flags.Set("d", "true")
 }

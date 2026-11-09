@@ -62,8 +62,11 @@ allowed form and ends with its exception entry.
 - No empty branches (SA9003), no unused values or writes (SA4006, `unusedwrite`), no unused code
   (U1000: delete it or use it), and no `break` that only ends a `switch` case.
 - Defer in a loop only from a function the loop calls, so each defer runs when that call returns.
-- A switch on an enum type lists every constant, even with a `default` case (exhaustive).
+- A switch on an enum type lists every constant, or has a `default` case for the rest
+  (exhaustive).
 - All methods of a type have pointer receivers, or all have value receivers (recvcheck).
+  `String`, `Error`, `Format`, `Value` and `MarshalJSON`-style methods may take a value next to
+  pointer methods.
 - Multiply a duration by a number, never by another duration (durationcheck). Build a slice
   you append to with `make([]T, 0, n)` (makezero). Drop conversions to the type a value already
   has (unconvert), and assignments that are overwritten before they are read (wastedassign).

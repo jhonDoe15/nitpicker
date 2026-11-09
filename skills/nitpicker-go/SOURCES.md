@@ -104,9 +104,13 @@ than the others, and this skill teaches its rules before an agent writes Go.
   linter is known.
 - **Catalog linters for types and values.** An enum switch that misses a constant, a type with
   mixed receivers, a duration squared, an append after `make([]T, n)` and an assignment never
-  read are bugs or a second form of the same code. exhaustive does not count a `default` case,
-  so adding a constant fails every switch that forgot it; map literals and type switches are
-  left out because a partial lookup map is common and an interface's implementations are open.
+  read are bugs or a second form of the same code. A `default` case counts as handling the other
+  constants: without it, a switch on `reflect.Kind` or `token.Token` would have to list dozens of
+  constants that do not matter to it. Map literals and type switches are left out because a
+  partial lookup map is common and an interface's implementations are open. recvcheck lets the
+  methods an interface expects on values (`String`, `Error`, `Format`, `Value`, `Marshal...`)
+  take a value next to pointer methods, since a pointer receiver there would stop
+  `fmt` and `encoding/json` using them for plain values.
 - **A fixture for every check.** Each enabled check has a failing line and the allowed form in
   `languages/go/lint/fixtures`; the harness fails on a missing or unexpected report, so a tool
   upgrade that changes what a check reports is caught before release.
@@ -179,3 +183,14 @@ Two adversarial reviews of the catalog linters changed these rules:
   `A->B->C` chain are trimmed, and vet `sqlrowserr` (whose message names a line) is off.
 - **One finding per problem**: `return nil, nil` after an error check is nilerr, not nilnil too;
   a `rows.Close()` that is not deferred is sqlclosecheck, not errcheck too.
+
+Two adversarial reviews of the type and value linters changed these rules:
+
+- **A `default` case counts for exhaustive**, and recvcheck lets the value methods interfaces
+  expect (`String`, `Error`, `Marshal...`) sit next to pointer methods (see above).
+- **unconvert findings are matched to the conversion's parenthesis**, not to a line of the file
+  a `//line` directive names, which crashed the run or lost findings in cgo files.
+- **exhaustive and durationcheck messages drop the missing constants and the expression**, so
+  adding a case or a constant does not make the finding new.
+- **Rewritten directives keep their length and shape** (`//exhaustivx:`, `//nolinx:`), so no
+  comment's end moves and none turns from a directive into doc text.
