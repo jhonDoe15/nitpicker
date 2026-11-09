@@ -12,6 +12,7 @@ import { globMatcher } from '../../../shared/paths/glob.mjs';
 import { runJava } from './maven-command.mjs';
 import { failedCaseEntries, failingTestsError, freshReports } from '../builds/test-failures.mjs';
 import { readPitMutators } from '../builds/java-build.mjs';
+import { pitHistoryArguments } from '../builds/pit-history/pit-history.mjs';
 
 const DEFAULT_ARCHUNIT_INCLUDES = '**/*ArchTest.class,**/*ArchitectureTest.class';
 const JUNIT_ENGINE_JAR = /^junit-platform-engine-.+\.jar$/u;
@@ -232,7 +233,7 @@ function pitArgLine(pitDir, args) {
   return ['--argLine', `${quote}@${file}${quote}`];
 }
 
-export function runPit({ module, reportDir, tools, classpaths, isArchunit, spawn }) {
+export function runPit({ module, reportDir, tools, classpaths, isArchunit, spawn, history }) {
   const pitDir = path.join(reportDir, 'pit');
   rmSync(pitDir, { recursive: true, force: true });
   mkdirSync(pitDir, { recursive: true });
@@ -270,6 +271,7 @@ export function runPit({ module, reportDir, tools, classpaths, isArchunit, spawn
       '--verbose',
       'false',
       ...pitArgLine(pitDir, module.testJvmArgs),
+      ...pitHistoryArguments(history, module.buildDirectory),
     ],
     cwd: module.basedir,
     accept: (result) => result.status === 0,

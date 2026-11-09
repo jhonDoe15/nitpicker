@@ -101,9 +101,9 @@ Part of the [Java preset guide](../java-preset.md).
     Checkstyle, SpotBugs and ArchUnit message (`pmd/<rule>`).
   - `layout` is a config error with `"preset": "java"` instead of being ignored: its source-folder
     keys are TypeScript only, `layout.featureRoots` is accepted once `history.coChange` is on (it
-    names the feature folders `co-change` reads), and `layout.sharedRoots` is accepted once the
-    Java preset registers the rule that reads it (`shared-used-by-one-feature`) in
-    `shared/project-rules/fact-rules.mjs`. `testConsole` is accepted because the registry lists Java and
+    names the feature folders `co-change` reads), and `layout.sharedRoots` and `layout.featureRoots`
+    are accepted because `shared/project-rules/fact-rules.mjs` registers Java and Kotlin for
+    `shared-used-by-one-feature`, the rule that reads them. `testConsole` is accepted because the registry lists Java and
     Kotlin for `test-console-output`. `tools` takes `pmd`, `checkstyle` and `spotbugs`.
 - **Packaging.** The init script moved to `languages/java/gradle/` and `languages/**` is in the npm `files`;
   the packed-contents test and the installed-package test assert that `languages/java/gradle/nitpicker.init.gradle`
