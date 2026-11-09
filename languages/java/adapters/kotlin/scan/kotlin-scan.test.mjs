@@ -174,6 +174,7 @@ describe('readKotlinSourceFindings', () => {
         'LogStringConcatenation',
         'MutableModuleState',
         'MutationIgnoreMarker',
+        'OperandSlip',
         'ParameterMutation',
         'PlainTextRegex',
         'ProcessWaitWithoutTimeout',

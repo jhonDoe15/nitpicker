@@ -38,6 +38,7 @@ are listed at the end.
 | ORM schema at startup    | migrations: Alembic `alembic upgrade head` in the deploy step, Django migrations, Aerich                                                                                             | `orm-schema-sync` (script)                                                                                                                                                                                                                 |
 | ORM query logging        | `echo` and the query loggers off; slow queries logged from cursor events or by the database                                                                                          | `orm-query-logging` (script)                                                                                                                                                                                                               |
 | Query rows in memory     | `.count()`, `.exists()`, `.filter()`, `.order_by()`, `.aggregate()` (Django); `where`, `order_by`, `func.count`/`func.sum` (SQLAlchemy)                                              | `in-memory-query` (script)                                                                                                                                                                                                                 |
+| Foreign key indexes      | `index=True` on the foreign-key column, an `Index` that starts with it; Django keeps `db_index`                                                                                      | `unindexed-foreign-key` (script)                                                                                                                                                                                                           |
 | Defaulting parameters    | `limit if limit is not None else DEFAULT_LIMIT`                                                                                                                                      | `falsy-default` (script)                                                                                                                                                                                                                   |
 | Testing numbers          | `count > 0`, `index != -1`, `count is not None`                                                                                                                                      | `number-truthiness` (script)                                                                                                                                                                                                               |
 | Changing an argument     | build and return a new value, or copy the argument first                                                                                                                             | `parameter-mutation` (script)                                                                                                                                                                                                              |
@@ -57,7 +58,7 @@ are listed at the end.
 | Timeouts                 | `timeout=10` on every request, `urlopen` and plain `requests.Session` call; never `timeout=None`                                                                                     | ruff `S113`, `http-without-timeout` (script)                                                                                                                                                                                               |
 | Abandoned work           | `asyncio.wait_for`, `asyncio.timeout` or a `TaskGroup`; cancel or hand off `pending` after `asyncio.wait(..., timeout=)`                                                             | `timeout-abandons-operation` (script)                                                                                                                                                                                                      |
 | Child processes          | `subprocess.run(args, timeout=30, check=True)`, `communicate(timeout=30)`, asyncio waits in `asyncio.timeout(30)`                                                                    |
-| Test honesty             | a reason on every skip, no sleeping, no tautologies, fixed time and seeded random values, no network, no leaked global state                                                         | ruff `PT`, `skipped-test-without-reason`, `sleep-in-test`, `negative-wait-in-test`, `mocked-subject-in-test`, `mock-without-spec`, `patch-misses-lookup`, `tautological-assert`, `real-clock-in-test`, `random-in-test`, `network-in-test`, `server-or-container-per-test`, `global-state-leak-in-test` (script) |
+| Test honesty             | a reason on every skip, no sleeping, no tautologies, fixed time and seeded random values, no network, no leaked global state                                                         | ruff `PT`, `skipped-test-without-reason`, `sleep-in-test`, `negative-wait-in-test`, `retry-in-test`, `mocked-subject-in-test`, `mock-without-spec`, `patch-misses-lookup`, `tautological-assert`, `real-clock-in-test`, `random-in-test`, `network-in-test`, `server-or-container-per-test`, `global-state-leak-in-test` (script) |
 | Test layout              | tests in files pytest collects; helpers in the tests folder                                                                                                                          | `uncollected-tests`, `test-helper-in-source` (script)                                                                                                                                                                                      |
 
 `type-cast` rejects `typing.cast` (and `typing_extensions.cast`) as a call or as a value
@@ -680,6 +681,24 @@ self.items.append(item)`), also through a package `__init__` that re-exports it 
   `for` loops over the rows, `itertools.groupby` and `defaultdict` grouping are not followed.
   Tests, a Django `tests.py` and `migrations` folders are skipped. A small fixed lookup table that
   is meant to be loaded whole takes an `exceptions` entry.
+- `unindexed-foreign-key` (the model-side partner of the `foreign-key-index` repository rule, and
+  the counterpart of `nitpicker/no-unindexed-foreign-key`) reports a foreign-key column with no
+  index that starts with it: only MySQL indexes a foreign-key column by itself. It reads SQLAlchemy
+  `mapped_column`/`Column` with a `ForeignKey`, SQLModel `Field(foreign_key=...)` (also through
+  `sa_column`), core `Table(...)` columns and `ForeignKeyConstraint` in `__table_args__`. A column is
+  covered by `index=True` or `unique=True`, by being the first primary-key column, or by an `Index`,
+  `UniqueConstraint` or `PrimaryKeyConstraint` (in `__table_args__`, in the `Table`, or a
+  module-level `Index("ix", Model.column)`, also with `.desc()`) whose first column is it; a
+  partial index (`postgresql_where`) does not count. `__table_args__` may be a literal, a sum of
+  tuples or a `declared_attr` function. Columns of a mixin or abstract base defined in the same
+  module are judged with the class that inherits them. Django indexes foreign keys itself, so only a `ForeignKey`
+  with `db_index=False` is reported, unless `Meta.indexes`, `unique_together`, `index_together` or a
+  `UniqueConstraint` lists the field (or `<field>_id`) first; a conditional index does not count,
+  and `db_constraint=False` passes. A project whose manifests name only MySQL or MariaDB drivers, or
+  whose settings use `django.db.backends.mysql` without PostgreSQL, is left alone. SQLAlchemy
+  models are left to the migrations when the project has an Alembic `versions/` folder with a
+  revision (`down_revision = ...`) next to an `env.py`; `foreign-key-index` then checks the
+  revisions. Manifests are read from the project root and `requirements/`. Tests are skipped.
 - `falsy-default` reports a parameter whose annotation can be falsy (`int`, `float`, `str`, `bytes`,
   `bool`, a list, dict, set or tuple type, a `Sequence`, `Mapping`, `Decimal`, `timedelta`) and is
   `None` by default or by its type, when the body writes `param or default` or
@@ -904,6 +923,22 @@ t)`, `asyncio.timeout(t)`, `fail_after(t)`, `wait(t)`) inside `pytest.raises` or
   `integration`, `e2e` and the like. `tautological-assert` covers `assert True`, `assert x == x`,
   `assert 1`, `assertTrue(True)`, `assertEqual(x, x)`, `assertGreaterEqual(x, x)`,
   `assertIsInstance(x, object)` and the like: asserts that cannot fail.
+- `retry-in-test` (Java and Kotlin: `RetryInTest`; TypeScript: `nitpicker/no-test-retry`) reports a
+  retry set in test code: the `flaky` mark of pytest-rerunfailures, pytest-retry and the `flaky`
+  package (`@pytest.mark.flaky(reruns=3)`, `@pytest.mark.flaky(retries=2)`, a bare
+  `@pytest.mark.flaky`, in `pytestmark`, in `pytest.param(..., marks=...)` or added with
+  `add_marker` or `applymarker`, also by the name `"flaky"`), the `flaky` package's `@flaky`
+  decorator, and a tenacity, backoff, stamina, retry or retrying retry decorator on a test function
+  or method. A literal `reruns=0`, `retries=0` or `max_runs=1` is not a retry. A retry decorator
+  on a function whose name does not start with `test`, such as a helper that polls, is not
+  reported. The marks override the
+  `-o reruns=0` pin, so the test run backs the rule up: a test that fails and then passes on a
+  later attempt (a `rerun` or `retried` report, or a second setup or call of the same test)
+  counts as failed, with the first failure in the message. pytest-rerunfailures, pytest-retry and
+  the `flaky` plugin are covered, also under xdist, and so is a `retries` value in the config of
+  pytest-retry, which is not pinned. That run-time failure is `tests/tests-failed`, so an exception
+  for `retry-in-test` does not lift it. Only the rule sees a retry decorator, which retries inside
+  the test call, and the forms under unittest, nose2 and Django, which run no retry plugin.
 - `mocked-subject-in-test` (Java and Kotlin: `MockedSubjectInTest`; TypeScript:
   `nitpicker/no-mocking-subject-under-test`) reports a test that replaces the code it is named after.
   The subject is the module a test file is named for (`tests/test_cart.py` or `cart_test.py` for the
