@@ -1,4 +1,4 @@
-import ts from 'typescript';
+import { ts } from '../../../../typescript-api/typescript-api.mjs';
 import { decoratorNames } from '../contracts/decorators.mjs';
 import { packageOf } from '../contracts/infrastructure-types.mjs';
 import { findInType } from '../contracts/type-walk.mjs';

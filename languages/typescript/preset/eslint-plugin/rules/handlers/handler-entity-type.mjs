@@ -1,5 +1,5 @@
 import path from 'node:path';
-import ts from 'typescript';
+import { ts } from '../../../../typescript-api/typescript-api.mjs';
 import { decoratorNames, isNestController } from '../contracts/decorators.mjs';
 import { infrastructureOf, packageOf } from '../contracts/infrastructure-types.mjs';
 import { entitiesIn } from './orm-entities.mjs';
