@@ -23,8 +23,6 @@ const { temporaryRoot, createGitRepository } = useGitFixtures();
 const MANIFEST = new URL('../../package.json', import.meta.url);
 const PAIRED = { '--shard-count': ['--shard-index', '0'], '--shard-index': ['--shard-count', '2'] };
 const USAGE_LINK = docsUrl('docs/usage.md');
-const GO_MODULE = 'module example.com/demo\n';
-const BUILD_FILES = { java: { 'build.gradle': '' }, go: { 'go.mod': GO_MODULE } };
 const EXPECTED_USAGE_HEAD = [
   'Usage: nitpicker [<path>...] [--base <ref>] [--output <dir>] [--all | --fix] [--analyzer <name>]...',
   '                 [--rule <substring>]... [--details] [--shard-count <n> --shard-index <i>]',
@@ -171,12 +169,12 @@ function parseError(text) {
   throw new Error(`${text} parsed`);
 }
 
-function projectWith(config, preset) {
+function projectWith(config, markers = {}) {
   const root = temporaryRoot('nitpicker-help-');
-  writeFiles(root, {
-    ...(config === undefined ? {} : { 'nitpicker.config.json': config }),
-    ...BUILD_FILES[preset],
-  });
+  writeFiles(
+    root,
+    config === undefined ? markers : { ...markers, 'nitpicker.config.json': config },
+  );
   return root;
 }
 
@@ -213,7 +211,7 @@ describe('nitpicker --help', () => {
   );
 
   it('lists the analyzers of the preset the config names, and uses one in the example', () => {
-    const root = projectWith('{ "preset": "java" }', 'java');
+    const root = projectWith('{ "preset": "java" }', { 'pom.xml': '<project/>' });
     const java = ['Analyzers of the java preset (for --analyzer):', '  java, repository-hygiene'];
 
     expect(runIn(root, '--help').stdoutText).toBe(expectedUsage(java, 'java'));
@@ -226,7 +224,7 @@ describe('nitpicker --help', () => {
         disable: ['repository-hygiene'],
         analyzers: [{ name: 'house-rules', command: './scripts/house-rules' }],
       }),
-      'go',
+      { 'go.mod': 'module app\n' },
     );
     const go = ['Analyzers of the go preset (for --analyzer):', '  go, house-rules'];
 
@@ -236,7 +234,7 @@ describe('nitpicker --help', () => {
   it('lists the analyzers of the project a run would check, not of a config further up', () => {
     const { root } = createGitRepository({
       'nitpicker.config.json': '{ "preset": "go" }',
-      'go.mod': GO_MODULE,
+      'go.mod': 'module app\n',
       'packages/app/package.json': '{}',
     });
     const go = ['Analyzers of the go preset (for --analyzer):', '  go, repository-hygiene'];
