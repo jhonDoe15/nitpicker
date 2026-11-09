@@ -97,6 +97,7 @@ import { rule as ruleRequireErrorListener } from './rules/events/require-error-l
 import { rule as ruleRequireHttpTimeout } from './rules/security/http/require-http-timeout.mjs';
 import { rule as ruleRequireProcessTimeout } from './rules/processes/require-process-timeout.mjs';
 import { rule as ruleRequireTestProcessTimeout } from './rules/testing/processes/timeouts/require-test-process-timeout.mjs';
+import { rule as ruleSimplerBooleanLogic } from './rules/control/simpler-boolean-logic.mjs';
 import { rule as ruleStrictBooleanExpressions } from './rules/wrapped/strict-boolean-expressions.mjs';
 import { rule as ruleStructuredCatchLogging } from './rules/errors/structured-catch-logging.mjs';
 import { rule as ruleTestMustUseProductionRuntime } from './rules/testing/assertions/test-must-use-production-runtime.mjs';
@@ -206,6 +207,7 @@ export const directoryRules = {
   'require-http-timeout': ruleRequireHttpTimeout,
   'require-process-timeout': ruleRequireProcessTimeout,
   'require-test-process-timeout': ruleRequireTestProcessTimeout,
+  'simpler-boolean-logic': ruleSimplerBooleanLogic,
   'strict-boolean-expressions': ruleStrictBooleanExpressions,
   'structured-catch-logging': ruleStructuredCatchLogging,
   'test-must-use-production-runtime': ruleTestMustUseProductionRuntime,
