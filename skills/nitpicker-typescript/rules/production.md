@@ -21,6 +21,10 @@ Part of the [nitpicker-typescript](../SKILL.md) skill. Write these forms from th
   `match`, `matchAll` and `search` compile a string argument as a regex: use `includes` or
   `startsWith` for text, and escape a parameter before building it into `new RegExp(...)`
   (`nitpicker/no-string-as-regex`).
+  A pattern part that never changes the match or does not do what it looks like (an assertion that
+  always accepts, a duplicate alternative, `[\w_]`, an empty group) is a `regexp/` finding: remove it
+  or fix what was meant; a form with a shorter equivalent (`a{1}`, `(?:ab)c`, `[a]`) takes the
+  shorter one.
 - A `new Promise` that waits on a listener, a stream or a callback takes `reject` and wires the
   failure to it: `new Promise((resolve, reject) => { source.once('error', reject); ... })`, and a
   node-style callback branches first: `if (error) { reject(error); return; }`. Better, use a form
