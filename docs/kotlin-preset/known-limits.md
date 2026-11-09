@@ -14,7 +14,7 @@ Part of the [Kotlin preset guide](../kotlin-preset.md).
   management) does not reach that compiler: the pin is applied last.
 - The review rules read syntax only (see [Review rules](review-rules.md)): a call is tied to a
   declaration by name, package, imports and the form of its receiver, not by type, so a call on a local
-  value of another type can still count for a same-named extension or member that the file can see, and
+  value of another type can still count for a same-named extension, member or `object` function, and
   generated sources under the build directory are not read.
 - `inline` functions are not measured by CRAP (see [CRAP](crap.md)); their structure limits still apply.
 - Kotlin Multiplatform and Android modules are not covered (`org.jetbrains.kotlin.jvm` only).

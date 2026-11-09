@@ -6,7 +6,7 @@ import {
 } from '../../../../../../../shared/unused-api/unused-api-policy.mjs';
 import { append } from '../../kotlin-facts.mjs';
 import { declaredNames } from '../../spring/spring-names.mjs';
-import { callReaches } from './call-reach.mjs';
+import { callReaches, typeAliasNames } from './call-reach.mjs';
 import { callerNote, hiddenCallers } from './unused-option-gaps.mjs';
 import { limitedUnits, publicFunctionUnits } from './unused-option-units.mjs';
 
@@ -27,9 +27,10 @@ function typeAliases(files) {
   );
 }
 
-function callsByName(files, { aliases: withTypeAliases = true } = {}) {
+function callsByName(files, { aliases: withTypeAliases = true, declared = files } = {}) {
   const calls = new Map();
   const targets = withTypeAliases ? typeAliases(files) : new Map();
+  const named = typeAliasNames(declared);
   for (const file of files) {
     const aliases = new Map(
       file.imports
@@ -38,7 +39,12 @@ function callsByName(files, { aliases: withTypeAliases = true } = {}) {
     );
     for (const call of file.calls) {
       const name = aliases.get(call.name) ?? targets.get(call.name) ?? call.name;
-      append(calls, name, { ...call, origin: file, aliased: name !== call.name });
+      append(calls, name, {
+        ...call,
+        origin: file,
+        aliased: name !== call.name,
+        typeAliases: named,
+      });
     }
   }
   return calls;
@@ -159,7 +165,7 @@ function publicFindings(own, { build, reportRoot, finding }) {
   const tests = published
     ? callsByName(
         own.filter(({ test }) => test),
-        { aliases: false },
+        { aliases: false, declared: build.files },
       )
     : new Map();
   return judge(units, {

@@ -247,16 +247,16 @@ function projectFunctionNames(files) {
 }
 
 function projectInlineHosts(files) {
+  const inlined = new Map();
+  for (const { name, modifiers, parameters } of files.flatMap((file) => file.functions)) {
+    const looked =
+      modifiers.includes('inline') && parameters.every(({ inlining }) => inlining === undefined);
+    inlined.set(name, (inlined.get(name) ?? true) && looked);
+  }
   return new Set(
-    files.flatMap((file) =>
-      file.functions
-        .filter(
-          ({ modifiers, parameters }) =>
-            modifiers.includes('inline') &&
-            parameters.every(({ inlining }) => inlining === undefined),
-        )
-        .map(({ name }) => name),
-    ),
+    [...inlined]
+      .filter(([name, looked]) => looked && !SPARED_HOSTS.has(name))
+      .map(([name]) => name),
   );
 }
 

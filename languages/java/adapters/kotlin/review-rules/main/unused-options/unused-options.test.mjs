@@ -316,7 +316,7 @@ describe('the calls that can reach a Kotlin function', () => {
     expect(findingsFor(files)).toEqual([]);
   });
 
-  it('counts a call of an object member only through that object, an alias of it or this', () => {
+  it('counts a call of an object member through any receiver but another type', () => {
     const texts = klass('Texts', { kind: 'object' });
     const member = pad({ owner: 'Texts' });
     const imported = { imports: [{ path: 'demo.text.Texts', all: false }] };
@@ -330,11 +330,37 @@ describe('the calls that can reach a Kotlin function', () => {
       run('Texts'),
       run('demo.text.Texts', {}),
       run('this'),
-      run('other'),
+      run('this@Texts'),
+      run('texts'),
+      run(undefined, {}),
       run('Other'),
-    ]).toEqual([0, 0, 0, 1, 1]);
+      run('demo.other.Texts'),
+    ]).toEqual([0, 0, 0, 0, 0, 0, 1, 1]);
     expect(run('T', { imports: [{ path: 'demo.text.Texts', alias: 'T', all: false }] })).toBe(0);
+    expect(run('U', { typeAliases: [{ name: 'U', target: 'Texts', line: 1 }] })).toBe(0);
     expect(run('Texts', {})).toBe(1);
+  });
+
+  it('counts a named companion through its class and a nested object through an aliased outer class', () => {
+    const run = (owner, kind, qualifier) => {
+      const files = [
+        declaring(
+          [pad({ owner })],
+          [klass('Outer'), klass(owner.split('.')[1], { qualified: owner, kind })],
+        ),
+        caller([setsWidth({ qualifier })], {
+          imports: [{ path: 'demo.text.Outer', alias: 'O', all: false }],
+        }),
+      ];
+      files[0].calls = [call('pad', { positional: 1, qualifier: owner })];
+      return findingsFor(files).length;
+    };
+
+    expect([
+      run('Outer.Factory', 'companion', 'O'),
+      run('Outer.Inner', 'object', 'O.Inner'),
+      run('Outer.Inner', 'object', 'O.Other'),
+    ]).toEqual([0, 0, 1]);
   });
 
   it('counts a call of a class member through any receiver', () => {
