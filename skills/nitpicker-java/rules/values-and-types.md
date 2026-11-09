@@ -60,3 +60,8 @@ Part of the [nitpicker-java](../SKILL.md) skill. Write these forms from the star
   Factories named `of` or `from` and copies such as `List.copyOf` are fine.
 - A record or `@ConfigurationProperties` class (and the classes nested in it) has `tags` or `tag`,
   not both; one item is a one-element list.
+- Pick the cheaper collection form: a `HashSet` (or `LinkedHashSet`) for items you test with
+  `contains` while you collect them (`pmd/ListUsedAsSet`), a `Map` built once with
+  `Collectors.toMap` before a loop instead of `stream().filter(x -> x.getKey().equals(key)).findFirst()`
+  in it (`pmd/LinearLookupInLoop`), and `min(comparator)`/`max(comparator)` instead of
+  `sorted(...).findFirst()` (`pmd/SortForExtreme`).
