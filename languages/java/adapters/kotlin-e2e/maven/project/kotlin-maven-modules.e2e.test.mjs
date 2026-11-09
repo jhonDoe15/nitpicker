@@ -56,6 +56,7 @@ describe.skipIf(!kotlinE2eEnabled)('Kotlin preset on Maven: equivalence and modu
       'jacoco',
       'ktlint',
       'pit',
+      'test-runtime',
     ]);
   });
 
@@ -94,6 +95,7 @@ describe.skipIf(!kotlinE2eEnabled)('Kotlin preset on Maven: equivalence and modu
     expect(
       findings
         .filter((finding) => finding.tool === 'test-runtime')
+        .filter((finding) => finding.classification === 'enforceable')
         .map(({ rule, path: file, identity }) => `${rule} ${file} ${identity}`),
     ).toEqual([
       'slow-test core/src/test/kotlin/demo/core/AdderTest.kt test:demo.core.AdderTest#adds',
