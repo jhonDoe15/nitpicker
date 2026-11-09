@@ -5,6 +5,7 @@ import { sharedFactFindings } from './evaluate.mjs';
 import {
   FACT_RULE_LANGUAGES,
   FACT_RULE_LISTS,
+  OWN_TOOL,
   registeredFactRules,
   sharedFactExceptionRules,
 } from '../../project-rules/fact-rules.mjs';
@@ -16,6 +17,13 @@ import {
 } from './test-support/fact-fixtures.mjs';
 
 const CONSOLE = 'test-console-output';
+const FEATURE_RULES = ['feature-internal-import', 'shared-imports-feature', 'feature-cycle'];
+
+function factRulesOf(language) {
+  return Object.entries(FACT_RULE_LANGUAGES)
+    .filter(([, languages]) => [true, 'partial'].includes(languages[language]))
+    .map(([rule]) => rule);
+}
 
 describe('the shared fact rules', () => {
   it('registers rules the catalog knows, each with the lists it reads', () => {
@@ -34,12 +42,37 @@ describe('the shared fact rules', () => {
     ).toEqual(registered.map(([rule]) => [rule, LANGUAGES.toSorted()]));
     expect(
       registered.map(([rule]) => [rule, RULES.find(({ id }) => id === rule).enforcedBy]),
-    ).toEqual(registered.map(([rule, languages]) => [rule, languages]));
+    ).toEqual(
+      registered.map(([rule, languages]) => [
+        rule,
+        Object.fromEntries(
+          Object.entries(languages).map(([language, value]) => [
+            language,
+            value === OWN_TOOL || value,
+          ]),
+        ),
+      ]),
+    );
+  });
+
+  it('shows a rule a language enforces with its own tool as enforced, without running it', () => {
+    expect(FEATURE_RULES.map((rule) => RULES.find(({ id }) => id === rule).enforcedBy)).toEqual(
+      FEATURE_RULES.map(() => ({
+        typescript: true,
+        javascript: true,
+        java: false,
+        python: true,
+        kotlin: false,
+        go: false,
+      })),
+    );
+    expect(registeredFactRules('typescript')).not.toContain(FEATURE_RULES[0]);
   });
 
   it('runs every rule registered for a language', () => {
-    expect(registeredFactRules('typescript')).toEqual(Object.keys(FACT_RULE_LANGUAGES));
-    expect(registeredFactRules('javascript')).toEqual(Object.keys(FACT_RULE_LANGUAGES));
+    expect(registeredFactRules('typescript')).toEqual(factRulesOf('typescript'));
+    expect(registeredFactRules('javascript')).toEqual(factRulesOf('javascript'));
+    expect(registeredFactRules('python')).toEqual(factRulesOf('python'));
     expect(registeredFactRules('cobol')).toEqual([]);
   });
 
@@ -145,18 +178,18 @@ describe('the shared fact rules', () => {
       'duplicate-definition',
       'exported-name-collision',
       'sibling-copy-edit',
+      'shared-used-by-one-feature',
+      ...FEATURE_RULES,
       'test-only-export',
       'doc-comment-content',
       CONSOLE,
     ];
     expect(sharedFactExceptionRules()).toEqual(python);
     expect(registeredFactRules('python')).toEqual(python);
-    withLanguageRegistered('shared-used-by-one-feature', 'kotlin', () => {
-      expect(sharedFactExceptionRules()).toEqual([
-        ...python.slice(0, 3),
-        'shared-used-by-one-feature',
-        ...python.slice(3),
-      ]);
+    withLanguageRegistered('feature-cycle', 'kotlin', () => {
+      expect(sharedFactExceptionRules()).toEqual(python);
+      expect(registeredFactRules('kotlin').includes('feature-cycle')).toBe(true);
+      expect(registeredFactRules('python')).toEqual(python);
     });
   });
 });
