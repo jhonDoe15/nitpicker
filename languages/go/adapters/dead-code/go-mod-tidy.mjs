@@ -98,7 +98,7 @@ export function tidyFindings(projectRoot, text) {
       }),
     );
   const unlisted = [...added]
-    .filter(([module, { indirect }]) => !removed.has(module) && !indirect)
+    .filter(([module, { indirect }]) => !(removed.has(module) || indirect))
     .map(([module]) =>
       dependencyFinding({
         rule: PACKAGE_RULE_IDS.unlistedDependency,

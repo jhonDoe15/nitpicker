@@ -24,7 +24,7 @@ function goDuplicateIgnores(report, skippedFolders = GO_SKIPPED_FOLDERS) {
 
 export function duplicates(context) {
   const report = readInspect(context.reportRoot);
-  const files = report.files.filter(({ test, generated }) => !test && !generated);
+  const files = report.files.filter(({ test, generated }) => !(test || generated));
   try {
     runJscpd({
       cwd: context.projectRoot,

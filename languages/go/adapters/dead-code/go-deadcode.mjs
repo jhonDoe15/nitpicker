@@ -67,14 +67,14 @@ function entryPoints(report) {
   );
 }
 
-function isKept(entry, { packages, constrained, referenced, reported, entries, unusedAt }) {
+function isDropped(entry, { packages, constrained, referenced, reported, entries, unusedAt }) {
   const { file, name, line } = entry;
   const key = `${file}\0${name}`;
   return (
-    !(packages.isPublished(directoryOf(file)) && isExported(name)) &&
-    !constrained.has(file) &&
-    !unusedAt.has(`${file}\0${String(line)}`) &&
-    ![referenced, reported, entries].some((keys) => keys.has(key))
+    (packages.isPublished(directoryOf(file)) && isExported(name)) ||
+    constrained.has(file) ||
+    unusedAt.has(`${file}\0${String(line)}`) ||
+    [referenced, reported, entries].some((keys) => keys.has(key))
   );
 }
 
@@ -110,7 +110,7 @@ export function unreachableFindings(
   return diagnosticFindings(
     projectRoot,
     deadcodeEntries(deadcodePackages)
-      .filter((entry) => isKept(entry, filter))
+      .filter((entry) => !isDropped(entry, filter))
       .map(({ file, line, column, name }) => ({
         tool: DEADCODE_TOOL,
         rule: UNREACHABLE_RULE,
