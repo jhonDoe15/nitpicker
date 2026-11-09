@@ -67,12 +67,13 @@ function entryPoints(report) {
   );
 }
 
-function isKept(entry, { packages, constrained, referenced, reported, entries }) {
-  const { file, name } = entry;
+function isKept(entry, { packages, constrained, referenced, reported, entries, unusedAt }) {
+  const { file, name, line } = entry;
   const key = `${file}\0${name}`;
   return (
     !(packages.isPublished(directoryOf(file)) && isExported(name)) &&
     !constrained.has(file) &&
+    !unusedAt.has(`${file}\0${String(line)}`) &&
     ![referenced, reported, entries].some((keys) => keys.has(key))
   );
 }
@@ -95,13 +96,16 @@ function deadcodeEntries(packages) {
 export function unreachableFindings(
   projectRoot,
   deadcodePackages,
-  { report, module, facts, testOnly },
+  { report, module, facts, testOnly, unused = [] },
 ) {
   const filter = {
     packages: goPackages(report, module),
     ...constrainedReferences(report, facts),
     reported: new Set(testOnly.map(({ path: file, symbol }) => `${file}\0${symbol}`)),
     entries: entryPoints(report),
+    unusedAt: new Set(
+      unused.map(({ path: file, location }) => `${file}\0${String(location?.line)}`),
+    ),
   };
   return diagnosticFindings(
     projectRoot,
@@ -118,10 +122,10 @@ export function unreachableFindings(
   );
 }
 
-export function readDeadcodeFindings(context, { facts, testOnly }) {
+export function readDeadcodeFindings(context, { facts, testOnly, unused }) {
   return unreachableFindings(
     context.projectRoot,
     JSON.parse(readFileSync(path.join(context.reportRoot, DEADCODE_REPORT), 'utf8')),
-    { report: readInspect(context.reportRoot), module: context.module, facts, testOnly },
+    { report: readInspect(context.reportRoot), module: context.module, facts, testOnly, unused },
   );
 }

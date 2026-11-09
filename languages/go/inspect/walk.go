@@ -60,7 +60,7 @@ func goFiles(root string, report *Report) ([]string, error) {
 
 func emptyReport() Report {
 	return Report{
-		Files: []File{}, Functions: []Function{}, Types: []Type{}, Tests: []Function{}, Errors: []string{},
+		Files: []File{}, Functions: []Function{}, Types: []Type{}, Tests: []Test{}, Errors: []string{},
 		Definitions: []Definition{}, Usages: []Usage{}, Skipped: []string{},
 	}
 }

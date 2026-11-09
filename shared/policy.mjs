@@ -7,7 +7,7 @@ import {
   sizeRules,
 } from './project-rules/size-rules.mjs';
 import { UNUSED_API_RULES, UNUSED_API_RULE_IDS } from './unused-api/unused-api-policy.mjs';
-import { reuseRules } from './project-rules/reuse-rules.mjs';
+import { entryPointRule, reuseRules } from './project-rules/reuse-rules.mjs';
 import { NO_TYPE_ONLY, testConsoleRule } from './project-rules/test-runtime-rules.mjs';
 import {
   docCommentRule,
@@ -265,12 +265,7 @@ const CATALOG = [
     limit: 'raising a legacy baseline allowance fails',
     enforcedBy: withGo(withKotlin(ALL, true)),
   },
-  {
-    id: RULE_IDS.publicAlternativeBypass,
-    check: 'entry-points',
-    limit: 'none: importing around a public entry point fails',
-    enforcedBy: withKotlin(TYPESCRIPT_ONLY, false),
-  },
+  entryPointRule(RULE_IDS, withKotlin(TYPESCRIPT_ONLY, false)),
   ...UNUSED_API_RULES,
   ...sizeRules({ all: ALL, withKotlin, withGo }),
   ...reuseRules(RULE_IDS, withKotlin(TYPESCRIPT_ONLY, false)),
