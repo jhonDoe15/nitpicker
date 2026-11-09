@@ -3,6 +3,8 @@ import { PACKAGE_ROOT } from '../tooling/tool-resolution.mjs';
 import { captureOutput } from '../diff/reporting/test-support/output-capture.mjs';
 import { docsRef, LATEST_RELEASE_TAG } from '../../shared/messages/docs-url.mjs';
 import { indexEntries, readReferenceEntries, referenceUrl } from '../../shared/reference/store.mjs';
+import { usageText } from '../help/usage-text.mjs';
+import { projectAnalyzers } from '../command/information/project-analyzers.mjs';
 
 /** The links of an installed copy of the package with `manifest`: they point at its release tag. */
 export function installedLinks(manifest) {
@@ -122,4 +124,12 @@ export function checkoutOutput(links, args) {
   return `${output.stdoutText}${output.stderrText}`
     .replaceAll(`${links.repositoryUrl}/blob/main/`, `${links.tagRoot}/`)
     .replaceAll(`${links.repositoryUrl}/blob/${LATEST_RELEASE_TAG}/`, `${links.tagRoot}/`);
+}
+
+/** The help an installed package prints in `projectRoot`: its usage page at its release tag. */
+export function installedHelpText(links, projectRoot) {
+  return usageText({
+    analyzers: projectAnalyzers({ options: {}, currentProjectRoot: projectRoot }),
+    referenceUrl: `${links.tagRoot}/docs/usage.md`,
+  });
 }

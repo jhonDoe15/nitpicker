@@ -632,9 +632,11 @@ nitpicker rules [--preset <name>] [--tool <name>]
   another head, so they are never accepted this way. On a GitHub pull request the
   `accept-policy-change` label sets it (see
   [Accepting a policy change with a label](ci.md#accepting-a-policy-change-with-a-label)).
-- `--help`: list the commands and the flags of each with a one-line description, and exit 0.
-  `nitpicker init --help`, `nitpicker aggregate --help`, `nitpicker cache publish --help`,
-  `nitpicker explain --help` and `nitpicker rules --help` print the help of that command.
+- `--help` (or `-h`): print one screen and exit 0: the commands and flags with a one-line
+  description, the analyzers `--analyzer` takes in the project a run would check (the preset of its
+  `nitpicker.config.json`, `typescript` without one, minus `disable`, plus custom analyzers), the
+  exit codes, the report files to read first, a few example runs and a link to this page for the
+  installed version. `nitpicker <command> --help` (or `-h`) prints the options of that command.
 - `--version`: print the version of the installed nitpicker.
 
 The other commands:
