@@ -1,4 +1,5 @@
 import { MessageChannel, Worker, receiveMessageOnPort } from 'node:worker_threads';
+import { chainOf } from '../../traversal.mjs';
 
 const DEFAULT_TIMEOUT_MS = 20_000;
 const WORKER = new URL('decide-worker.mjs', import.meta.url);
@@ -27,18 +28,28 @@ function bridgeOnce() {
 
 const bridge = bridgeOnce();
 
+function pendingReplies(bridge) {
+  return chainOf(receiveMessageOnPort(bridge.replies), () => receiveMessageOnPort(bridge.replies));
+}
+
 function replyTo(bridge, id) {
-  for (let message = receiveMessageOnPort(bridge.replies); message !== undefined;) {
-    if (message.message.id === id) {
-      return message.message.result;
-    }
-    message = receiveMessageOnPort(bridge.replies);
-  }
-  return undefined;
+  return pendingReplies(bridge).find(({ message }) => message.id === id)?.message.result;
+}
+
+function waits(deadline) {
+  return {
+    [Symbol.iterator]() {
+      return this;
+    },
+    next() {
+      const left = deadline - Date.now();
+      return left > 0 ? { done: false, value: left } : { done: true, value: undefined };
+    },
+  };
 }
 
 function awaitReply(bridge, id, deadline) {
-  for (let left = deadline - Date.now(); left > 0; left = deadline - Date.now()) {
+  for (const left of waits(deadline)) {
     Atomics.wait(bridge.signal, 0, 0, left);
     Atomics.store(bridge.signal, 0, 0);
     const result = replyTo(bridge, id);

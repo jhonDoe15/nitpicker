@@ -7,12 +7,12 @@ import {
   term,
   withRange,
 } from '../../../../../../shared/logic/terms.mjs';
-import { depthFirst, objectChildren } from '../../../../../../shared/traversal.mjs';
+import { foldTree } from '../../../../../../shared/traversal.mjs';
 import { ts } from '../../../../typescript-api/typescript-api.mjs';
 import { partsOf } from '../analysis/narrowing/type-parts.mjs';
 import { toTerm } from '../analysis/logic/estree-terms.mjs';
+import { inside, isFunction, syntaxChildren } from './syntax.mjs';
 
-const FUNCTIONS = new Set(['FunctionDeclaration', 'FunctionExpression', 'ArrowFunctionExpression']);
 const EFFECTS = new Set([
   'AwaitExpression',
   'YieldExpression',
@@ -22,12 +22,6 @@ const EFFECTS = new Set([
 const RELATIONS = new Set(['<', '<=', '>', '>=']);
 const MEMBER_KINDS = new Set(['member', 'index', 'call']);
 const NUMBER = ts.TypeFlags.NumberLike;
-
-function inside(root) {
-  return depthFirst(root, (node) =>
-    FUNCTIONS.has(node.type) && node !== root ? [] : objectChildren(node),
-  );
-}
 
 function rangeKey(range) {
   return `${String(range[0])}:${String(range[1])}`;
@@ -66,7 +60,7 @@ export function conditionTerm(node, sourceCode) {
   });
 }
 
-export function namesOf(root) {
+function namesOf(root) {
   return foldTerm(root, (node, children) => {
     const names = new Set(children.flatMap((set) => [...set]));
     if (node.kind === 'name') {
@@ -123,7 +117,7 @@ function written(node) {
 function addEffect(effects, node, sourceCode) {
   const write = written(node);
   if (write !== undefined) {
-    for (const name of patternNames(write.target)) effects.writes.add(name);
+    patternNames(write.target).forEach((name) => effects.writes.add(name));
     effects.memberWrite ||= [...inside(write.target)].some(
       ({ type }) => type === 'MemberExpression',
     );
@@ -132,13 +126,44 @@ function addEffect(effects, node, sourceCode) {
   effects.call ||= EFFECTS.has(node.type) || (isCall && !isPureCall(node, sourceCode));
 }
 
-/** What running `node` may change: assigned names, any member write, any call that is not pure. */
-export function effectsOf(nodes, sourceCode) {
-  const effects = { writes: new Set(), memberWrite: false, call: false };
-  for (const root of nodes.filter((node) => node !== null && node !== undefined)) {
-    for (const node of inside(root)) addEffect(effects, node, sourceCode);
-  }
-  return effects;
+const NO_EFFECTS = Object.freeze({ writes: new Set(), memberWrite: false, call: false });
+
+function merged(parts) {
+  return {
+    writes: new Set(parts.flatMap(({ writes }) => [...writes])),
+    memberWrite: parts.some(({ memberWrite }) => memberWrite),
+    call: parts.some(({ call }) => call),
+  };
+}
+
+function effectTree(root, { sourceCode, effects }) {
+  return foldTree(root, true, {
+    expand(node, isRoot) {
+      const isOpaque = effects.has(node) || (isFunction(node) && !isRoot);
+      return isOpaque ? [] : syntaxChildren(node).map((child) => [child, false]);
+    },
+    combine(node, isRoot, below) {
+      if (effects.has(node)) {
+        return effects.get(node);
+      }
+      if (isFunction(node) && !isRoot) {
+        return NO_EFFECTS;
+      }
+      const own = merged(below);
+      addEffect(own, node, sourceCode);
+      effects.set(node, own);
+      return own;
+    },
+  });
+}
+
+/**
+ * What running `nodes` may change: assigned names, any member write, any call that is not pure.
+ * `flow.effects` keeps the answer for every node below, so nested statements are not walked again.
+ */
+export function effectsOf(nodes, flow) {
+  const present = nodes.filter((node) => node !== null && node !== undefined);
+  return merged(present.map((root) => effectTree(root, flow)));
 }
 
 function survives(known, effects, mutable) {

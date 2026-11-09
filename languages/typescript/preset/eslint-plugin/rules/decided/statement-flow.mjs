@@ -36,8 +36,7 @@ function isLeavingBoth(statement) {
   return statement?.type === 'IfStatement' && statement.alternate !== null;
 }
 
-/** The jump a statement always ends in (`returns`, `throws`, ...), if it always leaves. */
-export function exitOf(node) {
+function exitOf(node) {
   const last = lastStatement(node);
   if (JUMPS.has(last?.type)) {
     return JUMPS.get(last.type);
@@ -81,7 +80,7 @@ function guardFact(test, sourceCode, holds, exit) {
 
 function ifFlow(node, facts, context) {
   const { sourceCode, mutable } = context;
-  const atTest = afterEffects(facts, effectsOf([node.test], sourceCode), mutable);
+  const atTest = afterEffects(facts, effectsOf([node.test], context), mutable);
   const children = [
     {
       statements: statementsOf(node.consequent),
@@ -94,8 +93,8 @@ function ifFlow(node, facts, context) {
   ];
   const consequentExit = exitOf(node.consequent);
   const alternateExit = node.alternate === null ? undefined : exitOf(node.alternate);
-  const consequentEffects = effectsOf([node.consequent], sourceCode);
-  const alternateEffects = effectsOf([node.alternate], sourceCode);
+  const consequentEffects = effectsOf([node.consequent], context);
+  const alternateEffects = effectsOf([node.alternate], context);
   const after = [];
   if (consequentExit !== undefined && alternateExit === undefined) {
     after.push(
@@ -117,7 +116,7 @@ function ifFlow(node, facts, context) {
 
 function loopFlow(node, facts, context) {
   const { sourceCode, mutable } = context;
-  const inLoop = afterEffects(facts, effectsOf([node], sourceCode), mutable);
+  const inLoop = afterEffects(facts, effectsOf([node], context), mutable);
   const isGuarded =
     node.type === 'WhileStatement' || (node.type === 'ForStatement' && node.test !== null);
   const entry = isGuarded
@@ -163,7 +162,7 @@ function otherFlow(node, facts, context) {
   const after =
     node.type === 'FunctionDeclaration'
       ? facts
-      : afterEffects(facts, effectsOf([node], sourceCode), mutable);
+      : afterEffects(facts, effectsOf([node], context), mutable);
   const lists = nestedLists(node);
   const own = OWN_EXPRESSIONS.get(node.type)?.(node) ?? [];
   const checks = own.filter(Boolean).map((expression) => ({ expression, facts: after }));
@@ -178,7 +177,7 @@ function statementFlow(node, facts, context) {
   return LOOPS.has(node.type) ? loopFlow(node, facts, context) : otherFlow(node, facts, context);
 }
 
-function shadowed(facts, statements, context) {
+function shadowed(facts, statements) {
   const names = declaredNames(statements).flatMap((id) => patternNames(id));
   const writes = new Set(names);
   return facts.filter((known) => ![...known.names].some((name) => writes.has(name)));
@@ -193,7 +192,7 @@ export function conditionChecks(body, context) {
   const pending = [{ statements: body, facts: [] }];
   const checks = [];
   for (const task of pending) {
-    let facts = shadowed(task.facts, task.statements, context);
+    let facts = shadowed(task.facts, task.statements);
     for (const statement of task.statements) {
       const flow = statementFlow(statement, facts, context);
       checks.push(...flow.checks);
