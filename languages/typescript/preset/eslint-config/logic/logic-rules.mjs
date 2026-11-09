@@ -1,4 +1,5 @@
 import tseslint from 'typescript-eslint';
+import { nitpickerRules } from '../../eslint-plugin/index.mjs';
 
 const SYNTAX_RULES = {
   'array-callback-return': ['error', { allowImplicit: false, checkForEach: false }],
@@ -14,6 +15,10 @@ const SYNTAX_RULES = {
 
 const TYPED_RULES = {
   '@typescript-eslint/require-array-sort-compare': ['error', { ignoreStringArrays: true }],
+};
+
+const OWN_TYPED_RULES = {
+  'nitpicker/no-decided-condition': 'error',
 };
 
 /** The allowed form each logic rule's message ends with. */
@@ -48,6 +53,12 @@ export function logicConfigFor(files, parserOptions) {
       languageOptions: { parser: tseslint.parser, parserOptions },
       plugins,
       rules: TYPED_RULES,
+    },
+    {
+      files,
+      languageOptions: { parser: tseslint.parser, parserOptions },
+      plugins: { nitpicker: nitpickerRules },
+      rules: OWN_TYPED_RULES,
     },
   ];
 }

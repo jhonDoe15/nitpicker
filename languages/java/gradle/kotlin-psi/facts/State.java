@@ -3,13 +3,17 @@ package nitpicker.kotlinpsi.facts;
 import static nitpicker.kotlinpsi.common.Psi.m;
 
 import java.util.*;
+import nitpicker.kotlinpsi.bodies.Initializers;
 import nitpicker.kotlinpsi.common.Json;
 import nitpicker.kotlinpsi.common.Lines;
+import org.jetbrains.kotlin.psi.KtDeclaration;
 import org.jetbrains.kotlin.psi.KtFile;
 import org.jetbrains.kotlin.psi.KtImportDirective;
+import org.jetbrains.kotlin.psi.KtProperty;
 
 final class State {
   final boolean test;
+  final boolean locators;
   final List<Object> classes = new ArrayList<>();
   final List<Object> functions = new ArrayList<>();
   final List<Object> properties = new ArrayList<>();
@@ -17,9 +21,17 @@ final class State {
   final List<Object> waits = new ArrayList<>();
   final List<Object> timeouts = new ArrayList<>();
   final List<Object> predicates = new ArrayList<>();
+  final List<Object> updates = new ArrayList<>();
+  final List<Object> handlers = new ArrayList<>();
+  final List<Object> lookups = new ArrayList<>();
+  final List<Object> typed = new ArrayList<>();
   final Set<String> calls = new LinkedHashSet<>();
   final Set<String> references = new LinkedHashSet<>();
   final List<Object> typeAliases = new ArrayList<>();
+  private static final List<String> LOCATOR_PACKAGES =
+      List.of(
+          "org.koin.", "com.google.inject.", "jakarta.enterprise.", "javax.enterprise.", "javax.naming.",
+          "org.springframework.jndi.");
   private final KtFile file;
   private final String relative;
   private final Lines lines;
@@ -30,6 +42,7 @@ final class State {
     this.relative = relative;
     this.test = test;
     this.lines = new Lines(text);
+    this.locators = !test && LOCATOR_PACKAGES.stream().anyMatch(text::contains);
     for (KtImportDirective directive : file.getImportDirectives()) {
       var path = directive.getImportPath();
       if (path != null && !path.isAllUnder()) {
@@ -66,9 +79,23 @@ final class State {
         "file", relative, "test", test, "package", file.getPackageFqName().asString(),
         "imports", imports(), "classes", classes, "functions", functions, "properties", properties,
         "globals", globals, "waits", waits, "timeouts", timeouts, "predicates", predicates,
-        "typeAliases", typeAliases,
+        "handlers", handlers, "updates", updates, "topLevelProperties", topLevelProperties(),
+        "typeAliases", typeAliases, "lookups", lookups, "typed", lookups.isEmpty() ? List.of() : typed,
         "calls", new ArrayList<Object>(calls.stream().map(Json.Raw::new).toList()),
         "references", new ArrayList<Object>(references));
+  }
+
+  private List<Object> topLevelProperties() {
+    List<Object> found = new ArrayList<>();
+    for (KtDeclaration declaration : file.getDeclarations()) {
+      if (declaration instanceof KtProperty && declaration.getName() != null) {
+        KtProperty property = (KtProperty) declaration;
+        found.add(
+            m("name", property.getName(), "var", property.isVar(), "delegated", property.getDelegate() != null,
+                "initializer", Initializers.callee(property), "argument", Initializers.argument(property)));
+      }
+    }
+    return found;
   }
 
   private List<Object> imports() {

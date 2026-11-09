@@ -11,6 +11,7 @@ import {
 } from './cache-stores.mjs';
 import { cacheKey, createFindingsCache } from './findings-cache.mjs';
 import { resetTestHttpServer, startTestHttpServer } from './test-support/test-http-server.mjs';
+import { linkSentence } from '../../../shared/messages/test-support/link-sentence.mjs';
 
 const cleanups = [];
 
@@ -247,7 +248,7 @@ describe('resolveCacheStore', () => {
     });
     expect(bad.store).toBeUndefined();
     expect(bad.warnings).toEqual([
-      'NITPICKER_CACHE_URL ignored: it must be an http(s) URL.',
+      `NITPICKER_CACHE_URL ignored: it must be an http(s) URL. ${linkSentence('staleCache')}`,
       noCacheWarning,
     ]);
     const header = resolveCacheStore({
@@ -259,7 +260,7 @@ describe('resolveCacheStore', () => {
     });
     expect(header.remote).toBeDefined();
     expect(header.warnings).toEqual([
-      'NITPICKER_CACHE_AUTH_HEADER ignored: expected "Name: value".',
+      `NITPICKER_CACHE_AUTH_HEADER ignored: expected "Name: value". ${linkSentence('staleCache')}`,
     ]);
   });
 });
