@@ -38,6 +38,7 @@ function headFactProperties(projectRoot, policy, directory) {
   return [
     ...javaStyleProperties(policy),
     ...(policy.spring === true ? ['-Pnitpicker.spring=true'] : []),
+    ...(policy.featureFolders === true ? ['-Pnitpicker.featureFolders=true'] : []),
     ...(roles === undefined ? [] : [`-Pnitpicker.spring.roles=${roles}`]),
     ...(springRules === undefined ? [] : [`-Pnitpicker.pmd.springRules=${springRules}`]),
   ];

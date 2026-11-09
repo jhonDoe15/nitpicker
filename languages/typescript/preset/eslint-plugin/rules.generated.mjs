@@ -1,9 +1,11 @@
 import { rule as ruleBoundedContainerTeardown } from './rules/testing/lifecycle/bounded-container-teardown.mjs';
 import { rule as ruleCognitiveComplexity } from './rules/analysis/cognitive-complexity.mjs';
 import { rule as ruleContainerPauseRequiresFinallyUnpause } from './rules/testing/lifecycle/container-pause-requires-finally-unpause.mjs';
+import { rule as ruleContractInfrastructureType } from './rules/contracts/contract-infrastructure-type.mjs';
 import { rule as ruleExhaustiveUnionPredicate } from './rules/api-shape/exhaustive-union-predicate.mjs';
 import { rule as ruleFakeTimersRequireRestore } from './test-quality/fake-timers-require-restore.mjs';
 import { rule as ruleFileNameCasing } from './rules/naming/file-name-casing.mjs';
+import { rule as ruleHandlerEntityType } from './rules/handlers/handler-entity-type.mjs';
 import { rule as ruleHermeticGitInTests } from './rules/testing/processes/hermetic-git-in-tests.mjs';
 import { rule as ruleHoverTestNeedsKeyboard } from './rules/react-tests/hover-test-needs-keyboard.mjs';
 import { rule as ruleIntegrationTestUsesApprovedHarness } from './rules/testing/processes/integration-test-uses-approved-harness.mjs';
@@ -113,9 +115,11 @@ export const directoryRules = {
   'bounded-container-teardown': ruleBoundedContainerTeardown,
   'cognitive-complexity': ruleCognitiveComplexity,
   'container-pause-requires-finally-unpause': ruleContainerPauseRequiresFinallyUnpause,
+  'contract-infrastructure-type': ruleContractInfrastructureType,
   'exhaustive-union-predicate': ruleExhaustiveUnionPredicate,
   'fake-timers-require-restore': ruleFakeTimersRequireRestore,
   'file-name-casing': ruleFileNameCasing,
+  'handler-entity-type': ruleHandlerEntityType,
   'hermetic-git-in-tests': ruleHermeticGitInTests,
   'hover-test-needs-keyboard': ruleHoverTestNeedsKeyboard,
   'integration-test-uses-approved-harness': ruleIntegrationTestUsesApprovedHarness,

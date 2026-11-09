@@ -1,0 +1,7 @@
+[
+  {
+    "tool": "python-rules",
+    "rule": "contract-infrastructure-type",
+    "mention": "composition root"
+  }
+]
