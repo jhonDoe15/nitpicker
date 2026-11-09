@@ -31,7 +31,7 @@ type Result struct {
 }
 
 func supersededBy() map[string][]string {
-	return map[string][]string{
+	replacements := map[string][]string{
 		"S1023":    {"SA4011"},
 		"S1000":    {"S1037"},
 		"inline":   {"gofixdirective"},
@@ -41,6 +41,8 @@ func supersededBy() map[string][]string {
 		"nilness":  {"SA4031", "SA5000"},
 		"errcheck": {"SA5001", "SA9001"},
 	}
+	maps.Copy(replacements, reviveSuperseded())
+	return replacements
 }
 
 const packageCommentRule = "ST1000"
@@ -82,6 +84,13 @@ func analyze(directory string, settings options, patterns []string) (Result, err
 		objects.add(action.Result)
 	}
 	for found := range objects.findings() {
+		seen[found] = true
+	}
+	revived, err := reviveFindings(loaded)
+	if err != nil {
+		return result, err
+	}
+	for _, found := range revived {
 		seen[found] = true
 	}
 	findings, err := selected(handWritten(kept(seen), sources(loaded)), settings.project)
