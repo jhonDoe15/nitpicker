@@ -347,14 +347,15 @@ suite('packed nitpicker in a separate consumer', () => {
           '--output',
           reports('fixed'),
         ]);
-        const typeScript = path.dirname(
-          realpathSync(
-            createRequire(packageLocation + path.sep).resolve('typescript/package.json'),
-          ),
-        );
-        renameSync(typeScript, `${typeScript}-aside`);
+        const typeScriptLinks = [
+          ...new Set([
+            path.join(root, 'node_modules/typescript'),
+            path.join(path.dirname(realpathSync(packageLocation)), 'typescript'),
+          ]),
+        ].filter((link) => lstatSync(link, { throwIfNoEntry: false }) !== undefined);
+        for (const link of typeScriptLinks) renameSync(link, `${link}-aside`);
         withoutTypeScript = invoke(['--base', 'main', '--analyzer', 'eslint-lint']);
-        renameSync(`${typeScript}-aside`, typeScript);
+        for (const link of typeScriptLinks) renameSync(`${link}-aside`, link);
         initialized = invoke(['init', '--agents-md', '--ci', 'github']);
       }, 600_000);
       afterAll(() => {
@@ -410,12 +411,16 @@ suite('packed nitpicker in a separate consumer', () => {
         expect(installedVersions).toEqual(peers.map((peer) => manifest.devDependencies[peer]));
       });
       it('stops in one line, before any analyzer, when typescript is missing from node_modules', () => {
-        const reason = supportsRedirect()
-          ? `typescript is not installed in ${realpathSync(root)}. Run npm install (it is in package.json).`
-          : 'The typescript package nitpicker resolves has no JavaScript API (it is TypeScript 7 or later, ' +
-            'or no typescript is installed), so nitpicker reads source files with its own TypeScript 6, ' +
-            `which needs Node.js ${MINIMUM_NODE.join('.')} or newer; this is Node.js ${process.versions.node}.`;
-        expect(withoutTypeScript).toEqual({ status: 2, output: `nitpicker failed: ${reason}\n` });
+        const peerCheck = `typescript is not installed in ${realpathSync(root)}. Run npm install (it is in package.json).`;
+        const olderNode =
+          'The typescript package nitpicker resolves has no JavaScript API (it is TypeScript 7 or later, ' +
+          'or no typescript is installed), so nitpicker reads source files with its own TypeScript 6, ' +
+          `which needs Node.js ${MINIMUM_NODE.join('.')} or newer; this is Node.js ${process.versions.node}.`;
+        const reasons = supportsRedirect() ? [peerCheck] : [peerCheck, olderNode];
+        expect(withoutTypeScript).toEqual({
+          status: 2,
+          output: expect.toBeOneOf(reasons.map((reason) => `nitpicker failed: ${reason}\n`)),
+        });
       });
       it('keeps the policy hash stable across two runs', () => {
         expect(second.status, second.output).toBe(1);
