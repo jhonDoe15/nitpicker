@@ -44,3 +44,26 @@ func Fetch(ctx context.Context, client *http.Client, url string) (*http.Response
 	}
 	return client.Do(request)
 }
+
+type Service struct {
+	client *http.Client
+}
+
+func NewService(timeout time.Duration) *Service {
+	service := &Service{}
+	service.client = &http.Client{}
+	service.client.Timeout = timeout
+	return service
+}
+
+func UseDefaults(timeout time.Duration) bool {
+	http.DefaultClient.Timeout = timeout
+	return http.DefaultClient != nil
+}
+
+func NewUnboundedClients() (*http.Client, *http.Client, http.Client) {
+	unbounded := &http.Client{Timeout: 0} // want http-without-timeout
+	fresh := new(http.Client)             // want http-without-timeout
+	var zero http.Client                  // want http-without-timeout
+	return unbounded, fresh, zero
+}

@@ -2,6 +2,8 @@ package remote
 
 import (
 	"go/ast"
+	"go/constant"
+	"go/token"
 	"go/types"
 
 	"github.com/jhonDoe15/nitpicker/languages/go/lint/rules/support"
@@ -17,13 +19,12 @@ var timeoutAnalyzer = &analysis.Analyzer{
 }
 
 const timeoutMessage = "this HTTP client has no timeout, so a server that accepts the connection and never answers " +
-	"blocks the call for good: use `&http.Client{Timeout: 10 * time.Second}`, or send " +
-	"`http.NewRequestWithContext` with a context from `context.WithTimeout`"
+	"blocks the call for good: build `&http.Client{Timeout: 10 * time.Second}` once and pass it in"
 
 var defaultClientFunctions = []string{"Get", "Post", "Head", "PostForm"}
 
 func runTimeout(pass *analysis.Pass) (any, error) {
-	nodes := []ast.Node{(*ast.CallExpr)(nil), (*ast.SelectorExpr)(nil), (*ast.CompositeLit)(nil)}
+	nodes := []ast.Node{(*ast.CallExpr)(nil), (*ast.SelectorExpr)(nil), (*ast.CompositeLit)(nil), (*ast.ValueSpec)(nil)}
 	for cursor := range support.Root(pass).Preorder(nodes...) {
 		if support.InTestFile(pass, cursor.Node()) {
 			continue
@@ -38,68 +39,76 @@ func runTimeout(pass *analysis.Pass) (any, error) {
 func withoutTimeout(pass *analysis.Pass, cursor inspector.Cursor) bool {
 	switch node := cursor.Node().(type) {
 	case *ast.CallExpr:
-		for _, name := range defaultClientFunctions {
-			if support.IsFunc(pass.TypesInfo, node, "net/http", name) {
-				return true
-			}
-		}
+		return defaultClientCall(pass.TypesInfo, node) || zeroClient(pass, cursor, node)
 	case *ast.SelectorExpr:
-		variable, ok := pass.TypesInfo.Uses[node.Sel].(*types.Var)
-		return ok && variable.Pkg() != nil && variable.Pkg().Path() == "net/http" && variable.Name() == "DefaultClient"
+		return defaultClient(pass.TypesInfo, node) && !configures(cursor)
 	case *ast.CompositeLit:
-		return support.IsNamed(pass.TypesInfo.TypeOf(node), "net/http", "Client") &&
-			!hasField(node, "Timeout") && !timeoutSetLater(pass, cursor)
-	}
-	return false
-}
-
-func hasField(literal *ast.CompositeLit, name string) bool {
-	for _, element := range literal.Elts {
-		if pair, ok := element.(*ast.KeyValueExpr); ok {
-			if key, isIdent := pair.Key.(*ast.Ident); isIdent && key.Name == name {
-				return true
-			}
-		}
-	}
-	return false
-}
-
-func timeoutSetLater(pass *analysis.Pass, cursor inspector.Cursor) bool {
-	target := assignedVariable(pass.TypesInfo, cursor)
-	function, found := support.EnclosingFunc(cursor)
-	if target == nil || !found {
-		return false
-	}
-	for each := range function.Preorder((*ast.AssignStmt)(nil)) {
-		for _, left := range each.Node().(*ast.AssignStmt).Lhs {
-			selector, ok := left.(*ast.SelectorExpr)
-			if !ok || selector.Sel.Name != "Timeout" {
-				continue
-			}
-			if ident, isIdent := ast.Unparen(selector.X).(*ast.Ident); isIdent && pass.TypesInfo.Uses[ident] == target {
-				return true
-			}
-		}
-	}
-	return false
-}
-
-func assignedVariable(info *types.Info, cursor inspector.Cursor) types.Object {
-	parent := cursor.Parent()
-	if unary, ok := parent.Node().(*ast.UnaryExpr); ok && unary.X == cursor.Node() {
-		parent = parent.Parent()
-	}
-	switch node := parent.Node().(type) {
-	case *ast.AssignStmt:
-		if len(node.Lhs) == 1 {
-			if ident, ok := node.Lhs[0].(*ast.Ident); ok {
-				return info.ObjectOf(ident)
-			}
-		}
+		return isClient(pass.TypesInfo.TypeOf(node)) && !hasTimeout(pass.TypesInfo, node) &&
+			!timeoutSetLater(pass, cursor, assignedTarget(cursor))
 	case *ast.ValueSpec:
-		if len(node.Names) == 1 {
-			return info.ObjectOf(node.Names[0])
+		return node.Values == nil && len(node.Names) == 1 && clientValue(pass.TypesInfo.TypeOf(node.Names[0])) &&
+			!timeoutSetLater(pass, cursor, node.Names[0])
+	}
+	return false
+}
+
+func isClient(typ types.Type) bool {
+	return typ != nil && support.IsNamed(typ, "net/http", "Client")
+}
+
+func clientValue(typ types.Type) bool {
+	_, pointer := types.Unalias(typ).(*types.Pointer)
+	return isClient(typ) && !pointer
+}
+
+func defaultClientCall(info *types.Info, call *ast.CallExpr) bool {
+	for _, name := range defaultClientFunctions {
+		if support.IsFunc(info, call, "net/http", name) {
+			return true
 		}
 	}
-	return nil
+	return false
+}
+
+func zeroClient(pass *analysis.Pass, cursor inspector.Cursor, call *ast.CallExpr) bool {
+	return support.IsBuiltin(pass.TypesInfo, call, "new") && len(call.Args) == 1 &&
+		isClient(pass.TypesInfo.TypeOf(call.Args[0])) && !timeoutSetLater(pass, cursor, assignedTarget(cursor))
+}
+
+func defaultClient(info *types.Info, selector *ast.SelectorExpr) bool {
+	variable, ok := info.Uses[selector.Sel].(*types.Var)
+	return ok && variable.Pkg() != nil && variable.Pkg().Path() == "net/http" && variable.Name() == "DefaultClient"
+}
+
+func configures(cursor inspector.Cursor) bool {
+	node := cursor.Node()
+	parent := cursor.Parent()
+	if selector, ok := parent.Node().(*ast.SelectorExpr); ok && selector.X == node {
+		node, parent = selector, parent.Parent()
+	}
+	switch each := parent.Node().(type) {
+	case *ast.AssignStmt:
+		for _, left := range each.Lhs {
+			if left == node {
+				return true
+			}
+		}
+	case *ast.BinaryExpr:
+		return each.Op == token.EQL || each.Op == token.NEQ
+	}
+	return false
+}
+
+func hasTimeout(info *types.Info, literal *ast.CompositeLit) bool {
+	for _, element := range literal.Elts {
+		pair, ok := element.(*ast.KeyValueExpr)
+		if !ok {
+			continue
+		}
+		if key, isIdent := pair.Key.(*ast.Ident); isIdent && key.Name == "Timeout" {
+			value := info.Types[pair.Value].Value
+			return value == nil || constant.Sign(value) != 0
+		}
+	}
+	return false
 }

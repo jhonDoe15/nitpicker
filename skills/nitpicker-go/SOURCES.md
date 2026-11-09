@@ -58,9 +58,11 @@ than the others, and this skill teaches its rules before an agent writes Go.
   names from the Go blog's "Package names"; `GetX` getters from Effective Go ("Getters"). A sealed
   interface is exempt because it is the Uber guide's functional-options form, and registrations in
   `init` because the standard library's driver registry (`database/sql`) is built on them.
-- **HTTP timeouts and I/O in loops.** The same rules as the other presets (`http-without-timeout`
-  and `io-in-loop` in Python, `pmd/HttpWithoutTimeout` in Java): Go's default client has no timeout
-  at all, and a query per item is the most common cause of slow endpoints.
+- **HTTP timeouts and I/O in loops.** `http-without-timeout` is the rule every other preset runs
+  (`http-without-timeout` in Python, `pmd/HttpWithoutTimeout` in Java, `kotlin-source/` in Kotlin,
+  `nitpicker/require-http-timeout` in TypeScript): Go's default client has no timeout at all.
+  `io-in-loop` carries the Python rule's name and remedies: a query per item is the most common
+  cause of slow endpoints.
 - **Configuration read once in `main`; clocks, randomness and writers passed in.** Matches the
   composition-root rule of the other presets and makes tests deterministic.
 - **`context.Context` first, never stored.** From Go Code Review Comments and the Google guide.
