@@ -22,7 +22,7 @@ const mavenDiffOf = mavenDiffRunner(maven);
 
 describe.skipIf(!kotlinE2eEnabled)('Kotlin preset on Maven: coverage and structure', () => {
   const fixture = useKotlinCoverageProject({ initialize: initializeMavenProject });
-  it('fails a changed Kotlin branch that no test takes together with its surviving mutant', () => {
+  it('fails a changed Kotlin branch that no test takes together with its surviving mutants', () => {
     const result = mavenDiffOf(fixture.project, 'one-sided-branch');
 
     expect(result.failed).toBe(true);
@@ -39,7 +39,10 @@ describe.skipIf(!kotlinE2eEnabled)('Kotlin preset on Maven: coverage and structu
         location: { line: 4 },
       },
     ]);
-    expect(fromTool(result.newEnforceable, 'pit')).toEqual(['pit mutant-survived Label.kt']);
+    expect(fromTool(result.newEnforceable, 'pit')).toEqual([
+      'pit mutant-survived Label.kt',
+      'pit mutant-survived Label.kt',
+    ]);
   });
   it('fails the untested branches of a statement that spans lines and of a file outside its package directory', () => {
     const result = mavenDiffOf(fixture.project, 'multiline-branch');

@@ -48,7 +48,9 @@ Work from a clean checkout of `main` with full history.
      written.
 2. **Bump the version.** At the repository root:
    `npm version <new-version> --no-git-tag-version`. This updates `package.json` and
-   `package-lock.json`. Commit it (`Release v<new-version>`) through a normal PR to `main`.
+   `package-lock.json`. Put the new version in the opening paragraph of each
+   `skills/*/SKILL.md` ("Written for nitpicker <new-version>."); the skills test fails until they
+   match. Commit it (`Release v<new-version>`) through a normal PR to `main`.
 3. **Test.**
    ```sh
    npm ci
