@@ -113,6 +113,42 @@ describe('Go coverage', () => {
     ]);
   });
 
+  it('finds an empty body one column after its brace, and leaves fallthrough entries out of the matches', () => {
+    const text = `mode: atomic
+example.com/shop/shop/nest.go:3.20,4.11 1 4
+example.com/shop/shop/nest.go:4.11,4.11 0 0
+example.com/shop/shop/nest.go:5.2,5.9 1 4
+example.com/shop/shop/nest.go:6.13,7.18 1 2
+example.com/shop/shop/nest.go:8.3,8.14 1 1
+example.com/shop/shop/nest.go:9.14,10.11 1 2
+`;
+    const nest = [
+      { at: at(4, 2), arms: [arm('the if body', at(4, 10), at(4, 11))], implicit: IF_FALSE },
+      {
+        at: at(5, 2),
+        arms: [
+          { ...arm('case x > 0', at(6, 13)), fallthrough: at(8, 3) },
+          arm('case x < -5', at(9, 14)),
+        ],
+        implicit: 'no case matching',
+      },
+    ].map((branch) => ({ file: 'shop/nest.go', function: 'Nest', kind: 'if', ...branch }));
+    const findings = goBranchFindings({
+      branches: nest,
+      profile: parseCoverProfile(text, 'example.com/shop'),
+      sourceLines: () => SOURCE,
+    });
+    expect(branchSummary(findings)).toEqual([
+      {
+        rule: 'changed-branch-coverage',
+        path: 'shop/nest.go',
+        symbol: 'Nest',
+        line: 4,
+        missed: { percent: '50.00', arms: 'the if body (line 4)' },
+      },
+    ]);
+  });
+
   it('leaves implicit outcomes out of a profile that only records whether a block ran', () => {
     const set = parseCoverProfile(PROFILE.replace('mode: count', 'mode: set'), 'example.com/shop');
     const findings = goBranchFindings({

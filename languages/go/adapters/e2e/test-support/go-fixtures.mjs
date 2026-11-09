@@ -189,3 +189,15 @@ func Size(weight int) string {
 	return "none"
 }
 `;
+
+export const DISCOUNT_PANIC_TEST = `package shop
+
+import "testing"
+
+func TestDiscount(t *testing.T) {
+	if Discount(200, 10) != 180 || Discount(200, 0) != 200 {
+		t.Fatal("wrong discount")
+	}
+	panic("crashed after the checks")
+}
+`;

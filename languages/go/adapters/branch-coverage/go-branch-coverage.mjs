@@ -9,10 +9,15 @@ function shortLabel(label) {
   return label.length > LABEL_LIMIT ? `${label.slice(0, LABEL_LIMIT)}…` : label;
 }
 
+function matchedCount(arms) {
+  return arms.reduce((sum, { count, fellThrough }) => sum + count - fellThrough, 0);
+}
+
 export function branchOutcomes(branch, blocks, counted) {
   const arms = branch.arms.map((arm) => ({
     label: `${shortLabel(arm.label)} (line ${String(arm.from.line)})`,
     count: blockStartingIn(blocks, arm.from, arm.to)?.count,
+    fellThrough: arm.fallthrough === undefined ? 0 : (blockAt(blocks, arm.fallthrough)?.count ?? 0),
   }));
   const evaluations = blockAt(blocks, branch.at)?.count;
   const known = arms.filter(({ count }) => count !== undefined);
@@ -25,10 +30,10 @@ export function branchOutcomes(branch, blocks, counted) {
       : [
           {
             label: branch.implicit,
-            count: Math.max(0, evaluations - known.reduce((sum, { count }) => sum + count, 0)),
+            count: Math.max(0, evaluations - matchedCount(known)),
           },
         ];
-  return [...known, ...implicit];
+  return [...known.map(({ label, count }) => ({ label, count })), ...implicit];
 }
 
 function sourceLine(lines, line) {

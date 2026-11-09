@@ -23,7 +23,7 @@ function testCommand(settings, reportRoot) {
     '-vet=off',
     '-json',
     ...buildFlags(settings),
-    '-covermode=count',
+    '-covermode=atomic',
     '-coverpkg=./...',
     `-coverprofile=${path.join(reportRoot, COVERAGE_PROFILE)}`,
     './...',

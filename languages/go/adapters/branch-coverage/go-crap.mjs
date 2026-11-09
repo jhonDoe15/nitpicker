@@ -8,14 +8,12 @@ function inside(position, { body, close }) {
   return comparePositions(body, position) <= 0 && comparePositions(position, close) <= 0;
 }
 
-function ownBlocks(fn, functions, blocks) {
+function ownPositions(fn, functions) {
   const nested = functions.filter(
     (other) =>
       other !== fn && other.file === fn.file && inside(other.body, fn) && inside(other.close, fn),
   );
-  return blocks.filter(
-    ({ start }) => inside(start, fn) && !nested.some((literal) => inside(start, literal)),
-  );
+  return (position) => inside(position, fn) && !nested.some((literal) => inside(position, literal));
 }
 
 function share(covered, total) {
@@ -24,13 +22,14 @@ function share(covered, total) {
 
 function functionCoverage(fn, { functions, branches, profile }) {
   const blocks = profile.files.get(fn.file) ?? [];
-  const own = ownBlocks(fn, functions, blocks);
+  const owns = ownPositions(fn, functions);
+  const own = blocks.filter(({ start }) => owns(start));
   const statements = own.reduce((sum, { statements: count }) => sum + count, 0);
   const covered = own
     .filter(({ count }) => count > 0)
     .reduce((sum, { statements: count }) => sum + count, 0);
   const outcomes = branches
-    .filter((branch) => branch.file === fn.file && branch.function === fn.name)
+    .filter((branch) => branch.file === fn.file && owns(branch.at))
     .flatMap((branch) => branchOutcomes(branch, blocks, profile.counted));
   const taken = outcomes.filter(({ count }) => count > 0).length;
   return Math.min(share(covered, statements), share(taken, outcomes.length));

@@ -145,23 +145,34 @@ func arm(fileSet *token.FileSet, label string, from, to token.Pos) Arm {
 	return Arm{Label: label, From: position(fileSet, from), To: position(fileSet, to)}
 }
 
+func bodyArm(fileSet *token.FileSet, label string, body *ast.BlockStmt) Arm {
+	return arm(fileSet, label, body.Lbrace, body.Lbrace+1)
+}
+
+func elseEnd(statement ast.Stmt) token.Pos {
+	if block, ok := statement.(*ast.BlockStmt); ok {
+		return block.Lbrace + 1
+	}
+	return statement.Pos()
+}
+
 func decisionBranch(fileSet *token.FileSet, statement ast.Stmt) Branch {
 	branch := Branch{At: position(fileSet, statement.Pos())}
 	switch typed := statement.(type) {
 	case *ast.IfStmt:
 		branch.Kind = "if"
-		branch.Arms = []Arm{arm(fileSet, "the if body", typed.Body.Lbrace, typed.Body.Lbrace)}
+		branch.Arms = []Arm{bodyArm(fileSet, "the if body", typed.Body)}
 		if typed.Else == nil {
 			branch.Implicit = "the condition false (the if body skipped)"
 		} else {
-			branch.Arms = append(branch.Arms, arm(fileSet, "the else branch", typed.Body.End(), typed.Else.Pos()))
+			branch.Arms = append(branch.Arms, arm(fileSet, "the else branch", typed.Body.End(), elseEnd(typed.Else)))
 		}
 	case *ast.ForStmt:
 		branch.Kind = "for"
-		branch.Arms = []Arm{arm(fileSet, "the loop body", typed.Body.Lbrace, typed.Body.Lbrace)}
+		branch.Arms = []Arm{bodyArm(fileSet, "the loop body", typed.Body)}
 	case *ast.RangeStmt:
 		branch.Kind = "range"
-		branch.Arms = []Arm{arm(fileSet, "the loop body", typed.Body.Lbrace, typed.Body.Lbrace)}
+		branch.Arms = []Arm{bodyArm(fileSet, "the loop body", typed.Body)}
 	case *ast.SwitchStmt:
 		branch.Kind = "switch"
 		branch.Arms, branch.Implicit = clauseArms(fileSet, typed.Body)
@@ -180,10 +191,12 @@ func clauseArms(fileSet *token.FileSet, body *ast.BlockStmt) ([]Arm, string) {
 	implicit := "no case matching"
 	for _, clause := range body.List {
 		label, colon, statements := clauseParts(fileSet, clause)
-		if label == "default" || fallsThrough(statements) {
+		if label == "default" {
 			implicit = ""
 		}
-		arms = append(arms, arm(fileSet, label, colon+1, colon+1))
+		clauseArm := arm(fileSet, label, colon+1, colon+1)
+		clauseArm.Fallthrough = fallthroughAt(fileSet, statements)
+		arms = append(arms, clauseArm)
 	}
 	return arms, implicit
 }
@@ -208,12 +221,16 @@ func clauseParts(fileSet *token.FileSet, clause ast.Stmt) (string, token.Pos, []
 	return "", clause.Pos(), nil
 }
 
-func fallsThrough(statements []ast.Stmt) bool {
+func fallthroughAt(fileSet *token.FileSet, statements []ast.Stmt) *Position {
 	if len(statements) == 0 {
-		return false
+		return nil
 	}
-	branch, ok := statements[len(statements)-1].(*ast.BranchStmt)
-	return ok && branch.Tok == token.FALLTHROUGH
+	last, ok := statements[len(statements)-1].(*ast.BranchStmt)
+	if !ok || last.Tok != token.FALLTHROUGH {
+		return nil
+	}
+	at := position(fileSet, last.Pos())
+	return &at
 }
 
 func source(fileSet *token.FileSet, node ast.Node) string {
