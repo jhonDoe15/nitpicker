@@ -1,4 +1,5 @@
 import { simplerForms } from '../../../../../../shared/logic/simplify/simpler-forms.mjs';
+import { depthFirst } from '../../../../../../shared/traversal.mjs';
 import { term, withRange } from '../../../../../../shared/logic/terms.mjs';
 import { ts } from '../../../../typescript-api/typescript-api.mjs';
 import { ancestorsOf } from '../analysis/ancestry.mjs';
@@ -7,6 +8,7 @@ import { partsOf } from '../analysis/narrowing/type-parts.mjs';
 
 const LISTS = new Map([
   ['Program', 'body'],
+  ['TSModuleBlock', 'body'],
   ['StaticBlock', 'body'],
   ['SwitchCase', 'consequent'],
 ]);
@@ -22,6 +24,29 @@ const BODY_OWNERS = new Set([
 ]);
 const LOOP_TESTS = new Set(['WhileStatement', 'DoWhileStatement', 'ForStatement']);
 const TYPE_PROBES = new Set(['Identifier', 'MemberExpression', 'CallExpression']);
+const TYPE_SYNTAX = new Set([
+  'TSAsExpression',
+  'TSNonNullExpression',
+  'TSSatisfiesExpression',
+  'TSTypeAssertion',
+  'TSInstantiationExpression',
+  'TSTypeParameterInstantiation',
+]);
+
+function childNodes(node, visitorKeys) {
+  return (visitorKeys[node.type] ?? [])
+    .flatMap((field) => node[field] ?? [])
+    .filter((child) => typeof child?.type === 'string');
+}
+
+function typeSyntaxRanges(sourceCode) {
+  const nodes = depthFirst(sourceCode.ast, (node) => childNodes(node, sourceCode.visitorKeys));
+  return [...nodes].filter(({ type }) => TYPE_SYNTAX.has(type)).map(({ range }) => range);
+}
+
+function holdsAny(range, inner) {
+  return inner.some(([start, end]) => start >= range[0] && end <= range[1]);
+}
 
 function booleanTypes(services) {
   if (services?.program === null || services?.program === undefined) {
@@ -70,18 +95,22 @@ export const rule = {
     },
     schema: [],
     messages: {
-      simpler: 'This boolean logic has a simpler exact form: `{{ form }}`.',
+      simpler: 'Write this boolean logic in its simpler exact form: `{{ form }}`.',
       swapped:
-        'This boolean logic has a simpler exact form: `{{ form }}`, with the two branches swapped.',
+        'Write this boolean logic in its simpler exact form: `{{ form }}`, with the two branches swapped.',
     },
   },
   create(context) {
     const { sourceCode } = context;
     const options = { isBoolean: booleanTypes(sourceCode.parserServices) };
     const seen = new WeakSet();
+    const typeSyntax = typeSyntaxRanges(sourceCode);
 
     function report(root, booleanContext) {
-      for (const { range, form, swapped } of simplerForms(root, { booleanContext })) {
+      const forms = simplerForms(root, { booleanContext });
+      for (const { range, form, swapped } of forms.filter(
+        (found) => !holdsAny(found.range, typeSyntax),
+      )) {
         context.report({
           loc: {
             start: sourceCode.getLocFromIndex(range[0]),
@@ -111,7 +140,8 @@ export const rule = {
     }
 
     return {
-      'Program, StaticBlock, SwitchCase, BlockStatement, :statement': checkStatements,
+      'Program, StaticBlock, SwitchCase, TSModuleBlock, BlockStatement, :statement':
+        checkStatements,
       'UnaryExpression[operator="!"], LogicalExpression, ConditionalExpression': checkExpression,
     };
   },

@@ -81,8 +81,11 @@ export function simplerForms(root, { booleanContext = false } = {}) {
   return differences(root, simpler).map((node) => ({
     range: node.range,
     form: print(compact(node)),
-    swapped: rewrites.some(
-      ({ rewrite, range }) => rewrite === 'negated-condition' && sameRange(range, node.range),
-    ),
+    swapped:
+      rewrites.filter(
+        ({ rewrite, range }) => rewrite === 'negated-condition' && sameRange(range, node.range),
+      ).length %
+        2 ===
+      1,
   }));
 }

@@ -61,6 +61,11 @@ untyped.run('simpler-boolean-logic', rule, {
     'function f(a, b) { return a ? false : b; }',
     'function f(a) { return a === undefined ? [a] : true; }',
     'function f(a, b) { while (a !== b) { step(); } }',
+    'function f(a, b, c) { return !a ? (b ? 1 : 2) : c; }',
+    'function f(a) { return !((a as any).b == 1); }',
+    'function f(a) { return !(a!.b == 1); }',
+    'function f(a) { return !(a.g<number>() == 1); }',
+    'function f(a, b) { return !(a satisfies boolean) && !b; }',
   ],
   invalid: [
     reported('function f(a, b) { if (a < b) { return true; } return false; }', 'return a < b;'),
@@ -105,6 +110,10 @@ untyped.run('simpler-boolean-logic', rule, {
       'swapped if (a) { … } else { … }',
     ),
     reported('switch (k) { case 1: if (a) { if (b) { run(); } } }', 'if (a && b) { … }'),
+    reported('namespace N { if (a) { if (b) { run(); } } }', 'if (a && b) { … }'),
+    reported('function f(a, b, c) { return !!a ? b : c; }', 'a ? b : c'),
+    reported('function f(a) { if (!!a) { run(); } else { stop(); } }', 'if (a) { … } else { … }'),
+    reported('function f(a, b, c) { return !!!a ? b : c; }', 'swapped a ? c : b'),
   ],
 });
 
