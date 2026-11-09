@@ -236,6 +236,22 @@ Part of the [TypeScript strict preset guide](../typescript-strict-preset.md).
   bindings already removes the late-binding bug `no-loop-func` exists for. Python's counterparts are ruff `PLE0101`,
   `B023` and `PLR1711`; in Java and Kotlin a missing return does not compile and the existing
   unused-member checks already report an unused private member.
+- Boolean logic with a strictly simpler exact form (`nitpicker/simpler-boolean-logic`, production
+  and test files of both presets; the counterpart of the Java PMD rules `SimplifyBooleanReturns`,
+  `SimplifiedTernary`, `CollapsibleIfStatements`, `LogicInversion`, `ConfusingTernary` and
+  `NegatedOperands`). The message prints the simpler form: `if (c) { return true; } return false;`
+  is `return c;` (`return !c;` with the literals swapped); `c ? true : false` is `c`, and
+  `c ? x : false`, `c ? true : x`, `c ? false : x` and `c ? x : true` are `c && x`, `c || x`,
+  `!c && x` and `!c || x` when `x` is boolean too; `!(a === b)` is `a !== b`; `!!x` outside a
+  condition is `x`; an `if` whose only statement is another `if`, neither with an `else`, is one
+  `if (a && b)`; `if (!c) {A} else {B}` and `!c ? a : b` are `if (c) {B} else {A}` and
+  `c ? b : a`; and a `&&` or `||` chain whose every operand is negated is one negation
+  (`!a && !b` is `!(a || b)`). Each form keeps the value exactly: where dropping `!!` or a ternary
+  needs `c` to be boolean, it must be a comparison, a `!`, a `&&`/`||` of those or (with type
+  information) typed `boolean`, so `return !!name;` is never suggested. `!(a < b)` stays, since it
+  is not `a >= b` when either side is `NaN`; an `else if` chain and a ternary whose `else` is
+  another ternary are not swapped. `!!x` in a condition is left to `no-extra-boolean-cast` and
+  `x === true` to `@typescript-eslint/no-unnecessary-boolean-literal-compare`.
 - Identifier casing (`nitpicker/naming-convention`, which wraps
   `@typescript-eslint/naming-convention`): types and type parameters in PascalCase; functions,
   variables and parameters in camelCase; constants may be UPPER_CASE; a leading underscore is

@@ -11,6 +11,9 @@ Part of the [nitpicker-javascript](../SKILL.md) skill. Write these forms from th
   the value you got.
 - `===` only. Early returns, no `else` after `return`, no nested ternaries, exhaustive `switch`
   over unions, with no `default`.
+- Boolean logic in its simplest exact form (`nitpicker/simpler-boolean-logic`): `return a < b;`, not an `if`
+  that returns `true` and `false`; one `if (a && b)`, not an `if` that only holds another `if`; `if (c) {B} else {A}`,
+  not `if (!c) {A} else {B}`; `a !== b`, not `!(a === b)`; `!(a || b)`, not `!a && !b`.
 - `const` or `let`, never `var`. Rest parameters (`...args`) instead of `arguments[i]`, and spread
   instead of `.apply`.
 - Template literals take strings only: `${String(count)}`.
