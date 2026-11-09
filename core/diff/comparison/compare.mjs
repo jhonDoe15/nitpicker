@@ -49,11 +49,8 @@ export function compareFindings({
     ...addGrowthAdvice({ findings: ratcheted.newFindings, baseFindings, moves }),
     ...anchored.grown,
   ];
-  present.newFindings = againstMissingReports(
-    withUntouchedCause(advised, touchedCode),
-    baseFindings,
-    moves,
-  );
+  const explained = withUntouchedCause(advised, touchedCode);
+  present.newFindings = againstMissingReports(explained, baseFindings, moves);
   present.unchangedFindings.push(...ratcheted.heldFindings);
   const resolvedFindings = unmatchedBase.filter((finding) => !ratcheted.matchedBase.has(finding));
 

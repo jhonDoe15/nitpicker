@@ -62,7 +62,6 @@ function pmdRulesets(context) {
     mainRuleset,
     ...writeGuardRulesets({
       reportDir,
-      mainDirectories: module.sourceRoots,
       testDirectories: module.testSourceRoots,
       compiler: guardCompiler(module.compiler),
     }),

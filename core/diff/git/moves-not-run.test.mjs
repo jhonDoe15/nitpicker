@@ -7,7 +7,7 @@ import {
   finding,
   move,
   write,
-} from './test-support/move-repositories.mjs';
+} from './test-support/moves/move-repositories.mjs';
 
 const createRepository = createMoveRepositories();
 

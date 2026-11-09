@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { evaluateDuplicates } from '../rules/duplicates.mjs';
-import { clonePartnerPath } from './matching.mjs';
+import { clonePartnerPath, RENAMED_IDENTITY_PREFIX } from './matching.mjs';
 
 describe('clonePartnerPath', () => {
   it('names the other file of the pair for a clone and its size metrics', () => {
@@ -26,7 +26,7 @@ describe('clonePartnerPath', () => {
 
   it('names the other file of the pair for a renamed clone and a CPD clone', () => {
     expect(
-      ['renamed:', 'cpd:'].map((kind) =>
+      [RENAMED_IDENTITY_PREFIX, 'cpd:'].map((kind) =>
         clonePartnerPath({
           rule: 'duplicate-clone',
           path: 'a.py',

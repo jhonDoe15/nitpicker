@@ -11,10 +11,10 @@ import {
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterAll, afterEach, beforeAll } from 'vitest';
-import { reportFromAnalyzerOutput } from '../../execution/process.mjs';
-import { runQualityDiff } from '../../comparison/run-diff.mjs';
-import { writeFiles } from './fixture-files.mjs';
-import { copyGitTemplate, fixtureGit } from './git-repository.mjs';
+import { reportFromAnalyzerOutput } from '../../../execution/process.mjs';
+import { runQualityDiff } from '../../../comparison/run-diff.mjs';
+import { writeFiles } from '../fixture-files.mjs';
+import { copyGitTemplate, fixtureGit } from '../git-repository.mjs';
 
 const FINDING_MARKER = '// FINDING ';
 
