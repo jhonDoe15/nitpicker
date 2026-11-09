@@ -47,8 +47,9 @@ allowed form and ends with its exception entry.
   `os.Setenv`, `os.Chdir` or `context.Background()` in a test (usetesting).
 - With testify, use the specific assertion (`assert.Len`, `assert.Empty`, `assert.ErrorIs`,
   `assert.JSONEq`, `assert.InDelta` for floats), `require.NoError` for errors, the expected value
-  first, `assert.Equalf` when the message has format arguments, `s.Equal` and `s.Run` inside a
-  suite, and `require` only in the test's own goroutine (testifylint).
+  first, format strings that match their arguments, `s.Equal` and `s.Run` inside a suite, and
+  `require` only in the test's own goroutine (testifylint). Compare a float with
+  `assert.InDelta`, or convert a whole number to `int` first.
 
 ## Names and comments
 

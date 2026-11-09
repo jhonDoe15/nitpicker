@@ -202,3 +202,14 @@ Two adversarial reviews of the type and value linters changed these rules:
   adding a case or a constant does not make the finding new.
 - **Rewritten directives keep their length and shape** (`//exhaustivx:`, `//nolinx:`), so no
   comment's end moves and none turns from a directive into doc text.
+
+Two adversarial reviews of the test linters changed these rules:
+
+- **testifylint's formatter checks format strings only**; requiring `Equalf` for every message
+  flagged plain messages that format nothing. usetesting leaves `os.TempDir()` alone, since
+  building an expected path with it creates nothing.
+- **Messages drop test names and counts** (usetesting's `in TestX`, formatter's argument
+  numbers), and a testifylint check name testifylint adds later falls back to
+  `testifylint/testifylint` instead of an unknown rule.
+- **One finding per line**: errorlint wins over testifylint `compares` on
+  `assert.True(t, err == io.EOF)`, and thelper over `suite-thelper`.

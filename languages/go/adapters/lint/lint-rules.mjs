@@ -137,7 +137,15 @@ const VARYING_PARTS = new Map([
   ['contextcheck', /->[^`]*/u],
   ['exhaustive', /: .*$/u],
   ['durationcheck', /: `.*`$/u],
+  ['usetesting', / in \w+$/u],
 ]);
+const COUNTED_RULES = new Set(['formatter']);
+
+function stable(rule, message) {
+  const varying = VARYING_PARTS.get(rule);
+  const text = varying === undefined ? message : message.replace(varying, '');
+  return COUNTED_RULES.has(rule) ? text.replace(/#?\d+/gu, 'N') : text;
+}
 
 export function lintRule(rule) {
   return RULE_NAMES.get(rule) ?? rule;
@@ -158,7 +166,6 @@ function hintOf(tool, rule) {
 
 export function lintMessage({ tool, rule, message }) {
   const hint = hintOf(tool, rule);
-  const varying = VARYING_PARTS.get(rule);
-  const text = sentence(varying === undefined ? message : message.replace(varying, ''));
+  const text = sentence(stable(rule, message));
   return hint === undefined ? text : `${text} ${hint}`;
 }
