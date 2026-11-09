@@ -128,6 +128,9 @@ func measureUnit(fileSet *token.FileSet, path, name string, signature *ast.FuncT
 		Close:             position(fileSet, body.Rbrace),
 	}
 	for _, decision := range walker.decisions {
+		if remapped(fileSet, decision.Pos()) {
+			continue
+		}
 		branch := decisionBranch(fileSet, decision)
 		branch.File = path
 		branch.Function = name
@@ -148,4 +151,10 @@ func parameterCount(signature *ast.FuncType) int {
 		count += max(1, len(field.Names))
 	}
 	return count
+}
+
+func remapped(fileSet *token.FileSet, pos token.Pos) bool {
+	adjusted := fileSet.PositionFor(pos, true)
+	raw := fileSet.PositionFor(pos, false)
+	return adjusted.Filename != raw.Filename || adjusted.Line != raw.Line
 }

@@ -39,7 +39,7 @@ node core/cli.mjs go-analyzer --project-root <snapshot>   (per snapshot)
   -> inspect <module root> inspect.json           structure metrics (languages/go/inspect)
   -> <formatter> -l <files>                        format check, one per formatter
   -> go vet -json ./...                            compile errors and vet diagnostics
-  -> go test -vet=off -json -covermode=count -coverpkg=./... -coverprofile=coverage.out ./...
+  -> go test -vet=off -json -covermode=atomic -coverpkg=./... -coverprofile=coverage.out ./...
   -> readGoFindings -> applyFindingPolicy -> compareFindings(base, head)
 ```
 
@@ -143,9 +143,10 @@ run that writes a coverage profile, so every test runs and its time is measured.
 
 ## Branch coverage and CRAP
 
-`go test -coverprofile` records statement blocks and how often each ran (`-covermode=count`), not
-branches. The metrics program lists every branch point of each function with `go/ast`, and the
-profile's blocks stand in for its outcomes:
+`go test -coverprofile` records statement blocks and how often each ran (`-covermode=atomic`, so
+counts stay exact when tests run in parallel and under `-race`), not branches. The metrics program
+lists every branch point of each function with `go/ast`, and the profile's blocks stand in for its
+outcomes:
 
 | Branch point          | Outcomes                                                              |
 | --------------------- | --------------------------------------------------------------------- |
@@ -154,27 +155,30 @@ profile's blocks stand in for its outcomes:
 | `select`              | each case                                                             |
 | `for`, `range`        | the loop body                                                         |
 
-An outcome with a block of its own (a body, an else branch, a case) is taken when its block ran. An
-outcome without one (the condition false, no case matching) is taken when the branch point was
-evaluated more often than its blocks ran: the count of the block holding the `if` or `switch`
-keyword minus the counts of its arms. A switch with a `fallthrough` gets no "no case matching"
-outcome, since the fallen-through case counts runs no match started. A loop's exit is not an
-outcome: it is taken whenever the loop ends. `&&` and `||` are not split into outcomes; the
-profile records no blocks inside a condition.
+An outcome with a block of its own (a body, an else branch, a case) is taken when its block ran; an
+empty body counts too. An outcome without one (the condition false, no case matching) is taken when
+the branch point was evaluated more often than its arms were entered: the count of the block holding
+the `if` or `switch` keyword minus the counts of its arms. A case reached by `fallthrough` also
+counts the runs that fell into it, so the runs that reached a `fallthrough` statement are taken off
+first. A loop's exit is not an outcome: it is taken whenever the loop ends. `&&` and `||` are not
+split into outcomes; the profile records no blocks inside a condition.
 
 - **`changed-branch-coverage`** fails a branch point with less than 95% of its outcomes taken, and
   names the ones not taken (`Not taken: the if body (line 4)`). It is keyed by its function and the
   trimmed source line, so only a branch point the change wrote or edited is new. Its exception names
   the function, as in the other presets.
-- **`crap-score-limit`** scores each function and function literal: `complexity² × (1 − coverage)³
-  - complexity`, with the cyclomatic complexity from the metrics program and the coverage the lower
-of its statement coverage (statements of the blocks that ran, its literals left out) and its
-branch outcome coverage. A function over the limit (9, or `thresholds.crapLimit`) fails; an edited
-legacy function fails only when its score rose. **`crap-coverage-unknown`** fails a new or changed
-    function when no test wrote a profile at all.
-- A file the profile does not list (left out by a build constraint, for example `_windows.go` on
-  Linux) and the files of a package that did not build are not scored: the build error is already a
-  finding.
+- **`crap-score-limit`** scores each function and function literal as
+  `complexity² × (1 − coverage)³ + complexity`. The complexity is the metrics program's cyclomatic
+  complexity, and the coverage is the function's statement coverage: the statements of the blocks
+  that ran, its literals left out, as in the Python preset. A function over the limit (9, or
+  `thresholds.crapLimit`) fails; an edited legacy function fails only when its score rose.
+- **`crap-coverage-unknown`** fails a new or changed function when no test wrote a profile at all.
+- Some files are not scored:
+  - a file the profile does not list, such as one a build constraint leaves out (`_windows.go` on
+    Linux);
+  - the files of a package that did not build, because the build error is already a finding;
+  - the files of a package whose test binary crashed (a panic, a timeout, `os.Exit`). Such a binary
+    writes no profile, and the failing test is already a finding.
 
 ## Structure limits
 
@@ -263,5 +267,9 @@ with `"preset": "go"`, each naming its reason.
 - One module per run: the module at the project root. A nested module (its own `go.mod`) and a
   `go.work` workspace's other modules are not analyzed.
 - Generated files are listed but not measured or format-checked; they still compile and vet.
+- A branch point under a `//line` directive that moves it to another line or file is not measured,
+  because its profile blocks name the directive's position.
+- Branch and CRAP findings are keyed by their file and function. Moving a function to another file,
+  or turning it into a method, makes its legacy findings new.
 - The tools are built from the Go module proxy on first use, so the first run needs network access
   (or a `GOPROXY` the project sets) and takes longer.

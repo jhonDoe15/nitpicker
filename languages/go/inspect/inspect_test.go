@@ -195,21 +195,22 @@ func Grade(score int, tags []string, events chan int) string {
 func TestRecordsEachBranchWithItsArms(t *testing.T) {
 	report := inspected(t, map[string]string{"go.mod": "module demo\n", "grade.go": graded})
 	at := func(line, column int) Position { return Position{Line: line, Column: column} }
+	fallthroughAt := at(14, 3)
 	want := []Branch{
 		{File: "grade.go", Function: "Grade", Kind: "if", At: at(4, 2), Arms: []Arm{
-			{Label: "the if body", From: at(4, 16), To: at(4, 16)},
+			{Label: "the if body", From: at(4, 16), To: at(4, 17)},
 			{Label: "the else branch", From: at(6, 3), To: at(6, 9)},
 		}},
 		{File: "grade.go", Function: "Grade", Kind: "if", At: at(6, 9), Arms: []Arm{
-			{Label: "the if body", From: at(6, 23), To: at(6, 23)},
+			{Label: "the if body", From: at(6, 23), To: at(6, 24)},
 		}, Implicit: "the condition false (the if body skipped)"},
 		{File: "grade.go", Function: "Grade", Kind: "range", At: at(9, 2), Arms: []Arm{
-			{Label: "the loop body", From: at(9, 27), To: at(9, 27)},
+			{Label: "the loop body", From: at(9, 27), To: at(9, 28)},
 		}},
 		{File: "grade.go", Function: "Grade", Kind: "switch", At: at(12, 2), Arms: []Arm{
-			{Label: "case 1, 2", From: at(13, 12), To: at(13, 12)},
+			{Label: "case 1, 2", From: at(13, 12), To: at(13, 12), Fallthrough: &fallthroughAt},
 			{Label: "case 3", From: at(15, 9), To: at(15, 9)},
-		}},
+		}, Implicit: "no case matching"},
 		{File: "grade.go", Function: "Grade", Kind: "select", At: at(17, 2), Arms: []Arm{
 			{Label: "case <-events", From: at(18, 16), To: at(18, 16)},
 			{Label: "default", From: at(19, 10), To: at(19, 10)},

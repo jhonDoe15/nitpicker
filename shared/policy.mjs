@@ -128,7 +128,7 @@ export const MUTATION_EXCEPTION_RULES = [
 /** Rules `exceptions` can lift for some paths in any preset (TypeScript also takes ESLint rules). */
 export const SHARED_EXCEPTION_RULES = [...FUNCTION_EXCEPTION_RULES, ...PATH_EXCEPTION_RULES];
 
-/** A CRAP score at or above this fails (`QUALITY_CRAP_SCORE_LIMIT` / `thresholds.crapLimit` override it). */
+/** A CRAP score at or above this fails (`thresholds.crapLimit` overrides it). */
 export const DEFAULT_CRAP_SCORE_LIMIT = 9;
 
 /** A changed branch below this percentage of coverage fails. */
@@ -204,7 +204,7 @@ const CATALOG = [
   {
     id: RULE_IDS.crapScoreLimit,
     check: 'crap',
-    limit: `CRAP score at or above ${String(DEFAULT_CRAP_SCORE_LIMIT)}; override with \`QUALITY_CRAP_SCORE_LIMIT\` (positive number) or \`thresholds.crapLimit\``,
+    limit: `CRAP score at or above ${String(DEFAULT_CRAP_SCORE_LIMIT)}; override with \`thresholds.crapLimit\` (positive number)`,
     enforcedBy: withGo(withKotlin(ALL, true)),
   },
   {

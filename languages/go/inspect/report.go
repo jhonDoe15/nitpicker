@@ -15,9 +15,10 @@ type Position struct {
 }
 
 type Arm struct {
-	Label string   `json:"label"`
-	From  Position `json:"from"`
-	To    Position `json:"to"`
+	Label       string    `json:"label"`
+	From        Position  `json:"from"`
+	To          Position  `json:"to"`
+	Fallthrough *Position `json:"fallthrough,omitempty"`
 }
 
 type Branch struct {

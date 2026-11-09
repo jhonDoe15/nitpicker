@@ -66,14 +66,24 @@ than the others, and this skill teaches its rules before an agent writes Go.
 
 - **Branch coverage from blocks.** `go test -coverprofile` records statement blocks, not branches.
   Every arm of an `if`, `switch` or `select` and every loop body starts a block of its own, so its
-  block count says whether it ran. With `-covermode=count`, the outcomes that have no block (an `if`
-  without `else` whose condition was false, a switch where no case matched) are the evaluations of
-  the branch point minus its arms' counts, which makes an `if err != nil { return err }` count as two
-  outcomes, as it does in JaCoCo and coverage.py. Conditions with `&&` and `||` are not split, since
-  the profile has no blocks inside them; that is weaker than JaCoCo, which counts each operand.
+  block count says whether it ran; an empty body's block starts one column after its brace. The
+  outcomes that have no block (an `if` without `else` whose condition was false, a switch where no
+  case matched) are the evaluations of the branch point minus the entries into its arms, which makes
+  an `if err != nil { return err }` count as two outcomes, as it does in JaCoCo and coverage.py. A
+  case reached by `fallthrough` counts those runs too, so the count of the block holding each
+  `fallthrough` statement is taken off. Conditions with `&&` and `||` are not split, since the
+  profile has no blocks inside them; that is weaker than JaCoCo, which counts each operand.
+- **`-covermode=atomic`, not `count`.** `count` loses increments when tests run in parallel, which
+  can make a never-taken implicit outcome look taken, and Go refuses it under `-race` (including a
+  project's own `GOFLAGS=-race`). `atomic` costs a little speed and keeps the arithmetic exact.
 - **CRAP from the same profile.** The cyclomatic complexity comes from the metrics program (each
   `if`, loop, case and `&&`/`||`), and the coverage is the lower of the statement and branch outcome
-  coverage, as in the Python preset.
+  coverage, as in the Python preset (`coveragePercent` in `languages/python/ingest/crap.mjs`). A
+  function's statements and branch points are picked by position (inside its braces, outside its
+  literals), not by name, since a file can hold several `init` functions.
+- **A crashed test binary measures nothing.** A test binary that panics, times out or calls
+  `os.Exit` writes no profile, so every block of its package reads 0. Its files are not scored;
+  the failing test is already a finding.
 - **Files the build leaves out are not scored.** A file behind a build constraint the run does not
   satisfy has no blocks; scoring it as unknown would fail every platform-specific file.
 
