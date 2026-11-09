@@ -5,6 +5,7 @@ import { run } from './execution/go-process.mjs';
 import { detectFormatters } from './formatting/go-formatters.mjs';
 import { unformattedFiles } from './formatting/go-format.mjs';
 import { inspect, readInspect } from './structure/go-inspect.mjs';
+import { lint } from './lint/go-lint.mjs';
 import { goTest } from './tests/go-test.mjs';
 import { mutate } from './mutation/go-mutation.mjs';
 
@@ -61,7 +62,7 @@ function toolchain(context) {
 }
 
 const STEPS = {
-  go: [toolchain, inspect, format, vet, goTest],
+  go: [toolchain, inspect, format, vet, lint, goTest],
   mutation: [toolchain, mutate],
 };
 const PREREQUISITES = new Set([toolchain, inspect]);

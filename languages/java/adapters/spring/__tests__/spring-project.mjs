@@ -98,6 +98,9 @@ const REVIEW_RULES = new Set([
   'SpringUnreleasedResource',
   'SpringStartupCleanup',
   'HttpWithoutTimeout',
+  'ListUsedAsSet',
+  'LinearLookupInLoop',
+  'SortForExtreme',
   'GeneratedMemberCycle',
   'GeneratedEqualsSkipsSuperclass',
 ]);

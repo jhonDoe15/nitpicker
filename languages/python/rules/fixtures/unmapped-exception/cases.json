@@ -1,0 +1,7 @@
+[
+  {
+    "tool": "python-rules",
+    "rule": "unmapped-exception",
+    "mention": "exception_handler"
+  }
+]
