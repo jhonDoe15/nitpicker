@@ -5,6 +5,9 @@ description: Use before writing or changing JavaScript in a project that runs ni
 
 # nitpicker for JavaScript
 
+Written for nitpicker 0.1.0-rc.1. If `npx nitpicker --version` prints another version, reinstall
+this skill with the command `npx nitpicker init` prints.
+
 nitpicker allows one way to write each construct. Write it that way from the start; the gate is a
 backstop. It fails only on findings your change adds, so leave code the task doesn't need alone.
 
@@ -12,7 +15,7 @@ This is for `"preset": "javascript"` in `nitpicker.config.json`: plain `.js`, `.
 whose types are written as JSDoc and checked by TypeScript (`checkJs`). The rules are the TypeScript
 preset's, with the type syntax written in JSDoc. A `.ts`, `.mts` or `.cts` file in the same project
 follows the full TypeScript rules (no `as`, `enum`, `interface`, `any`, `!`), not this page: install
-`nitpicker-typescript` too (`npx skills add jhonDoe15/nitpicker --skill nitpicker-typescript`).
+`nitpicker-typescript` too, with the command `npx nitpicker init` prints and `--skill nitpicker-typescript`.
 
 If your change edits a function, file or folder that existed before it, read
 [editing-existing-code.md](editing-existing-code.md) before you edit.

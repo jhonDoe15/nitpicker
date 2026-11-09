@@ -29,6 +29,18 @@ const COVERAGE_CONFIGURATION_FILES = [
   JAVASCRIPT_PRESET_FILE,
 ];
 
+const MUTATION_CONFIGURATION_FILES = [
+  'languages/typescript/preset/tool-configs.mjs',
+  'languages/typescript/preset/project-configs/typescript/typescript-project-options.mjs',
+  'languages/typescript/preset/modules/selected-project-tsconfig.mjs',
+  JAVASCRIPT_PRESET_FILE,
+  'languages/typescript/preset/defaults/stryker.config.mjs',
+  'languages/typescript/preset/project-configs/stryker-project-config.mjs',
+  'languages/typescript/preset/project-configs/config-module.mjs',
+  'languages/typescript/preset/defaults/vitest.quality.config.ts',
+  'languages/typescript/preset/defaults/tsconfig.stryker.json',
+];
+
 export function testExecutionChecksFor(exclusions) {
   return [
     {
@@ -66,16 +78,7 @@ export function testExecutionChecksFor(exclusions) {
       executionPriority: 1,
       shardWeight: 90,
       timeoutMs: 30 * MINUTE_MS,
-      configurationFiles: [
-        'languages/typescript/preset/tool-configs.mjs',
-        'languages/typescript/preset/project-configs/typescript/typescript-project-options.mjs',
-        'languages/typescript/preset/modules/selected-project-tsconfig.mjs',
-        JAVASCRIPT_PRESET_FILE,
-        'languages/typescript/preset/defaults/stryker.config.mjs',
-        'languages/typescript/preset/project-configs/stryker-project-config.mjs',
-        'languages/typescript/preset/defaults/vitest.quality.config.ts',
-        'languages/typescript/preset/defaults/tsconfig.stryker.json',
-      ],
+      configurationFiles: MUTATION_CONFIGURATION_FILES,
     },
   ];
 }

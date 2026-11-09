@@ -1,4 +1,4 @@
-import { ancestorsOf, chainOf } from '../analysis/ancestry.mjs';
+import { ancestorsOf, chainOf, contains } from '../analysis/ancestry.mjs';
 import {
   accumulatingSpreadMessageId,
   accumulatingSpreadMessages,
@@ -33,10 +33,6 @@ function innerExpression(node) {
   return chainOf(node, (current) =>
     WRAPPER_TYPES.has(current.type) ? current.expression : undefined,
   ).at(-1);
-}
-
-function contains(outer, inner) {
-  return outer.range[0] <= inner.range[0] && inner.range[1] <= outer.range[1];
 }
 
 function staticPropertyName(member) {

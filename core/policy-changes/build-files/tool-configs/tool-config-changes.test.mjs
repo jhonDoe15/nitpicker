@@ -57,6 +57,28 @@ describe('project tool configs the project opted into', () => {
     ).toEqual([]);
   });
 
+  it('counts an edit of any staticcheck.conf the Go project opted into', () => {
+    const go = { preset: 'go', tools: { staticcheck: PROJECT } };
+    const at = (checks) => ({
+      'staticcheck.conf': 'checks = ["all"]\n',
+      'shop/staticcheck.conf': checks,
+      'go.mod': 'module m\n',
+      'shop/a.go': 'package shop\n',
+    });
+
+    expect(
+      between({ base: at('checks = ["all"]\n'), head: at('checks = ["-ST1000"]\n'), config: go })
+        .policyLoosenings,
+    ).toEqual(['staticcheck project config changed: shop/staticcheck.conf']);
+    expect(
+      between({
+        base: at('checks = ["all"]\n'),
+        head: at('checks = ["-ST1000"]\n'),
+        config: { preset: 'go' },
+      }).policyLoosenings,
+    ).toEqual([]);
+  });
+
   it('counts an edit of the detekt config and editorconfig the Kotlin project opted into', () => {
     const kotlin = { preset: 'kotlin', tools: { detekt: PROJECT, ktlint: PROJECT } };
     const at = (detekt, editorconfig) => ({
