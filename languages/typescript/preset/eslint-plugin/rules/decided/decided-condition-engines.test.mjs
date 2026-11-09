@@ -41,11 +41,11 @@ const BANNED = [
   '  }',
   "  return 'few';",
   '}',
-  'export function label(user: { name: string } | undefined): string {',
-  '  if (user === undefined) {',
+  'export function label(kind: string): string {',
+  "  if (kind === 'none') {",
   "    return '';",
   '  }',
-  "  return user !== undefined ? user.name : '';",
+  "  return kind === 'none' ? '-' : kind;",
   '}',
 ].join('\n');
 
@@ -61,23 +61,23 @@ const ALLOWED = [
   '  }',
   "  return 'few';",
   '}',
-  'export function label(user: { name: string } | undefined): string {',
-  '  if (user === undefined) {',
+  'export function label(kind: string): string {',
+  "  if (kind === 'none') {",
   "    return '';",
   '  }',
-  '  return user.name;',
+  '  return kind;',
   '}',
 ].join('\n');
 
 const JSDOC = '/** @param {number} count */\n';
-const LABEL_JSDOC = '/** @param {{ name: string } | undefined} user */\n';
+const LABEL_JSDOC = '/** @param {string} kind */\n';
 
 function javascriptOf(source) {
   return source
     .replace('export function size', `${JSDOC}export function size`)
     .replace('export function label', `${LABEL_JSDOC}export function label`)
     .replace('(count: number): string', '(count)')
-    .replace('(user: { name: string } | undefined): string', '(user)');
+    .replace('(kind: string): string', '(kind)');
 }
 
 const BANNED_JAVASCRIPT = javascriptOf(BANNED);
@@ -140,7 +140,7 @@ function expectedIn(files, extension) {
 describe.each([
   { javascript: false, extension: 'ts', banned: BANNED, allowed: ALLOWED },
   { javascript: true, extension: 'mjs', banned: BANNED_JAVASCRIPT, allowed: ALLOWED_JAVASCRIPT },
-])('operand slips (javascript: $javascript)', ({ javascript, extension, banned, allowed }) => {
+])('decided conditions (javascript: $javascript)', ({ javascript, extension, banned, allowed }) => {
   const files = [`src/main/banned.${extension}`, `test/banned.test.${extension}`];
   const root = project(
     {

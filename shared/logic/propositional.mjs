@@ -1,7 +1,7 @@
 import { isSideEffectFree } from './purity.mjs';
 import { foldTerm, isBooleanLiteral, isComparison, isLogical, isNot, key } from './terms.mjs';
 
-const MAX_ROWS = 65_536;
+const MAX_ROWS = 4096;
 const RELATIONS = new Set(['===', '!==']);
 
 function isRelation(node) {
@@ -36,28 +36,39 @@ function choiceTest(choice, choices) {
   return (assignment) => (assignment.get(choice.value) === choice.literal) === choice.equal;
 }
 
+function junction(node, [left, right]) {
+  return node.value === '&&'
+    ? (assignment) => left(assignment) && right(assignment)
+    : (assignment) => left(assignment) || right(assignment);
+}
+
+function connective(node, children) {
+  if (isBooleanLiteral(node)) {
+    const value = node.value === 'true';
+    return () => value;
+  }
+  if (isNot(node)) {
+    return (assignment) => !children[0](assignment);
+  }
+  if (isLogical(node, '&&') || isLogical(node, '||')) {
+    return junction(node, children);
+  }
+  if (node.kind !== 'conditional') {
+    return undefined;
+  }
+  const [test, whenTrue, whenFalse] = children;
+  return (assignment) => (test(assignment) ? whenTrue(assignment) : whenFalse(assignment));
+}
+
 function compile(root, { atoms, choices, fresh }) {
   return foldTerm(root, (node, children) => {
     const choice = literalChoice(node);
     if (choice !== undefined) {
       return choiceTest(choice, choices);
     }
-    if (isBooleanLiteral(node)) {
-      const value = node.value === 'true';
-      return () => value;
-    }
-    if (isNot(node)) {
-      return (assignment) => !children[0](assignment);
-    }
-    if (isLogical(node, '&&') || isLogical(node, '||')) {
-      const [left, right] = children;
-      return node.value === '&&'
-        ? (assignment) => left(assignment) && right(assignment)
-        : (assignment) => left(assignment) || right(assignment);
-    }
-    if (node.kind === 'conditional') {
-      const [test, whenTrue, whenFalse] = children;
-      return (assignment) => (test(assignment) ? whenTrue(assignment) : whenFalse(assignment));
+    const compiled = connective(node, children);
+    if (compiled !== undefined) {
+      return compiled;
     }
     const name = atomKey(node, fresh);
     atoms.add(name);

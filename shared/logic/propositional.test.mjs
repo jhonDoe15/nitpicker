@@ -53,7 +53,7 @@ describe('truth tables before the solver', () => {
   });
 
   it('gives up on more atoms than a table can hold', () => {
-    const flags = Array.from({ length: 17 }, (_, index) => name(`flag${String(index)}`));
+    const flags = Array.from({ length: 13 }, (_, index) => name(`flag${String(index)}`));
     expect(
       decideByTruthTable(
         [],

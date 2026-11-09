@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { decide } from '../decide.mjs';
 import { and, binary, name, not, number, or } from '../test-support/build.mjs';
 import { decideSync } from './decide-sync.mjs';
@@ -20,5 +20,20 @@ describe('decide for synchronous callers', () => {
     const flags = Array.from({ length: 30 }, (_, index) => name(`flag${String(index)}`));
     const deep = flags.reduce((chain, flag) => or(chain, flag));
     expect(['open', 'true', 'false']).toContain(decideSync([], deep, { timeoutMs: 1 }));
+  });
+
+  it('answers open while a late answer is pending, then recovers', async () => {
+    const flags = Array.from({ length: 30 }, (_, index) => name(`slow${String(index)}`));
+    const [label, conditions, query] = cases[0];
+    const expected = await decide(conditions, query);
+    decideSync(
+      [],
+      flags.reduce((chain, flag) => or(chain, flag)),
+      { timeoutMs: 1 },
+    );
+    expect(['open', expected]).toContain(decideSync(conditions, query));
+    await vi.waitFor(() => {
+      expect(decideSync(conditions, query), label).toBe(expected);
+    }, 10_000);
   });
 });

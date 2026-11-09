@@ -1,4 +1,4 @@
-import { depthFirst } from '../../../../../../shared/traversal.mjs';
+import { chainOf, depthFirst } from '../../../../../../shared/traversal.mjs';
 
 const FUNCTIONS = new Set(['FunctionDeclaration', 'FunctionExpression', 'ArrowFunctionExpression']);
 const SKIPPED = new Set(['parent', 'loc', 'range', 'tokens', 'comments']);
@@ -36,4 +36,36 @@ export function inside(root) {
 /** The syntax of an expression outside the functions in it: none when it is a function itself. */
 export function outsideFunctions(root) {
   return depthFirst(root, (node) => (isFunction(node) ? [] : syntaxChildren(node)));
+}
+
+const REFERENCES = new Set(['Identifier', 'MemberExpression', 'ChainExpression', 'ThisExpression']);
+const EQUALITIES = new Set(['===', '!==', '==', '!=']);
+
+function withoutNegation(node) {
+  return chainOf(node, (current) =>
+    current.type === 'UnaryExpression' && current.operator === '!' ? current.argument : undefined,
+  ).at(-1);
+}
+
+function isNullish(node) {
+  return (
+    (node.type === 'Literal' && node.value === null && node.raw === 'null') ||
+    (node.type === 'Identifier' && node.name === 'undefined')
+  );
+}
+
+/**
+ * Whether TypeScript narrows on `node` itself: a truthiness test of one reference, or one compared
+ * with `null` or `undefined`. `@typescript-eslint/no-unnecessary-condition` reports those already.
+ */
+export function isNarrowingTest(node) {
+  const test = withoutNegation(node);
+  if (REFERENCES.has(test.type)) {
+    return true;
+  }
+  if (test.type !== 'BinaryExpression' || !EQUALITIES.has(test.operator)) {
+    return false;
+  }
+  const sides = [test.left, test.right];
+  return sides.some(isNullish) && sides.some((side) => REFERENCES.has(side.type));
 }

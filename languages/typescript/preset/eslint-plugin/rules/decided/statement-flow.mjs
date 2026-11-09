@@ -68,7 +68,7 @@ function lineOf(node) {
   return node.loc.start.line;
 }
 
-function guardFact(test, sourceCode, holds, exit) {
+function guardFact(test, sourceCode, { holds, exit }) {
   const text = sourceCode.getText(test);
   const line = String(lineOf(test));
   const reason =
@@ -78,39 +78,49 @@ function guardFact(test, sourceCode, holds, exit) {
   return fact(test, sourceCode, { holds, reason });
 }
 
-function ifFlow(node, facts, context) {
+function guardFacts(node, context, { holds, exit, branch }) {
   const { sourceCode, mutable } = context;
-  const atTest = afterEffects(facts, effectsOf([node.test], context), mutable);
-  const children = [
-    {
-      statements: statementsOf(node.consequent),
-      facts: [...atTest, guardFact(node.test, sourceCode, true)],
-    },
-    {
-      statements: statementsOf(node.alternate),
-      facts: [...atTest, guardFact(node.test, sourceCode, false)],
-    },
-  ];
+  const guard = guardFact(node.test, sourceCode, { holds, exit });
+  const afterTest = afterEffects([guard], effectsOf([node.test], context), mutable);
+  return afterEffects(afterTest, effectsOf([branch], context), mutable);
+}
+
+function afterIf(node, atTest, context) {
+  const { mutable } = context;
   const consequentExit = exitOf(node.consequent);
   const alternateExit = node.alternate === null ? undefined : exitOf(node.alternate);
   const consequentEffects = effectsOf([node.consequent], context);
   const alternateEffects = effectsOf([node.alternate], context);
-  const after = [];
   if (consequentExit !== undefined && alternateExit === undefined) {
-    after.push(
+    return [
       ...afterEffects(atTest, alternateEffects, mutable),
-      guardFact(node.test, sourceCode, false, consequentExit),
-    );
-  } else if (alternateExit !== undefined && consequentExit === undefined) {
-    after.push(
-      ...afterEffects(atTest, consequentEffects, mutable),
-      guardFact(node.test, sourceCode, true, alternateExit),
-    );
-  } else if (consequentExit === undefined) {
-    after.push(
-      ...afterEffects(afterEffects(atTest, consequentEffects, mutable), alternateEffects, mutable),
-    );
+      ...guardFacts(node, context, { holds: false, exit: consequentExit, branch: node.alternate }),
+    ];
   }
+  if (alternateExit !== undefined && consequentExit === undefined) {
+    return [
+      ...afterEffects(atTest, consequentEffects, mutable),
+      ...guardFacts(node, context, { holds: true, exit: alternateExit, branch: node.consequent }),
+    ];
+  }
+  return consequentExit === undefined
+    ? afterEffects(afterEffects(atTest, consequentEffects, mutable), alternateEffects, mutable)
+    : [];
+}
+
+function ifFlow(node, facts, context) {
+  const atTest = afterEffects(facts, effectsOf([node.test], context), context.mutable);
+  const children = [
+    {
+      statements: statementsOf(node.consequent),
+      facts: [...atTest, ...guardFacts(node, context, { holds: true })],
+    },
+    {
+      statements: statementsOf(node.alternate),
+      facts: [...atTest, ...guardFacts(node, context, { holds: false })],
+    },
+  ];
+  const after = afterIf(node, atTest, context);
   return { checks: [{ condition: node.test, facts: atTest }], children, after };
 }
 
@@ -119,17 +129,18 @@ function loopFlow(node, facts, context) {
   const inLoop = afterEffects(facts, effectsOf([node], context), mutable);
   const isGuarded =
     node.type === 'WhileStatement' || (node.type === 'ForStatement' && node.test !== null);
+  const testFact = isGuarded
+    ? fact(node.test, sourceCode, {
+        holds: true,
+        reason: `the loop on line ${String(lineOf(node))} only runs while \`${sourceCode.getText(node.test)}\``,
+      })
+    : undefined;
   const entry = isGuarded
-    ? [
-        ...inLoop,
-        fact(node.test, sourceCode, {
-          holds: true,
-          reason: `the loop on line ${String(lineOf(node))} only runs while \`${sourceCode.getText(node.test)}\``,
-        }),
-      ]
+    ? [...inLoop, ...afterEffects([testFact], effectsOf([node.test], context), mutable)]
     : inLoop;
+  const test = node.type === 'DoWhileStatement' || isGuarded ? node.test : undefined;
   return {
-    checks: [],
+    checks: test === undefined ? [] : [{ condition: test, facts: inLoop }],
     children: [{ statements: statementsOf(node.body), facts: entry }],
     after: inLoop,
   };
@@ -158,7 +169,7 @@ function nestedLists(node) {
 const KEPT_ENTRY = new Set(['BlockStatement', 'LabeledStatement']);
 
 function otherFlow(node, facts, context) {
-  const { sourceCode, mutable } = context;
+  const { mutable } = context;
   const after =
     node.type === 'FunctionDeclaration'
       ? facts

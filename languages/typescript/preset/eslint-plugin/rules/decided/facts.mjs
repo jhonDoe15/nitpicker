@@ -105,6 +105,13 @@ function written(node) {
     case 'VariableDeclarator': {
       return { target: node.id };
     }
+    case 'ForOfStatement':
+    case 'ForInStatement': {
+      return { target: node.left };
+    }
+    case 'CatchClause': {
+      return node.param === null ? undefined : { target: node.param };
+    }
     case 'UnaryExpression': {
       return node.operator === 'delete' ? { target: node.argument } : undefined;
     }
@@ -117,7 +124,9 @@ function written(node) {
 function addEffect(effects, node, sourceCode) {
   const write = written(node);
   if (write !== undefined) {
-    patternNames(write.target).forEach((name) => effects.writes.add(name));
+    for (const name of patternNames(write.target)) {
+      effects.writes.add(name);
+    }
     effects.memberWrite ||= [...inside(write.target)].some(
       ({ type }) => type === 'MemberExpression',
     );
@@ -180,13 +189,18 @@ export function afterEffects(facts, effects, mutable) {
   return facts.filter((known) => survives(known, effects, mutable));
 }
 
-/** Names a call could change: variables written after their declaration, and unresolved globals. */
+/**
+ * Names a call could change: variables written after their declaration, imported live bindings
+ * and unresolved globals.
+ */
 export function mutableNames(sourceCode) {
   const { scopeManager } = sourceCode;
   const reassigned = scopeManager.scopes
     .flatMap((scope) => scope.variables)
-    .filter((variable) =>
-      variable.references.some((reference) => reference.isWrite() && !reference.init),
+    .filter(
+      (variable) =>
+        variable.defs.some(({ type }) => type === 'ImportBinding') ||
+        variable.references.some((reference) => reference.isWrite() && !reference.init),
     )
     .map((variable) => variable.name);
   const unresolved = scopeManager.globalScope.through.map((reference) => reference.identifier.name);
