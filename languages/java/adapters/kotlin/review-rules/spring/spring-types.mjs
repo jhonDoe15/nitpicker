@@ -204,6 +204,8 @@ export const JDBC = group(
   ),
   inPackage(`${SPRING}.jdbc.core.simple`, 'JdbcClient'),
 );
+export const JOOQ_CONTEXT = group(['org.jooq.DSLContext']);
+export const JOOQ_RECORDS = group(['org.jooq.TableRecord', 'org.jooq.UpdatableRecord']);
 export const HTTP_CLIENTS = group(
   inPackage(`${SPRING}.web.client`, 'RestTemplate', 'RestOperations', 'RestClient'),
   inPackage(`${SPRING}.web.reactive.function.client`, 'WebClient'),

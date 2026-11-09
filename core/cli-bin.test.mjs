@@ -3,7 +3,7 @@ import { cpSync, mkdtempSync, readFileSync, rmSync, symlinkSync } from 'node:fs'
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
-import { USAGE_TEXT } from './command/arguments.mjs';
+import { projectUsageText } from './command/information/printed-information.mjs';
 
 const temporaryRoots = [];
 const binEntry = path.join(import.meta.dirname, 'bin.mjs');
@@ -42,7 +42,7 @@ describe('nitpicker bin', () => {
       },
     });
 
-    expect(stdout).toBe(USAGE_TEXT);
+    expect(stdout).toBe(projectUsageText());
   });
 
   it('names the required Node.js version and exits 2 on an older Node.js', () => {
@@ -67,7 +67,7 @@ describe('nitpicker bin', () => {
 
     expect({ status: result.status, stdout: result.stdout }).toEqual({
       status: 0,
-      stdout: USAGE_TEXT,
+      stdout: projectUsageText(),
     });
   });
 

@@ -1,4 +1,3 @@
-import path from 'node:path';
 import {
   headPolicyEnvironment,
   resolveHeadPolicy,
@@ -12,37 +11,13 @@ import {
   splitByEncoding,
 } from '../../../core/fix/common/fix-files.mjs';
 import { linkNote, undecodableNote } from '../../../core/fix/common/fix-notes.mjs';
-import {
-  prettierExclusions,
-  prettierExtensions,
-  typescriptExtensions,
-} from '../../../core/fix/extensions.mjs';
+import { fixTargets } from './fix-targets.mjs';
 import { eslintFixStep } from './eslint-fix.mjs';
 import { prettierFixStep } from './prettier-fix.mjs';
 
-function extensionOf(name) {
-  return path.posix.extname(name).toLowerCase();
-}
-
-function eslintExtensionsFor(layout) {
-  return layout.javascript
-    ? new Set(layout.extensions.map((extension) => `.${extension}`))
-    : typescriptExtensions;
-}
-
-function isPrettierFile(name) {
-  return (
-    prettierExtensions.has(extensionOf(name)) &&
-    !prettierExclusions.some((pattern) => pattern.test(name))
-  );
-}
-
 function fixWithPolicy(settings) {
   const { repositoryRoot, projectRoot, baseRef, scope, layout } = settings;
-  const eslintExtensions = eslintExtensionsFor(layout);
-  function isEslintFile(name) {
-    return eslintExtensions.has(extensionOf(name));
-  }
+  const { isEslintFile, isPrettierFile } = fixTargets(layout);
   const { comparison, files, links } = collectFixFiles({
     repositoryRoot,
     projectRoot,

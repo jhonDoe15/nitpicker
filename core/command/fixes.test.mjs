@@ -202,10 +202,10 @@ Full diagnostics: ${outputRoot}/report.txt
       'src/main/legacy.json':
         '[\n{"legacy":true},\n{"legacy":true},\n{"legacy":true},\n{"legacy":true}\n]\n',
     });
-    fixtureGit(repository.root, ['mv', 'src/main/legacy.json', 'src/main/legacy.md']);
+    fixtureGit(repository.root, ['mv', 'src/main/legacy.json', 'src/main/legacy.yaml']);
     writeFiles(repository.root, {
-      'src/main/legacy.md':
-        '[\n{"legacy":true},\n{"legacy":true},\n{"legacy":true},\n{"legacy":true}\n]\n\n#  Heading\n\nSome   text\n',
+      'src/main/legacy.yaml':
+        '[\n{"legacy":true},\n{"legacy":true},\n{"legacy":true},\n{"legacy":true},\n{"legacy":false}\n]\n',
     });
     const output = captureOutput();
     let checkedBasePath;
@@ -224,15 +224,15 @@ Full diagnostics: ${outputRoot}/report.txt
     });
 
     expect(exitCode).toBe(0);
-    expect(readFileSync(path.join(repository.root, 'src/main/legacy.md'), 'utf8')).toBe(
-      '[\n{"legacy":true},\n{"legacy":true},\n{"legacy":true},\n{"legacy":true}\n]\n\n#  Heading\n\nSome   text\n',
+    expect(readFileSync(path.join(repository.root, 'src/main/legacy.yaml'), 'utf8')).toBe(
+      '[\n{"legacy":true},\n{"legacy":true},\n{"legacy":true},\n{"legacy":true},\n{"legacy":false}\n]\n',
     );
     expect(checkedBasePath).toBe(path.join(repository.root, 'src/main/legacy.json'));
     expect(output.stdoutText).toEqual(
       expect.stringMatching(exactText`Fixed files:
 (none)
 Fix notes:
-  prettier left src/main/legacy.md as is: already unformatted before your change
+  prettier left src/main/legacy.yaml as is: already unformatted before your change
 Base: ${repository.baseRef} (argument)
 
 Quality gate summary
@@ -287,6 +287,58 @@ Fix notes:
   prettier left src/main/legacy.mjs as is: already unformatted before your change
 `);
   });
+  it('fixes only the files the ESLint and Prettier checks cover', () => {
+    const outsideRootsNotice = [
+      '1 changed TypeScript file is outside layout.sourceRoots and layout.testRoots, so nothing checks it:',
+      'scripts/tool.ts. Move it under a root or add its folder to layout.sourceRoots;',
+      'to leave it unchecked, list it in "exclude" in nitpicker.config.json.',
+    ].join(' ');
+    const repository = createRepository({
+      'quality-policy.json': policy(),
+      'tests/placeholder.ts': 'export const placeholder = true;\n',
+    });
+    symlinkSync(
+      path.join(fileURLToPath(new URL('../', import.meta.url)), '../node_modules'),
+      path.join(repository.root, 'node_modules'),
+      'dir',
+    );
+    const unchecked = {
+      'src/main/notes.md': '#  Notes\n',
+      'src/main/style.css': 'a{color:red}\n',
+      'scripts/tool.ts': 'export let tool=1;\n',
+    };
+    writeFiles(repository.root, { ...unchecked, 'src/main/module.mjs': 'export let value=1;\n' });
+    const output = captureOutput();
+    const outputRoot = makeOutputRoot();
+    const exitCode = runCli({
+      arguments_: ['--fix', '--base', repository.baseRef, '--output', outputRoot],
+      currentProjectRoot: repository.root,
+      environment: isolatedCache(),
+      analyzers: [fakeAnalyzer()],
+      stdout: output.stdout,
+      stderr: output.stderr,
+    });
+    expect(exitCode, output.stdoutText + output.stderrText).toBe(0);
+    expect(
+      Object.keys(unchecked).map((file) => readFileSync(path.join(repository.root, file), 'utf8')),
+    ).toEqual(Object.values(unchecked));
+    expect(readFileSync(path.join(repository.root, 'src/main/module.mjs'), 'utf8')).toBe(
+      'export const value = 1;\n',
+    );
+    expect(output.stdoutText).toBe(`Fixed files:
+src/main/module.mjs
+Fix notes:
+  eslint --fix rewrote src/main/module.mjs
+  prettier rewrote src/main/module.mjs
+Base: ${repository.baseRef} (argument)
+
+Quality gate summary
+✓ No new enforceable violations
+Notices (not failing):
+  ${outsideRootsNotice}
+Full diagnostics: ${outputRoot}/report.txt
+`);
+  });
   it('does not fix files that the config excludes, and fixes custom layout roots', () => {
     const repository = createRepository({
       'nitpicker.config.json': `${JSON.stringify(
@@ -311,6 +363,7 @@ Fix notes:
       'lib/legacy/old.ts': 'export let old=3;\n',
     });
     const output = captureOutput();
+    const outputRoot = makeOutputRoot();
     const exitCode = runCli({
       arguments_: [
         '--fix',
@@ -319,7 +372,7 @@ Fix notes:
         '--analyzer',
         'prettier-format',
         '--output',
-        makeOutputRoot(),
+        outputRoot,
       ],
       currentProjectRoot: repository.root,
       environment: isolatedCache(),
