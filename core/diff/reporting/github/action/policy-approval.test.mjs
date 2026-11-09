@@ -69,8 +69,6 @@ describe('the policy approval of action.yml', () => {
     expect(workflow.jobs['self-gate'].permissions).toEqual({
       contents: 'read',
       statuses: 'read',
-      checks: 'read',
-      actions: 'read',
     });
   });
 
@@ -248,18 +246,18 @@ describe('the policy approval workflow', () => {
     ]);
   });
 
-  it('re-runs a failed run that a later failed label run copied, before the copy', async () => {
+  it('re-runs an older failed run before a newer one, also when a run passed in between', async () => {
     const runs = [
       { id: 7, workflow_id: 1, name: 'typescript', status: 'completed', conclusion: 'failure' },
-      { id: 6, workflow_id: 1, name: 'typescript', status: 'completed', conclusion: 'failure' },
-      { id: 4, workflow_id: 1, name: 'typescript', status: 'completed', conclusion: 'success' },
+      { id: 6, workflow_id: 1, name: 'typescript', status: 'completed', conclusion: 'success' },
+      { id: 4, workflow_id: 1, name: 'typescript', status: 'completed', conclusion: 'failure' },
     ];
     const github = fakeGithub({ permission: 'write', runs });
 
     await approve(github);
 
     expect(github.rest.actions.reRunWorkflowFailedJobs.mock.calls).toEqual([
-      [{ ...REPO, run_id: 6 }],
+      [{ ...REPO, run_id: 4 }],
       [{ ...REPO, run_id: 7 }],
     ]);
   });

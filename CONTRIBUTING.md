@@ -91,11 +91,11 @@ CI (the `typescript` workflow) runs:
 - on every push to `main` that touches a path in the workflow's `paths` list (a run that has started
   finishes; a run still waiting is replaced by the next push's run, which tests everything merged so far);
 - on a pull request when someone adds the `run-ci` label, once per added label (remove and add the
-  label again for another run). Any other label starts the workflows too but runs no CI: the summary
-  checks (`test`, `self-gate`, `java`, `kotlin`, `python-e2e`, `go-e2e` and `platforms`) wait for
-  the earlier runs of their workflow on the head commit, keep the result of the newest one, and
-  fail when CI has not run on it, because GitHub counts a skipped required check as passed and
-  takes a check's result from the newest run. The `accept-policy-change` label runs the self-gate again;
+  label again for another run). Any other label starts the workflows too, with every job skipped.
+  GitHub counts a skipped required check as passed and reads a check from the newest run, so on
+  such a label the summary checks (`test`, `self-gate`, `java`, `kotlin`, `python-e2e`, `go-e2e`
+  and `platforms`) take another name, ending in "(no CI on this label)", and leave the last real
+  result in place. The `accept-policy-change` label runs the self-gate again;
 - by hand from the Actions tab (Run workflow) on any branch that already has this workflow.
 
 GitHub does not start a pull request run while the pull request has a merge conflict, so resolve it
