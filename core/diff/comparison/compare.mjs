@@ -7,6 +7,10 @@ import { withWorseMessage } from '../../../shared/messages/advice/finding-advice
 import { isHeldOnTouchedLine } from './ratchet/touched-code.mjs';
 import { pairedKeys } from './positions/occurrences.mjs';
 import { withEditedLineReason } from './positions/touched-lines.mjs';
+import {
+  withoutCauses,
+  withUntouchedCause,
+} from '../../../shared/rules/stability/untouched-cause.mjs';
 
 export function compareFindings({
   baseFindings,
@@ -40,19 +44,20 @@ export function compareFindings({
     moves,
     touchedCode,
   });
-  present.newFindings = [
+  const advised = [
     ...addGrowthAdvice({ findings: ratcheted.newFindings, baseFindings, moves }),
     ...anchored.grown,
   ];
+  present.newFindings = withUntouchedCause(advised, touchedCode);
   present.unchangedFindings.push(...ratcheted.heldFindings);
   const resolvedFindings = unmatchedBase.filter((finding) => !ratcheted.matchedBase.has(finding));
 
-  return {
+  return withoutCauses({
     newFindings: sortFindings(present.newFindings),
     resolvedFindings: sortFindings(resolvedFindings),
     unchangedFindings: sortFindings(present.unchangedFindings),
     changedMetrics: present.changedMetrics.sort(compareDisplayOrder),
-  };
+  });
 }
 
 function indexSnapshots({ baseFindings, headFindings, moves, touchedCode }) {
