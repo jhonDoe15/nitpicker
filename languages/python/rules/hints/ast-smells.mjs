@@ -197,6 +197,13 @@ export const SMELL_HINTS = [
   },
   {
     tool: RULES_TOOL,
+    rules: ['retry-in-test'],
+    describe: (subject) => `\`${subject}\` runs a failing test again`,
+    allowed:
+      'Remove the retry: a test that passes on a later attempt hides a flaky or racy test. Fix the cause, such as waiting on the condition instead of a fixed delay or isolating shared state.',
+  },
+  {
+    tool: RULES_TOOL,
     rules: ['mocked-subject-in-test'],
     describe: (subject) =>
       `\`${subject}\` is part of the module this test is named after, so the test replaces the code it should check`,
