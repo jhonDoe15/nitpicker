@@ -40,18 +40,43 @@ const SIGNAL_FILES = [
   },
 ];
 
-export function databaseKind(projectRoot, files) {
-  const found = { postgres: false, mysql: false };
+function signalsByFolder(projectRoot, files) {
+  const folders = new Map();
   for (const file of files) {
     const signal = SIGNAL_FILES.find(({ matches }) => matches(path.posix.basename(file)));
     const text = signal === undefined ? undefined : readSource(projectRoot, file);
     if (text !== undefined) {
+      const folder = path.posix.dirname(file);
+      const found = folders.get(folder) ?? { postgres: false, mysql: false };
       found.postgres ||= signal.postgres.test(text);
       found.mysql ||= signal.mysql.test(text);
+      folders.set(folder, found);
     }
   }
-  if (found.postgres) {
+  return folders;
+}
+
+function kindOf(found) {
+  if (found?.postgres === true) {
     return POSTGRES;
   }
-  return found.mysql ? MYSQL : UNKNOWN;
+  return found?.mysql === true ? MYSQL : UNKNOWN;
+}
+
+export function ancestorFolders(file) {
+  const parts = file.split('/').slice(0, -1);
+  return [...[...parts.keys()].map((index) => parts.slice(0, parts.length - index).join('/')), '.'];
+}
+
+export function databaseKinds(projectRoot, files) {
+  const folders = signalsByFolder(projectRoot, files);
+  const all = [...folders.values()];
+  const overall = kindOf({
+    postgres: all.some((found) => found.postgres),
+    mysql: all.some((found) => found.mysql),
+  });
+  return (file) =>
+    ancestorFolders(file)
+      .map((folder) => kindOf(folders.get(folder)))
+      .find((kind) => kind !== UNKNOWN) ?? overall;
 }

@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { useGitFixtures } from '../../../core/diff/git/test-support/git-repository.mjs';
+import { runHygieneCheck } from '../runner.mjs';
 import { trackedFiles } from '../tracked-files.mjs';
 import { foreignKeyIndexFindings } from './foreign-key-index.mjs';
 
@@ -44,7 +45,8 @@ describe('foreign keys without an index in migrations', () => {
       `${FLYWAY}/V1__orders.sql:4 orders(customer_id)`,
       `${FLYWAY}/V1__orders.sql:8 orders(courier_id)`,
     ]);
-    expect(findings[0]).toMatchObject({
+    const { tool, rule, classification } = findings[0];
+    expect({ tool, rule, classification }).toEqual({
       tool: 'repository-hygiene',
       rule: 'foreign-key-index',
       classification: 'enforceable',
@@ -52,10 +54,82 @@ describe('foreign keys without an index in migrations', () => {
     expect(findings[0].message).toBe(
       `${FLYWAY}/V1__orders.sql adds a foreign key on orders (customer_id) (line 4) and no migration creates an index that starts with it. ` +
         "Add `CREATE INDEX ON orders (customer_id)` in a migration, or the ORM's index on the field followed by a generated migration. " +
-        'PostgreSQL does not index a foreign-key column by itself, so every delete of a referenced row, and every join or lookup by the column, scans the whole table once it grows. ' +
+        'Only MySQL indexes a foreign-key column by itself; PostgreSQL, SQL Server and SQLite do not, so every delete of a referenced row, and every join or lookup by the column, scans the whole table once it grows. ' +
         'An exception fits only when the table is known to stay small or the index is created outside the repository. ' +
         `If this is intended, add {"rule":"foreign-key-index","paths":["${FLYWAY}/V1__orders.sql"],"reason":"..."} to "exceptions" in nitpicker.config.json.`,
     );
+  });
+
+  it('drops a finding through its exception entry and keeps others', () => {
+    const { root } = createGitRepository({
+      [`${FLYWAY}/V1__orders.sql`]: ORDERS,
+      [`${FLYWAY}/V2__lines.sql`]:
+        'alter table lines add column order_id bigint references orders(id);\n',
+    });
+    const policy = {
+      exceptions: [
+        { rule: 'foreign-key-index', paths: [`${FLYWAY}/V1__orders.sql`], reason: 'small table' },
+      ],
+    };
+
+    expect(
+      summary(
+        runHygieneCheck({ check: 'repository-hygiene', projectRoot: root, policy }).filter(
+          (found) => found.rule === 'foreign-key-index',
+        ),
+      ),
+    ).toEqual([`${FLYWAY}/V2__lines.sql:1 lines(order_id)`]);
+  });
+
+  it('keeps repeated foreign keys apart, skips down files and reads an up section after its down', () => {
+    const findings = check({
+      [`${FLYWAY}/V3__twice.sql`]: [
+        'alter table b add constraint f1 foreign key (a_id) references a (id);',
+        'alter table b add constraint f2 foreign key (a_id) references a (id);',
+        '',
+      ].join('\n'),
+      'migrations/000001_lines.down.sql':
+        'create table refunds (order_id int references orders (id));\n',
+      'alembic/versions/0002_lines.py': [
+        'def downgrade():',
+        '    op.drop_column("lines", "shop_id")',
+        '',
+        '',
+        'def upgrade():',
+        '    op.add_column("lines", sa.Column("shop_id", sa.Integer(), sa.ForeignKey("shops.id")))',
+        '',
+      ].join('\n'),
+      'src/migrations/1700000000001-Escaped.ts': [
+        'export class Escaped1700000000001 {',
+        '  async up(queryRunner) {',
+        '    await queryRunner.query("ALTER TABLE \\"cart\\" ADD CONSTRAINT f FOREIGN KEY (\\"userId\\") REFERENCES \\"user\\"(\\"id\\")");',
+        "    await queryRunner.query('CREATE INDEX \\'i\\' ON cart (\"userId\")');",
+        '  }',
+        '}',
+        '',
+      ].join('\n'),
+    });
+
+    expect(summary(findings)).toEqual([
+      'alembic/versions/0002_lines.py:6 lines(shop_id)',
+      `${FLYWAY}/V3__twice.sql:1 b(a_id)`,
+      `${FLYWAY}/V3__twice.sql:2 b(a_id)#2`,
+    ]);
+    expect(findings[0].message).toContain(
+      "Add `op.create_index(None, 'lines', ['shop_id'])` in a revision",
+    );
+  });
+
+  it('checks each service by its own database driver', () => {
+    const findings = check({
+      'shop/package.json': JSON.stringify({ dependencies: { mysql2: '3.0.0' } }),
+      'shop/migrations/1_orders.sql': ORDERS,
+      'billing/package.json': JSON.stringify({ dependencies: { pg: '8.0.0' } }),
+      'billing/migrations/1_invoices.sql':
+        'create table invoices (id int primary key, order_id int references orders (id));\n',
+    });
+
+    expect(summary(findings)).toEqual(['billing/migrations/1_invoices.sql:1 invoices(order_id)']);
   });
 
   it('accepts an index a later migration creates, a primary key or a unique constraint that starts with the column', () => {
@@ -145,6 +219,43 @@ describe('foreign keys without an index in migrations', () => {
     expect(summary(findings)).toEqual([
       'src/main/resources/db/changelog/lines.yaml:8 lines(order_id)',
       'src/main/resources/db/changelog/orders.xml:5 orders(customer_id)',
+    ]);
+  });
+
+  it('reads SQL changes in YAML and skips changes for other databases', () => {
+    const findings = check({
+      'src/main/resources/db/changelog/mysql.xml': [
+        '<databaseChangeLog>',
+        '  <changeSet id="3" author="shop" dbms="mysql, mariadb">',
+        '    <addForeignKeyConstraint baseTableName="notes" baseColumnNames="order_id" referencedTableName="orders" referencedColumnNames="id"/>',
+        '  </changeSet>',
+        '  <changeSet id="4" author="shop">',
+        '    <sql dbms="h2">alter table tags add foreign key (order_id) references orders (id);</sql>',
+        '  </changeSet>',
+        '</databaseChangeLog>',
+        '',
+      ].join('\n'),
+      'src/main/resources/db/changelog/raw.yaml': [
+        'databaseChangeLog:',
+        '  - changeSet:',
+        '      id: 5',
+        '      author: shop',
+        '      changes:',
+        '        - sql:',
+        '            sql: alter table gifts add foreign key (order_id) references orders (id)',
+        '  - changeSet:',
+        '      id: 6',
+        '      author: shop',
+        '      dbms: mysql',
+        '      changes:',
+        '        - sql:',
+        '            sql: alter table wraps add foreign key (order_id) references orders (id)',
+        '',
+      ].join('\n'),
+    });
+
+    expect(summary(findings)).toEqual([
+      'src/main/resources/db/changelog/raw.yaml:6 gifts(order_id)',
     ]);
   });
 
@@ -244,5 +355,34 @@ describe('Prisma relations without an index', () => {
     });
 
     expect([plain, summary(emulated).length, migrated]).toEqual([[], 2, []]);
+  });
+
+  it('reads a schema split into files and models written on one line', () => {
+    const models = [
+      'model Tag { id Int @id }',
+      'model Note {',
+      '  id     Int  @id',
+      '  post   Post @relation(fields: [postId], references: [id])',
+      '  postId Int',
+      '}',
+      '',
+    ].join('\n');
+    const split = (provider) =>
+      check({
+        'prisma/schema/base.prisma': `datasource db {\n  provider = "${provider}"\n}\n`,
+        'prisma/schema/models/note.prisma': models,
+      });
+    const migrated = check({
+      'prisma/schema/base.prisma': 'datasource db {\n  provider = "postgresql"\n}\n',
+      'prisma/schema/models/note.prisma': models,
+      'prisma/migrations/20240101000000_init/migration.sql':
+        'CREATE INDEX "Note_postId_idx" ON "Note"("postId");\n',
+    });
+
+    expect([summary(split('postgresql')), split('sqlite'), migrated]).toEqual([
+      ['prisma/schema/models/note.prisma:4 Note.post'],
+      [],
+      [],
+    ]);
   });
 });

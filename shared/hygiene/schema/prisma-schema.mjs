@@ -1,8 +1,10 @@
 import path from 'node:path';
 import { readSource } from '../migrations/revision-graph.mjs';
+import { ancestorFolders } from './database-kind.mjs';
+import { leadsWith } from './migration-schema.mjs';
 
-const MODEL = /^\s*model\s+(\w+)\s*\{([\s\S]*?)^\s*\}/gmu;
-const DATASOURCE = /^\s*datasource\s+\w+\s*\{([\s\S]*?)^\s*\}/mu;
+const BLOCK_START = /^\s*(model|datasource)\s+(\w+)\s*\{/u;
+const BLOCK_END = /^\s*\}/u;
 const PROVIDER = /\bprovider\s*=\s*"([^"]+)"/u;
 const RELATION_MODE = /\brelationMode\s*=\s*"prisma"/u;
 const RELATION_FIELDS = /@relation\s*\([^)]*?\bfields\s*:\s*\[([^\]]*)\]/u;
@@ -20,66 +22,94 @@ function names(list) {
     .filter(Boolean);
 }
 
-function lineOf(text, index) {
-  return text.slice(0, index).split('\n').length;
+function blocksOf(text) {
+  const blocks = [];
+  let open;
+  for (const [index, line] of text.split('\n').entries()) {
+    const start = BLOCK_START.exec(line);
+    if (start !== null) {
+      const block = { kind: start[1], name: start[2], lines: [] };
+      blocks.push(block);
+      open = line.includes('}', start[0].length) ? undefined : block;
+    } else if (BLOCK_END.test(line)) {
+      open = undefined;
+    } else {
+      open?.lines.push({ text: line, line: index + 1 });
+    }
+  }
+  return blocks;
 }
 
-function isChecked(text) {
-  const datasource = DATASOURCE.exec(text)?.[1];
-  const provider = datasource === undefined ? undefined : PROVIDER.exec(datasource)?.[1];
+function bodyOf(block) {
+  return block.lines.map(({ text }) => text).join('\n');
+}
+
+function isChecked(body = '') {
+  const provider = PROVIDER.exec(body)?.[1];
   if (provider === undefined || CHECKED_PROVIDERS.has(provider) || provider.startsWith('env')) {
     return true;
   }
-  return provider === MYSQL && RELATION_MODE.test(datasource);
+  return provider === MYSQL && RELATION_MODE.test(body);
 }
 
-function modelRelations(text, match) {
-  const [, model, body] = match;
-  const start = match.index + match[0].indexOf(body);
-  const lines = body.split('\n');
-  const indexes = [...body.matchAll(BLOCK_INDEX)].map(([, list]) => names(list));
-  const keyed = lines.filter((line) => KEYED_FIELD.test(line)).map((line) => FIELD.exec(line)?.[1]);
-  const covered = (columns) =>
-    [...indexes, ...keyed.map((field) => [field])].some((index) => {
-      const lead = new Set(index.slice(0, columns.length));
-      return columns.length > 0 && columns.every((column) => lead.has(column));
-    });
-  let offset = start;
-  return lines.flatMap((line) => {
-    const at = offset;
-    offset += line.length + 1;
-    const fields = RELATION_FIELDS.exec(line)?.[1];
+function modelIndexes(block) {
+  const listed = [...bodyOf(block).matchAll(BLOCK_INDEX)].map(([, list]) => names(list));
+  const keyed = block.lines
+    .filter(({ text }) => KEYED_FIELD.test(text))
+    .map(({ text }) => [FIELD.exec(text)?.[1]]);
+  return [...listed, ...keyed];
+}
+
+function modelRelations(block) {
+  const indexes = modelIndexes(block);
+  return block.lines.flatMap(({ text, line }) => {
+    const fields = RELATION_FIELDS.exec(text)?.[1];
     const columns = fields === undefined ? [] : names(fields);
-    return columns.length === 0 || covered(columns)
+    const covered = indexes.some((index) => leadsWith(index, columns));
+    return columns.length === 0 || covered
       ? []
-      : [{ model, field: FIELD.exec(line)?.[1], columns, line: lineOf(text, at) }];
+      : [{ model: block.name, field: FIELD.exec(text)?.[1], columns, line }];
   });
 }
 
 function hasMigrations(schemaFile, files) {
-  const folders = [
-    path.posix.dirname(schemaFile),
-    path.posix.dirname(path.posix.dirname(schemaFile)),
-  ];
+  const prefixes = ancestorFolders(schemaFile).map((folder) =>
+    folder === '.' ? 'migrations/' : `${folder}/migrations/`,
+  );
   return files.some(
-    (file) =>
-      file.endsWith('/migration.sql') &&
-      folders.some((folder) => file.startsWith(`${folder}/migrations/`)),
+    (file) => file.endsWith('/migration.sql') && prefixes.some((prefix) => file.startsWith(prefix)),
   );
 }
 
-export function unindexedPrismaRelations(projectRoot, files) {
-  const schemas = files.filter((file) => file.endsWith('.prisma'));
-  return schemas
-    .filter((file) => !hasMigrations(file, files))
+function datasourceFor(file, datasources) {
+  const folder = ancestorFolders(file).find((candidate) => datasources.has(candidate));
+  return folder === undefined ? undefined : datasources.get(folder);
+}
+
+function parsedSchemas(projectRoot, files) {
+  return files
+    .filter((file) => file.endsWith('.prisma'))
     .flatMap((file) => {
       const raw = readSource(projectRoot, file);
-      const text = raw?.replace(COMMENT, (comment) => ' '.repeat(comment.length));
-      if (text === undefined || !isChecked(text)) {
-        return [];
-      }
-      return [...text.matchAll(MODEL)].flatMap((match) =>
-        modelRelations(text, match).map((relation) => ({ file, ...relation })),
-      );
+      return raw === undefined ? [] : [{ file, blocks: blocksOf(raw.replace(COMMENT, '')) }];
     });
+}
+
+export function unindexedPrismaRelations(projectRoot, files) {
+  const schemas = parsedSchemas(projectRoot, files);
+  const datasources = new Map(
+    schemas.flatMap(({ file, blocks }) => {
+      const datasource = blocks.find((block) => block.kind === 'datasource');
+      return datasource === undefined ? [] : [[path.posix.dirname(file), bodyOf(datasource)]];
+    }),
+  );
+  return schemas
+    .filter(
+      ({ file }) => !hasMigrations(file, files) && isChecked(datasourceFor(file, datasources)),
+    )
+    .flatMap(({ file, blocks }) =>
+      blocks
+        .filter((block) => block.kind === 'model')
+        .flatMap((block) => modelRelations(block).map((relation) => ({ file, ...relation }))),
+    );
 }
