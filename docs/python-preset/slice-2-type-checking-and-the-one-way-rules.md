@@ -112,6 +112,7 @@ through the real tools.
 | a `TextIO` parameter, `out.write(...)` or `print(..., file=out)` | `sys.stdout`, `sys.stderr` outside the entry point                           | `process-stream-access`                                    |
 | log the caught exception itself                                  | logging only `str(error)` or an f-string with it in an `except`              | `catch-log-without-exception`                              |
 | a test that asserts                                              | a test function with no assertion                                            | `test-without-assertion`                                   |
+| the constant by name in a test                                   | a test literal that copies the value of a constant it can see                | `copied-constant-in-test`                                  |
 | `@dataclass(frozen=True)`                                        | `@dataclass` without `frozen=True`, outside tests                            | `frozen-dataclass`                                         |
 | the validation library in `adapters/` only                       | importing pydantic (or the declared library) elsewhere                       | `pydantic-boundary`                                        |
 | an `enum.Enum` / `StrEnum`                                       | a plain class of two string constants, or three `X_*`                        | `enum-string-constants`                                    |
@@ -184,6 +185,19 @@ Details that are decisions rather than the table:
   `self.name(...)` or qualified by a project test module (`helpers.check_total(...)`), never on an
   arbitrary receiver. A smoke test that deliberately asserts nothing takes a `python.exceptions`
   entry for `test-without-assertion`.
+- `copied-constant-in-test` flags a string, integer or float literal in a collected test file that
+  equals the value of a module-level `UPPER_SNAKE` constant (`NAME = 50`, `NAME: Final = "eu"`, a
+  negative number too) declared in a production module the test imports (`import a.b`,
+  `import a.b as x`, `from a.b import ...`, `from a import b`). Test files, `test_*.py` and `*_test.py`
+  modules and the test support files (`conftest.py`, the `tests`/`test` folders and `testpaths`, and the
+  `testing`, `fixtures`, `mocks` and other support folders that production code does not import, as
+  for the security rules) declare no constants; booleans, `None`, bytes
+  and f-strings are not values. Not reported: the numbers -1, 0, 1 and 2, strings shorter than three
+  characters or blank, a literal whose statement also names the constant
+  (`assert limits.MAX_ITEMS == 50` pins the value on purpose; a lambda counts as its own statement), docstrings, imports,
+  annotations, `ids=` and the argument names of `pytest.mark.parametrize`, and `id=` of
+  `pytest.param`. Numbers compare by value (`5000` matches `5000.0` and `5_000`), as in the other presets. A value declared in
+  two imported modules is one finding naming all of them, sorted, joined by `or`.
 - The boundary is a directory named `adapters` anywhere in the path (`src/shop/adapters/api.py`),
   as in the TypeScript preset; a project that keeps its models elsewhere (`schemas/`,
   `api/`) adds a `python.exceptions` entry for `pydantic-boundary` with those paths.

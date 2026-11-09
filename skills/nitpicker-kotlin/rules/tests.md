@@ -52,6 +52,8 @@ Part of the [nitpicker-kotlin](../SKILL.md) skill. Write these forms from the st
   the same goes for `assertTrue(x == 0.1)` and `(x == 0.1) shouldBe true`, which need
   `abs(x - 0.1) < 1e-9`. An AssertJ `using...Comparator(...)` is fine. An integral literal such as
   `1.0` is exact and fine.
+- Use a production constant by name, never a copy of its value (`pmd/CopiedConstantInTest`):
+  `Limits.MAX_LENGTH + 1`, not `65`. Pin a contract value as `assertEquals(64, Limits.MAX_LENGTH)`.
 - Never mock the class under test (`pmd/MockedSubjectInTest`): no `mockk<OrderService>()`,
   `mock<OrderService>()` or `@MockK` of it in `OrderServiceTest`, and no `spyk`/`@SpyK` of it with
   `every { subject.helper() }`. Pass its collaborators in through the constructor with fakes or mocks

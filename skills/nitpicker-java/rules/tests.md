@@ -41,6 +41,8 @@ Part of the [nitpicker-java](../SKILL.md) skill. Write these forms from the star
   for `assertTrue(x == 0.1)` and `assertThat(x == 0.1).isTrue()`, which need
   `Math.abs(x - 0.1) < 1e-9` or `isCloseTo`. An AssertJ `using...Comparator(...)` is fine. An
   integral literal such as `1.0` is exact and fine.
+- Use a production constant by name, never a copy of its value (`pmd/CopiedConstantInTest`):
+  `Limits.MAX_LENGTH + 1`, not `65`. Pin a contract value as `assertEquals(64, Limits.MAX_LENGTH)`.
 - Never mock the class under test (`MockedSubjectInTest`): no `mock(OrderService.class)` or `@Mock`
   of it in `OrderServiceTest`, and no `spy`/`@Spy` of it whose own methods you stub. Pass its
   collaborators in through the constructor with fakes or mocks of them, and test a helper through

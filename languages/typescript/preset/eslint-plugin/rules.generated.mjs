@@ -13,6 +13,7 @@ import { rule as ruleNoAssertionInLoop } from './test-assertions/loop-assertions
 import { rule as ruleNoBranchInCompositionRoot } from './rules/boundaries/no-branch-in-composition-root.mjs';
 import { rule as ruleNoComments } from './rules/modules/no-comments.mjs';
 import { rule as ruleNoCompatibilityShim } from './rules/signatures/no-compatibility-shim.mjs';
+import { rule as ruleNoCopiedConstant } from './test-assertions/copied-constants/no-copied-constant.mjs';
 import { rule as ruleNoCopyPastedTests } from './test-quality/no-copy-pasted-tests.mjs';
 import { rule as ruleNoDefaultExport } from './rules/syntax/no-default-export.mjs';
 import { rule as ruleNoDevDependencyInProduction } from './rules/dependencies/no-dev-dependency-in-production.mjs';
@@ -124,6 +125,7 @@ export const directoryRules = {
   'no-branch-in-composition-root': ruleNoBranchInCompositionRoot,
   'no-comments': ruleNoComments,
   'no-compatibility-shim': ruleNoCompatibilityShim,
+  'no-copied-constant': ruleNoCopiedConstant,
   'no-copy-pasted-tests': ruleNoCopyPastedTests,
   'no-default-export': ruleNoDefaultExport,
   'no-dev-dependency-in-production': ruleNoDevDependencyInProduction,

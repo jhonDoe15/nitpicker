@@ -2020,6 +2020,7 @@
                             "structure/inheritance-depth-limit",
                             "test-runtime/test-console-output",
                             "test-runtime/test-not-run",
+                            "pmd/CopiedConstantInTest",
                             "kotlin-source/ChildCoroutineOutlivesResource",
                             "kotlin-source/SuspendFunInFinallySection",
                             "kotlin-source/UnboundedFanOut",
