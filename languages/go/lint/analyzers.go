@@ -1,6 +1,9 @@
 package main
 
 import (
+	"strings"
+
+	"github.com/jhonDoe15/nitpicker/languages/go/lint/rules"
 	"github.com/kisielk/errcheck/errcheck"
 	"golang.org/x/tools/go/analysis"
 	"golang.org/x/tools/go/analysis/passes/deepequalerrors"
@@ -71,6 +74,7 @@ func groups() []group {
 		{tool: "vet", analyzers: passes()},
 		{tool: "errcheck", analyzers: []*analysis.Analyzer{errcheck.Analyzer}},
 		{tool: modernizeTool, analyzers: modernize.Suite},
+		{tool: rules.Tool, analyzers: rules.Analyzers()},
 	}
 }
 
@@ -95,4 +99,8 @@ func toolNames() map[string]string {
 		}
 	}
 	return names
+}
+
+func ruleName(analyzer *analysis.Analyzer) string {
+	return strings.ReplaceAll(analyzer.Name, "_", "-")
 }

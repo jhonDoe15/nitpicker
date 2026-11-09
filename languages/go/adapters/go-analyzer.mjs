@@ -66,6 +66,7 @@ export function createGoAnalyzer(settings = {}) {
       'staticcheck',
       'errcheck',
       'modernize',
+      'go-rules',
       'build',
       'tests',
       'test-runtime',

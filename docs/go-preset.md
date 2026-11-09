@@ -85,6 +85,7 @@ per source hash and toolchain into the nitpicker cache.
 | staticcheck            | lint program              | `staticcheck/<check>`, for example `staticcheck/SA4006`                             |
 | Unchecked errors       | lint program (errcheck)   | `errcheck/unchecked`                                                                |
 | Modern forms           | lint program (modernize)  | `modernize/<analyzer>`, for example `modernize/rangeint`                            |
+| Own one-way rules      | lint program (go-rules)   | `go-rules/<rule>`, for example `go-rules/panic-for-failure`                         |
 | Failing tests          | `go test -json`           | `tests/tests-failed` tool error quoting each failure                                |
 | No tests ran           | `go test -json`           | `tests/no-tests-ran`                                                                |
 | Slow tests             | `go test -json`           | `test-runtime/slow-test`                                                            |
@@ -265,12 +266,39 @@ program's Go test fails when a marked line is not reported, when any other line 
 check has no fixture. `fixtures/legacy` (Go 1.14) and `fixtures/next` (Go 1.27) hold the checks
 that apply only before or after a Go version.
 
+## Own rules
+
+nitpicker's own analyzers run in the lint program as the `go-rules` tool, for the forms no linter
+above settles. Each message names the allowed form and ends with its exception entry. They follow
+the project's choices and never flag them: `testing` or testify assertions, the logger (`log/slog`,
+zap, zerolog, logrus and the others are all recognised), table-driven or separate tests, and the
+`cmd/`, `internal/`, `pkg/` layout.
+
+| Rule                    | Reports                                                                                                                                                                                                               | Allowed form                                                                                    |
+| ----------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------- |
+| `panic-for-failure`     | `panic` outside `main` (in package main), `init` and functions named `Must...`, in non-test files; re-panicking a `recover()` value is allowed                                                                        | return an error                                                                                 |
+| `logged-and-returned`   | a logger call that takes an error, followed in the same block by a `return` of that error, as is or wrapped                                                                                                           | return it wrapped with `%w` and log it where it is handled, or log it and handle it             |
+| `unowned-goroutine`     | a `go` statement in a non-test file whose function neither takes nor uses a `sync.WaitGroup`, errgroup, channel or `context.Context`, directly, through its receiver's fields or in the body of the function it calls | `wg.Go(...)`, an errgroup's `Go`, or a context the caller cancels or a channel the caller reads |
+| `context-outside-entry` | `context.Background()` or `context.TODO()` in a non-test file of a package other than `main`                                                                                                                          | take `ctx context.Context` first and pass it on                                                 |
+| `sleep-to-wait`         | `time.Sleep` in a non-test function that started a goroutine (`go`, `wg.Go`, an errgroup's `Go`) before it                                                                                                            | wait on the WaitGroup, errgroup, channel or context                                             |
+
+Left to linters, so not rebuilt here (the ones not listed under [Linters](#linters) come with
+GO2's next parts, #975 to #977): `%w` and `errors.Is`/`errors.As`
+(errorlint, SA1032, `deepequalerrors`), contexts in structs and contexts as the first parameter
+(containedctx, revive `context-as-argument`), `defer` in a loop (revive `defer`, SA9001), naked
+returns (revive `bare-return`), mixed receivers (recvcheck) and string-built SQL (gosec). Sleeps in
+tests and goroutines a test leaves behind are the test-honesty rules (GO6).
+
+**Fixtures.** `languages/go/lint/fixtures/go-rules` holds a failing and an allowed form for each
+rule, checked like the linters' fixtures. `fixtures/stubs` holds minimal stand-ins for zap, zerolog
+and errgroup, so the fixtures build without downloads.
+
 ## Exceptions
 
 The top-level `exceptions` take a finding as it is printed, `<tool>/<rule>` (`vet/printf`), as in
 the Java preset, plus the shared rules (the function, type, file and folder limits, `slow-test`, and
-the repository checks). Every vet, staticcheck, errcheck, modernize, limit and slow-test message
-ends with its exception entry, for
+the repository checks). Every vet, staticcheck, errcheck, modernize, go-rules, limit and slow-test
+message ends with its exception entry, for
 example `{"rule":"vet/printf","paths":["shop/label.go"],"reason":"..."}`. Format findings,
 compile errors and `no-tests-ran` have no exception route: run the formatter, fix the build, or
 add a test.
@@ -308,7 +336,7 @@ with `"preset": "go"`, each naming its reason.
 | --- | ----------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | GO1 | Base (#414)                                     | This document: done.                                                                                                                                                                                             |
 | GO2 | Linters (#415)                                  | Part 1 done: staticcheck, errcheck, modernize and the extra `golang.org/x/tools` passes (see [Linters](#linters)). Next: revive, gosec and the permissively licensed `go/analysis` linters, in the same program. |
-| GO3 | One-way rules (#416)                            | nitpicker's own analyzers for the forms Go still leaves open (error wrapping and comparison, constructors, receivers, loops, context), each message naming the allowed form.                                     |
+| GO3 | One-way rules (#416)                            | Part 1 done: errors and concurrency (see [Own rules](#own-rules)). Next: package state and design, then HTTP timeouts and I/O in loops.                                                                          |
 | GO4 | Coverage, CRAP and mutation (#417)              | changed-branch coverage and CRAP from the coverage profile; mutation testing.                                                                                                                                    |
 | GO5 | Duplicates, coupling, dead code, modules (#418) | clones, package coupling and stability, unused code, and `go mod tidy -diff`.                                                                                                                                    |
 | GO6 | Shared guards and test honesty (#419)           | the guards the other presets share (secrets in code, path joins, subprocess timeouts, test assertions), after GO3.                                                                                               |
