@@ -48,6 +48,9 @@ whole project, so it takes as long as a full run; finish with the plain run belo
 Before you change code other packages use, or fix a bug, read
 [beyond-the-gate.md](beyond-the-gate.md). Why each rule is here: [SOURCES.md](SOURCES.md).
 
+The linters' allowed forms (errors, names and doc comments, simplifications, modern forms): read
+[rules/linters.md](rules/linters.md) before you write Go.
+
 ## Write it this way
 
 - The code compiles and `go vet` is clean, test files included. A compile error is a
