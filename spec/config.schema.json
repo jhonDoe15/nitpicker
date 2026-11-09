@@ -370,6 +370,8 @@
                         "structure/exported-name-collision",
                         "sibling-copy-edit",
                         "structure/sibling-copy-edit",
+                        "shared-used-by-one-feature",
+                        "coupling/shared-used-by-one-feature",
                         "test-only-export",
                         "dead-code/test-only-export",
                         "coupling/test-only-export",
@@ -1603,8 +1605,7 @@
               "sourceRoots": false,
               "testRoots": false,
               "excludedGlobs": false,
-              "entryPoints": false,
-              "sharedRoots": false
+              "entryPoints": false
             }
           },
           "tools": {
@@ -1735,6 +1736,8 @@
                             "structure/exported-name-collision",
                             "sibling-copy-edit",
                             "structure/sibling-copy-edit",
+                            "shared-used-by-one-feature",
+                            "coupling/shared-used-by-one-feature",
                             "test-only-export",
                             "dead-code/test-only-export",
                             "coupling/test-only-export",
@@ -1779,23 +1782,7 @@
           "python": false,
           "kotlin": false,
           "go": false
-        },
-        "allOf": [
-          {
-            "if": {
-              "not": {
-                "required": ["history"],
-                "properties": {
-                  "history": {
-                    "required": ["coChange"],
-                    "properties": { "coChange": { "const": true } }
-                  }
-                }
-              }
-            },
-            "then": { "properties": { "layout": { "properties": { "featureRoots": false } } } }
-          }
-        ]
+        }
       }
     },
     {
@@ -1808,8 +1795,7 @@
               "sourceRoots": false,
               "testRoots": false,
               "excludedGlobs": false,
-              "entryPoints": false,
-              "sharedRoots": false
+              "entryPoints": false
             }
           },
           "tools": {
@@ -1973,6 +1959,8 @@
                             "structure/exported-name-collision",
                             "sibling-copy-edit",
                             "structure/sibling-copy-edit",
+                            "shared-used-by-one-feature",
+                            "coupling/shared-used-by-one-feature",
                             "test-only-export",
                             "dead-code/test-only-export",
                             "coupling/test-only-export",
@@ -1992,6 +1980,9 @@
                             "kotlin-source/UnboundedFanOut",
                             "kotlin-source/UnboundedReactiveFanOut",
                             "kotlin-source/UnsafeCastOperator",
+                            "kotlin-source/ListUsedAsSet",
+                            "kotlin-source/LinearLookupInLoop",
+                            "kotlin-source/SortForExtreme",
                             "kotlin-source/RepeatedStringLiteral",
                             "kotlin-source/LogFormatArguments",
                             "kotlin-source/LogExceptionFirst",
@@ -2043,6 +2034,7 @@
                             "pmd/AssertionInControlFlow",
                             "pmd/CoroutineEscapesTest",
                             "pmd/GlobalStateLeakInTest",
+                            "pmd/SharedTestState",
                             "pmd/MockedSubjectInTest",
                             "pmd/StaticMockOfProjectType",
                             "pmd/SpringUnusedContext",
@@ -2152,23 +2144,7 @@
           "i18n": false,
           "python": false,
           "go": false
-        },
-        "allOf": [
-          {
-            "if": {
-              "not": {
-                "required": ["history"],
-                "properties": {
-                  "history": {
-                    "required": ["coChange"],
-                    "properties": { "coChange": { "const": true } }
-                  }
-                }
-              }
-            },
-            "then": { "properties": { "layout": { "properties": { "featureRoots": false } } } }
-          }
-        ]
+        }
       }
     },
     {
@@ -2288,6 +2264,8 @@
                         "structure/exported-name-collision",
                         "sibling-copy-edit",
                         "structure/sibling-copy-edit",
+                        "shared-used-by-one-feature",
+                        "coupling/shared-used-by-one-feature",
                         "test-only-export",
                         "dead-code/test-only-export",
                         "coupling/test-only-export",
@@ -2446,6 +2424,8 @@
                             "structure/exported-name-collision",
                             "sibling-copy-edit",
                             "structure/sibling-copy-edit",
+                            "shared-used-by-one-feature",
+                            "coupling/shared-used-by-one-feature",
                             "test-only-export",
                             "dead-code/test-only-export",
                             "coupling/test-only-export",
