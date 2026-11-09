@@ -90,11 +90,10 @@ function supportOf(keys, sites) {
 
 function existingOwner(keys, index) {
   const names = keys.map((key) => key.split(': ')[0]);
-  return index.types.find(
-    ({ kind, fields = [] }) =>
-      (kind === 'data' || kind === 'class') &&
-      names.every((name) => fields.some((field) => field.name === name)),
-  );
+  return index.types.find(({ kind, fields = [] }) => {
+    const fieldNames = new Set(fields.map((field) => field.name));
+    return (kind === 'data' || kind === 'class') && names.every((name) => fieldNames.has(name));
+  });
 }
 
 function clumpFinding({ keys, support }, { index, finding }) {
