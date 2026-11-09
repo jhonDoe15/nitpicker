@@ -8,6 +8,8 @@ import {
   readCouplingFindings,
   scanImports,
 } from './python-coupling.mjs';
+import { libraryProject } from '../../../../shared/rules/stability/test-support/library-project.mjs';
+import { libraryModules } from './test-support/library-modules.mjs';
 
 const roots = [];
 
@@ -290,6 +292,23 @@ describe('analyzing the import graph', () => {
       message:
         'base depends on less stable package other. Depend on an abstraction in a more stable package instead.',
       classification: 'enforceable',
+      cause: {
+        folders: ['src/base'],
+        units: [
+          {
+            unit: 'package feature',
+            folders: ['src/feature'],
+            files: ['src/feature/a.py', 'src/feature/b.py'],
+            count: 2,
+          },
+          {
+            unit: 'package other',
+            folders: ['src/other'],
+            files: ['src/other/__init__.py', 'src/other/o.py'],
+            count: 2,
+          },
+        ],
+      },
     });
   });
 
@@ -340,6 +359,61 @@ describe('analyzing the import graph', () => {
         metric: { name: 'fanOut', value: 1 },
       },
     ]);
+  });
+});
+
+describe('a feature that reuses three others through their __init__.py', () => {
+  const { features, uses } = libraryProject({ withFines: true });
+  const graph = libraryModules(features, uses);
+
+  it('passes stability direction: each feature is one unit and its facade edges stay inside', () => {
+    expect(analyzePythonCoupling(graph).stabilityDirection).toEqual([]);
+  });
+
+  it('reports each facade edge, members on an untouched file, when the layout has no features', () => {
+    const reportRoot = temporaryRoot();
+    writeFileSync(path.join(reportRoot, 'imports.json'), JSON.stringify(graph));
+
+    const findings = readCouplingFindings(reportRoot, { layout: { featureRoots: [] } });
+
+    expect(
+      findings
+        .filter(({ classification }) => classification === 'enforceable')
+        .map(({ path: file, identity }) => `${file} ${identity}`),
+    ).toEqual(
+      ['members', 'catalog', 'loans', 'fines'].map(
+        (name) =>
+          `src/app/features/${name}/__init__.py package-edge:app.features.${name}->app.features.${name}.adapters`,
+      ),
+    );
+  });
+
+  it.each([
+    [
+      ['shared', 'members:face'],
+      'src/app/shared/__init__.py',
+      'package app.shared (instability 0.1111) depends on feature src/app/features/members (instability 0.2)',
+    ],
+    [
+      ['catalog:domain', 'fines:face'],
+      'src/app/features/catalog',
+      'feature src/app/features/catalog (instability 0.5) depends on feature src/app/features/fines (instability 0.6667)',
+    ],
+  ])('reports %j on a real project path with one fix', (extra, expectedPath, pair) => {
+    const reportRoot = temporaryRoot();
+    writeFileSync(
+      path.join(reportRoot, 'imports.json'),
+      JSON.stringify(libraryModules(features, [...uses, extra])),
+    );
+
+    const [finding] = readCouplingFindings(reportRoot).filter(
+      ({ classification }) => classification === 'enforceable',
+    );
+
+    expect(finding.path).toBe(expectedPath);
+    expect(finding.message).toBe(
+      `Keep feature dependencies pointing at more stable units: ${pair}. Depend on the other side's public face, or move the code that joins them into the composition root.`,
+    );
   });
 });
 

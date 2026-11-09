@@ -45,6 +45,23 @@ classes -> classes
 const fileOf = (name) => `src/main/java/${name.replaceAll('.', '/')}.java`;
 const analyze = () => analyzeJavaCoupling({ classes: CLASSES, edges: parseJdeps(JDEPS), fileOf });
 const packageOf = (report, name) => report.packages.find((entry) => entry.name === name);
+function packageUnit(root, files) {
+  const [name] = files[0].split('/');
+  return {
+    unit: `package ${name}`,
+    folders: [`${root}/${name}`],
+    files: files.map((file) => `${root}/${file}`),
+    count: files.length,
+  };
+}
+const STABLE_CAUSE = {
+  folders: ['src/main/java/stable'],
+  units: [
+    ['churn/U.java'],
+    ['client/A.java', 'client/B.java', 'client/C.java'],
+    ['leaf/L.java'],
+  ].map((files) => packageUnit('src/main/java', files)),
+};
 
 describe('parseJdeps', () => {
   it('reads class edges and skips the headers', () => {
@@ -67,7 +84,7 @@ describe('analyzeJavaCoupling', () => {
       fanIn: 3,
       fanOut: 2,
       totalCoupling: 5,
-      instability: expect.closeTo(0.4, 10),
+      instability: 0.4,
     });
     expect(report.modules.find((entry) => entry.file.endsWith('/Main.java'))).toEqual({
       file: 'src/main/java/Main.java',
@@ -86,12 +103,12 @@ describe('analyzeJavaCoupling', () => {
       modules: 3,
       fanIn: 1,
       fanOut: 1,
-      instability: expect.closeTo(0.5, 10),
+      instability: 0.5,
       cohesion: {
         internalEdges: 1,
-        edgeDensity: expect.closeTo(0.1667, 10),
+        edgeDensity: 0.1667,
         connectedComponents: 2,
-        largestComponentShare: expect.closeTo(0.6667, 10),
+        largestComponentShare: 0.6667,
       },
     });
     expect(packageOf(report, 'stable')).toEqual({
@@ -99,7 +116,7 @@ describe('analyzeJavaCoupling', () => {
       modules: 1,
       fanIn: 3,
       fanOut: 2,
-      instability: expect.closeTo(0.4, 10),
+      instability: 0.4,
       cohesion: {
         internalEdges: 0,
         edgeDensity: null,
@@ -112,7 +129,7 @@ describe('analyzeJavaCoupling', () => {
       modules: 1,
       fanIn: 1,
       fanOut: 1,
-      instability: expect.closeTo(0.5, 10),
+      instability: 0.5,
       cohesion: {
         internalEdges: 0,
         edgeDensity: null,
@@ -150,7 +167,7 @@ describe('analyzeJavaCoupling', () => {
 
   it('lists package edges that point at a less stable package', () => {
     expect(analyze().stabilityDirection).toEqual([
-      { source: 'stable', target: 'churn', delta: expect.closeTo(0.1, 10) },
+      { source: 'stable', target: 'churn', delta: 0.1, cause: STABLE_CAUSE },
     ]);
   });
 });
@@ -196,6 +213,7 @@ describe('readCouplingFindings', () => {
         identity: 'package-edge:stable->churn',
         message: 'stable depends on less stable package churn',
         classification: 'enforceable',
+        cause: STABLE_CAUSE,
       },
     ]);
     expect(findings.filter((finding) => finding.classification !== 'enforceable')).not.toHaveLength(
@@ -203,7 +221,7 @@ describe('readCouplingFindings', () => {
     );
     expect(
       findings.find((finding) => finding.identity === 'package:stable:instability').metric,
-    ).toEqual({ name: 'instability', value: expect.closeTo(0.4, 10) });
+    ).toEqual({ name: 'instability', value: 0.4 });
     expect(
       findings.find(
         (finding) =>
@@ -274,7 +292,17 @@ describe('Kotlin classes', () => {
 
   it('finds a stability direction violation between Kotlin packages', () => {
     expect(analyzeKotlin().stabilityDirection).toEqual([
-      { source: 'stable', target: 'churn', delta: expect.closeTo(0.1667, 10) },
+      {
+        source: 'stable',
+        target: 'churn',
+        delta: 0.1667,
+        cause: {
+          folders: ['src/main/kotlin/stable'],
+          units: ['churn/Volatile.kt', 'client/Orders.kt', 'leaf/Leaf.kt', 'other/Reports.kt'].map(
+            (file) => packageUnit('src/main/kotlin', [file]),
+          ),
+        },
+      },
     ]);
   });
 

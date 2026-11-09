@@ -4,6 +4,14 @@ import { internalEdges, normalizePath } from '../dependency-graph/cruise.mjs';
 import { defaultResolvedLayout } from '../layout.mjs';
 import { isReuseProductionPath, projectPathOf } from '../structure/reuse/reuse-paths.mjs';
 import { sharedUsedByOneFeature } from './shared-usage.mjs';
+import {
+  featureRoles,
+  PUBLIC_FACES,
+  withPublicFace,
+} from '../../../../shared/rules/features/feature-roles.mjs';
+import { globMatcher } from '../../../../shared/paths/glob.mjs';
+import { featureLayout } from '../architecture/strict-layout.mjs';
+import { stabilityUnits } from './feature-layout.mjs';
 
 function pathWithinRoot(file, sourceRoot) {
   return file.startsWith(`${sourceRoot}/`) ? file.slice(sourceRoot.length + 1) : file;
@@ -45,8 +53,11 @@ function sharedUsage(graph, sourceRoot, { layout, projectRoot }) {
   });
 }
 
+const defaultRoles = withPublicFace(featureRoles(featureLayout), PUBLIC_FACES.typescript);
+const sharedRoots = featureLayout.sharedRoots.map((glob) => globMatcher(glob));
+
 export function analyzeCoupling(graph, sourceRoot, options = {}) {
-  const { layout = defaultResolvedLayout } = options;
+  const { layout = defaultResolvedLayout, roleOf = defaultRoles } = options;
   if (!Array.isArray(graph?.modules)) {
     throw new TypeError('Expected a dependency-cruiser graph with a modules array');
   }
@@ -67,6 +78,8 @@ export function analyzeCoupling(graph, sourceRoot, options = {}) {
     edges,
     packageOf: (file) => packageName(file, normalizedRoot),
     runtime: true,
+    fileOf: (file) => file,
+    ...stabilityUnits({ sourceRoot: normalizedRoot, sharedRoots, roleOf }),
   });
   const moduleMetrics = metrics.modules.map(({ module, ...rest }) => ({ source: module, ...rest }));
 

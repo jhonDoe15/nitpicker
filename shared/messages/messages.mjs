@@ -46,6 +46,11 @@ export const BASE_MESSAGES = {
   exportedNameCollision: `{name} is also exported by {others}; {importer} imports both. ${allowedForm('{fix}')} ${EXCEPTION_HINT}`,
   redefinedLibraryComponent: `{name} is already rendered from {package} in {count}. ${allowedForm('Use that one.')} ${EXCEPTION_HINT}`,
   newIconAsset: `${allowedForm('Use an icon from {package} instead of adding {path}.')} ${EXCEPTION_HINT}`,
+  stabilityDirectionFeature:
+    "Keep feature dependencies pointing at more stable units: {source} (instability {sourceInstability}) depends on {target} (instability {targetInstability}). Depend on the other side's public face, or move the code that joins them into the composition root.",
+  stabilityMovedBy: 'The change edited none of its files: it moved the numbers through {units}.',
+  stabilityMovedElsewhere:
+    'The change edited none of its files or of the files around it now, so the numbers moved through dependencies it removed or files it added elsewhere.',
   testConsoleOutput: `Tests print new console output: {output}. ${allowedForm('Fix the cause (for example a timer that outlives the test), or allow a third-party message in "testConsole.allow" of nitpicker.config.json.')} ${EXCEPTION_HINT}`,
 };
 
