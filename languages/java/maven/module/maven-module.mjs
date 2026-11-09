@@ -2,7 +2,7 @@ import path from 'node:path';
 import { runCheckstyle, runFormat, runPmd, runSpotbugs } from '../maven-lint.mjs';
 import { archunitMatcher } from '../maven-tests.mjs';
 import { runSpringArch } from '../spring/maven-spring-arch.mjs';
-import { withDeclaredSpring } from '../spring/arch-rules-gate.mjs';
+import { withDeclaredSpring, withFeatureFolders } from '../spring/arch-rules-gate.mjs';
 import { moduleManifest, usesReactor, writeManifest } from '../manifest/maven-manifest.mjs';
 import { ownSourceRoots } from '../../adapters/red-base/tests-failed.mjs';
 import { runErrorProne } from '../errorprone/maven-errorprone.mjs';
@@ -85,9 +85,9 @@ export function analyzeModule(options) {
   const { module, classpaths, pinned } = options;
   const reportDir = path.join(module.basedir, MAVEN_REPORT_DIRECTORY);
   const isArchunit = archunitMatcher(module.archunitIncludes);
-  const manifest = withDeclaredSpring(
-    moduleManifest({ module, classpaths, pinned }),
-    options.spring,
+  const manifest = withFeatureFolders(
+    withDeclaredSpring(moduleManifest({ module, classpaths, pinned }), options.spring),
+    options.featureFolders,
   );
   const { spring, springArch } = manifest;
   const { testsRan, failure } = readTestRuns({

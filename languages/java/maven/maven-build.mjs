@@ -116,6 +116,7 @@ function analyzeAll({ analyzed, policy, kotlin, work, ...shared }) {
         tolerateFailures: policy.snapshot === 'base',
         kotlinOptions: kotlin.options,
         spring: policy.spring,
+        featureFolders: policy.featureFolders,
         springRoles,
         springRules,
       }),
