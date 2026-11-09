@@ -37,53 +37,25 @@ function sourceTask(tool, url, options) {
 
 function runSourceTools(options) {
   const { module, reportDir, tools, classpaths, configs, pinned, kotlin, style } = options;
-  const run = { timeoutMs: options.timeoutMs };
+  const base = { module, reportDir, tools, configs, timeoutMs: options.timeoutMs };
   const tasks = [
     sourceTask(runPmd, LINT_URL, {
-      module,
-      reportDir,
-      tools,
+      ...base,
       classpaths,
-      configs,
       spring: kotlin.spring,
       springRules: options.springRules,
       reactor: options.reactor,
-      ...run,
     }),
     sourceTask(runSpotbugs, LINT_URL, {
+      ...base,
       module: kotlin.spotbugsModule,
-      reportDir,
-      tools,
-      configs,
       auxClasspath: kotlin.auxClasspath,
-      ...run,
     }),
-    sourceTask(runErrorProne, ERRORPRONE_URL, {
-      module,
-      reportDir,
-      tools,
-      classpaths,
-      configs,
-      ...run,
-    }),
-    sourceTask(runFormat, LINT_URL, {
-      module,
-      reportDir,
-      tools,
-      javaStyle: style.javaStyle,
-      ...run,
-    }),
-    sourceTask(runCheckstyle, LINT_URL, {
-      module,
-      reportDir,
-      tools,
-      configs,
-      pinned,
-      style,
-      ...run,
-    }),
-    sourceTask(runStructure, METRICS_URL, { module, reportDir, ...run }),
-    sourceTask(runJdeps, METRICS_URL, { module, reportDir, ...run }),
+    sourceTask(runErrorProne, ERRORPRONE_URL, { ...base, classpaths }),
+    sourceTask(runFormat, LINT_URL, { ...base, javaStyle: style.javaStyle }),
+    sourceTask(runCheckstyle, LINT_URL, { ...base, pinned, style }),
+    sourceTask(runStructure, METRICS_URL, base),
+    sourceTask(runJdeps, METRICS_URL, base),
   ];
   runToolsConcurrently(tasks, { spawn: options.spawn, concurrent: options.quick === true });
 }
