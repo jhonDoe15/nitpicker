@@ -109,6 +109,9 @@ JPA and Spring Data:
   for large inputs), also through a helper, `saveAll(List.of(x))` or a `@Modifying` update per row.
   The one loop allowed is the JPA batch loop that calls `persist`, then `flush` and `clear` on the
   `EntityManager`. No other `flush` or `saveAndFlush`.
+- Index every foreign key in the Flyway or Liquibase migration that adds it:
+  `CREATE INDEX ON orders (customer_id)`, or an index or primary key that starts with the column.
+  PostgreSQL does not create one (`foreign-key-index`).
 - Filter and count in the query, not after `findAll()`: not with `stream()`, `size()`, a local
   that holds the list, or a reactive `filter`, `count`, `any`, `hasElements`, `take` or
   `collectList()`. Query text is constant (a text block) and

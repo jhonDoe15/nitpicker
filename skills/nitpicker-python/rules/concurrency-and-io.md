@@ -30,6 +30,9 @@ Part of the [nitpicker-python](../SKILL.md) skill. Write these forms from the st
   truth test on a queryset or `.all()` list, `.filter()`/`.where()` instead of a comprehension with an
   `if`, `any()` or `next()`, `.order_by()` instead of `sorted()`, and `.aggregate()`/`func.sum` instead
   of `sum()`, `max()` or `Counter` over the rows (`in-memory-query`).
+- Index every foreign key in the migration that adds it (Alembic `op.create_index`, or `index=True` on
+  the column), with an index or primary key that starts with the column. PostgreSQL does not create one
+  (`foreign-key-index`).
 - Debugging and processes: remove debugger imports and breakpoints before committing. Pass
   `check=True` to `subprocess.run`, or `check=False` and handle `returncode`.
 - Child processes: give every wait a deadline: `subprocess.run(args, timeout=30, check=True)`,

@@ -2,6 +2,7 @@ import { existsSync } from 'node:fs';
 import { REPOSITORY_HYGIENE_TOOL, collectRepositoryFindings } from './files/repository-files.mjs';
 import { runCheckCli } from './cli.mjs';
 import { hardcodedNameFindings } from './migrations/hardcoded-names.mjs';
+import { foreignKeyIndexFindings } from './schema/foreign-key-index.mjs';
 import { migrationOrderFindings } from './migrations/migration-order.mjs';
 import { withoutExcepted, withoutExcluded } from './rules.mjs';
 import { trackedFiles } from './tracked-files.mjs';
@@ -11,6 +12,7 @@ function collectRepositoryHygiene(context) {
     ...collectRepositoryFindings(context),
     ...migrationOrderFindings(REPOSITORY_HYGIENE_TOOL, context),
     ...hardcodedNameFindings(REPOSITORY_HYGIENE_TOOL, context),
+    ...foreignKeyIndexFindings(REPOSITORY_HYGIENE_TOOL, context),
   ];
 }
 
