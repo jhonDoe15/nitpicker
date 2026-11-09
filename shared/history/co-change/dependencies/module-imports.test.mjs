@@ -11,10 +11,11 @@ const IMPORTS = [
 ];
 
 describe('folder imports', () => {
-  it('counts the importing files per folder pair and leaves same-folder and root files out', () => {
+  it('keeps one edge per importing file and imported folder, without same-folder or root files', () => {
     expect(folderImports(IMPORTS)).toEqual([
-      { from: 'src/billing', to: 'src/invoicing', files: 2 },
-      { from: 'src/invoicing', to: 'src/billing', files: 1 },
+      { from: 'src/billing/invoice.ts', to: 'src/invoicing' },
+      { from: 'src/billing/refund.ts', to: 'src/invoicing' },
+      { from: 'src/invoicing/ledger.ts', to: 'src/billing' },
     ]);
   });
   it('publishes the section only when co-change history is enabled', () => {

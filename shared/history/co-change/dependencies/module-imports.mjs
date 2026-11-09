@@ -12,23 +12,15 @@ function compareImports(left, right) {
 }
 
 export function folderImports(imports) {
-  const importers = new Map();
+  const pairs = new Map();
   for (const { from, to } of imports) {
     const source = folderOf(from);
     const target = folderOf(to);
     if (source !== undefined && target !== undefined && source !== target) {
-      const key = `${source}\0${target}`;
-      const files = importers.get(key) ?? new Set();
-      files.add(from);
-      importers.set(key, files);
+      pairs.set(`${from}\0${target}`, { from, to: target });
     }
   }
-  return [...importers]
-    .map(([key, files]) => {
-      const [from, to] = key.split('\0');
-      return { from, to, files: files.size };
-    })
-    .sort(compareImports);
+  return [...pairs.values()].sort(compareImports);
 }
 
 export function moduleImportsSection(imports, history) {

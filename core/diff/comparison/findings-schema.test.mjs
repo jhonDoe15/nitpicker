@@ -458,8 +458,8 @@ describe('spec/findings.schema.json', () => {
     expect(() => validate({ findings: [] }, { oneOf: [] })).toThrow(/does not support/);
   });
 
-  it('accepts folder-level module imports like the reference parser', () => {
-    const moduleImports = [{ from: 'src/billing', to: 'src/invoicing', files: 2 }];
+  it('accepts module imports like the reference parser', () => {
+    const moduleImports = [{ from: 'src/billing/invoice.ts', to: 'src/invoicing' }];
 
     expect(parseAnalyzerReport({ findings: [], moduleImports }, 'fixture')).toEqual({
       findings: [],
@@ -469,10 +469,9 @@ describe('spec/findings.schema.json', () => {
   });
 
   it.each([
-    [{ from: 'src/billing', to: 'src/invoicing', files: 0 }],
-    [{ from: 'src/billing', files: 1 }],
-    [{ from: '', to: 'src/invoicing', files: 1 }],
-    [{ from: 'src/billing', to: 'src/invoicing', files: 1, kind: 'runtime' }],
+    [{ from: 'src/billing/invoice.ts' }],
+    [{ from: '', to: 'src/invoicing' }],
+    [{ from: 'src/billing/invoice.ts', to: 'src/invoicing', files: 1 }],
   ])('rejects the malformed module import %j like the reference parser', (entry) => {
     const report = { findings: [], moduleImports: [entry] };
 

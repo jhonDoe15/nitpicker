@@ -34,6 +34,10 @@ export function cacheKey({
 
 export { resolveCacheDirectory };
 
+function cacheEntry(key, { findings, moduleImports }) {
+  return moduleImports === undefined ? { key, findings } : { key, findings, moduleImports };
+}
+
 export function createFindingsCache({
   store,
   directory,
@@ -70,7 +74,7 @@ export function createFindingsCache({
   }
   function writeReport(analyzer, report) {
     const key = keyFor(analyzer);
-    return backend.put(key, `${JSON.stringify({ key, findings: report.findings })}\n`);
+    return backend.put(key, `${JSON.stringify(cacheEntry(key, report))}\n`);
   }
   return {
     read(analyzer) {

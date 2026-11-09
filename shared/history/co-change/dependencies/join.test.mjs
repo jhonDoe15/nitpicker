@@ -33,7 +33,11 @@ describe('co-change dependencies', () => {
   it('names the direction and the number of importing files', () => {
     const run = joined({
       'change-history': historyReport(),
-      coupling: publisher([{ from: 'src/billing', to: 'src/invoicing', files: 3 }]),
+      coupling: publisher([
+        { from: 'src/billing/invoice.ts', to: 'src/invoicing' },
+        { from: 'src/billing/refund.ts', to: 'src/invoicing' },
+        { from: 'src/billing/totals.ts', to: 'src/invoicing' },
+      ]),
     });
 
     expect(sentenceOf(run)).toBe('src/billing imports src/invoicing in 3 files.');
@@ -42,8 +46,9 @@ describe('co-change dependencies', () => {
     const run = joined({
       'change-history': historyReport(),
       coupling: publisher([
-        { from: 'src/billing', to: 'src/invoicing', files: 1 },
-        { from: 'src/invoicing', to: 'src/billing', files: 2 },
+        { from: 'src/billing/invoice.ts', to: 'src/invoicing' },
+        { from: 'src/invoicing/ledger.ts', to: 'src/billing' },
+        { from: 'src/invoicing/totals.ts', to: 'src/billing' },
       ]),
     });
 
@@ -54,7 +59,7 @@ describe('co-change dependencies', () => {
   it('says neither imports the other when a publisher reported no edge between them', () => {
     const run = joined({
       'change-history': historyReport(),
-      coupling: publisher([{ from: 'src/billing', to: 'src/shared', files: 4 }]),
+      coupling: publisher([{ from: 'src/billing/invoice.ts', to: 'src/shared' }]),
     });
 
     expect(sentenceOf(run)).toBe(
@@ -73,17 +78,30 @@ describe('co-change dependencies', () => {
     const run = joined({
       'change-history': historyReport(pair),
       java: publisher([
-        { from: 'src/features/billing/api', to: 'src/features/invoicing/model', files: 2 },
+        { from: 'src/features/billing/api/Invoice.java', to: 'src/features/invoicing/model' },
+        { from: 'src/features/billing/api/Refund.java', to: 'src/features/invoicing/model' },
       ]),
-      kotlin: publisher([{ from: 'src/features/billing', to: 'src/features/invoicing', files: 1 }]),
+      kotlin: publisher([{ from: 'src/features/billing/Totals.kt', to: 'src/features/invoicing' }]),
     });
 
     expect(sentenceOf(run)).toBe('src/features/billing imports src/features/invoicing in 3 files.');
   });
+  it('counts a file once when it imports several folders of the same module', () => {
+    const pair = { ...PAIR, first: 'src/features/billing', second: 'src/features/invoicing' };
+    const run = joined({
+      'change-history': historyReport(pair),
+      coupling: publisher([
+        { from: 'src/features/billing/ui/view.ts', to: 'src/features/invoicing/api' },
+        { from: 'src/features/billing/ui/view.ts', to: 'src/features/invoicing/model' },
+      ]),
+    });
+
+    expect(sentenceOf(run)).toBe('src/features/billing imports src/features/invoicing in 1 file.');
+  });
   it('keeps a plain subfolder as its own module outside features', () => {
     const run = joined({
       'change-history': historyReport(),
-      coupling: publisher([{ from: 'src/billing/api', to: 'src/invoicing', files: 2 }]),
+      coupling: publisher([{ from: 'src/billing/api/client.ts', to: 'src/invoicing' }]),
     });
 
     expect(sentenceOf(run)).toBe(
@@ -96,7 +114,7 @@ describe('co-change dependencies', () => {
       {
         'change-history': historyReport(pair),
         coupling: publisher([
-          { from: 'app/modules/billing/api', to: 'app/modules/invoicing', files: 1 },
+          { from: 'app/modules/billing/api/client.ts', to: 'app/modules/invoicing' },
         ]),
       },
       { layout: { featureRoots: ['app/modules'] } },
