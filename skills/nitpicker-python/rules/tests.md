@@ -20,6 +20,9 @@ Part of the [nitpicker-python](../SKILL.md) skill. Write these forms from the st
   (`@pytest.mark.skipif(sys.platform == "win32", reason="...")`, `pytest.importorskip`); a
   permanent `skip`, a literal `skipif(True)` (or `1 == 1`, `"1"`, a constant) or a non-strict
   `xfail` is `switched-off-test`: delete the test, fix it, or use `xfail(strict=True)`.
+- No retries in test code (`retry-in-test`): no `@pytest.mark.flaky` (pytest-rerunfailures,
+  pytest-retry), no `@flaky` from the flaky package, no tenacity or backoff retry on a test. A test
+  that passes only on a later attempt always counts as failed. Fix the flaky cause instead.
 - Never patch the module a test is named after (`mocked-subject-in-test`): in `test_cart.py`, no
   `patch("shop.cart.total")`, no `patch.object(cart, "helper")` on a `Cart`, no `Mock(spec=Cart)`.
   Pass the collaborators in and fake them, test a helper through the public function that calls
