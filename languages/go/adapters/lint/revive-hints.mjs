@@ -103,12 +103,16 @@ const MESSAGE_HINTS = [
   ],
 ];
 
-export const REVIVE_VARYING_PARTS = new Map([
+const VARYING_PARTS = new Map([
   ['identical-ifelseif-branches', / \(lines \d+ and \d+\)/u],
   ['identical-switch-branches', / \(lines \d+ and \d+\)/u],
   ['identical-switch-conditions', / at line \d+/u],
   ['package-directory-mismatch', / or parent directory name "[^"]*"/u],
 ]);
+
+export function reviveVaryingPart(rule) {
+  return VARYING_PARTS.get(rule);
+}
 
 export function reviveHint(rule, message) {
   const match = MESSAGE_HINTS.find(([name, pattern]) => name === rule && pattern.test(message));

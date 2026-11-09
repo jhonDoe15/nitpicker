@@ -252,8 +252,8 @@ message does not already name it, and by its exception entry:
   others) get them from the program's own package load, so third-party and sibling-package types
   are known. revive's command line type-checks each package on its own and loses every type in a
   package that imports anything outside the standard library. With gofumpt as the formatter,
-  `comment-spacings` and `empty-lines` can report a line the format finding also covers; running
-  the formatter clears both.
+  `comment-spacings` and `empty-lines` are dropped in a file gofumpt would rewrite, because its
+  format finding covers the same lines.
 
 The linters skip generated files (`// Code generated ... DO NOT EDIT.`), as staticcheck does; a
 package of only generated files needs no package comment. An analyzer that fails on a package that

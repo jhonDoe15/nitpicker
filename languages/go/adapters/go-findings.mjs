@@ -17,22 +17,35 @@ export function goRouteRule(finding) {
     : sharedRouteRule(finding);
 }
 
-function formatterFindings(context) {
-  return Object.entries(readFormatReport(context.reportRoot)).flatMap(([formatter, files]) =>
+const GOFUMPT_LAYOUT_RULES = new Set(['empty-lines', 'comment-spacings']);
+
+function formatterFindings(context, report) {
+  return Object.entries(report).flatMap(([formatter, files]) =>
     formatFindings({ formatter, from: context.formatting.from, files }),
+  );
+}
+
+function withoutGofumptOverlap(findings, report) {
+  const gofumptFiles = new Set(report.gofumpt ?? []);
+  return findings.filter(
+    (finding) =>
+      finding.tool !== 'revive' ||
+      !GOFUMPT_LAYOUT_RULES.has(finding.rule) ||
+      !gofumptFiles.has(finding.path),
   );
 }
 
 export function readGoFindings(context, policy = {}) {
   const report = readInspect(context.reportRoot);
   const testRun = readTestRun(context.reportRoot);
+  const formatReport = readFormatReport(context.reportRoot);
   return [
-    ...formatterFindings(context),
+    ...formatterFindings(context, formatReport),
     ...vetFindings(
       context.projectRoot,
       readFileSync(path.join(context.reportRoot, VET_REPORT), 'utf8'),
     ),
-    ...lintFindings(context),
+    ...withoutGofumptOverlap(lintFindings(context), formatReport),
     ...testRunFindings(testRun, context.snapshot),
     ...goSlowTestFindings(context, testRun, report),
     ...goStructureFindings(report, context.projectRoot, policy),
