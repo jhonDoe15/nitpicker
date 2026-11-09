@@ -59,12 +59,12 @@ function columnTag(state, { attributes }) {
   state.index?.columns.push(state.column);
 }
 
-function foreignKeyTag(state, { attributes, at }, schema) {
+function foreignKeyTag(_state, { attributes, at }, schema) {
   const columns = namesIn(attributes.baseColumnNames);
   schema.foreignKeys.push({ table: attributes.baseTableName?.toLowerCase(), columns, at });
 }
 
-function keyTag(state, { attributes }, schema) {
+function keyTag(_state, { attributes }, schema) {
   schema.indexes.push({
     table: attributes.tableName?.toLowerCase(),
     columns: namesIn(attributes.columnNames),

@@ -93,21 +93,23 @@ function keyedColumns(part) {
   return open < 0 ? [] : columnList(part, open);
 }
 
-function definitionFacts(table, rawPart, schema) {
-  const part = afterConstraint(rawPart);
+function tableConstraint(table, part, schema) {
   const [first] = part;
-  if (first === undefined) {
-    return;
-  }
   if (isWord(first, 'foreign') && isWord(part[1], 'key')) {
     schema.foreignKeys.push({ table, columns: keyedColumns(part), at: first.at });
-    return;
+    return true;
   }
   if (!first.quoted && KEYED.has(first.word)) {
     schema.indexes.push({ table, columns: keyedColumns(part) });
-    return;
+    return true;
   }
-  if (!first.quoted && ['check', 'exclude', 'like'].includes(first.word)) {
+  return !first.quoted && ['check', 'exclude', 'like'].includes(first.word);
+}
+
+function definitionFacts(table, rawPart, schema) {
+  const part = afterConstraint(rawPart);
+  const [first] = part;
+  if (first === undefined || tableConstraint(table, part, schema)) {
     return;
   }
   const rest = part.slice(1);
@@ -184,15 +186,19 @@ function statementsOf(tokens) {
   return statements;
 }
 
+function statementFacts(tokens, schema) {
+  let resume = 0;
+  for (const index of tokens.keys()) {
+    if (index >= resume && (isWord(tokens[index], 'create') || isWord(tokens[index], 'alter'))) {
+      resume = statementAt(tokens, index, schema) + 1;
+    }
+  }
+}
+
 export function sqlSchema(text, offset = 0) {
   const schema = { foreignKeys: [], indexes: [] };
   for (const tokens of statementsOf(tokensOf(text, offset))) {
-    let resume = 0;
-    for (const index of tokens.keys()) {
-      if (index >= resume && (isWord(tokens[index], 'create') || isWord(tokens[index], 'alter'))) {
-        resume = statementAt(tokens, index, schema) + 1;
-      }
-    }
+    statementFacts(tokens, schema);
   }
   return schema;
 }

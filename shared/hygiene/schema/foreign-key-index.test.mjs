@@ -115,9 +115,10 @@ describe('foreign keys without an index in migrations', () => {
       `${FLYWAY}/V3__twice.sql:1 b(a_id)`,
       `${FLYWAY}/V3__twice.sql:2 b(a_id)#2`,
     ]);
-    expect(findings[0].message).toContain(
-      "Add `op.create_index(None, 'lines', ['shop_id'])` in a revision",
-    );
+    expect(findings[0].message.split('. ').slice(0, 2)).toEqual([
+      'alembic/versions/0002_lines.py adds a foreign key on lines (shop_id) (line 6) and no migration creates an index that starts with it',
+      "Add `op.create_index(None, 'lines', ['shop_id'])` in a revision, or `index=True` on the column followed by a generated revision",
+    ]);
   });
 
   it('checks each service by its own database driver', () => {
