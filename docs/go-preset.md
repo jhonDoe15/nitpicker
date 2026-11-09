@@ -234,8 +234,10 @@ message does not already name it, and by its exception entry:
     makes a new one; follows calls across the module's packages, not into dependencies),
     containedctx (no context in a struct field), fatcontext (no context derived from itself in a
     loop);
-  - types and values: exhaustive (a switch on an enum lists every constant; a `default` case
-    does not count), recvcheck (a type's methods all have pointer or all have value receivers),
+  - types and values: exhaustive (a switch on an enum without a `default` case lists every
+    constant), recvcheck (a type's methods all have pointer or all have value receivers, apart
+    from `String`, `Error`, `Format`, `Value` and the `Marshal...` methods, which take a value so
+    that values and pointers both implement the interface),
     durationcheck (no duration times duration), makezero (no append to a slice made with a
     length), reassign (no assigning another package's `Err...` or `EOF` variables), unconvert (no
     conversion to the type a value already has), wastedassign (no value assigned and then
@@ -362,5 +364,8 @@ with `"preset": "go"`, each naming its reason.
 - The tools are built from the Go module proxy on first use, so the first run needs network access
   (or a `GOPROXY` the project sets) and takes longer. The lint program needs Go 1.27, so a project
   on an older toolchain downloads it once with `GOTOOLCHAIN=auto`.
+- The linters type-check for the host's `GOOS` and `GOARCH`, so unconvert can report a conversion
+  that is needed on another platform (a `syscall.Stat_t` field that is `int64` on linux/amd64 but
+  not on 32-bit targets); such a file takes an `exceptions` entry.
 - The linters run on the whole module for both snapshots; a finding is new when its message and
   line text are new, as for vet.

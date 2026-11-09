@@ -23,3 +23,15 @@ func (wallet *Wallet) Total() int {
 func (wallet *Wallet) Deposit(amount int) {
 	wallet.Balance += amount
 }
+
+type Meter struct {
+	Reading int
+}
+
+func (meter Meter) String() string {
+	return "meter"
+}
+
+func (meter *Meter) Add(amount int) {
+	meter.Reading += amount
+}

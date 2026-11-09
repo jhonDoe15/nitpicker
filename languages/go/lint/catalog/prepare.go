@@ -59,9 +59,9 @@ func ignoreSuppressions(files []*ast.File) {
 func neutralized(text string) string {
 	switch {
 	case ignoreDirective.MatchString(text):
-		return strings.Replace(text, "nolint:", "nolinted:", 1)
+		return strings.Replace(text, "nolint:", "nolinx:", 1)
 	case strings.HasPrefix(text, exhaustiveDirective):
-		return "//exhaustiveignored:" + text[len(exhaustiveDirective):]
+		return "//exhaustivx:" + text[len(exhaustiveDirective):]
 	default:
 		return text
 	}

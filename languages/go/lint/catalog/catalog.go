@@ -57,5 +57,8 @@ func Linters() []Linter {
 // `//lint:ignore` comments some linters read.
 func Configure() error {
 	commentmap.Analyzer.Run = func(*analysis.Pass) (any, error) { return comment.Maps{}, nil }
-	return errorComparisons.Flags.Set("errorf", "true")
+	if err := errorComparisons.Flags.Set("errorf", "true"); err != nil {
+		return err
+	}
+	return configureValues()
 }
