@@ -16,11 +16,11 @@ class Order(Base):
 class Line(Base):
     __tablename__ = "lines"
     id: Mapped[int] = mapped_column(primary_key=True)
-    order_id: Mapped[int] = mapped_column(ForeignKey("orders.id"))
+    order_id: Mapped[int] = mapped_column(ForeignKey("orders.id"), index=True)
     order: Mapped[Order] = relationship(back_populates="lines")
 
 
 class Payment(Base):
     __tablename__ = "payments"
     id: Mapped[int] = mapped_column(primary_key=True)
-    order_id: Mapped[int] = mapped_column(ForeignKey("orders.id"))
+    order_id: Mapped[int] = mapped_column(ForeignKey("orders.id"), index=True)
