@@ -10,6 +10,8 @@ import { collectionOptions } from '../configuration/pytest/collection-options.mj
 import { readPytestConfig } from '../configuration/pytest/pytest-config.mjs';
 import { listProductionModules, testFileMatcher } from './python-sources.mjs';
 import { entryFilesOf } from '../../rules/libraries/entry-modules.mjs';
+import { designFiles } from './design/design-files.mjs';
+import { designDistributions } from './design/design-distributions.mjs';
 import { boundaryRoots, detectLibraries } from '../../rules/libraries/project-libraries.mjs';
 import { dropGeneratedFindings } from '../../libraries/generated-files.mjs';
 import {
@@ -89,8 +91,16 @@ export function checkRules(context) {
   const options = path.join(context.reportRoot, OPTIONS_FILE);
   const sources = pythonSources(context);
   const pytestConfig = readPytestConfig(context.projectRoot);
+  const design = designFiles(context, sources);
   writeFileSync(list, sources.join('\n'));
-  writeFileSync(options, JSON.stringify(rulesOptions(context, sources, pytestConfig)));
+  writeFileSync(
+    options,
+    JSON.stringify({
+      ...rulesOptions(context, sources, pytestConfig),
+      designFiles: design,
+      distributions: designDistributions(context.projectRoot, design),
+    }),
+  );
   run(
     context,
     ['python', '-I', RULES_SCRIPT, list, path.join(context.reportRoot, RULES_REPORT), options],
