@@ -1,5 +1,5 @@
 import { existsSync, readFileSync } from 'node:fs';
-import path from 'node:path';
+import { pathInside } from '../../../../../shared/filesystem.mjs';
 import { crossedFetchAt, fetchSource } from './java/fetch-sites.mjs';
 import { javaEntities } from './java/java-entities.mjs';
 
@@ -14,12 +14,8 @@ function isCandidate(finding) {
 }
 
 function sourceFile(projectRoot, relative) {
-  const root = path.resolve(projectRoot);
-  const file = path.resolve(root, relative);
-  if (!file.startsWith(root + path.sep) || !existsSync(file)) {
-    return undefined;
-  }
-  return file;
+  const file = pathInside(projectRoot, relative);
+  return file !== undefined && existsSync(file) ? file : undefined;
 }
 
 export function withCrossedFetches(findings, { projectRoot, sourceRoots = [] }) {

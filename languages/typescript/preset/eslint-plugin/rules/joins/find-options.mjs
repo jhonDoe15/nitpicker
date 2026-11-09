@@ -1,5 +1,6 @@
-import { existsSync, readFileSync } from 'node:fs';
+import { readFileSync } from 'node:fs';
 import path from 'node:path';
+import { firstFileIn } from '../../../../../../shared/filesystem.mjs';
 import { stringValue } from '../analysis/constant-resolution.mjs';
 import { nearestManifest } from '../dependencies/package-manifest.mjs';
 import {
@@ -76,12 +77,13 @@ function isQueryStrategy(context, options) {
   );
 }
 
-function readText(file) {
-  return existsSync(file) ? readFileSync(file, 'utf8') : '';
+function textIn(directory, name) {
+  const file = firstFileIn(directory, [name]);
+  return file === undefined ? '' : readFileSync(file, 'utf8');
 }
 
 function majorVersion(directory) {
-  const text = readText(path.join(directory, MIKRO_ORM_CORE));
+  const text = textIn(directory, MIKRO_ORM_CORE);
   const version = text === '' ? undefined : JSON.parse(text).version;
   return typeof version === 'string' ? Number.parseInt(version, 10) : undefined;
 }
@@ -96,9 +98,7 @@ function projectJoinsByDefault(context) {
   if (major !== undefined && major < JOINED_SINCE_MAJOR) {
     return false;
   }
-  return !MIKRO_ORM_CONFIGS.some((file) =>
-    SELECT_IN_DEFAULT.test(readText(path.join(directory, file))),
-  );
+  return !MIKRO_ORM_CONFIGS.some((file) => SELECT_IN_DEFAULT.test(textIn(directory, file)));
 }
 
 function strategyOf(context, options) {
