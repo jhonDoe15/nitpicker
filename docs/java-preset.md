@@ -32,6 +32,7 @@ Each topic has its own page, so two changes to different topics never edit the s
 - [Slice 5: CRAP](java-preset/slice-5-crap.md)
 - [Slice 6: duplicates](java-preset/slice-6-duplicates.md)
 - [Slice 8: gate on changed coverage](java-preset/slice-8-gate-on-changed-coverage.md)
+- [Design rules](java-preset/design-rules.md)
 - [Slow tests](java-preset/slow-tests.md)
 - [Tests that never run](java-preset/tests-that-never-run.md)
 - [Tests that copy a constant](java-preset/tests-that-copy-a-constant.md)
