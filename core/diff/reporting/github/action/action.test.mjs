@@ -121,7 +121,7 @@ describe('the sample workflow', () => {
       workflow.permissions,
     ]).toEqual([['main'], ['labeled'], null, { contents: 'read' }]);
     expect(workflow.jobs.changes.if).toBe(
-      "github.event_name != 'pull_request' || github.event.label.name == 'run-ci'",
+      "github.event_name != 'pull_request' || contains(github.event.pull_request.labels.*.name, 'run-ci')",
     );
     expect([job.needs, job.if]).toEqual(['changes', "needs.changes.outputs.run == 'true'"]);
     expect([job['timeout-minutes'], job.strategy.matrix.os, job.defaults.run.shell]).toEqual([

@@ -21,17 +21,17 @@ on:
     types: [labeled]
   workflow_dispatch:
 
-# A newer request cancels the older run on the same pull request, other labels do not. On main a started
+# A newer run on the same pull request cancels the older one. On main a started
 # run finishes, and a newer push replaces a run that is still waiting.
 concurrency:
-  group: ${{ github.workflow }}-${{ github.event_name == 'push' && 'main' || github.event.label.name == 'run-ci' && github.event.pull_request.number || github.run_id }}
+  group: ${{ github.workflow }}-${{ github.event_name == 'push' && 'main' || github.event.pull_request.number || github.run_id }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   # On a pull request, the jobs below run only when the pull request changes a file in this
   # workflow's push paths, or when the changed files cannot be listed. Other runs check everything.
   changes:
-    if: github.event_name != 'pull_request' || github.event.label.name == 'run-ci'
+    if: github.event_name != 'pull_request' || contains(github.event.pull_request.labels.*.name, 'run-ci')
     runs-on: ubuntu-latest
     timeout-minutes: 5
     permissions:
@@ -117,10 +117,7 @@ jobs:
       - run: node scripts/test-shards/verify-e2e-shards.mjs python
 
   python-e2e:
-    name: >-
-      ${{ (github.event_name != 'pull_request' || github.event.label.name == 'run-ci') &&
-      'python-e2e' || 'python-e2e (no CI on this label)' }}
-    if: ${{ always() && (github.event_name != 'pull_request' || github.event.label.name == 'run-ci') }}
+    if: ${{ always() && (github.event_name != 'pull_request' || contains(github.event.pull_request.labels.*.name, 'run-ci')) }}
     needs: [changes, python-shard-plan, python-shard]
     runs-on: ubuntu-latest
     timeout-minutes: 5

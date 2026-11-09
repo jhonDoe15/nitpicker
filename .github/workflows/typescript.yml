@@ -33,19 +33,18 @@ on:
   workflow_dispatch:
 
 # Pull requests are checked locally with `npm run check` (CONTRIBUTING.md). On a pull request CI runs
-# only when the `run-ci` label is added; a newer request cancels the older run, other labels do not.
-# Another label still starts the workflow, with every job skipped. GitHub counts a skipped required
-# check as passed and reads a check from the newest run, so on such a label the required jobs take
-# another name and the run reports nothing named `test` or `self-gate`. The accept-policy-change
-# label runs the self-gate again.
+# when a label is added while the pull request carries the `run-ci` label, and a newer run cancels the
+# older one. GitHub keeps only the newest run of a workflow for a commit and counts a skipped required
+# check as passed, so every label runs CI again instead of skipping: otherwise any label would hide a
+# failed run behind skipped checks. Without `run-ci` the self-gate still runs and `test` fails.
 # On main a started run finishes, and a newer push replaces a run that is still waiting.
 concurrency:
-  group: ${{ github.workflow }}-${{ github.event_name == 'push' && 'main' || github.event.label.name == 'run-ci' && github.event.pull_request.number || github.run_id }}
+  group: ${{ github.workflow }}-${{ github.event_name == 'push' && 'main' || github.event.pull_request.number || github.run_id }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   container-smoke:
-    if: github.event_name != 'pull_request' || github.event.label.name == 'run-ci'
+    if: github.event_name != 'pull_request' || contains(github.event.pull_request.labels.*.name, 'run-ci')
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
@@ -80,7 +79,7 @@ jobs:
   # slowest shard sets the time instead of the whole suite. The required `test` check is the job
   # below that passes only when every shard passed. scripts/test-shards/sequencer.mjs balances them.
   test-shard:
-    if: github.event_name != 'pull_request' || github.event.label.name == 'run-ci'
+    if: github.event_name != 'pull_request' || contains(github.event.pull_request.labels.*.name, 'run-ci')
     name: test shard ${{ matrix.shard }}/${{ strategy.job-total }}
     runs-on: ubuntu-latest
     # A healthy shard takes 6 to 9 minutes; this stops a hung one well before the 6-hour default.
@@ -114,10 +113,7 @@ jobs:
       - run: npm test -- --maxWorkers=100% --shard=${{ matrix.shard }}/${{ strategy.job-total }}
 
   test:
-    name: >-
-      ${{ (github.event_name != 'pull_request' || github.event.label.name == 'run-ci') &&
-      'test' || 'test (no CI on this label)' }}
-    if: ${{ always() && (github.event_name != 'pull_request' || github.event.label.name == 'run-ci') }}
+    if: always()
     needs: test-shard
     runs-on: ubuntu-latest
     timeout-minutes: 5
@@ -125,7 +121,11 @@ jobs:
       - name: Every test shard passed
         env:
           RESULT: ${{ needs.test-shard.result }}
-        run: test "$RESULT" = success
+        run: |
+          if [ "$RESULT" = skipped ]; then
+            echo "::error::The tests did not run: add the run-ci label to run CI on this pull request."
+          fi
+          test "$RESULT" = success
 
   # nitpicker gates its own repository: only new findings on lines a PR touches fail, everything
   # already in the merge base stays baselined. A separate job, not a step after the tests, because it
@@ -133,14 +133,7 @@ jobs:
   # and a failing gate never hides test results (or the other way round). Not on main: there the
   # head is the base, so there is nothing to compare.
   self-gate:
-    name: >-
-      ${{ (github.event_name != 'pull_request' || github.event.label.name == 'run-ci' ||
-      github.event.label.name == 'accept-policy-change') &&
-      'self-gate' || 'self-gate (no CI on this label)' }}
-    if: >-
-      github.ref != 'refs/heads/main' &&
-      (github.event_name != 'pull_request' || github.event.label.name == 'run-ci' ||
-      github.event.label.name == 'accept-policy-change')
+    if: github.ref != 'refs/heads/main'
     runs-on: ubuntu-latest
     timeout-minutes: 15
     permissions:
@@ -224,7 +217,7 @@ jobs:
   # git-ignored folders, and the peers a consumer brings. Not a required check. Node.js 22.14 is the
   # oldest supported version; its bundled npm 10 installs the repository from the lockfile.
   installed:
-    if: github.event_name != 'pull_request' || github.event.label.name == 'run-ci'
+    if: github.event_name != 'pull_request' || contains(github.event.pull_request.labels.*.name, 'run-ci')
     runs-on: ubuntu-latest
     timeout-minutes: 30
     strategy:

@@ -237,18 +237,20 @@ than the wait. Without `statuses: read` the action cannot see an approval, and s
 gate fails. Coding agents never add the label.
 
 When a workflow of yours also runs on the `labeled` event (for example to start CI with a label),
-skipping its required jobs for the other labels with a job `if` is not enough: GitHub counts a
-skipped required check as passed and reads a check from the newest run, so adding any label after
-a failed run would make the pull request mergeable. Give those jobs another name on the other
-labels too, so the run reports nothing under the required name, as the workflows of this
-repository do:
+do not skip its required jobs for the other labels with a job `if`. GitHub keeps only the newest
+run of a workflow for a commit and counts a skipped required check as passed, so adding any label
+after a failed run would make the pull request mergeable. Decide on the labels the pull request
+carries instead of the label just added, and let a required job fail rather than skip, as the
+workflows of this repository do:
 
 ```yaml
 gate:
-  name: >-
-    ${{ (github.event.action != 'labeled' || github.event.label.name == 'run-ci') &&
-    'gate' || 'gate (no CI on this label)' }}
-  if: github.event.action != 'labeled' || github.event.label.name == 'run-ci'
+  if: always()
+  needs: tests
+  steps:
+    - run: test "${{ needs.tests.result }}" = success
+tests:
+  if: github.event_name != 'pull_request' || contains(github.event.pull_request.labels.*.name, 'run-ci')
 ```
 
 ### Without the action
