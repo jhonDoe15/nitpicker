@@ -54,6 +54,7 @@ describe('contract-infrastructure-type findings', () => {
         path: 'src/main/java/com/shop/accounts/AccountService.java',
         identity,
         message: `${message} If this is intended, add {"rule":"archunit/${RULE}","paths":["src/main/java/com/shop/accounts/AccountService.java"],"reason":"..."} to "exceptions" in nitpicker.config.json.`,
+        allowedForm: message,
         classification: 'enforceable',
         symbol: 'AccountService',
       });

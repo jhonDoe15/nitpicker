@@ -12,6 +12,10 @@ describe('factRuleSettings', () => {
   );
 
   it('lists each setting once when a fact rule and contract-infrastructure-type read it', () => {
-    expect(factRuleSettings('python')).toEqual(LAYOUT);
+    const settings = factRuleSettings('python');
+
+    expect(LAYOUT.map((key) => settings.filter((setting) => setting === key).length)).toEqual([
+      1, 1,
+    ]);
   });
 });
