@@ -21,6 +21,8 @@ export function installedHelpUri(links, id) {
   return referenceUrl(links.reference.exact.get(id)[0], links.tagRoot);
 }
 
+const PRETTIER_MESSAGE =
+  'These lines are not formatted with Prettier. Run `nitpicker --fix` to format the changed files; it skips a file that was already unformatted on the base, so format such lines by hand.';
 const DEBUGGER_MESSAGE =
   '`debugger` statement is not allowed. If this is intended, add {"rule":"no-debugger",' +
   '"paths":["src/main/example.ts"],"reason":"..."} to "exceptions" in nitpicker.config.json.';
@@ -52,7 +54,7 @@ export function expectedDirtyFindings(links) {
       rule: 'prettier/prettier',
       path: 'src/main/example.ts',
       identity: 'format-diff:3021261b8c9abc3d63b74d13',
-      message: 'Format these lines with Prettier',
+      message: PRETTIER_MESSAGE,
       classification: 'enforceable',
       location: { line: 1, endLine: 1 },
       helpUri: installedHelpUri(links, 'prettier-format/prettier/prettier'),
@@ -62,7 +64,7 @@ export function expectedDirtyFindings(links) {
       rule: 'prettier/prettier',
       path: 'src/main/example.ts',
       identity: 'format-diff:92772ea69de4f061a708c457',
-      message: 'Format these lines with Prettier',
+      message: PRETTIER_MESSAGE,
       classification: 'enforceable',
       location: { line: 3, endLine: 3 },
       helpUri: installedHelpUri(links, 'prettier-format/prettier/prettier'),
@@ -85,8 +87,8 @@ export function expectedSnapshotOutput(links) {
     'prettier-format: total=2 enforceable=2 descriptive=0',
     '',
     'Enforceable findings:',
-    'prettier-format/prettier/prettier src/main/example.ts:1 Format these lines with Prettier',
-    'prettier-format/prettier/prettier src/main/example.ts:3 Format these lines with Prettier',
+    `prettier-format/prettier/prettier src/main/example.ts:1 ${PRETTIER_MESSAGE}`,
+    `prettier-format/prettier/prettier src/main/example.ts:3 ${PRETTIER_MESSAGE}`,
     '',
     `Rule reference: ${links.tagRoot}/docs/rules/README.md (nitpicker explain <tool/rule> prints one rule)`,
     'nitpicker: head: running 1 analyzer',
@@ -101,7 +103,7 @@ export function expectedDirtyOutput(root) {
 Quality gate summary
 ✖ 3 new enforceable violations
   by area: format 2 · lint 1
-  prettier-format/prettier/prettier: Format these lines with Prettier
+  prettier-format/prettier/prettier: ${PRETTIER_MESSAGE}
     src/main/example.ts:1, 3
   eslint-lint/no-debugger: ${DEBUGGER_MESSAGE.replace(' If', '\n    src/main/example.ts:2:3\n    If')}
 Ran only: eslint-lint, prettier-format. Run nitpicker without --analyzer before you finish.
