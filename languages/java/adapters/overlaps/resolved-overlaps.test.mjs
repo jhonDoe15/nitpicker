@@ -21,6 +21,13 @@ const PARTIAL = new Set([
   'URF_UNREAD_FIELD',
   'UUF_UNUSED_FIELD',
 ]);
+const KOTLIN_TOOL = 'kotlin-source/';
+const KOTLIN_EVIDENCE = {
+  'line: kotlin-source/ChildCoroutineOutlivesResource over pmd/CoroutineEscapesTest': path.resolve(
+    import.meta.dirname,
+    '../kotlin-e2e/review-rules/kotlin-preset-review-rules-coroutines.e2e.test.mjs',
+  ),
+};
 const roots = [];
 
 afterAll(() => {
@@ -50,6 +57,14 @@ function droppedBy({ primary, secondary }) {
   return own.filter(
     (finding) => !kept.has(finding) && matchesRule(secondary, printedRule(finding)),
   );
+}
+
+function pairName({ primary, secondary, scope }) {
+  return `${scope}: ${primary.join(', ')} over ${secondary.join(', ')}`;
+}
+
+function kotlinOnly({ primary, secondary }) {
+  return [...primary, ...secondary].some((rule) => rule.startsWith(KOTLIN_TOOL));
 }
 
 function name(finding) {
@@ -92,7 +107,6 @@ describe('overlaps on the probe project', () => {
         ],
       ],
       ['C3Locks.java:15', ['errorprone/LockOnBoxedPrimitive', 'pmd/AvoidSynchronizedStatement']],
-      ['C4Switches.java:34', ['errorprone/EmptyCatch', 'pmd/SwallowedInterruptedException']],
       [
         'C4Switches.java:6',
         ['errorprone/StatementSwitchToExpressionSwitch', 'pmd/NonExhaustiveSwitch'],
@@ -177,11 +191,23 @@ describe('overlaps on the probe project', () => {
 
   it('drop a secondary under every pair of the table, so each pair matches real findings', () => {
     expect(
-      OVERLAP_PAIRS.filter((pair) => droppedBy(pair).length === 0).map(
-        ({ primary, secondary, scope }) =>
-          `${scope}: ${primary.join(', ')} over ${secondary.join(', ')}`,
+      OVERLAP_PAIRS.filter((pair) => !kotlinOnly(pair) && droppedBy(pair).length === 0).map(
+        pairName,
       ),
     ).toStrictEqual([]);
+  });
+
+  it('leave only the Kotlin pairs to the Kotlin e2e, which runs both rules on the same line', () => {
+    const kotlinPairs = OVERLAP_PAIRS.filter(kotlinOnly);
+    const unexercised = kotlinPairs.flatMap((pair) => {
+      const evidence = readFileSync(KOTLIN_EVIDENCE[pairName(pair)], 'utf8');
+      return [...pair.primary, ...pair.secondary].filter(
+        (rule) => !evidence.includes(rule.split('/').at(-1)),
+      );
+    });
+
+    expect(kotlinPairs.map(pairName)).toStrictEqual(Object.keys(KOTLIN_EVIDENCE));
+    expect(unexercised).toStrictEqual([]);
   });
 
   it('keep the cases only the secondary side covers', () => {
@@ -244,7 +270,7 @@ describe('the overlap list in docs/java-preset.md', () => {
       .map(guideText)
       .join('\n')
       .split('\n')
-      .filter((line) => /^- (?:line|member|javadoc|class|field|file): `/u.test(line));
+      .filter((line) => /^- (?:line|member|javadoc|catch|class|field|file): `/u.test(line));
 
     expect(documented).toStrictEqual(
       OVERLAP_PAIRS.map(

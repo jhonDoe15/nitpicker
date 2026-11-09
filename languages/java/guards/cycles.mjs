@@ -1,4 +1,4 @@
-import { listed } from '../../../shared/rules/finding-helpers.mjs';
+import { listed } from '../../../shared/rules/features/feature-boundaries.mjs';
 import { RULE_IDS } from '../../../shared/policy.mjs';
 
 const PACKAGE_CYCLE_RULE = RULE_IDS.packageCycle;

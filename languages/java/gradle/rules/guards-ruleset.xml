@@ -54,15 +54,6 @@
 //Annotation[@SimpleName = 'SneakyThrows']
 ]]></value></property></properties>
   </rule>
-  <rule name="SwallowedInterruptedException" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
-        message="Restore the interrupt with Thread.currentThread().interrupt() or rethrow when catching InterruptedException.">
-    <description>Swallowing InterruptedException hides a cancellation request.</description>
-    <priority>3</priority>
-    <properties><property name="xpath"><value><![CDATA[
-//CatchClause[CatchParameter/(ClassType | UnionType/ClassType)[@SimpleName = 'InterruptedException']]
-  [not(.//MethodCall[@MethodName = 'interrupt'][*[1][self::MethodCall[@MethodName = 'currentThread']]] or .//ThrowStatement)]
-]]></value></property></properties>
-  </rule>
   <rule name="CollectorsToList" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
         message="Use Stream.toList(). For a mutable result use collect(Collectors.toCollection(ArrayList::new)).">
     <description>Stream.toList() is the short form of collect(Collectors.toList()).</description>

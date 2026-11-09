@@ -1,16 +1,19 @@
 package nitpicker.kotlinpsi.facts;
 
 import static nitpicker.kotlinpsi.common.Psi.*;
+import static nitpicker.kotlinpsi.common.Signatures.*;
 
 import java.util.*;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import nitpicker.kotlinpsi.bodies.Initializers;
 import nitpicker.kotlinpsi.common.Frame;
-import org.jetbrains.kotlin.com.intellij.psi.PsiElement;
 import org.jetbrains.kotlin.com.intellij.psi.util.PsiTreeUtil;
 import org.jetbrains.kotlin.lexer.KtTokens;
 import org.jetbrains.kotlin.psi.*;
 
 final class Declarations {
+  private static final Pattern CALL_ROOT = Pattern.compile("^\\s*([\\w.]+)\\s*\\(");
   private final State state;
 
   Declarations(State state) {
@@ -98,25 +101,8 @@ final class Declarations {
             "constructorAnnotations", primary == null ? null : annotationEntries(primary),
             "genericSupers", genericSupers(klass), "typeBounds", typeBounds(klass.getTypeParameters())));
     return new Frame(frame, m("k", "class", "name", simple, "qualified", qualified,
-        "supers", supertypes(klass), "visibility", own));
-  }
-
-  private static List<Object> typeBounds(List<KtTypeParameter> parameters) {
-    List<Object> bounds = new ArrayList<>();
-    for (KtTypeParameter parameter : parameters) {
-      bounds.add(m("name", parameter.getName(), "bound", clip(parameter.getExtendsBound())));
-    }
-    return bounds.isEmpty() ? null : bounds;
-  }
-
-  private static List<Object> genericSupers(KtClassOrObject klass) {
-    List<Object> texts = new ArrayList<>();
-    for (KtSuperTypeListEntry entry : klass.getSuperTypeListEntries()) {
-      if (entry.getTypeReference() != null && entry.getTypeReference().getText().contains("<")) {
-        texts.add(entry.getTypeReference().getText());
-      }
-    }
-    return texts.isEmpty() ? null : texts;
+        "supers", supertypes(klass), "visibility", own, "object", klass instanceof KtObjectDeclaration,
+        "annotations", annotationNames(klass)));
   }
 
   private static String superClass(KtClassOrObject klass) {
@@ -154,7 +140,7 @@ final class Declarations {
     return names;
   }
 
-  Frame declareFunction(KtNamedFunction function, Frame frame) {
+  Frame declareFunction(KtNamedFunction function, Frame frame, boolean shielded) {
     Frame holder = frame;
     while (holder != null && !"class".equals(holder.kind()) && !"object".equals(holder.kind())) {
       holder = holder.parent;
@@ -180,8 +166,11 @@ final class Declarations {
             "emptyBody", body instanceof KtBlockExpression && ((KtBlockExpression) body).getStatements().isEmpty(),
             "expressionBody", body != null && !(body instanceof KtBlockExpression) ? Boolean.TRUE : null,
             "returns", body instanceof KtNameReferenceExpression ? nameOf(body) : null,
-            "forward", forward(function), "typeBounds", typeBounds(function.getTypeParameters())));
-    Map<String, Object> scope = m("k", "fun", "name", function.getName());
+            "forward", forward(function), "typeBounds", typeBounds(function.getTypeParameters()),
+            "shielded", shielded ? Boolean.TRUE : null));
+    Map<String, Object> scope = m("k", "fun", "name", function.getName(), "topLevel", owner == null && !local,
+        "annotations", annotationNames(function), "receiver", clip(function.getReceiverTypeReference()),
+        "parameters", parameterTypes(function));
     if (function.getName() == null) {
       scope.putAll(Scopes.hostData(function));
     }
@@ -226,6 +215,7 @@ final class Declarations {
             "delegated", property.getDelegate() != null, "computed", computed(property),
             "annotations", annotationNames(property),
             "annotationEntries", annotationEntries(property), "initializer", Initializers.callee(property),
+            "argument", Initializers.argument(property),
             "literal", Initializers.literal(property), "literalText", Initializers.literalText(property),
             "abstract", isAbstract(property) ? Boolean.TRUE : null,
             "initializerQualifier", Initializers.qualifier(property.getInitializer()),
@@ -252,6 +242,23 @@ final class Declarations {
       }
     }
     return Boolean.TRUE;
+  }
+
+  void typed(String name, KtTypeReference type, KtExpression initializer, Frame frame) {
+    if (!state.locators || name == null) {
+      return;
+    }
+    String text = type != null ? withoutTypeArguments(type.getText()).replace("?", "").trim() : null;
+    if (text == null && initializer != null) {
+      Matcher matcher = CALL_ROOT.matcher(initializer.getText());
+      text = matcher.find() ? matcher.group(1) : null;
+    }
+    if (text != null) {
+      boolean member = frame != null && ("class".equals(frame.kind()) || "object".equals(frame.kind()));
+      state.typed.add(
+          m("name", name, "type", clip(text, 120), "scope", frame == null ? null : frame.data.get("frameId"),
+              "member", member));
+    }
   }
 
   void declareTypeAlias(KtTypeAlias alias) {

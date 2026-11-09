@@ -7,7 +7,7 @@ export const PROJECT_TOOL_CONFIGS = new Map([
   ['checkstyle', 'config/checkstyle/checkstyle.xml'],
 ]);
 
-export const BUILD_DECLARED_TOOLS = ['spotbugs'];
+export const BUILD_DECLARED_TOOLS = ['spotbugs', 'errorprone', 'pit'];
 
 const STYLE_TOOLS = new Map([
   ['python', ['ruff', 'black', 'pyright', 'mypy', 'mutmut', 'coverage']],

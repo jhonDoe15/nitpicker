@@ -1,5 +1,5 @@
 import { normalizeGitPath } from '../../git/normalize.mjs';
-import { baseLineOf, canMapLines, isChangedLine } from '../../git/patches/lines/line-map.mjs';
+import { lineMapOf } from '../../git/unchanged-lines.mjs';
 
 function linesOf({ startLine, endLine }) {
   return Array.from({ length: endLine - startLine + 1 }, (_, offset) => startLine + offset);
@@ -13,13 +13,25 @@ function baseSpanFor(headSpan, baseSpans, renames) {
   });
 }
 
+function isChangedLine(changed, line) {
+  return (
+    changed !== undefined &&
+    (changed.added || changed.ranges.some(([start, end]) => start <= line && line <= end))
+  );
+}
+
+function canMapLines(changed) {
+  return changed === undefined || (changed.added !== true && Array.isArray(changed.hunks));
+}
+
 function keptLines(headSpan, baseSpan, changed) {
   const lines = linesOf(headSpan);
   if (baseSpan === undefined || !canMapLines(changed)) {
     return lines.filter((line) => !isChangedLine(changed, line));
   }
+  const lineMap = lineMapOf(changed);
   return lines.filter((line) => {
-    const baseLine = baseLineOf(changed, line);
+    const baseLine = isChangedLine(changed, line) ? undefined : lineMap.baseLineOf(line);
     return baseLine !== undefined && baseLine >= baseSpan.startLine && baseLine <= baseSpan.endLine;
   });
 }

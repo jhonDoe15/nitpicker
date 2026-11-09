@@ -410,7 +410,11 @@ describe('where mypy finds its config', () => {
 
   it('names a pyproject.toml it cannot parse', () => {
     expect(() => generated({ 'pyproject.toml': '[tool.mypy\nx = 1\n' })).toThrow(
-      /^pyproject\.toml could not be parsed \([\s\S]+\): fix it$/u,
+      new RegExp(
+        String.raw`^pyproject\.toml could not be parsed \([\s\S]+\): fix it\n` +
+          String.raw`See https://\S+#a-project-tool-config-is-missing-or-broken$`,
+        'u',
+      ),
     );
   });
 });

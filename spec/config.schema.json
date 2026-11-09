@@ -217,6 +217,12 @@
         }
       }
     },
+    "analyzerTimeoutMinutes": {
+      "description": "Minutes each named analyzer may run before it is stopped. A deadline is not policy: it leaves the policy hash alone.",
+      "type": "object",
+      "propertyNames": { "pattern": "\\S" },
+      "additionalProperties": { "type": "integer", "minimum": 1, "maximum": 35791 }
+    },
     "legacyInventory": {
       "description": "Path of the legacy inventory inside the project; nitpicker.legacy.json when absent.",
       "type": "string",
@@ -370,12 +376,27 @@
                         "structure/sibling-copy-edit",
                         "shared-used-by-one-feature",
                         "coupling/shared-used-by-one-feature",
+                        "feature-internal-import",
+                        "coupling/feature-internal-import",
+                        "shared-imports-feature",
+                        "coupling/shared-imports-feature",
+                        "feature-cycle",
+                        "coupling/feature-cycle",
                         "test-only-export",
                         "dead-code/test-only-export",
                         "coupling/test-only-export",
                         "doc-comment-content",
                         "facts/doc-comment-content",
                         "test-console-output",
+                        "mutable-state-escape",
+                        "context-threading",
+                        "caller-protocol",
+                        "protocol-contract",
+                        "forwarding-chain",
+                        "disjoint-consumer-groups",
+                        "data-clump",
+                        "repeated-policy-decision",
+                        "foreign-state-decision",
                         "folder-depth-limit",
                         "structure/folder-depth-limit",
                         "class-methods-limit",
@@ -849,6 +870,36 @@
             }
           }
         },
+        "errorprone": {
+          "description": "Settings of errorprone.",
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["precedence"],
+          "properties": {
+            "precedence": {
+              "description": "Which config errorprone uses: \"project\" is your own config file, \"nitpicker\" is the preset's. List each at most once.",
+              "type": "array",
+              "minItems": 1,
+              "uniqueItems": true,
+              "items": { "enum": ["project", "nitpicker"] }
+            }
+          }
+        },
+        "pit": {
+          "description": "Settings of pit.",
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["precedence"],
+          "properties": {
+            "precedence": {
+              "description": "Which config pit uses: \"project\" is your own config file, \"nitpicker\" is the preset's. List each at most once.",
+              "type": "array",
+              "minItems": 1,
+              "uniqueItems": true,
+              "items": { "enum": ["project", "nitpicker"] }
+            }
+          }
+        },
         "ktlint": {
           "description": "Settings of ktlint.",
           "type": "object",
@@ -1067,6 +1118,45 @@
         }
       }
     },
+    "protocols": {
+      "description": "Lifecycle contracts for the protocol-contract rule: a type whose open member must be followed by a close member on every exit.",
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["type", "open", "close"],
+        "properties": {
+          "type": {
+            "description": "The class or interface name, such as \"Session\".",
+            "type": "string",
+            "minLength": 1
+          },
+          "open": {
+            "description": "Members that start the lifecycle.",
+            "type": "array",
+            "minItems": 1,
+            "items": { "type": "string", "minLength": 1 }
+          },
+          "close": {
+            "description": "Members that end the lifecycle; one must run on every exit.",
+            "type": "array",
+            "minItems": 1,
+            "items": { "type": "string", "minLength": 1 }
+          },
+          "steps": {
+            "description": "Members that must come after an open member.",
+            "type": "array",
+            "minItems": 1,
+            "items": { "type": "string", "minLength": 1 }
+          },
+          "reason": {
+            "description": "Why the contract exists.",
+            "type": "string",
+            "pattern": "\\S"
+          }
+        }
+      }
+    },
     "kotlin": {
       "description": "Kotlin preset settings.",
       "type": "object",
@@ -1202,6 +1292,8 @@
               "pmd": false,
               "checkstyle": false,
               "spotbugs": false,
+              "errorprone": false,
+              "pit": false,
               "ktlint": false,
               "ktfmt": false,
               "detekt": false,
@@ -1371,6 +1463,9 @@
                     "class-fields-limit",
                     "inheritance-depth-limit",
                     "shared-used-by-one-feature",
+                    "feature-internal-import",
+                    "shared-imports-feature",
+                    "feature-cycle",
                     "duplicate-definition",
                     "sibling-copy-edit",
                     "exported-name-collision",
@@ -1392,7 +1487,16 @@
                     "unresolved-import",
                     "co-change",
                     "test-console-output",
-                    "doc-comment-content"
+                    "doc-comment-content",
+                    "mutable-state-escape",
+                    "context-threading",
+                    "caller-protocol",
+                    "protocol-contract",
+                    "forwarding-chain",
+                    "disjoint-consumer-groups",
+                    "data-clump",
+                    "repeated-policy-decision",
+                    "foreign-state-decision"
                   ]
                 }
               }
@@ -1417,6 +1521,8 @@
               "pmd": false,
               "checkstyle": false,
               "spotbugs": false,
+              "errorprone": false,
+              "pit": false,
               "ktlint": false,
               "ktfmt": false,
               "detekt": false,
@@ -1574,6 +1680,9 @@
                     "class-fields-limit",
                     "inheritance-depth-limit",
                     "shared-used-by-one-feature",
+                    "feature-internal-import",
+                    "shared-imports-feature",
+                    "feature-cycle",
                     "duplicate-definition",
                     "sibling-copy-edit",
                     "exported-name-collision",
@@ -1595,7 +1704,16 @@
                     "unresolved-import",
                     "co-change",
                     "test-console-output",
-                    "doc-comment-content"
+                    "doc-comment-content",
+                    "mutable-state-escape",
+                    "context-threading",
+                    "caller-protocol",
+                    "protocol-contract",
+                    "forwarding-chain",
+                    "disjoint-consumer-groups",
+                    "data-clump",
+                    "repeated-policy-decision",
+                    "foreign-state-decision"
                   ]
                 }
               }
@@ -1753,12 +1871,27 @@
                             "structure/sibling-copy-edit",
                             "shared-used-by-one-feature",
                             "coupling/shared-used-by-one-feature",
+                            "feature-internal-import",
+                            "coupling/feature-internal-import",
+                            "shared-imports-feature",
+                            "coupling/shared-imports-feature",
+                            "feature-cycle",
+                            "coupling/feature-cycle",
                             "test-only-export",
                             "dead-code/test-only-export",
                             "coupling/test-only-export",
                             "doc-comment-content",
                             "facts/doc-comment-content",
                             "test-console-output",
+                            "mutable-state-escape",
+                            "context-threading",
+                            "caller-protocol",
+                            "protocol-contract",
+                            "forwarding-chain",
+                            "disjoint-consumer-groups",
+                            "data-clump",
+                            "repeated-policy-decision",
+                            "foreign-state-decision",
                             "folder-depth-limit",
                             "structure/folder-depth-limit",
                             "class-methods-limit",
@@ -1976,12 +2109,27 @@
                             "structure/sibling-copy-edit",
                             "shared-used-by-one-feature",
                             "coupling/shared-used-by-one-feature",
+                            "feature-internal-import",
+                            "coupling/feature-internal-import",
+                            "shared-imports-feature",
+                            "coupling/shared-imports-feature",
+                            "feature-cycle",
+                            "coupling/feature-cycle",
                             "test-only-export",
                             "dead-code/test-only-export",
                             "coupling/test-only-export",
                             "doc-comment-content",
                             "facts/doc-comment-content",
                             "test-console-output",
+                            "mutable-state-escape",
+                            "context-threading",
+                            "caller-protocol",
+                            "protocol-contract",
+                            "forwarding-chain",
+                            "disjoint-consumer-groups",
+                            "data-clump",
+                            "repeated-policy-decision",
+                            "foreign-state-decision",
                             "folder-depth-limit",
                             "structure/folder-depth-limit",
                             "class-methods-limit",
@@ -1992,6 +2140,9 @@
                             "structure/inheritance-depth-limit",
                             "test-runtime/test-console-output",
                             "test-runtime/test-not-run",
+                            "pmd/CopiedConstantInTest",
+                            "kotlin-source/ChildCoroutineOutlivesResource",
+                            "kotlin-source/SuspendFunInFinallySection",
                             "kotlin-source/UnboundedFanOut",
                             "kotlin-source/UnboundedReactiveFanOut",
                             "kotlin-source/UnsafeCastOperator",
@@ -2049,6 +2200,8 @@
                             "pmd/ServerOrContainerPerTest",
                             "pmd/AssertionInControlFlow",
                             "pmd/CoroutineEscapesTest",
+                            "pmd/FloatEqualityInTest",
+                            "pmd/WeakAssertionInTest",
                             "pmd/GlobalStateLeakInTest",
                             "pmd/SharedTestState",
                             "pmd/MockedSubjectInTest",
@@ -2056,8 +2209,15 @@
                             "pmd/SpringUnusedContext",
                             "pmd/ExhaustiveEnumPredicate",
                             "pmd/StaticForwardingWrapper",
+                            "pmd/ForwardingMethodAlias",
                             "pmd/SingularAndPluralMember",
                             "pmd/timeout-abandons-operation",
+                            "pmd/NonAtomicUpdateAcrossSuspension",
+                            "pmd/SwallowedInterrupt",
+                            "pmd/SwallowedCancellation",
+                            "pmd/LockOrderInversion",
+                            "pmd/InconsistentFieldLocking",
+                            "pmd/ServiceLocatorLookup",
                             "pmd/ValidationAnnotationTarget",
                             "pmd/ClassLoadEffect",
                             "pmd/UnboundedThreadPool",
@@ -2128,7 +2288,9 @@
                             "pmd/SpringDataFilterInQuery",
                             "pmd/SpringQueryConcatenation",
                             "unused-option",
-                            "structure/unused-option"
+                            "structure/unused-option",
+                            "kotlin-source/BlockingCallInCoroutine",
+                            "kotlin-source/TimeoutWithoutSuspension"
                           ]
                         },
                         { "pattern": "^detekt\\.[a-z-]+\\.[A-Z][A-Za-z0-9]*$" },
@@ -2171,8 +2333,7 @@
               "sourceRoots": false,
               "testRoots": false,
               "excludedGlobs": false,
-              "entryPoints": false,
-              "sharedRoots": false
+              "entryPoints": false
             }
           },
           "tools": {
@@ -2187,6 +2348,8 @@
               "pmd": false,
               "checkstyle": false,
               "spotbugs": false,
+              "errorprone": false,
+              "pit": false,
               "ktlint": false,
               "ktfmt": false,
               "detekt": false,
@@ -2280,12 +2443,27 @@
                         "structure/sibling-copy-edit",
                         "shared-used-by-one-feature",
                         "coupling/shared-used-by-one-feature",
+                        "feature-internal-import",
+                        "coupling/feature-internal-import",
+                        "shared-imports-feature",
+                        "coupling/shared-imports-feature",
+                        "feature-cycle",
+                        "coupling/feature-cycle",
                         "test-only-export",
                         "dead-code/test-only-export",
                         "coupling/test-only-export",
                         "doc-comment-content",
                         "facts/doc-comment-content",
                         "test-console-output",
+                        "mutable-state-escape",
+                        "context-threading",
+                        "caller-protocol",
+                        "protocol-contract",
+                        "forwarding-chain",
+                        "disjoint-consumer-groups",
+                        "data-clump",
+                        "repeated-policy-decision",
+                        "foreign-state-decision",
                         "folder-depth-limit",
                         "structure/folder-depth-limit",
                         "class-methods-limit",
@@ -2321,23 +2499,7 @@
           "kotlin": false,
           "go": false,
           "spring": false
-        },
-        "allOf": [
-          {
-            "if": {
-              "not": {
-                "required": ["history"],
-                "properties": {
-                  "history": {
-                    "required": ["coChange"],
-                    "properties": { "coChange": { "const": true } }
-                  }
-                }
-              }
-            },
-            "then": { "properties": { "layout": { "properties": { "featureRoots": false } } } }
-          }
-        ]
+        }
       }
     },
     {
@@ -2359,6 +2521,8 @@
               "pmd": false,
               "checkstyle": false,
               "spotbugs": false,
+              "errorprone": false,
+              "pit": false,
               "ktlint": false,
               "ktfmt": false,
               "detekt": false,
@@ -2438,12 +2602,27 @@
                             "structure/sibling-copy-edit",
                             "shared-used-by-one-feature",
                             "coupling/shared-used-by-one-feature",
+                            "feature-internal-import",
+                            "coupling/feature-internal-import",
+                            "shared-imports-feature",
+                            "coupling/shared-imports-feature",
+                            "feature-cycle",
+                            "coupling/feature-cycle",
                             "test-only-export",
                             "dead-code/test-only-export",
                             "coupling/test-only-export",
                             "doc-comment-content",
                             "facts/doc-comment-content",
                             "test-console-output",
+                            "mutable-state-escape",
+                            "context-threading",
+                            "caller-protocol",
+                            "protocol-contract",
+                            "forwarding-chain",
+                            "disjoint-consumer-groups",
+                            "data-clump",
+                            "repeated-policy-decision",
+                            "foreign-state-decision",
                             "folder-depth-limit",
                             "structure/folder-depth-limit",
                             "class-methods-limit",
@@ -2479,7 +2658,8 @@
           "kotlin": false,
           "duplicates": false,
           "spring": false,
-          "testConsole": false
+          "testConsole": false,
+          "protocols": false
         },
         "allOf": [
           {
@@ -2701,6 +2881,12 @@
         "structure/inheritance-depth-limit",
         "shared-used-by-one-feature",
         "coupling/shared-used-by-one-feature",
+        "feature-internal-import",
+        "coupling/feature-internal-import",
+        "shared-imports-feature",
+        "coupling/shared-imports-feature",
+        "feature-cycle",
+        "coupling/feature-cycle",
         "duplicate-definition",
         "structure/duplicate-definition",
         "sibling-copy-edit",
@@ -2743,7 +2929,16 @@
         "change-history/co-change",
         "test-console-output",
         "doc-comment-content",
-        "facts/doc-comment-content"
+        "facts/doc-comment-content",
+        "mutable-state-escape",
+        "context-threading",
+        "caller-protocol",
+        "protocol-contract",
+        "forwarding-chain",
+        "disjoint-consumer-groups",
+        "data-clump",
+        "repeated-policy-decision",
+        "foreign-state-decision"
       ]
     }
   }

@@ -1,0 +1,7 @@
+[
+  {
+    "tool": "python-rules",
+    "rule": "inconsistent-attribute-locking",
+    "mention": "same lock for every write"
+  }
+]

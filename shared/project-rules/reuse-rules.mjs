@@ -12,7 +12,7 @@ export function entryPointRule(ids, enforcedBy) {
   };
 }
 
-export function reuseRules(ids, reactEnforcedBy) {
+function featureFolderRules(ids) {
   return [
     {
       id: ids.sharedUsedByOneFeature,
@@ -20,6 +20,30 @@ export function reuseRules(ids, reactEnforcedBy) {
       limit:
         'a module under a shared root (`layout.sharedRoots`) that exactly one feature reaches and nothing else uses',
     },
+    {
+      id: ids.featureInternalImport,
+      check: 'coupling',
+      limit:
+        'a production module outside a feature (`layout.featureRoots`) that imports a module behind its public face (Python: other than `__init__.py` and the modules directly in the feature folder not named `_*`); TypeScript and JavaScript: dependency-cruiser `feature-internals-only-through-index`, `features-do-not-import-other-feature-internals`',
+    },
+    {
+      id: ids.sharedImportsFeature,
+      check: 'coupling',
+      limit:
+        'a production module under a shared root (`layout.sharedRoots`) that imports a feature module; TypeScript and JavaScript: dependency-cruiser `shared-does-not-import-features`',
+    },
+    {
+      id: ids.featureCycle,
+      check: 'coupling',
+      limit:
+        'a runtime import between two features that closes a cycle of features (imports only for the type checker do not count); TypeScript and JavaScript: dependency-cruiser `no-production-cycles`, which reports every module cycle',
+    },
+  ];
+}
+
+export function reuseRules(ids, reactEnforcedBy) {
+  return [
+    ...featureFolderRules(ids),
     {
       id: ids.duplicateDefinition,
       check: 'structure',
@@ -59,7 +83,7 @@ export function couplingRules(ids, { everyLanguage, withoutTypescript }) {
       id: ids.stabilityDirection,
       check: COUPLING,
       limit:
-        'a package depending on a less stable package; an import that exists only for the type checker (`import type`, `if TYPE_CHECKING:`) is never the reported dependency, but still counts toward instability',
+        'a package depending on a less stable package; a feature folder is one unit, and edges between its public face and its own internals do not count; an import that exists only for the type checker (`import type`, `if TYPE_CHECKING:`) is never the reported dependency, but still counts toward instability',
       enforcedBy: everyLanguage,
     },
     {

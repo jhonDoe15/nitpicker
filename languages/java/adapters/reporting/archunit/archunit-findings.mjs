@@ -4,6 +4,7 @@ import { ingestArchunit } from '../../../ingest/archunit.mjs';
 import { exceptionMatcher } from '../../../../../shared/rules/exceptions.mjs';
 import { inModule } from '../../../builds/module-path.mjs';
 import { readSpringArchFindings } from '../../spring-arch/spring-arch.mjs';
+import { featureFaceMatcher } from '../../spring-arch/contract-types.mjs';
 import { sourceFileOf, sourceLocator } from '../kotlin-reports.mjs';
 
 function classLocator({ projectRoot, sourceRoots, manifest }) {
@@ -24,6 +25,8 @@ export function springArchFindings(context) {
   const matches = exceptionMatcher(exceptions);
   return readSpringArchFindings(context.reportRoot, {
     resolvePath: (className, fileName) => sourceFileOf(locate, className, fileName),
+    spring: context.manifest.spring === true,
+    isFeatureFace: featureFaceMatcher(context.featureLayout),
     isExcepted: (rule, file) => file !== undefined && matches(rule, inModule(modulePath, file)),
   });
 }

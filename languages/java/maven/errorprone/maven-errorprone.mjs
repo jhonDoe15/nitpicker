@@ -63,7 +63,7 @@ function lookupLines({ classpath: sourcePath, compiled = [], own, modular }) {
 }
 
 function writeArguments(work, set) {
-  const { name, roots, own, processors, compiler, test, modular } = set;
+  const { name, roots, own, processors, compiler, test, modular, flags } = set;
   const sources = javaFiles(roots).filter(
     (file) => modular !== false || path.basename(file) !== MODULE_INFO,
   );
@@ -83,6 +83,7 @@ function writeArguments(work, set) {
     ...compiler.compilerArgs.map((argument) => `--project-arg=${argument}`),
     ...levelLines(compiler),
     ...(compiler.encoding === undefined ? [] : ['-encoding', compiler.encoding]),
+    ...flags.map((flag) => `--errorprone-flag=${flag}`),
     ...(test ? ['--test-only'] : []),
     '--sources',
     ...sources,
@@ -118,7 +119,7 @@ function compileSets({ module, classpaths }, modular) {
   ];
 }
 
-function analyze({ module, reportDir, tools, classpaths, spawn }, modular) {
+function analyze({ module, reportDir, tools, classpaths, configs, ...run }, modular) {
   const report = path.join(reportDir, 'errorprone.json');
   const work = path.join(reportDir, 'errorprone');
   rmSync(work, { recursive: true, force: true });
@@ -128,6 +129,7 @@ function analyze({ module, reportDir, tools, classpaths, spawn }, modular) {
       ...set,
       compiler: set.test ? { ...compiler, ...compiler.test } : compiler,
       processors: [...tools.errorprone, ...processorPath(set.classpath, compiler, tools)],
+      flags: configs?.errorprone?.arguments ?? [],
     }),
   );
   if (argumentFiles.length === 0) {
@@ -138,8 +140,8 @@ function analyze({ module, reportDir, tools, classpaths, spawn }, modular) {
     settings.compilerArgs.includes('--enable-preview'),
   );
   runJava({
-    java: errorProneJava({ preview, spawn }),
-    spawn,
+    java: errorProneJava({ preview, spawn: run.spawn }),
+    ...run,
     tool: 'Error Prone',
     jvmArgs: JVM_FLAGS,
     args: [

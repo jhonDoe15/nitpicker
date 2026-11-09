@@ -55,7 +55,6 @@ const GUARD_RULES = new Set([
   'OptionalOfCollection',
   'InstanceofThenCast',
   'SneakyThrows',
-  'SwallowedInterruptedException',
   'CollectorsToList',
   'StreamResourceNotClosed',
   'ForEachSideEffect',

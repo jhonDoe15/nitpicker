@@ -22,6 +22,7 @@ import { validateGoConfig } from '../../languages/go/adapters/configuration/go-c
 import { canonicalRule } from '../../shared/exceptions/rule-names.mjs';
 import { liftsOnlyRules, validateExceptions } from '../../shared/exceptions/validation.mjs';
 import { RULES } from '../../shared/policy.mjs';
+import { validateAnalyzerTimeouts } from '../../shared/analyzer-timeouts/analyzer-timeouts.mjs';
 import { validateTools } from './tool-settings.mjs';
 import { rejectHeadBase } from './project-checks/project-config.mjs';
 import { conventionDefinitions } from '../conventions/definitions.mjs';
@@ -30,6 +31,7 @@ import { stylingApproaches } from '../../languages/typescript/preset/eslint-conf
 import { i18nRuleIds } from '../../languages/typescript/preset/eslint-config/i18n/i18n-rules.mjs';
 import { validateScope, validateTestConsole } from './scopes/scope-settings.mjs';
 import { validateHistory } from './scopes/history-settings.mjs';
+import { validateProtocols } from './scopes/protocols/protocol-settings.mjs';
 import { TYPESCRIPT_PRESETS, validateLayout } from './scopes/layout-settings.mjs';
 import { didYouMean, suggestionOrAllowed } from '../../shared/messages/closest-match.mjs';
 
@@ -45,6 +47,7 @@ const OPTIONAL_VALIDATORS = [
   ['legacyInventory', validateProjectRelativePath],
   ['duplicates', validateDuplicates],
   ['analyzers', validateCustomAnalyzers],
+  ['analyzerTimeoutMinutes', validateAnalyzerTimeouts],
 ];
 export const SUPPORTED_PRESETS = ['typescript', 'javascript', ...GRADLE_PRESETS, 'python', 'go'];
 
@@ -59,11 +62,13 @@ export const KEYS = [
   'react',
   'i18n',
   'analyzers',
+  'analyzerTimeoutMinutes',
   'legacyInventory',
   'duplicates',
   'python',
   'tools',
   'testConsole',
+  'protocols',
   'kotlin',
   'spring',
   'conventions',
@@ -96,6 +101,7 @@ export function validateConfig(config) {
   validateReact(config.react);
   validateI18n(config.i18n);
   validateTestConsole(config.testConsole);
+  validateProtocols(config.protocols);
   validateHistory(config.history);
   validateOptional(config);
   validateProjectConventions(config);

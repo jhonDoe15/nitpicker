@@ -45,6 +45,23 @@ classes -> classes
 const fileOf = (name) => `src/main/java/${name.replaceAll('.', '/')}.java`;
 const analyze = () => analyzeJavaCoupling({ classes: CLASSES, edges: parseJdeps(JDEPS), fileOf });
 const packageOf = (report, name) => report.packages.find((entry) => entry.name === name);
+function packageUnit(root, files) {
+  const [name] = files[0].split('/');
+  return {
+    unit: `package ${name}`,
+    folders: [`${root}/${name}`],
+    files: files.map((file) => `${root}/${file}`),
+    count: files.length,
+  };
+}
+const STABLE_CAUSE = {
+  folders: ['src/main/java/stable'],
+  units: [
+    ['churn/U.java'],
+    ['client/A.java', 'client/B.java', 'client/C.java'],
+    ['leaf/L.java'],
+  ].map((files) => packageUnit('src/main/java', files)),
+};
 
 describe('parseJdeps', () => {
   it('reads class edges and skips the headers', () => {
@@ -150,7 +167,7 @@ describe('analyzeJavaCoupling', () => {
 
   it('lists package edges that point at a less stable package', () => {
     expect(analyze().stabilityDirection).toEqual([
-      { source: 'stable', target: 'churn', delta: 0.1 },
+      { source: 'stable', target: 'churn', delta: 0.1, cause: STABLE_CAUSE },
     ]);
   });
 });
@@ -196,6 +213,7 @@ describe('readCouplingFindings', () => {
         identity: 'package-edge:stable->churn',
         message: 'stable depends on less stable package churn',
         classification: 'enforceable',
+        cause: STABLE_CAUSE,
       },
     ]);
     expect(findings.filter((finding) => finding.classification !== 'enforceable')).not.toHaveLength(
@@ -274,7 +292,17 @@ describe('Kotlin classes', () => {
 
   it('finds a stability direction violation between Kotlin packages', () => {
     expect(analyzeKotlin().stabilityDirection).toEqual([
-      { source: 'stable', target: 'churn', delta: 0.1667 },
+      {
+        source: 'stable',
+        target: 'churn',
+        delta: 0.1667,
+        cause: {
+          folders: ['src/main/kotlin/stable'],
+          units: ['churn/Volatile.kt', 'client/Orders.kt', 'leaf/Leaf.kt', 'other/Reports.kt'].map(
+            (file) => packageUnit('src/main/kotlin', [file]),
+          ),
+        },
+      },
     ]);
   });
 
