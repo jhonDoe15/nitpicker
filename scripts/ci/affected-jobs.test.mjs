@@ -293,7 +293,15 @@ describe('the required checks of the typescript workflow', () => {
       "github.ref != 'refs/heads/main'",
       "github.event_name != 'pull_request' || contains(github.event.pull_request.labels.*.name, 'run-ci')",
     ]);
-    expect(jobs.test.steps[0].run).toContain('test "$RESULT" = success');
+    expect(jobs.test.steps[0].run).toBe(
+      [
+        'if [ "$RESULT" = skipped ]; then',
+        '  echo "::error::The tests did not run: add the run-ci label to run CI on this pull request."',
+        'fi',
+        'test "$RESULT" = success',
+        '',
+      ].join('\n'),
+    );
   });
 
   it('lets no workflow that runs on a label look at which label was added', () => {
