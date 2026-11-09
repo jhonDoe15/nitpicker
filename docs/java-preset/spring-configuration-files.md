@@ -62,7 +62,32 @@ decides what counts as a literal secret, and `java-spring.mjs` applies the rules
 | `active-profile`       | `spring.profiles.active` or `spring.profiles.include` with a literal value in the main (profile-less) document, one finding per line                                                                                                                                                                                                                                                                                                                                                                | none             |
 | `missing-enable`       | `@Scheduled`, `@Async`, the cache annotations, `@PreAuthorize` and friends, or `@Retryable` used in Java or Kotlin while no main class has the matching `@Enable...` and no XML `annotation-driven` element enables it                                                                                                                                                                                                                                                                              | none             |
 | `literal-secret`       | a literal value under a key whose last segment is, or ends in a separate word that is, a secret word (below)                                                                                                                                                                                                                                                                                                                                                                                        | test, local, dev |
+| `unbound-property`     | a key in an `application*` file (main or test resources) or a test override (`@SpringBootTest` and slice `properties`, `@TestPropertySource(properties)`, `TestPropertyValues`, `withPropertyValues`, `DynamicPropertyRegistry.add`) that binds to no known property, under a group that is described; see below                                                                                                                                                                                    | none             |
 
+- **Unbound properties.** Spring Boot projects only: the classpath the build records
+  (`springClasspath` in `manifest.json`: the main compile, test compile and test runtime classpaths,
+  plus `developmentOnly` on Gradle) must hold a `spring-boot-<version>.jar`; without one the rule
+  does not run, and Gradle logs a warning when it cannot resolve that classpath.
+  Known keys come from `META-INF/spring-configuration-metadata.json` and
+  `additional-spring-configuration-metadata.json` in every jar and directory of that classpath and in
+  the resource roots; from the project's `@ConfigurationProperties` classes, read from Java and Kotlin
+  source (fields, setters, constructor and record parameters, Kotlin properties, nested classes and
+  project superclasses; a map, an `Object`, a type outside the project or a `@Bean` method accepts any
+  key below it); and from keys the code or resources name: `${...}` placeholders, `getProperty`,
+  `getRequiredProperty`, `containsProperty`, `@ConditionalOn...Property`, `springProperty source`
+  in logging XML, and `Binder.bind("prefix")`, `getProperty("prefix." + name)` or a key with a
+  `$name` template or `%s` part, which accept any key below the fixed part. Keys compare in relaxed
+  form; a map or collection property and the keys Spring derives from endpoint and health indicator ids
+  (`management.endpoint.<id>.access`, `management.health.<id>.enabled`) accept any suffix. A key is
+  judged in full only when the deepest known prefix above it is a metadata `groups` entry, or a prefix
+  whose every property the metadata marks removed (`spring.redis`). Under a project properties class,
+  which another module or library may extend (`acme.security.token` next to an `acme` class), and under
+  a prefix nobody describes (`acme.client.timeout`, or `spring.output.ansi.console-available`, which
+  Spring Boot binds without metadata), only a near miss of a known segment at the same place is
+  reported (`spring.datsource`: one edit for five or more letters, two for ten or more; digits and a
+  plural `s` do not count). The message names the nearest known key, or the replacement the metadata
+  gives for a removed key. Declare a key that code reads by name, in a way the scan cannot see, in
+  `META-INF/additional-spring-configuration-metadata.json`, which also documents it for IDEs.
 - **Literal secrets.** The last key segment, split into words at `-`, `_` and case changes, must
   end in `password`, `passwd`, `passphrase`, `secret`, `token`, `credential(s)`, `api-key` (or `apikey`), `private-key`,
   `secret-key`, `access-key`, `signing-key`, `encryption-key`, `hmac-key`, `jwt-key`, `crypto-key` or
@@ -139,6 +164,7 @@ decides what counts as a literal secret, and `java-spring.mjs` applies the rules
   order mark, continuations, escapes, indexes, flow collections, anchors), `spring-secrets.test.mjs`
   (key words, value judgement), `java-spring.test.mjs` (relaxed keys, open-in-view, ddl-auto,
   profile expressions, line stability, exceptions, the configuration hash), `java-spring-rules.test.mjs`
-  (the other rules), `config-rules/config-rules.test.mjs` (active profiles, diagnostics, error
+  (the other rules), `unbound-keys/` (metadata jars, properties classes, test overrides, the
+  unbound-property rule), `config-rules/config-rules.test.mjs` (active profiles, diagnostics, error
   details, URL credentials), `wiring/spring-wiring.test.mjs` (the `@Enable...` check) and `java-reports.test.mjs`
   (glue, the `spring: true` gate).
