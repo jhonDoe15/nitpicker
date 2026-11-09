@@ -120,10 +120,11 @@ jobs:
     if: always()
     needs: [changes, python-shard-plan, python-shard]
     runs-on: ubuntu-latest
-    timeout-minutes: 45
+    timeout-minutes: ${{ github.event_name == 'pull_request' && github.event.label.name != 'run-ci' && 110 || 5 }}
     permissions:
       contents: read
       checks: read
+      actions: read
     env:
       COPY_LAST_RESULT: ${{ github.event_name == 'pull_request' && github.event.label.name != 'run-ci' }}
     steps:

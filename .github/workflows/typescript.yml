@@ -35,8 +35,9 @@ on:
 # Pull requests are checked locally with `npm run check` (CONTRIBUTING.md). On a pull request CI runs
 # only when the `run-ci` label is added; a newer request cancels the older run, other labels do not.
 # Another label still starts the workflow, and a skipped required check counts as passed, so on such a
-# label `test` and `self-gate` run no CI and keep the last result of the head commit instead
-# (scripts/ci/last-result.mjs); the accept-policy-change label runs the self-gate again.
+# label `test` and `self-gate` run no CI: they wait for the earlier runs on the head commit and keep
+# the result of the newest (scripts/ci/last-result.mjs); the accept-policy-change label runs the
+# self-gate again.
 # On main a started run finishes, and a newer push replaces a run that is still waiting.
 concurrency:
   group: ${{ github.workflow }}-${{ github.event_name == 'push' && 'main' || github.event.label.name == 'run-ci' && github.event.pull_request.number || github.run_id }}
@@ -116,10 +117,11 @@ jobs:
     if: always()
     needs: test-shard
     runs-on: ubuntu-latest
-    timeout-minutes: 45
+    timeout-minutes: ${{ github.event_name == 'pull_request' && github.event.label.name != 'run-ci' && 110 || 5 }}
     permissions:
       contents: read
       checks: read
+      actions: read
     env:
       COPY_LAST_RESULT: ${{ github.event_name == 'pull_request' && github.event.label.name != 'run-ci' }}
     steps:
@@ -148,11 +150,14 @@ jobs:
   self-gate:
     if: github.ref != 'refs/heads/main'
     runs-on: ubuntu-latest
-    timeout-minutes: 45
+    timeout-minutes: >-
+      ${{ github.event_name == 'pull_request' && github.event.label.name != 'run-ci' &&
+      github.event.label.name != 'accept-policy-change' && 110 || 15 }}
     permissions:
       contents: read
       statuses: read
       checks: read
+      actions: read
     env:
       COPY_LAST_RESULT: >-
         ${{ github.event_name == 'pull_request' && github.event.label.name != 'run-ci' &&
