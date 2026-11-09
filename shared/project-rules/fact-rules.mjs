@@ -50,7 +50,7 @@ export const FACT_RULE_LISTS = {
   'exported-name-collision': ['modules', 'packages', 'definitions', 'imports'],
   'sibling-copy-edit': ['modules', 'packages', 'definitions'],
   'shared-used-by-one-feature': ['modules', 'imports'],
-  'public-alternative-bypass': ['modules', 'definitions', 'imports'],
+  'public-alternative-bypass': ['modules', 'imports'],
   'test-only-export': ['modules', 'packages', 'definitions', 'imports'],
   'doc-comment-content': ['docComments'],
   'test-console-output': ['console'],

@@ -25,8 +25,9 @@ Kotlin and Java sources together, the way the Java preset runs them (see "Reuse 
 objects, and top-level classes are compared within one Gradle module; an `import ... as` alias or a
 fully qualified name that keeps two different classes of one name apart is a collision, and same-named functions, which
 overload, are not. `shared-used-by-one-feature` reads the same uses: a file under `layout.sharedRoots` that only one
-feature under `layout.featureRoots` uses is reported, as in the Java preset. `public-alternative-bypass` treats a
-`typealias` as a re-export: when `package shop.billing` declares `typealias Invoice = shop.billing.internal.Invoice`,
-Kotlin code outside `shop.billing` that names `shop.billing.internal.Invoice` is reported and told to use the alias.
-Java code is left alone, since Java cannot see a type alias, and so are `private` aliases and aliases of a generic or
-function type.
+feature under `layout.featureRoots` uses is reported, as in the Java preset. `public-alternative-bypass` treats a public
+`typealias` of a class in a subpackage as a re-export: when `shop/billing/Aliases.kt` declares
+`typealias Invoice = shop.billing.internal.Invoice`, Kotlin code outside the folder `shop/billing/` that names
+`shop.billing.internal.Invoice` is reported and told to import `Invoice` from `shop.billing`. Java code is left alone,
+since Java cannot see a type alias, and so are classes with a `main` function, `private` and `internal` aliases, an
+alias of a class in its own package, and aliases of a generic or function type.
