@@ -38,6 +38,7 @@ import { isJavaTouchedRule } from './touched-rules.mjs';
 import { withProjectEnumPredicates } from './review-rules/enum-predicates.mjs';
 import { gradleBudget } from './gradle-wrapper/gradle-budget.mjs';
 import { gradleStages } from './gradle-wrapper/gradle-stages.mjs';
+import { gradleDesignFindings, mavenDesignFindings } from './design/design-modules.mjs';
 
 const CLOCK_SLACK_MS = 2000;
 function runJavaPreset(
@@ -131,13 +132,14 @@ function gradleFindings(projectRoot, options, reportBase) {
   if (preset === 'kotlin') {
     runKotlinDuplicates(projectRoot, duplicates);
   }
+  const { findings } = readJavaFindings(projectRoot, {
+    ...readOptions(options.policy),
+    formatAdvice: kotlinRun?.advice,
+    reportBase,
+    report,
+  });
   return {
-    findings: readJavaFindings(projectRoot, {
-      ...readOptions(options.policy),
-      formatAdvice: kotlinRun?.advice,
-      reportBase,
-      report,
-    }).findings,
+    findings: [...findings, ...gradleDesignFindings({ projectRoot, report, options, reportBase })],
     testsFailures: withRootSourceRoots(testsFailures, report.modules),
   };
 }
@@ -171,12 +173,13 @@ function mavenFindings(projectRoot, options) {
   if (options.policy?.preset === 'kotlin') {
     runKotlinDuplicates(projectRoot, duplicates);
   }
+  const findings = readModuleFindings(projectRoot, moduleDirs, {
+    ...readOptions(options.policy),
+    formatAdvice,
+    reportDirectory: MAVEN_REPORT_DIRECTORY,
+  });
   return {
-    findings: readModuleFindings(projectRoot, moduleDirs, {
-      ...readOptions(options.policy),
-      formatAdvice,
-      reportDirectory: MAVEN_REPORT_DIRECTORY,
-    }),
+    findings: [...findings, ...mavenDesignFindings(projectRoot, moduleDirs, options.policy)],
     testsFailures,
   };
 }
