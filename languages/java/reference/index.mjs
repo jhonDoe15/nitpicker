@@ -7,10 +7,11 @@ import { kotlinReviewEntries, leftOutPmdRules, ownPmdEntry, ownPmdRules } from '
 
 /** The entries of every rule the Java and Kotlin presets can report. */
 export function jvmRuleEntries() {
-  const leftOut = new Set(leftOutPmdRules());
+  const own = ownPmdRules();
+  const notCatalogued = new Set([...leftOutPmdRules(), ...own.map(({ rule }) => rule)]);
   const javaEntries = [
-    ...catalogRuleEntries().filter(({ tool, rule }) => tool !== 'pmd' || !leftOut.has(rule)),
-    ...ownPmdRules().map(ownPmdEntry),
+    ...catalogRuleEntries({ skippedPmd: notCatalogued }),
+    ...own.map(ownPmdEntry),
   ];
   return [
     ...javaEntries,
