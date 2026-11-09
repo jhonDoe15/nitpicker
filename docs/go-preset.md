@@ -244,10 +244,11 @@ message does not already name it, and by its exception entry:
     assigned again unread);
   - tests: thelper (a test helper starts with `t.Helper()` and takes `t` first), tparallel (a test
     whose subtests call `t.Parallel()` calls it too), usetesting (`t.TempDir()`, `t.Setenv()`,
-    `t.Chdir()` and `t.Context()` instead of their `os` and `context` forms), testifylint (every
+    `t.Chdir()` and `t.Context()` instead of `os.MkdirTemp`, `os.CreateTemp`, `os.Setenv`,
+    `os.Chdir`, `context.Background()` and `context.TODO()`), testifylint (every
     check, printed under its own name such as `testifylint/bool-compare`: the specific
-    assertion, `require` for errors, expected before actual, the `f` form when a message has
-    format arguments, suite methods instead of the package functions).
+    assertion, `require` for errors, expected before actual, format strings that match their
+    arguments, suite methods instead of the package functions).
 
 The linters skip generated files (`// Code generated ... DO NOT EDIT.`), as staticcheck does; a
 package of only generated files needs no package comment. An analyzer that fails on a package that
@@ -298,6 +299,8 @@ comments do nothing, including the ones nilerr and contextcheck read themselves,
 | sqlclosecheck (Close not deferred)   | errcheck                           |
 | SA4006, SA4010                       | wastedassign                       |
 | modernize `testingcontext`           | usetesting                         |
+| errorlint                            | testifylint `compares`             |
+| thelper                              | testifylint `suite-thelper`        |
 | ST1012 (sentinel error names)        | errname                            |
 | SA1005 (`exec.Command` shell line)   | noctx                              |
 
@@ -375,5 +378,8 @@ with `"preset": "go"`, each naming its reason.
 - The linters type-check for the host's `GOOS` and `GOARCH`, so unconvert can report a conversion
   that is needed on another platform (a `syscall.Stat_t` field that is `int64` on linux/amd64 but
   not on 32-bit targets); such a file takes an `exceptions` entry.
+- tparallel asks a test whose subtests call `t.Parallel()` to call it too, which a test that
+  uses `t.Setenv` or `t.Chdir` cannot do; such a test makes its subtests serial or takes an
+  `exceptions` entry.
 - The linters run on the whole module for both snapshots; a finding is new when its message and
   line text are new, as for vet.

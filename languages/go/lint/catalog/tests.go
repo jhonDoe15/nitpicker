@@ -29,13 +29,10 @@ var (
 )
 
 func configureTests() error {
-	for _, detection := range []string{"contextbackground", "contexttodo", "ossetenv", "ostempdir"} {
+	for _, detection := range []string{"contextbackground", "contexttodo", "ossetenv"} {
 		if err := testingForms.Flags.Set(detection, "true"); err != nil {
 			return err
 		}
-	}
-	if err := testify.Flags.Set("formatter.require-f-funcs", "true"); err != nil {
-		return err
 	}
 	return testify.Flags.Set("enable-all", "true")
 }

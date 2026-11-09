@@ -1,6 +1,7 @@
 package catalog
 
 import (
+	"slices"
 	"strings"
 
 	"golang.org/x/tools/go/analysis"
@@ -22,7 +23,7 @@ func Checks(analyzer string) []string {
 // Rule names a diagnostic's finding: its check, for a linter that reports checks, or else the
 // analyzer. The message loses the check-name prefix such linters put in front of it.
 func Rule(analyzer string, diagnostic analysis.Diagnostic) (string, string) {
-	if diagnostic.Category == "" || Checks(analyzer) == nil {
+	if !slices.Contains(Checks(analyzer), diagnostic.Category) {
 		return analyzer, diagnostic.Message
 	}
 	return diagnostic.Category, strings.TrimPrefix(diagnostic.Message, diagnostic.Category+": ")

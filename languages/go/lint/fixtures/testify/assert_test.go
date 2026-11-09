@@ -83,7 +83,7 @@ func TestFloatCompare(t *testing.T) {
 func TestFormatter(t *testing.T) {
 	name, err := find("shop")
 	require.NoError(t, err)
-	assert.Equal(t, "SHOP", name, "name %s", name) // want formatter
+	assert.Equalf(t, "SHOP", name, "name %s %s", name) // want formatter
 	assert.Equalf(t, "SHOP", name, "name %s", name)
 }
 
