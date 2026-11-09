@@ -40,6 +40,10 @@ Part of the [nitpicker-typescript](../SKILL.md) skill. Write these forms from th
   `(await repo.find()).length`, `where` instead of `.filter`/`.some`/`.find` on the rows, `order`/`orderBy`
   instead of `.sort`, and the ORM's aggregate or `groupBy` instead of `reduce`, `Math.max(...rows.map(...))`
   or `groupBy` (`nitpicker/no-in-memory-query`).
+- Pick the cheaper collection form: a `Set` (`add`, `has`) for items you search while you collect
+  them, a `Map` built once before a loop or handler instead of `find((x) => x.key === key)` in it,
+  and one `reduce` pass instead of `sort(...)[0]` or `toSorted(...).at(-1)`
+  (`nitpicker/no-costly-collection-form`).
 - Each finding names the allowed form. A deliberate exception goes in `nitpicker.config.json`
   `exceptions` (rule, paths, reason), never inline.
 - The `$schema` line of `nitpicker.config.json`
