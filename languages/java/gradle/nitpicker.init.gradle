@@ -45,6 +45,8 @@ def nitpickerStyle = {
 
 def analysisRoot = gradle.startParameter.currentDir
 def reportBase = nitpickerArgument('nitpicker.reportDir')
+def pitHistoryRecorded = nitpickerArgument('nitpicker.pit.recordHistory') == 'true'
+def pitHistoryRoot = nitpickerArgument('nitpicker.pit.historyRoot')
 def javaModules = []
 
 def relativeToRoot = { File file ->
@@ -474,6 +476,18 @@ allprojects {
             sourceSets.main.compileClasspath.files.any { it.name ==~ /jmolecules-ddd-.*\.jar/ }
         }
         def runsArchRules = { usesSpring() || usesJmolecules() }
+        def springClasspath = {
+            try {
+                def test = sourceSets.findByName('test') ?: sourceSets.main
+                def development = ['developmentOnly', 'testAndDevelopmentOnly']
+                    .collect { configurations.findByName(it) }.findAll { it != null && it.canBeResolved }
+                (sourceSets.main.compileClasspath.files + test.compileClasspath.files + test.runtimeClasspath.files
+                    + development.collectMany { it.files }).collect { it.absolutePath }.unique()
+            } catch (Exception failure) {
+                logger.warn("nitpicker: could not resolve the classpath of ${project.path} for spring/unbound-property: ${failure.message}")
+                []
+            }
+        }
         def hasGuava = { sourceSet -> sourceSet.compileClasspath.files.any { it.name ==~ /guava-\d.*\.jar/ } }
         def hasAwaitility = { sourceSets.test.compileClasspath.files.any { it.name ==~ /awaitility-\d.*\.jar/ } }
 
@@ -826,6 +840,18 @@ allprojects {
                           '--threads', '2',
                           '--failWhenNoMutations', 'false',
                           '--verbose', 'false'])
+                    def historyFile = project.layout.buildDirectory
+                        .file("nitpicker-pit-history/${source.name}.history").get().asFile
+                    if (pitHistoryRecorded) {
+                        args '--historyOutputLocation', historyFile.absolutePath
+                    }
+                    def baseRoot = pitHistoryRoot == null ? null : new File(pitHistoryRoot.toString()).canonicalFile
+                    def sameDrive = historyFile.toPath().root == analysisRoot.toPath().root
+                    def recorded = baseRoot == null || !sameDrive ? null
+                        : new File(baseRoot, relativeToRoot(historyFile)).canonicalFile
+                    if (recorded?.isFile() && recorded.path.startsWith(baseRoot.path + File.separator)) {
+                        args '--historyInputLocation', recorded.absolutePath
+                    }
                     def testJvmArgs = (source.jvmArgs ?: []) +
                         source.systemProperties.collect { key, value ->
                             (value == null ? "-D${key}" : "-D${key}=${value}").toString() } +
@@ -1067,6 +1093,7 @@ allprojects {
                     spring         : usesSpring(),
                     testsFailed    : testsFailed,
                     springArch     : runsArchRules(),
+                    springClasspath: usesSpring() ? springClasspath() : [],
                     guava          : hasGuava(sourceSets.main),
                     testGuava      : hasGuava(sourceSets.test),
                     testAwaitility : hasAwaitility(),
