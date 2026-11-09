@@ -4,8 +4,8 @@ import {
   collectArchunitResults,
   collectTestResults,
   runJacocoReport,
-  runPit,
 } from '../maven-tests.mjs';
+import { runPit } from '../pit/maven-pit.mjs';
 import { copyTestResults, requireTestngRun } from '../results/maven-test-results.mjs';
 import { lifecycleArgs } from '../maven-project.mjs';
 import { jacocoPlugin } from '../maven-tools.mjs';

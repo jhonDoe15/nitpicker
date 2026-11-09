@@ -1,8 +1,8 @@
 import { existsSync, mkdirSync, rmSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
-import { runJava } from './maven-command.mjs';
-import { nitpickerPitArguments } from '../adapters/tool-config/declared/pit-declared.mjs';
-import { classFiles, pitClasspath, pitTargets, pitTests } from './maven-tests.mjs';
+import { runJava } from '../maven-command.mjs';
+import { nitpickerPitArguments } from '../../adapters/tool-config/declared/pit-declared.mjs';
+import { classFiles, pitClasspath, pitTargets, pitTests } from '../maven-tests.mjs';
 
 export function javaArgumentFile(args) {
   return args

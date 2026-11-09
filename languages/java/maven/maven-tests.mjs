@@ -4,8 +4,6 @@ import { globMatcher } from '../../../shared/paths/glob.mjs';
 import { runJava } from './maven-command.mjs';
 import { failedCaseEntries, failingTestsError, freshReports } from '../builds/test-failures.mjs';
 
-export { javaArgumentFile, runPit } from './maven-pit.mjs';
-
 const DEFAULT_ARCHUNIT_INCLUDES = '**/*ArchTest.class,**/*ArchitectureTest.class';
 const JUNIT_ENGINE_JAR = /^junit-platform-engine-.+\.jar$/u;
 const TESTNG_JAR = /^testng-\d.*\.jar$/u;
