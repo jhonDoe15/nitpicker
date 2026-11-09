@@ -68,6 +68,7 @@ const REVIEW_RULES = new Set([
   'StaticMockOfProjectType',
   'GlobalStateLeakInTest',
   'ServerOrContainerPerTest',
+  'SharedTestState',
   'ExhaustiveEnumPredicate',
   'StaticForwardingWrapper',
   'SingularAndPluralMember',
@@ -99,6 +100,9 @@ const REVIEW_RULES = new Set([
   'HttpWithoutTimeout',
   'UnorderedQuery',
   'UnboundedQueryArray',
+  'ListUsedAsSet',
+  'LinearLookupInLoop',
+  'SortForExtreme',
   'GeneratedMemberCycle',
   'GeneratedEqualsSkipsSuperclass',
 ]);
