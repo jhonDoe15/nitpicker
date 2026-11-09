@@ -54,7 +54,7 @@ describe('history config', () => {
     expect(() => validateConfig(config)).toThrow(message);
   });
 
-  it.each(['java', 'kotlin', 'python'])(
+  it.each(['python'])(
     'takes layout.featureRoots with %s once co-change is on, and not before',
     (preset) => {
       const layout = { featureRoots: ['**/modules'] };
@@ -71,7 +71,7 @@ describe('history config', () => {
   it('keeps layout.sharedRoots out of the presets that do not run its rule', () => {
     expect(() =>
       validateConfig({
-        preset: 'java',
+        preset: 'python',
         layout: { sharedRoots: ['**/shared'] },
         history: { coChange: true },
       }),

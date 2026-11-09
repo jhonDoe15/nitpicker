@@ -55,7 +55,6 @@ function runJavaPreset(
   } = {},
 ) {
   const withKotlin = kotlinRun?.withArguments ?? ((run) => run([]));
-  const directory = path.join(reportBase, 'tool-config');
   const since = Date.now() - CLOCK_SLACK_MS;
   withKotlin((kotlinArguments) => {
     const common = [
@@ -70,7 +69,7 @@ function runJavaPreset(
       projectRoot,
       initScript,
       policy,
-      directory,
+      directory: path.join(reportBase, 'tool-config'),
       testsFailedModules,
     });
     for (const stage of stages) {
@@ -102,6 +101,7 @@ function readOptions(policy = {}) {
     fileLimits: policy.fileLimits,
     exclude: policy.exclude,
     exceptions: policy.exceptions,
+    layout: policy.layout,
     testSeconds: policy.testSeconds,
     testConsoleAllow: policy.testConsoleAllow,
     javaStyle: policy.javaStyle,

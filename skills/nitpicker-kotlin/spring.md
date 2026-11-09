@@ -68,7 +68,10 @@ that carry one of these or that an `@Aspect` matches):
   persistence exception, no `runCatching` without `getOrThrow()` or a throwing `getOrElse`,
   `onFailure` or `fold`.
 - `@Throws(IOException::class)` or a checked `throw` needs `rollbackFor = [Exception::class]`. A
-  write under `readOnly = true` needs its own plain `@Transactional`.
+  write under `readOnly = true` (a repository write or `@Modifying` query, DML through
+  `JdbcTemplate`, `JdbcClient` or jOOQ, or an assignment to an entity the function loaded) needs its
+  own plain `@Transactional`. To shape a response from an entity, map it to a DTO instead of
+  changing it.
 - A public service function that writes more than once (`save`, `delete`, a `@Modifying` query,
   `jdbcTemplate.update`), also through its private helpers, is `@Transactional` or runs the writes in
   `transactionTemplate.execute { }`.
@@ -103,6 +106,10 @@ your tests activate with `@ActiveProfiles`, and local or dev ones where noted, a
   show-sql, bind logging, H2 console or `always` actuator details. Secrets from the environment,
   `password=${DB_PASSWORD}`, no literal default. Profiles from `SPRING_PROFILES_ACTIVE`, not the
   main file.
+- Every key binds to a property, also in test resources and overrides (`@SpringBootTest`
+  `properties`, `withPropertyValues`, `registry.add`): use the name the Boot metadata or your
+  `@ConfigurationProperties` class defines; declare keys only code reads by name in
+  `META-INF/additional-spring-configuration-metadata.json`.
 
 JPA and Spring Data (`pmd/Jpa...`, `pmd/SpringData...`; SQL or JPQL built from runtime values is
 `kotlin-source/SqlStringBuilding`):
