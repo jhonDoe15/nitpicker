@@ -263,6 +263,7 @@ export function readHeadPolicy(environment = process.env) {
     generatedFiles: policy.generatedFiles ?? [],
     libraries: policy.libraries,
     frameworks: { defaultExports: [], entryPoints: [], ...policy.frameworks },
+    history: policy.history ?? {},
   };
 }
 

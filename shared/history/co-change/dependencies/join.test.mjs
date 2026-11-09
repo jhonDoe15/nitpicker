@@ -48,7 +48,7 @@ describe('co-change dependencies', () => {
     });
 
     expect(sentenceOf(run)).toBe(
-      'They import each other: src/billing imports src/invoicing in 1 file, src/invoicing imports src/billing in 2 files.',
+      'src/billing imports src/invoicing in 1 file and src/invoicing imports src/billing in 2 files.',
     );
   });
   it('says neither imports the other when a publisher reported no edge between them', () => {
@@ -65,7 +65,7 @@ describe('co-change dependencies', () => {
     const run = joined({ 'change-history': historyReport(), coupling: { findings: [] } });
 
     expect(sentenceOf(run)).toBe(
-      'No analyzer reported imports for this run, so whether one imports the other is unknown.',
+      'Imports between them are unknown: no analyzer reported any for this run.',
     );
   });
   it('lifts folders inside a feature to the feature module and adds edges from all publishers', () => {

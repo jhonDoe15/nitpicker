@@ -122,7 +122,7 @@ export function readPythonFindings({
     units: COLUMN_UNITS,
     readSource: (file) => readSource(projectRoot, file),
   });
-  return { findings, ...moduleImportsSection(readFactImports(reportRoot)) };
+  return { findings, ...moduleImportsSection(readFactImports(reportRoot), policy.history) };
 }
 
 function sizedModules(projectRoot, modules) {
