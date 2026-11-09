@@ -54,7 +54,11 @@ function outermostEntry(entries, { from, to }) {
       ({ entry, folder }) =>
         folder !== '' && entry !== to && to.startsWith(folder) && !from.startsWith(folder),
     )
-    .toSorted((left, right) => left.folder.length - right.folder.length)[0];
+    .reduce(
+      (best, entry) =>
+        best === undefined || entry.folder.length < best.folder.length ? entry : best,
+      undefined,
+    );
 }
 
 function isJudged(record, modules) {
