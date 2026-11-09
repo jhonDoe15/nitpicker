@@ -77,12 +77,13 @@ function unsupportedValue(value) {
   return undefined;
 }
 
-export function encodedValue(value, at = 'config') {
+export function encodedValue(value, at) {
   const unsupported = unsupportedValue(value);
   if (unsupported !== undefined) {
     const where = unsupported.where === '' ? 'the exported value' : unsupported.where;
+    const label = at === undefined ? '' : `${at}: `;
     throw new TypeError(
-      `${at}: ${where} is ${unsupported.what}; only JSON values and regular expressions can be used`,
+      `${label}${where} is ${unsupported.what}; only JSON values and regular expressions can be used`,
     );
   }
   return JSON.parse(
