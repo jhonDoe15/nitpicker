@@ -3,14 +3,28 @@ module github.com/jhonDoe15/nitpicker/languages/go/lint
 go 1.27.0
 
 require (
+	github.com/Antonboom/errname v1.1.2
+	github.com/Antonboom/nilnil v1.1.2
+	github.com/gostaticanalysis/comment v1.5.0
+	github.com/gostaticanalysis/nilerr v0.1.2
+	github.com/jingyugao/rowserrcheck v1.1.1
 	github.com/kisielk/errcheck v1.30.0
+	github.com/kkHAIKE/contextcheck v1.1.6
+	github.com/polyfloyd/go-errorlint v1.8.0
+	github.com/ryanrolds/sqlclosecheck v0.6.0
+	github.com/sivchari/containedctx v1.0.3
+	github.com/sonatard/noctx v0.5.1
+	github.com/timakin/bodyclose v0.0.0-20261107224203-8bb60b19bea4
+	go.augendre.info/fatcontext v0.10.1
 	golang.org/x/tools v0.52.0
 	honnef.co/go/tools v0.8.2
 )
 
 require (
 	github.com/BurntSushi/toml v1.4.1-0.20240526193622-a339e1f7089c // indirect
+	github.com/gostaticanalysis/analysisutil v0.7.1 // indirect
 	golang.org/x/exp/typeparams v0.0.0-20231108232855-2478ac86f678 // indirect
 	golang.org/x/mod v0.42.0 // indirect
 	golang.org/x/sync v0.24.0 // indirect
+	golang.org/x/tools/go/packages/packagestest v0.1.1-deprecated // indirect
 )

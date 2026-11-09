@@ -10,7 +10,20 @@ import { GO_SIZE_RULES } from '../../../../shared/project-rules/size-rules.mjs';
 import { FORMATTERS } from '../formatting/go-formatters.mjs';
 import { suggestionOrAllowed } from '../../../../shared/messages/closest-match.mjs';
 
-export const GO_LINT_TOOLS = ['vet', 'staticcheck', 'errcheck', 'modernize'];
+export const GO_CATALOG_TOOLS = [
+  'bodyclose',
+  'rowserrcheck',
+  'sqlclosecheck',
+  'noctx',
+  'errorlint',
+  'nilerr',
+  'nilnil',
+  'errname',
+  'contextcheck',
+  'containedctx',
+  'fatcontext',
+];
+export const GO_LINT_TOOLS = ['vet', 'staticcheck', 'errcheck', 'modernize', ...GO_CATALOG_TOOLS];
 export const GO_EXCEPTION_RULES = [...COMMON_EXCEPTION_RULES, ...GO_SIZE_RULES];
 export const GO_SETTING_KEYS = ['formatters', 'buildTags'];
 export const BUILD_TAG = /^!?[\w.]+$/u;

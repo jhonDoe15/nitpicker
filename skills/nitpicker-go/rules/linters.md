@@ -1,8 +1,9 @@
 # Linters
 
 Part of the [nitpicker-go](../SKILL.md) skill. The gate runs staticcheck (every SA, S, ST and QF
-check, and U1000), errcheck, the modernize suite and more `golang.org/x/tools` passes on every
-package, test files included. Write these forms from the start; each finding's message names the
+check, and U1000), errcheck, the modernize suite, more `golang.org/x/tools` passes and catalog
+linters (bodyclose, sqlclosecheck, rowserrcheck, noctx, errorlint, nilerr, nilnil, errname,
+contextcheck, containedctx, fatcontext) on every package, test files included. Write these forms from the start; each finding's message names the
 allowed form and ends with its exception entry.
 
 ## Errors
@@ -11,9 +12,25 @@ allowed form and ends with its exception entry.
   unchecked too. Close a file you wrote to in a deferred call that joins
   the error into a named result: `defer func() { err = errors.Join(err, file.Close()) }()`.
 - A type assertion takes two values, `value, ok := x.(T)`, unless a type switch fits better.
-- Compare errors with `errors.Is` and `errors.As`, never `==`, `reflect.DeepEqual` or their text.
+- Compare errors with `errors.Is` and `errors.As`, never `==`, a type assertion, a type switch,
+  `reflect.DeepEqual` or their text (errorlint). Wrap an error with `%w`, never `%v`.
+- A branch that checked `err != nil` returns the error, not nil (nilerr). A function returning a
+  pointer, map, channel, func or interface with an error never returns `nil, nil`: return a
+  sentinel error (nilnil).
 - Error strings start in lower case and end without punctuation (ST1005). A sentinel error is a
-  package variable named `ErrX` (ST1012).
+  package variable named `ErrX` (ST1012), and an error type is named `XError` (errname).
+
+## Resources and contexts
+
+- Close an HTTP response body, and `sql.Rows` and `sql.Stmt`, in a deferred call that joins the
+  error: `defer func() { err = errors.Join(err, rows.Close()) }()` (bodyclose, sqlclosecheck).
+  Return `rows.Err()` after reading rows (rowserrcheck).
+- Use the context forms of calls that block: `http.NewRequestWithContext`,
+  `exec.CommandContext`, `db.QueryContext`, `net.Dialer.DialContext` (noctx).
+- A function that has a context passes it on; it never calls one that makes its own with
+  `context.Background()` (contextcheck). A context is the first parameter, never a struct field
+  (containedctx). In a loop, derive each iteration's context into a new variable, not into the
+  loop's own (fatcontext).
 
 ## Names and comments
 

@@ -1,14 +1,14 @@
 package sa4
 
-type Problem struct{}
+type ProblemError struct{}
 
-func (*Problem) Error() string {
+func (*ProblemError) Error() string {
 	return "problem"
 }
 
-func find(missing bool) *Problem {
+func find(missing bool) *ProblemError {
 	if missing {
-		return &Problem{}
+		return &ProblemError{}
 	}
 	return nil
 }
@@ -23,7 +23,7 @@ func TypedNil(missing bool) bool {
 
 func Untyped(missing bool) error {
 	if missing {
-		return &Problem{}
+		return &ProblemError{}
 	}
 	return nil
 }
