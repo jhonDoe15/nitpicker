@@ -9,6 +9,7 @@ import { pythonOutsideRootsNotices } from '../../../languages/python/adapters/no
 import { testFileMatcher } from '../../../languages/python/adapters/analysis/python-sources.mjs';
 import { detectSourceRoots } from '../../../languages/python/adapters/execution/python-project.mjs';
 import { outsideRootsNotices } from '../../../languages/typescript/preset/notices/outside-roots-notice.mjs';
+import { projectFilePaths } from '../../../shared/project-files/project-files.mjs';
 import {
   LAYOUT_ROOT_KEYS,
   unmatchedLayoutRootNotices,
@@ -45,7 +46,7 @@ function languageDescriber(config, headPolicy, projectRoot) {
 
 function layoutDescriber(layout, projectRoot) {
   return LAYOUT_ROOT_KEYS.some((key) => layout?.[key] !== undefined)
-    ? () => unmatchedLayoutRootNotices(layout, listedFiles(projectRoot))
+    ? () => unmatchedLayoutRootNotices(layout, projectFilePaths(projectRoot))
     : undefined;
 }
 
