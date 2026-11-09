@@ -245,8 +245,8 @@ message does not already name it, and by its exception entry:
   unnecessary-format, unnecessary-if, unnecessary-stmt, unused-parameter, unused-receiver,
   use-fmt-print, useless-break, useless-fallthrough and var-declaration. revive's own confidence
   floor (0.8) applies, as its command line applies it. `package-naming` is a finding on the package
-  folder, like ST1000, because revive reports it from whichever file it reads first. revive type-checks from the toolchain's export data, as its command line
-  does, so the few rules that need types (time-equal, unexported-return, epoch-naming and others)
+  folder, like ST1000, because revive reports it from whichever file it reads first. revive
+  type-checks from the toolchain's export data, as its command line does, so the few rules that need types (time-equal, unexported-return, epoch-naming and others)
   see standard-library types but not those of third-party modules.
 
 The linters skip generated files (`// Code generated ... DO NOT EDIT.`), as staticcheck does; a
