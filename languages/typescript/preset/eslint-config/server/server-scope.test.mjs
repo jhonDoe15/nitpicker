@@ -30,6 +30,8 @@ function ruleIdsFor(filename, code, browser = false) {
 }
 
 const LOCAL_HOUR = 'export const hour = () => new Date().getHours();';
+const UNCONVERTED_QUERY =
+  "import { z } from 'zod';\nexport const list = (req) => z.object({ page: z.number() }).parse(req.query);";
 
 describe('server scope', () => {
   it.each([
@@ -46,6 +48,13 @@ describe('server scope', () => {
 
   it('reports local time in production code of a server project', () => {
     expect(ruleIdsFor('src/clock.ts', LOCAL_HOUR)).toEqual(['nitpicker/no-local-time-zone']);
+  });
+
+  it('reports a number read from the query string in production code of a server project', () => {
+    expect(ruleIdsFor('src/routes.ts', UNCONVERTED_QUERY)).toEqual([
+      'nitpicker/no-uncoerced-request-input',
+    ]);
+    expect(ruleIdsFor('src/routes.test.ts', UNCONVERTED_QUERY)).toEqual([]);
   });
 
   it('leaves tests and test support out', () => {
