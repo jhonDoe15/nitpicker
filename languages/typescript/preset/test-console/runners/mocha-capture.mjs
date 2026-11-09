@@ -49,6 +49,16 @@ function wrapMethod(owner, name, before) {
   }
 }
 
+function loadWithin(tracking, owner, name) {
+  const original = owner[name];
+  if (typeof original === 'function') {
+    owner[name] = function loading(...values) {
+      watchLoading(tracking, this);
+      return tracking.storage.run(NO_PLACE, () => Reflect.apply(original, this, values));
+    };
+  }
+}
+
 function isSharedRootHook(hook, loadedFileCounts) {
   return (loadedFileCounts.get(hook.parent) ?? 0) > 1 && !isEachHook(hook);
 }
@@ -70,7 +80,7 @@ function watchLoading(tracking, { suite }) {
   });
   suite.on('post-require', () => {
     tracking.state.loading = '';
-    tracking.state.current = NO_PLACE;
+    enter(tracking, NO_PLACE);
   });
   for (const event of ALL_HOOK_EVENTS) {
     suite.on(event, (hook) => {
@@ -91,8 +101,8 @@ function watchRunner(tracking, runner) {
   runner.on('test', (test) => {
     enter(tracking, testPlace(test));
   });
-  runner.on('end', () => {
-    tracking.state.current = NO_PLACE;
+  runner.prependListener('end', () => {
+    enter(tracking, NO_PLACE);
   });
 }
 
@@ -104,19 +114,15 @@ export function trackMocha(mochaClass, storage = new AsyncLocalStorage()) {
     loadedFileCounts: new WeakMap(),
     watched: new WeakSet(),
   };
-  wrapMethod(mochaClass.prototype, 'loadFiles', (mocha) => {
-    watchLoading(tracking, mocha);
-  });
-  wrapMethod(mochaClass.prototype, 'loadFilesAsync', (mocha) => {
-    watchLoading(tracking, mocha);
-  });
+  loadWithin(tracking, mochaClass.prototype, 'loadFiles');
+  loadWithin(tracking, mochaClass.prototype, 'loadFilesAsync');
   wrapMethod(mochaClass.Runner.prototype, 'run', (runner) => {
     watchRunner(tracking, runner);
   });
   return function place() {
     const { current } = tracking.state;
     const origin = storage.getStore() ?? current;
-    return origin.file === '' || origin.file === current.file ? current : NO_PLACE;
+    return origin.file === '' || origin.file === current.file ? current : origin;
   };
 }
 
