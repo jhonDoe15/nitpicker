@@ -2038,6 +2038,7 @@
                             "pmd/ClassLoadEffect",
                             "pmd/UnboundedThreadPool",
                             "pmd/RecursiveMapUpdate",
+                            "pmd/StreamedRowsCollected",
                             "pmd/GeneratedMemberCycle",
                             "pmd/GeneratedEqualsSkipsSuperclass",
                             "pmd/SpringConstructorInjection",
