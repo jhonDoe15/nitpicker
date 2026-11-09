@@ -13,6 +13,10 @@ const VALID = {
 const DESCRIPTIVE = { ...VALID, classification: 'descriptive' };
 const NOT_RUN = { ...DESCRIPTIVE, toolNotRun: true };
 
+function firstErrorPath(finding) {
+  return findingsSchemaErrors([finding])[0].split(' ')[2];
+}
+
 const MALFORMED = [
   [{ ...VALID, toolNotRun: true }, '/findings/0/classification'],
   [{ ...DESCRIPTIVE, toolNotRun: false }, '/findings/0/toolNotRun'],
@@ -30,7 +34,7 @@ describe('tool-not-run notices and kept line ranges in the findings schema', () 
     'rejects the malformed finding %j like the reference parser',
     (finding, errorPath) => {
       expect(() => parseFinding(finding)).toThrow(TypeError);
-      expect(findingsSchemaErrors([finding])[0]).toContain(`tool rule: ${errorPath} `);
+      expect(firstErrorPath(finding)).toBe(errorPath);
     },
   );
 
@@ -57,9 +61,7 @@ describe('tool-not-run notices and kept line ranges in the findings schema', () 
     expect(findingsSchemaErrors([finding])).toEqual([]);
     expect(() => parseFinding(reversed)).toThrow(TypeError);
     expect(() => parseFinding(unnamed)).toThrow(TypeError);
-    expect(findingsSchemaErrors([unnamed])[0]).toContain(
-      "mustKeepUnchangedLines/0 must have required property 'path'",
-    );
+    expect(firstErrorPath(unnamed)).toBe('/findings/0/ratchet/mustKeepUnchangedLines/0');
   });
 
   it('accepts a tool-not-run notice on a descriptive finding', () => {
