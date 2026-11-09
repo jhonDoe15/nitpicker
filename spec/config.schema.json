@@ -1987,6 +1987,7 @@
                             "kotlin-source/RepeatedStringLiteral",
                             "kotlin-source/LogFormatArguments",
                             "kotlin-source/LogExceptionFirst",
+                            "kotlin-source/OperandSlip",
                             "kotlin-source/ProcessWaitWithoutTimeout",
                             "kotlin-source/UnquotedRegexValue",
                             "kotlin-source/PlainTextRegex",
