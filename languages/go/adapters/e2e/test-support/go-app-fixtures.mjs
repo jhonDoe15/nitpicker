@@ -95,3 +95,14 @@ func round(total int) int {
 	return total / 5 * 5
 }
 `;
+
+export const ROUNDING_TEST = `package billing
+
+import "testing"
+
+func TestRound(t *testing.T) {
+	if round(12) != 10 {
+		t.Fatal("wrong rounding")
+	}
+}
+`;
