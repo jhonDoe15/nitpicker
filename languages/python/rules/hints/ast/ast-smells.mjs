@@ -211,6 +211,14 @@ export const SMELL_HINTS = [
   },
   {
     tool: RULES_TOOL,
+    rules: ['shared-test-state'],
+    describe: (subject) =>
+      `a test changes \`${subject}\`, which every test of the module or class shares, so the tests depend on the order they run in`,
+    allowed:
+      'Build the state in the test or in a function-scoped fixture, or reset it before every test: `.clear()` or reassign it in an `autouse` fixture, `setup_method` or `setUp`. State built once in a session or module fixture is fine while the tests only read it.',
+  },
+  {
+    tool: RULES_TOOL,
     rules: ['network-in-test'],
     describe: (subject) => `\`${subject}\` reaches the network in a unit test`,
     allowed:

@@ -68,6 +68,7 @@ describe('conventions in a run', () => {
       path.join(root, 'nitpicker.config.json'),
       '{ "preset": "java", "disable": ["nope"] }\n',
     );
+    writeFileSync(path.join(root, 'build.gradle'), '');
     let errors = '';
 
     const exitCode = runCli({

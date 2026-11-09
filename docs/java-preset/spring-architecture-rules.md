@@ -167,6 +167,33 @@ attribute). A field that is free-form on purpose takes an exception. Kotlin clas
 same way; an annotation Kotlin puts on the constructor parameter only (a `@JsonIgnore` without
 `@get:` or `@field:`) is not seen.
 
+**Exceptions mapped to a status.** An exception that leaves a controller without a mapping reaches
+the client as a 500 with no useful body, and the cause is lost from the API contract.
+
+| Rule                        | Fails when                                                                                                                                                                                                                                                                                                                                                     |
+| --------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `spring-unmapped-exception` | a handler method of a controller (a `@RequestMapping` or composed mapping on the method, its superclass or interface) can throw a project exception class that no `@ExceptionHandler` maps, that carries no `@ResponseStatus` (on it or a superclass) and that is no `ResponseStatusException` or `ErrorResponse`; one finding per handler and exception class |
+
+The walk starts at each handler method, also one inherited from a project superclass, and follows
+calls, method references and constructor calls into project code (an interface call also into its
+project implementations) four levels deep, the shortest call path first, and the message names that
+path; compiler-made bridge and default-argument methods are not counted as a level. A thrown
+exception is a project `Throwable` that the bytecode constructs and throws at once (`throw new
+OrderNotFound(id)`), one a lambda returns (`orElseThrow(() -> new OrderNotFound(id))`) or a constructor
+reference (`orElseThrow(OrderNotFound::new)`); one built as the cause of another exception is not. A
+call or construction inside a `try` block that has a `catch` is not followed, since the code there
+handles what it throws. An `@ExceptionHandler` in any `@ControllerAdvice` or `@RestControllerAdvice`
+class maps its classes and their subclasses for every controller (its `basePackages` and
+`assignableTypes` are not read, which can only hide a finding), one in the controller itself for that
+controller; with no annotation value, its `Throwable` parameter types count. A handler for
+`Exception`, `RuntimeException` or `Throwable` maps only the classes its class checks with
+`instanceof`, since the rest still fall through to a generic response. A project class that extends a
+library exception outside `java.` (such as Spring's `TypeMismatchException`, which Spring maps to 400)
+counts as mapped, and a project `HandlerExceptionResolver` or `WebExceptionHandler` turns the rule off,
+since it can map any class. Exceptions from libraries and the JDK are left out: Spring maps its own,
+and the rest are usually server faults. Messaging, GraphQL and functional (`RouterFunction`) endpoints
+are not checked.
+
 **Aggregates (jMolecules).** A project that declares its domain model with
 [jMolecules](https://github.com/xmolecules/jmolecules) (`org.jmolecules:jmolecules-ddd`, Apache-2.0,
 read from the project's own classes; nitpicker adds no dependency) gets its aggregate boundaries

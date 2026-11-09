@@ -472,6 +472,85 @@ return (
       </property>
     </properties>
   </rule>
+  <rule name="SharedTestState" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
+        message="All tests of this class share this field, and this test changes it, so a test passes or fails depending on the tests that ran before it. Shared fields are static ones, and every field of a class with @TestInstance(PER_CLASS) or of a TestNG class (one instance runs all its tests). Create the state in the test, or assign it (or clear() it) in @BeforeEach, @Before or @BeforeMethod so every test starts from the same value. State built once in @BeforeAll that the tests only read is fine.">
+    <priority>2</priority>
+    <properties>
+      <property name="xpath">
+        <value><![CDATA[
+let $testMarks := ('Test', 'ParameterizedTest', 'RepeatedTest', 'TestFactory', 'TestTemplate'),
+    $perTestMarks := ('BeforeEach', 'AfterEach', 'Before', 'After', 'BeforeMethod', 'AfterMethod'),
+    $onceMarks := ('BeforeAll', 'AfterAll', 'BeforeClass', 'AfterClass', 'BeforeSuite', 'AfterSuite',
+                   'BeforeTest', 'AfterTest', 'BeforeGroups', 'AfterGroups'),
+    $mutators := '^(add|put|remove|clear|set|push|pop|offer|poll|compute|merge|replace|retain|sort|append|insert|delete|increment|decrement|getAnd|accumulate|update|lazySet|compareAndSet|drain)',
+    $resetters := ('clear', 'set', 'reset', 'lazySet', 'setLength'),
+    $marked := function($method, $marks) { $method/ModifierList/Annotation/@SimpleName = $marks },
+    $mutableType := function($field) {
+      exists($field/ArrayType)
+      or exists($field/ClassType[pmd-java:typeIs('java.util.Collection') or pmd-java:typeIs('java.util.Map')
+        or pmd-java:typeIs('java.lang.StringBuilder') or pmd-java:typeIs('java.lang.StringBuffer')
+        or pmd-java:typeIs('java.util.concurrent.atomic.AtomicInteger')
+        or pmd-java:typeIs('java.util.concurrent.atomic.AtomicLong')
+        or pmd-java:typeIs('java.util.concurrent.atomic.AtomicBoolean')
+        or pmd-java:typeIs('java.util.concurrent.atomic.AtomicReference')
+        or pmd-java:typeIs('java.util.concurrent.atomic.AtomicIntegerArray')
+        or pmd-java:typeIs('java.util.concurrent.atomic.AtomicLongArray')
+        or pmd-java:typeIs('java.util.concurrent.atomic.AtomicReferenceArray')
+        or pmd-java:typeIs('java.util.concurrent.atomic.LongAdder')
+        or pmd-java:typeIs('java.util.concurrent.atomic.DoubleAdder')]) },
+    $singleInstance := function($class) {
+      exists($class/ModifierList/Annotation[@SimpleName = 'TestInstance'][.//*[@Name = 'PER_CLASS']])
+      or exists($class/ModifierList/Annotation[pmd-java:typeIs('org.testng.annotations.Test')])
+      or exists($class/ClassBody/MethodDeclaration/ModifierList/Annotation[pmd-java:typeIs('org.testng.annotations.Test')]) },
+    $fieldOf := function($ref) {
+      let $name := string($ref/@Name),
+          $qualifier := $ref/self::FieldAccess/*[1],
+          $member := $ref/ancestor::*[self::MethodDeclaration or self::ConstructorDeclaration
+                                      or self::Initializer or self::LambdaExpression][last()]
+      return
+        if ($ref/self::FieldAccess and not($qualifier[self::ThisExpression
+              or self::TypeExpression[ClassType/@SimpleName = $ref/ancestor::ClassDeclaration/@SimpleName]])) then ()
+        else if ($ref/self::VariableAccess and exists($member//VariableId[@Name = $name][@Field = false()])) then ()
+        else ($ref/ancestor::ClassBody/FieldDeclaration[VariableDeclarator/VariableId/@Name = $name])[last()] },
+    $writes := (
+      //AssignmentExpression/*[1][self::VariableAccess or self::FieldAccess],
+      //UnaryExpression[@Operator = ('++', '--')]/*[1][self::VariableAccess or self::FieldAccess],
+      //ArrayAccess[@AccessType = 'WRITE']/*[1][self::VariableAccess or self::FieldAccess],
+      //MethodCall[matches(@MethodName, $mutators)]/*[1][self::VariableAccess or self::FieldAccess])
+return
+$writes
+  [let $ref := ., $field := $fieldOf(.), $class := $field/../..,
+       $direct := exists(parent::AssignmentExpression | parent::UnaryExpression)
+   return exists($field)
+     and not($field/ModifierList/Annotation)
+     and (if ($direct) then not($field/VariableDeclarator/VariableId/@Final = true())
+          else if (parent::ArrayAccess) then exists($field/ArrayType)
+          else $mutableType($field))
+     and ($field/@Static = true() or $singleInstance($class))
+     and exists($class//MethodDeclaration[$marked(., $testMarks)])
+     and (let $site := ancestor::MethodDeclaration[last()],
+              $name := string($field/VariableDeclarator/VariableId/@Name),
+              $hooks := $class//MethodDeclaration[$marked(., $perTestMarks)],
+              $helpers := $class/ClassBody/MethodDeclaration
+                [@Name = $hooks//MethodCall[*[1][self::ArgumentList or self::ThisExpression]]/@MethodName],
+              $resets := ($hooks | $helpers)//(
+                  AssignmentExpression[@Operator = '=']/*[1]
+                | MethodCall[@MethodName = $resetters][ArgumentList/@Size le 1]/*[1])
+                [self::VariableAccess or self::FieldAccess][@Name = $name][$fieldOf(.) is $field],
+              $callers := $class//MethodCall[@MethodName = $site/@Name][*[1][self::ArgumentList or self::ThisExpression]],
+              $onceOnly := exists($callers)
+                and (every $call in $callers satisfies
+                       $marked($call/ancestor::MethodDeclaration[last()], $onceMarks))
+          return exists($site)
+            and not($marked($site, $onceMarks))
+            and ($marked($site, ($testMarks, $perTestMarks)) or (exists($callers) and not($onceOnly)))
+            and empty($resets))]
+  /(parent::MethodCall | parent::AssignmentExpression | parent::UnaryExpression
+    | parent::ArrayAccess/(parent::AssignmentExpression | parent::UnaryExpression))
+]]></value>
+      </property>
+    </properties>
+  </rule>
   <rule name="StaticMockOfProjectType" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
         message="A static or constructor mock (mockStatic, mockConstruction) replaces a class of this project, for the whole thread, so the test runs a fake instead of the real code and depends on how that code is called. Pass the dependency in instead: an instance, a function or a Clock the test can replace. Keep static mocks for library types that cannot be passed in.">
     <priority>2</priority>

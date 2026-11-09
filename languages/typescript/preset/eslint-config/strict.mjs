@@ -181,6 +181,7 @@ function strictTypedConfigFor(layout, parserOptions, options = {}) {
         'nitpicker/no-service-locator': ['error', { entryPoints: layout.entryPoints ?? [] }],
         'nitpicker/no-falsy-default': 'error',
         'nitpicker/no-string-as-regex': 'error',
+        'nitpicker/no-unmapped-exception': 'error',
       },
     },
     {

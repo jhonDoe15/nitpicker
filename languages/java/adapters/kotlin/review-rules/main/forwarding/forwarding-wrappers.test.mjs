@@ -188,3 +188,62 @@ describe('forwarding wrapper in Kotlin', () => {
     ]);
   });
 });
+
+describe('forwarding wrapper targets in Kotlin', () => {
+  it('reports a forward to a library type written with its package', () => {
+    const check = fn('checked', {
+      line: 5,
+      parameters: [parameter('value', 'String')],
+      forward: forward('requireNonNull', ['value'], { qualifier: 'java.util.Objects' }),
+    });
+
+    expect(summary(findingsFor([check]))).toEqual([`${FORWARDING_RULE} checked 5`]);
+  });
+
+  it('allows a forward through a lowercase value', () => {
+    const viaValue = fn('checked', {
+      parameters: params('value'),
+      forward: forward('scaled', ['value'], { qualifier: 'java.util.objects' }),
+    });
+
+    expect(findingsFor([viaValue, target()])).toEqual([]);
+  });
+
+  it('ignores a same-named object of another package that the wrapper does not import', () => {
+    const own = klass('Math', { kind: 'object' });
+    const abs = fn('abs', { owner: 'Math', parameters: [parameter('x', 'Long')] });
+    const elsewhere = file({
+      file: 'src/main/kotlin/demo/other/Math.kt',
+      package: 'demo.other',
+      classes: [own],
+      functions: [abs],
+    });
+    const absOf = fn('absOf', {
+      line: 4,
+      parameters: params('x'),
+      forward: forward('abs', ['x'], { qualifier: 'Math' }),
+    });
+    const wrapperFile = file({ functions: [absOf], imports: COMPONENT });
+    const files = [wrapperFile, elsewhere];
+
+    expect(summary(run(forwardingWrapperFindings, files))).toEqual([`${FORWARDING_RULE} absOf 4`]);
+    wrapperFile.imports = [{ path: 'demo.other.Math', all: false }];
+
+    expect(run(forwardingWrapperFindings, files)).toEqual([]);
+  });
+
+  it('matches an unqualified forward only to a function its file can see', () => {
+    const elsewhere = file({
+      file: 'src/main/kotlin/demo/other/Scale.kt',
+      package: 'demo.other',
+      functions: [target()],
+    });
+    const wrapperFile = file({ functions: [wrapper()] });
+    const files = [wrapperFile, elsewhere];
+
+    expect(run(forwardingWrapperFindings, files)).toEqual([]);
+    wrapperFile.imports = [{ path: 'demo.other.scaled', all: false }];
+
+    expect(summary(run(forwardingWrapperFindings, files))).toEqual([`${FORWARDING_RULE} price 3`]);
+  });
+});

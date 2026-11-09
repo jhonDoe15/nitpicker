@@ -293,6 +293,7 @@ describe('Kotlin exception rules for the review rules', () => {
       'pmd/FloatEqualityInTest',
       'pmd/WeakAssertionInTest',
       'pmd/GlobalStateLeakInTest',
+      'pmd/SharedTestState',
       'pmd/MockedSubjectInTest',
       'pmd/StaticMockOfProjectType',
       'pmd/SpringUnusedContext',
