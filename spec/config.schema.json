@@ -1908,8 +1908,7 @@
           "i18n": false,
           "python": false,
           "kotlin": false,
-          "go": false,
-          "protocols": false
+          "go": false
         }
       }
     },

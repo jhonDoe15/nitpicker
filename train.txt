@@ -1,2 +1,3 @@
 MERGED 533 a0e87a759 design signals; 1093 files passed
 MERGED 572 41908542b kotlin design facts; kotlin design e2e not run
+MERGED 574 2a630a574 python design rules; follow-up fixes for nitpicker_rules build_project and python-facts; python design e2e not run

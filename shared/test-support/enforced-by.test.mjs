@@ -136,6 +136,19 @@ describe('the enforcedBy column of every catalogued rule', () => {
       found('python', 'committed-env-file', 'shared/hygiene/files/repository-files.mjs'),
     ]).toEqual([true, true, true, true]);
     expect(emitters.java.get('unused-option')).toEqual([]);
+    expect([
+      emitters.java.get('mutable-state-escape'),
+      emitters.java.get('duplicate-definition'),
+      found(
+        'typescript',
+        'duplicate-definition',
+        'languages/typescript/preset/structure/reuse/reuse-findings.mjs',
+      ),
+    ]).toEqual([
+      ['languages/java/adapters/design/design-findings.mjs'],
+      ['languages/java/adapters/reuse/jvm-reuse-facts.mjs'],
+      true,
+    ]);
     expect(emitters.kotlin.get('unused-option')).not.toEqual([]);
   });
   it('does not count a rule named only in a comment', () => {
