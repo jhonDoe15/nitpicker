@@ -5,6 +5,7 @@ import { run } from './execution/go-process.mjs';
 import { detectFormatters } from './formatting/go-formatters.mjs';
 import { unformattedFiles } from './formatting/go-format.mjs';
 import { inspect, readInspect } from './structure/go-inspect.mjs';
+import { lint } from './lint/go-lint.mjs';
 import { goTest } from './tests/go-test.mjs';
 import { analyzerDeadlineMs } from '../../../shared/analyzer-timeouts/analyzer-timeouts.mjs';
 
@@ -60,7 +61,7 @@ function toolchain(context) {
   context.projectGoFlags = flags.stdout.trim();
 }
 
-const STEPS = [toolchain, inspect, format, vet, goTest];
+const STEPS = [toolchain, inspect, format, vet, lint, goTest];
 const PREREQUISITES = new Set([toolchain, inspect]);
 
 function attempt(step, context) {
