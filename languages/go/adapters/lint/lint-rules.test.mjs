@@ -92,6 +92,22 @@ describe('Go lint messages', () => {
       },
       'assert.Equalf format %s reads arg N, but call has N arg.',
     ],
+    [
+      {
+        tool: 'spancheck',
+        rule: 'spancheck',
+        message: 'span.End is not called on all paths, possible memory leak',
+      },
+      'span.End is not called on all paths, possible memory leak. End the span in a deferred call right after starting it: `defer span.End()`.',
+    ],
+    [
+      {
+        tool: 'perfsprint',
+        rule: 'integer-format',
+        message: 'fmt.Sprintf can be replaced with faster strconv.Itoa',
+      },
+      'fmt.Sprintf can be replaced with faster strconv.Itoa.',
+    ],
   ])('names the allowed form for %j', (entry, message) => {
     expect(lintMessage(entry)).toBe(message);
   });

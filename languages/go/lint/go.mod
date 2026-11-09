@@ -3,17 +3,23 @@ module github.com/jhonDoe15/nitpicker/languages/go/lint
 go 1.27.0
 
 require (
+	4d63.com/gocheckcompilerdirectives v1.4.0
 	codeberg.org/polyfloyd/go-errorlint v1.9.0
 	github.com/Antonboom/errname v1.1.2
 	github.com/Antonboom/nilnil v1.1.2
 	github.com/Antonboom/testifylint v1.6.4
 	github.com/ashanbrown/makezero/v2 v2.2.1
+	github.com/breml/bidichk v0.3.4
+	github.com/catenacyber/perfsprint v0.10.1
 	github.com/charithe/durationcheck v0.0.11
 	github.com/curioswitch/go-reassign v0.3.0
+	github.com/golangci/asciicheck v0.5.0
+	github.com/golangci/canonicalheader v0.0.0-20260928145534-e18e5c5a078f
 	github.com/golangci/unconvert v0.0.0-20250410112200-a129a6e6413e
 	github.com/gostaticanalysis/comment v1.5.0
 	github.com/gostaticanalysis/nilerr v0.1.2
 	github.com/jingyugao/rowserrcheck v1.1.1
+	github.com/jjti/go-spancheck v0.6.5
 	github.com/kisielk/errcheck v1.30.0
 	github.com/kkHAIKE/contextcheck v1.1.6
 	github.com/kulti/thelper v0.7.1
@@ -23,9 +29,12 @@ require (
 	github.com/raeperd/recvcheck v0.3.2
 	github.com/ryanrolds/sqlclosecheck v0.6.0
 	github.com/sanposhiho/wastedassign/v2 v2.1.0
+	github.com/sashamelentyev/usestdlibvars v1.29.0
 	github.com/sivchari/containedctx v1.0.3
 	github.com/sonatard/noctx v0.5.1
 	github.com/timakin/bodyclose v0.0.0-20260723120731-857993a2939c
+	go-simpler.org/musttag v0.14.0
+	go-simpler.org/sloglint v0.12.0
 	go.augendre.info/fatcontext v0.10.1
 	golang.org/x/tools v0.52.0
 	honnef.co/go/tools v0.8.2
@@ -33,6 +42,8 @@ require (
 
 require (
 	github.com/BurntSushi/toml v1.4.1-0.20240526193622-a339e1f7089c // indirect
+	github.com/ettle/strcase v0.2.0 // indirect
+	github.com/go-toolsmith/astcast v1.1.0 // indirect
 	github.com/gostaticanalysis/analysisutil v0.7.1 // indirect
 	golang.org/x/exp/typeparams v0.0.0-20231108232855-2478ac86f678 // indirect
 	golang.org/x/mod v0.42.0 // indirect

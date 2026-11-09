@@ -128,6 +128,20 @@ const HINTS = new Map([
   ],
   ['suite-broken-parallel', 'Remove the `t.Parallel()` call; suites run their tests in order.'],
   ['wastedassign', 'Remove the assignment, or use the value before it is assigned again.'],
+  ['asciicheck', 'Rename it with ASCII letters only.'],
+  [
+    'bidichk',
+    'Remove the character; in a string, write it as an escape such as `\\u2066` so it stays visible.',
+  ],
+  [
+    'gocheckcompilerdirectives',
+    'Use a directive the compiler knows, such as `//go:noinline`; an ordinary comment starts with `// `.',
+  ],
+  [
+    'musttag',
+    'Tag every exported field, such as `json:"id"`, so renaming a field leaves the encoded form as it is.',
+  ],
+  ['spancheck', 'End the span in a deferred call right after starting it: `defer span.End()`.'],
 ]);
 
 const RULE_NAMES = new Map([['errcheck', 'unchecked']]);
