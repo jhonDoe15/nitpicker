@@ -7,7 +7,7 @@ import {
 
 describe('The pinned Kotlin Spring findings of the fixture', () => {
   it('are what the Spring rules report for the recorded facts, so the recording cannot drift', () => {
-    expect(PINNED_SPRING_LINES).toHaveLength(279);
+    expect(PINNED_SPRING_LINES).toHaveLength(292);
     expect(springLines(recordedFindings())).toEqual(PINNED_SPRING_LINES);
   });
 });

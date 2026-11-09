@@ -5,6 +5,9 @@ description: Use before writing or changing Go code in a project that runs nitpi
 
 # nitpicker for Go
 
+Written for nitpicker 0.1.0-rc.1. If `npx nitpicker --version` prints another version, reinstall
+this skill with the command `npx nitpicker init` prints.
+
 nitpicker allows one way to write each construct. Write it that way from the start; the gate is a
 backstop. It fails only on findings your change adds, so leave code the task doesn't need alone.
 
@@ -47,6 +50,9 @@ whole project, so it takes as long as a full run; finish with the plain run belo
 
 Before you change code other packages use, or fix a bug, read
 [beyond-the-gate.md](beyond-the-gate.md). Why each rule is here: [SOURCES.md](SOURCES.md).
+
+The linters' allowed forms (errors, names and doc comments, simplifications, modern forms): read
+[rules/linters.md](rules/linters.md) before you write Go.
 
 ## Write it this way
 
