@@ -11,6 +11,11 @@ Part of the [nitpicker-javascript](../SKILL.md) skill. Write these forms from th
   the value you got.
 - `===` only. Early returns, no `else` after `return`, no nested ternaries, exhaustive `switch`
   over unions, with no `default`.
+- Boolean logic in its simplest exact form (`nitpicker/simpler-boolean-logic`): `return a < b;`, not an `if`
+  that returns `true` and `false`; one `if (a && b)`, not an `if` that only holds another `if`; `if (c) {B} else {A}`,
+  not `if (!c) {A} else {B}` (and `c ? b : a`, not `!c ? a : b`); `a !== b`, not `!(a === b)`; `!(a || b)`,
+  not `!a && !b`; a boolean `c` itself, not `c ? true : false` or `!!c`, and `c && x`, `c || x`, `!c && x`,
+  `!c || x` for a ternary with one `true`/`false` branch and a boolean other branch.
 - `const` or `let`, never `var`. Rest parameters (`...args`) instead of `arguments[i]`, and spread
   instead of `.apply`.
 - Template literals take strings only: `${String(count)}`.
@@ -32,6 +37,10 @@ Part of the [nitpicker-javascript](../SKILL.md) skill. Write these forms from th
   `(await repo.find()).length`, `where` instead of `.filter`/`.some`/`.find` on the rows, `order`/`orderBy`
   instead of `.sort`, and the ORM's aggregate or `groupBy` instead of `reduce` or `groupBy` over the rows
   (`nitpicker/no-in-memory-query`).
+- Pick the cheaper collection form: a `Set` (`add`, `has`) for items you search while you collect
+  them, a `Map` built once before a loop or handler instead of `find((x) => x.key === key)` in it,
+  and one `reduce` pass instead of `sort(...)[0]` or `toSorted(...).at(-1)`
+  (`nitpicker/no-costly-collection-form`).
 - A child process you wait for gets a deadline: `{ timeout: 30_000 }` on `execFileSync`/`spawnSync`, or a
   `timeout` or `signal: AbortSignal.timeout(30_000)` on `execFile` and an awaited `spawn` or `execa`
   (`nitpicker/require-process-timeout`; a build wrapper that only runs a child to completion takes an exception).
@@ -51,3 +60,7 @@ Part of the [nitpicker-javascript](../SKILL.md) skill. Write these forms from th
 - In a server project, dates use UTC or a named zone, never the server's own: `getUTCHours()`,
   `toISOString()`, `Date.UTC(...)`, `{ timeZone }` for `Intl.DateTimeFormat` and `toLocale*String`,
   luxon `{ zone }`, date-fns `{ in: tz(zone) }`, dayjs `.utc()` (`nitpicker/no-local-time-zone`).
+- In a server project, a number, boolean or date read from the query string, path, headers or a
+  form is converted in its schema, since the value arrives as text: `z.coerce.number()`, `z.stringbool()`,
+  valibot `v.pipe(v.string(), v.toNumber(), v.number())`. Never `z.coerce.boolean()`: it turns `"false"`
+  into true (`nitpicker/no-uncoerced-request-input`).

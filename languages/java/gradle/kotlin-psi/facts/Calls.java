@@ -40,7 +40,7 @@ final class Calls {
         positional++;
       }
     }
-    recordCall(name, positional, named, spread, lambda);
+    recordCall(name, receiverOf(call), positional, named, spread, lambda);
     String imported = state.importedPath(name);
     String waitName = imported == null ? name : imported.substring(imported.lastIndexOf('.') + 1);
     if (state.test && WAIT_NAMES.contains(waitName)) {
@@ -48,10 +48,19 @@ final class Calls {
     }
   }
 
-  private void recordCall(String name, int positional, List<String> named, boolean spread, boolean lambda) {
+  private static String receiverOf(KtCallExpression call) {
+    return call.getParent() instanceof KtQualifiedExpression
+            && ((KtQualifiedExpression) call.getParent()).getSelectorExpression() == call
+        ? clip(((KtQualifiedExpression) call.getParent()).getReceiverExpression())
+        : null;
+  }
+
+  private void recordCall(
+      String name, String qualifier, int positional, List<String> named, boolean spread, boolean lambda) {
     state.calls.add(
         Json.of(
-            m("name", name, "positional", positional, "named", named, "spread", spread, "lambda", lambda)));
+            m("name", name, "qualifier", qualifier, "positional", positional, "named", named, "spread", spread,
+                "lambda", lambda)));
   }
 
   void delegation(PsiElement element, String name, List<? extends ValueArgument> arguments, List<String> extra) {
@@ -69,7 +78,7 @@ final class Calls {
         positional++;
       }
     }
-    recordCall(name, positional, named, spread, false);
+    recordCall(name, null, positional, named, spread, false);
   }
 
   void constructorDelegation(KtConstructorDelegationCall call, Frame frame) {

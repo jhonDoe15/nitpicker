@@ -1,5 +1,6 @@
 const SAME_START_SUPERSEDING = new Map([
   ['no-restricted-properties', 'nitpicker/react-no-random-key'],
+  ['nitpicker/no-costly-collection-form', 'nitpicker/no-in-memory-query'],
 ]);
 
 const ENCLOSING_SUPERSEDING = [

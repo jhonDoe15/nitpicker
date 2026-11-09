@@ -85,6 +85,7 @@ describe('testHonestyFindings', () => {
       'AssertionInControlFlow',
       'CoroutineEscapesTest',
       'GlobalStateLeakInTest',
+      'SharedTestState',
     ]);
   });
 
