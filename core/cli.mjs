@@ -35,6 +35,7 @@ import { fixWorkingTree } from './fix/run-fix.mjs';
 import { resolveCacheStore } from './diff/cache/cache-stores.mjs';
 import { runHistoryCli } from '../shared/history/runner.mjs';
 import { runHygieneCli } from '../shared/hygiene/runner.mjs';
+import { yamlDocuments } from './tooling/yaml/yaml-documents.mjs';
 import { printedInformation } from './help/printed-information.mjs';
 import { runInitCommand } from './init/run-init.mjs';
 import { javascriptPresetHint } from './configuration/project-checks/preset-detection.mjs';
@@ -43,7 +44,7 @@ import { redirectToBundledTypeScriptApi } from '../languages/typescript/typescri
 import { describeError } from '../shared/messages/error-chain.mjs';
 
 const CHECK_COMMANDS = {
-  hygiene: runHygieneCli,
+  hygiene: (cli) => runHygieneCli({ ...cli, parseYaml: yamlDocuments }),
   history: runHistoryCli,
   [GO_ANALYZER_COMMAND]: runGoCli,
 };

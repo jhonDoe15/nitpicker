@@ -61,13 +61,13 @@ export function isMysqlDialect(file, text) {
   return (SQL_FILE.test(file) ? MYSQL_SQL : MYSQL_CODE).test(text);
 }
 
-export function migrationSchema(file, text) {
+export function migrationSchema(file, text, parseYaml) {
   const base = path.posix.basename(file);
   if (XML_FILE.test(base)) {
     return xmlSchema(text);
   }
   if (YAML_FILE.test(base)) {
-    return yamlSchema(text);
+    return yamlSchema(text, parseYaml);
   }
   const up = upSection(text);
   if (SQL_FILE.test(base)) {

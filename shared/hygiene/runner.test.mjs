@@ -7,6 +7,7 @@ import { HEAD_POLICY_ENV } from '../head-policy.mjs';
 import { configurationFiles, createHygieneAnalyzers } from './analyzers.mjs';
 import { parseCheckArguments } from './cli.mjs';
 import { runHygieneCheck, runHygieneCli } from './runner.mjs';
+import { yamlDocuments } from '../../core/tooling/yaml/yaml-documents.mjs';
 
 const temporaryDirectories = [];
 const { createGitRepository } = useGitFixtures();
@@ -94,7 +95,7 @@ describe('parseCheckArguments', () => {
 });
 
 describe('runHygieneCli', () => {
-  function run(commandArguments, policy) {
+  function run(commandArguments, policy, parseYaml) {
     const directory = mkdtempSync(path.join(tmpdir(), 'nitpicker-hygiene-policy-'));
     temporaryDirectories.push(directory);
     const policyFile = path.join(directory, 'policy.json');
@@ -105,6 +106,7 @@ describe('runHygieneCli', () => {
       stdout: { write: (text) => (output.stdout += text) },
       stderr: { write: (text) => (output.stderr += text) },
       environment: { [HEAD_POLICY_ENV]: policyFile },
+      parseYaml,
     });
     return { status, ...output };
   }
@@ -119,6 +121,29 @@ describe('runHygieneCli', () => {
       ...result,
       stdout: JSON.parse(result.stdout).findings.map(({ path: file }) => file),
     }).toEqual({ status: 0, stdout: ['.env'], stderr: '' });
+  });
+
+  it('hands the YAML parser it is given to the checks', () => {
+    const { root } = createGitRepository({
+      'db/changelog/lines.yaml': [
+        'databaseChangeLog:',
+        '  - changeSet:',
+        '      id: 1',
+        '      changes:',
+        '        - addForeignKeyConstraint:',
+        '            baseTableName: lines',
+        '            baseColumnNames: order_id',
+        '            referencedTableName: orders',
+        '            referencedColumnNames: id',
+        '',
+      ].join('\n'),
+    });
+    const paths = (parseYaml) =>
+      JSON.parse(
+        run(['--check', 'repository-hygiene', '--project-root', root], {}, parseYaml).stdout,
+      ).findings.map(({ path: file }) => file);
+
+    expect([paths(yamlDocuments), paths(undefined)]).toEqual([['db/changelog/lines.yaml'], []]);
   });
 
   it('exits 2 with the cause on bad input', () => {

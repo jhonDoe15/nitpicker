@@ -19,12 +19,12 @@ function isUpMigration(file) {
   return isMigrationFile(file) && !DOWN_FILE.test(file) && graphCandidate(file)?.kind !== 'django';
 }
 
-function migrationSchemas(projectRoot, files) {
+function migrationSchemas(projectRoot, files, parseYaml) {
   return files.filter(isUpMigration).flatMap((file) => {
     const text = readSource(projectRoot, file);
     return text === undefined || isMysqlDialect(file, text)
       ? []
-      : [{ file, text, schema: migrationSchema(file, text) }];
+      : [{ file, text, schema: migrationSchema(file, text, parseYaml) }];
   });
 }
 
@@ -99,10 +99,10 @@ function prismaFinding(relation) {
   });
 }
 
-export function foreignKeyIndexFindings(tool, { projectRoot, files }) {
+export function foreignKeyIndexFindings(tool, { projectRoot, files, parseYaml }) {
   const kindOf = databaseKinds(projectRoot, files);
   const checked = files.filter((file) => kindOf(file) !== MYSQL);
-  const schemas = migrationSchemas(projectRoot, checked);
+  const schemas = migrationSchemas(projectRoot, checked, parseYaml);
   const indexes = schemas.flatMap(({ schema }) => schema.indexes);
   const migrations = schemas.flatMap((entry) => fileFindings(entry, indexes));
   const prisma = unindexedPrismaRelations(projectRoot, files)

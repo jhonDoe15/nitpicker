@@ -3,6 +3,7 @@ import { useGitFixtures } from '../../../core/diff/git/test-support/git-reposito
 import { runHygieneCheck } from '../runner.mjs';
 import { trackedFiles } from '../tracked-files.mjs';
 import { foreignKeyIndexFindings } from './foreign-key-index.mjs';
+import { yamlDocuments } from '../../../core/tooling/yaml/yaml-documents.mjs';
 
 const { createGitRepository } = useGitFixtures();
 const FLYWAY = 'src/main/resources/db/migration';
@@ -12,6 +13,7 @@ function check(files) {
   return foreignKeyIndexFindings('repository-hygiene', {
     projectRoot: root,
     files: trackedFiles(root),
+    parseYaml: yamlDocuments,
   });
 }
 
