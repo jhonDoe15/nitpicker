@@ -50,7 +50,7 @@ const ALLOWED = {
   SpringTransactionalCheckedRollback:
     'Add rollbackFor = [Exception::class] to this @Transactional, or throw an unchecked exception. Kotlin lets any function throw a checked exception, and a checked exception commits the work done so far instead of rolling it back.',
   SpringTransactionalReadOnlyWrite:
-    'Put @Transactional without readOnly on this function: a write inside a read-only transaction is skipped or fails.',
+    'Put @Transactional without readOnly on this function, or map the loaded entity to a DTO if the change only shapes the response. A write inside a read-only transaction fails or is silently dropped, and so is a change to an entity loaded in it.',
   SpringMultiWriteWithoutTransaction:
     'Put @Transactional on this function, or run its writes inside transactionTemplate.execute { }. It writes to the database more than once outside a transaction, so when a later write fails the earlier ones stay committed.',
   SpringCacheWriteInTransaction:
