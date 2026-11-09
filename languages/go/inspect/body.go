@@ -145,13 +145,20 @@ func arm(fileSet *token.FileSet, label string, from, to token.Pos) Arm {
 	return Arm{Label: label, From: position(fileSet, from), To: position(fileSet, to)}
 }
 
+func firstStatement(statements []ast.Stmt, open token.Pos) token.Pos {
+	if len(statements) == 0 {
+		return open + 1
+	}
+	return statements[0].Pos()
+}
+
 func bodyArm(fileSet *token.FileSet, label string, body *ast.BlockStmt) Arm {
-	return arm(fileSet, label, body.Lbrace, body.Lbrace+1)
+	return arm(fileSet, label, body.Lbrace, firstStatement(body.List, body.Lbrace))
 }
 
 func elseEnd(statement ast.Stmt) token.Pos {
 	if block, ok := statement.(*ast.BlockStmt); ok {
-		return block.Lbrace + 1
+		return firstStatement(block.List, block.Lbrace)
 	}
 	return statement.Pos()
 }
@@ -194,7 +201,7 @@ func clauseArms(fileSet *token.FileSet, body *ast.BlockStmt) ([]Arm, string) {
 		if label == "default" {
 			implicit = ""
 		}
-		clauseArm := arm(fileSet, label, colon+1, colon+1)
+		clauseArm := arm(fileSet, label, colon+1, firstStatement(statements, colon))
 		clauseArm.Fallthrough = fallthroughAt(fileSet, statements)
 		arms = append(arms, clauseArm)
 	}
