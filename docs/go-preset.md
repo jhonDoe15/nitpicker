@@ -392,8 +392,8 @@ there are no source roots to set) are config errors with `"preset": "go"`, each 
   untouched legacy one, exceptions, failing and slow tests, build tags, gofumpt from a golangci-lint
   file, a change that adopts gofumpt, a missing toolchain, the linters' findings and messages, a
   `staticcheck.conf` that is ignored until the project opts in, and, on an application module, a
-  renamed copy, an exported function only tests call, an unexported function only tests call, and an unused function reported once. CI runs
-  them in the `go-e2e` workflow.
+  renamed copy, an exported function only tests call, an unexported function only tests call, and
+  an unused function reported once. CI runs them in the `go-e2e` workflow.
 
 ## Remaining slices
 
