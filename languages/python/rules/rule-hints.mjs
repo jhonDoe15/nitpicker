@@ -7,8 +7,9 @@ import { STRUCTURE_HINTS } from './hints/ast/ast-structure.mjs';
 import { TYPING_HINTS } from './hints/typing/ast-typing.mjs';
 import { SMELL_HINTS } from './hints/ast/ast-smells.mjs';
 import { ORM_HINTS } from './hints/persistence/ast-orm.mjs';
-import { PYTEST_HINTS } from './hints/ruff-pytest.mjs';
 import { SIGNATURE_HINTS } from './hints/signatures/ast-signatures.mjs';
+import { TEST_SWITCH_HINTS } from './hints/tests/ast-test-switches.mjs';
+import { PYTEST_HINTS } from './hints/tests/ruff-pytest.mjs';
 import { SECURITY_HINTS } from './hints/security/ruff-security.mjs';
 import { RULES_SECURITY_HINTS } from './hints/security/rules-security.mjs';
 import { PITFALL_HINTS } from './hints/pitfalls/ruff-pitfalls.mjs';
@@ -54,6 +55,7 @@ export const RULE_HINTS = [
   ...ASYNC_HINTS,
   ...SMELL_HINTS,
   ...SIGNATURE_HINTS,
+  ...TEST_SWITCH_HINTS,
   ...ORM_HINTS,
   ...PERSISTENCE_HINTS,
   { tool: 'mypy', rules: ['import-not-found', 'import-untyped'], allowed: INSTALL_PACKAGE },

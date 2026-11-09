@@ -74,6 +74,8 @@ describe('running the rules script', () => {
       ignoredGlobs: [],
       keywords: [],
       marks: [],
+      xfailStrict: false,
+      minimumPython: [3, 8],
       testFiles: [],
       entryFiles: [],
       entryModules: [],
