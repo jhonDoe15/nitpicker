@@ -149,6 +149,34 @@ example.com/shop/shop/nest.go:9.14,10.11 1 2
     ]);
   });
 
+  it('finds an arm whose block starts at its first statement, as Go 1.27 writes the profile', () => {
+    const text = `mode: atomic
+example.com/shop/shop/size.go:4.2,4.12 1 1
+example.com/shop/shop/size.go:5.3,6.1 1 0
+example.com/shop/shop/size.go:7.2,7.9 1 1
+example.com/shop/shop/size.go:9.3,9.18 1 1
+example.com/shop/shop/size.go:11.3,11.17 1 0
+example.com/shop/shop/size.go:13.2,13.15 1 0
+`;
+    const branches = [
+      { at: at(4, 2), arms: [arm('the if body', at(4, 12), at(5, 3))], implicit: IF_FALSE },
+      {
+        at: at(7, 2),
+        arms: [arm('case n > 5', at(8, 13), at(9, 3)), arm('case n > 0', at(10, 13), at(11, 3))],
+        implicit: 'no case matching',
+      },
+    ].map((branch) => ({ file: 'shop/size.go', function: 'Size', kind: 'if', ...branch }));
+    const findings = goBranchFindings({
+      branches,
+      profile: parseCoverProfile(text, 'example.com/shop'),
+      sourceLines: () => SOURCE,
+    });
+    expect(branchSummary(findings).map(({ line, missed }) => ({ line, missed }))).toEqual([
+      { line: 4, missed: { percent: '50.00', arms: 'the if body (line 4)' } },
+      { line: 7, missed: { percent: '33.33', arms: 'case n > 0 (line 10); no case matching' } },
+    ]);
+  });
+
   it('leaves implicit outcomes out of a profile that only records whether a block ran', () => {
     const set = parseCoverProfile(PROFILE.replace('mode: count', 'mode: set'), 'example.com/shop');
     const findings = goBranchFindings({
