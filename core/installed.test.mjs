@@ -16,7 +16,10 @@ import path from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { readSnippet } from './init/files/agents-md.mjs';
 import { PACKAGE_ROOT } from './tooling/tool-resolution.mjs';
-import { supportsRedirect } from '../languages/typescript/typescript-api/api-redirect.mjs';
+import {
+  MINIMUM_NODE,
+  supportsRedirect,
+} from '../languages/typescript/typescript-api/api-redirect.mjs';
 import { consumerCommands, eslintVersionOf } from './test-support/installed-consumer.mjs';
 import {
   checkoutOutput,
@@ -407,10 +410,12 @@ suite('packed nitpicker in a separate consumer', () => {
         expect(installedVersions).toEqual(peers.map((peer) => manifest.devDependencies[peer]));
       });
       it('stops in one line, before any analyzer, when typescript is missing from node_modules', () => {
-        expect(withoutTypeScript).toEqual({
-          status: 2,
-          output: `nitpicker failed: typescript is not installed in ${realpathSync(root)}. Run npm install (it is in package.json).\n`,
-        });
+        const reason = supportsRedirect()
+          ? `typescript is not installed in ${realpathSync(root)}. Run npm install (it is in package.json).`
+          : 'The typescript package nitpicker resolves has no JavaScript API (it is TypeScript 7 or later, ' +
+            'or no typescript is installed), so nitpicker reads source files with its own TypeScript 6, ' +
+            `which needs Node.js ${MINIMUM_NODE.join('.')} or newer; this is Node.js ${process.versions.node}.`;
+        expect(withoutTypeScript).toEqual({ status: 2, output: `nitpicker failed: ${reason}\n` });
       });
       it('keeps the policy hash stable across two runs', () => {
         expect(second.status, second.output).toBe(1);
