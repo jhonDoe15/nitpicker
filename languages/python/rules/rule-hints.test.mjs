@@ -179,7 +179,7 @@ describe('hints', () => {
 
   it.each([
     ['ruff', 'F401'],
-    ['ruff', 'SIM102'],
+    ['ruff', 'SIM118'],
     ['ruff', 'invalid-syntax'],
   ])('end a %s %s finding without an allowed form with the exception route', (tool, rule) => {
     expect(hintFor(sample({ tool, rule }))).toBeUndefined();

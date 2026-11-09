@@ -13,6 +13,7 @@ import { RULES_SECURITY_HINTS } from './hints/security/rules-security.mjs';
 import { PITFALL_HINTS } from './hints/pitfalls/ruff-pitfalls.mjs';
 import { PERSISTENCE_HINTS } from './hints/persistence/orm-hints.mjs';
 import { STYLE_HINTS } from './hints/ruff-style.mjs';
+import { SIMPLER_LOGIC_HINTS } from './hints/logic/simpler-logic.mjs';
 import { RULES_TOOL } from './hints/tool.mjs';
 import { DEFAULT_LIBRARIES } from './libraries/project-libraries.mjs';
 
@@ -43,6 +44,7 @@ const USE_REPLACEMENT =
 
 export const RULE_HINTS = [
   ...STYLE_HINTS,
+  ...SIMPLER_LOGIC_HINTS,
   ...PITFALL_HINTS,
   ...PYTEST_HINTS,
   ...SECURITY_HINTS,
