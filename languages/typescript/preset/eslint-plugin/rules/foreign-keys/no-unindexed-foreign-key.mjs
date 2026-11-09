@@ -4,7 +4,7 @@ import { indexesItself, schemaSource } from './schema-source.mjs';
 
 const DRIZZLE = 'Drizzle';
 const WHY =
-  'PostgreSQL does not index a foreign-key column by itself, so every delete of a referenced row, and every join or lookup by the column, scans the whole table once it grows.';
+  'Only MySQL indexes a foreign-key column by itself; PostgreSQL, SQL Server and SQLite do not, so every delete of a referenced row, and every join or lookup by the column, scans the whole table once it grows.';
 const EXCEPTION = 'An exception fits only when the table is known to stay small.';
 
 export const rule = {
@@ -17,8 +17,8 @@ export const rule = {
     schema: [],
     messages: {
       TypeORM: `The many-to-one relation {{property}} has no index on its join column. Add @Index() to the relation, or a class @Index whose first column is it. ${WHY} ${EXCEPTION}`,
-      MikroORM: `The many-to-one relation {{property}} has no index on its foreign-key column. Add index: true to @ManyToOne, @Index() on the property, or a class @Index whose first property is it. ${WHY} ${EXCEPTION}`,
-      Drizzle: `The foreign key on {{property}} has no index that starts with it. Add index().on(table.{{property}}) to the table's extra config. ${WHY} ${EXCEPTION}`,
+      MikroORM: `The many-to-one relation {{property}} has no index on its foreign-key column. Add index: true to @ManyToOne, @Index() or @Unique() on the property, or a class @Index or @Unique whose first property is it. ${WHY} ${EXCEPTION}`,
+      Drizzle: `The foreign key on {{property}} has no index that starts with it. Add index().on({{columns}}) to the table's extra config, or .unique() on a single column. ${WHY} ${EXCEPTION}`,
     },
   },
   create(context) {
@@ -30,7 +30,7 @@ export const rule = {
     }
 
     return {
-      ClassDeclaration(node) {
+      'ClassDeclaration, ClassExpression'(node) {
         collect(unindexedRelations(sourceCode, node));
       },
       CallExpression(node) {
@@ -39,6 +39,7 @@ export const rule = {
             node: key.node,
             orm: DRIZZLE,
             property: key.columns.join(', '),
+            columns: key.columns.map((column) => `table.${column}`).join(', '),
           })),
         );
       },
@@ -51,7 +52,7 @@ export const rule = {
           context.report({
             node: entry.node,
             messageId: entry.orm,
-            data: { property: entry.property },
+            data: { property: entry.property, columns: entry.columns ?? '' },
           });
         }
       },

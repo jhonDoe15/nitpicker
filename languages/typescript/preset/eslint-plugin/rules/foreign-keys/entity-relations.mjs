@@ -10,13 +10,8 @@ import {
 } from '../persistence/orm-bindings.mjs';
 
 const RELATION = new Set(['ManyToOne']);
-const INDEXED = new Set([
-  'Index',
-  'Unique',
-  'PrimaryColumn',
-  'PrimaryGeneratedColumn',
-  'PrimaryKey',
-]);
+const PRIMARY = new Set(['PrimaryColumn', 'PrimaryGeneratedColumn', 'PrimaryKey']);
+const VIEWS = new Set(['ViewEntity']);
 const CLASS_INDEXES = new Set(['Index', 'Unique']);
 const COLUMNS = new Set(['Column', 'Property']);
 const JOIN_COLUMN = new Set(['JoinColumn']);
@@ -101,40 +96,64 @@ function joinColumnNames(sourceCode, member, relation) {
   return [name, ...named, `${snakeCase(name)}_id`];
 }
 
-function isIndexedColumn(sourceCode, member, names) {
-  const column = decoratorsOf(sourceCode, member, COLUMNS)[0];
-  const options = column === undefined ? new Map() : optionsOf(sourceCode, column.call);
-  const columnName = stringValue(options.get('name') ?? options.get('fieldName'));
-  const named = [staticKeyName(member.key, member.computed), columnName].some((name) =>
-    names.has(name),
+function isPartial(sourceCode, call) {
+  return call.arguments.some((argument) =>
+    propertiesOf(sourceCode, objectOf(sourceCode, argument)).has('where'),
   );
-  const keyed =
-    literalOf(options.get('unique')) === true || literalOf(options.get('primary')) === true;
-  return named && (keyed || decoratorsOf(sourceCode, member, INDEXED).length > 0);
 }
 
-function isCovered(sourceCode, { member, relation, classNode }) {
-  const names = new Set(joinColumnNames(sourceCode, member, relation).filter(Boolean));
-  const { options } = relation;
-  const indexOption = literalOf(options.get('index'));
-  if (
-    literalOf(options.get('primary')) === true ||
-    indexOption === true ||
-    typeof indexOption === 'string'
-  ) {
-    return true;
+function isTruthy(value) {
+  const literal = literalOf(value);
+  return literal === true || (typeof literal === 'string' && literal.length > 0);
+}
+
+function columnOptions(sourceCode, member) {
+  const column =
+    decoratorsOf(sourceCode, member, COLUMNS)[0] ?? decoratorsOf(sourceCode, member, RELATION)[0];
+  return column === undefined ? new Map() : optionsOf(sourceCode, column.call);
+}
+
+function memberNames(sourceCode, member) {
+  const relation = relationOf(sourceCode, member);
+  if (relation !== undefined) {
+    return joinColumnNames(sourceCode, member, relation).filter(Boolean);
   }
-  if (decoratorsOf(sourceCode, member, INDEXED).length > 0) {
-    return true;
-  }
-  const leading = decoratorsOf(sourceCode, classNode, CLASS_INDEXES).map(({ call }) =>
-    leadingColumn(sourceCode, call),
+  const options = columnOptions(sourceCode, member);
+  const name = staticKeyName(member.key, member.computed);
+  return [name, stringValue(options.get('name') ?? options.get('fieldName'))].filter(Boolean);
+}
+
+function isPrimary(sourceCode, member) {
+  return (
+    decoratorsOf(sourceCode, member, PRIMARY).length > 0 ||
+    literalOf(columnOptions(sourceCode, member).get('primary')) === true
   );
+}
+
+function isIndexedMember(sourceCode, member) {
+  const options = columnOptions(sourceCode, member);
+  const indexes = decoratorsOf(sourceCode, member, CLASS_INDEXES);
+  return (
+    indexes.some(({ call }) => !isPartial(sourceCode, call)) ||
+    isTruthy(options.get('index')) ||
+    isTruthy(options.get('unique'))
+  );
+}
+
+function isCovered(sourceCode, { member, classNode }) {
+  const names = new Set(memberNames(sourceCode, member));
+  const matches = (other) => memberNames(sourceCode, other).some((name) => names.has(name));
+  const members = classNode.body.body;
+  const primary = members.find((other) => isPrimary(sourceCode, other));
+  if (primary !== undefined && matches(primary)) {
+    return true;
+  }
+  const leading = decoratorsOf(sourceCode, classNode, CLASS_INDEXES)
+    .filter(({ call }) => !isPartial(sourceCode, call))
+    .map(({ call }) => leadingColumn(sourceCode, call));
   return (
     leading.some((name) => names.has(name)) ||
-    classNode.body.body.some(
-      (other) => other !== member && isIndexedColumn(sourceCode, other, names),
-    )
+    members.some((other) => matches(other) && isIndexedMember(sourceCode, other))
   );
 }
 
@@ -150,9 +169,12 @@ function relationOf(sourceCode, member) {
 }
 
 export function unindexedRelations(sourceCode, classNode) {
+  if (decoratorsOf(sourceCode, classNode, VIEWS).length > 0) {
+    return [];
+  }
   return classNode.body.body.flatMap((member) => {
     const relation = relationOf(sourceCode, member);
-    if (relation === undefined || isCovered(sourceCode, { member, relation, classNode })) {
+    if (relation === undefined || isCovered(sourceCode, { member, classNode })) {
       return [];
     }
     const property = staticKeyName(member.key, member.computed);

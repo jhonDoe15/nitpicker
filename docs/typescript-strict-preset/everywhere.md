@@ -217,20 +217,25 @@ Part of the [TypeScript strict preset guide](../typescript-strict-preset.md).
   followed. Tests are skipped. A small fixed lookup list that is meant to be loaded whole takes an
   `exceptions` entry.
 - No foreign key without an index that starts with its column (`nitpicker/no-unindexed-foreign-key`,
-  the model-side partner of the `foreign-key-index` repository rule): PostgreSQL does not index a
-  foreign-key column by itself. It reads TypeORM and MikroORM `@ManyToOne` properties and Drizzle
-  `pgTable` columns with `.references(...)` or an extra-config `foreignKey(...)`. A TypeORM relation
-  is covered by `@Index()` on it, a class `@Index` or `@Unique` whose first column is the property,
-  its `@JoinColumn` name or `<property>Id`, or an indexed, unique or primary column of that name;
-  `createForeignKeyConstraints: false` passes. MikroORM is covered by `index` on `@ManyToOne`,
-  `@Index()`, `@Unique()` or `@PrimaryKey()` on the property, or a class `@Index`/`@Unique` whose
-  first property is it, and is only checked with `@mikro-orm/postgresql`, because MikroORM indexes
-  many-to-one columns itself on its other platforms. Drizzle is covered by an `index`,
-  `uniqueIndex`, `unique` or `primaryKey` that starts with the column, or `.primaryKey()` or
-  `.unique()` on it. A one-to-one join column is left alone (TypeORM and MikroORM make it unique),
-  and so is a project whose manifest names only MySQL or MariaDB drivers. When the project has
-  migration files, the migrations are checked instead (by `foreign-key-index`) and this rule stays
-  quiet. `EntitySchema`, `defineEntity` and the other Drizzle dialects are not read.
+  the model-side partner of the `foreign-key-index` repository rule): only MySQL indexes a
+  foreign-key column by itself. It reads TypeORM and MikroORM `@ManyToOne` properties of entity
+  classes (not `@ViewEntity`), and Drizzle Postgres tables (`pgTable`, also through a namespace
+  import, `pgSchema(...).table` and `pgTableCreator`, with the columns as an object or a callback)
+  whose columns call `.references(...)` or whose extra config has a `foreignKey(...)`. A TypeORM
+  relation is covered by `@Index()` on it, a class `@Index` or `@Unique` whose first column is the
+  property, its `@JoinColumn` name or `<property>Id`, an indexed or unique column of that name, or
+  being the first primary-key column; `createForeignKeyConstraints: false` passes. MikroORM is
+  covered by `index` or `unique` on `@ManyToOne`, `@Index()` or `@Unique()` on the property, a class
+  `@Index`/`@Unique` whose first property is it, or being the first primary key, and is only checked
+  with `@mikro-orm/postgresql` or `@mikro-orm/mssql`, because MikroORM indexes many-to-one columns
+  itself on its other platforms. Drizzle is covered by an `index`, `uniqueIndex`, `unique` or
+  `primaryKey` that starts with the column (`.asc()`, `.desc()` and `.op()` are read), or by
+  `.primaryKey()` or `.unique()` on it. A partial index (TypeORM `where`, Drizzle `.where(...)`)
+  does not count. A one-to-one join column is left alone (TypeORM and MikroORM make it unique), and
+  so is a project whose manifests (the nearest and the ones above it) name only MySQL or MariaDB
+  drivers. When the project has migration files (looked for up to six folders below the topmost
+  manifest), the migrations are checked instead (by `foreign-key-index`) and this rule stays quiet.
+  `EntitySchema`, `defineEntity` and the other Drizzle dialects are not read.
 - `===` and `!==` only (`eqeqeq`). Braces on every `if`, `else` and loop body (`curly`). One import
   statement per module (`no-duplicate-imports`; a separate `import type` is fine).
 - Logic mistakes the bundled rules catch, in production code and tests of both presets
