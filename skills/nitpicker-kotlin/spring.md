@@ -103,6 +103,10 @@ your tests activate with `@ActiveProfiles`, and local or dev ones where noted, a
   show-sql, bind logging, H2 console or `always` actuator details. Secrets from the environment,
   `password=${DB_PASSWORD}`, no literal default. Profiles from `SPRING_PROFILES_ACTIVE`, not the
   main file.
+- Every key binds to a property, also in test resources and overrides (`@SpringBootTest`
+  `properties`, `withPropertyValues`, `registry.add`): use the name the Boot metadata or your
+  `@ConfigurationProperties` class defines; declare keys only code reads by name in
+  `META-INF/additional-spring-configuration-metadata.json`.
 
 JPA and Spring Data (`pmd/Jpa...`, `pmd/SpringData...`; SQL or JPQL built from runtime values is
 `kotlin-source/SqlStringBuilding`):
