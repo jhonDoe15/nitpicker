@@ -40,6 +40,10 @@ Part of the [nitpicker-kotlin](../SKILL.md) skill. Write these forms from the st
   `when` without `else` (adding an entry then fails to compile), or a `Boolean` each entry
   declares. Not `s == PAID || s == SHIPPED`, `s in setOf(PAID, SHIPPED)` or a `when` with
   `else -> false` (`pmd/ExhaustiveEnumPredicate`).
+- Operands: no copied operand (`kotlin-source/OperandSlip`). Not `a == a`, `x - x` or `a and a`
+  (a NaN test on a `Double` is `x.isNaN()`), the same operand twice in one `&&`/`||` chain, comparisons of
+  one value that contradict or repeat each other (`x < 3 && x > 5`, `x > 5 && x > 3`), `x * 0`, or
+  `a += a + b`. Tests may apply an operator to one value twice to exercise it.
 - No top-level or `object` function that only passes its parameters, in order, to another function
   with the same parameters (`pmd/StaticForwardingWrapper`); call that function. Factories named
   `of` or `from` are fine. The same goes for a member that only passes its parameters to another

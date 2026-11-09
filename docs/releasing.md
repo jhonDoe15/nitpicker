@@ -54,7 +54,9 @@ Work from a clean checkout of `main` with full history.
      written.
 2. **Bump the version.** At the repository root:
    `npm version <new-version> --no-git-tag-version`. This updates `package.json` and
-   `package-lock.json`. In `CHANGELOG.md`, move the `Unreleased` entries under a new
+   `package-lock.json`. Put the new version in the opening paragraph of each
+   `skills/*/SKILL.md` ("Written for nitpicker <new-version>."); the skills test fails until they
+   match. In `CHANGELOG.md`, move the `Unreleased` entries under a new
    `## [<new-version>] - <YYYY-MM-DD>` heading, leave an empty `Unreleased` section above it, and
    update the link definitions at the bottom (`[Unreleased]` compares the new tag with `HEAD`, and the
    new version links to its release). Commit it (`Release v<new-version>`) through a normal PR to
