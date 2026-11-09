@@ -89,3 +89,12 @@ type Tagged struct {
 	Name string `json:"name,inline"` // want struct-tag
 	Size int    `json:"size,omitempty"`
 }
+
+type NamesIndex struct{} // want exported
+
+type Index struct{}
+
+func Spaced(text string) string { // want empty-lines
+
+	return text + "!"
+}
