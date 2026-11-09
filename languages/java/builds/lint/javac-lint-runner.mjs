@@ -22,7 +22,7 @@ const LINT_TIMEOUT_MS = 15 * 60 * 1000;
 
 function inside(directory, file) {
   const relative = path.relative(directory, file);
-  return !relative.startsWith('..') && !path.isAbsolute(relative);
+  return !(relative.startsWith('..') || path.isAbsolute(relative));
 }
 
 function generatedFiles(directories) {

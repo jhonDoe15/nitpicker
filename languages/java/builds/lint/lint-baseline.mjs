@@ -19,7 +19,7 @@ function javacVersion(javac, spawn = spawnSync) {
 
 function insideRoot(root, entry) {
   const relative = path.relative(root, entry);
-  return !relative.startsWith('..') && !path.isAbsolute(relative);
+  return !(relative.startsWith('..') || path.isAbsolute(relative));
 }
 
 function fileDigest(file) {

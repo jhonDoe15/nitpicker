@@ -151,7 +151,7 @@ function withoutRepeatedDeclarations(uses) {
       return true;
     }
     const key = lineOf(use, use.declaration.member);
-    const free = !usedLines.has(lineOf(use)) && !declared.has(key);
+    const free = !(usedLines.has(lineOf(use)) || declared.has(key));
     declared.add(key);
     return free;
   });
