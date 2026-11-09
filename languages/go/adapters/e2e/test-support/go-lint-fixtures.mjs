@@ -1,6 +1,7 @@
 export const LOOKUP = `package shop
 
 import (
+	"fmt"
 	"os"
 	"strings"
 )
@@ -13,8 +14,8 @@ func Forget(name string) {
 	os.Remove(name)
 }
 
-func Anything() interface{} {
-	return 1
+func Describe(value interface{}) string {
+	return fmt.Sprint(value)
 }
 `;
 
