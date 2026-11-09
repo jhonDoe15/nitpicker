@@ -38,19 +38,28 @@ export function projectWith(files) {
   return root;
 }
 
-let resolved;
+const resolved = new Map();
 
-export function pinnedTools() {
-  resolved ??= resolveTools({ projectRoot: projectWith({}), maven, pinned: readPinnedTools() });
-  return resolved;
+export function pinnedTools(extraTools = []) {
+  const key = JSON.stringify(extraTools);
+  if (!resolved.has(key)) {
+    const projectRoot = projectWith({});
+    resolved.set(key, resolveTools({ projectRoot, maven, pinned: readPinnedTools(), extraTools }));
+  }
+  return resolved.get(key);
 }
 
-export function compiled(root, sources) {
-  const classes = path.join(root, 'classes');
+export function compiled(root, sources, options = {}) {
+  const classes = options.classes ?? path.join(root, 'classes');
+  const classpath = options.classpath ?? [];
   mkdirSync(classes, { recursive: true });
   const result = spawnSync(
     javaCommand('javac'),
-    ['-d', classes, ...sources.map((source) => path.join(root, source))],
+    [
+      ...['-d', classes],
+      ...(classpath.length === 0 ? [] : ['-cp', classpath.join(path.delimiter)]),
+      ...sources.map((source) => path.join(root, source)),
+    ],
     { encoding: 'utf8', timeout: PROCESS_TIMEOUT_MS },
   );
   if (result.status !== 0) {

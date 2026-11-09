@@ -18,7 +18,7 @@ export function formatFindings({ reportRoot, roots, javaStyle }) {
 
 export function javaFormatMessage(javaStyle) {
   const { label, command } = JAVA_FORMATTER_TOOLS[javaStyle] ?? JAVA_FORMATTER_TOOLS.google;
-  return `File is not formatted with ${label}. Format it with ${command}. ${NOT_YOUR_JAVA_FORMATTER}`;
+  return `File is not formatted with ${label}. Run nitpicker --fix, or format it with ${command}. ${NOT_YOUR_JAVA_FORMATTER}`;
 }
 
 const CHECKSTYLE_SOURCE_SET_REPORT = /^checkstyle-.+\.xml$/u;
