@@ -18,7 +18,11 @@ function mostCommon(values) {
   for (const value of values) {
     counts.set(value, (counts.get(value) ?? 0) + 1);
   }
-  return [...counts].toSorted(([, left], [, right]) => right - left)[0]?.[0];
+  const [name] = [...counts].reduce(
+    (best, entry) => (entry[1] > best[1] ? entry : best),
+    [undefined, 0],
+  );
+  return name;
 }
 
 function packageNames(files) {

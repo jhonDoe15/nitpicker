@@ -45,22 +45,26 @@ describe.skipIf(!goE2eEnabled)('Go preset duplicates and dead code end to end', 
     removeWorkspace(workspace);
   });
 
-  it('fails a renamed copy of a function', () => {
-    const result = gate(project, 'copied');
+  it.each([
+    [
+      'a renamed copy of a function',
+      'copied',
+      'duplicates/duplicate-clone internal/billing/invoice.go',
+    ],
+    [
+      'an exported function only tests call, once',
+      'test-only',
+      'facts/test-only-export internal/billing/rebate.go',
+    ],
+    [
+      'a function nothing calls once, as staticcheck U1000',
+      'unused',
+      'staticcheck/U1000 internal/billing/rounding.go',
+    ],
+  ])('fails %s', (_case, branch, finding) => {
+    const result = gate(project, branch);
     expect(toolErrors(result)).toEqual([]);
-    expect(newFindings(result)).toEqual(['duplicates/duplicate-clone internal/billing/invoice.go']);
-  });
-
-  it('fails an exported function only tests call, once', () => {
-    const result = gate(project, 'test-only');
-    expect(toolErrors(result)).toEqual([]);
-    expect(newFindings(result)).toEqual(['facts/test-only-export internal/billing/rebate.go']);
-  });
-
-  it('reports a function nothing calls once, as staticcheck U1000', () => {
-    const result = gate(project, 'unused');
-    expect(toolErrors(result)).toEqual([]);
-    expect(newFindings(result)).toEqual(['staticcheck/U1000 internal/billing/rounding.go']);
+    expect(newFindings(result)).toEqual([finding]);
   });
 
   it('fails a function only tests call, which no main package reaches', () => {
