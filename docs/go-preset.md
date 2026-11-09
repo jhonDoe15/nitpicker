@@ -253,6 +253,7 @@ comments do nothing: the only way past a finding is an
 | S1018 (sliding copy loop)            | modernize `rangeint`               |
 | vet `gofixdirective`                 | vet `inline` on the same directive |
 | `go vet` printf                      | SA1006 (Go 1.24 and later modules) |
+| contextcheck                         | `go-rules/context-outside-entry`   |
 
 **Project config.** `staticcheck.conf` files are read only when the project opts in with
 `"tools": { "staticcheck": { "precedence": ["project"] } }`. Then each package's merged
