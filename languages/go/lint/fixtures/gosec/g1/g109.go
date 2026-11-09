@@ -4,7 +4,7 @@ import "strconv"
 
 func Narrowed(text string) (int32, error) {
 	value, err := strconv.Atoi(text)
-	return int32(value), err // want G109 G115
+	return int32(value), err // want G109
 }
 
 func Parsed(text string) (int32, error) {

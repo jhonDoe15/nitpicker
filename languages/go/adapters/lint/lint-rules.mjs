@@ -1,4 +1,4 @@
-import { GOSEC_HINTS, GOSEC_MESSAGES } from './gosec-hints.mjs';
+import { GOSEC_HINTS, gosecMessage } from './gosec-hints.mjs';
 
 const GO_FIX = '`go fix ./...` applies this rewrite.';
 const KEEP_OR_DROP = 'Use the value or remove the assignment.';
@@ -115,7 +115,7 @@ function hintOf(tool, rule) {
 export function lintMessage({ tool, rule, message }) {
   const hint = hintOf(tool, rule);
   const varying = VARYING_PARTS.get(rule);
-  const own = tool === 'gosec' ? (GOSEC_MESSAGES.get(rule) ?? message) : message;
+  const own = tool === 'gosec' ? gosecMessage(rule, message) : message;
   const text = sentence(varying === undefined ? own : own.replace(varying, ''));
   return hint === undefined ? text : `${text} ${hint}`;
 }

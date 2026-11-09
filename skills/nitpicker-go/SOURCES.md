@@ -94,10 +94,16 @@ than the others, and this skill teaches its rules before an agent writes Go.
 - **gosec with every rule, its file-mode limits aligned.** Each rule names the safe form (crypto/rand,
   query parameters, `os.Root`, a server with `ReadHeaderTimeout`, 0o600 files). G307 is held to the
   same 0o600 as G302 and G306, because gosec's default limit for `os.Create` (0o666) is the mode
-  `os.Create` always uses, so the rule never reported. G104, G107, G204 and G304 are off: errcheck
-  covers unchecked errors, and the taint rules G704, G702 and G703 report URLs, commands and paths
-  that come from request input, where the older rules flag every non-constant value. G601 runs only
-  for files before Go 1.22, read per file, because gosec itself reads one Go version per process.
+  `os.Create` always uses, so the rule never reported. G104, G107, G204, G304 and G504 are off:
+  errcheck covers unchecked errors; G107, G204 and G304 flag every non-constant URL, command or
+  path, while the taint rules G704, G702 and G703 report the ones from request data, program
+  arguments, the environment or stdin; G504 names a `net/http/cgi` weakness fixed in Go 1.6.3. G601
+  runs only for files before Go 1.22, read per file, because gosec itself reads one Go version per
+  process.
+- **Every hint was checked against the rule.** Two reviews tried each suggested form against gosec:
+  forms the rule still flags (`http.MaxBytesReader` before `ParseMultipartForm`, a validated
+  command name, an escaped URL string, 0o640 files) were replaced by forms it accepts, and rules
+  that accept no validation say that a checked value takes an exception.
 - **A fixture for every check.** Each enabled check has a failing line and the allowed form in
   `languages/go/lint/fixtures`; the harness fails on a missing or unexpected report, so a tool
   upgrade that changes what a check reports is caught before release.

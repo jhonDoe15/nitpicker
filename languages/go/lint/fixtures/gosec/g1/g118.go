@@ -2,16 +2,21 @@ package g1
 
 import (
 	"context"
+	"net/http"
 	"time"
 )
 
 func Leaked(ctx context.Context) context.Context {
-	child, _ := context.WithTimeout(ctx, time.Second) // want G118
+	child, _ := context.WithTimeout(ctx, time.Second)
 	return child
 }
 
-func Cancelled(ctx context.Context, work func(context.Context) error) error {
-	child, cancel := context.WithTimeout(ctx, time.Second)
-	defer cancel()
-	return work(child)
+func Detached(request *http.Request, work func(context.Context)) {
+	ctx := request.Context()
+	go work(context.Background()) // want G118
+	work(ctx)
+}
+
+func Attached(request *http.Request, work func(context.Context)) {
+	go work(request.Context())
 }

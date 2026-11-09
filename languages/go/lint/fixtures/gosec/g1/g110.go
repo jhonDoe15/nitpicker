@@ -21,6 +21,6 @@ func UnpackLimited(target io.Writer, source io.Reader) error {
 	if err != nil {
 		return err
 	}
-	_, err = io.CopyN(target, reader, maxUnpacked)
+	_, err = io.Copy(target, io.LimitReader(reader, maxUnpacked))
 	return err
 }
