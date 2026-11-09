@@ -21,22 +21,14 @@ import { outputRootFor } from '../diff/reporting/reporters.mjs';
 import { assertHasCommit } from '../diff/git/repository/base-ref.mjs';
 import { partialRunField, partialRunOf } from '../diff/reporting/partial-run/partial-run.mjs';
 import { failingHeadTests } from '../diff/reporting/failing-tests/failing-tests.mjs';
+import { snapshotJson } from '../diff/reporting/json-output/json-output.mjs';
 
 function stderrWarning(stderr) {
   return (message) => stderr.write(`nitpicker: ${message}\n`);
 }
 
-export function runSnapshotCli({
-  options,
-  currentProjectRoot,
-  analyzers,
-  headPolicy,
-  stdout,
-  stderr,
-  environment,
-  runTasks,
-  scope,
-}) {
+export function runSnapshotCli(cli) {
+  const { options, currentProjectRoot, analyzers, headPolicy, stderr, runTasks, scope } = cli;
   const outputRoot = outputRootFor(currentProjectRoot, options.outputRoot, 'snapshot');
   const selectedAnalyzers = selectAnalyzers(analyzers, options.analyzerNames);
   if (selectedAnalyzers.length === 0) {
@@ -64,17 +56,26 @@ export function runSnapshotCli({
     projectPath: relativeProjectPath,
     repositoryRoot,
   });
-  stdout.write(renderSnapshotConsoleSummary(report, path.join(outputRoot, 'report.txt')));
-  stdout.write(renderSnapshotRuleFilterSection(report, options.ruleFilters));
+  return writeSnapshotOutcome(cli, report, outputRoot);
+}
+
+function writeSnapshotOutcome(cli, report, outputRoot) {
+  const { stdout, jsonOutput } = cli;
+  if (jsonOutput === undefined) {
+    stdout.write(renderSnapshotConsoleSummary(report, path.join(outputRoot, 'report.txt')));
+  }
+  stdout.write(renderSnapshotRuleFilterSection(report, cli.options.ruleFilters));
   writeGithubOutput({
     kind: 'snapshot',
     report,
-    projectRoot: currentProjectRoot,
-    environment,
+    projectRoot: cli.currentProjectRoot,
+    environment: cli.environment,
     stdout,
-    stderr,
+    stderr: cli.stderr,
   });
-  return snapshotExitCode(report);
+  const exitCode = snapshotExitCode(report);
+  jsonOutput?.write(snapshotJson({ report, outputRoot, exitCode }));
+  return exitCode;
 }
 
 function snapshotExitCode({ summary, toolErrors }) {
