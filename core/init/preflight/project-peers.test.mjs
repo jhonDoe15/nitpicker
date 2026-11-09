@@ -15,7 +15,7 @@ const VITEST = { vitest: '4.1.11', '@vitest/coverage-v8': '4.1.11' };
 
 function check(root, analyzers = PRESET, configuredRunner) {
   return () => {
-    assertProjectPeers({ projectRoot: root, analyzers, configuredRunner });
+    assertProjectPeers({ projectRoot: root, analyzers, configuredRunner, packageRoot: root });
   };
 }
 
@@ -52,6 +52,16 @@ describe('the project peers a run needs', () => {
     expect(check(root)).toThrow(
       `vitest and @vitest/coverage-v8 are not installed in ${root}. Run ${add} vitest @vitest/coverage-v8.`,
     );
+  });
+
+  it('takes a typescript that nitpicker loads from its own installation', () => {
+    const root = project(withPeers(VITEST));
+    const packageRoot = project(withPeers({ typescript: '6.0.3' }));
+    const analyzers = PRESET;
+
+    expect(() => {
+      assertProjectPeers({ projectRoot: root, analyzers, packageRoot });
+    }).not.toThrow();
   });
 
   it('says the command to add also installs the peers package.json declares', () => {
@@ -113,7 +123,7 @@ describe('the project peers a run needs', () => {
 
     expect([exitCode, output.stdoutText, started]).toEqual([2, '', []]);
     expect(output.stderrText).toBe(
-      `nitpicker failed: typescript, vitest and @vitest/coverage-v8 are not installed in ${repository.root}. Run npm install --save-dev typescript vitest @vitest/coverage-v8.\n`,
+      `nitpicker failed: vitest and @vitest/coverage-v8 are not installed in ${repository.root}. Run npm install --save-dev vitest @vitest/coverage-v8.\n`,
     );
   });
 });
