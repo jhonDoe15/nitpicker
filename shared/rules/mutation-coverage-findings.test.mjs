@@ -3,6 +3,10 @@ import { branchCoverageFindings } from './branch-coverage.mjs';
 import { crapFindings } from './crap.mjs';
 import { mutantFindings } from './mutation.mjs';
 
+function pick(finding, keys) {
+  return Object.fromEntries(keys.map((key) => [key, finding[key]]));
+}
+
 describe('crapFindings', () => {
   const fn = { path: 'a.ts', name: 'f', identity: 'function:f', line: 3 };
 
@@ -45,14 +49,13 @@ describe('crapFindings', () => {
 
   it('reports unknown coverage when there is no finite score', () => {
     const findings = crapFindings([{ ...fn, line: undefined }], { tool: 'crap', limit: 5 });
-    expect(findings).toEqual([
-      expect.objectContaining({
+    expect(findings.map((finding) => pick(finding, ['rule', 'message', 'symbol']))).toEqual([
+      {
         rule: 'crap-coverage-unknown',
-        message: expect.stringContaining(
-          'f has unknown coverage and no CRAP score: no test runs it',
-        ),
+        message:
+          'f has unknown coverage and no CRAP score: no test runs it. Add a test that calls it; for inline composition-root wiring, move it to a named function in adapters/ and test that. If this is intended, add {"rule":"crap-coverage-unknown","paths":["a.ts"],"function":"f","reason":"..."} to "exceptions" in nitpicker.config.json.',
         symbol: 'f',
-      }),
+      },
     ]);
     expect(findings[0]).not.toHaveProperty('location');
   });
@@ -72,7 +75,7 @@ describe('branchCoverageFindings', () => {
       { tool: 'cov', identify },
     );
     expect(findings.map((finding) => finding.identity)).toEqual(['k:1', 'k:2', 'k:1']);
-    expect(findings[0]).toMatchObject({
+    expect(pick(findings[0], ['rule', 'message', 'classification', 'location'])).toEqual({
       rule: 'changed-branch-coverage',
       message:
         'Branch coverage is 50.00%; minimum is 95%. Add a test for each outcome it misses. To accept the file, add it to "exclude" in nitpicker.config.json.',
@@ -132,7 +135,7 @@ describe('mutantFindings', () => {
       ['mutant-nocoverage', 'enforceable'],
       ['mutant-timeout', 'descriptive'],
     ]);
-    expect(findings[0]).toMatchObject({
+    expect(pick(findings[0], ['message', 'symbol', 'location'])).toEqual({
       message:
         'Survived Op: no test fails when this code changes. Add an assertion that would. If no input can tell the two apart, simplify the code so this mutant disappears.',
       symbol: 'C#m',

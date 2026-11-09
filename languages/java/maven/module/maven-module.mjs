@@ -31,51 +31,59 @@ function runArchitecture(options) {
   });
 }
 
-function sourceTask(tool, url, toolOptions, shared) {
-  return { run: tool, url, name: tool.name, options: { ...toolOptions, ...shared } };
+function sourceTask(tool, url, options) {
+  return { run: tool, url, name: tool.name, options };
 }
 
 function runSourceTools(options) {
   const { module, reportDir, tools, classpaths, configs, pinned, kotlin, style } = options;
   const run = { timeoutMs: options.timeoutMs };
   const tasks = [
-    sourceTask(
-      runPmd,
-      LINT_URL,
-      {
-        module,
-        reportDir,
-        tools,
-        classpaths,
-        configs,
-        spring: kotlin.spring,
-        springRules: options.springRules,
-        reactor: options.reactor,
-      },
-      run,
-    ),
-    sourceTask(
-      runSpotbugs,
-      LINT_URL,
-      {
-        module: kotlin.spotbugsModule,
-        reportDir,
-        tools,
-        configs,
-        auxClasspath: kotlin.auxClasspath,
-      },
-      run,
-    ),
-    sourceTask(
-      runErrorProne,
-      ERRORPRONE_URL,
-      { module, reportDir, tools, classpaths, configs },
-      run,
-    ),
-    sourceTask(runFormat, LINT_URL, { module, reportDir, tools, javaStyle: style.javaStyle }, run),
-    sourceTask(runCheckstyle, LINT_URL, { module, reportDir, tools, configs, pinned, style }, run),
-    sourceTask(runStructure, METRICS_URL, { module, reportDir }, run),
-    sourceTask(runJdeps, METRICS_URL, { module, reportDir }, run),
+    sourceTask(runPmd, LINT_URL, {
+      module,
+      reportDir,
+      tools,
+      classpaths,
+      configs,
+      spring: kotlin.spring,
+      springRules: options.springRules,
+      reactor: options.reactor,
+      ...run,
+    }),
+    sourceTask(runSpotbugs, LINT_URL, {
+      module: kotlin.spotbugsModule,
+      reportDir,
+      tools,
+      configs,
+      auxClasspath: kotlin.auxClasspath,
+      ...run,
+    }),
+    sourceTask(runErrorProne, ERRORPRONE_URL, {
+      module,
+      reportDir,
+      tools,
+      classpaths,
+      configs,
+      ...run,
+    }),
+    sourceTask(runFormat, LINT_URL, {
+      module,
+      reportDir,
+      tools,
+      javaStyle: style.javaStyle,
+      ...run,
+    }),
+    sourceTask(runCheckstyle, LINT_URL, {
+      module,
+      reportDir,
+      tools,
+      configs,
+      pinned,
+      style,
+      ...run,
+    }),
+    sourceTask(runStructure, METRICS_URL, { module, reportDir, ...run }),
+    sourceTask(runJdeps, METRICS_URL, { module, reportDir, ...run }),
   ];
   runToolsConcurrently(tasks, { spawn: options.spawn, concurrent: options.quick === true });
 }
