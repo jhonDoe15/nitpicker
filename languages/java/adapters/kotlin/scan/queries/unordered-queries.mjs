@@ -109,7 +109,7 @@ function unorderedPage(scanned, match) {
   }
   const text = argumentText(scanned, createOpen, scope);
   if (text !== undefined) {
-    return !ORDERED.test(text) && !(single && COUNT_OR_CONSTANT.test(text));
+    return !(ORDERED.test(text) || (single && COUNT_OR_CONSTANT.test(text)));
   }
   const name = argumentName(scanned, createOpen);
   const criteria = name !== undefined && CRITERIA.test(declarationOf(scanned, name, scope) ?? '');

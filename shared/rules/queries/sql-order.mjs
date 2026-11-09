@@ -128,7 +128,7 @@ function openScope(stack, index) {
 }
 
 function addDynamic(scope, nested) {
-  scope.opaque ||= !VALUE_BEFORE.test(scope.text) && !(nested && scope.text.trim() === '');
+  scope.opaque ||= !(VALUE_BEFORE.test(scope.text) || (nested && scope.text.trim() === ''));
   scope.text += DYNAMIC;
 }
 
