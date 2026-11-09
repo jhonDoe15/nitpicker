@@ -48,6 +48,18 @@ describe('Go lint messages', () => {
       },
       'methods on the same type should have the same receiver name. Use one receiver name for every method of the type.',
     ],
+    [
+      {
+        tool: 'nilerr',
+        rule: 'nilerr',
+        message: 'error is not nil (lines [6 9]) but it returns nil',
+      },
+      'error is not nil but it returns nil. Return the error the branch checks: the error when it is set, nil when it is not.',
+    ],
+    [
+      { tool: 'bodyclose', rule: 'bodyclose', message: 'response body must be closed' },
+      'response body must be closed. Close it in a deferred call: `defer func() { err = errors.Join(err, response.Body.Close()) }()`.',
+    ],
   ])('names the allowed form for %j', (entry, message) => {
     expect(lintMessage(entry)).toBe(message);
   });

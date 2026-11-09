@@ -1,6 +1,7 @@
 package main
 
 import (
+	"github.com/jhonDoe15/nitpicker/languages/go/lint/catalog"
 	"github.com/kisielk/errcheck/errcheck"
 	"golang.org/x/tools/go/analysis"
 	"golang.org/x/tools/go/analysis/passes/deepequalerrors"
@@ -49,7 +50,10 @@ func errcheckFlags() error {
 	if err := errcheck.Analyzer.Flags.Set("blank", "true"); err != nil {
 		return err
 	}
-	return errcheck.Analyzer.Flags.Set("assert", "true")
+	if err := errcheck.Analyzer.Flags.Set("assert", "true"); err != nil {
+		return err
+	}
+	return catalog.Configure()
 }
 
 func staticcheckAnalyzers() []*analysis.Analyzer {
@@ -66,12 +70,16 @@ func staticcheckAnalyzers() []*analysis.Analyzer {
 }
 
 func groups() []group {
-	return []group{
+	all := []group{
 		{tool: staticcheckTool, analyzers: staticcheckAnalyzers()},
 		{tool: "vet", analyzers: passes()},
 		{tool: "errcheck", analyzers: []*analysis.Analyzer{errcheck.Analyzer}},
 		{tool: modernizeTool, analyzers: modernize.Suite},
 	}
+	for _, linter := range catalog.Linters() {
+		all = append(all, group{tool: linter.Tool, analyzers: linter.Analyzers})
+	}
+	return all
 }
 
 func analyzers() []*analysis.Analyzer {

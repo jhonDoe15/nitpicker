@@ -30,6 +30,10 @@ than the others, and this skill teaches its rules before an agent writes Go.
   [`golang.org/x/tools` analysis passes](https://pkg.go.dev/golang.org/x/tools/go/analysis/passes),
   including [modernize](https://pkg.go.dev/golang.org/x/tools/go/analysis/passes/modernize)
   (BSD-3-Clause): the lint program, run directly instead of through golangci-lint.
+- Catalog linters, each license checked at the pinned version: bodyclose, sqlclosecheck, noctx,
+  errorlint, nilerr, nilnil, errname, containedctx, fatcontext and rowserrcheck (MIT),
+  contextcheck (Apache-2.0). Their shared helpers (gostaticanalysis analysisutil and comment) are
+  MIT.
 
 ## Rules and their reasoning
 
@@ -90,6 +94,11 @@ than the others, and this skill teaches its rules before an agent writes Go.
   the package folder instead.
 - **`staticcheck.conf` only on opt-in.** A project config could switch checks off silently, so it
   is read only when the project opts in, and then every such file is policy.
+- **Catalog linters for resources, errors and contexts.** A response body or rows left open, an
+  error compared with `==` or dropped by `return nil`, and a context made anew or kept in a
+  struct are logic bugs, and each linter's allowed form is the one the Go wiki and the standard
+  library document. Each runs under its own tool name, so its exception entry reads as the
+  linter is known.
 - **A fixture for every check.** Each enabled check has a failing line and the allowed form in
   `languages/go/lint/fixtures`; the harness fails on a missing or unexpected report, so a tool
   upgrade that changes what a check reports is caught before release.
@@ -110,6 +119,10 @@ than the others, and this skill teaches its rules before an agent writes Go.
   an outer `err`, which would push code away from Go's own convention.
 - **vet `fieldalignment` and `atomicalign`.** Field order for memory layout is a performance
   choice, not a second way to write the same code; SA1027 still catches misaligned 64-bit atomics.
+- **err113 and wrapcheck.** err113 rejects every `errors.New` inside a function, and wrapcheck
+  every unwrapped error from another package, the module's own included; both need per-project
+  lists to stop flagging correct code. errorlint's `%w` and comparison checks cover the part that
+  is one way to write.
 - **Holding interfaces to the method limit.** Interface size is better judged by a linter that
   knows where the interface is used.
 
