@@ -238,6 +238,26 @@ Part of the [TypeScript strict preset guide](../typescript-strict-preset.md).
   code also uses another way. `for` loops over the rows and `.then(...)` callbacks are not
   followed. Tests are skipped. A small fixed lookup list that is meant to be loaded whole takes an
   `exceptions` entry.
+- No foreign key without an index that starts with its column (`nitpicker/no-unindexed-foreign-key`,
+  the model-side partner of the `foreign-key-index` repository rule): only MySQL indexes a
+  foreign-key column by itself. It reads TypeORM and MikroORM `@ManyToOne` properties of entity
+  classes (not `@ViewEntity`), and Drizzle Postgres tables (`pgTable`, also through a namespace
+  import, `pgSchema(...).table` and `pgTableCreator`, with the columns as an object or a callback)
+  whose columns call `.references(...)` or whose extra config has a `foreignKey(...)`. A TypeORM
+  relation is covered by `@Index()` on it, a class `@Index` or `@Unique` whose first column is the
+  property, its `@JoinColumn` name or `<property>Id`, an indexed or unique column of that name, or
+  being the first primary-key column; `createForeignKeyConstraints: false` passes. MikroORM is
+  covered by `index` or `unique` on `@ManyToOne`, `@Index()` or `@Unique()` on the property, a class
+  `@Index`/`@Unique` whose first property is it, or being the first primary key, and is only checked
+  with `@mikro-orm/postgresql` or `@mikro-orm/mssql`, because MikroORM indexes many-to-one columns
+  itself on its other platforms. Drizzle is covered by an `index`, `uniqueIndex`, `unique` or
+  `primaryKey` that starts with the column (`.asc()`, `.desc()` and `.op()` are read), or by
+  `.primaryKey()` or `.unique()` on it. A partial index (TypeORM `where`, Drizzle `.where(...)`)
+  does not count. A one-to-one join column is left alone (TypeORM and MikroORM make it unique), and
+  so is a project whose manifests (the nearest and the ones above it) name only MySQL or MariaDB
+  drivers. When the project has migration files (looked for up to six folders below the topmost
+  manifest), the migrations are checked instead (by `foreign-key-index`) and this rule stays quiet.
+  `EntitySchema`, `defineEntity` and the other Drizzle dialects are not read.
 - `===` and `!==` only (`eqeqeq`). Braces on every `if`, `else` and loop body (`curly`). One import
   statement per module (`no-duplicate-imports`; a separate `import type` is fine).
 - Logic mistakes the bundled rules catch, in production code and tests of both presets
@@ -258,6 +278,25 @@ Part of the [TypeScript strict preset guide](../typescript-strict-preset.md).
   bindings already removes the late-binding bug `no-loop-func` exists for. Python's counterparts are ruff `PLE0101`,
   `B023` and `PLR1711`; in Java and Kotlin a missing return does not compile and the existing
   unused-member checks already report an unused private member.
+- Boolean logic with a strictly simpler exact form (`nitpicker/simpler-boolean-logic`, production
+  and test files of both presets; the counterpart of the Java PMD rules `SimplifyBooleanReturns`,
+  `SimplifiedTernary`, `CollapsibleIfStatements`, `LogicInversion`, `ConfusingTernary` and
+  `NegatedOperands`). The message prints the simpler form: `if (c) { return true; } return false;`
+  is `return c;` (`return !c;` with the literals swapped); `c ? true : false` is `c`, and
+  `c ? x : false`, `c ? true : x`, `c ? false : x` and `c ? x : true` are `c && x`, `c || x`,
+  `!c && x` and `!c || x` when `x` is boolean too; `!(a === b)` is `a !== b`; `!!x` outside a
+  condition is `x`; an `if` whose only statement is another `if`, neither with an `else`, is one
+  `if (a && b)`; `if (!c) {A} else {B}` and `!c ? a : b` are `if (c) {B} else {A}` and
+  `c ? b : a`; and a `&&` or `||` chain whose every operand is negated is one negation
+  (`!a && !b` is `!(a || b)`). Each form keeps the value exactly: where dropping `!!` or a ternary
+  needs `c` to be boolean, it must be a comparison, a `!`, a `&&`/`||` of those or (with type
+  information) typed `boolean`, so `return !!name;` is never suggested. `!(a < b)` stays, since it
+  is not `a >= b` when either side is `NaN`; an `else if` chain and a ternary whose `else` is
+  another ternary are not swapped, and neither is a ternary whose `then` branch is a ternary (that
+  would make a nested ternary). Forms combine: `!a || !b ? x : y` is reported as `a && b ? y : x`. A
+  part that holds TypeScript-only syntax (`as`, `!`, `satisfies`, type arguments) is not reported,
+  since the printed form would drop it. `!!x` in a condition is left to `no-extra-boolean-cast` and
+  `x === true` to `@typescript-eslint/no-unnecessary-boolean-literal-compare`.
 - Identifier casing (`nitpicker/naming-convention`, which wraps
   `@typescript-eslint/naming-convention`): types and type parameters in PascalCase; functions,
   variables and parameters in camelCase; constants may be UPPER_CASE; a leading underscore is
@@ -559,6 +598,20 @@ Part of the [TypeScript strict preset guide](../typescript-strict-preset.md).
   are not. JavaScript files carry no type annotations, so there only the schema entries are checked.
   Two members whose meanings differ (`owner?: User` for the main owner beside `owners?: User[]` for
   the co-owners) are the case for an exception with a reason.
+- `nitpicker/no-unmapped-exception` (type-aware, TypeScript preset only): a NestJS handler (a
+  method with a route or GraphQL decorator such as `@Get` or `@Query` in a `@Controller` or
+  `@Resolver` class) that can throw a project exception class no exception filter in scope maps, so
+  the client gets a 500. The walk follows calls into project functions and methods, resolved by the
+  type checker, four levels deep, and the message names the call path. A `throw` inside a `try`
+  that has a `catch`, or in the promise chain before a `.catch(...)`, is not followed, and neither is
+  a function stored in a variable (a callback passed to a call is followed). A class is mapped when it or a superclass is a framework
+  status class (`HttpException` and its subclasses, `RpcException`, `WsException`, `GraphQLError`,
+  `ApolloError`) or a filter in scope catches it or a superclass: `@UseFilters` on the method or
+  the class, `app.useGlobalFilters(...)`, or an `APP_FILTER` provider. A `@Catch()` or
+  `@Catch(Error)` filter maps only the classes it checks with `instanceof`, since the rest fall
+  through to a generic response. Exceptions from libraries, `throw error` of a variable, plain
+  `Error` and a class whose base is a call (a mixin) are left out. The JavaScript preset does not run it, since it has no type information. Allowed:
+  `class OrderNotFound extends NotFoundException {}`.
 - `nitpicker/no-forwarding-wrapper` (type-aware): a module-level named function or `const` arrow
   whose body is one `return` (or an expression body) of a call that passes exactly its own
   parameters, in order, unchanged (`export const loadUser = (id: string) => fetchUser(id)`; an
