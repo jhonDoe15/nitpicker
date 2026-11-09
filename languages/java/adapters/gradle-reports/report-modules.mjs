@@ -15,6 +15,7 @@ const ROOT_LISTS = [
   'kotlinSourceRoots',
   'kotlinTestSourceRoots',
 ];
+const MERGED_LISTS = [...ROOT_LISTS, 'springClasspath'];
 
 function readJson(file) {
   return JSON.parse(readFileSync(file, 'utf8'));
@@ -25,7 +26,7 @@ function moduleLabel({ path: projectPath, dir }) {
 }
 
 function mergeManifests(modules) {
-  const declared = ROOT_LISTS.filter((list) =>
+  const declared = MERGED_LISTS.filter((list) =>
     modules.some(({ manifest }) => Array.isArray(manifest[list])),
   );
   return {
