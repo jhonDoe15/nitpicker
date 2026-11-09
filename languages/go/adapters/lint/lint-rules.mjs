@@ -1,4 +1,4 @@
-import { REVIVE_VARYING_PARTS, reviveHint } from './revive-hints.mjs';
+import { reviveHint, reviveVaryingPart } from './revive-hints.mjs';
 
 const GO_FIX = '`go fix ./...` applies this rewrite.';
 const KEEP_OR_DROP = 'Use the value or remove the assignment.';
@@ -92,7 +92,7 @@ const HINTS = new Map([
 ]);
 
 const RULE_NAMES = new Map([['errcheck', 'unchecked']]);
-const VARYING_PARTS = new Map([['ST1016', / \(seen [^)]*\)$/u], ...REVIVE_VARYING_PARTS]);
+const VARYING_PARTS = new Map([['ST1016', / \(seen [^)]*\)$/u]]);
 
 export function lintRule(rule) {
   return RULE_NAMES.get(rule) ?? rule;
@@ -116,7 +116,7 @@ function hintOf(tool, rule, message) {
 
 export function lintMessage({ tool, rule, message }) {
   const hint = hintOf(tool, rule, message);
-  const varying = VARYING_PARTS.get(rule);
+  const varying = tool === 'revive' ? reviveVaryingPart(rule) : VARYING_PARTS.get(rule);
   const text = sentence(varying === undefined ? message : message.replace(varying, ''));
   return hint === undefined ? text : `${text} ${hint}`;
 }
