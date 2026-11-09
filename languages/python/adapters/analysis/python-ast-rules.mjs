@@ -2,6 +2,7 @@ import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { normalizeReportPath } from '../../../../shared/ingest/common.mjs';
 import { run } from '../execution/python-process.mjs';
+import { detectTargetVersion } from '../execution/python-project.mjs';
 import { readPackageFacts } from '../../rules/libraries/package-facts.mjs';
 import { ruffConfigFor } from '../configuration/python-ruff-config.mjs';
 import { fileURLToPath } from 'node:url';
@@ -22,6 +23,11 @@ const RULES_SCRIPT = path.resolve(
   fileURLToPath(new URL('../', import.meta.url)),
   '../rules/nitpicker_rules.py',
 );
+
+function minimumPython(projectRoot) {
+  const [, major, minor] = /^py(\d)(\d+)$/u.exec(detectTargetVersion(projectRoot)) ?? [];
+  return major === undefined ? undefined : [Number(major), Number(minor)];
+}
 
 export function readTestFiles(reportRoot) {
   const file = path.join(reportRoot, OPTIONS_FILE);
@@ -47,12 +53,14 @@ export function pythonSources(context) {
     .filter((file) => file !== undefined);
 }
 
-function rulesOptions({ projectRoot, project }, sources, collection) {
+function rulesOptions({ projectRoot, project }, sources, pytestConfig) {
   const modules = listProductionModules(projectRoot, project.sourceRoots);
   return {
     sourceRoots: project.sourceRoots,
     testRunner: project.testRunner,
-    ...collection,
+    ...collectionOptions(pytestConfig),
+    xfailStrict: pytestConfig.xfailStrict,
+    minimumPython: minimumPython(projectRoot),
     testFiles: sources.filter(testFileMatcher(projectRoot)),
     entryFiles: entryFilesOf(sources, project.entryPoints),
     boundaryRoots: boundaryRoots(detectLibraries(projectRoot)),
@@ -65,9 +73,9 @@ export function checkRules(context) {
   const list = path.join(context.reportRoot, FILE_LIST);
   const options = path.join(context.reportRoot, OPTIONS_FILE);
   const sources = pythonSources(context);
-  const collection = collectionOptions(readPytestConfig(context.projectRoot));
+  const pytestConfig = readPytestConfig(context.projectRoot);
   writeFileSync(list, sources.join('\n'));
-  writeFileSync(options, JSON.stringify(rulesOptions(context, sources, collection)));
+  writeFileSync(options, JSON.stringify(rulesOptions(context, sources, pytestConfig)));
   run(
     context,
     ['python', '-I', RULES_SCRIPT, list, path.join(context.reportRoot, RULES_REPORT), options],

@@ -201,6 +201,12 @@ describe('rules script report', () => {
       '`pytest.mark.skip` skips a test without a reason',
     ],
     ['sleep-in-test', 'time.sleep', '`time.sleep` waits for real time in a test'],
+    ['switched-off-test', 'pytest.mark.skip', '`pytest.mark.skip` switches a test off for good'],
+    [
+      'conditional-assertion-in-test',
+      'test_total: for',
+      'Test `test_total` asserts inside a `for` loop',
+    ],
     ['tautological-assert', 'assert', '`assert` can never fail'],
     [
       'float-equality-in-test',

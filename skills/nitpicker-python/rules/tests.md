@@ -12,6 +12,14 @@ Part of the [nitpicker-python](../SKILL.md) skill. Write these forms from the st
 - Assert the value, not that something is there (`weak-assertion`): no `assert x`, `assert x is not None`
   or `assert len(x) > 0` as the whole check, and no `m.assert_called()` or `assert_called_with(ANY)`; assert
   the exact value, contents or length and the call's arguments. A not-null check is fine when the test uses `x` afterwards.
+- Honest tests: one case per test with `@pytest.mark.parametrize`, and assert unconditionally (no
+  `assert` inside `if`, `for`, `while`, `match`, `except`, a comprehension or a `subTest` loop:
+  `conditional-assertion-in-test`); a branch that only calls `pytest.fail` or skips is fine.
+  Call the nested helpers a test defines, or they assert nothing. Skip only on a real condition
+  with a reason, in a test, fixture or hook alike
+  (`@pytest.mark.skipif(sys.platform == "win32", reason="...")`, `pytest.importorskip`); a
+  permanent `skip`, a literal `skipif(True)` (or `1 == 1`, `"1"`, a constant) or a non-strict
+  `xfail` is `switched-off-test`: delete the test, fix it, or use `xfail(strict=True)`.
 - Never patch the module a test is named after (`mocked-subject-in-test`): in `test_cart.py`, no
   `patch("shop.cart.total")`, no `patch.object(cart, "helper")` on a `Cart`, no `Mock(spec=Cart)`.
   Pass the collaborators in and fake them, test a helper through the public function that calls

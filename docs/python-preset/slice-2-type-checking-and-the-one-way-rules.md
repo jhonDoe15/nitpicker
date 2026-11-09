@@ -113,6 +113,8 @@ through the real tools.
 | log the caught exception itself                                  | logging only `str(error)` or an f-string with it in an `except`              | `catch-log-without-exception`                              |
 | a test that asserts                                              | a test function with no assertion                                            | `test-without-assertion`                                   |
 | the constant by name in a test                                   | a test literal that copies the value of a constant it can see                | `copied-constant-in-test`                                  |
+| one case per test, asserted outright                             | an assertion inside a branch, loop, `except` or comprehension                | `conditional-assertion-in-test`                            |
+| a skip on a real condition, a strict `xfail`                     | a permanent skip, a literal `skipif`, a non-strict `xfail`                   | `switched-off-test`                                        |
 | `@dataclass(frozen=True)`                                        | `@dataclass` without `frozen=True`, outside tests                            | `frozen-dataclass`                                         |
 | the validation library in `adapters/` only                       | importing pydantic (or the declared library) elsewhere                       | `pydantic-boundary`                                        |
 | an `enum.Enum` / `StrEnum`                                       | a plain class of two string constants, or three `X_*`                        | `enum-string-constants`                                    |
