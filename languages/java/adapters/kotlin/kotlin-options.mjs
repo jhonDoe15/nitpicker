@@ -18,6 +18,7 @@ import { TEST_ONLY_EXCEPTION_RULE } from '../review-rules/test-only-classes.mjs'
 import { CONSOLE_EXCEPTION_RULE } from '../test-times/console-findings.mjs';
 import { KOTLIN_REVIEW_EXCEPTION_RULES } from './review-rules/review-rules.mjs';
 import { UNRUN_TEST_EXCEPTION_RULE } from '../test-runs/unrun-tests.mjs';
+import { COPIED_CONSTANT_EXCEPTION_RULE } from '../review-rules/copied-constants/copied-constants.mjs';
 import { suggestionOrAllowed } from '../../../../shared/messages/closest-match.mjs';
 
 export const KOTLIN_FORMATTERS = ['ktlint', 'ktfmt', 'none'];
@@ -32,6 +33,7 @@ export const KOTLIN_EXCEPTION_RULES = [
     CONSOLE_EXCEPTION_RULE,
     UNRUN_TEST_EXCEPTION_RULE,
     TEST_ONLY_EXCEPTION_RULE,
+    COPIED_CONSTANT_EXCEPTION_RULE,
     ...KOTLIN_LISTED_RULES,
     ...KOTLIN_REVIEW_EXCEPTION_RULES,
   ]),
