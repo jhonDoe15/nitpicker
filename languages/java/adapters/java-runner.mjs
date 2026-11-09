@@ -36,7 +36,7 @@ export function analyzeJavaSnapshot(
       spawn,
       budget: javaExecutionBudget(),
     });
-    return { findings, ...moduleImportsSection(imports, environment) };
+    return { findings, ...moduleImportsSection(imports, policy?.history) };
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     const rule = failureRule(error, projectRoot);
@@ -56,7 +56,7 @@ export function analyzeJavaSnapshot(
 }
 
 export function withHeadPolicy(policy, headPolicy) {
-  const { conventions, spring, springRoles, kotlin } = headPolicy;
+  const { conventions, spring, springRoles, kotlin, history } = headPolicy;
   return {
     ...policy,
     conventions,
@@ -65,6 +65,7 @@ export function withHeadPolicy(policy, headPolicy) {
     ...(springRoles === undefined ? {} : { springRoles }),
     kotlinFormatter: kotlin?.formatter ?? policy.kotlinFormatter,
     ...(kotlin === undefined ? {} : { kotlinFacts: kotlin }),
+    ...(history === undefined ? {} : { history }),
   };
 }
 

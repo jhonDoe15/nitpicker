@@ -1,25 +1,5 @@
-import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
-import path from 'node:path';
-import { afterEach, describe, expect, it } from 'vitest';
-import { HEAD_POLICY_ENV } from '../../../head-policy.mjs';
+import { describe, expect, it } from 'vitest';
 import { folderImports, moduleImportsSection } from './module-imports.mjs';
-
-const roots = [];
-
-afterEach(() => {
-  for (const root of roots.splice(0)) {
-    rmSync(root, { recursive: true, force: true });
-  }
-});
-
-function policyEnvironment(policy) {
-  const root = mkdtempSync(path.join(tmpdir(), 'nitpicker-module-imports-'));
-  roots.push(root);
-  const file = path.join(root, 'policy.json');
-  writeFileSync(file, JSON.stringify(policy));
-  return { [HEAD_POLICY_ENV]: file };
-}
 
 const IMPORTS = [
   { from: 'src/billing/invoice.ts', to: 'src/invoicing/ledger.ts' },
@@ -38,13 +18,11 @@ describe('folder imports', () => {
     ]);
   });
   it('publishes the section only when co-change history is enabled', () => {
-    expect(
-      moduleImportsSection(IMPORTS, policyEnvironment({ history: { coChange: true } })),
-    ).toEqual({ moduleImports: folderImports(IMPORTS) });
-    expect(moduleImportsSection(IMPORTS, policyEnvironment({ history: {} }))).toEqual({});
+    expect(moduleImportsSection(IMPORTS, { coChange: true })).toEqual({
+      moduleImports: folderImports(IMPORTS),
+    });
     expect(moduleImportsSection(IMPORTS, {})).toEqual({});
-    expect(
-      moduleImportsSection(undefined, policyEnvironment({ history: { coChange: true } })),
-    ).toEqual({});
+    expect(moduleImportsSection(IMPORTS, undefined)).toEqual({});
+    expect(moduleImportsSection(undefined, { coChange: true })).toEqual({});
   });
 });

@@ -3,8 +3,7 @@ import { folderModuleResolver } from '../evidence/production-files.mjs';
 import { CO_CHANGE_ADVICE } from '../findings.mjs';
 import { MODULE_IMPORTS } from './module-imports.mjs';
 
-const UNAVAILABLE =
-  'No analyzer reported imports for this run, so whether one imports the other is unknown.';
+const UNAVAILABLE = 'Imports between them are unknown: no analyzer reported any for this run.';
 const UNRELATED = 'Neither imports the other, so what they share is not visible as a dependency.';
 
 function filesText(count) {
@@ -30,21 +29,19 @@ function moduleEdges(imports, policy) {
   return edges;
 }
 
+function importClause(edges, importer, imported) {
+  const count = edges.get(`${importer}\0${imported}`);
+  return count === undefined ? undefined : `${importer} imports ${imported} in ${filesText(count)}`;
+}
+
 function dependencySentence(edges, [first, second]) {
   if (edges === undefined) {
     return UNAVAILABLE;
   }
-  const forward = edges.get(`${first}\0${second}`);
-  const backward = edges.get(`${second}\0${first}`);
-  if (forward !== undefined && backward !== undefined) {
-    return `They import each other: ${first} imports ${second} in ${filesText(forward)}, ${second} imports ${first} in ${filesText(backward)}.`;
-  }
-  if (forward !== undefined || backward !== undefined) {
-    const [importer, imported, count] =
-      forward === undefined ? [second, first, backward] : [first, second, forward];
-    return `${importer} imports ${imported} in ${filesText(count)}.`;
-  }
-  return UNRELATED;
+  const clauses = [importClause(edges, first, second), importClause(edges, second, first)].filter(
+    (clause) => clause !== undefined,
+  );
+  return clauses.length === 0 ? UNRELATED : `${clauses.join(' and ')}.`;
 }
 
 function isCoChange(finding) {

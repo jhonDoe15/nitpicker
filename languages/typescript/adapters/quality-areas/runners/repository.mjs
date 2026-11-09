@@ -90,7 +90,7 @@ export async function runCoupling(options) {
     options,
     'languages/typescript/preset/coupling/analyze.mjs',
   );
-  const { exceptions } = readHeadPolicy();
+  const { exceptions, history } = readHeadPolicy();
   const findings = await perSourceRoot(options, layout, (root) =>
     normalizeCoupling(
       analyzeCoupling(graph, root, { layout, projectRoot: options.projectRoot }),
@@ -98,7 +98,7 @@ export async function runCoupling(options) {
       exceptions,
     ),
   );
-  return { findings, ...moduleImportsSection(projectImports(graph, layout.isSourceFile)) };
+  return { findings, ...moduleImportsSection(projectImports(graph, layout.isSourceFile), history) };
 }
 
 export async function runTestRuntime(options) {

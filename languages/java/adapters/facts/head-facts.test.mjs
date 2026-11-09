@@ -206,16 +206,25 @@ describe('javaHeadFacts', () => {
     const directory = realpathSync(mkdtempSync(path.join(tmpdir(), 'nitpicker-head-facts-')));
     roots.push(directory);
     const file = path.join(directory, 'policy.json');
-    writeFileSync(file, JSON.stringify({ spring: true, kotlin: { formatter: 'ktlint' } }));
+    writeFileSync(
+      file,
+      JSON.stringify({
+        spring: true,
+        kotlin: { formatter: 'ktlint' },
+        history: { coChange: true },
+      }),
+    );
     const { policy } = readRunnerPolicy(['--project-root', '/p', '--kotlin-formatter', 'none'], {
       NITPICKER_POLICY: file,
     });
+    const unset = readRunnerPolicy(['--project-root', '/p', '--kotlin-formatter', 'none'], {});
 
-    expect([policy.spring, policy.kotlinFormatter]).toEqual([true, 'ktlint']);
-    expect(
-      readRunnerPolicy(['--project-root', '/p', '--kotlin-formatter', 'none'], {}).policy
-        .kotlinFormatter,
-    ).toBe('none');
+    expect([policy.spring, policy.kotlinFormatter, policy.history]).toEqual([
+      true,
+      'ktlint',
+      { coChange: true },
+    ]);
+    expect([unset.policy.kotlinFormatter, unset.policy.history]).toEqual(['none', undefined]);
   });
 
   it('turns Spring on and picks the formatter in the Gradle run from the policy', () => {

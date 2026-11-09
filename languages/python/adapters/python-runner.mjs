@@ -153,13 +153,13 @@ export function parsePythonArguments(arguments_) {
 
 export function runPython(runnerArguments, { spawn } = {}) {
   const { part, projectRoot, liveRoot, settings, policy } = parsePythonArguments(runnerArguments);
-  const conventions = readHeadPolicyFile().conventions;
+  const { conventions, history } = readHeadPolicyFile();
   return analyzePythonSnapshot({
     part,
     projectRoot: realpathSync(projectRoot),
     liveRoot: realpathSync(liveRoot),
     settings,
-    policy: { ...policy, conventions },
+    policy: { ...policy, conventions, history },
     spawn,
   });
 }

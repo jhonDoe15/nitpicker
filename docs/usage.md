@@ -1208,9 +1208,9 @@ These files are never modules:
 - declaration files (`*.d.ts`, `*.d.mts`, `*.d.cts`), documents, lockfiles, files directly in the
   project root and files under `exclude`.
 
-Only files with a TypeScript, JavaScript, Python, Java or Kotlin extension count, and a file counts
-under the path it has at the end of the history read: a renamed or moved file keeps its earlier
-history.
+Only files with a TypeScript, JavaScript, Python, Java, Kotlin or Go extension count, and a file
+counts under the path it has at the end of the history read: a renamed or moved file keeps its
+earlier history.
 
 Two modules are reported when both thresholds hold over the commits that count:
 

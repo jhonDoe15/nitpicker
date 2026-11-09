@@ -155,7 +155,7 @@ describe('co-change dependencies in a gate run', () => {
 
   it('says the dependency is unknown when no analyzer published imports', () => {
     expect(dependencySentence(repositories.alone, createHistoryAnalyzers(ENTRY))).toBe(
-      'No analyzer reported imports for this run, so whether one imports the other is unknown.',
+      'Imports between them are unknown: no analyzer reported any for this run.',
     );
   });
 });

@@ -1,5 +1,4 @@
 import path from 'node:path';
-import { readHeadPolicyFile } from '../../../head-policy.mjs';
 
 export const MODULE_IMPORTS = 'moduleImports';
 
@@ -32,12 +31,8 @@ export function folderImports(imports) {
     .sort(compareImports);
 }
 
-function publishesModuleImports(environment) {
-  return readHeadPolicyFile(environment).history?.coChange === true;
-}
-
-export function moduleImportsSection(imports, environment) {
-  return imports !== undefined && publishesModuleImports(environment)
+export function moduleImportsSection(imports, history) {
+  return imports !== undefined && history?.coChange === true
     ? { [MODULE_IMPORTS]: folderImports(imports) }
     : {};
 }
