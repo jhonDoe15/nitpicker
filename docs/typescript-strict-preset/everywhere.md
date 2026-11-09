@@ -79,11 +79,12 @@ Part of the [TypeScript strict preset guide](../typescript-strict-preset.md).
   and `kotlin-source/` rules of the same names (Kotlin). Only this rule also reads `indexOf`
   and identity `some` as membership tests and listeners as repeated runs.
 - `nitpicker/no-collected-stream-rows`: every item of a stream, async generator or cursor
-  collected into one array, in all production code (not in tests). It reports `push`, `unshift` or
-  `xs = [...xs, x]` inside `for await (const x of source)`, where `source` is not an array (an array
+  collected into one array, in all production code (not in tests). It reports `push` or `unshift` inside
+  `for await (const x of source)`, where `source` is not provably an array (an array
   literal, an array method or `Array.from`, `Promise.all` and the like, or, with type information, a
-  value typed as an array are left alone), `xs` is an array literal declared before the loop, the loop never drains it
-  (`splice`, `pop`, `shift`, `length = 0` or a reassignment) and code after the loop reads it. Bytes
+  value typed as an array are left alone; a source of unknown type counts, since `for await` is how a stream is read), `xs` is an array literal declared before the loop, the loop never drains it
+  (`splice`, `pop`, `shift`, `length = 0` or a reassignment; `xs = [...xs, x]` is
+  `nitpicker/no-accumulating-spread`'s) and code after the loop reads it. Bytes
   that are joined after the loop (`Buffer.concat`, `join`, `new Blob`) and a loop that can `break`
   or `return` early (a first page) are left alone. Allowed form:
   flush a fixed-size batch inside the loop (`if (batch.length >= 500) await save(batch.splice(0))`)

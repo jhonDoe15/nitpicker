@@ -50,7 +50,7 @@ public final class RowExports {
   }
 
   public List<Long> ids() {
-    return jdbc.queryForStream("select id from rows", (rs, n) -> rs.getLong(1)).toList(); // violation: StreamedRowsCollected
+    return jdbc.queryForStream("select id", (rs, n) -> rs.getLong(1)).toList(); // violation: StreamedRowsCollected
   }
 
   public void exportInBatches(Consumer<List<Row>> sink) {

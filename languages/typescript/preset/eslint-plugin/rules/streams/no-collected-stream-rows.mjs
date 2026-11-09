@@ -104,11 +104,8 @@ function isDrain(reference, name) {
   );
 }
 
-function isAppend(reference, name) {
-  if (reference.isWrite()) {
-    return isSpreadAppend(reference.identifier, name);
-  }
-  return APPENDS.has(memberCall(reference.identifier)?.name);
+function isAppend(reference) {
+  return !reference.isWrite() && APPENDS.has(memberCall(reference.identifier)?.name);
 }
 
 function assemblesBytes(identifier) {
@@ -166,9 +163,7 @@ export const rule = {
         (candidate) => candidate.identifier === identifier,
       );
       const appends =
-        reference !== undefined &&
-        ownLoopCode(identifier, loop) &&
-        isAppend(reference, identifier.name);
+        reference !== undefined && ownLoopCode(identifier, loop) && isAppend(reference);
       return appends ? collectedArray(sourceCode, loop, reference) : undefined;
     }
     return {
