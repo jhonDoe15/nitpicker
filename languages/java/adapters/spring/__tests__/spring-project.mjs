@@ -99,6 +99,8 @@ const REVIEW_RULES = new Set([
   'HttpWithoutTimeout',
   'UnorderedQuery',
   'UnboundedQueryArray',
+  'GeneratedMemberCycle',
+  'GeneratedEqualsSkipsSuperclass',
 ]);
 const roots = [];
 const RECEIPT_TEST_FILE = 'src/test/java/shop/ReceiptTest.java';

@@ -1,4 +1,5 @@
 import { readFileSync } from 'node:fs';
+import { counterpartsOf } from '../../../shared/reference/counterparts.mjs';
 import { ruleEntry } from '../../../shared/reference/entry.mjs';
 import { asSentence } from '../../../shared/reference/build/text.mjs';
 import { guideCell, optionalGuideCell } from '../../../shared/reference/build/guide-tables.mjs';
@@ -117,6 +118,7 @@ export function ownPmdEntry({ rule, scope, spring, message }) {
       : { [flags === undefined ? 'messageIn' : 'allowedIn']: { kotlin: springMessage(rule) } }),
     scope,
     exception: { key: 'exceptions', rule: `pmd/${rule}` },
+    ...(counterpartsOf(`pmd/${rule}`).length === 0 ? {} : { docs: counterpartsOf(`pmd/${rule}`) }),
   });
 }
 
