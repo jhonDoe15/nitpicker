@@ -55,8 +55,12 @@ function isGlued(state, position) {
   return state.tokens[item.token].start === state.tokens[before.close ?? before.token].end;
 }
 
-function positions(from, to) {
-  return Array.from({ length: Math.max(0, to - from) }, (_, step) => from + step);
+function genericStep(state, { index, depth }) {
+  const item = state.items[index];
+  if (item === undefined || !isTypeItem(state, item)) {
+    return undefined;
+  }
+  return { index: index + 1, depth: depth + ({ '<': 1, '>': -1 }[textAt(state, index)] ?? 0) };
 }
 
 function genericEnd(state, position) {
@@ -64,17 +68,11 @@ function genericEnd(state, position) {
   if (open.close !== undefined || !isGlued(state, position)) {
     return undefined;
   }
-  let depth = 0;
-  for (const index of positions(position, state.items.length)) {
-    depth += { '<': 1, '>': -1 }[textAt(state, index)] ?? 0;
-    if (!isTypeItem(state, state.items[index])) {
-      return undefined;
-    }
-    if (depth === 0) {
-      return GENERIC_FOLLOWERS.has(textAt(state, index + 1)) ? index + 1 : undefined;
-    }
-  }
-  return undefined;
+  const end = chainOf({ index: position, depth: 0 }, (step) =>
+    step.depth === 0 && step.index > position ? undefined : genericStep(state, step),
+  ).at(-1);
+  const closed = end.depth === 0 && end.index > position;
+  return closed && GENERIC_FOLLOWERS.has(textAt(state, end.index)) ? end.index : undefined;
 }
 
 function postfixEnd(state, position) {
@@ -103,9 +101,9 @@ function isPrefix(state, position) {
 }
 
 function readOperand(state, start) {
-  const atomAt =
-    positions(start, state.items.length).find((position) => !isPrefix(state, position)) ??
-    state.items.length;
+  const atomAt = chainOf({ position: start }, ({ position }) =>
+    isPrefix(state, position) ? { position: position + 1 } : undefined,
+  ).at(-1).position;
   const atom = state.items[atomAt];
   if (
     atom === undefined ||
@@ -134,18 +132,19 @@ function typeStep(state, position, depth) {
   return text === '>' ? depth - 1 : depth;
 }
 
-function readType(state, start) {
-  let depth = 0;
-  let end = start;
-  for (const position of positions(start, state.items.length)) {
-    const isType = isTypeItem(state, state.items[position]);
-    const next = isType ? typeStep(state, position, depth) : undefined;
-    if (next === undefined || next < 0) {
-      break;
-    }
-    depth = next;
-    end = position + 1;
+function typeAdvance(state, { position, depth }) {
+  const item = state.items[position];
+  if (item === undefined || !isTypeItem(state, item)) {
+    return undefined;
   }
+  const next = typeStep(state, position, depth);
+  return next === undefined || next < 0 ? undefined : { position: position + 1, depth: next };
+}
+
+function readType(state, start) {
+  const end = chainOf({ position: start, depth: 0 }, (step) => typeAdvance(state, step)).at(
+    -1,
+  ).position;
   return end === start ? undefined : { from: start, to: end, type: true };
 }
 
@@ -156,10 +155,10 @@ function readOperator(state, position) {
     return undefined;
   }
   if (PRECEDENCE.has(text)) {
-    return { text, precedence: PRECEDENCE.get(text), position };
+    return { text, precedence: PRECEDENCE.get(text), position, token: item.token };
   }
   const isInfix = state.tokens[item.token].kind === 'word';
-  return isInfix ? { text, precedence: INFIX_PRECEDENCE, position } : undefined;
+  return isInfix ? { text, precedence: INFIX_PRECEDENCE, position, token: item.token } : undefined;
 }
 
 function nextOperand(state, sequence, operand) {
@@ -191,7 +190,14 @@ function leaf(state, { from, to, type }) {
 function reduce(output, operator) {
   const right = output.pop();
   const left = output.pop();
-  const node = { operator: operator.text, left, right, first: left.first, last: right.last };
+  const node = {
+    operator: operator.text,
+    left,
+    right,
+    first: left.first,
+    last: right.last,
+    infix: operator.precedence === INFIX_PRECEDENCE ? operator.token : undefined,
+  };
   left.parent = node;
   right.parent = node;
   output.push(node);

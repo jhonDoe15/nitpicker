@@ -12,6 +12,21 @@ const MIRRORED = new Map([
 const SYMMETRIC = new Set(['==', '!=', '===', '!==']);
 const WRITES = new Set(['++', '--', '=', '+=', '-=', '*=', '/=', '%=']);
 const CALLERS = new Set(['word', 'string', 'char', 'number']);
+const OPERATOR_WORDS = new Set(['in', 'is', 'as', 'and', 'or', 'xor', 'return']);
+const PURE_INFIX = new Set([
+  'and',
+  'or',
+  'xor',
+  'shl',
+  'shr',
+  'ushr',
+  'until',
+  'downTo',
+  'step',
+  'to',
+  'rangeTo',
+  'rangeUntil',
+]);
 const LITERAL_WORDS = new Set(['true', 'false', 'null']);
 const MEMBER_MARKS = new Set(['.', '?.', '::']);
 
@@ -41,12 +56,21 @@ function linkGroups(forest) {
   }
 }
 
+function markInfixCall(forest, node) {
+  if (node.infix !== undefined && !PURE_INFIX.has(node.operator)) {
+    forest.infixCalls.add(node.infix);
+  }
+}
+
 function plantTrees(forest, closes) {
   const trees = new Map();
   for (const range of expressionRanges(forest.tokens, closes)) {
     const root = rangeTree(forest.tokens, range.items);
     trees.set(range, root);
     forest.roots.push(...(root === undefined ? [] : [root]));
+    for (const node of root === undefined ? [] : expressionNodes(root)) {
+      markInfixCall(forest, node);
+    }
     if (root !== undefined && range.group !== undefined) {
       forest.byGroup.set(range.group, root);
     }
@@ -69,7 +93,7 @@ function compoundsOf(trees) {
 export function expressionForest(scanned) {
   const tokens = kotlinTokens(scanned);
   const closes = closingTokens(tokens);
-  const forest = { tokens, roots: [], byGroup: new Map(), compounds: [] };
+  const forest = { tokens, roots: [], byGroup: new Map(), compounds: [], infixCalls: new Set() };
   if (closes === undefined) {
     return forest;
   }
@@ -108,6 +132,12 @@ function keyText(forest, node) {
 }
 
 /** The text two operands share when they are the same value: comparisons read from one side. */
+/** The number of tokens of the node without its outer parentheses. */
+export function nodeSize(forest, node) {
+  const inner = unwrapped(forest, node);
+  return inner.last - inner.first;
+}
+
 export function nodeKey(forest, node) {
   const inner = unwrapped(forest, node);
   if (!MIRRORED.has(inner.operator) && !SYMMETRIC.has(inner.operator)) {
@@ -131,7 +161,9 @@ function isCall(tokens, index) {
   const before = tokens[index - 1];
   const callee =
     before !== undefined &&
-    (CALLERS.has(before.kind) || [')', ']', '>', '!!'].includes(before.text));
+    (CALLERS.has(before.kind) || [')', ']', '>', '!!'].includes(before.text)) &&
+    (before.text !== '>' || before.end === tokens[index].start) &&
+    !OPERATOR_WORDS.has(before.text);
   return text === '(' && callee && !LITERAL_WORDS.has(before.text);
 }
 
@@ -142,7 +174,8 @@ export function isEffectFree(forest, node) {
     (token, offset) =>
       WRITES.has(token.text) ||
       token.literal?.template === true ||
-      isCall(forest.tokens, inner.first + offset),
+      isCall(forest.tokens, inner.first + offset) ||
+      forest.infixCalls.has(inner.first + offset),
   );
 }
 

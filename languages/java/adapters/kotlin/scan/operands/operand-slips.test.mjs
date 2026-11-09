@@ -36,7 +36,7 @@ function covered(redundant, deciding) {
 }
 
 function erases(operator, operand) {
-  return `\`${operator} 0\` erases \`${operand}\`: the result is 0 whatever it holds (or -0.0 or NaN for a \`Double\`). Write the value meant, or fix the operand.`;
+  return `\`${operator} 0\` erases \`${operand}\`: a number times 0 is 0 whatever it holds (or -0.0 or NaN for a \`Double\`). Write the value meant, or fix the operand.`;
 }
 
 function reapplied(target, operator) {
@@ -55,11 +55,15 @@ describe('mainOperandSlips', () => {
     [
       'an equality of one name',
       'return x != x',
-      [`\`x\` is compared with itself. To test for NaN, write \`x.isNaN()\`. ${COPY}`],
+      [
+        `\`x\` is compared with itself. If this is a NaN test on a \`Double\` or \`Float\`, write \`x.isNaN()\`. ${COPY}`,
+      ],
     ],
     ['a lambda body', 'return listOf(a).map { it - it }', [both('it', '-')]],
     ['an if condition', 'if (a > a) return 1\n    return 0', [both('a', '>')]],
     ['a class literal', 'return a::class == a::class', [both('a::class', '==')]],
+    ['a range', 'return (a..b) == (a..b)', [both('a..b', '==')]],
+    ['a pure infix call', 'return (a shl 1) - (a shl 1)', [both('a shl 1', '-')]],
   ])('reports the same operand on both sides: %s', (_, body, messages) => {
     expect(found(inFunction(body))).toEqual(messages.map((message) => [2, message]));
   });
@@ -76,6 +80,10 @@ describe('mainOperandSlips', () => {
     ['text inside a comment', 'return b // a - a'],
     ['two statements on two lines', 'val c = a\n    -a\n    return c'],
     ['a generic call', 'return listOf<Int>(a) == listOf<Int>(a)'],
+    ['two labelled receivers', 'return (this@Outer) == (this@Inner)'],
+    ['two labelled receivers without parentheses', 'return this@Outer - this@Inner'],
+    ['an infix call that may change state', 'return queue offer a == queue offer a'],
+    ['a trailing comma in parentheses', 'return listOf(a,) == a'],
   ])('leaves %s alone', (_, body) => {
     expect(found(inFunction(body))).toEqual([]);
   });

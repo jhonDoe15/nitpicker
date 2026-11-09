@@ -41,7 +41,7 @@ Part of the [nitpicker-kotlin](../SKILL.md) skill. Write these forms from the st
   declares. Not `s == PAID || s == SHIPPED`, `s in setOf(PAID, SHIPPED)` or a `when` with
   `else -> false` (`pmd/ExhaustiveEnumPredicate`).
 - Operands: no copied operand (`kotlin-source/OperandSlip`). Not `a == a`, `x - x` or `a and a`
-  (write `x.isNaN()` for a NaN test), the same operand twice in one `&&`/`||` chain, comparisons of
+  (a NaN test on a `Double` is `x.isNaN()`), the same operand twice in one `&&`/`||` chain, comparisons of
   one value that contradict or repeat each other (`x < 3 && x > 5`, `x > 5 && x > 3`), `x * 0`, or
   `a += a + b`. Tests may apply an operator to one value twice to exercise it.
 - No top-level or `object` function that only passes its parameters, in order, to another function
