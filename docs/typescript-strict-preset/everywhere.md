@@ -56,6 +56,28 @@ Part of the [TypeScript strict preset guide](../typescript-strict-preset.md).
   reducer and a callback with one or three parameters are not reported either. A spread in `map`
   that adds a field (`items.map((item) => ({ ...item, done: true }))`) is the allowed immutable
   update and is not reported: copying one element per step is linear.
+- `nitpicker/no-costly-collection-form`: a collection form with a cheaper equivalent, in all
+  production code (not in tests). It reports an array declared with an array literal that gets
+  `push`, `unshift` or `xs = [...xs, x]` and is searched with `includes`, `indexOf(x) === -1` (or
+  another test against `-1` or `0`) or `some((y) => y === x)` inside a loop, a callback or a
+  recursive function such as a visitor; an array also used by position (`xs[i]`, `splice`, `sort`,
+  `pop`, `shift`, `at`, a positional `indexOf`) is left alone. Allowed form: a `Set` (`add`, `has`;
+  `[...set]` keeps insertion order). It reports `find`, `findIndex`, `findLast`,
+  `findLastIndex` or `some` whose callback only compares a property of the item with `===` or `==`
+  to a value that is not a literal (`handlers.find((h) => h.message === event.type)`), inside a
+  loop, an iteration callback (`map`, `forEach`, `filter`, `reduce` and the like) or a listener
+  (`on`, `once`, `addListener`, `prependListener`, `addEventListener`, `subscribe`), on a binding declared outside it that is never
+  reassigned or changed in place (`push`, `splice`, `sort` and the like), or a `this` field that
+  only the constructor assigns. Allowed form: a `Map` built once, before the loop or handler. It
+  reports `sort(...)` or `toSorted(...)` followed by `[0]`, `.at(0)`, `.at(-1)`, `.pop()`, `.shift()`
+  or a one-element destructuring (`const [first] = xs.toSorted(cmp)`); `xs.sort()` on a binding read
+  again later, or on a property, keeps the sorted array and is left alone. Allowed form: one pass
+  with `reduce`, or `Math.min`/`Math.max` for a few numbers. An exception fits only for a list that
+  always stays a handful of items. The rule reads no types, so it behaves the same in the
+  JavaScript preset; it reads local arrays only, not class fields or exported arrays. The same rules run as `list-used-as-set`, `linear-lookup-in-loop` and ruff
+  `FURB192` (Python), `pmd/ListUsedAsSet`, `pmd/LinearLookupInLoop` and `pmd/SortForExtreme` (Java)
+  and `kotlin-source/` rules of the same names (Kotlin). Only this rule also reads `indexOf`
+  and identity `some` as membership tests and listeners as repeated runs.
 - `async`/`await` and `Promise.all`. No `.then()`, `.catch()` or `.finally()` chains, and no promise
   left without being awaited (`@typescript-eslint/no-floating-promises`). Deliberate
   fire-and-forget is written `void job();`, typescript-eslint's own form; `.then()` and `.catch()`
@@ -236,6 +258,25 @@ Part of the [TypeScript strict preset guide](../typescript-strict-preset.md).
   bindings already removes the late-binding bug `no-loop-func` exists for. Python's counterparts are ruff `PLE0101`,
   `B023` and `PLR1711`; in Java and Kotlin a missing return does not compile and the existing
   unused-member checks already report an unused private member.
+- Boolean logic with a strictly simpler exact form (`nitpicker/simpler-boolean-logic`, production
+  and test files of both presets; the counterpart of the Java PMD rules `SimplifyBooleanReturns`,
+  `SimplifiedTernary`, `CollapsibleIfStatements`, `LogicInversion`, `ConfusingTernary` and
+  `NegatedOperands`). The message prints the simpler form: `if (c) { return true; } return false;`
+  is `return c;` (`return !c;` with the literals swapped); `c ? true : false` is `c`, and
+  `c ? x : false`, `c ? true : x`, `c ? false : x` and `c ? x : true` are `c && x`, `c || x`,
+  `!c && x` and `!c || x` when `x` is boolean too; `!(a === b)` is `a !== b`; `!!x` outside a
+  condition is `x`; an `if` whose only statement is another `if`, neither with an `else`, is one
+  `if (a && b)`; `if (!c) {A} else {B}` and `!c ? a : b` are `if (c) {B} else {A}` and
+  `c ? b : a`; and a `&&` or `||` chain whose every operand is negated is one negation
+  (`!a && !b` is `!(a || b)`). Each form keeps the value exactly: where dropping `!!` or a ternary
+  needs `c` to be boolean, it must be a comparison, a `!`, a `&&`/`||` of those or (with type
+  information) typed `boolean`, so `return !!name;` is never suggested. `!(a < b)` stays, since it
+  is not `a >= b` when either side is `NaN`; an `else if` chain and a ternary whose `else` is
+  another ternary are not swapped, and neither is a ternary whose `then` branch is a ternary (that
+  would make a nested ternary). Forms combine: `!a || !b ? x : y` is reported as `a && b ? y : x`. A
+  part that holds TypeScript-only syntax (`as`, `!`, `satisfies`, type arguments) is not reported,
+  since the printed form would drop it. `!!x` in a condition is left to `no-extra-boolean-cast` and
+  `x === true` to `@typescript-eslint/no-unnecessary-boolean-literal-compare`.
 - Identifier casing (`nitpicker/naming-convention`, which wraps
   `@typescript-eslint/naming-convention`): types and type parameters in PascalCase; functions,
   variables and parameters in camelCase; constants may be UPPER_CASE; a leading underscore is
@@ -537,6 +578,20 @@ Part of the [TypeScript strict preset guide](../typescript-strict-preset.md).
   are not. JavaScript files carry no type annotations, so there only the schema entries are checked.
   Two members whose meanings differ (`owner?: User` for the main owner beside `owners?: User[]` for
   the co-owners) are the case for an exception with a reason.
+- `nitpicker/no-unmapped-exception` (type-aware, TypeScript preset only): a NestJS handler (a
+  method with a route or GraphQL decorator such as `@Get` or `@Query` in a `@Controller` or
+  `@Resolver` class) that can throw a project exception class no exception filter in scope maps, so
+  the client gets a 500. The walk follows calls into project functions and methods, resolved by the
+  type checker, four levels deep, and the message names the call path. A `throw` inside a `try`
+  that has a `catch`, or in the promise chain before a `.catch(...)`, is not followed, and neither is
+  a function stored in a variable (a callback passed to a call is followed). A class is mapped when it or a superclass is a framework
+  status class (`HttpException` and its subclasses, `RpcException`, `WsException`, `GraphQLError`,
+  `ApolloError`) or a filter in scope catches it or a superclass: `@UseFilters` on the method or
+  the class, `app.useGlobalFilters(...)`, or an `APP_FILTER` provider. A `@Catch()` or
+  `@Catch(Error)` filter maps only the classes it checks with `instanceof`, since the rest fall
+  through to a generic response. Exceptions from libraries, `throw error` of a variable, plain
+  `Error` and a class whose base is a call (a mixin) are left out. The JavaScript preset does not run it, since it has no type information. Allowed:
+  `class OrderNotFound extends NotFoundException {}`.
 - `nitpicker/no-forwarding-wrapper` (type-aware): a module-level named function or `const` arrow
   whose body is one `return` (or an expression body) of a call that passes exactly its own
   parameters, in order, unchanged (`export const loadUser = (id: string) => fetchUser(id)`; an

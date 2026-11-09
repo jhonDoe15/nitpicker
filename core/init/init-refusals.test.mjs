@@ -1,6 +1,7 @@
 import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
+import { packageVersion } from '../help/package-version.mjs';
 import { init, initWith, readText, useProjects } from './test-support/projects.mjs';
 
 const createProject = useProjects();
@@ -75,7 +76,7 @@ describe('nitpicker init run again', () => {
       configLine,
       '',
       'Install the agent skill:',
-      '  npx skills add jhonDoe15/nitpicker --skill nitpicker-java',
+      `  npx skills add jhonDoe15/nitpicker#v${packageVersion()} --skill nitpicker-java`,
       '',
       'Then run `npx nitpicker` to check a change, or `npx nitpicker --all` to survey the whole project.',
       '',

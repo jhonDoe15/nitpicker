@@ -49,3 +49,11 @@ object`. Instance methods are left to the duplicates check, as class methods are
 - **`sibling-copy-edit`.** On the head run of a change the runner reads each changed file of the
   base checkout (`--baseline-root`) again, following renames from `--baseline-moves-file`, and
   compares the edited definition with its base copy and its same-named siblings in the module.
+- **`shared-used-by-one-feature`.** The same facts feed the feature rule: a source file under a
+  folder that `layout.sharedRoots` matches (default `**/shared`, such as
+  `src/main/java/com/acme/shared`) that only the files of one feature use, directly or through
+  other shared files, is reported with tool `coupling`. Each folder directly under a
+  `layout.featureRoots` folder (default `**/features`) is one feature, and a use from any other
+  file keeps the shared file where it is. Uses are the ones above, so a class of the same package,
+  a fully qualified name and a static import count; only the main sources are read, so tests never
+  count. Without a feature folder the rule finds nothing; `"featureRoots": []` turns it off.

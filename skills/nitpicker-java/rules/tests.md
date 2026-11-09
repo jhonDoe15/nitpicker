@@ -39,6 +39,10 @@ Part of the [nitpicker-java](../SKILL.md) skill. Write these forms from the star
   server or container is a `@ClassRule`, and `@BeforeEach`/`@Before` does not create and start one
   (nor `SpringApplication.run`, `ProcessBuilder.start`); two tests do not make the same start. Start
   it in `@BeforeAll` and reset its state between tests.
+- Tests do not change state that other tests of the class see (`SharedTestState`): no write from a test to a
+  static field, a static collection, map, array, `StringBuilder` or atomic, or (with `@TestInstance(PER_CLASS)` or
+  in a TestNG class) an instance field. Create the state in the test, or assign or `clear()` it in `@BeforeEach`;
+  state built once in `@BeforeAll` is fine while the tests only read it.
 - Tests print nothing new (`test-runtime/test-console-output`): no `System.out`/`System.err`, and
   no new `WARN` or `ERROR` log line from the code under test. Fix the cause the line names.
 - Tests get the same PMD, Checkstyle, Error Prone and formatter checks as main code, plus the file
