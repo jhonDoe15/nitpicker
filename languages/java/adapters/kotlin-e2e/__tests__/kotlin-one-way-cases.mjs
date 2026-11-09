@@ -165,6 +165,7 @@ export function defineHostileConfigCases(fixture, failureRule) {
         'Compiler',
         'Exiter',
         'Hidden',
+        'Holder',
         'Printer',
         'Qualified',
         'Qualified',
