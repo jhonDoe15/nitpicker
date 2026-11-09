@@ -172,13 +172,26 @@ function statementAt(tokens, index, schema) {
   return isWord(tokens[indexed], 'index') ? createIndex(tokens, indexed + 1, schema) : index;
 }
 
+function statementsOf(tokens) {
+  const statements = [[]];
+  for (const token of tokens) {
+    if (token.value === ';' && !token.quoted) {
+      statements.push([]);
+    } else {
+      statements.at(-1).push(token);
+    }
+  }
+  return statements;
+}
+
 export function sqlSchema(text, offset = 0) {
-  const tokens = tokensOf(text, offset);
   const schema = { foreignKeys: [], indexes: [] };
-  let resume = 0;
-  for (const index of tokens.keys()) {
-    if (index >= resume) {
-      resume = statementAt(tokens, index, schema) + 1;
+  for (const tokens of statementsOf(tokensOf(text, offset))) {
+    let resume = 0;
+    for (const index of tokens.keys()) {
+      if (index >= resume && (isWord(tokens[index], 'create') || isWord(tokens[index], 'alter'))) {
+        resume = statementAt(tokens, index, schema) + 1;
+      }
     }
   }
   return schema;

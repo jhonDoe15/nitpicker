@@ -1,39 +1,37 @@
 import { exceptionEntryText, exceptionSentence } from '../../messages/exception-sentence.mjs';
 import { HYGIENE_RULE_IDS } from '../../project-rules/hygiene-rules.mjs';
 import { graphCandidate, isMigrationFile } from '../migrations/migration-files.mjs';
-import { readSource } from '../migrations/revision-graph.mjs';
-import { databaseKind } from './database-kind.mjs';
-import { isMysqlDialect, migrationSchema } from './migration-schema.mjs';
+import { lineOf, readSource } from '../migrations/revision-graph.mjs';
+import { databaseKinds } from './database-kind.mjs';
+import { isMysqlDialect, leadsWith, migrationSchema } from './migration-schema.mjs';
 import { unindexedPrismaRelations } from './prisma-schema.mjs';
 
 const RULE = HYGIENE_RULE_IDS.foreignKeyIndex;
 const MYSQL = 'mysql';
+const DOWN_FILE = /(?:^|[/._-])down\.sql$/iu;
+const CHANGELOG_FILE = /\.(?:xml|ya?ml|json)$/iu;
 const WHY =
-  'PostgreSQL does not index a foreign-key column by itself, so every delete of a referenced row, and every join or lookup by the column, scans the whole table once it grows.';
+  'Only MySQL indexes a foreign-key column by itself; PostgreSQL, SQL Server and SQLite do not, so every delete of a referenced row, and every join or lookup by the column, scans the whole table once it grows.';
 const EXCEPTION =
   'An exception fits only when the table is known to stay small or the index is created outside the repository.';
 
-function lineOf(text, index) {
-  return text.slice(0, index).split('\n').length;
+function isUpMigration(file) {
+  return isMigrationFile(file) && !DOWN_FILE.test(file) && graphCandidate(file)?.kind !== 'django';
 }
 
 function migrationSchemas(projectRoot, files) {
-  return files
-    .filter((file) => isMigrationFile(file) && graphCandidate(file)?.kind !== 'django')
-    .flatMap((file) => {
-      const text = readSource(projectRoot, file);
-      return text === undefined || isMysqlDialect(file, text)
-        ? []
-        : [{ file, text, schema: migrationSchema(file, text) }];
-    });
+  return files.filter(isUpMigration).flatMap((file) => {
+    const text = readSource(projectRoot, file);
+    return text === undefined || isMysqlDialect(file, text)
+      ? []
+      : [{ file, text, schema: migrationSchema(file, text) }];
+  });
 }
 
 function isCovered(foreignKey, indexes) {
-  const { columns } = foreignKey;
-  return indexes.some((index) => {
-    const lead = new Set(index.columns.slice(0, columns.length));
-    return index.table === foreignKey.table && columns.every((column) => lead.has(column));
-  });
+  return indexes.some(
+    (index) => index.table === foreignKey.table && leadsWith(index.columns, foreignKey.columns),
+  );
 }
 
 function finding({ path, key, line, message }) {
@@ -48,18 +46,44 @@ function finding({ path, key, line, message }) {
   };
 }
 
-function migrationFinding({ file, text }, foreignKey) {
+function indexHint(file, table, columns) {
+  if (CHANGELOG_FILE.test(file)) {
+    return `Add a createIndex change on ${table} (${columns}) to the changelog.`;
+  }
+  if (graphCandidate(file)?.kind === 'alembic') {
+    const listed = columns.split(', ').map((column) => `'${column}'`);
+    return `Add \`op.create_index(None, '${table}', [${listed.join(', ')}])\` in a revision, or \`index=True\` on the column followed by a generated revision.`;
+  }
+  return `Add \`CREATE INDEX ON ${table} (${columns})\` in a migration, or the ORM's index on the field followed by a generated migration.`;
+}
+
+function migrationFinding({ file, text }, foreignKey, ordinal) {
   const columns = foreignKey.columns.join(', ');
+  const line = lineOf(text, foreignKey.at);
+  const key = `${foreignKey.table}(${columns})`;
   return finding({
     path: file,
-    key: `${foreignKey.table}(${columns})`,
-    line: lineOf(text, foreignKey.at),
+    key: ordinal === 0 ? key : `${key}#${String(ordinal + 1)}`,
+    line,
     message: [
-      `${file} adds a foreign key on ${foreignKey.table} (${columns}) (line ${String(lineOf(text, foreignKey.at))})`,
+      `${file} adds a foreign key on ${foreignKey.table} (${columns}) (line ${String(line)})`,
       'and no migration creates an index that starts with it.',
-      `Add \`CREATE INDEX ON ${foreignKey.table} (${columns})\` in a migration, or the ORM's index on the field followed by a generated migration.`,
+      indexHint(file, foreignKey.table, columns),
     ].join(' '),
   });
+}
+
+function fileFindings(entry, indexes) {
+  const seen = new Map();
+  return entry.schema.foreignKeys
+    .filter((foreignKey) => foreignKey.table !== undefined && foreignKey.columns.length > 0)
+    .filter((foreignKey) => !isCovered(foreignKey, indexes))
+    .map((foreignKey) => {
+      const key = `${foreignKey.table}(${foreignKey.columns.join(', ')})`;
+      const ordinal = seen.get(key) ?? 0;
+      seen.set(key, ordinal + 1);
+      return migrationFinding(entry, foreignKey, ordinal);
+    });
 }
 
 function prismaFinding(relation) {
@@ -76,17 +100,13 @@ function prismaFinding(relation) {
 }
 
 export function foreignKeyIndexFindings(tool, { projectRoot, files }) {
-  if (databaseKind(projectRoot, files) === MYSQL) {
-    return [];
-  }
-  const schemas = migrationSchemas(projectRoot, files);
+  const kindOf = databaseKinds(projectRoot, files);
+  const checked = files.filter((file) => kindOf(file) !== MYSQL);
+  const schemas = migrationSchemas(projectRoot, checked);
   const indexes = schemas.flatMap(({ schema }) => schema.indexes);
-  const migrations = schemas.flatMap((entry) =>
-    entry.schema.foreignKeys
-      .filter((foreignKey) => foreignKey.table !== undefined && foreignKey.columns.length > 0)
-      .filter((foreignKey) => !isCovered(foreignKey, indexes))
-      .map((foreignKey) => migrationFinding(entry, foreignKey)),
-  );
-  const prisma = unindexedPrismaRelations(projectRoot, files).map(prismaFinding);
+  const migrations = schemas.flatMap((entry) => fileFindings(entry, indexes));
+  const prisma = unindexedPrismaRelations(projectRoot, files)
+    .filter((relation) => kindOf(relation.file) !== MYSQL)
+    .map(prismaFinding);
   return [...migrations, ...prisma].map((found) => ({ ...found, tool }));
 }

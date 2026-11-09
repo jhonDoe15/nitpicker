@@ -28,6 +28,20 @@ function closing(tokens, open) {
   return tokens.length;
 }
 
+function closings(tokens) {
+  const ends = new Map();
+  const opened = [];
+  for (const [index, token] of tokens.entries()) {
+    const step = token.string ? 0 : (DEPTH[token.value] ?? 0);
+    if (step > 0) {
+      opened.push(index);
+    } else if (step < 0 && opened.length > 0) {
+      ends.set(opened.pop(), index);
+    }
+  }
+  return ends;
+}
+
 function partsOf(tokens) {
   const parts = [[]];
   let depth = 0;
@@ -42,12 +56,18 @@ function partsOf(tokens) {
   return parts.filter((part) => part.length > 0);
 }
 
-function argumentsOf(tokens, open) {
-  const parts = partsOf(tokens.slice(open + 1, closing(tokens, open)));
-  const named = (part) => part[1]?.value === '=' && !part[0].string && part[2]?.value !== '=';
+function isNamed(part) {
+  return part[1]?.value === '=' && !part[0].string && part[2]?.value !== '=';
+}
+
+function argumentsOf(tokens, open, ends) {
+  const close = ends === undefined ? closing(tokens, open) : (ends.get(open) ?? tokens.length);
+  const parts = partsOf(tokens.slice(open + 1, close));
   return {
-    positional: parts.filter((part) => !named(part)),
-    keywords: Object.fromEntries(parts.filter(named).map((part) => [part[0].value, part.slice(2)])),
+    positional: parts.filter((part) => !isNamed(part)),
+    keywords: Object.fromEntries(
+      parts.filter(isNamed).map((part) => [part[0].value, part.slice(2)]),
+    ),
   };
 }
 
@@ -64,76 +84,103 @@ function calledAt(tokens, index) {
   return !token.string && tokens[index + 1]?.value === '(' ? token.value : undefined;
 }
 
-function columnFacts(table, part, schema) {
-  const open = part.findIndex((token) => token.value === '(');
-  const callee = part[open - 1]?.value.split('.').at(-1);
-  if (open < 0) {
+function columnCall({ table, part, call, schema }) {
+  const [column] = strings(call.positional[0]);
+  if (column === undefined) {
     return;
   }
-  const { positional, keywords } = argumentsOf(part, open);
-  if (callee === 'Column') {
-    const [column] = strings(positional[0]);
-    const foreignKey = part.find((token) => token.value.split('.').at(-1) === 'ForeignKey');
-    if (column !== undefined && foreignKey !== undefined) {
-      schema.foreignKeys.push({ table, columns: [column], at: foreignKey.at });
-    }
-    if (['index', 'primary_key', 'unique'].some((name) => isTrue(keywords[name]))) {
-      schema.indexes.push({ table, columns: [column] });
-    }
-  } else if (callee === 'ForeignKeyConstraint') {
-    schema.foreignKeys.push({ table, columns: strings(positional[0]), at: part[0].at });
-  } else if (callee === 'PrimaryKeyConstraint' || callee === 'UniqueConstraint') {
-    schema.indexes.push({ table, columns: positional.flatMap(strings) });
-  } else if (callee === 'Index') {
-    schema.indexes.push({ table, columns: positional.slice(1).flatMap(strings) });
+  const foreignKey = part.find((token) => token.value.split('.').at(-1) === 'ForeignKey');
+  if (foreignKey !== undefined) {
+    schema.foreignKeys.push({ table, columns: [column], at: foreignKey.at });
+  }
+  if (['index', 'primary_key', 'unique'].some((name) => isTrue(call.keywords[name]))) {
+    schema.indexes.push({ table, columns: [column] });
   }
 }
 
-function tableOf(owner, positional, keywords, batches) {
-  return owner === 'batch_op' ? batches.at(-1) : strings(keywords.table_name ?? positional[0])[0];
+function foreignKeyConstraint({ table, part, call, schema }) {
+  schema.foreignKeys.push({ table, columns: strings(call.positional[0]), at: part[0].at });
 }
 
-function operation({ owner, name, call }, schema, batches) {
-  const { positional, keywords } = call;
-  const batch = owner === 'batch_op';
-  const rest = batch ? positional : positional.slice(1);
-  const table = tableOf(owner, positional, keywords, batches);
-  if (name === 'create_table' || name === 'add_column') {
-    for (const part of rest) {
-      columnFacts(table, part, schema);
-    }
-  } else if (name === 'create_index') {
-    const own = batch ? positional[1] : positional[2];
-    const columns = strings(keywords.columns ?? own);
-    schema.indexes.push({
-      table: batch ? table : strings(keywords.table_name ?? positional[1])[0],
-      columns,
-    });
-  } else if (name === 'create_foreign_key') {
-    const source = batch ? table : strings(keywords.source_table ?? positional[1])[0];
-    const local = strings(keywords.local_cols ?? (batch ? positional[2] : positional[3]));
-    schema.foreignKeys.push({ table: source, columns: local, at: call.at });
-  } else if (name === 'create_unique_constraint' || name === 'create_primary_key') {
-    const owned = batch ? table : strings(keywords.table_name ?? positional[1])[0];
-    schema.indexes.push({
-      table: owned,
-      columns: strings(keywords.columns ?? (batch ? positional[1] : positional[2])),
-    });
+function keyConstraint({ table, call, schema }) {
+  schema.indexes.push({ table, columns: call.positional.flatMap(strings) });
+}
+
+function indexCall({ table, call, schema }) {
+  schema.indexes.push({ table, columns: call.positional.slice(1).flatMap(strings) });
+}
+
+const COLUMN_FACTS = new Map([
+  ['Column', columnCall],
+  ['ForeignKeyConstraint', foreignKeyConstraint],
+  ['PrimaryKeyConstraint', keyConstraint],
+  ['UniqueConstraint', keyConstraint],
+  ['Index', indexCall],
+]);
+
+function columnFacts(table, part, schema) {
+  const open = part.findIndex((token) => token.value === '(');
+  const facts = open < 0 ? undefined : COLUMN_FACTS.get(part[open - 1]?.value.split('.').at(-1));
+  facts?.({ table, part, call: argumentsOf(part, open), schema });
+}
+
+function argument(operation, keyword, index) {
+  return operation.keywords[keyword] ?? operation.positional[operation.batch ? index : index + 1];
+}
+
+function namedTable(operation, keyword) {
+  return operation.batch
+    ? operation.batchTable
+    : strings(operation.keywords[keyword] ?? operation.positional[1])[0];
+}
+
+function tableColumns(operation) {
+  const { batch, positional, keywords, schema } = operation;
+  const table = batch ? operation.batchTable : strings(keywords.table_name ?? positional[0])[0];
+  for (const part of batch ? positional : positional.slice(1)) {
+    columnFacts(table, part, schema);
   }
 }
+
+function createIndex(operation) {
+  operation.schema.indexes.push({
+    table: namedTable(operation, 'table_name'),
+    columns: strings(argument(operation, 'columns', 1)),
+  });
+}
+
+function createForeignKey(operation) {
+  operation.schema.foreignKeys.push({
+    table: namedTable(operation, 'source_table'),
+    columns: strings(argument(operation, 'local_cols', 2)),
+    at: operation.at,
+  });
+}
+
+const OPERATIONS = new Map([
+  ['create_table', tableColumns],
+  ['add_column', tableColumns],
+  ['create_index', createIndex],
+  ['create_unique_constraint', createIndex],
+  ['create_primary_key', createIndex],
+  ['create_foreign_key', createForeignKey],
+]);
 
 export function alembicSchema(text) {
   const tokens = tokensOf(text);
   const schema = { foreignKeys: [], indexes: [] };
   const batches = [];
+  const ends = closings(tokens);
   for (const index of tokens.keys()) {
     const called = calledAt(tokens, index);
     const [owner, name] = called?.split('.') ?? [];
     if (name === BATCH) {
-      batches.push(strings(argumentsOf(tokens, index + 1).positional[0])[0]);
-    } else if (OPS.has(owner) && name !== undefined) {
-      const call = { ...argumentsOf(tokens, index + 1), at: tokens[index].at };
-      operation({ owner, name, call }, schema, batches);
+      batches.push(strings(argumentsOf(tokens, index + 1, ends).positional[0])[0]);
+    } else if (OPS.has(owner)) {
+      const batch = owner === 'batch_op';
+      const call = argumentsOf(tokens, index + 1, ends);
+      const at = tokens[index].at;
+      OPERATIONS.get(name)?.({ ...call, batch, batchTable: batches.at(-1), at, schema });
     }
   }
   return schema;
