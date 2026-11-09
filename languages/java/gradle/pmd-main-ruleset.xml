@@ -516,6 +516,106 @@ return (
       </property>
     </properties>
   </rule>
+  <rule name="LinearLookupInLoop" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
+        message="This stream scans the whole collection for one key on every pass of the enclosing loop or stream, and the collection does not change in between. Build a Map keyed by that value once, before the loop (collect(Collectors.toMap(Route::path, Function.identity()))), and use get or containsKey (a Set of keys for anyMatch). An exception fits only for a collection that always stays a handful of items.">
+    <priority>3</priority>
+    <properties>
+      <property name="xpath">
+        <value><![CDATA[
+let $repeats := ('ForeachStatement', 'ForStatement', 'WhileStatement', 'DoStatement'),
+    $iterating := ('forEach', 'forEachOrdered', 'map', 'flatMap', 'filter', 'anyMatch', 'allMatch', 'noneMatch',
+                   'peek', 'removeIf', 'mapToObj', 'mapToInt', 'mapToLong', 'mapToDouble', 'takeWhile', 'dropWhile'),
+    $mutators := ('add', 'addAll', 'remove', 'removeAll', 'removeIf', 'retainAll', 'clear', 'set', 'sort',
+                  'replaceAll', 'addFirst', 'addLast', 'removeFirst', 'removeLast'),
+    $body := function($lambda) {
+      if ($lambda/*[2][self::Block]) then $lambda/*[2][count(*) = 1]/ReturnStatement/*[1] else $lambda/*[2]
+    },
+    $sides := function($e) {
+      if ($e/self::MethodCall[@MethodName = 'equals'][ArgumentList/@Size = 1][not(*[1][self::TypeExpression])])
+      then ($e/*[1], $e/ArgumentList/*[1])
+      else if ($e/self::MethodCall[@MethodName = 'equals'][ArgumentList/@Size = 2]
+                 [*[1][self::TypeExpression][pmd-java:typeIs('java.util.Objects')]])
+      then $e/ArgumentList/*
+      else if ($e/self::InfixExpression[@Operator = '==']) then $e/* else ()
+    },
+    $isKey := function($side, $p) {
+      exists($side[self::MethodCall[ArgumentList/@Size = 0] or self::FieldAccess]//VariableAccess[@Name = $p])
+    },
+    $isProbe := function($side, $p) {
+      empty($side/descendant-or-self::VariableAccess[@Name = $p])
+      and not($side[self::StringLiteral or self::NumericLiteral or self::CharLiteral or self::BooleanLiteral
+                    or self::NullLiteral or self::FieldAccess[*[1][self::TypeExpression]]])
+    },
+    $keyed := function($lambda) {
+      let $p := $lambda/LambdaParameterList[count(LambdaParameter) = 1]/LambdaParameter/VariableId/@Name,
+          $s := $sides($body($lambda))
+      return exists($p) and count($s) = 2
+        and (($isKey($s[1], $p) and $isProbe($s[2], $p)) or ($isKey($s[2], $p) and $isProbe($s[1], $p)))
+    },
+    $lookup := function($call) {
+      if ($call/@MethodName = ('findFirst', 'findAny'))
+      then $call[ArgumentList/@Size = 0]/*[1][self::MethodCall[@MethodName = 'filter']]
+             [ArgumentList/*[1][self::LambdaExpression][$keyed(.)]]/*[1]
+      else $call[ArgumentList/*[1][self::LambdaExpression][$keyed(.)]]/*[1]
+    }
+return //MethodCall[@MethodName = ('findFirst', 'findAny', 'anyMatch', 'noneMatch')]
+  [let $call := .,
+       $stream := $lookup(.)[self::MethodCall[@MethodName = 'stream'][ArgumentList/@Size = 0]],
+       $source := $stream/*[1][self::VariableAccess or self::FieldAccess[*[1][self::ThisExpression[not(*)]]]],
+       $name := $source/@Name,
+       $block := ancestor::Block[LocalVariableDeclaration/VariableDeclarator/VariableId[@Name = $name]][1],
+       $local := $block/LocalVariableDeclaration/VariableDeclarator[VariableId/@Name = $name],
+       $method := ancestor::*[self::MethodDeclaration or self::ConstructorDeclaration][1],
+       $bound := (ancestor::LambdaExpression/LambdaParameterList/LambdaParameter/VariableId
+                  | ancestor::ForeachStatement/LocalVariableDeclaration/VariableDeclarator/VariableId
+                  | ancestor::ForStatement/ForInit//VariableId)[@Name = $name],
+       $parameter := $method/FormalParameters/FormalParameter/VariableId[@Name = $name],
+       $scope := if (exists($local)) then $block
+                 else if (exists($parameter)) then $method
+                 else ancestor::*[self::ClassBody or self::RecordBody or self::EnumBody][1],
+       $changes := ($scope//MethodCall[@MethodName = $mutators]
+                      [*[1][self::VariableAccess[@Name = $name] or self::FieldAccess[@Name = $name][*[1][self::ThisExpression]]]]
+                    | $scope//AssignmentExpression[*[1][@Name = $name]])
+                   [empty(ancestor::ConstructorDeclaration) or exists($local) or exists($parameter)],
+       $runs := ancestor::*[local-name() = $repeats or self::LambdaExpression[parent::ArgumentList/parent::MethodCall
+                  [@MethodName = $iterating][*[1][pmd-java:typeIs('java.util.stream.BaseStream')
+                    or pmd-java:typeIs('java.lang.Iterable') or pmd-java:typeIs('java.util.Map')]]]]
+   return exists($name) and empty($bound) and empty($changes)
+     and exists(if (exists($local)) then $runs[. >> $local] else $runs)]
+]]></value>
+      </property>
+    </properties>
+  </rule>
+  <rule name="ListUsedAsSet" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
+        message="This local list gets add and is searched with contains inside a loop or stream step, so every search scans the whole list. Keep it in a Set (new HashSet&lt;&gt;(), or LinkedHashSet to keep insertion order): add returns false when the item is already there. An exception fits only for a list that always stays a handful of items.">
+    <priority>3</priority>
+    <properties>
+      <property name="xpath">
+        <value><![CDATA[
+let $positional := ('get', 'set', 'indexOf', 'lastIndexOf', 'subList', 'listIterator', 'sort', 'replaceAll',
+                    'getFirst', 'getLast', 'addFirst', 'addLast', 'removeFirst', 'removeLast', 'reversed'),
+    $repeats := ('ForeachStatement', 'ForStatement', 'WhileStatement', 'DoStatement'),
+    $iterating := ('forEach', 'forEachOrdered', 'map', 'flatMap', 'filter', 'anyMatch', 'allMatch', 'noneMatch',
+                   'peek', 'removeIf', 'mapToObj', 'mapToInt', 'mapToLong', 'mapToDouble', 'takeWhile', 'dropWhile')
+return //MethodCall[@MethodName = 'contains'][ArgumentList/@Size = 1][*[1][self::VariableAccess]]
+  [let $call := .,
+       $name := *[1]/@Name,
+       $block := ancestor::Block[LocalVariableDeclaration/VariableDeclarator/VariableId[@Name = $name]][1],
+       $declarator := $block/LocalVariableDeclaration/VariableDeclarator[VariableId/@Name = $name],
+       $uses := $block//MethodCall[*[1][self::VariableAccess[@Name = $name]]]
+   return exists($declarator/ConstructorCall[pmd-java:typeIs('java.util.ArrayList') or pmd-java:typeIs('java.util.LinkedList')])
+     and $declarator << $call
+     and exists($uses[@MethodName = 'add'][ArgumentList/@Size = 1])
+     and empty($uses[@MethodName = $positional])
+     and empty($uses[@MethodName = 'add'][ArgumentList/@Size = 2])
+     and empty($uses[@MethodName = 'remove'][ArgumentList/*[1][pmd-java:typeIs('int')]])
+     and exists($call/ancestor::*[local-name() = $repeats
+           or self::LambdaExpression[parent::ArgumentList/parent::MethodCall[@MethodName = $iterating]
+             [*[1][pmd-java:typeIs('java.util.stream.BaseStream') or pmd-java:typeIs('java.lang.Iterable') or pmd-java:typeIs('java.util.Map')]]]][. >> $declarator])]
+]]></value>
+      </property>
+    </properties>
+  </rule>
   <rule name="ParameterMutation" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
         message="This changes the collection, map or array the caller passed in. Build and return a new one (List.copyOf, a stream, new ArrayList&lt;&gt;(items) filled and returned), or copy the parameter first and change the copy.">
     <priority>3</priority>
@@ -765,6 +865,26 @@ return (
             return $plural = $plurals($nameOf($other))
               and $own[self::ClassType or self::PrimitiveType] and $simple($own) = $simple($element)
               and not($own/TypeArguments) and not($element/TypeArguments))]
+]]></value>
+      </property>
+    </properties>
+  </rule>
+  <rule name="SortForExtreme" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
+        message="This stream is sorted only to take its first or last element, which costs a full sort. Take it in one pass with min(comparator) or max(comparator) on the stream, or Collections.min and Collections.max on a collection. An exception fits only for a stream that always stays a handful of items.">
+    <priority>3</priority>
+    <properties>
+      <property name="xpath">
+        <value><![CDATA[
+let $sorted := function($call) {
+      $call/*[1][self::MethodCall[@MethodName = 'sorted'][*[1][pmd-java:typeIs('java.util.stream.Stream')]]]
+    },
+    $listed := function($call) {
+      $call/*[1][self::MethodCall[@MethodName = 'toList' and ArgumentList/@Size = 0
+                                  or @MethodName = 'collect' and ArgumentList/@Size = 1]][exists($sorted(.))]
+    }
+return //MethodCall[@MethodName = 'findFirst'][ArgumentList/@Size = 0][exists($sorted(.))]
+  | //MethodCall[@MethodName = 'get'][ArgumentList[@Size = 1]/NumericLiteral[@ValueAsInt = 0]][exists($listed(.))]
+  | //MethodCall[@MethodName = ('getFirst', 'getLast')][ArgumentList/@Size = 0][exists($listed(.))]
 ]]></value>
       </property>
     </properties>
