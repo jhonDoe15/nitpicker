@@ -198,13 +198,12 @@ describe('the shared fact rules', () => {
       CONSOLE,
       ...DESIGN_RULES,
     ];
-    const withoutDesign = python.filter((rule) => !DESIGN_RULES.includes(rule));
     expect(sharedFactExceptionRules()).toEqual(python);
-    expect(registeredFactRules('python')).toEqual(withoutDesign);
+    expect(registeredFactRules('python')).toEqual(python);
     withLanguageRegistered('feature-cycle', 'kotlin', () => {
       expect(sharedFactExceptionRules()).toEqual(python);
       expect(registeredFactRules('kotlin').includes('feature-cycle')).toBe(true);
-      expect(registeredFactRules('python')).toEqual(withoutDesign);
+      expect(registeredFactRules('python')).toEqual(python);
     });
   });
 });

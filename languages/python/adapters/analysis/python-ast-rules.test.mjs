@@ -77,6 +77,8 @@ describe('running the rules script', () => {
       xfailStrict: false,
       minimumPython: [3, 8],
       testFiles: [],
+      designFiles: ['src/demo/a.py'],
+      distributions: [],
       entryFiles: [],
       entryModules: [],
       boundaryRoots: ['pydantic', 'pydantic_settings'],
