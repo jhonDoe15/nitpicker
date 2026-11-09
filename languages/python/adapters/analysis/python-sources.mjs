@@ -1,4 +1,4 @@
-import { existsSync, statSync, writeFileSync } from 'node:fs';
+import { existsSync, readdirSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import {
   PYTHON_SKIPPED_FOLDERS,
@@ -15,6 +15,8 @@ import {
   TOP_LEVEL_TEST_DIRECTORIES,
 } from '../execution/python-project.mjs';
 import { isGeneratedPython } from '../../libraries/generated-files.mjs';
+import { isBuildManifest } from '../../../../shared/hygiene/files/build-output.mjs';
+import { bddFeatureMatcher, isDirectory } from '../configuration/pytest/bdd-features.mjs';
 import {
   DJANGO_TEST_FILES,
   isDjangoProject,
@@ -39,10 +41,6 @@ function isSkippedDirectory(entry, { wholeProject, topLevel }) {
 
 function relativePosix(projectRoot, absolute) {
   return path.relative(projectRoot, absolute).split(path.sep).join('/');
-}
-
-function isDirectory(absolute) {
-  return existsSync(absolute) && statSync(absolute).isDirectory();
 }
 
 export function pythonSourceFiles(projectRoot, sourceRoots) {
@@ -84,7 +82,10 @@ export function functionText(sources, projectRoot, { file, start, end }) {
 }
 
 const DEPENDENCY_DIRECTORIES = ['__pycache__', 'venv', 'node_modules', 'site-packages'];
-const EXCLUDED_DIRECTORIES = [...DEPENDENCY_DIRECTORIES, ...PYTHON_SKIPPED_FOLDERS];
+const BUILD_OUTPUT_DIRECTORIES = new Set(['build', 'dist']);
+const EXCLUDED_DIRECTORIES = [...DEPENDENCY_DIRECTORIES, ...PYTHON_SKIPPED_FOLDERS].filter(
+  (name) => !BUILD_OUTPUT_DIRECTORIES.has(name),
+);
 const HIDDEN_PREFIX = '.';
 const COMMON_HIDDEN_DIRECTORIES = [
   '.git',
@@ -140,15 +141,34 @@ function moduleName(importRoot, absoluteFile) {
 
 export function testFileMatcher(projectRoot) {
   const options = testFileOptions(projectRoot);
-  return (file) => isTestFile(file, options);
+  const isBddCode = bddFeatureMatcher(projectRoot);
+  return (file) => isTestFile(file, options) || isBddCode(file);
 }
 
-function productionFiles(top, { skippedAtTop, isTest }) {
+function holdsBuildOutput(directory, projectRoot) {
+  return (
+    path.resolve(directory) === path.resolve(projectRoot) ||
+    readdirSync(directory, { withFileTypes: true }).some(
+      (entry) => entry.isFile() && isBuildManifest(entry.name),
+    )
+  );
+}
+
+function productionFiles(top, { skippedAtTop, isTest, projectRoot }) {
+  const outputs = new Map();
+  function holdsOutput(directory) {
+    if (!outputs.has(directory)) {
+      outputs.set(directory, holdsBuildOutput(directory, projectRoot));
+    }
+    return outputs.get(directory);
+  }
   function isSkipped(absolute, entry) {
+    const parent = path.dirname(absolute);
     return (
       entry.name.startsWith(HIDDEN_PREFIX) ||
       EXCLUDED_DIRECTORIES.includes(entry.name) ||
-      (path.dirname(absolute) === top && skippedAtTop.includes(entry.name))
+      (parent === top && skippedAtTop.includes(entry.name)) ||
+      (BUILD_OUTPUT_DIRECTORIES.has(entry.name) && holdsOutput(parent))
     );
   }
   return projectFilesUnder(top, { skipDirectory: isSkipped })
@@ -168,7 +188,7 @@ export function listProductionModules(projectRoot, sourceRoots) {
     const skippedAtTop =
       root === '.' ? [...DOCUMENTATION_DIRECTORIES, ...TOP_LEVEL_TEST_DIRECTORIES] : [];
     const top = path.resolve(projectRoot, root);
-    return productionFiles(top, { skippedAtTop, isTest }).flatMap((absolute) => {
+    return productionFiles(top, { skippedAtTop, isTest, projectRoot }).flatMap((absolute) => {
       const file = path.relative(projectRoot, absolute).split(path.sep).join('/');
       const module = moduleName(importRoot, absolute);
       if (seen.has(module) || module === '') {

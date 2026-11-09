@@ -1,6 +1,12 @@
-import { CONFIG_FILE_NAME, isPlainObject, shownSetting } from '../../shared/config.mjs';
+import {
+  CONFIG_FILE_NAME,
+  FEATURE_LAYOUT_KEYS,
+  isPlainObject,
+  shownSetting,
+} from '../../shared/config.mjs';
 import { policyDigest } from '../diff/reporting/review/policy-findings.mjs';
 import { buildNarrowingChanges } from './build-files/build-narrowing.mjs';
+import { featureLayoutChanges } from './features/feature-layout-changes.mjs';
 import { toolConfigChanges } from './build-files/tool-config-changes.mjs';
 import { coveredPathChanges } from './paths/covered-paths.mjs';
 import { generatedMarkingChanges } from './paths/generated-marking.mjs';
@@ -18,7 +24,7 @@ const LISTED_KEYS = new Set([
   'duplicates',
   'analyzerTimeoutMinutes',
 ]);
-const LISTED_LAYOUT_KEYS = new Set(['excludedGlobs', 'entryPoints']);
+const LISTED_LAYOUT_KEYS = new Set(['excludedGlobs', 'entryPoints', ...FEATURE_LAYOUT_KEYS]);
 
 function withoutKeys(object, keys) {
   return Object.fromEntries(Object.entries(object).filter(([key]) => !keys.has(key)));
@@ -90,6 +96,7 @@ function describedEntries(baseConfig, headConfig, scope) {
     ...listedChanges(baseConfig, headConfig),
     timeoutChanges(baseConfig, headConfig),
     hiddenCodeChanges(baseConfig, headConfig, scope),
+    featureLayoutChanges(baseConfig, headConfig, scope),
     generatedMarkingChanges(scope),
     tsconfigChanges(scope),
     ...buildNarrowingChanges(scope),

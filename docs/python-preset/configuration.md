@@ -15,12 +15,10 @@ Config keys with this preset: `base`, `disable` (the analyzer names are `python`
 `inheritanceDepth`, and the [slow test](slow-tests.md) budgets `unitTestSeconds` and
 `integrationTestSeconds`), `testConsole` (see [new console output](new-console-output-from-tests.md)), `exclude` (findings under the globs are dropped) and
 `legacyInventory` (same format and `baseline-expansion` rule as for Java), `history` (the opt-in
-[change history](../usage.md#change-history) check), and the `python` object below. `layout` takes
-only `featureRoots`, and only once `history.coChange` is on (it names the feature folders
-`co-change` reads); its other keys stay a config error with this preset: the Python preset has no
-feature layout (no `features/` and `shared/` folders to read), so it does not register the one rule
-that reads them, `shared-used-by-one-feature`. The
-top-level `exceptions` is accepted only for the rules shared with the other languages: the file and size limits
+[change history](../usage.md#change-history) check), and the `python` object below. `layout.featureRoots` and `layout.sharedRoots` place the [feature folders](feature-folders.md), and
+`featureRoots` also names the feature folders `co-change` reads (the other `layout` keys describe
+TypeScript sources and are an error). The
+top-level `exceptions` is accepted only for the rules shared with the other languages: the [feature folder rules](feature-folders.md), the file and size limits
 (`file-lines-limit`, `line-length-limit`, `folder-files-limit`, `slow-test`, `folder-depth-limit`,
 `class-methods-limit`, `class-fields-limit`, `inheritance-depth-limit`), the function rules
 (`function-lines-limit`, `function-statements-limit`, `function-control-nesting-limit`,
