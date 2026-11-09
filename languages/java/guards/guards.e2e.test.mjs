@@ -167,7 +167,7 @@ function reportedViolations(root) {
         ? `${file} ${tool}/${rule}`
         : `${file}:${String(location.line)} ${tool}/${rule}`,
     )
-    .sort();
+    .sort((left, right) => left.localeCompare(right));
 }
 
 function runGradle(projectRoot, args) {
