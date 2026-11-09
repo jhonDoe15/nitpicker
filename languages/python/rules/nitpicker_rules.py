@@ -148,20 +148,28 @@ def file_results(context, modules):
     return found + ([too_deep(context.path, "file")] if deep else []), allowances
 
 
-def check_all(paths, options, modules):
-    from checks.comments import stub_findings
+def build_project(paths, options, findings=None):
     from index.project import Project
 
     project = Project(options, paths)
-    findings = [item for path in paths for item in stub_findings(path)]
     for path in paths:
         try:
             source = parse_file(path)
         except RecursionError:
-            findings.append(too_deep(path, "all"))
+            if findings is not None:
+                findings.append(too_deep(path, "all"))
             continue
         if source is not None:
             project.add(FileContext(path, source[0], source[1], project))
+    return project
+
+
+def check_all(paths, options, modules):
+    from checks.comments import stub_findings
+    from security.support import support_files
+
+    findings = [item for path in paths for item in stub_findings(path)]
+    project = build_project(paths, options, findings)
     allowances = []
     for context in project.contexts.values():
         found, allowed = file_results(context, modules)
