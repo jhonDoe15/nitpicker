@@ -83,7 +83,7 @@ export function touchedLineCases(resultOf) {
   it('keeps a legacy branch baselined above an extracted helper and through reformatting', () => {
     expect(
       locations(resultOf(), 'changed-branch-coverage').filter(
-        (entry) => !entry.startsWith('Twice') && !entry.startsWith('Edited'),
+        (entry) => !(entry.startsWith('Twice') || entry.startsWith('Edited')),
       ),
     ).toEqual([]);
   });

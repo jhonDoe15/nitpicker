@@ -176,7 +176,10 @@ function parseError(text) {
 
 function projectWith(config, markers = {}) {
   const root = temporaryRoot('nitpicker-help-');
-  writeFiles(root, config === undefined ? markers : { ...markers, 'nitpicker.config.json': config });
+  writeFiles(
+    root,
+    config === undefined ? markers : { ...markers, 'nitpicker.config.json': config },
+  );
   return root;
 }
 

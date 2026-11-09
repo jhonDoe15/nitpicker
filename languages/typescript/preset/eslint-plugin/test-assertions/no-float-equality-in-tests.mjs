@@ -190,7 +190,7 @@ function assertFunctionName(callee, bindings) {
 
 function expectFloat(node) {
   const { callee } = node;
-  if (!isMember(callee) || !MATCHERS.has(callee.property.name)) {
+  if (!(isMember(callee) && MATCHERS.has(callee.property.name))) {
     return undefined;
   }
   const modifiers = expectModifiers(callee);

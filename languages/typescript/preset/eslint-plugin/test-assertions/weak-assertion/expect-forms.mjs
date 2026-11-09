@@ -38,7 +38,7 @@ function parseExpectation(call) {
   );
   const root = links.at(-1);
   const modifiers = links.slice(0, -1).map((link) => memberName(link));
-  if (!isExpectCall(root) || !modifiers.every((name) => MODIFIERS.has(name))) {
+  if (!(isExpectCall(root) && modifiers.every((name) => MODIFIERS.has(name)))) {
     return undefined;
   }
   return {
@@ -71,7 +71,7 @@ function isEmptyAssertion({ matcher, negated, args: [expected] }) {
   if (negated && matcher === 'toHaveLength') {
     return isNumber(expected, 0);
   }
-  if (!negated || !DEEP_EQUALITY_MATCHERS.has(matcher)) {
+  if (!(negated && DEEP_EQUALITY_MATCHERS.has(matcher))) {
     return false;
   }
   return isEmptyLiteral(expected);

@@ -227,7 +227,7 @@ function unionedOptions(flags, lists) {
   const merged = new Map();
   const others = flags.filter((flag) => {
     const [key, value = ''] = flag.slice('-XepOpt:NullAway:'.length).split('=');
-    if (!flag.startsWith('-XepOpt:NullAway:') || !lists.has(key)) {
+    if (!(flag.startsWith('-XepOpt:NullAway:') && lists.has(key))) {
       return true;
     }
     merged.set(key, [...(merged.get(key) ?? lists.get(key)), ...value.split(',')]);

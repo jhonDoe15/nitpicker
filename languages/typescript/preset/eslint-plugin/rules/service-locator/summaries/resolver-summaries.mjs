@@ -7,7 +7,7 @@ import { bodyParts, functionsOf, referenceName, referenceOf } from './function-s
 import { isInRegistration } from './registrations.mjs';
 
 function isProjectSource(program, source) {
-  return !source.isDeclarationFile && !program.isSourceFileFromExternalLibrary(source);
+  return !(source.isDeclarationFile || program.isSourceFileFromExternalLibrary(source));
 }
 
 function projectDirectory(program) {
@@ -116,7 +116,7 @@ function summaryOf(context, fn) {
 
 function enqueue(context, { queue, parents }, { fn, callees }) {
   for (const callee of callees) {
-    if (!parents.has(callee) && !isKnownClean(context, callee)) {
+    if (!(parents.has(callee) || isKnownClean(context, callee))) {
       parents.set(callee, fn);
       queue.push(callee);
     }

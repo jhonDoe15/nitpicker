@@ -69,7 +69,7 @@ function isValueUse(node) {
   if (ts.isElementAccessExpression(parent) && parent.expression === value) {
     return false;
   }
-  return !isCalled(parent, value) && !isOperand(parent, value);
+  return !(isCalled(parent, value) || isOperand(parent, value));
 }
 
 function isCandidate(node) {

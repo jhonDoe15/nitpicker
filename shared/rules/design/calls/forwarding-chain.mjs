@@ -16,7 +16,7 @@ function passesAllInOrder(callable) {
   return (
     passed.length === params.length &&
     passed.every((position, index) => position === index) &&
-    params.every(({ variadic, optional, pattern }) => !variadic && !optional && !pattern)
+    params.every(({ variadic, optional, pattern }) => !(variadic || optional || pattern))
   );
 }
 
@@ -88,7 +88,7 @@ export function forwardingChainFindings(index, finding) {
     }),
   );
   return index.callables
-    .filter((callable) => !hopTargets.has(callable.id) && !index.isPublished(callable))
+    .filter((callable) => !(hopTargets.has(callable.id) || index.isPublished(callable)))
     .map((callable) => chainFrom(callable, index))
     .filter((chain) => chain.length > MIN_HOPS)
     .flatMap((chain) => chainFinding(chain, { index, finding }));

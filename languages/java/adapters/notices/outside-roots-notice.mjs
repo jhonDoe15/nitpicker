@@ -21,8 +21,10 @@ export function inJvmSourceSets(file, declaredRoots = []) {
 }
 
 function outsideSourceSets(file, declaredRoots) {
-  return (
-    !HIDDEN_FOLDER.test(file) && !BUILD_OUTPUT.test(file) && !inJvmSourceSets(file, declaredRoots)
+  return !(
+    HIDDEN_FOLDER.test(file) ||
+    BUILD_OUTPUT.test(file) ||
+    inJvmSourceSets(file, declaredRoots)
   );
 }
 

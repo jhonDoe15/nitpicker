@@ -50,7 +50,7 @@ function isCandidate(fn, owners) {
     fn.forward !== null &&
     !SKIPPED_NAMES.has(fn.name) &&
     !fn.modifiers.some((modifier) => SKIPPED_MODIFIERS.has(modifier)) &&
-    fn.parameters.every(({ vararg, default: hasDefault }) => !vararg && !hasDefault)
+    fn.parameters.every(({ vararg, default: hasDefault }) => !(vararg || hasDefault))
   );
 }
 
@@ -89,7 +89,7 @@ function isPlainTarget(target) {
     !target.typeParameters &&
     !hasModifier(target, 'abstract') &&
     !hasModifier(target, 'inline') &&
-    target.parameters.every(({ vararg, default: hasDefault }) => !vararg && !hasDefault)
+    target.parameters.every(({ vararg, default: hasDefault }) => !(vararg || hasDefault))
   );
 }
 

@@ -35,7 +35,7 @@ function withoutGenerated(facts) {
   );
   return {
     ...facts,
-    imports: facts.imports.filter(({ from, to }) => !generated.has(from) && !generated.has(to)),
+    imports: facts.imports.filter(({ from, to }) => !(generated.has(from) || generated.has(to))),
   };
 }
 

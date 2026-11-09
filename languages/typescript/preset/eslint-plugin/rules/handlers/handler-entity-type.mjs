@@ -59,7 +59,7 @@ function isStaticSender(checker, expression) {
 
 function sendTarget(checker, tsCall) {
   const callee = tsCall.expression;
-  if (!ts.isPropertyAccessExpression(callee) || !SEND_METHODS.has(callee.name.text)) {
+  if (!(ts.isPropertyAccessExpression(callee) && SEND_METHODS.has(callee.name.text))) {
     return false;
   }
   return (

@@ -99,7 +99,7 @@ describe.skipIf(!kotlinE2eEnabled)(
 
     it('keeps a legacy branch baselined above an extracted helper and through reformatting', () => {
       expect(
-        newBranches().filter((entry) => !entry.startsWith('Twice') && !entry.startsWith('Edited')),
+        newBranches().filter((entry) => !(entry.startsWith('Twice') || entry.startsWith('Edited'))),
       ).toEqual([]);
     });
 
