@@ -9,12 +9,7 @@ const TRANSPARENT = new Set([
   'TSInstantiationExpression',
 ]);
 
-const LOOSE = new Set([
-  'SequenceExpression',
-  'AssignmentExpression',
-  'ArrowFunctionExpression',
-  'YieldExpression',
-]);
+const LOOSE = new Set(['SequenceExpression', 'AssignmentExpression', 'YieldExpression']);
 
 const OPERATORS = new Map([
   ['UnaryExpression', 'unary'],
@@ -79,6 +74,11 @@ const COMPOSITES = new Set([
 
 function isComposite(node) {
   return COMPOSITES.has(node.type) && isModeled(node);
+}
+
+/** Whether `toTerm` models `node` with its parts, so an expression inside it is part of its term. */
+export function isTermPart(node) {
+  return TRANSPARENT.has(node.type) || isComposite(node);
 }
 
 function fieldsOf(node) {
@@ -174,6 +174,9 @@ function opaque(node, text) {
   }
   if (node.type.endsWith('Statement')) {
     return term('statement', text);
+  }
+  if (node.type === 'ArrowFunctionExpression') {
+    return { ...term('opaque', text), loose: true, assignment: true };
   }
   return LOOSE.has(node.type) ? { ...term('opaque', text), loose: true } : term('opaque', text);
 }

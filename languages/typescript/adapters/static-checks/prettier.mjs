@@ -8,6 +8,9 @@ import { resolveTool } from '../../../../core/tooling/tool-resolution.mjs';
 import { trackTemporaryPath } from '../../../../core/tooling/temporary-files.mjs';
 import { formattingHunks } from '../prettier/format-hunks.mjs';
 import { listUnformattedInParallel } from '../prettier/parallel-cli.mjs';
+import { formatAdvice } from '../../../../shared/messages/format/format-advice.mjs';
+
+const PRETTIER_MESSAGE = `These lines are not formatted with Prettier. ${formatAdvice()}`;
 
 export async function runPrettier(options) {
   if (options.patterns.length === 0) {
@@ -184,7 +187,7 @@ function formattingFindings({ tool, relativePath, source }, formatted) {
       rule: 'prettier/prettier',
       path: relativePath,
       identity: `format-diff:${digest}${occurrence === 0 ? '' : `#${String(occurrence)}`}`,
-      message: 'Format these lines with Prettier',
+      message: PRETTIER_MESSAGE,
       classification: 'enforceable',
       location: { line: hunk.line, endLine: hunk.line + Math.max(hunk.count, 1) - 1 },
     };
