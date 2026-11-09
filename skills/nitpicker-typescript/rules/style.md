@@ -14,7 +14,9 @@ Part of the [nitpicker-typescript](../SKILL.md) skill. Write these forms from th
   over unions, with no `default`.
 - Boolean logic in its simplest exact form (`nitpicker/simpler-boolean-logic`): `return a < b;`, not an `if`
   that returns `true` and `false`; one `if (a && b)`, not an `if` that only holds another `if`; `if (c) {B} else {A}`,
-  not `if (!c) {A} else {B}`; `a !== b`, not `!(a === b)`; `!(a || b)`, not `!a && !b`.
+  not `if (!c) {A} else {B}` (and `c ? b : a`, not `!c ? a : b`); `a !== b`, not `!(a === b)`; `!(a || b)`,
+  not `!a && !b`; a boolean `c` itself, not `c ? true : false` or `!!c`, and `c && x`, `c || x`, `!c && x`,
+  `!c || x` for a ternary with one `true`/`false` branch and a boolean other branch.
 - Template literals take strings only: `${String(count)}`.
 - Sort IDs, codes and ISO dates with `toSorted()` and no comparator; names and titles with
   `a.localeCompare(b, 'en')`. Objects in plain string order share one `compareText(a, b)` that

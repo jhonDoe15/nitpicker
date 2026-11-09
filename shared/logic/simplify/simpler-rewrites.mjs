@@ -62,7 +62,10 @@ const EXPRESSION_CHECKS = new Map([
     (node, result) =>
       node.children.slice(1).every(isBooleanValued) && !addsDoubleNegation([node], [result]),
   ],
-  ['negated-condition', (node) => node.children[2].kind !== 'conditional'],
+  [
+    'negated-condition',
+    (node) => node.children.slice(1).every(({ kind }) => kind !== 'conditional'),
+  ],
 ]);
 
 const STATEMENT_CHECKS = new Map([

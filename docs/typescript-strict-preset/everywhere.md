@@ -250,7 +250,10 @@ Part of the [TypeScript strict preset guide](../typescript-strict-preset.md).
   needs `c` to be boolean, it must be a comparison, a `!`, a `&&`/`||` of those or (with type
   information) typed `boolean`, so `return !!name;` is never suggested. `!(a < b)` stays, since it
   is not `a >= b` when either side is `NaN`; an `else if` chain and a ternary whose `else` is
-  another ternary are not swapped. `!!x` in a condition is left to `no-extra-boolean-cast` and
+  another ternary are not swapped, and neither is a ternary whose `then` branch is a ternary (that
+  would make a nested ternary). Forms combine: `!a || !b ? x : y` is reported as `a && b ? y : x`. A
+  part that holds TypeScript-only syntax (`as`, `!`, `satisfies`, type arguments) is not reported,
+  since the printed form would drop it. `!!x` in a condition is left to `no-extra-boolean-cast` and
   `x === true` to `@typescript-eslint/no-unnecessary-boolean-literal-compare`.
 - Identifier casing (`nitpicker/naming-convention`, which wraps
   `@typescript-eslint/naming-convention`): types and type parameters in PascalCase; functions,
