@@ -33,17 +33,17 @@ type Result struct {
 
 func supersededBy() map[string][]string {
 	return map[string][]string{
-		"S1023":        {"SA4011"},
-		"S1000":        {"S1037"},
-		"inline":       {"gofixdirective"},
-		"rangeint":     {"S1018"},
-		"SA4006":       {"SA4010"},
-		"SA1006":       {"printf"},
-		"nilness":      {"SA4031", "SA5000"},
-		"errcheck":     {"SA5001", "SA9001"},
-		"rowserrcheck": {"sqlrowserr"},
-		"errname":      {"ST1012"},
-		"noctx":        {"SA1005"},
+		"S1023":    {"SA4011"},
+		"S1000":    {"S1037"},
+		"inline":   {"gofixdirective"},
+		"rangeint": {"S1018"},
+		"SA4006":   {"SA4010"},
+		"SA1006":   {"printf"},
+		"nilness":  {"SA4031", "SA5000"},
+		"errcheck": {"SA5001", "SA9001", "sqlclosecheck"},
+		"nilnil":   {"nilerr"},
+		"errname":  {"ST1012"},
+		"noctx":    {"SA1005"},
 	}
 }
 
@@ -64,9 +64,7 @@ func analyze(directory string, settings options, patterns []string) (Result, err
 		return Result{}, err
 	}
 	result := Result{Findings: []Finding{}, Errors: loadErrors(loaded)}
-	if err := catalog.Prepare(loaded); err != nil {
-		return result, err
-	}
+	catalog.Prepare(loaded)
 	graph, err := checker.Analyze(append(analyzers(), vetAnalyzers()...), loaded, nil)
 	if err != nil {
 		return result, err

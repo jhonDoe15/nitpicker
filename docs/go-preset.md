@@ -218,13 +218,14 @@ message does not already name it, and by its exception entry:
   where the file's Go version allows the new form; `go fix ./...` rewrites them.
 - **More `golang.org/x/tools` passes** that `go vet` leaves out: deepequalerrors, gofixdirective,
   httpmux, inline (calls to functions marked `//go:fix inline`), nilness, reflectvaluecompare,
-  scannererr, sqlrowserr and unusedwrite.
+  scannererr and unusedwrite.
 - **Catalog linters**, permissively licensed `go/analysis` linters that golangci-lint also bundles,
   run directly, each under its own tool name (`bodyclose/bodyclose`):
-  - resources: bodyclose (HTTP response bodies closed), sqlclosecheck (rows and statements closed
-    in a deferred call), rowserrcheck (`rows.Err()` checked, for `database/sql` and sqlx), noctx
-    (`http.NewRequestWithContext`, `exec.CommandContext`, `QueryContext` and the other context
-    forms of calls that block);
+  - resources: bodyclose (HTTP response bodies closed; `bodyclose/handled` reports a
+    `//bodyclose:handled` directive, which would stop bodyclose checking the function's
+    callers), sqlclosecheck (rows and statements closed in a deferred call), rowserrcheck
+    (`rows.Err()` checked, for `database/sql` and sqlx), noctx (`http.NewRequestWithContext`,
+    `exec.CommandContext`, `QueryContext` and the other context forms of calls that block);
   - errors: errorlint (`errors.Is` and `errors.As` instead of `==`, type assertions and type
     switches, and `%w` for errors in `fmt.Errorf`), nilerr (a branch that checked an error
     returns it), nilnil (no `return nil, nil` for a pointer, map, channel, func or interface; a
@@ -237,8 +238,9 @@ message does not already name it, and by its exception entry:
 The linters skip generated files (`// Code generated ... DO NOT EDIT.`), as staticcheck does; a
 package of only generated files needs no package comment. An analyzer that fails on a package that
 builds is a `go/go-lint-failed` tool error, never a silent pass. `//lint:ignore` and `//nolint`
-comments do nothing, including the ones nilerr and contextcheck read themselves: the only way
-past a finding is an `exceptions` entry a person accepts.
+comments do nothing, including the ones nilerr and contextcheck read themselves, and a
+`//bodyclose:handled` directive is a finding of its own: the only way past a finding is an
+`exceptions` entry a person accepts.
 
 **Off, with the reason.** Each of these reports the same problem as a check that runs:
 
@@ -249,6 +251,7 @@ past a finding is an `exceptions` entry a person accepts.
 | ST1023                                                                 | QF1011 reports the same declaration                                                                                               |
 | SA5005                                                                 | never reports on current Go versions; `runtime.AddCleanup` replaces finalizers                                                    |
 | vet `sortslice`                                                        | SA1028 reports the same call                                                                                                      |
+| vet `sqlrowserr`                                                       | rowserrcheck reports the same rows, and more (rows read without a loop, sqlx)                                                     |
 | vet `shadow`                                                           | flags the idiomatic `if err := f(); err != nil` inside a function with an outer `err`                                             |
 | vet `fieldalignment`, `atomicalign`                                    | memory layout, not one way to write code; SA1027 covers 32-bit atomics                                                            |
 | modernize `appendclipped`, `bloop`, `fmtappendf`, `slicesdelete`       | left out of the suite upstream (not nil-preserving, or less clear)                                                                |
@@ -273,7 +276,8 @@ past a finding is an `exceptions` entry a person accepts.
 | S1018 (sliding copy loop)            | modernize `rangeint`               |
 | vet `gofixdirective`                 | vet `inline` on the same directive |
 | `go vet` printf                      | SA1006 (Go 1.24 and later modules) |
-| vet `sqlrowserr`                     | rowserrcheck                       |
+| nilerr                               | nilnil on `return nil, nil`        |
+| sqlclosecheck (Close not deferred)   | errcheck                           |
 | ST1012 (sentinel error names)        | errname                            |
 | SA1005 (`exec.Command` shell line)   | noctx                              |
 

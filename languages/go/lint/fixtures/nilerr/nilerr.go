@@ -1,6 +1,8 @@
 package nilerr
 
-import "os"
+import (
+	"os"
+)
 
 func Size(name string) (int64, error) {
 	info, err := os.Stat(name)
@@ -25,4 +27,12 @@ func CheckedSize(name string) (int64, error) {
 		return 0, err
 	}
 	return info.Size(), nil
+}
+
+func Info(name string) (os.FileInfo, error) {
+	info, err := os.Stat(name)
+	if err != nil {
+		return nil, nil // want nilerr
+	}
+	return info, nil
 }

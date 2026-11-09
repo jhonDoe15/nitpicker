@@ -13,7 +13,9 @@ allowed form and ends with its exception entry.
   the error into a named result: `defer func() { err = errors.Join(err, file.Close()) }()`.
 - A type assertion takes two values, `value, ok := x.(T)`, unless a type switch fits better.
 - Compare errors with `errors.Is` and `errors.As`, never `==`, a type assertion, a type switch,
-  `reflect.DeepEqual` or their text (errorlint). Wrap an error with `%w`, never `%v`.
+  `reflect.DeepEqual` or their text (errorlint). Wrap an error with `%w`, never `%v`. Where the
+  cause must not reach callers (an API boundary), return an error of your own type or a sentinel
+  instead of formatting the cause.
 - A branch that checked `err != nil` returns the error, not nil (nilerr). A function returning a
   pointer, map, channel, func or interface with an error never returns `nil, nil`: return a
   sentinel error (nilnil).
@@ -26,9 +28,13 @@ allowed form and ends with its exception entry.
   error: `defer func() { err = errors.Join(err, rows.Close()) }()` (bodyclose, sqlclosecheck).
   Return `rows.Err()` after reading rows (rowserrcheck).
 - Use the context forms of calls that block: `http.NewRequestWithContext`,
-  `exec.CommandContext`, `db.QueryContext`, `net.Dialer.DialContext` (noctx).
+  `exec.CommandContext`, `db.QueryContext`, `net.Dialer.DialContext` (noctx). In tests pass
+  `t.Context()`: `http.NewRequestWithContext(t.Context(), http.MethodGet, server.URL, nil)` and
+  `server.Client().Do(request)`.
 - A function that has a context passes it on; it never calls one that makes its own with
-  `context.Background()` (contextcheck). A context is the first parameter, never a struct field
+  `context.Background()` (contextcheck). A goroutine gets its context from a variable made
+  before the `go` statement: `ctx := context.WithoutCancel(r.Context())`, then
+  `go func() { work(ctx) }()`. A context is the first parameter, never a struct field
   (containedctx). In a loop, derive each iteration's context into a new variable, not into the
   loop's own (fatcontext).
 

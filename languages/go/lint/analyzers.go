@@ -36,6 +36,7 @@ func disabled() map[string]bool {
 	return map[string]bool{
 		"SA1014": true, "SA1017": true, "SA2000": true, "SA2002": true, "SA4018": true, "SA4021": true,
 		"SA5005": true, "SA5009": true, "SA5010": true, "SA9006": true, "S1029": true, "ST1023": true,
+		"sqlrowserr": true,
 	}
 }
 

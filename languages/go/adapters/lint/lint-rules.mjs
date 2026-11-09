@@ -97,7 +97,12 @@ const HINTS = new Map([
   ['nilerr', 'Return the error the branch checks: the error when it is set, nil when it is not.'],
   [
     'contextcheck',
-    "Take a `ctx context.Context` parameter and pass the caller's context down, or derive one from it.",
+    "Take a `ctx context.Context` parameter and pass the caller's context down, or derive one from it; " +
+      'a goroutine uses a context made before the `go` statement.',
+  ],
+  [
+    'handled',
+    'Remove the directive and close the body where the response is read, or return the response to a caller that closes it.',
   ],
   ['containedctx', 'Pass the context as the first parameter of each method that needs it.'],
   ['fatcontext', 'Assign the derived context to a new variable inside the loop.'],
@@ -107,6 +112,7 @@ const RULE_NAMES = new Map([['errcheck', 'unchecked']]);
 const VARYING_PARTS = new Map([
   ['ST1016', / \(seen [^)]*\)$/u],
   ['nilerr', / \(lines? [^)]*\)/u],
+  ['contextcheck', /->[^`]*/u],
 ]);
 
 export function lintRule(rule) {

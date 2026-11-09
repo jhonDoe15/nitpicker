@@ -29,3 +29,16 @@ func ClosedCount(ctx context.Context, db *sql.DB) (count int, err error) {
 	}
 	return count, rows.Err()
 }
+
+func CountClosedLater(ctx context.Context, db *sql.DB) (int, error) {
+	rows, err := db.QueryContext(ctx, "SELECT id FROM users")
+	if err != nil {
+		return 0, err
+	}
+	count := 0
+	for rows.Next() {
+		count++
+	}
+	rows.Close() // want sqlclosecheck
+	return count, rows.Err()
+}
