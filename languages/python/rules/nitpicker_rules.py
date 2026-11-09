@@ -131,6 +131,7 @@ class Results:
         self.findings = findings
         self.allowances = allowances
         self.support = support
+        self.project = None
 
 
 def file_results(context, modules):
@@ -150,7 +151,6 @@ def file_results(context, modules):
 def check_all(paths, options, modules):
     from checks.comments import stub_findings
     from index.project import Project
-    from security.support import support_files
 
     project = Project(options, paths)
     findings = [item for path in paths for item in stub_findings(path)]
@@ -168,7 +168,9 @@ def check_all(paths, options, modules):
         findings.extend(found)
         allowances.extend(allowed)
     support = project.memo("security-support-files", support_files)
-    return Results(findings + review_findings(project), allowances, sorted(support))
+    results = Results(findings + review_findings(project), allowances, sorted(support))
+    results.project = project
+    return results
 
 
 def read_options(arguments):
@@ -190,6 +192,13 @@ def skipped(out_file):
     )
 
 
+def write_design_report(results, options, out_file):
+    if "designFiles" in options:
+        from design.report import write_design
+
+        write_design(results.project, options, os.path.dirname(out_file))
+
+
 def main(arguments):
     list_file, out_file = arguments[:2]
     if sys.version_info < MINIMUM_PYTHON:
@@ -199,6 +208,10 @@ def main(arguments):
     with open(list_file, encoding="utf-8") as handle:
         paths_to_check = [line.strip() for line in handle if line.strip()]
     results = check_all(paths_to_check, options, load_checks())
+    write_reports(results, options, out_file)
+
+
+def write_reports(results, options, out_file):
     results.findings.sort(
         key=lambda item: (item["path"], item["line"], item["rule"], item["subject"])
     )
@@ -210,6 +223,7 @@ def main(arguments):
     )
     allowances = {"supportFiles": results.support, "allowed": allowed}
     write_json(os.path.join(os.path.dirname(out_file), ALLOWANCES_REPORT), allowances)
+    write_design_report(results, options, out_file)
 
 
 if __name__ == "__main__":

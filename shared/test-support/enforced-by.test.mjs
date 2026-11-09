@@ -7,21 +7,6 @@ import { catalogFileOf, isKotlinPath, mentionsRule, ruleEmitters } from './rule-
 
 const repositoryRoot = path.resolve(import.meta.dirname, '../..');
 
-const JVM_DESIGN_RULES = [
-  'mutable-state-escape',
-  'context-threading',
-  'caller-protocol',
-  'protocol-contract',
-  'forwarding-chain',
-  'disjoint-consumer-groups',
-  'data-clump',
-  'repeated-policy-decision',
-  'foreign-state-decision',
-];
-const PYTHON_FACTS_WITHOUT_DESIGN = {
-  file: 'languages/python/adapters/facts/python-facts.mjs',
-  evidence: /registeredFactRules\('python'\)/u,
-};
 const JVM_RUNTIME_EDGES_ONLY = {
   file: 'languages/java/adapters/test-runtime/test-graph.mjs',
   evidence: /kind: EDGE_KINDS\.RUNTIME/u,
@@ -33,7 +18,6 @@ const NOT_ENFORCED_ALTHOUGH_EMITTED = {
   kotlin: {
     'type-only-production-dependency': JVM_RUNTIME_EDGES_ONLY,
   },
-  python: Object.fromEntries(JVM_DESIGN_RULES.map((id) => [id, PYTHON_FACTS_WITHOUT_DESIGN])),
   go: {
     'inheritance-depth-limit': {
       file: 'languages/go/adapters/configuration/go-config.mjs',

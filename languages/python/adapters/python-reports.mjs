@@ -36,6 +36,7 @@ import {
   pythonFolderDepthFindings,
   readClassesReport,
 } from './size/python-size.mjs';
+import { designFindings } from './analysis/design/python-design.mjs';
 import { readDependencyFindings } from './dependencies/dependency-findings.mjs';
 import { withoutFrameworkForms } from './dependencies/python-frameworks.mjs';
 import { readStructureFunctions } from '../../../shared/ingest/structure-report.mjs';
@@ -173,6 +174,11 @@ function projectShapeFindings({ projectRoot, reportRoot, policy, imports, manife
     ...cycleFindings(imports, features),
     ...outsideRootsFindings(imports),
     ...readDependencyFindings({ reportRoot, projectRoot, snapshot: policy.snapshot }),
+    ...designFindings({
+      reportRoot,
+      analyzerName: PYTHON_ANALYZER_NAME,
+      headPolicy: policy.headPolicy,
+    }),
   ];
 }
 

@@ -2467,8 +2467,7 @@
           "i18n": false,
           "kotlin": false,
           "go": false,
-          "spring": false,
-          "protocols": false
+          "spring": false
         }
       }
     },

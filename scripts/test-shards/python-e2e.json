@@ -2,6 +2,7 @@
   "languages/python/adapters/configuration/coverage-config/coverage-precedence.e2e.test.mjs": 45,
   "languages/python/adapters/configuration/python-ruff-config.e2e.test.mjs": 1,
   "languages/python/adapters/e2e/comparison/python-preset-touched-lines.e2e.test.mjs": 18,
+  "languages/python/adapters/e2e/design/design-rules.e2e.test.mjs": 22,
   "languages/python/adapters/e2e/environments/python-base-environment.e2e.test.mjs": 9,
   "languages/python/adapters/e2e/gates/python-gates-exceptions.e2e.test.mjs": 38,
   "languages/python/adapters/e2e/gates/python-gates-lint-and-types.e2e.test.mjs": 62,
