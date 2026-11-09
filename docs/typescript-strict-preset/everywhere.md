@@ -255,6 +255,26 @@ Part of the [TypeScript strict preset guide](../typescript-strict-preset.md).
   `if` branch, and chains on `qb.clone()`, count as their own query. Prisma and
   Drizzle relational queries are not reported: they load each relation in its own query or as a
   nested JSON aggregate. Load the collections in separate queries, or batch them with a DataLoader.
+- No foreign key without an index that starts with its column (`nitpicker/no-unindexed-foreign-key`,
+  the model-side partner of the `foreign-key-index` repository rule): only MySQL indexes a
+  foreign-key column by itself. It reads TypeORM and MikroORM `@ManyToOne` properties of entity
+  classes (not `@ViewEntity`), and Drizzle Postgres tables (`pgTable`, also through a namespace
+  import, `pgSchema(...).table` and `pgTableCreator`, with the columns as an object or a callback)
+  whose columns call `.references(...)` or whose extra config has a `foreignKey(...)`. A TypeORM
+  relation is covered by `@Index()` on it, a class `@Index` or `@Unique` whose first column is the
+  property, its `@JoinColumn` name or `<property>Id`, an indexed or unique column of that name, or
+  being the first primary-key column; `createForeignKeyConstraints: false` passes. MikroORM is
+  covered by `index` or `unique` on `@ManyToOne`, `@Index()` or `@Unique()` on the property, a class
+  `@Index`/`@Unique` whose first property is it, or being the first primary key, and is only checked
+  with `@mikro-orm/postgresql` or `@mikro-orm/mssql`, because MikroORM indexes many-to-one columns
+  itself on its other platforms. Drizzle is covered by an `index`, `uniqueIndex`, `unique` or
+  `primaryKey` that starts with the column (`.asc()`, `.desc()` and `.op()` are read), or by
+  `.primaryKey()` or `.unique()` on it. A partial index (TypeORM `where`, Drizzle `.where(...)`)
+  does not count. A one-to-one join column is left alone (TypeORM and MikroORM make it unique), and
+  so is a project whose manifests (the nearest and the ones above it) name only MySQL or MariaDB
+  drivers. When the project has migration files (looked for up to six folders below the topmost
+  manifest), the migrations are checked instead (by `foreign-key-index`) and this rule stays quiet.
+  `EntitySchema`, `defineEntity` and the other Drizzle dialects are not read.
 - `===` and `!==` only (`eqeqeq`). Braces on every `if`, `else` and loop body (`curly`). One import
   statement per module (`no-duplicate-imports`; a separate `import type` is fine).
 - Logic mistakes the bundled rules catch, in production code and tests of both presets
@@ -275,6 +295,25 @@ Part of the [TypeScript strict preset guide](../typescript-strict-preset.md).
   bindings already removes the late-binding bug `no-loop-func` exists for. Python's counterparts are ruff `PLE0101`,
   `B023` and `PLR1711`; in Java and Kotlin a missing return does not compile and the existing
   unused-member checks already report an unused private member.
+- Boolean logic with a strictly simpler exact form (`nitpicker/simpler-boolean-logic`, production
+  and test files of both presets; the counterpart of the Java PMD rules `SimplifyBooleanReturns`,
+  `SimplifiedTernary`, `CollapsibleIfStatements`, `LogicInversion`, `ConfusingTernary` and
+  `NegatedOperands`). The message prints the simpler form: `if (c) { return true; } return false;`
+  is `return c;` (`return !c;` with the literals swapped); `c ? true : false` is `c`, and
+  `c ? x : false`, `c ? true : x`, `c ? false : x` and `c ? x : true` are `c && x`, `c || x`,
+  `!c && x` and `!c || x` when `x` is boolean too; `!(a === b)` is `a !== b`; `!!x` outside a
+  condition is `x`; an `if` whose only statement is another `if`, neither with an `else`, is one
+  `if (a && b)`; `if (!c) {A} else {B}` and `!c ? a : b` are `if (c) {B} else {A}` and
+  `c ? b : a`; and a `&&` or `||` chain whose every operand is negated is one negation
+  (`!a && !b` is `!(a || b)`). Each form keeps the value exactly: where dropping `!!` or a ternary
+  needs `c` to be boolean, it must be a comparison, a `!`, a `&&`/`||` of those or (with type
+  information) typed `boolean`, so `return !!name;` is never suggested. `!(a < b)` stays, since it
+  is not `a >= b` when either side is `NaN`; an `else if` chain and a ternary whose `else` is
+  another ternary are not swapped, and neither is a ternary whose `then` branch is a ternary (that
+  would make a nested ternary). Forms combine: `!a || !b ? x : y` is reported as `a && b ? y : x`. A
+  part that holds TypeScript-only syntax (`as`, `!`, `satisfies`, type arguments) is not reported,
+  since the printed form would drop it. `!!x` in a condition is left to `no-extra-boolean-cast` and
+  `x === true` to `@typescript-eslint/no-unnecessary-boolean-literal-compare`.
 - Identifier casing (`nitpicker/naming-convention`, which wraps
   `@typescript-eslint/naming-convention`): types and type parameters in PascalCase; functions,
   variables and parameters in camelCase; constants may be UPPER_CASE; a leading underscore is
