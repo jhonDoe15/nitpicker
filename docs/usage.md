@@ -1321,8 +1321,8 @@ failed assertion's string message with the other arguments as Node does:
 file whose test or top-level code started the work (a hook's call to the file that declares the hook),
 read from the async resource node:test runs each of them in, and names no test, as with Jest. Work a
 file started keeps that file, also when it prints while a later file runs or after the file's tests,
-as long as the runner process lives; Vitest without isolation gives such a timer to the file running
-when it fires, and Mocha does not see it. Mocha runs every
+as long as the runner process lives, as with Mocha; Vitest without isolation gives such a timer to
+the file running when it fires. Mocha runs every
 spec file in one process (one per worker with `--parallel`); a root hook from a `--require` file
 belongs to no test file and is not seen, but what the work it started prints while a test runs (a
 server it started handling the test's request) belongs to that test, as Vitest without isolation
@@ -1330,8 +1330,15 @@ gives a shared server's output to the running test. A `before` or `after` at the
 file is a root hook too, which runs once for the whole run: what it prints belongs to its file, and
 what the work it started prints later belongs to whichever test is running then, in any file, so a
 timer such a hook leaves running is reported against the test it fires in. With `--parallel` each
-file runs alone with its own root hooks, so their work stays with their file. Other work another
-spec file started, such as a test's timer, is not seen while a later file runs.
+file runs alone with its own root hooks, so their work stays with their file. Other work a spec file
+started, such as a test's timer or a server from a `describe`'s `before`, keeps that file, also when
+it prints while a later file runs or after the run, as long as the process lives: within its file it
+names the test running then, outside it the test or suite that started it. A client or pool that a
+test creates on first use and later files share keeps that test's file, so start shared work in a
+top-level `before` or a fixture instead. A `mochaGlobalSetup`
+fixture belongs to no file, like a root hook from a `--require` file, so what a server it started
+prints belongs to the test running then; with `--parallel` the fixture runs in the main process,
+outside the workers, and is not seen.
 
 It does not see:
 
@@ -1340,8 +1347,8 @@ It does not see:
   a test starts, on every runner (a `worker_threads` Worker prints through its own console, whose
   output the parent receives as a stream);
 - output printed after a test file has finished (after its last `after`/`afterAll` hook), such as a
-  dangling timer that fires later, or with Mocha a timer that fires while another file's tests run
-  (`node:test` with isolation off is the exception above);
+  dangling timer that fires later (Mocha and `node:test` with isolation off, which run several files in
+  one process, are the exception above);
   with Jest such a call prints "Cannot log after tests are done", which fails a run in band only when
   it would fail without nitpicker too, and only when Jest's report shows no other failure (a failed
   test or suite, or an obsolete or unwritten snapshot);
