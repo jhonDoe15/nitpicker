@@ -1,32 +1,32 @@
 import { setTimeout as sleep } from 'node:timers/promises';
 
-const POLL_MS = 20_000;
-const POLLS = 120;
+const POLL_MS = 30_000;
+const POLLS = 200;
 
-function newest(checkRuns) {
-  return checkRuns.reduce(
-    (last, run) => (last === undefined || run.id > last.id ? run : last),
-    undefined,
-  );
+function runOf(checkRun) {
+  return Number(/\/actions\/runs\/(\d+)\//u.exec(checkRun.html_url ?? '')?.[1]);
 }
 
-function inRun(checkRun, runId) {
-  return checkRun.html_url?.includes(`/actions/runs/${runId}/`) === true;
+function latestAttempt(checkRuns, runId) {
+  return checkRuns
+    .filter((checkRun) => runOf(checkRun) === runId)
+    .reduce(
+      (last, checkRun) => (last === undefined || checkRun.id > last.id ? checkRun : last),
+      undefined,
+    );
 }
 
-export function lastResult(checkRuns, runId) {
-  const own = checkRuns.filter((run) => run.app?.slug === 'github-actions');
-  const current = own.filter((run) => inRun(run, runId) && run.status !== 'completed');
-  if (current.length === 0) {
-    return { listed: false };
+export function lastResult({ runs, checkRuns, runId }) {
+  const earlier = runs.filter((run) => run.id < runId).toSorted((a, b) => b.id - a.id);
+  const pending = earlier.find((run) => run.status !== 'completed');
+  if (pending !== undefined) {
+    return { pending };
   }
-  const before = Math.min(...current.map((run) => run.id));
-  const earlier = own.filter((run) => run.id < before && !inRun(run, runId));
-  const pending = earlier.filter((run) => run.status !== 'completed');
-  if (pending.length > 0) {
-    return { listed: true, pending: newest(pending) };
-  }
-  return { listed: true, last: newest(earlier.filter((run) => run.conclusion !== 'skipped')) };
+  const own = checkRuns.filter((checkRun) => checkRun.app?.slug === 'github-actions');
+  const last = earlier
+    .map((run) => latestAttempt(own, run.id))
+    .find((checkRun) => checkRun !== undefined && checkRun.conclusion !== 'skipped');
+  return { last };
 }
 
 function report(core, check, last) {
@@ -44,6 +44,26 @@ function report(core, check, last) {
   }
 }
 
+async function listResults({ github, context, check, workflowId }) {
+  const sha = context.payload.pull_request.head.sha;
+  const [runs, checkRuns] = await Promise.all([
+    github.paginate(github.rest.actions.listWorkflowRuns, {
+      ...context.repo,
+      workflow_id: workflowId,
+      head_sha: sha,
+      per_page: 100,
+    }),
+    github.paginate(github.rest.checks.listForRef, {
+      ...context.repo,
+      ref: sha,
+      check_name: check,
+      filter: 'all',
+      per_page: 100,
+    }),
+  ]);
+  return lastResult({ runs, checkRuns, runId: context.runId });
+}
+
 export async function copyLastResult({
   github,
   context,
@@ -52,28 +72,28 @@ export async function copyLastResult({
   pause = sleep,
   polls = POLLS,
 }) {
-  const listing = {
+  const { data: run } = await github.rest.actions.getWorkflowRun({
     ...context.repo,
-    ref: context.payload.pull_request.head.sha,
-    check_name: check,
-    filter: 'all',
-    per_page: 100,
-  };
+    run_id: context.runId,
+  });
   for (const poll of Array.from({ length: polls + 1 }, (_, index) => index)) {
-    const { listed, pending, last } = lastResult(
-      await github.paginate(github.rest.checks.listForRef, listing),
-      context.runId,
-    );
-    if (listed && pending === undefined) {
+    const { pending, last } = await listResults({
+      github,
+      context,
+      check,
+      workflowId: run.workflow_id,
+    });
+    if (pending === undefined) {
       report(core, check, last);
       return;
     }
-    const awaited = pending?.html_url ?? 'the check run of this job';
     if (poll < polls) {
-      core.info(`Waiting for ${awaited} to be listed or to finish.`);
+      core.info(`Waiting for ${pending.html_url} to finish.`);
       await pause(POLL_MS);
     } else {
-      core.setFailed(`${check}: ${awaited} is still going. Add run-ci again once it ends.`);
+      core.setFailed(
+        `${check}: ${pending.html_url} is still going. Add run-ci again once it ends.`,
+      );
     }
   }
 }

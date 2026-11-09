@@ -16,24 +16,35 @@ const labeled = readdirSync(workflowsDirectory)
 
 const RUN_ID = 50;
 const SHA = 'a'.repeat(40);
+const WORKFLOW = 7;
 
-function checkRun(id, runId, status, conclusion = null, slug = 'github-actions') {
+function run(id, status = 'completed') {
+  return { id, status, html_url: `https://github.com/o/r/actions/runs/${id}` };
+}
+
+function checkRun(id, runId, conclusion, slug = 'github-actions') {
   return {
     id,
-    status,
+    status: conclusion === null ? 'in_progress' : 'completed',
     conclusion,
     app: { slug },
     html_url: `https://github.com/o/r/actions/runs/${runId}/job/${id}`,
   };
 }
 
-const current = checkRun(900, RUN_ID, 'in_progress');
-
 function fakes(...listings) {
-  const listForRef = vi.fn();
-  const github = { rest: { checks: { listForRef } }, paginate: vi.fn() };
-  for (const listing of listings) {
-    github.paginate.mockResolvedValueOnce(listing);
+  const github = {
+    rest: {
+      actions: {
+        getWorkflowRun: vi.fn().mockResolvedValue({ data: { workflow_id: WORKFLOW } }),
+        listWorkflowRuns: vi.fn(),
+      },
+      checks: { listForRef: vi.fn() },
+    },
+    paginate: vi.fn(),
+  };
+  for (const [runs, checkRuns] of listings) {
+    github.paginate.mockResolvedValueOnce(runs).mockResolvedValueOnce(checkRuns);
   }
   const core = { notice: vi.fn(), info: vi.fn(), setFailed: vi.fn() };
   const context = {
@@ -45,48 +56,43 @@ function fakes(...listings) {
 }
 
 describe('lastResult', () => {
-  it('takes the newest completed result before this job, past skipped ones and other apps', () => {
-    const runs = [
-      checkRun(1, 10, 'completed', 'failure'),
-      checkRun(3, 11, 'completed', 'skipped'),
-      checkRun(2, 12, 'completed', 'success'),
-      checkRun(4, 13, 'completed', 'success', 'other-app'),
-      current,
-      checkRun(950, 51, 'completed', 'success'),
+  it('takes the latest attempt in the newest earlier run, past skipped jobs and other apps', () => {
+    const checkRuns = [
+      checkRun(1, 10, 'failure'),
+      checkRun(9, 10, 'success'),
+      checkRun(3, 11, 'skipped'),
+      checkRun(4, 12, 'success', 'other-app'),
+      checkRun(900, RUN_ID, null),
+      checkRun(950, 51, 'failure'),
     ];
+    const runs = [run(51), run(RUN_ID, 'in_progress'), run(12), run(11), run(10)];
 
-    expect(lastResult(runs, RUN_ID)).toEqual({ listed: true, last: runs[2] });
+    expect(lastResult({ runs, checkRuns, runId: RUN_ID })).toEqual({ last: checkRuns[1] });
   });
 
-  it('waits for an earlier check that is still going, but not for a later one', () => {
-    const going = checkRun(5, 10, 'queued');
+  it('waits for an earlier run that is still going, also before its job has a check run', () => {
+    const runs = [run(9), run(10, 'queued'), run(51, 'in_progress')];
 
-    expect(lastResult([checkRun(1, 9, 'completed', 'success'), going, current], RUN_ID)).toEqual({
-      listed: true,
-      pending: going,
+    expect(lastResult({ runs, checkRuns: [checkRun(1, 9, 'success')], runId: RUN_ID })).toEqual({
+      pending: runs[1],
     });
-    expect(lastResult([checkRun(901, 52, 'in_progress'), current], RUN_ID)).toEqual({
-      listed: true,
+    expect(lastResult({ runs: [run(51, 'in_progress')], checkRuns: [], runId: RUN_ID })).toEqual({
       last: undefined,
     });
-  });
-
-  it('leaves out earlier attempts of this run, and waits until this job is listed', () => {
-    const attempt = checkRun(7, RUN_ID, 'completed', 'failure');
-    const other = checkRun(8, 11, 'completed', 'success');
-
-    expect(lastResult([attempt, other, current], RUN_ID)).toEqual({ listed: true, last: other });
-    expect(lastResult([attempt, other], RUN_ID)).toEqual({ listed: false });
   });
 });
 
 describe('copyLastResult', () => {
-  it('passes with the passing result it keeps', async () => {
-    const { github, core, context } = fakes([checkRun(2, 12, 'completed', 'success'), current]);
+  it('passes with the passing result it keeps, listing the runs of its own workflow', async () => {
+    const { github, core, context } = fakes([[run(12)], [checkRun(2, 12, 'success')]]);
 
     await copyLastResult({ github, context, core, check: 'test' });
 
     expect(github.paginate.mock.calls).toEqual([
+      [
+        github.rest.actions.listWorkflowRuns,
+        { owner: 'o', repo: 'r', workflow_id: WORKFLOW, head_sha: SHA, per_page: 100 },
+      ],
       [
         github.rest.checks.listForRef,
         { owner: 'o', repo: 'r', ref: SHA, check_name: 'test', filter: 'all', per_page: 100 },
@@ -103,8 +109,8 @@ describe('copyLastResult', () => {
   });
 
   it('fails with a failed result, and when CI has not run on the commit', async () => {
-    const failed = fakes([checkRun(2, 12, 'completed', 'cancelled'), current]);
-    const never = fakes([checkRun(3, 11, 'completed', 'skipped'), current]);
+    const failed = fakes([[run(12)], [checkRun(2, 12, 'cancelled')]]);
+    const never = fakes([[run(11)], [checkRun(3, 11, 'skipped')]]);
 
     await copyLastResult({ ...failed, check: 'self-gate' });
     await copyLastResult({ ...never, check: 'self-gate' });
@@ -119,45 +125,26 @@ describe('copyLastResult', () => {
     ]);
   });
 
-  it('polls again while its own check run is not listed yet', async () => {
+  it('waits for an earlier run to end, and fails when it does not end in time', async () => {
     const pause = vi.fn().mockResolvedValue(undefined);
-    const late = fakes([], [checkRun(2, 12, 'completed', 'success'), current]);
-
-    await copyLastResult({ ...late, check: 'test', pause });
-
-    expect([late.core.info.mock.calls, late.core.notice.mock.calls.length]).toEqual([
-      [['Waiting for the check run of this job to be listed or to finish.']],
-      1,
-    ]);
-  });
-
-  it('waits for an earlier check to end, and fails when it does not end in time', async () => {
-    const going = checkRun(5, 10, 'in_progress');
-    const pause = vi.fn().mockResolvedValue(undefined);
-    const ends = fakes(
-      [going, current],
-      [{ ...going, status: 'completed', conclusion: 'failure' }, current],
-    );
-    const stuck = fakes([going, current], [going, current], [going, current]);
+    const going = [[run(10, 'in_progress')], []];
+    const ends = fakes(going, [[run(10)], [checkRun(5, 10, 'failure')]]);
+    const stuck = fakes(going, going, going);
 
     await copyLastResult({ ...ends, check: 'java', pause });
     await copyLastResult({ ...stuck, check: 'java', pause, polls: 2 });
 
-    expect([ends.core.setFailed.mock.calls.length, ends.github.paginate.mock.calls.length]).toEqual(
-      [1, 2],
-    );
-    expect([
-      stuck.core.setFailed.mock.calls,
-      stuck.github.paginate.mock.calls.length,
-      pause.mock.calls,
-    ]).toEqual([
+    expect([ends.core.info.mock.calls, ends.core.setFailed.mock.calls.length]).toEqual([
+      [['Waiting for https://github.com/o/r/actions/runs/10 to finish.']],
+      1,
+    ]);
+    expect([stuck.core.setFailed.mock.calls, pause.mock.calls]).toEqual([
       [
         [
-          'java: https://github.com/o/r/actions/runs/10/job/5 is still going. Add run-ci again once it ends.',
+          'java: https://github.com/o/r/actions/runs/10 is still going. Add run-ci again once it ends.',
         ],
       ],
-      3,
-      [[20_000], [20_000], [20_000]],
+      [[30_000], [30_000], [30_000]],
     ]);
   });
 });
@@ -166,7 +153,7 @@ function summaryJobs(parsed) {
   return Object.entries(parsed.jobs).filter(([, job]) => String(job.if).includes('always()'));
 }
 
-const COPY = "${{ github.event_name == 'pull_request' && github.event.label.name != 'run-ci' }}";
+const COPY = `\${{ github.event_name == 'pull_request' && github.event.label.name != 'run-ci' }}`;
 
 function copySteps(check) {
   return [
@@ -181,7 +168,7 @@ function copySteps(check) {
       uses: 'actions/github-script@v8.0.0',
       with: {
         script: [
-          'const { copyLastResult } = await import(`${process.env.GITHUB_WORKSPACE}/scripts/ci/last-result.mjs`);',
+          `const { copyLastResult } = await import(\`\${process.env.GITHUB_WORKSPACE}/scripts/ci/last-result.mjs\`);`,
           `await copyLastResult({ github, context, core, check: '${check}' });`,
           '',
         ].join('\n'),
@@ -211,7 +198,7 @@ describe('workflows that run on a label', () => {
     (id, job, definition) => {
       expect(definition.if).toBe('always()');
       expect(definition.env).toEqual({ COPY_LAST_RESULT: COPY });
-      expect(definition.permissions).toEqual({ contents: 'read', checks: 'read' });
+      expect(definition.permissions).toEqual({ contents: 'read', checks: 'read', actions: 'read' });
       expect(definition.steps.slice(-2)).toEqual(copySteps(job));
       expect(
         definition.steps
@@ -228,8 +215,10 @@ describe('workflows that run on a label', () => {
     expect([gate.if, gate.env]).toEqual([
       "github.ref != 'refs/heads/main'",
       {
-        COPY_LAST_RESULT:
-          "${{ github.event_name == 'pull_request' && github.event.label.name != 'run-ci' && github.event.label.name != 'accept-policy-change' }}",
+        COPY_LAST_RESULT: COPY.replace(
+          ' }}',
+          " && github.event.label.name != 'accept-policy-change' }}",
+        ),
       },
     ]);
     expect(gate.steps.slice(-2)).toEqual(copySteps('self-gate'));

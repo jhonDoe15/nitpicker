@@ -70,6 +70,7 @@ describe('the policy approval of action.yml', () => {
       contents: 'read',
       statuses: 'read',
       checks: 'read',
+      actions: 'read',
     });
   });
 
