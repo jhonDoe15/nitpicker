@@ -32,6 +32,9 @@ Part of the [nitpicker-python](../SKILL.md) skill. Write these forms from the st
   of `sum()`, `max()` or `Counter` over the rows (`in-memory-query`).
 - Join at most one collection into a query: `joinedload(Order.lines)` next to to-one relations, and
   `selectinload(Order.payments)` for the other collections (`multiple-collection-joins`).
+- Index every foreign key: `index=True` on a SQLAlchemy `mapped_column(ForeignKey(...))` or SQLModel
+  `Field(foreign_key=...)`, or an `Index` that starts with the column; never `db_index=False` on a Django
+  `ForeignKey` without a `Meta.indexes` entry that starts with it (`unindexed-foreign-key`).
 - Debugging and processes: remove debugger imports and breakpoints before committing. Pass
   `check=True` to `subprocess.run`, or `check=False` and handle `returncode`.
 - Child processes: give every wait a deadline: `subprocess.run(args, timeout=30, check=True)`,

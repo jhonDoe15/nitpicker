@@ -96,6 +96,10 @@ non-test `.py` files under a source root changed, and runs every mutant after an
 including every test change, because mutmut does not re-test results when a test changes. See
 [python-preset.md](python-preset/slice-6-mutation-testing.md#reusing-base-results-on-head).
 
+The Java and Kotlin presets keep mutating every class on both sides, and head starts from PIT's
+history file of the base run, so PIT runs again only the mutants of changed classes and those whose
+tests changed. See [Mutation in a comparison](java-preset/mutation-in-a-comparison.md).
+
 ## Java and Kotlin mutators
 
 Stryker runs every one of its mutators. PIT, run with no `--mutators`, uses an implicit set of 11

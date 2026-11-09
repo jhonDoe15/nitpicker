@@ -110,4 +110,11 @@ export const SPRING_ARCH_VIOLATIONS = [
   'spring-typed-request-field shop.intake.Profile Profile.put:any-setter:IntakeController.profile',
   'spring-typed-request-field shop.intake.Remainder Remainder.rest:any-setter:IntakeController.remainder',
   'spring-typed-request-field shop.intake.SearchForm SearchForm.filters:field:IntakeController.search',
+  'spring-unmapped-exception shop.returns.ReturnController gone:ReturnGone:',
+  'spring-unmapped-exception shop.returns.ReturnController lookup:ReturnNotFound:ReturnService.lookup',
+  'spring-unmapped-exception shop.returns.ReturnController open:ReturnNotFound:new ReturnRequest',
+  'spring-unmapped-exception shop.returns.ReturnController owner:Orders.NotFound:',
+  'spring-unmapped-exception shop.returns.ReturnController owner:Users.NotFound:',
+  'spring-unmapped-exception shop.returns.ReturnController search:ReturnNotFound:ReturnService.search',
+  'spring-unmapped-exception shop.returns.ReturnController show:ReturnNotFound:ReturnService.find',
 ];

@@ -61,6 +61,14 @@ export const STRUCTURE_HINTS = [
   { tool: 'ruff', rules: ['E722', 'BLE001'], allowed: HANDLE_EXCEPTION },
   {
     tool: RULES_TOOL,
+    rules: ['unmapped-exception'],
+    describe: (subject) =>
+      `${subject}, and no exception handler maps it to a status, so the client gets a 500`,
+    allowed:
+      'Register a handler for it (`@app.exception_handler(OrderNotFound)` returning a 404) or derive it from `HTTPException` with the status that fits. A handler for `Exception` counts when it checks the class with `isinstance`. An exception fits a class that only signals a server fault.',
+  },
+  {
+    tool: RULES_TOOL,
     rules: ['swallowed-exception'],
     describe: (subject) =>
       `\`${subject}\` swallows the error: it only logs it or returns a default, and carries on`,

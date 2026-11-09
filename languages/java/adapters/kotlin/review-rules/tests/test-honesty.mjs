@@ -16,6 +16,7 @@ import {
   PER_TEST_START_RULE,
   perTestStarts,
 } from './setup/per-test-starts.mjs';
+import { SHARED_STATE_RULE, sharedStateReports } from './shared-state/shared-state.mjs';
 
 export const HONESTY_RULES = [
   DISABLED_RULE,
@@ -25,6 +26,7 @@ export const HONESTY_RULES = [
   CONTROL_FLOW_RULE,
   ESCAPING_RULE,
   GLOBAL_STATE_RULE,
+  SHARED_STATE_RULE,
 ];
 
 const CONTEXT_MARKERS = new RegExp(
@@ -53,6 +55,7 @@ export function fileReports(scanned, project) {
     ...honestyReports(scanned, suites, project),
     ...coroutineReports(scanned, suites, project),
     ...globalStateReports(scanned, suites),
+    ...sharedStateReports(scanned, suites, project),
     ...perTestStarts(scanned, suites).map((entry) => ({
       ...entry,
       rule: PER_TEST_START_RULE,
