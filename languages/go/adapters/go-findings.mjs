@@ -21,7 +21,7 @@ const GOFUMPT_LAYOUT_RULES = new Set(['empty-lines', 'comment-spacings']);
 
 function formatterFindings(context, report) {
   return Object.entries(report).flatMap(([formatter, files]) =>
-    formatFindings({ formatter, from: context.formatting.from, files }),
+    formatFindings(context, { formatter, files }),
   );
 }
 
