@@ -22,7 +22,7 @@ export function withCompileErrors(error, output, projectRoot) {
 }
 
 export function compileErrorsOf(error) {
-  const chain = [error];
+  const chain = new Set([error]);
   for (const current of chain) {
     if (!(current instanceof Error)) {
       return [];
@@ -30,9 +30,7 @@ export function compileErrorsOf(error) {
     if (current.compileErrors !== undefined) {
       return current.compileErrors;
     }
-    if (!chain.includes(current.cause)) {
-      chain.push(current.cause);
-    }
+    chain.add(current.cause);
   }
   return [];
 }
