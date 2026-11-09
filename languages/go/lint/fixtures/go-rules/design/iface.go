@@ -26,6 +26,16 @@ type Shape interface {
 	Area() float64
 }
 
+func Largest(shapes []Shape) Shape {
+	var largest Shape = Square{}
+	for _, shape := range shapes {
+		if shape.Area() > largest.Area() {
+			largest = shape
+		}
+	}
+	return largest
+}
+
 type Square struct{ Side float64 }
 
 func (square Square) Area() float64 { return square.Side * square.Side }
@@ -74,4 +84,42 @@ func Describe(finder Finder, id string) string {
 		return "unknown"
 	}
 	return row
+}
+
+type Measure interface {
+	Size() int
+}
+
+type fixed struct{ size int }
+
+func (value fixed) Size() int { return value.size }
+
+type Sized[T any] struct{ Items []T }
+
+func (sized Sized[T]) Size() int { return len(sized.Items) }
+
+func NewMeasure(size int) Measure {
+	return fixed{size: size}
+}
+
+type flags struct{ verbose bool }
+
+type Setting interface {
+	Apply(*flags)
+}
+
+type verbose struct{}
+
+func (verbose) Apply(target *flags) { target.verbose = true }
+
+func Verbose() Setting {
+	return verbose{}
+}
+
+func Configure(choices ...Setting) bool {
+	var target flags
+	for _, option := range choices {
+		option.Apply(&target)
+	}
+	return target.verbose
 }

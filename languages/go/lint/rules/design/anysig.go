@@ -3,6 +3,7 @@ package design
 import (
 	"go/ast"
 	"go/types"
+	"slices"
 
 	"github.com/jhonDoe15/nitpicker/languages/go/lint/rules/support"
 	"golang.org/x/tools/go/analysis"
@@ -23,14 +24,13 @@ const (
 )
 
 func runAny(pass *analysis.Pass) (any, error) {
-	foreign := support.ImportedInterfaceMethods(pass.Pkg)
 	for _, file := range pass.Files {
 		if support.InTestFile(pass, file) {
 			continue
 		}
 		for _, decl := range file.Decls {
 			function, ok := decl.(*ast.FuncDecl)
-			if !ok || !exportedAPI(function) || implementsForeign(pass, foreign, function) {
+			if !ok || !exportedAPI(function) || implementsForeign(pass, function) {
 				continue
 			}
 			checkResults(pass, function)
@@ -64,9 +64,22 @@ func exportedAPI(function *ast.FuncDecl) bool {
 	}
 }
 
-func implementsForeign(pass *analysis.Pass, foreign support.ForeignMethods, function *ast.FuncDecl) bool {
+func implementsForeign(pass *analysis.Pass, function *ast.FuncDecl) bool {
+	if function.Recv == nil || !mentionsAny(pass, function) {
+		return false
+	}
 	method, ok := pass.TypesInfo.Defs[function.Name].(*types.Func)
-	return ok && function.Recv != nil && foreign.Implements(method)
+	return ok && support.ImportedInterfaceMethods(pass.Pkg).Implements(method)
+}
+
+func mentionsAny(pass *analysis.Pass, function *ast.FuncDecl) bool {
+	fields := function.Type.Params.List
+	if function.Type.Results != nil {
+		fields = append(slices.Clip(fields), function.Type.Results.List...)
+	}
+	return slices.ContainsFunc(fields, func(field *ast.Field) bool {
+		return emptyInterface(pass.TypesInfo.TypeOf(field.Type))
+	})
 }
 
 func emptyInterface(typ types.Type) bool {

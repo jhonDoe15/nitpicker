@@ -4,6 +4,7 @@ import (
 	"go/ast"
 	"go/types"
 	"slices"
+	"strings"
 	"unicode"
 	"unicode/utf8"
 
@@ -28,7 +29,7 @@ var getterAnalyzer = &analysis.Analyzer{
 const (
 	packageNameMessage = "package name `%s` says nothing about what it provides, so everything ends up in it: " +
 		"split it into packages named for what each provides, such as `money` or `retry`"
-	getterMessage = "Go getters are named after the value without Get: `Owner()`, not `GetOwner()`"
+	getterMessage = "Go getters are named after the value, without Get: `%s()`, not `%s()`"
 )
 
 var genericNames = []string{"util", "utils", "common", "misc", "helper", "helpers", "interfaces"}
@@ -53,20 +54,20 @@ func runPackageName(pass *analysis.Pass) (any, error) {
 }
 
 func runGetter(pass *analysis.Pass) (any, error) {
-	foreign := support.ImportedInterfaceMethods(pass.Pkg)
 	for _, file := range pass.Files {
 		if support.InTestFile(pass, file) {
 			continue
 		}
 		for _, decl := range file.Decls {
 			function, ok := decl.(*ast.FuncDecl)
-			if !ok || function.Recv == nil || !getterName(function.Name.Name) {
+			if !ok || function.Recv == nil || !getterName(function.Name.Name) || !exportedAPI(function) {
 				continue
 			}
 			method, isMethod := pass.TypesInfo.Defs[function.Name].(*types.Func)
 			if isMethod && method.Signature().Params().Len() == 0 && method.Signature().Results().Len() == 1 &&
-				!foreign.Implements(method) {
-				pass.Reportf(function.Name.Pos(), "%s", getterMessage)
+				!support.ImportedInterfaceMethods(pass.Pkg).Implements(method) {
+				name := function.Name.Name
+				pass.Reportf(function.Name.Pos(), getterMessage, name[len("Get"):], name)
 			}
 		}
 	}
@@ -79,7 +80,7 @@ func getterName(name string) bool {
 		return false
 	}
 	first, _ := utf8.DecodeRuneInString(rest)
-	return unicode.IsUpper(first)
+	return unicode.IsUpper(first) && !strings.HasPrefix(rest, "Or")
 }
 
 func cutPrefix(name, prefix string) (string, bool) {

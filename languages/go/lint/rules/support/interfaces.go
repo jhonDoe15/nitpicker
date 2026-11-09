@@ -1,10 +1,24 @@
 package support
 
-import "go/types"
+import (
+	"go/types"
+	"sync"
+)
 
-type ForeignMethods map[string][]*types.Signature
+type ForeignMethods map[string][]*types.Interface
+
+var foreignCache sync.Map
 
 func ImportedInterfaceMethods(pkg *types.Package) ForeignMethods {
+	if cached, ok := foreignCache.Load(pkg); ok {
+		return cached.(ForeignMethods)
+	}
+	methods := collectMethods(pkg)
+	foreignCache.Store(pkg, methods)
+	return methods
+}
+
+func collectMethods(pkg *types.Package) ForeignMethods {
 	methods := ForeignMethods{}
 	seen := map[*types.Package]bool{}
 	var visit func(*types.Package)
@@ -35,21 +49,17 @@ func (methods ForeignMethods) add(scope *types.Scope) {
 			continue
 		}
 		for method := range face.Methods() {
-			methods[method.Name()] = append(methods[method.Name()], method.Signature())
+			methods[method.Name()] = append(methods[method.Name()], face)
 		}
 	}
 }
 
 func (methods ForeignMethods) Implements(method *types.Func) bool {
-	signature := method.Signature()
-	for _, candidate := range methods[method.Name()] {
-		if types.Identical(withoutReceiver(candidate), withoutReceiver(signature)) {
+	receiver := Deref(method.Signature().Recv().Type())
+	for _, face := range methods[method.Name()] {
+		if types.Implements(receiver, face) || types.Implements(types.NewPointer(receiver), face) {
 			return true
 		}
 	}
 	return false
-}
-
-func withoutReceiver(signature *types.Signature) *types.Signature {
-	return types.NewSignatureType(nil, nil, nil, signature.Params(), signature.Results(), signature.Variadic())
 }

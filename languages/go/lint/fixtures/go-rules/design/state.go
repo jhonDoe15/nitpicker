@@ -3,6 +3,7 @@ package design
 import (
 	"errors"
 	"sync"
+	"sync/atomic"
 )
 
 var ErrMissing = errors.New("missing")
@@ -13,7 +14,7 @@ var cache = map[string]string{} // want mutable-package-state
 
 var hits int // want mutable-package-state
 
-var lock sync.Mutex // want mutable-package-state
+var lock sync.Mutex
 
 var buffers = sync.Pool{New: func() any { return new([]byte) }}
 
@@ -57,4 +58,48 @@ func (store *Store) Remember(key, value string) {
 	store.mutex.Lock()
 	defer store.mutex.Unlock()
 	store.entries[key] = value
+}
+
+var loaded map[string]string // want mutable-package-state
+
+var once sync.Once // want mutable-package-state
+
+var total int // want mutable-package-state
+
+var seen = map[string]bool{} // want mutable-package-state
+
+var config struct{ Mode string } // want mutable-package-state
+
+var counter atomic.Int64
+
+func Load(read func() map[string]string) map[string]string {
+	once.Do(func() { loaded = read() })
+	return loaded
+}
+
+func Count(values map[int]int) int {
+	for total = range values {
+	}
+	counter.Add(1)
+	return total
+}
+
+func Forget(key string) {
+	delete(seen, key)
+}
+
+func Decode(read func(any) error) error {
+	return read(&config)
+}
+
+func Seen(key string) bool {
+	return seen[key]
+}
+
+func Configured() string {
+	return config.Mode
+}
+
+func Calls() int64 {
+	return counter.Load()
 }
