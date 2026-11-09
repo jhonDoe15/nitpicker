@@ -60,6 +60,14 @@ describe('Go lint messages', () => {
       { tool: 'bodyclose', rule: 'bodyclose', message: 'response body must be closed' },
       'response body must be closed. Close it in a deferred call: `defer func() { err = errors.Join(err, response.Body.Close()) }()`.',
     ],
+    [
+      {
+        tool: 'contextcheck',
+        rule: 'contextcheck',
+        message: 'Function `refresh->load` should pass the context parameter',
+      },
+      "Function `refresh` should pass the context parameter. Take a `ctx context.Context` parameter and pass the caller's context down, or derive one from it; a goroutine uses a context made before the `go` statement.",
+    ],
   ])('names the allowed form for %j', (entry, message) => {
     expect(lintMessage(entry)).toBe(message);
   });

@@ -10,7 +10,7 @@ import { GO_SIZE_RULES } from '../../../../shared/project-rules/size-rules.mjs';
 import { FORMATTERS } from '../formatting/go-formatters.mjs';
 import { suggestionOrAllowed } from '../../../../shared/messages/closest-match.mjs';
 
-export const GO_CATALOG_TOOLS = [
+const GO_CATALOG_TOOLS = [
   'bodyclose',
   'rowserrcheck',
   'sqlclosecheck',

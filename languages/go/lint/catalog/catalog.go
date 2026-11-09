@@ -3,6 +3,7 @@
 package catalog
 
 import (
+	"codeberg.org/polyfloyd/go-errorlint/errorlint"
 	errname "github.com/Antonboom/errname/pkg/analyzer"
 	nilnil "github.com/Antonboom/nilnil/pkg/analyzer"
 	"github.com/gostaticanalysis/comment"
@@ -10,14 +11,12 @@ import (
 	"github.com/gostaticanalysis/nilerr"
 	"github.com/jingyugao/rowserrcheck/passes/rowserr"
 	"github.com/kkHAIKE/contextcheck"
-	"github.com/polyfloyd/go-errorlint/errorlint"
 	sqlclosecheck "github.com/ryanrolds/sqlclosecheck/pkg/analyzer"
 	"github.com/sivchari/containedctx"
 	"github.com/sonatard/noctx"
 	"github.com/timakin/bodyclose/passes/bodyclose"
 	fatcontext "go.augendre.info/fatcontext/pkg/analyzer"
 	"golang.org/x/tools/go/analysis"
-	"golang.org/x/tools/go/packages"
 )
 
 // Linter is one linter: the tool name findings are printed under and its analyzers.
@@ -33,7 +32,7 @@ var (
 	errorComparisons = errorlint.NewAnalyzer()
 	contexts         = contextcheck.NewAnalyzer(contextcheck.Configuration{})
 	linters          = []Linter{
-		{Tool: "bodyclose", Analyzers: []*analysis.Analyzer{bodyclose.Analyzer}},
+		{Tool: "bodyclose", Analyzers: []*analysis.Analyzer{bodyclose.Analyzer, handledDirective}},
 		{Tool: "rowserrcheck", Analyzers: []*analysis.Analyzer{rowserr.NewAnalyzer(SQLPackages...)}},
 		{Tool: "sqlclosecheck", Analyzers: []*analysis.Analyzer{sqlclosecheck.NewAnalyzer()}},
 		{Tool: "noctx", Analyzers: []*analysis.Analyzer{noctx.Analyzer}},
@@ -57,20 +56,4 @@ func Linters() []Linter {
 func Configure() error {
 	commentmap.Analyzer.Run = func(*analysis.Pass) (any, error) { return comment.Maps{}, nil }
 	return errorComparisons.Flags.Set("errorf", "true")
-}
-
-// Prepare readies the catalog linters for the loaded packages. It limits contextcheck to the
-// module's own packages, as golangci-lint does, so that what it infers about the standard
-// library does not reach the module's calls, and it turns off the `//nolint:` doc comments
-// contextcheck reads.
-func Prepare(loaded []*packages.Package) error {
-	for _, pkg := range loaded {
-		ignoreSuppressions(pkg.Syntax)
-		if pkg.Module != nil {
-			if err := contexts.Flags.Set("pkgprefix", pkg.Module.Path); err != nil {
-				return err
-			}
-		}
-	}
-	return nil
 }

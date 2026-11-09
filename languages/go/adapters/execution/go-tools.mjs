@@ -78,7 +78,7 @@ function sourceNames(source) {
     .filter((entry) => entry.isFile() && !entry.name.endsWith('_test.go'))
     .map((entry) => path.relative(source, path.join(entry.parentPath, entry.name)))
     .filter((name) => !name.split(path.sep).includes('fixtures'))
-    .toSorted((left, right) => left.localeCompare(right));
+    .toSorted();
 }
 
 export function sourceHash(source, extra) {

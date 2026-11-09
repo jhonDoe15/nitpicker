@@ -114,7 +114,8 @@ than the others, and this skill teaches its rules before an agent writes Go.
   shared 120-character limit applies.
 - **Checks that report what another check already reports.** SA1014, SA1017, SA2000, SA2002,
   SA4018, SA4021, SA5009, SA5010 and SA9006 duplicate `go vet`; S1029 duplicates SA6003; ST1023
-  duplicates QF1011; vet `sortslice` duplicates SA1028. SA5005 never reports on current Go.
+  duplicates QF1011; vet `sortslice` duplicates SA1028; vet `sqlrowserr` duplicates rowserrcheck,
+  whose message has no line number in it. SA5005 never reports on current Go.
 - **vet `shadow`.** It flags the idiomatic `if err := f(); err != nil` inside a function that has
   an outer `err`, which would push code away from Go's own convention.
 - **vet `fieldalignment` and `atomicalign`.** Field order for memory layout is a performance
@@ -156,3 +157,16 @@ Two adversarial reviews of the linters changed these rules:
 - **Messages that count things are trimmed**: ST1016 lists how often each receiver name is used,
   so adding a method changed the message and made the finding new.
 - **`staticcheck.conf` check names match case-sensitively**, as staticcheck reads them.
+
+Two adversarial reviews of the catalog linters changed these rules:
+
+- **Comments that switch a linter off are findings or do nothing.** nilerr reads `//lint:ignore`
+  and contextcheck `// nolint:contextcheck`; both are turned off. bodyclose reads
+  `//bodyclose:handled` from the callee's file on disk, so the directive is reported as
+  `bodyclose/handled` instead.
+- **contextcheck is scoped to the module by package path**, not by string prefix, so a
+  dependency named like the module (`example.com/shop-utils`) is not analyzed.
+- **Messages keep no line numbers or call chains**: nilerr's `(line N)` and contextcheck's
+  `A->B->C` chain are trimmed, and vet `sqlrowserr` (whose message names a line) is off.
+- **One finding per problem**: `return nil, nil` after an error check is nilerr, not nilnil too;
+  a `rows.Close()` that is not deferred is sqlclosecheck, not errcheck too.
