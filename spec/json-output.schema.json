@@ -1,0 +1,199 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/jhonDoe15/nitpicker/spec/json-output.schema.json",
+  "title": "Nitpicker --json output",
+  "description": "The one JSON object a nitpicker run with --json prints on stdout: the result of a comparison run or of --all, or the error that stopped the run. Optional fields are left out when they have no value.",
+  "oneOf": [{ "$ref": "#/$defs/result" }, { "$ref": "#/$defs/failure" }],
+  "$defs": {
+    "text": { "type": "string", "minLength": 1 },
+    "count": { "type": "integer", "minimum": 0 },
+    "failure": {
+      "description": "The run stopped before it had a result, for example on an unknown argument or a repository with no commits.",
+      "type": "object",
+      "required": ["status", "exitCode", "error"],
+      "additionalProperties": false,
+      "properties": {
+        "status": { "const": "error" },
+        "exitCode": { "const": 2 },
+        "error": { "$ref": "#/$defs/text" }
+      }
+    },
+    "result": {
+      "type": "object",
+      "required": ["mode", "status", "exitCode", "counts", "findings", "toolErrors", "reports"],
+      "additionalProperties": false,
+      "properties": {
+        "mode": {
+          "description": "diff for a comparison with the base, all for --all.",
+          "enum": ["diff", "all"]
+        },
+        "status": {
+          "description": "The outcome of the gate: passed (exit code 0), failed (1: failing findings or failing tests) or error (2: a tool error left the run incomplete).",
+          "enum": ["passed", "failed", "error"]
+        },
+        "exitCode": {
+          "description": "The exit code of the process; 0 with --defer-exit whatever the status.",
+          "enum": [0, 1, 2]
+        },
+        "base": {
+          "description": "The ref the comparison ran against and how it was chosen.",
+          "type": "object",
+          "required": ["ref", "source"],
+          "additionalProperties": false,
+          "properties": {
+            "ref": { "$ref": "#/$defs/text" },
+            "source": { "$ref": "#/$defs/text" }
+          }
+        },
+        "noChanges": {
+          "description": "Nothing changed since the merge base, so nothing was checked.",
+          "const": true
+        },
+        "counts": { "$ref": "#/$defs/counts" },
+        "findings": {
+          "description": "The failing findings, in the order the reports list them. Unreached mutants of one function are one entry, and a function lists at most three surviving mutants and then one entry for the rest.",
+          "type": "array",
+          "items": { "$ref": "#/$defs/finding" }
+        },
+        "toolErrors": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/toolError" }
+        },
+        "partialRun": {
+          "description": "Only some analyzers ran (--analyzer); run without it before you finish.",
+          "type": "object",
+          "required": ["ran", "skipped"],
+          "additionalProperties": false,
+          "properties": {
+            "ran": { "type": "array", "items": { "$ref": "#/$defs/text" } },
+            "skipped": { "type": "array", "items": { "$ref": "#/$defs/text" } }
+          }
+        },
+        "reports": {
+          "description": "Absolute path of the folder with the full reports (report.txt and the JSON files).",
+          "$ref": "#/$defs/text"
+        }
+      },
+      "if": { "properties": { "mode": { "const": "diff" } } },
+      "then": {
+        "required": ["base"],
+        "properties": { "counts": { "required": ["held"] } }
+      },
+      "else": {
+        "properties": {
+          "base": false,
+          "noChanges": false,
+          "counts": { "properties": { "held": false } }
+        }
+      }
+    },
+    "counts": {
+      "type": "object",
+      "required": ["failing", "byArea", "reportOnly"],
+      "additionalProperties": false,
+      "properties": {
+        "failing": {
+          "description": "Failing findings, each mutant counted on its own.",
+          "$ref": "#/$defs/count"
+        },
+        "byArea": {
+          "description": "Failing findings per area, in the order to fix them.",
+          "type": "object",
+          "propertyNames": {
+            "enum": [
+              "format",
+              "types",
+              "lint",
+              "structure",
+              "other",
+              "tests",
+              "coverage",
+              "crap",
+              "mutation"
+            ]
+          },
+          "additionalProperties": { "type": "integer", "minimum": 1 }
+        },
+        "reportOnly": {
+          "description": "Findings that never fail the gate (descriptive); listed in the reports.",
+          "$ref": "#/$defs/count"
+        },
+        "held": {
+          "description": "Comparison runs: findings the base already had and the change did not make worse; listed in held-findings.json.",
+          "$ref": "#/$defs/count"
+        }
+      }
+    },
+    "finding": {
+      "type": "object",
+      "required": ["tool", "rule", "path", "message"],
+      "additionalProperties": false,
+      "properties": {
+        "tool": { "$ref": "#/$defs/text" },
+        "rule": { "$ref": "#/$defs/text" },
+        "path": { "$ref": "#/$defs/text" },
+        "line": { "type": "integer", "minimum": 1 },
+        "column": {
+          "description": "1-based, in UTF-16 code units.",
+          "type": "integer",
+          "minimum": 1
+        },
+        "message": {
+          "description": "The message on one line, without the exception sentence when `exception` carries it.",
+          "$ref": "#/$defs/text"
+        },
+        "allowedForm": {
+          "description": "The part of the message that names what to write instead.",
+          "$ref": "#/$defs/text"
+        },
+        "exception": {
+          "description": "The entry that accepts the finding when it is intended; its reason is a placeholder to replace.",
+          "type": "object",
+          "required": ["rule", "paths", "reason"],
+          "properties": {
+            "rule": { "$ref": "#/$defs/text" },
+            "paths": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/text" } },
+            "reason": { "$ref": "#/$defs/text" },
+            "packages": { "type": "array", "items": { "type": "string" } },
+            "function": { "type": "string" },
+            "name": { "type": "string" }
+          }
+        },
+        "exceptionList": {
+          "description": "Set when `exception` goes to a list other than the top-level `exceptions` of nitpicker.config.json.",
+          "const": "python.exceptions"
+        },
+        "helpUri": {
+          "description": "The rule reference entry of the rule.",
+          "type": "string",
+          "pattern": "^https?://\\S+$"
+        },
+        "folded": {
+          "description": "The entry stands for several mutants; the message says how many.",
+          "const": true
+        }
+      },
+      "dependentRequired": { "exceptionList": ["exception"] }
+    },
+    "toolError": {
+      "type": "object",
+      "required": ["tool", "headline"],
+      "additionalProperties": false,
+      "properties": {
+        "tool": { "$ref": "#/$defs/text" },
+        "snapshot": {
+          "description": "Which checkout the error happened in, such as head or base.",
+          "$ref": "#/$defs/text"
+        },
+        "rule": {
+          "description": "Set on the errors that carry a rule, such as failing tests.",
+          "$ref": "#/$defs/text"
+        },
+        "headline": {
+          "description": "The first line of the error; report.txt and tool-errors.json have the full text.",
+          "$ref": "#/$defs/text"
+        }
+      }
+    }
+  }
+}
