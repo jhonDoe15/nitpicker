@@ -105,7 +105,7 @@ function firstKey(view, members) {
   return members
     .filter((member) => annotatedWith(view, member, PRIMARY_KEY) !== undefined)
     .map(({ name }) => name)
-    .toSorted()[0];
+    .reduce((first, name) => (first === undefined || name < first ? name : first), undefined);
 }
 
 function isIndexed(member, { leads, key, join }) {
