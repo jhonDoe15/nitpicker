@@ -2,9 +2,9 @@ import { decideByTruthTable, needsValues } from '../../../../../../shared/logic/
 import { decideSync } from '../../../../../../shared/logic/sync/decide-sync.mjs';
 import { key } from '../../../../../../shared/logic/terms.mjs';
 import { depthFirst } from '../../../../../../shared/traversal.mjs';
-import { conditionTerm, fact, mutableNames } from './facts.mjs';
+import { afterEffects, conditionTerm, effectsOf, fact, mutableNames } from './facts.mjs';
 import { conditionChecks } from './statement-flow.mjs';
-import { outsideFunctions } from './syntax.mjs';
+import { isNarrowingTest, outsideFunctions } from './syntax.mjs';
 
 const CHAINS = new Set(['&&', '||']);
 const MAX_FACTS = 24;
@@ -26,7 +26,9 @@ function relevant(facts, names) {
     const joined = round.filter((known) => !kept.has(known) && sharesName(known, reached));
     for (const known of joined) {
       kept.add(known);
-      known.names.forEach((name) => reached.add(name));
+    }
+    for (const name of joined.flatMap((known) => [...known.names])) {
+      reached.add(name);
     }
     if (joined.length > 0) {
       rounds.push(facts);
@@ -77,9 +79,6 @@ function isValueRead(node) {
 }
 
 function isNarrowed(node, services) {
-  if (services?.program === null || services?.program === undefined) {
-    return true;
-  }
   const reads = [...outsideFunctions(node)].filter(isValueRead);
   return reads.every((read) => !services.getTypeAtLocation(read).isUnion());
 }
@@ -94,14 +93,78 @@ function chainOperands(chain) {
   ].filter((node) => node.type !== 'LogicalExpression' || node.operator !== chain.operator);
 }
 
+function isChainHead(node) {
+  const { parent } = node;
+  const continues = parent?.type === 'LogicalExpression' && parent.operator === node.operator;
+  const isTernaryTest = parent?.type === 'ConditionalExpression' && parent.test === node;
+  return CHAINS.has(node.operator) && !continues && !isTernaryTest;
+}
+
 function sitesIn(expression) {
-  return [...outsideFunctions(expression)].filter(
-    (node) =>
-      node.type === 'ConditionalExpression' ||
-      (node.type === 'LogicalExpression' &&
-        CHAINS.has(node.operator) &&
-        !(node.parent?.type === 'LogicalExpression' && node.parent.operator === node.operator)),
-  );
+  return [...outsideFunctions(expression)].flatMap((node) => {
+    if (node.type === 'ConditionalExpression') {
+      return [node.test];
+    }
+    return node.type === 'LogicalExpression' && isChainHead(node) ? [node] : [];
+  });
+}
+
+function report(scan, { node, facts, verdict, query }) {
+  const { reason } = reasonFor(facts, query, verdict);
+  const condition = scan.sourceCode.getText(node);
+  scan.context.report({ node, messageId: VERDICTS.get(verdict), data: { condition, reason } });
+}
+
+function check(scan, node, facts) {
+  const { sourceCode } = scan;
+  if (isNarrowingTest(node)) {
+    return false;
+  }
+  const query = conditionTerm(node, sourceCode);
+  const known = relevant(facts, fact(node, sourceCode, { holds: true }).names);
+  const verdict = verdictOf(known, { term: query });
+  if (verdict === undefined || !isNarrowed(node, sourceCode.parserServices)) {
+    return false;
+  }
+  report(scan, { node, facts: known, verdict, query });
+  return true;
+}
+
+function operandFact(scan, chain, operand) {
+  return fact(operand, scan.sourceCode, {
+    holds: chain.operator === '&&',
+    reason: `\`${scan.sourceCode.getText(operand)}\` comes first in the same \`${chain.operator}\``,
+  });
+}
+
+function checkChain(scan, node, facts) {
+  if (check(scan, node, facts) || node.type !== 'LogicalExpression') {
+    return;
+  }
+  const { flow } = scan;
+  let left = [];
+  const repeated = new Set();
+  for (const operand of chainOperands(node)) {
+    const operandKey = key(conditionTerm(operand, scan.sourceCode));
+    if (!repeated.has(operandKey)) {
+      check(scan, operand, [...facts, ...left]);
+    }
+    repeated.add(operandKey);
+    const effects = effectsOf([operand], flow);
+    left = afterEffects([...left, operandFact(scan, node, operand)], effects, flow.mutable);
+  }
+}
+
+function checkedConditions(found) {
+  return found.condition === undefined ? sitesIn(found.expression) : [found.condition];
+}
+
+function analyze(scan, statements) {
+  for (const found of conditionChecks(statements, scan.flow)) {
+    for (const condition of checkedConditions(found)) {
+      checkChain(scan, condition, found.facts);
+    }
+  }
 }
 
 export const rule = {
@@ -121,64 +184,20 @@ export const rule = {
   },
   create(context) {
     const { sourceCode } = context;
+    const program = sourceCode.parserServices?.program;
+    if (program === null || program === undefined) {
+      return {};
+    }
     const flow = { sourceCode, mutable: mutableNames(sourceCode), effects: new WeakMap() };
-    function report(node, facts, verdict, query) {
-      const { reason } = reasonFor(facts, query, verdict);
-      const condition = sourceCode.getText(node);
-      context.report({ node, messageId: VERDICTS.get(verdict), data: { condition, reason } });
-    }
-    function check(node, facts) {
-      const condition = {
-        term: conditionTerm(node, sourceCode),
-        names: fact(node, sourceCode, { holds: true }).names,
-      };
-      const known = relevant(facts, condition.names);
-      const verdict = verdictOf(known, condition);
-      if (verdict !== undefined && isNarrowed(node, sourceCode.parserServices)) {
-        report(node, known, verdict, condition.term);
-        return true;
-      }
-      return false;
-    }
-    function checkChain(node, facts) {
-      if (check(node, facts) || node.type !== 'LogicalExpression') {
-        return;
-      }
-      const left = [];
-      const repeated = new Set();
-      for (const operand of chainOperands(node)) {
-        const operandKey = key(conditionTerm(operand, sourceCode));
-        if (!repeated.has(operandKey)) {
-          check(operand, [...facts, ...left]);
-        }
-        repeated.add(operandKey);
-        left.push(
-          fact(operand, sourceCode, {
-            holds: node.operator === '&&',
-            reason: `\`${sourceCode.getText(operand)}\` comes first in the same \`${node.operator}\``,
-          }),
-        );
-      }
-    }
-    function analyze(statements) {
-      for (const found of conditionChecks(statements, flow)) {
-        if (found.condition !== undefined) {
-          checkChain(found.condition, found.facts);
-        } else {
-          for (const site of sitesIn(found.expression)) {
-            checkChain(site.type === 'ConditionalExpression' ? site.test : site, found.facts);
-          }
-        }
-      }
-    }
+    const scan = { context, sourceCode, flow };
     function analyzeFunction(node) {
       if (node.body.type === 'BlockStatement') {
-        analyze(node.body.body);
+        analyze(scan, node.body.body);
       }
     }
     return {
       Program(node) {
-        analyze(node.body);
+        analyze(scan, node.body);
       },
       FunctionDeclaration: analyzeFunction,
       FunctionExpression: analyzeFunction,

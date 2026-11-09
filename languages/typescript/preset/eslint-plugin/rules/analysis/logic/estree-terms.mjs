@@ -124,8 +124,11 @@ function literalValue(node) {
   if (typeof node.value === 'string') {
     return JSON.stringify(node.value);
   }
-  if (typeof node.value === 'number' && Number.isFinite(node.value)) {
+  if (typeof node.value === 'number') {
     return String(node.value);
+  }
+  if (typeof node.bigint === 'string') {
+    return `${BigInt(node.bigint).toString()}n`;
   }
   const isNull = node.value === null && node.regex === undefined && node.bigint === undefined;
   return isNull ? 'null' : node.raw;

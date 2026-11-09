@@ -491,19 +491,25 @@ Part of the [TypeScript strict preset guide](../typescript-strict-preset.md).
 - Early returns; no `else` after a `return`; no nested ternaries.
 - A `switch` over a discriminated union must handle every case.
 - `nitpicker/no-decided-condition` (type-aware, production code and tests of both presets): a
-  condition that the guards before it in the same function already decide. Reported: an `if`
-  test, a ternary test or one operand of an `&&`/`||` chain that is always true or always false
-  given an earlier `if` that returned, threw, broke or continued, the `if` or `else` branch it
-  sits in, a `while` or `for` test, or the operands before it in the same chain
-  (`if (count > 10) return; if (count > 20) ...`). The message names the guard that decides it.
-  Facts are dropped when a name they read is assigned, and also on any call that is not pure
-  when they read a member or a variable written elsewhere. The conditions are decided by the
-  shared logic module: a truth table first, and the Z3 solver when values are compared. An order
-  comparison counts as a number comparison only when both operands are number-typed; otherwise it
-  is an opaque fact, since `'10' < '9'`. Not reported: a check on a value whose type is still a
-  union, because TypeScript may need it to narrow, and an operand repeated in the same chain,
-  which `nitpicker/no-operand-slip` reports. Java's SpotBugs `UC_USELESS_CONDITION` covers part of
-  this; the Java, Python and Kotlin counterparts on the shared logic module are not built yet.
+  condition that the guards before it in the same function already decide. Reported: an `if`,
+  `while`, `do`/`while` or `for` test, a ternary test, or one operand of an `&&`/`||` chain that is
+  always true or always false given an earlier `if` that returned, threw, broke or continued, the
+  `if` or `else` branch it sits in, the test of the loop it sits in, or the operands before it in
+  the same chain (`if (count > 10) return; if (count > 20) ...`). The message names the guard that
+  decides it. A fact is dropped when a name it reads is assigned (also as a loop variable or a
+  `catch` parameter); a fact that reads a member is dropped on any member write and on any call
+  that is not pure (`await`, `yield`, `new` and `import()` count as calls); and a fact that reads a
+  variable written elsewhere, an import or an unresolved global is dropped on such a call. The
+  conditions are decided by the shared logic module: a truth table first, and the Z3 solver when
+  values are compared. An order comparison counts as a number comparison only when both operands
+  are number-typed; otherwise it is an opaque fact, since `'10' < '9'`. Not reported: a check on a
+  value whose type is still a union, because TypeScript may need it to narrow; a truthiness test of
+  one value or its comparison with `null` or `undefined`, which TypeScript narrows itself and
+  `@typescript-eslint/no-unnecessary-condition` reports; an operand repeated
+  in the same chain, which `nitpicker/no-operand-slip` reports; anything the solver does not
+  answer within 20 seconds; and files without type information. Java's SpotBugs
+  `UC_USELESS_CONDITION` covers part of this; the Java, Python and Kotlin counterparts on the shared
+  logic module are not built yet.
 - `nitpicker/exhaustive-union-predicate` (type-aware): no `||` chain of `===` (or `&&` chain of
   `!==`) that compares one plain reference (`kind`, `props.kind`) with some string or number
   literals of a union that has at least three members, when the chain is a predicate's value: an

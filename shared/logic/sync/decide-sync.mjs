@@ -13,7 +13,13 @@ function startBridge() {
   });
   worker.unref();
   port1.unref();
-  return { worker, signal, replies: port1, next: 0 };
+  const bridge = { worker, signal, replies: port1, next: 0, waiting: undefined, isDead: false };
+  function stop() {
+    bridge.isDead = true;
+  }
+  worker.on('error', stop);
+  worker.on('exit', stop);
+  return bridge;
 }
 
 function bridgeOnce() {
@@ -57,19 +63,35 @@ function awaitReply(bridge, id, deadline) {
       return result;
     }
   }
-  return 'open';
+  return undefined;
+}
+
+function isBusy(bridge) {
+  if (bridge.waiting !== undefined && replyTo(bridge, bridge.waiting) !== undefined) {
+    bridge.waiting = undefined;
+  }
+  return bridge.waiting !== undefined;
 }
 
 /**
  * `decide` for synchronous callers such as lint rules: the solver runs in a worker thread and this
- * call blocks until it answers. A solver that does not answer within `timeoutMs` counts as 'open'.
+ * call blocks until it answers. A solver that does not answer within `timeoutMs` counts as 'open',
+ * and so does every call while that answer is still pending or after the worker stopped.
  */
 export function decideSync(conditions, query, options = {}) {
   const { timeoutMs = DEFAULT_TIMEOUT_MS, ...decideOptions } = options;
   const current = bridge();
+  if (current.isDead || isBusy(current)) {
+    return 'open';
+  }
   current.next += 1;
   const id = current.next;
   Atomics.store(current.signal, 0, 0);
   current.worker.postMessage({ id, conditions, query, options: decideOptions });
-  return awaitReply(current, id, Date.now() + timeoutMs);
+  current.waiting = id;
+  const result = awaitReply(current, id, Date.now() + timeoutMs);
+  if (result !== undefined) {
+    current.waiting = undefined;
+  }
+  return result ?? 'open';
 }
