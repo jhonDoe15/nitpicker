@@ -14,22 +14,25 @@ const DESCRIPTIVE = { ...VALID, classification: 'descriptive' };
 const NOT_RUN = { ...DESCRIPTIVE, toolNotRun: true };
 
 const MALFORMED = [
-  { ...VALID, toolNotRun: true },
-  { ...DESCRIPTIVE, toolNotRun: false },
-  { ...DESCRIPTIVE, notRunScope: ['core'] },
-  { ...NOT_RUN, notRunScope: [] },
-  { ...NOT_RUN, notRunScope: [''] },
-  { ...NOT_RUN, notRunScope: 'core' },
-  { ...DESCRIPTIVE, notRunIdentityPrefix: 'cpd:' },
-  { ...NOT_RUN, notRunIdentityPrefix: '' },
-  { ...NOT_RUN, notRunIdentityPrefix: 1 },
+  [{ ...VALID, toolNotRun: true }, '/findings/0/classification'],
+  [{ ...DESCRIPTIVE, toolNotRun: false }, '/findings/0/toolNotRun'],
+  [{ ...DESCRIPTIVE, notRunScope: ['core'] }, '/findings/0'],
+  [{ ...NOT_RUN, notRunScope: [] }, '/findings/0/notRunScope'],
+  [{ ...NOT_RUN, notRunScope: [''] }, '/findings/0/notRunScope/0'],
+  [{ ...NOT_RUN, notRunScope: 'core' }, '/findings/0/notRunScope'],
+  [{ ...DESCRIPTIVE, notRunIdentityPrefix: 'cpd:' }, '/findings/0'],
+  [{ ...NOT_RUN, notRunIdentityPrefix: '' }, '/findings/0/notRunIdentityPrefix'],
+  [{ ...NOT_RUN, notRunIdentityPrefix: 1 }, '/findings/0/notRunIdentityPrefix'],
 ];
 
 describe('tool-not-run notices and kept line ranges in the findings schema', () => {
-  it.each(MALFORMED)('rejects the malformed finding %j like the reference parser', (finding) => {
-    expect(() => parseFinding(finding)).toThrow(TypeError);
-    expect(findingsSchemaErrors([finding])).not.toEqual([]);
-  });
+  it.each(MALFORMED)(
+    'rejects the malformed finding %j like the reference parser',
+    (finding, errorPath) => {
+      expect(() => parseFinding(finding)).toThrow(TypeError);
+      expect(findingsSchemaErrors([finding])[0]).toContain(`tool rule: ${errorPath} `);
+    },
+  );
 
   it('accepts line ranges a held finding must keep unchanged and rejects a reversed one', () => {
     const finding = {
@@ -54,7 +57,9 @@ describe('tool-not-run notices and kept line ranges in the findings schema', () 
     expect(findingsSchemaErrors([finding])).toEqual([]);
     expect(() => parseFinding(reversed)).toThrow(TypeError);
     expect(() => parseFinding(unnamed)).toThrow(TypeError);
-    expect(findingsSchemaErrors([unnamed])).not.toEqual([]);
+    expect(findingsSchemaErrors([unnamed])[0]).toContain(
+      "mustKeepUnchangedLines/0 must have required property 'path'",
+    );
   });
 
   it('accepts a tool-not-run notice on a descriptive finding', () => {
