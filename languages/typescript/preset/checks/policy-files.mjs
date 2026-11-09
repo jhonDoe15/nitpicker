@@ -238,7 +238,7 @@ export const DEPENDENCY_GRAPH_FILES = [
 ];
 
 export const TEST_RUNNER_CONFIGURATION_FILES = [
-  'core/tooling/child-output.mjs',
+  'core/tooling/host-environment.mjs',
   'shared/conventions/read-inside.mjs',
   'shared/conventions/tool-precedence.mjs',
   'languages/typescript/preset/project-configs/config-module.mjs',
