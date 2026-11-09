@@ -24,3 +24,12 @@ export const PROJECT_STATICCHECK = JSON.stringify({
   preset: 'go',
   tools: { staticcheck: { precedence: ['project'] } },
 });
+
+export const TOKEN = `package shop
+
+import "math/rand/v2"
+
+func Token() uint64 {
+	return rand.Uint64() // #nosec G404
+}
+`;

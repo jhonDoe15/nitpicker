@@ -26,7 +26,8 @@ than the others, and this skill teaches its rules before an agent writes Go.
 - The shared rules of the other presets (size limits, slow tests, repository hygiene), applied to
   Go where they fit.
 - [staticcheck](https://staticcheck.dev/docs/checks/) (MIT),
-  [errcheck](https://github.com/kisielk/errcheck) (MIT) and the
+  [errcheck](https://github.com/kisielk/errcheck) (MIT), [gosec](https://github.com/securego/gosec)
+  (Apache-2.0) and the
   [`golang.org/x/tools` analysis passes](https://pkg.go.dev/golang.org/x/tools/go/analysis/passes),
   including [modernize](https://pkg.go.dev/golang.org/x/tools/go/analysis/passes/modernize)
   (BSD-3-Clause): the lint program, run directly instead of through golangci-lint.
@@ -90,6 +91,13 @@ than the others, and this skill teaches its rules before an agent writes Go.
   the package folder instead.
 - **`staticcheck.conf` only on opt-in.** A project config could switch checks off silently, so it
   is read only when the project opts in, and then every such file is policy.
+- **gosec with every rule, its file-mode limits aligned.** Each rule names the safe form (crypto/rand,
+  query parameters, `os.Root`, a server with `ReadHeaderTimeout`, 0o600 files). G307 is held to the
+  same 0o600 as G302 and G306, because gosec's default limit for `os.Create` (0o666) is the mode
+  `os.Create` always uses, so the rule never reported. G104, G107, G204 and G304 are off: errcheck
+  covers unchecked errors, and the taint rules G704, G702 and G703 report URLs, commands and paths
+  that come from request input, where the older rules flag every non-constant value. G601 runs only
+  for files before Go 1.22, read per file, because gosec itself reads one Go version per process.
 - **A fixture for every check.** Each enabled check has a failing line and the allowed form in
   `languages/go/lint/fixtures`; the harness fails on a missing or unexpected report, so a tool
   upgrade that changes what a check reports is caught before release.

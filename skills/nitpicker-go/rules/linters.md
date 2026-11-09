@@ -1,7 +1,7 @@
 # Linters
 
 Part of the [nitpicker-go](../SKILL.md) skill. The gate runs staticcheck (every SA, S, ST and QF
-check, and U1000), errcheck, the modernize suite and more `golang.org/x/tools` passes on every
+check, and U1000), errcheck, the modernize suite, gosec and more `golang.org/x/tools` passes on every
 package, test files included. Write these forms from the start; each finding's message names the
 allowed form and ends with its exception entry.
 
@@ -39,9 +39,27 @@ allowed form and ends with its exception entry.
   (U1000: delete it or use it), and no `break` that only ends a `switch` case.
 - Defer in a loop only from a function the loop calls, so each defer runs when that call returns.
 
+## Security (gosec)
+
+- Random values an attacker must not guess come from crypto/rand (`rand.Text()`, `rand.Read`);
+  math/rand needs an exception that says why (simulations, jitter).
+- SQL takes values as query parameters, never through `fmt.Sprintf` or `+`.
+- Files are written with 0o600 or less and folders created with 0o750 or less; open a new file with
+  `os.OpenFile(path, os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0o600)` instead of `os.Create`. Temporary
+  files come from `os.CreateTemp`.
+- Paths, commands, URLs, redirects and templates from request input go through a fixed root
+  (`os.Root`), a fixed list or escaping; log request values as structured `slog` fields.
+- Servers set `ReadHeaderTimeout` (`http.Server{...}.ListenAndServe()`, never
+  `http.ListenAndServe`), cookies set `Secure`, `HttpOnly` and `SameSite`, TLS keeps certificate
+  checks on with `MinVersion: tls.VersionTLS12`, and RSA keys have at least 2048 bits.
+- Hashes and ciphers: SHA-256 or better, AES-GCM or ChaCha20-Poly1305, a fresh nonce per message;
+  never MD5, SHA-1, DES, RC4, MD4 or RIPEMD-160.
+- Every `context.With...` cancel function is called; integer conversions that can overflow are
+  range-checked first.
+
 ## What does not work
 
-`//lint:ignore` and `//nolint` comments are ignored. A project's `staticcheck.conf` is read only
+`//lint:ignore`, `//nolint` and `#nosec` comments are ignored. A project's `staticcheck.conf` is read only
 when `nitpicker.config.json` opts in with
 `"tools": { "staticcheck": { "precedence": ["project"] } }`, and editing one then is a policy
 change. If a finding seems wrong, stop and ask.
