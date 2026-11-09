@@ -25,6 +25,7 @@ export const strictEslintRuleIds = [
   'nitpicker/no-branch-in-composition-root',
   'nitpicker/no-comments',
   'nitpicker/no-compatibility-shim',
+  'nitpicker/no-copied-constant',
   'nitpicker/no-default-export',
   'nitpicker/no-disabled-tls-verification',
   'nitpicker/no-eager-relation',

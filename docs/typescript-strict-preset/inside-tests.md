@@ -76,6 +76,18 @@ hop, and type-only imports do not count.
   and `test.extend` results are not followed. It checks Cypress and Playwright files under a test
   root too. Config-level retries (Vitest `test.retry`, Mocha `retries`) are pinned to 0 by
   nitpicker's runs and are not this rule's job.
+- `nitpicker/no-copied-constant`: a test literal must not copy the value of a production constant
+  the test can import. It reports a string or number literal in a test-area file that equals an
+  `UPPER_SNAKE` constant with one literal value (`export const MAX_ITEMS = 50`, also through
+  `export { NAME }`, `export { NAME } from` and `export * from`) of a project module the file
+  imports with an `import` declaration (`require()` and `import()` are not followed). When the
+  constant changes, such a test keeps checking the old value, or a boundary test stops testing the
+  boundary: use the name (`MAX_LENGTH + 1`). Not reported: the numbers -1 to 2,
+  strings shorter than 3 characters, a literal whose statement names the constant
+  (`expect(MAX_ITEMS).toBe(50)` pins a value that is a contract, which is the allowed form), test
+  names, property keys, types, module paths, and constants of the files the layout counts as tests,
+  test helpers, fixtures or generated code (the test roots, `*.test.*`/`*.spec.*`, `__tests__/`,
+  `test-support/`, `fixtures/`).
 - `nitpicker/require-test-process-timeout`: synchronous `spawnSync`, `execSync` and `execFileSync`
   calls from `node:child_process` or `child_process` in test-area files need a positive subprocess
   timeout, for example `spawnSync(program, args, { timeout: 10_000 })`. A runner's timeout cannot

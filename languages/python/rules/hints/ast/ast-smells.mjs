@@ -22,6 +22,11 @@ function skipDescription(subject = '') {
     : `\`${subject}\` skips a test without a reason`;
 }
 
+function copiedConstantAllowed(subject = '') {
+  const name = subject.split(' ')[0] || 'NAME';
+  return `Use \`${name}\` (or an expression on it, such as \`${name} + 1\`). If the value is a contract the test pins on purpose, assert it next to the constant (\`assert ${name} == <value>\`).`;
+}
+
 function skipAllowed(subject = '') {
   if (subject.startsWith('return in ')) {
     return 'Skip visibly: `@pytest.mark.skipif(sys.platform == "win32", reason="posix only")` or `pytest.skip("...")` (`self.skipTest("...")` in unittest).';
@@ -242,6 +247,13 @@ export const SMELL_HINTS = [
     describe: (subject) => `Test \`${subject}\` has no assertion`,
     allowed:
       'Assert the outcome: `assert result == expected`, `with pytest.raises(SomeError):`, or call one of the assertion helpers the project tests use.',
+  },
+  {
+    tool: RULES_TOOL,
+    rules: ['copied-constant-in-test'],
+    describe: (subject) =>
+      `This literal copies ${subject}: when the constant changes, the test keeps checking the old value or stops testing the case it was written for`,
+    allowed: (subject) => copiedConstantAllowed(subject),
   },
   {
     tool: RULES_TOOL,

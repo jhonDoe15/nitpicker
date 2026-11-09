@@ -40,6 +40,8 @@ Part of the [nitpicker-javascript](../SKILL.md) skill. Write these forms from th
   padded value for a `.trim()`, two bad fields for a `join`); never delete a schema rule to silence it.
 - No per-test git repos, child processes, servers, fixed sleeps, raised timeouts, or test retries
   (`retry`/`retries` options, `jest.retryTimes`, `this.retries(n)`); fix the flaky cause.
+- A test uses an imported constant by name (`MAX_LENGTH + 1`), never a copy of its value
+  (`nitpicker/no-copied-constant`); pin a contract value as `expect(MAX_LENGTH).toBe(64)`.
 - Wait for every callback that asserts: `await once(emitter, 'ready')`, await a promise the
   callback resolves, or advance fake timers in the test. An assertion in a timer, listener or
   error-first callback the test does not wait for runs after it ends and its failure is lost.

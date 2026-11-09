@@ -11,6 +11,12 @@ import { JAVA_FORMATTER_TOOLS } from '../adapters/style/java-style.mjs';
 import { javaFormatMessage } from '../adapters/reporting/format-findings.mjs';
 import { INLINE_SUPPRESSION_MESSAGES } from '../adapters/suppressions/java-suppressions.mjs';
 import { JVM_ANALYZERS, JVM_BUILDS } from './catalog-rules.mjs';
+import {
+  COPIED_CONSTANT_EXCEPTION_RULE,
+  COPIED_CONSTANT_PIN,
+  COPIED_CONSTANT_RULE,
+} from '../adapters/review-rules/copied-constants/copied-constants.mjs';
+import { copiedConstantMessage } from '../../../shared/rules/copied-constants/copied-constants.mjs';
 import { springConfigForms } from './spring-config-messages.mjs';
 
 const GUIDE = 'docs/java-preset.md';
@@ -147,12 +153,32 @@ function unrunTestEntry() {
   });
 }
 
+function copiedConstantEntry() {
+  return ruleEntry({
+    ...JVM,
+    tool: 'pmd',
+    rule: COPIED_CONSTANT_RULE,
+    summary:
+      'A string or number literal in a test that equals an `UPPER_SNAKE` constant of a main-source class, object or file the test can see.',
+    why: 'When the constant changes, a test that holds a copy of its value keeps checking the old value, or a boundary test stops testing the boundary. Nitpicker computes it over the sources of every module and prints it as a PMD rule, like the other test honesty rules.',
+    allowed: copiedConstantMessage({
+      names: ['<Owner>.<NAME>'],
+      owner: '<file>',
+      literal: { kind: 'number', value: '<value>' },
+      pin: COPIED_CONSTANT_PIN,
+    }),
+    exception: { key: 'exceptions', rule: COPIED_CONSTANT_EXCEPTION_RULE },
+    docs: [{ label: 'Java preset guide', path: GUIDE, anchor: 'tests-that-copy-a-constant' }],
+  });
+}
+
 /** The entries of the rules nitpicker itself adds to the Java and Kotlin presets. */
 export function jvmNitpickerEntries() {
   return [
     ...archunitEntries(),
     ...springConfigEntries(),
     unrunTestEntry(),
+    copiedConstantEntry(),
     formatEntry('google'),
     formatEntry('palantir'),
     ...suppressionEntries(),
