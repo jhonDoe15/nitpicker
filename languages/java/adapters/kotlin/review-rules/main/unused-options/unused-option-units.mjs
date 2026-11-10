@@ -35,6 +35,7 @@ function unitOf(file, fn, limited) {
     callee: fn.name,
     label: [fn.owner, fn.name].filter(Boolean).join('.'),
     limited,
+    internal: fn.visibility === 'internal',
     parameters: fn.parameters,
     line: fn.line,
     declaration: declarationOf(file, {
@@ -105,6 +106,7 @@ function constructorUnits(file, classes, serialization) {
       callee: klass.name,
       label: klass.qualified,
       limited: true,
+      internal: klass.visibility !== 'private' && klass.constructorVisibility !== 'private',
       data: klass.data,
       parameters: klass.primaryParameters,
       line: klass.line,
@@ -124,6 +126,7 @@ function constructorUnits(file, classes, serialization) {
       callee: classes.get(fn.owner).name,
       label: fn.owner,
       limited: true,
+      internal: fn.visibility === 'internal' && classes.get(fn.owner).visibility !== 'private',
       data: false,
       parameters: fn.parameters,
       line: fn.line,

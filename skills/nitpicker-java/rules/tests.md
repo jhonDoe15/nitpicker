@@ -11,6 +11,11 @@ Part of the [nitpicker-java](../SKILL.md) skill. Write these forms from the star
   cannot be told apart takes an exception for `pit/mutant-survived`.
 - Plan tests to be fast (`slow-test`): a fake clock instead of `Thread.sleep`, a test
   slice instead of `@SpringBootTest`.
+- In a Reactor chain (`reactor-core` on the classpath), no blocking call (`Files.*`, JDBC, `Future.get()`,
+  `Thread.sleep`, `block()`) inside `map`, `flatMap`, `doOnNext` and the other operators: wrap it as
+  `Mono.fromCallable(() -> blocking()).subscribeOn(Schedulers.boundedElastic())` or put
+  `publishOn(Schedulers.boundedElastic())` before the operator (a `publishOn` after it does not move it); a method returning a `Mono` or `Flux` never calls `block()`
+  (`ReactorBlockingInOperator`, `ReactorBlockInReactiveMethod`).
 - Never wait a fixed time (`FixedSleepInTest`): wait on the condition with Awaitility when the
   tests use it (`await().atMost(Duration.ofSeconds(5)).until(...)`), otherwise in a loop against a
   deadline; `verify(mock, timeout(1000))` for a mock, not `after(1000)`. `parkNanos` and
@@ -20,10 +25,24 @@ Part of the [nitpicker-java](../SKILL.md) skill. Write these forms from the star
   answer, a thread body or a test fake that implements or extends a main class is fine. To
   show something does not happen, give the code a `Clock` or scheduler the test moves forward, not
   `after(ms).never()` or `during(...)` (`NegativeWaitInTest`).
+- Assert the value, not that something is there (`WeakAssertionInTest`): no `assertNotNull(x)`, AssertJ
+  `isNotNull()` or Hamcrest `notNullValue()` as the whole check, no `isNotEmpty()`, `assertFalse(c.isEmpty())`
+  or `assertTrue(c.size() > 0)`, and no `verify(m).f(any())` whose arguments are all `any()`. Assert the
+  exact value, contents or length and the call's arguments; `verify(m, never())` is fine. The same goes for
+  `assertTrue(x != null)` (`SimplifiableTestAssertion`): assert the exact value.
 - No retries in test code (`RetryInTest`): no `@RetryingTest`, `@RepeatedIfExceptionsTest`, TestNG
   `retryAnalyzer`, `IRetryAnalyzer` or `RetryAnalyzerCount`, nor `setRetryAnalyzer(...)`. A test that
   passes on a later attempt hides a flaky or racy test: wait on the condition instead of a fixed
   delay, isolate shared state. `@RepeatedTest` is fine, since every repetition must pass.
+- Compare floating-point numbers with a tolerance (`FloatEqualityInTest`): no `assertEquals`,
+  `assertNotEquals`, AssertJ `isEqualTo` or Hamcrest `is(...)`/`equalTo(...)` against a fractional
+  literal such as `0.1`. Use `assertEquals(expected, actual, 1e-9)`,
+  `assertThat(actual).isCloseTo(expected, within(1e-9))` or `closeTo(expected, 1e-9)`; the same goes
+  for `assertTrue(x == 0.1)` and `assertThat(x == 0.1).isTrue()`, which need
+  `Math.abs(x - 0.1) < 1e-9` or `isCloseTo`. An AssertJ `using...Comparator(...)` is fine. An
+  integral literal such as `1.0` is exact and fine.
+- Use a production constant by name, never a copy of its value (`pmd/CopiedConstantInTest`):
+  `Limits.MAX_LENGTH + 1`, not `65`. Pin a contract value as `assertEquals(64, Limits.MAX_LENGTH)`.
 - Never mock the class under test (`MockedSubjectInTest`): no `mock(OrderService.class)` or `@Mock`
   of it in `OrderServiceTest`, and no `spy`/`@Spy` of it whose own methods you stub. Pass its
   collaborators in through the constructor with fakes or mocks of them, and test a helper through
@@ -51,7 +70,7 @@ Part of the [nitpicker-java](../SKILL.md) skill. Write these forms from the star
 - Tests get the same PMD, Checkstyle, Error Prone and formatter checks as main code, plus the file
   (500 lines) and folder (6 files) limits. SpotBugs, the method limits, CRAP and duplicate detection
   read main sources only. In a test, use `assertThrows` instead of a try/catch. Spring rules apply
-  to main sources only, as do the enum predicate, forwarding wrapper, singular-and-plural and
-  class-load rules.
+  to main sources only, as do the enum predicate, forwarding wrapper, method alias, singular-and-plural
+  and class-load rules.
   If a PMD rule or an Error Prone check flags test code that is right, ask a human for a reviewed
   exception for `pmd/<rule>` or `errorprone/<Check>`.

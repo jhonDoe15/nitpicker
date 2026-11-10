@@ -16,7 +16,7 @@ const PROBE = `import java.nio.file.*;
 public final class Probe {
   public static void main(String[] args) throws Exception {
     String checks = Files.readString(Path.of(args[0]));
-    System.out.print(ErrorProneReport.pluginArgument(checks, java.util.List.of(), true, false));
+    System.out.print(ErrorProneReport.pluginArgument(checks, java.util.List.of(), true, false, java.util.List.of()));
   }
 }
 `;

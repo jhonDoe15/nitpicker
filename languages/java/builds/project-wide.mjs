@@ -7,6 +7,7 @@ import { kotlinModules, readKotlinMetrics } from '../adapters/kotlin/kotlin-metr
 import { inModule } from './module-path.mjs';
 import { readTestOnlyClassFindings } from '../adapters/review-rules/test-only-classes.mjs';
 import { readTestRuntimeFindings } from '../adapters/test-runtime/test-runtime-findings.mjs';
+import { readCopiedConstantFindings } from '../adapters/review-rules/copied-constants/copied-constants.mjs';
 import { readJvmReuseFindings } from '../adapters/reuse/jvm-reuse-facts.mjs';
 import { readRoundTripFindings } from '../adapters/review-rules/round-trips/round-trips.mjs';
 
@@ -99,7 +100,7 @@ function mergeProjects(projectRoot, projects, mergedRoot) {
   );
 }
 
-function couplingFindings(projectRoot, { projects, mergedRoot, manifest, kotlin }) {
+function couplingFindings(projectRoot, { projects, mergedRoot, manifest, kotlin, layout }) {
   const complete = projects
     .filter(({ reportRoot }) =>
       [JDEPS_REPORT, JDEPS_CLASSES].every((name) => existsSync(path.join(reportRoot, name))),
@@ -114,6 +115,7 @@ function couplingFindings(projectRoot, { projects, mergedRoot, manifest, kotlin 
       projectRoot,
       sourceRoots: manifest.sourceRoots ?? [],
       kotlin: kotlin ? kotlinNodes([single]) : undefined,
+      layout,
     });
   }
   const files = mergeProjects(projectRoot, complete, mergedRoot);
@@ -122,6 +124,7 @@ function couplingFindings(projectRoot, { projects, mergedRoot, manifest, kotlin 
     sourceRoots: manifest.sourceRoots ?? [],
     kotlin: kotlin ? kotlinNodes(complete) : undefined,
     files,
+    layout,
   });
 }
 
@@ -141,10 +144,17 @@ export function projectWideFindings(
         baselineRoot: policy.baselineRoot,
       },
     }),
-    ...couplingFindings(projectRoot, { projects, mergedRoot, manifest, kotlin }),
+    ...couplingFindings(projectRoot, {
+      projects,
+      mergedRoot,
+      manifest,
+      kotlin,
+      layout: policy.layout,
+    }),
     ...readTestOnlyClassFindings(projectRoot, { projects }),
     ...readTestRuntimeFindings(projectRoot, { projects }),
     ...readJvmReuseFindings(projectRoot, { projects, kotlin, policy }),
     ...readRoundTripFindings(projectRoot, { projects, kotlin, policy }),
+    ...readCopiedConstantFindings(projectRoot, { projects, kotlin, policy }),
   ];
 }

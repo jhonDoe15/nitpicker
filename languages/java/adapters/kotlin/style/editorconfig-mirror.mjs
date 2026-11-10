@@ -1,6 +1,6 @@
 import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
-import { filesUnder } from '../../../../../shared/filesystem.mjs';
+import { projectFilesUnder } from '../../../../../shared/project-files/project-files.mjs';
 
 const EDITORCONFIG = '.editorconfig';
 const ROOT = 'root = true\n';
@@ -27,7 +27,7 @@ function ancestorsUp(start, top) {
 
 function editorconfigsBelow(directory) {
   return [
-    ...filesUnder(directory, {
+    ...projectFilesUnder(directory, {
       skipDirectory: (_, entry) => GENERATED_DIRECTORIES.has(entry.name),
     }),
   ].filter((file) => path.basename(file) === EDITORCONFIG);

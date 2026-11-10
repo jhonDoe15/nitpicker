@@ -73,14 +73,17 @@
     "docs/agents-snippet.md",
     "!languages/java/gradle/rulesets/**",
     "skills/**",
+    "CHANGELOG.md",
     "spec/config.schema.json",
-    "spec/findings.schema.json"
+    "spec/findings.schema.json",
+    "spec/json-output.schema.json"
   ],
   "exports": {
     "./package.json": "./package.json",
     "./config.schema.json": "./spec/config.schema.json",
     "./spec/config.schema.json": "./spec/config.schema.json",
-    "./spec/findings.schema.json": "./spec/findings.schema.json"
+    "./spec/findings.schema.json": "./spec/findings.schema.json",
+    "./spec/json-output.schema.json": "./spec/json-output.schema.json"
   },
   "peerDependencies": {
     "@types/node": ">=20",
