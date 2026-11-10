@@ -76,8 +76,16 @@ class Bindings:
             self.fallbacks.add(name)
 
     def visit(self, statements, conditional=False):
-        for statement in statements:
-            self.statement(statement, conditional)
+        pending = [(iter(statements), conditional, None)]
+        while pending:
+            items, inner, restore = pending[-1]
+            node = next(items, None)
+            if node is None:
+                pending.pop()
+                if restore is not None:
+                    self.tried = restore
+            elif not self.statement(node, inner):
+                pending.extend(self.branch(node, inner))
 
     def statement(self, node, conditional):
         if isinstance(node, DEFINITIONS):
@@ -87,15 +95,15 @@ class Bindings:
         elif isinstance(node, (ast.Assign, ast.AnnAssign)):
             self.assign(node, conditional)
         else:
-            self.branch(node, conditional)
+            return False
+        return True
 
     def branch(self, node, conditional):
         inner = conditional or not isinstance(node, UNCONDITIONAL)
         tried = self.tried
         self.tried = tried or isinstance(node, TRIES)
-        for body in nested_bodies(node):
-            self.visit(body, inner)
-        self.tried = tried
+        bodies = [(iter(body), inner, None) for body in nested_bodies(node)]
+        return [(iter(()), inner, tried), *reversed(bodies)]
 
     def imports(self, node, conditional):
         if isinstance(node, ast.Import):

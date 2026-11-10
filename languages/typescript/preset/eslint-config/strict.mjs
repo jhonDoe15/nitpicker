@@ -36,6 +36,7 @@ import {
   restrictedAdapterSyntax,
   strictAdaptersTypedConfig,
 } from './strict-adapters.mjs';
+import { atomicUpdateConfigFor } from './concurrency/atomic-updates.mjs';
 import { strictTestConfigFor, testAreaGlobsFor } from './strict-tests.mjs';
 import { truthinessRules } from './truthiness/truthiness-rules.mjs';
 import { configFileGlobsFor, productionPolicyConfigFor } from './policy/production-policy.mjs';
@@ -123,6 +124,7 @@ export function strictSyntaxConfigFor(layout = defaultResolvedLayout, options = 
         'no-restricted-syntax': ['error', ...restrictedSyntax.source],
         ...sourceSyntaxBans(options),
         'nitpicker/no-self-recursion': 'error',
+        'nitpicker/no-task-outliving-resource': 'error',
         'nitpicker/no-tri-state-boolean': 'error',
         'nitpicker/no-unhandled-url-parse': 'error',
         'nitpicker/no-compatibility-shim': 'error',
@@ -159,6 +161,24 @@ export function strictSyntaxConfigFor(layout = defaultResolvedLayout, options = 
 
 export const strictSyntaxConfig = strictSyntaxConfigFor();
 
+function typedProductionRules(layout, options) {
+  return {
+    ...typedDeclarationRules,
+    ...controlFlowTypedRules,
+    'nitpicker/no-unhandled-void-promise': [
+      'error',
+      { runners: options.detachedWorkRunners ?? [] },
+    ],
+    'nitpicker/exhaustive-union-predicate': 'error',
+    'nitpicker/no-forwarding-method-alias': 'error',
+    'nitpicker/no-forwarding-wrapper': 'error',
+    'nitpicker/no-service-locator': ['error', { entryPoints: layout.entryPoints ?? [] }],
+    'nitpicker/no-falsy-default': 'error',
+    'nitpicker/no-string-as-regex': 'error',
+    'nitpicker/no-unmapped-exception': 'error',
+  };
+}
+
 function strictTypedConfigFor(layout, parserOptions, options = {}) {
   return [
     {
@@ -166,19 +186,7 @@ function strictTypedConfigFor(layout, parserOptions, options = {}) {
       ...productionScope(layout),
       languageOptions: { parser: tseslint.parser, parserOptions },
       plugins: { '@typescript-eslint': tseslint.plugin, nitpicker: nitpickerRules },
-      rules: {
-        ...typedDeclarationRules,
-        ...controlFlowTypedRules,
-        'nitpicker/no-unhandled-void-promise': [
-          'error',
-          { runners: options.detachedWorkRunners ?? [] },
-        ],
-        'nitpicker/exhaustive-union-predicate': 'error',
-        'nitpicker/no-forwarding-wrapper': 'error',
-        'nitpicker/no-falsy-default': 'error',
-        'nitpicker/no-string-as-regex': 'error',
-        'nitpicker/no-unmapped-exception': 'error',
-      },
+      rules: typedProductionRules(layout, options),
     },
     {
       files: layout.sourceGlobs,
@@ -199,7 +207,7 @@ function strictTypedConfigFor(layout, parserOptions, options = {}) {
       ignores: layout.excludedGlobs,
       languageOptions: { parser: tseslint.parser, parserOptions },
       plugins: { nitpicker: nitpickerRules },
-      rules: truthinessRules,
+      rules: { ...truthinessRules, 'nitpicker/simpler-boolean-logic': 'error' },
     },
     ...strictAdaptersTypedConfig.map((entry) => ({
       ...entry,
@@ -239,6 +247,7 @@ export function strictPresetConfig(layout, parserOptions, options = {}) {
       plugins: { nitpicker: nitpickerRules },
       rules: strictProductionRules,
     },
+    atomicUpdateConfigFor(layout),
     ...strictTestConfigFor(layout),
   ];
 }
