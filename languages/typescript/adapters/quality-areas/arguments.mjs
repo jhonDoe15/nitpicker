@@ -9,7 +9,7 @@ import {
 import { DEFAULT_LEGACY_INVENTORY } from '../../preset/coding-standards/inventory-path.mjs';
 import { DEFAULT_CRAP_SCORE_LIMIT } from '../../../../shared/policy.mjs';
 import { parsePositiveNumber } from '../../preset/checks/numbers.mjs';
-import { tmpdir } from 'node:os';
+import { realTemporaryDirectory } from '../../../../core/tooling/temporary-files.mjs';
 
 const VALUE_ARGUMENTS = new Set([
   '--analyzer-name',
@@ -132,7 +132,7 @@ function validatedSnapshotRoot(value, name) {
   if (root === TRUSTED_TOOL_ROOT) {
     return root;
   }
-  const relativeToTemporaryRoot = path.relative(realpathSync(tmpdir()), root);
+  const relativeToTemporaryRoot = path.relative(realTemporaryDirectory(), root);
   const segments = relativeToTemporaryRoot.split(path.sep);
   if (
     relativeToTemporaryRoot.startsWith(`..${path.sep}`) ||

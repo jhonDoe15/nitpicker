@@ -214,6 +214,20 @@ describe('readJvmDefinitions on Kotlin layout', () => {
 
     expect(summary(source)).toEqual(['class A line 1 exported', 'function A.f line 2 exported']);
   });
+
+  it('reads members of nested types only when asked, keeping private and companion types out', () => {
+    const java =
+      'class A {\n  static class B { static final int X = 1;\n    interface C { int Y = 2; } }\n' +
+      '  private static class D { static final int Z = 3; }\n}\n';
+    const kotlin =
+      'class K {\n  object O { const val P = 1 }\n  companion object { const val Q = 2 }\n}\n';
+    const names = (source, options) =>
+      readJvmDefinitions(source, options).definitions.map(({ owner, name }) => `${owner}.${name}`);
+
+    expect(names(java)).toEqual(['undefined.A']);
+    expect(names(java, { nested: true })).toEqual(['undefined.A', 'A.B.X', 'A.B.C.Y']);
+    expect(names(kotlin, { kotlin: true, nested: true })).toEqual(['undefined.K', 'K.Q', 'K.O.P']);
+  });
 });
 
 describe('tokenizeJvm', () => {
