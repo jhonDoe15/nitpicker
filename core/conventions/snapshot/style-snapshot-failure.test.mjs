@@ -11,9 +11,7 @@ vi.mock('node:fs', async (importOriginal) => {
     ...original,
     mkdtempSync: (prefix, ...rest) => {
       const directory = original.mkdtempSync(prefix, ...rest);
-      if (String(prefix).endsWith('nitpicker-style-')) {
-        created.push(directory);
-      }
+      created.push(directory);
       return directory;
     },
     writeFileSync: (file, ...rest) => {
@@ -31,6 +29,7 @@ describe('a copy of the merge base that fails half way', () => {
   it('removes its temporary directory and reports the failure', () => {
     const failing = createGitRepository({ 'broken.toml': 'x = 1\n' });
     const failingSha = fixtureGit(failing.root, ['rev-parse', 'HEAD']).trim();
+    created.length = 0;
     const snapshot = lazyConfigRoot({
       projectRoot: failing.root,
       commit: () => ({ repositoryRoot: failing.root, commitSha: failingSha }),
@@ -39,7 +38,8 @@ describe('a copy of the merge base that fails half way', () => {
     });
 
     expect(() => snapshot.get()).toThrow('disk exploded');
-    expect(created).toHaveLength(1);
-    expect(existsSync(created[0])).toBe(false);
+    const snapshots = created.filter((directory) => directory.includes('nitpicker-style-'));
+    expect(snapshots).toHaveLength(1);
+    expect(snapshots.filter((directory) => existsSync(directory))).toEqual([]);
   });
 });
