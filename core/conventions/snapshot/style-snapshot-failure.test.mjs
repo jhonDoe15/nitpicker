@@ -1,14 +1,21 @@
-import { readdirSync } from 'node:fs';
-import { tmpdir } from 'node:os';
-import path from 'node:path';
+import { existsSync } from 'node:fs';
 import { describe, expect, it, vi } from 'vitest';
 import { fixtureGit, useGitFixtures } from '../../diff/git/test-support/git-repository.mjs';
 import { lazyConfigRoot } from '../style-snapshot.mjs';
+
+const created = vi.hoisted(() => []);
 
 vi.mock('node:fs', async (importOriginal) => {
   const original = await importOriginal();
   return {
     ...original,
+    mkdtempSync: (prefix, ...rest) => {
+      const directory = original.mkdtempSync(prefix, ...rest);
+      if (String(prefix).endsWith('nitpicker-style-')) {
+        created.push(directory);
+      }
+      return directory;
+    },
     writeFileSync: (file, ...rest) => {
       if (String(file).includes('nitpicker-style-') && String(file).endsWith('broken.toml')) {
         throw new Error('disk exploded');
@@ -20,15 +27,10 @@ vi.mock('node:fs', async (importOriginal) => {
 
 const { createGitRepository } = useGitFixtures();
 
-function leftovers() {
-  return readdirSync(path.resolve(tmpdir())).filter((name) => name.startsWith('nitpicker-style-'));
-}
-
 describe('a copy of the merge base that fails half way', () => {
   it('removes its temporary directory and reports the failure', () => {
     const failing = createGitRepository({ 'broken.toml': 'x = 1\n' });
     const failingSha = fixtureGit(failing.root, ['rev-parse', 'HEAD']).trim();
-    const before = leftovers();
     const snapshot = lazyConfigRoot({
       projectRoot: failing.root,
       commit: () => ({ repositoryRoot: failing.root, commitSha: failingSha }),
@@ -37,6 +39,7 @@ describe('a copy of the merge base that fails half way', () => {
     });
 
     expect(() => snapshot.get()).toThrow('disk exploded');
-    expect(leftovers()).toEqual(before);
+    expect(created).toHaveLength(1);
+    expect(existsSync(created[0])).toBe(false);
   });
 });
