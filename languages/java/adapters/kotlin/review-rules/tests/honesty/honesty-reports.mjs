@@ -8,6 +8,7 @@ import { loopScope } from './flow/loops/loop-scope.mjs';
 import { focusedTests, FOCUSED_MESSAGE, FOCUSED_RULE } from './focused-tests.mjs';
 import { RETRY_MESSAGE, RETRY_RULE, retriesInTests } from './retries/retry-tests.mjs';
 import { DISABLED_MESSAGE, DISABLED_RULE, skippedTests } from './skipped-tests.mjs';
+import { weakReports } from './weak/weak-reports.mjs';
 
 function flowReports(scanned, suites) {
   const tests = testBodies(scanned, suites);
@@ -46,5 +47,6 @@ export function honestyReports(scanned, suites, project) {
     ...located(focusedTests(suites), FOCUSED_RULE, FOCUSED_MESSAGE),
     ...located(retriesInTests(scanned, suites), RETRY_RULE, RETRY_MESSAGE),
     ...flowReports(scanned, suites),
+    ...weakReports(scanned, suites),
   ];
 }

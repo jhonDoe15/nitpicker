@@ -40,5 +40,8 @@ Each topic has its own page, so two changes to different topics never edit the s
 - [Slice 5: duplicates, coupling and import contracts](python-preset/slice-5-duplicates-coupling-and-import-contracts.md)
 - [Slice 6: mutation testing](python-preset/slice-6-mutation-testing.md)
 - [Runner parity](python-preset/runner-parity.md)
+- [Design rules](python-preset/design-rules.md)
+- [Feature folders](python-preset/feature-folders.md)
 - [Slices](python-preset/slices.md)
 - [Tests](python-preset/tests.md)
+- [Troubleshooting](python-preset/troubleshooting.md)
