@@ -114,6 +114,7 @@ const REVIEW_RULES = new Set([
   'HttpWithoutTimeout',
   'UnorderedQuery',
   'UnboundedQueryArray',
+  'ConfigurationReadOutsideCompositionRoot',
   'ListUsedAsSet',
   'LinearLookupInLoop',
   'SortForExtreme',

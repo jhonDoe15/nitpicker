@@ -1899,6 +1899,54 @@ return (
       </property>
     </properties>
   </rule>
+  <rule name="ConfigurationReadOutsideCompositionRoot" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
+        message="Read environment variables and system properties once in the composition root (the class with main, a Guice or Dagger module, a CDI or Micronaut factory) or through the typed configuration of the framework, and pass the values in through constructors or parameters, not System.getenv, System.getProperty, Integer.getInteger, Long.getLong or Boolean.getBoolean. JVM properties such as java.*, user.*, javax.*, jdk.* and http.* are fine. A library reading its own opt-in switch (-Dmylib.debug) takes an exception.">
+    <priority>3</priority>
+    <properties>
+      <property name="xpath">
+        <value><![CDATA[
+(
+  //MethodCall
+    [pmd-java:matchesSig('java.lang.System#getenv(_*)')
+     or pmd-java:matchesSig('java.lang.System#getProperty(_*)')]
+    [ArgumentList/* or parent::MethodCall[@MethodName = ('get', 'getOrDefault', 'containsKey')]]
+  | //MethodCall
+    [pmd-java:matchesSig('java.lang.Integer#getInteger(_*)')
+     or pmd-java:matchesSig('java.lang.Long#getLong(_*)')
+     or pmd-java:matchesSig('java.lang.Boolean#getBoolean(_*)')]
+  | //MethodReference
+    [@MethodName = ('getenv', 'getProperty') and *[1][pmd-java:typeIs('java.lang.System')]
+     or @MethodName = 'getInteger' and *[1][pmd-java:typeIs('java.lang.Integer')]
+     or @MethodName = 'getLong' and *[1][pmd-java:typeIs('java.lang.Long')]
+     or @MethodName = 'getBoolean' and *[1][pmd-java:typeIs('java.lang.Boolean')]]
+)
+[not(ArgumentList/*[1][self::StringLiteral]
+  [matches(@ConstValue, '^(java|user|os|file|line|path|javax|jdk|sun|com\.sun|http|https|ftp)\.|^socks')])]
+[not(ancestor::CompilationUnit//MethodDeclaration[@Name = 'main'][VoidType][pmd-java:modifiers() = 'static']
+  [count(FormalParameters/FormalParameter) = 1])]
+[not(ancestor::*/ModifierList/Annotation[
+  pmd-java:typeIs('org.springframework.context.annotation.Configuration')
+  or pmd-java:typeIs('org.springframework.boot.autoconfigure.SpringBootApplication')
+  or pmd-java:typeIs('org.springframework.boot.autoconfigure.AutoConfiguration')
+  or pmd-java:typeIs('org.springframework.boot.test.context.TestConfiguration')
+  or pmd-java:typeIs('io.micronaut.context.annotation.Factory')
+  or pmd-java:typeIs('io.micronaut.context.annotation.ConfigurationProperties')
+  or pmd-java:typeIs('io.quarkus.runtime.annotations.QuarkusMain')
+  or pmd-java:typeIs('dagger.Module')
+  or pmd-java:typeIs('dagger.Provides')
+  or pmd-java:typeIs('com.google.inject.Provides')
+  or pmd-java:typeIs('jakarta.enterprise.inject.Produces')
+  or pmd-java:typeIs('javax.enterprise.inject.Produces')])]
+[not(ancestor::ClassDeclaration/*[self::ExtendsList or self::ImplementsList]/ClassType[
+  pmd-java:typeIs('com.google.inject.AbstractModule')
+  or pmd-java:typeIs('com.google.inject.Module')
+  or pmd-java:typeIs('io.quarkus.runtime.QuarkusApplication')
+  or pmd-java:typeIs('org.springframework.boot.env.EnvironmentPostProcessor')
+  or pmd-java:typeIs('org.springframework.context.ApplicationContextInitializer')])]
+]]></value>
+      </property>
+    </properties>
+  </rule>
   <rule name="GeneratedEqualsSkipsSuperclass" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
         message="This class extends a project class, which declares fields, but the equals and hashCode that Lombok generates ignore inherited fields unless callSuper is set, so two objects that differ only in those fields are equal. Write @EqualsAndHashCode(callSuper = true), or callSuper = false when ignoring them is intended.">
     <priority>3</priority>
