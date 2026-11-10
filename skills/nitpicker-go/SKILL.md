@@ -76,6 +76,8 @@ The linters' allowed forms (errors, names and doc comments, simplifications, mod
 
 - The gate fails committed secrets, binaries, build output and files over 1 MB; each message names
   the fix. Don't add an `exceptions` entry to get past one: stop and ask.
+- A migration that adds a foreign key also creates an index that starts with its columns
+  (`CREATE INDEX ON orders (customer_id)`); PostgreSQL does not create one (`foreign-key-index`).
 
 ## Reuse, packages and dead code
 

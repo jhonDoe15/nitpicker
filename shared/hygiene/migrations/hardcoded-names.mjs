@@ -8,7 +8,7 @@ import {
 } from '../../messages/exception-sentence.mjs';
 import { HYGIENE_RULE_IDS } from '../../project-rules/hygiene-rules.mjs';
 import { isMigrationFile } from './migration-files.mjs';
-import { readSource } from './revision-graph.mjs';
+import { lineOf, readSource } from './revision-graph.mjs';
 
 const RULE = HYGIENE_RULE_IDS.migrationHardcodedName;
 const MYSQL_DATABASE_OPTIONS = new Set([
@@ -86,10 +86,6 @@ const FORMS = [
       ].join(' '),
   },
 ];
-
-function lineOf(text, index) {
-  return text.slice(0, index).split('\n').length;
-}
 
 function snippetAt(text, index) {
   const start = text.lastIndexOf('\n', index) + 1;
