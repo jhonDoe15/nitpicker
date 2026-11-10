@@ -28,6 +28,8 @@ Part of the [nitpicker-typescript](../SKILL.md) skill. Write these forms from th
   and a CLI `main` that is only called from startup code stay synchronous.
 - Parse a URL from runtime text with `URL.parse(text)` or after `URL.canParse(text)`; `new URL(text)`
   throws on text that is not a URL (`nitpicker/no-unhandled-url-parse`).
+- Build an `Intl` formatter or an `Ajv` instance with fixed options once, at module scope or in a
+  class field, not per call (`nitpicker/reusable-object-per-call`).
 - Regexes: a `g` or `y` regex keeps `lastIndex`, so don't reuse one with `test()` or `exec()`
   across calls; drop the flag or use `text.matchAll(pattern)` (`nitpicker/no-shared-stateful-regex`).
   `match`, `matchAll` and `search` compile a string argument as a regex: use `includes` or
@@ -46,6 +48,10 @@ Part of the [nitpicker-typescript](../SKILL.md) skill. Write these forms from th
 - A runtime array in an SQL `in` list or a multi-row insert gets an empty check and a size bound: return early when
   it is empty, then send it as one parameter (`= any($1::uuid[])`) or split it with the project's chunking
   helper (`nitpicker/no-unbounded-query-array`).
+- Time values carry their unit in the name (`timeoutMs`, `ttlSeconds`) and meet only the same unit: convert
+  once where a value enters (`ttlSeconds * 1000`, `Math.floor(Date.now() / 1000)`), compare JWT `exp` with
+  `Date.now() / 1000`, pass milliseconds to `setTimeout` and `new Date(...)`, and never cut an epoch time
+  with `| 0` (`nitpicker/time-unit-mismatch`).
 - In a server project, dates use UTC or a named zone, never the server's own: `getUTCHours()`,
   `toISOString()`, `Date.UTC(...)`, `{ timeZone }` for `Intl.DateTimeFormat` and `toLocale*String`,
   luxon `{ zone }`, date-fns `{ in: tz(zone) }`, dayjs `.utc()` (`nitpicker/no-local-time-zone`).
@@ -58,6 +64,9 @@ Part of the [nitpicker-typescript](../SKILL.md) skill. Write these forms from th
   `(await repo.find()).length`, `where` instead of `.filter`/`.some`/`.find` on the rows, `order`/`orderBy`
   instead of `.sort`, and the ORM's aggregate or `groupBy` instead of `reduce`, `Math.max(...rows.map(...))`
   or `groupBy` (`nitpicker/no-in-memory-query`).
+- Join at most one to-many relation into a query: TypeORM `relationLoadStrategy: 'query'` or a query
+  per collection, Sequelize `separate: true` on the other `hasMany` includes, and
+  `strategy: 'select-in'` on a MikroORM `populate` (`nitpicker/no-multiple-collection-joins`).
 - Index every foreign key: `@Index()` on a TypeORM `@ManyToOne` (or a class `@Index` that starts with it),
   `index: true` on a MikroORM `@ManyToOne`, `index().on(t.orderId)` in a Drizzle `pgTable`
   (`nitpicker/no-unindexed-foreign-key`; with migrations, a `CREATE INDEX` there, `foreign-key-index`).

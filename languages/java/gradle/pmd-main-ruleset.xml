@@ -249,6 +249,48 @@ return (
       </property>
     </properties>
   </rule>
+  <rule name="EpochNarrowedToInt" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
+        message="An epoch time is cut to a 32-bit int here: epoch milliseconds overflow at once, and epoch seconds overflow in 2038 and turn a long lifetime into a date in the past. Keep epoch times in a long or an Instant (long expiresAt = Instant.now().getEpochSecond() + lifetimeSeconds), and compare them as long values.">
+    <priority>3</priority>
+    <properties>
+      <property name="xpath">
+        <value><![CDATA[
+let $epochCall := function($e) {
+      $e/self::MethodCall[@MethodName = ('currentTimeMillis', 'toEpochMilli', 'getEpochSecond', 'toEpochSecond')
+                          or (@MethodName = 'getTime' and ArgumentList/@Size = 0
+                              and *[1][pmd-java:typeIs('java.util.Date')])]
+    },
+    $epochName := function($e) {
+      $e[self::VariableAccess or self::FieldAccess or self::MethodCall]
+        [matches(string((@Name, @MethodName)[1]), 'epoch', 'i')]
+        [matches(string((@Name, @MethodName)[1]),
+                 '(Milli|Millis|Ms|Second|Seconds|Secs|_MILLI|_MILLIS|_MS|_SECOND|_SECONDS|_SECS|_milli|_millis|_ms|_second|_seconds|_secs)$')]
+    },
+    $direct := function($e) {
+      exists($epochCall($e)) or exists($epochName($e))
+        or exists($e/self::InfixExpression[@Operator = ('/', '*', '+')]
+                    [NumericLiteral or @Operator = '+']
+                    /*[exists($epochCall(.)) or exists($epochName(.))])
+    },
+    $epoch := function($e) {
+      $direct($e)
+        or (exists($e/self::VariableAccess)
+            and (let $declarations := $e/ancestor::*[self::MethodDeclaration or self::ConstructorDeclaration
+                                                     or self::LambdaExpression or self::Initializer][1]
+                                       //LocalVariableDeclaration/VariableDeclarator[VariableId/@Name = $e/@Name]
+                 return count($declarations) = 1 and $direct($declarations/*[2])))
+    }
+return (
+  //CastExpression[PrimitiveType[@Kind = 'int']][$epoch(*[last()])]
+  | //MethodCall[@MethodName = 'toIntExact'][ArgumentList/@Size = 1][$epoch(ArgumentList/*[1])]
+  | //InfixExpression[@Operator = ('<', '<=', '>', '>=')]
+    [some $side in *[self::InfixExpression[@Operator = '+'][pmd-java:typeIs('int')]] satisfies
+       $epoch(*[not(. is $side)])]
+)
+]]></value>
+      </property>
+    </properties>
+  </rule>
   <rule name="ExhaustiveEnumPredicate" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
         message="These comparisons list only some constants of an enum of the project, so a constant added later silently falls into the other case. Classify every constant: a switch expression without default (adding a constant then fails to compile), or a boolean each constant declares (PAID(true)).">
     <priority>3</priority>
@@ -664,6 +706,119 @@ return //MethodCall[@MethodName = 'contains'][ArgumentList/@Size = 1][*[1][self:
       </property>
     </properties>
   </rule>
+  <rule name="MixedTimeUnits" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
+        message="Time values in two different units meet here without a conversion: seconds with milliseconds, nanoseconds or minutes, in a +, -, comparison, assignment or argument, so the result is off by a factor such as 1000. Convert once where the value enters (TimeUnit.SECONDS.toMillis(seconds), Duration.ofSeconds(seconds).toMillis() or seconds * 1000) and name the result with its unit; if a name gives the wrong unit, rename it to the real one.">
+    <priority>3</priority>
+    <properties>
+      <property name="xpath">
+        <value><![CDATA[
+let $scales := map { 'ns': 1, 'us': 1000, 'ms': 1000000, 's': 1000000000, 'min': 60000000000 },
+    $named := function($names) {
+      let $name := string($names[1])
+      return if (empty($names) or matches($name, '(Per|_per|_PER)([A-Z_]|$)|^_*(show|hide|include|display|enable|disable|use|should|can|allow)[A-Z_]')) then ()
+      else if (matches($name, '^_*(NANOS|NANOSECONDS|nanos|nanoseconds)$|[a-z0-9](Nanoseconds|Nanos)$|_(NANOS|NANOSECONDS|nanos|nanoseconds)$')) then 'ns'
+      else if (matches($name, '^_*(MICROS|MICROSECONDS|micros|microseconds)$|[a-z0-9](Microseconds|Micros)$|_(MICROS|MICROSECONDS|micros|microseconds)$')) then 'us'
+      else if (matches($name, '^_*(EPOCHMILLI|MILLIS|MILLISECONDS|MS|epochMilli|epochmilli|millis|milliseconds|ms)$|[a-z0-9](Milliseconds|Millis|Ms|EpochMilli)$|_(EPOCH_MILLI|MILLIS|MILLISECONDS|MS|epoch_milli|millis|milliseconds|ms)$')) then 'ms'
+      else if (matches($name, '^_*(EPOCHSECOND|SECONDS|SECS|epochSecond|epochsecond|seconds|secs)$|[a-z0-9](Seconds|Secs|EpochSecond)$|_(EPOCH_SECOND|SECONDS|SECS|epoch_second|seconds|secs)$')) then 's'
+      else if (matches($name, '^_*(MINUTES|minutes)$|[a-z0-9](Minutes)$|_(MINUTES|minutes)$')) then 'min'
+      else ()
+    },
+    $converter := function($names) {
+      matches(string($names[1]), '^_*(of|plus|minus|with|set|from|parse|sleep|truncated|multiplied|divided|is|has|format)([^a-z]|$)')
+    },
+    $constant := function($name) {
+      if ($name = ('NANOSECONDS', 'NANOS')) then 'ns'
+      else if ($name = ('MICROSECONDS', 'MICROS')) then 'us'
+      else if ($name = ('MILLISECONDS', 'MILLIS')) then 'ms'
+      else if ($name = 'SECONDS') then 's'
+      else if ($name = 'MINUTES') then 'min'
+      else ()
+    },
+    $unitType := function($e) {
+      $e[self::FieldAccess][pmd-java:typeIs('java.util.concurrent.TimeUnit')
+                            or pmd-java:typeIs('java.time.temporal.ChronoUnit')]/$constant(@Name)
+    },
+    $direct := function($e) {
+      if ($e/self::MethodCall) then
+        if ($e/@MethodName = 'nanoTime') then 'ns'
+        else if ($e/@MethodName = 'getTime' and $e/ArgumentList/@Size = 0
+                 and $e/*[1][pmd-java:typeIs('java.util.Date')]) then 'ms'
+        else if ($converter($e/@MethodName)) then ()
+        else $named($e/@MethodName)
+      else if ($e/self::VariableAccess or $e/self::FieldAccess) then $named($e/@Name)
+      else ()
+    },
+    $scaled := function($e, $unit) {
+      let $operand := $e/*[not(self::NumericLiteral)],
+          $literal := $e/NumericLiteral
+      return if (count($operand) = 1 and count($literal) = 1
+                 and ($e/@Operator = '*' or $e/*[1] is $operand)) then
+        let $from := $unit($operand)
+        return if (empty($from)) then ()
+        else
+          let $target := if ($e/@Operator = '*') then $scales($from) div $literal/@ValueAsDouble
+                         else $scales($from) * $literal/@ValueAsDouble
+          return ('ns', 'us', 'ms', 's', 'min')[$scales(.) = $target]
+      else ()
+    },
+    $local := function($e) {
+      if ($e/self::VariableAccess and empty($named($e/@Name))) then
+        let $declarations := $e/ancestor::*[self::MethodDeclaration or self::ConstructorDeclaration
+                                            or self::LambdaExpression or self::Initializer][1]
+                               //LocalVariableDeclaration/VariableDeclarator[VariableId/@Name = $e/@Name]
+        return if (count($declarations) = 1) then $declarations/*[2] else ()
+      else ()
+    },
+    $base := function($e) {
+      let $plain := if ($e/self::CastExpression[PrimitiveType[@Kind = ('long', 'double')]])
+                    then $e/*[last()] else $e
+      return (
+        $direct($plain),
+        if ($plain/self::InfixExpression[@Operator = ('*', '/')]) then $scaled($plain, $direct) else (),
+        for $init in $local($plain) return
+          ($direct($init), if ($init/self::InfixExpression[@Operator = ('*', '/')]) then $scaled($init, $direct) else ())
+      )[1]
+    },
+    $unit := function($e) {
+      if ($e/self::InfixExpression[@Operator = ('+', '-')][not(pmd-java:typeIs('java.lang.String'))]) then
+        let $units := distinct-values(($base($e/*[1]), $base($e/*[2])))
+        return if (count($units) = 1) then $units else ()
+      else $base($e)
+    },
+    $differs := function($left, $right) {
+      exists($left) and exists($right) and $left != $right
+    }
+return (
+  //InfixExpression[@Operator = ('+', '-', '<', '<=', '>', '>=', '==', '!=')]
+    [not(pmd-java:typeIs('java.lang.String'))]
+    [$differs($unit(*[1]), $unit(*[2]))]
+  | //AssignmentExpression[@Operator = ('=', '+=', '-=')]
+    [*[1][self::VariableAccess or self::FieldAccess]]
+    [$differs($named(*[1]/@Name), $unit(*[2]))]
+  | //VariableDeclarator[*[2]][$differs($named(VariableId/@Name), $unit(*[2]))]
+  | //MethodCall[ArgumentList/@Size >= 1]
+    [let $call := .,
+         $first := ArgumentList/*[1],
+         $expected := if (@MethodName = 'sleep' and *[1][pmd-java:typeIs('java.lang.Thread')]
+                          or pmd-java:matchesSig('java.lang.Thread#sleep(long)')) then 'ms'
+                      else if (exists($unitType(*[1]))) then $unitType(*[1])
+                      else if ($converter(@MethodName)) then $named(@MethodName)
+                      else ()
+     return $differs($expected, $unit($first))
+       or (some $index in 2 to count(ArgumentList/*) satisfies
+             $differs($unitType(ArgumentList/*[$index]), $unit(ArgumentList/*[$index - 1])))
+       or (let $methods := ancestor::ClassBody[1]/MethodDeclaration[@Name = $call/@MethodName]
+                                [FormalParameters/@Size = $call/ArgumentList/@Size]
+           return if (count($methods) = 1 and (*[1][self::ThisExpression] or count(*) = 1)) then
+             some $index in 1 to count(ArgumentList/*) satisfies
+               $differs($named($methods/FormalParameters/FormalParameter[$index]/VariableId/@Name),
+                        $unit($call/ArgumentList/*[$index]))
+           else false())]
+)
+]]></value>
+      </property>
+    </properties>
+  </rule>
   <rule name="ParameterMutation" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
         message="This changes the collection, map or array the caller passed in. Build and return a new one (List.copyOf, a stream, new ArrayList&lt;&gt;(items) filled and returned), or copy the parameter first and change the copy.">
     <priority>3</priority>
@@ -817,6 +972,79 @@ return (
 ]]></value>
       </property>
     </properties>
+  </rule>
+  <rule name="ReusableObjectPerCall" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
+        message="Build this once and reuse it: once built it is safe to share between threads, and building it costs far more than using it. Keep it in a static final constant, a final field set in the constructor, or a @Bean.">
+    <priority>2</priority>
+    <properties><property name="xpath"><value><![CDATA[
+let $shared := ('ObjectMapper', 'JsonMapper', 'XmlMapper', 'YAMLMapper', 'Gson', 'GsonBuilder', 'JAXBContext',
+      'ValidatorFactory', 'Validator', 'DateTimeFormatter'),
+    $caches := ('computeIfAbsent', 'withInitial', 'memoize', 'memoizeWithExpiration'),
+    $stores := ('put', 'putIfAbsent', 'set'),
+    $onlyFrom := function($method, $callers) {
+  let $uses := $method/..//(MethodCall[*[1][self::ArgumentList or self::ThisExpression[not(*)]]]
+      | MethodReference[*[1][self::ThisExpression[not(*)]]])[@MethodName = $method/@Name]
+  return $method/@Visibility = 'private' and exists($uses)
+    and (every $use in $uses satisfies exists($use/ancestor::* intersect $callers))
+},
+    $start := function($method) {
+  exists($method/ModifierList/Annotation[pmd-java:typeIs('org.springframework.context.annotation.Bean')
+    or pmd-java:typeIs('jakarta.annotation.PostConstruct') or pmd-java:typeIs('javax.annotation.PostConstruct')
+    or pmd-java:typeIs('jakarta.enterprise.inject.Produces') or pmd-java:typeIs('javax.enterprise.inject.Produces')])
+  or ($method/@Name = ('afterPropertiesSet', 'start') and not($method/FormalParameters/*))
+  or ($method/@Name = 'main' and $method[pmd-java:modifiers() = 'static'])
+  or exists($method/ClassType/descendant-or-self::ClassType[@SimpleName = $shared])
+},
+    $setupMethod := function($method) {
+  let $body := $method/..,
+      $starts := ($body/ConstructorDeclaration, $body/CompactConstructorDeclaration, $body/Initializer,
+        $body/FieldDeclaration, $body/MethodDeclaration[$start(.)]),
+      $helpers := $body/MethodDeclaration[$onlyFrom(., $starts)]
+  return exists($method intersect ($starts, $helpers, $body/MethodDeclaration[$onlyFrom(., ($starts, $helpers))]))
+},
+    $cached := function($node, $method) {
+  exists($node/ancestor::LambdaExpression[ancestor::MethodDeclaration[1] is $method]
+    [parent::ArgumentList/parent::MethodCall[@MethodName = $caches
+      or (@MethodName = 'get' and count(ArgumentList/*) = 2)]])
+},
+    $keptInField := function($node, $method) {
+  let $locals := $method//VariableId/@Name
+  return exists($node/ancestor::AssignmentExpression[ancestor::MethodDeclaration[1] is $method]
+    [*[1][self::FieldAccess or self::VariableAccess[not(@Name = $locals)]]]
+    [exists(*[2]/descendant-or-self::* intersect $node)])
+  or exists($node/parent::ArgumentList/parent::MethodCall[@MethodName = $stores])
+},
+    $fromCall := function($node, $method) {
+  exists($node/ArgumentList//VariableAccess[@Name = $method//VariableId/@Name])
+},
+    $perCall := function($node) {
+  let $method := $node/ancestor::MethodDeclaration[1]
+  return exists($method) and not($setupMethod($method)) and not($cached($node, $method))
+    and not($keptInField($node, $method)) and not($fromCall($node, $method))
+}
+return (
+  //ConstructorCall[pmd-java:typeIs('com.fasterxml.jackson.databind.ObjectMapper')
+    or pmd-java:typeIs('com.fasterxml.jackson.databind.json.JsonMapper')
+    or pmd-java:typeIs('com.fasterxml.jackson.dataformat.xml.XmlMapper')
+    or pmd-java:typeIs('com.fasterxml.jackson.dataformat.yaml.YAMLMapper')
+    or pmd-java:typeIs('tools.jackson.databind.ObjectMapper')
+    or pmd-java:typeIs('tools.jackson.databind.json.JsonMapper')
+    or pmd-java:typeIs('com.google.gson.Gson')
+    or pmd-java:typeIs('com.google.gson.GsonBuilder')]
+  | //MethodCall[@MethodName = 'builder'][*[1][self::TypeExpression
+      and (pmd-java:typeIs('com.fasterxml.jackson.databind.json.JsonMapper')
+        or pmd-java:typeIs('com.fasterxml.jackson.dataformat.xml.XmlMapper')
+        or pmd-java:typeIs('com.fasterxml.jackson.dataformat.yaml.YAMLMapper')
+        or pmd-java:typeIs('tools.jackson.databind.json.JsonMapper'))]]
+  | //MethodCall[@MethodName = 'newInstance'][*[1][self::TypeExpression
+      and (pmd-java:typeIs('jakarta.xml.bind.JAXBContext') or pmd-java:typeIs('javax.xml.bind.JAXBContext'))]]
+  | //MethodCall[@MethodName = ('buildDefaultValidatorFactory', 'byDefaultProvider', 'byProvider')]
+      [*[1][self::TypeExpression
+        and (pmd-java:typeIs('jakarta.validation.Validation') or pmd-java:typeIs('javax.validation.Validation'))]]
+  | //MethodCall[pmd-java:matchesSig('java.time.format.DateTimeFormatter#ofPattern(_*)')]
+      [ArgumentList/*[1][@CompileTimeConstant = true()]]
+)[$perCall(.)]
+]]></value></property></properties>
   </rule>
   <rule name="ServiceLocatorLookup" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
         message="Take the dependency as a constructor parameter (a Provider or Instance parameter when it is optional or created per use) instead of looking it up from a Guice Injector, CDI, a BeanManager or a JNDI context where it is used: the lookup hides what the class needs. The main method, the configure method of a Guice Module, @Provides and @Produces methods, @Bean methods of a @Configuration class and CDI extensions may look dependencies up.">
@@ -1702,6 +1930,44 @@ return (
   /ClassBody/FieldDeclaration[not(pmd-java:modifiers() = 'static')][not(PrimitiveType)]
     [not(ClassType[pmd-java:typeIsExactly('java.lang.String')])]
   /VariableDeclarator/VariableId
+]]></value>
+      </property>
+    </properties>
+  </rule>
+  <rule name="BacktrackingRegex" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
+        message="Rewrite this regex without nested or overlapping quantifiers, or use a String method: it backtracks super-linearly on some inputs. An exception fits only when the input is bounded and trusted.">
+    <priority>3</priority>
+    <properties>
+      <property name="xpath">
+        <value><![CDATA[
+//MethodCall[pmd-java:matchesSig('java.util.regex.Pattern#compile(java.lang.String)')
+             or pmd-java:matchesSig('java.util.regex.Pattern#compile(java.lang.String,int)')
+             or pmd-java:matchesSig('java.util.regex.Pattern#matches(java.lang.String,java.lang.CharSequence)')
+             or pmd-java:matchesSig('java.lang.String#matches(java.lang.String)')
+             or pmd-java:matchesSig('java.lang.String#replaceAll(java.lang.String,java.lang.String)')
+             or pmd-java:matchesSig('java.lang.String#replaceFirst(java.lang.String,java.lang.String)')
+             or pmd-java:matchesSig('java.lang.String#split(_*)')
+             or pmd-java:matchesSig('java.lang.String#splitWithDelimiters(_*)')]
+  /ArgumentList/*[1][self::StringLiteral][not(@TextBlock = true())]
+]]></value>
+      </property>
+    </properties>
+  </rule>
+  <rule name="RegexPartDefect" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
+        message="Remove the part of this regex that never changes what it matches, rewrite the part that does not do what it looks like, or write the shorter form with the same meaning.">
+    <priority>3</priority>
+    <properties>
+      <property name="xpath">
+        <value><![CDATA[
+//MethodCall[pmd-java:matchesSig('java.util.regex.Pattern#compile(java.lang.String)')
+             or pmd-java:matchesSig('java.util.regex.Pattern#compile(java.lang.String,int)')
+             or pmd-java:matchesSig('java.util.regex.Pattern#matches(java.lang.String,java.lang.CharSequence)')
+             or pmd-java:matchesSig('java.lang.String#matches(java.lang.String)')
+             or pmd-java:matchesSig('java.lang.String#replaceAll(java.lang.String,java.lang.String)')
+             or pmd-java:matchesSig('java.lang.String#replaceFirst(java.lang.String,java.lang.String)')
+             or pmd-java:matchesSig('java.lang.String#split(_*)')
+             or pmd-java:matchesSig('java.lang.String#splitWithDelimiters(_*)')]
+  /ArgumentList/*[1][self::StringLiteral][not(@TextBlock = true())]
 ]]></value>
       </property>
     </properties>
