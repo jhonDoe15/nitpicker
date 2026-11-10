@@ -18,6 +18,7 @@ describe('pnpm workspace packages', () => {
 
   it('reads a block list without indent', () => {
     expect(pnpmPackagePatterns('packages:\n- apps/*\n- tools/*\n')).toEqual(['apps/*', 'tools/*']);
+    expect(pnpmPackagePatterns('packages:\n-apps/*\n-   tools/*\n')).toEqual(['apps/*', 'tools/*']);
   });
 
   it('reads a flow array on one line or across lines', () => {
@@ -28,6 +29,8 @@ describe('pnpm workspace packages', () => {
     expect(
       pnpmPackagePatterns('packages: [\n  apps/*,\n  libs/*\n]\nonlyBuiltDependencies: []\n'),
     ).toEqual(['apps/*', 'libs/*']);
+    expect(pnpmPackagePatterns('packages:[apps/*]\n')).toEqual(['apps/*']);
+    expect(pnpmPackagePatterns('packages:   [ apps/* ]\n')).toEqual(['apps/*']);
   });
 
   it('reads only the packages key', () => {
