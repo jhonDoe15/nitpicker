@@ -26,7 +26,7 @@ const STATIC_CALL = new RegExp(
 const FIRST_ARGUMENT_ONLY = new Set(['mockStatic', 'mockConstruction']);
 const CLASS_LITERAL = /^([\w.]+)::class(?:\.java)?$/u;
 const FUNCTION_REFERENCE = /^([\w.]*)::(\w+)$/u;
-const OBJECT_NAME = /^[A-Z][\w]*(?:\.[A-Za-z]\w*)*$/u;
+const OBJECT_NAME = /^[A-Z]\w*(?:\.[A-Za-z]\w*)*$/u;
 const STRING_LITERAL = /^"[^"]*"$/u;
 const COMPANION = /\.Companion$/u;
 

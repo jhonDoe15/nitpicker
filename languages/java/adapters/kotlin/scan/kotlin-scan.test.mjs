@@ -156,6 +156,7 @@ describe('readKotlinSourceFindings', () => {
   it('names every rule it reports in KOTLIN_SOURCE_RULES', () => {
     expect(KOTLIN_SOURCE_RULES.toSorted()).toEqual(
       [
+        'BacktrackingRegex',
         'BooleanFlagParameter',
         'CatchOnlyLogsOrReturnsDefault',
         'ChildCoroutineOutlivesResource',
@@ -184,15 +185,18 @@ describe('readKotlinSourceFindings', () => {
         'ParameterMutation',
         'PlainTextRegex',
         'ProcessWaitWithoutTimeout',
+        'RegexPartDefect',
         'RepeatedStringLiteral',
         'SecretInLog',
         'ShellCommand',
+        'SimplerBooleanLogic',
         'SortForExtreme',
         'SqlStringBuilding',
         'StandardStreamOutsideEntryPoint',
         'SuspendFunInFinallySection',
         'TestClassWithoutTestCases',
         'TestHelperInSource',
+        'TimeUnitMismatch',
         'TlsVerificationOff',
         'TriStateBoolean',
         'UnboundedFanOut',
