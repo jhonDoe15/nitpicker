@@ -1,11 +1,17 @@
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
+import {
+  nestedCheckout,
+  useGitCheckouts,
+} from '../../../../../core/diff/git/test-support/git-checkout.mjs';
 import { kotlinProjects } from '../test-support/kotlin-project.mjs';
 import {
   isolatedWorkspace,
   mirroredWorkspace,
   projectEditorconfigs,
 } from './editorconfig-mirror.mjs';
+
+const { gitCheckout } = useGitCheckouts();
 
 const { project, remove } = kotlinProjects();
 
@@ -114,6 +120,22 @@ describe('the mirror workspace', () => {
     ).toEqual([
       { path: '.editorconfig', text: 'root = true\n' },
       { path: 'src/.editorconfig', text: 'indent_size = 2\n' },
+    ]);
+  });
+
+  it('skips git-ignored folders and nested checkouts of a Git project', () => {
+    const config = '[*.kt]\nindent_size = 2\n';
+    const root = gitCheckout(
+      {
+        'src/.editorconfig': config,
+        'scratch/.editorconfig': config,
+        ...nestedCheckout('agent', { '.editorconfig': config, 'src/.editorconfig': config }),
+      },
+      ['scratch/'],
+    );
+
+    expect(projectEditorconfigs(root).editorconfigs.map(({ path: file }) => file)).toEqual([
+      'src/.editorconfig',
     ]);
   });
 });

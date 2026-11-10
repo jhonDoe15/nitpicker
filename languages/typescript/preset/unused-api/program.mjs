@@ -1,9 +1,13 @@
 import { existsSync, lstatSync, readdirSync } from 'node:fs';
 import path from 'node:path';
 import { ts } from '../../typescript-api/typescript-api.mjs';
-import { filesUnder } from '../../../../shared/filesystem.mjs';
+import { projectFilesUnder } from '../../../../shared/project-files/project-files.mjs';
 import { codeExtensionNames } from '../layout.mjs';
 import { workspacePaths } from './workspace/entries.mjs';
+import {
+  TROUBLESHOOTING_ANCHORS,
+  troubleshootingError,
+} from '../../../../shared/messages/troubleshooting.mjs';
 
 const NO_INPUTS = 18_003;
 const SCRIPT_DIRECTORIES = ['scripts'];
@@ -14,7 +18,10 @@ function configError(diagnostics) {
   const messages = diagnostics.map((diagnostic) =>
     ts.flattenDiagnosticMessageText(diagnostic.messageText, '\n'),
   );
-  return new Error(`The TypeScript config could not be read: ${messages.join('; ')}`);
+  return troubleshootingError(
+    `The TypeScript config could not be read: ${messages.join('; ')}`,
+    TROUBLESHOOTING_ANCHORS.typescriptConfigUnreadable,
+  );
 }
 
 function parseConfig(configPath, projectRoot) {
@@ -42,7 +49,7 @@ function rootConfigsAndScripts(projectRoot, layout) {
     .map((entry) => path.join(projectRoot, entry.name));
   const scripts = SCRIPT_DIRECTORIES.map((name) => path.join(projectRoot, name))
     .filter((directory) => existsSync(directory))
-    .flatMap((directory) => [...filesUnder(directory)]);
+    .flatMap((directory) => projectFilesUnder(directory, { includeIgnored: true }));
   return [...configs, ...scripts].filter(
     (file) => isCodeFile(file) && !layout.isExcluded(path.relative(projectRoot, file)),
   );
@@ -60,7 +67,8 @@ export function codeFilesUnder(directories, layout, projectRoot) {
   const walked = { layout, projectRoot };
   return directories
     .flatMap((dir) => [
-      ...filesUnder(dir, {
+      ...projectFilesUnder(dir, {
+        includeIgnored: true,
         skipDirectory: (absolute, entry) => isSkippedDirectory(absolute, entry, walked),
       }),
     ])
@@ -116,12 +124,25 @@ function compilerOptions({ parsed, packages, projectRoot, layout }) {
   };
 }
 
+function keepsFile({ projectRoot, layout, withoutTests }, file) {
+  const relative = path.relative(projectRoot, file).split(path.sep).join('/');
+  return !(withoutTests && (layout.isTestFile(relative) || layout.isTestFixture(`/${relative}`)));
+}
+
 /**
  * One program over the project's files (from the layered policy tsconfig, so `paths`, `extends` and
  * references resolve as the type check does), its root configs and scripts, and the code of the
  * other workspace packages. Ambient `types` are left out: imported modules still bring theirs.
+ * `withoutTests` leaves the layout's test files and fixtures out of the program, for a pass that
+ * only reads production code.
  */
-export function createProjectProgram({ projectRoot, configPath, packagesInfo, layout }) {
+export function createProjectProgram({
+  projectRoot,
+  configPath,
+  packagesInfo,
+  layout,
+  withoutTests = false,
+}) {
   const parsed = parseConfig(configPath, projectRoot);
   const siblings = packagesInfo.packages.filter(
     ({ dir }) => dir !== projectRoot && !projectRoot.startsWith(`${dir}${path.sep}`),
@@ -136,7 +157,9 @@ export function createProjectProgram({ projectRoot, configPath, packagesInfo, la
     ),
   ]);
   return ts.createProgram({
-    rootNames: [...rootNames],
+    rootNames: [...rootNames].filter((file) =>
+      keepsFile({ projectRoot, layout, withoutTests }, file),
+    ),
     options: compilerOptions({ parsed, packages: packagesInfo.packages, projectRoot, layout }),
   });
 }

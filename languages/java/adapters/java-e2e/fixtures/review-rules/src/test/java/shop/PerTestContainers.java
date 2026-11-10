@@ -52,7 +52,7 @@ abstract class ContainerPerTestCases {
 
   @Test
   void readsTheDatabase() {
-    assertThat(database.getDatabaseName()).isNotBlank();
+    assertThat(database.getDatabaseName()).isNotBlank(); // violation: WeakAssertionInTest
     assertThat(SHARED.getDockerImageName()).contains("redis");
   }
 }

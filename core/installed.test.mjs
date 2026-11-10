@@ -19,6 +19,7 @@ import { supportsRedirect } from '../languages/typescript/typescript-api/api-red
 import { consumerCommands, eslintVersionOf } from './test-support/installed-consumer.mjs';
 import {
   checkoutOutput,
+  installedHelpText,
   expectedDirtyFindings,
   expectedDirtyOutput,
   expectedSnapshotOutput,
@@ -224,6 +225,7 @@ suite('packed nitpicker in a separate consumer', () => {
       let initialized;
       let rules;
       let explanation;
+      let help;
       let packageLocation;
       const reports = (name) => path.join(root, 'reports', name);
       const invoke = (args, cwd = root) =>
@@ -333,6 +335,7 @@ suite('packed nitpicker in a separate consumer', () => {
         ]);
         rules = invoke(['rules', '--preset', 'java']);
         explanation = invoke(['explain', ...explained]);
+        help = invoke(['-h']);
         fixed = invoke([
           '--base',
           'main',
@@ -379,7 +382,7 @@ suite('packed nitpicker in a separate consumer', () => {
         expect(dirty.status, dirty.output).toBe(1);
         expect(summary('dirty').overallStatus).toBe('completed');
         expect(findings('dirty')).toEqual(expectedDirtyFindings(links));
-        expect(withoutSlowAnalyzerLines(dirty.output)).toEqual(expectedDirtyOutput(root));
+        expect(withoutSlowAnalyzerLines(dirty.output)).toEqual(expectedDirtyOutput());
       });
       it('records pinned owned tool versions and the installed TypeScript peer', () => {
         const versions = Object.fromEntries(
@@ -429,6 +432,10 @@ suite('packed nitpicker in a separate consumer', () => {
           installedHelpUri(links, 'prettier-format/prettier/prettier'),
           installedHelpUri(links, 'prettier-format/prettier/prettier'),
         ]);
+      });
+      it('prints help that links the usage page at its own release tag', () => {
+        expect(help.status, help.output).toBe(0);
+        expect(help.output).toBe(installedHelpText(links, root));
       });
       it('sets the consumer up with init from the packed files', () => {
         expect(initialized.status, initialized.output).toBe(0);
