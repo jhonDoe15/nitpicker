@@ -10,6 +10,7 @@ import { withLockEvidence } from '../../../messages/locking/lock-evidence.mjs';
 import { withProjectTypeMocks } from '../../../messages/mocks/project-mocks.mjs';
 import { withGeneratedMembers } from '../../../messages/generated-members/generated-members.mjs';
 import { withSpringTransactionFilters } from '../../spring/transactions/transaction-filters.mjs';
+import { withCrossedFetches } from '../../jpa/fetches/fetch-filter.mjs';
 
 const LINE_NUMBER = /\bline \d+\b/g;
 const PRINTED_PMD_RULES = new Map([['timeout-abandons-async-task', 'timeout-abandons-operation']]);
@@ -78,9 +79,12 @@ export function sarifFindings(context) {
         dropSleepsInFakes(
           withProjectTypeMocks(
             dropInheritedVersions(
-              withGeneratedMembers(
-                withSpringTransactionFilters(ingestSarif(pmd, { tool: 'pmd' }).findings, context),
-                { projectRoot },
+              withCrossedFetches(
+                withGeneratedMembers(
+                  withSpringTransactionFilters(ingestSarif(pmd, { tool: 'pmd' }).findings, context),
+                  { projectRoot },
+                ),
+                { projectRoot, sourceRoots: allSourceRoots },
               ),
               { projectRoot, sourceRoots: allSourceRoots },
             ),

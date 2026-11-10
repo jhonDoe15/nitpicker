@@ -1,17 +1,13 @@
-import { readFileSync, rmSync } from 'node:fs';
+import { readdirSync, readFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { exactText } from '../../diff/reporting/test-support/output-expectations.mjs';
 import { runCli as nitpickerCli } from '../../cli.mjs';
 import { createJavaAnalyzer } from '../../../languages/java/adapters/java-analyzer.mjs';
 import { analyzeJavaSnapshot } from '../../../languages/java/adapters/java-runner.mjs';
 import { JAVA_TOOLS } from '../../../languages/java/adapters/gradle-presets.mjs';
 import { commit, fixtureGit } from '../../diff/git/test-support/git-repository.mjs';
-import {
-  fakeGradleRun,
-  gradleFailureMessage,
-  useGradleFixtures,
-} from './test-support/java-cli-harness.mjs';
+import { fakeGradleRun, useGradleFixtures } from './test-support/java-cli-harness.mjs';
 import { writeFiles } from '../../diff/git/test-support/fixture-files.mjs';
 import { linkSentence } from '../../../shared/messages/test-support/link-sentence.mjs';
 
@@ -56,6 +52,7 @@ describe('Kotlin analyzer', () => {
     expect(analyzer.reportedTools).toEqual([
       ...JAVA_TOOLS,
       'facts',
+      'build',
       'detekt',
       'ktlint',
       'ktfmt',
@@ -81,7 +78,7 @@ describe('Kotlin analyzer', () => {
         rule: 'gradle-failure',
         path: '.',
         identity: 'gradle-failure',
-        message: gradleFailureMessage(`Java preset failed in ${root}: detekt crashed`),
+        message: `Kotlin preset failed on your change: detekt crashed. ${linkSentence('gradleFails')}`,
         classification: 'tool-error',
       },
     ]);
@@ -89,7 +86,10 @@ describe('Kotlin analyzer', () => {
 });
 describe('a build without a project that applies the plugin', () => {
   it.each([
-    ['kotlin', 'org.jetbrains.kotlin.jvm'],
+    [
+      'kotlin',
+      'org.jetbrains.kotlin.jvm, org.jetbrains.kotlin.multiplatform or org.jetbrains.kotlin.android',
+    ],
     ['java', 'java'],
   ])('is a tool error naming the plugin for the %s preset', (preset, plugin) => {
     const root = temporaryRoot('nitpicker-no-reports-');
@@ -154,7 +154,7 @@ describe('Java analyzer', () => {
         rule: 'gradle-failure',
         path: '.',
         identity: 'gradle-failure',
-        message: gradleFailureMessage(`Java preset failed in ${root}: tool crashed`),
+        message: `Java preset failed on your change: tool crashed. ${linkSentence('gradleFails')}`,
         classification: 'tool-error',
       },
     ]);
@@ -170,22 +170,44 @@ describe('Gradle failure diagnostics', () => {
     'keeps the short diagnostic or empty-output fallback: $expected',
     ({ stderr, stdout, expected }) => {
       const root = temporaryRoot('nitpicker-gradle-diagnostic-');
+      const logRoot = path.join(temporaryRoot('nitpicker-gradle-logs-'), 'logs');
       writeFiles(root, { GRADLE_FAIL: stderr, GRADLE_STDOUT: stdout });
 
-      const { findings } = analyzeJavaSnapshot(root, { ...fakeGradleRun });
-      const message = findings[0].message;
-      const log = /Full Gradle log: ([^\n]+)/u.exec(message)?.[1];
-      try {
-        expect(message).toEqual(gradleFailureMessage(`Java preset failed in ${root}: ${expected}`));
-        expect(readFileSync(log, 'utf8')).toBe(
-          `=== stdout ===\n${stdout}\n=== stderr ===\n${stderr}\n`,
-        );
-      } finally {
-        rmSync(path.dirname(log), { recursive: true, force: true });
-      }
+      const { findings } = analyzeJavaSnapshot(root, {
+        ...fakeGradleRun,
+        policy: { logRoot, logLabel: 'logs' },
+      });
+
+      expect(findings[0].message).toBe(
+        `Java preset failed on your change: ${expected}\nFull Gradle log: logs/java-head-gradle.log\n` +
+          linkSentence('gradleFails'),
+      );
+      expect(readFileSync(path.join(logRoot, 'java-head-gradle.log'), 'utf8')).toBe(
+        `=== stdout ===\n${stdout}\n=== stderr ===\n${stderr}\n`,
+      );
     },
   );
-  it('keeps the reason first and full output after snapshot cleanup on both sides', () => {
+  it('keeps the log line of a message that only the long log path makes overlong', () => {
+    const root = temporaryRoot('nitpicker-gradle-long-');
+    const logRoot = path.join(temporaryRoot('nitpicker-gradle-logs-'), 'logs');
+    const lines = Array.from({ length: 20 }, (_, index) => `${String(index)}${'x'.repeat(400)}`);
+    writeFiles(root, { GRADLE_FAIL: lines.join('\n') });
+    const logLabel = 'l'.repeat(600);
+
+    const { message } = analyzeJavaSnapshot(root, {
+      ...fakeGradleRun,
+      policy: { logRoot, logLabel },
+    }).findings[0];
+
+    expect(message.split('\n').slice(-2)).toEqual([
+      `Full Gradle log: ${logLabel}/java-head-gradle.log`,
+      linkSentence('gradleFails'),
+    ]);
+    expect(message.length).toBeGreaterThan(4000);
+    expect(message).not.toContain('...');
+  });
+
+  it('keeps the cause and saves the full output under the report folder on both sides', () => {
     const failure = [
       'warning: ordinary compiler noise\n'.repeat(300),
       'FAILURE: Build failed with an exception.',
@@ -199,38 +221,31 @@ describe('Gradle failure diagnostics', () => {
     writeFiles(root, { 'change.txt': 'head change' });
     commit(root, 'change');
 
+    const gradleLogs = () =>
+      readdirSync(tmpdir()).filter((name) => name.startsWith('nitpicker-gradle-failure-'));
+    const before = gradleLogs();
+
     const result = run(root);
     const errors = result.json('tool-errors.json');
 
+    expect(gradleLogs()).toEqual(before);
     expect(result.exitCode).toBe(2);
     expect(errors.map(({ snapshot }) => snapshot).sort()).toEqual(['base', 'head']);
-    const paths = errors.map((error) => /Full Gradle log: ([^\n]+)/u.exec(error.message)?.[1]);
-    expect(paths).toHaveLength(2);
-    expect(paths).not.toContain(undefined);
-    const texts = paths.map((log) => {
-      try {
-        return readFileSync(log, 'utf8');
-      } finally {
-        rmSync(path.dirname(log), { recursive: true, force: true });
-      }
-    });
-    expect(texts).toEqual(
-      paths.map(() => `=== stdout ===\nfull stdout marker\n=== stderr ===\n${failure}\n`),
-    );
+    const where = { base: 'on the base', head: 'on your change' };
     expect(errors.map(({ message }) => message)).toEqual(
-      errors.map((error, index) =>
-        expect.stringMatching(exactText`Full Gradle log: ${paths[index]}
-Java preset failed in ${error.snapshot}: FAILURE: Build failed with an exception.
-* What went wrong:
-Execution failed for task ':test'.
-> There were failing tests. See the report at: build/reports/tests/test/index.html
-...
-${/(?:warning: ordinary compiler noise\n)+warning: [a-z ]+/}
-${linkSentence('gradleFails')}`),
+      errors.map(({ snapshot }) =>
+        [
+          `Kotlin preset failed ${where[snapshot]}: Execution failed for task ':test'.`,
+          '> There were failing tests. See the report at: build/reports/tests/test/index.html',
+          `Full Gradle log: ${result.reports}/logs/kotlin-${snapshot}-gradle.log`,
+          linkSentence('gradleFails'),
+        ].join('\n'),
       ),
     );
-    expect(errors.map(({ message }) => message.length).filter((length) => length > 4003)).toEqual(
-      [],
-    );
+    expect(
+      errors.map(({ snapshot }) =>
+        readFileSync(path.join(result.reports, 'logs', `kotlin-${snapshot}-gradle.log`), 'utf8'),
+      ),
+    ).toEqual(errors.map(() => `=== stdout ===\nfull stdout marker\n=== stderr ===\n${failure}\n`));
   });
 });

@@ -8,6 +8,7 @@ import { DOC_COMMENT_TOOL } from './doc-comments/doc-comment-findings.mjs';
 import { INIT_SCRIPT, readPinnedTools } from '../builds/java-build.mjs';
 import { importClosure } from '../../../shared/import-closure.mjs';
 import { javaExecutionBudget } from './java-runner.mjs';
+import { COMPILE_ERROR_TOOL } from '../../../shared/rules/finding-helpers.mjs';
 import { javaCommand } from '../maven/maven-command.mjs';
 import { JVM_NOISE } from '../../../shared/messages/jvm/jvm-noise.mjs';
 
@@ -47,6 +48,7 @@ const RESOURCE_FILES = [
   'languages/java/gradle/CpdReport.java',
   'languages/java/gradle/errorprone/error-prone.gradle',
   'languages/java/gradle/kotlin/kotlin-lint.gradle',
+  'languages/java/gradle/kotlin/kotlin-source-modules.gradle',
   'languages/java/gradle/errorprone/checks.json',
   'languages/java/adapters/overlaps/overlap-pairs.json',
   'languages/java/gradle/errorprone/ErrorProneReport.java',
@@ -114,7 +116,7 @@ function hashConfiguration() {
 }
 
 const KOTLIN_TOOLS = ['detekt', 'ktlint', 'ktfmt', 'kotlin-source', 'kotlinc'];
-const JVM_ANALYZER_TOOLS = [...JAVA_TOOLS, DOC_COMMENT_TOOL];
+const JVM_ANALYZER_TOOLS = [...JAVA_TOOLS, DOC_COMMENT_TOOL, COMPILE_ERROR_TOOL];
 
 export function createJavaAnalyzer({ kotlin = false } = {}) {
   const budget = javaExecutionBudget();

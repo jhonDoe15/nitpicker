@@ -9,6 +9,8 @@ import {
   readMainCheckstyle,
   readModuleJacoco,
   readReportModules,
+  withModuleIdentity,
+  withoutExcludedFiles,
 } from '../gradle-reports/report-modules.mjs';
 import { readErrorProneFindings } from '../errorprone/java-errorprone.mjs';
 import { readInlineSuppressionFindings } from '../suppressions/java-suppressions.mjs';
@@ -44,7 +46,6 @@ import {
 } from './kotlin-reports.mjs';
 import { withJavaCountRatchets } from './counts/java-counts.mjs';
 
-const MODULE_IDENTITY_SEPARATOR = '@';
 const ROOT_MODULE = 'root';
 
 export function readJavaFindings(projectRoot, options = {}) {
@@ -88,7 +89,7 @@ export function readJavaFindings(projectRoot, options = {}) {
     { preset, javaStyle: options.javaStyle },
   );
   const locate = modulesUnitLocator(projectRoot, modules, kotlinPreset);
-  return { findings: withJavaCountRatchets(findings, locate) };
+  return { findings: withJavaCountRatchets(withoutExcludedFiles(findings, modules), locate) };
 }
 
 function projectOf(module) {
@@ -99,6 +100,7 @@ function projectOf(module) {
     kotlinSourceRoots: module.manifest.kotlinSourceRoots ?? [],
     testSourceRoots: module.manifest.testSourceRoots ?? [],
     kotlinTestSourceRoots: module.manifest.kotlinTestSourceRoots ?? [],
+    kotlinExcludedFiles: module.manifest.kotlinExcludedFiles ?? [],
     resourceRoots: module.manifest.resourceRoots ?? [],
   };
 }
@@ -180,19 +182,6 @@ function readModuleFindings(context, crapLimit) {
     }),
     ...testRunFindings(context, { reportRoot, projectRoot, testRoots }),
   ];
-}
-
-function withModuleIdentity(findings, module) {
-  return module.key === ROOT_MODULE
-    ? findings
-    : findings.map((finding) =>
-        finding.path === '.'
-          ? {
-              ...finding,
-              identity: `${finding.identity}${MODULE_IDENTITY_SEPARATOR}${module.path}`,
-            }
-          : finding,
-      );
 }
 
 function lintedRoots({ sourceRoots = [], testSourceRoots = [] }) {
