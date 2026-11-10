@@ -2,6 +2,7 @@ import { cpSync, mkdtempSync, realpathSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { linkSentence } from '../../../../../shared/messages/test-support/link-sentence.mjs';
 import {
   commitBranch,
   commitBranchFrom,
@@ -63,7 +64,7 @@ describe.skipIf(!pythonE2eEnabled)('Python preset on a base whose tests fail', (
         snapshot: 'base',
         rule: 'tests-failed',
         path: '.',
-        message: 'Tests fail on the base:\n  tests/test_greeter.py::test_greet',
+        message: `Tests fail on the base:\n  tests/test_greeter.py::test_greet\n${linkSentence('baseTestsFail')}`,
       },
     ]);
   });

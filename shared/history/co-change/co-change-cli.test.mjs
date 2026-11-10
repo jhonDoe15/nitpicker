@@ -86,12 +86,12 @@ function summary(root, notices = []) {
   const noticeLines =
     notices.length === 0
       ? ''
-      : `\u001b[1m\u001b[33mNotices (not failing):\u001b[0m\n${notices.map((notice) => `  ${notice}\n`).join('')}`;
+      : `Notices (not failing):\n${notices.map((notice) => `  ${notice}\n`).join('')}`;
   return `Base: ${BASE_REF} (argument)
 
-\u001b[1m\u001b[32mQuality gate summary\u001b[0m
-\u001b[32m✓ No new enforceable violations\u001b[0m
-${noticeLines}\u001b[2mFull diagnostics: ${path.join(root, 'reports/quality/diff')}/report.txt\u001b[0m
+Quality gate summary
+✓ No new enforceable violations
+${noticeLines}Full diagnostics: ${path.join(root, 'reports/quality/diff')}/report.txt
 `;
 }
 

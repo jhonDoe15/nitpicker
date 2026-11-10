@@ -1,6 +1,8 @@
 import { normalizeGitPath } from '../git/normalize.mjs';
+import { withoutAnsi } from '../../../shared/messages/terminal/terminal-text.mjs';
+import { isRecord } from '../../../shared/rules/facts/checks.mjs';
 import { routeFields } from '../../../shared/messages/exception-sentence.mjs';
-import { adviceProblems } from '../../../shared/messages/finding-advice.mjs';
+import { adviceProblems } from '../../../shared/messages/advice/finding-advice.mjs';
 
 const CLASSIFICATIONS = new Set(['enforceable', 'descriptive', 'tool-error']);
 const HTTP_URL = /^https?:\/\/\S+$/u;
@@ -56,7 +58,7 @@ export function parseFinding(value, context = 'finding') {
     `${context}.path`,
   );
   const identity = requiredString(value.identity, `${context}.identity`);
-  const message = requiredString(value.message, `${context}.message`);
+  const message = withoutAnsi(requiredString(value.message, `${context}.message`));
   const classification = requiredString(value.classification, `${context}.classification`);
   if (!CLASSIFICATIONS.has(classification)) {
     throw new TypeError(`${context}.classification is not supported: ${classification}`);
@@ -85,6 +87,7 @@ const OPTIONAL_PARSERS = {
   tokens: parseTokens,
   anchor: parseAnchor,
   helpUri: parseHelpUri,
+  cause: parseCause,
 };
 
 function parseOptionalFields(value, classification, context) {
@@ -232,6 +235,39 @@ function parseTokens(value, context) {
   return value.map((token, index) => requiredString(token, `${context}[${String(index)}]`));
 }
 
+function parseCause(value, context) {
+  if (!(isRecord(value) && Array.isArray(value.units))) {
+    throw new TypeError(`${context} must be { folders, units }`);
+  }
+  return {
+    folders: causePaths(value.folders, `${context}.folders`),
+    units: value.units.map((entry, index) =>
+      parseCauseUnit(entry, `${context}.units[${String(index)}]`),
+    ),
+  };
+}
+
+function parseCauseUnit(entry, context) {
+  if (!isRecord(entry)) {
+    throw new TypeError(`${context} must be { unit, folders, files, count }`);
+  }
+  return {
+    unit: requiredString(entry.unit, `${context}.unit`),
+    folders: causePaths(entry.folders, `${context}.folders`),
+    files: causePaths(entry.files, `${context}.files`),
+    count: positiveInteger(entry.count, `${context}.count`),
+  };
+}
+
+function causePaths(value, context) {
+  if (!Array.isArray(value)) {
+    throw new TypeError(`${context} must be an array of paths`);
+  }
+  return value.map((file, index) =>
+    normalizeGitPath(requiredString(file, `${context}[${String(index)}]`)),
+  );
+}
+
 function positiveInteger(value, context) {
   if (!Number.isInteger(value) || value < 1) {
     throw new TypeError(`${context} must be a positive integer`);
@@ -257,8 +293,4 @@ function normalizeFindingPath(value, context) {
     throw new TypeError(`${context} must stay within the analyzed project`);
   }
   return normalizedPath;
-}
-
-function isRecord(value) {
-  return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
