@@ -19,6 +19,6 @@ export function isMissing(binary) {
   );
 }
 
-export function missingToolError(kind, purpose) {
-  return environmentError(`${kind} is not installed, ${purpose}: ${INSTALL_HINTS[kind]}`);
+export function missingToolError(kind, purpose, anchor) {
+  return environmentError(`${kind} is not installed, ${purpose}: ${INSTALL_HINTS[kind]}`, anchor);
 }
