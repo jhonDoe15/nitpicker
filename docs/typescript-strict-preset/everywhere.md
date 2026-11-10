@@ -319,6 +319,23 @@ Part of the [TypeScript strict preset guide](../typescript-strict-preset.md).
   code also uses another way. `for` loops over the rows and `.then(...)` callbacks are not
   followed. Tests are skipped. A small fixed lookup list that is meant to be loaded whole takes an
   `exceptions` entry.
+- No two to-many relations joined into one query (`nitpicker/no-multiple-collection-joins`, the
+  counterpart of the Spring rule `pmd/JpaMultipleCollectionFetch` and of the Python
+  `multiple-collection-joins`): the database returns one row for every pair of their elements. It
+  reads TypeORM `relations` (array or nested object) of `find`, `findOne`, `findOneOrFail` and
+  `findAndCount`, and query builder `leftJoinAndSelect`/`innerJoinAndSelect` chains from
+  `createQueryBuilder`; Sequelize `include` of `findAll`, `findOne`, `findByPk`, `findAndCountAll`
+  and `findOrCreate` (by `as`, `association`, a string or the model); and MikroORM `populate`, which
+  joins by default since MikroORM 6 (unless the find sets `strategy: 'select-in'`, the project's
+  `mikro-orm.config` file sets `loadStrategy: 'select-in'`, or MikroORM 5 is installed). Relations come from the declared entity types:
+  an array, a MikroORM `Collection` or `LoadedCollection` is to-many, and `Ref`, `Reference` and
+  `Promise` are unwrapped. A chain along one collection (`'lines'` and `'lines.parts'`), a
+  collection next to to-one relations, TypeORM `relationLoadStrategy: 'query'`, a Sequelize
+  include with `separate: true` and MikroORM's select-in strategy pass. Joins on a query builder
+  held in a variable are combined with later calls on it in the same block; calls inside an
+  `if` branch, and chains on `qb.clone()`, count as their own query. Prisma and
+  Drizzle relational queries are not reported: they load each relation in its own query or as a
+  nested JSON aggregate. Load the collections in separate queries, or batch them with a DataLoader.
 - No foreign key without an index that starts with its column (`nitpicker/no-unindexed-foreign-key`,
   the model-side partner of the `foreign-key-index` repository rule): only MySQL indexes a
   foreign-key column by itself. It reads TypeORM and MikroORM `@ManyToOne` properties of entity
@@ -359,6 +376,19 @@ Part of the [TypeScript strict preset guide](../typescript-strict-preset.md).
   bindings already removes the late-binding bug `no-loop-func` exists for. Python's counterparts are ruff `PLE0101`,
   `B023` and `PLR1711`; in Java and Kotlin a missing return does not compile and the existing
   unused-member checks already report an unused private member.
+- Copy slips in operands (`nitpicker/no-operand-slip`, production code and tests of both presets,
+  both lint engines). Reported: the same side-effect-free operand on both sides of a comparison,
+  `-`, `/`, `%`, `&`, `|` or `^`, or twice in one `&&`/`||` chain
+  (`element.endArrowhead || element.endArrowhead`). Operands are compared in the shared logic
+  normal form, so `a.b === c && c === a.b` and `!(x && y) || !x` count. Also reported: two
+  comparisons of one operand against constants that cannot both hold (`x < 3 && x > 5`), that
+  always hold together (`x !== 1 || x !== 2`), or where one already decides the other
+  (`x > 5 && x > 3`, `x === 1 || x >= 1`); `x * 0` and `x & 0`; and `a += a + b`. `x !== x` names
+  `Number.isNaN(x)`. Operands after a call that may change state are not compared with those before
+  it. Java reports the same slips through Error Prone (`IdentityBinaryExpression`, `SelfComparison`,
+  `SelfEquals`, `ComparisonOutOfRange`). Python covers a name compared with itself and repeated
+  `==` comparisons of one name (ruff `PLR0124`, `PLR1714`), not the arithmetic, erasing or
+  contradicting-constant forms. Kotlin has no counterpart yet.
 - Boolean logic with a strictly simpler exact form (`nitpicker/simpler-boolean-logic`, production
   and test files of both presets; the counterpart of the Java PMD rules `SimplifyBooleanReturns`,
   `SimplifiedTernary`, `CollapsibleIfStatements`, `LogicInversion`, `ConfusingTernary` and
@@ -607,6 +637,21 @@ express()`, `express.Router()`, `new Router()`, also through a chain such as
   hangs the program. A program whose purpose is to run a child to completion, such as a build
   wrapper, takes an exception. The rule reads no types, so it behaves the same in the JavaScript
   preset.
+- Time values in one unit meet only values in the same unit (`nitpicker/time-unit-mismatch`, production
+  files). Units come from the API (`Date.now()`, `getTime()`, `Date.parse`, `Date.UTC` and `performance.now()`
+  in milliseconds, `process.uptime()` in seconds, `process.hrtime.bigint()` in nanoseconds, the JWT claims
+  `exp`, `iat`, `nbf` and `auth_time` in seconds) and from name suffixes (`Ms`, `Millis`, `Milliseconds`,
+  `Seconds`, `Secs`, `Nanos`, `Micros`, `Minutes`, in camel case, `snake_case` or `UPPER_CASE`; a ratio
+  such as `MS_PER_SECOND` has no unit). A `const` takes the unit of its initializer, and `* 1000`, `/ 1000`
+  (also through a unit-less `const`), `Math.floor` and the like convert or keep it. Reported: a `+`, `-` or
+  comparison of two units; a variable, property, class field, default or destructured name in one unit that
+  gets a value in another; an argument of one unit where the call takes another (`setTimeout` and
+  `setInterval` delays, `node:timers/promises` `setTimeout`, `AbortSignal.timeout`, `new Date(epochMs)`,
+  a function of the same file, or, with type information, any function whose parameter is named with a
+  unit); and an epoch time cut to 32 bits (`| 0`, `>> 0`, `<< 0`, `>>> 0`, `^ 0`, `~~`). The message names both units,
+  the factor and the conversion. A name with the wrong unit is fixed by renaming it. The same rule runs as
+  `time-unit-mismatch` (Python), `pmd/MixedTimeUnits` and `pmd/EpochNarrowedToInt` (Java) and
+  `kotlin-source/TimeUnitMismatch` (Kotlin).
 - Named exports list their names: no `export *`, which makes every internal export of a feature's
   `index.ts` public (`export { name } from './domain/x.js'`).
 - Cognitive complexity of at most 15 per function, tests included (`nitpicker/cognitive-complexity`).
@@ -821,6 +866,20 @@ express()`, `express.Router()`, `new Router()`, also through a chain such as
   reported; `new URL(url.href)` passes. The Java and Kotlin presets report `URI.create(text)` the
   same way (`pmd/UriCreateDynamic`, `kotlin-source/UriCreateDynamic`); Python has no counterpart,
   since `urllib.parse` does not raise on such text.
+- `nitpicker/reusable-object-per-call`: `new Intl.DateTimeFormat`, `NumberFormat`, `Collator`,
+  `PluralRules`, `RelativeTimeFormat`, `ListFormat`, `DisplayNames`, `DurationFormat` or
+  `Segmenter` (also called without `new`, or through `globalThis.Intl`), and `new Ajv(...)`
+  imported from `ajv`, with arguments that are all constants, inside a function that runs on every
+  call. Building one loads locale data or compiles schemas each time, and with fixed options one
+  shared instance does the same work. Allowed: module scope, a class field, a static block, a
+  constructor, a module-level IIFE, a `useMemo`, `useState`, `once`, `memoize` or `lazy` callback, a
+  function that returns it (also inside a returned object literal, or through a local that a returned
+  object or function uses), `??=`/`||=`, an assignment to a member or an outer variable, and
+  `map.set(key, ...)` (also of a local, the get-or-create cache). Arguments that read a parameter or local (a locale from the request) are not
+  reported. `new RegExp(constant)` is not reported: engines cache compiled patterns, and
+  `nitpicker/no-shared-stateful-regex` wants a `g` or `y` regex created where it is used. The Java,
+  Kotlin and Python presets report the same mistake as `pmd/ReusableObjectPerCall` and
+  `reusable-object-per-call`.
 - `nitpicker/no-parameter-mutation` (type-aware): a mutating method (`push`, `pop`, `splice`,
   `sort`, `reverse`, `add`, `set`, `delete`, `clear` and the other array, `Set`, `Map` mutators of
   `no-mutating-method-in-domain`) called on a parameter, or an assignment, `++` or `delete` on an

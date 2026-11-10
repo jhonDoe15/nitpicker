@@ -102,6 +102,11 @@
     "scope": "line"
   },
   {
+    "primary": ["pmd/RegexPartDefect"],
+    "secondary": ["spotbugs/RE_POSSIBLE_UNINTENDED_PATTERN"],
+    "scope": "line"
+  },
+  {
     "primary": ["errorprone/RandomCast"],
     "secondary": ["spotbugs/RV_01_TO_INT"],
     "scope": "line"
@@ -516,6 +521,11 @@
   {
     "primary": ["errorprone/DefaultLocale"],
     "secondary": ["pmd/SimpleDateFormatNeedsLocale"],
+    "scope": "line"
+  },
+  {
+    "primary": ["pmd/MixedTimeUnits"],
+    "secondary": ["errorprone/TimeUnitMismatch"],
     "scope": "line"
   },
   {

@@ -9,6 +9,7 @@ import { generatedMemberFindings } from './main/generated-members/generated-memb
 import { loadEffectFindings } from './main/load-effects.mjs';
 import { fieldLockingFindings } from './main/locking/field-locking.mjs';
 import { lockOrderFindings } from './main/locking/lock-order.mjs';
+import { reusableObjectFindings } from './main/reusable-objects/reusable-objects.mjs';
 import { singularPluralFindings } from './main/member-names.mjs';
 import { timeoutFindings } from './main/timeouts/timeouts.mjs';
 import { streamedRowsFindings } from './main/streamed-rows/streamed-rows.mjs';
@@ -108,6 +109,7 @@ export function readKotlinReviewFindings(context) {
     ...unboundedPoolFindings(own, { finding }),
     ...recursiveMapUpdateFindings(own, { finding, declaredIn: projectFiles }),
     ...streamedRowsFindings(own, { finding, declaredIn: projectFiles }),
+    ...reusableObjectFindings(own, { finding, declaredIn: projectFiles }),
     ...kotlinDesignFindings(reportRoot, { environment: context.environment }),
     ...generatedMemberFindings(own, { finding, declaredIn: projectFiles }),
     ...unusedOptionFindings(own, {

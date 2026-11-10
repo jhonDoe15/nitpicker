@@ -41,7 +41,6 @@
     "src/main/java/probe/NullColl.java": "package probe;\n\nimport java.util.List;\nimport org.jspecify.annotations.Nullable;\n\npublic class NullColl {\n  public List<String> none(int x) {\n    if (x > 0) {\n      return List.of();\n    }\n    return null;\n  }\n\n  public @Nullable List<String> maybe(int x) {\n    if (x > 0) {\n      return List.of();\n    }\n    return null;\n  }\n}\n",
     "src/main/java/probe/Numbers.java": "package probe;\n\nimport java.util.Random;\n\npublic class Numbers {\n  public long all(int x, byte b, int y) {\n    int s = x << 32;\n    int r = (int) Math.random();\n    int m = new Random().nextInt() % 5;\n    boolean big = b == 200;\n    long mul = x * y;\n    int abs = Math.abs(new Random().nextInt());\n    return s + r + m + (big ? 1 : 0) + mul + abs;\n  }\n}\n",
     "src/main/java/probe/Obsolete.java": "package probe;\n\nimport java.util.Hashtable;\nimport java.util.LinkedList;\nimport java.util.Stack;\nimport java.util.Vector;\n\npublic class Obsolete {\n  public int sizes() {\n    Vector<String> v = new Vector<>();\n    Hashtable<String, String> h = new Hashtable<>();\n    Stack<String> s = new Stack<>();\n    LinkedList<String> l = new LinkedList<>();\n    StringBuffer b = new StringBuffer();\n    return v.size() + h.size() + s.size() + l.size() + b.length();\n  }\n}\n",
-    "src/main/java/probe/other/G1Reader.java": "package probe.other;\n\nimport probe.G1Mutable;\n\npublic class G1Reader {\n  public int count() {\n    return G1Mutable.NAMES.length;\n  }\n}\n",
     "src/main/java/probe/P2Eq.java": "package probe;\n\npublic class P2Eq {\n  private int a;\n\n  public boolean equals(P2Eq o) {\n    return o.a == a;\n  }\n}\n",
     "src/main/java/probe/P2Inner.java": "package probe;\n\nimport java.text.SimpleDateFormat;\n\npublic class P2Inner {\n  public static String[] names = {\"a\"};\n  private static SimpleDateFormat format = new SimpleDateFormat(\"yyyy\");\n\n  public int one() {\n    return new Helper().one() + format.toPattern().length() + names.length;\n  }\n\n  private class Helper {\n    int one() {\n      return 1;\n    }\n  }\n}\n",
     "src/main/java/probe/P2Strings.java": "package probe;\n\nimport java.io.ByteArrayOutputStream;\nimport java.io.IOException;\nimport java.io.OutputStreamWriter;\nimport java.io.Writer;\n\npublic class P2Strings {\n  public String all(byte[] b, int[] arr, int x, int y) throws IOException {\n    String u = \"A\";\n    String s = new String(b, \"UTF-8\");\n    Writer w = new OutputStreamWriter(new ByteArrayOutputStream(), \"UTF-8\");\n    w.close();\n    long sum = x + y;\n    float div = x / y;\n    if (x > y);\n    return u + s + arr.toString() + String.format(\"%s %s\", \"x\") + sum + div;\n  }\n\n  public Object make(Class<?> c) throws ReflectiveOperationException {\n    return c.newInstance();\n  }\n\n  public void sleep() {\n    try {\n      Thread.sleep(5);\n    } catch (Exception e) {\n      throw new IllegalStateException(e);\n    }\n  }\n}\n",
@@ -55,11 +54,13 @@
     "src/main/java/probe/Stamps.java": "package probe;\n\nimport java.text.SimpleDateFormat;\nimport java.util.Date;\nimport java.util.Locale;\n\npublic class Stamps {\n  private static final SimpleDateFormat stamp = new SimpleDateFormat(\"HH\", Locale.ROOT);\n\n  public String at(Date date) {\n    return stamp.format(date);\n  }\n}\n",
     "src/main/java/probe/StaticCtor.java": "package probe;\n\npublic class StaticCtor {\n  private static int count;\n\n  public StaticCtor() {\n    count = 5;\n  }\n\n  public int count() {\n    return count;\n  }\n}\n",
     "src/main/java/probe/SunUse.java": "package probe;\n\nimport sun.misc.Signal;\nimport sun.misc.Unsafe;\n\npublic class SunUse {\n  public Object get() {\n    return Unsafe.class.getName() + Signal.class.getName();\n  }\n}\n",
+    "src/main/java/probe/TimeUnits.java": "package probe;\n\nimport java.util.concurrent.TimeUnit;\n\npublic final class TimeUnits {\n  private TimeUnits() {}\n\n  public static long lockWait(long waitSeconds) {\n    long lockWaitMillis = waitSeconds;\n    return lockWaitMillis;\n  }\n\n  public static long delay(long delayMillis) {\n    return TimeUnit.SECONDS.toNanos(delayMillis);\n  }\n}\n",
     "src/main/java/probe/Types.java": "package probe;\n\nimport java.util.List;\n\npublic class Types {\n  public boolean all(List<String> l) {\n    return l.contains(5) || \"a\".equals(5);\n  }\n}\n",
     "src/main/java/probe/V1Style.java": "package probe;\n\nimport java.math.BigDecimal;\nimport java.util.*;\n\n/** V1. */\npublic class V1Style<t> {\n  private final @Deprecated int annotated = 1;\n  private final long big = 10l;\n  int legacy[] = {1};\n\n  public BigDecimal decimal() {\n    return new BigDecimal(0.1);\n  }\n\n  public StringBuilder builder() {\n    return new StringBuilder('c');\n  }\n\n  public boolean nullEquals(Object o) {\n    return o.equals(null);\n  }\n\n  public int varargs() {\n    return Arrays.asList(new String[] {\"a\"}).size() + annotated + (int) big + legacy.length;\n  }\n\n  public int loop(List<String> items) {\n    int n = 0;\n    for (int i = 0; i < items.size(); i++) {\n      n += items.get(i).length();\n    }\n    for (int j = 0; j < 3; j++) {\n      j++;\n    }\n    return n;\n  }\n\n  public void out() {\n    System.out.println(\"x\");\n    System.exit(1);\n  }\n\n  public void trace() {\n    try {\n      Thread.sleep(1);\n    } catch (InterruptedException e) {\n      e.printStackTrace();\n    }\n  }\n\n  public int assignInOperand(int x) {\n    int y;\n    if ((y = x) > 0) {\n      return y;\n    }\n    return 0;\n  }\n\n  public String sdcard() {\n    return \"/sdcard/x\";\n  }\n\n  public <u> u same(u value) {\n    return value;\n  }\n\n  @SuppressWarnings(\"finally\")\n  public int fin() {\n    try {\n      return 1;\n    } finally {\n      return 2;\n    }\n  }\n\n  @Override\n  protected void finalize() {}\n\n  public String toString() {\n    return \"v\";\n  }\n\n  public boolean optional(Optional<String> a, Optional<String> b) {\n    return a == b;\n  }\n\n  public Map<String, String> doubleBrace() {\n    return new HashMap<>() {\n      {\n        put(\"a\", \"b\");\n      }\n    };\n  }\n\n  public int sw(int x) {\n    switch (x) {\n      default:\n        return 0;\n      case 1:\n        return 1;\n    }\n  }\n\n  private int unusedHelper() {\n    return 1;\n  }\n\n  public void rethrow() {\n    try {\n      Thread.sleep(1);\n    } catch (InterruptedException e) {\n      throw new IllegalStateException(\"x\");\n    }\n  }\n\n  public int unusedLocal() {\n    int unusedLocal2 = 5;\n    return 1;\n  }\n}\n\nclass Second {}\n",
     "src/main/java/probe/V2Docs.java": "package probe;\n\npublic class V2Docs {\n  /**\n   * Adds.\n   *\n   * @param a first\n   * @param missing not a parameter\n   * @return sum\n   * @throws\n   */\n  public int add(int a) {\n    return a;\n  }\n\n  /** Returns the value. */\n  public int value() {\n    /** Not javadoc. */\n    return 1;\n  }\n\n  enum Color {\n    RED,\n    GREEN\n  }\n\n  public int color(Color c) {\n    switch (c) {\n      case RED:\n        return 1;\n    }\n    return 0;\n  }\n}\n",
     "src/main/java/probe/V3Unused.java": "package probe;\n\npublic class V3Unused {\n  public int compute(int used, int unusedParam) {\n    int dead = 3;\n    dead = 4;\n    return used;\n  }\n\n  private void neverCalled() {}\n}\n",
     "src/main/java/probe/Volatile.java": "package probe;\n\npublic class Volatile {\n  private volatile int v;\n  private final Object lock = new Object();\n  private Object inst;\n\n  public void inc() {\n    v++;\n  }\n\n  public void await() throws InterruptedException {\n    synchronized (lock) {\n      lock.wait();\n    }\n  }\n\n  public Object get() {\n    if (inst == null) {\n      synchronized (this) {\n        if (inst == null) {\n          inst = new Object();\n        }\n      }\n    }\n    return inst;\n  }\n}\n",
+    "src/main/java/probe/other/G1Reader.java": "package probe.other;\n\nimport probe.G1Mutable;\n\npublic class G1Reader {\n  public int count() {\n    return G1Mutable.NAMES.length;\n  }\n}\n",
     "src/test/java/probe/OldTest.java": "package probe;\n\nimport static org.junit.Assert.assertTrue;\n\nimport org.junit.Test;\n\npublic class OldTest {\n  public void setUp() {}\n\n  public void tearDown() {}\n\n  @Test\n  public void works() {\n    assertTrue(new Recur() != null);\n  }\n}\n"
   },
   "findings": [
@@ -1067,6 +1068,18 @@
     },
     {
       "tool": "errorprone",
+      "rule": "TimeUnitMismatch",
+      "path": "src/main/java/probe/TimeUnits.java",
+      "line": 14
+    },
+    {
+      "tool": "errorprone",
+      "rule": "TimeUnitMismatch",
+      "path": "src/main/java/probe/TimeUnits.java",
+      "line": 9
+    },
+    {
+      "tool": "errorprone",
       "rule": "CollectionIncompatibleType",
       "path": "src/main/java/probe/Types.java",
       "line": 7
@@ -1394,6 +1407,18 @@
       "rule": "CompareObjectsWithEquals",
       "path": "src/main/java/probe/C2Strings.java",
       "line": 33
+    },
+    {
+      "tool": "pmd",
+      "rule": "RegexPartDefect",
+      "path": "src/main/java/probe/C2Strings.java",
+      "line": 37
+    },
+    {
+      "tool": "pmd",
+      "rule": "RegexPartDefect",
+      "path": "src/main/java/probe/C2Strings.java",
+      "line": 37
     },
     {
       "tool": "pmd",
@@ -1916,6 +1941,18 @@
       "rule": "DontImportSun",
       "path": "src/main/java/probe/SunUse.java",
       "line": 4
+    },
+    {
+      "tool": "pmd",
+      "rule": "MixedTimeUnits",
+      "path": "src/main/java/probe/TimeUnits.java",
+      "line": 14
+    },
+    {
+      "tool": "pmd",
+      "rule": "MixedTimeUnits",
+      "path": "src/main/java/probe/TimeUnits.java",
+      "line": 9
     },
     {
       "tool": "pmd",

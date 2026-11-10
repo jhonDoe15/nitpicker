@@ -23,6 +23,10 @@ Part of the [nitpicker-kotlin](../SKILL.md) skill. Write these forms from the st
   zone, `ZoneId.systemDefault()`, `TimeZone.getDefault()` and `TimeZone.currentSystemDefault()`
   (`kotlin-source/DefaultTimeZone`); `Calendar`, `GregorianCalendar` and `SimpleDateFormat` need a
   zone (`kotlin-source/LegacyCalendarApi`).
+- Time units: name a time value with its unit (`timeoutMillis`, `ttlSeconds`) and let it meet only the same
+  unit: convert once where it enters (`TimeUnit.SECONDS.toMillis(ttlSeconds)`, `ttlSeconds.seconds`), pass
+  milliseconds to `delay` and `Thread.sleep`, and keep epoch times in a `Long` or an `Instant`, never
+  `.toInt()` (`kotlin-source/TimeUnitMismatch`).
 - A public top-level, `object` or companion function, or a private or `internal` function or
   constructor, does not declare a default parameter that no call sets (`unused-option`): remove the
   parameter, or pass it from a real call. Tests count only for private and `internal` declarations
@@ -36,6 +40,9 @@ Part of the [nitpicker-kotlin](../SKILL.md) skill. Write these forms from the st
   whole pattern to `Regex(pattern)` on its own, and use the plain-text `replace`, `split` and
   `contains` for text without metacharacters (`kotlin-source/UnquotedRegexValue`,
   `kotlin-source/PlainTextRegex`).
+  Every part of a literal pattern must change what it matches (`Regex("a|b|a")`, `"[\\w_]"` and
+  `"x{1}"` are `kotlin-source/RegexPartDefect`), and nested quantifiers such as `"(\\s*\\w+)*x"` are
+  `kotlin-source/BacktrackingRegex`.
 - Enums: to sort the entries of one of your enums into two groups, classify every entry with a
   `when` without `else` (adding an entry then fails to compile), or a `Boolean` each entry
   declares. Not `s == PAID || s == SHIPPED`, `s in setOf(PAID, SHIPPED)` or a `when` with
