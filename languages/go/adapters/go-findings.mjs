@@ -20,7 +20,7 @@ export function goRouteRule(finding) {
 
 function formatterFindings(context) {
   return Object.entries(readFormatReport(context.reportRoot)).flatMap(([formatter, files]) =>
-    formatFindings({ formatter, from: context.formatting.from, files }),
+    formatFindings(context, { formatter, files }),
   );
 }
 

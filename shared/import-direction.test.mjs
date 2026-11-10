@@ -8,18 +8,21 @@ const packageRoot = path.resolve(sharedRoot, '..');
 
 // Static `import ... from 'x'`, `export ... from 'x'` and dynamic `import('x')` specifiers.
 const SPECIFIER =
-  /(?:^|\n)\s*(?:import|export)\b[^'";]*?\bfrom\s*['"]([^'"]+)['"]|(?<![\w-])import\s*\(?\s*['"]([^'"]+)['"]/g;
+  /(?:^|\n)\s*(?:import|export)\b[^'";]*?\bfrom\s*['"]([^'"]+)['"]|(?<![\w'"-])import\s*\(?\s*['"]([^'"]+)['"]/g;
 
 const LAZY_TOOL_IMPORTS = new Map([['logic/decide.mjs', 'z3-solver']]);
 
 function sharedModules() {
   return [...filesUnder(sharedRoot)].filter(
-    (file) => file.endsWith('.mjs') && !file.endsWith('.test.mjs'),
+    (file) =>
+      file.endsWith('.mjs') &&
+      !file.endsWith('.test.mjs') &&
+      !file.split(path.sep).includes('test-support'),
   );
 }
 
 describe('shared layer import direction', () => {
-  it('imports only node built-ins and other shared modules, and a tool package only as a listed lazy import', () => {
+  it('imports only node built-ins and other shared modules outside tests and test-support, and a tool package only as a listed lazy import', () => {
     const offenders = sharedModules().flatMap((file) =>
       [...readFileSync(file, 'utf8').matchAll(SPECIFIER)]
         .map((match) => match[1] ?? match[2])

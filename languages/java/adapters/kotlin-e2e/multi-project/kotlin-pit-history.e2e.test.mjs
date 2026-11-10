@@ -3,7 +3,7 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { collectJavaFindings } from '../../java-diff.mjs';
-import { pitStatuses } from '../../java-e2e/test-support/pit-statuses.mjs';
+import { pitStatuses } from '../../java-e2e/test-support/pit/pit-statuses.mjs';
 import { gradle, kotlinE2eEnabled, kotlinPolicy } from '../test-support/kotlin-e2e-project.mjs';
 
 const fixture = path.resolve(import.meta.dirname, '../../fixtures/kotlin-multi-project');

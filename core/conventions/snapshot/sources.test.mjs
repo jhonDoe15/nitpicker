@@ -1,10 +1,12 @@
 import { mkdirSync, symlinkSync } from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
+import { nestedCheckout, useGitCheckouts } from '../../diff/git/test-support/git-checkout.mjs';
 import { commit, fixtureGit, useGitFixtures } from '../../diff/git/test-support/git-repository.mjs';
 import { commitSource, workingTreeSource } from '../sources.mjs';
 
 const { createGitRepository } = useGitFixtures();
+const { gitCheckout } = useGitCheckouts();
 
 function repositoryWithLinks() {
   const { root } = createGitRepository({
@@ -62,5 +64,24 @@ describe('a symbolic link in the sources', () => {
     expect(fromTree.readMany(['escape.txt', 'inside.txt'])).toEqual(
       fromCommit.readMany(['escape.txt', 'inside.txt']),
     );
+  });
+});
+
+describe('the paths of the working tree', () => {
+  it('are the files of the Git checkout and its links, not ignored folders or nested checkouts', () => {
+    const root = gitCheckout(
+      {
+        'config/checkstyle.xml': '<module/>',
+        'scratch/checkstyle.xml': '<module/>',
+        ...nestedCheckout('agent', { 'checkstyle.xml': '<module/>' }),
+      },
+      ['scratch/'],
+    );
+    symlinkSync('checkstyle.xml', path.join(root, 'config/link.xml'));
+
+    expect(workingTreeSource(root).paths().toSorted()).toEqual([
+      'config/checkstyle.xml',
+      'config/link.xml',
+    ]);
   });
 });
