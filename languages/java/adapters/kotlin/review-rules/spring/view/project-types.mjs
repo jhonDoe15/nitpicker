@@ -93,10 +93,13 @@ function dataRepository(context, candidate) {
   );
 }
 
-function reachesRepository(context, start) {
+function reaches(context, start, targets) {
   const queue = exactly(start);
   for (const { name, exact } of queue) {
-    if (DATA_REPOSITORIES.has(name) || (exact && dataRepository(context, name))) {
+    if (
+      targets.has(name) ||
+      (exact && targets === DATA_REPOSITORIES && dataRepository(context, name))
+    ) {
       return true;
     }
     if (queue.length < SEARCH_LIMIT) {
@@ -126,24 +129,32 @@ export function projectContext({ projectFiles, declared, projectRoot, javaRoots 
     classes: qualifiedClasses(projectFiles),
     resolvers: new Map(),
     javaSources: new Map(),
-    repositories: new Map(),
+    reached: new Map(),
     declared,
     projectRoot,
     javaRoots,
   };
 }
 
-export function isRepositoryType(context, resolve, text) {
+export function reachesType(context, { resolve, text, targets }) {
   const name = typeName(text);
   if (name === '') {
     return false;
   }
   const start = resolve(name);
   const key = start.join(' ');
-  if (!context.repositories.has(key)) {
-    context.repositories.set(key, reachesRepository(context, start));
+  if (!context.reached.has(targets)) {
+    context.reached.set(targets, new Map());
   }
-  return context.repositories.get(key);
+  const cache = context.reached.get(targets);
+  if (!cache.has(key)) {
+    cache.set(key, reaches(context, start, targets));
+  }
+  return cache.get(key);
+}
+
+export function isRepositoryType(context, resolve, text) {
+  return reachesType(context, { resolve, text, targets: DATA_REPOSITORIES });
 }
 
 function enclosingFiles(candidate) {

@@ -1,5 +1,6 @@
 import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs';
 import path from 'node:path';
+import { projectFilesUnder } from '../../../../shared/project-files/project-files.mjs';
 import { blankComments, blankLiterals, pathInside, sourceFilesUnder } from './java-sources.mjs';
 
 const CODE_EXTENSIONS = new Set(['.java', '.kt']);
@@ -37,14 +38,13 @@ const COMMENT_STYLES = new Map([
 ]);
 const MAX_TEXT_BYTES = 2 * 1024 * 1024;
 const WEBAPP_ROOT = 'src/main/webapp';
+const DEPENDENCY_DIRECTORY = 'node_modules';
 
 function filesUnder(directory) {
-  if (!existsSync(directory)) {
-    return [];
-  }
-  return readdirSync(directory, { recursive: true, withFileTypes: true })
-    .filter((entry) => entry.isFile())
-    .map((entry) => path.join(entry.parentPath, entry.name));
+  return projectFilesUnder(directory, {
+    includeIgnored: true,
+    skipDirectory: (_, entry) => entry.name === DEPENDENCY_DIRECTORY,
+  });
 }
 
 function filesIn(directory) {

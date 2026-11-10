@@ -1,6 +1,6 @@
 const OPENER_OF = { ')': '(', ']': '[', '}': '{' };
 const OPENERS = new Set(['(', '[', '{']);
-const WORD_WINDOW = 128;
+export const WORD_WINDOW = 128;
 
 function trimTable(code) {
   const table = new Int32Array(code.length + 1);

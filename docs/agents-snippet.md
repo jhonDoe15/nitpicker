@@ -17,9 +17,14 @@ base and fails only on **new enforceable findings**. Existing debt is baselined 
   base. Run it from anywhere inside the project, and run it before you finish a task.
 - When nothing changed since the merge base, no analyzer runs: it prints
   `No changes since <base> (<sha>); nothing to check.` and exits 0.
-- `npx nitpicker --fix` first applies ESLint and Prettier fixes to the changed files, then runs the
-  comparison. Use it to clear formatting and auto-fixable lint findings. It cannot be combined with
-  `--all`.
+- `npx nitpicker --quick` skips the tests and the checks built on them; read the printed skipped
+  list for what it left out.
+  Use it while you iterate; a quick run is never a pass, so run `npx nitpicker` without `--quick`
+  before you finish. `--quick` works with `--fix`, `--base`, `--analyzer` and `--all`.
+- `npx nitpicker --fix` first applies the preset's fixers to the changed files (ESLint and Prettier;
+  `ruff check --fix` and ruff format or black; google-java-format or palantir-java-format; ktlint or
+  ktfmt), then runs the comparison. Use it to clear formatting and auto-fixable lint findings. It
+  cannot be combined with `--all`.
 - `npx nitpicker --base <ref>` compares against a specific ref when the default base is wrong (for
   example `--base origin/develop`).
 - `npx nitpicker --all` reports every finding in the checkout, with no baseline. It exits 1 on any
@@ -41,9 +46,10 @@ A full run takes minutes and prints a progress line to stderr for each slow, fai
 not start a second run or kill it. A second run in the same project exits 2 at once with `another run is in progress`.
 
 Exit 2 is not a pass. Tool errors are listed and recorded even when the exit is 1. Read the tool errors, fix the cause (a missing peer such as `vitest` or
-`typescript`, a bad `nitpicker.config.json`, a wrong `--base`) and rerun. `npx nitpicker init` lists
-the missing peers with the install command for the project's package manager; it never overwrites
-an existing file.
+`typescript`, a bad `nitpicker.config.json`, a wrong `--base`) and rerun. When the message links to
+[troubleshooting](https://github.com/jhonDoe15/nitpicker/blob/main/docs/troubleshooting.md), the fix is there.
+`npx nitpicker init` lists the missing peers with the install command for the project's package
+manager; it never overwrites an existing file.
 
 ### Read the report
 
