@@ -53,7 +53,7 @@ const LINE_COMMENT = /^(?:#|\/\/)/u;
 const BLOCK_START = '/*';
 const BLOCK_END = '*/';
 const DOCSTRING_START = /^[rRuU]?("""|''')/u;
-const COMMENT_SYNTAX = /^(?:#!?|\/\/+|\/?\*+)\s*/u;
+const COMMENT_SYNTAX = /^(?:#!?|\/{2,}|\/?\*+)\s*/u;
 
 export function hasGeneratorMarker(text) {
   return GENERATOR_MARKER.test(text.split('\n', MARKER_LINES).join('\n'));

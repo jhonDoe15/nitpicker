@@ -8,7 +8,7 @@ import { inModule } from './module-path.mjs';
 import { readTestOnlyClassFindings } from '../adapters/review-rules/test-only-classes.mjs';
 import { readTestRuntimeFindings } from '../adapters/test-runtime/test-runtime-findings.mjs';
 import { readCopiedConstantFindings } from '../adapters/review-rules/copied-constants/copied-constants.mjs';
-import { readJvmReuseFindings } from '../adapters/reuse/jvm-reuse-facts.mjs';
+import { readJvmReuse } from '../adapters/reuse/jvm-reuse-facts.mjs';
 
 const JDEPS_REPORT = 'jdeps.txt';
 const JDEPS_CLASSES = 'jdeps-classes.txt';
@@ -127,11 +127,22 @@ function couplingFindings(projectRoot, { projects, mergedRoot, manifest, kotlin,
   });
 }
 
-export function projectWideFindings(
-  projectRoot,
-  { projects, mergedRoot, manifest, kotlin, policy },
-) {
-  return [
+export function reportModuleProjects(modules, rootKey) {
+  return modules.map((module) => ({
+    reportRoot: module.reportRoot,
+    qualifier: module.key === rootKey ? '' : module.dir,
+    sourceRoots: module.manifest.sourceRoots ?? [],
+    kotlinSourceRoots: module.manifest.kotlinSourceRoots ?? [],
+    testSourceRoots: module.manifest.testSourceRoots ?? [],
+    kotlinTestSourceRoots: module.manifest.kotlinTestSourceRoots ?? [],
+    kotlinExcludedFiles: module.manifest.kotlinExcludedFiles ?? [],
+    resourceRoots: module.manifest.resourceRoots ?? [],
+  }));
+}
+
+export function projectWideReport(projectRoot, { projects, mergedRoot, manifest, kotlin, policy }) {
+  const reuse = readJvmReuse(projectRoot, { projects, kotlin, policy });
+  const findings = [
     ...readJavaFileLimitFindings(projectRoot, {
       manifest,
       kotlin,
@@ -152,7 +163,8 @@ export function projectWideFindings(
     }),
     ...readTestOnlyClassFindings(projectRoot, { projects }),
     ...readTestRuntimeFindings(projectRoot, { projects }),
-    ...readJvmReuseFindings(projectRoot, { projects, kotlin, policy }),
+    ...reuse.findings,
     ...readCopiedConstantFindings(projectRoot, { projects, kotlin, policy }),
   ];
+  return { findings, imports: reuse.imports };
 }
