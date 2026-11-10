@@ -34,6 +34,7 @@ export function createGoContext({
     analyzerDeadlineMs: analyzerDeadlineMs(environment ?? {}),
     snapshot: policy.snapshot ?? 'head',
     baselineRoot: policy.baselineRoot,
+    baselineMovesFile: policy.baselineMovesFile,
     testSeconds: policy.testSeconds,
     toolPrecedence: policy.toolPrecedence,
     policyRoot: policy.policyRoot ?? projectRoot,

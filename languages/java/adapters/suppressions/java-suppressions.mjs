@@ -31,7 +31,7 @@ const JUSTIFICATION = /\bjustification\s*=\s*"(?:[^"\\]|\\.)*"/g;
 const UNICODE_ESCAPE = /\\u+([0-9a-fA-F]{4})/g;
 const NESTED_PARENTHESES = /(\([^()]*)\([^()]*\)/g;
 const ANNOTATION = /@[\w.]+(?:\s*\([^()]*\))?/g;
-const LITERAL_ARGUMENTS = /^\s*(?:value\s*=)?[\s{},"]*$/;
+const LITERAL_ARGUMENTS = /^(?:\s*value\s*=)?[\s{},"]*$/;
 const PMD_WARNING_NAMES = new Set(['all', 'unused', 'serial', 'fallthrough']);
 const MESSAGE =
   'Do not silence PMD inline: fix the finding. PMD also honors "all", "unused", "serial" and "fallthrough". The one accepted marker is @SuppressWarnings("PMD.SpringDataNativeQuery") on a repository method that needs native SQL.';

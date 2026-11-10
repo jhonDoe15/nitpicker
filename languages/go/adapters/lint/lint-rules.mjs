@@ -1,3 +1,5 @@
+import { reviveHint, reviveVaryingPart } from './revive-hints.mjs';
+
 function deferredClose(value) {
   return `\`defer func() { err = errors.Join(err, ${value}.Close()) }()\``;
 }
@@ -50,7 +52,7 @@ const HINTS = new Map([
   ['SA9004', 'Give every constant its type, or start an iota group with a typed first constant.'],
   ['SA9005', 'Export the fields to marshal, or implement MarshalJSON.'],
   ['SA9009', 'Write the directive without the space: `//go:name`.'],
-  ['SA9010', 'Call the returned function: `defer cleanup()()`.'],
+  ['SA9010', 'Keep the returned function and defer that: `stop := cleanup(); defer stop()`.'],
   [
     'ST1000',
     'Add a package comment, `// Package name ...`, to one file of the package (usually doc.go).',
@@ -141,8 +143,8 @@ const VARYING_PARTS = new Map([
 ]);
 const COUNTED_RULES = new Set(['formatter']);
 
-function stable(rule, message) {
-  const varying = VARYING_PARTS.get(rule);
+function stable(tool, rule, message) {
+  const varying = tool === 'revive' ? reviveVaryingPart(rule) : VARYING_PARTS.get(rule);
   const text = varying === undefined ? message : message.replace(varying, '');
   return COUNTED_RULES.has(rule) ? text.replace(/#?\d+/gu, 'N') : text;
 }
@@ -156,7 +158,10 @@ function sentence(message) {
   return /[.?!]$/u.test(text) ? text : `${text}.`;
 }
 
-function hintOf(tool, rule) {
+function hintOf(tool, rule, message) {
+  if (tool === 'revive') {
+    return reviveHint(rule, message);
+  }
   const hint = HINTS.get(rule);
   if (tool !== 'modernize') {
     return hint;
@@ -165,7 +170,7 @@ function hintOf(tool, rule) {
 }
 
 export function lintMessage({ tool, rule, message }) {
-  const hint = hintOf(tool, rule);
-  const text = sentence(stable(rule, message));
+  const hint = hintOf(tool, rule, message);
+  const text = sentence(stable(tool, rule, message));
   return hint === undefined ? text : `${text} ${hint}`;
 }

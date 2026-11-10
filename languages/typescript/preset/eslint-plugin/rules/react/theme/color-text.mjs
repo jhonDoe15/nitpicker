@@ -1,20 +1,25 @@
 const HEX_BODY = '(?:[0-9a-fA-F]{8}|[0-9a-fA-F]{6}|[0-9a-fA-F]{3,4})';
 const HEX = `#${HEX_BODY}(?![\\w-])`;
+const CASELESS_HEX = '#(?:[\\da-f]{8}|[\\da-f]{6}|[\\da-f]{3,4})';
 const HEX_START = '(?<![\\w&#/-])';
 const NOT_A_SELECTOR = '(?![^;}]*\\{)';
 const FUNCTION_NAMES = '(?:rgba?|hsla?|hwb|lab|lch|oklab|oklch)';
 const COLOR_SPACES = 'srgb|display-p3|a98-rgb|prophoto-rgb|rec2020|xyz(?:-d50|-d65)?';
-const FUNCTION_CALL = `(?:${FUNCTION_NAMES}\\(\\s*[\\d.+-][^)\\]]*\\)|color\\(\\s*(?:${COLOR_SPACES})\\b[^)\\]]*\\))`;
+const FUNCTION_FORMS = `${FUNCTION_NAMES}\\(\\s*[\\d.+-][^)\\]]*\\)|color\\(\\s*(?:${COLOR_SPACES})\\b[^)\\]]*\\)`;
+const FUNCTION_CALL = `(?:${FUNCTION_FORMS})`;
 const COLOR_PROPERTY =
-  '(?:--[\\w-]+|(?:background|border(?:-(?:top|right|bottom|left|block|inline)(?:-(?:start|end))?)?|outline|column-rule|text-decoration|text-emphasis)(?:-color|-image)?|color|fill|stroke|stop-color|flood-color|lighting-color|caret-color|accent-color|scrollbar-color|box-shadow|text-shadow|filter|mask-image|border-image)';
+  '(?:--[\\w-]+|(?:background|border(?:-(?:top|right|bottom|left|block|inline)(?:-(?:start|end))?)?|outline|column-rule|text-decoration|text-emphasis)(?:-color|-image)?|color|fill|stroke|stop-color|flood-color|lighting-color|caret-color|accent-color|scrollbar-color|box-shadow|text-shadow|filter|mask-image)';
 
 const longHex = /^#(?:[0-9a-fA-F]{6}|[0-9a-fA-F]{8})$/u;
 const shortHex = /^#[0-9a-fA-F]{3,4}$/u;
 const wholeFunction = new RegExp(`^${FUNCTION_CALL}$`, 'iu');
-const functionCall = new RegExp(`(?<![\\w-])(${FUNCTION_CALL})`, 'iu');
+const functionCall = new RegExp(`(?<![\\w-])(${FUNCTION_FORMS})`, 'iu');
 const anyHex = new RegExp(`${HEX_START}(${HEX})`, 'u');
 const cssHex = new RegExp(`${HEX_START}(${HEX})${NOT_A_SELECTOR}`, 'u');
-const arbitraryValue = new RegExp(`(?<![\\w])[\\w:/-]*-\\[(${HEX}|${FUNCTION_CALL})\\]`, 'iu');
+const arbitraryValue = new RegExp(
+  `(?<!\\w)[\\w:/-]*-\\[(${CASELESS_HEX}|${FUNCTION_FORMS})\\]`,
+  'iu',
+);
 const NAMED_COLOR_PROPERTY =
   '(?:color|background(?:-color)?|border-color|fill|stroke|outline-color|text-decoration-color|caret-color)';
 

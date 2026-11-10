@@ -16,6 +16,15 @@ func Forget(name string) {
 func Anything() interface{} {
 	return 1
 }
+
+func Counts(names []string) map[string]int {
+	//revive:disable-next-line:enforce-map-style
+	counts := make(map[string]int)
+	for _, name := range names {
+		counts[name]++
+	}
+	return counts
+}
 `;
 
 export const SKIP_S1003 = 'checks = ["all", "-S1003"]\n';
@@ -76,12 +85,15 @@ type Status int
 const (
 	Open Status = iota
 	Shipped
+	Returned
 )
 
 func Label(status Status) string {
 	switch status {
 	case Open:
 		return "open"
+	case Shipped:
+		return "shipped"
 	}
 	return ""
 }

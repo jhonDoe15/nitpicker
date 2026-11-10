@@ -17,7 +17,7 @@ const MIN_STEM_LENGTH = 3;
 const CODE_FENCE = /^(?:```|~~~)/u;
 const EXAMPLE_TAG = /^@example(?![\w-])/u;
 const BLOCK_TAG = /^@[A-Za-z][\w-]*(?=[\s{]|$)/u;
-const INLINE_TAG = /\{@\w+(?!\w)\s*((?:[^\s}][^}]*)?)\}/gu;
+const INLINE_TAG = /\{@\w+\b\s*((?:[^\s}][^}]*)?)\}/gu;
 const NAMED_TAGS = new Set([
   'param',
   'arg',
