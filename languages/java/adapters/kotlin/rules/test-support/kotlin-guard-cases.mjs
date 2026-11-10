@@ -29,7 +29,7 @@ export const kotlinGuardCases = [
     rule: 'detekt.style.ForbiddenMethodCall',
     message: forbidden(
       'java.lang.System.getenv',
-      'Read environment variables only in the composition root (the file with `fun main`, the `@SpringBootApplication` class or a Ktor `Application` module): read them once into a config class there and pass it in.',
+      'Read environment variables only in the composition root (the file with `fun main`, the `@SpringBootApplication` class, a Ktor `Application` module, or a framework configuration type such as Spring `@Configuration`, Micronaut `@Factory` or a Dagger or Guice module): read them once into a config class there and pass it in.',
     ),
     allowedForm: 'composition root',
     banned: 'fun home(): String? = System.getenv("HOME")\n',

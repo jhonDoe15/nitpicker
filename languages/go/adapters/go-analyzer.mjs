@@ -4,6 +4,7 @@ import { readdirSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { importClosure } from '../../../shared/import-closure.mjs';
 import { toolVersions } from './execution/go-tools.mjs';
+import { GO_LINTER_TOOLS } from './configuration/go-config.mjs';
 import { PROBE_TIMEOUT_MS } from '../../../shared/processes/deadlines.mjs';
 
 export const GO_ANALYZER_NAME = 'go';
@@ -62,11 +63,7 @@ export function createGoAnalyzer(settings = {}) {
       'gofmt',
       'gofumpt',
       'goimports',
-      'vet',
-      'staticcheck',
-      'errcheck',
-      'modernize',
-      'revive',
+      ...GO_LINTER_TOOLS,
       'build',
       'tests',
       'test-runtime',
