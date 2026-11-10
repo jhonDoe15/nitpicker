@@ -22,7 +22,9 @@ gradle -I languages/java/gradle/nitpicker.init.gradle nitpickerJava   (per snaps
   temporary directory outside the project, and the task writes only below it, one subdirectory per
   Gradle project (layout in [internals.md](../internals.md#java-report-directory)). A build script
   that writes to `build/nitpicker` therefore changes nothing nitpicker reads. Run by hand without the property, the task
-  writes to `build/nitpicker/` of each project.
+  writes to `build/nitpicker/` of each project. The tools resolve from Maven Central, which the init script adds to each
+  project, unless `settings.gradle(.kts)` sets `repositoriesMode` to `FAIL_ON_PROJECT_REPOS` (Gradle then refuses a
+  project repository): the repositories the settings declare are used, and they must include Maven Central or a mirror.
 - **Multi-project builds.** Every project that applies the `java` plugin is analyzed, the root
   included when it applies it; paths in findings are relative to the directory Gradle runs in, so a
   subproject's findings carry its folder (`lib/src/main/java/...`). A build where no project applies
