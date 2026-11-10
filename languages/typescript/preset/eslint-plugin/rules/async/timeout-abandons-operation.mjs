@@ -6,10 +6,10 @@ import {
   closesOverSignal,
   passesLifetimeOwner,
   signalParameterOf,
-} from './operation-lifetime.mjs';
-import { combinedEntries, operationsIn } from './race-operations.mjs';
-import { globalMemberCall, isGlobalTimerCall } from './syntax-nodes.mjs';
-import { isTimer, timeoutBindings, timeoutOf } from './timeout-entries.mjs';
+} from './operations/operation-lifetime.mjs';
+import { combinedEntries, operationsIn } from './operations/race-operations.mjs';
+import { globalMemberCall, isGlobalTimerCall } from './operations/syntax-nodes.mjs';
+import { isTimer, timeoutBindings, timeoutOf } from './operations/timeout-entries.mjs';
 
 const MAX_TEXT = 40;
 

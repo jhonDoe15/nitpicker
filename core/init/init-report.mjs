@@ -1,5 +1,3 @@
-const SKILLS_ADD = 'npx skills add jhonDoe15/nitpicker --skill';
-
 function runCommandOf(project) {
   return project.family === 'node' ? project.packageManager.run : 'npx nitpicker';
 }
@@ -53,10 +51,10 @@ function peerLines(peers) {
   return [...installLines(peers), ...undeclared];
 }
 
-function skillLines(project) {
+function skillLines(project, source) {
   return [
     'Install the agent skill:',
-    ...skillsOf(project).map((skill) => `  ${SKILLS_ADD} ${skill}`),
+    ...skillsOf(project).map((skill) => `  npx skills add ${source} --skill ${skill}`),
   ];
 }
 
@@ -94,13 +92,14 @@ function ciLines(workflow, { approval, workflowFile, command, offered }) {
 }
 
 export function renderReport(placed) {
-  const { project, peers, config, workflow, approval, workflowFile, agents, offers } = placed;
+  const { project, peers, config, workflow, approval, workflowFile, agents, offers, skillSource } =
+    placed;
   const command = runCommandOf(project);
   const sections = [
     [headline(project), ...project.notes],
     peerLines(peers),
     fileLines(config),
-    skillLines(project),
+    skillLines(project, skillSource),
     [
       ...agentsLines(agents, command, offers.agents),
       ...ciLines(workflow, { approval, workflowFile, command, offered: offers.workflow }),
