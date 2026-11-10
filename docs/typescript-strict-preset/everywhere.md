@@ -307,6 +307,23 @@ Part of the [TypeScript strict preset guide](../typescript-strict-preset.md).
   code also uses another way. `for` loops over the rows and `.then(...)` callbacks are not
   followed. Tests are skipped. A small fixed lookup list that is meant to be loaded whole takes an
   `exceptions` entry.
+- No two to-many relations joined into one query (`nitpicker/no-multiple-collection-joins`, the
+  counterpart of the Spring rule `pmd/JpaMultipleCollectionFetch` and of the Python
+  `multiple-collection-joins`): the database returns one row for every pair of their elements. It
+  reads TypeORM `relations` (array or nested object) of `find`, `findOne`, `findOneOrFail` and
+  `findAndCount`, and query builder `leftJoinAndSelect`/`innerJoinAndSelect` chains from
+  `createQueryBuilder`; Sequelize `include` of `findAll`, `findOne`, `findByPk`, `findAndCountAll`
+  and `findOrCreate` (by `as`, `association`, a string or the model); and MikroORM `populate`, which
+  joins by default since MikroORM 6 (unless the find sets `strategy: 'select-in'`, the project's
+  `mikro-orm.config` file sets `loadStrategy: 'select-in'`, or MikroORM 5 is installed). Relations come from the declared entity types:
+  an array, a MikroORM `Collection` or `LoadedCollection` is to-many, and `Ref`, `Reference` and
+  `Promise` are unwrapped. A chain along one collection (`'lines'` and `'lines.parts'`), a
+  collection next to to-one relations, TypeORM `relationLoadStrategy: 'query'`, a Sequelize
+  include with `separate: true` and MikroORM's select-in strategy pass. Joins on a query builder
+  held in a variable are combined with later calls on it in the same block; calls inside an
+  `if` branch, and chains on `qb.clone()`, count as their own query. Prisma and
+  Drizzle relational queries are not reported: they load each relation in its own query or as a
+  nested JSON aggregate. Load the collections in separate queries, or batch them with a DataLoader.
 - No foreign key without an index that starts with its column (`nitpicker/no-unindexed-foreign-key`,
   the model-side partner of the `foreign-key-index` repository rule): only MySQL indexes a
   foreign-key column by itself. It reads TypeORM and MikroORM `@ManyToOne` properties of entity

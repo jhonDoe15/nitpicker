@@ -42,6 +42,7 @@ import { rule as ruleNoManyToManyCascadeRemove } from './rules/persistence/no-ma
 import { rule as ruleNoMockingSubjectUnderTest } from './rules/testing/assertions/no-mocking-subject-under-test.mjs';
 import { rule as ruleNoModuleLevelLet } from './rules/modules/no-module-level-let.mjs';
 import { rule as ruleNoModuleLevelMutableState } from './rules/guards/no-module-level-mutable-state.mjs';
+import { rule as ruleNoMultipleCollectionJoins } from './rules/joins/no-multiple-collection-joins.mjs';
 import { rule as ruleNoMutatingMethodInDomain } from './rules/domain/no-mutating-method-in-domain.mjs';
 import { rule as ruleNoNodeProcessPerTest } from './rules/testing/processes/no-node-process-per-test.mjs';
 import { rule as ruleNoNull } from './rules/syntax/no-null.mjs';
@@ -167,6 +168,7 @@ export const directoryRules = {
   'no-mocking-subject-under-test': ruleNoMockingSubjectUnderTest,
   'no-module-level-let': ruleNoModuleLevelLet,
   'no-module-level-mutable-state': ruleNoModuleLevelMutableState,
+  'no-multiple-collection-joins': ruleNoMultipleCollectionJoins,
   'no-mutating-method-in-domain': ruleNoMutatingMethodInDomain,
   'no-node-process-per-test': ruleNoNodeProcessPerTest,
   'no-null': ruleNoNull,
