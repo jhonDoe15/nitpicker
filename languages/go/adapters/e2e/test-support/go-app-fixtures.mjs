@@ -66,6 +66,26 @@ export const REFUND = INVOICE.replace('func Invoice(lines', 'func Refund(entries
   .replaceAll('total', 'sum')
   .replace('negative entry', 'negative refund');
 
+export const REFUND_TEST = `package billing
+
+import "testing"
+
+func TestRefund(t *testing.T) {
+	if _, err := Refund([]int{-1}, 5); err == nil {
+		t.Fatal("negative refund accepted")
+	}
+	if sum, err := Refund([]int{1, 2}, 5); err != nil || sum != 10 {
+		t.Fatal("small refund")
+	}
+	if sum, err := Refund([]int{600, 600}, 500); err != nil || sum != 1000 {
+		t.Fatal("capped refund")
+	}
+	if sum, err := Refund([]int{20}, 50); err != nil || sum != 21 {
+		t.Fatal("plain refund")
+	}
+}
+`;
+
 export const MAIN_WITH_REFUND = MAIN.replace(
   'fmt.Println(billing.Invoice([]int{1, 2}, 5))',
   'fmt.Println(billing.Invoice([]int{1, 2}, 5))\n\tfmt.Println(billing.Refund([]int{3}, 5))',
