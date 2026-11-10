@@ -25,6 +25,7 @@
   "languages/java/adapters/java-e2e/preset/comparison/java-preset-policy.e2e.test.mjs": 111,
   "languages/java/adapters/java-e2e/preset/comparison/signals/java-preset-stability.e2e.test.mjs": 178,
   "languages/java/adapters/java-e2e/preset/comparison/java-preset-structure.e2e.test.mjs": 110,
+  "languages/java/adapters/java-e2e/preset/probes/reusable-objects.e2e.test.mjs": 30,
   "languages/java/adapters/java-e2e/preset/comparison/signals/java-preset-touched-lines.e2e.test.mjs": 65,
   "languages/java/adapters/java-e2e/preset/configuration/configuration-reads.e2e.test.mjs": 30,
   "languages/java/adapters/java-e2e/preset/quality/http-timeouts.e2e.test.mjs": 30,

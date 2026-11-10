@@ -14,6 +14,7 @@ import { withLockEvidence } from '../../../messages/locking/lock-evidence.mjs';
 import { withProjectTypeMocks } from '../../../messages/mocks/project-mocks.mjs';
 import { withGeneratedMembers } from '../../../messages/generated-members/generated-members.mjs';
 import { withSpringTransactionFilters } from '../../spring/transactions/transaction-filters.mjs';
+import { withCrossedFetches } from '../../jpa/fetches/fetch-filter.mjs';
 import { withoutSpringCoveredReads } from '../../spring/configuration/covered-reads.mjs';
 
 const LINE_NUMBER = /\bline \d+\b/g;
@@ -83,12 +84,15 @@ export function sarifFindings(context) {
         dropSleepsInFakes(
           withProjectTypeMocks(
             dropInheritedVersions(
-              withGeneratedMembers(
-                withSpringTransactionFilters(
-                  withoutSpringCoveredReads(ingestSarif(pmd, { tool: 'pmd' }).findings),
-                  context,
+              withCrossedFetches(
+                withGeneratedMembers(
+                  withSpringTransactionFilters(
+                    withoutSpringCoveredReads(ingestSarif(pmd, { tool: 'pmd' }).findings),
+                    context,
+                  ),
+                  { projectRoot },
                 ),
-                { projectRoot },
+                { projectRoot, sourceRoots: allSourceRoots },
               ),
               { projectRoot, sourceRoots: allSourceRoots },
             ),

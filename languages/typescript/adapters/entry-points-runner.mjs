@@ -1,5 +1,4 @@
 import { existsSync, realpathSync } from 'node:fs';
-import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { toEntryPointDiffFindings } from './entry-points.mjs';
@@ -9,6 +8,7 @@ import { existingRoots } from '../preset/layout.mjs';
 import { readLayout } from '../preset/head-policy.mjs';
 import { EXCLUDED_PATH_PATTERN } from '../preset/dependency-graph/cruise.mjs';
 import { loadDependencyGraph } from './dependency-graph/project-dependency-graph.mjs';
+import { realTemporaryDirectory } from '../../../core/tooling/temporary-files.mjs';
 import { withTypeScriptHint } from './hints/tool-failure-hint.mjs';
 
 const TRUSTED_TOOL_ROOT = PACKAGE_ROOT;
@@ -113,7 +113,7 @@ function validatedRoot(value, name) {
   if (root === PACKAGE_ROOT) {
     return root;
   }
-  const segments = path.relative(realpathSync(tmpdir()), root).split(path.sep);
+  const segments = path.relative(realTemporaryDirectory(), root).split(path.sep);
   if (
     segments.length >= 2 &&
     segments[0].startsWith('nitpicker-diff-') &&
