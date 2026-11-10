@@ -86,5 +86,5 @@ function hasArrayType(sourceCode, node) {
 }
 
 export function isStreamSource(sourceCode, node) {
-  return !isArrayExpression(sourceCode, node) && !hasArrayType(sourceCode, node);
+  return !(isArrayExpression(sourceCode, node) || hasArrayType(sourceCode, node));
 }
