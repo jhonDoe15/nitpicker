@@ -13,6 +13,11 @@ import {
   troubleshootingLinkOf,
 } from '../../../shared/messages/troubleshooting.mjs';
 import { TESTS_FAILED_RULE } from '../../../shared/rules/finding-helpers.mjs';
+import { GRADLE_LOG_LINE } from './gradle-wrapper/diagnostics/failure-log.mjs';
+import {
+  compileErrorFindings,
+  compileErrorsOf,
+} from '../builds/compile-errors/compile-findings.mjs';
 
 export const GRADLE_FAILURE_RULE = 'gradle-failure';
 export const MAVEN_FAILURE_RULE = 'maven-failure';
@@ -25,11 +30,11 @@ function truncated(message, rule) {
     return message;
   }
   const link = troubleshootingLinkOf(message);
-  const kept = message
-    .replace(link ?? '', '')
-    .trimEnd()
-    .slice(0, limit);
-  return `${kept}...${link === undefined ? '' : `\n${link}`}`;
+  const kept = message.replace(link ?? '', '').trimEnd();
+  const logAt = kept.lastIndexOf(`\n${GRADLE_LOG_LINE}`);
+  const [body, log] = logAt < 0 ? [kept, ''] : [kept.slice(0, logAt), kept.slice(logAt)];
+  const cut = body.length > limit ? `${body.slice(0, limit)}...` : body;
+  return `${cut}${log}${link === undefined ? '' : `\n${link}`}`;
 }
 
 export function javaExecutionBudget(environment = process.env) {
@@ -68,6 +73,10 @@ export function analyzeJavaSnapshot(
     });
     return { findings, ...moduleImportsSection(imports, policy?.history) };
   } catch (error) {
+    const compileErrors = policy?.snapshot === 'base' ? [] : compileErrorsOf(error);
+    if (compileErrors.length > 0) {
+      return { findings: compileErrorFindings(compileErrors, policy?.preset ?? 'java') };
+    }
     const rule = failureRule(error, projectRoot);
     const anchor =
       rule === MAVEN_FAILURE_RULE

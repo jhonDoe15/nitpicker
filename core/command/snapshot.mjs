@@ -5,7 +5,7 @@ import {
   writeSnapshotReports,
   renderRuleFilterSection as renderSnapshotRuleFilterSection,
 } from '../snapshot/reporters.mjs';
-import { selectAnalyzers } from '../diff/execution/run-analyzers.mjs';
+import { analyzerRunOptions, selectAnalyzers } from '../diff/execution/run-analyzers.mjs';
 import { withTemporaryWorktree } from '../diff/git/repository/worktree.mjs';
 import {
   prepareSnapshotDependencies,
@@ -48,8 +48,8 @@ export function runSnapshotCli(cli) {
       selectedAnalyzers,
       currentProjectRoot,
       headPolicy,
-      runTasks,
       scope,
+      ...analyzerRunOptions({ outputRoot, runTasks }),
     }),
   );
   Object.assign(
@@ -95,8 +95,8 @@ function runInSnapshotWorktree({
   selectedAnalyzers,
   currentProjectRoot,
   headPolicy,
-  runTasks,
   scope,
+  ...execution
 }) {
   const needsDependencies = selectedAnalyzers.some((analyzer) => analyzer.requiresDependencies);
   const dependencies = needsDependencies
@@ -114,8 +114,8 @@ function runInSnapshotWorktree({
       toolRoot: PACKAGE_ROOT,
       liveProjectRoot: currentProjectRoot,
       headPolicy,
-      runTasks,
       scope,
+      ...execution,
     });
   } finally {
     removeSnapshotDependencies(dependencies);

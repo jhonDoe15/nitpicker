@@ -1,4 +1,4 @@
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
@@ -31,9 +31,15 @@ describe('assertGradleSucceeded', () => {
     return root;
   }
 
-  function thrownBy(result, reportBase, extra = {}) {
+  function logRoot() {
+    const root = mkdtempSync(path.join(tmpdir(), 'nitpicker-gradle-logs-'));
+    temporaryRoots.push(root);
+    return path.join(root, 'logs');
+  }
+
+  function thrownBy(result, reportBase, { projectRoot = '/p', ...extra } = {}) {
     try {
-      assertGradleSucceeded(result, '/p', { reportBase, since: 0, ...extra });
+      assertGradleSucceeded(result, projectRoot, { reportBase, since: 0, ...extra });
     } catch (error) {
       return error;
     }
@@ -48,7 +54,10 @@ describe('assertGradleSucceeded', () => {
     const reportBase = reportsWith(
       '<testsuite name="shop.CartTest"><testcase classname="shop.CartTest" name="adds"><failure message="no"/></testcase></testsuite>',
     );
-    const error = thrownBy({ ...failed, stderr: 'FAILURE: Build failed' }, reportBase);
+    const logs = logRoot();
+    const error = thrownBy({ ...failed, stderr: 'FAILURE: Build failed' }, reportBase, {
+      policy: { logRoot: logs, logLabel: 'reports/logs', snapshot: 'head' },
+    });
 
     expect(error.failures).toEqual([
       {
@@ -61,7 +70,12 @@ describe('assertGradleSucceeded', () => {
       '1 test fails in core; the build stopped, so no other check ran. Fix the tests and rerun:',
       '  shop.CartTest.adds: no',
     ]);
-    expect(error.message.split('\n').at(-1)).toMatch(/^Full Gradle log: \S+$/u);
+    expect(error.message.split('\n').at(-1)).toBe(
+      'Full Gradle log: reports/logs/java-head-gradle.log',
+    );
+    expect(readFileSync(path.join(logs, 'java-head-gradle.log'), 'utf8')).toBe(
+      '=== stdout ===\n\n=== stderr ===\nFAILURE: Build failed',
+    );
   });
 
   describe('on a build that succeeded', () => {
@@ -92,9 +106,38 @@ describe('assertGradleSucceeded', () => {
     const error = thrownBy(failed, '/none');
 
     expect(error.failures).toBeUndefined();
-    expect(error.message.split('\n').slice(1).join('\n')).toBe(
-      `Java preset failed in /p: ${TEST_TASK_OUTPUT}`,
+    expect(error.message).toBe(
+      "Java preset failed on your change: Execution failed for task ':test'.\n> There were failing tests.",
     );
+  });
+
+  it('names the base and the Kotlin preset, and keeps the log after the message', () => {
+    const logs = logRoot();
+    const error = thrownBy(failed, '/none', {
+      policy: { preset: 'kotlin', snapshot: 'base', logRoot: logs, logLabel: 'out/logs' },
+    });
+
+    expect(error.message.split('\n')).toEqual([
+      "Kotlin preset failed on the base: Execution failed for task ':test'.",
+      '> There were failing tests.',
+      'Full Gradle log: out/logs/kotlin-base-gradle.log',
+    ]);
+  });
+
+  it('carries the compile errors of the project for the runner to report as findings', () => {
+    const root = mkdtempSync(path.join(tmpdir(), 'nitpicker-gradle-compile-'));
+    temporaryRoots.push(root);
+    mkdirSync(path.join(root, 'src/main/java/demo'), { recursive: true });
+    writeFileSync(path.join(root, 'src/main/java/demo/A.java'), '\n');
+    const error = thrownBy(
+      { status: 1, stdout: '', stderr: 'src/main/java/demo/A.java:5: error: cannot find symbol' },
+      '/none',
+      { projectRoot: root },
+    );
+
+    expect(error.compileErrors).toEqual([
+      { path: 'src/main/java/demo/A.java', line: 5, message: 'cannot find symbol' },
+    ]);
   });
 
   it('keeps a run that could not start apart from failing test reports', () => {
@@ -104,6 +147,6 @@ describe('assertGradleSucceeded', () => {
     const error = thrownBy({ error: new Error('timed out'), status: null }, reportBase);
 
     expect(error.failures).toBeUndefined();
-    expect(error.message.split('\n').slice(1)).toEqual(['timed out']);
+    expect(error.message).toBe('timed out');
   });
 });

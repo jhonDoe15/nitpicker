@@ -37,7 +37,7 @@ import {
   withTestsFailures,
 } from './red-base/tests-failed.mjs';
 import { isJavaTouchedRule } from './touched-rules.mjs';
-import { withProjectEnumPredicates } from './review-rules/enum-predicates.mjs';
+import { withProjectSourceRules } from './regexes/regex-defects.mjs';
 import { gradleBudget } from './gradle-wrapper/gradle-budget.mjs';
 import { gradleStages } from './gradle-wrapper/gradle-stages.mjs';
 import { gradleDesignFindings, mavenDesignFindings } from './design/design-modules.mjs';
@@ -74,17 +74,10 @@ function runJavaPreset(
       directory: path.join(reportBase, 'tool-config'),
       testsFailedModules,
     });
+    const checkTests = testsFailedModules.length === 0;
+    const options = { projectRoot, gradle, budget, reportBase, since, checkTests, policy, spawn };
     for (const stage of stages) {
-      runGradleStage({
-        args: stage(),
-        projectRoot,
-        gradle,
-        budget,
-        reportBase,
-        since,
-        checkTests: testsFailedModules.length === 0,
-        spawn,
-      });
+      runGradleStage({ args: stage(), ...options });
     }
   });
 }
@@ -187,7 +180,7 @@ export function collectJavaReport(root, options = {}) {
   ).findings;
   const policed = applyFindingPolicy(
     withoutFollowedImports(
-      withProjectEnumPredicates(withoutGeneratedSources(parsed, projectRoot), projectRoot),
+      withProjectSourceRules(withoutGeneratedSources(parsed, projectRoot), projectRoot),
       options.policy?.conventions,
       readSource,
     ),
