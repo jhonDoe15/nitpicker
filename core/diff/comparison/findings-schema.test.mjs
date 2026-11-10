@@ -335,9 +335,11 @@ describe('spec/findings.schema.json', () => {
           classification: 'tool-error',
         },
       ],
+      moduleImports: [{ from: 'src/billing/invoice.ts', to: 'src/invoicing' }],
     };
 
     expect(parseAnalyzerReport(report, 'fixture').findings).toHaveLength(report.findings.length);
+    expect(parseAnalyzerReport(report, 'fixture').moduleImports).toEqual(report.moduleImports);
     expect(validate(report)).toEqual([]);
   });
 
@@ -487,24 +489,12 @@ describe('spec/findings.schema.json', () => {
     expect(() => validate({ findings: [] }, { oneOf: [] })).toThrow(/does not support/);
   });
 
-  it('accepts module imports like the reference parser', () => {
-    const moduleImports = [{ from: 'src/billing/invoice.ts', to: 'src/invoicing' }];
-
-    expect(parseAnalyzerReport({ findings: [], moduleImports }, 'fixture')).toEqual({
-      findings: [],
-      moduleImports,
-    });
-    expect(validate({ findings: [], moduleImports })).toEqual([]);
-  });
-
   it.each([
-    [{ from: 'src/billing/invoice.ts' }],
-    [{ from: '', to: 'src/invoicing' }],
-    [{ from: 'src/billing/invoice.ts', to: 'src/invoicing', files: 1 }],
-  ])('rejects the malformed module import %j like the reference parser', (entry) => {
+    [{ from: 'src/billing/invoice.ts' }, ['$.moduleImports[0].to is required']],
+    [{ from: 'src/billing.ts', to: 'src', files: 1 }, ['$.moduleImports[0].files is not allowed']],
+  ])('rejects the module import %j like the reference parser', (entry, errors) => {
     const report = { findings: [], moduleImports: [entry] };
-
     expect(() => parseAnalyzerReport(report, 'fixture')).toThrow(TypeError);
-    expect(validate(report)).not.toEqual([]);
+    expect(validate(report)).toEqual(errors);
   });
 });
