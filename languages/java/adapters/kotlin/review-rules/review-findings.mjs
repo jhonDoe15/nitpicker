@@ -25,6 +25,7 @@ import { suspendCleanupFindings } from './coroutines/suspend-cleanup.mjs';
 import { productionTypeResolver } from './production-types.mjs';
 import { findingFactory } from './review-finding.mjs';
 import { springFindings } from './spring/spring-findings.mjs';
+import { relaxedMockFindings } from './tests/mocks/relaxed-mocks.mjs';
 import { subjectMockFindings } from './tests/mocks/subject-mocks.mjs';
 import { springContextFindings } from './tests/spring-context.mjs';
 import { testHonestyFindings } from './tests/test-honesty.mjs';
@@ -88,6 +89,7 @@ export function readKotlinReviewFindings(context) {
     }),
     ...honesty,
     ...subjectMockFindings(own, { finding, projectRoot, projectFiles, isProduction }),
+    ...relaxedMockFindings(own, { finding, projectRoot, isProduction }),
     ...springContextFindings(own, { finding }),
     ...springFindings(own, { finding, manifest, projectFiles, projectRoot, javaRoots }),
     ...blockingFindings(own, { finding, declaredIn: projectFiles, projectRoot, javaRoots }),

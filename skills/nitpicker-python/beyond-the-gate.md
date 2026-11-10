@@ -36,8 +36,5 @@ The gate can't check these; reviewers keep catching them.
   a copy of its value. The magic-number check skips test files.
 - Build fixtures from what the real producer returns (a recorded response saved under
   `tests/fixtures/`, a row as the repository loads it), including the shapes with absent fields.
-- Patch the name where it is looked up: after `from mailer import send` in `shop.checkout`, patch
-  `shop.checkout.send`, not `mailer.send`. Give a mock `spec=` or `create_autospec`, so a changed
-  signature fails the test.
 - For measured values (sizes, positions, timings), assert relationships (no overlap, order holds),
   not the numbers; compare floats with `pytest.approx`.
