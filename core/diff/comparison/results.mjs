@@ -5,13 +5,16 @@ import {
   policyFindings,
 } from '../reporting/review/policy-findings.mjs';
 import { compareAnalyzers } from './base-red/compare-analyzers.mjs';
+import { withCoChangeDependencies } from '../../../shared/history/co-change/dependencies/join.mjs';
 import { runProfileSummary } from '../../quick/summary.mjs';
 import { scopeNotes, scopeOutcomes, scopeSummary } from '../../scope/scope-findings.mjs';
 
 export function combineAnalyzerReports(context) {
-  const { baseRun, headRun, additionalToolErrors } = context;
+  const { additionalToolErrors, policies = {} } = context;
+  const baseRun = withCoChangeDependencies(context.baseRun, policies.base);
+  const headRun = withCoChangeDependencies(context.headRun, policies.head);
   const toolErrors = [...additionalToolErrors, ...baseRun.toolErrors, ...headRun.toolErrors];
-  const compared = compareAnalyzers({ ...context, toolErrors });
+  const compared = compareAnalyzers({ ...context, baseRun, headRun, toolErrors });
   const outcomes = scopeOutcomes(compared.outcomes, context.scope);
   const notes = scopeNotes(compared.notes, context.scope);
   return buildReport({ ...context, outcomes, notes, toolErrors });
