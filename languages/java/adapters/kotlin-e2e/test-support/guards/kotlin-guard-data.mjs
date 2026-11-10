@@ -55,6 +55,7 @@ const BANNED_GUARDS = {
   'Versions.kt': `${PACKAGE}fun version(command: List<String>): String {\n    val process = ProcessBuilder(command).start()\n    return process.inputStream.bufferedReader().readText()\n}\n`,
   'Reports.kt': `${PACKAGE}const val RECENT = "select id from account where active limit 20"\n`,
   'Lookups.kt': `${QUERY}fun byIds(query: Query, ids: List<Long>): Query = query.setParameter("ids", ids)\n`,
+  'Settings.kt': `${PACKAGE}fun batch(): String = System.getProperty("shop.batch", "50")\n`,
   'Paths.kt': `${PACKAGE}class Paths(private val known: List<String>) {\n    fun unique(paths: List<String>): List<String> {\n        val seen = mutableListOf<String>()\n        for (path in paths) {\n            if (path !in seen) seen.add(path)\n        }\n        return seen\n    }\n\n    fun matches(paths: List<String>): List<String?> = paths.map { p -> known.find { it.length == p.length } }\n\n    fun shortest(paths: List<String>): String = paths.sortedBy { it.length }.first()\n}\n`,
 };
 
@@ -84,7 +85,7 @@ const ALLOWED_GUARDS = {
   'Marked.kt': `${PACKAGE}fun keep(): Int = 1\n`,
   'Casts.kt': `${PACKAGE}fun next(): Int = 1\n\nfun names(value: Any): List<String> = (value as? List<*>).orEmpty().filterIsInstance<String>()\n\nfun same(value: String): String = value\n`,
   'Literals.kt': `${PACKAGE}private const val SHIPPING = "shipping"\n\nfun labels(): List<String> = listOf(SHIPPING, SHIPPING, SHIPPING)\n\nfun kind(text: String): Int = when (text) {\n    "shipping-pending" -> 1\n    "shipping-sent", "shipping-pending" -> 2\n    else -> 3\n}\n\nfun more(): Map<String, Int> = mapOf("shipping-pending" to 1)\n`,
-  'App.kt': `${PACKAGE}fun main() {\n    ProcessBuilder("serve", "--port", System.getenv("PORT")).inheritIO().start()\n    show(System.out)\n}\n`,
+  'App.kt': `${PACKAGE}fun main() {\n    val batch = System.getProperty("shop.batch", "50")\n    ProcessBuilder("serve", "--port", System.getenv("PORT"), "--batch", batch).inheritIO().start()\n    show(System.out)\n}\n`,
   'Prefetch.kt': prefetch('limited', LIMITED),
   'Links.kt': `${PACKAGE}import java.net.URI\n\nfun cover(path: String): URI? = runCatching { URI.create("https://shop.example/$path") }.getOrNull()\n`,
   'Streams.kt': `${PACKAGE}import java.io.File\nimport java.util.jar.JarFile\n\nfun manifestOf(root: File): String = JarFile(root).use { it.name }\n`,
@@ -146,6 +147,7 @@ export const EXPECTED_BANNED = [
   'kotlin-source/ProcessWaitWithoutTimeout Versions.kt',
   'kotlin-source/UnorderedQuery Reports.kt',
   'kotlin-source/UnboundedQueryArray Lookups.kt',
+  'kotlin-source/ConfigurationReadOutsideCompositionRoot Settings.kt',
   'kotlin-source/ListUsedAsSet Paths.kt',
   'kotlin-source/LinearLookupInLoop Paths.kt',
   'kotlin-source/SortForExtreme Paths.kt',
