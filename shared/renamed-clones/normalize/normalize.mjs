@@ -9,6 +9,7 @@ export function normalizeSource({ text, fileName, syntax, typescript }) {
     case 'python':
     case 'kotlin':
     case 'java':
+    case 'go':
       return normalizeScanned(text, syntax);
     default:
       throw new TypeError(`Unknown syntax ${String(syntax)}`);

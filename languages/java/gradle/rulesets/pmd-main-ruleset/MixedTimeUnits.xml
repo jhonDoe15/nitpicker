@@ -1,0 +1,113 @@
+  <rule name="MixedTimeUnits" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
+        message="Time values in two different units meet here without a conversion: seconds with milliseconds, nanoseconds or minutes, in a +, -, comparison, assignment or argument, so the result is off by a factor such as 1000. Convert once where the value enters (TimeUnit.SECONDS.toMillis(seconds), Duration.ofSeconds(seconds).toMillis() or seconds * 1000) and name the result with its unit; if a name gives the wrong unit, rename it to the real one.">
+    <priority>3</priority>
+    <properties>
+      <property name="xpath">
+        <value><![CDATA[
+let $scales := map { 'ns': 1, 'us': 1000, 'ms': 1000000, 's': 1000000000, 'min': 60000000000 },
+    $named := function($names) {
+      let $name := string($names[1])
+      return if (empty($names) or matches($name, '(Per|_per|_PER)([A-Z_]|$)|^_*(show|hide|include|display|enable|disable|use|should|can|allow)[A-Z_]')) then ()
+      else if (matches($name, '^_*(NANOS|NANOSECONDS|nanos|nanoseconds)$|[a-z0-9](Nanoseconds|Nanos)$|_(NANOS|NANOSECONDS|nanos|nanoseconds)$')) then 'ns'
+      else if (matches($name, '^_*(MICROS|MICROSECONDS|micros|microseconds)$|[a-z0-9](Microseconds|Micros)$|_(MICROS|MICROSECONDS|micros|microseconds)$')) then 'us'
+      else if (matches($name, '^_*(EPOCHMILLI|MILLIS|MILLISECONDS|MS|epochMilli|epochmilli|millis|milliseconds|ms)$|[a-z0-9](Milliseconds|Millis|Ms|EpochMilli)$|_(EPOCH_MILLI|MILLIS|MILLISECONDS|MS|epoch_milli|millis|milliseconds|ms)$')) then 'ms'
+      else if (matches($name, '^_*(EPOCHSECOND|SECONDS|SECS|epochSecond|epochsecond|seconds|secs)$|[a-z0-9](Seconds|Secs|EpochSecond)$|_(EPOCH_SECOND|SECONDS|SECS|epoch_second|seconds|secs)$')) then 's'
+      else if (matches($name, '^_*(MINUTES|minutes)$|[a-z0-9](Minutes)$|_(MINUTES|minutes)$')) then 'min'
+      else ()
+    },
+    $converter := function($names) {
+      matches(string($names[1]), '^_*(of|plus|minus|with|set|from|parse|sleep|truncated|multiplied|divided|is|has|format)([^a-z]|$)')
+    },
+    $constant := function($name) {
+      if ($name = ('NANOSECONDS', 'NANOS')) then 'ns'
+      else if ($name = ('MICROSECONDS', 'MICROS')) then 'us'
+      else if ($name = ('MILLISECONDS', 'MILLIS')) then 'ms'
+      else if ($name = 'SECONDS') then 's'
+      else if ($name = 'MINUTES') then 'min'
+      else ()
+    },
+    $unitType := function($e) {
+      $e[self::FieldAccess][pmd-java:typeIs('java.util.concurrent.TimeUnit')
+                            or pmd-java:typeIs('java.time.temporal.ChronoUnit')]/$constant(@Name)
+    },
+    $direct := function($e) {
+      if ($e/self::MethodCall) then
+        if ($e/@MethodName = 'nanoTime') then 'ns'
+        else if ($e/@MethodName = 'getTime' and $e/ArgumentList/@Size = 0
+                 and $e/*[1][pmd-java:typeIs('java.util.Date')]) then 'ms'
+        else if ($converter($e/@MethodName)) then ()
+        else $named($e/@MethodName)
+      else if ($e/self::VariableAccess or $e/self::FieldAccess) then $named($e/@Name)
+      else ()
+    },
+    $scaled := function($e, $unit) {
+      let $operand := $e/*[not(self::NumericLiteral)],
+          $literal := $e/NumericLiteral
+      return if (count($operand) = 1 and count($literal) = 1
+                 and ($e/@Operator = '*' or $e/*[1] is $operand)) then
+        let $from := $unit($operand)
+        return if (empty($from)) then ()
+        else
+          let $target := if ($e/@Operator = '*') then $scales($from) div $literal/@ValueAsDouble
+                         else $scales($from) * $literal/@ValueAsDouble
+          return ('ns', 'us', 'ms', 's', 'min')[$scales(.) = $target]
+      else ()
+    },
+    $local := function($e) {
+      if ($e/self::VariableAccess and empty($named($e/@Name))) then
+        let $declarations := $e/ancestor::*[self::MethodDeclaration or self::ConstructorDeclaration
+                                            or self::LambdaExpression or self::Initializer][1]
+                               //LocalVariableDeclaration/VariableDeclarator[VariableId/@Name = $e/@Name]
+        return if (count($declarations) = 1) then $declarations/*[2] else ()
+      else ()
+    },
+    $base := function($e) {
+      let $plain := if ($e/self::CastExpression[PrimitiveType[@Kind = ('long', 'double')]])
+                    then $e/*[last()] else $e
+      return (
+        $direct($plain),
+        if ($plain/self::InfixExpression[@Operator = ('*', '/')]) then $scaled($plain, $direct) else (),
+        for $init in $local($plain) return
+          ($direct($init), if ($init/self::InfixExpression[@Operator = ('*', '/')]) then $scaled($init, $direct) else ())
+      )[1]
+    },
+    $unit := function($e) {
+      if ($e/self::InfixExpression[@Operator = ('+', '-')][not(pmd-java:typeIs('java.lang.String'))]) then
+        let $units := distinct-values(($base($e/*[1]), $base($e/*[2])))
+        return if (count($units) = 1) then $units else ()
+      else $base($e)
+    },
+    $differs := function($left, $right) {
+      exists($left) and exists($right) and $left != $right
+    }
+return (
+  //InfixExpression[@Operator = ('+', '-', '<', '<=', '>', '>=', '==', '!=')]
+    [not(pmd-java:typeIs('java.lang.String'))]
+    [$differs($unit(*[1]), $unit(*[2]))]
+  | //AssignmentExpression[@Operator = ('=', '+=', '-=')]
+    [*[1][self::VariableAccess or self::FieldAccess]]
+    [$differs($named(*[1]/@Name), $unit(*[2]))]
+  | //VariableDeclarator[*[2]][$differs($named(VariableId/@Name), $unit(*[2]))]
+  | //MethodCall[ArgumentList/@Size >= 1]
+    [let $call := .,
+         $first := ArgumentList/*[1],
+         $expected := if (@MethodName = 'sleep' and *[1][pmd-java:typeIs('java.lang.Thread')]
+                          or pmd-java:matchesSig('java.lang.Thread#sleep(long)')) then 'ms'
+                      else if (exists($unitType(*[1]))) then $unitType(*[1])
+                      else if ($converter(@MethodName)) then $named(@MethodName)
+                      else ()
+     return $differs($expected, $unit($first))
+       or (some $index in 2 to count(ArgumentList/*) satisfies
+             $differs($unitType(ArgumentList/*[$index]), $unit(ArgumentList/*[$index - 1])))
+       or (let $methods := ancestor::ClassBody[1]/MethodDeclaration[@Name = $call/@MethodName]
+                                [FormalParameters/@Size = $call/ArgumentList/@Size]
+           return if (count($methods) = 1 and (*[1][self::ThisExpression] or count(*) = 1)) then
+             some $index in 1 to count(ArgumentList/*) satisfies
+               $differs($named($methods/FormalParameters/FormalParameter[$index]/VariableId/@Name),
+                        $unit($call/ArgumentList/*[$index]))
+           else false())]
+)
+]]></value>
+      </property>
+    </properties>
+  </rule>

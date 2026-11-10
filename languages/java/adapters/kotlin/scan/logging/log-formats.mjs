@@ -4,7 +4,7 @@ const RELATIVE = /^[-#+ 0,(<]*</u;
 const PRINTF_IN_MESSAGE = /%(?:\d+\$)?[-#+0,(]*(?:[1-9]\d*)?(?:\.\d+)?[sdfxXbBcSeEgG]/u;
 const MESSAGE_IN_PRINTF = /\{\s*(?:\d+\s*)?[,}]/u;
 const MESSAGE_INDEX = /\{\s*(\d+)\s*[,}]/gu;
-const MESSAGE_MALFORMED = /\{\s*(?:\}|[^\d\s])|\{\s+\d/u;
+const MESSAGE_MALFORMED = /\{\s*[^\d\s]|\{\s+\d/u;
 const QUOTED = /'[^']*(?:'|$)/gu;
 
 function printfSpecs(text) {

@@ -4,6 +4,7 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { JVM_NOISE } from '../../../shared/messages/jvm/jvm-noise.mjs';
 import { wrapperTarget } from '../adapters/gradle-wrapper/gradle-command.mjs';
+import { withCompileErrors } from '../builds/compile-errors/compile-findings.mjs';
 import { explainedError } from '../../../shared/messages/troubleshooting.mjs';
 
 const MAVEN_TIMEOUT_MS = 15 * 60 * 1000;
@@ -95,8 +96,11 @@ export function runMaven({
     throw spawnFailure(result.error, { command: target.command, projectRoot, timeoutMs });
   }
   if (result.status !== 0) {
-    throw new Error(
-      `Maven failed in ${projectRoot}:\n${mavenErrorSummary(`${result.stdout}\n${result.stderr}`)}`,
+    const output = `${result.stdout}\n${result.stderr}`;
+    throw withCompileErrors(
+      new Error(`Maven failed in ${projectRoot}:\n${mavenErrorSummary(output)}`),
+      output,
+      projectRoot,
     );
   }
   return result.stdout;

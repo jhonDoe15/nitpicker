@@ -135,3 +135,6 @@ true, flushAutomatically = true)`, with `@Transactional` on the function or the 
 - Index every foreign key in the Flyway or Liquibase migration that adds it:
   `CREATE INDEX ON orders (customer_id)`, or an index or primary key that starts with the column.
   PostgreSQL does not create one (`foreign-key-index`).
+- Fetch at most one collection per query (`join fetch`, Criteria `fetch` or an entity graph); load
+  the others in their own query or with `@BatchSize` or `@Fetch(FetchMode.SUBSELECT)`
+  (`JpaMultipleCollectionFetch`).

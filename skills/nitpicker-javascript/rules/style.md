@@ -54,6 +54,9 @@ Part of the [nitpicker-javascript](../SKILL.md) skill. Write these forms from th
 - Index every foreign key in the migration that adds it (`CREATE INDEX ON orders (customer_id)`, or an index
   that starts with the column) and give Prisma relations an `@@index([authorId])`: PostgreSQL does not create
   one (`foreign-key-index`).
+- Join at most one to-many relation into a query: TypeORM `relationLoadStrategy: 'query'` or a query
+  per collection, Sequelize `separate: true` on the other `hasMany` includes, and
+  `strategy: 'select-in'` on a MikroORM `populate` (`nitpicker/no-multiple-collection-joins`).
 - Index every foreign key: `@Index()` on a TypeORM `@ManyToOne` (or a class `@Index` that starts with it),
   `index: true` on a MikroORM `@ManyToOne`, `index().on(t.orderId)` in a Drizzle `pgTable`
   (`nitpicker/no-unindexed-foreign-key`; with migrations, a `CREATE INDEX` there, `foreign-key-index`).
@@ -64,6 +67,10 @@ Part of the [nitpicker-javascript](../SKILL.md) skill. Write these forms from th
 - A child process you wait for gets a deadline: `{ timeout: 30_000 }` on `execFileSync`/`spawnSync`, or a
   `timeout` or `signal: AbortSignal.timeout(30_000)` on `execFile` and an awaited `spawn` or `execa`
   (`nitpicker/require-process-timeout`; a build wrapper that only runs a child to completion takes an exception).
+- Time values carry their unit in the name (`timeoutMs`, `ttlSeconds`) and meet only the same unit: convert
+  once where a value enters (`ttlSeconds * 1000`, `Math.floor(Date.now() / 1000)`), compare JWT `exp` with
+  `Date.now() / 1000`, pass milliseconds to `setTimeout` and `new Date(...)`, and never cut an epoch time
+  with `| 0` (`nitpicker/time-unit-mismatch`).
 - Named exports only (`export function`, `export { x } from`); no `export default`. No comments;
   JSDoc type tags are the exception.
 - Signatures: a value with three states is a union of string literals, not `{boolean|undefined}`,

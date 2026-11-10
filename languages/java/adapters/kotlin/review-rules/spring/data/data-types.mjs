@@ -23,6 +23,9 @@ export const ENUMERATED = persistence('Enumerated');
 export const MAP_KEY_ENUMERATED = persistence('MapKeyEnumerated');
 export const ELEMENT_COLLECTION = persistence('ElementCollection');
 export const QUERY_TYPES = persistence('Query', 'TypedQuery');
+export const NAMED_QUERIES = persistence('NamedQuery', 'NamedQueries');
+export const NAMED_GRAPHS = persistence('NamedEntityGraph', 'NamedEntityGraphs');
+export const CRITERIA_FETCHES = persistence('criteria.Root', 'criteria.Fetch', 'criteria.Join');
 export const IMMUTABLE = group([`${HIBERNATE}.Immutable`]);
 export const NOT_COLUMNS = group([
   ...persistence('Transient', 'Convert'),
@@ -40,6 +43,7 @@ export const JDK_ENUMS = group([
 ]);
 
 export const JPA_QUERY = group([`${DATA}.jpa.repository.Query`]);
+export const ENTITY_GRAPH = group([`${DATA}.jpa.repository.EntityGraph`]);
 export const NATIVE_QUERY = group([`${DATA}.jpa.repository.NativeQuery`]);
 export const MODIFYING = group([`${DATA}.jpa.repository.Modifying`]);
 export const QUERY_ANNOTATIONS = group([
