@@ -108,6 +108,15 @@ const domainRules = {
   'nitpicker/no-unknown-in-domain': 'error',
 };
 
+const sourceRules = {
+  'nitpicker/no-self-recursion': 'error',
+  'nitpicker/no-task-outliving-resource': 'error',
+  'nitpicker/no-tri-state-boolean': 'error',
+  'nitpicker/no-unhandled-url-parse': 'error',
+  'nitpicker/no-compatibility-shim': 'error',
+  'nitpicker/untested-round-trip': 'error',
+};
+
 export function strictSyntaxConfigFor(layout = defaultResolvedLayout, options = {}) {
   const restrictedSyntax = restrictedSyntaxFor(options);
   return [
@@ -123,12 +132,7 @@ export function strictSyntaxConfigFor(layout = defaultResolvedLayout, options = 
         ...controlFlowRules,
         'no-restricted-syntax': ['error', ...restrictedSyntax.source],
         ...sourceSyntaxBans(options),
-        'nitpicker/no-self-recursion': 'error',
-        'nitpicker/no-task-outliving-resource': 'error',
-        'nitpicker/no-tri-state-boolean': 'error',
-        'nitpicker/no-unhandled-url-parse': 'error',
-        'nitpicker/no-compatibility-shim': 'error',
-        'nitpicker/untested-round-trip': 'error',
+        ...sourceRules,
       },
     },
     {
