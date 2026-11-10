@@ -2144,6 +2144,7 @@
                             "structure/inheritance-depth-limit",
                             "test-runtime/test-console-output",
                             "test-runtime/test-not-run",
+                            "pmd/UntestedRoundTrip",
                             "pmd/CopiedConstantInTest",
                             "kotlin-source/ChildCoroutineOutlivesResource",
                             "kotlin-source/SuspendFunInFinallySection",
@@ -2153,6 +2154,7 @@
                             "kotlin-source/ListUsedAsSet",
                             "kotlin-source/LinearLookupInLoop",
                             "kotlin-source/SortForExtreme",
+                            "kotlin-source/ConfigurationReadOutsideCompositionRoot",
                             "kotlin-source/RepeatedStringLiteral",
                             "kotlin-source/LogFormatArguments",
                             "kotlin-source/LogExceptionFirst",
@@ -2216,6 +2218,7 @@
                             "pmd/SharedTestState",
                             "pmd/MockedSubjectInTest",
                             "pmd/StaticMockOfProjectType",
+                            "pmd/RelaxedMockInTest",
                             "pmd/SpringUnusedContext",
                             "pmd/ExhaustiveEnumPredicate",
                             "pmd/StaticForwardingWrapper",
@@ -2662,7 +2665,7 @@
                           ]
                         },
                         {
-                          "pattern": "^(?:vet|staticcheck|errcheck|modernize|revive|deadcode)/[\\s\\S]"
+                          "pattern": "^(?:vet|staticcheck|errcheck|modernize|revive|bodyclose|rowserrcheck|sqlclosecheck|noctx|errorlint|nilerr|nilnil|errname|contextcheck|containedctx|fatcontext|exhaustive|recvcheck|durationcheck|makezero|reassign|unconvert|wastedassign|deadcode)/[\\s\\S]"
                         }
                       ]
                     }

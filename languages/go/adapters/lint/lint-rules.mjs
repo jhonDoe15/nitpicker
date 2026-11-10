@@ -1,5 +1,9 @@
 import { reviveHint, reviveVaryingPart } from './revive-hints.mjs';
 
+function deferredClose(value) {
+  return `\`defer func() { err = errors.Join(err, ${value}.Close()) }()\``;
+}
+
 const GO_FIX = '`go fix ./...` applies this rewrite.';
 const KEEP_OR_DROP = 'Use the value or remove the assignment.';
 const TAGGED_SWITCH = 'Write a tagged switch, `switch value { case 1: ... }`.';
@@ -89,10 +93,47 @@ const HINTS = new Map([
   ['embedlit', 'Set the promoted fields directly in the literal.'],
   ['stringsbuilder', 'Build the string with a `strings.Builder`.'],
   ['stringsseq', 'Range over `strings.SplitSeq` or `strings.FieldsSeq`.'],
+  ['bodyclose', `Close it in a deferred call: ${deferredClose('response.Body')}.`],
+  ['sqlclosecheck', `Close it in a deferred call: ${deferredClose('rows')}.`],
+  ['rowserrcheck', 'Return `rows.Err()` after reading the rows, or join it into the error result.'],
+  ['nilerr', 'Return the error the branch checks: the error when it is set, nil when it is not.'],
+  [
+    'contextcheck',
+    "Take a `ctx context.Context` parameter and pass the caller's context down, or derive one from it; " +
+      'a goroutine uses a context made before the `go` statement.',
+  ],
+  [
+    'handled',
+    'Remove the directive and close the body where the response is read, or return the response to a caller that closes it.',
+  ],
+  ['containedctx', 'Pass the context as the first parameter of each method that needs it.'],
+  ['fatcontext', 'Assign the derived context to a new variable inside the loop.'],
+  [
+    'exhaustive',
+    'Add a case for each missing constant, or a `default` case that handles the rest.',
+  ],
+  [
+    'recvcheck',
+    'Give every method of the type a pointer receiver, or every method a value receiver.',
+  ],
+  ['durationcheck', 'Multiply a duration by a number: `time.Duration(seconds) * time.Second`.'],
+  [
+    'makezero',
+    'Make the slice with length 0 and a capacity, `make([]T, 0, n)`, or assign by index.',
+  ],
+  ['reassign', "Leave the other package's variable as it is; declare a variable of your own."],
+  ['unconvert', 'Remove the conversion; the value already has that type.'],
+  ['wastedassign', 'Remove the assignment, or use the value before it is assigned again.'],
 ]);
 
 const RULE_NAMES = new Map([['errcheck', 'unchecked']]);
-const VARYING_PARTS = new Map([['ST1016', / \(seen [^)]*\)$/u]]);
+const VARYING_PARTS = new Map([
+  ['ST1016', / \(seen [^)]*\)$/u],
+  ['nilerr', / \(lines? [^)]*\)/u],
+  ['contextcheck', /->[^`]*/u],
+  ['exhaustive', /: .*$/u],
+  ['durationcheck', /: `.*`$/u],
+]);
 
 export function lintRule(rule) {
   return RULE_NAMES.get(rule) ?? rule;

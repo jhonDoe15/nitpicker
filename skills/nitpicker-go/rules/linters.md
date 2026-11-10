@@ -1,8 +1,10 @@
 # Linters
 
 Part of the [nitpicker-go](../SKILL.md) skill. The gate runs staticcheck (every SA, S, ST and QF
-check, and U1000), errcheck, the modernize suite, more `golang.org/x/tools` passes and revive on
-every package, test files included. Write these forms from the start; each finding's message names the
+check, and U1000), errcheck, the modernize suite, more `golang.org/x/tools` passes, revive and
+catalog linters (bodyclose, sqlclosecheck, rowserrcheck, noctx, errorlint, nilerr, nilnil, errname,
+contextcheck, containedctx, fatcontext, exhaustive, recvcheck, durationcheck, makezero,
+reassign, unconvert, wastedassign) on every package, test files included. Write these forms from the start; each finding's message names the
 allowed form and ends with its exception entry.
 
 ## Errors
@@ -11,9 +13,31 @@ allowed form and ends with its exception entry.
   unchecked too. Close a file you wrote to in a deferred call that joins
   the error into a named result: `defer func() { err = errors.Join(err, file.Close()) }()`.
 - A type assertion takes two values, `value, ok := x.(T)`, unless a type switch fits better.
-- Compare errors with `errors.Is` and `errors.As`, never `==`, `reflect.DeepEqual` or their text.
+- Compare errors with `errors.Is` and `errors.As`, never `==`, a type assertion, a type switch,
+  `reflect.DeepEqual` or their text (errorlint). Wrap an error with `%w`, never `%v`. Where the
+  cause must not reach callers (an API boundary), return an error of your own type or a sentinel
+  instead of formatting the cause.
+- A branch that checked `err != nil` returns the error, not nil (nilerr). A function returning a
+  pointer, map, channel, func or interface with an error never returns `nil, nil`: return a
+  sentinel error (nilnil).
 - Error strings start in lower case and end without punctuation (ST1005). A sentinel error is a
-  package variable named `ErrX` (ST1012).
+  package variable named `ErrX` (ST1012), and an error type is named `XError` (errname).
+
+## Resources and contexts
+
+- Close an HTTP response body, and `sql.Rows` and `sql.Stmt`, in a deferred call that joins the
+  error: `defer func() { err = errors.Join(err, rows.Close()) }()` (bodyclose, sqlclosecheck).
+  Return `rows.Err()` after reading rows (rowserrcheck).
+- Use the context forms of calls that block: `http.NewRequestWithContext`,
+  `exec.CommandContext`, `db.QueryContext`, `net.Dialer.DialContext` (noctx). In tests pass
+  `t.Context()`: `http.NewRequestWithContext(t.Context(), http.MethodGet, server.URL, nil)` and
+  `server.Client().Do(request)`.
+- A function that has a context passes it on; it never calls one that makes its own with
+  `context.Background()` (contextcheck). A goroutine gets its context from a variable made
+  before the `go` statement: `ctx := context.WithoutCancel(r.Context())`, then
+  `go func() { work(ctx) }()`. A context is the first parameter, never a struct field
+  (containedctx). In a loop, derive each iteration's context into a new variable, not into the
+  loop's own (fatcontext).
 
 ## Names and comments
 
@@ -39,6 +63,15 @@ allowed form and ends with its exception entry.
 - No empty branches (SA9003), no unused values or writes (SA4006, `unusedwrite`), no unused code
   (U1000: delete it or use it), and no `break` that only ends a `switch` case.
 - Defer in a loop only from a function the loop calls, so each defer runs when that call returns.
+- A switch on an enum type lists every constant, or has a `default` case for the rest
+  (exhaustive).
+- All methods of a type have pointer receivers, or all have value receivers (recvcheck).
+  `String`, `Error`, `Format`, `Value` and `MarshalJSON`-style methods may take a value next to
+  pointer methods.
+- Multiply a duration by a number, never by another duration (durationcheck). Build a slice
+  you append to with `make([]T, 0, n)` (makezero). Drop conversions to the type a value already
+  has (unconvert), and assignments that are overwritten before they are read (wastedassign).
+- Never assign another package's variables such as `io.EOF` (reassign).
 - Defer one call: keep a returned function first, `stop := start(); defer stop()`, never
   `defer start()()`.
 

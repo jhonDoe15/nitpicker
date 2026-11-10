@@ -115,6 +115,7 @@ const productionSourceRules = {
   'nitpicker/no-unhandled-url-parse': 'error',
   'nitpicker/reusable-object-per-call': 'error',
   'nitpicker/no-compatibility-shim': 'error',
+  'nitpicker/untested-round-trip': 'error',
 };
 
 export function strictSyntaxConfigFor(layout = defaultResolvedLayout, options = {}) {
