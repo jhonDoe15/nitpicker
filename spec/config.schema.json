@@ -2649,7 +2649,9 @@
                             "dead-code/unlisted-dependency"
                           ]
                         },
-                        { "pattern": "^(?:vet|staticcheck|errcheck|modernize|deadcode)/[\\s\\S]" }
+                        {
+                          "pattern": "^(?:vet|staticcheck|errcheck|modernize|revive|deadcode)/[\\s\\S]"
+                        }
                       ]
                     }
                   }
