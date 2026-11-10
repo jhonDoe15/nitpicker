@@ -1,6 +1,7 @@
 import { readdirSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { isProfileKey, parseProperties, parseYaml } from './spring-config-parser.mjs';
+import { projectFilesUnder } from '../../../../shared/project-files/project-files.mjs';
 
 const CONFIG_FILE = /^application(?:-(.+))?\.(properties|ya?ml)$/;
 const MAIN_FILES = ['application.properties', 'application.yml', 'application.yaml'];
@@ -88,18 +89,15 @@ function documentProfiles(entries, fileProfile) {
 }
 
 function sourceFiles(directory) {
-  return valueOr([], () =>
-    readdirSync(directory, { recursive: true })
-      .map(String)
-      .filter((file) => SOURCE_EXTENSIONS.some((extension) => file.endsWith(extension))),
+  return projectFilesUnder(directory).filter((file) =>
+    SOURCE_EXTENSIONS.some((extension) => file.endsWith(extension)),
   );
 }
 
 export function usesJpa(projectRoot, sourceRoots) {
-  return sourceRoots.some((root) => {
-    const absolute = path.join(projectRoot, root);
-    return sourceFiles(absolute).some((file) =>
-      PERSISTENCE_IMPORT.test(readText(path.join(absolute, file)) ?? ''),
-    );
-  });
+  return sourceRoots.some((root) =>
+    sourceFiles(path.join(projectRoot, root)).some((file) =>
+      PERSISTENCE_IMPORT.test(readText(file) ?? ''),
+    ),
+  );
 }

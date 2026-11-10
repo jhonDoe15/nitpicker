@@ -1,4 +1,5 @@
-import { globSync, readFileSync, existsSync, symlinkSync, unlinkSync } from 'node:fs';
+import { readFileSync, existsSync, symlinkSync, unlinkSync } from 'node:fs';
+import { glob, readFile } from 'node:fs/promises';
 import { prettierPrecedence, usesLayeredPrettier, readLayout } from '../../preset/head-policy.mjs';
 import { runNodeTool, projectFile, policyFile, hash } from './shared.mjs';
 import { isIgnoredByLayers, layeredPrettierOptions } from '../prettier/prettier-layers.mjs';
@@ -8,6 +9,9 @@ import { resolveTool } from '../../../../core/tooling/tool-resolution.mjs';
 import { trackTemporaryPath } from '../../../../core/tooling/temporary-files.mjs';
 import { formattingHunks } from '../prettier/format-hunks.mjs';
 import { listUnformattedInParallel } from '../prettier/parallel-cli.mjs';
+import { formatAdvice } from '../../../../shared/messages/format/format-advice.mjs';
+
+const PRETTIER_MESSAGE = `These lines are not formatted with Prettier. ${formatAdvice()}`;
 
 export async function runPrettier(options) {
   if (options.patterns.length === 0) {
@@ -16,10 +20,9 @@ export async function runPrettier(options) {
   if (options.ignoreRelativePath === undefined) {
     throw new Error('Prettier requires --ignore-path');
   }
-  if (
-    !options.patterns.some((pattern) => globSync(pattern, { cwd: options.projectRoot }).length > 0)
-  )
+  if ((await matchingFiles(options)).length === 0) {
     return [];
+  }
   const installedPolicy = installPrettierPolicy(options);
   try {
     if (usesLayeredPrettier()) {
@@ -76,15 +79,20 @@ function listUnformattedFilesSerially(options, installedPolicy, exclusions) {
   return unformattedFiles;
 }
 
+async function matchingFiles(options) {
+  const perPattern = await Promise.all(
+    options.patterns.map((pattern) => Array.fromAsync(glob(pattern, { cwd: options.projectRoot }))),
+  );
+  return [...new Set(perPattern.flat())];
+}
+
 async function layeredFormattingFindings(options, installedPolicy, precedence) {
   const prettier = await importPrettier();
   const policyOptions = readPrettierPolicy(installedPolicy.configPath);
   const layout = readLayout();
-  const candidates = [
-    ...new Set(
-      options.patterns.flatMap((pattern) => globSync(pattern, { cwd: options.projectRoot })),
-    ),
-  ].filter((relativePath) => !layout.isExcluded(relativePath));
+  const candidates = (await matchingFiles(options)).filter(
+    (relativePath) => !layout.isExcluded(relativePath),
+  );
   const layers = {
     precedence,
     policyIgnorePath: installedPolicy.ignorePath,
@@ -96,7 +104,7 @@ async function layeredFormattingFindings(options, installedPolicy, precedence) {
       if (await isIgnoredByLayers(prettier, { ...layers, relativePath })) {
         return [];
       }
-      const source = readFileSync(path.join(options.projectRoot, relativePath), 'utf8');
+      const source = await readFile(path.join(options.projectRoot, relativePath), 'utf8');
       const formatted = await prettier.format(source, {
         ...(await layeredPrettierOptions(prettier, { ...layers, policyOptions, relativePath })),
         filepath: path.join(options.projectRoot, relativePath),
@@ -128,7 +136,7 @@ async function formattingFindingsOf(options, unformattedFiles, configPath) {
     unformattedFiles.map(async (filePath) => {
       const relativePath = projectFile(options.projectRoot, filePath);
       const absolutePath = path.join(options.projectRoot, relativePath);
-      const source = readFileSync(absolutePath, 'utf8');
+      const source = await readFile(absolutePath, 'utf8');
       const formatted = await prettier.format(source, {
         ...prettierOptions,
         filepath: absolutePath,
@@ -184,7 +192,7 @@ function formattingFindings({ tool, relativePath, source }, formatted) {
       rule: 'prettier/prettier',
       path: relativePath,
       identity: `format-diff:${digest}${occurrence === 0 ? '' : `#${String(occurrence)}`}`,
-      message: 'Format these lines with Prettier',
+      message: PRETTIER_MESSAGE,
       classification: 'enforceable',
       location: { line: hunk.line, endLine: hunk.line + Math.max(hunk.count, 1) - 1 },
     };

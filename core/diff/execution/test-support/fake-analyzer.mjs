@@ -80,6 +80,7 @@ function findingFromMarkedLine(line, { marker, markerIndex, index, relativePath 
     symbol: finding.symbol,
     identity: finding.identityFromPath === true ? `path:${relativePath}` : finding.identity,
     message: finding.message,
+    allowedForm: finding.allowedForm,
     location: finding.location ?? { line: index + 1, column: markerIndex + 1 },
     classification: finding.classification,
     metric: finding.metric,

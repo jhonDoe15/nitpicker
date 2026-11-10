@@ -1,0 +1,7 @@
+[
+  {
+    "tool": "python-rules",
+    "rule": "timeout-scope-path-without-checkpoint",
+    "mention": "asyncio.to_thread"
+  }
+]
