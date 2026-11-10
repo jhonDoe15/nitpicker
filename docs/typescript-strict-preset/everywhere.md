@@ -30,6 +30,24 @@ Part of the [TypeScript strict preset guide](../typescript-strict-preset.md).
   (`for (const node of pending) { pending.push(...children) }`); flat data uses `map`, `filter`,
   `flatMap` or `Object.fromEntries`. `domain/` has no loops and no recursion, so a walk over a tree
   of unknown depth moves to `adapters/`, which passes `domain/` the flat result.
+- `nitpicker/no-task-outliving-resource`: a resource must not be disposed while a task that uses it is
+  still running. In the scope of a `using` or `await using` declaration, or of a `try` whose `finally`
+  closes a variable (`close`, `dispose`, `destroy`, `release`, `disconnect` or `end`, optionally awaited),
+  it reports a use of that resource inside a call detached with `void`, inside the callback of
+  `setTimeout`, `setInterval`, `setImmediate`, `queueMicrotask` or `process.nextTick` (unless the callback
+  settles a promise the same function awaits in the block), and inside an async call that is returned
+  without `await` or stored in a variable nothing reads (an async function or arrow of the same file, or
+  an async IIFE). `await` the task before the block ends, `return await` it, or open and close the
+  resource inside the task. It needs no types and reads one function at a time, so these forms are not
+  seen: a promise that only type information shows (`const p = client.fetch(db)` of an imported
+  function); `try { return db.query(); } finally { await db.close(); }`, because without types a
+  synchronous call that returns a value cannot be told from one that returns a promise; a `.then`,
+  `.catch` or `.finally` chain on the task; a resource reached through an alias (`const alias = db`) or
+  a destructured member; a `finally` that closes with `await db?.close()`, with a conditional
+  (`if (db) { await db.close(); }`), through a helper or inside a nested statement, since only a
+  top-level `x.close()` statement of the `finally` names the resource; and a task started in another
+  function that receives the resource. `@typescript-eslint/no-floating-promises` already reports the
+  bare call, and this rule covers what `void` hides from it. Production code only.
 - `for...of` is the only loop, in all production code (not just `adapters/`). No `forEach`,
   `for(;;)`, `for...in`, `while`, or `do...while`. `domain/` is stricter and has no loops at all.
 - `nitpicker/no-accumulating-spread`: an accumulator that grows is not spread into its own next
@@ -97,6 +115,57 @@ Part of the [TypeScript strict preset guide](../typescript-strict-preset.md).
   banned. `await Promise.allSettled(...)` with its result dropped hides every rejection, and
   `new Promise((resolve) => resolve(value))` wraps a value that `Promise.resolve(value)` or an
   async function returns directly.
+- Shared read/modify/write operations across `await` are rejected
+  (`nitpicker/require-atomic-updates`, which runs ESLint 10.9.1's `require-atomic-updates` with
+  `allowProperties: false` and keeps only some of its reports) in production and test code,
+  including the JavaScript dialect: `state.total += await load()`,
+  `total = total + (await load())` on a binding that closures or other calls share,
+  `state.items = [...state.items, await load()]`, a lazy initialization written as an operator
+  (`cached ??= await load()`), and a value read into a local before the `await` and written back
+  after it (`const current = total; const delta = await load(); total = current + delta`).
+- A plain `=` is reported only when its value reads the location it writes before the `await`:
+  directly, or through a local that holds such a read (followed through aliases, destructuring and
+  compound updates of the local). ESLint's rule alone also reports a write whose value never read
+  that location once anything of the same object was read before the `await`; nitpicker drops
+  those, so the advised local-first forms pass:
+  `const user = await verify(req.headers.token); req.user = user;`,
+  `const { id } = order; const items = await load(id); order.items = items;` and the lazy
+  initialization below.
+
+  ```ts
+  if (cached === undefined) {
+    const value = await load();
+    cached = value;
+  }
+  ```
+
+- Await the new value into a local first, then read and write the shared state in one step with no
+  `await` between them (`const delta = await load(); state.total += delta;`). A lock or a queue is
+  not recognized: `mutex.runExclusive(async () => { state.total += await load(); })` and an update
+  between `acquire()` and `release()` are still reported. A value that only one call can observe (a
+  local, an object the function creates) passes, and so does `state.items.push(await load())`,
+  which mutates in place. When the state is already serialized or confined to one task, a reviewed
+  `exceptions` entry (`rule: "nitpicker/require-atomic-updates"`, `paths`, `reason`) is the route.
+- The rule is a strict rule, so a violation on a line you touch is new even when the base has it.
+  It is enabled explicitly in `eslint-lint` (`eslint.configs.recommended` and `strictTypeChecked`
+  do not include ESLint's rule); Oxlint 1.87.0 has no native equivalent, so the existing JavaScript
+  plugin bridge runs it, and the finding keeps the standard ESLint semantic identity. The message
+  adds the failure mechanism and the allowed forms to ESLint's evidence. Other immutability rules
+  can independently reject mutation; this rule specifically identifies stale reads across
+  suspension. `allowProperties: true` would disable the property check and is deliberately not the
+  preset default.
+- Limits of the upstream analysis, measured and not assumed: it does not follow `this`
+  (`this.total += await load()` passes; the preset bans classes outside `Error` subclasses, so this
+  mostly concerns tests, object-literal methods and framework classes), a local alias of a shared
+  object escapes detection (`const alias = state; alias.total += await load()`), and an update
+  through a method call is not an assignment (`cache.set(key, (cache.get(key) ?? 0) + await load())`
+  passes). Run over nitpicker's own sources and several open-source TypeScript and JavaScript
+  packages, the rule reported nothing; that measures false positives only, and the classes above
+  come from probes written for them.
+- Parity with the other presets ([the matrix](../spec/checks.md#updates-across-a-suspension)): a
+  saved local is followed, `this` is not, and no lock or semaphore is recognized. The Python rule
+  follows `self` and recognizes a proven shared lock and a one-slot semaphore; the Kotlin rule
+  recognizes `Mutex.withLock` and a one-permit `Semaphore`.
 - An `'error'` listener on every socket, file stream, child process and client the code creates
   (`nitpicker/require-error-listener`, production code). Node.js throws an `'error'` event that
   has no listener, so a dropped connection, a missing file or a failed spawn stops the whole
@@ -351,6 +420,44 @@ Part of the [TypeScript strict preset guide](../typescript-strict-preset.md).
   separator (`base + path.sep`, `` `${base}/` ``, `'/srv/'`): `full.startsWith(base)` also
   accepts `/srv-other`. A parameter as the first segment is the base and is fine
   (`path.join(dir, 'package.json')`).
+- Blocking calls in async code (`nitpicker/no-sync-node-api-in-async`, production code): a
+  synchronous Node call inside an `async` function or a request handler blocks the event loop, so
+  every other request waits. The calls are every `*Sync` function of `fs`, `fs-extra` and
+  `graceful-fs` (also `realpathSync.native` and `fs["readFileSync"]`), `execSync`, `execFileSync`
+  and `spawnSync` of `child_process`, `pbkdf2Sync`, `scryptSync`, `hkdfSync`, `generateKeySync`,
+  `generateKeyPairSync`, `generatePrimeSync` and `checkPrimeSync` of `crypto`, every `*Sync`
+  function of `zlib`, and `execaSync`/`execaCommandSync` of `execa`, found through the imports
+  (named, default, namespace, renamed, `require` and destructured `require`, and
+  `const { x } = fs`). A parameter or local that shadows the imported name is not the import. The
+  module lists are shared with `nitpicker/report-module-load-effects`, which reports the same
+  `*Sync` calls at import time. A request handler is a function passed to a route method (`get`,
+  `post`, `put`, `patch`, `delete`, `all`, `use`, `route`, ...) of an app or router created from
+  Express, Fastify, Koa, Hono, hapi, restify, connect, polka, h3 or itty-router (`const app =
+express()`, `express.Router()`, `new Router()`, also through a chain such as
+  `router.route("/").get(...)`, or a parameter typed with the framework's type, such as
+  `app: Express`), inline or declared in the file, or a method decorated with a NestJS `@Get`,
+  `@Post`, `@Put`, `@Patch`, `@Delete`, `@All`, `@Head` or `@Options`. A route method on any other
+  receiver (a `Map`, an untyped parameter) is not a handler. Synchronous array callbacks (`map`,
+  `forEach`, `filter`, ...) are looked through; any other nested function (a stored callback, an
+  event listener, a returned closure) is not inspected. Not reported: module top level, an `async`
+  function invoked in place at module top level (`(async () => { ... })()`), a file that has a
+  shebang, a worker script (a file that reads `parentPort` or `workerData` from
+  `node:worker_threads`), the worker branch of an `isMainThread` test
+  (`if (!isMainThread) { ... }`, or the `else` of `if (isMainThread)`), config files, and an
+  `async` function that is declared in the file, never exported and only ever called from startup
+  code (a CLI `main`). Entry points are checked like any other file, because their request handlers
+  run per request; their startup code is already left alone by the rules above. The message names
+  the allowed form of the call: `await readFile()` from `node:fs/promises` (the call without
+  `Sync`), `access` or `stat` for `existsSync`, a `FileHandle` from `open()` for the descriptor
+  calls (`closeSync`, `readSync`, `fstatSync`, ...), `for await` over `glob()` for `globSync`,
+  `pathExists` and the other promise functions of `fs-extra`, `promisify(execFile)` for the
+  `child_process` calls, `promisify(...)` of the async `crypto` and `zlib` function, and `execa()`.
+  A bounded read that must finish before the function can continue goes in a reviewed
+  `exceptions` entry. Unlike Python, where Ruff's `ASYNC` family covers `time.sleep`, `open` and
+  `requests`, nothing else in the TypeScript preset reports these calls, so no finding is shared.
+  Limits: an untyped `app` parameter (`module.exports = (app) => { app.get(...) }`) is not
+  recognized as a framework app, and a file that reads `parentPort` or `workerData` is skipped as a
+  whole.
 - Security sinks: SQL built from strings, weak hashes, disabled TLS checks, HTTP calls without a
   timeout and unsafe deserialization. All five apply to production code, not to test support files (`test-support/`, `mocks/`, `__mocks__/`,
   `__fixtures__/`, `fixtures/`, `stories/`, `.storybook/`, `*.stories.*`, `setupTests.*`); each message
@@ -566,6 +673,26 @@ Part of the [TypeScript strict preset guide](../typescript-strict-preset.md).
   exempt.
 - Early returns; no `else` after a `return`; no nested ternaries.
 - A `switch` over a discriminated union must handle every case.
+- `nitpicker/no-decided-condition` (type-aware, production code and tests of both presets): a
+  condition that the guards before it in the same function already decide. Reported: an `if`,
+  `while`, `do`/`while` or `for` test, a ternary test, or one operand of an `&&`/`||` chain that is
+  always true or always false given an earlier `if` that returned, threw, broke or continued, the
+  `if` or `else` branch it sits in, the test of the loop it sits in, or the operands before it in
+  the same chain (`if (count > 10) return; if (count > 20) ...`). The message names the guard that
+  decides it. A fact is dropped when a name it reads is assigned (also as a loop variable or a
+  `catch` parameter); a fact that reads a member is dropped on any member write and on any call
+  that is not pure (`await`, `yield`, `new` and `import()` count as calls); and a fact that reads a
+  variable written elsewhere, an import or an unresolved global is dropped on such a call. The
+  conditions are decided by the shared logic module: a truth table first, and the Z3 solver when
+  values are compared. An order comparison counts as a number comparison only when both operands
+  are number-typed; otherwise it is an opaque fact, since `'10' < '9'`. Not reported: a check on a
+  value whose type is still a union, because TypeScript may need it to narrow; a truthiness test of
+  one value or its comparison with `null` or `undefined`, which TypeScript narrows itself and
+  `@typescript-eslint/no-unnecessary-condition` reports; an operand repeated
+  in the same chain, which `nitpicker/no-operand-slip` reports; anything the solver does not
+  answer within 20 seconds; and files without type information. Java's SpotBugs
+  `UC_USELESS_CONDITION` covers part of this; the Java, Python and Kotlin counterparts on the shared
+  logic module are not built yet.
 - `nitpicker/exhaustive-union-predicate` (type-aware): no `||` chain of `===` (or `&&` chain of
   `!==`) that compares one plain reference (`kind`, `props.kind`) with some string or number
   literals of a union that has at least three members, when the chain is a predicate's value: an
@@ -648,6 +775,29 @@ Part of the [TypeScript strict preset guide](../typescript-strict-preset.md).
   `export default`, or an export list) the message gives the re-export under the exported name,
   `export { fetchUser as loadUser }` or `export { fetchUser as default }`; for a local one it says to
   call the callee directly and delete the wrapper.
+- `nitpicker/no-forwarding-method-alias` (type-aware, same rule in the JavaScript preset): the
+  member counterpart of the rule above. A method of a class declaration whose body is one
+  `return this.target(a, b)` (or the same call as a statement when both methods return `void` or
+  `Promise<void>`, or `return await` in an `async` method) that passes exactly its own parameters,
+  in order and unchanged, to another method of the same class is flagged when the parameter types,
+  optional and rest forms and the return type are identical. Static methods that forward through
+  `this` and `#private` targets count. Not flagged: methods with decorators, an `override`
+  modifier or a `@deprecated` tag, `of` and `from`, overloads, generators, type parameters, type
+  predicates, getters, setters and constructors, default or destructured parameters, calls with
+  type arguments, optional calls, `async` wrappers around a callee that is not `async`, a target
+  inherited from a base class, class properties holding an arrow function (they bind `this`), class
+  expressions and object literal methods. Also not flagged: a parameter decorator, a bare call in
+  an `async` method (a floating promise), an `abstract` target, a name that a merged
+  interface declares, and a name the class writes through `this` (`this.sum = ...`, or any
+  computed `this[key] = ...`). A method whose name exists on a base class or an implemented interface is an
+  override or implementation and passes, and so does every method of a class whose base class or
+  interface the compiler cannot resolve (a structural interface the class does not declare with
+  `implements` cannot be seen; a base-class alias that subclasses override is reported). Callback
+  parameters count as equal when their function types are mutually assignable, and string-literal
+  keys are matched by name. When two methods forward to each other only the later is reported.
+  The message says to call the target directly and delete the alias; when the target is `private`,
+  `protected` or `#private` and the alias is more visible it says to rename the target to the alias
+  name instead. Add an exception for a public alias that must stay.
 - `nitpicker/no-tri-state-boolean`: a `boolean` that can also be `undefined` or `null` has three
   states that the type does not name. Reported as the whole type of a parameter, return type
   (also inside `Promise<...>`), type member or class field (`force: boolean | undefined`,

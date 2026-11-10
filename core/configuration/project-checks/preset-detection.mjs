@@ -1,7 +1,7 @@
 import { existsSync } from 'node:fs';
 import path from 'node:path';
 import { configError } from '../../../shared/config.mjs';
-import { filesUnder } from '../../../shared/filesystem.mjs';
+import { projectFilesUnder } from '../../../shared/project-files/project-files.mjs';
 import { sourceRoots as defaultSourceRoots } from '../../../languages/typescript/preset/layout.mjs';
 import { firstJsxFile } from './project-config.mjs';
 import { PROJECT_MARKERS, markerFilesIn } from './project-markers.mjs';
@@ -32,7 +32,7 @@ function codeFiles(directory, skippedFolders = SKIPPED_FOLDERS) {
     return [];
   }
   return [
-    ...filesUnder(directory, {
+    ...projectFilesUnder(directory, {
       skipDirectory: (_absolute, entry) =>
         entry.name.startsWith('.') || skippedFolders.has(entry.name),
     }),

@@ -9,8 +9,8 @@ import {
   collectTestResults,
   junitLauncherVersion,
   runJacocoReport,
-  runPit,
 } from '../../maven/maven-tests.mjs';
+import { runPit } from '../../maven/pit/maven-pit.mjs';
 import { copyTestResults } from '../../maven/results/maven-test-results.mjs';
 import { ingestArchunit } from '../../ingest/archunit.mjs';
 import { ingestJacoco } from '../../ingest/coverage-reports/jacoco.mjs';

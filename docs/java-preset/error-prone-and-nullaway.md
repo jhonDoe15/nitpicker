@@ -236,6 +236,16 @@ Part of the [Java preset guide](../java-preset.md).
   Gradle build of the same sources). The JDK choice on Gradle was checked by hand: Gradle on JDK 17
   runs Error Prone on a JDK 21 launcher, and a project with a JDK 25 toolchain on a JDK 21 Gradle
   runs it on JDK 25.
+- **Updates across a suspension.** The TypeScript, Python and Kotlin presets report shared state
+  updated from a read made before an `await` or a suspend call (see
+  [the matrix](../spec/checks.md#updates-across-a-suspension)). A Java expression cannot suspend, so
+  that rule has no Java form. The related lost update between threads is covered where one
+  statement shows it: `errorprone/NonAtomicVolatileUpdate` (on, as Error Prone enables it by
+  default) reports `++`, `--` and compound assignments of a `volatile` field, and SpotBugs, which
+  runs at `-effort:default -medium` with no detector excluded, adds `IS2_INCONSISTENT_SYNC` (a field
+  read or written both with and without its lock) and `AT_NONATOMIC_OPERATIONS_ON_SHARED_VARIABLE`;
+  its `VO_VOLATILE_INCREMENT` gives way to the Error Prone finding on the same line. A plain field
+  updated from a blocking call (`this.total += future.join()`) is reported by none of them.
 
 ## Checks that are off
 
@@ -376,6 +386,9 @@ primary rule and the secondary rules it stands for, with a scope:
 - `javadoc`: the same Javadoc comment, whichever of its lines each tool names (Checkstyle's
   `SummaryJavadoc` reports the comment's first line, Error Prone's `MissingSummary` can name a
   later one, such as the line of an `@author` tag).
+- `catch`: the same `catch` clause, named by the line of its `catch` keyword, so a finding on the
+  line of the parameter or the brace of a clause laid out over several lines still meets one on
+  the keyword's line (Checkstyle's `EmptyCatchBlock` names the line of the block's brace).
 - `class`: the same class; a nested class is its own class.
 - `field`: the same class and field name. SpotBugs names a field `pkg.Class.field` and often gives
   it no line, or the line of a write.
@@ -480,6 +493,7 @@ The pairs:
 - line: `errorprone/LockNotBeforeTry` over `spotbugs/UL_UNRELEASED_LOCK`, `spotbugs/UL_UNRELEASED_LOCK_EXCEPTION_PATH`
 - line: `errorprone/WaitNotInLoop` over `spotbugs/UW_UNCOND_WAIT`, `spotbugs/WA_NOT_IN_LOOP`
 - line: `errorprone/NonAtomicVolatileUpdate` over `spotbugs/VO_VOLATILE_INCREMENT`
+- line: `pmd/InconsistentFieldLocking` over `spotbugs/IS2_INCONSISTENT_SYNC`, `spotbugs/AT_STALE_THREAD_WRITE_OF_PRIMITIVE`, `spotbugs/AT_NONATOMIC_64BIT_PRIMITIVE`, `errorprone/NonAtomicVolatileUpdate`
 - line: `errorprone/SubstringOfZero` over `spotbugs/DMI_USELESS_SUBSTRING`
 - line: `errorprone/IdentityBinaryExpression`, `errorprone/SelfComparison`, `errorprone/SelfEquals` over `spotbugs/SA_FIELD_SELF_COMPARISON`, `spotbugs/SA_LOCAL_SELF_COMPARISON`
 - line: `errorprone/LockOnBoxedPrimitive` over `spotbugs/DL_SYNCHRONIZATION_ON_*`
@@ -499,8 +513,9 @@ The pairs:
 - line: `errorprone/FallThrough` over `pmd/ImplicitSwitchFallThrough`, `checkstyle/FallThrough`
 - line: `pmd/ImplicitSwitchFallThrough` over `checkstyle/FallThrough`
 - member: `errorprone/FallThrough`, `pmd/ImplicitSwitchFallThrough`, `checkstyle/FallThrough` over `spotbugs/SF_SWITCH_FALLTHROUGH`
-- line: `errorprone/EmptyCatch` over `pmd/EmptyCatchBlock`, `checkstyle/EmptyCatchBlock`
-- line: `pmd/EmptyCatchBlock` over `checkstyle/EmptyCatchBlock`
+- catch: `pmd/SwallowedInterrupt` over `errorprone/EmptyCatch`, `pmd/EmptyCatchBlock`, `checkstyle/EmptyCatchBlock`
+- catch: `errorprone/EmptyCatch` over `pmd/EmptyCatchBlock`, `checkstyle/EmptyCatchBlock`
+- catch: `pmd/EmptyCatchBlock` over `checkstyle/EmptyCatchBlock`
 - line: `errorprone/MultiVariableDeclaration` over `pmd/OneDeclarationPerLine`, `checkstyle/MultipleVariableDeclarations`
 - line: `pmd/OneDeclarationPerLine` over `checkstyle/MultipleVariableDeclarations`
 - line: `errorprone/InterruptedExceptionSwallowed` over `pmd/AvoidCatchingGenericException`
@@ -568,6 +583,7 @@ The pairs:
 - class: `errorprone/DateFormatConstant` over `pmd/UnsynchronizedStaticFormatter`, `spotbugs/STCAL_INVOKE_ON_STATIC_DATE_FORMAT_INSTANCE`
 - field: `errorprone/DateFormatConstant` over `spotbugs/STCAL_STATIC_SIMPLE_DATE_FORMAT_INSTANCE`
 - line: `pmd/NonThreadSafeSingleton` over `spotbugs/LI_LAZY_INIT_STATIC`, `spotbugs/SING_SINGLETON_GETTER_NOT_SYNCHRONIZED`
+- line: `kotlin-source/ChildCoroutineOutlivesResource` over `pmd/CoroutineEscapesTest`
 
 ## Standard streams and the `main` method
 

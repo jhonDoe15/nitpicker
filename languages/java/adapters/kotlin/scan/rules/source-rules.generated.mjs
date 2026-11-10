@@ -1,3 +1,5 @@
+import { kotlinSourceRules as rulesResourceLifetime } from '../../review-rules/coroutines/resource-lifetime.mjs';
+import { kotlinSourceRules as rulesSuspendCleanup } from '../../review-rules/coroutines/suspend-cleanup.mjs';
 import { kotlinSourceRules as rulesFanOut } from '../../review-rules/main/fan-out/fan-out.mjs';
 import { kotlinSourceRules as rulesUnsafeCasts } from '../casts/unsafe-casts.mjs';
 import { kotlinSourceRules as rulesCostlyCollections } from '../collections/costly-collections.mjs';
@@ -26,6 +28,8 @@ import { kotlinSourceRules as rulesTimeUnits } from '../time/units/time-units.mj
 import { kotlinSourceRules as rulesUriParsing } from '../uris/uri-parsing.mjs';
 
 export const directoryRules = [
+  rulesResourceLifetime,
+  rulesSuspendCleanup,
   rulesFanOut,
   rulesUnsafeCasts,
   rulesCostlyCollections,

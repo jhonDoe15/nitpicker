@@ -78,4 +78,38 @@ describe('createBaseSetupResolver', () => {
       conventions: { 'java.indentation': '4' },
     });
   });
+
+  it('runs the base policy with the head analyzer timeouts', () => {
+    const { root } = createGitRepository({
+      'nitpicker.config.json': JSON.stringify({
+        disable: ['crap'],
+        analyzerTimeoutMinutes: { custom: 1, other: 2 },
+      }),
+    });
+    const analyzer = (name) => ({
+      name,
+      version: '1',
+      configurationHash: 'h',
+      exclusions: [],
+      createInvocation: () => ({ command: 'node', args: [], env: {} }),
+    });
+    const head = { disable: [], analyzerTimeoutMinutes: { custom: 30 } };
+    const resolve = createBaseSetupResolver({
+      headConfig: head,
+      injectedAnalyzers: [analyzer('custom'), analyzer('other'), analyzer('crap')],
+    });
+
+    const setup = resolve({
+      baseProjectRoot: root,
+      headSnapshotRoot: root,
+      analyzers: [analyzer('custom'), analyzer('other')],
+    });
+
+    expect(setup.analyzers.map(({ name, timeoutMs }) => [name, timeoutMs])).toEqual([
+      ['custom', 30 * 60_000],
+      ['other', undefined],
+    ]);
+    expect(setup.analyzers[0].configuredTimeout).toBe(true);
+    expect(setup.policyChanges).toEqual(['analyzer enabled: crap']);
+  });
 });
