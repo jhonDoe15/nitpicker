@@ -2,7 +2,9 @@ import { afterEach, describe, expect, it } from 'vitest';
 import { createScripts } from '../../../test-support/python-script-helpers.mjs';
 
 const enabled = process.env.NITPICKER_PYTHON_E2E === '1';
-const { cleanup, findingsOf } = createScripts({ hidden: ['test-without-assertion'] });
+const { cleanup, findingsOf } = createScripts({
+  hidden: ['test-without-assertion', 'weak-assertion'],
+});
 afterEach(cleanup);
 
 function outcomes(rows) {

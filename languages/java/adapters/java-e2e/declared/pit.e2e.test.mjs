@@ -195,6 +195,7 @@ describe.skipIf(!enabled)('PIT with the settings a build declares', () => {
 });
 
 const TWIN_MUTANTS = [
+  'mutant-nocoverage NoCoverage InlineConstantMutator',
   'mutant-survived Survived BooleanTrueReturnValsMutator',
   'mutant-survived Survived RemoveConditionalMutator_EQUAL_IF',
 ];
