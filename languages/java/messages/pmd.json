@@ -544,7 +544,7 @@
     "mayBeIntended": false
   },
   "SimplifiableTestAssertion": {
-    "fix": "Use the assertion the message names, such as assertEquals, assertNull or assertFalse, in place of assertTrue on a comparison or negation.",
+    "fix": "Use the named assertion. For assertTrue(x != null) or assertTrue(!c.isEmpty()), assertNotNull or assertFalse(isEmpty()) is weak too: assert the exact value.",
     "mayBeIntended": false
   },
   "SimplifiedTernary": {
@@ -598,6 +598,10 @@
   "SuspiciousOctalEscape": {
     "fix": "Write the character as a unicode escape (\\u0008) or a three-digit octal escape so the digits are not read together.",
     "mayBeIntended": false
+  },
+  "SwallowedInterrupt": {
+    "fix": "Call Thread.currentThread().interrupt() before leaving the handler, or rethrow: throw e, or throw a new exception with the cause.",
+    "mayBeIntended": true
   },
   "SwitchStmtsShouldHaveDefault": {
     "fix": "Make it an exhaustive switch expression, or add a default branch that throws IllegalStateException.",

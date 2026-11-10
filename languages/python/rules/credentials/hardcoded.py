@@ -35,19 +35,31 @@ def converted(node):
     return None
 
 
-def folded_text(node):
+def folded_leaf(node):
     if isinstance(node, ast.Constant) and isinstance(node.value, (str, bytes)):
         value = node.value
         return value.decode("latin-1") if isinstance(value, bytes) else value
     if converted(node) is not None:
         return folded_text(converted(node))
-    if isinstance(node, ast.BinOp) and isinstance(node.op, ast.Add):
-        left, right = folded_text(node.left), folded_text(node.right)
-        return left + right if left is not None and right is not None else None
     if isinstance(node, ast.JoinedStr):
-        parts = [folded_text(v) for v in node.values if isinstance(v, ast.Constant)]
+        parts = [folded_leaf(v) for v in node.values if isinstance(v, ast.Constant)]
         return "".join(parts) if parts and all(p is not None for p in parts) else None
     return None
+
+
+def folded_text(node):
+    parts = []
+    stack = [node]
+    while stack:
+        current = stack.pop()
+        if isinstance(current, ast.BinOp) and isinstance(current.op, ast.Add):
+            stack.extend([current.right, current.left])
+            continue
+        text = folded_leaf(current)
+        if text is None:
+            return None
+        parts.append(text)
+    return "".join(parts)
 
 
 def unwrapped(node, aliases):

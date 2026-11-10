@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { compareFindings } from '../../../comparison/compare.mjs';
+import { withEditedLineReason } from '../../../comparison/positions/touched-lines.mjs';
 
 describe('strict rules on an edited line of a legacy function', () => {
   function pushFinding(identity, line, count, rule = 'no-restricted-syntax') {
@@ -64,7 +65,9 @@ describe('strict rules on an edited line of a legacy function', () => {
       touchedCode: strictTouched([[4, 4]]),
     });
 
-    expect(result.newFindings).toEqual([unformatted]);
+    expect(result.newFindings).toEqual([
+      withEditedLineReason(unformatted, strictTouched([[4, 4]])),
+    ]);
   });
   it('keeps a strict finding without a count ratchet new on an edited line', () => {
     const moduleLevel = { ...pushFinding('module', 4, 1), ratchet: undefined };
@@ -75,6 +78,8 @@ describe('strict rules on an edited line of a legacy function', () => {
       touchedCode: strictTouched([[4, 4]]),
     });
 
-    expect(result.newFindings).toEqual([moduleLevel]);
+    expect(result.newFindings).toEqual([
+      withEditedLineReason(moduleLevel, strictTouched([[4, 4]])),
+    ]);
   });
 });
