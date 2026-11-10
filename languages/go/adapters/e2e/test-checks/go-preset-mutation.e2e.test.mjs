@@ -8,7 +8,7 @@ import {
   newMessages,
   removeWorkspace,
   toolErrors,
-} from './test-support/go-e2e-support.mjs';
+} from '../test-support/go-e2e-support.mjs';
 import {
   BROKEN_TEST,
   FEE,
