@@ -8,7 +8,7 @@ const BODY_HEAD = /(?:(?<![\w.])(?:else|do)|->)$/;
 
 /** True when nothing after `code`'s start continues the expression that ends there. */
 export function ends(code) {
-  return !CONTINUED.test(code) && !INFIX_NAME.test(code);
+  return !(CONTINUED.test(code) || INFIX_NAME.test(code));
 }
 
 /** True when the text from `start` to `end` is a whole operand of `&&`, `||`, a call or an assignment. */
@@ -37,7 +37,7 @@ export function isBlockStatement(code, index) {
   if (BODY_HEAD.test(before)) {
     return false;
   }
-  return (
-    !before.endsWith(')') || !LOOP_HEAD.test(code.slice(0, openingIndex(code, before.length - 1)))
+  return !(
+    before.endsWith(')') && LOOP_HEAD.test(code.slice(0, openingIndex(code, before.length - 1)))
   );
 }

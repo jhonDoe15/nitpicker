@@ -99,7 +99,7 @@ function booleanReturn(scanned, { start, open, close }) {
     pair === undefined ||
     pair.first.literal === pair.second.literal ||
     !foldable(condition) ||
-    (!pair.returns && !standsFree(scanned.code, start, pair.end))
+    !(pair.returns || standsFree(scanned.code, start, pair.end))
   ) {
     return undefined;
   }

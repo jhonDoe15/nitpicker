@@ -46,7 +46,7 @@ function topLevel(code) {
 /** False when folding the piece onto one line could change it: a raw string or a block across lines. */
 export function foldable(piece) {
   const { code, text } = trimmed(piece);
-  return !code.includes('\n') || (!text.includes('"""') && !code.includes('{'));
+  return !(code.includes('\n') && (text.includes('"""') || code.includes('{')));
 }
 
 /** The piece without one pair of parentheses around all of it. */
