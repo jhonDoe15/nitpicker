@@ -84,6 +84,10 @@ The linters' allowed forms (errors, names and doc comments, simplifications, mod
   A smaller function copied into a second package fails too
   (`duplicate-definition`), and so does editing one of two copies away from the other
   (`sibling-copy-edit`): keep one copy, exported from one package.
+- A doc comment says what the name does not: `// Close closes.` restates it
+  (`doc-comment-content`); say what the caller must know (`// Close flushes pending writes and
+releases the file; calling it twice returns an error.`). Keep the prose to 5 lines; put an
+  example in an indented code block and a replacement in a `Deprecated:` paragraph.
 - Code exists for production callers. An exported name that only `_test.go` files use fails
   (`test-only-export`), and in a module with a `main` package so does a function no `main`
   reaches (`deadcode/unreachable-func`): delete it, or call it from production code. A test helper
@@ -120,6 +124,10 @@ The linters' allowed forms (errors, names and doc comments, simplifications, mod
   has an `integration` or `e2e` build tag, or it starts with `if testing.Short() { t.Skip(...) }`
   (only a skip, or a `return`, as the first statement counts; logging under `testing.Short()` does
   not).
+- A test prints nothing new at `WARN` or `ERROR` level, and nothing through the standard `log`
+  package (`test-console-output`): log in a test with `t.Log`, give the code under test a logger
+  the test controls, and fix the cause of a warning the code now logs. A third-party message that
+  can't be avoided goes in `testConsole.allow`, which a person accepts.
 
 ## When a rule flags legitimate code
 
