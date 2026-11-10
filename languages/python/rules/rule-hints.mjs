@@ -17,6 +17,7 @@ import { SECURITY_HINTS } from './hints/security/ruff-security.mjs';
 import { RULES_SECURITY_HINTS } from './hints/security/rules-security.mjs';
 import { PITFALL_HINTS } from './hints/pitfalls/ruff-pitfalls.mjs';
 import { PERSISTENCE_HINTS } from './hints/persistence/orm-hints.mjs';
+import { QUERY_HINTS } from './hints/persistence/query-hints.mjs';
 import { STYLE_HINTS } from './hints/ruff-style.mjs';
 import { STREAM_HINTS } from './hints/streams/streams.mjs';
 import { TIME_UNIT_HINTS } from './hints/time/time-units.mjs';
@@ -65,6 +66,7 @@ export const RULE_HINTS = [
   ...TEST_SWITCH_HINTS,
   ...ORM_HINTS,
   ...PERSISTENCE_HINTS,
+  ...QUERY_HINTS,
   ...TIME_UNIT_HINTS,
   ...CONTAINER_HINTS,
   ...STREAM_HINTS,

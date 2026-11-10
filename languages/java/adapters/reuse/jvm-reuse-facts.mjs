@@ -12,7 +12,7 @@ const REUSE_TOOL = 'structure';
 const COUPLING_TOOL = 'coupling';
 const SHARED_USAGE_RULES = ['shared-used-by-one-feature'];
 const REUSE_RULES = ['duplicate-definition', 'exported-name-collision', 'sibling-copy-edit'];
-const OUTSIDE_SOURCES = /^(?:\.\.(?:\/|$))|(?:^|\/)build(?:\/|$)/u;
+const OUTSIDE_SOURCES = /^\.\.(?:\/|$)|(?:^|\/)build(?:\/|$)/u;
 const JAVA_COLLISION_FIX = 'Rename one, or use both by their fully qualified names.';
 const NOTHING_SKIPPED = new Set();
 const UNKNOWN_BASE = { unchanged: false, definitions: [] };
@@ -123,11 +123,15 @@ function baselineOf(projectRoot, policy) {
   return onHead ? { readFile: baselineReader(projectRoot, policy) } : undefined;
 }
 
-export function readJvmReuseFindings(projectRoot, { projects, kotlin = false, policy = {} }) {
+export function readJvmReuseFindings(projectRoot, options) {
+  return readJvmReuse(projectRoot, options).findings;
+}
+
+export function readJvmReuse(projectRoot, { projects, kotlin = false, policy = {} }) {
   const facts = jvmReuseFacts(projectRoot, { projects, kotlin, exclude: policy.exclude });
   const language = kotlin ? 'kotlin' : 'java';
   const exceptions = policy.exceptions ?? [];
-  return [
+  const findings = [
     ...sharedFactFindings(facts, {
       language,
       analyzerName: REUSE_TOOL,
@@ -143,4 +147,5 @@ export function readJvmReuseFindings(projectRoot, { projects, kotlin = false, po
       policy: { exceptions, ...(policy.layout === undefined ? {} : { layout: policy.layout }) },
     }),
   ];
+  return { findings, imports: facts.imports };
 }
