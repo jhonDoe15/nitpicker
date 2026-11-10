@@ -66,7 +66,8 @@ describe('static differential adapters: Prettier', () => {
           rule: 'prettier/prettier',
           path: 'src/main/legacy.ts',
           identity: 'format-diff:21be5318beb85c3a6ff3440b',
-          message: 'Format these lines with Prettier',
+          message:
+            'These lines are not formatted with Prettier. Run `nitpicker --fix` to format the changed files; it skips a file that was already unformatted on the base, so format such lines by hand.',
           classification: 'enforceable',
           location: { line: 1, endLine: 1 },
         },
@@ -84,7 +85,8 @@ describe('static differential adapters: Prettier', () => {
           rule: 'prettier/prettier',
           path: 'src/main/legacy.ts',
           identity: 'format-diff:8a051786838f18724e9c186e',
-          message: 'Format these lines with Prettier',
+          message:
+            'These lines are not formatted with Prettier. Run `nitpicker --fix` to format the changed files; it skips a file that was already unformatted on the base, so format such lines by hand.',
           classification: 'enforceable',
           location: { line: 1, endLine: 1 },
         },
@@ -114,7 +116,8 @@ describe('static differential adapters: Prettier', () => {
           rule: 'prettier/prettier',
           path: 'src/main/fresh.ts',
           identity: 'format-diff:fb042a0e28721a451f393e30',
-          message: 'Format these lines with Prettier',
+          message:
+            'These lines are not formatted with Prettier. Run `nitpicker --fix` to format the changed files; it skips a file that was already unformatted on the base, so format such lines by hand.',
           classification: 'enforceable',
           location: { line: 1, endLine: 1 },
         },
@@ -133,7 +136,8 @@ describe('static differential adapters: Prettier', () => {
           rule: 'prettier/prettier',
           path: 'src/main/ok.ts',
           identity: 'format-diff:f56d25669f365e5afd0ac8af',
-          message: 'Format these lines with Prettier',
+          message:
+            'These lines are not formatted with Prettier. Run `nitpicker --fix` to format the changed files; it skips a file that was already unformatted on the base, so format such lines by hand.',
           classification: 'enforceable',
           location: { line: 2, endLine: 2 },
         },
@@ -186,7 +190,8 @@ describe('static differential adapters: Prettier', () => {
           rule: 'prettier/prettier',
           path: 'src/main/fresh.ts',
           identity: 'format-diff:046e36fb31cb6cd60107aae3',
-          message: 'Format these lines with Prettier',
+          message:
+            'These lines are not formatted with Prettier. Run `nitpicker --fix` to format the changed files; it skips a file that was already unformatted on the base, so format such lines by hand.',
           classification: 'enforceable',
           location: { line: 1, endLine: 1 },
         },
@@ -206,7 +211,8 @@ describe('static differential adapters: Prettier', () => {
           rule: 'prettier/prettier',
           path: 'src/main/fresh.ts',
           identity: 'format-diff:b2a1d02d8759b56690983826',
-          message: 'Format these lines with Prettier',
+          message:
+            'These lines are not formatted with Prettier. Run `nitpicker --fix` to format the changed files; it skips a file that was already unformatted on the base, so format such lines by hand.',
           classification: 'enforceable',
           location: { line: 1, endLine: 1 },
         },

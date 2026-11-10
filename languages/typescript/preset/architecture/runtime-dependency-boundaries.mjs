@@ -1,4 +1,4 @@
-import { filesUnder } from '../../../../shared/filesystem.mjs';
+import { projectFilesUnder } from '../../../../shared/project-files/project-files.mjs';
 import { depthFirst } from '../../../../shared/traversal.mjs';
 import { syntaxChildren } from '../syntax/children.mjs';
 import { chainOf } from '../../../../shared/traversal.mjs';
@@ -175,7 +175,7 @@ function sourceFiles(root, exclude, { layout, displayRoot }) {
   function skipDirectory(absolute) {
     return matches(relative(absolute), exclude) || matches(relative(absolute) + '/', exclude);
   }
-  return [...filesUnder(root, { skipDirectory })]
+  return [...projectFilesUnder(root, { skipDirectory })]
     .map(relative)
     .filter(
       (file) =>
