@@ -34,14 +34,18 @@ func Blank(_ string, count int) int {
 	return count
 }
 
-type Box struct {
+type Tile struct {
 	size int
 }
 
-func (b Box) Area() int {
-	b.size *= 2 // want modifies-value-receiver
-	area := b.size * b.size
+func (t Tile) Area() int {
+	t.size *= 2 // want modifies-value-receiver
+	area := t.size * t.size
 	return area
+}
+
+type Box struct {
+	size int
 }
 
 func (b *Box) Grown() {

@@ -50,6 +50,34 @@ describe('Go lint messages', () => {
     ],
     [
       {
+        tool: 'nilerr',
+        rule: 'nilerr',
+        message: 'error is not nil (lines [6 9]) but it returns nil',
+      },
+      'error is not nil but it returns nil. Return the error the branch checks: the error when it is set, nil when it is not.',
+    ],
+    [
+      { tool: 'bodyclose', rule: 'bodyclose', message: 'response body must be closed' },
+      'response body must be closed. Close it in a deferred call: `defer func() { err = errors.Join(err, response.Body.Close()) }()`.',
+    ],
+    [
+      {
+        tool: 'contextcheck',
+        rule: 'contextcheck',
+        message: 'Function `refresh->load` should pass the context parameter',
+      },
+      "Function `refresh` should pass the context parameter. Take a `ctx context.Context` parameter and pass the caller's context down, or derive one from it; a goroutine uses a context made before the `go` statement.",
+    ],
+    [
+      {
+        tool: 'exhaustive',
+        rule: 'exhaustive',
+        message: 'missing cases in expression switch: Paused, Closed',
+      },
+      'missing cases in expression switch. Add a case for each missing constant, or a `default` case that handles the rest.',
+    ],
+    [
+      {
         tool: 'revive',
         rule: 'identical-switch-branches',
         message: '"switch" with identical branches (lines 22 and 24)',
