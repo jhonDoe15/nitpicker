@@ -298,6 +298,16 @@ path is `internal`. A module named `shop` or code under `internal/` is judged in
 a whole file is never judged, only its declarations. A function marked `//export` (cgo) or
 `//go:linkname` is an entry point. Unexported test-only code is left to `deadcode`.
 
+**Copies across packages.** The packages of a module count as one package, as Python's modules do:
+two files cannot define one top-level name in the same Go package, so a copy is always in another
+package. `duplicate-definition` fails a used function, type or literal constant with the same name
+and the same code in two files (one too small for the duplicate scan below), and asks to keep one in
+a package and import it. `sibling-copy-edit` fails a function of 20 tokens or more that a change
+edits away from its unedited copy in another package (at least 80% the same tokens before and
+after): edit both, or move them into one. `exported-name-collision` does not apply: Go code names
+another package's export through the package (`billing.Total`), so two exports with one name never
+meet unqualified.
+
 ## Duplicates
 
 jscpd's `go` format runs over the module's non-test, non-generated files, and the renamed-clone pass
@@ -397,15 +407,15 @@ there are no source roots to set) are config errors with `"preset": "go"`, each 
 
 ## Remaining slices
 
-| #   | Slice                                           | Scope                                                                                                                                                                                                            |
-| --- | ----------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| GO1 | Base (#414)                                     | This document: done.                                                                                                                                                                                             |
-| GO2 | Linters (#415)                                  | Part 1 done: staticcheck, errcheck, modernize and the extra `golang.org/x/tools` passes (see [Linters](#linters)). Next: revive, gosec and the permissively licensed `go/analysis` linters, in the same program. |
-| GO3 | One-way rules (#416)                            | nitpicker's own analyzers for the forms Go still leaves open (error wrapping and comparison, constructors, receivers, loops, context), each message naming the allowed form.                                     |
-| GO4 | Coverage, CRAP and mutation (#417)              | changed-branch coverage and CRAP from the coverage profile; mutation testing.                                                                                                                                    |
-| GO5 | Duplicates, coupling, dead code, modules (#418) | Done: see [Facts](#facts) through [Module requirements](#module-requirements).                                                                                                                                   |
-| GO6 | Shared guards and test honesty (#419)           | the guards the other presets share (secrets in code, path joins, subprocess timeouts, test assertions), after GO3.                                                                                               |
-| GO7 | Race detector (#433)                            | `go test -race`, with each race a finding keyed by its stacks.                                                                                                                                                   |
+| #   | Slice                                           | Scope                                                                                                                                                                                                                                     |
+| --- | ----------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| GO1 | Base (#414)                                     | This document: done.                                                                                                                                                                                                                      |
+| GO2 | Linters (#415)                                  | Part 1 done: staticcheck, errcheck, modernize and the extra `golang.org/x/tools` passes (see [Linters](#linters)). Next: revive, gosec and the permissively licensed `go/analysis` linters, in the same program.                          |
+| GO3 | One-way rules (#416)                            | nitpicker's own analyzers for the forms Go still leaves open (error wrapping and comparison, constructors, receivers, loops, context), each message naming the allowed form.                                                              |
+| GO4 | Coverage, CRAP and mutation (#417)              | changed-branch coverage and CRAP from the coverage profile; mutation testing.                                                                                                                                                             |
+| GO5 | Duplicates, coupling, dead code, modules (#418) | Done: see [Facts](#facts) through [Module requirements](#module-requirements).                                                                                                                                                            |
+| GO6 | Shared guards and test honesty (#419)           | Started: `duplicate-definition` and `sibling-copy-edit` (see [Facts](#facts)). Next: doc comments and test output, then the guards the other presets share (secrets in code, path joins, subprocess timeouts, test assertions) after GO3. |
+| GO7 | Race detector (#433)                            | `go test -race`, with each race a finding keyed by its stacks.                                                                                                                                                                            |
 
 ## Known limits
 

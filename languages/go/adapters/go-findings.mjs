@@ -5,7 +5,7 @@ import { goCouplingFindings } from './coupling/go-coupling.mjs';
 import { readDeadcodeFindings } from './dead-code/go-deadcode.mjs';
 import { readTidyFindings } from './dead-code/go-mod-tidy.mjs';
 import { readGoDuplicateFindings } from './duplicates/go-duplicates.mjs';
-import { goFactFindings, readGoFacts } from './facts/go-fact-findings.mjs';
+import { goFactFindings, readGoBaseline, readGoFacts } from './facts/go-fact-findings.mjs';
 import { GO_LINT_TOOLS } from './configuration/go-config.mjs';
 import { formatFindings } from './formatting/go-format.mjs';
 import { lintFindings } from './lint/go-lint.mjs';
@@ -31,7 +31,7 @@ function formatterFindings(context) {
 
 function deadCodeFindings(context, { policy, lint }) {
   const facts = readGoFacts(context);
-  const factFindings = goFactFindings(facts, policy);
+  const factFindings = goFactFindings(facts, { policy, baseline: readGoBaseline(context) });
   const testOnly = factFindings.filter(({ rule }) => rule === UNUSED_API_RULE_IDS.testOnlyExport);
   const unused = lint.filter(({ rule }) => rule === UNUSED_LINT_RULE);
   return [
