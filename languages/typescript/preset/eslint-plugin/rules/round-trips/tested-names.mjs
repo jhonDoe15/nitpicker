@@ -4,9 +4,12 @@ import { ts } from '../../../../typescript-api/typescript-api.mjs';
 import { readStamped } from '../../../modules/stamped-file-cache.mjs';
 import { scriptKindOf } from '../../../modules/module-sources.mjs';
 import { readLayout } from '../../../head-policy.mjs';
+import { EXCLUDED_PATH_PATTERN, toPosix } from '../../../layout.mjs';
+import { walkedPaths } from '../../../../../../shared/project-files/tree-walk.mjs';
 import { reachableNames } from '../../../../../../shared/rules/round-trips/round-trips.mjs';
 
 const TEST_CALLS = new Set(['it', 'test', 'specify']);
+const EXCLUDED = new RegExp(EXCLUDED_PATH_PATTERN, 'u');
 const files = new Map();
 
 function calleeOf(node) {
@@ -100,11 +103,21 @@ function covers(names, reaching) {
   return reaching.some((name) => names.has(name));
 }
 
-export function untestedPairs(projectRoot, pairs) {
+function isSkipped(projectRoot, absolute, entry) {
+  return entry.name.startsWith('.') || EXCLUDED.test(toPosix(path.relative(projectRoot, absolute)));
+}
+
+function testFilesOf(projectRoot) {
   const layout = readLayout();
-  const found = layout
-    .projectCodeFiles(projectRoot)
-    .filter((file) => layout.isTestFile(file))
+  return walkedPaths(projectRoot, {
+    skipDirectory: (absolute, entry) => isSkipped(projectRoot, absolute, entry),
+  }).filter(
+    (file) => layout.isTestFile(file) && !layout.isExcluded(file) && !layout.isGeneratedPath(file),
+  );
+}
+
+export function untestedPairs(projectRoot, pairs) {
+  const found = testFilesOf(projectRoot)
     .map((file) => readStamped(files, path.join(projectRoot, file), scanned))
     .filter(Boolean);
   const callers = callersOf(found);
