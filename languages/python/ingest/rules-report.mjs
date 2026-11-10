@@ -1,5 +1,6 @@
 import { describeRuleFinding, RULES_TOOL } from '../rules/rule-hints.mjs';
 import { createIdentities } from './identities.mjs';
+import { withRegexDefects } from '../rules/regexes/regex-defects.mjs';
 
 const CHECK_FAILED_RULE = 'rules-check-failed';
 const SKIPPED_RULE = 'rules-skipped';
@@ -40,19 +41,21 @@ function described({ rule, subject, data }, libraries) {
 
 export function ingestRulesReport(text, libraries) {
   const identify = createIdentities();
-  return JSON.parse(text).map(({ rule, path, subject, line, data, error, via }) => {
-    if (rule === CHECK_FAILED_RULE || rule === SKIPPED_RULE) {
-      return toolError({ rule, path, subject, error });
-    }
-    const shown = via ?? subject;
-    return {
-      tool: RULES_TOOL,
-      rule,
-      path,
-      identity: identify({ path, rule, subject }),
-      subject: shown,
-      ...described({ rule, subject: shown, data }, libraries),
-      location: { line },
-    };
-  });
+  return withRegexDefects(JSON.parse(text)).map(
+    ({ rule, path, subject, line, data, error, via }) => {
+      if (rule === CHECK_FAILED_RULE || rule === SKIPPED_RULE) {
+        return toolError({ rule, path, subject, error });
+      }
+      const shown = via ?? subject;
+      return {
+        tool: RULES_TOOL,
+        rule,
+        path,
+        identity: identify({ path, rule, subject }),
+        subject: shown,
+        ...described({ rule, subject: shown, data }, libraries),
+        location: { line },
+      };
+    },
+  );
 }

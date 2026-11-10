@@ -112,4 +112,16 @@ export const PYLINT_WARNING_HINTS = [
     rules: ['PLR1711'],
     allowed: 'Remove the `return`: the function ends there anyway.',
   },
+  {
+    tool: 'ruff',
+    rules: ['PLR0124'],
+    allowed:
+      'One side was probably copied: fix the operand meant to differ. To test for NaN, write `math.isnan(value)`.',
+  },
+  {
+    tool: 'ruff',
+    rules: ['PLR1714'],
+    allowed:
+      'Test membership once: `kind in {"a", "b"}`, or `kind not in {"a", "b"}` for `!=` joined by `and`.',
+  },
 ];

@@ -1,4 +1,13 @@
-import { existsSync, rmSync, writeFileSync } from 'node:fs';
+import {
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  realpathSync,
+  rmSync,
+  symlinkSync,
+  writeFileSync,
+} from 'node:fs';
+import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { useGitFixtures } from '../test-support/git-repository.mjs';
@@ -15,6 +24,7 @@ const { rmSync: actualRmSync } = await vi.importActual('node:fs');
 const leftovers = [];
 
 afterEach(() => {
+  vi.unstubAllEnvs();
   vi.mocked(rmSync).mockImplementation(actualRmSync);
   for (const leftover of leftovers.splice(0)) {
     actualRmSync(leftover, { recursive: true, force: true });
@@ -59,6 +69,27 @@ describe('withTemporaryWorktree', () => {
     expect(path.basename(head)).toBe('head');
     expect(path.basename(path.dirname(head))).toMatch(/^nitpicker-diff-/u);
     expect(warn).not.toHaveBeenCalled();
+  });
+
+  it('hands the analyzers the real path when the temp folder is reached through a link', () => {
+    const repository = createGitRepository({ 'a.txt': 'a\n' });
+    const scratch = realpathSync.native(mkdtempSync(path.join(tmpdir(), 'nitpicker-link-')));
+    leftovers.push(scratch);
+    const realTemp = path.join(scratch, 'real');
+    const linkedTemp = path.join(scratch, 'linked');
+    mkdirSync(realTemp);
+    symlinkSync(realTemp, linkedTemp, 'junction');
+    for (const name of ['TMPDIR', 'TMP', 'TEMP']) {
+      vi.stubEnv(name, linkedTemp);
+    }
+
+    const root = withTemporaryWorktree(
+      repository.root,
+      { commitSha: repository.baseSha, warn: vi.fn() },
+      (worktreeRoot) => worktreeRoot,
+    );
+
+    expect(path.dirname(path.dirname(root))).toBe(realTemp);
   });
 
   it('returns the result and warns when the folder cannot be removed after the operation', () => {

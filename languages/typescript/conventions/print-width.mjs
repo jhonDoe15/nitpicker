@@ -3,7 +3,7 @@ import { indentOf } from '../../../shared/conventions/lines.mjs';
 const WIDTHS = [80, 100, 120];
 const MAX_WIDTH = 120;
 const UNBREAKABLE_LINE =
-  /:\/\/|^\s*(?:import|export)\b.*\bfrom\b|^\s*(?:\/\/|\/\*|\*)|['"`][^'"`]{30,}|^\s*\/[^/*\s]|^[^(){}[\];=,]*$/;
+  /:\/\/|^\s*(?:import|export)\b.+\bfrom\b|^\s*(?:\/\/|\/\*|\*)|['"`][^'"`]{30,}|^\s*\/[^/*\s]|^[^(){}[\];=,]*$/;
 const GROUP_OPENER = /[([]\s*$/;
 const BREAKS_AFTER = /\s(?:=|=>)\s*$/;
 const GROUP_CLOSER = /^\s*[)\]]/;
