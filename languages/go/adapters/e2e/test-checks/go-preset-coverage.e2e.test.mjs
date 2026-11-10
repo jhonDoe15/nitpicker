@@ -8,7 +8,7 @@ import {
   newMessages,
   removeWorkspace,
   toolErrors,
-} from './test-support/go-e2e-support.mjs';
+} from '../test-support/go-e2e-support.mjs';
 import {
   BASE_FILES,
   BRANCHY,
@@ -17,7 +17,7 @@ import {
   DISCOUNT_PANIC_TEST,
   DISCOUNT_TEST,
   UNTESTED_LEGACY,
-} from './test-support/go-fixtures.mjs';
+} from '../test-support/go-fixtures.mjs';
 
 const goE2eEnabled = process.env.NITPICKER_GO_E2E === '1';
 const EXCEPTION = {
