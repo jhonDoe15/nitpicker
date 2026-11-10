@@ -1,8 +1,8 @@
 # Go preset
 
-Status: slices GO1 (ticket #414) and GO7 (ticket #433) implemented, and the first part of slice GO2
-(#415): staticcheck, errcheck, modernize and the extra `golang.org/x/tools` passes. The remaining
-slices are listed under [Remaining slices](#remaining-slices).
+Status: slices GO1 (ticket #414), GO5 (ticket #418) and GO7 (ticket #433) implemented, and the
+first part of slice GO2 (#415): staticcheck, errcheck, modernize and the extra `golang.org/x/tools`
+passes. The remaining slices are listed under [Remaining slices](#remaining-slices).
 
 The Go preset gates a Go module (`go.mod` at the project root) with the same differential gate as
 the other presets: run the tools on the merge base and on head, turn each report into findings,
@@ -43,6 +43,9 @@ node core/cli.mjs go-analyzer --project-root <snapshot>   (per snapshot)
   -> go vet -json ./...                            compile errors and vet diagnostics
   -> lint ./...                                    staticcheck, errcheck, modernize (languages/go/lint)
   -> go test -vet=off -json -race -covermode=atomic -coverpkg=./... -coverprofile=coverage.out ./...
+  -> jscpd --format go (plain, then over renamed sources)  duplicates
+  -> go mod tidy -diff                             unused and unlisted requirements
+  -> deadcode -json ./...                          unreachable functions (modules with a main package)
   -> readGoFindings -> applyFindingPolicy -> compareFindings(base, head)
 ```
 
@@ -51,7 +54,7 @@ instead of a separate runner script (`languages/go/adapters/go-runner.mjs`). The
 is not edited and nothing is added to its `go.mod`.
 
 **Tools.** The pinned versions live in one map (`languages/go/adapters/execution/go-tools.mjs`):
-gofumpt v0.12.0 and goimports from golang.org/x/tools v0.52.0. Each is built once per version
+gofumpt v0.12.0, and goimports and deadcode from golang.org/x/tools v0.52.0 (BSD-3-Clause). Each is built once per version
 into the nitpicker cache folder (`$XDG_CACHE_HOME/nitpicker`, else `~/.cache/nitpicker`) with
 `go install <module>@<version>`, from a neutral working folder with `GOWORK=off`, so a vendored or
 workspace project does not change how they build. A `tool` directive in the project's `go.mod` for
@@ -60,7 +63,9 @@ toolchain (`$(go env GOROOT)/bin/gofmt`) and runs without `-s`, as `go fmt` does
 
 **Metrics program.** `languages/go/inspect` is a small Go program on the standard library only
 (`go/parser`, `go/ast`), built the same way into the cache under a hash of its sources. It lists the
-module's files and measures every function, function literal and type. golangci-lint is not used:
+module's files and measures every function, function literal and type. It also lists each file's
+top-level declarations and the names it uses, which the duplicates, coupling and dead-code checks
+read (see [Facts](#facts)). golangci-lint is not used:
 it is GPL-3.0 licensed, so the preset runs the permissively licensed tools it bundles directly
 (slice GO2).
 
@@ -92,6 +97,12 @@ per source hash and toolchain into the nitpicker cache.
 | Function limits        | metrics program           | `structure/function-*-limit`                                                        |
 | Type limits            | metrics program           | `structure/class-methods-limit`, `class-fields-limit`                               |
 | File and folder limits | metrics program           | `file-lines-limit`, `line-length-limit`, `folder-files-limit`, `folder-depth-limit` |
+| Duplicates             | jscpd, renamed-clone pass | `duplicates/duplicate-clone`                                                        |
+| Package coupling       | metrics program           | `coupling/stability-direction`                                                      |
+| Feature layout         | metrics program           | `facts/shared-used-by-one-feature`                                                  |
+| Test-only code         | metrics program           | `facts/test-only-export`                                                            |
+| Unreachable code       | `deadcode`                | `deadcode/unreachable-func`                                                         |
+| Module requirements    | `go mod tidy -diff`       | `dependencies/unused-dependency`, `dependencies/unlisted-dependency`                |
 | Repository hygiene     | shared                    | committed secrets, binaries, build output, large files                              |
 
 ## Format check: following the project
@@ -293,12 +304,91 @@ program's Go test fails when a marked line is not reported, when any other line 
 check has no fixture. `fixtures/legacy` (Go 1.14) and `fixtures/next` (Go 1.27) hold the checks
 that apply only before or after a Go version.
 
+## Facts
+
+The metrics program writes, per `.go` file, its top-level functions, types, constants and variables
+(methods are not listed) and the names the file uses: names defined in another file of the same
+package, `alias.Name` selectors into packages of the same module (an import of the module path or a
+path below it), dot imports, and names a file defines and uses itself. From these the adapter builds
+the shared facts (`shared/rules/facts/`, see "Facts schema" in [internals](internals.md)), so the
+fact rules the other presets run reach Go with the same definitions. Names are resolved without type
+information: a local variable that shadows a package-level name is seen as local, and a struct key
+in a composite literal (`Item{Name: name}`) counts as a use of a package-level `Name` if there is
+one, which can only hide a finding.
+
+**Published packages.** A package's exported API counts as used, and tests count as its callers,
+when other modules can import it: the module path can be fetched (its first element has a dot, such
+as `github.com/...` or `example.com/...`), the package is not `main`, and no element of its import
+path is `internal`. A module named `shop` or code under `internal/` is judged in full.
+
+**`test-only-export`.** An exported top-level name of a package that is not published, which only
+`_test.go` files use, fails. Go compiles a package's files together and has no file-level import, so
+a whole file is never judged, only its declarations. A function marked `//export` (cgo) or
+`//go:linkname` is an entry point. Unexported test-only code is left to `deadcode`.
+
+## Duplicates
+
+jscpd's `go` format runs over the module's non-test, non-generated files, and the renamed-clone pass
+runs it again over a copy with names, strings, runes and numbers normalized, as in the other
+presets: a clone of at least 100 tokens fails even when every name was changed. Import blocks,
+composite literals that hold only data, and code that only repeats Go boilerplate (struct fields,
+`if err != nil {`, `return nil, err`, constructors that assign fields, getters) do not count.
+`_test.go` files never count. Folders the go tool skips (`testdata`, `vendor`, names that start
+with `.` or `_`, nested modules) are always skipped, and `duplicates.skippedFolders` (default
+`testdata` and `vendor`) names more. A
+project's `.jscpd.json` applies with `"tools": { "jscpd": { "precedence": ["project"] } }`.
+
+## Coupling and features
+
+`stability-direction` runs on the package graph: one unit per package folder, an edge for each
+import of another package of the module by a non-test file. Every file counts whatever its build
+constraints, because a dependency in `poll_windows.go` is still a dependency of the package. A
+package that depends on a less stable package fails, on its `doc.go` (else its first file that is not generated), and the
+message suggests an interface the stable package owns.
+
+`layout.featureRoots` and `layout.sharedRoots` (defaults `**/features` and `**/shared`) feed
+`shared-used-by-one-feature`: a file under a shared root that only one feature uses, directly or
+through other shared code, fails. A blank import (`import _ ".../shared/drivers"`) counts as a use
+of every file of the package. The compiler already enforces `internal/` visibility and rejects
+import cycles, so the preset has no rule for either.
+
+## Dead code
+
+`deadcode` (golang.org/x/tools) runs when the module has a `main` package, with `go.buildTags`. Each
+function no `main` package of the module reaches is a `deadcode/unreachable-func` finding; calls from
+tests do not count. It is dropped when:
+
+- the function is exported and its package is published (another module may call it);
+- `test-only-export` already reports it;
+- it is marked `//export` (cgo) or `//go:linkname`;
+- staticcheck already reports it as U1000 (unused code);
+- its file has build constraints (`//go:build`, or a `_linux.go`-style name), or a file with build
+  constraints uses it: `deadcode` sees one platform and set of tags, and that code may be live on
+  another.
+
+A module without a `main` package is a library: its exported API is its entry point and `deadcode`
+does not run. A folder's package is named after its files without build constraints, so a
+`//go:build ignore` generator in `package main` does not turn a library folder into a `main` package. A method only a constrained file calls can still be reported; add an exception for it.
+`deadcode` runs only when the code compiles.
+
+## Module requirements
+
+`go mod tidy -diff` (Go 1.23 or later) compares `go.mod` with what the module's packages import. A
+`require` it would remove is `dependencies/unused-dependency` on its `go.mod` line, and a direct
+`require` it would add is `dependencies/unlisted-dependency`; both name `go mod tidy` as the fix.
+A change of only the `// indirect` marker, of the `go` line or of `go.sum` is not a finding.
+`unresolved-import` does not apply to Go: the compiler rejects an import no package provides, which
+is a `build/compile-error`. When `go mod tidy` fails without printing a diff (for example when it
+cannot reach the module proxy, or Go is older than 1.23), the snapshot is a `go/go-mod-tidy-failed`
+tool error and, as with any step that fails, holds no other findings.
+
 ## Exceptions
 
-The top-level `exceptions` take a finding as it is printed, `<tool>/<rule>` (`vet/printf`), as in
-the Java preset, plus the shared rules (the function, type, file and folder limits, `slow-test`, and
-the repository checks). Every vet, staticcheck, errcheck, modernize, limit and slow-test message
-ends with its exception entry, for
+The top-level `exceptions` take a finding as it is printed, `<tool>/<rule>` (`vet/printf`,
+`deadcode/unreachable-func`), as in the Java preset, plus the shared rules (the function, type, file
+and folder limits, `slow-test`, `duplicate-clone`, `stability-direction`, the fact rules,
+`unused-dependency`, `unlisted-dependency` and the repository checks). Every vet, staticcheck,
+errcheck, modernize, deadcode, limit and slow-test message ends with its exception entry, for
 example `{"rule":"vet/printf","paths":["shop/label.go"],"reason":"..."}`. Format findings,
 compile errors and `no-tests-ran` have no exception route: run the formatter, fix the build, or
 add a test.
@@ -311,11 +401,13 @@ add a test.
 | `go.buildTags`                                           | build tags passed as `-tags` to vet and the tests            |
 | `tools.gofumpt.precedence`, `tools.goimports.precedence` | read the formatter's options from the golangci-lint config   |
 | `tools.staticcheck.precedence`                           | read the project's `staticcheck.conf` files                  |
+| `tools.jscpd.precedence`                                 | read the project's `.jscpd.json` for the duplicate scan      |
+| `layout.featureRoots`, `layout.sharedRoots`              | the feature layout `shared-used-by-one-feature` reads        |
+| `duplicates.skippedFolders`                              | folder names the duplicate scan skips                        |
 | `thresholds`, `exclude`, `exceptions`, `legacyInventory` | shared with every preset                                     |
 
-`react` and `i18n` (TypeScript only), `layout` (Go packages follow the module, so there are no
-source roots to set) and `duplicates` (no duplicate-code scan runs yet, see GO5) are config errors
-with `"preset": "go"`, each naming its reason.
+`react` and `i18n` (TypeScript only) and the other `layout` keys (Go packages follow the module, so
+there are no source roots to set) are config errors with `"preset": "go"`, each naming its reason.
 
 ## Tests of the preset
 
@@ -327,8 +419,10 @@ with `"preset": "go"`, each naming its reason.
   the real CLI on them: a clean change, gofmt, vet, a compile error, a nested function next to an
   untouched legacy one, exceptions, failing and slow tests, build tags, gofumpt from a golangci-lint
   file, a change that adopts gofumpt, a missing toolchain, the linters' findings and messages, a
-  `staticcheck.conf` that is ignored until the project opts in, a new data race, a race the merge
-  base already had, and cgo turned off. CI runs them in the `go-e2e` workflow.
+  `staticcheck.conf` that is ignored until the project opts in; on an application module, a
+  renamed copy, an exported function only tests call, an unexported function only tests call, and
+  an unused function reported once; and a new data race, a race the merge base already had, and
+  cgo turned off. CI runs them in the `go-e2e` workflow.
 
 ## Remaining slices
 
@@ -338,7 +432,7 @@ with `"preset": "go"`, each naming its reason.
 | GO2 | Linters (#415)                                  | Part 1 done: staticcheck, errcheck, modernize and the extra `golang.org/x/tools` passes (see [Linters](#linters)). Next: revive, gosec and the permissively licensed `go/analysis` linters, in the same program. |
 | GO3 | One-way rules (#416)                            | nitpicker's own analyzers for the forms Go still leaves open (error wrapping and comparison, constructors, receivers, loops, context), each message naming the allowed form.                                     |
 | GO4 | Coverage, CRAP and mutation (#417)              | changed-branch coverage and CRAP from the coverage profile; mutation testing.                                                                                                                                    |
-| GO5 | Duplicates, coupling, dead code, modules (#418) | clones, package coupling and stability, unused code, and `go mod tidy -diff`.                                                                                                                                    |
+| GO5 | Duplicates, coupling, dead code, modules (#418) | Done: see [Facts](#facts) through [Module requirements](#module-requirements).                                                                                                                                   |
 | GO6 | Shared guards and test honesty (#419)           | the guards the other presets share (secrets in code, path joins, subprocess timeouts, test assertions), after GO3.                                                                                               |
 | GO7 | Race detector (#433)                            | This document: done.                                                                                                                                                                                             |
 
@@ -346,7 +440,9 @@ with `"preset": "go"`, each naming its reason.
 
 - One module per run: the module at the project root. A nested module (its own `go.mod`) and a
   `go.work` workspace's other modules are not analyzed.
-- Generated files are listed but not measured, format-checked or linted; they still compile and vet.
+- Generated files are listed but not measured, format-checked, linted or duplicate-scanned; they
+  still compile and vet, and the names they use count as uses.
+- The feature boundary rules other than `shared-used-by-one-feature` are not run for Go yet.
 - The tools are built from the Go module proxy on first use, so the first run needs network access
   (or a `GOPROXY` the project sets) and takes longer. The lint program needs Go 1.27, so a project
   on an older toolchain downloads it once with `GOTOOLCHAIN=auto`.

@@ -276,10 +276,39 @@ describe('workflows that select their jobs from the changed files', () => {
       const { changes } = selecting.find((workflow) => workflow.name === name).parsed.jobs;
 
       expect([changes.if, changes.permissions, changes.steps[0].with]).toEqual([
-        "github.event_name != 'pull_request' || github.event.label.name == 'run-ci'",
+        "github.event_name != 'pull_request' || contains(github.event.pull_request.labels.*.name, 'run-ci')",
         { contents: 'read', 'pull-requests': 'read' },
         { 'sparse-checkout': '.github/workflows\nscripts/ci\n' },
       ]);
     },
   );
+});
+
+describe('the required checks of the typescript workflow', () => {
+  const { jobs } = workflows.find(({ name }) => name === 'typescript.yml').parsed;
+
+  it('run on every label of a pull request, so a newer run never hides a failure behind a skip', () => {
+    expect([jobs.test.if, jobs['self-gate'].if, jobs['test-shard'].if]).toEqual([
+      'always()',
+      "github.ref != 'refs/heads/main'",
+      "github.event_name != 'pull_request' || contains(github.event.pull_request.labels.*.name, 'run-ci')",
+    ]);
+    expect(jobs.test.steps[0].run).toBe(
+      [
+        'if [ "$RESULT" = skipped ]; then',
+        '  echo "::error::The tests did not run: add the run-ci label to run CI on this pull request."',
+        'fi',
+        'test "$RESULT" = success',
+        '',
+      ].join('\n'),
+    );
+  });
+
+  it('lets no workflow that runs on a label look at which label was added', () => {
+    const labeled = workflows.filter(({ parsed }) =>
+      parsed.on?.pull_request?.types?.includes('labeled'),
+    );
+
+    expect(labeled.filter(({ text }) => text.includes('github.event.label.name'))).toEqual([]);
+  });
 });

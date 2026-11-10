@@ -35,7 +35,9 @@ def check(context):
             continue
         covered.update(id(child) for child in ast.walk(node))
         named = named_in(enclosing(node, context.parents))
-        copies = sorted(entry for entry in known[key] if entry[0] not in named)
+        copies = sorted(
+            entry for entry in known[key] if entry[0].rsplit(".", 1)[-1] not in named
+        )
         if copies:
             subject = " or ".join(f"{name} from {module}" for name, module in copies)
             findings.append(finding(context.path, RULE, subject, node))
