@@ -9,7 +9,12 @@ import {
   removeWorkspace,
 } from './test-support/go-e2e-support.mjs';
 import { BASE_FILES } from './test-support/go-fixtures.mjs';
-import { LOOKUP, PROJECT_STATICCHECK, SKIP_S1003 } from './test-support/go-lint-fixtures.mjs';
+import {
+  LOOKUP,
+  LOOKUP_TEST,
+  PROJECT_STATICCHECK,
+  SKIP_S1003,
+} from './test-support/go-lint-fixtures.mjs';
 
 const goE2eEnabled = process.env.NITPICKER_GO_E2E === '1';
 
@@ -19,13 +24,15 @@ describe.skipIf(!goE2eEnabled)('Go preset linters end to end', () => {
   beforeAll(() => {
     workspace = createWorkspace();
     project = goRepository(workspace, BASE_FILES);
-    commitBranch(project, 'lint', { 'shop/lookup.go': LOOKUP });
+    commitBranch(project, 'lint', { 'shop/lookup.go': LOOKUP, 'shop/lookup_test.go': LOOKUP_TEST });
     commitBranch(project, 'conf-ignored', {
       'shop/lookup.go': LOOKUP,
+      'shop/lookup_test.go': LOOKUP_TEST,
       'staticcheck.conf': SKIP_S1003,
     });
     commitBranch(project, 'conf-opted-in', {
       'shop/lookup.go': LOOKUP,
+      'shop/lookup_test.go': LOOKUP_TEST,
       'staticcheck.conf': SKIP_S1003,
       'nitpicker.config.json': PROJECT_STATICCHECK,
     });
