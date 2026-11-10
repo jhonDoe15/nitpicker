@@ -1,7 +1,11 @@
-import { readFileSync } from 'node:fs';
-import path from 'node:path';
 import { sharedRouteRule } from '../../../shared/exceptions/routes.mjs';
-import { VET_REPORT, vetFindings } from './build/go-vet.mjs';
+import { UNUSED_API_RULE_IDS } from '../../../shared/unused-api/unused-api-policy.mjs';
+import { readVetFindings } from './build/go-vet.mjs';
+import { goCouplingFindings } from './coupling/go-coupling.mjs';
+import { readDeadcodeFindings } from './dead-code/go-deadcode.mjs';
+import { readTidyFindings } from './dead-code/go-mod-tidy.mjs';
+import { readGoDuplicateFindings } from './duplicates/go-duplicates.mjs';
+import { goFactFindings, readGoFacts } from './facts/go-fact-findings.mjs';
 import { GO_LINT_TOOLS } from './configuration/go-config.mjs';
 import { formatFindings } from './formatting/go-format.mjs';
 import { lintFindings } from './lint/go-lint.mjs';
@@ -11,6 +15,8 @@ import { readInspect } from './structure/go-inspect.mjs';
 import { goSlowTestFindings } from './tests/go-slow-tests.mjs';
 import { goCoverageFindings } from './branch-coverage/go-coverage.mjs';
 import { readTestRun, testRunFindings } from './tests/go-test.mjs';
+
+const UNUSED_LINT_RULE = 'U1000';
 
 export function goRouteRule(finding) {
   return GO_LINT_TOOLS.includes(finding.tool)
@@ -24,19 +30,32 @@ function formatterFindings(context) {
   );
 }
 
+function deadCodeFindings(context, { policy, lint }) {
+  const facts = readGoFacts(context);
+  const factFindings = goFactFindings(facts, policy);
+  const testOnly = factFindings.filter(({ rule }) => rule === UNUSED_API_RULE_IDS.testOnlyExport);
+  const unused = lint.filter(({ rule }) => rule === UNUSED_LINT_RULE);
+  return [
+    ...factFindings,
+    ...readDeadcodeFindings(context, { facts, testOnly, unused }),
+    ...readTidyFindings(context),
+  ];
+}
+
 export function readGoFindings(context, policy = {}) {
   const report = readInspect(context.reportRoot);
   const testRun = readTestRun(context.reportRoot);
+  const lint = lintFindings(context);
   return [
     ...formatterFindings(context),
-    ...vetFindings(
-      context.projectRoot,
-      readFileSync(path.join(context.reportRoot, VET_REPORT), 'utf8'),
-    ),
-    ...lintFindings(context),
+    ...readVetFindings(context),
+    ...lint,
     ...testRunFindings(testRun, context.snapshot),
     ...goSlowTestFindings(context, testRun, report),
     ...goStructureFindings(report, context.projectRoot, policy),
     ...goCoverageFindings(context, { report, testRun }, policy),
+    ...readGoDuplicateFindings(context.reportRoot, context.projectRoot),
+    ...goCouplingFindings(report, context.module),
+    ...deadCodeFindings(context, { policy, lint }),
   ];
 }

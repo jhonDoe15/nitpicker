@@ -72,6 +72,11 @@ export function createGoAnalyzer(settings = {}) {
       'coverage',
       'crap',
       'structure',
+      'duplicates',
+      'coupling',
+      'facts',
+      'deadcode',
+      'dependencies',
     ],
     timeoutMs: ANALYZER_TIMEOUT_MS,
     createInvocation: ({ projectRoot, toolRoot }) => ({

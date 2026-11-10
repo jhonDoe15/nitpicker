@@ -7,6 +7,10 @@ type Report struct {
 	Tests     []Test     `json:"tests"`
 	Branches  []Branch   `json:"branches"`
 	Errors    []string   `json:"errors"`
+
+	Definitions []Definition `json:"definitions"`
+	Usages      []Usage      `json:"usages"`
+	Skipped     []string     `json:"skipped"`
 }
 
 type Position struct {
@@ -31,10 +35,11 @@ type Branch struct {
 }
 
 type File struct {
-	Path      string `json:"path"`
-	Package   string `json:"package"`
-	Test      bool   `json:"test"`
-	Generated bool   `json:"generated"`
+	Path        string `json:"path"`
+	Package     string `json:"package"`
+	Test        bool   `json:"test"`
+	Generated   bool   `json:"generated"`
+	Constrained bool   `json:"constrained"`
 }
 
 type Function struct {

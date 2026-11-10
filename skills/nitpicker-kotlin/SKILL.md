@@ -42,7 +42,8 @@ full run below.
    - 0: done, unless you narrowed the run with `--analyzer`: then the summary says `Ran only: ...`
      and you run the gate again without it before you finish.
    - 1: fix the failing tests the summary leads with, every new finding and any tool error listed
-     below them, then rerun.
+     below them, then rerun. A compile error is a `build/compile-error` finding at its line; fix it
+     first, since the other checks wait until the code builds.
    - 2: no new findings, but a tool failed. Fix the cause it names (usually a Gradle or Maven error) and rerun. Exit 2 is never a pass. If it says another run is in progress, wait
      for that run; never kill it.
      When the message links to [troubleshooting](https://github.com/jhonDoe15/nitpicker/blob/main/docs/troubleshooting.md), the fix is there.
