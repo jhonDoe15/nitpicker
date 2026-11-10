@@ -7,6 +7,7 @@ import {
   supportsRedirect,
 } from '../../../languages/typescript/typescript-api/api-redirect.mjs';
 import { packageVersion } from '../../help/package-version.mjs';
+import { PACKAGE_ROOT } from '../../tooling/tool-resolution.mjs';
 
 const COVERAGE_PACKAGE = '@vitest/coverage-v8';
 const RUNNER_PEERS = {
@@ -18,13 +19,17 @@ const RUNNER_PEERS = {
 const DEPENDENCY_FIELDS = ['dependencies', 'devDependencies', 'optionalDependencies'];
 const TYPESCRIPT = 'typescript';
 const NITPICKER = 'nitpicker';
-const FIRST_VERSION = /(?<major>\d+)(?:\.(?<minor>\d+))?/u;
-const OLDEST_TYPESCRIPT = [5, 7];
+const FIRST_VERSION = /(?<major>\d+)(?:\.(?<minor>\d+))?(?:\.(?<patch>\d+))?/u;
+const PEER_RANGES = readManifest(PACKAGE_ROOT).peerDependencies;
 const NATIVE_TYPESCRIPT_MAJOR = 7;
 const JAVASCRIPT_API_TYPESCRIPT = `${TYPESCRIPT}@^6`;
 
+export function runnerPeers(testRunner) {
+  return RUNNER_PEERS[testRunner];
+}
+
 export function requiredNodePeers(testRunner) {
-  return [NITPICKER, TYPESCRIPT, '@types/node', ...RUNNER_PEERS[testRunner]];
+  return [NITPICKER, TYPESCRIPT, '@types/node', ...runnerPeers(testRunner)];
 }
 
 function installedManifest(projectRoot, name) {
@@ -40,28 +45,60 @@ function declaredSpecifier(manifest, name) {
   );
 }
 
-function isSupportedTypeScript(version) {
-  if (version === undefined) {
-    return false;
-  }
-  const found = FIRST_VERSION.exec(String(version))?.groups;
-  if (found === undefined) {
-    return true;
-  }
-  const [major, minor] = [Number(found.major), Number(found.minor ?? 0)];
-  const [oldestMajor, oldestMinor] = OLDEST_TYPESCRIPT;
-  return major === oldestMajor ? minor >= oldestMinor : major > oldestMajor;
+function versionParts(text) {
+  const found = FIRST_VERSION.exec(String(text))?.groups;
+  return [found?.major, found?.minor, found?.patch]
+    .filter((part) => part !== undefined)
+    .map(Number);
 }
 
-function isPresent(projectRoot, manifest, name) {
-  const installed = installedManifest(projectRoot, name)?.version;
+function declaredVersionParts(declared) {
+  const protocol = /^(?<name>[\w+-]+):/u.exec(String(declared))?.groups.name;
+  return protocol === undefined || protocol === 'npm' ? versionParts(declared).slice(0, 2) : [];
+}
+
+function isAtLeast(version, minimum) {
+  const index = version.findIndex((part, position) => part !== (minimum[position] ?? 0));
+  return index === -1 || version[index] > (minimum[index] ?? 0);
+}
+
+function supportedRange(name) {
+  return PEER_RANGES[name];
+}
+
+function isSupported(name, { installed, declared }) {
+  const minimum = versionParts(supportedRange(name));
+  const version =
+    installed === undefined ? declaredVersionParts(declared) : versionParts(installed);
+  return version.length === 0 || minimum.length === 0 || isAtLeast(version, minimum);
+}
+
+function peerStatus(projectRoot, manifest, { name, loadedFrom }) {
+  const found = installedManifest(projectRoot, name);
+  const installed = (found ?? (loadedFrom && installedManifest(loadedFrom, name)))?.version;
   const declared = declaredSpecifier(manifest, name);
-  if (name !== TYPESCRIPT) {
-    return installed !== undefined || declared !== undefined;
-  }
-  return installed === undefined
-    ? isSupportedTypeScript(declared)
-    : isSupportedTypeScript(installed);
+  return { name, installed, declared, supported: isSupported(name, { installed, declared }) };
+}
+
+function needsAdding({ installed, declared, supported }) {
+  return !supported || (installed === undefined && declared === undefined);
+}
+
+export function nodePeerNeeds(projectRoot, names, options = {}) {
+  const { nodeVersion = process.versions.node, loadedFrom = {} } = options;
+  const manifest = readManifest(projectRoot);
+  const statuses = names
+    .map((name) => peerStatus(projectRoot, manifest, { name, loadedFrom: loadedFrom[name] }))
+    .filter(({ installed, supported }) => installed === undefined || !supported);
+  const added = statuses.filter(needsAdding);
+  return {
+    add: added.map(({ name }) => requirementOf(projectRoot, name, nodeVersion)),
+    uninstalled: statuses.filter((status) => !needsAdding(status)).map(({ name }) => name),
+    absent: statuses.filter(({ installed }) => installed === undefined).map(({ name }) => name),
+    outdated: statuses
+      .filter(({ installed }) => installed !== undefined)
+      .map(({ name, installed }) => ({ name, installed, range: supportedRange(name) })),
+  };
 }
 
 function requirementOf(projectRoot, name, nodeVersion) {
@@ -76,7 +113,8 @@ function requirementOf(projectRoot, name, nodeVersion) {
 
 function pinnedToVitest(projectRoot, name) {
   const version = installedManifest(projectRoot, 'vitest')?.version;
-  return name === COVERAGE_PACKAGE && version !== undefined ? `${name}@${version}` : name;
+  const pinned = version !== undefined && isSupported('vitest', { installed: version });
+  return name === COVERAGE_PACKAGE && pinned ? `${name}@${version}` : name;
 }
 
 function projectTypeScript(projectRoot) {
@@ -100,8 +138,5 @@ export function assertTypeScriptNode(projectRoot, nodeVersion = process.versions
 }
 
 export function missingNodePeers(projectRoot, testRunner, nodeVersion = process.versions.node) {
-  const manifest = readManifest(projectRoot);
-  return requiredNodePeers(testRunner)
-    .filter((name) => !isPresent(projectRoot, manifest, name))
-    .map((name) => requirementOf(projectRoot, name, nodeVersion));
+  return nodePeerNeeds(projectRoot, requiredNodePeers(testRunner), { nodeVersion });
 }

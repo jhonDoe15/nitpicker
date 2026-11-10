@@ -16,6 +16,7 @@ import { run } from './go-process.mjs';
 export const GO_TOOLS = {
   gofumpt: { module: 'mvdan.cc/gofumpt', version: 'v0.12.0' },
   goimports: { module: 'golang.org/x/tools/cmd/goimports', version: 'v0.52.0' },
+  deadcode: { module: 'golang.org/x/tools/cmd/deadcode', version: 'v0.52.0' },
 };
 const INSPECT_SOURCE = path.resolve(import.meta.dirname, '../../inspect');
 const LINT_SOURCE = path.resolve(import.meta.dirname, '../../lint');

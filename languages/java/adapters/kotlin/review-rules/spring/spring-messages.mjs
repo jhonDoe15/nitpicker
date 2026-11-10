@@ -88,6 +88,8 @@ const ALLOWED = {
     'Make the entity an open class that is not a data class: apply the all-open plugin for @Entity, @MappedSuperclass and @Embeddable (allOpen { annotation("jakarta.persistence.Entity") ... } next to kotlin("plugin.jpa")), or write open class. Hibernate cannot proxy a final class, so lazy loading stops working, and a data class compares and hashes every property; use data classes for DTOs.',
   JpaManyToManyCascade:
     'Cascade only PERSIST and MERGE on @ManyToMany, never ALL or REMOVE: removing one parent deletes rows that other parents still share.',
+  JpaMultipleCollectionFetch:
+    'Load at most one collection per query with join fetch or an entity graph, and the others in their own query or with @BatchSize or @Fetch(FetchMode.SUBSELECT): two fetched collections return one row for every pair of their elements, and Hibernate throws MultipleBagFetchException for two lists.',
   JpaManyToManySet:
     'Map @ManyToMany as a MutableSet (or a MutableList with @OrderColumn). A plain list makes Hibernate delete and re-insert every join row when one element is removed.',
   JpaVersion:
