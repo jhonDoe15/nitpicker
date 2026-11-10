@@ -49,7 +49,7 @@ export function springFindings(
     projectFiles,
     projectRoot,
     javaRoots,
-    checksForeignKeys = foreignKeyGate(projectRoot),
+    foreignKeys = foreignKeyGate(projectRoot),
     rules = RULES,
     message = springMessage,
   },
@@ -60,7 +60,7 @@ export function springFindings(
   const options = {
     allOpen: manifest.kotlinAllOpen,
     projectFiles,
-    checksForeignKeys,
+    checksForeignKeys: foreignKeys,
   };
   return springViews({ files, projectFiles, projectRoot, javaRoots }).flatMap((view) =>
     rules

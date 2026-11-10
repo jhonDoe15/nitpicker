@@ -55,7 +55,7 @@ function reported(files, { checksForeignKeys = () => true } = {}) {
     projectFiles: files,
     projectRoot: '/nonexistent',
     javaRoots: [],
-    checksForeignKeys,
+    foreignKeys: checksForeignKeys,
     rules: FOREIGN_KEY_RULES,
   }).map(({ symbol, location }) => `${symbol}:${String(location.line)}`);
 }

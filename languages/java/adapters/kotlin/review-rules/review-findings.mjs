@@ -70,7 +70,7 @@ function honestyFindings({ manifest, projectRoot, modules = [] }, finding) {
 }
 
 export function readKotlinReviewFindings(context) {
-  const { manifest, projectRoot, reportRoot, foreignKeys } = context;
+  const { manifest, projectRoot, reportRoot } = context;
   const { own, projectFiles, javaRoots, build } = projectView(context);
   const finding = findingFactory();
   const honesty = honestyFindings(context, finding);
@@ -88,14 +88,7 @@ export function readKotlinReviewFindings(context) {
     ...honesty,
     ...subjectMockFindings(own, { finding, projectRoot, projectFiles, isProduction }),
     ...springContextFindings(own, { finding }),
-    ...springFindings(own, {
-      finding,
-      manifest,
-      projectFiles,
-      projectRoot,
-      javaRoots,
-      checksForeignKeys: foreignKeys,
-    }),
+    ...springFindings(own, { ...context, finding, projectFiles, javaRoots }),
     ...blockingFindings(own, { finding, declaredIn: projectFiles, projectRoot, javaRoots }),
     ...enumPredicateFindings(own, { finding, projectRoot, declaredIn: projectFiles }),
     ...forwardingWrapperFindings(own, { finding, declaredIn: projectFiles }),
