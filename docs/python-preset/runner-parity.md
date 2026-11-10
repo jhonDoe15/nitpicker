@@ -88,8 +88,11 @@ What the Python preset does the way the TypeScript and Java presets do (`parity/
   and out of `PYTEST_ADDOPTS`: `-x`/`--exitfirst` (also inside `-vx`), `--maxfail`, `--sw`,
   `--stepwise`, `--collect-only`, `--setup-only`, `--setup-plan`, `-k`, `-m`, `--deselect`,
   `--reruns`, `--only-rerun` and the other rerun and retry options, and `-p no:` for the
-  plugins that collect or report results; with pytest-rerunfailures installed `-o reruns=0` is
-  added. A run that collects no test is `python/no-tests-ran`, as before.
+  plugins that collect or report results (also the `flaky` plugin's `--force-flaky`, `--max-runs`
+  and `--min-passes`); with pytest-rerunfailures installed `-o reruns=0` is added. A test that
+  passes only on a later attempt anyway (a `flaky` mark, `retries` set in the config of
+  pytest-retry) counts as failed; see `retry-in-test`. A run that collects no test is
+  `python/no-tests-ran`, as before.
 - **Size.** `folder-depth-limit` (a package more than 4 levels below the root package, as for Java:
   the common package prefix of the production modules, on the base when there is one, after
   the leading namespace folders without `__init__.py` of each top-level tree, up to its shallowest
@@ -128,7 +131,9 @@ EDIT.`); and a file under a `generated/`, `_generated/` or `__generated__/` fold
   production modules keep their checks.
 - **Import structure.** From the import scan (`imports/python-import-rules.mjs`):
   `coupling/package-cycle` with Java's message, on each package of a cycle (a package `__init__`
-  importing its own submodules is a re-export, not a dependency); `coupling/no-production-cycles`
+  importing its own submodules is a re-export, not a dependency, and a cycle whose packages all
+  belong to the features of a reported [`feature-cycle`](feature-folders.md), and that no import
+  outside that feature cycle closes, is left out); `coupling/no-production-cycles`
   for module cycles inside one package; `coupling/no-import-outside-roots` when production code
   imports a project module outside `python.sourceRoots` (scripts, a top-level `tests/` package).
   Type-only imports do not count.
@@ -190,6 +195,3 @@ EDIT.`); and a file under a `generated/`, `_generated/` or `__generated__/` fold
   environment and use `from x import *`; `manage.py`, `wsgi.py` and `asgi.py` may read the
   environment and have no test. FastAPI routers (modules that import `fastapi`) and the modules
   they import directly may use pydantic. Flask needs no allowance yet.
-- **Feature folders.** Not applied to Python: the TypeScript feature layout lives under
-  `<root>/main/`, and Python has no such convention, so the rule would flag ordinary Django apps and
-  FastAPI packages.
