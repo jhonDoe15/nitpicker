@@ -142,7 +142,8 @@ export const GOSEC_HINTS = [
   ['G703', `Open request paths through an \`os.Root\` for the allowed folder. ${UNSANITISED}`],
   [
     'G704',
-    'Build the URL with `url.URL{Scheme: "https", Host: fixedHost, Path: ...}` and call `String()`. ' +
+    'Build the URL with `url.URL{Scheme: "https", Host: fixedHost, Path: ...}` and pass `String()` ' +
+      'to `http.NewRequestWithContext`. ' +
       UNSANITISED,
   ],
   ['G705', 'Render HTML with html/template, or escape the value with `html.EscapeString`.'],

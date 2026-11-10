@@ -1,3 +1,5 @@
+import { GO_LINTER_TOOLS } from '../../../../../languages/go/adapters/configuration/go-config.mjs';
+
 const AREA_TOOLS = [
   [
     'format',
@@ -30,12 +32,7 @@ const AREA_TOOLS = [
       'detekt',
       'ktlint',
       'kotlin-source',
-      'vet',
-      'staticcheck',
-      'errcheck',
-      'modernize',
-      'gosec',
-      'revive',
+      ...GO_LINTER_TOOLS,
       'coding-standards',
       'entry-points',
       'dependency-architecture',

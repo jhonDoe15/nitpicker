@@ -1,11 +1,15 @@
 package g1
 
-import "net"
+import (
+	"context"
+	"net"
+)
 
 func ListenEverywhere() (net.Listener, error) {
-	return net.Listen("tcp", "0.0.0.0:8080") // want G102
+	return net.Listen("tcp", "0.0.0.0:8080") // want G102 noctx
 }
 
-func ListenLocally() (net.Listener, error) {
-	return net.Listen("tcp", "127.0.0.1:8080")
+func ListenLocally(ctx context.Context) (net.Listener, error) {
+	var config net.ListenConfig
+	return config.Listen(ctx, "tcp", "127.0.0.1:8080")
 }

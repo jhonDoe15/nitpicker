@@ -35,6 +35,10 @@ than the others, and this skill teaches its rules before an agent writes Go.
   [hashicorp/go-version](https://github.com/hashicorp/go-version) (MPL-2.0, weak copyleft) for
   Go version checks; nitpicker uses it unmodified and does not ship it (the lint program is built
   from `go.mod` on the user's machine), which the license policy allows for unmodified tools.
+- Catalog linters, each license checked at the pinned version: bodyclose, sqlclosecheck, noctx,
+  errorlint, nilerr, nilnil, errname, containedctx, fatcontext and rowserrcheck (MIT),
+  contextcheck (Apache-2.0). Their shared helpers (gostaticanalysis analysisutil and comment) are
+  MIT.
 
 ## Rules and their reasoning
 
@@ -120,6 +124,11 @@ than the others, and this skill teaches its rules before an agent writes Go.
   forms the rule still flags (`http.MaxBytesReader` before `ParseMultipartForm`, a validated
   command name, an escaped URL string, 0o640 files) were replaced by forms it accepts, and rules
   that accept no validation say that a checked value takes an exception.
+- **Catalog linters for resources, errors and contexts.** A response body or rows left open, an
+  error compared with `==` or dropped by `return nil`, and a context made anew or kept in a
+  struct are logic bugs, and each linter's allowed form is the one the Go wiki and the standard
+  library document. Each runs under its own tool name, so its exception entry reads as the
+  linter is known.
 - **A fixture for every check.** Each enabled check has a failing line and the allowed form in
   `languages/go/lint/fixtures`; the harness fails on a missing or unexpected report, so a tool
   upgrade that changes what a check reports is caught before release.
@@ -135,7 +144,8 @@ than the others, and this skill teaches its rules before an agent writes Go.
   shared 120-character limit applies.
 - **Checks that report what another check already reports.** SA1014, SA1017, SA2000, SA2002,
   SA4018, SA4021, SA5009, SA5010 and SA9006 duplicate `go vet`; S1029 duplicates SA6003; ST1023
-  duplicates QF1011; vet `sortslice` duplicates SA1028. SA5005 never reports on current Go.
+  duplicates QF1011; vet `sortslice` duplicates SA1028; vet `sqlrowserr` duplicates rowserrcheck,
+  whose message has no line number in it. SA5005 never reports on current Go.
 - **vet `shadow`.** It flags the idiomatic `if err := f(); err != nil` inside a function that has
   an outer `err`, which would push code away from Go's own convention.
 - **vet `fieldalignment` and `atomicalign`.** Field order for memory layout is a performance
@@ -146,6 +156,10 @@ than the others, and this skill teaches its rules before an agent writes Go.
   whichever of two names it reads last, so its finding moves between runs; `modifies-parameter`
   and `optimize-operands-order` never reach revive's confidence floor; `unsecure-url-scheme` flags
   XML namespaces and similar identifiers. The size rules are left to the shared limits.
+- **err113 and wrapcheck.** err113 rejects every `errors.New` inside a function, and wrapcheck
+  every unwrapped error from another package, the module's own included; both need per-project
+  lists to stop flagging correct code. errorlint's `%w` and comparison checks cover the part that
+  is one way to write.
 - **Holding interfaces to the method limit.** Interface size is better judged by a linter that
   knows where the interface is used.
 
@@ -179,3 +193,16 @@ Two adversarial reviews of the linters changed these rules:
 - **Messages that count things are trimmed**: ST1016 lists how often each receiver name is used,
   so adding a method changed the message and made the finding new.
 - **`staticcheck.conf` check names match case-sensitively**, as staticcheck reads them.
+
+Two adversarial reviews of the catalog linters changed these rules:
+
+- **Comments that switch a linter off are findings or do nothing.** nilerr reads `//lint:ignore`
+  and contextcheck `// nolint:contextcheck`; both are turned off. bodyclose reads
+  `//bodyclose:handled` from the callee's file on disk, so the directive is reported as
+  `bodyclose/handled` instead.
+- **contextcheck is scoped to the module by package path**, not by string prefix, so a
+  dependency named like the module (`example.com/shop-utils`) is not analyzed.
+- **Messages keep no line numbers or call chains**: nilerr's `(line N)` and contextcheck's
+  `A->B->C` chain are trimmed, and vet `sqlrowserr` (whose message names a line) is off.
+- **One finding per problem**: `return nil, nil` after an error check is nilerr, not nilnil too;
+  a `rows.Close()` that is not deferred is sqlclosecheck, not errcheck too.
