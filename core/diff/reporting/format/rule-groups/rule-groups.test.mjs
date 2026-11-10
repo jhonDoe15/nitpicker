@@ -365,6 +365,7 @@ describe('finding areas', () => {
       'staticcheck',
       'errcheck',
       'modernize',
+      'revive',
       'tests',
       'facts',
     ],

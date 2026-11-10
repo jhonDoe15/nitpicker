@@ -6,8 +6,10 @@ import { kotlinSourceRules as rulesCostlyCollections } from '../collections/cost
 import { kotlinSourceRules as rulesConfigurationReads } from '../configuration/configuration-reads.mjs';
 import { kotlinSourceRules as rulesRepeatedStrings } from '../literals/repeated-strings.mjs';
 import { kotlinSourceRules as rulesLogFormatRules } from '../logging/log-format-rules.mjs';
+import { kotlinSourceRules as rulesSimplerLogic } from '../logic/simpler-logic.mjs';
 import { kotlinSourceRules as rulesOperandSlips } from '../operands/operand-slips.mjs';
 import { kotlinSourceRules as rulesProcessWaits } from '../processes/process-waits.mjs';
+import { kotlinSourceRules as rulesQueryRules } from '../queries/query-rules.mjs';
 import { kotlinSourceRules as rulesRegexDefects } from '../regexes/regex-defects.mjs';
 import { kotlinSourceRules as rulesRegexValues } from '../regexes/regex-values.mjs';
 import { kotlinSourceRules as rulesInlineCloseables } from '../resources/inline-closeables.mjs';
@@ -38,8 +40,10 @@ export const directoryRules = [
   rulesConfigurationReads,
   rulesRepeatedStrings,
   rulesLogFormatRules,
+  rulesSimplerLogic,
   rulesOperandSlips,
   rulesProcessWaits,
+  rulesQueryRules,
   rulesRegexDefects,
   rulesRegexValues,
   rulesInlineCloseables,
