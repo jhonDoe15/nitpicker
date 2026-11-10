@@ -77,6 +77,23 @@ The linters' allowed forms (errors, names and doc comments, simplifications, mod
 - The gate fails committed secrets, binaries, build output and files over 1 MB; each message names
   the fix. Don't add an `exceptions` entry to get past one: stop and ask.
 
+## Reuse, packages and dead code
+
+- Don't copy a function and rename its variables: a renamed copy of 100 tokens or more fails
+  (`duplicates/duplicate-clone`). Call the existing code, or move it to a shared package both use.
+- Code exists for production callers. An exported name that only `_test.go` files use fails
+  (`test-only-export`), and in a module with a `main` package so does a function no `main`
+  reaches (`deadcode/unreachable-func`): delete it, or call it from production code. A test helper
+  lives in a `_test.go` file. The exported API of a package other modules can import (not under
+  `internal/`, in a module whose path has a domain) counts as used.
+- A package depends on packages more stable than itself (`stability-direction`): when a widely used
+  package needs a detail from a narrower one, define an interface in the widely used package and
+  let the narrower one implement it.
+- Code under a `shared` folder is used by more than one feature (`shared-used-by-one-feature`);
+  code only one feature uses lives in that feature.
+- `go.mod` requires exactly what the code imports: run `go mod tidy` after adding or removing an
+  import (`unused-dependency`, `unlisted-dependency`).
+
 ## Size and tests
 
 - A function stays within 50 lines, 15 statements, 2 levels of control nesting and 3 parameters

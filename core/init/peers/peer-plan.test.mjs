@@ -1,15 +1,15 @@
 import { describe, expect, it } from 'vitest';
 import { packageVersion } from '../../help/package-version.mjs';
-import { useProjects } from '../test-support/projects.mjs';
+import { useProjects, withPeers } from '../test-support/projects.mjs';
 import { installCommand, planPeers, pythonInstaller, shellQuoted } from './peer-plan.mjs';
 
 const project = useProjects();
 const MUTMUT = 'mutmut>=3,<4';
 const NITPICKER = `nitpicker@${packageVersion()}`;
-const NOTHING = { missing: [], undeclared: [], installedOnly: [] };
+const NOTHING = { missing: [], uninstalled: [], undeclared: [], installedOnly: [] };
 
 function nodeProject(add, testRunner = 'vitest') {
-  return { family: 'node', packageManager: { add }, testRunner };
+  return { family: 'node', packageManager: { add, install: 'npm install' }, testRunner };
 }
 
 describe('peer plan for Node projects', () => {
@@ -25,6 +25,7 @@ describe('peer plan for Node projects', () => {
       expect(planPeers(root, nodeProject(add))).toEqual({
         ...NOTHING,
         missing: [NITPICKER, 'vitest', '@vitest/coverage-v8'],
+        uninstalled: ['typescript', '@types/node'],
         command: `${add} ${NITPICKER} vitest @vitest/coverage-v8`,
       });
     },
@@ -39,13 +40,20 @@ describe('peer plan for Node projects', () => {
   });
 
   it('plans nothing when every peer is there', () => {
-    const root = project({
-      'package.json': JSON.stringify({
-        devDependencies: { nitpicker: '1', typescript: '6', '@types/node': '25' },
-      }),
-    });
+    const root = project(withPeers({ nitpicker: '1', typescript: '6.0.3', '@types/node': '25' }));
 
     expect(planPeers(root, nodeProject('npm install --save-dev', 'node'))).toEqual(NOTHING);
+  });
+
+  it('plans a plain install when package.json declares every peer and node_modules lacks some', () => {
+    const declared = withPeers({ nitpicker: '1', typescript: '6', '@types/node': '25' });
+    const root = project({ 'package.json': declared['package.json'] });
+
+    expect(planPeers(root, nodeProject('npm install --save-dev', 'node'))).toEqual({
+      ...NOTHING,
+      uninstalled: ['nitpicker', 'typescript', '@types/node'],
+      command: 'npm install',
+    });
   });
 
   it('asks for TypeScript 6 on a Node.js older than TypeScript 7 projects need', () => {
@@ -80,6 +88,7 @@ describe('peer plan for Python projects', () => {
 
     expect(planPeers(root, { ...python, tool })).toEqual({
       missing: ALL,
+      uninstalled: [],
       undeclared: ALL,
       installedOnly: [],
       command: `${installer} coverage mypy pytest 'mutmut>=3,<4'`,
