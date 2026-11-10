@@ -80,13 +80,11 @@ function failureOf(event, { events, outputs }) {
   };
 }
 
-function raceOutputs(outputs) {
-  return [...outputs]
-    .filter(([, output]) => output.includes(WARNING))
-    .map(([key, output]) => {
-      const separator = key.indexOf('\0');
-      return { package: key.slice(0, separator), test: key.slice(separator + 1), output };
-    });
+function outputEntries(outputs) {
+  return [...outputs].map(([key, output]) => {
+    const [packageName, test] = key.split('\0');
+    return { package: packageName, test, output };
+  });
 }
 
 function hasFailingSubtest(failure, failures) {
@@ -104,6 +102,7 @@ export function parseTestEvents(text) {
   const events = parseEventLines(text);
   const builds = failedBuilds(events);
   const outputs = outputsOf(events);
+  const entries = outputEntries(outputs);
   const finished = events.filter(({ Action }) => Object.hasOwn(OUTCOMES, Action));
   const tests = finished
     .filter(({ Test }) => Test !== undefined)
@@ -125,7 +124,8 @@ export function parseTestEvents(text) {
       .filter((failure) => !hasFailingSubtest(failure, failures))
       .map(({ id, package: packageName, output }) => ({ id, package: packageName, output })),
     buildFailures: [...builds].sort(),
-    raceOutputs: raceOutputs(outputs),
+    outputs: entries,
+    raceOutputs: entries.filter(({ output }) => output.includes(WARNING)),
     testsRan: events.some(({ Action }) => Action === 'run'),
   };
 }

@@ -96,6 +96,18 @@ Part of the [TypeScript strict preset guide](../typescript-strict-preset.md).
   `FURB192` (Python), `pmd/ListUsedAsSet`, `pmd/LinearLookupInLoop` and `pmd/SortForExtreme` (Java)
   and `kotlin-source/` rules of the same names (Kotlin). Only this rule also reads `indexOf`
   and identity `some` as membership tests and listeners as repeated runs.
+- `nitpicker/no-collected-stream-rows`: every item of a stream, async generator or cursor
+  collected into one array, in all production code (not in tests). It reports `push` or `unshift` inside
+  `for await (const x of source)`, where `source` is not provably an array (an array
+  literal, an array method or `Array.from`, `Promise.all` and the like, or, with type information, a
+  value typed as an array are left alone; a source of unknown type counts, since `for await` is how a stream is read), `xs` is an array literal declared before the loop, the loop never drains it
+  (`splice`, `pop`, `shift`, `length = 0` or a reassignment; `xs = [...xs, x]` is
+  `nitpicker/no-accumulating-spread`'s) and code after the loop reads it. Bytes
+  that are joined after the loop (`Buffer.concat`, `join`, `new Blob`) and a loop that can `break`
+  or `return` early (a first page) are left alone. Allowed form:
+  flush a fixed-size batch inside the loop (`if (batch.length >= 500) await save(batch.splice(0))`)
+  and the rest once after it. An exception fits only for a source that always stays small. The same
+  form runs as `streamed-rows-collected` (Python) and `pmd/StreamedRowsCollected` (Java and Kotlin).
 - `async`/`await` and `Promise.all`. No `.then()`, `.catch()` or `.finally()` chains, and no promise
   left without being awaited (`@typescript-eslint/no-floating-promises`). Deliberate
   fire-and-forget is written `void job();`, typescript-eslint's own form; `.then()` and `.catch()`
@@ -988,6 +1000,20 @@ express()`, `express.Router()`, `new Router()`, also through a chain such as
   allowed. Callers of a deprecated API are reported by `@typescript-eslint/no-deprecated`. In the
   JavaScript preset the `@deprecated` tag is already rejected as an unsupported JSDoc tag, so only
   the alias form is added.
+- `nitpicker/untested-round-trip` (Python: `untested-round-trip`; Java and Kotlin:
+  `pmd/UntestedRoundTrip`): two exported functions of one module, or two public methods of one
+  exported class, that turn values into each other, when no test calls both. Pairs differ only by a
+  direction word: `toX`/`fromX`, `dumps`/`loads`, `dump`/`load`, `encode`/`decode`,
+  `serialize`/`deserialize`, `marshal`/`unmarshal`, `parse`/`format`, `pack`/`unpack`,
+  `encrypt`/`decrypt`, `compress`/`decompress`, `escape`/`unescape`, alone or with the same rest
+  (`encodeToken`/`decodeToken`, `parseDate`/`formatDate`); `toString`/`fromString` is not a pair. A
+  test is one `it`, `test` or `specify` call (also `.each`, tagged `.each` tables, `.only` and the
+  like) in a test file of the layout, with its callback inline or passed by name, counting the
+  functions of test files that it calls, directly or through each other; names match by name.
+  Abstract and `private` or `protected` methods, functions that are not exported, and CommonJS
+  `module.exports` are not reported. The finding is on the later declaration. Allowed:
+  `expect(decodeToken(encodeToken(value))).toEqual(value)` with values that need escaping or
+  mapping. An exception goes in `exceptions` with the rule `nitpicker/untested-round-trip`.
 - Naive datetimes have no rule in this preset. A `Date` is a UTC instant: it has no naive form and
   the standard library has no zone-aware replacement, so a check could only match literals. Reading
   the clock is already limited by `Date.now()` and `new Date()` in `domain/`, and a clock is passed

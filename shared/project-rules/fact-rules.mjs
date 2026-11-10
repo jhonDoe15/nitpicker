@@ -60,12 +60,14 @@ export const FACT_RULE_LANGUAGES = {
     java: true,
     kotlin: true,
     python: true,
+    go: true,
   },
   'test-console-output': {
     ...TYPESCRIPT_AND_JAVASCRIPT,
     java: true,
     kotlin: true,
     python: true,
+    go: true,
   },
   ...Object.fromEntries(DESIGN_RULES.map((rule) => [rule, { ...DESIGN_RULE_LANGUAGES }])),
 };

@@ -3,6 +3,8 @@
 package catalog
 
 import (
+	"slices"
+
 	"codeberg.org/polyfloyd/go-errorlint/errorlint"
 	errname "github.com/Antonboom/errname/pkg/analyzer"
 	nilnil "github.com/Antonboom/nilnil/pkg/analyzer"
@@ -19,10 +21,12 @@ import (
 	"golang.org/x/tools/go/analysis"
 )
 
-// Linter is one linter: the tool name findings are printed under and its analyzers.
+// Linter is one linter: the tool name findings are printed under and its analyzers. A linter
+// with Checks reports each finding under the check named by the diagnostic's category.
 type Linter struct {
 	Tool      string
 	Analyzers []*analysis.Analyzer
+	Checks    []string
 }
 
 // SQLPackages are the packages whose rows rowserrcheck follows beside database/sql.
@@ -48,12 +52,18 @@ var (
 
 // Linters returns every catalog linter.
 func Linters() []Linter {
-	return linters
+	return slices.Concat(linters, valueLinters, testLinters)
 }
 
 // Configure sets the options that differ from each linter's defaults, and turns off the
 // `//lint:ignore` comments some linters read.
 func Configure() error {
 	commentmap.Analyzer.Run = func(*analysis.Pass) (any, error) { return comment.Maps{}, nil }
-	return errorComparisons.Flags.Set("errorf", "true")
+	if err := errorComparisons.Flags.Set("errorf", "true"); err != nil {
+		return err
+	}
+	if err := configureValues(); err != nil {
+		return err
+	}
+	return configureTests()
 }
