@@ -24,10 +24,26 @@ const SOURCES = {
     'export const LIMITS = { MAX: 3 };',
     'export function limit() { return MAX_ITEMS; }',
   ].join('\n'),
-  'src/index.ts': "export * from './limits';\nexport { ROLE as ADMIN_ROLE } from './roles';",
+  'src/index.ts':
+    "export * from './limits';\nexport { ROLE as ADMIN_ROLE } from './roles';\nexport { Paging as Pages } from './paging';",
+  'src/settings.ts':
+    "class Settings { static readonly THEME_NAME = 'dark-blue'; }\nexport { Settings as default };",
+  'src/legacy.js':
+    'export class Legacy {\n  static MAX_RETRIES = 30;\n  static #HIDDEN_CAP = 31;\n}',
   'src/roles.ts': "export const ROLE = 'administrator';",
   'src/other.ts': 'export const OTHER_LIMIT = 50;',
   'src/same.ts': 'export const BATCH_SIZE = 50;',
+  'src/paging.ts': [
+    'export class Paging {',
+    '  static readonly PAGE_LIMIT = 40;',
+    "  private static readonly SECRET_KEY = 'hidden-key';",
+    '  static readonly lowerName = 41;',
+    '  static PAGE_FLOOR = 42;',
+    '  readonly PAGE_CEILING = 43;',
+    '}',
+    "class Local { static readonly LOCAL_KEY = 'local-key'; }",
+    'export { Local as Shared };',
+  ].join('\n'),
   'test/helpers/values.ts': 'export const HELPER_LIMIT = 123;',
 };
 
@@ -161,6 +177,84 @@ describe('no-copied-constant', () => {
     );
 
     expect(messages).toEqual([]);
+  });
+
+  it('follows require(), dynamic import(), import = require() and requireActual/importActual', () => {
+    const messages = reported(
+      [
+        "const { limit } = require('../src/limits');",
+        "import roles = require('../src/roles');",
+        "it('loads late', async () => {",
+        "  const { BATCH_SIZE: size } = await import('../src/same');",
+        '  expect(limit()).toBe(-25);',
+        "  expect(roles.role()).toBe('administrator');",
+        '  expect(size).toBe(50);',
+        '  expect(count()).toBe(50);',
+        "  const other = await vi.importActual('../src/other');",
+        "  const read = jest.requireActual('node:fs');",
+        `  const dynamic = await import(\`../src/\${name}\`);`,
+        '});',
+      ].join('\n'),
+    );
+
+    expect(messages.map(({ line, message }) => `${line} ${message.split(':')[0]}`)).toEqual([
+      '5 This literal copies MIN_BALANCE from ../src/limits',
+      '6 This literal copies ROLE from ../src/roles',
+      '8 This literal copies BATCH_SIZE (and MAX_ITEMS, OTHER_LIMIT, which hold the same value) from ../src/limits and ../src/other and ../src/same',
+    ]);
+  });
+
+  it('reads static readonly members of exported classes', () => {
+    const messages = reported(
+      [
+        "import { Paging as P, Shared } from '../src/paging';",
+        'expect(pages()).toBe(40);',
+        'expect(P.PAGE_LIMIT).toBe(40);',
+        'expect(new P().size()).toBe(40);',
+        "expect(key()).toBe('hidden-key');",
+        'expect(other()).toEqual([41, 42, 43]);',
+        "expect(Shared.name).toBe('local-key');",
+      ].join('\n'),
+    );
+
+    expect(messages.map(({ line, message }) => `${line} ${message.split(' from ')[0]}`)).toEqual([
+      '2 This literal copies Paging.PAGE_LIMIT',
+      '4 This literal copies Paging.PAGE_LIMIT',
+      '7 This literal copies Shared.LOCAL_KEY',
+    ]);
+  });
+
+  it('reads plain static members in JavaScript and class members through re-exports', () => {
+    const messages = reported(
+      [
+        "import { Legacy } from '../src/legacy.js';",
+        "import { Pages } from '@/index';",
+        'expect(retries()).toBe(30);',
+        'expect(cap()).toBe(31);',
+        'expect(Pages.of()).toBe(40);',
+      ].join('\n'),
+    );
+
+    expect(messages.map(({ line, message }) => `${line} ${message.split(' from ')[0]}`)).toEqual([
+      '3 This literal copies Legacy.MAX_RETRIES',
+      '5 This literal copies Pages.PAGE_LIMIT',
+    ]);
+  });
+
+  it('names a default-exported class by its own name and skips a require the file defines', () => {
+    const messages = reported(
+      [
+        "import Theme from '../src/settings';",
+        "expect(Theme.current()).toBe('dark-blue');",
+        'function require(name) { return name; }',
+        "require('../src/limits');",
+        'expect(limit()).toBe(50);',
+      ].join('\n'),
+    );
+
+    expect(messages.map(({ line, message }) => `${line} ${message.split(' from ')[0]}`)).toEqual([
+      '2 This literal copies Settings.THEME_NAME',
+    ]);
   });
 
   it('works in JavaScript test files', () => {

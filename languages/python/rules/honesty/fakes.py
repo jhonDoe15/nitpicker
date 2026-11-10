@@ -218,7 +218,7 @@ class Fakes:
             if path.rsplit("/", 1)[-1] != "conftest.py" or path == self.context.path:
                 continue
             base = path.rsplit("/", 1)[0] if "/" in path else ""
-            if base == "" or directory == base or directory.startswith(base + "/"):
+            if base in {"", directory} or directory.startswith(base + "/"):
                 kinds |= other_autouse(other)
         return kinds
 

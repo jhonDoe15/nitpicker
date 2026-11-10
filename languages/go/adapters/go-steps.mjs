@@ -1,6 +1,10 @@
 import { readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { vet } from './build/go-vet.mjs';
+import { deadcode } from './dead-code/go-deadcode.mjs';
+import { tidy } from './dead-code/go-mod-tidy.mjs';
+import { duplicates } from './duplicates/go-duplicates.mjs';
+import { readGoModule } from './execution/go-module.mjs';
 import { run } from './execution/go-process.mjs';
 import { detectFormatters } from './formatting/go-formatters.mjs';
 import { unformattedFiles } from './formatting/go-format.mjs';
@@ -25,6 +29,8 @@ export function createGoContext({
     settings,
     spawn,
     environment,
+    module: readGoModule(projectRoot)?.module ?? '',
+    duplicateSkippedFolders: policy.duplicateSkippedFolders,
     analyzerDeadlineMs: analyzerDeadlineMs(environment ?? {}),
     snapshot: policy.snapshot ?? 'head',
     baselineRoot: policy.baselineRoot,
@@ -61,7 +67,7 @@ function toolchain(context) {
   context.projectGoFlags = flags.stdout.trim();
 }
 
-const STEPS = [toolchain, inspect, format, vet, lint, goTest];
+const STEPS = [toolchain, inspect, format, vet, lint, goTest, duplicates, tidy, deadcode];
 const PREREQUISITES = new Set([toolchain, inspect]);
 
 function attempt(step, context) {

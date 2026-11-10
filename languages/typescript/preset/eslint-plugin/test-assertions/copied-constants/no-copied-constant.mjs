@@ -8,6 +8,7 @@ import { resolveModuleSpecifier } from '../../../modules/module-resolution.mjs';
 import { isTestFunctionName, registrationRoot } from '../../rules/analysis/test-code-analysis.mjs';
 import { chainOf } from '../../../../../../shared/traversal.mjs';
 import { exportedConstants } from './exported-constants.mjs';
+import { importedModule, loadedModule } from './module-loads.mjs';
 import { byText } from '../../../../../../shared/text-order/by-text.mjs';
 
 const PIN = 'expect({name}).toBe({value})';
@@ -24,39 +25,32 @@ function isValueImport(statement) {
   return statement.type === 'ImportDeclaration' && statement.importKind !== 'type';
 }
 
-function localNames(statement) {
-  const names = new Map();
-  const namespaces = [];
-  for (const specifier of statement.specifiers) {
-    if (specifier.type === 'ImportNamespaceSpecifier') {
-      namespaces.push(specifier.local.name);
-    } else if (specifier.type === 'ImportSpecifier' && specifier.importKind !== 'type') {
-      const imported = specifier.imported.name ?? specifier.imported.value;
-      names.set(imported, [...(names.get(imported) ?? []), specifier.local.name]);
-    }
-  }
-  return { names, namespaces };
-}
-
-function seenConstants(context) {
+function seenConstants(context, loads) {
   const seen = new Map();
-  for (const statement of context.sourceCode.ast.body.filter(isValueImport)) {
-    const target = resolveModuleSpecifier(statement.source.value, context.filename);
+  const imports = context.sourceCode.ast.body.filter(isValueImport).map(importedModule);
+  for (const { specifier, names } of [...imports, ...loads]) {
+    const target = resolveModuleSpecifier(specifier, context.filename);
     if (target.kind !== 'file') {
       continue;
     }
-    const { names } = localNames(statement);
     const constants = exportedConstants(target.path, { root: context.cwd });
     for (const [name, value] of constants) {
-      const entry = {
-        name,
-        owner: statement.source.value,
-        mentions: [name, ...(names.get(name) ?? [])],
-      };
+      const member = name.split('.').at(-1);
+      const mentions = [member, ...(member === name ? (names.get(name) ?? []) : [])];
+      const entry = { name, owner: specifier, mentions };
       seen.set(valueKey(value), [...(seen.get(valueKey(value)) ?? []), entry]);
     }
   }
   return seen;
+}
+
+function isOwnRequire(context, node) {
+  if (node.callee?.type !== 'Identifier') {
+    return false;
+  }
+  const scopes = chainOf(context.sourceCode.getScope(node), (scope) => scope.upper);
+  const variable = scopes.map((scope) => scope.set.get(node.callee.name)).find(Boolean);
+  return (variable?.defs.length ?? 0) > 0;
 }
 
 function isTestName(node) {
@@ -151,17 +145,25 @@ export const rule = {
     },
   },
   create(context) {
-    let seen;
-    function check(candidate) {
+    const literals = [];
+    const loads = [];
+    function collect(candidate) {
       const literal = literalOf(candidate);
       if (
-        literal === undefined ||
-        isTrivialValue(literal.value) ||
-        isSkippedPosition(literal.node)
+        literal !== undefined &&
+        !isTrivialValue(literal.value) &&
+        !isSkippedPosition(literal.node)
       ) {
-        return;
+        literals.push(literal);
       }
-      seen ??= seenConstants(context);
+    }
+    function load(node) {
+      const loaded = isOwnRequire(context, node) ? undefined : loadedModule(node);
+      if (loaded !== undefined) {
+        loads.push(loaded);
+      }
+    }
+    function check(seen, literal) {
       const entries = seen.get(valueKey(literal.value));
       if (entries === undefined || namesConstant(context, literal.node, entries)) {
         return;
@@ -174,6 +176,20 @@ export const rule = {
         data: copiedConstantData({ names, owner: owners.join(' and '), literal: literal.value }),
       });
     }
-    return { Literal: check, TemplateLiteral: check };
+    return {
+      Literal: collect,
+      TemplateLiteral: collect,
+      CallExpression: load,
+      ImportExpression: load,
+      TSImportEqualsDeclaration: load,
+      'Program:exit'() {
+        if (literals.length > 0) {
+          const seen = seenConstants(context, loads);
+          for (const literal of literals) {
+            check(seen, literal);
+          }
+        }
+      },
+    };
   },
 };
