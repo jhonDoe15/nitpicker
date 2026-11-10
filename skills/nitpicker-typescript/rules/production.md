@@ -28,6 +28,8 @@ Part of the [nitpicker-typescript](../SKILL.md) skill. Write these forms from th
   and a CLI `main` that is only called from startup code stay synchronous.
 - Parse a URL from runtime text with `URL.parse(text)` or after `URL.canParse(text)`; `new URL(text)`
   throws on text that is not a URL (`nitpicker/no-unhandled-url-parse`).
+- Build an `Intl` formatter or an `Ajv` instance with fixed options once, at module scope or in a
+  class field, not per call (`nitpicker/reusable-object-per-call`).
 - Regexes: a `g` or `y` regex keeps `lastIndex`, so don't reuse one with `test()` or `exec()`
   across calls; drop the flag or use `text.matchAll(pattern)` (`nitpicker/no-shared-stateful-regex`).
   `match`, `matchAll` and `search` compile a string argument as a regex: use `includes` or

@@ -128,6 +128,14 @@ outside a `try` that releases them. The TypeScript, JavaScript and Python preset
 counterpart yet; their thread and timer model differs and the NestJS provider case is tracked
 separately.
 
+Objects built on every call: `pmd/ReusableObjectPerCall` in the Java and Kotlin presets,
+`nitpicker/reusable-object-per-call` in the TypeScript and JavaScript presets and
+`reusable-object-per-call` in the Python preset report an object that is safe to share once built
+and costly to build (Jackson mappers, Gson, `JAXBContext`, validator factories, constant-pattern
+formatters, `Intl` formatters, Ajv, pydantic `TypeAdapter`, jinja2 `Environment`) made in a
+function that runs on every call, in production code. The Go preset has no rule engine of its own
+yet.
+
 Child process deadlines: `nitpicker/require-process-timeout` (production source, in `eslint-lint`)
 reports production code that waits for a child process to exit without a deadline: a synchronous
 `child_process` or `execa` call without a positive `timeout`, and `exec`, `execFile`, an awaited
