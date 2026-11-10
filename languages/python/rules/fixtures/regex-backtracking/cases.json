@@ -1,0 +1,11 @@
+[
+  {
+    "tool": "python-rules",
+    "rule": "regex-backtracking",
+    "data": {
+      "description": "This quantifier can reach itself via the loop '(?: *[a-z]+)*'.",
+      "hint": "Rewrite the pattern without nested or overlapping quantifiers, or use a string method. An exception fits only when the input is bounded and trusted."
+    },
+    "mention": "without nested or overlapping quantifiers"
+  }
+]

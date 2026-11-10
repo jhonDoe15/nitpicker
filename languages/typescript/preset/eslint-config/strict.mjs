@@ -108,11 +108,12 @@ const domainRules = {
   'nitpicker/no-unknown-in-domain': 'error',
 };
 
-const sourceRules = {
+const productionSourceRules = {
   'nitpicker/no-self-recursion': 'error',
   'nitpicker/no-task-outliving-resource': 'error',
   'nitpicker/no-tri-state-boolean': 'error',
   'nitpicker/no-unhandled-url-parse': 'error',
+  'nitpicker/reusable-object-per-call': 'error',
   'nitpicker/no-compatibility-shim': 'error',
   'nitpicker/untested-round-trip': 'error',
 };
@@ -132,7 +133,7 @@ export function strictSyntaxConfigFor(layout = defaultResolvedLayout, options = 
         ...controlFlowRules,
         'no-restricted-syntax': ['error', ...restrictedSyntax.source],
         ...sourceSyntaxBans(options),
-        ...sourceRules,
+        ...productionSourceRules,
       },
     },
     {

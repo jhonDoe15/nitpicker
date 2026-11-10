@@ -6,11 +6,13 @@ import { validateAnalyzer, validateInvocation } from './validation/analyzers.mjs
 import { PACKAGE_ROOT } from '../../tooling/tool-resolution.mjs';
 import { namedReports, namedToolErrors } from '../snapshot-root/snapshot-root.mjs';
 import { fileURLToPath } from 'node:url';
+import path from 'node:path';
 import {
   TROUBLESHOOTING_ANCHORS,
   troubleshootingError,
 } from '../../../shared/messages/troubleshooting.mjs';
 import { describeError } from '../../../shared/messages/error-chain.mjs';
+import { LOG_DIRECTORY } from '../reporting/reporters.mjs';
 
 const MAX_ANALYZER_OUTPUT_BYTES = 50 * 1024 * 1024;
 
@@ -73,6 +75,7 @@ export function runAnalyzers({
   baselineMovesFile,
   liveProjectRoot,
   headPolicyFile,
+  logRoot,
   runTasks = runScheduler,
 }) {
   if (typeof liveProjectRoot !== 'string' || liveProjectRoot.length === 0) {
@@ -87,6 +90,7 @@ export function runAnalyzers({
     baselineRoot,
     baselineMovesFile,
     liveProjectRoot,
+    logRoot,
   });
 
   const scheduled = scheduleTasks(tasks, { runTasks, headPolicyFile, snapshot });
@@ -208,6 +212,23 @@ function prepareTasks(analyzers, context) {
   return { tasks, toolErrors };
 }
 
+export function analyzerRunOptions({ outputRoot, runTasks }) {
+  return {
+    runTasks,
+    logRoot:
+      outputRoot === undefined ? undefined : path.join(path.resolve(outputRoot), LOG_DIRECTORY),
+  };
+}
+
+function logLocation(logRoot, liveProjectRoot) {
+  if (logRoot === undefined) {
+    return {};
+  }
+  const relative = path.relative(liveProjectRoot, logRoot);
+  const inside = relative !== '' && !relative.startsWith('..') && !path.isAbsolute(relative);
+  return { logRoot, logLabel: inside ? relative.split(path.sep).join('/') : logRoot };
+}
+
 function createTask(analyzer, context) {
   const { projectRoot, policyRoot, toolRoot, snapshot, liveProjectRoot } = context;
   resolveAnalyzerMetadata(analyzer, { liveProjectRoot, policyRoot });
@@ -221,6 +242,7 @@ function createTask(analyzer, context) {
     baselineRoot: context.baselineRoot,
     baselineMovesFile: context.baselineMovesFile,
     liveProjectRoot,
+    ...logLocation(context.logRoot, liveProjectRoot),
   });
   validateInvocation(analyzer.name, invocation);
   return {

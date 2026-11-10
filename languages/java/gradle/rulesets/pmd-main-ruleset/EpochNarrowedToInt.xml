@@ -1,0 +1,42 @@
+  <rule name="EpochNarrowedToInt" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
+        message="An epoch time is cut to a 32-bit int here: epoch milliseconds overflow at once, and epoch seconds overflow in 2038 and turn a long lifetime into a date in the past. Keep epoch times in a long or an Instant (long expiresAt = Instant.now().getEpochSecond() + lifetimeSeconds), and compare them as long values.">
+    <priority>3</priority>
+    <properties>
+      <property name="xpath">
+        <value><![CDATA[
+let $epochCall := function($e) {
+      $e/self::MethodCall[@MethodName = ('currentTimeMillis', 'toEpochMilli', 'getEpochSecond', 'toEpochSecond')
+                          or (@MethodName = 'getTime' and ArgumentList/@Size = 0
+                              and *[1][pmd-java:typeIs('java.util.Date')])]
+    },
+    $epochName := function($e) {
+      $e[self::VariableAccess or self::FieldAccess or self::MethodCall]
+        [matches(string((@Name, @MethodName)[1]), 'epoch', 'i')]
+        [matches(string((@Name, @MethodName)[1]),
+                 '(Milli|Millis|Ms|Second|Seconds|Secs|_MILLI|_MILLIS|_MS|_SECOND|_SECONDS|_SECS|_milli|_millis|_ms|_second|_seconds|_secs)$')]
+    },
+    $direct := function($e) {
+      exists($epochCall($e)) or exists($epochName($e))
+        or exists($e/self::InfixExpression[@Operator = ('/', '*', '+')]
+                    [NumericLiteral or @Operator = '+']
+                    /*[exists($epochCall(.)) or exists($epochName(.))])
+    },
+    $epoch := function($e) {
+      $direct($e)
+        or (exists($e/self::VariableAccess)
+            and (let $declarations := $e/ancestor::*[self::MethodDeclaration or self::ConstructorDeclaration
+                                                     or self::LambdaExpression or self::Initializer][1]
+                                       //LocalVariableDeclaration/VariableDeclarator[VariableId/@Name = $e/@Name]
+                 return count($declarations) = 1 and $direct($declarations/*[2])))
+    }
+return (
+  //CastExpression[PrimitiveType[@Kind = 'int']][$epoch(*[last()])]
+  | //MethodCall[@MethodName = 'toIntExact'][ArgumentList/@Size = 1][$epoch(ArgumentList/*[1])]
+  | //InfixExpression[@Operator = ('<', '<=', '>', '>=')]
+    [some $side in *[self::InfixExpression[@Operator = '+'][pmd-java:typeIs('int')]] satisfies
+       $epoch(*[not(. is $side)])]
+)
+]]></value>
+      </property>
+    </properties>
+  </rule>

@@ -13,6 +13,10 @@ const SYNTAX_RULES = {
   'no-useless-call': 'error',
 };
 
+const OWN_RULES = {
+  'nitpicker/no-operand-slip': 'error',
+};
+
 const TYPED_RULES = {
   '@typescript-eslint/require-array-sort-compare': ['error', { ignoreStringArrays: true }],
 };
@@ -48,6 +52,12 @@ export function logicConfigFor(files, parserOptions) {
   const plugins = { '@typescript-eslint': tseslint.plugin };
   return [
     { files, languageOptions: { parser: tseslint.parser }, plugins, rules: SYNTAX_RULES },
+    {
+      files,
+      languageOptions: { parser: tseslint.parser },
+      plugins: { nitpicker: nitpickerRules },
+      rules: OWN_RULES,
+    },
     {
       files,
       languageOptions: { parser: tseslint.parser, parserOptions },

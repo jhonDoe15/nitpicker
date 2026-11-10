@@ -6,6 +6,7 @@ import {
   RULES_REPORT,
   checkRules,
   readAllowances,
+  readRegexSites,
   readTestFiles,
 } from '../../adapters/analysis/python-ast-rules.mjs';
 import { ruffFindings, typeFindings } from '../../adapters/python-reports.mjs';
@@ -34,7 +35,10 @@ const COLLECTORS = {
   },
   'python-rules': (context) => {
     checkRules(context);
-    return ingestRulesReport(read(context.reportRoot, RULES_REPORT));
+    return [
+      ...ingestRulesReport(read(context.reportRoot, RULES_REPORT)),
+      ...ingestRulesReport(readRegexSites(context.reportRoot)),
+    ];
   },
   type: (context, roots) => {
     typeCheck(context);
