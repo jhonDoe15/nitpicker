@@ -13,6 +13,7 @@ import { rule as ruleNamingConvention } from './rules/wrapped/naming-convention.
 import { rule as ruleNoAccumulatingSpread } from './rules/collections/no-accumulating-spread.mjs';
 import { rule as ruleNoAssertionInLoop } from './test-assertions/loop-assertions/no-assertion-in-loop.mjs';
 import { rule as ruleNoBranchInCompositionRoot } from './rules/boundaries/no-branch-in-composition-root.mjs';
+import { rule as ruleNoCollectedStreamRows } from './rules/streams/no-collected-stream-rows.mjs';
 import { rule as ruleNoComments } from './rules/modules/no-comments.mjs';
 import { rule as ruleNoCompatibilityShim } from './rules/signatures/no-compatibility-shim.mjs';
 import { rule as ruleNoCopiedConstant } from './test-assertions/copied-constants/no-copied-constant.mjs';
@@ -123,6 +124,7 @@ import { rule as ruleTimeUnitMismatch } from './rules/time/units/time-unit-misma
 import { rule as ruleTimeoutAbandonsOperation } from './rules/async/timeout-abandons-operation.mjs';
 import { rule as ruleUnboundedFanOut } from './rules/concurrency/unbounded-fan-out.mjs';
 import { rule as ruleUnboundedReactiveFanOut } from './rules/concurrency/reactive/unbounded-reactive-fan-out.mjs';
+import { rule as ruleUntestedRoundTrip } from './rules/round-trips/untested-round-trip.mjs';
 
 export const directoryRules = {
   'bounded-container-teardown': ruleBoundedContainerTeardown,
@@ -140,6 +142,7 @@ export const directoryRules = {
   'no-accumulating-spread': ruleNoAccumulatingSpread,
   'no-assertion-in-loop': ruleNoAssertionInLoop,
   'no-branch-in-composition-root': ruleNoBranchInCompositionRoot,
+  'no-collected-stream-rows': ruleNoCollectedStreamRows,
   'no-comments': ruleNoComments,
   'no-compatibility-shim': ruleNoCompatibilityShim,
   'no-copied-constant': ruleNoCopiedConstant,
@@ -251,4 +254,5 @@ export const directoryRules = {
   'timeout-abandons-operation': ruleTimeoutAbandonsOperation,
   'unbounded-fan-out': ruleUnboundedFanOut,
   'unbounded-reactive-fan-out': ruleUnboundedReactiveFanOut,
+  'untested-round-trip': ruleUntestedRoundTrip,
 };
