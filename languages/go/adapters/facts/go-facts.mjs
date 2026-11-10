@@ -1,3 +1,4 @@
+import { goConsoleFacts } from '../tests/test-console.mjs';
 import { directoryOf, goPackages } from './go-packages.mjs';
 
 const DOT_IMPORT = '.';
@@ -128,7 +129,7 @@ function definitionFacts(report, uses) {
   );
 }
 
-export function goFacts(report, { module } = {}) {
+export function goFacts(report, { module = '', testRun } = {}) {
   const packages = goPackages(report, module);
   const roles = new Map(report.files.map((file) => [file.path, file.test ? 'test' : 'production']));
   function roleOf(file) {
@@ -140,6 +141,8 @@ export function goFacts(report, { module } = {}) {
     packages: packages.directories.map((root) => ({ root, published: packages.isPublished(root) })),
     definitions: definitionFacts(report, productionUses(imports)),
     imports,
+    docComments: report.docComments ?? [],
+    console: testRun === undefined ? [] : goConsoleFacts(testRun, { report, module }),
     constrained: report.files
       .filter(({ constrained }) => constrained)
       .map(({ path: file }) => file),

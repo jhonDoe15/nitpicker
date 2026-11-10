@@ -173,6 +173,16 @@ run that writes a coverage profile, so every test runs and its time is measured.
   its budget is run again alone (`-run '^Name$' -count=1`) and the fastest time counts, so a busy
   machine does not fail it. A test is "changed" when its function's text differs from the merge
   base.
+- **Test output** (`test-runtime/test-console-output`): a line a test prints that the base run did
+  not print fails, on the test's file, compared as text with numbers and paths normalized (see
+  `testConsole.allow` to accept a third-party message). `go test` writes a test's stdout and
+  stderr into one stream, so the level decides what counts, in place of the stream: a line at
+  `WARN` or `ERROR` level or above (`level=WARN`, `"level":"error"`, a `WARN` or `ERROR` word, a
+  klog `W` or `E` line), and a standard `log` line (`2026/11/10 10:00:00 ...`, which writes to
+  stderr) unless it carries a lower level (`INFO`, `[INFO]`, `info:`). A plain `fmt.Println` does
+  not count, as stdout does not in the other presets. `t.Log` and `t.Error` lines, `=== RUN` and `--- PASS` lines and
+  race reports (the race detector has its own finding) never count. Output outside any test
+  (`TestMain`, `init`) is reported on the package folder.
 
 ## Structure limits
 
@@ -423,6 +433,15 @@ often declare their own small type or constant of one name. Files with a build c
 package (`billing.Total`), so two exports with one name never meet unqualified, and a file that dot
 imports two packages exporting one name does not compile.
 
+**`doc-comment-content`.** A doc comment on a top-level function, method, type, constant or
+variable, or on a struct field or interface method, fails when it only restates its name
+(`// Close closes.`) or its prose runs past 5 lines. The text is read with `go/doc/comment`:
+directives (`//go:generate`, `//export`, `//nolint:...`) are not part of it, list items and
+headings count as prose, and an indented code block or a `Deprecated:` paragraph is not counted
+and says more, so a comment with one is never reported as restating its name. `_test.go` and
+generated files are not read, and neither is the package comment. The exception takes it as
+printed, `facts/doc-comment-content`.
+
 ## Duplicates
 
 jscpd's `go` format runs over the module's non-test, non-generated files, and the renamed-clone pass
@@ -501,6 +520,7 @@ add a test.
 | `tools.staticcheck.precedence`                           | read the project's `staticcheck.conf` files                  |
 | `tools.jscpd.precedence`                                 | read the project's `.jscpd.json` for the duplicate scan      |
 | `layout.featureRoots`, `layout.sharedRoots`              | the feature layout `shared-used-by-one-feature` reads        |
+| `testConsole.allow`                                      | test output messages `test-console-output` accepts           |
 | `duplicates.skippedFolders`                              | folder names the duplicate scan skips                        |
 | `thresholds`, `exclude`, `exceptions`, `legacyInventory` | shared with every preset                                     |
 
@@ -530,7 +550,7 @@ there are no source roots to set) are config errors with `"preset": "go"`, each 
 | GO3 | One-way rules (#416)                            | nitpicker's own analyzers for the forms Go still leaves open (constructors, receivers, loops), each message naming the allowed form. Error comparison and wrapping (errorlint, nilerr) and contexts in structs, loops and new contexts (containedctx, fatcontext, contextcheck) are covered by the catalog linters. |
 | GO4 | Coverage, CRAP and mutation (#417)              | changed-branch coverage and CRAP from the coverage profile; mutation testing.                                                                                                                                                                                                                                       |
 | GO5 | Duplicates, coupling, dead code, modules (#418) | Done: see [Facts](#facts) through [Module requirements](#module-requirements).                                                                                                                                                                                                                                      |
-| GO6 | Shared guards and test honesty (#419)           | Started: `duplicate-definition` and `sibling-copy-edit` (see [Facts](#facts)). Next: doc comments and test output, then the guards the other presets share (secrets in code, path joins, subprocess timeouts, test assertions) after GO3.                                                                           |
+| GO6 | Shared guards and test honesty (#419)           | Started: `duplicate-definition`, `sibling-copy-edit` and `doc-comment-content` (see [Facts](#facts)) and `test-console-output` (see [Tests](#tests)). Next: the guards the other presets share (secrets in code, path joins, subprocess timeouts, test assertions) after GO3.                                       |
 | GO7 | Race detector (#433)                            | `go test -race`, with each race a finding keyed by its stacks.                                                                                                                                                                                                                                                      |
 
 ## Known limits
