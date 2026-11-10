@@ -42,6 +42,8 @@ Part of the [nitpicker-python](../SKILL.md) skill. Write these forms from the st
   name: no alias (`Old = New`), module `__getattr__`, `@deprecated` or `DeprecationWarning` shim.
 - Regexes: an argument built into a `re` pattern goes through `re.escape(value)`; plain text is
   compared with `in`, `startswith` or `==` (`regex-unescaped-value`).
+  Every part of a literal pattern must change what it matches (`a|b|a`, `[_a-z_]` and `x{1}` are
+  `regex-part-defect`), and nested quantifiers such as `^( *[a-z]+)*$` are `regex-backtracking`.
 - Pick the cheaper collection form: a `set()` for items you test with `in` while you collect them
   (`list-used-as-set`), a `dict` built once before a loop instead of `next(x for x in xs if x.key == key)`
   in it (`linear-lookup-in-loop`), and `min`/`max` instead of `sorted(xs)[0]` (ruff `FURB192`).

@@ -12,6 +12,7 @@ import {
   MEMBER_CYCLE_RULE,
   SKIPPED_SUPER_RULE,
 } from './main/generated-members/generated-members.mjs';
+import { REUSABLE_OBJECT_RULE } from '../../../messages/reuse/reusable-objects.mjs';
 import { SINGULAR_PLURAL_RULE } from './main/member-names.mjs';
 import { STREAMED_ROWS_RULE } from './main/streamed-rows/streamed-rows.mjs';
 import { TIMEOUT_RULE } from './main/timeouts/timeouts.mjs';
@@ -54,6 +55,7 @@ export const KOTLIN_REVIEW_EXCEPTION_RULES = [
   UNBOUNDED_POOL_RULE,
   RECURSIVE_MAP_UPDATE_RULE,
   STREAMED_ROWS_RULE,
+  REUSABLE_OBJECT_RULE,
   MEMBER_CYCLE_RULE,
   SKIPPED_SUPER_RULE,
   ...SPRING_RULES,
