@@ -19,8 +19,16 @@ export function withDeclaredSpring(manifest, declared) {
   return { ...manifest, spring, springArch: spring || manifest.springArch };
 }
 
+export function withFeatureFolders(manifest, featureFolders) {
+  return { ...manifest, springArch: manifest.springArch || featureFolders === true };
+}
+
 export function buildRunsArchRules(policy, analyzed) {
-  return policy.spring === true || analyzed.some(({ classpaths }) => runsArchRules(classpaths));
+  return (
+    policy.spring === true ||
+    policy.featureFolders === true ||
+    analyzed.some(({ classpaths }) => runsArchRules(classpaths))
+  );
 }
 
 export function springFacts(classpaths) {

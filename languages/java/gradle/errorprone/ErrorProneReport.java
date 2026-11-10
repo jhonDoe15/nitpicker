@@ -16,25 +16,24 @@ import javax.tools.*;
  * around it, innermost first. Usage: {@code ErrorProneReport <report.json> <checks.json> <arguments file>...};
  * each arguments file holds javac arguments, then {@code --sources} and the sources, one per line.
  * The non-javac lines ({@code --test-only}, {@code --own-classes=}, {@code --release=}, {@code
- * --source=}, {@code --target=}, {@code --project-arg=}) and lombok.config handling are described in
- * docs/java-preset/error-prone-and-nullaway.md. A failed compilation exits with status 1 and
- * javac's errors on stderr.
+ * --source=}, {@code --target=}, {@code --project-arg=}, {@code --errorprone-flag=}) and lombok.config
+ * handling are described in docs/java-preset/error-prone-and-nullaway.md. A failed compilation exits
+ * with status 1 and javac's errors on stderr.
  */
 public final class ErrorProneReport {
   private static final String SOURCES = "--sources";
   private static final String TEST_ONLY = "--test-only";
   private static final String OWN_CLASSES = "--own-classes=";
   private static final String PROJECT_ARG = "--project-arg=";
-  private static final List<String> MODULE_OPTIONS =
-      List.of("--add-exports", "--add-modules", "--add-reads");
+  private static final String PROJECT_FLAG = "--errorprone-flag=";
+  private static final List<String> MODULE_OPTIONS = List.of("--add-exports", "--add-modules", "--add-reads");
   private static final List<String> NULLAWAY_OPTIONS =
       List.of("ExcludedFieldAnnotations", "ExternalInitAnnotations", "CustomInitializerAnnotations");
   private static final Pattern NAME = Pattern.compile("\"([^\"]+)\"");
   private static final Pattern JDK_MODULE = Pattern.compile("^--add-exports=(?:java|jdk)\\.");
   private static final Pattern ADD_SUPPRESS_WARNINGS =
       Pattern.compile("(?m)^\\s*lombok\\.addSuppressWarnings\\s*=\\s*(\\w+)");
-  private static final Pattern STOP_BUBBLING =
-      Pattern.compile("(?m)^\\s*config\\.stopBubbling\\s*=\\s*true\\b");
+  private static final Pattern STOP_BUBBLING = Pattern.compile("(?m)^\\s*config\\.stopBubbling\\s*=\\s*true\\b");
 
   private ErrorProneReport() {}
 
@@ -68,8 +67,7 @@ public final class ErrorProneReport {
     }
     List<String> sorted = packages.stream().distinct().sorted().toList();
     return sorted.stream()
-        .filter(name -> sorted.stream().noneMatch(other -> name.startsWith(other + ".")))
-        .toList();
+        .filter(name -> sorted.stream().noneMatch(other -> name.startsWith(other + "."))).toList();
   }
 
   static List<String> namesIn(String checks, String key) {
@@ -77,8 +75,8 @@ public final class ErrorProneReport {
     return list.find() ? NAME.matcher(list.group(1)).results().map(name -> name.group(1)).toList() : List.of();
   }
 
-  static String pluginArgument(
-      String checks, List<String> packages, boolean test, boolean lombokUnsuppressed) {
+  static String pluginArgument(String checks, List<String> packages, boolean test, boolean lombokUnsuppressed,
+      List<String> projectLines) {
     List<String> flags = new ArrayList<>(List.of("-Xplugin:ErrorProne", "-XepAllErrorsAsWarnings"));
     if (test) {
       flags.add("-XepCompilingTestOnlyCode");
@@ -103,6 +101,7 @@ public final class ErrorProneReport {
         }
       }
     }
+    projectLines.forEach(line -> flags.add(line.substring(PROJECT_FLAG.length())));
     return String.join(" ", flags);
   }
 
@@ -116,7 +115,7 @@ public final class ErrorProneReport {
         projectArgs.add(line.substring(PROJECT_ARG.length()));
       } else if (form.matches()) {
         level.put(form.group(1), form.group(2));
-      } else if (!line.equals(TEST_ONLY) && !line.startsWith(OWN_CLASSES)) {
+      } else if (!line.equals(TEST_ONLY) && !line.startsWith(OWN_CLASSES) && !line.startsWith(PROJECT_FLAG)) {
         options.add(line);
       }
     }
@@ -198,7 +197,7 @@ public final class ErrorProneReport {
         options.set(classpath, options.get(classpath) + java.io.File.pathSeparator + ownClasses);
       }
       options.add(pluginArgument(checks, ownPackages(ownClasses), head.contains(TEST_ONLY),
-          group == unsuppressed));
+          group == unsuppressed, head.stream().filter(line -> line.startsWith(PROJECT_FLAG)).toList()));
       if (failedSilently(compiler, options, group, entries, errors)) {
         errors.add("javac failed on " + argumentsFile + " without reporting an error");
       }
