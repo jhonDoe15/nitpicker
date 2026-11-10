@@ -10,7 +10,6 @@ final class Layout {
   static final String FEATURE_BOUNDARY = "spring-feature-boundary";
   static final String SHARED_PURE = "spring-shared-pure";
   private static final String APPLICATION = "org.springframework.boot.autoconfigure.SpringBootApplication";
-  private static final String CONFIGURATION = "org.springframework.context.annotation.Configuration";
   private static final String PROPERTIES = "org.springframework.boot.context.properties.ConfigurationProperties";
   private static final String SERVLET_INITIALIZER =
       "org.springframework.boot.web.servlet.support.SpringBootServletInitializer";
@@ -64,7 +63,7 @@ final class Layout {
     }
   }
 
-  private static boolean isFeature(String name) {
+  static boolean isFeature(String name) {
     return !name.equals(SHARED) && !LAYER_PACKAGES.contains(name);
   }
 
@@ -86,7 +85,7 @@ final class Layout {
   }
 
   private static boolean allowedAtRoot(JavaClass owner) {
-    return owner.isMetaAnnotatedWith(CONFIGURATION)
+    return owner.isMetaAnnotatedWith(Spring.CONFIGURATION)
         || owner.isAnnotatedWith(PROPERTIES)
         || owner.isAssignableTo(SERVLET_INITIALIZER);
   }

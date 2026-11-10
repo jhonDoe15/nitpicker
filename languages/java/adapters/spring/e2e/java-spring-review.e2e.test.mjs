@@ -85,6 +85,30 @@ describe.skipIf(!enabled)('Review rules on Gradle and Maven builds of a Spring p
     expect(located(reviewFindings(runs.maven))).toEqual(runs.markers);
   });
 
+  it('reports an empty catch of InterruptedException once, also when the catch spans lines', () => {
+    const onPauses = (findings) =>
+      findings
+        .filter(({ path: file }) => file.endsWith('/Pauses.java'))
+        .filter(({ rule }) => /EmptyCatch/u.test(rule) || rule === 'SwallowedInterrupt')
+        .map(({ tool, rule, location }) => `${String(location?.line)} ${tool}/${rule}`)
+        .toSorted();
+
+    expect(onPauses(runs.gradle)).toEqual(
+      ['16', '24', '32', '40', '48', '56', '65', '73', '83', '94'].map(
+        (line) => `${line} pmd/SwallowedInterrupt`,
+      ),
+    );
+    expect(onPauses(runs.maven)).toEqual(onPauses(runs.gradle));
+  });
+
+  it('runs the Reactor rules on Maven as on Gradle, from reactor-core on the module classpath', () => {
+    const reactor = (entries) => entries.filter((entry) => / Reactor\w+$/u.test(entry));
+
+    expect(reactor(runs.markers)).toHaveLength(14);
+    expect(reactor(located(reviewFindings(runs.maven)))).toEqual(reactor(runs.markers));
+    expect(reactor(located(reviewFindings(runs.gradle)))).toEqual(reactor(runs.markers));
+  });
+
   it('names Awaitility for a fixed sleep, as the project has it, and calls join(ms) a timed wait', () => {
     const waits = runs.gradle.filter(({ rule }) => rule === 'FixedSleepInTest');
     const timed = waits.filter(({ message }) => message.startsWith('A timed wait, '));
@@ -142,6 +166,58 @@ describe.skipIf(!enabled)('Review rules on Gradle and Maven builds of a Spring p
     expect(warehouse?.slice(warehouse.indexOf('If this is intended'))).toBe(
       [
         'If this is intended, add {"rule":"pmd/ClassLoadEffect","paths":["src/main/java/shop/Warehouse.java"],',
+        '"reason":"..."} to "exceptions" in nitpicker.config.json.',
+      ].join(''),
+    );
+  });
+
+  it('names both nestings of a lock-order inversion and the locked write of a field, keyed without lines', () => {
+    const named = (rule) =>
+      runs.maven
+        .filter((finding) => finding.rule === rule)
+        .map(({ message, identity }) => [message.slice(0, message.indexOf(': ')), identity]);
+
+    expect(named('LockOrderInversion').slice(0, 2)).toEqual([
+      [
+        'transfer() takes `audit` while it holds `accounts`, and report() takes `accounts` while it holds `audit`',
+        'fp:nitpicker/subject=Transfers.transfer(): accounts -> audit',
+      ],
+      [
+        'report() takes `accounts` while it holds `audit`, and transfer() takes `audit` while it holds `accounts`',
+        'fp:nitpicker/subject=Transfers.report(): audit -> accounts',
+      ],
+    ]);
+    expect(named('InconsistentFieldLocking')).toEqual([
+      [
+        'bump() writes `count` without a lock, while increment() writes it holding `lock`',
+        'fp:nitpicker/subject=Counters.bump(): count',
+      ],
+      [
+        'reset() writes `count` without a lock, while increment() writes it holding `lock`',
+        'fp:nitpicker/subject=Counters.reset(): count',
+      ],
+      [
+        'reset() writes `hits` without a lock, while increment() writes it holding `lock`',
+        'fp:nitpicker/subject=Counters.reset(): hits',
+      ],
+      [
+        'clear() writes `total` without a lock, while add() writes it holding `guard`',
+        'fp:nitpicker/subject=Counters.clear(): total',
+      ],
+      [
+        'addThenCount() writes `total` without a lock, while add() writes it holding `guard`',
+        'fp:nitpicker/subject=Counters.addThenCount(): total',
+      ],
+      [
+        'rename() writes `label` without a lock, while name() writes it holding `this`',
+        'fp:nitpicker/subject=Counters.rename(): label',
+      ],
+    ]);
+    const inversion = runs.gradle.find(({ rule }) => rule === 'LockOrderInversion')?.message;
+
+    expect(inversion?.slice(inversion.indexOf('If this is intended'))).toBe(
+      [
+        'If this is intended, add {"rule":"pmd/LockOrderInversion","paths":["src/main/java/shop/locking/Transfers.java"],',
         '"reason":"..."} to "exceptions" in nitpicker.config.json.',
       ].join(''),
     );
