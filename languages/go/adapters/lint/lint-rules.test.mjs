@@ -70,6 +70,14 @@ describe('Go lint messages', () => {
     ],
     [
       {
+        tool: 'exhaustive',
+        rule: 'exhaustive',
+        message: 'missing cases in expression switch: Paused, Closed',
+      },
+      'missing cases in expression switch. Add a case for each missing constant, or a `default` case that handles the rest.',
+    ],
+    [
+      {
         tool: 'revive',
         rule: 'identical-switch-branches',
         message: '"switch" with identical branches (lines 22 and 24)',

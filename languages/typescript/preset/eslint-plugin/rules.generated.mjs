@@ -124,6 +124,7 @@ import { rule as ruleTimeUnitMismatch } from './rules/time/units/time-unit-misma
 import { rule as ruleTimeoutAbandonsOperation } from './rules/async/timeout-abandons-operation.mjs';
 import { rule as ruleUnboundedFanOut } from './rules/concurrency/unbounded-fan-out.mjs';
 import { rule as ruleUnboundedReactiveFanOut } from './rules/concurrency/reactive/unbounded-reactive-fan-out.mjs';
+import { rule as ruleUntestedRoundTrip } from './rules/round-trips/untested-round-trip.mjs';
 
 export const directoryRules = {
   'bounded-container-teardown': ruleBoundedContainerTeardown,
@@ -253,4 +254,5 @@ export const directoryRules = {
   'timeout-abandons-operation': ruleTimeoutAbandonsOperation,
   'unbounded-fan-out': ruleUnboundedFanOut,
   'unbounded-reactive-fan-out': ruleUnboundedReactiveFanOut,
+  'untested-round-trip': ruleUntestedRoundTrip,
 };
