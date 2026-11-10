@@ -5,7 +5,17 @@ import { inspectCommand } from '../execution/go-tools.mjs';
 
 const INSPECT_REPORT = 'inspect.json';
 const BASE_INSPECT_REPORT = 'inspect-base.json';
-const EMPTY = { files: [], functions: [], types: [], tests: [], branches: [], errors: [] };
+const EMPTY = {
+  files: [],
+  functions: [],
+  types: [],
+  tests: [],
+  branches: [],
+  errors: [],
+  definitions: [],
+  usages: [],
+  skipped: [],
+};
 
 function runInspect(context, root, report) {
   run(context, [inspectCommand(context), root, report], { rule: 'go-inspect-failed' });

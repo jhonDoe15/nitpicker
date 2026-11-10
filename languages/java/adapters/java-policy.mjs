@@ -176,6 +176,9 @@ export function configureJavaAnalyzer(analyzer, options) {
             ? []
             : ['--policy-root', context.projectPolicyRoot]),
           ...(context.baselineRoot === undefined ? [] : ['--baseline-root', context.baselineRoot]),
+          ...(context.logRoot === undefined
+            ? []
+            : ['--log-root', context.logRoot, '--log-label', context.logLabel]),
           ...movesArguments(analyzer, context),
         ],
       };
