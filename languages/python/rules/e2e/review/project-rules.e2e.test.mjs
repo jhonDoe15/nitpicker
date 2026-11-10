@@ -223,11 +223,11 @@ describe.skipIf(!enabled)('unused-option', () => {
 
 describe.skipIf(!enabled)('an expression too deep for the recursion limit', () => {
   it('notes the skipped checks of that file and checks the others', () => {
-    const sum = `total = ${Array.from({ length: 900 }, () => '1').join(' + ')}\n`;
+    const nested = `total = ${'lambda: '.repeat(900)}1\n`;
 
     expect(
       reportOf({
-        'shop/sums.py': sum,
+        'shop/sums.py': nested,
         'tests/test_users.py': 'import time\ntime.sleep(1)\n',
       }),
     ).toEqual([

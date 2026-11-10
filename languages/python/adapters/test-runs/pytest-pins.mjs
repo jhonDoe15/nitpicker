@@ -37,7 +37,10 @@ const FILTERING_OPTIONS = new Set([
   '--rerun-except',
   '--retries',
   '--retry-delay',
+  '--max-runs',
+  '--min-passes',
 ]);
+const RETRY_FLAGS = new Set(['--force-flaky']);
 const RESULT_PLUGINS = new Set(['python', 'unittest', 'doctest', 'junitxml', 'runner', 'main']);
 const PLUGIN_OFF = 'no:';
 const SHORT_WITH_VALUE = new Set(['k', 'm', 'p', 'c', 'o', 'W', 'r', 'n']);
@@ -125,7 +128,7 @@ function pinWord(word, following) {
       ? { removed: [`${word} ${value}`], kept: [], consumesNext: true }
       : { removed: [word], kept: [], consumesNext: false };
   }
-  if (STOPPING_FLAGS.has(word)) {
+  if (STOPPING_FLAGS.has(word) || RETRY_FLAGS.has(word)) {
     return { removed: [word], kept: [], consumesNext: false };
   }
   const flags = withoutExitFirst(word);
