@@ -1,6 +1,7 @@
 import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs';
 import path from 'node:path';
 import { childrenNamed, parseXml, testCaseProblem } from '../../../shared/ingest/common.mjs';
+import { explainedError } from '../../../shared/messages/troubleshooting.mjs';
 import { testsFailHeadline } from '../../../shared/rules/finding-helpers.mjs';
 import {
   failingTestEntries,
@@ -101,7 +102,7 @@ function modulesOf(failures) {
 
 export function failingTestsError(failures) {
   const count = failures.reduce((total, { tests }) => total + tests.length, 0);
-  const error = new Error(
+  const error = explainedError(
     [
       testsFailHeadline(count, 'the build stopped, so no other check ran', modulesOf(failures)),
       ...listedFailures(failures),

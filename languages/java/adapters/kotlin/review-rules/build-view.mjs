@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs';
 import { pathInside, sourceFilesUnder } from '../../review-rules/java-sources.mjs';
-import { readKotlinFacts } from './kotlin-facts.mjs';
+import { readKotlinFacts } from './report/kotlin-report.mjs';
 
 const IDENTIFIER = /[\p{L}_$][\p{L}\p{N}_$]*/gu;
 
