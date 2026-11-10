@@ -13,6 +13,7 @@ import { placeConfig } from './files/config-file.mjs';
 import { parseInitArguments } from './init-arguments.mjs';
 import { renderReport } from './init-report.mjs';
 import { planPeers } from './peers/peer-plan.mjs';
+import { skillSource } from './skill/skill-source.mjs';
 import { assertNothingInTheWay, hasProjectFile } from './support/inside-project.mjs';
 import { assertSupportedNode, requireRepository } from './support/preconditions.mjs';
 
@@ -29,7 +30,8 @@ export function runInitCommand(cli) {
   const project = detectProject(projectRoot);
   const peers = planPeers(projectRoot, project, nodeVersion);
   const files = placeFiles(projectRoot, options, { project, peers, repository });
-  cli.stdout.write(renderReport({ project, peers, ...files }));
+  const source = skillSource(projectRoot, { repository, version: packageVersion() });
+  cli.stdout.write(renderReport({ project, peers, ...files, skillSource: source }));
   const placed = [files.config, files.workflow, files.approval];
   return placed.some((result) => result?.status === 'differs') ? 1 : 0;
 }

@@ -204,12 +204,18 @@ export const JDBC = group(
   ),
   inPackage(`${SPRING}.jdbc.core.simple`, 'JdbcClient'),
 );
+export const JOOQ_CONTEXT = group(['org.jooq.DSLContext']);
+export const JOOQ_RECORDS = group(['org.jooq.TableRecord', 'org.jooq.UpdatableRecord']);
 export const HTTP_CLIENTS = group(
   inPackage(`${SPRING}.web.client`, 'RestTemplate', 'RestOperations', 'RestClient'),
   inPackage(`${SPRING}.web.reactive.function.client`, 'WebClient'),
   ['java.net.http.HttpClient'],
 );
 export const REST_TEMPLATE = group(inPackage(`${SPRING}.web.client`, 'RestTemplate'));
+export const REST_OPERATIONS = group(
+  inPackage(`${SPRING}.web.client`, 'RestTemplate', 'RestOperations'),
+);
+export const REST_CLIENT = group(inPackage(`${SPRING}.web.client`, 'RestClient'));
 export const REST_TEMPLATE_BUILDER = group(
   inPackage(`${SPRING}.boot.web.client`, 'RestTemplateBuilder'),
   inPackage(`${SPRING}.boot.restclient`, 'RestTemplateBuilder'),

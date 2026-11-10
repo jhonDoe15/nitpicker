@@ -1,7 +1,5 @@
-import {
-  featureRoles,
-  sharedUsedByOneFeature as sharedUsage,
-} from '../../../../shared/rules/features/shared-usage.mjs';
+import { featureRoles } from '../../../../shared/rules/features/feature-roles.mjs';
+import { sharedUsedByOneFeature as sharedUsage } from '../../../../shared/rules/features/shared-usage.mjs';
 import { featureLayout } from '../architecture/strict-layout.mjs';
 import { normalizePath } from '../dependency-graph/cruise.mjs';
 
