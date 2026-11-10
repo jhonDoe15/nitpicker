@@ -2,7 +2,7 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
-import { createGoAnalyzers } from '../go-analyzer.mjs';
+import { createGoAnalyzers, GO_MUTATION_ANALYZER_NAME } from '../go-analyzer.mjs';
 import { readMutationFindings } from './go-mutation.mjs';
 import { runMutant } from './mutation-run.mjs';
 import { onChangedLine } from './mutation-scope.mjs';
@@ -101,7 +101,11 @@ describe('Go mutation findings', () => {
   });
 
   it('keeps the weakened-test findings and says which failing packages left mutants untested', () => {
-    const weakened = { tool: 'mutation', rule: 'mutant-survived', identity: 'weakened|x' };
+    const weakened = {
+      tool: GO_MUTATION_ANALYZER_NAME,
+      rule: 'mutant-survived',
+      identity: 'weakened|x',
+    };
     const findings = readMutationFindings(
       snapshot(
         [
@@ -152,16 +156,16 @@ describe('Go mutation findings', () => {
     const [go, mutation] = createGoAnalyzers({});
     expect([go.name, mutation.name, mutation.dependencies, mutation.reportedTools]).toEqual([
       'go',
-      'mutation',
+      GO_MUTATION_ANALYZER_NAME,
       ['go'],
-      ['mutation'],
+      [GO_MUTATION_ANALYZER_NAME],
     ]);
     expect(mutation.createInvocation({ projectRoot: '/p', toolRoot: '/t' }).args.slice(1)).toEqual([
       'go-analyzer',
       '--project-root',
       '/p',
       '--part',
-      'mutation',
+      GO_MUTATION_ANALYZER_NAME,
     ]);
   });
 
@@ -189,7 +193,7 @@ describe('Go mutation findings', () => {
         mutant: mutant({}),
         directory: '0',
         packages: ['example.com/shop/shop'],
-        seconds: new Map([['example.com/shop/shop', 10]]),
+        seconds: new Map([['example.com/shop/shop', 12]]),
       },
     );
     expect([status, calls]).toEqual([
@@ -201,7 +205,7 @@ describe('Go mutation findings', () => {
           '-vet=off',
           '-count=1',
           '-failfast',
-          '-timeout=50s',
+          '-timeout=60s',
           'example.com/shop/shop',
         ],
       ],
