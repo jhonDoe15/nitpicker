@@ -2148,6 +2148,7 @@
                             "kotlin-source/RepeatedStringLiteral",
                             "kotlin-source/LogFormatArguments",
                             "kotlin-source/LogExceptionFirst",
+                            "kotlin-source/SimplerBooleanLogic",
                             "kotlin-source/OperandSlip",
                             "kotlin-source/ProcessWaitWithoutTimeout",
                             "kotlin-source/RegexPartDefect",
