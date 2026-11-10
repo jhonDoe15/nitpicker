@@ -50,7 +50,8 @@ import { TYPES_REPORT } from './python-types.mjs';
 import { listProductionModules } from './analysis/python-sources.mjs';
 import { isGeneratedPython } from '../libraries/generated-files.mjs';
 import { readConsoleFindings } from './test-results/console-output.mjs';
-import { readFactFindings } from './facts/python-facts.mjs';
+import { readFactFindings, readFactImports } from './facts/python-facts.mjs';
+import { moduleImportsSection } from '../../../shared/history/co-change/dependencies/module-imports.mjs';
 
 const FORMATTER_TOOLS = { ruff: 'ruff-format', black: 'black' };
 const NO_TESTS_RULE = 'no-tests-ran';
@@ -121,7 +122,7 @@ export function readPythonFindings({
     units: COLUMN_UNITS,
     readSource: (file) => readSource(projectRoot, file),
   });
-  return { findings };
+  return { findings, ...moduleImportsSection(readFactImports(reportRoot), policy.history) };
 }
 
 function testRunFindings({ manifest, reportRoot, projectRoot, roots, crapLimit }) {
