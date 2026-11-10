@@ -2,6 +2,10 @@ import { createRequire } from 'node:module';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { resolveTool } from '../../../../core/tooling/tool-resolution.mjs';
+import {
+  TROUBLESHOOTING_ANCHORS,
+  troubleshootingError,
+} from '../../../../shared/messages/troubleshooting.mjs';
 
 const NO_INPUTS_CODE = 18003;
 const REMOVED_OPTION_CODES = new Set([5102, 5108]);
@@ -37,9 +41,11 @@ export async function nativeDiagnostics({
     collected = await collectedDiagnostics(api, configPath);
   } catch (error) {
     const hint = own || !engineHint ? '' : `\n${ENGINE_HINT}`;
-    throw new Error(`TypeScript 7 type check failed: ${String(error.message)}${hint}`, {
-      cause: error,
-    });
+    throw troubleshootingError(
+      `TypeScript 7 type check failed: ${String(error.message)}${hint}`,
+      hint === '' ? undefined : TROUBLESHOOTING_ANCHORS.engineUnavailable,
+      { cause: error },
+    );
   } finally {
     await api.close();
   }
