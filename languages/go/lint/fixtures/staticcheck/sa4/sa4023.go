@@ -1,14 +1,14 @@
 package sa4
 
-type Problem struct{}
+type ProblemError struct{}
 
-func (*Problem) Error() string {
+func (*ProblemError) Error() string {
 	return "problem"
 }
 
-func find(code int) *Problem {
+func find(code int) *ProblemError {
 	if code != 0 {
-		return &Problem{}
+		return &ProblemError{}
 	}
 	return nil
 }
@@ -23,7 +23,7 @@ func TypedNil(code int) bool {
 
 func Untyped(code int) error {
 	if code != 0 {
-		return &Problem{}
+		return &ProblemError{}
 	}
 	return nil
 }

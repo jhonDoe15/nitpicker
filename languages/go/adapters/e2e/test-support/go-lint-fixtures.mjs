@@ -42,3 +42,47 @@ func Token() uint64 {
 	return rand.Uint64() // #nosec G404
 }
 `;
+
+export const STOCK = `package shop
+
+import (
+	"context"
+	"io"
+	"os"
+
+	"example.com/shop/shop/stock"
+)
+
+func AtEnd(err error) bool {
+	return err == io.EOF
+}
+
+func Size(name string) (int64, error) {
+	info, err := os.Stat(name)
+	if err != nil {
+		return 0, nil
+	}
+	return info.Size(), nil
+}
+
+func Sync(ctx context.Context) error {
+	if err := ctx.Err(); err != nil {
+		return err
+	}
+	return stock.Refresh()
+}
+`;
+
+export const STOCK_REFRESH = `// Package stock refreshes the stock.
+package stock
+
+import "context"
+
+func Refresh() error {
+	return load(context.Background())
+}
+
+func load(ctx context.Context) error {
+	return ctx.Err()
+}
+`;
