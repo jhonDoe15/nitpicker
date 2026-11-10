@@ -1,3 +1,5 @@
+const QUALIFIED_NAMES =
+  "Go code names another package's export through the package (`billing.Total`, `report.Total`), so two exports with one name never meet unqualified, and two dot imports that both define a name do not compile";
 const NO_REEXPORT =
   'the language has no re-exports: a class has one importable name, in the package that declares it, so there is no public path to the same class to go around (a facade is a different class)';
 
@@ -47,19 +49,20 @@ export function reuseRules(ids, reactEnforcedBy) {
       id: ids.duplicateDefinition,
       check: 'structure',
       limit:
-        'a used literal `const`, function or `type` with one name and text in two modules of a package (Java and Kotlin: a source file is a module, a static, `object` or top-level function a function)',
+        'a used literal `const`, function or `type` with one name and text in two modules of a package (Java and Kotlin: a source file is a module, a static, `object` or top-level function a function; Go: a `.go` file is a module and the packages of a Go module are one package)',
     },
     {
       id: ids.siblingCopyEdit,
       check: 'structure',
       limit:
-        'a function or class edited so that it drifts from its same-named copy in another module of the package, at least 80% the same tokens before and after, while that copy is left unedited (Java and Kotlin: top-level classes and static, `object` and top-level functions)',
+        'a function or class edited so that it drifts from its same-named copy in another module of the package, at least 80% the same tokens before and after, while that copy is left unedited (Java and Kotlin: top-level classes and static, `object` and top-level functions; Go: top-level functions, across the packages of a Go module)',
     },
     {
       id: ids.exportedNameCollision,
       check: 'structure',
       limit:
         'two different exports with one name that a module imports both of, keeping the name for one (Java: one imported, the other written fully qualified; Java and Kotlin functions overload, so they are left out)',
+      notApplicable: { go: QUALIFIED_NAMES },
     },
     {
       id: ids.redefinedLibraryComponent,
