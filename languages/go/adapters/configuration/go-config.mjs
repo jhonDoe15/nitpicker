@@ -30,6 +30,10 @@ const GO_CATALOG_TOOLS = [
   'reassign',
   'unconvert',
   'wastedassign',
+  'thelper',
+  'tparallel',
+  'testifylint',
+  'usetesting',
 ];
 export const GO_LINTER_TOOLS = [
   'vet',

@@ -78,6 +78,22 @@ describe('Go lint messages', () => {
     ],
     [
       {
+        tool: 'usetesting',
+        rule: 'usetesting',
+        message: 'os.MkdirTemp() could be replaced by t.TempDir() in TestFolder',
+      },
+      'os.MkdirTemp() could be replaced by t.TempDir().',
+    ],
+    [
+      {
+        tool: 'testifylint',
+        rule: 'formatter',
+        message: 'assert.Equalf format %s reads arg #2, but call has 1 arg',
+      },
+      'assert.Equalf format %s reads arg N, but call has N arg.',
+    ],
+    [
+      {
         tool: 'revive',
         rule: 'identical-switch-branches',
         message: '"switch" with identical branches (lines 22 and 24)',

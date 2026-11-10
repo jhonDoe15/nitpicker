@@ -298,7 +298,14 @@ message does not already name it, and by its exception entry:
     durationcheck (no duration times duration), makezero (no append to a slice made with a
     length), reassign (no assigning another package's `Err...` or `EOF` variables), unconvert (no
     conversion to the type a value already has), wastedassign (no value assigned and then
-    assigned again unread).
+    assigned again unread);
+  - tests: thelper (a test helper starts with `t.Helper()` and takes `t` first), tparallel (a test
+    whose subtests call `t.Parallel()` calls it too), usetesting (`t.TempDir()`, `t.Setenv()`,
+    `t.Chdir()` and `t.Context()` instead of `os.MkdirTemp`, `os.CreateTemp`, `os.Setenv`,
+    `os.Chdir`, `context.Background()` and `context.TODO()`), testifylint (every
+    check, printed under its own name such as `testifylint/bool-compare`: the specific
+    assertion, `require` for errors, expected before actual, format strings that match their
+    arguments, suite methods instead of the package functions).
 
 The linters skip generated files (`// Code generated ... DO NOT EDIT.`), as staticcheck does; a
 package of only generated files needs no package comment. An analyzer that fails on a package that
@@ -339,13 +346,14 @@ themselves, exhaustive's `//exhaustive:ignore` and makezero's `// nozero`, and a
 
 **Catalog linters considered and left out**, with the reason:
 
-| Linter                            | Reason                                                                                                                               |
-| --------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------ |
-| err113                            | flags every `errors.New` inside a function, though a one-off error nobody compares is fine; its `==` check duplicates errorlint      |
-| wrapcheck                         | flags every error returned from another package unwrapped, the module's own included; it needs per-project ignore lists to be usable |
-| forcetypeassert                   | errcheck `-assert` reports the same one-value type assertions                                                                        |
-| exhaustive maps and type switches | a lookup map keyed by an enum is often partial on purpose, and a type switch over an interface cannot know every implementation      |
-| nilnil `-detect-opposite`         | a value with a non-nil error is the `io.Reader` contract (`n, err`), not a second form                                               |
+| Linter                            | Reason                                                                                                                                                                             |
+| --------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| err113                            | flags every `errors.New` inside a function, though a one-off error nobody compares is fine; its `==` check duplicates errorlint                                                    |
+| wrapcheck                         | flags every error returned from another package unwrapped, the module's own included; it needs per-project ignore lists to be usable                                               |
+| paralleltest                      | requires `t.Parallel()` in every test, which `t.Setenv` and `t.Chdir` forbid and tests with shared fixtures cannot use; tparallel keeps a test and its subtests consistent instead |
+| forcetypeassert                   | errcheck `-assert` reports the same one-value type assertions                                                                                                                      |
+| exhaustive maps and type switches | a lookup map keyed by an enum is often partial on purpose, and a type switch over an interface cannot know every implementation                                                    |
+| nilnil `-detect-opposite`         | a value with a non-nil error is the `io.Reader` contract (`n, err`), not a second form                                                                                             |
 
 **Overlaps on one line.** When two checks report the same line, the more specific one stays:
 
@@ -374,6 +382,9 @@ themselves, exhaustive's `//exhaustive:ignore` and makezero's `// nozero`, and a
 | ST1012 (sentinel error names)        | errname                                          |
 | SA1005 (`exec.Command` shell line)   | noctx                                            |
 | SA4006, SA4010                       | wastedassign                                     |
+| modernize `testingcontext`           | usetesting                                       |
+| errorlint                            | testifylint `compares`                           |
+| thelper                              | testifylint `suite-thelper`                      |
 
 Those two compare the column too, because one line can hold a second, different problem
 (`found == true || ready && false`). revive keeps the rules staticcheck lacks in the same areas: `bool-literal-in-expr` also flags
@@ -566,5 +577,8 @@ there are no source roots to set) are config errors with `"preset": "go"`, each 
 - The linters type-check for the host's `GOOS` and `GOARCH`, so unconvert can report a conversion
   that is needed on another platform (a `syscall.Stat_t` field that is `int64` on linux/amd64 but
   not on 32-bit targets); such a file takes an `exceptions` entry.
+- tparallel asks a test whose subtests call `t.Parallel()` to call it too, which a test that
+  uses `t.Setenv` or `t.Chdir` cannot do; such a test makes its subtests serial or takes an
+  `exceptions` entry.
 - The linters run on the whole module for both snapshots; a finding is new when its message and
   line text are new, as for vet.

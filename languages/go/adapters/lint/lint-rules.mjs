@@ -123,6 +123,12 @@ const HINTS = new Map([
   ],
   ['reassign', "Leave the other package's variable as it is; declare a variable of your own."],
   ['unconvert', 'Remove the conversion; the value already has that type.'],
+  ['useless-assert', 'Assert the value under test against the expected value.'],
+  [
+    'go-require',
+    'Use assert in the goroutine, or send the error back and require it in the test goroutine.',
+  ],
+  ['suite-broken-parallel', 'Remove the `t.Parallel()` call; suites run their tests in order.'],
   ['wastedassign', 'Remove the assignment, or use the value before it is assigned again.'],
 ]);
 
@@ -133,7 +139,15 @@ const VARYING_PARTS = new Map([
   ['contextcheck', /->[^`]*/u],
   ['exhaustive', /: .*$/u],
   ['durationcheck', /: `.*`$/u],
+  ['usetesting', / in \w+$/u],
 ]);
+const COUNTED_RULES = new Set(['formatter']);
+
+function stable(tool, rule, message) {
+  const varying = tool === 'revive' ? reviveVaryingPart(rule) : VARYING_PARTS.get(rule);
+  const text = varying === undefined ? message : message.replace(varying, '');
+  return COUNTED_RULES.has(rule) ? text.replace(/#?\d+/gu, 'N') : text;
+}
 
 export function lintRule(rule) {
   return RULE_NAMES.get(rule) ?? rule;
@@ -157,7 +171,6 @@ function hintOf(tool, rule, message) {
 
 export function lintMessage({ tool, rule, message }) {
   const hint = hintOf(tool, rule, message);
-  const varying = tool === 'revive' ? reviveVaryingPart(rule) : VARYING_PARTS.get(rule);
-  const text = sentence(varying === undefined ? message : message.replace(varying, ''));
+  const text = sentence(stable(tool, rule, message));
   return hint === undefined ? text : `${text} ${hint}`;
 }
