@@ -3,6 +3,7 @@ import {
   parseRaces,
   raceFindings,
   raceNotCheckedFinding,
+  WARNING,
   withoutRaceReports,
 } from './race-reports.mjs';
 
@@ -10,7 +11,7 @@ const MODULE = { root: '/work/my shop', path: 'example.com/shop' };
 const REPORT = [
   '=== RUN   TestCounter',
   '==================',
-  'WARNING: DATA RACE',
+  WARNING,
   'Write at 0x00c000012318 by goroutine 8:',
   '  runtime.mapassign_faststr()',
   '      /usr/local/go/src/internal/runtime/maps/runtime_faststr.go:263 +0x0',
