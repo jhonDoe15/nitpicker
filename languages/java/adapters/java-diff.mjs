@@ -1,4 +1,4 @@
-import { existsSync, mkdtempSync, readFileSync, rmSync } from 'node:fs';
+import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import {
@@ -23,11 +23,12 @@ import { readOptions } from './options/java-read-options.mjs';
 import { toolConfigChoices } from './tool-config/tool-config-choices.mjs';
 import { readJavaFindings } from './reporting/java-reports.mjs';
 import { withJavaColumns } from './reporting/columns/java-columns.mjs';
+import { sourceTextReader } from './reporting/function-locator.mjs';
 import { readReportModules } from './gradle-reports/report-modules.mjs';
 import { runMavenPreset } from '../maven/maven-build.mjs';
 import { MAVEN_REPORT_DIRECTORY } from '../maven/module/maven-module.mjs';
 import { detectJavaBuild, INIT_SCRIPT } from '../builds/java-build.mjs';
-import { mergedRoots, readModuleFindings } from '../builds/java-modules.mjs';
+import { mergedRoots, readModuleReport } from '../builds/java-modules.mjs';
 import { resolveKotlinRun } from './kotlin/kotlin-run.mjs';
 import { runGradleStage } from './red-base/gradle-stage.mjs';
 import {
@@ -105,7 +106,7 @@ function gradleFindings(projectRoot, options, reportBase) {
   if (preset === 'kotlin') {
     runKotlinDuplicates(projectRoot, duplicates);
   }
-  const { findings } = readJavaFindings(projectRoot, {
+  const { findings, imports } = readJavaFindings(projectRoot, {
     ...readOptions(options.policy),
     formatAdvice: kotlinRun?.advice,
     reportBase,
@@ -113,6 +114,7 @@ function gradleFindings(projectRoot, options, reportBase) {
   });
   return {
     findings: [...findings, ...gradleDesignFindings({ projectRoot, report, options, reportBase })],
+    imports,
     testsFailures: withRootSourceRoots(testsFailures, report.modules),
   };
 }
@@ -146,27 +148,30 @@ function mavenFindings(projectRoot, options) {
   if (options.policy?.preset === 'kotlin') {
     runKotlinDuplicates(projectRoot, duplicates);
   }
-  const findings = readModuleFindings(projectRoot, moduleDirs, {
+  const { findings, imports } = readModuleReport(projectRoot, moduleDirs, {
     ...readOptions(options.policy),
     formatAdvice,
     reportDirectory: MAVEN_REPORT_DIRECTORY,
   });
   return {
     findings: [...findings, ...mavenDesignFindings(projectRoot, moduleDirs, options.policy)],
+    imports,
     testsFailures,
   };
 }
 
 export function collectJavaFindings(root, options = {}) {
+  return collectJavaReport(root, options).findings;
+}
+
+export function collectJavaReport(root, options = {}) {
   const projectRoot = path.resolve(root);
-  const { findings, testsFailures } =
+  const { findings, imports, testsFailures } =
     detectJavaBuild(projectRoot) === 'maven'
       ? mavenFindings(projectRoot, options)
       : withGradleReports(projectRoot, options);
   const preset = options.policy?.preset ?? 'java';
-  function readSource(file) {
-    return sourceText(projectRoot, file);
-  }
+  const readSource = sourceTextReader(projectRoot);
   const parsed = parseAnalyzerReport(
     {
       findings: withJavaColumns(findings, { projectRoot, policy: options.policy, readSource }),
@@ -182,12 +187,7 @@ export function collectJavaFindings(root, options = {}) {
     { ...options.policy, inventoryTool: preset, routeRule: javaRouteRule },
     options.resolveOverlaps ?? ((reported) => withoutOverlaps(reported, { readSource })),
   );
-  return withTestsFailures(policed, preset, testsFailures);
-}
-
-function sourceText(projectRoot, file) {
-  const absolute = path.join(projectRoot, file);
-  return existsSync(absolute) ? readFileSync(absolute, 'utf8') : undefined;
+  return { findings: withTestsFailures(policed, preset, testsFailures), imports };
 }
 
 function collectBothSnapshots({
