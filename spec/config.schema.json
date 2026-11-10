@@ -2153,6 +2153,7 @@
                             "kotlin-source/ListUsedAsSet",
                             "kotlin-source/LinearLookupInLoop",
                             "kotlin-source/SortForExtreme",
+                            "kotlin-source/ConfigurationReadOutsideCompositionRoot",
                             "kotlin-source/RepeatedStringLiteral",
                             "kotlin-source/LogFormatArguments",
                             "kotlin-source/LogExceptionFirst",
