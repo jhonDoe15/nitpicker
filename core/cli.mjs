@@ -169,7 +169,7 @@ function runConfigured(cli) {
   }
   assertProjectPeers({
     projectRoot: currentProjectRoot,
-    analyzers: selectAnalyzers(analyzers, options.analyzerNames),
+    analyzers: selectAnalyzers(setup.analyzers, options.analyzerNames),
     configuredRunner: config.tools?.tests?.runner,
   });
   return withRunLock({ projectRoot: currentProjectRoot, stderr: cli.stderr }, () => {
