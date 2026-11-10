@@ -36,15 +36,15 @@ const BODY = [
   '}',
 ];
 
-function file(path) {
-  return { path, package: path.split('/')[0], test: false, generated: false, constrained: false };
+function file(path, constrained = false) {
+  return { path, package: path.split('/')[0], test: false, generated: false, constrained };
 }
 
-function clamp(path, tokens = BODY) {
+function clamp(path, tokens = BODY, kind = 'function') {
   return {
     file: path,
     name: 'clamp',
-    kind: 'function',
+    kind,
     line: 3,
     lines: 9,
     exported: false,
@@ -54,18 +54,24 @@ function clamp(path, tokens = BODY) {
   };
 }
 
-function report(definitions) {
+function usage(path, extra = {}) {
+  return { file: path, imports: [], names: [], selectors: [], local: ['clamp'], ...extra };
+}
+
+function report(definitions, { constrained = [] } = {}) {
   return {
-    files: ['billing/total.go', 'report/sum.go'].map((path) => file(path)),
+    files: ['billing/total.go', 'report/sum.go'].map((path) =>
+      file(path, constrained.includes(path)),
+    ),
     definitions,
-    usages: ['billing/total.go', 'report/sum.go'].map((path) => ({
-      file: path,
-      imports: [],
-      names: [],
-      selectors: [],
-      local: ['clamp'],
-    })),
+    usages: ['billing/total.go', 'report/sum.go'].map((path) => usage(path)),
   };
+}
+
+function duplicates(input) {
+  return goFactFindings(goFacts(input, { module: 'shop' })).map(
+    ({ rule, path }) => `${rule} ${path}`,
+  );
 }
 
 function rows(findings) {
@@ -96,5 +102,35 @@ describe('shared fact rules on Go facts', () => {
     expect(findings.map(({ rule, path }) => `${rule} ${path}`)).toEqual([
       'sibling-copy-edit billing/total.go',
     ]);
+  });
+
+  it('counts a helper called from another file of its package as used', () => {
+    const input = report([clamp('billing/total.go'), clamp('report/sum.go')]);
+    const split = {
+      files: [...input.files, file('report/main.go')],
+      definitions: input.definitions,
+      usages: [
+        usage('billing/total.go'),
+        usage('report/sum.go', { local: [] }),
+        usage('report/main.go', { names: ['clamp'], local: [] }),
+      ],
+    };
+
+    expect(duplicates(split)).toEqual([
+      'duplicate-definition billing/total.go',
+      'duplicate-definition report/sum.go',
+    ]);
+  });
+
+  it.each([
+    ['a build-constrained platform variant', { constrained: ['report/sum.go'] }, 'function'],
+    ['a type', {}, 'type'],
+  ])('leaves out %s', (_label, options, kind) => {
+    const input = report(
+      [clamp('billing/total.go', BODY, kind), clamp('report/sum.go', BODY, kind)],
+      options,
+    );
+
+    expect(duplicates(input)).toEqual([]);
   });
 });

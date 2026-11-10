@@ -9,7 +9,7 @@ const repositoryRoot = path.resolve(import.meta.dirname, '../..');
 
 const GO_REGISTERED_FACT_RULES_ONLY = {
   file: 'languages/go/adapters/facts/go-fact-findings.mjs',
-  evidence: /rules: registeredFactRules\(LANGUAGE\)/u,
+  evidence: /const registered = registeredFactRules\(LANGUAGE\)/u,
 };
 const GO_FACT_RULES_NOT_RUN = Object.fromEntries(
   ['exported-name-collision', 'doc-comment-content', 'test-console-output'].map((rule) => [

@@ -81,7 +81,7 @@ The linters' allowed forms (errors, names and doc comments, simplifications, mod
 
 - Don't copy a function and rename its variables: a renamed copy of 100 tokens or more fails
   (`duplicates/duplicate-clone`). Call the existing code, or move it to a shared package both use.
-  A smaller function, type or constant copied into a second package fails too
+  A smaller function copied into a second package fails too
   (`duplicate-definition`), and so does editing one of two copies away from the other
   (`sibling-copy-edit`): keep one copy, exported from one package.
 - Code exists for production callers. An exported name that only `_test.go` files use fails
