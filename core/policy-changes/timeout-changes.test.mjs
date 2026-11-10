@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { hasSpecificGuidance } from '../diff/reporting/review/policy-guidance.mjs';
 import { timeoutChanges } from './timeout-changes.mjs';
-import { policyChangeFields } from './describe-policy-changes.mjs';
+import { describePolicyChanges, policyChangeFields } from './describe-policy-changes.mjs';
 import { createPolicyScope, rootSets } from './policy-scope.mjs';
 
 const LANGUAGES = ['typescript', 'javascript', 'java', 'kotlin', 'python'];
@@ -133,5 +133,32 @@ describe('timeout policy changes', () => {
       policyFields({}, config({ languages: { java: { testDeclarationCeilingMs: 25_000 } } }))
         .policyDigest,
     ).not.toBe(first.policyDigest);
+  });
+});
+
+describe('analyzer timeouts', () => {
+  function changes(base, head) {
+    const files = ['src/a.ts'];
+    return describePolicyChanges(
+      base,
+      head,
+      createPolicyScope({
+        files,
+        baseFiles: files,
+        baseRoots: rootSets(base, '.'),
+        headRoots: rootSets(head, '.'),
+        headConfig: head,
+      }),
+    );
+  }
+
+  it('lists no analyzer timeout change, raised, lowered, added or removed', () => {
+    const none = { loosened: [], changed: [] };
+
+    expect(changes({}, { analyzerTimeoutMinutes: { java: 60 } })).toEqual(none);
+    expect(
+      changes({ analyzerTimeoutMinutes: { java: 60 } }, { analyzerTimeoutMinutes: { java: 5 } }),
+    ).toEqual(none);
+    expect(changes({ analyzerTimeoutMinutes: { java: 60 } }, {})).toEqual(none);
   });
 });

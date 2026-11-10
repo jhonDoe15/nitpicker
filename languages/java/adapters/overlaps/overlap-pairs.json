@@ -170,6 +170,16 @@
     "scope": "line"
   },
   {
+    "primary": ["pmd/InconsistentFieldLocking"],
+    "secondary": [
+      "spotbugs/IS2_INCONSISTENT_SYNC",
+      "spotbugs/AT_STALE_THREAD_WRITE_OF_PRIMITIVE",
+      "spotbugs/AT_NONATOMIC_64BIT_PRIMITIVE",
+      "errorprone/NonAtomicVolatileUpdate"
+    ],
+    "scope": "line"
+  },
+  {
     "primary": ["errorprone/SubstringOfZero"],
     "secondary": ["spotbugs/DMI_USELESS_SUBSTRING"],
     "scope": "line"
@@ -302,14 +312,19 @@
     "scope": "member"
   },
   {
+    "primary": ["pmd/SwallowedInterrupt"],
+    "secondary": ["errorprone/EmptyCatch", "pmd/EmptyCatchBlock", "checkstyle/EmptyCatchBlock"],
+    "scope": "catch"
+  },
+  {
     "primary": ["errorprone/EmptyCatch"],
     "secondary": ["pmd/EmptyCatchBlock", "checkstyle/EmptyCatchBlock"],
-    "scope": "line"
+    "scope": "catch"
   },
   {
     "primary": ["pmd/EmptyCatchBlock"],
     "secondary": ["checkstyle/EmptyCatchBlock"],
-    "scope": "line"
+    "scope": "catch"
   },
   {
     "primary": ["errorprone/MultiVariableDeclaration"],
@@ -688,6 +703,11 @@
       "spotbugs/LI_LAZY_INIT_STATIC",
       "spotbugs/SING_SINGLETON_GETTER_NOT_SYNCHRONIZED"
     ],
+    "scope": "line"
+  },
+  {
+    "primary": ["kotlin-source/ChildCoroutineOutlivesResource"],
+    "secondary": ["pmd/CoroutineEscapesTest"],
     "scope": "line"
   }
 ]
