@@ -45,6 +45,7 @@ import { rule as ruleNoModuleLevelMutableState } from './rules/guards/no-module-
 import { rule as ruleNoMutatingMethodInDomain } from './rules/domain/no-mutating-method-in-domain.mjs';
 import { rule as ruleNoNodeProcessPerTest } from './rules/testing/processes/no-node-process-per-test.mjs';
 import { rule as ruleNoNull } from './rules/syntax/no-null.mjs';
+import { rule as ruleNoOperandSlip } from './rules/operands/no-operand-slip.mjs';
 import { rule as ruleNoOrmQueryLogging } from './rules/database/no-orm-query-logging.mjs';
 import { rule as ruleNoOrmSchemaSync } from './rules/database/no-orm-schema-sync.mjs';
 import { rule as ruleNoParameterMutation } from './rules/signatures/no-parameter-mutation.mjs';
@@ -169,6 +170,7 @@ export const directoryRules = {
   'no-mutating-method-in-domain': ruleNoMutatingMethodInDomain,
   'no-node-process-per-test': ruleNoNodeProcessPerTest,
   'no-null': ruleNoNull,
+  'no-operand-slip': ruleNoOperandSlip,
   'no-orm-query-logging': ruleNoOrmQueryLogging,
   'no-orm-schema-sync': ruleNoOrmSchemaSync,
   'no-parameter-mutation': ruleNoParameterMutation,
