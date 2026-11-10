@@ -63,7 +63,9 @@ func TestStock(t *testing.T) {
 		stock.Restock(2)
 		close(done)
 	}()
-	_ = stock.Units()
+	if units := stock.Units(); units < 0 {
+		t.Fatalf("units %d", units)
+	}
 	<-done
 }
 `;
