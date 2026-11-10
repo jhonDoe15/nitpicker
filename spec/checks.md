@@ -174,6 +174,22 @@ sources, with or without Spring; the clients Spring builds stay with `pmd/Spring
 `pmd/SpringHttpClientPerCall`) and `kotlin-source/HttpWithoutTimeout` in the Kotlin preset; each preset's
 document lists the clients it knows.
 
+Query order: `nitpicker/no-unordered-query` (strict preset, production source) reports a query that takes a
+page of rows (`limit`, `offset`, `take`, `skip`, a cursor, or SQL `LIMIT`, `OFFSET` or `FETCH`) or builds an
+`array_agg`/`json_agg` list with no ORDER BY, so which rows come back can change between runs. It reads Kysely,
+Knex, TypeORM and Drizzle builder chains, Prisma, TypeORM and Sequelize option objects and SQL text. The same
+rule runs as `unordered-query` in the Python preset (SQLAlchemy, Django querysets, SQL text),
+`pmd/UnorderedQuery` in the Java preset (JPQL and SQL text, `setMaxResults`/`setFirstResult`, criteria queries,
+unsorted `PageRequest`) and `kotlin-source/UnorderedQuery` in the Kotlin preset. The text analysis is shared:
+[`shared/rules/queries/sql-order.mjs`](../shared/rules/queries/sql-order.mjs).
+
+Query arrays: `nitpicker/no-unbounded-query-array` reports a runtime array expanded into an SQL in list or a
+multi-row insert with no empty check, size check or chunking: an empty array renders `in ()`, and PostgreSQL
+takes at most 65,535 bound parameters. One array parameter (`= any($1::uuid[])`) passes. The same rule runs as
+`unbounded-query-array` in the Python preset, `pmd/UnboundedQueryArray` in the Java preset and
+`kotlin-source/UnboundedQueryArray` in the Kotlin preset. Go has no counterpart: the Go preset runs the Go
+toolchain's own checks and has no rule engine of its own.
+
 Exceptions mapped to a status: `nitpicker/no-unmapped-exception` (TypeScript strict preset, type-aware)
 reports a NestJS handler that can throw a project exception class no exception filter in scope maps, so
 the client gets a 500. The Python preset runs it as `unmapped-exception` for FastAPI and Starlette routes

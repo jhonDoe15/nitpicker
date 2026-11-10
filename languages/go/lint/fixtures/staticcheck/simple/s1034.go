@@ -7,6 +7,8 @@ func Describe(value any) string {
 		if ok {
 			return text
 		}
+	case int:
+		return "number"
 	}
 	return ""
 }
@@ -15,6 +17,8 @@ func DescribeBound(value any) string {
 	switch typed := value.(type) {
 	case string:
 		return typed
+	case int:
+		return "number"
 	}
 	return ""
 }

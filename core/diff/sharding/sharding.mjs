@@ -59,7 +59,8 @@ function validateAnalyzers(analyzers) {
 function dependencyComponents(analyzers) {
   const neighbors = new Map(analyzers.map(({ name }) => [name, new Set()]));
   for (const analyzer of analyzers) {
-    for (const dependencyName of analyzer.dependencies ?? []) {
+    const companions = (analyzer.colocatedWith ?? []).filter((name) => neighbors.has(name));
+    for (const dependencyName of [...(analyzer.dependencies ?? []), ...companions]) {
       neighbors.get(analyzer.name).add(dependencyName);
       neighbors.get(dependencyName).add(analyzer.name);
     }
@@ -119,5 +120,12 @@ function validateAnalyzerEntry(analyzer, analyzersByName) {
       ))
   ) {
     throw new TypeError(`${analyzer.name} dependencies must contain non-empty strings`);
+  }
+  if (
+    analyzer.colocatedWith !== undefined &&
+    (!Array.isArray(analyzer.colocatedWith) ||
+      analyzer.colocatedWith.some((name) => typeof name !== 'string' || name.length === 0))
+  ) {
+    throw new TypeError(`${analyzer.name} colocatedWith must contain non-empty strings`);
   }
 }
