@@ -27,6 +27,17 @@ func Counts(names []string) map[string]int {
 }
 `;
 
+export const LOOKUP_TEST = `package shop
+
+import "testing"
+
+func TestCounts(t *testing.T) {
+	if Counts([]string{"a"})["a"] != 1 {
+		t.Fatal("a counted once")
+	}
+}
+`;
+
 export const SKIP_S1003 = 'checks = ["all", "-S1003"]\n';
 
 export const PROJECT_STATICCHECK = JSON.stringify({
