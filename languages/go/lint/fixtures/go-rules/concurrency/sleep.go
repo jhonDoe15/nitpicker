@@ -38,8 +38,8 @@ func Retry(attempts int, run func() error) error {
 	return err
 }
 
-func WarmOrPause(background bool, load func()) {
-	if background {
+func WarmOrPause(mode string, load func()) {
+	if mode == "background" {
 		go load() // want unowned-goroutine
 	} else {
 		time.Sleep(time.Second)

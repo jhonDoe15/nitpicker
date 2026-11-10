@@ -27,6 +27,11 @@ Part of the [nitpicker-python](../SKILL.md) skill. Write these forms from the st
   `patch("shop.cart.total")`, no `patch.object(cart, "helper")` on a `Cart`, no `Mock(spec=Cart)`.
   Pass the collaborators in and fake them, test a helper through the public function that calls
   it, and patch only what the module imports (`patch("shop.cart.requests.get")`).
+- Give a mock of project code its shape (`mock-without-spec`): `Mock(spec=Mailer)` or
+  `create_autospec(Mailer, instance=True)` where a project class is expected, and
+  `patch("shop.checkout.send", autospec=True)` (or `new=`) for a project function or class.
+- Patch a name where it is looked up (`patch-misses-lookup`): after `from shop.mailer import send` in
+  `shop.checkout`, patch `shop.checkout.send`, not `shop.mailer.send`.
 - Tests put back what they change for the whole process (`global-state-leak-in-test`): set environment
   variables and attributes with `monkeypatch.setenv`/`monkeypatch.setattr` or `mock.patch.dict(os.environ, ...)`,
   not `os.environ[...] =`, `settings.DEBUG = True`, `time.tzset()` or `locale.setlocale(...)`; or restore the old
@@ -39,3 +44,6 @@ Part of the [nitpicker-python](../SKILL.md) skill. Write these forms from the st
   `add`, item assignment or `global` rebinding of a module-level list, dict or set, and no change to a class
   attribute from a test method. Build the state in the test or in a function-scoped fixture, or reset it in an
   `autouse` fixture or `setup_method`.
+- Test each public inverse pair on its own output (`untested-round-trip`): for `encode_token`/
+  `decode_token` or `Order.to_dict`/`Order.from_dict`, one test calls both,
+  `assert Order.from_dict(order.to_dict()) == order`.

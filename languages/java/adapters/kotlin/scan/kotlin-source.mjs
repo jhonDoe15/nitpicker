@@ -248,6 +248,11 @@ export function literalsIn(scanned, from, to) {
   return scanned.literals.filter(({ start, end }) => start >= from && end <= to);
 }
 
+export function lineAt(code, start) {
+  const end = code.indexOf('\n', start);
+  return code.slice(start, end === -1 ? undefined : end);
+}
+
 export function lineStart(code, offset) {
   return code.lastIndexOf('\n', offset - 1) + 1;
 }

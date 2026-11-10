@@ -3,14 +3,14 @@ package zerolog
 
 type Event struct{}
 
-func (event *Event) Err(err error) *Event {
+func (event *Event) Err(error) *Event {
 	return event
 }
 
-func (event *Event) Msg(message string) {}
+func (*Event) Msg(string) {}
 
 type Logger struct{}
 
-func (logger *Logger) Error() *Event {
+func (*Logger) Error() *Event {
 	return &Event{}
 }

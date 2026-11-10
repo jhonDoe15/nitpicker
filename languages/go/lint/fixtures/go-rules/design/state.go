@@ -79,8 +79,8 @@ func Load(read func() map[string]string) map[string]string {
 
 func Count(values map[int]int) int {
 	for total = range values {
+		counter.Add(1)
 	}
-	counter.Add(1)
 	return total
 }
 

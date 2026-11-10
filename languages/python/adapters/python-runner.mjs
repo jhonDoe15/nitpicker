@@ -123,35 +123,34 @@ function collectPythonFindings({ projectRoot, liveRoot, settings, policy, spawn 
       toolContext({ projectRoot, liveRoot, settings, policy, spawn }, reportRoot),
     );
     if (failures.length > 0) {
-      return failures.map((failure) => toolError(failure));
+      return { findings: failures.map((failure) => toolError(failure)) };
     }
-    const { findings } = readPythonFindings({
+    const { findings, ...sections } = readPythonFindings({
       projectRoot,
       reportRoot,
       crapLimit: policy.crapLimit,
       policy,
       exceptions: settings.exceptions,
     });
-    return applyFindingPolicy(applyPythonExceptions(findings, settings.exceptions), {
-      ...policy,
-      inventoryTool: PYTHON_ANALYZER_NAME,
-      routeRule: pythonRouteRule,
-    });
+    return {
+      findings: applyFindingPolicy(applyPythonExceptions(findings, settings.exceptions), {
+        ...policy,
+        inventoryTool: PYTHON_ANALYZER_NAME,
+        routeRule: pythonRouteRule,
+      }),
+      ...sections,
+    };
   });
 }
 
 export function analyzePythonSnapshot({ part = PYTHON_ANALYZER_NAME, ...options }) {
   const snapshot = options.policy?.snapshot;
   try {
-    return {
-      findings: withFixLinks(
-        part === MUTATION_ANALYZER_NAME
-          ? collectMutationFindings(options)
-          : collectPythonFindings(options),
-        part,
-        snapshot,
-      ),
-    };
+    const report =
+      part === MUTATION_ANALYZER_NAME
+        ? { findings: collectMutationFindings(options) }
+        : collectPythonFindings(options);
+    return { ...report, findings: withFixLinks(report.findings, part, snapshot) };
   } catch (error) {
     return {
       findings: withFixLinks(
@@ -202,13 +201,13 @@ export function parsePythonArguments(arguments_) {
 export function runPython(runnerArguments, { spawn } = {}) {
   const { part, projectRoot, liveRoot, settings, policy } = parsePythonArguments(runnerArguments);
   const headPolicy = readHeadPolicyFile();
-  const { conventions, layout } = headPolicy;
+  const { conventions, layout, history } = headPolicy;
   return analyzePythonSnapshot({
     part,
     projectRoot: realpathSync(projectRoot),
     liveRoot: realpathSync(liveRoot),
     settings,
-    policy: { ...policy, conventions, layout, headPolicy },
+    policy: { ...policy, conventions, layout, history, headPolicy },
     spawn,
   });
 }

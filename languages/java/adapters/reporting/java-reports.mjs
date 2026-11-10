@@ -37,7 +37,7 @@ import { ingestJacoco } from '../../ingest/coverage-reports/jacoco.mjs';
 import { ingestPit } from '../../ingest/pit.mjs';
 import { ingestJacocoBranches } from '../../ingest/coverage-reports/jacoco-branches.mjs';
 import { sarifFindings } from './sarif/sarif-reports.mjs';
-import { projectWideFindings } from '../../builds/project-wide.mjs';
+import { projectWideReport, reportModuleProjects } from '../../builds/project-wide.mjs';
 import { applyRuleMessages } from '../../messages/rule-messages.mjs';
 import {
   jacocoSourceRoots,
@@ -67,35 +67,30 @@ export function readJavaFindings(projectRoot, options = {}) {
         module,
       ),
     );
+  const wide = projectWide
+    ? projectWideReport(projectRoot, {
+        projects: reportModuleProjects(modules, ROOT_MODULE),
+        mergedRoot: path.join(reportBase, 'project'),
+        manifest,
+        kotlin: kotlinPreset,
+        policy: options,
+      })
+    : { findings: [], imports: undefined };
   const findings = applyRuleMessages(
     [
       ...moduleFindings,
       ...(projectWide ? readProjectDuplicateFindings(reportBase, { preset, projectRoot }) : []),
-      ...(projectWide
-        ? projectWideFindings(projectRoot, {
-            projects: modules.map((module) => ({
-              reportRoot: module.reportRoot,
-              qualifier: module.key === ROOT_MODULE ? '' : module.dir,
-              sourceRoots: module.manifest.sourceRoots ?? [],
-              kotlinSourceRoots: module.manifest.kotlinSourceRoots ?? [],
-              testSourceRoots: module.manifest.testSourceRoots ?? [],
-              kotlinTestSourceRoots: module.manifest.kotlinTestSourceRoots ?? [],
-              kotlinExcludedFiles: module.manifest.kotlinExcludedFiles ?? [],
-              resourceRoots: module.manifest.resourceRoots ?? [],
-            })),
-            mergedRoot: path.join(reportBase, 'project'),
-            manifest,
-            kotlin: kotlinPreset,
-            policy: options,
-          })
-        : []),
+      ...wide.findings,
       ...readInlineSuppressionFindings(projectRoot, lintedRoots(manifest)),
       ...springFindings(projectRoot, manifest, options),
     ],
     { preset, javaStyle: options.javaStyle },
   );
   const locate = modulesUnitLocator(projectRoot, modules, kotlinPreset);
-  return { findings: withJavaCountRatchets(withoutExcludedFiles(findings, modules), locate) };
+  return {
+    findings: withJavaCountRatchets(withoutExcludedFiles(findings, modules), locate),
+    imports: wide.imports,
+  };
 }
 
 function moduleContextFindings(projectRoot, module, { manifest, modules, options, kotlinBuild }) {
