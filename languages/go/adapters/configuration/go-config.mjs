@@ -11,7 +11,14 @@ import { GO_SIZE_RULES } from '../../../../shared/project-rules/size-rules.mjs';
 import { FORMATTERS } from '../formatting/go-formatters.mjs';
 import { suggestionOrAllowed } from '../../../../shared/messages/closest-match.mjs';
 
-export const GO_LINT_TOOLS = ['vet', 'staticcheck', 'errcheck', 'modernize', 'deadcode', 'go-rules'];
+export const GO_LINT_TOOLS = [
+  'vet',
+  'staticcheck',
+  'errcheck',
+  'modernize',
+  'deadcode',
+  'go-rules',
+];
 export const GO_EXCEPTION_RULES = [
   ...COMMON_EXCEPTION_RULES,
   ...GO_SIZE_RULES,
