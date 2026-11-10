@@ -24,7 +24,7 @@ function isImplemented(structure, { member, info }, language) {
 
 function isVisible({ info }, { language, ownerKind }) {
   if (language === 'kotlin') {
-    return !info.modifiers.has('private') && !info.modifiers.has('protected');
+    return !(info.modifiers.has('private') || info.modifiers.has('protected'));
   }
   return info.modifiers.has('public') || ownerKind === INTERFACE;
 }
