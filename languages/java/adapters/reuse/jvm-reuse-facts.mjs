@@ -12,7 +12,7 @@ const REUSE_TOOL = 'structure';
 const COUPLING_TOOL = 'coupling';
 const SHARED_USAGE_RULES = ['shared-used-by-one-feature'];
 const REUSE_RULES = ['duplicate-definition', 'exported-name-collision', 'sibling-copy-edit'];
-const OUTSIDE_SOURCES = /^(?:\.\.(?:\/|$))|(?:^|\/)build(?:\/|$)/u;
+const OUTSIDE_SOURCES = /^\.\.(?:\/|$)|(?:^|\/)build(?:\/|$)/u;
 const JAVA_COLLISION_FIX = 'Rename one, or use both by their fully qualified names.';
 const NOTHING_SKIPPED = new Set();
 const UNKNOWN_BASE = { unchanged: false, definitions: [] };
@@ -26,11 +26,13 @@ function sourceRootsOf(project, kotlin) {
 
 function projectSources(projectRoot, { project, kotlin }) {
   const extensions = kotlin ? ['.java', '.kt'] : ['.java'];
+  const excluded = new Set(project.kotlinExcludedFiles ?? []);
   return [...new Set(sourceRootsOf(project, kotlin))]
     .flatMap((root) =>
       sourceFilesUnder(pathInside(projectRoot, root), extensions, { skipped: NOTHING_SKIPPED }),
     )
-    .map((full) => [path.relative(projectRoot, full).replaceAll('\\', '/'), project]);
+    .map((full) => [path.relative(projectRoot, full).replaceAll('\\', '/'), project])
+    .filter(([file]) => !excluded.has(file));
 }
 
 function sourceFiles(projectRoot, { projects, kotlin, exclude = [] }) {
