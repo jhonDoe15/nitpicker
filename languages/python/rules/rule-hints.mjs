@@ -4,6 +4,7 @@ import { definedField } from '../../../shared/messages/messages.mjs';
 import { LOCATOR_HINTS } from './hints/ast/locators.mjs';
 import { ASYNC_HINTS } from './hints/ast/ast-async.mjs';
 import { STRUCTURE_HINTS } from './hints/ast/ast-structure.mjs';
+import { ROUND_TRIP_HINTS } from './hints/tests/round-trip-hints.mjs';
 import { CONTAINER_HINTS } from './hints/containers/containers.mjs';
 import { TYPING_HINTS } from './hints/typing/ast-typing.mjs';
 import { SMELL_HINTS } from './hints/ast/ast-smells.mjs';
@@ -20,6 +21,7 @@ import { PITFALL_HINTS } from './hints/pitfalls/ruff-pitfalls.mjs';
 import { PERSISTENCE_HINTS } from './hints/persistence/orm-hints.mjs';
 import { QUERY_HINTS } from './hints/persistence/query-hints.mjs';
 import { STYLE_HINTS } from './hints/ruff-style.mjs';
+import { STREAM_HINTS } from './hints/streams/streams.mjs';
 import { TIME_UNIT_HINTS } from './hints/time/time-units.mjs';
 import { RULES_TOOL } from './hints/tool.mjs';
 import { DEFAULT_LIBRARIES } from './libraries/project-libraries.mjs';
@@ -56,6 +58,7 @@ export const RULE_HINTS = [
   ...SECURITY_HINTS,
   ...RULES_SECURITY_HINTS,
   ...STRUCTURE_HINTS,
+  ...ROUND_TRIP_HINTS,
   ...TYPING_HINTS,
   ...LOCATOR_HINTS,
   ...CONTRACT_HINTS,
@@ -70,6 +73,7 @@ export const RULE_HINTS = [
   ...QUERY_HINTS,
   ...TIME_UNIT_HINTS,
   ...CONTAINER_HINTS,
+  ...STREAM_HINTS,
   { tool: 'mypy', rules: ['import-not-found', 'import-untyped'], allowed: INSTALL_PACKAGE },
   ...['pyright', 'basedpyright'].map((tool) => ({
     tool,

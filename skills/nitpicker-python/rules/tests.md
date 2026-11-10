@@ -44,3 +44,6 @@ Part of the [nitpicker-python](../SKILL.md) skill. Write these forms from the st
   `add`, item assignment or `global` rebinding of a module-level list, dict or set, and no change to a class
   attribute from a test method. Build the state in the test or in a function-scoped fixture, or reset it in an
   `autouse` fixture or `setup_method`.
+- Test each public inverse pair on its own output (`untested-round-trip`): for `encode_token`/
+  `decode_token` or `Order.to_dict`/`Order.from_dict`, one test calls both,
+  `assert Order.from_dict(order.to_dict()) == order`.

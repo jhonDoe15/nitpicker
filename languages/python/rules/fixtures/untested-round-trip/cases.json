@@ -1,0 +1,7 @@
+[
+  {
+    "tool": "python-rules",
+    "rule": "untested-round-trip",
+    "mention": "calls both on the same value"
+  }
+]
