@@ -6,6 +6,7 @@ import { runMaven } from '../../../maven/maven-command.mjs';
 import { archunitMatcher } from '../../../maven/maven-tests.mjs';
 import { requireTestngRun } from '../../../maven/results/maven-test-results.mjs';
 import { childrenNamed, parseXml } from '../../../../../shared/ingest/common.mjs';
+import { linkSentence } from '../../../../../shared/messages/test-support/link-sentence.mjs';
 import { mavenFrameworkFindings } from '../../test-support/maven-framework.mjs';
 import {
   ARCHUNIT_FINDING,
@@ -39,7 +40,7 @@ describe.skipIf(!enabled)('Java preset on TestNG and Spock test frameworks', () 
           `Surefire ran none of the tests in ${root} but the ArchUnit classes: the JUnit Platform on its ` +
           'test classpath makes Surefire use its JUnit Platform provider, which runs TestNG tests only through ' +
           'the TestNG engine. Add org.junit.support:testng-engine to the test dependencies, or run TestNG in ' +
-          'a Surefire execution of its own',
+          `a Surefire execution of its own. ${linkSentence('mavenFails')}`,
       },
     ]);
   });

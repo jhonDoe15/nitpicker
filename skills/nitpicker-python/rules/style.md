@@ -18,6 +18,8 @@ Part of the [nitpicker-python](../SKILL.md) skill. Write these forms from the st
   (`def send(message, *, urgent=False)`), two functions or an enum.
 - Flow: no `else` after a `return`, and return an expression directly instead of assigning it to a
   local first. Build a list with a comprehension, not `append` in a loop.
+- No method that only passes its parameters on to another method of the same class
+  (`def total(self, items): return self._sum(items)`): call that method directly (or, when it is less visible, rename it to the alias's name and delete the alias).
 - Imports: name what you use. No `from module import *`.
 - Loops and calls: bind a new name rather than reassigning the loop variable; pass a function
   itself (`key=str`), not `lambda x: str(x)`; one `max(a, b, c)`, not nested calls.

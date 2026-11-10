@@ -34,8 +34,16 @@ const LOGICAL_PRECEDENCE = new Map([
 const UNARY = 14;
 const POSTFIX = 17;
 const LEAF = 18;
+const ASSIGNMENT = 1;
 const SIGNS = new Set(['-', '+']);
 const WORD_OPERATORS = new Set(['typeof', 'void', 'delete']);
+
+function looseness(node) {
+  if (node.loose !== true) {
+    return UNARY;
+  }
+  return node.assignment === true ? ASSIGNMENT : 0;
+}
 
 function precedence(node) {
   switch (node.kind) {
@@ -57,7 +65,7 @@ function precedence(node) {
       return POSTFIX;
     }
     case 'opaque': {
-      return node.loose === true ? 0 : UNARY;
+      return looseness(node);
     }
     default: {
       return LEAF;

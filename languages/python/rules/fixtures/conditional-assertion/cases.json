@@ -1,0 +1,7 @@
+[
+  {
+    "tool": "python-rules",
+    "rule": "conditional-assertion-in-test",
+    "mention": "parametrize"
+  }
+]

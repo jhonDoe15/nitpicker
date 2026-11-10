@@ -16,7 +16,7 @@ a Kotest spec) and it is not abstract, an interface or an annotation.
   OrderIT runs: ...". The correct forms are a module that binds Failsafe, or test classes Surefire
   runs.
 - **Gradle.** A test task runs every class of its source set whatever its name, so `*IT` in
-  `src/test/java` runs under `test`. The silent skip is a test source set (a source set other than `main` whose name contains `test`, such as `integrationTest`) that no `Test` task takes its
+  `src/test/java` runs under `test`. The silent skip is a test source set (a source set other than `main` whose name, split at capitals, `-` and `_`, has the word `it` or a word starting with `test`, such as `integrationTest` or `testFixtures`, but not `latest`) that no `Test` task takes its
   classes from: the init script lists those source sets with their Java, Kotlin and Groovy source
   directories as `unrunTestSourceSets` in the manifest, and each test class in them is reported:
   "Register a Test task for the integrationTest source set (testClassesDirs = ..., classpath = ...)
