@@ -99,7 +99,7 @@ function superclassAfter(source, line) {
     .split('\n')
     .slice(line - 1)
     .join('\n');
-  return /\bclass\s+\w+\b(?:\s*<[^{]*?>)?\s+extends\s+([\w.]+)/.exec(after)?.[1].split('.').at(-1);
+  return /\bclass\s+\w+(?:\s*<[^{]*?>)?\s+extends\s+([\w.]+)/.exec(after)?.[1].split('.').at(-1);
 }
 
 export function dropInheritedVersions(findings, { projectRoot, sourceRoots }) {

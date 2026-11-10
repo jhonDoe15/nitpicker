@@ -60,7 +60,7 @@ const MUTABLE_FACTORIES = [
 ];
 const JAVA_UTIL = String.raw`(?:java\.util\.(?:concurrent\.(?:atomic\.)?)?)?`;
 const MUTABLE_FACTORY = new RegExp(
-  String.raw`^${JAVA_UTIL}(?:${MUTABLE_FACTORIES.join('|')})\b\s*(?:<[^>]*>\s*)?[({]`,
+  String.raw`^${JAVA_UTIL}(?:${MUTABLE_FACTORIES.join('|')})\s*(?:<[^>]*>\s*)?[({]`,
 );
 const MUTABLE_TYPES =
   'Mutable\\w+|Array|IntArray|LongArray|DoubleArray|ByteArray|ArrayList|HashMap|HashSet|StringBuilder|Atomic\\w+';

@@ -79,6 +79,7 @@ describe('the JDK Error Prone runs on', () => {
     writeFileSync(
       path.join(home, '.m2', 'toolchains.xml'),
       `<toolchains><toolchain><type>jdk</type><configuration><jdkHome> ${toolchain} </jdkHome>` +
+        '</configuration></toolchain><toolchain><configuration><jdkHome> </jdkHome>' +
         '</configuration></toolchain></toolchains>',
     );
 
