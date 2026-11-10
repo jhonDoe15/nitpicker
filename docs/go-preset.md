@@ -280,14 +280,23 @@ message does not already name it, and by its exception entry:
   - contexts: contextcheck (a function with a context passes it on instead of calling one that
     makes a new one; follows calls across the module's packages, not into dependencies),
     containedctx (no context in a struct field), fatcontext (no context derived from itself in a
-    loop).
+    loop);
+  - types and values: exhaustive (a switch on an enum without a `default` case lists every
+    constant), recvcheck (a type's methods all have pointer or all have value receivers, apart
+    from `String`, `Error`, `Format`, `Value` and the `Marshal...` methods, which take a value so
+    that values and pointers both implement the interface),
+    durationcheck (no duration times duration), makezero (no append to a slice made with a
+    length), reassign (no assigning another package's `Err...` or `EOF` variables), unconvert (no
+    conversion to the type a value already has), wastedassign (no value assigned and then
+    assigned again unread).
 
 The linters skip generated files (`// Code generated ... DO NOT EDIT.`), as staticcheck does; a
 package of only generated files needs no package comment. An analyzer that fails on a package that
 builds is a `go/go-lint-failed` tool error, never a silent pass. `//lint:ignore`, `//nolint` and
 `//revive:disable` comments do nothing, including the ones nilerr and contextcheck read
-themselves, and a `//bodyclose:handled` directive is a finding of its own: the only way past a
-finding is an `exceptions` entry a person accepts.
+themselves, exhaustive's `//exhaustive:ignore` and makezero's `// nozero`, and a
+`//bodyclose:handled` directive is a finding of its own: the only way past a finding is an
+`exceptions` entry a person accepts.
 
 **Off, with the reason.** Each of these reports the same problem as a check that runs:
 
@@ -320,11 +329,13 @@ finding is an `exceptions` entry a person accepts.
 
 **Catalog linters considered and left out**, with the reason:
 
-| Linter                    | Reason                                                                                                                               |
-| ------------------------- | ------------------------------------------------------------------------------------------------------------------------------------ |
-| err113                    | flags every `errors.New` inside a function, though a one-off error nobody compares is fine; its `==` check duplicates errorlint      |
-| wrapcheck                 | flags every error returned from another package unwrapped, the module's own included; it needs per-project ignore lists to be usable |
-| nilnil `-detect-opposite` | a value with a non-nil error is the `io.Reader` contract (`n, err`), not a second form                                               |
+| Linter                            | Reason                                                                                                                               |
+| --------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------ |
+| err113                            | flags every `errors.New` inside a function, though a one-off error nobody compares is fine; its `==` check duplicates errorlint      |
+| wrapcheck                         | flags every error returned from another package unwrapped, the module's own included; it needs per-project ignore lists to be usable |
+| forcetypeassert                   | errcheck `-assert` reports the same one-value type assertions                                                                        |
+| exhaustive maps and type switches | a lookup map keyed by an enum is often partial on purpose, and a type switch over an interface cannot know every implementation      |
+| nilnil `-detect-opposite`         | a value with a non-nil error is the `io.Reader` contract (`n, err`), not a second form                                               |
 
 **Overlaps on one line.** When two checks report the same line, the more specific one stays:
 
@@ -352,6 +363,7 @@ finding is an `exceptions` entry a person accepts.
 | sqlclosecheck (Close not deferred)   | errcheck                                         |
 | ST1012 (sentinel error names)        | errname                                          |
 | SA1005 (`exec.Command` shell line)   | noctx                                            |
+| SA4006, SA4010                       | wastedassign                                     |
 
 Those two compare the column too, because one line can hold a second, different problem
 (`found == true || ready && false`). revive keeps the rules staticcheck lacks in the same areas: `bool-literal-in-expr` also flags
@@ -531,5 +543,8 @@ there are no source roots to set) are config errors with `"preset": "go"`, each 
 - The tools are built from the Go module proxy on first use, so the first run needs network access
   (or a `GOPROXY` the project sets) and takes longer. The lint program needs Go 1.27, so a project
   on an older toolchain downloads it once with `GOTOOLCHAIN=auto`.
+- The linters type-check for the host's `GOOS` and `GOARCH`, so unconvert can report a conversion
+  that is needed on another platform (a `syscall.Stat_t` field that is `int64` on linux/amd64 but
+  not on 32-bit targets); such a file takes an `exceptions` entry.
 - The linters run on the whole module for both snapshots; a finding is new when its message and
   line text are new, as for vet.
