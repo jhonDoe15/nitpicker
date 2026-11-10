@@ -34,6 +34,15 @@ const GO_CATALOG_TOOLS = [
   'tparallel',
   'testifylint',
   'usetesting',
+  'asciicheck',
+  'bidichk',
+  'gocheckcompilerdirectives',
+  'canonicalheader',
+  'musttag',
+  'perfsprint',
+  'usestdlibvars',
+  'sloglint',
+  'spancheck',
 ];
 export const GO_LINTER_TOOLS = [
   'vet',
