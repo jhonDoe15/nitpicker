@@ -24,7 +24,7 @@ const DATA_SOURCE_CONNECTION = /\??\.\s*(?:getConnection\s*\(\s*\)|connection\b(
 const FILE_MEMBER =
   /\??\.\s*(?:inputStream|outputStream|bufferedReader|bufferedWriter|reader|writer|printWriter)\s*\(/g;
 const RESOURCE_MEMBER =
-  /\??\.\s*(?:(?:get(?:Input|Output)Stream)\s*\(|(?:input|output)Stream\b(?!\s*[(=]))/g;
+  /\??\.\s*(?:get(?:Input|Output)Stream\s*\(|(?:input|output)Stream\b(?!\s*[(=]))/g;
 
 const FILE_CALLS = new Set([
   'File',

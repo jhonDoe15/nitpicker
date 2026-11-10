@@ -15,6 +15,6 @@ type Job struct {
 	Name string
 }
 
-func (job Job) Run(ctx context.Context) error {
-	return ctx.Err()
+func (job Job) Run(ctx context.Context) (string, error) {
+	return job.Name, ctx.Err()
 }

@@ -1,4 +1,4 @@
-import { GO_LINT_TOOLS } from '../../../../../languages/go/adapters/configuration/go-config.mjs';
+import { GO_LINTER_TOOLS } from '../../../../../languages/go/adapters/configuration/go-config.mjs';
 
 const AREA_TOOLS = [
   [
@@ -32,7 +32,7 @@ const AREA_TOOLS = [
       'detekt',
       'ktlint',
       'kotlin-source',
-      ...GO_LINT_TOOLS,
+      ...GO_LINTER_TOOLS,
       'coding-standards',
       'entry-points',
       'dependency-architecture',

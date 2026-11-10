@@ -1,6 +1,6 @@
 import { inImport } from '../kotlin-source.mjs';
 
-const CAST_OPERATOR = /(?<![\w.$`])as(?![\w?$`])(?<target>\s*(?:[\w.]+)\??)?/g;
+const CAST_OPERATOR = /(?<![\w.$`])as(?![\w?$`])(?<target>\s*[\w.]+\??)?/g;
 const NULL_WINDOW = 20;
 const NULL_BEFORE = /\bnull\s*$/;
 const ANY_OR_NULL = /^\s*(?:kotlin\.)?Any\?$/;
