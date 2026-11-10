@@ -197,7 +197,9 @@ describe('Go facts', () => {
       'shared-used-by-one-feature shared/money/round.go',
     ]);
     expect(
-      goFactFindings(goFacts(report, { module: 'shop' }), { layout: { sharedRoots: ['lib'] } }),
+      goFactFindings(goFacts(report, { module: 'shop' }), {
+        policy: { layout: { sharedRoots: ['lib'] } },
+      }),
     ).toEqual([]);
   });
 });
