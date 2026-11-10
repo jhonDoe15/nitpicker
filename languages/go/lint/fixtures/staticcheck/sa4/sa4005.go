@@ -8,6 +8,10 @@ func (counter Counter) Lost() {
 	counter.Count++ // want SA4005
 }
 
-func (counter *Counter) Kept() {
-	counter.Count++
+type Tally struct {
+	Count int
+}
+
+func (tally *Tally) Kept() {
+	tally.Count++
 }

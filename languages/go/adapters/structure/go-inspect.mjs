@@ -14,6 +14,7 @@ const EMPTY = {
   errors: [],
   definitions: [],
   usages: [],
+  docComments: [],
   skipped: [],
 };
 
