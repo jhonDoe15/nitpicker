@@ -45,6 +45,15 @@ Part of the [nitpicker-kotlin](../SKILL.md) skill. Write these forms from the st
   package config, `TestConfig(retries = n)`). A test that passes on a later attempt hides a flaky or
   racy test: wait on the condition instead of a fixed delay, isolate shared state. `retries = 0` and
   `@RepeatedTest` are fine.
+- Compare floating-point numbers with a tolerance (`pmd/FloatEqualityInTest`): no `assertEquals`,
+  `assertNotEquals`, `shouldBe`, `shouldNotBe` or AssertJ `isEqualTo` against a fractional literal
+  such as `0.1`. Use `assertEquals(expected, actual, absoluteTolerance = 1e-9)`, the JUnit delta
+  overload, `actual shouldBe (expected plusOrMinus 1e-9)` or `isCloseTo(expected, within(1e-9))`;
+  the same goes for `assertTrue(x == 0.1)` and `(x == 0.1) shouldBe true`, which need
+  `abs(x - 0.1) < 1e-9`. An AssertJ `using...Comparator(...)` is fine. An integral literal such as
+  `1.0` is exact and fine.
+- Use a production constant by name, never a copy of its value (`pmd/CopiedConstantInTest`):
+  `Limits.MAX_LENGTH + 1`, not `65`. Pin a contract value as `assertEquals(64, Limits.MAX_LENGTH)`.
 - Never mock the class under test (`pmd/MockedSubjectInTest`): no `mockk<OrderService>()`,
   `mock<OrderService>()` or `@MockK` of it in `OrderServiceTest`, and no `spyk`/`@SpyK` of it with
   `every { subject.helper() }`. Pass its collaborators in through the constructor with fakes or mocks
@@ -73,6 +82,11 @@ Part of the [nitpicker-kotlin](../SKILL.md) skill. Write these forms from the st
   `do { } while`. Split the cases into separate tests or a parameterized test (`@ParameterizedTest` with
   `@MethodSource` or `@CsvSource`, Kotest `withData`), assert a whole collection at once, and narrow with
   `assertNotNull`, `assertIs` or `?: fail(...)` instead of an `if`.
+- Assert the value, not that something is there (`pmd/WeakAssertionInTest`): no `assertNotNull(x)`,
+  `x.shouldNotBeNull()` or AssertJ `isNotNull()` as the whole check (a not-null check is fine when the
+  test then uses `x`, since Kotlin smart-casts it), no `isNotEmpty()`, `size > 0` or `shouldNotBeEmpty()`, and
+  no `verify { m.f(any()) }` whose arguments are all `any()`. Assert the exact value, contents or length
+  and the call's arguments; `exactly = 0` and `wasNot Called` are fine.
 - A test owns the coroutines it starts (`pmd/CoroutineEscapesTest`): do not `launch`, `async`, `launchIn`,
   `stateIn` or `shareIn` on `CoroutineScope(...)`, a scope field, a scope a helper returns,
   `viewModelScope`, or a `TestScope` outside `runTest` and leave it running; `with`, `run`, `apply` or

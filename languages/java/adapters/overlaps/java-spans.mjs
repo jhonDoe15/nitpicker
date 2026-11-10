@@ -1,6 +1,7 @@
 const CLASS_HEADER = /(?:^|[^\w@.])(?:class|interface|enum|record|@interface)\s+(\w+)/u;
 const ANNOTATION = /@[\w.]+(?:\s*\([^()]*\))?/gu;
 const CALLABLE = /(\w+)\s*\(/u;
+const CATCH = /^\s*catch\s*\(/u;
 const INITIALIZED = /(\w+)\s*=(?!=)/u;
 const FIELD_NAME = /\b([A-Za-z_$][\w$]*)\s*(?:=(?!=)|;|,)/u;
 const TOKEN = new RegExp(
@@ -35,6 +36,9 @@ function frameFor(header, parent, line) {
   if (named !== undefined) {
     const name = parent?.kind === 'class' ? `${parent.name}$${named[1]}` : named[1];
     return { kind: 'class', name, start: line };
+  }
+  if (CATCH.test(header)) {
+    return { kind: 'catch', start: line };
   }
   if (parent?.kind === 'class') {
     return { kind: 'member', name: `${parent.name}#${memberName(header)}@${line}`, start: line };
@@ -120,6 +124,7 @@ export function lineLocator(text) {
     className: innermost(spans, 'class', line)?.name,
     member: innermost(spans, 'member', line)?.name,
     javadoc: innermost(spans, 'javadoc', line)?.start,
+    catchLine: innermost(spans, 'catch', line)?.start,
     field: FIELD_NAME.exec(
       withoutTypeArguments((lines[line - 1] ?? '').replace(ANNOTATION, ' ')),
     )?.[1],

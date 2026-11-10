@@ -12,7 +12,7 @@ import { KEYS, NITPICKER_RULES, SUPPORTED_PRESETS } from '../validate.mjs';
 import { HEAD_NAMES } from '../project-checks/project-config.mjs';
 import { LAYOUT_KEYS, layoutKeysFor } from '../scopes/layout-settings.mjs';
 import * as areas from './area-schemas.mjs';
-import { conventionProperties, history, spring } from './setting-schemas.mjs';
+import { conventionProperties, history, protocols, spring } from './setting-schemas.mjs';
 import {
   exceptionDefinitions,
   exceptionList,
@@ -33,6 +33,7 @@ import {
   without,
 } from './schema-parts.mjs';
 import { tools, toolsByPreset } from './tools-schema.mjs';
+import { MAX_TIMER_MS, MINUTE_MS } from '../../../shared/analyzer-timeouts/analyzer-timeouts.mjs';
 
 export const SCHEMA_URL =
   'https://raw.githubusercontent.com/jhonDoe15/nitpicker/main/spec/config.schema.json';
@@ -70,6 +71,17 @@ const TOP_LEVEL = {
   react: areas.react,
   i18n: areas.i18n,
   analyzers: areas.analyzers,
+  analyzerTimeoutMinutes: {
+    description:
+      'Minutes each named analyzer may run before it is stopped. A deadline is not policy: it leaves the policy hash alone.',
+    type: 'object',
+    propertyNames: { pattern: '\\S' },
+    additionalProperties: {
+      type: 'integer',
+      minimum: 1,
+      maximum: Math.floor(MAX_TIMER_MS / MINUTE_MS),
+    },
+  },
   legacyInventory: {
     description:
       'Path of the legacy inventory inside the project; nitpicker.legacy.json when absent.',
@@ -79,6 +91,7 @@ const TOP_LEVEL = {
   python: areas.python,
   tools,
   testConsole: areas.testConsole,
+  protocols,
   kotlin: areas.kotlin,
   go: areas.go,
   spring,
@@ -97,6 +110,7 @@ function unavailableKeys(preset) {
     ...(preset === 'go' ? ['layout', 'duplicates'] : ['go']),
     ...(GRADLE_PRESETS.includes(preset) ? [] : ['spring']),
     ...(factRuleSettings(preset).includes('testConsole') ? [] : ['testConsole']),
+    ...(factRuleSettings(preset).includes('protocols') ? [] : ['protocols']),
   ];
 }
 

@@ -7,7 +7,7 @@ import {
   preparePmdProbe,
   readPmdProbeFindings,
   runPmdProbe,
-} from '../../test-support/pmd-probe.mjs';
+} from '../../test-support/pmd/pmd-probe.mjs';
 
 const enabled = process.env.NITPICKER_JAVA_E2E === '1';
 const gradle = process.env.NITPICKER_GRADLE ?? 'gradle';

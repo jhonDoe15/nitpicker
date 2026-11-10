@@ -1,10 +1,10 @@
 import { spawnSync } from 'node:child_process';
 import { createHash, randomUUID } from 'node:crypto';
-import { existsSync, mkdirSync, readdirSync, readFileSync, renameSync, rmSync } from 'node:fs';
+import { existsSync, mkdirSync, readdirSync, readFileSync, rmSync } from 'node:fs';
 import path from 'node:path';
 import { GRADLE_DIRECTORY } from '../../builds/java-build.mjs';
 import { javaCommand, runJava } from '../maven-command.mjs';
-import { cacheDirectory } from '../maven-tools.mjs';
+import { cacheDirectory, publishDirectory } from '../maven-tools.mjs';
 
 const RULES_DIRECTORY = path.join(GRADLE_DIRECTORY, 'archunit');
 const TOOL = 'Spring architecture rules';
@@ -47,18 +47,7 @@ function cacheKey({ sources, versions, spawn }) {
   return digest.digest('hex');
 }
 
-function publish(staging, classes) {
-  try {
-    renameSync(staging, classes);
-  } catch (raced) {
-    rmSync(staging, { recursive: true, force: true });
-    if (!existsSync(classes)) {
-      throw raced;
-    }
-  }
-}
-
-function compileRules({ classes, sources, libraries, cwd, spawn }) {
+function compileRules({ classes, sources, libraries, cwd, spawn, timeoutMs }) {
   if (existsSync(classes)) {
     return;
   }
@@ -73,20 +62,22 @@ function compileRules({ classes, sources, libraries, cwd, spawn }) {
       args: sources,
       cwd,
       spawn,
+      timeoutMs,
       accept: (result) => result.status === 0,
     });
   } catch (error) {
     rmSync(staging, { recursive: true, force: true });
     throw error;
   }
-  publish(staging, classes);
+  publishDirectory(staging, classes);
 }
 
 function existing(entries) {
   return entries.filter((entry) => existsSync(entry));
 }
 
-function runRules({ module, classpaths, libraries, locations, springRoles, spawn }) {
+function runRules(options) {
+  const { module, classpaths, libraries, locations, springRoles, spawn, timeoutMs } = options;
   const { classes, output } = locations;
   const projectPath = [
     module.outputDirectory,
@@ -102,6 +93,7 @@ function runRules({ module, classpaths, libraries, locations, springRoles, spawn
     args: [output, module.outputDirectory, module.testOutputDirectory],
     cwd: module.basedir,
     spawn,
+    timeoutMs,
     accept: (result) => result.status === 0,
   });
 }
@@ -116,6 +108,7 @@ export function runSpringArch(options) {
     archRules,
     springRoles,
     spawn = spawnSync,
+    timeoutMs,
   } = options;
   if (!archRules) {
     return;
@@ -130,6 +123,14 @@ export function runSpringArch(options) {
     cacheKey({ sources, versions: `${pinned.archunit}|${pinned.asm}`, spawn }),
   );
   const libraries = existing(tools.archunit);
-  compileRules({ classes, sources, libraries, cwd: module.basedir, spawn });
-  runRules({ module, classpaths, libraries, springRoles, locations: { classes, output }, spawn });
+  compileRules({ classes, sources, libraries, cwd: module.basedir, spawn, timeoutMs });
+  runRules({
+    module,
+    classpaths,
+    libraries,
+    springRoles,
+    locations: { classes, output },
+    spawn,
+    timeoutMs,
+  });
 }
