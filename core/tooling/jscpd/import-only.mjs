@@ -1,3 +1,4 @@
+import { GO_OVERSHOOT, goImportsOnly } from './import-only/go-imports.mjs';
 import { JVM_OVERSHOOT, jvmImportsOnly } from './import-only/jvm-imports.mjs';
 import { PYTHON_OVERSHOOT, pythonImportsOnly } from './import-only/python-imports.mjs';
 import { SCRIPT_OVERSHOOT, scriptImportsOnly } from './import-only/script-imports.mjs';
@@ -9,6 +10,7 @@ const CHECKS = new Map([
   ['typescript', { check: scriptImportsOnly, overshoot: SCRIPT_OVERSHOOT }],
   ['tsx', { check: scriptImportsOnly, overshoot: SCRIPT_OVERSHOOT }],
   ['javascript', { check: scriptImportsOnly, overshoot: SCRIPT_OVERSHOOT }],
+  ['go', { check: goImportsOnly, overshoot: GO_OVERSHOOT }],
 ]);
 
 export function importsOnly(fragment, format) {
