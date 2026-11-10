@@ -209,7 +209,7 @@ describe('the policy approval workflow', () => {
     expect(template.includes('${{')).toBe(false);
   });
 
-  it('records the approval of a person with write access and re-runs the latest failed runs', async () => {
+  it('records the approval of a person with write access and re-runs the failed runs, oldest first', async () => {
     const runs = [
       { id: 3, workflow_id: 1, name: 'typescript', status: 'completed', conclusion: 'skipped' },
       { id: 2, workflow_id: 1, name: 'typescript', status: 'completed', conclusion: 'failure' },
@@ -220,7 +220,10 @@ describe('the policy approval workflow', () => {
 
     const calls = await approve(github);
 
-    expect([calls.failed, calls.notices]).toEqual([[], ['Re-ran the failed jobs of typescript.']]);
+    expect([calls.failed, calls.notices]).toEqual([
+      [],
+      ['Re-ran the failed jobs of typescript.', 'Re-ran the failed jobs of typescript.'],
+    ]);
     expect(callLog(github)).toEqual([
       ['removeLabel', { ...REPO, issue_number: 7, name: 'accept-policy-change' }],
       ['getCollaboratorPermissionLevel', { ...REPO, username: 'reviewer' }],
@@ -238,7 +241,24 @@ describe('the policy approval workflow', () => {
         'listWorkflowRunsForRepo',
         { ...REPO, head_sha: HEAD, event: 'pull_request', per_page: 100 },
       ],
+      ['reRunWorkflowFailedJobs', { ...REPO, run_id: 1 }],
       ['reRunWorkflowFailedJobs', { ...REPO, run_id: 2 }],
+    ]);
+  });
+
+  it('re-runs an older failed run before a newer one, also when a run passed in between', async () => {
+    const runs = [
+      { id: 7, workflow_id: 1, name: 'typescript', status: 'completed', conclusion: 'failure' },
+      { id: 6, workflow_id: 1, name: 'typescript', status: 'completed', conclusion: 'success' },
+      { id: 4, workflow_id: 1, name: 'typescript', status: 'completed', conclusion: 'failure' },
+    ];
+    const github = fakeGithub({ permission: 'write', runs });
+
+    await approve(github);
+
+    expect(github.rest.actions.reRunWorkflowFailedJobs.mock.calls).toEqual([
+      [{ ...REPO, run_id: 4 }],
+      [{ ...REPO, run_id: 7 }],
     ]);
   });
 
