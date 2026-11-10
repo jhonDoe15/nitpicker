@@ -30,7 +30,7 @@ import {
   readKotlinFanOutFindings,
   readKotlinReviewFindings,
 } from '../kotlin/review-rules/review-findings.mjs';
-import { withoutCoveredSourceFindings } from '../kotlin/review-rules/spring/spring-findings.mjs';
+import { withoutCoveredFindings } from '../kotlin/review-rules/review-finding.mjs';
 import { readKotlinNotes } from './kotlin-notes.mjs';
 import { withoutTransactionAwareCacheWrites } from '../spring/transactions/transaction-aware.mjs';
 import { springRoots } from '../spring/transactions/transaction-filters.mjs';
@@ -152,7 +152,7 @@ export function readKotlinFindings(context, crapLimit) {
     metrics.detektCounts,
     functionUnitLocator({ ...context, kotlin: true }),
   );
-  const findings = withoutCoveredSourceFindings(
+  const findings = withoutCoveredFindings(
     [
       ...ruleFindings,
       ...readKotlinNotes(reportRoot),

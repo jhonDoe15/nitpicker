@@ -1,0 +1,3 @@
+MAX_ITEMS = 50
+DEFAULT_REGION: str = "eu-west-1"
+RETRIES = 1

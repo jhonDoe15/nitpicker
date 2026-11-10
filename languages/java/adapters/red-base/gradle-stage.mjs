@@ -3,13 +3,14 @@ import { gradleOptions } from '../gradle-wrapper/gradle-stages.mjs';
 import { runGradle } from '../gradle-wrapper/gradle-process.mjs';
 import { gradleLog, withGradleLog } from '../gradle-wrapper/diagnostics/failure-log.mjs';
 import { condenseFailure } from '../gradle-wrapper/diagnostics/failure-text.mjs';
+import { gradleSpawnFailure } from '../gradle-wrapper/diagnostics/spawn-failure.mjs';
 import { failingTestsOf } from '../gradle-reports/failing-tests.mjs';
 import { failingTestsError } from '../../builds/test-failures.mjs';
 import { presetLabel, withCompileErrors } from '../../builds/compile-errors/compile-findings.mjs';
 
-function failedStage(result, projectRoot, policy) {
+function failedStage(result, projectRoot, { policy, command, budget }) {
   if (result.error !== undefined) {
-    return result.error;
+    return gradleSpawnFailure(result.error, { command, budget, projectRoot });
   }
   const output = `${result.stdout ?? ''}\n${result.stderr ?? ''}`;
   const detail = condenseFailure(output, projectRoot) || 'no diagnostic output';
@@ -20,7 +21,7 @@ function failedStage(result, projectRoot, policy) {
 export function assertGradleSucceeded(
   result,
   projectRoot,
-  { reportBase, since, checkTests = true, policy = {} },
+  { reportBase, since, checkTests = true, policy = {}, command, budget },
 ) {
   const succeeded = result.error === undefined && result.status === 0;
   const failures =
@@ -37,7 +38,8 @@ export function assertGradleSucceeded(
   if (succeeded) {
     return;
   }
-  const error = withGradleLog(failedStage(result, projectRoot, policy), result, log);
+  const stage = failedStage(result, projectRoot, { policy, command, budget });
+  const error = withGradleLog(stage, result, log);
   throw result.error === undefined
     ? withCompileErrors(error, `${result.stdout ?? ''}\n${result.stderr ?? ''}`, projectRoot)
     : error;
@@ -60,5 +62,12 @@ export function runGradleStage({
     target.args,
     gradleOptions(target, { projectRoot, budget, spawn }),
   );
-  assertGradleSucceeded(result, projectRoot, { reportBase, since, checkTests, policy });
+  assertGradleSucceeded(result, projectRoot, {
+    reportBase,
+    since,
+    checkTests,
+    policy,
+    command: target.command,
+    budget,
+  });
 }

@@ -109,6 +109,7 @@ export function parseRunnerArguments(
       logRoot: values.get('--log-root'),
       logLabel: values.get('--log-label'),
       snapshot: values.get('--snapshot') ?? 'head',
+      ...parseMode(values.get('--mode')),
       preset: values.get('--preset'),
       kotlinFormatter: values.get('--kotlin-formatter'),
       kotlinDetektConfig: values.get('--kotlin-detekt-config'),
@@ -116,6 +117,13 @@ export function parseRunnerArguments(
       toolPrecedence: toolPrecedence(values, precedenceTools),
     },
   };
+}
+
+function parseMode(mode = 'full') {
+  if (!['quick', 'full'].includes(mode)) {
+    throw new Error('--mode must be one of: quick, full');
+  }
+  return mode === 'quick' ? { quick: true } : {};
 }
 
 function precedenceOption(tool) {
@@ -151,6 +159,7 @@ const RUNNER_OPTIONS = [
   '--test-seconds',
   '--test-console-allow',
   '--duplicate-skipped-folders',
+  '--mode',
 ];
 
 function parseJsonObject(text, option) {

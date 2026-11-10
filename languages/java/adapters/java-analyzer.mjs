@@ -8,8 +8,9 @@ import { DOC_COMMENT_TOOL } from './doc-comments/doc-comment-findings.mjs';
 import { INIT_SCRIPT, readPinnedTools } from '../builds/java-build.mjs';
 import { importClosure } from '../../../shared/import-closure.mjs';
 import { javaExecutionBudget } from './java-runner.mjs';
-import { JVM_NOISE, javaCommand } from '../maven/maven-command.mjs';
 import { COMPILE_ERROR_TOOL } from '../../../shared/rules/finding-helpers.mjs';
+import { javaCommand } from '../maven/maven-command.mjs';
+import { JVM_NOISE } from '../../../shared/messages/jvm/jvm-noise.mjs';
 
 const packageRoot = path.resolve(import.meta.dirname, '../../..');
 const runnerPath = path.join(import.meta.dirname, 'java-runner.mjs');
@@ -19,6 +20,7 @@ const ENTRY_FILES = [
 ];
 const ARCHUNIT_DIRECTORY = 'languages/java/gradle/archunit';
 const KOTLIN_PSI_DIRECTORY = 'languages/java/gradle/kotlin-psi';
+const DESIGN_DIRECTORY = 'languages/java/gradle/design';
 const RESOURCE_FILES = [
   'languages/java/adapters/gradle-wrapper/gradle-supervisor.mjs',
   'languages/java/gradle/nitpicker.init.gradle',
@@ -27,6 +29,7 @@ const RESOURCE_FILES = [
   'languages/java/gradle/pmd-ruleset.xml',
   'languages/java/gradle/pmd-main-ruleset.xml',
   'languages/java/gradle/spring-ruleset.xml',
+  'languages/java/gradle/reactor-ruleset.xml',
   'languages/java/gradle/pmd-test-ruleset.xml',
   'languages/java/gradle/spring-test-ruleset.xml',
   'languages/java/gradle/StructureMetrics.java',
@@ -51,12 +54,14 @@ function javaSources(directory, entries) {
 function configurationContents() {
   const kotlinPsi = readdirSync(path.join(packageRoot, KOTLIN_PSI_DIRECTORY), { recursive: true });
   const archunit = readdirSync(path.join(packageRoot, ARCHUNIT_DIRECTORY), { recursive: true });
+  const design = readdirSync(path.join(packageRoot, DESIGN_DIRECTORY), { recursive: true });
   return importClosure(
     [
       ...ENTRY_FILES,
       ...RESOURCE_FILES,
       ...javaSources(KOTLIN_PSI_DIRECTORY, kotlinPsi),
       ...javaSources(ARCHUNIT_DIRECTORY, archunit),
+      ...javaSources(DESIGN_DIRECTORY, design),
     ],
     packageRoot,
   );

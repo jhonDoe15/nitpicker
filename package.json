@@ -73,6 +73,7 @@
     "docs/agents-snippet.md",
     "!languages/java/gradle/rulesets/**",
     "skills/**",
+    "CHANGELOG.md",
     "spec/config.schema.json",
     "spec/findings.schema.json",
     "spec/json-output.schema.json"

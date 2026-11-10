@@ -8,7 +8,7 @@ const packageRoot = path.resolve(sharedRoot, '..');
 
 // Static `import ... from 'x'`, `export ... from 'x'` and dynamic `import('x')` specifiers.
 const SPECIFIER =
-  /(?:^|\n)\s*(?:import|export)\b[^'";]*?\bfrom\s*['"]([^'"]+)['"]|(?<![\w-])import\s*\(?\s*['"]([^'"]+)['"]/g;
+  /(?:^|\n)\s*(?:import|export)\b[^'";]*?\bfrom\s*['"]([^'"]+)['"]|(?<![\w'"-])import\s*\(?\s*['"]([^'"]+)['"]/g;
 
 const LAZY_TOOL_IMPORTS = new Map([['logic/decide.mjs', 'z3-solver']]);
 

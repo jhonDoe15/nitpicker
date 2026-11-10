@@ -4,6 +4,7 @@ import path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { gradleTarget } from './gradle-command.mjs';
 import { analyzeJavaSnapshot } from '../java-runner.mjs';
+import { linkSentence } from '../../../../shared/messages/test-support/link-sentence.mjs';
 
 const roots = [];
 let previousGradle;
@@ -139,7 +140,7 @@ describe.skipIf(process.platform === 'win32')('analyzeJavaSnapshot', () => {
     const root = project(wrapper(failing));
 
     expect(messageOf(root, { gradle: undefined })).toBe(
-      'Java preset failed on your change: ran gradlew in .',
+      'Java preset failed on your change: ran gradlew in . ' + linkSentence('gradleFails'),
     );
   });
 
@@ -147,7 +148,7 @@ describe.skipIf(process.platform === 'win32')('analyzeJavaSnapshot', () => {
     const root = project({ gradlew: { text: failing, mode: 0o644 } });
 
     expect(messageOf(root, { gradle: undefined })).toBe(
-      'Java preset failed on your change: ran gradlew in .',
+      'Java preset failed on your change: ran gradlew in . ' + linkSentence('gradleFails'),
     );
   });
 
@@ -158,7 +159,7 @@ describe.skipIf(process.platform === 'win32')('analyzeJavaSnapshot', () => {
     });
 
     expect(messageOf(root, { gradle: path.join(other, 'other-gradle') })).toBe(
-      `Java preset failed on your change: configured ${other}/other-gradle in .`,
+      `Java preset failed on your change: configured ${other}/other-gradle in . ${linkSentence('gradleFails')}`,
     );
   });
 });

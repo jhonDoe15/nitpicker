@@ -1,6 +1,9 @@
 import { scopeLine } from '../scope/scope-findings.mjs';
 import { renderSnapshotSarifReport } from '../diff/reporting/sarif.mjs';
 import { clearLogs, clearReports, json, writeReports } from '../diff/reporting/reporters.mjs';
+import { quickLines, stagedLines } from '../quick/summary.mjs';
+import { junitRunProfile } from '../quick/report-formats.mjs';
+import { toolErrorHelpLine } from '../../shared/messages/troubleshooting.mjs';
 import { designNoteLines } from '../diff/reporting/format/design-notes.mjs';
 import { partialRunLines } from '../diff/reporting/partial-run/partial-run.mjs';
 import { ruleReferenceLines } from '../diff/reporting/text.mjs';
@@ -53,12 +56,14 @@ function renderTextReport(report, reference, descriptiveLines) {
   const descriptive = report.findings.filter((finding) => finding.classification === 'descriptive');
   const lines = [
     'Nitpicker quality snapshot',
+    ...stagedLines(report.summary),
     `Status: ${report.summary.overallStatus}`,
     ...scopeLine(report.summary),
     `Enforceable findings: ${String(enforceable.length)}`,
     `Descriptive findings: ${String(descriptive.length)}`,
     `Tool errors: ${String(report.toolErrors.length)}`,
     ...partialRunLines(report.summary),
+    ...quickLines(report.summary),
   ];
 
   appendToolCountSection(lines, report.summary.tools);
@@ -98,6 +103,8 @@ function renderJunitReport(report) {
       `  <testcase classname="quality.snapshot" name="${escapeXml(`${error.tool}:${error.snapshot}`)}" time="0"><failure message="${escapeXml(error.message)}">${escapeXml(error.message)}</failure></testcase>`,
     );
   }
+  const profile = junitRunProfile(report.summary, 'quality.snapshot', escapeXml);
+  testCases.push(...profile.skippedCases);
   if (testCases.length === 0) {
     testCases.push(
       '  <testcase classname="quality.snapshot" name="framework" time="0"></testcase>',
@@ -106,7 +113,8 @@ function renderJunitReport(report) {
   const tests = testCases.length;
   return [
     '<?xml version="1.0" encoding="UTF-8"?>',
-    `<testsuite name="quality.snapshot" tests="${String(tests)}" failures="${String(failures)}" errors="0" time="${(report.summary.elapsedMs / 1000).toFixed(3)}">`,
+    `<testsuite name="quality.snapshot" tests="${String(tests)}" failures="${String(failures)}" errors="0"${profile.skippedAttribute} time="${(report.summary.elapsedMs / 1000).toFixed(3)}">`,
+    ...profile.propertyLines,
     ...testCases,
     '</testsuite>',
     '',
@@ -144,6 +152,10 @@ function appendToolErrorSection(lines, toolErrors) {
   lines.push('', 'Tool errors:');
   for (const error of toolErrors) {
     lines.push(`${error.tool} (${error.snapshot}): ${error.message}`);
+  }
+  const help = toolErrorHelpLine(toolErrors.map(({ message }) => message));
+  if (help !== undefined) {
+    lines.push(help);
   }
 }
 

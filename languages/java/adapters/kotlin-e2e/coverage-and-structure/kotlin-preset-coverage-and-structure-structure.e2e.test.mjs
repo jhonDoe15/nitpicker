@@ -80,7 +80,7 @@ describe.skipIf(!kotlinE2eEnabled)('Kotlin preset coverage and structure end to 
     const stable = onlyTools(result.newFindings, 'coupling').find(
       ({ identity }) => identity === 'package:stable2:instability',
     );
-    expect(stable.metric).toEqual({ name: 'instability', value: 0.3333 });
+    expect(stable.metric).toEqual({ name: 'instability', value: expect.closeTo(0.3333, 10) });
     expect(
       onlyTools(result.unchangedFindings, 'coupling')
         .filter(({ rule }) => rule === 'stability-direction')
