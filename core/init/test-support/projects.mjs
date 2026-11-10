@@ -9,6 +9,17 @@ export function readText(root, name) {
   return readFileSync(insideProject(root, name), 'utf8');
 }
 
+export function withPeers(versions, manifest = {}) {
+  const installed = Object.entries(versions).map(([name, version]) => [
+    `node_modules/${name}/package.json`,
+    JSON.stringify({ name, version }),
+  ]);
+  return {
+    'package.json': JSON.stringify({ ...manifest, devDependencies: versions }),
+    ...Object.fromEntries(installed),
+  };
+}
+
 export function useProjects() {
   const { temporaryRoot } = useGitFixtures();
   return function project(files, { repository = false } = {}) {

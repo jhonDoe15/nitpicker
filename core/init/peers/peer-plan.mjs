@@ -17,7 +17,7 @@ const PYTHON_ADVICE = {
     "Run it with the project's conda environment active, or add the packages to environment.yml.",
 };
 const JVM_REQUIREMENTS = 'Java 21 or newer. nitpicker adds its own analysis tools to the build.';
-const NOTHING = { missing: [], undeclared: [], installedOnly: [] };
+const NOTHING = { missing: [], uninstalled: [], undeclared: [], installedOnly: [] };
 
 export function shellQuoted(requirement) {
   return /^[\w@/.=-]+$/u.test(requirement) ? requirement : `'${requirement}'`;
@@ -33,8 +33,16 @@ export function installCommand(installer, requirements) {
 
 function nodePlan(projectRoot, project, nodeVersion) {
   assertTypeScriptNode(projectRoot, nodeVersion);
-  const missing = missingNodePeers(projectRoot, project.testRunner, nodeVersion);
-  return { ...NOTHING, missing, command: installCommand(project.packageManager.add, missing) };
+  const { add, uninstalled } = missingNodePeers(projectRoot, project.testRunner, nodeVersion);
+  return {
+    ...NOTHING,
+    missing: add,
+    uninstalled,
+    command:
+      add.length === 0
+        ? project.packageManager.install
+        : installCommand(project.packageManager.add, add),
+  };
 }
 
 function requirementsWhere(status, keep) {
@@ -46,6 +54,7 @@ function pythonPlan(projectRoot, project) {
   const missing = requirementsWhere(status, ({ declared, installed }) => !declared && !installed);
   return {
     missing,
+    uninstalled: [],
     undeclared: requirementsWhere(status, ({ declared }) => !declared),
     installedOnly: requirementsWhere(status, ({ declared, installed }) => !declared && installed),
     command: installCommand(pythonInstaller(project.tool), missing),
@@ -61,7 +70,7 @@ export function planPeers(projectRoot, project, nodeVersion = process.versions.n
     project.family === 'python'
       ? pythonPlan(projectRoot, project)
       : nodePlan(projectRoot, project, nodeVersion);
-  return plan.missing.length === 0
+  return plan.missing.length === 0 && plan.uninstalled.length === 0
     ? { ...NOTHING, undeclared: plan.undeclared, installedOnly: plan.installedOnly }
     : plan;
 }
