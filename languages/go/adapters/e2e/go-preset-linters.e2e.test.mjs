@@ -81,11 +81,13 @@ describe.skipIf(!goE2eEnabled)('Go preset linters end to end', () => {
     expect(newFindings(result)).toEqual([
       'contextcheck/contextcheck shop/stock.go',
       'errorlint/errorlint shop/stock.go',
+      'go-rules/context-outside-entry shop/stock/stock.go',
       'nilerr/nilerr shop/stock.go',
     ]);
     expect(newMessages(result)).toEqual([
       'Function `Refresh` should pass the context parameter. Take a `ctx context.Context` parameter and pass the caller\'s context down, or derive one from it; a goroutine uses a context made before the `go` statement. If this is intended, add {"rule":"contextcheck/contextcheck","paths":["shop/stock.go"],"reason":"..."} to "exceptions" in nitpicker.config.json.',
       'comparing with == will fail on wrapped errors. Use errors.Is to check for a specific error. If this is intended, add {"rule":"errorlint/errorlint","paths":["shop/stock.go"],"reason":"..."} to "exceptions" in nitpicker.config.json.',
+      'a new root context outside package main cannot be cancelled by any caller: take `ctx context.Context` as the first parameter and pass it on. If this is intended, add {"rule":"go-rules/context-outside-entry","paths":["shop/stock/stock.go"],"reason":"..."} to "exceptions" in nitpicker.config.json.',
       'error is not nil but it returns nil. Return the error the branch checks: the error when it is set, nil when it is not. If this is intended, add {"rule":"nilerr/nilerr","paths":["shop/stock.go"],"reason":"..."} to "exceptions" in nitpicker.config.json.',
     ]);
   });
