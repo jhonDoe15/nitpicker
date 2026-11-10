@@ -19,6 +19,7 @@ function prefetch(task, extra = '') {
 }
 const LIMITED = `    private fun limited(url: URI): String {\n        permits.acquire()\n        try {\n            return body(url)\n        } finally {\n            permits.release()\n        }\n    }\n\n`;
 
+const QUERY = `${PACKAGE}class Query {\n    fun setParameter(name: String, value: Any): Query = this\n}\n\n`;
 export const GUARD_ROOT = 'src/main/kotlin/demo/guards';
 const GUARD_TEST_ROOT = 'src/test/kotlin/demo/guards';
 
@@ -52,6 +53,8 @@ const BANNED_GUARDS = {
   'Routes.kt': `${PACKAGE}fun route(name: String): Regex = Regex("^/$name/")\n\nfun clean(text: String): String = text.replace(Regex("abc"), "")\n`,
   'Exports.kt': `${PACKAGE}fun render(command: List<String>): Int = ProcessBuilder(command).start().waitFor()\n`,
   'Versions.kt': `${PACKAGE}fun version(command: List<String>): String {\n    val process = ProcessBuilder(command).start()\n    return process.inputStream.bufferedReader().readText()\n}\n`,
+  'Reports.kt': `${PACKAGE}const val RECENT = "select id from account where active limit 20"\n`,
+  'Lookups.kt': `${QUERY}fun byIds(query: Query, ids: List<Long>): Query = query.setParameter("ids", ids)\n`,
   'Paths.kt': `${PACKAGE}class Paths(private val known: List<String>) {\n    fun unique(paths: List<String>): List<String> {\n        val seen = mutableListOf<String>()\n        for (path in paths) {\n            if (path !in seen) seen.add(path)\n        }\n        return seen\n    }\n\n    fun matches(paths: List<String>): List<String?> = paths.map { p -> known.find { it.length == p.length } }\n\n    fun shortest(paths: List<String>): String = paths.sortedBy { it.length }.first()\n}\n`,
 };
 
@@ -88,6 +91,8 @@ const ALLOWED_GUARDS = {
   'Routes.kt': `${PACKAGE}fun route(name: String): Regex = Regex("^/\${Regex.escape(name)}/")\n\nfun clean(text: String): String = text.replace("abc", "")\n`,
   'Exports.kt': `${PACKAGE}import java.util.concurrent.TimeUnit\n\nprivate const val DEADLINE_SECONDS = 30L\n\nfun render(command: List<String>): Int {\n    val process = ProcessBuilder(command).start()\n    check(process.waitFor(DEADLINE_SECONDS, TimeUnit.SECONDS)) { "timed out: $command" }\n    return process.exitValue()\n}\n`,
   'Versions.kt': `${PACKAGE}import java.util.concurrent.CompletableFuture\nimport java.util.concurrent.TimeUnit\n\nprivate const val VERSION_SECONDS = 30L\n\nfun version(command: List<String>): String {\n    val process = ProcessBuilder(command).start()\n    val output = CompletableFuture.supplyAsync { process.inputStream.bufferedReader().readText() }\n    check(process.waitFor(VERSION_SECONDS, TimeUnit.SECONDS)) { "timed out: $command" }\n    return output.join()\n}\n`,
+  'Reports.kt': `${PACKAGE}const val RECENT = "select id from account where active order by id limit 20"\n`,
+  'Lookups.kt': `${QUERY}fun byIds(query: Query, ids: List<Long>): Query {\n    if (ids.isEmpty()) {\n        return query\n    }\n    return query.setParameter("ids", ids)\n}\n`,
   'Paths.kt': `${PACKAGE}class Paths(private val known: List<String>) {\n    fun unique(paths: List<String>): Set<String> {\n        val seen = mutableSetOf<String>()\n        for (path in paths) {\n            seen.add(path)\n        }\n        return seen\n    }\n\n    fun matches(paths: List<String>): List<String?> {\n        val byLength = known.associateBy { it.length }\n        return paths.map { p -> byLength[p.length] }\n    }\n\n    fun shortest(paths: List<String>): String? = paths.minByOrNull { it.length }\n}\n`,
 };
 
@@ -139,6 +144,8 @@ export const EXPECTED_BANNED = [
   'kotlin-source/PlainTextRegex Routes.kt',
   'kotlin-source/ProcessWaitWithoutTimeout Exports.kt',
   'kotlin-source/ProcessWaitWithoutTimeout Versions.kt',
+  'kotlin-source/UnorderedQuery Reports.kt',
+  'kotlin-source/UnboundedQueryArray Lookups.kt',
   'kotlin-source/ListUsedAsSet Paths.kt',
   'kotlin-source/LinearLookupInLoop Paths.kt',
   'kotlin-source/SortForExtreme Paths.kt',
