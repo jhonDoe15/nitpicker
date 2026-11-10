@@ -55,7 +55,7 @@ function goVersion(liveProjectRoot) {
 }
 
 function goInvocation(settings, part) {
-  return ({ projectRoot, toolRoot }) => ({
+  return ({ projectRoot, toolRoot, baselineMovesFile }) => ({
     command: process.execPath,
     args: [
       cliPath,
@@ -64,6 +64,7 @@ function goInvocation(settings, part) {
       projectRoot,
       ...(part === GO_ANALYZER_NAME ? [] : ['--part', part]),
       ...(Object.keys(settings).length === 0 ? [] : ['--go-settings', JSON.stringify(settings)]),
+      ...(baselineMovesFile === undefined ? [] : ['--baseline-moves-file', baselineMovesFile]),
     ],
     cwd: toolRoot,
   });
@@ -88,6 +89,7 @@ function createGoAnalyzer(settings) {
       'staticcheck',
       'errcheck',
       'modernize',
+      'revive',
       'build',
       'tests',
       'test-runtime',

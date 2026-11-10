@@ -6,7 +6,7 @@ const IMPORT_LINE = new RegExp(String.raw`^(?:${PLAIN_IMPORT}|${FROM_IMPORT})$`)
 const COMMENT_TAIL = /#.*$/;
 const IMPORT_CONTINUATION = /^(?:[\w.*]+(?:\s+as\s+\w+)?\s*(?:,\s*\)?|\))|\))$/;
 const BLANK_OR_COMMENT = /^\s*(?:#.*)?$/;
-const ALL_START = /^\s*__all__\s*[+]?=\s*[[(]/;
+const ALL_START = /^\s*__all__\s*\+?=\s*[[(]/;
 const ALL_END = /[\])]\s*$/;
 export const PYTHON_OVERSHOOT = /^\s*(?:@\w|#|(?:async\s+)?(?:def|class)\b)/;
 

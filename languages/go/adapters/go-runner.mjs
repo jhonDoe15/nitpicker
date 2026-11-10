@@ -16,7 +16,7 @@ import { createGoContext, runGoSteps } from './go-steps.mjs';
 import { describeError } from '../../../shared/messages/error-chain.mjs';
 
 export const GO_ANALYZER_COMMAND = 'go-analyzer';
-const GO_OPTIONS = ['--go-settings', '--part'];
+const GO_OPTIONS = ['--go-settings', '--part', '--baseline-moves-file'];
 const PARTS = [GO_ANALYZER_NAME, GO_MUTATION_ANALYZER_NAME];
 
 function toolError({ rule, message }) {
@@ -117,7 +117,7 @@ export function parseGoArguments(runnerArguments) {
   return {
     projectRoot,
     settings: JSON.parse(own.get('--go-settings') ?? '{}'),
-    policy,
+    policy: { ...policy, baselineMovesFile: own.get('--baseline-moves-file') },
     part,
   };
 }
