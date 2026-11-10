@@ -11,6 +11,7 @@ import { readLayout } from '../../../head-policy.mjs';
 const MAX_REEXPORT_DEPTH = 4;
 const DECLARATION_FILE = /\.d\.[cm]?ts$/u;
 const EMPTY = { constants: new Map(), reexports: [] };
+const JAVASCRIPT_FILE = /\.[cm]?jsx?$/u;
 const HIDDEN_MEMBERS = [ts.SyntaxKind.PrivateKeyword, ts.SyntaxKind.ProtectedKeyword];
 const layout = readLayout();
 
@@ -55,33 +56,35 @@ function hasModifier(node, kind) {
   return node.modifiers?.some((modifier) => modifier.kind === kind) ?? false;
 }
 
-function isStaticConstant(member) {
+function isStaticConstant(member, javascript) {
   return (
     ts.isPropertyDeclaration(member) &&
     ts.isIdentifier(member.name) &&
     hasModifier(member, ts.SyntaxKind.StaticKeyword) &&
-    hasModifier(member, ts.SyntaxKind.ReadonlyKeyword) &&
+    (javascript || hasModifier(member, ts.SyntaxKind.ReadonlyKeyword)) &&
     !HIDDEN_MEMBERS.some((kind) => hasModifier(member, kind)) &&
     isConstantName(member.name.text)
   );
 }
 
-function classConstants(statement) {
+function classConstants(statement, javascript) {
   if (!ts.isClassDeclaration(statement) || statement.name === undefined) {
     return [];
   }
-  return statement.members.filter(isStaticConstant).flatMap((member) => {
-    const value = literalValue(member.initializer);
-    return value === undefined ? [] : [[`${statement.name.text}.${member.name.text}`, value]];
-  });
+  return statement.members
+    .filter((member) => isStaticConstant(member, javascript))
+    .flatMap((member) => {
+      const value = literalValue(member.initializer);
+      return value === undefined ? [] : [[`${statement.name.text}.${member.name.text}`, value]];
+    });
 }
 
-function localConstants(statement) {
+function localConstants(statement, javascript) {
   const isConst =
     ts.isVariableStatement(statement) &&
     (statement.declarationList.flags & ts.NodeFlags.Const) !== 0;
   if (!isConst) {
-    return classConstants(statement);
+    return classConstants(statement, javascript);
   }
   return statement.declarationList.declarations.flatMap(({ name, initializer }) => {
     const value = ts.isIdentifier(name) ? literalValue(initializer) : undefined;
@@ -147,13 +150,15 @@ function readModule(file) {
     true,
     scriptKindOf(file),
   );
-  const locals = new Map(sourceFile.statements.flatMap(localConstants));
+  const javascript = JAVASCRIPT_FILE.test(file);
+  const constantsOf = (statement) => localConstants(statement, javascript);
+  const locals = new Map(sourceFile.statements.flatMap(constantsOf));
   const exportStatements = sourceFile.statements.filter(isValueExport);
   return {
     constants: new Map([
       ...sourceFile.statements
         .filter(isExported)
-        .flatMap(localConstants)
+        .flatMap(constantsOf)
         .filter(([name]) => isConstantPath(name)),
       ...listedConstants(exportStatements, locals),
     ]),

@@ -193,7 +193,9 @@ Details that are decisions rather than the table:
   `import a.b as x`, `from a.b import ...`, `from a import b`, or by a fixed absolute name with
   `importlib.import_module`, `__import__` or `pytest.importorskip`). An `UPPER_SNAKE` class attribute
   counts too, in nested classes as well (`Api.Paging.MAX_PAGES`), except in a class whose name starts
-  with `_` and the members of an `Enum`, `Flag` or Django `Choices` class. Test files, `test_*.py` and `*_test.py`
+  with `_` and the members of an enum: a class whose base, read through the module's imports, ends in
+  `Enum`, `Flag` or `Choices` (`enum.Enum`, `from enum import Enum as E`, Django `TextChoices`), or is
+  an enum class of the same module. Test files, `test_*.py` and `*_test.py`
   modules and the test support files (`conftest.py`, the `tests`/`test` folders and `testpaths`, and the
   `testing`, `fixtures`, `mocks` and other support folders that production code does not import, as
   for the security rules) declare no constants; booleans, `None`, bytes

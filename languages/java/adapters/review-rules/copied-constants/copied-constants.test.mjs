@@ -184,10 +184,10 @@ describe('copied constants in JVM tests', () => {
       ].join('\n'),
       'src/test/kotlin/other/StoreTest.kt': [
         'package other',
-        'import shop.Store',
+        'import shop.Store.Keys',
         'import shop.Store.Shelf as S',
         'fun t() {',
-        '  Store.of(); S.of()',
+        '  Keys.of(); S.of()',
         '  key() shouldBe "cart-v2"',
         '  size() shouldBe 30',
         '  hidden() shouldBe "hidden-v1"',

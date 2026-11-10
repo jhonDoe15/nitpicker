@@ -24,7 +24,10 @@ const SOURCES = {
     'export const LIMITS = { MAX: 3 };',
     'export function limit() { return MAX_ITEMS; }',
   ].join('\n'),
-  'src/index.ts': "export * from './limits';\nexport { ROLE as ADMIN_ROLE } from './roles';",
+  'src/index.ts':
+    "export * from './limits';\nexport { ROLE as ADMIN_ROLE } from './roles';\nexport { Paging as Pages } from './paging';",
+  'src/legacy.js':
+    'export class Legacy {\n  static MAX_RETRIES = 30;\n  static #HIDDEN_CAP = 31;\n}',
   'src/roles.ts': "export const ROLE = 'administrator';",
   'src/other.ts': 'export const OTHER_LIMIT = 50;',
   'src/same.ts': 'export const BATCH_SIZE = 50;',
@@ -216,6 +219,23 @@ describe('no-copied-constant', () => {
       '2 This literal copies Paging.PAGE_LIMIT',
       '4 This literal copies Paging.PAGE_LIMIT',
       '7 This literal copies Shared.LOCAL_KEY',
+    ]);
+  });
+
+  it('reads plain static members in JavaScript and class members through re-exports', () => {
+    const messages = reported(
+      [
+        "import { Legacy } from '../src/legacy.js';",
+        "import { Pages } from '@/index';",
+        'expect(retries()).toBe(30);',
+        'expect(cap()).toBe(31);',
+        'expect(Pages.of()).toBe(40);',
+      ].join('\n'),
+    );
+
+    expect(messages.map(({ line, message }) => `${line} ${message.split(' from ')[0]}`)).toEqual([
+      '3 This literal copies Legacy.MAX_RETRIES',
+      '5 This literal copies Pages.PAGE_LIMIT',
     ]);
   });
 
