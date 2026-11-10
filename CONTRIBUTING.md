@@ -90,8 +90,11 @@ CI (the `typescript` workflow) runs:
 
 - on every push to `main` that touches a path in the workflow's `paths` list (a run that has started
   finishes; a run still waiting is replaced by the next push's run, which tests everything merged so far);
-- on a pull request when someone adds the `run-ci` label, once per added label (remove and add the
-  label again for another run);
+- on a pull request when someone adds a label while it carries the `run-ci` label: adding `run-ci`
+  starts it, and any later label runs it again (remove and add `run-ci` for another run). GitHub
+  keeps only the newest run of a workflow for a commit and counts a skipped required check as
+  passed, so a label never skips the checks: on a pull request without `run-ci` the self-gate
+  still runs and `test` fails until someone adds `run-ci`;
 - by hand from the Actions tab (Run workflow) on any branch that already has this workflow.
 
 GitHub does not start a pull request run while the pull request has a merge conflict, so resolve it

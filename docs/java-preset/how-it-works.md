@@ -23,7 +23,9 @@ gradle -I languages/java/gradle/nitpicker.init.gradle nitpickerJava   (per snaps
   temporary directory outside the project, and the task writes only below it, one subdirectory per
   Gradle project (layout in [internals.md](../internals.md#java-report-directory)). A build script
   that writes to `build/nitpicker` therefore changes nothing nitpicker reads. Run by hand without the property, the task
-  writes to `build/nitpicker/` of each project.
+  writes to `build/nitpicker/` of each project. The tools resolve from Maven Central, which the init script adds to each
+  project, unless `settings.gradle(.kts)` sets `repositoriesMode` to `FAIL_ON_PROJECT_REPOS` (Gradle then refuses a
+  project repository): the repositories the settings declare are used, and they must include Maven Central or a mirror.
 - **Multi-project builds.** Every project that applies the `java` plugin is analyzed, the root
   included when it applies it; paths in findings are relative to the directory Gradle runs in, so a
   subproject's findings carry its folder (`lib/src/main/java/...`). A build where no project applies
@@ -93,6 +95,11 @@ gradle -I languages/java/gradle/nitpicker.init.gradle nitpickerJava   (per snaps
   crashes, no `gradle` on the PATH, unreadable reports), nothing is silently skipped. `runJavaDiff`
   (the library entry) throws; the CLI path maps the failure to a `tool-error` finding, see slice 2:
   `tests-failed` when the test reports name failing tests (exit 1), `gradle-failure` otherwise.
+  A head that does not compile is not a tool failure: each compiler error (javac, Error Prone,
+  kotlinc; on Maven the compiler plugin's `[ERROR] file:[line,column]` lines) becomes a
+  `build/compile-error` finding at its file and line (exit 1), and one `compile-failed-skipped`
+  notice says the other checks did not run. The comparison then reports no base finding as
+  resolved. A base that does not compile stays a `gradle-failure` (or `maven-failure`).
   The one exception is a base snapshot whose test reports name failing tests while the head passes:
   that is a note and the run goes on (see [A base whose tests fail](../usage.md#a-base-whose-tests-fail)).
   A base that fails for another reason, or whose tests fail without a named failing test, still

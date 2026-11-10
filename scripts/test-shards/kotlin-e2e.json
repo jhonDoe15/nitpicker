@@ -41,6 +41,8 @@
   "languages/java/adapters/kotlin-e2e/maven/project/kotlin-maven-modules.e2e.test.mjs": 95,
   "languages/java/adapters/kotlin-e2e/maven/project/kotlin-maven-spring.e2e.test.mjs": 135,
   "languages/java/adapters/kotlin-e2e/multi-project/kotlin-multi-project.e2e.test.mjs": 51,
+  "languages/java/adapters/kotlin-e2e/multiplatform/kotlin-android.e2e.test.mjs": 150,
+  "languages/java/adapters/kotlin-e2e/multiplatform/kotlin-multiplatform.e2e.test.mjs": 90,
   "languages/java/adapters/kotlin-e2e/mutation/kotlin-mutation-facts.e2e.test.mjs": 12,
   "languages/java/adapters/kotlin-e2e/one-way/kotlin-preset-one-way-rules-allowed.e2e.test.mjs": 74,
   "languages/java/adapters/kotlin-e2e/one-way/kotlin-preset-one-way-rules-banned.e2e.test.mjs": 154,

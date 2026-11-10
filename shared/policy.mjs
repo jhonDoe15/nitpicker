@@ -242,10 +242,10 @@ const CATALOG = [
     id: RULE_IDS.duplicateClone,
     check: 'duplicates',
     limit: `jscpd in \`${DUPLICATES_MODE}\` mode, also over sources with names and literals normalized (at least 100 tokens, except code that only repeats one or two statements); any new clone fails`,
-    enforcedBy: withKotlin(ALL, true),
+    enforcedBy: withGo(withKotlin(ALL, true)),
   },
   ...couplingRules(RULE_IDS, {
-    everyLanguage: withKotlin(ALL, true),
+    everyLanguage: withGo(withKotlin(ALL, true)),
     withoutTypescript: withKotlin({ typescript: false, java: true, python: true }, true),
   }),
   {

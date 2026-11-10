@@ -1,5 +1,4 @@
-import { mkdtempSync, writeFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { mkdirSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import {
   isExplainedError,
@@ -20,21 +19,33 @@ function withLineBeforeLink(message, line) {
     : `${withoutTroubleshooting(message)}\n${line}\n${link}`;
 }
 
-export function withGradleLog(error, result, { logLast = false } = {}) {
+export const GRADLE_LOG_LINE = 'Full Gradle log: ';
+
+export function gradleLog({ logRoot, logLabel, preset = 'java', snapshot = 'head' } = {}) {
+  if (logRoot === undefined) {
+    return undefined;
+  }
+  const name = `${preset}-${snapshot}-gradle.log`;
+  return {
+    file: path.join(logRoot, name),
+    label: logLabel === undefined ? path.join(logRoot, name) : `${logLabel}/${name}`,
+  };
+}
+
+export function withGradleLog(error, result, log) {
+  if (log === undefined) {
+    return error;
+  }
   try {
-    const directory = mkdtempSync(path.join(tmpdir(), 'nitpicker-gradle-failure-'));
-    const file = path.join(directory, 'gradle.log');
+    mkdirSync(path.dirname(log.file), { recursive: true });
     writeFileSync(
-      file,
+      log.file,
       `=== stdout ===\n${result.stdout ?? ''}\n=== stderr ===\n${result.stderr ?? ''}`,
-      {
-        mode: 0o600,
-      },
+      { mode: 0o600 },
     );
-    const log = `Full Gradle log: ${file}`;
     return keepingExplained(
       error,
-      new Error(logLast ? withLineBeforeLink(error.message, log) : `${log}\n${error.message}`, {
+      new Error(withLineBeforeLink(error.message, `${GRADLE_LOG_LINE}${log.label}`), {
         cause: error,
       }),
     );
