@@ -15,7 +15,11 @@ const hygieneAnalyzers = createHygieneAnalyzers(entryPath);
 const historyAnalyzers = createHistoryAnalyzers(entryPath);
 
 export function presetAnalyzers(config, injected) {
-  return injected ?? [...languageAnalyzers(config), ...hygieneAnalyzers, ...optInAnalyzers(config)];
+  if (injected !== undefined) {
+    return injected;
+  }
+  const language = languageAnalyzers(config);
+  return [...language, ...hygieneAnalyzers, ...optInAnalyzers(config, language)];
 }
 
 function languageAnalyzers(config) {
@@ -31,6 +35,11 @@ function languageAnalyzers(config) {
   return config.preset === 'javascript' ? javascriptAnalyzers() : configuredAnalyzers();
 }
 
-function optInAnalyzers(config) {
-  return config.history?.coChange === true ? historyAnalyzers : [];
+function optInAnalyzers(config, language) {
+  const publishers = language
+    .filter(({ publishesModuleImports }) => publishesModuleImports === true)
+    .map(({ name }) => name);
+  return config.history?.coChange === true
+    ? historyAnalyzers.map((analyzer) => ({ ...analyzer, colocatedWith: publishers }))
+    : [];
 }

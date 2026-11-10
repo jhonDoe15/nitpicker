@@ -1,6 +1,7 @@
 import { realpathSync } from 'node:fs';
 import { readHeadPolicyFile } from '../../../shared/head-policy.mjs';
-import { collectJavaFindings } from './java-diff.mjs';
+import { collectJavaReport } from './java-diff.mjs';
+import { moduleImportsSection } from '../../../shared/history/co-change/dependencies/module-imports.mjs';
 import { detectJavaBuild } from '../builds/java-build.mjs';
 import { parseJavaRunnerArguments } from './java-policy.mjs';
 import { featureLayout } from '../../../shared/rules/features/feature-roles.mjs';
@@ -62,16 +63,15 @@ export function analyzeJavaSnapshot(
   } = {},
 ) {
   try {
-    return {
-      findings: collectJavaFindings(projectRoot, {
-        gradle: gradle || undefined,
-        maven: maven || undefined,
-        environment,
-        policy,
-        spawn,
-        budget: javaExecutionBudget(),
-      }),
-    };
+    const { findings, imports } = collectJavaReport(projectRoot, {
+      gradle: gradle || undefined,
+      maven: maven || undefined,
+      environment,
+      policy,
+      spawn,
+      budget: javaExecutionBudget(),
+    });
+    return { findings, ...moduleImportsSection(imports, policy?.history) };
   } catch (error) {
     const compileErrors = policy?.snapshot === 'base' ? [] : compileErrorsOf(error);
     if (compileErrors.length > 0) {
@@ -98,7 +98,7 @@ export function analyzeJavaSnapshot(
 }
 
 export function withHeadPolicy(policy, headPolicy) {
-  const { conventions, spring, springRoles, featureFolders, layout, kotlin } = headPolicy;
+  const { conventions, spring, springRoles, featureFolders, layout, kotlin, history } = headPolicy;
   return {
     ...policy,
     conventions,
@@ -109,6 +109,7 @@ export function withHeadPolicy(policy, headPolicy) {
     ...(springRoles === undefined ? {} : { springRoles }),
     kotlinFormatter: kotlin?.formatter ?? policy.kotlinFormatter,
     ...(kotlin === undefined ? {} : { kotlinFacts: kotlin }),
+    ...(history === undefined ? {} : { history }),
   };
 }
 
