@@ -86,6 +86,8 @@ const REVIEW_RULES = new Set([
   'UnclosedInlineResource',
   'UnquotedRegexValue',
   'PlainTextRegex',
+  'RegexPartDefect',
+  'BacktrackingRegex',
   'ProcessWaitWithoutTimeout',
   'LogFormatArguments',
   'LogExceptionFirst',

@@ -2150,6 +2150,8 @@
                             "kotlin-source/LogExceptionFirst",
                             "kotlin-source/OperandSlip",
                             "kotlin-source/ProcessWaitWithoutTimeout",
+                            "kotlin-source/RegexPartDefect",
+                            "kotlin-source/BacktrackingRegex",
                             "kotlin-source/UnquotedRegexValue",
                             "kotlin-source/PlainTextRegex",
                             "kotlin-source/UnclosedInlineResource",

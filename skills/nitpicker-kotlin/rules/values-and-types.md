@@ -40,6 +40,9 @@ Part of the [nitpicker-kotlin](../SKILL.md) skill. Write these forms from the st
   whole pattern to `Regex(pattern)` on its own, and use the plain-text `replace`, `split` and
   `contains` for text without metacharacters (`kotlin-source/UnquotedRegexValue`,
   `kotlin-source/PlainTextRegex`).
+  Every part of a literal pattern must change what it matches (`Regex("a|b|a")`, `"[\\w_]"` and
+  `"x{1}"` are `kotlin-source/RegexPartDefect`), and nested quantifiers such as `"(\\s*\\w+)*x"` are
+  `kotlin-source/BacktrackingRegex`.
 - Enums: to sort the entries of one of your enums into two groups, classify every entry with a
   `when` without `else` (adding an entry then fails to compile), or a `Boolean` each entry
   declares. Not `s == PAID || s == SHIPPED`, `s in setOf(PAID, SHIPPED)` or a `when` with
