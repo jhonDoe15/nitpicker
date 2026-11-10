@@ -156,6 +156,18 @@ describe('duplicate-definition on Java and Kotlin', () => {
 
     expect(findings(files, { kotlin: true, policy })).toEqual([]);
   });
+
+  it('reads no file that the build excludes from its Kotlin source set', () => {
+    const file = (packageName) =>
+      `package ${packageName}\n\nfun rounded(x: Double) = Math.round(x * 100) / 100.0\n`;
+    const files = {
+      [`${KOTLIN_ROOT}/shop/a/Money.kt`]: file('shop.a'),
+      [`${KOTLIN_ROOT}/shop/b/Money.kt`]: file('shop.b'),
+    };
+    const projects = [{ ...SINGLE[0], kotlinExcludedFiles: [`${KOTLIN_ROOT}/shop/b/Money.kt`] }];
+
+    expect(findings(files, { kotlin: true, projects })).toEqual([]);
+  });
 });
 
 describe('duplicate-definition keys', () => {

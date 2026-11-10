@@ -1,6 +1,8 @@
 export const SCRIPT_SKIPPED_FOLDERS = ['dist', 'build', 'generated', 'target'];
 export const JVM_SKIPPED_FOLDERS = ['build', 'generated', 'target', 'out'];
 export const PYTHON_SKIPPED_FOLDERS = ['build', 'dist', 'tests', 'test', 'migrations'];
+export const GO_SKIPPED_FOLDERS = ['testdata', 'vendor'];
+export const GO_DUPLICATE_GLOBS = ['**/*_test.go'];
 
 export function skippedFolderGlobs(folders) {
   return folders.map((name) => `**/${name}/**`);
