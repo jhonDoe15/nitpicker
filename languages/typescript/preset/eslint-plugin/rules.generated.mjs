@@ -42,9 +42,11 @@ import { rule as ruleNoManyToManyCascadeRemove } from './rules/persistence/no-ma
 import { rule as ruleNoMockingSubjectUnderTest } from './rules/testing/assertions/no-mocking-subject-under-test.mjs';
 import { rule as ruleNoModuleLevelLet } from './rules/modules/no-module-level-let.mjs';
 import { rule as ruleNoModuleLevelMutableState } from './rules/guards/no-module-level-mutable-state.mjs';
+import { rule as ruleNoMultipleCollectionJoins } from './rules/joins/no-multiple-collection-joins.mjs';
 import { rule as ruleNoMutatingMethodInDomain } from './rules/domain/no-mutating-method-in-domain.mjs';
 import { rule as ruleNoNodeProcessPerTest } from './rules/testing/processes/no-node-process-per-test.mjs';
 import { rule as ruleNoNull } from './rules/syntax/no-null.mjs';
+import { rule as ruleNoOperandSlip } from './rules/operands/no-operand-slip.mjs';
 import { rule as ruleNoOrmQueryLogging } from './rules/database/no-orm-query-logging.mjs';
 import { rule as ruleNoOrmSchemaSync } from './rules/database/no-orm-schema-sync.mjs';
 import { rule as ruleNoParameterMutation } from './rules/signatures/no-parameter-mutation.mjs';
@@ -111,11 +113,13 @@ import { rule as ruleRequireErrorListener } from './rules/events/require-error-l
 import { rule as ruleRequireHttpTimeout } from './rules/security/http/require-http-timeout.mjs';
 import { rule as ruleRequireProcessTimeout } from './rules/processes/require-process-timeout.mjs';
 import { rule as ruleRequireTestProcessTimeout } from './rules/testing/processes/timeouts/require-test-process-timeout.mjs';
+import { rule as ruleReusableObjectPerCall } from './rules/reuse/reusable-object-per-call.mjs';
 import { rule as ruleSimplerBooleanLogic } from './rules/control/simpler-boolean-logic.mjs';
 import { rule as ruleStrictBooleanExpressions } from './rules/wrapped/strict-boolean-expressions.mjs';
 import { rule as ruleStructuredCatchLogging } from './rules/errors/structured-catch-logging.mjs';
 import { rule as ruleTestMustUseProductionRuntime } from './rules/testing/assertions/test-must-use-production-runtime.mjs';
 import { rule as ruleTestTsconfigPinsLibAndTypes } from './rules/testing/types/test-tsconfig-pins-lib-and-types.mjs';
+import { rule as ruleTimeUnitMismatch } from './rules/time/units/time-unit-mismatch.mjs';
 import { rule as ruleTimeoutAbandonsOperation } from './rules/async/timeout-abandons-operation.mjs';
 import { rule as ruleUnboundedFanOut } from './rules/concurrency/unbounded-fan-out.mjs';
 import { rule as ruleUnboundedReactiveFanOut } from './rules/concurrency/reactive/unbounded-reactive-fan-out.mjs';
@@ -166,9 +170,11 @@ export const directoryRules = {
   'no-mocking-subject-under-test': ruleNoMockingSubjectUnderTest,
   'no-module-level-let': ruleNoModuleLevelLet,
   'no-module-level-mutable-state': ruleNoModuleLevelMutableState,
+  'no-multiple-collection-joins': ruleNoMultipleCollectionJoins,
   'no-mutating-method-in-domain': ruleNoMutatingMethodInDomain,
   'no-node-process-per-test': ruleNoNodeProcessPerTest,
   'no-null': ruleNoNull,
+  'no-operand-slip': ruleNoOperandSlip,
   'no-orm-query-logging': ruleNoOrmQueryLogging,
   'no-orm-schema-sync': ruleNoOrmSchemaSync,
   'no-parameter-mutation': ruleNoParameterMutation,
@@ -235,11 +241,13 @@ export const directoryRules = {
   'require-http-timeout': ruleRequireHttpTimeout,
   'require-process-timeout': ruleRequireProcessTimeout,
   'require-test-process-timeout': ruleRequireTestProcessTimeout,
+  'reusable-object-per-call': ruleReusableObjectPerCall,
   'simpler-boolean-logic': ruleSimplerBooleanLogic,
   'strict-boolean-expressions': ruleStrictBooleanExpressions,
   'structured-catch-logging': ruleStructuredCatchLogging,
   'test-must-use-production-runtime': ruleTestMustUseProductionRuntime,
   'test-tsconfig-pins-lib-and-types': ruleTestTsconfigPinsLibAndTypes,
+  'time-unit-mismatch': ruleTimeUnitMismatch,
   'timeout-abandons-operation': ruleTimeoutAbandonsOperation,
   'unbounded-fan-out': ruleUnboundedFanOut,
   'unbounded-reactive-fan-out': ruleUnboundedReactiveFanOut,

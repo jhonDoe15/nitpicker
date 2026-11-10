@@ -24,6 +24,8 @@ const EVERY_LANGUAGE = { typescript: true, java: true, python: true, kotlin: tru
 const IMPORTS_COMPILE =
   'an import that resolves to no class is a compile error in the source sets the build compiles, which are the ones nitpicker reads, so the build fails and reports it before any analyzer runs';
 const TYPESCRIPT_AND_PYTHON = { typescript: true, java: false, python: true, kotlin: false };
+const GO_RESOLVES_IMPORTS =
+  'the compiler rejects an import that no package provides, so it is a `build/compile-error` finding';
 
 export const HYGIENE_RULES = [
   {
@@ -82,22 +84,22 @@ export const HYGIENE_RULES = [
     id: PACKAGE_RULE_IDS.unusedDependency,
     check: 'dead-code',
     limit:
-      "a dependency in package.json (Python: in the project's dependency files) that nothing imports or runs",
-    enforcedBy: TYPESCRIPT_AND_PYTHON,
+      "a dependency in package.json (Python: in the project's dependency files; Go: a `require` that `go mod tidy` removes) that nothing imports or runs",
+    enforcedBy: { ...TYPESCRIPT_AND_PYTHON, go: true },
   },
   {
     id: PACKAGE_RULE_IDS.unlistedDependency,
     check: 'dead-code',
     limit:
-      "an import of a package that package.json (Python: the project's dependency files) does not list",
-    enforcedBy: TYPESCRIPT_AND_PYTHON,
+      "an import of a package that package.json (Python: the project's dependency files; Go: a direct `require` that `go mod tidy` adds) does not list",
+    enforcedBy: { ...TYPESCRIPT_AND_PYTHON, go: true },
   },
   {
     id: PACKAGE_RULE_IDS.unresolvedImport,
     check: 'dead-code',
     limit: 'an import that resolves to no file and no package',
     enforcedBy: TYPESCRIPT_AND_PYTHON,
-    notApplicable: { java: IMPORTS_COMPILE, kotlin: IMPORTS_COMPILE },
+    notApplicable: { java: IMPORTS_COMPILE, kotlin: IMPORTS_COMPILE, go: GO_RESOLVES_IMPORTS },
   },
 ];
 

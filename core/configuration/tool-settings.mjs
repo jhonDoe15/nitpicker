@@ -89,8 +89,7 @@ export function toolSettingKeysOf(preset) {
         : []),
       ...styleToolsOf(preset),
     ];
-    const duplicateScan = preset === 'go' ? [] : ['jscpd'];
-    return new Map([...names, ...duplicateScan].map((tool) => [tool, PRECEDENCE_KEYS]));
+    return new Map([...names, 'jscpd'].map((tool) => [tool, PRECEDENCE_KEYS]));
   }
   return TOOL_SETTING_KEYS;
 }

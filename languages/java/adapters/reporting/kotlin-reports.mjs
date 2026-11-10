@@ -47,7 +47,7 @@ const PACKAGE_DECLARATION = /^\s*package\s+([\w.`]+)/m;
 export function requireKotlinManifest(manifest) {
   if (manifest.kotlin !== true) {
     throw new Error(
-      'The kotlin preset needs a project that applies the Kotlin plugin (org.jetbrains.kotlin.jvm for Gradle, kotlin-maven-plugin for Maven); this one does not',
+      'The kotlin preset needs a project that applies the Kotlin plugin (org.jetbrains.kotlin.jvm, org.jetbrains.kotlin.multiplatform or org.jetbrains.kotlin.android for Gradle, kotlin-maven-plugin for Maven); this one does not',
     );
   }
 }

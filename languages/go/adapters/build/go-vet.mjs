@@ -1,4 +1,4 @@
-import { writeFileSync } from 'node:fs';
+import { readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { ANY_STATUS, failure, run } from '../execution/go-process.mjs';
 import { diagnosticFindings, parsePosition } from './diagnostics.mjs';
@@ -59,6 +59,13 @@ function compileDiagnostics(projectRoot, lines) {
           },
         ];
   });
+}
+
+export function readVetFindings(context) {
+  return vetFindings(
+    context.projectRoot,
+    readFileSync(path.join(context.reportRoot, VET_REPORT), 'utf8'),
+  );
 }
 
 export function vetFindings(projectRoot, text) {

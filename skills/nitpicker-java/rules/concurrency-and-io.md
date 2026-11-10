@@ -31,6 +31,9 @@ Part of the [nitpicker-java](../SKILL.md) skill. Write these forms from the star
   empty check first and goes in chunks (`Lists.partition(ids, 1000)`), or goes as one array parameter
   (`id = any(:ids)`): an empty list renders `in ()` and PostgreSQL takes at most 65,535 bound parameters
   (`pmd/UnboundedQueryArray`).
+- Build shareable objects once: an `ObjectMapper`, `Gson`, `JAXBContext`, `ValidatorFactory` or
+  `DateTimeFormatter.ofPattern("...")` goes in a `static final` constant, a final field or a `@Bean`,
+  not inside a method that runs per call (`pmd/ReusableObjectPerCall`).
 - Resources: try-with-resources for anything `Closeable`, also one used once: not
   `resource.getInputStream().readAllBytes()` or `load(new JarFile(root))`
   (`pmd/UnclosedInlineResource`). No `finally` that returns or throws.
