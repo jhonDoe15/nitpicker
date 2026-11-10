@@ -282,6 +282,7 @@ describe('head policy reader', () => {
       testConsole: {},
       generatedFiles: [],
       frameworks: { defaultExports: [], entryPoints: [] },
+      history: {},
     });
   });
 
@@ -304,6 +305,7 @@ describe('head policy reader', () => {
         testConsole: {},
         generatedFiles: [],
         frameworks: { defaultExports: [], entryPoints: [] },
+        history: {},
       });
     });
   });
@@ -441,6 +443,7 @@ describe('head policy delivery', () => {
         testConsole: {},
         generatedFiles: [],
         frameworks: { defaultExports: [], entryPoints: [] },
+        history: {},
       })),
     );
   });

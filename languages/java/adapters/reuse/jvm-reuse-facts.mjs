@@ -93,11 +93,15 @@ function baselineOf(projectRoot, policy) {
   return onHead ? { readFile: baselineReader(projectRoot, policy) } : undefined;
 }
 
-export function readJvmReuseFindings(projectRoot, { projects, kotlin = false, policy = {} }) {
+export function readJvmReuseFindings(projectRoot, options) {
+  return readJvmReuse(projectRoot, options).findings;
+}
+
+export function readJvmReuse(projectRoot, { projects, kotlin = false, policy = {} }) {
   const facts = jvmReuseFacts(projectRoot, { projects, kotlin, exclude: policy.exclude });
   const language = kotlin ? 'kotlin' : 'java';
   const exceptions = policy.exceptions ?? [];
-  return [
+  const findings = [
     ...sharedFactFindings(facts, {
       language,
       analyzerName: REUSE_TOOL,
@@ -113,4 +117,5 @@ export function readJvmReuseFindings(projectRoot, { projects, kotlin = false, po
       policy: { exceptions, ...(policy.layout === undefined ? {} : { layout: policy.layout }) },
     }),
   ];
+  return { findings, imports: facts.imports };
 }
