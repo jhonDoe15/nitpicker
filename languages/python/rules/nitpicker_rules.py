@@ -70,7 +70,7 @@ def parse_file(path):
         with tokenize.open(path) as handle:
             text = handle.read()
         return text, ast.parse(text)
-    except (OSError, SyntaxError, UnicodeDecodeError, ValueError, RecursionError):
+    except (OSError, SyntaxError, UnicodeDecodeError, ValueError):
         return None
 
 
@@ -122,8 +122,8 @@ def run_check(module, context, step="check"):
         return [], []
     try:
         return run(context), []
-    except RecursionError as error:
-        return [], [check_failure(module, context, error)]
+    except RecursionError:
+        raise
     except Exception as error:
         if not is_guarded(module):
             raise
