@@ -13,7 +13,8 @@ sources of every module, because the constants live in other files than the test
   whose name is `UPPER_SNAKE` and whose initializer is one string literal (no template) or one number
   literal, negative numbers included. Numbers compare by value, so `5_000L` matches `5000`. Nested
   types count at any depth (`Api.Paging.PAGE_SIZE`, a Kotlin `object` or the `companion object` of a
-  nested class), except a `private` nested type and everything inside it.
+  nested class), except a `private` nested type and everything inside it, and types declared inside a
+  Kotlin `companion object`.
 - **Seen by a test:** the test names the owner class (`Limits`) and the owner is in the test's package
   or imported (single-type, on-demand or with an alias), or the test imports the constant itself
   (`import static shop.Limits.MAX_ITEMS`, `import shop.Limits.MAX_ITEMS`). For a nested owner, any

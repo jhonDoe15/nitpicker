@@ -2,6 +2,8 @@ import ast
 import re
 from collections import Counter
 
+from checks.common import dotted_name
+
 CONSTANT_NAME = re.compile(r"^[A-Z][A-Z0-9]*(?:_[A-Z0-9]+)*$")
 TRIVIAL_NUMBERS = {-1, 0, 1, 2}
 MIN_TEXT_LENGTH = 3
@@ -60,17 +62,25 @@ def assigned_names(body):
     return {name for name, count in Counter(names).items() if count > 1}
 
 
-def is_enum(node):
-    return any(ENUM_BASE.search(ast.unparse(base)) for base in node.bases)
+def is_enum(node, scope):
+    for base in node.bases:
+        target = base.value if isinstance(base, ast.Subscript) else base
+        name = dotted_name(target, scope["aliases"]) or ""
+        if name in scope["enums"] or ENUM_BASE.search(name):
+            return True
+    return False
 
 
-def body_constants(body, prefix="", members=True):
+def body_constants(body, scope, prefix="", members=True):
     reassigned = assigned_names(body)
     found = []
     for statement in body:
         if isinstance(statement, ast.ClassDef) and not statement.name.startswith("_"):
+            enum = is_enum(statement, scope)
+            if enum:
+                scope["enums"].add(statement.name)
             nested = f"{prefix}{statement.name}."
-            found.extend(body_constants(statement.body, nested, not is_enum(statement)))
+            found.extend(body_constants(statement.body, scope, nested, not enum))
         for target, value in declared(statement) if members else []:
             key = literal_key(value)
             named = isinstance(target, ast.Name) and is_constant_name(target.id)
@@ -79,8 +89,8 @@ def body_constants(body, prefix="", members=True):
     return found
 
 
-def module_constants(tree):
-    return body_constants(tree.body)
+def module_constants(tree, aliases):
+    return body_constants(tree.body, {"aliases": aliases, "enums": set()})
 
 
 def production_constants(project):
@@ -91,7 +101,7 @@ def production_constants(project):
     for path, context in project.contexts.items():
         if context.tests or path in support or is_test_named(path):
             continue
-        constants = module_constants(context.tree)
+        constants = module_constants(context.tree, context.aliases)
         if constants:
             found[path] = (project.module_name(path), constants)
     return found

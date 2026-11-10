@@ -107,6 +107,19 @@ describe.skipIf(!enabled)('copied-constant-in-test', () => {
         at(6),
       ],
       [
+        'enums through an alias or a local enum base',
+        withTest(
+          `from shop import kinds\n\n\ndef test_a():\n    assert f("north-side", "south-side", 60)\n`,
+          {
+            'shop/kinds.py':
+              'from enum import Enum as E\n\n\nclass Side(E):\n    NORTH = "north-side"\n\n\n' +
+              'class Base(E):\n    pass\n\n\nclass Pole(Base):\n    SOUTH = "south-side"\n\n\n' +
+              'class Plain:\n    WIDTH = 60\n',
+          },
+        ),
+        ['copied-constant-in-test:5 Plain.WIDTH from shop.kinds'],
+      ],
+      [
         '__import__',
         withTest('limits = __import__("shop.limits")\n\n\ndef test_a():\n    assert f(50)\n'),
         copy('MAX_ITEMS', 5),

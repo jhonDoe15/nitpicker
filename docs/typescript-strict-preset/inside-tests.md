@@ -78,8 +78,9 @@ hop, and type-only imports do not count.
   nitpicker's runs and are not this rule's job.
 - `nitpicker/no-copied-constant`: a test literal must not copy the value of a production constant
   the test can import. It reports a string or number literal in a test-area file that equals an
-  `UPPER_SNAKE` constant with one literal value (`export const MAX_ITEMS = 50`, a non-private
-  `static readonly` member of an exported class such as `Paging.PAGE_LIMIT`, also through
+  `UPPER_SNAKE` constant with one literal value (`export const MAX_ITEMS = 50`, a public
+  `static readonly` member of an exported class such as `Paging.PAGE_LIMIT` (any public `static`
+  member in a JavaScript file; namespaces are not read, the preset rejects them), also through
   `export { NAME }`, `export { NAME } from` and `export * from`) of a project module the file
   loads with an `import` declaration, `import x = require()`, `require()`, `import()` or the
   test runner's `requireActual`/`importActual` with a fixed module path (a path built with `${...}`
