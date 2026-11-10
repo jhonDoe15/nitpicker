@@ -25,7 +25,8 @@ The gate can't check these; reviewers keep catching them.
   module boundary), not by calling the inner function you changed.
 - Test collections with two or more items, a duplicate, and an item whose nested field is
   `undefined`.
-- Round-trip values that need escaping: `expect(parse(format(value))).toEqual(value)`.
+- In a round-trip test, use values that need escaping or mapping: quotes, newlines, non-ASCII,
+  empty and absent fields.
 - Test a duration or limit with the production constant, not a copy of its value.
 - Build fixtures from what the real producer returns, including the shapes with absent fields.
 - For measured values (sizes, positions, timings), assert relationships (no overlap, order holds),
