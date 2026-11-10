@@ -53,6 +53,7 @@ export function analyzeKotlinModule({ module, reportDir, tools, classpaths, pinn
     pinned,
     classes: options.psiClasses,
     spawn: options.spawn,
+    timeoutMs: options.timeoutMs,
   });
   return {
     spotbugsModule: { ...module, outputDirectory: javaClasses },

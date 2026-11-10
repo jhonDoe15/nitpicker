@@ -186,7 +186,7 @@ public final class Prefetch {
   }
 
   private void launch(String url) {
-    schedule(url);
+    schedule(url.strip());
   }
 
   private void schedule(String url) {

@@ -1,6 +1,7 @@
 import { compareFindings } from '../compare.mjs';
 import { analyzerMetadata, analyzerName } from '../../reporting/report-model.mjs';
 import { TESTS_FAILED_RULE } from '../../../../shared/rules/finding-helpers.mjs';
+import { withoutAnsi } from '../../../../shared/messages/terminal/terminal-text.mjs';
 import { baseFailuresOf, baseNoteOf, redBaseAnalyzers, unknownOnBaseFor } from './unknown-base.mjs';
 
 export function compareAnalyzers(context) {
@@ -94,7 +95,7 @@ function compareOrReportError(context) {
     toolErrors.push({
       tool: name,
       snapshot: 'comparison',
-      message: error instanceof Error ? error.message : String(error),
+      message: withoutAnsi(error instanceof Error ? error.message : String(error)),
     });
     return emptyComparison();
   }

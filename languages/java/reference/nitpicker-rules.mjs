@@ -7,10 +7,17 @@ import {
   UNRUN_TEST_EXCEPTION_RULE,
 } from '../adapters/test-runs/unrun-tests.mjs';
 import { SPRING_ARCH_MESSAGES, SPRING_ARCH_RULES } from '../adapters/spring-arch/spring-arch.mjs';
+import { CONTRACT_RULE, contractEntry } from '../adapters/spring-arch/contract-types.mjs';
 import { JAVA_FORMATTER_TOOLS } from '../adapters/style/java-style.mjs';
 import { javaFormatMessage } from '../adapters/reporting/format-findings.mjs';
 import { INLINE_SUPPRESSION_MESSAGES } from '../adapters/suppressions/java-suppressions.mjs';
 import { JVM_ANALYZERS, JVM_BUILDS } from './catalog-rules.mjs';
+import {
+  COPIED_CONSTANT_EXCEPTION_RULE,
+  COPIED_CONSTANT_PIN,
+  COPIED_CONSTANT_RULE,
+} from '../adapters/review-rules/copied-constants/copied-constants.mjs';
+import { copiedConstantMessage } from '../../../shared/rules/copied-constants/copied-constants.mjs';
 import { springConfigForms } from './spring-config-messages.mjs';
 
 const GUIDE = 'docs/java-preset.md';
@@ -67,14 +74,30 @@ function archunitEntry(rule) {
   });
 }
 
+function contractTypeEntry() {
+  return ruleEntry({
+    ...JVM,
+    tool: 'archunit',
+    rule: CONTRACT_RULE,
+    summary: asSentence(guideCell(GUIDE, CONTRACT_RULE, 'fails when')),
+    why: ARCHUNIT_WHY,
+    allowed: contractEntry('<Class>', 'service|persistence|<method>:<PersistenceHandle>').message,
+    scope: 'A project with Spring, or with feature folders, in its main sources.',
+    exception: { key: 'exceptions', rule: `archunit/${CONTRACT_RULE}` },
+    docs: [{ label: 'Java preset guide', path: GUIDE, anchor: 'spring-architecture-rules' }],
+  });
+}
+
 function archunitEntries() {
+  const ownRules = [...SPRING_ARCH_RULES, CONTRACT_RULE];
   return [
     ...SPRING_ARCH_RULES.map(archunitEntry),
+    contractTypeEntry(),
     ruleEntry({
       ...JVM,
       tool: 'archunit',
       rule: '<rule>',
-      pattern: `^(?!(?:${SPRING_ARCH_RULES.join('|')})$)`,
+      pattern: `^(?!(?:${ownRules.join('|')})$)`,
       samples: ['archunit/noCyclesBetweenFeatures'],
       summary: "A rule of the project's own ArchUnit tests.",
       why: 'The project writes ArchUnit rules as tests named `*ArchTest` or `*ArchitectureTest`; nitpicker runs them and reports each violated rule by the name of its test field or method.',
@@ -157,12 +180,32 @@ function unrunTestEntry() {
   });
 }
 
+function copiedConstantEntry() {
+  return ruleEntry({
+    ...JVM,
+    tool: 'pmd',
+    rule: COPIED_CONSTANT_RULE,
+    summary:
+      'A string or number literal in a test that equals an `UPPER_SNAKE` constant of a main-source class, object or file the test can see.',
+    why: 'When the constant changes, a test that holds a copy of its value keeps checking the old value, or a boundary test stops testing the boundary. Nitpicker computes it over the sources of every module and prints it as a PMD rule, like the other test honesty rules.',
+    allowed: copiedConstantMessage({
+      names: ['<Owner>.<NAME>'],
+      owner: '<file>',
+      literal: { kind: 'number', value: '<value>' },
+      pin: COPIED_CONSTANT_PIN,
+    }),
+    exception: { key: 'exceptions', rule: COPIED_CONSTANT_EXCEPTION_RULE },
+    docs: [{ label: 'Java preset guide', path: GUIDE, anchor: 'tests-that-copy-a-constant' }],
+  });
+}
+
 /** The entries of the rules nitpicker itself adds to the Java and Kotlin presets. */
 export function jvmNitpickerEntries() {
   return [
     ...archunitEntries(),
     ...springConfigEntries(),
     unrunTestEntry(),
+    copiedConstantEntry(),
     formatEntry('google'),
     formatEntry('palantir'),
     ...suppressionEntries(),
