@@ -5,11 +5,12 @@ import { packageVersion } from '../help/package-version.mjs';
 import { INIT_USAGE_TEXT } from '../help/usage-text.mjs';
 import { readSnippet } from './files/agents-md.mjs';
 import { unifiedDiff } from './files/line-diff.mjs';
-import { init, initWith, readText, useProjects } from './test-support/projects.mjs';
+import { init, initWith, readText, useProjects, withPeers } from './test-support/projects.mjs';
 
 const createProject = useProjects();
 const TYPESCRIPT = { 'package.json': '{}', 'src/index.ts': 'export const value = 1;\n' };
 const SKILL = `npx skills add jhonDoe15/nitpicker#v${packageVersion()} --skill`;
+const LOCAL_SKILL = 'npx skills add ./node_modules/nitpicker --skill';
 const NITPICKER = `nitpicker@${packageVersion()}`;
 const NODE_INSTALL = `${NITPICKER} typescript @types/node vitest @vitest/coverage-v8`;
 const NODE_MISSING = `${NITPICKER}, typescript, @types/node, vitest, @vitest/coverage-v8`;
@@ -107,7 +108,7 @@ describe('nitpicker init', () => {
   it('writes the config and reports the setup of a TypeScript project', () => {
     const root = project({
       ...TYPESCRIPT,
-      'package.json': '{"devDependencies":{"typescript":"6"}}',
+      ...withPeers({ typescript: '6.0.3' }),
       'pnpm-lock.yaml': '',
     });
 
@@ -129,18 +130,14 @@ describe('nitpicker init', () => {
 
   it('says there is nothing to install when the peers are there', () => {
     const deps = { nitpicker: '1', typescript: '6', '@types/node': '25', jest: '30' };
-    const root = project({
-      ...TYPESCRIPT,
-      'package.json': JSON.stringify({ scripts: { test: 'jest' }, devDependencies: deps }),
+    const root = project({ ...TYPESCRIPT, ...withPeers(deps, { scripts: { test: 'jest' } }) });
+    const report = expectedReport({
+      head: ['nitpicker init: TypeScript, npm, Jest (preset "typescript")'],
+      peers: ['Nothing to install: every peer nitpicker needs is already there.'],
+      skills: ['nitpicker-typescript'],
     });
 
-    expect(init(root).stdoutText).toBe(
-      expectedReport({
-        head: ['nitpicker init: TypeScript, npm, Jest (preset "typescript")'],
-        peers: ['Nothing to install: every peer nitpicker needs is already there.'],
-        skills: ['nitpicker-typescript'],
-      }),
-    );
+    expect(init(root).stdoutText).toBe(report.replace(SKILL, LOCAL_SKILL));
   });
 
   it.each([

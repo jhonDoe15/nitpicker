@@ -36,6 +36,7 @@ function parsedSources(projectRoot, roots, { kotlin, excluded }) {
     kotlin: file.endsWith('.kt'),
     parsed: readJvmDefinitions(readFileSync(pathInside(projectRoot, file), 'utf8'), {
       kotlin: file.endsWith('.kt'),
+      nested: true,
     }),
   }));
 }
@@ -49,15 +50,20 @@ function onDemand(imports, owner) {
 }
 
 function ownerNames(test, constant) {
-  const qualified = `${constant.packageName}.${constant.owner}`;
-  const aliases = test.parsed.imports
-    .filter(({ path: name, alias }) => alias !== undefined && name === qualified)
-    .map(({ alias }) => alias);
-  const visible =
-    test.parsed.packageName === constant.packageName ||
-    imported(test.parsed.imports, qualified) ||
-    onDemand(test.parsed.imports, constant.packageName);
-  return [...(visible ? [constant.owner] : []), ...aliases];
+  const { imports, packageName } = test.parsed;
+  const types = constant.owner.split('.');
+  return types.flatMap((type, depth) => {
+    const outer = [constant.packageName, ...types.slice(0, depth)].join('.');
+    const qualified = `${outer}.${type}`;
+    const aliases = imports
+      .filter(({ path: name, alias }) => alias !== undefined && name === qualified)
+      .map(({ alias }) => alias);
+    const visible =
+      (depth === 0 && packageName === constant.packageName) ||
+      imported(imports, qualified) ||
+      onDemand(imports, outer);
+    return [...(visible ? [type] : []), ...aliases];
+  });
 }
 
 function memberImport(test, constant, prefix) {
