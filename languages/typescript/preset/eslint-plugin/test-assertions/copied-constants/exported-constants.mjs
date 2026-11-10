@@ -11,6 +11,8 @@ import { readLayout } from '../../../head-policy.mjs';
 const MAX_REEXPORT_DEPTH = 4;
 const DECLARATION_FILE = /\.d\.[cm]?ts$/u;
 const EMPTY = { constants: new Map(), reexports: [] };
+const JAVASCRIPT_FILE = /\.[cm]?jsx?$/u;
+const HIDDEN_MEMBERS = [ts.SyntaxKind.PrivateKeyword, ts.SyntaxKind.ProtectedKeyword];
 const layout = readLayout();
 
 function isWrapper(node) {
@@ -50,12 +52,39 @@ function literalValue(initializer) {
   return value === undefined ? undefined : { kind: 'number', value };
 }
 
-function localConstants(statement) {
+function hasModifier(node, kind) {
+  return node.modifiers?.some((modifier) => modifier.kind === kind) ?? false;
+}
+
+function isStaticConstant(member, javascript) {
+  return (
+    ts.isPropertyDeclaration(member) &&
+    ts.isIdentifier(member.name) &&
+    hasModifier(member, ts.SyntaxKind.StaticKeyword) &&
+    (javascript || hasModifier(member, ts.SyntaxKind.ReadonlyKeyword)) &&
+    !HIDDEN_MEMBERS.some((kind) => hasModifier(member, kind)) &&
+    isConstantName(member.name.text)
+  );
+}
+
+function classConstants(statement, javascript) {
+  if (!ts.isClassDeclaration(statement) || statement.name === undefined) {
+    return [];
+  }
+  return statement.members
+    .filter((member) => isStaticConstant(member, javascript))
+    .flatMap((member) => {
+      const value = literalValue(member.initializer);
+      return value === undefined ? [] : [[`${statement.name.text}.${member.name.text}`, value]];
+    });
+}
+
+function localConstants(statement, javascript) {
   const isConst =
     ts.isVariableStatement(statement) &&
     (statement.declarationList.flags & ts.NodeFlags.Const) !== 0;
   if (!isConst) {
-    return [];
+    return classConstants(statement, javascript);
   }
   return statement.declarationList.declarations.flatMap(({ name, initializer }) => {
     const value = ts.isIdentifier(name) ? literalValue(initializer) : undefined;
@@ -93,12 +122,25 @@ function isLocalExportList(statement) {
   return statement.moduleSpecifier === undefined && statement.exportClause !== undefined;
 }
 
+function renamedHead(name, rename) {
+  const [head, ...rest] = name.split('.');
+  const renamed = rename(head);
+  return renamed === undefined ? undefined : [renamed, ...rest].join('.');
+}
+
+function isConstantPath(name) {
+  return name !== undefined && isConstantName(name.split('.').at(-1));
+}
+
 function listedConstants(statements, locals) {
-  return statements
-    .filter(isLocalExportList)
-    .flatMap(exportedNames)
-    .filter(({ exported, local }) => locals.has(local) && isConstantName(exported))
-    .map(({ exported, local }) => [exported, locals.get(local)]);
+  const listed = statements.filter(isLocalExportList).flatMap(exportedNames);
+  return [...locals].flatMap(([name, value]) =>
+    listed.flatMap(({ exported, local }) => {
+      const shown = exported === 'default' && name.includes('.') ? local : exported;
+      const renamed = renamedHead(name, (head) => (head === local ? shown : undefined));
+      return isConstantPath(renamed) ? [[renamed, value]] : [];
+    }),
+  );
 }
 
 function readModule(file) {
@@ -109,14 +151,17 @@ function readModule(file) {
     true,
     scriptKindOf(file),
   );
-  const locals = new Map(sourceFile.statements.flatMap(localConstants));
+  const javascript = JAVASCRIPT_FILE.test(file);
+  const locals = new Map(
+    sourceFile.statements.flatMap((statement) => localConstants(statement, javascript)),
+  );
   const exportStatements = sourceFile.statements.filter(isValueExport);
   return {
     constants: new Map([
       ...sourceFile.statements
         .filter(isExported)
-        .flatMap(localConstants)
-        .filter(([name]) => isConstantName(name)),
+        .flatMap((statement) => localConstants(statement, javascript))
+        .filter(([name]) => isConstantPath(name)),
       ...listedConstants(exportStatements, locals),
     ]),
     reexports: exportStatements.map(reexportOf).filter((reexport) => reexport !== undefined),
@@ -181,12 +226,10 @@ export function exportedConstants(file, { root, aliases = [] }) {
     }
     visited.add(step.file);
     const named = [...parsedModule(step.file).constants].map(([name, value]) => [
-      step.rename(name),
+      renamedHead(name, step.rename),
       value,
     ]);
-    const fresh = named.filter(
-      ([name]) => name !== undefined && isConstantName(name) && !found.has(name),
-    );
+    const fresh = named.filter(([name]) => isConstantPath(name) && !found.has(name));
     for (const [name, value] of fresh) {
       found.set(name, value);
     }
