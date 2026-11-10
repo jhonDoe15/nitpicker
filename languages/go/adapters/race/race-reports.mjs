@@ -105,7 +105,7 @@ export function withoutRaceReports(output) {
   let opened = false;
   for (const line of output.split(/(?<=\n)/u)) {
     const text = line.trim();
-    const keep = !inside && !(opened && text === WARNING) && !RACE_FAILURE.test(text);
+    const keep = !(inside || (opened && text === WARNING) || RACE_FAILURE.test(text));
     if (inside) {
       inside = !SEPARATOR.test(text);
     } else if (opened && text === WARNING) {
