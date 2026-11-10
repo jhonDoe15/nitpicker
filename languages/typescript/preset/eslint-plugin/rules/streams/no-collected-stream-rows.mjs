@@ -114,10 +114,9 @@ function assemblesBytes(identifier) {
     return true;
   }
   const call = identifier.parent;
-  if (
-    !['CallExpression', 'NewExpression'].includes(call?.type) ||
-    !call.arguments.includes(identifier)
-  ) {
+  if (!(
+    ['CallExpression', 'NewExpression'].includes(call?.type) && call.arguments.includes(identifier)
+  )) {
     return false;
   }
   const callee = unwrapped(call.callee);
