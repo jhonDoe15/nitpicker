@@ -131,7 +131,9 @@ EDIT.`); and a file under a `generated/`, `_generated/` or `__generated__/` fold
   production modules keep their checks.
 - **Import structure.** From the import scan (`imports/python-import-rules.mjs`):
   `coupling/package-cycle` with Java's message, on each package of a cycle (a package `__init__`
-  importing its own submodules is a re-export, not a dependency); `coupling/no-production-cycles`
+  importing its own submodules is a re-export, not a dependency, and a cycle whose packages all
+  belong to the features of a reported [`feature-cycle`](feature-folders.md), and that no import
+  outside that feature cycle closes, is left out); `coupling/no-production-cycles`
   for module cycles inside one package; `coupling/no-import-outside-roots` when production code
   imports a project module outside `python.sourceRoots` (scripts, a top-level `tests/` package).
   Type-only imports do not count.
@@ -193,6 +195,3 @@ EDIT.`); and a file under a `generated/`, `_generated/` or `__generated__/` fold
   environment and use `from x import *`; `manage.py`, `wsgi.py` and `asgi.py` may read the
   environment and have no test. FastAPI routers (modules that import `fastapi`) and the modules
   they import directly may use pydantic. Flask needs no allowance yet.
-- **Feature folders.** Not applied to Python: the TypeScript feature layout lives under
-  `<root>/main/`, and Python has no such convention, so the rule would flag ordinary Django apps and
-  FastAPI packages.

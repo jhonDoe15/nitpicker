@@ -1,3 +1,5 @@
+import { withoutAnsi } from './terminal/terminal-text.mjs';
+
 const MAX_CAUSE_DEPTH = 3;
 const MAX_CAUSE_LINES = 10;
 
@@ -46,5 +48,6 @@ function causeLines(error, message) {
 
 export function describeError(error) {
   const message = messageOf(error);
-  return [message, ...causeLines(error, message)].filter((part) => part.length > 0).join('\n');
+  const lines = [message, ...causeLines(error, message)].filter((part) => part.length > 0);
+  return withoutAnsi(lines.join('\n'));
 }
