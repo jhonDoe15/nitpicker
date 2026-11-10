@@ -42,6 +42,7 @@ export const strictEslintRuleIds = [
   'nitpicker/no-many-to-many-cascade-remove',
   'nitpicker/no-module-level-let',
   'nitpicker/no-module-level-mutable-state',
+  'nitpicker/no-multiple-collection-joins',
   'nitpicker/no-mutating-method-in-domain',
   'nitpicker/no-node-process-per-test',
   'nitpicker/no-parameter-mutation',
