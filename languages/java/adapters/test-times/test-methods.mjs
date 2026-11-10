@@ -2,7 +2,7 @@ const CALL = /^(.+?)\((?:[^()]|\([^()]*\))*\)(?:\[\d+\])?$/u;
 const INDEXED = /^([\p{L}_$][\p{L}\p{N}_$]*)\[\d+\]$/u;
 const DECLARED_NAME = String.raw`(\x60[^\x60]+\x60|"[^"\n]+"|'[^'\n]+'|[\p{L}_$][\p{L}\p{N}_$]*)`;
 const NAME_QUOTES = /^[\x60"']|[\x60"']$/gu;
-const DYNAMIC_TYPE = String.raw`(?:[\w.]+\s*<[^;{}()]*Dynamic\w*\s*>|Dynamic\w*(?:\[\])?)`;
+const DYNAMIC_TYPE = String.raw`[\w.]+\s*<[^;{}()]*Dynamic\w*\s*>|Dynamic\w*(?:\[\])?`;
 const DECLARATION = new RegExp(
   String.raw`(?:\b(?:void|fun|def)|${DYNAMIC_TYPE})\s+${DECLARED_NAME}\s*\(`,
   'gu',
