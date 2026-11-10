@@ -9,6 +9,7 @@ const { cleanup, outcomes } = createScripts({
     'tautological-assert',
     'swallowed-exception',
     'blind-suppress',
+    'weak-assertion',
   ],
 });
 afterEach(cleanup);
