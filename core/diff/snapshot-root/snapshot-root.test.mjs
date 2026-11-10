@@ -3,7 +3,7 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { runAnalyzers } from '../execution/run-analyzers.mjs';
-import { clearDiffReports } from '../reporting/reporters.mjs';
+import { LOG_DIRECTORY, clearDiffReports } from '../reporting/reporters.mjs';
 import { withoutSnapshotRoot } from './snapshot-root.mjs';
 
 const WORKTREE = path.join(path.sep, 'tmp', 'nitpicker-diff-Ab.c1', 'head');
@@ -119,15 +119,15 @@ describe('runAnalyzers log folder', () => {
   }
 
   it('names a log folder inside the live project by its relative path', () => {
-    const logRoot = path.join(LIVE, 'reports', 'quality', 'diff', 'logs');
+    const logRoot = path.join(LIVE, 'reports', 'quality', 'diff', LOG_DIRECTORY);
 
     const { logLabel } = invocationContext(logRoot);
 
-    expect(logLabel).toBe('reports/quality/diff/logs');
+    expect(logLabel).toBe(`reports/quality/diff/${LOG_DIRECTORY}`);
   });
 
   it('names a log folder outside the live project by its full path, and none when there is none', () => {
-    const logRoot = path.join(path.sep, 'tmp', 'out', 'logs');
+    const logRoot = path.join(path.sep, 'tmp', 'out', LOG_DIRECTORY);
 
     const outside = invocationContext(logRoot);
 
@@ -139,7 +139,7 @@ describe('runAnalyzers log folder', () => {
 describe('clearing the log folder', () => {
   it('removes only the build logs a run wrote, and the folder once it is empty', () => {
     const output = mkdtempSync(path.join(tmpdir(), 'nitpicker-logs-clear-'));
-    const logs = path.join(output, 'logs');
+    const logs = path.join(output, LOG_DIRECTORY);
     mkdirSync(logs);
     for (const name of ['java-head-gradle.log', 'kotlin-base-gradle.log', 'server.log']) {
       writeFileSync(path.join(logs, name), 'x');
