@@ -136,6 +136,18 @@ same rule runs as `subprocess-without-timeout` in the Python preset, `pmd/Proces
 in the Java preset and `kotlin-source/ProcessWaitWithoutTimeout` in the Kotlin preset; tests keep
 `nitpicker/require-test-process-timeout` (TypeScript) or their runner's own limits.
 
+Time units: `nitpicker/time-unit-mismatch` (production source, in `eslint-lint`) reports time values in
+two different units that meet without a conversion: a `+`, `-` or comparison of seconds with milliseconds
+(or nanoseconds, microseconds, minutes), a value assigned or passed under a name or parameter of another
+unit, and an epoch time cut to 32 bits. Units come from known clock and conversion APIs and from name
+suffixes such as `Ms`, `Millis`, `Seconds` and `_seconds`; ratio names (`MS_PER_SECOND`) and flags
+(`showSeconds`, `use_ms`) carry no unit, a `format...` call takes its unit rather than returning it,
+JWT claims (`exp`, `iat`) count as epoch seconds only on a token, claims or payload object, and an epoch
+name needs a unit (`expiresAtEpochSecond`, not `epoch`). The same rule runs as `time-unit-mismatch` in
+the Python preset, `pmd/MixedTimeUnits` and `pmd/EpochNarrowedToInt` in the Java preset (Gradle and
+Maven; the overlap keeps `pmd/MixedTimeUnits` over Error Prone's `TimeUnitMismatch`) and
+`kotlin-source/TimeUnitMismatch` in the Kotlin preset. The Go preset has no own rule engine yet.
+
 Costly collection forms: `nitpicker/no-costly-collection-form` (production source, in `eslint-lint`)
 reports three forms with a cheaper equivalent: an array that is appended to and searched with
 `includes`, `indexOf` or an identity `some` inside a loop, callback or recursive function (a `Set`); a

@@ -519,6 +519,11 @@
     "scope": "line"
   },
   {
+    "primary": ["pmd/MixedTimeUnits"],
+    "secondary": ["errorprone/TimeUnitMismatch"],
+    "scope": "line"
+  },
+  {
     "primary": ["pmd/LegacyCalendarApi"],
     "secondary": [
       "pmd/AvoidCalendarDateCreation",

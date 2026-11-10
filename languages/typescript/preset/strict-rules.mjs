@@ -85,6 +85,7 @@ export const strictEslintRuleIds = [
   'nitpicker/simpler-boolean-logic',
   'nitpicker/strict-boolean-expressions',
   'nitpicker/test-tsconfig-pins-lib-and-types',
+  'nitpicker/time-unit-mismatch',
   'nitpicker/timeout-abandons-operation',
   'nitpicker/unbounded-fan-out',
   'nitpicker/unbounded-reactive-fan-out',

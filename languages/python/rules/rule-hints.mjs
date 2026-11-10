@@ -17,6 +17,7 @@ import { RULES_SECURITY_HINTS } from './hints/security/rules-security.mjs';
 import { PITFALL_HINTS } from './hints/pitfalls/ruff-pitfalls.mjs';
 import { PERSISTENCE_HINTS } from './hints/persistence/orm-hints.mjs';
 import { STYLE_HINTS } from './hints/ruff-style.mjs';
+import { TIME_UNIT_HINTS } from './hints/time/time-units.mjs';
 import { RULES_TOOL } from './hints/tool.mjs';
 import { DEFAULT_LIBRARIES } from './libraries/project-libraries.mjs';
 
@@ -61,6 +62,7 @@ export const RULE_HINTS = [
   ...TEST_SWITCH_HINTS,
   ...ORM_HINTS,
   ...PERSISTENCE_HINTS,
+  ...TIME_UNIT_HINTS,
   ...CONTAINER_HINTS,
   { tool: 'mypy', rules: ['import-not-found', 'import-untyped'], allowed: INSTALL_PACKAGE },
   ...['pyright', 'basedpyright'].map((tool) => ({

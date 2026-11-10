@@ -193,6 +193,7 @@ describe('readKotlinSourceFindings', () => {
         'SuspendFunInFinallySection',
         'TestClassWithoutTestCases',
         'TestHelperInSource',
+        'TimeUnitMismatch',
         'TlsVerificationOff',
         'TriStateBoolean',
         'UnboundedFanOut',
