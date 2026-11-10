@@ -204,6 +204,8 @@ describe('the shared fact rules', () => {
       'sibling-copy-edit',
       'shared-used-by-one-feature',
       'test-only-export',
+      'doc-comment-content',
+      'test-console-output',
     ]);
     withLanguageRegistered('feature-cycle', 'kotlin', () => {
       expect(sharedFactExceptionRules()).toEqual(python);

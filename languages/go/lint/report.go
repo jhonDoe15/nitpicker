@@ -42,6 +42,7 @@ func supersededBy() map[string][]string {
 		"nilness":      {"SA4031", "SA5000"},
 		"errcheck":     {"SA5001", "SA9001", "sqlclosecheck"},
 		"nilnil":       {"nilerr"},
+		"wastedassign": {"SA4006", "SA4010"},
 		"errname":      {"ST1012"},
 		"noctx":        {"SA1005"},
 		"SA1019":       {"G506", "G507"},

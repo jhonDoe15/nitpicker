@@ -61,7 +61,7 @@ func goFiles(root string, report *Report) ([]string, error) {
 func emptyReport() Report {
 	return Report{
 		Files: []File{}, Functions: []Function{}, Types: []Type{}, Tests: []Test{}, Errors: []string{},
-		Definitions: []Definition{}, Usages: []Usage{}, Skipped: []string{},
+		Definitions: []Definition{}, Usages: []Usage{}, DocComments: []DocComment{}, Skipped: []string{},
 	}
 }
 
@@ -104,6 +104,9 @@ func inspectModule(root string) (Report, error) {
 		parsed = append(parsed, file)
 		if err == nil {
 			report.Definitions = append(report.Definitions, fileDefinitions(fileSet, file)...)
+		}
+		if err == nil && !file.test {
+			report.DocComments = append(report.DocComments, fileDocComments(fileSet, file)...)
 		}
 	}
 	addFunctions(&report, fileSet, parsed)

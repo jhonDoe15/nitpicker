@@ -12,10 +12,7 @@ const GO_REGISTERED_FACT_RULES_ONLY = {
   evidence: /const registered = registeredFactRules\(LANGUAGE\)/u,
 };
 const GO_FACT_RULES_NOT_RUN = Object.fromEntries(
-  ['exported-name-collision', 'doc-comment-content', 'test-console-output'].map((rule) => [
-    rule,
-    GO_REGISTERED_FACT_RULES_ONLY,
-  ]),
+  ['exported-name-collision'].map((rule) => [rule, GO_REGISTERED_FACT_RULES_ONLY]),
 );
 const JVM_RUNTIME_EDGES_ONLY = {
   file: 'languages/java/adapters/test-runtime/test-graph.mjs',

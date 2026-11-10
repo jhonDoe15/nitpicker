@@ -202,4 +202,41 @@ describe('Go facts', () => {
       }),
     ).toEqual([]);
   });
+
+  it('reports doc comments that restate their name and new console output of tests', () => {
+    const report = {
+      files: [file('cart/cart.go'), file('cart/cart_test.go')],
+      definitions: [definition('cart/cart.go', 'Close')],
+      usages: [usage('cart/cart.go'), usage('cart/cart_test.go')],
+      tests: [{ file: 'cart/cart_test.go', name: 'TestClose' }],
+      docComments: [
+        {
+          file: 'cart/cart.go',
+          line: 2,
+          name: 'Close',
+          qualifier: 'Cart.Close',
+          lines: ['Close closes.'],
+        },
+        { file: 'cart/cart.go', line: 8, name: 'Open', lines: ['Open closes.'], detailed: true },
+      ],
+    };
+    const testRun = {
+      outputs: [
+        { package: 'shop/cart', test: 'TestClose', output: '2026/11/10 10:00:00 pool leaked\n' },
+      ],
+    };
+    const findings = goFactFindings(goFacts(report, { module: 'shop', testRun }), {
+      policy: { testConsole: { allow: [{ contains: 'other' }] } },
+    });
+    expect(
+      findings.map(({ tool, rule, path, symbol }) => `${tool} ${rule} ${path} ${symbol}`),
+    ).toEqual([
+      'facts doc-comment-content cart/cart.go Close',
+      'test-runtime test-console-output cart/cart_test.go undefined',
+    ]);
+    const allowed = goFactFindings(goFacts(report, { module: 'shop', testRun }), {
+      policy: { testConsole: { allow: [{ contains: 'pool leaked' }] } },
+    });
+    expect(allowed.map(({ rule }) => rule)).toEqual(['doc-comment-content']);
+  });
 });

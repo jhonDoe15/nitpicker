@@ -3,6 +3,8 @@
 package catalog
 
 import (
+	"slices"
+
 	"codeberg.org/polyfloyd/go-errorlint/errorlint"
 	errname "github.com/Antonboom/errname/pkg/analyzer"
 	nilnil "github.com/Antonboom/nilnil/pkg/analyzer"
@@ -48,12 +50,15 @@ var (
 
 // Linters returns every catalog linter.
 func Linters() []Linter {
-	return linters
+	return slices.Concat(linters, valueLinters)
 }
 
 // Configure sets the options that differ from each linter's defaults, and turns off the
 // `//lint:ignore` comments some linters read.
 func Configure() error {
 	commentmap.Analyzer.Run = func(*analysis.Pass) (any, error) { return comment.Maps{}, nil }
-	return errorComparisons.Flags.Set("errorf", "true")
+	if err := errorComparisons.Flags.Set("errorf", "true"); err != nil {
+		return err
+	}
+	return configureValues()
 }
