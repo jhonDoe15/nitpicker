@@ -74,14 +74,18 @@ export function toolVersions() {
   return Object.entries(GO_TOOLS).map(([name, { version }]) => `${name}@${version}`);
 }
 
-function sourceHash(source, extra) {
+function sourceNames(source) {
+  return readdirSync(source, { recursive: true, withFileTypes: true })
+    .filter((entry) => entry.isFile() && !entry.name.endsWith('_test.go'))
+    .map((entry) => path.relative(source, path.join(entry.parentPath, entry.name)))
+    .filter((name) => !name.split(path.sep).includes('fixtures'))
+    .toSorted();
+}
+
+export function sourceHash(source, extra) {
   const hash = createHash('sha256').update(extra);
-  const files = readdirSync(source, { recursive: true })
-    .map((name) => name.split(path.sep).join('/'))
-    .filter((name) => /\.(?:go|mod|sum)$/u.test(name) && !name.endsWith('_test.go'))
-    .toSorted((left, right) => left.localeCompare(right));
-  for (const file of files) {
-    hash.update(`${file}\0`).update(sourceFile(source, file));
+  for (const name of sourceNames(source)) {
+    hash.update(`${name}\0`).update(sourceFile(source, name));
   }
   return hash.digest('hex').slice(0, HASH_LENGTH);
 }
