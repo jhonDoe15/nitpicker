@@ -132,3 +132,6 @@ true, flushAutomatically = true)`, with `@Transactional` on the function or the 
   (`filter`, `count`, `firstOrNull`, `hasElements`, `take`, `toList().size`). Native SQL only when JPQL can't express it,
   marked on that one function with `@Suppress("PMD.SpringDataNativeQuery")`,
   `EntityManager.createNativeQuery` too.
+- Fetch at most one collection per query (`join fetch`, Criteria `fetch` or an entity graph); load
+  the others in their own query or with `@BatchSize` or `@Fetch(FetchMode.SUBSELECT)`
+  (`JpaMultipleCollectionFetch`).
