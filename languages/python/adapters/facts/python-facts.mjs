@@ -118,6 +118,17 @@ function readReport(file) {
   return existsSync(file) ? JSON.parse(readFileSync(file, 'utf8')) : undefined;
 }
 
+export function readFactImports(reportRoot) {
+  const facts = readReport(path.join(reportRoot, FACTS_REPORT));
+  if (facts === undefined) {
+    return undefined;
+  }
+  const production = new Set(
+    (facts.modules ?? []).filter(({ role }) => role === 'production').map(({ file }) => file),
+  );
+  return (facts.imports ?? []).filter(({ from, to }) => production.has(from) && production.has(to));
+}
+
 export function readFactFindings(reportRoot, { exceptions = [], baselineMovesFile } = {}) {
   const facts = readReport(path.join(reportRoot, FACTS_REPORT));
   if (facts === undefined) {

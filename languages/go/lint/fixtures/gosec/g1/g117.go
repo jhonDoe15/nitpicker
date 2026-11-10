@@ -11,11 +11,10 @@ type Profile struct {
 	User string
 }
 
-func Encoded(login Login, profile Profile) ([]byte, []byte, error) {
-	first, err := json.Marshal(login) // want G117
-	if err != nil {
-		return nil, nil, err
-	}
-	second, err := json.Marshal(profile)
-	return first, second, err
+func EncodedLogin(login Login) ([]byte, error) {
+	return json.Marshal(login) // want G117
+}
+
+func EncodedProfile(profile Profile) ([]byte, error) {
+	return json.Marshal(profile)
 }

@@ -1,0 +1,50 @@
+  <rule name="UnboundedQueryArray" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
+        message="This collection is bound as one query parameter per element (an in list): an empty collection renders in (), which some databases reject, and PostgreSQL takes at most 65,535 bound parameters in one statement, so the query works in tests and fails on a large account. Return early when it is empty, and bound its size or split it into chunks first (for (List&lt;Long&gt; chunk : Lists.partition(ids, 1000)), or the project''s chunking helper), or send it as one array parameter (where id = any(:ids) with a SQL array). An exception fits only a collection that its callers bound, such as a request field with a maximum size.">
+    <priority>3</priority>
+    <properties>
+      <property name="xpath">
+        <value><![CDATA[
+let $collection := function($node) { exists($node[pmd-java:typeIs('java.util.Collection')]) },
+    $scope := function($node) {
+  $node/ancestor::*[self::MethodDeclaration or self::ConstructorDeclaration or self::Initializer][1]
+},
+    $initial := function($access) {
+  ($scope($access)//VariableDeclarator[VariableId/@Name = $access/@Name],
+   $access/ancestor::ClassBody[1]/FieldDeclaration[pmd-java:modifiers() = 'final']
+     /VariableDeclarator[VariableId/@Name = $access/@Name])[1]/*[2]
+},
+    $fixed := function($value) {
+  exists($value/self::MethodCall[@MethodName = ('of', 'asList', 'singleton', 'singletonList', 'emptyList', 'emptySet')]
+    [*[1][self::TypeExpression/ClassType[@SimpleName = ('List', 'Set', 'Arrays', 'Collections')]]]
+    [not(count(ArgumentList/*) = 1 and ArgumentList/VariableAccess[pmd-java:typeIs('java.lang.Object[]')])])
+  or exists($value/self::MethodCall[@MethodName = ('of', 'allOf', 'noneOf', 'range')]
+    [*[1][self::TypeExpression/ClassType[@SimpleName = 'EnumSet']]])
+  or exists($value/descendant-or-self::MethodCall[@MethodName = ('subList', 'partition', 'limit')])
+},
+    $guarded := function($argument) {
+  let $name := ($argument/self::VariableAccess/@Name, $argument/self::MethodCall[not(ArgumentList/*)]/@MethodName)[1],
+      $body := $scope($argument)
+  return empty($name)
+    or exists($body//MethodCall[@MethodName = ('size', 'isEmpty')]
+                [*[1][self::VariableAccess[@Name = $name] or self::MethodCall[@MethodName = $name]]])
+    or exists($body//ForeachStatement/LocalVariableDeclaration[VariableDeclarator/VariableId/@Name = $name])
+    or exists($argument/ancestor::LambdaExpression/LambdaParameterList/LambdaParameter[VariableId/@Name = $name])
+    or $fixed($initial($argument[self::VariableAccess]))
+},
+    $writes := ('save', 'saveAll', 'saveAndFlush', 'saveAllAndFlush', 'delete', 'deleteAll', 'deleteAllById')
+return (
+  //MethodCall[@MethodName = ('setParameter', 'setParameterList')]/ArgumentList/*[2][$collection(.)]
+  | //MethodCall[@MethodName = 'addValue']
+      [*[1][pmd-java:typeIs('org.springframework.jdbc.core.namedparam.MapSqlParameterSource')]]
+      /ArgumentList/*[2][$collection(.)]
+  | //ConstructorCall[pmd-java:typeIs('org.springframework.jdbc.core.namedparam.MapSqlParameterSource')]
+      /ArgumentList/*[2][$collection(.)]
+  | //MethodCall[@MethodName = 'param'][*[1][pmd-java:typeIs('org.springframework.jdbc.core.simple.JdbcClient.StatementSpec')]]
+      /ArgumentList/*[last()][$collection(.)]
+  | //MethodCall[*[1][pmd-java:typeIs('org.springframework.data.repository.Repository')]][not(@MethodName = $writes)]
+      /ArgumentList/*[$collection(.)]
+)[not($guarded(.))]
+]]></value>
+      </property>
+    </properties>
+  </rule>

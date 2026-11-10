@@ -7,6 +7,7 @@ export const HYGIENE_RULE_IDS = {
   migrationOrder: 'migration-order',
   migrationHardcodedName: 'migration-hardcoded-name',
   startSchemaPush: 'start-schema-push',
+  foreignKeyIndex: 'foreign-key-index',
 };
 
 export const PACKAGE_RULE_IDS = {
@@ -71,6 +72,13 @@ export const HYGIENE_RULES = [
     check: 'repository-hygiene',
     limit:
       'a migration file that names the `public` schema (`public.table`), a database in `ALTER DATABASE` or a role in `OWNER TO`',
+    enforcedBy: EVERY_LANGUAGE,
+  },
+  {
+    id: HYGIENE_RULE_IDS.foreignKeyIndex,
+    check: 'repository-hygiene',
+    limit:
+      'a foreign key that a migration adds, or a Prisma relation, with no index that starts with its columns, unless the project uses MySQL or MariaDB (which index foreign keys themselves)',
     enforcedBy: EVERY_LANGUAGE,
   },
   {

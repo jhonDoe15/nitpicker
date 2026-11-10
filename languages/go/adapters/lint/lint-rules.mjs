@@ -1,4 +1,5 @@
 import { GOSEC_HINTS, gosecMessage } from './gosec-hints.mjs';
+import { reviveHint, reviveVaryingPart } from './revive-hints.mjs';
 
 const GO_FIX = '`go fix ./...` applies this rewrite.';
 const KEEP_OR_DROP = 'Use the value or remove the assignment.';
@@ -48,7 +49,7 @@ const HINTS = new Map([
   ['SA9004', 'Give every constant its type, or start an iota group with a typed first constant.'],
   ['SA9005', 'Export the fields to marshal, or implement MarshalJSON.'],
   ['SA9009', 'Write the directive without the space: `//go:name`.'],
-  ['SA9010', 'Call the returned function: `defer cleanup()()`.'],
+  ['SA9010', 'Keep the returned function and defer that: `stop := cleanup(); defer stop()`.'],
   [
     'ST1000',
     'Add a package comment, `// Package name ...`, to one file of the package (usually doc.go).',
@@ -104,7 +105,10 @@ function sentence(message) {
   return /[.?!]$/u.test(text) ? text : `${text}.`;
 }
 
-function hintOf(tool, rule) {
+function hintOf(tool, rule, message) {
+  if (tool === 'revive') {
+    return reviveHint(rule, message);
+  }
   const hint = HINTS.get(rule);
   if (tool !== 'modernize') {
     return hint;
@@ -113,8 +117,8 @@ function hintOf(tool, rule) {
 }
 
 export function lintMessage({ tool, rule, message }) {
-  const hint = hintOf(tool, rule);
-  const varying = VARYING_PARTS.get(rule);
+  const hint = hintOf(tool, rule, message);
+  const varying = tool === 'revive' ? reviveVaryingPart(rule) : VARYING_PARTS.get(rule);
   const own = tool === 'gosec' ? gosecMessage(rule, message) : message;
   const text = sentence(varying === undefined ? own : own.replace(varying, ''));
   return hint === undefined ? text : `${text} ${hint}`;

@@ -142,6 +142,11 @@ func TestEveryEnabledRuleHasAFailingFixture(t *testing.T) {
 			uncovered = append(uncovered, rule)
 		}
 	}
+	for _, each := range reviveRules() {
+		if !covered[each.Name()] {
+			uncovered = append(uncovered, each.Name())
+		}
+	}
 	if len(uncovered) > 0 {
 		t.Fatalf("rules without a fixture: %s", strings.Join(uncovered, " "))
 	}
