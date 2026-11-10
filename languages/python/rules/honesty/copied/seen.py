@@ -2,7 +2,6 @@ import ast
 
 from checks.common import dotted_name, imported_module
 
-
 LOADERS = {"importlib.import_module", "__import__", "pytest.importorskip"}
 
 
