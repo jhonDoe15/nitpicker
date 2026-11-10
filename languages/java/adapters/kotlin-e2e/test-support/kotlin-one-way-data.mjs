@@ -37,6 +37,43 @@ style:
       - 'java.lang.System.exit'
 coroutines:
   active: false
+  SuspendFunSwallowedCancellation:
+    active: false
+    severity: info
+    excludes: ['**/*.kt']
+    includes: ['missing/**']
+    ignoreAnnotated: ['Marker']
+  InjectDispatcher:
+    active: false
+    severity: info
+    excludes: ['**/*.kt']
+    includes: ['missing/**']
+    ignoreAnnotated: ['Marker']
+    dispatcherNames: []
+  RedundantSuspendModifier:
+    active: false
+    severity: info
+    excludes: ['**/*.kt']
+    includes: ['missing/**']
+    ignoreAnnotated: ['Marker']
+  SleepInsteadOfDelay:
+    active: false
+    severity: info
+    excludes: ['**/*.kt']
+    includes: ['missing/**']
+    ignoreAnnotated: ['Marker']
+  SuspendFunWithFlowReturnType:
+    active: false
+    severity: info
+    excludes: ['**/*.kt']
+    includes: ['missing/**']
+    ignoreAnnotated: ['Marker']
+  SuspendFunWithCoroutineScopeReceiver:
+    active: false
+    severity: info
+    excludes: ['**/*.kt']
+    includes: ['missing/**']
+    ignoreAnnotated: ['Marker']
 potential-bugs:
   active: false
   ignoreAnnotated: ['Marker']

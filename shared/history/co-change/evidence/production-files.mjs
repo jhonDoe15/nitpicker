@@ -6,7 +6,7 @@ import {
   hasGeneratorHeader,
   readFileHead,
 } from '../../../conventions/generator-marker.mjs';
-import { DEFAULT_FEATURE_LAYOUT, featureRoles } from '../../../rules/features/feature-roles.mjs';
+import { featureLayout, featureRoles } from '../../../rules/features/feature-roles.mjs';
 
 const CODE_FILE = /\.(?:tsx?|mts|cts|jsx?|mjs|cjs|py|java|kts?|go)$/u;
 const DECLARATION_FILE = /\.d\.[cm]?ts$/u;
@@ -115,7 +115,7 @@ export function moduleResolver({ projectRoot, files, policy = {} }) {
   const testRoots = policy.layout?.testRoots ?? [];
   const roleOf = featureRoles({
     sharedRoots: [],
-    featureRoots: policy.layout?.featureRoots ?? DEFAULT_FEATURE_LAYOUT.featureRoots,
+    featureRoots: featureLayout(policy.layout).featureRoots,
   });
   const resolved = new Map();
   function resolve(file) {

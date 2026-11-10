@@ -47,19 +47,19 @@ function unmanagedEnvironment(projectRoot) {
   return existsSync(directory) ? { kind: 'venv', directory } : { kind: 'path' };
 }
 
-export function openSnapshotEnvironment({ projectRoot, liveRoot, setting }) {
+export function openSnapshotEnvironment({ projectRoot, liveRoot, setting, spawn }) {
   return (
     baseEnvironment({ projectRoot, liveRoot, setting, virtualenv: venvLauncher }) ??
-    openEnvironment(detectEnvironment(liveRoot, setting), liveRoot)
+    openEnvironment(detectEnvironment(liveRoot, setting), liveRoot, spawn)
   );
 }
 
-export function openEnvironment(environment, projectRoot) {
+export function openEnvironment(environment, projectRoot, spawn = spawnSync) {
   if (environment.kind === 'uv') {
     return uvLauncher(projectRoot);
   }
   if (environment.kind === 'poetry') {
-    return venvLauncher(poetryDirectory(projectRoot), 'poetry');
+    return venvLauncher(poetryDirectory(projectRoot, spawn), 'poetry');
   }
   if (environment.kind === 'venv') {
     return venvLauncher(environment.directory, 'virtualenv');
@@ -68,6 +68,7 @@ export function openEnvironment(environment, projectRoot) {
     const launcher = openManagedEnvironment(environment.kind, {
       projectRoot,
       virtualenv: venvLauncher,
+      spawn,
     });
     return launcher ?? fallbackLauncher(environment, projectRoot);
   }
@@ -152,8 +153,8 @@ function declaresUvWorkspace(directory) {
   return existsSync(pyproject) && UV_WORKSPACE_TABLE.test(readFileSync(pyproject, 'utf8'));
 }
 
-function poetryDirectory(projectRoot) {
-  const result = spawnSync('poetry', ['-C', projectRoot, 'env', 'info', '--path'], {
+function poetryDirectory(projectRoot, spawn) {
+  const result = spawn('poetry', ['-C', projectRoot, 'env', 'info', '--path'], {
     encoding: 'utf8',
     timeout: POETRY_TIMEOUT_MS,
   });

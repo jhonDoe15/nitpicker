@@ -4,11 +4,24 @@ Part of the [nitpicker-kotlin](../SKILL.md) skill. Write these forms from the st
 
 - Coroutines: no `GlobalScope`, no `runBlocking` (a call, however it is imported). Make the caller `suspend`
   (`suspend fun main()` for an entry point) and use `coroutineScope { launch { ... } }`; a test uses `runTest`.
+  Cleanup in `finally` (or after `catch (CancellationException)`) that suspends must run as
+  `withContext(NonCancellable) { withTimeout(5.seconds) { ... } }`, or be a plain blocking `close()`. Do not start
+  `scope.launch { ... }` from `x.use { }` with an outer scope while the child reads `x`: use `coroutineScope { }`
+  in the block, `join()` the launched job before it ends (not under an `if`), or open the resource inside the
+  child (`scope.launch { open().use { ... } }`).
 - A timeout stops waiting, not the work (`pmd/timeout-abandons-operation`): start the work inside
   `withTimeout(ms) { ... }`, or catch `TimeoutCancellationException` and `cancel()` the `Deferred`
   before rethrowing. `future.get(1, SECONDS)` needs `cancel(true)` on that future or a rethrow in
   its `TimeoutException` handler; a `supplyAsync` future never interrupts its task (`get`, `orTimeout`
   or `cancel(true)`), so run that work as a coroutine or on an `ExecutorService`.
+- Do not wrap suspending work in `runCatching`: it captures cancellation. Call directly or catch
+  only an expected specific failure. Non-suspending `runCatching` is allowed.
+- In a suspend function or coroutine, a `catch` of `CancellationException` rethrows it (`throw e`) or calls
+  `ensureActive()`; a `catch` of `InterruptedException` rethrows or calls `Thread.currentThread().interrupt()`.
+  Logging or returning a default swallows it (`pmd/SwallowedCancellation`, `pmd/SwallowedInterrupt`).
+- Inject a dispatcher (`dispatcher: CoroutineDispatcher = Dispatchers.IO`) instead of naming `Dispatchers.IO`
+  in main code; no `suspend` on a function that never suspends or returns a `Flow`; no `suspend`
+  `CoroutineScope` extension; `delay`, never `Thread.sleep`, in a `suspend` function.
 - Fan-out: bound concurrent remote or message calls. One `Semaphore(8)` with `withPermit { ... }` around each call,
   `chunked(n)`, or `flatMapMerge(concurrency = n)`; never `items.map { async { client.get(it) } }.awaitAll()` over a
   runtime collection. `limitedParallelism(n)` caps threads, not suspending calls in flight. Reactor: pass a limit
