@@ -56,6 +56,8 @@ public final class Report {
     classification: 'enforceable',
     symbol: 'Report.note',
     location: { line: 9 },
+    exception: { rule: 'mutable-state-escape', paths: [report], reason: '...' },
+    exceptionList: 'exceptions',
   };
 }
 
@@ -120,5 +122,7 @@ public final class Users {
     classification: 'enforceable',
     symbol: 'Users.leaked',
     location: { line: 16 },
+    exception: { rule: 'protocol-contract', paths: [users], reason: '...' },
+    exceptionList: 'exceptions',
   };
 }

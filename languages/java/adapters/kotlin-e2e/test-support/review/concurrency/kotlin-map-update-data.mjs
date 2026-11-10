@@ -3,7 +3,7 @@ import path from 'node:path';
 
 const SOURCES = path.resolve(
   import.meta.dirname,
-  '../../../fixtures/kotlin-map-update-project/src/main/kotlin/demo/orders',
+  '../../../../fixtures/kotlin-map-update-project/src/main/kotlin/demo/orders',
 );
 const MAIN = 'src/main/kotlin/demo/orders';
 

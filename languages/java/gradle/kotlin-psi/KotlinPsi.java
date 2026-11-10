@@ -111,13 +111,13 @@ public final class KotlinPsi {
           sources.stream().filter(source -> !source.test()).map(Parsed::parsed).toList());
       for (Parsed source : sources) {
         if (!source.test()) {
-          new MetricsCollector(source.parsed(), source.text(), source.relative(), functions).collect();
+          metricsOf(source, functions);
           classes.add(FileClasses.describe(source.parsed(), source.relative(), claimedFacades));
           Types.collect(source.parsed(), source.text(), source.relative(), types);
           production.add(new Source(source.parsed(), source.relative(), source.text()));
           mainSources.add(source);
         }
-        DetektCounts.collect(source.parsed(), source.text(), source.relative(), detektCounts);
+        detektCountsOf(source, detektCounts);
         facts.add(factsOf(source, nothing));
       }
       design = designOf(production);
@@ -154,6 +154,26 @@ public final class KotlinPsi {
       }
     }
     return entries;
+  }
+
+  private static void metricsOf(Parsed source, List<String> functions) {
+    List<String> entries = new ArrayList<>();
+    try {
+      new MetricsCollector(source.parsed(), source.text(), source.relative(), entries).collect();
+      functions.addAll(entries);
+    } catch (StackOverflowError tooDeep) {
+      System.err.println(source.relative() + ": too deeply nested to measure the functions; the file is skipped");
+    }
+  }
+
+  private static void detektCountsOf(Parsed source, List<String> detektCounts) {
+    List<String> entries = new ArrayList<>();
+    try {
+      DetektCounts.collect(source.parsed(), source.text(), source.relative(), entries);
+      detektCounts.addAll(entries);
+    } catch (StackOverflowError tooDeep) {
+      System.err.println(source.relative() + ": too deeply nested to count the detekt rules; the file is skipped");
+    }
   }
 
   private static Object factsOf(Parsed source, Set<String> nothing) {

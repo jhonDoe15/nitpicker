@@ -152,6 +152,8 @@ public final class FactsCollector {
       declarations.declareTypeAlias((KtTypeAlias) element);
     } else if (element instanceof KtTryExpression) {
       lifetimes.tryExpression((KtTryExpression) element, frame);
+      state.handlers.addAll(
+          Catches.completing((KtTryExpression) element, state::lineOf, Predicates.symbolAt(frame, element), throwing));
     } else if (element instanceof KtCallExpression) {
       lifetimes.call((KtCallExpression) element, frame);
       calls.call((KtCallExpression) element, frame);
@@ -173,9 +175,6 @@ public final class FactsCollector {
       locking.step((KtUnaryExpression) element, frame);
     } else if (element instanceof KtDotQualifiedExpression) {
       predicates.containsForm((KtDotQualifiedExpression) element, frame);
-    } else if (element instanceof KtTryExpression) {
-      state.handlers.addAll(
-          Catches.completing((KtTryExpression) element, state::lineOf, Predicates.symbolAt(frame, element), throwing));
     } else if (element instanceof KtWhenExpression) {
       predicates.when((KtWhenExpression) element, frame);
     } else if (element instanceof KtCallableReferenceExpression) {
