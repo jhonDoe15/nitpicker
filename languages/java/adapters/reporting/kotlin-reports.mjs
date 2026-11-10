@@ -34,6 +34,7 @@ import { withoutCoveredFindings } from '../kotlin/review-rules/review-finding.mj
 import { readKotlinNotes } from './kotlin-notes.mjs';
 import { withoutTransactionAwareCacheWrites } from '../spring/transactions/transaction-aware.mjs';
 import { springRoots } from '../spring/transactions/transaction-filters.mjs';
+import { withoutSpringCoveredReads } from '../spring/configuration/covered-reads.mjs';
 
 const DETEKT_TOOL = 'detekt';
 const DETEKT_REPORT = 'detekt.sarif';
@@ -153,7 +154,7 @@ export function readKotlinFindings(context, crapLimit) {
     functionUnitLocator({ ...context, kotlin: true }),
   );
   const findings = withoutCoveredFindings(
-    [
+    withoutSpringCoveredReads([
       ...ruleFindings,
       ...readKotlinNotes(reportRoot),
       ...readSuppressionFindings(projectRoot, {
@@ -172,7 +173,7 @@ export function readKotlinFindings(context, crapLimit) {
       ...(jacoco === undefined
         ? []
         : readKotlinCrapFindings(metrics, { projectRoot, jacoco, crapLimit })),
-    ],
+    ]),
     context.classLimits,
   );
   return withoutTransactionAwareCacheWrites(findings, { projectRoot, roots: springRoots(context) });

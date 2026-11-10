@@ -35,6 +35,7 @@ const AREA_TOOLS = [
       'errcheck',
       'modernize',
       'gosec',
+      'revive',
       'coding-standards',
       'entry-points',
       'dependency-architecture',

@@ -1,7 +1,7 @@
 package g6
 
 func Head() []byte {
-	values := make([]byte, 0)
+	values := []byte{}
 	return values[:3] // want G602
 }
 

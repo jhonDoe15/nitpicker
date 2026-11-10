@@ -31,7 +31,7 @@ type Result struct {
 }
 
 func supersededBy() map[string][]string {
-	return map[string][]string{
+	replacements := map[string][]string{
 		"S1023":    {"SA4011"},
 		"S1000":    {"S1037"},
 		"inline":   {"gofixdirective"},
@@ -43,7 +43,10 @@ func supersededBy() map[string][]string {
 		"SA1019":   {"G506", "G507"},
 		"G118":     {"lostcancel"},
 		"G115":     {"G109"},
+		"G601":     {"range-val-address"},
 	}
+	maps.Copy(replacements, reviveSuperseded())
+	return replacements
 }
 
 const packageCommentRule = "ST1000"
@@ -86,6 +89,13 @@ func analyze(directory string, settings options, patterns []string) (Result, err
 		objects.add(action.Result)
 	}
 	for found := range objects.findings() {
+		seen[found] = true
+	}
+	revived, err := reviveFindings(loaded)
+	if err != nil {
+		return result, err
+	}
+	for _, found := range revived {
 		seen[found] = true
 	}
 	chosen, err := selected(slices.Collect(maps.Keys(seen)), settings.project)
@@ -185,16 +195,22 @@ func finding(files *token.FileSet, at token.Pos, tool, rule string) Finding {
 func kept(seen map[Finding]bool) []Finding {
 	rulesAt := map[string]map[string]bool{}
 	for found := range seen {
-		key := lineKey(found)
-		if rulesAt[key] == nil {
-			rulesAt[key] = map[string]bool{}
+		for _, key := range []string{lineKey(found), columnKey(found)} {
+			if rulesAt[key] == nil {
+				rulesAt[key] = map[string]bool{}
+			}
+			rulesAt[key][found.Rule] = true
 		}
-		rulesAt[key][found.Rule] = true
 	}
 	findings := []Finding{}
 	replacements := supersededBy()
+	byColumn := reviveSupersededByColumn()
 	for found := range seen {
-		if found.Tool != vetTool && !superseded(found, rulesAt[lineKey(found)], replacements) {
+		key := lineKey(found)
+		if byColumn[found.Rule] {
+			key = columnKey(found)
+		}
+		if found.Tool != vetTool && !superseded(found, rulesAt[key], replacements) {
 			findings = append(findings, found)
 		}
 	}
@@ -216,6 +232,10 @@ func present(findings []Finding) map[Finding]bool {
 
 func lineKey(found Finding) string {
 	return found.File + ":" + strconv.Itoa(found.Line)
+}
+
+func columnKey(found Finding) string {
+	return lineKey(found) + ":" + strconv.Itoa(found.Column)
 }
 
 func superseded(found Finding, rules map[string]bool, replacements map[string][]string) bool {
