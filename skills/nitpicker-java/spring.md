@@ -118,6 +118,9 @@ JPA and Spring Data:
   that holds the list, or a reactive `filter`, `count`, `any`, `hasElements`, `take` or
   `collectList()`. Query text is constant (a text block) and
   values are bind parameters, in JPQL and JDBC alike.
+- Fetch at most one collection per query (`join fetch`, Criteria `fetch` or an entity graph); load
+  the others in their own query or with `@BatchSize` or `@Fetch(FetchMode.SUBSELECT)`
+  (`JpaMultipleCollectionFetch`). Two fetched collections return a row for every pair.
 - Native SQL only when JPQL can't express it, marked on that one method with
   `@SuppressWarnings("PMD.SpringDataNativeQuery")`, `EntityManager.createNativeQuery` too.
 

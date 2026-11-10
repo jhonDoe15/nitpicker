@@ -57,3 +57,11 @@ def log(lines, line):
     if not line:
         return
     lines.append(line)
+
+
+def same(value, other):
+    return value == other
+
+
+def either(kind):
+    return kind in {"a", "b"}
