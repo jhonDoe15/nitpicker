@@ -59,10 +59,13 @@ describe('Go package coupling', () => {
     const findings = goCouplingFindings(report, 'shop').filter(
       ({ classification }) => classification === 'enforceable',
     );
-    expect(findings).toEqual([
+    expect(
+      findings.map(({ cause, ...finding }) => ({ ...finding, folders: cause.folders })),
+    ).toEqual([
       {
         tool: 'coupling',
         rule: 'stability-direction',
+        folders: ['core'],
         path: 'core/doc.go',
         identity: 'package-edge:core->helpers',
         message:

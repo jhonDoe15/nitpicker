@@ -8,7 +8,7 @@ import {
 } from './project-rules/size-rules.mjs';
 import { UNUSED_API_RULES, UNUSED_API_RULE_IDS } from './unused-api/unused-api-policy.mjs';
 import { entryPointRule, reuseRules } from './project-rules/reuse-rules.mjs';
-import { NO_TYPE_ONLY, testConsoleRule } from './project-rules/test-runtime-rules.mjs';
+import { NO_TYPE_ONLY, slowTest, testConsoleRule } from './project-rules/test-runtime-rules.mjs';
 import {
   docCommentRule,
   SOURCE_RULE_IDS,
@@ -22,6 +22,7 @@ import {
   HYGIENE_RULES,
 } from './project-rules/hygiene-rules.mjs';
 import { sharedFactExceptionRules, withLanguageColumns } from './project-rules/fact-rules.mjs';
+import { DESIGN_RULE_IDS, designRules } from './project-rules/design/design-rules.mjs';
 
 import {
   BASE_GREW_MESSAGES,
@@ -58,6 +59,9 @@ export const RULE_IDS = {
   ...SIZE_RULE_IDS,
   slowTest: 'slow-test',
   sharedUsedByOneFeature: 'shared-used-by-one-feature',
+  featureInternalImport: 'feature-internal-import',
+  sharedImportsFeature: 'shared-imports-feature',
+  featureCycle: 'feature-cycle',
   duplicateDefinition: 'duplicate-definition',
   siblingCopyEdit: 'sibling-copy-edit',
   exportedNameCollision: 'exported-name-collision',
@@ -66,6 +70,7 @@ export const RULE_IDS = {
   testConsoleOutput: 'test-console-output',
   docCommentContent: 'doc-comment-content',
   ...SOURCE_RULE_IDS,
+  ...DESIGN_RULE_IDS,
 };
 
 /** Per-function structure limits, keyed by the metric name the TypeScript analyzer reports. */
@@ -241,7 +246,7 @@ const CATALOG = [
     id: RULE_IDS.stabilityDirection,
     check: 'coupling',
     limit:
-      'a package depending on a less stable package; an import that exists only for the type checker (`import type`, `if TYPE_CHECKING:`) is never the reported dependency, but still counts toward instability',
+      'a package depending on a less stable package; a feature folder is one unit, and edges between its public face and its own internals do not count; an import that exists only for the type checker (`import type`, `if TYPE_CHECKING:`) is never the reported dependency, but still counts toward instability',
     enforcedBy: withGo(withKotlin(ALL, true)),
   },
   {
@@ -270,16 +275,12 @@ const CATALOG = [
   ...sizeRules({ all: ALL, withKotlin, withGo }),
   ...reuseRules(RULE_IDS, withKotlin(TYPESCRIPT_ONLY, false)),
   ...sourceRules(RULE_IDS, withKotlin(TYPESCRIPT_ONLY, false)),
-  {
-    id: RULE_IDS.slowTest,
-    check: 'test-runtime',
-    limit: `a test the change adds or edits taking more than ${String(TEST_TIME_DEFAULTS.unitTestSeconds)} s (unit) or ${String(TEST_TIME_DEFAULTS.integrationTestSeconds)} s (integration); override with \`thresholds.unitTestSeconds\` and \`thresholds.integrationTestSeconds\``,
-    enforcedBy: withGo(withKotlin(ALL, true)),
-  },
+  slowTest(RULE_IDS, TEST_TIME_DEFAULTS, withGo(withKotlin(ALL, true))),
   ...HYGIENE_RULES,
   ...HISTORY_RULES,
   testConsoleRule(RULE_IDS),
   docCommentRule(RULE_IDS),
+  ...designRules(DESIGN_RULE_IDS),
 ];
 
 export const RULES = CATALOG.map((rule) => withLanguageColumns(rule, LANGUAGES));

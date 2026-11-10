@@ -7,8 +7,11 @@ import {
   trackTemporaryPath,
   untrackTemporaryPath,
 } from '../../core/tooling/temporary-files.mjs';
+import { nestedCheckout, useGitCheckouts } from '../../core/diff/git/test-support/git-checkout.mjs';
 import { sourceFilesUnder } from './files.mjs';
 import { withNormalizedTree } from './tree.mjs';
+
+const { gitCheckout } = useGitCheckouts();
 
 const roots = [];
 const temporaryPaths = { track: trackTemporaryPath, untrack: untrackTemporaryPath };
@@ -139,6 +142,44 @@ describe('listing the sources of a project', () => {
     expect(sourceFilesUnder(root, ['src', 'missing'], ['.kt', '.kts'])).toEqual([
       'src/a.kt',
       'src/b.kt',
+    ]);
+  });
+
+  it('lists the files of a Git checkout without ignored folders and nested checkouts', () => {
+    const root = gitCheckout(
+      {
+        'src/a.kt': '',
+        'src/generated/b.kt': '',
+        ...nestedCheckout('src/agent', { 'c.kt': '' }),
+      },
+      ['src/generated/'],
+    );
+
+    expect(sourceFilesUnder(root, ['src'], ['.kt'])).toEqual(['src/a.kt']);
+  });
+
+  it('takes a root that is a file, in a Git checkout or outside of one', () => {
+    const files = { 'bin/cli.ts': '', 'bin/other.ts': '', 'src/a.ts': '' };
+    const checkout = gitCheckout(files);
+    const plain = project(files);
+
+    expect(sourceFilesUnder(checkout, ['bin/cli.ts'], ['.ts'])).toEqual(['bin/cli.ts']);
+    expect(sourceFilesUnder(plain, ['bin/cli.ts', 'src'], ['.ts'])).toEqual([
+      'bin/cli.ts',
+      'src/a.ts',
+    ]);
+  });
+
+  it('takes a root that is a glob, in a Git checkout or outside of one', () => {
+    const files = { 'src/a.ts': '', 'src/b.md': '', 'lib/c.ts': '', 'src/ignored/d.ts': '' };
+    const checkout = gitCheckout(files, ['src/ignored/']);
+    const plain = project(files);
+
+    expect(sourceFilesUnder(checkout, ['src/*.ts'], ['.ts'])).toEqual(['src/a.ts']);
+    expect(sourceFilesUnder(plain, ['*/*.ts'], ['.ts'])).toEqual([
+      'lib/c.ts',
+      'src/a.ts',
+      'src/ignored/d.ts',
     ]);
   });
 });
