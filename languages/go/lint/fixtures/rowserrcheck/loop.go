@@ -1,4 +1,4 @@
-package passes
+package rowserrcheck
 
 import (
 	"context"
@@ -7,7 +7,7 @@ import (
 )
 
 func Names(ctx context.Context, db *sql.DB) ([]string, error) {
-	rows, err := db.QueryContext(ctx, "SELECT name FROM users") // want sqlrowserr
+	rows, err := db.QueryContext(ctx, "SELECT name FROM users") // want rowserrcheck
 	if err != nil {
 		return nil, err
 	}
