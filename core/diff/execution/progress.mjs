@@ -1,4 +1,5 @@
 import { writeSync } from 'node:fs';
+import { displayPath } from '../../../shared/messages/terminal/terminal-text.mjs';
 
 const PROGRESS_FD = 3;
 
@@ -21,7 +22,7 @@ export function startLine({ label, total }) {
 }
 
 export function cachedLine({ label, count, directory }) {
-  const location = directory === undefined ? 'remote cache' : directory;
+  const location = directory === undefined ? 'remote cache' : displayPath(directory);
   return `nitpicker: ${label} ${countAnalyzers(count)} cached (${location}; use --no-cache to rerun)\n`;
 }
 

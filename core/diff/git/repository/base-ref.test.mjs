@@ -235,6 +235,37 @@ describe('resolveBase', () => {
     );
   });
 
+  it('compares a staged run with HEAD when no remote base exists', () => {
+    const repositoryRoot = createRepository();
+
+    expect(resolveBase({ repositoryRoot, environment: {}, staged: true })).toEqual({
+      baseRef: 'HEAD',
+      source: 'staged, no remote base',
+    });
+  });
+
+  it('still prefers the remote base for a staged run', () => {
+    const repositoryRoot = createRepository();
+    addRemote(repositoryRoot, 'origin');
+    setRemoteHead(repositoryRoot, 'origin', 'main');
+
+    expect(resolveBase({ repositoryRoot, environment: {}, staged: true })).toEqual({
+      baseRef: 'origin/main',
+      source: 'remote-head',
+    });
+  });
+
+  it('says how to make the first commit when a staged run finds none', () => {
+    const repositoryRoot = createRepository();
+    fixtureGit(repositoryRoot, ['checkout', '-q', '--orphan', 'empty']);
+
+    expect(() => resolveBase({ repositoryRoot, environment: {}, staged: true })).toThrow(
+      new Error(
+        'No base could be determined: the repository has no commit yet. Make the first commit without the hook (git commit --no-verify), or pass --base <ref>.',
+      ),
+    );
+  });
+
   it('compares a feature branch with the local main when there is no remote', () => {
     const repositoryRoot = createRepository();
     fixtureGit(repositoryRoot, ['checkout', '-q', '-b', 'feature']);

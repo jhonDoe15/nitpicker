@@ -9,6 +9,7 @@ import { fixtureGit } from '../diff/git/test-support/git-repository.mjs';
 import { fakeAnalyzer, useCliFixtures } from './test-support/cli-harness.mjs';
 import { fileURLToPath } from 'node:url';
 import { writeFiles } from '../diff/git/test-support/fixture-files.mjs';
+import { linkSentence } from '../../shared/messages/test-support/link-sentence.mjs';
 import { PROJECT_LAYER_VARIABLE } from '../../languages/typescript/adapters/lint-engine/project-layer.mjs';
 
 const { createRepository, makeOutputRoot, makeTemporaryRoot, runCli } =
@@ -16,6 +17,10 @@ const { createRepository, makeOutputRoot, makeTemporaryRoot, runCli } =
 
 function isolatedCache() {
   return { NITPICKER_CACHE_DIR: makeTemporaryRoot('nitpicker-cli-cache-') };
+}
+
+function fixLines(stdout) {
+  return stdout.slice(0, stdout.indexOf('Base: '));
 }
 
 function fixOrderObserver() {
@@ -86,14 +91,17 @@ describe('nitpicker CLI', () => {
     expect(output.stdoutText).toBe(`Fixed files:
 src/main/changed.ts
 src/main/format.mjs
+Fix notes:
+  eslint --fix rewrote src/main/changed.ts
+  prettier rewrote src/main/changed.ts, src/main/format.mjs
 Base: ${repository.baseRef} (argument)
 
-\u001b[1m\u001b[32mQuality gate summary\u001b[0m
-\u001b[32m✓ No new enforceable violations\u001b[0m
-\u001b[2mFull diagnostics: ${outputRoot}/report.txt\u001b[0m
+Quality gate summary
+✓ No new enforceable violations
+Full diagnostics: ${outputRoot}/report.txt
 `);
     expect(output.stderrText).toBe('');
-    const fixOrder = ['eslint-fix', 'prettier-base-check', 'prettier-fix'];
+    const fixOrder = ['eslint-fix', 'prettier-fix', 'prettier-base-check'];
     expect(observer.operationsAtInvocations).toEqual([fixOrder, fixOrder]);
   });
   it('continues remaining fixers and comparison when a fixer fails', () => {
@@ -121,7 +129,7 @@ Base: ${repository.baseRef} (argument)
       analyzers: [fakeAnalyzer()],
       executeFixCommand({ operation }) {
         if (operation === 'eslint-fix') {
-          return { status: 2, stderr: 'fixture ESLint failure' };
+          return { status: 2, stderr: '\u001B[31mfixture ESLint failure\u001B[39m' };
         }
       },
       stdout: output.stdout,
@@ -135,13 +143,15 @@ Base: ${repository.baseRef} (argument)
     expect(output.stdoutText).toEqual(`Fixed files:
 src/main/changed.ts
 src/main/format.mjs
+Fix notes:
+  prettier rewrote src/main/changed.ts, src/main/format.mjs
 Base: ${repository.baseRef} (argument)
 
-\u001b[1m\u001b[31mQuality gate summary\u001b[0m
+Quality gate summary
 No new enforceable violations, but the run is incomplete:
-\u001b[1m\u001b[31m✖ 1 tool error\u001b[0m
-  \u001b[33meslint-fix (fix)\u001b[0m: eslint-fix failed: fixture ESLint failure
-\u001b[2mFull diagnostics: ${outputRoot}/report.txt\u001b[0m
+✖ 1 tool error
+  eslint-fix (fix): eslint-fix failed: fixture ESLint failure. ${linkSentence('fixersFail')}
+Full diagnostics: ${outputRoot}/report.txt
 `);
     expect(output.stderrText).toBe('');
     expect(JSON.parse(readFileSync(path.join(outputRoot, 'summary.json'), 'utf8'))).toEqual({
@@ -176,12 +186,13 @@ No new enforceable violations, but the run is incomplete:
       policyLoosenings: [],
       policyChangeAccepted: false,
       notices: [],
+      mode: 'full',
     });
     expect(JSON.parse(readFileSync(path.join(outputRoot, 'tool-errors.json'), 'utf8'))).toEqual([
       {
         tool: 'eslint-fix',
         snapshot: 'fix',
-        message: 'eslint-fix failed: fixture ESLint failure',
+        message: `eslint-fix failed: fixture ESLint failure. ${linkSentence('fixersFail')}`,
       },
     ]);
   });
@@ -220,11 +231,13 @@ No new enforceable violations, but the run is incomplete:
     expect(output.stdoutText).toEqual(
       expect.stringMatching(exactText`Fixed files:
 (none)
+Fix notes:
+  prettier left src/main/legacy.yaml as is: already unformatted before your change
 Base: ${repository.baseRef} (argument)
 
-\u001b[1m\u001b[32mQuality gate summary\u001b[0m
-\u001b[32m✓ No new enforceable violations\u001b[0m
-\u001b[2mFull diagnostics: /tmp/nitpicker-cli-output-${/[A-Za-z0-9]{6}/}/reports/report.txt\u001b[0m
+Quality gate summary
+✓ No new enforceable violations
+Full diagnostics: /tmp/nitpicker-cli-output-${/[A-Za-z0-9]{6}/}/reports/report.txt
 `),
     );
     expect(output.stderrText).toBe('');
@@ -266,9 +279,13 @@ Base: ${repository.baseRef} (argument)
     expect(readFileSync(path.join(repository.root, 'src/main/legacy.mjs'), 'utf8')).toBe(
       'export const legacy=false\n',
     );
-    expect(output.stdoutText).toMatch(
-      /Fixed files:\nsrc\/main\/clean.mjs\nsrc\/main\/new.mjs\nBase:/,
-    );
+    expect(fixLines(output.stdoutText)).toBe(`Fixed files:
+src/main/clean.mjs
+src/main/new.mjs
+Fix notes:
+  prettier rewrote src/main/clean.mjs, src/main/new.mjs
+  prettier left src/main/legacy.mjs as is: already unformatted before your change
+`);
   });
   it('fixes only the files the ESLint and Prettier checks cover', () => {
     const outsideRootsNotice = [
@@ -310,13 +327,16 @@ Base: ${repository.baseRef} (argument)
     );
     expect(output.stdoutText).toBe(`Fixed files:
 src/main/module.mjs
+Fix notes:
+  eslint --fix rewrote src/main/module.mjs
+  prettier rewrote src/main/module.mjs
 Base: ${repository.baseRef} (argument)
 
-\u001b[1m\u001b[32mQuality gate summary\u001b[0m
-\u001b[32m✓ No new enforceable violations\u001b[0m
-\u001b[1m\u001b[33mNotices (not failing):\u001b[0m
+Quality gate summary
+✓ No new enforceable violations
+Notices (not failing):
   ${outsideRootsNotice}
-\u001b[2mFull diagnostics: ${outputRoot}/report.txt\u001b[0m
+Full diagnostics: ${outputRoot}/report.txt
 `);
   });
   it('does not fix files that the config excludes, and fixes custom layout roots', () => {
@@ -366,14 +386,11 @@ Base: ${repository.baseRef} (argument)
     expect(readFileSync(path.join(repository.root, 'lib/legacy/old.ts'), 'utf8')).toBe(
       'export let old=3;\n',
     );
-    expect(output.stdoutText).toBe(`Fixed files:
+    expect(fixLines(output.stdoutText)).toBe(`Fixed files:
 lib/changed.ts
-Base: ${repository.baseRef} (argument)
-
-\u001b[1m\u001b[32mQuality gate summary\u001b[0m
-\u001b[32m✓ No new enforceable violations\u001b[0m
-\u001b[1m\u001b[33mRan only: prettier-format. Run nitpicker without --analyzer before you finish.\u001b[0m
-\u001b[2mFull diagnostics: ${outputRoot}/report.txt\u001b[0m
+Fix notes:
+  eslint --fix rewrote lib/changed.ts
+  prettier rewrote lib/changed.ts
 `);
   });
   it('hands eslint --fix the ESLint project config the project opted into', () => {
@@ -401,7 +418,7 @@ Base: ${repository.baseRef} (argument)
           return undefined;
         }
         layers.push(JSON.parse(environment[PROJECT_LAYER_VARIABLE]));
-        return { status: 0, stdout: '', stderr: '' };
+        return { status: 0, stdout: '[]', stderr: '' };
       },
       stdout: output.stdout,
       stderr: output.stderr,
@@ -421,7 +438,7 @@ Base: ${repository.baseRef} (argument)
     expect(
       runCli({ arguments_: ['--fix', '--all'], stdout: output.stdout, stderr: output.stderr }),
     ).toBe(2);
-    expect(output.stderrText).toEqual('nitpicker failed: --fix cannot be combined with --all\n');
+    expect(output.stderrText).toEqual(`nitpicker failed: --fix cannot be combined with --all\n`);
   });
   it('rejects --all combined with --base', () => {
     const output = captureOutput();

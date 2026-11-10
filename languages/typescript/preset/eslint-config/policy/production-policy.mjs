@@ -106,6 +106,7 @@ function productionGuardRules({ react, security }) {
     'nitpicker/no-unindexed-foreign-key': 'error',
     'nitpicker/no-shell-string-command': 'error',
     'nitpicker/require-process-timeout': 'error',
+    'nitpicker/no-sync-node-api-in-async': 'error',
     'nitpicker/no-unsafe-path-join': 'error',
     'nitpicker/timeout-abandons-operation': ['error', httpClientOptions({ react, security })],
     'nitpicker/require-error-listener': 'error',
@@ -135,6 +136,16 @@ export function productionLayoutConfigFor(layout, options = {}) {
   ];
 }
 
+function securitySupportOff() {
+  return {
+    files: securitySupportGlobs(),
+    plugins: { nitpicker: nitpickerRules },
+    rules: Object.fromEntries(
+      [...SECURITY_RULES, 'nitpicker/timeout-abandons-operation'].map((rule) => [rule, 'off']),
+    ),
+  };
+}
+
 export function productionPolicyConfigFor(layout, options = {}) {
   const production = {
     files: layout.sourceGlobs,
@@ -153,13 +164,7 @@ export function productionPolicyConfigFor(layout, options = {}) {
         ...productionGuardRules({ react: options.react === true, security: options.security }),
       },
     },
-    {
-      files: securitySupportGlobs(),
-      plugins: { nitpicker: nitpickerRules },
-      rules: Object.fromEntries(
-        [...SECURITY_RULES, 'nitpicker/timeout-abandons-operation'].map((rule) => [rule, 'off']),
-      ),
-    },
+    securitySupportOff(),
     {
       files: layout.sourceGlobs,
       ignores: [...production.ignores, JAVASCRIPT_FILES],
@@ -180,6 +185,10 @@ export function productionPolicyConfigFor(layout, options = {}) {
     {
       files: [...(layout.entryPoints ?? []), ...configFileGlobsFor(layout)],
       rules: { 'nitpicker/no-process-access-outside-composition-root': 'off' },
+    },
+    {
+      files: configFileGlobsFor(layout),
+      rules: { 'nitpicker/no-sync-node-api-in-async': 'off' },
     },
   ];
 }
