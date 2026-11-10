@@ -32,7 +32,7 @@ function isComparable(definition) {
   );
 }
 
-function fixFor(exported, otherCopies) {
+function fixFor(exported, otherCopies, privateFix = FIX.private) {
   const [exportedOther] = otherCopies
     .filter(({ definition }) => definition.exported)
     .map(({ path: other }) => other)
@@ -40,10 +40,10 @@ function fixFor(exported, otherCopies) {
   if (exported) {
     return FIX.exported;
   }
-  return exportedOther === undefined ? FIX.private : `Import it from ${exportedOther} instead.`;
+  return exportedOther === undefined ? privateFix : `Import it from ${exportedOther} instead.`;
 }
 
-function copyFinding({ copy, copies, analyzerName }) {
+function copyFinding({ copy, copies, analyzerName, privateFix }) {
   const { name, qualifier = name, kind, line, exported } = copy.definition;
   const otherCopies = copies.filter(({ path: other }) => other !== copy.path);
   const others = otherCopies.map(({ path: p }) => p).toSorted();
@@ -57,16 +57,18 @@ function copyFinding({ copy, copies, analyzerName }) {
       name: qualifier,
       same: SAME[kind],
       others: listPaths(others),
-      fix: fixFor(exported, otherCopies),
+      fix: fixFor(exported, otherCopies, privateFix),
     },
   });
 }
 
-export function duplicateDefinitionFindings(facts, { analyzerName, isExcepted }) {
+export function duplicateDefinitionFindings(facts, { analyzerName, isExcepted, privateFix }) {
   return copyGroups(facts, {
     rule: RULE_IDS.duplicateDefinition,
     isExcepted,
     isComparable,
     keyOf: ({ kind, name, key }) => `${kind}\0${name}\0${key}`,
-  }).flatMap((copies) => copies.map((copy) => copyFinding({ copy, copies, analyzerName })));
+  }).flatMap((copies) =>
+    copies.map((copy) => copyFinding({ copy, copies, analyzerName, privateFix })),
+  );
 }

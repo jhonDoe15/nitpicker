@@ -83,8 +83,8 @@ const XML_TOKEN_PARTS = [
   String.raw`<!--[\s\S]*?-->`,
   String.raw`<!\[CDATA\[[\s\S]*?\]\]>`,
   String.raw`<\?[\s\S]*?\?>`,
-  String.raw`<!DOCTYPE[^>[]*(?:\[[\s\S]*?\])?\s*>`,
-  String.raw`<(\/?)([^\s/>]+)((?:[^>"']|"[^"]*"|'[^']*')*?)(\/?)>`,
+  String.raw`<!DOCTYPE[^>[]*(?:\[[\s\S]*?\]\s*)?>`,
+  String.raw`<(\/?)([^\s/>]+)((?:[\s/](?:[^>"']|"[^"]*"|'[^']*')*?)??)(\/?)>`,
 ];
 
 export function parseXml(text) {

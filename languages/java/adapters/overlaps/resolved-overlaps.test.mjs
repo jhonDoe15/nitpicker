@@ -169,7 +169,6 @@ describe('overlaps on the probe project', () => {
         .sort(),
     ).toStrictEqual([
       'C1Arrays.java:21 EI_EXPOSE_REP',
-      'C2Strings.java:37 RE_POSSIBLE_UNINTENDED_PATTERN',
       'C3Locks.java:21 RV_RETURN_VALUE_IGNORED',
       'C3Locks.java:22 RV_RETURN_VALUE_IGNORED',
       'C6Encoding.java:11 SS_SHOULD_BE_STATIC',

@@ -45,7 +45,9 @@ import org.jetbrains.kotlin.psi.KtFile;
  * <pre>java -Dnitpicker.kotlinCompiler=VERSION -cp COMPILER_JARS:CLASSES nitpicker.kotlinpsi.KotlinPsi
  *     METRICS.json FACTS.json PROJECT_DIR ROOT...</pre>
  *
- * A root prefixed {@code test:} holds test sources. The metrics report (functions, class names and types, see
+ * A root prefixed {@code test:} holds test sources. The system property {@code nitpicker.kotlinPsi.excluded}
+ * names a file of paths relative to PROJECT_DIR, one per line, that the build excludes from its source sets:
+ * they are not read. The metrics report (functions, class names and types, see
  * {@link MetricsCollector} and {@link Types}) covers the other roots only; its detekt counts
  * ({@link DetektCounts}) and the facts report ({@link FactsCollector}) cover all.
  * A syntax error ends the run: the sources compiled, so the pinned compiler does not read them.
@@ -53,6 +55,7 @@ import org.jetbrains.kotlin.psi.KtFile;
 public final class KotlinPsi {
   private static final String TEST_PREFIX = "test:";
   private static final String MUTATION_REPORT = "kotlin-mutation-facts.json";
+  private static final String EXCLUDED_PROPERTY = "nitpicker.kotlinPsi.excluded";
   private static final long STACK_BYTES = Long.getLong("nitpicker.stackBytes", 1L << 29);
 
   private KotlinPsi() {}
@@ -206,14 +209,29 @@ public final class KotlinPsi {
     return Map.of("file", relative, "test", test, "skipped", true);
   }
 
+  private static Set<Path> excluded(Path projectDir) throws IOException {
+    String list = System.getProperty(EXCLUDED_PROPERTY);
+    Set<Path> excluded = new HashSet<>();
+    if (list != null && Files.isRegularFile(Path.of(list))) {
+      for (String line : Files.readAllLines(Path.of(list), StandardCharsets.UTF_8)) {
+        if (!line.isEmpty()) {
+          excluded.add(projectDir.resolve(line).normalize());
+        }
+      }
+    }
+    return excluded;
+  }
+
   private static Map<Path, Boolean> sources(Path projectDir, List<String> roots) throws IOException {
     Map<Path, Boolean> files = new LinkedHashMap<>();
+    Set<Path> excluded = excluded(projectDir);
     for (String argument : roots) {
       boolean test = argument.startsWith(TEST_PREFIX);
       Path root = projectDir.resolve(test ? argument.substring(TEST_PREFIX.length()) : argument);
       if (Files.isDirectory(root)) {
         try (Stream<Path> walk = Files.walk(root)) {
-          for (Path file : walk.filter(p -> p.toString().endsWith(".kt")).sorted().collect(Collectors.toList())) {
+          for (Path file : walk.filter(p -> p.toString().endsWith(".kt") && !excluded.contains(p.normalize()))
+              .sorted().collect(Collectors.toList())) {
             files.putIfAbsent(file, test);
           }
         }

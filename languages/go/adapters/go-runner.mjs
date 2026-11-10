@@ -15,7 +15,7 @@ import { createGoContext, runGoSteps } from './go-steps.mjs';
 import { describeError } from '../../../shared/messages/error-chain.mjs';
 
 export const GO_ANALYZER_COMMAND = 'go-analyzer';
-const GO_OPTIONS = ['--go-settings'];
+const GO_OPTIONS = ['--go-settings', '--baseline-moves-file'];
 
 function toolError({ rule, message }) {
   return {
@@ -91,17 +91,17 @@ export function parseGoArguments(runnerArguments) {
   return {
     projectRoot,
     settings: JSON.parse(own.get('--go-settings') ?? '{}'),
-    policy,
+    policy: { ...policy, baselineMovesFile: own.get('--baseline-moves-file') },
   };
 }
 
 export function runGo(runnerArguments, { spawn, environment } = {}) {
   const { projectRoot, settings, policy } = parseGoArguments(runnerArguments);
-  const conventions = readHeadPolicyFile(environment).conventions;
+  const { conventions, layout } = readHeadPolicyFile(environment);
   return analyzeGoSnapshot({
     projectRoot: realpathSync(projectRoot),
     settings,
-    policy: { ...policy, conventions },
+    policy: { ...policy, conventions, layout },
     spawn,
     environment,
   });

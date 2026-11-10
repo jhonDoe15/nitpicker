@@ -12,7 +12,7 @@ const BANNED_SUPPRESSIONS = [
   /^all$/i,
   /^detekt(?:[.:]|$)/i,
   /^ktlint(?:[.:]|$)/i,
-  /^[A-Z][A-Za-z0-9]*[a-z][A-Za-z0-9]*$/,
+  /^[A-Z][\dA-Z]*[a-z][\dA-Za-z]*$/,
 ];
 const DETEKT_RULESETS = new Set([
   'comments',

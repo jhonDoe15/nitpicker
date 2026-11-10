@@ -108,6 +108,15 @@ const domainRules = {
   'nitpicker/no-unknown-in-domain': 'error',
 };
 
+const productionSourceRules = {
+  'nitpicker/no-self-recursion': 'error',
+  'nitpicker/no-task-outliving-resource': 'error',
+  'nitpicker/no-tri-state-boolean': 'error',
+  'nitpicker/no-unhandled-url-parse': 'error',
+  'nitpicker/reusable-object-per-call': 'error',
+  'nitpicker/no-compatibility-shim': 'error',
+};
+
 export function strictSyntaxConfigFor(layout = defaultResolvedLayout, options = {}) {
   const restrictedSyntax = restrictedSyntaxFor(options);
   return [
@@ -123,11 +132,7 @@ export function strictSyntaxConfigFor(layout = defaultResolvedLayout, options = 
         ...controlFlowRules,
         'no-restricted-syntax': ['error', ...restrictedSyntax.source],
         ...sourceSyntaxBans(options),
-        'nitpicker/no-self-recursion': 'error',
-        'nitpicker/no-task-outliving-resource': 'error',
-        'nitpicker/no-tri-state-boolean': 'error',
-        'nitpicker/no-unhandled-url-parse': 'error',
-        'nitpicker/no-compatibility-shim': 'error',
+        ...productionSourceRules,
       },
     },
     {
@@ -232,7 +237,9 @@ export const strictProductionRules = {
   'nitpicker/no-module-level-let': 'error',
   'nitpicker/no-shared-stateful-regex': 'error',
   'nitpicker/no-singular-and-plural-prop': 'error',
+  'nitpicker/no-unbounded-query-array': 'error',
   'nitpicker/no-uninjectable-delay': 'error',
+  'nitpicker/no-unordered-query': 'error',
   'nitpicker/no-unvalidated-schema-field': 'error',
 };
 
