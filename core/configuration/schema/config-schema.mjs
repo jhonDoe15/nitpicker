@@ -107,7 +107,7 @@ function unavailableKeys(preset) {
     ...(preset === 'typescript' ? [] : SCOPE_KEYS),
     ...(preset === 'python' ? [] : ['python']),
     ...(preset === 'kotlin' ? [] : ['kotlin']),
-    ...(preset === 'go' ? ['layout', 'duplicates'] : ['go']),
+    ...(preset === 'go' ? [] : ['go']),
     ...(GRADLE_PRESETS.includes(preset) ? [] : ['spring']),
     ...(factRuleSettings(preset).includes('testConsole') ? [] : ['testConsole']),
     ...(factRuleSettings(preset).includes('protocols') ? [] : ['protocols']),

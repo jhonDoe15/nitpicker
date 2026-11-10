@@ -5,7 +5,7 @@ import {
 import { realpathSync, statSync } from 'node:fs';
 import { normalizedRelativePath, assertContainedPath } from './paths.mjs';
 import path from 'node:path';
-import { tmpdir } from 'node:os';
+import { realTemporaryDirectory } from '../../../../core/tooling/temporary-files.mjs';
 import { analyzerDeadlineMs } from '../../../../shared/analyzer-timeouts/analyzer-timeouts.mjs';
 
 const DEFAULT_ESLINT_TIMEOUT_MS = 4 * 60 * 1000;
@@ -119,7 +119,7 @@ function validatedSnapshotRoot(value, context) {
     throw new Error(`${context} must be a directory`);
   }
 
-  const relativeToTemporaryRoot = path.relative(realpathSync(tmpdir()), canonicalRoot);
+  const relativeToTemporaryRoot = path.relative(realTemporaryDirectory(), canonicalRoot);
   const segments = relativeToTemporaryRoot.split(path.sep);
   if (
     relativeToTemporaryRoot.startsWith(`..${path.sep}`) ||
