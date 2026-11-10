@@ -2,7 +2,7 @@ import { blockCommentEnd, stringEnd } from './jvm-literals.mjs';
 
 const IDENTIFIER = /[\p{L}_$][\p{L}\p{N}_$]*|`[^`\n]+`/uy;
 const NUMBER =
-  /(?:0[xXbB][\w]+|\d[\d_]*(?:\.\d[\d_]*)?(?:[eE][+-]?\d+)?|\.\d[\d_]*(?:[eE][+-]?\d+)?)[\w]*/uy;
+  /(?:0[xXbB]\w|\d[\d_]*(?:\.\d[\d_]*)?(?:[eE][+-]?\d)?|\.\d[\d_]*(?:[eE][+-]?\d)?)\w*/uy;
 const OPERATOR =
   /(?:>>>=|<<=|>>=|\.\.\.|===|!==|\.\.<|\?\.|\?:|::|->|==|!=|<=|>=|&&|\|\||\+\+|--|[+\-*/%&|^]=|!!|\.\.|<<|[^\s\w])/uy;
 const CHARACTER = /'(?:\\(?:u[\da-fA-F]{4}|.)|[^'\\\n])*'/uy;
