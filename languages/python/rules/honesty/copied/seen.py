@@ -1,6 +1,17 @@
 import ast
 
-from checks.common import imported_module
+from checks.common import dotted_name, imported_module
+
+
+LOADERS = {"importlib.import_module", "__import__", "pytest.importorskip"}
+
+
+def loaded_module(node, aliases):
+    if not isinstance(node, ast.Call) or dotted_name(node.func, aliases) not in LOADERS:
+        return []
+    first = node.args[0] if node.args else None
+    text = first.value if isinstance(first, ast.Constant) else None
+    return [text] if isinstance(text, str) and not text.startswith(".") else []
 
 
 def import_targets(node, project, path):
@@ -18,7 +29,8 @@ def seen_modules(context, constants):
     project = context.project
     seen = set()
     for node in ast.walk(context.tree):
-        for dotted in import_targets(node, project, context.path):
+        targets = import_targets(node, project, context.path)
+        for dotted in targets + loaded_module(node, context.aliases):
             path = project.module_path(dotted)
             if path in constants:
                 seen.add(path)

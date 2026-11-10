@@ -141,20 +141,33 @@ function companions(structure, { name, body, supertypes }) {
   });
 }
 
-function typeMembers(structure, info, { language, member }) {
+function typeMembers(structure, info, { language, member, name = info.name }) {
   const body = bodyOf(structure.tokens, structure.close, member);
   if (body === undefined) {
     return [];
   }
   const ownerKind = language === 'kotlin' ? info.keyword : info.kind;
   const supertypes = supertypesOf(structure, { member, body });
-  const owner = { language, owner: info.name, ownerKind, body, supertypes };
+  const owner = { language, owner: name, ownerKind, body, supertypes };
   const own = STATIC_OWNERS[language].has(ownerKind) ? staticMembers(structure, owner) : [];
   const companion =
     language === 'kotlin' && COMPANION_OWNERS.has(info.keyword)
-      ? companions(structure, { name: info.name, body, supertypes })
+      ? companions(structure, { name, body, supertypes })
       : [];
-  return [...own, ...companion];
+  const inner = structure.nested ? nestedTypes(structure, { language, name, body }) : [];
+  return [...own, ...companion, ...inner];
+}
+
+function nestedTypes(structure, { language, name, body }) {
+  const { tokens, close } = structure;
+  const rules = LANGUAGE_RULES[language];
+  return rules.members(tokens, close, body).flatMap((member) => {
+    const info = rules.member(tokens, close, member);
+    const hidden = ['private', 'companion'].some((modifier) => info?.modifiers?.has(modifier));
+    return info?.type && info.name !== undefined && !hidden
+      ? typeMembers(structure, info, { language, member, name: `${name}.${info.name}` })
+      : [];
+  });
 }
 
 function topLevel(structure, language) {
@@ -256,9 +269,9 @@ function declaredTypes(tokens) {
   );
 }
 
-export function readJvmDefinitions(source, { kotlin = false } = {}) {
+export function readJvmDefinitions(source, { kotlin = false, nested = false } = {}) {
   const language = kotlin ? 'kotlin' : 'java';
-  const structure = { ...parseStructure(source, { kotlin }), memberNames: new Set() };
+  const structure = { ...parseStructure(source, { kotlin }), memberNames: new Set(), nested };
   const found = topLevel(structure, language);
   const signatures = new Map(found.map((item) => [item, signature(structure, item, kotlin)]));
   const mainTypes = new Set(

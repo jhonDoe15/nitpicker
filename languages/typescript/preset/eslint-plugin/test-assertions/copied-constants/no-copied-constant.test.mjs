@@ -28,6 +28,17 @@ const SOURCES = {
   'src/roles.ts': "export const ROLE = 'administrator';",
   'src/other.ts': 'export const OTHER_LIMIT = 50;',
   'src/same.ts': 'export const BATCH_SIZE = 50;',
+  'src/paging.ts': [
+    'export class Paging {',
+    '  static readonly PAGE_LIMIT = 40;',
+    "  private static readonly SECRET_KEY = 'hidden-key';",
+    '  static readonly lowerName = 41;',
+    '  static PAGE_FLOOR = 42;',
+    '  readonly PAGE_CEILING = 43;',
+    '}',
+    "class Local { static readonly LOCAL_KEY = 'local-key'; }",
+    'export { Local as Shared };',
+  ].join('\n'),
   'test/helpers/values.ts': 'export const HELPER_LIMIT = 123;',
 };
 
@@ -161,6 +172,51 @@ describe('no-copied-constant', () => {
     );
 
     expect(messages).toEqual([]);
+  });
+
+  it('follows require(), dynamic import(), import = require() and requireActual/importActual', () => {
+    const messages = reported(
+      [
+        "const { limit } = require('../src/limits');",
+        "import roles = require('../src/roles');",
+        "it('loads late', async () => {",
+        "  const { BATCH_SIZE: size } = await import('../src/same');",
+        '  expect(limit()).toBe(-25);',
+        "  expect(roles.role()).toBe('administrator');",
+        '  expect(size).toBe(50);',
+        '  expect(count()).toBe(50);',
+        "  const other = await vi.importActual('../src/other');",
+        "  const read = jest.requireActual('node:fs');",
+        '  const dynamic = await import(`../src/${name}`);',
+        '});',
+      ].join('\n'),
+    );
+
+    expect(messages.map(({ line, message }) => `${line} ${message.split(':')[0]}`)).toEqual([
+      '5 This literal copies MIN_BALANCE from ../src/limits',
+      '6 This literal copies ROLE from ../src/roles',
+      '8 This literal copies BATCH_SIZE (and MAX_ITEMS, OTHER_LIMIT, which hold the same value) from ../src/limits and ../src/other and ../src/same',
+    ]);
+  });
+
+  it('reads static readonly members of exported classes', () => {
+    const messages = reported(
+      [
+        "import { Paging as P, Shared } from '../src/paging';",
+        'expect(pages()).toBe(40);',
+        'expect(P.PAGE_LIMIT).toBe(40);',
+        'expect(new P().size()).toBe(40);',
+        "expect(key()).toBe('hidden-key');",
+        'expect(other()).toEqual([41, 42, 43]);',
+        "expect(Shared.name).toBe('local-key');",
+      ].join('\n'),
+    );
+
+    expect(messages.map(({ line, message }) => `${line} ${message.split(' from ')[0]}`)).toEqual([
+      '2 This literal copies Paging.PAGE_LIMIT',
+      '4 This literal copies Paging.PAGE_LIMIT',
+      '7 This literal copies Shared.LOCAL_KEY',
+    ]);
   });
 
   it('works in JavaScript test files', () => {

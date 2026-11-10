@@ -11,11 +11,15 @@ sources of every module, because the constants live in other files than the test
 - **Constants:** a non-private `static final` field or an interface field of a main-source class, and
   in Kotlin a non-private `const val` or `val` at top level, in an `object` or in a `companion object`,
   whose name is `UPPER_SNAKE` and whose initializer is one string literal (no template) or one number
-  literal, negative numbers included. Numbers compare by value, so `5_000L` matches `5000`.
+  literal, negative numbers included. Numbers compare by value, so `5_000L` matches `5000`. Nested
+  types count at any depth (`Api.Paging.PAGE_SIZE`, a Kotlin `object` or the `companion object` of a
+  nested class), except a `private` nested type and everything inside it.
 - **Seen by a test:** the test names the owner class (`Limits`) and the owner is in the test's package
   or imported (single-type, on-demand or with an alias), or the test imports the constant itself
-  (`import static shop.Limits.MAX_ITEMS`, `import shop.Limits.MAX_ITEMS`). A Kotlin top-level
-  constant is seen by a Kotlin test in its package or one that imports it or its package.
+  (`import static shop.Limits.MAX_ITEMS`, `import shop.Limits.MAX_ITEMS`). For a nested owner, any
+  type on its path counts: `Api` seen as above (`Api.Paging.PAGE_SIZE`), or `Paging` imported
+  (`import shop.Api.Paging`, `import shop.Api.*`, with an alias). A Kotlin top-level constant is seen
+  by a Kotlin test in its package or one that imports it or its package.
 - **Not reported:** the numbers -1, 0, 1 and 2 and strings shorter than 3 characters; a literal whose
   statement names the constant (`assertEquals(50, Limits.MAX_ITEMS)` pins a value that is a contract,
   which is the allowed form); annotation arguments; test names (the first argument of `test`, `it`,

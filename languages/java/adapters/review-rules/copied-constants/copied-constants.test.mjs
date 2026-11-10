@@ -134,6 +134,75 @@ describe('copied constants in JVM tests', () => {
     ]);
   });
 
+  it('reads constants of nested types and the names that reach them', () => {
+    const api = [
+      'package shop;',
+      'public final class Api {',
+      '  public static final class Paging { public static final int PAGE_SIZE = 25; }',
+      '  interface Headers { String TRACE = "x-trace-id"; }',
+      '  private static final class Secret { static final int CODE = 4242; }',
+      '  public enum Mode { ON; public static final int RETRY_CAP = 7; }',
+      '}',
+    ].join('\n');
+    const test = (header, body) => ({
+      'src/main/java/shop/Api.java': api,
+      'src/test/java/other/ApiTest.java': `${header}\nclass ApiTest { void x() { ${body} } }`,
+    });
+    const count = (header, body) => findings(test(header, body)).length;
+    const samePackage = findings({
+      'src/main/java/shop/Api.java': api,
+      ...javaTest(
+        '  void x() { Api.of(); f(25); f("x-trace-id"); f(4242); f(7); f(25, Api.Paging.PAGE_SIZE); }',
+      ),
+    });
+
+    expect(samePackage.map(({ message }) => message.split(' from ')[0])).toEqual([
+      'This literal copies Api.Paging.PAGE_SIZE',
+      'This literal copies Api.Headers.TRACE',
+      'This literal copies Api.Mode.RETRY_CAP',
+    ]);
+    expect([
+      count('package other;\nimport shop.Api.Paging;', 'Paging.of(); f(25);'),
+      count('package other;\nimport shop.Api.*;', 'Paging.of(); f(25);'),
+      count('package other;\nimport shop.Api;', 'Api.of(); f(25);'),
+      count('package other;\nimport static shop.Api.Paging.PAGE_SIZE;', 'f(25);'),
+      count('package other;\nimport static shop.Api.Paging.*;', 'f(25);'),
+      count('package other;\nimport shop.*;', 'Paging.of(); f(25);'),
+      count('package other;\nimport shop.Api.Paging;', 'f(25);'),
+    ]).toEqual([1, 1, 1, 1, 1, 0, 0]);
+  });
+
+  it('reads Kotlin nested objects and companions of nested classes', () => {
+    const found = findings({
+      'src/main/kotlin/shop/Store.kt': [
+        'package shop',
+        'class Store {',
+        '  object Keys { const val CART_KEY = "cart-v2" }',
+        '  class Shelf { companion object { const val SHELF_SIZE = 30 } }',
+        '  private object Hidden { const val HIDDEN_KEY = "hidden-v1" }',
+        '}',
+      ].join('\n'),
+      'src/test/kotlin/other/StoreTest.kt': [
+        'package other',
+        'import shop.Store',
+        'import shop.Store.Shelf as S',
+        'fun t() {',
+        '  Store.of(); S.of()',
+        '  key() shouldBe "cart-v2"',
+        '  size() shouldBe 30',
+        '  hidden() shouldBe "hidden-v1"',
+        '}',
+      ].join('\n'),
+    });
+
+    expect(
+      found.map(({ line, message }) => `${String(line)} ${message.split(' from ')[0]}`),
+    ).toEqual([
+      '6 This literal copies Store.Keys.CART_KEY',
+      '7 This literal copies Store.Shelf.SHELF_SIZE',
+    ]);
+  });
+
   it('reads Kotlin constants and Kotlin tests, with Kotest names skipped', () => {
     const found = findings({
       'src/main/kotlin/shop/Config.kt': [
