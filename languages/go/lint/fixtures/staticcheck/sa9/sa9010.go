@@ -9,5 +9,6 @@ func Missed() {
 }
 
 func Called() {
-	defer cleanup()()
+	stop := cleanup()
+	defer stop()
 }

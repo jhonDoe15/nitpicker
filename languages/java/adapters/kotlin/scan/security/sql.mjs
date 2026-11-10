@@ -29,7 +29,7 @@ const CALL_BEFORE = /(?:([A-Za-z_]\w*)\s*\??\.\s*)?([A-Za-z_]\w*)\s*(?:<[^<>()]*
 const ASSIGNED_BEFORE = /\b(?:val|var)\s+([A-Za-z_]\w*)\s*(?::\s*String\s*)?=\s*$/;
 const PLUS_AFTER = /^\s*\+(?![+=])\s*/;
 const PLUS_BEFORE = /(?<![+=])\+\s*$/;
-const NAME_BEFORE = /([A-Za-z_][\w.]*)\s*(?<![+=])\+\s*$/;
+const NAME_BEFORE = /([A-Za-z_][\w.]*)\s*\+\s*$/;
 const PRIMARY = /^[A-Za-z_]\w*(?:\s*(?:\?\.|\.)\s*[A-Za-z_]\w*|!!)*/;
 const FORMAT_CALL = /\bString\s*\.\s*format\s*\(/g;
 const FORMAT_AFTER = /^\s*\.\s*format\s*\(/;
