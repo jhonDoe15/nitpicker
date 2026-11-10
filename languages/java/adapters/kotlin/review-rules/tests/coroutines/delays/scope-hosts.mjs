@@ -21,7 +21,7 @@ const CONSTANT_CONDITION = /^!*(?:true|false|\d+(?:\.\d+)?(?:[<>]=?|[!=]=)\d+(?:
 const SPACES = /\s+/gu;
 const CONDITIONAL_EXIT = new RegExp(
   [
-    String.raw`\b(?:if|when)\b[^\n]*\b(?:break|return)\b`,
+    String.raw`\b(?:if|when)\b[^\n]+\b(?:break|return)\b`,
     String.raw`\bif\s*\([^\n]*\)\s*\{[^}]*\b(?:break|return)\b`,
     String.raw`\?:\s*(?:break|return)\b`,
   ].join('|'),
