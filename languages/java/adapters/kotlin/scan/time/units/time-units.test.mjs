@@ -58,7 +58,7 @@ describe('timeUnitMismatches', () => {
       'fun stale(limitSeconds: Long): Boolean {\n        val now = System.currentTimeMillis()\n        return now > limitSeconds\n    }',
     ],
   ])('flags %s', (_name, line) => {
-    expect(found([line])).not.toEqual([]);
+    expect(found([line])).toHaveLength(1);
   });
 
   it.each([
