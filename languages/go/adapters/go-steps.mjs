@@ -5,7 +5,9 @@ import { run } from './execution/go-process.mjs';
 import { detectFormatters } from './formatting/go-formatters.mjs';
 import { unformattedFiles } from './formatting/go-format.mjs';
 import { inspect, readInspect } from './structure/go-inspect.mjs';
+import { lint } from './lint/go-lint.mjs';
 import { goTest } from './tests/go-test.mjs';
+import { analyzerDeadlineMs } from '../../../shared/analyzer-timeouts/analyzer-timeouts.mjs';
 
 const FORMAT_REPORT = 'format.json';
 
@@ -23,6 +25,7 @@ export function createGoContext({
     settings,
     spawn,
     environment,
+    analyzerDeadlineMs: analyzerDeadlineMs(environment ?? {}),
     snapshot: policy.snapshot ?? 'head',
     baselineRoot: policy.baselineRoot,
     testSeconds: policy.testSeconds,
@@ -58,7 +61,7 @@ function toolchain(context) {
   context.projectGoFlags = flags.stdout.trim();
 }
 
-const STEPS = [toolchain, inspect, format, vet, goTest];
+const STEPS = [toolchain, inspect, format, vet, lint, goTest];
 const PREREQUISITES = new Set([toolchain, inspect]);
 
 function attempt(step, context) {

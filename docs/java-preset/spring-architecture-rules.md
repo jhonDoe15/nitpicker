@@ -167,6 +167,33 @@ attribute). A field that is free-form on purpose takes an exception. Kotlin clas
 same way; an annotation Kotlin puts on the constructor parameter only (a `@JsonIgnore` without
 `@get:` or `@field:`) is not seen.
 
+**Exceptions mapped to a status.** An exception that leaves a controller without a mapping reaches
+the client as a 500 with no useful body, and the cause is lost from the API contract.
+
+| Rule                        | Fails when                                                                                                                                                                                                                                                                                                                                                     |
+| --------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `spring-unmapped-exception` | a handler method of a controller (a `@RequestMapping` or composed mapping on the method, its superclass or interface) can throw a project exception class that no `@ExceptionHandler` maps, that carries no `@ResponseStatus` (on it or a superclass) and that is no `ResponseStatusException` or `ErrorResponse`; one finding per handler and exception class |
+
+The walk starts at each handler method, also one inherited from a project superclass, and follows
+calls, method references and constructor calls into project code (an interface call also into its
+project implementations) four levels deep, the shortest call path first, and the message names that
+path; compiler-made bridge and default-argument methods are not counted as a level. A thrown
+exception is a project `Throwable` that the bytecode constructs and throws at once (`throw new
+OrderNotFound(id)`), one a lambda returns (`orElseThrow(() -> new OrderNotFound(id))`) or a constructor
+reference (`orElseThrow(OrderNotFound::new)`); one built as the cause of another exception is not. A
+call or construction inside a `try` block that has a `catch` is not followed, since the code there
+handles what it throws. An `@ExceptionHandler` in any `@ControllerAdvice` or `@RestControllerAdvice`
+class maps its classes and their subclasses for every controller (its `basePackages` and
+`assignableTypes` are not read, which can only hide a finding), one in the controller itself for that
+controller; with no annotation value, its `Throwable` parameter types count. A handler for
+`Exception`, `RuntimeException` or `Throwable` maps only the classes its class checks with
+`instanceof`, since the rest still fall through to a generic response. A project class that extends a
+library exception outside `java.` (such as Spring's `TypeMismatchException`, which Spring maps to 400)
+counts as mapped, and a project `HandlerExceptionResolver` or `WebExceptionHandler` turns the rule off,
+since it can map any class. Exceptions from libraries and the JDK are left out: Spring maps its own,
+and the rest are usually server faults. Messaging, GraphQL and functional (`RouterFunction`) endpoints
+are not checked.
+
 **Aggregates (jMolecules).** A project that declares its domain model with
 [jMolecules](https://github.com/xmolecules/jmolecules) (`org.jmolecules:jmolecules-ddd`, Apache-2.0,
 read from the project's own classes; nitpicker adds no dependency) gets its aggregate boundaries
@@ -194,6 +221,53 @@ A class referring to its own type (a root's `parent` of the same root type), a s
 supertype of it, or an entity holding its own root is not reported. The detail of `ddd-foreign-entity` is `<aggregate>:<entity>`, so its
 identity is `Order|Cart:CartLine`.
 
+<a id="contract-types"></a>**Contract types.** A class that other code calls through (a
+`@Service`, a `@Controller`, or any class directly in a feature package) keeps persistence handles
+and web request objects out of its public method signatures, so callers do not need a database
+session or a live HTTP exchange. The rule reads parameter and return types, generic arguments
+(`Supplier<List<Connection>>`), arrays and Kotlin type aliases included.
+
+| Rule                           | Fails when                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       |
+| ------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `contract-infrastructure-type` | a public method of a `@Service`, a controller, or a public class directly in a feature package takes or returns a persistence handle (JPA `EntityManager`, `EntityManagerFactory`, `EntityTransaction`, `Query`; Hibernate `Session`, `StatelessSession`, `SessionFactory`; JDBC `Connection`, `Statement`, `ResultSet`, `DataSource`; `JdbcTemplate` and the other Spring JDBC, R2DBC and Mongo operations; R2DBC and MongoDB driver types; jOOQ `DSLContext`) or a web request or response object (servlet request, response, session and `Part`; `ServerWebExchange`; `ServerHttpRequest`/`ServerHttpResponse`; `WebRequest`; `MultipartFile`; WebFlux `ServerRequest`/`ServerResponse`; `HttpEntity` and `ResponseEntity`; JAX-RS `Response` and `ContainerRequestContext`; Micronaut `HttpRequest`/`HttpResponse`; Vert.x `RoutingContext`) |
+
+Framework-owned signatures are left out: repositories (`@Repository` or a Spring Data `Repository`)
+own their handles, `@Configuration` classes and `@Bean` methods wire them, a web class that is not
+a controller (`@ControllerAdvice`) and a method that overrides a library type's method (a
+`RowMapper`, a servlet `Filter`) have signatures the framework fixed, and classes in a package
+segment `adapter`, `adapters`, `infrastructure`, `infra`, `persistence`, `repository`,
+`repositories`, `db`, `database`, `dependencies`, `deps`, `config`, `configuration` or `security`
+are where the handles belong (the same module names the Python and TypeScript presets treat as
+infrastructure). A controller's web types are framework-owned too: a Spring controller, a JAX-RS
+resource (`@Path`) or a Micronaut `@Controller` takes and returns what its framework hands it, so
+web types in a controller are never reported, and a Spring controller's data access is already
+`spring-controller-repository`. A service's web types are already `spring-service-web`. So that
+web entry points written without a controller annotation pass, a method whose first parameter is a
+request (`HttpServletRequest`, `ServerWebExchange`, WebFlux `ServerRequest`, JAX-RS
+`ContainerRequestContext`, Micronaut `HttpRequest`, Vert.x `RoutingContext`) may take and return
+web types (`Mono<ServerResponse> list(ServerRequest)`, `void list(RoutingContext)`); it is still
+reported for a persistence handle. A class whose name ends in `Client` calls another service, so its
+web types (`RequestEntity` in, `ResponseEntity` out) are outbound and not reported, and
+`RequestEntity` is never a web request object. A static factory method that returns a project type
+(`Accounts.of(DataSource)`) is the composition root's way in: only its return type is read. Record
+accessors and Kotlin property getters and setters are read through the record components and
+properties, not as methods, so a record or data class that holds a handle is not reported through
+its accessors.
+
+The rule runs where the other architecture rules run (Spring and jMolecules projects) and also in a
+project without Spring when the head checkout has a `.java` or `.kt` file of a main source set
+(`src/main/java`, `src/main/kotlin`) directly in a feature folder: `layout.featureRoots` (default
+`**/features`) and `layout.sharedRoots` (default `**/shared`) in `nitpicker.config.json`, the same
+keys the feature boundary rules read. Node checks this on the head checkout (`featureFolders` head
+fact) and passes it to both sides, so the base runs the same rules; on Gradle it is the
+`-Pnitpicker.featureFolders=true` property. Then every Gradle project and Maven module runs it,
+those without Spring included. What is a contract class: a `@Service` (or a class `spring.roles`
+maps to the service role), a controller, a public class directly in a feature package of the Spring
+root package, and any public class directly in a folder under `layout.featureRoots` (with or without
+Spring). `"featureRoots": []` only removes that last kind: in a Spring project services,
+controllers and the classes of the root package's feature packages are still checked; without
+Spring the rule then does not run, since no file is in a feature folder.
+
 **Tests that start a Spring context.** A concrete test class counts when it, an enclosing class or
 one of its superclasses (`class X extends AbstractIntegrationTest`) is annotated, directly or
 through a composed annotation, with `@SpringBootTest`, any slice test (`@DataJpaTest`, `@WebMvcTest`, ...; all carry
@@ -213,7 +287,10 @@ Java, not here.
 
 **Limits.** The rules read bytecode, so generated classes without a source file are skipped (no
 finding can be placed), and a use of another package's compile-time constant (`static final` of a
-primitive or `String`) is invisible, because `javac` inlines its value. Each Gradle project and Maven module that uses Spring or jMolecules is checked on its own,
+primitive or `String`) is invisible, because `javac` inlines its value. `contract-infrastructure-type`
+reads methods only, not fields, record components or Kotlin properties; it matches an override of a
+library method by name and parameter count; and a Kotlin `internal` class is public in bytecode, so
+it counts as public (its `internal` members are skipped). Each Gradle project and Maven module that uses Spring or jMolecules is checked on its own,
 over its main and test classes. Kotlin modules run the same rules on their compiled classes, and the
 findings point at the `.kt` files; the file facade of top-level functions (`ShopApplicationKt`, with
 `fun main`) next to the application or a `@Configuration` class in the root package is not a
