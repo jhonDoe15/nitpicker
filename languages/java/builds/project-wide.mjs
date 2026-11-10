@@ -9,6 +9,7 @@ import { readTestOnlyClassFindings } from '../adapters/review-rules/test-only-cl
 import { readTestRuntimeFindings } from '../adapters/test-runtime/test-runtime-findings.mjs';
 import { readCopiedConstantFindings } from '../adapters/review-rules/copied-constants/copied-constants.mjs';
 import { readJvmReuse } from '../adapters/reuse/jvm-reuse-facts.mjs';
+import { readRoundTripFindings } from '../adapters/review-rules/round-trips/round-trips.mjs';
 
 const JDEPS_REPORT = 'jdeps.txt';
 const JDEPS_CLASSES = 'jdeps-classes.txt';
@@ -164,6 +165,7 @@ export function projectWideReport(projectRoot, { projects, mergedRoot, manifest,
     ...readTestOnlyClassFindings(projectRoot, { projects }),
     ...readTestRuntimeFindings(projectRoot, { projects }),
     ...reuse.findings,
+    ...readRoundTripFindings(projectRoot, { projects, kotlin, policy }),
     ...readCopiedConstantFindings(projectRoot, { projects, kotlin, policy }),
   ];
   return { findings, imports: reuse.imports };

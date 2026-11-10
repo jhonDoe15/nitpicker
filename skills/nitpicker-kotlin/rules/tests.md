@@ -99,3 +99,6 @@ Part of the [nitpicker-kotlin](../SKILL.md) skill. Write these forms from the st
   (`backgroundScope.launch` for work that ends with the test), keep the job and `join()` it or `await()` the
   deferred (a collection of them too), or build the scope on the test dispatcher and drive it with
   `advanceUntilIdle`; a scope the test class cancels in `@AfterEach` or Kotest `afterSpec` is owned too.
+- Test each public inverse pair on its own output (`pmd/UntestedRoundTrip`): for `encodeOrder`/
+  `decodeOrder` or `toJson` and a companion `fromJson`, one test calls both,
+  `assertEquals(order, Order.fromJson(order.toJson()))`.
