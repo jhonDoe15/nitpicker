@@ -11,6 +11,7 @@ import { unformattedFiles } from './formatting/go-format.mjs';
 import { inspect, readInspect } from './structure/go-inspect.mjs';
 import { lint } from './lint/go-lint.mjs';
 import { goTest } from './tests/go-test.mjs';
+import { analyzerDeadlineMs } from '../../../shared/analyzer-timeouts/analyzer-timeouts.mjs';
 
 const FORMAT_REPORT = 'format.json';
 
@@ -30,6 +31,7 @@ export function createGoContext({
     environment,
     module: readGoModule(projectRoot)?.module ?? '',
     duplicateSkippedFolders: policy.duplicateSkippedFolders,
+    analyzerDeadlineMs: analyzerDeadlineMs(environment ?? {}),
     snapshot: policy.snapshot ?? 'head',
     baselineRoot: policy.baselineRoot,
     testSeconds: policy.testSeconds,

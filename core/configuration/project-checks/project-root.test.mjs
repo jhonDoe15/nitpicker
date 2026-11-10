@@ -3,6 +3,7 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, beforeAll, describe, expect, it } from 'vitest';
 import { copyGitTemplate, createGitTemplate } from '../../diff/git/test-support/git-repository.mjs';
+import { linkSentence } from '../../../shared/messages/test-support/link-sentence.mjs';
 import { resolveProjectRoot } from './project-root.mjs';
 
 const temporaryRoots = [];
@@ -34,7 +35,8 @@ describe('project root resolution', () => {
     expect(() => resolveProjectRoot(emptyRoot)).toThrow(
       new Error(
         `No package.json or nitpicker.config.json found in the repository root ${emptyRoot}. ` +
-          'For a Java, Kotlin, Python or Go project, create nitpicker.config.json with its preset, for example {"preset": "java"}.',
+          'For a Java, Kotlin, Python or Go project, create nitpicker.config.json with its preset, for example {"preset": "java"}. ' +
+          linkSentence('noProjectFound'),
       ),
     );
   });
@@ -56,13 +58,14 @@ describe('project root resolution', () => {
     expect(() => resolveProjectRoot(path.join(root, 'service'))).toThrow(
       new Error(
         `No package.json or nitpicker.config.json found between ${path.join(root, 'service')} ` +
-          `and repository root ${root}. ${advice}`,
+          `and repository root ${root}. ${advice} ${linkSentence('noProjectFound')}`,
       ),
     );
     writeFileSync(path.join(root, marker), '');
     expect(() => resolveProjectRoot(root)).toThrow(
       new Error(
-        `No package.json or nitpicker.config.json found in the repository root ${root}. ${advice}`,
+        `No package.json or nitpicker.config.json found in the repository root ${root}. ${advice} ` +
+          linkSentence('noProjectFound'),
       ),
     );
   });
