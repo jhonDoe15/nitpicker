@@ -15,7 +15,7 @@ function runScan(context, [, ...args]) {
       cwd: context.projectRoot,
       encoding: 'utf8',
       maxBuffer: MAX_OUTPUT_BYTES,
-      timeout: SCAN_TIMEOUT_MS,
+      timeout: context.analyzerDeadlineMs ?? SCAN_TIMEOUT_MS,
     });
     if (result.error === undefined && result.status === 0) {
       return result;

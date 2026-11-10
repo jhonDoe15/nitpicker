@@ -4,6 +4,11 @@ import {
   testsFailHeadline,
   testsFailOnBase,
 } from '../../../../../shared/rules/finding-helpers.mjs';
+import {
+  testsFailAnchor,
+  troubleshootingError,
+  withTroubleshooting,
+} from '../../../../../shared/messages/troubleshooting.mjs';
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
 
@@ -42,12 +47,14 @@ export function coverageFailureFindings(
         rule: TESTS_NOT_RUN_RULE,
         path: unhandled[0].file === undefined ? '.' : findingPath(unhandled[0].file),
         message: unhandledErrorText(unhandled),
+        anchor: testsFailAnchor(options.snapshot),
       }),
     ];
   }
   if (firstFailure === undefined) {
-    throw new Error(
+    throw troubleshootingError(
       `${runnerName} exited ${String(result.status)} without naming a failing test${formatProcessOutput(result)}`,
+      testsFailAnchor(options.snapshot),
     );
   }
   const ran = failures.some(({ name }) => name !== COULD_NOT_RUN);
@@ -60,6 +67,7 @@ export function coverageFailureFindings(
         precedingCommands,
         snapshot: ran ? options.snapshot : undefined,
       }),
+      anchor: testsFailAnchor(options.snapshot),
     }),
   ];
 }
@@ -75,25 +83,26 @@ export function readCoverageFindings(options, testReport) {
   );
 }
 
-export function readTestReport(reportPath, result, runnerName) {
+export function readTestReport(reportPath, result, { runnerName, snapshot }) {
   try {
     return JSON.parse(readFileSync(reportPath, 'utf8'));
   } catch (error) {
     const reason = error instanceof Error ? error.message : String(error);
-    throw new Error(
+    throw troubleshootingError(
       `${runnerName} exited ${String(result.status)} without a readable test report: ${reason}${formatProcessOutput(result)}`,
+      testsFailAnchor(snapshot),
       { cause: error },
     );
   }
 }
 
-export function toolErrorFinding(options, { rule, path: findingPath = '.', message }) {
+export function toolErrorFinding(options, { rule, path: findingPath = '.', message, anchor }) {
   return {
     tool: options.analyzerName,
     rule,
     path: findingPath,
     identity: rule,
-    message,
+    message: anchor === undefined ? message : withTroubleshooting(message, anchor),
     classification: 'tool-error',
   };
 }
