@@ -8,7 +8,7 @@ import { applyRuleMessages } from '../../../../messages/rule-messages.mjs';
 import { INIT_SCRIPT } from '../../../../builds/java-build.mjs';
 import { writeRulesets } from '../../../tool-config/pmd-wrappers.mjs';
 
-const ruleset = path.resolve(import.meta.dirname, '../../../gradle/pmd-ruleset.xml');
+const ruleset = path.resolve(import.meta.dirname, '../../../../gradle/pmd-ruleset.xml');
 
 function scopedRulesets(root) {
   const { mainRuleset, testsRuleset } = writeRulesets({

@@ -21,9 +21,10 @@ describe.skipIf(!enabled)('Java preset quick run on a Maven build', () => {
     const tools = new Set(findings.map(({ tool }) => tool));
     expect(tools.has('pmd')).toBe(true);
     expect(tools.has('coupling')).toBe(true);
+    expect(tools.has('test-runtime')).toBe(true);
     expect(
       findings
-        .filter(({ tool }) => ['archunit', 'pit', 'jacoco', 'crap', 'test-runtime'].includes(tool))
+        .filter(({ tool }) => ['archunit', 'pit', 'jacoco', 'crap'].includes(tool))
         .map(({ tool, rule, path: file }) => `${tool} ${rule} ${file}`),
     ).toEqual(['archunit no_classes_use_legacy_date src/main/java/demo/Dated.java']);
     expect(
