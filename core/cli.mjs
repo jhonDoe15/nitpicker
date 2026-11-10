@@ -3,6 +3,7 @@ import { runAggregateCli } from './diff/sharding/aggregate-shards.mjs';
 import { reportingProgress } from './diff/execution/progress.mjs';
 import { runScheduler } from './diff/execution/run-analyzers.mjs';
 import { runCacheCommand } from './command/cache.mjs';
+import { runChangelogCommand } from './command/changelog/changelog.mjs';
 import { runExplainCommand, runRulesCommand } from './command/reference/reference.mjs';
 import { runBaseCommand } from './command/base.mjs';
 import { missingPathHint, parseArguments } from './command/arguments.mjs';
@@ -31,7 +32,9 @@ import path from 'node:path';
 import { clearDiffReports, outputRootFor } from './diff/reporting/reporters.mjs';
 import { selectComparisonAnalyzers } from './command/comparison/analyzers.mjs';
 import { runQualityDiff } from './diff/comparison/run-diff.mjs';
-import { fixWorkingTree } from './fix/run-fix.mjs';
+import { fixIfRequested } from './command/fix-request.mjs';
+import { applyRunProfile } from './quick/profile.mjs';
+import { stagedCapture, withIndexFile } from './staged/capture-index.mjs';
 import { resolveCacheStore } from './diff/cache/cache-stores.mjs';
 import { runHistoryCli } from '../shared/history/runner.mjs';
 import { runHygieneCli } from '../shared/hygiene/runner.mjs';
@@ -59,8 +62,8 @@ const SUBCOMMANDS = {
 };
 
 export function runCli(options = {}) {
-  detachLocalGitVariables(process.env);
-  const cli = withCliDefaults(options);
+  const detached = detachLocalGitVariables(process.env);
+  const cli = withIndexFile(withCliDefaults(options), detached);
   const checkCommand = CHECK_COMMANDS[cli.arguments_[0]];
   if (checkCommand !== undefined) {
     return checkCommand({
@@ -81,12 +84,19 @@ export function runCli(options = {}) {
     });
   }
   try {
-    redirectToBundledTypeScriptApi(cli.environment);
     return runCommand(cli);
   } catch (error) {
-    cli.stderr.write(`nitpicker failed: ${describeError(error)}\n`);
+    const description = describeError(error) || 'unknown error';
+    cli.stderr.write(`nitpicker failed: ${description}\n`);
+    if (wantsJson(cli.arguments_)) {
+      cli.stdout.write(`${JSON.stringify({ status: 'error', exitCode: 2, error: description })}\n`);
+    }
     return 2;
   }
+}
+
+function wantsJson(commandLine) {
+  return !Object.hasOwn(SUBCOMMANDS, commandLine[0]) && commandLine.includes('--json');
 }
 
 const HELP_ALIAS = '-h';
@@ -118,11 +128,22 @@ function withCliDefaults(options) {
 
 function runCommand(cli) {
   const [name, ...rest] = cli.arguments_;
+  if (name === 'changelog') {
+    return runChangelogCommand({ ...cli, arguments_: rest });
+  }
+  redirectToBundledTypeScriptApi(cli.environment);
   if (Object.hasOwn(SUBCOMMANDS, name)) {
     return SUBCOMMANDS[name](cli, rest);
   }
   const options = parseArguments(cli.arguments_);
-  return printedInformation(options, cli) ? 0 : runConfigured({ ...cli, options });
+  if (printedInformation(options, cli)) {
+    return 0;
+  }
+  return runConfigured(
+    options.json
+      ? { ...cli, options, stdout: cli.stderr, jsonOutput: cli.stdout }
+      : { ...cli, options },
+  );
 }
 
 function writePresetHint(stderr, config, projectRoot) {
@@ -141,7 +162,10 @@ function runConfigured(cli) {
     maven: cli.environment.NITPICKER_MAVEN,
   });
   const presetSet = presetAnalyzers(config, options.all ? cli.snapshotAnalyzers : cli.analyzers);
-  const analyzers = configureAnalyzers(presetSet, config, headPolicy);
+  const setup = {
+    ...applyRunProfile(configureAnalyzers(presetSet, config, headPolicy), options),
+    captureHead: stagedCapture(cli, currentProjectRoot),
+  };
   for (const note of describeDisableCascade(presetSet, config)) {
     cli.stderr.write(`nitpicker: ${note}\n`);
   }
@@ -153,9 +177,10 @@ function runConfigured(cli) {
       return runSnapshotCli({
         options,
         currentProjectRoot,
-        analyzers,
+        ...setup,
         headPolicy: snapshotPolicy({ config, currentProjectRoot, headPolicy, stdout }),
         stdout,
+        jsonOutput: cli.jsonOutput,
         stderr: cli.stderr,
         environment: cli.environment,
         runTasks,
@@ -165,7 +190,7 @@ function runConfigured(cli) {
     return runComparisonCli({
       ...cli,
       currentProjectRoot,
-      analyzers,
+      ...setup,
       injectedAnalyzers: cli.analyzers,
       config,
       headPolicy,
@@ -184,12 +209,17 @@ function runComparisonCli(cli) {
     explicitBase: options.baseRef,
     configuredBase: config.base,
     environment: cli.environment,
+    staged: options.staged,
   });
   const outputRoot = outputRootFor(currentProjectRoot, options.outputRoot, 'diff');
   const { analyzers, partialRun } = selectComparisonAnalyzers(cli);
   clearDiffReports(outputRoot);
   const headPolicy = comparisonPolicy({ ...cli, repositoryRoot, base }, resolveComparison);
-  const fixResult = fixIfRequested({ ...cli, headPolicy }, repositoryRoot, base);
+  const fixResult = fixIfRequested(
+    { ...cli, headPolicy, spawnEnvironment: { ...process.env, ...cli.environment } },
+    repositoryRoot,
+    base,
+  );
   const cacheStore = resolveRunCacheStore(cli);
   const report = runQualityDiff({
     repositoryRoot,
@@ -201,6 +231,9 @@ function runComparisonCli(cli) {
     partialRun,
     cacheStore,
     includeWorkingTree: true,
+    captureHead: cli.captureHead,
+    quick: cli.quick,
+    staged: options.staged,
     additionalToolErrors: fixResult.toolErrors,
     configOverrides: describeConfigOverrides(config),
     headPolicy,
@@ -225,24 +258,6 @@ function acceptanceOf(cli) {
     cli.stderr.write(`nitpicker: ${ignoredAcceptance}\n`);
   }
   return acceptance;
-}
-
-function fixIfRequested(cli, repositoryRoot, base) {
-  if (!cli.options.fix) {
-    return { fixedFiles: [], toolErrors: [] };
-  }
-  const fixResult = fixWorkingTree({
-    repositoryRoot,
-    projectRoot: cli.currentProjectRoot,
-    baseRef: base.baseRef,
-    executeFixCommand: cli.executeFixCommand,
-    headPolicy: cli.headPolicy,
-    scope: cli.scope,
-  });
-  cli.stdout.write(
-    `Fixed files:\n${fixResult.fixedFiles.length === 0 ? '(none)\n' : `${fixResult.fixedFiles.join('\n')}\n`}`,
-  );
-  return fixResult;
 }
 
 function resolveRunCacheStore(cli) {

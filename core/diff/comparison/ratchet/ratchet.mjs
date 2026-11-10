@@ -1,8 +1,11 @@
 import { baseMoves, comparisonKey } from '../fingerprint.mjs';
 import { normalizeGitPath } from '../../git/normalize.mjs';
 import { folderMoves, mainDestination } from '../../git/patches/renames.mjs';
-import { withGrowthAdvice, withWorseMessage } from '../../../../shared/messages/finding-advice.mjs';
-import { isInTouchedCode, isOnAddedLine } from './touched-code.mjs';
+import {
+  withGrowthAdvice,
+  withWorseMessage,
+} from '../../../../shared/messages/advice/finding-advice.mjs';
+import { isHeldOnTouchedLine } from './touched-code.mjs';
 
 const NO_MOVES = baseMoves(new Map());
 
@@ -108,9 +111,7 @@ function groupBaseByRatchetKey(unmatchedBase, keyOf) {
 
 function holdCandidatesFor(headFinding, baseByRatchet, { touchedCode, keyOf }) {
   const isNeverHeld =
-    headFinding.ratchet === undefined ||
-    isInTouchedCode(headFinding, touchedCode) ||
-    isOnAddedLine(headFinding, touchedCode);
+    headFinding.ratchet === undefined || isHeldOnTouchedLine(headFinding, touchedCode);
   const key = isNeverHeld ? undefined : keyOf(headFinding);
   return key === undefined ? undefined : baseByRatchet.get(key);
 }

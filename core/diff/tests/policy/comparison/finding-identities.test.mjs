@@ -19,6 +19,31 @@ describe('quality diff finding identities', () => {
 
     expect(first).toBe(second);
   });
+  it('keeps a feature finding when its importer is renamed and the target feature folder moves', () => {
+    const base = finding({
+      tool: 'coupling',
+      rule: 'feature-cycle',
+      path: 'src/features/billing/invoice.py',
+      identity: 'src/features/shipping|feature-cycle',
+    });
+    const head = {
+      ...base,
+      path: 'src/features/billing/documents/invoice.py',
+      identity: 'src/modules/shipping|feature-cycle',
+    };
+
+    const comparison = compareFindings({
+      baseFindings: [base],
+      headFindings: [head],
+      baseToHeadRenames: new Map([
+        ['src/features/billing/invoice.py', 'src/features/billing/documents/invoice.py'],
+      ]),
+      baseToHeadDirectories: new Map([['src/features/shipping', 'src/modules/shipping']]),
+    });
+
+    expect(comparison.newFindings).toEqual([]);
+    expect(comparison.unchangedFindings).toHaveLength(1);
+  });
   it('does not match different metric names under one descriptive identity', () => {
     const base = finding({
       path: 'src/main/fixture.ts',

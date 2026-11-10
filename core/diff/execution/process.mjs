@@ -1,6 +1,16 @@
 import { spawn } from 'node:child_process';
 import { openOutputFile } from '../../tooling/output-file/output-file.mjs';
 import { parseAnalyzerReport } from '../comparison/finding-schema.mjs';
+import {
+  ANALYZER_TIMEOUT_KEY,
+  ANALYZER_TIMEOUT_VARIABLE,
+} from '../../../shared/analyzer-timeouts/analyzer-timeouts.mjs';
+import { CONFIG_FILE_NAME } from '../../../shared/config.mjs';
+import {
+  TROUBLESHOOTING_ANCHORS,
+  troubleshootingError,
+  withTroubleshooting,
+} from '../../../shared/messages/troubleshooting.mjs';
 import { withoutHostCiOutputs } from '../../tooling/host-environment.mjs';
 
 const MAX_ANALYZER_OUTPUT_BYTES = 50 * 1024 * 1024;
@@ -11,8 +21,20 @@ const OUTPUT_POLL_INTERVAL_MS = 100;
 
 const activeChildren = new Set();
 
+function analyzerEnvironment(environment, task) {
+  return {
+    ...withoutHostCiOutputs(environment),
+    ...(task.configuredTimeout === true
+      ? { [ANALYZER_TIMEOUT_VARIABLE]: String(task.timeoutMs) }
+      : {}),
+  };
+}
+
 function outputLimitError(task) {
-  return new Error(`${task.name} exceeded the analyzer output limit`);
+  return troubleshootingError(
+    `${task.name} exceeded the analyzer output limit`,
+    TROUBLESHOOTING_ANCHORS.analyzerCrashed,
+  );
 }
 
 function settleClose(task, { failure, status, signal, stdoutFile, output }, { resolve, reject }) {
@@ -38,7 +60,7 @@ function settleClose(task, { failure, status, signal, stdoutFile, output }, { re
 function spawnAnalyzer(task, stdoutDescriptor) {
   const child = spawn(task.invocation.command, task.invocation.args, {
     cwd: task.invocation.cwd,
-    env: withoutHostCiOutputs(task.invocation.env ?? process.env),
+    env: analyzerEnvironment(task.invocation.env ?? process.env, task),
     detached: process.platform !== 'win32',
     stdio: ['ignore', stdoutDescriptor, 'pipe'],
   });
@@ -85,6 +107,13 @@ function scheduleForceKill(child) {
   return timer;
 }
 
+function timeoutMessage(task) {
+  return (
+    `${task.name} timed out after ${String(task.timeoutMs)} ms. To give it more time, set ` +
+    `"${ANALYZER_TIMEOUT_KEY}": { "${task.name}": <minutes> } in ${CONFIG_FILE_NAME}`
+  );
+}
+
 function createTaskController(child, task) {
   const errors = new Map();
   const state = {
@@ -92,7 +121,7 @@ function createTaskController(child, task) {
     forceKillTimeout: undefined,
   };
   const timeout = setTimeout(() => {
-    terminate(new Error(`${task.name} timed out after ${String(task.timeoutMs)} ms`));
+    terminate(troubleshootingError(timeoutMessage(task), TROUBLESHOOTING_ANCHORS.analyzerTimeout));
   }, task.timeoutMs);
   function terminate(error) {
     if (errors.has('termination')) return;
@@ -157,7 +186,10 @@ export function reportFromAnalyzerOutput(task, { status, signal, stdoutText, std
   if (!task.acceptedExitCodes.includes(status)) {
     const exit = status === null ? `signal ${signal ?? 'unknown'}` : `exit ${String(status)}`;
     const detail = stderrText.trim() || stdoutText.trim() || 'no diagnostic output';
-    throw new Error(`${task.name} crashed with ${exit}: ${detail}`);
+    throw troubleshootingError(
+      `${task.name} crashed with ${exit}: ${detail}`,
+      TROUBLESHOOTING_ANCHORS.analyzerCrashed,
+    );
   }
   return parseReport(stdoutText, task.name, task.reportedTools);
 }
@@ -200,20 +232,36 @@ export function installShutdownHandlers(
   }
 }
 
+function parsedReport(rawReport, analyzerName) {
+  try {
+    return parseAnalyzerReport(rawReport, analyzerName);
+  } catch (error) {
+    if (error instanceof Error) {
+      error.message = withTroubleshooting(error.message, TROUBLESHOOTING_ANCHORS.analyzerCrashed);
+    }
+    throw error;
+  }
+}
+
 function parseReport(stdout, analyzerName, reportedTools = []) {
   let rawReport;
   try {
     rawReport = JSON.parse(stdout);
   } catch (error) {
-    throw new Error(`${analyzerName} did not produce valid JSON`, { cause: error });
+    throw troubleshootingError(
+      `${analyzerName} did not produce valid JSON`,
+      TROUBLESHOOTING_ANCHORS.analyzerCrashed,
+      { cause: error },
+    );
   }
-  const report = parseAnalyzerReport(rawReport, analyzerName);
+  const report = parsedReport(rawReport, analyzerName);
   const mismatchedFinding = report.findings.find(
     (finding) => finding.tool !== analyzerName && !reportedTools.includes(finding.tool),
   );
   if (mismatchedFinding !== undefined) {
-    throw new Error(
+    throw troubleshootingError(
       `${analyzerName} emitted a finding for unexpected tool ${mismatchedFinding.tool}`,
+      TROUBLESHOOTING_ANCHORS.analyzerCrashed,
     );
   }
   return report;
