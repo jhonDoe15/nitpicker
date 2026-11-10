@@ -104,6 +104,11 @@ export const STRUCTURE_NOTES = {
     'Another install keeps its tables in another schema, or has another database name or roles.',
     'Leave the schema out, target the current database, and leave out the owner or use `CURRENT_USER`.',
   ],
+  'foreign-key-index': [
+    'A foreign key a migration adds (SQL, Liquibase or Alembic), or a Prisma relation, with no index that starts with its columns, in a project that does not use MySQL or MariaDB.',
+    'PostgreSQL does not index a foreign-key column by itself, so deleting a referenced row and every join or lookup by the column scan the whole table.',
+    'Create an index that starts with the foreign-key columns in a migration (or `@@index` in the Prisma schema); a composite index counts when the columns come first.',
+  ],
   'start-schema-push': [
     'A `start`, `prestart`, `serve` or `start:*` script (not `start:dev`, `start:local`, `start:watch`, `start:debug` or `start:test`) in `package.json`, or a script it runs, that pushes the ORM schema (`prisma db push`, `prisma migrate dev`, `drizzle-kit push`, `typeorm schema:sync`, `mikro-orm schema:update`).',
     'A schema push changes the database on every start without a migration, so a deploy can drop columns and their data.',
