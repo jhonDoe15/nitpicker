@@ -2672,7 +2672,6 @@
           "python": false,
           "kotlin": false,
           "spring": false,
-          "testConsole": false,
           "protocols": false
         }
       }
