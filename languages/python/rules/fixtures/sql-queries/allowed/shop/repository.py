@@ -56,7 +56,7 @@ def table_rows(cursor: object, table: str, owner: int) -> None:
 
 
 def page(cursor: object, limit: int) -> None:
-    cursor.execute(f"SELECT * FROM events LIMIT {int(limit)}")
+    cursor.execute(f"SELECT * FROM events ORDER BY id LIMIT {int(limit)}")
 
 
 def reject(name: str) -> None:

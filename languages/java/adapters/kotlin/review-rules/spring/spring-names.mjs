@@ -1,7 +1,7 @@
 import { ancestorsOf } from '../kotlin-facts.mjs';
 import { SPRING_MANAGED_CLASSES } from './spring-types.mjs';
 
-const QUALIFIED = /^[a-z_][\w]*(?:\.[\w]+)+$/u;
+const QUALIFIED = /^[a-z_]\w*(?:\.\w+)+$/u;
 const DEFAULT_PACKAGES = [
   'kotlin',
   'kotlin.annotation',
