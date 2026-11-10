@@ -1,0 +1,11 @@
+[
+  {
+    "tool": "python-rules",
+    "rule": "regex-part-defect",
+    "data": {
+      "description": "Unexpected duplicate alternative. This alternative can be removed.",
+      "hint": "That part of the pattern never changes what it matches: remove it, or rewrite it to match what was meant."
+    },
+    "mention": "to match what was meant"
+  }
+]

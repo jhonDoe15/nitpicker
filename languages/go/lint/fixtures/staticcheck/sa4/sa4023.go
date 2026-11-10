@@ -6,23 +6,23 @@ func (*Problem) Error() string {
 	return "problem"
 }
 
-func find(missing bool) *Problem {
-	if missing {
+func find(code int) *Problem {
+	if code != 0 {
 		return &Problem{}
 	}
 	return nil
 }
 
-func Typed(missing bool) error {
-	return find(missing)
+func Typed(code int) error {
+	return find(code)
 }
 
-func TypedNil(missing bool) bool {
-	return Typed(missing) == nil // want SA4023
+func TypedNil(code int) bool {
+	return Typed(code) == nil // want SA4023
 }
 
-func Untyped(missing bool) error {
-	if missing {
+func Untyped(code int) error {
+	if code != 0 {
 		return &Problem{}
 	}
 	return nil

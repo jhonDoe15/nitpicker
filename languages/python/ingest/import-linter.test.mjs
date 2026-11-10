@@ -184,4 +184,25 @@ describe('import-linter findings', () => {
       },
     ]);
   });
+
+  it('reads a chain start that names no modules beside the chains around it', () => {
+    const text = [
+      'One BROKEN',
+      'Contracts: 0 kept, 1 broken.',
+      'Broken contracts',
+      'One',
+      '---',
+      '-   ',
+      '- a -> b',
+      '  b -> c',
+      '- x -> y',
+      '',
+    ].join('\n');
+
+    expect(ingestImportLinter(text).findings.map(({ identity }) => identity)).toEqual([
+      'contract:One:',
+      'contract:One:a -> b -> c',
+      'contract:One:x -> y',
+    ]);
+  });
 });

@@ -26,12 +26,22 @@ Part of the [nitpicker-kotlin](../SKILL.md) skill. Write these forms from the st
   `chunked(n)`, or `flatMapMerge(concurrency = n)`; never `items.map { async { client.get(it) } }.awaitAll()` over a
   runtime collection. `limitedParallelism(n)` caps threads, not suspending calls in flight. Reactor: pass a limit
   (`flatMap({ fetch(it) }, 8)`) or use `concatMap`; never `Mono.zip(items.map { fetch(it) })`.
+- Build shareable objects once: an `ObjectMapper`, `jacksonObjectMapper()`, `Json { }`, `Gson`, a
+  `Regex("...")` or `DateTimeFormatter.ofPattern("...")` goes in a property, a companion or `by lazy`, not inside
+  a function that runs per call (`pmd/ReusableObjectPerCall`).
 - Child processes: wait with a deadline, `if (!process.waitFor(30, TimeUnit.SECONDS)) process.destroyForcibly()`,
   and read the output on another thread first; never `waitFor()` or `inputStream.readBytes()` alone
   (`kotlin-source/ProcessWaitWithoutTimeout`; a build wrapper that only runs a child to completion takes an exception).
 - HTTP calls: every request has a deadline. `HttpRequest.newBuilder(uri).timeout(...)`, `readTimeout` on an
   `HttpURLConnection`, Ktor's `HttpTimeout`, OkHttp; not `URL(url).readText()` or `HttpClients.createDefault()`
   (`kotlin-source/HttpWithoutTimeout`).
+- Pages of rows: a query that takes a page (`setMaxResults`, `setFirstResult`, `limit`, `offset`, an unsorted
+  `PageRequest` passed to `findAll`) or builds an `array_agg`/`json_agg` list orders on a unique key:
+  `order by a.createdAt desc, a.id`, `PageRequest.of(page, size, Sort.by("createdAt", "id"))`
+  (`kotlin-source/UnorderedQuery`; Java sources: `pmd/UnorderedQuery`).
+- A list bound into a query (`setParameter("ids", ids)`, `findAllById(ids)`) has an empty check first and goes in
+  chunks (`ids.chunked(1000)`), or goes as one array parameter (`id = any(:ids)`): an empty list renders `in ()`
+  and PostgreSQL takes at most 65,535 bound parameters (`kotlin-source/UnboundedQueryArray`).
 - A stream, reader, JAR file or connection you open is closed with `.use { }`, also one used
   once: `resource.inputStream.use { it.readBytes() }`, not `resource.inputStream.readBytes()`
   (`kotlin-source/UnclosedInlineResource`; Java sources: `pmd/UnclosedInlineResource`).

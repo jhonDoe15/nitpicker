@@ -8,7 +8,7 @@ import { explainedError } from '../../../../shared/messages/troubleshooting.mjs'
 const ERROR_PRONE_JDK = 21;
 const VERSION = /version "(?:1\.)?(\d+)/u;
 const VERSIONED_HOME = /^JAVA_HOME_\d+_(?:X64|ARM64|AARCH64)$/u;
-const JDK_HOME = /<jdkHome>\s*([^<]+?)\s*<\/jdkHome>/gu;
+const JDK_HOME = /<jdkHome>([^<]*)<\/jdkHome>/gu;
 const SYSTEM_JDKS = ['/usr/lib/jvm', '/Library/Java/JavaVirtualMachines'];
 
 export function featureVersion(versionOutput) {
@@ -27,7 +27,9 @@ function subdirectories(directory) {
 export function jdkHomes({ env = process.env, home = homedir(), systemJdks = SYSTEM_JDKS } = {}) {
   const toolchains = path.join(home, '.m2', 'toolchains.xml');
   const declared = existsSync(toolchains)
-    ? [...readFileSync(toolchains, 'utf8').matchAll(JDK_HOME)].map(([, jdkHome]) => jdkHome)
+    ? [...readFileSync(toolchains, 'utf8').matchAll(JDK_HOME)]
+        .map(([, jdkHome]) => jdkHome.trim())
+        .filter((jdkHome) => jdkHome !== '')
     : [];
   const installed = [path.join(home, '.sdkman', 'candidates', 'java'), ...systemJdks]
     .flatMap((directory) => subdirectories(directory))
