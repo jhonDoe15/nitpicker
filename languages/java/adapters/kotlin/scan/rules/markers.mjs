@@ -32,7 +32,7 @@ const LEADING_MODIFIER = new RegExp(String.raw`^(?:${DECLARATION_MODIFIERS.join(
 const LEADING_ANNOTATION = /^@(?:[A-Za-z_]\w*:)?[\w.]+/;
 const DECLARATION_KEYWORD = /^(?:(?:class|interface|object|fun|constructor)\b|(?:get|set)\s*\()/;
 const MUTATION_MARKERS = new Set(['DoNotMutate', 'CoverageIgnore']);
-const GENERATED_HEADER = /@generated\b|\bgenerated\b[\s\S]*\bdo not (?:edit|modify)\b/i;
+const GENERATED_HEADER = /@generated\b|\bgenerated\b[\s\S]+\bdo not (?:edit|modify)\b/i;
 
 const MARKER_MESSAGES = {
   GeneratedOnHandWrittenCode: `Remove the annotation from hand-written code: JaCoCo skips code carrying an annotation whose name contains Generated, and PIT skips @Generated, so this is not measured. Put the JPA @GeneratedValue on the field.`,
@@ -49,7 +49,7 @@ const MODIFIERS =
 const CODE_SHAPES = [
   new RegExp(`^${DECLARATION}$`),
   /^[a-z_][\w.]*(?:<[^>]*>)?\((?:[^()]|\([^()]*\))*\)(?:\s*\.\s*[a-z]\w*\((?:[^()]|\([^()]*\))*\))*\s*$/,
-  /^(?:this\.)?[a-z_]\w*(?:\.[a-z_]\w*)*\s*(?:[-+*/%]?=)\s*[^=\s].*$/,
+  /^(?:this\.)?[a-z_]\w*(?:\.[a-z_]\w*)*\s*[-+*/%]?=\s*[^=\s].*$/,
   /^(?:\}\s*)?(?:if|for|while|when)\s*\(.*\)\s*\{?$/,
   /^(?:\}\s*)?(?:else|try|finally)\s*\{$/,
   /^\}\s*catch\s*\(.*\)\s*\{$/,
