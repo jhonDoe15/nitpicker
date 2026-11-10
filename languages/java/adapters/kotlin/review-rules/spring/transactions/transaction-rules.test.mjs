@@ -101,7 +101,14 @@ describe('Spring writes and transactions in Kotlin', () => {
   });
 
   it.each([
-    ['write', ['SpringMultiWriteWithoutTransaction', 'SpringLocalCacheWriteInTransaction']],
+    [
+      'write',
+      [
+        'SpringTransactionalReadOnlyWrite',
+        'SpringMultiWriteWithoutTransaction',
+        'SpringLocalCacheWriteInTransaction',
+      ],
+    ],
     ...['writing', 'runsInTransaction', 'inTransaction'].map((name) => [
       name,
       ['SpringCacheWriteInTransaction', 'SpringLocalCacheWriteInTransaction'],
