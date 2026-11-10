@@ -1,11 +1,10 @@
 import {
-  isTestedPair,
   memberCall,
   roundTripMessage,
   shownMember,
 } from '../../../../../../shared/rules/round-trips/round-trips.mjs';
 import { exportedPairs } from './exported-pairs.mjs';
-import { testedNames } from './tested-names.mjs';
+import { untestedPairs } from './tested-names.mjs';
 
 function example({ owner, inner, outer }) {
   return `expect(${memberCall(owner, outer, memberCall(owner, inner, 'value'))}).toEqual(value)`;
@@ -25,8 +24,7 @@ export const rule = {
         if (pairs.length === 0) {
           return;
         }
-        const tests = testedNames(context.cwd);
-        for (const pair of pairs.filter((found) => !isTestedPair(tests, found))) {
+        for (const pair of untestedPairs(context.cwd, pairs)) {
           const message = roundTripMessage({
             first: shownMember(pair.owner, pair.earlier),
             second: shownMember(pair.owner, pair.later),

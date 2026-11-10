@@ -80,21 +80,38 @@ function scanned(file) {
   return { tests, helpers };
 }
 
-function helperTable(found) {
-  const table = new Map();
-  for (const [name, names] of found.flatMap(({ helpers }) => helpers)) {
-    table.set(name, new Set([...(table.get(name) ?? []), ...names]));
+function callersOf(found) {
+  const callers = new Map();
+  for (const [helper, names] of found.flatMap(({ helpers }) => helpers)) {
+    for (const name of names) {
+      const known = callers.get(name) ?? [];
+      known.push(helper);
+      callers.set(name, known);
+    }
   }
-  return table;
+  return callers;
 }
 
-export function testedNames(projectRoot) {
+function reachingNames(callers, name) {
+  return [...reachableNames([name], callers)];
+}
+
+function covers(names, reaching) {
+  return reaching.some((name) => names.has(name));
+}
+
+export function untestedPairs(projectRoot, pairs) {
   const layout = readLayout();
   const found = layout
     .projectCodeFiles(projectRoot)
     .filter((file) => layout.isTestFile(file))
     .map((file) => readStamped(files, path.join(projectRoot, file), scanned))
     .filter(Boolean);
-  const helpers = helperTable(found);
-  return found.flatMap(({ tests }) => tests.map((names) => reachableNames(names, helpers)));
+  const callers = callersOf(found);
+  const tests = found.flatMap((scan) => scan.tests);
+  return pairs.filter(({ earlier, later }) => {
+    const first = reachingNames(callers, earlier.name);
+    const second = reachingNames(callers, later.name);
+    return !tests.some((names) => covers(names, first) && covers(names, second));
+  });
 }
