@@ -75,7 +75,7 @@ function aliasesOf(body, name) {
 
 function lambdaScopes(body, name) {
   const parameter = new RegExp(String.raw`(?<![\w.])${name}(?!\w)`);
-  return [...body.matchAll(/\{([\w\s,:<>?()]*?)->/g)]
+  return [...body.matchAll(/\{([\w\s,:<>?()]*)->/g)]
     .filter((header) => parameter.test(header[1]))
     .map((header) => ({ from: header.index, to: closingIndex(body, header.index) }));
 }

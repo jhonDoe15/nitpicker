@@ -21,7 +21,7 @@ const MODIFIERS =
 const ARGUMENTS = String.raw`\s*\((?:[^()]|\((?:[^()]|\([^()]*\))*\))*\)`;
 const ANNOTATION_TEXT = new RegExp(String.raw`@\[?[\w.:]+\]?(?:${ARGUMENTS})?`, 'g');
 const DECLARATION_TAIL = new RegExp(
-  String.raw`(?:(?:@\[?[\w.:]+\]?(?:${ARGUMENTS})?|(?<![\w.])(?:${MODIFIERS})\b)\s+)*$`,
+  String.raw`(?:(?:@\[?[\w.:]+\]?(?:${ARGUMENTS})?|(?<![\w.])(?:${MODIFIERS}))\s+)*$`,
 );
 const MODIFIER_NAME = new RegExp(String.raw`(?<![\w.@])(?:${MODIFIERS})\b`, 'g');
 const ANNOTATION_NAME = /@\[?(?:\w+:)?([\w.]+)/g;

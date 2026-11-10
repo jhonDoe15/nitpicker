@@ -66,6 +66,7 @@ export function createGoAnalyzer(settings = {}) {
       'staticcheck',
       'errcheck',
       'modernize',
+      'revive',
       'build',
       'tests',
       'test-runtime',
@@ -77,7 +78,7 @@ export function createGoAnalyzer(settings = {}) {
       'dependencies',
     ],
     timeoutMs: ANALYZER_TIMEOUT_MS,
-    createInvocation: ({ projectRoot, toolRoot }) => ({
+    createInvocation: ({ projectRoot, toolRoot, baselineMovesFile }) => ({
       command: process.execPath,
       args: [
         cliPath,
@@ -85,6 +86,7 @@ export function createGoAnalyzer(settings = {}) {
         '--project-root',
         projectRoot,
         ...(Object.keys(settings).length === 0 ? [] : ['--go-settings', JSON.stringify(settings)]),
+        ...(baselineMovesFile === undefined ? [] : ['--baseline-moves-file', baselineMovesFile]),
       ],
       cwd: toolRoot,
     }),

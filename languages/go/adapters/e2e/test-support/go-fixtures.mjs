@@ -40,7 +40,7 @@ export const BASE_FILES = {
 
 export const DISCOUNT = `package shop
 
-func Discount(price int, percent int) int {
+func Discount(price, percent int) int {
 	if percent <= 0 {
 		return price
 	}
@@ -84,7 +84,7 @@ func Broken() int {
 
 export const NESTED = `package shop
 
-func Grade(score int, bonus int) string {
+func Grade(score, bonus int) string {
 	if score > 0 {
 		for i := range bonus {
 			if score+i > 90 {
@@ -122,6 +122,7 @@ import (
 
 func ${name}(t *testing.T) {
 ${guard}	time.Sleep(${String(seconds)} * time.Second)
+	t.Log("woke up")
 }
 `;
 }

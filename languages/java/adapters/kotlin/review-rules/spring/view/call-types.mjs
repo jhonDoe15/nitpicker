@@ -117,7 +117,7 @@ const BUILDERS = new Map([
 ]);
 const PARTITIONS = new Set(['Lists', 'ListUtils', 'Iterables']);
 const PAGED = /pag/iu;
-const LISTED_FINDERS = /^(?:findAll|findAllBy\w*|findAllById|saveAll|saveAllAndFlush)$/u;
+const LISTED_FINDERS = /^(?:findAll|findAllBy\w*|saveAll|saveAllAndFlush)$/u;
 const TYPE_NAME = /^[A-Z]/u;
 const MEMBER_CHAIN = /^[\p{L}_][\p{L}\p{N}_]*(?:\.[\p{L}_][\p{L}\p{N}_]*)*$/u;
 const LAMBDA_VALUES = new Map([
