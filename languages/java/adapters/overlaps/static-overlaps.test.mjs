@@ -2,10 +2,16 @@ import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { CATALOG_TOOLS, readCatalog } from '../../messages/rule-messages.mjs';
+import { KOTLIN_REVIEW_EXCEPTION_RULES } from '../kotlin/review-rules/review-rules.mjs';
 import { OVERLAP_PAIRS, matchesRule, withoutOverlaps } from './static-overlaps.mjs';
 
 const CHECKS = path.resolve(import.meta.dirname, '../../gradle/errorprone/checks.json');
-const NITPICKER_RULESETS = ['pmd-main-ruleset.xml', 'pmd-test-ruleset.xml', 'spring-ruleset.xml'];
+const NITPICKER_RULESETS = [
+  'pmd-ruleset.xml',
+  'pmd-main-ruleset.xml',
+  'pmd-test-ruleset.xml',
+  'spring-ruleset.xml',
+];
 const nitpickerRules = NITPICKER_RULESETS.flatMap((file) =>
   [
     ...readFileSync(path.resolve(import.meta.dirname, '../../gradle', file), 'utf8').matchAll(
@@ -15,13 +21,14 @@ const nitpickerRules = NITPICKER_RULESETS.flatMap((file) =>
 );
 const KNOWN_RULES = [
   'errorprone/NullAway',
+  ...KOTLIN_REVIEW_EXCEPTION_RULES,
   ...nitpickerRules,
   ...JSON.parse(readFileSync(CHECKS, 'utf8')).suppressible.map((check) => `errorprone/${check}`),
   ...CATALOG_TOOLS.flatMap((tool) =>
     Object.keys(readCatalog(tool)).map((rule) => `${tool}/${rule}`),
   ),
 ];
-const TOOLS = /^(?:pmd|spotbugs|errorprone|checkstyle)\/[A-Za-z0-9_*]+$/u;
+const TOOLS = /^(?:pmd|spotbugs|errorprone|checkstyle|kotlin-source)\/[A-Za-z0-9_*]+$/u;
 const SOURCE = [
   'package demo;',
   'public class A {',
@@ -43,6 +50,19 @@ const SOURCE = [
   'class C {}',
   '/** D. */',
   'class D {}',
+  'class E {',
+  '  void m() {',
+  '    try {',
+  '      run();',
+  '    } catch (InterruptedException',
+  '        e) {',
+  '    }',
+  '    try {',
+  '      run();',
+  '    } catch (IllegalStateException e) {',
+  '    }',
+  '  }',
+  '}',
 ].join('\n');
 
 function at(printedRule, line, extra = {}) {
@@ -61,6 +81,7 @@ const SCOPED = {
   member: { primary: 5, covered: { line: 6 }, apart: { line: 9 } },
   class: { primary: 5, covered: { line: 9 }, apart: { line: 13 } },
   javadoc: { primary: 16, covered: { line: 15 }, apart: { line: 19 } },
+  catch: { primary: 25, covered: { line: 26 }, apart: { line: 30 } },
   file: { primary: 5, covered: { line: 13 }, apart: { line: 5, path: 'src/Other.java' } },
   field: { primary: 3, covered: { symbol: 'demo.A.f' }, apart: { symbol: 'demo.B.f' } },
 };
@@ -75,7 +96,7 @@ const cases = OVERLAP_PAIRS.flatMap(({ primary, secondary, scope }) =>
 );
 
 describe('overlap pairs', () => {
-  it('name printed rules of the four tools, in known scopes, with no rule depending on itself', () => {
+  it('name printed rules of the tools, in known scopes, with no rule depending on itself', () => {
     const rules = OVERLAP_PAIRS.flatMap(({ primary, secondary }) => [...primary, ...secondary]);
     const coveredBy = (rule) =>
       OVERLAP_PAIRS.filter(({ secondary }) => matchesRule(secondary, rule)).flatMap(

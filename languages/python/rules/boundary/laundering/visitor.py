@@ -8,6 +8,7 @@ from boundary.laundering.bindings import (
     scope_bindings,
 )
 from checks.common import finding
+from syntax.walk import IterativeVisitor
 
 ANY = f"{TYPING}.Any"
 CAST = f"{TYPING}.cast"
@@ -32,8 +33,9 @@ def without_class_scopes(scopes, class_scopes):
     return [s for s in scopes if not any(s is cls for cls in class_scopes)]
 
 
-class TypeLaundering(ast.NodeVisitor):
+class TypeLaundering(IterativeVisitor):
     def __init__(self, context, existing):
+        super().__init__()
         self.context = context
         self.scopes = []
         self.class_scopes = []
@@ -49,14 +51,14 @@ class TypeLaundering(ast.NodeVisitor):
         ]
 
     def resolve(self, node):
-        if isinstance(node, ast.Attribute):
-            base = self.resolve(node.value)
-            return f"{base}.{node.attr}" if base else None
-        if isinstance(node, ast.Name):
-            for scope in reversed(self.scopes):
-                if node.id in scope:
-                    return scope[node.id]
-        return None
+        attributes = []
+        while isinstance(node, ast.Attribute):
+            attributes.append(node.attr)
+            node = node.value
+        if not isinstance(node, ast.Name):
+            return None
+        base = next((s[node.id] for s in reversed(self.scopes) if node.id in s), None)
+        return ".".join([base, *reversed(attributes)]) if base else None
 
     def qualified(self, name):
         return ".".join([*self.names, name])
@@ -127,8 +129,8 @@ class TypeLaundering(ast.NodeVisitor):
     def visit_Module(self, node):
         self.scopes.append(scope_bindings(node))
         self.mark_implementations(node.body)
+        self.on_exit(self.scopes.pop)
         self.generic_visit(node)
-        self.scopes.pop()
 
     def type_parameters(self, node, label):
         for parameter in getattr(node, "type_params", []):
@@ -196,8 +198,8 @@ class TypeLaundering(ast.NodeVisitor):
 
     def visit_comprehension_scope(self, node):
         self.scopes.append(comprehension_bindings(node))
+        self.on_exit(self.scopes.pop)
         self.generic_visit(node)
-        self.scopes.pop()
 
     visit_ListComp = visit_comprehension_scope
     visit_SetComp = visit_comprehension_scope

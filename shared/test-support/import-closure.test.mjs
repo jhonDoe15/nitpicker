@@ -3,6 +3,7 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import { importClosure } from '../import-closure.mjs';
+import { byText } from '../text-order/by-text.mjs';
 
 const roots = [];
 afterEach(() => {
@@ -31,7 +32,7 @@ describe('import closure', () => {
       'unrelated.mjs': 'export const unused = 1;\n',
     });
 
-    expect([...importClosure(['a/main.mjs'], root).keys()].sort()).toEqual([
+    expect([...importClosure(['a/main.mjs'], root).keys()].sort(byText)).toEqual([
       'a/b.mjs',
       'a/d.mjs',
       'a/e.mjs',
@@ -61,5 +62,18 @@ describe('import closure', () => {
         ['main.mjs', 'export {};\n'],
       ]),
     );
+  });
+
+  it('keeps a file it is told to stop at without following its imports', () => {
+    const root = project({
+      'main.mjs': "import './gate.mjs';\nimport './side.mjs';\n",
+      'gate.mjs': "import './behind.mjs';\n",
+      'side.mjs': 'export {};\n',
+      'behind.mjs': 'export {};\n',
+    });
+
+    expect(
+      [...importClosure(['main.mjs'], root, { stopAt: new Set(['gate.mjs']) }).keys()].sort(byText),
+    ).toEqual(['gate.mjs', 'main.mjs', 'side.mjs']);
   });
 });
