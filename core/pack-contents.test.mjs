@@ -118,6 +118,7 @@ describe('npm package contents', () => {
     expect(packedFiles.has('core/bin.mjs')).toBe(true);
     expect(packedFiles.has('core/tooling/node-version/node-version.mjs')).toBe(true);
     expect(packedFiles.has('core/fix/run-fix.mjs')).toBe(true);
+    expect(packedFiles.has('CHANGELOG.md')).toBe(true);
     expect(packedFiles.has('languages/java/gradle/nitpicker.init.gradle')).toBe(true);
     expect(packedFiles.has('languages/java/detekt/nitpicker-detekt.yml')).toBe(true);
     expect(packedFiles.has('languages/python/ruff/nitpicker-ruff.toml')).toBe(true);
@@ -136,6 +137,7 @@ describe('npm package contents', () => {
     expect(packedFiles.has('docs/agents-snippet.md')).toBe(true);
     expect(packedFiles.has('spec/config.schema.json')).toBe(true);
     expect(packedFiles.has('spec/findings.schema.json')).toBe(true);
+    expect(packedFiles.has('spec/json-output.schema.json')).toBe(true);
     expect(packedFiles.has('shared/reference/rules/java-pmd.json')).toBe(true);
     expect(packedFiles.has('core/command/reference/reference.mjs')).toBe(true);
     expect(packedFiles.has('languages/go/inspect/go.mod')).toBe(true);
