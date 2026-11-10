@@ -58,6 +58,13 @@ function reportArguments(options, reportPath) {
   ];
 }
 
+function timeoutEnvironment(setupPath) {
+  return {
+    [TIMEOUT_SETUP_VARIABLE]: setupPath,
+    [TIMEOUT_LIMITS_VARIABLE]: JSON.stringify(testTimeouts()),
+  };
+}
+
 export function runVitest(options) {
   const configured = readHeadPolicyFile().tools?.tests?.timeouts !== undefined;
   const configPath = temporaryProjectPath(options, 'vitest.config.ts');
@@ -87,17 +94,17 @@ export function runVitest(options) {
       environment: {
         ...testConsole.environment,
         [FAILURE_DETAILS_VARIABLE]: detailsPath,
-        ...(configured
-          ? {
-              [TIMEOUT_SETUP_VARIABLE]: setupPath,
-              [TIMEOUT_LIMITS_VARIABLE]: JSON.stringify(testTimeouts()),
-            }
-          : {}),
+        ...(configured ? timeoutEnvironment(setupPath) : {}),
       },
       acceptedStatuses: [0, 1],
     });
     return withFailureDetails(
-      readRun({ reportPath, result, runnerName: RUNNER_NAMES.vitest }),
+      readRun({
+        reportPath,
+        result,
+        runnerName: RUNNER_NAMES.vitest,
+        snapshot: options.snapshot,
+      }),
       detailsPath,
     );
   } finally {

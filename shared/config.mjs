@@ -1,5 +1,6 @@
 import path from 'node:path';
 import { FACT_RULE_SETTINGS, factRuleSettings } from './project-rules/fact-rules.mjs';
+import { troubleshootingError } from './messages/troubleshooting.mjs';
 import { suggestionOrAllowed } from './messages/closest-match.mjs';
 
 export const CONFIG_FILE_NAME = 'nitpicker.config.json';
@@ -41,8 +42,8 @@ export const FEATURE_LAYOUT_KEYS = ['sharedRoots', 'featureRoots'];
 
 export const TYPESCRIPT_ONLY_KEYS = ['exceptions', 'react', 'i18n', 'tools'];
 
-export function configError(message) {
-  return new Error(`${CONFIG_FILE_NAME}: ${message}`);
+export function configError(message, anchor) {
+  return troubleshootingError(`${CONFIG_FILE_NAME}: ${message}`, anchor);
 }
 
 export function isNonEmptyString(value) {
@@ -239,25 +240,30 @@ function usedFactSettings(config) {
   const layout = isPlainObject(config.layout) ? config.layout : {};
   return [
     ...(config.testConsole === undefined ? [] : ['testConsole']),
+    ...(config.protocols === undefined ? [] : ['protocols']),
     ...FEATURE_LAYOUT_KEYS.filter((key) => layout[key] !== undefined).map((key) => `layout.${key}`),
+  ];
+}
+
+export function acceptedFactSettings(config) {
+  return [
+    ...factRuleSettings(config.preset ?? 'typescript'),
+    ...(config.history?.coChange === true ? ['layout.featureRoots'] : []),
   ];
 }
 
 export function validateFactRuleSettings(config) {
   const language = config.preset ?? 'typescript';
-  const accepted = [
-    ...factRuleSettings(language),
-    ...(config.history?.coChange === true ? ['layout.featureRoots'] : []),
-  ];
+  const accepted = acceptedFactSettings(config);
   const unsupported = usedFactSettings(config).find((setting) => !accepted.includes(setting));
   if (unsupported === undefined) {
     return;
   }
-  const [rule] = Object.entries(FACT_RULE_SETTINGS).find(([, settings]) =>
-    settings.includes(unsupported),
-  );
+  const rules = Object.entries(FACT_RULE_SETTINGS)
+    .filter(([, settings]) => settings.includes(unsupported))
+    .map(([rule]) => rule);
   throw configError(
-    `"${unsupported}" is not supported with "preset": "${language}": it configures ${rule}, which the ${language} preset does not run yet. Remove it`,
+    `"${unsupported}" is not supported with "preset": "${language}": it configures ${rules.join(', ')}, which the ${language} preset does not run yet. Remove it`,
   );
 }
 

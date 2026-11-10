@@ -1,6 +1,10 @@
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
+import {
+  nestedCheckout,
+  useGitCheckouts,
+} from '../../../../core/diff/git/test-support/git-checkout.mjs';
 import { afterEach, describe, expect, it } from 'vitest';
 import {
   dropEntityAssociations,
@@ -9,6 +13,7 @@ import {
 } from './jpa-source-filters.mjs';
 
 const roots = [];
+const { gitCheckout } = useGitCheckouts();
 const SOURCE_ROOTS = ['src/main/java'];
 
 afterEach(() => {
@@ -128,5 +133,35 @@ describe('dropInheritedVersions', () => {
   it('ignores other findings', () => {
     const other = { tool: 'pmd', rule: 'SpringFieldInjection', path: 'x' };
     expect(dropInheritedVersions([other], options('/nonexistent'))).toEqual([other]);
+  });
+});
+
+describe('dropInheritedVersions in a Git checkout', () => {
+  const finding = {
+    tool: 'pmd',
+    rule: 'JpaVersion',
+    path: 'src/main/java/Invoice.java',
+    location: { line: 1 },
+  };
+  const base = '@MappedSuperclass\nclass Base {\n @Version long version;\n}\n';
+  const invoice = '@Entity\nclass Invoice extends Base {\n @Id Long id;\n}\n';
+  const options = (root) => ({ projectRoot: root, sourceRoots: SOURCE_ROOTS });
+
+  it('looks for the superclass in the checkout, not in ignored folders or nested checkouts', () => {
+    const hidden = gitCheckout(
+      {
+        'src/main/java/Invoice.java': invoice,
+        'src/main/java/gen/Base.java': base,
+        ...nestedCheckout('src/main/java/agent', { 'Base.java': base }),
+      },
+      ['src/main/java/gen/'],
+    );
+    const visible = gitCheckout({
+      'src/main/java/Invoice.java': invoice,
+      'src/main/java/Base.java': base,
+    });
+
+    expect(dropInheritedVersions([finding], options(hidden))).toEqual([finding]);
+    expect(dropInheritedVersions([finding], options(visible))).toEqual([]);
   });
 });

@@ -1,0 +1,18 @@
+- id: nitpicker
+  name: nitpicker (quick, staged changes)
+  description: Quick differential quality gate on the staged changes. Skips the tests and the checks built on them (the run prints the list); run nitpicker without --quick before you finish.
+  entry: nitpicker --quick --staged
+  language: node
+  pass_filenames: false
+  always_run: true
+  stages: [pre-commit]
+  minimum_pre_commit_version: '3.2.0'
+- id: nitpicker-full
+  name: nitpicker (full gate)
+  description: The full differential quality gate. It takes minutes, so run it before a push rather than on every commit.
+  entry: nitpicker
+  language: node
+  pass_filenames: false
+  always_run: true
+  stages: [pre-push]
+  minimum_pre_commit_version: '3.2.0'
