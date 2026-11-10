@@ -37,6 +37,16 @@ const (
 // Reader reads.
 var Reader, Writer = 1, 2
 
+// Min, Max.
+var Min, Max, _ = 1, 2, 3
+
+/* Block returns the thing the
+   caller wants. */
+func Block() {}
+
+// Blank is blank.
+func _() {}
+
 // Store keeps carts:
 //   - in memory
 //   - on disk
@@ -69,7 +79,9 @@ func TestListsDocCommentsOfDeclarationsWithTheirProse(t *testing.T) {
 		"Items | Cart.Items | Items is the items. | ",
 		"Total | Cart.Total | Total adds up / the prices. | detailed",
 		"MaxItems |  | MaxItems is the most items a cart holds. | ",
-		"Reader |  | Reader reads. | ",
+		"Reader, Writer |  | Reader reads. | ",
+		"Min, Max |  | Min, Max. | ",
+		"Block |  | Block returns the thing the / caller wants. | ",
 		"Store |  | Store keeps carts: / in memory / on disk | ",
 		"Load | Store.Load | Load loads. | ",
 	}

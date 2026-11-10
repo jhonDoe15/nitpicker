@@ -79,10 +79,32 @@ func (doc *docText) addBlock(block comment.Block) {
 	}
 }
 
+func docSource(group *ast.CommentGroup) string {
+	text := group.Text()
+	if !strings.HasPrefix(group.List[0].Text, "/*") {
+		return text
+	}
+	lines := strings.Split(text, "\n")
+	for index, line := range lines {
+		lines[index] = strings.TrimSpace(line)
+	}
+	return strings.Join(lines, "\n")
+}
+
+func declaredNames(names []*ast.Ident) string {
+	kept := []string{}
+	for _, name := range names {
+		if name.Name != "_" {
+			kept = append(kept, name.Name)
+		}
+	}
+	return strings.Join(kept, ", ")
+}
+
 func parseDocText(group *ast.CommentGroup) docText {
 	var parser comment.Parser
 	var doc docText
-	for _, block := range parser.Parse(group.Text()).Content {
+	for _, block := range parser.Parse(docSource(group)).Content {
 		doc.addBlock(block)
 	}
 	return doc
@@ -91,10 +113,11 @@ func parseDocText(group *ast.CommentGroup) docText {
 func fieldTargets(owner string, fields *ast.FieldList) []docTarget {
 	targets := []docTarget{}
 	for _, field := range fields.List {
-		if field.Doc == nil || len(field.Names) == 0 || field.Names[0].Name == "_" {
+		name := declaredNames(field.Names)
+		if field.Doc == nil || name == "" {
 			continue
 		}
-		targets = append(targets, docTarget{group: field.Doc, name: field.Names[0].Name, qualifier: owner + "." + field.Names[0].Name})
+		targets = append(targets, docTarget{group: field.Doc, name: name, qualifier: owner + "." + name})
 	}
 	return targets
 }
@@ -119,14 +142,14 @@ func specTargets(declaration *ast.GenDecl) []docTarget {
 		case *ast.TypeSpec:
 			doc, name, members = typed.Doc, typed.Name.Name, memberTargets(typed)
 		case *ast.ValueSpec:
-			doc, name = typed.Doc, typed.Names[0].Name
+			doc, name = typed.Doc, declaredNames(typed.Names)
 		default:
 			continue
 		}
 		if doc == nil && !declaration.Lparen.IsValid() {
 			doc = declaration.Doc
 		}
-		if doc != nil && name != "_" {
+		if doc != nil && name != "_" && name != "" {
 			targets = append(targets, docTarget{group: doc, name: name})
 		}
 		targets = append(targets, members...)
@@ -135,7 +158,7 @@ func specTargets(declaration *ast.GenDecl) []docTarget {
 }
 
 func functionTarget(function *ast.FuncDecl) []docTarget {
-	if function.Doc == nil {
+	if function.Doc == nil || function.Name.Name == "_" {
 		return nil
 	}
 	receiver := receiverName(function)

@@ -179,7 +179,7 @@ run that writes a coverage profile, so every test runs and its time is measured.
   stderr into one stream, so the level decides what counts, in place of the stream: a line at
   `WARN` or `ERROR` level or above (`level=WARN`, `"level":"error"`, a `WARN` or `ERROR` word, a
   klog `W` or `E` line), and a standard `log` line (`2026/11/10 10:00:00 ...`, which writes to
-  stderr) unless it carries a lower level (`INFO`). A plain `fmt.Println` does not count, as stdout
+  stderr) unless it carries a lower level (`INFO`, `[INFO]`, `info:`). A plain `fmt.Println` does not count, as stdout
   does not in the other presets. `t.Log` and `t.Error` lines, `=== RUN` and `--- PASS` lines and
   race reports (the race detector has its own finding) never count. Output outside any test
   (`TestMain`, `init`) is reported on the package folder.

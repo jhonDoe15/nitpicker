@@ -1,14 +1,14 @@
 import { packageDirectory, testFunction } from './go-slow-tests.mjs';
 
 const FRAMING =
-  /^(?:=== (?:RUN|PAUSE|CONT|NAME)\b|--- (?:PASS|FAIL|SKIP)\b|PASS$|FAIL\b|ok\s|coverage:)/u;
+  /^(?:=== (?:RUN|PAUSE|CONT|NAME|ATTR)\b|--- (?:PASS|FAIL|SKIP)\b|PASS$|FAIL\b|ok\s|coverage:)/u;
 const INDENTED = /^\s/u;
 const DATA_RACE = /^WARNING: DATA RACE$/u;
 const WARNING_WORD =
   /(?:^|[\s[|])(?:WARN|WARNING|ERROR|FATAL|SEVERE|PANIC|CRITICAL)(?=[\s\]|:]|$)/u;
 const WARNING_FIELD =
   /(?:^|[\s{,])"?level"?\s*[=:]\s*"?(?:warn|warning|error|fatal|panic|dpanic|critical)\b/iu;
-const LOWER_LEVEL_WORD = /^(?:TRACE|DEBUG|INFO|NOTICE)\b/u;
+const LOWER_LEVEL_WORD = /^\[?(?:trace|debug|info|notice)(?:\]|:|\s|$)/iu;
 const LEVEL_FIELD = /(?:^|[\s{,])"?level"?\s*[=:]/iu;
 const STANDARD_LOG = /^\d{4}\/\d{2}\/\d{2} \d{2}:\d{2}:\d{2}(?:\.\d+)? /u;
 const KLOG = /^([IWEF])\d{4} \d{2}:\d{2}:\d{2}\.\d{6}\s+\d+ \S+:\d+\] /u;
@@ -23,7 +23,10 @@ function leveledWarning(line) {
     return klog[1] !== KLOG_INFO;
   }
   const rest = line.replace(STANDARD_LOG, '');
-  return rest === line ? WARNING_WORD.test(line) : !LOWER_LEVEL_WORD.test(rest);
+  if (LOWER_LEVEL_WORD.test(rest)) {
+    return false;
+  }
+  return rest !== line || WARNING_WORD.test(line);
 }
 
 function counts(line) {
