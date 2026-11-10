@@ -38,6 +38,8 @@ describe.skipIf(!goE2eEnabled)('Go preset doc comments and test output end to en
     expect(newFindings(result)).toEqual([
       'test-runtime/test-console-output internal/cart/cart_test.go',
     ]);
-    expect(newMessages(result).join('\n')).toContain('price list has');
+    expect(newMessages(result).map((message) => /"([^"]*)"/u.exec(message)[1])).toEqual([
+      'price list has <n> entries',
+    ]);
   });
 });
