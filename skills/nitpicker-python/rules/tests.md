@@ -9,6 +9,17 @@ Part of the [nitpicker-python](../SKILL.md) skill. Write these forms from the st
   instead of `time.sleep` and fake network, database and disk access. A test over budget is run
   again alone without coverage and fails only if it is still over. Lift a legitimate one in the
   top-level `exceptions` with `{ "rule": "slow-test", "paths": [...], "reason": "..." }`.
+- Assert the value, not that something is there (`weak-assertion`): no `assert x`, `assert x is not None`
+  or `assert len(x) > 0` as the whole check, and no `m.assert_called()` or `assert_called_with(ANY)`; assert
+  the exact value, contents or length and the call's arguments. A not-null check is fine when the test uses `x` afterwards.
+- Honest tests: one case per test with `@pytest.mark.parametrize`, and assert unconditionally (no
+  `assert` inside `if`, `for`, `while`, `match`, `except`, a comprehension or a `subTest` loop:
+  `conditional-assertion-in-test`); a branch that only calls `pytest.fail` or skips is fine.
+  Call the nested helpers a test defines, or they assert nothing. Skip only on a real condition
+  with a reason, in a test, fixture or hook alike
+  (`@pytest.mark.skipif(sys.platform == "win32", reason="...")`, `pytest.importorskip`); a
+  permanent `skip`, a literal `skipif(True)` (or `1 == 1`, `"1"`, a constant) or a non-strict
+  `xfail` is `switched-off-test`: delete the test, fix it, or use `xfail(strict=True)`.
 - No retries in test code (`retry-in-test`): no `@pytest.mark.flaky` (pytest-rerunfailures,
   pytest-retry), no `@flaky` from the flaky package, no tenacity or backoff retry on a test. A test
   that passes only on a later attempt always counts as failed. Fix the flaky cause instead.

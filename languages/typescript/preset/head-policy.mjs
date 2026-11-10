@@ -158,6 +158,7 @@ const HEAD_CHECKOUT_FACTS = [
   'frameworks',
   'libraries',
   'spring',
+  'featureFolders',
   'kotlin',
 ];
 const SCOPE_FACTS = [
@@ -263,6 +264,7 @@ export function readHeadPolicy(environment = process.env) {
     generatedFiles: policy.generatedFiles ?? [],
     libraries: policy.libraries,
     frameworks: { defaultExports: [], entryPoints: [], ...policy.frameworks },
+    ...(policy.protocols === undefined ? {} : { protocols: policy.protocols }),
   };
 }
 

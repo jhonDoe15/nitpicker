@@ -1,15 +1,18 @@
 import { exceptionRoute } from '../../../shared/exceptions/rule-names.mjs';
-import { FUNCTION_EXCEPTION_RULES } from '../../../shared/policy.mjs';
+import { COMMON_EXCEPTION_RULES } from '../../../shared/policy.mjs';
 import { definedField } from '../../../shared/messages/messages.mjs';
-import { ASYNC_HINTS } from './hints/ast-async.mjs';
-import { STRUCTURE_HINTS } from './hints/ast-structure.mjs';
+import { LOCATOR_HINTS } from './hints/ast/locators.mjs';
+import { ASYNC_HINTS } from './hints/ast/ast-async.mjs';
+import { STRUCTURE_HINTS } from './hints/ast/ast-structure.mjs';
 import { CONTAINER_HINTS } from './hints/containers/containers.mjs';
 import { TYPING_HINTS } from './hints/typing/ast-typing.mjs';
-import { SMELL_HINTS } from './hints/ast-smells.mjs';
+import { SMELL_HINTS } from './hints/ast/ast-smells.mjs';
 import { MOCK_HINTS } from './hints/tests/mock-hints.mjs';
 import { ORM_HINTS } from './hints/persistence/ast-orm.mjs';
-import { PYTEST_HINTS } from './hints/ruff-pytest.mjs';
+import { CONTRACT_HINTS } from './hints/contracts/ast-contracts.mjs';
 import { SIGNATURE_HINTS } from './hints/signatures/ast-signatures.mjs';
+import { TEST_SWITCH_HINTS } from './hints/tests/ast-test-switches.mjs';
+import { PYTEST_HINTS } from './hints/tests/ruff-pytest.mjs';
 import { SECURITY_HINTS } from './hints/security/ruff-security.mjs';
 import { RULES_SECURITY_HINTS } from './hints/security/rules-security.mjs';
 import { PITFALL_HINTS } from './hints/pitfalls/ruff-pitfalls.mjs';
@@ -51,10 +54,13 @@ export const RULE_HINTS = [
   ...RULES_SECURITY_HINTS,
   ...STRUCTURE_HINTS,
   ...TYPING_HINTS,
+  ...LOCATOR_HINTS,
+  ...CONTRACT_HINTS,
   ...ASYNC_HINTS,
   ...SMELL_HINTS,
   ...MOCK_HINTS,
   ...SIGNATURE_HINTS,
+  ...TEST_SWITCH_HINTS,
   ...ORM_HINTS,
   ...PERSISTENCE_HINTS,
   ...CONTAINER_HINTS,
@@ -124,7 +130,7 @@ function canBeLifted(finding) {
     finding.classification === 'enforceable' &&
     typeof finding.rule === 'string' &&
     finding.rule !== '' &&
-    !FUNCTION_EXCEPTION_RULES.includes(finding.rule) &&
+    !COMMON_EXCEPTION_RULES.includes(finding.rule) &&
     finding.path !== '.'
   );
 }
