@@ -722,13 +722,16 @@ set `"disable": ["mutation"]`. On native Windows mutmut does not run; see
 
 ### The Gradle build fails
 
-**Symptom.** A `gradle-failure` tool error of the `java` (or `kotlin`) analyzer holding the build's
-diagnostic output, up to 4000 characters, on `base` or `head`. Exit code 2 when there are no new
-findings.
+**Symptom.** A `gradle-failure` tool error of the `java` (or `kotlin`) analyzer on `base` or `head`
+that says the preset failed "on the base" or "on your change", followed by the cause Gradle gave (at
+most 12 lines) and `Full Gradle log: reports/quality/diff/logs/<preset>-<base|head>-gradle.log` with
+the whole output. Exit code 2 when there are no new findings. A change that does not compile is not
+this error: each compile error is a `build/compile-error` finding at its line (exit 1), with a
+`compile-failed-skipped` note that the other checks did not run.
 
 **Cause.** nitpicker runs the build through an init script, and the build failed on that snapshot. Common
-reasons: a compile error, a missing dependency or repository, a Gradle or JDK version the build does not
-support, a plugin that needs a network the runner does not have, or a failing test (see
+reasons: a base that does not compile, a missing dependency or repository, a Gradle or JDK version the
+build does not support, a plugin that needs a network the runner does not have, or a failing test (see
 [Tests fail](#tests-fail)).
 
 **Fix.** The output holds the cause. Run the project's own build and tests (`./gradlew build`,
@@ -741,7 +744,8 @@ If the build passes by itself and only fails under nitpicker, open an issue with
 
 **Symptom.** A `maven-failure` tool error of the `java` analyzer holding Maven's `[ERROR]` lines (up to
 4000 characters) on `base` or `head`, possibly with `nitpicker needs Maven 3.6.3 or newer`, or
-`The kotlin preset needs a Gradle build, and this project builds with Maven`.
+`The kotlin preset needs a Gradle build, and this project builds with Maven`. Compile errors on `head`
+are `build/compile-error` findings instead, as for Gradle.
 
 **Cause.** The same as for Gradle: the Maven build failed on that snapshot, one module at a time. A
 surefire or Failsafe configuration with `<testFailureIgnore>false</testFailureIgnore>`, or a

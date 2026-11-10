@@ -11,7 +11,7 @@ const INSECURE_PARAMETERS = [
   'sslValidate=false',
 ];
 const URL_TEXT = new RegExp(`[?&](?:${INSECURE_PARAMETERS.join('|')})(?:&|$|#)`, 'iu');
-const FLAG_TEXT = /^(?:--)?ignore-certificate-errors(?![-\w])(?:=\S*)?$/u;
+const FLAG_TEXT = /^(?:--)?ignore-certificate-errors(?:=\S*)?$/u;
 const LAUNCHER =
   /^(?:exec|execSync|execFile|execFileSync|spawn|spawnSync|fork|execa|execaSync|execaCommand|execaCommandSync|\$)$/u;
 const LOOKUPS = new Set([

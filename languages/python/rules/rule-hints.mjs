@@ -7,6 +7,7 @@ import { STRUCTURE_HINTS } from './hints/ast/ast-structure.mjs';
 import { CONTAINER_HINTS } from './hints/containers/containers.mjs';
 import { TYPING_HINTS } from './hints/typing/ast-typing.mjs';
 import { SMELL_HINTS } from './hints/ast/ast-smells.mjs';
+import { REGEX_DEFECT_HINTS } from './regexes/regex-defects.mjs';
 import { ORM_HINTS } from './hints/persistence/ast-orm.mjs';
 import { CONTRACT_HINTS } from './hints/contracts/ast-contracts.mjs';
 import { SIGNATURE_HINTS } from './hints/signatures/ast-signatures.mjs';
@@ -18,6 +19,7 @@ import { PITFALL_HINTS } from './hints/pitfalls/ruff-pitfalls.mjs';
 import { PERSISTENCE_HINTS } from './hints/persistence/orm-hints.mjs';
 import { STYLE_HINTS } from './hints/ruff-style.mjs';
 import { SIMPLER_LOGIC_HINTS } from './hints/logic/simpler-logic.mjs';
+import { TIME_UNIT_HINTS } from './hints/time/time-units.mjs';
 import { RULES_TOOL } from './hints/tool.mjs';
 import { DEFAULT_LIBRARIES } from './libraries/project-libraries.mjs';
 
@@ -59,10 +61,12 @@ export const RULE_HINTS = [
   ...CONTRACT_HINTS,
   ...ASYNC_HINTS,
   ...SMELL_HINTS,
+  ...REGEX_DEFECT_HINTS,
   ...SIGNATURE_HINTS,
   ...TEST_SWITCH_HINTS,
   ...ORM_HINTS,
   ...PERSISTENCE_HINTS,
+  ...TIME_UNIT_HINTS,
   ...CONTAINER_HINTS,
   { tool: 'mypy', rules: ['import-not-found', 'import-untyped'], allowed: INSTALL_PACKAGE },
   ...['pyright', 'basedpyright'].map((tool) => ({
