@@ -22,9 +22,10 @@ describe.skipIf(!kotlinE2eEnabled)('Kotlin preset quick run end to end', () => {
     const tools = new Set(findings.map(({ tool }) => tool));
 
     expect(tools.has('coupling')).toBe(true);
+    expect(tools.has('test-runtime')).toBe(true);
     expect(
       findings
-        .filter(({ tool }) => ['archunit', 'pit', 'jacoco', 'crap', 'test-runtime'].includes(tool))
+        .filter(({ tool }) => ['archunit', 'pit', 'jacoco', 'crap'].includes(tool))
         .map(({ tool, rule, path: file, identity }) => `${tool} ${rule} ${file} ${identity}`),
     ).toEqual(['archunit servicesOnly src/main/kotlin/demo/Calc.kt demo.Calc']);
     expect(existsSync(path.join(root, 'build/test-results/test'))).toBe(false);
