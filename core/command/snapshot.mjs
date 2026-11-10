@@ -17,6 +17,7 @@ import { realpathSync } from 'node:fs';
 import { runGit } from '../diff/git/repository/command.mjs';
 import { writeGithubOutput } from '../diff/reporting/github/emit.mjs';
 import { captureWorkingTree } from '../diff/git/repository/git.mjs';
+import { runProfileSummary } from '../quick/summary.mjs';
 import { outputRootFor } from '../diff/reporting/reporters.mjs';
 import { assertHasCommit } from '../diff/git/repository/base-ref.mjs';
 import { partialRunField, partialRunOf } from '../diff/reporting/partial-run/partial-run.mjs';
@@ -36,7 +37,10 @@ export function runSnapshotCli(cli) {
   }
   clearSnapshotReports(outputRoot);
 
-  const { repositoryRoot, relativeProjectPath, capturedSha } = captureSnapshot(currentProjectRoot);
+  const { repositoryRoot, relativeProjectPath, capturedSha } = captureSnapshot(
+    currentProjectRoot,
+    cli.captureHead ?? captureWorkingTree,
+  );
   const snapshot = { commitSha: capturedSha, warn: stderrWarning(stderr) };
   const report = withTemporaryWorktree(repositoryRoot, snapshot, (worktreeRoot) =>
     runInSnapshotWorktree({
@@ -51,6 +55,7 @@ export function runSnapshotCli(cli) {
   Object.assign(
     report.summary,
     partialRunField(partialRunOf(options.analyzerNames, analyzers, selectedAnalyzers)),
+    runProfileSummary({ quick: cli.quick, staged: options.staged }),
   );
   report.text = writeSnapshotReports(outputRoot, report, {
     projectPath: relativeProjectPath,
@@ -117,13 +122,13 @@ function runInSnapshotWorktree({
   }
 }
 
-function captureSnapshot(currentProjectRoot) {
+function captureSnapshot(currentProjectRoot, capture) {
   const repositoryRoot = realpathSync(
     runGit(currentProjectRoot, ['rev-parse', '--show-toplevel']).trim(),
   );
   const relativeProjectPath = path.relative(repositoryRoot, currentProjectRoot) || '.';
   assertHasCommit(repositoryRoot);
   const headSha = runGit(repositoryRoot, ['rev-parse', 'HEAD^{commit}']).trim();
-  const capturedSha = captureWorkingTree(repositoryRoot, headSha);
+  const capturedSha = capture(repositoryRoot, headSha);
   return { repositoryRoot, relativeProjectPath, capturedSha };
 }

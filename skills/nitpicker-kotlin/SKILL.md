@@ -23,15 +23,21 @@ run; finish with the plain run below.
 
 ## Finish with the gate
 
+While you iterate, run `npx nitpicker --quick`: it skips the tests and the checks built on them;
+read the printed skipped list for what it left out. A quick run is never a pass; finish with the
+full run below.
+
 1. Run the project's tests (`./gradlew test`, or `./mvnw test` on Maven). Failing tests stop
    coverage, CRAP and mutation from running.
-2. When the change is complete, run `npx nitpicker` as a background command you wait on, without a
-   pipe: you need its exit code. It has no `--fix` for Kotlin; format with the command and notes
-   printed at the start of the run. It runs the project's build (Gradle, or Maven with
-   `kotlin-maven-plugin`) on the merge base and on head, with the project's `./gradlew` or `./mvnw`
-   when there is one, otherwise `gradle` or `mvn` from the PATH (`NITPICKER_GRADLE` or
-   `NITPICKER_MAVEN` overrides both). It takes minutes and prints a progress line for each slow
-   analyzer.
+2. When the change is complete, run `npx nitpicker --fix` as a background command you wait on,
+   without a pipe: you need its exit code. It first rewrites the changed Kotlin and Java files with
+   the formatter named at the start of the run (ktlint or ktfmt, google-java-format for Java) and
+   lists them under "Fixed files:"; re-read those files before you edit them again. When a "Fix
+   notes:" line says no formatter was found, keep the layout by hand. Then it runs the project's
+   build (Gradle, or Maven with `kotlin-maven-plugin`) on the merge base and on head, with the
+   project's `./gradlew` or `./mvnw` when there is one, otherwise `gradle` or `mvn` from the PATH
+   (`NITPICKER_GRADLE` or `NITPICKER_MAVEN` overrides both). It takes minutes and prints a progress
+   line for each slow analyzer.
 3. Act on the exit code:
    - 0: done, unless you narrowed the run with `--analyzer`: then the summary says `Ran only: ...`
      and you run the gate again without it before you finish.
@@ -40,6 +46,7 @@ run; finish with the plain run below.
      first, since the other checks wait until the code builds.
    - 2: no new findings, but a tool failed. Fix the cause it names (usually a Gradle or Maven error) and rerun. Exit 2 is never a pass. If it says another run is in progress, wait
      for that run; never kill it.
+     When the message links to [troubleshooting](https://github.com/jhonDoe15/nitpicker/blob/main/docs/troubleshooting.md), the fix is there.
 4. Never suppress: no `@Suppress` of a detekt or ktlint rule, coverage or mutation markers
    (`@Generated`, `@ExcludeFromJacocoGeneratedReport`, `@DoNotMutate`), config `exclude`/`disable`/`exceptions`, legacy
    entries, or weakened tests. In Java files the Java rules apply: `@SuppressFBWarnings` and

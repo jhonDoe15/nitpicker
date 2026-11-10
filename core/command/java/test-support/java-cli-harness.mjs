@@ -10,6 +10,7 @@ import { usePresetFixtures } from '../../test-support/preset-fixtures.mjs';
 import { readCatalog } from '../../../../languages/java/messages/rule-messages.mjs';
 import { exceptionHint } from '../../../../shared/rules/exceptions.mjs';
 import { fakeMavenRun, spawnFakeMaven } from './in-process-maven.mjs';
+import { linkSentence } from '../../../../shared/messages/test-support/link-sentence.mjs';
 
 export { fakeGradle, fakeGradleRun };
 
@@ -74,6 +75,7 @@ export function useGradleFixtures(runNitpickerCli) {
               `Java preset failed ${snapshot === 'base' ? 'on the base' : 'on your change'}: ` +
                 'Execution failed for task :compileJava',
               `Full Gradle log: ${reports}/logs/java-${snapshot}-gradle.log`,
+              linkSentence('gradleFails'),
             ].join('\n'),
         },
       },
@@ -92,7 +94,8 @@ export function useGradleFixtures(runNitpickerCli) {
         stub: (binary) => vi.stubEnv('NITPICKER_GRADLE', binary),
         rule: 'gradle-failure',
         message: (binary, reports) =>
-          `spawnSync ${binary} ENOENT\nFull Gradle log: ${reports}/logs/java-base-gradle.log`,
+          `${binary} was not found. Add the Gradle wrapper (gradlew) to the project, put gradle on ` +
+          `the PATH, or set NITPICKER_GRADLE\nFull Gradle log: ${reports}/logs/java-base-gradle.log`,
       },
     },
   };
@@ -127,7 +130,7 @@ export function useMavenFixtures(runNitpickerCli) {
         error: {
           rule: 'maven-failure',
           message: (snapshot) =>
-            `Maven failed in ${snapshot}:\n[ERROR] COMPILATION ERROR in A.java`,
+            `Maven failed in ${snapshot}:\n[ERROR] COMPILATION ERROR in A.java\n${linkSentence('mavenFails')}`,
         },
       },
       redBase: {

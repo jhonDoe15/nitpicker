@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { chainOf, depthFirst, foldTree } from './traversal.mjs';
+import { chainOf, depthFirst, foldTree, whileHolds } from './traversal.mjs';
 
 describe('iterative tree traversal', () => {
   it('visits children before the next sibling in their original order', () => {
@@ -24,6 +24,14 @@ describe('iterative tree traversal', () => {
         throw new Error('unexpected successor');
       }),
     ).toEqual([]);
+  });
+
+  it('repeats over one value until its condition stops holding', () => {
+    const counter = { count: 0 };
+    for (const current of whileHolds(counter, ({ count }) => count < 3)) {
+      current.count += 1;
+    }
+    expect(counter).toEqual({ count: 3 });
   });
 
   it('folds children before their parent and passes each child the context its parent gives it', () => {

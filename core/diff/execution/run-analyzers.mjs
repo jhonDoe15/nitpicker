@@ -7,6 +7,10 @@ import { PACKAGE_ROOT } from '../../tooling/tool-resolution.mjs';
 import { namedReports, namedToolErrors } from '../snapshot-root/snapshot-root.mjs';
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
+import {
+  TROUBLESHOOTING_ANCHORS,
+  troubleshootingError,
+} from '../../../shared/messages/troubleshooting.mjs';
 import { describeError } from '../../../shared/messages/error-chain.mjs';
 import { LOG_DIRECTORY } from '../reporting/reporters.mjs';
 
@@ -167,14 +171,19 @@ export function runScheduler(tasks, headPolicyFile, { progress } = {}) {
   }
   if (result.status !== 0) {
     const detail = result.stderr.trim() || result.stdout.trim() || 'no diagnostic output';
-    throw new Error(`Analyzer scheduler crashed with exit ${String(result.status)}: ${detail}`);
+    throw troubleshootingError(
+      `Analyzer scheduler crashed with exit ${String(result.status)}: ${detail}`,
+      TROUBLESHOOTING_ANCHORS.analyzerCrashed,
+    );
   }
   try {
     return JSON.parse(result.stdout);
   } catch (error) {
-    throw new Error('Analyzer scheduler returned invalid JSON', {
-      cause: error,
-    });
+    throw troubleshootingError(
+      'Analyzer scheduler returned invalid JSON',
+      TROUBLESHOOTING_ANCHORS.analyzerCrashed,
+      { cause: error },
+    );
   }
 }
 
@@ -244,6 +253,7 @@ function createTask(analyzer, context) {
     concurrencyGroup: analyzer.concurrencyGroup,
     executionPriority: analyzer.executionPriority ?? 0,
     timeoutMs: analyzer.timeoutMs ?? DEFAULT_ANALYZER_TIMEOUT_MS,
+    configuredTimeout: analyzer.configuredTimeout === true,
     reportedTools: analyzer.reportedTools ?? [],
     acceptedExitCodes: [0, ...(analyzer.findingExitCodes ?? [])],
     invocation,

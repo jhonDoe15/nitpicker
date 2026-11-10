@@ -1,5 +1,23 @@
 import { mkdirSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
+import {
+  isExplainedError,
+  troubleshootingLinkOf,
+  withoutTroubleshooting,
+} from '../../../../../shared/messages/troubleshooting.mjs';
+
+function keepingExplained(error, wrapped) {
+  return isExplainedError(error)
+    ? Object.defineProperty(wrapped, 'explained', { value: true })
+    : wrapped;
+}
+
+function withLineBeforeLink(message, line) {
+  const link = troubleshootingLinkOf(message);
+  return link === undefined
+    ? `${message}\n${line}`
+    : `${withoutTroubleshooting(message)}\n${line}\n${link}`;
+}
 
 export const GRADLE_LOG_LINE = 'Full Gradle log: ';
 
@@ -25,12 +43,20 @@ export function withGradleLog(error, result, log) {
       `=== stdout ===\n${result.stdout ?? ''}\n=== stderr ===\n${result.stderr ?? ''}`,
       { mode: 0o600 },
     );
-    return new Error(`${error.message}\n${GRADLE_LOG_LINE}${log.label}`, { cause: error });
+    return keepingExplained(
+      error,
+      new Error(withLineBeforeLink(error.message, `${GRADLE_LOG_LINE}${log.label}`), {
+        cause: error,
+      }),
+    );
   } catch (logError) {
-    return new AggregateError(
-      [error, logError],
-      `${error.message}\nCould not save the Gradle log: ${logError.message}`,
-      { cause: logError },
+    return keepingExplained(
+      error,
+      new AggregateError(
+        [error, logError],
+        withLineBeforeLink(error.message, `Could not save the Gradle log: ${logError.message}`),
+        { cause: logError },
+      ),
     );
   }
 }

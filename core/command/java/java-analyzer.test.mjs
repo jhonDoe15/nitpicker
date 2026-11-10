@@ -9,6 +9,7 @@ import { JAVA_TOOLS } from '../../../languages/java/adapters/gradle-presets.mjs'
 import { commit, fixtureGit } from '../../diff/git/test-support/git-repository.mjs';
 import { fakeGradleRun, useGradleFixtures } from './test-support/java-cli-harness.mjs';
 import { writeFiles } from '../../diff/git/test-support/fixture-files.mjs';
+import { linkSentence } from '../../../shared/messages/test-support/link-sentence.mjs';
 
 const { kotlinRepository, run, temporaryRoot } = useGradleFixtures(nitpickerCli);
 
@@ -77,7 +78,7 @@ describe('Kotlin analyzer', () => {
         rule: 'gradle-failure',
         path: '.',
         identity: 'gradle-failure',
-        message: 'Kotlin preset failed on your change: detekt crashed',
+        message: `Kotlin preset failed on your change: detekt crashed. ${linkSentence('gradleFails')}`,
         classification: 'tool-error',
       },
     ]);
@@ -99,7 +100,7 @@ describe('a build without a project that applies the plugin', () => {
         rule: 'gradle-failure',
         path: '.',
         identity: 'gradle-failure',
-        message: `The ${preset} preset found no Gradle project that applies the ${plugin} plugin`,
+        message: `The ${preset} preset found no Gradle project that applies the ${plugin} plugin. ${linkSentence('gradleFails')}`,
         classification: 'tool-error',
       },
     ]);
@@ -149,7 +150,7 @@ describe('Java analyzer', () => {
         rule: 'gradle-failure',
         path: '.',
         identity: 'gradle-failure',
-        message: 'Java preset failed on your change: tool crashed',
+        message: `Java preset failed on your change: tool crashed. ${linkSentence('gradleFails')}`,
         classification: 'tool-error',
       },
     ]);
@@ -174,7 +175,8 @@ describe('Gradle failure diagnostics', () => {
       });
 
       expect(findings[0].message).toBe(
-        `Java preset failed on your change: ${expected}\nFull Gradle log: logs/java-head-gradle.log`,
+        `Java preset failed on your change: ${expected}\nFull Gradle log: logs/java-head-gradle.log\n` +
+          linkSentence('gradleFails'),
       );
       expect(readFileSync(path.join(logRoot, 'java-head-gradle.log'), 'utf8')).toBe(
         `=== stdout ===\n${stdout}\n=== stderr ===\n${stderr}\n`,
@@ -193,7 +195,10 @@ describe('Gradle failure diagnostics', () => {
       policy: { logRoot, logLabel },
     }).findings[0];
 
-    expect(message.split('\n').at(-1)).toBe(`Full Gradle log: ${logLabel}/java-head-gradle.log`);
+    expect(message.split('\n').slice(-2)).toEqual([
+      `Full Gradle log: ${logLabel}/java-head-gradle.log`,
+      linkSentence('gradleFails'),
+    ]);
     expect(message.length).toBeGreaterThan(4000);
     expect(message).not.toContain('...');
   });
@@ -229,6 +234,7 @@ describe('Gradle failure diagnostics', () => {
           `Kotlin preset failed ${where[snapshot]}: Execution failed for task ':test'.`,
           '> There were failing tests. See the report at: build/reports/tests/test/index.html',
           `Full Gradle log: ${result.reports}/logs/kotlin-${snapshot}-gradle.log`,
+          linkSentence('gradleFails'),
         ].join('\n'),
       ),
     );
