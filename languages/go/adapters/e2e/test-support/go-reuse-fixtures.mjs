@@ -48,7 +48,7 @@ ${CLAMP}`;
 
 export const REUSE_FILES = {
   'go.mod': 'module shop\n\ngo 1.22\n',
-  'nitpicker.config.json': '{ "preset": "go" }\n',
+  'nitpicker.config.json': '{ "preset": "go", "disable": ["mutation"] }\n',
   'cmd/shop/main.go': MAIN,
   'internal/billing/total.go': BILLING,
   'internal/report/score.go': REPORT,
