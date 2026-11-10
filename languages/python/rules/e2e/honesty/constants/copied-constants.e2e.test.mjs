@@ -76,6 +76,54 @@ describe.skipIf(!enabled)('copied-constant-in-test', () => {
     expect(actual).toEqual(expected);
   });
 
+  it('reads class constants, nested classes and modules loaded by name', () => {
+    const shapes = {
+      'shop/shapes.py':
+        'import enum\n\n\nclass Api:\n    PAGE_SIZE = 25\n\n    class Paging:\n' +
+        '        MAX_PAGES = 40\n\n\nclass _Hidden:\n    CODE = 4242\n\n\n' +
+        'class Mode(enum.Enum):\n    STEADY = "steady-state"\n\n    class Limits:\n        BURST = 90\n',
+    };
+    const body = (head) =>
+      `${head}\n\n\ndef test_a():\n    assert f(25, 40, 4242, "steady-state", 90)\n` +
+      '    assert g(25) == shapes.Api.PAGE_SIZE\n';
+    const at = (line) => [
+      `copied-constant-in-test:${String(line)} Api.PAGE_SIZE from shop.shapes`,
+      `copied-constant-in-test:${String(line)} Api.Paging.MAX_PAGES from shop.shapes`,
+      `copied-constant-in-test:${String(line)} Mode.Limits.BURST from shop.shapes`,
+    ];
+    const [actual, expected] = outcomes([
+      ['an import', withTest(body('from shop import shapes'), shapes), at(5)],
+      [
+        'import_module',
+        withTest(
+          body('from importlib import import_module\nshapes = import_module("shop.shapes")'),
+          shapes,
+        ),
+        at(6),
+      ],
+      [
+        'importorskip',
+        withTest(body('import pytest\nshapes = pytest.importorskip("shop.shapes")'), shapes),
+        at(6),
+      ],
+      [
+        '__import__',
+        withTest('limits = __import__("shop.limits")\n\n\ndef test_a():\n    assert f(50)\n'),
+        copy('MAX_ITEMS', 5),
+      ],
+      [
+        'a relative or computed name',
+        withTest(
+          'import importlib\nm = importlib.import_module(".limits", "shop")\n' +
+            'n = importlib.import_module(name)\n\n\ndef test_a():\n    assert f(50)\n',
+        ),
+        [],
+      ],
+    ]);
+
+    expect(actual).toEqual(expected);
+  });
+
   it('names every module that declares the value, once, sorted', () => {
     const [actual, expected] = outcomes([
       [
