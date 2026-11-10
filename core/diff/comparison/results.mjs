@@ -5,6 +5,7 @@ import {
   policyFindings,
 } from '../reporting/review/policy-findings.mjs';
 import { compareAnalyzers } from './base-red/compare-analyzers.mjs';
+import { runProfileSummary } from '../../quick/summary.mjs';
 import { scopeNotes, scopeOutcomes, scopeSummary } from '../../scope/scope-findings.mjs';
 
 export function combineAnalyzerReports(context) {
@@ -59,6 +60,11 @@ function policyReview(context, digest) {
   };
 }
 
+function runAndScopeSummary(context, outcomes) {
+  const outside = outcomes.reduce((total, { outside: count }) => total + count, 0);
+  return { ...runProfileSummary(context), ...scopeSummary(context.scope, outside) };
+}
+
 function buildReport(context) {
   const { analyzers, outcomes, toolErrors, comparison, startedAt } = context;
   const { configOverrides, policyChanges, policyLoosenings, notices } = context;
@@ -81,10 +87,7 @@ function buildReport(context) {
         ? {}
         : { policyAcceptanceSource: context.policyAcceptanceSource }),
       notices,
-      ...scopeSummary(
-        context.scope,
-        outcomes.reduce((total, { outside }) => total + outside, 0),
-      ),
+      ...runAndScopeSummary(context, outcomes),
       tools: outcomes.map(({ tool }) => tool),
       exclusions: declaredExclusions(analyzers),
       renamedPaths: context.baseToHeadRenames.size,

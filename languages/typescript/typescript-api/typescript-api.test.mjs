@@ -21,7 +21,7 @@ import {
   supportsRedirect,
   withRedirectPreload,
 } from './api-redirect.mjs';
-import { selectTypeScriptApi, TYPESCRIPT_API } from './api-selection.mjs';
+import { selectTypeScriptApi } from './api-selection.mjs';
 import { ts } from './typescript-api.mjs';
 
 const require = createRequire(import.meta.url);
@@ -50,15 +50,30 @@ describe('choosing the TypeScript API nitpicker reads source files with', () => 
       file: installed,
       bundled: false,
     });
-    expect(TYPESCRIPT_API.bundled).toBe(false);
+    expect(selectTypeScriptApi().bundled).toBe(false);
     expect(ts.createSourceFile).toBeTypeOf('function');
+  });
+
+  it('still reports the bundled API once the redirect sends typescript to it', () => {
+    const resolve = resolverOf({ typescript: bundledFile, 'typescript-js-api': bundledFile });
+
+    expect(selectTypeScriptApi(resolve, nativeRoot)).toEqual({ file: bundledFile, bundled: true });
+  });
+
+  it('reports an installed TypeScript 6 as installed when it shares its files with the bundled API', () => {
+    const resolve = resolverOf({ typescript: bundledFile, 'typescript-js-api': bundledFile });
+
+    expect(selectTypeScriptApi(resolve, bundledRoot)).toEqual({
+      file: bundledFile,
+      bundled: false,
+    });
   });
 
   it('uses the bundled TypeScript 6 when the installed one is TypeScript 7', () => {
     const resolve = resolverOf({ typescript: nativeMain, 'typescript-js-api': bundledFile });
 
     expect(hasJavaScriptApi(nativeMain)).toBe(false);
-    expect(selectTypeScriptApi(resolve)).toEqual({ file: bundledFile, bundled: true });
+    expect(selectTypeScriptApi(resolve, nativeRoot)).toEqual({ file: bundledFile, bundled: true });
   });
 
   it('uses the bundled TypeScript 6 when no typescript is installed', () => {

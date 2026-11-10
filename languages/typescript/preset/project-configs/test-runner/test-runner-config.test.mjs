@@ -4,6 +4,7 @@ import { withHeadCheckoutFacts } from '../../head-policy.mjs';
 import { vitestRetryArguments } from './test-retry.mjs';
 import { runArea } from '../../../adapters/test-runners/test-support/runner-project.mjs';
 import { projectTestRetry } from './test-runner-config.mjs';
+import { linkSentence } from '../../../../../shared/messages/test-support/link-sentence.mjs';
 import { OPT_IN, TESTS_FAILED, createRetryProjects } from './test-support/retry-projects.mjs';
 
 const projects = createRetryProjects();
@@ -177,7 +178,7 @@ describe('the retry captured from the head checkout', () => {
     [
       'no Vitest config',
       () => projects.vitestProject({}),
-      '"tools.tests.precedence" lists "project" but a vitest.config.* or vite.config.* is missing: create it, or remove "project" from tools.tests.precedence',
+      `"tools.tests.precedence" lists "project" but a vitest.config.* or vite.config.* is missing: create it, or remove "project" from tools.tests.precedence. ${linkSentence('projectToolConfigMissing')}`,
     ],
     [
       'a Vitest config that throws',
@@ -212,7 +213,7 @@ describe('the retry captured from the head checkout', () => {
     [
       'no Mocha config',
       () => projects.mochaProject({}),
-      '"tools.tests.precedence" lists "project" but a .mocharc.* file or a "mocha" key in package.json is missing: create it, or remove "project" from tools.tests.precedence',
+      `"tools.tests.precedence" lists "project" but a .mocharc.* file or a "mocha" key in package.json is missing: create it, or remove "project" from tools.tests.precedence. ${linkSentence('projectToolConfigMissing')}`,
     ],
     [
       'Mocha retries that are not a count',

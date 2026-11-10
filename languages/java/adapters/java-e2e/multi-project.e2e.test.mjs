@@ -12,6 +12,8 @@ import { childrenAt, childrenNamed, parseXml } from '../../../../shared/ingest/c
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { DESIGN_RULES } from '../../../../shared/project-rules/design/design-rules.mjs';
+import { POOL_PROTOCOL, writeEscape, writePool } from '../design/test-support/escape-sources.mjs';
 import { collectJavaFindings } from '../java-diff.mjs';
 import { analyzeWithIncludedBuild, GRADLE_STEP_TIMEOUT_MS } from '../test-support/gradle-e2e.mjs';
 import { pathsOutsideProject } from './test-support/project-paths.mjs';
@@ -29,21 +31,44 @@ function located(findings, tool, rule) {
 
 describe.skipIf(!enabled)('a Gradle build of two projects and an extra source set', () => {
   let root;
+  let reports;
   let findings;
 
   beforeAll(() => {
     root = mkdtempSync(path.join(tmpdir(), 'nitpicker-multi-project-'));
+    reports = mkdtempSync(path.join(tmpdir(), 'nitpicker-multi-reports-'));
     cpSync(fixture, root, { recursive: true });
     findings = collectJavaFindings(root, {
       gradle,
+      reportDirectory: reports,
       policy: { preset: 'java', testSeconds: { unitTestSeconds: 0.0001 } },
     });
   }, 300_000);
 
   afterAll(() => {
-    if (root !== undefined) {
-      rmSync(root, { recursive: true, force: true });
+    for (const directory of [root, reports]) {
+      if (directory !== undefined) {
+        rmSync(directory, { recursive: true, force: true });
+      }
     }
+  });
+
+  it('writes the design facts of both projects, with the call from app into lib resolved', () => {
+    const facts = JSON.parse(readFileSync(path.join(reports, 'design-facts.json'), 'utf8'));
+    const greeter = 'app/src/main/java/demo/app/Greeter.java';
+    const counter = 'lib/src/main/java/demo/lib/Counter.java';
+
+    expect(facts.packages.map(({ root: packageRoot }) => packageRoot).toSorted()).toEqual([
+      'app',
+      'lib',
+    ]);
+    expect(
+      facts.callables
+        .find(({ id }) => id === `${greeter}#Greeter.greet`)
+        .calls.map(({ target }) => target)
+        .filter((target) => target.startsWith('lib/')),
+    ).toEqual([`${counter}#Counter.next`]);
+    expect(facts.modules.filter(({ file }) => !file.includes('/src/main/java/'))).toEqual([]);
   });
 
   it('names every finding by a file or folder relative to the build root', () => {
@@ -122,6 +147,34 @@ describe.skipIf(!enabled)('a Gradle build of two projects and an extra source se
       ],
     ]);
   });
+});
+
+describe.skipIf(!enabled)('the design rules on a Gradle build of two projects', () => {
+  it('reports a caller in app that changes the private list of a lib class or leaks a pool', () => {
+    const root = mkdtempSync(path.join(tmpdir(), 'nitpicker-multi-design-'));
+    try {
+      cpSync(fixture, root, { recursive: true });
+      const sides = {
+        owner: { root: 'lib', package: 'demo.lib' },
+        caller: { root: 'app', package: 'demo.app' },
+      };
+      const expected = writeEscape(root, sides);
+      const leak = writePool(root, sides);
+
+      const findings = collectJavaFindings(root, {
+        gradle,
+        policy: {
+          preset: 'java',
+          testSeconds: { unitTestSeconds: -1 },
+          protocols: [POOL_PROTOCOL],
+        },
+      });
+
+      expect(findings.filter(({ rule }) => DESIGN_RULES.includes(rule))).toEqual([expected, leak]);
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  }, 180_000);
 });
 
 describe.skipIf(!enabled)(
