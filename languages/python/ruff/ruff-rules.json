@@ -2008,6 +2008,15 @@
       "useInstead": "x = \"Dear Sir\\u200b/\\u200bMadam\"  # zero width space"
     },
     {
+      "code": "PLR0124",
+      "name": "comparison-with-itself",
+      "linter": "Pylint",
+      "summary": "Name compared with itself, consider replacing `{actual}`",
+      "whatItDoes": "Checks for operations that compare a name to itself.",
+      "why": "Comparing a name to itself typically results in a truthy value, and is likely a mistake.",
+      "useInstead": "import math\n\nmath.isnan(foo)"
+    },
+    {
       "code": "PLR1711",
       "name": "useless-return",
       "linter": "Pylint",
@@ -2015,6 +2024,15 @@
       "whatItDoes": "Checks for functions that end with an unnecessary `return` or `return None`, and contain no other `return` statements.",
       "why": "Python implicitly assumes a `None` return at the end of a function, making it unnecessary to explicitly write `return None`.",
       "useInstead": "def f():\n    print(5)"
+    },
+    {
+      "code": "PLR1714",
+      "name": "repeated-equality-comparison",
+      "linter": "Pylint",
+      "summary": "Consider merging multiple comparisons: `{expression}`. Use a `set` if the elements are hashable.",
+      "whatItDoes": "Checks for repeated equality comparisons that can be rewritten as a membership test.",
+      "why": "To check if a variable is equal to one of many values, it is common to write a series of equality comparisons (e.g., `foo == \"bar\" or foo == \"baz\"`).",
+      "useInstead": "foo in {\"bar\", \"baz\", \"qux\"}"
     },
     {
       "code": "PLR2004",

@@ -199,6 +199,12 @@ describe('the shared fact rules', () => {
       ...DESIGN_RULES,
     ];
     expect(registeredFactRules('python')).toEqual(python);
+    expect(registeredFactRules('go')).toEqual([
+      'duplicate-definition',
+      'sibling-copy-edit',
+      'shared-used-by-one-feature',
+      'test-only-export',
+    ]);
     withLanguageRegistered('feature-cycle', 'kotlin', () => {
       expect(sharedFactExceptionRules()).toEqual(python);
       expect(registeredFactRules('kotlin').includes('feature-cycle')).toBe(true);
