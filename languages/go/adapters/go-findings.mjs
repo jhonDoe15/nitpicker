@@ -5,7 +5,7 @@ import { goCouplingFindings } from './coupling/go-coupling.mjs';
 import { readDeadcodeFindings } from './dead-code/go-deadcode.mjs';
 import { readTidyFindings } from './dead-code/go-mod-tidy.mjs';
 import { readGoDuplicateFindings } from './duplicates/go-duplicates.mjs';
-import { goFactFindings, readGoFacts } from './facts/go-fact-findings.mjs';
+import { goFactFindings, readGoBaseline, readGoFacts } from './facts/go-fact-findings.mjs';
 import { GO_LINT_TOOLS } from './configuration/go-config.mjs';
 import { formatFindings } from './formatting/go-format.mjs';
 import { lintFindings } from './lint/go-lint.mjs';
@@ -23,15 +23,27 @@ export function goRouteRule(finding) {
     : sharedRouteRule(finding);
 }
 
-function formatterFindings(context) {
-  return Object.entries(readFormatReport(context.reportRoot)).flatMap(([formatter, files]) =>
+const GOFUMPT_LAYOUT_RULES = new Set(['empty-lines', 'comment-spacings']);
+
+function formatterFindings(context, report) {
+  return Object.entries(report).flatMap(([formatter, files]) =>
     formatFindings(context, { formatter, files }),
+  );
+}
+
+function withoutGofumptOverlap(findings, report) {
+  const gofumptFiles = new Set(report.gofumpt ?? []);
+  return findings.filter(
+    (finding) =>
+      finding.tool !== 'revive' ||
+      !GOFUMPT_LAYOUT_RULES.has(finding.rule) ||
+      !gofumptFiles.has(finding.path),
   );
 }
 
 function deadCodeFindings(context, { policy, lint }) {
   const facts = readGoFacts(context);
-  const factFindings = goFactFindings(facts, policy);
+  const factFindings = goFactFindings(facts, { policy, baseline: readGoBaseline(context) });
   const testOnly = factFindings.filter(({ rule }) => rule === UNUSED_API_RULE_IDS.testOnlyExport);
   const unused = lint.filter(({ rule }) => rule === UNUSED_LINT_RULE);
   return [
@@ -44,9 +56,10 @@ function deadCodeFindings(context, { policy, lint }) {
 export function readGoFindings(context, policy = {}) {
   const report = readInspect(context.reportRoot);
   const testRun = readTestRun(context.reportRoot);
-  const lint = lintFindings(context);
+  const formatReport = readFormatReport(context.reportRoot);
+  const lint = withoutGofumptOverlap(lintFindings(context), formatReport);
   return [
-    ...formatterFindings(context),
+    ...formatterFindings(context, formatReport),
     ...readVetFindings(context),
     ...lint,
     ...testRunFindings(testRun, context.snapshot),

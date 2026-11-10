@@ -103,7 +103,15 @@ function importFacts(report, packages, roleOf) {
   }));
 }
 
-function definitionFacts(report, localNames) {
+function productionUses(imports) {
+  const uses = new Map();
+  for (const { to, names } of imports.filter((edge) => edge.role === 'production')) {
+    uses.set(to, new Set([...(uses.get(to) ?? []), ...names.map(({ name }) => name)]));
+  }
+  return uses;
+}
+
+function definitionFacts(report, uses) {
   return report.definitions.map(
     ({ file, name, kind, line, lines, exported, entry, literal, tokens }) => ({
       file,
@@ -115,7 +123,7 @@ function definitionFacts(report, localNames) {
       entry,
       literal,
       tokens,
-      usedLocally: localNames.get(file)?.has(name) ?? false,
+      usedLocally: uses.get(file)?.has(name) ?? false,
     }),
   );
 }
@@ -126,11 +134,14 @@ export function goFacts(report, { module } = {}) {
   function roleOf(file) {
     return roles.get(file) ?? 'production';
   }
-  const localNames = new Map(report.usages.map(({ file, local }) => [file, new Set(local)]));
+  const imports = importFacts(report, packages, roleOf);
   return {
     modules: report.files.map(({ path: file }) => ({ file, role: roleOf(file), entry: true })),
     packages: packages.directories.map((root) => ({ root, published: packages.isPublished(root) })),
-    definitions: definitionFacts(report, localNames),
-    imports: importFacts(report, packages, roleOf),
+    definitions: definitionFacts(report, productionUses(imports)),
+    imports,
+    constrained: report.files
+      .filter(({ constrained }) => constrained)
+      .map(({ path: file }) => file),
   };
 }

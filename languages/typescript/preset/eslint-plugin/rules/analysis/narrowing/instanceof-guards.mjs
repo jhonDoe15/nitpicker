@@ -7,7 +7,7 @@ const EXIT_STATEMENTS = new Set([
   'BreakStatement',
 ]);
 
-const ERROR_CLASS = /^(?:Error|\w*(?:Error|Exception))$/;
+const ERROR_CLASS = /^\w*(?:Error|Exception)$/;
 
 function className(expression) {
   if (expression.type === 'Identifier') {

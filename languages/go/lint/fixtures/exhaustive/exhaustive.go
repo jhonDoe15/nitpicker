@@ -23,6 +23,8 @@ func IgnoredLabel(status Status) string {
 	switch status { // want exhaustive
 	case Active:
 		return "active"
+	case Paused:
+		return "paused"
 	}
 	return ""
 }
