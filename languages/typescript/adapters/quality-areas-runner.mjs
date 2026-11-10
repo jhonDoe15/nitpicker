@@ -7,7 +7,7 @@ import { applyAreaExceptions } from './exceptions/area-exceptions.mjs';
 import { hasProjectTests } from './test-runners/test-run.mjs';
 import { withTypeScriptHint } from './hints/tool-failure-hint.mjs';
 
-export async function runQualityArea(options) {
+function areaResult(options) {
   const runner = QUALITY_AREA_RUNNERS.get(options.kind);
   if (runner === undefined) {
     throw new Error(`Unsupported quality area: ${options.kind}`);
@@ -34,7 +34,18 @@ export async function runQualityArea(options) {
       return [];
     }
   }
-  return applyAreaExceptions(await runner(options));
+  return runner(options);
+}
+
+export async function runQualityAreaReport(options) {
+  const result = await areaResult(options);
+  return Array.isArray(result)
+    ? { findings: applyAreaExceptions(result) }
+    : { ...result, findings: applyAreaExceptions(result.findings) };
+}
+
+export async function runQualityArea(options) {
+  return (await runQualityAreaReport(options)).findings;
 }
 
 const invokedPath = process.argv[1];
@@ -45,8 +56,8 @@ if (
 ) {
   try {
     const options = parseArguments(process.argv.slice(2));
-    const findings = await runQualityArea(options);
-    process.stdout.write(`${JSON.stringify({ findings })}\n`);
+    const report = await runQualityAreaReport(options);
+    process.stdout.write(`${JSON.stringify(report)}\n`);
   } catch (failure) {
     const error = withTypeScriptHint(failure);
     process.stderr.write(
