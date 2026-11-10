@@ -23,6 +23,10 @@ Part of the [nitpicker-kotlin](../SKILL.md) skill. Write these forms from the st
   zone, `ZoneId.systemDefault()`, `TimeZone.getDefault()` and `TimeZone.currentSystemDefault()`
   (`kotlin-source/DefaultTimeZone`); `Calendar`, `GregorianCalendar` and `SimpleDateFormat` need a
   zone (`kotlin-source/LegacyCalendarApi`).
+- Time units: name a time value with its unit (`timeoutMillis`, `ttlSeconds`) and let it meet only the same
+  unit: convert once where it enters (`TimeUnit.SECONDS.toMillis(ttlSeconds)`, `ttlSeconds.seconds`), pass
+  milliseconds to `delay` and `Thread.sleep`, and keep epoch times in a `Long` or an `Instant`, never
+  `.toInt()` (`kotlin-source/TimeUnitMismatch`).
 - A public top-level, `object` or companion function, or a private or `internal` function or
   constructor, does not declare a default parameter that no call sets (`unused-option`): remove the
   parameter, or pass it from a real call. Tests count only for private and `internal` declarations

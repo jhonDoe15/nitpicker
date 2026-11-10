@@ -43,6 +43,10 @@ Part of the [nitpicker-python](../SKILL.md) skill. Write these forms from the st
 - Child processes: give every wait a deadline: `subprocess.run(args, timeout=30, check=True)`,
   `process.communicate(timeout=30)`, and asyncio process waits inside `async with asyncio.timeout(30):`
   (`subprocess-without-timeout`; a build wrapper that only runs a child to completion takes an exception).
+- Time units: name a time value with its unit (`timeout_ms`, `ttl_seconds`) and let it meet only the same
+  unit: convert once where it enters (`ttl_seconds * 1000`, `time.time()` for JWT `exp`), pass seconds to
+  `time.sleep` and `datetime.fromtimestamp`, and keep epoch times in an `int` or a `datetime`, never a
+  32-bit `numpy.int32` (`time-unit-mismatch`).
 - Secrets: never put a secret in code (`password`, `token`, `api_key`, ... assigned a literal, also as the
   fallback of `os.getenv`); read it from the environment in the composition root. Never log, print,
   warn or raise with it: log that it is set (`token is not None`) or a masked tail.

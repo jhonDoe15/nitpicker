@@ -2183,6 +2183,7 @@
                             "kotlin-source/TriStateBoolean",
                             "kotlin-source/DefaultTimeZone",
                             "kotlin-source/LegacyCalendarApi",
+                            "kotlin-source/TimeUnitMismatch",
                             "kotlin-source/UriCreateDynamic",
                             "kotlinc/deprecation",
                             "kotlinc/unchecked",

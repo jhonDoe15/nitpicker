@@ -550,6 +550,7 @@ The pairs:
 - line: `errorprone/JdkObsolete` over `errorprone/StringCharset`
 - line: `errorprone/NonOverridingEquals` over `pmd/SuspiciousEqualsMethodName`
 - line: `errorprone/DefaultLocale` over `pmd/SimpleDateFormatNeedsLocale`
+- line: `pmd/MixedTimeUnits` over `errorprone/TimeUnitMismatch`
 - line: `pmd/LegacyCalendarApi` over `pmd/AvoidCalendarDateCreation`, `pmd/SimpleDateFormatNeedsLocale`, `errorprone/DefaultLocale`, `errorprone/DateFormatConstant`
 - line: `pmd/UnclosedInlineResource` over `spotbugs/OS_OPEN_STREAM`, `spotbugs/ODR_OPEN_DATABASE_RESOURCE`, `spotbugs/OBL_UNSATISFIED_OBLIGATION`
 - line: `pmd/UseLocaleWithCaseConversions` over `errorprone/StringCaseLocaleUsage`
