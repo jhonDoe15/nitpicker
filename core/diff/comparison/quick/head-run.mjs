@@ -1,7 +1,7 @@
 import { runGit } from '../../git/repository/command.mjs';
 import { createFindingsCache, runBaseWithCache } from '../../cache/findings-cache.mjs';
 import { cachedLine } from '../../execution/progress.mjs';
-import { runAnalyzers } from '../../execution/run-analyzers.mjs';
+import { analyzerRunOptions, runAnalyzers } from '../../execution/run-analyzers.mjs';
 import { PACKAGE_ROOT } from '../../../tooling/tool-resolution.mjs';
 import { scopeToTouchedFiles } from './scope.mjs';
 
@@ -54,7 +54,7 @@ export function runHeadAnalyzers(context, baselineMovesFile) {
       snapshot: 'head',
       baselineRoot: roots.baseProjectRoot,
       baselineMovesFile,
-      runTasks: settings.runTasks,
+      ...analyzerRunOptions(settings),
     }),
   );
 }

@@ -1875,7 +1875,12 @@ SpotBugs, Error Prone (with NullAway), google-java-format and JaCoCo run on the 
 new enforceable findings fail. Exit codes, console summary, `new-findings.json`, `report.sarif`
 and `report.junit.xml` are the same as for TypeScript. If Gradle fails on either snapshot, the
 failure is reported as a `java/gradle-failure` tool error (exit 2 when there are no new findings), never thrown;
-failing tests on the head are a `java/tests-failed` tool error instead (exit 1).
+failing tests on the head are a `java/tests-failed` tool error instead (exit 1). A head that does not compile
+reports each javac or Error Prone error as a `build/compile-error` finding at its file and line (exit 1),
+plus a `java/compile-failed-skipped` notice that the other checks did not run; a base that does not
+compile stays a `gradle-failure` or `maven-failure` tool error. The tool error keeps the cause (the
+compiler errors and the innermost lines of Gradle's "What went wrong") and ends with the path of the full
+build log, `logs/<preset>-<base|head>-gradle.log` in the report folder, which the next run clears.
 A project whose root has a `pom.xml` and no Gradle build file (or both, with `mvnw` and no `gradlew`)
 is built with Maven 3.6.3 or newer instead, with the same tools, versions and findings, one module
 at a time (findings carry the module path); a Maven failure is a `java/maven-failure` tool error

@@ -2,11 +2,14 @@ import { readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { ANY_STATUS, failure, run } from '../execution/go-process.mjs';
 import { diagnosticFindings, parsePosition } from './diagnostics.mjs';
+import {
+  COMPILE_ERROR_RULE,
+  COMPILE_ERROR_TOOL,
+  compileErrorMessage,
+} from '../../../../shared/rules/finding-helpers.mjs';
 
 export const VET_REPORT = 'vet.txt';
-const COMPILE_RULE = 'compile-error';
 const COMPILE_LINE = /^(?:vet: )?(\S+\.go:\d+(?::\d+)?): (.+)$/u;
-const COMPILE_HINT = 'The code does not compile; fix it before anything else is checked.';
 
 export function buildFlags(settings = {}) {
   return settings.buildTags === undefined || settings.buildTags.length === 0
@@ -52,10 +55,10 @@ function compileDiagnostics(projectRoot, lines) {
       ? []
       : [
           {
-            tool: 'build',
-            rule: COMPILE_RULE,
+            tool: COMPILE_ERROR_TOOL,
+            rule: COMPILE_ERROR_RULE,
             ...position,
-            message: `${match[2]}. ${COMPILE_HINT}`,
+            message: compileErrorMessage(match[2]),
           },
         ];
   });
