@@ -57,7 +57,8 @@ Part of the [Kotlin preset guide](../kotlin-preset.md).
   fail and a head that repairs them. See "A base whose tests fail" in `usage.md`.
   `red-base/tests-failed.test.mjs` covers the rerun with a fake Gradle.
 - `languages/java/adapters/kotlin-e2e/**/*.e2e.test.mjs`: real Gradle, behind `NITPICKER_KOTLIN_E2E=1`
-  (`npm run test:kotlin`). Needs Java 21, Gradle and network access
+  (`npm run test:kotlin`). Needs Java 21, Gradle, an Android SDK (`ANDROID_HOME` or
+  `ANDROID_SDK_ROOT`, set on GitHub's Ubuntu runners) and network access
   to Maven Central and the Gradle plugin portal. A mixed Kotlin and Java fixture project
   (`languages/java/adapters/fixtures/kotlin-project`): a tested change passes with its legacy detekt
   finding baselined; new detekt and ktlint findings fail; a Java change in the Kotlin module is

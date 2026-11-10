@@ -3,6 +3,7 @@ package main
 import (
 	"strings"
 
+	"github.com/jhonDoe15/nitpicker/languages/go/lint/catalog"
 	"github.com/jhonDoe15/nitpicker/languages/go/lint/rules"
 	"github.com/kisielk/errcheck/errcheck"
 	"golang.org/x/tools/go/analysis"
@@ -38,6 +39,7 @@ func disabled() map[string]bool {
 	return map[string]bool{
 		"SA1014": true, "SA1017": true, "SA2000": true, "SA2002": true, "SA4018": true, "SA4021": true,
 		"SA5005": true, "SA5009": true, "SA5010": true, "SA9006": true, "S1029": true, "ST1023": true,
+		"sqlrowserr": true,
 	}
 }
 
@@ -52,7 +54,10 @@ func errcheckFlags() error {
 	if err := errcheck.Analyzer.Flags.Set("blank", "true"); err != nil {
 		return err
 	}
-	return errcheck.Analyzer.Flags.Set("assert", "true")
+	if err := errcheck.Analyzer.Flags.Set("assert", "true"); err != nil {
+		return err
+	}
+	return catalog.Configure()
 }
 
 func staticcheckAnalyzers() []*analysis.Analyzer {
@@ -69,13 +74,17 @@ func staticcheckAnalyzers() []*analysis.Analyzer {
 }
 
 func groups() []group {
-	return []group{
+	all := []group{
 		{tool: staticcheckTool, analyzers: staticcheckAnalyzers()},
 		{tool: "vet", analyzers: passes()},
 		{tool: "errcheck", analyzers: []*analysis.Analyzer{errcheck.Analyzer}},
 		{tool: modernizeTool, analyzers: modernize.Suite},
 		{tool: rules.Tool, analyzers: rules.Analyzers()},
 	}
+	for _, linter := range catalog.Linters() {
+		all = append(all, group{tool: linter.Tool, analyzers: linter.Analyzers})
+	}
+	return all
 }
 
 func analyzers() []*analysis.Analyzer {

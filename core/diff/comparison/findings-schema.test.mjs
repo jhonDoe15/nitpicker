@@ -335,9 +335,11 @@ describe('spec/findings.schema.json', () => {
           classification: 'tool-error',
         },
       ],
+      moduleImports: [{ from: 'src/billing/invoice.ts', to: 'src/invoicing' }],
     };
 
     expect(parseAnalyzerReport(report, 'fixture').findings).toHaveLength(report.findings.length);
+    expect(parseAnalyzerReport(report, 'fixture').moduleImports).toEqual(report.moduleImports);
     expect(validate(report)).toEqual([]);
   });
 
@@ -485,5 +487,14 @@ describe('spec/findings.schema.json', () => {
   it('is exercised by a validator that covers every keyword the schema uses', () => {
     expect(() => validate({ findings: [] })).not.toThrow();
     expect(() => validate({ findings: [] }, { oneOf: [] })).toThrow(/does not support/);
+  });
+
+  it.each([
+    [{ from: 'src/billing/invoice.ts' }, ['$.moduleImports[0].to is required']],
+    [{ from: 'src/billing.ts', to: 'src', files: 1 }, ['$.moduleImports[0].files is not allowed']],
+  ])('rejects the module import %j like the reference parser', (entry, errors) => {
+    const report = { findings: [], moduleImports: [entry] };
+    expect(() => parseAnalyzerReport(report, 'fixture')).toThrow(TypeError);
+    expect(validate(report)).toEqual(errors);
   });
 });

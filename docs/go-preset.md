@@ -1,9 +1,9 @@
 # Go preset
 
-Status: slices GO1 (ticket #414) and GO5 (ticket #418) implemented, and the first part of slice GO2
-(#415): staticcheck, errcheck, modernize and the extra `golang.org/x/tools` passes, and the first
-part of slice GO3 (#416): nitpicker's own rules for errors and concurrency. The remaining slices are
-listed under [Remaining slices](#remaining-slices).
+Status: slices GO1 (ticket #414) and GO5 (ticket #418) implemented, and the first two parts of slice
+GO2 (#415): staticcheck, errcheck, modernize, the extra `golang.org/x/tools` passes and revive, and
+the first part of slice GO3 (#416): nitpicker's own rules for errors and concurrency. The remaining
+slices are listed under [Remaining slices](#remaining-slices).
 
 The Go preset gates a Go module (`go.mod` at the project root) with the same differential gate as
 the other presets: run the tools on the merge base and on head, turn each report into findings,
@@ -42,7 +42,8 @@ node core/cli.mjs go-analyzer --project-root <snapshot>   (per snapshot)
   -> inspect <module root> inspect.json           structure metrics (languages/go/inspect)
   -> <formatter> -l <files>                        format check, one per formatter
   -> go vet -json ./...                            compile errors and vet diagnostics
-  -> lint ./...                                    staticcheck, errcheck, modernize, go-rules (languages/go/lint)
+  -> lint ./...                                    staticcheck, errcheck, modernize, revive, catalog linters,
+                                                   go-rules (languages/go/lint)
   -> go test -vet=off -json -coverpkg=./... -coverprofile=coverage.out ./...
   -> jscpd --format go (plain, then over renamed sources)  duplicates
   -> go mod tidy -diff                             unused and unlisted requirements
@@ -175,6 +176,16 @@ run that writes a coverage profile, so every test runs and its time is measured.
   its budget is run again alone (`-run '^Name$' -count=1`) and the fastest time counts, so a busy
   machine does not fail it. A test is "changed" when its function's text differs from the merge
   base.
+- **Test output** (`test-runtime/test-console-output`): a line a test prints that the base run did
+  not print fails, on the test's file, compared as text with numbers and paths normalized (see
+  `testConsole.allow` to accept a third-party message). `go test` writes a test's stdout and
+  stderr into one stream, so the level decides what counts, in place of the stream: a line at
+  `WARN` or `ERROR` level or above (`level=WARN`, `"level":"error"`, a `WARN` or `ERROR` word, a
+  klog `W` or `E` line), and a standard `log` line (`2026/11/10 10:00:00 ...`, which writes to
+  stderr) unless it carries a lower level (`INFO`, `[INFO]`, `info:`). A plain `fmt.Println` does
+  not count, as stdout does not in the other presets. `t.Log` and `t.Error` lines, `=== RUN` and `--- PASS` lines and
+  race reports (the race detector has its own finding) never count. Output outside any test
+  (`TestMain`, `init`) is reported on the package folder.
 
 ## Structure limits
 
@@ -231,53 +242,176 @@ message does not already name it, and by its exception entry:
   where the file's Go version allows the new form; `go fix ./...` rewrites them.
 - **More `golang.org/x/tools` passes** that `go vet` leaves out: deepequalerrors, gofixdirective,
   httpmux, inline (calls to functions marked `//go:fix inline`), nilness, reflectvaluecompare,
-  scannererr, sqlrowserr and unusedwrite.
+  scannererr and unusedwrite.
+- **revive** (MIT), run as a library over the packages the program already loaded: every rule
+  that narrows a choice to one form or catches a mistake the other tools miss. The configurable
+  ones get one setting each:
+
+  | Rule                              | Setting                                      | Why                                                                  |
+  | --------------------------------- | -------------------------------------------- | -------------------------------------------------------------------- |
+  | `enforce-map-style`               | `literal`: `map[K]V{}`                       | `make` stays for a sized map, `make(map[K]V, n)`, where it says more |
+  | `enforce-slice-style`             | `literal`: `[]T{}`                           | the same form as maps; `var items []T` stays for a nil slice         |
+  | `enforce-repeated-arg-type-style` | `short`: `first, second string`              | the form gofumpt's `-extra` mode writes                              |
+  | `enforce-switch-style`            | `default` last, a switch may have none       | ST1015 allows first or last; one place is enough                     |
+  | `filename-format`                 | `^[a-z0-9]+(_[a-z0-9]+)*\.go$`               | lower case with underscores, the form the go tool's own suffixes use |
+  | `exported`                        | only the stutter check (`orders.OrdersList`) | ST1020 to ST1022 check doc comments; a doc comment is not required   |
+
+  The rules on: bare-return, blank-imports, bool-literal-in-expr, call-to-gc, comment-spacings,
+  confusing-results, context-as-argument, datarace, deep-exit, defer (deferred call chains too:
+  `stop := start(); defer stop()`, not `defer start()()`), early-return, empty-block, empty-lines,
+  the four `enforce-*` styles, exported (stutter only), epoch-naming, filename-format, flag-parameter,
+  forbidden-call-in-wg-go, get-return, identical-branches, identical-ifelseif-branches,
+  identical-switch-branches, identical-switch-conditions, if-return, import-alias-naming,
+  import-shadowing, increment-decrement, indent-error-flow, inefficient-map-lookup,
+  marshal-receiver, modifies-value-receiver, multiline-if-init, nested-structs,
+  package-directory-mismatch, package-naming, range-val-address (Go before 1.22),
+  redefines-builtin-id, redundant-import-alias, redundant-test-main-exit, struct-tag,
+  superfluous-else, time-date, time-equal, unexported-naming, unexported-return,
+  unnecessary-format, unnecessary-if, unnecessary-stmt, unreachable-code (only after `os.Exit`,
+  `log.Fatal` and the like; `go vet` reports code after `return` and `panic`), unused-parameter,
+  unused-receiver, use-fmt-print, useless-break, useless-fallthrough and var-declaration. revive's own confidence
+  floor (0.8) applies, as its command line applies it. `package-naming` is a finding on the package
+  folder, like ST1000, because revive reports it from whichever file it reads first. The rules
+  that need types (epoch-naming, inefficient-map-lookup, time-equal, unexported-return and
+  others) get them from the program's own package load, so third-party and sibling-package types
+  are known. revive's command line type-checks each package on its own and loses every type in a
+  package that imports anything outside the standard library. With gofumpt as the formatter,
+  `comment-spacings` and `empty-lines` are dropped in a file gofumpt would rewrite, because its
+  format finding covers the same lines.
+
+- **Catalog linters**, permissively licensed `go/analysis` linters that golangci-lint also bundles,
+  run directly, each under its own tool name (`bodyclose/bodyclose`):
+  - resources: bodyclose (HTTP response bodies closed; `bodyclose/handled` reports a
+    `//bodyclose:handled` directive, which would stop bodyclose checking the function's
+    callers), sqlclosecheck (rows and statements closed in a deferred call), rowserrcheck
+    (`rows.Err()` checked, for `database/sql` and sqlx), noctx (`http.NewRequestWithContext`,
+    `exec.CommandContext`, `QueryContext` and the other context forms of calls that block);
+  - errors: errorlint (`errors.Is` and `errors.As` instead of `==`, type assertions and type
+    switches, and `%w` for errors in `fmt.Errorf`), nilerr (a branch that checked an error
+    returns it), nilnil (no `return nil, nil` for a pointer, map, channel, func or interface; a
+    sentinel error instead), errname (error types end in `Error`);
+  - contexts: contextcheck (a function with a context passes it on instead of calling one that
+    makes a new one; follows calls across the module's packages, not into dependencies),
+    containedctx (no context in a struct field), fatcontext (no context derived from itself in a
+    loop);
+  - types and values: exhaustive (a switch on an enum without a `default` case lists every
+    constant), recvcheck (a type's methods all have pointer or all have value receivers, apart
+    from `String`, `Error`, `Format`, `Value` and the `Marshal...` methods, which take a value so
+    that values and pointers both implement the interface),
+    durationcheck (no duration times duration), makezero (no append to a slice made with a
+    length), reassign (no assigning another package's `Err...` or `EOF` variables), unconvert (no
+    conversion to the type a value already has), wastedassign (no value assigned and then
+    assigned again unread);
+  - tests: thelper (a test helper starts with `t.Helper()` and takes `t` first), tparallel (a test
+    whose subtests call `t.Parallel()` calls it too), usetesting (`t.TempDir()`, `t.Setenv()`,
+    `t.Chdir()` and `t.Context()` instead of `os.MkdirTemp`, `os.CreateTemp`, `os.Setenv`,
+    `os.Chdir`, `context.Background()` and `context.TODO()`), testifylint (every
+    check, printed under its own name such as `testifylint/bool-compare`: the specific
+    assertion, `require` for errors, expected before actual, format strings that match their
+    arguments, suite methods instead of the package functions).
 
 The linters skip generated files (`// Code generated ... DO NOT EDIT.`), as staticcheck does; a
 package of only generated files needs no package comment. An analyzer that fails on a package that
-builds is a `go/go-lint-failed` tool error, never a silent pass. `//lint:ignore` and `//nolint`
-comments do nothing: the only way past a finding is an
+builds is a `go/go-lint-failed` tool error, never a silent pass. `//lint:ignore`, `//nolint` and
+`//revive:disable` comments do nothing, including the ones nilerr and contextcheck read
+themselves, exhaustive's `//exhaustive:ignore` and makezero's `// nozero`, and a
+`//bodyclose:handled` directive is a finding of its own: the only way past a finding is an
 `exceptions` entry a person accepts.
 
 **Off, with the reason.** Each of these reports the same problem as a check that runs:
 
-| Check                                                                  | Reason                                                                                                                            |
-| ---------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------- |
-| SA1014, SA1017, SA2000, SA2002, SA4018, SA4021, SA5009, SA5010, SA9006 | `go vet` reports the same code (unmarshal, sigchanyzer, waitgroup, testinggoroutine, assign, appends, printf, ifaceassert, shift) |
-| S1029                                                                  | SA6003 reports the same loop                                                                                                      |
-| ST1023                                                                 | QF1011 reports the same declaration                                                                                               |
-| SA5005                                                                 | never reports on current Go versions; `runtime.AddCleanup` replaces finalizers                                                    |
-| vet `sortslice`                                                        | SA1028 reports the same call                                                                                                      |
-| vet `shadow`                                                           | flags the idiomatic `if err := f(); err != nil` inside a function with an outer `err`                                             |
-| vet `fieldalignment`, `atomicalign`                                    | memory layout, not one way to write code; SA1027 covers 32-bit atomics                                                            |
-| modernize `appendclipped`, `bloop`, `fmtappendf`, `slicesdelete`       | left out of the suite upstream (not nil-preserving, or less clear)                                                                |
+| Check                                                                                                                                                           | Reason                                                                                                                                                  |
+| --------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| SA1014, SA1017, SA2000, SA2002, SA4018, SA4021, SA5009, SA5010, SA9006                                                                                          | `go vet` reports the same code (unmarshal, sigchanyzer, waitgroup, testinggoroutine, assign, appends, printf, ifaceassert, shift)                       |
+| S1029                                                                                                                                                           | SA6003 reports the same loop                                                                                                                            |
+| ST1023                                                                                                                                                          | QF1011 reports the same declaration                                                                                                                     |
+| SA5005                                                                                                                                                          | never reports on current Go versions; `runtime.AddCleanup` replaces finalizers                                                                          |
+| vet `sortslice`                                                                                                                                                 | SA1028 reports the same call                                                                                                                            |
+| vet `sqlrowserr`                                                                                                                                                | rowserrcheck reports the same rows, and more (rows read without a loop, sqlx)                                                                           |
+| vet `shadow`                                                                                                                                                    | flags the idiomatic `if err := f(); err != nil` inside a function with an outer `err`                                                                   |
+| vet `fieldalignment`, `atomicalign`                                                                                                                             | memory layout, not one way to write code; SA1027 covers 32-bit atomics                                                                                  |
+| modernize `appendclipped`, `bloop`, `fmtappendf`, `slicesdelete`                                                                                                | left out of the suite upstream (not nil-preserving, or less clear)                                                                                      |
+| revive `atomic`, `range-val-in-closure`, `string-of-int`, `waitgroup-by-value`                                                                                  | `go vet` reports the same code (atomic, loopclosure, stringintconv, copylocks)                                                                          |
+| revive `constant-logical-expr`, `identical-ifelseif-conditions`, `unconditional-recursion`, `context-keys-type`                                                 | SA4000, SA4014, SA5007 and SA1029 report the same code                                                                                                  |
+| revive `dot-imports`, `duplicated-imports`, `error-naming`, `error-return`, `error-strings`, `package-comments`, `receiver-naming`, `time-naming`, `var-naming` | ST1001, ST1019, ST1012, ST1008, ST1005, ST1000, ST1006 and ST1016, ST1011, ST1003                                                                       |
+| revive `errorf`, `range`                                                                                                                                        | S1028, S1005                                                                                                                                            |
+| revive `unhandled-error`, `unchecked-type-assertion`                                                                                                            | errcheck, with blank assignments and type assertions checked                                                                                            |
+| revive `redundant-build-tag`, `use-any`, `use-slices-sort`, `use-waitgroup-go`                                                                                  | modernize `plusbuild`, `any`, `slicessort`, `waitgroupgo`                                                                                               |
+| revive `use-errors-new`                                                                                                                                         | `unnecessary-format` reports the same call on every Go version                                                                                          |
+| revive `use-slices-concat`                                                                                                                                      | not nil-preserving, the reason modernize leaves out `appendclipped`                                                                                     |
+| revive `argument-limit`, `cognitive-complexity`, `cyclomatic`, `file-length-limit`, `function-length`, `line-length-limit`, `max-control-nesting`               | the shared limits measure parameters, statements, lines, nesting, file length and line length, and CRAP covers complexity                               |
+| revive `function-result-limit`, `max-public-structs`                                                                                                            | a size limit no other preset has; `confusing-results` covers same-typed results                                                                         |
+| revive `banned-characters`, `comments-density`, `file-header`, `imports-blocklist`, `string-format`                                                             | only useful with a project's own list or threshold                                                                                                      |
+| revive `add-constant`                                                                                                                                           | flags every numeric literal, so it fires on most correct code                                                                                           |
+| revive `confusing-naming`                                                                                                                                       | reports whichever of the two names it reads last, which changes between runs                                                                            |
+| revive `modifies-parameter`, `optimize-operands-order`                                                                                                          | report only below revive's 0.8 confidence floor (they cannot tell a parameter from a shadowing variable, or a cheap operand from one with side effects) |
+| revive `unsecure-url-scheme`                                                                                                                                    | flags every `http://` string, XML namespaces and documentation links included; transport security belongs to the gosec slice (#976)                     |
+
+**Catalog linters considered and left out**, with the reason:
+
+| Linter                            | Reason                                                                                                                                                                             |
+| --------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| err113                            | flags every `errors.New` inside a function, though a one-off error nobody compares is fine; its `==` check duplicates errorlint                                                    |
+| wrapcheck                         | flags every error returned from another package unwrapped, the module's own included; it needs per-project ignore lists to be usable                                               |
+| paralleltest                      | requires `t.Parallel()` in every test, which `t.Setenv` and `t.Chdir` forbid and tests with shared fixtures cannot use; tparallel keeps a test and its subtests consistent instead |
+| forcetypeassert                   | errcheck `-assert` reports the same one-value type assertions                                                                                                                      |
+| exhaustive maps and type switches | a lookup map keyed by an enum is often partial on purpose, and a type switch over an interface cannot know every implementation                                                    |
+| nilnil `-detect-opposite`         | a value with a non-nil error is the `io.Reader` contract (`n, err`), not a second form                                                                                             |
 
 **Overlaps on one line.** When two checks report the same line, the more specific one stays:
 
-| Kept                                 | Dropped                            |
-| ------------------------------------ | ---------------------------------- |
-| SA4011 (break in a switch in a loop) | S1023 (redundant break)            |
-| S1037 (elaborate sleep)              | S1000 (single-case select)         |
-| SA4010 (append result unused)        | SA4006 (value never used)          |
-| SA4031, SA5000                       | vet `nilness`                      |
-| SA5001, SA9001 (defer Close)         | errcheck                           |
-| S1018 (sliding copy loop)            | modernize `rangeint`               |
-| vet `gofixdirective`                 | vet `inline` on the same directive |
-| `go vet` printf                      | SA1006 (Go 1.24 and later modules) |
-| contextcheck                         | `go-rules/context-outside-entry`   |
+| Kept                                 | Dropped                                          |
+| ------------------------------------ | ------------------------------------------------ |
+| SA4011 (break in a switch in a loop) | S1023 (redundant break)                          |
+| S1037 (elaborate sleep)              | S1000 (single-case select)                       |
+| SA4010 (append result unused)        | SA4006 (value never used)                        |
+| SA4031, SA5000                       | vet `nilness`                                    |
+| SA5001, SA9001 (defer Close)         | errcheck                                         |
+| S1018 (sliding copy loop)            | modernize `rangeint`                             |
+| vet `gofixdirective`                 | vet `inline` on the same directive               |
+| `go vet` printf                      | SA1006 (Go 1.24 and later modules)               |
+| S1002                                | revive `bool-literal-in-expr` at the same column |
+| SA5008, `go vet` structtag           | revive `struct-tag`                              |
+| SA5003, SA9001, SA9010               | revive `defer`                                   |
+| SA5002, SA9003                       | revive `empty-block`                             |
+| ST1015                               | revive `enforce-switch-style`                    |
+| SA4005                               | revive `modifies-value-receiver`                 |
+| QF1009                               | revive `time-equal`                              |
+| S1039                                | revive `unnecessary-format`                      |
+| S1023, SA4011                        | revive `unnecessary-stmt`, `useless-break`       |
+| QF1011                               | revive `var-declaration` at the same column      |
+| nilerr                               | nilnil on `return nil, nil`                      |
+| sqlclosecheck (Close not deferred)   | errcheck                                         |
+| ST1012 (sentinel error names)        | errname                                          |
+| SA1005 (`exec.Command` shell line)   | noctx                                            |
+| SA4006, SA4010                       | wastedassign                                     |
+| modernize `testingcontext`           | usetesting                                       |
+| errorlint                            | testifylint `compares`                           |
+| thelper                              | testifylint `suite-thelper`                      |
+| contextcheck                         | `go-rules/context-outside-entry`                 |
+
+Those two compare the column too, because one line can hold a second, different problem (`found ==
+true || ready && false`). revive keeps the rules staticcheck lacks in the same areas:
+`bool-literal-in-expr` also flags `found && true`, `empty-block` an empty `switch`, `useless-break`
+a `break` that ends a `select` case, `modifies-value-receiver` a changed receiver that is read
+again, and `defer` a deferred call chain.
 
 **Project config.** `staticcheck.conf` files are read only when the project opts in with
 `"tools": { "staticcheck": { "precedence": ["project"] } }`. Then each package's merged
 configuration decides which checks report there (its `checks` list, as staticcheck reads it) and
 its initialisms, dot-import and status-code lists apply, and every `staticcheck.conf` in the
 repository counts as policy, so editing one is a policy change a person accepts. A file that does
-not parse is a `go/go-lint-failed` tool error that names it.
+not parse is a `go/go-lint-failed` tool error that names it. revive has no project file it finds
+on its own (its command line reads a `-config` path or the user's home config), so nitpicker reads
+none and the settings above are fixed.
 
 **Fixtures.** `languages/go/lint/fixtures` holds, for every check that runs, a file with a line
 that fails (marked `// want <check>`) and the allowed form, which must pass every check. The lint
 program's Go test fails when a marked line is not reported, when any other line is, or when a
 check has no fixture. `fixtures/legacy` (Go 1.14) and `fixtures/next` (Go 1.27) hold the checks
-that apply only before or after a Go version.
+that apply only before or after a Go version. A revive rule must be either in the list that runs
+or in the off list of the lint program's tests, so a revive upgrade that adds a rule fails until
+someone decides it.
 
 ## Own rules
 
@@ -296,9 +430,8 @@ recognised by package), table-driven or separate tests, and the
 | `context-outside-entry` | `context.Background()` or `context.TODO()` in a non-test file of a package other than `main`                                                                                                                          | take `ctx context.Context` first and pass it on                                                 |
 | `sleep-to-wait`         | `time.Sleep` in a non-test function that started a goroutine (`go`, `wg.Go`, an errgroup's `Go`) on a path that reaches it                                                                                            | wait on the WaitGroup, errgroup, channel or context                                             |
 
-Left to linters, so not rebuilt here (the ones not listed under [Linters](#linters) come with
-GO2's next parts, #975 to #977): `%w` and `errors.Is`/`errors.As`
-(errorlint, SA1032, `deepequalerrors`), contexts in structs and contexts as the first parameter
+Left to linters, so not rebuilt here (gosec comes with GO2's next part, #976): `%w` and
+`errors.Is`/`errors.As` (errorlint, SA1032, `deepequalerrors`), contexts in structs and contexts as the first parameter
 (containedctx, revive `context-as-argument`), `defer` in a loop (revive `defer`, SA9001), naked
 returns (revive `bare-return`), mixed receivers (recvcheck) and string-built SQL (gosec). Sleeps in
 tests and goroutines a test leaves behind are the test-honesty rules (GO6).
@@ -341,6 +474,15 @@ often declare their own small type or constant of one name. Files with a build c
 `exported-name-collision` does not apply: Go code names another package's export through the
 package (`billing.Total`), so two exports with one name never meet unqualified, and a file that dot
 imports two packages exporting one name does not compile.
+
+**`doc-comment-content`.** A doc comment on a top-level function, method, type, constant or
+variable, or on a struct field or interface method, fails when it only restates its name
+(`// Close closes.`) or its prose runs past 5 lines. The text is read with `go/doc/comment`:
+directives (`//go:generate`, `//export`, `//nolint:...`) are not part of it, list items and
+headings count as prose, and an indented code block or a `Deprecated:` paragraph is not counted
+and says more, so a comment with one is never reported as restating its name. `_test.go` and
+generated files are not read, and neither is the package comment. The exception takes it as
+printed, `facts/doc-comment-content`.
 
 ## Duplicates
 
@@ -404,10 +546,10 @@ The top-level `exceptions` take a finding as it is printed, `<tool>/<rule>` (`ve
 `deadcode/unreachable-func`), as in the Java preset, plus the shared rules (the function, type, file
 and folder limits, `slow-test`, `duplicate-clone`, `stability-direction`, the fact rules,
 `unused-dependency`, `unlisted-dependency` and the repository checks). Every vet, staticcheck,
-errcheck, modernize, deadcode, go-rules, limit and slow-test message ends with its exception entry,
-for example `{"rule":"vet/printf","paths":["shop/label.go"],"reason":"..."}`. Format findings,
-compile errors and `no-tests-ran` have no exception route: run the formatter, fix the build, or add
-a test.
+errcheck, modernize, revive, deadcode, catalog linter, go-rules, limit and slow-test message ends
+with its exception entry, for example
+`{"rule":"vet/printf","paths":["shop/label.go"],"reason":"..."}`. Format findings, compile errors
+and `no-tests-ran` have no exception route: run the formatter, fix the build, or add a test.
 
 ## Config keys
 
@@ -419,6 +561,7 @@ a test.
 | `tools.staticcheck.precedence`                           | read the project's `staticcheck.conf` files                  |
 | `tools.jscpd.precedence`                                 | read the project's `.jscpd.json` for the duplicate scan      |
 | `layout.featureRoots`, `layout.sharedRoots`              | the feature layout `shared-used-by-one-feature` reads        |
+| `testConsole.allow`                                      | test output messages `test-console-output` accepts           |
 | `duplicates.skippedFolders`                              | folder names the duplicate scan skips                        |
 | `thresholds`, `exclude`, `exceptions`, `legacyInventory` | shared with every preset                                     |
 
@@ -441,15 +584,15 @@ there are no source roots to set) are config errors with `"preset": "go"`, each 
 
 ## Remaining slices
 
-| #   | Slice                                           | Scope                                                                                                                                                                                                                                     |
-| --- | ----------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| GO1 | Base (#414)                                     | This document: done.                                                                                                                                                                                                                      |
-| GO2 | Linters (#415)                                  | Part 1 done: staticcheck, errcheck, modernize and the extra `golang.org/x/tools` passes (see [Linters](#linters)). Next: revive, gosec and the permissively licensed `go/analysis` linters, in the same program.                          |
-| GO3 | One-way rules (#416)                            | Part 1 done: errors and concurrency (see [Own rules](#own-rules)). Next: package state and design, then HTTP timeouts and I/O in loops.                                                                                                   |
-| GO4 | Coverage, CRAP and mutation (#417)              | changed-branch coverage and CRAP from the coverage profile; mutation testing.                                                                                                                                                             |
-| GO5 | Duplicates, coupling, dead code, modules (#418) | Done: see [Facts](#facts) through [Module requirements](#module-requirements).                                                                                                                                                            |
-| GO6 | Shared guards and test honesty (#419)           | Started: `duplicate-definition` and `sibling-copy-edit` (see [Facts](#facts)). Next: doc comments and test output, then the guards the other presets share (secrets in code, path joins, subprocess timeouts, test assertions) after GO3. |
-| GO7 | Race detector (#433)                            | `go test -race`, with each race a finding keyed by its stacks.                                                                                                                                                                            |
+| #   | Slice                                           | Scope                                                                                                                                                                                                                                                                         |
+| --- | ----------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| GO1 | Base (#414)                                     | This document: done.                                                                                                                                                                                                                                                          |
+| GO2 | Linters (#415)                                  | Parts 1 and 2 done: staticcheck, errcheck, modernize, the extra `golang.org/x/tools` passes and revive (see [Linters](#linters)). Next: gosec and the permissively licensed `go/analysis` linters, in the same program.                                                       |
+| GO3 | One-way rules (#416)                            | Part 1 done: errors and concurrency (see [Own rules](#own-rules)). Next: package state and design, then HTTP timeouts and I/O in loops.                                                                                                                                       |
+| GO4 | Coverage, CRAP and mutation (#417)              | changed-branch coverage and CRAP from the coverage profile; mutation testing.                                                                                                                                                                                                 |
+| GO5 | Duplicates, coupling, dead code, modules (#418) | Done: see [Facts](#facts) through [Module requirements](#module-requirements).                                                                                                                                                                                                |
+| GO6 | Shared guards and test honesty (#419)           | Started: `duplicate-definition`, `sibling-copy-edit` and `doc-comment-content` (see [Facts](#facts)) and `test-console-output` (see [Tests](#tests)). Next: the guards the other presets share (secrets in code, path joins, subprocess timeouts, test assertions) after GO3. |
+| GO7 | Race detector (#433)                            | `go test -race`, with each race a finding keyed by its stacks.                                                                                                                                                                                                                |
 
 ## Known limits
 
@@ -461,5 +604,11 @@ there are no source roots to set) are config errors with `"preset": "go"`, each 
 - The tools are built from the Go module proxy on first use, so the first run needs network access
   (or a `GOPROXY` the project sets) and takes longer. The lint program needs Go 1.27, so a project
   on an older toolchain downloads it once with `GOTOOLCHAIN=auto`.
+- The linters type-check for the host's `GOOS` and `GOARCH`, so unconvert can report a conversion
+  that is needed on another platform (a `syscall.Stat_t` field that is `int64` on linux/amd64 but
+  not on 32-bit targets); such a file takes an `exceptions` entry.
+- tparallel asks a test whose subtests call `t.Parallel()` to call it too, which a test that
+  uses `t.Setenv` or `t.Chdir` cannot do; such a test makes its subtests serial or takes an
+  `exceptions` entry.
 - The linters run on the whole module for both snapshots; a finding is new when its message and
   line text are new, as for vet.
