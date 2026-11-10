@@ -2,7 +2,7 @@ import { mkdirSync, mkdtempSync, realpathSync, rmSync, writeFileSync } from 'nod
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
-import { prefixedFinding, readModuleFindings } from './java-modules.mjs';
+import { prefixedFinding, readModuleFindings, readModuleReport } from './java-modules.mjs';
 
 const ROUTE =
   'If this is intended, add {"rule":"function-lines-limit","paths":["src/main/java/demo/Big.java"],"function":"Big.big","reason":"..."} to "exceptions" in nitpicker.config.json.';
@@ -266,5 +266,31 @@ describe('prefixedFinding', () => {
     };
 
     expect(prefixedFinding(finding, '')).toEqual(finding);
+  });
+});
+
+describe('readModuleReport', () => {
+  it('returns the imports between the Maven modules with module-prefixed paths', () => {
+    const root = mavenProject();
+    write(
+      path.join(root, 'core/src/main/java/demo/Adder.java'),
+      'package demo;\n\npublic class Adder {\n  public static int add() { return 1; }\n}\n',
+    );
+    write(
+      path.join(root, 'app/src/main/java/demo/Main.java'),
+      'package demo.app;\n\nimport demo.Adder;\n\npublic class Main {\n  int run() { return Adder.add(); }\n}\n',
+    );
+
+    const report = readModuleReport(root, [path.join(root, 'app'), path.join(root, 'core')], {
+      reportDirectory: REPORT_DIRECTORY,
+    });
+
+    expect(report.imports).toEqual([
+      {
+        from: 'app/src/main/java/demo/Main.java',
+        to: 'core/src/main/java/demo/Adder.java',
+        names: [{ name: 'Adder' }, { name: 'Adder.add' }],
+      },
+    ]);
   });
 });

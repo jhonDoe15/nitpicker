@@ -3,7 +3,7 @@ import { qualifiedName, sourceOfType } from './integration-tests.mjs';
 import { testMethod } from './test-methods.mjs';
 
 const MAX_LEVELS = 10;
-const REGEXP_SPECIALS = /[$]/gu;
+const REGEXP_SPECIALS = /\$/gu;
 
 export function superclassOf(text, className) {
   const simple = className.split('.').pop().split('$').pop().replaceAll(REGEXP_SPECIALS, '\\$&');

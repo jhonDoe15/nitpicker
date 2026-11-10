@@ -51,6 +51,9 @@ Part of the [nitpicker-javascript](../SKILL.md) skill. Write these forms from th
   `(await repo.find()).length`, `where` instead of `.filter`/`.some`/`.find` on the rows, `order`/`orderBy`
   instead of `.sort`, and the ORM's aggregate or `groupBy` instead of `reduce` or `groupBy` over the rows
   (`nitpicker/no-in-memory-query`).
+- Index every foreign key in the migration that adds it (`CREATE INDEX ON orders (customer_id)`, or an index
+  that starts with the column) and give Prisma relations an `@@index([authorId])`: PostgreSQL does not create
+  one (`foreign-key-index`).
 - Join at most one to-many relation into a query: TypeORM `relationLoadStrategy: 'query'` or a query
   per collection, Sequelize `separate: true` on the other `hasMany` includes, and
   `strategy: 'select-in'` on a MikroORM `populate` (`nitpicker/no-multiple-collection-joins`).

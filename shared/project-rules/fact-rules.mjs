@@ -35,6 +35,7 @@ export const FACT_RULE_LANGUAGES = {
     ...JVM,
     javascript: 'partial',
     python: true,
+    go: true,
   },
   'exported-name-collision': {
     ...TYPESCRIPT_AND_JAVASCRIPT,
@@ -42,7 +43,7 @@ export const FACT_RULE_LANGUAGES = {
     javascript: 'partial',
     python: true,
   },
-  'sibling-copy-edit': { ...TYPESCRIPT_AND_JAVASCRIPT, ...JVM, python: true },
+  'sibling-copy-edit': { ...TYPESCRIPT_AND_JAVASCRIPT, ...JVM, python: true, go: true },
   'shared-used-by-one-feature': { ...TYPESCRIPT_AND_JAVASCRIPT, ...JVM, python: true, go: true },
   'feature-internal-import': { ...FEATURE_BOUNDARY_LANGUAGES },
   'shared-imports-feature': { ...FEATURE_BOUNDARY_LANGUAGES },

@@ -76,11 +76,16 @@ The linters' allowed forms (errors, names and doc comments, simplifications, mod
 
 - The gate fails committed secrets, binaries, build output and files over 1 MB; each message names
   the fix. Don't add an `exceptions` entry to get past one: stop and ask.
+- A migration that adds a foreign key also creates an index that starts with its columns
+  (`CREATE INDEX ON orders (customer_id)`); PostgreSQL does not create one (`foreign-key-index`).
 
 ## Reuse, packages and dead code
 
 - Don't copy a function and rename its variables: a renamed copy of 100 tokens or more fails
   (`duplicates/duplicate-clone`). Call the existing code, or move it to a shared package both use.
+  A smaller function copied into a second package fails too
+  (`duplicate-definition`), and so does editing one of two copies away from the other
+  (`sibling-copy-edit`): keep one copy, exported from one package.
 - Code exists for production callers. An exported name that only `_test.go` files use fails
   (`test-only-export`), and in a module with a `main` package so does a function no `main`
   reaches (`deadcode/unreachable-func`): delete it, or call it from production code. A test helper
