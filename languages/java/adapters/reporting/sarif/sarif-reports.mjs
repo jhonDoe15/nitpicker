@@ -14,6 +14,7 @@ import { withLockEvidence } from '../../../messages/locking/lock-evidence.mjs';
 import { withProjectTypeMocks } from '../../../messages/mocks/project-mocks.mjs';
 import { withGeneratedMembers } from '../../../messages/generated-members/generated-members.mjs';
 import { withSpringTransactionFilters } from '../../spring/transactions/transaction-filters.mjs';
+import { withCrossedFetches } from '../../jpa/fetches/fetch-filter.mjs';
 import { withUnindexedForeignKeys } from '../../jpa/foreign-keys/key-filter.mjs';
 
 const LINE_NUMBER = /\bline \d+\b/g;
@@ -25,6 +26,14 @@ const EMPTY_SARIF = { version: '2.1.0', runs: [] };
 export function readSarifReport(file) {
   const text = readFileSync(file, 'utf8');
   return text.trim() === '' ? EMPTY_SARIF : JSON.parse(text);
+}
+
+function withJpaFilters(findings, { projectRoot, sourceRoots, foreignKeys }) {
+  const options = { projectRoot, sourceRoots };
+  return withUnindexedForeignKeys(withCrossedFetches(findings, options), {
+    ...options,
+    checks: foreignKeys,
+  });
 }
 
 function printedRule(result) {
@@ -83,12 +92,12 @@ export function sarifFindings(context) {
         dropSleepsInFakes(
           withProjectTypeMocks(
             dropInheritedVersions(
-              withUnindexedForeignKeys(
+              withJpaFilters(
                 withGeneratedMembers(
                   withSpringTransactionFilters(ingestSarif(pmd, { tool: 'pmd' }).findings, context),
                   { projectRoot },
                 ),
-                { projectRoot, sourceRoots: allSourceRoots, checks: context.foreignKeys },
+                { projectRoot, sourceRoots: allSourceRoots, foreignKeys: context.foreignKeys },
               ),
               { projectRoot, sourceRoots: allSourceRoots },
             ),
