@@ -7,5 +7,14 @@ export function testConsoleRule(ids) {
   };
 }
 
+export function slowTest(ids, defaults, enforcedBy) {
+  return {
+    id: ids.slowTest,
+    check: 'test-runtime',
+    limit: `a test the change adds or edits taking more than ${String(defaults.unitTestSeconds)} s (unit) or ${String(defaults.integrationTestSeconds)} s (integration); override with \`thresholds.unitTestSeconds\` and \`thresholds.integrationTestSeconds\``,
+    enforcedBy,
+  };
+}
+
 export const NO_TYPE_ONLY =
   'the language has no import that exists only for the type checker: a production type that a test names only as an erased generic argument leaves no reference in the bytecode, so the test is reported as `no-production-runtime`';

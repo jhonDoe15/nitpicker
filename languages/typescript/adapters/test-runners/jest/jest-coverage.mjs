@@ -3,6 +3,10 @@ import { readFileSync } from 'node:fs';
 import { coverageGlobs, coverageOutputFile, coverageSourceFiles } from '../test-run.mjs';
 import { parseReportJson } from '../../quality-areas/runners/tooling.mjs';
 import { formatProcessOutput } from '../../quality-areas/reporting/test-report.mjs';
+import {
+  TROUBLESHOOTING_ANCHORS,
+  troubleshootingError,
+} from '../../../../../shared/messages/troubleshooting.mjs';
 
 const SHOWN_CONFIG_START = '{\n  "configs"';
 const GLOB_CHARACTERS = /[*?[{]/u;
@@ -109,10 +113,11 @@ export function assertSourcesCovered(options, rootDir) {
         'Move that code out of the source roots, or add the file to exclude in nitpicker.config.json.',
     );
   }
-  throw new Error(
+  throw troubleshootingError(
     `Jest collected no coverage for the project's source files, such as ${example}. ` +
       'Jest only instruments files inside the rootDir of the config that runs the test ' +
       `(the global rootDir is ${rootDir}). ` +
       "Make the project's Jest config, or each of its projects, use a rootDir that holds the sources.",
+    TROUBLESHOOTING_ANCHORS.jestNoCoverage,
   );
 }

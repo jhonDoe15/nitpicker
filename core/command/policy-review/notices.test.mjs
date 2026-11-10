@@ -60,6 +60,23 @@ describe('noticeDescriber', () => {
     expect(noticeDescriber({ preset: 'kotlin' }, { exclude: [] }, root)?.(files)).toHaveLength(1);
   });
 
+  it('says when a configured feature or shared root matches no folder', () => {
+    const { root } = createGitRepository({
+      'src/app/features/billing/__init__.py': '',
+      'src/app/shared/ids.py': '',
+    });
+    const layout = {
+      featureRoots: ['src/app/features', 'src/app/modules'],
+      sharedRoots: ['src/app/common'],
+    };
+    const describe = noticeDescriber({ preset: 'python' }, { exclude: [], layout }, root);
+
+    expect(describe?.(['src/app/shared/ids.py'])).toEqual([
+      '"layout.featureRoots" entry "src/app/modules" matches no folder in the project: it adds no feature folder for the feature folder rules to check. Point the glob at an existing folder, or remove it from nitpicker.config.json.',
+      '"layout.sharedRoots" entry "src/app/common" matches no folder in the project: it marks no code as shared for the feature folder rules. Point the glob at an existing folder, or remove it from nitpicker.config.json.',
+    ]);
+  });
+
   it('describes nothing for the javascript preset', () => {
     expect(noticeDescriber({ preset: 'javascript' }, {})).toBeUndefined();
   });
