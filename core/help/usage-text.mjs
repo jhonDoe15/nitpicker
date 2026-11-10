@@ -1,4 +1,5 @@
-const DOCUMENTATION_URL = 'https://github.com/jhonDoe15/nitpicker/blob/main/docs/usage.md';
+const WRAP_WIDTH = 100;
+const LIST_INDENT = '  ';
 const HELP_ROW = ['--help', 'Print this help.'];
 
 export const COMMANDS = [
@@ -6,6 +7,7 @@ export const COMMANDS = [
   ['nitpicker init', 'Detect the project and set it up: config, install command, agent skill.'],
   ['nitpicker aggregate', 'Combine the reports of sharded runs into one result.'],
   ['nitpicker cache publish', 'Upload the findings of HEAD to the remote cache.'],
+  ['nitpicker changelog', 'Print what changed in a version, from the changelog of the package.'],
   ['nitpicker base', 'Print the base ref a run would compare with.'],
   ['nitpicker explain', 'Print what the rule reference says about the rules named.'],
   ['nitpicker rules', 'List the rules the preset of the project reports.'],
@@ -18,6 +20,9 @@ export const FLAGS = [
   ['--analyzer <name>', 'Run only this analyzer (repeatable).'],
   ['--rule <substring>', 'List the findings whose rule matches (repeatable).'],
   ['--details', 'Print every new and held finding with its full message.'],
+  ['--json', 'Print one compact JSON result on stdout instead of the summary.'],
+  ['--quick', 'Run only the fast checks and skip the tests and what builds on them.'],
+  ['--staged', 'Judge the git index (what the next commit would contain), not the working tree.'],
   ['--output <dir>', 'Write the reports to this directory.'],
   ['--shard-count <n>', 'Split the analyzers over n jobs (with --shard-index).'],
   ['--shard-index <i>', 'Run shard i of the split (0 to n-1).'],
@@ -61,11 +66,13 @@ const CACHE_PUBLISH_USAGE =
   'nitpicker cache publish [--analyzer <name>]... [--shard-count <n> --shard-index <i>] [--help]';
 const USAGE_LINES = [
   'nitpicker [<path>...] [--base <ref>] [--output <dir>] [--all | --fix] [--analyzer <name>]...',
-  '          [--rule <substring>]... [--details] [--shard-count <n> --shard-index <i>]',
-  '          [--defer-exit] [--no-cache] [--accept-policy-change=<digest>] [--help] [--version]',
+  '          [--rule <substring>]... [--details] [--json] [--quick] [--staged]',
+  '          [--shard-count <n> --shard-index <i>] [--defer-exit] [--no-cache]',
+  '          [--accept-policy-change=<digest>] [--help] [--version]',
   INIT_USAGE,
   AGGREGATE_USAGE,
   CACHE_PUBLISH_USAGE,
+  'nitpicker changelog [<version>]',
   'nitpicker base [--base <ref>]',
   'nitpicker explain <tool/rule>...',
   'nitpicker rules [--preset <name>] [--tool <name>]',
@@ -81,16 +88,52 @@ function usageBlock() {
   return [`Usage: ${first}`, ...rest.map((line) => `       ${line}`)].join('\n');
 }
 
-export const USAGE_TEXT =
-  `${usageBlock()}\n\nCommands:\n${table(COMMANDS)}\nOptions:\n${table(FLAGS)}\n` +
-  `Options of nitpicker init:\n${table(INIT_FLAGS)}\n` +
-  `Options of nitpicker aggregate:\n${table(AGGREGATE_FLAGS)}\n` +
-  `Options of nitpicker cache publish:\n${table(CACHE_PUBLISH_FLAGS)}\n` +
-  'Paths (files or folders, relative to the current folder) limit the findings that are shown\n' +
-  'and gate the run; the analysis still covers the whole project. Examples:\n' +
-  '  nitpicker src/orders/order.ts    gate your change to one file\n' +
-  '  nitpicker --all src/orders       show every finding in one folder\n\n' +
-  `Start a new project with nitpicker init. Reference: ${DOCUMENTATION_URL}\n`;
+function wrappedList(names) {
+  const lines = [];
+  for (const [index, name] of names.entries()) {
+    const item = index === names.length - 1 ? name : `${name},`;
+    const last = lines.at(-1);
+    if (last !== undefined && `${last} ${item}`.length <= WRAP_WIDTH) {
+      lines[lines.length - 1] = `${last} ${item}`;
+    } else {
+      lines.push(`${LIST_INDENT}${item}`);
+    }
+  }
+  return lines.map((line) => `${line}\n`).join('');
+}
+
+function analyzerBlock(analyzers) {
+  return analyzers.error === undefined
+    ? `Analyzers of the ${analyzers.preset} preset (for --analyzer):\n${wrappedList(analyzers.names)}`
+    : `Analyzers: not listed (${analyzers.error})\n`;
+}
+
+function examples(analyzers) {
+  const analyzer = analyzers.names?.[0] ?? '<name>';
+  return table([
+    ['nitpicker', 'check your change against the detected base'],
+    ['nitpicker --base origin/release', 'check it against a given base'],
+    ['nitpicker --fix', 'apply the fixes nitpicker knows, then check'],
+    [`nitpicker --analyzer ${analyzer}`, 'iterate on one analyzer; finish with a plain nitpicker'],
+    ['nitpicker src/orders/order.ts', 'gate your change to one file'],
+    ['nitpicker --all src/orders', 'show every finding in one folder'],
+  ]);
+}
+
+/** The text of nitpicker --help for a project with `analyzers`, linking `referenceUrl` if known. */
+export function usageText({ analyzers, referenceUrl }) {
+  const reference = referenceUrl === undefined ? '' : ` Reference: ${referenceUrl}`;
+  return (
+    `${usageBlock()}\n\nCommands (nitpicker <command> --help lists its options):\n${table(COMMANDS)}\n` +
+    `Options:\n${table(FLAGS)}\n${analyzerBlock(analyzers)}\n` +
+    'Exit codes: 0 pass; 1 new findings or failing tests; 2 tool error or invalid input (not a pass).\n' +
+    'Reports: reports/quality/diff/ (--all: reports/quality/snapshot/, or --output <dir>). Read\n' +
+    'new-findings.json (--all: findings.json) first, then report.txt.\n\n' +
+    `Examples:\n${examples(analyzers)}` +
+    'Paths limit the findings shown and gate the run; the analysis still covers the whole project.\n\n' +
+    `Start a new project with nitpicker init.${reference}\n`
+  );
+}
 
 export const INIT_USAGE_TEXT =
   `Usage: ${INIT_USAGE}\n\n` +

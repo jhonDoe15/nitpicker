@@ -11,24 +11,32 @@ function taskBody(name) {
 
 describe('nitpickerSpringArch in the init script', () => {
   it('runs as part of nitpickerJava', () => {
-    const dependsOn = /dependsOn ((?:'[^'\n]+',\s*)*'[^'\n]+')/.exec(taskBody('nitpickerJava'))[1];
+    const dependsOn = [
+      ...taskBody('nitpickerJava').matchAll(/dependsOn ((?:'[^'\n]+',\s*)*'[^'\n]+')/gu),
+    ].flatMap(([, names]) => names.split(/,\s*/u).map((task) => task.replaceAll("'", '')));
 
-    expect(dependsOn.split(/,\s*/u).map((task) => task.replaceAll("'", ''))).toEqual([
+    expect(dependsOn).toEqual([
       'nitpickerPmd',
       'nitpickerSpotbugs',
       'nitpickerErrorProne',
       'nitpickerFormat',
-      'nitpickerJacoco',
       'nitpickerArchunit',
       'nitpickerSpringArch',
       'nitpickerStructure',
+      'nitpickerJacoco',
       'nitpickerPit',
     ]);
   });
 
-  it('runs only for Spring or jMolecules projects, so other projects skip it', () => {
+  it('runs for Spring or jMolecules projects and for projects with a feature folder, so other projects skip it', () => {
     expect(/onlyIf \{[^}]*\}/.exec(taskBody('nitpickerSpringArch'))[0]).toBe(
       'onlyIf { runsArchRules() }',
+    );
+    expect(/def runsArchRules = (.+)/.exec(script)[1]).toBe(
+      '{ usesSpring() || usesJmolecules() || featureFoldersDeclared }',
+    );
+    expect(/def featureFoldersDeclared = (.+)/.exec(script)[1]).toBe(
+      "nitpickerArgument('nitpicker.featureFolders') == 'true'",
     );
   });
 

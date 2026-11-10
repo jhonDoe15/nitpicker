@@ -11,8 +11,8 @@ def server():
 
 
 def test_serves(server):
-    assert server.pid
+    assert server.poll() is None
 
 
 def test_serves_again(server):
-    assert server.pid
+    assert server.poll() is None
