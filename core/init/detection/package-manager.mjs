@@ -1,6 +1,6 @@
 import { existsSync, readFileSync } from 'node:fs';
+import { createRequire } from 'node:module';
 import path from 'node:path';
-import { parse } from 'yaml';
 import { detectPackageManager as detectManager } from '../../../languages/typescript/adapters/dependency-graph/package-managers/detect.mjs';
 import { readManifest } from '../../../languages/typescript/preset/eslint-config/scope-support.mjs';
 import { ancestorDirectories } from '../../../shared/filesystem.mjs';
@@ -72,6 +72,7 @@ function projectText(root, name) {
 
 function workspacePatterns(root, name) {
   if (name === 'pnpm') {
+    const { parse } = createRequire(import.meta.url)('yaml');
     const packages = parse(projectText(root, 'pnpm-workspace.yaml'))?.packages;
     return Array.isArray(packages) ? packages : [];
   }
