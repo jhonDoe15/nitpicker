@@ -1,0 +1,7 @@
+[
+  {
+    "tool": "python-rules",
+    "rule": "switched-off-test",
+    "mention": "real condition"
+  }
+]

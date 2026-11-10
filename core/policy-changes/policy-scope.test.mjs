@@ -1,9 +1,15 @@
+import { writeFileSync } from 'node:fs';
+import path from 'node:path';
 import { describe, expect, it } from 'vitest';
+import { useProjectFixtures } from '../diff/git/test-support/projects/project-fixtures.mjs';
+import { nestedCheckout, useGitCheckouts } from '../diff/git/test-support/git-checkout.mjs';
 import { useGitFixtures } from '../diff/git/test-support/git-repository.mjs';
 import { policyChangeFields } from './describe-policy-changes.mjs';
-import { readPolicyScope } from './policy-scope.mjs';
+import { listedFiles, readPolicyScope } from './policy-scope.mjs';
 
 const { createGitRepository } = useGitFixtures();
+const { gitCheckout } = useGitCheckouts();
+const { outsideGit } = useProjectFixtures();
 const vendor = { exclude: ['src/vendor/**'] };
 
 function fieldsBetween({ base, head, baseConfig = {}, headConfig = baseConfig }) {
@@ -84,5 +90,37 @@ describe('readPolicyScope', () => {
 
     expect(second.policyLoosenings).toEqual(first.policyLoosenings);
     expect(second.policyDigest).not.toBe(first.policyDigest);
+  });
+});
+
+describe('listedFiles', () => {
+  it('names the Git failure of a real checkout instead of calling it no checkout', () => {
+    const root = createGitRepository({ 'src/a.ts': '' }).root;
+    writeFileSync(path.join(root, '.git', 'index'), 'broken');
+
+    expect(() => listedFiles(root)).toThrow(/git ls-files failed/u);
+  });
+
+  it('lists the files of the Git checkout, not ignored folders or nested checkouts', () => {
+    const root = gitCheckout(
+      {
+        'src/a.ts': '',
+        'scratch/b.ts': '',
+        ...nestedCheckout('.claude/worktrees/x', { 'tsconfig.json': '{}', 'c.ts': '' }),
+      },
+      ['scratch/'],
+    );
+
+    expect(listedFiles(root)).toEqual(['src/a.ts']);
+  });
+
+  it('lists nothing for a folder that does not exist', () => {
+    expect(listedFiles(path.join(gitCheckout({}), 'missing'))).toEqual([]);
+  });
+
+  it('walks a folder that is outside Git instead of refusing it', () => {
+    const root = outsideGit({ 'src/a.ts': '' });
+
+    expect(listedFiles(root)).toEqual(['src/a.ts']);
   });
 });

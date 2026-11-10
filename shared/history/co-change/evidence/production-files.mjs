@@ -6,7 +6,7 @@ import {
   hasGeneratorHeader,
   readFileHead,
 } from '../../../conventions/generator-marker.mjs';
-import { DEFAULT_FEATURE_LAYOUT, featureRoles } from '../../../rules/features/feature-roles.mjs';
+import { featureLayout, featureRoles } from '../../../rules/features/feature-roles.mjs';
 
 const FOLDER_MEMBER = 'module';
 const CODE_FILE = /\.(?:tsx?|mts|cts|jsx?|mjs|cjs|py|java|kts?|go)$/u;
@@ -113,7 +113,7 @@ function isProductionCode(file) {
 function moduleRoles(policy) {
   return featureRoles({
     sharedRoots: [],
-    featureRoots: policy.layout?.featureRoots ?? DEFAULT_FEATURE_LAYOUT.featureRoots,
+    featureRoots: featureLayout(policy.layout).featureRoots,
   });
 }
 
