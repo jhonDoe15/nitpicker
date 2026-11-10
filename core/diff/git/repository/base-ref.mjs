@@ -27,14 +27,25 @@ const NO_COMMITS_MESSAGE = [
   'or compare later changes against that commit.',
 ].join(' ');
 
-export function assertHasCommit(repositoryRoot) {
+const NO_COMMITS_FOR_HOOK_MESSAGE = [
+  'No base could be determined: the repository has no commit yet.',
+  'Make the first commit without the hook (git commit --no-verify), or pass --base <ref>.',
+].join(' ');
+
+export function assertHasCommit(repositoryRoot, staged = false) {
   if (commitOf(repositoryRoot, 'HEAD') === undefined) {
-    throw new Error(NO_COMMITS_MESSAGE);
+    throw new Error(staged ? NO_COMMITS_FOR_HOOK_MESSAGE : NO_COMMITS_MESSAGE);
   }
 }
 
-export function resolveBase({ repositoryRoot, explicitBase, configuredBase, environment = {} }) {
-  assertHasCommit(repositoryRoot);
+export function resolveBase({
+  repositoryRoot,
+  explicitBase,
+  configuredBase,
+  environment = {},
+  staged = false,
+}) {
+  assertHasCommit(repositoryRoot, staged);
   if (isNonEmpty(explicitBase)) {
     return { baseRef: explicitBase, source: 'argument' };
   }
@@ -54,6 +65,10 @@ export function resolveBase({ repositoryRoot, explicitBase, configuredBase, envi
     return { baseRef: notCheckedOutCommit(repositoryRoot, configuredBase), source: 'config' };
   }
 
+  return inferredBase(repositoryRoot, staged);
+}
+
+function inferredBase(repositoryRoot, staged) {
   const remotes = listRemotes(repositoryRoot);
   const branch = currentBranch(repositoryRoot);
   const onDefault = defaultBranchAtHead(repositoryRoot, branch);
@@ -61,6 +76,9 @@ export function resolveBase({ repositoryRoot, explicitBase, configuredBase, envi
     remoteBase(repositoryRoot, remotes) ??
     upstreamBase(repositoryRoot, branch) ??
     localBranchBase(repositoryRoot, onDefault);
+  if (found === undefined && staged) {
+    return { baseRef: 'HEAD', source: 'staged, no remote base' };
+  }
   if (found === undefined) {
     throw noBaseError(remotes, onDefault);
   }

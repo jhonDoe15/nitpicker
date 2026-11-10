@@ -1,0 +1,7 @@
+[
+  {
+    "tool": "python-rules",
+    "rule": "unindexed-foreign-key",
+    "mention": "index=True"
+  }
+]

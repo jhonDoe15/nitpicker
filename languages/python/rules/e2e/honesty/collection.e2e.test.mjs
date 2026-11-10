@@ -90,13 +90,13 @@ describe.skipIf(!enabled)('uncollected-tests in other configurations', () => {
         '[tool.pytest]',
         'python_files = ["test_*.py"]',
         'norecursedirs = ["slow"]',
-        'addopts = ["--ignore=tests/test_ignored.py", "--deselect=tests/test_a.py::test_b", "-k", "not flaky"]',
+        'addopts = ["--ignore=tests/test_ignored.py", "--deselect=tests/test_a.py::test_b", "-k", "not smoke"]',
       ),
       'tests/test_a.py': passing,
       'tests/test_ignored.py': passing,
       'tests/slow/test_slow.py': passing,
       'tests/test_flaky.py':
-        'import pytest\n\n\n@pytest.mark.flaky\ndef test_c():\n    assert total() == 3\n',
+        'import pytest\n\n\n@pytest.mark.smoke\ndef test_c():\n    assert total() == 3\n',
       'tests/orders_test.py': passing,
     };
 
