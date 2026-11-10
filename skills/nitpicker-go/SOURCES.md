@@ -41,6 +41,8 @@ than the others, and this skill teaches its rules before an agent writes Go.
   Types and values: exhaustive (BSD-2-Clause), recvcheck, reassign and wastedassign (MIT),
   durationcheck and makezero (Apache-2.0), unconvert (BSD-3-Clause, the analyzer form
   golangci-lint maintains).
+  Tests: thelper, tparallel and testifylint (MIT), usetesting (Apache-2.0). testify itself is
+  only a dependency of the fixtures.
 
 ## Rules and their reasoning
 
@@ -127,6 +129,12 @@ than the others, and this skill teaches its rules before an agent writes Go.
   methods an interface expects on values (`String`, `Error`, `Format`, `Value`, `Marshal...`)
   take a value next to pointer methods, since a pointer receiver there would stop
   `fmt` and `encoding/json` using them for plain values.
+- **Test linters.** A helper without `t.Helper()` reports failures on its own line, a serial
+  test with parallel subtests runs them after it returns, `os.Setenv` in a test leaks into the
+  next one, and a generic testify assertion hides what failed; each has one allowed form.
+  testifylint runs every check, and each is printed under its own name, so an exception names
+  one check rather than all of testify. paralleltest is left out: `t.Parallel()` everywhere
+  conflicts with `t.Setenv` and shared fixtures.
 - **A fixture for every check.** Each enabled check has a failing line and the allowed form in
   `languages/go/lint/fixtures`; the harness fails on a missing or unexpected report, so a tool
   upgrade that changes what a check reports is caught before release.
@@ -216,3 +224,14 @@ Two adversarial reviews of the type and value linters changed these rules:
   adding a case or a constant does not make the finding new.
 - **Rewritten directives keep their length and shape** (`//exhaustivx:`, `//nolinx:`), so no
   comment's end moves and none turns from a directive into doc text.
+
+Two adversarial reviews of the test linters changed these rules:
+
+- **testifylint's formatter checks format strings only**; requiring `Equalf` for every message
+  flagged plain messages that format nothing. usetesting leaves `os.TempDir()` alone, since
+  building an expected path with it creates nothing.
+- **Messages drop test names and counts** (usetesting's `in TestX`, formatter's argument
+  numbers), and a testifylint check name testifylint adds later falls back to
+  `testifylint/testifylint` instead of an unknown rule.
+- **One finding per line**: errorlint wins over testifylint `compares` on
+  `assert.True(t, err == io.EOF)`, and thelper over `suite-thelper`.
