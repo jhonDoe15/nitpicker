@@ -2,7 +2,12 @@ import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
-import { BASE_FACTS_REPORT, FACTS_REPORT, readFactFindings } from './python-facts.mjs';
+import {
+  BASE_FACTS_REPORT,
+  FACTS_REPORT,
+  readFactFindings,
+  readFactImports,
+} from './python-facts.mjs';
 
 const roots = [];
 
@@ -149,5 +154,17 @@ describe('the shared fact rules over the Python facts', () => {
 
   it('finds nothing when the facts step wrote no report', () => {
     expect(readFactFindings(reportRootWith(undefined))).toEqual([]);
+  });
+
+  it('reads the imports between production modules for co-change dependencies', () => {
+    const production = {
+      from: 'src/shop/__init__.py',
+      to: 'src/shop/helpers.py',
+      names: [{ name: 'helper' }],
+    };
+    const facts = { ...FACTS, imports: [...FACTS.imports, production] };
+
+    expect(readFactImports(reportRootWith(facts))).toEqual([production]);
+    expect(readFactImports(reportRootWith(undefined))).toBeUndefined();
   });
 });

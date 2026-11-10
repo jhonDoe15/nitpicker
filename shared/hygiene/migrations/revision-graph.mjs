@@ -15,6 +15,10 @@ const DJANGO_REPLACES = /^\s*replaces\s*=/mu;
 const DJANGO_PAIR =
   /\(\s*(?<quote>['"])(?<app>[^'"\n]+)\k<quote>\s*,\s*(?<q2>['"])(?<name>[^'"\n]+)\k<q2>\s*\)/gu;
 
+export function lineOf(text, index) {
+  return text.slice(0, index).split('\n').length;
+}
+
 export function readSource(root, file) {
   const filePath = pathInside(root, file);
   if (filePath === undefined) {

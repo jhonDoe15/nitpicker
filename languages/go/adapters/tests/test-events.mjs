@@ -104,6 +104,10 @@ export function parseTestEvents(text) {
       .filter((failure) => !hasFailingSubtest(failure, failures))
       .map(({ id, package: packageName, output }) => ({ id, package: packageName, output })),
     buildFailures: [...builds].sort(),
+    outputs: [...outputs].map(([key, output]) => {
+      const [packageName, test] = key.split('\0');
+      return { package: packageName, test, output };
+    }),
     testsRan: events.some(({ Action }) => Action === 'run'),
   };
 }

@@ -234,20 +234,27 @@ describe('javaHeadFacts', () => {
     roots.push(directory);
     const file = path.join(directory, 'policy.json');
     const layout = { sharedRoots: ['**/common'], featureRoots: ['**/modules'] };
-    writeFileSync(file, JSON.stringify({ spring: true, kotlin: { formatter: 'ktlint' }, layout }));
+    writeFileSync(
+      file,
+      JSON.stringify({
+        spring: true,
+        kotlin: { formatter: 'ktlint' },
+        layout,
+        history: { coChange: true },
+      }),
+    );
     const { policy } = readRunnerPolicy(['--project-root', '/p', '--kotlin-formatter', 'none'], {
       NITPICKER_POLICY: file,
     });
+    const unset = readRunnerPolicy(['--project-root', '/p', '--kotlin-formatter', 'none'], {});
 
-    expect([policy.spring, policy.kotlinFormatter, policy.layout]).toEqual([
+    expect([policy.spring, policy.kotlinFormatter, policy.layout, policy.history]).toEqual([
       true,
       'ktlint',
       { ...layout, sharedInsideFeatures: true },
+      { coChange: true },
     ]);
-    expect(
-      readRunnerPolicy(['--project-root', '/p', '--kotlin-formatter', 'none'], {}).policy
-        .kotlinFormatter,
-    ).toBe('none');
+    expect([unset.policy.kotlinFormatter, unset.policy.history]).toEqual(['none', undefined]);
   });
 
   it('hands the feature folder fact and the feature roots to the runner policy', () => {
