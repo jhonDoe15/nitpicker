@@ -88,7 +88,8 @@ function over another branch in an old one.
 
 ## Our own code, and other people's
 
-- Dependencies must be under permissive licenses. Source-available analyzers (SonarJS and
+- Dependencies must be under permissive licenses. A weak-copyleft dependency (such as MPL-2.0)
+  is acceptable only when a tool uses it unmodified. Source-available analyzers (SonarJS and
   SonarJava, OpenRewrite's Spring recipes) are not used, and their implementations are not read
   when we write similar rules.
 - Ideas from MIT-licensed projects (for example Taikai's ArchUnit rules) are welcome when they fit

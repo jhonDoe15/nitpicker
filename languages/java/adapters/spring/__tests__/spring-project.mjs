@@ -112,6 +112,8 @@ const REVIEW_RULES = new Set([
   'SpringUnreleasedResource',
   'SpringStartupCleanup',
   'HttpWithoutTimeout',
+  'UnorderedQuery',
+  'UnboundedQueryArray',
   'ListUsedAsSet',
   'LinearLookupInLoop',
   'SortForExtreme',

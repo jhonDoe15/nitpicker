@@ -2,14 +2,9 @@ package perfsprint
 
 import (
 	"encoding/hex"
-	"errors"
 	"fmt"
 	"strconv"
 )
-
-var ErrMissing = fmt.Errorf("missing") // want error-format
-
-var ErrAbsent = errors.New("absent")
 
 func Count(total int) string {
 	return fmt.Sprintf("%d", total) // want integer-format

@@ -2148,8 +2148,11 @@
                             "kotlin-source/RepeatedStringLiteral",
                             "kotlin-source/LogFormatArguments",
                             "kotlin-source/LogExceptionFirst",
+                            "kotlin-source/SimplerBooleanLogic",
                             "kotlin-source/OperandSlip",
                             "kotlin-source/ProcessWaitWithoutTimeout",
+                            "kotlin-source/UnorderedQuery",
+                            "kotlin-source/UnboundedQueryArray",
                             "kotlin-source/RegexPartDefect",
                             "kotlin-source/BacktrackingRegex",
                             "kotlin-source/UnquotedRegexValue",
@@ -2647,7 +2650,7 @@
                           ]
                         },
                         {
-                          "pattern": "^(?:vet|staticcheck|errcheck|modernize|deadcode|bodyclose|rowserrcheck|sqlclosecheck|noctx|errorlint|nilerr|nilnil|errname|contextcheck|containedctx|fatcontext|exhaustive|recvcheck|durationcheck|makezero|reassign|unconvert|wastedassign|thelper|tparallel|testifylint|usetesting|asciicheck|bidichk|gocheckcompilerdirectives|canonicalheader|musttag|perfsprint|usestdlibvars|sloglint|spancheck)/[\\s\\S]"
+                          "pattern": "^(?:vet|staticcheck|errcheck|modernize|revive|bodyclose|rowserrcheck|sqlclosecheck|noctx|errorlint|nilerr|nilnil|errname|contextcheck|containedctx|fatcontext|exhaustive|recvcheck|durationcheck|makezero|reassign|unconvert|wastedassign|thelper|tparallel|testifylint|usetesting|asciicheck|bidichk|gocheckcompilerdirectives|canonicalheader|musttag|perfsprint|usestdlibvars|sloglint|spancheck|deadcode)/[\\s\\S]"
                         }
                       ]
                     }

@@ -1,8 +1,8 @@
 # Linters
 
 Part of the [nitpicker-go](../SKILL.md) skill. The gate runs staticcheck (every SA, S, ST and QF
-check, and U1000), errcheck, the modernize suite, more `golang.org/x/tools` passes and catalog
-linters (bodyclose, sqlclosecheck, rowserrcheck, noctx, errorlint, nilerr, nilnil, errname,
+check, and U1000), errcheck, the modernize suite, more `golang.org/x/tools` passes, revive and
+catalog linters (bodyclose, sqlclosecheck, rowserrcheck, noctx, errorlint, nilerr, nilnil, errname,
 contextcheck, containedctx, fatcontext, exhaustive, recvcheck, durationcheck, makezero,
 reassign, unconvert, wastedassign, thelper, tparallel, usetesting, testifylint) on every package, test files included. Write these forms from the start; each finding's message names the
 allowed form and ends with its exception entry.
@@ -54,7 +54,8 @@ allowed form and ends with its exception entry.
 ## Names and comments
 
 - Every package has a package comment, `// Package orders ...`, in one file, usually `doc.go`
-  (ST1000). Every exported name has a doc comment that starts with the name (ST1020 to ST1022).
+  (ST1000). A doc comment on an exported name starts with the name (ST1020 to ST1022). An exported
+  name does not repeat its package: `orders.List`, not `orders.OrdersList` (revive `exported`).
 - Names use MixedCaps with upper-case initialisms: `userID`, `ServeHTTP`, `parseURL` (ST1003).
 - A receiver is named after its type (`account` or `a`, never `this` or `self`), and every method
   of a type uses the same name (ST1006, ST1016).
@@ -93,10 +94,40 @@ allowed form and ends with its exception entry.
 - Write header keys in canonical form, `"Content-Type"` (canonicalheader); keep identifiers ASCII
   (asciicheck), source free of bidirectional control characters (bidichk), and every `//go:`
   directive one the compiler knows (gocheckcompilerdirectives).
+- Defer one call: keep a returned function first, `stop := start(); defer stop()`, never
+  `defer start()()`.
+
+## Shapes revive asks for
+
+- Return early instead of nesting: no `else` after a branch that returns, breaks or continues,
+  and `if !ok { return }` before the main path rather than around it.
+- Return the call directly instead of `if err := f(); err != nil { return err }; return nil`, and
+  assign a condition instead of `if c { x = true } else { x = false }`.
+- A `switch` has at least two cases (one case is an `if`), `default` comes last, and cases with the
+  same body are merged: `case a, b:`.
+- Empty maps and slices are literals, `map[K]V{}` and `[]T{}` (`make` only with a size); a nil
+  slice is `var items []T`. Group repeated parameter types, `first, second string`, and write
+  `count++` rather than `count += 1`.
+- Name every result in a `return`; no bare returns. Two unnamed results of the same type get names.
+- Names: local variables start in lower case, nothing shadows an import or a builtin (`len`,
+  `max`), import aliases are lower-case letters and digits and never repeat the package name, a
+  `GetX` function returns something, a Unix timestamp variable ends in `Sec`, `Milli` and so on.
+- File names are lower case with underscores, a package is named after its folder, and never
+  `util`, `common` or a standard package name.
+- An unused parameter is named `_`; an unused receiver is left unnamed, `func (Box) Name()`
+  (ST1006 rejects `_`). `context.Context` is the first parameter; a `bool` parameter that picks the branch means two functions.
+- A struct field's type is a named type, not an inline `struct { ... }`.
+- `os.Exit` and `log.Fatal` only in `main` or `init`; `fmt.Fprintln(os.Stderr, ...)` instead of the `print`
+  and `println` builtins; nothing after an `os.Exit` or `log.Fatal` call;
+  no `runtime.GC()`; `t.Equal(u)` for times; `_, found := m[key]` instead of a loop over the keys;
+  no `wg.Done()` or `panic` inside `wg.Go`; `m.Run()` in `TestMain` without `os.Exit`.
+- A blank import (`import _ "image/png"`) belongs in the main package or a test.
+- A comment has a space after `//`, except directives such as `//go:build`, and a block has no
+  empty line at its start or end.
 
 ## What does not work
 
-`//lint:ignore` and `//nolint` comments are ignored. A project's `staticcheck.conf` is read only
+`//lint:ignore`, `//nolint` and `//revive:disable` comments are ignored. A project's `staticcheck.conf` is read only
 when `nitpicker.config.json` opts in with
 `"tools": { "staticcheck": { "precedence": ["project"] } }`, and editing one then is a policy
 change. If a finding seems wrong, stop and ask.

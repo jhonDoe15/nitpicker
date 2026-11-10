@@ -1,5 +1,7 @@
 package recvcheck
 
+import "strconv"
+
 type Account struct { // want recvcheck
 	Balance int
 }
@@ -29,7 +31,7 @@ type Meter struct {
 }
 
 func (meter Meter) String() string {
-	return "meter"
+	return strconv.Itoa(meter.Reading)
 }
 
 func (meter *Meter) Add(amount int) {

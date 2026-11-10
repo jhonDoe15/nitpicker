@@ -14,7 +14,7 @@ import {
 } from './doc-scopes.mjs';
 
 const LETTER = String.raw`[\p{L}\p{N}_]`;
-const NAME = String.raw`(?:[\p{L}_]${LETTER}*|\x60[^\x60\n]+\x60)`;
+const NAME = String.raw`[\p{L}_]${LETTER}*|\x60[^\x60\n]+\x60`;
 const TYPE = new RegExp(
   String.raw`(?<![\p{L}\p{N}_.@:])(?:companion\s+object(?:\s+(${NAME}))?|(enum\s+)?(class|interface|object)\s+(${NAME}))`,
   'gu',
