@@ -80,7 +80,7 @@ func targetFiles(root string, targets mutantTargets) ([]string, error) {
 		sort.Strings(files)
 		return files, nil
 	}
-	paths, err := goFiles(root)
+	paths, err := goFiles(root, &Report{})
 	files := make([]string, 0, len(paths))
 	for _, path := range paths {
 		relative, _ := filepath.Rel(root, path)
