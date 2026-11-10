@@ -10,6 +10,7 @@ type Report struct {
 
 	Definitions []Definition `json:"definitions"`
 	Usages      []Usage      `json:"usages"`
+	DocComments []DocComment `json:"docComments"`
 	Skipped     []string     `json:"skipped"`
 }
 
