@@ -18,14 +18,15 @@ profile; recording disabled tests in an ordinary run cannot erase enabled-suite 
 to whole seconds, from the shard job logs of CI runs. The default reporter prints one line per
 passed file, `✓ <file> (<n> tests) <ms>ms`, and that time includes the file's hooks. The current
 values come from every Java, Kotlin and Python shard job that finished, passed or failed, from
-2026-11-09 to 2026-11-10: 11 to 160 samples per file. Files that no longer exist are dropped, and a
-file with no passing sample keeps the one-second default.
+2026-11-09 to 2026-11-10: 11 to 160 samples per file. A file that failed in a job is not counted for
+that job, which puts files that often fail slightly low. Files that no longer exist are dropped, and
+a file with no passing sample keeps the one-second default.
 
 Before this refresh, 15 Kotlin files (the Kotlin-on-Maven suites and newer files) had no weight.
-They all counted as one second, so the sequencer put them on the same shard: on main that shard
-measured about 2,940 seconds of test time against 1,310 and 1,380 for the other two, and slow
-runners hit the 60-minute job limit. With the measured medians the sequencer's estimated loads
-are 1,876–1,880 seconds for Kotlin, 1,004–1,006 for Java (before: 842–1,158 measured) and 776–777
+They all counted as one second, so the sequencer put them on the same shard: the measured medians
+of that shard's files add up to about 2,940 seconds against 1,310 and 1,380 for the other two, and
+slow runners hit the 60-minute job limit. With the measured medians the sequencer's estimated loads
+are 1,876–1,880 seconds for Kotlin, 1,004–1,006 for Java (the old plan's shards add up to 842–1,158) and 776–777
 for Python. The longest single file, `kotlin-maven-lint` at about 511 seconds, is well below a
 Kotlin shard's load, so no file needs a split.
 
