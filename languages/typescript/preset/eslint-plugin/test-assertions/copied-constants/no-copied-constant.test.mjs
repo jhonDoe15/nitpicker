@@ -26,6 +26,8 @@ const SOURCES = {
   ].join('\n'),
   'src/index.ts':
     "export * from './limits';\nexport { ROLE as ADMIN_ROLE } from './roles';\nexport { Paging as Pages } from './paging';",
+  'src/settings.ts':
+    "class Settings { static readonly THEME_NAME = 'dark-blue'; }\nexport { Settings as default };",
   'src/legacy.js':
     'export class Legacy {\n  static MAX_RETRIES = 30;\n  static #HIDDEN_CAP = 31;\n}',
   'src/roles.ts': "export const ROLE = 'administrator';",
@@ -236,6 +238,22 @@ describe('no-copied-constant', () => {
     expect(messages.map(({ line, message }) => `${line} ${message.split(' from ')[0]}`)).toEqual([
       '3 This literal copies Legacy.MAX_RETRIES',
       '5 This literal copies Pages.PAGE_LIMIT',
+    ]);
+  });
+
+  it('names a default-exported class by its own name and skips a require the file defines', () => {
+    const messages = reported(
+      [
+        "import Theme from '../src/settings';",
+        "expect(Theme.current()).toBe('dark-blue');",
+        'function require(name) { return name; }',
+        "require('../src/limits');",
+        'expect(limit()).toBe(50);',
+      ].join('\n'),
+    );
+
+    expect(messages.map(({ line, message }) => `${line} ${message.split(' from ')[0]}`)).toEqual([
+      '2 This literal copies Settings.THEME_NAME',
     ]);
   });
 

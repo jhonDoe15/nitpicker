@@ -44,6 +44,15 @@ function seenConstants(context, loads) {
   return seen;
 }
 
+function isOwnRequire(context, node) {
+  if (node.callee?.type !== 'Identifier') {
+    return false;
+  }
+  const scopes = chainOf(context.sourceCode.getScope(node), (scope) => scope.upper);
+  const variable = scopes.map((scope) => scope.set.get(node.callee.name)).find(Boolean);
+  return (variable?.defs.length ?? 0) > 0;
+}
+
 function isTestName(node) {
   const call = node.parent;
   if (call?.type !== 'CallExpression' || call.arguments[0] !== node) {
@@ -149,7 +158,7 @@ export const rule = {
       }
     }
     function load(node) {
-      const loaded = loadedModule(node);
+      const loaded = isOwnRequire(context, node) ? undefined : loadedModule(node);
       if (loaded !== undefined) {
         loads.push(loaded);
       }

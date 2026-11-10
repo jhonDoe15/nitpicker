@@ -2,13 +2,15 @@ import ast
 
 from checks.common import dotted_name, imported_module
 
+NAME_KEYWORDS = {"name", "modname"}
 LOADERS = {"importlib.import_module", "__import__", "pytest.importorskip"}
 
 
 def loaded_module(node, aliases):
     if not isinstance(node, ast.Call) or dotted_name(node.func, aliases) not in LOADERS:
         return []
-    first = node.args[0] if node.args else None
+    named = [item.value for item in node.keywords if item.arg in NAME_KEYWORDS]
+    first = node.args[0] if node.args else next(iter(named), None)
     text = first.value if isinstance(first, ast.Constant) else None
     return [text] if isinstance(text, str) and not text.startswith(".") else []
 

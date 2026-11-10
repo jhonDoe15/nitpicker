@@ -103,7 +103,10 @@ describe.skipIf(!enabled)('copied-constant-in-test', () => {
       ],
       [
         'importorskip',
-        withTest(body('import pytest\nshapes = pytest.importorskip("shop.shapes")'), shapes),
+        withTest(
+          body('import pytest\nshapes = pytest.importorskip(modname="shop.shapes")'),
+          shapes,
+        ),
         at(6),
       ],
       [

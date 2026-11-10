@@ -136,7 +136,8 @@ function listedConstants(statements, locals) {
   const listed = statements.filter(isLocalExportList).flatMap(exportedNames);
   return [...locals].flatMap(([name, value]) =>
     listed.flatMap(({ exported, local }) => {
-      const renamed = renamedHead(name, (head) => (head === local ? exported : undefined));
+      const shown = exported === 'default' && name.includes('.') ? local : exported;
+      const renamed = renamedHead(name, (head) => (head === local ? shown : undefined));
       return isConstantPath(renamed) ? [[renamed, value]] : [];
     }),
   );
