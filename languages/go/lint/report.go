@@ -12,6 +12,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/jhonDoe15/nitpicker/languages/go/lint/catalog"
 	"golang.org/x/tools/go/analysis/checker"
 	"golang.org/x/tools/go/packages"
 )
@@ -39,7 +40,10 @@ func supersededBy() map[string][]string {
 		"SA4006":   {"SA4010"},
 		"SA1006":   {"printf"},
 		"nilness":  {"SA4031", "SA5000"},
-		"errcheck": {"SA5001", "SA9001"},
+		"errcheck": {"SA5001", "SA9001", "sqlclosecheck"},
+		"nilnil":   {"nilerr"},
+		"errname":  {"ST1012"},
+		"noctx":    {"SA1005"},
 	}
 	maps.Copy(replacements, reviveSuperseded())
 	return replacements
@@ -62,6 +66,7 @@ func analyze(directory string, settings options, patterns []string) (Result, err
 		return Result{}, err
 	}
 	result := Result{Findings: []Finding{}, Errors: loadErrors(loaded)}
+	catalog.Prepare(loaded)
 	graph, err := checker.Analyze(append(analyzers(), vetAnalyzers()...), loaded, nil)
 	if err != nil {
 		return result, err
