@@ -240,14 +240,14 @@ const CATALOG = [
     id: RULE_IDS.duplicateClone,
     check: 'duplicates',
     limit: `jscpd in \`${DUPLICATES_MODE}\` mode, also over sources with names and literals normalized (at least 100 tokens, except code that only repeats one or two statements); any new clone fails`,
-    enforcedBy: withKotlin(ALL, true),
+    enforcedBy: withGo(withKotlin(ALL, true)),
   },
   {
     id: RULE_IDS.stabilityDirection,
     check: 'coupling',
     limit:
       'a package depending on a less stable package; a feature folder is one unit, and edges between its public face and its own internals do not count; an import that exists only for the type checker (`import type`, `if TYPE_CHECKING:`) is never the reported dependency, but still counts toward instability',
-    enforcedBy: withKotlin(ALL, true),
+    enforcedBy: withGo(withKotlin(ALL, true)),
   },
   {
     id: RULE_IDS.noProductionRuntime,

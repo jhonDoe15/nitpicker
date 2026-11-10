@@ -5,7 +5,8 @@ import {
   validateStringArray,
 } from '../../../../shared/config.mjs';
 import { canonicalRule } from '../../../../shared/exceptions/rule-names.mjs';
-import { COMMON_EXCEPTION_RULES } from '../../../../shared/policy.mjs';
+import { COMMON_EXCEPTION_RULES, RULE_IDS } from '../../../../shared/policy.mjs';
+import { PACKAGE_RULE_IDS } from '../../../../shared/project-rules/hygiene-rules.mjs';
 import { GO_SIZE_RULES } from '../../../../shared/project-rules/size-rules.mjs';
 import { FORMATTERS } from '../formatting/go-formatters.mjs';
 import { suggestionOrAllowed } from '../../../../shared/messages/closest-match.mjs';
@@ -23,8 +24,24 @@ const GO_CATALOG_TOOLS = [
   'containedctx',
   'fatcontext',
 ];
-export const GO_LINT_TOOLS = ['vet', 'staticcheck', 'errcheck', 'modernize', ...GO_CATALOG_TOOLS];
-export const GO_EXCEPTION_RULES = [...COMMON_EXCEPTION_RULES, ...GO_SIZE_RULES];
+export const GO_LINT_TOOLS = [
+  'vet',
+  'staticcheck',
+  'errcheck',
+  'modernize',
+  'deadcode',
+  ...GO_CATALOG_TOOLS,
+];
+export const GO_EXCEPTION_RULES = [
+  ...COMMON_EXCEPTION_RULES,
+  ...GO_SIZE_RULES,
+  RULE_IDS.duplicateClone,
+  RULE_IDS.stabilityDirection,
+  RULE_IDS.testOnlyExport,
+  RULE_IDS.sharedUsedByOneFeature,
+  PACKAGE_RULE_IDS.unusedDependency,
+  PACKAGE_RULE_IDS.unlistedDependency,
+];
 export const GO_SETTING_KEYS = ['formatters', 'buildTags'];
 export const BUILD_TAG = /^!?[\w.]+$/u;
 const TYPESCRIPT_REASON =
@@ -34,8 +51,6 @@ const UNSUPPORTED_KEYS = new Map([
     key,
     TYPESCRIPT_REASON,
   ]),
-  ['layout', 'Go packages follow the module, so there are no source roots to set'],
-  ['duplicates', 'the Go preset runs no duplicate-code scan'],
 ]);
 
 function validateUnsupported(config) {

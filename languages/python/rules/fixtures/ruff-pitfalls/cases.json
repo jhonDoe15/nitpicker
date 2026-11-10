@@ -408,5 +408,15 @@
     "tool": "ruff",
     "rule": "PLR1711",
     "mention": "Remove the `return`"
+  },
+  {
+    "tool": "ruff",
+    "rule": "PLR0124",
+    "mention": "math.isnan(value)"
+  },
+  {
+    "tool": "ruff",
+    "rule": "PLR1714",
+    "mention": "Test membership once"
   }
 ]
