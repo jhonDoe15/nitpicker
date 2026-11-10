@@ -13,7 +13,7 @@ const TOKEN = new RegExp(
     String.raw`'(?:\\[\s\S]|[^'\\])*'`,
     String.raw`[{};]`,
     String.raw`[^"'/{};]+`,
-    String.raw`[\s\S]`,
+    String.raw`["'/]`,
   ].join('|'),
   'gu',
 );
