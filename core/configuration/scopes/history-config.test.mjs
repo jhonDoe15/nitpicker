@@ -54,28 +54,33 @@ describe('history config', () => {
     expect(() => validateConfig(config)).toThrow(message);
   });
 
-  it.each(['python'])(
-    'takes layout.featureRoots with %s once co-change is on, and not before',
-    (preset) => {
-      const layout = { featureRoots: ['**/modules'] };
-      const accepted = { preset, layout, history: { coChange: true } };
+  it('takes layout.featureRoots with python, which runs the feature folder rules, without co-change', () => {
+    const config = { preset: 'python', layout: { featureRoots: ['**/modules'] } };
 
-      expect(() => validateConfig({ preset, layout })).toThrow(/not supported with "preset"/u);
-      expect(() => validateConfig({ preset, layout, history: { coChange: false } })).toThrow(
-        /not supported/u,
-      );
-      expect(validateConfig(accepted)).toEqual(accepted);
+    expect(validateConfig(config)).toEqual(config);
+  });
+
+  it.each(['java', 'kotlin'])(
+    'takes layout.featureRoots and sharedRoots with %s, which runs the contract rule, with or without co-change',
+    (preset) => {
+      const layout = { featureRoots: ['**/modules'], sharedRoots: ['**/common'] };
+      const configs = [
+        { preset, layout },
+        { preset, layout, history: { coChange: true } },
+      ];
+
+      expect(configs.map((config) => validateConfig(config))).toEqual(configs);
     },
   );
 
-  it('keeps layout.sharedRoots out of the presets that do not run its rule', () => {
+  it('keeps the source folder layout keys out of the other presets when co-change is on', () => {
     expect(() =>
       validateConfig({
-        preset: 'python',
-        layout: { sharedRoots: ['**/shared'] },
+        preset: 'java',
+        layout: { sourceRoots: ['app'] },
         history: { coChange: true },
       }),
-    ).toThrow(/sharedRoots/u);
+    ).toThrow(/sourceRoots/u);
   });
 
   it.each(PRESETS)('takes co-change exceptions with %s', (preset) => {

@@ -8,7 +8,14 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import nitpicker.kotlinpsi.bodies.Bodies;
+import nitpicker.kotlinpsi.bodies.Throwing;
+import nitpicker.kotlinpsi.catches.Catches;
+import nitpicker.kotlinpsi.bodies.Initializers;
 import nitpicker.kotlinpsi.common.Frame;
+import nitpicker.kotlinpsi.facts.locking.Locking;
+import nitpicker.kotlinpsi.facts.updates.Updates;
+import nitpicker.kotlinpsi.facts.lifetimes.Lifetimes;
+import nitpicker.kotlinpsi.coroutines.CoroutineFacts;
 import nitpicker.kotlinpsi.load.LoadCalls;
 import nitpicker.kotlinpsi.timeouts.Timeouts;
 import org.jetbrains.kotlin.com.intellij.psi.PsiElement;
@@ -23,8 +30,14 @@ public final class FactsCollector {
   private final Calls calls;
   private final Timeouts timeouts;
   private final Predicates predicates;
+  private final Updates updates;
+  private final Locking locking;
+  private final Lifetimes lifetimes;
+  private final CoroutineFacts coroutines;
   private final Bodies bodies;
+  private int frames;
   private final LoadCalls loads;
+  private final Throwing throwing;
 
   public FactsCollector(KtFile file, String text, String relative, boolean test, Set<String> nothing) {
     this.file = file;
@@ -33,7 +46,12 @@ public final class FactsCollector {
     this.calls = new Calls(state);
     this.timeouts = new Timeouts(file, text, state.timeouts);
     this.predicates = new Predicates(state);
-    this.bodies = new Bodies(text, test, nothing, state.namesOf(HANDLER));
+    this.updates = new Updates(state::lineOf);
+    this.throwing = new Throwing(nothing, file);
+    this.locking = new Locking(file, state::lineOf);
+    this.lifetimes = new Lifetimes(file, state::lineOf);
+    this.coroutines = new CoroutineFacts(file, text);
+    this.bodies = new Bodies(text, test, throwing, state.namesOf(HANDLER));
     this.loads = test ? null : new LoadCalls(file, state::lineOf);
   }
 
@@ -44,6 +62,14 @@ public final class FactsCollector {
   public Map<String, Object> result() {
     Map<String, Object> result = new LinkedHashMap<>(state.result());
     result.putAll(bodies.result());
+    result.putAll(locking.result());
+    if (!lifetimes.cleanupCalls().isEmpty()) {
+      result.put("cleanupCalls", lifetimes.cleanupCalls());
+    }
+    if (!lifetimes.useLaunches().isEmpty()) {
+      result.put("useLaunches", lifetimes.useLaunches());
+    }
+    result.put("coroutines", coroutines.collect());
     if (loads != null) {
       result.putAll(loads.result());
     }
@@ -53,15 +79,18 @@ public final class FactsCollector {
   private void walk(PsiElement element, Frame frame) {
     if (element instanceof KtEnumEntry
         || (element instanceof KtObjectDeclaration && ((KtObjectDeclaration) element).isObjectLiteral())) {
-      descend(element, declarations.literal((KtClassOrObject) element, frame));
+      descend(element, frame, declarations.literal((KtClassOrObject) element, frame));
     } else if (element instanceof KtClassOrObject) {
-      descend(element, declarations.declareClass((KtClassOrObject) element, frame));
+      descend(element, frame, declarations.declareClass((KtClassOrObject) element, frame));
     } else {
-      descend(element, enter(element, frame));
+      descend(element, frame, enter(element, frame));
     }
   }
 
-  private void descend(PsiElement element, Frame inner) {
+  private void descend(PsiElement element, Frame outer, Frame inner) {
+    if (inner != outer && inner != null) {
+      inner.data.put("frameId", ++frames);
+    }
     for (PsiElement child : element.getChildren()) {
       walk(child, inner);
     }
@@ -69,7 +98,8 @@ public final class FactsCollector {
 
   private Frame enter(PsiElement element, Frame frame) {
     if (element instanceof KtNamedFunction) {
-      Frame inner = declarations.declareFunction((KtNamedFunction) element, frame);
+      Frame inner = declarations.declareFunction(
+          (KtNamedFunction) element, frame, lifetimes.shieldsWholeBody((KtNamedFunction) element));
       bodies.function(inner, (KtNamedFunction) element);
       return inner;
     }
@@ -110,25 +140,46 @@ public final class FactsCollector {
       loads.observe(element);
     }
     if (element instanceof KtProperty) {
-      declarations.declareProperty((KtProperty) element, frame);
+      KtProperty property = (KtProperty) element;
+      KtExpression initializer =
+          property.getInitializer() != null ? property.getInitializer() : Initializers.lazyValue(property);
+      declarations.typed(property.getName(), property.getTypeReference(), initializer, frame);
+      declarations.declareProperty(property, frame);
+    } else if (element instanceof KtParameter) {
+      KtParameter parameter = (KtParameter) element;
+      declarations.typed(parameter.getName(), parameter.getTypeReference(), null, frame);
     } else if (element instanceof KtTypeAlias) {
       declarations.declareTypeAlias((KtTypeAlias) element);
+    } else if (element instanceof KtTryExpression) {
+      lifetimes.tryExpression((KtTryExpression) element, frame);
+      state.handlers.addAll(
+          Catches.completing((KtTryExpression) element, state::lineOf, Predicates.symbolAt(frame, element), throwing));
     } else if (element instanceof KtCallExpression) {
+      lifetimes.call((KtCallExpression) element, frame);
       calls.call((KtCallExpression) element, frame);
       timeouts.call((KtCallExpression) element, frame);
+      locking.call((KtCallExpression) element, frame);
     } else if (element instanceof KtSuperTypeCallEntry) {
       KtSuperTypeCallEntry entry = (KtSuperTypeCallEntry) element;
       calls.delegation(element, nameOf(entry.getCalleeExpression()), entry.getValueArguments(), List.of());
     } else if (element instanceof KtConstructorDelegationCall) {
       calls.constructorDelegation((KtConstructorDelegationCall) element, frame);
     } else if (element instanceof KtBinaryExpression) {
+      locking.assignment((KtBinaryExpression) element, frame);
+      Map<String, Object> update = updates.assignment((KtBinaryExpression) element, frame);
+      if (update != null) {
+        state.updates.add(update);
+      }
       predicates.binary((KtBinaryExpression) element, frame);
+    } else if (element instanceof KtUnaryExpression) {
+      locking.step((KtUnaryExpression) element, frame);
     } else if (element instanceof KtDotQualifiedExpression) {
       predicates.containsForm((KtDotQualifiedExpression) element, frame);
     } else if (element instanceof KtWhenExpression) {
       predicates.when((KtWhenExpression) element, frame);
     } else if (element instanceof KtCallableReferenceExpression) {
       state.references.add(((KtCallableReferenceExpression) element).getCallableReference().getReferencedName());
+      calls.reference((KtCallableReferenceExpression) element, frame);
     }
   }
 }

@@ -15,6 +15,7 @@ import {
   copyProjectFixture,
   managerVersion,
 } from './package-managers/test-support/project-fixtures.mjs';
+import { linkSentence } from '../../../../shared/messages/test-support/link-sentence.mjs';
 
 const git = useGitFixtures();
 
@@ -102,7 +103,8 @@ describe('Yarn Plug and Play', () => {
 
     expect(() => resolveDependencyHook().install(projectRoot)).toThrow(
       new Error(
-        "Failed to install merge-base dependencies with yarn: the install created no node_modules folder (Yarn Plug'n'Play is not supported: set `nodeLinker: node-modules`)",
+        "Failed to install merge-base dependencies with yarn: the install created no node_modules folder (Yarn Plug'n'Play is not supported: set `nodeLinker: node-modules`). " +
+          linkSentence('unsupportedYarn'),
       ),
     );
     expect(existsSync(path.join(projectRoot, 'node_modules'))).toBe(false);
