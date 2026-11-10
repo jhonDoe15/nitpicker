@@ -72,7 +72,7 @@ export function mergedRoots(projectRoot, moduleDirs, reportDirectory) {
   return roots;
 }
 
-function moduleProject(projectRoot, moduleDir, { reportDirectory }) {
+export function moduleProject(projectRoot, moduleDir, { reportDirectory }) {
   const prefix = prefixOf(projectRoot, moduleDir);
   const manifest = readManifest(moduleDir, reportDirectory);
   function roots(name) {
@@ -87,6 +87,7 @@ function moduleProject(projectRoot, moduleDir, { reportDirectory }) {
     testSourceRoots: roots('testSourceRoots'),
     kotlinTestSourceRoots: roots('kotlinTestSourceRoots'),
     resourceRoots: roots('resourceRoots'),
+    published: manifest.published === true,
   };
 }
 

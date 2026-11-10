@@ -14,4 +14,7 @@ data classes; parameters with an annotation (`@RequestParam`, `@PathVariable`) a
 The Java preset's Spring architecture rules (feature layout, layering, bean lifetimes, request data in singletons (a `companion object` property counts as a static field), untyped fields of request bodies (`Map<String, Any>`, `JsonNode`, `@JsonAnySetter`), and the
 jMolecules aggregate rules, which also run without Spring; "Spring architecture rules" in
 [java-preset.md](../java-preset.md)) read compiled classes, so they check Kotlin classes the same way, with the same `archunit/<rule>` exceptions and the same `spring.roles` config
-key.
+key. So does `archunit/contract-infrastructure-type` ([contract types](../java-preset/spring-architecture-rules.md#contract-types)),
+also in a Kotlin project without Spring that has feature folders. It sees through type aliases
+(`typealias Rows = List<Connection>`) and leaves out property getters and setters, the `componentN` and
+`copy` functions of data classes, and `internal` functions.
