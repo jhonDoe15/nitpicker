@@ -1,7 +1,8 @@
 import { normalizeReportPath } from '../../../shared/ingest/common.mjs';
 import { createIdentities } from './identities.mjs';
 
-const MYPY_LINE = /^(.+?):(\d+):(?:(\d+):)? (error|warning): (.*?)(?:\s+\[([\w-]+)\])?$/;
+const MYPY_LINE = /^(.+?):(\d+):(?:(\d+):)? (error|warning): (.*)$/;
+const ERROR_CODE = /\s\[([\w-]+)\]$/;
 const FALLBACK_RULE = 'type-error';
 const ENFORCEABLE_SEVERITIES = new Set(['error', 'warning']);
 
@@ -9,6 +10,13 @@ function projectPath(file, roots) {
   return roots
     .map((root) => normalizeReportPath(file, root))
     .find((candidate) => candidate !== undefined);
+}
+
+function messageAndCode(text) {
+  const code = ERROR_CODE.exec(text);
+  return code === null
+    ? { message: text, rule: FALLBACK_RULE }
+    : { message: text.slice(0, code.index).trimEnd(), rule: code[1] };
 }
 
 function createFindingBuilder(tool) {
@@ -30,14 +38,15 @@ export function ingestMypy(text, { roots }) {
     .split(/\r?\n/)
     .map((line) => MYPY_LINE.exec(line))
     .filter((match) => match !== null)
-    .flatMap(([, file, line, column, severity, message, code]) => {
+    .flatMap(([, file, line, column, severity, text]) => {
       const path = projectPath(file, roots);
+      const { message, rule } = messageAndCode(text);
       return path === undefined
         ? []
         : [
             build({
               path,
-              rule: code ?? FALLBACK_RULE,
+              rule,
               subject: message,
               severity,
               line: Number(line),
