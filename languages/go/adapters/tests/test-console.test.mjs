@@ -57,6 +57,10 @@ describe('Go test console output', () => {
     ['prose naming an error', 'expected error, got nil'],
     ['an info line that names an error', 'level=INFO msg="ERROR count 0"'],
     ['a standard log info line that names an error', '2026/11/10 10:00:00 INFO no ERROR'],
+    ['a bracketed info level through the standard log', '2026/11/10 10:00:00 [INFO] ERROR count 0'],
+    ['a lowercase info level through the standard log', '2026/11/10 10:00:00 info: connected'],
+    ['an info line that names a warning', 'INFO: lots of WARN things'],
+    ['a test attribute line', '=== ATTR  TestTotal kind ERROR'],
     ['a klog info line', 'I1110 10:00:00.000000   12345 total.go:12] ERROR count 0'],
   ])('leaves out %s', (_name, line) => {
     expect(consoleMessages(line)).toEqual([]);
