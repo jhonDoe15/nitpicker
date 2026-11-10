@@ -1422,6 +1422,7 @@ change adds; a file already on the base is left alone. Each message names the ex
 | `committed-build-output`   | a file in a build output folder: `dist`, `build`, `out`, `coverage` or `target` next to a `package.json`, `build.gradle(.kts)`, `pom.xml` or `pyproject.toml`, or `.next`, `.nuxt`, `storybook-static`, `.turbo` or `.parcel-cache` at any depth; one finding per folder                                                                                                                                                                                                                                                                     |
 | `migration-order`          | a migration whose version sorts before, or equals, the newest migration of its folder on the base branch: Flyway `V<version>__name`, Prisma `migrations/<timestamp>_name/`, and numbered files in a `migrations`, `migration` or `drizzle` folder (TypeORM, Kysely, Knex, Sequelize, MikroORM, Drizzle, golang-migrate, goose); an Alembic revision or a Django migration whose parent already has a child on the base branch, so the history has two heads                                                                                  |
 | `migration-hardcoded-name` | a migration file (the layouts above, Liquibase changelogs and other files directly in a `migrations`, `migration`, `migrate` or `drizzle` folder) that qualifies a name with the `public` schema, names a database in `ALTER DATABASE` or a role in `OWNER TO`; one finding per file and form                                                                                                                                                                                                                                                |
+| `foreign-key-index`        | a foreign key that a migration adds with no index that starts with its columns, or a Prisma relation whose `fields` no `@@index`, `@@unique` or `@@id` of the model starts with; not reported when the project uses MySQL or MariaDB, which index foreign keys themselves                                                                                                                                                                                                                                                                    |
 | `start-schema-push`        | a `start`, `prestart`, `serve` or `start:*` script in a `package.json` (not `start:dev`, `start:local`, `start:watch`, `start:debug` or `start:test`), or a script it runs through `npm`, `pnpm`, `yarn`, `bun` or `npm-run-all` (with its `pre` hook), that pushes the ORM schema: `prisma db push`, `prisma migrate dev`/`reset`, `drizzle-kit push`, `typeorm schema:sync`/`schema:drop`, `mikro-orm schema:update`/`create`/`fresh`/`drop` (options between the tool and the command count); apply migrations in the deploy step instead |
 
 An env file that holds only public build-time values (every key starts with `VITE_`, `NEXT_PUBLIC_`,
@@ -1445,6 +1446,25 @@ or an Atlas `atlas.sum`, and the schema and owners in a pg_dump baseline. Like e
 `repository-hygiene` rule it fails only what the change adds, so migrations already on the base are
 left alone. A project that pins its schema, database or roles on purpose adds an exception for its
 migrations folder, as the message shows.
+
+`foreign-key-index` reads the migration files (Flyway, Prisma, Liquibase XML, YAML and SQL
+changelogs, Alembic, and the SQL in TypeORM, MikroORM, Kysely, Knex and goose migrations, skipping their down part
+and `.down.sql` files):
+`CREATE TABLE` with `REFERENCES` or `FOREIGN KEY`, `ALTER TABLE ... ADD`, Liquibase
+`addForeignKeyConstraint` and column `constraints`, Alembic `create_table`, `add_column` and
+`create_foreign_key` (also through `batch_alter_table`). A foreign key counts as indexed when an
+index, primary key or unique constraint of the same table, in any migration, starts with its
+columns; a composite index that has the column second does not count. The Knex and TypeORM
+schema builders (`table.foreign(...)`, `new TableForeignKey(...)`) and table renames are not read,
+and Django migrations are left alone because Django indexes its foreign keys. The Prisma schema
+(one file or a `prisma/schema/` folder) is checked only when no `migrations` folder sits next to
+it or above it (then the migrations are read), and a `mysql` provider only with
+`relationMode = "prisma"`. A migration is skipped when the nearest folder above it whose
+manifests name a database driver names only MySQL or MariaDB drivers (`mysql2`,
+`mysql-connector-j`, `pymysql`, `gorm.io/driver/mysql`, a `jdbc:mysql:` URL and the like), so each
+service of a monorepo goes by its own driver; a migration written for MySQL (backquoted names or
+`ENGINE=`) and a Liquibase change limited by `dbms` to other databases are skipped too. The fix is a migration that creates the index; a table known to stay small
+takes an exception for its migration.
 
 A build output folder is fine when what runs from the checkout points into it: a GitHub Action's
 `action.yml` (`runs.main`, `pre`, `post`), or the `main`, `module`, `types`, `bin`, `exports` or

@@ -296,6 +296,7 @@ describe('Kotlin exception rules for the review rules', () => {
       'pmd/SharedTestState',
       'pmd/MockedSubjectInTest',
       'pmd/StaticMockOfProjectType',
+      'pmd/RelaxedMockInTest',
       'pmd/SpringUnusedContext',
       'pmd/ExhaustiveEnumPredicate',
       'pmd/StaticForwardingWrapper',
