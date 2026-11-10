@@ -1,6 +1,7 @@
 import path from 'node:path';
 import { CONFIG_FILE_NAME, SCHEMA_KEY, configError } from '../../shared/config.mjs';
 import { withCanonicalRules } from '../../shared/exceptions/validation.mjs';
+import { listNames } from '../../shared/messages/messages.mjs';
 import { existsSync, readFileSync } from 'node:fs';
 import { validateConfig, KEYS } from './validate.mjs';
 import { rejectUnreadableSources } from './project-checks/project-config.mjs';
@@ -75,10 +76,6 @@ function turnedOffByDependency(analyzers, disabled) {
     }
   }
   return causes;
-}
-
-function listNames(names) {
-  return names.length > 1 ? `${names.slice(0, -1).join(', ')} and ${names.at(-1)}` : names[0];
 }
 
 function checkKnown(analyzers, disabled) {

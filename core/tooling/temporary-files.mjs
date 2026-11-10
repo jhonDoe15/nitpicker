@@ -1,9 +1,13 @@
-import { rmSync } from 'node:fs';
-import { constants as osConstants } from 'node:os';
+import { realpathSync, rmSync } from 'node:fs';
+import { constants as osConstants, tmpdir } from 'node:os';
 
 const trackedPaths = new Set();
 const handledSignals = ['SIGINT', 'SIGTERM', 'SIGHUP'];
 const handlerState = { installed: false };
+
+export function realTemporaryDirectory() {
+  return realpathSync.native(tmpdir());
+}
 
 export function trackTemporaryPath(filePath) {
   installHandlers();
