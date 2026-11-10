@@ -1,7 +1,7 @@
 import { filePatterns, globsFor } from './layout/path-patterns.mjs';
 import { existsSync } from 'node:fs';
 import path from 'node:path';
-import { filesUnder } from '../../../shared/filesystem.mjs';
+import { projectFilesUnder } from '../../../shared/project-files/project-files.mjs';
 import { escapeRegExp, globMatcher, globToRegExpSource } from '../../../shared/paths/glob.mjs';
 import {
   isJavascriptPolicy,
@@ -213,7 +213,7 @@ function codeFilesUnderRoot(layout, projectRoot, root) {
     return toPosix(path.relative(projectRoot, absolute));
   }
   return [
-    ...filesUnder(path.join(projectRoot, root), {
+    ...projectFilesUnder(path.join(projectRoot, root), {
       skipDirectory: (absolute) => DEPENDENCY_PATH.test(relativeOf(absolute)),
     }),
   ]

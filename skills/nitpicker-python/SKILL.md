@@ -26,12 +26,19 @@ project, so it takes as long as a full run; finish with the plain run below.
 
 ## Finish with the gate
 
+While you iterate, run `npx nitpicker --quick`: it skips the tests and the checks built on them;
+read the printed skipped list for what it left out. A quick run is never a pass; finish with the
+full run below.
+
 1. Run the project's tests with its own runner (pytest, unittest, `manage.py test` or nose2).
    Failing tests are a tool error that names them; coverage and CRAP then come only from the tests
    that pass, and mutation testing leaves the failing modules out.
-2. When the change is complete, run `npx nitpicker` as a background command you wait on, without a
-   pipe: you need its exit code. It has no `--fix` for Python; format with the "Format with ..." command
-   printed at the start of the run (the gate does not read the project's formatter config). It takes minutes and prints a progress line for each slow analyzer.
+2. When the change is complete, run `npx nitpicker --fix` as a background command you wait on,
+   without a pipe: you need its exit code. It first applies `ruff check --fix` and the formatter
+   named in the "Format with ..." line (with the project's formatter config only when
+   `tools.<formatter>.precedence` in `nitpicker.config.json` lists `"project"`, as the gate does) to
+   the changed files and lists the rewritten ones under "Fixed files:"; re-read those files before
+   you edit them again. It takes minutes and prints a progress line for each slow analyzer.
 3. Act on the exit code:
    - 0: done, unless you narrowed the run with `--analyzer`: then the summary says `Ran only: ...`
      and you run the gate again without it before you finish.
@@ -40,6 +47,7 @@ project, so it takes as long as a full run; finish with the plain run below.
    - 2: no new findings, but a tool failed. Fix the cause it names (usually a tool missing from the
      environment) and rerun. Exit 2 is never a pass. If it says another run
      is in progress, wait for that run; never kill it.
+     When the message links to [troubleshooting](https://github.com/jhonDoe15/nitpicker/blob/main/docs/troubleshooting.md), the fix is there.
 4. Never suppress: no `# noqa`, `# type: ignore`, `# pragma: no mutate`, `do_not_mutate`, config
    `exclude`/`disable`/`exceptions`, legacy entries, or weakened tests (`-x`, `-k`, `--deselect` and
    reruns in `addopts` are ignored anyway). If a finding seems wrong, stop and ask. Never pass
@@ -65,7 +73,9 @@ The allowed forms are on one page per topic. Before you write code, read the pag
 - A finding that flags legitimate code is lifted in `nitpicker.config.json`. A ruff, type-checker,
   `python-rules`, import-linter, duplicate or coupling finding goes under `python.exceptions`, with
   an entry such as `{ "rule": "PERF203", "paths": ["src/jobs/**"], "reason": "..." }`, the rule being
-  the id in the message. A function, CRAP, changed-branch coverage, mutation, file or size finding, and
+  the id in the message. A function, CRAP, changed-branch coverage, mutation, file, size or feature folder
+  (`feature-internal-import`, `shared-imports-feature`, `feature-cycle`,
+  `shared-used-by-one-feature`) finding, and
   `slow-test`, `test-console-output`, `unused-option` and the other rules every preset shares, go
   under the top-level `exceptions`
   (`{ "rule": "function-lines-limit", "paths": [...], "function": "name", "reason": "..." }`), and

@@ -137,7 +137,12 @@ export async function runNodeTest(options, command) {
       arguments_: [],
     });
     testConsole.finish();
-    const run = readRun({ reportPath, result, runnerName: RUNNER_NAMES.node });
+    const run = readRun({
+      reportPath,
+      result,
+      runnerName: RUNNER_NAMES.node,
+      snapshot: options.snapshot,
+    });
     if (!run.failed) {
       await coverage.write();
     }
