@@ -8,6 +8,7 @@ const { cleanup, outcomes } = createScripts({
     'switched-off-test',
     'tautological-assert',
     'swallowed-exception',
+    'weak-assertion',
   ],
 });
 afterEach(cleanup);

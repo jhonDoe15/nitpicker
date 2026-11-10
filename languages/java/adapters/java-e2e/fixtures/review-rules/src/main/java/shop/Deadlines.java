@@ -27,7 +27,7 @@ public final class Deadlines {
     Future<String> future = pool.submit(work);
     try {
       return future.get(1, TimeUnit.SECONDS); // violation: timeout-abandons-operation
-    } catch (InterruptedException | ExecutionException | TimeoutException e) {
+    } catch (InterruptedException | ExecutionException | TimeoutException e) { // violation: SwallowedInterrupt
       return "failed";
     }
   }
