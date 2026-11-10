@@ -85,3 +85,11 @@ def largest(a, b, c):
 def log(lines, line):
     lines.append(line)
     return
+
+
+def same(value):
+    return value == value
+
+
+def either(kind):
+    return kind == "a" or kind == "b"

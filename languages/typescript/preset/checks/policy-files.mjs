@@ -1,22 +1,16 @@
+import { LOGIC_POLICY_FILES } from '../eslint-config/logic/logic-policy-files.mjs';
 import { ARCHITECTURE_CONFIG, POLICY_TYPESCRIPT_CONFIG } from '../dependency-graph/cruise.mjs';
 import { PROJECT_TOOL_FILES } from '../project-tools/project-config-files.mjs';
 
 export const JAVASCRIPT_PRESET_FILE = 'languages/javascript/preset/javascript-preset.mjs';
 
 export const POLICY_FILES = [
+  ...LOGIC_POLICY_FILES,
   'shared/test-timeouts/resolve.mjs',
   'shared/paths/glob.mjs',
   'shared/head-policy.mjs',
   'shared/policy.mjs',
   'shared/traversal.mjs',
-  'shared/logic/decide.mjs',
-  'shared/logic/propositional.mjs',
-  'shared/logic/sync/decide-sync.mjs',
-  'shared/logic/sync/decide-worker.mjs',
-  'languages/typescript/preset/eslint-plugin/rules/decided/facts.mjs',
-  'languages/typescript/preset/eslint-plugin/rules/decided/no-decided-condition.mjs',
-  'languages/typescript/preset/eslint-plugin/rules/decided/statement-flow.mjs',
-  'languages/typescript/preset/eslint-plugin/rules/decided/syntax.mjs',
   'shared/hygiene/migrations/migration-files.mjs',
   'languages/typescript/preset/layout.mjs',
   'languages/typescript/preset/head-policy.mjs',
@@ -69,18 +63,6 @@ export const POLICY_FILES = [
   'shared/rules/doc-comments/doc-comments.mjs',
   'languages/typescript/preset/eslint-plugin/rules/boundaries/no-handwritten-boundary-guard.mjs',
   'languages/typescript/preset/eslint-plugin/rules/control/no-self-recursion.mjs',
-  'languages/typescript/preset/eslint-plugin/rules/control/simpler-boolean-logic.mjs',
-  'languages/typescript/preset/eslint-plugin/rules/analysis/logic/estree-terms.mjs',
-  'shared/logic/normalize.mjs',
-  'shared/logic/print.mjs',
-  'shared/logic/terms.mjs',
-  'shared/logic/purity.mjs',
-  'shared/logic/rewrites/expressions.mjs',
-  'shared/logic/rewrites/ordering.mjs',
-  'shared/logic/rewrites/statements.mjs',
-  'shared/logic/simplify/negation-factoring.mjs',
-  'shared/logic/simplify/simpler-forms.mjs',
-  'shared/logic/simplify/simpler-rewrites.mjs',
   'languages/typescript/preset/eslint-plugin/rules/collections/accumulating-spread-messages.mjs',
   'languages/typescript/preset/eslint-plugin/rules/collections/no-accumulating-spread.mjs',
   'languages/typescript/preset/eslint-plugin/rules/collections/costly-forms/array-membership.mjs',
