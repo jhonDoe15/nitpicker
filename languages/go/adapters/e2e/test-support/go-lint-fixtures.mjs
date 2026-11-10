@@ -44,3 +44,75 @@ export const PROJECT_STATICCHECK = JSON.stringify({
   preset: 'go',
   tools: { staticcheck: { precedence: ['project'] } },
 });
+
+export const STOCK = `package shop
+
+import (
+	"context"
+	"io"
+	"os"
+
+	"example.com/shop/shop/stock"
+)
+
+func AtEnd(err error) bool {
+	return err == io.EOF
+}
+
+func Size(name string) (int64, error) {
+	info, err := os.Stat(name)
+	if err != nil {
+		return 0, nil
+	}
+	return info.Size(), nil
+}
+
+func Sync(ctx context.Context) error {
+	if err := ctx.Err(); err != nil {
+		return err
+	}
+	return stock.Refresh()
+}
+`;
+
+export const STOCK_TEST = `package shop
+
+import (
+	"context"
+	"testing"
+)
+
+func TestSize(t *testing.T) {
+	if size, err := Size("missing.txt"); size != 0 || err != nil {
+		t.Fatalf("missing file: %d, %v", size, err)
+	}
+	if size, err := Size("stock.go"); size == 0 || err != nil {
+		t.Fatalf("stock.go: %d, %v", size, err)
+	}
+}
+
+func TestSync(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	if err := Sync(ctx); err != nil {
+		t.Fatal(err)
+	}
+	cancel()
+	if Sync(ctx) == nil {
+		t.Fatal("a cancelled context syncs")
+	}
+}
+`;
+
+export const STOCK_REFRESH = `// Package stock refreshes the stock.
+package stock
+
+import "context"
+
+func Refresh() error {
+	return load(context.Background())
+}
+
+func load(ctx context.Context) error {
+	return ctx.Err()
+}
+`;
