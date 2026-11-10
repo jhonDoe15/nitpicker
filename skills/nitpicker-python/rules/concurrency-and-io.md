@@ -36,6 +36,9 @@ Part of the [nitpicker-python](../SKILL.md) skill. Write these forms from the st
   truth test on a queryset or `.all()` list, `.filter()`/`.where()` instead of a comprehension with an
   `if`, `any()` or `next()`, `.order_by()` instead of `sorted()`, and `.aggregate()`/`func.sum` instead
   of `sum()`, `max()` or `Counter` over the rows (`in-memory-query`).
+- Index every foreign key in the migration that adds it (Alembic `op.create_index`, or `index=True` on
+  the column), with an index or primary key that starts with the column. PostgreSQL does not create one
+  (`foreign-key-index`).
 - Join at most one collection into a query: `joinedload(Order.lines)` next to to-one relations, and
   `selectinload(Order.payments)` for the other collections (`multiple-collection-joins`).
 - Index every foreign key: `index=True` on a SQLAlchemy `mapped_column(ForeignKey(...))` or SQLModel
