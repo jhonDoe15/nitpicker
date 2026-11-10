@@ -22,7 +22,7 @@ const MYSQL_DATABASE_OPTIONS = new Set([
 ]);
 const SNIPPET_LENGTH = 80;
 const CURRENT_ROLES = new Set(['current_user', 'current_role', 'session_user']);
-const NAMED = String.raw`(?:"(?<quoted>[^"\n]+)"|\x60(?<ticked>[^\x60\n]+)\x60|(?<name>[A-Za-z_][\w$]*)(?![\w$(]))`;
+const NAMED = String.raw`(?:"(?<quoted>[^"\n]+)"|\x60(?<ticked>[^\x60\n]+)\x60|(?<name>[A-Z_][\w$]*)(?![\w$(]))`;
 const BLOCK_COMMENT = String.raw`/\*[\s\S]*?\*/`;
 const COMMENTS = [
   {
@@ -48,7 +48,7 @@ function nameOf(groups) {
 const FORMS = [
   {
     key: 'public-schema',
-    pattern: /(?<![\w$."])(?<quote>"?)public\k<quote>\s*\.\s*"?[A-Za-z_]/giu,
+    pattern: /(?<![\w$."])(?<quote>"?)public\k<quote>\s*\.\s*"?[A-Z_]/giu,
     accepts: () => true,
     skippedIn: ['drizzle-kit', 'atlas', 'pg_dump'],
     text: ({ file, count, line, snippet }) =>

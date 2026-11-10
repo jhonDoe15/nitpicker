@@ -48,6 +48,47 @@ describe('Go lint messages', () => {
       },
       'methods on the same type should have the same receiver name. Use one receiver name for every method of the type.',
     ],
+    [
+      {
+        tool: 'revive',
+        rule: 'identical-switch-branches',
+        message: '"switch" with identical branches (lines 22 and 24)',
+      },
+      '"switch" with identical branches. Merge the branches into one: `case a, b:` or `if a || b`.',
+    ],
+    [
+      {
+        tool: 'revive',
+        rule: 'identical-switch-conditions',
+        message: 'case clause at line 32 has the same condition',
+      },
+      'case clause has the same condition. Remove the repeated case; only the first one can run.',
+    ],
+    [
+      { tool: 'revive', rule: 'defer', message: 'prefer not to defer chains of function calls' },
+      'prefer not to defer chains of function calls. Keep the returned function and defer that: `stop := start(); defer stop()`.',
+    ],
+    [
+      {
+        tool: 'revive',
+        rule: 'package-directory-mismatch',
+        message:
+          'package name "api" does not match directory name "v2" or parent directory name "head"',
+      },
+      'package name "api" does not match directory name "v2". Name the package after its folder, or after the parent folder for a version folder such as `v2`.',
+    ],
+    [
+      { tool: 'revive', rule: 'defer', message: 'return in a defer function has no effect' },
+      'return in a defer function has no effect. Remove the return; a deferred function result is discarded.',
+    ],
+    [
+      {
+        tool: 'revive',
+        rule: 'unused-parameter',
+        message: "parameter 'text' seems to be unused, consider removing or renaming it as _",
+      },
+      "parameter 'text' seems to be unused, consider removing or renaming it as _.",
+    ],
   ])('names the allowed form for %j', (entry, message) => {
     expect(lintMessage(entry)).toBe(message);
   });
