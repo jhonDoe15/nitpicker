@@ -159,6 +159,22 @@ export const testFailureMessageCases = [
     allowed: 'relations: { customer: true }',
   },
   {
+    name: 'unordered page names the order on a unique key',
+    config: productionRulesConfig,
+    filename: 'src/assets/asset.repository.ts',
+    banned:
+      "import { Kysely } from 'kysely';\nexport const list = (db: Kysely<DB>) => db.selectFrom('asset').selectAll().limit(20).execute();",
+    allowed: ".orderBy('createdAt', 'desc').orderBy('id')",
+  },
+  {
+    name: 'runtime array in an in list names the any() parameter',
+    config: productionRulesConfig,
+    filename: 'src/assets/asset.repository.ts',
+    banned:
+      "import { Kysely } from 'kysely';\nexport const byIds = (db: Kysely<DB>, ids: string[]) => db.selectFrom('asset').selectAll().where('id', 'in', ids).execute();",
+    allowed: '::uuid[])',
+  },
+  {
     name: 'many-to-many cascade remove names the persist-only cascade',
     config: productionRulesConfig,
     filename: 'src/posts/post.entity.ts',

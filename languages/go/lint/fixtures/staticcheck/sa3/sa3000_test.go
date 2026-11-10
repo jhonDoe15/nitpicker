@@ -1,12 +1,9 @@
 package sa3
 
-import (
-	"os"
-	"testing"
-)
+import "testing"
 
 func TestMain(m *testing.M) {
-	os.Exit(m.Run())
+	m.Run()
 }
 
 func TestAnswer(t *testing.T) {

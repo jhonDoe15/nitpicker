@@ -57,7 +57,7 @@ const EVALUATORS = {
   'duplicate-definition': ({ modules, context, options }) =>
     duplicateDefinitionFindings(
       options.duplicatesAcrossPackages === true ? acrossPackages(modules) : modules,
-      context,
+      { ...context, privateFix: options.privateCopyFix },
     ),
   'exported-name-collision': ({ facts, modules, context, options }) =>
     exportedNameCollisionFindings(modules, facts.imports, {

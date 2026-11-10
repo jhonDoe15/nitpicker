@@ -2,6 +2,6 @@ package stylecheck
 
 import "time"
 
-var TimeoutMs time.Duration = 5 * time.Second // want ST1011
+var TimeoutMs time.Duration = 5 * time.Second // want ST1011 var-declaration
 
 var Timeout = 5 * time.Second

@@ -13,7 +13,7 @@ const HEADER = new RegExp(
   [
     String.raw`(?<![\w.])(?:(fun)\s+(?:<[^>]*>\s*)?(?:[\w.<>?]+\.)?([A-Za-z_]\w*)`,
     String.raw`|(class)\s+([A-Za-z_]\w*)(?:\s*<[^>]*>)?(?:\s+(?:private|internal|protected|public))?(?:\s+constructor)?`,
-    String.raw`|(constructor)())\s*\(`,
+    String.raw`|(constructor))\s*\(`,
   ].join(''),
   'g',
 );

@@ -55,7 +55,7 @@ function iniSection(text, name) {
   return section === undefined ? undefined : Object.fromEntries(section);
 }
 
-const SHELL_WORD = /(?:[^\s'"\\]+|\\[\s\S]?|"(?:[^"\\]|\\[\s\S])*(?:"|$)|'[^']*(?:'|$))+/gu;
+const SHELL_WORD = /(?:[^\s'"\\]|\\[\s\S]?|"(?:[^"\\]|\\[\s\S])*(?:"|$)|'[^']*(?:'|$))+/gu;
 const SHELL_PIECE = /"((?:[^"\\]|\\[\s\S])*)"?|'([^']*)'?|\\([\s\S]?)/gu;
 
 function unquoted(...[, double, single, escaped]) {
