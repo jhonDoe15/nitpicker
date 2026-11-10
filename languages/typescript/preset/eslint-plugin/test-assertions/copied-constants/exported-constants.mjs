@@ -152,14 +152,15 @@ function readModule(file) {
     scriptKindOf(file),
   );
   const javascript = JAVASCRIPT_FILE.test(file);
-  const constantsOf = (statement) => localConstants(statement, javascript);
-  const locals = new Map(sourceFile.statements.flatMap(constantsOf));
+  const locals = new Map(
+    sourceFile.statements.flatMap((statement) => localConstants(statement, javascript)),
+  );
   const exportStatements = sourceFile.statements.filter(isValueExport);
   return {
     constants: new Map([
       ...sourceFile.statements
         .filter(isExported)
-        .flatMap(constantsOf)
+        .flatMap((statement) => localConstants(statement, javascript))
         .filter(([name]) => isConstantPath(name)),
       ...listedConstants(exportStatements, locals),
     ]),
