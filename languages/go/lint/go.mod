@@ -6,13 +6,20 @@ require (
 	codeberg.org/polyfloyd/go-errorlint v1.9.0
 	github.com/Antonboom/errname v1.1.2
 	github.com/Antonboom/nilnil v1.1.2
+	github.com/ashanbrown/makezero/v2 v2.2.1
+	github.com/charithe/durationcheck v0.0.11
+	github.com/curioswitch/go-reassign v0.3.0
+	github.com/golangci/unconvert v0.0.0-20250410112200-a129a6e6413e
 	github.com/gostaticanalysis/comment v1.5.0
 	github.com/gostaticanalysis/nilerr v0.1.2
 	github.com/jingyugao/rowserrcheck v1.1.1
 	github.com/kisielk/errcheck v1.30.0
 	github.com/kkHAIKE/contextcheck v1.1.6
 	github.com/mgechev/revive v1.17.1
+	github.com/nishanths/exhaustive v0.17.1
+	github.com/raeperd/recvcheck v0.3.2
 	github.com/ryanrolds/sqlclosecheck v0.6.0
+	github.com/sanposhiho/wastedassign/v2 v2.1.0
 	github.com/securego/gosec/v2 v2.30.0
 	github.com/sivchari/containedctx v1.0.3
 	github.com/sonatard/noctx v0.5.1
@@ -36,5 +43,6 @@ require (
 	golang.org/x/mod v0.42.0 // indirect
 	golang.org/x/sync v0.24.0 // indirect
 	golang.org/x/sys v0.49.0 // indirect
+	golang.org/x/text v0.43.0 // indirect
 	golang.org/x/tools/go/packages/packagestest v0.1.1-deprecated // indirect
 )

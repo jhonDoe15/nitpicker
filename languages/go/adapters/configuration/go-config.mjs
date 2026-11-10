@@ -23,6 +23,13 @@ const GO_CATALOG_TOOLS = [
   'contextcheck',
   'containedctx',
   'fatcontext',
+  'exhaustive',
+  'recvcheck',
+  'durationcheck',
+  'makezero',
+  'reassign',
+  'unconvert',
+  'wastedassign',
 ];
 export const GO_LINTER_TOOLS = [
   'vet',

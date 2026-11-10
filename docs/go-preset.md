@@ -175,6 +175,16 @@ run that writes a coverage profile, so every test runs and its time is measured.
   its budget is run again alone (`-run '^Name$' -count=1`) and the fastest time counts, so a busy
   machine does not fail it. A test is "changed" when its function's text differs from the merge
   base.
+- **Test output** (`test-runtime/test-console-output`): a line a test prints that the base run did
+  not print fails, on the test's file, compared as text with numbers and paths normalized (see
+  `testConsole.allow` to accept a third-party message). `go test` writes a test's stdout and
+  stderr into one stream, so the level decides what counts, in place of the stream: a line at
+  `WARN` or `ERROR` level or above (`level=WARN`, `"level":"error"`, a `WARN` or `ERROR` word, a
+  klog `W` or `E` line), and a standard `log` line (`2026/11/10 10:00:00 ...`, which writes to
+  stderr) unless it carries a lower level (`INFO`, `[INFO]`, `info:`). A plain `fmt.Println` does
+  not count, as stdout does not in the other presets. `t.Log` and `t.Error` lines, `=== RUN` and `--- PASS` lines and
+  race reports (the race detector has its own finding) never count. Output outside any test
+  (`TestMain`, `init`) is reported on the package folder.
 
 ## Structure limits
 
@@ -282,7 +292,15 @@ message does not already name it, and by its exception entry:
   - contexts: contextcheck (a function with a context passes it on instead of calling one that
     makes a new one; follows calls across the module's packages, not into dependencies),
     containedctx (no context in a struct field), fatcontext (no context derived from itself in a
-    loop).
+    loop);
+  - types and values: exhaustive (a switch on an enum without a `default` case lists every
+    constant), recvcheck (a type's methods all have pointer or all have value receivers, apart
+    from `String`, `Error`, `Format`, `Value` and the `Marshal...` methods, which take a value so
+    that values and pointers both implement the interface),
+    durationcheck (no duration times duration), makezero (no append to a slice made with a
+    length), reassign (no assigning another package's `Err...` or `EOF` variables), unconvert (no
+    conversion to the type a value already has), wastedassign (no value assigned and then
+    assigned again unread).
 
 - **gosec**: every rule, the AST rules (G1xx to G6xx) and the SSA and taint analyzers (G113, G115,
   G118 to G124, G407, G408, G602, G701 to G710), except the five in the table below, on test
@@ -301,8 +319,9 @@ The linters skip generated files (`// Code generated ... DO NOT EDIT.`), as stat
 package of only generated files needs no package comment. An analyzer that fails on a package that
 builds is a `go/go-lint-failed` tool error, never a silent pass. `//lint:ignore`, `//nolint`,
 `//revive:disable` and `#nosec` comments do nothing, including the ones nilerr and contextcheck read
-themselves, and a `//bodyclose:handled` directive is a finding of its own: the only way past a
-finding is an `exceptions` entry a person accepts.
+themselves, exhaustive's `//exhaustive:ignore` and makezero's `// nozero`, and a
+`//bodyclose:handled` directive is a finding of its own: the only way past a finding is an
+`exceptions` entry a person accepts.
 
 **Off, with the reason.** Each of these reports the same problem as a check that runs:
 
@@ -338,11 +357,13 @@ finding is an `exceptions` entry a person accepts.
 
 **Catalog linters considered and left out**, with the reason:
 
-| Linter                    | Reason                                                                                                                               |
-| ------------------------- | ------------------------------------------------------------------------------------------------------------------------------------ |
-| err113                    | flags every `errors.New` inside a function, though a one-off error nobody compares is fine; its `==` check duplicates errorlint      |
-| wrapcheck                 | flags every error returned from another package unwrapped, the module's own included; it needs per-project ignore lists to be usable |
-| nilnil `-detect-opposite` | a value with a non-nil error is the `io.Reader` contract (`n, err`), not a second form                                               |
+| Linter                            | Reason                                                                                                                               |
+| --------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------ |
+| err113                            | flags every `errors.New` inside a function, though a one-off error nobody compares is fine; its `==` check duplicates errorlint      |
+| wrapcheck                         | flags every error returned from another package unwrapped, the module's own included; it needs per-project ignore lists to be usable |
+| forcetypeassert                   | errcheck `-assert` reports the same one-value type assertions                                                                        |
+| exhaustive maps and type switches | a lookup map keyed by an enum is often partial on purpose, and a type switch over an interface cannot know every implementation      |
+| nilnil `-detect-opposite`         | a value with a non-nil error is the `io.Reader` contract (`n, err`), not a second form                                               |
 
 **Overlaps on one line.** When two checks report the same line, the more specific one stays:
 
@@ -375,6 +396,7 @@ finding is an `exceptions` entry a person accepts.
 | sqlclosecheck (Close not deferred)   | errcheck                                         |
 | ST1012 (sentinel error names)        | errname                                          |
 | SA1005 (`exec.Command` shell line)   | noctx                                            |
+| SA4006, SA4010                       | wastedassign                                     |
 
 Those two compare the column too, because one line can hold a second, different problem
 (`found == true || ready && false`). revive keeps the rules staticcheck lacks in the same areas: `bool-literal-in-expr` also flags
@@ -433,6 +455,15 @@ often declare their own small type or constant of one name. Files with a build c
 `exported-name-collision` does not apply: Go code names another package's export through the
 package (`billing.Total`), so two exports with one name never meet unqualified, and a file that dot
 imports two packages exporting one name does not compile.
+
+**`doc-comment-content`.** A doc comment on a top-level function, method, type, constant or
+variable, or on a struct field or interface method, fails when it only restates its name
+(`// Close closes.`) or its prose runs past 5 lines. The text is read with `go/doc/comment`:
+directives (`//go:generate`, `//export`, `//nolint:...`) are not part of it, list items and
+headings count as prose, and an indented code block or a `Deprecated:` paragraph is not counted
+and says more, so a comment with one is never reported as restating its name. `_test.go` and
+generated files are not read, and neither is the package comment. The exception takes it as
+printed, `facts/doc-comment-content`.
 
 ## Duplicates
 
@@ -512,6 +543,7 @@ add a test.
 | `tools.staticcheck.precedence`                           | read the project's `staticcheck.conf` files                  |
 | `tools.jscpd.precedence`                                 | read the project's `.jscpd.json` for the duplicate scan      |
 | `layout.featureRoots`, `layout.sharedRoots`              | the feature layout `shared-used-by-one-feature` reads        |
+| `testConsole.allow`                                      | test output messages `test-console-output` accepts           |
 | `duplicates.skippedFolders`                              | folder names the duplicate scan skips                        |
 | `thresholds`, `exclude`, `exceptions`, `legacyInventory` | shared with every preset                                     |
 
@@ -541,7 +573,7 @@ there are no source roots to set) are config errors with `"preset": "go"`, each 
 | GO3 | One-way rules (#416)                            | nitpicker's own analyzers for the forms Go still leaves open (constructors, receivers, loops), each message naming the allowed form. Error comparison and wrapping (errorlint, nilerr) and contexts in structs, loops and new contexts (containedctx, fatcontext, contextcheck) are covered by the catalog linters. |
 | GO4 | Coverage, CRAP and mutation (#417)              | changed-branch coverage and CRAP from the coverage profile; mutation testing.                                                                                                                                                                                                                                       |
 | GO5 | Duplicates, coupling, dead code, modules (#418) | Done: see [Facts](#facts) through [Module requirements](#module-requirements).                                                                                                                                                                                                                                      |
-| GO6 | Shared guards and test honesty (#419)           | Started: `duplicate-definition` and `sibling-copy-edit` (see [Facts](#facts)). Next: doc comments and test output, then the guards the other presets share (secrets in code, path joins, subprocess timeouts, test assertions) after GO3.                                                                           |
+| GO6 | Shared guards and test honesty (#419)           | Started: `duplicate-definition`, `sibling-copy-edit` and `doc-comment-content` (see [Facts](#facts)) and `test-console-output` (see [Tests](#tests)). Next: the guards the other presets share (secrets in code, path joins, subprocess timeouts, test assertions) after GO3.                                       |
 | GO7 | Race detector (#433)                            | `go test -race`, with each race a finding keyed by its stacks.                                                                                                                                                                                                                                                      |
 
 ## Known limits
@@ -556,5 +588,8 @@ there are no source roots to set) are config errors with `"preset": "go"`, each 
   on an older toolchain downloads it once with `GOTOOLCHAIN=auto`.
 - gosec's SQL rules G201 and G202 match a query built in an assignment or an expression statement,
   not one built inside a `return` statement; G701 still reports request input that reaches the query.
+- The linters type-check for the host's `GOOS` and `GOARCH`, so unconvert can report a conversion
+  that is needed on another platform (a `syscall.Stat_t` field that is `int64` on linux/amd64 but
+  not on 32-bit targets); such a file takes an `exceptions` entry.
 - The linters run on the whole module for both snapshots; a finding is new when its message and
   line text are new, as for vet.
