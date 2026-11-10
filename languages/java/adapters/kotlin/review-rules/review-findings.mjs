@@ -72,6 +72,8 @@ function honestyFindings({ manifest, projectRoot, modules = [] }, finding) {
   });
 }
 
+const COLLECTION_RULES = [recursiveMapUpdateFindings, streamedRowsFindings, reusableObjectFindings];
+
 export function readKotlinReviewFindings(context) {
   const { manifest, projectRoot, reportRoot } = context;
   const { own, projectFiles, javaRoots, build } = projectView(context);
@@ -109,9 +111,7 @@ export function readKotlinReviewFindings(context) {
     ...validationTargetFindings(own, { finding }),
     ...loadEffectFindings(own, { finding, declaredIn: projectFiles }),
     ...unboundedPoolFindings(own, { finding }),
-    ...recursiveMapUpdateFindings(own, { finding, declaredIn: projectFiles }),
-    ...streamedRowsFindings(own, { finding, declaredIn: projectFiles }),
-    ...reusableObjectFindings(own, { finding, declaredIn: projectFiles }),
+    ...COLLECTION_RULES.flatMap((rule) => rule(own, { finding, declaredIn: projectFiles })),
     ...kotlinDesignFindings(reportRoot, { environment: context.environment }),
     ...generatedMemberFindings(own, { finding, declaredIn: projectFiles }),
     ...unusedOptionFindings(own, {
