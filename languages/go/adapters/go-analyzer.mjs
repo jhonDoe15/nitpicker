@@ -80,6 +80,11 @@ export function createGoAnalyzer(settings = {}) {
       'race',
       'test-runtime',
       'structure',
+      'duplicates',
+      'coupling',
+      'facts',
+      'deadcode',
+      'dependencies',
     ],
     timeoutMs: ANALYZER_TIMEOUT_MS,
     createInvocation: ({ projectRoot, toolRoot }) => ({

@@ -1,4 +1,6 @@
 import {
+  GO_DUPLICATE_GLOBS,
+  GO_SKIPPED_FOLDERS,
   JVM_SKIPPED_FOLDERS,
   PYTHON_SKIPPED_FOLDERS,
   SCRIPT_SKIPPED_FOLDERS,
@@ -10,6 +12,9 @@ import { NON_PRODUCTION_GLOBS } from '../../../languages/python/adapters/analysi
 function permanentGlobs(preset) {
   if (preset === 'java' || preset === 'kotlin') {
     return [];
+  }
+  if (preset === 'go') {
+    return GO_DUPLICATE_GLOBS;
   }
   const defaults =
     preset === 'python'
@@ -28,6 +33,8 @@ export function duplicateFolderExclusions(config, preset = config.preset) {
     globs = skippedFolderGlobs(JVM_SKIPPED_FOLDERS);
   } else if (preset === 'python') {
     globs = skippedFolderGlobs(PYTHON_SKIPPED_FOLDERS);
+  } else if (preset === 'go') {
+    globs = skippedFolderGlobs(GO_SKIPPED_FOLDERS);
   } else {
     globs = SCRIPT_SKIPPED_FOLDERS.map((folder) => `${folder}/**`);
   }
