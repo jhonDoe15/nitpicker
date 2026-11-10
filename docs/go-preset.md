@@ -299,14 +299,17 @@ a whole file is never judged, only its declarations. A function marked `//export
 `//go:linkname` is an entry point. Unexported test-only code is left to `deadcode`.
 
 **Copies across packages.** The packages of a module count as one package, as Python's modules do:
-two files cannot define one top-level name in the same Go package, so a copy is always in another
-package. `duplicate-definition` fails a used function, type or literal constant with the same name
-and the same code in two files (one too small for the duplicate scan below), and asks to keep one in
-a package and import it. `sibling-copy-edit` fails a function of 20 tokens or more that a change
-edits away from its unedited copy in another package (at least 80% the same tokens before and
-after): edit both, or move them into one. `exported-name-collision` does not apply: Go code names
-another package's export through the package (`billing.Total`), so two exports with one name never
-meet unqualified.
+outside build-constrained files, two files cannot define one top-level name in the same Go package,
+so a copy sits in another package. `duplicate-definition` fails a used top-level function with the
+same name and the same code in two files (one too small for the duplicate scan below), and asks to
+keep one in a package and import it. `sibling-copy-edit` fails a function of 20 tokens or more that
+a change edits away from its unedited copy in another package (at least 80% the same tokens before
+and after): edit both, or move them into one. Types and constants are not compared, since packages
+often declare their own small type or constant of one name. Files with a build constraint
+(`//go:build`, `_linux.go`) are left out: they are platform variants of one function, not copies.
+`exported-name-collision` does not apply: Go code names another package's export through the
+package (`billing.Total`), so two exports with one name never meet unqualified, and a file that dot
+imports two packages exporting one name does not compile.
 
 ## Duplicates
 
