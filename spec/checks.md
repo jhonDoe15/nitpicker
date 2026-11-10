@@ -186,6 +186,17 @@ sources, with or without Spring; the clients Spring builds stay with `pmd/Spring
 `pmd/SpringHttpClientPerCall`) and `kotlin-source/HttpWithoutTimeout` in the Kotlin preset; each preset's
 document lists the clients it knows.
 
+Configuration reads: the process environment and system properties are read once, in the composition root,
+and passed in. The TypeScript presets report `process.env` outside it
+(`nitpicker/no-process-access-outside-composition-root`), the Python preset `os.environ` and `os.getenv`
+(`process-env-access`). The Java preset reports `System.getenv`, `System.getProperty` of an application key,
+`Integer.getInteger`, `Long.getLong` and `Boolean.getBoolean` in main sources outside the file with `main`, a
+dependency-injection module or factory (Guice, Dagger, CDI, Micronaut, Quarkus) or a Spring configuration class
+as `pmd/ConfigurationReadOutsideCompositionRoot`, with or without Spring; in a Spring project
+`pmd/SpringTypedConfiguration` keeps the reads both report. The Kotlin preset reports the same reads as
+`kotlin-source/ConfigurationReadOutsideCompositionRoot`, except `System.getenv`, which is detekt's
+`ForbiddenMethodCall` there, with the same files allowed.
+
 Query order: `nitpicker/no-unordered-query` (strict preset, production source) reports a query that takes a
 page of rows (`limit`, `offset`, `take`, `skip`, a cursor, or SQL `LIMIT`, `OFFSET` or `FETCH`) or builds an
 `array_agg`/`json_agg` list with no ORDER BY, so which rows come back can change between runs. It reads Kysely,
