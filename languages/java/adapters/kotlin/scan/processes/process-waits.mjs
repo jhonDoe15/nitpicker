@@ -1,5 +1,5 @@
 import { chainOf } from '../../../../../../shared/traversal.mjs';
-import { closingIndex, enclosingOpen, lineStart } from '../kotlin-source.mjs';
+import { closingIndex, enclosingOpen, lineAt, lineStart } from '../kotlin-source.mjs';
 
 const UNTIMED_WAIT =
   /\??\.\s*waitFor\s*\(\s*\)|\.\s*onExit\s*\(\s*\)\s*\.\s*(?:get|join)\s*\(\s*\)/g;
@@ -58,11 +58,6 @@ function functionScope(code, offset) {
     .slice(0, open === undefined ? undefined : opens.indexOf(open))
     .some((candidate) => !CONTROL_HEADER.test(code.slice(headerStart(code, candidate), candidate)));
   return { start, end, text: code.slice(start, end), inLambda };
-}
-
-function lineAt(code, start) {
-  const end = code.indexOf('\n', start);
-  return code.slice(start, end === -1 ? undefined : end);
 }
 
 function continuesChain(code, start) {

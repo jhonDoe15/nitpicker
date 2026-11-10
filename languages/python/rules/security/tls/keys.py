@@ -57,7 +57,7 @@ INSECURE_PARAMETERS = (
     r"|sslmode=no-verify"
 )
 URI_TEXT = re.compile(rf"[?&](?:{INSECURE_PARAMETERS})(?:&|$|#)", re.I)
-FLAG_TEXT = re.compile(r"^(?:--)?ignore-certificate-errors(?![-\w])(?:=\S*)?$")
+FLAG_TEXT = re.compile(r"^(?:--)?ignore-certificate-errors(?:=\S*)?$")
 MAX_DEPTH = 4
 
 
