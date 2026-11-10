@@ -94,6 +94,7 @@ export const strictEslintRuleIds = [
   'nitpicker/timeout-abandons-operation',
   'nitpicker/unbounded-fan-out',
   'nitpicker/unbounded-reactive-fan-out',
+  'nitpicker/untested-round-trip',
   'no-duplicate-imports',
   'no-empty',
   'no-eval',
