@@ -10,7 +10,7 @@ const JEST_LAUNCHERS = new Set(['react-scripts', 'craco']);
 const TS_MOCHA_FLAGS = { '--paths': 'TS_CONFIG_PATHS', '--type-check': 'TS_TYPE_CHECK' };
 const TS_MOCHA_PROJECT = new Set(['-p', '--project']);
 
-const TOKEN = /(?<separator>&&|\|\||[;|&])|(?<word>(?:[^\s'"&;|]+|'[^']*'|"[^"]*")+)/gu;
+const TOKEN = /(?<separator>&&|\|\||[;|&])|(?<word>(?:[^\s'"&;|]|'[^']*'|"[^"]*")+)/gu;
 const QUOTED = /'(?<single>[^']*)'|"(?<double>[^"]*)"/gu;
 
 function unquote(word) {
