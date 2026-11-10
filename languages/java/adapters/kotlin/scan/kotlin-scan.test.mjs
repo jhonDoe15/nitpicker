@@ -1,11 +1,16 @@
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
+import {
+  nestedCheckout,
+  useGitCheckouts,
+} from '../../../../../core/diff/git/test-support/git-checkout.mjs';
 import { afterEach, describe, expect, it } from 'vitest';
 import { withFrameworkAllowances } from './framework-allowances.mjs';
 import { KOTLIN_SOURCE_RULES, readKotlinSourceFindings } from './kotlin-scan.mjs';
 
 const roots = [];
+const { gitCheckout } = useGitCheckouts();
 
 afterEach(() => {
   for (const root of roots.splice(0)) {
@@ -153,6 +158,7 @@ describe('readKotlinSourceFindings', () => {
       [
         'BooleanFlagParameter',
         'CatchOnlyLogsOrReturnsDefault',
+        'ChildCoroutineOutlivesResource',
         'CommentedOutCode',
         'CompatibilityShim',
         'CredentialLiteral',
@@ -174,6 +180,7 @@ describe('readKotlinSourceFindings', () => {
         'LogStringConcatenation',
         'MutableModuleState',
         'MutationIgnoreMarker',
+        'OperandSlip',
         'ParameterMutation',
         'PlainTextRegex',
         'ProcessWaitWithoutTimeout',
@@ -183,6 +190,7 @@ describe('readKotlinSourceFindings', () => {
         'SortForExtreme',
         'SqlStringBuilding',
         'StandardStreamOutsideEntryPoint',
+        'SuspendFunInFinallySection',
         'TestClassWithoutTestCases',
         'TestHelperInSource',
         'TlsVerificationOff',
@@ -289,5 +297,66 @@ describe('withFrameworkAllowances', () => {
     });
 
     expect(kept).toEqual(findings.slice(3));
+  });
+
+  it('keeps one finding for a Thread.sleep in a suspend function and drops the repeat of the forbidden call', () => {
+    const at = (rule, message, line) => ({
+      tool: 'detekt',
+      rule,
+      path: 'src/main/kotlin/demo/Shop.kt',
+      message,
+      location: { line },
+    });
+    const sleep = at(
+      'detekt.coroutines.SleepInsteadOfDelay',
+      'This use of Thread.sleep() inside a suspend function should be replaced by delay().',
+      4,
+    );
+    const forbidden = (line) =>
+      at(
+        'detekt.style.ForbiddenMethodCall',
+        'The method `java.lang.Thread.sleep` has been forbidden: Do not sleep in production code.',
+        line,
+      );
+
+    expect(
+      withFrameworkAllowances([sleep, forbidden(4), forbidden(9)], { projectRoot: root() }),
+    ).toEqual([sleep, forbidden(9)]);
+  });
+
+  it('keeps the dispatcher injection to main sources', () => {
+    const dispatcher = (file) => ({
+      tool: 'detekt',
+      rule: 'detekt.coroutines.InjectDispatcher',
+      path: file,
+      message: 'Dispatcher IO is used without dependency injection.',
+      location: { line: 1 },
+    });
+    const findings = [
+      dispatcher('src/test/kotlin/demo/ShopTest.kt'),
+      dispatcher('src/main/kotlin/Shop.kt'),
+    ];
+
+    expect(
+      withFrameworkAllowances(findings, { projectRoot: root(), testRoots: ['src/test/kotlin'] }),
+    ).toEqual(findings.slice(1));
+  });
+});
+
+describe('readKotlinSourceFindings in a Git checkout', () => {
+  it('reads the files of the checkout, not ignored folders or nested checkouts', () => {
+    const state = 'package demo\n\nvar a = 0\n';
+    const root = gitCheckout(
+      {
+        'src/main/kotlin/demo/State.kt': state,
+        'src/main/kotlin/gen/Gen.kt': state,
+        ...nestedCheckout('src/main/kotlin/agent', { 'Other.kt': state }),
+      },
+      ['src/main/kotlin/gen/'],
+    );
+
+    expect(readKotlinSourceFindings(root, manifest).map(({ path: file }) => file)).toEqual([
+      'src/main/kotlin/demo/State.kt',
+    ]);
   });
 });
