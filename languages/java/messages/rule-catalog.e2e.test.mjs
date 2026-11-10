@@ -21,6 +21,7 @@ const RULE_FILES = [
 ];
 const EXTRA_PMD_RULES = [
   'AvoidCatchingGenericException',
+  'SwallowedInterrupt',
   'SimplifyBooleanReturns',
   'SimplifyBooleanExpressions',
   'SimplifiedTernary',
