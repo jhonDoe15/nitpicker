@@ -30,6 +30,10 @@ than the others, and this skill teaches its rules before an agent writes Go.
   [`golang.org/x/tools` analysis passes](https://pkg.go.dev/golang.org/x/tools/go/analysis/passes),
   including [modernize](https://pkg.go.dev/golang.org/x/tools/go/analysis/passes/modernize)
   (BSD-3-Clause): the lint program, run directly instead of through golangci-lint.
+- [revive](https://revive.run/r) (MIT), in the same program through its library. It links
+  [hashicorp/go-version](https://github.com/hashicorp/go-version) (MPL-2.0, weak copyleft) for
+  Go version checks; nitpicker uses it unmodified and does not ship it (the lint program is built
+  from `go.mod` on the user's machine), which the license policy allows for unmodified tools.
 
 ## Rules and their reasoning
 
@@ -106,6 +110,18 @@ than the others, and this skill teaches its rules before an agent writes Go.
   the package folder instead.
 - **`staticcheck.conf` only on opt-in.** A project config could switch checks off silently, so it
   is read only when the project opts in, and then every such file is policy.
+- **revive with one setting per style rule.** revive's `enforce-*` rules exist to pick one form,
+  so each gets the setting that matches the rest of the preset: literals for empty maps and
+  slices (as staticcheck's own fixes write them), grouped parameter types (as gofumpt writes
+  them), `default` last. Its in-code `//revive:disable` comments are blanked before revive reads
+  the file, so they suppress nothing, the same contract as `//nolint`. Rules that duplicate a
+  check that already runs are off with the check named, and where both report the same line the
+  staticcheck finding stays; revive keeps the cases staticcheck misses.
+- **revive's typed rules see the whole program.** revive's command line type-checks each package
+  alone with the toolchain's export data, which fails for any import outside the standard library,
+  and its typed rules then report nothing for the whole package. The lint program hands revive the
+  types from its own package load instead, so those rules work in real modules; a fixture that
+  imports a sibling package keeps it that way.
 - **A fixture for every check.** Each enabled check has a failing line and the allowed form in
   `languages/go/lint/fixtures`; the harness fails on a missing or unexpected report, so a tool
   upgrade that changes what a check reports is caught before release.
@@ -126,6 +142,12 @@ than the others, and this skill teaches its rules before an agent writes Go.
   an outer `err`, which would push code away from Go's own convention.
 - **vet `fieldalignment` and `atomicalign`.** Field order for memory layout is a performance
   choice, not a second way to write the same code; SA1027 still catches misaligned 64-bit atomics.
+- **revive rules that need a project's own input or are noisy.** `add-constant` flags every numeric
+  literal; `banned-characters`, `file-header`, `imports-blocklist`, `string-format` and
+  `comments-density` need lists or thresholds only a project can set; `confusing-naming` reports
+  whichever of two names it reads last, so its finding moves between runs; `modifies-parameter`
+  and `optimize-operands-order` never reach revive's confidence floor; `unsecure-url-scheme` flags
+  XML namespaces and similar identifiers. The size rules are left to the shared limits.
 - **Holding interfaces to the method limit.** Interface size is better judged by a linter that
   knows where the interface is used.
 
