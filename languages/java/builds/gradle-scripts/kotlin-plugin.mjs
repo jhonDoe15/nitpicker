@@ -3,15 +3,21 @@ import path from 'node:path';
 import { createRequire } from 'node:module';
 import { filesUnder, pathInside } from '../../../../shared/filesystem.mjs';
 
-const KOTLIN_JVM_PLUGIN = 'org.jetbrains.kotlin.jvm';
 export const BUILD_LOGIC_FOLDERS = ['buildSrc', 'build-logic'];
-const PLUGIN_IDS = new Set([KOTLIN_JVM_PLUGIN, 'kotlin']);
+const PLUGIN_IDS = new Set([
+  'org.jetbrains.kotlin.jvm',
+  'org.jetbrains.kotlin.multiplatform',
+  'org.jetbrains.kotlin.android',
+  'kotlin',
+  'kotlin-multiplatform',
+  'kotlin-android',
+]);
 const SKIPPED_FOLDERS = new Set(['build', 'node_modules', 'out', 'target']);
 const BUILD_SCRIPT = /\.gradle(?:\.kts)?$/u;
 const SETTINGS_SCRIPT = /^settings\.gradle(?:\.kts)?$/u;
 const CONVENTION_SOURCE = /\.kt$/u;
 const DEFAULT_CATALOG = { name: 'libs', file: 'gradle/libs.versions.toml' };
-const KOTLIN_JVM_ACCESSOR = /\bkotlin\s*\(\s*["']jvm["']\s*\)/u;
+const KOTLIN_ACCESSOR = /\bkotlin\s*\(\s*["'](?:jvm|multiplatform|android)["']\s*\)/u;
 const PLUGIN_BY_ID = /\bid(?:\s*\(\s*|\s+)["'](?<id>[\w.-]+)["']/gu;
 const PLUGIN_BY_APPLY = /\bapply(?:\s*\(\s*|\s+)(?:plugin\s*[:=]\s*)?["'](?<id>[\w.-]+)["']/gu;
 const PLUGIN_BY_ALIAS = /\balias(?:\s*\(\s*|\s+)(?<catalog>\w+)\.plugins\.(?<accessor>[\w.]+)/gu;
@@ -93,7 +99,7 @@ function appliesOnLine(line, aliases) {
     ({ groups }) => `${groups.catalog}.${groups.accessor}`,
   );
   return (
-    KOTLIN_JVM_ACCESSOR.test(line) ||
+    KOTLIN_ACCESSOR.test(line) ||
     ids.some((id) => PLUGIN_IDS.has(id)) ||
     references.some((reference) => aliases.has(reference))
   );
