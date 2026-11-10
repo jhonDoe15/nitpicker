@@ -9,8 +9,7 @@ import { kotlinFormatterOf, mavenKotlinFacts } from '../kotlin/kotlin-tools.mjs'
 import { featureFaceMatcher } from '../spring-arch/contract-types.mjs';
 import { springRolesFact } from '../spring-arch/spring-roles.mjs';
 
-const BUILD_FILE =
-  /(?:^|\/)(?:pom\.xml|[^/]+\.gradle(?:\.kts)?|libs\.versions\.toml|[^/]+\.versions\.toml)$/u;
+const BUILD_FILE = /(?:^|\/)(?:pom\.xml|[^/]+\.gradle(?:\.kts)?|[^/]+\.versions\.toml)$/u;
 const SPRING = /org\.springframework\b/u;
 const MAIN_SOURCE = /(?:^|\/)src\/main\/(?:java|kotlin)\/.+\.(?:java|kt)$/u;
 const COMMENTS = /\/\*[\s\S]*?\*\/|<!--[\s\S]*?-->|(?:^|[ \t])(?:\/\/|#)[^\n]*/gmu;

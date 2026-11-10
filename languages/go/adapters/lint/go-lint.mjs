@@ -7,7 +7,7 @@ import { lintMessage, lintRule } from './lint-rules.mjs';
 
 const LINT_REPORT = 'lint.json';
 const PROJECT_CONFIG_FLAG = '-project-staticcheck-config';
-const PACKAGE_RULES = new Set(['ST1000']);
+const PACKAGE_RULES = new Set(['ST1000', 'package-naming']);
 
 function lintArguments(context) {
   const tags = context.settings.buildTags ?? [];

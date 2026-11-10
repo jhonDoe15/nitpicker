@@ -112,7 +112,7 @@ function record(state, type, data) {
   state.pending.push(...lifted, ...own);
 }
 
-const ERROR_LINE = /^(?:\w+)?Error\b/u;
+const ERROR_LINE = /^\w*Error\b/u;
 
 function loadFailureMessage(state) {
   const errorLine = state.stderr

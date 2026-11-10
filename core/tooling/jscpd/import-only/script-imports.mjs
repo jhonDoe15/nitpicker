@@ -2,7 +2,7 @@ const COMMENTS = /\/\*[\s\S]*?\*\/|\/\/[^\n]*/g;
 const MODULE_NAME = /(['"])[^'"\n]*\1\)?[ \t]*;?/g;
 const IMPORT_FORMS = [
   String.raw`import\b[\w$*\s{},]*`,
-  String.raw`export\b[\w$*\s{},]*\bfrom\s*`,
+  String.raw`export\b[\w$*\s{},]+\bfrom\s*`,
   String.raw`import\s+[\w$]+\s*=\s*require\(\s*`,
   String.raw`(?:const|let|var)\s[\w$\s{},:]*=\s*require\(\s*`,
 ];
