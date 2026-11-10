@@ -187,7 +187,7 @@ describe('no-copied-constant', () => {
         '  expect(count()).toBe(50);',
         "  const other = await vi.importActual('../src/other');",
         "  const read = jest.requireActual('node:fs');",
-        '  const dynamic = await import(`../src/${name}`);',
+        `  const dynamic = await import(\`../src/\${name}\`);`,
         '});',
       ].join('\n'),
     );
