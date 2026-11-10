@@ -23,6 +23,9 @@ Part of the [nitpicker-java](../SKILL.md) skill. Write these forms from the star
   `setReadTimeout` on an `HttpURLConnection`, `setDefaultRequestConfig(...)` on an Apache client
   builder, `readTimeout` on a JAX-RS `ClientBuilder`; not `URL.openStream()` or
   `HttpClients.createDefault()` (`pmd/HttpWithoutTimeout`).
+- Build shareable objects once: an `ObjectMapper`, `Gson`, `JAXBContext`, `ValidatorFactory` or
+  `DateTimeFormatter.ofPattern("...")` goes in a `static final` constant, a final field or a `@Bean`,
+  not inside a method that runs per call (`pmd/ReusableObjectPerCall`).
 - Resources: try-with-resources for anything `Closeable`, also one used once: not
   `resource.getInputStream().readAllBytes()` or `load(new JarFile(root))`
   (`pmd/UnclosedInlineResource`). No `finally` that returns or throws.

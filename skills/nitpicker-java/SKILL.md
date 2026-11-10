@@ -27,8 +27,9 @@ While you iterate, run `npx nitpicker --quick`: it skips the tests and the check
 read the printed skipped list for what it left out. A quick run is never a pass; finish with the
 full run below.
 
-1. Run the project's tests (`./gradlew test`, or `./mvnw test` on Maven). Failing tests or compile
-   errors make the gate exit 2.
+1. Run the project's tests (`./gradlew test`, or `./mvnw test` on Maven). Failing tests make the
+   gate exit 1, and so does a change that does not compile: each compile error is a
+   `build/compile-error` finding at its line, and the other checks wait until it builds.
 2. Run `npx nitpicker --fix` as a background command you wait on, without a pipe: you need its exit
    code. It first rewrites the changed Java files with the formatter the run names under
    "Following this project's conventions" (google-java-format 1.25.2, `--aosp` for the aosp style,
@@ -42,8 +43,8 @@ full run below.
      and you run the gate again without it before you finish.
    - 1: fix the failing tests the summary leads with, every new finding (printed as
      `tool/rule path:line`) and any tool error listed below them, then rerun.
-   - 2: no new findings, but a tool failed (the build, a compile error). Fix the
-     cause it names and rerun. Exit 2 is never a pass. If another run is in progress, wait for
+   - 2: no new findings, but a tool failed (the build, or a base that does not compile). Fix
+     the cause it names and rerun. Exit 2 is never a pass. If another run is in progress, wait for
      it; never kill it.
      When the message links to [troubleshooting](https://github.com/jhonDoe15/nitpicker/blob/main/docs/troubleshooting.md), the fix is there.
 4. Never suppress: no `// NOPMD`, `@SuppressWarnings`, `@SuppressFBWarnings`, `CHECKSTYLE`
