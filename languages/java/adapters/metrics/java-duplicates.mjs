@@ -21,6 +21,12 @@ import {
   skippedFolderGlobs,
 } from '../../../../core/tooling/jscpd/skipped-folders.mjs';
 
+const GLOB_SYNTAX = /[*?[\]{}()!@+]/gu;
+
+function literalGlob(file) {
+  return `**/${file.replaceAll(GLOB_SYNTAX, String.raw`\$&`)}`;
+}
+
 export function runJavaDuplicates(
   projectRoot,
   {
@@ -36,15 +42,21 @@ export function runJavaDuplicates(
   const roots = (manifest[rootsKey] ?? []).filter((root) =>
     existsSync(path.join(projectRoot, root)),
   );
+  const excluded = manifest.kotlinExcludedFiles ?? [];
   mkdirSync(reportRoot, { recursive: true });
   runJscpd({
     cwd: projectRoot,
     roots,
     format,
-    ignore: skippedFolderGlobs(skippedFolders),
+    ignore: [...skippedFolderGlobs(skippedFolders), ...excluded.map(literalGlob)],
     reportRoot,
     reportFile,
-    renamed: { syntax: format, files: sourceFilesUnder(projectRoot, roots, renamedExtensions) },
+    renamed: {
+      syntax: format,
+      files: sourceFilesUnder(projectRoot, roots, renamedExtensions).filter(
+        (file) => !excluded.includes(file),
+      ),
+    },
   });
 }
 
