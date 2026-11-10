@@ -5,13 +5,10 @@ import {
   LANGUAGE_RULES,
   parseStructure,
 } from './jvm-declarations.mjs';
-import { annotationsEnd, topLevelIndexes } from './jvm-members.mjs';
+import { topLevelIndexes } from './jvm-members.mjs';
+import { signature } from './signature/jvm-signature.mjs';
 import { namesOf } from './jvm-tokens.mjs';
 
-const ANGLE_DEPTH = new Map([
-  ['<', 1],
-  ['>', -1],
-]);
 const TYPE_KEYWORDS = new Set(['class', 'interface', 'enum', 'record', 'object']);
 const MEMBER_ACCESS = new Set(['.', '::']);
 const STATIC_OWNERS = {
@@ -22,56 +19,6 @@ const COMPANION_OWNERS = new Set(['class', 'interface']);
 const SUPERTYPE_MARKS = new Set(['extends', 'implements', ':']);
 const NOT_DEFINED = new Set(['variable', 'fields']);
 const PLATFORM_MODIFIERS = ['expect', 'actual'];
-
-function parameterRanges(tokens, close, paren) {
-  const ranges = [];
-  let from = paren + 1;
-  let depth = 0;
-  for (const index of topLevelIndexes(close, { from: paren + 1, to: close[paren] })) {
-    depth += ANGLE_DEPTH.get(tokens[index].text) ?? 0;
-    if (tokens[index].text === ',' && depth === 0) {
-      ranges.push({ from, to: index });
-      from = index + 1;
-    }
-  }
-  return [...ranges, { from, to: close[paren] }].filter((range) => range.to > range.from);
-}
-
-function javaParameterStart(tokens, close, from) {
-  const positions = [from];
-  for (const index of positions) {
-    if (tokens[index]?.text === 'final') {
-      positions.push(index + 1);
-    } else if (tokens[index]?.text === '@') {
-      positions.push(annotationsEnd(tokens, close, index));
-    }
-  }
-  return positions.at(-1);
-}
-
-function parameterType(tokens, close, { range, kotlin }) {
-  const part = tokens.slice(range.from, range.to);
-  if (!kotlin) {
-    return tokens.slice(javaParameterStart(tokens, close, range.from), range.to - 1);
-  }
-  const colon = part.findIndex(({ text }) => text === ':');
-  const assign = part.findIndex(({ text }) => text === '=');
-  return part.slice(colon + 1, assign === -1 ? undefined : assign);
-}
-
-function signature(structure, { paren }, kotlin) {
-  const { tokens, close } = structure;
-  if (paren === undefined || close[paren] < 0) {
-    return '';
-  }
-  return parameterRanges(tokens, close, paren)
-    .map((range) =>
-      parameterType(tokens, close, { range, kotlin })
-        .map(({ text }) => text)
-        .join(''),
-    )
-    .join(',');
-}
 
 function constKind(info, { language, ownerKind }) {
   if (NOT_DEFINED.has(info.kind) || PLATFORM_MODIFIERS.some((name) => info.modifiers.has(name))) {
@@ -141,33 +88,43 @@ function companions(structure, { name, body, supertypes }) {
   });
 }
 
-function typeMembers(structure, info, { language, member, name = info.name }) {
-  const body = bodyOf(structure.tokens, structure.close, member);
-  if (body === undefined) {
-    return [];
-  }
+function typeMembers(structure, { info, name, body }, language) {
   const ownerKind = language === 'kotlin' ? info.keyword : info.kind;
-  const supertypes = supertypesOf(structure, { member, body });
+  const supertypes = supertypesOf(structure, { member: info.member, body });
   const owner = { language, owner: name, ownerKind, body, supertypes };
   const own = STATIC_OWNERS[language].has(ownerKind) ? staticMembers(structure, owner) : [];
   const companion =
     language === 'kotlin' && COMPANION_OWNERS.has(info.keyword)
       ? companions(structure, { name, body, supertypes })
       : [];
-  const inner = structure.nested ? nestedTypes(structure, { language, name, body }) : [];
-  return [...own, ...companion, ...inner];
+  return [...own, ...companion];
 }
 
-function nestedTypes(structure, { language, name, body }) {
+function nestedTypes(structure, { name, body }, language) {
   const { tokens, close } = structure;
   const rules = LANGUAGE_RULES[language];
   return rules.members(tokens, close, body).flatMap((member) => {
     const info = rules.member(tokens, close, member);
     const hidden = ['private', 'companion'].some((modifier) => info?.modifiers?.has(modifier));
     return info?.type && info.name !== undefined && !hidden
-      ? typeMembers(structure, info, { language, member, name: `${name}.${info.name}` })
+      ? [{ info: { ...info, member }, name: `${name}.${info.name}` }]
       : [];
   });
+}
+
+function typeTree(structure, info, { language, member }) {
+  const found = [];
+  const pending = [{ info: { ...info, member }, name: info.name }];
+  for (const type of pending) {
+    const body = bodyOf(structure.tokens, structure.close, type.info.member);
+    if (body !== undefined) {
+      found.push(...typeMembers(structure, { ...type, body }, language));
+      pending.push(
+        ...(structure.nested ? nestedTypes(structure, { ...type, body }, language) : []),
+      );
+    }
+  }
+  return found;
 }
 
 function topLevel(structure, language) {
@@ -183,7 +140,7 @@ function topLevel(structure, language) {
       return [];
     }
     if (info.type) {
-      return [{ ...info, member }, ...typeMembers(structure, info, { language, member })];
+      return [{ ...info, member }, ...typeTree(structure, info, { language, member })];
     }
     const kind = constKind(info, { language });
     return language === 'kotlin' && kind !== undefined ? [{ ...info, kind, member }] : [];
