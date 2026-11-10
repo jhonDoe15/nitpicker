@@ -47,7 +47,10 @@ import { redirectToBundledTypeScriptApi } from '../languages/typescript/typescri
 import { describeError } from '../shared/messages/error-chain.mjs';
 
 const CHECK_COMMANDS = {
-  hygiene: runHygieneCli,
+  hygiene: async (cli) => {
+    const { yamlDocuments } = await import('./tooling/yaml/yaml-documents.mjs');
+    return runHygieneCli({ ...cli, parseYaml: yamlDocuments });
+  },
   history: runHistoryCli,
   [GO_ANALYZER_COMMAND]: runGoCli,
 };
@@ -279,5 +282,5 @@ function resolveRunCacheStore(cli) {
 const invokedPath = process.argv[1];
 
 if (invokedPath !== undefined && realpathSync(invokedPath) === import.meta.filename) {
-  process.exitCode = runCli();
+  process.exitCode = await runCli();
 }

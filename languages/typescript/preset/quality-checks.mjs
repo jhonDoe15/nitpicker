@@ -216,6 +216,7 @@ function graphChecksFor(exclusions) {
     {
       name: 'coupling',
       kind: 'coupling',
+      publishesModuleImports: true,
       version: dependencyCruiserVersion,
       exclusions: exclusions.production,
       timeoutMs: 2 * MINUTE_MS,
