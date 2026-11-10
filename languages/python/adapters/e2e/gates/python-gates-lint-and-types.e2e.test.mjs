@@ -1,6 +1,7 @@
 import path from 'node:path';
 import { readFileSync } from 'node:fs';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { RUFF_FORMAT_ADVICE } from '../../test-support/ruff-format-advice.mjs';
 import {
   GREETER_HI,
   GREETER_HI_TEST,
@@ -102,7 +103,7 @@ describe.skipIf(!pythonE2eEnabled)('Python preset lint and type gates end to end
       [
         'ruff-format/format: ' +
           'File is not formatted with ruff (detected; set "python.formatter" if wrong). ' +
-          'Format it with the "Format with ruff" command printed at the start of the run.',
+          RUFF_FORMAT_ADVICE,
         'src/demo/bad.py',
       ],
       [

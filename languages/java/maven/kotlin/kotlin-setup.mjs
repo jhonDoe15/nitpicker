@@ -60,6 +60,7 @@ function resolveKotlinOptions({ projectRoot, policy, effectivePom, work, toolcha
     projectRoot,
     toolchains,
     spawn: toolchains.spawn,
+    timeoutMs: toolchains.timeoutMs,
     psiClasses: path.join(work, PSI_CLASSES),
     formatter: tools.formatter,
     ktfmtStyle: tools.ktfmtStyle,
@@ -81,6 +82,7 @@ export function kotlinSetup({
   maven,
   environment,
   spawn,
+  timeoutMs,
 }) {
   if (policy.preset !== 'kotlin') {
     return NO_KOTLIN;
@@ -90,7 +92,7 @@ export function kotlinSetup({
       'The kotlin preset needs a Maven project that applies kotlin-maven-plugin; this one does not. Use the java preset for its Java sources',
     );
   }
-  const toolchains = { projectRoot, maven, environment, home: homedir(), spawn };
+  const toolchains = { projectRoot, maven, environment, home: homedir(), spawn, timeoutMs };
   const options = resolveKotlinOptions({ projectRoot, policy, effectivePom, work, toolchains });
   return { options, extraTools: kotlinTools(pinned, options.formatter) };
 }

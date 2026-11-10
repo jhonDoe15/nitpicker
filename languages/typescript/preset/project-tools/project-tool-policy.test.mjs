@@ -5,6 +5,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { resolveHeadPolicy, withHeadCheckoutFacts } from '../head-policy.mjs';
 import { conventionStyle } from '../../../../core/conventions/definitions.mjs';
 import { projectToolLayer, withProjectToolConfigs } from './project-tool-policy.mjs';
+import { linkSentence } from '../../../../shared/messages/test-support/link-sentence.mjs';
 
 const roots = [];
 afterEach(() => {
@@ -90,7 +91,8 @@ describe('project tool configs in the head policy', () => {
     expect(failure(project({}))).toBe(
       '"tools.knip.precedence" lists "project" but a knip config (knip.json, knip.jsonc, .knip.json, ' +
         '.knip.jsonc, knip.ts, knip.js, knip.config.ts, knip.config.js, or the "knip" key in ' +
-        'package.json) is missing: create it, or remove "project" from tools.knip.precedence',
+        'package.json) is missing: create it, or remove "project" from tools.knip.precedence. ' +
+        linkSentence('projectToolConfigMissing'),
     );
     expect(failure(project({ 'knip.json': '[1]' }))).toBe(
       unread('knip.json', 'knip.json must hold an object'),
