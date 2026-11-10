@@ -1,6 +1,5 @@
 import { ARCHITECTURE_CONFIG, POLICY_TYPESCRIPT_CONFIG } from '../dependency-graph/cruise.mjs';
 import { PROJECT_TOOL_FILES } from '../project-tools/project-config-files.mjs';
-import { CRAP_CHECK_FILES } from '../crap/check-files.mjs';
 import { QUERY_RULE_FILES } from '../../../../shared/rules/queries/query-rule-files.mjs';
 
 export const JAVASCRIPT_PRESET_FILE = 'languages/javascript/preset/javascript-preset.mjs';
@@ -290,12 +289,4 @@ export const TEST_RUNNER_CONFIGURATION_FILES = [
   'languages/typescript/preset/test-runner/mocha-options.mjs',
   'languages/typescript/preset/test-runner/runners.mjs',
   'languages/typescript/preset/test-runner/script-command.mjs',
-];
-
-export const CRAP_CONFIGURATION_FILES = [
-  ...CRAP_CHECK_FILES,
-  'languages/typescript/preset/layout.mjs',
-  'languages/typescript/preset/head-policy.mjs',
-  JAVASCRIPT_PRESET_FILE,
-  'shared/rules/crap.mjs',
 ];

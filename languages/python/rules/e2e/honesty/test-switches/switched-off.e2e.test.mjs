@@ -3,7 +3,7 @@ import { createScripts } from '../../../test-support/python-script-helpers.mjs';
 
 const enabled = process.env.NITPICKER_PYTHON_E2E === '1';
 const { cleanup, outcomes, findingsOf } = createScripts({
-  hidden: ['test-without-assertion', 'skipped-test-without-reason'],
+  hidden: ['test-without-assertion', 'skipped-test-without-reason', 'weak-assertion'],
 });
 afterEach(cleanup);
 
