@@ -41,6 +41,8 @@ Part of the [nitpicker-java](../SKILL.md) skill. Write these forms from the star
 - Regexes: `split`, `matches`, `replaceAll` and `replaceFirst` take a regex, so wrap a runtime
   value in `Pattern.quote(value)` (also when you join it into a `Pattern.compile` pattern), and use
   `replace` for plain text (`pmd/UnquotedRegexValue`, `pmd/PlainTextRegex`).
+  Every part of a literal pattern must change what it matches (`"a|b|a"`, `"[\\w_]"` and `"x{1}"` are
+  `pmd/RegexPartDefect`), and nested quantifiers such as `"(\\s*\\w+)*x"` are `pmd/BacktrackingRegex`.
 - Maps: the function passed to `computeIfAbsent`, `compute`, `computeIfPresent` or `merge` never
   changes the same map, not even from a callback it starts (`pmd/RecursiveMapUpdate`). Attach the
   cleanup to the returned value:

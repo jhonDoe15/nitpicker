@@ -51,6 +51,7 @@ are listed at the end.
 | Changing an argument     | build and return a new value, or copy the argument first                                                                                                                             | `parameter-mutation` (script)                                                                                                                                                                                                                                                                                    |
 | Compatibility shims      | change every caller in the same change and delete the old name                                                                                                                       | `compatibility-shim` (script)                                                                                                                                                                                                                                                                                    |
 | Values in regex patterns | `re.escape(value)` inside a pattern, `in`/`startswith`/`==` for plain text, `re.compile(pattern)` with a whole pattern                                                               | `regex-unescaped-value` (script)                                                                                                                                                                                                                                                                                 |
+| Regex pattern parts      | every part of a literal `re` pattern changes what it matches; the shorter form of the same pattern; no nested or overlapping quantifiers                                             | `regex-part-defect`, `regex-backtracking` (script)                                                                                                                                                                                                                                                               |
 | Input or output per item | one batch call, or `asyncio.gather` bounded by a shared `asyncio.Semaphore`                                                                                                          | `io-in-loop` (script)                                                                                                                                                                                                                                                                                            |
 | Shareable objects        | build once at module level, in `__init__` or in a `functools.cache` factory                                                                                                          | `reusable-object-per-call` (script)                                                                                                                                                                                                        |
 | Lists used as sets       | a `set()` (or a `dict` as an ordered set); a `dict` built once for a lookup by key; `min`/`max` instead of `sorted(xs)[0]`                                                           | `list-used-as-set`, `linear-lookup-in-loop` (script), ruff `FURB192`                                                                                                                                                                                                                                             |
@@ -1000,6 +1001,20 @@ x.key == value)` and `any(x.key == value for x in xs)` inside a loop, comprehens
   `UnquotedRegexValue`, the TypeScript preset as `nitpicker/no-string-as-regex`. The plain-text form
   (`re.sub("abc", "", s)` for `s.replace("abc", "")`) is ruff's `RUF055`, still a preview rule in
   the pinned ruff, so it is not selected yet.
+- `regex-part-defect` reports a literal pattern of `re.compile`, `match`, `search`, `fullmatch`,
+  `findall`, `finditer`, `split`, `sub` or `subn` with a part that never changes what it matches
+  (`a|b|a`, `[_a-z_]`, an empty group), that does not do what it looks like (`a\bb`, which can never
+  match), or that has a shorter form with the same meaning (`x{1}`, `(?:ab)c`). `regex-backtracking`
+  reports one with nested or overlapping quantifiers that backtrack super-linearly (`^( *[a-z]+)*$`).
+  Both run the checks of the TypeScript preset's `regexp/` rules on the pattern, with `re.I`,
+  `re.M`, `re.S`, `re.A` or a leading `(?i)`, `(?m)` or `(?s)` read as flags, and the message names the
+  part. A pattern outside the syntax Python and JavaScript share is skipped, never misreported:
+  `(?P<name>...)`, `(?x)` and `re.VERBOSE`, `\A`, `\Z`, a `$` before the end (Python's `$` also
+  matches before a final newline), `\p`, a character above ASCII, `\w`, `\d`, `\s` and `\b` without `re.ASCII` (they
+  cover Unicode in Python), a lookbehind, a flags value that is not one of those constants, and `bytes` patterns. The
+  `regex` module is not read. The Java preset reports the same as `RegexPartDefect` and
+  `BacktrackingRegex`, the Kotlin preset as `kotlin-source/RegexPartDefect` and
+  `kotlin-source/BacktrackingRegex`.
 - `compatibility-shim` reports four ways to keep an old name alive: a module-level `def
 __getattr__` that warns or maps removed names to new ones (a PEP 562 lazy import through
   `importlib.import_module` is not a shim), a `warnings.warn` (or `warn_explicit`) call whose category
