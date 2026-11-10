@@ -1,0 +1,7 @@
+[
+  {
+    "tool": "python-rules",
+    "rule": "copied-constant-in-test",
+    "mention": "next to the constant"
+  }
+]

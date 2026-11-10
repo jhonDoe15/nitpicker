@@ -84,6 +84,8 @@ describe('testHonestyFindings', () => {
       'ServerOrContainerPerTest',
       'AssertionInControlFlow',
       'CoroutineEscapesTest',
+      'FloatEqualityInTest',
+      'WeakAssertionInTest',
       'GlobalStateLeakInTest',
       'SharedTestState',
     ]);

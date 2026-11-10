@@ -1,5 +1,5 @@
 import { depthFirst } from '../../../../shared/traversal.mjs';
-import { filesUnder } from '../../../../shared/filesystem.mjs';
+import { projectFilesUnder } from '../../../../shared/project-files/project-files.mjs';
 import { syntaxChildren } from '../syntax/children.mjs';
 import { callbackProtocolContracts } from './contracts.mjs';
 import { ts } from '../../typescript-api/typescript-api.mjs';
@@ -110,7 +110,7 @@ export function analyzeProductionCallbacks({
     return /^(?:__tests__|tests|node_modules)$/.test(entry.name);
   }
   const files = existsSync(sourceRoot)
-    ? [...filesUnder(sourceRoot, { skipDirectory })]
+    ? [...projectFilesUnder(sourceRoot, { skipDirectory })]
         .filter((fullPath) => {
           const relative = path.relative(sourceRoot, fullPath).replaceAll('\\', '/');
           return (

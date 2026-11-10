@@ -1,6 +1,6 @@
 import { existsSync } from 'node:fs';
 import path from 'node:path';
-import { filesUnder } from '../../../../shared/filesystem.mjs';
+import { projectFilesUnder } from '../../../../shared/project-files/project-files.mjs';
 import { readManifest } from '../eslint-config/scope-support.mjs';
 import { LOGGER_LIBRARIES } from './logger-libraries.mjs';
 import { VALIDATION_LIBRARIES } from './validation-libraries.mjs';
@@ -60,7 +60,7 @@ function packageDirectories(projectRoot, isExcluded) {
   return [
     ROOT_PACKAGE,
     ...[
-      ...filesUnder(projectRoot, {
+      ...projectFilesUnder(projectRoot, {
         skipDirectory: (absolute, entry) =>
           SKIPPED_FOLDERS.has(entry.name) || isExcluded(`${relativeOf(absolute)}/package.json`),
       }),

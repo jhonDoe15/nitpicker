@@ -5,7 +5,7 @@ import {
   EXPECTED_REVIEW_FINDINGS,
   REVIEW_RULE_FILES,
 } from '../test-support/review/kotlin-review-data.mjs';
-import { PLURAL_FINDINGS } from '../test-support/review/kotlin-plural-data.mjs';
+import { reviewFindings } from '../test-support/review/kotlin-review-findings.mjs';
 import {
   commitBranch,
   commitFromBranch,
@@ -18,7 +18,6 @@ import {
 } from './test-support/kotlin-maven-project.mjs';
 
 const mavenDiffOf = mavenDiffRunner(process.env.NITPICKER_MAVEN);
-const REVIEW_TOOLS = new Set(['pmd']);
 const ORDERS_TESTS = 'src/test/kotlin/demo/orders/*';
 const RUNTIME_SERIALIZATION = `    <dependency>
       <groupId>com.fasterxml.jackson.module</groupId>
@@ -35,12 +34,14 @@ const DISTRIBUTION = `  <distributionManagement>
   </distributionManagement>
 </project>`;
 
-function reviewFindings(findings) {
-  return findings
-    .filter(({ tool, rule }) => REVIEW_TOOLS.has(tool) || rule === 'unused-option')
-    .map(({ rule, symbol }) => `${rule} ${symbol}`)
-    .sort();
-}
+const LIFTED_RULES = [
+  'FixedSleepInTest',
+  'SpringUnusedContext',
+  'MockedSubjectInTest',
+  'StaticMockOfProjectType',
+  'unused-option',
+  'ClassLoadEffect',
+];
 
 describe.skipIf(!kotlinE2eEnabled)('Kotlin preset review rules on Maven end to end', () => {
   let project;
@@ -76,24 +77,7 @@ describe.skipIf(!kotlinE2eEnabled)('Kotlin preset review rules on Maven end to e
     });
 
     expect(reviewFindings(result.newEnforceable)).toEqual(
-      [
-        'ExhaustiveEnumPredicate isHandedOver',
-        'ExhaustiveEnumPredicate isLive',
-        'ExhaustiveEnumPredicate isOpen',
-        'ExhaustiveEnumPredicate isPending',
-        'ExhaustiveEnumPredicate isSettled',
-        'ExhaustiveEnumPredicate weight',
-        ...PLURAL_FINDINGS,
-        'StaticForwardingWrapper absOf',
-        'StaticForwardingWrapper total',
-        'timeout-abandons-operation awaitAllOutside:withTimeout:first',
-        'timeout-abandons-operation awaitAllOutside:withTimeout:second',
-        'timeout-abandons-operation awaitOutside:withTimeout:work',
-        'timeout-abandons-operation boundedAsync:orTimeout:supplyAsync',
-        'timeout-abandons-operation cancelAsyncTask:get:future',
-        'timeout-abandons-operation giveUp:get:future',
-        'timeout-abandons-operation shutDownLetsItFinish:get:future',
-      ].sort(),
+      EXPECTED_REVIEW_FINDINGS.filter((entry) => !LIFTED_RULES.includes(entry.split(' ')[0])),
     );
   });
 

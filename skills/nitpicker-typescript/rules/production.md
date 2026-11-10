@@ -3,9 +3,15 @@
 Part of the [nitpicker-typescript](../SKILL.md) skill. Write these forms from the start; the gate is a backstop.
 
 - `async`/`await`, never `.then()`. No floating promises.
+  Await every task that uses a `using` or `finally`-closed resource before its block ends (no `void` call,
+  timer callback or un-awaited async call on it): `nitpicker/no-task-outliving-resource`.
 - A timeout does not stop the work it races: `Promise.race([op(), rejectAfter(ms)])` leaves `op` running
   (`timeout-abandons-operation`). Give `op` the `AbortSignal` the timeout aborts (`{ signal: controller.signal }`,
   or `AbortSignal.timeout(ms)` straight to an API that takes `signal`) and drop the race.
+- Do not update shared state from a value read before an `await` (`state.total += await load()`):
+  await into a local first (`const delta = await load(); state.total += delta;`), then read and
+  write the shared state with no `await` between them. A lock or queue is not recognized; state
+  that is already serialized takes a reviewed exception (`nitpicker/require-atomic-updates`).
 - Fan-out: bound concurrent remote or message calls. Run each call through a limiter created outside the loop (`pLimit(8)`, p-queue `concurrency`, Bottleneck `maxConcurrent`) or work through fixed-size chunks. RxJS: `mergeMap(fn, 8)` or `concatMap`, never `forkJoin(items.map(load))`. Never `Promise.all(items.map(send))` over a runtime collection.
 - Wire clients, servers, pools and config in the composition root (`src/main/composition-root.ts`,
   `main.ts` or `server.ts`) and pass them into factories; read `process.env` only there.
@@ -14,6 +20,12 @@ Part of the [nitpicker-typescript](../SKILL.md) skill. Write these forms from th
   `console.*` is a finding everywhere.
 - Parse untrusted input once with zod in `adapters/`; `domain/` takes readonly types it declares.
 - Run programs with `execFile(command, [args])`, never a command string.
+- In an `async` function or a request handler, use the promise APIs (`readFile` from
+  `node:fs/promises`, `access` or `stat` instead of `existsSync`, `promisify(execFile)`,
+  `promisify(pbkdf2)`), never `readFileSync`, `execSync`, `pbkdf2Sync` and the other `*Sync` calls of
+  `fs`, `child_process`, `crypto` and `zlib`: they block the event loop for every other request
+  (`nitpicker/no-sync-node-api-in-async`, entry points included). Module top level, a worker thread
+  and a CLI `main` that is only called from startup code stay synchronous.
 - Parse a URL from runtime text with `URL.parse(text)` or after `URL.canParse(text)`; `new URL(text)`
   throws on text that is not a URL (`nitpicker/no-unhandled-url-parse`).
 - Build an `Intl` formatter or an `Ajv` instance with fixed options once, at module scope or in a
