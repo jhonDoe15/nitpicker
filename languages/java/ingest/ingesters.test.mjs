@@ -450,6 +450,16 @@ describe('parseXml', () => {
     expect(() => parseXml('')).toThrow('no root');
   });
 
+  it('skips a document type with an internal subset and reads a slash-closed root', () => {
+    const root = parseXml('<!DOCTYPE r [<!ENTITY e "x">] ><r a="1" b=\'/\'/>');
+    expect(root.name).toBe('r');
+    expect(root.attrs).toEqual({ a: '1', b: '/' });
+  });
+
+  it('gives up on a long unclosed tag without backtracking over its name', () => {
+    expect(() => parseXml(`<r><${'a'.repeat(100_000)}`)).toThrow('<r> is not closed');
+  });
+
   it('decodes numeric entities and leaves unknown ones', () => {
     expect(decodeEntities('&#65;&#x42;&bogus;&#0;')).toBe('AB&bogus;&#0;');
   });

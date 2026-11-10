@@ -98,6 +98,35 @@ Part of the [TypeScript strict preset guide](../typescript-strict-preset.md).
   `[Cascade.PERSIST]` (MikroORM); the join rows already go with the owner. Sequelize is not
   checked: `onDelete: 'CASCADE'` on a `belongsToMany` only removes rows of the through table, which
   is the allowed form. Port of `JpaManyToManyCascade`.
+- `nitpicker/no-unordered-query` (all production code): a page of rows, or a nested list, whose
+  order the database picks. A query-builder chain (Kysely `selectFrom`, Knex, TypeORM and MikroORM
+  `createQueryBuilder`, Drizzle `select().from()`) with `limit`, `offset`, `take` or `skip` and no
+  `orderBy`, `addOrderBy` or `orderByRaw` (also when a local builder variable gets the order in
+  another statement); the options of Prisma or Drizzle `findMany`, TypeORM `find`/`findAndCount`,
+  Sequelize `findAll`/`findAndCountAll` and nested Prisma `include`/Drizzle `with` relations with
+  `take`, `skip`, `cursor`, `limit` or `offset` and no `orderBy`/`order`; and SQL text (a `sql`
+  tagged template, a string that starts a SELECT, or text a SQL sink takes) with `LIMIT`,
+  `OFFSET` or `FETCH` and no `ORDER BY` at the same level. The second form is a list built by
+  `array_agg`, `json_agg` or `jsonb_agg` without `ORDER BY` inside, Kysely `fn.jsonAgg` or
+  `fn.agg('array_agg', ...)` without `.orderBy(...)`, and `jsonArrayFrom` over a subquery with
+  no `orderBy`. `limit(1)` (or `LIMIT 1`) is allowed when the query selects only a constant or a
+  count; a chain that goes through `$call`, `$if`, `modify` or `$dynamic`, or a builder passed to
+  another function, is not checked. Order on a unique key, or add a tie-breaker after a non-unique
+  one; a nested list that is a set takes an exception. Same rule as Java and Kotlin
+  `UnorderedQuery` and Python `unordered-query`.
+- `nitpicker/no-unbounded-query-array` (all production code): a runtime array expanded into one
+  bound parameter per element: Kysely and Knex `where(column, 'in' | 'not in', array)` (also the
+  expression builder `eb(column, 'in', array)`), Knex `whereIn`/`whereNotIn`, TypeORM `In(array)`
+  and `whereInIds`, Drizzle `inArray`/`notInArray`, and multi-row inserts (Kysely and Drizzle
+  `values(array)`, Knex `insert(array)`, TypeORM `insert(array)`). An empty array is a syntax
+  error or a thrown error, and PostgreSQL rejects more than 65,535 parameters in one statement.
+  Allowed: the enclosing function reads the array's `length` (or the length of the array it was
+  mapped or filtered from), the array is a chunk (`for (const part of chunk(ids, 1000))`, a
+  callback of a helper whose name says chunk, batch or partition, or a method decorated with one),
+  a literal or fixed-size window (`ids.slice(0, 100)`), a subquery, and one array parameter
+  (`` sql`id = any(${ids}::uuid[])` ``). Inserts are reported only when the value is known to be
+  an array (its type, an array annotation, or a `map`/`filter` result). Same rule as Java and
+  Kotlin `UnboundedQueryArray` and Python `unbounded-query-array`.
 - Untrusted input is parsed once, at the boundary, with a schema library (zod by default). Hand-written
   type guards for external data are not allowed (`nitpicker/no-handwritten-boundary-guard`, in `adapters/`, `shared/` and
   the other layers outside `domain/`): a predicate whose parameter is `unknown`, `any`, `object`,

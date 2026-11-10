@@ -32,7 +32,7 @@ const (
 	getterMessage = "Go getters are named after the value, without Get: `%s()`, not `%s()`"
 )
 
-var genericNames = []string{"util", "utils", "common", "misc", "helper", "helpers", "interfaces"}
+var genericNames = []string{"helper", "helpers"}
 
 func runPackageName(pass *analysis.Pass) (any, error) {
 	if !slices.Contains(genericNames, pass.Pkg.Name()) {
