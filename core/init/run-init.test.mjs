@@ -9,7 +9,7 @@ import { init, initWith, readText, useProjects } from './test-support/projects.m
 
 const createProject = useProjects();
 const TYPESCRIPT = { 'package.json': '{}', 'src/index.ts': 'export const value = 1;\n' };
-const SKILL = 'npx skills add jhonDoe15/nitpicker --skill';
+const SKILL = `npx skills add jhonDoe15/nitpicker#v${packageVersion()} --skill`;
 const NITPICKER = `nitpicker@${packageVersion()}`;
 const NODE_INSTALL = `${NITPICKER} typescript @types/node vitest @vitest/coverage-v8`;
 const NODE_MISSING = `${NITPICKER}, typescript, @types/node, vitest, @vitest/coverage-v8`;

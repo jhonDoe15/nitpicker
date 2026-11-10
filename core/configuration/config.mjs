@@ -5,11 +5,13 @@ import { existsSync, readFileSync } from 'node:fs';
 import { validateConfig, KEYS } from './validate.mjs';
 import { rejectUnreadableSources } from './project-checks/project-config.mjs';
 import { rejectUndeclaredPreset } from './project-checks/preset-detection.mjs';
+import { rejectMissingBuildFiles } from './project-checks/project-markers.mjs';
 
 export function loadConfig(projectRoot) {
   const config = readConfigFile(projectRoot);
   rejectUnreadableSources(config, projectRoot);
   rejectUndeclaredPreset(config, projectRoot);
+  rejectMissingBuildFiles(config, projectRoot);
   return config;
 }
 
@@ -34,8 +36,10 @@ function withoutSchemaKey(config) {
   return Object.fromEntries(Object.entries(config).filter(([key]) => key !== SCHEMA_KEY));
 }
 
+const RUN_SETTINGS = new Set(['analyzerTimeoutMinutes']);
+
 export function describeConfigOverrides(config) {
-  return KEYS.filter((key) => config[key] !== undefined).flatMap((key) =>
+  return KEYS.filter((key) => config[key] !== undefined && !RUN_SETTINGS.has(key)).flatMap((key) =>
     key === 'python' ? describePythonOverrides(config.python) : describeOverride(config, key),
   );
 }

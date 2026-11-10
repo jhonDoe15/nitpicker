@@ -15,13 +15,13 @@ import {
   collectTestResults,
   junitLauncherVersion,
   pitClasspath,
-  javaArgumentFile,
   pitTargets,
   pitTests,
   freshExecFiles,
   runJacocoReport,
-  runPit,
 } from './maven-tests.mjs';
+import { javaArgumentFile, runPit } from './pit/maven-pit.mjs';
+import { explainedError } from '../../../shared/messages/troubleshooting.mjs';
 import { readPitMutators } from '../builds/java-build.mjs';
 
 const roots = [];
@@ -195,7 +195,7 @@ describe('collectTestResults', () => {
         isArchunit: archunitMatcher(),
       });
     }).toThrow(
-      new Error(
+      explainedError(
         [
           '12 tests fail; the build stopped, so no other check ran. Fix the tests and rerun:',
           ...listed,
@@ -218,7 +218,7 @@ describe('collectTestResults', () => {
       });
     };
     const failing = (...lines) =>
-      new Error(
+      explainedError(
         [
           `${String(lines.length)} ${lines.length === 1 ? 'test fails' : 'tests fail'}; ` +
             'the build stopped, so no other check ran. Fix the tests and rerun:',
@@ -389,5 +389,34 @@ describe('runPit', () => {
     const [tokens] = calls;
 
     expect(tokens[tokens.indexOf('"--mutators"') + 1]).toBe(`"${readPitMutators().join(',')}"`);
+  });
+
+  it('records the base history in the module build directory', () => {
+    const root = tree({ 'classes/demo/A.class': '', 'test-classes/demo/ATest.class': '' });
+    const calls = [];
+    runPit({
+      module: {
+        basedir: root,
+        buildDirectory: path.join(root, 'target'),
+        outputDirectory: path.join(root, 'classes'),
+        testOutputDirectory: path.join(root, 'test-classes'),
+        sourceRoots: [],
+        testJvmArgs: [],
+      },
+      reportDir: root,
+      tools: { pit: [] },
+      classpaths: { testRuntime: [] },
+      isArchunit: () => false,
+      history: { snapshot: 'base', projectRoot: root },
+      spawn: (command, [argumentFile]) => {
+        calls.push(readFileSync(argumentFile.slice(1), 'utf8').split('\n'));
+        return { status: 0, stdout: '', stderr: '' };
+      },
+    });
+    const [tokens] = calls;
+
+    expect(tokens[tokens.indexOf('"--historyOutputLocation"') + 1]).toBe(
+      `"${path.join(root, 'target', 'nitpicker-pit-history', 'test.history')}"`,
+    );
   });
 });

@@ -4,6 +4,7 @@ import { javaStyleProperties } from '../style/java-style.mjs';
 import { toolConfigChoices, toolConfigProperties } from '../tool-config/tool-config-choices.mjs';
 import { writeSpringRoles } from '../spring-arch/spring-roles.mjs';
 import { writeSpringRuleset } from '../spring/proxies/proxy-ruleset.mjs';
+import { pitHistoryProperties } from '../../builds/pit-history/pit-history.mjs';
 
 const MAX_OUTPUT_BYTES = 50 * 1024 * 1024;
 const CHECKSTYLE_EXPORT = 'checkstyle-nitpicker.xml';
@@ -38,15 +39,20 @@ function headFactProperties(projectRoot, policy, directory) {
   return [
     ...javaStyleProperties(policy),
     ...(policy.spring === true ? ['-Pnitpicker.spring=true'] : []),
+    ...(policy.featureFolders === true ? ['-Pnitpicker.featureFolders=true'] : []),
     ...(roles === undefined ? [] : [`-Pnitpicker.spring.roles=${roles}`]),
     ...(springRules === undefined ? [] : [`-Pnitpicker.pmd.springRules=${springRules}`]),
   ];
 }
 
 export function gradleStages(
-  common,
+  baseArguments,
   { projectRoot, initScript, policy, directory, testsFailedModules = [] },
 ) {
+  const common = [
+    ...baseArguments,
+    ...(policy.quick ? ['-Pnitpicker.quick=true', '--build-cache'] : []),
+  ];
   const checkstyleBase = path.join(directory, CHECKSTYLE_EXPORT);
   const layersCheckstyle = toolConfigChoices(projectRoot, policy).checkstyle.project !== undefined;
   return [
@@ -58,6 +64,7 @@ export function gradleStages(
         : []),
       ...toolConfigProperties(projectRoot, policy, { directory, checkstyleBase }),
       ...headFactProperties(projectRoot, policy, directory),
+      ...pitHistoryProperties(policy, projectRoot),
       '-I',
       initScript,
       'nitpickerJava',
