@@ -68,8 +68,8 @@ than the others, and this skill teaches its rules before an agent writes Go.
   contexts outside `main` and sleeping to wait for a goroutine come from Effective Go ("don't
   panic"), the Uber guide (goroutine lifetimes, "handle errors once") and the Google guide
   (contexts). `Must` functions and `main`/`init` keep `panic`, as in the standard library. Sleeps in
-  tests and goroutines tests leave behind are left to the test-honesty rules (#419), so a test line
-  is not reported twice. Package state and `init` side effects come from the Uber guide ("avoid
+  tests are `sleep-in-test` (#419) rather than `sleep-to-wait`, so a test line is not reported
+  twice; goroutines a test leaves behind are `unowned-goroutine` in test files too. Package state and `init` side effects come from the Uber guide ("avoid
   mutable globals", "avoid `init()`"); producer-side interfaces ("accept interfaces, return
   structs") and `any` in APIs from Go Code Review Comments ("Interfaces"); `helper` package names
   from the Go blog's "Package names" (revive's `package-naming` already reports `util`, `common` and
@@ -92,6 +92,12 @@ than the others, and this skill teaches its rules before an agent writes Go.
   printf templates are Go's interpolated strings, so they are not counted as repeats; and a method
   an interface asks for may forward, since Go has no other way to satisfy it. Unused parameters,
   boolean flags, commented-out code and discarded errors are revive, go-critic and errcheck rules.
+- **Test honesty (#211, #587).** The test rules of every preset (`test-without-assertion`,
+  `conditional-assertion-in-test`, `skipped-test-without-reason`, `switched-off-test`,
+  `sleep-in-test`), in Go's forms: `if got != want { t.Errorf(...) }` is Go's assertion, so an `if`
+  is a condition only when its body does not fail itself and nothing after it asserts; and the loop
+  decisions of #587 (constant counts and non-empty literal tables are fine; a table's cases run as
+  `t.Run` subtests, the subtest form of the Go wiki's table-driven tests).
 - **Configuration read once in `main`; clocks, randomness and writers passed in.** Matches the
   composition-root rule of the other presets and makes tests deterministic.
 - **`context.Context` first, never stored.** From Go Code Review Comments and the Google guide.

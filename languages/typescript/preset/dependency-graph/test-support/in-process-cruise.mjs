@@ -3,11 +3,11 @@ import { ts } from '../../../typescript-api/typescript-api.mjs';
 import { cruise as runDependencyCruiser } from 'dependency-cruiser';
 import { linkPolicyFile } from '../../../../../core/tooling/policy-links.mjs';
 import { readLayout } from '../../head-policy.mjs';
-import { layoutTransformFor } from '../../tool-configs.mjs';
 import {
   EXCLUDED_PATH_PATTERN,
   POLICY_TYPESCRIPT_CONFIG,
   TYPESCRIPT_CONFIG_ENVIRONMENT,
+  dependencyGraphTsconfig,
 } from '../cruise.mjs';
 
 const projectRoot = path.resolve(import.meta.dirname, '../../../../..');
@@ -71,7 +71,7 @@ export async function cruiseInProcess(paths, { typeScriptRoot = projectRoot } = 
       path.resolve(projectRoot, typeScriptRoot),
       `.nitpicker-dependency-graph-${String(process.pid)}-tsconfig.json`,
     ),
-    layoutTransformFor(POLICY_TYPESCRIPT_CONFIG, readLayout()),
+    dependencyGraphTsconfig(readLayout()),
   );
   try {
     const ruleSet = structuredClone(config);
