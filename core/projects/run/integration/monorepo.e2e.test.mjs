@@ -162,7 +162,8 @@ describe.skipIf(!pythonE2eEnabled)(
       expect(statuses(result)).toEqual({ web: 'skipped', api: 'skipped', svc: 'passed' });
       expect(result.exitCode).toBe(0);
       expect(linesStarting(result, '== ')).toEqual(['== svc (java) ==']);
-      expect(result.json('svc/summary.json').tools.map(({ name }) => name)).toContain('java');
+      const names = result.json('svc/summary.json').tools.map(({ name }) => name);
+      expect(names.filter((name) => name === 'java')).toEqual(['java']);
     });
 
     it('runs only the projects named with --project, changed or not', () => {
