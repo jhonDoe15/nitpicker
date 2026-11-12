@@ -19,7 +19,9 @@ describe("the Kotlin source scan's module list", () => {
   });
 
   it('names each message once, so no module silently replaces the text of another', () => {
-    const rules = directoryRules.flatMap(({ messages = {} }) => Object.keys(messages));
+    const rules = directoryRules.flatMap((entry) =>
+      Object.keys('messages' in entry ? entry.messages : {}),
+    );
 
     expect(rules.filter((rule, index) => rules.indexOf(rule) !== index)).toEqual([]);
   });

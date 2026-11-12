@@ -16,7 +16,7 @@ import {
 import { meaningfulLines, parseTestEvents } from './test-events.mjs';
 
 const TEST_EVENTS = 'test-events.jsonl';
-const COVERAGE_PROFILE = 'coverage.out';
+export const COVERAGE_PROFILE = 'coverage.out';
 const TESTS_TOOL = 'tests';
 const NO_TESTS_RULE = 'no-tests-ran';
 const LISTED_TESTS = 20;
@@ -30,6 +30,7 @@ function testCommand(settings, reportRoot, race) {
     '-json',
     ...(race ? RACE_FLAGS : []),
     ...buildFlags(settings),
+    '-covermode=atomic',
     '-coverpkg=./...',
     `-coverprofile=${path.join(reportRoot, COVERAGE_PROFILE)}`,
     './...',
