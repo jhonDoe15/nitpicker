@@ -22,9 +22,10 @@ type modelField struct {
 }
 
 type indexPart struct {
-	field    modelField
-	priority int
-	partial  bool
+	field      modelField
+	priority   int
+	where      bool
+	expression bool
 }
 
 const maxEmbedding = 8
@@ -107,7 +108,7 @@ func relationTarget(field modelField) (*types.Named, bool) {
 	}
 	typ := support.Deref(field.variable.Type())
 	many := false
-	if slice, ok := types.Unalias(typ).(*types.Slice); ok {
+	if slice, ok := types.Unalias(typ).Underlying().(*types.Slice); ok && !valueType(typ) {
 		typ, many = support.Deref(slice.Elem()), true
 	}
 	named, ok := types.Unalias(typ).(*types.Named)
@@ -118,6 +119,11 @@ func relationTarget(field modelField) (*types.Named, bool) {
 		return nil, false
 	}
 	return named, many
+}
+
+func valueType(typ types.Type) bool {
+	named, ok := types.Unalias(typ).(*types.Named)
+	return ok && isValue(named)
 }
 
 func isValue(named *types.Named) bool {
@@ -169,8 +175,8 @@ func covered(model *types.Named, key modelField) bool {
 		lead := slices.MinFunc(parts, func(left, right indexPart) int {
 			return cmp.Or(cmp.Compare(left.priority, right.priority), cmp.Compare(left.field.order, right.field.order))
 		})
-		partial := slices.ContainsFunc(parts, func(part indexPart) bool { return part.partial })
-		if lead.field.variable == key.variable && !partial {
+		partial := slices.ContainsFunc(parts, func(part indexPart) bool { return part.where })
+		if lead.field.variable == key.variable && !partial && !lead.expression {
 			return true
 		}
 	}
@@ -178,12 +184,26 @@ func covered(model *types.Named, key modelField) bool {
 }
 
 func leadingPrimary(fields []modelField, key modelField) bool {
+	primary := primaryFields(fields)
+	return len(primary) > 0 && primary[0].variable == key.variable
+}
+
+func primaryFields(fields []modelField) []modelField {
+	var primary []modelField
 	for _, field := range fields {
 		if field.primary() {
-			return field.variable == key.variable
+			primary = append(primary, field)
 		}
 	}
-	return false
+	if len(primary) > 0 {
+		return primary
+	}
+	for _, field := range fields {
+		if field.column() == "id" {
+			return []modelField{field}
+		}
+	}
+	return nil
 }
 
 func indexes(model string, fields []modelField) map[string][]indexPart {
@@ -204,8 +224,9 @@ func indexes(model string, fields []modelField) map[string][]indexPart {
 			if err != nil {
 				priority = 10
 			}
-			partial := parsed["WHERE"] != "" || parsed["EXPRESSION"] != ""
-			groups[name] = append(groups[name], indexPart{field: field, priority: priority, partial: partial})
+			groups[name] = append(groups[name], indexPart{
+				field: field, priority: priority, where: parsed["WHERE"] != "", expression: parsed["EXPRESSION"] != "",
+			})
 		}
 	}
 	return groups

@@ -86,3 +86,45 @@ type Invoice struct {
 	Customer   User
 	CustomerID uint // want unindexed-foreign-key
 }
+
+type Shelf struct {
+	gorm.Model
+	OwnerID uint   `gorm:"index:idx_shelf_owner_name"`
+	Name    string `gorm:"index:idx_shelf_owner_name,expression:lower(name)"`
+	Owner   User
+}
+
+type Account struct {
+	ID    uint
+	Name  string `gorm:"index"`
+	Books Books
+}
+
+type Book struct {
+	ID        uint
+	AccountID uint // want unindexed-foreign-key
+}
+
+type Books []Book
+
+type Detail struct {
+	ID      uint
+	Account Account `gorm:"foreignKey:ID"`
+}
+
+type Crate struct {
+	gorm.Model
+	Boxes []Box `gorm:"constraint:-"`
+}
+
+type Box struct {
+	gorm.Model
+	Crate   Crate
+	CrateID uint
+}
+
+type Plain struct {
+	ID      uint
+	Shelf   Shelf
+	ShelfID uint // want unindexed-foreign-key
+}

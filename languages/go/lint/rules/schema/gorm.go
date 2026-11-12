@@ -19,7 +19,7 @@ type gormRelation struct {
 
 func gormFindings(pass *analysis.Pass) []finding {
 	var found []finding
-	for _, model := range gormModels(pass) {
+	for _, model := range gormModels(pass, importsGorm(pass.Pkg)) {
 		for _, relation := range modelRelations(model) {
 			if covered(relation.child, relation.key) {
 				continue
@@ -30,7 +30,16 @@ func gormFindings(pass *analysis.Pass) []finding {
 	return found
 }
 
-func gormModels(pass *analysis.Pass) []*types.Named {
+func importsGorm(pkg *types.Package) bool {
+	for _, imported := range pkg.Imports() {
+		if imported.Path() == gormPath {
+			return true
+		}
+	}
+	return false
+}
+
+func gormModels(pass *analysis.Pass, gormPackage bool) []*types.Named {
 	var models []*types.Named
 	scope := pass.Pkg.Scope()
 	for _, name := range scope.Names() {
@@ -42,7 +51,11 @@ func gormModels(pass *analysis.Pass) []*types.Named {
 		if !ok {
 			continue
 		}
-		if structure, isStruct := named.Underlying().(*types.Struct); isStruct && isGormModel(structure, 0) {
+		structure, isStruct := named.Underlying().(*types.Struct)
+		if !isStruct {
+			continue
+		}
+		if isGormModel(structure, 0) || gormPackage && len(primaryFields(modelFields(named))) > 0 {
 			models = append(models, named)
 		}
 	}
@@ -88,7 +101,7 @@ func guessRelation(model, target *types.Named, field modelField, many bool) (gor
 	if many {
 		return gormRelation{}, false
 	}
-	if key, ok := foreignKeyField(model, target, field, field.variable.Name()); ok {
+	if key, ok := foreignKeyField(model, target, field, field.variable.Name()); ok && !reverseWithout(target, model, key) {
 		return gormRelation{holder: model, child: model, field: field.variable, key: key}, true
 	}
 	return gormRelation{}, false
@@ -115,21 +128,11 @@ func primaryField(model *types.Named, references string) (string, bool) {
 	if references != "" {
 		return references, !strings.Contains(references, ",")
 	}
-	var primary []string
-	identifier := false
-	for _, field := range modelFields(model) {
-		if field.primary() {
-			primary = append(primary, field.variable.Name())
-		}
-		identifier = identifier || field.variable.Name() == "ID"
+	primary := primaryFields(modelFields(model))
+	if len(primary) != 1 {
+		return "", false
 	}
-	switch {
-	case len(primary) == 1:
-		return primary[0], true
-	case len(primary) == 0 && identifier:
-		return "ID", true
-	}
-	return "", false
+	return primary[0].variable.Name(), true
 }
 
 func lookupField(fields []modelField, name string) (modelField, bool) {
@@ -156,4 +159,17 @@ func gormFinding(pass *analysis.Pass, relation gormRelation) finding {
 		"`%s` holds the foreign key of the GORM relation `%s.%s`, and no index, unique constraint or primary key "+
 			"of `%s` starts with it: add `gorm:\"index\"` to `%s`, or put it first in a composite index",
 		key, relation.holder.Obj().Name(), relation.field.Name(), child, key)}
+}
+
+func reverseWithout(parent, child *types.Named, key modelField) bool {
+	for _, field := range modelFields(parent) {
+		target, _ := relationTarget(field)
+		if target == nil || !types.Identical(target, child) || field.settings["CONSTRAINT"] != "-" {
+			continue
+		}
+		if reverse, ok := foreignKeyField(child, parent, field, parent.Obj().Name()); ok && reverse.variable == key.variable {
+			return true
+		}
+	}
+	return false
 }

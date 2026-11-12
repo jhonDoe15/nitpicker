@@ -50,6 +50,11 @@ func entSchemas(pass *analysis.Pass) map[*types.TypeName]*entSchema {
 	for owner, declared := range methods {
 		schemas[owner] = readSchema(pass, owner, declared)
 	}
+	for _, read := range schemas {
+		for _, edge := range read.edges {
+			edgeSchemaIndex(schemas, edge)
+		}
+	}
 	return schemas
 }
 
@@ -162,4 +167,16 @@ func paired(schemas map[*types.TypeName]*entSchema, assoc *entEdge) bool {
 func lowerFirst(name string) string {
 	first, size := utf8.DecodeRuneInString(name)
 	return string(unicode.ToLower(first)) + name[size:]
+}
+
+func edgeSchemaIndex(schemas map[*types.TypeName]*entSchema, edge *entEdge) {
+	via := schemas[edge.via]
+	if via == nil || via.keyed {
+		return
+	}
+	owner := edge.owner
+	if edge.inverse {
+		owner = edge.target
+	}
+	via.leads["field:"+snake(owner.Name())+"_id"] = true
 }

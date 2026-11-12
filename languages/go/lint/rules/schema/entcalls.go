@@ -10,11 +10,12 @@ import (
 )
 
 const (
-	entPath   = "entgo.io/ent"
-	edgePath  = entPath + "/schema/edge"
-	indexPath = entPath + "/schema/index"
-	fieldPath = entPath + "/schema/field"
-	mixinPath = entPath + "/schema/mixin"
+	entPath    = "entgo.io/ent"
+	edgePath   = entPath + "/schema/edge"
+	indexPath  = entPath + "/schema/index"
+	fieldPath  = entPath + "/schema/field"
+	mixinPath  = entPath + "/schema/mixin"
+	entsqlPath = entPath + "/dialect/entsql"
 )
 
 type method struct {
