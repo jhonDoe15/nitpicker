@@ -15,6 +15,7 @@ import {
   PROJECT_STATICCHECK,
   SKIP_S1003,
   STATUS,
+  STATUS_TEST,
   STOCK,
   STOCK_REFRESH,
   STOCK_TEST,
@@ -34,7 +35,10 @@ describe.skipIf(!goE2eEnabled)('Go preset linters end to end', () => {
       'shop/stock_test.go': STOCK_TEST,
       'shop/stock/stock.go': STOCK_REFRESH,
     });
-    commitBranch(project, 'catalog-values', { 'shop/status.go': STATUS });
+    commitBranch(project, 'catalog-values', {
+      'shop/status.go': STATUS,
+      'shop/status_test.go': STATUS_TEST,
+    });
     commitBranch(project, 'conf-ignored', {
       'shop/lookup.go': LOOKUP,
       'shop/lookup_test.go': LOOKUP_TEST,
