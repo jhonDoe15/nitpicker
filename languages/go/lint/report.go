@@ -47,7 +47,7 @@ func supersededBy() map[string][]string {
 		"compares":                  {"errorlint"},
 		"suite-thelper":             {"thelper"},
 		"errname":                   {"ST1012"},
-		"noctx":                     {"SA1005"},
+		"noctx":                     {"SA1005", "http-without-timeout"},
 		"string-format":             {"SA1006", "QF1010", "QF1012", "S1025", "S1028", "S1039", "unnecessary-format"},
 		"bool-format":               {"QF1012"},
 		"hex-format":                {"QF1012"},
