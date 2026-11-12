@@ -9,10 +9,11 @@ import {
   gateCandidates,
   suiteFiles,
   workflowProblems,
-} from './e2e-gates.mjs';
+} from './e2e-gates.mts';
+import { type Fields, fieldsOf, listOf } from '../json/fields.mts';
 
 const ENV = ['process', 'env'].join('.');
-const roots = [];
+const roots: string[] = [];
 
 afterEach(() => {
   for (const root of roots.splice(0)) {
@@ -20,7 +21,7 @@ afterEach(() => {
   }
 });
 
-function repository(files) {
+function repository(files: Readonly<Record<string, string>>): string {
   const root = mkdtempSync(path.join(tmpdir(), 'nitpicker-e2e-gates-'));
   roots.push(root);
   for (const [file, text] of Object.entries(files)) {
@@ -85,7 +86,8 @@ describe('the suite files', () => {
   });
 });
 
-const cases = (file, ...names) => names.map((name) => ({ file, name }));
+const cases = (file: string, ...names: string[]): { file: string; name: string }[] =>
+  names.map((name) => ({ file, name }));
 
 describe('the E2E gates', () => {
   const candidates = [
@@ -145,9 +147,24 @@ describe('the E2E gates', () => {
   });
 });
 
-function workflow(language) {
+function workflow(language: string): unknown {
   const file = path.join(import.meta.dirname, `../../.github/workflows/${language}-e2e.yml`);
-  return parse(readFileSync(file, 'utf8'));
+  const parsed: unknown = parse(readFileSync(file, 'utf8'));
+  return parsed;
+}
+
+function withJob(parsed: unknown, name: string, change: (job: Fields) => Fields): unknown {
+  const jobs = fieldsOf(fieldsOf(parsed)?.['jobs']) ?? {};
+  return { ...fieldsOf(parsed), jobs: { ...jobs, [name]: change(fieldsOf(jobs[name]) ?? {}) } };
+}
+
+function withoutShardOption(job: Fields): Fields {
+  const steps = listOf(job['steps']).map((step) => {
+    const fields = fieldsOf(step) ?? {};
+    const run = fields['run'];
+    return typeof run === 'string' ? { ...fields, run: run.replace(/ --shard=\S+/u, '') } : fields;
+  });
+  return { ...job, steps };
 }
 
 describe('the E2E workflows', () => {
@@ -159,11 +176,14 @@ describe('the E2E workflows', () => {
   );
 
   it('report an aggregate that does not need the plan, and a shard run without --shard', () => {
-    const parsed = workflow('python');
-    parsed.jobs['python-e2e'].needs = ['changes', 'python-shard'];
-    for (const step of parsed.jobs['python-shard'].steps) {
-      step.run = step.run?.replace(/ --shard=\S+/u, '');
-    }
+    const parsed = withJob(
+      withJob(workflow('python'), 'python-e2e', (job) => ({
+        ...job,
+        needs: ['changes', 'python-shard'],
+      })),
+      'python-shard',
+      withoutShardOption,
+    );
 
     expect(workflowProblems(parsed, 'python')).toEqual([
       'python-shard must run test:python with --shard=${{ matrix.shard }}/${{ strategy.job-total }}',
@@ -172,8 +192,10 @@ describe('the E2E workflows', () => {
   });
 
   it('report an aggregate that ignores the changed-file selection', () => {
-    const parsed = workflow('go');
-    parsed.jobs['go-e2e'].needs = ['go-shard-plan', 'go-shard'];
+    const parsed = withJob(workflow('go'), 'go-e2e', (job) => ({
+      ...job,
+      needs: ['go-shard-plan', 'go-shard'],
+    }));
 
     expect(workflowProblems(parsed, 'go')).toEqual([
       'the aggregate job must also need changes and check its result',

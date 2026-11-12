@@ -1,13 +1,13 @@
 import path from 'node:path';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { durationFile } from './duration-profile.mjs';
-import { mergeDurations } from './record-durations.mjs';
+import { durationFile } from './duration-profile.mts';
+import { type MeasuredModule, mergeDurations } from './record-durations.mts';
 import {
   assignShards,
   createDurationSequencer,
   heaviestFirst,
   readDurations,
-} from './sequencer.mjs';
+} from './sequencer.mts';
 
 const files = ['a.test.mjs', 'b.test.mjs', 'c.test.mjs', 'd.test.mjs', 'e.test.mjs', 'f.test.mjs'];
 const durations = new Map([
@@ -98,7 +98,9 @@ describe('assignShards', () => {
 
 describe('createDurationSequencer', () => {
   const root = path.resolve('/repository');
-  const specification = (file) => ({ moduleId: path.join(root, file) });
+  const specification = (file: string): { moduleId: string } => ({
+    moduleId: path.join(root, file),
+  });
   const specifications = files.map(specification);
 
   it('runs its own shard, heaviest file first', () => {
@@ -124,7 +126,7 @@ describe('createDurationSequencer', () => {
 
 describe('mergeDurations', () => {
   const root = path.resolve('/repository');
-  const measured = (file, milliseconds) => ({
+  const measured = (file: string, milliseconds: number): MeasuredModule => ({
     moduleId: path.join(root, file),
     diagnostic: {
       environmentSetupDuration: 0,

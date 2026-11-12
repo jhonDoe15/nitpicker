@@ -28,7 +28,6 @@
   "include": ["**/*.mts"],
   "exclude": [
     "node_modules/**",
-    "vitest.config.mts",
     "**/fixtures/**",
     "evals/cases/**",
     "evals/results/**",
