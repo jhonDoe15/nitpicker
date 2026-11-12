@@ -5,6 +5,7 @@ import { readComparisonChanges } from './comparison-changes.mjs';
 import { MAX_TESTED_SOURCES, testedSources } from './tested-sources.mjs';
 
 const MUTATION_TOOL = 'pit';
+const SUMMARY_RULE = 'mutation-summary';
 const NAMED_CAPPED = 3;
 
 function sameDirectory(left, right) {
@@ -75,11 +76,19 @@ function onChangedLine(finding, ranges) {
   return line !== undefined && ranges.some(([start, end]) => start <= endLine && line <= end);
 }
 
+function isPlannedMutant(finding, plan) {
+  if (finding.tool !== MUTATION_TOOL) {
+    return true;
+  }
+  if (finding.rule === SUMMARY_RULE) {
+    return false;
+  }
+  const ranges = plan.changedOnly.get(finding.path);
+  return ranges === undefined || onChangedLine(finding, ranges);
+}
+
 function plannedMutationFindings(findings, plan) {
-  const kept = findings.filter((finding) => {
-    const ranges = finding.tool === MUTATION_TOOL ? plan.changedOnly.get(finding.path) : undefined;
-    return ranges === undefined || onChangedLine(finding, ranges);
-  });
+  const kept = findings.filter((finding) => isPlannedMutant(finding, plan));
   return [...kept, ...plan.notices];
 }
 

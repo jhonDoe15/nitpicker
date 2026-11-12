@@ -29,6 +29,8 @@ Kotlin preset gets the same, on Gradle and Maven.
   findings cache is keyed by the changed test files and their head contents (only when a test
   changed; otherwise the base entry is shared as before).
 - Paths given to the run (`nitpicker src/orders --base main`) narrow the head side further.
+- The `mutation-summary` counts are left out of a comparison, since the two sides mutate different
+  classes.
 
 **PIT history.** When both sides mutate the classes reached by changed tests, head also starts from
 the PIT results of the base run (PIT's own incremental analysis). On the base side, every PIT run
