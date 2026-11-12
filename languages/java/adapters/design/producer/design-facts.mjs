@@ -62,7 +62,11 @@ export function sourceJava(modules) {
     .map((module) => module.sourceJava)
     .filter((source) => typeof source?.java === 'string')
     .filter(({ java }) => !path.isAbsolute(java) || existsSync(java))
-    .toSorted((left, right) => (right.feature ?? 0) - (left.feature ?? 0))[0]?.java;
+    .reduce(
+      (best, source) =>
+        best === undefined || (source.feature ?? 0) > (best.feature ?? 0) ? source : best,
+      undefined,
+    )?.java;
 }
 
 function programFacts({ projectRoot, files, work, target, java }) {

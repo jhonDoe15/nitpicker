@@ -72,11 +72,13 @@ describe('nitpickerCheckstyleConfig', () => {
   });
 
   it('allows one-letter fields and methods, and an untagged TODO in any case but the tag itself', () => {
-    expect(config).toContain('value="^[a-z]([a-z0-9][a-zA-Z0-9]*)?$"/>');
-    expect(config).toContain(
-      `<property name="query" value="//VARIABLE_DEF/IDENT[matches(@text, '^[a-z]$')]"/>`,
-    );
-    expect(config).toContain('<property name="format" value="^[ \\t]*(?!TODO\\b)(?i:TODO)\\b"/>');
+    const count = (text) => config.split(text).length - 1;
+
+    expect([
+      count('value="^[a-z]([a-z0-9][a-zA-Z0-9]*)?$"/>'),
+      count(`<property name="query" value="//VARIABLE_DEF/IDENT[matches(@text, '^[a-z]$')]"/>`),
+      count('<property name="format" value="^[ \\t]*(?!TODO\\b)(?i:TODO)\\b"/>'),
+    ]).toEqual([1, 1, 1]);
     expect(config).not.toContain('^TODO:');
   });
 
@@ -242,7 +244,7 @@ describe('runFormat', () => {
     mkdirSync(path.dirname(java), { recursive: true });
     writeFileSync(
       java,
-      '#!/bin/sh\n[ "$1" = -version ] && echo \'openjdk version "21.0.1"\' >&2 && exit 0\ncat "${1#@}"\n',
+      `#!/bin/sh\n[ "$1" = -version ] && echo 'openjdk version "21.0.1"' >&2 && exit 0\ncat "\${1#@}"\n`,
     );
     chmodSync(java, 0o755);
     vi.stubEnv('JAVA_HOME', path.join(root, 'jdk'));
