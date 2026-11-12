@@ -94,7 +94,7 @@ export function readKotlinReviewFindings(context) {
     ...subjectMockFindings(own, { finding, projectRoot, projectFiles, isProduction }),
     ...relaxedMockFindings(own, { finding, projectRoot, isProduction }),
     ...springContextFindings(own, { finding }),
-    ...springFindings(own, { finding, manifest, projectFiles, projectRoot, javaRoots }),
+    ...springFindings(own, { ...context, finding, projectFiles, javaRoots }),
     ...blockingFindings(own, { finding, declaredIn: projectFiles, projectRoot, javaRoots }),
     ...enumPredicateFindings(own, { finding, projectRoot, declaredIn: projectFiles }),
     ...forwardingWrapperFindings(own, { finding, declaredIn: projectFiles }),
