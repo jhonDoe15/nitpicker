@@ -1,9 +1,13 @@
 import { existsSync } from 'node:fs';
 import path from 'node:path';
 import { ancestorDirectories } from '../../../../../../shared/filesystem.mjs';
+import { posixRelative } from '../../../../../../shared/project-files/tree-walk.mjs';
 import { readHeadPolicy, readLayout } from '../../../head-policy.mjs';
 import { DEFAULT_TEST_RUNNER, TEST_RUNNERS } from '../../../test-runner/runners.mjs';
-import { recordedTestRunner, runnerVocabulary } from '../../../test-runner/vocabulary/runner-vocabulary.mjs';
+import {
+  recordedTestRunner,
+  runnerVocabulary,
+} from '../../../test-runner/vocabulary/runner-vocabulary.mjs';
 import {
   defaultTestFiles,
   testFileMatcher,
@@ -29,10 +33,6 @@ function packageRoot(directory) {
   return ancestorDirectories(directory).find((candidate) =>
     existsSync(path.join(candidate, 'package.json')),
   );
-}
-
-function posixRelative(from, to) {
-  return path.relative(from, to).split(path.sep).join('/');
 }
 
 export function projectRelative(filename, cwd) {

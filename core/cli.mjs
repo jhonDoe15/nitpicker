@@ -14,9 +14,7 @@ import {
   describeDisableCascade,
   loadConfig,
 } from './configuration/config.mjs';
-import { resolveProjectHeadPolicy } from './conventions/project-head-policy.mjs';
-import { configuredWithTestFiles } from './command/comparison/test-file-policy.mjs';
-import { presetAnalyzers } from './configuration/preset-analyzers.mjs';
+import { configuredRunSetup } from './command/comparison/test-file-policy.mjs';
 import { assertProjectPeers } from './init/preflight/project-peers.mjs';
 import { withRunLock } from './command/run-lock.mjs';
 import { runSnapshotCli } from './command/snapshot.mjs';
@@ -35,11 +33,10 @@ import { resolveBase } from './diff/git/repository/base-ref.mjs';
 import { detachLocalGitVariables } from './diff/git/environment/local-variables.mjs';
 import path from 'node:path';
 import { clearDiffReports, outputRootFor } from './diff/reporting/reporters.mjs';
-import { requestedAnalyzers, selectComparisonAnalyzers } from './command/comparison/analyzers.mjs';
+import { selectComparisonAnalyzers } from './command/comparison/analyzers.mjs';
 import { runQualityDiff } from './diff/comparison/run-diff.mjs';
 import { fixIfRequested } from './command/fix-request.mjs';
-import { applyRunProfile } from './quick/profile.mjs';
-import { stagedCapture, withIndexFile } from './staged/capture-index.mjs';
+import { withIndexFile } from './staged/capture-index.mjs';
 import { resolveCacheStore } from './diff/cache/cache-stores.mjs';
 import { runHistoryCli } from '../shared/history/runner.mjs';
 import { runHygieneCli } from '../shared/hygiene/runner.mjs';
@@ -163,20 +160,7 @@ function runConfigured(cli) {
   const { currentProjectRoot, scope } = resolveRunTarget({ ...cli, missingPathHint });
   const config = loadConfig(currentProjectRoot);
   writePresetHint(cli.stderr, config, currentProjectRoot);
-  const presetSet = presetAnalyzers(config, options.all ? cli.snapshotAnalyzers : cli.analyzers);
-  const { headPolicy, analyzers } = configuredWithTestFiles({
-    presetSet,
-    config,
-    projectRoot: currentProjectRoot,
-    detectedPolicy: resolveProjectHeadPolicy(config, currentProjectRoot, {
-      maven: cli.environment.NITPICKER_MAVEN,
-    }),
-    select: (configured) => requestedAnalyzers(options, configured),
-  });
-  const setup = {
-    ...applyRunProfile(analyzers, options),
-    captureHead: stagedCapture(cli, currentProjectRoot),
-  };
+  const { presetSet, headPolicy, setup } = configuredRunSetup(cli, { config, currentProjectRoot });
   for (const note of describeDisableCascade(presetSet, config)) {
     cli.stderr.write(`nitpicker: ${note}\n`);
   }

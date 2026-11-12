@@ -92,7 +92,7 @@ const startsTestProcesses =
 
 if (IN_PROCESS_OPTION.test(execArguments.join(' '))) {
   queueMicrotask(registerRestore);
-} else if (!startsTestProcesses || !preloadedWithRequire()) {
+} else if (!(startsTestProcesses && preloadedWithRequire())) {
   registerRestore();
 }
 

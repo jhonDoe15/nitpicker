@@ -1,23 +1,23 @@
 import { describe, expect, it } from 'vitest';
-import { TEST_RUNNERS } from '../runners.mjs';
+import { DEFAULT_TEST_RUNNER, TEST_RUNNERS } from '../runners.mjs';
 import { runnerVocabulary } from './runner-vocabulary.mjs';
 
 describe('runnerVocabulary', () => {
   it('names the same terms for every runner', () => {
-    const [first, ...others] = TEST_RUNNERS.map((runner) => Object.keys(runnerVocabulary(runner)));
+    const keys = Object.keys(runnerVocabulary(DEFAULT_TEST_RUNNER));
 
-    for (const keys of others) expect(keys).toEqual(first);
+    expect(TEST_RUNNERS.map((runner) => Object.keys(runnerVocabulary(runner)))).toEqual(
+      TEST_RUNNERS.map(() => keys),
+    );
   });
 
   it('speaks Vitest by default and for an unknown runner', () => {
-    expect(runnerVocabulary()).toBe(runnerVocabulary('vitest'));
-    expect(runnerVocabulary('tap')).toBe(runnerVocabulary('vitest'));
+    expect(runnerVocabulary()).toBe(runnerVocabulary(DEFAULT_TEST_RUNNER));
+    expect(runnerVocabulary('tap')).toBe(runnerVocabulary(DEFAULT_TEST_RUNNER));
   });
 
-  it('keeps the vi namespace out of every other runner', () => {
-    for (const runner of ['jest', 'node', 'mocha']) {
-      expect(Object.values(runnerVocabulary(runner)).join(' ')).not.toMatch(/\bvi\.|vitest/u);
-    }
+  it.each(['jest', 'node', 'mocha'])('keeps the vi namespace out of %s', (runner) => {
+    expect(Object.values(runnerVocabulary(runner)).join(' ')).not.toMatch(/\bvi\.|vitest/u);
   });
 
   it.each([
@@ -29,7 +29,7 @@ describe('runnerVocabulary', () => {
   });
 
   it.each([
-    ['vitest', 'beforeAll'],
+    [DEFAULT_TEST_RUNNER, 'beforeAll'],
     ['jest', 'beforeAll'],
     ['node', 'before'],
     ['mocha', 'before'],

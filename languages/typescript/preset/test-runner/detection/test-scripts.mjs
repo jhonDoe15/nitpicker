@@ -37,7 +37,7 @@ function operands(tokens, valued) {
     if (token === ARGUMENTS_SEPARATOR && !isValue) {
       break;
     }
-    if (!isValue && !token.startsWith('-')) {
+    if (!(isValue || token.startsWith('-'))) {
       found.push(index);
     }
   }

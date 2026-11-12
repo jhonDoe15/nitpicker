@@ -88,7 +88,7 @@ describe('partial output assertions with Chai under Mocha', () => {
   it.each([
     "expect(output).to.include('fragment');",
     "expect(output).to.contain('fragment');",
-    'expect(output).to.have.string(`line ${n}`);',
+    `expect(output).to.have.string(\`line \${n}\`);`,
     'expect(list).to.deep.include({ id: 1 });',
     "assert.include(output, 'fragment');",
     'assert.deepInclude(list, { id: 1 });',

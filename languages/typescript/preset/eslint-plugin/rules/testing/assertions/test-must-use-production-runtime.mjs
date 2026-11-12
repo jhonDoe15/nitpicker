@@ -83,7 +83,7 @@ function isProductionModule(filename, source) {
     return false;
   }
   const rootRelative = resolved.slice(resolved.indexOf(`/${resolvedRoot}/`) + 1);
-  return !TEST_SUPPORT.test(rootRelative) && !layout.isTestFile(rootRelative);
+  return !(TEST_SUPPORT.test(rootRelative) || layout.isTestFile(rootRelative));
 }
 
 function reachesProduction(filename, source) {

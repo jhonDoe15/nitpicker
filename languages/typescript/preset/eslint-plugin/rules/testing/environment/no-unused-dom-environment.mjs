@@ -47,7 +47,9 @@ const ALIAS_FIND = {
 
 function registeredInFile(program) {
   for (const statement of program.body) {
-    const specifier = statementSources(statement).find((source) => registeredEnvironment(source));
+    const specifier = statementSources(statement).find(
+      (source) => registeredEnvironment(source) !== undefined,
+    );
     if (specifier !== undefined) {
       return { directive: specifier, name: registeredEnvironment(specifier), loc: statement.loc };
     }

@@ -28,7 +28,7 @@ tester.run('no-switched-off-tests under node:test, Mocha and test options', noSw
     "it('x', (t) => { items.todo(); });",
     "test('x', ({ skip }) => { skip(process.platform === 'win32'); run(); });",
     "test('x', (ctx) => { ctx.skip(!hasDocker, 'needs Docker'); run(); });",
-    "test('x', { skip: `${reason}` }, () => {});",
+    `test('x', { skip: \`\${reason}\` }, () => {});`,
     "test.step('x', () => { setUp(); });",
     "t.test('sub', { skip: process.platform === 'win32' }, () => {});",
     "const passes = pattern.test('x');",

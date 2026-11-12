@@ -75,10 +75,11 @@ describe('rule messages name the API of the project runner', () => {
     expect(all).not.toMatch(/\bvi\./u);
   });
 
-  it('accept the runner ids the detection produces and nothing else', () => {
-    for (const runner of TEST_RUNNERS) {
-      expect(() => messagesFor(sleepRules, SLEEP, runner)).not.toThrow();
-    }
+  it.each(TEST_RUNNERS)('accept the runner id %s the detection produces', (runner) => {
+    expect(() => messagesFor(sleepRules, SLEEP, runner)).not.toThrow();
+  });
+
+  it('reject a runner id the detection does not produce', () => {
     expect(() => messagesFor(sleepRules, SLEEP, 'tap')).toThrow(/allowed values/u);
   });
 

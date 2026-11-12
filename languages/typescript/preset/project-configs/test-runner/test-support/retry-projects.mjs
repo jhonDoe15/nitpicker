@@ -1,4 +1,4 @@
-import { writeFileSync } from 'node:fs';
+import { writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { vi } from 'vitest';
 import {
@@ -11,7 +11,7 @@ import { resolveHeadPolicy } from '../../../head-policy.mjs';
 import { withProjectTestFiles } from '../../../test-runner/test-files/project-test-files.mjs';
 
 export const OPT_IN = ['project', 'nitpicker'];
-export const MOCHA_TESTS = "mocha 'test/**/*.test.ts'";
+const MOCHA_TESTS = "mocha 'test/**/*.test.ts'";
 export const TESTS_FAILED = ['tool-error:tests-failed'];
 const COVERAGE_ANALYZER = { name: 'coverage', policyFromPackage: true };
 const TEST_RUN_FAILURE = /:tests-(?:failed|not-run)$/u;
@@ -77,7 +77,7 @@ export function createRetryProjects() {
         resolveHeadPolicy({ tools: { tests: { precedence } } }, root),
         { projectRoot: root, liveProjectRoot: root, analyzers: [COVERAGE_ANALYZER] },
       );
-      writeFileSync(policyFile, JSON.stringify(policy));
+      await writeFile(policyFile, JSON.stringify(policy));
       vi.stubEnv('NITPICKER_POLICY', policyFile);
       return rulesOf(await runArea('coverage', root)).filter((rule) => TEST_RUN_FAILURE.test(rule));
     },

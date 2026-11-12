@@ -127,7 +127,7 @@ export const rule = {
         ) {
           context.report({ node: callee.property, messageId: 'literalCondition' });
         }
-        if (!isCaseCall(node) && !isSuiteCall(node) && !isSubtestCall(node)) {
+        if (!(isCaseCall(node) || isSuiteCall(node) || isSubtestCall(node))) {
           return;
         }
         const option = switchedOffOption(node);
