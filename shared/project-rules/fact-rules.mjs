@@ -1,3 +1,10 @@
+import {
+  DESIGN_RULE_LANGUAGES,
+  DESIGN_RULE_LISTS,
+  DESIGN_RULE_SETTINGS,
+  DESIGN_RULES,
+} from './design/design-rules.mjs';
+
 const TYPESCRIPT_AND_JAVASCRIPT = {
   typescript: true,
   javascript: true,
@@ -7,7 +14,20 @@ const TYPESCRIPT_AND_JAVASCRIPT = {
   go: false,
 };
 
+export const OWN_TOOL = 'own-tool';
+
 const JVM = { java: true, kotlin: true };
+
+const FEATURE_BOUNDARY_LANGUAGES = {
+  typescript: OWN_TOOL,
+  javascript: OWN_TOOL,
+  java: false,
+  python: true,
+  kotlin: false,
+  go: false,
+};
+
+const FEATURE_LAYOUT_SETTINGS = ['layout.sharedRoots', 'layout.featureRoots'];
 
 export const FACT_RULE_LANGUAGES = {
   'duplicate-definition': {
@@ -15,6 +35,7 @@ export const FACT_RULE_LANGUAGES = {
     ...JVM,
     javascript: 'partial',
     python: true,
+    go: true,
   },
   'exported-name-collision': {
     ...TYPESCRIPT_AND_JAVASCRIPT,
@@ -22,27 +43,34 @@ export const FACT_RULE_LANGUAGES = {
     javascript: 'partial',
     python: true,
   },
-  'sibling-copy-edit': { ...TYPESCRIPT_AND_JAVASCRIPT, ...JVM, python: true },
-  'shared-used-by-one-feature': { ...TYPESCRIPT_AND_JAVASCRIPT, ...JVM },
+  'sibling-copy-edit': { ...TYPESCRIPT_AND_JAVASCRIPT, ...JVM, python: true, go: true },
+  'shared-used-by-one-feature': { ...TYPESCRIPT_AND_JAVASCRIPT, ...JVM, python: true, go: true },
+  'feature-internal-import': { ...FEATURE_BOUNDARY_LANGUAGES },
+  'shared-imports-feature': { ...FEATURE_BOUNDARY_LANGUAGES },
+  'feature-cycle': { ...FEATURE_BOUNDARY_LANGUAGES },
   'public-alternative-bypass': { ...TYPESCRIPT_AND_JAVASCRIPT, python: true, kotlin: true },
   'test-only-export': {
     ...TYPESCRIPT_AND_JAVASCRIPT,
     java: true,
     kotlin: true,
     python: true,
+    go: true,
   },
   'doc-comment-content': {
     ...TYPESCRIPT_AND_JAVASCRIPT,
     java: true,
     kotlin: true,
     python: true,
+    go: true,
   },
   'test-console-output': {
     ...TYPESCRIPT_AND_JAVASCRIPT,
     java: true,
     kotlin: true,
     python: true,
+    go: true,
   },
+  ...Object.fromEntries(DESIGN_RULES.map((rule) => [rule, { ...DESIGN_RULE_LANGUAGES }])),
 };
 
 export const FACT_RULE_LISTS = {
@@ -50,15 +78,23 @@ export const FACT_RULE_LISTS = {
   'exported-name-collision': ['modules', 'packages', 'definitions', 'imports'],
   'sibling-copy-edit': ['modules', 'packages', 'definitions'],
   'shared-used-by-one-feature': ['modules', 'imports'],
+  'feature-internal-import': ['modules', 'imports'],
+  'shared-imports-feature': ['modules', 'imports'],
+  'feature-cycle': ['modules', 'imports'],
   'public-alternative-bypass': ['modules', 'imports'],
   'test-only-export': ['modules', 'packages', 'definitions', 'imports'],
   'doc-comment-content': ['docComments'],
   'test-console-output': ['console'],
+  ...DESIGN_RULE_LISTS,
 };
 
 export const FACT_RULE_SETTINGS = {
-  'shared-used-by-one-feature': ['layout.sharedRoots', 'layout.featureRoots'],
+  'shared-used-by-one-feature': FEATURE_LAYOUT_SETTINGS,
+  'feature-internal-import': FEATURE_LAYOUT_SETTINGS,
+  'shared-imports-feature': FEATURE_LAYOUT_SETTINGS,
+  'feature-cycle': FEATURE_LAYOUT_SETTINGS,
   'test-console-output': ['testConsole'],
+  ...DESIGN_RULE_SETTINGS,
 };
 
 const NATIVE_LANGUAGES = new Set(['typescript', 'javascript']);
@@ -73,8 +109,30 @@ export function registeredFactRules(language) {
     .map(([rule]) => rule);
 }
 
+const OWN_RULE_SETTINGS = {
+  'contract-infrastructure-type': {
+    languages: ['java', 'kotlin', 'python'],
+    settings: FEATURE_LAYOUT_SETTINGS,
+  },
+};
+
+function ownRuleSettings(language) {
+  return Object.values(OWN_RULE_SETTINGS)
+    .filter(({ languages }) => languages.includes(language))
+    .flatMap(({ settings }) => settings);
+}
+
 export function factRuleSettings(language) {
-  return registeredFactRules(language).flatMap((rule) => FACT_RULE_SETTINGS[rule] ?? []);
+  return [
+    ...new Set([
+      ...registeredFactRules(language).flatMap((rule) => FACT_RULE_SETTINGS[rule] ?? []),
+      ...ownRuleSettings(language),
+    ]),
+  ];
+}
+
+function column(value) {
+  return value === OWN_TOOL ? true : value;
 }
 
 const OWN_COLUMN_LANGUAGES = new Set(['go']);
@@ -90,7 +148,7 @@ export function withLanguageColumns(rule, languages) {
       language,
       registered === undefined
         ? (rule.enforcedBy[language] ?? defaultEnforcement(rule.enforcedBy, language))
-        : registered[language],
+        : column(registered[language]),
     ]),
   );
   return { ...rule, enforcedBy };

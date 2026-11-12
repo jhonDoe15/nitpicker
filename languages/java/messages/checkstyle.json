@@ -42,6 +42,10 @@
     "layout": true,
     "mayBeIntended": false
   },
+  "ConstantName": {
+    "fix": null,
+    "mayBeIntended": true
+  },
   "ConstructorsDeclarationGrouping": {
     "fix": "Declare all constructors of a class next to each other, with no methods or fields between them.",
     "mayBeIntended": false
@@ -124,6 +128,10 @@
   "LocalVariableName": {
     "fix": "Name local variables lowerCamelCase, one letter or two or more characters with a lowercase or digit second: totalCents, not tC or total_cents.",
     "mayBeIntended": false
+  },
+  "MagicNumber": {
+    "fix": null,
+    "mayBeIntended": true
   },
   "MemberName": {
     "fix": "Name fields lowerCamelCase with at least two characters and a lowercase or digit second: userId, not uId, x or user_id.",
@@ -304,6 +312,10 @@
   "VariableDeclarationUsageDistance": {
     "fix": "Declare the local right before its first use, at most three statements earlier, or move the statements in between above it.",
     "mayBeIntended": false
+  },
+  "VisibilityModifier": {
+    "fix": null,
+    "mayBeIntended": true
   },
   "WhitespaceAfter": {
     "fix": null,

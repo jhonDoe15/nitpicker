@@ -3,7 +3,7 @@ name: kotlin-e2e
 # The Kotlin end-to-end suite (npm run test:kotlin): real Gradle builds of a small Kotlin and Java project,
 # sharded across isolated runners. It runs on a push to main that touches the Java and Kotlin preset code, the core and
 # shared code it imports, the package and test configuration, or this file; by hand from the Actions tab;
-# and on a pull request only when the `run-ci` label is added and the pull request changes one of those paths.
+# and on a pull request when a label is added while it carries `run-ci` and it changes one of those paths.
 on:
   push:
     branches: [main]
@@ -24,17 +24,17 @@ on:
     types: [labeled]
   workflow_dispatch:
 
-# A newer request cancels the older run on the same pull request, other labels do not. On main a started
+# A newer run on the same pull request cancels the older one. On main a started
 # run finishes, and a newer push replaces a run that is still waiting.
 concurrency:
-  group: ${{ github.workflow }}-${{ github.event_name == 'push' && 'main' || github.event.label.name == 'run-ci' && github.event.pull_request.number || github.run_id }}
+  group: ${{ github.workflow }}-${{ github.event_name == 'push' && 'main' || github.event.pull_request.number || github.run_id }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   # On a pull request, the jobs below run only when the pull request changes a file in this
   # workflow's push paths, or when the changed files cannot be listed. Other runs check everything.
   changes:
-    if: github.event_name != 'pull_request' || github.event.label.name == 'run-ci'
+    if: github.event_name != 'pull_request' || contains(github.event.pull_request.labels.*.name, 'run-ci')
     runs-on: ubuntu-latest
     timeout-minutes: 5
     permissions:
@@ -115,10 +115,10 @@ jobs:
           cache: npm
           cache-dependency-path: package-lock.json
       - run: npm ci
-      - run: node scripts/test-shards/verify-e2e-shards.mjs kotlin
+      - run: node scripts/test-shards/verify-e2e-shards.mts kotlin
 
   kotlin:
-    if: ${{ always() && (github.event_name != 'pull_request' || github.event.label.name == 'run-ci') }}
+    if: ${{ always() && (github.event_name != 'pull_request' || contains(github.event.pull_request.labels.*.name, 'run-ci')) }}
     needs: [changes, kotlin-shard-plan, kotlin-shard]
     runs-on: ubuntu-latest
     timeout-minutes: 5

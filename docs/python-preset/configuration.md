@@ -9,18 +9,16 @@ flags the TypeScript-only keys this preset refuses. A Python project has no `nod
 points at the published file: `"$schema": "https://raw.githubusercontent.com/jhonDoe15/nitpicker/main/spec/config.schema.json"`. nitpicker ignores the line; see
 [Editor support](usage.md#editor-support).
 
-Config keys with this preset: `base`, `disable` (the analyzer names are `python` and `mutation`), `analyzers`, the keys shared by all languages,
+Config keys with this preset: `base`, `disable` (the analyzer names are `python` and `mutation`), `analyzers`, `analyzerTimeoutMinutes`, the keys shared by all languages,
 `thresholds` (`crapLimit`, enforced from slice 3, the file limits `fileLines`, `testFileLines`,
 `lineLength` and `folderFiles`, the size limits `folderDepth`, `classMethods`, `classFields` and
 `inheritanceDepth`, and the [slow test](slow-tests.md) budgets `unitTestSeconds` and
 `integrationTestSeconds`), `testConsole` (see [new console output](new-console-output-from-tests.md)), `exclude` (findings under the globs are dropped) and
 `legacyInventory` (same format and `baseline-expansion` rule as for Java), `history` (the opt-in
-[change history](../usage.md#change-history) check), and the `python` object below. `layout` takes
-only `featureRoots`, and only once `history.coChange` is on (it names the feature folders
-`co-change` reads); its other keys stay a config error with this preset: the Python preset has no
-feature layout (no `features/` and `shared/` folders to read), so it does not register the one rule
-that reads them, `shared-used-by-one-feature`. The
-top-level `exceptions` is accepted only for the rules shared with the other languages: the file and size limits
+[change history](../usage.md#change-history) check), and the `python` object below. `layout.featureRoots` and `layout.sharedRoots` place the [feature folders](feature-folders.md), which
+`contract-infrastructure-type` reads too, and `featureRoots` also names the feature folders `co-change` reads (the other `layout` keys describe
+TypeScript sources and are an error). The
+top-level `exceptions` is accepted only for the rules shared with the other languages: the [feature folder rules](feature-folders.md), the file and size limits
 (`file-lines-limit`, `line-length-limit`, `folder-files-limit`, `slow-test`, `folder-depth-limit`,
 `class-methods-limit`, `class-fields-limit`, `inheritance-depth-limit`), the function rules
 (`function-lines-limit`, `function-statements-limit`, `function-control-nesting-limit`,
@@ -80,9 +78,10 @@ Where each kind of finding is lifted for some paths:
 
 `python.entryPoints` lists the files that start the program, such as a job runner or a worker that
 reads its settings from the environment or connects at import (see the composition roots below).
-Adding a file there loosens `process-env-access`, `process-stream-access` and `import-time-effect`,
-so the policy-change list reports it as a loosening and a removal as a change, like
-`layout.entryPoints`; the base snapshot is measured with the entry points both sides declare.
+`process-env-access`, `process-stream-access`, `import-time-effect` and `service-locator-lookup`
+skip a file listed there. Like `layout.entryPoints`, an added or removed entry is listed among the
+policy changes and does not fail the gate, unless another production module imports a file it newly
+covers; the base snapshot is measured with the entry points both sides declare.
 
 The policy-change list also reads the project's own pytest and mutmut settings, because they shrink
 what the gate measures: `testpaths` that stop collecting a test file and an added `--ignore` or

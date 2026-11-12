@@ -30,7 +30,7 @@ def test_patched():
 def test_monkeypatch(monkeypatch):
     monkeypatch.setenv("SHOP_REGION", "EU")
     monkeypatch.setattr(settings, "DEBUG", True)
-    assert settings.DEBUG
+    assert settings.DEBUG is True
 
 
 def test_finally():
@@ -50,4 +50,4 @@ class TestDebug:
         settings.DEBUG = False
 
     def test_debug(self):
-        assert settings.DEBUG
+        assert settings.DEBUG is True

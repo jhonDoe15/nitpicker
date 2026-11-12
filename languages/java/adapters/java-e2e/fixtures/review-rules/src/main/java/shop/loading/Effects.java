@@ -14,7 +14,7 @@ public final class Effects {
     ForkJoinPool.commonPool().submit(() -> CONFIGURED); // violation: ClassLoadEffect
     ForkJoinPool.commonPool().invoke(new Count()); // violation: ClassLoadEffect
     pause();
-    if (Boolean.getBoolean("effects.abort")) {
+    if (Boolean.getBoolean("effects.abort")) { // violation: ConfigurationReadOutsideCompositionRoot
       System.exit(2);
     }
   }

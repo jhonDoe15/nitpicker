@@ -12,6 +12,7 @@ const KOTLIN_STRING =
   String.raw`'(?:\\.|[^'\\\n])*'?`;
 const JAVA_STRING = String.raw`"""[\s\S]*?(?:"""|$)|"(?:\\.|[^"\\\n])*"?|'(?:\\.|[^'\\\n])*'?`;
 const JAVA_COMMENT = String.raw`//[^\n]*|/\*[\s\S]*?(?:\*/|$)`;
+const GO_STRING = String.raw`\x60[^\x60]*\x60?|"(?:\\.|[^"\\\n])*"?|'(?:\\.|[^'\\\n])*'?`;
 const KOTLIN_COMMENT = String.raw`//[^\n]*|/\*(?:[^*/]|\*(?!/)|/(?!\*)|/\*(?:[^*]|\*(?!/))*\*/)*(?:\*/|$)`;
 
 function tokenizer({ comment, string, name }) {
@@ -30,6 +31,7 @@ export const SYNTAXES = {
     name: `\`[^\`\\n]*\`|${NAME}`,
   }),
   java: tokenizer({ comment: JAVA_COMMENT, string: JAVA_STRING, name: NAME }),
+  go: tokenizer({ comment: JAVA_COMMENT, string: GO_STRING, name: NAME }),
 };
 
 const OPENERS = new Set(['(', '[', '{']);

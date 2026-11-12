@@ -63,6 +63,15 @@ describe('duplicates in Python sources', () => {
           'This code repeats src/app/b.py:1 (10 lines). Keep one copy and call it from both places. If the repetition is intended, add src/app/a.py or src/app/b.py to "exclude" in nitpicker.config.json.',
         classification: 'enforceable',
         location: { line: 1 },
+        ratchet: {
+          key: 'pair:src/app/a.py|src/app/b.py:clone',
+          value: 59,
+          divisible: true,
+          mustKeepUnchangedLines: [
+            { path: 'src/app/a.py', startLine: 1, endLine: 10 },
+            { path: 'src/app/b.py', startLine: 1, endLine: 10 },
+          ],
+        },
       },
     ]);
   });
@@ -297,6 +306,15 @@ describe('duplicates whose names and literals were renamed', () => {
           'This code repeats src/app/parcel.py:1 (17 lines). Keep one copy and call it from both places. If the repetition is intended, add src/app/invoice.py or src/app/parcel.py to "exclude" in nitpicker.config.json.',
         classification: 'enforceable',
         location: { line: 1 },
+        ratchet: {
+          key: 'pair:src/app/invoice.py|src/app/parcel.py:clone',
+          value: 117,
+          divisible: true,
+          mustKeepUnchangedLines: [
+            { path: 'src/app/invoice.py', startLine: 1, endLine: 17 },
+            { path: 'src/app/parcel.py', startLine: 1, endLine: 17 },
+          ],
+        },
       },
     ]);
   });

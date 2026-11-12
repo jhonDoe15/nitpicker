@@ -1,12 +1,17 @@
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
+import {
+  nestedCheckout,
+  useGitCheckouts,
+} from '../../../../core/diff/git/test-support/git-checkout.mjs';
 import { afterEach, describe, expect, it } from 'vitest';
 import { project, removeProjects, resource } from './test-support/spring-config-projects.mjs';
 import { readSpringConfigFindings } from './java-spring.mjs';
 import { readTestProfiles } from './spring-profiles.mjs';
 
 const extraRoots = [];
+const { gitCheckout } = useGitCheckouts();
 
 afterEach(() => {
   removeProjects();
@@ -205,5 +210,21 @@ describe('profile name words', () => {
     const files = { [resource(`application-${profile}.properties`)]: DDL_CREATE };
 
     expect(flaggedFiles(files)).toEqual([resource(`application-${profile}.properties`)]);
+  });
+});
+
+describe('readTestProfiles in a Git checkout', () => {
+  it('reads the test sources of the checkout, not ignored folders or nested checkouts', () => {
+    const active = (name) => `@ActiveProfiles("${name}")\nclass T {}\n`;
+    const root = gitCheckout(
+      {
+        'src/test/java/A.java': active('ci'),
+        'src/test/java/gen/G.java': active('generated'),
+        ...nestedCheckout('src/test/java/agent', { 'X.java': active('nested') }),
+      },
+      ['src/test/java/gen/'],
+    );
+
+    expect([...readTestProfiles(root, ['src/test/java'])]).toEqual(['ci']);
   });
 });
