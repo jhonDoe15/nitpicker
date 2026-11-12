@@ -5,11 +5,9 @@ import "context"
 
 type Group struct{}
 
-func (group *Group) Go(run func() error) {
-	_ = run
-}
+func (*Group) Go(func() error) {}
 
-func (group *Group) Wait() error {
+func (*Group) Wait() error {
 	return nil
 }
 

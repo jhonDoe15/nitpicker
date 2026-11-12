@@ -7,6 +7,8 @@ func BreakSwitch(values []int) int {
 		case value > 10:
 			found = value
 			break // want SA4011
+		case value < 0:
+			found = -value
 		}
 	}
 	return found
@@ -20,6 +22,8 @@ loop:
 		case value > 10:
 			found = value
 			break loop
+		case value < 0:
+			found = -value
 		}
 	}
 	return found

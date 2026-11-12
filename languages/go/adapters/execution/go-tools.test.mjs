@@ -1,19 +1,8 @@
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
-import { afterAll, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it } from 'vitest';
 import { newerToolchain, sourceHash } from './go-tools.mjs';
-
-const root = mkdtempSync(path.join(tmpdir(), 'nitpicker-go-tools-'));
-
-afterAll(() => {
-  rmSync(root, { recursive: true, force: true });
-});
-
-function write(relative, text) {
-  mkdirSync(path.dirname(path.join(root, relative)), { recursive: true });
-  writeFileSync(path.join(root, relative), text);
-}
 
 describe('the toolchain the lint program builds with', () => {
   it.each([
@@ -32,15 +21,42 @@ describe('the toolchain the lint program builds with', () => {
   });
 });
 
-describe('the hash that names a built program', () => {
-  it('changes with a source file in a subpackage, not with tests or fixtures', () => {
-    write('main.go', 'package main\n');
-    write('rules/rule.go', 'package rules\n');
+describe('the cache key of a Go program', () => {
+  const roots = [];
+
+  afterEach(() => {
+    for (const root of roots.splice(0)) {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  function program() {
+    const root = mkdtempSync(path.join(tmpdir(), 'go-source-'));
+    roots.push(root);
+    for (const [name, text] of [
+      ['main.go', 'package main\n'],
+      ['catalog/catalog.go', 'package catalog\n'],
+      ['fixtures/a/a.go', 'package a\n'],
+      ['main_test.go', 'package main\n'],
+    ]) {
+      mkdirSync(path.dirname(path.join(root, name)), { recursive: true });
+      writeFileSync(path.join(root, name), text);
+    }
+    return root;
+  }
+
+  it('changes with a source file in a subfolder', () => {
+    const root = program();
     const before = sourceHash(root, '');
-    write('rules/rule_test.go', 'package rules\n');
-    write('fixtures/sample.go', 'package sample\n');
-    expect(sourceHash(root, '')).toBe(before);
-    write('rules/rule.go', 'package rules\n\nconst Name = "changed"\n');
+    writeFileSync(path.join(root, 'catalog/catalog.go'), 'package catalog\n\nvar changed = 1\n');
     expect(sourceHash(root, '')).not.toBe(before);
+  });
+
+  it('ignores fixtures and Go tests', () => {
+    const root = program();
+    const before = sourceHash(root, '');
+    writeFileSync(path.join(root, 'fixtures/a/a.go'), 'package a\n\nvar changed = 1\n');
+    writeFileSync(path.join(root, 'main_test.go'), 'package main\n\nvar changed = 1\n');
+    expect(sourceHash(root, '')).toBe(before);
   });
 });

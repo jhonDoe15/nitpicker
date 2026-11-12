@@ -48,8 +48,9 @@ the allowed form and ends with its exception entry.
   parameter with a constraint, or one function per type. `...any` for fmt- and slog-style
   arguments, a value passed straight to encoding or reflection, and a method an imported interface
   requires (`Scan(src any) error`) are fine.
-- Name a package for what it provides (`go-rules/generic-package-name`): never `util`, `utils`,
-  `common`, `misc`, `helper`, `helpers` or `interfaces`.
+- Name a package for what it provides (`go-rules/generic-package-name` for `helper` and
+  `helpers`, revive `package-naming` for `util`, `utils`, `common`, `misc`, `interfaces` and
+  `types`).
 - A getter is named after the value (`go-rules/get-prefixed-getter`): `Owner()`, never
   `GetOwner()`, unless an imported interface requires the Get name.
 
