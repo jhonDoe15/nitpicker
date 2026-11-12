@@ -9,6 +9,6 @@ export function checkoutModulePath(file, { stripsTypes = STRIPS_TYPES } = {}) {
   return stripsTypes && source !== file && existsSync(source) ? source : file;
 }
 
-export function checkoutModuleUrl(url) {
-  return pathToFileURL(checkoutModulePath(fileURLToPath(url)));
+export function checkoutModuleUrl(url, options = {}) {
+  return pathToFileURL(checkoutModulePath(fileURLToPath(url), options));
 }

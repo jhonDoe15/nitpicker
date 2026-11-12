@@ -13,6 +13,12 @@ const REFERENCE_EMITTED = path.join(repositoryRoot, 'core/reference/generate.mjs
 function referenceModule() {
   const opened =
     STRIPS_TYPES && existsSync(REFERENCE_SOURCE) ? REFERENCE_SOURCE : REFERENCE_EMITTED;
+  if (!existsSync(opened)) {
+    throw new Error(
+      `${path.relative(repositoryRoot, opened)} is missing: this Node.js cannot strip types, so ` +
+        'run node scripts/typescript/emit.mjs first or use Node.js 22.18 or newer',
+    );
+  }
   return import(pathToFileURL(opened).href);
 }
 
