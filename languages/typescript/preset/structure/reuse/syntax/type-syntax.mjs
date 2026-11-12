@@ -26,9 +26,15 @@ const MARKED_DECLARATIONS = [
 ];
 
 function isTypeOnlyNode(node, parent) {
-  if (TYPE_ONLY_KINDS.has(node.kind) || isSignatureOnly(node)) return true;
-  if (ts.isHeritageClause(node)) return node.token === ts.SyntaxKind.ImplementsKeyword;
-  if (ts.isNonNullExpression(parent)) return node.kind === ts.SyntaxKind.ExclamationToken;
+  if (TYPE_ONLY_KINDS.has(node.kind) || isSignatureOnly(node)) {
+    return true;
+  }
+  if (ts.isHeritageClause(node)) {
+    return node.token === ts.SyntaxKind.ImplementsKeyword;
+  }
+  if (ts.isNonNullExpression(parent)) {
+    return node.kind === ts.SyntaxKind.ExclamationToken;
+  }
   const marked = MARKED_DECLARATIONS.some((matches) => matches(parent));
   return marked && (node === parent.questionToken || node === parent.exclamationToken);
 }
@@ -43,8 +49,12 @@ function isThisParameter(node) {
 }
 
 function isSignatureOnly(node) {
-  if (ts.isPropertyDeclaration(node) || ts.isVariableStatement(node)) return isDeclared(node);
-  if (isThisParameter(node)) return true;
+  if (ts.isPropertyDeclaration(node) || ts.isVariableStatement(node)) {
+    return isDeclared(node);
+  }
+  if (isThisParameter(node)) {
+    return true;
+  }
   return (
     (ts.isMethodDeclaration(node) || ts.isConstructorDeclaration(node)) && node.body === undefined
   );
@@ -65,7 +75,9 @@ function isTypeAnnotation(parent, child) {
 }
 
 function hasSingleBareParameter(node) {
-  if (!ts.isArrowFunction(node) || node.parameters.length !== 1) return false;
+  if (!ts.isArrowFunction(node) || node.parameters.length !== 1) {
+    return false;
+  }
   const [parameter] = node.parameters;
   return (
     ts.isIdentifier(parameter.name) &&
@@ -75,7 +87,9 @@ function hasSingleBareParameter(node) {
 }
 
 function isWrappedAssertion(node) {
-  if (!ts.isParenthesizedExpression(node)) return false;
+  if (!ts.isParenthesizedExpression(node)) {
+    return false;
+  }
   const { expression } = node;
   return (
     ts.isAsExpression(expression) ||
@@ -93,12 +107,18 @@ function isOptionalParenthesis(parent, child) {
 
 function typeSpans(parent, children) {
   return children.flatMap((child, index) => {
-    if (typeListAt(parent, child)) return [index - 1, index, index + 1];
-    if (isOptionalParenthesis(parent, child)) return [index];
+    if (typeListAt(parent, child)) {
+      return [index - 1, index, index + 1];
+    }
+    if (isOptionalParenthesis(parent, child)) {
+      return [index];
+    }
     if (isThisParameter(child)) {
       return children[index + 1]?.kind === ts.SyntaxKind.CommaToken ? [index, index + 1] : [index];
     }
-    if (!isTypeAnnotation(parent, child)) return [];
+    if (!isTypeAnnotation(parent, child)) {
+      return [];
+    }
     const closing = ts.isTypeAssertionExpression(parent) ? [index + 1] : [];
     return [index - 1, index, ...closing].filter(
       (position) => position !== index - 1 || TYPE_LEADERS.has(children[position]?.kind),
@@ -108,7 +128,7 @@ function typeSpans(parent, children) {
 
 export function untypedChildren(parent, children) {
   const skipped = new Set(typeSpans(parent, children));
-  return children.filter((child, index) => !skipped.has(index) && !isTypeOnlyNode(child, parent));
+  return children.filter((child, index) => !(skipped.has(index) || isTypeOnlyNode(child, parent)));
 }
 
 export function untypedParts(node) {
