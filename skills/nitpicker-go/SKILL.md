@@ -5,7 +5,7 @@ description: Use before writing or changing Go code in a project that runs nitpi
 
 # nitpicker for Go
 
-Written for nitpicker 0.1.0-rc.1. If `npx nitpicker --version` prints another version, reinstall
+Written for nitpicker 0.1.0-rc.2. If `npx nitpicker --version` prints another version, reinstall
 this skill with the command `npx nitpicker init` prints.
 
 nitpicker allows one way to write each construct. Write it that way from the start; the gate is a
@@ -124,6 +124,9 @@ releases the file; calling it twice returns an error.`). Keep the prose to 5 lin
   false), every `case` and, without a `default`, a value no case matches, and every loop body
   (`changed-branch-coverage`). A function's CRAP score (complexity and coverage) stays below 9:
   test it, or split a branchy part into its own function.
+- The tests run under the race detector. A `race/data-race` finding names both accesses to the
+  same memory: guard it with a `sync.Mutex`, make it a `sync/atomic` value, or hand it over through
+  a channel. Run `go test -race ./...` yourself to reproduce it.
 - Every package with code has tests; a module where no test runs fails (`no-tests-ran`). Tests are
   table-driven where cases share a shape: `tests := []struct{...}{...}` and `t.Run(tt.name, ...)`.
 - A new or changed unit test runs in under 5 s (`slow-test`); an integration test in under 30 s.

@@ -5,9 +5,15 @@ import {
   failingTestEntries,
   valuesInMessage,
 } from '../../../../shared/rules/failing-tests/failing-tests.mjs';
-import { ANY_STATUS, failure, run } from '../execution/go-process.mjs';
+import { execute, failure } from '../execution/go-process.mjs';
 import { buildFlags } from '../build/go-vet.mjs';
-import { parseTestEvents } from './test-events.mjs';
+import {
+  RACE_FLAGS,
+  raceOnlyFailures,
+  raceUnavailable,
+  writeRaceCheck,
+} from '../race/race-run.mjs';
+import { meaningfulLines, parseTestEvents } from './test-events.mjs';
 
 const TEST_EVENTS = 'test-events.jsonl';
 export const COVERAGE_PROFILE = 'coverage.out';
@@ -16,12 +22,13 @@ const NO_TESTS_RULE = 'no-tests-ran';
 const LISTED_TESTS = 20;
 const OUTPUT_LINES = 8;
 
-function testCommand(settings, reportRoot) {
+function testCommand(settings, reportRoot, race) {
   return [
     'go',
     'test',
     '-vet=off',
     '-json',
+    ...(race ? RACE_FLAGS : []),
     ...buildFlags(settings),
     '-covermode=atomic',
     '-coverpkg=./...',
@@ -30,29 +37,34 @@ function testCommand(settings, reportRoot) {
   ];
 }
 
+function runTests(context, race) {
+  const command = testCommand(context.settings, context.reportRoot, race);
+  return { command, result: execute(context, command) };
+}
+
 export function goTest(context) {
-  const command = testCommand(context.settings, context.reportRoot);
-  const result = run(context, command, { rule: 'go-test-failed', accepted: ANY_STATUS });
+  const raced = runTests(context, true);
+  const reason = raceUnavailable(raced.result);
+  const { command, result } = reason === undefined ? raced : runTests(context, false);
   const text = result.stdout ?? '';
-  if (result.status !== 0 && parseTestEvents(text).events === 0) {
+  if (result.error !== undefined || (result.status !== 0 && parseTestEvents(text).events === 0)) {
     throw failure({ command, result, rule: 'go-test-failed' });
   }
   writeFileSync(path.join(context.reportRoot, TEST_EVENTS), text);
+  writeRaceCheck(
+    context,
+    reason === undefined
+      ? { checked: true, raceOnly: raceOnlyFailures(context, parseTestEvents(text)) }
+      : { checked: false, reason },
+  );
 }
 
 export function readTestRun(reportRoot) {
   return parseTestEvents(readFileSync(path.join(reportRoot, TEST_EVENTS), 'utf8'));
 }
 
-function outputLines(output) {
-  return output
-    .split(/\r?\n/u)
-    .map((line) => line.trim())
-    .filter((line) => line !== '' && !/^(?:=== |--- |FAIL\b|ok\b|PASS$)/u.test(line));
-}
-
 function failureLines({ id, output }) {
-  const lines = outputLines(output)
+  const lines = meaningfulLines(output)
     .slice(0, OUTPUT_LINES)
     .map((line) => `    ${line}`);
   return [`  ${id}`, ...lines];
@@ -75,7 +87,7 @@ function locatedLine(lines) {
 }
 
 function failureEntry({ id, output }) {
-  const lines = outputLines(output);
+  const lines = meaningfulLines(output);
   const located = locatedLine(lines);
   const errorLine = lines
     .find((line) => line.startsWith('Error:'))

@@ -43,13 +43,22 @@ function hashConfiguration(settings) {
   return hash.digest('hex');
 }
 
-function goVersion(liveProjectRoot) {
-  const result = spawnSync('go', ['version'], {
+function probe(liveProjectRoot, args) {
+  const result = spawnSync('go', args, {
     cwd: liveProjectRoot,
     encoding: 'utf8',
     timeout: PROBE_TIMEOUT_MS,
   });
-  return result.status === 0 ? result.stdout.trim() : 'go missing';
+  return result.status === 0 ? result.stdout.trim() : undefined;
+}
+
+function goVersion(liveProjectRoot) {
+  const version = probe(liveProjectRoot, ['version']);
+  if (version === undefined) {
+    return 'go missing';
+  }
+  const cgo = probe(liveProjectRoot, ['env', 'CGO_ENABLED', 'CC'])?.split(/\s+/u).join('/');
+  return `${version} cgo=${cgo ?? 'unknown'}`;
 }
 
 export function createGoAnalyzer(settings = {}) {
@@ -66,6 +75,7 @@ export function createGoAnalyzer(settings = {}) {
       ...GO_LINTER_TOOLS,
       'build',
       'tests',
+      'race',
       'test-runtime',
       'coverage',
       'crap',
