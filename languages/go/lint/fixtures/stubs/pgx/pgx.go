@@ -7,6 +7,6 @@ type CommandTag struct{}
 
 type Conn struct{}
 
-func (conn *Conn) Exec(ctx context.Context, sql string, arguments ...any) (CommandTag, error) {
+func (*Conn) Exec(ctx context.Context, _ string, _ ...any) (CommandTag, error) {
 	return CommandTag{}, ctx.Err()
 }

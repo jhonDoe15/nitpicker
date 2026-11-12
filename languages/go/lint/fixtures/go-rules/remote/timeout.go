@@ -61,9 +61,9 @@ func UseDefaults(timeout time.Duration) bool {
 	return http.DefaultClient != nil
 }
 
-func NewUnboundedClients() (*http.Client, *http.Client, http.Client) {
+func NewUnboundedClients() []*http.Client {
 	unbounded := &http.Client{Timeout: 0} // want http-without-timeout
 	fresh := new(http.Client)             // want http-without-timeout
 	var zero http.Client                  // want http-without-timeout
-	return unbounded, fresh, zero
+	return []*http.Client{unbounded, fresh, &zero}
 }
