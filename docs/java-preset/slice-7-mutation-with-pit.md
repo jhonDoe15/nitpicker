@@ -6,8 +6,11 @@ Part of the [Java preset guide](../java-preset.md).
   profile, no wider scope, no score gate. Every main class of the Gradle project is mutated (on each
   path of the compiled main classes, the first package that holds classes: a project rooted in
   `org.example` targets `org.example.*`. PIT refuses `org.*` because it matches PIT's own classes,
-  so classes directly in `org` are named one by one), against the project's own tests. The only
-  profile can produce enforceable findings. In a comparison, head starts from the base run's results (see
+  so classes directly in `org` are named one by one), against the project's own tests. A run given
+  paths lists instead, one by one, the classes compiled from the Java and Kotlin source files under
+  them: a class belongs to the file its `SourceFile` attribute names in the package folder that file
+  declares, and a test task with no such class runs no PIT. The only profile can produce enforceable
+  findings. In a comparison, head starts from the base run's results (see
   [Mutation in a comparison](mutation-in-a-comparison.md)).
 - **What runs.** `nitpickerPit` (`languages/java/gradle/nitpicker.init.gradle`) runs the pinned `pitest-command-line` (1.17.4) with the test
   plugins the project's framework needs (`pitest-junit5-plugin` 1.2.1, `pitest-testng-plugin`
