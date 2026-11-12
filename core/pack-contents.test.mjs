@@ -1,7 +1,16 @@
 import { execFileSync } from 'node:child_process';
-import { readdirSync, statSync } from 'node:fs';
+import {
+  cpSync,
+  existsSync,
+  mkdtempSync,
+  readdirSync,
+  rmSync,
+  statSync,
+  symlinkSync,
+} from 'node:fs';
+import { tmpdir } from 'node:os';
 import path from 'node:path';
-import { beforeAll, describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { PACKAGE_ROOT } from './tooling/tool-resolution.mjs';
 
 const root = PACKAGE_ROOT;
@@ -47,16 +56,46 @@ function assertRuntimeFiles(files) {
   ).toEqual([]);
 }
 
+const HERMETIC_GIT = { ...process.env, GIT_CONFIG_GLOBAL: '/dev/null', GIT_CONFIG_NOSYSTEM: '1' };
+
+function checkoutCopy() {
+  const copy = mkdtempSync(path.join(tmpdir(), 'nitpicker-pack-contents-'));
+  const files = execFileSync(
+    'git',
+    ['ls-files', '-z', '--cached', '--others', '--exclude-standard'],
+    {
+      cwd: root,
+      encoding: 'utf8',
+      env: HERMETIC_GIT,
+      timeout: 30_000,
+    },
+  )
+    .split('\0')
+    .filter((file) => file !== '' && existsSync(path.join(root, file)));
+  for (const file of files) {
+    cpSync(path.join(root, file), path.join(copy, file));
+  }
+  symlinkSync(path.join(root, 'node_modules'), path.join(copy, 'node_modules'), 'junction');
+  return copy;
+}
+
 describe('npm package contents', () => {
   let packedFiles;
+  let copy;
+
+  afterAll(() => {
+    rmSync(copy, { recursive: true, force: true });
+  });
 
   beforeAll(() => {
     let listing;
+    copy = checkoutCopy();
     try {
       listing = JSON.parse(
         execFileSync('npm', ['pack', '--dry-run', '--json'], {
-          cwd: root,
+          cwd: copy,
           encoding: 'utf8',
+          timeout: 120_000,
         }),
       );
     } catch (error) {
