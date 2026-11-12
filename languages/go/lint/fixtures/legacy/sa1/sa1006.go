@@ -7,5 +7,5 @@ func PrintDynamic(text string) string {
 }
 
 func PrintVerb(text string) string {
-	return fmt.Sprintf("%s!", text)
+	return fmt.Sprintf("%q!", text)
 }

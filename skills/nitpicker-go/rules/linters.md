@@ -84,6 +84,16 @@ allowed form and ends with its exception entry.
   you append to with `make([]T, 0, n)` (makezero). Drop conversions to the type a value already
   has (unconvert), and assignments that are overwritten before they are read (wastedassign).
 - Never assign another package's variables such as `io.EOF` (reassign).
+- Format with `strconv`, `hex.EncodeToString`, `errors.New` or `+` where `fmt.Sprintf` adds
+  nothing (perfsprint), and use the standard library's constants: `http.MethodGet`,
+  `http.StatusCreated`, `time.RFC3339`, `time.January` in `time.Date` (usestdlibvars).
+- Tag every field of a struct that goes through `json`, `xml`, `yaml`, `toml`, `mapstructure` or
+  sqlx (musttag).
+- Log with `slog`'s `...Context` form when the function has a context or request, and typed attributes such as `slog.String("name", name)`, never bare key-value pairs
+  (sloglint). End every span in a deferred call right after `tracer.Start` (spancheck).
+- Write header keys in canonical form, `"Content-Type"` (canonicalheader); keep identifiers ASCII
+  (asciicheck), source free of bidirectional control characters (bidichk), and every `//go:`
+  directive one the compiler knows (gocheckcompilerdirectives).
 - Defer one call: keep a returned function first, `stop := start(); defer stop()`, never
   `defer start()()`.
 

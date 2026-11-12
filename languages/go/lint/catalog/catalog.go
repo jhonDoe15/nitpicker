@@ -52,7 +52,7 @@ var (
 
 // Linters returns every catalog linter.
 func Linters() []Linter {
-	return slices.Concat(linters, valueLinters, testLinters)
+	return slices.Concat(linters, valueLinters, testLinters, otherLinters)
 }
 
 // Configure sets the options that differ from each linter's defaults, and turns off the
@@ -65,5 +65,8 @@ func Configure() error {
 	if err := configureValues(); err != nil {
 		return err
 	}
-	return configureTests()
+	if err := configureTests(); err != nil {
+		return err
+	}
+	return configureOthers()
 }
