@@ -15,7 +15,7 @@ import { pathToFileURL } from 'node:url';
 import { ts } from '../../../typescript-api/typescript-api.mjs';
 import { ownedNativePlugins } from '../native/owned-native-rules.mjs';
 import { materializedDirectory } from './oxlint-inline-config.mjs';
-import { baseUrlFreeOptions } from './oxlint-paths.mjs';
+import { stageCompilerOptions } from './oxlint-paths.mjs';
 
 const STAGE_DIRECTORY = '.nitpicker-oxlint';
 
@@ -51,13 +51,16 @@ export function createStage(projectRoot, projectConfigPath) {
     symlinkSync(path.join(projectRoot, entry), path.join(stage, entry));
   }
   if (projectConfigPath !== undefined) {
-    writeFileSync(path.join(stage, 'tsconfig.json'), lintTypeScriptConfig(projectConfigPath));
+    writeFileSync(
+      path.join(stage, 'tsconfig.json'),
+      lintTypeScriptConfig(projectConfigPath, stage),
+    );
   }
   mkdirSync(path.join(stage, STAGE_DIRECTORY));
   return stage;
 }
 
-function lintTypeScriptConfig(projectConfigPath) {
+function lintTypeScriptConfig(projectConfigPath, stage) {
   const { config, error } = ts.parseConfigFileTextToJson(
     projectConfigPath,
     readFileSync(projectConfigPath, 'utf8'),
@@ -75,7 +78,7 @@ function lintTypeScriptConfig(projectConfigPath) {
     ...rebased,
     compilerOptions: {
       ...config.compilerOptions,
-      ...baseUrlFreeOptions(rebased, projectConfigPath),
+      ...stageCompilerOptions(rebased, projectConfigPath, stage),
       noEmit: true,
     },
   });
