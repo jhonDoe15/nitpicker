@@ -76,18 +76,28 @@ function pitArguments({ module, pitDir, classpaths, isArchunit, configs, history
   ];
 }
 
-export function runPit({
-  module,
-  reportDir,
-  tools,
-  classpaths,
-  isArchunit,
-  configs,
-  history,
-  spawn,
-  timeoutMs,
-  deadline,
-}) {
+function pitRan(options, { pitDir, limit }) {
+  const { module, tools, classpaths, isArchunit, configs, history, spawn } = options;
+  try {
+    runJava({
+      tool: 'PIT',
+      classpath: pitClasspath(tools, classpaths.testRuntime),
+      mainClass: 'org.pitest.mutationtest.commandline.MutationCoverageReport',
+      args: pitArguments({ module, pitDir, classpaths, isArchunit, configs, history }),
+      cwd: module.basedir,
+      accept: (result) => result.status === 0,
+      spawn,
+      timeoutMs: limit,
+    });
+    return true;
+  } catch (error) {
+    writePitFailure(pitDir, error);
+    return false;
+  }
+}
+
+export function runPit(options) {
+  const { module, reportDir, timeoutMs, deadline } = options;
   const pitDir = path.join(reportDir, 'pit');
   rmSync(pitDir, { recursive: true, force: true });
   mkdirSync(pitDir, { recursive: true });
@@ -100,22 +110,7 @@ export function runPit({
     writePitFailure(pitDir, notStarted(module));
     return;
   }
-  try {
-    runJava({
-      tool: 'PIT',
-      classpath: pitClasspath(tools, classpaths.testRuntime),
-      mainClass: 'org.pitest.mutationtest.commandline.MutationCoverageReport',
-      args: pitArguments({ module, pitDir, classpaths, isArchunit, configs, history }),
-      cwd: module.basedir,
-      accept: (result) => result.status === 0,
-      spawn,
-      timeoutMs: limit,
-    });
-  } catch (error) {
-    writePitFailure(pitDir, error);
-    return;
-  }
-  if (!existsSync(report)) {
+  if (pitRan(options, { pitDir, limit }) && !existsSync(report)) {
     writeFileSync(report, '<mutations/>');
   }
 }
