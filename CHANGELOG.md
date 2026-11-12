@@ -223,7 +223,8 @@ Other changes:
   palantir-java-format to 2.90.0, so module imports and statements before `super(...)` parse; the
   formatter check no longer comes back empty when the formatter fails. Checkstyle and the
   formatters run on JDK 21 or newer, and the source parsers and `--fix` run on a JDK that reads the
-  project's language level (#1068).
+  project's language level (#1068). PMD findings of every priority still fail the gate, though
+  PMD 7.16 marks its lower priorities as notes.
 - An uncommitted edit made in the same second as the last index write is no longer analyzed as the
   old content (#258).
 - A timed-out Gradle build is stopped, with the processes it started, before the next snapshot
