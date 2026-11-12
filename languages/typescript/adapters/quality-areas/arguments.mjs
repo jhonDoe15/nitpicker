@@ -144,8 +144,8 @@ function validatedSnapshotRoot(value, name) {
     relativeToTemporaryRoot.startsWith(`..${path.sep}`) ||
     path.isAbsolute(relativeToTemporaryRoot) ||
     segments.length < 2 ||
-    !segments[0].startsWith('nitpicker-diff-') ||
-    !SNAPSHOT_DIRECTORY_NAMES.includes(segments[1])
+    !(segments[0] ?? '').startsWith('nitpicker-diff-') ||
+    !SNAPSHOT_DIRECTORY_NAMES.includes(segments[1] ?? '')
   ) {
     throw new Error(`${name} must be inside a generated quality-diff worktree`);
   }
