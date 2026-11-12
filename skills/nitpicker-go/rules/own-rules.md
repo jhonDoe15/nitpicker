@@ -15,6 +15,11 @@ the allowed form and ends with its exception entry.
   log it and handle it (fall back, retry, return `nil`). The common logging packages count: `log`,
   `log/slog`, zap, zerolog, logrus, go-kit log, klog, logr, hclog and the others listed in the
   preset's docs.
+- Never only log or drop an error and carry on (`go-rules/swallowed-error`): an `if err != nil`
+  whose body only logs, `continue`s or returns `false`, `0` or `""` hides the failure from the
+  caller. Return it wrapped, handle it with a fallback the caller can tell apart (a named default
+  such as `return defaultPort`, a retry), or check the one error you expect with
+  `errors.Is(err, fs.ErrNotExist)`.
 
 ## Goroutines and contexts
 
@@ -48,9 +53,12 @@ the allowed form and ends with its exception entry.
   parameter with a constraint, or one function per type. `...any` for fmt- and slog-style
   arguments, a value passed straight to encoding or reflection, and a method an imported interface
   requires (`Scan(src any) error`) are fine.
-- Name a package for what it provides (`go-rules/generic-package-name` for `helper` and
-  `helpers`, revive `package-naming` for `util`, `utils`, `common`, `misc`, `interfaces` and
-  `types`).
+- Name a package for what it provides (`go-rules/generic-package-name` for `helper`, `helpers`,
+  `utility`, `commons`, `manager` and `managers`, revive `package-naming` for `util`, `utils`,
+  `common`, `misc`, `interfaces` and `types`), and a type or file for the job it does
+  (`go-rules/generic-name`): `PriceRounding` and `order_repository.go`, never `OrderManager`,
+  `PriceHelper` or `string_utils.go`. `TransactionManager`, `SessionManager` and the other
+  managers of a named resource are fine.
 - A getter is named after the value (`go-rules/get-prefixed-getter`): `Owner()`, never
   `GetOwner()`, unless an imported interface requires the Get name.
 
@@ -65,3 +73,24 @@ the allowed form and ends with its exception entry.
   concurrently under an errgroup with `SetLimit`. Inside one transaction, prepare the statement
   once and execute it per item. A loop over a fixed list (migrations), a retry loop over a count, a
   loop over a channel and a loop that stops at the first success are fine.
+
+## Literals, comments and methods
+
+- Name a string you write more than twice in a file (`go-rules/repeated-string-literal`): a
+  constant, or a typed constant when it is one of a set of values (`type Status string`). Struct
+  tags, map keys, `case` values, log attribute keys and format templates are not counted.
+- Every task marker names its issue (`go-rules/todo-without-issue`): `// TODO(#123): ...`, or the
+  tracker's key, `// TODO(PROJ-123): ...`. A `TODO(name)` or a bare `TODO:` is never picked up;
+  file the issue or do the work now.
+- One method per operation (`go-rules/forwarding-method-alias`): a method that only passes its
+  parameters on to another method of the same type is an alias. Call the target directly, or
+  rename it, and delete the other. A method an interface asks for (`Write` for `io.Writer`) may
+  forward.
+
+## Secrets
+
+- No secret in the source (`go-rules/hardcoded-secret`, `go-rules/credential-shape`): read
+  passwords, tokens and keys from the environment or a secret store in `main` and pass them in,
+  `cmp.Or(os.Getenv("API_TOKEN"), "...")` included. A placeholder (`changeme`, `${TOKEN}`) is fine.
+- Never log a secret or put it in an error (`go-rules/secret-in-log`): log only that it is set,
+  `slog.Bool("token_set", token != "")`, or its length.
