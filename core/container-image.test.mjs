@@ -44,7 +44,7 @@ const expectedDockerignoreLines = [
 const HELPER_STAGES = ['base', 'jdk', 'maven', 'gradle', 'jvm-files'];
 const JVM_ENVIRONMENT = {
   JAVA_HOME: '/opt/java/openjdk',
-  PATH: '/opt/java/openjdk/bin:/opt/maven/bin:/opt/gradle/bin:${PATH}',
+  PATH: `/opt/java/openjdk/bin:/opt/maven/bin:/opt/gradle/bin:\${PATH}`,
   GRADLE_USER_HOME: '/home/nitpicker/.gradle',
   MAVEN_OPTS: '-Duser.home=/home/nitpicker',
 };
@@ -104,12 +104,11 @@ describe('container image Dockerfile', () => {
       .filter((image) => image.includes(':'));
     const copied = instruction('COPY')
       .filter((line) => line.includes('--from='))
-      .map((line) => setting(line, /--from=(\S+)/))
+      .map((line) => line.match(/--from=(\S+)/)?.[1] ?? '')
       .filter((source) => source.includes(':'));
-    expect(images.length + copied.length).toBe(5);
-    for (const image of [...images, ...copied]) {
-      expect(image, image).toMatch(EXACT_VERSION_TAG);
-    }
+    const pinned = [...images, ...copied];
+    expect(pinned).toHaveLength(5);
+    expect(pinned.filter((image) => !EXACT_VERSION_TAG.test(image))).toEqual([]);
   });
 
   it('uses the Node major version that CI targets', () => {
@@ -173,7 +172,7 @@ describe('container image Dockerfile', () => {
   it('labels the image with the repository it is built from, the package repository by default', () => {
     const repository = JSON.parse(read('package.json')).repository.url;
     expect(setting(dockerfile, /org\.opencontainers\.image\.source="([^"]+)"/)).toBe(
-      '${SOURCE_URL}',
+      `\${SOURCE_URL}`,
     );
     expect(`git+${setting(dockerfile, /^ARG SOURCE_URL=(\S+)$/m)}.git`).toBe(repository);
   });
@@ -189,20 +188,21 @@ describe('container image toolchains', () => {
   const pythonWorkflow = read('.github/workflows/python-e2e.yml');
   const pythonConstraints = read('.github/python-e2e-constraints.txt');
 
-  it('gives the JVM images the JDK and the Gradle that the end-to-end suites use', () => {
-    for (const workflow of [javaWorkflow, kotlinWorkflow]) {
-      const java = setting(workflow, /java-version: (\d+)/);
-      expect(
-        setting(stage('jdk')[0], /^FROM eclipse-temurin:(\d+)\.\d+\.\d+_\d+-jdk-noble AS jdk$/),
-      ).toBe(java);
-      expect(setting(stage('maven')[0], /^FROM maven:3\.9\.\d+-eclipse-temurin-(\d+)-noble/)).toBe(
-        java,
-      );
-      expect(setting(stage('gradle')[0], /^FROM gradle:[\d.]+-jdk(\d+)-noble/)).toBe(java);
-      expect(setting(stage('gradle')[0], /^FROM gradle:([\d.]+)-jdk/)).toBe(
-        setting(workflow, /gradle-version: ([\d.]+)/),
-      );
-    }
+  it.each([
+    ['java-e2e', javaWorkflow],
+    ['kotlin-e2e', kotlinWorkflow],
+  ])('gives the JVM images the JDK and the Gradle that the %s suite uses', (_name, workflow) => {
+    const java = setting(workflow, /java-version: (\d+)/);
+    expect(
+      setting(stage('jdk')[0], /^FROM eclipse-temurin:(\d+)\.\d+\.\d+_\d+-jdk-noble AS jdk$/),
+    ).toBe(java);
+    expect(setting(stage('maven')[0], /^FROM maven:3\.9\.\d+-eclipse-temurin-(\d+)-noble/)).toBe(
+      java,
+    );
+    expect(setting(stage('gradle')[0], /^FROM gradle:[\d.]+-jdk(\d+)-noble/)).toBe(java);
+    expect(setting(stage('gradle')[0], /^FROM gradle:([\d.]+)-jdk/)).toBe(
+      setting(workflow, /gradle-version: ([\d.]+)/),
+    );
   });
 
   it('keeps the Gradle and Maven caches in the home directory for every user', () => {
@@ -252,17 +252,17 @@ describe('container image toolchains', () => {
 describe('container workflow', () => {
   const variants = stageNames()
     .filter((name) => !HELPER_STAGES.includes(name))
-    .sort();
+    .toSorted((left, right) => left.localeCompare(right));
 
   it('builds and smoke-tests every image variant of the Dockerfile', () => {
     const built = [...containerWorkflow.matchAll(/^ {10}- variant: (\S+)$/gm)].map(
       ([, name]) => name,
     );
-    expect(built.sort()).toEqual(variants);
+    expect(built.toSorted((left, right) => left.localeCompare(right))).toEqual(variants);
   });
 
   it('moves the latest tag of every image variant', () => {
     const moved = setting(containerWorkflow, /for variant in ([\w ]+); do/).split(' ');
-    expect(moved.sort()).toEqual(variants);
+    expect(moved.toSorted((left, right) => left.localeCompare(right))).toEqual(variants);
   });
 });
