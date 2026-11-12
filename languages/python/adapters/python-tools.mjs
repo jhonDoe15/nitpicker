@@ -80,6 +80,7 @@ export function createToolContext({
   probes = new Map(),
   spawn,
   pytestAddopts,
+  mutationScope,
   analyzerDeadlineMs,
   quick = false,
 }) {
@@ -104,6 +105,7 @@ export function createToolContext({
     exclude,
     duplicateSkippedFolders,
     pytestAddopts,
+    mutationScope,
     analyzerDeadlineMs,
     quick,
     project: projectSettings({ projectRoot, liveRoot, policyRoot, settings, sourceRoots }),
