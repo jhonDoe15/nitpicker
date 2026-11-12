@@ -873,9 +873,10 @@ reports are stored. When the base is reused, the progress line names the local c
 A quick run uses the same cache. The Python, Java and Kotlin analyzers and the custom analyzers
 produce different output in quick mode, so their quick entries are keyed apart from full ones: a
 quick run never reads a full entry and a full run never reads a quick one. The file-local analyzers
-that a quick run limits to the changed files are keyed by that list of files as well, and so are the
-Java and Kotlin analyzers of a full run whose change touches a test file, by those test files and
-their head contents, since their base side mutates what those tests use. The other
+that a quick run limits to the changed files are keyed by that list of files as well. The Java and
+Kotlin base entries of a full comparison are keyed by the changed test files, their head contents and
+the production files they reach on head, since that base side mutates only what those tests use, so
+they do not share entries with `nitpicker cache publish`, which mutates every class. The other
 TypeScript and JavaScript analyzers produce the same findings as in a full run, so they share the
 full run's entries; both the base and the head of a quick comparison run the same quick set. A quick
 run also caches its head side, keyed by the git tree of the captured head (the working tree, or the

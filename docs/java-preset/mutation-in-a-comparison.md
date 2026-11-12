@@ -14,8 +14,10 @@ Kotlin preset gets the same, on Gradle and Maven.
   change wrote has no counterpart on base, so each one that survives or is not covered is new. A
   file whose change only deletes lines is not mutated.
 - **Changed tests.** When the change adds, edits, renames or deletes a test file (a `.java` or `.kt`
-  file under a `src/<name>/` folder whose name contains `test`, such as `src/test` or
-  `src/integrationTest`, under `src/it`, or under a `test` or `tests` folder), both sides mutate,
+  file in the source set after the first `src` folder when that source set is `test`, `tests`, `it`,
+  starts with `test` (`testFixtures`) or ends with `Test`, `Tests`, `-test` or `_test`, such as
+  `src/integrationTest`; without a `src` folder, a file under a `test`, `tests` or `it` folder), both
+  sides mutate,
   whole, the production files that test uses: the file named like the test without its `Test`,
   `Tests`, `IT`, `ITCase` or `Spec` part, then each production class the test names, in the order it
   names them, when it is in the test's package or imported (single, wildcard or static imports).
@@ -25,9 +27,12 @@ Kotlin preset gets the same, on Gradle and Maven.
   At most ten files are mutated this way; the others are named in a descriptive
   `tested-modules-capped` finding of the `pit` tool, which never fails the run.
 - **Base.** The base side runs PIT only for the files reached by changed tests, so a change that
-  touches no test runs no mutation on base at all. Because that depends on the change, the base
-  findings cache is keyed by the changed test files and their head contents (only when a test
-  changed; otherwise the base entry is shared as before).
+  touches no test runs no mutation on base at all. A reached file that the change renamed is mutated
+  at its base path on base. Because that depends on the change, the base findings cache of a
+  comparison is keyed by the changed test files, their head contents and the files they reach on
+  head; comparisons without changed tests share one entry per base. A base entry from
+  `nitpicker cache publish`, which mutates every class, is therefore not used by a Java or Kotlin
+  comparison.
 - Paths given to the run (`nitpicker src/orders --base main`) narrow the head side further.
 - The `mutation-summary` counts are left out of a comparison, since the two sides mutate different
   classes.
