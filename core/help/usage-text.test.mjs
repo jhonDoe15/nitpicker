@@ -232,7 +232,7 @@ describe('nitpicker --help', () => {
       }),
       { 'go.mod': 'module example.com/help\n' },
     );
-    const go = ['Analyzers of the go preset (for --analyzer):', '  go, house-rules'];
+    const go = ['Analyzers of the go preset (for --analyzer):', '  go, mutation, house-rules'];
 
     expect(runIn(root, '--help').stdoutText).toBe(expectedUsage(go, 'go'));
   });
@@ -243,7 +243,10 @@ describe('nitpicker --help', () => {
       'go.mod': 'module example.com/help\n',
       'packages/app/package.json': '{}',
     });
-    const go = ['Analyzers of the go preset (for --analyzer):', '  go, repository-hygiene'];
+    const go = [
+      'Analyzers of the go preset (for --analyzer):',
+      '  go, mutation, repository-hygiene',
+    ];
 
     expect({
       top: runIn(root, '--help').stdoutText,
