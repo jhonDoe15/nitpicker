@@ -68,8 +68,8 @@ than the others, and this skill teaches its rules before an agent writes Go.
   contexts outside `main` and sleeping to wait for a goroutine come from Effective Go ("don't
   panic"), the Uber guide (goroutine lifetimes, "handle errors once") and the Google guide
   (contexts). `Must` functions and `main`/`init` keep `panic`, as in the standard library. Sleeps in
-  tests and goroutines tests leave behind are left to the test-honesty rules (#419), so a test line
-  is not reported twice. Package state and `init` side effects come from the Uber guide ("avoid
+  tests are `sleep-in-test` (#419) rather than `sleep-to-wait`, so a test line is not reported
+  twice; goroutines a test leaves behind are `unowned-goroutine` in test files too. Package state and `init` side effects come from the Uber guide ("avoid
   mutable globals", "avoid `init()`"); producer-side interfaces ("accept interfaces, return
   structs") and `any` in APIs from Go Code Review Comments ("Interfaces"); `helper` package names
   from the Go blog's "Package names" (revive's `package-naming` already reports `util`, `common` and
@@ -92,6 +92,12 @@ than the others, and this skill teaches its rules before an agent writes Go.
   printf templates are Go's interpolated strings, so they are not counted as repeats; and a method
   an interface asks for may forward, since Go has no other way to satisfy it. Unused parameters,
   boolean flags, commented-out code and discarded errors are revive, go-critic and errcheck rules.
+- **Test honesty (#211, #587).** The test rules of every preset (`test-without-assertion`,
+  `conditional-assertion-in-test`, `skipped-test-without-reason`, `switched-off-test`,
+  `sleep-in-test`), in Go's forms: `if got != want { t.Errorf(...) }` is Go's assertion, so an `if`
+  is a condition only when its body does not fail itself and nothing after it asserts; and the loop
+  decisions of #587 (constant counts and non-empty literal tables are fine; a table's cases run as
+  `t.Run` subtests, the subtest form of the Go wiki's table-driven tests).
 - **Configuration read once in `main`; clocks, randomness and writers passed in.** Matches the
   composition-root rule of the other presets and makes tests deterministic.
 - **`context.Context` first, never stored.** From Go Code Review Comments and the Google guide.
@@ -118,6 +124,22 @@ than the others, and this skill teaches its rules before an agent writes Go.
   `testing.Short()` marker counts only as a skip guard at the top of the test (read from the
   syntax tree), because a text match let `_ = testing.Short()` lift any test to 30 s (#707).
 
+- **Tests run under the race detector.** Data races are the Go mistake no linter catches reliably,
+  and `go test -race` finds the ones the tests exercise. Each race is a finding keyed by the two
+  conflicting functions rather than a failing test, because a failing test makes a snapshot a tool
+  error, and a project whose merge base already had a race could then never pass. Keyed by the
+  functions (not lines or goroutine numbers, which change between runs), a race the base had stays
+  quiet and only a new one fails. A data race is undefined behaviour in Go's memory model, so the
+  finding has no exception route. Without cgo the tests run without `-race` and a descriptive
+  finding says races were not checked, instead of skipping silently.
+- **The cost of `-race`.** The race detector documents a 2 to 20 times slowdown in CPU and 5 to 10
+  times in memory. On the preset's own metrics program (one package, 7 tests) a warm run took
+  0.18 s without it and 1.3 s with it, most of it linking the instrumented binary, and a cold run
+  (empty build cache) 5.1 s against 7.6 s. The end-to-end fixture modules stay within a few seconds
+  per snapshot. That is cheap enough to run every time, on every package, from the same run that
+  writes the coverage profile, so the preset runs it always instead of only on the packages a change
+  touches. The slow-test check reruns a test over its budget without `-race` and keeps the fastest
+  time, so the slowdown never fails a test.
 - **Every linter check that narrows a choice, off-by-default ones included.** The preset exists to
   leave one way to write each construct, so staticcheck's non-default checks (package and doc
   comments, names, receiver names, empty branches) and the QF quick fixes run too: each picks one
@@ -230,6 +252,15 @@ Two adversarial reviews of the first version changed these rules:
 - **`layout` and `duplicates` are config errors with their reason**, not silently ignored.
 - **The project's `GOFLAGS` is read with `go env`**, so `go env -w` settings apply, and the tools
   build from a neutral environment so the project's `GOOS` or `GOFLAGS` cannot break them.
+- **Race detector review.** Two reviews of the first version changed it: parallel tests the
+  detector failed next to a race, and race-only tests that logged with `t.Log`, were still listed as
+  failing, so a failing test whose package raced or timed out is now rerun without `-race` instead
+  of judged by its output; a parent test's own failure is no longer hidden by a failing subtest; a
+  path with a space no longer loses the race; a report with one restorable stack is still a
+  finding; only blocks that start with `WARNING: DATA RACE` are cut from quoted output; the "not
+  checked" notice shows on every run, not only when it is new; cgo is part of the analyzer version
+  for the findings cache; and a timeout, ThreadSanitizer crash or goroutine limit under `-race`
+  falls back instead of failing the snapshot.
 
 Two adversarial reviews of the linters changed these rules:
 
