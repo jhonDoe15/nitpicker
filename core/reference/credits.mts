@@ -1,5 +1,5 @@
-import { pinnedToolTextVersion } from '../../languages/java/reference/tool-text/tool-text.mjs';
-import { readRuffSnapshot } from '../../languages/python/reference/ruff-entries.mjs';
+import { pinnedToolTextVersion } from '../../languages/java/reference/tool-text/tool-text.mts';
+import { readRuffSnapshot } from '../../languages/python/reference/ruff-entries.mts';
 
 function lgplNote(tool) {
   return `${tool} is under the LGPL-2.1, so this page names each rule and its category only; the description is in the documentation each entry links to.`;

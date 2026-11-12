@@ -1,6 +1,6 @@
-import { pythonRulesEntries } from './rules-entries.mjs';
-import { ruffEntries } from './ruff-entries.mjs';
-import { pythonToolEntries } from './tool-entries.mjs';
+import { pythonRulesEntries } from './rules-entries.mts';
+import { ruffEntries } from './ruff-entries.mts';
+import { pythonToolEntries } from './tool-entries.mts';
 
 /** The entries of every rule the Python preset can report beyond the shared checks. */
 export function pythonRuleEntries() {

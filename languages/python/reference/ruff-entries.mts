@@ -1,8 +1,8 @@
 import { readFileSync } from 'node:fs';
 import { ruleEntry } from '../../../shared/reference/entry.mjs';
 import { hintFor } from '../rules/rule-hints.mjs';
-import { allowedOf } from './hint-text.mjs';
-import { isPresetRule } from './ruff-selection.mjs';
+import { allowedOf } from './hint-text.mts';
+import { isPresetRule } from './ruff-selection.mts';
 
 export const RUFF_RULES_FILE = new URL('../ruff/ruff-rules.json', import.meta.url);
 

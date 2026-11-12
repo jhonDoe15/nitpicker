@@ -1,7 +1,7 @@
 import { counterpartsOf } from '../../../shared/reference/counterparts.mjs';
 import { ruleEntry } from '../../../shared/reference/entry.mjs';
 import { RULE_HINTS, RULES_TOOL } from '../rules/rule-hints.mjs';
-import { allowedOf, describedBy } from './hint-text.mjs';
+import { allowedOf, describedBy } from './hint-text.mts';
 
 const PYTHON_ANALYZERS = { python: ['python'] };
 

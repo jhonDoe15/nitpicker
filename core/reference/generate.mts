@@ -3,27 +3,27 @@ import path from 'node:path';
 import * as prettier from 'prettier';
 import { encodePage, REFERENCE_DATA_DIRECTORY } from '../../shared/reference/store.mjs';
 import { PAGES } from '../../shared/reference/pages.mjs';
-import { buildReference } from './build.mjs';
-import { renderReference } from './render.mjs';
+import { buildReference } from './build.mts';
+import { renderReference } from './render.mts';
 
 export {
   installedRuffRules,
   isOlderVersion,
   withSelectedNewerRules,
-} from '../../languages/python/reference/ruff-selection.mjs';
+} from '../../languages/python/reference/ruff-selection.mts';
 export {
   readRuffSnapshot,
   RUFF_RULES_FILE,
-} from '../../languages/python/reference/ruff-entries.mjs';
+} from '../../languages/python/reference/ruff-entries.mts';
 export {
   liveToolText,
   TOOL_TEXT_TOOLS,
   toolTextFile,
-} from '../../languages/java/reference/tool-text/tool-text.mjs';
+} from '../../languages/java/reference/tool-text/tool-text.mts';
 export {
   liveEslintInventory,
   writeEslintInventory,
-} from '../../languages/typescript/reference/eslint-inventory.mjs';
+} from '../../languages/typescript/reference/eslint-inventory.mts';
 
 const JSON_FILE = /\.json$/u;
 

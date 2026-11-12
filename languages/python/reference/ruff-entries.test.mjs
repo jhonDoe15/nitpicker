@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
-import { readRuffSnapshot } from './ruff-entries.mjs';
-import { isOlderVersion, isPresetRule } from './ruff-selection.mjs';
+import { readRuffSnapshot } from './ruff-entries.mts';
+import { isOlderVersion, isPresetRule } from './ruff-selection.mts';
 
 const PINNED_RUFF = /^ruff==(\S+)$/mu;
 

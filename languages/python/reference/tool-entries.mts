@@ -1,6 +1,6 @@
 import { ruleEntry } from '../../../shared/reference/entry.mjs';
 import { RULE_HINTS } from '../rules/rule-hints.mjs';
-import { allowedOf } from './hint-text.mjs';
+import { allowedOf } from './hint-text.mts';
 
 const PYTHON = { python: ['python'] };
 const PYTHON_EXCEPTIONS = 'python.exceptions';

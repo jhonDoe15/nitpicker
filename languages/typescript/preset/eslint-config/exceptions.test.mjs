@@ -3,7 +3,7 @@ import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { resolveHeadPolicy } from '../head-policy.mjs';
 import presetConfig from '../defaults/eslint.config.mjs';
-import errorsConfig from './policies/errors.config.mjs';
+import errorsConfig from './policies/errors.config.mts';
 import {
   applyMatchingRuleExceptions,
   applyRuleExceptions,

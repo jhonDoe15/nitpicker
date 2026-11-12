@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { beforeAll, describe, expect, it } from 'vitest';
 import { RUFF_SELECT } from '../adapters/configuration/python-rule-ids.mjs';
-import { installedRuffRules } from '../reference/ruff-selection.mjs';
+import { installedRuffRules } from '../reference/ruff-selection.mts';
 
 const enabled = process.env.NITPICKER_PYTHON_E2E === '1';
 

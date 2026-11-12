@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { pinnedToolTextVersion, readToolText, TOOL_TEXT_TOOLS } from './tool-text.mjs';
+import { pinnedToolTextVersion, readToolText, TOOL_TEXT_TOOLS } from './tool-text.mts';
 
 describe('the JVM rule text snapshots', () => {
   it.each(TOOL_TEXT_TOOLS)(

@@ -2,8 +2,8 @@ import { counterpartsOf } from '../../../shared/reference/counterparts.mjs';
 import { ruleEntry } from '../../../shared/reference/entry.mjs';
 import { reactRuleIds, reactTestRuleIds } from '../preset/eslint-config/react/react-rules.mjs';
 import { i18nRuleIds } from '../preset/eslint-config/i18n/i18n-rules.mjs';
-import { readEslintInventory } from './eslint-inventory.mjs';
-import { ruleSets } from './rule-sets.mjs';
+import { readEslintInventory } from './eslint-inventory.mts';
+import { ruleSets } from './rule-sets.mts';
 
 const GUIDE = 'docs/typescript-strict-preset.md';
 const NITPICKER_PREFIX = 'nitpicker/';

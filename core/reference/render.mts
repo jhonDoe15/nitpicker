@@ -1,8 +1,8 @@
 import path from 'node:path';
 import { entryFacts, entryLinks } from '../../shared/reference/facts.mjs';
 import { PAGES } from '../../shared/reference/pages.mjs';
-import { pageCredits } from './credits.mjs';
-import { pageExceptionTexts } from './page-exceptions.mjs';
+import { pageCredits } from './credits.mts';
+import { pageExceptionTexts } from './page-exceptions.mts';
 
 const REFERENCE_DIRECTORY = 'docs/rules';
 const INDEX_FILE = 'README.md';

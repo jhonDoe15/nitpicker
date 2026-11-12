@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs';
 import { ruleEntry } from '../../../../shared/reference/entry.mjs';
-import { JVM_ANALYZERS, JVM_BUILDS } from '../catalog-rules.mjs';
+import { JVM_ANALYZERS, JVM_BUILDS } from '../catalog-rules.mts';
 import { LINT_ADVICE } from '../../guards/javac-lint.mjs';
 
 const JVM = { page: 'java-nitpicker', analyzers: JVM_ANALYZERS, builds: JVM_BUILDS };

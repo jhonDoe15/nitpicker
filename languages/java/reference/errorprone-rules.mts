@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { ruleEntry } from '../../../shared/reference/entry.mjs';
-import { JVM_ANALYZERS, JVM_BUILDS } from './catalog-rules.mjs';
-import { readToolText } from './tool-text/tool-text.mjs';
+import { JVM_ANALYZERS, JVM_BUILDS } from './catalog-rules.mts';
+import { readToolText } from './tool-text/tool-text.mts';
 import { flatText } from '../../../shared/reference/build/text.mjs';
 
 const CHECKS_FILE = new URL('../gradle/errorprone/checks.json', import.meta.url);

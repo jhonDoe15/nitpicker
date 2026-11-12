@@ -6,7 +6,7 @@ import { guideCell, optionalGuideCell } from '../../../shared/reference/build/gu
 import { springMessage } from '../adapters/kotlin/review-rules/spring/spring-messages.mjs';
 import { KOTLIN_REVIEW_EXCEPTION_RULES } from '../adapters/kotlin/review-rules/review-rules.mjs';
 import { REVIEW_TOOL } from '../adapters/kotlin/review-rules/review-finding.mjs';
-import { JVM_ANALYZERS, JVM_BUILDS } from './catalog-rules.mjs';
+import { JVM_ANALYZERS, JVM_BUILDS } from './catalog-rules.mts';
 import {
   ESCAPING_MESSAGE,
   ESCAPING_RULE,

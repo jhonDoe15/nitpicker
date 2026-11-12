@@ -1,10 +1,10 @@
-import { catalogRuleEntries } from './catalog-rules.mjs';
-import { errorProneEntries } from './errorprone-rules.mjs';
-import { guardRuleEntries } from './guards/guard-rules.mjs';
-import { detektEntries } from './kotlin/detekt-rules.mjs';
-import { kotlinNitpickerEntries } from './kotlin/source-rules.mjs';
-import { jvmNitpickerEntries } from './nitpicker-rules.mjs';
-import { kotlinReviewEntries, leftOutPmdRules, ownPmdEntry, ownPmdRules } from './pmd-rules.mjs';
+import { catalogRuleEntries } from './catalog-rules.mts';
+import { errorProneEntries } from './errorprone-rules.mts';
+import { guardRuleEntries } from './guards/guard-rules.mts';
+import { detektEntries } from './kotlin/detekt-rules.mts';
+import { kotlinNitpickerEntries } from './kotlin/source-rules.mts';
+import { jvmNitpickerEntries } from './nitpicker-rules.mts';
+import { kotlinReviewEntries, leftOutPmdRules, ownPmdEntry, ownPmdRules } from './pmd-rules.mts';
 
 /** The entries of every rule the Java and Kotlin presets can report. */
 export function jvmRuleEntries() {

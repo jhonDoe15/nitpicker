@@ -3,7 +3,7 @@ import {
   liveToolText,
   readToolText,
   TOOL_TEXT_TOOLS,
-} from '../../../reference/tool-text/tool-text.mjs';
+} from '../../../reference/tool-text/tool-text.mts';
 
 const enabled = process.env.NITPICKER_JAVA_E2E === '1';
 

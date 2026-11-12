@@ -4,7 +4,7 @@ import { paragraphsOf, splitFirstSentence } from '../../../shared/reference/buil
 import { JAVA_FORMATTER_TOOLS, NOT_YOUR_JAVA_FORMATTER } from '../adapters/style/java-style.mjs';
 import { CATALOG_TOOLS, readCatalog } from '../messages/rule-messages.mjs';
 import { GRADLE_PRESETS, MAVEN_PRESETS } from '../adapters/gradle-presets.mjs';
-import { readToolText } from './tool-text/tool-text.mjs';
+import { readToolText } from './tool-text/tool-text.mts';
 
 export const JVM_ANALYZERS = { java: ['java'], kotlin: ['kotlin'] };
 export const JVM_BUILDS = Object.fromEntries(

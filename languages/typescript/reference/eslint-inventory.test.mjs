@@ -8,7 +8,7 @@ import {
   readEslintInventory,
   variantEnvironment,
   variantProject,
-} from './eslint-inventory.mjs';
+} from './eslint-inventory.mts';
 
 const roots = [];
 

@@ -13,7 +13,7 @@ import { KOTLINC_ADVICE, lintNotRun } from '../../adapters/kotlin/rules/kotlin-c
 import { inlineSuppressionMessage } from '../../adapters/kotlin/rules/kotlin-suppressions.mjs';
 import { kotlinFormatAdvice } from '../../adapters/kotlin/style/kotlin-format-advice.mjs';
 import { ktfmtMessage, ktlintAdvice } from '../../adapters/reporting/kotlin-reports.mjs';
-import { JVM_BUILDS } from '../catalog-rules.mjs';
+import { JVM_BUILDS } from '../catalog-rules.mts';
 import {
   BLOCKING_RULE,
   blockingMessage,

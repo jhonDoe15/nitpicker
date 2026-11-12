@@ -5,6 +5,7 @@ import path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { promisify } from 'node:util';
 import { TOOL_TIMEOUT_MS } from '../../../shared/processes/deadlines.mjs';
+import { checkoutModuleUrl } from '../../../shared/paths/checkout-module.mjs';
 
 const run = promisify(execFile);
 const INVENTORY_FILE = new URL('./eslint-inventory.json', import.meta.url);
@@ -15,7 +16,7 @@ const POLICIES = new URL('../preset/eslint-config/policies/', import.meta.url);
 
 export const ESLINT_CONFIGS = [
   ['eslint-lint', new URL('../preset/defaults/eslint.config.mjs', import.meta.url)],
-  ['eslint-errors', new URL('errors.config.mjs', POLICIES)],
+  ['eslint-errors', checkoutModuleUrl(new URL('errors.config.mjs', POLICIES))],
   ['eslint-logging', new URL('logging.config.mjs', POLICIES)],
   ['eslint-module-effects', new URL('module-effects.config.mjs', POLICIES)],
   ['coding-standards', new URL('coding-standards.config.mjs', POLICIES)],

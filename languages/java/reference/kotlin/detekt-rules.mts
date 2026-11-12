@@ -1,9 +1,9 @@
 import { readFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
-import { JVM_BUILDS } from '../catalog-rules.mjs';
+import { JVM_BUILDS } from '../catalog-rules.mts';
 import { ruleEntry } from '../../../../shared/reference/entry.mjs';
 import { flatText, splitFirstSentence } from '../../../../shared/reference/build/text.mjs';
-import { readToolText } from '../tool-text/tool-text.mjs';
+import { readToolText } from '../tool-text/tool-text.mts';
 import { ONE_WAY_RULES } from '../../adapters/kotlin/rules/kotlin-rules.mjs';
 
 const DEFAULTS_FILE = new URL('./detekt-default-rules.json', import.meta.url);

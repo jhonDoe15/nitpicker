@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
-import { detektEntries, nitpickerDetektRules } from './detekt-rules.mjs';
+import { detektEntries, nitpickerDetektRules } from './detekt-rules.mts';
 
 const DEFAULTS = JSON.parse(
   readFileSync(new URL('./detekt-default-rules.json', import.meta.url), 'utf8'),

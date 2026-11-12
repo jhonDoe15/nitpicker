@@ -11,14 +11,14 @@ import { CONTRACT_RULE, contractEntry } from '../adapters/spring-arch/contract-t
 import { JAVA_FORMATTER_TOOLS } from '../adapters/style/java-style.mjs';
 import { javaFormatMessage } from '../adapters/reporting/format-findings.mjs';
 import { INLINE_SUPPRESSION_MESSAGES } from '../adapters/suppressions/java-suppressions.mjs';
-import { JVM_ANALYZERS, JVM_BUILDS } from './catalog-rules.mjs';
+import { JVM_ANALYZERS, JVM_BUILDS } from './catalog-rules.mts';
 import {
   COPIED_CONSTANT_EXCEPTION_RULE,
   COPIED_CONSTANT_PIN,
   COPIED_CONSTANT_RULE,
 } from '../adapters/review-rules/copied-constants/copied-constants.mjs';
 import { copiedConstantMessage } from '../../../shared/rules/copied-constants/copied-constants.mjs';
-import { springConfigForms } from './spring-config-messages.mjs';
+import { springConfigForms } from './spring-config-messages.mts';
 import {
   ROUND_TRIP_EXCEPTION_RULE,
   ROUND_TRIP_RULE,
