@@ -22,6 +22,7 @@ import {
 } from '../hints/eslint-hints.mjs';
 import { growthAdviceFor } from '../hints/growth-advice.mjs';
 import { requiredString, positiveInteger } from './arguments.mjs';
+import { isRecord } from '../../../../shared/rules/facts/checks.mjs';
 import { withoutSupersededMessages } from '../lint-engine/overlapping-reports.mjs';
 
 const REPORT_ONLY_RULES = new Set(['nitpicker/promise-wait-deadline']);
@@ -279,8 +280,4 @@ function nonRuleDiagnosticId(message, context) {
     return 'eslint/inline-config-disabled';
   }
   throw new Error(`${context} has no rule identifier: ${message}`);
-}
-
-function isRecord(value) {
-  return typeof value === 'object' && value !== null && !Array.isArray(value);
 }

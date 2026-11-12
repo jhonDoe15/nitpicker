@@ -74,6 +74,25 @@ describe.each(['java', 'kotlin'])('import-only fragments in %s', (format) => {
   });
 });
 
+describe('import-only fragments in go', () => {
+  it.each([
+    ['an import block', 'import (\n\t"fmt"\n\tlog "example.com/log"\n)'],
+    ['a package line and imports', 'package shop\n\nimport "fmt"\nimport _ "embed"'],
+    ['the inside of an import block', '\t"fmt"\n\t"strings"\n\n\t"example.com/log"\n)'],
+    ['imports and the line where the clone ends', 'import (\n\t"fmt"\n)\n\nfunc main() {'],
+  ])('treats %s as imports only', (_, fragment) => {
+    expect(importsOnly(fragment, 'go')).toBe(true);
+  });
+
+  it.each([
+    ['code after the imports', 'import "fmt"\n\nvar x = 1\nvar y = 2'],
+    ['statements', 'x := 1\nreturn x'],
+    ['an import path and a call', '"fmt"\n)\n\nfunc main() {\n\tfmt.Println(1)\n}'],
+  ])('treats %s as code', (_, fragment) => {
+    expect(importsOnly(fragment, 'go')).toBe(false);
+  });
+});
+
 describe.each(['typescript', 'tsx', 'javascript'])('import-only fragments in %s', (format) => {
   it.each([
     ['imports', "import a from 'a';\nimport { b, c } from \"b\";\nimport * as d from 'd';"],

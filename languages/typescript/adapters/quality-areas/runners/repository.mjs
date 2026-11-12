@@ -24,10 +24,13 @@ import { rootsPattern } from '../../../../../core/tooling/jscpd/skipped-folders.
 import { trackTemporaryPath } from '../../../../../core/tooling/temporary-files.mjs';
 import { normalizeDuplicates } from '../../../preset/duplicates/normalize.mjs';
 import { renamedDuplicatesReport } from '../../../preset/duplicates/renamed.mjs';
+import { runDesignSignals } from './program/design-signals.mjs';
 import { runTestOnlyExports, runUnusedApi } from './unused-api.mjs';
 import { spawnedEntryFiles } from '../../dependency-graph/spawned-entries.mjs';
 import { baselinePathsOf } from '../../../../../shared/rules/facts/baseline.mjs';
 import { knipReport, withProjectKnipConfig } from '../knip/knip-run.mjs';
+import { projectImports } from '../../../preset/dependency-graph/cruise.mjs';
+import { moduleImportsSection } from '../../../../../shared/history/co-change/dependencies/module-imports.mjs';
 
 export async function runCodingStandards(options) {
   const checker = await importPolicyModule(
@@ -88,14 +91,15 @@ export async function runCoupling(options) {
     options,
     'languages/typescript/preset/coupling/analyze.mjs',
   );
-  const { exceptions } = readHeadPolicy();
-  return perSourceRoot(options, layout, (root) =>
+  const { exceptions, history } = readHeadPolicy();
+  const findings = await perSourceRoot(options, layout, (root) =>
     normalizeCoupling(
       analyzeCoupling(graph, root, { layout, projectRoot: options.projectRoot }),
       options.analyzerName,
       exceptions,
     ),
   );
+  return { findings, ...moduleImportsSection(projectImports(graph, layout.isSourceFile), history) };
 }
 
 export async function runTestRuntime(options) {
@@ -137,6 +141,7 @@ export async function runStructure(options) {
     ...functionFindings,
     ...typescriptStructureProjectFindings({ ...options, baselinePaths: baselinePathsOf(options) }),
     ...(await runUnusedApi(options)),
+    ...(await runDesignSignals(options)),
   ];
 }
 

@@ -5,12 +5,16 @@ import {
   policyFindings,
 } from '../reporting/review/policy-findings.mjs';
 import { compareAnalyzers } from './base-red/compare-analyzers.mjs';
+import { withCoChangeDependencies } from '../../../shared/history/co-change/dependencies/join.mjs';
+import { runProfileSummary } from '../../quick/summary.mjs';
 import { scopeNotes, scopeOutcomes, scopeSummary } from '../../scope/scope-findings.mjs';
 
 export function combineAnalyzerReports(context) {
-  const { baseRun, headRun, additionalToolErrors } = context;
+  const { additionalToolErrors, policies = {} } = context;
+  const baseRun = withCoChangeDependencies(context.baseRun, policies.base);
+  const headRun = withCoChangeDependencies(context.headRun, policies.head);
   const toolErrors = [...additionalToolErrors, ...baseRun.toolErrors, ...headRun.toolErrors];
-  const compared = compareAnalyzers({ ...context, toolErrors });
+  const compared = compareAnalyzers({ ...context, baseRun, headRun, toolErrors });
   const outcomes = scopeOutcomes(compared.outcomes, context.scope);
   const notes = scopeNotes(compared.notes, context.scope);
   return buildReport({ ...context, outcomes, notes, toolErrors });
@@ -29,6 +33,22 @@ export function noChangesReport(context) {
     reportsPolicy: false,
   });
   return { ...report, summary: { ...report.summary, noChanges: true } };
+}
+
+const SKIPPED_CHECK_RULES = new Set(['race-not-checked', 'mutation-skipped']);
+
+function skippedCheckNotices(outcomes) {
+  const findings = [...collect(outcomes, 'newFindings'), ...collect(outcomes, 'unchangedFindings')];
+  return [
+    ...new Set(
+      findings
+        .filter(
+          ({ rule, classification }) =>
+            classification === 'descriptive' && SKIPPED_CHECK_RULES.has(rule),
+        )
+        .map(({ tool, rule, message }) => `${tool}/${rule}: ${message}`),
+    ),
+  ];
 }
 
 function collect(outcomes, key) {
@@ -59,6 +79,11 @@ function policyReview(context, digest) {
   };
 }
 
+function runAndScopeSummary(context, outcomes) {
+  const outside = outcomes.reduce((total, { outside: count }) => total + count, 0);
+  return { ...runProfileSummary(context), ...scopeSummary(context.scope, outside) };
+}
+
 function buildReport(context) {
   const { analyzers, outcomes, toolErrors, comparison, startedAt } = context;
   const { configOverrides, policyChanges, policyLoosenings, notices } = context;
@@ -80,11 +105,8 @@ function buildReport(context) {
       ...(context.policyAcceptanceSource === undefined
         ? {}
         : { policyAcceptanceSource: context.policyAcceptanceSource }),
-      notices,
-      ...scopeSummary(
-        context.scope,
-        outcomes.reduce((total, { outside }) => total + outside, 0),
-      ),
+      notices: [...notices, ...skippedCheckNotices(outcomes)],
+      ...runAndScopeSummary(context, outcomes),
       tools: outcomes.map(({ tool }) => tool),
       exclusions: declaredExclusions(analyzers),
       renamedPaths: context.baseToHeadRenames.size,

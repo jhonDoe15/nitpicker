@@ -85,6 +85,14 @@ describe('progress lines', () => {
       'nitpicker: base 1 analyzer cached (remote cache; use --no-cache to rerun)\n',
     );
   });
+
+  it('prints a cache folder inside the current folder relative to it', () => {
+    const directory = path.join(process.cwd(), '.git', 'nitpicker', 'cache');
+
+    expect(cachedLine({ label: 'base', count: 2, directory })).toBe(
+      `nitpicker: base 2 analyzers cached (${path.join('.git', 'nitpicker', 'cache')}; use --no-cache to rerun)\n`,
+    );
+  });
 });
 
 describe('progress on a descriptor', () => {

@@ -3,6 +3,7 @@ import {
   parseDrillDownOptions,
   unknownArgumentError,
 } from '../diff/comparison/cli.mjs';
+import { validateRunProfile } from '../quick/validate.mjs';
 import { didYouMean } from '../../shared/messages/closest-match.mjs';
 
 const FLAGS = new Map([
@@ -10,8 +11,11 @@ const FLAGS = new Map([
   ['--details', { property: 'details', value: true }],
   ['--fix', { property: 'fix', value: true }],
   ['--help', { property: 'help', value: true }],
+  ['--json', { property: 'json', value: true }],
   ['--version', { property: 'version', value: true }],
   ['--no-cache', { property: 'cache', value: false }],
+  ['--quick', { property: 'quick', value: true }],
+  ['--staged', { property: 'staged', value: true }],
 ]);
 const ACCEPT_FLAG = '--accept-policy-change';
 const VALUES = new Map([
@@ -92,8 +96,11 @@ function remainingOptions(arguments_) {
     details: false,
     fix: false,
     help: false,
+    json: false,
     version: false,
     cache: true,
+    quick: false,
+    staged: false,
     paths: [],
   };
   const remaining = arguments_.values();
@@ -139,5 +146,6 @@ export function parseArguments(arguments_) {
   const { remainingArguments, ...drillDown } = parseDrillDownOptions(arguments_);
   const options = { ...remainingOptions(remainingArguments), ...drillDown };
   validateModes(options);
+  validateRunProfile(options);
   return options;
 }

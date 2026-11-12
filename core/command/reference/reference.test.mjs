@@ -144,9 +144,11 @@ describe('nitpicker explain', () => {
   it('describes a rule named without its tool and a family of rules by the name a finding prints', () => {
     expect(run(['explain', 'F401']).stdout.split('\n')[0]).toBe('ruff/F401');
     expect(run(['explain', 'mypy/attr-defined']).stdout.split('\n')[0]).toBe('mypy/<error code>');
-    expect(run(['explain', 'MagicNumber']).stdout.split('\n')[0]).toBe(
-      'detekt/detekt.style.MagicNumber',
-    );
+    const headings = run(['explain', 'MagicNumber'])
+      .stdout.split('\n')
+      .filter((line) => /^[a-z]+\/\S+$/u.test(line));
+
+    expect(headings).toEqual(['checkstyle/MagicNumber', 'detekt/detekt.style.MagicNumber']);
   });
 
   it.each(['coverage', 'mutation', 'duplicates'])(

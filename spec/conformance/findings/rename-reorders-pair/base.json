@@ -1,0 +1,32 @@
+{
+  "findings": [
+    {
+      "tool": "duplicates",
+      "rule": "duplicate-clone",
+      "path": "src/a/A.java",
+      "identity": "pair:src/a/A.java|src/b/B.java:fragment:f1:occurrence:1",
+      "message": "This code repeats src/b/B.java.",
+      "classification": "enforceable"
+    },
+    {
+      "tool": "duplicates",
+      "rule": "duplicate-clone",
+      "path": "src/a/A.java",
+      "identity": "cpd:pair:src/a/A.java|src/b/B.java:fragment:f1:occurrence:1",
+      "message": "This code repeats src/b/B.java.",
+      "classification": "enforceable"
+    },
+    {
+      "tool": "duplicates",
+      "rule": "duplicate-clone-size",
+      "path": "src/a/A.java",
+      "identity": "pair:src/a/A.java|src/b/B.java:occurrence:1:lines",
+      "message": "Duplicate with src/b/B.java",
+      "classification": "descriptive",
+      "metric": {
+        "name": "lines",
+        "value": 30
+      }
+    }
+  ]
+}

@@ -1,7 +1,6 @@
 import { createRequire } from 'node:module';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { defineConfig } from 'eslint/config';
 
 const TYPESCRIPT_CONFIG = /\.[cm]?ts$/u;
 const ENTRY_KEYS = new Set([
@@ -50,6 +49,7 @@ export async function projectEntries(file) {
   if (typeof exported !== 'object' || exported === null) {
     throw new TypeError(`${label} must export a flat config array or object`);
   }
+  const { defineConfig } = createRequire(import.meta.url)('eslint/config');
   const entries = await described(`${label} is not a valid flat config`, () =>
     defineConfig(exported),
   );

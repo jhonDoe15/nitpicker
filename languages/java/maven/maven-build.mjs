@@ -3,21 +3,11 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { readEffectivePom } from './configuration/effective-pom.mjs';
 import { runMaven, TEST_RERUNS_OFF } from './maven-command.mjs';
-import {
-  lifecycleArgs,
-  moduleClasspaths,
-  parseDependencyList,
-  readReactor,
-} from './maven-project.mjs';
+import { readReactor } from './maven-project.mjs';
+import { moduleClasspaths, parseDependencyList } from './configuration/maven-classpaths.mjs';
 import { missingLauncherVersions } from './maven-tests.mjs';
 import { checkstyleIndentation } from '../adapters/style/java-style.mjs';
-import {
-  archunitTool,
-  formatTool,
-  jacocoPlugin,
-  MAVEN_PLUGINS,
-  resolveTools,
-} from './maven-tools.mjs';
+import { archunitTool, formatTool, MAVEN_PLUGINS, resolveTools } from './maven-tools.mjs';
 import { buildRunsArchRules, springAotSkip } from './spring/arch-rules-gate.mjs';
 import { writeSpringRoles } from '../adapters/spring-arch/spring-roles.mjs';
 import { writeSpringRuleset } from '../adapters/spring/proxies/proxy-ruleset.mjs';
@@ -26,12 +16,8 @@ import { processorTool } from './errorprone/maven-errorprone.mjs';
 import { readPinnedTools } from '../builds/java-build.mjs';
 import { kotlinSetup } from './kotlin/kotlin-setup.mjs';
 import { pitHistoryOf } from '../builds/pit-history/pit-history.mjs';
-import {
-  analyzeModule,
-  jacocoExecFiles,
-  MAVEN_REPORT_DIRECTORY,
-  OWN_JACOCO_EXEC,
-} from './module/maven-module.mjs';
+import { analyzeModule, MAVEN_REPORT_DIRECTORY } from './module/maven-module.mjs';
+import { buildGoals, jacocoExecFiles } from './quick/maven-test-phase.mjs';
 
 const PROJECT_CHECKS_OFF = [
   '-Dcheckstyle.skip=true',
@@ -48,16 +34,24 @@ function dependencyFile(work, module) {
   return path.join(work, 'dependencies', groupId, `${artifactId}.txt`);
 }
 
-export function buildAndTest({ projectRoot, maven, work, pinned, modules, spawn }) {
+export function buildAndTest({
+  projectRoot,
+  maven,
+  work,
+  pinned,
+  modules,
+  spawn,
+  timeoutMs,
+  quick,
+}) {
   runMaven({
     projectRoot,
     maven,
     spawn,
+    timeoutMs,
     args: [
       '--quiet',
-      `${jacocoPlugin(pinned)}:prepare-agent`,
-      `-Djacoco.destFile=\${project.build.directory}/${OWN_JACOCO_EXEC}`,
-      ...lifecycleArgs(modules),
+      ...buildGoals({ quick, pinned, modules }),
       `${MAVEN_PLUGINS.dependency}:list`,
       `-DoutputFile=${path.join(work, 'dependencies', '${project.groupId}', '${project.artifactId}.txt')}`,
       '-DoutputAbsoluteArtifactFilename=true',
@@ -73,10 +67,16 @@ export function buildAndTest({ projectRoot, maven, work, pinned, modules, spawn 
 }
 
 function readClasspaths(work, module) {
-  return moduleClasspaths(
-    module,
-    parseDependencyList(readFileSync(dependencyFile(work, module), 'utf8')),
-  );
+  const dependencies = parseDependencyList(readFileSync(dependencyFile(work, module), 'utf8'));
+  return { ...moduleClasspaths(module, dependencies), dependencies };
+}
+
+function guardProject(projectRoot, policy, modules) {
+  return {
+    projectRoot,
+    baselineRoot: policy.snapshot === 'head' ? policy.baselineRoot : undefined,
+    reactor: modules.map((module) => module.coordinates),
+  };
 }
 
 function staleOutputs(module) {
@@ -88,8 +88,8 @@ function staleOutputs(module) {
   ];
 }
 
-function readModules({ projectRoot, maven, work, spawn }) {
-  const effectivePom = readEffectivePom({ projectRoot, maven, work, spawn });
+function readModules({ projectRoot, maven, work, spawn, timeoutMs }) {
+  const effectivePom = readEffectivePom({ projectRoot, maven, work, spawn, timeoutMs });
   const modules = readReactor(projectRoot, effectivePom).filter(
     (module) => module.packaging !== 'pom',
   );
@@ -125,8 +125,10 @@ function analyzeAll({ analyzed, policy, kotlin, work, ...shared }) {
         pitHistory: pitHistoryOf(policy, shared.projectRoot),
         kotlinOptions: kotlin.options,
         spring: policy.spring,
+        featureFolders: policy.featureFolders,
         springRoles,
         springRules,
+        mutationScope: policy.mutationScope,
       }),
     )
     .filter((failure) => failure !== undefined);
@@ -143,7 +145,7 @@ function extraTools({ modules, analyzed, policy, pinned, kotlin }) {
 
 export function runMavenPreset(
   projectRoot,
-  { maven, policy = {}, configs, environment = {}, spawn },
+  { maven, policy = {}, configs, environment = {}, spawn, timeoutMs },
 ) {
   if (policy.preset !== undefined && !MAVEN_PRESETS.includes(policy.preset)) {
     throw new Error(
@@ -152,7 +154,7 @@ export function runMavenPreset(
   }
   const pinned = readPinnedTools();
   const work = mkdtempSync(path.join(tmpdir(), 'nitpicker-maven-'));
-  const run = { projectRoot, maven, spawn, pinned };
+  const run = { projectRoot, maven, spawn, timeoutMs, pinned, quick: policy.quick === true };
   try {
     const { modules, effectivePom } = readModules({ ...run, work });
     const kotlin = kotlinSetup({ ...run, policy, modules, effectivePom, work, environment });
@@ -164,7 +166,7 @@ export function runMavenPreset(
     }));
     const tools = resolveTools({
       ...run,
-      launcherVersions: missingLauncherVersions(analyzed),
+      launcherVersions: run.quick ? [] : missingLauncherVersions(analyzed),
       extraTools: extraTools({ modules, analyzed, policy, pinned, kotlin }),
     });
     const testsFailures = analyzeAll({
@@ -176,6 +178,7 @@ export function runMavenPreset(
       policy,
       kotlin,
       work,
+      project: guardProject(projectRoot, policy, modules),
     });
     return {
       moduleDirs: modules.map((module) => module.basedir),
