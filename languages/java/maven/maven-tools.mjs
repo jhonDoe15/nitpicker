@@ -4,6 +4,7 @@ import { homedir } from 'node:os';
 import path from 'node:path';
 import { JAVA_FORMATTERS } from '../adapters/style/jvm-formatters.mjs';
 import { runMaven } from './maven-command.mjs';
+import { explainedError } from '../../../shared/messages/troubleshooting.mjs';
 import { withoutTestTools } from './quick/maven-quick.mjs';
 
 export const MAVEN_PLUGINS = {
@@ -19,8 +20,17 @@ const JUNIT_PLATFORM_EXCLUSIONS = [
 ];
 
 export function jacocoPlugin(pinned, modules = []) {
-  const own = modules.map((module) => module.jacocoAgentVersion).find(Boolean);
-  return `org.jacoco:jacoco-maven-plugin:${own ?? pinned.jacoco}`;
+  const bound = modules.filter((module) => module.jacocoAgentVersion !== undefined);
+  const versions = [...new Set(bound.map((module) => module.jacocoAgentVersion))];
+  if (versions.length > 1) {
+    const listed = bound.map((module) => `${module.coordinates} ${module.jacocoAgentVersion}`);
+    throw explainedError(
+      `The Maven modules bind different JaCoCo agent versions (${listed.join(', ')}). A test JVM ` +
+        "can hold one JaCoCo agent version, and nitpicker runs the project's own: set one " +
+        'jacoco-maven-plugin version for every module',
+    );
+  }
+  return `org.jacoco:jacoco-maven-plugin:${versions[0] ?? pinned.jacoco}`;
 }
 
 export function dependency(coordinates, exclusions = []) {

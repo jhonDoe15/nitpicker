@@ -3,7 +3,10 @@ import path from 'node:path';
 
 export const SUITES = ['java', 'kotlin', 'python', 'go'];
 const E2E_NAME = '.e2e.test.';
-export const TEST_FILES = ['{core,shared,languages,scripts}/**/*.test.mjs', 'evals/**/*.test.mjs'];
+export const TEST_FILES = [
+  '{core,shared,languages,scripts}/**/*.test.{mjs,mts}',
+  'evals/**/*.test.{mjs,mts}',
+];
 const FLAG_READ = /process\.env(?:\.|\[\s*['"])(NITPICKER_\w+?_E2E)\b/gu;
 const RELATIVE_IMPORT = /(?:from|import)[\s(]*['"](\.{1,2}\/[^'"]+)['"]/gu;
 const RELATIVE_RE_EXPORT = /export\s*(?:\*|\{[^}]*\})\s*from\s*['"](\.{1,2}\/[^'"]+)['"]/gu;

@@ -123,6 +123,13 @@ function setting(plugin, goal, name) {
   return configured(defaultExecution(plugin, goal), plugin, name);
 }
 
+function jacocoSettings(plugin, basedir) {
+  return {
+    jacocoDestFiles: jacocoDestFiles(plugin, basedir),
+    jacocoAgentVersion: jacocoAgentVersion(plugin),
+  };
+}
+
 function describeModule(project, { basedir, pomFile }) {
   const build = childAt(project, 'build');
   const plugins = pluginsOf(project);
@@ -168,8 +175,7 @@ function describeModule(project, { basedir, pomFile }) {
     testJvmArgs: testJvmArguments(project, surefire, defaultExecution(surefire, 'test')),
     integrationTestJvmArgs: testJvmArguments(project, failsafe, integrationTests),
     published: isPublished(project, plugins),
-    jacocoDestFiles: jacocoDestFiles(plugins.get(JACOCO), basedir),
-    jacocoAgentVersion: jacocoAgentVersion(plugins.get(JACOCO)),
+    ...jacocoSettings(plugins.get(JACOCO), basedir),
     archunitIncludes: textAt(project, 'properties', 'nitpicker.archunit.includes'),
     compiler: compilerSettings(project),
   };
