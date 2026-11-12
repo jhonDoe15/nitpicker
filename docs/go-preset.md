@@ -333,7 +333,19 @@ message does not already name it, and by its exception entry:
     `os.Chdir`, `context.Background()` and `context.TODO()`), testifylint (every
     check, printed under its own name such as `testifylint/bool-compare`: the specific
     assertion, `require` for errors, expected before actual, format strings that match their
-    arguments, suite methods instead of the package functions).
+    arguments, suite methods instead of the package functions);
+  - other forms: asciicheck (ASCII identifiers), bidichk (no bidirectional control characters,
+    which make code read differently from how it compiles), gocheckcompilerdirectives (every
+    `//go:` directive is one the compiler knows), canonicalheader (`http.Header` keys in
+    canonical form), musttag (a struct passed to an encoder or decoder has a
+    tag on each field, so renaming a field does not change the encoded form; `json`, `xml`, `yaml`, `toml`, `mapstructure` and sqlx `db` calls), perfsprint (no
+    `fmt.Sprintf` where `strconv`, `hex.EncodeToString`, `errors.New` or `+` does the same, printed
+    under each check's name such as `perfsprint/integer-format`), usestdlibvars (the standard
+    library's constants for HTTP methods and statuses, time layouts such as `time.RFC3339`, the
+    month in `time.Date` and the RPC paths), sloglint (the `...Context` form when the
+    function takes a context or request, typed attributes such as
+    `slog.String("name", name)` instead of key-value pairs, `slog.DiscardHandler`), spancheck
+    (`span.End()` on every path after `tracer.Start`).
 
 The linters skip generated files (`// Code generated ... DO NOT EDIT.`), as staticcheck does; a
 package of only generated files needs no package comment. An analyzer that fails on a package that
@@ -371,48 +383,64 @@ themselves, exhaustive's `//exhaustive:ignore` and makezero's `// nozero`, and a
 | revive `confusing-naming`                                                                                                                                       | reports whichever of the two names it reads last, which changes between runs                                                                            |
 | revive `modifies-parameter`, `optimize-operands-order`                                                                                                          | report only below revive's 0.8 confidence floor (they cannot tell a parameter from a shadowing variable, or a cheap operand from one with side effects) |
 | revive `unsecure-url-scheme`                                                                                                                                    | flags every `http://` string, XML namespaces and documentation links included; transport security belongs to the gosec slice (#976)                     |
+| perfsprint `concat-loop`                                                                                                                                        | modernize `stringsbuilder` reports the same loop                                                                                                        |
+| perfsprint `error-format`                                                                                                                                       | revive `unnecessary-format` reports the same `fmt.Errorf` call                                                                                          |
+| perfsprint `fiximports`                                                                                                                                         | an edit to the import block that goes with the other fixes, not a finding                                                                               |
+| sloglint `no-mixed-args`                                                                                                                                        | attributes-only reports every key-value pair, mixed or not                                                                                              |
 
 **Catalog linters considered and left out**, with the reason:
 
-| Linter                            | Reason                                                                                                                                                                             |
-| --------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| err113                            | flags every `errors.New` inside a function, though a one-off error nobody compares is fine; its `==` check duplicates errorlint                                                    |
-| wrapcheck                         | flags every error returned from another package unwrapped, the module's own included; it needs per-project ignore lists to be usable                                               |
-| paralleltest                      | requires `t.Parallel()` in every test, which `t.Setenv` and `t.Chdir` forbid and tests with shared fixtures cannot use; tparallel keeps a test and its subtests consistent instead |
-| forcetypeassert                   | errcheck `-assert` reports the same one-value type assertions                                                                                                                      |
-| exhaustive maps and type switches | a lookup map keyed by an enum is often partial on purpose, and a type switch over an interface cannot know every implementation                                                    |
-| nilnil `-detect-opposite`         | a value with a non-nil error is the `io.Reader` contract (`n, err`), not a second form                                                                                             |
+| Linter                                                                                                                    | Reason                                                                                                                                                                             |
+| ------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| err113                                                                                                                    | flags every `errors.New` inside a function, though a one-off error nobody compares is fine; its `==` check duplicates errorlint                                                    |
+| wrapcheck                                                                                                                 | flags every error returned from another package unwrapped, the module's own included; it needs per-project ignore lists to be usable                                               |
+| paralleltest                                                                                                              | requires `t.Parallel()` in every test, which `t.Setenv` and `t.Chdir` forbid and tests with shared fixtures cannot use; tparallel keeps a test and its subtests consistent instead |
+| forcetypeassert                                                                                                           | errcheck `-assert` reports the same one-value type assertions                                                                                                                      |
+| exhaustive maps and type switches                                                                                         | a lookup map keyed by an enum is often partial on purpose, and a type switch over an interface cannot know every implementation                                                    |
+| nilnil `-detect-opposite`                                                                                                 | a value with a non-nil error is the `io.Reader` contract (`n, err`), not a second form                                                                                             |
+| predeclared                                                                                                               | revive's `redefines-builtin-id` reports the same names                                                                                                                             |
+| sloglint `kv-only`                                                                                                        | flags every `LogAttrs` call, which takes only attributes; attributes-only works with every call and keeps keys and values typed                                                    |
+| sloglint other options                                                                                                    | the default logger, constant keys, message style and key case are choices each project makes, and no one form is Go's                                                              |
+| spancheck `set-status`, `record-error`                                                                                    | a project that records errors in a helper cannot name it without config, so every such span would be a finding                                                                     |
+| usestdlibvars `os-dev-null`, `syslog-priority`                                                                            | deprecated upstream                                                                                                                                                                |
+| usestdlibvars `time-month`, `time-weekday`, `crypto-hash`, `sql-isolation-level`, `tls-signature-scheme`, `constant-kind` | they flag a bare word such as `"May"`, `"MD5"`, `"Ed25519"` or `"Int"` in any string, a type-name table or a JWT algorithm label included, where the constant is not meant         |
+| sloglint `static-msg`                                                                                                     | flags a constant from another package (`msgs.Started`) and a logging wrapper that passes its message on, with no other form to write                                               |
 
 **Overlaps on one line.** When two checks report the same line, the more specific one stays:
 
-| Kept                                 | Dropped                                          |
-| ------------------------------------ | ------------------------------------------------ |
-| SA4011 (break in a switch in a loop) | S1023 (redundant break)                          |
-| S1037 (elaborate sleep)              | S1000 (single-case select)                       |
-| SA4010 (append result unused)        | SA4006 (value never used)                        |
-| SA4031, SA5000                       | vet `nilness`                                    |
-| SA5001, SA9001 (defer Close)         | errcheck                                         |
-| S1018 (sliding copy loop)            | modernize `rangeint`                             |
-| vet `gofixdirective`                 | vet `inline` on the same directive               |
-| `go vet` printf                      | SA1006 (Go 1.24 and later modules)               |
-| S1002                                | revive `bool-literal-in-expr` at the same column |
-| SA5008, `go vet` structtag           | revive `struct-tag`                              |
-| SA5003, SA9001, SA9010               | revive `defer`                                   |
-| SA5002, SA9003                       | revive `empty-block`                             |
-| ST1015                               | revive `enforce-switch-style`                    |
-| SA4005                               | revive `modifies-value-receiver`                 |
-| QF1009                               | revive `time-equal`                              |
-| S1039                                | revive `unnecessary-format`                      |
-| S1023, SA4011                        | revive `unnecessary-stmt`, `useless-break`       |
-| QF1011                               | revive `var-declaration` at the same column      |
-| nilerr                               | nilnil on `return nil, nil`                      |
-| sqlclosecheck (Close not deferred)   | errcheck                                         |
-| ST1012 (sentinel error names)        | errname                                          |
-| SA1005 (`exec.Command` shell line)   | noctx                                            |
-| SA4006, SA4010                       | wastedassign                                     |
-| modernize `testingcontext`           | usetesting                                       |
-| errorlint                            | testifylint `compares`                           |
-| thelper                              | testifylint `suite-thelper`                      |
+| Kept                                                             | Dropped                                                                                   |
+| ---------------------------------------------------------------- | ----------------------------------------------------------------------------------------- |
+| SA4011 (break in a switch in a loop)                             | S1023 (redundant break)                                                                   |
+| S1037 (elaborate sleep)                                          | S1000 (single-case select)                                                                |
+| SA4010 (append result unused)                                    | SA4006 (value never used)                                                                 |
+| SA4031, SA5000                                                   | vet `nilness`                                                                             |
+| SA5001, SA9001 (defer Close)                                     | errcheck                                                                                  |
+| S1018 (sliding copy loop)                                        | modernize `rangeint`                                                                      |
+| vet `gofixdirective`                                             | vet `inline` on the same directive                                                        |
+| `go vet` printf                                                  | SA1006 (Go 1.24 and later modules)                                                        |
+| S1002                                                            | revive `bool-literal-in-expr` at the same column                                          |
+| SA5008, `go vet` structtag                                       | revive `struct-tag`                                                                       |
+| SA5003, SA9001, SA9010                                           | revive `defer`                                                                            |
+| SA5002, SA9003                                                   | revive `empty-block`                                                                      |
+| ST1015                                                           | revive `enforce-switch-style`                                                             |
+| SA4005                                                           | revive `modifies-value-receiver`                                                          |
+| QF1009                                                           | revive `time-equal`                                                                       |
+| S1039                                                            | revive `unnecessary-format`                                                               |
+| S1023, SA4011                                                    | revive `unnecessary-stmt`, `useless-break`                                                |
+| QF1011                                                           | revive `var-declaration` at the same column                                               |
+| nilerr                                                           | nilnil on `return nil, nil`                                                               |
+| sqlclosecheck (Close not deferred)                               | errcheck                                                                                  |
+| ST1012 (sentinel error names)                                    | errname                                                                                   |
+| SA1005 (`exec.Command` shell line)                               | noctx                                                                                     |
+| SA4006, SA4010                                                   | wastedassign                                                                              |
+| modernize `testingcontext`                                       | usetesting                                                                                |
+| errorlint                                                        | testifylint `compares`                                                                    |
+| thelper                                                          | testifylint `suite-thelper`                                                               |
+| SA1006, QF1010, S1025, S1028, S1039, revive `unnecessary-format` | perfsprint `string-format`                                                                |
+| QF1012 (`fmt.Fprintf` to a writer)                               | perfsprint `string-format`, `integer-format`, `error-format`, `bool-format`, `hex-format` |
+| SA9009 (space in a directive)                                    | gocheckcompilerdirectives                                                                 |
+| ST1013 (HTTP status constants)                                   | usestdlibvars                                                                             |
+| ST1018 (format characters in text)                               | bidichk                                                                                   |
 
 Those two compare the column too, because one line can hold a second, different problem
 (`found == true || ready && false`). revive keeps the rules staticcheck lacks in the same areas: `bool-literal-in-expr` also flags
