@@ -109,7 +109,9 @@ export function convertedNodeBuildModules(
   imports: readonly ModuleImport[],
 ): string[] {
   const tracked = new Set(modules);
-  return [...nodeBuildModules(imports)].filter((file) => isConverted(file) || !tracked.has(file));
+  return [...nodeBuildModules(imports)]
+    .map((file) => (tracked.has(file) ? file : file.replace(/\.mjs$/u, '.mts')))
+    .filter((file) => isConverted(file) && tracked.has(file));
 }
 
 function runsOnNodeBuild(importer: string, build: ReadonlySet<string>): boolean {
