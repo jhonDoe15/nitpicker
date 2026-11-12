@@ -3,7 +3,7 @@ import path from 'node:path';
 import { globMatcher } from '../../../shared/paths/glob.mjs';
 import { codeExtensionNames } from '../../../languages/typescript/preset/layout.mjs';
 import { parseJsonc } from '../../../shared/jsonc/jsonc.mjs';
-import { TYPESCRIPT_API } from '../../../languages/typescript/typescript-api/api-selection.mjs';
+import { selectTypeScriptApi } from '../../../languages/typescript/typescript-api/api-selection.mjs';
 
 const EDITORCONFIG = '.editorconfig';
 const KOTLIN_FILES = ['A.kt', 'A.kts'];
@@ -72,7 +72,7 @@ function scriptText(text) {
 }
 
 function printedScript(file, text) {
-  const ts = createRequire(import.meta.url)(TYPESCRIPT_API.file);
+  const ts = createRequire(import.meta.url)(selectTypeScriptApi().file);
   const source = ts.createSourceFile(file, text, ts.ScriptTarget.Latest, false);
   return ts.createPrinter({ removeComments: true }).printFile(source);
 }

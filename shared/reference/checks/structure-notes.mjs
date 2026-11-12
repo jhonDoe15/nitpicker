@@ -19,6 +19,21 @@ export const STRUCTURE_NOTES = {
     '`shared` is for code several features use; code with one user belongs with it.',
     'Move the module into the feature that uses it.',
   ],
+  'feature-internal-import': [
+    'A production module outside a feature that imports a module behind the public face of that feature.',
+    'A feature that others reach into cannot change its internals without breaking them.',
+    "Import the feature's public face (its index file or package `__init__`), or export what you need from it.",
+  ],
+  'shared-imports-feature': [
+    'A production module under a shared root that imports a feature module.',
+    'Shared code that depends on one feature ties every other feature to it.',
+    'Move the code into the feature, or move what it needs from the feature into the shared root.',
+  ],
+  'feature-cycle': [
+    'A runtime import between two features that closes a cycle of features.',
+    'Features that depend on each other cannot be understood, changed or removed one at a time.',
+    'Break the cycle: move the shared part to a shared root, or invert one dependency through an interface.',
+  ],
   'duplicate-definition': [
     'A used literal constant, function or type with the same name and text in two modules of a package.',
     'Two copies of one definition drift apart.',
@@ -89,6 +104,11 @@ export const STRUCTURE_NOTES = {
     'Another install keeps its tables in another schema, or has another database name or roles.',
     'Leave the schema out, target the current database, and leave out the owner or use `CURRENT_USER`.',
   ],
+  'foreign-key-index': [
+    'A foreign key a migration adds (SQL, Liquibase or Alembic), or a Prisma relation, with no index that starts with its columns, in a project that does not use MySQL or MariaDB.',
+    'PostgreSQL does not index a foreign-key column by itself, so deleting a referenced row and every join or lookup by the column scan the whole table.',
+    'Create an index that starts with the foreign-key columns in a migration (or `@@index` in the Prisma schema); a composite index counts when the columns come first.',
+  ],
   'start-schema-push': [
     'A `start`, `prestart`, `serve` or `start:*` script (not `start:dev`, `start:local`, `start:watch`, `start:debug` or `start:test`) in `package.json`, or a script it runs, that pushes the ORM schema (`prisma db push`, `prisma migrate dev`, `drizzle-kit push`, `typeorm schema:sync`, `mikro-orm schema:update`).',
     'A schema push changes the database on every start without a migration, so a deploy can drop columns and their data.',
@@ -108,5 +128,50 @@ export const STRUCTURE_NOTES = {
     'An import that resolves to no file and no package.',
     'It fails when the code runs.',
     'Fix the path, or install the package and list it in `package.json`.',
+  ],
+  'mutable-state-escape': [
+    'A caller in another module that changes (push, add, put, an element assignment) a private mutable field of a class through the value an exported member of that class returned.',
+    'An owner that hands out its own mutable state no longer controls it, so its rules can be broken from anywhere.',
+    'Return a copy or a read-only view, or add an operation to the owner that makes the change.',
+  ],
+  'context-threading': [
+    'A parameter of a project type with 5 or more fields passed whole through 2 or more callables, one in another module, that together read at most a third of its fields.',
+    'Passing a whole context for a few of its fields makes every caller build all of it and hides what the code really needs.',
+    'Pass the values that are read, or a small type with just them.',
+  ],
+  'caller-protocol': [
+    'The same 3 or more steps on one value of a project class, repeated by 3 or more callables in 2 or more modules.',
+    'A sequence every caller has to repeat is knowledge the class should own; each copy can get the order or the cleanup wrong.',
+    'Give the class one operation that runs the steps, and call that.',
+  ],
+  'protocol-contract': [
+    'A call that breaks a lifecycle the project lists in `protocols`: an `open` member without a `close` member on every exit, or a listed step before `open`.',
+    'A resource used out of order or left open leaks or fails at run time.',
+    'Call the steps in the listed order and close on every exit, for example in a `finally` block.',
+  ],
+  'forwarding-chain': [
+    'Two or more forwarding hops in a row, each into another module, that pass the same parameters in order and return the result unchanged, with the same parameter and return types.',
+    'Layers that only forward add indirection without hiding anything, so every reader has to follow them to find the code that works.',
+    'Call the last function directly, or give the middle layers work of their own.',
+  ],
+  'disjoint-consumer-groups': [
+    'The exported members of one module or class, used from other modules, that split into 2 or more groups no caller module uses together and that share no field or helper.',
+    'A module that serves unrelated groups of callers is several modules in one, so a change for one group touches the others.',
+    'Split the module along the groups.',
+  ],
+  'data-clump': [
+    'The same 3 or more typed parameters (names and types) in 3 or more exported functions of 2 or more modules.',
+    'Values that always travel together are a concept with no type, so their rules are checked in many places or nowhere.',
+    'Give them one value type that owns their rules, and pass that instead.',
+  ],
+  'repeated-policy-decision': [
+    'Two decisions in different modules over the same enum or field that group its constants the same way, with an arm covering 2 or more constants.',
+    'A grouping repeated in several places is a rule of its own; a new constant has to be added to every copy.',
+    'Give the type one function that answers the question, and call it from each place.',
+  ],
+  'foreign-state-decision': [
+    'Two or more functions outside a class with behaviour that branch on the same 2 or more of its fields.',
+    'Decisions over the state of a class made outside it spread its rules across the code base.',
+    'Give the class a method that answers the question, and call that.',
   ],
 };

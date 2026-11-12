@@ -5,12 +5,10 @@ import { importPolicyModule, relativeProjectPath, runNodeTool, policyFile } from
 import path from 'node:path';
 import { normalizeMutation, withUnreachedMutantsUncovered } from '../reporting/tests.mjs';
 import { withMutationSourceHashes } from '../reporting/source-hashes.mjs';
-import { rmSync, readFileSync, writeFileSync, existsSync } from 'node:fs';
-import {
-  TYPECHECK_FAILED_SKIPPED_RULE,
-  TESTS_FAILED_SKIPPED_RULE,
-} from '../../../../../shared/rules/finding-helpers.mjs';
+import { readFileSync, writeFileSync, existsSync } from 'node:fs';
+import { rm } from 'node:fs/promises';
 import { toolErrorFinding } from '../reporting/test-report.mjs';
+import { mutationSkipFor } from './skips/mutation-skips.mjs';
 import { layoutTransformFor } from '../../../preset/tool-configs.mjs';
 import { trackTemporaryPath } from '../../../../../core/tooling/temporary-files.mjs';
 import { projectTestRunner } from '../../../preset/test-runner/project-runner.mjs';
@@ -36,11 +34,6 @@ const UNSUPPORTED_RUNNER_RULE = 'mutation-unsupported-runner';
 const STRYKER_TSCONFIG_TARGET = '.nitpicker-diff-tsconfig.stryker.json';
 
 const STRYKER_CONFIG_PATH = 'languages/typescript/preset/defaults/stryker.config.mjs';
-
-const INITIAL_TEST_RUN_FAILED_PATTERN =
-  /failed tests in the initial test run|Something went wrong in the initial test run/u;
-
-const DRY_RUN_TYPECHECK_FAILED_PATTERN = /Typescript error\(s\) found in dry run compilation/u;
 
 export function runMutation(options) {
   return runScopedMutation(options, {
@@ -93,9 +86,7 @@ async function strykerReport(options, { sourceConfig, targets, testRunner }) {
       ),
     };
   } finally {
-    for (const filePath of createdFiles.reverse()) {
-      rmSync(filePath, { force: true });
-    }
+    await Promise.all(createdFiles.map((filePath) => rm(filePath, { force: true })));
   }
 }
 
@@ -167,30 +158,6 @@ export function strykerRunConfig(sourceConfig, { snapshot, targets, ...files }) 
     reporters: ['json'],
     jsonReporter: { fileName: MUTATION_REPORT_PATH },
   };
-}
-
-const SKIP_MESSAGES = {
-  head: {
-    typecheck:
-      'mutation skipped: the project does not type-check under the mutation checker configuration (see differential typescript-typecheck findings)',
-    tests: 'mutation skipped: tests fail (see coverage findings)',
-  },
-  base: {
-    typecheck:
-      'mutation skipped: the base commit does not type-check, so its mutants cannot be compared. Fix the base first; a missing @types/node is the usual cause.',
-    tests:
-      'mutation skipped: the base commit fails its own tests, so its mutants are unknown there.',
-  },
-};
-
-export function mutationSkipFor(errorMessage, snapshot = 'head') {
-  const messages = SKIP_MESSAGES[snapshot];
-  if (DRY_RUN_TYPECHECK_FAILED_PATTERN.test(errorMessage)) {
-    return { rule: TYPECHECK_FAILED_SKIPPED_RULE, message: messages.typecheck };
-  }
-  return INITIAL_TEST_RUN_FAILED_PATTERN.test(errorMessage)
-    ? { rule: TESTS_FAILED_SKIPPED_RULE, message: messages.tests }
-    : undefined;
 }
 
 function runStrykerOrExplainSkip(options, configPath, command) {

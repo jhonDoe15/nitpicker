@@ -35,12 +35,12 @@ export const PLACEHOLDER_PATTERNS = [
   '<.*>',
   String.raw`\[.*\]`,
   String.raw`\$\{.*\}`,
-  String.raw`\$[A-Za-z_]\w*`,
+  String.raw`\$[a-z_]\w*`,
   String.raw`\{\{.*\}\}`,
   String.raw`\{\w*\}`,
   '%s',
   String.raw`%\(\w+\)s`,
-  ':[A-Za-z_]+',
+  ':[a-z_]+',
   'changeme',
   'change-me',
   'todo',
@@ -83,9 +83,13 @@ export const EMBEDDED_SECRET_PATTERNS = [
   String.raw`[?&;]password=([^&;\s]+)`,
 ];
 
+function uncoveredWords(words) {
+  return words.filter((word) => !words.some((other) => other !== word && word.includes(other)));
+}
+
 const WORD_BOUNDARIES = [/([a-z0-9])([A-Z])/g, /([A-Z]+)([A-Z][a-z])/g];
 const SECRET_NAME = new RegExp(`(?:${SECRET_NAME_WORDS.join('|')})$`);
-const SECRET_WORD = new RegExp(SECRET_NAME_WORDS.join('|'));
+const SECRET_WORD = new RegExp(uncoveredWords(SECRET_NAME_WORDS).join('|'));
 const PASSPHRASE_NAME = new RegExp(`(?:${PASSPHRASE_NAME_WORDS.join('|')})$`);
 const PLACEHOLDER = new RegExp(`^(?:${PLACEHOLDER_PATTERNS.join('|')})$`, 'i');
 const NOT_SECRET = new RegExp(`^(?:${NOT_SECRET_PATTERNS.join('|')})$`);

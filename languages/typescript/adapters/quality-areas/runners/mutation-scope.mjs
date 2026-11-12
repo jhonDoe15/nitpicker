@@ -1,4 +1,7 @@
-import { parseChangedLines } from '../../../../../core/diff/git/patches/changed-lines.mjs';
+import {
+  DIFF_ALGORITHM,
+  parseChangedLines,
+} from '../../../../../core/diff/git/patches/changed-lines.mjs';
 import { runGit } from '../../../../../core/diff/git/repository/command.mjs';
 import { diffFromBase } from '../../../../../core/tooling/git/base-diff.mjs';
 import {
@@ -17,7 +20,7 @@ export function diffAgainstBase({ baselineRoot, projectRoot }, format) {
     runGit,
     baselineRoot,
     projectRoot,
-    args: [format, '--find-renames', '--relative', '--no-color', '--no-ext-diff'],
+    args: [format, DIFF_ALGORITHM, '--find-renames', '--relative', '--no-color', '--no-ext-diff'],
   });
 }
 

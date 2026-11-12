@@ -12,12 +12,25 @@ function applies(files) {
   return gradleAppliesKotlin(root);
 }
 
-describe('the Kotlin JVM plugin in a Gradle build', () => {
+describe('a Kotlin plugin in a Gradle build', () => {
   it.each([
     ['kotlin("jvm")', { 'build.gradle.kts': 'plugins {\n    kotlin("jvm") version "2.1.0"\n}\n' }],
     ['the plugin id', { 'build.gradle': "plugins {\n    id 'org.jetbrains.kotlin.jvm'\n}\n" }],
     ['apply plugin', { 'app/build.gradle': "apply plugin: 'kotlin'\n" }],
     ['apply(plugin = ...)', { 'build.gradle.kts': 'apply(plugin = "org.jetbrains.kotlin.jvm")\n' }],
+    ['kotlin("multiplatform")', { 'build.gradle.kts': 'plugins { kotlin("multiplatform") }\n' }],
+    [
+      'the Android plugin id',
+      { 'build.gradle.kts': 'plugins { id("org.jetbrains.kotlin.android") }\n' },
+    ],
+    ['apply plugin: kotlin-android', { 'app/build.gradle': "apply plugin: 'kotlin-android'\n" }],
+    [
+      'a catalog alias of the Multiplatform plugin',
+      {
+        [CATALOG]: '[plugins]\nkmp = { id = "org.jetbrains.kotlin.multiplatform" }\n',
+        'build.gradle.kts': 'plugins { alias(libs.plugins.kmp) }\n',
+      },
+    ],
   ])('is applied through %s', (_name, files) => {
     expect(applies(files)).toBe(true);
   });
@@ -72,10 +85,6 @@ describe('the Kotlin JVM plugin in a Gradle build', () => {
     [
       'a declaration with apply false',
       { 'build.gradle.kts': 'plugins {\n    kotlin("jvm") version "2.1.0" apply false\n}\n' },
-    ],
-    [
-      'the Android plugin, which the kotlin preset does not run on',
-      { 'build.gradle.kts': 'plugins { id("org.jetbrains.kotlin.android") }\n' },
     ],
     [
       'a version in pluginManagement',

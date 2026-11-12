@@ -22,7 +22,8 @@ export function mutationScopeArguments(mutationScope) {
 
 const BASE_USAGE =
   ' --project-root <directory> [--snapshot base|head] [--policy-root <directory>]' +
-  ' [--baseline-root <directory>] [--crap-limit <number>] [--exclude <glob>]... [--exception <json>]... [--legacy-inventory <path>]' +
+  ' [--baseline-root <directory>] [--log-root <directory> --log-label <path>]' +
+  ' [--crap-limit <number>] [--exclude <glob>]... [--exception <json>]... [--legacy-inventory <path>]' +
   ' [--kotlin-detekt-config <path>] [--file-limits <json>] [--test-seconds <json>] [--test-console-allow <json array>] [--duplicate-skipped-folders <json array>]' +
   ` [${MUTATION_SCOPE_OPTION} <json array>]`;
 
@@ -126,7 +127,10 @@ export function parseRunnerArguments(
       legacyInventory: values.get('--legacy-inventory'),
       policyRoot: realpathOptional(values.get('--policy-root')),
       baselineRoot: realpathOptional(values.get('--baseline-root')),
+      logRoot: values.get('--log-root'),
+      logLabel: values.get('--log-label'),
       snapshot: values.get('--snapshot') ?? 'head',
+      ...parseMode(values.get('--mode')),
       preset: values.get('--preset'),
       kotlinFormatter: values.get('--kotlin-formatter'),
       kotlinDetektConfig: values.get('--kotlin-detekt-config'),
@@ -137,6 +141,13 @@ export function parseRunnerArguments(
       toolPrecedence: toolPrecedence(values, precedenceTools),
     },
   };
+}
+
+function parseMode(mode = 'full') {
+  if (!['quick', 'full'].includes(mode)) {
+    throw new Error('--mode must be one of: quick, full');
+  }
+  return mode === 'quick' ? { quick: true } : {};
 }
 
 function precedenceOption(tool) {
@@ -159,6 +170,8 @@ const RUNNER_OPTIONS = [
   '--snapshot',
   '--policy-root',
   '--baseline-root',
+  '--log-root',
+  '--log-label',
   '--crap-limit',
   '--exclude',
   '--exception',
@@ -171,6 +184,7 @@ const RUNNER_OPTIONS = [
   '--test-console-allow',
   '--duplicate-skipped-folders',
   MUTATION_SCOPE_OPTION,
+  '--mode',
 ];
 
 function parseJsonObject(text, option) {

@@ -1,3 +1,5 @@
+import { GO_LINTER_TOOLS } from '../../../../../languages/go/adapters/configuration/go-config.mjs';
+
 const AREA_TOOLS = [
   [
     'format',
@@ -30,10 +32,7 @@ const AREA_TOOLS = [
       'detekt',
       'ktlint',
       'kotlin-source',
-      'vet',
-      'staticcheck',
-      'errcheck',
-      'modernize',
+      ...GO_LINTER_TOOLS,
       'coding-standards',
       'entry-points',
       'dependency-architecture',
@@ -66,16 +65,19 @@ export function areaRank(tool) {
   return AREAS.indexOf(areaOf(tool));
 }
 
-export function areaCountLine(findings) {
+export function areaCounts(findings) {
   const counts = new Map();
   for (const { tool } of findings) {
     const area = areaOf(tool);
     counts.set(area, (counts.get(area) ?? 0) + 1);
   }
+  return new Map(AREAS.filter((area) => counts.has(area)).map((area) => [area, counts.get(area)]));
+}
+
+export function areaCountLine(findings) {
+  const counts = areaCounts(findings);
   if (counts.size < 2) {
     return undefined;
   }
-  return AREAS.filter((area) => counts.has(area))
-    .map((area) => `${area} ${String(counts.get(area))}`)
-    .join(' · ');
+  return [...counts].map(([area, count]) => `${area} ${String(count)}`).join(' · ');
 }

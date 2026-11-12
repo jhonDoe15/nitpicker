@@ -40,6 +40,7 @@ function headFactProperties(projectRoot, policy, directory) {
   return [
     ...javaStyleProperties(policy),
     ...(policy.spring === true ? ['-Pnitpicker.spring=true'] : []),
+    ...(policy.featureFolders === true ? ['-Pnitpicker.featureFolders=true'] : []),
     ...(roles === undefined ? [] : [`-Pnitpicker.spring.roles=${roles}`]),
     ...(springRules === undefined ? [] : [`-Pnitpicker.pmd.springRules=${springRules}`]),
   ];
@@ -55,9 +56,13 @@ function mutationScopeProperties({ mutationScope }, directory) {
 }
 
 export function gradleStages(
-  common,
+  baseArguments,
   { projectRoot, initScript, policy, directory, testsFailedModules = [] },
 ) {
+  const common = [
+    ...baseArguments,
+    ...(policy.quick ? ['-Pnitpicker.quick=true', '--build-cache'] : []),
+  ];
   const checkstyleBase = path.join(directory, CHECKSTYLE_EXPORT);
   const layersCheckstyle = toolConfigChoices(projectRoot, policy).checkstyle.project !== undefined;
   return [

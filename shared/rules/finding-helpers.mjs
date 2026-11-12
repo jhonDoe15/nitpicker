@@ -11,6 +11,14 @@ export const TESTS_FAILED_RULES = [TESTS_FAILED_RULE, TESTS_FAILED_SKIPPED_RULE]
 /** A tests-failed finding's `symbol` lists the directories it covers, joined by this. */
 export const TESTS_FAILED_SCOPE_SEPARATOR = ',';
 export const TYPECHECK_FAILED_SKIPPED_RULE = 'typecheck-failed-skipped';
+export const COMPILE_ERROR_TOOL = 'build';
+export const COMPILE_ERROR_RULE = 'compile-error';
+export const COMPILE_FAILED_SKIPPED_RULE = 'compile-failed-skipped';
+const COMPILE_ERROR_HINT = 'The code does not compile; fix it before anything else is checked.';
+
+export function compileErrorMessage(compilerText) {
+  return `${compilerText.trim().replace(/\.$/u, '')}. ${COMPILE_ERROR_HINT}`;
+}
 
 const MAX_LISTED_TESTS = 5;
 

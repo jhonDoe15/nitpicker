@@ -6,7 +6,7 @@ import { scanDomEvidence } from './dom-evidence.mjs';
 
 const LIMITS = { maxDepth: 8, maxFiles: 200 };
 const COMPONENT_MODULE = /\.(?:[jt]sx|vue|svelte|astro)$/u;
-const SCANNED_MODULE = /\.(?:[cm]?[jt]sx?)$/u;
+const SCANNED_MODULE = /\.[cm]?[jt]sx?$/u;
 
 const evidenceCache = new Map();
 

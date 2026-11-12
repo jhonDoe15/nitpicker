@@ -1,0 +1,7 @@
+[
+  {
+    "tool": "python-rules",
+    "rule": "streamed-rows-collected",
+    "mention": "fixed-size batch"
+  }
+]

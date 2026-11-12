@@ -15,8 +15,12 @@ Part of the [Java preset guide](../java-preset.md).
   NullAway resolve from a detached configuration with their versions pinned in the init script's
   map, so a dependency-management plugin of the project cannot move them. A compile error in this
   second compile fails the task with javac's errors (a `tool-error` on the CLI path); it never
-  becomes an empty report. `module-info.java` is left out, so the sources compile in the unnamed
-  module. Kotlin preset: Java sources only, like PMD and SpotBugs.
+  becomes an empty report. Main sources with a `module-info.java` compile as that module on both
+  builds: jars and class directories that are modules (`module-info.class`, also under
+  `META-INF/versions/`, or an `Automatic-Module-Name`) go on `--module-path`, the rest on the class
+  path, and when that compile fails it is retried with every library on `--module-path`, so a sealed
+  type may permit classes in another package. Test sources compile on the class path, without the
+  descriptor. Kotlin preset: Java sources only, like PMD and SpotBugs.
 - **Which JDK.** Error Prone needs JDK 21 or newer. On Gradle the runner uses the JVM that runs
   Gradle when it is at least 21 and at least the JDK of every compile task's toolchain; otherwise
   it asks Gradle's toolchain service for a launcher of the version it needs (found locally or
@@ -76,8 +80,8 @@ Part of the [Java preset guide](../java-preset.md).
   file as the path). Only findings in main sources of the checks in `certainBugs` in `checks.json` go without it: a
   curated list of ERROR checks whose finding in main code is a bug, not a severity filter (the
   ERROR checks left out, and why, are listed below). Findings in test sources always keep the
-  route, since a test can build the broken case on purpose. The route is added after the identity is computed, so it
-  does not change it. Diagnostics outside the main and test source roots (annotation-processor
+  route, since a test can build the broken case on purpose. `applyRuleMessages` adds the route
+  after the identity is computed, so it does not change it. Diagnostics outside the main and test source roots (annotation-processor
   output) are dropped. Diagnostics with the same check, file, line, column and message are one
   finding, and the `class is an internal JDK API` diagnostic `SunApi` adds at the `.class` of a
   literal it already reported is dropped; different columns or messages on a line stay apart. Identity: a hash of the check and the
@@ -236,6 +240,16 @@ Part of the [Java preset guide](../java-preset.md).
   Gradle build of the same sources). The JDK choice on Gradle was checked by hand: Gradle on JDK 17
   runs Error Prone on a JDK 21 launcher, and a project with a JDK 25 toolchain on a JDK 21 Gradle
   runs it on JDK 25.
+- **Updates across a suspension.** The TypeScript, Python and Kotlin presets report shared state
+  updated from a read made before an `await` or a suspend call (see
+  [the matrix](../spec/checks.md#updates-across-a-suspension)). A Java expression cannot suspend, so
+  that rule has no Java form. The related lost update between threads is covered where one
+  statement shows it: `errorprone/NonAtomicVolatileUpdate` (on, as Error Prone enables it by
+  default) reports `++`, `--` and compound assignments of a `volatile` field, and SpotBugs, which
+  runs at `-effort:default -medium` with no detector excluded, adds `IS2_INCONSISTENT_SYNC` (a field
+  read or written both with and without its lock) and `AT_NONATOMIC_OPERATIONS_ON_SHARED_VARIABLE`;
+  its `VO_VOLATILE_INCREMENT` gives way to the Error Prone finding on the same line. A plain field
+  updated from a blocking call (`this.total += future.join()`) is reported by none of them.
 
 ## Checks that are off
 
@@ -376,6 +390,9 @@ primary rule and the secondary rules it stands for, with a scope:
 - `javadoc`: the same Javadoc comment, whichever of its lines each tool names (Checkstyle's
   `SummaryJavadoc` reports the comment's first line, Error Prone's `MissingSummary` can name a
   later one, such as the line of an `@author` tag).
+- `catch`: the same `catch` clause, named by the line of its `catch` keyword, so a finding on the
+  line of the parameter or the brace of a clause laid out over several lines still meets one on
+  the keyword's line (Checkstyle's `EmptyCatchBlock` names the line of the block's brace).
 - `class`: the same class; a nested class is its own class.
 - `field`: the same class and field name. SpotBugs names a field `pkg.Class.field` and often gives
   it no line, or the line of a write.
@@ -393,7 +410,12 @@ clearest message: usually the Error Prone check with its fix over a SpotBugs pat
 check over the general one (`OptionalEquality` or `BoxedPrimitiveEquality` over
 `ReferenceEquality`, over PMD's `CompareObjectsWithEquals` and SpotBugs `ES_COMPARING_*`), and the fullest switch check over the
 rest (`MissingCasesInEnumSwitch` over `NonExhaustiveSwitch`, `MissingDefault`, Checkstyle's
-`MissingSwitchDefault` and `SF_SWITCH_NO_DEFAULT`).
+`MissingSwitchDefault` and `SF_SWITCH_NO_DEFAULT`). A forbiddenapis signature stands over the
+Error Prone check on the same call: its message names the allowed form at least as clearly
+(`legacy-date-time` lists the java.time classes and the `toInstant()` conversion, where
+`JavaUtilDate` names only `Instant` or `LocalDate`), and its fix also settles the check, which the
+check's own fix does not (`LocalDate.now(zone)` for `JavaTimeDefaultTimeZone` is still a
+`clock-now` call, `Thread.sleep(Duration)` for `PreferJavaTimeOverload` still a `thread-sleep`).
 
 Where the primary covers only some of the secondary's cases, both stay on and the secondary is
 dropped only in the scope the two share: `RV_RETURN_VALUE_IGNORED` on a method Error Prone's
@@ -468,6 +490,7 @@ The pairs:
 - line: `errorprone/NullAway` over `pmd/NullAssignment`, `pmd/ReturnEmptyCollectionRatherThanNull`
 - line: `errorprone/InvalidPatternSyntax` over `spotbugs/RE_BAD_SYNTAX_FOR_REGULAR_EXPRESSION`
 - line: `errorprone/BareDotMetacharacter` over `spotbugs/RE_POSSIBLE_UNINTENDED_PATTERN`
+- line: `pmd/RegexPartDefect` over `spotbugs/RE_POSSIBLE_UNINTENDED_PATTERN`
 - line: `errorprone/RandomCast` over `spotbugs/RV_01_TO_INT`
 - line: `errorprone/MathAbsoluteNegative` over `spotbugs/RV_ABSOLUTE_VALUE_OF_RANDOM_INT`
 - line: `errorprone/DeadException` over `spotbugs/RV_EXCEPTION_NOT_THROWN`
@@ -480,6 +503,7 @@ The pairs:
 - line: `errorprone/LockNotBeforeTry` over `spotbugs/UL_UNRELEASED_LOCK`, `spotbugs/UL_UNRELEASED_LOCK_EXCEPTION_PATH`
 - line: `errorprone/WaitNotInLoop` over `spotbugs/UW_UNCOND_WAIT`, `spotbugs/WA_NOT_IN_LOOP`
 - line: `errorprone/NonAtomicVolatileUpdate` over `spotbugs/VO_VOLATILE_INCREMENT`
+- line: `pmd/InconsistentFieldLocking` over `spotbugs/IS2_INCONSISTENT_SYNC`, `spotbugs/AT_STALE_THREAD_WRITE_OF_PRIMITIVE`, `spotbugs/AT_NONATOMIC_64BIT_PRIMITIVE`, `errorprone/NonAtomicVolatileUpdate`
 - line: `errorprone/SubstringOfZero` over `spotbugs/DMI_USELESS_SUBSTRING`
 - line: `errorprone/IdentityBinaryExpression`, `errorprone/SelfComparison`, `errorprone/SelfEquals` over `spotbugs/SA_FIELD_SELF_COMPARISON`, `spotbugs/SA_LOCAL_SELF_COMPARISON`
 - line: `errorprone/LockOnBoxedPrimitive` over `spotbugs/DL_SYNCHRONIZATION_ON_*`
@@ -499,8 +523,9 @@ The pairs:
 - line: `errorprone/FallThrough` over `pmd/ImplicitSwitchFallThrough`, `checkstyle/FallThrough`
 - line: `pmd/ImplicitSwitchFallThrough` over `checkstyle/FallThrough`
 - member: `errorprone/FallThrough`, `pmd/ImplicitSwitchFallThrough`, `checkstyle/FallThrough` over `spotbugs/SF_SWITCH_FALLTHROUGH`
-- line: `errorprone/EmptyCatch` over `pmd/EmptyCatchBlock`, `checkstyle/EmptyCatchBlock`
-- line: `pmd/EmptyCatchBlock` over `checkstyle/EmptyCatchBlock`
+- catch: `pmd/SwallowedInterrupt` over `errorprone/EmptyCatch`, `pmd/EmptyCatchBlock`, `checkstyle/EmptyCatchBlock`
+- catch: `errorprone/EmptyCatch` over `pmd/EmptyCatchBlock`, `checkstyle/EmptyCatchBlock`
+- catch: `pmd/EmptyCatchBlock` over `checkstyle/EmptyCatchBlock`
 - line: `errorprone/MultiVariableDeclaration` over `pmd/OneDeclarationPerLine`, `checkstyle/MultipleVariableDeclarations`
 - line: `pmd/OneDeclarationPerLine` over `checkstyle/MultipleVariableDeclarations`
 - line: `errorprone/InterruptedExceptionSwallowed` over `pmd/AvoidCatchingGenericException`
@@ -519,6 +544,13 @@ The pairs:
 - line: `pmd/ClassLoadEffect` over `spotbugs/SC_START_IN_CTOR`
 - line: `errorprone/CatchAndPrintStackTrace` over `pmd/AvoidPrintStackTrace`, `errorprone/SystemOut`
 - line: `errorprone/SystemOut` over `pmd/SystemPrintln`
+- line: `errorprone/StreamResourceLeak` over `pmd/StreamResourceNotClosed`
+- line: `errorprone/PatternMatchingInstanceof` over `pmd/InstanceofThenCast`
+- line: `errorprone/ThrowSpecificExceptions` over `pmd/AvoidThrowingRawExceptionTypes`
+- line: `forbiddenapis/legacy-date-time` over `errorprone/JavaUtilDate`
+- line: `forbiddenapis/clock-now` over `errorprone/JavaTimeDefaultTimeZone`
+- line: `forbiddenapis/thread-sleep` over `errorprone/PreferJavaTimeOverload`
+- line: `forbiddenapis/java-deserialization` over `errorprone/BanSerializableRead`
 - line: `errorprone/MissingOverride` over `pmd/MissingOverride`
 - line: `pmd/DefaultLabelNotLastInSwitch` over `errorprone/SwitchDefault`
 - line: `checkstyle/JavadocMethod` over `errorprone/InvalidParam`
@@ -535,7 +567,9 @@ The pairs:
 - line: `errorprone/JdkObsolete` over `errorprone/StringCharset`
 - line: `errorprone/NonOverridingEquals` over `pmd/SuspiciousEqualsMethodName`
 - line: `errorprone/DefaultLocale` over `pmd/SimpleDateFormatNeedsLocale`
-- line: `pmd/LegacyCalendarApi` over `pmd/AvoidCalendarDateCreation`, `pmd/SimpleDateFormatNeedsLocale`, `errorprone/DefaultLocale`, `errorprone/DateFormatConstant`
+- line: `pmd/MixedTimeUnits` over `errorprone/TimeUnitMismatch`
+- line: `pmd/LegacyCalendarApi` over `pmd/AvoidCalendarDateCreation`, `pmd/SimpleDateFormatNeedsLocale`, `errorprone/DefaultLocale`, `errorprone/DateFormatConstant`, `forbiddenapis/legacy-date-time`
+- line: `pmd/DefaultTimeZone` over `forbiddenapis/legacy-date-time`
 - line: `pmd/UnclosedInlineResource` over `spotbugs/OS_OPEN_STREAM`, `spotbugs/ODR_OPEN_DATABASE_RESOURCE`, `spotbugs/OBL_UNSATISFIED_OBLIGATION`
 - line: `pmd/UseLocaleWithCaseConversions` over `errorprone/StringCaseLocaleUsage`
 - line: `spotbugs/ST_WRITE_TO_STATIC_FROM_INSTANCE_METHOD` over `errorprone/StaticAssignmentInConstructor`, `pmd/AssignmentToNonFinalStatic`
@@ -567,6 +601,9 @@ The pairs:
 - class: `errorprone/DateFormatConstant` over `pmd/UnsynchronizedStaticFormatter`, `spotbugs/STCAL_INVOKE_ON_STATIC_DATE_FORMAT_INSTANCE`
 - field: `errorprone/DateFormatConstant` over `spotbugs/STCAL_STATIC_SIMPLE_DATE_FORMAT_INSTANCE`
 - line: `pmd/NonThreadSafeSingleton` over `spotbugs/LI_LAZY_INIT_STATIC`, `spotbugs/SING_SINGLETON_GETTER_NOT_SYNCHRONIZED`
+- line: `kotlin-source/ChildCoroutineOutlivesResource` over `pmd/CoroutineEscapesTest`
+- line: `pmd/SqlConcatenation` over `spotbugs/SQL_NONCONSTANT_STRING_PASSED_TO_EXECUTE`, `spotbugs/SQL_PREPARED_STATEMENT_GENERATED_FROM_NONCONSTANT_STRING`
+- line: `checkstyle/MagicNumber` over `pmd/AvoidLiteralsInIfCondition`
 
 ## Standard streams and the `main` method
 
