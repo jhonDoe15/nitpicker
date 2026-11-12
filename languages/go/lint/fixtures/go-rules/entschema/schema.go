@@ -32,6 +32,8 @@ func (Pet) Edges() []ent.Edge {
 	}
 }
 
+const carOwner = "owner_id"
+
 type Car struct{ ent.Schema }
 
 func (Car) Mixin() []ent.Mixin {
@@ -39,24 +41,24 @@ func (Car) Mixin() []ent.Mixin {
 }
 
 func (Car) Fields() []ent.Field {
-	return []ent.Field{field.Int("owner_id"), field.String("plate")}
+	return []ent.Field{field.Int(carOwner), field.String("plate")}
 }
 
 func (Car) Edges() []ent.Edge {
 	return []ent.Edge{
-		edge.From("owner", User.Type).Ref("cars").Unique().Field("owner_id"),
+		edge.From("owner", User.Type).Ref("cars").Unique().Field(carOwner),
 	}
 }
 
 func (Car) Indexes() []ent.Index {
-	return []ent.Index{index.Fields("owner_id", "plate")}
+	return []ent.Index{index.Fields(carOwner, "plate")}
 }
 
 type Card struct{ ent.Schema }
 
 func (Card) Edges() []ent.Edge {
 	return []ent.Edge{
-		edge.From("owner", User.Type).Ref("card").Unique(),
+		edge.From("holder", User.Type).Ref("card").Unique(),
 	}
 }
 
@@ -125,7 +127,7 @@ func (Legacy) Annotations() []schema.Annotation {
 }
 
 func (Legacy) Edges() []ent.Edge {
-	return []ent.Edge{edge.To("owner", User.Type).Unique()}
+	return []ent.Edge{edge.To("keeper", User.Type).Unique()}
 }
 
 type Tenant struct{ mixin.Schema }
@@ -174,7 +176,7 @@ func (Receipt) Mixin() []ent.Mixin {
 }
 
 func (Receipt) Edges() []ent.Edge {
-	return []ent.Edge{edge.To("tenant", Team.Type).Unique()}
+	return []ent.Edge{edge.To("space", Team.Type).Unique()}
 }
 
 type Wrapped struct{ Tenant }
@@ -186,7 +188,7 @@ func (Bill) Mixin() []ent.Mixin {
 }
 
 func (Bill) Edges() []ent.Edge {
-	return []ent.Edge{edge.To("tenant", Team.Type).Unique()}
+	return []ent.Edge{edge.To("org", Team.Type).Unique()}
 }
 
 var ownerRef = "pets"
@@ -194,5 +196,5 @@ var ownerRef = "pets"
 type Toy struct{ ent.Schema }
 
 func (Toy) Edges() []ent.Edge {
-	return []ent.Edge{edge.From("owner", User.Type).Ref(ownerRef).Unique()}
+	return []ent.Edge{edge.From("buyer", User.Type).Ref(ownerRef).Unique()}
 }

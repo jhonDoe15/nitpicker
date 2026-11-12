@@ -108,12 +108,14 @@ describe('the Maven build in a quick run', () => {
 
     expect(Object.keys(withoutTestTools(all))).toEqual([
       'pmd',
+      'forbiddenapis',
       'spotbugs',
       'checkstyle',
       'errorprone',
     ]);
     expect(Object.keys(all)).toEqual([
       'pmd',
+      'forbiddenapis',
       'spotbugs',
       'checkstyle',
       'errorprone',

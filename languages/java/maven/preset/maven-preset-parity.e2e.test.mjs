@@ -106,6 +106,7 @@ describe.skipIf(!enabled)('Java preset on Maven builds', () => {
       'coupling',
       'crap',
       'errorprone',
+      'forbiddenapis',
       'google-java-format',
       'jacoco',
       'pit',

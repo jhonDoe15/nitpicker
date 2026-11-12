@@ -5,7 +5,7 @@ description: Use before writing or changing Go code in a project that runs nitpi
 
 # nitpicker for Go
 
-Written for nitpicker 0.1.0-rc.1. If `npx nitpicker --version` prints another version, reinstall
+Written for nitpicker 0.1.0-rc.2. If `npx nitpicker --version` prints another version, reinstall
 this skill with the command `npx nitpicker init` prints.
 
 nitpicker allows one way to write each construct. Write it that way from the start; the gate is a
@@ -54,8 +54,9 @@ Before you change code other packages use, or fix a bug, read
 
 The linters' allowed forms (errors, names and doc comments, simplifications, modern forms): read
 [rules/linters.md](rules/linters.md) before you write Go. nitpicker's own rules (panics, logged
-errors, goroutine owners, root contexts, sleeps, package state, interfaces, `any`, names, HTTP
-timeouts, I/O in loops): read [rules/own-rules.md](rules/own-rules.md).
+and swallowed errors, goroutine owners, root contexts, sleeps, package state, interfaces, `any`,
+names, HTTP timeouts, I/O in loops, repeated strings, task markers, method aliases, secrets): read
+[rules/own-rules.md](rules/own-rules.md).
 
 ## Write it this way
 

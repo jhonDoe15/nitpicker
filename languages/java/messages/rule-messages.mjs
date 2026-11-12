@@ -4,12 +4,25 @@ import { definedField } from '../../../shared/messages/messages.mjs';
 import { exceptionHint } from '../../../shared/rules/exceptions.mjs';
 import { JAVA_FORMATTER_TOOLS, NOT_YOUR_JAVA_FORMATTER } from '../adapters/style/java-style.mjs';
 import { lazy } from '../../../shared/rules/finding-helpers.mjs';
+import { SOURCE_RULE_IDS } from '../adapters/kotlin/rules/kotlin-rules.mjs';
 
 export const CATALOG_TOOLS = ['pmd', 'checkstyle', 'spotbugs'];
 const catalogs = lazy(() => new Map(CATALOG_TOOLS.map((tool) => [tool, readCatalog(tool)])));
+const ROUTED = new Set([
+  ...CATALOG_TOOLS,
+  'javac',
+  'forbiddenapis',
+  'duplicates',
+  'coupling/package-cycle',
+  'coupling/test-only-export',
+  'detekt',
+  'dependencies',
+  'spring',
+]);
 const CHECKSTYLE_CHECK =
   /^com\.puppycrawl\.tools\.checkstyle\.checks\.(?:\w+\.)*(\w+?)(?:Check)?$/u;
-const SENTENCE_END = /[.!?;]$/u;
+const SENTENCE_END = /[.!?;:]$/u;
+const EXCLUDE_ROUTE = /to "exclude" in nitpicker\.config\.json\.$/u;
 const FIRST_SENTENCE = /^.*?[.!?](?= |$)/u;
 const leadingFormRules = lazy(
   () =>
@@ -44,39 +57,55 @@ function layoutFix(javaStyle) {
 }
 
 export function withRuleMessage(finding, { preset = 'java', javaStyle } = {}) {
-  const catalog = catalogs().get(finding.tool);
-  if (catalog === undefined) {
+  if (!(ROUTED.has(finding.tool) || ROUTED.has(`${finding.tool}/${finding.rule}`))) {
     return finding;
   }
+  const catalog = catalogs().get(finding.tool) ?? {};
   const rule = finding.tool === 'checkstyle' ? checkstyleRuleName(finding.rule) : finding.rule;
   const entry = Object.hasOwn(catalog, rule) ? catalog[rule] : undefined;
+  const exceptionRule = exceptionRuleFor({ ...finding, rule }, preset);
+  const liftable =
+    exceptionRule !== undefined &&
+    finding.classification === 'enforceable' &&
+    entry?.mayBeIntended !== false;
   return {
     ...finding,
     rule,
-    ...ruleMessage({ ...finding, rule }, entry, { preset, javaStyle }),
+    ...ruleMessage({ ...finding, rule }, entry, { liftable, javaStyle, exceptionRule }),
   };
+}
+
+function exceptionRuleFor(finding, preset) {
+  const qualified = `${finding.tool}/${finding.rule}`;
+  if (preset === 'kotlin') {
+    if (finding.tool === 'detekt' && SOURCE_RULE_IDS.includes(finding.rule)) {
+      return finding.rule;
+    }
+    const javaSource = finding.path.endsWith('.java') && finding.tool !== 'detekt';
+    return javaSource || qualified === 'coupling/test-only-export' ? qualified : undefined;
+  }
+  return preset === 'java' && finding.tool !== 'detekt' ? qualified : undefined;
 }
 
 export function applyRuleMessages(findings, options) {
   return findings.map((finding) => withRuleMessage(finding, options));
 }
 
-function ruleMessage(finding, entry, { preset, javaStyle }) {
+function ruleMessage(finding, entry, { liftable, javaStyle, exceptionRule }) {
   const message = finding.message.trim();
-  if (hasExceptionRoute(message)) {
+  if (hasExceptionRoute(message) || EXCLUDE_ROUTE.test(message)) {
     return { message };
   }
   const fix = entry?.layout === true ? layoutFix(javaStyle) : entry?.fix;
-  const liftable =
-    (preset === 'java' || finding.path.endsWith('.java')) &&
-    finding.classification === 'enforceable' &&
-    entry?.mayBeIntended !== false;
+  if (!(catalogs().has(finding.tool) || liftable)) {
+    return { message: finding.message };
+  }
   const sentence = SENTENCE_END.test(message) ? message : `${message}.`;
   return {
     message: [
       sentence,
       ...(typeof fix === 'string' ? [fix] : []),
-      ...(liftable ? [exceptionHint(`${finding.tool}/${finding.rule}`, finding.path)] : []),
+      ...(liftable ? [exceptionHint(exceptionRule, finding.path)] : []),
     ].join(' '),
     ...definedField('allowedForm', typeof fix === 'string' ? fix : leadingForm(finding, sentence)),
   };

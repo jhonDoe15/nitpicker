@@ -17,7 +17,7 @@ const EXTRA_MAVEN_DEPENDENCIES = [
   '    <dependency><groupId>junit</groupId><artifactId>junit</artifactId>' +
     '<version>4.13.2</version><scope>test</scope></dependency>',
 ];
-const KEPT_TOOLS = new Set(['pmd', 'spotbugs', 'checkstyle', 'errorprone']);
+const KEPT_TOOLS = new Set(['pmd', 'spotbugs', 'checkstyle', 'errorprone', 'forbiddenapis']);
 
 export function readProbe(file = PROBE_FILE) {
   return JSON.parse(readFileSync(file, 'utf8'));

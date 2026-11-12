@@ -9,8 +9,8 @@ Part of the [nitpicker-java](../SKILL.md) skill. Write these forms from the star
 - Keep classes small: split by responsibility and prefer holding a collaborator to extending one.
 - Cyclomatic complexity 9 or more fails `crap-score-limit` even when fully covered; less
   coverage lowers the ceiling (`ccn^2 * (1 - coverage)^3 + ccn < 9`). Split branchy methods.
-- A new clone of at least 5 lines and 50 tokens in main sources (`duplicate-clone`) fails, also
-  when the copy has other names and literals: extract a method.
+- Copied code fails (`duplicate-clone`), also when the copy has other names and literals: extract
+  a method; in tests, a helper or one `@ParameterizedTest`.
 - Smaller copies fail too: a static helper or a constant with the same code in two classes of one
   module (`duplicate-definition`), and editing one of two near-identical copies while leaving the
   other (`sibling-copy-edit`). Keep one and call it. Don't give two classes one name and use both in
