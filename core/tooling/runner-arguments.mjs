@@ -1,10 +1,31 @@
 import { realpathSync } from 'node:fs';
 
+export const MUTATION_SCOPE_OPTION = '--mutation-scope';
+
+const SCOPE_USAGE = `${MUTATION_SCOPE_OPTION} must be a JSON array of project-relative paths`;
+
+export function parseMutationScope(text) {
+  const paths = JSON.parse(text);
+  const valid =
+    Array.isArray(paths) &&
+    paths.length > 0 &&
+    paths.every((entry) => typeof entry === 'string' && entry.length > 0 && entry !== '.');
+  if (!valid) {
+    throw new Error(SCOPE_USAGE);
+  }
+  return paths;
+}
+
+export function mutationScopeArguments(mutationScope) {
+  return mutationScope === undefined ? [] : [MUTATION_SCOPE_OPTION, JSON.stringify(mutationScope)];
+}
+
 const BASE_USAGE =
   ' --project-root <directory> [--snapshot base|head] [--policy-root <directory>]' +
   ' [--baseline-root <directory>] [--log-root <directory> --log-label <path>]' +
   ' [--crap-limit <number>] [--exclude <glob>]... [--exception <json>]... [--legacy-inventory <path>]' +
-  ' [--kotlin-detekt-config <path>] [--file-limits <json>] [--test-seconds <json>] [--test-console-allow <json array>] [--duplicate-skipped-folders <json array>]';
+  ' [--kotlin-detekt-config <path>] [--file-limits <json>] [--test-seconds <json>] [--test-console-allow <json array>] [--duplicate-skipped-folders <json array>]' +
+  ` [${MUTATION_SCOPE_OPTION} <json array>]`;
 
 function usageOf(runner, choices, precedenceTools) {
   const listed = Object.entries(choices).map(
@@ -114,6 +135,9 @@ export function parseRunnerArguments(
       kotlinFormatter: values.get('--kotlin-formatter'),
       kotlinDetektConfig: values.get('--kotlin-detekt-config'),
       duplicateSkippedFolders: parseSkippedFolders(values.get('--duplicate-skipped-folders')),
+      mutationScope: values.has(MUTATION_SCOPE_OPTION)
+        ? parseMutationScope(values.get(MUTATION_SCOPE_OPTION))
+        : undefined,
       toolPrecedence: toolPrecedence(values, precedenceTools),
     },
   };
@@ -159,6 +183,7 @@ const RUNNER_OPTIONS = [
   '--test-seconds',
   '--test-console-allow',
   '--duplicate-skipped-folders',
+  MUTATION_SCOPE_OPTION,
   '--mode',
 ];
 
