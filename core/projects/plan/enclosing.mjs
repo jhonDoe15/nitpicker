@@ -4,7 +4,7 @@ import { parseYaml } from '../../tooling/yaml/yaml-documents.mjs';
 import { CONFIG_FILE_NAME } from '../../../shared/config.mjs';
 import { chainOf } from '../../../shared/traversal.mjs';
 import { runGit } from '../../diff/git/repository/command.mjs';
-import { declaresUvWorkspace } from '../../tooling/uv-workspace.mjs';
+import { declaresUvWorkspace } from '../../configuration/project-checks/uv-workspace.mjs';
 import { inspectRepository } from './inspect.mjs';
 
 export const DECLARATION_FILES = [

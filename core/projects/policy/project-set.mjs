@@ -6,6 +6,7 @@ import { captureWorkingTree } from '../../diff/git/repository/git.mjs';
 import { gitBlobId } from '../../policy-changes/policy-scope.mjs';
 import { isInside } from '../discovery/repository-files.mjs';
 import { DECLARATION_FILES } from '../plan/enclosing.mjs';
+import { byText } from '../../../shared/text-order/by-text.mjs';
 
 function inside(root, file) {
   const full = path.resolve(root, file);
@@ -95,7 +96,7 @@ function gatedHead(root, acceptedDigest) {
 }
 
 function checkedPolicy({ loosenings, root, acceptedDigest }) {
-  const files = [...new Set(loosenings.flatMap((entry) => entry.files))].toSorted();
+  const files = [...new Set(loosenings.flatMap((entry) => entry.files))].toSorted(byText);
   const digest = policyDigest({
     loosenings: loosenings.map(({ key }) => key),
     files: files.map((file) => [file, gitBlobId(readFileSync(inside(root, file)))]),

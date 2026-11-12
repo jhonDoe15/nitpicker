@@ -22,7 +22,11 @@ function depthOf(projectPath) {
 export function deepestProject(projectPaths, folder) {
   return projectPaths
     .filter((projectPath) => isInside(folder, projectPath))
-    .toSorted((left, right) => depthOf(right) - depthOf(left))[0];
+    .reduce(
+      (deepest, projectPath) =>
+        deepest === undefined || depthOf(projectPath) > depthOf(deepest) ? projectPath : deepest,
+      undefined,
+    );
 }
 
 function edgesOf(projectPath, unit, { byName, projectPaths }) {

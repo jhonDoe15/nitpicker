@@ -1,6 +1,7 @@
 import { existsSync, readFileSync, statSync } from 'node:fs';
 import path from 'node:path';
 import { runGit } from '../../diff/git/repository/command.mjs';
+import { byText } from '../../../shared/text-order/by-text.mjs';
 
 const SKIPPED_SEGMENTS = new Set([
   'node_modules',
@@ -54,7 +55,7 @@ export function directoriesWith(root, files, names) {
         .filter((file) => statInside(root, file) !== undefined)
         .map(directoryOf),
     ),
-  ].toSorted();
+  ].toSorted(byText);
 }
 
 export function isSkippedLocation(directory) {

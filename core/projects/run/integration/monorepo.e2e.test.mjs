@@ -41,8 +41,7 @@ const ROOT_FILES = {
     extends: '../nitpicker.shared.json',
     disable: ['typescript-typecheck', 'coverage', 'crap', 'mutation'],
   }),
-  'web/src/greeting.ts':
-    'export function greeting(name: string): string {\n  return `Hello, ${name}!`;\n}\n',
+  'web/src/greeting.ts': `export function greeting(name: string): string {\n  return \`Hello, \${name}!\`;\n}\n`,
 };
 
 function summaryOf(result) {
@@ -107,8 +106,7 @@ describe.skipIf(!pythonE2eEnabled)(
       initializeRepository(root, 'base');
       installPackages(path.join(root, 'api'), PACKAGES);
       commitBranch(root, 'web-and-api', {
-        'web/src/greeting.ts':
-          'export function greeting(name: string): string {\n  return `Hi, ${name}!`;\n}\n',
+        'web/src/greeting.ts': `export function greeting(name: string): string {\n  return \`Hi, \${name}!\`;\n}\n`,
         'api/src/demo/greeter.py': GREETER_HI,
         'api/tests/test_greeter.py': GREETER_HI_TEST,
         'api/src/demo/extra.py': VIOLATION,
@@ -164,7 +162,7 @@ describe.skipIf(!pythonE2eEnabled)(
       expect(statuses(result)).toEqual({ web: 'skipped', api: 'skipped', svc: 'passed' });
       expect(result.exitCode).toBe(0);
       expect(linesStarting(result, '== ')).toEqual(['== svc (java) ==']);
-      expect(result.json('svc/summary.json').tools.length).toBeGreaterThan(0);
+      expect(result.json('svc/summary.json').tools.map(({ name }) => name)).toContain('java');
     });
 
     it('runs only the projects named with --project, changed or not', () => {
@@ -215,8 +213,7 @@ describe.skipIf(!pythonE2eEnabled)(
       installWebPackages(root, '.', manager);
       initializeRepository(root, 'base');
       commitBranch(root, 'member', {
-        'packages/a/src/greeting.ts':
-          'export function greeting(name: string): string {\n  return `Hi, ${name}!`;\n}\n',
+        'packages/a/src/greeting.ts': `export function greeting(name: string): string {\n  return \`Hi, \${name}!\`;\n}\n`,
       });
 
       const result = gate(root, 'member');
@@ -240,8 +237,7 @@ describe.skipIf(!pythonE2eEnabled)(
       installWebPackages(root, '.', 'npm');
       initializeRepository(root, 'base');
       commitBranch(root, 'excluded', {
-        'packages/a/src/legacy/old.ts':
-          'export function old(name: string): string {\n  var unused = 1;\n  return `Hi, ${name}!`;\n}\n',
+        'packages/a/src/legacy/old.ts': `export function old(name: string): string {\n  var unused = 1;\n  return \`Hi, \${name}!\`;\n}\n`,
       });
 
       const result = gate(root, 'excluded');

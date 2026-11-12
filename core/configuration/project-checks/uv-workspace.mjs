@@ -1,7 +1,7 @@
 import { existsSync, readFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import path from 'node:path';
-import { isPlainObject } from '../../shared/config.mjs';
+import { isPlainObject } from '../../../shared/config.mjs';
 
 export function parseToml(text) {
   return createRequire(import.meta.url)('smol-toml').parse(text);

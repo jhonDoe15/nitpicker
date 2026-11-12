@@ -8,6 +8,7 @@ import { resolveComparison } from '../../diff/git/repository/git.mjs';
 import { CONFIG_FILE_NAME } from '../../../shared/config.mjs';
 import { PROJECT_FILES } from '../discovery/declared-projects.mjs';
 import { isInside, isSkippedLocation } from '../discovery/repository-files.mjs';
+import { byText } from '../../../shared/text-order/by-text.mjs';
 
 export function comparisonBase({ repositoryRoot, configuredBase, cli }) {
   const base = resolveBase({
@@ -42,7 +43,7 @@ export function analyzersByProject(plan, cli) {
   if (unknown.length > 0) {
     throw new Error(
       `Unknown --analyzer: ${unknown.join(', ')}. Known analyzers of the projects in this monorepo: ` +
-        [...known].toSorted().join(', '),
+        [...known].toSorted(byText).join(', '),
     );
   }
   return new Map(
@@ -71,5 +72,5 @@ export function unlistedFolders(plan, changed) {
     .filter((folder) => folder !== plan.prefix && isInside(folder, plan.prefix))
     .filter((folder) => !isSkippedLocation(folder))
     .filter((folder) => !plan.projects.some(({ repoPath }) => isInside(folder, repoPath)));
-  return [...new Set(folders)].toSorted();
+  return [...new Set(folders)].toSorted(byText);
 }

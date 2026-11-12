@@ -9,10 +9,6 @@ import { isInside } from '../discovery/repository-files.mjs';
 
 const ROOT_REPORT_FOLDER = '_root';
 
-function messageOf(error) {
-  return error instanceof Error ? error.message : String(error);
-}
-
 function projectsOf(file, label) {
   try {
     return { projects: parseConfigFile(file, label)?.projects };
@@ -79,7 +75,10 @@ function loadSettings(absolute, overlay, repositoryRoot) {
   try {
     return { config: readLayeredConfig(absolute, { overlay, repositoryRoot }) };
   } catch (error) {
-    return { config: undefined, configError: messageOf(error) };
+    return {
+      config: undefined,
+      configError: error instanceof Error ? error.message : String(error),
+    };
   }
 }
 

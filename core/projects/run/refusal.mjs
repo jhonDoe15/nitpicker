@@ -5,7 +5,7 @@ import { enclosingMember } from '../plan/enclosing.mjs';
 import { planMonorepo } from '../plan/inspect.mjs';
 import { oneProjectCommandMessage } from './messages.mjs';
 
-export function rootOf(cli) {
+function rootOf(cli) {
   return cli.currentProjectRoot === undefined
     ? resolveProjectRoot(cli.workingDirectory)
     : realpathSync(cli.currentProjectRoot);

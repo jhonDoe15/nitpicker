@@ -2,7 +2,12 @@ import { mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { combinedSummary, exitCodeOf, writeCombinedReports } from './combined-summary.mjs';
+import {
+  SUMMARY_FILE,
+  combinedSummary,
+  exitCodeOf,
+  writeCombinedReports,
+} from './combined-summary.mjs';
 import { reportFolder } from '../plan/project-entry.mjs';
 import { outcomeOf } from './outcome.mjs';
 
@@ -254,7 +259,7 @@ describe('combinedSummary', () => {
 
     writeCombinedReports(root, { overallStatus: 'completed' }, 'text\n');
 
-    expect(JSON.parse(readFileSync(path.join(root, 'summary.json'), 'utf8'))).toEqual({
+    expect(JSON.parse(readFileSync(path.join(root, SUMMARY_FILE), 'utf8'))).toEqual({
       overallStatus: 'completed',
     });
     expect(readFileSync(path.join(root, 'report.txt'), 'utf8')).toBe('text\n');
