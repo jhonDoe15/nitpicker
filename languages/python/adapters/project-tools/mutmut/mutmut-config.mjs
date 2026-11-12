@@ -6,11 +6,16 @@ import { readOptional } from '../../execution/python-project.mjs';
 import { mutmutTestPatterns } from '../../execution/python-test-files.mjs';
 import { missingProjectConfig } from '../../../../../shared/conventions/tool-precedence.mjs';
 import { attempt, parseToml, stringifyToml, toolLayers, unique } from '../project-tool-layers.mjs';
+import {
+  listedProjectFiles,
+  outsideScopePatterns,
+} from '../../../../../core/scope/mutation-scope.mjs';
 
 export const MUTMUT_TOOL = 'mutmut';
 const MUTMUT_LOOKED = 'a mutmut config ([tool.mutmut] in pyproject.toml, or [mutmut] in setup.cfg)';
 const PYPROJECT = 'pyproject.toml';
 const SETUP_CFG = 'setup.cfg';
+const PYTHON_FILES = ':(glob)**/*.py';
 const RUN_KEYS = [
   'also_copy',
   'process_isolation',
@@ -79,6 +84,12 @@ function excludedPatterns(exclude) {
   return exclude.flatMap((glob) => [glob, `${glob.replace(/\/+$/u, '')}/*`]);
 }
 
+function outsideScope({ projectRoot, mutationScope }) {
+  return mutationScope === undefined
+    ? []
+    : outsideScopePatterns(listedProjectFiles(projectRoot, [PYTHON_FILES]), mutationScope);
+}
+
 export function ignoredMutmutKeys(table) {
   return Object.keys(table).filter((key) => !RUN_KEYS.includes(key) && !SOURCE_KEYS.includes(key));
 }
@@ -115,10 +126,11 @@ function mutmutSettings({ context, fail }) {
   }
   const nitpicker = {
     source_paths: projectSource ?? sourceRoots,
-    do_not_mutate: [
+    do_not_mutate: unique([
       ...mutmutTestPatterns(isDjangoProject(context.projectRoot)),
       ...excludedPatterns(context.exclude),
-    ],
+      ...outsideScope(context),
+    ]),
   };
   if (!layers.appliesProject) {
     return { ...nitpicker, ...pick(table, RUN_KEYS) };
