@@ -197,7 +197,7 @@ export const rule = {
         report(node, ownCheckSubject(context, node));
       },
       'LogicalExpression[operator="??"], AssignmentExpression[operator="??="]'(node) {
-        if (!isHarmlessFallback(node.right) && !isCompositionRootFile(context)) {
+        if (!(isHarmlessFallback(node.right) || isCompositionRootFile(context))) {
           report(node, envSubject(context, node.left), 'nullishFallback');
         }
       },

@@ -1,3 +1,4 @@
+import { isIdentifierNamed } from '../analysis/ancestry.mjs';
 import { findVariable, stringValue } from '../analysis/constant-resolution.mjs';
 
 const GLOBAL_OBJECTS = new Set(['globalThis', 'global', 'window', 'self']);
@@ -24,12 +25,10 @@ function propertyName(node) {
   return keyName(node.computed, node.property);
 }
 
-function isNamed(node, name) {
-  return node.type === 'Identifier' && node.name === name;
-}
-
 function isGlobal(context, node, name) {
-  return isNamed(node, name) && (findVariable(context, node, name)?.defs.length ?? 0) === 0;
+  return (
+    isIdentifierNamed(node, name) && (findVariable(context, node, name)?.defs.length ?? 0) === 0
+  );
 }
 
 function isProcess(context, node) {
