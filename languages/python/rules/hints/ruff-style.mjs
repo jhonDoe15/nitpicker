@@ -19,6 +19,14 @@ function logging(advice) {
   return (_subject, libraries) => advice[libraries?.logging ?? 'logging'];
 }
 
+const PROGRAM_OUTPUT_ADVICE =
+  'For program output, take a `TextIO` parameter and write with `out.write(...)` or `print(..., file=out)`; the entry point passes `sys.stdout`.';
+
+function printAdvice(advice) {
+  const diagnostics = logging(advice);
+  return (subject, libraries) => `${diagnostics(subject, libraries)} ${PROGRAM_OUTPUT_ADVICE}`;
+}
+
 const NAMING_HINTS = [
   [['N801'], 'Name the class in `CapWords` (`OrderLine`), not `snake_case`.'],
   [
@@ -84,6 +92,12 @@ export const STYLE_HINTS = [
   },
   {
     tool: 'ruff',
+    rules: ['FURB192'],
+    allowed:
+      'Take the smallest or largest in one pass: `min(xs)`, `max(xs)`, or `min(xs, key=...)` instead of `sorted(xs)[0]`.',
+  },
+  {
+    tool: 'ruff',
     rules: ['B006'],
     allowed:
       'Default to `None` and create the value inside the function, or use an immutable default such as a tuple.',
@@ -93,7 +107,7 @@ export const STYLE_HINTS = [
     rules: ['F403'],
     allowed: 'Import the names you use: `from module import name`.',
   },
-  { tool: 'ruff', rules: ['T201', 'T203'], allowed: logging(LOGGING_ADVICE) },
+  { tool: 'ruff', rules: ['T201', 'T203'], allowed: printAdvice(LOGGING_ADVICE) },
   {
     tool: 'ruff',
     rules: ['PERF203'],

@@ -149,6 +149,32 @@ describe('a run at the top of a monorepo', () => {
     );
   });
 
+  it('refuses --json at the top of a monorepo and says what to do', () => {
+    const root = monorepo();
+
+    const result = run(root, ['--json']);
+
+    expect(result.exitCode).toBe(2);
+    expect(result.err).toBe(
+      `nitpicker failed: --json prints the result of one project, and ${root} is a monorepo ` +
+        'of 3 projects (web, api, tools/app). Read the combined summary.json in the reports ' +
+        'folder, or run --json in a project folder (cd web && nitpicker --json).\n',
+    );
+  });
+
+  it('refuses paths that belong to the top folder instead of one project', () => {
+    const root = monorepo({ 'docs/guide.ts': 'export const guide = 1;\n' });
+
+    const result = run(root, ['docs/guide.ts'], { workingDirectory: root });
+
+    expect(result.exitCode).toBe(2);
+    expect(result.err).toBe(
+      'nitpicker failed: Paths narrow one project, and these paths belong to the top folder of a ' +
+        'monorepo of 3 projects (web, api, tools/app). Choose projects with --project <path>, or ' +
+        'give paths in a project folder that has its own package.json or nitpicker.config.json.\n',
+    );
+  });
+
   it('keeps one project when run inside it', () => {
     const root = monorepo();
     writeFiles(root, { 'web/src/a.ts': violation('web-finding') });

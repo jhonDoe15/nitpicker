@@ -22,7 +22,7 @@
     "generated/**",
     "**/node_modules/**",
     "coverage/**",
-    "reports/**",
+    "reports/quality/**",
     "target/**"
   ]
 }

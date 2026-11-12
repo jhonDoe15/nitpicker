@@ -1,0 +1,142 @@
+def shared = project.ext.nitpickerKotlinSourceModule
+def analysisRoot = gradle.startParameter.currentDir
+def relative = { File file -> analysisRoot.toPath().relativize(file.toPath()).toString().replace('\\', '/') }
+
+def kotlinSourceFiles = { kotlinSourceSet ->
+    def generated = layout.buildDirectory.get().asFile.toPath()
+    def dirs = kotlinSourceSet == null ? [] : kotlinSourceSet.kotlin.srcDirs.findAll {
+        it.exists() && it.toPath().startsWith(projectDir.toPath()) && !it.toPath().startsWith(generated)
+    }.sort()
+    def present = dirs.collectMany { dir -> fileTree(dir) { include '**/*.kt' }.files }.unique().sort()
+    def kept = new HashSet<File>()
+    if (!dirs.isEmpty()) {
+        kept.addAll(kotlinSourceSet.kotlin.files)
+    }
+    [dirs: dirs, files: present.findAll { kept.contains(it) }, excluded: present.findAll { !kept.contains(it) }]
+}
+def excludedFrom = { Collection found ->
+    def kept = found.collectMany { it.files } as Set
+    found.collectMany { it.excluded }.unique().findAll { !kept.contains(it) }.sort()
+}
+project.ext.nitpickerKotlinExcluded = { Collection kotlinSourceSets ->
+    excludedFrom(kotlinSourceSets.collect { kotlinSourceFiles(it) })
+}
+
+def writeExcluded = { File list, Collection<File> excluded ->
+    list.parentFile.mkdirs()
+    list.setText(excluded.collect { relative(it) + '\n' }.unique().sort().join(''), 'UTF-8')
+}
+project.ext.nitpickerWriteKotlinExcluded = writeExcluded
+def testSet = { String name -> name.startsWith('test') || name.contains('Test') }
+
+afterEvaluate {
+    if (!shared.selected(project)) {
+        return
+    }
+    def moduleKey = shared.moduleKey(project)
+    def reportDir = shared.reportBase
+        ? objects.directoryProperty().fileValue(new File(shared.reportBase.toString(), moduleKey))
+        : layout.buildDirectory.dir('nitpicker')
+    shared.modules << [key: moduleKey, path: project.path, dir: relative(projectDir)]
+
+    def sourcesOf = { boolean tests ->
+        def found = project.kotlin.sourceSets.sort { it.name }.findAll { testSet(it.name) == tests }
+            .collect { kotlinSourceFiles(it) }
+        [dirs: found.collectMany { it.dirs }.unique(), files: found.collectMany { it.files }.unique()]
+    }
+    def excluded = { excludedFrom(project.kotlin.sourceSets.collect { kotlinSourceFiles(it) }) }
+
+    configurations {
+        nitpickerKotlinCompiler { canBeConsumed = false }
+    }
+    if (shared.repositories.allowed) {
+        repositories { mavenCentral() }
+    }
+    dependencies {
+        nitpickerKotlinCompiler "org.jetbrains.kotlin:kotlin-compiler-embeddable:${shared.pinned.kotlinCompiler}"
+    }
+    configurations.nitpickerKotlinCompiler.incoming.beforeResolve {
+        configurations.nitpickerKotlinCompiler.resolutionStrategy.eachDependency { details ->
+            if (details.requested.group == 'org.jetbrains.kotlin') {
+                details.useVersion(shared.pinned.kotlinCompiler)
+            }
+        }
+    }
+
+    def published = { project.extensions.findByName('publishing')?.publications?.isEmpty() == false }
+
+    tasks.register('nitpickerKotlinPsi') {
+        group = 'nitpicker'
+        doLast {
+            def directory = reportDir.get().asFile
+            directory.mkdirs()
+            def main = sourcesOf(false)
+            def test = sourcesOf(true)
+            def excludedList = new File(directory, 'kotlin-excluded.txt')
+            writeExcluded(excludedList, excluded())
+            def metrics = new File(directory, 'kotlin-metrics.json')
+            def facts = new File(directory, 'kotlin-facts.json')
+            if (main.files.isEmpty() && test.files.isEmpty()) {
+                metrics.text = '{"functions":[],"files":[]}'
+                facts.text = '{"files":[]}'
+                new File(directory, 'kotlin-mutation-facts.json').text = '{"files":[]}'
+                return
+            }
+            def compiler = configurations.nitpickerKotlinCompiler.asPath
+            def classes = shared.psiClasses(project, compiler)
+            def roots = main.dirs.collect { relative(it) } + test.dirs.collect { 'test:' + relative(it) }
+            shared.runProcess('KotlinPsi', [new File(System.getProperty('java.home'), 'bin/java').absolutePath,
+                    '-Djava.awt.headless=true', "-Dnitpicker.kotlinCompiler=${shared.pinned.kotlinCompiler}".toString(),
+                    "-Dnitpicker.kotlinPsi.excluded=${excludedList.absolutePath}".toString(),
+                    "-Dnitpicker.published=${published()}".toString(), '-cp',
+                    compiler + File.pathSeparator + classes.absolutePath, 'nitpicker.kotlinpsi.KotlinPsi',
+                    metrics.absolutePath, facts.absolutePath, analysisRoot.absolutePath] + roots,
+                projectDir)
+        }
+    }
+
+    tasks.register('nitpickerJava') {
+        group = 'nitpicker'
+        dependsOn 'nitpickerKotlinPsi'
+        doLast {
+            def directory = reportDir.get().asFile
+            def emptySarif = '{"version":"2.1.0","runs":[]}'
+            def empty = ['structure.json': '[]', 'classes.json': '{"files":{},"classes":[]}', 'errorprone.json': '[]']
+            ['pmd.sarif', 'spotbugs.sarif', 'detekt.sarif', 'ktlint.sarif'].each { empty[it] = emptySarif }
+            ['format.txt', 'ktfmt.txt', 'jdeps.txt', 'jdeps-test.txt', 'jdeps-classes.txt'].each { empty[it] = '' }
+            empty.each { name, text -> new File(directory, name).text = text }
+            new File(directory, 'kotlin-notes.json').setText(groovy.json.JsonOutput.toJson([
+                "The Android or Multiplatform project ${project.path} gets the source checks only: detekt, the " +
+                    'format check, the kotlinc lint, coverage, mutation and its tests do not run, and its .java ' +
+                    'files are not checked.']), 'UTF-8')
+            def main = sourcesOf(false)
+            def test = sourcesOf(true)
+            def buildFacts = shared.buildFacts(project.rootProject)
+            def declared = configurations.collectMany { it.dependencies }
+                .collect { "${it.group}:${it.name}".toString() }
+            new File(directory, 'manifest.json').text = groovy.json.JsonOutput.toJson([
+                versions             : shared.pinned,
+                moduleKey            : moduleKey,
+                sourceRoots          : [],
+                testSourceRoots      : [],
+                resourceRoots        : [],
+                kotlin               : true,
+                kotlinSourceModule   : true,
+                published            : published(),
+                kotlinSourceRoots    : main.dirs.collect { relative(it) },
+                kotlinTestSourceRoots: test.dirs.collect { relative(it) },
+                kotlinExcludedFiles  : excluded().collect { relative(it) },
+                kotlinFormatter      : shared.formatter?.toString() ?: 'none',
+                kotlinCallerGaps     : buildFacts.gaps,
+                projectDependencies  : buildFacts.dependencies[project.path],
+                kotlinSerialization  : plugins.hasPlugin('org.jetbrains.kotlin.plugin.serialization') || declared.any {
+                    it ==~ /.*:(jackson-module-kotlin|kotlinx-serialization-(core|json)|moshi-kotlin).*/
+                },
+                spring               : false,
+                springArch           : false,
+                testsFailed          : false,
+                unrunTestSourceSets  : [],
+            ])
+        }
+    }
+}

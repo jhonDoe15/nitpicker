@@ -1,0 +1,8 @@
+[
+  {
+    "name": "try in a loop names a helper function",
+    "tool": "ruff",
+    "rule": "PERF203",
+    "mention": "helper function"
+  }
+]

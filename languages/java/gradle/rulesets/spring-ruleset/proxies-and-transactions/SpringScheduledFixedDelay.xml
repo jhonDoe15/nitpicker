@@ -1,0 +1,8 @@
+  <rule name="SpringScheduledFixedDelay" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
+        message="Use fixedDelay or cron instead of fixedRate, so a slow run never overlaps the next one.">
+    <priority>3</priority>
+    <properties><property name="xpath"><value><![CDATA[
+//Annotation[pmd-java:typeIs('org.springframework.scheduling.annotation.Scheduled')]
+  /AnnotationMemberList/MemberValuePair[@Name = ('fixedRate', 'fixedRateString')]
+]]></value></property></properties>
+  </rule>

@@ -5,6 +5,7 @@ import { pathToFileURL } from 'node:url';
 import { codeExtensions } from '../layout.mjs';
 import { readJsonc } from '../modules/tsconfig-files.mjs';
 import { projectConfigFile } from '../test-environment/config-files.mjs';
+import { nestEntryPoints } from './nest/nest-project.mjs';
 
 const scopePackages = {
   react: ['react'],
@@ -127,7 +128,7 @@ export function frameworkConventions(projectRoot) {
       ...(names.includes('expo-router') ? expoRouterGlobs : []),
       ...(reactRouter ? reactRouterGlobs : []),
     ],
-    entryPoints: vite ? viteEntryPoints(projectRoot) : [],
+    entryPoints: [...(vite ? viteEntryPoints(projectRoot) : []), ...nestEntryPoints(projectRoot)],
   };
 }
 

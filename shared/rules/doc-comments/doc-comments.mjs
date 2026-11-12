@@ -1,4 +1,4 @@
-import { MESSAGES, RULE_IDS, renderMessage } from '../../policy.mjs';
+import { MESSAGES, RULE_IDS, messageFields } from '../../policy.mjs';
 import { exceptionText } from '../exceptions.mjs';
 
 const STOPWORDS = new Set(
@@ -17,7 +17,7 @@ const MIN_STEM_LENGTH = 3;
 const CODE_FENCE = /^(?:```|~~~)/u;
 const EXAMPLE_TAG = /^@example(?![\w-])/u;
 const BLOCK_TAG = /^@[A-Za-z][\w-]*(?=[\s{]|$)/u;
-const INLINE_TAG = /\{@\w+(?!\w)\s*((?:[^\s}][^}]*)?)\}/gu;
+const INLINE_TAG = /\{@\w+\b\s*((?:[^\s}][^}]*)?)\}/gu;
 const NAMED_TAGS = new Set([
   'param',
   'arg',
@@ -191,7 +191,7 @@ function findingOf(comment, problem, analyzerName) {
     rule,
     path: comment.file,
     identity: `doc-comment:${comment.qualifier ?? comment.name}:${problem.kind}`,
-    message: renderMessage(restating ? MESSAGES.restatingDocComment : MESSAGES.longDocComment, {
+    ...messageFields(restating ? MESSAGES.restatingDocComment : MESSAGES.longDocComment, {
       ...problem,
       exception: exceptionText(rule, comment.file),
     }),

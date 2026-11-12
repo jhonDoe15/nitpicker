@@ -1,6 +1,6 @@
-import { existsSync } from 'node:fs';
+import { existsSync, rmSync } from 'node:fs';
 import path from 'node:path';
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { REPORT_FILE_NAMES } from '../../../reporting/reporters.mjs';
 import {
   commitFiles,
@@ -19,8 +19,38 @@ import {
   policy,
 } from '../../../execution/test-support/analyzer-findings.mjs';
 import { readJson, writeFiles } from '../../../git/test-support/fixture-files.mjs';
+import { linkSentence } from '../../../../../shared/messages/test-support/link-sentence.mjs';
+
+const TIMEOUT_MESSAGE =
+  'fake-quality-analyzer timed out after 100 ms. To give it more time, set ' +
+  '"analyzerTimeoutMinutes": { "fake-quality-analyzer": <minutes> } in nitpicker.config.json. ' +
+  linkSentence('analyzerTimeout');
+
+vi.mock('node:fs', async (importOriginal) => {
+  const actual = await importOriginal();
+  return { ...actual, rmSync: vi.fn(actual.rmSync) };
+});
 
 const { createRepository } = useQualityDiffRepositories();
+const { rmSync: actualRmSync } = await vi.importActual('node:fs');
+const leftovers = [];
+
+afterEach(() => {
+  vi.mocked(rmSync).mockImplementation(actualRmSync);
+  for (const leftover of leftovers.splice(0)) {
+    actualRmSync(leftover, { recursive: true, force: true });
+  }
+});
+
+function keepWritingIntoWorktrees() {
+  vi.mocked(rmSync).mockImplementation((target, options) => {
+    if (path.basename(target).startsWith('nitpicker-diff-')) {
+      leftovers.push(target);
+      throw new Error(`ENOTEMPTY: directory not empty, rmdir '${target}'`);
+    }
+    return actualRmSync(target, options);
+  });
+}
 
 describe('quality diff temporary worktrees and reports', () => {
   it.each(['crash', 'malformed'])(
@@ -77,15 +107,54 @@ describe('quality diff temporary worktrees and reports', () => {
       {
         tool: 'fake-quality-analyzer',
         snapshot: 'base',
-        message: 'fake-quality-analyzer timed out after 100 ms',
+        message: TIMEOUT_MESSAGE,
       },
       {
         tool: 'fake-quality-analyzer',
         snapshot: 'head',
-        message: 'fake-quality-analyzer timed out after 100 ms',
+        message: TIMEOUT_MESSAGE,
       },
     ]);
     expect(worktreePaths(repository.root)).toEqual([repository.root]);
+  });
+  it('keeps the report and the timeout when a killed build still writes into the worktree', () => {
+    const repository = createRepository({
+      'quality-policy.json': policy(),
+      'src/main/source.ts': 'export const source = true;\n',
+    });
+    commitFiles(repository.root, { 'quality-policy.json': policy({ mode: 'hang' }) }, 'hang');
+    const output = captureOutput();
+    const progress = captureOutput();
+    keepWritingIntoWorktrees();
+
+    const exitCode = runCli({
+      ...IN_PROCESS_TASKS,
+      arguments_: ['--base', repository.baseRef, '--output', 'reports/quality/diff'],
+      environment: {},
+      currentProjectRoot: repository.root,
+      analyzers: [fakeAnalyzer({ timeoutMs: 100 })],
+      stdout: output.stdout,
+      stderr: output.stderr,
+      progress: progress.stderr,
+      runTasks: undefined,
+    });
+
+    expect(exitCode).toBe(2);
+    expect(
+      readJson(repository.root, 'reports/quality/diff/tool-errors.json').map(
+        ({ message }) => message,
+      ),
+    ).toEqual([TIMEOUT_MESSAGE, TIMEOUT_MESSAGE]);
+    expect(output.stdoutText.split('\n', 1)).toEqual([`Base: ${repository.baseRef} (argument)`]);
+    expect(output.stderrText).toBe(
+      leftovers
+        .map(
+          (leftover) =>
+            `nitpicker: could not remove the temporary worktree ${leftover} (ENOTEMPTY: directory not empty, rmdir '${leftover}'); delete it and run git worktree prune once the build has stopped\n`,
+        )
+        .join(''),
+    );
+    expect(leftovers).toHaveLength(2);
   });
   it('removes stale reports before an invalid-ref failure', () => {
     const repository = createRepository({

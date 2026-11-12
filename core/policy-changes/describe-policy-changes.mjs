@@ -1,6 +1,12 @@
-import { CONFIG_FILE_NAME, isPlainObject } from '../../shared/config.mjs';
+import {
+  CONFIG_FILE_NAME,
+  FEATURE_LAYOUT_KEYS,
+  isPlainObject,
+  shownSetting,
+} from '../../shared/config.mjs';
 import { policyDigest } from '../diff/reporting/review/policy-findings.mjs';
 import { buildNarrowingChanges } from './build-files/build-narrowing.mjs';
+import { featureLayoutChanges } from './features/feature-layout-changes.mjs';
 import { toolConfigChanges } from './build-files/tool-config-changes.mjs';
 import { coveredPathChanges } from './paths/covered-paths.mjs';
 import { generatedMarkingChanges } from './paths/generated-marking.mjs';
@@ -16,8 +22,9 @@ const LISTED_KEYS = new Set([
   'thresholds',
   'analyzers',
   'duplicates',
+  'analyzerTimeoutMinutes',
 ]);
-const LISTED_LAYOUT_KEYS = new Set(['excludedGlobs', 'entryPoints']);
+const LISTED_LAYOUT_KEYS = new Set(['excludedGlobs', 'entryPoints', ...FEATURE_LAYOUT_KEYS]);
 
 function withoutKeys(object, keys) {
   return Object.fromEntries(Object.entries(object).filter(([key]) => !keys.has(key)));
@@ -59,10 +66,6 @@ function settingLeaves(config) {
   );
 }
 
-function show(value) {
-  return value === undefined ? 'not set' : JSON.stringify(value);
-}
-
 function changedSettings(baseConfig, headConfig) {
   const before = settingLeaves(baseConfig);
   const after = settingLeaves(headConfig);
@@ -70,7 +73,12 @@ function changedSettings(baseConfig, headConfig) {
     const change = { setting, before: before.get(setting), after: after.get(setting) };
     return JSON.stringify(change.before) === JSON.stringify(change.after)
       ? []
-      : [{ ...change, text: `${setting}: ${show(change.before)} -> ${show(change.after)}` }];
+      : [
+          {
+            ...change,
+            text: `${setting}: ${shownSetting(change.before)} -> ${shownSetting(change.after)}`,
+          },
+        ];
   });
 }
 
@@ -103,6 +111,7 @@ function describedEntries(baseConfig, headConfig, scope) {
     ...listedChanges(baseConfig, headConfig),
     timeoutChanges(baseConfig, headConfig),
     hiddenCodeChanges(baseConfig, headConfig, scope),
+    featureLayoutChanges(baseConfig, headConfig, scope),
   ];
   const scopeParts = [
     generatedMarkingChanges(scope),

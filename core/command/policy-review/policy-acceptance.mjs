@@ -33,3 +33,15 @@ export function policyAcceptance(options, environment, interactive = false) {
     reportsPolicy: (options.shardIndex ?? 0) === 0,
   };
 }
+
+export function acceptanceOf(cli) {
+  const { ignoredAcceptance, ...acceptance } = policyAcceptance(
+    cli.options,
+    cli.environment,
+    cli.interactive,
+  );
+  if (ignoredAcceptance !== undefined) {
+    cli.stderr.write(`nitpicker: ${ignoredAcceptance}\n`);
+  }
+  return acceptance;
+}

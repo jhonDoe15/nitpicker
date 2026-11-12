@@ -8,7 +8,7 @@ import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import reactor.core.publisher.Mono
 
-interface ShipmentRepository : JpaRepository<Shipment, Long> {
+@Transactional interface ShipmentRepository : JpaRepository<Shipment, Long> {
     @Query(
         """
         select s from Shipment s
@@ -61,7 +61,7 @@ class ShipmentService(private val shipments: ShipmentRepository, private val ent
     }
 }
 
-interface StockRepository : JpaRepository<Shipment, Long> {
+@Transactional interface StockRepository : JpaRepository<Shipment, Long> {
     @Modifying(clearAutomatically = true, flushAutomatically = true)
     @Query("update Shipment s set s.status = 'VOID' where s.id in :ids")
     fun deactivate(ids: Collection<Long>): Int

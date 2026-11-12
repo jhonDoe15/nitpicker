@@ -75,7 +75,7 @@ describe('coverage reporting in the quality-area analyzers', () => {
     );
 
     expect(message).toBe(
-      '2 tests fail, so coverage, CRAP and mutation were skipped. Fix the tests and rerun:\n' +
+      '2 tests fail; coverage, CRAP and mutation were skipped. Fix the tests and rerun:\n' +
         '  test/example.test.ts > example rejects invalid input: AssertionError: expected 500 to be 400\n' +
         '  test/example.test.ts > example other: expected [] to have a length of 1',
     );
@@ -117,12 +117,11 @@ describe('coverage reporting in the quality-area analyzers', () => {
       rule: 'tests-failed',
       path: '.',
       identity: 'tests-failed',
-      message:
-        '1 test fails, so coverage, CRAP and mutation were skipped. Fix the tests and rerun:\n  /elsewhere/test/a.test.ts > adds: no',
+      message: `1 test fails; coverage, CRAP and mutation were skipped. Fix the tests and rerun:\n  /elsewhere/test/a.test.ts > adds: no`,
       classification: 'tool-error',
     });
     expect(finding.message).toBe(
-      '1 test fails, so coverage, CRAP and mutation were skipped. Fix the tests and rerun:\n  /elsewhere/test/a.test.ts > adds: no',
+      `1 test fails; coverage, CRAP and mutation were skipped. Fix the tests and rerun:\n  /elsewhere/test/a.test.ts > adds: no`,
     );
   });
   it('says which steps of the test script nitpicker did not run before the tests', () => {
@@ -147,20 +146,20 @@ describe('coverage reporting in the quality-area analyzers', () => {
         },
       ).map(({ message }) => message);
     const failure =
-      '1 test fails, so coverage, CRAP and mutation were skipped. Fix the tests and rerun:\n' +
+      '1 test fails; coverage, CRAP and mutation were skipped. Fix the tests and rerun:\n' +
       "  test/a.test.js > could not run: Cannot find module '../dist/a.js'";
 
     expect(run(['tsc'])).toEqual([
       `${failure}\nThe test script runs "tsc" before the tests; nitpicker runs only the test command, ` +
-        'so run that step first if the tests need it.',
+        `so run that step first if the tests need it.`,
     ]);
     expect(run(['npm run build', 'npm run seed'])).toEqual([
       `${failure}\nThe test script runs "npm run build", "npm run seed" before the tests; ` +
-        'nitpicker runs only the test command, so run those steps first if the tests need it.',
+        `nitpicker runs only the test command, so run those steps first if the tests need it.`,
     ]);
     expect(run([])).toEqual([failure]);
   });
-  it('lists at most five failing tests and a test file that could not run', () => {
+  it('lists every failing test and a test file that could not run', () => {
     const failing = (index) => ({
       fullName: `case ${String(index)}`,
       status: 'failed',
@@ -184,13 +183,14 @@ describe('coverage reporting in the quality-area analyzers', () => {
 
     expect(message).toBe(
       [
-        '7 tests fail, so coverage, CRAP and mutation were skipped. Fix the tests and rerun:',
+        '7 tests fail; coverage, CRAP and mutation were skipped. Fix the tests and rerun:',
         '  test/a.test.ts > case 1: boom',
         '  test/a.test.ts > case 2: boom',
         '  test/a.test.ts > case 3: boom',
         '  test/a.test.ts > case 4: boom',
         '  test/a.test.ts > case 5: boom',
-        '  … and 2 more',
+        '  test/a.test.ts > case 6: boom',
+        '  test/broken.test.ts > could not run: Failed to resolve import "./missing"',
       ].join('\n'),
     );
   });
@@ -221,8 +221,10 @@ describe('coverage reporting in the quality-area analyzers', () => {
         rule: 'changed-branch-coverage',
         path: 'src/main/value.ts',
         identity: 'branch-source:branch-source:occurrence:1',
+        anchor: { key: 'branch:branch-source', requireUnchangedLine: true },
         message:
-          'Branch coverage is 50.00%; minimum is 95%. To accept the file, add it to "exclude" in nitpicker.config.json.',
+          'Branch coverage is 50.00%; minimum is 95%. Add a test for each outcome it misses. To accept the file, add it to "exclude" in nitpicker.config.json.',
+        allowedForm: 'Add a test for each outcome it misses.',
         classification: 'enforceable',
       },
       {
@@ -232,7 +234,7 @@ describe('coverage reporting in the quality-area analyzers', () => {
         identity: 'covered-branches-per-test',
         message: 'Covered branch outcomes per test',
         classification: 'descriptive',
-        metric: { name: 'coveredBranchesPerTest', value: 0.5 },
+        metric: { name: 'coveredBranchesPerTest', value: expect.closeTo(0.5, 10) },
       },
       {
         tool: 'coverage',
@@ -246,7 +248,7 @@ describe('coverage reporting in the quality-area analyzers', () => {
     ]);
     expect(findings.map(({ metric }) => metric).filter(Boolean)).toEqual([
       { name: 'branches', value: 50 },
-      { name: 'coveredBranchesPerTest', value: 0.5 },
+      { name: 'coveredBranchesPerTest', value: expect.closeTo(0.5, 10) },
       { name: 'testCount', value: 2 },
     ]);
   });
@@ -278,8 +280,10 @@ describe('coverage reporting in the quality-area analyzers', () => {
         rule: 'changed-branch-coverage',
         path: 'src/main/value.ts',
         identity: 'branch-source:branch-source:occurrence:1',
+        anchor: { key: 'branch:branch-source', requireUnchangedLine: true },
         message:
           'Branch coverage is 50.00%; minimum is 95%. Not taken: the false arm of the ?: at 3:29. Test it, or remove it if it can\'t happen. To accept the file, add it to "exclude" in nitpicker.config.json.',
+        allowedForm: "Test it, or remove it if it can't happen.",
         classification: 'enforceable',
       },
     ]);
@@ -404,8 +408,10 @@ describe('coverage reporting in the quality-area analyzers', () => {
         rule: 'changed-branch-coverage',
         path: 'src/main/value.ts',
         identity: 'branch-source:changed-branch-after:occurrence:1',
+        anchor: { key: 'branch:changed-branch-after', requireUnchangedLine: true },
         message:
-          'Branch coverage is 50.00%; minimum is 95%. To accept the file, add it to "exclude" in nitpicker.config.json.',
+          'Branch coverage is 50.00%; minimum is 95%. Add a test for each outcome it misses. To accept the file, add it to "exclude" in nitpicker.config.json.',
+        allowedForm: 'Add a test for each outcome it misses.',
         classification: 'enforceable',
       },
     ]);

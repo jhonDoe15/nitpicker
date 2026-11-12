@@ -1,0 +1,37 @@
+[
+  {
+    "tool": "ruff",
+    "rule": "S313",
+    "mention": "defusedxml"
+  },
+  {
+    "tool": "ruff",
+    "rule": "S314",
+    "mention": "defusedxml"
+  },
+  {
+    "tool": "ruff",
+    "rule": "S315",
+    "mention": "defusedxml"
+  },
+  {
+    "tool": "ruff",
+    "rule": "S316",
+    "mention": "defusedxml"
+  },
+  {
+    "tool": "ruff",
+    "rule": "S317",
+    "mention": "defusedxml"
+  },
+  {
+    "tool": "ruff",
+    "rule": "S318",
+    "mention": "defusedxml"
+  },
+  {
+    "tool": "ruff",
+    "rule": "S319",
+    "mention": "defusedxml"
+  }
+]

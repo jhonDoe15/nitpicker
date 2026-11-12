@@ -39,6 +39,7 @@ const SUPPORTED_KEYWORDS = new Set([
   'enum',
   'const',
   'minLength',
+  'minItems',
   'minimum',
   'pattern',
   'allOf',
@@ -128,6 +129,9 @@ function validate(value, node = schema, errors = [], at = '$') {
   checkCombinators(value, node, errors, at);
   if (isRecord(value)) {
     checkObject(value, node, errors, at);
+  }
+  if (Array.isArray(value) && node.minItems !== undefined && value.length < node.minItems) {
+    errors.push(`${at} has fewer than ${String(node.minItems)} items`);
   }
   if (Array.isArray(value) && node.items !== undefined) {
     validateItems(value, node.items, errors, at);
@@ -331,9 +335,11 @@ describe('spec/findings.schema.json', () => {
           classification: 'tool-error',
         },
       ],
+      moduleImports: [{ from: 'src/billing/invoice.ts', to: 'src/invoicing' }],
     };
 
     expect(parseAnalyzerReport(report, 'fixture').findings).toHaveLength(report.findings.length);
+    expect(parseAnalyzerReport(report, 'fixture').moduleImports).toEqual(report.moduleImports);
     expect(validate(report)).toEqual([]);
   });
 
@@ -403,6 +409,63 @@ describe('spec/findings.schema.json', () => {
     expect(validate({ findings: [empty] })).not.toEqual([]);
   });
 
+  it('accepts the units around a finding, also outside the project, and rejects a unit without a count', () => {
+    const finding = {
+      tool: 'coupling',
+      rule: 'stability-direction',
+      path: 'src/features/loans',
+      identity: 'package-edge:src/features/loans->src/features/fines',
+      message: 'message',
+      classification: 'enforceable',
+      cause: {
+        folders: ['src/features/loans'],
+        units: [
+          {
+            unit: 'feature src/features/fines',
+            folders: ['src/features/fines', '../generated/fines'],
+            files: ['src/features/fines/index.ts'],
+            count: 4,
+          },
+        ],
+      },
+    };
+    const [unit] = finding.cause.units;
+    const countless = { ...finding, cause: { ...finding.cause, units: [{ ...unit, count: 0 }] } };
+
+    expect(parseFinding(finding)).toEqual(finding);
+    expect(validate({ findings: [finding] })).toEqual([]);
+    expect(() => parseFinding(countless)).toThrow(TypeError);
+    expect(validate({ findings: [countless] })).toHaveLength(1);
+  });
+
+  const linkedFinding = {
+    tool: 'tool',
+    rule: 'rule',
+    path: 'src/a.ts',
+    identity: 'id',
+    message: 'message',
+    classification: 'enforceable',
+    helpUri: 'https://example.com/rules#rule',
+  };
+
+  it('accepts a helpUri that is an http or https URL', () => {
+    const finding = linkedFinding;
+
+    expect(parseFinding(finding)).toEqual(finding);
+    expect(parseFinding({ ...finding, helpUri: 'http://example.com/rule' }).helpUri).toBe(
+      'http://example.com/rule',
+    );
+    expect(validate({ findings: [finding] })).toEqual([]);
+  });
+
+  it.each(['', 'rules/rule.md', 'javascript:alert(1)', 'https://a b', 7])(
+    'rejects the helpUri %j',
+    (helpUri) => {
+      expect(() => parseFinding({ ...linkedFinding, helpUri })).toThrow(TypeError);
+      expect(validate({ findings: [{ ...linkedFinding, helpUri }] })).not.toEqual([]);
+    },
+  );
+
   it('accepts the number of files of a folder finding and rejects zero', () => {
     const finding = {
       tool: 'tool',
@@ -424,5 +487,14 @@ describe('spec/findings.schema.json', () => {
   it('is exercised by a validator that covers every keyword the schema uses', () => {
     expect(() => validate({ findings: [] })).not.toThrow();
     expect(() => validate({ findings: [] }, { oneOf: [] })).toThrow(/does not support/);
+  });
+
+  it.each([
+    [{ from: 'src/billing/invoice.ts' }, ['$.moduleImports[0].to is required']],
+    [{ from: 'src/billing.ts', to: 'src', files: 1 }, ['$.moduleImports[0].files is not allowed']],
+  ])('rejects the module import %j like the reference parser', (entry, errors) => {
+    const report = { findings: [], moduleImports: [entry] };
+    expect(() => parseAnalyzerReport(report, 'fixture')).toThrow(TypeError);
+    expect(validate(report)).toEqual(errors);
   });
 });

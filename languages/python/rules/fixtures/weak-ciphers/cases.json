@@ -1,0 +1,12 @@
+[
+  {
+    "tool": "ruff",
+    "rule": "S304",
+    "mention": "aesgcm"
+  },
+  {
+    "tool": "ruff",
+    "rule": "S305",
+    "mention": "aesgcm"
+  }
+]

@@ -1,4 +1,4 @@
-import { existsSync, readdirSync, readFileSync } from 'node:fs';
+import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { exceptionHint } from '../../../../../shared/rules/exceptions.mjs';
 import { createIdentityCounter } from '../../../../../shared/ingest/common.mjs';
@@ -10,6 +10,7 @@ import {
   isUnusedCodeSuppression,
   SUPPRESSION_RULE,
 } from './kotlin-rules.mjs';
+import { projectFilePaths } from '../../../../../shared/project-files/project-files.mjs';
 
 const SUPPRESS_ANNOTATION =
   /@\[?(?:\w+:)?(?:(?:kotlin|java\.lang)\.)?Suppress(?:Warnings)?\s*\(((?:"[^"]*"|[^")])*)\)/g;
@@ -91,23 +92,30 @@ export function suppressionTokens(source) {
 }
 
 export function kotlinFiles(projectRoot, sourceRoot) {
-  if (!existsSync(path.join(projectRoot, sourceRoot))) {
-    return [];
-  }
-  return readdirSync(path.join(projectRoot, sourceRoot), { recursive: true })
+  return projectFilePaths(path.join(projectRoot, sourceRoot))
     .filter((entry) => entry.endsWith('.kt'))
-    .map((entry) => path.posix.join(sourceRoot, entry.replaceAll('\\', '/')));
+    .map((entry) => path.posix.join(sourceRoot, entry));
 }
 
-function suppressionMessage(file, token) {
+const UNUSED_PARAMETER_FORM =
+  'Remove the parameter, or use it; a name starting `ignored` or `unused` marks one a signature requires.';
+
+export function inlineSuppressionMessage(file, token) {
   if (isUnusedCodeSuppression(token)) {
-    return `Suppressing "${token}" inline would hide an unused parameter. Remove the parameter, or use it; a name starting \`ignored\` or \`unused\` marks one a signature requires. When reflection or a framework calls it with that signature, remove the suppression and lift the rule for this path instead. ${exceptionHint('detekt.style.UnusedParameter', file)}`;
+    return {
+      message: `Suppressing "${token}" inline would hide an unused parameter. ${UNUSED_PARAMETER_FORM} When reflection or a framework calls it with that signature, remove the suppression and lift the rule for this path instead. ${exceptionHint('detekt.style.UnusedParameter', file)}`,
+      allowedForm: UNUSED_PARAMETER_FORM,
+    };
   }
   const compilerRule = compilerWarningRule(token);
-  if (compilerRule !== undefined) {
-    return `Suppressing "${token}" inline is not allowed. Fix the code the compiler warns about. ${exceptionHint(compilerRule, file)}`;
-  }
-  return `Suppressing "${token}" inline is not allowed. Fix the code the rule flags; to skip generated code, add it to "exclude" in nitpicker.config.json. ${exceptionHint(SUPPRESSION_RULE, file)}`;
+  const allowedForm =
+    compilerRule === undefined
+      ? 'Fix the code the rule flags; to skip generated code, add it to "exclude" in nitpicker.config.json.'
+      : 'Fix the code the compiler warns about.';
+  return {
+    message: `Suppressing "${token}" inline is not allowed. ${allowedForm} ${exceptionHint(compilerRule ?? SUPPRESSION_RULE, file)}`,
+    allowedForm,
+  };
 }
 
 function suppressionFinding(file, token, identity) {
@@ -116,7 +124,7 @@ function suppressionFinding(file, token, identity) {
     rule: SUPPRESSION_RULE,
     path: file,
     identity,
-    message: suppressionMessage(file, token),
+    ...inlineSuppressionMessage(file, token),
     classification: 'enforceable',
   };
 }
@@ -129,7 +137,7 @@ function isBanned({ token, annotation }, compiled) {
   if (isUnusedCodeSuppression(token)) {
     return compiled && hidesUnusedParameter(annotation);
   }
-  return isBannedSuppression(token) && (compilerWarningRule(token) === undefined || compiled);
+  return isBannedSuppression(token);
 }
 
 export function readSuppressionFindings(projectRoot, { sourceRoots, testRoots = [] }) {

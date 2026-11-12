@@ -1,0 +1,12 @@
+  <rule name="SpringDataNativeQuery" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
+        message="Write the query in JPQL; native SQL is not checked at startup. If this one needs SQL, mark this method with @SuppressWarnings(&quot;PMD.SpringDataNativeQuery&quot;), the only inline suppression nitpicker accepts.">
+    <priority>2</priority>
+    <properties><property name="xpath"><value><![CDATA[
+//Annotation[pmd-java:typeIs('org.springframework.data.jpa.repository.NativeQuery')]
+|
+//Annotation[pmd-java:typeIs('org.springframework.data.jpa.repository.Query')]
+  [AnnotationMemberList/MemberValuePair[@Name = 'nativeQuery']/BooleanLiteral[@True = true()]]
+|
+//MethodCall[@MethodName = 'createNativeQuery'][*[1][(pmd-java:typeIs('jakarta.persistence.EntityManager') or pmd-java:typeIs('javax.persistence.EntityManager'))]]
+]]></value></property></properties>
+  </rule>

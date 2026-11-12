@@ -1,20 +1,11 @@
 const GENERIC =
   'Changes the checking policy for affected code. Restore the base setting unless a person confirms the weaker checks.';
 
-const VERIFY_INVOCATION = [
-  'If a command or runtime loads the file without an import,',
-  'a reviewer confirms that invocation; otherwise remove the entry.',
-].join(' ');
-
 export const POLICY_GUIDANCE = {
-  'entry-point': [
-    'Marks matching files as entry points: the dead-code check treats them as used,',
-    'and module-load effects and process access are allowed in them.',
-    `${VERIFY_INVOCATION} Other checks still apply.`,
-  ].join(' '),
-  'python-entry-point': [
-    'Matching files may read the process environment: process-env-access skips them.',
-    `${VERIFY_INVOCATION} Other checks still apply.`,
+  'imported-entry-point': [
+    'An entry point is a file a command or runtime loads without an import, yet checked code imports',
+    'these files, and marking them relaxes the dead-code, module-load and process-access checks for them.',
+    'List only the files that start a program, or have a person confirm it.',
   ].join(' '),
   exception: [
     'Silences the named rule for matching paths; other rules still apply.',
@@ -132,14 +123,32 @@ export const POLICY_GUIDANCE = {
     'Points detekt at another config, which may relax its rules; nitpicker does not judge that.',
     'Restore the base path, or have a person review the new config.',
   ].join(' '),
+  'go-formatters-dropped': [
+    'Drops a Go formatter from the format check, so the files it would change stop failing.',
+    'Restore the base formatters.',
+  ].join(' '),
+  'go-build-tags-dropped': [
+    'Drops a Go build tag, so the files behind it are no longer built, vetted or tested.',
+    'Restore the base build tags.',
+  ].join(' '),
   'tool-precedence': [
     "The project's own tool config now outranks nitpicker's, or nitpicker's is dropped,",
     'so the project can relax the checks.',
     'Restore the base precedence.',
   ].join(' '),
+  'protocols-loosened': [
+    'Drops a protocols contract, one of its open or step calls, or accepts another close call,',
+    'so calls that broke the contract may no longer fail.',
+    'Restore the base contract.',
+  ].join(' '),
   'spring-roles-shrank': [
     'Drops a Spring role mapping, so the classes it marked lose that role and its layering checks.',
     'Restore the mapping.',
+  ].join(' '),
+  'detached-work-runner-added': [
+    'Names a new detached-work runner, so `void` on its calls is no longer checked for an',
+    'unhandled rejection. Remove the name, or have a person check that the runner handles',
+    'every rejection.',
   ].join(' '),
 };
 

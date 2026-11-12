@@ -7,7 +7,7 @@ import {
 } from '../../../core/tooling/tool-resolution.mjs';
 import { testRunnerFor } from './test-runner/detect-runner.mjs';
 import { RUNNER_PACKAGES } from './test-runner/runners.mjs';
-import { TYPESCRIPT_API } from '../typescript-api/api-selection.mjs';
+import { selectTypeScriptApi } from '../typescript-api/api-selection.mjs';
 
 const TOOL_BY_ANALYZER = {
   'entry-points': 'dependency-cruiser',
@@ -79,7 +79,9 @@ export function testRunnerAnalyzerVersion(
   if (analyzerName !== 'mutation') {
     return runnerVersion;
   }
-  return `${resolve('@stryker-mutator/core', { projectRoot: liveProjectRoot }).version};${runnerVersion}`;
+  const stryker = resolve('@stryker-mutator/core', { projectRoot: liveProjectRoot }).version;
+  const native = resolve('@typescript/native', { projectRoot: PACKAGE_ROOT }).version;
+  return `${stryker};${runnerVersion};@typescript/native@${native}`;
 }
 
 function typeScriptApiVersion(resolve, bundled) {
@@ -91,7 +93,11 @@ function typeScriptApiVersion(resolve, bundled) {
 export function resolveAnalyzerVersion(
   analyzerName,
   liveProjectRoot,
-  { resolve = resolveTool, bundled = TYPESCRIPT_API.bundled, installed = isToolInstalled } = {},
+  {
+    resolve = resolveTool,
+    bundled = selectTypeScriptApi().bundled,
+    installed = isToolInstalled,
+  } = {},
 ) {
   if (['coverage', 'mutation', 'test-console'].includes(analyzerName)) {
     return testRunnerAnalyzerVersion(analyzerName, liveProjectRoot, { resolve });
@@ -114,8 +120,8 @@ function typeCheckVersion(liveProjectRoot, { resolve, bundled, installed }) {
   const project = installed('typescript', { projectRoot: liveProjectRoot })
     ? resolve('typescript', { projectRoot: liveProjectRoot }).version
     : 'none';
-  const native = resolve('typescript-native', { projectRoot: PACKAGE_ROOT }).version;
-  return `${project};typescript-native@${native};${typeScriptApiVersion(resolve, bundled)}`;
+  const native = resolve('@typescript/native', { projectRoot: PACKAGE_ROOT }).version;
+  return `${project};@typescript/native@${native};${typeScriptApiVersion(resolve, bundled)}`;
 }
 
 function withTypeScriptVersions({ analyzerName, toolName, version }, { resolve, bundled }) {

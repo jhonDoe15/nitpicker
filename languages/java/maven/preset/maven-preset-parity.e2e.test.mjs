@@ -1,4 +1,4 @@
-import { mkdirSync, writeFileSync } from 'node:fs';
+import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { collectJavaFindings } from '../../adapters/java-diff.mjs';
@@ -15,6 +15,8 @@ import {
   fixtures,
   DATED,
   FAILING_TEST,
+  GUARD,
+  GUARD_TEST,
   SHAPES,
   SHAPES_TEST,
   copyOf,
@@ -22,31 +24,118 @@ import {
   comparable,
 } from '../__tests__/maven-preset-project.mjs';
 
+const MODE_TEST = `package demo;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+
+import org.junit.jupiter.api.Test;
+
+class ModeTest {
+  @Test
+  void runsWithTheJvmArgumentsOfTheBuild() {
+    assertEquals("checked", System.getProperty("nitpicker.mode"));
+    assertEquals("a,b", System.getProperty("nitpicker.list"));
+    assertEquals("hello world", System.getProperty("nitpicker.spaced"));
+    assertEquals("say \\"hi\\"", System.getProperty("nitpicker.quote"));
+    assertEquals("yes", System.getProperty("nitpicker.provided"));
+    assertTrue(Runtime.getRuntime().maxMemory() <= 400L * 1024 * 1024);
+  }
+}
+`;
+const GRADLE_TEST_JVM = `
+class Provided implements CommandLineArgumentProvider {
+    Iterable<String> asArguments() { ['-Dnitpicker.provided=yes'] }
+}
+tasks.test {
+    jvmArgs '-Dnitpicker.mode=checked', '-Dnitpicker.list=a,b'
+    systemProperty 'nitpicker.spaced', 'hello world'
+    systemProperty 'nitpicker.quote', 'say "hi"'
+    maxHeapSize = '384m'
+    jvmArgumentProviders.add(new Provided())
+}
+`;
+const MAVEN_ARG_LINE =
+  '<argLine>-Dnitpicker.mode=checked -Dnitpicker.list=a,b "-Dnitpicker.spaced=hello world" -Xmx384m</argLine>';
+const MAVEN_SYSTEM_PROPERTIES =
+  '<build><plugins><plugin><groupId>org.apache.maven.plugins</groupId>' +
+  '<artifactId>maven-surefire-plugin</artifactId><version>3.5.2</version>' +
+  '<configuration><systemPropertyVariables><nitpicker.quote>say &quot;hi&quot;</nitpicker.quote>' +
+  '<nitpicker.provided>yes</nitpicker.provided></systemPropertyVariables></configuration>' +
+  '</plugin></plugins></build>';
+
+const FEATURE_FILES = {
+  'src/main/java/demo/shared/Money.java':
+    'package demo.shared;\n\npublic final class Money {\n  private Money() {}\n\n' +
+    '  public static long cents(long units) {\n    return units * 100;\n  }\n}\n',
+  'src/main/java/demo/features/billing/Invoice.java':
+    'package demo.features.billing;\n\nimport demo.shared.Money;\n\npublic final class Invoice {\n' +
+    '  private Invoice() {}\n\n  public static long total(long units) {\n' +
+    '    return Money.cents(units);\n  }\n}\n',
+};
+
+function appendTo(file, text) {
+  writeFileSync(file, `${readFileSync(file, 'utf8')}${text}`);
+}
+
 describe.skipIf(!enabled)('Java preset on Maven builds', () => {
   useMavenPresetProject();
   it('finds exactly what the Gradle build of the same sources finds', () => {
     const [gradleProject, mavenProject] = twinProjects();
     for (const root of [gradleProject, mavenProject]) {
       writeFileSync(path.join(root, 'src/main/java/demo/Dated.java'), DATED);
+      for (const [file, text] of Object.entries(FEATURE_FILES)) {
+        mkdirSync(path.dirname(path.join(root, file)), { recursive: true });
+        writeFileSync(path.join(root, file), text);
+      }
     }
     const fromGradle = collectJavaFindings(gradleProject, { gradle, policy: {} });
     const fromMaven = collectJavaFindings(mavenProject, { maven, policy: {} });
     const tools = new Set(fromMaven.map((finding) => finding.tool));
 
     expect(comparable(fromMaven)).toEqual(comparable(fromGradle));
+    expect(
+      fromMaven
+        .filter(({ rule }) => rule === 'shared-used-by-one-feature')
+        .map(({ tool, path: file }) => `${tool} ${file}`),
+    ).toEqual(['coupling src/main/java/demo/shared/Money.java']);
+    expect(fromMaven.some(({ rule }) => rule === 'CollapsibleIfStatements')).toBe(true);
     expect([...tools].sort()).toEqual([
       'archunit',
       'checkstyle',
       'coupling',
       'crap',
       'errorprone',
+      'forbiddenapis',
       'google-java-format',
       'jacoco',
       'pit',
       'pmd',
       'spotbugs',
       'structure',
+      'test-runtime',
     ]);
+  }, 180_000);
+  it('runs PIT with the JVM arguments the tests of either build need', () => {
+    const [gradleProject, mavenProject] = twinProjects();
+    for (const root of [gradleProject, mavenProject]) {
+      writeFileSync(path.join(root, 'src/test/java/demo/ModeTest.java'), MODE_TEST);
+    }
+    appendTo(path.join(gradleProject, 'build.gradle'), GRADLE_TEST_JVM);
+    const pom = path.join(mavenProject, 'pom.xml');
+    writeFileSync(
+      pom,
+      readFileSync(pom, 'utf8')
+        .replace('</properties>', `${MAVEN_ARG_LINE}</properties>`)
+        .replace('</project>', `${MAVEN_SYSTEM_PROPERTIES}</project>`),
+    );
+    const fromGradle = collectJavaFindings(gradleProject, { gradle, policy: {} });
+    const fromMaven = collectJavaFindings(mavenProject, { maven, policy: {} });
+    const errors = (findings) =>
+      findings.filter((finding) => finding.classification === 'tool-error');
+
+    expect([errors(fromGradle), errors(fromMaven)]).toEqual([[], []]);
+    expect(comparable(fromMaven)).toEqual(comparable(fromGradle));
   }, 180_000);
   it('reports no untaken branch in sealed and enum switches or interfaces, on Gradle and Maven', () => {
     const [gradleProject, mavenProject] = twinProjects();
@@ -63,6 +152,26 @@ describe.skipIf(!enabled)('Java preset on Maven builds', () => {
 
     expect(fromMaven.map(({ rule }) => rule)).toEqual(['line-coverage']);
     expect(comparable(fromMaven)).toEqual(comparable(fromGradle));
+  }, 180_000);
+  it('runs the same PIT mutators on Gradle and Maven, beyond PIT defaults', () => {
+    const [gradleProject, mavenProject] = twinProjects();
+    const survivors = (findings) =>
+      findings
+        .filter(({ rule, path: file }) => rule === 'mutant-survived' && file.endsWith('Guard.java'))
+        .map(({ identity }) => identity)
+        .sort();
+    for (const root of [gradleProject, mavenProject]) {
+      writeFileSync(path.join(root, 'src/main/java/demo/Guard.java'), GUARD);
+      writeFileSync(path.join(root, 'src/test/java/demo/GuardTest.java'), GUARD_TEST);
+    }
+    const fromGradle = survivors(collectJavaFindings(gradleProject, { gradle, policy: {} }));
+    const fromMaven = survivors(collectJavaFindings(mavenProject, { maven, policy: {} }));
+
+    expect(fromMaven).toEqual([
+      'Guard|label(LString;)LString;|NakedReceiverMutator|replaced call to String::trim with receiver#1',
+      'Guard|share(II)I|RemoveConditionalMutator_EQUAL_ELSE|removed conditional - replaced equality check with false#1',
+    ]);
+    expect(fromGradle).toEqual(fromMaven);
   }, 180_000);
   it('filters the inlined library branches of Kotlin sources as the Kotlin preset does', () => {
     const project = copyOf(path.join(fixtures, 'kotlin'));
@@ -82,21 +191,20 @@ describe.skipIf(!enabled)('Java preset on Maven builds', () => {
         .sort(),
     ).toEqual(['Library.kt:12', 'Library.kt:14', 'Library.kt:18']);
   }, 180_000);
-  it('reports a failing test as a maven-failure tool error that names the test', () => {
+  it('reports a failing test as a tests-failed tool error that names the test', () => {
     const project = copyOf(path.join(fixtures, 'multi-module'));
     writeFileSync(path.join(project, 'core/src/test/java/demo/core/AdderTest.java'), FAILING_TEST);
     const [finding] = analyzeJavaSnapshot(project, { maven, policy: {} }).findings;
 
     expect(finding).toEqual({
       tool: 'java',
-      rule: 'maven-failure',
+      rule: 'tests-failed',
       path: '.',
-      identity: 'maven-failure',
+      identity: 'tests-failed',
       classification: 'tool-error',
       message: [
-        `Tests fail in ${path.join(project, 'core')}; nitpicker needs a passing test suite ` +
-          'for coverage and mutation testing:',
-        '  demo.core.AdderTest.adds: expected: <4> but was: <3>',
+        '1 test fails in core; the build stopped, so no other check ran. Fix the tests and rerun:',
+        '  demo/core/AdderTest.java:10 > demo.core.AdderTest.adds: expected: <4> but was: <3>',
       ].join('\n'),
     });
   }, 180_000);

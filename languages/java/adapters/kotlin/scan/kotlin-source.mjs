@@ -1,4 +1,4 @@
-import { matchesFrom } from './kotlin-brackets.mjs';
+import { braceDepths, matchesFrom } from './kotlin-brackets.mjs';
 
 export {
   braceDepths,
@@ -12,6 +12,12 @@ const CHARACTER_LITERAL = /'(?:\\(?:u[0-9a-fA-F]{4}|.)|[^'\\\n])'/y;
 const TOKEN = /"+|\\|'|\/\/|\/\*|\$\{|\$[A-Za-z_`]|[{}\n]/g;
 const BLOCK_COMMENT_MARK = /\/\*|\*\//g;
 const RAW_QUOTES = '"""';
+const TOP_LEVEL_MAIN = /(?<![\w.])fun\s+main\s*\(/g;
+const ROOT_MARKERS = [
+  /@JvmStatic\s+(?:\w+\s+)*fun\s+main\s*\(/,
+  /@(?:[\w.]+\.)?SpringBootApplication\b/,
+  /(?<![\w.])fun\s+Application\s*\.\s*\w+\s*\(/,
+];
 
 function blank(state, from, to) {
   state.ranges.push({ from, to });
@@ -242,7 +248,24 @@ export function literalsIn(scanned, from, to) {
   return scanned.literals.filter(({ start, end }) => start >= from && end <= to);
 }
 
+export function lineAt(code, start) {
+  const end = code.indexOf('\n', start);
+  return code.slice(start, end === -1 ? undefined : end);
+}
+
+export function lineStart(code, offset) {
+  return code.lastIndexOf('\n', offset - 1) + 1;
+}
+
 export function inImport(code, offset) {
-  const start = code.lastIndexOf('\n', offset - 1) + 1;
+  const start = lineStart(code, offset);
   return /^[ \t]*import\s/.test(code.slice(start, offset + 1));
+}
+
+export function isCompositionRoot(scanned) {
+  const depths = braceDepths(scanned.code);
+  const declaresMain = [...scanned.code.matchAll(TOP_LEVEL_MAIN)].some(
+    ({ index }) => depths[index] === 0,
+  );
+  return declaresMain || ROOT_MARKERS.some((marker) => marker.test(scanned.code));
 }

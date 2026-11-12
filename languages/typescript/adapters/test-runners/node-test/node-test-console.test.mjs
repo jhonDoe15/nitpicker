@@ -96,6 +96,7 @@ describe('test console output on a node:test project', () => {
         "it('saves', () => {",
         "  const write = mock.method(fs, 'writeFileSync', () => {});",
         "  console.warn('saving an empty file');",
+        "  console.assert(pick(false) === 'yes', 'got %s', pick(false));",
         "  fs.writeFileSync('/nowhere/out.txt', pick(false));",
         '  assert.equal(write.mock.callCount(), 1);',
         "  assert.equal(pick(true), 'yes');",
@@ -104,6 +105,7 @@ describe('test console output on a node:test project', () => {
     });
 
     expect(await consoleOutput(project)).toEqual([
+      ['test-console-output', 'test/save.test.js', '"Assertion failed: got no" (test "saves")'],
       ['test-console-output', 'test/save.test.js', '"saving an empty file" (test "saves")'],
     ]);
   });
@@ -170,19 +172,38 @@ describe('test console output on a node:test project', () => {
     expect(await consoleOutput(project)).toEqual([]);
   });
 
-  it('reads nothing when every file runs in the runner process', async () => {
+  it('names the file of each call when every file runs in the runner process', async () => {
     const project = nodeTestProject(
       {
-        'test/pick.test.js': testFile([
-          "it('one', () => {",
-          "  console.warn('in one process');",
-          "  assert.equal(pick(true) + pick(false), 'yesno');",
+        'test/a.test.js': testFile([
+          "console.warn('while loading a');",
+          "setTimeout(() => console.warn('timer from loading a'), 40);",
+          "describe('a', () => {",
+          "  it('one', async () => {",
+          '    await new Promise((resolve) => setTimeout(resolve, 5));',
+          "    console.warn('after a wait in one');",
+          "    setTimeout(() => console.warn('timer from one'), 40);",
+          "    assert.equal(pick(true), 'yes');",
+          '  });',
+          '});',
+        ]),
+        'test/b.test.js': testFile([
+          "it('two', async () => {",
+          "  console.error('in two');",
+          '  await new Promise((resolve) => setTimeout(resolve, 150));',
+          "  assert.equal(pick(false), 'no');",
           '});',
         ]),
       },
       'node --test --experimental-test-isolation=none',
     );
 
-    expect(await consoleOutput(project)).toEqual([]);
+    expect(await consoleOutput(project)).toEqual([
+      ['test-console-output', 'test/a.test.js', '"after a wait in one"'],
+      ['test-console-output', 'test/a.test.js', '"timer from loading a"'],
+      ['test-console-output', 'test/a.test.js', '"timer from one"'],
+      ['test-console-output', 'test/a.test.js', '"while loading a"'],
+      ['test-console-output', 'test/b.test.js', '"in two"'],
+    ]);
   });
 });

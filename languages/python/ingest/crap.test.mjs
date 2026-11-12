@@ -3,6 +3,7 @@ import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { parseAnalyzerReport } from '../../../core/diff/comparison/finding-schema.mjs';
 import { GREW_MESSAGES, HELD_MESSAGES, MESSAGES, renderMessage } from '../../../shared/policy.mjs';
+import { hash } from '../../../shared/rules/finding-helpers.mjs';
 import { ingestPythonCrap } from './crap.mjs';
 
 const fixture = (name) => readFileSync(path.resolve(import.meta.dirname, 'fixtures', name), 'utf8');
@@ -42,6 +43,7 @@ describe('ingestPythonCrap', () => {
       path: 'never.py',
       identity: 'function:B.go',
       message: `${renderMessage(MESSAGES.crapScoreLimit, { name: 'B.go', crap: '6.00', limit: 4 })}${ROUTE}`,
+      allowedForm: 'Test its uncovered branches, or split a branchy part into its own function.',
       classification: 'enforceable',
       symbol: 'B.go',
       location: { line: 2, endLine: 5 },
@@ -54,6 +56,7 @@ describe('ingestPythonCrap', () => {
           limit: 4,
           base: '{base}',
         })}${ROUTE}`,
+        worseAllowedForm: 'Put new code in a new function and cover it with tests.',
         heldMessage: renderMessage(HELD_MESSAGES.crap, {
           name: 'B.go',
           crap: '6.00',
@@ -94,6 +97,8 @@ describe('ingestPythonCrap', () => {
         identity: 'function:f',
         message:
           'f has unknown coverage and no CRAP score: no test runs it. Add a test that calls it; for inline composition-root wiring, move it to a named function in adapters/ and test that. If this is intended, add {"rule":"crap-coverage-unknown","paths":["other.py"],"function":"f","reason":"..."} to "exceptions" in nitpicker.config.json.',
+        allowedForm:
+          'Add a test that calls it; for inline composition-root wiring, move it to a named function in adapters/ and test that.',
         classification: 'enforceable',
         location: { line: 1, endLine: 2 },
       },
@@ -114,6 +119,7 @@ describe('ingestPythonCrap', () => {
         identity: 'function:coro',
         message:
           'coro has CRAP 2.00; score must be below 2. Test its uncovered branches, or split a branchy part into its own function. If this is intended, add {"rule":"crap-score-limit","paths":["never.py"],"function":"coro","reason":"..."} to "exceptions" in nitpicker.config.json.',
+        allowedForm: 'Test its uncovered branches, or split a branchy part into its own function.',
         classification: 'enforceable',
         location: { line: 8, endLine: 9 },
         ratchet: {
@@ -121,6 +127,7 @@ describe('ingestPythonCrap', () => {
           value: 2,
           worseMessage:
             'coro CRAP rose from {base} to 2 (limit 2). Put new code in a new function and cover it with tests. If this is intended, add {"rule":"crap-score-limit","paths":["never.py"],"function":"coro","reason":"..."} to "exceptions" in nitpicker.config.json.',
+          worseAllowedForm: 'Put new code in a new function and cover it with tests.',
           heldMessage:
             'coro: CRAP 2.00 (limit 2), allowed because base was {base}; any increase fails.',
         },
@@ -147,16 +154,16 @@ describe('ingestPythonCrap', () => {
 
   it('includes the source hash in the identity of a function with known coverage only', () => {
     const functions = [...functionEntries(), entry('other.py', 'f', [1, 2])];
-    const [known, unknown] = ingest({ limit: 4, sourceHash: () => 'abc' }, functions).filter(
+    const [known, unknown] = ingest({ limit: 4, sourceText: () => 'abc' }, functions).filter(
       (finding) => finding.symbol !== 'top',
     );
 
-    expect(known.identity).toBe('function:B.go:source:abc');
+    expect(known.identity).toBe(`function:B.go:source:${hash('abc')}`);
     expect(unknown.identity).toBe('function:f');
   });
 
   it('numbers same-named definitions among those of the same text, so adding one above does not rename another', () => {
-    const sourceHash = ({ start }) => (start === 30 ? 'setter' : 'getter');
+    const sourceText = ({ start }) => (start === 30 ? 'setter' : 'getter');
     const coverage = JSON.stringify({
       files: { 'm.py': { executed_lines: [], missing_lines: [6, 11, 31], functions: {} } },
     });
@@ -164,17 +171,19 @@ describe('ingestPythonCrap', () => {
       ingestPythonCrap(
         starts.map((start) => entry('m.py', 'A.value', [start, start + 1])),
         coverage,
-        { limit: 1.5, sourceHash },
+        { limit: 1.5, sourceText },
       ).findings.map((finding) => finding.identity);
 
+    const [getter, setter] = [hash('getter'), hash('setter')];
+
     expect(identities([10, 30])).toEqual([
-      'function:A.value:source:getter',
-      'function:A.value:source:setter',
+      `function:A.value:source:${getter}`,
+      `function:A.value:source:${setter}`,
     ]);
     expect(identities([5, 10, 30])).toEqual([
-      'function:A.value:source:getter',
-      'function:A.value#2:source:getter',
-      'function:A.value:source:setter',
+      `function:A.value:source:${getter}`,
+      `function:A.value#2:source:${getter}`,
+      `function:A.value:source:${setter}`,
     ]);
   });
 

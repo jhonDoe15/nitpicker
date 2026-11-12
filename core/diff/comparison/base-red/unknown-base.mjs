@@ -17,6 +17,7 @@ const TEST_RESULT_RULES = [
   'uncovered-method',
   'line-coverage',
   'test-efficiency',
+  'data-race',
 ];
 
 export function isTestResultFinding(finding) {

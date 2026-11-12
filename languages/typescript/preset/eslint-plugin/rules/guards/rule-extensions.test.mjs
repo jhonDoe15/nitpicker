@@ -2,7 +2,6 @@ import { createRuleTester } from './test-support/rule-tester.mjs';
 import { rule as noBranchInCompositionRoot } from '../boundaries/no-branch-in-composition-root.mjs';
 import { rule as noHandwrittenBoundaryGuard } from '../boundaries/no-handwritten-boundary-guard.mjs';
 import { rule as noManagedResource } from '../boundaries/no-managed-resource-construction-outside-composition-roots.mjs';
-import { rule as noProductionConsole } from '../modules/no-production-console.mjs';
 import { rule as noSelfRecursion } from '../control/no-self-recursion.mjs';
 import { rule as noUnknownInDomain } from '../boundaries/no-unknown-in-domain.mjs';
 import { rule as noUnvalidatedSchemaField } from '../boundaries/no-unvalidated-schema-field.mjs';
@@ -206,11 +205,21 @@ tester.run('no-unvalidated-schema-field loose forms', noUnvalidatedSchemaField, 
     },
     {
       code: 'const s = z.object({ a: z.record(z.string(), z.unknown()) });',
-      errors: [{ messageId: 'unvalidatedField', data: { factory: 'z.unknown' } }],
+      errors: [
+        {
+          messageId: 'unvalidatedField',
+          data: { factory: 'z.unknown()', example: 'z.string().trim().min(1) or z.email()' },
+        },
+      ],
     },
     {
       code: 'const s = z.object({ a: z.array(z.any()) });',
-      errors: [{ messageId: 'unvalidatedField', data: { factory: 'z.any' } }],
+      errors: [
+        {
+          messageId: 'unvalidatedField',
+          data: { factory: 'z.any()', example: 'z.string().trim().min(1) or z.email()' },
+        },
+      ],
     },
     {
       code: 'const anything = z.any(); const s = z.object({ a: anything });',
@@ -397,30 +406,6 @@ tester.run('no-branch-in-composition-root defaults and loops', noBranchInComposi
       errors: [{ messageId: 'branch' }],
     },
     { filename: root, code: 'while (more()) { step(); }', errors: [{ messageId: 'branch' }] },
-  ],
-});
-
-tester.run('no-production-console computed access and standard streams', noProductionConsole, {
-  valid: [
-    { code: 'logger.info("x");' },
-    { code: 'console[method]("x");' },
-    { filename: root, code: 'process.stdout.write("done");' },
-    { code: 'out.write("x"); process.stdin.write("x");' },
-  ],
-  invalid: [
-    { code: 'console.log("x");', errors: [{ messageId: 'consoleCall' }] },
-    {
-      code: 'console["error"]("x");',
-      errors: [{ messageId: 'consoleCall', data: { method: 'error' } }],
-    },
-    {
-      filename: '/repo/src/main/features/a/adapters/x.ts',
-      code: 'process.stdout.write("debug"); process.stderr.write("oops");',
-      errors: [
-        { messageId: 'streamWrite', data: { stream: 'stdout' } },
-        { messageId: 'streamWrite', data: { stream: 'stderr' } },
-      ],
-    },
   ],
 });
 

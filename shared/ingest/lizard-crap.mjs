@@ -1,6 +1,6 @@
 import { DEFAULT_CRAP_SCORE_LIMIT } from '../policy.mjs';
 import { crapFindings } from '../rules/crap.mjs';
-import { nextOccurrence } from '../rules/finding-helpers.mjs';
+import { declarationLine, hash, nameFreeHash, nextOccurrence } from '../rules/finding-helpers.mjs';
 import { createIdentityCounter, normalizeReportPath } from './common.mjs';
 
 const FULL_COVERAGE = 100;
@@ -28,10 +28,8 @@ export function ingestCrapRows(parsed, options, resolve) {
 function crapRow(fn, filePath, { options, limit, resolve, counters, sameSourceByFile }) {
   const { coverage, name = fn.longName } = resolve(fn, filePath);
   const crap = coverage === undefined ? undefined : calculateCrap(fn.ccn, coverage);
-  const sourceHash =
-    coverage === undefined
-      ? undefined
-      : options.sourceHash?.({ file: filePath, start: fn.start, end: fn.end });
+  const text = options.sourceText?.({ file: filePath, start: fn.start, end: fn.end });
+  const sourceHash = coverage === undefined || text === undefined ? undefined : hash(text);
   const key =
     fn.numberedAmongSameSource === true
       ? keyAmongSameSource(
@@ -48,6 +46,12 @@ function crapRow(fn, filePath, { options, limit, resolve, counters, sameSourceBy
     name,
     identity: sourceHash === undefined ? key : `${key}:source:${sourceHash}`,
     ratchetKey: `${key}:crap`,
+    ...(text === undefined || text === ''
+      ? {}
+      : {
+          anchor: `function:crap:text:${nameFreeHash(text, name)}`,
+          declarationKey: `function:${name}:declaration:${hash(fn.signature ?? declarationLine(text))}:crap`,
+        }),
     line: fn.start,
     endLine: fn.end,
     crap,

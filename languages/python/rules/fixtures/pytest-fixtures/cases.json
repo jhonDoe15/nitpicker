@@ -1,0 +1,47 @@
+[
+  {
+    "tool": "ruff",
+    "rule": "PT001",
+    "mention": "without parentheses"
+  },
+  {
+    "tool": "ruff",
+    "rule": "PT002",
+    "mention": "by keyword"
+  },
+  {
+    "tool": "ruff",
+    "rule": "PT003",
+    "mention": "default scope"
+  },
+  {
+    "tool": "ruff",
+    "rule": "PT019",
+    "mention": "usefixtures"
+  },
+  {
+    "tool": "ruff",
+    "rule": "PT020",
+    "mention": "yield_fixture"
+  },
+  {
+    "tool": "ruff",
+    "rule": "PT021",
+    "mention": "addfinalizer"
+  },
+  {
+    "tool": "ruff",
+    "rule": "PT022",
+    "mention": "use `return`"
+  },
+  {
+    "tool": "ruff",
+    "rule": "PT024",
+    "mention": "remove `@pytest.mark.asyncio`"
+  },
+  {
+    "tool": "ruff",
+    "rule": "PT025",
+    "mention": "usefixtures"
+  }
+]

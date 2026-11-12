@@ -1,8 +1,11 @@
 import ast
 
-from checks.common import dotted_name, finding
+from checks.common import dotted_name, finding, last_name
+from review.fields import TYPED_DICT, base_class, record_kind
 from signatures.annotations import (
     FUNCTION_TYPES,
+    TRANSPARENT_WRAPPERS,
+    subscript_arguments,
     decorator_names,
     is_hook,
     members_of,
@@ -13,6 +16,8 @@ from signatures.copies import copy_positions
 from signatures.scopes import key_of, position, visible_nodes
 
 RULE = "parameter-mutation"
+UNION_NAMES = {"Union", "Optional"}
+MAX_UNION_MEMBERS = 24
 CONTAINERS = {
     "list": {"append", "extend", "insert", "remove", "pop", "clear", "sort", "reverse"},
     "dict": {"update", "setdefault", "pop", "popitem", "clear"},
@@ -93,16 +98,63 @@ FIXED_SIGNATURE_DECORATORS = {"override", "overload"}
 ANY_MUTATORS = set().union(*CONTAINERS.values())
 
 
-def container_kind(annotation):
-    return next(
-        (KIND_BY_NAME[name] for name in members_of(annotation) if name in KIND_BY_NAME),
-        None,
+def parsed(node):
+    if not (isinstance(node, ast.Constant) and isinstance(node.value, str)):
+        return node
+    try:
+        return ast.parse(node.value.strip(), mode="eval").body
+    except (SyntaxError, ValueError, RecursionError, MemoryError):
+        return None
+
+
+def annotation_parts(node):
+    if isinstance(node, ast.BinOp) and isinstance(node.op, ast.BitOr):
+        return [node.left, node.right], None
+    if isinstance(node, ast.Subscript):
+        arguments = subscript_arguments(node)
+        wrapper = last_name(node.value)
+        if wrapper in UNION_NAMES:
+            return arguments, None
+        if wrapper in TRANSPARENT_WRAPPERS:
+            return arguments[:1], None
+        return [], node.value
+    return [], node
+
+
+def annotation_classes(annotation):
+    pending, found = [annotation], []
+    for node in pending:
+        if len(pending) > MAX_UNION_MEMBERS:
+            break
+        parts, named = annotation_parts(parsed(node))
+        pending.extend(parts)
+        if named is not None:
+            found.append(named)
+    return found
+
+
+def is_typed_dict(annotation, context):
+    if annotation is None:
+        return False
+    return any(
+        found is not None and record_kind(found[0], found[1]) == TYPED_DICT
+        for found in (
+            base_class(context, node) for node in annotation_classes(annotation)
+        )
     )
 
 
-def container_parameters(function):
+def container_kind(annotation, context):
+    named = next(
+        (KIND_BY_NAME[name] for name in members_of(annotation) if name in KIND_BY_NAME),
+        None,
+    )
+    return "dict" if named is None and is_typed_dict(annotation, context) else named
+
+
+def container_parameters(function, context):
     kinds = {
-        argument.arg: container_kind(argument.annotation)
+        argument.arg: container_kind(argument.annotation, context)
         for argument in parameters_of(function)
     }
     return {name: kind for name, kind in kinds.items() if kind is not None}
@@ -235,7 +287,7 @@ def function_findings(function, context):
         return []
     return [
         item
-        for name, kind in container_parameters(function).items()
+        for name, kind in container_parameters(function, context).items()
         for item in parameter_findings(function, name, kind, context)
     ]
 

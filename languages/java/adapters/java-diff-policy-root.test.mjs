@@ -69,3 +69,35 @@ describe('the project configs a diff reads when only the head has them', () => {
     );
   });
 });
+
+describe('the build-declared settings a diff reads when only the head declares them', () => {
+  const JAVA_BASE = {
+    'build.gradle': "plugins { id 'java' }\n",
+    'src/main/java/demo/A.java': 'package demo;\n\nclass A {}\n',
+  };
+  const javaDiff = (root, precedence) =>
+    diff(root, { preset: 'java', toolPrecedence: { spotbugs: precedence } });
+
+  it('reads the SpotBugs settings of the head build for the base snapshot too', () => {
+    const root = repository(JAVA_BASE);
+    fixtureGit(root, ['checkout', '-q', '-b', 'feature']);
+    writeFiles(root, {
+      'build.gradle': "plugins { id 'java' }\nspotbugs { excludeFilter = file('exclude.xml') }\n",
+      'exclude.xml': '<FindBugsFilter/>',
+    });
+    commit(root, 'declare a SpotBugs filter');
+
+    expect(javaDiff(root, ['project', 'nitpicker']).newEnforceable).toEqual([]);
+  });
+
+  it('fails when the head build declares no SpotBugs settings either', () => {
+    const root = repository(JAVA_BASE);
+    fixtureGit(root, ['checkout', '-q', '-b', 'feature']);
+    writeFiles(root, { 'src/main/java/demo/B.java': 'package demo;\n\nclass B {}\n' });
+    commit(root, 'change');
+
+    expect(() => javaDiff(root, ['nitpicker', 'project'])).toThrow(
+      /"tools.spotbugs.precedence" lists "project" but SpotBugs settings in the build/u,
+    );
+  });
+});

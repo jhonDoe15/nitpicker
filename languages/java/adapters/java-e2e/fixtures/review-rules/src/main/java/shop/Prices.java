@@ -4,6 +4,8 @@ import java.util.List;
 
 public final class Prices {
   public static final long FEE = 50;
+  static int discountPercent;
+  private static int rounding = 1;
 
   private Prices() {}
 
@@ -13,5 +15,14 @@ public final class Prices {
       total += value;
     }
     return total;
+  }
+
+  public static long discounted(long cents) {
+    long off = cents * discountPercent / 100;
+    return (cents - off) / rounding * rounding;
+  }
+
+  static void setRounding(int cents) {
+    rounding = cents;
   }
 }

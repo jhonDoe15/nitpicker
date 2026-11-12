@@ -1,0 +1,8 @@
+[
+  {
+    "name": "str.format names an f-string",
+    "tool": "ruff",
+    "rule": "UP032",
+    "mention": "f-string"
+  }
+]

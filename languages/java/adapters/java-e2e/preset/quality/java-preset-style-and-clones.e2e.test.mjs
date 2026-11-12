@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { summarize } from '../../../test-support/gradle-e2e.mjs';
 import { useJavaPresetProject, enabled } from '../../__tests__/java-preset-project.mjs';
+import { helpUriProblems } from '../../../../../../shared/reference/test-support/help-uris.mjs';
 
 describe.skipIf(!enabled)('Java preset end to end', () => {
   const fixture = useJavaPresetProject();
@@ -20,13 +21,18 @@ describe.skipIf(!enabled)('Java preset end to end', () => {
 
     expect(style(result.newEnforceable)).toEqual(['palantir-java-format format Messy.java']);
     expect(style(result.newFindings)).toEqual(['palantir-java-format format Messy.java']);
+    expect(helpUriProblems(result.newFindings)).toEqual([]);
   }, 180_000);
-  it('fails a new clone found by jscpd', () => {
+  it('fails a new clone between two files, and the repeated blocks PMD CPD finds inside each copy', () => {
     const result = fixture.diffOf('clone');
 
     expect(result.failed).toBe(true);
     expect(
       summarize(result.newEnforceable.filter((finding) => finding.tool === 'duplicates')),
-    ).toEqual(['duplicates duplicate-clone Left.java']);
+    ).toEqual([
+      'duplicates duplicate-clone Left.java',
+      'duplicates duplicate-clone Left.java',
+      'duplicates duplicate-clone Right.java',
+    ]);
   }, 180_000);
 });

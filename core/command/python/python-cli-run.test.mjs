@@ -5,6 +5,8 @@ import { runCli } from '../../cli.mjs';
 import { commit } from '../../diff/git/test-support/git-repository.mjs';
 import { LEGACY_VIOLATION, usePythonFixtures } from './test-support/python-cli-harness.mjs';
 import { writeFiles } from '../../diff/git/test-support/fixture-files.mjs';
+import { linkSentence } from '../../../shared/messages/test-support/link-sentence.mjs';
+import { docsUrl } from '../../../shared/messages/docs-url.mjs';
 
 const { callsLog, pythonRepository, run, temporaryRoot } = usePythonFixtures(nitpickerCli);
 
@@ -44,7 +46,7 @@ describe('nitpicker with "preset": "python" running the project', () => {
         snapshot: 'head',
         rule: 'tests-not-run',
         path: '.',
-        message: 'coverage run exited 1 in the virtualenv environment:\n1 failed: test_greet',
+        message: `coverage run exited 1 in the virtualenv environment:\n1 failed: test_greet`,
       },
     ]);
   });
@@ -59,7 +61,7 @@ describe('nitpicker with "preset": "python" running the project', () => {
     const result = run(root);
 
     expect(result.exitCode).toBe(2);
-    const message = `No Python environment at ${path.join(root, 'no-such-venv')} (${path.join(root, 'no-such-venv/bin')} does not exist): create it, or set "python.environment"`;
+    const message = `No Python environment at ${path.join(root, 'no-such-venv')} (${path.join(root, 'no-such-venv/bin')} does not exist): create it, or set "python.environment". ${linkSentence('pythonEnvironment')}`;
     expect(
       result
         .json('tool-errors.json')
@@ -162,19 +164,20 @@ describe('nitpicker with "preset": "python" running the project', () => {
         'Enforceable findings:',
         'ruff/F401 src/demo/a.py:1 `os` imported but unused. If this is intended, add {"rule":"F401","paths":["src/demo/a.py"],"reason":"..."} to "python.exceptions" in nitpicker.config.json.',
         '',
-        'Descriptive findings:',
-        'coupling/coupling . dependencies summary',
-        'coupling/coupling . modules summary',
-        'coupling/coupling . packages summary',
-        'coupling/package-coupling . connectedComponents for package demo',
-        'coupling/package-coupling . fanIn for package demo',
-        'coupling/package-coupling . fanOut for package demo',
-        'coupling/package-coupling . internalEdges for package demo',
-        'coupling/package-coupling . largestComponentShare for package demo',
-        'coupling/package-coupling . modules for package demo',
-        'coupling/module-coupling src/demo/a.py fanIn for src/demo/a.py',
-        'coupling/module-coupling src/demo/a.py fanOut for src/demo/a.py',
-        'coupling/module-coupling src/demo/a.py totalCoupling for src/demo/a.py',
+        'Design notes for review (not failing): 12 in the snapshot',
+        '  coupling/coupling . dependencies summary (dependencies 0)',
+        '  coupling/coupling . modules summary (modules 1)',
+        '  coupling/coupling . packages summary (packages 1)',
+        '  coupling/package-coupling . connectedComponents for package demo (connectedComponents 1)',
+        '  coupling/package-coupling . fanIn for package demo (fanIn 0)',
+        '  coupling/package-coupling . fanOut for package demo (fanOut 0)',
+        '  coupling/package-coupling . internalEdges for package demo (internalEdges 0)',
+        '  coupling/package-coupling . largestComponentShare for package demo (largestComponentShare 1)',
+        '  coupling/package-coupling . modules for package demo (modules 1)',
+        '  coupling/module-coupling src/demo/a.py fanIn for src/demo/a.py (fanIn 0)',
+        `  … 2 more; see ${path.join(reports, 'report.txt')}`,
+        '',
+        `Rule reference: ${docsUrl('docs/rules/README.md')} (nitpicker explain <tool/rule> prints one rule)`,
         '',
       ].join('\n'),
     );
@@ -197,14 +200,33 @@ describe('nitpicker with "preset": "python" running the project', () => {
         rule: 'tests-failed',
         path: '.',
         message: [
-          'Tests fail in the head snapshot. Make each failing test pass:',
-          '  tests/test_greet.py::test_greet',
-          'The static analyzers ran as usual; coverage and CRAP come from the tests that ran.',
+          '1 test fails; the static analyzers ran, and coverage and CRAP come from the tests that ran. ' +
+            'Fix the tests and rerun:',
+          '  tests/test_greet.py > test_greet: assert False',
           'Mutation testing (mutmut) leaves out the test modules tests/test_greet.py.',
         ].join('\n'),
       },
     ]);
     const ruff = result.json('new-findings.json').filter(({ tool }) => tool === 'ruff');
     expect(ruff.map(({ rule, path: file }) => `${rule} ${file}`)).toEqual(['F841 src/demo/a.py']);
+  });
+  it('exits 1 and leads the summary with failing tests that are the only problem', () => {
+    const root = pythonRepository({ 'tests/conftest.py': '' });
+    writeFiles(root, { 'test-exit.txt': '1\n' });
+    commit(root, 'break a test');
+
+    const result = run(root);
+    const lines = result.output.out.split('\n');
+
+    expect(result.exitCode, result.text).toBe(1);
+    expect(
+      result
+        .json('new-findings.json')
+        .filter(({ classification }) => classification === 'enforceable'),
+    ).toEqual([]);
+    expect(lines[lines.indexOf('Quality gate summary') + 1]).toBe(
+      '✖ 1 test fails; the static analyzers ran, and coverage and CRAP come from the tests that ran. ' +
+        'Fix the tests and rerun:',
+    );
   });
 });

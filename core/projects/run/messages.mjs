@@ -18,7 +18,40 @@ export function oneProjectCommandMessage(plan, command) {
   );
 }
 
-export function shardingMessage(plan) {
+function pathScopeMessage(plan) {
+  return (
+    `Paths narrow one project, and these paths belong to the top folder of a monorepo of ` +
+    `${String(plan.projects.length)} projects (${folders(plan)}). Choose projects with ` +
+    `--project <path>, or give paths in a project folder that has its own package.json or ` +
+    `${CONFIG_FILE_NAME}.`
+  );
+}
+
+function jsonMessage(plan) {
+  return (
+    `--json prints the result of one project, and ${plan.root} is a monorepo of ` +
+    `${String(plan.projects.length)} projects (${folders(plan)}). Read the combined summary.json ` +
+    `in the reports folder, or run --json in a project folder (cd ${exampleFolder(plan)} && ` +
+    `nitpicker --json).`
+  );
+}
+
+export function rejectPathScope(plan, scope) {
+  if (scope !== undefined) {
+    throw new Error(pathScopeMessage(plan));
+  }
+}
+
+export function rejectWholeRunOptions(plan, options) {
+  if (options.shardCount !== undefined) {
+    throw new Error(shardingMessage(plan));
+  }
+  if (options.json === true) {
+    throw new Error(jsonMessage(plan));
+  }
+}
+
+function shardingMessage(plan) {
   return (
     `Sharding splits the analyzers of one project, so it does not apply at the top of a monorepo of ` +
     `${String(plan.projects.length)} projects (${folders(plan)}). Run one CI job per project with ` +

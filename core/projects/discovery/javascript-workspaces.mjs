@@ -1,6 +1,6 @@
 import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
-import { parse as parseYaml } from 'yaml';
+import { parseYaml } from '../../tooling/yaml/yaml-documents.mjs';
 import { isNonEmptyString } from '../../../shared/config.mjs';
 import { globMatcher } from '../../../shared/paths/glob.mjs';
 

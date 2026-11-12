@@ -1,6 +1,18 @@
 import { normalizeGitPath } from '../git/normalize.mjs';
+import { parseLineRanges, parseNotRunFields } from './schema/not-run-fields.mjs';
+import {
+  isRecord,
+  normalizeFindingPath,
+  positiveInteger,
+  requiredString,
+} from './schema/values.mjs';
+import { withoutAnsi } from '../../../shared/messages/terminal/terminal-text.mjs';
+import { routeFields } from '../../../shared/messages/exception-sentence.mjs';
+import { adviceProblems } from '../../../shared/messages/advice/finding-advice.mjs';
 
 const CLASSIFICATIONS = new Set(['enforceable', 'descriptive', 'tool-error']);
+const HTTP_URL = /^https?:\/\/\S+$/u;
+const MODULE_IMPORT_FIELDS = new Set(['from', 'to']);
 
 export function parseAnalyzerReport(value, analyzerName) {
   if (!isRecord(value) || !Array.isArray(value.findings)) {
@@ -11,6 +23,32 @@ export function parseAnalyzerReport(value, analyzerName) {
     findings: value.findings.map((finding, index) =>
       parseFinding(finding, `${analyzerName} findings[${String(index)}]`),
     ),
+    ...parseModuleImports(value.moduleImports, `${analyzerName} moduleImports`),
+  };
+}
+
+function parseModuleImports(value, context) {
+  if (value === undefined) {
+    return {};
+  }
+  if (!Array.isArray(value)) {
+    throw new TypeError(`${context} must be an array`);
+  }
+  return {
+    moduleImports: value.map((entry, index) => {
+      const where = `${context}[${String(index)}]`;
+      if (!isRecord(entry)) {
+        throw new TypeError(`${where} must be an object`);
+      }
+      const extra = Object.keys(entry).find((key) => !MODULE_IMPORT_FIELDS.has(key));
+      if (extra !== undefined) {
+        throw new TypeError(`${where}.${extra} is not a supported field`);
+      }
+      return {
+        from: normalizeFindingPath(requiredString(entry.from, `${where}.from`), `${where}.from`),
+        to: normalizeFindingPath(requiredString(entry.to, `${where}.to`), `${where}.to`),
+      };
+    }),
   };
 }
 
@@ -26,7 +64,7 @@ export function parseFinding(value, context = 'finding') {
     `${context}.path`,
   );
   const identity = requiredString(value.identity, `${context}.identity`);
-  const message = requiredString(value.message, `${context}.message`);
+  const message = withoutAnsi(requiredString(value.message, `${context}.message`));
   const classification = requiredString(value.classification, `${context}.classification`);
   if (!CLASSIFICATIONS.has(classification)) {
     throw new TypeError(`${context}.classification is not supported: ${classification}`);
@@ -41,16 +79,29 @@ export function parseFinding(value, context = 'finding') {
     classification,
   };
 
-  return { ...finding, ...parseOptionalFields(value, classification, context) };
+  return {
+    ...finding,
+    ...parseOptionalFields(value, classification, context),
+    ...parseAdvice(value, message, context),
+  };
 }
+
+const OPTIONAL_PARSERS = {
+  symbol: requiredString,
+  location: parseLocation,
+  ratchet: parseRatchet,
+  tokens: parseTokens,
+  anchor: parseAnchor,
+  helpUri: parseHelpUri,
+  cause: parseCause,
+};
 
 function parseOptionalFields(value, classification, context) {
   const fields = {};
-  if (value.symbol !== undefined) {
-    fields.symbol = requiredString(value.symbol, `${context}.symbol`);
-  }
-  if (value.location !== undefined) {
-    fields.location = parseLocation(value.location, `${context}.location`);
+  for (const [name, parse] of Object.entries(OPTIONAL_PARSERS)) {
+    if (value[name] !== undefined) {
+      fields[name] = parse(value[name], `${context}.${name}`);
+    }
   }
   if (value.metric !== undefined) {
     if (classification !== 'descriptive') {
@@ -58,14 +109,27 @@ function parseOptionalFields(value, classification, context) {
     }
     fields.metric = parseMetric(value.metric, `${context}.metric`);
   }
-  if (value.ratchet !== undefined) {
-    fields.ratchet = parseRatchet(value.ratchet, `${context}.ratchet`);
-  }
-  if (value.tokens !== undefined) {
-    fields.tokens = parseTokens(value.tokens, `${context}.tokens`);
-  }
+  return { ...fields, ...parseNotRunFields(value, classification, context) };
+}
 
-  return fields;
+function parseAdvice(value, message, context) {
+  const advice = {
+    ...(value.allowedForm === undefined
+      ? {}
+      : {
+          allowedForm: requiredString(value.allowedForm, `${context}.allowedForm`),
+        }),
+    ...(value.exception === undefined && value.exceptionList === undefined
+      ? routeFields(message)
+      : { exception: value.exception, exceptionList: value.exceptionList }),
+  };
+  const [problem] = adviceProblems({ message, ...advice });
+  if (problem !== undefined) {
+    throw new TypeError(
+      `${context} (${String(value.tool)} ${String(value.rule)} in ${String(value.path)}): ${problem}`,
+    );
+  }
+  return advice;
 }
 
 function parseLocation(value, context) {
@@ -97,8 +161,61 @@ function parseMetric(value, context) {
   };
 }
 
-const RATCHET_TEXT_FIELDS = ['worseMessage', 'growthAdvice', 'heldMessage'];
-const RATCHET_FLAGS = ['existingCodeOnly', 'pathIsFolder'];
+function parseAnchor(value, context) {
+  if (!isRecord(value)) {
+    throw new TypeError(`${context} must be an object`);
+  }
+  const anchor = { key: requiredString(value.key, `${context}.key`) };
+  if (value.requireUnchangedLine !== undefined) {
+    if (typeof value.requireUnchangedLine !== 'boolean') {
+      throw new TypeError(`${context}.requireUnchangedLine must be a boolean`);
+    }
+    anchor.requireUnchangedLine = value.requireUnchangedLine;
+  }
+  return anchor;
+}
+
+const RATCHET_TEXT_FIELDS = [
+  'declarationKey',
+  'worseMessage',
+  'worseAllowedForm',
+  'growthAdvice',
+  'growthAllowedForm',
+  'heldMessage',
+];
+const RATCHET_PARTS = [
+  ['worseAllowedForm', 'worseMessage'],
+  ['growthAllowedForm', 'growthAdvice'],
+];
+const RATCHET_FLAGS = ['existingCodeOnly', 'pathIsFolder', 'divisible'];
+
+function ratchetTexts(value, context) {
+  return Object.fromEntries(
+    RATCHET_TEXT_FIELDS.filter((name) => value[name] !== undefined).map((name) => [
+      name,
+      requiredString(value[name], `${context}.${name}`),
+    ]),
+  );
+}
+
+function checkRatchetParts(ratchet, context) {
+  for (const [part, whole] of RATCHET_PARTS) {
+    if (ratchet[part] !== undefined && !(ratchet[whole] ?? '').includes(ratchet[part])) {
+      throw new TypeError(`${context}.${part} is not part of ${whole}`);
+    }
+  }
+}
+
+function ratchetFlags(value, context) {
+  const flags = {};
+  for (const name of RATCHET_FLAGS.filter((flag) => value[flag] !== undefined)) {
+    if (typeof value[name] !== 'boolean') {
+      throw new TypeError(`${context}.${name} must be a boolean`);
+    }
+    flags[name] = value[name];
+  }
+  return flags;
+}
 
 function parseRatchet(value, context) {
   if (!isRecord(value)) {
@@ -107,22 +224,31 @@ function parseRatchet(value, context) {
   if (typeof value.value !== 'number' || !Number.isFinite(value.value)) {
     throw new TypeError(`${context}.value must be a finite number`);
   }
-  const ratchet = { key: requiredString(value.key, `${context}.key`), value: value.value };
+  const ratchet = {
+    key: requiredString(value.key, `${context}.key`),
+    value: value.value,
+  };
   if (value.folderFiles !== undefined) {
     ratchet.folderFiles = positiveInteger(value.folderFiles, `${context}.folderFiles`);
   }
-  for (const name of RATCHET_TEXT_FIELDS) {
-    if (value[name] !== undefined) {
-      ratchet[name] = requiredString(value[name], `${context}.${name}`);
-    }
-  }
-  for (const name of RATCHET_FLAGS.filter((flag) => value[flag] !== undefined)) {
-    if (typeof value[name] !== 'boolean') {
-      throw new TypeError(`${context}.${name} must be a boolean`);
-    }
-    ratchet[name] = value[name];
+  Object.assign(ratchet, ratchetTexts(value, context));
+  checkRatchetParts(ratchet, context);
+  Object.assign(ratchet, ratchetFlags(value, context));
+  if (value.mustKeepUnchangedLines !== undefined) {
+    ratchet.mustKeepUnchangedLines = parseLineRanges(
+      value.mustKeepUnchangedLines,
+      `${context}.mustKeepUnchangedLines`,
+    );
   }
   return ratchet;
+}
+
+function parseHelpUri(value, context) {
+  const uri = requiredString(value, context);
+  if (!HTTP_URL.test(uri)) {
+    throw new TypeError(`${context} must be an http or https URL`);
+  }
+  return uri;
 }
 
 function parseTokens(value, context) {
@@ -132,33 +258,35 @@ function parseTokens(value, context) {
   return value.map((token, index) => requiredString(token, `${context}[${String(index)}]`));
 }
 
-function positiveInteger(value, context) {
-  if (!Number.isInteger(value) || value < 1) {
-    throw new TypeError(`${context} must be a positive integer`);
+function parseCause(value, context) {
+  if (!(isRecord(value) && Array.isArray(value.units))) {
+    throw new TypeError(`${context} must be { folders, units }`);
   }
-  return value;
+  return {
+    folders: causePaths(value.folders, `${context}.folders`),
+    units: value.units.map((entry, index) =>
+      parseCauseUnit(entry, `${context}.units[${String(index)}]`),
+    ),
+  };
 }
 
-function requiredString(value, context) {
-  if (typeof value !== 'string' || value.length === 0 || value.includes('\0')) {
-    throw new TypeError(`${context} must be a non-empty string`);
+function parseCauseUnit(entry, context) {
+  if (!isRecord(entry)) {
+    throw new TypeError(`${context} must be { unit, folders, files, count }`);
   }
-  return value;
+  return {
+    unit: requiredString(entry.unit, `${context}.unit`),
+    folders: causePaths(entry.folders, `${context}.folders`),
+    files: causePaths(entry.files, `${context}.files`),
+    count: positiveInteger(entry.count, `${context}.count`),
+  };
 }
 
-function normalizeFindingPath(value, context) {
-  const normalizedPath = normalizeGitPath(value);
-  if (
-    normalizedPath === '..' ||
-    normalizedPath.startsWith('../') ||
-    normalizedPath.startsWith('/') ||
-    /^[A-Za-z]:\//.test(normalizedPath)
-  ) {
-    throw new TypeError(`${context} must stay within the analyzed project`);
+function causePaths(value, context) {
+  if (!Array.isArray(value)) {
+    throw new TypeError(`${context} must be an array of paths`);
   }
-  return normalizedPath;
-}
-
-function isRecord(value) {
-  return typeof value === 'object' && value !== null && !Array.isArray(value);
+  return value.map((file, index) =>
+    normalizeGitPath(requiredString(file, `${context}[${String(index)}]`)),
+  );
 }

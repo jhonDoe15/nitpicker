@@ -13,7 +13,7 @@ const HEADER = new RegExp(
   [
     String.raw`(?<![\w.])(?:(fun)\s+(?:<[^>]*>\s*)?(?:[\w.<>?]+\.)?([A-Za-z_]\w*)`,
     String.raw`|(class)\s+([A-Za-z_]\w*)(?:\s*<[^>]*>)?(?:\s+(?:private|internal|protected|public))?(?:\s+constructor)?`,
-    String.raw`|(constructor)())\s*\(`,
+    String.raw`|(constructor))\s*\(`,
   ].join(''),
   'g',
 );
@@ -22,7 +22,7 @@ const OVERRIDE_PARAMETER = /\boverride\b/;
 const RETURN_TYPE = /^\s*:\s*(Boolean\?)(?![\w?])/;
 const PROPERTY = /(?<![\w.])(?:val|var)\s+([A-Za-z_]\w*)\s*:\s*(Boolean\?)(?![\w?])/g;
 
-export const TRI_STATE_MESSAGES = {
+const TRI_STATE_MESSAGES = {
   TriStateBoolean:
     'Use an `enum class` that names each state (`Mode.ON`, `Mode.OFF`, `Mode.AUTO`): a `Boolean?` is true, false or null, so this has three states that the type does not name. A plain `Boolean` is fine only when it is not a flag that switches the function between two behaviors.',
 };
@@ -96,3 +96,5 @@ export function triStateBooleans(scanned) {
     .flatMap((header) => parameterFindings(code, header, header.index + header[0].length - 1));
   return [...signatures, ...propertyFindings(code)];
 }
+
+export const kotlinSourceRules = { messages: TRI_STATE_MESSAGES, main: [triStateBooleans] };

@@ -15,6 +15,7 @@ import {
 } from './test-support/eslint-fixtures.mjs';
 import { writeFiles } from '../../../git/test-support/fixture-files.mjs';
 import { commit } from '../../../git/test-support/git-repository.mjs';
+import { linkSentence } from '../../../../../shared/messages/test-support/link-sentence.mjs';
 
 const { createRepository, temporaryRoot } = useEslintFixtures();
 
@@ -56,7 +57,7 @@ function dependencyAnalyzer() {
 }
 
 describe('ESLint snapshot isolation and failures', () => {
-  it('uses prepared baseline dependencies without replacing them with head dependencies', () => {
+  it('uses prepared baseline dependencies without replacing them with head dependencies', async () => {
     const root = temporaryRoot('nitpicker-diff-');
     const projectRoot = path.join(root, 'base/project');
     const policyRoot = path.join(root, 'base/policy');
@@ -70,7 +71,7 @@ describe('ESLint snapshot isolation and failures', () => {
       'package.json': '{"name":"fixture","version":"2.0.0"}\n',
     });
 
-    const findings = runEslint(
+    const findings = await runEslint(
       parseArguments([
         '--analyzer-name',
         'eslint-lint',
@@ -93,12 +94,13 @@ describe('ESLint snapshot isolation and failures', () => {
         rule: 'no-debugger',
         path: 'src/main/source.ts',
         identity:
-          'message:`debugger` statement is not allowed|node:LastStatement|syntax:c101e41c622a39ff619763e2|occurrence:1',
+          'message:`debugger` statement is not allowed|node:LastStatement|syntax:3e60f1dc2469d9ea675d7a1c|occurrence:1',
         message:
           '`debugger` statement is not allowed. If this is intended, add {"rule":"no-debugger","paths":["src/main/source.ts"],"reason":"..."} to "exceptions" in nitpicker.config.json.',
         location: { line: 2, column: 3 },
         classification: 'enforceable',
         symbol: 'baseline',
+        anchor: { key: expect.stringMatching(/^count:/u) },
         ratchet: {
           key: 'count:`debugger` statement is not allowed',
           value: 1,
@@ -143,6 +145,32 @@ describe('ESLint snapshot isolation and failures', () => {
     expect(report.summary.overallStatus).toBe('completed');
     expect(report.toolErrors).toEqual([]);
   });
+  it('gives ESLint the configured analyzer deadline, else its own 4 minutes', () => {
+    const root = temporaryRoot('nitpicker-diff-');
+    const projectRoot = path.join(root, 'base/project');
+    writeFiles(projectRoot, { 'package.json': '{"name":"fixture"}\n' });
+    const parse = (environment) =>
+      parseArguments(
+        [
+          '--analyzer-name',
+          'eslint-lint',
+          '--project-root',
+          projectRoot,
+          '--policy-root',
+          projectRoot,
+          '--tool-root',
+          toolRoot,
+          '--config',
+          'eslint.config.mjs',
+          '--pattern',
+          'src/main/**/*.ts',
+        ],
+        environment,
+      ).timeoutMs;
+
+    expect(parse({})).toBe(240_000);
+    expect(parse({ NITPICKER_ANALYZER_TIMEOUT_MS: '1200000' })).toBe(1_200_000);
+  });
   it('rejects direct filesystem roots outside generated worktrees', () => {
     const untrustedRoot = temporaryRoot('eslint-untrusted-root-');
 
@@ -183,7 +211,7 @@ describe('ESLint snapshot isolation and failures', () => {
     expect(report.summary.overallStatus).toBe('tool-error');
     expect(report.toolErrors).toHaveLength(2);
     expect(report.toolErrors[0].message).toEqual(
-      'eslint-lint crashed with exit 2: ESLint differential adapter failed: --pattern must stay within the analyzed snapshot',
+      `eslint-lint crashed with exit 2: ESLint differential adapter failed: --pattern must stay within the analyzed snapshot. ${linkSentence('typescriptToolFails')}`,
     );
   });
   it.each(['malformed', 'configuration-error', 'crash', 'timeout'])(

@@ -48,7 +48,7 @@ const MUTATORS = [
 const JAVA_MUTATORS =
   'Collections\\s*\\.\\s*(?:sort|shuffle|reverse|swap|fill|rotate)|Arrays\\s*\\.\\s*(?:sort|fill|setAll)';
 
-export const PARAMETER_MUTATION_MESSAGES = {
+const PARAMETER_MUTATION_MESSAGES = {
   ParameterMutation:
     'Build and return a new collection or array (`items + item`, `items.sorted()`, `items.copyOf()`), or take a read-only `List`, `Set` or `Map` and copy it first (`val copy = items.toMutableList()`): this public function changes the argument its caller passed in.',
 };
@@ -75,7 +75,7 @@ function aliasesOf(body, name) {
 
 function lambdaScopes(body, name) {
   const parameter = new RegExp(String.raw`(?<![\w.])${name}(?!\w)`);
-  return [...body.matchAll(/\{([\w\s,:<>?()]*?)->/g)]
+  return [...body.matchAll(/\{([\w\s,:<>?()]*)->/g)]
     .filter((header) => parameter.test(header[1]))
     .map((header) => ({ from: header.index, to: closingIndex(body, header.index) }));
 }
@@ -169,3 +169,8 @@ export function parameterMutations(scanned) {
       return body === undefined ? [] : mutatedParameters(code, match, body);
     });
 }
+
+export const kotlinSourceRules = {
+  messages: PARAMETER_MUTATION_MESSAGES,
+  main: [parameterMutations],
+};

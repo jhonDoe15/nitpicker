@@ -1,0 +1,22 @@
+{
+  "findings": [
+    {
+      "tool": "javac",
+      "rule": "lint-not-run",
+      "path": ".",
+      "identity": "lint-not-run@:app",
+      "message": "The javac lint did not run for app.",
+      "classification": "descriptive",
+      "toolNotRun": true,
+      "notRunScope": ["app"]
+    },
+    {
+      "tool": "javac",
+      "rule": "rawtypes",
+      "path": "app/sub/src/main/java/Raw.java",
+      "identity": "rawtypes:1",
+      "message": "found raw type: List",
+      "classification": "enforceable"
+    }
+  ]
+}

@@ -1,17 +1,24 @@
-import { spawnSync } from 'node:child_process';
+import { spawnSyncWithOutputFile } from '../../../core/tooling/output-file/output-file.mjs';
 import { existsSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
+import { JVM_NOISE } from '../../../shared/messages/jvm/jvm-noise.mjs';
 import { wrapperTarget } from '../adapters/gradle-wrapper/gradle-command.mjs';
+import { argumentFileToken } from '../builds/lint/javac-options.mjs';
+import { withCompileErrors } from '../builds/compile-errors/compile-findings.mjs';
+import { explainedError } from '../../../shared/messages/troubleshooting.mjs';
 
 const MAVEN_TIMEOUT_MS = 15 * 60 * 1000;
-const TOOL_TIMEOUT_MS = 15 * 60 * 1000;
 const MAX_OUTPUT_BYTES = 50 * 1024 * 1024;
 const MAX_ERROR_LINES = 40;
 const MILLISECONDS_PER_MINUTE = 60_000;
 const MINIMUM_MAVEN = '3.6.3';
 const OLD_MAVEN = /Unrecognized option: --no-transfer-progress|requires Maven version/u;
 const MAVEN_FLAGS = ['--batch-mode', '--no-transfer-progress', '-Dstyle.color=never'];
+export const TEST_RERUNS_OFF = [
+  '-Dsurefire.rerunFailingTestsCount=0',
+  '-Dfailsafe.rerunFailingTestsCount=0',
+];
 const MAVEN_NOISE = [
   /^\[ERROR\]\s*$/u,
   /^\[ERROR\] -> \[Help \d+\]/u,
@@ -22,8 +29,6 @@ const MAVEN_NOISE = [
   /^\[ERROR\] After correcting the problems/u,
   /^\[ERROR\]\s+mvn <args> -rf/u,
 ];
-const JVM_NOISE =
-  /^(?:Picked up (?:JAVA_TOOL_OPTIONS|_JAVA_OPTIONS|JDK_JAVA_OPTIONS)|NOTE: Picked up)/u;
 
 export function mavenTarget({ projectRoot, configured, args, platform }) {
   return wrapperTarget({
@@ -49,7 +54,7 @@ export function mavenErrorSummary(output) {
 
 function missingMaven(error, command) {
   return error.code === 'ENOENT'
-    ? new Error(
+    ? explainedError(
         `${command} was not found. Add the Maven wrapper (mvnw) to the project, put mvn on the PATH, or set NITPICKER_MAVEN`,
       )
     : error;
@@ -65,10 +70,11 @@ function spawnFailure(error, { command, projectRoot, timeoutMs }) {
   if (error.code !== 'ETIMEDOUT') {
     return missingMaven(error, command);
   }
-  return new Error(
+  return explainedError(
     `Maven did not finish in ${projectRoot} within ${duration(timeoutMs)} and was stopped. ` +
       'Its post-integration-test steps may not have run, so containers or servers the build ' +
-      'started may still be running',
+      'started may still be running. Set NITPICKER_MAVEN_TIMEOUT_MINUTES to give each Maven ' +
+      'command more time',
   );
 }
 
@@ -77,7 +83,7 @@ export function runMaven({
   maven,
   args,
   timeoutMs = MAVEN_TIMEOUT_MS,
-  spawn = spawnSync,
+  spawn = spawnSyncWithOutputFile,
 }) {
   const target = mavenTarget({ projectRoot, configured: maven, args: [...MAVEN_FLAGS, ...args] });
   const result = spawn(target.command, target.args, {
@@ -91,8 +97,11 @@ export function runMaven({
     throw spawnFailure(result.error, { command: target.command, projectRoot, timeoutMs });
   }
   if (result.status !== 0) {
-    throw new Error(
-      `Maven failed in ${projectRoot}:\n${mavenErrorSummary(`${result.stdout}\n${result.stderr}`)}`,
+    const output = `${result.stdout}\n${result.stderr}`;
+    throw withCompileErrors(
+      new Error(`Maven failed in ${projectRoot}:\n${mavenErrorSummary(output)}`),
+      output,
+      projectRoot,
     );
   }
   return result.stdout;
@@ -106,10 +115,6 @@ export function javaCommand(name) {
     : name;
 }
 
-function argumentFileToken(value) {
-  return `"${String(value).replaceAll('\\', '\\\\').replaceAll('"', '\\"')}"`;
-}
-
 export function runJava({
   java = javaCommand('java'),
   tool,
@@ -119,7 +124,8 @@ export function runJava({
   args,
   cwd,
   accept = () => true,
-  spawn = spawnSync,
+  spawn = spawnSyncWithOutputFile,
+  timeoutMs = MAVEN_TIMEOUT_MS,
 }) {
   const directory = mkdtempSync(path.join(tmpdir(), 'nitpicker-java-'));
   try {
@@ -135,10 +141,10 @@ export function runJava({
       cwd,
       encoding: 'utf8',
       maxBuffer: MAX_OUTPUT_BYTES,
-      timeout: TOOL_TIMEOUT_MS,
+      timeout: timeoutMs,
     });
     if (result.error?.code === 'ENOENT') {
-      throw new Error(
+      throw explainedError(
         `java not found (${java}): set JAVA_HOME to a JDK, or put its bin directory on the PATH`,
       );
     }

@@ -20,9 +20,10 @@ describe('i18n config key', () => {
   it.each([
     [[], /"i18n" must be an object/],
     ['react-intl', /"i18n" must be an object/],
+    [{ enable: true }, /unknown i18n key "enable". Did you mean "enabled"\?$/],
     [
-      { enable: true },
-      /unknown i18n key "enable". Allowed i18n keys: enabled, functionNames, componentNames/,
+      { strings: true },
+      /unknown i18n key "strings". Allowed i18n keys: enabled, functionNames, componentNames$/,
     ],
     [{ enabled: 'yes' }, /"i18n.enabled" must be true or false/],
     [{ enabled: 1 }, /"i18n.enabled" must be true or false/],

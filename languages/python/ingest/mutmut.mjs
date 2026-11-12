@@ -1,4 +1,4 @@
-import { addMetric } from '../../../shared/rules/finding-helpers.mjs';
+import { addMetric, hash } from '../../../shared/rules/finding-helpers.mjs';
 import { mutantFindings } from '../../../shared/rules/mutation.mjs';
 import { assertNeverArmLines } from './coverage-reports/exhaustive-match.mjs';
 
@@ -32,7 +32,7 @@ const TOKEN_PARTS = [
   String.raw`\*\*=|\/\/=|>>=|<<=|\*\*|\/\/|==|!=`,
   String.raw`<=|>=|->|:=|\+=|-=|\*=|\/=|%=|&=|\|=|\^=|<<|>>`,
   String.raw`\s+`,
-  String.raw`[\s\S]`,
+  String.raw`\S`,
 ];
 const TOKEN = new RegExp(TOKEN_PARTS.join('|'), 'gu');
 const NUMBER = /^\d[\w.]*$/u;
@@ -176,11 +176,16 @@ function describeChange({ mutant, blocks, originalLines }) {
     return undefined;
   }
   const start = locate(originalLines, original);
+  const line = start === undefined ? undefined : start + 1 + change.lineOffset;
+  const text = line === undefined ? undefined : originalLines[line - 1]?.trim();
   return {
     original: change.original,
     replacement: change.replacement,
     label: labelOf(change),
-    ...(start === undefined ? {} : { line: start + 1 + change.lineOffset }),
+    ...(line === undefined ? {} : { line }),
+    ...(text === undefined || text === ''
+      ? {}
+      : { anchor: `${change.original}→${change.replacement}|${hash(text)}` }),
   };
 }
 

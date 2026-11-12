@@ -1,5 +1,6 @@
 def pinned = [
     pmd             : '7.7.0',
+    forbiddenapis   : '3.10',
     spotbugs        : '4.9.3',
     googleJavaFormat: '1.25.2',
     palantirJavaFormat: '2.50.0',
@@ -20,12 +21,25 @@ def pinned = [
     nullAway        : '0.14.2',
 ]
 
+def pitMutators = [
+    'INVERT_NEGS', 'MATH', 'VOID_METHOD_CALLS', 'NEGATE_CONDITIONALS', 'CONDITIONALS_BOUNDARY', 'INCREMENTS',
+    'TRUE_RETURNS', 'FALSE_RETURNS', 'PRIMITIVE_RETURNS', 'EMPTY_RETURNS', 'NULL_RETURNS',
+    'REMOVE_CONDITIONALS', 'EXPERIMENTAL_SWITCH', 'REMOVE_SWITCH', 'REMOVE_INCREMENTS',
+    'EXPERIMENTAL_NAKED_RECEIVER', 'EXPERIMENTAL_MEMBER_VARIABLE', 'EXPERIMENTAL_BIG_DECIMAL',
+    'EXPERIMENTAL_BIG_INTEGER',
+]
+
 // BEGIN SH5 structure metrics
 // The directory of this script, where languages/java/gradle/StructureMetrics.java lives.
 def initScriptDir = buildscript.sourceFile.parentFile
 // END SH5 structure metrics
 
 def nitpickerArgument = { String name -> gradle.startParameter.projectProperties[name] }
+def nitpickerSettings = { String tool, List<String> defaults ->
+    def file = nitpickerArgument("nitpicker.${tool}.settings".toString())
+    file == null ? defaults : new groovy.json.JsonSlurper().parse(new File(file.toString()), 'UTF-8')
+}
+def quickRun = nitpickerArgument('nitpicker.quick') == 'true'
 def nitpickerStyle = {
     def file = nitpickerArgument('nitpicker.kotlin.styleFile')
     file == null ? [:] : new groovy.json.JsonSlurper().parse(new File(file.toString()), 'UTF-8')
@@ -33,7 +47,16 @@ def nitpickerStyle = {
 
 def analysisRoot = gradle.startParameter.currentDir
 def reportBase = nitpickerArgument('nitpicker.reportDir')
+def pitHistoryRecorded = nitpickerArgument('nitpicker.pit.recordHistory') == 'true'
+def pitHistoryRoot = nitpickerArgument('nitpicker.pit.historyRoot')
 def javaModules = []
+def projectRepositories = [allowed: true]
+settingsEvaluated { settings ->
+    if (settings.hasProperty('dependencyResolutionManagement')) {
+        def mode = settings.dependencyResolutionManagement.repositoriesMode.get().toString()
+        projectRepositories.allowed = mode != 'FAIL_ON_PROJECT_REPOS'
+    }
+}
 
 def relativeToRoot = { File file ->
     analysisRoot.toPath().relativize(file.toPath()).toString().replace('\\', '/')
@@ -48,6 +71,7 @@ def runProcess = { String name, List<String> command, File directory ->
 }
 
 def kotlinPsiKeys = [] as Set
+def kotlinBuildFacts = [:]
 def gradleJavac = {
     def bin = new File(System.getProperty('java.home'), 'bin')
     def javac = ['javac', 'javac.exe'].collect { new File(bin, it) }.find { it.isFile() }
@@ -86,6 +110,214 @@ def kotlinPsiClasses = { project, String compiler ->
     classes
 }
 
+def projectPathOf = { dependency ->
+    dependency.respondsTo('getPath') ? dependency.path : dependency.dependencyProject.path
+}
+
+def TEST_WORDS = ['it']
+def TEST_HARNESS_WORDS = ['jmh', 'benchmark', 'benchmarks', 'gatling']
+def nameWords = { String name ->
+    name.split(/(?<=[a-z0-9])(?=[A-Z])|[^A-Za-z0-9]+/).findAll { it }.collect { it.toLowerCase() }
+}
+def isTestWord = { String word -> word in TEST_WORDS || word.startsWith('test') }
+def isTestName = { String name -> nameWords(name).any(isTestWord) }
+def isTestOnlyName = { String name -> nameWords(name).any { isTestWord(it) || it in TEST_HARNESS_WORDS } }
+
+def projectDependenciesOf = { Collection configurations ->
+    configurations.collectMany { configuration ->
+        configuration.allDependencies.withType(ProjectDependency).collect { projectPathOf(it) }
+    }.toSet()
+}
+
+def productionConfigurations = { Project project ->
+    def named = ['compileClasspath', 'runtimeClasspath'].collect { project.configurations.findByName(it) }
+        .findAll { it != null }
+    named.isEmpty() ? project.configurations.findAll { !isTestOnlyName(it.name) } : named
+}
+
+def closureOver = { Map direct, Collection start, String self ->
+    def seen = [] as Set
+    def pending = new ArrayDeque(start)
+    while (!pending.isEmpty()) {
+        def next = pending.poll()
+        if (next != self && seen.add(next)) {
+            pending.addAll(direct[next] ?: [])
+        }
+    }
+    seen.sort()
+}
+
+def projectDependencyClosure = { Project root ->
+    def direct = root.allprojects.collectEntries { project ->
+        [project.path, projectDependenciesOf(productionConfigurations(project))]
+    }
+    [direct: direct, closure: direct.collectEntries { path, start -> [path, closureOver(direct, start, path)] }]
+}
+
+def sourceSetReach = { Project project, sourceSet, Map direct ->
+    def start = projectDependenciesOf([sourceSet.compileClasspathConfigurationName,
+        sourceSet.runtimeClasspathConfigurationName].collect { project.configurations.findByName(it) }
+        .findAll { it != null })
+    ([project.path] + closureOver(direct, start, project.path)).unique().sort()
+}
+
+def UNREAD_LANGUAGES = ['groovy', 'scala']
+def sourceDirsOfLanguages = { sourceSet, List<String> languages ->
+    def extensions = sourceSet instanceof ExtensionAware
+        ? languages.collect { sourceSet.extensions.findByName(it) }.findAll { it instanceof SourceDirectorySet } : []
+    extensions.collectMany { it.srcDirs }
+}
+
+def declaredSourceDirs = { sourceSet ->
+    sourceSet.allSource.srcDirs + sourceDirsOfLanguages(sourceSet, ['kotlin'] + UNREAD_LANGUAGES)
+}
+
+def callerSources = { Project project, sourceSet ->
+    declaredSourceDirs(sourceSet).findAll { it.exists() }.collectMany {
+        project.fileTree(it) { include '**/*.kt', '**/*.java', '**/*.groovy', '**/*.scala' }.files
+    }
+}
+
+def generatedSourceSet = { Project project, sourceSet ->
+    def buildRoot = project.layout.buildDirectory.get().asFile.toPath()
+    def dirs = declaredSourceDirs(sourceSet)
+    !project.projectDir.toPath().startsWith(buildRoot) && dirs.any { it.toPath().startsWith(buildRoot) } &&
+        !dirs.any { it.exists() && !it.toPath().startsWith(buildRoot) }
+}
+
+def unreadCallerSources = { Project project, sourceSet ->
+    def dirs = sourceSet.allSource.srcDirs + sourceDirsOfLanguages(sourceSet, UNREAD_LANGUAGES)
+    dirs.findAll { it.exists() }.collectMany {
+        project.fileTree(it) { include '**/*.groovy', '**/*.scala' }.files
+    }
+}
+
+def aotModeMentions = [:]
+def aotModeDeclared = { Project project ->
+    synchronized (aotModeMentions) {
+        aotModeMentions.computeIfAbsent(project.rootDir.absolutePath) {
+            project.fileTree(project.rootDir) {
+                include '**/*.gradle', '**/*.gradle.kts', '**/gradle.properties', '**/spring.properties'
+                exclude '**/build/**', '**/.gradle/**', '**/node_modules/**'
+            }.files.any { it.getText('UTF-8').contains('spring.aot.enabled') }
+        }
+    }
+}
+
+def holdsTests = { Project project, sourceSet ->
+    def suites = project.extensions.findByName('testing')?.suites?.names ?: []
+    def testClassDirs = project.tasks.withType(Test).collectMany { it.testClassesDirs.files }
+    isTestOnlyName(sourceSet.name) || suites.contains(sourceSet.name) ||
+        sourceSet.output.classesDirs.files.any { testClassDirs.contains(it) }
+}
+
+def coordinatePatterns = { String group, String name ->
+    def g = java.util.regex.Pattern.quote(group)
+    def n = java.util.regex.Pattern.quote(name)
+    def quoted = { String value -> /["']${value}["']/ }
+    [/(?<![\w.-])${g}:${n}(?![\w.-])/,
+     /\bgroup\s*[=:]\s*${quoted(g)}\s*,\s*(?:\w+\s*[=:]\s*["'][^"'\n]*["']\s*,\s*)?name\s*[=:]\s*${quoted(n)}/,
+     /\bname\s*[=:]\s*${quoted(n)}\s*,\s*(?:\w+\s*[=:]\s*["'][^"'\n]*["']\s*,\s*)?group\s*[=:]\s*${quoted(g)}/]
+        .collect { java.util.regex.Pattern.compile(it) }
+}
+
+def includedBuildReach = { Project root, build, Map dependencies ->
+    def scripts = root.fileTree(build.projectDir) {
+        include '**/*.gradle', '**/*.gradle.kts', '**/*.versions.toml'
+        exclude '**/build/**', '**/.gradle/**', '**/node_modules/**'
+    }.files.collect { it.getText('UTF-8') }.join('\n')
+    def used = root.allprojects.findAll { project ->
+        project.group.toString() != '' &&
+            coordinatePatterns(project.group.toString(), project.name).any { it.matcher(scripts).find() }
+    }.collect { it.path }
+    (used + used.collectMany { dependencies[it] }).unique().sort()
+}
+
+def moduleKeyOf = { Project project ->
+    project == project.rootProject
+        ? 'root' : 'module-' + project.path.substring(1).replace('_', '_u').replace(':', '_c')
+}
+
+def kotlinSourceModule = { Project project ->
+    !project.plugins.hasPlugin('java') && project.extensions.findByName('kotlin')?.hasProperty('sourceSets') &&
+        project.projectDir.toPath().startsWith(analysisRoot.toPath())
+}
+
+def ANDROID_OR_MULTIPLATFORM = ['org.jetbrains.kotlin.android', 'org.jetbrains.kotlin.multiplatform', 'com.android.base',
+    'com.android.application', 'com.android.library', 'com.android.dynamic-feature', 'com.android.test',
+    'com.android.kotlin.multiplatform.library']
+def isAndroidOrMultiplatform = { Project project ->
+    ANDROID_OR_MULTIPLATFORM.any { project.plugins.hasPlugin(it) } ||
+        project.plugins.any { it.class.name.startsWith('com.android.build.gradle.') }
+}
+
+def sourceSetGaps = { Project project, Map direct ->
+    project.sourceSets.findAll { !generatedSourceSet(project, it) }.collectMany { set ->
+        def tests = set.name == 'test' || (set.name != 'main' && holdsTests(project, set))
+        def unread = set.name in ['main', 'test'] ? unreadCallerSources(project, set) : callerSources(project, set)
+        if (unread.isEmpty()) {
+            return []
+        }
+        def label = set.name in ['main', 'test']
+            ? "the Groovy or Scala sources of ${set.name} in ${project.path}"
+            : "the source set ${set.name} of ${project.path}"
+        [[label: label.toString(), tests: tests, owner: project.path, reaches: sourceSetReach(project, set, direct)]]
+    }
+}
+
+def kotlinCallerGaps = { Project root ->
+    synchronized (kotlinBuildFacts) {
+        if (kotlinBuildFacts.isEmpty()) {
+            def projects = projectDependencyClosure(root)
+            def dependencies = projects.closure
+            def gaps = []
+            root.allprojects.findAll { !kotlinSourceModule(it) }.each { other ->
+                def reach = dependencies[other.path]
+                if (isAndroidOrMultiplatform(other)) {
+                    gaps << [label: "the Android or Multiplatform project ${other.path}".toString(), reaches: reach]
+                } else if (other.plugins.hasPlugin('java')) {
+                    if (!other.projectDir.toPath().startsWith(analysisRoot.toPath())) {
+                        gaps << [label: "the project ${other.path} outside the analysis root".toString(), reaches: reach]
+                    } else {
+                        gaps.addAll(sourceSetGaps(other, projects.direct))
+                    }
+                }
+            }
+            root.gradle.includedBuilds.each { build ->
+                def reach = includedBuildReach(root, build, dependencies)
+                if (!reach.isEmpty()) {
+                    gaps << [label: "the included build ${build.name}".toString(), reaches: reach]
+                }
+            }
+            kotlinBuildFacts.gaps = gaps.sort { it.label }
+            kotlinBuildFacts.dependencies = dependencies
+        }
+        kotlinBuildFacts
+    }
+}
+
+gradle.rootProject { root -> root.ext.nitpickerKotlinCallerGaps = { kotlinCallerGaps(root) } }
+
+def pinTestRetries = { Task testTask ->
+    def develocity = testTask.extensions.findByName('develocity')
+    def retryExtensions = [testTask.extensions.findByName('retry'),
+                           develocity != null && develocity.hasProperty('testRetry') ? develocity.testRetry : null]
+    retryExtensions.findAll { it != null && it.hasProperty('maxRetries') }.each { retry ->
+        retry.maxRetries = 0
+        if (retry.hasProperty('failOnPassedAfterRetry')) {
+            retry.failOnPassedAfterRetry = true
+        }
+    }
+}
+
+gradle.projectsEvaluated {
+    if (gradle.parent == null) {
+        gradle.taskGraph.whenReady { graph ->
+            graph.allTasks.findAll { it instanceof Test }.each(pinTestRetries)
+        }
+    }
+}
+
 gradle.projectsEvaluated {
     if (reportBase && gradle.parent == null) {
         def modules = new File(reportBase.toString(), 'modules.json')
@@ -115,8 +347,10 @@ def rulesetExcluding = { String name, String description, List<String> rules, Co
         + excludes + rules + ['</ruleset>', '']).join('\n')
 }
 
-def mainRulesOnMainSources = { File mainRules, File rulesetDir, boolean spring, Collection<File> testDirectories ->
-    def rules = [mainRules] + (spring ? [new File(rulesetDir, 'spring-ruleset.xml')] : [])
+def mainRulesOnMainSources = { File mainRules, File rulesetDir, boolean spring, boolean reactor, Collection<File> testDirectories ->
+    def springRules = nitpickerArgument('nitpicker.pmd.springRules') ?: new File(rulesetDir, 'spring-ruleset.xml').absolutePath
+    def rules = [mainRules] + (spring ? [new File(springRules)] : []) +
+        (reactor ? [new File(rulesetDir, 'reactor-ruleset.xml')] : [])
     rulesetExcluding('nitpicker-main', "Nitpicker's main-only rules on main sources only.",
         rules.collect { "  <rule ref=\"${escapeXml(it.absolutePath)}\"/>".toString() }, testDirectories)
 }
@@ -127,15 +361,76 @@ def testRulesOnTestSources = { File testRules, File rulesetDir, boolean spring, 
         rules.collect { "  <rule ref=\"${escapeXml(it.absolutePath)}\"/>".toString() }, mainDirectories)
 }
 
+def nodeCommand = nitpickerArgument('nitpicker.node') ?: 'node'
+def rulesWriter = new File(initScriptDir, '../builds/rulesets/write-rules.mjs').canonicalFile
+def runNode = { File script, List<String> arguments, String failure ->
+    def process
+    try {
+        process = new ProcessBuilder([nodeCommand, script.absolutePath] + arguments)
+            .redirectErrorStream(true).start()
+    } catch (IOException error) {
+        throw new GradleException("${failure}: could not run ${nodeCommand}: ${error.message}")
+    }
+    def log = process.inputStream.getText('UTF-8')
+    if (process.waitFor() != 0) {
+        throw new GradleException("${failure}: ${log.trim()}")
+    }
+}
+def writeRules = { String kind, File plan ->
+    runNode(rulesWriter, [kind, plan.absolutePath], "nitpicker could not write the ${kind} configuration")
+}
+def toolCommandsFile = new File(initScriptDir, '../builds/tools/tool-commands.json').canonicalFile
+def toolCommandsScript = new File(initScriptDir, '../builds/tools/tool-commands.mjs').canonicalFile
+def toolLauncher = { String tool ->
+    def launcher = new groovy.json.JsonSlurper().parse(toolCommandsFile)[tool].launcher
+    launcher == null ? null : new File(toolCommandsFile.parentFile, launcher).canonicalFile
+}
+def toolCommand = { String tool, Map values, File directory ->
+    directory.mkdirs()
+    def valuesFile = new File(directory, "${tool}-values.json")
+    def commandFile = new File(directory, "${tool}-command.json")
+    valuesFile.text = groovy.json.JsonOutput.toJson(values)
+    runNode(toolCommandsScript, [tool, valuesFile.absolutePath, commandFile.absolutePath],
+        "nitpicker could not build the ${tool} command line")
+    def command = new groovy.json.JsonSlurper().parse(commandFile)
+    def accept = command.accept
+    [
+        launcher: command.launcher == null ? null : new File(command.launcher),
+        args    : command.args,
+        accepts : { int code ->
+            def report = accept.report == null ? null : new File(accept.report)
+            (accept.exits == null || code in accept.exits) && (report == null || (report.isFile() &&
+                (accept.reportPattern == null || (report.getText('UTF-8') =~ accept.reportPattern).find())))
+        },
+    ]
+}
+def compilerOf = { compile ->
+    [
+        release : compile.options.release.orNull?.toString(),
+        source  : compile.sourceCompatibility,
+        target  : compile.targetCompatibility,
+        encoding: compile.options.encoding,
+        args    : compile.options.allCompilerArgs.collect { it.toString() },
+    ]
+}
+
 allprojects {
     if (gradle.parent != null) {
         return
     }
+    if (nitpickerArgument('nitpicker.kotlin') == 'true') {
+        project.ext.nitpickerKotlinSourceModule = [pinned: pinned, reportBase: reportBase, modules: javaModules,
+            moduleKey: moduleKeyOf, selected: kotlinSourceModule, buildFacts: kotlinCallerGaps,
+            psiClasses: kotlinPsiClasses, runProcess: runProcess, repositories: projectRepositories,
+            formatter: nitpickerArgument('nitpicker.kotlin.formatter')]
+        project.apply from: new File(initScriptDir, 'kotlin/kotlin-source-modules.gradle')
+    }
     plugins.withId('java') {
+        project.ext.nitpickerPinned = pinned
         pluginManager.apply('jacoco')
         pluginManager.apply('checkstyle')
 
-        def moduleKey = project == rootProject ? 'root' : 'module-' + project.path.substring(1).replace('_', '_u').replace(':', '_c')
+        def moduleKey = moduleKeyOf(project)
         def reportDir = reportBase
             ? objects.directoryProperty().fileValue(new File(reportBase.toString(), moduleKey))
             : layout.buildDirectory.dir('nitpicker')
@@ -143,6 +438,16 @@ allprojects {
             javaModules << [key: moduleKey, path: project.path, dir: relativeToRoot(project.projectDir)]
         }
         def kotlinPreset = nitpickerArgument('nitpicker.kotlin') == 'true'
+        project.ext.nitpickerReportDir = reportDir
+        project.ext.nitpickerGeneratedSourceSet = { sourceSet -> generatedSourceSet(project, sourceSet) }
+        project.ext.nitpickerRelativeToRoot = relativeToRoot
+        project.ext.nitpickerAnalysisRoot = analysisRoot
+        project.ext.nitpickerCompilerOf = compilerOf
+        project.ext.nitpickerToolCommand = toolCommand
+        project.ext.nitpickerToolCommandInputs = [toolCommandsFile, toolCommandsScript]
+        project.ext.nitpickerToolLauncher = toolLauncher
+        project.ext.nitpickerRunNode = runNode
+        project.ext.nitpickerWriteRules = writeRules
         def testsFailedModules = (nitpickerArgument('nitpicker.testsFailed') ?: '').toString().split(',').findAll { it }
         def testsFailed = testsFailedModules.contains(relativeToRoot(project.projectDir) ?: '.')
         def javaStyle = nitpickerArgument('nitpicker.java.style') ?: 'google'
@@ -158,7 +463,9 @@ allprojects {
             nitpickerPitTestng { canBeConsumed = false }
             nitpickerCheckstyle { canBeConsumed = false }
         }
-        repositories { mavenCentral() }
+        if (projectRepositories.allowed) {
+            repositories { mavenCentral() }
+        }
         dependencies {
             nitpickerPmd "net.sourceforge.pmd:pmd-cli:${pinned.pmd}"
             nitpickerPmd "net.sourceforge.pmd:pmd-java:${pinned.pmd}"
@@ -256,7 +563,7 @@ allprojects {
         }
         checkstyle { toolVersion = pinned.checkstyle }
         afterEvaluate {
-            tasks.withType(Checkstyle).configureEach {
+            tasks.withType(Checkstyle).configureEach { task ->
                 ignoreFailures = true
                 showViolations = false
                 maxWarnings = Integer.MAX_VALUE
@@ -271,6 +578,21 @@ allprojects {
                 configProperties = ['org.checkstyle.google.suppressionfilter.config':
                     new File(initScriptDir, javaStyle == 'none'
                         ? 'checkstyle-suppressions-unformatted.xml' : 'checkstyle-suppressions.xml').absolutePath]
+                def baseConfig = configFile
+                inputs.dir(new File(initScriptDir, 'rules'))
+                doFirst {
+                    def directory = new File(reportDir.get().asFile, 'checkstyle-guards/' + task.name)
+                    directory.mkdirs()
+                    def output = new File(directory, 'checkstyle.xml')
+                    def plan = new File(directory, 'plan.json')
+                    plan.text = groovy.json.JsonOutput.toJson([
+                        source: baseConfig.absolutePath,
+                        output: output.absolutePath,
+                        files: ['checkstyle-all.xml'] + (task.name == 'checkstyleMain' ? ['checkstyle-main.xml'] : []),
+                    ])
+                    writeRules('checkstyle-guards', plan)
+                    configFile = output
+                }
             }
         }
         tasks.withType(Checkstyle).configureEach { checkstyleTask ->
@@ -288,8 +610,9 @@ allprojects {
         def testSourceSets = {
             def testClassDirs = tasks.withType(Test).collectMany { it.testClassesDirs.files }
             sourceSets.findAll { sourceSet ->
-                sourceSet.name != 'main' && (sourceSet.name.toLowerCase().contains('test')
-                    || sourceSet.output.classesDirs.files.any { testClassDirs.contains(it) })
+                def namedTest = isTestName(sourceSet.name) && !generatedSourceSet(project, sourceSet)
+                def ranByTests = sourceSet.output.classesDirs.files.any { testClassDirs.contains(it) }
+                sourceSet.name != 'main' && (namedTest || ranByTests)
             }
         }
         project.ext.nitpickerTestSourceSets = testSourceSets
@@ -320,17 +643,33 @@ allprojects {
             kotlinPreset ? [tasks.named('compileJava').get().destinationDirectory.get().asFile]
                 : sourceSets.main.output.classesDirs.files
         }
-        // PIT mutates the Java and the Kotlin classes alike; the Kotlin findings are report-only (see the Nitpicker side).
         def mutatedClassDirs = { sourceSets.main.output.classesDirs.files }
 
+        project.ext.nitpickerAnalyzedClassDirs = analyzedClassDirs
+        project.ext.nitpickerTestSourceDirectories = testSourceDirectories
         def springDeclared = nitpickerArgument('nitpicker.spring') == 'true'
+        def featureFoldersDeclared = nitpickerArgument('nitpicker.featureFolders') == 'true'
         def usesSpring = {
             springDeclared || sourceSets.main.compileClasspath.files.any { it.name ==~ /spring-(context|boot)-.*\.jar/ }
         }
+        def usesReactor = { sourceSets.main.compileClasspath.files.any { it.name ==~ /reactor-core-.*\.jar/ } }
         def usesJmolecules = {
             sourceSets.main.compileClasspath.files.any { it.name ==~ /jmolecules-ddd-.*\.jar/ }
         }
-        def runsArchRules = { usesSpring() || usesJmolecules() }
+        def runsArchRules = { usesSpring() || usesJmolecules() || featureFoldersDeclared }
+        def publishesLibrary = { project.extensions.findByName('publishing')?.publications?.isEmpty() == false }
+        def springClasspath = {
+            try {
+                def test = sourceSets.findByName('test') ?: sourceSets.main
+                def development = ['developmentOnly', 'testAndDevelopmentOnly']
+                    .collect { configurations.findByName(it) }.findAll { it != null && it.canBeResolved }
+                (sourceSets.main.compileClasspath.files + test.compileClasspath.files + test.runtimeClasspath.files
+                    + development.collectMany { it.files }).collect { it.absolutePath }.unique()
+            } catch (Exception failure) {
+                logger.warn("nitpicker: could not resolve the classpath of ${project.path} for spring/unbound-property: ${failure.message}")
+                []
+            }
+        }
         def hasGuava = { sourceSet -> sourceSet.compileClasspath.files.any { it.name ==~ /guava-\d.*\.jar/ } }
         def hasAwaitility = { sourceSets.test.compileClasspath.files.any { it.name ==~ /awaitility-\d.*\.jar/ } }
 
@@ -360,10 +699,19 @@ allprojects {
                     .findAll { it.exists() }.unique().collect { it.absolutePath }.join('\n')
                 def mainRuleset = reportDir.get().file('pmd-main.xml').asFile
                 mainRuleset.text = mainRulesOnMainSources(
-                    mainRules, initScriptDir, usesSpring(), testSourceDirectories())
+                    mainRules, initScriptDir, usesSpring(), usesReactor(), testSourceDirectories())
                 def testRuleset = reportDir.get().file('pmd-tests.xml').asFile
                 testRuleset.text = testRulesOnTestSources(testRules, initScriptDir, usesSpring(), mainSources.files)
                 def nitpickerExtras = [testRuleset, mainRuleset]
+                def guardsPlan = reportDir.get().file('pmd-guards-plan.json').asFile
+                guardsPlan.text = groovy.json.JsonOutput.toJson([
+                    reportDir: reportDir.get().asFile.absolutePath,
+                    mainDirectories: mainSources.files*.absolutePath,
+                    testDirectories: testSourceDirectories()*.absolutePath,
+                    compiler: compilerOf(tasks.named('compileJava').get()),
+                ])
+                writeRules('pmd-guards', guardsPlan)
+                nitpickerExtras += reportDir.get().file('pmd-rulesets.txt').asFile.text.split(',').findAll { it }.collect { new File(it) }
                 def rulesets = ([ruleset] + nitpickerExtras.collect { it.absolutePath }).join(',')
                 args 'check', '--no-cache', '--no-progress', '--format', 'sarif',
                     '--report-file', reportDir.get().file('pmd.sarif').asFile.absolutePath,
@@ -386,7 +734,7 @@ allprojects {
                 def classDirs = analyzedClassDirs().findAll { it.exists() }
                 def auxiliary = kotlinPreset
                     ? sourceSets.main.runtimeClasspath.files.findAll { it.exists() && !classDirs.contains(it) } : []
-                args(['-effort:default', '-medium', '-sarif',
+                args(nitpickerSettings('spotbugs', ['-effort:default', '-medium']) + ['-sarif',
                       '-output', reportDir.get().file('spotbugs.sarif').asFile.absolutePath,
                       '-sourcepath', sourcePath] +
                     (auxiliary.isEmpty() ? [] : ['-auxclasspath', auxiliary.join(File.pathSeparator)]) +
@@ -426,7 +774,42 @@ allprojects {
         def archunitIncludes = (findProperty('nitpicker.archunit.includes') ?: '**/*ArchTest.class,**/*ArchitectureTest.class')
             .toString().split(',')*.trim().findAll { it }
 
-        tasks.withType(Test).configureEach { reports.junitXml.outputPerTestCase = true }
+        tasks.withType(Test).configureEach { testTask ->
+            testTask.reports.junitXml.outputPerTestCase = true
+            // The XML names a test after its own display name only. A Kotest test nested in contexts is named
+            // by its whole path on Maven, so the containers between the spec class and the test go to a side file.
+            def nested = []
+            testTask.afterTest { descriptor, result ->
+                def containers = []
+                def parent = descriptor.parent
+                while (parent != null && parent.className == descriptor.className && parent.name != descriptor.className) {
+                    containers.add(0, parent.name)
+                    parent = parent.parent
+                }
+                if (!containers.isEmpty()) {
+                    nested << [className: descriptor.className, name: descriptor.name, containers: containers]
+                }
+            }
+            testTask.doLast {
+                def directory = testTask.reports.junitXml.outputLocation.get().asFile
+                def containersFile = new File(directory, 'nitpicker-containers.json')
+                if (nested.isEmpty()) {
+                    containersFile.delete()
+                } else {
+                    directory.mkdirs()
+                    containersFile.text = groovy.json.JsonOutput.toJson(nested)
+                }
+            }
+        }
+        def aotFlag = { value -> value.toString().toLowerCase().contains('-dspring.aot.enabled=true') }
+        def runsAotTests = { Test test ->
+            test.allJvmArgs.any(aotFlag) || test.environment.values().any(aotFlag)
+        }
+        tasks.configureEach { task ->
+            if (task.class.name.startsWith('org.springframework.boot.gradle.tasks.aot.')) {
+                task.onlyIf { aotModeDeclared(project) || tasks.withType(Test).any(runsAotTests) }
+            }
+        }
 
         def verifyArchunitRan = { String taskName, Collection<File> classesDirs ->
             def archunitClasses = classesDirs.findAll { it.exists() }.collectMany { dir ->
@@ -583,8 +966,14 @@ allprojects {
             def mutations = best.values().collect { xml(it) }.join('')
             target.text = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<mutations>${mutations}</mutations>\n"
         }
-        def registerPit = { String pitName, Test source ->
+        def jacocoArgumentProvider = 'org.gradle.testing.jacoco.plugins.JacocoPluginExtension$JacocoAgent'
+        project.apply from: new File(initScriptDir, 'pit/pit-scope.gradle')
+        def scopedPitTargets = {
+            project.ext.nitpickerScopedPitTargets(mutatedClassDirs().findAll { it.exists() }, sourceSets.main.allSource.files)
+        }
+        def registerPit = { String pitName, TaskProvider<Test> sourceTask ->
             tasks.register(pitName, JavaExec) {
+                def source = sourceTask.get()
                 group = 'nitpicker'
                 dependsOn tasks.named('classes')
                 dependsOn source.testClassesDirs
@@ -610,7 +999,8 @@ allprojects {
                             : 'org.pitest.'.startsWith(prefix) ? classes + subpackages()
                             : ["${prefix}*".toString()]
                     }
-                    def targets = classDirs.collectMany { dir -> packageTargets(dir, '') }.unique().sort()
+                    def targets = scopedPitTargets() ?:
+                        classDirs.collectMany { dir -> packageTargets(dir, '') }.unique().sort()
                     // Tests are named class by class: a package glob would also hand the main classes
                     // that share a package with the tests to the test engine.
                     def testRuntimeFiles = source.classpath.files
@@ -642,9 +1032,37 @@ allprojects {
                           '--mutableCodePaths', classDirs.collect { it.absolutePath }.join(','),
                           '--outputFormats', 'XML',
                           '--timestampedReports', 'false',
-                          '--threads', '2',
                           '--failWhenNoMutations', 'false',
-                          '--verbose', 'false'])
+                          '--verbose', 'false'] +
+                        nitpickerSettings('pit', ['--threads', '2', '--mutators', pitMutators.join(',')]))
+                    def historyFile = project.layout.buildDirectory
+                        .file("nitpicker-pit-history/${source.name}.history").get().asFile
+                    if (pitHistoryRecorded) {
+                        args '--historyOutputLocation', historyFile.absolutePath
+                    }
+                    def baseRoot = pitHistoryRoot == null ? null : new File(pitHistoryRoot.toString()).canonicalFile
+                    def sameDrive = historyFile.toPath().root == analysisRoot.toPath().root
+                    def recorded = baseRoot == null || !sameDrive ? null
+                        : new File(baseRoot, relativeToRoot(historyFile)).canonicalFile
+                    if (recorded?.isFile() && recorded.path.startsWith(baseRoot.path + File.separator)) {
+                        args '--historyInputLocation', recorded.absolutePath
+                    }
+                    def testJvmArgs = (source.jvmArgs ?: []) +
+                        source.systemProperties.collect { key, value ->
+                            (value == null ? "-D${key}" : "-D${key}=${value}").toString() } +
+                        [source.minHeapSize ? "-Xms${source.minHeapSize}" : null,
+                         source.maxHeapSize ? "-Xmx${source.maxHeapSize}" : null].findAll { it != null }*.toString() +
+                        source.jvmArgumentProviders.findAll { it.getClass().name != jacocoArgumentProvider }
+                            .collectMany { provider -> provider.asArguments().collect { it.toString() } }
+                    if (!testJvmArgs.isEmpty()) {
+                        def argumentFile = new File(pitDir.asFile, 'jvm-arguments')
+                        argumentFile.text = testJvmArgs.collect { argument ->
+                            '"' + argument.replace('\\', '\\\\').replace('"', '\\"')
+                                .replace('\n', '\\n').replace('\r', '\\r') + '"\n'
+                        }.join('')
+                        def quote = argumentFile.absolutePath.contains('"') ? "'" : '"'
+                        args '--argLine', "${quote}@${argumentFile.absolutePath}${quote}".toString()
+                    }
                     if (source.options instanceof org.gradle.api.tasks.testing.junitplatform.JUnitPlatformOptions) {
                         if (!source.options.includeTags.isEmpty()) {
                             args '--includedGroups', source.options.includeTags.toList().sort().join(',')
@@ -656,7 +1074,7 @@ allprojects {
                 }
                 onlyIf {
                     !testsFailed && mutatedClassDirs().any { it.exists() && it.list()?.length } && !skippedByBuild(source) &&
-                        (source.name == 'test' || !pitTestClasses(source).isEmpty())
+                        (source.name == 'test' || !pitTestClasses(source).isEmpty()) && scopedPitTargets() != []
                 }
             }
         }
@@ -709,37 +1127,47 @@ allprojects {
             executionData(emptyExecutionData)
         }
         afterEvaluate {
-            checkedTestTasks().each { it.exclude archunitIncludes }
-            if (testsFailed) {
-                checkedTestTasks().each { it.enabled = false }
-            }
-            checkedTestTasks().findAll { it.name != 'test' }.each { source ->
-                def archunitName = "nitpickerArchunit${capitalized(source.name)}".toString()
-                def sourceSet = sourceSets.find { set ->
-                    set.output.classesDirs.files.any { source.testClassesDirs.files.contains(it) }
-                }
-                def declared = sourceSet == null ? []
-                    : configurations.getByName(sourceSet.runtimeClasspathConfigurationName).allDependencies*.name
-                tasks.register(archunitName, Test) {
-                    group = 'nitpicker'
-                    dependsOn source.testClassesDirs
-                    testClassesDirs = source.testClassesDirs
-                    classpath = source.classpath
-                    include archunitIncludes
-                    ignoreFailures = true
-                    reports {
-                        junitXml.outputLocation = reportDir.map { it.dir('archunit') }
-                        html.required = false
-                    }
-                    doLast { verifyArchunitRan(archunitName, source.testClassesDirs.files) }
-                    if (archunitOnJUnit4(declared, onJUnit4(source))) {
-                        useJUnit()
-                    } else {
-                        useJUnitPlatform()
+            def followedTest = { String name -> !name.startsWith('nitpickerArchunit') }
+            tasks.withType(Test).configureEach { testTask ->
+                if (followedTest(testTask.name)) {
+                    testTask.exclude archunitIncludes
+                    if (testsFailed) {
+                        testTask.enabled = false
                     }
                 }
             }
-            checkedTestTasks().each { registerPit("nitpickerPit${capitalized(it.name)}".toString(), it) }
+            tasks.withType(Test).names.findAll(followedTest).each { sourceName ->
+                def sourceTask = tasks.named(sourceName, Test)
+                if (sourceName != 'test') {
+                    def archunitName = "nitpickerArchunit${capitalized(sourceName)}".toString()
+                    tasks.register(archunitName, Test) {
+                        def source = sourceTask.get()
+                        def sourceSet = sourceSets.find { set ->
+                            set.output.classesDirs.files.any { source.testClassesDirs.files.contains(it) }
+                        }
+                        def runtime = sourceSet == null ? null
+                            : configurations.getByName(sourceSet.runtimeClasspathConfigurationName)
+                        def declared = runtime == null ? [] : runtime.allDependencies*.name
+                        group = 'nitpicker'
+                        dependsOn source.testClassesDirs
+                        testClassesDirs = source.testClassesDirs
+                        classpath = source.classpath
+                        include archunitIncludes
+                        ignoreFailures = true
+                        reports {
+                            junitXml.outputLocation = reportDir.map { it.dir('archunit') }
+                            html.required = false
+                        }
+                        doLast { verifyArchunitRan(archunitName, source.testClassesDirs.files) }
+                        if (archunitOnJUnit4(declared, onJUnit4(source))) {
+                            useJUnit()
+                        } else {
+                            useJUnitPlatform()
+                        }
+                    }
+                }
+                registerPit("nitpickerPit${capitalized(sourceName)}".toString(), sourceTask)
+            }
         }
         gradle.projectsEvaluated {
             tasks.withType(Test).configureEach { testTask ->
@@ -750,6 +1178,7 @@ allprojects {
                     coverage.excludes = []
                     coverage.excludeClassLoaders = []
                 }
+                pinTestRetries(testTask)
             }
             // The rules run on the framework their ArchUnit library needs: archunit-junit4 on JUnit 4,
             // archunit-junit5 on the JUnit Platform. With both or neither declared, they follow the task they check.
@@ -803,7 +1232,10 @@ allprojects {
             description = 'Runs PMD, SpotBugs, Error Prone, the formatter check, JaCoCo, Checkstyle, ' +
                 'ArchUnit rule tests, structure metrics and PIT; reports go to build/nitpicker.'
             dependsOn 'nitpickerPmd', 'nitpickerSpotbugs', 'nitpickerErrorProne', 'nitpickerFormat',
-                'nitpickerJacoco', 'nitpickerArchunit', 'nitpickerSpringArch', 'nitpickerStructure', 'nitpickerPit'
+                'nitpickerArchunit', 'nitpickerSpringArch', 'nitpickerStructure'
+            if (!quickRun) {
+                dependsOn 'nitpickerJacoco', 'nitpickerPit'
+            }
             dependsOn {
                 checkedTestTasks().findAll { it.name != 'test' }
                     .collect { tasks.named("nitpickerArchunit${capitalized(it.name)}") }
@@ -819,7 +1251,7 @@ allprojects {
                 }
                 ranTestTasks().findAll { gradle.taskGraph.hasTask(it) }.each { testTask ->
                     copy {
-                        from(testTask.reports.junitXml.outputLocation) { include 'TEST-*.xml' }
+                        from(testTask.reports.junitXml.outputLocation) { include 'TEST-*.xml', 'nitpicker-containers.json' }
                         into reportDir.get().dir("test-results/${testTask.name}")
                     }
                 }
@@ -840,7 +1272,7 @@ allprojects {
                 }
                 def runTestClassDirs = tasks.withType(Test).findAll { it.name != 'nitpickerArchunit' }
                     .collectMany { it.testClassesDirs.files }
-                def unrunTestSourceSets = testSourceSets()
+                def unrunTestSourceSets = quickRun ? [] : testSourceSets()
                     .findAll { set -> !set.output.classesDirs.files.any { runTestClassDirs.contains(it) } }
                     .collect { set -> [name: set.name, roots: sourceDirsOf(set).collect { relativeToRoot(it) }] }
                 def kotlinRoots = []
@@ -859,10 +1291,11 @@ allprojects {
                     spring         : usesSpring(),
                     testsFailed    : testsFailed,
                     springArch     : runsArchRules(),
+                    springClasspath: usesSpring() ? springClasspath() : [],
                     guava          : hasGuava(sourceSets.main),
                     testGuava      : hasGuava(sourceSets.test),
                     testAwaitility : hasAwaitility(),
-                    published      : project.extensions.findByName('publishing')?.publications?.isEmpty() == false,
+                    published      : publishesLibrary(),
                     unrunTestSourceSets: unrunTestSourceSets,
                 ])
             }
@@ -872,21 +1305,44 @@ allprojects {
         // The coupling metrics, stability-direction and test-only-export findings are computed on the
         // Nitpicker side from these files. jdeps ships with the JDK that runs Gradle; it is not a
         // pinned download.
+        def classFilesIn = { File directory ->
+            java.nio.file.Files.walk(directory.toPath()).withCloseable { paths ->
+                paths.filter { java.nio.file.Files.isRegularFile(it, java.nio.file.LinkOption.NOFOLLOW_LINKS) }
+                    .filter { it.fileName.toString().endsWith('.class') &&
+                        !(it.fileName.toString() in ['module-info.class', 'package-info.class']) }
+                    .map { it.toFile() }.collect(java.util.stream.Collectors.toList())
+            }
+        }
         def classNamesIn = { Collection<File> classDirs ->
             classDirs.collectMany { dir ->
-                fileTree(dir) { include '**/*.class'; exclude '**/module-info.class', '**/package-info.class' }.files.collect {
+                classFilesIn(dir).collect {
                     dir.toPath().relativize(it.toPath()).toString().replace('\\', '/')
                         .replaceAll(/\.class$/, '').replace('/', '.')
                 }
             }.unique().sort()
         }
         def runJdeps = { Collection<File> classDirs, Closure onLine ->
+            def staged = layout.buildDirectory.dir('nitpicker-jdeps-classes').get().asFile
+            delete staged
+            staged.mkdirs()
+            def analyzed = classDirs.withIndex().collect { directory, index ->
+                def target = new File(staged, index.toString())
+                target.mkdirs()
+                classFilesIn(directory).each { source ->
+                    def destination = new File(target, directory.toPath().relativize(source.toPath()).toString())
+                    destination.parentFile.mkdirs()
+                    java.nio.file.Files.copy(source.toPath(), destination.toPath())
+                }
+                target
+            }
             def jdeps = new File(System.getProperty('java.home'), 'bin/jdeps')
             def process = new ProcessBuilder([jdeps.absolutePath, '-verbose:class', '-filter:none'] +
-                classDirs.collect { it.absolutePath }).directory(projectDir)
+                analyzed.collect { it.absolutePath }).directory(projectDir)
                 .redirectError(ProcessBuilder.Redirect.DISCARD).start()
             process.inputStream.withReader('UTF-8') { reader -> reader.eachLine { onLine(it) } }
-            if (process.waitFor() != 0) {
+            def result = process.waitFor()
+            delete staged
+            if (result != 0) {
                 throw new GradleException("jdeps failed (${jdeps}) with exit code ${process.exitValue()}")
             }
         }
@@ -923,6 +1379,9 @@ allprojects {
             }
         }
         tasks.named('nitpickerJava') { dependsOn 'nitpickerJdeps' }
+        ['lint-tasks.gradle', 'cpd-task.gradle', 'dependency-tasks.gradle'].each {
+            project.apply from: new File(initScriptDir, 'tasks/' + it)
+        }
         // --- end coupling ---
 
         // --- kotlin (KT1): detekt, a ktlint or ktfmt format check and JaCoCo on Kotlin classes ---
@@ -939,6 +1398,10 @@ allprojects {
                     (kotlinSourceSet == null ? [] : kotlinSourceSet.kotlin.srcDirs).findAll {
                         it.exists() && it.toPath().startsWith(projectDir.toPath()) && !it.toPath().startsWith(generated)
                     }.sort()
+                }
+                def kotlinExcludedFiles = {
+                    def mainAndTest = ['main', 'test'].collect { project.kotlin.sourceSets.findByName(it) }
+                    project.ext.nitpickerKotlinExcluded(mainAndTest)
                 }
                 def kotlinSourceDirs = { kotlinSourceDirsOf('main') }
                 def kotlinLintedDirs = { (kotlinSourceDirs() + kotlinSourceDirsOf('test')).unique() }
@@ -1189,6 +1652,7 @@ allprojects {
                         if (kotlinLintedFiles().isEmpty()) {
                             metrics.text = '{"functions":[],"files":[]}'
                             facts.text = '{"files":[]}'
+                            reportDir.get().file('kotlin-mutation-facts.json').asFile.text = '{"files":[]}'
                             return
                         }
                         def home = new File(System.getProperty('java.home'), 'bin')
@@ -1196,8 +1660,12 @@ allprojects {
                         def classes = kotlinPsiClasses(project, compiler)
                         def roots = kotlinSourceDirs().collect { relative(it) } +
                             kotlinSourceDirsOf('test').collect { 'test:' + relative(it) }
+                        def excluded = reportDir.get().file('kotlin-excluded.txt').asFile
+                        project.ext.nitpickerWriteKotlinExcluded(excluded, kotlinExcludedFiles())
                         runProcess('KotlinPsi', [new File(home, 'java').absolutePath, '-Djava.awt.headless=true',
-                                "-Dnitpicker.kotlinCompiler=${pinned.kotlinCompiler}".toString(), '-cp',
+                                "-Dnitpicker.kotlinCompiler=${pinned.kotlinCompiler}".toString(),
+                                "-Dnitpicker.kotlinPsi.excluded=${excluded.absolutePath}".toString(),
+                                "-Dnitpicker.published=${publishesLibrary()}".toString(), '-cp',
                                 compiler + File.pathSeparator + classes.absolutePath, 'nitpicker.kotlinpsi.KotlinPsi',
                                 metrics.absolutePath, facts.absolutePath, analysisRoot.absolutePath] + roots,
                             projectDir)
@@ -1236,7 +1704,11 @@ allprojects {
                         manifest.kotlin = true
                         manifest.kotlinSourceRoots = kotlinSourceDirs().collect { relative(it) }
                         manifest.kotlinTestSourceRoots = kotlinSourceDirsOf('test').collect { relative(it) }
+                        manifest.kotlinExcludedFiles = kotlinExcludedFiles().collect { relative(it) }
                         manifest.kotlinFormatter = kotlinFormatter()
+                        def buildFacts = kotlinCallerGaps(project.rootProject)
+                        manifest.kotlinCallerGaps = buildFacts.gaps
+                        manifest.projectDependencies = buildFacts.dependencies[project.path]
                         def mainClasspath = sourceSets.main.compileClasspath.files +
                             sourceSets.main.runtimeClasspath.files
                         manifest.kotlinSerialization = mainClasspath.any {

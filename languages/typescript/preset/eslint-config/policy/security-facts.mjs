@@ -5,6 +5,7 @@ import { SQL_LIBRARIES } from '../../eslint-plugin/rules/security/sql/no-sql-str
 import { codeExtensions } from '../../layout.mjs';
 import { nonProductionFolders } from '../../structure/reuse/reuse-paths.mjs';
 import { packageMajorOf, readDependencyNames, storyGlobs } from '../scope-support.mjs';
+import { GIT_TIMEOUT_MS } from '../../../../../shared/processes/deadlines.mjs';
 
 export const SECURITY_RULES = [
   'nitpicker/no-disabled-tls-verification',
@@ -61,7 +62,7 @@ function filesSettingDefaults(projectRoot) {
       ':(exclude)**/node_modules/**',
       ':(exclude)node_modules/**',
     ],
-    { cwd: projectRoot, encoding: 'utf8', maxBuffer: MAX_LISTING_BYTES },
+    { cwd: projectRoot, encoding: 'utf8', maxBuffer: MAX_LISTING_BYTES, timeout: GIT_TIMEOUT_MS },
   );
   return found.status === 0 ? found.stdout.split('\n').filter(Boolean) : [];
 }
@@ -103,6 +104,13 @@ export function securityFactsFor(projectRoot, isProductionFile) {
   };
 }
 
+export function httpClientOptions({ react, security = {} }) {
+  return {
+    fetch: !(react || security.browser === true),
+    nodeFetchTimeout: security.nodeFetchTimeout !== false,
+  };
+}
+
 export function securityRules({ react, security = {} }) {
   const sql = security.sqlLibrary === undefined ? {} : { sqlLibrary: security.sqlLibrary };
   const yaml = security.yamlMajor === undefined ? {} : { yamlMajor: security.yamlMajor };
@@ -113,11 +121,7 @@ export function securityRules({ react, security = {} }) {
     'nitpicker/no-weak-hash': 'error',
     'nitpicker/require-http-timeout': [
       'error',
-      {
-        fetch: !(react || security.browser === true),
-        nodeFetchTimeout: security.nodeFetchTimeout !== false,
-        projectDefaults: security.httpDefaults ?? [],
-      },
+      { ...httpClientOptions({ react, security }), projectDefaults: security.httpDefaults ?? [] },
     ],
   };
 }

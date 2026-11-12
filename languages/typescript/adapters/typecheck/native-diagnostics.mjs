@@ -2,9 +2,14 @@ import { createRequire } from 'node:module';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { resolveTool } from '../../../../core/tooling/tool-resolution.mjs';
+import {
+  TROUBLESHOOTING_ANCHORS,
+  troubleshootingError,
+} from '../../../../shared/messages/troubleshooting.mjs';
 
 const NO_INPUTS_CODE = 18003;
 const REMOVED_OPTION_CODES = new Set([5102, 5108]);
+const NON_FATAL_CONFIG_CODES = new Set([5023, 5025]);
 const ENGINE_HINT =
   'Set "tools": { "typescript": { "engine": "project" } } in nitpicker.config.json ' +
   "to type check with the project's own TypeScript instead.";
@@ -36,9 +41,11 @@ export async function nativeDiagnostics({
     collected = await collectedDiagnostics(api, configPath);
   } catch (error) {
     const hint = own || !engineHint ? '' : `\n${ENGINE_HINT}`;
-    throw new Error(`TypeScript 7 type check failed: ${String(error.message)}${hint}`, {
-      cause: error,
-    });
+    throw troubleshootingError(
+      `TypeScript 7 type check failed: ${String(error.message)}${hint}`,
+      hint === '' ? undefined : TROUBLESHOOTING_ANCHORS.engineUnavailable,
+      { cause: error },
+    );
   } finally {
     await api.close();
   }
@@ -53,7 +60,11 @@ function ownStartError(cause) {
   );
 }
 
-async function startedApi({ projectRoot, apiRoot = resolveTool('typescript-native').root, entry }) {
+async function startedApi({
+  projectRoot,
+  apiRoot = resolveTool('@typescript/native').root,
+  entry,
+}) {
   const apiPath = createRequire(path.join(apiRoot, 'package.json')).resolve(entry);
   const { API } = await import(pathToFileURL(apiPath).href);
   let api;
@@ -80,12 +91,21 @@ async function collectedDiagnostics(api, configPath) {
     () => program.getSemanticDiagnostics(),
     ...(emitsDeclarations ? [() => program.getDeclarationDiagnostics()] : []),
   ];
-  const configErrors = await program.getConfigFileParsingDiagnostics();
+  const configErrors = (await program.getConfigFileParsingDiagnostics()).map((diagnostic) =>
+    withoutRootConfigLocation(diagnostic, configPath),
+  );
   const diagnostics = (await program.getProgramDiagnostics()).map(withoutConfigLocation);
   for (const request of requests) {
     diagnostics.push(...(await request()));
   }
   return { hasRootFiles: project.rootFiles.length > 0, configErrors, diagnostics };
+}
+
+function withoutRootConfigLocation(diagnostic, configPath) {
+  return diagnostic.fileName !== undefined &&
+    path.resolve(diagnostic.fileName) === path.resolve(configPath)
+    ? { ...diagnostic, fileName: undefined, pos: -1, end: -1 }
+    : diagnostic;
 }
 
 function withoutConfigLocation(diagnostic) {
@@ -105,29 +125,44 @@ function settledDiagnostics(ts, { hasRootFiles, configErrors, diagnostics }) {
 }
 
 function ownDiagnostics(ts, { hasRootFiles, configErrors, diagnostics }) {
-  const unexpectedErrors = configErrors.filter(({ code }) => code !== NO_INPUTS_CODE);
-  if (unexpectedErrors.length > 0) {
-    throw new Error(unexpectedErrors.map(({ text }) => text).join('\n'));
+  const fatalErrors = configErrors.filter(
+    ({ code }) => code !== NO_INPUTS_CODE && !isNonFatalConfigCode(code),
+  );
+  if (fatalErrors.length > 0) {
+    throw configFailure(fatalErrors.map(({ text }) => text).join('\n'));
   }
-  return hasRootFiles ? shapedDiagnostics(ts, diagnostics) : { diagnostics: [] };
+  const reported = configErrors.filter(({ code }) => code !== NO_INPUTS_CODE);
+  return shapedDiagnostics(ts, hasRootFiles ? diagnostics : [], reported);
 }
 
-function shapedDiagnostics(ts, diagnostics) {
-  const sourceFileOf = sourceFileReader(ts);
+export function isNonFatalConfigCode(code) {
+  return NON_FATAL_CONFIG_CODES.has(code);
+}
+
+export function configFailure(message) {
+  return Object.assign(new Error(message), { configError: true });
+}
+
+function shapedDiagnostics(ts, diagnostics, configErrors = []) {
+  const sourceFileOf = sourceFileReader(ts, { withPath: true });
+  const configFileOf = sourceFileReader(ts, { withPath: false });
   return {
-    diagnostics: ts.sortAndDeduplicateDiagnostics(
-      diagnostics.map((diagnostic) => typeScriptShaped(diagnostic, sourceFileOf)),
-    ),
+    diagnostics: ts.sortAndDeduplicateDiagnostics([
+      ...configErrors.map((diagnostic) => typeScriptShaped(diagnostic, configFileOf)),
+      ...diagnostics.map((diagnostic) => typeScriptShaped(diagnostic, sourceFileOf)),
+    ]),
   };
 }
 
-function sourceFileReader(ts) {
+function sourceFileReader(ts, { withPath }) {
   const sourceFiles = new Map();
   return (fileName) => {
     if (!sourceFiles.has(fileName)) {
       const text = ts.sys.readFile(fileName);
       const sourceFile = ts.createSourceFile(fileName, text, ts.ScriptTarget.Latest, true);
-      sourceFile.path = ts.sys.useCaseSensitiveFileNames ? fileName : fileName.toLowerCase();
+      if (withPath) {
+        sourceFile.path = ts.sys.useCaseSensitiveFileNames ? fileName : fileName.toLowerCase();
+      }
       sourceFiles.set(fileName, sourceFile);
     }
     return sourceFiles.get(fileName);

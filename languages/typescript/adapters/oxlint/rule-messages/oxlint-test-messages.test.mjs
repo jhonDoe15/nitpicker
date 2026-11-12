@@ -34,6 +34,7 @@ const SOURCES = {
     "it('timers', () => { vi.useFakeTimers(); expect(run()).toBe(1); });",
     "it('stub', () => { vi.stubGlobal('fetch', run); expect(run()).toBe(1); });",
     "it.fails('known bug', () => { expect(run()).toBe(2); });",
+    "it('float', () => { expect(run()).toStrictEqual([0.1]); });",
     "it('loop', () => { for (const order of orders) { expect(order.paid).toBe(true); } });",
     '',
   ].join('\n'),
@@ -48,14 +49,14 @@ const SOURCES = {
 let root;
 let findings;
 
-beforeAll(() => {
+beforeAll(async () => {
   root = realpathSync(mkdtempSync(path.join(tmpdir(), 'nitpicker-oxlint-messages-')));
   writeFileSync(path.join(root, 'policy.mjs'), POLICY);
   for (const [relativePath, text] of Object.entries(SOURCES)) {
     mkdirSync(path.dirname(path.join(root, relativePath)), { recursive: true });
     writeFileSync(path.join(root, relativePath), text);
   }
-  const results = lintWithOxlint({
+  const results = await lintWithOxlint({
     options: { projectRoot: root, patterns: ['test/**/*.ts'] },
     environment: {
       ...process.env,
@@ -142,7 +143,13 @@ describe('test rule messages under the oxlint engine', () => {
           'nitpicker/fake-timers-require-restore',
           'This stubbed global stays stubbed for the tests that follow. Restore it: `afterEach(() => { vi.unstubAllGlobals(); });`, or stub it once in a setup file.',
         ],
-        ['test/a.test.ts', 12, 'nitpicker/no-assertion-in-loop', ALLOWED_LOOP_MESSAGE],
+        [
+          'test/a.test.ts',
+          12,
+          'nitpicker/no-float-equality-in-tests',
+          'A float literal compared for exact equality fails on rounding error. Use `toBeCloseTo(0.1)`, `expect.closeTo(0.1)` inside the expected value, chai `closeTo`, or `assert.ok(Math.abs(actual - 0.1) < tolerance)`. An exception fits only when the value is exact by construction.',
+        ],
+        ['test/a.test.ts', 13, 'nitpicker/no-assertion-in-loop', ALLOWED_LOOP_MESSAGE],
         [
           'test/clock.test.ts',
           1,

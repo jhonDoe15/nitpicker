@@ -8,7 +8,7 @@ import { runQualityDiff } from '../../../comparison/run-diff.mjs';
 import { policy } from '../../../execution/test-support/analyzer-findings.mjs';
 import { readMovesFile } from '../../../../../shared/rules/facts/baseline.mjs';
 import { commit } from '../../../git/test-support/git-repository.mjs';
-import { renameFile } from '../../../git/test-support/fixture-files.mjs';
+import { renameFile, writeFiles } from '../../../git/test-support/fixture-files.mjs';
 
 const { createRepository } = useQualityDiffRepositories();
 
@@ -46,6 +46,8 @@ describe('quality diff moves handed to the head analyzers', () => {
       'quality-policy.json': policy(),
       'src/main/source.ts': 'export const source = true;\n',
     });
+    writeFiles(repository.root, { 'src/main/source.ts': 'export const source = false;\n' });
+    commit(repository.root, 'edit source');
     const seen = [];
 
     runQualityDiff({ ...comparisonOptions(repository), analyzers: [recordingAnalyzer(seen)] });

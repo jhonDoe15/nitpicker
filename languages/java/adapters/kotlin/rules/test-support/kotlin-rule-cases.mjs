@@ -24,6 +24,30 @@ export const kotlinRuleCases = [
     allowed: 'fun text(value: Any?): String = value as? String ?: "none"\n',
   },
   {
+    id: 'nullableCast',
+    rule: 'detekt.potential-bugs.CastToNullableType',
+    message: "Use the safe cast ('as? String') instead of 'as String?'.",
+    allowedForm: 'as? String',
+    banned: 'fun text(value: Any): String? = value as String?\n',
+    allowed: 'fun text(value: Any): String? = value as? String\n',
+  },
+  {
+    id: 'collectionDowncast',
+    rule: 'detekt.potential-bugs.DontDowncastCollectionTypes',
+    message: 'Down-casting from type List to MutableList is risky. Use `toMutableList()` instead.',
+    allowedForm: 'toMutableList',
+    banned: 'fun grow(items: List<String>): MutableList<String> = items as MutableList<String>\n',
+    allowed: 'fun grow(items: List<String>): MutableList<String> = items.toMutableList()\n',
+  },
+  {
+    id: 'collectionTypeCheck',
+    rule: 'detekt.potential-bugs.DontDowncastCollectionTypes',
+    message: 'Down-casting from type List to MutableList is risky. Use `toMutableList()` instead.',
+    allowedForm: 'toMutableList',
+    banned: 'fun writable(items: List<String>): Boolean = items is MutableList<String>\n',
+    allowed: 'fun writable(items: List<String>): Boolean = items.isNotEmpty()\n',
+  },
+  {
     id: 'broadCatch',
     rule: 'detekt.exceptions.TooGenericExceptionCaught',
     message:
@@ -42,6 +66,86 @@ export const kotlinRuleCases = [
     banned: `${COROUTINE_IMPORTS}\nfun start() {\n    GlobalScope.launch { }\n}\n`,
     allowed:
       'import kotlinx.coroutines.coroutineScope\nimport kotlinx.coroutines.launch\n\nsuspend fun start() = coroutineScope {\n    launch { }\n}\n',
+  },
+  {
+    id: 'suspendRunCatching',
+    rule: 'detekt.coroutines.SuspendFunSwallowedCancellation',
+    message:
+      'The `runCatching` has suspend call inside. You should either use specific `try-catch` only catching exception that you are expecting or rethrow the `CancellationException` if already caught.',
+    allowedForm: 'direct suspend call',
+    banned:
+      'suspend fun load(): Result<Unit> = runCatching { fetch() }\nsuspend fun fetch() { kotlinx.coroutines.delay(1) }\n',
+    allowed:
+      'suspend fun load() { fetch() }\nsuspend fun fetch() { kotlinx.coroutines.delay(1) }\n',
+  },
+  {
+    id: 'aliasedSuspendRunCatching',
+    rule: 'detekt.coroutines.SuspendFunSwallowedCancellation',
+    message:
+      'The `runCatching` has suspend call inside. You should either use specific `try-catch` only catching exception that you are expecting or rethrow the `CancellationException` if already caught.',
+    allowedForm: 'direct suspend call',
+    banned:
+      'import kotlin.runCatching as attempt\n\nsuspend fun load(): Unit = attempt { fetch() }.getOrThrow()\nsuspend fun fetch() { kotlinx.coroutines.delay(1) }\n',
+    allowed:
+      'import kotlinx.coroutines.delay\n\nsuspend fun load(): Result<Int> {\n    delay(1)\n    return runCatching { "1".toInt() }\n}\n',
+  },
+  {
+    id: 'qualifiedSuspendRunCatching',
+    rule: 'detekt.coroutines.SuspendFunSwallowedCancellation',
+    message:
+      'The `runCatching` has suspend call inside. You should either use specific `try-catch` only catching exception that you are expecting or rethrow the `CancellationException` if already caught.',
+    allowedForm: 'direct suspend call',
+    banned:
+      'suspend fun load(): Unit = kotlin.runCatching { fetch() }.getOrThrow()\nsuspend fun fetch() { kotlinx.coroutines.delay(1) }\n',
+    allowed:
+      'import java.util.concurrent.CancellationException\n\nsuspend fun load(): Result<Unit> = try {\n    Result.success(fetch())\n} catch (error: CancellationException) {\n    throw error\n} catch (error: java.io.IOException) {\n    Result.failure(error)\n}\n\nsuspend fun fetch() { kotlinx.coroutines.delay(1) }\n',
+  },
+  {
+    id: 'injectedDispatcher',
+    rule: 'detekt.coroutines.InjectDispatcher',
+    message: 'Dispatcher IO is used without dependency injection.',
+    allowedForm: 'inject the dispatcher',
+    banned:
+      'import kotlinx.coroutines.Dispatchers\nimport kotlinx.coroutines.withContext\n\nsuspend fun load(): Int = withContext(Dispatchers.IO) { 1 }\n',
+    allowed:
+      'import kotlinx.coroutines.CoroutineDispatcher\nimport kotlinx.coroutines.Dispatchers\nimport kotlinx.coroutines.withContext\n\nsuspend fun load(dispatcher: CoroutineDispatcher = Dispatchers.IO): Int =\n    withContext(dispatcher) { 1 }\n',
+  },
+  {
+    id: 'redundantSuspend',
+    rule: 'detekt.coroutines.RedundantSuspendModifier',
+    message: 'Function has redundant `suspend` modifier.',
+    allowedForm: 'remove the `suspend` modifier',
+    banned: 'suspend fun answer(): String = "answer"\n',
+    allowed:
+      'import kotlinx.coroutines.delay\n\nsuspend fun answer(): String {\n    delay(1)\n    return "answer"\n}\n',
+  },
+  {
+    id: 'sleepInSuspend',
+    rule: 'detekt.coroutines.SleepInsteadOfDelay',
+    message: 'This use of Thread.sleep() inside a suspend function should be replaced by delay().',
+    allowedForm: 'use `delay`',
+    banned: 'suspend fun pause() {\n    Thread.sleep(1)\n}\n',
+    allowed: 'import kotlinx.coroutines.delay\n\nsuspend fun pause() {\n    delay(1)\n}\n',
+  },
+  {
+    id: 'suspendFlow',
+    rule: 'detekt.coroutines.SuspendFunWithFlowReturnType',
+    message: '`suspend` function returns Coroutines Flow.',
+    allowedForm: 'return the flow from a plain function',
+    banned:
+      'import kotlinx.coroutines.flow.Flow\nimport kotlinx.coroutines.flow.flowOf\n\nsuspend fun values(): Flow<Int> = flowOf(1)\n',
+    allowed:
+      'import kotlinx.coroutines.flow.Flow\nimport kotlinx.coroutines.flow.flowOf\n\nfun values(): Flow<Int> = flowOf(1)\n',
+  },
+  {
+    id: 'suspendScopeReceiver',
+    rule: 'detekt.coroutines.SuspendFunWithCoroutineScopeReceiver',
+    message: '`suspend` function uses CoroutineScope as receiver.',
+    allowedForm: 'coroutineScope { ... }',
+    banned:
+      'import kotlinx.coroutines.CoroutineScope\nimport kotlinx.coroutines.delay\n\nsuspend fun CoroutineScope.pause() {\n    delay(1)\n}\n',
+    allowed:
+      'import kotlinx.coroutines.coroutineScope\nimport kotlinx.coroutines.delay\nimport kotlinx.coroutines.launch\n\nsuspend fun pause() = coroutineScope {\n    launch { delay(1) }\n}\n',
   },
   {
     id: 'runBlocking',
@@ -103,6 +207,17 @@ export const kotlinRuleCases = [
     allowedForm: '?.let',
     banned: 'fun describe(text: String?): String? = if (text == null) null else "Text: $text"\n',
     allowed: 'fun describe(text: String?): String? = text?.let { "Text: $it" }\n',
+  },
+  {
+    id: 'collapsibleIf',
+    rule: 'detekt.style.CollapsibleIfStatements',
+    message:
+      'Two if statements which could be collapsed were detected. These statements can be merged to improve readability.',
+    allowedForm: 'if (a && b)',
+    banned:
+      'fun ready(count: Int, open: Boolean): Boolean {\n    if (count > 0) {\n        if (open) {\n            return true\n        }\n    }\n    return false\n}\n',
+    allowed:
+      'fun ready(count: Int, open: Boolean): Boolean {\n    if (count > 0 && open) {\n        return true\n    }\n    return false\n}\n',
   },
   {
     id: 'recordClass',
