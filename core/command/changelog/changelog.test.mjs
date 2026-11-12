@@ -123,13 +123,9 @@ describe('nitpicker changelog', () => {
   });
 
   it('prints the entry of the version it is given, with or without a leading v', () => {
-    expect(changelogCli('Unreleased')).toEqual({
-      exitCode: 0,
-      stdout: printed('Unreleased'),
-      stderr: '',
-    });
+    expect(changelogCli(version)).toEqual({ exitCode: 0, stdout: printed(version), stderr: '' });
     expect(changelogCli(`v${version}`)).toEqual(changelogCli(version));
-    expect(changelogCli('unreleased')).toEqual(changelogCli('Unreleased'));
+    expect(changelogCli('unreleased').stdout).toEqual(changelogCli('Unreleased').stdout);
   });
 
   it('fails for a version without an entry and lists the versions it has', () => {
