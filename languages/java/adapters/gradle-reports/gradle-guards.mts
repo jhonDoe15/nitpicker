@@ -8,7 +8,10 @@ const GUARDS_PLAN = 'guards-plan.json';
 type GuardsPlan = { readonly classDirectories?: unknown; readonly lint?: unknown };
 
 function guardsPlan(value: unknown): GuardsPlan {
-  return typeof value === 'object' && value !== null ? value : {};
+  if (typeof value !== 'object' || value === null) {
+    throw new TypeError(`${GUARDS_PLAN} must hold an object`);
+  }
+  return value;
 }
 
 export function runGuardPlan(
