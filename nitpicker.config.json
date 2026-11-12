@@ -132,8 +132,11 @@
     },
     {
       "rule": "javascript-in-typescript-project",
-      "paths": ["**/*.mjs"],
-      "reason": "Our own code is converting from .mjs to .mts one area at a time (#147). Until it is done, a module that shipped JavaScript imports must stay .mjs, because the package does not ship the .mts sources, and the package emit script runs on Node.js versions that cannot strip types."
+      "paths": [
+        "**/*.mjs",
+        "languages/typescript/adapters/test-runners/node-test/restore-mocks.cjs"
+      ],
+      "reason": "Our own code is converting from .mjs to .mts one area at a time (#147). Until it is done, a module that shipped JavaScript imports must stay .mjs, because the package does not ship the .mts sources, and the package emit script runs on Node.js versions that cannot strip types. The node:test preload that restores mocks is loaded with --require into the project's own Node.js, so it stays CommonJS JavaScript."
     },
     {
       "rule": "@typescript-eslint/no-unsafe-member-access",

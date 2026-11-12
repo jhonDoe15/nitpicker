@@ -62,7 +62,7 @@ export function nodeScriptPatterns(tokens) {
   for (const token of tokens) {
     const isValue = pending.value;
     pending.value = !isValue && VALUED_NODE_OPTIONS.has(token);
-    if (!isValue && !token.startsWith('-')) {
+    if (!(isValue || token.startsWith('-'))) {
       patterns.push(token);
     }
   }

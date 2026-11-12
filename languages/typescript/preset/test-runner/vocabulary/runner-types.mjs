@@ -78,7 +78,7 @@ export function runnerTypesNotices(runner, { projectDirectory, analyzers }) {
 export function withRunnerTypes(text, { runner, projectDirectory }) {
   const config = JSON.parse(text);
   const current = config.compilerOptions?.types;
-  if (!Array.isArray(current) || !current.includes(VITEST_GLOBALS)) {
+  if (!(Array.isArray(current) && current.includes(VITEST_GLOBALS))) {
     return text;
   }
   const types = current.flatMap((type) =>

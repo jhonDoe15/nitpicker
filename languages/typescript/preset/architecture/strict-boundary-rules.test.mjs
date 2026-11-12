@@ -239,7 +239,7 @@ describe('the test files of each runner in domain/', () => {
   it('holds the same files to the domain rules when the runner does not run them', async () => {
     expect(await violationsWith(patternsFor(defaultTestFiles('vitest')))).toEqual([
       [`${domain}/login-test.ts`, 'fs', 'domain-does-not-import-node-io'],
-      [`${domain}/login-test.ts`, 'fs', 'domain-does-not-reach-io-through-shared'],
+      [`${domain}/login-test.ts`, 'fs', REACH_THROUGH_SHARED_RULE],
       [`${domain}/login-test.ts`, 'node:test', 'domain-does-not-import-node-io'],
       [`${domain}/test/login.ts`, 'node:test', 'domain-does-not-import-node-io'],
     ]);

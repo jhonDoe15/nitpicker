@@ -44,7 +44,7 @@ export function testRunnerFor(projectRoot, configured, layout) {
       };
 }
 
-export function detectedRunnerFact(projectRoot, { configured, layout }) {
+function detectedRunnerFact(projectRoot, { configured, layout }) {
   const detection = runnerDetection(projectRoot, layout);
   if (detection.candidates === undefined) {
     return { detectedRunner: detection.runner };

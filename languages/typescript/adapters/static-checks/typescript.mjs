@@ -67,7 +67,7 @@ function gatedDiagnostics(diagnostics, projectRoot) {
     const file = projectFile(projectRoot, diagnostic.file.fileName);
     const untypedGlobal =
       untyped && layout.isTestFile(file) && isUntypedRunnerGlobal(diagnostic, runner);
-    return !layout.isExcluded(file) && !untypedGlobal;
+    return !(layout.isExcluded(file) || untypedGlobal);
   });
 }
 

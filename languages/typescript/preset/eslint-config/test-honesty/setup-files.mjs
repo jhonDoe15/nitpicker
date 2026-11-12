@@ -102,16 +102,15 @@ function ownEntries(projectRoot, runner) {
 }
 
 function runnerEntries(projectRoot, runner) {
-  const pending = ['.'];
+  const pending = new Set(['.']);
   const entries = [];
   for (const directory of pending) {
     const root = path.join(projectRoot, directory);
     entries.push(...ownEntries(root, runner).map((file) => path.posix.join(directory, file)));
     const projects = PROJECT_RUNNERS.has(runner) ? projectDirectoriesOf(root, runner) : [];
-    const added = projects
-      .map((project) => path.posix.join(directory, project))
-      .filter((project) => !pending.includes(project));
-    pending.push(...new Set(added));
+    for (const project of projects) {
+      pending.add(path.posix.join(directory, project));
+    }
   }
   return entries;
 }

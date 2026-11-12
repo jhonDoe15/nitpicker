@@ -148,23 +148,25 @@ describe('the test files of the head policy', () => {
     });
   });
 
-  it('stops on an ambiguity once an analyzer has to run the tests', () => {
-    for (const name of ['coverage', 'crap', 'mutation']) {
+  it.each(['coverage', 'crap', 'mutation'])(
+    'stops on an ambiguity once %s has to run the tests',
+    (name) => {
       const analyzers = [...LINT, presetAnalyzer(name)];
 
       expect(() => testsOf({ 'package.json': BOTH_RUNNERS }, { analyzers })).toThrow(
         new Error(AMBIGUITY),
       );
-    }
-  });
+    },
+  );
 
-  it('names the runner types package to install when the type check runs without it', () => {
-    const analyzers = [presetAnalyzer('typescript-typecheck')];
+  it.each([
+    ['jest', '@types/jest', 'Jest'],
+    ['mocha', '@types/mocha', 'Mocha'],
+  ])(
+    'names %s types package to install when the type check runs without it',
+    (runner, packageName, name) => {
+      const analyzers = [presetAnalyzer('typescript-typecheck')];
 
-    for (const [runner, packageName, name] of [
-      ['jest', '@types/jest', 'Jest'],
-      ['mocha', '@types/mocha', 'Mocha'],
-    ]) {
       expect(
         testsOf({ 'package.json': `{"scripts":{"test":"${runner}"}}` }, { analyzers }).notices,
       ).toEqual([
@@ -173,26 +175,25 @@ describe('the test files of the head policy', () => {
           `cause in test files. Install ${packageName} (npm install --save-dev ${packageName}) ` +
           'to have the tests type checked against them.',
       ]);
-    }
+    },
+  );
+
+  it.each([
+    {
+      'package.json': '{"scripts":{"test":"vitest"}}',
+      'vitest.config.mjs': "export default { test: { environment: 'jsdom' } };\n",
+    },
+    { 'package.json': '{"scripts":{"test":"jest"},"jest":{"testEnvironment":"jsdom"}}' },
+    {
+      'package.json': '{"scripts":{"test":"mocha"}}',
+      '.mocharc.json': '{"require":["global-jsdom/register"]}',
+    },
+    { 'package.json': '{"scripts":{"test":"node --import global-jsdom/register --test"}}' },
+  ])('records a DOM test environment for the runner of %j', (files) => {
+    expect(testsOf(files).domEnvironment).toBe(true);
   });
 
-  it('records a DOM test environment for every runner', () => {
-    const projects = [
-      {
-        'package.json': '{"scripts":{"test":"vitest"}}',
-        'vitest.config.mjs': "export default { test: { environment: 'jsdom' } };\n",
-      },
-      { 'package.json': '{"scripts":{"test":"jest"},"jest":{"testEnvironment":"jsdom"}}' },
-      {
-        'package.json': '{"scripts":{"test":"mocha"}}',
-        '.mocharc.json': '{"require":["global-jsdom/register"]}',
-      },
-      { 'package.json': '{"scripts":{"test":"node --import global-jsdom/register --test"}}' },
-    ];
-
-    for (const files of projects) {
-      expect(testsOf(files).domEnvironment, JSON.stringify(files)).toBe(true);
-    }
+  it('records no DOM test environment when the runner sets none', () => {
     expect(testsOf({ 'package.json': '{"scripts":{"test":"jest"}}' }).domEnvironment).toBe(
       undefined,
     );

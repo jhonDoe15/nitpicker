@@ -120,9 +120,9 @@ function chaiPropertyVerdict(name, links) {
 
 function isTerminal(node) {
   const { parent } = node;
-  return (
-    !(parent.type === 'MemberExpression' && parent.object === node) &&
-    !(parent.type === 'CallExpression' && parent.callee === node)
+  return !(
+    (parent.type === 'MemberExpression' && parent.object === node) ||
+    (parent.type === 'CallExpression' && parent.callee === node)
   );
 }
 

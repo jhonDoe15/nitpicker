@@ -168,8 +168,9 @@ describe('a detected test runner', () => {
     });
   });
 
-  it('reads the Jest a create-react-app launcher runs', () => {
-    for (const launcher of ['react-scripts', 'react-app-rewired', 'rescripts', 'craco']) {
+  it.each(['react-scripts', 'react-app-rewired', 'rescripts', 'craco'])(
+    'reads the Jest the %s launcher runs',
+    (launcher) => {
       const files = { 'package.json': manifest({ scripts: { test: `${launcher} test` } }) };
 
       expect(detect(files)).toEqual({
@@ -177,8 +178,8 @@ describe('a detected test runner', () => {
         evidence: 'package.json script "test"',
         command: `${launcher} test`,
       });
-    }
-  });
+    },
+  );
 
   it('stops at a script that runs itself', () => {
     const files = { 'package.json': manifest({ scripts: { test: 'npm run test' } }) };
