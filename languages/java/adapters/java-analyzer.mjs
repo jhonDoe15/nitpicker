@@ -12,6 +12,7 @@ import { COMPILE_ERROR_TOOL } from '../../../shared/rules/finding-helpers.mjs';
 import { javaCommand } from '../maven/maven-command.mjs';
 import { JVM_NOISE } from '../../../shared/messages/jvm/jvm-noise.mjs';
 import { mutationScopeArguments } from '../../../core/tooling/runner-arguments.mjs';
+import { changedTestsKey } from '../builds/change-scope/jvm-paths.mjs';
 
 const packageRoot = path.resolve(import.meta.dirname, '../../..');
 const runnerPath = path.join(import.meta.dirname, 'java-runner.mjs');
@@ -135,6 +136,7 @@ export function createJavaAnalyzer({ kotlin = false } = {}) {
     exclusions: [],
     reportedTools: kotlin ? [...JVM_ANALYZER_TOOLS, ...KOTLIN_TOOLS] : JVM_ANALYZER_TOOLS,
     timeoutMs: budget.analyzerTimeoutMs,
+    comparisonKey: changedTestsKey,
     createInvocation({ projectRoot, toolRoot, mutationScope }) {
       return {
         command: process.execPath,

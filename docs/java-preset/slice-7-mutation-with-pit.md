@@ -10,8 +10,8 @@ Part of the [Java preset guide](../java-preset.md).
   paths lists instead, one by one, the classes compiled from the Java and Kotlin source files under
   them: a class belongs to the file its `SourceFile` attribute names in the package folder that file
   declares, and a test task with no such class runs no PIT. The only profile can produce enforceable
-  findings. In a comparison, head starts from the base run's results (see
-  [Mutation in a comparison](mutation-in-a-comparison.md)).
+  findings. A comparison mutates the lines the change wrote and the classes its changed tests use
+  (see [Mutation in a comparison](mutation-in-a-comparison.md)).
 - **What runs.** `nitpickerPit` (`languages/java/gradle/nitpicker.init.gradle`) runs the pinned `pitest-command-line` (1.17.4) with the test
   plugins the project's framework needs (`pitest-junit5-plugin` 1.2.1, `pitest-testng-plugin`
   1.0.0, both pinned, added on the conditions below), nitpicker's mutator list (see
