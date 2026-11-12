@@ -5,6 +5,7 @@ import { lineOf, readSource } from '../migrations/revision-graph.mjs';
 import { databaseKinds } from './database-kind.mjs';
 import { isMysqlDialect, leadsWith, migrationSchema } from './migration-schema.mjs';
 import { unindexedPrismaRelations } from './prisma-schema.mjs';
+import { sqlcSchemaFiles } from './sources/sqlc-schemas.mjs';
 
 const RULE = HYGIENE_RULE_IDS.foreignKeyIndex;
 const MYSQL = 'mysql';
@@ -19,12 +20,23 @@ function isUpMigration(file) {
   return isMigrationFile(file) && !DOWN_FILE.test(file) && graphCandidate(file)?.kind !== 'django';
 }
 
-function migrationSchemas(projectRoot, files, parseYaml) {
-  return files.filter(isUpMigration).flatMap((file) => {
+function schemaFiles(projectRoot, files, parseYaml, kindOf = () => undefined) {
+  const sqlc = sqlcSchemaFiles(projectRoot, files, parseYaml);
+  const migrations = files
+    .filter(isUpMigration)
+    .filter((file) => !sqlc.mysql.has(file) && kindOf(file) !== MYSQL);
+  const declared = sqlc.checked
+    .filter((file) => !isUpMigration(file))
+    .map((file) => ({ file, declared: true }));
+  return [...migrations.map((file) => ({ file, declared: false })), ...declared];
+}
+
+function migrationSchemas(projectRoot, entries, parseYaml) {
+  return entries.flatMap(({ file, declared }) => {
     const text = readSource(projectRoot, file);
     return text === undefined || isMysqlDialect(file, text)
       ? []
-      : [{ file, text, schema: migrationSchema(file, text, parseYaml) }];
+      : [{ file, text, declared, schema: migrationSchema(file, text, parseYaml) }];
   });
 }
 
@@ -46,7 +58,10 @@ function finding({ path, key, line, message }) {
   };
 }
 
-function indexHint(file, table, columns) {
+function indexHint(file, table, columns, declared) {
+  if (declared) {
+    return `Add \`CREATE INDEX ON ${table} (${columns})\` to the schema.`;
+  }
   if (CHANGELOG_FILE.test(file)) {
     return `Add a createIndex change on ${table} (${columns}) to the changelog.`;
   }
@@ -57,7 +72,7 @@ function indexHint(file, table, columns) {
   return `Add \`CREATE INDEX ON ${table} (${columns})\` in a migration, or the ORM's index on the field followed by a generated migration.`;
 }
 
-function migrationFinding({ file, text }, foreignKey, ordinal) {
+function migrationFinding({ file, text, declared }, foreignKey, ordinal) {
   const columns = foreignKey.columns.join(', ');
   const line = lineOf(text, foreignKey.at);
   const key = `${foreignKey.table}(${columns})`;
@@ -66,9 +81,9 @@ function migrationFinding({ file, text }, foreignKey, ordinal) {
     key: ordinal === 0 ? key : `${key}#${String(ordinal + 1)}`,
     line,
     message: [
-      `${file} adds a foreign key on ${foreignKey.table} (${columns}) (line ${String(line)})`,
-      'and no migration creates an index that starts with it.',
-      indexHint(file, foreignKey.table, columns),
+      `${file} ${declared ? 'declares' : 'adds'} a foreign key on ${foreignKey.table} (${columns}) (line ${String(line)})`,
+      `and no ${declared ? 'schema file' : 'migration'} creates an index that starts with it.`,
+      indexHint(file, foreignKey.table, columns, declared),
     ].join(' '),
   });
 }
@@ -100,15 +115,15 @@ function prismaFinding(relation) {
 }
 
 export function migratesForeignKeys(projectRoot, files, parseYaml) {
-  return migrationSchemas(projectRoot, files, parseYaml).some(
+  return migrationSchemas(projectRoot, schemaFiles(projectRoot, files, parseYaml), parseYaml).some(
     ({ schema }) => schema.foreignKeys.length > 0,
   );
 }
 
 export function foreignKeyIndexFindings(tool, { projectRoot, files, parseYaml }) {
   const kindOf = databaseKinds(projectRoot, files);
-  const checked = files.filter((file) => kindOf(file) !== MYSQL);
-  const schemas = migrationSchemas(projectRoot, checked, parseYaml);
+  const entries = schemaFiles(projectRoot, files, parseYaml, kindOf);
+  const schemas = migrationSchemas(projectRoot, entries, parseYaml);
   const indexes = schemas.flatMap(({ schema }) => schema.indexes);
   const migrations = schemas.flatMap((entry) => fileFindings(entry, indexes));
   const prisma = unindexedPrismaRelations(projectRoot, files)

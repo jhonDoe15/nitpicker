@@ -7,11 +7,14 @@ import (
 	"github.com/jhonDoe15/nitpicker/languages/go/lint/rules/design"
 	"github.com/jhonDoe15/nitpicker/languages/go/lint/rules/failures"
 	"github.com/jhonDoe15/nitpicker/languages/go/lint/rules/remote"
+	"github.com/jhonDoe15/nitpicker/languages/go/lint/rules/schema"
 	"golang.org/x/tools/go/analysis"
 )
 
 const Tool = "go-rules"
 
 func Analyzers() []*analysis.Analyzer {
-	return slices.Concat(failures.Analyzers(), concurrency.Analyzers(), design.Analyzers(), remote.Analyzers())
+	return slices.Concat(failures.Analyzers(), concurrency.Analyzers(), design.Analyzers(), remote.Analyzers(),
+		schema.Analyzers(),
+	)
 }
