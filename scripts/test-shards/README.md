@@ -12,6 +12,31 @@ the corresponding enabled end-to-end suites. Selection uses the same `NITPICKER_
 `NITPICKER_KOTLIN_E2E=1` flag that enables those suites. The recorder and sequencer use the same
 profile; recording disabled tests in an ordinary run cannot erase enabled-suite measurements.
 
+## Where the end-to-end weights come from
+
+`java-e2e.json`, `kotlin-e2e.json` and `python-e2e.json` hold the median per-file time, rounded up
+to whole seconds, from the shard job logs of CI runs. The default reporter prints one line per
+passed file, `✓ <file> (<n> tests) <ms>ms`, and that time includes the file's hooks. The current
+values come from every Java, Kotlin and Python shard job that finished, passed or failed, from
+2026-11-09 to 2026-11-10: 11 to 160 samples per file. A file that failed in a job is not counted for
+that job, which puts files that often fail slightly low. Files that no longer exist are dropped, and
+a file with no passing sample keeps the one-second default.
+
+Before this refresh, 15 Kotlin files (the Kotlin-on-Maven suites and newer files) had no weight.
+They all counted as one second, so the sequencer put them on the same shard: the measured medians
+of that shard's files add up to about 2,940 seconds against 1,310 and 1,380 for the other two, and
+slow runners hit the 60-minute job limit. With the measured medians the sequencer's estimated loads
+are 1,876–1,880 seconds for Kotlin, 1,004–1,006 for Java (the old plan's shards add up to 842–1,158) and 776–777
+for Python. The longest single file, `kotlin-maven-lint` at about 511 seconds, is well below a
+Kotlin shard's load, so no file needs a split.
+
+To refresh the weights, list a workflow's recent runs
+(`gh api repos/<owner>/<repo>/actions/workflows/<language>-e2e.yml/runs`), read each shard job's
+log (`gh api repos/<owner>/<repo>/actions/jobs/<id>/logs`), collect the `✓` lines per file, take
+the median and write the sorted profile. Run `node scripts/test-shards/verify-e2e-shards.mjs
+<language>` afterwards: it prints the estimated load of every shard and fails when the profile
+names a file the suite does not select. The paragraphs below record how earlier splits were sized.
+
 Python uses `python-e2e.json` when `NITPICKER_PYTHON_E2E=1`, with two isolated runner jobs and
 two test workers each. Its initial weights come from the successful
 [Python run 39316386448](https://github.com/jhonDoe15/nitpicker/actions/runs/39316386448) on
@@ -183,8 +208,7 @@ The shard counts were later lowered twice so that more pull request runs fit int
 concurrent job limit at once. The loads, targets and measurements earlier in this file describe
 the previous split; this paragraph replaces them. The unit `test` job went from eight shards to
 two, Java from 16 to four, Kotlin from ten to three, Python from four to two and Go from two to one.
-Fewer runners also repeat the per-job setup (checkout, `npm ci`, toolchains) fewer times. With the
-current profiles the sequencer's estimated loads per shard are about 1,334 seconds for the unit
-suite (run with one worker per vCPU, so roughly six to nine minutes of wall time), 971–975 seconds
-for Java, 905–929 seconds for Kotlin, 707 seconds for Python and 70 seconds for Go, before setup.
-Every load stays well inside its job's `timeout-minutes`.
+Fewer runners also repeat the per-job setup (checkout, `npm ci`, toolchains) fewer times. At that
+change the sequencer estimated about 1,334 seconds per unit shard (run with one worker per vCPU,
+so roughly six to nine minutes of wall time) and 70 seconds for Go; the measured end-to-end loads
+are at the top of this file.

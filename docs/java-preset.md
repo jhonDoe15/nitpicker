@@ -42,6 +42,7 @@ Each topic has its own page, so two changes to different topics never edit the s
 - [Tests that never run](java-preset/tests-that-never-run.md)
 - [Tests that copy a constant](java-preset/tests-that-copy-a-constant.md)
 - [Console output of tests](java-preset/console-output-of-tests.md)
+- [Round-trip tests](java-preset/round-trip-tests.md)
 - [Error Prone and NullAway](java-preset/error-prone-and-nullaway.md)
 - [Structure limits (SH5)](java-preset/structure-limits-sh5.md)
 - [Class and package size limits](java-preset/class-and-package-size-limits.md)

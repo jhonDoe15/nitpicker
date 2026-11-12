@@ -1,3 +1,4 @@
+import { goConsoleFacts } from '../tests/test-console.mjs';
 import { directoryOf, goPackages } from './go-packages.mjs';
 
 const DOT_IMPORT = '.';
@@ -103,7 +104,15 @@ function importFacts(report, packages, roleOf) {
   }));
 }
 
-function definitionFacts(report, localNames) {
+function productionUses(imports) {
+  const uses = new Map();
+  for (const { to, names } of imports.filter((edge) => edge.role === 'production')) {
+    uses.set(to, new Set([...(uses.get(to) ?? []), ...names.map(({ name }) => name)]));
+  }
+  return uses;
+}
+
+function definitionFacts(report, uses) {
   return report.definitions.map(
     ({ file, name, kind, line, lines, exported, entry, literal, tokens }) => ({
       file,
@@ -115,22 +124,27 @@ function definitionFacts(report, localNames) {
       entry,
       literal,
       tokens,
-      usedLocally: localNames.get(file)?.has(name) ?? false,
+      usedLocally: uses.get(file)?.has(name) ?? false,
     }),
   );
 }
 
-export function goFacts(report, { module } = {}) {
+export function goFacts(report, { module = '', testRun } = {}) {
   const packages = goPackages(report, module);
   const roles = new Map(report.files.map((file) => [file.path, file.test ? 'test' : 'production']));
   function roleOf(file) {
     return roles.get(file) ?? 'production';
   }
-  const localNames = new Map(report.usages.map(({ file, local }) => [file, new Set(local)]));
+  const imports = importFacts(report, packages, roleOf);
   return {
     modules: report.files.map(({ path: file }) => ({ file, role: roleOf(file), entry: true })),
     packages: packages.directories.map((root) => ({ root, published: packages.isPublished(root) })),
-    definitions: definitionFacts(report, localNames),
-    imports: importFacts(report, packages, roleOf),
+    definitions: definitionFacts(report, productionUses(imports)),
+    imports,
+    docComments: report.docComments ?? [],
+    console: testRun === undefined ? [] : goConsoleFacts(testRun, { report, module }),
+    constrained: report.files
+      .filter(({ constrained }) => constrained)
+      .map(({ path: file }) => file),
   };
 }

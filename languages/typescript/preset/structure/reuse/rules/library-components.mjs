@@ -3,7 +3,7 @@ import { isScopePackage } from '../../../eslint-config/scope-support.mjs';
 import { reuseFinding } from '../../../../../../shared/rules/reuse/reuse-finding.mjs';
 
 const COMPONENT_FILE = /\.[jt]sx$/u;
-const COMPONENT_NAME = /^[A-Z][A-Za-z0-9]*[a-z][A-Za-z0-9]*$/u;
+const COMPONENT_NAME = /^[A-Z][\dA-Z]*[a-z][\dA-Za-z]*$/u;
 
 function renderedNames(declaration, jsxTags) {
   const lastSegment = declaration.specifier.split('/').at(-1);

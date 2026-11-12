@@ -4,6 +4,7 @@ import { readdirSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { importClosure } from '../../../shared/import-closure.mjs';
 import { toolVersions } from './execution/go-tools.mjs';
+import { GO_LINTER_TOOLS } from './configuration/go-config.mjs';
 import { PROBE_TIMEOUT_MS } from '../../../shared/processes/deadlines.mjs';
 
 export const GO_ANALYZER_NAME = 'go';
@@ -62,10 +63,7 @@ export function createGoAnalyzer(settings = {}) {
       'gofmt',
       'gofumpt',
       'goimports',
-      'vet',
-      'staticcheck',
-      'errcheck',
-      'modernize',
+      ...GO_LINTER_TOOLS,
       'build',
       'tests',
       'test-runtime',
@@ -77,7 +75,7 @@ export function createGoAnalyzer(settings = {}) {
       'dependencies',
     ],
     timeoutMs: ANALYZER_TIMEOUT_MS,
-    createInvocation: ({ projectRoot, toolRoot }) => ({
+    createInvocation: ({ projectRoot, toolRoot, baselineMovesFile }) => ({
       command: process.execPath,
       args: [
         cliPath,
@@ -85,6 +83,7 @@ export function createGoAnalyzer(settings = {}) {
         '--project-root',
         projectRoot,
         ...(Object.keys(settings).length === 0 ? [] : ['--go-settings', JSON.stringify(settings)]),
+        ...(baselineMovesFile === undefined ? [] : ['--baseline-moves-file', baselineMovesFile]),
       ],
       cwd: toolRoot,
     }),

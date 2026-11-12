@@ -9,16 +9,10 @@ const repositoryRoot = path.resolve(import.meta.dirname, '../..');
 
 const GO_REGISTERED_FACT_RULES_ONLY = {
   file: 'languages/go/adapters/facts/go-fact-findings.mjs',
-  evidence: /rules: registeredFactRules\(LANGUAGE\)/u,
+  evidence: /const registered = registeredFactRules\(LANGUAGE\)/u,
 };
 const GO_FACT_RULES_NOT_RUN = Object.fromEntries(
-  [
-    'duplicate-definition',
-    'exported-name-collision',
-    'sibling-copy-edit',
-    'doc-comment-content',
-    'test-console-output',
-  ].map((rule) => [rule, GO_REGISTERED_FACT_RULES_ONLY]),
+  ['exported-name-collision'].map((rule) => [rule, GO_REGISTERED_FACT_RULES_ONLY]),
 );
 const JVM_RUNTIME_EDGES_ONLY = {
   file: 'languages/java/adapters/test-runtime/test-graph.mjs',

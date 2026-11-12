@@ -14,6 +14,7 @@ import {
 } from './main/generated-members/generated-members.mjs';
 import { REUSABLE_OBJECT_RULE } from '../../../messages/reuse/reusable-objects.mjs';
 import { SINGULAR_PLURAL_RULE } from './main/member-names.mjs';
+import { STREAMED_ROWS_RULE } from './main/streamed-rows/streamed-rows.mjs';
 import { TIMEOUT_RULE } from './main/timeouts/timeouts.mjs';
 import { SUSPENDED_UPDATE_RULE } from './main/suspension/suspended-updates.mjs';
 import { RECURSIVE_MAP_UPDATE_RULE } from './main/map-updates/recursive-map-update.mjs';
@@ -29,6 +30,7 @@ import { SPRING_UNUSED_CONTEXT_RULE } from './tests/spring-context.mjs';
 import { FIXED_SLEEP_RULE } from '../../../messages/wait-advice.mjs';
 import { HONESTY_RULES } from './tests/test-honesty.mjs';
 import { NEGATIVE_WAIT_RULE } from './tests/test-waits.mjs';
+import { RELAXED_MOCK_RULE } from './tests/mocks/relaxed-mocks.mjs';
 import { MOCKED_SUBJECT_RULE, STATIC_MOCK_RULE } from '../../../messages/mocks/project-mocks.mjs';
 
 export const KOTLIN_REVIEW_EXCEPTION_RULES = [
@@ -37,6 +39,7 @@ export const KOTLIN_REVIEW_EXCEPTION_RULES = [
   ...HONESTY_RULES,
   MOCKED_SUBJECT_RULE,
   STATIC_MOCK_RULE,
+  RELAXED_MOCK_RULE,
   SPRING_UNUSED_CONTEXT_RULE,
   ENUM_PREDICATE_RULE,
   FORWARDING_RULE,
@@ -53,6 +56,7 @@ export const KOTLIN_REVIEW_EXCEPTION_RULES = [
   LOAD_EFFECT_RULE,
   UNBOUNDED_POOL_RULE,
   RECURSIVE_MAP_UPDATE_RULE,
+  STREAMED_ROWS_RULE,
   REUSABLE_OBJECT_RULE,
   MEMBER_CYCLE_RULE,
   SKIPPED_SUPER_RULE,

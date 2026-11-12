@@ -32,7 +32,7 @@ const TOKEN_PARTS = [
   String.raw`\*\*=|\/\/=|>>=|<<=|\*\*|\/\/|==|!=`,
   String.raw`<=|>=|->|:=|\+=|-=|\*=|\/=|%=|&=|\|=|\^=|<<|>>`,
   String.raw`\s+`,
-  String.raw`[\s\S]`,
+  String.raw`\S`,
 ];
 const TOKEN = new RegExp(TOKEN_PARTS.join('|'), 'gu');
 const NUMBER = /^\d[\w.]*$/u;

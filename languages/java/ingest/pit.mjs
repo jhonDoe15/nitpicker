@@ -159,7 +159,7 @@ function withoutPackages(text) {
 }
 
 function withoutSyntheticNumbers(name) {
-  return name.replaceAll(/\$\d+(?!\w)/gu, '');
+  return name.replaceAll(/\$\d+\b/gu, '');
 }
 
 function withoutMethod(description) {

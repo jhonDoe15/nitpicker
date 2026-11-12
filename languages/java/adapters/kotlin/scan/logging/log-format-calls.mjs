@@ -11,7 +11,7 @@ const JUL_IMPORT = /^[ \t]*import\s+java\.util\.logging\.(?:Level|\*)[ \t]*$/mu;
 const LOG4J_IMPORT =
   /^[ \t]*import\s+org\.apache\.logging\.log4j\.(?:Logger|LogManager|Level|\*)[ \t]*$/mu;
 const LOG4J_LEVEL_IMPORT = /^[ \t]*import\s+org\.apache\.logging\.log4j\.(?:Level|\*)[ \t]*$/mu;
-const CALL = /(?<!\w)([A-Za-z_]\w*)\s*\??\.\s*([a-z]\w*)\s*\(/gu;
+const CALL = /\b([A-Za-z_]\w*)\s*\??\.\s*([a-z]\w*)\s*\(/gu;
 const FORMATTER_FACTORY = String.raw`(?:org\.apache\.logging\.log4j\.)?LogManager\s*\.\s*getFormatterLogger\s*\(`;
 const FORMATTER = new RegExp(
   String.raw`\b(?:val|var)\s+([A-Za-z_]\w*)\b[^=\n]*=\s*${FORMATTER_FACTORY}`,

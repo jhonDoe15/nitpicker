@@ -11,7 +11,48 @@ import { GO_SIZE_RULES } from '../../../../shared/project-rules/size-rules.mjs';
 import { FORMATTERS } from '../formatting/go-formatters.mjs';
 import { suggestionOrAllowed } from '../../../../shared/messages/closest-match.mjs';
 
-export const GO_LINT_TOOLS = ['vet', 'staticcheck', 'errcheck', 'modernize', 'deadcode'];
+const GO_CATALOG_TOOLS = [
+  'bodyclose',
+  'rowserrcheck',
+  'sqlclosecheck',
+  'noctx',
+  'errorlint',
+  'nilerr',
+  'nilnil',
+  'errname',
+  'contextcheck',
+  'containedctx',
+  'fatcontext',
+  'exhaustive',
+  'recvcheck',
+  'durationcheck',
+  'makezero',
+  'reassign',
+  'unconvert',
+  'wastedassign',
+  'thelper',
+  'tparallel',
+  'testifylint',
+  'usetesting',
+  'asciicheck',
+  'bidichk',
+  'gocheckcompilerdirectives',
+  'canonicalheader',
+  'musttag',
+  'perfsprint',
+  'usestdlibvars',
+  'sloglint',
+  'spancheck',
+];
+export const GO_LINTER_TOOLS = [
+  'vet',
+  'staticcheck',
+  'errcheck',
+  'modernize',
+  'revive',
+  ...GO_CATALOG_TOOLS,
+];
+export const GO_LINT_TOOLS = [...GO_LINTER_TOOLS, 'deadcode'];
 export const GO_EXCEPTION_RULES = [
   ...COMMON_EXCEPTION_RULES,
   ...GO_SIZE_RULES,
