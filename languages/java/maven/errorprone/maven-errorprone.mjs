@@ -2,6 +2,7 @@ import { createHash } from 'node:crypto';
 import { existsSync, mkdirSync, rmSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { GRADLE_DIRECTORY } from '../../builds/java-build.mjs';
+import { isJavaModule } from '../../builds/lint/lint-arguments.mjs';
 import { runJava } from '../maven-command.mjs';
 import { javaFiles } from '../maven-lint.mjs';
 import { errorProneJava } from './maven-jdk.mjs';
@@ -20,6 +21,7 @@ const JVM_FLAGS = [
   ),
 ];
 const OWN_JARS = /^(?:error_prone_|nullaway-)/u;
+const MODULE_INFO = 'module-info.java';
 
 export function processorTool(compiler) {
   if (compiler.processorPaths === undefined || compiler.processorPaths.length === 0) {
@@ -29,7 +31,7 @@ export function processorTool(compiler) {
   return { name: `processors-${key.slice(0, 16)}`, coordinates: compiler.processorPaths };
 }
 
-function processorPath(classpath, compiler, tools) {
+export function processorPath(classpath, compiler, tools) {
   if (compiler.proc === 'none') {
     return [];
   }
@@ -48,11 +50,23 @@ function levelLines(compiler) {
   ];
 }
 
-function writeArguments(
-  work,
-  { name, roots, classpath, compiled = [], own, processors, compiler, test, flags },
-) {
-  const sources = javaFiles(roots).filter((file) => path.basename(file) !== 'module-info.java');
+function lookupLines({ classpath: sourcePath, compiled = [], own, modular }) {
+  const classpath = [...sourcePath, ...compiled];
+  const libraries = classpath.filter((entry) => !own.includes(entry) && existsSync(entry));
+  const modules =
+    modular === false ? [] : libraries.filter((entry) => modular === 'all' || isJavaModule(entry));
+  const plain = classpath.filter((entry) => !modules.includes(entry));
+  return [
+    ...(modules.length === 0 ? [] : ['--module-path', modules.join(path.delimiter)]),
+    ...['-classpath', plain.join(path.delimiter)],
+  ];
+}
+
+function writeArguments(work, set) {
+  const { name, roots, own, processors, compiler, test, modular, flags } = set;
+  const sources = javaFiles(roots).filter(
+    (file) => modular !== false || path.basename(file) !== MODULE_INFO,
+  );
   if (sources.length === 0) {
     return [];
   }
@@ -61,14 +75,7 @@ function writeArguments(
   mkdirSync(classes, { recursive: true });
   mkdirSync(generated, { recursive: true });
   const lines = [
-    ...[
-      '-d',
-      classes,
-      '-s',
-      generated,
-      '-classpath',
-      [...classpath, ...compiled].join(path.delimiter),
-    ],
+    ...['-d', classes, '-s', generated, ...lookupLines(set)],
     ...['-processorpath', processors.join(path.delimiter)],
     ...['-XDcompilePolicy=simple', '-XDaddTypeAnnotationsToSymbol=true'],
     ...['--should-stop=ifError=FLOW', '-Xmaxwarns', '1000000', '-Xmaxerrs', '1000000'],
@@ -86,7 +93,11 @@ function writeArguments(
   return [file];
 }
 
-function analysisSets(module, classpaths) {
+function isModular(module) {
+  return javaFiles(module.sourceRoots).some((file) => path.basename(file) === MODULE_INFO);
+}
+
+function compileSets({ module, classpaths }, modular) {
   return [
     {
       name: 'main',
@@ -94,6 +105,7 @@ function analysisSets(module, classpaths) {
       classpath: [...classpaths.mainCompile, module.outputDirectory],
       own: [module.outputDirectory],
       test: false,
+      modular,
     },
     {
       name: 'test',
@@ -102,17 +114,17 @@ function analysisSets(module, classpaths) {
       compiled: [module.testOutputDirectory],
       own: [module.outputDirectory, module.testOutputDirectory],
       test: true,
+      modular: false,
     },
   ];
 }
 
-export function runErrorProne({ module, reportDir, tools, classpaths, configs, ...run }) {
+function analyze({ module, reportDir, tools, classpaths, configs, ...run }, modular) {
   const report = path.join(reportDir, 'errorprone.json');
   const work = path.join(reportDir, 'errorprone');
   rmSync(work, { recursive: true, force: true });
   const { compiler } = module;
-  const sets = analysisSets(module, classpaths);
-  const argumentFiles = sets.flatMap((set) =>
+  const argumentFiles = compileSets({ module, classpaths }, modular).flatMap((set) =>
     writeArguments(work, {
       ...set,
       compiler: set.test ? { ...compiler, ...compiler.test } : compiler,
@@ -141,4 +153,16 @@ export function runErrorProne({ module, reportDir, tools, classpaths, configs, .
     cwd: module.basedir,
     accept: (result) => result.status === 0 && existsSync(report),
   });
+}
+
+export function runErrorProne(context) {
+  const modular = isModular(context.module);
+  try {
+    analyze(context, modular);
+  } catch (error) {
+    if (!modular) {
+      throw error;
+    }
+    analyze(context, 'all');
+  }
 }

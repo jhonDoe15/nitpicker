@@ -2,6 +2,7 @@ import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { globMatcher } from '../../../../shared/paths/glob.mjs';
 import {
+  methodText,
   readStructureFindings,
   STRUCTURE_TOOL,
 } from '../../../../shared/ingest/structure-report.mjs';
@@ -11,8 +12,18 @@ import { javaLineLengthFindings } from '../size/line-length.mjs';
 import { javaLineLength } from '../style/java-style.mjs';
 import { projectFilePaths } from '../../../../shared/project-files/project-files.mjs';
 
-export function readJavaStructureFindings(reportRoot, projectRoot) {
-  return readStructureFindings(reportRoot, projectRoot);
+export function readJavaStructureFindings(reportRoot, projectRoot, reactorRoot = projectRoot) {
+  return readStructureFindings(reportRoot, projectRoot, {
+    textOf: (sources, root, entry) =>
+      javaMethodText(sources, { projectRoot: root, reactorRoot }, entry),
+  });
+}
+
+export function javaMethodText(sources, { projectRoot, reactorRoot = projectRoot }, entry) {
+  return methodText(sources, reactorRoot, {
+    ...entry,
+    file: path.relative(reactorRoot, path.resolve(projectRoot, entry.file)),
+  });
 }
 
 const SOURCE_ROOT_KEYS = { source: 'sourceRoots', test: 'testSourceRoots' };

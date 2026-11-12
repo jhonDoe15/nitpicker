@@ -1,0 +1,40 @@
+def reportDir = project.ext.nitpickerReportDir
+def declaredConfigurations = ['implementation', 'api']
+
+tasks.register('nitpickerDependencies') {
+    group = 'nitpicker'
+    dependsOn tasks.named('classes')
+    inputs.files(sourceSets.main.output.classesDirs, configurations.compileClasspath).withPropertyName('classes')
+    inputs.property('declared', providers.provider { declaredConfigurations.collectMany { name ->
+        configurations.findByName(name)?.dependencies?.collect {
+            "${name} ${it.group}:${it.name}:${it.version}".toString()
+        } ?: []
+    } })
+    outputs.file(reportDir.map { it.file('dependencies.json') }).withPropertyName('report')
+    doLast {
+        reportDir.get().asFile.mkdirs()
+        def archivesOf = [:]
+        def lenient = configurations.compileClasspath.resolvedConfiguration.lenientConfiguration
+        lenient.firstLevelModuleDependencies.each { resolved ->
+            archivesOf["${resolved.moduleGroup}:${resolved.moduleName}".toString()] =
+                resolved.moduleArtifacts.collect { it.file }.findAll { it.exists() }.unique()
+        }
+        def classDirs = sourceSets.main.output.classesDirs.files.findAll { it.exists() && it.list()?.length }
+        def declared = declaredConfigurations.findAll { configurations.findByName(it) != null }.collectMany { name ->
+            configurations.getByName(name).dependencies.withType(ExternalModuleDependency).collect { dependency ->
+                def archives = archivesOf["${dependency.group}:${dependency.name}".toString()] ?: []
+                [configuration: name, group: dependency.group ?: '', name: dependency.name,
+                 archives: archives.collect { it.name }, archivePaths: archives.collect { it.absolutePath }]
+            }
+        }
+        def buildFile = project.buildFile.exists() ? project.ext.nitpickerRelativeToRoot(project.buildFile) : null
+        reportDir.get().file('dependencies.json').asFile.text = groovy.json.JsonOutput.toJson([
+            buildFile: buildFile,
+            analyzed : !classDirs.isEmpty(),
+            classDirectories: classDirs.collect { it.absolutePath },
+            declared : declared,
+        ])
+    }
+}
+
+tasks.named('nitpickerJava') { dependsOn 'nitpickerDependencies' }

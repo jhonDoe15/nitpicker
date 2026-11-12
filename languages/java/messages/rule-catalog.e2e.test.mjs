@@ -30,7 +30,12 @@ const EXTRA_PMD_RULES = [
   'LogicInversion',
   'ConfusingTernary',
 ];
-const EXTRA_CHECKSTYLE_RULES = ['UnusedImports'];
+const EXTRA_CHECKSTYLE_RULES = [
+  'ConstantName',
+  'MagicNumber',
+  'UnusedImports',
+  'VisibilityModifier',
+];
 const CHECKSTYLE_INFRASTRUCTURE = /^(?:Checker|TreeWalker)$|Filter$|^Suppress/u;
 
 function pinnedVersion(tool) {
