@@ -3,7 +3,8 @@ import { mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { expect } from 'vitest';
-import { ingestSarifText } from '../../../../../../shared/ingest/sarif.mjs';
+import { ingestSarif } from '../../../../../../shared/ingest/sarif.mjs';
+import { withPmdLevels } from '../../../reporting/sarif/pmd-levels.mjs';
 import { applyRuleMessages } from '../../../../messages/rule-messages.mjs';
 import { INIT_SCRIPT } from '../../../../builds/java-build.mjs';
 import { writeRulesets } from '../../../tool-config/pmd-wrappers.mjs';
@@ -62,5 +63,7 @@ export function runPmdProbe(root, gradle) {
 
 export function readPmdProbeFindings(root) {
   const report = readFileSync(path.join(root, 'pmd.sarif'), 'utf8');
-  return applyRuleMessages(ingestSarifText(report, { tool: 'pmd', root }).findings);
+  return applyRuleMessages(
+    ingestSarif(withPmdLevels(JSON.parse(report)), { tool: 'pmd', root }).findings,
+  );
 }
