@@ -3,7 +3,16 @@ export function testConsoleRule(ids) {
     id: ids.testConsoleOutput,
     check: 'test-console',
     limit:
-      'a test file printing console.error or console.warn output (Python: stderr, warnings and log records at WARNING or above; compared as text with numbers and paths normalized, one random-looking word tolerated) that the base run did not print',
+      'a test file printing console.error or console.warn output (Python: stderr, warnings and log records at WARNING or above; Go: lines at WARN or ERROR level and standard `log` lines; compared as text with numbers and paths normalized, one random-looking word tolerated) that the base run did not print',
+  };
+}
+
+export function slowTest(ids, defaults, enforcedBy) {
+  return {
+    id: ids.slowTest,
+    check: 'test-runtime',
+    limit: `a test the change adds or edits taking more than ${String(defaults.unitTestSeconds)} s (unit) or ${String(defaults.integrationTestSeconds)} s (integration); override with \`thresholds.unitTestSeconds\` and \`thresholds.integrationTestSeconds\``,
+    enforcedBy,
   };
 }
 

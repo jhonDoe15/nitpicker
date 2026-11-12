@@ -190,20 +190,32 @@ function receiverPart(scanned, dot) {
   return /[\w)\]]$/.test(head) ? undefined : { start: open + 1, end: end - 1 };
 }
 
-function regexSites(scanned) {
+export function regexSites(scanned) {
   const { code } = scanned;
   const constructed = [...code.matchAll(CONSTRUCTOR)]
     .filter(({ index }) => !inImport(code, index))
     .map((match) => {
       const open = match.index + match[0].length - 1;
       const { parts, close } = splitArguments(code, open);
-      return { part: parts[0], count: parts.length, start: match.index, end: close + 1 };
+      return {
+        part: parts[0],
+        options: parts.slice(1),
+        count: parts.length,
+        start: match.index,
+        end: close + 1,
+      };
     });
   const converted = [...code.matchAll(CONVERSION)].map((match) => {
     const open = match.index + match[0].length - 1;
     const { parts, close } = splitArguments(code, open);
     const part = receiverPart(scanned, match.index);
-    return { part, count: parts.length + 1, start: part?.start ?? match.index, end: close + 1 };
+    return {
+      part,
+      options: parts,
+      count: parts.length + 1,
+      start: part?.start ?? match.index,
+      end: close + 1,
+    };
   });
   return [...constructed, ...converted].filter(({ part }) => part !== undefined);
 }
@@ -229,14 +241,17 @@ function decoded(literal) {
   );
 }
 
-function plainLiteral(scanned, part) {
+export function literalText(scanned, part) {
   const operand = trimmed(scanned.code, part);
   const literal = literalAt(scanned, operand.start);
-  if (literal === undefined || literal.template || literal.end !== operand.end) {
-    return undefined;
-  }
-  const text = decoded(literal);
-  return METACHARACTERS.test(text) || text === '' ? undefined : text;
+  return literal === undefined || literal.template || literal.end !== operand.end
+    ? undefined
+    : decoded(literal);
+}
+
+function plainLiteral(scanned, part) {
+  const text = literalText(scanned, part);
+  return text === undefined || METACHARACTERS.test(text) || text === '' ? undefined : text;
 }
 
 export function plainTextRegexes(scanned) {

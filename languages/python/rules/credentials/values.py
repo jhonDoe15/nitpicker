@@ -21,8 +21,16 @@ def any_of(patterns):
     return "(?:" + "|".join(patterns) + ")"
 
 
+def uncovered_words(words):
+    return [
+        word
+        for word in words
+        if not any(other != word and other in word for other in words)
+    ]
+
+
 SECRET_NAME = re.compile(any_of(SECRET_NAME_WORDS) + "$")
-SECRET_WORD = re.compile(any_of(SECRET_NAME_WORDS))
+SECRET_WORD = re.compile(any_of(uncovered_words(SECRET_NAME_WORDS)))
 PASSPHRASE_NAME = re.compile(any_of(PASSPHRASE_NAME_WORDS) + "$")
 PLACEHOLDER = re.compile(any_of(PLACEHOLDER_PATTERNS), re.IGNORECASE | re.ASCII)
 NOT_SECRET = re.compile(any_of(NOT_SECRET_PATTERNS), re.ASCII)

@@ -2,6 +2,10 @@ import { readFileSync } from 'node:fs';
 import { ts } from '../../typescript-api/typescript-api.mjs';
 import { readStamped } from './stamped-file-cache.mjs';
 
+export function isExported(statement) {
+  return statement.modifiers?.some(({ kind }) => kind === ts.SyntaxKind.ExportKeyword) ?? false;
+}
+
 function literalSource(node) {
   return node?.type === 'Literal' && typeof node.value === 'string' ? node.value : undefined;
 }

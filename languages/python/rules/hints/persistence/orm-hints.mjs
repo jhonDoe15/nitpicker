@@ -25,6 +25,24 @@ export const PERSISTENCE_HINTS = [
   },
   {
     tool: RULES_TOOL,
+    rules: ['multiple-collection-joins'],
+    describe: (subject) => {
+      const [first, second] = subject.split(' ');
+      return `\`${first}\` and \`${second}\` are both collections joined into one query, so it returns every row of the first once for each row of the second`;
+    },
+    allowed:
+      'Load the collections with `selectinload`, one query each: `select(Order).options(selectinload(Order.lines), selectinload(Order.payments))`; one `joinedload` of a collection next to to-one relations stays one row per child. An exception fits only when both collections are known to stay small.',
+  },
+  {
+    tool: RULES_TOOL,
+    rules: ['unindexed-foreign-key'],
+    describe: (subject) =>
+      `The foreign key \`${subject}\` has no index that starts with it, so every delete of a referenced row and every lookup by it scans the table`,
+    allowed:
+      'Add `index=True` to the column (SQLAlchemy `mapped_column`/`Column`, SQLModel `Field`), an `Index` whose first column is it, or drop `db_index=False` (Django) or list the field first in `Meta.indexes`. Only MySQL indexes a foreign-key column by itself; PostgreSQL, SQL Server and SQLite do not. An exception fits only when the table is known to stay small.',
+  },
+  {
+    tool: RULES_TOOL,
     rules: ['in-memory-query'],
     describe: (subject) => {
       const [model, shape] = subject.split(' ');

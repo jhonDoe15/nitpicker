@@ -28,6 +28,10 @@ Part of the [nitpicker-javascript](../SKILL.md) skill. Write these forms from th
   collection (`expect(orders).toEqual([...])`) and put cases in `it.each`
   (`nitpicker/no-assertion-in-loop`). The rules of the other pages (`for...of` only, no `.then()`, no casts) apply
   to tests too.
+- Assert the value, not that something is there (`nitpicker/no-weak-assertion`): no `not.toBe(null)`,
+  `expect(x.length).toBeGreaterThan(0)`, `assert.ok(x.length)` or `toHaveBeenCalledWith(expect.anything())`
+  as the whole check; assert the exact value, contents or length and the call's arguments. `assert(x != null)`
+  is fine when the test then uses `x`.
 - Tests assert exact values and are deterministic and fast; each finding names the allowed form.
 - A shared helper (stdout capture) lives once, in a non-test file such as `test/support/lines.js`, or in a `test-support/` folder beside the code when the tests sit next to it.
   When an existing test defines the same helper, make it import the shared one.
@@ -36,6 +40,8 @@ Part of the [nitpicker-javascript](../SKILL.md) skill. Write these forms from th
   padded value for a `.trim()`, two bad fields for a `join`); never delete a schema rule to silence it.
 - No per-test git repos, child processes, servers, fixed sleeps, raised timeouts, or test retries
   (`retry`/`retries` options, `jest.retryTimes`, `this.retries(n)`); fix the flaky cause.
+- A test uses an imported constant by name (`MAX_LENGTH + 1`), never a copy of its value
+  (`nitpicker/no-copied-constant`); pin a contract value as `expect(MAX_LENGTH).toBe(64)`.
 - Wait for every callback that asserts: `await once(emitter, 'ready')`, await a promise the
   callback resolves, or advance fake timers in the test. An assertion in a timer, listener or
   error-first callback the test does not wait for runs after it ends and its failure is lost.
@@ -47,3 +53,6 @@ Part of the [nitpicker-javascript](../SKILL.md) skill. Write these forms from th
   `*.integration.test.js`, folders counted under the test roots). Use fake timers instead of waits
   and fakes instead of network or disk. A test over budget is run again alone without coverage and
   fails only if it is still over. A slow test you did not touch stays baselined.
+- Test each exported inverse pair on its own output (`nitpicker/untested-round-trip`): for
+  `encodeToken`/`decodeToken` or `Order.toJson`/`Order.fromJson`, one test calls both,
+  `expect(decodeToken(encodeToken(value))).toEqual(value)`.

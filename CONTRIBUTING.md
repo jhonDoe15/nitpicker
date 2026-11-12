@@ -90,8 +90,11 @@ CI (the `typescript` workflow) runs:
 
 - on every push to `main` that touches a path in the workflow's `paths` list (a run that has started
   finishes; a run still waiting is replaced by the next push's run, which tests everything merged so far);
-- on a pull request when someone adds the `run-ci` label, once per added label (remove and add the
-  label again for another run);
+- on a pull request when someone adds a label while it carries the `run-ci` label: adding `run-ci`
+  starts it, and any later label runs it again (remove and add `run-ci` for another run). GitHub
+  keeps only the newest run of a workflow for a commit and counts a skipped required check as
+  passed, so a label never skips the checks: on a pull request without `run-ci` the self-gate
+  still runs and `test` fails until someone adds `run-ci`;
 - by hand from the Actions tab (Run workflow) on any branch that already has this workflow.
 
 GitHub does not start a pull request run while the pull request has a merge conflict, so resolve it
@@ -120,7 +123,7 @@ node scripts/test-shards/record-durations.mjs --maxWorkers=100%
 ```
 
 Java end-to-end CI uses 4 isolated runner shards and Kotlin uses 3, with files run serially in
-each shard. Independent behavior groups have separate fixture trees; the full 102 Java and 98
+each shard. Independent behavior groups have separate fixture trees; the full 124 Java and 110
 Kotlin cases remain selected. The final `java` or `kotlin` check passes only when all its shards
 pass. Reproduce a shard with `npm run test:java -- --shard=1/4` or
 `npm run test:kotlin -- --no-file-parallelism --shard=1/3`. A file that runs longer than about

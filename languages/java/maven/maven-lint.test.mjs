@@ -10,6 +10,10 @@ import {
 } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
+import {
+  nestedCheckout,
+  useGitCheckouts,
+} from '../../../core/diff/git/test-support/git-checkout.mjs';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { GRADLE_DIRECTORY } from '../builds/java-build.mjs';
 import { javaFiles, runFormat, runPmd, runSpotbugs, writeCheckstyleSetup } from './maven-lint.mjs';
@@ -17,6 +21,7 @@ import { toolDependencies } from './maven-tools.mjs';
 import { readPinnedTools } from '../builds/java-build.mjs';
 
 const roots = [];
+const { gitCheckout } = useGitCheckouts();
 
 function dependency(groupId, artifactId, version, extra = '') {
   const id = `<groupId>${groupId}</groupId><artifactId>${artifactId}</artifactId>`;
@@ -261,7 +266,7 @@ describe('runFormat', () => {
 });
 
 describe.skipIf(process.platform === 'win32')('runPmd', () => {
-  function pmdRun(spring, springRules) {
+  function pmdRun(spring, springRules, reactor = false) {
     const basedir = mkdtempSync(path.join(tmpdir(), 'nitpicker-maven-pmd-'));
     roots.push(basedir);
     const java = path.join(basedir, 'jdk/bin/java');
@@ -286,7 +291,12 @@ describe.skipIf(process.platform === 'win32')('runPmd', () => {
       mkdirSync(directory, { recursive: true });
     }
     writeFileSync(path.join(mainRoot, 'Demo.java'), 'class Demo {}\n');
-    const module = { basedir, sourceRoots: [mainRoot], testSourceRoots: [testRoot] };
+    const module = {
+      basedir,
+      sourceRoots: [mainRoot],
+      testSourceRoots: [testRoot],
+      compiler: { compilerArgs: [] },
+    };
     const classpaths = { mainCompile: [], testCompile: [] };
     runPmd({
       module,
@@ -296,6 +306,7 @@ describe.skipIf(process.platform === 'win32')('runPmd', () => {
       configs: { pmd: {} },
       spring,
       springRules,
+      reactor,
     });
     const args = JSON.parse(readFileSync(path.join(basedir, 'arguments.json'), 'utf8'));
     const refs = (name) =>
@@ -315,16 +326,27 @@ describe.skipIf(process.platform === 'win32')('runPmd', () => {
   it('adds the Spring rule sets to the main-only and test-only wrappers of a Spring module', () => {
     const run = pmdRun(true);
 
-    expect(run.rulesets).toEqual([
+    expect(run.rulesets.slice(0, 3)).toEqual([
       shipped('pmd-ruleset.xml'),
       path.join(run.reportDir, 'pmd-tests.xml'),
       path.join(run.reportDir, 'pmd-main.xml'),
     ]);
+    expect(run.rulesets.slice(3).every((file) => path.dirname(file) === run.reportDir)).toBe(true);
     expect(run.mainRules).toEqual([shipped('pmd-main-ruleset.xml'), shipped('spring-ruleset.xml')]);
     expect(run.testRules).toEqual([
       shipped('pmd-test-ruleset.xml'),
       shipped('spring-test-ruleset.xml'),
     ]);
+  });
+
+  it('adds the Reactor rule set to the main-only wrapper of a module that uses Reactor', () => {
+    const run = pmdRun(false, undefined, true);
+
+    expect(run.mainRules).toEqual([
+      shipped('pmd-main-ruleset.xml'),
+      shipped('reactor-ruleset.xml'),
+    ]);
+    expect(run.testRules).toEqual([shipped('pmd-test-ruleset.xml')]);
   });
 
   it('takes the Spring rule set written for the project when it names annotations of its own', () => {
@@ -403,5 +425,21 @@ describe.skipIf(process.platform === 'win32')('runSpotbugs', () => {
     expect(
       spotbugsArguments({ spotbugs: { arguments: ['-effort:max', '-low', '-exclude', '/x.xml'] } }),
     ).toEqual(['-effort:max', '-low', '-exclude', '/x.xml']);
+  });
+});
+
+describe('javaFiles in a Git checkout', () => {
+  it('lists the files of the checkout, not ignored folders or nested checkouts', () => {
+    const root = gitCheckout(
+      {
+        'src/A.java': '',
+        'src/gen/G.java': '',
+        ...nestedCheckout('src/agent', { 'X.java': '' }),
+      },
+      ['src/gen/'],
+    );
+
+    expect(javaFiles([path.join(root, 'src')])).toEqual([path.join(root, 'src/A.java')]);
+    expect(javaFiles([path.join(root, 'src/gen')])).toEqual([]);
   });
 });

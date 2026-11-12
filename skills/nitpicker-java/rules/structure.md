@@ -9,13 +9,19 @@ Part of the [nitpicker-java](../SKILL.md) skill. Write these forms from the star
 - Keep classes small: split by responsibility and prefer holding a collaborator to extending one.
 - Cyclomatic complexity 9 or more fails `crap-score-limit` even when fully covered; less
   coverage lowers the ceiling (`ccn^2 * (1 - coverage)^3 + ccn < 9`). Split branchy methods.
-- A new clone of at least 5 lines and 50 tokens in main sources (`duplicate-clone`) fails, also
-  when the copy has other names and literals: extract a method.
+- Copied code fails (`duplicate-clone`), also when the copy has other names and literals: extract
+  a method; in tests, a helper or one `@ParameterizedTest`.
 - Smaller copies fail too: a static helper or a constant with the same code in two classes of one
   module (`duplicate-definition`), and editing one of two near-identical copies while leaving the
   other (`sibling-copy-edit`). Keep one and call it. Don't give two classes one name and use both in
   one file, one fully qualified (`exported-name-collision`): rename one.
 - A main class only tests use belongs in the test sources (`coupling/test-only-export`).
+- Read environment variables and system properties (`System.getenv`, `System.getProperty`, `Integer.getInteger`,
+  `Long.getLong`, `Boolean.getBoolean`) once in the composition root: the class with `main`, a Guice or Dagger
+  module, a CDI producer or Micronaut `@Factory`, or the framework's typed configuration (Spring or Micronaut
+  `@ConfigurationProperties`, Quarkus `@ConfigMapping`). Put the values in a record and pass it in through
+  constructors (`pmd/ConfigurationReadOutsideCompositionRoot`; with Spring, `SpringTypedConfiguration`). JVM keys
+  such as `java.*` and `user.*` are fine.
 - A class in a `shared` package that only one feature (a package under `features`) uses belongs in
   that feature (`coupling/shared-used-by-one-feature`); `layout.sharedRoots` and
   `layout.featureRoots` name other folders.

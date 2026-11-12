@@ -37,7 +37,7 @@ function compilerOptions(pinned) {
   return ['-Djava.awt.headless=true', `-Dnitpicker.kotlinCompiler=${pinned.kotlinCompiler}`];
 }
 
-function compilePsi({ classes, tools, spawn }) {
+function compilePsi({ classes, tools, spawn, timeoutMs }) {
   const marker = path.join(classes, COMPILED_MARKER);
   if (!existsSync(marker)) {
     mkdirSync(classes, { recursive: true });
@@ -49,12 +49,13 @@ function compilePsi({ classes, tools, spawn }) {
       cwd: classes,
       accept: succeeded,
       spawn,
+      timeoutMs,
     });
     writeFileSync(marker, '');
   }
 }
 
-export function runKotlinPsi({ module, reportDir, tools, pinned, classes, spawn }) {
+export function runKotlinPsi({ module, reportDir, tools, pinned, classes, spawn, timeoutMs }) {
   const metrics = path.join(reportDir, 'kotlin-metrics.json');
   const facts = path.join(reportDir, 'kotlin-facts.json');
   if (kotlinFiles(lintedRoots(module.kotlin)).length === 0) {
@@ -62,7 +63,7 @@ export function runKotlinPsi({ module, reportDir, tools, pinned, classes, spawn 
     writeFileSync(facts, EMPTY_FILES);
     return;
   }
-  compilePsi({ classes, tools, spawn });
+  compilePsi({ classes, tools, spawn, timeoutMs });
   runJava({
     tool: 'KotlinPsi',
     classpath: [...tools['kotlin-compiler'], classes],
@@ -72,5 +73,6 @@ export function runKotlinPsi({ module, reportDir, tools, pinned, classes, spawn 
     cwd: module.basedir,
     accept: succeeded,
     spawn,
+    timeoutMs,
   });
 }

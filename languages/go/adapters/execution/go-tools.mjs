@@ -16,6 +16,7 @@ import { run } from './go-process.mjs';
 export const GO_TOOLS = {
   gofumpt: { module: 'mvdan.cc/gofumpt', version: 'v0.12.0' },
   goimports: { module: 'golang.org/x/tools/cmd/goimports', version: 'v0.52.0' },
+  deadcode: { module: 'golang.org/x/tools/cmd/deadcode', version: 'v0.52.0' },
 };
 const INSPECT_SOURCE = path.resolve(import.meta.dirname, '../../inspect');
 const LINT_SOURCE = path.resolve(import.meta.dirname, '../../lint');
@@ -73,12 +74,18 @@ export function toolVersions() {
   return Object.entries(GO_TOOLS).map(([name, { version }]) => `${name}@${version}`);
 }
 
-function sourceHash(source, extra) {
-  const hash = createHash('sha256').update(extra);
-  for (const file of readdirSync(source, { withFileTypes: true })
+function sourceNames(source) {
+  return readdirSync(source, { recursive: true, withFileTypes: true })
     .filter((entry) => entry.isFile() && !entry.name.endsWith('_test.go'))
-    .toSorted((left, right) => left.name.localeCompare(right.name))) {
-    hash.update(`${file.name}\0`).update(sourceFile(source, file.name));
+    .map((entry) => path.relative(source, path.join(entry.parentPath, entry.name)))
+    .filter((name) => !name.split(path.sep).includes('fixtures'))
+    .toSorted();
+}
+
+export function sourceHash(source, extra) {
+  const hash = createHash('sha256').update(extra);
+  for (const name of sourceNames(source)) {
+    hash.update(`${name}\0`).update(sourceFile(source, name));
   }
   return hash.digest('hex').slice(0, HASH_LENGTH);
 }

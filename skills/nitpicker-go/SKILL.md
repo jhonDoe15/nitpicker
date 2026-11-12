@@ -5,6 +5,9 @@ description: Use before writing or changing Go code in a project that runs nitpi
 
 # nitpicker for Go
 
+Written for nitpicker 0.1.0-rc.1. If `npx nitpicker --version` prints another version, reinstall
+this skill with the command `npx nitpicker init` prints.
+
 nitpicker allows one way to write each construct. Write it that way from the start; the gate is a
 backstop. It fails only on findings your change adds, so leave code the task doesn't need alone.
 
@@ -39,6 +42,7 @@ whole project, so it takes as long as a full run; finish with the plain run belo
    - 2: no new findings, but a tool failed. Fix the cause it names (usually a module that does not load,
      or Go missing from the `PATH`) and rerun. Exit 2 is never a pass. If it
      says another run is in progress, wait for that run; never kill it.
+     When the message links to [troubleshooting](https://github.com/jhonDoe15/nitpicker/blob/main/docs/troubleshooting.md), the fix is there.
 5. Never suppress: no `//nolint`, `//lint:ignore`, build tags that hide a file from the checks,
    config `exclude`/`exceptions`, legacy entries, or weakened tests (`t.Skip` added to get past a
    failure). If a finding seems wrong, stop and ask. Never pass `--accept-policy-change`, set `NITPICKER_ACCEPT_POLICY_CHANGE`
@@ -49,7 +53,10 @@ Before you change code other packages use, or fix a bug, read
 [beyond-the-gate.md](beyond-the-gate.md). Why each rule is here: [SOURCES.md](SOURCES.md).
 
 The linters' allowed forms (errors, names and doc comments, simplifications, modern forms): read
-[rules/linters.md](rules/linters.md) before you write Go.
+[rules/linters.md](rules/linters.md) before you write Go. nitpicker's own rules (panics, logged
+and swallowed errors, goroutine owners, root contexts, sleeps, package state, interfaces, `any`,
+names, HTTP timeouts, I/O in loops, repeated strings, task markers, method aliases, secrets): read
+[rules/own-rules.md](rules/own-rules.md).
 
 ## Write it this way
 
@@ -72,6 +79,32 @@ The linters' allowed forms (errors, names and doc comments, simplifications, mod
 
 - The gate fails committed secrets, binaries, build output and files over 1 MB; each message names
   the fix. Don't add an `exceptions` entry to get past one: stop and ask.
+- A migration that adds a foreign key also creates an index that starts with its columns
+  (`CREATE INDEX ON orders (customer_id)`); PostgreSQL does not create one (`foreign-key-index`).
+
+## Reuse, packages and dead code
+
+- Don't copy a function and rename its variables: a renamed copy of 100 tokens or more fails
+  (`duplicates/duplicate-clone`). Call the existing code, or move it to a shared package both use.
+  A smaller function copied into a second package fails too
+  (`duplicate-definition`), and so does editing one of two copies away from the other
+  (`sibling-copy-edit`): keep one copy, exported from one package.
+- A doc comment says what the name does not: `// Close closes.` restates it
+  (`doc-comment-content`); say what the caller must know (`// Close flushes pending writes and
+releases the file; calling it twice returns an error.`). Keep the prose to 5 lines; put an
+  example in an indented code block and a replacement in a `Deprecated:` paragraph.
+- Code exists for production callers. An exported name that only `_test.go` files use fails
+  (`test-only-export`), and in a module with a `main` package so does a function no `main`
+  reaches (`deadcode/unreachable-func`): delete it, or call it from production code. A test helper
+  lives in a `_test.go` file. The exported API of a package other modules can import (not under
+  `internal/`, in a module whose path has a domain) counts as used.
+- A package depends on packages more stable than itself (`stability-direction`): when a widely used
+  package needs a detail from a narrower one, define an interface in the widely used package and
+  let the narrower one implement it.
+- Code under a `shared` folder is used by more than one feature (`shared-used-by-one-feature`);
+  code only one feature uses lives in that feature.
+- `go.mod` requires exactly what the code imports: run `go mod tidy` after adding or removing an
+  import (`unused-dependency`, `unlisted-dependency`).
 
 ## Size and tests
 
@@ -96,6 +129,10 @@ The linters' allowed forms (errors, names and doc comments, simplifications, mod
   has an `integration` or `e2e` build tag, or it starts with `if testing.Short() { t.Skip(...) }`
   (only a skip, or a `return`, as the first statement counts; logging under `testing.Short()` does
   not).
+- A test prints nothing new at `WARN` or `ERROR` level, and nothing through the standard `log`
+  package (`test-console-output`): log in a test with `t.Log`, give the code under test a logger
+  the test controls, and fix the cause of a warning the code now logs. A third-party message that
+  can't be avoided goes in `testConsole.allow`, which a person accepts.
 
 ## When a rule flags legitimate code
 

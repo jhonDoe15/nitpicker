@@ -7,6 +7,7 @@ import {
   readFileSync,
   readdirSync,
   realpathSync,
+  renameSync,
   rmSync,
   writeFileSync,
 } from 'node:fs';
@@ -15,10 +16,14 @@ import path from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { readSnippet } from './init/files/agents-md.mjs';
 import { PACKAGE_ROOT } from './tooling/tool-resolution.mjs';
-import { supportsRedirect } from '../languages/typescript/typescript-api/api-redirect.mjs';
+import {
+  MINIMUM_NODE,
+  supportsRedirect,
+} from '../languages/typescript/typescript-api/api-redirect.mjs';
 import { consumerCommands, eslintVersionOf } from './test-support/installed-consumer.mjs';
 import {
   checkoutOutput,
+  installedHelpText,
   expectedDirtyFindings,
   expectedDirtyOutput,
   expectedSnapshotOutput,
@@ -224,7 +229,9 @@ suite('packed nitpicker in a separate consumer', () => {
       let initialized;
       let rules;
       let explanation;
+      let help;
       let packageLocation;
+      let withoutTypeScript;
       const reports = (name) => path.join(root, 'reports', name);
       const invoke = (args, cwd = root) =>
         command(cwd, 'npx', ['--no-install', 'nitpicker', ...args]);
@@ -333,6 +340,7 @@ suite('packed nitpicker in a separate consumer', () => {
         ]);
         rules = invoke(['rules', '--preset', 'java']);
         explanation = invoke(['explain', ...explained]);
+        help = invoke(['-h']);
         fixed = invoke([
           '--base',
           'main',
@@ -342,6 +350,15 @@ suite('packed nitpicker in a separate consumer', () => {
           '--output',
           reports('fixed'),
         ]);
+        const typeScriptLinks = [
+          ...new Set([
+            path.join(root, 'node_modules/typescript'),
+            path.join(path.dirname(realpathSync(packageLocation)), 'typescript'),
+          ]),
+        ].filter((link) => lstatSync(link, { throwIfNoEntry: false }) !== undefined);
+        for (const link of typeScriptLinks) renameSync(link, `${link}-aside`);
+        withoutTypeScript = invoke(['--base', 'main', '--analyzer', 'eslint-lint']);
+        for (const link of typeScriptLinks) renameSync(`${link}-aside`, link);
         initialized = invoke(['init', '--agents-md', '--ci', 'github']);
       }, 600_000);
       afterAll(() => {
@@ -379,7 +396,7 @@ suite('packed nitpicker in a separate consumer', () => {
         expect(dirty.status, dirty.output).toBe(1);
         expect(summary('dirty').overallStatus).toBe('completed');
         expect(findings('dirty')).toEqual(expectedDirtyFindings(links));
-        expect(withoutSlowAnalyzerLines(dirty.output)).toEqual(expectedDirtyOutput(root));
+        expect(withoutSlowAnalyzerLines(dirty.output)).toEqual(expectedDirtyOutput());
       });
       it('records pinned owned tool versions and the installed TypeScript peer', () => {
         const versions = Object.fromEntries(
@@ -395,6 +412,18 @@ suite('packed nitpicker in a separate consumer', () => {
             JSON.parse(readFileSync(path.join(root, 'node_modules', peer, 'package.json'))).version,
         );
         expect(installedVersions).toEqual(peers.map((peer) => manifest.devDependencies[peer]));
+      });
+      it('stops in one line, before any analyzer, when typescript is missing from node_modules', () => {
+        const peerCheck = `typescript is not installed in ${realpathSync(root)}. Run npm install (it is in package.json).`;
+        const olderNode =
+          'The typescript package nitpicker resolves has no JavaScript API (it is TypeScript 7 or later, ' +
+          'or no typescript is installed), so nitpicker reads source files with its own TypeScript 6, ' +
+          `which needs Node.js ${MINIMUM_NODE.join('.')} or newer; this is Node.js ${process.versions.node}.`;
+        const reasons = supportsRedirect() ? [peerCheck] : [peerCheck, olderNode];
+        expect(withoutTypeScript).toEqual({
+          status: 2,
+          output: expect.toBeOneOf(reasons.map((reason) => `nitpicker failed: ${reason}\n`)),
+        });
       });
       it('keeps the policy hash stable across two runs', () => {
         expect(second.status, second.output).toBe(1);
@@ -429,6 +458,10 @@ suite('packed nitpicker in a separate consumer', () => {
           installedHelpUri(links, 'prettier-format/prettier/prettier'),
           installedHelpUri(links, 'prettier-format/prettier/prettier'),
         ]);
+      });
+      it('prints help that links the usage page at its own release tag', () => {
+        expect(help.status, help.output).toBe(0);
+        expect(help.output).toBe(installedHelpText(links, root));
       });
       it('sets the consumer up with init from the packed files', () => {
         expect(initialized.status, initialized.output).toBe(0);

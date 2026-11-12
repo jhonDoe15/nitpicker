@@ -85,6 +85,7 @@ function pythonInvocation(settings, part) {
 function pythonAnalyzer(settings, probes) {
   return {
     name: PYTHON_ANALYZER_NAME,
+    publishesModuleImports: true,
     version: UNRESOLVED_VERSION,
     resolveVersion: (liveProjectRoot) =>
       resolveVersion(liveProjectRoot, toolVersions, { settings, probes }),

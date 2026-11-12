@@ -1,3 +1,9 @@
+import { reviveHint, reviveVaryingPart } from './revive-hints.mjs';
+
+function deferredClose(value) {
+  return `\`defer func() { err = errors.Join(err, ${value}.Close()) }()\``;
+}
+
 const GO_FIX = '`go fix ./...` applies this rewrite.';
 const KEEP_OR_DROP = 'Use the value or remove the assignment.';
 const TAGGED_SWITCH = 'Write a tagged switch, `switch value { case 1: ... }`.';
@@ -46,7 +52,7 @@ const HINTS = new Map([
   ['SA9004', 'Give every constant its type, or start an iota group with a typed first constant.'],
   ['SA9005', 'Export the fields to marshal, or implement MarshalJSON.'],
   ['SA9009', 'Write the directive without the space: `//go:name`.'],
-  ['SA9010', 'Call the returned function: `defer cleanup()()`.'],
+  ['SA9010', 'Keep the returned function and defer that: `stop := cleanup(); defer stop()`.'],
   [
     'ST1000',
     'Add a package comment, `// Package name ...`, to one file of the package (usually doc.go).',
@@ -87,10 +93,86 @@ const HINTS = new Map([
   ['embedlit', 'Set the promoted fields directly in the literal.'],
   ['stringsbuilder', 'Build the string with a `strings.Builder`.'],
   ['stringsseq', 'Range over `strings.SplitSeq` or `strings.FieldsSeq`.'],
+  ['bodyclose', `Close it in a deferred call: ${deferredClose('response.Body')}.`],
+  ['sqlclosecheck', `Close it in a deferred call: ${deferredClose('rows')}.`],
+  ['rowserrcheck', 'Return `rows.Err()` after reading the rows, or join it into the error result.'],
+  ['nilerr', 'Return the error the branch checks: the error when it is set, nil when it is not.'],
+  [
+    'contextcheck',
+    "Take a `ctx context.Context` parameter and pass the caller's context down, or derive one from it; " +
+      'a goroutine uses a context made before the `go` statement.',
+  ],
+  [
+    'handled',
+    'Remove the directive and close the body where the response is read, or return the response to a caller that closes it.',
+  ],
+  ['containedctx', 'Pass the context as the first parameter of each method that needs it.'],
+  ['fatcontext', 'Assign the derived context to a new variable inside the loop.'],
+  [
+    'exhaustive',
+    'Add a case for each missing constant, or a `default` case that handles the rest.',
+  ],
+  [
+    'recvcheck',
+    'Give every method of the type a pointer receiver, or every method a value receiver.',
+  ],
+  ['durationcheck', 'Multiply a duration by a number: `time.Duration(seconds) * time.Second`.'],
+  [
+    'makezero',
+    'Make the slice with length 0 and a capacity, `make([]T, 0, n)`, or assign by index.',
+  ],
+  ['reassign', "Leave the other package's variable as it is; declare a variable of your own."],
+  ['unconvert', 'Remove the conversion; the value already has that type.'],
+  ['useless-assert', 'Assert the value under test against the expected value.'],
+  [
+    'go-require',
+    'Use assert in the goroutine, or send the error back and require it in the test goroutine.',
+  ],
+  ['suite-broken-parallel', 'Remove the `t.Parallel()` call; suites run their tests in order.'],
+  ['wastedassign', 'Remove the assignment, or use the value before it is assigned again.'],
+  ['asciicheck', 'Rename it with ASCII letters only.'],
+  [
+    'bidichk',
+    'Remove the character; in a string, write it as an escape such as `\\u2066` so it stays visible.',
+  ],
+  [
+    'gocheckcompilerdirectives',
+    'Use a directive the compiler knows, such as `//go:noinline`; an ordinary comment starts with `// `.',
+  ],
+  [
+    'musttag',
+    'Give each exported field the tag the message names, such as `json:"id"`, so renaming a field ' +
+      'leaves the encoded form as it is.',
+  ],
+  [
+    'spancheck',
+    'Assign the span and end it in a deferred call right after `tracer.Start`: `defer span.End()`.',
+  ],
 ]);
+const MESSAGE_HINTS = [
+  [
+    'sloglint',
+    /^key-value pairs/u,
+    'Pass typed attributes: `slog.String("name", name)`, `slog.Any("order", order)`.',
+  ],
+];
 
 const RULE_NAMES = new Map([['errcheck', 'unchecked']]);
-const VARYING_PARTS = new Map([['ST1016', / \(seen [^)]*\)$/u]]);
+const VARYING_PARTS = new Map([
+  ['ST1016', / \(seen [^)]*\)$/u],
+  ['nilerr', / \(lines? [^)]*\)/u],
+  ['contextcheck', /->[^`]*/u],
+  ['exhaustive', /: .*$/u],
+  ['durationcheck', /: `.*`$/u],
+  ['usetesting', / in \w+$/u],
+]);
+const COUNTED_RULES = new Set(['formatter']);
+
+function stable(tool, rule, message) {
+  const varying = tool === 'revive' ? reviveVaryingPart(rule) : VARYING_PARTS.get(rule);
+  const text = varying === undefined ? message : message.replace(varying, '');
+  return COUNTED_RULES.has(rule) ? text.replace(/#?\d+/gu, 'N') : text;
+}
 
 export function lintRule(rule) {
   return RULE_NAMES.get(rule) ?? rule;
@@ -101,8 +183,13 @@ function sentence(message) {
   return /[.?!]$/u.test(text) ? text : `${text}.`;
 }
 
-function hintOf(tool, rule) {
-  const hint = HINTS.get(rule);
+function hintOf(tool, rule, message) {
+  if (tool === 'revive') {
+    return reviveHint(rule, message);
+  }
+  const hint =
+    HINTS.get(rule) ??
+    MESSAGE_HINTS.find(([name, pattern]) => name === rule && pattern.test(message))?.[2];
   if (tool !== 'modernize') {
     return hint;
   }
@@ -110,8 +197,7 @@ function hintOf(tool, rule) {
 }
 
 export function lintMessage({ tool, rule, message }) {
-  const hint = hintOf(tool, rule);
-  const varying = VARYING_PARTS.get(rule);
-  const text = sentence(varying === undefined ? message : message.replace(varying, ''));
+  const hint = hintOf(tool, rule, message);
+  const text = sentence(stable(tool, rule, message));
   return hint === undefined ? text : `${text} ${hint}`;
 }
