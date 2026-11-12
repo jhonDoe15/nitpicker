@@ -18,6 +18,13 @@ const MODULE = /\.(?:mjs|mts|cjs)$/u;
 const FIXTURE = /(?:^|\/)fixtures\//u;
 const MODULE_URL = /new URL\(\s*(['"])(?<specifier>[^'"]+)\1,\s*import\.meta\.url/gu;
 const NODE_22_14_SCRIPTS = ['scripts/typescript/emit.mjs', 'scripts/reference/gen-rules.mjs'];
+const NODE_22_14_LOADED = [
+  'languages/typescript/preset/defaults/eslint.config.mjs',
+  'languages/typescript/preset/eslint-config/policies/errors.config.mjs',
+  'languages/typescript/preset/eslint-config/policies/logging.config.mjs',
+  'languages/typescript/preset/eslint-config/policies/module-effects.config.mjs',
+  'languages/typescript/preset/eslint-config/policies/coding-standards.config.mjs',
+];
 const NODE_22_14_BUILD = 'the package build on Node.js 22.14';
 
 export function repositoryFile(root: string, file: string): string {
@@ -87,7 +94,7 @@ export function doubledModules(modules: readonly string[]): string[] {
 
 function nodeBuildModules(imports: readonly ModuleImport[]): Set<string> {
   const byImporter = Map.groupBy(imports, ({ importer }) => importer);
-  const found = new Set(NODE_22_14_SCRIPTS);
+  const found = new Set([...NODE_22_14_SCRIPTS, ...NODE_22_14_LOADED]);
   for (const file of found) {
     const next = isShipped(file) ? [] : (byImporter.get(file) ?? []);
     for (const { target } of next) {
@@ -144,7 +151,8 @@ function waitingImporters(
   file: string,
   converting: ReadonlySet<string>,
 ): string[] {
-  const roots = NODE_22_14_SCRIPTS.includes(file) ? [NODE_22_14_BUILD] : [];
+  const roots =
+    NODE_22_14_SCRIPTS.includes(file) || NODE_22_14_LOADED.includes(file) ? [NODE_22_14_BUILD] : [];
   return [
     ...roots,
     ...(byTarget.get(file) ?? [])
