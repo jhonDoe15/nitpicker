@@ -78,9 +78,9 @@ Where each kind of finding is lifted for some paths:
 
 `python.entryPoints` lists the files that start the program, such as a job runner or a worker that
 reads its settings from the environment or connects at import (see the composition roots below).
-Adding a file there loosens `process-env-access`, `process-stream-access` and `import-time-effect`,
-so the policy-change list reports it as a loosening and a removal as a change, like
-`layout.entryPoints`; the base snapshot is measured with the entry points both sides declare.
+`process-env-access`, `process-stream-access` and `import-time-effect` skip a file listed there.
+Like `layout.entryPoints`, an added or removed entry is listed among the policy changes and does
+not fail the gate; the base snapshot is measured with the entry points both sides declare.
 
 The policy-change list also reads the project's own pytest and mutmut settings, because they shrink
 what the gate measures: `testpaths` that stop collecting a test file and an added `--ignore` or

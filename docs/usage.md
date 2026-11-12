@@ -1016,7 +1016,7 @@ in the console summary and in `report.txt` as "Policy changed in this change" an
 `summary.json` under `policyChanges`. A change that checks less fails the run with one
 `nitpicker-config/policy-loosened` finding per loosening. The console groups those changes by kind:
 it lists the changes of a kind, then what that kind does to the checks and how to undo it, once
-(ten new entry points print the entry point guidance once), followed by the count, the digest and
+(ten new exclusions print the exclusion guidance once), followed by the count, the digest and
 the acceptance command. `report.txt` and `new-findings.json` keep one finding per change, each with
 its guidance and the acceptance route. The first response is to undo the change and fix the code
 until it passes. If the change is intended, a coding agent stops and asks a person reviewing it, who
@@ -1027,7 +1027,7 @@ accepts it by the digest (`--accept-policy-change=<digest>` or, in CI,
 check the pull request merged into its target branch. A project's first `nitpicker.config.json` is
 compared with the defaults. These changes are loosening:
 
-- an added `exclude`, `layout.excludedGlobs`, `layout.entryPoints` or
+- an added `exclude`, `layout.excludedGlobs` or
   `exceptions` glob that covers a code file the base config did not already cover (every
   tracked code file of the preset, wherever it is: `.ts`/`.js` family files for TypeScript and
   JavaScript, `.py` files for Python, `.java`, `.kt` and `.kts` files for Java and Kotlin, so
@@ -1035,11 +1035,7 @@ compared with the defaults. These changes are loosening:
   and `layout.excludedGlobs` are one set: a glob respelled to cover the same files, or moved from
   one key to the other, is listed but does not fail. Files moved with `git mv` keep their base
   path, so updating a glob after a move is not loosening; a glob that covers no new code file is
-  listed but does not fail. A `layout.entryPoints` entry makes the dead-code check treat the files
-  as used and allows module-load effects and process access in them, and a `python.entryPoints`
-  entry only exempts them from `process-env-access`, `process-stream-access` and
-  `import-time-effect`; other checks still apply. A reviewer confirms that a command or runtime
-  loads each file without an import, and otherwise the entry is removed;
+  listed but does not fail;
 - a removed `layout.sourceRoots`, `layout.testRoots` or `python.sourceRoots` entry that still has
   checked files under it (Python's detected default counts when the setting is absent), and an
   added `layout.testRoots` entry that turns production code the base checked into test code;
@@ -1128,6 +1124,13 @@ noUncheckedIndexedAccess: true -> false`, only one that goes from `true` to `fal
 - a tool `precedence` that puts `"project"` first where it was not first, or that drops
   `"nitpicker"` (for `pmd`, which runs both rule sets, only dropping `"nitpicker"` counts);
 - a name removed from a `spring.roles` list (adding one only adds checks).
+
+An added `layout.entryPoints` or `python.entryPoints` entry is not loosening and is only listed. An
+entry point names a file that a command or runtime loads without an import, such as a script run by
+path, a worker or a test reporter: the dead-code check treats it as used and it may hold the
+module-load effects and process access a program start needs (for `python.entryPoints`, only
+`process-env-access`, `process-stream-access` and `import-time-effect` skip it). Every other check
+still applies to it, and the console lists each added entry so a reviewer sees it.
 
 Choosing another tool that runs the same checks is not loosening and is only listed:
 `tools.eslint.engine`, `tools.typescript.engine`, `python.typeChecker`, `python.formatter`,

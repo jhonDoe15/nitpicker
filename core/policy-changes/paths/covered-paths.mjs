@@ -12,10 +12,10 @@ import { duplicateFolderExclusions } from './duplicate-folders.mjs';
 
 const NOTHING_NEW = 'covers no checked file it did not cover before';
 
-function newlyCovered(baseGlobs, headGlob, { paths, basePathOf = (file) => file }) {
+function newlyCovered(baseGlobs, headGlob, { paths }) {
   const before = matcherOf(baseGlobs);
   const after = matcherOf([headGlob]);
-  return paths.filter((file) => after(file) && !before(basePathOf(file)));
+  return paths.filter((file) => after(file) && !before(file));
 }
 
 function addedGlob({ text, kind }, covered, scope) {
@@ -114,47 +114,19 @@ function exceptionChanges(baseExceptions = [], headExceptions = [], scope) {
   return [...added, { loosened: [], changed: removed }];
 }
 
-function entryPointChanges(baseConfig, headConfig, scope) {
-  return [
-    ...entryPointChangesOf('layout.entryPoints', {
-      before: baseConfig.layout?.entryPoints ?? [],
-      after: headConfig.layout?.entryPoints ?? [],
-      scope,
-    }),
-    ...entryPointChangesOf('python.entryPoints', {
-      before: baseConfig.python?.entryPoints ?? [],
-      after: headConfig.python?.entryPoints ?? [],
-      scope,
-    }),
-  ];
-}
-
-const ENTRY_POINT_KINDS = {
-  'layout.entryPoints': 'entry-point',
-  'python.entryPoints': 'python-entry-point',
-};
-
-function entryPointChangesOf(key, { before, after, scope }) {
-  return [
-    ...after
-      .filter((glob) => !before.includes(glob))
-      .map((glob) =>
-        addedGlob(
-          { text: `${key} added: ${glob}`, kind: ENTRY_POINT_KINDS[key] },
-          newlyCovered(before, glob, {
-            paths: scope.codePaths,
-            basePathOf: scope.basePathOf,
-          }),
-          scope,
-        ),
-      ),
-    {
+function entryPointChanges(baseConfig, headConfig) {
+  return ['layout', 'python'].map((owner) => {
+    const key = `${owner}.entryPoints`;
+    const before = baseConfig[owner]?.entryPoints ?? [];
+    const after = headConfig[owner]?.entryPoints ?? [];
+    return {
       loosened: [],
-      changed: before
-        .filter((glob) => !after.includes(glob))
-        .map((glob) => `${key} removed: ${glob}`),
-    },
-  ];
+      changed: [
+        ...after.filter((glob) => !before.includes(glob)).map((glob) => `${key} added: ${glob}`),
+        ...before.filter((glob) => !after.includes(glob)).map((glob) => `${key} removed: ${glob}`),
+      ],
+    };
+  });
 }
 
 function rootRemovalKind(key) {
@@ -214,7 +186,7 @@ function testRootAdditions(baseConfig, headConfig, scope) {
 export function coveredPathChanges(baseConfig, headConfig, scope) {
   return [
     ...exclusionChanges(baseConfig, headConfig, scope),
-    ...entryPointChanges(baseConfig, headConfig, scope),
+    ...entryPointChanges(baseConfig, headConfig),
     ...exceptionChanges(baseConfig.exceptions, headConfig.exceptions, scope),
     ...exceptionChanges(baseConfig.python?.exceptions, headConfig.python?.exceptions, scope),
     ...rootRemovals(scope),

@@ -1,22 +1,7 @@
 const GENERIC =
   'Changes the checking policy for affected code. Restore the base setting unless a person confirms the weaker checks.';
 
-const VERIFY_INVOCATION = [
-  'If a command or runtime loads the file without an import,',
-  'a reviewer confirms that invocation; otherwise remove the entry.',
-].join(' ');
-
 export const POLICY_GUIDANCE = {
-  'entry-point': [
-    'Marks matching files as entry points: the dead-code check treats them as used,',
-    'and module-load effects and process access are allowed in them.',
-    `${VERIFY_INVOCATION} Other checks still apply.`,
-  ].join(' '),
-  'python-entry-point': [
-    'Matching files may read the process environment and the standard streams and run effects at import:',
-    'process-env-access, process-stream-access and import-time-effect skip them.',
-    `${VERIFY_INVOCATION} Other checks still apply.`,
-  ].join(' '),
   exception: [
     'Silences the named rule for matching paths; other rules still apply.',
     'Remove the exception and fix the findings, or have a person confirm it.',
