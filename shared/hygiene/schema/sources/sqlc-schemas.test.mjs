@@ -48,9 +48,11 @@ describe('foreign keys in sqlc schema files', () => {
     expect(findings.map(({ path, location }) => `${path}:${String(location.line)}`)).toEqual([
       'db/schema/001_orders.sql:4',
     ]);
-    expect(findings[0].message).toMatch(
-      /^db\/schema\/001_orders\.sql declares a foreign key on orders \(customer_id\) \(line 4\) and no schema file creates an index that starts with it\. Add `CREATE INDEX ON orders \(customer_id\)` to the schema\./u,
-    );
+    expect(findings[0].message.split('. ').slice(0, 2)).toEqual([
+      'db/schema/001_orders.sql declares a foreign key on orders (customer_id) (line 4) ' +
+        'and no schema file creates an index that starts with it',
+      'Add `CREATE INDEX ON orders (customer_id)` to the schema',
+    ]);
   });
 
   it.each([
