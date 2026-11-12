@@ -9,6 +9,7 @@ import { writeFiles } from '../../core/diff/git/test-support/fixture-files.mjs';
 import { printConversion } from './convert.mts';
 import { clean, emit, isShippedPath, transpiled } from './emit.mjs';
 import {
+  convertedNodeBuildModules,
   doubledModules,
   moduleImports,
   shippedTypeScriptImports,
@@ -73,6 +74,9 @@ describe('the repository during the TypeScript conversion', () => {
   it('opens converted modules by URL only through checkoutModuleUrl', () => {
     expect(unwrappedModuleUrls(REPOSITORY_ROOT, modules)).toEqual([]);
   });
+  it('keeps the modules that the package build runs on Node.js 22.14 in JavaScript', () => {
+    expect(convertedNodeBuildModules(modules, imports)).toEqual([]);
+  });
 });
 
 describe('module URLs during the conversion', () => {
@@ -95,15 +99,19 @@ describe('module URLs during the conversion', () => {
 
 let template: string;
 
-beforeAll(() => {
-  template = mkdtempSync(path.join(tmpdir(), 'nitpicker-typescript-template-'));
-  writeFiles(template, SAMPLE);
+function track(root: string): void {
   for (const command of [
     ['init', '--quiet'],
     ['add', '.'],
   ]) {
-    execFileSync('git', command, { cwd: template, env: HERMETIC_GIT, timeout: 10_000 });
+    execFileSync('git', command, { cwd: root, env: HERMETIC_GIT, timeout: 10_000 });
   }
+}
+
+beforeAll(() => {
+  template = mkdtempSync(path.join(tmpdir(), 'nitpicker-typescript-template-'));
+  writeFiles(template, SAMPLE);
+  track(template);
 });
 
 afterAll(() => {
@@ -141,6 +149,68 @@ describe('conversion readiness', () => {
         '',
       ].join('\n'),
     );
+  });
+});
+
+const NODE_BUILD = {
+  'scripts/typescript/emit.mjs': "import { files } from '../../shared/files.mjs';\n",
+  'scripts/reference/gen-rules.mjs': [
+    "import { registry } from './registry.mjs';",
+    "import { entries } from '../../languages/go/reference/entries.mjs';",
+    "const generate = await import('../../core/reference/generate.mjs');",
+    '',
+  ].join('\n'),
+  'scripts/reference/registry.mjs': "import { text } from '../../shared/text.mjs';\n",
+  'languages/go/reference/entries.mjs': "import { files } from '../../../shared/files.mjs';\n",
+  'core/reference/generate.mjs': "import { page } from './page.mjs';\n",
+  'core/reference/page.mjs': 'export const page = 1;\n',
+  'core/reference/render.mjs': 'export const render = 1;\n',
+  'shared/files.mjs': 'export const files = [];\n',
+  'shared/text.mjs': "export const text = 'text';\n",
+};
+
+describe('the package build on Node.js 22.14', () => {
+  it('holds the build scripts and the modules they import outside the shipped import chain', () => {
+    const root = project(NODE_BUILD);
+    track(root);
+    expect(readiness(root, '.')).toEqual({
+      ready: ['core/reference/render.mjs'],
+      waiting: [
+        'core/reference/generate.mjs (imported by scripts/reference/gen-rules.mjs on Node.js 22.14)',
+        'core/reference/page.mjs (imported by core/reference/generate.mjs)',
+        'languages/go/reference/entries.mjs (imported by scripts/reference/gen-rules.mjs on Node.js 22.14)',
+        'scripts/reference/gen-rules.mjs (imported by the package build on Node.js 22.14)',
+        'scripts/reference/registry.mjs (imported by scripts/reference/gen-rules.mjs on Node.js 22.14)',
+        'scripts/typescript/emit.mjs (imported by the package build on Node.js 22.14)',
+        'shared/files.mjs (imported by languages/go/reference/entries.mjs, scripts/typescript/emit.mjs on Node.js 22.14)',
+        'shared/text.mjs (imported by scripts/reference/registry.mjs on Node.js 22.14)',
+      ],
+    });
+  });
+  it('refuses to convert a module that the build imports, naming the build script', () => {
+    const root = project(NODE_BUILD);
+    track(root);
+    expect(() => {
+      printConversion(root, ['shared/text.mjs'], { write: () => undefined });
+    }).toThrow('shared/text.mjs <- scripts/reference/registry.mjs on Node.js 22.14');
+  });
+  it('reports a converted or renamed module that the build runs', () => {
+    const root = project({
+      ...NODE_BUILD,
+      'scripts/reference/registry.mjs': "import { text } from '../../shared/text.mts';\n",
+      'shared/text.mts': "export const text = 'text';\n",
+    });
+    track(root);
+    const modules = trackedModules(root).filter((file) => file !== 'shared/text.mjs');
+    expect(convertedNodeBuildModules(modules, moduleImports(root, modules))).toEqual([
+      'shared/text.mts',
+    ]);
+    const kept = project(NODE_BUILD);
+    track(kept);
+    const renamed = trackedModules(kept).filter((file) => file !== 'scripts/typescript/emit.mjs');
+    expect(convertedNodeBuildModules(renamed, moduleImports(kept, renamed))).toEqual([
+      'scripts/typescript/emit.mjs',
+    ]);
   });
 });
 
