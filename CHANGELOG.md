@@ -11,6 +11,14 @@ about your code is explained in [troubleshooting](https://github.com/jhonDoe15/n
 
 ## [Unreleased]
 
+### Changed
+
+- An added `layout.entryPoints` or `python.entryPoints` entry is listed among the policy changes
+  and no longer fails the gate as a `nitpicker-config/policy-loosened` finding, so it needs no
+  `accept-policy-change` approval (#1094). An entry that covers a file other production code
+  imports, such as a `**` glob, still fails, as do exceptions, exclusions, disabled analyzers and
+  the other loosenings.
+
 ### Fixed
 
 - Java: Spring architecture findings no longer print their exception sentence twice, which made
