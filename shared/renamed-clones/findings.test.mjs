@@ -120,6 +120,15 @@ describe('findings for renamed clones', () => {
           'This code repeats b.py:1 (8 lines). Keep one copy and call it from both places. If the repetition is intended, add a.py or b.py to "exclude" in nitpicker.config.json.',
         classification: 'enforceable',
         location: { line: 1 },
+        ratchet: {
+          key: 'pair:a.py|b.py:clone',
+          value: 120,
+          divisible: true,
+          mustKeepUnchangedLines: [
+            { path: 'a.py', startLine: 1, endLine: 8 },
+            { path: 'b.py', startLine: 1, endLine: 8 },
+          ],
+        },
       },
       {
         tool: 'duplicates',

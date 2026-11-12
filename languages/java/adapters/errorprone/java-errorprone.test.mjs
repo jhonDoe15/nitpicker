@@ -208,4 +208,34 @@ describe('readErrorProneFindings', () => {
       ['src/main/java/demo/A.java', 'enforceable'],
     ]);
   });
+
+  it('keeps the findings of the other checks and names a crashed check in one tool error', () => {
+    const { projectRoot, reportRoot } = reportRootWith((root) => [
+      diagnostic(path.join(root, 'src/main/java/demo/A.java')),
+      {
+        crash: 'ForEachIterable',
+        file: path.join(root, 'src/main/java/demo/QueryVisitor.java'),
+        line: 59,
+        cause: 'java.lang.AssertionError: isSameType UNKNOWN',
+      },
+    ]);
+
+    const findings = readErrorProneFindings({
+      reportRoot,
+      roots: [projectRoot],
+      lintedRoots: ['src/main/java'],
+    });
+
+    expect(
+      findings.map(({ rule, identity, classification }) => [rule, identity, classification]),
+    ).toEqual([
+      ['DeadException', expect.any(String), 'enforceable'],
+      ['check-crashed', 'check-crashed:ForEachIterable', 'tool-error'],
+    ]);
+    expect(findings[1].message).toBe(
+      "Error Prone's ForEachIterable check crashed on src/main/java/demo/QueryVisitor.java:59 " +
+        '(java.lang.AssertionError: isSameType UNKNOWN), so it was turned off for this run and the ' +
+        'findings of the other checks are kept. The crash is an Error Prone bug, not a problem in this code.',
+    );
+  });
 });

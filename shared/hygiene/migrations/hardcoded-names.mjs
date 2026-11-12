@@ -8,7 +8,7 @@ import {
 } from '../../messages/exception-sentence.mjs';
 import { HYGIENE_RULE_IDS } from '../../project-rules/hygiene-rules.mjs';
 import { isMigrationFile } from './migration-files.mjs';
-import { readSource } from './revision-graph.mjs';
+import { lineOf, readSource } from './revision-graph.mjs';
 
 const RULE = HYGIENE_RULE_IDS.migrationHardcodedName;
 const MYSQL_DATABASE_OPTIONS = new Set([
@@ -22,7 +22,7 @@ const MYSQL_DATABASE_OPTIONS = new Set([
 ]);
 const SNIPPET_LENGTH = 80;
 const CURRENT_ROLES = new Set(['current_user', 'current_role', 'session_user']);
-const NAMED = String.raw`(?:"(?<quoted>[^"\n]+)"|\x60(?<ticked>[^\x60\n]+)\x60|(?<name>[A-Za-z_][\w$]*)(?![\w$(]))`;
+const NAMED = String.raw`(?:"(?<quoted>[^"\n]+)"|\x60(?<ticked>[^\x60\n]+)\x60|(?<name>[A-Z_][\w$]*)(?![\w$(]))`;
 const BLOCK_COMMENT = String.raw`/\*[\s\S]*?\*/`;
 const COMMENTS = [
   {
@@ -48,7 +48,7 @@ function nameOf(groups) {
 const FORMS = [
   {
     key: 'public-schema',
-    pattern: /(?<![\w$."])(?<quote>"?)public\k<quote>\s*\.\s*"?[A-Za-z_]/giu,
+    pattern: /(?<![\w$."])(?<quote>"?)public\k<quote>\s*\.\s*"?[A-Z_]/giu,
     accepts: () => true,
     skippedIn: ['drizzle-kit', 'atlas', 'pg_dump'],
     text: ({ file, count, line, snippet }) =>
@@ -86,10 +86,6 @@ const FORMS = [
       ].join(' '),
   },
 ];
-
-function lineOf(text, index) {
-  return text.slice(0, index).split('\n').length;
-}
 
 function snippetAt(text, index) {
   const start = text.lastIndexOf('\n', index) + 1;

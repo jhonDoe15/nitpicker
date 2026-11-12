@@ -2,7 +2,13 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
+import {
+  nestedCheckout,
+  useGitCheckouts,
+} from '../../../../core/diff/git/test-support/git-checkout.mjs';
 import { pytestStyle, pytestStyleFlags } from './pytest-style.mjs';
+
+const { gitCheckout } = useGitCheckouts();
 
 const roots = [];
 
@@ -107,6 +113,21 @@ describe('the pytest style of a project', () => {
       'parametrize-values-type': 'list',
       'parametrize-values-row-type': 'tuple',
     });
+  });
+
+  it('measures the files of the Git checkout, not ignored fixtures or nested checkouts', () => {
+    const bare = '@pytest.fixture\ndef a(): ...\n\n@pytest.fixture\ndef b(): ...\n';
+    const root = gitCheckout(
+      {
+        'tests/test_a.py': bare,
+        'scratch/test_old.py': parenthesized,
+        'scratch/test_older.py': parenthesized,
+        ...nestedCheckout('agent', { 'tests/test_b.py': parenthesized }),
+      },
+      ['scratch/'],
+    );
+
+    expect(pytestStyle(root)['fixture-parentheses']).toBe(false);
   });
 
   it('reads the set options from the config root and measures the checked code', () => {

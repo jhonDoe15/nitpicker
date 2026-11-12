@@ -204,7 +204,7 @@ export function unknownMemberTags(tags) {
   return tags.filter((tag) => mentionsUnknownAsMember(tag) && !isCaughtErrorSlot(tag));
 }
 
-const TYPE_PREDICATE = /^(?:asserts\s+[\w$]+(?:\s+is\s+.+)?|[\w$]+\s+is\s+.+)$/s;
+const TYPE_PREDICATE = /^(?:asserts\s+[\w$]+(?:\s+is\s.+)?|[\w$]+\s+is\s.+)$/s;
 
 export function typePredicateTags(tags) {
   return tags.filter(

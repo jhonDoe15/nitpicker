@@ -1,0 +1,7 @@
+[
+  {
+    "tool": "python-rules",
+    "rule": "multiple-collection-joins",
+    "mention": "selectinload"
+  }
+]

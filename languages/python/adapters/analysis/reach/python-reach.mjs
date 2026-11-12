@@ -15,7 +15,7 @@ function runScan(context, [, ...args]) {
       cwd: context.projectRoot,
       encoding: 'utf8',
       maxBuffer: MAX_OUTPUT_BYTES,
-      timeout: SCAN_TIMEOUT_MS,
+      timeout: context.analyzerDeadlineMs ?? SCAN_TIMEOUT_MS,
     });
     if (result.error === undefined && result.status === 0) {
       return result;
@@ -61,14 +61,39 @@ function asModules(entry) {
   return { ...entry, isPackage: path.posix.basename(entry.file) === '__init__.py' };
 }
 
-export function pythonProductionReach(projectRoot, { sourceRoots, isHidden }) {
+function withScan(projectRoot, sourceRoots, read) {
   const reportRoot = mkdtempSync(path.join(tmpdir(), 'nitpicker-python-reach-'));
   try {
     const scanned = collectImports({ projectRoot, reportRoot, project: { sourceRoots } }, runScan);
-    const modules = [...scanned.modules, ...scanned.others.map(asModules)];
-    const starts = scanned.modules.filter(({ file }) => !isHidden(file));
-    return reachFrom(starts, { modules, imports: scanned.imports });
+    return read({
+      scanned,
+      modules: [...scanned.modules, ...scanned.others.map(asModules)],
+    });
   } finally {
     rmSync(reportRoot, { recursive: true, force: true });
   }
+}
+
+export function pythonProductionReach(projectRoot, { sourceRoots, isHidden }) {
+  return withScan(projectRoot, sourceRoots, ({ scanned, modules }) =>
+    reachFrom(
+      scanned.modules.filter(({ file }) => !isHidden(file)),
+      { modules, imports: scanned.imports },
+    ),
+  );
+}
+
+export function pythonImportedFiles(projectRoot, { sourceRoots, isHidden }) {
+  return withScan(projectRoot, sourceRoots, ({ scanned, modules }) => {
+    const files = new Map(modules.toReversed().map(({ module, file }) => [module, file]));
+    const importers = new Set(
+      scanned.modules.filter(({ file }) => !isHidden(file)).map(({ module }) => module),
+    );
+    return new Set(
+      importEdges(modules, scanned.imports)
+        .filter(({ source, target }) => importers.has(source) && source !== target)
+        .flatMap(({ target }) => withParents(target, files))
+        .map((module) => files.get(module)),
+    );
+  });
 }

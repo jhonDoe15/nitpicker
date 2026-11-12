@@ -17,7 +17,7 @@ import { applyRuleHints } from '../rules/rule-hints.mjs';
 
 const enabled = process.env.NITPICKER_PYTHON_E2E === '1';
 const fixtures = path.resolve(import.meta.dirname, '../rules/fixtures/ruff-pitfalls');
-const PITFALL = /^(?:(?:ASYNC|DTZ|LOG|PLE|PLW|T10)\d+|PLR1711)$/u;
+const PITFALL = /^(?:(?:ASYNC|DTZ|LOG|PLE|PLW|T10)\d+|PLR0124|PLR1711|PLR1714)$/u;
 const OWNERS = [
   'clock-now',
   'real-clock-in-test',
@@ -106,6 +106,8 @@ const BANNED = {
     '77 PLW2901',
     '82 PLW3301',
     '87 PLR1711',
+    '91 PLR0124',
+    '95 PLR1714',
   ],
   'settings.py': ['7 PLW1507', '8 PLW1508', '9 PLE1507'],
   'special/dunders.py': [

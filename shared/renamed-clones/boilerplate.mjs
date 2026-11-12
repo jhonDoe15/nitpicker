@@ -9,6 +9,8 @@ const KOTLIN_TYPES = 'data|sealed|open|abstract|enum|annotation|inline|value|pri
 const JAVA_MODIFIERS =
   '(?:(?:public|private|protected|static|final|abstract|transient|volatile|default)\\s+)*';
 const JAVA_TYPE = String.raw`[\w<>?.[\]]+(?:, ?[\w<>?.[\]]+)*`;
+const GO_TYPE = String.raw`[\w.*[\]]+`;
+const GO_RECEIVER = String.raw`(?:\(\w+ \*?\w+(?:\[[\w, ]+\])?\) )?`;
 
 const PATTERNS = {
   typescript: [
@@ -16,7 +18,7 @@ const PATTERNS = {
     /^@\w+(?:\(.*\))?$/u,
     /^return\s+(?:this\.)?\w+;?$/u,
     /^this\.\w+ = \w+;?$/u,
-    new RegExp(`^${TS_MODIFIERS}(?:override\\s+)?\\w+\\??: [^=]+;?,?$`, 'u'),
+    new RegExp(`^${TS_MODIFIERS}(?:override\\s+)?\\w+\\??: [^=]+$`, 'u'),
     new RegExp(`^${TS_MODIFIERS}(?:(?:get|set)\\s+)?\\w+\\([^)]*\\)(?: ?: [^{]+)? ?\\{$`, 'u'),
     /^(?:export\s+)?(?:default\s+)?(?:abstract\s+)?class\s+\w.*\{$/u,
   ],
@@ -36,11 +38,11 @@ const PATTERNS = {
     BRACKETS_ONLY,
     /^@\w+(?:\(.*\))?$/u,
     new RegExp(
-      `^${KOTLIN_MODIFIERS}(?:val|var)\\s+\\w+(?: ?: ${TYPE_TEXT})?(?: ?= ?[^({]*)?,?$`,
+      `^${KOTLIN_MODIFIERS}(?:val|var)\\s+\\w+(?: ?: ${TYPE_TEXT})?(?: ?=[^({]*)?,?$`,
       'u',
     ),
-    new RegExp(`^${KOTLIN_MODIFIERS}(?:val|var)\\s+\\w+ ?: ${TYPE_TEXT} ?= ?.+,$`, 'u'),
-    new RegExp(`^(?:(?:${KOTLIN_TYPES})\\s+)*(?:class|interface|object)\\s+\\w.*[({]?$`, 'u'),
+    new RegExp(`^${KOTLIN_MODIFIERS}(?:val|var)\\s+\\w+ ?: ${TYPE_TEXT}=.+,$`, 'u'),
+    new RegExp(`^(?:(?:${KOTLIN_TYPES})\\s+)*(?:class|interface|object)\\s+\\w.*$`, 'u'),
     /^[A-Z][A-Z0-9_]*(?:\(.*\))?[,;]?$/u,
     /^return\s+\w+$/u,
     /^this\.\w+ = \w+$/u,
@@ -59,6 +61,21 @@ const PATTERNS = {
     /^this\.\w+ = \w+;$/u,
     /^super\([^)]*\);$/u,
     /^[A-Z][A-Z0-9_]*(?:\(.*\))?[,;]?$/u,
+  ],
+  go: [
+    BRACKETS_ONLY,
+    /^(?:package|import)\s.+$/u,
+    /^(?:\w+ |\. )?""$/u,
+    /^if err != nil \{$/u,
+    /^return (?:\w+, )*(?:err|nil)$/u,
+    /^return (?:\w+\.)?\w+$/u,
+    /^return &?[\w.]+\{$/u,
+    /^\}, (?:nil|err)$/u,
+    /^\w+\.\w+ = \w+$/u,
+    /^\w+: +\w+,$/u,
+    new RegExp(`^\\w+(?:, \\w+)* +${GO_TYPE}(?: +\x60[^\x60]*\x60)?$`, 'u'),
+    new RegExp(`^func ${GO_RECEIVER}\\w+\\(.*\\)(?: .+)? \\{$`, 'u'),
+    /^type \w+(?:\[.*\])? (?:struct|interface) \{$/u,
   ],
 };
 
