@@ -59,9 +59,15 @@ export function comparisonMutationPlan(projectRoot, policy = {}) {
   }
   const tested = testedSources(changes.tests, roots);
   if (policy.snapshot === 'base') {
-    return { scope: tested.sources, changedOnly: new Map(), notices: [] };
+    const toBase = new Map(changes.renames.map(([from, to]) => [to, from]));
+    return {
+      scope: [...new Set(tested.sources.map((file) => toBase.get(file) ?? file))],
+      changedOnly: new Map(),
+      notices: [],
+    };
   }
-  const reached = new Set(tested.sources);
+  const toHead = new Map(changes.renames);
+  const reached = new Set(tested.sources.map((file) => toHead.get(file) ?? file));
   const changedOnly = new Map([...changes.sources].filter(([file]) => !reached.has(file)));
   return {
     scope: withinScope([...new Set([...changes.sources.keys(), ...reached])], policy.mutationScope),

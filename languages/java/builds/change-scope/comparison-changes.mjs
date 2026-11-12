@@ -25,11 +25,17 @@ function nameStatusEntries(output) {
     .map((line) => {
       const [status, from, to = from] = line.split('\t');
       return { status, from, to };
-    })
-    .filter(({ status }) => !UNCHANGED_CONTENT.test(status));
+    });
 }
 
-function changedTests(entries) {
+function renamedSources(entries) {
+  return entries
+    .filter(({ status, to }) => status.startsWith('R') && isJvmProductionPath(to))
+    .map(({ from, to }) => [from, to]);
+}
+
+function changedTests(listed) {
+  const entries = listed.filter(({ status }) => !UNCHANGED_CONTENT.test(status));
   return {
     head: entries
       .filter(({ status, to }) => status !== 'D' && isJvmTestPath(to))
@@ -59,5 +65,10 @@ export function readComparisonChanges(roots) {
     }
     throw error;
   }
-  return { sources: changedSources(roots), tests: changedTests(nameStatusEntries(listing)) };
+  const entries = nameStatusEntries(listing);
+  return {
+    sources: changedSources(roots),
+    tests: changedTests(entries),
+    renames: renamedSources(entries),
+  };
 }

@@ -7,7 +7,8 @@ import {
   useGitFixtures,
 } from '../../../../core/diff/git/test-support/git-repository.mjs';
 import { comparisonMutationPlan, mutationPlanOf } from './mutation-plan.mjs';
-import { changedTestsKey, isJvmTestPath } from './jvm-paths.mjs';
+import { isJvmTestPath } from './jvm-paths.mjs';
+import { changedTestsKey } from './tested-sources.mjs';
 
 const MAIN = 'src/main/java/shop';
 const TEST = 'src/test/java/shop';
@@ -142,7 +143,8 @@ describe('mutation in a comparison', () => {
     const parts = Object.fromEntries(
       names.map((name) => [`${MAIN}/${name}.java`, `package shop;\n\npublic class ${name} {}\n`]),
     );
-    const test = `package shop;\n\nclass PartsTest {\n  Object[] all = { ${names.map((name) => `new ${name}()`).join(', ')} };\n}\n`;
+    const created = names.map((name) => `new ${name}()`).join(', ');
+    const test = `package shop;\n\nclass PartsTest {\n  Object[] all = { ${created} };\n}\n`;
     const roots = snapshots({ [`${TEST}/PartsTest.java`]: test }, [], parts);
 
     const head = headPlan(roots);
@@ -178,6 +180,21 @@ describe('mutation in a comparison', () => {
   });
 });
 
+describe('a production file moved on head', () => {
+  it('is mutated at its base path on base and at its head path on head', () => {
+    const roots = snapshots(
+      {
+        [`${MAIN}/stock/Stock.java`]: 'package shop.stock;\n\npublic class Stock {}\n',
+        [`${TEST}/StockTest.java`]: 'package shop;\n\nimport shop.stock.Stock;\n\nclass StockTest {}\n',
+      },
+      [`${MAIN}/Stock.java`],
+    );
+
+    expect(basePlan(roots).scope).toContain(`${MAIN}/Stock.java`);
+    expect(headPlan(roots).scope).toContain(`${MAIN}/stock/Stock.java`);
+  });
+});
+
 describe('JVM test paths', () => {
   it.each([
     ['src/test/java/a/ATest.java', true],
@@ -187,6 +204,10 @@ describe('JVM test paths', () => {
     ['test/a/A.java', true],
     ['src/main/java/a/Test.java', false],
     ['src/main/java/a/testing/A.java', false],
+    ['src/main/java/com/acme/test/Fixture.java', false],
+    ['tests/src/main/java/A.java', false],
+    ['src/contest/java/A.java', false],
+    ['src/functional-test/java/A.java', true],
     ['src/test/resources/a.json', false],
   ])('%s is a test: %s', (file, expected) => {
     expect(isJvmTestPath(file)).toBe(expected);
@@ -197,11 +218,27 @@ describe('JVM test paths', () => {
     const touchedPaths = [`${TEST}/PriceTest.java`, `${MAIN}/Price.java`, 'README.md'];
     const key = changedTestsKey({ touchedPaths, headRoot: roots.head, quick: false });
 
-    expect(JSON.parse(key).map(([file]) => file)).toEqual([`${TEST}/PriceTest.java`]);
+    expect(JSON.parse(key)).toEqual({
+      tests: [[`${TEST}/PriceTest.java`, expect.stringMatching(/^[0-9a-f]{64}$/u)]],
+      reached: [`${MAIN}/Price.java`, `${MAIN}/money/Money.java`],
+    });
     expect(changedTestsKey({ touchedPaths, headRoot: roots.base, quick: false })).not.toBe(key);
     expect(changedTestsKey({ touchedPaths, headRoot: roots.head, quick: true })).toBeUndefined();
+  });
+
+  it('keys the base by what the changed tests reach on head', () => {
+    const edited = { [`${TEST}/PriceTest.java`]: PRICE_TEST.replace('ONE', 'TWO') };
+    const touchedPaths = [`${TEST}/PriceTest.java`];
+    const key = (roots) => changedTestsKey({ touchedPaths, headRoot: roots.head, quick: false });
+
+    expect(key(snapshots(edited, [`${MAIN}/money/Money.java`]))).not.toBe(key(snapshots(edited)));
+  });
+
+  it('keys a comparison without changed tests apart from a base snapshot', () => {
+    const roots = snapshots();
+
     expect(
-      changedTestsKey({ touchedPaths: ['README.md'], headRoot: roots.head, quick: false }),
-    ).toBeUndefined();
+      JSON.parse(changedTestsKey({ touchedPaths: ['README.md'], headRoot: roots.head, quick: false })),
+    ).toEqual({ tests: [], reached: [] });
   });
 });

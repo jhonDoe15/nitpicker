@@ -1,8 +1,9 @@
-import { readFileSync } from 'node:fs';
+import { createHash } from 'node:crypto';
+import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { pathInside } from '../../../../shared/filesystem.mjs';
 import { byCodeUnits, listedProjectFiles } from '../../../../core/scope/mutation-scope.mjs';
-import { isJvmProductionPath } from './jvm-paths.mjs';
+import { isJvmProductionPath, isJvmTestPath } from './jvm-paths.mjs';
 
 export const MAX_TESTED_SOURCES = 10;
 const JVM_FILES = ['*.java', '*.kt'];
@@ -98,4 +99,21 @@ export function testedSources(tests, roots) {
     sources: reached.slice(0, MAX_TESTED_SOURCES),
     capped: reached.slice(MAX_TESTED_SOURCES),
   };
+}
+
+function contentDigest(root, file) {
+  const full = pathInside(root, file);
+  return full === undefined || !existsSync(full)
+    ? 'absent'
+    : createHash('sha256').update(readFileSync(full)).digest('hex');
+}
+
+export function changedTestsKey({ touchedPaths, headRoot, quick }) {
+  const tests = touchedPaths.filter(isJvmTestPath).toSorted(byCodeUnits);
+  if (quick) {
+    return undefined;
+  }
+  const digests = tests.map((file) => [file, contentDigest(headRoot, file)]);
+  const onHead = digests.filter(([, digest]) => digest !== 'absent').map(([file]) => file);
+  return JSON.stringify({ tests: digests, reached: reachedFrom(headRoot, onHead) });
 }
