@@ -13,7 +13,7 @@ var ready = make(chan bool, 1)
 func init() {
 	registered["orders"] = true
 	fmt.Println("loaded") // want init-side-effect
-	Register("users", func() string { return "users" })
+	Register("users", func() string { return "users" }) // want repeated-string-literal
 	if len(registered) > 0 {
 		defer fmt.Println("registered") // want init-side-effect
 		ready <- true                   // want init-side-effect
