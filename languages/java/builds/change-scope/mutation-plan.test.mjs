@@ -185,7 +185,8 @@ describe('a production file moved on head', () => {
     const roots = snapshots(
       {
         [`${MAIN}/stock/Stock.java`]: 'package shop.stock;\n\npublic class Stock {}\n',
-        [`${TEST}/StockTest.java`]: 'package shop;\n\nimport shop.stock.Stock;\n\nclass StockTest {}\n',
+        [`${TEST}/StockTest.java`]:
+          'package shop;\n\nimport shop.stock.Stock;\n\nclass StockTest {}\n',
       },
       [`${MAIN}/Stock.java`],
     );
@@ -238,7 +239,9 @@ describe('JVM test paths', () => {
     const roots = snapshots();
 
     expect(
-      JSON.parse(changedTestsKey({ touchedPaths: ['README.md'], headRoot: roots.head, quick: false })),
+      JSON.parse(
+        changedTestsKey({ touchedPaths: ['README.md'], headRoot: roots.head, quick: false }),
+      ),
     ).toEqual({ tests: [], reached: [] });
   });
 });

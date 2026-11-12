@@ -1,4 +1,3 @@
-
 const JVM_SOURCE = /\.(?:java|kt)$/u;
 const TEST_FOLDERS = new Set(['test', 'tests', 'it']);
 const TEST_SOURCE_SET = /^tests?(?:$|[A-Z_-])|[a-z0-9](?:Tests?|[_-]tests?)$/u;
