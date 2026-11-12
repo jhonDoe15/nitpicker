@@ -17,6 +17,11 @@ about your code is explained in [troubleshooting](https://github.com/jhonDoe15/n
   from 2.26 to 2.52 crashes on them for record patterns with `var` bindings and Lombok `@Getter`
   fields; `pmd/ForLoopCanBeForeach` and `spotbugs/SS_SHOULD_BE_STATIC` now report those loops and
   fields (SpotBugs only when the initializer is a compile-time constant).
+- An added `layout.entryPoints` or `python.entryPoints` entry is listed among the policy changes
+  and no longer fails the gate as a `nitpicker-config/policy-loosened` finding, so it needs no
+  `accept-policy-change` approval (#1094). An entry that covers a file other production code
+  imports, such as a `**` glob, still fails, as do exceptions, exclusions, disabled analyzers and
+  the other loosenings.
 
 ### Fixed
 
