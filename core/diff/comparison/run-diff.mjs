@@ -275,7 +275,6 @@ function withPreparedAnalyzerDependencies(
     if (baseDependencies !== undefined) {
       preparedDependencies.push(baseDependencies);
     }
-
     const headDependencies = prepareSnapshotDependencies({
       projectRoot: headSnapshotRoot,
       liveProjectRoot,

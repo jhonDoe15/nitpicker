@@ -967,6 +967,10 @@ allprojects {
             target.text = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<mutations>${mutations}</mutations>\n"
         }
         def jacocoArgumentProvider = 'org.gradle.testing.jacoco.plugins.JacocoPluginExtension$JacocoAgent'
+        project.apply from: new File(initScriptDir, 'pit/pit-scope.gradle')
+        def scopedPitTargets = {
+            project.ext.nitpickerScopedPitTargets(mutatedClassDirs().findAll { it.exists() }, sourceSets.main.allSource.files)
+        }
         def registerPit = { String pitName, TaskProvider<Test> sourceTask ->
             tasks.register(pitName, JavaExec) {
                 def source = sourceTask.get()
@@ -995,7 +999,8 @@ allprojects {
                             : 'org.pitest.'.startsWith(prefix) ? classes + subpackages()
                             : ["${prefix}*".toString()]
                     }
-                    def targets = classDirs.collectMany { dir -> packageTargets(dir, '') }.unique().sort()
+                    def targets = scopedPitTargets() ?:
+                        classDirs.collectMany { dir -> packageTargets(dir, '') }.unique().sort()
                     // Tests are named class by class: a package glob would also hand the main classes
                     // that share a package with the tests to the test engine.
                     def testRuntimeFiles = source.classpath.files
@@ -1069,7 +1074,7 @@ allprojects {
                 }
                 onlyIf {
                     !testsFailed && mutatedClassDirs().any { it.exists() && it.list()?.length } && !skippedByBuild(source) &&
-                        (source.name == 'test' || !pitTestClasses(source).isEmpty())
+                        (source.name == 'test' || !pitTestClasses(source).isEmpty()) && scopedPitTargets() != []
                 }
             }
         }

@@ -36,4 +36,15 @@ describe('exception routes of the Java route rule', () => {
       }),
     ).toEqual([]);
   });
+
+  it('keeps the one entry of a Spring architecture finding whose message names it', () => {
+    const named = {
+      ...finding('archunit', 'src/main/java/app/mapper/OwnerMapper.java'),
+      rule: 'spring-layout',
+      message:
+        'Put OwnerMapper in the feature package it belongs to. If this is intended, add {"rule":"archunit/spring-layout","paths":["src/main/java/app/mapper/OwnerMapper.java"],"reason":"..."} to "exceptions" in nitpicker.config.json.',
+    };
+
+    expect(applyFindingPolicy([named], { routeRule: javaRouteRule })).toEqual([named]);
+  });
 });
