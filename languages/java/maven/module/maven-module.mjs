@@ -7,6 +7,7 @@ import { withDeclaredSpring, withFeatureFolders } from '../spring/arch-rules-gat
 import { moduleManifest, usesReactor, writeManifest } from '../manifest/maven-manifest.mjs';
 import { ownSourceRoots } from '../../adapters/red-base/tests-failed.mjs';
 import { runErrorProne } from '../errorprone/maven-errorprone.mjs';
+import { parserJava, sourceLevel } from '../errorprone/maven-jdk.mjs';
 import { analyzeKotlinModule } from '../kotlin/kotlin-module.mjs';
 import { runGuards } from '../guards/maven-guards.mjs';
 import { runToolsConcurrently } from '../parallel/concurrent-tools.mjs';
@@ -97,7 +98,11 @@ export function analyzeModule(options) {
       isArchunit,
     });
   }
-  const written = { ...manifest, ...kotlin.manifest };
+  const written = {
+    ...manifest,
+    ...kotlin.manifest,
+    sourceJava: parserJava({ level: sourceLevel(module.compiler) }),
+  };
   writeManifest({ reportDir, manifest: written, testsFailed: failure !== undefined });
   return failure && { ...failure, roots: ownSourceRoots(written) };
 }
