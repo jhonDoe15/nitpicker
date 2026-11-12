@@ -55,6 +55,7 @@ func supersededBy() map[string][]string {
 		"gocheckcompilerdirectives": {"SA9009"},
 		"usestdlibvars":             {"ST1013"},
 		"bidichk":                   {"ST1018"},
+		"context-outside-entry":     {"contextcheck"},
 	}
 	maps.Copy(replacements, reviveSuperseded())
 	return replacements
@@ -94,6 +95,9 @@ func analyze(directory string, settings options, patterns []string) (Result, err
 		}
 		for _, diagnostic := range action.Diagnostics {
 			rule, message := catalog.Rule(action.Analyzer.Name, diagnostic)
+			if rule == action.Analyzer.Name {
+				rule = ruleName(action.Analyzer)
+			}
 			found := finding(action.Package.Fset, diagnostic.Pos, names[action.Analyzer.Name], rule)
 			found.Message = message
 			seen[found] = true

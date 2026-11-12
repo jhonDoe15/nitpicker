@@ -34,6 +34,32 @@ export const PROJECT_STATICCHECK = JSON.stringify({
   tools: { staticcheck: { precedence: ['project'] } },
 });
 
+export const OWN_RULES = `package shop
+
+import (
+	"log"
+	"os"
+	"strconv"
+)
+
+func Quantity(text string) int {
+	value, err := strconv.Atoi(text)
+	if err != nil {
+		panic(err)
+	}
+	return value
+}
+
+func Read(name string) ([]byte, error) {
+	data, err := os.ReadFile(name)
+	if err != nil {
+		log.Printf("read %s: %v", name, err)
+		return nil, err
+	}
+	return data, nil
+}
+`;
+
 export const STOCK = `package shop
 
 import (
