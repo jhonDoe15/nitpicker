@@ -439,6 +439,41 @@
     "scope": "line"
   },
   {
+    "primary": ["errorprone/StreamResourceLeak"],
+    "secondary": ["pmd/StreamResourceNotClosed"],
+    "scope": "line"
+  },
+  {
+    "primary": ["errorprone/PatternMatchingInstanceof"],
+    "secondary": ["pmd/InstanceofThenCast"],
+    "scope": "line"
+  },
+  {
+    "primary": ["errorprone/ThrowSpecificExceptions"],
+    "secondary": ["pmd/AvoidThrowingRawExceptionTypes"],
+    "scope": "line"
+  },
+  {
+    "primary": ["forbiddenapis/legacy-date-time"],
+    "secondary": ["errorprone/JavaUtilDate"],
+    "scope": "line"
+  },
+  {
+    "primary": ["forbiddenapis/clock-now"],
+    "secondary": ["errorprone/JavaTimeDefaultTimeZone"],
+    "scope": "line"
+  },
+  {
+    "primary": ["forbiddenapis/thread-sleep"],
+    "secondary": ["errorprone/PreferJavaTimeOverload"],
+    "scope": "line"
+  },
+  {
+    "primary": ["forbiddenapis/java-deserialization"],
+    "secondary": ["errorprone/BanSerializableRead"],
+    "scope": "line"
+  },
+  {
     "primary": ["errorprone/MissingOverride"],
     "secondary": ["pmd/MissingOverride"],
     "scope": "line"
@@ -534,8 +569,14 @@
       "pmd/AvoidCalendarDateCreation",
       "pmd/SimpleDateFormatNeedsLocale",
       "errorprone/DefaultLocale",
-      "errorprone/DateFormatConstant"
+      "errorprone/DateFormatConstant",
+      "forbiddenapis/legacy-date-time"
     ],
+    "scope": "line"
+  },
+  {
+    "primary": ["pmd/DefaultTimeZone"],
+    "secondary": ["forbiddenapis/legacy-date-time"],
     "scope": "line"
   },
   {
@@ -718,6 +759,19 @@
   {
     "primary": ["kotlin-source/ChildCoroutineOutlivesResource"],
     "secondary": ["pmd/CoroutineEscapesTest"],
+    "scope": "line"
+  },
+  {
+    "primary": ["pmd/SqlConcatenation"],
+    "secondary": [
+      "spotbugs/SQL_NONCONSTANT_STRING_PASSED_TO_EXECUTE",
+      "spotbugs/SQL_PREPARED_STATEMENT_GENERATED_FROM_NONCONSTANT_STRING"
+    ],
+    "scope": "line"
+  },
+  {
+    "primary": ["checkstyle/MagicNumber"],
+    "secondary": ["pmd/AvoidLiteralsInIfCondition"],
     "scope": "line"
   }
 ]

@@ -1,3 +1,4 @@
+import { lineAt } from '../../../../shared/conventions/lines.mjs';
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { blankLiterals, packageOf, pathInside, sourceFilesUnder } from './java-sources.mjs';
@@ -48,10 +49,6 @@ function bodyRange(text, depths, start) {
 function bodyOf(text, depths, start) {
   const range = bodyRange(text, depths, start);
   return range === undefined ? '' : text.slice(range.open, range.close);
-}
-
-function lineAt(text, index) {
-  return text.slice(0, index).split('\n').length;
 }
 
 function facadeName(file, raw) {

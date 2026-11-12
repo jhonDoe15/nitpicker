@@ -1,0 +1,45 @@
+{
+  "description": "A head notice is also not run on the base when a base notice of its tool has the same comparison key, even if the head notice lists more directories (core gained a testFixtures root), or when the base notices of its tool together cover its directories (lib-all spans the lib and lib-tests notices). A head notice for directories no base notice covers (app) is a tool-error.",
+  "new": [
+    {
+      "tool": "duplicates",
+      "rule": "cpd-not-run",
+      "path": ".",
+      "identity": "cpd-not-run@:app",
+      "classification": "tool-error"
+    },
+    {
+      "tool": "duplicates",
+      "rule": "cpd-not-run",
+      "path": ".",
+      "identity": "cpd-not-run@:lib-all",
+      "classification": "descriptive"
+    }
+  ],
+  "resolved": [
+    {
+      "tool": "duplicates",
+      "rule": "cpd-not-run",
+      "path": ".",
+      "identity": "cpd-not-run@:lib",
+      "classification": "descriptive"
+    },
+    {
+      "tool": "duplicates",
+      "rule": "cpd-not-run",
+      "path": ".",
+      "identity": "cpd-not-run@:lib-tests",
+      "classification": "descriptive"
+    }
+  ],
+  "unchanged": [
+    {
+      "tool": "duplicates",
+      "rule": "cpd-not-run",
+      "path": ".",
+      "identity": "cpd-not-run@:core",
+      "classification": "descriptive"
+    }
+  ],
+  "changedMetrics": []
+}

@@ -56,6 +56,8 @@ func supersededBy() map[string][]string {
 		"usestdlibvars":             {"ST1013"},
 		"bidichk":                   {"ST1018"},
 		"context-outside-entry":     {"contextcheck"},
+		"todoCommentWithoutDetail":  {"todo-without-issue"},
+		"G101":                      {"hardcoded-secret", "credential-shape"},
 	}
 	maps.Copy(replacements, reviveSuperseded())
 	return replacements

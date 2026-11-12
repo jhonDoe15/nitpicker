@@ -115,6 +115,21 @@ describe('compilerSettings', () => {
     ]).toStrictEqual([undefined, '1.8', '1.8', 'none', undefined]);
   });
 
+  it('treats a setting the effective POM leaves unresolved as unset', () => {
+    const settings = compilerSettings(
+      project(`<properties><maven.compiler.target>\${java.version}</maven.compiler.target></properties>
+        <build><plugins><plugin><artifactId>maven-compiler-plugin</artifactId>
+        <configuration><release>\${release}</release><source>11</source></configuration>
+        </plugin></plugins></build>`),
+    );
+
+    expect([settings.release, settings.source, settings.target]).toStrictEqual([
+      undefined,
+      '11',
+      undefined,
+    ]);
+  });
+
   it('prefers the default-compile execution over the plugin configuration', () => {
     const settings = compilerSettings(
       project(`<build><plugins><plugin><artifactId>maven-compiler-plugin</artifactId>
