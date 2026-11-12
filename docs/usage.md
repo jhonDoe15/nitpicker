@@ -231,8 +231,12 @@ npx nitpicker --all src/orders       # every finding in one folder
 Paths are read relative to the current folder, and the project is the one that holds the first path,
 so `npx nitpicker services/orders/src/main/java/Order.java` works from the repository top. All paths
 must be in that project. The analyzers still run over the whole project, so cross-file rules (dead
-code, unused exports, coupling, the type check, architecture) keep their full context and the run
-takes as long as a whole-project run. Only the findings in files under the paths fail the run and
+code, unused exports, coupling, the type check, architecture) keep their full context. Mutation, the
+slowest step, is the exception: on the head side it mutates only the source files under the paths
+(Stryker's `mutate`; PIT's `--targetClasses`, listing the classes compiled from those files, nested
+ones included; mutmut's `do_not_mutate` for every other Python file), while every test still runs
+against each mutant, so a mutant can be killed by any test. In a comparison it narrows the changed
+lines mutation already follows, and the base side is unchanged. Only the findings in files under the paths fail the run and
 appear in the console and the reports. Tool errors and `nitpicker-config/policy-loosened` findings
 (a loosened config changes the whole gate) still count wherever they come from. Findings about the
 whole project (path `.`) count only when a path is the project folder itself. The summary names the
@@ -1422,7 +1426,7 @@ change adds; a file already on the base is left alone. Each message names the ex
 | `committed-build-output`   | a file in a build output folder: `dist`, `build`, `out`, `coverage` or `target` next to a `package.json`, `build.gradle(.kts)`, `pom.xml` or `pyproject.toml`, or `.next`, `.nuxt`, `storybook-static`, `.turbo` or `.parcel-cache` at any depth; one finding per folder                                                                                                                                                                                                                                                                     |
 | `migration-order`          | a migration whose version sorts before, or equals, the newest migration of its folder on the base branch: Flyway `V<version>__name`, Prisma `migrations/<timestamp>_name/`, and numbered files in a `migrations`, `migration` or `drizzle` folder (TypeORM, Kysely, Knex, Sequelize, MikroORM, Drizzle, golang-migrate, goose); an Alembic revision or a Django migration whose parent already has a child on the base branch, so the history has two heads                                                                                  |
 | `migration-hardcoded-name` | a migration file (the layouts above, Liquibase changelogs and other files directly in a `migrations`, `migration`, `migrate` or `drizzle` folder) that qualifies a name with the `public` schema, names a database in `ALTER DATABASE` or a role in `OWNER TO`; one finding per file and form                                                                                                                                                                                                                                                |
-| `foreign-key-index`        | a foreign key that a migration adds with no index that starts with its columns, or a Prisma relation whose `fields` no `@@index`, `@@unique` or `@@id` of the model starts with; not reported when the project uses MySQL or MariaDB, which index foreign keys themselves                                                                                                                                                                                                                                                                    |
+| `foreign-key-index`        | a foreign key that a migration or an sqlc schema file adds with no index that starts with its columns, or a Prisma relation whose `fields` no `@@index`, `@@unique` or `@@id` of the model starts with; not reported when the project uses MySQL or MariaDB, which index foreign keys themselves                                                                                                                                                                                                                                             |
 | `start-schema-push`        | a `start`, `prestart`, `serve` or `start:*` script in a `package.json` (not `start:dev`, `start:local`, `start:watch`, `start:debug` or `start:test`), or a script it runs through `npm`, `pnpm`, `yarn`, `bun` or `npm-run-all` (with its `pre` hook), that pushes the ORM schema: `prisma db push`, `prisma migrate dev`/`reset`, `drizzle-kit push`, `typeorm schema:sync`/`schema:drop`, `mikro-orm schema:update`/`create`/`fresh`/`drop` (options between the tool and the command count); apply migrations in the deploy step instead |
 
 An env file that holds only public build-time values (every key starts with `VITE_`, `NEXT_PUBLIC_`,
@@ -1449,7 +1453,8 @@ migrations folder, as the message shows.
 
 `foreign-key-index` reads the migration files (Flyway, Prisma, Liquibase XML, YAML and SQL
 changelogs, Alembic, and the SQL in TypeORM, MikroORM, Kysely, Knex and goose migrations, skipping their down part
-and `.down.sql` files):
+and `.down.sql` files), and the schema files an sqlc config (`sqlc.yaml`, `sqlc.yml` or `sqlc.json`,
+`schema` of each `sql` or `packages` entry: a file, a folder's own `.sql` files or a glob) names, unless its `engine` is `mysql`:
 `CREATE TABLE` with `REFERENCES` or `FOREIGN KEY`, `ALTER TABLE ... ADD`, Liquibase
 `addForeignKeyConstraint` and column `constraints`, Alembic `create_table`, `add_column` and
 `create_foreign_key` (also through `batch_alter_table`). A foreign key counts as indexed when an
