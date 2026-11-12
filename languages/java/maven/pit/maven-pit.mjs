@@ -3,6 +3,7 @@ import path from 'node:path';
 import { runJava } from '../maven-command.mjs';
 import { nitpickerPitArguments } from '../../adapters/tool-config/declared/pit-declared.mjs';
 import { pitHistoryArguments } from '../../builds/pit-history/pit-history.mjs';
+import { writePitFailure } from '../../builds/pit-failure/pit-failure.mjs';
 import { classFiles, pitClasspath, pitTargets, pitTests } from '../maven-tests.mjs';
 
 export function javaArgumentFile(args) {
@@ -74,16 +75,21 @@ export function runPit({
   if (classFiles(module.outputDirectory).length === 0) {
     return;
   }
-  runJava({
-    tool: 'PIT',
-    classpath: pitClasspath(tools, classpaths.testRuntime),
-    mainClass: 'org.pitest.mutationtest.commandline.MutationCoverageReport',
-    args: pitArguments({ module, pitDir, classpaths, isArchunit, configs, history }),
-    cwd: module.basedir,
-    accept: (result) => result.status === 0,
-    spawn,
-    timeoutMs,
-  });
+  try {
+    runJava({
+      tool: 'PIT',
+      classpath: pitClasspath(tools, classpaths.testRuntime),
+      mainClass: 'org.pitest.mutationtest.commandline.MutationCoverageReport',
+      args: pitArguments({ module, pitDir, classpaths, isArchunit, configs, history }),
+      cwd: module.basedir,
+      accept: (result) => result.status === 0,
+      spawn,
+      timeoutMs,
+    });
+  } catch (error) {
+    writePitFailure(pitDir, error);
+    return;
+  }
   if (!existsSync(report)) {
     writeFileSync(report, '<mutations/>');
   }
