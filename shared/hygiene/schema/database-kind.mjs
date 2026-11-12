@@ -4,6 +4,7 @@ import { readSource } from '../migrations/revision-graph.mjs';
 const POSTGRES = 'postgres';
 const MYSQL = 'mysql';
 const UNKNOWN = 'unknown';
+const TEST_SOURCES = /(?:^|\/)src\/test\//u;
 const MYSQL_PROVIDER = /\bprovider\s*=\s*"mysql"/u;
 const RELATION_MODE = /\brelationMode\s*=\s*"prisma"/u;
 const SIGNAL_FILES = [
@@ -24,7 +25,8 @@ const SIGNAL_FILES = [
     mysql: /jdbc:(?:mysql|mariadb):|r2dbc:(?:mysql|mariadb):/u,
   },
   {
-    matches: (base) => /^(?:build\.gradle(?:\.kts)?|pom\.xml)$/u.test(base),
+    matches: (base) =>
+      /^(?:build\.gradle(?:\.kts)?|pom\.xml)$/u.test(base) || base.endsWith('.versions.toml'),
     postgres: /org\.postgresql/u,
     mysql: /mysql-connector|org\.mariadb/u,
   },
@@ -42,7 +44,7 @@ const SIGNAL_FILES = [
 
 function signalsByFolder(projectRoot, files) {
   const folders = new Map();
-  for (const file of files) {
+  for (const file of files.filter((name) => !TEST_SOURCES.test(name))) {
     const signal = SIGNAL_FILES.find(({ matches }) => matches(path.posix.basename(file)));
     const text = signal === undefined ? undefined : readSource(projectRoot, file);
     if (text !== undefined) {
