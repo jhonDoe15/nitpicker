@@ -1,11 +1,13 @@
 import path from 'node:path';
-import { runCheckstyle, runFormat, runPmd, runSpotbugs } from '../maven-lint.mjs';
+import { runFormat } from '../format/maven-format.mjs';
+import { runCheckstyle, runPmd, runSpotbugs } from '../maven-lint.mjs';
 import { archunitMatcher } from '../maven-tests.mjs';
 import { runSpringArch } from '../spring/maven-spring-arch.mjs';
 import { withDeclaredSpring, withFeatureFolders } from '../spring/arch-rules-gate.mjs';
 import { moduleManifest, usesReactor, writeManifest } from '../manifest/maven-manifest.mjs';
 import { ownSourceRoots } from '../../adapters/red-base/tests-failed.mjs';
 import { runErrorProne } from '../errorprone/maven-errorprone.mjs';
+import { parserJava, sourceLevel } from '../errorprone/maven-jdk.mjs';
 import { analyzeKotlinModule } from '../kotlin/kotlin-module.mjs';
 import { runGuards } from '../guards/maven-guards.mjs';
 import { runToolsConcurrently } from '../parallel/concurrent-tools.mjs';
@@ -14,6 +16,7 @@ import { readTestRuns, runCoverageTools } from '../quick/maven-test-phase.mjs';
 
 export const MAVEN_REPORT_DIRECTORY = 'target/nitpicker';
 const LINT_URL = new URL('../maven-lint.mjs', import.meta.url).href;
+const FORMAT_URL = new URL('../format/maven-format.mjs', import.meta.url).href;
 const ERRORPRONE_URL = new URL('../errorprone/maven-errorprone.mjs', import.meta.url).href;
 const METRICS_URL = new URL('../parallel/module-metrics.mjs', import.meta.url).href;
 
@@ -53,7 +56,7 @@ function runSourceTools(options) {
       auxClasspath: kotlin.auxClasspath,
     }),
     sourceTask(runErrorProne, ERRORPRONE_URL, { ...base, classpaths }),
-    sourceTask(runFormat, LINT_URL, { ...base, javaStyle: style.javaStyle }),
+    sourceTask(runFormat, FORMAT_URL, { ...base, javaStyle: style.javaStyle }),
     sourceTask(runCheckstyle, LINT_URL, { ...base, pinned, style }),
     sourceTask(runStructure, METRICS_URL, base),
     sourceTask(runJdeps, METRICS_URL, base),
@@ -95,7 +98,11 @@ export function analyzeModule(options) {
       isArchunit,
     });
   }
-  const written = { ...manifest, ...kotlin.manifest };
+  const written = {
+    ...manifest,
+    ...kotlin.manifest,
+    sourceJava: parserJava({ level: sourceLevel(module.compiler) }),
+  };
   writeManifest({ reportDir, manifest: written, testsFailed: failure !== undefined });
   return failure && { ...failure, roots: ownSourceRoots(written) };
 }

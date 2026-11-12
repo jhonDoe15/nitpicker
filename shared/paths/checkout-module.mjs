@@ -6,7 +6,10 @@ const STRIPS_TYPES = typeof process.features.typescript === 'string';
 
 export function checkoutModulePath(file, { stripsTypes = STRIPS_TYPES } = {}) {
   const source = file.replace(PACKAGED_MODULE, '.mts');
-  return stripsTypes && source !== file && existsSync(source) ? source : file;
+  if (source === file || !existsSync(source)) {
+    return file;
+  }
+  return stripsTypes || !existsSync(file) ? source : file;
 }
 
 export function checkoutModuleUrl(url, options = {}) {

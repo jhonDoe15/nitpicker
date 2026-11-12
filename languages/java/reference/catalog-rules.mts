@@ -70,6 +70,12 @@ const NO_ROUTE = [
   'an entry still lifts it if a reviewer agrees.',
 ].join(' ');
 
+const CHECKSTYLE_ID_MODULES = {
+  BoxComments: 'TodoComment',
+  TodoFormat: 'TodoComment',
+  singleLineCommentStartWithSpace: 'MatchXpath',
+};
+
 function allowedOf({ fix, layout }) {
   if (layout === true) {
     return { allowed: LAYOUT_ALLOWED };
@@ -102,8 +108,9 @@ function pmdText(rule, texts) {
 }
 
 function checkstyleCheck(rule, texts) {
+  const module = CHECKSTYLE_ID_MODULES[rule] ?? rule;
   const name = Object.keys(texts.rules)
-    .filter((check) => rule.startsWith(check))
+    .filter((check) => module.startsWith(check))
     .toSorted((a, b) => b.length - a.length)[0];
   if (name === undefined) {
     throw new Error(`The Checkstyle ${texts.version} snapshot has no check for ${rule}`);

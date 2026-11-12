@@ -8,6 +8,9 @@ import { GO_LINTER_TOOLS } from './configuration/go-config.mjs';
 import { PROBE_TIMEOUT_MS } from '../../../shared/processes/deadlines.mjs';
 
 export const GO_ANALYZER_NAME = 'go';
+export const GO_MUTATION_ANALYZER_NAME = 'mutation';
+const MUTATION_TIMEOUT_MS = 70 * 60 * 1000;
+const MUTATION_SHARD_WEIGHT = 90;
 const ANALYZER_TIMEOUT_MS = 30 * 60 * 1000;
 const packageRoot = path.resolve(import.meta.dirname, '../../..');
 const goRoot = path.join(packageRoot, 'languages/go');
@@ -61,11 +64,31 @@ function goVersion(liveProjectRoot) {
   return `${version} cgo=${cgo ?? 'unknown'}`;
 }
 
-export function createGoAnalyzer(settings = {}) {
+function goInvocation(settings, part) {
+  return ({ projectRoot, toolRoot, baselineMovesFile }) => ({
+    command: process.execPath,
+    args: [
+      cliPath,
+      'go-analyzer',
+      '--project-root',
+      projectRoot,
+      ...(part === GO_ANALYZER_NAME ? [] : ['--part', part]),
+      ...(Object.keys(settings).length === 0 ? [] : ['--go-settings', JSON.stringify(settings)]),
+      ...(baselineMovesFile === undefined ? [] : ['--baseline-moves-file', baselineMovesFile]),
+    ],
+    cwd: toolRoot,
+  });
+}
+
+function resolveGoVersion(liveProjectRoot) {
+  return [goVersion(liveProjectRoot), ...toolVersions()].join(' ');
+}
+
+function createGoAnalyzer(settings) {
   return {
     name: GO_ANALYZER_NAME,
     version: 'unresolved',
-    resolveVersion: (liveProjectRoot) => [goVersion(liveProjectRoot), ...toolVersions()].join(' '),
+    resolveVersion: resolveGoVersion,
     configurationHash: hashConfiguration(settings),
     exclusions: [],
     reportedTools: [
@@ -77,6 +100,8 @@ export function createGoAnalyzer(settings = {}) {
       'tests',
       'race',
       'test-runtime',
+      'coverage',
+      'crap',
       'structure',
       'duplicates',
       'coupling',
@@ -85,17 +110,26 @@ export function createGoAnalyzer(settings = {}) {
       'dependencies',
     ],
     timeoutMs: ANALYZER_TIMEOUT_MS,
-    createInvocation: ({ projectRoot, toolRoot, baselineMovesFile }) => ({
-      command: process.execPath,
-      args: [
-        cliPath,
-        'go-analyzer',
-        '--project-root',
-        projectRoot,
-        ...(Object.keys(settings).length === 0 ? [] : ['--go-settings', JSON.stringify(settings)]),
-        ...(baselineMovesFile === undefined ? [] : ['--baseline-moves-file', baselineMovesFile]),
-      ],
-      cwd: toolRoot,
-    }),
+    createInvocation: goInvocation(settings, GO_ANALYZER_NAME),
   };
+}
+
+function createGoMutationAnalyzer(settings) {
+  return {
+    name: GO_MUTATION_ANALYZER_NAME,
+    version: 'unresolved',
+    resolveVersion: resolveGoVersion,
+    configurationHash: hashConfiguration({ ...settings, part: GO_MUTATION_ANALYZER_NAME }),
+    exclusions: [],
+    reportedTools: [GO_MUTATION_ANALYZER_NAME],
+    dependencies: [GO_ANALYZER_NAME],
+    toleratedDependencyErrors: ['tests', 'test-runtime'],
+    shardWeight: MUTATION_SHARD_WEIGHT,
+    timeoutMs: MUTATION_TIMEOUT_MS,
+    createInvocation: goInvocation(settings, GO_MUTATION_ANALYZER_NAME),
+  };
+}
+
+export function createGoAnalyzers(settings = {}) {
+  return [createGoAnalyzer(settings), createGoMutationAnalyzer(settings)];
 }

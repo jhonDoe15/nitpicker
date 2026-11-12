@@ -7,12 +7,12 @@ import { buildConfigSchema } from '../../core/configuration/schema/config-schema
 const repositoryRoot = path.resolve(import.meta.dirname, '../..');
 const SCHEMA_FILE = path.join(repositoryRoot, 'spec/config.schema.json');
 
-export async function renderConfigSchema() {
+export async function renderConfigSchema(): Promise<string> {
   const options = (await resolveConfig(SCHEMA_FILE)) ?? {};
   return format(JSON.stringify(buildConfigSchema()), { ...options, parser: 'json' });
 }
 
-export async function isStale() {
+export async function isStale(): Promise<boolean> {
   return (await renderConfigSchema()) !== readFileSync(SCHEMA_FILE, 'utf8');
 }
 

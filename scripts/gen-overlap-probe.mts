@@ -7,11 +7,12 @@ import {
   readProbe,
   runProbe,
 } from '../languages/java/adapters/overlaps/test-support/probe-run.mjs';
+import { fieldAt } from './json/fields.mts';
 
 const OPTIONS = ['gradle', 'maven', 'build'];
 const STDERR = 2;
 
-function runOptions(argv) {
+function runOptions(argv: readonly string[]): Record<string, string> {
   return Object.fromEntries(
     OPTIONS.flatMap((name) => {
       const prefix = `--${name}=`;
@@ -21,7 +22,13 @@ function runOptions(argv) {
   );
 }
 
-function driftReport({ added, removed }) {
+function driftReport({
+  added,
+  removed,
+}: {
+  readonly added: readonly string[];
+  readonly removed: readonly string[];
+}): string {
   return [
     'Stale overlap probe fixture (run npm run gen:overlap-probe):',
     ...removed.map((line) => `- ${line}`),
@@ -38,6 +45,7 @@ if (process.argv[1] && import.meta.url === pathToFileURL(realpathSync(process.ar
       process.exitCode = 1;
     }
   } else {
-    writeFileSync(PROBE_FILE, printProbe(runProbe(readProbe().sources, options)));
+    const probe: unknown = readProbe();
+    writeFileSync(PROBE_FILE, printProbe(runProbe(fieldAt(probe, 'sources'), options)));
   }
 }
