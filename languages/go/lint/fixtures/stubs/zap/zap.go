@@ -8,9 +8,9 @@ type Field struct {
 
 type Logger struct{}
 
-func (logger *Logger) Error(message string, fields ...Field) {}
+func (*Logger) Error(string, ...Field) {}
 
-func (logger *Logger) Fatal(message string, fields ...Field) {}
+func (*Logger) Fatal(string, ...Field) {}
 
 func Error(err error) Field {
 	return Field{Key: "error", Value: err}

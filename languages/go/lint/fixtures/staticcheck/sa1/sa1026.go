@@ -3,8 +3,8 @@ package sa1
 import "encoding/json"
 
 type Job struct {
-	Name string
-	Run  func()
+	Name string `json:"name"`
+	Run  func() `json:"run"`
 }
 
 func MarshalFunc(job Job) ([]byte, error) {
@@ -12,7 +12,7 @@ func MarshalFunc(job Job) ([]byte, error) {
 }
 
 type JobData struct {
-	Name string
+	Name string `json:"name"`
 }
 
 func MarshalData(job JobData) ([]byte, error) {

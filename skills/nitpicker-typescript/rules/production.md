@@ -42,6 +42,12 @@ Part of the [nitpicker-typescript](../SKILL.md) skill. Write these forms from th
 - A child process you wait for gets a deadline: `{ timeout: 30_000 }` on `execFileSync`/`spawnSync`, or a
   `timeout` or `signal: AbortSignal.timeout(30_000)` on `execFile` and an awaited `spawn` or `execa`
   (`nitpicker/require-process-timeout`; a build wrapper that only runs a child to completion takes an exception).
+- A page of rows has an order: `limit`/`offset`/`take`/`skip`, a Prisma `cursor` or SQL `LIMIT` comes with
+  `orderBy` on a unique key (or a tie-breaker after a non-unique one), and `json_agg`/`array_agg` or
+  Kysely `jsonArrayFrom` lists sort inside (`json_agg(t ORDER BY t.name)`) (`nitpicker/no-unordered-query`).
+- A runtime array in an SQL `in` list or a multi-row insert gets an empty check and a size bound: return early when
+  it is empty, then send it as one parameter (`= any($1::uuid[])`) or split it with the project's chunking
+  helper (`nitpicker/no-unbounded-query-array`).
 - Time values carry their unit in the name (`timeoutMs`, `ttlSeconds`) and meet only the same unit: convert
   once where a value enters (`ttlSeconds * 1000`, `Math.floor(Date.now() / 1000)`), compare JWT `exp` with
   `Date.now() / 1000`, pass milliseconds to `setTimeout` and `new Date(...)`, and never cut an epoch time
@@ -58,6 +64,9 @@ Part of the [nitpicker-typescript](../SKILL.md) skill. Write these forms from th
   `(await repo.find()).length`, `where` instead of `.filter`/`.some`/`.find` on the rows, `order`/`orderBy`
   instead of `.sort`, and the ORM's aggregate or `groupBy` instead of `reduce`, `Math.max(...rows.map(...))`
   or `groupBy` (`nitpicker/no-in-memory-query`).
+- Index every foreign key in the migration that adds it (`CREATE INDEX ON orders (customer_id)`, or an index
+  that starts with the column) and give Prisma relations an `@@index([authorId])`: PostgreSQL does not create
+  one (`foreign-key-index`).
 - Join at most one to-many relation into a query: TypeORM `relationLoadStrategy: 'query'` or a query
   per collection, Sequelize `separate: true` on the other `hasMany` includes, and
   `strategy: 'select-in'` on a MikroORM `populate` (`nitpicker/no-multiple-collection-joins`).
@@ -68,6 +77,9 @@ Part of the [nitpicker-typescript](../SKILL.md) skill. Write these forms from th
   them, a `Map` built once before a loop or handler instead of `find((x) => x.key === key)` in it,
   and one `reduce` pass instead of `sort(...)[0]` or `toSorted(...).at(-1)`
   (`nitpicker/no-costly-collection-form`).
+- Rows read from a stream, async generator or cursor are handled as they arrive: in `for await`, flush
+  a fixed-size batch inside the loop (`if (batch.length >= 500) await save(batch.splice(0))`) and the
+  rest after it, never one array of every row (`nitpicker/no-collected-stream-rows`).
 - Each finding names the allowed form. A deliberate exception goes in `nitpicker.config.json`
   `exceptions` (rule, paths, reason), never inline.
 - The `$schema` line of `nitpicker.config.json`

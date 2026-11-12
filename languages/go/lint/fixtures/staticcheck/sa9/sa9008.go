@@ -1,9 +1,9 @@
 package sa9
 
 func Wrong(value any) int { // want any-in-exported-signature
-	if value, ok := value.(int); ok {
+	if value, ok := value.(int); ok { // want identical-branches
 		return value
-	} else {
+	} else { // want indent-error-flow
 		return value // want SA9008
 	}
 }

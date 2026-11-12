@@ -74,19 +74,17 @@ export function toolVersions() {
   return Object.entries(GO_TOOLS).map(([name, { version }]) => `${name}@${version}`);
 }
 
-const UNBUILT_FOLDERS = new Set(['fixtures', 'testdata']);
-
-function programFiles(source) {
+function sourceNames(source) {
   return readdirSync(source, { recursive: true, withFileTypes: true })
     .filter((entry) => entry.isFile() && !entry.name.endsWith('_test.go'))
-    .map((entry) => path.relative(source, path.join(entry.parentPath, entry.name)).split(path.sep))
-    .filter((parts) => !parts.some((part) => UNBUILT_FOLDERS.has(part)))
-    .map((parts) => parts.join('/'));
+    .map((entry) => path.relative(source, path.join(entry.parentPath, entry.name)))
+    .filter((name) => !name.split(path.sep).includes('fixtures'))
+    .toSorted();
 }
 
 export function sourceHash(source, extra) {
   const hash = createHash('sha256').update(extra);
-  for (const name of programFiles(source).toSorted((left, right) => left.localeCompare(right))) {
+  for (const name of sourceNames(source)) {
     hash.update(`${name}\0`).update(sourceFile(source, name));
   }
   return hash.digest('hex').slice(0, HASH_LENGTH);

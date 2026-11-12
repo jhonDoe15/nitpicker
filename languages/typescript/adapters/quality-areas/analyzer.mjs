@@ -20,9 +20,11 @@ export function createQualityAreaAnalyzer({
   executionPriority = 0,
   reportedTools = [],
   shardWeight = 1,
+  publishesModuleImports = false,
 }) {
   return {
     name,
+    publishesModuleImports,
     version,
     configurationHash,
     exclusions,
