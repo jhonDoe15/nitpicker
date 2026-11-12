@@ -14,6 +14,14 @@ type ContextManager struct{}
 
 type ParserV2 struct{}
 
+type Manager interface { // want generic-name
+	Close() error
+}
+
+type ReadManager interface {
+	Manager
+}
+
 func Title(text string, manager OrderManager) string {
 	return strings.ToUpper(text[:1]) + text[1:] + strings.Join(manager.orders, ",")
 }

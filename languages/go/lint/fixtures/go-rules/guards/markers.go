@@ -8,7 +8,7 @@ package guards
 
 // TODO(someone): cache the totals. // want todo-without-issue
 
-// The steps are listed in TODO.md and the HACKING guide.
+// The steps are listed in TODO.md and the HACKING guide; éTODO is a word.
 
 /*
 Total adds the line prices.

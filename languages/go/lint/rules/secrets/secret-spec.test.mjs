@@ -22,7 +22,9 @@ function goName(name) {
 }
 
 function goList(name) {
-  const block = new RegExp(String.raw`^\t${goName(name)} = \[\]string\{\n(.*?)^\t\}$`, 'ms').exec(SOURCE)?.[1];
+  const block = new RegExp(String.raw`^\t${goName(name)} = \[\]string\{\n(.*?)^\t\}$`, 'ms').exec(
+    SOURCE,
+  )?.[1];
   return [...(block ?? '').matchAll(/^\t\t`([^`]*)`,$/gm)].map((match) => match[1]);
 }
 

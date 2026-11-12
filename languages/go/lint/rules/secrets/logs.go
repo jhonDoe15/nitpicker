@@ -110,6 +110,9 @@ func ownName(info *types.Info, node ast.Expr) (string, bool) {
 		}
 	case *ast.SelectorExpr:
 		name = each.Sel.Name
+		if _, constant := info.Uses[each.Sel].(*types.Const); constant {
+			return "", false
+		}
 	case *ast.CallExpr:
 		if support.IsFunc(info, each, "os", "Getenv") && len(each.Args) == 1 {
 			return stringValue(each.Args[0]), isLoggedSecret(stringValue(each.Args[0]), true)
@@ -154,6 +157,9 @@ func keyedLeaks(info *types.Info, node ast.Expr) []leak {
 	if !ok {
 		return nil
 	}
+	if _, isLogger := support.LoggerCall(info, call); !isLogger {
+		return nil
+	}
 	found := []leak{}
 	for index := 0; index+1 < len(call.Args); index++ {
 		key := stringValue(call.Args[index])
@@ -186,7 +192,9 @@ func nameOf(value ast.Expr) string {
 func children(info *types.Info, node ast.Expr) []ast.Expr {
 	switch each := node.(type) {
 	case *ast.BinaryExpr:
-		return []ast.Expr{each.X, each.Y}
+		if each.Op == token.ADD {
+			return []ast.Expr{each.X, each.Y}
+		}
 	case *ast.CompositeLit:
 		values := []ast.Expr{}
 		for _, element := range each.Elts {
