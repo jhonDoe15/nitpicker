@@ -7,6 +7,7 @@ import { moduleManifest, usesReactor, writeManifest } from '../manifest/maven-ma
 import { ownSourceRoots } from '../../adapters/red-base/tests-failed.mjs';
 import { runErrorProne } from '../errorprone/maven-errorprone.mjs';
 import { analyzeKotlinModule } from '../kotlin/kotlin-module.mjs';
+import { runGuards } from '../guards/maven-guards.mjs';
 import { runToolsConcurrently } from '../parallel/concurrent-tools.mjs';
 import { runJdeps, runStructure } from '../parallel/module-metrics.mjs';
 import { readTestRuns, runCoverageTools } from '../quick/maven-test-phase.mjs';
@@ -63,6 +64,7 @@ function runSourceTools(options) {
 function analyzeSources(options) {
   const kotlin = analyzeKotlinModule({ ...options, options: options.kotlinOptions });
   runSourceTools({ ...options, kotlin: { ...kotlin, spring: options.spring } });
+  runGuards(options, options.project);
   runArchitecture({ ...options, module: kotlin.coverageModule });
   return kotlin;
 }

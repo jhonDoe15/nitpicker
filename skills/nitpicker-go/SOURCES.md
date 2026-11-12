@@ -60,8 +60,28 @@ than the others, and this skill teaches its rules before an agent writes Go.
 - **Compile and vet first.** A package that does not build hides every other check in it, so the
   compile error is its own finding and the skill puts it first.
 - **Errors wrapped with `%w`, compared with `errors.Is`/`errors.As`.** All three style guides agree,
-  and comparing wrapped errors with `==` or their text is the most common Go error bug. Enforced
-  rules for it come with the one-way rules slice; until then the skill carries it.
+  and comparing wrapped errors with `==` or their text is the most common Go error bug. SA1032 and
+  `deepequalerrors` enforce part of it; errorlint (#977) is to enforce the rest, so the own rules do
+  not rebuild it.
+- **Own rules (`go-rules`).** Built only for the forms no linter enforces (#416). `panic` for
+  ordinary failures, logging and returning the same error, goroutines without an owner, root
+  contexts outside `main` and sleeping to wait for a goroutine come from Effective Go ("don't
+  panic"), the Uber guide (goroutine lifetimes, "handle errors once") and the Google guide
+  (contexts). `Must` functions and `main`/`init` keep `panic`, as in the standard library. Sleeps in
+  tests and goroutines tests leave behind are left to the test-honesty rules (#419), so a test line
+  is not reported twice. Package state and `init` side effects come from the Uber guide ("avoid
+  mutable globals", "avoid `init()`"); producer-side interfaces ("accept interfaces, return
+  structs") and `any` in APIs from Go Code Review Comments ("Interfaces"); `helper` package names
+  from the Go blog's "Package names" (revive's `package-naming` already reports `util`, `common` and
+  the rest of the blog's list, so the own rule covers only the names it leaves out); `GetX` getters
+  from Effective Go ("Getters"). A sealed interface is exempt because it is the Uber guide's
+  functional-options form, and registrations in `init` because the standard library's driver
+  registry (`database/sql`) is built on them.
+- **HTTP timeouts and I/O in loops.** `http-without-timeout` is the rule every other preset runs
+  (`http-without-timeout` in Python, `pmd/HttpWithoutTimeout` in Java, `kotlin-source/` in Kotlin,
+  `nitpicker/require-http-timeout` in TypeScript): Go's default client has no timeout at all.
+  `io-in-loop` carries the Python rule's name and remedies: a query per item is the most common
+  cause of slow endpoints.
 - **Configuration read once in `main`; clocks, randomness and writers passed in.** Matches the
   composition-root rule of the other presets and makes tests deterministic.
 - **`context.Context` first, never stored.** From Go Code Review Comments and the Google guide.

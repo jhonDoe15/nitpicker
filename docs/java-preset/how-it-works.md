@@ -4,7 +4,8 @@ Part of the [Java preset guide](../java-preset.md).
 
 ```
 gradle -I languages/java/gradle/nitpicker.init.gradle nitpickerJava   (per snapshot: base, head; Maven builds: see below)
-  -> <report dir>/modules.json and, per Gradle project that applies java, <report dir>/<key>/{pmd.sarif, spotbugs.sarif, errorprone.json, format.txt, jacoco.xml, checkstyle.xml, checkstyle-<source set>.xml, archunit/*.xml, spring-arch.json, structure.json, classes.json, pit/mutations.xml, jdeps.txt, jdeps-classes.txt, manifest.json}
+  -> <report dir>/modules.json and, per Gradle project that applies java, <report dir>/<key>/{pmd.sarif, spotbugs.sarif, errorprone.json, format.txt, jacoco.xml, checkstyle.xml, checkstyle-<source set>.xml, archunit/*.xml, spring-arch.json, structure.json, classes.json, pit/mutations.xml, jdeps.txt, jdeps-classes.txt, forbidden-apis.txt, cpd.xml, dependencies.json, guards-plan.json, javac-lint.txt, permits.txt, manifest.json}
+     (nitpickerLint runs node languages/java/adapters/gradle-reports/gradle-guards.mjs on its guards-plan.json)
   -> languages/java/adapters/reporting/java-reports.mjs       (readJavaFindings, via the ingesters)
   -> languages/java/adapters/spring/java-spring.mjs    (spring findings read straight from application*.properties/yml, no Gradle report; only when manifest.json says spring: true)
   -> compareFindings(base, head, renames)               (languages/java/adapters/java-diff.mjs)
@@ -34,13 +35,16 @@ gradle -I languages/java/gradle/nitpicker.init.gradle nitpickerJava   (per snaps
   analyzed nor configured, so Gradle builds their plugins as it would without nitpicker. Each project
   runs every tool (tests, JaCoCo, PIT included) in the one Gradle invocation, so a build of several
   projects costs about the sum of single-project runs; Gradle's own `--parallel` setting applies.
-  File limits and coupling (with the stability direction) are evaluated once over all projects, as
-  for Maven modules, so a package dependency from one project to another counts. Packages and classes
-  of a project other than the root are named with its folder (`lib/demo.lib`), so two projects that
-  share a package or class name stay apart, and a dependency goes to the project that declares the
-  class (its own first). A project's names depend only on its own folder, never on how many projects
-  there are: a lone subproject is named with its folder too, and the root project's names and
-  identities are as in a one-project build, which reads its own jdeps reports unmerged.
+  File limits, coupling (with the stability direction) and package cycles are evaluated once over
+  all projects, as for Maven modules, so a package dependency from one project to another counts
+  and a cycle through two projects is one cycle. Packages and classes of a project other than the
+  root are named with its folder (`lib/demo.lib`), so two projects that share a package or class
+  name stay apart, and a dependency goes to the project that declares the class (its own first).
+  A project's names depend only on its own folder, never on how many projects there are: a lone
+  subproject is named with its folder too. The `permits.txt` of every project is merged with the
+  same names, so a sealed type's `permits` edge is left out whichever project declares it. The
+  root's names and identities are as in a one-project build, which reads its own jdeps reports
+  unmerged.
 - **Test retries.** A test that fails once is a failing test, whatever retry the build configures.
   On Gradle, after the projects are evaluated and again when the task graph is ready, the init
   script sets `maxRetries` to 0 (and `failOnPassedAfterRetry` to true) on the `retry` extension of

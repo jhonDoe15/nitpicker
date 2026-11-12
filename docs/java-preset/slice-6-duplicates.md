@@ -33,9 +33,9 @@ Part of the [Java preset guide](../java-preset.md).
   directory while the run lasts. The message names the same route as for any clone: add either file
   of the pair to `exclude`.
 
-| Tool                 | Report                      | Ingester                                              | Classification                                                    | Identity                                                                                                                                                  |
-| -------------------- | --------------------------- | ----------------------------------------------------- | ----------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| jscpd (`duplicates`) | jscpd JSON, per source root | `normalizeDuplicates` (TypeScript `duplicates` check) | `duplicate-clone` enforceable; `duplicate-clone-size` descriptive | Sorted file pair, a hash of the cloned text, and the n-th occurrence of that pair; the size metrics use pair, occurrence and metric name. No line number. |
+| Tool                 | Report                      | Ingester                                              | Classification                                                    | Identity                                                                                                                                                              |
+| -------------------- | --------------------------- | ----------------------------------------------------- | ----------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| jscpd (`duplicates`) | jscpd JSON, per source root | `normalizeDuplicates` (TypeScript `duplicates` check) | `duplicate-clone` enforceable; `duplicate-clone-size` descriptive | Sorted file pair, a hash of the cloned text, and the n-th occurrence of that text in the pair; the size metrics use pair, occurrence and metric name. No line number. |
 
 Editing the cloned text changes its hash, so a clone that was changed (not only moved) counts as a
 resolved plus a new finding, as in the TypeScript check.
