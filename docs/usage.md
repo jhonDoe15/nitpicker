@@ -231,8 +231,12 @@ npx nitpicker --all src/orders       # every finding in one folder
 Paths are read relative to the current folder, and the project is the one that holds the first path,
 so `npx nitpicker services/orders/src/main/java/Order.java` works from the repository top. All paths
 must be in that project. The analyzers still run over the whole project, so cross-file rules (dead
-code, unused exports, coupling, the type check, architecture) keep their full context and the run
-takes as long as a whole-project run. Only the findings in files under the paths fail the run and
+code, unused exports, coupling, the type check, architecture) keep their full context. Mutation, the
+slowest step, is the exception: on the head side it mutates only the source files under the paths
+(Stryker's `mutate`; PIT's `--targetClasses`, listing the classes compiled from those files, nested
+ones included; mutmut's `do_not_mutate` for every other Python file), while every test still runs
+against each mutant, so a mutant can be killed by any test. In a comparison it narrows the changed
+lines mutation already follows, and the base side is unchanged. Only the findings in files under the paths fail the run and
 appear in the console and the reports. Tool errors and `nitpicker-config/policy-loosened` findings
 (a loosened config changes the whole gate) still count wherever they come from. Findings about the
 whole project (path `.`) count only when a path is the project folder itself. The summary names the
