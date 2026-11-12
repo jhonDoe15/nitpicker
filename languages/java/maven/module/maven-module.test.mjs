@@ -1,6 +1,7 @@
-import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 import { afterEach, describe, expect, it } from 'vitest';
 import { moduleManifest } from '../manifest/maven-manifest.mjs';
 import { buildAndTest } from '../maven-build.mjs';
@@ -144,5 +145,25 @@ describe('buildAndTest', () => {
       aotArguments({ testJvmArgs: [] }),
       aotArguments({ testJvmArgs: ['-Dspring.aot.enabled=true'] }),
     ]).toEqual([['-Dspring-boot.aot.skip=true'], []]);
+  });
+});
+
+describe('the tools a module runs in parallel processes', () => {
+  it('names each tool function in the module that a process imports it from', async () => {
+    const directory = path.dirname(fileURLToPath(import.meta.url));
+    const source = readFileSync(path.join(directory, 'maven-module.mjs'), 'utf8');
+    const urls = Object.fromEntries(
+      [...source.matchAll(/const (\w+_URL) = new URL\('([^']+)'/gu)].map(([, name, file]) => [
+        name,
+        pathToFileURL(path.join(directory, file)).href,
+      ]),
+    );
+    const tasks = [...source.matchAll(/sourceTask\((\w+), (\w+_URL)/gu)];
+    const exported = await Promise.all(
+      tasks.map(async ([, tool, url]) => [tool, typeof (await import(urls[url]))[tool]]),
+    );
+
+    expect(tasks.length).toBeGreaterThan(5);
+    expect(exported.filter(([, type]) => type !== 'function')).toEqual([]);
   });
 });

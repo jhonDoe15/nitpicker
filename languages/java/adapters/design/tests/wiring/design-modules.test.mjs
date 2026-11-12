@@ -4,6 +4,7 @@ import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import { DESIGN_FACTS_FAILURE_RULE, designFindings } from '../../design-findings.mjs';
 import { gradleDesignModules, mavenDesignModules } from '../../design-modules.mjs';
+import { sourceJava } from '../../producer/design-facts.mjs';
 
 const REPORTS = 'target/nitpicker';
 const work = [];
@@ -85,14 +86,51 @@ describe('the modules the design rules read', () => {
   it('reads the Gradle modules from the manifests of the report', () => {
     const report = {
       modules: [
-        { dir: 'lib', manifest: { sourceRoots: ['lib/src/main/java'], published: true } },
+        {
+          dir: 'lib',
+          manifest: {
+            sourceRoots: ['lib/src/main/java'],
+            published: true,
+            sourceJava: { feature: 25, java: '/jdk25/bin/java' },
+          },
+        },
         { dir: '', manifest: {} },
       ],
     };
 
     expect(gradleDesignModules(report)).toEqual([
-      { dir: 'lib', sourceRoots: ['lib/src/main/java'], published: true },
-      { dir: '', sourceRoots: [], published: false },
+      {
+        dir: 'lib',
+        sourceRoots: ['lib/src/main/java'],
+        published: true,
+        sourceJava: { feature: 25, java: '/jdk25/bin/java' },
+      },
+      { dir: '', sourceRoots: [], published: false, sourceJava: undefined },
+    ]);
+  });
+
+  it('parses with the newest JDK a module compiles with that exists, else the java of JAVA_HOME', () => {
+    const root = mkdtempSync(path.join(tmpdir(), 'nitpicker-design-jdks-'));
+    work.push(root);
+    const jdk = (feature, present = true) => {
+      const java = path.join(root, `jdk${String(feature)}`, 'java');
+      if (present) {
+        mkdirSync(path.dirname(java), { recursive: true });
+        writeFileSync(java, '');
+      }
+      return { sourceJava: { feature, java } };
+    };
+
+    expect([
+      sourceJava([jdk(17), jdk(25), jdk(21), {}]),
+      sourceJava([jdk(21), jdk(26, false)]),
+      sourceJava([{ sourceJava: { java: 'java' } }, { sourceJava: {} }]),
+      sourceJava([]),
+    ]).toEqual([
+      path.join(root, 'jdk25', 'java'),
+      path.join(root, 'jdk21', 'java'),
+      'java',
+      undefined,
     ]);
   });
 });

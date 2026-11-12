@@ -20,7 +20,7 @@ export function javaFormatterPlan(style, pinned) {
       };
 }
 
-export function javaFormat({ style, classpath, executeFixCommand }) {
+export function javaFormat({ style, classpath, java, executeFixCommand }) {
   const { label, mainClass, flags } = JAVA_FORMATTERS[style];
   return function format(sources) {
     return withWorkspace((directory) => {
@@ -34,6 +34,7 @@ export function javaFormat({ style, classpath, executeFixCommand }) {
       const result = runFormatterJar({
         operation: 'java-format-fix',
         tool: label,
+        java,
         classpath,
         mainClass,
         jvmArgs: JAVAC_EXPORTS,
