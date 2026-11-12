@@ -7,6 +7,7 @@ import { MAX_TESTED_SOURCES, testedSources } from './tested-sources.mjs';
 const MUTATION_TOOL = 'pit';
 const SUMMARY_RULE = 'mutation-summary';
 const NAMED_CAPPED = 3;
+const DIGEST_LENGTH = 16;
 
 function sameDirectory(left, right) {
   return realpathSync.native(left) === realpathSync.native(right);
@@ -35,7 +36,10 @@ function cappedNotice(capped) {
   const named = capped.slice(0, NAMED_CAPPED).join(', ');
   const rest = capped.length - NAMED_CAPPED;
   const more = rest > 0 ? ` and ${String(rest)} more` : '';
-  const digest = createHash('sha256').update(capped.join('\n')).digest('hex').slice(0, 16);
+  const digest = createHash('sha256')
+    .update(capped.join('\n'))
+    .digest('hex')
+    .slice(0, DIGEST_LENGTH);
   return {
     tool: MUTATION_TOOL,
     rule: 'tested-modules-capped',

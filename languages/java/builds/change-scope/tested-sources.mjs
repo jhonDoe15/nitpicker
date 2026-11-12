@@ -8,7 +8,8 @@ import { isJvmProductionPath, isJvmTestPath } from './jvm-paths.mjs';
 export const MAX_TESTED_SOURCES = 10;
 const JVM_FILES = ['*.java', '*.kt'];
 const PACKAGE = /^\s*(?:@file:\S+\s+)*package\s+([\w.`]+)/mu;
-const IMPORT = /^\s*import\s+(static\s+)?([\w.`]+?)(\.\*)?(?:\s+as\s+\w+)?\s*;?\s*$/gmu;
+const IMPORT =
+  /^[ \t]*import[ \t]+(static[ \t]+)?([\w.`]+?)(\.\*)?(?:[ \t]+as[ \t]+\w+)?[ \t]*(?:;[ \t]*)?$/gmu;
 const NOT_CODE =
   /\/\*[\s\S]*?\*\/|\/\/[^\n]*|"""[\s\S]*?"""|"(?:\\.|[^"\\\n])*"|'(?:\\.|[^'\\\n])*'/gu;
 const HEADER_LINE = /^\s*(?:package|import)\s[^\n]*$/gmu;
@@ -18,7 +19,7 @@ const TEST_AFFIXES = /^Test(?=[A-Z])|(?:Tests?|IT|ITCase|Specs?)$/gu;
 function readText(root, file) {
   const full = pathInside(root, file);
   try {
-    return full === undefined ? undefined : readFileSync(full, 'utf8').replace(/^﻿/u, '');
+    return full === undefined ? undefined : readFileSync(full, 'utf8').replace(/^\uFEFF/u, '');
   } catch (error) {
     if (error.code === 'ENOENT') {
       return undefined;

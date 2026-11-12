@@ -8,7 +8,7 @@ import {
 } from '../../../../core/diff/git/test-support/git-repository.mjs';
 import { comparisonMutationPlan, mutationPlanOf } from './mutation-plan.mjs';
 import { isJvmTestPath } from './jvm-paths.mjs';
-import { changedTestsKey } from './tested-sources.mjs';
+import { MAX_TESTED_SOURCES, changedTestsKey } from './tested-sources.mjs';
 
 const MAIN = 'src/main/java/shop';
 const TEST = 'src/test/java/shop';
@@ -149,7 +149,7 @@ describe('mutation in a comparison', () => {
 
     const head = headPlan(roots);
 
-    expect(head.scope.filter((file) => file.includes('Part'))).toHaveLength(10);
+    expect(head.scope.filter((file) => file.includes('Part'))).toHaveLength(MAX_TESTED_SOURCES);
     expect(
       head.notices.map(({ rule, path: file, classification }) => [rule, file, classification]),
     ).toEqual([['tested-modules-capped', `${MAIN}/Part10.java`, 'descriptive']]);
@@ -191,8 +191,8 @@ describe('a production file moved on head', () => {
       [`${MAIN}/Stock.java`],
     );
 
-    expect(basePlan(roots).scope).toContain(`${MAIN}/Stock.java`);
-    expect(headPlan(roots).scope).toContain(`${MAIN}/stock/Stock.java`);
+    expect(basePlan(roots).scope).toEqual([`${MAIN}/Stock.java`]);
+    expect(headPlan(roots).scope).toEqual([`${MAIN}/stock/Stock.java`]);
   });
 });
 
