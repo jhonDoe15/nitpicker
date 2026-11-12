@@ -16,6 +16,7 @@ export type Output = { write(text: string): void };
 export const GIT_TIMEOUT_MS = 60_000;
 const MODULE = /\.(?:mjs|mts|cjs)$/u;
 const FIXTURE = /(?:^|\/)fixtures\//u;
+const MODULE_URL = /new URL\(\s*(['"])(?<specifier>[^'"]+)\1,\s*import\.meta\.url/gu;
 
 export function repositoryFile(root: string, file: string): string {
   const base = path.resolve(root);
@@ -37,7 +38,8 @@ export function trackedModules(root: string): string[] {
     timeout: GIT_TIMEOUT_MS,
   })
     .split('\0')
-    .filter((file) => MODULE.test(file) && !FIXTURE.test(file));
+    .filter((file) => MODULE.test(file) && !FIXTURE.test(file))
+    .filter((file) => existsSync(repositoryFile(root, file)));
 }
 
 function importsOf(root: string, importer: string): ModuleImport[] {
@@ -125,4 +127,25 @@ export function waitingOn(
   return imports
     .filter((moduleImport) => moduleImport.target === file && waits(moduleImport, converting))
     .map(({ importer }) => importer);
+}
+
+function unwrappedReferences(root: string, file: string): string[] {
+  const lines = readFileSync(repositoryFile(root, file), 'utf8').split('\n');
+  return lines.flatMap((line, index) =>
+    [...line.matchAll(MODULE_URL)].flatMap((match) => {
+      const specifier = match.groups?.['specifier'] ?? '';
+      const target = path.posix.normalize(path.posix.join(path.posix.dirname(file), specifier));
+      const source = target.replace(/\.mjs$/u, '.mts');
+      const breaks =
+        source !== target &&
+        !line.includes('checkoutModuleUrl(') &&
+        !existsSync(repositoryFile(root, target)) &&
+        existsSync(repositoryFile(root, source));
+      return breaks ? [`${file}:${String(index + 1)} ${specifier}`] : [];
+    }),
+  );
+}
+
+export function unwrappedModuleUrls(root: string, modules: readonly string[]): string[] {
+  return modules.flatMap((file) => unwrappedReferences(root, file));
 }
