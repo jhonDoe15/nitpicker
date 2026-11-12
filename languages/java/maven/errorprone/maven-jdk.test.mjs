@@ -161,8 +161,14 @@ describe('the JDK nitpicker --fix formats Java on', () => {
 
   it('names the formatter when no JDK 21 or newer is installed', () => {
     expect(
-      chooseFormatterJdk({ tool: 'palantir-java-format', project: jdk(17), installed: [] }).problem,
-    ).toMatch(/^palantir-java-format needs JDK 21 or newer to run/u);
+      chooseFormatterJdk({ tool: 'palantir-java-format', project: jdk(17), installed: [] }),
+    ).toStrictEqual({
+      problem:
+        'palantir-java-format needs JDK 21 or newer to run, and /jdk17/bin/java is JDK 17. nitpicker ' +
+        'found no JDK 21 or newer in JAVA_HOME, the JAVA_HOME_<N>_X64 variables, ~/.m2/toolchains.xml, ' +
+        'SDKMAN, /usr/lib/jvm or /Library/Java/JavaVirtualMachines. Install one there; the project ' +
+        'keeps compiling for its own release',
+    });
   });
 });
 
@@ -171,7 +177,7 @@ describe('the Java level a Maven module compiles at', () => {
     expect([
       sourceLevel({ release: '25', source: '17', test: { release: undefined, source: '1.8' } }),
       sourceLevel({ release: undefined, source: '1.8', target: '1.8', test: {} }),
-      sourceLevel({ release: '${java.version}', test: { release: '21' } }),
+      sourceLevel({ release: `\${java.version}`, test: { release: '21' } }),
       sourceLevel({ test: {} }),
       sourceLevel(),
     ]).toStrictEqual([25, 8, 21, undefined, undefined]);
@@ -186,9 +192,10 @@ describe('the Java level a Maven module compiles at', () => {
     ]).toStrictEqual([
       { java: '/jdk25/bin/java' },
       { java: '/jdk25/bin/java' },
-      expect.stringMatching(
-        /^Checkstyle needs JDK 25 or newer to run, and \/jdk21\/bin\/java is JDK 21/u,
-      ),
+      'Checkstyle needs JDK 25 or newer to run, and /jdk21/bin/java is JDK 21. nitpicker found no ' +
+        'JDK 25 or newer in JAVA_HOME, the JAVA_HOME_<N>_X64 variables, ~/.m2/toolchains.xml, SDKMAN, ' +
+        '/usr/lib/jvm or /Library/Java/JavaVirtualMachines. Install one there; the project keeps ' +
+        'compiling for its own release',
     ]);
   });
 });

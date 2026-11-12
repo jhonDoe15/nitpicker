@@ -100,8 +100,6 @@ function projectJava(spawn) {
   return project;
 }
 
-const toolJavas = new Map();
-
 const LEVEL = /^(?:1\.)?(\d+)$/u;
 
 export function sourceLevel(compiler = {}) {
@@ -115,7 +113,10 @@ export function sourceLevel(compiler = {}) {
 function lowestFrom(installed, minimum) {
   return installed
     .filter((jdk) => jdk.feature !== undefined && jdk.feature >= minimum)
-    .toSorted((left, right) => left.feature - right.feature)[0];
+    .reduce(
+      (best, jdk) => (best === undefined || jdk.feature < best.feature ? jdk : best),
+      undefined,
+    );
 }
 
 export function chooseToolJdk({ tool, project, installed, minimum = ERROR_PRONE_JDK }) {
@@ -143,30 +144,22 @@ function installedBelow(project, minimum, spawn) {
 
 export function toolJava({ tool, level, spawn = spawnSync }) {
   const minimum = Math.max(ERROR_PRONE_JDK, level ?? 0);
-  const key = `${tool}|${String(minimum)}|${javaCommand('java')}`;
-  if (!toolJavas.has(key)) {
-    const project = projectJava(spawn);
-    const installed = installedBelow(project, minimum, spawn);
-    const { java, problem } = chooseToolJdk({ tool, project, installed, minimum });
-    if (problem !== undefined) {
-      throw explainedError(problem);
-    }
-    toolJavas.set(key, java);
+  const project = projectJava(spawn);
+  const installed = installedBelow(project, minimum, spawn);
+  const { java, problem } = chooseToolJdk({ tool, project, installed, minimum });
+  if (problem !== undefined) {
+    throw explainedError(problem);
   }
-  return toolJavas.get(key);
+  return java;
 }
 
 export function parserJava({ level, spawn = spawnSync }) {
   if (level === undefined) {
     return { java: javaCommand('java') };
   }
-  const key = `parser|${String(level)}|${javaCommand('java')}`;
-  if (!toolJavas.has(key)) {
-    const project = projectJava(spawn);
-    const found = lowestFrom(installedBelow(project, level, spawn), level) ?? project;
-    toolJavas.set(key, { feature: found.feature, java: found.java });
-  }
-  return toolJavas.get(key);
+  const project = projectJava(spawn);
+  const found = lowestFrom(installedBelow(project, level, spawn), level) ?? project;
+  return { feature: found.feature, java: found.java };
 }
 
 export function chooseFormatterJdk({ tool, project, installed }) {
@@ -177,7 +170,10 @@ export function chooseFormatterJdk({ tool, project, installed }) {
         jdk.feature >= ERROR_PRONE_JDK &&
         jdk.feature <= NEWEST_FORMATTER_JDK,
     )
-    .toSorted((left, right) => right.feature - left.feature)[0];
+    .reduce(
+      (best, jdk) => (best === undefined || jdk.feature > best.feature ? jdk : best),
+      undefined,
+    );
   if (project.feature >= ERROR_PRONE_JDK && !(newest?.feature > project.feature)) {
     return { java: project.java };
   }

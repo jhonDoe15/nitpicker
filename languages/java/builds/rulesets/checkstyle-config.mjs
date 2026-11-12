@@ -83,7 +83,7 @@ function fieldNameModules() {
 const EDITS = [
   {
     pattern: METHOD_NAME,
-    replacement: (whole, head, tail) => `${head}${RELAXED_NAME}${tail}`,
+    replacement: (_whole, head, tail) => `${head}${RELAXED_NAME}${tail}`,
     name: 'MethodName',
   },
   { pattern: NON_CONSTANT_FIELD_NAME, replacement: fieldNameModules, name: FIELD_RULE },
