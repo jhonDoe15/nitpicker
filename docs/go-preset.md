@@ -1,9 +1,9 @@
 # Go preset
 
-Status: slices GO1 (ticket #414) and GO5 (ticket #418) implemented, and the first two parts of slice
-GO2 (#415): staticcheck, errcheck, modernize, the extra `golang.org/x/tools` passes and revive, and
-slice GO3 (#416): nitpicker's own rules for errors, concurrency, package state, design and I/O. The
-remaining slices are listed under [Remaining slices](#remaining-slices).
+Status: slices GO1 (ticket #414), GO5 (ticket #418) and GO7 (ticket #433) implemented, the first
+two parts of slice GO2 (#415): staticcheck, errcheck, modernize, the extra `golang.org/x/tools`
+passes and revive, and slice GO3 (#416): nitpicker's own rules for errors, concurrency, package
+state, design and I/O. The remaining slices are listed under [Remaining slices](#remaining-slices).
 
 The Go preset gates a Go module (`go.mod` at the project root) with the same differential gate as
 the other presets: run the tools on the merge base and on head, turn each report into findings,
@@ -44,7 +44,7 @@ node core/cli.mjs go-analyzer --project-root <snapshot>   (per snapshot)
   -> go vet -json ./...                            compile errors and vet diagnostics
   -> lint ./...                                    staticcheck, errcheck, modernize, revive, catalog linters,
                                                    go-rules (languages/go/lint)
-  -> go test -vet=off -json -coverpkg=./... -coverprofile=coverage.out ./...
+  -> go test -vet=off -json -race -covermode=atomic -coverpkg=./... -coverprofile=coverage.out ./...
   -> jscpd --format go (plain, then over renamed sources)  duplicates
   -> go mod tidy -diff                             unused and unlisted requirements
   -> deadcode -json ./...                          unreachable functions (modules with a main package)
@@ -94,6 +94,7 @@ per source hash and toolchain into the nitpicker cache.
 | Modern forms           | lint program (modernize)  | `modernize/<analyzer>`, for example `modernize/rangeint`                            |
 | Own one-way rules      | lint program (go-rules)   | `go-rules/<rule>`, for example `go-rules/panic-for-failure`                         |
 | Failing tests          | `go test -json`           | `tests/tests-failed` tool error quoting each failure                                |
+| Data races             | `go test -race`           | `race/data-race`, one per pair of conflicting functions                             |
 | No tests ran           | `go test -json`           | `tests/no-tests-ran`                                                                |
 | Slow tests             | `go test -json`           | `test-runtime/slow-test`                                                            |
 | Function limits        | metrics program           | `structure/function-*-limit`                                                        |
@@ -162,6 +163,32 @@ run that writes a coverage profile, so every test runs and its time is measured.
   failing subtest is listed, and a package that failed to build is not, because its compile error
   is already a finding.
 - A module where no test ran gets `tests/no-tests-ran`, unless a build failure stopped them.
+- **Data races.** The tests run under the race detector (`-race`, with `-covermode=atomic`, which
+  `-race` needs). Each race report becomes one `race/data-race` finding on the file of its first
+  access. The message names both conflicting accesses (read or write, the function and its
+  `file:line`, the first frame of each stack inside the module) and the test that found it. The
+  finding is keyed by the two functions (closures without their `func1`, `func2` numbers),
+  whichever access the detector printed first, so a race the merge base already had is not new,
+  and the same race found by several tests is one finding. A side whose stack the detector could
+  not restore, or that has no frame inside the module, is still named as well as the report allows.
+  A data race is never intended, so the finding has no exception route.
+- **Tests that fail only under `-race`.** The race detector fails every test that ran during a
+  race, parallel tests included, and slows tests 2 to 20 times. So when a package printed a race
+  report, timed out, hit the detector's goroutine limit or was killed, its failing tests run once
+  more without `-race` (`-run` with their names, `-count=1`). The ones that pass are left out of
+  `tests/tests-failed`: a race report is already a finding. A failure with no race report in its
+  package (a timeout under the slowdown) adds a descriptive `race/race-not-checked` finding naming
+  the tests. A test that fails without `-race` too stays a failing test, with the race report taken
+  out of its quoted output.
+- **Without the race detector.** `-race` needs cgo (`CGO_ENABLED=1` and a C compiler on the
+  `PATH`) and a platform the detector supports. When `go test -race` reports that it cannot run
+  (cgo off, an unsupported platform, a race runtime that does not build, ThreadSanitizer refusing
+  the machine's memory layout) or does not finish within the tool time limit, the tests run again
+  without it, and a descriptive `race/race-not-checked` finding says why. Every
+  `race/race-not-checked` finding of head is listed under "Notices (not failing)" on every run, so a
+  report never claims races were checked when they were not. Whether cgo is on is part of the
+  analyzer version, so a cached merge base result from a machine with cgo is not compared with a
+  head run without it.
 - **Slow tests** use the shared `slow-test` limits: a new or changed top-level test over the unit
   budget (5 s) fails, and an integration test gets the integration budget (30 s). A test counts as
   integration when it lives under an `integration`, `integration_tests`, `e2e` or `end_to_end`
@@ -174,7 +201,8 @@ run that writes a coverage profile, so every test runs and its time is measured.
   Reading `testing.Short()` anywhere else, such as to log or into `_`, or running anything else
   before the skip does not count, because that code still runs under `go test -short`. A test over
   its budget is run again alone (`-run '^Name$' -count=1`) and the fastest time counts, so a busy
-  machine does not fail it. A test is "changed" when its function's text differs from the merge
+  machine does not fail it. The rerun is without `-race`, so the race detector's slowdown never
+  counts towards the budget. A test is "changed" when its function's text differs from the merge
   base.
 - **Test output** (`test-runtime/test-console-output`): a line a test prints that the base run did
   not print fails, on the test's file, compared as text with numbers and paths normalized (see
@@ -629,9 +657,10 @@ there are no source roots to set) are config errors with `"preset": "go"`, each 
   the real CLI on them: a clean change, gofmt, vet, a compile error, a nested function next to an
   untouched legacy one, exceptions, failing and slow tests, build tags, gofumpt from a golangci-lint
   file, a change that adopts gofumpt, a missing toolchain, the linters' findings and messages, a
-  `staticcheck.conf` that is ignored until the project opts in, and, on an application module, a
+  `staticcheck.conf` that is ignored until the project opts in; on an application module, a
   renamed copy, an exported function only tests call, an unexported function only tests call, and
-  an unused function reported once. CI runs them in the `go-e2e` workflow.
+  an unused function reported once; and a new data race, a race the merge base already had, and
+  cgo turned off. CI runs them in the `go-e2e` workflow.
 
 ## Remaining slices
 
@@ -643,7 +672,7 @@ there are no source roots to set) are config errors with `"preset": "go"`, each 
 | GO4 | Coverage, CRAP and mutation (#417)              | changed-branch coverage and CRAP from the coverage profile; mutation testing.                                                                                                                                                                                                                                                     |
 | GO5 | Duplicates, coupling, dead code, modules (#418) | Done: see [Facts](#facts) through [Module requirements](#module-requirements).                                                                                                                                                                                                                                                    |
 | GO6 | Shared guards and test honesty (#419)           | Started: `duplicate-definition`, `sibling-copy-edit` and `doc-comment-content` (see [Facts](#facts)), `test-console-output` (see [Tests](#tests)) and the source guards (swallowed errors, repeated strings, generic names, task markers, method aliases and secrets; see [Own rules](#own-rules)). Next: the test-honesty rules. |
-| GO7 | Race detector (#433)                            | `go test -race`, with each race a finding keyed by its stacks.                                                                                                                                                                                                                                                                    |
+| GO7 | Race detector (#433)                            | This document: done.                                                                                                                                                                                                                                                                                                              |
 
 ## Known limits
 
@@ -663,3 +692,9 @@ there are no source roots to set) are config errors with `"preset": "go"`, each 
   `exceptions` entry.
 - The linters run on the whole module for both snapshots; a finding is new when its message and
   line text are new, as for vet.
+- The race detector finds only the races the tests exercise, on the interleavings that happen in
+  that run. A race the merge base has but its run did not hit shows as new on head. A base whose
+  tests failed treats head's races outside the changed lines as unknown on the base, as it does
+  coverage and slow tests.
+- A race is keyed by its functions and reported on the file of its first access, so moving one of
+  the racing functions to another file or package makes the race new.
