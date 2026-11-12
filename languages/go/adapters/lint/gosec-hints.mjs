@@ -1,5 +1,3 @@
-const EXCEPTION =
-  'If the value is trusted by design, add an exception for this rule with the reason.';
 const UNSANITISED =
   'The rule accepts no validation, so a value the code already checks takes an exception with the reason.';
 const STRONG_HASH =
