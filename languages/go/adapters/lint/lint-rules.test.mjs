@@ -94,6 +94,30 @@ describe('Go lint messages', () => {
     ],
     [
       {
+        tool: 'spancheck',
+        rule: 'spancheck',
+        message: 'span.End is not called on all paths, possible memory leak',
+      },
+      'span.End is not called on all paths, possible memory leak. Assign the span and end it in a deferred call right after `tracer.Start`: `defer span.End()`.',
+    ],
+    [
+      { tool: 'sloglint', rule: 'sloglint', message: 'key-value pairs should not be used' },
+      'key-value pairs should not be used. Pass typed attributes: `slog.String("name", name)`, `slog.Any("order", order)`.',
+    ],
+    [
+      { tool: 'sloglint', rule: 'sloglint', message: 'use slog.DiscardHandler instead' },
+      'use slog.DiscardHandler instead.',
+    ],
+    [
+      {
+        tool: 'perfsprint',
+        rule: 'integer-format',
+        message: 'fmt.Sprintf can be replaced with faster strconv.Itoa',
+      },
+      'fmt.Sprintf can be replaced with faster strconv.Itoa.',
+    ],
+    [
+      {
         tool: 'revive',
         rule: 'identical-switch-branches',
         message: '"switch" with identical branches (lines 22 and 24)',

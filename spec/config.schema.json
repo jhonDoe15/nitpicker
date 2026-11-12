@@ -2235,6 +2235,7 @@
                             "pmd/ClassLoadEffect",
                             "pmd/UnboundedThreadPool",
                             "pmd/RecursiveMapUpdate",
+                            "pmd/StreamedRowsCollected",
                             "pmd/ReusableObjectPerCall",
                             "pmd/GeneratedMemberCycle",
                             "pmd/GeneratedEqualsSkipsSuperclass",
@@ -2288,6 +2289,7 @@
                             "pmd/JpaVersion",
                             "pmd/JpaSequenceIds",
                             "pmd/JpaEnumString",
+                            "pmd/JpaUnindexedForeignKey",
                             "pmd/JpaIdentityHashCode",
                             "pmd/SpringDataDerivedQuery",
                             "pmd/SpringDataNativeQuery",
@@ -2665,7 +2667,7 @@
                           ]
                         },
                         {
-                          "pattern": "^(?:vet|staticcheck|errcheck|modernize|revive|bodyclose|rowserrcheck|sqlclosecheck|noctx|errorlint|nilerr|nilnil|errname|contextcheck|containedctx|fatcontext|exhaustive|recvcheck|durationcheck|makezero|reassign|unconvert|wastedassign|thelper|tparallel|testifylint|usetesting|go-rules|deadcode)/[\\s\\S]"
+                          "pattern": "^(?:vet|staticcheck|errcheck|modernize|revive|bodyclose|rowserrcheck|sqlclosecheck|noctx|errorlint|nilerr|nilnil|errname|contextcheck|containedctx|fatcontext|exhaustive|recvcheck|durationcheck|makezero|reassign|unconvert|wastedassign|thelper|tparallel|testifylint|usetesting|asciicheck|bidichk|gocheckcompilerdirectives|canonicalheader|musttag|perfsprint|usestdlibvars|sloglint|spancheck|go-rules|deadcode)/[\\s\\S]"
                         }
                       ]
                     }

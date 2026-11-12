@@ -43,6 +43,10 @@ than the others, and this skill teaches its rules before an agent writes Go.
   golangci-lint maintains).
   Tests: thelper, tparallel and testifylint (MIT), usetesting (Apache-2.0). testify itself is
   only a dependency of the fixtures.
+  Other forms: asciicheck and canonicalheader (MIT, the forks golangci-lint maintains), bidichk,
+  gocheckcompilerdirectives, perfsprint, usestdlibvars and spancheck (MIT), musttag and sloglint
+  (MPL-2.0, weak copyleft, used unmodified). OpenTelemetry's trace package is only a dependency
+  of the spancheck fixtures.
 
 ## Rules and their reasoning
 
@@ -143,6 +147,13 @@ than the others, and this skill teaches its rules before an agent writes Go.
   testifylint runs every check, and each is printed under its own name, so an exception names
   one check rather than all of testify. paralleltest is left out: `t.Parallel()` everywhere
   conflicts with `t.Setenv` and shared fixtures.
+- **Other one-form linters.** A `fmt.Sprintf` that `strconv` or `+` replaces, a layout or status literal where the standard library names the constant, an untagged struct whose field names become its
+  encoded form, a log call that drops the context it has, a span not ended on every path, a
+  non-canonical header key, a non-ASCII identifier and a bidirectional control character are a
+  second form or a hidden bug, each with one allowed form. sloglint asks for typed attributes
+  rather than key-value pairs, because `LogAttrs` takes only attributes, so it is the form every
+  call accepts, and a key-value list can pair a key with the wrong value. usestdlibvars's checks for bare words (`\"May\"`, `\"MD5\"`) and sloglint's constant-message check stay off: both flag correct code (a type-name table, a logging wrapper) that has no other form. predeclared is left
+  out because revive's `redefines-builtin-id` reports the same names.
 - **A fixture for every check.** Each enabled check has a failing line and the allowed form in
   `languages/go/lint/fixtures`; the harness fails on a missing or unexpected report, so a tool
   upgrade that changes what a check reports is caught before release.
@@ -243,3 +254,17 @@ Two adversarial reviews of the test linters changed these rules:
   `testifylint/testifylint` instead of an unknown rule.
 - **One finding per line**: errorlint wins over testifylint `compares` on
   `assert.True(t, err == io.EOF)`, and thelper over `suite-thelper`.
+
+Two adversarial reviews of the other catalog linters changed these rules:
+
+- **Checks that match a bare word are off.** usestdlibvars's month, weekday, hash, isolation
+  level, TLS scheme and constant-kind checks flag `"May"` or `"Int"` in any string, and
+  sloglint's constant-message check flags a constant from another package and every logging
+  wrapper; neither leaves an allowed form.
+- **A misspelled directive alone on its line is reported.** gocheckcompilerdirectives reads a
+  directive only up to a following space, so `//go:nosplitt` with nothing after it passed; the
+  lint program hands it each comment with a space appended.
+- **perfsprint stays quiet where staticcheck reports the call**: S1025, S1028, S1039, SA1006,
+  QF1010 and QF1012 keep the line.
+- **Hints fit every message**: musttag names the tag the message names, spancheck covers a span
+  that is never assigned, and sloglint's key-value message names the attribute form.

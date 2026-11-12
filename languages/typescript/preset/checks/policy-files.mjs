@@ -73,6 +73,8 @@ export const POLICY_FILES = [
   'languages/typescript/preset/eslint-plugin/rules/collections/costly-forms/no-costly-collection-form.mjs',
   'languages/typescript/preset/eslint-plugin/rules/collections/costly-forms/repeated-runs.mjs',
   'languages/typescript/preset/eslint-plugin/rules/collections/costly-forms/sorted-extreme.mjs',
+  'languages/typescript/preset/eslint-plugin/rules/streams/no-collected-stream-rows.mjs',
+  'languages/typescript/preset/eslint-plugin/rules/streams/stream-sources.mjs',
   'languages/typescript/preset/eslint-plugin/rules/errors/no-throw.mjs',
   'languages/typescript/preset/eslint-plugin/rules/boundaries/no-unknown-in-domain.mjs',
   'languages/typescript/preset/eslint-plugin/rules/boundaries/no-unvalidated-schema-field.mjs',

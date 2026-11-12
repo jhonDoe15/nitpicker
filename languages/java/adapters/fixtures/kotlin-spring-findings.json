@@ -115,6 +115,7 @@
   "src/main/kotlin/shop/bad/Entities.kt:20 JpaVersion Customer",
   "src/main/kotlin/shop/bad/Entities.kt:21 JpaSequenceIds Customer.id",
   "src/main/kotlin/shop/bad/Entities.kt:32 JpaLazyFetching Invoice.customer",
+  "src/main/kotlin/shop/bad/Entities.kt:32 JpaUnindexedForeignKey Invoice.customer",
   "src/main/kotlin/shop/bad/Entities.kt:33 JpaLazyFetching Invoice.receipt",
   "src/main/kotlin/shop/bad/Entities.kt:34 JpaLazyFetching Invoice.lines",
   "src/main/kotlin/shop/bad/Entities.kt:35 JpaManyToManyCascade Invoice.tags",

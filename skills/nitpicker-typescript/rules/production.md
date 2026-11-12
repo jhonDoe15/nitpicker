@@ -77,6 +77,9 @@ Part of the [nitpicker-typescript](../SKILL.md) skill. Write these forms from th
   them, a `Map` built once before a loop or handler instead of `find((x) => x.key === key)` in it,
   and one `reduce` pass instead of `sort(...)[0]` or `toSorted(...).at(-1)`
   (`nitpicker/no-costly-collection-form`).
+- Rows read from a stream, async generator or cursor are handled as they arrive: in `for await`, flush
+  a fixed-size batch inside the loop (`if (batch.length >= 500) await save(batch.splice(0))`) and the
+  rest after it, never one array of every row (`nitpicker/no-collected-stream-rows`).
 - Each finding names the allowed form. A deliberate exception goes in `nitpicker.config.json`
   `exceptions` (rule, paths, reason), never inline.
 - The `$schema` line of `nitpicker.config.json`
