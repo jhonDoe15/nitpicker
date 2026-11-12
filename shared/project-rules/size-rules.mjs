@@ -123,8 +123,13 @@ const GO_DEPTH = `more than ${String(FOLDER_DEPTH_DEFAULTS.go)} packages below t
 
 const JAVA_AND_PYTHON = { typescript: false, java: true, python: true };
 
-function classRule(id, limit, enforcedBy) {
-  return { id, check: 'structure', limit, enforcedBy };
+const GO_NO_INHERITANCE =
+  'the language has no inheritance: a struct embeds other types as fields and their methods are promoted, so there is no chain of superclasses to measure';
+
+function classRule(id, limit, enforcedBy, notApplicable) {
+  return notApplicable === undefined
+    ? { id, check: 'structure', limit, enforcedBy }
+    : { id, check: 'structure', limit, enforcedBy, notApplicable };
 }
 
 export function sizeRules({ all, withKotlin, withGo }) {
@@ -151,6 +156,7 @@ export function sizeRules({ all, withKotlin, withGo }) {
       SIZE_RULE_IDS.inheritanceDepth,
       `a class more than ${String(CLASS_LIMIT_DEFAULTS.inheritanceDepth)} superclasses deep in the main Java sources or the Python source roots (Go has no inheritance); override with \`thresholds.inheritanceDepth\``,
       classes,
+      { go: GO_NO_INHERITANCE },
     ),
   ];
 }
