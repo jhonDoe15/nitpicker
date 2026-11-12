@@ -1,0 +1,47 @@
+  <rule name="StreamedRowsCollected" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
+        message="This stream reads rows from the database one at a time, but the whole result is collected into one collection, so every row is held in memory at once, which is what streaming avoids and what runs out of memory on a large table. Handle each row inside forEach, or flush a fixed-size batch there (add, and at 500 rows save the batch and clear it), and the rest once after it. An exception fits only for a query that always returns a handful of rows.">
+    <priority>2</priority>
+    <properties>
+      <property name="xpath">
+        <value><![CDATA[
+let $steps := ('map', 'filter', 'peek', 'distinct', 'sorted', 'flatMap', 'mapToObj', 'mapToInt', 'mapToLong',
+               'mapToDouble', 'boxed', 'skip', 'dropWhile', 'parallel', 'sequential', 'unordered', 'onClose'),
+    $collectors := ('toList', 'toUnmodifiableList', 'toSet', 'toUnmodifiableSet', 'toMap', 'toUnmodifiableMap',
+                    'toConcurrentMap', 'toCollection'),
+    $groupings := ('groupingBy', 'groupingByConcurrent', 'partitioningBy'),
+    $queried := function($node) {
+      exists($node[self::MethodCall][pmd-java:typeIs('java.util.stream.Stream')]
+        [*[1][pmd-java:typeIs('org.springframework.data.repository.Repository')]
+         or @MethodName = 'getResultStream' and *[1][pmd-java:typeIs('jakarta.persistence.Query')
+                                                    or pmd-java:typeIs('javax.persistence.Query')]
+         or @MethodName = 'queryForStream' and *[1][pmd-java:typeIs('org.springframework.jdbc.core.JdbcOperations')
+           or pmd-java:typeIs('org.springframework.jdbc.core.namedparam.NamedParameterJdbcOperations')]
+         or @MethodName = 'stream' and *[1][pmd-java:typeIs('org.hibernate.query.SelectionQuery')]])
+    },
+    $held := function($node) {
+      some $access in $node[self::VariableAccess] satisfies
+        (let $name := $access/@Name
+         return exists($access/ancestor::*[self::Block or self::TryStatement]
+           /(LocalVariableDeclaration/VariableDeclarator | ResourceList/Resource/LocalVariableDeclaration/VariableDeclarator)
+           [VariableId/@Name = $name][$queried(*[2])])
+           and empty($access/ancestor::MethodDeclaration//AssignmentExpression[*[1][self::VariableAccess[@Name = $name]]]))
+    },
+    $fromQuery := function($sink) {
+      some $root in $sink/*[1]/descendant-or-self::*[$queried(.) or $held(.)] satisfies
+        (every $step in ($root/ancestor-or-self::* intersect $sink/descendant::*) satisfies
+          ($step is $step/../*[1] and ($step is $root or exists($step[self::MethodCall][@MethodName = $steps]))))
+    },
+    $appends := function($argument) {
+      exists($argument[self::MethodReference[@MethodName = 'add'][*[1][self::VariableAccess]]
+        | self::LambdaExpression[*[2][self::MethodCall[@MethodName = 'add'][*[1][self::VariableAccess]]]]])
+    }
+return (
+  //MethodCall[@MethodName = 'toList' and ArgumentList/@Size = 0 or @MethodName = 'toArray']
+  | //MethodCall[@MethodName = 'collect'][ArgumentList[@Size = 1]/MethodCall
+      [@MethodName = $collectors or @MethodName = $groupings and ArgumentList/@Size = 1]]
+  | //MethodCall[@MethodName = ('forEach', 'forEachOrdered')][ArgumentList[@Size = 1][$appends(*[1])]]
+)[$fromQuery(.)]
+]]></value>
+      </property>
+    </properties>
+  </rule>

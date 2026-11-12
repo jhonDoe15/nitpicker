@@ -107,19 +107,22 @@ func toolNames() map[string]string {
 	return names
 }
 
-func ruleOf(analyzer *analysis.Analyzer, diagnostic analysis.Diagnostic) string {
+func ruleOf(analyzer *analysis.Analyzer, diagnostic analysis.Diagnostic) (string, string) {
 	if analyzer == gosecAnalyzer {
-		return diagnostic.Category
+		return diagnostic.Category, diagnostic.Message
 	}
-	return analyzer.Name
+	return catalog.Rule(analyzer.Name, diagnostic)
 }
 
 func ruleNames() []string {
 	var names []string
 	for _, analyzer := range analyzers() {
-		if analyzer == gosecAnalyzer {
+		switch checks := catalog.Checks(analyzer.Name); {
+		case analyzer == gosecAnalyzer:
 			names = append(names, gosecRules()...)
-		} else {
+		case checks != nil:
+			names = append(names, checks...)
+		default:
 			names = append(names, analyzer.Name)
 		}
 	}

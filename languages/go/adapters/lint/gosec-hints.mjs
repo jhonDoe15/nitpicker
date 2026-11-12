@@ -54,10 +54,6 @@ export const GOSEC_HINTS = [
     'Check the value against the target range (math.MaxInt32 and friends) before converting.',
   ],
   [
-    'G116',
-    'Remove the bidirectional control characters; write them as escapes (`\\u202e`) if a string needs them.',
-  ],
-  [
     'G117',
     'Tag the field `json:"-"`, or marshal a separate type without the secret. ' +
       'A request body that must carry the secret takes an exception with the reason.',
@@ -147,7 +143,11 @@ export const GOSEC_HINTS = [
       UNSANITISED,
   ],
   ['G705', 'Render HTML with html/template, or escape the value with `html.EscapeString`.'],
-  ['G706', 'Log request values as structured fields, `slog.Info("msg", "user", value)`.'],
+  [
+    'G706',
+    'Log request values as structured attributes: ' +
+      '`slog.InfoContext(ctx, "msg", slog.String("user", value))`.',
+  ],
   [
     'G707',
     'Parse sender and recipient addresses with `mail.ParseAddress` and pass `address.Address`.',

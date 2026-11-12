@@ -124,9 +124,40 @@ const HINTS = new Map([
   ],
   ['reassign', "Leave the other package's variable as it is; declare a variable of your own."],
   ['unconvert', 'Remove the conversion; the value already has that type.'],
+  ['useless-assert', 'Assert the value under test against the expected value.'],
+  [
+    'go-require',
+    'Use assert in the goroutine, or send the error back and require it in the test goroutine.',
+  ],
+  ['suite-broken-parallel', 'Remove the `t.Parallel()` call; suites run their tests in order.'],
   ['wastedassign', 'Remove the assignment, or use the value before it is assigned again.'],
+  ['asciicheck', 'Rename it with ASCII letters only.'],
+  [
+    'bidichk',
+    'Remove the character; in a string, write it as an escape such as `\\u2066` so it stays visible.',
+  ],
+  [
+    'gocheckcompilerdirectives',
+    'Use a directive the compiler knows, such as `//go:noinline`; an ordinary comment starts with `// `.',
+  ],
+  [
+    'musttag',
+    'Give each exported field the tag the message names, such as `json:"id"`, so renaming a field ' +
+      'leaves the encoded form as it is.',
+  ],
+  [
+    'spancheck',
+    'Assign the span and end it in a deferred call right after `tracer.Start`: `defer span.End()`.',
+  ],
   ...GOSEC_HINTS,
 ]);
+const MESSAGE_HINTS = [
+  [
+    'sloglint',
+    /^key-value pairs/u,
+    'Pass typed attributes: `slog.String("name", name)`, `slog.Any("order", order)`.',
+  ],
+];
 
 const RULE_NAMES = new Map([['errcheck', 'unchecked']]);
 const VARYING_PARTS = new Map([
@@ -135,7 +166,15 @@ const VARYING_PARTS = new Map([
   ['contextcheck', /->[^`]*/u],
   ['exhaustive', /: .*$/u],
   ['durationcheck', /: `.*`$/u],
+  ['usetesting', / in \w+$/u],
 ]);
+const COUNTED_RULES = new Set(['formatter']);
+
+function stable(tool, rule, message) {
+  const varying = tool === 'revive' ? reviveVaryingPart(rule) : VARYING_PARTS.get(rule);
+  const text = varying === undefined ? message : message.replace(varying, '');
+  return COUNTED_RULES.has(rule) ? text.replace(/#?\d+/gu, 'N') : text;
+}
 
 export function lintRule(rule) {
   return RULE_NAMES.get(rule) ?? rule;
@@ -150,7 +189,9 @@ function hintOf(tool, rule, message) {
   if (tool === 'revive') {
     return reviveHint(rule, message);
   }
-  const hint = HINTS.get(rule);
+  const hint =
+    HINTS.get(rule) ??
+    MESSAGE_HINTS.find(([name, pattern]) => name === rule && pattern.test(message))?.[2];
   if (tool !== 'modernize') {
     return hint;
   }
@@ -159,8 +200,7 @@ function hintOf(tool, rule, message) {
 
 export function lintMessage({ tool, rule, message }) {
   const hint = hintOf(tool, rule, message);
-  const varying = tool === 'revive' ? reviveVaryingPart(rule) : VARYING_PARTS.get(rule);
   const own = tool === 'gosec' ? gosecMessage(rule, message) : message;
-  const text = sentence(varying === undefined ? own : own.replace(varying, ''));
+  const text = sentence(stable(tool, rule, own));
   return hint === undefined ? text : `${text} ${hint}`;
 }

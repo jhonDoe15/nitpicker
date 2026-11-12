@@ -39,7 +39,7 @@ var gosecAnalyzer = &analysis.Analyzer{
 }
 
 func gosecDisabled() map[string]bool {
-	return map[string]bool{"G104": true, "G107": true, "G204": true, "G304": true, "G504": true}
+	return map[string]bool{"G104": true, "G107": true, "G116": true, "G204": true, "G304": true, "G504": true}
 }
 
 func fileModes() map[string]string {

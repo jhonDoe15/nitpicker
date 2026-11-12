@@ -8,7 +8,7 @@ import (
 )
 
 type User struct {
-	Name string
+	Name string `json:"name"`
 }
 
 func Decoded(request *http.Request) (User, error) {
