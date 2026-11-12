@@ -1,5 +1,6 @@
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { mutationScopeArguments } from '../../../../core/tooling/runner-arguments.mjs';
 
 const runnerPath = path.join(
   fileURLToPath(new URL('../', import.meta.url)),
@@ -42,7 +43,10 @@ export function createQualityAreaAnalyzer({
         ...['--analyzer-name', name, '--kind', kind],
         ...['--project-root', projectRoot, '--policy-root', policyRoot],
         ...['--tool-root', toolRoot, '--snapshot', snapshot],
-        ...optionalRootArguments(optionalRoots),
+        ...optionalRootArguments({
+          ...optionalRoots,
+          mutationScope: kind === 'mutation' ? optionalRoots.mutationScope : undefined,
+        }),
         ...adapterArguments,
       ];
       return { command: process.execPath, args, cwd: toolRoot };
@@ -55,11 +59,13 @@ function optionalRootArguments({
   projectPolicyRoot,
   baselineRoot,
   baselineMovesFile,
+  mutationScope,
 }) {
   return [
     ...(liveProjectRoot === undefined ? [] : ['--live-project-root', liveProjectRoot]),
     ...(projectPolicyRoot === undefined ? [] : ['--project-policy-root', projectPolicyRoot]),
     ...(baselineRoot === undefined ? [] : ['--baseline-root', baselineRoot]),
     ...(baselineMovesFile === undefined ? [] : ['--baseline-moves-file', baselineMovesFile]),
+    ...mutationScopeArguments(mutationScope),
   ];
 }

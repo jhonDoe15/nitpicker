@@ -224,7 +224,8 @@ test suite that waits on the network, or a project larger than the budget allows
 **Symptom.** `<analyzer> crashed with exit 1: ...`, `crashed with signal SIGKILL`, `<analyzer> did not
 produce valid JSON`, `<analyzer> exceeded the analyzer output limit`, `<analyzer> emitted a finding for
 unexpected tool <tool>`, `Analyzer scheduler crashed with exit 1: ...`, `Analyzer scheduler returned
-invalid JSON`, or `Hygiene check failed: ...` or `History check failed: ...`.
+invalid JSON`, `Hygiene check failed: ...` or `History check failed: ...`, or `<analyzer> reported a finding
+that nitpicker cannot check, left out of the result; its other findings are kept`.
 
 **Cause.** Analyzers run as child processes that report findings as JSON. This message means the
 process died, was killed (an out-of-memory kill shows as `SIGKILL`), printed something that is not a

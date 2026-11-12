@@ -21,6 +21,22 @@ Part of the [Java preset guide](../java-preset.md).
   path, and when that compile fails it is retried with every library on `--module-path`, so a sealed
   type may permit classes in another package. Test sources compile on the class path, without the
   descriptor. Kotlin preset: Java sources only, like PMD and SpotBugs.
+- **Report and arguments files.** `ErrorProneReport <report.json> <checks.json> <arguments file>...`
+  reads one arguments file per source set: javac arguments, then `--sources` and the sources, one
+  per line, plus the lines that are not javac's (`--test-only`, `--own-classes=`, `--release=`,
+  `--source=`, `--target=`, `--project-arg=`, `--errorprone-flag=`). The report is a JSON array of
+  `{file, line, column, position, kind, message, classAnnotations}`: `position` is the one offset
+  Error Prone reports, `classAnnotations` the annotations (meta-annotations included) of every
+  class around it, innermost first.
+- **A check that crashes.** When a check throws, Error Prone reports an unhandled exception with
+  the `BugPattern: <Check>` it came from; the runner then turns that check off with
+  `-Xep:<Check>:OFF` and compiles the source set again, for as many checks as crash, so the other
+  checks' findings are kept. Each crashed check is one more report entry,
+  `{crash, cause, file, line, ...}`, and one `errorprone/check-crashed` tool error that names the
+  check, the file and line it crashed on and the exception, and says that it is an Error Prone bug.
+  Seen with Error Prone 2.50.0: `ForEachIterable` on a record pattern with `var` bindings
+  (`case And(var left, var right)`), and `FieldCanBeStatic` on a Lombok `@Getter` field
+  initialized from a constant of the same class.
 - **Which JDK.** Error Prone needs JDK 21 or newer. On Gradle the runner uses the JVM that runs
   Gradle when it is at least 21 and at least the JDK of every compile task's toolchain; otherwise
   it asks Gradle's toolchain service for a launcher of the version it needs (found locally or
