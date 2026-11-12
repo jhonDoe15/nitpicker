@@ -1449,6 +1449,7 @@
                     "mutant-nocoverage",
                     "duplicate-clone",
                     "stability-direction",
+                    "package-cycle",
                     "no-production-runtime",
                     "type-only-production-dependency",
                     "baseline-expansion",
@@ -1666,6 +1667,7 @@
                     "mutant-nocoverage",
                     "duplicate-clone",
                     "stability-direction",
+                    "package-cycle",
                     "no-production-runtime",
                     "type-only-production-dependency",
                     "baseline-expansion",
@@ -1836,6 +1838,7 @@
                             "duplicates/duplicate-clone",
                             "stability-direction",
                             "coupling/stability-direction",
+                            "package-cycle",
                             "no-production-runtime",
                             "test-runtime/no-production-runtime",
                             "file-lines-limit",
@@ -1906,7 +1909,7 @@
                           ]
                         },
                         {
-                          "pattern": "^(?:pmd|spotbugs|errorprone|archunit|google-java-format|palantir-java-format|jacoco|checkstyle|crap|duplicates|pit|structure|coupling|spring|test-runtime)/[\\s\\S]"
+                          "pattern": "^(?:pmd|spotbugs|errorprone|archunit|google-java-format|palantir-java-format|jacoco|checkstyle|crap|duplicates|pit|structure|coupling|javac|forbiddenapis|dependencies|spring|test-runtime)/[\\s\\S]"
                         }
                       ]
                     }
@@ -2075,6 +2078,7 @@
                             "duplicates/duplicate-clone",
                             "stability-direction",
                             "coupling/stability-direction",
+                            "package-cycle",
                             "no-production-runtime",
                             "test-runtime/no-production-runtime",
                             "file-lines-limit",
@@ -2312,7 +2316,7 @@
                         },
                         { "pattern": "^detekt\\.[a-z-]+\\.[A-Z][A-Za-z0-9]*$" },
                         {
-                          "pattern": "^(?:pmd|spotbugs|errorprone|archunit|google-java-format|palantir-java-format|jacoco|checkstyle|crap|duplicates|pit|structure|coupling|spring|test-runtime)/[\\s\\S]"
+                          "pattern": "^(?:pmd|spotbugs|errorprone|archunit|google-java-format|palantir-java-format|jacoco|checkstyle|crap|duplicates|pit|structure|coupling|javac|forbiddenapis|dependencies|spring|test-runtime)/[\\s\\S]"
                         }
                       ]
                     }
@@ -2667,7 +2671,7 @@
                           ]
                         },
                         {
-                          "pattern": "^(?:vet|staticcheck|errcheck|modernize|revive|bodyclose|rowserrcheck|sqlclosecheck|noctx|errorlint|nilerr|nilnil|errname|contextcheck|containedctx|fatcontext|exhaustive|recvcheck|durationcheck|makezero|reassign|unconvert|wastedassign|thelper|tparallel|testifylint|usetesting|asciicheck|bidichk|gocheckcompilerdirectives|canonicalheader|musttag|perfsprint|usestdlibvars|sloglint|spancheck|deadcode)/[\\s\\S]"
+                          "pattern": "^(?:vet|staticcheck|errcheck|modernize|revive|bodyclose|rowserrcheck|sqlclosecheck|noctx|errorlint|nilerr|nilnil|errname|contextcheck|containedctx|fatcontext|exhaustive|recvcheck|durationcheck|makezero|reassign|unconvert|wastedassign|thelper|tparallel|testifylint|usetesting|asciicheck|bidichk|gocheckcompilerdirectives|canonicalheader|musttag|perfsprint|usestdlibvars|sloglint|spancheck|go-rules|deadcode)/[\\s\\S]"
                         }
                       ]
                     }
@@ -2869,6 +2873,7 @@
         "duplicates/duplicate-clone",
         "stability-direction",
         "coupling/stability-direction",
+        "package-cycle",
         "no-production-runtime",
         "test-runtime/no-production-runtime",
         "type-only-production-dependency",

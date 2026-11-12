@@ -1,5 +1,6 @@
 import { changedByDiff } from './base-red/unknown-base.mjs';
 import { baseMoves, comparisonKey } from './fingerprint.mjs';
+import { againstMissingReports } from './notices/missing-reports.mjs';
 import { matchSimilarFindings } from './similar/match.mjs';
 import { matchAnchoredFindings } from './anchored/match.mjs';
 import { addGrowthAdvice, holdRatchetedFindings } from './ratchet/ratchet.mjs';
@@ -48,7 +49,8 @@ export function compareFindings({
     ...addGrowthAdvice({ findings: ratcheted.newFindings, baseFindings, moves }),
     ...anchored.grown,
   ];
-  present.newFindings = withUntouchedCause(advised, touchedCode);
+  const explained = withUntouchedCause(advised, touchedCode);
+  present.newFindings = againstMissingReports(explained, baseFindings, moves);
   present.unchangedFindings.push(...ratcheted.heldFindings);
   const resolvedFindings = unmatchedBase.filter((finding) => !ratcheted.matchedBase.has(finding));
 
