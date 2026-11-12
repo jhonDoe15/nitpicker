@@ -10,7 +10,7 @@ import {
 } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
-import { resolveInside } from '../../shared/conventions/read-inside.mjs';
+import { containedPath } from '../../core/fix/common/contained-path.mjs';
 
 export const REPOSITORY_ROOT = path.resolve(import.meta.dirname, '../..');
 const GRADLE_PROJECT = 'languages/java/adapters/fixtures/gradle-project';
@@ -35,7 +35,27 @@ const SWALLOWED_PYTHON = `def parse(text: str) -> int:
     return 0
 `;
 
-export const SAMPLES = {
+type Files = Readonly<Record<string, string>>;
+
+type SampleChange = { readonly files?: Files; readonly append?: Files };
+
+export type Sample = {
+  readonly allExitCode: number;
+  readonly sources: readonly string[];
+  readonly removed?: readonly string[];
+  readonly files?: Files;
+  readonly linkNodeModules: boolean;
+  readonly pythonEnvironment?: readonly string[];
+  readonly change: SampleChange;
+};
+
+export type SampleRepository = {
+  readonly root: string;
+  readonly change: () => void;
+  readonly remove: () => void;
+};
+
+const SAMPLES: Readonly<Record<string, Sample>> = {
   typescript: {
     allExitCode: 0,
     sources: ['languages/typescript/preset/fixtures/strict-clean'],
@@ -50,12 +70,14 @@ export const SAMPLES = {
   },
   gradle: {
     allExitCode: 1,
+    linkNodeModules: false,
     sources: [GRADLE_PROJECT],
     files: { '.gitignore': 'build/\n.gradle/\nreports/\n', 'nitpicker.config.json': JAVA_CONFIG },
     change: { files: { 'src/main/java/demo/Parser.java': SWALLOWED_JAVA } },
   },
   maven: {
     allExitCode: 1,
+    linkNodeModules: false,
     sources: [GRADLE_PROJECT, 'languages/java/maven/fixtures/single'],
     removed: ['build.gradle', 'settings.gradle'],
     files: { '.gitignore': 'target/\nreports/\n', 'nitpicker.config.json': JAVA_CONFIG },
@@ -63,6 +85,7 @@ export const SAMPLES = {
   },
   python: {
     allExitCode: 1,
+    linkNodeModules: false,
     sources: ['languages/python/adapters/fixtures/python-project'],
     files: {
       '.gitignore': '.venv/\n__pycache__/\n.pytest_cache/\n.ruff_cache/\nmutants/\nreports/\n',
@@ -83,7 +106,7 @@ const GIT_IDENTITY = [
   'commit.gpgsign=false',
 ];
 
-function runCommand(command, args, cwd) {
+function runCommand(command: string, args: readonly string[], cwd: string): string {
   return execFileSync(command, args, {
     cwd,
     encoding: 'utf8',
@@ -92,47 +115,39 @@ function runCommand(command, args, cwd) {
   });
 }
 
-function runGit(args, cwd) {
+function runGit(args: readonly string[], cwd: string): string {
   return runCommand('git', [...GIT_IDENTITY, ...args], cwd);
 }
 
-export function inside(base, name) {
-  const full = resolveInside(base, name);
-  if (full === undefined) {
-    throw new Error(`${name} is outside ${base}`);
-  }
-  return full;
-}
-
-function writeFiles(root, files = {}) {
+function writeFiles(root: string, files: Files = {}): void {
   for (const [name, text] of Object.entries(files)) {
-    writeFileSync(inside(root, name), text);
+    writeFileSync(containedPath(root, name), text);
   }
 }
 
-function applyChange(root, { files, append = {} }) {
+function applyChange(root: string, { files, append = {} }: SampleChange): void {
   writeFiles(root, files);
   for (const [name, text] of Object.entries(append)) {
-    appendFileSync(inside(root, name), text);
+    appendFileSync(containedPath(root, name), text);
   }
 }
 
-function commitAll(root, message) {
+function commitAll(root: string, message: string): void {
   runGit(['add', '-A'], root);
   runGit(['commit', '-q', '-m', message], root);
 }
 
-function installPythonEnvironment(root, packages) {
+function installPythonEnvironment(root: string, packages: readonly string[]): void {
   runCommand('uv', ['venv', '-q', '.venv'], root);
   runCommand('uv', ['pip', 'install', '-q', '--python', '.venv', ...packages], root);
 }
 
-function copySample(root, sample) {
+function copySample(root: string, sample: Sample): void {
   for (const source of sample.sources) {
-    cpSync(inside(REPOSITORY_ROOT, source), root, { recursive: true });
+    cpSync(containedPath(REPOSITORY_ROOT, source), root, { recursive: true });
   }
   for (const removed of sample.removed ?? []) {
-    rmSync(inside(root, removed));
+    rmSync(containedPath(root, removed));
   }
   writeFiles(root, sample.files);
   if (sample.linkNodeModules) {
@@ -144,14 +159,15 @@ function copySample(root, sample) {
   }
 }
 
-function sampleNamed(name) {
-  if (!Object.hasOwn(SAMPLES, name)) {
+export function sampleNamed(name: string): Sample {
+  const sample = SAMPLES[name];
+  if (!Object.hasOwn(SAMPLES, name) || sample === undefined) {
     throw new Error(`Unknown sample ${name}; choose one of ${Object.keys(SAMPLES).join(', ')}`);
   }
-  return SAMPLES[name];
+  return sample;
 }
 
-export function createSampleRepository(name) {
+export function createSampleRepository(name: string): SampleRepository {
   const sample = sampleNamed(name);
   const root = realpathSync.native(mkdtempSync(path.join(tmpdir(), `nitpicker-platform-${name}-`)));
   copySample(root, sample);
