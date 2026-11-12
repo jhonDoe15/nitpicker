@@ -137,3 +137,15 @@ func Label(status Status) string {
 	return ""
 }
 `;
+
+export const STATUS_TEST = `package shop
+
+import "testing"
+
+func TestStatusLabel(t *testing.T) {
+	labels := []string{Label(Open), Label(Shipped), Label(Returned)}
+	if labels[0] != "open" || labels[1] != "shipped" || labels[2] != "" {
+		t.Fatalf("labels %q", labels)
+	}
+}
+`;
