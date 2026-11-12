@@ -119,6 +119,16 @@ describe('createDurationSequencer', () => {
     ]);
   });
 
+  it('refuses to shard a run without a valid shard', () => {
+    const unsharded = createDurationSequencer({ config: { root } }, durations);
+    const outOfRange = createDurationSequencer(
+      { config: { root, shard: { index: 4, count: 3 } } },
+      durations,
+    );
+    expect(() => unsharded.shard(specifications)).toThrow('valid --shard');
+    expect(() => outOfRange.shard(specifications)).toThrow('valid --shard');
+  });
+
   it('reads the recorded durations of this repository', () => {
     expect([...readDurations().values()].every((seconds) => Number.isInteger(seconds))).toBe(true);
   });
