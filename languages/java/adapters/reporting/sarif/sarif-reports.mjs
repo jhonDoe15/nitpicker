@@ -87,10 +87,6 @@ export function sarifFindings(context) {
       { projectRoot },
     ),
   );
-  const spotbugs = preparedReport('spotbugs.sarif', context, (result) =>
-    securitySubject(result, spotbugsSubject(result)),
-  );
-  const pmdLog = readSarifReport(path.join(context.reportRoot, 'pmd.sarif'));
   const mainRoots = [...(allSourceRoots ?? []), ...(context.manifest?.kotlinSourceRoots ?? [])];
   return [
     ...withFanOutDetails(
@@ -118,15 +114,21 @@ export function sarifFindings(context) {
       ),
       { projectRoot },
     ),
-    ...ingestSarif(
-      withSecurityMessages(
-        withoutDuplicateSites(dropEntityAssociations(spotbugs, projectRoot), pmdLog),
-      ),
-      {
-        tool: 'spotbugs',
-      },
-    ).findings,
+    ...spotbugsFindings(context, projectRoot),
   ];
+}
+
+function spotbugsFindings(context, projectRoot) {
+  const spotbugs = preparedReport('spotbugs.sarif', context, (result) =>
+    securitySubject(result, spotbugsSubject(result)),
+  );
+  const pmdLog = readSarifReport(path.join(context.reportRoot, 'pmd.sarif'));
+  return ingestSarif(
+    withSecurityMessages(
+      withoutDuplicateSites(dropEntityAssociations(spotbugs, projectRoot), pmdLog),
+    ),
+    { tool: 'spotbugs' },
+  ).findings;
 }
 
 function spotbugsSubject(result) {

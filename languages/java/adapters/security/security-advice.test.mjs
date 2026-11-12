@@ -240,12 +240,14 @@ describe('find-sec-bugs advice', () => {
   });
 
   it('names the allowed form briefly and leaves the exception route to the shared sentence', () => {
-    for (const pattern of securityPatterns()) {
-      const message = securityMessage(pattern);
+    const messages = securityPatterns().map((pattern) => securityMessage(pattern));
 
-      expect(message).not.toMatch(/nitpicker\.config|add an exception|"exceptions"/u);
-      expect(message.length).toBeLessThan(260);
-    }
+    expect(
+      messages.filter((message) =>
+        /nitpicker\.config|add an exception|"exceptions"/u.test(message),
+      ),
+    ).toEqual([]);
+    expect(messages.filter((message) => message.length >= 260)).toEqual([]);
   });
 
   it('writes the SQL advice for the Spring and JPA cases', () => {
@@ -371,7 +373,7 @@ describe('sink files', () => {
         .map((line) => /\.(\w+)\(/.exec(line)[1]),
     );
 
-    expect([...methods].sort()).toEqual([
+    expect([...methods].toSorted((left, right) => left.localeCompare(right))).toEqual([
       'batchUpdate',
       'execute',
       'query',

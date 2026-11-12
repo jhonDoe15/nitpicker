@@ -26,24 +26,28 @@ function scopeChains(scopes) {
   return chains;
 }
 
+function memoizer() {
+  const memos = new Map();
+  return (key, build) => {
+    if (!memos.has(key)) {
+      memos.set(key, build());
+    }
+    return memos.get(key);
+  };
+}
+
 function fileView(file, context) {
   const resolve = nameResolver(file, context.declared);
   const chains = scopeChains(file.scopes);
   const functions = new Map(file.functions.map((fn) => [`${fn.name}:${String(fn.line)}`, fn]));
   const classes = new Map(file.classes.map((declared) => [declared.qualified, declared]));
-  const memos = new Map();
   const view = {
     file: {
       ...file,
       invocations: file.invocations.map((invocation) => ({ arguments: [], ...invocation })),
     },
     resolve,
-    memo: (key, build) => {
-      if (!memos.has(key)) {
-        memos.set(key, build());
-      }
-      return memos.get(key);
-    },
+    memo: memoizer(),
     declared: context.declared,
     chain: (id) => chains.get(id) ?? [],
     classes,

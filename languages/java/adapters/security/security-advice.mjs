@@ -88,7 +88,7 @@ export function withoutDuplicateSites(log, pmdLog) {
     runs: (log.runs ?? []).map((run) => ({
       ...run,
       results: (run.results ?? []).filter(
-        (result) => !hasSiblingOnSite(result, run.results) && !coveredByQueryRule(result, ranges),
+        (result) => !(hasSiblingOnSite(result, run.results) || coveredByQueryRule(result, ranges)),
       ),
     })),
   };
