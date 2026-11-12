@@ -16,7 +16,7 @@ class IsolationTest {
 
     @Test
     fun readsTheRealClock() {
-        assertTrue(Instant.now().toString().isNotEmpty())
+        assertEquals(2024, Instant.now().atZone(ZoneOffset.UTC).year)
     }
 
     @Test
