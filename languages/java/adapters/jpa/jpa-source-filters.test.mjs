@@ -1,14 +1,15 @@
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
-import { afterEach, describe, expect, it } from 'vitest';
 import {
-  dropEntityAssociations,
-  dropInheritedVersions,
-  withExposureAdvice,
-} from './jpa-source-filters.mjs';
+  nestedCheckout,
+  useGitCheckouts,
+} from '../../../../core/diff/git/test-support/git-checkout.mjs';
+import { afterEach, describe, expect, it } from 'vitest';
+import { dropEntityAssociations, dropInheritedVersions } from './jpa-source-filters.mjs';
 
 const roots = [];
+const { gitCheckout } = useGitCheckouts();
 const SOURCE_ROOTS = ['src/main/java'];
 
 afterEach(() => {
@@ -85,17 +86,6 @@ class Order {
   });
 });
 
-describe('withExposureAdvice', () => {
-  it('names the copy and when an exception fits for exposure findings only', () => {
-    const advised = withExposureAdvice({ rule: 'EI_EXPOSE_REP2', message: 'May expose' });
-    expect(advised.message).toBe(
-      'May expose. Copy on the way in and out (List.copyOf, Map.copyOf), or use a record. An exception fits only when it is right here.',
-    );
-    const other = { rule: 'DLS_DEAD_LOCAL_STORE', message: 'Dead store' };
-    expect(withExposureAdvice(other)).toBe(other);
-  });
-});
-
 describe('dropInheritedVersions', () => {
   const versionFinding = (file) => ({
     tool: 'pmd',
@@ -128,5 +118,35 @@ describe('dropInheritedVersions', () => {
   it('ignores other findings', () => {
     const other = { tool: 'pmd', rule: 'SpringFieldInjection', path: 'x' };
     expect(dropInheritedVersions([other], options('/nonexistent'))).toEqual([other]);
+  });
+});
+
+describe('dropInheritedVersions in a Git checkout', () => {
+  const finding = {
+    tool: 'pmd',
+    rule: 'JpaVersion',
+    path: 'src/main/java/Invoice.java',
+    location: { line: 1 },
+  };
+  const base = '@MappedSuperclass\nclass Base {\n @Version long version;\n}\n';
+  const invoice = '@Entity\nclass Invoice extends Base {\n @Id Long id;\n}\n';
+  const options = (root) => ({ projectRoot: root, sourceRoots: SOURCE_ROOTS });
+
+  it('looks for the superclass in the checkout, not in ignored folders or nested checkouts', () => {
+    const hidden = gitCheckout(
+      {
+        'src/main/java/Invoice.java': invoice,
+        'src/main/java/gen/Base.java': base,
+        ...nestedCheckout('src/main/java/agent', { 'Base.java': base }),
+      },
+      ['src/main/java/gen/'],
+    );
+    const visible = gitCheckout({
+      'src/main/java/Invoice.java': invoice,
+      'src/main/java/Base.java': base,
+    });
+
+    expect(dropInheritedVersions([finding], options(hidden))).toEqual([finding]);
+    expect(dropInheritedVersions([finding], options(visible))).toEqual([]);
   });
 });

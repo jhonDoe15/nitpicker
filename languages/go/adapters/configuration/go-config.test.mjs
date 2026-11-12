@@ -18,6 +18,7 @@ describe('the go preset config', () => {
           { rule: 'staticcheck/ST1003', paths: ['api/*.go'], reason: 'generated names' },
           { rule: 'errcheck/unchecked', paths: ['cmd/main.go'], reason: 'best effort' },
           { rule: 'modernize/rangeint', paths: ['old/*.go'], reason: 'kept as is' },
+          { rule: 'go-rules/panic-for-failure', paths: ['cmd/*.go'], reason: 'startup only' },
           {
             rule: 'function-lines-limit',
             paths: ['cmd/main.go'],
@@ -25,6 +26,23 @@ describe('the go preset config', () => {
             reason: 'wiring',
           },
           { rule: 'class-fields-limit', paths: ['config/*.go'], reason: 'flat config struct' },
+        ],
+      }),
+    ).not.toThrow();
+  });
+
+  it('accepts the feature layout, duplicate scan settings and the rules of the dead-code checks', () => {
+    expect(
+      go({
+        layout: { featureRoots: ['internal/features'], sharedRoots: ['internal/platform'] },
+        duplicates: { skippedFolders: ['testdata', 'vendor', 'mocks'] },
+        tools: { jscpd: { precedence: ['project'] } },
+        exceptions: [
+          { rule: 'deadcode/unreachable-func', paths: ['internal/debug/*.go'], reason: 'manual' },
+          { rule: 'duplicate-clone', paths: ['internal/legacy/*.go'], reason: 'frozen' },
+          { rule: 'stability-direction', paths: ['internal/app/doc.go'], reason: 'composition' },
+          { rule: 'test-only-export', paths: ['internal/fake/*.go'], reason: 'fixtures' },
+          { rule: 'unused-dependency', paths: ['go.mod'], reason: 'loaded by plugin' },
         ],
       }),
     ).not.toThrow();
@@ -41,12 +59,10 @@ describe('the go preset config', () => {
     [{ thresholds: { inheritanceDepth: 2 } }, 'Go has no inheritance'],
     [{ react: { enabled: true } }, '"react" is not supported with "preset": "go"'],
     [
-      { layout: {} },
-      '"layout" is not supported with "preset": "go": Go packages follow the module',
+      { layout: { sourceRoots: ['src'] } },
+      '"layout.sourceRoots" is not supported with "preset": "go"',
     ],
-    [{ duplicates: { skippedFolders: [] } }, '"duplicates" is not supported with "preset": "go"'],
     [{ tools: { prettier: { precedence: ['project'] } } }, 'unknown tool "prettier"'],
-    [{ tools: { jscpd: { precedence: ['project'] } } }, 'unknown tool "jscpd"'],
     [
       { exceptions: [{ rule: 'golint/naming', paths: ['a.go'], reason: 'not run' }] },
       'must name a finding as it is printed, "<tool>/<rule>" (for example "vet/printf")',

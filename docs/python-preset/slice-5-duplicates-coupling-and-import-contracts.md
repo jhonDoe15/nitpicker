@@ -20,8 +20,9 @@ the source root detection already does.
   `runJscpd` and `evaluateDuplicates` the Java preset uses, so the findings are identical in shape:
   `duplicate-clone` (enforceable, one per clone) and `duplicate-clone-size` (descriptive `lines` and
   `tokens`), tool name `duplicates`. Identity is the sorted file pair, a hash of the cloned text and
-  the n-th occurrence of that pair, never a line, so moving a legacy clone within its files keeps it
-  baselined. Clones that consist only of import statements or `__all__` re-export lists are dropped
+  the n-th occurrence of that text in the pair, never a line, so moving a legacy clone within its files keeps it
+  baselined; a legacy clone that shrank or split is held at its base token count while most of each copy
+  is unchanged code that was part of that base clone. Clones that consist only of import statements or `__all__` re-export lists are dropped
   (`importsOnly` in `core/tooling/jscpd/import-only/`, the same check the other languages use for
   their import lines); a clone that also carries code is still reported. The finding is on the first
   file of the pair, and its message names both files and tells to add either one to `exclude` when
@@ -62,8 +63,13 @@ the source root detection already does.
   package's `__init__.py` (the package's first file when it has none), and the message says to
   depend on an abstraction in a more stable package, and ends with the `python.exceptions` entry for that
   file, for when the inversion is intended. An edge can appear without anyone touching it, because package
-  instability moves when other packages change. As in Java, packages are flat
-  (`a.b` and `a.b.c` are different packages) and fan-in and fan-out count distinct files. A file
+  instability moves when other packages change; such a finding names the changed files that
+  moved it. Under a feature root a feature is one unit: its `__init__.py` re-exporting its own
+  `domain` and `adapters` is not an inversion, and an edge to another feature or package is
+  measured between whole units and reported on the feature folder, or on the `__init__.py` of a
+  package that depends on a feature, with a message that names both units (see
+  [Stability direction](../usage.md#stability-direction)). Outside features, as in Java, packages
+  are flat (`a.b` and `a.b.c` are different packages) and fan-in and fan-out count distinct files. A file
   that does not parse with the interpreter is left out of the graph (ruff already reports syntax
   errors), so one legacy Python 2 file does not break the gate.
 - **import-linter and `TYPE_CHECKING`.** import-linter counts imports under `if TYPE_CHECKING:` as

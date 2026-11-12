@@ -2,22 +2,23 @@ import { absoluteTextReportPath } from '../../diff/reporting/reporters.mjs';
 import { renderConsoleSummary } from '../../diff/reporting/summary.mjs';
 import { writeGithubOutput } from '../../diff/reporting/github/emit.mjs';
 import { renderClosingSections } from '../../exceptions/stale-exceptions.mjs';
+import { colorEnabled, displayPath } from '../../../shared/messages/terminal/terminal-text.mjs';
+import { stagedHeader } from '../../quick/summary.mjs';
 import { comparisonExitCode } from '../../diff/reporting/failing-tests/failing-tests.mjs';
+import { comparisonJson } from '../../diff/reporting/json-output/json-output.mjs';
 
 function consoleSummary({ cli, report, outputRoot }) {
-  const color = cli.environment.NO_COLOR === undefined;
-  const diagnosticsPath = absoluteTextReportPath(outputRoot);
+  const color = colorEnabled(cli.stdout, cli.environment);
+  const diagnosticsPath = displayPath(absoluteTextReportPath(outputRoot));
   return renderConsoleSummary(report, { color, details: cli.options.details, diagnosticsPath });
 }
 
 export function writeComparisonOutcome({ cli, report, base, outputRoot }) {
   const { options, environment, stdout } = cli;
   const unchanged = report.summary.noChanges === true;
-  if (!unchanged) {
-    stdout.write(`Base: ${base.baseRef} (${base.source})\n`);
-  }
-  stdout.write(consoleSummary({ cli, report, outputRoot }));
-  if (!unchanged) {
+  if (cli.jsonOutput === undefined) {
+    writeConsoleOutcome({ cli, report, base, outputRoot });
+  } else if (!unchanged) {
     stdout.write(renderClosingSections(cli, report));
   }
   if (options.shardCount === undefined) {
@@ -30,8 +31,19 @@ export function writeComparisonOutcome({ cli, report, base, outputRoot }) {
       stderr: cli.stderr,
     });
   }
-  if (options.deferExit) {
-    return 0;
+  const gateExitCode = comparisonExitCode(report);
+  const exitCode = options.deferExit ? 0 : gateExitCode;
+  cli.jsonOutput?.write(comparisonJson({ report, base, outputRoot, gateExitCode, exitCode }));
+  return exitCode;
+}
+
+function writeConsoleOutcome({ cli, report, base, outputRoot }) {
+  const unchanged = report.summary.noChanges === true;
+  if (!unchanged) {
+    cli.stdout.write(`Base: ${base.baseRef} (${base.source})\n${stagedHeader(report.summary)}`);
   }
-  return comparisonExitCode(report);
+  cli.stdout.write(consoleSummary({ cli, report, outputRoot }));
+  if (!unchanged) {
+    cli.stdout.write(renderClosingSections(cli, report));
+  }
 }

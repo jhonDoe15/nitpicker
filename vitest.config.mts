@@ -1,12 +1,30 @@
 import { defineConfig } from 'vitest/config';
-import { createDurationSequencer } from './scripts/test-shards/sequencer.mjs';
-import { TEST_FILES, suiteFiles } from './scripts/test-shards/e2e-gates.mjs';
+import type { TestSequencer, TestSpecification, Vitest } from 'vitest/node';
+import {
+  createDurationSequencer,
+  type DurationSequencer as Sequencer,
+} from './scripts/test-shards/sequencer.mts';
+import { TEST_FILES, suiteFiles } from './scripts/test-shards/e2e-gates.mts';
 
 const jvmEndToEnd =
-  process.env.NITPICKER_JAVA_E2E === '1' || process.env.NITPICKER_KOTLIN_E2E === '1';
+  process.env['NITPICKER_JAVA_E2E'] === '1' || process.env['NITPICKER_KOTLIN_E2E'] === '1';
 
-// With an end-to-end suite flag set, the run selects the files that read that flag, so a new file
-// joins its suite without a path list in package.json.
+class DurationSequencer implements TestSequencer {
+  readonly #sequencer: Sequencer;
+
+  constructor(context: Vitest) {
+    this.#sequencer = createDurationSequencer(context);
+  }
+
+  shard(specifications: TestSpecification[]): TestSpecification[] {
+    return this.#sequencer.shard(specifications);
+  }
+
+  sort(specifications: TestSpecification[]): TestSpecification[] {
+    return this.#sequencer.sort(specifications);
+  }
+}
+
 const suite = suiteFiles(import.meta.dirname, process.env);
 
 const mavenCentralRetries = [
@@ -18,25 +36,24 @@ const mavenCentralRetries = [
 export default defineConfig({
   test: {
     environment: 'node',
-    sequence: { sequencer: createDurationSequencer },
-    // Tests start their own vitest runs (eval acceptance tests, Stryker mutants). Clearing the step
-    // summary path keeps those nested runs, some of which fail on purpose, out of the CI job's
-    // "Vitest Test Report"; the suite's own report is written by this process, which keeps it. The
-    // same goes for nitpicker's own job summary and annotations, which tests would otherwise write
-    // into the CI job and into the output they compare.
+    sequence: { sequencer: DurationSequencer },
     env: {
       NITPICKER_MAX_PARALLEL: '1',
       GITHUB_STEP_SUMMARY: '',
       NITPICKER_GITHUB_OUTPUT: 'off',
       NITPICKER_SHARED_BUILD_DIRECTORY: '',
       ...(jvmEndToEnd
-        ? { MAVEN_OPTS: [process.env.MAVEN_OPTS, ...mavenCentralRetries].filter(Boolean).join(' ') }
+        ? {
+            MAVEN_OPTS: [process.env['MAVEN_OPTS'], ...mavenCentralRetries]
+              .filter(Boolean)
+              .join(' '),
+          }
         : {}),
     },
     include: suite.length === 0 ? TEST_FILES : suite,
     testTimeout: 30_000,
     hookTimeout: 30_000,
-    globalSetup: ['./scripts/reference/global-setup.mjs'],
+    globalSetup: ['./scripts/reference/global-setup.mts'],
     setupFiles: jvmEndToEnd ? ['./scripts/test-shards/repository-timeouts.mjs'] : [],
   },
 });

@@ -4,9 +4,9 @@ const SUMMARY_LINE = /^Contracts: \d+ kept, \d+ broken\.$/m;
 const BROKEN_SECTION = /^Broken contracts$/m;
 const BROKEN_STATUS = /^(.+?) BROKEN(?: \[[\d.]+s\])?$/;
 const DASHES = /^-{3,}$/;
-const CHAIN_START = /^-\s+(.*)$/;
+const CHAIN_START = /^-\s+((?:\S.*)?)$/;
 const CHAIN_CONTINUATION = /^\s+(\S.*)$/;
-const HOP = /^(\S+) -> (\S+?)(?: \((?:l\.)?(\d+)(?:, (?:l\.)?\d+)*\))?$/;
+const HOP = /^(\S+) -> (\S+)(?: \((?:l\.)?(\d+)(?:, (?:l\.)?\d+)*\))?$/;
 const NO_VIOLATION = { modules: [], note: '' };
 
 export function importLinterCompleted(text) {

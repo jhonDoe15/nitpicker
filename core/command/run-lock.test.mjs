@@ -39,7 +39,7 @@ describe('run lock', () => {
     expect(lock).toEqual({ acquired: false, holder: 1234 });
     expect(readFileSync(lockPath, 'utf8')).toBe('1234\n');
     expect(describeRunInProgress(lock.holder)).toBe(
-      'nitpicker: another run is in progress in this project (pid 1234); wait for it to finish.\n',
+      `nitpicker: another run is in progress in this project (pid 1234); wait for it to finish.\n`,
     );
   });
 

@@ -8,11 +8,11 @@ const RUNNERS = new Set(['npm', 'pnpm', 'yarn', 'bun', 'run-s', 'run-p', 'npm-ru
 const PRINTERS = new Set(['echo', 'printf']);
 const MAX_SCRIPTS = 20;
 const SCHEMA_PUSHES = [
-  /(?<![\w-])prisma\b.*?\bdb\s+push\b/u,
-  /(?<![\w-])prisma\b.*?\bmigrate\s+(?:dev|reset)\b/u,
-  /(?<![\w-])drizzle-kit\b.*?\bpush\b/u,
-  /(?<![\w-])typeorm(?:-ts-node-(?:commonjs|esm))?\b.*?\bschema:(?:sync|drop)\b/u,
-  /(?<![\w-])mikro-orm\b.*?\bschema:(?:update|create|fresh|drop)\b/u,
+  /(?<![\w-])prisma\b.+?\bdb\s+push\b/u,
+  /(?<![\w-])prisma\b.+?\bmigrate\s+(?:dev|reset)\b/u,
+  /(?<![\w-])drizzle-kit\b.+?\bpush\b/u,
+  /(?<![\w-])typeorm(?:-ts-node-(?:commonjs|esm))?\b.+?\bschema:(?:sync|drop)\b/u,
+  /(?<![\w-])mikro-orm\b.+?\bschema:(?:update|create|fresh|drop)\b/u,
 ];
 
 function scriptsOf(projectRoot, file) {

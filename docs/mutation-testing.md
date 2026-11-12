@@ -21,7 +21,8 @@ way to lift the finding. A project that opts into its own Stryker config with
 removes those mutants from the findings (a mutant a `Stryker disable` comment hides stays a finding); an
 edit of that config is a policy change too (see
 [Mutation testing config](usage.md#mutation-testing-config-typescript-and-javascript-presets)).
-`nitpicker --all` mutates that whole area. When no test loads any mutated file, Stryker collects no
+`nitpicker --all` mutates that whole area, and `nitpicker --all <paths>` only its files under the paths
+(see [One file or folder](usage.md#one-file-or-folder)). When no test loads any mutated file, Stryker collects no
 coverage and runs every test against each mutant; a report with no coverage data and no killed or
 timed-out mutant is therefore read as `NoCoverage`, so unreached code gets the same finding in a
 comparison as in a full run.
@@ -30,8 +31,11 @@ comparison as in a full run.
 
 A comparison mutates only what the change wrote. On the head side, `mutate` becomes one
 `<file>:<first>-<last>` line range per changed hunk of a source file (from `git diff --unified=0
---find-renames` between the merge base and the head snapshot); test files, deleted lines and files
-outside the source roots are skipped, and a change with no source lines skips Stryker entirely. The
+--diff-algorithm=patience --find-renames --relative` between the merge base and the head
+snapshot); test files, deleted lines and files outside the source roots are skipped, and a change
+with no source lines skips Stryker entirely. The hunks are not aligned against the file sources the
+way the touched-code rule's are, so a line a formatter only reformatted is mutated too: that costs
+run time, never a missed mutant. The
 base side runs no mutants: a mutant on a line the change wrote has no counterpart on the base, so
 every surviving or uncovered mutant reported is new, which matches the touched-code rule for strict
 findings.

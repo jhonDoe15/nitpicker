@@ -20,6 +20,33 @@ public final class Initializers {
     return value instanceof KtCallExpression ? nameOf(((KtCallExpression) value).getCalleeExpression()) : null;
   }
 
+  public static String argument(KtProperty property) {
+    KtExpression value = property.getInitializer();
+    if (value instanceof KtQualifiedExpression) {
+      value = ((KtQualifiedExpression) value).getSelectorExpression();
+    }
+    if (!(value instanceof KtCallExpression) || ((KtCallExpression) value).getValueArguments().size() != 1) {
+      return null;
+    }
+    return clip(((KtCallExpression) value).getValueArguments().get(0).getArgumentExpression());
+  }
+
+  public static KtExpression lazyValue(KtProperty property) {
+    KtExpression delegate = property.getDelegateExpression();
+    if (!(delegate instanceof KtCallExpression)
+        || !"lazy".equals(nameOf(((KtCallExpression) delegate).getCalleeExpression()))) {
+      return null;
+    }
+    for (KtLambdaArgument argument : ((KtCallExpression) delegate).getLambdaArguments()) {
+      KtLambdaExpression lambda = argument.getLambdaExpression();
+      KtBlockExpression body = lambda == null ? null : lambda.getBodyExpression();
+      if (body != null && !body.getStatements().isEmpty()) {
+        return body.getStatements().get(body.getStatements().size() - 1);
+      }
+    }
+    return null;
+  }
+
   public static String qualifier(KtExpression initializer) {
     return initializer instanceof KtDotQualifiedExpression
         && ((KtDotQualifiedExpression) initializer).getSelectorExpression() instanceof KtNameReferenceExpression

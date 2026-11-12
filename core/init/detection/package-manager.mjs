@@ -1,6 +1,6 @@
 import { existsSync, readFileSync } from 'node:fs';
+import { createRequire } from 'node:module';
 import path from 'node:path';
-import { parse } from 'yaml';
 import { detectPackageManager as detectManager } from '../../../languages/typescript/adapters/dependency-graph/package-managers/detect.mjs';
 import { readManifest } from '../../../languages/typescript/preset/eslint-config/scope-support.mjs';
 import { ancestorDirectories } from '../../../shared/filesystem.mjs';
@@ -8,10 +8,10 @@ import { globMatcher } from '../../../shared/paths/glob.mjs';
 import { hasProjectFile, insideProject } from '../support/inside-project.mjs';
 
 const COMMANDS = {
-  npm: { add: 'npm install --save-dev', run: 'npx nitpicker' },
-  pnpm: { add: 'pnpm add --save-dev', run: 'pnpm exec nitpicker' },
-  yarn: { add: 'yarn add --dev', run: 'yarn nitpicker' },
-  bun: { add: 'bun add --dev', run: 'bunx nitpicker' },
+  npm: { add: 'npm install --save-dev', install: 'npm install', run: 'npx nitpicker' },
+  pnpm: { add: 'pnpm add --save-dev', install: 'pnpm install', run: 'pnpm exec nitpicker' },
+  yarn: { add: 'yarn add --dev', install: 'yarn install', run: 'yarn nitpicker' },
+  bun: { add: 'bun add --dev', install: 'bun install', run: 'bunx nitpicker' },
 };
 const LOCKFILES = {
   npm: ['package-lock.json', 'npm-shrinkwrap.json'],
@@ -72,6 +72,7 @@ function projectText(root, name) {
 
 function workspacePatterns(root, name) {
   if (name === 'pnpm') {
+    const { parse } = createRequire(import.meta.url)('yaml');
     const packages = parse(projectText(root, 'pnpm-workspace.yaml'))?.packages;
     return Array.isArray(packages) ? packages : [];
   }
@@ -123,6 +124,7 @@ export function describePackageManager(projectRoot) {
     locked,
     declaration,
     add: addCommand(projectRoot, manager),
+    install: COMMANDS[manager.name].install,
     run: COMMANDS[manager.name].run,
   };
 }

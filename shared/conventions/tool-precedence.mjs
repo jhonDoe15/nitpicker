@@ -1,5 +1,6 @@
 import { existsSync } from 'node:fs';
 import path from 'node:path';
+import { TROUBLESHOOTING_ANCHORS, withTroubleshooting } from '../messages/troubleshooting.mjs';
 
 export const JSCPD_PROJECT_FILE = '.jscpd.json';
 
@@ -22,7 +23,10 @@ function projectOptIn(tool, settings) {
 }
 
 export function missingProjectConfig(tool, looked) {
-  return `"tools.${tool}.precedence" lists "project" but ${looked} is missing: create it, or remove "project" from tools.${tool}.precedence`;
+  return withTroubleshooting(
+    `"tools.${tool}.precedence" lists "project" but ${looked} is missing: create it, or remove "project" from tools.${tool}.precedence`,
+    TROUBLESHOOTING_ANCHORS.projectToolConfigMissing,
+  );
 }
 
 export function ignoredConfigNotice(ignored, tool, settings = {}) {
