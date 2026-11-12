@@ -20,19 +20,15 @@ function isUpMigration(file) {
   return isMigrationFile(file) && !DOWN_FILE.test(file) && graphCandidate(file)?.kind !== 'django';
 }
 
-function anyKind() {
-  return 'unknown';
-}
-
-function schemaFiles({ projectRoot, files, parseYaml }, kindOf) {
+function schemaFiles({ projectRoot, files, parseYaml }) {
   const sqlc = sqlcSchemaFiles(projectRoot, files, parseYaml);
   const migrations = files
     .filter(isUpMigration)
-    .filter((file) => !sqlc.mysql.has(file) && kindOf(file) !== MYSQL);
+    .map((file) => ({ file, declared: false, mysql: sqlc.mysql.has(file) }));
   const declared = sqlc.checked
     .filter((file) => !isUpMigration(file))
-    .map((file) => ({ file, declared: true }));
-  return [...migrations.map((file) => ({ file, declared: false })), ...declared];
+    .map((file) => ({ file, declared: true, mysql: false }));
+  return [...migrations, ...declared];
 }
 
 function migrationSchemas(projectRoot, entries, parseYaml) {
@@ -80,12 +76,14 @@ function migrationFinding({ file, text, declared }, foreignKey, ordinal) {
   const columns = foreignKey.columns.join(', ');
   const line = lineOf(text, foreignKey.at);
   const key = `${foreignKey.table}(${columns})`;
+  const target = `${foreignKey.table} (${columns})`;
+  const verb = declared ? 'declares' : 'adds';
   return finding({
     path: file,
     key: ordinal === 0 ? key : `${key}#${String(ordinal + 1)}`,
     line,
     message: [
-      `${file} ${declared ? 'declares' : 'adds'} a foreign key on ${foreignKey.table} (${columns}) (line ${String(line)})`,
+      `${file} ${verb} a foreign key on ${target} (line ${String(line)})`,
       `and no ${declared ? 'schema file' : 'migration'} creates an index that starts with it.`,
       indexHint({ file, declared }, foreignKey.table, columns),
     ].join(' '),
@@ -121,14 +119,16 @@ function prismaFinding(relation) {
 export function migratesForeignKeys(projectRoot, files, parseYaml) {
   return migrationSchemas(
     projectRoot,
-    schemaFiles({ projectRoot, files, parseYaml }, anyKind),
+    schemaFiles({ projectRoot, files, parseYaml }),
     parseYaml,
   ).some(({ schema }) => schema.foreignKeys.length > 0);
 }
 
 export function foreignKeyIndexFindings(tool, { projectRoot, files, parseYaml }) {
   const kindOf = databaseKinds(projectRoot, files);
-  const entries = schemaFiles({ projectRoot, files, parseYaml }, kindOf);
+  const entries = schemaFiles({ projectRoot, files, parseYaml }).filter(
+    ({ file, declared, mysql }) => !mysql && (declared || kindOf(file) !== MYSQL),
+  );
   const schemas = migrationSchemas(projectRoot, entries, parseYaml);
   const indexes = schemas.flatMap(({ schema }) => schema.indexes);
   const migrations = schemas.flatMap((entry) => fileFindings(entry, indexes));

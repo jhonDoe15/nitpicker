@@ -75,6 +75,9 @@ describe('foreign keys in sqlc schema files', () => {
     ['a down migration', SQLC_V2, 'db/schema/001_orders.down.sql'],
     ['a file outside the schema paths', SQLC_V2, 'db/queries/orders.sql'],
     ['an unreadable config', 'sql: [', 'db/schema/001_orders.sql'],
+    ['an upper-case extension', SQLC_V2, 'db/schema/ORDERS.SQL'],
+    ['an empty schema path', 'sql:\n  - engine: postgresql\n    schema: ""\n', 'schema.sql'],
+    ['an absolute schema path', 'sql:\n  - engine: postgresql\n    schema: /db\n', 'db/schema.sql'],
   ])('reports nothing for %s', (_, config, schemaFile) => {
     expect(reported({ 'sqlc.yaml': config, [schemaFile]: ORDERS })).toEqual([]);
   });
@@ -87,6 +90,15 @@ describe('foreign keys in sqlc schema files', () => {
     expect(
       reported({ 'sqlc.yaml': config.replace('postgresql', 'mysql'), [migration]: ORDERS }),
     ).toEqual([]);
+  });
+
+  it('still counts a migration a MySQL sqlc config names as declaring its keys', () => {
+    const { projectRoot, files, parseYaml } = project({
+      'sqlc.yaml': SQLC_V2.replace('postgresql', 'mysql').replace('db/schema', 'db/migrations'),
+      'db/migrations/000001_orders.up.sql': ORDERS,
+    });
+
+    expect(migratesForeignKeys(projectRoot, files, parseYaml)).toBe(true);
   });
 
   it('counts keys in sqlc schema files as declared by the schema, which keeps model rules quiet', () => {

@@ -1450,7 +1450,7 @@ migrations folder, as the message shows.
 `foreign-key-index` reads the migration files (Flyway, Prisma, Liquibase XML, YAML and SQL
 changelogs, Alembic, and the SQL in TypeORM, MikroORM, Kysely, Knex and goose migrations, skipping their down part
 and `.down.sql` files), and the schema files an sqlc config (`sqlc.yaml`, `sqlc.yml` or `sqlc.json`,
-`schema` of each `sql` or `packages` entry: a file, a folder or a glob) names, unless its `engine` is `mysql`:
+`schema` of each `sql` or `packages` entry: a file, a folder's own `.sql` files or a glob) names, unless its `engine` is `mysql`:
 `CREATE TABLE` with `REFERENCES` or `FOREIGN KEY`, `ALTER TABLE ... ADD`, Liquibase
 `addForeignKeyConstraint` and column `constraints`, Alembic `create_table`, `add_column` and
 `create_foreign_key` (also through `batch_alter_table`). A foreign key counts as indexed when an

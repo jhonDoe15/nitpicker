@@ -3,8 +3,8 @@ import { parsedJsonc } from '../../../jsonc/jsonc.mjs';
 import { readSource } from '../../migrations/revision-graph.mjs';
 
 const CONFIG_FILE = /^sqlc\.(?:ya?ml|json)$/u;
-const SQL_FILE = /\.sql$/iu;
-const DOWN_FILE = /\.down\.sql$/iu;
+const SQL_FILE = /\.sql$/u;
+const DOWN_FILE = /\.down\.sql$/u;
 const GLOB_PART = /[*?[\]]/u;
 const ESCAPED = /[.+^${}()|\\]/gu;
 const MYSQL_ENGINE = 'mysql';
@@ -17,6 +17,10 @@ function parsedConfig(file, text, parseYaml) {
   return parsed.kind === 'json' ? parsed.value : undefined;
 }
 
+function isRelativePath(value) {
+  return typeof value === 'string' && value.trim() !== '' && !path.posix.isAbsolute(value);
+}
+
 function configEntries(config) {
   if (config === null || typeof config !== 'object') {
     return [];
@@ -27,7 +31,7 @@ function configEntries(config) {
     .filter((entry) => entry !== null && typeof entry === 'object')
     .map((entry) => ({
       engine: typeof entry.engine === 'string' ? entry.engine : 'postgresql',
-      schema: [entry.schema].flat().filter((each) => typeof each === 'string'),
+      schema: [entry.schema].flat().filter(isRelativePath),
     }));
 }
 
