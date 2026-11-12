@@ -160,6 +160,22 @@ than the others, and this skill teaches its rules before an agent writes Go.
   "kill" every mutant; the note names the failing packages.
 - **Files the build leaves out are not scored.** A file behind a build constraint the run does not
   satisfy has no blocks; scoring it as unknown would fail every platform-specific file.
+- **Tests run under the race detector.** Data races are the Go mistake no linter catches reliably,
+  and `go test -race` finds the ones the tests exercise. Each race is a finding keyed by the two
+  conflicting functions rather than a failing test, because a failing test makes a snapshot a tool
+  error, and a project whose merge base already had a race could then never pass. Keyed by the
+  functions (not lines or goroutine numbers, which change between runs), a race the base had stays
+  quiet and only a new one fails. A data race is undefined behaviour in Go's memory model, so the
+  finding has no exception route. Without cgo the tests run without `-race` and a descriptive
+  finding says races were not checked, instead of skipping silently.
+- **The cost of `-race`.** The race detector documents a 2 to 20 times slowdown in CPU and 5 to 10
+  times in memory. On the preset's own metrics program (one package, 7 tests) a warm run took
+  0.18 s without it and 1.3 s with it, most of it linking the instrumented binary, and a cold run
+  (empty build cache) 5.1 s against 7.6 s. The end-to-end fixture modules stay within a few seconds
+  per snapshot. That is cheap enough to run every time, on every package, from the same run that
+  writes the coverage profile, so the preset runs it always instead of only on the packages a change
+  touches. The slow-test check reruns a test over its budget without `-race` and keeps the fastest
+  time, so the slowdown never fails a test.
 - **Every linter check that narrows a choice, off-by-default ones included.** The preset exists to
   leave one way to write each construct, so staticcheck's non-default checks (package and doc
   comments, names, receiver names, empty branches) and the QF quick fixes run too: each picks one
@@ -280,6 +296,15 @@ Two adversarial reviews of the first version changed these rules:
   on another test: the whole run output is read now. Raw strings with a carriage return, type
   parameters and array lengths gave mutants that cannot compile and are skipped. A multi-line
   mutation is in scope when any of its lines changed. `exclude` globs are not mutated.
+- **Race detector review.** Two reviews of the first version changed it: parallel tests the
+  detector failed next to a race, and race-only tests that logged with `t.Log`, were still listed as
+  failing, so a failing test whose package raced or timed out is now rerun without `-race` instead
+  of judged by its output; a parent test's own failure is no longer hidden by a failing subtest; a
+  path with a space no longer loses the race; a report with one restorable stack is still a
+  finding; only blocks that start with `WARNING: DATA RACE` are cut from quoted output; the "not
+  checked" notice shows on every run, not only when it is new; cgo is part of the analyzer version
+  for the findings cache; and a timeout, ThreadSanitizer crash or goroutine limit under `-race`
+  falls back instead of failing the snapshot.
 
 Two adversarial reviews of the linters changed these rules:
 
