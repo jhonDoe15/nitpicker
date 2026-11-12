@@ -14,6 +14,7 @@ import { goStructureFindings } from './structure/go-structure.mjs';
 import { readInspect } from './structure/go-inspect.mjs';
 import { goSlowTestFindings } from './tests/go-slow-tests.mjs';
 import { readTestRun, testRunFindings } from './tests/go-test.mjs';
+import { raceCheckFindings, withoutRaceOnlyFailures } from './race/race-findings.mjs';
 
 const UNUSED_LINT_RULE = 'U1000';
 
@@ -62,7 +63,8 @@ export function readGoFindings(context, policy = {}) {
     ...formatterFindings(context, formatReport),
     ...readVetFindings(context),
     ...lint,
-    ...testRunFindings(testRun, context.snapshot),
+    ...testRunFindings(withoutRaceOnlyFailures(testRun, context.reportRoot), context.snapshot),
+    ...raceCheckFindings(context, testRun),
     ...goSlowTestFindings(context, testRun, report),
     ...goStructureFindings(report, context.projectRoot, policy),
     ...readGoDuplicateFindings(context.reportRoot, context.projectRoot),

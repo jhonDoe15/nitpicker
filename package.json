@@ -1,6 +1,6 @@
 {
   "name": "nitpicker",
-  "version": "0.1.0-rc.1",
+  "version": "0.1.0-rc.2",
   "description": "A quality gate for code written by coding agents. It narrows each language to one allowed way of doing each thing and fails a change only for the problems it adds.",
   "keywords": [
     "quality-gate",
@@ -39,7 +39,9 @@
     "gen:checks": "node scripts/gen-checks.mjs",
     "gen:schema": "node scripts/schema/gen-config-schema.mjs",
     "gen:rules": "node scripts/reference/gen-rules.mjs",
-    "prepack": "node scripts/reference/gen-rules.mjs --data",
+    "typecheck": "tsc -p tsconfig.json",
+    "prepack": "node scripts/reference/gen-rules.mjs --data && node scripts/typescript/emit.mjs",
+    "postpack": "node scripts/typescript/emit.mjs --clean",
     "gen:overlap-probe": "node scripts/gen-overlap-probe.mjs",
     "test:installed": "NITPICKER_INSTALLED_TEST=1 vitest run --config vitest.config.mts core/installed.test.mjs",
     "test:record-eslint": "node scripts/record-eslint-reports.mjs",
@@ -57,6 +59,7 @@
     "shared/reference/rules/*.json",
     "languages/**",
     "!**/*.test.mjs",
+    "!**/*.mts",
     "!**/*_test.go",
     "!**/fixtures/**",
     "!**/test-support/**",
