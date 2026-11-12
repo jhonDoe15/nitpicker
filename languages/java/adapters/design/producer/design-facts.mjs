@@ -61,7 +61,8 @@ export function sourceJava(modules) {
   return modules
     .map((module) => module.sourceJava)
     .filter((source) => typeof source?.java === 'string')
-    .toSorted((left, right) => right.feature - left.feature)[0]?.java;
+    .filter(({ java }) => !path.isAbsolute(java) || existsSync(java))
+    .toSorted((left, right) => (right.feature ?? 0) - (left.feature ?? 0))[0]?.java;
 }
 
 function programFacts({ projectRoot, files, work, target, java }) {

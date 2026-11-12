@@ -102,18 +102,32 @@ function projectJava(spawn) {
 
 const toolJavas = new Map();
 
-export function chooseToolJdk({ tool, project, installed }) {
-  if (project.feature >= ERROR_PRONE_JDK) {
+const LEVEL = /^(?:1\.)?(\d+)$/u;
+
+export function sourceLevel(compiler = {}) {
+  const levels = [compiler.release, compiler.source, compiler.test?.release, compiler.test?.source]
+    .map((value) => LEVEL.exec(String(value ?? '').trim())?.[1])
+    .filter((value) => value !== undefined)
+    .map(Number);
+  return levels.length === 0 ? undefined : Math.max(...levels);
+}
+
+function lowestFrom(installed, minimum) {
+  return installed
+    .filter((jdk) => jdk.feature !== undefined && jdk.feature >= minimum)
+    .toSorted((left, right) => left.feature - right.feature)[0];
+}
+
+export function chooseToolJdk({ tool, project, installed, minimum = ERROR_PRONE_JDK }) {
+  if (project.feature >= minimum) {
     return { java: project.java };
   }
-  const found = installed
-    .filter((jdk) => jdk.feature !== undefined && jdk.feature >= ERROR_PRONE_JDK)
-    .toSorted((left, right) => left.feature - right.feature)[0];
+  const found = lowestFrom(installed, minimum);
   return found === undefined
     ? {
         problem:
-          `${tool} needs JDK ${ERROR_PRONE_JDK} or newer to run, and ${project.java} is JDK ` +
-          `${String(project.feature)}. nitpicker found no JDK ${ERROR_PRONE_JDK} or newer in ` +
+          `${tool} needs JDK ${String(minimum)} or newer to run, and ${project.java} is JDK ` +
+          `${String(project.feature)}. nitpicker found no JDK ${String(minimum)} or newer in ` +
           'JAVA_HOME, the JAVA_HOME_<N>_X64 variables, ~/.m2/toolchains.xml, SDKMAN, /usr/lib/jvm or ' +
           '/Library/Java/JavaVirtualMachines. Install one there; the project keeps compiling for its ' +
           'own release',
@@ -121,19 +135,36 @@ export function chooseToolJdk({ tool, project, installed }) {
     : { java: found.java };
 }
 
-export function toolJava({ tool, spawn = spawnSync }) {
-  const key = `${tool}|${javaCommand('java')}`;
+function installedBelow(project, minimum, spawn) {
+  return project.feature >= minimum
+    ? []
+    : jdkHomes().map((jdk) => describe(path.join(jdk, 'bin', 'java'), spawn));
+}
+
+export function toolJava({ tool, level, spawn = spawnSync }) {
+  const minimum = Math.max(ERROR_PRONE_JDK, level ?? 0);
+  const key = `${tool}|${String(minimum)}|${javaCommand('java')}`;
   if (!toolJavas.has(key)) {
     const project = projectJava(spawn);
-    const installed =
-      project.feature >= ERROR_PRONE_JDK
-        ? []
-        : jdkHomes().map((jdk) => describe(path.join(jdk, 'bin', 'java'), spawn));
-    const { java, problem } = chooseToolJdk({ tool, project, installed });
+    const installed = installedBelow(project, minimum, spawn);
+    const { java, problem } = chooseToolJdk({ tool, project, installed, minimum });
     if (problem !== undefined) {
       throw explainedError(problem);
     }
     toolJavas.set(key, java);
+  }
+  return toolJavas.get(key);
+}
+
+export function parserJava({ level, spawn = spawnSync }) {
+  if (level === undefined) {
+    return { java: javaCommand('java') };
+  }
+  const key = `parser|${String(level)}|${javaCommand('java')}`;
+  if (!toolJavas.has(key)) {
+    const project = projectJava(spawn);
+    const found = lowestFrom(installedBelow(project, level, spawn), level) ?? project;
+    toolJavas.set(key, { feature: found.feature, java: found.java });
   }
   return toolJavas.get(key);
 }

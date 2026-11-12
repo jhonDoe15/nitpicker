@@ -370,8 +370,7 @@
     "mayBeIntended": false
   },
   "singleLineCommentStartWithSpace": {
-    "fix": null,
-    "layout": true,
+    "fix": "Put one space after the // of the comment: // like this.",
     "mayBeIntended": false
   }
 }

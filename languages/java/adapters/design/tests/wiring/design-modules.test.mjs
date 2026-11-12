@@ -109,13 +109,28 @@ describe('the modules the design rules read', () => {
     ]);
   });
 
-  it('parses with the newest JDK a module compiles with, else the java of JAVA_HOME', () => {
-    const jdk = (feature) => ({ sourceJava: { feature, java: `/jdk${String(feature)}/bin/java` } });
+  it('parses with the newest JDK a module compiles with that exists, else the java of JAVA_HOME', () => {
+    const root = mkdtempSync(path.join(tmpdir(), 'nitpicker-design-jdks-'));
+    work.push(root);
+    const jdk = (feature, present = true) => {
+      const java = path.join(root, `jdk${String(feature)}`, 'java');
+      if (present) {
+        mkdirSync(path.dirname(java), { recursive: true });
+        writeFileSync(java, '');
+      }
+      return { sourceJava: { feature, java } };
+    };
 
     expect([
       sourceJava([jdk(17), jdk(25), jdk(21), {}]),
-      sourceJava([{}, { sourceJava: {} }]),
+      sourceJava([jdk(21), jdk(26, false)]),
+      sourceJava([{ sourceJava: { java: 'java' } }, { sourceJava: {} }]),
       sourceJava([]),
-    ]).toEqual(['/jdk25/bin/java', undefined, undefined]);
+    ]).toEqual([
+      path.join(root, 'jdk25', 'java'),
+      path.join(root, 'jdk21', 'java'),
+      'java',
+      undefined,
+    ]);
   });
 });

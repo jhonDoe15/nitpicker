@@ -7,6 +7,7 @@ import {
   chooseErrorProneJdk,
   chooseFormatterJdk,
   chooseToolJdk,
+  sourceLevel,
   featureVersion,
   jdkHomes,
 } from './maven-jdk.mjs';
@@ -162,5 +163,32 @@ describe('the JDK nitpicker --fix formats Java on', () => {
     expect(
       chooseFormatterJdk({ tool: 'palantir-java-format', project: jdk(17), installed: [] }).problem,
     ).toMatch(/^palantir-java-format needs JDK 21 or newer to run/u);
+  });
+});
+
+describe('the Java level a Maven module compiles at', () => {
+  it('reads the highest release or source of main and test, old and new forms', () => {
+    expect([
+      sourceLevel({ release: '25', source: '17', test: { release: undefined, source: '1.8' } }),
+      sourceLevel({ release: undefined, source: '1.8', target: '1.8', test: {} }),
+      sourceLevel({ release: '${java.version}', test: { release: '21' } }),
+      sourceLevel({ test: {} }),
+      sourceLevel(),
+    ]).toStrictEqual([25, 8, 21, undefined, undefined]);
+  });
+
+  it('runs a tool on a JDK that reads the level when the project JDK is older', () => {
+    expect([
+      chooseToolJdk({ tool: 'Checkstyle', project: jdk(21), installed: [jdk(25)], minimum: 25 }),
+      chooseToolJdk({ tool: 'Checkstyle', project: jdk(25), installed: [], minimum: 25 }),
+      chooseToolJdk({ tool: 'Checkstyle', project: jdk(21), installed: [jdk(17)], minimum: 25 })
+        .problem,
+    ]).toStrictEqual([
+      { java: '/jdk25/bin/java' },
+      { java: '/jdk25/bin/java' },
+      expect.stringMatching(
+        /^Checkstyle needs JDK 25 or newer to run, and \/jdk21\/bin\/java is JDK 21/u,
+      ),
+    ]);
   });
 });

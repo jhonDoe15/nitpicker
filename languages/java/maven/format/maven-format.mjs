@@ -1,7 +1,7 @@
 import { writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { JAVA_FORMATTERS } from '../../adapters/style/jvm-formatters.mjs';
-import { toolJava } from '../errorprone/maven-jdk.mjs';
+import { sourceLevel, toolJava } from '../errorprone/maven-jdk.mjs';
 import { runJava } from '../maven-command.mjs';
 import { JAVAC_EXPORTS, javaFiles } from '../maven-lint.mjs';
 
@@ -14,7 +14,7 @@ export function runFormat({ module, reportDir, tools, javaStyle = 'google', spaw
     return;
   }
   const result = runJava({
-    java: toolJava({ tool: formatter.tool }),
+    java: toolJava({ tool: formatter.tool, level: sourceLevel(module.compiler) }),
     tool: formatter.tool,
     classpath: tools[formatter.classpath],
     jvmArgs: JAVAC_EXPORTS,

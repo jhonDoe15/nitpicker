@@ -267,6 +267,13 @@ Other changes:
 
 ### Upgrade notes
 
+- Checkstyle 13.5 renames some rules: `checkstyle/MemberName` is now
+  `checkstyle/GoogleNonConstantFieldName`, `checkstyle/OperatorWrap` is `OperatorWrapNL` or
+  `OperatorWrapEOL`, and `checkstyle/AnnotationLocationMostCases` is
+  `AnnotationLocationMethodsAndCtors` or `AnnotationLocationTypeAndPackage`. A check with an `id`
+  reports as that id. Rename `exceptions` entries that use the old names.
+- Checkstyle and the Java formatters need JDK 21 or newer to run. The project can still compile
+  for an older release; nitpicker finds an installed JDK 21 (or a Gradle toolchain) for them.
 - `vitest` and `@vitest/coverage-v8` are needed only when Vitest is your test runner. Install the
   peers of the runner you use.
 - A `react` key with `"preset": "javascript"` is a configuration error. Use the TypeScript preset for
