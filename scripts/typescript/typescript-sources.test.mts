@@ -14,6 +14,7 @@ import {
   shippedTypeScriptImports,
   trackedModules,
   unresolvedTypeScriptImports,
+  unwrappedModuleUrls,
 } from './module-graph.mts';
 import { printReadiness, readiness } from './ready.mts';
 
@@ -68,6 +69,27 @@ describe('the repository during the TypeScript conversion', () => {
   });
   it('resolves every relative import of a TypeScript module', () => {
     expect(unresolvedTypeScriptImports(REPOSITORY_ROOT, imports)).toEqual([]);
+  });
+  it('opens converted modules by URL only through checkoutModuleUrl', () => {
+    expect(unwrappedModuleUrls(REPOSITORY_ROOT, modules)).toEqual([]);
+  });
+});
+
+describe('module URLs during the conversion', () => {
+  it('reports a converted module that code still opens by its packaged URL without the helper', () => {
+    const root = project({
+      'core/start.mjs': [
+        "const plain = new URL('./worker.mjs', import.meta.url);",
+        "const helped = checkoutModuleUrl(new URL('./worker.mjs', import.meta.url));",
+        "const kept = new URL('./kept.mjs', import.meta.url);",
+        '',
+      ].join('\n'),
+      'core/worker.mts': 'export {};\n',
+      'core/kept.mjs': 'export {};\n',
+    });
+    expect(unwrappedModuleUrls(root, ['core/start.mjs'])).toEqual([
+      'core/start.mjs:1 ./worker.mjs',
+    ]);
   });
 });
 
