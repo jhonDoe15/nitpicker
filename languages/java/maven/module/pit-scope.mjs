@@ -2,15 +2,12 @@ import { readdirSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { byCodeUnits, isInMutationScope } from '../../../../core/scope/mutation-scope.mjs';
 import { sourceFileOf } from '../kotlin/java-classes.mjs';
+import { posix } from '../../builds/lint/lint-staging.mjs';
 
 const PACKAGE_DECLARATION = /^\s*(?:@file:\S+\s+)*package\s+([\w.`]+)/mu;
 const SOURCE_FILE = /\.(?:java|kt)$/u;
 const CLASS_FILE = /\.class$/u;
 const DESCRIPTOR_CLASS = /(?:^|\/)(?:package|module)-info\.class$/u;
-
-function posix(file) {
-  return file.split(path.sep).join('/');
-}
 
 function filesUnder(directory, pattern) {
   try {
