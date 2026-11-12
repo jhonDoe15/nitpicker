@@ -62,7 +62,6 @@ func supersededBy() map[string][]string {
 		"contextcheck":                {"G118"},
 		"context-outside-entry":       {"contextcheck"},
 		"todoCommentWithoutDetail":    {"todo-without-issue"},
-		"G101":                        {"hardcoded-secret", "credential-shape"},
 		"skipped-test-without-reason": {"switched-off-test"},
 	}
 	maps.Copy(replacements, reviveSuperseded())
