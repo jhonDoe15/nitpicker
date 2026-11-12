@@ -93,6 +93,8 @@ describe('project imports from the dependency graph', () => {
           allowImportingTsExtensions: true,
           rewriteRelativeImportExtensions: true,
           noEmit: true,
+          types: [],
+          lib: ['ES2022'],
         },
       }),
       'src/billing/invoice.ts':
