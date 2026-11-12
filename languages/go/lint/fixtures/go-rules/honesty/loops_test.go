@@ -82,3 +82,46 @@ func TestSleeps(t *testing.T) {
 		t.Errorf("total = %d", total)
 	}
 }
+
+func TestCountdown(t *testing.T) {
+	for left := 3; left > 0; left-- {
+		expectTotal(t, Order{Lines: []int{left}}, left)
+		if left > 3 {
+			t.Fatal("count")
+		}
+	}
+}
+
+func TestTimeout(t *testing.T) {
+	done := make(chan int, 1)
+	done <- 1
+	select {
+	case total := <-done:
+		if total != 1 {
+			t.Errorf("total = %d", total)
+		}
+	case <-time.After(time.Second):
+		t.Fatal("timeout")
+	}
+}
+
+type slowStore struct{}
+
+func (slowStore) Load() int {
+	time.Sleep(time.Millisecond)
+	return 1
+}
+
+func TestSlowStore(t *testing.T) {
+	if (slowStore{}).Load() != 1 {
+		t.Fatal("load")
+	}
+}
+
+func TestNamedSubtest(t *testing.T) {
+	t.Run("one", checkOne)
+}
+
+func checkOne(t *testing.T) {
+	expectTotal(t, Order{Lines: []int{1}}, 1)
+}

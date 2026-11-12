@@ -91,7 +91,12 @@ func (check walker) literals(node ast.Node) {
 
 func (check walker) ifStatement(statement *ast.IfStmt, later bool) {
 	info := check.pass.TypesInfo
+	if statement.Init != nil {
+		check.literals(statement.Init)
+	}
+	check.literals(statement.Cond)
 	if !check.fails(statement.Body.List) && firstAssertion(info, statement.Body) != nil && !later &&
+		firstAssertion(info, statement.Cond) == nil &&
 		(statement.Else == nil || firstAssertion(info, statement.Else) == nil) {
 		check.pass.Reportf(firstAssertion(info, statement.Body).Pos(), branchMessage, "if")
 		return
@@ -108,7 +113,8 @@ func (check walker) fails(statements []ast.Stmt) bool {
 		if !ok {
 			continue
 		}
-		if call, isCall := ast.Unparen(expression.X).(*ast.CallExpr); isCall && isAssertion(check.pass.TypesInfo, call) {
+		if call, isCall := ast.Unparen(expression.X).(*ast.CallExpr); isCall &&
+			testingMethod(check.pass.TypesInfo, call, failures) {
 			return true
 		}
 	}
@@ -188,8 +194,7 @@ func (check walker) fixedCount(statement ast.Stmt) bool {
 			return true
 		}
 		binary, ok := ast.Unparen(each.Cond).(*ast.BinaryExpr)
-		return ok && (binary.Op == token.LSS || binary.Op == token.LEQ) && positive(info, binary.Y) &&
-			startsAtZero(info, each.Init)
+		return ok && runsOnce(binary.Op, start(info, each.Init), info.Types[binary.Y].Value)
 	case *ast.RangeStmt:
 		return positive(info, each.X)
 	}
@@ -201,13 +206,23 @@ func positive(info *types.Info, expression ast.Expr) bool {
 	return value != nil && value.Kind() == constant.Int && constant.Sign(value) > 0
 }
 
-func startsAtZero(info *types.Info, init ast.Stmt) bool {
+func start(info *types.Info, init ast.Stmt) constant.Value {
 	assign, ok := init.(*ast.AssignStmt)
 	if !ok || len(assign.Rhs) != 1 {
+		return nil
+	}
+	return info.Types[assign.Rhs[0]].Value
+}
+
+func runsOnce(operator token.Token, first, bound constant.Value) bool {
+	if first == nil || bound == nil || first.Kind() != constant.Int || bound.Kind() != constant.Int {
 		return false
 	}
-	value := info.Types[assign.Rhs[0]].Value
-	return value != nil && value.Kind() == constant.Int && constant.Sign(value) == 0
+	switch operator {
+	case token.LSS, token.GTR, token.LEQ, token.GEQ:
+		return constant.Compare(first, operator, bound)
+	}
+	return false
 }
 
 func (check walker) table(statement ast.Stmt) bool {
