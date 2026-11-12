@@ -3422,7 +3422,7 @@ For a Java or Kotlin project, with the Gradle and Maven caches kept between runs
 directory mounted as the home directory:
 
 ```yaml
-- uses: actions/cache@v4
+- uses: actions/cache@v6.1.0
   with:
     path: ~/nitpicker-home
     key: nitpicker-home-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties', '**/pom.xml') }}
