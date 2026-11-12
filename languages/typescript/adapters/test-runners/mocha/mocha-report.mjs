@@ -21,6 +21,12 @@ function testStatus(test, pending) {
   return pending.has(testKey(test)) ? 'pending' : 'passed';
 }
 
+function failureDetails(error) {
+  return 'expected' in error && 'actual' in error
+    ? { failureDetails: [{ expected: error.expected, actual: error.actual, formatted: true }] }
+    : {};
+}
+
 function assertionFor(test, pending) {
   const status = testStatus(test, pending);
   return {
@@ -28,6 +34,7 @@ function assertionFor(test, pending) {
     title: test.title,
     status,
     failureMessages: status === 'failed' ? [errorMessage(test.err)] : [],
+    ...(status === 'failed' ? failureDetails(test.err) : {}),
     duration: test.duration,
   };
 }

@@ -3,6 +3,7 @@ import {
   isPlainObject,
   configError,
   isNonEmptyString,
+  SCHEMA_KEY,
   validateStringArray,
   validateThresholds,
   validateDuplicates,
@@ -17,9 +18,11 @@ import {
   PYTHON_TOP_LEVEL_EXCEPTION_RULES,
   validatePythonConfig,
 } from '../../languages/python/adapters/configuration/python-config.mjs';
+import { validateGoConfig } from '../../languages/go/adapters/configuration/go-config.mjs';
 import { canonicalRule } from '../../shared/exceptions/rule-names.mjs';
 import { liftsOnlyRules, validateExceptions } from '../../shared/exceptions/validation.mjs';
 import { RULES } from '../../shared/policy.mjs';
+import { validateAnalyzerTimeouts } from '../../shared/analyzer-timeouts/analyzer-timeouts.mjs';
 import { validateTools } from './tool-settings.mjs';
 import { rejectHeadBase } from './project-checks/project-config.mjs';
 import { conventionDefinitions } from '../conventions/definitions.mjs';
@@ -28,7 +31,9 @@ import { stylingApproaches } from '../../languages/typescript/preset/eslint-conf
 import { i18nRuleIds } from '../../languages/typescript/preset/eslint-config/i18n/i18n-rules.mjs';
 import { validateScope, validateTestConsole } from './scopes/scope-settings.mjs';
 import { validateHistory } from './scopes/history-settings.mjs';
+import { validateProtocols } from './scopes/protocols/protocol-settings.mjs';
 import { TYPESCRIPT_PRESETS, validateLayout } from './scopes/layout-settings.mjs';
+import { didYouMean, suggestionOrAllowed } from '../../shared/messages/closest-match.mjs';
 
 const OPTIONAL_VALIDATORS = [
   [
@@ -42,8 +47,9 @@ const OPTIONAL_VALIDATORS = [
   ['legacyInventory', validateProjectRelativePath],
   ['duplicates', validateDuplicates],
   ['analyzers', validateCustomAnalyzers],
+  ['analyzerTimeoutMinutes', validateAnalyzerTimeouts],
 ];
-export const SUPPORTED_PRESETS = ['typescript', 'javascript', ...GRADLE_PRESETS, 'python'];
+export const SUPPORTED_PRESETS = ['typescript', 'javascript', ...GRADLE_PRESETS, 'python', 'go'];
 
 export const KEYS = [
   'base',
@@ -56,26 +62,33 @@ export const KEYS = [
   'react',
   'i18n',
   'analyzers',
+  'analyzerTimeoutMinutes',
   'legacyInventory',
   'duplicates',
   'python',
   'tools',
   'testConsole',
+  'protocols',
   'kotlin',
   'spring',
   'conventions',
+  'go',
   'history',
 ];
 
-const REACT_KEYS = ['enabled', 'styling'];
+export const REACT_KEYS = ['enabled', 'styling'];
 
-const I18N_KEYS = ['enabled', 'functionNames', 'componentNames'];
+export const I18N_KEYS = ['enabled', 'functionNames', 'componentNames'];
 
-const CUSTOM_ANALYZER_KEYS = ['name', 'command', 'args'];
+export const CUSTOM_ANALYZER_KEYS = ['name', 'command', 'args'];
 
 const NITPICKER_RULE_IDS = new Set(RULES.map(({ id }) => id));
 
+export const NITPICKER_RULES = [...NITPICKER_RULE_IDS];
+
 const TYPESCRIPT_RULE_NAMES = new Map([['doc-comment-content', 'nitpicker/no-comments']]);
+
+export const RENAMED_TYPESCRIPT_RULES = [...TYPESCRIPT_RULE_NAMES.keys()];
 
 export function validateConfig(config) {
   if (!isPlainObject(config)) {
@@ -88,6 +101,7 @@ export function validateConfig(config) {
   validateReact(config.react);
   validateI18n(config.i18n);
   validateTestConsole(config.testConsole);
+  validateProtocols(config.protocols);
   validateHistory(config.history);
   validateOptional(config);
   validateProjectConventions(config);
@@ -96,9 +110,12 @@ export function validateConfig(config) {
 
 function validateKeys(config) {
   for (const key of Object.keys(config)) {
-    if (!KEYS.includes(key)) {
-      throw configError(`unknown key "${key}". Allowed keys: ${KEYS.join(', ')}`);
+    if (!KEYS.includes(key) && key !== SCHEMA_KEY) {
+      throw configError(`unknown key "${key}"${suggestionOrAllowed(key, [SCHEMA_KEY, ...KEYS])}`);
     }
+  }
+  if (config[SCHEMA_KEY] !== undefined && typeof config[SCHEMA_KEY] !== 'string') {
+    throw configError(`"${SCHEMA_KEY}" must be a string`);
   }
 }
 
@@ -115,6 +132,7 @@ function validateScalars(config) {
   }
   validateJavascriptConfig(config);
   validateKotlinOptions(config);
+  validateGoConfig(config);
   validateSpringOptions(config);
   validatePythonConfig(
     config,
@@ -171,9 +189,6 @@ function validateOptional(config) {
   if (config.layout !== undefined) {
     validateLayout(config.layout, config.preset, config.history);
   }
-  if (config.exceptions !== undefined) {
-    validateTypescriptExceptionRules(config.exceptions, config.preset);
-  }
   if (config.tools !== undefined) {
     validateTools(config.tools, config.preset);
   }
@@ -199,13 +214,14 @@ function exceptionRuleProblem(rule, preset) {
   if (rule.startsWith('formatjs/') && !i18nRuleIds.includes(rule)) {
     return `which nitpicker does not run. The i18n rules it runs: ${i18nRuleIds.join(', ')}`;
   }
-  const native = TYPESCRIPT_RULE_NAMES.get(rule);
+  const native = TYPESCRIPT_RULE_NAMES.get(canonicalRule(rule));
   return native === undefined
     ? undefined
     : `which the ${preset ?? 'typescript'} preset reports as ${native}: name "${native}" instead`;
 }
 
 function validateProjectExceptions(exceptions, key, preset) {
+  validateTypescriptExceptionRules(exceptions, preset);
   validateExceptions(exceptions, key, {
     preset: preset ?? 'typescript',
     matchesOwnGlobs: TYPESCRIPT_PRESETS.includes(preset)
@@ -215,11 +231,12 @@ function validateProjectExceptions(exceptions, key, preset) {
 }
 
 function validateTypescriptExceptionRules(exceptions, preset) {
-  if (!TYPESCRIPT_PRESETS.includes(preset)) {
+  if (!TYPESCRIPT_PRESETS.includes(preset) || !Array.isArray(exceptions)) {
     return;
   }
-  for (const [index, { rule }] of exceptions.entries()) {
-    const problem = exceptionRuleProblem(rule, preset);
+  for (const [index, entry] of exceptions.entries()) {
+    const rule = entry?.rule;
+    const problem = typeof rule === 'string' ? exceptionRuleProblem(rule, preset) : undefined;
     if (problem !== undefined) {
       throw configError(`"exceptions[${String(index)}].rule" names ${rule}, ${problem}`);
     }
@@ -240,7 +257,9 @@ function validateCustomAnalyzerEntry(entry, label) {
   }
   for (const key of Object.keys(entry)) {
     if (!CUSTOM_ANALYZER_KEYS.includes(key)) {
-      throw configError(`unknown key "${key}" in "${label}"`);
+      throw configError(
+        `unknown key "${key}" in "${label}"${didYouMean(key, CUSTOM_ANALYZER_KEYS)}`,
+      );
     }
   }
   if (!isNonEmptyString(entry.name) || !isNonEmptyString(entry.command)) {

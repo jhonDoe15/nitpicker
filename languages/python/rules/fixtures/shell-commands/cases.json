@@ -1,0 +1,22 @@
+[
+  {
+    "tool": "ruff",
+    "rule": "S602",
+    "mention": "leave `shell=true` out"
+  },
+  {
+    "tool": "ruff",
+    "rule": "S604",
+    "mention": "leave `shell=true` out"
+  },
+  {
+    "tool": "ruff",
+    "rule": "S605",
+    "mention": "leave `shell=true` out"
+  },
+  {
+    "tool": "ruff",
+    "rule": "S609",
+    "mention": "separate list items"
+  }
+]

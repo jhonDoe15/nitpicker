@@ -1,9 +1,17 @@
 import { changedByDiff } from './base-red/unknown-base.mjs';
-import { comparisonKey } from './fingerprint.mjs';
+import { baseMoves, comparisonKey } from './fingerprint.mjs';
+import { againstMissingReports } from './notices/missing-reports.mjs';
 import { matchSimilarFindings } from './similar/match.mjs';
-import { normalizeGitPath } from '../git/normalize.mjs';
-import { folderMoves, mainDestination } from '../git/patches/renames.mjs';
-import { insertBeforeRoute } from '../../../shared/messages/exception-sentence.mjs';
+import { matchAnchoredFindings } from './anchored/match.mjs';
+import { addGrowthAdvice, holdRatchetedFindings } from './ratchet/ratchet.mjs';
+import { withWorseMessage } from '../../../shared/messages/advice/finding-advice.mjs';
+import { isHeldOnTouchedLine } from './ratchet/touched-code.mjs';
+import { pairedKeys } from './positions/occurrences.mjs';
+import { withEditedLineReason } from './positions/touched-lines.mjs';
+import {
+  withoutCauses,
+  withUntouchedCause,
+} from '../../../shared/rules/stability/untouched-cause.mjs';
 
 export function compareFindings({
   baseFindings,
@@ -13,52 +21,106 @@ export function compareFindings({
   touchedCode,
   unknownOnBase,
 }) {
-  const baseByKey = indexFindings({
-    findings: baseFindings,
-    renames: baseToHeadRenames,
-    directories: baseToHeadDirectories,
-    snapshot: 'base',
+  const moves = baseMoves(baseToHeadRenames, baseToHeadDirectories);
+  const { baseByKey, headByKey } = indexSnapshots({
+    baseFindings,
+    headFindings,
+    moves,
+    touchedCode,
   });
-  const headByKey = indexFindings({ findings: headFindings, snapshot: 'head' });
   const present = classifyHeadFindings({ headByKey, baseByKey, touchedCode, unknownOnBase });
   const withoutExactMatch = [...baseByKey]
     .filter(([key]) => !headByKey.has(key))
     .map(([, baseFinding]) => baseFinding);
-  const similar = matchSimilarFindings({
-    headFindings: present.newFindings,
-    baseFindings: withoutExactMatch,
-    renames: baseToHeadRenames,
+  const anchored = moveAnchoredFindings(present, {
+    baseFindings: moveSimilarFindings(present, withoutExactMatch, moves.files),
+    snapshots: { base: baseFindings, head: headFindings },
+    renames: moves.files,
+    touchedCode,
   });
-  present.newFindings = similar.unmatched;
-  present.unchangedFindings.push(...similar.matched);
-  const unmatchedBase = withoutExactMatch.filter((finding) => !similar.matchedBase.has(finding));
+  const { unmatchedBase } = anchored;
   const ratcheted = holdRatchetedFindings({
     newFindings: present.newFindings,
     unmatchedBase,
-    renames: baseToHeadRenames,
-    directories: baseToHeadDirectories,
+    moves,
     touchedCode,
   });
-  present.newFindings = withGrowthAdvice({
-    findings: ratcheted.newFindings,
-    baseFindings,
-    renames: baseToHeadRenames,
-    directories: baseToHeadDirectories,
-  });
+  const advised = [
+    ...addGrowthAdvice({ findings: ratcheted.newFindings, baseFindings, moves }),
+    ...anchored.grown,
+  ];
+  const explained = withUntouchedCause(advised, touchedCode);
+  present.newFindings = againstMissingReports(explained, baseFindings, moves);
   present.unchangedFindings.push(...ratcheted.heldFindings);
   const resolvedFindings = unmatchedBase.filter((finding) => !ratcheted.matchedBase.has(finding));
 
-  return {
+  return withoutCauses({
     newFindings: sortFindings(present.newFindings),
     resolvedFindings: sortFindings(resolvedFindings),
     unchangedFindings: sortFindings(present.unchangedFindings),
     changedMetrics: present.changedMetrics.sort(compareDisplayOrder),
+  });
+}
+
+function indexSnapshots({ baseFindings, headFindings, moves, touchedCode }) {
+  const keys = pairedKeys({ baseFindings, headFindings, moves, touchedCode });
+  return {
+    baseByKey: indexFindings({ findings: baseFindings, moves, snapshot: 'base' }),
+    headByKey: indexFindings({ findings: headFindings, snapshot: 'head', keys }),
   };
 }
 
+function moveSimilarFindings(present, baseFindings, renames) {
+  const similar = matchSimilarFindings({
+    headFindings: present.newFindings,
+    baseFindings,
+    renames,
+  });
+  present.newFindings = similar.unmatched;
+  present.unchangedFindings.push(...similar.matched);
+  return baseFindings.filter((finding) => !similar.matchedBase.has(finding));
+}
+
+function moveAnchoredFindings(present, { baseFindings, snapshots, renames, touchedCode }) {
+  const pairs = matchAnchoredFindings({
+    headFindings: present.newFindings.filter((finding) => present.withoutBase.has(finding)),
+    baseFindings,
+    snapshots,
+    renames,
+    touchedCode,
+  });
+  const movedHeads = new Set(pairs.map(({ head }) => head));
+  present.newFindings = present.newFindings.filter((finding) => !movedHeads.has(finding));
+  const grown = [];
+  for (const { head, base } of pairs) {
+    if (head.ratchet !== undefined && head.ratchet.value > (base.ratchet?.value ?? Infinity)) {
+      grown.push(withWorseMessage(head, base.ratchet.value));
+      continue;
+    }
+    const { bucket, entry } = classify(head, base, { touchedCode, isUnknown: false });
+    present[bucket].push(heldAt(bucket, entry, base));
+  }
+  const movedBase = new Set(pairs.map(({ base }) => base));
+  return { unmatchedBase: baseFindings.filter((finding) => !movedBase.has(finding)), grown };
+}
+
+function heldAt(bucket, entry, base) {
+  return bucket === 'unchangedFindings' && entry.ratchet !== undefined && base.ratchet !== undefined
+    ? { ...entry, heldAtBase: base.ratchet.value }
+    : entry;
+}
+
 function classifyHeadFindings({ headByKey, baseByKey, touchedCode, unknownOnBase }) {
-  const buckets = { newFindings: [], unchangedFindings: [], changedMetrics: [] };
+  const buckets = {
+    newFindings: [],
+    unchangedFindings: [],
+    changedMetrics: [],
+    withoutBase: new Set(),
+  };
   for (const [key, headFinding] of headByKey) {
+    if (!baseByKey.has(key)) {
+      buckets.withoutBase.add(headFinding);
+    }
     const { bucket, entry } = classify(headFinding, baseByKey.get(key), {
       touchedCode,
       isUnknown: unknownOnBase?.(headFinding) === true,
@@ -79,130 +141,9 @@ function classify(headFinding, baseFinding, { touchedCode, isUnknown }) {
   if (hasChangedMetric(baseFinding, headFinding)) {
     return { bucket: 'changedMetrics', entry: changedMetricOf(baseFinding, headFinding) };
   }
-  const isNew =
-    isInTouchedCode(headFinding, touchedCode) || isOnAddedLine(headFinding, touchedCode);
-  return { bucket: isNew ? 'newFindings' : 'unchangedFindings', entry: headFinding };
-}
-
-function holdRatchetedFindings({ newFindings, unmatchedBase, renames, directories, touchedCode }) {
-  const atSamePath = holdAgainst(
-    newFindings,
-    groupBaseByRatchetKey(unmatchedBase, (finding) => ratchetKey(finding, renames, directories)),
-    { touchedCode, matchedBase: new Set() },
-  );
-  const moves = folderMoves(renames);
-  const movedFolders = groupBaseByRatchetKey(
-    unmatchedBase.filter(
-      (baseFinding) =>
-        baseFinding.ratchet?.pathIsFolder === true && !atSamePath.matchedBase.has(baseFinding),
-    ),
-    (finding) => movedFolderKey(finding, moves),
-  );
-  const atMovedPath = holdAgainst(atSamePath.unmatched, movedFolders, {
-    touchedCode,
-    matchedBase: atSamePath.matchedBase,
-  });
-  return {
-    newFindings: [...atSamePath.grew, ...atMovedPath.grew, ...atMovedPath.unmatched],
-    heldFindings: [...atSamePath.heldFindings, ...atMovedPath.heldFindings],
-    matchedBase: atMovedPath.matchedBase,
-  };
-}
-
-function holdAgainst(headFindings, baseByRatchet, { touchedCode, matchedBase }) {
-  const result = { unmatched: [], grew: [], heldFindings: [], matchedBase };
-  for (const headFinding of headFindings) {
-    const candidates = holdCandidatesFor(headFinding, baseByRatchet, touchedCode);
-    const baseFinding =
-      candidates === undefined || candidates.length === 0
-        ? undefined
-        : closestCandidate(candidates, headFinding.ratchet.value);
-    if (baseFinding === undefined) {
-      result.unmatched.push(headFinding);
-      continue;
-    }
-    if (headFinding.ratchet.value > baseFinding.ratchet.value) {
-      result.grew.push(grewFinding(headFinding, baseFinding.ratchet.value));
-      continue;
-    }
-    candidates.splice(candidates.indexOf(baseFinding), 1);
-    result.matchedBase.add(baseFinding);
-    result.heldFindings.push({ ...headFinding, heldAtBase: baseFinding.ratchet.value });
-  }
-  return result;
-}
-
-function movedFolderKey(finding, moves) {
-  const destinations = moves.get(normalizeGitPath(finding.path));
-  const destination = mainDestination(destinations);
-  const movedFiles = destination === undefined ? 0 : destinations.get(destination);
-  return movedFiles * 2 > (finding.ratchet.folderFiles ?? finding.ratchet.value)
-    ? ratchetKey({ ...finding, path: destination }, new Map(), new Map())
-    : undefined;
-}
-
-function closestCandidate(candidates, value) {
-  const holding = candidates.filter((candidate) => candidate.ratchet.value >= value);
-  const pool = holding.length > 0 ? holding : candidates;
-  const pick = holding.length > 0 ? Math.min : Math.max;
-  const target = pick(...pool.map((candidate) => candidate.ratchet.value));
-  return pool.find((candidate) => candidate.ratchet.value === target);
-}
-
-function withGrowthAdvice({ findings, baseFindings, renames, directories }) {
-  const baseValues = new Map(
-    baseFindings
-      .filter((baseFinding) => baseFinding.ratchet !== undefined)
-      .map((baseFinding) => [
-        ratchetKey(baseFinding, renames, directories),
-        baseFinding.ratchet.value,
-      ]),
-  );
-  return findings.map((finding) => {
-    const advice = finding.ratchet?.growthAdvice;
-    const baseValue =
-      advice === undefined ? undefined : baseValues.get(ratchetKey(finding, new Map(), new Map()));
-    return baseValue === undefined
-      ? finding
-      : {
-          ...finding,
-          message: insertBeforeRoute(
-            finding.message,
-            advice.replaceAll('{base}', String(baseValue)),
-          ),
-        };
-  });
-}
-
-function groupBaseByRatchetKey(unmatchedBase, keyOf) {
-  const baseByRatchet = new Map();
-  const keyed = unmatchedBase
-    .filter((baseFinding) => baseFinding.ratchet !== undefined)
-    .map((baseFinding) => [keyOf(baseFinding), baseFinding])
-    .filter(([key]) => key !== undefined);
-  for (const [key, baseFinding] of keyed) {
-    baseByRatchet.set(key, [...(baseByRatchet.get(key) ?? []), baseFinding]);
-  }
-  return baseByRatchet;
-}
-
-function holdCandidatesFor(headFinding, baseByRatchet, touchedCode) {
-  const isNeverHeld =
-    headFinding.ratchet === undefined ||
-    isInTouchedCode(headFinding, touchedCode) ||
-    isOnAddedLine(headFinding, touchedCode);
-  return isNeverHeld ? undefined : baseByRatchet.get(ratchetKey(headFinding, new Map(), new Map()));
-}
-
-function grewFinding(headFinding, baseValue) {
-  const { worseMessage } = headFinding.ratchet;
-  return worseMessage === undefined
-    ? headFinding
-    : { ...headFinding, message: worseMessage.replaceAll('{base}', String(baseValue)) };
-}
-
-function ratchetKey(finding, renames, directories) {
-  return comparisonKey({ ...finding, identity: finding.ratchet.key }, renames, directories);
+  return isHeldOnTouchedLine(headFinding, touchedCode)
+    ? { bucket: 'newFindings', entry: withEditedLineReason(headFinding, touchedCode) }
+    : { bucket: 'unchangedFindings', entry: headFinding };
 }
 
 function changedMetricOf(baseFinding, headFinding) {
@@ -220,47 +161,10 @@ function changedMetricOf(baseFinding, headFinding) {
   };
 }
 
-function isInTouchedCode(finding, touchedCode) {
-  if (touchedCode === undefined || finding.classification !== 'enforceable') {
-    return false;
-  }
-  if (!touchedCode.isStrictRule(finding.rule, finding)) {
-    return false;
-  }
-  const changed = touchedCode.changedLines.get(finding.path);
-  if (changed === undefined) {
-    return false;
-  }
-  if (changed.added) {
-    return true;
-  }
-  if (
-    finding.ratchet?.existingCodeOnly === true &&
-    touchedCode.mustMeetOnEditedLines?.(finding.rule) !== true
-  ) {
-    return false;
-  }
-  const line = finding.location?.line;
-  const endLine = finding.location?.endLine ?? line;
-  return (
-    line !== undefined && changed.ranges.some(([start, end]) => start <= endLine && line <= end)
-  );
-}
-
-function isOnAddedLine(finding, touchedCode) {
-  const line = finding.location?.line;
-  const inserted = touchedCode?.changedLines.get(finding.path)?.inserted;
-  return (
-    finding.ratchet?.existingCodeOnly === true &&
-    line !== undefined &&
-    (inserted ?? []).some(([start, end]) => start <= line && line <= end)
-  );
-}
-
-function indexFindings({ findings, renames = new Map(), directories = new Map(), snapshot }) {
+function indexFindings({ findings, moves, snapshot, keys = new Map() }) {
   const indexed = new Map();
   for (const finding of findings) {
-    const key = comparisonKey(finding, renames, directories);
+    const key = keys.get(finding) ?? comparisonKey(finding, moves);
     if (indexed.has(key)) {
       throw new Error(
         `${snapshot} analyzer output contains duplicate stable identity for ${finding.tool}/${finding.rule} at ${finding.path}`,

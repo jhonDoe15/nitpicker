@@ -3,16 +3,22 @@ import { heldFindings, heldLine } from './format/held-findings.mjs';
 import { noteSectionLines } from './format/notes.mjs';
 import { noticeSection } from './review/notices.mjs';
 import { policyChangeSection } from './review/policy-changes.mjs';
+import { quickLines, stagedLines } from '../../quick/summary.mjs';
+import { partialRunLines } from './partial-run/partial-run.mjs';
+import { repositoryUrl } from '../../../shared/reference/facts.mjs';
+import { helpUriFor, referenceLinks } from '../../../shared/reference/store.mjs';
+import { scopeLine } from '../../scope/scope-findings.mjs';
 
-export function renderTextReport(report) {
+export function renderTextReport(report, { reference = referenceLinks() } = {}) {
   const lines = [
     ...summaryLines(report),
     ...configOverrideLines(report.summary.configOverrides ?? []),
     ...policyChangeSection(report.summary),
     ...noticeSection(report.summary.notices),
-    ...toolCountLines(report.summary.tools),
+    ...toolCountLines(report.summary),
   ];
   appendFindingSection(lines, 'New findings', report.newFindings);
+  lines.push(...ruleReferenceLines(report.newFindings, reference));
   appendHeldSection(lines, report.unchangedFindings);
   appendFindingSection(lines, 'Resolved findings', report.resolvedFindings);
   appendMetricSection(lines, report.changedMetrics);
@@ -27,13 +33,17 @@ function summaryLines(report) {
     `Base ref: ${report.summary.requestedBaseRef}`,
     `Merge base: ${report.summary.mergeBaseSha}`,
     `Head: ${report.summary.headSha}`,
+    ...stagedLines(report.summary),
     `Status: ${report.summary.overallStatus}`,
+    ...scopeLine(report.summary),
     `New enforceable findings: ${String(report.summary.newEnforceableFindings)}`,
     `New findings: ${String(report.newFindings.length)}`,
     `Resolved findings: ${String(report.resolvedFindings.length)}`,
     `Unchanged findings: ${String(sumToolCount(report.summary.tools, 'unchanged'))}`,
     `Changed metrics: ${String(report.changedMetrics.length)}`,
     `Tool errors: ${String(report.toolErrors.length)}`,
+    ...partialRunLines(report.summary),
+    ...quickLines(report.summary),
   ];
 }
 
@@ -44,7 +54,10 @@ function configOverrideLines(configOverrides) {
   return ['', 'Config overrides:', ...configOverrides.map((override) => `  ${override}`)];
 }
 
-function toolCountLines(tools) {
+function toolCountLines({ tools, noChanges }) {
+  if (noChanges === true) {
+    return ['Analyzers: none ran, the head has the same files as the merge base'];
+  }
   if (tools.length === 0) {
     return ['Analyzers: none configured'];
   }
@@ -82,6 +95,17 @@ function appendFindingSection(lines, heading, findings) {
     const location = finding.location === undefined ? '' : `:${String(finding.location.line)}`;
     lines.push(`${finding.tool}/${finding.rule} ${finding.path}${location} ${finding.message}`);
   }
+}
+
+/** The line that points at the rule reference, when one of `findings` has an entry there. */
+export function ruleReferenceLines(findings, reference) {
+  const known = findings.some((finding) => helpUriFor(reference, finding) !== undefined);
+  const url = known
+    ? repositoryUrl('docs/rules/README.md', undefined, reference.root())
+    : undefined;
+  return url === undefined
+    ? []
+    : ['', `Rule reference: ${url} (nitpicker explain <tool/rule> prints one rule)`];
 }
 
 function appendHeldSection(lines, unchangedFindings) {

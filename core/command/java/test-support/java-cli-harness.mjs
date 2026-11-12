@@ -1,7 +1,6 @@
-import { tmpdir } from 'node:os';
-import { afterEach, beforeEach, expect, vi } from 'vitest';
-import { exactText } from '../../../diff/reporting/test-support/output-expectations.mjs';
+import { afterEach, beforeEach, vi } from 'vitest';
 import {
+  EMPTY_MUTATION_FACTS,
   fakeGradle,
   fakeGradleRun,
   spawnFakeGradle,
@@ -11,6 +10,7 @@ import { usePresetFixtures } from '../../test-support/preset-fixtures.mjs';
 import { readCatalog } from '../../../../languages/java/messages/rule-messages.mjs';
 import { exceptionHint } from '../../../../shared/rules/exceptions.mjs';
 import { fakeMavenRun, spawnFakeMaven } from './in-process-maven.mjs';
+import { linkSentence } from '../../../../shared/messages/test-support/link-sentence.mjs';
 
 export { fakeGradle, fakeGradleRun };
 
@@ -59,6 +59,7 @@ export function useGradleFixtures(runNitpickerCli) {
       fixtures.repository({
         'nitpicker.config.json': kotlinConfig(),
         'detekt.txt': 'Legacy magic number\n',
+        'kotlin-mutation-facts.json': EMPTY_MUTATION_FACTS,
         ...files,
       }),
     run: fixtures.run,
@@ -69,14 +70,16 @@ export function useGradleFixtures(runNitpickerCli) {
         files: { GRADLE_FAIL: 'Execution failed for task :compileJava\n' },
         error: {
           rule: 'gradle-failure',
-          message: (snapshot) =>
-            gradleFailureMessage(
-              `Java preset failed in ${snapshot}: Execution failed for task :compileJava`,
-            ),
+          message: (snapshot, reports) =>
+            [
+              `Java preset failed ${snapshot === 'base' ? 'on the base' : 'on your change'}: ` +
+                'Execution failed for task :compileJava',
+              `Full Gradle log: ${reports}/logs/java-${snapshot}-gradle.log`,
+              linkSentence('gradleFails'),
+            ].join('\n'),
         },
       },
       redBase: {
-        headRule: 'gradle-failure',
         files: (suite) => ({ TESTS_FAIL: JSON.stringify({ '': suite }) }),
         repair: { remove: ['TESTS_FAIL'] },
         modules: {
@@ -90,10 +93,9 @@ export function useGradleFixtures(runNitpickerCli) {
       missingBinary: {
         stub: (binary) => vi.stubEnv('NITPICKER_GRADLE', binary),
         rule: 'gradle-failure',
-        message: (binary) =>
-          expect.stringMatching(
-            exactText`Full Gradle log: ${tmpdir()}/nitpicker-gradle-failure-${/[A-Za-z0-9]{6}/}/gradle.log\nspawnSync ${binary} ENOENT`,
-          ),
+        message: (binary, reports) =>
+          `${binary} was not found. Add the Gradle wrapper (gradlew) to the project, put gradle on ` +
+          `the PATH, or set NITPICKER_GRADLE\nFull Gradle log: ${reports}/logs/java-base-gradle.log`,
       },
     },
   };
@@ -128,11 +130,10 @@ export function useMavenFixtures(runNitpickerCli) {
         error: {
           rule: 'maven-failure',
           message: (snapshot) =>
-            `Maven failed in ${snapshot}:\n[ERROR] COMPILATION ERROR in A.java`,
+            `Maven failed in ${snapshot}:\n[ERROR] COMPILATION ERROR in A.java\n${linkSentence('mavenFails')}`,
         },
       },
       redBase: {
-        headRule: 'maven-failure',
         files: (suite) => ({ 'test-results/test/TEST-demo.ATest.xml': suite }),
         repair: {
           write: {
@@ -156,8 +157,19 @@ export function unusedFieldMessage(name, file = 'src/main/java/demo/A.java') {
   return `Avoid unused field: ${name}. ${fix} ${exceptionHint('pmd/UnusedPrivateField', file)}`;
 }
 
-export function gradleFailureMessage(detail) {
-  const suffix = /[A-Za-z0-9]{6}/;
-  return expect.stringMatching(exactText`Full Gradle log: ${tmpdir()}/nitpicker-gradle-failure-${suffix}/gradle.log
-${detail}`);
+export function unusedFieldFields(file = 'src/main/java/demo/A.java') {
+  return {
+    allowedForm: readCatalog('pmd').UnusedPrivateField.fix,
+    exception: { rule: 'pmd/UnusedPrivateField', paths: [file], reason: '...' },
+    exceptionList: 'exceptions',
+  };
+}
+
+export function unusedFieldConsoleEntry(name, line, file = 'src/main/java/demo/A.java') {
+  const { fix } = readCatalog('pmd').UnusedPrivateField;
+  return [
+    `  pmd/UnusedPrivateField: Avoid unused field: ${name}. ${fix}`,
+    `    ${file}:${String(line)}`,
+    `    ${exceptionHint('pmd/UnusedPrivateField', file)}`,
+  ].join('\n');
 }

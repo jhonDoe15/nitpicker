@@ -64,6 +64,7 @@ function runMypy(context) {
       ...mypyExcludeArguments(context),
       '--explicit-package-bases',
       '--show-error-codes',
+      '--show-column-numbers',
       '--no-error-summary',
       '--no-pretty',
       '--hide-error-context',

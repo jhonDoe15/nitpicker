@@ -95,6 +95,26 @@ describe('exported-name-collision over facts', () => {
   });
 });
 
+describe('exported-name-collision and conditional imports', () => {
+  it('leaves out an import the producer marks conditional, like a require in a branch', () => {
+    const facts = factFixture('reuse');
+    const imports = facts.imports.map((record) =>
+      record.to === 'app/billing/format.py' ? { ...record, conditional: true } : record,
+    );
+
+    expect(findingsOf({ ...facts, imports }, ['exported-name-collision'])).toEqual([]);
+  });
+
+  it('leaves out a reference edge, which names a module without importing it', () => {
+    const facts = factFixture('reuse');
+    const imports = facts.imports.map((record) =>
+      record.to === 'app/billing/format.py' ? { ...record, reference: true } : record,
+    );
+
+    expect(findingsOf({ ...facts, imports }, ['exported-name-collision'])).toEqual([]);
+  });
+});
+
 describe('sibling-copy-edit over facts', () => {
   const baseline = (movesFile) => ({ facts: factFixture('sibling-base'), movesFile });
 
@@ -134,6 +154,31 @@ describe('sibling-copy-edit over facts', () => {
         }),
       ),
     ).toEqual([['sibling-copy-edit', 'app/orders/totals.py', 'sibling-copy:round_total']]);
+  });
+
+  it('scopes sibling copies by a definition package, and duplicates unless asked not to', () => {
+    const moves = movesFile([['app/orders/legacy_totals.py', 'app/orders/totals.py']]);
+    const scoped = (facts) => ({
+      ...facts,
+      definitions: facts.definitions.map((definition) => ({
+        ...definition,
+        package: definition.file.split('/').slice(0, 2).join('/'),
+      })),
+    });
+
+    expect(
+      findingsOf(scoped(factFixture('sibling-head')), ['sibling-copy-edit'], {
+        baseline: baseline(moves),
+      }),
+    ).toEqual([]);
+    expect(findingsOf(scoped(factFixture('reuse')), ['duplicate-definition'])).toEqual([]);
+    expect(
+      rows(
+        findingsOf(scoped(factFixture('reuse')), ['duplicate-definition'], {
+          duplicatesAcrossPackages: true,
+        }),
+      ),
+    ).toEqual(rows(fixtureFindings('reuse', ['duplicate-definition'])));
   });
 });
 

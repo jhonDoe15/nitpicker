@@ -32,6 +32,13 @@ const ALLOWED_FORMS = new Map([
     'Explain this existing suppression in a comment next to it, saying why the warning is safe ' +
       'to ignore. This is not a reason to add suppressions: fix new warnings instead.',
   ],
+  [
+    'SystemOut',
+    'Write through a logger, or take a PrintStream, Writer or Appendable parameter and write to it; ' +
+      'only static void main passes System.out or System.err, as in new Cli(System.out).run(args) ' +
+      'or System.out::print. Log an exception instead of calling printStackTrace(). An exception ' +
+      'fits only for a program without a main method.',
+  ],
   ['CheckReturnValue', 'Use the result, or make the method return void if callers do not need it.'],
   [
     'JavaTimeDefaultTimeZone',
@@ -102,6 +109,10 @@ function readableSummary(check, summary, guava) {
   return guava
     ? rewritten
     : GUAVA_SUMMARIES.reduce((text, [from, to]) => text.replace(from, to), rewritten);
+}
+
+export function errorProneAllowedForm(check) {
+  return ALLOWED_FORMS.get(check);
 }
 
 export function errorProneMessage({ check, summary, suggestion }, { guava = true } = {}) {

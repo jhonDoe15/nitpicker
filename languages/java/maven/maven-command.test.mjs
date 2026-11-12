@@ -4,8 +4,11 @@ import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import { analyzeJavaSnapshot } from '../adapters/java-runner.mjs';
 import { mavenErrorSummary, mavenTarget, runMaven } from './maven-command.mjs';
+import { explainedError } from '../../../shared/messages/troubleshooting.mjs';
+import { linkSentence } from '../../../shared/messages/test-support/link-sentence.mjs';
 
 const roots = [];
+const FAKE_MAVEN = path.resolve(import.meta.dirname, '../adapters/fixtures/fake-maven.mjs');
 
 function project(files = {}) {
   const root = realpathSync(mkdtempSync(path.join(tmpdir(), 'nitpicker-maven-')));
@@ -90,7 +93,7 @@ describe.skipIf(process.platform === 'win32')('Maven failures', () => {
     expect(() =>
       runMaven({ projectRoot: root, maven: path.join(root, 'no-such-mvn'), args: ['test'] }),
     ).toThrow(
-      new Error(
+      explainedError(
         `${path.join(root, 'no-such-mvn')} was not found. Add the Maven wrapper (mvnw) to the project, put mvn on the PATH, or set NITPICKER_MAVEN`,
       ),
     );
@@ -108,9 +111,10 @@ describe.skipIf(process.platform === 'win32')('Maven failures', () => {
         timeoutMs: 300,
       }),
     ).toThrow(
-      new Error(
+      explainedError(
         `Maven did not finish in ${root} within 0.3 s and was stopped. Its post-integration-test ` +
-          'steps may not have run, so containers or servers the build started may still be running',
+          'steps may not have run, so containers or servers the build started may still be running. ' +
+          'Set NITPICKER_MAVEN_TIMEOUT_MINUTES to give each Maven command more time',
       ),
     );
   });
@@ -127,25 +131,28 @@ describe.skipIf(process.platform === 'win32')('Maven failures', () => {
         rule: 'maven-failure',
         path: '.',
         identity: 'maven-failure',
-        message: `Maven failed in ${root}:\n[ERROR] broken pom`,
+        message: `Maven failed in ${root}:\n[ERROR] broken pom\n${linkSentence('mavenFails')}`,
         classification: 'tool-error',
       },
     ]);
   });
 
-  it('asks for a Gradle build under the kotlin preset', () => {
-    const root = project({ 'pom.xml': {} });
+  it('asks for kotlin-maven-plugin under the kotlin preset when no module applies it', () => {
+    const root = project({
+      'pom.xml': {
+        text: '<project><groupId>demo</groupId><artifactId>demo</artifactId></project>',
+      },
+    });
 
     expect(
-      analyzeJavaSnapshot(root, { maven: '/unused', policy: { preset: 'kotlin' } }).findings,
+      analyzeJavaSnapshot(root, { maven: FAKE_MAVEN, policy: { preset: 'kotlin' } }).findings,
     ).toEqual([
       {
         tool: 'kotlin',
         rule: 'maven-failure',
         path: '.',
         identity: 'maven-failure',
-        message:
-          'The kotlin preset needs a Gradle build, and this project builds with Maven. Use the java preset for its Java sources',
+        message: `The kotlin preset needs a Maven project that applies kotlin-maven-plugin; this one does not. Use the java preset for its Java sources. ${linkSentence('mavenFails')}`,
         classification: 'tool-error',
       },
     ]);

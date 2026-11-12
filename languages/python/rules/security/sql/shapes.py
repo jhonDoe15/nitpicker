@@ -82,7 +82,7 @@ def safe_annotation(annotation, where, depth=0):
         if isinstance(annotation.value, str):
             try:
                 parsed = ast.parse(annotation.value, mode="eval").body
-            except SyntaxError:
+            except (SyntaxError, ValueError):
                 return False
             return safe_annotation(parsed, where, depth + 1)
         return False

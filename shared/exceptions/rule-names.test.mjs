@@ -13,6 +13,7 @@ describe('canonicalRule', () => {
     ['structure/function-lines-limit', 'function-lines-limit'],
     ['jacoco/changed-branch-coverage', 'changed-branch-coverage'],
     ['dead-code/exports', 'exports'],
+    ['facts/doc-comment-content', 'doc-comment-content'],
     ['coding-standards/runtime-boundary/domain', 'runtime-boundary/domain'],
     ['pmd/UnusedPrivateField', 'pmd/UnusedPrivateField'],
     ['pmd/function-lines-limit', 'pmd/function-lines-limit'],
@@ -43,6 +44,14 @@ describe('toolPrefixError', () => {
     ['coverage-py/changed-branch-coverage', 'python', undefined],
     ['changed-branch-coverage', 'python', undefined],
     ['pmd/UnusedPrivateField', 'java', undefined],
+    ['facts/doc-comment-content', 'java', undefined],
+    ['facts/doc-comment-content', 'kotlin', undefined],
+    ['facts/doc-comment-content', 'python', undefined],
+    [
+      'facts/doc-comment-content',
+      'typescript',
+      'unknown tool prefix "facts" for doc-comment-content: use the rule bare',
+    ],
     [
       'bogus/function-parameters-limit',
       'typescript',

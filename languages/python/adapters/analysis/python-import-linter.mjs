@@ -1,25 +1,18 @@
 import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { importLinterCompleted, ingestImportLinter } from '../../ingest/import-linter.mjs';
+import { attempt } from '../project-tools/project-tool-layers.mjs';
+import { readImportLinterConfig } from './import-linter/import-linter-config.mjs';
 import { readImportsReport } from './python-coupling.mjs';
 
 const IMPORT_LINTER_REPORT = 'import-linter.txt';
 const IMPORT_LINTER_FAILED_RULE = 'import-linter-failed';
-const CONFIG_FILES = [
-  { file: '.importlinter', marker: /^\s*\[importlinter\]/m },
-  { file: 'setup.cfg', marker: /^\s*\[importlinter\]/m },
-  { file: 'tox.ini', marker: /^\s*\[importlinter\]/m },
-  { file: 'pyproject.toml', marker: /^\s*\[tool\.importlinter\]/m },
-];
 const OUTPUT_TAIL_LENGTH = 3000;
 const NOT_FOUND_HINT = ', or turn the contracts off with "python": { "importLinter": false }';
 
 export function hasImportLinterConfig(projectRoot) {
-  return CONFIG_FILES.some(
-    ({ file, marker }) =>
-      existsSync(path.join(projectRoot, file)) &&
-      marker.test(readFileSync(path.join(projectRoot, file), 'utf8')),
-  );
+  const { value, error } = attempt(() => readImportLinterConfig(projectRoot));
+  return error !== undefined || value !== undefined;
 }
 
 export function importLinterEnabled(projectRoot, setting) {

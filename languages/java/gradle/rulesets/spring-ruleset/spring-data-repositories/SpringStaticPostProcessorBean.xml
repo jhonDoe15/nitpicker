@@ -1,0 +1,18 @@
+  <rule name="SpringStaticPostProcessorBean" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
+        message="Make this @Bean method static and give it only Environment or ObjectProvider parameters. A post-processor or @ConfigurationPropertiesBinding bean is created before post-processing is ready, so an instance method creates its configuration class, and each parameter its bean, too early; those beans then miss proxies such as @Transactional and @Async.">
+    <priority>2</priority>
+    <properties><property name="xpath"><value><![CDATA[
+//MethodDeclaration[ModifierList/Annotation[pmd-java:typeIs('org.springframework.context.annotation.Bean')]]
+  [ClassType[pmd-java:typeIs('org.springframework.beans.factory.config.BeanPostProcessor')
+      or pmd-java:typeIs('org.springframework.beans.factory.config.BeanFactoryPostProcessor')]
+    or ModifierList/Annotation[pmd-java:typeIs('org.springframework.boot.context.properties.ConfigurationPropertiesBinding')]]
+  [not(pmd-java:modifiers() = 'static')
+    or FormalParameters/FormalParameter
+      [not(ModifierList/Annotation[pmd-java:typeIs('org.springframework.context.annotation.Lazy')
+        or pmd-java:typeIs('org.springframework.beans.factory.annotation.Value')])]
+      [not(*[pmd-java:typeIs('org.springframework.core.env.Environment')
+        or pmd-java:typeIs('org.springframework.beans.factory.ObjectProvider')
+        or pmd-java:typeIs('org.springframework.beans.factory.BeanFactory')
+        or pmd-java:typeIs('org.springframework.context.ApplicationContext')])]]
+]]></value></property></properties>
+  </rule>

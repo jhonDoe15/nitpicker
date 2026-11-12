@@ -1,0 +1,7 @@
+[
+  {
+    "tool": "python-rules",
+    "rule": "number-truthiness",
+    "mention": "count > 0"
+  }
+]

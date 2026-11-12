@@ -177,6 +177,9 @@ const attributesAndDeclarations = [
   ["const classes = 'hover:text-[#fff]';", '#fff'],
   ["const classes = 'bg-[#add]';", '#add'],
   ["const classes = 'bg-[rgb(0,0,0)]';", 'rgb(0,0,0)'],
+  ["const classes = 'bg-[#FFF]';", '#FFF'],
+  ["const classes = 'bg-[#AbCdEf80]';", '#AbCdEf80'],
+  ["const classes = 'bg-[RGB(0,0,0)]';", 'RGB(0,0,0)'],
   ["const classes = 'border-[rgba(0,0,0,.5)] p-2';", 'rgba(0,0,0,.5)'],
   ["const classes = <div className='bg-[#336699]' />;", '#336699'],
 ];

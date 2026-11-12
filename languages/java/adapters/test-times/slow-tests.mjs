@@ -3,7 +3,7 @@ import path from 'node:path';
 import { childrenNamed, parseXml } from '../../../../shared/ingest/common.mjs';
 import { inModule } from '../../builds/module-path.mjs';
 import { sourceLocator } from '../reporting/kotlin-reports.mjs';
-import { MESSAGES, RULE_IDS, renderMessage } from '../../../../shared/policy.mjs';
+import { MESSAGES, RULE_IDS, messageFields, renderMessage } from '../../../../shared/policy.mjs';
 import {
   shownSeconds,
   slowestRuns,
@@ -17,10 +17,12 @@ import {
   sourceOf,
 } from './integration-tests.mjs';
 import { inheritedMethod, superclassOf } from './inherited-tests.mjs';
+import { DECLARES_KOTEST_SPEC } from '../test-runs/unrun-tests.mjs';
 import { templateMethods, testMethod } from './test-methods.mjs';
 
 const SLOW_TEST_TOOL = 'test-runtime';
 export const TEST_RESULTS_DIRECTORY = 'test-results';
+const CONTAINERS_FILE = 'nitpicker-containers.json';
 const MOVE_ADVICE = {
   gradle:
     ', or if it is an integration test, name it *IT or move it to an integration test source set',
@@ -28,7 +30,7 @@ const MOVE_ADVICE = {
 };
 const MAVEN_TASKS = new Set(['surefire', 'failsafe']);
 
-const NOT_TIMED_OUTCOMES = ['failure', 'error', 'skipped'];
+const NOT_TIMED_OUTCOMES = ['failure', 'error', 'flakyFailure', 'flakyError', 'skipped'];
 
 export function testCasesOf(xml, task) {
   const root = parseXml(xml);
@@ -48,17 +50,40 @@ export function testCasesOf(xml, task) {
   );
 }
 
+function readContainers(directory) {
+  const file = path.join(directory, CONTAINERS_FILE);
+  const entries = existsSync(file) ? JSON.parse(readFileSync(file, 'utf8')) : [];
+  return new Map(
+    entries.map(({ className, name, containers }) => [`${className}#${name}`, containers]),
+  );
+}
+
 function readTestCases(reportRoot) {
   const resultsRoot = path.join(reportRoot, TEST_RESULTS_DIRECTORY);
   const tasks = existsSync(resultsRoot) ? readdirSync(resultsRoot).sort() : [];
-  return tasks.flatMap((task) =>
-    readdirSync(path.join(resultsRoot, task))
+  return tasks.flatMap((task) => {
+    const directory = path.join(resultsRoot, task);
+    const containers = readContainers(directory);
+    return readdirSync(directory)
       .filter((name) => name.endsWith('.xml'))
       .sort()
-      .flatMap((name) =>
-        testCasesOf(readFileSync(path.join(resultsRoot, task, name), 'utf8'), task),
-      ),
-  );
+      .flatMap((name) => testCasesOf(readFileSync(path.join(directory, name), 'utf8'), task))
+      .map((testCase) => {
+        const found = containers.get(`${testCase.className}#${testCase.name}`);
+        return found === undefined ? testCase : { ...testCase, containers: found };
+      });
+  });
+}
+
+function withContainerPath(testCase, locate, projectRoot) {
+  const { containers, ...plain } = testCase;
+  if (containers === undefined) {
+    return testCase;
+  }
+  const text = readOptional(projectRoot, sourceOf(locate, testCase.className));
+  return text !== undefined && DECLARES_KOTEST_SPEC.test(text)
+    ? { ...plain, name: [...containers, testCase.name].join('/') }
+    : plain;
 }
 
 function readOptional(root, relative) {
@@ -145,7 +170,7 @@ function slowTestFinding({ testCase, method, limit, integration, modulePath, ...
     path: source ?? '.',
     identity: `test:${testCase.className}#${testCase.name}`,
     ...(method === undefined ? {} : { location: { line: method.line } }),
-    message: renderMessage(MESSAGES.slowTest, {
+    ...messageFields(MESSAGES.slowTest, {
       name: `${testCase.className.split('.').pop().replaceAll('$', '.')} ${testCase.name}`,
       seconds: shownSeconds(testCase.seconds, limit),
       kind: integration ? 'an integration' : 'a unit',
@@ -167,7 +192,7 @@ export function readSlowTestFindings(options) {
   const budget = slowTestBudget(limits);
   const locate = sourceLocator(projectRoot, testRoots);
   return slowestRuns(
-    readTestCases(reportRoot),
+    readTestCases(reportRoot).map((testCase) => withContainerPath(testCase, locate, projectRoot)),
     (testCase) => `${testCase.className}#${testCase.name}`,
   ).flatMap((testCase) => {
     const source = sourceOf(locate, testCase.className);

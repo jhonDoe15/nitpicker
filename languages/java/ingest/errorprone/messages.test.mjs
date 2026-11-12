@@ -98,10 +98,24 @@ describe('errorProneMessage', () => {
   });
 });
 
+describe('SystemOut', () => {
+  it('names the allowed stream form and the one place that may use System.out', () => {
+    expect(errorProneMessage({ check: 'SystemOut', summary: 'Printing to standard output' })).toBe(
+      'Printing to standard output. Write through a logger, or take a PrintStream, Writer or Appendable ' +
+        'parameter and write to it; only static void main passes System.out or System.err, as in ' +
+        'new Cli(System.out).run(args) or System.out::print. Log an exception instead of calling printStackTrace(). ' +
+        'An exception fits only for a program without a main method.',
+    );
+  });
+});
+
 describe('the Java skill', () => {
   it('gives the null form the NullAway message gives', () => {
     const skill = readFileSync(
-      path.resolve(import.meta.dirname, '../../../../skills/nitpicker-java/SKILL.md'),
+      path.resolve(
+        import.meta.dirname,
+        '../../../../skills/nitpicker-java/rules/values-and-types.md',
+      ),
       'utf8',
     );
     const nullRule = /^- Null:[\s\S]*?(?=\n- |\n\n)/mu.exec(skill)?.[0].replaceAll(/\s+/gu, ' ');

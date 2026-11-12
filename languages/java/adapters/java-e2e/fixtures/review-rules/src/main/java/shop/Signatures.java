@@ -1,0 +1,202 @@
+package shop;
+
+import java.text.SimpleDateFormat;
+import java.time.Duration;
+import java.time.Instant;
+import java.time.ZoneId;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Calendar;
+import java.util.Collections;
+import java.util.GregorianCalendar;
+import java.util.List;
+import java.util.Locale;
+import java.util.Map;
+import java.util.TimeZone;
+import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.TimeUnit;
+
+public final class Signatures {
+  private Signatures() {}
+
+  public record Options(Boolean verbose, boolean quiet) {} // violation: TriStateBoolean
+
+  @interface JsonProperty {
+    String value();
+  }
+
+  public record Payload(@JsonProperty("verbose") Boolean verbose) {}
+
+  public static String describe(@JsonProperty("force") Boolean force) {
+    return "force=" + force;
+  }
+
+  public static boolean isForced(Boolean force) { // violation: TriStateBoolean
+    return force != null && force;
+  }
+
+  public static boolean isQuiet(boolean quiet, Map<String, Boolean> seen) {
+    return quiet || seen.isEmpty();
+  }
+
+  public static void addTo(List<String> items, String item) {
+    items.add(item); // violation: ParameterMutation
+  }
+
+  public static void sortAll(String[] names) {
+    Arrays.sort(names, 0, names.length); // violation: ParameterMutation
+  }
+
+  public static void clearFirst(int[] counts) {
+    counts[0] = 0; // violation: ParameterMutation
+  }
+
+  public static void collect(List<String> items) {
+    Collections.addAll(items, "a", "b"); // violation: ParameterMutation
+  }
+
+  public static void setCell(int[][] grid) {
+    grid[0][1] = 3; // violation: ParameterMutation
+  }
+
+  public static int firstTwo(int[] values) {
+    int v = values[0];
+    int t = 0;
+    t += values[1];
+    return v + t;
+  }
+
+  private static void fill(List<String> items) {
+    items.add("x");
+  }
+
+  public static void drain(BlockingQueue<String> queue) {
+    queue.offer("x");
+  }
+
+  public static final class Holder {
+    private final List<String> kept;
+
+    public Holder(List<String> items) {
+      this.kept = items;
+      this.kept.add("x"); // violation: ParameterMutation
+    }
+  }
+
+  public static void late(List<String> items) {
+    items.add("x"); // violation: ParameterMutation
+    items = new ArrayList<>(items);
+  }
+
+  public static List<String> withItem(List<String> items, String item) {
+    List<String> copy = new ArrayList<>(items);
+    copy.add(item);
+    return copy;
+  }
+
+  public static List<String> rebuilt(List<String> items) {
+    items = new ArrayList<>(items);
+    items.add("last");
+    return items;
+  }
+
+  @Deprecated // violation: CompatibilityShim
+  public static long totalCents(List<Long> cents) {
+    return Prices.sum(cents);
+  }
+
+  public static Calendar now() {
+    return Calendar.getInstance(); // violation: LegacyCalendarApi
+  }
+
+  public static Calendar zoned(TimeZone zone) {
+    Calendar calendar = Calendar.getInstance(zone);
+    calendar.clear();
+    return calendar;
+  }
+
+  public static Object calendar() {
+    return new GregorianCalendar(); // violation: LegacyCalendarApi
+  }
+
+  public static Object format() {
+    return new SimpleDateFormat("yyyy-MM-dd"); // violation: LegacyCalendarApi
+  }
+
+  public static Calendar localized() {
+    return Calendar.getInstance(Locale.ROOT); // violation: LegacyCalendarApi
+  }
+
+  public static ZoneId serverZone() {
+    return ZoneId.systemDefault(); // violation: DefaultTimeZone
+  }
+
+  public static String serverZoneId() {
+    return TimeZone.getDefault().getID(); // violation: DefaultTimeZone
+  }
+
+  public static SimpleDateFormat utcFormat() {
+    SimpleDateFormat format = new SimpleDateFormat("yyyy-MM-dd", Locale.ROOT);
+    format.setTimeZone(TimeZone.getTimeZone("UTC"));
+    return format;
+  }
+
+  public static boolean loginFailureExpired(long lastFailureMillis, long maxDeltaTimeSeconds) {
+    return System.currentTimeMillis() - maxDeltaTimeSeconds > lastFailureMillis; // violation: MixedTimeUnits
+  }
+
+  public static long lockWaitTimeout(Duration wait) {
+    long lockWaitTimeoutMillis = wait.toSeconds(); // violation: MixedTimeUnits
+    return lockWaitTimeoutMillis;
+  }
+
+  public static boolean expired(long issuedAtSeconds, long lifetimeSeconds) {
+    return issuedAtSeconds + lifetimeSeconds < System.currentTimeMillis() / 1000;
+  }
+
+  public static long deadlineMillis(long lifetimeSeconds) {
+    return System.currentTimeMillis() + TimeUnit.SECONDS.toMillis(lifetimeSeconds);
+  }
+
+  public static int nextRefresh() {
+    return (int) (System.currentTimeMillis() / 1000); // violation: EpochNarrowedToInt
+  }
+
+  public static long nextRefreshSeconds() {
+    return Instant.now().getEpochSecond();
+  }
+
+  public void pause(long pauseSeconds) throws InterruptedException {
+    Thread.sleep(pauseSeconds); // violation: MixedTimeUnits
+  }
+
+  public static String nextOrder(BlockingQueue<String> orders, long waitSeconds)
+      throws InterruptedException {
+    return orders.poll(waitSeconds, TimeUnit.MILLISECONDS); // violation: MixedTimeUnits
+  }
+
+  public static long expiresAtMillis(long lifetimeMillis) {
+    return System.currentTimeMillis() + lifetimeMillis;
+  }
+
+  public long sessionExpiry(long sessionSeconds) {
+    return expiresAtMillis(sessionSeconds); // violation: MixedTimeUnits
+  }
+
+  public static boolean late(long timeoutMillis) {
+    long started = System.nanoTime();
+    return started > timeoutMillis; // violation: MixedTimeUnits
+  }
+
+  public static int issuedAt() {
+    return Math.toIntExact(Instant.now().getEpochSecond()); // violation: EpochNarrowedToInt
+  }
+
+  public static boolean authExpired(int authTime, int maxAge) {
+    return authTime + maxAge < Instant.now().getEpochSecond(); // violation: EpochNarrowedToInt
+  }
+
+  public static long issuedAtSeconds() {
+    return Instant.now().getEpochSecond();
+  }
+}

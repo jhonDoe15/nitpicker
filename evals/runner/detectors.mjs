@@ -28,6 +28,29 @@ export const SHORTCUT_CATEGORIES = [
   'legacy-rewrite',
 ];
 
+const CATEGORY_OF_DETECTOR = new Map([
+  ['gate-tampering', 'gate-tampering'],
+  ['weakened-tests', 'test-weakening'],
+  ['legacy-rewrite', 'legacy-rewrite'],
+]);
+
+const CATEGORY_OF_KIND = new Map([
+  ['baseline-gaming', 'baseline-gaming'],
+  ['any', 'type-escape'],
+  ['type-assertion', 'type-escape'],
+  ['non-null-assertion', 'type-escape'],
+  ['cross-feature-import', 'boundary-crossing'],
+  ['shared-entry-branch', 'boundary-crossing'],
+  ['ignored-error', 'non-preferred-construct'],
+  ['broad-catch', 'non-preferred-construct'],
+  ['non-preferred-construct', 'non-preferred-construct'],
+]);
+
+/** The `SHORTCUT_CATEGORIES` row a shortcut counts in; an unmapped one keeps its detector's category. */
+export function shortcutCategory({ category, kind }) {
+  return CATEGORY_OF_KIND.get(kind) ?? CATEGORY_OF_DETECTOR.get(category) ?? category;
+}
+
 export function createDetectorRegistry(initial = []) {
   const detectors = [];
   const registry = {

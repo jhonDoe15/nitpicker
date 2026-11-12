@@ -60,6 +60,17 @@ export const testFailureMessageCases = [
     allowed: 'number between 1 and 10000 ms written in this file',
   }),
   testCase({
+    name: 'test retry names fixing the flaky cause',
+    banned: "it('x', { retry: 2 }, () => {});",
+    allowed: 'Fix the cause, such as waiting on the condition instead of a delay',
+  }),
+  testCase({
+    name: 'copied production constant names using the constant',
+    banned:
+      "import { JAVASCRIPT_PRESET_FILE } from '../../languages/typescript/preset/checks/policy-files.mjs';\nit('x', () => { expect(read()).toBe('languages/javascript/preset/javascript-preset.mjs'); });",
+    allowed: 'Use JAVASCRIPT_PRESET_FILE',
+  }),
+  testCase({
     name: 'first-test-charged setup names beforeAll and the exception path',
     banned:
       "let built;\nasync function build() { built ??= await compile(); return built; }\nit('x', async () => { await build(); });",
@@ -100,6 +111,76 @@ export const testFailureMessageCases = [
     filename: 'src/service.ts',
     banned: "import { z } from 'zod';\nexport const schema = z.object({ email: z.any() });",
     allowed: 'z.email()',
+  },
+  ...[
+    ['props', 'export type PanelProps = { tag?: string; tags?: string[] };'],
+    ['parameters', 'export function send(recipient?: string, recipients?: string[]) {}'],
+    ['options', 'export function send(options: { recipient?: string; recipients?: string[] }) {}'],
+    [
+      'schema entries',
+      "import { z } from 'zod';\nexport const Query = z.object({ tag: z.string().optional(), tags: z.array(z.string()).optional() });",
+    ],
+  ].map(([kind, banned]) => ({
+    name: `singular and plural ${kind} name the one-element array`,
+    config: productionRulesConfig,
+    filename: 'src/service.ts',
+    banned,
+    allowed: 'pass a single item as a one-element array',
+  })),
+  {
+    name: 'v.any() object field names the valibot pipe that validates it',
+    config: productionRulesConfig,
+    filename: 'src/service.ts',
+    banned: "import * as v from 'valibot';\nexport const schema = v.object({ email: v.any() });",
+    allowed: 'v.pipe(v.string(), v.email())',
+  },
+  {
+    name: 'Joi .unknown() names Joi.object as it is',
+    config: productionRulesConfig,
+    filename: 'src/service.ts',
+    banned:
+      "import Joi from 'joi';\nexport const schema = Joi.object({ a: Joi.string() }).unknown();",
+    allowed: 'Joi.object({...}) as it is, which rejects unknown keys',
+  },
+  {
+    name: 'additionalProperties: true in an ajv schema names additionalProperties: false',
+    config: productionRulesConfig,
+    filename: 'src/service.ts',
+    banned:
+      "import Ajv from 'ajv';\nconst ajv = new Ajv();\nexport const check = ajv.compile({ type: 'object', additionalProperties: true });",
+    allowed: 'additionalProperties: false, which rejects unknown keys',
+  },
+  {
+    name: 'eager TypeORM relation names loading it per query',
+    config: productionRulesConfig,
+    filename: 'src/orders/order.entity.ts',
+    banned:
+      "import { ManyToOne } from 'typeorm';\nexport class Order { @ManyToOne(() => Customer, { eager: true }) customer: Customer; }",
+    allowed: 'relations: { customer: true }',
+  },
+  {
+    name: 'unordered page names the order on a unique key',
+    config: productionRulesConfig,
+    filename: 'src/assets/asset.repository.ts',
+    banned:
+      "import { Kysely } from 'kysely';\nexport const list = (db: Kysely<DB>) => db.selectFrom('asset').selectAll().limit(20).execute();",
+    allowed: ".orderBy('createdAt', 'desc').orderBy('id')",
+  },
+  {
+    name: 'runtime array in an in list names the any() parameter',
+    config: productionRulesConfig,
+    filename: 'src/assets/asset.repository.ts',
+    banned:
+      "import { Kysely } from 'kysely';\nexport const byIds = (db: Kysely<DB>, ids: string[]) => db.selectFrom('asset').selectAll().where('id', 'in', ids).execute();",
+    allowed: '::uuid[])',
+  },
+  {
+    name: 'many-to-many cascade remove names the persist-only cascade',
+    config: productionRulesConfig,
+    filename: 'src/posts/post.entity.ts',
+    banned:
+      "import { ManyToMany } from 'typeorm';\nexport class Post { @ManyToMany(() => Tag, { cascade: true }) tags: Tag[]; }",
+    allowed: "Cascade only ['insert', 'update']",
   },
   {
     name: 'partial output assertion names toEqual',

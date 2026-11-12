@@ -16,14 +16,170 @@ npm install --save-dev nitpicker vitest @vitest/coverage-v8 typescript @types/no
 with `npx nitpicker`, `pnpm exec nitpicker`, `yarn nitpicker` or `bunx nitpicker`.
 
 Requirements: Node.js 22.14 or newer (22.19 or newer for a project on TypeScript 7, see
-[Type check engine](#type-check-engine)), a Git repository, and a project whose dependencies are
+[Type check engine](#type-check-engine); on an older Node.js `nitpicker` stops with exit code 2 and
+names the version it needs), a Git repository, and a project whose dependencies are
 installed in `node_modules` by npm, pnpm, Yarn (Yarn Plug'n'Play is not supported: set
 `nodeLinker: node-modules`) or Bun. The base's own install supports all four managers; nitpicker
 itself is tested end to end with npm projects. nitpicker brings its own pinned ESLint, Prettier, dependency-cruiser, knip, jscpd,
 Stryker and CRAP tooling and loads them from its own package, so neither side of the comparison can
 choose them. `vitest` and `@vitest/coverage-v8` (4.1.11 or newer, or 5) and `typescript` come from
 your project; if one is missing or incompatible, the tool that needs it fails and the report shows a
-tool error.
+tool error. On Node.js 22 with its bundled npm 10, see [npm 10 and Vitest 4.1](#npm-10-and-vitest-41).
+
+### npm 10 and Vitest 4.1
+
+Node.js 22 ships with npm 10, and npm 10 cannot resolve the peers of Vitest 4.1 (every 4.1.x
+release, with or without `@vitest/coverage-v8`) when there is no lockfile to start from:
+
+```text
+npm error Cannot read properties of null (reading 'edgesOut')
+```
+
+Nothing is installed, so a later `npx nitpicker` fails with "Required tool vitest is not installed",
+followed by this hint. Any one of these avoids it:
+
+- Install with npm 11: `npx npm@11 install --save-dev nitpicker vitest @vitest/coverage-v8`, or
+  `npm install -g npm@11` once. The lockfile it writes then installs with npm 10 too, so `npm ci` in
+  CI on Node.js 22 works.
+- Use Vitest 5 (`vitest@5 @vitest/coverage-v8@5`), which npm 10 installs.
+- Add `--legacy-peer-deps` to the npm 10 install.
+
+Vitest 4.0 does not hit it, but nitpicker needs 4.1.11 or newer.
+
+### Set up with `nitpicker init`
+
+`npx nitpicker init` sets a project up for its language. Run it in the project's folder: the one
+with the `package.json`, `pom.xml`, `build.gradle(.kts)` or `pyproject.toml`, inside a Git
+repository. It asks nothing, so a coding agent can run it, and it prints what it did and what is
+left for you:
+
+1. **Detects the project.** The preset comes from the sources under the source roots (`src`, or
+   `layout.sourceRoots` of an existing `nitpicker.config.json`) and the project files. A folder
+   with TypeScript or JavaScript sources is a script project when it has a `package.json` or no
+   other project file: TypeScript (also React, which the TypeScript preset covers) when it has a
+   `tsconfig.json` or any `.ts`, `.tsx`, `.mts`, `.cts` or `.jsx` file (or a `.jsx` or `.tsx` file
+   under the test roots, which the JavaScript preset refuses), and JavaScript otherwise.
+   Without such sources, or when a `pom.xml`, Gradle build or Python file sits next to them and
+   there is no `package.json`, it is Python (`pyproject.toml`, `setup.py`, `setup.cfg`, `Pipfile`
+   or `requirements.txt`), Java (Gradle or Maven) or Kotlin (Gradle, when there are `.kt` files and
+   they outnumber the `.java` ones or a build script applies a Kotlin plugin the kotlin preset runs on:
+   `kotlin("jvm")`, `kotlin("multiplatform")`, `kotlin("android")`, `id("org.jetbrains.kotlin.jvm")` (or
+   `.multiplatform`, `.android`), `apply plugin: 'kotlin'` (or `'kotlin-multiplatform'`, `'kotlin-android'`),
+   or a version catalog alias such as `alias(libs.plugins.kotlin.jvm)`, looked up in
+   `gradle/libs.versions.toml` and the catalogs `settings.gradle(.kts)` declares, also inside the
+   convention plugins of `buildSrc` or `build-logic` (`.gradle.kts` and `.kt`); a plugin declared
+   with `apply false` does not count, nor do `.kts` build
+   scripts and the files of `buildSrc` and `build-logic` as sources). A Gradle project with fewer `.kt` than `.java` files and no Kotlin plugin
+   in its build scripts gets the `java` preset with a note. The Kotlin preset needs Gradle today: a
+   Maven project with Kotlin and Java sources gets the `java` preset with a note that only its Java
+   sources are checked, and one with Kotlin sources only stops with exit 2. It also reads the package manager the way the gate does (the
+   `packageManager` field or the lockfile of the nearest folder, up to the repository root, that
+   has a lockfile; without a lockfile, the nearest `packageManager` field; npm without either; a
+   lockfile above the project counts only when the project is a member of that root's
+   workspaces), and stops with exit 2 for Yarn Plug'n'Play (Yarn 2 or newer without
+   `nodeLinker: node-modules` in `.yarnrc.yml`), which nitpicker cannot read, the test runner (Vitest, Jest, `node:test` or Mocha, for both presets, the way
+   [the strict preset](typescript-strict-preset.md) finds it) and, for Python, the project tool
+   (uv, poetry, pipenv, pdm, hatch, conda, or pip for a plain or `.venv` project).
+2. **Prints the install command** for the project's package manager with only the peers that are
+   missing: `nitpicker` (pinned to the version that runs init), `typescript`, `@types/node` and the test runner's packages (`vitest` and
+   `@vitest/coverage-v8` pinned to the installed Vitest, `jest` or `mocha`; `node:test` needs none).
+   At a workspace root it adds the flag that pnpm (`-w`) and Yarn 1 (`-W`) need there. A Python
+   project gets `coverage`, its type checker, `pytest`, `mutmut` and a runner plugin if its runner
+   needs one (`pytest-django`, `nose2`), added with `uv add --dev`, `poetry add --group dev`,
+   `pipenv install --dev`, `pdm add -dG dev`, `hatch run python -m pip install` (into the default
+   hatch environment, which nitpicker uses; list them under `[tool.hatch.envs.default]` to keep
+   them), `conda install --channel conda-forge` (in the project's active environment) or
+   `python -m pip install`. A package counts as present when the project declares it (in
+   `package.json`, `pyproject.toml`, `setup.cfg`, `setup.py`, `Pipfile`, `hatch.toml`,
+   `environment.yml` or a requirements file) or has it installed (`node_modules`, `.venv`); one
+   that only `.venv` holds is named, so you can declare it. `typescript` counts from 5.7 on,
+   TypeScript 7 included (the installed version, else the declared range); an older one is asked
+   for again. A project on TypeScript 7 needs Node.js 22.19 or newer, so on an older Node.js init
+   stops with exit 2 and names the version, and asks for `typescript@^6` instead of `typescript`. Java and Kotlin projects need Java 21 and nothing else.
+3. **Writes `nitpicker.config.json`** with the preset only, `{ "preset": "python" }`, formatted as
+   Prettier formats it. Everything else (React, the test runner, the formatter, the build tool) is
+   detected at run time, so init never writes it.
+4. **Prints the skill to install**, from the same version as the gate. With nitpicker in the
+   project's `node_modules` (or a workspace root's), it installs from that package:
+   `npx skills add ./node_modules/nitpicker --skill nitpicker-typescript`. Otherwise it installs
+   from the release tag of the running version, for example
+   `npx skills add jhonDoe15/nitpicker#v0.1.0 --skill nitpicker-python` (`nitpicker-kotlin` and,
+   with Java sources, `nitpicker-java`). Each skill's opening paragraph names the version it was
+   written for, so an agent can see a mismatch with `npx nitpicker --version`.
+5. **Offers the agent guidance and the CI job**, and does them only when asked.
+
+```sh
+npx nitpicker init                    # config, install command, skill
+npx nitpicker init --agents-md        # also append the agent snippet to AGENTS.md
+npx nitpicker init --ci github        # also write the GitHub Actions workflow
+```
+
+`--agents-md` appends the [agent guidance snippet](agents-snippet.md) to `AGENTS.md` (to
+`CLAUDE.md` when only that file exists, and it creates `AGENTS.md` when neither does), keeping the
+file's line endings. It adds the section once: running it again, or with the snippet already in
+either file, changes nothing.
+
+`--ci github` writes a workflow at the repository root from the template
+`core/init/templates/github-workflow.yml`: `.github/workflows/nitpicker.yml` for a project at the
+root, and `.github/workflows/nitpicker-<path>.yml` with a `working-directory` default for a project
+in a subfolder, so two projects of one repository get two workflows. The path keeps a folder name
+of lowercase letters, digits and single `-`, `_` or `.` as it is and joins folders with `--`
+(`apps/web` gives `nitpicker-apps--web.yml`); any other folder name is lowercased with a short
+hash of the original added (`Web App` gives `web-app-60d39972`), so no two folders share a file. It runs on pull requests, checks out with `fetch-depth: 0`, sets up Node.js 24 (plus
+Java 21 or Python for those presets: from `.python-version`, else the lower bound of
+`requires-python` or the poetry `python` dependency, raised to 3.10 when the range allows it, else
+3.13), installs the dependencies and runs nitpicker through the
+[GitHub Action](ci.md#with-the-action) at the tag of the running version
+(`jhonDoe15/nitpicker@v<version>`), with `node-version: ''` and `install-command: none` so it keeps
+the Node.js and dependencies of the steps before it, `working-directory` for a project in a
+subfolder, and `package: nitpicker@<version>` for a project without a `package.json`. Next to it,
+init writes `.github/workflows/nitpicker-policy-approval.yml`, once per repository, which lets a
+person accept a policy loosening with the `accept-policy-change` label (see
+[Accepting a policy change with a label](ci.md#accepting-a-policy-change-with-a-label)).
+The action adds the findings cache, the job summary and annotations. Python 3.10 is the oldest one the python-rules,
+mutmut and dependency checks run on; when `.python-version` or a range that leaves 3.10 out asks
+for an older one, init prints a note that those checks report that they were skipped:
+
+- **Node.js.** `npm ci`, `pnpm install --frozen-lockfile`, `yarn install --frozen-lockfile` (Yarn 1),
+  `yarn install --immutable` (Yarn 2 or newer) or `bun install --frozen-lockfile` with a lockfile,
+  and a plain install without one (`yarn install --no-immutable` for Yarn 2 or newer, which is
+  immutable on CI by default). A `corepack enable` step comes first for Yarn 2 or newer and for any
+  project whose `package.json`, or one above it up to the repository root, declares
+  `packageManager`. pnpm is set up with `pnpm/action-setup`: from the declaring `package.json`
+  (`package_json_file` when that file is not at the repository root), else at the major version of
+  the lockfile's `lockfileVersion` (`9.0`: 10, `6.x`: 8, `5.4`: 7), else 10.
+- **Python.** uv, poetry, pipenv, pdm and hatch sync with their own tool (`uv sync`,
+  `poetry install`, `pipenv install --dev`, `pdm install`, `hatch env create`) and then install
+  every peer into that environment (`uv pip install`, or `python -m pip install` through
+  `poetry run`, `pipenv run`, `pdm run` or `hatch run`), which leaves a declared one as it is, so
+  the workflow stays the same after you declare them. A conda project gets `conda-incubator/setup-miniconda` instead of `setup-python`, which
+  creates the environment from its `environment.yml` under the file's `name:` (`nitpicker` without
+  one); the run steps use the login shell `bash -el {0}`, so that environment is active, and
+  `conda install --yes --channel conda-forge` installs every peer into it. pip
+  projects install the root `requirements*.txt` files, the project itself when `pyproject.toml`
+  has a `[project]` or `[build-system]` table (or there is a `setup.py` or `setup.cfg`), and every
+  peer, with pip into the runner's Python.
+- **Java and Kotlin.** The build runs as it always does.
+
+init never overwrites a file, and never writes through a symbolic link that leads outside the
+project (or the repository, for the workflow); it stops with exit 2 and names the link. It also
+stops with exit 2, before writing anything, when a folder stands where it writes a file (an
+`AGENTS.md` folder) or a file stands where it needs a folder (a `.github` file). For an
+existing file that needs a change it prints a unified diff from your file to what it would write
+and leaves the file alone, with three lines of context around each change; line endings (CRLF or
+LF) and a missing final newline do not count as a change. A rerun offers `--agents-md` and
+`--ci github` only while their file is not there yet.
+`nitpicker.config.json` is up to date when it sets the detected preset, whatever else it holds, or
+sets no preset on a TypeScript project, whose preset is the default. Otherwise the diff changes or
+adds only the `"preset"` line and keeps every other key.
+
+init has exit codes of its own:
+
+| Code | Meaning                                                                                                                                                                                                                                                           |
+| ---- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 0    | Everything it was asked to write is in place: created, or already set up.                                                                                                                                                                                         |
+| 1    | An existing `nitpicker.config.json` or workflow needs a change, shown as a diff. The rest of the setup still happens.                                                                                                                                             |
+| 2    | It cannot run: an unknown argument, Node.js older than the `engines` range of the package (22.14), no Git repository, no project in the folder, Yarn Plug'n'Play, Kotlin on Maven without Java sources, or a link, folder or file in the way of a file it writes. |
 
 ### From a GitHub release
 
@@ -33,7 +189,7 @@ is not on npm. Keep the tarball in your repository, so teammates and CI install 
 without access to the release:
 
 ```sh
-VERSION=0.1.0-rc.1
+VERSION=0.1.0-rc.2
 gh release download "v$VERSION" --repo jhonDoe15/nitpicker --pattern 'nitpicker-*.tgz' --pattern SHA256SUMS --dir vendor
 (cd vendor && shasum -a 256 -c SHA256SUMS && rm SHA256SUMS)
 npm install --save-dev "./vendor/nitpicker-$VERSION.tgz" vitest @vitest/coverage-v8 typescript @types/node
@@ -54,12 +210,46 @@ as the [README](../README.md) describes.
 npx nitpicker
 ```
 
-Run it from anywhere inside your project. It needs no configuration.
+Run it from anywhere inside your project. A TypeScript project needs no configuration; for any
+other language, `npx nitpicker init` writes the one line it needs (see
+[Set up with `nitpicker init`](#set-up-with-nitpicker-init)).
 
 The project is the nearest directory, up to the repository root, that holds a `package.json` or a
 `nitpicker.config.json`. A repository with several projects, for example a TypeScript `web/` and a
 Java `service/`, runs nitpicker once in each directory, and each reads its own
 `nitpicker.config.json`. A Java project needs only that config file, no `package.json`.
+
+### One file or folder
+
+Pass files or folders to look at only part of the project:
+
+```sh
+npx nitpicker src/orders/order.ts    # gate your change to one file
+npx nitpicker --all src/orders       # every finding in one folder
+```
+
+Paths are read relative to the current folder, and the project is the one that holds the first path,
+so `npx nitpicker services/orders/src/main/java/Order.java` works from the repository top. All paths
+must be in that project. The analyzers still run over the whole project, so cross-file rules (dead
+code, unused exports, coupling, the type check, architecture) keep their full context. Mutation, the
+slowest step, is the exception: on the head side it mutates only the source files under the paths
+(Stryker's `mutate`; PIT's `--targetClasses`, listing the classes compiled from those files, nested
+ones included; mutmut's `do_not_mutate` for every other Python file), while every test still runs
+against each mutant, so a mutant can be killed by any test. In a comparison it narrows the changed
+lines mutation already follows, and the base side is unchanged. Only the findings in files under the paths fail the run and
+appear in the console and the reports. Tool errors and `nitpicker-config/policy-loosened` findings
+(a loosened config changes the whole gate) still count wherever they come from. Findings about the
+whole project (path `.`) count only when a path is the project folder itself. The summary names the
+scope and how many findings it left out, for example `Scope: src/orders (12 findings outside it not
+shown)`, and `summary.json` records it as `scope: { "paths": [...], "outside": <count> }`; `outside`
+counts the new findings of a comparison, or all findings with `--all`. The per-tool new, resolved,
+unchanged and changed-metric counts are narrowed too, while the per-tool base and head counts stay
+those of the whole analysis. The GitHub step summary names the scope as well. With `--fix`, only the
+changed files under the paths are fixed. A path that does not exist, holds no tracked or untracked
+file, or leads (through a link) outside the repository or into `.git`, a path outside the project, a
+path in another project and an empty path are errors. Paths cannot be combined with sharding. A
+folder named like a subcommand (`base`, `cache`, `aggregate`, `explain`, `rules`, `hygiene`,
+`history`) needs a `./` in front.
 
 Using a coding agent? Copy the [agent guidance snippet](agents-snippet.md) into your
 `AGENTS.md`.
@@ -70,6 +260,10 @@ Using a coding agent? Copy the [agent guidance snippet](agents-snippet.md) into 
 - **Head**: your checkout, including committed, staged, unstaged and untracked changes (ignored
   files are excluded). Your index, branches and files are not touched. In CI the checkout is clean,
   so the same command checks the committed `HEAD`.
+- **No changes**: when the head has the same files as the merge base (before your first edit, after
+  `git stash`, or after you undo a change), no finding can be new, so no analyzer runs. The run
+  prints `No changes since <base> (<merge base>); nothing to check.`, exits 0, and writes the
+  reports with zero counts and `"noChanges": true` in `summary.json`.
 - **Result**: every finding on both sides is fingerprinted. Only findings that are new on the head
   side and enforceable fail the run. Resolved and unchanged findings are reported but never fail.
   Descriptive findings and metric changes are reported only.
@@ -116,9 +310,8 @@ SARIF file) and the run is judged as follows.
   are tool errors on the base too: `tests-not-run` for TypeScript and Python, `gradle-failure` or
   `maven-failure` for Java and Kotlin. A test that fails by timing out is an ordinary failing test
   when the runner names it, so a flaky base counts as red.
-- A red head still fails. Its tool error is `tests-failed` for TypeScript and Python and
-  `gradle-failure` or `maven-failure` for Java and Kotlin. When base and head are both red, both
-  are listed as tool errors.
+- A red head still fails, with exit 1. Its tool error is `tests-failed` in every preset. When base
+  and head are both red, both are listed as tool errors.
 - A base that does not type-check (`typecheck-failed-skipped`) or whose build fails for any other
   reason is still a tool error.
 - Java and Kotlin Gradle builds run the base with `--continue`, so every module's tests run, and
@@ -130,14 +323,29 @@ SARIF file) and the run is judged as follows.
 The base ref is the first match of:
 
 1. `--base <ref>`
-2. the pull request target branch from CI (`CHANGE_TARGET`, `GITHUB_BASE_REF` or
-   `CI_MERGE_REQUEST_TARGET_BRANCH_NAME`)
+2. the pull request target branch from CI (`CHANGE_TARGET`, `GITHUB_BASE_REF`,
+   `CI_MERGE_REQUEST_TARGET_BRANCH_NAME`, `SYSTEM_PULLREQUEST_TARGETBRANCH`,
+   `BITBUCKET_PR_DESTINATION_BRANCH` or `BUILDKITE_PULL_REQUEST_BASE_BRANCH`)
 3. `base` in `nitpicker.config.json` (not `HEAD`, the branch you are on, or its commit)
 4. the remote's default branch (`refs/remotes/<remote>/HEAD`, using `upstream` if it exists and
    `origin` otherwise)
 5. `origin/main`, then `origin/master`
+6. the branch's upstream (`@{upstream}`), unless it is the same branch on a remote, such as
+   `origin/feature` for `feature`
+7. a local `main`, then `master`, unless you are on one of them
 
-In CI, fetch enough history to contain the merge base (for example `fetch-depth: 0`).
+The `Base:` line names the source (`argument`, `ci`, `config`, `remote-head`, `fallback`,
+`upstream` or `local-branch`), and `nitpicker base` prints the ref it would use. So a new repository
+without a remote compares a feature branch with its local `main`. When nothing matches, the error
+lists what was missing and the ways out: `--base <ref>`, `"base"` in `nitpicker.config.json`, or
+`nitpicker --all` to check the whole project. A repository with no commits needs one first.
+
+In CI, fetch enough history to contain the merge base (for example `fetch-depth: 0`); a shallow
+clone fails with [no merge base](troubleshooting.md#no-merge-base). When none of the refs above
+exists, the run stops with [no base could be determined](troubleshooting.md#no-base-could-be-determined),
+and a named ref the clone lacks with [base ref not found](troubleshooting.md#base-ref-not-found).
+Recipes for GitHub Actions (with a composite action), GitLab CI and Jenkins are in
+[nitpicker in CI](ci.md).
 
 **Dependencies of the base.** The base is checked out in a temporary worktree. The package
 manager's folder is the nearest folder from the project up to the repository root that holds a
@@ -170,7 +378,127 @@ error that names how to get it (`corepack enable pnpm` or `npm install --global 
 `npm install --global bun`; Node.js no longer bundles Corepack from version 25, so install it
 first there). A lockfile that does not match its `package.json` fails the frozen install and the
 tool error carries the manager's message. Installing the base is not supported on native Windows
-(run nitpicker in WSL).
+(run nitpicker in WSL); [compatibility](compatibility.md#operating-systems) lists the other
+Windows limits.
+
+Local packages (`file:`, `link:` and `portal:` dependencies) resolve against the temporary
+worktree, so a package outside the repository (`file:../shared-lib`, `file:../nitpicker-0.1.0.tgz`)
+or one that is not committed would be missing there. Before the install, nitpicker copies each such
+package from your working tree to the matching place next to the worktree, leaving out its
+`node_modules` and `.git`, and removes the copies afterwards. The copy is the package as it is now,
+not as it was at the base. A package that is not in your working tree either is named in the tool
+error. On Node.js 22, npm 10 can stop with `Cannot read properties of null (reading 'edgesOut')`
+while it resolves the optional peer dependencies of Vitest 4; the tool error then says to update npm
+(`npm install --global npm@11`; see [npm 10 and Vitest 4.1](#npm-10-and-vitest-41)).
+
+### Console summary
+
+A comparison run prints a short summary. New violations are grouped by rule, in the order to fix
+them: format, type check, lint, structure, then tests, coverage, CRAP and mutation. Each rule prints
+its advice once, then one line per place (`path:line:col` and only the part of the message that
+differs between findings), then once the `exceptions` entry that accepts it, with `<path>` (or
+`<function>`) where the findings of the rule differ; a line then names its own function, for example
+`(function price)`. A count per area follows the headline:
+
+```text
+Quality gate summary
+✖ 5 new enforceable violations
+  by area: lint 4 · coverage 1
+  eslint-lint/nitpicker/no-magic-numbers: Name it with a module-level constant.
+    src/main/pricing.ts:4:20 No magic number: 3.
+    src/main/pricing.ts:5:24 No magic number: 4.
+    If this is intended, add {"rule":"nitpicker/no-magic-numbers","paths":["src/main/pricing.ts"],"reason":"..."} to "exceptions" in nitpicker.config.json.
+  eslint-lint/@typescript-eslint/no-unsafe-member-access: Have adapters/ parse it into a typed object.
+    src/main/pricing.ts:4:14, 6:23 Unsafe member access .qty on an `any` value.
+    If this is intended, add {"rule":"@typescript-eslint/no-unsafe-member-access","paths":["src/main/pricing.ts"],"reason":"..."} to "exceptions" in nitpicker.config.json.
+  coverage/changed-branch-coverage: Branch coverage is 0.00%; minimum is 95%. Test it, or remove it if it can't happen.
+    src/main/pricing.ts:4 Not taken: the true arm of the if at 4:5.
+    If this is intended, add {"rule":"changed-branch-coverage","paths":["src/main/pricing.ts"],"function":"price","reason":"..."} to "exceptions" in nitpicker.config.json.
+Full diagnostics: reports/quality/diff/report.txt
+```
+
+Findings that are allowed because the base already had them ("still over a limit", "existing lint
+findings in edited code") are listed after the violations, at most 10 of each, without their
+exception entries. `--details` prints every finding with its full message instead, the layout
+`report.txt`, the JSON reports and SARIF always keep. `--all` prints `report.txt` itself, so
+`--details` changes nothing there.
+
+### JSON output
+
+`--json` prints one JSON object on stdout instead of the console summary, for agents and scripts.
+Progress, warnings and GitHub annotations go to stderr, the reports are written as usual, and the
+exit codes stay the same. It works for comparison runs and `--all`. The object is printed on one
+line; here it is spread out:
+
+```json
+{
+  "mode": "diff",
+  "status": "failed",
+  "exitCode": 1,
+  "base": { "ref": "origin/main", "source": "remote-head" },
+  "counts": { "failing": 2, "byArea": { "lint": 1, "coverage": 1 }, "reportOnly": 0, "held": 3 },
+  "findings": [
+    {
+      "tool": "eslint-lint",
+      "rule": "nitpicker/no-magic-numbers",
+      "path": "src/main/pricing.ts",
+      "line": 4,
+      "column": 20,
+      "message": "No magic number: 3. Name it with a module-level constant.",
+      "allowedForm": "Name it with a module-level constant.",
+      "exception": {
+        "rule": "nitpicker/no-magic-numbers",
+        "paths": ["src/main/pricing.ts"],
+        "reason": "..."
+      },
+      "helpUri": "https://github.com/jhonDoe15/nitpicker/blob/latest/docs/rules/typescript-nitpicker.md#eslint-nitpicker-no-magic-numbers"
+    },
+    {
+      "tool": "coverage",
+      "rule": "changed-branch-coverage",
+      "path": "src/main/pricing.ts",
+      "line": 4,
+      "message": "Branch coverage is 0.00%; minimum is 95%. Test it, or remove it if it can't happen. Not taken: the true arm of the if at 4:5.",
+      "allowedForm": "Test it, or remove it if it can't happen.",
+      "exception": {
+        "rule": "changed-branch-coverage",
+        "paths": ["src/main/pricing.ts"],
+        "function": "price",
+        "reason": "..."
+      },
+      "helpUri": "https://github.com/jhonDoe15/nitpicker/blob/latest/docs/rules/checks.md#coverage-changed-branch-coverage"
+    }
+  ],
+  "toolErrors": [],
+  "reports": "/work/shop/reports/quality/diff"
+}
+```
+
+- `status` is `passed` (exit 0), `failed` (exit 1: failing findings or failing tests) or `error`
+  (exit 2: a tool error left the run incomplete). `exitCode` is the exit code of the process, 0
+  with `--defer-exit`.
+- `findings` lists the failing findings only, each message on one line. When `exception` carries
+  the entry that accepts a finding, the message leaves out the sentence that names it;
+  `exceptionList` is set when the entry goes to `python.exceptions`. `line`, `column`,
+  `allowedForm`, `exception` and `helpUri` are left out when the finding has none. Mutants fold as
+  in the console summary: one entry per function for the mutants no test runs and at most three
+  surviving ones, each folded entry marked `"folded": true`, while `counts.failing` counts every
+  mutant.
+- `counts.byArea` counts the failing findings per area, in the order to fix them. Report-only and
+  held findings are counts only; the files in `reports` list them.
+- `toolErrors` gives each error's `tool`, `snapshot` (`head` or `base`), `rule` when it has one
+  (such as failing tests) and `headline`, its first line.
+- A comparison run has `base`, and `"noChanges": true` when nothing changed since the merge base.
+  `--all` has no `base` and no `counts.held`. A run narrowed with `--analyzer` adds
+  `partialRun: { ran, skipped }`.
+- A run that stops before it has a result, such as on an unknown argument, prints
+  `{"status":"error","exitCode":2,"error":"..."}`.
+- `--fix` lists the fixed files on stderr. A shard job prints the result of its shard; the JSON of
+  the whole run is not printed by `nitpicker aggregate`, which reads the shard reports. `--help` and
+  `--version` print as usual.
+
+The schema is [`spec/json-output.schema.json`](../spec/json-output.schema.json), also exported by
+the package as `nitpicker/spec/json-output.schema.json`.
 
 ### Reports
 
@@ -190,10 +518,12 @@ A comparison run writes these files to `reports/quality/diff/`:
 - `report.sarif`: SARIF 2.1.0 with the new findings only, the file to upload to code scanning.
 - `report-baseline.sarif`: SARIF 2.1.0 with the new and the held findings, each marked with its
   `baselineState`, for tools that read it.
+- `codequality.json`: the new findings as a GitLab Code Quality report (see
+  [GitLab CI](ci.md#gitlab-ci)).
 
 `--all` has no baseline, so it writes `reports/quality/snapshot/` with `report.txt`, `summary.json`,
-`findings.json` (every finding in the checkout), `tool-errors.json`, `report.junit.xml` and
-`report.sarif`.
+`findings.json` (every finding in the checkout), `tool-errors.json`, `report.junit.xml`,
+`report.sarif` and `codequality.json`.
 
 The summary records every config override, a policy hash, the `policyChanges` the head config makes
 against the base and any `notices`. A notice is information that never fails the run. Today there is
@@ -202,7 +532,22 @@ one kind: changed code files that lie outside the roots the preset checks. For T
 `layout.sourceRoots`); for Python, `python.sourceRoots`; for Java and Kotlin, the build's source
 sets (`src/<set>/java` or `src/<set>/kotlin` of a module, or a directory the build file declares).
 To leave files unchecked, list them in `exclude`. Choose another directory with `--output <dir>`.
-Set `NO_COLOR` to disable colored console output.
+
+The console summary shortens mutation findings: the mutants that no test runs print as one entry
+per function (with their count and lines), and a function prints at most three surviving mutants,
+then how many more there are. The headline still counts every mutant, and the reports above list
+each one.
+
+The summary is colored only when standard output is a terminal, so a pipe, a file or an agent's
+shell tool gets plain text. `FORCE_COLOR` turns color on anywhere, for CI logs that render it
+(`FORCE_COLOR=0` or `false` turns it off), and `NO_COLOR` (any value) always turns it off, even with
+`FORCE_COLOR`. A `TERM` of `dumb` also turns it off. Color codes that the tools print, for example in
+a failing test's message, are removed from every finding and tool error, so the console summary and
+every report are plain text. The `Full diagnostics:` path and the cache folder in the cache line are
+printed relative to the current folder when they are inside it, else as absolute paths.
+
+On GitHub Actions the run also writes a job summary and `::error` annotations for the new
+enforceable findings (see [Job summary and annotations](ci.md#job-summary-and-annotations)).
 
 #### SARIF
 
@@ -212,7 +557,10 @@ The SARIF files have one run with one result per finding. `ruleId` is `<tool>/<r
 consumer matches a finding across runs when its line moves. A tool error makes the run's invocation
 unsuccessful and adds a notification; a note (such as a red base) adds a `note`-level notification
 without changing the outcome. Columns are counted in UTF-16 code units
-(`columnKind: "utf16CodeUnits"`).
+(`columnKind: "utf16CodeUnits"`), a tab counting as one: nitpicker converts the columns of ruff
+(code points), Error Prone (tabs expanded to every eighth column) and Checkstyle (tabs expanded to its
+`tabWidth`, 8 unless the project Checkstyle config the run uses sets it). mypy versions count
+columns differently, so a mypy finding on a line with non-ASCII text has a line and no column.
 
 | File                    | Run        | Results                                      | `baselineState`    |
 | ----------------------- | ---------- | -------------------------------------------- | ------------------ |
@@ -229,16 +577,26 @@ both snapshots and are not held are in no report file.
 A `uri` is relative to the root of the git repository: the folder of the project inside the
 repository, then the finding's path, percent-encoded, with `uriBaseId: "%SRCROOT%"` naming the
 repository root. A project in `packages/app` reports `packages/app/src/a.ts`, which is how code
-scanning matches a result to a file. The files hold no absolute path, so `originalUriBaseIds` is not
-written. When nitpicker cannot find the repository root (the `aggregate` command outside a git
-checkout), paths stay relative to the project and have no `uriBaseId`.
+scanning matches a result to a file. `originalUriBaseIds` gives `%SRCROOT%` the repository root as a
+`file://` URI, so other SARIF viewers can open the files; it is the absolute path of the checkout on
+the machine that ran nitpicker, so a SARIF file shared outside it shows where that checkout was.
+When nitpicker cannot find the repository root (the `aggregate` command outside a git checkout),
+paths stay relative to the project, with no `uriBaseId` and no `originalUriBaseIds`. A finding about
+the whole project (no file) points at the project folder, or `.` for a project at the repository
+root.
+
+GitHub code scanning rejects an upload whose run has more than 25,000 results or whose file is over
+10 MB gzipped. A SARIF file that would pass either limit lists only as many findings as fit, new
+findings first (so on a large legacy project `report-baseline.sarif` is the file that gets cut),
+and ends its notifications with a `warning` that gives the count and the JSON file that has every
+finding.
 
 Upload the comparison file in pull requests with `github/codeql-action/upload-sarif`:
 
 ```yaml
 - run: npx nitpicker
   working-directory: packages/app
-- uses: github/codeql-action/upload-sarif@v3
+- uses: github/codeql-action/upload-sarif@v4.39.1
   if: always()
   with:
     sarif_file: packages/app/reports/quality/diff/report.sarif
@@ -250,15 +608,74 @@ give each kind of run its own category: a `--all` upload on the default branch
 (`reports/quality/snapshot/report.sarif`) goes in another category, such as `nitpicker-all`, or the
 next comparison upload would close the alerts it opened.
 
+`summary.json` always has a `mode` field: `"full"` or `"quick"`. A `--quick` run also adds a `quick`
+object to `summary.json`, a `Quick run: ...` line to the console summary and the same line to
+`report.txt`. `quick.skipped` lists what the run left out (analyzer names for TypeScript and
+JavaScript, the `mutation` analyzer and tool names for Python, tool names for Java and Kotlin): only
+checks that this configuration turns on and, with `--analyzer`, that the selected analyzers would
+run, and an empty list when there is nothing to skip. `quick.message` is the line itself, for example
+`Quick run: skipped coverage, test-console, crap, mutation. Run nitpicker without --quick before you finish.`
+`report.junit.xml` carries a `quick` property and one `<skipped>` test case per skipped check, and
+`report.sarif` carries the line as a warning in `toolExecutionNotifications` and
+`"quick": true` with the skipped list in `invocations[0].properties`, so a CI view that reads only
+those files still tells a quick run from a full one. A `--staged` run adds `"staged": true` to
+`summary.json` (and a `staged` property to the JUnit and SARIF reports) and prints
+`Staged run: the head is the index. ...` under the base line of the console and the head line of
+`report.txt`. `overallStatus` and the exit code are decided as for a full run, over the checks that
+did run.
+
+Each finding in `new-findings.json` has `tool`, `rule`, `path`, `identity`, `message` and
+`classification`, and a `location` when the rule has one. Two things a message says in words are
+also fields, so a script or a review tool need not read English: `allowedForm` is what to write
+instead (the sentence the message gives for it), and `exception` is the entry the message tells you
+to add to `exceptions` (`exceptionList` names the config list that takes it: `exceptions`, or
+`python.exceptions` for the Python rules the top-level list does not take). A rule that states no
+allowed form apart from the problem has no `allowedForm`, and a finding that cannot be accepted
+with an exception (a tool error, a policy change) has no `exception`. The `reason` in `exception`
+is a placeholder: an entry with it is refused until you replace it with the real reason. The
+fields are described in [`spec/findings.schema.json`](../spec/findings.schema.json).
+
+New descriptive findings appear under "Design notes for review (not failing)" in the console.
+The summary shows the first sentence, rule and source location for up to ten notes, rule notes
+before metric notes (which also show the metric and its value); an overflow count points to
+`report.txt` for the rest. These notes never change the exit code. A diff lists only new notes;
+`--all` lists the notes in the full snapshot. The report files keep every full message.
+
 ## Exit codes
 
-| Code | Meaning                                                                                                          |
-| ---- | ---------------------------------------------------------------------------------------------------------------- |
-| 0    | Completed with no new enforceable findings.                                                                      |
-| 1    | At least one new enforceable finding (`--all`: any violation), even if a tool also errored.                      |
-| 2    | A tool error and no new enforceable findings, invalid arguments, invalid config, or any other failure to decide. |
+| Code | Meaning                                                                                                                                                    |
+| ---- | ---------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 0    | Completed with no new enforceable findings. A run narrowed with `--analyzer` checked only the analyzers it names.                                          |
+| 1    | At least one new enforceable finding (`--all`: any violation), or tests that fail on the head (`--all`: in the checked code), even if a tool also errored. |
+| 2    | A tool error and no new enforceable findings or failing head tests, invalid arguments, invalid config, or any other failure to decide.                     |
 
-A tool error never counts as a pass. When a run has both findings and tool errors it exits 1, and the
+A failing test on the head is a problem with the change, not with a tool, so it exits 1 like a
+violation, and the console summary leads with it: `✖ 1 test fails; coverage, CRAP and mutation were
+skipped. Fix the tests and rerun:` followed by the failing tests. Every preset starts that line the
+same way (the count, what the failure skipped, the ask), and lists each failing test the same way:
+the test file and line of the failing assertion when the runner's report has them, the test name,
+the first line of the failure, and the expected and received values (each cut at 200 characters)
+when the report has them and the first line does not already show them:
+
+```
+✖ 1 test fails; coverage, CRAP and mutation were skipped. Fix the tests and rerun:
+  test/cart.test.ts:12 > cart > totals: AssertionError: expected { Object (total) } to deeply equal { Object (total) }
+    expected: { "total": 4, }
+    received: { "total": 3, }
+```
+
+The location comes from the stack of the failure (Vitest, Jest, Mocha, `node:test`, and JUnit XML
+on Gradle and Maven, where it is the class's package folder and the source file name, such as
+`demo/CartTest.java:12`), pytest's report, unittest's traceback, or the `file_test.go:12:` prefix of
+Go's output. Expected and received come from the runner's error (Vitest, Jest, Mocha, `node:test`)
+or from the message of JUnit 4 and 5, AssertJ, Hamcrest, kotlin.test and testify. pytest and
+unittest failures show the values in the failure line itself (`assert 3 == 4`, `AssertionError: 3 != 4`),
+so they get no separate lines. The console shows ten failing tests for each test run and says how
+many more there are; the tool error in `report.txt` lists up to 50.
+Tests that fail only on the base are a note (see [A base whose tests fail](#a-base-whose-tests-fail)).
+
+A tool error never counts as a pass. [Troubleshooting](troubleshooting.md) gives the cause and the
+fix of each one; a message whose fix takes more than it says links to its entry. When a run has both findings and tool errors it exits 1, and the
 tool errors are still listed in the console and reports and recorded in `summary.json`
 (`overallStatus` stays `tool-error`). `nitpicker aggregate` applies the same rule. With `--defer-exit`, a comparison always exits 0 once it has
 written its reports; use it only for shard workers that are followed by `nitpicker aggregate`.
@@ -271,31 +688,98 @@ dependency failed); stdout still carries only the final summary. Only one run ca
 at a time. A second `nitpicker` started meanwhile prints `nitpicker: another run is in progress in
 this project (pid 1234); wait for it to finish.` and exits 2. The lock is a pid file in the
 repository's `.git` directory (`nitpicker-run-*.lock`); a lock whose process is gone is taken over
-automatically.
+automatically. See [another run is in progress](troubleshooting.md#another-run-is-in-progress).
 
 ## Command line
 
 ```text
-nitpicker [--base <ref>] [--output <dir>] [--all | --fix]
-          [--analyzer <name>]... [--rule <substring>]...
+nitpicker [<path>...] [--base <ref>] [--output <dir>] [--all | --fix]
+          [--analyzer <name>]... [--rule <substring>]... [--details] [--json]
+          [--quick] [--staged]
           [--shard-count <n> --shard-index <i>] [--defer-exit] [--no-cache]
-          [--accept-policy-change=<digest>] [--help]
+          [--accept-policy-change=<digest>] [--help] [--version]
+nitpicker init [--agents-md] [--ci github] [--help]
 nitpicker aggregate --input-root <dir> --shard-count <n>
-          [--output <dir>] [--policy-root <dir>]
+          [--output <dir>] [--policy-root <dir>] [--details]
 nitpicker cache publish [--analyzer <name>]...
-          [--shard-count <n> --shard-index <i>]
+          [--shard-count <n> --shard-index <i>] [--help]
+nitpicker changelog [<version>]
+nitpicker base [--base <ref>]
+nitpicker explain <tool/rule>...
+nitpicker rules [--preset <name>] [--tool <name>]
 ```
 
+- `<path>...`: show and gate only the findings in these files or folders; see
+  [One file or folder](#one-file-or-folder).
 - `--all`: report every finding in the current checkout, with no baseline. Exits 1 on any violation.
   Cannot be combined with `--base`, `--fix`, sharding or `--defer-exit`.
-- `--fix`: apply ESLint and Prettier fixes to the changed files in your checkout, using the gate's
-  own configs, then run the comparison. A fixer that fails is reported as a tool error; the other
-  fixer and the comparison still run. Cannot be combined with `--all`.
+- `--fix`: rewrite the changed files in your checkout with the fixers of the preset, using the
+  gate's own configs, then run the comparison: ESLint and Prettier for TypeScript and JavaScript;
+  `ruff check --fix` (safe fixes, nitpicker's rules only) and ruff format or black for Python;
+  google-java-format or palantir-java-format for Java; ktlint or ktfmt for Kotlin (see the Java,
+  Kotlin and Python sections). The TypeScript and JavaScript fixers touch only the changed files
+  their check covers: ESLint the files `eslint-lint` lints, Prettier the files `prettier-format`
+  checks, so a changed `src/README.md` or a script outside the source and test roots is left as it
+  is. Only files whose bytes changed are listed under "Fixed files:", and a
+  formatter leaves alone a file that already failed its format check on the base (ktlint, whose
+  findings are per line, formats only the code around your change in such a file). ESLint,
+  Prettier and the Python, Java and Kotlin formatters replace a file in one step (a temporary file
+  renamed over it), leave alone a file that changed while they ran or is not UTF-8, and do not
+  follow symbolic links; each of these is named in a "Fix notes:" line. ESLint and the Python, Java
+  and Kotlin formatters keep CRLF line endings; a file Prettier rewrites gets the line endings of
+  the gate's `prettier.endOfLine` convention, as its format check expects. A fixer that fails is reported as a tool error; the
+  other fixers and the comparison still run. Cannot be combined with `--all`.
 - `--base <ref>`: the ref to compare against.
-- `--analyzer <name>`: run only this analyzer (repeatable). Cannot be combined with sharding.
+- `--analyzer <name>`: run only this analyzer and the analyzers it depends on (repeatable). Cannot
+  be combined with sharding. A narrowed run says so: the console, `report.txt` and the GitHub step
+  summary print `Ran only: <names>. Run nitpicker without --analyzer before you finish.`, and
+  `summary.json` records `partialRun: { ran, skipped, message }` (`skipped` lists the analyzers
+  left out). Its exit 0 is not a pass. An unknown name exits 2 and leaves the previous reports in
+  place.
+- `--quick`: run only the fast checks, for a commit hook or an agent's edit loop. It keeps format,
+  lint, typecheck, structure, architecture and review rules, and skips the tests and everything built
+  on them. For TypeScript and JavaScript the skipped analyzers are `coverage`, `crap`, `mutation` and
+  `test-console` (`test-runtime` stays: it is a static dependency check of the tests); for Python
+  they are the `tests`, `coverage`, `crap` and `test-runtime` tools and the `mutation` analyzer; for
+  Java and Kotlin the `tests`, `jacoco`, `crap`, `pit` and `test-runtime` tools. The ArchUnit rules
+  still run: Gradle compiles the tests and runs only the `nitpickerArchunit` task, and Maven runs
+  `test` with `-Dtest` limited to the ArchUnit classes, so no other test runs. Read the printed list
+  rather than assuming it: it names only the checks this configuration turns on. The format check and
+  the untyped ESLint rule sets (`prettier-format`, `eslint-errors`, `eslint-logging`,
+  `eslint-module-effects`) look only at the changed files on both sides, since their findings depend
+  on one file alone; the typed rules (`eslint-lint`), the type check, the dependency, coupling,
+  dead-code, duplicates, structure and coding-standards checks still read the whole project. Gradle
+  runs with `--build-cache` in a quick run, so tasks whose inputs did not change (an unchanged module,
+  the base after the head, a repeated run) are restored from the Gradle build cache (the local one
+  in the Gradle user home, and a remote one only as the build's own `settings.gradle` configures it);
+  Maven runs PMD, SpotBugs, Error Prone, the format check and Checkstyle of a module side by side.
+  The console summary, `report.txt`, `summary.json`, `report.junit.xml` and `report.sarif` name what
+  was skipped, and exit codes keep their meaning, but a quick run is never a pass: run `nitpicker`
+  without `--quick` before you finish. `--quick` works with `--base`, `--all`, `--analyzer` (a name
+  that quick mode skips is refused) and `--fix`: the fixers run in full on the changed files, then the
+  quick comparison runs. Cannot be combined with sharding.
+- `--staged`: judge the git index (what the next commit would contain) instead of the working tree.
+  Unstaged edits and untracked files are ignored, and the base is still the merge base with the base
+  ref. Inside a hook it honours the `GIT_INDEX_FILE` that Git sets. It works with every preset and
+  with `--all` (the whole index) and `--quick`. Cannot be combined with `--fix`: fixes land in the
+  working tree, so run `nitpicker --fix`, stage the result, then run `nitpicker --staged`.
+  `nitpicker.config.json`, the tools' own config files and the installed dependencies are still read
+  from the working tree; when one of those config files differs from the index (or is untracked),
+  stderr says which, so you can stage it or run without `--staged`. With no base ref to find (no
+  `--base`, CI variable, configured `base`, remote base, branch upstream or local `main` or
+  `master` to compare with), a staged run compares the index with `HEAD`, which is what the commit
+  adds; in a repository with no commit
+  yet it stops and asks you to make the first commit without the hook (`git commit --no-verify`) or
+  to pass `--base`. nitpicker never passes a `GIT_INDEX_FILE` it inherits to its own git commands, so
+  a hook that runs it, with or without `--staged`, leaves the commit's index as it was.
 - `--rule <substring>`: list the findings whose rule matches, after the summary (repeatable).
+- `--details`: print every new finding with its full message, and every held finding, in the
+  console summary (see [Console summary](#console-summary)).
+- `--json`: print one compact JSON object on stdout instead of the console summary (see
+  [JSON output](#json-output)).
 - `--output <dir>`: where reports go.
-
+- `--shard-count <n>`, `--shard-index <i>` and `--defer-exit`: run one shard of a split run; see
+  [Sharding in CI](#sharding-in-ci).
 - `--no-cache`: do not read or write the findings cache for this run (local and remote).
 - `--accept-policy-change=<digest>`: accept the loosenings of `nitpicker.config.json` whose digest
   the console and the `nitpicker-config/policy-loosened` findings name (see
@@ -305,30 +789,222 @@ nitpicker cache publish [--analyzer <name>]...
   `NITPICKER_ACCEPT_POLICY_CHANGE=<digest>` instead, and that variable is ignored anywhere else. An
   ignored acceptance is named on stderr and the run still fails. The digest covers every loosening
   in full and the content (git blob id) of each file it names, and `summary.json` records it as
-  `policyDigest`: editing a named file or adding a loosening changes it and fails again.
-- `nitpicker cache publish`: analyze the committed `HEAD` tree and upload its findings to the remote
-  cache so later branches reuse them as their base. Requires `NITPICKER_CACHE_URL`; exits 0 when
-  everything was uploaded and 2 otherwise.
+  `policyDigest`: editing a named file or adding a loosening changes it and fails again. Both also
+  take `commit:<sha>`, the full SHA of the commit the person reviewed, which accepts whatever that
+  commit loosens and is honoured only when it is the head the run gates; uncommitted changes make
+  another head, so they are never accepted this way. On a GitHub pull request the
+  `accept-policy-change` label sets it (see
+  [Accepting a policy change with a label](ci.md#accepting-a-policy-change-with-a-label)).
+- `--help` (or `-h`): print one screen and exit 0: the commands and flags with a one-line
+  description, the analyzers `--analyzer` takes in the project a run would check (the preset of its
+  `nitpicker.config.json`, `typescript` without one, minus `disable`, plus custom analyzers), the
+  exit codes, the report files to read first, a few example runs and a link to this page for the
+  installed version. `nitpicker <command> --help` (or `-h`) prints the options of that command.
+- `--version`: print the version of the installed nitpicker.
+
+The other commands:
+
+- `nitpicker init [--agents-md] [--ci github]`: set the project up; see
+  [Set up with `nitpicker init`](#set-up-with-nitpicker-init). `--agents-md` appends the agent
+  snippet to `AGENTS.md` once; `--ci github` writes a GitHub Actions workflow. It never overwrites a
+  file: for an existing one that needs a change it prints a diff and exits 1.
+- `nitpicker aggregate --input-root <dir> --shard-count <n> [--output <dir>] [--policy-root <dir>]`:
+  combine the reports of the shard jobs; see [Sharding in CI](#sharding-in-ci).
+- `nitpicker cache publish [--analyzer <name>]... [--shard-count <n> --shard-index <i>]`: analyze
+  the committed `HEAD` tree (all analyzers, the named ones, or one shard) and upload its findings to
+  the remote cache so later branches reuse them as their base. Requires `NITPICKER_CACHE_URL`; exits
+  0 when everything was uploaded and 2 otherwise. It refuses any other option, such as `--rule` or
+  `--defer-exit`, with exit 2.
+- `nitpicker changelog [<version>]`: print what changed in a version, from the `CHANGELOG.md` that
+  ships in the package, with its heading and date. Without a version it prints the installed one;
+  `Unreleased` prints the changes not released yet, and a leading `v` is accepted. Exits 2 when the
+  changelog has no entry, or an empty one, for that version.
+- `nitpicker explain <tool/rule>...`: print what the [rule reference](https://github.com/jhonDoe15/nitpicker/blob/latest/docs/rules/README.md) says about
+  each rule: the presets and analyzers that report it, why it is on, the allowed form where the
+  reference has one, and the `nitpicker.config.json` entry that accepts it. Name a rule as a finding prints it
+  (`eslint-lint/no-undef`, `pmd/UnusedLocalVariable`), by its bare name (`F401`, or `MagicNumber`
+  for detekt's `detekt.style.MagicNumber`), or name a check (`coverage`, `mutation`, `duplicates`)
+  to list its rules. A name the reference does not know is reported with the closest rules and
+  exits 1.
+- `nitpicker rules [--preset <name>] [--tool <name>]`: list the rules, one line each. It lists the
+  preset of the project's `nitpicker.config.json` (`typescript` without a config) and leaves out the
+  rules of analyzers listed in `disable`; `--preset` (or `--preset=<name>`) lists another preset in
+  full, and `--tool` keeps one tool.
+- `nitpicker base [--base <ref>]`: print the base a comparison would use, picked as listed under
+  [What it compares](#what-it-compares), so a CI script can fetch it before the run.
+
+A command line nitpicker does not accept stops the run with exit 2 before anything is analyzed; see
+[invalid arguments](troubleshooting.md#invalid-arguments).
+
+### Rule reference
+
+The [rule reference](https://github.com/jhonDoe15/nitpicker/blob/latest/docs/rules/README.md) has one entry for every rule that can fail the gate, for all presets:
+the tool and rule id, the presets that report it, why it is on, the allowed form where it has one,
+and the exact `exceptions` entry that accepts it. Where the reference has no allowed form of its
+own, the entry links to the page the tool keeps for the rule (or to the guide that describes it);
+for nitpicker's own PMD rules that the guides do not describe, the entry quotes the message the
+finding prints, which names the form to use. The summaries,
+reasons and examples of PMD, Error Prone, detekt, ruff and ESLint rules are those tools' own text,
+taken from the versions nitpicker pins; SpotBugs and Checkstyle are under the LGPL, so their entries
+name the rule and its category and link to the tool's description. The pages are generated from the
+rule catalogs with `npm run gen:rules` and committed only on the commit each release tags, so the
+link above opens the latest release and an installed version links to its own tag. Report-only
+measurements and tool errors are not rules and have no entry.
+
+Each entry has a stable anchor, and the places that show a finding link to it: the SARIF report
+sets `helpUri` (and a `shortDescription`) on each rule it lists, `new-findings.json`,
+`held-findings.json`, `resolved-findings.json` and, with `--all`, `findings.json` carry an optional
+`helpUri` on each finding whose rule has an entry, and `report.txt` ends its findings with a link to
+the reference when one of them has an entry. In an installed package the links point at the
+release tag of its version (`v<version>`) in the repository named in `package.json`, so they match
+the rules that version reports; in a git checkout of nitpicker they point at `main`.
 
 ### Findings cache
 
 The base side of a comparison is cached per analyzer; the head side always runs. The key covers the
 merge-base commit, project path, analyzer name and version, the analyzer's configuration hash, the
-config-file overrides and the head policy (`exclude`, `layout`, `exceptions`, `thresholds`, `react`, `i18n`, `testConsole`, `history`) with the
-legacy inventory path, so changing any of them is a miss. Only clean reports are stored.
+config-file overrides and the head policy (`exclude`, `layout`, `exceptions`, `thresholds`, `react`, `i18n`, `testConsole`, `protocols`, `history`) with the
+legacy inventory path, so changing any of them is a miss. A content fingerprint of nitpicker's
+package manifest and shipped code and tool configs is computed once per process and included in
+the key, so changing rules without a version bump also invalidates old findings. Only clean
+reports are stored. When the base is reused, the progress line names the local cache directory
+(or the remote cache when there is no local directory); use `--no-cache` to rerun the analysis.
+
+A quick run uses the same cache. The Python, Java and Kotlin analyzers and the custom analyzers
+produce different output in quick mode, so their quick entries are keyed apart from full ones: a
+quick run never reads a full entry and a full run never reads a quick one. The file-local analyzers
+that a quick run limits to the changed files are keyed by that list of files as well. The other
+TypeScript and JavaScript analyzers produce the same findings as in a full run, so they share the
+full run's entries; both the base and the head of a quick comparison run the same quick set. A quick
+run also caches its head side, keyed by the git tree of the captured head (the working tree, or the
+index with `--staged`) on top of the merge base, the configuration hash and the head policy: running
+`nitpicker --quick` again on unchanged files reuses every analyzer, and an edit runs the head again.
+A full run always runs its head.
 
 - `NITPICKER_CACHE_DIR`: local cache directory (relative to the project root). Default:
-  `node_modules/.cache/nitpicker`.
+  `node_modules/.cache/nitpicker` when the project has `node_modules`, else `nitpicker/cache` in the
+  repository's Git directory (`git rev-parse --git-common-dir`, Git 2.31 or newer), which every worktree shares and
+  Git never lists as untracked. That default covers Java, Kotlin, Python and Go projects. When no
+  writable folder is found, the run prints one line saying the base side runs every time.
+  The Java and Kotlin analyzer version includes the output of `java -version` (from `JAVA_HOME`,
+  else the `PATH`), as Python and Go include their interpreter and toolchain versions, so switching
+  JDKs is a miss. A Gradle or Maven version that is not pinned in the repository (no wrapper) is not
+  in the key; use `--no-cache` after changing it.
 - `NITPICKER_CACHE_URL`: remote cache prefix; an entry is `GET`/`PUT` at `<url>/<key>.json`.
   Optional `NITPICKER_CACHE_AUTH_HEADER` and `NITPICKER_CACHE_TIMEOUT_MS`. Comparison runs only
   read the remote; give write credentials only to the job that runs `cache publish` on `main`.
 
-See [typescript-single-command.md](typescript-single-command.md) for the full model.
+See [typescript-single-command.md](typescript-single-command.md) for the full model, and
+[a stale or shared cache](troubleshooting.md#a-stale-or-shared-cache) when a cached result looks wrong.
+
+## Commit hooks
+
+`nitpicker --quick --staged` checks what the commit would contain, skips the tests, and finishes in a
+fraction of a full run, so it fits a pre-commit hook. A hook blocks the commit when the exit code is
+not 0 (new enforceable findings, or a tool error). It does not replace the full gate: run `nitpicker`
+before you push, in CI, or from a pre-push hook. Install nitpicker and the project's dependencies
+first (`npm install --save-dev nitpicker`); the hook reads the dependencies, `nitpicker.config.json`
+and the tools' configs from the working tree. A clone's remote HEAD is the base; set `base` in
+`nitpicker.config.json` or add `--base <ref>` to the hook command to pick another, and the base ref
+has to exist locally (fetch it). Without any remote base, a staged run compares with `HEAD`. Make
+the very first commit of a new repository with `git commit --no-verify`.
+
+nitpicker finds the project from the directory it starts in. Git runs hooks at the repository root,
+so for a project in a subfolder (a monorepo package) the hook has to change into it first; the
+recipes below show both forms.
+
+The base side of a comparison is cached per merge base, so the first quick run after a fetch, merge
+or checkout pays for the base. To pay it before you commit, warm the cache from the hooks that move
+the merge base. Git ignores the exit code of these hooks, so they never block a merge or checkout:
+
+```sh
+# .husky/post-merge and .husky/post-checkout (or the lefthook/pre-commit equivalents)
+npx nitpicker --quick > /dev/null 2>&1 || true
+```
+
+The warm-up runs in the foreground, so `git pull` or `git checkout` returns once it is done. Only
+one nitpicker runs in a project at a time: when you send the warm-up to the background instead, a
+commit made while it runs is refused with `another run is in progress` (exit 2), and you commit again
+after it finishes.
+
+### husky
+
+```sh
+npm install --save-dev husky
+npx husky init
+```
+
+`husky init` adds a `prepare` script and a sample `.husky/pre-commit`. Replace its content with:
+
+```sh
+npx nitpicker --quick --staged
+```
+
+For a project in a subfolder:
+
+```sh
+cd packages/app && npx nitpicker --quick --staged
+```
+
+### lefthook
+
+```sh
+npm install --save-dev lefthook
+```
+
+```yaml
+# lefthook.yml
+pre-commit:
+  commands:
+    nitpicker:
+      run: npx nitpicker --quick --staged
+```
+
+For a project in a subfolder, add `root: packages/app/` under `nitpicker:` (lefthook then runs the
+command in that folder). Run `npx lefthook install` once to write the Git hook.
+
+### pre-commit
+
+The repository ships a `.pre-commit-hooks.yaml` with two hooks: `nitpicker` (`nitpicker --quick
+--staged`, at the `pre-commit` stage) and `nitpicker-full` (`nitpicker`, at the `pre-push` stage).
+
+```yaml
+# .pre-commit-config.yaml
+repos:
+  - repo: https://github.com/jhonDoe15/nitpicker
+    rev: v0.1.0 # a release tag of nitpicker
+    hooks:
+      - id: nitpicker
+      - id: nitpicker-full
+```
+
+Run `pre-commit install` and, for the full gate, `pre-commit install --hook-type pre-push`. The hooks
+use `language: node`, so pre-commit installs nitpicker into its own environment; the project still
+needs its own `node_modules`. pre-commit stashes unstaged changes before it runs a hook, which
+matches what `--staged` judges anyway. Extra flags such as `--base origin/develop` go under `args:`.
+
+The shipped hooks run at the repository root. For a project in a subfolder, use a local hook that
+changes into it and runs the project's own nitpicker:
+
+```yaml
+# .pre-commit-config.yaml
+repos:
+  - repo: local
+    hooks:
+      - id: nitpicker
+        name: nitpicker (quick, staged changes)
+        entry: sh -c 'cd packages/app && npx nitpicker --quick --staged'
+        language: system
+        pass_filenames: false
+        always_run: true
+        stages: [pre-commit]
+```
 
 ## Configuration
 
-Optional. Put `nitpicker.config.json` at the project root. The head is measured with the head's
-config. The base is measured with the base's own `nitpicker.config.json` when it has one that
+Optional. Put `nitpicker.config.json` at the project root. An unknown key or a wrong value stops the
+run with exit 2; see [invalid configuration](troubleshooting.md#invalid-configuration). The head is
+measured with the head's config. The base is measured with the base's own `nitpicker.config.json` when it has one that
 differs, widened to what the head reads and tightened to what the head checks: the head's added
 source and test roots are added; an `exclude`, `layout.excludedGlobs`, `layout.entryPoints`,
 `disable` or `exceptions` entry the head drops is dropped; and each threshold
@@ -340,17 +1016,18 @@ in the console summary and in `report.txt` as "Policy changed in this change" an
 `summary.json` under `policyChanges`. A change that checks less fails the run with one
 `nitpicker-config/policy-loosened` finding per loosening. The console groups those changes by kind:
 it lists the changes of a kind, then what that kind does to the checks and how to undo it, once
-(ten new entry points print the entry point guidance once), followed by the count, the digest and
+(ten new exclusions print the exclusion guidance once), followed by the count, the digest and
 the acceptance command. `report.txt` and `new-findings.json` keep one finding per change, each with
 its guidance and the acceptance route. The first response is to undo the change and fix the code
 until it passes. If the change is intended, a coding agent stops and asks a person reviewing it, who
 accepts it by the digest (`--accept-policy-change=<digest>` or, in CI,
-`NITPICKER_ACCEPT_POLICY_CHANGE=<digest>`; the routes are described under
-[Command line](#command-line)). A local run and CI can print different digests, because CI may
+`NITPICKER_ACCEPT_POLICY_CHANGE=<digest>`), or on a GitHub pull request with the
+`accept-policy-change` label; the routes are described under [Command line](#command-line), and in
+[a policy-loosened finding](troubleshooting.md#a-policy-loosened-finding). A local run and CI can print different digests, because CI may
 check the pull request merged into its target branch. A project's first `nitpicker.config.json` is
 compared with the defaults. These changes are loosening:
 
-- an added `exclude`, `layout.excludedGlobs`, `layout.entryPoints` or
+- an added `exclude`, `layout.excludedGlobs` or
   `exceptions` glob that covers a code file the base config did not already cover (every
   tracked code file of the preset, wherever it is: `.ts`/`.js` family files for TypeScript and
   JavaScript, `.py` files for Python, `.java`, `.kt` and `.kts` files for Java and Kotlin, so
@@ -358,10 +1035,7 @@ compared with the defaults. These changes are loosening:
   and `layout.excludedGlobs` are one set: a glob respelled to cover the same files, or moved from
   one key to the other, is listed but does not fail. Files moved with `git mv` keep their base
   path, so updating a glob after a move is not loosening; a glob that covers no new code file is
-  listed but does not fail. A `layout.entryPoints` entry makes the dead-code check treat the files
-  as used and allows module-load effects and process access in them, and a `python.entryPoints`
-  entry only exempts them from `process-env-access`; other checks still apply. A reviewer confirms
-  that a command or runtime loads each file without an import, and otherwise the entry is removed;
+  listed but does not fail;
 - a removed `layout.sourceRoots`, `layout.testRoots` or `python.sourceRoots` entry that still has
   checked files under it (Python's detected default counts when the setting is absent), and an
   added `layout.testRoots` entry that turns production code the base checked into test code;
@@ -416,11 +1090,28 @@ compared with the defaults. These changes are loosening:
   detected `config/detekt/detekt.yml`) while `tools.detekt.precedence` lists `"project"` or
   `kotlin.detektConfig` is set, the `.editorconfig` files that `ktlint` or `ktfmt` read while their
   `precedence` lists `"project"` (only the lines before the first section and the sections whose
-  glob matches `.kt` or `.kts` files), and the Prettier config files while
+  glob matches `.kt` or `.kts` files), the Prettier config files while
   `tools.prettier.precedence` lists `"project"` (the `prettier` key of `package.json` only, and in
-  `.editorconfig` only the sections that match the files Prettier formats). An edit that only
+  `.editorconfig` only the sections that match the files Prettier formats), and the ESLint flat
+  config at the project root with every local file it imports while `tools.eslint.precedence`
+  lists `"project"` (turning a nitpicker rule `"off"` there has no effect, but changing its
+  options does). An edit that only
   changes comments, blank lines or layout is not counted. Whether an edit is stricter or looser is
-  not judged, so a person reviews it; a removed file is listed;
+  not judged, so a person reviews it; a removed file is listed. The TypeScript compiler options are
+  judged per option while `tools.typescript.precedence` lists `"project"` first on both sides: each
+  strict option whose effective value moved is listed as `typescript tsconfig.json
+noUncheckedIndexedAccess: true -> false`, only one that goes from `true` to `false` needs a person,
+  and the files of the tsconfig chain (the selected config, the root `tsconfig.json` and what they
+  `extends` inside the project) are listed when the change adds the opt-in or a side cannot be read;
+- a `layout.featureRoots` or `layout.sharedRoots` change, with a preset that runs the feature folder
+  rules, that takes a code file out of the feature or shared folder it was in under the base
+  config: the file ends up in no feature or shared folder, moves between a feature and a shared
+  folder, or joins a larger feature (a nested feature root removed). With a preset that reads
+  `featureRoots` for `stability-direction` (every preset; Java and Kotlin with `history.coChange`
+  on), a file that moves into a feature folder from outside the features counts too. Each code file of the head
+  is placed by both configs. A root that only adds folders, or splits a feature with a nested
+  root, is listed but does not fail;
+
 - a newly disabled analyzer, a threshold above the base's (a removed threshold counts at its
   default), and a removed or changed custom analyzer (any change to its `command` or `args`);
 - a `preset` that checks less: an explicit preset changed to another one, or `javascript` set where
@@ -434,6 +1125,17 @@ compared with the defaults. These changes are loosening:
   `"nitpicker"` (for `pmd`, which runs both rule sets, only dropping `"nitpicker"` counts);
 - a name removed from a `spring.roles` list (adding one only adds checks).
 
+An added `layout.entryPoints` or `python.entryPoints` entry is only listed, as long as no checked
+code imports the files it newly covers. An entry point names a file that a command or runtime loads
+without an import, such as a script run by path, a worker or a test reporter. The dead-code and
+unused-export checks treat it as used, and it may do what a program start does: with
+`layout.entryPoints`, module-load effects, process access and service-locator lookups (it counts as
+a composition root); with `python.entryPoints`, `process-env-access`, `process-stream-access`,
+`import-time-effect` and `service-locator-lookup` skip it. Every other check still applies. A file
+that a production file under the source roots imports is not an entry point, so an added entry that
+newly covers one (a broad glob such as `**`, for example) is loosening, and the finding names the
+imported files.
+
 Choosing another tool that runs the same checks is not loosening and is only listed:
 `tools.eslint.engine`, `tools.typescript.engine`, `python.typeChecker`, `python.formatter`,
 `python.testRunner`, `python.environment` and a `kotlin.formatter` other than `none`. Other changes
@@ -443,17 +1145,24 @@ on in a tsconfig) are listed and never fail; an added
 `nitpicker.legacy.json` entry fails on its own as `baseline-expansion`. With sharding, the first
 shard reports the findings. Unknown keys and
 invalid values are an error (exit 2). Every override is listed in the report and changes the policy
-hash, so a weakened check is visible in review.
+hash, so a weakened check is visible in review. `analyzerTimeoutMinutes` is the exception: a
+deadline changes how long an analyzer may run, not what it checks, so it is never listed and leaves
+the hash alone.
 
 ```json
 {
+  "$schema": "./node_modules/nitpicker/spec/config.schema.json",
   "base": "origin/develop",
   "preset": "typescript",
   "disable": ["mutation"],
   "thresholds": { "crapLimit": 12 },
   "exclude": ["src/vendor/**"],
   "duplicates": { "skippedFolders": ["dist", "generated", "target"] },
-  "layout": { "sourceRoots": ["lib"], "testRoots": ["spec"], "excludedGlobs": ["**/vendor/**"] },
+  "layout": {
+    "sourceRoots": ["lib"],
+    "testRoots": ["spec"],
+    "excludedGlobs": ["**/vendor/**"]
+  },
   "exceptions": [
     {
       "rule": "nitpicker/preserve-error-cause",
@@ -462,32 +1171,42 @@ hash, so a weakened check is visible in review.
     }
   ],
   "react": { "styling": "css-in-js" },
-  "analyzers": [{ "name": "house-rules", "command": "./scripts/house-rules", "args": ["--ci"] }],
+  "analyzers": [
+    {
+      "name": "house-rules",
+      "command": "./scripts/house-rules",
+      "args": ["--ci"]
+    }
+  ],
   "legacyInventory": "config/nitpicker.legacy.json"
 }
 ```
 
-| Key               | Type                                                               | Meaning                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 |
-| ----------------- | ------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `base`            | string                                                             | Base ref used when neither `--base` nor a CI target branch is given. It must not follow the commit you are on: `HEAD`, `@`, an expression that resolves through them (`HEAD~0`, `@{0}`), the branch you are on, or a SHA equal to `HEAD` is a config error, because the change would be compared with itself. Another branch such as `origin/main` is accepted even when it points at the commit you are on, so uncommitted work on an up-to-date branch is still checked.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              |
-| `preset`          | `"typescript"`, `"javascript"`, `"java"`, `"kotlin"` or `"python"` | The preset; default `typescript`. `javascript` gates a plain JavaScript project; see [JavaScript preset](#javascript-preset). `java` and `kotlin` gate a Gradle project and `python` a Python project; none of them is auto-detected. Without `preset`, a project whose source roots hold no TypeScript or JavaScript but that has `pom.xml`, `build.gradle(.kts)` or `settings.gradle(.kts)` (Java, or Kotlin when `.kt` files outnumber `.java`), or `pyproject.toml`, `setup.py` or `setup.cfg` (Python), stops with a config error (exit 2) naming the preset to set. The check is best-effort: files under `resources`, `static`, `public`, `assets`, `webapp` or `wwwroot` folders and `*.min.js` files are bundled assets and do not count as TypeScript or JavaScript; see [Java preset](#java-preset), [Kotlin preset](#kotlin-preset) and [Python preset](#python-preset).                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    |
-| `disable`         | string[]                                                           | Analyzer names to turn off, without duplicates. An unknown name is an error. Disabling an analyzer also turns off every analyzer that depends on it, and a note on stderr names them (`coverage` is needed by `crap` and `test-console`, so `"disable": ["coverage"]` turns off all three; a config written before `test-console` existed keeps working).                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               |
-| `thresholds`      | object                                                             | `crapLimit`: a positive number. A function whose CRAP score is at or above it is a finding. The default is 9. TypeScript, JavaScript, Java, Kotlin and Python. Whole numbers for the file limits: `fileLines` (lines per source file, default 300), `testFileLines` (per test file, default 500), `lineLength` (characters per line, default 120; imports, URLs and the text inside string literals are not counted) and `folderFiles` (source files, and separately test files, directly in one folder, default 6; only code files of the language count, so config and asset folders are never checked, and test files under a `fixtures` folder are skipped). A file or folder already over a limit on the base fails only when it grows, and a folder moved to a new path is matched to its old path. Every preset, except `lineLength` with Java and Kotlin, where setting it is a config error: nitpicker checks the `.java` files at the width of the Java formatter (100 for google-java-format, 120 for palantir-java-format) or at the width of the project's Checkstyle `LineLength`, and a `java.lineLength` convention pins any width from 10 to 999 (text blocks are not counted), and detekt's `MaxLineLength` checks the Kotlin files. Java and Kotlin only: `unitTestSeconds` (default 5) and `integrationTestSeconds` (default 30), the seconds one test the change adds or edits may take (see [slow tests](java-preset.md#slow-tests)); with another preset they are a config error. Java and Kotlin only: `unitTestSeconds` (default 5) and `integrationTestSeconds` (default 30), the seconds one test the change adds or edits may take (see [slow tests](java-preset.md#slow-tests)); with another preset they are a config error. Generated sources a build registers (Java, Kotlin) belong in `exclude`. The size thresholds are below the table.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             |
-| `exclude`         | string[]                                                           | Globs relative to the project root (`**`, `*`, `?`, `{a,b}`), added to the built-in exclusions: the project-root folders `dist`, `build`, `generated`, `coverage`, `reports` and `target`, and `node_modules` at any depth (a folder such as `src/build/` is analysed). Generated code needs no `exclude`: a file named like generated code (`*.gen.*`, `*.generated.*`, `*.pb.*`, `*_pb.*`, under `__generated__/`) or a tracked code file in one of those root folders counts as generated, skipped by the layout checks and importable from the source roots, when one of its first five lines carries a generator marker such as `// @generated`; any code file counts when its leading comments carry the exact header a known generator writes (OpenAPI Generator's `auto generated by OpenAPI Generator (https://openapi-generator.tech)`, protoc's, Thrift's, or `// Code generated by <tool>. DO NOT EDIT.`). That marker is the allowed form for generated code; without it the file is checked like any other. With the Java and Kotlin presets the one way is the build output: let the generator write under `build/generated/` (Gradle) or `target/generated-sources/` (Maven), which is never analyzed. A file elsewhere counts as generated only through a known generator's header or a `@Generated` annotation naming a known generator. Adding any generated-file marker to a file the base checked is a policy loosening, for every preset. Hand-written `*.d.ts` files under the source roots are linted, and the type check reads their declarations, but it runs with `skipLibCheck`, so it reports no errors inside any `.d.ts` file; coverage, CRAP and mutation skip them. Excluded files are skipped by every analyzer and are absent from the dependency graph. With the Java and Python presets the built-in list does not apply and findings whose path matches a glob are dropped (Python also keeps those files away from ruff and black).                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              |
-| `duplicates`      | object                                                             | `skippedFolders`: an array of folder names (no slashes, commas, glob characters or leading `!`, no repeats; empty is allowed) that the duplicate-code scan skips at any depth. Every preset. It replaces the built-in list, so name every folder you still want skipped. The built-in lists are the project-root `dist`, `build`, `generated`, `target` for TypeScript and JavaScript (a nested `src/build/` is scanned); `build`, `generated`, `target`, `out` for Java and Kotlin; `build`, `dist`, `tests`, `test`, `migrations` for Python. Use it when a real package is called `build`, `dist` or `test`. Dependency, hidden and tool-output folders (`node_modules`, `coverage`, `reports`, `.venv`, `__pycache__` and the like) and the Python test files stay skipped. To skip files, use `exclude`. The base snapshot is scanned with the same list as the head, so changing it never turns an old clone into a new one.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      |
-| `layout`          | object                                                             | The TypeScript and JavaScript presets take every key. `sharedRoots` and `featureRoots` are taken by every preset that runs `shared-used-by-one-feature` (today TypeScript and JavaScript; the [checks table](../spec/checks.md#custom-rules) says where), and are an error with the others until they run it, except that every preset takes `featureRoots` once `history.coChange` is on (it names the folders whose children `co-change` treats as one module each); the other keys are TypeScript and JavaScript only. `sharedRoots` and `featureRoots`: arrays of folder globs inside the project (a Java or Kotlin package is its folder, such as `**/com/acme/shared`) that `shared-used-by-one-feature` reads: a module under a shared root that only one feature reaches is reported, and each folder directly under a feature root is one feature. A glob that can never match is an error: a leading `./`, a trailing `/`, a regular-expression flag such as `(?i)` (globs match case-sensitively) or an unclosed `{`; `[` and `]` match themselves, so a Next.js route folder such as `src/app/[id]` is written as it is. For `shared-used-by-one-feature` they default to `<sourceRoot>/main/shared` and `<sourceRoot>/main/features` in the TypeScript and JavaScript presets and to `**/shared` and `**/features` elsewhere; `[]` turns the rule off. For `co-change`, `featureRoots` defaults to `**/features` in every preset, which also matches `<sourceRoot>/main/features`. In TypeScript they move only that rule: the import boundary rules keep `<sourceRoot>/main/shared/` and `<sourceRoot>/main/features/`. `sourceRoots` (default `["src"]`) and `testRoots` (default `["test", "tests", "__tests__", "e2e"]`; a missing folder is ignored): non-empty arrays of directories inside the project, with no absolute paths, `..` or globs. `excludedGlobs`: an array of globs that replaces the built-in exclusions. `entryPoints`: an array of globs of files that are started or loaded by path (a spawned script, a worker, a config read by another tool) and so are never imported; the dead-code check treats them as entries and the module-load-effects check skips them. A root `e2e/` of Playwright or Cypress specs is linted and type-checked like tests but needs no production import, is never mutated and is not run by the default quality test run (a `testRoots` you list yourself is always run). A Jest project whose root `__tests__/` the quality test run cannot execute lists its own `testRoots` or adds `__tests__/**` to `exclude`. Other keys are an error. The strict preset puts features under `<sourceRoot>/main/features/`.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   |
-| `exceptions`      | object[]                                                           | The TypeScript, JavaScript, Java and Kotlin presets; with `python`, only for the file limits (`file-lines-limit`, `folder-files-limit` and `line-length-limit`) and the [repository checks](#dependency-and-repository-checks) (`committed-env-file`, `committed-private-key`, `committed-binary`, `large-file`, `committed-build-output`) and the function rules below, and `co-change`, and `python` has `python.exceptions` for its other rules. Lifts a strict rule for some paths: `{ "rule", "paths", "reason" }`, all required, plus `function` (the name of one function) for `function-lines-limit`, `function-statements-limit`, `function-control-nesting-limit`, `function-parameters-limit`, `crap-score-limit`, `crap-coverage-unknown`, `changed-branch-coverage` (required) and the mutants `mutant-survived` and `mutant-nocoverage`, and `name` (one declaration) for the dead-code findings `exports` and `types`; the message of each finding prints the entry, see [Exceptions for rules nitpicker adds](#exceptions-for-rules-nitpicker-adds). `rule` must be a rule the preset configures (with `java`: the finding as printed, `<tool>/<rule>`; with `kotlin`: one of the one-way rules, see [Kotlin preset](#kotlin-preset)) or one of the file limits `file-lines-limit`, `line-length-limit` and `folder-files-limit` (and the size rules below; the TypeScript preset also takes `component-story-missing` and the reuse rules `shared-used-by-one-feature`, `duplicate-definition`, `sibling-copy-edit`, `exported-name-collision`, `redefined-library-component` and `new-icon-asset`, and a `domain-*` architecture rule, whose `paths` are the importing files); with every preset also the [dependency and repository checks](#dependency-and-repository-checks) (`committed-env-file`, `committed-private-key`, `committed-binary`, `large-file`, `committed-build-output`) and the [change history](#change-history) rule `co-change` (with a `<module>/**` glob), and with the TypeScript and JavaScript presets `unused-dependency`, `unlisted-dependency`, `unresolved-import` and `nitpicker/no-dev-dependency-in-production`; `paths` a non-empty glob array, `reason` a non-empty text, and for `unused-dependency`, `unlisted-dependency` and `unresolved-import` an optional `packages` array that limits the exception to those package names (import specifiers for `unresolved-import`). A file matching a file-limit exception is not checked and not counted in its folder; a `folder-files-limit` path may also name the folder itself. Each exception is listed in the report and changes the policy hash. See [The strict preset](#the-strict-preset).                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               |
-| `react`           | object                                                             | TypeScript preset only; with `"preset": "javascript"` it is a config error. The React rule scope; see [React](#react). `enabled` (`true` or `false`) forces it on or off; without it the scope is on when `react` is in the project's `package.json` `dependencies` or `devDependencies`. `styling` (`"class-names"`, `"css-in-js"`, `"inline-style"` or `"style-sheet"`; inferred from what the source files use when unset) is the one styling approach the project uses. Other keys are an error.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    |
-| `i18n`            | object                                                             | TypeScript preset. The i18n rule scope for `react-intl`; see [Internationalized messages](#internationalized-messages). `enabled` (`true` or `false`) forces it on or off; without it the scope is on when `react-intl` or `@formatjs/intl` is in the head checkout's `package.json` `dependencies` or `devDependencies`. `functionNames` and `componentNames` (string arrays) name wrappers of `formatMessage` and `FormattedMessage` that are checked too. Other keys are an error.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   |
-| `testConsole`     | object                                                             | Every preset that runs `test-console-output` (today TypeScript, JavaScript, Java and Kotlin, not Python yet; the [checks table](../spec/checks.md#custom-rules) says where); an error with the others until they run it. The allowlist of the `test-console` check (`test-runtime/test-console-output` on Java and Kotlin, see [java-preset.md](java-preset.md)); see [Console output from tests](#console-output-from-tests). `allow` is an array of `{ "contains", "paths"?, "reason" }`: `contains` is a message fragment that keeps at least three characters once it is normalized (`404` alone, which becomes `<n>`, is refused), `paths` a non-empty list of test file globs that limits the entry (the same globs that can never match are an error as in `layout`), and `reason` is required. Other keys are an error.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         |
-| `python`          | object                                                             | Python preset only: `environment`, `formatter`, `testRunner`, `typeChecker` and `sourceRoots` overrides for what nitpicker detects, and `exceptions` (the Python counterpart of `exceptions`); see [Python preset](#python-preset).                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     |
-| `kotlin`          | object                                                             | Kotlin preset only. `formatter`: `"ktlint"`, `"ktfmt"` or `"none"`, the format check to run; detected from the build files and `.editorconfig` when absent. `detektConfig`: path of the detekt config inside the project; detected when absent. See [Kotlin preset](#kotlin-preset).                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    |
-| `spring`          | object                                                             | Java and Kotlin presets, for Spring projects. `roles`: an object whose `controller`, `service` and `repository` keys each list fully qualified annotation or type names (`"com.example.UseCase"`); a class annotated with one, directly or through a composed annotation, or extending or implementing one, counts in that role for the [Spring architecture rules](java-preset.md#spring-architecture-rules), on top of Spring's own stereotypes. A mapping only adds roles; removing a name loosens the policy (see above).                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           |
-| `analyzers`       | object[]                                                           | Custom analyzers; see below.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
-| `legacyInventory` | string                                                             | Path of the legacy inventory, inside the project. Default `nitpicker.legacy.json`. Every preset; see [Adopting nitpicker on existing code](#adopting-nitpicker-on-existing-code) [Java preset](#java-preset) and [Python preset](#python-preset).                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       |
-| `tools`           | object                                                             | Which config each tool uses: `{ "prettier": { "precedence": [...] } }`. See [Your project's tool configs](#your-projects-tool-configs). `jscpd` with every preset; `prettier`, `eslint` and `typescript` with the TypeScript and JavaScript presets (`{ "eslint": { "engine": "oxlint" } }`; see [Lint engine](#lint-engine); `{ "typescript": { "engine": "native" } }`; see [Type check engine](#type-check-engine)), `tests` with the TypeScript and JavaScript presets (`{ "tests": { "runner": "jest" } }`; see [Test runners](#test-runners)), `pmd` and `checkstyle` with `java` and `kotlin`; any other name is an error, and Python tool choices are described below.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          |
-| `history`         | object                                                             | Every preset; opt-in analysis of the commit history, see [Change history](#change-history). `coChange`: `true` turns on the `change-history` analyzer, which reports modules that keep changing together (`false` or absent: off). Optional, with `coChange` set (`true`, or `false` to keep them while it is off; without `coChange` they are an error): `commits`, how many recent commits to read (whole number from 20 to 2000, default 300); `minSupport`, the commits two modules must share (whole number, at least 2, default 5); `minConfidence`, the share of the less-changed module's commits that must include the other (above 0, at most 1, default 0.6); `maxCommitFiles`, the most files a commit may touch and still count (whole number from 2 to 100, default 30).                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  |
-| `conventions`     | object                                                             | Pins a style nitpicker otherwise takes from the project. When two conventions are equally valid, nitpicker counts which one most files use and checks with that: a comparison measures the merge base (so a branch cannot flip it), or the branch when the base has no files of that kind yet; `--all` measures the checkout. A tie, or nothing to measure, keeps the preset default, and the run prints what it followed. Java and Kotlin presets (Java sources): `"java.formatter"`, `"google"` (google-java-format, the default), `"palantir"` (palantir-java-format) or `"none"` (no Java format check); `"java.indentation"`, `"2"` (google-java-format), `"4"` (google-java-format `--aosp`; palantir-java-format is always 4) or `"tab"`; `"java.lineLength"`, a whole number of columns from 10 to 999 (`"100"`, `"120"` and `"140"` are the measured ones; it drives `line-length-limit` for Java files; google-java-format wraps at 100 and palantir-java-format at 120, so a pin that disagrees with a pinned or build-declared formatter is a config error, and with a default or measured one it turns the formatter into `"none"`); `"java.wildcardImports"` `"explicit"`/`"wildcard"` (wildcard turns off Checkstyle `AvoidStarImport` and Error Prone `WildcardImport`); `"java.testStaticImports"` `"explicit"`/`"wildcard"` (the same for `import static ...*` in test sources only); `"java.assertionHelpers"` and `"kotlin.assertionHelpers"`, a list of method names (a helper is followed when it ends tests that have no other assertion in at least three test files and is defined as a method or function in a test or test-support source whose body calls an assertion or throws; PMD's `UnitTestShouldIncludeAssert` and the Kotlin `test-without-assertion` rule then accept it as an assertion; `[]` pins none). Kotlin and Python presets: the `kotlin.*` and `python.*` ids and values are under [Formatter and detekt configs](#formatter-and-detekt-configs-python-and-kotlin-presets); a project's own tool config sets them only when `tools.<tool>.precedence` lists `"project"`. TypeScript and JavaScript presets (Prettier options): `"prettier.quotes"` `"single"`/`"double"`, `"prettier.semicolons"` `"always"`/`"never"`, `"prettier.indentation"` `"2"`/`"4"`/`"tab"`, `"prettier.printWidth"` `"80"`/`"100"`/`"120"` or any number of columns, `"prettier.trailingCommas"` `"all"`/`"es5"`/`"none"`, `"prettier.arrowParens"` `"always"`/`"avoid"`, `"prettier.bracketSpacing"` `"spaced"`/`"tight"`, `"prettier.endOfLine"` `"lf"`/`"crlf"`, `"prettier.jsonIndentation"` `"2"`/`"4"`/`"tab"` and `"prettier.yamlIndentation"` `"2"`/`"4"` (measured from the JSON and YAML files themselves, only the ones the Prettier check covers: JSON at the project root and under the source and test roots, YAML under the source roots; fixtures and generated files do not count). TypeScript preset only (React): `"prettier.jsxQuotes"` `"double"`/`"single"` (Prettier `jsxSingleQuote`, measured from string attribute values in `.tsx`/`.jsx` files) and `"prettier.bracketSameLine"` `"newLine"`/`"sameLine"` (where the `>` of a multi-line opening tag is, compared with its last attribute); and, beyond Prettier, `"typescript.typeImports"` (TypeScript preset only) `"separate"` (`import type { A }`)/`"inline"` (`import { type A }`), which sets the `consistent-type-imports` fix style, and `"typescript.assertionHelpers"` a list of function names (for example `["assertOk", "verifyCalled"]`): a function the project defines in a test file or a `test-support`, `test-utils`, `testing` or `testkit` folder whose body calls `expect` or `assert` (or throws), and that is the last call of a test (`it`, `test` and their `.only`, `.skip`, `.each`, `.for` and similar forms, not hooks or `describe`) containing no `expect` in at least three test files, counts as an assertion for `vitest/expect-expect`, next to `expect`, `assert`, `expectTypeOf` and `assertType`. A pin is a list of plain identifiers (letters, digits, `_`) and replaces the measured list. `"typescript.fileNames"` `"kebab-case"`/`"camelCase"`/`"snake_case"`, the casing `nitpicker/file-name-casing` expects of source and test file names (the part before the first dot, so `foo.min.js` is judged as `foo`). Only files under the source and test roots count; fixtures and generated files neither count nor fail. PascalCase names always pass (components, classes) and cast no vote, as do names that fit every casing (`index`, `utils`, `404`, `fr-CA`), React hook files (a file named `useX` that exports a function or constant named exactly `useX`; `useCase.ts` exporting something else is judged like any other name), Next.js and Remix names (`not-found`, `[id]`, `posts_.$id`, `_app`, `+page`), `*.config.*` files and names with a hash segment (`chunk-3f9a1c2b`). When a folder has at least three other files that vote, their plurality decides for that folder (a tie keeps the project casing); a pin in `conventions` overrides this, so every file follows the pin. |
+| Key                      | Type                                                                       | Meaning                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         |
+| ------------------------ | -------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `$schema`                | string                                                                     | The JSON Schema of this file, for [editor completion and checks](#editor-support). nitpicker ignores it.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        |
+| `base`                   | string                                                                     | Base ref used when neither `--base` nor a CI target branch is given. It must not follow the commit you are on: `HEAD`, `@`, an expression that resolves through them (`HEAD~0`, `@{0}`), the branch you are on, or a SHA equal to `HEAD` is a config error, because the change would be compared with itself. Another branch such as `origin/main` is accepted even when it points at the commit you are on, so uncommitted work on an up-to-date branch is still checked.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      |
+| `preset`                 | `"typescript"`, `"javascript"`, `"java"`, `"kotlin"`, `"python"` or `"go"` | The preset; default `typescript`. `javascript` gates a plain JavaScript project; see [JavaScript preset](#javascript-preset). `java` and `kotlin` gate a Gradle or Maven project, `python` a Python project and `go` a Go module; none of them is auto-detected at run time (`nitpicker init` detects and writes `java`, `kotlin` and `python`). Without `preset`, a project whose source roots hold no TypeScript or JavaScript but that has `pom.xml`, `build.gradle(.kts)` or `settings.gradle(.kts)` (Java, or Kotlin when `.kt` files outnumber `.java` or a build script applies the Kotlin plugin), `go.mod` (Go), or `pyproject.toml`, `setup.py` or `setup.cfg` (Python), stops with a config error (exit 2) naming the preset to set. The check is best-effort: files under `resources`, `static`, `public`, `assets`, `webapp` or `wwwroot` folders and `*.min.js` files are bundled assets and do not count as TypeScript or JavaScript; see [Java preset](#java-preset), [Kotlin preset](#kotlin-preset), [Python preset](#python-preset) and [Go preset](#go-preset).                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             |
+| `disable`                | string[]                                                                   | Analyzer names to turn off, without duplicates. An unknown name is an error. Disabling an analyzer also turns off every analyzer that depends on it, and a note on stderr names them (`coverage` is needed by `crap` and `test-console`, so `"disable": ["coverage"]` turns off all three; a config written before `test-console` existed keeps working).                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       |
+| `thresholds`             | object                                                                     | `crapLimit`: a positive number. A function whose CRAP score is at or above it is a finding. The default is 9. TypeScript, JavaScript, Java, Kotlin and Python. Whole numbers for the file limits: `fileLines` (lines per source file, default 300), `testFileLines` (per test file, default 500), `lineLength` (characters per line, default 120; imports, URLs and the text inside string literals are not counted) and `folderFiles` (source files, and separately test files, directly in one folder, default 6; only code files of the language count, so config and asset folders are never checked, and test files under a `fixtures` folder are skipped). A file or folder already over a limit on the base fails only when it grows, and a folder moved to a new path is matched to its old path. Every preset, except `lineLength` with Java and Kotlin, where setting it is a config error: nitpicker checks the `.java` files at the width of the Java formatter (100 for google-java-format, 120 for palantir-java-format) or at the width of the project's Checkstyle `LineLength`, and a `java.lineLength` convention pins any width from 10 to 999 (text blocks are not counted), and detekt's `MaxLineLength` checks the Kotlin files. Java, Kotlin and Python only: `unitTestSeconds` (default 5) and `integrationTestSeconds` (default 30), the seconds one test the change adds or edits may take (see slow tests for [Java](java-preset/slow-tests.md) and [Python](python-preset/slow-tests.md)); with another preset they are a config error. Generated sources a build registers (Java, Kotlin) belong in `exclude`. The size thresholds are below the table.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
+| `exclude`                | string[]                                                                   | Globs relative to the project root (`**`, `*`, `?`, `{a,b}`), added to the built-in exclusions: the project-root folders `dist`, `build`, `generated`, `coverage`, `reports` and `target`, and `node_modules` at any depth (a folder such as `src/build/` is analysed). Generated code needs no `exclude`: a file named like generated code (`*.gen.*`, `*.generated.*`, `*.pb.*`, `*_pb.*`, under `__generated__/`) or a tracked code file in one of those root folders counts as generated, skipped by the layout checks and importable from the source roots, when one of its first five lines carries a generator marker such as `// @generated`; any code file counts when its leading comments carry the exact header a known generator writes (OpenAPI Generator's `auto generated by OpenAPI Generator (https://openapi-generator.tech)`, protoc's, Thrift's, or `// Code generated by <tool>. DO NOT EDIT.`). That marker is the allowed form for generated code; without it the file is checked like any other. With the Java and Kotlin presets the one way is the build output: let the generator write under `build/generated/` (Gradle) or `target/generated-sources/` (Maven), which is never analyzed. A file elsewhere counts as generated only through a known generator's header or a `@Generated` annotation naming a known generator. Adding any generated-file marker to a file the base checked is a policy loosening, for every preset. Hand-written `*.d.ts` files under the source roots are linted, and the type check reads their declarations, but it runs with `skipLibCheck`, so it reports no errors inside any `.d.ts` file; coverage, CRAP and mutation skip them. Excluded files are skipped by every analyzer and are absent from the dependency graph. With the Java and Python presets the built-in list does not apply and findings whose path matches a glob are dropped (Python also keeps those files away from ruff and black).                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      |
+| `duplicates`             | object                                                                     | `skippedFolders`: an array of folder names (no slashes, commas, glob characters or leading `!`, no repeats; empty is allowed) that the duplicate-code scan skips at any depth. Every preset. It replaces the built-in list, so name every folder you still want skipped. The built-in lists are the project-root `dist`, `build`, `generated`, `target` for TypeScript and JavaScript (a nested `src/build/` is scanned); `build`, `generated`, `target`, `out` for Java and Kotlin; `build`, `dist`, `tests`, `test`, `migrations` for Python; `testdata`, `vendor` for Go (folders the go tool skips stay skipped). Use it when a real package is called `build`, `dist` or `test`. Dependency, hidden and tool-output folders (`node_modules`, `coverage`, `reports`, `.venv`, `__pycache__` and the like) and the Python test files stay skipped. To skip files, use `exclude`. The base snapshot is scanned with the same list as the head, so changing it never turns an old clone into a new one.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        |
+| `layout`                 | object                                                                     | The TypeScript and JavaScript presets take every key. `sharedRoots` and `featureRoots` are taken by every preset that runs `shared-used-by-one-feature`, the feature boundary rules (today TypeScript, JavaScript, Java, Kotlin, Python and Go; the [checks table](../spec/checks.md#custom-rules) says where) or `contract-infrastructure-type` (Java, Kotlin and Python; TypeScript keeps its fixed feature folders for it), and are an error with the others until they run them, except that every preset takes `featureRoots` once `history.coChange` is on (it names the folders whose children `co-change` treats as one module each); the other keys are TypeScript and JavaScript only. `sharedRoots` and `featureRoots`: arrays of folder globs inside the project (a Java or Kotlin package is its folder, such as `**/com/acme/shared`) that `shared-used-by-one-feature` reads, and with the python preset also `feature-internal-import`, `shared-imports-feature` and `feature-cycle` (see [Feature folders](python-preset/feature-folders.md)), and with the Java, Kotlin and Python presets `contract-infrastructure-type`, which keeps persistence handles and web request objects out of a feature's public face (`__init__.py` and the public modules beside it, or the classes directly in the package): a module under a shared root that only one feature reaches is reported, and each folder directly under a feature root is one feature, so a new folder there is a feature without any configuration. A glob that can never match is an error: a leading `./`, a trailing `/`, a regular-expression flag such as `(?i)` (globs match case-sensitively) or an unclosed `{`; `[` and `]` match themselves, so a Next.js route folder such as `src/app/[id]` is written as it is. They default to `<sourceRoot>/main/shared` and `<sourceRoot>/main/features` in the TypeScript and JavaScript presets and to `**/shared` and `**/features` elsewhere; `[]` turns the rule off, except that Java and Kotlin's `contract-infrastructure-type` still checks Spring services, controllers and the feature packages of the Spring root package (see [contract types](java-preset/spring-architecture-rules.md#contract-types)). For `co-change`, `featureRoots` defaults to `**/features` in every preset, which also matches `<sourceRoot>/main/features`. When feature roots nest, a file belongs to the innermost one. A folder a `sharedRoots` glob you configure matches is shared even inside a feature; a default shared root inside a feature folder (a `shared/` folder of one feature) is part of that feature, in every preset. A configured glob that matches no folder is named in a notice on each run. In TypeScript they move only that rule: the import boundary rules keep `<sourceRoot>/main/shared/` and `<sourceRoot>/main/features/`. `sourceRoots` (default `["src"]`) and `testRoots` (default `["test", "tests", "__tests__", "e2e"]`; a missing folder is ignored): non-empty arrays of directories inside the project, with no absolute paths, `..` or globs. `excludedGlobs`: an array of globs that replaces the built-in exclusions. `entryPoints`: an array of globs of files that are started or loaded by path (a spawned script, a worker, a config read by another tool) and so are never imported; the dead-code check treats them as entries and the module-load-effects check skips them. A root `e2e/` of Playwright or Cypress specs is linted and type-checked like tests but needs no production import, is never mutated and is not run by the default quality test run (a `testRoots` you list yourself is always run). A Jest project whose root `__tests__/` the quality test run cannot execute lists its own `testRoots` or adds `__tests__/**` to `exclude`. Other keys are an error. The strict preset puts features under `<sourceRoot>/main/features/`.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                |
+| `exceptions`             | object[]                                                                   | The TypeScript, JavaScript, Java and Kotlin presets; with `python`, only for the file and size limits (`file-lines-limit`, `folder-files-limit`, `line-length-limit`, `folder-depth-limit`, `class-methods-limit`, `class-fields-limit` and `inheritance-depth-limit`), `slow-test`, `unused-option`, the [repository checks](#dependency-and-repository-checks) (`committed-env-file`, `committed-private-key`, `committed-binary`, `large-file`, `committed-build-output`, `migration-order`, `migration-hardcoded-name`, `start-schema-push`), the fact rules it runs (`test-console-output`, `shared-used-by-one-feature`, `feature-internal-import`, `shared-imports-feature`, `feature-cycle`, `test-only-export`, `duplicate-definition`, `exported-name-collision`, `sibling-copy-edit`, `doc-comment-content`) and the function rules below, and `co-change`, and `python` has `python.exceptions` for its other rules. Lifts a strict rule for some paths: `{ "rule", "paths", "reason" }`, all required, plus `function` (the name of one function) for `function-lines-limit`, `function-statements-limit`, `function-control-nesting-limit`, `function-parameters-limit`, `crap-score-limit`, `crap-coverage-unknown`, `changed-branch-coverage` (required) and the mutants `mutant-survived` and `mutant-nocoverage`, and `name` (one declaration) for the dead-code findings `exports` and `types`; the message of each finding prints the entry, see [Exceptions for rules nitpicker adds](#exceptions-for-rules-nitpicker-adds). `rule` must be a rule the preset configures (with `java` and `go`: the finding as printed, `<tool>/<rule>`; with `kotlin`: one of the one-way rules, see [Kotlin preset](#kotlin-preset)) or one of the file limits `file-lines-limit`, `line-length-limit` and `folder-files-limit` (and the size rules below; the TypeScript preset also takes `component-story-missing` and the reuse rules `shared-used-by-one-feature`, `duplicate-definition`, `sibling-copy-edit`, `exported-name-collision`, `redefined-library-component` and `new-icon-asset`, the Java and Kotlin presets the reuse rules `duplicate-definition`, `sibling-copy-edit` and `exported-name-collision`, and a `domain-*` architecture rule, whose `paths` are the importing files); with every preset also the [dependency and repository checks](#dependency-and-repository-checks) (`committed-env-file`, `committed-private-key`, `committed-binary`, `large-file`, `committed-build-output`, `migration-order`, `migration-hardcoded-name`, `start-schema-push`) and the [change history](#change-history) rule `co-change` (with a `<module>/**` glob), and with the TypeScript and JavaScript presets `unused-dependency`, `unlisted-dependency`, `unresolved-import` and `nitpicker/no-dev-dependency-in-production`; `paths` a non-empty glob array, `reason` a non-empty text, and for `unused-dependency`, `unlisted-dependency` and `unresolved-import` an optional `packages` array that limits the exception to those package names (import specifiers for `unresolved-import`). A file matching a file-limit exception is not checked and not counted in its folder; a `folder-files-limit` path may also name the folder itself. Each exception is listed in the report and changes the policy hash. See [The strict preset](#the-strict-preset).                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      |
+| `react`                  | object                                                                     | TypeScript preset only; with `"preset": "javascript"` it is a config error. The React rule scope; see [React](#react). `enabled` (`true` or `false`) forces it on or off; without it the scope is on when `react` is in the project's `package.json` `dependencies` or `devDependencies`. `styling` (`"class-names"`, `"css-in-js"`, `"inline-style"` or `"style-sheet"`; inferred from what the source files use when unset) is the one styling approach the project uses. Other keys are an error.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
+| `i18n`                   | object                                                                     | TypeScript preset. The i18n rule scope for `react-intl`; see [Internationalized messages](#internationalized-messages). `enabled` (`true` or `false`) forces it on or off; without it the scope is on when `react-intl` or `@formatjs/intl` is in the head checkout's `package.json` `dependencies` or `devDependencies`. `functionNames` and `componentNames` (string arrays) name wrappers of `formatMessage` and `FormattedMessage` that are checked too. Other keys are an error.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           |
+| `testConsole`            | object                                                                     | Every preset that runs `test-console-output` (today TypeScript, JavaScript, Java, Kotlin and Python; the [checks table](../spec/checks.md#custom-rules) says where); an error with the others until they run it. The allowlist of the `test-console` check (`test-runtime/test-console-output` on Java and Kotlin, see [java-preset.md](java-preset.md)); see [Console output from tests](#console-output-from-tests) and, for Python, [the Python preset](python-preset/new-console-output-from-tests.md). `allow` is an array of `{ "contains", "paths"?, "reason" }`: `contains` is a message fragment that keeps at least three characters once it is normalized (`404` alone, which becomes `<n>`, is refused), `paths` a non-empty list of test file globs that limits the entry (the same globs that can never match are an error as in `layout`), and `reason` is required. Other keys are an error.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    |
+| `protocols`              | array                                                                      | Every preset that runs `protocol-contract` (the [checks table](../spec/checks.md#custom-rules) says which); an error with the others. Lifecycle contracts for [Design signals](#design-signals): `[{ "type", "open", "close", "steps"?, "reason"? }]`, `type` a class or interface name, `open` and `close` non-empty lists of member names, `steps` the members that must come after `open`. Other keys are an error.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          |
+| `python`                 | object                                                                     | Python preset only: `environment`, `formatter`, `testRunner`, `typeChecker` and `sourceRoots` overrides for what nitpicker detects, and `exceptions` (the Python counterpart of `exceptions`); see [Python preset](#python-preset).                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             |
+| `kotlin`                 | object                                                                     | Kotlin preset only. `formatter`: `"ktlint"`, `"ktfmt"` or `"none"`, the format check to run; detected from the build files and `.editorconfig` when absent. `detektConfig`: path of the detekt config inside the project; detected when absent. See [Kotlin preset](#kotlin-preset).                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
+| `spring`                 | object                                                                     | Java and Kotlin presets, for Spring projects. `roles`: an object whose `controller`, `service` and `repository` keys each list fully qualified annotation or type names (`"com.example.UseCase"`); a class annotated with one, directly or through a composed annotation, or extending or implementing one, counts in that role for the [Spring architecture rules](java-preset/spring-architecture-rules.md), on top of Spring's own stereotypes. A mapping only adds roles; removing a name loosens the policy (see above).                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   |
+| `go`                     | object                                                                     | Go preset only. `formatters`: a list of `"gofmt"`, `"gofumpt"` and `"goimports"`, the format check to run; detected from `go.mod` tool directives and the golangci-lint config when absent. `buildTags`: build tags passed as `-tags` to `go vet` and `go test`, for example `["integration"]`. See [Go preset](#go-preset).                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    |
+| `analyzers`              | object[]                                                                   | Custom analyzers; see below.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    |
+| `analyzerTimeoutMinutes` | object                                                                     | Every preset. Whole minutes each named analyzer may run, built-in or custom; see [Analyzer timeouts](#analyzer-timeouts).                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       |
+| `legacyInventory`        | string                                                                     | Path of the legacy inventory, inside the project. Default `nitpicker.legacy.json`. Every preset; see [Adopting nitpicker on existing code](#adopting-nitpicker-on-existing-code) [Java preset](#java-preset) and [Python preset](#python-preset).                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               |
+| `tools`                  | object                                                                     | Which config each tool uses: `{ "prettier": { "precedence": [...] } }`. See [Your project's tool configs](#your-projects-tool-configs). `jscpd` with every preset except `go`, which runs no duplicate-code scan yet; `prettier`, `stryker` (see [Mutation testing config](#mutation-testing-config-typescript-and-javascript-presets)), `knip`, `dependency-cruiser`, `eslint` and `typescript` with the TypeScript and JavaScript presets (`{ "eslint": { "engine": "oxlint", "precedence": ["nitpicker"] } }`; see [Lint engine](#lint-engine) and [ESLint configs](#eslint-configs-typescript-and-javascript-presets); `{ "typescript": { "engine": "native" } }`; see [Type check engine](#type-check-engine), and `precedence`, see [TypeScript compiler options](#typescript-compiler-options-typescript-and-javascript-presets)), `tests` with the TypeScript and JavaScript presets (`{ "tests": { "runner": "jest" } }`; see [Test runners](#test-runners); `precedence`, see [Test runner configs](#test-runner-configs-typescript-and-javascript-presets)), `pmd`, `checkstyle`, `spotbugs`, `errorprone` and `pit` with `java` and `kotlin`, `ktlint`, `ktfmt` and `detekt` with `kotlin`, and `ruff`, `black`, `pyright`, `mypy`, `mutmut` and `coverage` with `python`, and `gofumpt` and `goimports` with `go` (their options from the project's golangci-lint config; see [Go preset](#go-preset)); any other name is an error.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                |
+| `history`                | object                                                                     | Every preset; opt-in analysis of the commit history, see [Change history](#change-history). `coChange`: `true` turns on the `change-history` analyzer, which reports modules that keep changing together (`false` or absent: off). Optional, with `coChange` set (`true`, or `false` to keep them while it is off; without `coChange` they are an error): `commits`, how many recent commits to read (whole number from 20 to 2000, default 300); `minSupport`, the commits two modules must share (whole number, at least 2, default 5); `minConfidence`, the share of the less-changed module's commits that must include the other (above 0, at most 1, default 0.6); `maxCommitFiles`, the most files a commit may touch and still count (whole number from 2 to 100, default 30).                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          |
+| `conventions`            | object                                                                     | Pins a style nitpicker otherwise takes from the project. When two conventions are equally valid, nitpicker counts which one most files use and checks with that: a comparison measures the merge base (so a branch cannot flip it), or the branch when the base has no files of that kind yet; `--all` measures the checkout. A tie, or nothing to measure, keeps the preset default, and the run prints what it followed. Java and Kotlin presets (Java sources): `"java.formatter"`, `"google"` (google-java-format, the default), `"palantir"` (palantir-java-format) or `"none"` (no Java format check); `"java.indentation"`, `"2"` (google-java-format), `"4"` (google-java-format `--aosp`; palantir-java-format is always 4) or `"tab"`; `"java.lineLength"`, a whole number of columns from 10 to 999 (`"100"`, `"120"` and `"140"` are the measured ones; it drives `line-length-limit` for Java files; google-java-format wraps at 100 and palantir-java-format at 120, so a pin that disagrees with a pinned or build-declared formatter is a config error, and with a default or measured one it turns the formatter into `"none"`); `"java.wildcardImports"` `"explicit"`/`"wildcard"` (wildcard turns off Checkstyle `AvoidStarImport` and Error Prone `WildcardImport`); `"java.testStaticImports"` `"explicit"`/`"wildcard"` (the same for `import static ...*` in test sources only); `"java.assertionHelpers"` and `"kotlin.assertionHelpers"`, a list of method names (a helper is followed when it ends tests that have no other assertion in at least three test files and is defined as a method or function in a test or test-support source whose body calls an assertion or throws; PMD's `UnitTestShouldIncludeAssert` and the Kotlin `test-without-assertion` rule then accept it as an assertion; `[]` pins none). Kotlin and Python presets: the `kotlin.*` and `python.*` ids and values are under [Formatter and detekt configs](#formatter-and-detekt-configs-python-and-kotlin-presets); a project's own tool config sets them only when `tools.<tool>.precedence` lists `"project"`. TypeScript and JavaScript presets (Prettier options): `"prettier.quotes"` `"single"`/`"double"`, `"prettier.semicolons"` `"always"`/`"never"`, `"prettier.indentation"` `"2"`/`"4"`/`"tab"`, `"prettier.printWidth"` `"80"`/`"100"`/`"120"` or any number of columns, `"prettier.trailingCommas"` `"all"`/`"es5"`/`"none"`, `"prettier.arrowParens"` `"always"`/`"avoid"`, `"prettier.bracketSpacing"` `"spaced"`/`"tight"`, `"prettier.endOfLine"` `"lf"`/`"crlf"`, `"prettier.jsonIndentation"` `"2"`/`"4"`/`"tab"` and `"prettier.yamlIndentation"` `"2"`/`"4"` (measured from the JSON and YAML files themselves, only the ones the Prettier check covers: JSON at the project root and under the source and test roots, YAML under the source roots; fixtures and generated files do not count). TypeScript preset only (React): `"prettier.jsxQuotes"` `"double"`/`"single"` (Prettier `jsxSingleQuote`, measured from string attribute values in `.tsx`/`.jsx` files) and `"prettier.bracketSameLine"` `"newLine"`/`"sameLine"` (where the `>` of a multi-line opening tag is, compared with its last attribute); and, beyond Prettier, `"typescript.typeImports"` (TypeScript preset only) `"separate"` (`import type { A }`)/`"inline"` (`import { type A }`), which sets the `consistent-type-imports` fix style; `"typescript.detachedWorkRunners"` (TypeScript and JavaScript presets), a list of function names that production code may call with `void` and not await: the project's own runner for fire-and-forget work, whose rejection handling `nitpicker/no-unhandled-void-promise` cannot see. It is never measured (`[]` unless pinned), a name matches the function or method by name alone (`["runDetached"]` covers `runDetached(...)` and `tasks.runDetached(...)`), and adding a name is reported as a policy loosening; and `"typescript.assertionHelpers"` a list of function names (for example `["assertOk", "verifyCalled"]`): a function the project defines in a test file or a `test-support`, `test-utils`, `testing` or `testkit` folder whose body calls `expect` or `assert` (or throws), and that is the last call of a test (`it`, `test` and their `.only`, `.skip`, `.each`, `.for` and similar forms, not hooks or `describe`) containing no `expect` in at least three test files, counts as an assertion for `vitest/expect-expect`, next to `expect`, `assert`, `expectTypeOf` and `assertType`. A pin is a list of plain identifiers (letters, digits, `_`) and replaces the measured list. `"typescript.fileNames"` `"kebab-case"`/`"camelCase"`/`"snake_case"`, the casing `nitpicker/file-name-casing` expects of source and test file names (the part before the first dot, so `foo.min.js` is judged as `foo`). Only files under the source and test roots count; fixtures and generated files neither count nor fail. PascalCase names always pass (components, classes) and cast no vote, as do names that fit every casing (`index`, `utils`, `404`, `fr-CA`), React hook files (a file named `useX` that exports a function or constant named exactly `useX`; `useCase.ts` exporting something else is judged like any other name), Next.js and Remix names (`not-found`, `[id]`, `posts_.$id`, `_app`, `+page`), `*.config.*` files and names with a hash segment (`chunk-3f9a1c2b`). When a folder has at least three other files that vote, their plurality decides for that folder (a tie keeps the project casing); a pin in `conventions` overrides this, so every file follows the pin. |
 
 Size thresholds beyond the file limits, all whole numbers that fail only when a change makes the
 code worse than the base: `folderDepth` is the folders below `features/<feature>/<layer>/` in
@@ -496,7 +1215,7 @@ TypeScript and JavaScript (default 1) and the packages below the root package in
 fields per class, default 10) and `inheritanceDepth` (superclasses, default 3). Their rules
 (`folder-depth-limit`, `class-methods-limit`, `class-fields-limit`, `inheritance-depth-limit`) take
 `exceptions` like the file limits, and a threshold a preset does not enforce is a config error. Details:
-[Java preset](java-preset.md#class-and-package-size-limits).
+[Java preset](java-preset/class-and-package-size-limits.md).
 
 These are the analyzer names you can pass to `disable` and `--analyzer`.
 The built-in set: `eslint-lint`, `eslint-errors`, `eslint-logging`, `eslint-module-effects`,
@@ -504,6 +1223,54 @@ The built-in set: `eslint-lint`, `eslint-errors`, `eslint-logging`, `eslint-modu
 `coding-standards`, `coupling`, `test-runtime`, `structure`, `duplicates`, `dead-code`, `coverage`,
 `test-console`, `crap` and `mutation`. The Java and Kotlin presets have one analyzer each, and the Python preset has
 two, `python` and `mutation`. Every preset also runs `repository-hygiene`, and `change-history` once `history.coChange` is on.
+
+### Editor support
+
+[`spec/config.schema.json`](../spec/config.schema.json) is a JSON Schema (draft-07) for
+`nitpicker.config.json`. It is generated from the definitions the validator reads, so the two cannot
+drift, and it ships with the package. With a `$schema` line, VS Code, the JetBrains IDEs and any other
+editor that reads JSON Schema offer the keys, the allowed values and a description of each, and
+underline a misspelled key or a value the run would refuse:
+
+```json
+{
+  "$schema": "./node_modules/nitpicker/spec/config.schema.json",
+  "preset": "typescript"
+}
+```
+
+A project without `node_modules` (a Java, Kotlin, Python or Go project that has no `package.json`) points
+at the published file instead:
+
+```json
+{
+  "$schema": "https://raw.githubusercontent.com/jhonDoe15/nitpicker/main/spec/config.schema.json",
+  "preset": "java"
+}
+```
+
+The URL names `main` because no release has the file yet: 0.1.0-rc.1 ships no schema and refuses
+`$schema` as an unknown key, so the first release after 0.1.0-rc.1 is the oldest that accepts the line.
+From that release on, put its tag in place of `main`
+(`https://raw.githubusercontent.com/jhonDoe15/nitpicker/<tag>/spec/config.schema.json`) so the editor
+checks against the keys of the version you run; `main` may offer a key that your version does not take
+yet.
+
+In an npm workspace, a `nitpicker.config.json` in a package folder points at the copy the root
+installed, with one `../` per level up to the root: `"$schema": "../../node_modules/nitpicker/spec/config.schema.json"`
+for `packages/web/nitpicker.config.json`. A package that installs nitpicker in its own
+`node_modules` keeps `./node_modules/...`. Tools that resolve package exports instead of paths can
+use `nitpicker/config.schema.json` or `nitpicker/spec/config.schema.json`, and
+`nitpicker/spec/findings.schema.json` is the schema of the findings an analyzer writes.
+
+The schema follows `preset`: it offers only the keys, thresholds, tools, conventions and exception
+rules that the chosen preset takes, and flags the others. nitpicker reads and ignores the `$schema`
+line: it is not an override and it never counts as a policy change (when a change does loosen the policy
+in `nitpicker.config.json`, the digest to accept it covers the whole file, this line included).
+Run time validation stays the authority. It also checks what a schema cannot express: analyzer names
+in `disable`, whether a Python or Checkstyle rule exists, a `{` that is never closed in a glob, how
+much of `testConsole.allow[].contains` is left once numbers become `<n>`, and the files of the
+project itself.
 
 ### React
 
@@ -535,7 +1302,7 @@ rule that flags legitimate code is lifted for some paths with an entry in `excep
 `react-hooks/exhaustive-deps`); an exception that names a React rule is skipped while the scope is
 off, so adding or removing React in a PR does not break either side of the comparison. The rules and
 their allowed forms, and the Vite entry point, CSS Module typing and framework file conventions,
-are in [The strict preset](typescript-strict-preset.md#react).
+are in [The strict preset](typescript-strict-preset/react.md).
 
 ### Exceptions for rules nitpicker adds
 
@@ -546,11 +1313,11 @@ Every finding of a rule nitpicker adds ends with the entry that accepts it, in t
 surviving and uncovered mutants (`mutant-survived`, `mutant-nocoverage`) and `stability-direction`;
 a `duplicate-clone` message keeps its sentence naming the files to add to `exclude`, and an
 `exceptions` entry for `duplicate-clone` lifts it too. The TypeScript and JavaScript presets add the dead-code findings (`files`,
-`exports`, `types`), `no-production-runtime`, `type-only-production-dependency`,
-`public-alternative-bypass`, the coding-standards findings (`public-contract-production-use`,
+`exports`, `types`), `public-alternative-bypass`, the coding-standards findings (`public-contract-production-use`,
 `runtime-boundary/*`, `callback-protocol/*`) and the dependency-cruiser rules (for example
 `no-production-cycles`, `domain-does-not-import-adapters`); every ESLint message ends with its own
-entry too, whose `rule` is the ESLint rule id. A TypeScript compiler error (`TS2322`) has no
+entry too, whose `rule` is the ESLint rule id. `no-production-runtime` prints its entry in every preset and
+`type-only-production-dependency` in the TypeScript, JavaScript and Python presets (Python: for `python.exceptions`). A TypeScript compiler error (`TS2322`) has no
 exception: fix the type error, and a config entry for one is rejected. The entry is the usual
 `{ "rule", "paths", "reason" }` with the path of the finding filled in, plus `function` (the
 structure, CRAP, coverage and mutation rules) or `name` (unused `exports` and `types`):
@@ -613,8 +1380,12 @@ an exception.
   the gate shows one of them. Each message names the entry for its own tool; once that entry lifts
   it, the other tool's finding for the line shows up with its own entry.
 - `duplicate-clone` and `stability-direction` take no `function` or `name`. Their `paths` are the
-  file of the finding in TypeScript, JavaScript and Python, and the package name in Java and
-  Kotlin (`"paths": ["stable"]`, not `src/main/java/stable`).
+  path of the finding: the file of a `duplicate-clone` finding in TypeScript, JavaScript and
+  Python, the package name in Java and Kotlin (`"paths": ["stable"]`, not
+  `src/main/java/stable`), and for `stability-direction` the folder in TypeScript and JavaScript
+  and the package's `__init__.py` in Python. A `stability-direction` finding on a feature names
+  the feature folder (the feature package in Java and Kotlin) instead (see
+  [Stability direction](#stability-direction)).
 - `function` or `name` on any other rule is a config error, and so is a blank one. Entries are
   listed in the report's config overrides and change the policy hash, so every accepted finding
   shows up in review. Removing or narrowing an exception in a change never turns the findings it
@@ -644,7 +1415,7 @@ legitimate code (a brand name in JSX text) is lifted for some paths with an entr
 (`formatjs/no-literal-string-in-jsx`); an exception that names an i18n rule is skipped while the
 scope is off, and one that names an i18n rule nitpicker does not run is an error. Story files
 (`*.stories.*`, `*.story.*`) are not checked. The rules, the ones left off and why are in
-[The strict preset](typescript-strict-preset.md#internationalized-messages).
+[The strict preset](typescript-strict-preset/internationalized-messages.md).
 
 ### Dependency and repository checks
 
@@ -653,13 +1424,17 @@ change adds; a file already on the base is left alone. Each message names the ex
 `exceptions` entry (`rule`, `paths`, `reason`) in `nitpicker.config.json`, for example
 `{ "rule": "committed-env-file", "paths": ["e2e/.env.test"], "reason": "Fake values for the test stack" }`.
 
-| Rule                     | Fails when the change adds                                                                                                                                                                                                                                               |
-| ------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `committed-env-file`     | a `.env`, `.env.*`, `.env-*`, `*.env`, `env.<environment>` or `.envrc` file; templates (`.env.example`, `.env.sample`, `.env.template`, `.env.dist`) are fine                                                                                                            |
-| `committed-private-key`  | any text file with a private-key block, or a key file by name (`id_rsa`, `id_ed25519`, `*.p12`, `*.pfx`, `*.jks`, `*.keystore`, `*.ppk`) other than a trust store                                                                                                        |
-| `committed-binary`       | an archive or compiled file (`.jar`, `.class`, `.exe`, `.dll`, `.so`, `.zip`, `.tar`, `.tgz`, `.gz`, `.whl`, `.node`, ...)                                                                                                                                               |
-| `large-file`             | a file whose committed content is over 1 MB                                                                                                                                                                                                                              |
-| `committed-build-output` | a file in a build output folder: `dist`, `build`, `out`, `coverage` or `target` next to a `package.json`, `build.gradle(.kts)`, `pom.xml` or `pyproject.toml`, or `.next`, `.nuxt`, `storybook-static`, `.turbo` or `.parcel-cache` at any depth; one finding per folder |
+| Rule                       | Fails when the change adds                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   |
+| -------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `committed-env-file`       | a `.env`, `.env.*`, `.env-*`, `*.env`, `env.<environment>` or `.envrc` file; templates (`.env.example`, `.env.sample`, `.env.template`, `.env.dist`) are fine                                                                                                                                                                                                                                                                                                                                                                                |
+| `committed-private-key`    | any text file with a private-key block, or a key file by name (`id_rsa`, `id_ed25519`, `*.p12`, `*.pfx`, `*.jks`, `*.keystore`, `*.ppk`) other than a trust store                                                                                                                                                                                                                                                                                                                                                                            |
+| `committed-binary`         | an archive or compiled file (`.jar`, `.class`, `.exe`, `.dll`, `.so`, `.zip`, `.tar`, `.tgz`, `.gz`, `.whl`, `.node`, ...)                                                                                                                                                                                                                                                                                                                                                                                                                   |
+| `large-file`               | a file whose committed content is over 1 MB                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  |
+| `committed-build-output`   | a file in a build output folder: `dist`, `build`, `out`, `coverage` or `target` next to a `package.json`, `build.gradle(.kts)`, `pom.xml` or `pyproject.toml`, or `.next`, `.nuxt`, `storybook-static`, `.turbo` or `.parcel-cache` at any depth; one finding per folder                                                                                                                                                                                                                                                                     |
+| `migration-order`          | a migration whose version sorts before, or equals, the newest migration of its folder on the base branch: Flyway `V<version>__name`, Prisma `migrations/<timestamp>_name/`, and numbered files in a `migrations`, `migration` or `drizzle` folder (TypeORM, Kysely, Knex, Sequelize, MikroORM, Drizzle, golang-migrate, goose); an Alembic revision or a Django migration whose parent already has a child on the base branch, so the history has two heads                                                                                  |
+| `migration-hardcoded-name` | a migration file (the layouts above, Liquibase changelogs and other files directly in a `migrations`, `migration`, `migrate` or `drizzle` folder) that qualifies a name with the `public` schema, names a database in `ALTER DATABASE` or a role in `OWNER TO`; one finding per file and form                                                                                                                                                                                                                                                |
+| `foreign-key-index`        | a foreign key that a migration or an sqlc schema file adds with no index that starts with its columns, or a Prisma relation whose `fields` no `@@index`, `@@unique` or `@@id` of the model starts with; not reported when the project uses MySQL or MariaDB, which index foreign keys themselves                                                                                                                                                                                                                                             |
+| `start-schema-push`        | a `start`, `prestart`, `serve` or `start:*` script in a `package.json` (not `start:dev`, `start:local`, `start:watch`, `start:debug` or `start:test`), or a script it runs through `npm`, `pnpm`, `yarn`, `bun` or `npm-run-all` (with its `pre` hook), that pushes the ORM schema: `prisma db push`, `prisma migrate dev`/`reset`, `drizzle-kit push`, `typeorm schema:sync`/`schema:drop`, `mikro-orm schema:update`/`create`/`fresh`/`drop` (options between the tool and the command count); apply migrations in the deploy step instead |
 
 An env file that holds only public build-time values (every key starts with `VITE_`, `NEXT_PUBLIC_`,
 `NUXT_PUBLIC_`, `EXPO_PUBLIC_`, `PUBLIC_`, `REACT_APP_`, `VUE_APP_` or `GATSBY_`) is fine. Tooling that
@@ -669,6 +1444,39 @@ tarball a `package.json` installs with a `file:` spec. Lock files (`package-lock
 `npm-shrinkwrap.json`, `yarn.lock`, `pnpm-lock.yaml`, `bun.lock(b)`, `gradle.lockfile`, `uv.lock`,
 `poetry.lock`, `Cargo.lock`, `go.sum` and the like) are never large files, and a file stored with Git
 LFS is sized by its pointer.
+
+`migration-order` compares the head with the base checkout, so it only runs in a comparison and
+only reports migrations the change adds. A migration counts as added when its file name (Prisma: its
+folder name; Alembic: its revision id) is not in the same folder on the base. The fix is a new version:
+create the migration again with the tool, or rename it with the current timestamp; for Alembic and
+Django, point it at the latest migration or add a merge migration. Liquibase is not checked, because
+the master changelog sets the order, not the file names. `migration-hardcoded-name` reads the
+migration files with their comments blanked, and leaves generated output alone: the `public` schema
+in a folder with a drizzle-kit `meta/_journal.json` (drizzle-kit writes it into every foreign key)
+or an Atlas `atlas.sum`, and the schema and owners in a pg_dump baseline. Like every
+`repository-hygiene` rule it fails only what the change adds, so migrations already on the base are
+left alone. A project that pins its schema, database or roles on purpose adds an exception for its
+migrations folder, as the message shows.
+
+`foreign-key-index` reads the migration files (Flyway, Prisma, Liquibase XML, YAML and SQL
+changelogs, Alembic, and the SQL in TypeORM, MikroORM, Kysely, Knex and goose migrations, skipping their down part
+and `.down.sql` files), and the schema files an sqlc config (`sqlc.yaml`, `sqlc.yml` or `sqlc.json`,
+`schema` of each `sql` or `packages` entry: a file, a folder's own `.sql` files or a glob) names, unless its `engine` is `mysql`:
+`CREATE TABLE` with `REFERENCES` or `FOREIGN KEY`, `ALTER TABLE ... ADD`, Liquibase
+`addForeignKeyConstraint` and column `constraints`, Alembic `create_table`, `add_column` and
+`create_foreign_key` (also through `batch_alter_table`). A foreign key counts as indexed when an
+index, primary key or unique constraint of the same table, in any migration, starts with its
+columns; a composite index that has the column second does not count. The Knex and TypeORM
+schema builders (`table.foreign(...)`, `new TableForeignKey(...)`) and table renames are not read,
+and Django migrations are left alone because Django indexes its foreign keys. The Prisma schema
+(one file or a `prisma/schema/` folder) is checked only when no `migrations` folder sits next to
+it or above it (then the migrations are read), and a `mysql` provider only with
+`relationMode = "prisma"`. A migration is skipped when the nearest folder above it whose
+manifests name a database driver names only MySQL or MariaDB drivers (`mysql2`,
+`mysql-connector-j`, `pymysql`, `gorm.io/driver/mysql`, a `jdbc:mysql:` URL and the like), so each
+service of a monorepo goes by its own driver; a migration written for MySQL (backquoted names or
+`ENGINE=`) and a Liquibase change limited by `dbms` to other databases are skipped too. The fix is a migration that creates the index; a table known to stay small
+takes an exception for its migration.
 
 A build output folder is fine when what runs from the checkout points into it: a GitHub Action's
 `action.yml` (`runs.main`, `pre`, `post`), or the `main`, `module`, `types`, `bin`, `exports` or
@@ -696,9 +1504,11 @@ name (a plugin in a config file) needs an `unused-dependency` exception for `pac
 names the package:
 `{ "rule": "unused-dependency", "paths": ["package.json"], "packages": ["prettier-plugin-x"], "reason": "Loaded by .prettierrc" }`.
 
-The Python preset fails a new `unused-dependency` and `unlisted-dependency` the same way, reading the
-dependencies from `pyproject.toml`, `Pipfile`, `requirements*.txt` or `setup.cfg` (see
-[python-preset.md](python-preset.md)); the Java and Kotlin presets have neither rule.
+The Python preset fails a new `unused-dependency`, `unlisted-dependency` and `unresolved-import` the
+same way, reading the dependencies from `pyproject.toml`, `Pipfile`, `requirements*.txt` or
+`setup.cfg` and the modules from the project and its environment (see
+[python-preset.md](python-preset.md)). The Java and Kotlin presets have none of these rules: an import
+that does not resolve there fails the compile.
 
 ### Change history
 
@@ -724,7 +1534,7 @@ These files are never modules:
   `androidTest/`, `integrationTest/` and `testFixtures/` at any depth, a test source set such as
   `src/test/`, `src/jvmTest/` or `src/integrationTest/`, a root `fixtures/` or `testing/`,
   `*.test.*`, `*.spec.*`, `test_*.py`, `*_test.py`, `tests.py`, `conftest.py`, `*Test.java`,
-  `*IT.java`, `*Tests.kt`, `*Spec.kt` and the like, plus `layout.testRoots`. Under a Gradle or
+  `*IT.java`, `*Tests.kt`, `*Spec.kt`, `*_test.go` and the like, plus `layout.testRoots`. Under a Gradle or
   Maven `src/main/`, only the file name marks a test, so a package named `test` stays production
   code, and a `src/testing/` or `src/fixtures/` package is production code too;
 - build and tool files: `*.gradle`, `*.gradle.kts` (`build.gradle.kts`, `settings.gradle.kts`),
@@ -735,9 +1545,9 @@ These files are never modules:
 - declaration files (`*.d.ts`, `*.d.mts`, `*.d.cts`), documents, lockfiles, files directly in the
   project root and files under `exclude`.
 
-Only files with a TypeScript, JavaScript, Python, Java or Kotlin extension count, and a file counts
-under the path it has at the end of the history read: a renamed or moved file keeps its earlier
-history.
+Only files with a TypeScript, JavaScript, Python, Java, Kotlin or Go extension count, and a file
+counts under the path it has at the end of the history read: a renamed or moved file keeps its
+earlier history.
 
 Two modules are reported when both thresholds hold over the commits that count:
 
@@ -760,7 +1570,7 @@ releases change modules together on purpose. Read a finding as a question:
 
 - Do they share knowledge such as a format, a constant or a schema? Give it one owner.
 - Does one module use the internals of the other? Put what it needs behind one smaller interface
-  that the other owns. The finding cannot tell which way the dependency goes (see the limits).
+  that the other owns. The finding says which way the imports go, see below.
 - Do they only ever change as one unit? Merge them into one module.
 
 A pair that is fine as it is takes an `exceptions` entry for `co-change` with a `<module>/**` glob
@@ -794,12 +1604,79 @@ PATH, `change-history` reports nothing and the summary (`--all` runs print it on
 notice with the reason, quoting git's own error when the history cannot be read. In GitHub Actions,
 check out with `fetch-depth: 0` to enable it.
 
-Limits: nitpicker does not read imports for this check (they come from per-language tools, and this
-analyzer has no import graph), so a finding cannot say whether one module depends on the other. A
-module is a folder, so two folders of one component show up as a pair and a flat project has few
+The finding also says how the two modules depend on each other, from the imports the language
+analyzers already read: `src/billing imports src/invoicing in 3 files`, both directions when they
+import each other, or that neither imports the other, in which case what they share (a format, a
+constant, a schema) is not visible as a dependency and the first question above is the likely one.
+The imports are those between production files: the TypeScript and JavaScript `coupling` analyzer
+(the dependency-cruiser graph, with path aliases resolved), the Python facts step (its import scan) and
+the Java and Kotlin analyzers (the source references of every module of the Gradle or Maven build).
+A file under a `featureRoots` folder counts for its feature, as for the pair itself. The analyzers
+collect them only when `history.coChange` is on. When none ran or published imports (the `go` preset,
+an analyzer that failed or was turned off with `disable`), the finding says the dependency is
+unknown rather than claiming there is none. The direction is evidence for the reading, not a
+verdict: an import can be the right shape and still change in step.
+
+Limits: an import that the language analyzer cannot resolve (a dynamic import, reflection,
+dependency injection by name) is not seen, so "neither imports the other" means no import nitpicker
+found. A module is a folder, so two folders of one component show up as a pair and a flat project has few
 modules. The analysis sees only the history it is given, so a squash-merge workflow yields few, large
 commits. The head side reads the merge base at the project's head path, so a project whose folder
 moved in the change has no head evidence until the move is merged.
+
+### Stability direction
+
+`stability-direction` (the `coupling` check, every preset) fails a new dependency of a package on a
+less stable one. Instability is `fanOut / (fanIn + fanOut)`, counting the distinct files on the
+other side of the package boundary. In TypeScript and JavaScript the unit outside the features is a
+folder, not every directory: a shared root (`<sourceRoot>/main/shared`, or each `layout.sharedRoots`
+folder) is one unit, and so is each folder directly under `<sourceRoot>/main` (or under the source
+root when there is no `main`), with every folder below it. The composition root
+(`composition-root.ts` or a `composition-root/` folder) and the entry files directly in `main` or in
+the source root (`main.ts`, `server.ts`) are wiring: their edges count toward the other side's
+fan-in but are never reported.
+
+With feature folders (`layout.featureRoots`: `**/features` by default, `<sourceRoot>/main/features`
+in the TypeScript and JavaScript presets), a feature is one unit:
+
+- An edge between a feature's public face and its own internals does not count, in either
+  direction: a face that builds or re-exports its `adapters` and `domain`, and adapters that
+  implement interfaces the face declares. The face is `index.ts` in TypeScript and JavaScript, the
+  `__init__.py` and the public modules directly in the folder in Python, and the classes directly in
+  the feature package in Java and Kotlin. Its internal layering stays covered by the domain and
+  adapter rules.
+- An edge between two internal parts of one feature (`domain` to `adapters`) is checked between
+  those parts: packages in Java, Kotlin and Python, and the folders directly under the feature
+  folder in TypeScript and JavaScript.
+- An edge between two features, or between a feature and code outside the features, is measured
+  between whole units: a feature's fan-in and fan-out count its files' dependencies across the
+  feature boundary, without the ones inside it. New dependents of one feature move only that
+  feature's numbers, and a new feature that reuses others through their face is the least stable
+  unit. The message names both units and their instabilities:
+  `Keep feature dependencies pointing at more stable units: feature src/app/features/loans (instability 0.5) depends on feature src/app/features/fines (instability 0.6667). Depend on the other side's public face, or move the code that joins them into the composition root.`
+  Its identity is `package-edge:<source>-><target>`, with the feature folder for a feature (the
+  package name in Java and Kotlin) and the package or folder for the other end.
+
+A finding sits on a path of the depending side: the feature folder for a feature, the package's
+`__init__.py` in Python, the folder relative to the project in TypeScript and JavaScript, and the
+package name in Java and Kotlin. That path is what its `exceptions` entry names. An existing
+per-file or per-package `stability-direction` exception for code inside a feature folder stops
+matching once the rule measures the feature as one unit: rename it to the feature folder (or the
+feature package in Java and Kotlin), or drop it if the feature no longer inverts.
+
+Without feature folders the rule is per package. Instability moves when other code changes, so a
+new finding can sit on files the change did not edit. Its message then names the changed files
+around it, with their feature or package (at most three of each):
+`The change edited none of its files: it moved the numbers through feature src/app/features/fines (src/app/features/fines/adapters/store.py).`
+When no changed file is next to it any more (the change removed dependents, or added files that
+reach it only through others), the message says the numbers moved through dependencies the change
+removed or files it added elsewhere. Neither form adds a second fix. The units around a finding are
+kept while the comparison runs (at most ten, the heaviest first, three sample files of each) and are
+not written to the report or the cache.
+
+Widening `layout.featureRoots` loosens this rule as well: a file that joins a feature folder, or a
+larger feature, is measured as part of a bigger unit, so the change is a policy loosening with every
+preset that runs `stability-direction` with features (see the loosening list above).
 
 ### Console output from tests
 
@@ -835,25 +1712,47 @@ way it is attributed, because findings are keyed by test file and message, so a 
 not name a test.
 
 For Jest the run uses Jest's `default` reporter and nitpicker's console reporter in place of the
-`reporters` of the project config (as the Vitest and Mocha runs replace theirs), and runs with
-`silent` and `verbose` off, because Jest buffers console calls only then; a `silent` project then
-shows its console output in the run's log. Jest keeps only the first argument of a failed
-`console.assert` (`console.assert(false, 'bad %s', 'input')` gives `Assertion failed: bad %s`). With
-`node:test`, tests of one file that run concurrently can swap the test name, and
-`--experimental-test-isolation=none` (every file in the runner's own process) is not read at all,
-because the file of a call is not known there: the check passes with no findings. Mocha runs every
+`reporters` of the project config, and runs with `silent` and `verbose` off, because Jest buffers
+console calls only then; a `silent` project then shows its console output in the run's log. No run
+starts the project's own reporters (the slow-test rerun uses `default` alone), as the Vitest, Mocha
+and `node:test` runs use only nitpicker's: a reporter's side effects, such as a JUnit file or an
+upload, are not wanted from the base and head runs of a check. Jest passes only the first message
+argument of `console.assert` on, so an `--import` preload in `NODE_OPTIONS` of the Jest run formats a
+failed assertion's string message with the other arguments as Node does:
+`console.assert(false, 'bad %s', 'input')` gives `Assertion failed: bad input` on every runner. With
+`node:test`, tests of one file that run concurrently can swap the test name. With
+`--experimental-test-isolation=none` (every file in the runner's own process) a call belongs to the
+file whose test or top-level code started the work (a hook's call to the file that declares the hook),
+read from the async resource node:test runs each of them in, and names no test, as with Jest. Work a
+file started keeps that file, also when it prints while a later file runs or after the file's tests,
+as long as the runner process lives, as with Mocha; Vitest without isolation gives such a timer to
+the file running when it fires. Mocha runs every
 spec file in one process (one per worker with `--parallel`); a root hook from a `--require` file
 belongs to no test file and is not seen, but what the work it started prints while a test runs (a
-server it started handling the test's request) belongs to that test, as with Vitest. Work another spec
-file started, such as its timer, is not seen while a later file runs.
+server it started handling the test's request) belongs to that test, as Vitest without isolation
+gives a shared server's output to the running test. A `before` or `after` at the top level of a spec
+file is a root hook too, which runs once for the whole run: what it prints belongs to its file, and
+what the work it started prints later belongs to whichever test is running then, in any file, so a
+timer such a hook leaves running is reported against the test it fires in. With `--parallel` each
+file runs alone with its own root hooks, so their work stays with their file. Other work a spec file
+started, such as a test's timer or a server from a `describe`'s `before`, keeps that file, also when
+it prints while a later file runs or after the run, as long as the process lives: within its file it
+names the test running then, outside it the test or suite that started it. A client or pool that a
+test creates on first use and later files share keeps that test's file, so start shared work in a
+top-level `before` or a fixture instead. A `mochaGlobalSetup`
+fixture belongs to no file, like a root hook from a `--require` file, so what a server it started
+prints belongs to the test running then; with `--parallel` the fixture runs in the main process,
+outside the workers, and is not seen.
 
 It does not see:
 
 - `console.log`, `console.info` and `console.debug`, which go to standard output;
 - `process.stderr.write`, `process.emitWarning`, and the output of child processes and worker threads
-  a test starts;
+  a test starts, on every runner (a `worker_threads` Worker prints through its own console, whose
+  output the parent receives as a stream);
 - output printed after a test file has finished (after its last `after`/`afterAll` hook), such as a
-  dangling timer that fires later, or with Mocha a timer that fires while another file's tests run;
+  dangling timer that fires later (Mocha and `node:test` with isolation off, which run several files in
+  one process, are the exception above);
   with Jest such a call prints "Cannot log after tests are done", which fails a run in band only when
   it would fail without nitpicker too, and only when Jest's report shows no other failure (a failed
   test or suite, or an obsolete or unwritten snapshot);
@@ -897,12 +1796,23 @@ wherever it appears:
 {
   "testConsole": {
     "allow": [
-      { "contains": "ReactDOM.render is no longer supported", "reason": "React 17 shim" },
-      { "contains": "waited 250 ms", "paths": ["test/legacy/**"], "reason": "old suite" }
+      {
+        "contains": "ReactDOM.render is no longer supported",
+        "reason": "React 17 shim"
+      },
+      {
+        "contains": "waited 250 ms",
+        "paths": ["test/legacy/**"],
+        "reason": "old suite"
+      }
     ]
   },
   "exceptions": [
-    { "rule": "test-console-output", "paths": ["test/flaky.test.ts"], "reason": "..." }
+    {
+      "rule": "test-console-output",
+      "paths": ["test/flaky.test.ts"],
+      "reason": "Retries print a warning"
+    }
   ]
 }
 ```
@@ -918,6 +1828,55 @@ the base did not print can fail.
 `"disable": ["test-console"]` turns the check off alone. Disabling `coverage` turns it off too, like `crap`,
 so a `disable` list written before the check existed keeps working.
 
+## Design signals
+
+Some design problems are not wrong code, so a rule cannot simply forbid them, but a reviewer wants
+to see them. nitpicker reports these as design notes: they are listed under "Design notes for
+review (not failing)" in the console summary, in the full report and as SARIF notes, and they
+never fail the gate. Each note names the code it is about and the smaller contract that would
+remove it. The same rules run on every preset whose column in the
+[checks table](../spec/checks.md#custom-rules) says so; a language only extracts the facts.
+
+- `context-threading`: a broad project type (5 or more fields) passed whole through two or more
+  functions, one in another module, that together read a third of its fields or fewer.
+- `forwarding-chain`: two or more forwarding hops in a row across modules that change nothing
+  (same parameters in order, same types, result returned as is).
+- `disjoint-consumer-groups`: one module or class whose callers split into separate groups that
+  share no state or helper inside it.
+- `data-clump`: the same three or more typed parameters in three or more exported functions of
+  two or more modules (coordinates and other numeric kernels are left out).
+- `repeated-policy-decision`: two modules that group the constants of one enum or field the same
+  way (`card` and `paypal` as one case), a rule that belongs in one place.
+- `foreign-state-decision`: two or more functions outside a class with behaviour that branch on
+  the same fields of it, a question the class could answer.
+- `caller-protocol`: three or more callers that repeat the same steps on one class, which could
+  own the whole operation.
+
+Two of them do fail, because they are not a guess:
+
+- `mutable-state-escape`: a caller in another module changes the private mutable collection a
+  public member returned (`cart.lines().push(item)`), so the owner no longer controls its state.
+  Return a copy or a read-only view, or add the operation to the owner.
+- `protocol-contract`, for the lifecycles listed in `protocols`: a call of an `open` member without a
+  `close` member on every exit (in `finally`, `with`, `use`, try-with-resources or a `using`
+  declaration), and a listed step before `open`. The project writes the contract, so the rule never
+  guesses a lifecycle from names. A contract on a class or interface also covers its subclasses, so
+  an inherited `open` and an overriding `close` count as one lifecycle. A function that returns the
+  opened value, or keeps it in a field, hands the lifecycle over and is not reported. Each type is
+  listed once:
+
+```json
+{
+  "protocols": [
+    { "type": "Session", "open": ["begin"], "close": ["commit", "rollback"], "steps": ["write"] }
+  ]
+}
+```
+
+A finding that is right but intended takes an `exceptions` entry like any other rule; each message
+names it. Dropping a `protocols` contract, or one of its `open` or `steps` members, or adding a
+`close` member is a policy loosening; adding a contract or members that make it stricter is not.
+
 ### Custom analyzers
 
 Each `analyzers` entry is `{ "name", "command", "args"? }`. The command runs on the base and the
@@ -927,7 +1886,31 @@ and `NITPICKER_SNAPSHOT`. It prints `{"findings": [...]}` on stdout and exits 0.
 the built-in finding schema and carries `tool` equal to the entry's `name`. Findings are
 fingerprinted and classified exactly like built-in ones. A non-zero exit, invalid JSON or a schema
 violation is a tool error. A name must not clash with a built-in analyzer. The command and its
-arguments are part of the policy hash.
+arguments are part of the policy hash. A custom analyzer always runs under `--quick` too, with
+`NITPICKER_QUICK=1` in its environment (unset in a full run), so a slow check can do less in a quick
+run; its quick results are cached apart from its full ones.
+
+### Analyzer timeouts
+
+Each analyzer has a deadline: 5 minutes unless the analyzer sets its own (30 minutes for `python` and `go`,
+70 for the Python `mutation` analyzer, two Gradle or Maven commands plus a minute for `java` and
+`kotlin`). An analyzer that runs out of time is a tool error that names this setting. On a large
+project, give it more time:
+
+```json
+{ "analyzerTimeoutMinutes": { "eslint-lint": 20, "java": 90, "house-rules": 10 } }
+```
+
+Each value is a whole number of minutes from 1 to 35791, the longest Node.js timer. A name must be
+an analyzer of the preset or a custom analyzer (a disabled one is accepted); another name is a
+config error that lists the known ones. The long commands inside the analyzer (the ESLint run, the
+Python tools and mutation run, the Go commands, and the Gradle and Maven commands and the tools run on a Maven build)
+then get the same deadline in place of their own shorter default. `NITPICKER_GRADLE_TIMEOUT_MINUTES` and
+`NITPICKER_MAVEN_TIMEOUT_MINUTES` still set each Gradle or Maven command when they are set.
+
+A timeout is not policy: changing it is not listed as a policy change, and a pull request that
+raises it runs both snapshots with the head's timeouts. A lowered timeout that makes an analyzer
+time out is still a tool error (exit 2).
 
 ## Java preset
 
@@ -936,18 +1919,52 @@ SpotBugs, Error Prone (with NullAway), google-java-format and JaCoCo run on the 
 `languages/java/gradle/nitpicker.init.gradle`, shipped in this package; the consumer build is not edited), and only
 new enforceable findings fail. Exit codes, console summary, `new-findings.json`, `report.sarif`
 and `report.junit.xml` are the same as for TypeScript. If Gradle fails on either snapshot, the
-failure is reported as a `java/gradle-failure` tool error (exit 2 when there are no new findings), never thrown.
+failure is reported as a `java/gradle-failure` tool error (exit 2 when there are no new findings), never thrown;
+failing tests on the head are a `java/tests-failed` tool error instead (exit 1). A head that does not compile
+reports each javac or Error Prone error as a `build/compile-error` finding at its file and line (exit 1),
+plus a `java/compile-failed-skipped` notice that the other checks did not run; a base that does not
+compile stays a `gradle-failure` or `maven-failure` tool error. The tool error keeps the cause (the
+compiler errors and the innermost lines of Gradle's "What went wrong") and ends with the path of the full
+build log, `logs/<preset>-<base|head>-gradle.log` in the report folder, which the next run clears.
 A project whose root has a `pom.xml` and no Gradle build file (or both, with `mvnw` and no `gradlew`)
 is built with Maven 3.6.3 or newer instead, with the same tools, versions and findings, one module
-at a time (findings carry the module path); a Maven failure or a failing test on the head is a
-`java/maven-failure` tool error naming the cause (a base whose tests fail is a note, see "A base
-whose tests fail"). Maven runs through `mvnw` when the project has
+at a time (findings carry the module path); a Maven failure is a `java/maven-failure` tool error
+naming the cause, and a failing test on the head is a `java/tests-failed` one (exit 1; a base whose
+tests fail is a note, see "A base whose tests fail"). Maven runs through `mvnw` when the project has
 one, else `mvn` from the PATH; `NITPICKER_MAVEN=<command>` overrides both. See
-[Maven builds](java-preset.md#maven-builds).
+[Maven builds](java-preset/maven-builds.md).
+
+With `--fix`, the changed `.java` files are rewritten with the formatter the gate checks them
+with, the one the run names under "Following this project's conventions": google-java-format
+1.25.2 (`--aosp` for the 4-space style) or palantir-java-format 2.50.0. With no formatter signal at
+all, the convention is google, so `--fix` applies google-java-format to new files and to files that
+were formatted on the base, which is what the gate's format check then demands. The convention is
+`"none"` when `conventions` pins `"java.formatter"` to it, and also when nitpicker detects it: an
+Eclipse or Prettier formatter step in Spotless, build files that contradict each other, or measured
+evidence that the code follows no supported formatter. Then no Java file is rewritten and the run
+prints a "Fix notes:" line saying so. `--fix` does not run Spotless or fmt-maven-plugin: license
+headers, import order and a formatter version other than the pinned one stay with the project's own
+task.
+
+Only the files the gate's format check covers are rewritten: files in a module's source sets (the
+conventional `src/<set>/java` and `src/<set>/kotlin` folders and the source directories the build
+files declare), the same rule as the "outside the build's source sets" notice. Build scripts,
+folders such as `tools/` or `src/test/resources`, build output and generated sources are left
+alone. A file that is not UTF-8 text is left as it is, with a "Fix notes:" line. The formatter jars
+are resolved through a small build nitpicker writes under `~/.cache/nitpicker` (Maven: the same
+tool cache the gate uses; Gradle: a throwaway build run with the project's wrapper or `gradle`, so
+the project's build is never evaluated and does not have to compile), and reused on later runs while
+the jars exist. Maven resolves them through your `settings.xml`, mirrors included. The Gradle build
+copies the repositories the project declares (the `dependencyResolutionManagement` repositories of
+`settings.gradle(.kts)`, and the top-level, `allprojects` or `subprojects` repositories of the root
+`build.gradle(.kts)`) and the project's `gradle.properties`, so a company mirror and its credential
+properties apply; with no declared repository it uses Maven Central. Your Gradle user home
+(`~/.gradle/gradle.properties`, `~/.gradle/init.d`) applies as for any build. When resolution fails,
+the tool error names the build and the files its repositories came from.
 
 Needs Java 21. Gradle is run through the project's own wrapper (`gradlew`, `gradlew.bat` on Windows) when the
 project root has one (run with `sh` when it is not executable), else `gradle` from the PATH; `NITPICKER_GRADLE=<command>` overrides both.
-Config keys with this preset: `base`, `disable`, `analyzers`, and the keys shared with the other
+Config keys with this preset: `base`, `disable`, `analyzers`, `analyzerTimeoutMinutes`, and the keys shared with the other
 presets, `thresholds` (`crapLimit`, `fileLines`, `testFileLines`, `folderFiles`, `folderDepth`,
 `classMethods`, `classFields`, `inheritanceDepth`, `unitTestSeconds` and `integrationTestSeconds`),
 `exclude` (findings under the globs are dropped; a duplicate is dropped when a glob matches either file of the pair), `duplicates` (the folders the duplicate scan skips), `exceptions`, `legacyInventory`, `conventions`, `spring` (role mappings for the Spring architecture rules) and `history` (see [Change history](#change-history)).
@@ -960,27 +1977,45 @@ the TypeScript one, `{ "sites": [{ "file", "rule", "source", "count" }] }`, wher
 finding's `identity` as printed in `new-findings.json`: up to `count` occurrences of that site are
 baselined, and raising a `count` (or adding a site) on head over the base fails as
 `baseline-expansion`. `react` and `i18n` describe React and message libraries, have no Java meaning, and stay a config
-error with this preset; `layout` is an error too until the Java preset runs the rule that reads it (`shared-used-by-one-feature`).
-`testConsole.allow` applies to the console output of the JUnit tests. `tools` takes `pmd` and `checkstyle`; see
+error with this preset. `layout` takes `sharedRoots` and `featureRoots`, which `shared-used-by-one-feature` and `archunit/contract-infrastructure-type` read (see
+[Reuse rules](java-preset/reuse-rules.md)); its TypeScript source-folder keys are an error.
+`testConsole.allow` applies to the console output of the JUnit tests. `tools` takes `pmd`, `checkstyle`, `spotbugs`, `errorprone` and `pit`; see
 [Your project's tool configs](#your-projects-tool-configs). `exceptions` takes a finding as printed
 (`pmd/UnusedPrivateField`) or a rule nitpicker adds; see
 [Exceptions for rules nitpicker adds](#exceptions-for-rules-nitpicker-adds). Details:
 [java-preset.md](java-preset.md).
 
+Troubleshooting: the failures this preset meets are listed in the
+[Java preset guide](java-preset/troubleshooting.md).
+
 ## Kotlin preset
 
-Set `"preset": "kotlin"` for a Gradle project with Kotlin JVM modules, including modules that mix
-Java and Kotlin. It runs everything the Java preset runs on the Java sources, plus detekt and a
+Set `"preset": "kotlin"` for a Gradle project with Kotlin JVM modules or a Maven project that applies
+`kotlin-maven-plugin`, including modules that mix Java and Kotlin. Kotlin Multiplatform and Android modules of a Gradle
+build get the source checks only (see [Known limits](kotlin-preset/known-limits.md)). The build tool is detected, as for
+the Java preset, and never configured. It runs everything the Java preset runs on the Java sources, plus detekt and a
 format check (ktlint or ktfmt, whichever the project uses, and none for a project that uses
 neither; `"kotlin": { "formatter": "ktfmt" }` overrides the detection) on the Kotlin sources,
 JaCoCo coverage and changed-branch coverage for both (a changed Kotlin branch that no test takes
 fails; a line the compiler generated branches for is ignored), and the structure limits, CRAP,
-duplicates and package stability checks on Kotlin code. PIT also mutates the Kotlin classes, but
-their mutants are only reported, because plain PIT on Kotlin bytecode reports mostly
-compiler-generated mutants (and a Kotlin module pays for PIT's run all the same). The project's
+duplicates and package stability checks on Kotlin code. PIT also mutates the Kotlin classes and
+their new surviving or uncovered mutants fail like Java ones, after a filter that leaves out the
+mutants of code the Kotlin compiler generated (the PSI program that reads the Kotlin sources writes
+the facts the filter needs). The project's
 detekt config is found in the usual places or set with `"kotlin": { "detektConfig": "path" }`. Config keys, Gradle
-requirements, exit codes and the Gradle-failure tool error are those of the Java preset, with the
+or Maven requirements, exit codes and the Gradle-failure or Maven-failure tool error are those of the Java preset, with the
 analyzer named `kotlin`. Details and the remaining slices: [kotlin-preset.md](kotlin-preset.md).
+
+With `--fix`, the changed `.kt` files in the build's source sets are rewritten with the formatter the
+check uses, the pinned ktlint 1.8.0 or ktfmt 0.64 with the same style and `.editorconfig` handling,
+under the same scope rules as Java files (build scripts such as `build.gradle.kts`, which the check
+does not cover, are left alone). A file the formatter cannot parse is left as it is and named in a
+"Fix notes:" line; the other files are still formatted. When no Kotlin formatter is found, the run
+prints a "Fix notes:" line saying so. In a file that already failed the check on the base, ktlint
+reports each unformatted line, so the gate flags the lines your change touched: there `--fix` keeps
+only the ktlint changes that meet a changed line (and the lines they move, such as a sorted import)
+and leaves the rest of the file as it was. ktfmt and the Java formatters check whole files, so such
+a file is left as it is. A file with CRLF line endings keeps them, although ktlint writes LF.
 
 The preset also narrows Kotlin to one way of writing the common many-ways spots, with detekt rules
 of its own that the project's detekt config cannot switch off: `!!` and unsafe casts of nullable
@@ -998,13 +2033,40 @@ Inline `@Suppress` of any detekt or ktlint rule fails (Kotlin compiler warnings 
 entry with the same shape as TypeScript's, for example
 `{ "rule": "detekt.style.ForbiddenMethodCall", "paths": ["src/main/kotlin/app/Main.kt"], "reason": "The entry point blocks on its coroutine." }`.
 
+Troubleshooting: the failures this preset meets are listed in the
+[Kotlin preset guide](kotlin-preset/troubleshooting.md).
+
+## Go preset
+
+Set `"preset": "go"` for a Go module (`go.mod` at the project root). It needs Go on the `PATH` and
+runs the project's own toolchain: a format check with the formatter the project uses (gofmt,
+gofumpt or goimports, detected from `go.mod` tool directives and the golangci-lint config, or set
+with `"go": { "formatters": ["gofumpt"] }`; gofmt when there is no signal), `go vet` (compile
+errors are `build/compile-error` findings, vet diagnostics `vet/<analyzer>`), `go test -json` over
+every package (failing tests are a tool error, plus `no-tests-ran` and the shared slow-test
+limits), the structure, type, file and folder limits from a small `go/ast` program that ships
+with nitpicker, duplicate code (jscpd and the renamed-clone pass), package stability direction,
+`shared-used-by-one-feature` and `test-only-export` over the same program's facts, unreachable
+functions (`deadcode`, for a module with a `main` package) and `go mod tidy -diff` for unused and
+unlisted requirements. Tools nitpicker pins (gofumpt, goimports, deadcode) are built once into
+`~/.cache/nitpicker`; a `tool` directive in the project's `go.mod` for the same tool wins.
+Build tags for the tests go in `"go": { "buildTags": ["integration"] }`. Exceptions name a finding
+as printed, `{ "rule": "vet/printf", "paths": ["shop/label.go"], "reason": "..." }`, or a shared
+rule. Details and the remaining slices: [go-preset.md](go-preset.md).
+
 ## JavaScript preset
 
 Set `"preset": "javascript"` to gate a project of plain `.js`, `.mjs` and `.cjs` files with the same
 checks, rules and exit codes as the TypeScript preset; the keys `layout`, `exceptions` and `tools` work the same.
-It is never auto-detected. Types are written as JSDoc and checked by TypeScript with `allowJs` and
+It is never applied unless declared: `nitpicker init` writes it for a project with JavaScript sources and no
+TypeScript, and a run without a preset on such a project prints a hint to stderr. CI needs what the TypeScript preset needs
+([nitpicker in CI](ci.md#toolchains-by-preset)). Types are written as JSDoc and checked by TypeScript with `allowJs` and
 `checkJs`: nitpicker generates the tsconfig, layered over your `tsconfig.json` or `jsconfig.json` when you
 have one. `typescript` and `vitest` are peers as for TypeScript.
+
+The `$schema` line of [Editor support](#editor-support) offers this preset's keys only: it flags
+`react`, `i18n` and the class thresholds that only Java, Kotlin and Python take, and accepts the
+JavaScript conventions.
 
 What the preset does not support:
 
@@ -1060,6 +2122,9 @@ reports no enforceable findings for it.
 
 CRAP is measured on `.js`, `.mjs`, `.cjs`, `.ts`, `.mts` and `.cts` files, the same way as on TypeScript ones.
 
+Troubleshooting: the failures this preset meets are listed in the
+[TypeScript and JavaScript preset guide](typescript-strict-preset/troubleshooting.md).
+
 ## Python preset
 
 Set `"preset": "python"` in `nitpicker.config.json` to gate a Python project the same way: ruff, a
@@ -1072,10 +2137,22 @@ enforceable findings fail. Exit codes, console summary, `new-findings.json`, `re
 environment, failing tests, a crashing tool; failing tests on the base alone are only a note, see
 [A base whose tests fail](#a-base-whose-tests-fail)), the failure is reported as a tool error of the
 analyzer that ran it, never thrown: `python` for `ruff-failed`, `format-failed`, `tests-failed`,
-`coverage-failed`, `types-failed`, `rules-failed`, `structure-failed` or a plain one when the environment is missing, and `mutation` for
-`mutation-failed` (exit 2 when there are no new findings). A mutation failure keeps the lint,
+`coverage-failed`, `types-failed`, `rules-failed`, `structure-failed`, `test-runtime-failed`, `design-failed` or a plain one when the environment is missing, and `mutation` for
+`mutation-failed` (exit 2 when there are no new findings; failing head tests exit 1). A mutation failure keeps the lint,
 format and coverage findings, and mutation testing is skipped when the `python` analyzer had a tool
 error.
+
+`--fix` runs inside that environment, on the changed `.py`, `.pyi` and `.ipynb` files, the files
+the gate's ruff and format checks cover: `ruff check --fix` with nitpicker's selected rules and
+ruff's safe fixes, then the formatter the run names (ruff format or black) with the options of the
+"Format with ..." command. `ruff check --fix` honours `# noqa` comments, so code you suppressed is
+never deleted (the gate's check ignores them, but only on the lines you change). Like ESLint on
+TypeScript, it fixes the whole changed file, not only the changed lines. Notebooks go to Black too,
+which formats them, as the gate checks them, only when its `jupyter` extra (`black[jupyter]`) is
+installed; without it a "Fix notes:" line names the notebooks it skipped. A file that does not
+parse, or is not UTF-8 text, is left as it is, and a file that already failed the format check on
+the base is not reformatted (Python indentation is code, so nitpicker does not format parts of it).
+A fixer that fails is reported as a tool error that names the missing or failing binary.
 
 The environment is detected: `uv.lock` (also the one of a uv workspace above a member) runs the
 tools with `uv run --no-sync`, `poetry.lock` uses the environment poetry reports, a `Pipfile` the one `pipenv --venv` reports,
@@ -1100,7 +2177,7 @@ with `# pragma: no mutate` or a `do_not_mutate` in your `[tool.mutmut]` is repor
 `fork`, so on native Windows the analyzer is skipped with a note: run nitpicker in WSL. Add
 `mutants/` to your ignore file. See [python-preset.md](python-preset.md).
 
-Config keys with this preset: `base`, `disable` (`python` and `mutation` are the analyzer names), `analyzers`, `thresholds` (`crapLimit`), `exclude` (findings
+Config keys with this preset: `base`, `disable` (`python` and `mutation` are the analyzer names), `analyzers`, `analyzerTimeoutMinutes`, `thresholds` (`crapLimit`), `exclude` (findings
 under the globs are dropped), `legacyInventory` (same format as the Java one; `source` is the
 finding's `identity`), `history` (see [Change history](#change-history)) and `python`, whose keys all override a detection: `environment` (`"uv"`,
 `"poetry"`, `"path"` or a virtualenv directory in the project), `formatter` (`"ruff"` or
@@ -1108,11 +2185,14 @@ finding's `identity`), `history` (see [Change history](#change-history)) and `py
 `typeChecker` (`"mypy"`, `"pyright"` or `"basedpyright"`), `importLinter` (`true` or `false`; by default the import-linter
 contracts run when the project configures them) and `sourceRoots` (default `src`, else the top-level
 packages). The gate also reports new duplicates (`duplicates/duplicate-clone`), package coupling
-(`coupling/stability-direction`; an import under `if TYPE_CHECKING:` is never the reported dependency, though it still counts toward instability) and broken import-linter contracts (`import-linter/contract-broken`);
+(`coupling/stability-direction`; an import under `if TYPE_CHECKING:` is never the reported dependency, though it still counts toward instability), package and module cycles (`coupling/package-cycle`, `coupling/no-production-cycles`), imports from outside the source roots (`coupling/no-import-outside-roots`), the feature folder rules (`coupling/feature-internal-import`, `coupling/shared-imports-feature`, `coupling/feature-cycle`, `coupling/shared-used-by-one-feature`; see [Feature folders](python-preset.md#feature-folders)) and broken import-linter contracts (`import-linter/contract-broken`);
 their messages name the file to add to `exclude` when the repetition or dependency is intended (a duplicate names both files of the pair, and an `exclude` or exception that matches either one lifts it, so excluding an old or generated file also hides a clone between it and a new file).
-`layout` and `testConsole` are an error until the Python preset runs the rules that read them; the top-level `exceptions` is accepted only
-for the file limits (`file-lines-limit`, `line-length-limit`, `folder-files-limit`), the
-[dependency and repository checks](#dependency-and-repository-checks) and the shared rules the preset reports.
+`testConsole` is the allowlist of `test-console-output`, which the Python preset runs on what its tests print
+(see [the Python preset](python-preset/new-console-output-from-tests.md)); `layout` takes only `sharedRoots` and
+`featureRoots`, for the feature folder rules the preset runs (see [the Python preset](python-preset/feature-folders.md)). The top-level `exceptions` is accepted only for
+the file and size limits, the function rules, `unused-option`, the
+[dependency and repository checks](#dependency-and-repository-checks) and the shared fact rules the preset reports
+(see [the Python preset](python-preset/configuration.md#exceptions) for the list).
 
 The one-way rules (pathlib, f-strings, no mutable defaults, no bare `except`, no `except` that only passes, continues, returns or assigns a constant, no `contextlib.suppress(Exception)`, no
 `import *`, logging instead of `print` with the logger the project declares, frozen dataclasses,
@@ -1125,23 +2205,33 @@ that is legitimately outside a rule is lifted with `python.exceptions`, the Pyth
 ```json
 {
   "preset": "python",
-  "exceptions": [
-    {
-      "rule": "T201",
-      "paths": ["src/cli/**"],
-      "reason": "Command line entry points print their result."
-    }
-  ]
+  "python": {
+    "exceptions": [
+      {
+        "rule": "PERF203",
+        "paths": ["src/importers/**"],
+        "reason": "Each row is validated on its own and a bad row must not stop the rest."
+      }
+    ]
+  }
 }
 ```
 
-`rule` is the id printed in the finding; `exclude` drops every finding under a path instead. The rules most likely to flag code that is right for its place are `T201` (`print` in a command-line tool), `PERF203` (`try` in a loop) and `F401` (an `__init__.py` that re-exports). Inline `# pragma: no cover` and `# pragma: no branch` are not honored either. Changed-branch coverage (`coverage-py`, from the branch data of the same coverage.py
+`rule` is the id printed in the finding; `exclude` drops every finding under a path instead. The rules most likely to flag code that is right for its place are `PERF203` (`try` in a loop) and `F401` (an `__init__.py` that re-exports). A command-line tool writes through a `TextIO` parameter that its entry point fills with `sys.stdout`, so it needs no exception for `print`. Inline `# pragma: no cover` and `# pragma: no branch` are not honored either. Changed-branch coverage (`coverage-py`, from the branch data of the same coverage.py
 run) fails an untested branch on a changed line, as for Java: `if`, `while`, `for` and `match`
-arms are judged, an untested `except` handler is not. The project's own coverage configuration is
-ignored (`exclude_lines`, `exclude_also`, `partial_branches`, `omit`, plugins, subprocess
-measurement): nitpicker's rcfile measures branches, skips test files and excludes only
-`if TYPE_CHECKING:`, `if __name__ == "__main__":`, `@overload` and `raise NotImplementedError`.
+arms are judged, an untested `except` handler is not. Of the project's own coverage configuration
+only `concurrency`, `patch` and `plugins`, which the run needs, are read until `tools.coverage` opts it in (see
+[Type checker and mutation configs](#type-checker-and-mutation-configs-python-preset)): nitpicker's
+rcfile measures branches, skips test files and excludes only
+`if TYPE_CHECKING:`, `if __name__ == "__main__":`, `@overload`, `raise NotImplementedError`, a
+function whose body is `...` right after the colon of its signature (`Protocol` and abstract method
+stubs) and a `case _:` arm whose only statement is `assert_never(subject)` on the next line. A
+`match` over every member of an enum or union ends with that arm: without it, the jump out of the
+`match` when no case matches is an untaken branch. An `assert_never` anywhere else is counted.
 A branch that cannot be tested is accepted for one function with an `exceptions` entry for `changed-branch-coverage` that names the function, which keeps every other finding of the file (see [Exceptions for rules nitpicker adds](#exceptions-for-rules-nitpicker-adds)); `exclude` lifts the whole file. A change that leaves the project with no test at all fails as `python/no-tests-ran`. Details: [python-preset.md](python-preset.md).
+
+Troubleshooting: the failures this preset meets are listed in the
+[Python preset guide](python-preset/troubleshooting.md).
 
 ## The strict preset
 
@@ -1159,17 +2249,28 @@ new and touched code must comply.
   `as const`), `any`, non-null `!`, `<Type>value`, or `null` (except strict comparison and the
   `JSON.stringify` replacer); no comments except doc comments on exported API, no inline lint disables, no `@ts-ignore`,
   `@ts-expect-error` or `@ts-nocheck`; `for...of` is the only loop (no `for(;;)`, `for...in`,
-  `while`, `do...while` or `forEach`), `async`/`await` with no `.then()/.catch()/.finally()` chains
+  `while`, `do...while` or `forEach`), no growing accumulator spread into its own next value
+  (`xs.reduce((acc, x) => ({ ...acc, [x.id]: x }), {})` or `out = [...out, x]` in a loop: build the
+  result in one pass with `Object.fromEntries`, `new Map`, `flatMap` or `map`, or `Object.groupBy`
+  with `lib` `ES2024`; a fixed-key object or a literal `.slice` bound is not reported),
+  `async`/`await` with no `.then()/.catch()/.finally()` chains
   and no floating promises, and `===`/`!==` only. Config files are exempt from the loop and chain
   bans.
 - **Tests** follow the same construct bans: `for...of` is the only loop (use `it.each` for one test
   per case), no `forEach`, no `.then()/.catch()/.finally()` chains, and no `as` (except `as const`)
-  or `<Type>value`. `nitpicker/no-partial-output-assertion` also rejects `toMatchObject` and
+  or `<Type>value`. `nitpicker/no-assertion-in-loop` rejects an assertion inside any loop or
+  iterating callback of a test (also in a same-file helper that a test calls), because an empty
+  collection passes without asserting: assert the whole collection, write a parameterized test, or
+  use the loop only to build data. A loop that always runs at least once (a `for` with a literal
+  start and bound, `Array.from({ length: 3 })` or `do ... while`) is not reported.
+  `nitpicker/no-partial-output-assertion` also rejects `toMatchObject` and
   `expect.objectContaining`, `expect.stringContaining` and `expect.arrayContaining` inside
   `toEqual`/`toStrictEqual`, and `toMatch` with a string or an unanchored pattern: assert the whole
   value. Assertions must pin the value: `toBeDefined`, `toBeTruthy`, `toBeFalsy`, `not.toBeNull`,
   `not.toBeUndefined`, a bare `toHaveBeenCalled()`, `toThrow()` without a message and `expect(true)`
-  are rejected. Tests do not use inline lint disables, `@ts-*` or coverage and mutation ignore
+  are rejected, and so are their spellings `nitpicker/no-weak-assertion` finds: `not.toBe(null)`, a
+  length checked only to be above 0, and `toHaveBeenCalledWith` given only `expect.anything()` or
+  `expect.any(Type)`. Tests do not use inline lint disables, `@ts-*` or coverage and mutation ignore
   comments; keep no mutable `let` shared between tests; write `it.each` instead of three copies of a
   test; restore fake timers in `afterEach`; leave out `it.todo`, `fails`, `skipIf(true)`, the real
   clock and `Math.random`, and the network in unit tests. A file that defines tests but is not named
@@ -1193,12 +2294,18 @@ new and touched code must comply.
   superstruct, runtypes, typia, effect or valita); with none installed the messages name
   [zod](https://zod.dev), an expectation of the preset, not a dependency of nitpicker. The
   catch-logging rule follows the project's logger the same way. See
-  [Libraries follow the project](typescript-strict-preset.md#libraries-follow-the-project).
+  [Libraries follow the project](typescript-strict-preset/inside-adapters.md#libraries-follow-the-project).
 - **All production code** has no recursion: a function that calls itself is flagged (use `map`,
   `flatMap` and friends, or a `for...of` loop for a retry outside `domain/`).
 - **Touched code**: a strict-rule finding that exists on the base stays baselined while its file's
   edited lines are elsewhere. When a change edits the line a strict-rule finding sits on, or adds
-  the file, the finding counts as new and fails the run. Pure renames and moves stay baselined.
+  the file, the finding counts as new and fails the run, and its message says so (the base already
+  had it; leave the line as it was, or bring it up to the rule). A line whose only change is what
+  a formatter does (whitespace, line breaks, quote style, trailing commas, semicolons), or that git
+  shows as deleted and re-added because code was inserted above it, is not an edited line; a
+  reformat into another form (an added or removed bracket pair) still is. When
+  several findings share a message in a file, the one on the added or edited line is the new one.
+  Pure renames and moves stay baselined.
   Findings of descriptive metrics (CRAP, duplication, coupling) keep their delta logic.
   Prettier works the same way: it reports one finding per unformatted region, located at the
   region's first line, so a legacy unformatted file stays baselined until a change edits a line
@@ -1243,7 +2350,9 @@ own tools do:
   `jsx`, `paths`, module resolution and other settings, and nitpicker adds its policy flags on top
   (`strict`, `noImplicitReturns`, `noFallthroughCasesInSwitch`, `noUncheckedIndexedAccess`,
   `useUnknownInCatchVariables` and the
-  rest of the strict family) plus `noEmit` and `skipLibCheck`. TypeScript projects also get
+  rest of the strict family) plus `noEmit`, `noCheck: false` and `skipLibCheck`. Where the project's tsconfig sets one
+  of these options itself, it wins only with `tools.typescript.precedence` listing `"project"` first
+  (see [TypeScript compiler options](#typescript-compiler-options-typescript-and-javascript-presets)). TypeScript projects also get
   `exactOptionalPropertyTypes`, `noPropertyAccessFromIndexSignature` and `noUncheckedSideEffectImports`
   (JavaScript projects do not); their errors name the allowed form (`env['PORT']`,
   `title?: string | undefined`). The files checked are the source and test roots. Because `noEmit`
@@ -1264,8 +2373,11 @@ own tools do:
 - **Coverage and mutation tests** load the project's `vitest.config.*` or `vite.config.*` (the
   first found, `.ts`, `.mts`, `.cts`, `.js`, `.mjs` or `.cjs`). Its environment, setup files,
   aliases and plugins apply. The options that decide whether a run passes are fixed by nitpicker
-  whatever the project sets: no retries, no `bail`, no `.only`, no passing without tests, test and
-  hook timeouts of 10 s, unhandled errors fail the run, and snapshots are never written (a snapshot
+  whatever the project sets: no config-level retries (the coverage, CRAP and test-console runs can
+  opt into them with `tools.tests.precedence`, mutation runs never retry; see
+  [Test runner configs](#test-runner-configs-typescript-and-javascript-presets)), no `bail`, no
+  `.only`, no passing without tests, test and hook timeouts of 10 s, unhandled errors fail the run,
+  and snapshots are never written (a snapshot
   must be committed, or the test fails). `vi.stubEnv` and `vi.stubGlobal` are undone after each
   test. nitpicker adds the `*.test.*` and `*.spec.*` files under the source and
   test roots, ignores the project's `test.dir`, and owns the coverage settings, so the project's
@@ -1361,7 +2473,8 @@ sets the precedence for that tool. It lists `"project"` and `"nitpicker"`, highe
 | `["nitpicker", "project"]` | both merged; nitpicker's value wins where both set the same option   |
 
 A change that adds the opt-in is a policy change, and the project config files it starts reading are
-listed with it (each option for `jscpd`), so the person who accepts it sees what the config loosens.
+listed with it (each option for `jscpd` and `stryker`), so the person who accepts it sees what the config
+loosens. Stryker's config has its own section, [Mutation testing config](#mutation-testing-config-typescript-and-javascript-presets).
 
 For Prettier, "the project's config" is what Prettier itself resolves for each file
 (`.prettierrc*`, `prettier.config.*`, the `prettier` key in `package.json`, and `.editorconfig`),
@@ -1386,6 +2499,56 @@ measured from data files, because a YAML or JSON file says nothing about it unle
 enough to wrap. Everything else keeps nitpicker's settings when `"nitpicker"` is listed, and the
 project's config alone (plus those two options) under `["project"]`. A `.editorconfig` counts as
 the project's Prettier config, so it is read only when `precedence` lists `"project"`.
+
+With the `typescript` and `javascript` presets, `knip` (the dead-code check) takes the project's knip
+config: the first of `knip.json`, `knip.jsonc`, `.knip.json`, `.knip.jsonc`, `knip.ts`, `knip.js`,
+`knip.config.ts` and `knip.config.js`, laid over the `knip` key in `package.json` the way knip itself
+reads them. A JSON or JSONC config is read as data. A TypeScript or JavaScript config is code: opting
+in runs it, with the knip version nitpicker pins, in the head checkout, as the project's own tests and
+scripts already do. It runs once when the run starts (and once per side for the policy-change check),
+only while `dead-code` is enabled, without the CI output variables (`GITHUB_OUTPUT`, `GITHUB_ENV` and
+the like), and is stopped after a minute. What it prints is ignored. One that exports a function is
+called with no options; regular expressions (in `ignoreDependencies` and the like) are kept; any other
+value that is not plain data (a function, a `Set`, a `Date`) is a tool error that names its key, such
+as `ignoreDependencies[0]`. `compilers`, `syncCompilers` and `asyncCompilers` are left out, at the top
+level and in each workspace, since the dead-code check reads only JavaScript and TypeScript files. A
+config file, or a `package.json`, that resolves outside the project through a symlink is a tool error.
+Without the opt-in neither the file nor the `package.json` key is read, not even the keys knip would
+merge in on its own (a `package.json` that does not parse but names `knip` fails the check rather
+than letting knip read the key), and the run prints `Ignoring knip.json; opt in with ...`. Naming
+`"project"` without a config, or with one knip cannot load, makes the dead-code check a tool error
+that says which.
+
+The layers merge key by key:
+
+| Keys                                                                                                 | Merge                                                                                                                                                               |
+| ---------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `entry`                                                                                              | the project's entry files are added to nitpicker's, so a file a host or script loads stops being reported as unused; negated (`!`) entries are not used             |
+| `project`                                                                                            | nitpicker's source and test roots; the project's negated patterns (`!src/generated/**`) are added, its other patterns are not                                       |
+| `ignore`, `ignoreFiles`, `ignoreDependencies`, `ignoreBinaries`, `ignoreMembers`, `ignoreUnresolved` | added to nitpicker's                                                                                                                                                |
+| `ignoreWorkspaces`, `ignoreIssues`                                                                   | added to nitpicker's                                                                                                                                                |
+| `rules`, `include`, `exclude`, `ignoreExportsUsedInFile`, `includeEntryExports`, `cycles`, `tags`    | the project's value under `["project"]` and `["project", "nitpicker"]`; nitpicker's (every issue type knip reports by default) under `["nitpicker", "project"]`     |
+| `paths` and plugin settings (`"vitest": { "entry": [...] }`, `"eslint": false`)                      | the project's where nitpicker sets none; where both set one, the first layer's; the production run that finds test-only exports still switches the test runners off |
+| `workspaces`                                                                                         | the `"."` entry is merged as the root config; the other workspaces keep the project's settings                                                                      |
+| `$schema`, `treatConfigHintsAsErrors`, `treatTagHintsAsErrors`, `compilers`                          | nitpicker's                                                                                                                                                         |
+
+So the project config can change which files are checked under every ordering: added entries, negated
+`project` patterns, `ignore`, `ignoreFiles`, `ignoreWorkspaces`, plugin entries and nested workspaces
+all take files or workspaces out of the report. nitpicker's own entries, roots and ignores always stay.
+`["project"]` and `["project", "nitpicker"]` are the same here. The config is read from the head
+checkout and applies to both sides of the comparison when both opt in; a base that does not opt in
+keeps nitpicker's config. Its evaluated content is part of the cache key.
+
+Listing `"project"` at all is a loosening, more so when it comes first. While the head opts in, the
+check for policy changes evaluates the config on both sides (the base's only when the base opts in
+too) and compares what applies key by key, so an edit of a file the config imports counts, and key
+order, comments and keys nitpicker never applies change nothing. A key that takes more files,
+dependencies or issues out of the report (an added entry, ignore, negated pattern or ignored issue
+type) and any change to `rules` and the other ranked keys while the project comes first, to `paths`,
+plugin settings or `workspaces` is a loosening that needs a person's acceptance, listed as
+`knip knip.json ignore: ["a/**"] -> ["a/**","b/**"]`; one that only removes entries is listed as a
+change. When either side cannot be evaluated, the change falls back to the files
+(`knip project config changed: knip.ts`).
 
 For `jscpd` (the duplicate-code check, every preset), the project's config is `.jscpd.json` at the
 project root, read from the head checkout for both sides of the comparison. Without the opt-in the
@@ -1413,8 +2576,64 @@ person's acceptance, and one that finds more is only listed. Key order and the o
 apply change nothing. When the head drops the opt-in, the base is measured with nitpicker's settings
 too.
 
-With the `java` and `kotlin` presets the tools are `pmd` (the project's `config/pmd/ruleset.xml`) and
-`checkstyle` (the project's `config/checkstyle/checkstyle.xml`). Both files are read from the head
+`dependency-cruiser` (the `dependency-architecture` check, and the dependency graph the coupling,
+test-runtime and entry-points checks read) takes the first of `.dependency-cruiser.json`,
+`.dependency-cruiser.js`, `.dependency-cruiser.cjs`, `.dependency-cruiser.mjs`,
+`.dependency-cruiser.ts`, `.dependency-cruiser.cts` and `.dependency-cruiser.mts`, the order
+dependency-cruiser searches them. A JSON config without `extends` is read as data. Any other config is
+evaluated with the dependency-cruiser version nitpicker pins, its `extends` followed: a script config
+is code, and opting in runs it in the head checkout the way the knip config runs (once when the run
+starts and once per side for the policy-change check, only while one of the graph checks is enabled,
+without the CI output variables, stopped after a minute, its output ignored). An `extends` target or
+a local `require`/`import` of the config that resolves outside the repository, through `..` or a
+symlink, is a tool error. Regular expressions are kept and read as their source where nitpicker joins
+patterns; any other value that is not plain data is a tool error that names its key. A
+`webpackConfig` or `babelConfig` `fileName` resolves against the head checkout. Without the opt-in the
+file is not read and the run prints `Ignoring .dependency-cruiser.js; opt in with ...`. Naming
+`"project"` without the file, or with one that does not load, makes `dependency-architecture` a tool
+error that says which; the coupling, test-runtime and entry-points checks then read the graph without
+the project config.
+
+- **Rules.** The `forbidden`, `required` and `allowed` rules of both configs run together. A project
+  rule with the name of a nitpicker rule (`no-production-cycles`, `no-production-to-test` and the
+  others nitpicker reports) is laid over it: under `["project"]` and `["project", "nitpicker"]` the
+  project's properties win, so `{ "name": "no-production-cycles", "severity": "warn" }` reports cycles
+  without failing; under `["nitpicker", "project"]` nitpicker's properties win and the project only adds
+  what nitpicker's rule leaves unset, such as a `comment`. Unnamed rules are added as written.
+  A violation's severity decides the finding, as for nitpicker's own rules: `error` fails the change
+  when it is new, `warn` and `info` are reported without failing, and `ignore` reports nothing. A
+  rule's `comment` is added to the message, and a module rule (`no-orphans`, a `required` rule) reads
+  `<file> breaks the <rule> rule`.
+- **Options.** The project's options are laid over nitpicker's in precedence order, so its
+  resolution settings (`webpackConfig`, `babelConfig`, `combinedDependencies`, `exoticRequireStrings`,
+  `enhancedResolveOptions` apart from `extensions`, and the like) apply. The project's `exclude` and
+  `doNotFollow` paths are added to nitpicker's. What decides which files and dependencies are read
+  and how the report comes back stays nitpicker's: `tsConfig`, `tsPreCompilationDeps`,
+  `preserveSymlinks`, `moduleSystems`, `includeOnly`, `focus`, `reaches`, `collapse`, `maxDepth`,
+  `extraExtensionsToScan`, `skipAnalysisNotInRules`, `baseDir`, `cache`, `outputType` and the other
+  reporter settings.
+
+`["project"]` and `["project", "nitpicker"]` are the same here, since nitpicker's rules always run.
+The project config changes which files and dependencies are checked under every ordering: its
+`exclude` and `doNotFollow` paths take files out of the graph, and a rule it lays over a nitpicker rule
+of the same name can lower that rule's severity. The evaluated config applies to both sides of the
+comparison when both opt in, and a base that does not opt in keeps nitpicker's config; it is part of
+the cache key, so an edit of a file it `extends` or requires invalidates cached results too.
+
+Listing `"project"` at all is a loosening, more so first. While the head opts in, the policy-change
+check evaluates the config on both sides (the base's only when the base opts in too) and compares
+what applies key by key, the options one by one (`options.exclude`), so an edit of a file the config
+`extends` or requires counts and comments, key and rule order and the options nitpicker owns change
+nothing. Added `exclude` or `doNotFollow` paths, added `allowed` rules, a dropped or changed rule, a
+named rule (which can override a nitpicker rule) and any change to the other options are loosenings
+that need a person's acceptance, listed as
+`dependency-cruiser .dependency-cruiser.cjs options.exclude: not set -> ["path ^gen"]`; an added unnamed
+rule or a removed path is listed as a change. When either side cannot be evaluated, the change falls
+back to the files (`dependency-cruiser project config changed: .dependency-cruiser.cjs`).
+
+With the `java` and `kotlin` presets the tools with a config file are `pmd` (the project's `config/pmd/ruleset.xml`) and
+`checkstyle` (the project's `config/checkstyle/checkstyle.xml`); `spotbugs`, `errorprone` and `pit` take the settings the build declares (see
+[Settings the build declares](#settings-the-build-declares-java-and-kotlin-presets)). Both files are read from the head
 checkout, and naming `"project"` without the file is a tool error. Without a `tools` entry these files
 are not used. Listing `"project"` never drops a nitpicker rule, with Gradle or Maven and for the Kotlin
 preset's Java files: `["project"]` and `["project", "nitpicker"]` both lay the project's file over
@@ -1441,6 +2660,129 @@ set one).
   pins, not the project's own, and the project's `${config_loc}` points at its config folder in the head
   checkout, on Gradle and Maven and for the base snapshot too.
 
+#### Settings the build declares (java and kotlin presets)
+
+Some tools keep their settings in the build instead of a file of their own. For these, "the
+project's config" is what the build files declare for the tool's own Gradle or Maven plugin: every
+`build.gradle(.kts)` of the project and its `buildSrc` or `build-logic` convention plugins, and every
+`pom.xml` (`<plugins>` and `<pluginManagement>`, with `${...}` properties of the POMs in the
+repository resolved). nitpicker reads them as text from the head checkout, the way it reads the ktfmt
+style a build names, and does not run the project's plugin: the forms in the table are the ones read,
+and a value written another way (a variable, a list built in code) is not read. A setting inside a
+condition (`if`, `when`, `else`, `onlyIf`) is not applied, and the run names it; the build files of a
+git submodule are not read. Settings declared in several build files are combined and apply to every
+module of the project, so an exclude filter declared by one module drops matching findings in all of
+them. The settings apply to both sides of the comparison, so editing them
+never turns unchanged code into new findings, and an edit of them (or of a file they name) is a
+policy change a person reviews; other edits of the same build file are not. Listing `"project"` when
+the build declares none of them, or with a filter file that is missing, is not valid XML or cannot be
+resolved to a file in the project (a link that leads outside it included), is a tool error. Without the opt-in the run prints one line such
+as `Ignoring the SpotBugs settings in build.gradle; opt in with "tools": { "spotbugs": { "precedence": ["project", "nitpicker"] } }`,
+and with it, one line naming the settings it left out.
+
+| Tool         | Read when `precedence` lists `"project"`                                                                                                                                                                                                                                                                                                                                                                                                                                                                            | Merge                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              |
+| ------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `spotbugs`   | Gradle: `excludeFilter`, `effort` and `reportLevel` in a `spotbugs { }` block, `spotbugsMain` or `withType(SpotBugsTask)` (not the test tasks). Maven: `excludeFilterFile` (one file or a comma-separated list), `effort` and `threshold` of `spotbugs-maven-plugin`                                                                                                                                                                                                                                                | Every exclude filter is added to the run under any ordering that lists `"project"`. A higher effort (`more`, `max`) or a lower threshold (`low`, `exp`) wins with `["project"]` and `["project", "nitpicker"]`; with `["nitpicker", "project"]` nitpicker's `default` effort and `medium` threshold stay. The highest effort and the lowest threshold the build files declare are used.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
+| `errorprone` | Gradle (`net.ltgt.errorprone`): `disable`, `enable`, `warn`, `error`, `check`, `option`, `excludedPaths`, `disableWarningsInGeneratedCode`, `ignoreSuppressionAnnotations` and `errorproneArgs` in an `options.errorprone` block, the `nullaway { }` extension (`annotatedPackages`, `excludedFieldAnnotations` and the other NullAway options), and `-Xep` flags in `options.compilerArgs`. Maven: the `-Xep` flags after `-Xplugin:ErrorProne` in `compilerArgs` or `compilerArgument` of `maven-compiler-plugin` | The flags are laid over nitpicker's and every finding stays enforceable. A check the project turns on runs under every ordering, and one that nitpicker turns off runs only with `"project"` first. Check options (`-XepOpt:`) apply under every ordering. Of NullAway's options only those that add findings apply (`CheckOptionalEmptiness`, `CheckContracts`, `AcknowledgeRestrictiveAnnotations`, `AcknowledgeAndroidRecent`, `ExhaustiveOverride` and `JSpecifyMode` set to `true`, `CheckOptionalEmptinessCustomClasses`, `CustomNullableAnnotations`), and its `ExcludedFieldAnnotations`, `ExternalInitAnnotations` and `CustomInitializerAnnotations` are added to nitpicker's lists. `excludedPaths` (several are joined) applies under every ordering when it is a valid pattern that leaves the `src/main` sources checked; `ignoreSuppressionAnnotations` and `allSuggestionsAsWarnings` only with `"project"` first. |
+| `pit`        | Gradle (`info.solidsoft.pitest`): `mutators`, `excludedClasses`, `excludedMethods`, `excludedTestClasses`, `avoidCallsTo`, `jvmArgs`, `timeoutConstInMillis`, `timeoutFactor` and `threads` of the `pitest { }` block. Maven: the same settings of `pitest-maven` (`timeoutConstant`, and `argLine` as JVM arguments)                                                                                                                                                                                               | `excludedClasses`, `excludedMethods`, `excludedTestClasses`, `avoidCallsTo` (added to PIT's logging classes) and `jvmArgs` are added under every ordering that lists `"project"`. A longer timeout than PIT's defaults (4000 ms, factor 1.25) applies under every ordering. `mutators` are added to PIT's default mutators, and `threads` replace nitpicker's 2, with `"project"` first; with `["nitpicker", "project"]` both stay nitpicker's.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    |
+
+nitpicker never applies a declared setting that would drop findings of the checks it runs: for
+SpotBugs a lower effort, a higher threshold, an `includeFilter`, `onlyAnalyze`, `visitors`,
+`omitVisitors` or a baseline file; for Error Prone a check turned off (`disable`, `-Xep:Name:OFF`),
+NullAway's severity, a name that is no check of the pinned Error Prone, the packages nitpicker measures
+from the classes (`NullAway:AnnotatedPackages`, `CheckReturnValue:Packages`), every other NullAway
+option (such as `UnannotatedSubPackages`, `ExcludedClasses`, `SuppressionNameAliases`,
+`KnownInitializers` or `CastToNonNullMethod`), an `excludedPaths` pattern that matches `src/main`
+sources or is not a valid pattern, `disableWarningsInGeneratedCode` (an `@Generated` annotation on
+hand-written code would hide its findings), `allDisabledChecksAsWarnings` (Error Prone lets it override explicit
+`OFF` flags, so it would turn back on the checks nitpicker turns off, and NullAway in test code),
+`disableAllChecks`, `disableAllWarnings`, `enabled = false` and the patching flags; for PIT a mutator
+removal (`-NAME`, also inside a comma list), an exclusion that matches everything (`*`, `**`, `.*`),
+a JVM argument with a comma (PIT splits its list on commas), a number that is not a plain literal, a
+shorter timeout (a mutant that times out counts as killed), and the settings that
+decide what is mutated and reported (`targetClasses`, `targetTests`, `features`, groups, output
+formats, thresholds, `maxMutationsPerClass`, `skipFailingTests`, history files). An exclude filter is applied because it is the project's own
+list of reviewed suppressions, as the project's Checkstyle `SuppressionFilter` files are: it names
+what it drops, and an edit of it is a policy change. Error Prone's `excludedPaths` is applied for
+the same reason, and so are PIT's excluded classes, methods and test classes. To lift a single finding without
+opting in, add an `exceptions` entry for it (`spotbugs/EI_EXPOSE_REP`, `errorprone/Var` and so on).
+
+These tools of the java and kotlin presets have no project config to opt into. The formatters
+(google-java-format, palantir-java-format) take no config: the style follows the conventions and
+what the build declares, see [Java preset](#java-preset). JaCoCo's include and exclude lists are not
+read: JaCoCo only measures coverage for the CRAP and changed-code coverage checks, and a class left out
+of the report would leave those checks without data, the same loophole `GeneratedOnHandWrittenCode`
+closes for `@Generated` (the init script resets the project's JaCoCo filters, and the Maven report reads
+every class). ArchUnit runs the project's own rule
+classes with its own `archunit.properties`, so the project's config already applies. The CRAP,
+structure, coupling, Spring, test-runtime and slow-test checks are nitpicker's own analyses with
+their limits in `nitpicker.config.json`.
+
+#### ESLint configs (typescript and javascript presets)
+
+With the `typescript` and `javascript` presets the tool is `eslint`, and the project's config is its flat
+config: the first of `eslint.config.js`, `.mjs`, `.cjs`, `.ts`, `.mts` and `.cts` at the project root, the
+file ESLint itself would load. It is read from the head checkout and applies to both sides of the
+comparison. A TypeScript config loads through the `jiti` package (version 2 or later) the project
+installs, as ESLint requires; without one, nitpicker uses a `jiti` installed next to it if there is one,
+and otherwise the ESLint analyzers fail with a message asking for `jiti`. A config that is a symbolic
+link to a file inside the repository is read through the link; one that points outside the repository is
+an error.
+
+The head policy keeps a digest of what the config reads, so the findings cache and the policy review
+see a change of any of it:
+
+- the config and every local file it imports (relative `import`, `export ... from`, `import()` and
+  `require`), followed through the repository, so a monorepo's shared `../eslint-rules.mjs` counts; a
+  local import outside the repository is an error;
+- every file a string literal in those files names relative to the file or to the project root, such
+  as the `.gitignore` handed to `includeIgnoreFile` (`package.json` and `tsconfig*.json` excepted);
+- the installed version of each package those files import by name, such as a plugin or a shared
+  config; a workspace package inside the repository counts by its `package.json` and its entry file,
+  followed like a local file.
+
+Not covered: a file read through a computed path (a template string with `${}`, a path built from
+variables, a glob), environment variables, and the dependencies of an imported package beyond that
+package's version. An edit of a tracked file is a policy change; package versions only change the
+cache key. Comments and formatting do not count: script files are compared as TypeScript prints them
+without comments. With `"project"` first, the policy review also lists each nitpicker rule whose options
+the project replaces (`eslint project config replaces the options of nitpicker rule no-unused-vars`).
+
+Naming `"project"` without the file, or with one that does not load, does not export a flat config array
+or object, or has an entry key ESLint does not know (`Unexpected key "default" found`, as for a CommonJS
+config that wraps its array in `module.exports = { default: [...] }`), is a tool error of the ESLint analyzers. Without the opt-in the run
+prints, once at the start, `Ignoring eslint.config.mjs; opt in with "tools": { "eslint": { "precedence":
+["project", "nitpicker"] } }`, keeping any other `tools.eslint` key in the snippet. Both
+[lint engines](#lint-engine) run the same layered config: oxlint gets the project's options for the rules
+it has its own port of, and plugins oxlint lacks run inside oxlint through the original ESLint plugin, as
+nitpicker's own do.
+
+Flat configs concatenate and the later entry wins for each rule, so the layer listed first goes last.
+Only these parts of each entry of the project's config apply:
+
+| Part of an entry                                                                    | How it applies                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           |
+| ----------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `rules` for a rule nitpicker's config turns on                                      | With `"project"` first, the setting applies only to files nitpicker runs the rule on (the entry's `files` and nitpicker's both have to match), and `"off"` or `0` is dropped. `no-restricted-syntax`, `no-restricted-globals` and `no-restricted-properties` add the project's entries to nitpicker's; a `max-*` or `complexity` limit takes the lower of the two; a severity alone keeps nitpicker's options; any other options replace nitpicker's. With `["nitpicker", "project"]` they are not used. |
+| other `rules`, including ones nitpicker only turns off                              | Added in `eslint-lint`, `"off"` included. `eslint-errors`, `eslint-logging` and `eslint-module-effects` take only the project's settings for the rules they run, and a `nitpicker/*` rule is never added where nitpicker does not run it.                                                                                                                                                                                                                                                                |
+| `plugins`                                                                           | Added for those rules. A namespace nitpicker defines (`@typescript-eslint`, `vitest`, `nitpicker` and the like) keeps nitpicker's plugin, so the project's rules of that namespace run on nitpicker's version of it.                                                                                                                                                                                                                                                                                     |
+| `settings`                                                                          | Merged with nitpicker's, except a key nitpicker sets or one in a namespace nitpicker owns (a `nitpicker*` key, a plugin name nitpicker defines such as `react`, or `import/...` for its `import` plugin), which is dropped.                                                                                                                                                                                                                                                                              |
+| `languageOptions.globals`                                                           | Merged with nitpicker's, the higher layer winning.                                                                                                                                                                                                                                                                                                                                                                                                                                                       |
+| global `ignores` (an entry with only `ignores`, `name` and `basePath`)              | Added to nitpicker's. A negated (`!`) pattern is dropped, so it cannot bring back a file nitpicker ignores.                                                                                                                                                                                                                                                                                                                                                                                              |
+| `files`, `ignores`, `basePath` and `name` of the other entries                      | Scope the entry, as in ESLint (`basePath` is folded into the patterns).                                                                                                                                                                                                                                                                                                                                                                                                                                  |
+| `languageOptions` other than `globals`, `linterOptions`, `processor` and `language` | Ignored. nitpicker's parser and type information, its lock on inline configuration (`noInlineConfig` for source files) and its report of unused disable directives stay.                                                                                                                                                                                                                                                                                                                                 |
+
+So, as for PMD, listing `"project"` never switches a nitpicker rule off, and `["project"]` is the same as
+`["project", "nitpicker"]`. A rule is lifted for some paths with an `exceptions` entry, the one reviewed
+route; with `"project"` listed that includes a rule only the project's config adds (`no-alert`, say), and
+an exception also wins over the project's setting for its rule. Which files are linted stays nitpicker's
+(the source and test roots, `exclude`): the project's config can only ignore more. Options are the one
+way the project can weaken a nitpicker rule (`allowEmptyCatch` for `no-empty`, `args: "none"` for
+`no-unused-vars`), which is why the review lists each rule whose options it replaces. Any opt-in that
+lists `"project"`, in either order, is a policy loosening a person reviews (its ignores, globals,
+settings and added rules apply with nitpicker first too), as is every later edit of a file the config
+reads. The rules run on the ESLint version nitpicker pins, so a core rule the project names must exist
+in it.
+
 #### Formatter and detekt configs (python and kotlin presets)
 
 The format checks and detekt follow the project's code, not its tool configs, so a setting in
@@ -1449,8 +2791,8 @@ loosen the gate. A project whose ruff or black config set the line length or quo
 `.editorconfig` set ktlint properties, or whose `detekt.yml` set rules is checked with the measured
 conventions (and detekt's defaults) until it opts in. The run prints, once at the start, the exact
 command that formats the code the way nitpicker checks it (`Format with ruff: ruff format ...`), and
-one line per ignored config, such as `Ignoring [tool.ruff] in pyproject.toml; opt in with "tools": {
-"ruff": { "precedence": ["project", "nitpicker"] } }`. Each format finding points to that command.
+one line per ignored config, such as `Ignoring [tool.ruff] in pyproject.toml except
+lint.flake8-pytest-style; opt in with "tools": { "ruff": { "precedence": ["project", "nitpicker"] } }`. Each format finding points to that command.
 
 | Tool     | Default (isolated)                                                                                 | Read when `precedence` lists `"project"`                                                                                    |
 | -------- | -------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------- |
@@ -1467,15 +2809,72 @@ says so. `["nitpicker", "project"]` lets the conventions win where they have a v
 for `ruff` and `detekt` and a config error for `ktlint` and `ktfmt` (both read their
 `.editorconfig` first) and `black` (no flag switches string normalization back on), which must list
 `"project"` first. The files are read from the head checkout and apply to both sides of the
-comparison; they are part of the cache key, so editing one invalidates cached results. A project
+comparison; they are part of the cache key, so editing one invalidates cached results. An edit of
+an opted-in config is a policy change a person reviews (see [Configuration](#configuration)), and
+so is the config a change opts into: its guidance then says to remove `"project"` from the
+precedence or have a person review the config, rather than to restore the file. For
+`ruff` and `black` only the tool's own settings count: the `[tool.ruff]` or `[tool.black]` table of
+`pyproject.toml` (an edit of `[tool.poetry]` is not one), the whole `ruff.toml` or `.ruff.toml`, and
+the files its `extend` chain names; comments, layout and key order never count. A project
 listed without its file is a tool error for `ruff`, `black`, `ktlint` and `detekt`, and the message
-says to create the file or remove `"project"` from `tools.<tool>.precedence`.
+says to create the file or remove `"project"` from `tools.<tool>.precedence`. A project folder with
+more than 1000 such files stops with [too many style files](troubleshooting.md#too-many-style-files).
 
 Without the opt-in, ruff and black still keep the project's scope: its `exclude`, `extend-exclude`
 and `force-exclude` (paths resolved against the config file) and its `target-version` or
 `requires-python`, so a project-excluded generated file gets no format finding and both formatters
 infer the same target. The other keys the project sets (`skip-magic-trailing-comma`, `line-ending`,
 `docstring-code-format`, `preview`) take effect only with the opt-in.
+
+`tools.ruff` covers `ruff check` too. Without the opt-in the lint runs nitpicker's rules with
+nitpicker's options, whatever `[tool.ruff.lint]` sets, and the run prints the `Ignoring [tool.ruff]`
+line also when black is the formatter. Listing `"project"` merges the config the format check reads
+(the same file and `extend` chain) with nitpicker's:
+
+- **Rules.** The rules the project's `select`, `extend-select`, `ignore` and `extend-ignore` resolve
+  to run next to nitpicker's. ruff itself resolves them (`ruff check --show-settings --config
+<project file>`), so the `extend` chain, the more specific selector winning, the pydocstyle
+  `convention` and the codes ruff redirects (`TCH` to `TC`, `TRY200` to `B904`) count the way the
+  project's own ruff counts them. As with PMD, listing `"project"` never drops a
+  nitpicker rule: an `ignore` or `per-file-ignores` entry that names one is dropped for that rule,
+  and `python.exceptions` (which then accepts any ruff code) is the way to lift a nitpicker rule
+  for some paths. A rule nitpicker leaves off on purpose (its own `ignore`, such as `B008`) runs when
+  the project selects it with `["project", "nitpicker"]` or `["project"]`, and stays off with
+  `["nitpicker", "project"]`.
+- **Per-file ignores.** `per-file-ignores` and `extend-per-file-ignores`, as ruff resolves them
+  (redirected codes included), apply to the rules the project adds.
+- **Options.** With `["project", "nitpicker"]` or `["project"]` the rule settings
+  (`[tool.ruff.lint.isort]`, `pydocstyle`, `pep8-naming`, the `flake8-*` tables and the like) and
+  lint keys such as `dummy-variable-rgx`, `typing-modules` and `preview` merge key by key, the
+  project's value winning where both set one and a list both set joined (nitpicker's
+  `pep8-naming.ignore-names` keeps the unittest names next to the project's); `indent-width`,
+  `builtins`, `src`, `namespace-packages`, `preview`, `target-version` and
+  `per-file-target-version` come from the project. The run prints which of those options reach the
+  rules nitpicker runs, such as `ruff check: the project's dummy-variable-rgx, pep8-naming replace
+nitpicker's for its own rules`. With `["nitpicker", "project"]` nitpicker's values win, lists
+  included: the project's top-level lint keys and the option tables of the linters nitpicker runs
+  (`pep8-naming`, `flake8-bandit`, `flake8-unused-arguments` and the like) are left out, so
+  `dummy-variable-rgx = ".*"` or `ignore-names = ["*"]` cannot silence a nitpicker rule; the
+  tables of linters only the project selects (`pydocstyle`, `isort`) still apply. `target-version`,
+  `per-file-target-version`, `builtins` and `preview` stay nitpicker's (the project's preview rules
+  then do not run), and only the layout keys `src`, `namespace-packages` and `indent-width` come
+  from the project.
+- **Line length.** The rules that depend on it (`SIM108` does not suggest a ternary that would not
+  fit) check against the followed `python.lineLength`, passed as `--line-length` in every ordering
+  and with either formatter, the way the format check does. The project's `line-length` is used
+  instead only when it is listed first and its value agrees with the followed one, or when the
+  conventions follow none; without the opt-in, or with `["nitpicker", "project"]`, the lint uses
+  the followed value (88 when none is followed).
+- **Scope.** The project's `exclude`, `extend-exclude` and `lint.exclude` are added to nitpicker's
+  `exclude` (ruff's default excludes stay); `include`, `extend-include`, `respect-gitignore`,
+  `force-exclude` and the fix, cache and output settings stay nitpicker's.
+
+Paths in the project config are resolved against the folder of the file that sets them, in the
+checkout being checked. The `[tool.ruff.lint.flake8-pytest-style]` options are read with or without
+the opt-in, from the head checkout for both sides (see the
+[Python preset](python-preset.md)). The merged config is written to the report folder as
+`nitpicker-ruff-layered.toml`; listing `"project"` with a ruff whose `ruff check --show-settings`
+cannot resolve the project config is a tool error.
 
 The ids and values: `"kotlin.indentation"` `"2"`/`"4"` (ktfmt `meta`/`kotlinlang`, and ktlint `indent_size`; unlike
 `java.indentation` it has no default: with no clear majority the tools keep their own, ktfmt Meta and
@@ -1503,16 +2902,17 @@ Which formatter applies which convention:
 
 #### Type checker and mutation configs (python preset)
 
-The type checkers and mutmut follow the same rule as the formatters: their strictness and their scope
+The type checkers, mutmut and coverage.py follow the same rule as the formatters: their strictness and scope
 are nitpicker's, so a project config cannot weaken the gate. By default only what the tool needs to
 find the code and the packages is read, and the run prints one line per ignored config, such as
 `Ignoring [tool.pyright] in pyproject.toml except its environment keys; opt in with "tools": { "pyright": { "precedence": ["project", "nitpicker"] } }`.
 
-| Tool      | Read without the opt-in                                                                                                                                                                                                                                                | Read when `precedence` lists `"project"`                                                                                            |
-| --------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------- |
-| `pyright` | `venv`, `venvPath`, `pythonVersion`, `pythonPlatform`, `stubPath`, `typeshedPath`, `extraPaths`, and the `root`, `extraPaths`, `pythonVersion` and `pythonPlatform` of `executionEnvironments`                                                                         | every key of `pyrightconfig.json` (or `[tool.pyright]`/`[tool.basedpyright]`, following `extends`) over nitpicker's strict settings |
-| `mypy`    | `plugins`, `mypy_path`, `python_version`, the namespace and typeshed options, and the `ignore_missing_imports` and `follow_imports` of sections for modules the project does not own (own: found under the source roots and `mypy_path`, as `.py`, `.pyi` or `-stubs`) | every option and per-module section of `mypy.ini`, `.mypy.ini`, `[tool.mypy]` or `setup.cfg`, over `strict = true`                  |
-| `mutmut`  | `also_copy`, the process isolation options, and the source paths when `python.sourceRoots` is `.`; nitpicker writes `source_paths` and `do_not_mutate` (tests and `exclude`)                                                                                           | every key of `[tool.mutmut]` or `[mutmut]` over nitpicker's; the test files and the `exclude` globs stay in `do_not_mutate`         |
+| Tool       | Read without the opt-in                                                                                                                                                                                                                                                | Read when `precedence` lists `"project"`                                                                                                                                                                                        |
+| ---------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `pyright`  | `venv`, `venvPath`, `pythonVersion`, `pythonPlatform`, `stubPath`, `typeshedPath`, `extraPaths`, and the `root`, `extraPaths`, `pythonVersion` and `pythonPlatform` of `executionEnvironments`                                                                         | every key of `pyrightconfig.json` (or `[tool.pyright]`/`[tool.basedpyright]`, following `extends`) over nitpicker's strict settings                                                                                             |
+| `mypy`     | `plugins`, `mypy_path`, `python_version`, the namespace and typeshed options, and the `ignore_missing_imports` and `follow_imports` of sections for modules the project does not own (own: found under the source roots and `mypy_path`, as `.py`, `.pyi` or `-stubs`) | every option and per-module section of `mypy.ini`, `.mypy.ini`, `[tool.mypy]` or `setup.cfg`, over `strict = true`                                                                                                              |
+| `mutmut`   | `also_copy`, the process isolation options, and the source paths when `python.sourceRoots` is `.`; nitpicker writes `source_paths` and `do_not_mutate` (tests and `exclude`)                                                                                           | every key of `[tool.mutmut]` or `[mutmut]` over nitpicker's; the test files and the `exclude` globs stay in `do_not_mutate`                                                                                                     |
+| `coverage` | `concurrency`, `patch` and `plugins`, which the run needs; nitpicker writes `source`, `branch = True`, the test files in `omit`, its `exclude_lines` and an empty `partial_branches`                                                                                   | `exclude_lines`, `exclude_also`, `partial_branches`, `partial_also` and the `omit` of the run and report sections added to nitpicker's, and `timid`, `cover_pylib`, `dynamic_context`, `sigterm`, `disable_warnings` and `core` |
 
 `tools.pyright` covers `pyright` and `basedpyright` alike (there is no `tools.basedpyright`). With the
 opt-in a key the project sets overrides nitpicker's and every key it leaves out stays strict, so a
@@ -1529,13 +2929,232 @@ directories up to the repository root. The project's mypy `exclude` is kept as w
 is added with `--exclude`. mutmut's notice is printed only when the project's table has keys it
 ignores.
 
+`tools.coverage` covers the coverage.py settings of the test step: the first of `.coveragerc`, the
+`[coverage:*]` sections of `setup.cfg` or `tox.ini`, and `[tool.coverage]` in `pyproject.toml` that
+has coverage settings, the order coverage.py reads them in. `source`, `include`, `branch`,
+`parallel`, `data_file`, `relative_files`, `[paths]` and the report settings (`fail_under`,
+`show_missing`, the output sections) stay nitpicker's with any `precedence`. With the project listed
+first its exclusion regexes and `omit` patterns add to nitpicker's, so a project that lists
+`pragma: no cover` gets that pragma back (nitpicker's own list leaves it out);
+`["nitpicker", "project"]` takes only the run options in the right column and keeps nitpicker's
+exclusions and omits. The run options must be values coverage.py takes (`timid`, `cover_pylib` and
+`sigterm` true or false, `core` one of `ctrace`, `pytrace` and `sysmon`, `dynamic_context`
+`test_function`, `disable_warnings` warning names); any other value is a tool error, so a value
+cannot add lines to the rcfile nitpicker writes. Its notice is printed only when the config sets one
+of the keys in the right column, `omit` included. The opted-in config is read from the head checkout
+for both sides, with `omit` resolved against the checkout being checked.
+
+An edit of an opted-in config is a policy change a person reviews, with any `precedence` that lists
+`"project"`, and so is the config a change opts into. Only the tool's own settings count: `pyrightconfig.json` and the files its `extends`
+chain names, or the `[tool.pyright]` and `[tool.basedpyright]` tables; for mypy and mutmut the one
+file the tool reads, and of it only the `[mypy]` and `[mypy-*]` sections (`mypy.ini`, `.mypy.ini`,
+`setup.cfg`), `[tool.mypy]`, `[tool.mutmut]` or the `[mutmut]` section, and for coverage the
+coverage sections of the file coverage.py reads (all of `.coveragerc`). An edit of `[flake8]` in
+`setup.cfg` or of `[tool.poetry]` is not one, and comments, layout and key order never count. A
+config the tool finds above the project folder (a `ruff.toml`, `pyproject.toml` or
+`pyrightconfig.json` at the root of a repository whose project sits in `packages/api`) counts too,
+up to the repository root, and every Python config is named by its path in the repository.
+
+import-linter has no `tools` entry: its contracts are the project's own, and nitpicker has none to
+merge them with. They run as written in each snapshot, read the way import-linter reads them (the
+first of `setup.cfg` and `.importlinter` with an `[importlinter]` section, then
+`[tool.importlinter]`; never `tox.ini`), so the policy review compares them contract by contract,
+with or without an opt-in, unless `python.importLinter` is `false`. A change that weakens them fails
+until a person accepts it: the config or a contract removed, a layer dropped or reordered, a
+forbidden or source module dropped, an ignored import added, indirect imports allowed, the
+unmatched-ignore alert relaxed. A change that only adds checking, such as a new contract or layer,
+is listed without failing. The full list is in the [Python preset](python-preset.md).
+
+#### Mutation testing config (typescript and javascript presets)
+
+Stryker runs with nitpicker's config, and the project's `stryker.config.*` or `.stryker.conf.*` is not
+read. Unless `mutation` is in `disable`, a project that has one gets the notice `Ignoring
+stryker.config.json; opt in with "tools": { "stryker": { "precedence": ["project", "nitpicker"] } }` at
+the start of the run. With the opt-in, nitpicker reads the first regular file Stryker itself would find
+(`stryker.conf.json`, `.js`, `.mjs` and `.cjs`, then `stryker.config.*`, then the same names with a
+leading dot; a directory with such a name is skipped). A JavaScript config is imported once with Node in
+the head checkout, in a child process that is stopped after 30 seconds, whose output is capped at
+10 MB, and that does not get the CI job summary variable; only the JSON values of its default export are
+kept, and whatever the config prints is ignored. While `mutation` is in `disable`, the head policy
+does not read it. The merge is shallow, key by key:
+
+| Stryker option                                                                                                                                                                                                                                                                                                                  | With the opt-in                                                                                                                                                                                                                                                                                  |
+| ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `mutator` (`excludedMutations`, `plugins`), `ignoreStatic`, `timeoutMS`, `timeoutFactor`, `dryRunTimeoutMinutes`, `concurrency`, `maxTestRunnerReuse`, `disableBail`, `warnings`                                                                                                                                                | the project's value; with `["nitpicker", "project"]` nitpicker's where it sets one (`timeoutMS` and `timeoutFactor` with Jest); a `timeoutMS`, `timeoutFactor` or `dryRunTimeoutMinutes` is never lower than nitpicker's value, or Stryker's default (5000, 1.5 and 5) where nitpicker sets none |
+| `testRunnerNodeArgs`, `checkerNodeArgs`                                                                                                                                                                                                                                                                                         | added after nitpicker's                                                                                                                                                                                                                                                                          |
+| `ignorePatterns`                                                                                                                                                                                                                                                                                                                | added before nitpicker's, so nitpicker's own entries still apply                                                                                                                                                                                                                                 |
+| `mutate`, `testRunner` and the runner options, `checkers`, `tsconfigFile`, `typescriptChecker`, `disableTypeChecks`, `coverageAnalysis`, `plugins`, `appendPlugins`, `ignorers`, `reporters` and the reporter options, `thresholds`, `tempDirName`, `inPlace`, `incremental`, `buildCommand`, `logLevel` and every other option | nitpicker's; the project's value is ignored                                                                                                                                                                                                                                                      |
+
+Everything Stryker needs to run and to report stays nitpicker's, so `["project"]` and
+`["project", "nitpicker"]` are the same. A project cannot lower a timeout, because a short one turns
+survivors into `Timeout` results that count as caught. The mutants the project's
+`mutator.excludedMutations` hides, and with `ignoreStatic` the static mutants Stryker skips, are left
+out of the findings, using the config Stryker was actually given, and only when the mutant's reason is
+Stryker's own (`Ignored because of excluded mutation "<mutator>"` or the static one); a mutant a
+`Stryker disable` comment hides is still an enforceable `mutant-ignored` finding, even when its mutator
+is excluded. The project's `thresholds` never fail the run: the gate fails for surviving mutants in
+changed code, not for a score. `ignorers` and plugins are not read because the reason an ignorer gives
+cannot be told apart from an ignore comment's, and `buildCommand` is not because the coverage run does
+not build either. The file is read from the head checkout and applies to both sides of the comparison,
+and when the head drops the opt-in the base is run with nitpicker's settings too; the keys nitpicker
+reads are part of the head policy, so editing them invalidates cached results. Naming `"project"`
+without a config, or with one that cannot be read (invalid JSON, a module that throws, ends the process,
+does not finish loading or does not export an object, a list option that is not a list of strings, a
+timeout that is not a number of 0 or more, a `mutator` that is not an object, a file that links outside
+the project), is a tool error of the `mutation` analyzer.
+
+An edit of the config is a policy change, judged on the values nitpicker applies, not on the file's
+text, and listed per key (`stryker stryker.config.mjs mutator.excludedMutations: [] -> ["StringLiteral"]`,
+with `mutator` listed as `mutator.<option>`). The config is loaded on both sides, so an edit of a file
+it imports, a computed value, or the deletion of the config that wins so that a lower-ranked one takes
+over all show up, while an edit of an option nitpicker does not read, a comment or the layout shows
+nothing. It needs a person's acceptance when `mutator.excludedMutations`, `ignorePatterns`,
+`testRunnerNodeArgs` or `checkerNodeArgs` gain an entry, `ignoreStatic` becomes `true`, or any other
+`mutator` option changes; every other change is only listed. When a side cannot be loaded, the text of
+the file is compared instead (`stryker project config changed: stryker.config.mjs`).
+
+#### TypeScript compiler options (typescript and javascript presets)
+
+The type check always extends the project's `tsconfig.json` (with the JavaScript preset, a
+`jsconfig.json` when there is no `tsconfig.json`; for a solution config, the referenced config that
+includes a source root), so its `paths`, `jsx`, module resolution and other settings apply without an
+opt-in. What `tools.typescript.precedence` decides is who wins for nitpicker's strict options:
+`strict` and its family (`noImplicitAny`, `strictNullChecks`, `strictFunctionTypes`,
+`strictBindCallApply`, `strictPropertyInitialization`, `noImplicitThis`,
+`useUnknownInCatchVariables`, `alwaysStrict`), `noImplicitReturns`, `noFallthroughCasesInSwitch`,
+`noUncheckedIndexedAccess`, `forceConsistentCasingInFileNames` and, with the TypeScript preset,
+`exactOptionalPropertyTypes`, `noPropertyAccessFromIndexSignature` and `noUncheckedSideEffectImports`.
+
+| `precedence`                              | Strict options                                                                                             |
+| ----------------------------------------- | ---------------------------------------------------------------------------------------------------------- |
+| `["nitpicker"]` (default)                 | nitpicker's values, whatever the tsconfig sets                                                             |
+| `["nitpicker", "project"]`                | nitpicker's values; the tsconfig is not read for them (see below)                                          |
+| `["project"]`, `["project", "nitpicker"]` | the value the tsconfig sets explicitly (following `extends`) wins; every option it leaves out stays strict |
+
+So a tsconfig that sets only `"noUncheckedIndexedAccess": false` is still checked with every other
+strict option. A `strict` the tsconfig sets also decides the members of its family that it leaves
+out, as in TypeScript (except `alwaysStrict`, which TypeScript deprecates turning off), and with `strictNullChecks` off `strictPropertyInitialization` and
+`exactOptionalPropertyTypes` are turned off too unless the tsconfig sets them, because TypeScript
+rejects them without it. `noEmit`, `noCheck`, `skipLibCheck`, `allowJs` and `checkJs`, the files
+checked and the excludes stay nitpicker's with every ordering: a tsconfig that sets `noCheck: true`,
+which would switch type checking off, is checked anyway, and `skipLibCheck` is on, which also covers
+`skipDefaultLibCheck`. Both type check engines and the mutation checker's tsconfig use the same
+values, and so do the type-aware lint rules, which read the same config. The values are read from the
+head checkout and apply to both sides of the comparison (a base whose tsconfig is still strict is
+checked with the head's values), and they are part of the head policy.
+
+With `["nitpicker", "project"]` nitpicker wins every option the tsconfig could set here, so the
+tsconfig is not read for them: a missing or unreadable tsconfig is no error of this setting, and an
+edit of it is no policy change. Whichever ordering is used, the project's other options (`target`,
+`paths`, `lib`, `include` and so on) reach the type check through `extends`.
+
+With `"project"` first, naming it without a tsconfig, or with one TypeScript cannot read (invalid
+JSON, a missing `extends` target, an option the TypeScript version in use does not know), is a tool
+error of the analyzers that use the type check config. The message names the compiler, as in
+`tsconfig.json cannot be read by TypeScript 6.0.3: Cannot read file ...`, and a tsconfig that a
+symlink moves out of the project is rejected with `must stay inside the project`.
+
+Policy review loads the selected tsconfig on both sides and compares the value each strict option
+ends up with (nitpicker's, replaced by what the project sets), so a `strict` moved to `false`, a
+changed `extends`, the root solution `tsconfig.json` that picks another config, and an edit of a file
+`extends`ed from above the project root or from a package (`@org/config/tsconfig.json`,
+`@tsconfig/strictest`) all show up, while `paths`, `include`, comments and key order show nothing.
+Each option that moved is listed as `typescript tsconfig.json noUncheckedIndexedAccess: true ->
+false`, and a strict option that goes from `true` to `false` needs a person's acceptance; a move the
+other way is only listed. When the change adds the opt-in, or a side cannot be read, every file of
+the chain is listed instead as `typescript project config changed: tsconfig.json`: the selected
+config, the root `tsconfig.json`, and the files they `extends` inside the project (not one that a
+symlink moves out of it). A head that removes the opt-in is not judged, and the base follows the
+head.
+
+Without the opt-in (the default or an explicit `["nitpicker"]`), a tsconfig that relaxes one of these
+options gets the notice `Ignoring strict: false, noUncheckedIndexedAccess: false in tsconfig.json; opt
+in with "tools": { "typescript": { "precedence": ["project", "nitpicker"] } }`; when the tsconfig
+cannot be read the report says `Could not check the tsconfig for relaxed strict options: ...` instead.
+`precedence` cannot be combined with `tools.typescript.project`, which already keeps the selected
+config's options as written (see [TypeScript project config](#typescript-project-config)).
+
+#### Test runner configs (typescript and javascript presets)
+
+The coverage, CRAP and test-console runs use the project's own test runner and its config, because
+the tests need its setup to run at all. What nitpicker reads from that config without an opt-in, and
+what it sets over it whatever the config says:
+
+| Runner      | Read without the opt-in                                                                                                                                                                                                                                                | Set by nitpicker                                                                                                                                                                                                                                                                |
+| ----------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Vitest      | the first `vitest.config.*` or `vite.config.*`: environment, setup files, aliases, plugins, `include` and `exclude` (nitpicker's are added), `projects`, and, while `tools.tests.timeouts` is not set, a `hookTimeout` or an inline project's `testTimeout` above 10 s | `retry: 0`, `allowOnly: false`, `restoreMocks: true`, `bail: 0`, `passWithNoTests: false`, `dangerouslyIgnoreUnhandledErrors: false`, no snapshot writes, the test timeout, `dir`, the reporters, the worker count and the whole `coverage` block                               |
+| Jest        | the config Jest itself resolves (`jest.config.*`, the `jest` key in `package.json`, or the test script's `--config`): transforms, environment, setup files, module mapping, `projects`, `testMatch`, `testPathIgnorePatterns` and `bail`                               | `--ci`, `--restoreMocks`, `--passWithNoTests` (a run with no test is reported on its own), `--testTimeout`, the worker count, the JSON report, and the coverage options: the babel provider, `collectCoverageFrom` and no thresholds                                            |
+| Mocha       | `.mocharc.*` or the `mocha` key in `package.json` (`require`, `ui`, `extension`, `node-option` and the rest), and the test script's options                                                                                                                            | the test files, `--timeout`, `--retries 0`, `--no-bail`, `--no-forbid-only`, the JSON reporter and V8 coverage; the script's `--bail`, `--forbid-only`, `--reporter`, `--timeout`, `--retries` and watch options are dropped, and so are the rc file's `bail` and `forbid-only` |
+| `node:test` | no config file; the test script's options                                                                                                                                                                                                                              | the test files, the reporter, `--test-timeout`, `--test-concurrency` and V8 coverage; the script's `--test-only`, watch, reporter, timeout, concurrency, shard, coverage and snapshot-update options are dropped                                                                |
+
+Coverage never follows the project's config: its include, its exclusions and its thresholds would decide
+what nitpicker measures, and an absolute threshold says nothing about the change under review. Code a
+project does not want measured goes in `exclude` (see [Configuration](#configuration)). Test timeouts have
+their own setting, `tools.tests.timeouts` (see [Test timeout tiers](#test-timeout-tiers)).
+
+`tools.tests.precedence` decides one thing: whether the retries set in the test runner's config apply.
+Without the opt-in, a test that fails once fails the run as far as config-level retries in Vitest and
+Mocha go. Retries set in test code (a per-test `{ retry }`, `vi.setConfig`, `jest.retryTimes`, Mocha's
+`this.retries`) are not controlled by this setting: they are reported in every preset
+(`nitpicker/no-test-retry`, Java and Kotlin `RetryInTest`, Python `retry-in-test`).
+
+| `precedence`                              | Retries                                                                                                                                                                                                                                                            |
+| ----------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `["nitpicker"]` (default)                 | none: nitpicker sets `retry: 0` (Vitest) and `--retries 0` (Mocha), whatever the config says                                                                                                                                                                       |
+| `["nitpicker", "project"]`                | the same: nitpicker always wins, so the config is not read or run, and it is not an error if it is missing or broken                                                                                                                                               |
+| `["project"]`, `["project", "nitpicker"]` | Vitest's root `test.retry` (a count up to 10, or `{ count, delay, condition }` with a delay up to 10 s and a RegExp condition without flags), or Mocha's `retries` (0 to 10), as the config sets them; the base keeps `retry: 0` unless its own config opts in too |
+
+Vitest reads the root `test.retry` only. It is passed on the command line, so it applies to every
+project; a `test.retry` inside an inline `test.projects` entry is ignored, with the notice `Ignoring
+test.retry of the Vitest project "unit" in vitest.config.ts; with the opt-in only test.retry of the root
+config applies, to every project` (projects loaded from their own config files are not read). A
+function `condition` is rejected, since only a RegExp can be passed on to Vitest. Mocha's `retries` is
+what Mocha resolves from the rc file it would use (`.mocharc.cjs`, `.js`, `.mjs`, `.yaml`, `.yml`,
+`.jsonc` or `.json`, the first one found), the `mocha` key in `package.json`, or the `--config` and
+`--package` of the test script; a `--retries` in the script is dropped as before. The rc file's `bail` and
+`forbid-only` are switched off like the script's.
+
+Jest has no retry option in its config (`jest.retryTimes` is called from test code) and `node:test` has no
+config file, so listing `"project"` first with either runner is a tool error that says to remove it. The
+value is read from the head checkout and applies to both sides when the base opts in too. The config is loaded in
+a child process with a timeout (30 s) and an output cap (10 MB): a Vitest config is loaded with vite, a
+Mocha config with Mocha's own option loader, and a config that ends the process, prints too much or does
+not finish is a tool error of the test runs. Naming `"project"` without the runner's config, with one that
+cannot be loaded, or with a retry above the caps or that is not a whole number is a tool error too.
+Mutation runs never retry, so a mutant is killed by its first failing test.
+
+Policy review loads the retry on both sides and lists each value that moved, as `tests vitest.config.ts
+retry: 0 -> 5` (or `retry.delay`, `retry.condition`). More retries, a longer delay and a changed or
+removed condition are loosenings; fewer retries, a shorter delay and a new condition are plain changes.
+Comments and unrelated edits show nothing, and a config that takes over when the winning one is deleted
+(`vitest.config.ts` to `vite.config.ts`, `.mocharc.cjs` to `.mocharc.json`) or a value the config imports
+is compared by what applies. A side that cannot be loaded, or a change that adds the opt-in, lists the
+config files (`vitest.config.*`, `vite.config.*`, the Mocha rc files, `package.json`) instead.
+
+Without the opt-in, the config of the runner that runs the tests gets the notice `Ignoring test.retry in
+vitest.config.ts; opt in with "tools": { "tests": { "precedence": ["project", "nitpicker"] } }` (or `retries in
+.mocharc.yml`, `retries in package.json "mocha"`) when its retry is above 0. Jest and `node:test` projects get
+none, since there is nothing to opt into.
+
 ### Lint engine
 
 The lint analyzers apply nitpicker's ESLint policy, but by default they run it on
 [oxlint](https://oxc.rs), which is several times faster. Rules oxlint has its own port of run
 natively, type-aware rules run on its TypeScript 7 checker, and every other rule (nitpicker's own,
 and plugins oxlint lacks) runs inside oxlint through the original ESLint plugin. The few type-aware
-plugin rules oxlint cannot run still run on ESLint, for those rules only.
+plugin rules oxlint cannot run still run on ESLint, for those rules only. A project config opted in
+with `tools.eslint.precedence` is layered the same way on both engines; see
+[ESLint configs](#eslint-configs-typescript-and-javascript-presets).
+
+oxlint also has rules of its own that no ESLint plugin provides. nitpicker runs one only when it
+owns an ESLint rule that reports the same code: oxlint then runs its native rule, ESLint runs
+nitpicker's, and both report under the nitpicker rule id with the same message, location and
+finding identity, so an `exceptions` entry or a switch of engine changes nothing. With the pinned
+oxlint 1.87.0 that is `nitpicker/no-accumulating-spread` (oxlint's `oxc/no-accumulating-spread`);
+nitpicker checks each native report against the rule's own scope, so the accumulators it leaves
+out (fixed keys, a literal `.slice` bound) stay out on both engines. When the native rule is not
+available, oxlint runs nitpicker's rule through the bridge and reports the same findings.
+oxlint's other native rules, including whole categories such as `perf` or `pedantic`, stay off.
 
 Findings match ESLint's with these known differences:
 
@@ -1579,6 +3198,8 @@ Findings match the project's own TypeScript, with the same messages, positions a
 - TypeScript adds "Did you mean ...?" to a limited number of unknown-name errors. TypeScript 7
   checks files on several checkers, each with its own limit, so it adds the suggestion to more of
   them.
+- A misspelled compiler option close to a real one is TS5025 ("Did you mean ...?") on TypeScript 5
+  and 6 and TS5023 on TypeScript 7.
 - A "file is in the program because" note names the include pattern or `files` entry that
   matched, where the project's TypeScript says "Root file specified for compilation".
 - A few messages are worded differently, such as "No overload matches this call" details and
@@ -1588,11 +3209,35 @@ Findings match the project's own TypeScript, with the same messages, positions a
 Switching engines therefore shows those findings as new once. Paths inside messages are relative
 to the project, so they are the same on both sides of the comparison.
 
+Config diagnostics, such as a removed or unknown compiler option, are reported against the
+project's own config, the one nitpicker's type check config extends (`tsconfig.json`,
+`jsconfig.json` in a JavaScript project, the config `tools.typescript.project` names, or the
+referenced config of a solution `tsconfig.json`), so an exception can name that path. A project without one gets
+nitpicker's own config, `languages/typescript/preset/defaults/tsconfig.quality.json`, as the path.
+An unknown option is reported at its line in the config that sets it, and the type check still runs,
+as `tsc` does; other option diagnostics are reported on the file, without a line. Any other config
+error, such as broken JSON or an `extends` that names a missing file, stops the analyzer, and the
+message names the project's config.
+
+Both sides of the comparison are type checked with the TypeScript of the current checkout, so their
+findings come from the same compiler. On a branch that upgrades TypeScript, the base is checked
+with the new version too: an option it removed or a check it changed shows up on both sides and is
+not reported as new, even though the base's own compiler never reported it.
+
 To always type check with the project's own TypeScript, set the engine:
 
 ```json
 { "tools": { "typescript": { "engine": "project" } } }
 ```
+
+The engine also picks the compiler Stryker checks mutants with in a comparison. With `native`,
+mutants that do not compile are found with TypeScript 7 (Stryker's native checker), which starts
+much faster; mutation on a small change takes about half as long. It uses nitpicker's own
+TypeScript 7, also on a TypeScript 7 project. It falls back to TypeScript 6 under the same
+conditions as the type check, for a selected project config with `references`, and under Deno and
+Bun, where Stryker cannot start TypeScript 7. A full run (`--all`) keeps the TypeScript 6 checker, because it checks related
+mutants together and stays faster once a run has thousands of mutants. Both checkers find the same
+compile errors, so the choice changes how long mutation takes, not its findings.
 
 ### TypeScript project config
 
@@ -1606,13 +3251,18 @@ TypeScript checker, explicitly select a config in `nitpicker.config.json`:
 The path must name a JSON config file inside the project, relative to its root. Nested configs
 and their `extends` are supported. Each snapshot reads its own copy of that config. Its options,
 `files`, `include` and `exclude` are retained; nitpicker adds its configured `exclude` patterns
-and sets `noEmit: true`. Imported files and explicit `files` entries follow TypeScript's usual
+and sets `noEmit: true` and `noCheck: false`. Imported files and explicit `files` entries follow TypeScript's usual
 exclusion semantics. The preset does not add strictness, JavaScript inputs or DOM libraries to
-an explicitly selected config. A missing config is an error, without a preset fallback.
+an explicitly selected config. A missing config is an error, without a preset fallback. Because the
+selected config's options are used as written, `project` cannot be combined with
+`tools.typescript.precedence`.
 
 `project` selects the config independently of `engine`, so both keys can be set together. With
 no `project`, nitpicker keeps its strict preset and automatic root tsconfig/jsconfig layering.
 Other analyzers still enforce nitpicker's rules and source/test layout.
+
+Troubleshooting: the failures this preset meets are listed in the
+[TypeScript and JavaScript preset guide](typescript-strict-preset/troubleshooting.md).
 
 ## Adopting nitpicker on existing code
 
@@ -1741,7 +3391,7 @@ jobs:
       IMAGE: ghcr.io/jhondoe15/nitpicker:<version>
       NITPICKER_ACCEPT_POLICY_CHANGE: ${{ vars.NITPICKER_ACCEPT_POLICY_CHANGE }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7.0.1
         with:
           fetch-depth: 0
       - run: docker run --rm --user "$(id -u):$(id -g)" -v "$PWD":/work --entrypoint npm "$IMAGE" ci
@@ -1754,7 +3404,9 @@ jobs:
 can read and remove what it wrote. `NITPICKER_ACCEPT_POLICY_CHANGE` comes from a repository variable
 that only an admin can set, so a person accepts a loosening of `nitpicker.config.json` by setting it
 to the digest the finding names; the container needs `CI` too, since the variable is honoured only
-in CI.
+in CI. For the label route,
+add the two approval steps of `action.yml` before the run and pass their `acceptance` output instead
+(see [Accepting a policy change with a label](ci.md#accepting-a-policy-change-with-a-label)).
 
 For a Python project, create the environment and run the gate in one container (the `.venv` it
 leaves also serves a later run of the same image):
@@ -1804,5 +3456,7 @@ npx nitpicker aggregate --input-root shards --shard-count 3
   missing or inconsistent shard is a tool error (exit 2). It reads the same
   `nitpicker.config.json`, writes to `reports/quality/diff/combined` unless `--output` is given,
   and takes the policy from the head commit recorded in the shards (or from `--policy-root`).
+  Analyzer versions include the runtime for Java and Kotlin (the JDK), Python and Go, so run the
+  aggregate job with the same toolchain as the shards.
 - Set `NITPICKER_MAX_PARALLEL` to a positive integer to cap how many analyzers run at once within
   one job.

@@ -1,0 +1,9 @@
+  <rule name="SpringDataModifyingQuery" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
+        message="Write @Modifying(clearAutomatically = true, flushAutomatically = true), so pending changes are flushed first and no stale entities stay in the persistence context.">
+    <priority>2</priority>
+    <properties><property name="xpath"><value><![CDATA[
+//Annotation[pmd-java:typeIs('org.springframework.data.jpa.repository.Modifying')]
+  [not(AnnotationMemberList/MemberValuePair[@Name = 'clearAutomatically']/BooleanLiteral[@True = true()])
+   or not(AnnotationMemberList/MemberValuePair[@Name = 'flushAutomatically']/BooleanLiteral[@True = true()])]
+]]></value></property></properties>
+  </rule>

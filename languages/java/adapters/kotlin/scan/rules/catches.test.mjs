@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { lineOf, scanKotlinSource } from '../kotlin-source.mjs';
-import { booleanFlags, catchOnlyLogs } from './catches.mjs';
+import { booleanFlags, catchOnlyLogs, swallowedCatchBlocks } from './catches.mjs';
 
 function found(check, source) {
   const scanned = scanKotlinSource(source);
@@ -32,7 +32,16 @@ describe('catchOnlyLogs', () => {
     ['the exception passed on', ['failures.add(e)']],
     ['an error response', ['return ResponseEntity.status(500).build<String>().toString()']],
     ['an empty catch, which detekt reports', []],
-    ['an interrupt', ['Thread.currentThread().interrupt()'], { type: 'InterruptedException' }],
+    ['a failing call that returns Nothing', [`error("load failed: \${e.message}")`]],
+    ['a TODO', ['TODO()']],
+    ['an assertion failure', ['fail("load failed")']],
+    ['a cancellation check', ['currentCoroutineContext().ensureActive()']],
+    [
+      'an interrupt, which SwallowedInterrupt reads',
+      ['log.warn("stop")'],
+      { type: 'InterruptedException' },
+    ],
+    ['a qualified interrupt type', ['return null'], { type: 'java.lang.InterruptedException' }],
   ])('passes a catch with %s', (_name, handler, options) => {
     expect(found(catchOnlyLogs, guarded(handler, options))).toEqual([]);
   });
@@ -51,6 +60,18 @@ describe('catchOnlyLogs', () => {
   });
 });
 
+describe('swallowedCatchBlocks', () => {
+  it('holds every catch of InterruptedException, so its log calls are not reported a second time', () => {
+    const source = guarded(['Thread.currentThread().interrupt()', 'log.warn("stop")'], {
+      type: 'InterruptedException',
+    });
+
+    expect(swallowedCatchBlocks(scanKotlinSource(source).code)).toEqual(
+      new Set([source.indexOf('{', source.indexOf('catch'))]),
+    );
+  });
+});
+
 describe('booleanFlags', () => {
   it.each([
     [
@@ -63,17 +84,65 @@ describe('booleanFlags', () => {
     ],
     [
       'a when on the flag',
-      'fun render(text: String, bold: Boolean?): String = when (bold) {\n    true -> "<b>$text</b>"\n    else -> text\n}\n',
+      'fun render(text: String, bold: Boolean): String = when (bold) {\n    true -> "<b>$text</b>"\n    else -> text\n}\n',
     ],
     [
       'a flag in a combined condition',
       'fun send(text: String, urgent: Boolean): String {\n    if (urgent && text.isNotEmpty()) return "!"\n    return text\n}\n',
+    ],
+    [
+      'a member of a public class',
+      'class Renderer(private val tag: String) {\n    fun render(text: String, bold: Boolean): String {\n        if (bold) return text\n        return tag\n    }\n}\n',
+    ],
+    [
+      'a member of a public class inside a public object',
+      'object Holder {\n    class Renderer {\n        fun render(bold: Boolean): String {\n            if (bold) return "b"\n            return ""\n        }\n    }\n}\n',
+    ],
+    [
+      'a flag behind package and import lines holding "internal"',
+      'package com.acme.internal\n\nimport com.acme.internal.Api\n\nclass Renderer {\n    fun render(bold: Boolean): String {\n        if (bold) return "b"\n        return ""\n    }\n}\n',
+    ],
+    [
+      'a public class after a private constant and a private function',
+      'private const val TAG = "x"\n\nprivate fun helper() = 1\n\nclass Renderer {\n    fun render(bold: Boolean): String {\n        if (bold) return "b"\n        return ""\n    }\n}\n',
+    ],
+    [
+      'a public class after an annotation line',
+      '@Service\nclass Renderer {\n    fun render(bold: Boolean): String {\n        if (bold) return "b"\n        return ""\n    }\n}\n',
+    ],
+    [
+      'a public function after a private function that returns an object',
+      'private fun x() = object {\n    val a = 1\n}\n\nfun render(bold: Boolean): String {\n    if (bold) return "b"\n    return ""\n}\n',
+    ],
+    [
+      'a companion object of a public class',
+      'class Renderer {\n    companion object {\n        fun render(bold: Boolean): String {\n            if (bold) return "b"\n            return ""\n        }\n    }\n}\n',
+    ],
+    [
+      'a subject-less when',
+      'fun render(bold: Boolean): String = when {\n    bold -> "b"\n    else -> ""\n}\n',
+    ],
+    [
+      'a while on the flag',
+      'fun poll(running: Boolean) {\n    while (running) {\n        tick()\n    }\n}\n',
+    ],
+    [
+      'a comparison with a boolean literal',
+      'fun render(bold: Boolean): String {\n    if (bold == true) return "b"\n    return ""\n}\n',
+    ],
+    [
+      'a use inside a nested lambda',
+      'fun render(items: List<String>, bold: Boolean): List<String> {\n    return items.map { if (bold) it.uppercase() else it }\n}\n',
     ],
   ])('flags %s', (_name, source) => {
     expect(found(booleanFlags, source).map(([rule]) => rule)).toEqual(['BooleanFlagParameter']);
   });
 
   it.each([
+    [
+      'a nullable Boolean, which is a tri-state rather than a flag',
+      'fun render(text: String, bold: Boolean?): String = when (bold) {\n    true -> "<b>$text</b>"\n    else -> text\n}\n',
+    ],
     [
       'a private function',
       'private fun render(text: String, bold: Boolean): String {\n    if (bold) return text\n    return text\n}\n',
@@ -92,12 +161,52 @@ describe('booleanFlags', () => {
       'fun render(@RequestParam bold: Boolean): String {\n    if (bold) return "b"\n    return ""\n}\n',
     ],
     [
+      'a nullable flag, left to TriStateBoolean',
+      'fun render(text: String, bold: Boolean?): String = when (bold) {\n    true -> "<b>$text</b>"\n    else -> text\n}\n',
+    ],
+    [
       'a flag passed on, not branched on',
       'fun render(text: String, bold: Boolean): Span = Span(text, bold)\n',
     ],
     [
+      'a function of an internal class',
+      'internal class Renderer {\n    fun render(text: String, bold: Boolean): String {\n        if (bold) return text\n        return text\n    }\n}\n',
+    ],
+    [
+      'a function of a private class',
+      'private class Renderer(val tag: String) {\n    fun render(text: String, bold: Boolean): String {\n        if (bold) return text\n        return text\n    }\n}\n',
+    ],
+    [
+      'a function of a class inside a private object',
+      'private object Holder {\n    class Renderer {\n        fun render(bold: Boolean): String {\n            if (bold) return "b"\n            return ""\n        }\n    }\n}\n',
+    ],
+    [
+      'a local function',
+      'fun outer(text: String): String {\n    fun inner(bold: Boolean): String {\n        if (bold) return text\n        return text\n    }\n    return inner(true)\n}\n',
+    ],
+    [
       'a flag compared, not used as the condition',
       'fun same(a: Boolean, b: Boolean): Int {\n    if (a == b) return 1\n    return 0\n}\n',
+    ],
+    [
+      'a function of an anonymous object',
+      'fun make() = object {\n    fun render(bold: Boolean): String {\n        if (bold) return "b"\n        return ""\n    }\n}\n',
+    ],
+    [
+      'a function of a private object after a public class',
+      'class Api\n\nprivate object Holder {\n    fun render(bold: Boolean): String {\n        if (bold) return "b"\n        return ""\n    }\n}\n',
+    ],
+    [
+      'a loop variable that shadows the flag',
+      'fun render(bold: Boolean, items: List<Boolean>) {\n    for (bold in items) {\n        if (bold) tick()\n    }\n}\n',
+    ],
+    [
+      'a lambda parameter that shadows the flag',
+      'fun render(bold: Boolean, items: List<Boolean>) = items.filter { bold -> if (bold) true else false }\n',
+    ],
+    [
+      'a local value that shadows the flag',
+      'fun render(bold: Boolean): String {\n    val bold = compute()\n    if (bold) return "b"\n    return ""\n}\n',
     ],
   ])('passes %s', (_name, source) => {
     expect(found(booleanFlags, source)).toEqual([]);

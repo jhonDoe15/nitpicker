@@ -1,0 +1,7 @@
+[
+  {
+    "tool": "python-rules",
+    "rule": "tls-verification-off",
+    "mention": "verify_mode = ssl.cert_optional"
+  }
+]

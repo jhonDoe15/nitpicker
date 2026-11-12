@@ -92,11 +92,14 @@ describe('computeInvoice', () => {
   });
 
   it('rejects a zero, negative or fractional quantity', () => {
-    for (const qty of [0, -1, 1.5]) {
+    const rejectsQuantity = (qty: number) => {
       expect(() => computeInvoice({ items: [{ name: 'Pen', qty, unitCents: 100 }] })).toThrow(
         'Invalid quantity for Pen',
       );
-    }
+    };
+    rejectsQuantity(0);
+    rejectsQuantity(-1);
+    rejectsQuantity(1.5);
   });
 });
 

@@ -37,6 +37,43 @@ style:
       - 'java.lang.System.exit'
 coroutines:
   active: false
+  SuspendFunSwallowedCancellation:
+    active: false
+    severity: info
+    excludes: ['**/*.kt']
+    includes: ['missing/**']
+    ignoreAnnotated: ['Marker']
+  InjectDispatcher:
+    active: false
+    severity: info
+    excludes: ['**/*.kt']
+    includes: ['missing/**']
+    ignoreAnnotated: ['Marker']
+    dispatcherNames: []
+  RedundantSuspendModifier:
+    active: false
+    severity: info
+    excludes: ['**/*.kt']
+    includes: ['missing/**']
+    ignoreAnnotated: ['Marker']
+  SleepInsteadOfDelay:
+    active: false
+    severity: info
+    excludes: ['**/*.kt']
+    includes: ['missing/**']
+    ignoreAnnotated: ['Marker']
+  SuspendFunWithFlowReturnType:
+    active: false
+    severity: info
+    excludes: ['**/*.kt']
+    includes: ['missing/**']
+    ignoreAnnotated: ['Marker']
+  SuspendFunWithCoroutineScopeReceiver:
+    active: false
+    severity: info
+    excludes: ['**/*.kt']
+    includes: ['missing/**']
+    ignoreAnnotated: ['Marker']
 potential-bugs:
   active: false
   ignoreAnnotated: ['Marker']
@@ -44,6 +81,10 @@ potential-bugs:
     severity: info
     ignoreAnnotated: ['Marker']
   CastNullableToNonNullableType:
+    excludes: ['**/*.kt']
+  CastToNullableType:
+    excludes: ['**/*.kt']
+  DontDowncastCollectionTypes:
     excludes: ['**/*.kt']
 exceptions:
   active: false
@@ -69,5 +110,5 @@ export const EXTRA_SOURCES = {
   'Hidden.kt':
     '@file:Suppress("ktlint:standard:indent")\n\npackage demo.extras\n\nval pattern = "**/*.kt"\nval maybe: String? = "a"\n\n@get:Suppress("UnsafeCallOnNullableType")\nval size: Int get() = maybe!!.length\n\n/** end */\n',
   'Compiler.kt':
-    'package demo.extras\n\n@Suppress("UNCHECKED_CAST", "unused")\nfun cast(value: Any): List<String> = value as List<String>\n',
+    'package demo.extras\n\nval source: Any = listOf("a")\n\n@Suppress("UNCHECKED_CAST", "unused")\nfun cast(): List<String> = source as List<String>\n',
 };

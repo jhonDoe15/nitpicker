@@ -20,10 +20,14 @@ function declaresHatchEnvironments(projectRoot) {
   );
 }
 
-function condaFile(projectRoot) {
+export function condaFile(projectRoot) {
   const yml = path.join(projectRoot, 'environment.yml');
   const yaml = path.join(projectRoot, 'environment.yaml');
   return [yml, yaml].find((candidate) => existsSync(candidate));
+}
+
+export function condaEnvironmentName(file) {
+  return CONDA_NAME.exec(readFileSync(file, 'utf8'))?.[1];
 }
 
 function hasPipfile(projectRoot) {
@@ -43,8 +47,8 @@ export function declaredManagedEnvironment(projectRoot) {
   return condaFile(projectRoot) === undefined ? undefined : 'conda';
 }
 
-function askManager(manager, args, { projectRoot }) {
-  const result = spawnSync(manager, args, {
+function askManager(manager, args, { projectRoot, spawn = spawnSync }) {
+  const result = spawn(manager, args, {
     cwd: projectRoot,
     encoding: 'utf8',
     timeout: MANAGER_TIMEOUT_MS,

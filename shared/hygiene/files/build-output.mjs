@@ -1,8 +1,9 @@
 import path from 'node:path';
+import { escapeRegExp } from '../../paths/glob.mjs';
 import { readJson, trackedText } from './known-files.mjs';
 import { holdsSources } from './output-sources.mjs';
 
-const MANIFESTS = new Set([
+const BUILD_MANIFESTS = new Set([
   'package.json',
   'build.gradle',
   'build.gradle.kts',
@@ -10,6 +11,10 @@ const MANIFESTS = new Set([
   'pyproject.toml',
 ]);
 const PROJECT_OUTPUT = new Set(['dist', 'build', 'out', 'coverage', 'target']);
+
+export function isBuildManifest(name) {
+  return BUILD_MANIFESTS.has(name);
+}
 const SOURCE_FOLDER_NAMES = new Set(['build', 'out', 'coverage', 'target']);
 const ANY_DEPTH_OUTPUT = new Set(['.next', '.nuxt', 'storybook-static', '.turbo', '.parcel-cache']);
 const PACKAGE_ENTRY_FIELDS = ['main', 'module', 'types', 'typings', 'bin', 'exports', 'browser'];
@@ -18,7 +23,7 @@ const ACTION_ENTRY = /^\s+(?:main|pre|post):\s*["']?([^"'\s#]+)/gmu;
 
 export function buildOutputFolders(projectRoot, files) {
   const tracked = new Set(files);
-  const manifests = files.filter((file) => MANIFESTS.has(path.posix.basename(file)));
+  const manifests = files.filter((file) => BUILD_MANIFESTS.has(path.posix.basename(file)));
   const projectDirectories = new Set(manifests.map(directoryOf));
   const filesByFolder = new Map();
   for (const file of files) {
@@ -48,7 +53,7 @@ function isSourceFolder(folder, folderFiles, { projectRoot, tracked, manifests }
 
 function isReferenced(projectRoot, tracked, { folder, siblings }) {
   const name = path.posix.basename(folder);
-  const reference = new RegExp(`(?:^|[\\s"'=:(./])${name}/([\\w./-]+)`, 'gu');
+  const reference = new RegExp(`(?:^|[\\s"'=:(./])${escapeRegExp(name)}/([\\w./-]+)`, 'gu');
   return siblings.some((manifest) =>
     [...trackedText(projectRoot, manifest).matchAll(reference)].some((match) =>
       tracked.has(path.posix.normalize(`${folder}/${match[1]}`)),

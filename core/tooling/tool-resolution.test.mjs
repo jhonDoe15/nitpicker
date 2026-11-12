@@ -1,4 +1,3 @@
-import { createGitTemplate, copyGitTemplate } from '../diff/git/test-support/git-repository.mjs';
 import {
   mkdtempSync,
   mkdirSync,
@@ -11,11 +10,11 @@ import {
 import { createRequire } from 'node:module';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
-import { beforeAll, afterEach, describe, expect, it } from 'vitest';
+import { afterEach, expect, it } from 'vitest';
 import {
   isToolInstalled,
+  missingToolMessage,
   PACKAGE_ROOT,
-  resolveProjectRoot,
   resolveTool,
 } from './tool-resolution.mjs';
 import {
@@ -50,6 +49,22 @@ it('tells whether a project has a peer tool installed', () => {
   expect(isToolInstalled('typescript', { projectRoot: withTypeScript })).toBe(true);
   expect(isToolInstalled('typescript', { projectRoot: without })).toBe(false);
   expect(isToolInstalled('eslint')).toBe(true);
+});
+
+it('names the npm 10 install failure when a Vitest peer is missing', () => {
+  const hint =
+    '. If npm 10 failed to install it with "reading \'edgesOut\'", install with npm 11 ' +
+    '(`npx npm@11 install`) or use Vitest 5';
+
+  expect(missingToolMessage('vitest', '/project')).toBe(
+    `Required tool vitest is not installed from /project${hint}`,
+  );
+  expect(missingToolMessage('@vitest/coverage-v8', '/project')).toBe(
+    `Required tool @vitest/coverage-v8 is not installed from /project${hint}`,
+  );
+  expect(missingToolMessage('typescript', '/project')).toBe(
+    'Required tool typescript is not installed from /project',
+  );
 });
 
 it('records the TypeScript version imported by structure instead of the consumer version', () => {
@@ -88,7 +103,7 @@ it('records the TypeScript version imported by structure instead of the consumer
   });
 
   expect(typecheck.resolveVersion(liveProjectRoot)).toBe(
-    `${consumerTypeScriptVersion};typescript-native@7.0.2;${importedTypeScriptVersion}`,
+    `${consumerTypeScriptVersion};@typescript/native@7.0.2;${importedTypeScriptVersion}`,
   );
   expect(report.summary.tools[0].version).toBe(importedTypeScriptVersion);
 });
@@ -243,33 +258,3 @@ function writeManifest(packageRoot, manifest) {
   mkdirSync(packageRoot, { recursive: true });
   writeFileSync(path.join(packageRoot, 'package.json'), JSON.stringify(manifest));
 }
-
-describe('project root resolution', () => {
-  let gitTemplateRoot;
-
-  beforeAll(() => {
-    gitTemplateRoot = createGitTemplate();
-  });
-
-  it('finds the nearest package or nitpicker config bounded by the git repository', () => {
-    const root = realpathSync(mkdtempSync(path.join(tmpdir(), 'nitpicker-project-')));
-    temporaryRoots.push(root);
-    copyGitTemplate(gitTemplateRoot, root);
-    writeFileSync(path.join(root, 'package.json'), '{}');
-    mkdirSync(path.join(root, 'packages/leaf'), { recursive: true });
-    writeFileSync(path.join(root, 'packages/package.json'), '{}');
-    expect(resolveProjectRoot(path.join(root, 'packages/leaf'))).toBe(path.join(root, 'packages'));
-    mkdirSync(path.join(root, 'service/src'), { recursive: true });
-    writeFileSync(path.join(root, 'service/nitpicker.config.json'), '{"preset":"java"}');
-    expect(resolveProjectRoot(path.join(root, 'service/src'))).toBe(path.join(root, 'service'));
-    const emptyRoot = realpathSync(mkdtempSync(path.join(tmpdir(), 'nitpicker-empty-project-')));
-    temporaryRoots.push(emptyRoot);
-    copyGitTemplate(gitTemplateRoot, emptyRoot);
-    expect(() => resolveProjectRoot(emptyRoot)).toThrow(
-      new Error(
-        `No package.json or nitpicker.config.json found between ${emptyRoot} and repository root ${emptyRoot}. ` +
-          'For a Java, Kotlin or Python project, create nitpicker.config.json with its preset, for example {"preset": "java"}.',
-      ),
-    );
-  });
-});

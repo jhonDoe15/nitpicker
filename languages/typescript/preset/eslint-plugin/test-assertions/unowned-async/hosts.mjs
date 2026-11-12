@@ -25,6 +25,8 @@ const CALLBACK_MODULES = withNodePrefix([
   'dgram',
 ]);
 const ASSERT_MODULES = new Set([...withNodePrefix(['assert', 'assert/strict']), 'chai']);
+const EXPECT_MODULES = new Set(['vitest', '@jest/globals', '@playwright/test']);
+const ASSERTION_IMPORT_NAME = /^(?:assert|expect)(?![a-z])/u;
 const NODE_TEST_MODULES = new Set(['node:test']);
 const RX_MODULES = new Set(['rxjs', 'rxjs/operators', 'rxjs/webSocket', 'rxjs/fetch']);
 const ASYNC_RX = new Set([
@@ -80,8 +82,22 @@ const OBSERVERS = new Set([
 ]);
 const HANDLER_PROPERTY = /^on[a-z]+$/u;
 
-export function fileBindings(program) {
+function importedAssertionNames(program) {
+  return program.body
+    .filter(
+      (statement) => statement.type === 'ImportDeclaration' && statement.importKind !== 'type',
+    )
+    .flatMap((statement) => statement.specifiers)
+    .filter((specifier) => specifier.type !== 'ImportNamespaceSpecifier')
+    .filter((specifier) => specifier.importKind !== 'type')
+    .map((specifier) => specifier.local.name)
+    .filter((name) => ASSERTION_IMPORT_NAME.test(name));
+}
+
+export function fileBindings(program, assertionNames = []) {
   return {
+    assertionNames: new Set([...assertionNames, ...importedAssertionNames(program)]),
+    expects: moduleBindings(program, EXPECT_MODULES),
     timers: moduleBindings(program, TIMER_MODULES),
     callbacks: moduleBindings(program, CALLBACK_MODULES),
     asserts: moduleBindings(program, ASSERT_MODULES),

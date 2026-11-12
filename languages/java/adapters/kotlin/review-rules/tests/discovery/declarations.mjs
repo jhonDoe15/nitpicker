@@ -185,6 +185,14 @@ export function enclosingClasses(classes, offset) {
     .toSorted((left, right) => left.bodyOpen - right.bodyOpen);
 }
 
+export function chainName(classes, offset, last) {
+  const outer = classes
+    .filter((klass) => klass.offset < offset && offset < klass.end)
+    .toSorted((left, right) => left.offset - right.offset);
+  const names = [...outer.map(({ name }) => name), last];
+  return names.filter((name) => name !== undefined).join('.') || 'top level';
+}
+
 export function ownersOf(classes, offsets) {
   const events = [
     ...classes

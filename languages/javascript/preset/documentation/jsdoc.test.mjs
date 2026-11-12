@@ -137,29 +137,25 @@ describe('parseJsdoc problems', () => {
   });
 
   it('reports the nullable shorthands like null and a bare ? like any', () => {
-    for (const type of [
-      '?string',
-      'string?',
-      'Array<?string>',
-      '{ a: ?string }',
-      'string? | number',
-    ]) {
-      expect(messageIds(`* @param {${type}} value`), type).toEqual(['jsdocNullType']);
-    }
+    const nullable = ['?string', 'string?', 'Array<?string>', '{ a: ?string }', 'string? | number'];
+    expect(nullable.map((type) => messageIds(`* @param {${type}} value`))).toEqual(
+      nullable.map(() => ['jsdocNullType']),
+    );
     expect(messageIds('* @param {?} value')).toEqual(['jsdocAnyType']);
     expect(messageIds('* @returns {Promise<?>}')).toEqual(['jsdocAnyType']);
   });
 
   it('accepts optional members, optional tuple elements and conditional types', () => {
-    for (const type of [
+    const optional = [
       '{ a?: string }',
       '(a?: number) => void',
       '[string, number?]',
       'T extends string ? 1 : 2',
       "'?' | '?x'",
-    ]) {
-      expect(messageIds(`* @param {${type}} value`), type).toEqual([]);
-    }
+    ];
+    expect(optional.map((type) => messageIds(`* @param {${type}} value`))).toEqual(
+      optional.map(() => []),
+    );
   });
 
   it('reports each distinct problem once', () => {

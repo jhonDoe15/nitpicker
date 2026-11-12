@@ -41,6 +41,14 @@ function generated(files, exclude = [], extra = {}) {
 }
 
 describe('the mypy config nitpicker generates', () => {
+  it('reads a lone carriage return as a line break, as mypy does', () => {
+    const { text } = generated({
+      'mypy.ini': '[mypy]\rmypy_path = stubs\r[mypy-legacy.*]\rignore_errors = True\n',
+    });
+
+    expect(text).toBe('[mypy]\nmypy_path = stubs\n');
+  });
+
   it('keeps the environment settings of a mypy.ini and drops everything that weakens the check', () => {
     const { projectRoot, file, text } = generated({
       'mypy.ini': [
@@ -402,7 +410,11 @@ describe('where mypy finds its config', () => {
 
   it('names a pyproject.toml it cannot parse', () => {
     expect(() => generated({ 'pyproject.toml': '[tool.mypy\nx = 1\n' })).toThrow(
-      /^pyproject\.toml could not be parsed \([\s\S]+\): fix it$/u,
+      new RegExp(
+        String.raw`^pyproject\.toml could not be parsed \([\s\S]+\): fix it\n` +
+          String.raw`See https://\S+#a-project-tool-config-is-missing-or-broken$`,
+        'u',
+      ),
     );
   });
 });

@@ -2,6 +2,10 @@ import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'nod
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import {
+  nestedCheckout,
+  useGitCheckouts,
+} from '../../../../core/diff/git/test-support/git-checkout.mjs';
 import { createScratch } from '../test-support/scratch.mjs';
 import {
   pythonFileLimitFindings,
@@ -9,6 +13,8 @@ import {
   structure,
   STRUCTURE_REPORT,
 } from './python-structure.mjs';
+
+const { gitCheckout } = useGitCheckouts();
 
 const scratch = createScratch();
 
@@ -117,9 +123,11 @@ describe('reading the structure report', () => {
     expect(edited.ratchet.key).toBe(before.ratchet.key);
     expect(before.ratchet).toEqual({
       key: 'function:Service.handle:occurrence:1:parameters',
+      declarationKey: 'function:Service.handle:declaration:6761e5af17ceff276b3e432b:parameters',
       value: 4,
       worseMessage:
         'Service.handle grew from {base} to 4 parameters (limit 3). Group related parameters into one object instead of adding another. If this is intended, add {"rule":"function-parameters-limit","paths":["src/demo/service.py"],"function":"Service.handle","reason":"..."} to "exceptions" in nitpicker.config.json.',
+      worseAllowedForm: 'Group related parameters into one object instead of adding another.',
       heldMessage:
         'Service.handle: 4 parameters (limit 3), allowed because base was {base}; any increase fails.',
     });
@@ -249,5 +257,20 @@ describe('Python file limits', () => {
         exceptions: [{ rule: 'folder-files-limit', paths: ['src/icons/*'] }],
       }),
     ).toEqual([]);
+  });
+
+  it('does not count the modules of git-ignored folders or nested checkouts', () => {
+    const modules = ['a.py', 'b.py', 'c.py'];
+    const root = gitCheckout(
+      {
+        'src/app/a.py': '',
+        'src/app/b.py': '',
+        ...Object.fromEntries(modules.map((name) => [`scratch/${name}`, ''])),
+        ...nestedCheckout('agent', Object.fromEntries(modules.map((name) => [name, '']))),
+      },
+      ['scratch/'],
+    );
+
+    expect(pythonFileLimitFindings(root, { fileLimits: limits })).toEqual([]);
   });
 });

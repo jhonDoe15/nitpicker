@@ -1,0 +1,8 @@
+[
+  {
+    "name": "module constants name an enum",
+    "tool": "python-rules",
+    "rule": "enum-string-constants",
+    "mention": "enum.StrEnum"
+  }
+]

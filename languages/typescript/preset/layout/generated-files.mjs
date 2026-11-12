@@ -1,27 +1,13 @@
-import { spawnSync } from 'node:child_process';
 import { existsSync, readFileSync } from 'node:fs';
 import { pathInside } from '../../../../shared/filesystem.mjs';
+import { projectFilePaths } from '../../../../shared/project-files/project-files.mjs';
 import {
   fileHasGeneratorHeader,
   hasGeneratorMarker,
 } from '../../../../shared/conventions/generator-marker.mjs';
 import { codeExtensionNames, mayBeGenerated } from '../layout.mjs';
 
-const MAX_LISTING_BYTES = 64 * 1024 * 1024;
 const CODE_FILE = new RegExp(`\\.(?:${codeExtensionNames.join('|')})$`, 'u');
-
-function projectFiles(projectRoot) {
-  const listed = spawnSync(
-    'git',
-    ['ls-files', '-z', '--cached', '--others', '--exclude-standard'],
-    {
-      cwd: projectRoot,
-      encoding: 'utf8',
-      maxBuffer: MAX_LISTING_BYTES,
-    },
-  );
-  return listed.status === 0 ? listed.stdout.split('\0').filter(Boolean) : [];
-}
 
 export function isMarkedGenerated(projectRoot, file) {
   const absolute = pathInside(projectRoot, file);
@@ -34,5 +20,5 @@ export function isMarkedGenerated(projectRoot, file) {
 }
 
 export function markedGeneratedFiles(projectRoot) {
-  return projectFiles(projectRoot).filter((file) => isMarkedGenerated(projectRoot, file));
+  return projectFilePaths(projectRoot).filter((file) => isMarkedGenerated(projectRoot, file));
 }

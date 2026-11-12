@@ -2,8 +2,12 @@ import { MINIMUM_BRANCH_COVERAGE } from '../../../../shared/policy.mjs';
 import { branchCoverageFindings } from '../../../../shared/rules/branch-coverage.mjs';
 import { enclosingFunctionName } from '../../../../shared/rules/finding-helpers.mjs';
 import { hashIdentity, normalizeReportPath } from '../../../../shared/ingest/common.mjs';
+import { formatAgnosticText } from '../../../../shared/source-text/format-tokens.mjs';
 
 const SCOPE_START = /^(?:async\s+def|def|class)\s+(\w+)/;
+const CASE_START = /^case\b/;
+const NO_CASE_MATCHED =
+  'no case matching (if the cases cover every value, end the match with `case _:` and `assert_never(subject)`)';
 
 export function ingestCoverageBranches(text, options = {}) {
   const report = JSON.parse(text);
@@ -38,12 +42,14 @@ function fileFindings(data, { path, lines, tool, minimum, options }) {
     if (source === undefined || source === '') {
       continue;
     }
+    const text = formatAgnosticText(lines[line - 1], path);
     branches.push({
       path,
       line,
-      key: hashIdentity('branch-source', [enclosingScope(lines, line - 1), source]),
+      key: hashIdentity('branch-source', [enclosingScope(lines, line - 1), text]),
+      anchor: hashIdentity('branch-source', [text]),
       percent: (outcomes.taken / (outcomes.taken + outcomes.missed.length)) * 100,
-      arms: outcomes.missed.map(describeArm),
+      arms: outcomes.missed.map((destination) => describeArm(lines, line, destination)),
       symbol: enclosingFunctionName(options.functions ?? [], path, line),
     });
   }
@@ -98,8 +104,15 @@ function validArcs(arcs) {
   );
 }
 
-function describeArm(destination) {
+function describeArm(lines, line, destination) {
+  if (CASE_START.test(lines[line - 1].trimStart()) && leavesMatch(lines, line, destination)) {
+    return NO_CASE_MATCHED;
+  }
   return destination > 0
     ? `the branch to line ${String(destination)}`
     : 'the exit from the enclosing scope';
+}
+
+function leavesMatch(lines, line, destination) {
+  return destination < 0 || indentOf(lines[destination - 1] ?? '') < indentOf(lines[line - 1]);
 }

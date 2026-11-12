@@ -3,9 +3,9 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterAll, describe, expect, it } from 'vitest';
 import { applyFindingPolicy } from '../../../../shared/findings/finding-policy.mjs';
-import { OVERLAP_PAIRS, withoutOverlaps } from './static-overlaps.mjs';
+import { OVERLAP_PAIRS, matchesRule, withoutOverlaps } from './static-overlaps.mjs';
+import { guidePages, guideText } from '../../../../shared/reference/build/guide-pages.mjs';
 
-const DOCS = path.resolve(import.meta.dirname, '../../../../docs/java-preset.md');
 const PROBE = JSON.parse(
   readFileSync(path.join(import.meta.dirname, 'fixtures/probe-findings.json'), 'utf8'),
 );
@@ -21,18 +21,50 @@ const PARTIAL = new Set([
   'URF_UNREAD_FIELD',
   'UUF_UNUSED_FIELD',
 ]);
+const KOTLIN_TOOL = 'kotlin-source/';
+const KOTLIN_EVIDENCE = {
+  'line: kotlin-source/ChildCoroutineOutlivesResource over pmd/CoroutineEscapesTest': path.resolve(
+    import.meta.dirname,
+    '../kotlin-e2e/review-rules/kotlin-preset-review-rules-coroutines.e2e.test.mjs',
+  ),
+};
 const roots = [];
 
 afterAll(() => {
   for (const root of roots.splice(0)) rmSync(root, { recursive: true, force: true });
 });
 
-function resolvedProbe() {
-  const findings = PROBE.findings.map(({ line, ...finding }) => ({
+function probeFindings() {
+  return PROBE.findings.map(({ line, ...finding }) => ({
     ...finding,
     ...(line === undefined ? {} : { location: { line } }),
   }));
-  return withoutOverlaps(findings, { readSource: (file) => PROBE.sources[file] });
+}
+
+function resolvedProbe() {
+  return withoutOverlaps(probeFindings(), { readSource: (file) => PROBE.sources[file] });
+}
+
+function printedRule({ tool, rule }) {
+  return `${tool}/${rule}`;
+}
+
+function droppedBy({ primary, secondary }) {
+  const own = probeFindings().filter((finding) =>
+    [...primary, ...secondary].some((pattern) => matchesRule([pattern], printedRule(finding))),
+  );
+  const kept = new Set(withoutOverlaps(own, { readSource: (file) => PROBE.sources[file] }));
+  return own.filter(
+    (finding) => !kept.has(finding) && matchesRule(secondary, printedRule(finding)),
+  );
+}
+
+function pairName({ primary, secondary, scope }) {
+  return `${scope}: ${primary.join(', ')} over ${secondary.join(', ')}`;
+}
+
+function kotlinOnly({ primary, secondary }) {
+  return [...primary, ...secondary].some((rule) => rule.startsWith(KOTLIN_TOOL));
 }
 
 function name(finding) {
@@ -74,35 +106,51 @@ describe('overlaps on the probe project', () => {
           'pmd/AddEmptyString',
         ],
       ],
-      ['C1Arrays.java:8', ['errorprone/JavaUtilDate', 'pmd/AvoidFieldNameMatchingMethodName']],
       ['C3Locks.java:15', ['errorprone/LockOnBoxedPrimitive', 'pmd/AvoidSynchronizedStatement']],
       [
         'C4Switches.java:6',
         ['errorprone/StatementSwitchToExpressionSwitch', 'pmd/NonExhaustiveSwitch'],
       ],
-      ['C8Equals.java:4', ['checkstyle/MemberName', 'errorprone/FieldCanBeStatic']],
       ['Encodings.java:9', ['errorprone/DefaultCharset', 'pmd/AvoidFileStream']],
-      ['EqOnly.java:4', ['checkstyle/MemberName', 'errorprone/FieldCanBeStatic']],
+      ['G12Worker.java:8', ['forbiddenapis/new-thread', 'pmd/ClassLoadEffect']],
+      ['G2Stored.java:7', ['errorprone/NullAway', 'pmd/UseVarargs']],
+      ['GuardOverlaps.java:38', ['checkstyle/MagicNumber', 'forbiddenapis/thread-sleep']],
       [
-        'Fields.java:5',
+        'Hiding.java:12',
         [
-          'checkstyle/MemberName',
-          'errorprone/FieldCanBeStatic',
-          'pmd/AvoidFieldNameMatchingMethodName',
+          'checkstyle/VisibilityModifier',
+          'errorprone/HidingField',
+          'spotbugs/URF_UNREAD_PUBLIC_OR_PROTECTED_FIELD',
         ],
       ],
       [
-        'Hiding.java:12',
-        ['errorprone/HidingField', 'spotbugs/URF_UNREAD_PUBLIC_OR_PROTECTED_FIELD'],
+        'Hiding.java:4',
+        ['checkstyle/VisibilityModifier', 'spotbugs/URF_UNREAD_PUBLIC_OR_PROTECTED_FIELD'],
       ],
-      ['Hiding.java:5', ['errorprone/NullAway', 'pmd/AvoidFieldNameMatchingMethodName']],
+      [
+        'Hiding.java:8',
+        ['checkstyle/VisibilityModifier', 'spotbugs/URF_UNREAD_PUBLIC_OR_PROTECTED_FIELD'],
+      ],
+      ['Locks.java:17', ['forbiddenapis/legacy-date-time', 'pmd/UnsynchronizedStaticFormatter']],
       ['Misc.java:23', ['errorprone/SynchronizeOnNonFinalField', 'pmd/AvoidSynchronizedStatement']],
-      ['Numbers.java:9', ['errorprone/RandomModInteger', 'spotbugs/DMI_RANDOM_USED_ONLY_ONCE']],
+      ['Numbers.java:10', ['checkstyle/MagicNumber', 'errorprone/ComparisonOutOfRange']],
+      ['Numbers.java:7', ['checkstyle/MagicNumber', 'errorprone/BadShiftAmount']],
+      [
+        'Numbers.java:9',
+        [
+          'checkstyle/MagicNumber',
+          'errorprone/RandomModInteger',
+          'spotbugs/DMI_RANDOM_USED_ONLY_ONCE',
+        ],
+      ],
       ['Obsolete.java:10', ['errorprone/JdkObsolete', 'pmd/LooseCoupling']],
       ['Obsolete.java:11', ['errorprone/JdkObsolete', 'pmd/LooseCoupling']],
       ['Obsolete.java:12', ['errorprone/JdkObsolete', 'pmd/LooseCoupling']],
       ['Obsolete.java:13', ['errorprone/JdkObsolete', 'pmd/LooseCoupling']],
       ['OldTest.java:14', ['errorprone/RedundantNullCheck', 'pmd/SimplifiableTestAssertion']],
+      ['P2Inner.java:10', ['forbiddenapis/legacy-date-time', 'pmd/UnsynchronizedStaticFormatter']],
+      ['P2Inner.java:6', ['checkstyle/VisibilityModifier', 'errorprone/NonFinalStaticField']],
+      ['P2Inner.java:7', ['errorprone/NonFinalStaticField', 'pmd/LegacyCalendarApi']],
       [
         'P2Strings.java:21',
         [
@@ -110,13 +158,56 @@ describe('overlaps on the probe project', () => {
           'spotbugs/REFLC_REFLECTION_MAY_INCREASE_ACCESSIBILITY_OF_CLASS',
         ],
       ],
+      ['P2Strings.java:26', ['checkstyle/MagicNumber', 'forbiddenapis/thread-sleep']],
       ['SelfAssign.java:7', ['errorprone/SelfAssignment', 'pmd/AvoidReassigningParameters']],
+      ['Shared.java:16', ['forbiddenapis/legacy-date-time', 'pmd/UnsynchronizedStaticFormatter']],
+      ['Skip.java:8', ['checkstyle/MagicNumber', 'pmd/CheckSkipResult']],
+      ['Stamps.java:11', ['forbiddenapis/legacy-date-time', 'pmd/UnsynchronizedStaticFormatter']],
       [
-        'StaticCtor.java:4',
-        ['errorprone/NonFinalStaticField', 'pmd/AvoidFieldNameMatchingMethodName'],
+        'StaticCtor.java:7',
+        ['checkstyle/MagicNumber', 'spotbugs/ST_WRITE_TO_STATIC_FROM_INSTANCE_METHOD'],
       ],
-      ['Volatile.java:4', ['checkstyle/MemberName', 'pmd/UnusedPrivateField']],
+      [
+        'Types.java:7',
+        [
+          'checkstyle/MagicNumber',
+          'errorprone/CollectionIncompatibleType',
+          'errorprone/EqualsIncompatibleType',
+        ],
+      ],
+      ['V1Style.java:10', ['checkstyle/VisibilityModifier', 'errorprone/MixedArrayDimensions']],
+      ['V1Style.java:13', ['checkstyle/MagicNumber', 'errorprone/BigDecimalLiteralDouble']],
+      [
+        'V1Style.java:8',
+        ['errorprone/AnnotationPosition', 'errorprone/FieldCanBeStatic', 'pmd/CompatibilityShim'],
+      ],
+      [
+        'V3Unused.java:5',
+        ['checkstyle/MagicNumber', 'pmd/UnusedAssignment', 'pmd/UnusedLocalVariable'],
+      ],
+      ['V3Unused.java:6', ['checkstyle/MagicNumber', 'pmd/UnusedAssignment']],
     ]);
+  });
+
+  it('drop a secondary under every pair of the table, so each pair matches real findings', () => {
+    expect(
+      OVERLAP_PAIRS.filter((pair) => !kotlinOnly(pair) && droppedBy(pair).length === 0).map(
+        pairName,
+      ),
+    ).toStrictEqual([]);
+  });
+
+  it('leave only the Kotlin pairs to the Kotlin e2e, which runs both rules on the same line', () => {
+    const kotlinPairs = OVERLAP_PAIRS.filter(kotlinOnly);
+    const unexercised = kotlinPairs.flatMap((pair) => {
+      const evidence = readFileSync(KOTLIN_EVIDENCE[pairName(pair)], 'utf8');
+      return [...pair.primary, ...pair.secondary].filter(
+        (rule) => !evidence.includes(rule.split('/').at(-1)),
+      );
+    });
+
+    expect(kotlinPairs.map(pairName)).toStrictEqual(Object.keys(KOTLIN_EVIDENCE));
+    expect(unexercised).toStrictEqual([]);
   });
 
   it('keep the cases only the secondary side covers', () => {
@@ -127,7 +218,6 @@ describe('overlaps on the probe project', () => {
         .sort(),
     ).toStrictEqual([
       'C1Arrays.java:21 EI_EXPOSE_REP',
-      'C2Strings.java:37 RE_POSSIBLE_UNINTENDED_PATTERN',
       'C3Locks.java:21 RV_RETURN_VALUE_IGNORED',
       'C3Locks.java:22 RV_RETURN_VALUE_IGNORED',
       'C6Encoding.java:11 SS_SHOULD_BE_STATIC',
@@ -175,9 +265,11 @@ describe('overlaps after policy', () => {
 describe('the overlap list in docs/java-preset.md', () => {
   it('is the pair table, in order', () => {
     const printed = (rules) => rules.map((rule) => `\`${rule}\``).join(', ');
-    const documented = readFileSync(DOCS, 'utf8')
+    const documented = guidePages('docs/java-preset.md')
+      .map(guideText)
+      .join('\n')
       .split('\n')
-      .filter((line) => /^- (?:line|member|javadoc|class|field|file): `/u.test(line));
+      .filter((line) => /^- (?:line|member|javadoc|catch|class|field|file): `/u.test(line));
 
     expect(documented).toStrictEqual(
       OVERLAP_PAIRS.map(

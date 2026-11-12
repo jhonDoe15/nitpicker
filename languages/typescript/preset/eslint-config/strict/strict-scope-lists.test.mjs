@@ -262,8 +262,8 @@ describe('no-restricted-syntax lists per scope', () => {
       .map((entry) => entry.rules['no-restricted-syntax'].slice(1));
 
     expect(lists).toHaveLength(4);
-    for (const selectors of lists) {
-      expect(new Set(selectors).size).toBe(selectors.length);
-    }
+    expect(lists.map((selectors) => new Set(selectors).size)).toEqual(
+      lists.map((selectors) => selectors.length),
+    );
   });
 });

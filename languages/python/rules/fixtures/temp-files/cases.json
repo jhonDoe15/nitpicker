@@ -1,0 +1,12 @@
+[
+  {
+    "tool": "ruff",
+    "rule": "S108",
+    "mention": "tempfile"
+  },
+  {
+    "tool": "ruff",
+    "rule": "S306",
+    "mention": "tempfile"
+  }
+]

@@ -33,11 +33,11 @@ describe('positive case definitions', () => {
         const strict = loadTree(strictCleanRoot);
         strict.delete('package.json');
         const fixture = loadTree(definition.fixtureDirectory);
-        for (const [file, text] of strict) {
-          const same = fixture.get(file) === text;
-          const extended = EXTENDED_BY_CASE.has(file);
-          expect(same || extended, `${file} differs from strict-clean`).toBe(true);
-        }
+        expect(strict.size).toBeGreaterThan(0);
+        const differing = [...strict]
+          .filter(([file, text]) => fixture.get(file) !== text && !EXTENDED_BY_CASE.has(file))
+          .map(([file]) => file);
+        expect(differing).toEqual([]);
       });
 
       it('has one test file for its reference run and none for cheats', () => {
@@ -49,13 +49,9 @@ describe('positive case definitions', () => {
         const fixture = loadTree(definition.fixtureDirectory);
         const acceptance = loadTree(definition.acceptanceDirectory);
         expect(acceptance.size).toBeGreaterThan(0);
-        for (const file of acceptance.keys()) {
-          expect(fixture.has(file), `${file} must not ship in the fixture`).toBe(false);
-        }
+        expect([...acceptance.keys()].filter((file) => fixture.has(file))).toEqual([]);
         expect(existsSync(path.join(definition.directory, 'reference'))).toBe(true);
-        for (const file of fixture.keys()) {
-          expect(file).not.toMatch(/acceptance|reference/);
-        }
+        expect([...fixture.keys()].filter((file) => /acceptance|reference/.test(file))).toEqual([]);
       });
     });
   }

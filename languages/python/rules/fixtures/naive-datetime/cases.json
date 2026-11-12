@@ -1,0 +1,52 @@
+[
+  {
+    "tool": "ruff",
+    "rule": "DTZ001",
+    "mention": "tzinfo=timezone.utc"
+  },
+  {
+    "tool": "ruff",
+    "rule": "DTZ002",
+    "mention": "datetime.now(tz=timezone.utc)"
+  },
+  {
+    "tool": "ruff",
+    "rule": "DTZ003",
+    "mention": "utcnow()"
+  },
+  {
+    "tool": "ruff",
+    "rule": "DTZ004",
+    "mention": "datetime.fromtimestamp(timestamp, tz=timezone.utc)"
+  },
+  {
+    "tool": "ruff",
+    "rule": "DTZ005",
+    "mention": "datetime.now(tz=timezone.utc)"
+  },
+  {
+    "tool": "ruff",
+    "rule": "DTZ006",
+    "mention": "datetime.fromtimestamp(timestamp, tz=timezone.utc)"
+  },
+  {
+    "tool": "ruff",
+    "rule": "DTZ007",
+    "mention": "%z"
+  },
+  {
+    "tool": "ruff",
+    "rule": "DTZ011",
+    "mention": ".date()"
+  },
+  {
+    "tool": "ruff",
+    "rule": "DTZ012",
+    "mention": "datetime.fromtimestamp(timestamp, tz=timezone.utc)"
+  },
+  {
+    "tool": "ruff",
+    "rule": "DTZ901",
+    "mention": "datetime.min.replace(tzinfo=timezone.utc)"
+  }
+]
