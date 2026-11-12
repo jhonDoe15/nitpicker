@@ -17,6 +17,7 @@ describe.skipIf(!enabled)('Java preset PMD escape hatch', () => {
     expect(ofTool(result, 'pmd')).toEqual([
       'pmd AvoidCatchingGenericException SwallowingTest.java',
       'pmd MethodArgumentCouldBeFinal Bad.java',
+      'pmd TryCatchInTest SwallowingTest.java',
       'pmd UnitTestShouldIncludeAssert SwallowingTest.java',
     ]);
   }, 180_000);

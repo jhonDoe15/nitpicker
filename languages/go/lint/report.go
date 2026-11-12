@@ -12,6 +12,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/jhonDoe15/nitpicker/languages/go/lint/catalog"
 	"golang.org/x/tools/go/analysis/checker"
 	"golang.org/x/tools/go/packages"
 )
@@ -31,16 +32,36 @@ type Result struct {
 }
 
 func supersededBy() map[string][]string {
-	return map[string][]string{
-		"S1023":    {"SA4011"},
-		"S1000":    {"S1037"},
-		"inline":   {"gofixdirective"},
-		"rangeint": {"S1018"},
-		"SA4006":   {"SA4010"},
-		"SA1006":   {"printf"},
-		"nilness":  {"SA4031", "SA5000"},
-		"errcheck": {"SA5001", "SA9001"},
+	replacements := map[string][]string{
+		"S1023":                       {"SA4011"},
+		"S1000":                       {"S1037"},
+		"inline":                      {"gofixdirective"},
+		"rangeint":                    {"S1018"},
+		"SA4006":                      {"SA4010"},
+		"SA1006":                      {"printf"},
+		"nilness":                     {"SA4031", "SA5000"},
+		"errcheck":                    {"SA5001", "SA9001", "sqlclosecheck"},
+		"nilnil":                      {"nilerr"},
+		"wastedassign":                {"SA4006", "SA4010"},
+		"usetesting":                  {"testingcontext"},
+		"compares":                    {"errorlint"},
+		"suite-thelper":               {"thelper"},
+		"errname":                     {"ST1012"},
+		"noctx":                       {"SA1005", "http-without-timeout"},
+		"string-format":               {"SA1006", "QF1010", "QF1012", "S1025", "S1028", "S1039", "unnecessary-format"},
+		"bool-format":                 {"QF1012"},
+		"hex-format":                  {"QF1012"},
+		"integer-format":              {"QF1012"},
+		"gocheckcompilerdirectives":   {"SA9009"},
+		"usestdlibvars":               {"ST1013"},
+		"bidichk":                     {"ST1018"},
+		"context-outside-entry":       {"contextcheck"},
+		"todoCommentWithoutDetail":    {"todo-without-issue"},
+		"G101":                        {"hardcoded-secret", "credential-shape"},
+		"skipped-test-without-reason": {"switched-off-test"},
 	}
+	maps.Copy(replacements, reviveSuperseded())
+	return replacements
 }
 
 const packageCommentRule = "ST1000"
@@ -60,6 +81,7 @@ func analyze(directory string, settings options, patterns []string) (Result, err
 		return Result{}, err
 	}
 	result := Result{Findings: []Finding{}, Errors: loadErrors(loaded)}
+	catalog.Prepare(loaded)
 	graph, err := checker.Analyze(append(analyzers(), vetAnalyzers()...), loaded, nil)
 	if err != nil {
 		return result, err
@@ -75,13 +97,24 @@ func analyze(directory string, settings options, patterns []string) (Result, err
 			continue
 		}
 		for _, diagnostic := range action.Diagnostics {
-			found := finding(action.Package.Fset, diagnostic.Pos, names[action.Analyzer.Name], action.Analyzer.Name)
-			found.Message = diagnostic.Message
+			rule, message := catalog.Rule(action.Analyzer.Name, diagnostic)
+			if rule == action.Analyzer.Name {
+				rule = ruleName(action.Analyzer)
+			}
+			found := finding(action.Package.Fset, diagnostic.Pos, names[action.Analyzer.Name], rule)
+			found.Message = message
 			seen[found] = true
 		}
 		objects.add(action.Result)
 	}
 	for found := range objects.findings() {
+		seen[found] = true
+	}
+	revived, err := reviveFindings(loaded)
+	if err != nil {
+		return result, err
+	}
+	for _, found := range revived {
 		seen[found] = true
 	}
 	findings, err := selected(handWritten(kept(seen), sources(loaded)), settings.project)
@@ -181,16 +214,22 @@ func finding(files *token.FileSet, at token.Pos, tool, rule string) Finding {
 func kept(seen map[Finding]bool) []Finding {
 	rulesAt := map[string]map[string]bool{}
 	for found := range seen {
-		key := lineKey(found)
-		if rulesAt[key] == nil {
-			rulesAt[key] = map[string]bool{}
+		for _, key := range []string{lineKey(found), columnKey(found)} {
+			if rulesAt[key] == nil {
+				rulesAt[key] = map[string]bool{}
+			}
+			rulesAt[key][found.Rule] = true
 		}
-		rulesAt[key][found.Rule] = true
 	}
 	findings := []Finding{}
 	replacements := supersededBy()
+	byColumn := reviveSupersededByColumn()
 	for found := range seen {
-		if found.Tool != vetTool && !superseded(found, rulesAt[lineKey(found)], replacements) {
+		key := lineKey(found)
+		if byColumn[found.Rule] {
+			key = columnKey(found)
+		}
+		if found.Tool != vetTool && !superseded(found, rulesAt[key], replacements) {
 			findings = append(findings, found)
 		}
 	}
@@ -204,6 +243,10 @@ func kept(seen map[Finding]bool) []Finding {
 
 func lineKey(found Finding) string {
 	return found.File + ":" + strconv.Itoa(found.Line)
+}
+
+func columnKey(found Finding) string {
+	return lineKey(found) + ":" + strconv.Itoa(found.Column)
 }
 
 func superseded(found Finding, rules map[string]bool, replacements map[string][]string) bool {

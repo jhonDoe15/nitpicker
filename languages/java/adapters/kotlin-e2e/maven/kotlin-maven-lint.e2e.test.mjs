@@ -117,6 +117,7 @@ describe.skipIf(!kotlinE2eEnabled)('Kotlin preset on Maven: detekt, ktlint and k
         .sort(),
     ).toEqual([
       '.',
+      'pom.xml',
       'src/main/java/demo/Api.java',
       'src/main/java/demo/Bridge.java',
       'src/main/kotlin/demo/Farewell.kt',

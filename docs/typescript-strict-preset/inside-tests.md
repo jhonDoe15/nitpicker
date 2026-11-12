@@ -76,6 +76,22 @@ hop, and type-only imports do not count.
   and `test.extend` results are not followed. It checks Cypress and Playwright files under a test
   root too. Config-level retries (Vitest `test.retry`, Mocha `retries`) are pinned to 0 by
   nitpicker's runs and are not this rule's job.
+- `nitpicker/no-copied-constant`: a test literal must not copy the value of a production constant
+  the test can import. It reports a string or number literal in a test-area file that equals an
+  `UPPER_SNAKE` constant with one literal value (`export const MAX_ITEMS = 50`, a public
+  `static readonly` member of an exported class such as `Paging.PAGE_LIMIT` (any public `static`
+  member in a JavaScript file; namespaces are not read, the preset rejects them), also through
+  `export { NAME }`, `export { NAME } from` and `export * from`) of a project module the file
+  loads with an `import` declaration, `import x = require()`, `require()`, `import()` or the
+  test runner's `requireActual`/`importActual` with a fixed module path (a path built with `${...}`
+  is not followed; names destructured from the loaded module count as its names). When the
+  constant changes, such a test keeps checking the old value, or a boundary test stops testing the
+  boundary: use the name (`MAX_LENGTH + 1`). Not reported: the numbers -1 to 2,
+  strings shorter than 3 characters, a literal whose statement names the constant
+  (`expect(MAX_ITEMS).toBe(50)` pins a value that is a contract, which is the allowed form), test
+  names, property keys, types, module paths, and constants of the files the layout counts as tests,
+  test helpers, fixtures or generated code (the test roots, `*.test.*`/`*.spec.*`, `__tests__/`,
+  `test-support/`, `fixtures/`).
 - `nitpicker/require-test-process-timeout`: synchronous `spawnSync`, `execSync` and `execFileSync`
   calls from `node:child_process` or `child_process` in test-area files need a positive subprocess
   timeout, for example `spawnSync(program, args, { timeout: 10_000 })`. A runner's timeout cannot
@@ -170,6 +186,29 @@ hop, and type-only imports do not count.
   rejects `toThrow()` without a message or class, and `no-restricted-syntax` rejects a literal
   subject (`expect(true)`). `nitpicker/no-partial-output-assertion` also rejects `toMatch` with a
   string or a pattern that is not anchored `^...$`; an anchored pattern pins the whole value.
+- `nitpicker/no-weak-assertion` (not strict) rejects the other spellings of a weak check, in test
+  files of the TypeScript and JavaScript presets alike:
+  - presence: `.not.toBe`, `.not.toEqual` or `.not.toStrictEqual` given `null` or `undefined` (also
+    after `.resolves`/`.rejects`), and node:assert `assert.notEqual(x, null)`,
+    `assert.notStrictEqual(x, undefined)`, `assert(x != null)` and `assert.ok(x !== undefined)`;
+  - non-empty only: `expect(x.length)` or `expect(x.size)` with `toBeGreaterThan(0)`,
+    `toBeGreaterThanOrEqual(1)` or `.not.toBe(0)`/`.not.toEqual(0)`/`.not.toStrictEqual(0)`,
+    `.not.toHaveLength(0)`, `.not.toEqual([])`, `.not.toEqual('')`, `expect(x.length > 0).toBe(true)`,
+    and `assert.ok(x.length > 0)`, `assert(x.size >= 1)`, `assert.ok(x.length)`,
+    `assert.notEqual(x.length, 0)`; `expect(spy.mock.calls.length).toBeGreaterThan(0)` is one of them;
+  - wildcard-only calls: `toHaveBeenCalledWith`, `toHaveBeenLastCalledWith`,
+    `toHaveBeenNthCalledWith` (after the index), `toHaveBeenCalledExactlyOnceWith` and their
+    aliases, when every argument is `expect.anything()` or `expect.any(Type)`.
+    Assert the exact value, contents or length (`expect(rows).toEqual([...])`,
+    `expect(rows).toHaveLength(3)`, `assert.deepStrictEqual(...)`) and the call's arguments
+    (`expect(spy).toHaveBeenCalledWith(orderId)`). `assert` is matched by name, with no import
+    tracking. `assert(x != null)` and `assert.ok(x !== undefined)` narrow the type in TypeScript, so
+    they are allowed when the same expression (`x`, `order.id`) appears later in the same
+    function; `assert.notEqual(x, null)` and `assert.notStrictEqual(x, undefined)` do not narrow and
+    are always reported. A negated call check (`.not.toHaveBeenCalledWith`) and a call that pins at least one
+    argument are allowed. The matchers `toBeDefined`, `toBeTruthy`, `toBeFalsy`, `not.toBeNull` and
+    `not.toBeUndefined` stay with `vitest/no-restricted-matchers`, and `assert.ok(x)` on a value
+    that is not a `.length` or `.size` is not reported.
 - `nitpicker/no-shared-test-state`: no `let` with a value at module level or directly in a `describe`
   callback. Keep the state in the test, or declare it without a value and set it in `beforeEach`.
 - `nitpicker/no-copy-pasted-tests`: three `it`/`test` calls in one block whose callbacks are the same
@@ -198,8 +237,27 @@ hop, and type-only imports do not count.
   The allowed forms are `vi.stubEnv`, `vi.stubGlobal`, `vi.spyOn` and fake timers, restored as above.
 - `nitpicker/no-switched-off-tests`: no `it.todo`/`test.todo`/`describe.todo` (`vitest/no-disabled-tests`
   already reports `skip`; neither is a way to switch a test off) and no `skipIf(true)`/`runIf(false)`.
+  A condition that folds to a constant counts as a literal: `skipIf(1 === 1)`, `skipIf(!false)`,
+  `runIf(0)`, `skipIf('x')`, `skipIf(true && true)`, `skipIf(undefined)`.
   A real condition such as `skipIf(process.platform === 'win32')` is allowed, and so is `it.fails`,
   which runs and documents a known bug: it starts failing once the bug is fixed.
+- `nitpicker/no-float-equality-in-tests`: no exact equality assertion against a non-integral float
+  literal (`0.1`, `-2.5`, `1e-3`, `.5`, also as `0.1 as number`), because the sum or product it checks
+  rarely equals the decimal literal bit for bit. It reports `toBe`, `toEqual` and `toStrictEqual`
+  (also after `.not`, `.resolves`, `.rejects` and on `expect.soft`/`expect.poll`), the `node:assert`
+  forms `equal`, `strictEqual`, `deepEqual`, `deepStrictEqual` and their `not` forms (also from
+  `assert/strict`, as a default, namespace or named import, and on a `node:test` `t.assert`) with the
+  literal in either of the first two arguments, and chai `equal`/`eq`/`eql` (`expect(x).to.equal(0.1)`,
+  `assert.equal` from chai). `toEqual`, `toStrictEqual`, `deepEqual`, `deepStrictEqual`, `eql` and
+  `.deep.equal` also look inside array and object literals. An `===`, `==`, `!==` or `!=` comparison
+  with such a literal inside `assert(...)`, `assert.ok`, chai `isTrue`/`isFalse` or `expect(...)` is
+  reported too (`expect(total === 0.1).toBe(true)`), also inside a call or an arrow-function
+  callback in that condition (`assert.ok(values.every((value) => value === 0.5))`). Use
+  `toBeCloseTo(0.1)`,
+  `expect.closeTo(0.1)` inside the expected value, chai `closeTo`, or
+  `assert.ok(Math.abs(actual - 0.1) < tolerance)`. Integral literals such as `1.0` or `2e3`, `BigInt`,
+  `NaN`, infinities and ordering comparisons are allowed. A value that is exact by construction needs
+  an exception in the config file.
 - `nitpicker/no-unowned-async-assertion`: an assertion inside a callback the test hands off must
   run before the test ends, or its failure is lost or blamed on another test. The callbacks it
   follows, written inline or passed by the name of a local function, anywhere in the test body

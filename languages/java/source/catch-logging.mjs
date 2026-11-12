@@ -7,7 +7,7 @@ export const CATCH_LOG_MESSAGE =
 
 const CATCH = /\bcatch\s*\(([^()]*)\)\s*\{/g;
 const CAUGHT_NAME = { kotlin: /^\s*(\w+)\s*:/, java: /(\w+)\s*$/ };
-const IGNORED_NAME = /^(?:_|ignored?\w*|expected\w*|unused\w*)$/i;
+const IGNORED_NAME = /^(?:_|ignore\w*|expected\w*|unused\w*)$/i;
 
 function catchBlocks(code, language) {
   return [...code.matchAll(CATCH)].flatMap((match) => {

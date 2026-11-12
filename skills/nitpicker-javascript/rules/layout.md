@@ -16,6 +16,8 @@ Part of the [nitpicker-javascript](../SKILL.md) skill. Write these forms from th
   `path` (`[index, field]`) names the bad record: `issues.map((issue) => issue.path.join('.'))`.
   Parse a URL from runtime text with `URL.parse(text)` or after `URL.canParse(text)`; `new URL(text)`
   throws on text that is not a URL (`nitpicker/no-unhandled-url-parse`).
+- Build an `Intl` formatter or an `Ajv` instance with fixed options once, at module scope or in a
+  class field, not per call (`nitpicker/reusable-object-per-call`).
 - Test an environment variable for a value, not only for `undefined`: `if (!process.env.API_URL)`,
   `process.env.PORT || '3000'`, or a schema with `z.string().min(1)`. `API_URL=` gives `''`, which passes
   `!== undefined`, `in` and `??` (`nitpicker/no-undefined-only-env-check`).

@@ -7,15 +7,15 @@ import { withLiteralIndex } from './literal-index.mjs';
 import { valueLiterals } from './secret-values.mjs';
 
 const TYPE = String.raw`(?:\s*:\s*[\w.]+(?:<[^=\n;{}()]*>)?\??)?`;
-const ASSIGNED = new RegExp(String.raw`(?<!\w)([A-Za-z_]\w*)${TYPE}\s*=(?![=>])`, 'g');
-const DELEGATED = new RegExp(String.raw`(?<!\w)([A-Za-z_]\w*)${TYPE}\s+by\b`, 'g');
+const ASSIGNED = new RegExp(String.raw`\b([A-Za-z_]\w*)${TYPE}\s*=(?![=>])`, 'g');
+const DELEGATED = new RegExp(String.raw`\b([A-Za-z_]\w*)${TYPE}\s+by\b`, 'g');
 const FUNCTION = new RegExp(String.raw`\bfun\s+([\w.<>]+)\s*\(\s*\)${TYPE}\s*([={])`, 'g');
 const GETTER = new RegExp(
   String.raw`\b(?:val|var)\s+([A-Za-z_]\w*)${TYPE}\s+get\s*\(\s*\)${TYPE}\s*([={])`,
   'g',
 );
 const RETURN = /\s*return\b/y;
-const KEYED = /"\s*(?:,|\bto\b|\)\s*\{)\s*/g;
+const KEYED = /"\s*(?:,|to\b|\)\s*\{)\s*/g;
 const INDEXED = /"\s*\]\s*=(?![=>])\s*/g;
 const CALL_NAME = /([A-Za-z_]\w*)\s*$/;
 const CALL_NAME_WINDOW = 64;

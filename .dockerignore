@@ -9,4 +9,5 @@ languages/typescript/reference/eslint-inventory.json
 **/.stryker-tmp
 **/.nitpicker-*
 **/*.test.mjs
+**/*.test.mts
 **/fixtures
