@@ -5,6 +5,8 @@ import { filesUnder } from '../../../shared/filesystem.mjs';
 import { PACKAGE_ROOT } from '../../tooling/tool-resolution.mjs';
 
 const UNSHIPPED_DIRECTORIES = new Set(['fixtures', 'test-support', '__tests__', '__pycache__']);
+const TEST_MODULE = /\.test\.m[jt]s$/u;
+const MODULE = /\.m[jt]s$/u;
 
 export function nitpickerCodeFingerprint() {
   return fingerprintPackageCode(PACKAGE_ROOT);
@@ -35,9 +37,9 @@ function shippedCodeFiles(packageRoot, directory) {
 
 function isShippedCode(directory, file) {
   return (
-    !file.endsWith('.test.mjs') &&
+    !TEST_MODULE.test(file) &&
     !file.endsWith('.pyc') &&
     path.basename(file) !== 'README.md' &&
-    (directory === 'languages' || file.endsWith('.mjs'))
+    (directory === 'languages' || MODULE.test(file))
   );
 }
