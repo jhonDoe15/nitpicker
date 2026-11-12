@@ -3,6 +3,7 @@ import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { useGitFixtures } from '../../../diff/git/test-support/git-repository.mjs';
 import { dependencyGraph, dependentsOf, deepestProject } from './graph.mjs';
+import { byText } from '../../../../shared/text-order/by-text.mjs';
 
 const git = useGitFixtures();
 
@@ -17,7 +18,9 @@ function layout(files) {
 
 function edges(files, projects) {
   const graph = dependencyGraph(layout(files), projects);
-  return Object.fromEntries([...graph].map(([project, needs]) => [project, [...needs].toSorted()]));
+  return Object.fromEntries(
+    [...graph].map(([project, needs]) => [project, [...needs].toSorted(byText)]),
+  );
 }
 
 const manifest = (name, dependencies = {}, extra = {}) =>

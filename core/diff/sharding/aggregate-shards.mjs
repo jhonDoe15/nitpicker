@@ -15,6 +15,7 @@ import {
   writeDiffReports,
   clearDiffReports,
   absoluteTextReportPath,
+  outputRootFor,
 } from '../reporting/reporters.mjs';
 import { parseArguments } from './arguments.mjs';
 import { GitCommandError, runGit } from '../git/repository/command.mjs';
@@ -169,10 +170,7 @@ export function runAggregateCli({
     }
     currentProjectRoot =
       currentProjectRoot === undefined ? resolveProjectRoot() : realpathSync(currentProjectRoot);
-    outputRoot = path.resolve(
-      currentProjectRoot,
-      options.outputRoot ?? 'reports/quality/diff/combined',
-    );
+    outputRoot = outputRootFor(currentProjectRoot, options.outputRoot, 'diff/combined');
     clearDiffReports(outputRoot);
     const report = configuredReport(options, {
       currentProjectRoot,

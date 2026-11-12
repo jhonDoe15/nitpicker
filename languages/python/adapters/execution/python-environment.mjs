@@ -1,7 +1,7 @@
 import { spawnSync } from 'node:child_process';
 import { existsSync } from 'node:fs';
 import path from 'node:path';
-import { uvWorkspaceOf } from '../../../../core/tooling/uv-workspace.mjs';
+import { uvWorkspaceOf } from '../../../../core/configuration/project-checks/uv-workspace.mjs';
 import { ancestorDirectories } from '../../../../shared/filesystem.mjs';
 import { baseEnvironment } from './environments/base/base-environment.mjs';
 import { environmentError, OVERRIDE_HINT } from './environments/environment-error.mjs';

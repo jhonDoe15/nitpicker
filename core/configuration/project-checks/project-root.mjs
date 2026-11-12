@@ -10,7 +10,7 @@ import {
 import { chainOf } from '../../../shared/traversal.mjs';
 import { detectedPreset } from './preset-detection.mjs';
 import { markerFilesIn } from './project-markers.mjs';
-import { uvWorkspaceOf } from '../../tooling/uv-workspace.mjs';
+import { uvWorkspaceOf } from './uv-workspace.mjs';
 
 const PROJECT_MARKERS = ['package.json', CONFIG_FILE_NAME];
 

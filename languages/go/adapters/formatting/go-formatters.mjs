@@ -1,6 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import path from 'node:path';
+import { parseYaml } from '../../../../core/tooling/yaml/yaml-documents.mjs';
 import { firstFileIn } from '../../../../shared/filesystem.mjs';
 import { GO_TOOLS } from '../execution/go-tools.mjs';
 import { GO_MOD, readGoModule } from '../execution/go-module.mjs';
@@ -17,10 +18,6 @@ const PARSERS = {
   '.toml': (text) => load('smol-toml').parse(text),
   '.json': (text) => JSON.parse(text),
 };
-
-function parseYaml(text) {
-  return load('yaml').parse(text);
-}
 
 function readGolangci(projectRoot) {
   const file = firstFileIn(projectRoot, GOLANGCI_FILES);

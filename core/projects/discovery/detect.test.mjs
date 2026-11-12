@@ -30,21 +30,19 @@ describe('a repository with one project', () => {
     );
   });
 
-  it('is not one for a lone Gradle, Maven or Python project', () => {
-    for (const files of [
-      { 'settings.gradle': '', 'app/build.gradle': '' },
-      { 'pom.xml': '<project/>', 'module-a/pom.xml': '<project/>' },
-      { 'pyproject.toml': '[project]\nname = "solo"\n' },
-    ]) {
-      expect(detect(files)).toEqual({
-        declared: false,
-        entries: [],
-        multiple: false,
-        paths: [],
-        origins: [],
-        undeclared: [],
-      });
-    }
+  it.each([
+    ['Gradle', { 'settings.gradle': '', 'app/build.gradle': '' }],
+    ['Maven', { 'pom.xml': '<project/>', 'module-a/pom.xml': '<project/>' }],
+    ['Python', { 'pyproject.toml': '[project]\nname = "solo"\n' }],
+  ])('is not one for a lone %s project', (_build, files) => {
+    expect(detect(files)).toEqual({
+      declared: false,
+      entries: [],
+      multiple: false,
+      paths: [],
+      origins: [],
+      undeclared: [],
+    });
   });
 
   it('is not one for a package with an Android build and example Python projects', () => {

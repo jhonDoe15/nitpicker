@@ -108,7 +108,9 @@ describe('projects that extend a shared config', () => {
 
     const [web, api] = ['web', 'api'].map((project) => reportOf(result, project).summary);
     expect(web.policyLoosenings).toEqual(api.policyLoosenings);
-    expect(web.policyLoosenings.length).toBeGreaterThan(0);
+    expect(web.policyLoosenings).toEqual([
+      'exception added: file-lines-limit for src/** (tables) (from shared/base.json)',
+    ]);
     expect(web.policyDigest).toMatch(/^[0-9a-f]{12}$/u);
     expect(api.policyDigest).toMatch(/^[0-9a-f]{12}$/u);
     expect(result.exitCode).toBe(1);

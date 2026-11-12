@@ -22,7 +22,7 @@ function contentOf(root, file) {
   if (!full.startsWith(root + path.sep)) {
     return undefined;
   }
-  if (!existsSync(full) || !statSync(full).isFile()) {
+  if (!(existsSync(full) && statSync(full).isFile())) {
     return undefined;
   }
   return gitBlobId(readFileSync(full));

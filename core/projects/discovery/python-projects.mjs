@@ -1,5 +1,5 @@
 import { isPlainObject } from '../../../shared/config.mjs';
-import { readPyproject, uvWorkspaceOf } from '../../tooling/uv-workspace.mjs';
+import { readPyproject, uvWorkspaceOf } from '../../configuration/project-checks/uv-workspace.mjs';
 import { workspaceMembers } from './javascript-workspaces.mjs';
 
 const UV_ORIGIN = 'uv workspace';

@@ -2,6 +2,7 @@ import { spawnSync } from 'node:child_process';
 import { mkdirSync, mkdtempSync, realpathSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
+import { GIT_TIMEOUT_MS } from '../../../shared/processes/deadlines.mjs';
 
 const MAX_BUFFER = 1024 * 1024 * 1024;
 const SYMLINK_MODE = '120000';
@@ -33,6 +34,7 @@ function git(repositoryRoot, args, input) {
     cwd: repositoryRoot,
     input,
     maxBuffer: MAX_BUFFER,
+    timeout: GIT_TIMEOUT_MS,
   });
   if (result.error !== undefined) {
     throw result.error;

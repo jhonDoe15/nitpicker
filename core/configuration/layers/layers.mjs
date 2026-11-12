@@ -2,6 +2,7 @@ import { execFileSync } from 'node:child_process';
 import { existsSync, readFileSync, realpathSync, statSync } from 'node:fs';
 import path from 'node:path';
 import { CONFIG_FILE_NAME, isPlainObject } from '../../../shared/config.mjs';
+import { GIT_TIMEOUT_MS } from '../../../shared/processes/deadlines.mjs';
 import { validateExtends } from './settings.mjs';
 
 export function parseConfigFile(file, label) {
@@ -24,6 +25,7 @@ export function repositoryRootOf(directory) {
         cwd: directory,
         encoding: 'utf8',
         stdio: ['ignore', 'pipe', 'ignore'],
+        timeout: GIT_TIMEOUT_MS,
       }).trim(),
     );
   } catch (error) {
@@ -45,7 +47,7 @@ function extendedFile({ layer, repositoryRoot }) {
       `${layer.label}: "extends" ${layer.config.extends} leaves the repository. A shared config must live inside it`,
     );
   }
-  if (!existsSync(target) || !statSync(target).isFile()) {
+  if (!(existsSync(target) && statSync(target).isFile())) {
     throw new Error(
       `${layer.label}: "extends" points at ${layer.config.extends}, which is not a file`,
     );
