@@ -9,7 +9,8 @@ Part of the [Java preset guide](../java-preset.md).
   so classes directly in `org` are named one by one), against the project's own tests. The only
   profile can produce enforceable findings. In a comparison, head starts from the base run's results (see
   [Mutation in a comparison](mutation-in-a-comparison.md)).
-- **What runs.** `nitpickerPit` (`languages/java/gradle/nitpicker.init.gradle`) runs the pinned `pitest-command-line` (1.17.4) with the test
+- **What runs.** `nitpickerPit` (`languages/java/gradle/nitpicker.init.gradle`) runs the pinned `pitest-command-line` (1.22.1, the newest release that still has the history
+  [mutation in a comparison](mutation-in-a-comparison.md) uses: 1.23.0 moved it to a commercial plugin) with the test
   plugins the project's framework needs (`pitest-junit5-plugin` 1.2.1, `pitest-testng-plugin`
   1.0.0, both pinned, added on the conditions below), nitpicker's mutator list (see
   [Mutators](../mutation-testing.md#java-and-kotlin-mutators)), XML output, two threads, to
