@@ -42,13 +42,18 @@ describe('checkout modules', () => {
     expect(checkoutModuleUrl(converted, { stripsTypes: true }).href).toBe(
       pathToFileURL(path.join(directory, 'converted.mts')).href,
     );
-    expect(checkoutModuleUrl(converted, { stripsTypes: false }).href).toBe(converted.href);
+    const emitted = pathToFileURL(path.join(directory, 'emitted.mjs'));
+    expect(checkoutModuleUrl(emitted, { stripsTypes: false }).href).toBe(emitted.href);
   });
   it('opens the emitted JavaScript where Node.js cannot strip types, as in the package build', () => {
     const emitted = path.join(directory, 'emitted.mjs');
     expect(checkoutModulePath(emitted, { stripsTypes: false })).toBe(emitted);
     expect(checkoutModulePath(emitted, { stripsTypes: true })).toBe(
       path.join(directory, 'emitted.mts'),
+    );
+    const converted = path.join(directory, 'converted.mjs');
+    expect(checkoutModulePath(converted, { stripsTypes: false })).toBe(
+      path.join(directory, 'converted.mts'),
     );
   });
 });
