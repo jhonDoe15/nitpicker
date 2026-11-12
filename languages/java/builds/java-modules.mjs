@@ -105,6 +105,7 @@ export function readModuleReport(projectRoot, moduleDirs, options) {
       ...options,
       projectWide: false,
       modulePath: prefix,
+      reactorRoot: projectRoot,
     }).findings.map((finding) => prefixedFinding(finding, prefix));
   });
   const roots = mergedRoots(projectRoot, moduleDirs, options.reportDirectory);

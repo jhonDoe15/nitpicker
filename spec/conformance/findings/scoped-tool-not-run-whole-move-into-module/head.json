@@ -1,0 +1,20 @@
+{
+  "findings": [
+    {
+      "tool": "javac",
+      "rule": "rawtypes",
+      "path": "kernel/src/main/java/p/A.java",
+      "identity": "rawtypes:kernel/src/main/java/p/A.java",
+      "message": "found raw type: List",
+      "classification": "enforceable"
+    },
+    {
+      "tool": "javac",
+      "rule": "rawtypes",
+      "path": "kernel/src/main/java/q/Existing.java",
+      "identity": "rawtypes:kernel/src/main/java/q/Existing.java",
+      "message": "found raw type: List",
+      "classification": "enforceable"
+    }
+  ]
+}

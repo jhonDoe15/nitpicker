@@ -3,7 +3,8 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { readEffectivePom } from './configuration/effective-pom.mjs';
 import { runMaven, TEST_RERUNS_OFF } from './maven-command.mjs';
-import { moduleClasspaths, parseDependencyList, readReactor } from './maven-project.mjs';
+import { readReactor } from './maven-project.mjs';
+import { moduleClasspaths, parseDependencyList } from './configuration/maven-classpaths.mjs';
 import { missingLauncherVersions } from './maven-tests.mjs';
 import { checkstyleIndentation } from '../adapters/style/java-style.mjs';
 import { archunitTool, formatTool, MAVEN_PLUGINS, resolveTools } from './maven-tools.mjs';
@@ -66,10 +67,16 @@ export function buildAndTest({
 }
 
 function readClasspaths(work, module) {
-  return moduleClasspaths(
-    module,
-    parseDependencyList(readFileSync(dependencyFile(work, module), 'utf8')),
-  );
+  const dependencies = parseDependencyList(readFileSync(dependencyFile(work, module), 'utf8'));
+  return { ...moduleClasspaths(module, dependencies), dependencies };
+}
+
+function guardProject(projectRoot, policy, modules) {
+  return {
+    projectRoot,
+    baselineRoot: policy.snapshot === 'head' ? policy.baselineRoot : undefined,
+    reactor: modules.map((module) => module.coordinates),
+  };
 }
 
 function staleOutputs(module) {
@@ -170,6 +177,7 @@ export function runMavenPreset(
       policy,
       kotlin,
       work,
+      project: guardProject(projectRoot, policy, modules),
     });
     return {
       moduleDirs: modules.map((module) => module.basedir),

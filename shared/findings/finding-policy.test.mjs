@@ -173,6 +173,16 @@ describe('applyFindingPolicy on a finding about two files', () => {
   );
   const all = [clone, ...sizes];
 
+  it('applies the same partner-file policy to CPD clone identities', () => {
+    const cpd = all.map((finding) => ({ ...finding, identity: `cpd:${finding.identity}` }));
+    expect(applyFindingPolicy(cpd, { exclude: ['src/b/**'] })).toEqual([]);
+    expect(
+      applyFindingPolicy(cpd, {
+        exceptions: [{ rule: 'duplicate-clone', glob: 'src/b/**' }],
+      }),
+    ).toEqual(cpd.slice(1));
+  });
+
   it('drops the finding and its size metrics when an excluded glob matches either file', () => {
     expect(applyFindingPolicy(all, { exclude: ['src/a/**'] })).toEqual([]);
     expect(applyFindingPolicy(all, { exclude: ['src/b/**'] })).toEqual([]);

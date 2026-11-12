@@ -23,9 +23,9 @@ export function readKotlinDuplicateFindings(reportRoot, projectRoot) {
     : [];
 }
 
-export function readProjectDuplicateFindings(reportRoot, { preset, projectRoot }) {
+export function readProjectDuplicateFindings(reportRoot, { preset, projectRoot, skip }) {
   return [
-    ...readDuplicateFindings(reportRoot, { projectRoot }),
+    ...readDuplicateFindings(reportRoot, { projectRoot, skip }),
     ...(preset === 'kotlin' ? readKotlinDuplicateFindings(reportRoot, projectRoot) : []),
   ];
 }

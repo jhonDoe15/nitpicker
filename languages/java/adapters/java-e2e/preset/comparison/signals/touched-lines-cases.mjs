@@ -95,7 +95,7 @@ export function touchedLineCases(resultOf) {
   });
 
   it('keeps literal conditions baselined through a move and a reformat, and finds the added one', () => {
-    expect(locations(resultOf(), 'AvoidLiteralsInIfCondition')).toEqual(['Twice.java:12']);
+    expect(locations(resultOf(), 'MagicNumber')).toEqual(['Twice.java:12']);
   });
 
   it('says a legacy branch is new because the change edited its line', () => {
