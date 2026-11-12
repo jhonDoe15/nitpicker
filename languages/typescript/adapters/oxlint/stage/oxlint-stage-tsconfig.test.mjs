@@ -168,14 +168,18 @@ describe('lintWithOxlint with a tsconfig oxlint rejects', () => {
     });
     roots.push(root);
 
-    await expect(
-      lintProject({
-        root,
-        patterns: ['src/consumer.ts'],
-        projectConfigName: 'tsconfig.nitpicker.json',
-      }),
-    ).rejects.toThrow(
-      /^oxlint rejected the tsconfig .* type-aware lint rule: .*'module' must be set to 'Node16'.*See https:\/\/\S+troubleshooting\.md#the-typescript-config-cannot-be-read$/su,
+    const failure = lintProject({
+      root,
+      patterns: ['src/consumer.ts'],
+      projectConfigName: 'tsconfig.nitpicker.json',
+    });
+
+    await expect(failure).rejects.toThrow(
+      /^oxlint rejected the tsconfig .* type-aware lint rule: /u,
+    );
+    await expect(failure).rejects.toThrow(/'module' must be set to 'Node16'/u);
+    await expect(failure).rejects.toThrow(
+      /troubleshooting\.md#the-typescript-config-cannot-be-read$/u,
     );
   });
 });
