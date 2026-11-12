@@ -1,8 +1,9 @@
 import { MessageChannel, Worker, receiveMessageOnPort } from 'node:worker_threads';
 import { chainOf } from '../../traversal.mjs';
+import { checkoutModuleUrl } from '../../paths/checkout-module.mjs';
 
 const DEFAULT_TIMEOUT_MS = 20_000;
-const WORKER = new URL('decide-worker.mjs', import.meta.url);
+const WORKER = checkoutModuleUrl(new URL('decide-worker.mjs', import.meta.url));
 
 function startBridge() {
   const signal = new Int32Array(new SharedArrayBuffer(Int32Array.BYTES_PER_ELEMENT));

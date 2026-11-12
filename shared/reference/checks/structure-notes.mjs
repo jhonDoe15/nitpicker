@@ -105,7 +105,7 @@ export const STRUCTURE_NOTES = {
     'Leave the schema out, target the current database, and leave out the owner or use `CURRENT_USER`.',
   ],
   'foreign-key-index': [
-    'A foreign key a migration adds (SQL, Liquibase or Alembic), or a Prisma relation, with no index that starts with its columns, in a project that does not use MySQL or MariaDB.',
+    'A foreign key a migration (SQL, Liquibase or Alembic) or an sqlc schema file adds, or a Prisma relation, with no index that starts with its columns, in a project that does not use MySQL or MariaDB.',
     'PostgreSQL does not index a foreign-key column by itself, so deleting a referenced row and every join or lookup by the column scan the whole table.',
     'Create an index that starts with the foreign-key columns in a migration (or `@@index` in the Prisma schema); a composite index counts when the columns come first.',
   ],

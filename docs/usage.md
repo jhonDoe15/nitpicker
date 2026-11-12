@@ -189,7 +189,7 @@ is not on npm. Keep the tarball in your repository, so teammates and CI install 
 without access to the release:
 
 ```sh
-VERSION=0.1.0-rc.1
+VERSION=0.1.0-rc.2
 gh release download "v$VERSION" --repo jhonDoe15/nitpicker --pattern 'nitpicker-*.tgz' --pattern SHA256SUMS --dir vendor
 (cd vendor && shasum -a 256 -c SHA256SUMS && rm SHA256SUMS)
 npm install --save-dev "./vendor/nitpicker-$VERSION.tgz" vitest @vitest/coverage-v8 typescript @types/node
@@ -1422,7 +1422,7 @@ change adds; a file already on the base is left alone. Each message names the ex
 | `committed-build-output`   | a file in a build output folder: `dist`, `build`, `out`, `coverage` or `target` next to a `package.json`, `build.gradle(.kts)`, `pom.xml` or `pyproject.toml`, or `.next`, `.nuxt`, `storybook-static`, `.turbo` or `.parcel-cache` at any depth; one finding per folder                                                                                                                                                                                                                                                                     |
 | `migration-order`          | a migration whose version sorts before, or equals, the newest migration of its folder on the base branch: Flyway `V<version>__name`, Prisma `migrations/<timestamp>_name/`, and numbered files in a `migrations`, `migration` or `drizzle` folder (TypeORM, Kysely, Knex, Sequelize, MikroORM, Drizzle, golang-migrate, goose); an Alembic revision or a Django migration whose parent already has a child on the base branch, so the history has two heads                                                                                  |
 | `migration-hardcoded-name` | a migration file (the layouts above, Liquibase changelogs and other files directly in a `migrations`, `migration`, `migrate` or `drizzle` folder) that qualifies a name with the `public` schema, names a database in `ALTER DATABASE` or a role in `OWNER TO`; one finding per file and form                                                                                                                                                                                                                                                |
-| `foreign-key-index`        | a foreign key that a migration adds with no index that starts with its columns, or a Prisma relation whose `fields` no `@@index`, `@@unique` or `@@id` of the model starts with; not reported when the project uses MySQL or MariaDB, which index foreign keys themselves                                                                                                                                                                                                                                                                    |
+| `foreign-key-index`        | a foreign key that a migration or an sqlc schema file adds with no index that starts with its columns, or a Prisma relation whose `fields` no `@@index`, `@@unique` or `@@id` of the model starts with; not reported when the project uses MySQL or MariaDB, which index foreign keys themselves                                                                                                                                                                                                                                             |
 | `start-schema-push`        | a `start`, `prestart`, `serve` or `start:*` script in a `package.json` (not `start:dev`, `start:local`, `start:watch`, `start:debug` or `start:test`), or a script it runs through `npm`, `pnpm`, `yarn`, `bun` or `npm-run-all` (with its `pre` hook), that pushes the ORM schema: `prisma db push`, `prisma migrate dev`/`reset`, `drizzle-kit push`, `typeorm schema:sync`/`schema:drop`, `mikro-orm schema:update`/`create`/`fresh`/`drop` (options between the tool and the command count); apply migrations in the deploy step instead |
 
 An env file that holds only public build-time values (every key starts with `VITE_`, `NEXT_PUBLIC_`,
@@ -1449,7 +1449,8 @@ migrations folder, as the message shows.
 
 `foreign-key-index` reads the migration files (Flyway, Prisma, Liquibase XML, YAML and SQL
 changelogs, Alembic, and the SQL in TypeORM, MikroORM, Kysely, Knex and goose migrations, skipping their down part
-and `.down.sql` files):
+and `.down.sql` files), and the schema files an sqlc config (`sqlc.yaml`, `sqlc.yml` or `sqlc.json`,
+`schema` of each `sql` or `packages` entry: a file, a folder's own `.sql` files or a glob) names, unless its `engine` is `mysql`:
 `CREATE TABLE` with `REFERENCES` or `FOREIGN KEY`, `ALTER TABLE ... ADD`, Liquibase
 `addForeignKeyConstraint` and column `constraints`, Alembic `create_table`, `add_column` and
 `create_foreign_key` (also through `batch_alter_table`). A foreign key counts as indexed when an
