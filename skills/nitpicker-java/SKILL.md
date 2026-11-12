@@ -32,7 +32,7 @@ full run below.
    `build/compile-error` finding at its line, and the other checks wait until it builds.
 2. Run `npx nitpicker --fix` as a background command you wait on, without a pipe: you need its exit
    code. It first rewrites the changed Java files with the formatter the run names under
-   "Following this project's conventions" (google-java-format 1.25.2, `--aosp` for the aosp style,
+   "Following this project's conventions" (google-java-format 1.35.0, `--aosp` for the aosp style,
    or palantir-java-format) and lists them under "Fixed files:"; re-read a file it lists before you
    edit it again. When the run says no Java formatter runs, it leaves the files alone; keep the
    layout by hand. Then it runs the build on the merge base and on head, which takes minutes, with

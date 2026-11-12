@@ -86,7 +86,7 @@ below (pushes to `main` that touch the paths they list, a manual run, and the `r
 `github-action` workflow, which runs the composite action in `action.yml` on the sample project in
 `.github/sample-project`, and the `platforms` workflow described below follow them too; neither is a
 required check. On a pull request, each of these six workflows first runs a small `changes` job
-(`scripts/ci/affected-jobs.mjs`) that compares the pull request's changed files with the workflow's own
+(`scripts/ci/affected-jobs.mts`) that compares the pull request's changed files with the workflow's own
 push `paths`. When none of them matches, the workflow's other jobs are skipped and its summary job
 passes; when the files cannot be listed, all jobs run. Changing a shared path such as `core/`, `shared/`,
 `package.json` or `vitest.config.mts` runs them all.

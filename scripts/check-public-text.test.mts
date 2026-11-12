@@ -15,11 +15,15 @@ const USAGE = [
   '',
 ].join('\n');
 
-function check(environment) {
+function check(environment: Readonly<Record<string, string>>): {
+  status: number | null;
+  stdout: string;
+  stderr: string;
+} {
   const result = spawnSync('bash', [SCRIPT], {
     cwd: root,
     encoding: 'utf8',
-    env: { PATH: process.env.PATH, ...environment },
+    env: { PATH: process.env['PATH'], ...environment },
     timeout: 10_000,
   });
   return { status: result.status, stdout: result.stdout, stderr: result.stderr };
