@@ -20,7 +20,7 @@ const ROUTED = new Set([
   'spring',
 ]);
 const CHECKSTYLE_CHECK =
-  /^com\.puppycrawl\.tools\.checkstyle\.checks\.(?:\w+\.)*(\w+?)(?:Check)?$/u;
+  /^com\.puppycrawl\.tools\.checkstyle\.checks\.(?:\w+\.)*(\w+?)(?:Check)?(?:#(\w+))?$/u;
 const SENTENCE_END = /[.!?;:]$/u;
 const EXCLUDE_ROUTE = /to "exclude" in nitpicker\.config\.json\.$/u;
 const FIRST_SENTENCE = /^.*?[.!?](?= |$)/u;
@@ -45,7 +45,8 @@ function rulesetNames(file) {
 }
 
 export function checkstyleRuleName(source) {
-  return CHECKSTYLE_CHECK.exec(source)?.[1] ?? source;
+  const match = CHECKSTYLE_CHECK.exec(source);
+  return match === null ? source : (match[2] ?? match[1]);
 }
 
 function layoutFix(javaStyle) {
