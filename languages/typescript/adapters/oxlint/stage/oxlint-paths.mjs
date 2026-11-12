@@ -17,15 +17,18 @@ export function stageConfigOptions(config, configPath, stage) {
   const typeDefinitions = stagedTypeDefinitions(options, projectRoot, stage);
   return {
     compilerOptions: {
-      ...baseUrlFreeOptions(options),
-      ...(options.rootDir === undefined ? {} : { rootDir: null }),
+      ...baseUrlPaths(options),
       ...(options.rootDirs === undefined
         ? {}
         : { rootDirs: stagedRootDirs(options.rootDirs, projectRoot, stage) }),
       ...(options.isolatedDeclarations === true ? { isolatedDeclarations: false } : {}),
-      ...removedOptionResets(options),
       ...typeDefinitions.compilerOptions,
     },
+    unset: [
+      ...(options.baseUrl === undefined ? [] : ['baseUrl']),
+      ...(options.rootDir === undefined ? [] : ['rootDir']),
+      ...removedOptions(options),
+    ],
     typeFiles: typeDefinitions.typeFiles,
   };
 }
@@ -59,15 +62,14 @@ function resolvedTypeFile(name, directory, options) {
     .resolvedTypeReferenceDirective?.resolvedFileName;
 }
 
-function removedOptionResets(options) {
-  const removed = [
+function removedOptions(options) {
+  return [
     ...Object.entries(REMOVED_ENUM_VALUES)
       .filter(([option, values]) => values.has(options[option]))
       .map(([option]) => option),
     ...REMOVED_FALSE_OPTIONS.filter((option) => options[option] === false),
     ...REMOVED_OPTIONS.filter((option) => options[option] !== undefined),
   ];
-  return Object.fromEntries(removed.map((option) => [option, null]));
 }
 
 function stagedRootDirs(rootDirs, projectRoot, stage) {
@@ -97,9 +99,8 @@ function parsedOptions(config, configPath) {
   return options;
 }
 
-function baseUrlFreeOptions(options) {
-  if (options.baseUrl === undefined) return {};
-  return { baseUrl: null, ...absolutePaths(options.baseUrl, options.paths) };
+function baseUrlPaths(options) {
+  return options.baseUrl === undefined ? {} : absolutePaths(options.baseUrl, options.paths);
 }
 
 function absolutePaths(baseUrl, paths) {
