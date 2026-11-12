@@ -1,10 +1,10 @@
-import { runCli } from '../cli.mjs';
+import { runCli } from '../cli.mts';
 import { PACKAGE_ROOT } from '../tooling/tool-resolution.mjs';
 import { captureOutput } from '../diff/reporting/test-support/output-capture.mjs';
 import { docsRef, LATEST_RELEASE_TAG } from '../../shared/messages/docs-url.mjs';
 import { indexEntries, readReferenceEntries, referenceUrl } from '../../shared/reference/store.mjs';
 import { usageText } from '../help/usage-text.mjs';
-import { projectAnalyzers } from '../command/information/project-analyzers.mjs';
+import { projectAnalyzers } from '../command/information/project-analyzers.mts';
 
 /** The links of an installed copy of the package with `manifest`: they point at its release tag. */
 export function installedLinks(manifest) {
@@ -114,9 +114,9 @@ nitpicker: head: running 2 analyzers
 }
 
 /** What the checkout prints for `args`, with its links moved to the release tag. */
-export function checkoutOutput(links, args) {
+export async function checkoutOutput(links, args) {
   const output = captureOutput();
-  runCli({
+  await runCli({
     arguments_: args,
     currentProjectRoot: PACKAGE_ROOT,
     environment: {},

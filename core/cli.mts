@@ -1,10 +1,10 @@
 #!/usr/bin/env node
-import { runAggregateCli } from './diff/sharding/aggregate-shards.mjs';
+import { runAggregateCli } from './diff/sharding/aggregate-shards.mts';
 import { reportingProgress } from './diff/execution/progress.mjs';
 import { runScheduler, selectAnalyzers } from './diff/execution/run-analyzers.mjs';
-import { runCacheCommand } from './command/cache.mjs';
+import { runCacheCommand } from './command/cache.mts';
 import { runChangelogCommand } from './command/changelog/changelog.mjs';
-import { runExplainCommand, runRulesCommand } from './command/reference/reference.mjs';
+import { runExplainCommand, runRulesCommand } from './command/reference/reference.mts';
 import { runBaseCommand } from './command/base.mjs';
 import { missingPathHint, parseArguments } from './command/arguments.mjs';
 import { resolveRunTarget } from './scope/run-target.mjs';
@@ -16,14 +16,11 @@ import {
 } from './configuration/config.mjs';
 import { resolveProjectHeadPolicy } from './conventions/project-head-policy.mjs';
 import { configureAnalyzers } from './configuration/configure-analyzers.mjs';
-import { presetAnalyzers } from './configuration/preset-analyzers.mjs';
+import { presetAnalyzers } from './configuration/preset-analyzers.mts';
 import { assertProjectPeers } from './init/preflight/project-peers.mjs';
 import { withRunLock } from './command/run-lock.mjs';
 import { runSnapshotCli } from './command/snapshot.mjs';
-import { writeComparisonOutcome } from './command/comparison/outcome.mjs';
-import { baseSetupResolver } from './command/policy-review/base-setup.mjs';
 import { historyAvailabilityNotes, noticeDescriber } from './command/policy-review/notices.mjs';
-import { policyAcceptance } from './command/policy-review/policy-acceptance.mjs';
 import { comparisonPolicy, snapshotPolicy } from './conventions/resolve.mjs';
 import { runGit } from './diff/git/repository/command.mjs';
 import { resolveComparison } from './diff/git/repository/git.mjs';
@@ -35,18 +32,38 @@ import { selectComparisonAnalyzers } from './command/comparison/analyzers.mjs';
 import { runQualityDiff } from './diff/comparison/run-diff.mjs';
 import { fixIfRequested } from './command/fix-request.mjs';
 import { applyRunProfile } from './quick/profile.mjs';
-import { stagedCapture, withIndexFile } from './staged/capture-index.mjs';
-import { resolveCacheStore } from './diff/cache/cache-stores.mjs';
+import { stagedCapture, withIndexFile } from './staged/capture-index.mts';
+import { writeComparisonOutcome } from './command/comparison/outcome.mjs';
+import { baseSetupResolver } from './command/policy-review/base-setup.mts';
 import { runHistoryCli } from '../shared/history/runner.mjs';
 import { runHygieneCli } from '../shared/hygiene/runner.mjs';
-import { printedInformation } from './command/information/printed-information.mjs';
+import { printedInformation } from './command/information/printed-information.mts';
 import { runInitCommand } from './init/run-init.mjs';
-import { javascriptPresetHint } from './configuration/project-checks/preset-detection.mjs';
 import { GO_ANALYZER_COMMAND, runGoCli } from '../languages/go/adapters/go-runner.mjs';
 import { redirectToBundledTypeScriptApi } from '../languages/typescript/typescript-api/api-selection.mjs';
 import { describeError } from '../shared/messages/error-chain.mjs';
+import { fieldOf, numberOr, textOf } from '../shared/values/readers.mts';
+import {
+  type ComparisonCli,
+  type ConfiguredCli,
+  acceptanceOf,
+  resolveRunCacheStore,
+  writeNotes,
+  writePresetHint,
+} from './command/comparison/run-context.mts';
+import type {
+  CheckCli,
+  Cli,
+  CliInput,
+  CliOptions,
+  ConfiguredRun,
+  ExitCode,
+  RunSetup,
+  Subcommand,
+} from './cli-context.mts';
+import type { NitpickerConfig } from './configuration/config-types.mts';
 
-const CHECK_COMMANDS = {
+const CHECK_COMMANDS: Readonly<Record<string, (cli: CheckCli) => ExitCode>> = {
   hygiene: async (cli) => {
     const { yamlDocuments } = await import('./tooling/yaml/yaml-documents.mjs');
     return runHygieneCli({ ...cli, parseYaml: yamlDocuments });
@@ -54,7 +71,7 @@ const CHECK_COMMANDS = {
   history: runHistoryCli,
   [GO_ANALYZER_COMMAND]: runGoCli,
 };
-const SUBCOMMANDS = {
+const SUBCOMMANDS: Readonly<Record<string, Subcommand>> = {
   cache: (cli, rest) => runCacheCommand({ ...cli, arguments_: rest }),
   init: (cli, rest) => runInitCommand({ ...cli, arguments_: rest }),
   base: (cli, rest) => runBaseCommand({ ...cli, arguments_: rest }),
@@ -62,10 +79,11 @@ const SUBCOMMANDS = {
   rules: (cli, rest) => runRulesCommand({ ...cli, commandArguments: rest }),
 };
 
-export function runCli(options = {}) {
+export function runCli(options: CliInput = {}): ExitCode {
   const detached = detachLocalGitVariables(process.env);
   const cli = withIndexFile(withCliDefaults(options), detached);
-  const checkCommand = CHECK_COMMANDS[cli.arguments_[0]];
+  const [name = ''] = cli.arguments_;
+  const checkCommand = CHECK_COMMANDS[name];
   if (checkCommand !== undefined) {
     return checkCommand({
       commandArguments: cli.arguments_.slice(1),
@@ -74,7 +92,7 @@ export function runCli(options = {}) {
       environment: cli.environment,
     });
   }
-  if (cli.arguments_[0] === 'aggregate') {
+  if (name === 'aggregate') {
     return runAggregateCli({
       arguments_: cli.arguments_.slice(1),
       currentProjectRoot: cli.currentProjectRoot,
@@ -87,7 +105,7 @@ export function runCli(options = {}) {
   try {
     return runCommand(cli);
   } catch (error) {
-    const description = describeError(error) || 'unknown error';
+    const description = textOf(describeError(error)) || 'unknown error';
     cli.stderr.write(`nitpicker failed: ${description}\n`);
     if (wantsJson(cli.arguments_)) {
       cli.stdout.write(`${JSON.stringify({ status: 'error', exitCode: 2, error: description })}\n`);
@@ -96,29 +114,35 @@ export function runCli(options = {}) {
   }
 }
 
-function wantsJson(commandLine) {
-  return !Object.hasOwn(SUBCOMMANDS, commandLine[0]) && commandLine.includes('--json');
+function wantsJson(commandLine: readonly string[]): boolean {
+  const [name = ''] = commandLine;
+  return !Object.hasOwn(SUBCOMMANDS, name) && commandLine.includes('--json');
 }
 
 const HELP_ALIAS = '-h';
 
-function helpFlag(argument) {
+function helpFlag(argument: string): string {
   return argument === HELP_ALIAS ? '--help' : argument;
 }
 
-function isTerminal(stream) {
-  return stream.isTTY === true;
+function isTerminal(stream: object): boolean {
+  return 'isTTY' in stream && stream.isTTY === true;
 }
 
-function withCliDefaults(options) {
+function withCliDefaults(options: CliInput): Omit<Cli, 'indexFile'> {
   const stderr = options.stderr ?? process.stderr;
   const progress = options.progress ?? stderr;
   return {
     ...options,
+    analyzers: options.analyzers,
+    currentProjectRoot: options.currentProjectRoot,
+    workingDirectory: options.workingDirectory,
     arguments_: (options.arguments_ ?? process.argv.slice(2)).map(helpFlag),
     environment: options.environment ?? process.env,
     interactive:
-      options.interactive ?? [process.stdin, options.stdout ?? process.stdout].every(isTerminal),
+      typeof options.interactive === 'boolean'
+        ? options.interactive
+        : [process.stdin, options.stdout ?? process.stdout].every(isTerminal),
     snapshotAnalyzers: options.snapshotAnalyzers ?? options.analyzers,
     stdout: options.stdout ?? process.stdout,
     stderr,
@@ -127,16 +151,17 @@ function withCliDefaults(options) {
   };
 }
 
-function runCommand(cli) {
-  const [name, ...rest] = cli.arguments_;
+function runCommand(cli: Cli): ExitCode {
+  const [name = '', ...rest] = cli.arguments_;
   if (name === 'changelog') {
     return runChangelogCommand({ ...cli, arguments_: rest });
   }
   redirectToBundledTypeScriptApi(cli.environment);
-  if (Object.hasOwn(SUBCOMMANDS, name)) {
-    return SUBCOMMANDS[name](cli, rest);
+  const subcommand = Object.hasOwn(SUBCOMMANDS, name) ? SUBCOMMANDS[name] : undefined;
+  if (subcommand !== undefined) {
+    return subcommand(cli, rest);
   }
-  const options = parseArguments(cli.arguments_);
+  const options: CliOptions = parseArguments(cli.arguments_);
   if (printedInformation(options, cli)) {
     return 0;
   }
@@ -147,65 +172,73 @@ function runCommand(cli) {
   );
 }
 
-function writePresetHint(stderr, config, projectRoot) {
-  const hint = javascriptPresetHint(config, projectRoot);
-  if (hint !== undefined) {
-    stderr.write(`nitpicker: ${hint}\n`);
-  }
-}
-
-function runConfigured(cli) {
-  const { options, stdout, runTasks } = cli;
-  const { currentProjectRoot, scope } = resolveRunTarget({ ...cli, missingPathHint });
-  const config = loadConfig(currentProjectRoot);
+function runConfigured(cli: ConfiguredCli): ExitCode {
+  const { options } = cli;
+  const target = resolveRunTarget({ ...cli, missingPathHint });
+  const currentProjectRoot = textOf(target.currentProjectRoot);
+  const config: NitpickerConfig = loadConfig(currentProjectRoot);
   writePresetHint(cli.stderr, config, currentProjectRoot);
-  const headPolicy = resolveProjectHeadPolicy(config, currentProjectRoot, {
-    maven: cli.environment.NITPICKER_MAVEN,
+  const headPolicy: unknown = resolveProjectHeadPolicy(config, currentProjectRoot, {
+    maven: cli.environment['NITPICKER_MAVEN'],
   });
   const presetSet = presetAnalyzers(config, options.all ? cli.snapshotAnalyzers : cli.analyzers);
-  const setup = {
-    ...applyRunProfile(configureAnalyzers(presetSet, config, headPolicy), options),
+  const profiled = applyRunProfile(configureAnalyzers(presetSet, config, headPolicy), options);
+  const setup: RunSetup = {
+    analyzers: profiled.analyzers,
+    quick: profiled.quick,
     captureHead: stagedCapture(cli, currentProjectRoot),
   };
-  for (const note of describeDisableCascade(presetSet, config)) {
-    cli.stderr.write(`nitpicker: ${note}\n`);
-  }
+  writeNotes(cli.stderr, describeDisableCascade(presetSet, config));
+  const selected: unknown = selectAnalyzers(setup.analyzers, options.analyzerNames);
   assertProjectPeers({
     projectRoot: currentProjectRoot,
-    analyzers: selectAnalyzers(setup.analyzers, options.analyzerNames),
+    analyzers: selected,
     configuredRunner: config.tools?.tests?.runner,
   });
-  return withRunLock({ projectRoot: currentProjectRoot, stderr: cli.stderr }, () => {
-    if (options.all) {
-      for (const note of historyAvailabilityNotes(config, headPolicy, currentProjectRoot)) {
-        cli.stderr.write(`nitpicker: ${note}\n`);
-      }
-      return runSnapshotCli({
-        options,
-        currentProjectRoot,
-        ...setup,
-        headPolicy: snapshotPolicy({ config, currentProjectRoot, headPolicy, stdout }),
-        stdout,
-        jsonOutput: cli.jsonOutput,
-        stderr: cli.stderr,
-        environment: cli.environment,
-        runTasks,
-        scope,
-      });
-    }
-    return runComparisonCli({
-      ...cli,
-      currentProjectRoot,
-      ...setup,
-      injectedAnalyzers: cli.analyzers,
-      config,
-      headPolicy,
-      scope,
-    });
+  const run = { currentProjectRoot, config, headPolicy, scope: target.scope, setup };
+  const exitCode: unknown = withRunLock(
+    { projectRoot: currentProjectRoot, stderr: cli.stderr },
+    () => (options.all ? runSnapshot(cli, run) : runComparison(cli, run)),
+  );
+  return numberOr(exitCode, 2);
+}
+
+function runSnapshot(cli: ConfiguredCli, run: ConfiguredRun): unknown {
+  const { config, currentProjectRoot, headPolicy } = run;
+  writeNotes(cli.stderr, historyAvailabilityNotes(config, headPolicy, currentProjectRoot));
+  const snapshotHeadPolicy: unknown = snapshotPolicy({
+    config,
+    currentProjectRoot,
+    headPolicy,
+    stdout: cli.stdout,
+  });
+  return runSnapshotCli({
+    options: cli.options,
+    currentProjectRoot,
+    ...run.setup,
+    headPolicy: snapshotHeadPolicy,
+    stdout: cli.stdout,
+    jsonOutput: cli.jsonOutput,
+    stderr: cli.stderr,
+    environment: cli.environment,
+    runTasks: cli.runTasks,
+    scope: run.scope,
   });
 }
 
-function runComparisonCli(cli) {
+function runComparison(cli: ConfiguredCli, run: ConfiguredRun): unknown {
+  return runComparisonCli({
+    ...cli,
+    currentProjectRoot: run.currentProjectRoot,
+    ...run.setup,
+    injectedAnalyzers: cli.analyzers,
+    config: run.config,
+    headPolicy: run.headPolicy,
+    scope: run.scope,
+  });
+}
+
+function runComparisonCli(cli: ComparisonCli): unknown {
   const { options, currentProjectRoot, config } = cli;
   const repositoryRoot = realpathSync(
     runGit(currentProjectRoot, ['rev-parse', '--show-toplevel']).trim(),
@@ -218,29 +251,31 @@ function runComparisonCli(cli) {
     staged: options.staged,
   });
   const outputRoot = outputRootFor(currentProjectRoot, options.outputRoot, 'diff');
-  const { analyzers, partialRun } = selectComparisonAnalyzers(cli);
+  const selection = selectComparisonAnalyzers(cli);
+  const analyzers: unknown = selection.analyzers;
   clearDiffReports(outputRoot);
-  const headPolicy = comparisonPolicy({ ...cli, repositoryRoot, base }, resolveComparison);
-  const fixResult = fixIfRequested(
+  const headPolicy: unknown = comparisonPolicy({ ...cli, repositoryRoot, base }, resolveComparison);
+  const fixResult: unknown = fixIfRequested(
     { ...cli, headPolicy, spawnEnvironment: { ...process.env, ...cli.environment } },
     repositoryRoot,
     base,
   );
   const cacheStore = resolveRunCacheStore(cli);
-  const report = runQualityDiff({
+  const requestedBaseRef: unknown = base.baseRef;
+  const report: unknown = runQualityDiff({
     repositoryRoot,
     projectRelativePath: path.relative(repositoryRoot, currentProjectRoot) || '.',
     headProjectRoot: currentProjectRoot,
-    requestedBaseRef: base.baseRef,
+    requestedBaseRef,
     outputRoot,
     analyzers,
-    partialRun,
+    partialRun: selection.partialRun,
     cacheStore,
     includeWorkingTree: true,
     captureHead: cli.captureHead,
     quick: cli.quick,
     staged: options.staged,
-    additionalToolErrors: fixResult.toolErrors,
+    additionalToolErrors: fieldOf(fixResult, 'toolErrors'),
     configOverrides: describeConfigOverrides(config),
     headPolicy,
     resolveBaseSetup: baseSetupResolver(cli, config, headPolicy),
@@ -249,34 +284,9 @@ function runComparisonCli(cli) {
     scope: cli.scope,
     progress: cli.progress,
     runTasks: cli.runTasks,
-    warn: (message) => cli.stderr.write(`nitpicker: ${message}\n`),
+    warn: (message: string) => cli.stderr.write(`nitpicker: ${message}\n`),
   });
   return writeComparisonOutcome({ cli, report, base, outputRoot });
-}
-
-function acceptanceOf(cli) {
-  const { ignoredAcceptance, ...acceptance } = policyAcceptance(
-    cli.options,
-    cli.environment,
-    cli.interactive,
-  );
-  if (ignoredAcceptance !== undefined) {
-    cli.stderr.write(`nitpicker: ${ignoredAcceptance}\n`);
-  }
-  return acceptance;
-}
-
-function resolveRunCacheStore(cli) {
-  const { store, warnings } = resolveCacheStore({
-    projectRoot: cli.currentProjectRoot,
-    environment: cli.environment,
-  });
-  if (cli.options.cache) {
-    for (const warning of warnings) {
-      cli.stderr.write(`nitpicker: ${warning}\n`);
-    }
-  }
-  return cli.options.cache ? store : undefined;
 }
 
 const invokedPath = process.argv[1];

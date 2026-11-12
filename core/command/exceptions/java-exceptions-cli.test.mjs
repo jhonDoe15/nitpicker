@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { JAVA_TOOLS } from '../../../languages/java/adapters/gradle-presets.mjs';
 import { SHARED_EXCEPTION_RULES } from '../../../shared/policy.mjs';
 import { JAVA_SIZE_RULES } from '../../../shared/project-rules/size-rules.mjs';
-import { runCli as nitpickerCli } from '../../cli.mjs';
+import { runCli as nitpickerCli } from '../../cli.mts';
 import { writeFiles } from '../../diff/git/test-support/fixture-files.mjs';
 import { commit } from '../../diff/git/test-support/git-repository.mjs';
 import { useGradleFixtures } from '../java/test-support/java-cli-harness.mjs';

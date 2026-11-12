@@ -1,4 +1,6 @@
 import { fileURLToPath } from 'node:url';
+import { type Analyzer, analyzersOf } from '../../shared/values/analyzers.mts';
+import type { NitpickerConfig } from './config-types.mts';
 import { createHistoryAnalyzers } from '../../shared/history/analyzers.mjs';
 import { createHygieneAnalyzers } from '../../shared/hygiene/analyzers.mjs';
 import { GRADLE_PRESETS } from '../../languages/java/adapters/gradle-presets.mjs';
@@ -9,12 +11,16 @@ import {
   configuredAnalyzers,
   javascriptAnalyzers,
 } from '../../languages/typescript/preset/diff/configured-analyzers.mjs';
+import { checkoutModuleUrl } from '../../shared/paths/checkout-module.mjs';
 
-const entryPath = fileURLToPath(new URL('../cli.mjs', import.meta.url));
-const hygieneAnalyzers = createHygieneAnalyzers(entryPath);
-const historyAnalyzers = createHistoryAnalyzers(entryPath);
+const entryPath = fileURLToPath(checkoutModuleUrl(new URL('../cli.mjs', import.meta.url)));
+const hygieneAnalyzers = analyzersOf(createHygieneAnalyzers(entryPath));
+const historyAnalyzers = analyzersOf(createHistoryAnalyzers(entryPath));
 
-export function presetAnalyzers(config, injected) {
+export function presetAnalyzers(
+  config: NitpickerConfig,
+  injected?: readonly Analyzer[],
+): readonly Analyzer[] {
   if (injected !== undefined) {
     return injected;
   }
@@ -22,20 +28,22 @@ export function presetAnalyzers(config, injected) {
   return [...language, ...hygieneAnalyzers, ...optInAnalyzers(config, language)];
 }
 
-function languageAnalyzers(config) {
+function languageAnalyzers(config: NitpickerConfig): Analyzer[] {
   if (config.preset === 'python') {
-    return createPythonAnalyzers(config.python);
+    return analyzersOf(createPythonAnalyzers(config.python));
   }
   if (config.preset === 'go') {
-    return createGoAnalyzers(config.go);
+    return analyzersOf(createGoAnalyzers(config.go));
   }
-  if (GRADLE_PRESETS.includes(config.preset)) {
-    return [createJavaAnalyzer({ kotlin: config.preset === 'kotlin' })];
+  if (config.preset !== undefined && GRADLE_PRESETS.includes(config.preset)) {
+    return analyzersOf([createJavaAnalyzer({ kotlin: config.preset === 'kotlin' })]);
   }
-  return config.preset === 'javascript' ? javascriptAnalyzers() : configuredAnalyzers();
+  return analyzersOf(
+    config.preset === 'javascript' ? javascriptAnalyzers() : configuredAnalyzers(),
+  );
 }
 
-function optInAnalyzers(config, language) {
+function optInAnalyzers(config: NitpickerConfig, language: readonly Analyzer[]): Analyzer[] {
   const publishers = language
     .filter(({ publishesModuleImports }) => publishesModuleImports === true)
     .map(({ name }) => name);

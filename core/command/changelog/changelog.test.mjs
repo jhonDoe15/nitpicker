@@ -2,9 +2,10 @@ import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { runCli } from '../../cli.mjs';
+import { runCli } from '../../cli.mts';
 import { captureOutput } from '../../diff/reporting/test-support/output-capture.mjs';
 import { changelogSection, changelogVersions, runChangelogCommand } from './changelog.mjs';
+import { checkoutModulePath } from '../../../shared/paths/checkout-module.mjs';
 
 const root = path.resolve(import.meta.dirname, '../../..');
 const SAMPLE = [
@@ -175,6 +176,6 @@ describe('nitpicker changelog', () => {
   });
 
   it('loads no installed package, so a release job can run it before npm ci', () => {
-    expect(packagesImportedFrom(path.join(root, 'core/cli.mjs'))).toEqual([]);
+    expect(packagesImportedFrom(checkoutModulePath(path.join(root, 'core/cli.mjs')))).toEqual([]);
   });
 });

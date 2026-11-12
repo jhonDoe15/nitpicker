@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { createBaseSetupResolver } from '../../command/policy-review/base-setup.mjs';
+import { createBaseSetupResolver } from '../../command/policy-review/base-setup.mts';
 import { useGitFixtures } from '../../diff/git/test-support/git-repository.mjs';
 import { applyRunProfile } from '../profile.mjs';
 

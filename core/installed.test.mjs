@@ -445,11 +445,11 @@ suite('packed nitpicker in a separate consumer', () => {
         expect(snapshot.status, snapshot.output).toBe(1);
         expect(withoutSlowAnalyzerLines(snapshot.output)).toEqual(expectedSnapshotOutput(links));
       });
-      it('lists and explains rules from the reference data the package ships, linking the release tag', () => {
+      it('lists and explains rules from the reference data the package ships, linking the release tag', async () => {
         expect(rules.status, rules.output).toBe(0);
-        expect(rules.output).toBe(checkoutOutput(links, ['rules', '--preset', 'java']));
+        expect(rules.output).toBe(await checkoutOutput(links, ['rules', '--preset', 'java']));
         expect(explanation.status, explanation.output).toBe(0);
-        expect(explanation.output).toBe(checkoutOutput(links, ['explain', ...explained]));
+        expect(explanation.output).toBe(await checkoutOutput(links, ['explain', ...explained]));
         expect(
           JSON.parse(readFileSync(path.join(reports('snapshot'), 'findings.json'))).map(
             (finding) => finding.helpUri,
