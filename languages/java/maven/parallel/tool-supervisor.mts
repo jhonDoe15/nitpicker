@@ -1,4 +1,4 @@
-import { spawn } from 'node:child_process';
+import { type ChildProcess, spawn } from 'node:child_process';
 import { TOOL_RUN_CEILING_MS } from '../../../../shared/processes/deadlines.mjs';
 
 const TOOL_SOURCE = [
@@ -13,31 +13,36 @@ const TOOL_SOURCE = [
   '}',
 ].join('\n');
 
-function failureOf(code, output) {
+type ToolTask = { readonly url: string; readonly name: string; readonly options: unknown };
+type ToolOutcome = { readonly error?: unknown };
+type ExitStatus = ChildProcess['exitCode'];
+type ToolOutput = { readonly stdout: Buffer[]; readonly stderr: Buffer[] };
+
+function failureOf(code: ExitStatus, output: ToolOutput): ToolOutcome {
   if (code === 0) {
     return {};
   }
   const text = Buffer.concat(output.stdout).toString('utf8');
+  if (text !== '') {
+    const error: unknown = JSON.parse(text);
+    return { error };
+  }
   return {
-    error:
-      text === ''
-        ? {
-            message:
-              Buffer.concat(output.stderr).toString('utf8').trim() || `exit code ${String(code)}`,
-          }
-        : JSON.parse(text),
+    error: {
+      message: Buffer.concat(output.stderr).toString('utf8').trim() || `exit code ${String(code)}`,
+    },
   };
 }
 
-function runTool(task) {
+function runTool(task: ToolTask): Promise<ToolOutcome> {
   return new Promise((resolve) => {
     const child = spawn(process.execPath, ['--input-type=module', '--eval', TOOL_SOURCE], {
       stdio: ['pipe', 'pipe', 'pipe'],
       timeout: TOOL_RUN_CEILING_MS,
     });
-    const output = { stdout: [], stderr: [] };
-    child.stdout.on('data', (chunk) => output.stdout.push(chunk));
-    child.stderr.on('data', (chunk) => output.stderr.push(chunk));
+    const output: ToolOutput = { stdout: [], stderr: [] };
+    child.stdout.on('data', (chunk: Buffer) => output.stdout.push(chunk));
+    child.stderr.on('data', (chunk: Buffer) => output.stderr.push(chunk));
     child.on('error', (error) => {
       resolve({ error: { message: error.message } });
     });
@@ -48,15 +53,24 @@ function runTool(task) {
   });
 }
 
-async function lane(entries, outcomes) {
+async function lane(
+  entries: IterableIterator<[number, ToolTask]>,
+  outcomes: ToolOutcome[],
+): Promise<void> {
   for (const [index, task] of entries) {
     outcomes[index] = await runTool(task);
   }
 }
 
-export async function superviseTools({ tasks, limit }) {
+export async function superviseTools({
+  tasks,
+  limit,
+}: {
+  readonly tasks: readonly ToolTask[];
+  readonly limit: number;
+}): Promise<ToolOutcome[]> {
   const entries = tasks.entries();
-  const outcomes = tasks.map(() => ({}));
+  const outcomes: ToolOutcome[] = tasks.map(() => ({}));
   await Promise.all(
     Array.from({ length: Math.min(limit, tasks.length) }, () => lane(entries, outcomes)),
   );
