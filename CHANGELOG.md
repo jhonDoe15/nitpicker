@@ -13,9 +13,10 @@ about your code is explained in [troubleshooting](https://github.com/jhonDoe15/n
 
 ### Changed
 
-- TypeScript and JavaScript: `nitpicker/no-null` allows `null` anywhere inside the arguments of
-  `JSON.stringify`, where it is the JSON value for nothing (an explicit `null` field of a request
-  body, or a key a tsconfig or merge patch must unset). `null` built elsewhere is still reported.
+- TypeScript and JavaScript: `nitpicker/no-null` allows `null` as an object field, array element or
+  conditional branch in the data passed to `JSON.stringify`, where it is the JSON value for nothing
+  (an explicit `null` field of a request body, or a key a tsconfig or merge patch must unset) (#1100).
+  `null` built outside the call, or passed to another function inside it, is still reported.
 
 ### Fixed
 
