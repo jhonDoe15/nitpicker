@@ -5,6 +5,10 @@ import { withAssetImportHint } from './asset-import-hint.mts';
 const hint =
   ' For CSS Modules and asset imports, add `vite/client` to `types` in tsconfig.json (or `/// <reference types="vite/client" />` in a `.d.ts` under src/), or declare the module in a `.d.ts` under src/ (`declare module "*.module.css"`).';
 
+function isDeclarationGlob(glob: unknown): boolean {
+  return typeof glob === 'string' && glob.endsWith('.d.ts');
+}
+
 function missing(specifier: string): string {
   return `Cannot find module '${specifier}' or its corresponding type declarations.`;
 }
@@ -34,9 +38,10 @@ describe('hint for CSS Module and asset imports that TypeScript cannot find', ()
 
   it('reports the .d.ts files it sends declarations to as checked', () => {
     const typecheck = staticChecks.find(({ name }) => name === 'typescript-typecheck');
-    const exclusions: string[] = typecheck?.exclusions ?? [];
+    const exclusions: unknown = typecheck?.exclusions;
 
-    expect(typecheck).toBeDefined();
-    expect(exclusions.filter((glob) => glob.endsWith('.d.ts'))).toEqual([]);
+    expect(Array.isArray(exclusions) ? exclusions.filter(isDeclarationGlob) : undefined).toEqual(
+      [],
+    );
   });
 });

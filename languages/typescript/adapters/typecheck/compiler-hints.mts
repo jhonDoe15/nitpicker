@@ -1,5 +1,5 @@
 import type TypeScript from 'typescript';
-import { formatDiagnostic, withoutProjectRoot } from './typescript-program.mjs';
+import { formatDiagnostic, withoutProjectRoot } from '../typed/typescript-program.mts';
 
 const INDEX_SIGNATURE_ACCESS = 4111;
 
@@ -20,6 +20,6 @@ export function diagnosticMessages(
   diagnostic: TypeScript.Diagnostic,
   projectRoot: string,
 ): { message: string; display: string } {
-  const message: string = withoutProjectRoot(formatDiagnostic(ts, diagnostic), projectRoot);
+  const message = withoutProjectRoot(formatDiagnostic(ts, diagnostic), projectRoot);
   return { message, display: `${message}${hintFor(diagnostic.code, message)}` };
 }

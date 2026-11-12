@@ -2,12 +2,11 @@ import { createHash } from 'node:crypto';
 import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
-import type TypeScript from 'typescript';
 import { afterAll, describe, expect, it } from 'vitest';
 import { normalizeTypeScriptDiagnostics } from '../static-checks/typescript.mts';
-import { loadTypeScript } from './typescript-program.mjs';
+import { loadTypeScript } from '../typed/typescript-program.mts';
 
-const ts: typeof TypeScript = loadTypeScript();
+const ts = loadTypeScript();
 const roots: string[] = [];
 
 afterAll(() => {

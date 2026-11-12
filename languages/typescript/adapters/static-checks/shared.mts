@@ -1,33 +1,12 @@
-import {
-  toolNameForPath,
-  resolveTool as resolveUntypedTool,
-} from '../../../../core/tooling/tool-resolution.mjs';
-import { spawnSyncWithOutputFile } from '../../../../core/tooling/output-file/output-file.mjs';
+import type { SpawnSyncReturns } from 'node:child_process';
+import { spawnSyncWithOutputFile, toolBinaryPath, toolNameForPath } from '../typed/tooling.mts';
 import { realpathSync, lstatSync, statSync } from 'node:fs';
 import path from 'node:path';
-import { type StaticCheckOptions, normalizedRelativePath, requiredString } from './arguments.mts';
+import { type StaticCheckOptions, normalizedRelativePath } from './arguments.mts';
 import { createHash } from 'node:crypto';
 import { TOOL_RUN_CEILING_MS } from '../../../../shared/processes/deadlines.mjs';
 
 const MAX_OUTPUT_BYTES = 50 * 1024 * 1024;
-
-type ToolLocation = {
-  readonly projectRoot?: string;
-  readonly bin?: string;
-  readonly packageRoot?: string;
-};
-
-type ResolvedTool = { readonly root: string; readonly binPath: string | undefined };
-
-export const resolveTool: (name: string, location?: ToolLocation) => ResolvedTool =
-  resolveUntypedTool;
-
-export function toolBinaryPath(
-  name: string,
-  location: ToolLocation & { readonly bin: string },
-): string {
-  return requiredString(resolveTool(name, location).binPath, `${name} binary`);
-}
 
 export type Finding = {
   tool: string;
@@ -43,20 +22,16 @@ export type Finding = {
 type NodeToolRun = {
   readonly options: StaticCheckOptions;
   readonly relativeToolPath: string;
-  readonly arguments_: readonly string[];
-  readonly acceptedStatuses: readonly (number | null)[];
+  readonly toolArguments: readonly string[];
+  readonly acceptedStatuses: readonly NodeToolResult['status'][];
 };
 
-export type NodeToolResult = {
-  readonly status: number | null;
-  readonly stdout: string;
-  readonly stderr: string;
-};
+export type NodeToolResult = Pick<SpawnSyncReturns<string>, 'status' | 'stdout' | 'stderr'>;
 
 export function runNodeTool({
   options,
   relativeToolPath,
-  arguments_,
+  toolArguments,
   acceptedStatuses,
 }: NodeToolRun): NodeToolResult {
   const name = toolNameForPath(relativeToolPath);
@@ -64,7 +39,7 @@ export function runNodeTool({
     projectRoot: options.liveProjectRoot,
     bin: relativeToolPath.slice(name.length + 1),
   });
-  const result = spawnSyncWithOutputFile(process.execPath, [toolPath, ...arguments_], {
+  const result = spawnSyncWithOutputFile(process.execPath, [toolPath, ...toolArguments], {
     cwd: options.projectRoot,
     encoding: 'utf8',
     maxBuffer: MAX_OUTPUT_BYTES,

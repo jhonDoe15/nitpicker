@@ -1,21 +1,18 @@
 import { readFileSync, existsSync, symlinkSync, unlinkSync } from 'node:fs';
 import { glob, readFile } from 'node:fs/promises';
-import { prettierPrecedence, usesLayeredPrettier, readLayout } from '../../preset/head-policy.mjs';
+import { prettierPrecedence, usesLayeredPrettier, readLayout } from '../typed/head-policy.mts';
 import type * as Prettier from 'prettier';
 import type { StaticCheckOptions } from './arguments.mts';
+import { type Finding, runNodeTool, projectFile, policyFile, hash } from './shared.mts';
+import { resolveTool, toolBinaryPath, trackTemporaryPath } from '../typed/tooling.mts';
 import {
-  type Finding,
-  runNodeTool,
-  projectFile,
-  policyFile,
-  hash,
-  resolveTool,
-  toolBinaryPath,
-} from './shared.mts';
-import { isIgnoredByLayers, layeredPrettierOptions } from '../prettier/prettier-layers.mjs';
+  importPrettier as importPrettierApi,
+  isIgnoredByLayers,
+  layeredPrettierOptions,
+  prettierOptionsOf,
+} from '../typed/prettier-layers.mts';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { trackTemporaryPath } from '../../../../core/tooling/temporary-files.mjs';
 import { formattingHunks } from '../prettier/format-hunks.mts';
 import { listUnformattedInParallel } from '../prettier/parallel-cli.mts';
 import { formatAdvice } from '../../../../shared/messages/format/format-advice.mjs';
@@ -67,7 +64,7 @@ function listUnformattedFiles(
   options: StaticCheckOptions,
   installedPolicy: InstalledPolicy,
 ): string[] {
-  const exclusions: string[] = readLayout().exclude;
+  const exclusions = readLayout().exclude;
   return (
     listUnformattedInParallel({
       toolPath: toolBinaryPath('prettier', {
@@ -91,7 +88,7 @@ function listUnformattedFilesSerially(
   const result = runNodeTool({
     options,
     relativeToolPath: 'prettier/bin/prettier.cjs',
-    arguments_: [
+    toolArguments: [
       '--config',
       installedPolicy.configPath,
       '--ignore-path',
@@ -124,7 +121,7 @@ async function matchingFiles(options: StaticCheckOptions): Promise<string[]> {
 async function layeredFormattingFindings(
   options: StaticCheckOptions,
   installedPolicy: InstalledPolicy,
-  precedence: unknown,
+  precedence: readonly string[],
 ): Promise<Finding[]> {
   const prettier = await importPrettier();
   const policyOptions = readPrettierPolicy(installedPolicy.configPath);
@@ -157,12 +154,14 @@ async function layeredFormattingFindings(
 }
 
 async function importPrettier(): Promise<typeof Prettier> {
-  return import(pathToFileURL(path.join(resolveTool('prettier').root, 'index.mjs')).href);
+  return importPrettierApi(
+    pathToFileURL(path.join(resolveTool('prettier').root, 'index.mjs')).href,
+  );
 }
 
 function readPrettierPolicy(configPath: string): Prettier.Options {
   try {
-    return JSON.parse(readFileSync(configPath, 'utf8'));
+    return prettierOptionsOf(JSON.parse(readFileSync(configPath, 'utf8')));
   } catch (error) {
     throw new Error('Prettier policy is not valid JSON', { cause: error });
   }
