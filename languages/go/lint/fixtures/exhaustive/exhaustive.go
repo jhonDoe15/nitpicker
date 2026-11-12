@@ -32,7 +32,7 @@ func IgnoredLabel(status Status) string {
 func ActiveLabel(status Status) string {
 	switch status {
 	case Active:
-		return "active"
+		return "active" // want repeated-string-literal
 	default:
 		return ""
 	}
@@ -41,9 +41,9 @@ func ActiveLabel(status Status) string {
 func FullLabel(status Status) string {
 	switch status {
 	case Active:
-		return "active"
+		return "active" // want repeated-string-literal
 	case Paused:
-		return "paused"
+		return "paused" // want repeated-string-literal
 	case Closed:
 		return "closed"
 	}
