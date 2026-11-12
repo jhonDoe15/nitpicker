@@ -1,13 +1,21 @@
 import { realpathSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { readDurations } from './sequencer.mjs';
-import { durationFile } from './duration-profile.mjs';
+import type { ModuleDiagnostic, Reporter } from 'vitest/node';
+import { type Durations, readDurations } from './sequencer.mts';
+import { durationFile } from './duration-profile.mts';
 
 const repositoryRoot = path.resolve(import.meta.dirname, '..', '..');
 const RECORDED_ABOVE_SECONDS = 1;
 
-const secondsOf = (diagnostic) =>
+type DurationParts = Pick<
+  ModuleDiagnostic,
+  'environmentSetupDuration' | 'prepareDuration' | 'collectDuration' | 'setupDuration' | 'duration'
+>;
+
+export type MeasuredModule = { readonly moduleId: string; readonly diagnostic: DurationParts };
+
+const secondsOf = (diagnostic: DurationParts): number =>
   Math.ceil(
     (diagnostic.environmentSetupDuration +
       diagnostic.prepareDuration +
@@ -17,7 +25,11 @@ const secondsOf = (diagnostic) =>
       1000,
   );
 
-export function mergeDurations(previous, modules, root) {
+export function mergeDurations(
+  previous: Durations,
+  modules: readonly MeasuredModule[],
+  root: string,
+): Record<string, number> {
   const measured = new Map(
     modules.map(({ moduleId, diagnostic }) => [
       path.relative(root, moduleId).split(path.sep).join('/'),
@@ -31,12 +43,12 @@ export function mergeDurations(previous, modules, root) {
   );
 }
 
-async function recordDurations(argv) {
+async function recordDurations(argv: readonly string[]): Promise<void> {
   const file = durationFile();
   const { parseCLI, startVitest } = await import('vitest/node');
   const { filter, options } = parseCLI(['vitest', 'run', ...argv]);
-  const modules = [];
-  const reporter = {
+  const modules: MeasuredModule[] = [];
+  const reporter: Reporter = {
     onTestRunEnd: (testModules) => {
       modules.push(
         ...testModules.map((testModule) => ({
