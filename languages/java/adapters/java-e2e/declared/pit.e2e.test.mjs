@@ -192,6 +192,51 @@ describe.skipIf(!enabled)('PIT with the settings a build declares', () => {
 
     expect(mutants(root, { maven })).toEqual(TWIN_MUTANTS);
   }, 180_000);
+
+  const failedRun = (root, build) => {
+    const findings = collectJavaFindings(root, {
+      ...build,
+      policy: { toolPrecedence: { pit: ['project', 'nitpicker'] }, policyRoot: root },
+    });
+    return {
+      pit: findings
+        .filter(({ tool }) => tool === 'pit')
+        .map(({ rule, classification, message }) => [rule, classification, message.split(':')[0]]),
+      others: findings.filter(({ tool }) => tool !== 'pit').length,
+    };
+  };
+  const PIT_FAILED = [['pit-failure', 'tool-error', 'PIT failed with exit code 1']];
+
+  it('keeps the other findings when PIT fails on Gradle', () => {
+    const root = twinProject((project) => {
+      writeFileSync(
+        path.join(project, 'build.gradle'),
+        GRADLE_BUILD.replace("'INLINE_CONSTS'", "'NO_SUCH_MUTATOR'"),
+      );
+    });
+    const run = failedRun(root, { gradle });
+
+    expect(run.pit).toEqual(PIT_FAILED);
+    expect(run.others).toBeGreaterThan(0);
+  }, 180_000);
+
+  it('keeps the other findings when PIT fails on Maven', () => {
+    const root = twinProject((project) => {
+      rmSync(path.join(project, 'build.gradle'));
+      rmSync(path.join(project, 'settings.gradle'));
+      writeFileSync(
+        path.join(project, 'pom.xml'),
+        readFileSync(mavenFixture, 'utf8').replace(
+          '</project>',
+          MAVEN_PLUGIN.replace('INLINE_CONSTS', 'NO_SUCH_MUTATOR'),
+        ),
+      );
+    });
+    const run = failedRun(root, { maven });
+
+    expect(run.pit).toEqual(PIT_FAILED);
+    expect(run.others).toBeGreaterThan(0);
+  }, 180_000);
 });
 
 const TWIN_MUTANTS = [

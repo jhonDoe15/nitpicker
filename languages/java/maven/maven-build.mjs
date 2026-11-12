@@ -144,7 +144,7 @@ function extraTools({ modules, analyzed, policy, pinned, kotlin }) {
 
 export function runMavenPreset(
   projectRoot,
-  { maven, policy = {}, configs, environment = {}, spawn, timeoutMs },
+  { maven, policy = {}, configs, environment = {}, spawn, timeoutMs, pitDeadline },
 ) {
   if (policy.preset !== undefined && !MAVEN_PRESETS.includes(policy.preset)) {
     throw new Error(
@@ -170,6 +170,7 @@ export function runMavenPreset(
     });
     const testsFailures = analyzeAll({
       ...run,
+      pitDeadline,
       analyzed,
       tools,
       configs,

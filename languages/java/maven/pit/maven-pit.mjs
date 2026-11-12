@@ -1,10 +1,29 @@
 import { existsSync, mkdirSync, rmSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { runJava } from '../maven-command.mjs';
+import { mavenBudget } from '../../adapters/gradle-wrapper/gradle-budget.mjs';
 import { nitpickerPitArguments } from '../../adapters/tool-config/declared/pit-declared.mjs';
 import { pitHistoryArguments } from '../../builds/pit-history/pit-history.mjs';
 import { writePitFailure } from '../../builds/pit-failure/pit-failure.mjs';
 import { classFiles, pitClasspath, pitTargets, pitTests } from '../maven-tests.mjs';
+
+const MINUTE_MS = 60_000;
+
+export function pitTimeoutMs(
+  timeoutMs = mavenBudget(process.env).commandTimeoutMs,
+  deadline = Number.POSITIVE_INFINITY,
+  now = Date.now(),
+) {
+  return Math.min(timeoutMs, Math.floor((deadline - now) / MINUTE_MS) * MINUTE_MS);
+}
+
+function notStarted(module) {
+  return (
+    `PIT was not started in ${module.basedir}: less than a minute of the Java analyzer's time ` +
+    'limit was left. Set NITPICKER_MAVEN_TIMEOUT_MINUTES, or analyzerTimeoutMinutes when the ' +
+    'config sets it, to give the Java analyzer more time'
+  );
+}
 
 export function javaArgumentFile(args) {
   return args
@@ -67,12 +86,18 @@ export function runPit({
   history,
   spawn,
   timeoutMs,
+  deadline,
 }) {
   const pitDir = path.join(reportDir, 'pit');
   rmSync(pitDir, { recursive: true, force: true });
   mkdirSync(pitDir, { recursive: true });
   const report = path.join(pitDir, 'mutations.xml');
   if (classFiles(module.outputDirectory).length === 0) {
+    return;
+  }
+  const limit = pitTimeoutMs(timeoutMs, deadline);
+  if (limit < MINUTE_MS) {
+    writePitFailure(pitDir, notStarted(module));
     return;
   }
   try {
@@ -84,7 +109,7 @@ export function runPit({
       cwd: module.basedir,
       accept: (result) => result.status === 0,
       spawn,
-      timeoutMs,
+      timeoutMs: limit,
     });
   } catch (error) {
     writePitFailure(pitDir, error);
