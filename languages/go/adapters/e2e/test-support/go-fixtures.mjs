@@ -124,6 +124,7 @@ func TestBroken(t *testing.T) {
 `;
 
 function sleepingTest(header, name, seconds, guard = '') {
+  const helper = name.replace('Test', 'restock');
   return `${header}package shop
 
 import (
@@ -132,8 +133,14 @@ import (
 )
 
 func ${name}(t *testing.T) {
-${guard}	time.Sleep(${String(seconds)} * time.Second)
-	t.Log("woke up")
+${guard}	if got := ${helper}(); got != 1 {
+		t.Fatalf("${helper}() = %d, want 1", got)
+	}
+}
+
+func ${helper}() int {
+	time.Sleep(${String(seconds)} * time.Second)
+	return 1
 }
 `;
 }
