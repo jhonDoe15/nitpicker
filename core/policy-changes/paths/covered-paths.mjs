@@ -114,46 +114,50 @@ function exceptionChanges(baseExceptions = [], headExceptions = [], scope) {
   return [...added, { loosened: [], changed: removed }];
 }
 
-function entryPointChanges(baseConfig, headConfig, scope) {
-  return [
-    ...entryPointChangesOf('layout.entryPoints', {
-      before: baseConfig.layout?.entryPoints ?? [],
-      after: headConfig.layout?.entryPoints ?? [],
-      scope,
-    }),
-    ...entryPointChangesOf('python.entryPoints', {
-      before: baseConfig.python?.entryPoints ?? [],
-      after: headConfig.python?.entryPoints ?? [],
-      scope,
-    }),
-  ];
+const ENTRY_POINT_KEYS = ['layout', 'python'];
+
+function addedEntryPoints(baseConfig, headConfig, scope) {
+  return ENTRY_POINT_KEYS.flatMap((owner) => {
+    const before = baseConfig[owner]?.entryPoints ?? [];
+    return (headConfig[owner]?.entryPoints ?? [])
+      .filter((glob) => !before.includes(glob))
+      .map((glob) => ({
+        key: `${owner}.entryPoints`,
+        glob,
+        covered: newlyCovered(before, glob, { paths: scope.code, basePathOf: scope.basePathOf }),
+      }));
+  });
 }
 
-const ENTRY_POINT_KINDS = {
-  'layout.entryPoints': 'entry-point',
-  'python.entryPoints': 'python-entry-point',
-};
+function entryPointAddition({ key, glob, covered }, imported) {
+  const text = `${key} added: ${glob}`;
+  const importedFiles = covered.filter((file) => imported.has(file));
+  return importedFiles.length === 0
+    ? { loosened: [], changed: [text] }
+    : {
+        loosened: [
+          {
+            kind: 'imported-entry-point',
+            text: `${text} (checked code imports ${importedFiles.join(', ')})`,
+            files: [CONFIG_FILE_NAME, ...importedFiles],
+          },
+        ],
+        changed: [],
+      };
+}
 
-function entryPointChangesOf(key, { before, after, scope }) {
+function entryPointChanges(baseConfig, headConfig, scope) {
+  const added = addedEntryPoints(baseConfig, headConfig, scope);
+  const imported = new Set(scope.importedBy([...new Set(added.flatMap(({ covered }) => covered))]));
+  const removed = ENTRY_POINT_KEYS.flatMap((owner) => {
+    const after = headConfig[owner]?.entryPoints ?? [];
+    return (baseConfig[owner]?.entryPoints ?? [])
+      .filter((glob) => !after.includes(glob))
+      .map((glob) => `${owner}.entryPoints removed: ${glob}`);
+  });
   return [
-    ...after
-      .filter((glob) => !before.includes(glob))
-      .map((glob) =>
-        addedGlob(
-          { text: `${key} added: ${glob}`, kind: ENTRY_POINT_KINDS[key] },
-          newlyCovered(before, glob, {
-            paths: scope.codePaths,
-            basePathOf: scope.basePathOf,
-          }),
-          scope,
-        ),
-      ),
-    {
-      loosened: [],
-      changed: before
-        .filter((glob) => !after.includes(glob))
-        .map((glob) => `${key} removed: ${glob}`),
-    },
+    ...added.map((entry) => entryPointAddition(entry, imported)),
+    { loosened: [], changed: removed },
   ];
 }
 

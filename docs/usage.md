@@ -189,7 +189,7 @@ is not on npm. Keep the tarball in your repository, so teammates and CI install 
 without access to the release:
 
 ```sh
-VERSION=0.1.0-rc.1
+VERSION=0.1.0-rc.2
 gh release download "v$VERSION" --repo jhonDoe15/nitpicker --pattern 'nitpicker-*.tgz' --pattern SHA256SUMS --dir vendor
 (cd vendor && shasum -a 256 -c SHA256SUMS && rm SHA256SUMS)
 npm install --save-dev "./vendor/nitpicker-$VERSION.tgz" vitest @vitest/coverage-v8 typescript @types/node
@@ -231,8 +231,12 @@ npx nitpicker --all src/orders       # every finding in one folder
 Paths are read relative to the current folder, and the project is the one that holds the first path,
 so `npx nitpicker services/orders/src/main/java/Order.java` works from the repository top. All paths
 must be in that project. The analyzers still run over the whole project, so cross-file rules (dead
-code, unused exports, coupling, the type check, architecture) keep their full context and the run
-takes as long as a whole-project run. Only the findings in files under the paths fail the run and
+code, unused exports, coupling, the type check, architecture) keep their full context. Mutation, the
+slowest step, is the exception: on the head side it mutates only the source files under the paths
+(Stryker's `mutate`; PIT's `--targetClasses`, listing the classes compiled from those files, nested
+ones included; mutmut's `do_not_mutate` for every other Python file), while every test still runs
+against each mutant, so a mutant can be killed by any test. In a comparison it narrows the changed
+lines mutation already follows, and the base side is unchanged. Only the findings in files under the paths fail the run and
 appear in the console and the reports. Tool errors and `nitpicker-config/policy-loosened` findings
 (a loosened config changes the whole gate) still count wherever they come from. Findings about the
 whole project (path `.`) count only when a path is the project folder itself. The summary names the
@@ -1012,7 +1016,7 @@ in the console summary and in `report.txt` as "Policy changed in this change" an
 `summary.json` under `policyChanges`. A change that checks less fails the run with one
 `nitpicker-config/policy-loosened` finding per loosening. The console groups those changes by kind:
 it lists the changes of a kind, then what that kind does to the checks and how to undo it, once
-(ten new entry points print the entry point guidance once), followed by the count, the digest and
+(ten new exclusions print the exclusion guidance once), followed by the count, the digest and
 the acceptance command. `report.txt` and `new-findings.json` keep one finding per change, each with
 its guidance and the acceptance route. The first response is to undo the change and fix the code
 until it passes. If the change is intended, a coding agent stops and asks a person reviewing it, who
@@ -1023,7 +1027,7 @@ accepts it by the digest (`--accept-policy-change=<digest>` or, in CI,
 check the pull request merged into its target branch. A project's first `nitpicker.config.json` is
 compared with the defaults. These changes are loosening:
 
-- an added `exclude`, `layout.excludedGlobs`, `layout.entryPoints` or
+- an added `exclude`, `layout.excludedGlobs` or
   `exceptions` glob that covers a code file the base config did not already cover (every
   tracked code file of the preset, wherever it is: `.ts`/`.js` family files for TypeScript and
   JavaScript, `.py` files for Python, `.java`, `.kt` and `.kts` files for Java and Kotlin, so
@@ -1031,11 +1035,7 @@ compared with the defaults. These changes are loosening:
   and `layout.excludedGlobs` are one set: a glob respelled to cover the same files, or moved from
   one key to the other, is listed but does not fail. Files moved with `git mv` keep their base
   path, so updating a glob after a move is not loosening; a glob that covers no new code file is
-  listed but does not fail. A `layout.entryPoints` entry makes the dead-code check treat the files
-  as used and allows module-load effects and process access in them, and a `python.entryPoints`
-  entry only exempts them from `process-env-access`, `process-stream-access` and
-  `import-time-effect`; other checks still apply. A reviewer confirms that a command or runtime
-  loads each file without an import, and otherwise the entry is removed;
+  listed but does not fail;
 - a removed `layout.sourceRoots`, `layout.testRoots` or `python.sourceRoots` entry that still has
   checked files under it (Python's detected default counts when the setting is absent), and an
   added `layout.testRoots` entry that turns production code the base checked into test code;
@@ -1124,6 +1124,17 @@ noUncheckedIndexedAccess: true -> false`, only one that goes from `true` to `fal
 - a tool `precedence` that puts `"project"` first where it was not first, or that drops
   `"nitpicker"` (for `pmd`, which runs both rule sets, only dropping `"nitpicker"` counts);
 - a name removed from a `spring.roles` list (adding one only adds checks).
+
+An added `layout.entryPoints` or `python.entryPoints` entry is only listed, as long as no checked
+code imports the files it newly covers. An entry point names a file that a command or runtime loads
+without an import, such as a script run by path, a worker or a test reporter. The dead-code and
+unused-export checks treat it as used, and it may do what a program start does: with
+`layout.entryPoints`, module-load effects, process access and service-locator lookups (it counts as
+a composition root); with `python.entryPoints`, `process-env-access`, `process-stream-access`,
+`import-time-effect` and `service-locator-lookup` skip it. Every other check still applies. A file
+that a production file under the source roots imports is not an entry point, so an added entry that
+newly covers one (a broad glob such as `**`, for example) is loosening, and the finding names the
+imported files.
 
 Choosing another tool that runs the same checks is not loosening and is only listed:
 `tools.eslint.engine`, `tools.typescript.engine`, `python.typeChecker`, `python.formatter`,
@@ -1422,7 +1433,7 @@ change adds; a file already on the base is left alone. Each message names the ex
 | `committed-build-output`   | a file in a build output folder: `dist`, `build`, `out`, `coverage` or `target` next to a `package.json`, `build.gradle(.kts)`, `pom.xml` or `pyproject.toml`, or `.next`, `.nuxt`, `storybook-static`, `.turbo` or `.parcel-cache` at any depth; one finding per folder                                                                                                                                                                                                                                                                     |
 | `migration-order`          | a migration whose version sorts before, or equals, the newest migration of its folder on the base branch: Flyway `V<version>__name`, Prisma `migrations/<timestamp>_name/`, and numbered files in a `migrations`, `migration` or `drizzle` folder (TypeORM, Kysely, Knex, Sequelize, MikroORM, Drizzle, golang-migrate, goose); an Alembic revision or a Django migration whose parent already has a child on the base branch, so the history has two heads                                                                                  |
 | `migration-hardcoded-name` | a migration file (the layouts above, Liquibase changelogs and other files directly in a `migrations`, `migration`, `migrate` or `drizzle` folder) that qualifies a name with the `public` schema, names a database in `ALTER DATABASE` or a role in `OWNER TO`; one finding per file and form                                                                                                                                                                                                                                                |
-| `foreign-key-index`        | a foreign key that a migration adds with no index that starts with its columns, or a Prisma relation whose `fields` no `@@index`, `@@unique` or `@@id` of the model starts with; not reported when the project uses MySQL or MariaDB, which index foreign keys themselves                                                                                                                                                                                                                                                                    |
+| `foreign-key-index`        | a foreign key that a migration or an sqlc schema file adds with no index that starts with its columns, or a Prisma relation whose `fields` no `@@index`, `@@unique` or `@@id` of the model starts with; not reported when the project uses MySQL or MariaDB, which index foreign keys themselves                                                                                                                                                                                                                                             |
 | `start-schema-push`        | a `start`, `prestart`, `serve` or `start:*` script in a `package.json` (not `start:dev`, `start:local`, `start:watch`, `start:debug` or `start:test`), or a script it runs through `npm`, `pnpm`, `yarn`, `bun` or `npm-run-all` (with its `pre` hook), that pushes the ORM schema: `prisma db push`, `prisma migrate dev`/`reset`, `drizzle-kit push`, `typeorm schema:sync`/`schema:drop`, `mikro-orm schema:update`/`create`/`fresh`/`drop` (options between the tool and the command count); apply migrations in the deploy step instead |
 
 An env file that holds only public build-time values (every key starts with `VITE_`, `NEXT_PUBLIC_`,
@@ -1449,7 +1460,8 @@ migrations folder, as the message shows.
 
 `foreign-key-index` reads the migration files (Flyway, Prisma, Liquibase XML, YAML and SQL
 changelogs, Alembic, and the SQL in TypeORM, MikroORM, Kysely, Knex and goose migrations, skipping their down part
-and `.down.sql` files):
+and `.down.sql` files), and the schema files an sqlc config (`sqlc.yaml`, `sqlc.yml` or `sqlc.json`,
+`schema` of each `sql` or `packages` entry: a file, a folder's own `.sql` files or a glob) names, unless its `engine` is `mysql`:
 `CREATE TABLE` with `REFERENCES` or `FOREIGN KEY`, `ALTER TABLE ... ADD`, Liquibase
 `addForeignKeyConstraint` and column `constraints`, Alembic `create_table`, `add_column` and
 `create_foreign_key` (also through `batch_alter_table`). A foreign key counts as indexed when an

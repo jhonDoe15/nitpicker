@@ -31,7 +31,7 @@ func ClosedCount(ctx context.Context, db *sql.DB) (count int, err error) {
 }
 
 func CountClosedLater(ctx context.Context, db *sql.DB) (int, error) {
-	rows, err := db.QueryContext(ctx, "SELECT id FROM users")
+	rows, err := db.QueryContext(ctx, "SELECT id FROM users") // want repeated-string-literal
 	if err != nil {
 		return 0, err
 	}
