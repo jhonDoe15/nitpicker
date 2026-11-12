@@ -1,7 +1,10 @@
 import { spawnSyncWithOutputFile } from '../../../../core/tooling/output-file/output-file.mjs';
 import { fileURLToPath } from 'node:url';
+import { checkoutModulePath } from '../../../../shared/paths/checkout-module.mjs';
 
-export const SUPERVISOR = fileURLToPath(new URL('./gradle-supervisor.mjs', import.meta.url));
+export const SUPERVISOR = checkoutModulePath(
+  fileURLToPath(new URL('./gradle-supervisor.mjs', import.meta.url)),
+);
 const JSON_OVERHEAD = 6;
 const ENVELOPE_OVERHEAD_BYTES = 4096;
 
