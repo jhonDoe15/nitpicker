@@ -1,0 +1,37 @@
+{
+  "findings": [
+    {
+      "tool": "duplicates",
+      "rule": "cpd-not-run",
+      "path": ".",
+      "identity": "cpd-not-run@:core",
+      "message": "No CPD duplicate report for core.",
+      "classification": "descriptive",
+      "toolNotRun": true,
+      "notRunScope": ["core/src/main/java", "core/src/test/java"],
+      "notRunIdentityPrefix": "cpd:"
+    },
+    {
+      "tool": "duplicates",
+      "rule": "cpd-not-run",
+      "path": ".",
+      "identity": "cpd-not-run@:lib",
+      "message": "No CPD duplicate report for lib.",
+      "classification": "descriptive",
+      "toolNotRun": true,
+      "notRunScope": ["lib/src/main/java"],
+      "notRunIdentityPrefix": "cpd:"
+    },
+    {
+      "tool": "duplicates",
+      "rule": "cpd-not-run",
+      "path": ".",
+      "identity": "cpd-not-run@:lib-tests",
+      "message": "No CPD duplicate report for lib-tests.",
+      "classification": "descriptive",
+      "toolNotRun": true,
+      "notRunScope": ["lib/src/test/java"],
+      "notRunIdentityPrefix": "cpd:"
+    }
+  ]
+}

@@ -291,7 +291,12 @@ describe.skipIf(process.platform === 'win32')('runPmd', () => {
       mkdirSync(directory, { recursive: true });
     }
     writeFileSync(path.join(mainRoot, 'Demo.java'), 'class Demo {}\n');
-    const module = { basedir, sourceRoots: [mainRoot], testSourceRoots: [testRoot] };
+    const module = {
+      basedir,
+      sourceRoots: [mainRoot],
+      testSourceRoots: [testRoot],
+      compiler: { compilerArgs: [] },
+    };
     const classpaths = { mainCompile: [], testCompile: [] };
     runPmd({
       module,
@@ -321,11 +326,12 @@ describe.skipIf(process.platform === 'win32')('runPmd', () => {
   it('adds the Spring rule sets to the main-only and test-only wrappers of a Spring module', () => {
     const run = pmdRun(true);
 
-    expect(run.rulesets).toEqual([
+    expect(run.rulesets.slice(0, 3)).toEqual([
       shipped('pmd-ruleset.xml'),
       path.join(run.reportDir, 'pmd-tests.xml'),
       path.join(run.reportDir, 'pmd-main.xml'),
     ]);
+    expect(run.rulesets.slice(3).every((file) => path.dirname(file) === run.reportDir)).toBe(true);
     expect(run.mainRules).toEqual([shipped('pmd-main-ruleset.xml'), shipped('spring-ruleset.xml')]);
     expect(run.testRules).toEqual([
       shipped('pmd-test-ruleset.xml'),

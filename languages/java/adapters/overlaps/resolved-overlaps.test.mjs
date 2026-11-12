@@ -112,18 +112,44 @@ describe('overlaps on the probe project', () => {
         ['errorprone/StatementSwitchToExpressionSwitch', 'pmd/NonExhaustiveSwitch'],
       ],
       ['Encodings.java:9', ['errorprone/DefaultCharset', 'pmd/AvoidFileStream']],
+      ['G12Worker.java:8', ['forbiddenapis/new-thread', 'pmd/ClassLoadEffect']],
       ['G2Stored.java:7', ['errorprone/NullAway', 'pmd/UseVarargs']],
+      ['GuardOverlaps.java:38', ['checkstyle/MagicNumber', 'forbiddenapis/thread-sleep']],
       [
         'Hiding.java:12',
-        ['errorprone/HidingField', 'spotbugs/URF_UNREAD_PUBLIC_OR_PROTECTED_FIELD'],
+        [
+          'checkstyle/VisibilityModifier',
+          'errorprone/HidingField',
+          'spotbugs/URF_UNREAD_PUBLIC_OR_PROTECTED_FIELD',
+        ],
       ],
+      [
+        'Hiding.java:4',
+        ['checkstyle/VisibilityModifier', 'spotbugs/URF_UNREAD_PUBLIC_OR_PROTECTED_FIELD'],
+      ],
+      [
+        'Hiding.java:8',
+        ['checkstyle/VisibilityModifier', 'spotbugs/URF_UNREAD_PUBLIC_OR_PROTECTED_FIELD'],
+      ],
+      ['Locks.java:17', ['forbiddenapis/legacy-date-time', 'pmd/UnsynchronizedStaticFormatter']],
       ['Misc.java:23', ['errorprone/SynchronizeOnNonFinalField', 'pmd/AvoidSynchronizedStatement']],
-      ['Numbers.java:9', ['errorprone/RandomModInteger', 'spotbugs/DMI_RANDOM_USED_ONLY_ONCE']],
+      ['Numbers.java:10', ['checkstyle/MagicNumber', 'errorprone/ComparisonOutOfRange']],
+      ['Numbers.java:7', ['checkstyle/MagicNumber', 'errorprone/BadShiftAmount']],
+      [
+        'Numbers.java:9',
+        [
+          'checkstyle/MagicNumber',
+          'errorprone/RandomModInteger',
+          'spotbugs/DMI_RANDOM_USED_ONLY_ONCE',
+        ],
+      ],
       ['Obsolete.java:10', ['errorprone/JdkObsolete', 'pmd/LooseCoupling']],
       ['Obsolete.java:11', ['errorprone/JdkObsolete', 'pmd/LooseCoupling']],
       ['Obsolete.java:12', ['errorprone/JdkObsolete', 'pmd/LooseCoupling']],
       ['Obsolete.java:13', ['errorprone/JdkObsolete', 'pmd/LooseCoupling']],
       ['OldTest.java:14', ['errorprone/RedundantNullCheck', 'pmd/SimplifiableTestAssertion']],
+      ['P2Inner.java:10', ['forbiddenapis/legacy-date-time', 'pmd/UnsynchronizedStaticFormatter']],
+      ['P2Inner.java:6', ['checkstyle/VisibilityModifier', 'errorprone/NonFinalStaticField']],
       ['P2Inner.java:7', ['errorprone/NonFinalStaticField', 'pmd/LegacyCalendarApi']],
       [
         'P2Strings.java:21',
@@ -132,11 +158,34 @@ describe('overlaps on the probe project', () => {
           'spotbugs/REFLC_REFLECTION_MAY_INCREASE_ACCESSIBILITY_OF_CLASS',
         ],
       ],
+      ['P2Strings.java:26', ['checkstyle/MagicNumber', 'forbiddenapis/thread-sleep']],
       ['SelfAssign.java:7', ['errorprone/SelfAssignment', 'pmd/AvoidReassigningParameters']],
+      ['Shared.java:16', ['forbiddenapis/legacy-date-time', 'pmd/UnsynchronizedStaticFormatter']],
+      ['Skip.java:8', ['checkstyle/MagicNumber', 'pmd/CheckSkipResult']],
+      ['Stamps.java:11', ['forbiddenapis/legacy-date-time', 'pmd/UnsynchronizedStaticFormatter']],
+      [
+        'StaticCtor.java:7',
+        ['checkstyle/MagicNumber', 'spotbugs/ST_WRITE_TO_STATIC_FROM_INSTANCE_METHOD'],
+      ],
+      [
+        'Types.java:7',
+        [
+          'checkstyle/MagicNumber',
+          'errorprone/CollectionIncompatibleType',
+          'errorprone/EqualsIncompatibleType',
+        ],
+      ],
+      ['V1Style.java:10', ['checkstyle/VisibilityModifier', 'errorprone/MixedArrayDimensions']],
+      ['V1Style.java:13', ['checkstyle/MagicNumber', 'errorprone/BigDecimalLiteralDouble']],
       [
         'V1Style.java:8',
         ['errorprone/AnnotationPosition', 'errorprone/FieldCanBeStatic', 'pmd/CompatibilityShim'],
       ],
+      [
+        'V3Unused.java:5',
+        ['checkstyle/MagicNumber', 'pmd/UnusedAssignment', 'pmd/UnusedLocalVariable'],
+      ],
+      ['V3Unused.java:6', ['checkstyle/MagicNumber', 'pmd/UnusedAssignment']],
     ]);
   });
 

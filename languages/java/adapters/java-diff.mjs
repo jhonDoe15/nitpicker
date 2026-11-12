@@ -43,6 +43,14 @@ import { gradleStages } from './gradle-wrapper/gradle-stages.mjs';
 import { gradleDesignFindings, mavenDesignFindings } from './design/design-modules.mjs';
 
 const CLOCK_SLACK_MS = 2000;
+const GRADLE_FLAGS = ['--console=plain', '--quiet', '--no-configuration-cache'];
+
+export function lintBaselineProperties({ snapshot, baselineRoot } = {}) {
+  return snapshot === 'head' && baselineRoot !== undefined
+    ? [`-Pnitpicker.lintBaseline=${baselineRoot}`]
+    : [];
+}
+
 function runJavaPreset(
   projectRoot,
   {
@@ -60,11 +68,11 @@ function runJavaPreset(
   const since = Date.now() - CLOCK_SLACK_MS;
   withKotlin((kotlinArguments) => {
     const common = [
-      '--console=plain',
-      '--quiet',
-      '--no-configuration-cache',
+      ...GRADLE_FLAGS,
       ...(policy.snapshot === 'base' ? ['--continue'] : []),
       `-Pnitpicker.reportDir=${reportBase}`,
+      `-Pnitpicker.node=${process.execPath}`,
+      ...lintBaselineProperties(policy),
       ...kotlinArguments,
     ];
     const stages = gradleStages(common, {
@@ -201,24 +209,28 @@ function collectBothSnapshots({
   const head = { commitSha: comparison.headSha, warn };
   return withTemporaryWorktree(repositoryRoot, head, (headWorktree) => {
     const policyRoot = path.join(headWorktree, projectRelativePath);
-    function collectIn(worktreeRoot, snapshot) {
+    function collectIn(worktreeRoot, snapshot, extra = {}) {
       return collectJavaFindings(path.join(worktreeRoot, projectRelativePath), {
         ...options,
-        policy: { ...policy, snapshot, policyRoot },
+        policy: { ...policy, snapshot, policyRoot, ...extra },
       });
     }
-    const headFindings = collectIn(headWorktree, 'head');
-    const collectedBase = withTemporaryWorktree(
+    return withTemporaryWorktree(
       repositoryRoot,
       { commitSha: comparison.mergeBaseSha, warn },
-      (baseWorktree) => collectIn(baseWorktree, 'base'),
+      (baseWorktree) => {
+        const collectedBase = collectIn(baseWorktree, 'base');
+        const headFindings = collectIn(headWorktree, 'head', {
+          baselineRoot: path.join(baseWorktree, projectRelativePath),
+        });
+        const notes = testFailuresOf({ findings: collectedBase });
+        return {
+          notes,
+          baseFindings: collectedBase.filter((finding) => !notes.includes(finding)),
+          headFindings,
+        };
+      },
     );
-    const notes = testFailuresOf({ findings: collectedBase });
-    return {
-      notes,
-      baseFindings: collectedBase.filter((finding) => !notes.includes(finding)),
-      headFindings,
-    };
   });
 }
 
@@ -226,7 +238,10 @@ function withEnforceable(outcome) {
   const newEnforceable = outcome.newFindings.filter(
     (finding) => finding.classification === 'enforceable',
   );
-  return { ...outcome, newEnforceable, failed: newEnforceable.length > 0 };
+  const failed =
+    newEnforceable.length > 0 ||
+    outcome.newFindings.some((finding) => finding.classification === 'tool-error');
+  return { ...outcome, newEnforceable, failed };
 }
 
 export function runJavaDiff({

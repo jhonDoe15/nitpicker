@@ -61,7 +61,9 @@
     "src/main/java/probe/V3Unused.java": "package probe;\n\npublic class V3Unused {\n  public int compute(int used, int unusedParam) {\n    int dead = 3;\n    dead = 4;\n    return used;\n  }\n\n  private void neverCalled() {}\n}\n",
     "src/main/java/probe/Volatile.java": "package probe;\n\npublic class Volatile {\n  private volatile int v;\n  private final Object lock = new Object();\n  private Object inst;\n\n  public void inc() {\n    v++;\n  }\n\n  public void await() throws InterruptedException {\n    synchronized (lock) {\n      lock.wait();\n    }\n  }\n\n  public Object get() {\n    if (inst == null) {\n      synchronized (this) {\n        if (inst == null) {\n          inst = new Object();\n        }\n      }\n    }\n    return inst;\n  }\n}\n",
     "src/main/java/probe/other/G1Reader.java": "package probe.other;\n\nimport probe.G1Mutable;\n\npublic class G1Reader {\n  public int count() {\n    return G1Mutable.NAMES.length;\n  }\n}\n",
-    "src/test/java/probe/OldTest.java": "package probe;\n\nimport static org.junit.Assert.assertTrue;\n\nimport org.junit.Test;\n\npublic class OldTest {\n  public void setUp() {}\n\n  public void tearDown() {}\n\n  @Test\n  public void works() {\n    assertTrue(new Recur() != null);\n  }\n}\n"
+    "src/test/java/probe/OldTest.java": "package probe;\n\nimport static org.junit.Assert.assertTrue;\n\nimport org.junit.Test;\n\npublic class OldTest {\n  public void setUp() {}\n\n  public void tearDown() {}\n\n  @Test\n  public void works() {\n    assertTrue(new Recur() != null);\n  }\n}\n",
+    "src/main/java/probe/G13Guards.java": "package probe;\n\nimport java.sql.Connection;\nimport java.sql.PreparedStatement;\nimport java.sql.SQLException;\nimport java.sql.Statement;\nimport java.util.List;\nimport java.util.Optional;\n\npublic class G13Guards {\n  boolean find(Connection connection, String name) throws SQLException {\n    try (Statement statement = connection.createStatement()) {\n      return statement.execute(\"select * from users where name = '\" + name + \"'\");\n    }\n  }\n\n  boolean prepare(Connection connection, String name) throws SQLException {\n    try (PreparedStatement statement =\n        connection.prepareStatement(\"select * from users where name = '\" + name + \"'\")) {\n      return statement.execute();\n    }\n  }\n\n  boolean big(int size) {\n    boolean exact = false;\n    if (size == 42) {\n      exact = true;\n    }\n    return exact;\n  }\n\n  int tags(Optional<List<String>> tags) {\n    return tags.map(List::size).orElse(0);\n  }\n}\n",
+    "src/main/java/probe/GuardOverlaps.java": "package probe;\n\nimport java.io.IOException;\nimport java.io.InputStream;\nimport java.io.ObjectInputStream;\nimport java.nio.file.Files;\nimport java.nio.file.Path;\nimport java.time.LocalDate;\nimport java.util.Calendar;\nimport java.util.Date;\nimport java.util.TimeZone;\n\npublic class GuardOverlaps {\n  long lines(Path path) throws IOException {\n    return Files.lines(path).count();\n  }\n\n  String trimmed(Object value) {\n    if (value instanceof String) {\n      return ((String) value).trim();\n    }\n    return \"\";\n  }\n\n  void fail() {\n    throw new RuntimeException(\"failed\");\n  }\n\n  Date created() {\n    return new Date();\n  }\n\n  LocalDate today() {\n    return LocalDate.now();\n  }\n\n  void pause() throws InterruptedException {\n    Thread.sleep(10);\n  }\n\n  Object read(InputStream input) throws IOException, ClassNotFoundException {\n    return new ObjectInputStream(input).readObject();\n  }\n\n  TimeZone zone() {\n    return TimeZone.getDefault();\n  }\n\n  Calendar calendar() {\n    return Calendar.getInstance();\n  }\n}\n"
   },
   "findings": [
     {
@@ -75,6 +77,12 @@
       "rule": "FallThrough",
       "path": "src/main/java/probe/C4Switches.java",
       "line": 22
+    },
+    {
+      "tool": "checkstyle",
+      "rule": "MagicNumber",
+      "path": "src/main/java/probe/C4Switches.java",
+      "line": 26
     },
     {
       "tool": "checkstyle",
@@ -102,9 +110,21 @@
     },
     {
       "tool": "checkstyle",
+      "rule": "ConstantName",
+      "path": "src/main/java/probe/C7Names.java",
+      "line": 4
+    },
+    {
+      "tool": "checkstyle",
       "rule": "MemberName",
       "path": "src/main/java/probe/C7Names.java",
       "line": 6
+    },
+    {
+      "tool": "checkstyle",
+      "rule": "MagicNumber",
+      "path": "src/main/java/probe/G13Guards.java",
+      "line": 26
     },
     {
       "tool": "checkstyle",
@@ -138,9 +158,63 @@
     },
     {
       "tool": "checkstyle",
+      "rule": "MagicNumber",
+      "path": "src/main/java/probe/G7Flag.java",
+      "line": 9
+    },
+    {
+      "tool": "checkstyle",
+      "rule": "MagicNumber",
+      "path": "src/main/java/probe/GuardOverlaps.java",
+      "line": 38
+    },
+    {
+      "tool": "checkstyle",
+      "rule": "VisibilityModifier",
+      "path": "src/main/java/probe/Hiding.java",
+      "line": 12
+    },
+    {
+      "tool": "checkstyle",
+      "rule": "VisibilityModifier",
+      "path": "src/main/java/probe/Hiding.java",
+      "line": 4
+    },
+    {
+      "tool": "checkstyle",
+      "rule": "VisibilityModifier",
+      "path": "src/main/java/probe/Hiding.java",
+      "line": 8
+    },
+    {
+      "tool": "checkstyle",
       "rule": "JavadocMethod",
       "path": "src/main/java/probe/Misc.java",
       "line": 16
+    },
+    {
+      "tool": "checkstyle",
+      "rule": "MagicNumber",
+      "path": "src/main/java/probe/Numbers.java",
+      "line": 10
+    },
+    {
+      "tool": "checkstyle",
+      "rule": "MagicNumber",
+      "path": "src/main/java/probe/Numbers.java",
+      "line": 7
+    },
+    {
+      "tool": "checkstyle",
+      "rule": "MagicNumber",
+      "path": "src/main/java/probe/Numbers.java",
+      "line": 9
+    },
+    {
+      "tool": "checkstyle",
+      "rule": "VisibilityModifier",
+      "path": "src/main/java/probe/P2Inner.java",
+      "line": 6
     },
     {
       "tool": "checkstyle",
@@ -150,15 +224,81 @@
     },
     {
       "tool": "checkstyle",
+      "rule": "MagicNumber",
+      "path": "src/main/java/probe/P2Strings.java",
+      "line": 26
+    },
+    {
+      "tool": "checkstyle",
+      "rule": "VisibilityModifier",
+      "path": "src/main/java/probe/P3Fields.java",
+      "line": 5
+    },
+    {
+      "tool": "checkstyle",
+      "rule": "VisibilityModifier",
+      "path": "src/main/java/probe/P3Fields.java",
+      "line": 7
+    },
+    {
+      "tool": "checkstyle",
+      "rule": "MagicNumber",
+      "path": "src/main/java/probe/Skip.java",
+      "line": 8
+    },
+    {
+      "tool": "checkstyle",
+      "rule": "MagicNumber",
+      "path": "src/main/java/probe/StaticCtor.java",
+      "line": 7
+    },
+    {
+      "tool": "checkstyle",
+      "rule": "MagicNumber",
+      "path": "src/main/java/probe/Types.java",
+      "line": 7
+    },
+    {
+      "tool": "checkstyle",
+      "rule": "MagicNumber",
+      "path": "src/main/java/probe/Types.java",
+      "line": 7
+    },
+    {
+      "tool": "checkstyle",
       "rule": "ArrayTypeStyle",
       "path": "src/main/java/probe/V1Style.java",
       "line": 10
     },
     {
       "tool": "checkstyle",
+      "rule": "VisibilityModifier",
+      "path": "src/main/java/probe/V1Style.java",
+      "line": 10
+    },
+    {
+      "tool": "checkstyle",
+      "rule": "MagicNumber",
+      "path": "src/main/java/probe/V1Style.java",
+      "line": 118
+    },
+    {
+      "tool": "checkstyle",
       "rule": "OneTopLevelClass",
       "path": "src/main/java/probe/V1Style.java",
       "line": 123
+    },
+    {
+      "tool": "checkstyle",
+      "rule": "MagicNumber",
+      "path": "src/main/java/probe/V1Style.java",
+      "line": 13
+    },
+    {
+      "tool": "checkstyle",
+      "rule": "MagicNumber",
+      "path": "src/main/java/probe/V1Style.java",
+      "line": 33
     },
     {
       "tool": "checkstyle",
@@ -213,6 +353,18 @@
       "rule": "JavadocMethod",
       "path": "src/main/java/probe/V2Docs.java",
       "line": 8
+    },
+    {
+      "tool": "checkstyle",
+      "rule": "MagicNumber",
+      "path": "src/main/java/probe/V3Unused.java",
+      "line": 5
+    },
+    {
+      "tool": "checkstyle",
+      "rule": "MagicNumber",
+      "path": "src/main/java/probe/V3Unused.java",
+      "line": 6
     },
     {
       "tool": "errorprone",
@@ -657,6 +809,48 @@
       "rule": "ForEachIterable",
       "path": "src/main/java/probe/G9Loop.java",
       "line": 9
+    },
+    {
+      "tool": "errorprone",
+      "rule": "StreamResourceLeak",
+      "path": "src/main/java/probe/GuardOverlaps.java",
+      "line": 15
+    },
+    {
+      "tool": "errorprone",
+      "rule": "PatternMatchingInstanceof",
+      "path": "src/main/java/probe/GuardOverlaps.java",
+      "line": 19
+    },
+    {
+      "tool": "errorprone",
+      "rule": "ThrowSpecificExceptions",
+      "path": "src/main/java/probe/GuardOverlaps.java",
+      "line": 26
+    },
+    {
+      "tool": "errorprone",
+      "rule": "JavaUtilDate",
+      "path": "src/main/java/probe/GuardOverlaps.java",
+      "line": 30
+    },
+    {
+      "tool": "errorprone",
+      "rule": "JavaTimeDefaultTimeZone",
+      "path": "src/main/java/probe/GuardOverlaps.java",
+      "line": 34
+    },
+    {
+      "tool": "errorprone",
+      "rule": "PreferJavaTimeOverload",
+      "path": "src/main/java/probe/GuardOverlaps.java",
+      "line": 38
+    },
+    {
+      "tool": "errorprone",
+      "rule": "BanSerializableRead",
+      "path": "src/main/java/probe/GuardOverlaps.java",
+      "line": 42
     },
     {
       "tool": "errorprone",
@@ -1349,6 +1543,246 @@
       "line": 8
     },
     {
+      "tool": "forbiddenapis",
+      "rule": "legacy-date-time",
+      "path": "src/main/java/probe/C1Arrays.java",
+      "line": 20
+    },
+    {
+      "tool": "forbiddenapis",
+      "rule": "legacy-date-time",
+      "path": "src/main/java/probe/C1Arrays.java",
+      "line": 24
+    },
+    {
+      "tool": "forbiddenapis",
+      "rule": "legacy-date-time",
+      "path": "src/main/java/probe/C1Arrays.java",
+      "line": 8
+    },
+    {
+      "tool": "forbiddenapis",
+      "rule": "thread-sleep",
+      "path": "src/main/java/probe/C4Switches.java",
+      "line": 33
+    },
+    {
+      "tool": "forbiddenapis",
+      "rule": "thread-sleep",
+      "path": "src/main/java/probe/C7Names.java",
+      "line": 10
+    },
+    {
+      "tool": "forbiddenapis",
+      "rule": "new-thread",
+      "path": "src/main/java/probe/G12Worker.java",
+      "line": 8
+    },
+    {
+      "tool": "forbiddenapis",
+      "rule": "legacy-date-time",
+      "path": "src/main/java/probe/GuardOverlaps.java",
+      "line": 29
+    },
+    {
+      "tool": "forbiddenapis",
+      "rule": "legacy-date-time",
+      "path": "src/main/java/probe/GuardOverlaps.java",
+      "line": 30
+    },
+    {
+      "tool": "forbiddenapis",
+      "rule": "clock-now",
+      "path": "src/main/java/probe/GuardOverlaps.java",
+      "line": 34
+    },
+    {
+      "tool": "forbiddenapis",
+      "rule": "thread-sleep",
+      "path": "src/main/java/probe/GuardOverlaps.java",
+      "line": 38
+    },
+    {
+      "tool": "forbiddenapis",
+      "rule": "java-deserialization",
+      "path": "src/main/java/probe/GuardOverlaps.java",
+      "line": 42
+    },
+    {
+      "tool": "forbiddenapis",
+      "rule": "legacy-date-time",
+      "path": "src/main/java/probe/GuardOverlaps.java",
+      "line": 45
+    },
+    {
+      "tool": "forbiddenapis",
+      "rule": "legacy-date-time",
+      "path": "src/main/java/probe/GuardOverlaps.java",
+      "line": 46
+    },
+    {
+      "tool": "forbiddenapis",
+      "rule": "legacy-date-time",
+      "path": "src/main/java/probe/GuardOverlaps.java",
+      "line": 49
+    },
+    {
+      "tool": "forbiddenapis",
+      "rule": "legacy-date-time",
+      "path": "src/main/java/probe/GuardOverlaps.java",
+      "line": 50
+    },
+    {
+      "tool": "forbiddenapis",
+      "rule": "legacy-date-time",
+      "path": "src/main/java/probe/Locales.java",
+      "line": 9
+    },
+    {
+      "tool": "forbiddenapis",
+      "rule": "legacy-date-time",
+      "path": "src/main/java/probe/Locales.java",
+      "line": 9
+    },
+    {
+      "tool": "forbiddenapis",
+      "rule": "legacy-date-time",
+      "path": "src/main/java/probe/Locks.java",
+      "line": 11
+    },
+    {
+      "tool": "forbiddenapis",
+      "rule": "legacy-date-time",
+      "path": "src/main/java/probe/Locks.java",
+      "line": 17
+    },
+    {
+      "tool": "forbiddenapis",
+      "rule": "legacy-date-time",
+      "path": "src/main/java/probe/P2Inner.java",
+      "line": 10
+    },
+    {
+      "tool": "forbiddenapis",
+      "rule": "legacy-date-time",
+      "path": "src/main/java/probe/P2Inner.java",
+      "line": 7
+    },
+    {
+      "tool": "forbiddenapis",
+      "rule": "thread-sleep",
+      "path": "src/main/java/probe/P2Strings.java",
+      "line": 26
+    },
+    {
+      "tool": "forbiddenapis",
+      "rule": "legacy-date-time",
+      "path": "src/main/java/probe/Shared.java",
+      "line": 10
+    },
+    {
+      "tool": "forbiddenapis",
+      "rule": "legacy-date-time",
+      "path": "src/main/java/probe/Shared.java",
+      "line": 11
+    },
+    {
+      "tool": "forbiddenapis",
+      "rule": "legacy-date-time",
+      "path": "src/main/java/probe/Shared.java",
+      "line": 15
+    },
+    {
+      "tool": "forbiddenapis",
+      "rule": "legacy-date-time",
+      "path": "src/main/java/probe/Shared.java",
+      "line": 16
+    },
+    {
+      "tool": "forbiddenapis",
+      "rule": "legacy-date-time",
+      "path": "src/main/java/probe/Shared.java",
+      "line": 20
+    },
+    {
+      "tool": "forbiddenapis",
+      "rule": "legacy-date-time",
+      "path": "src/main/java/probe/Shared.java",
+      "line": 23
+    },
+    {
+      "tool": "forbiddenapis",
+      "rule": "legacy-date-time",
+      "path": "src/main/java/probe/Shared.java",
+      "line": 24
+    },
+    {
+      "tool": "forbiddenapis",
+      "rule": "legacy-date-time",
+      "path": "src/main/java/probe/Shared.java",
+      "line": 27
+    },
+    {
+      "tool": "forbiddenapis",
+      "rule": "legacy-date-time",
+      "path": "src/main/java/probe/Shared.java",
+      "line": 28
+    },
+    {
+      "tool": "forbiddenapis",
+      "rule": "legacy-date-time",
+      "path": "src/main/java/probe/Shared.java",
+      "line": 28
+    },
+    {
+      "tool": "forbiddenapis",
+      "rule": "legacy-date-time",
+      "path": "src/main/java/probe/Shared.java",
+      "line": 32
+    },
+    {
+      "tool": "forbiddenapis",
+      "rule": "legacy-date-time",
+      "path": "src/main/java/probe/Shared.java",
+      "line": 32
+    },
+    {
+      "tool": "forbiddenapis",
+      "rule": "legacy-date-time",
+      "path": "src/main/java/probe/Shared.java",
+      "line": 9
+    },
+    {
+      "tool": "forbiddenapis",
+      "rule": "legacy-date-time",
+      "path": "src/main/java/probe/Stamps.java",
+      "line": 10
+    },
+    {
+      "tool": "forbiddenapis",
+      "rule": "legacy-date-time",
+      "path": "src/main/java/probe/Stamps.java",
+      "line": 11
+    },
+    {
+      "tool": "forbiddenapis",
+      "rule": "legacy-date-time",
+      "path": "src/main/java/probe/Stamps.java",
+      "line": 8
+    },
+    {
+      "tool": "forbiddenapis",
+      "rule": "thread-sleep",
+      "path": "src/main/java/probe/V1Style.java",
+      "line": 111
+    },
+    {
+      "tool": "forbiddenapis",
+      "rule": "thread-sleep",
+      "path": "src/main/java/probe/V1Style.java",
+      "line": 46
+    },
+    {
       "tool": "pmd",
       "rule": "UseVarargs",
       "path": "src/main/java/probe/Arrays1.java",
@@ -1560,6 +1994,30 @@
     },
     {
       "tool": "pmd",
+      "rule": "SqlConcatenation",
+      "path": "src/main/java/probe/G13Guards.java",
+      "line": 13
+    },
+    {
+      "tool": "pmd",
+      "rule": "SqlConcatenation",
+      "path": "src/main/java/probe/G13Guards.java",
+      "line": 19
+    },
+    {
+      "tool": "pmd",
+      "rule": "AvoidLiteralsInIfCondition",
+      "path": "src/main/java/probe/G13Guards.java",
+      "line": 26
+    },
+    {
+      "tool": "pmd",
+      "rule": "OptionalAsFieldOrParameter",
+      "path": "src/main/java/probe/G13Guards.java",
+      "line": 32
+    },
+    {
+      "tool": "pmd",
       "rule": "UseVarargs",
       "path": "src/main/java/probe/G2Stored.java",
       "line": 11
@@ -1617,6 +2075,36 @@
       "rule": "AvoidSynchronizedAtMethodLevel",
       "path": "src/main/java/probe/Guarded.java",
       "line": 6
+    },
+    {
+      "tool": "pmd",
+      "rule": "StreamResourceNotClosed",
+      "path": "src/main/java/probe/GuardOverlaps.java",
+      "line": 15
+    },
+    {
+      "tool": "pmd",
+      "rule": "InstanceofThenCast",
+      "path": "src/main/java/probe/GuardOverlaps.java",
+      "line": 19
+    },
+    {
+      "tool": "pmd",
+      "rule": "AvoidThrowingRawExceptionTypes",
+      "path": "src/main/java/probe/GuardOverlaps.java",
+      "line": 26
+    },
+    {
+      "tool": "pmd",
+      "rule": "DefaultTimeZone",
+      "path": "src/main/java/probe/GuardOverlaps.java",
+      "line": 46
+    },
+    {
+      "tool": "pmd",
+      "rule": "LegacyCalendarApi",
+      "path": "src/main/java/probe/GuardOverlaps.java",
+      "line": 50
     },
     {
       "tool": "pmd",
@@ -2064,6 +2552,18 @@
     },
     {
       "tool": "pmd",
+      "rule": "OptionalAsFieldOrParameter",
+      "path": "src/main/java/probe/V1Style.java",
+      "line": 84
+    },
+    {
+      "tool": "pmd",
+      "rule": "OptionalAsFieldOrParameter",
+      "path": "src/main/java/probe/V1Style.java",
+      "line": 84
+    },
+    {
+      "tool": "pmd",
       "rule": "CompareObjectsWithEquals",
       "path": "src/main/java/probe/V1Style.java",
       "line": 85
@@ -2448,6 +2948,20 @@
       "path": "src/main/java/probe/G12Worker.java",
       "line": 8,
       "symbol": "Thread.start()"
+    },
+    {
+      "tool": "spotbugs",
+      "rule": "SQL_NONCONSTANT_STRING_PASSED_TO_EXECUTE",
+      "path": "src/main/java/probe/G13Guards.java",
+      "line": 13,
+      "symbol": "probe.G13Guards.find(Connection, String)"
+    },
+    {
+      "tool": "spotbugs",
+      "rule": "SQL_PREPARED_STATEMENT_GENERATED_FROM_NONCONSTANT_STRING",
+      "path": "src/main/java/probe/G13Guards.java",
+      "line": 19,
+      "symbol": "probe.G13Guards.prepare(Connection, String)"
     },
     {
       "tool": "spotbugs",
