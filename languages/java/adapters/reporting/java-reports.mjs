@@ -46,6 +46,7 @@ import {
 } from './kotlin-reports.mjs';
 import { withJavaCountRatchets } from './counts/java-counts.mjs';
 import { foreignKeyGate } from '../jpa/foreign-keys/key-gate.mjs';
+import { pitFailureFindings } from '../../builds/pit-failure/pit-failure.mjs';
 
 const ROOT_MODULE = 'root';
 
@@ -220,8 +221,9 @@ function crapFindings({ reportRoot, sourceRoots, projectRoot, reactorRoot }, jac
 function pitFindings(context) {
   const { reportRoot, projectRoot } = context;
   const pitReport = path.join(reportRoot, 'pit/mutations.xml');
-  if (!existsSync(pitReport)) {
-    return [];
+  const failures = pitFailureFindings(reportRoot, context.module?.moduleDir);
+  if (failures.length > 0 || !existsSync(pitReport)) {
+    return failures;
   }
   const locate = sourceLocator(projectRoot, jacocoSourceRoots(context));
   return ingestPit(readFileSync(pitReport, 'utf8'), {

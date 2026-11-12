@@ -7,8 +7,8 @@ import { wrapperTarget } from '../adapters/gradle-wrapper/gradle-command.mjs';
 import { argumentFileToken } from '../builds/lint/javac-options.mjs';
 import { withCompileErrors } from '../builds/compile-errors/compile-findings.mjs';
 import { explainedError } from '../../../shared/messages/troubleshooting.mjs';
+import { mavenBudget } from '../adapters/gradle-wrapper/gradle-budget.mjs';
 
-const MAVEN_TIMEOUT_MS = 15 * 60 * 1000;
 const MAX_OUTPUT_BYTES = 50 * 1024 * 1024;
 const MAX_ERROR_LINES = 40;
 const MILLISECONDS_PER_MINUTE = 60_000;
@@ -82,7 +82,7 @@ export function runMaven({
   projectRoot,
   maven,
   args,
-  timeoutMs = MAVEN_TIMEOUT_MS,
+  timeoutMs = mavenBudget(process.env).commandTimeoutMs,
   spawn = spawnSyncWithOutputFile,
 }) {
   const target = mavenTarget({ projectRoot, configured: maven, args: [...MAVEN_FLAGS, ...args] });
@@ -115,6 +115,21 @@ export function javaCommand(name) {
     : name;
 }
 
+function javaSpawnFailure(error, { java, tool = 'java', cwd, timeoutMs }) {
+  if (error.code === 'ENOENT') {
+    return explainedError(
+      `java not found (${java}): set JAVA_HOME to a JDK, or put its bin directory on the PATH`,
+    );
+  }
+  if (error.code === 'ETIMEDOUT') {
+    return explainedError(
+      `${tool} did not finish in ${cwd} within ${duration(timeoutMs)} and was stopped. ` +
+        'Set NITPICKER_MAVEN_TIMEOUT_MINUTES to give each Maven command and Java tool more time',
+    );
+  }
+  return error;
+}
+
 export function runJava({
   java = javaCommand('java'),
   tool,
@@ -125,7 +140,7 @@ export function runJava({
   cwd,
   accept = () => true,
   spawn = spawnSyncWithOutputFile,
-  timeoutMs = MAVEN_TIMEOUT_MS,
+  timeoutMs = mavenBudget(process.env).commandTimeoutMs,
 }) {
   const directory = mkdtempSync(path.join(tmpdir(), 'nitpicker-java-'));
   try {
@@ -143,13 +158,8 @@ export function runJava({
       maxBuffer: MAX_OUTPUT_BYTES,
       timeout: timeoutMs,
     });
-    if (result.error?.code === 'ENOENT') {
-      throw explainedError(
-        `java not found (${java}): set JAVA_HOME to a JDK, or put its bin directory on the PATH`,
-      );
-    }
     if (result.error !== undefined) {
-      throw result.error;
+      throw javaSpawnFailure(result.error, { java, tool, cwd, timeoutMs });
     }
     if (!accept(result)) {
       const detail = `${result.stderr}\n${result.stdout}`
