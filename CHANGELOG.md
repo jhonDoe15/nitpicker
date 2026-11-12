@@ -113,6 +113,10 @@ Other changes:
 
 ### Fixed
 
+- TypeScript: the type-aware lint rules run on projects whose tsconfig sets `rootDir`, `rootDirs`,
+  `isolatedDeclarations`, an option TypeScript 7 removed, or a `types` entry that is not installed.
+  Any other tsconfig error oxlint reports now fails the ESLint analyzer with a message naming it,
+  instead of reporting without the type-aware findings (#1056).
 - An uncommitted edit made in the same second as the last index write is no longer analyzed as the
   old content (#258).
 - A timed-out Gradle build is stopped, with the processes it started, before the next snapshot
