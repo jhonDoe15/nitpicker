@@ -1,6 +1,8 @@
 import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { policyDigest, policyFindings } from '../../diff/reporting/review/policy-findings.mjs';
+import { runGit } from '../../diff/git/repository/command.mjs';
+import { captureWorkingTree } from '../../diff/git/repository/git.mjs';
 import { gitBlobId } from '../../policy-changes/policy-scope.mjs';
 import { isInside } from '../discovery/repository-files.mjs';
 import { DECLARATION_FILES } from '../plan/enclosing.mjs';
@@ -85,6 +87,13 @@ export function asProjectLoosenings(loosenings, root) {
   }));
 }
 
+function gatedHead(root, acceptedDigest) {
+  if (acceptedDigest === undefined) {
+    return undefined;
+  }
+  return captureWorkingTree(root, runGit(root, ['rev-parse', 'HEAD^{commit}']).trim());
+}
+
 function checkedPolicy({ loosenings, root, acceptedDigest }) {
   const files = [...new Set(loosenings.flatMap((entry) => entry.files))].toSorted();
   const digest = policyDigest({
@@ -92,7 +101,8 @@ function checkedPolicy({ loosenings, root, acceptedDigest }) {
     files: files.map((file) => [file, gitBlobId(readFileSync(inside(root, file)))]),
   });
   const texts = loosenings.map(({ text }) => text);
-  const findings = policyFindings(texts, digest, { acceptedDigest });
+  const headSha = gatedHead(root, acceptedDigest);
+  const findings = policyFindings(texts, digest, { acceptedDigest, headSha });
   return {
     policyLoosenings: texts,
     policyDigest: digest,

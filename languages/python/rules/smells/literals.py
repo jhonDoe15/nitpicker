@@ -1,11 +1,10 @@
 import ast
 import re
 
-from checks.common import finding, last_name
+from checks.common import finding, last_name, shown
 
 MINIMUM_LENGTH = 5
 MAXIMUM_USES = 2
-SHOWN_LENGTH = 30
 ALPHANUMERIC = re.compile(r"[A-Za-z0-9]")
 TRANSLATION_CALLS = {
     "_",
@@ -168,10 +167,6 @@ def is_countable(node, parents, skipped):
     if is_subscript_key(node, parents) or is_listed_constant(node, parents):
         return False
     return not is_literal_subscript(node, parents)
-
-
-def shown(value):
-    return value[:SHOWN_LENGTH] + "..." if len(value) > SHOWN_LENGTH else value
 
 
 def check(context):

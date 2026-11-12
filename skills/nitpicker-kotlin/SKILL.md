@@ -5,107 +5,78 @@ description: Use before writing or changing Kotlin in a project that runs nitpic
 
 # nitpicker for Kotlin
 
+Written for nitpicker 0.1.0-rc.2. If `npx nitpicker --version` prints another version, reinstall
+this skill with the command `npx nitpicker init` prints.
+
 nitpicker allows one way to write each construct. Write it that way from the start; the gate is a
 backstop. It fails only on findings your change adds, so leave code the task doesn't need alone.
 Java sources in the same project follow the `nitpicker-java` skill; if it isn't installed, install
-it with `npx skills add jhonDoe15/nitpicker --skill nitpicker-java`.
+it with the command `npx nitpicker init` prints, with `--skill nitpicker-java`.
+
+## Check one file or folder
+
+To look at one file or folder, for example before you change it, pass its path: `npx nitpicker --all
+src/main/kotlin/com/example/orders` lists every finding in it, and `npx nitpicker
+src/main/kotlin/com/example/orders/Order.kt` gates only your change to that file. Paths are read
+from the current folder. The analysis still covers the whole project, so it takes as long as a full
+run; finish with the plain run below.
 
 ## Finish with the gate
 
-1. Run the project's tests (`./gradlew test`). Failing tests stop coverage, CRAP and mutation from
-   running.
-2. When the change is complete, run `npx nitpicker` as a background command you wait on, without a
-   pipe: you need its exit code. It has no `--fix` for Kotlin; format with the command and notes
-   printed at the start of the run. It runs Gradle on the merge base and on head, with the project's `./gradlew` when there
-   is one, otherwise `gradle` from the PATH (`NITPICKER_GRADLE` overrides both). It takes minutes
-   and prints a progress line for each slow analyzer.
+While you iterate, run `npx nitpicker --quick`: it skips the tests and the checks built on them;
+read the printed skipped list for what it left out. A quick run is never a pass; finish with the
+full run below.
+
+1. Run the project's tests (`./gradlew test`, or `./mvnw test` on Maven). Failing tests stop
+   coverage, CRAP and mutation from running.
+2. When the change is complete, run `npx nitpicker --fix` as a background command you wait on,
+   without a pipe: you need its exit code. It first rewrites the changed Kotlin and Java files with
+   the formatter named at the start of the run (ktlint or ktfmt, google-java-format for Java) and
+   lists them under "Fixed files:"; re-read those files before you edit them again. When a "Fix
+   notes:" line says no formatter was found, keep the layout by hand. Then it runs the project's
+   build (Gradle, or Maven with `kotlin-maven-plugin`) on the merge base and on head, with the
+   project's `./gradlew` or `./mvnw` when there is one, otherwise `gradle` or `mvn` from the PATH
+   (`NITPICKER_GRADLE` or `NITPICKER_MAVEN` overrides both). It takes minutes and prints a progress
+   line for each slow analyzer.
 3. Act on the exit code:
-   - 0: done.
-   - 1: fix every new finding and any tool error listed below them, then rerun.
-   - 2: no new findings, but a tool failed. Fix the cause it names (usually a failing test or a
-     Gradle error) and rerun. Exit 2 is never a pass. If it says another run is in progress, wait
+   - 0: done, unless you narrowed the run with `--analyzer`: then the summary says `Ran only: ...`
+     and you run the gate again without it before you finish.
+   - 1: fix the failing tests the summary leads with, every new finding and any tool error listed
+     below them, then rerun. A compile error is a `build/compile-error` finding at its line; fix it
+     first, since the other checks wait until the code builds.
+   - 2: no new findings, but a tool failed. Fix the cause it names (usually a Gradle or Maven error) and rerun. Exit 2 is never a pass. If it says another run is in progress, wait
      for that run; never kill it.
-4. Never suppress: no `@Suppress` of a detekt or ktlint rule, config `exclude`/`disable`/`exceptions`, legacy
+     When the message links to [troubleshooting](https://github.com/jhonDoe15/nitpicker/blob/main/docs/troubleshooting.md), the fix is there.
+4. Never suppress: no `@Suppress` of a detekt or ktlint rule, coverage or mutation markers
+   (`@Generated`, `@ExcludeFromJacocoGeneratedReport`, `@DoNotMutate`), config `exclude`/`disable`/`exceptions`, legacy
    entries, or weakened tests. In Java files the Java rules apply: `@SuppressFBWarnings` and
    `@SuppressWarnings("PMD")` are findings, and a project's own PMD or Checkstyle config is used
    only when `nitpicker.config.json` opts in under `tools`. If a finding seems wrong, stop and ask.
-   Never pass `--accept-policy-change` or set `NITPICKER_ACCEPT_POLICY_CHANGE`: a
+   Never pass `--accept-policy-change`, set `NITPICKER_ACCEPT_POLICY_CHANGE` or add the `accept-policy-change` label: a
    `nitpicker-config/policy-loosened` finding is for a person to accept.
+
+With Spring on the classpath, also follow [spring.md](spring.md).
+
+If your change edits a function, class, file or package that existed before it, read
+[editing-existing-code.md](editing-existing-code.md) before you edit.
 
 Before you change code other modules use, or fix a bug, read
 [beyond-the-gate.md](beyond-the-gate.md).
 
+To learn why a rule is on and what form it allows before you write or change code, run `npx nitpicker explain <tool/rule>` with the name a finding prints, or read the [rule reference](https://github.com/jhonDoe15/nitpicker/blob/latest/docs/rules/README.md). `npx nitpicker rules` lists the rules of this project's preset.
+
 ## Write it this way
 
-- Scope functions: `let` for null (`value?.let { ... }`) and `apply` to configure an object you just
-  created. No `run`, `with` or `also`, and no `let` or `apply` where a direct call works.
-- Null: no `!!`, no `as String` on a nullable. Use `value ?: return`, `?.let`, or
-  `checkNotNull(value) { "why" }` when null is a bug; `x?.let { ... }`, not `if (x == null) null else ...`.
-- Coroutines: no `GlobalScope`, no `runBlocking` (a call, however it is imported). Make the caller `suspend`
-  (`suspend fun main()` for an entry point) and use `coroutineScope { launch { ... } }`; a test uses `runTest`.
-- Records: a class that only holds data is a `data class` with `val`s; change a copy with `copy(...)`.
-  A class with `var`s is not flagged, nor a JPA or Spring Data entity; the project adds other
-  annotations to `UseDataClass`'s `excludeAnnotatedClasses` in its `detekt.yml`.
-- Design for a fixed clock and a seeded random: take a `java.time.Clock` and a `kotlin.random.Random`
-  as constructor parameters, and read environment variables once where `fun main` (or the
-  `@SpringBootApplication` class, or the Ktor module) builds the objects, into a config class passed in.
-- With Spring, the architecture rules (`archunit/spring-...`) read the compiled Kotlin classes: package
-  by feature; controllers call services, never repositories or another controller; a repository calls
-  no service; a request- or session-scoped bean reaches a singleton only as `ObjectProvider<T>` or
-  through a scoped proxy (`@RequestScope`); request data never lands in a singleton's property or a
-  `companion object`: pass it through parameters and return values.
-- With jMolecules (`AggregateRoot`, `Entity`, `ValueObject` or their annotations; also without Spring),
-  the `archunit/ddd-...` rules hold aggregate boundaries: refer to another aggregate's root by its
-  identifier or an `Association`, keep each entity in one aggregate, and keep entities and roots out of
-  value objects.
-- Test sources are linted like main ones (detekt, and ktlint or ktfmt): the rules above, including `!!`, apply
-  in tests. detekt keeps its default exclusions for tests, so magic numbers, `lateinit`, many functions,
-  duplicated string literals, spread operators and function names in backticks are not findings in a
-  test. A test asserts on the specific exception (`assertFailsWith<IllegalStateException> { ... }`)
-  instead of catching `Exception`, whatever the variable is called.
-- KDoc is optional. When you write it, say what the name cannot (a unit, a limit, an edge case or
-  why), never only restate the name, and keep the description to 5 lines, tags and code blocks not
-  counted (`doc-comment-content`).
-- detekt's defaults stay on. In main sources: lines of at most 120 characters, named constants
-  instead of numbers other than -1, 0, 1 and 2 (`MagicNumber`), at most 2 `return` and 2 `throw`
-  per function, conditions of at most 3 `&&`/`||` parts, no wildcard imports unless most of the project's files
-  already use them, and no `TODO` or `FIXME` without an issue (`TODO(#123): ...`). Catch and throw specific exceptions, never `Exception`, `RuntimeException` or
-  `Throwable` (also in tests: `TooGenericExceptionCaught`), and pass the caught exception on as the cause (`SwallowedException`). Use
-  `require(...)` and `check(...)` instead of throwing `IllegalArgumentException` and
-  `IllegalStateException`; a top-level `val` holding a literal is `const val`. Remove unused private
-  members and parameters (an override, a function with a framework annotation and a name starting
-  `ignored` or `unused` are skipped). A public function's `Boolean` parameter that picks a behavior
-  becomes two functions or an enum (`BooleanFlagParameter`).
-- Signatures: a value with three states is an `enum class`, not a `Boolean?` parameter, return
-  type or property (`kotlin-source/TriStateBoolean`; a property or parameter a framework fills,
-  such as `@Column`, `@JsonProperty`, `@SerialName` or an `@Entity` property, is exempt); a public
-  function returns a new collection instead of changing a `MutableList`, `MutableMap` or array
-  parameter (`items.add`, `table[key] = v`, `counts[0]++`, also through `val alias = items`;
-  `kotlin-source/ParameterMutation`; private and local functions are exempt). When code moves,
-  change every caller and delete the old name: no `@Deprecated` delegate or `typealias Old = New`
-  (`kotlin-source/CompatibilityShim`). Time comes from an injected `Clock`; `Calendar`, `Date` and
-  `SimpleDateFormat` are banned.
-- Enums: to sort the entries of one of your enums into two groups, classify every entry with a
-  `when` without `else` (adding an entry then fails to compile), or a `Boolean` each entry
-  declares. Not `s == PAID || s == SHIPPED` or `s in setOf(PAID, SHIPPED)`
-  (`pmd/ExhaustiveEnumPredicate`).
-- No top-level or `object` function that only passes its parameters, in order, to another function
-  with the same parameters (`pmd/StaticForwardingWrapper`); call that function. Factories named
-  `of` or `from` are fine.
-- A data class or `@ConfigurationProperties` class has `tags` or `tag`, not both
-  (`pmd/SingularAndPluralMember`); one item is a one-element list.
-- A validation annotation on a constructor property takes the field target:
-  `data class OrderRequest(@field:NotBlank val item: String)`, not `@NotBlank val item`, which
-  lands on the constructor parameter where `@Valid` never looks (`pmd/ValidationAnnotationTarget`).
-- In main code, nothing with an outside effect runs while a file, `object`, companion object or
-  enum class loads (`pmd/ClassLoadEffect`): no connection, request, file access, pool, timer,
-  coroutine launch or JVM-wide setting in a top-level property, an `object`'s properties or `init`,
-  an enum entry, or a class its companion creates, nor in a function they call. Do the work in a
-  function `main` or the framework calls after startup (a `@Bean` method, an `ApplicationRunner`, a
-  Ktor module) and pass the result in, or defer it with `by lazy { }`. Constants, loggers, `Regex`
-  and collections can stay.
-- A private or `internal` function or constructor does not declare a default parameter that no
-  call in the project sets (`unused-option`): remove the parameter, or pass it from a real call.
+The allowed forms are on one page per topic. Before you write code, read the pages for the kind of code you are about to write; on your first task in a project, read them all.
+
+- [Style, names and secrets](rules/style-and-names.md): detekt's defaults (exceptions, `require` and `check`, magic numbers, returns), names, commented-out code, repeated strings, KDoc, secrets.
+- [Values, types and data](rules/values-and-types.md): scope functions, casts, null, data classes, signatures, default parameters, URIs, regexes, enums, maps, validation targets.
+- [Coroutines, I/O and remote calls](rules/concurrency-and-io.md): coroutine scopes, bounded fan-out, child processes, HTTP deadlines, closing resources, work at load time.
+- [Structure and dependencies](rules/structure.md): function, file and folder limits, CRAP, duplicates, aggregates.
+- [Tests](rules/tests.md): lint in tests, a fixed clock and seed, branch coverage, mutation testing, fast tests, waits, skipped and retried tests, shared state, servers and containers, assertions, coroutines in tests.
+
+## Exceptions and suppressions
+
 - Never `@Suppress` a detekt or ktlint rule (its name, `all`, a ruleset, `detekt:...`, `ktlint:...`):
   fix the code. The compiler warnings `UNCHECKED_CAST`, `DEPRECATION` and `USELESS_CAST` are
   findings too and are not suppressed either. If a rule flags legitimate code, stop and ask: the
@@ -115,70 +86,14 @@ Before you change code other modules use, or fix a bug, read
   (`{ "rule": "function-lines-limit", "paths": [...], "function": "name", "reason": "..." }`);
   switching a one-way rule off in
   `detekt.yml` has no effect. Generated code belongs in `exclude`: ask the maintainer to add it.
+- The `$schema` line of `nitpicker.config.json`
+  (`"$schema": "https://raw.githubusercontent.com/jhonDoe15/nitpicker/main/spec/config.schema.json"`)
+  lets the editor flag a misspelled key or a value the run refuses; nitpicker ignores it. Keep it
+  when you edit the file.
 - A project may add forbidden calls to `ForbiddenMethodCall.methods` in its `detekt.yml`; they join
   the preset's. Do not call anything the project lists there.
-- With Spring, the Spring, JPA and Spring Data rules of the Java preset run on Kotlin under the same
-  `pmd/...` ids, and each finding names the Kotlin form.
 
 ## Repository files
 
 - The gate fails committed secrets, binaries, build output and files over 1 MB; each message names
   the fix. Don't add an `exceptions` entry to get past one: stop and ask.
-
-## Size and tests
-
-- A function stays within 50 lines, 15 statements, 2 levels of control nesting and 3 parameters;
-  past 3 parameters, pass a data class. Each lambda, anonymous function and local function is a function
-  with the same limits, counted on its own and not towards the function around it; so are `init` blocks
-  (`Class.<init>`) and property initializers that branch (`val y = if (...) ... else ...`). An `init` block cannot return early: move the nested part into
-  a function. Complex code needs tests: the CRAP score of a function must
-  stay below 9.
-- A new clone of at least 5 lines and 50 tokens in main sources (`duplicate-clone`) fails: extract
-  a function, also when the copy has other names and literals. Smaller copies fail too: a top-level or `object` function or constant with the same code in two files of one module (`duplicate-definition`), and editing one of two near-identical copies while leaving the other (`sibling-copy-edit`); keep one and call it. Don't import two classes of one name into a file with `import ... as` (`exported-name-collision`): rename one. A package must not depend on a less stable one (`stability-direction`).
-- A file stays within 300 lines (a test file 500). A package folder holds at most 6 files and 6
-  test files directly: group the rest into subpackages by what they do. Java sources follow the
-  `nitpicker-java` rules.
-- Every branch you add needs a test: changed-branch coverage runs on your change.
-- Plan tests to be fast (`slow-test`): a test dispatcher or fake clock instead of
-  waits, a test slice instead of a full context.
-- Never wait a fixed time in a test (`pmd/FixedSleepInTest`): no `Thread.sleep`, `TimeUnit.sleep`
-  or `delay` inside `runBlocking`. Wait on the condition in a loop against a deadline or with
-  Awaitility, use `runTest` with virtual time for coroutines, and `verify(mock, timeout(1000))`
-  for a mock. `join(ms)` and `wait(ms)` return when time runs out and the test goes on unchecked:
-  assert the result. A sleep in a mock answer, a thread or `launch` body, or a test fake that
-  implements or extends a main class is fine. To show that something does not happen, give the
-  code a clock the test moves forward, not `after(ms).never()`, `during(...)` or kotest
-  `continually` (`pmd/NegativeWaitInTest`). Inside `runTest`, `delay` must run on the test scheduler:
-  a `delay` in `withContext(Dispatchers.IO)`, `Dispatchers.Default` or a thread-pool dispatcher, in a
-  `launch` or `async` on one that the test joins or awaits, in `runTest(Dispatchers.IO)`, on
-  `Dispatchers.Main` without a `setMain` applied to the test class, and in a Kotest body outside `runTest`
-  without `coroutineTestScope = true` waits for real, also in a test helper or a counted loop
-  (`pmd/FixedSleepInTest`); pass the test dispatcher to the code instead.
-- Do not skip or focus tests (`pmd/DisabledTest`, `pmd/FocusedTest`): no `@Disabled`, `@Ignore` or
-  `@Ignored` (nor an alias or an annotation that carries one), Kotest `xtest`, `xcontext`, `xdescribe`,
-  `xit`, `xshould`, `xgiven` or a `!` name prefix, no `.config(enabled = false)`, `invocations = 0` or other
-  config that never runs, no constant false `@EnabledIf` and no `assumeTrue(false)`; no `f:` name prefix,
-  `ftest`, `fcontext`, `fit`. Fix the test or delete it; limit it to an environment with `@EnabledOnOs` or
-  an assumption on a real condition when it cannot run elsewhere.
-- Assert unconditionally (`pmd/AssertionInControlFlow`): no assertion that can be skipped, inside an `if`,
-  a `when`, any loop (also over results), a safe call (`?.let`), `takeIf`, `&&`, `||`, `?:`, a `try` that
-  swallows the failure, a `runCatching`, or after an early `return`. An `if`/`else` or `when` whose every
-  branch asserts or fails is fine, and so are Kotest `checkAll` and `forAll`. Split the cases into separate
-  tests or a parameterized test (`@ParameterizedTest` with `@MethodSource` or `@CsvSource`, Kotest
-  `withData`), assert a whole collection at once, and narrow with `assertNotNull`, `assertIs` or
-  `?: fail(...)` instead of an `if`.
-- A test owns the coroutines it starts (`pmd/CoroutineEscapesTest`): do not `launch`, `async`, `launchIn`,
-  `stateIn` or `shareIn` on `CoroutineScope(...)`, a scope field, a scope a helper returns,
-  `viewModelScope`, or a `TestScope` outside `runTest` and leave it running; `with`, `run`, `apply` or
-  `also` on such a scope does not help. Run the body in `runTest`, launch from there
-  (`backgroundScope.launch` for work that ends with the test), keep the job and `join()` it or `await()` the
-  deferred (a collection of them too), or build the scope on the test dispatcher and drive it with
-  `advanceUntilIdle`; a scope the test class cancels in `@AfterEach` or Kotest `afterSpec` is owned too.
-- A `@SpringBootTest` class uses its context: it injects a bean or a `MockMvc`, `WebTestClient` or
-  `TestRestTemplate`, or it starts a web server port. Otherwise create the class with its
-  constructor in a unit test, or use a slice (`pmd/SpringUnusedContext`).
-- A function or file already over a limit may be edited but must not get worse: put new code in a
-  new function or file and call it.
-- A string of five characters or more used three times in a main file gets one
-  `private const val NAME = "..."` (`kotlin-source/RepeatedStringLiteral`); annotation arguments,
-  `when` labels, named arguments, map keys and message keys are not counted.

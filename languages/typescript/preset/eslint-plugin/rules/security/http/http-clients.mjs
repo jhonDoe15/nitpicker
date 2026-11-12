@@ -4,35 +4,23 @@ import { bindingsOf, importedFunction } from '../imported-names.mjs';
 import { memberName, unwrapped } from '../security-values.mjs';
 import { configNodes, isCallback, isLocalUrl, lacksTimeout, typeNamed } from './http-config.mjs';
 import { axiosPosition, createdInstance } from './http-defaults.mjs';
+import {
+  AXIOS_MODULES,
+  FETCH_MODULES,
+  GOT_METHODS,
+  GOT_MODULES,
+  HTTP_MODULE_FUNCTIONS,
+  HTTP_MODULES,
+  NODE_FETCH_MODULES,
+  UNDICI_MODULES,
+  isGlobalFetch,
+} from './http-modules.mjs';
 
-const FETCH_MODULES = new Set(['cross-fetch', 'isomorphic-fetch', 'isomorphic-unfetch']);
-const NODE_FETCH_MODULES = new Set(['node-fetch']);
-const UNDICI_MODULES = new Set(['undici']);
-const AXIOS_MODULES = new Set(['axios']);
-const GOT_MODULES = new Set(['got']);
-const HTTP_MODULES = new Set(['http', 'node:http', 'https', 'node:https']);
-const GLOBAL_OBJECTS = new Set(['globalThis', 'window', 'self', 'global']);
-const GOT_METHODS = new Set(['get', 'post', 'put', 'patch', 'delete', 'head', 'stream']);
-const HTTP_METHODS = new Set(['request', 'get']);
+const GOT_CALLS = new Set(GOT_METHODS);
+const HTTP_METHODS = new Set(HTTP_MODULE_FUNCTIONS);
 const CHAINED_LISTENERS = new Set(['on', 'once', 'prependListener', 'setHeader', 'setNoDelay']);
 const REQUEST_NAME = /^(?:request|req)$/u;
 const TIMEOUT_KEYS = ['timeout', 'signal'];
-
-function isGlobalFetch(context, callee) {
-  const target = unwrapped(resolveConstant(context, unwrapped(callee)));
-  if (target.type === 'MemberExpression') {
-    const owner = unwrapped(target.object);
-    return (
-      owner.type === 'Identifier' &&
-      GLOBAL_OBJECTS.has(owner.name) &&
-      memberName(target) === 'fetch'
-    );
-  }
-  if (target.type !== 'Identifier' || target.name !== 'fetch') {
-    return false;
-  }
-  return (findVariable(context, target, 'fetch')?.defs.length ?? 0) === 0;
-}
 
 function chainedListener(call) {
   const owner = call.parent;
@@ -68,12 +56,12 @@ function hasSetTimeoutCall(context, call) {
 
 export function clientBindings(program) {
   return {
-    fetchModules: bindingsOf(program, FETCH_MODULES),
-    nodeFetch: bindingsOf(program, NODE_FETCH_MODULES),
-    undici: bindingsOf(program, UNDICI_MODULES),
-    axios: bindingsOf(program, AXIOS_MODULES),
-    got: bindingsOf(program, GOT_MODULES),
-    http: bindingsOf(program, HTTP_MODULES),
+    fetchModules: bindingsOf(program, new Set(FETCH_MODULES)),
+    nodeFetch: bindingsOf(program, new Set(NODE_FETCH_MODULES)),
+    undici: bindingsOf(program, new Set(UNDICI_MODULES)),
+    axios: bindingsOf(program, new Set(AXIOS_MODULES)),
+    got: bindingsOf(program, new Set(GOT_MODULES)),
+    http: bindingsOf(program, new Set(HTTP_MODULES)),
   };
 }
 
@@ -125,7 +113,7 @@ function checkGot({ context, got }, node) {
   const callee = unwrapped(node.callee);
   const method = importedFunction(context, callee, got);
   const direct = callee.type === 'Identifier' && got.namespaces.has(callee.name);
-  if (!direct && !GOT_METHODS.has(method) && method !== 'extend') {
+  if (!direct && !GOT_CALLS.has(method) && method !== 'extend') {
     return undefined;
   }
   const config = method === 'extend' ? [node.arguments[0]] : configNodes(context, node.arguments);
@@ -193,5 +181,47 @@ export function clientCall(scope, node) {
     checkAxios(scope, node) ??
     checkGot(scope, node) ??
     checkHttp(scope, node)
+  );
+}
+
+function createdClient(scope, callee) {
+  const holder = unwrapped(callee.type === 'MemberExpression' ? callee.object : callee);
+  const created =
+    holder.type === 'Identifier' ? unwrapped(resolveConstant(scope.context, holder)) : undefined;
+  if (created?.type !== 'CallExpression') {
+    return undefined;
+  }
+  if (importedFunction(scope.context, created.callee, scope.axios) === 'create') {
+    return 'axios';
+  }
+  return importedFunction(scope.context, created.callee, scope.got) === 'extend'
+    ? 'got'
+    : undefined;
+}
+
+function isDirectCall(callee, bindings) {
+  return callee.type === 'Identifier' && bindings.namespaces.has(callee.name);
+}
+
+function isInstanceCall(scope, callee) {
+  const method = callee.type === 'MemberExpression' ? memberName(callee) : undefined;
+  const instance = createdClient(scope, callee);
+  if (instance === 'axios') {
+    return method === undefined || axiosPosition(method) !== undefined;
+  }
+  return instance === 'got' && (method === undefined || GOT_CALLS.has(method));
+}
+
+export function isClientCall(scope, node) {
+  const { context } = scope;
+  const callee = unwrapped(node.callee);
+  return (
+    (scope.checkFetch && fetchClient(scope, node.callee) !== undefined) ||
+    isDirectCall(callee, scope.axios) ||
+    axiosPosition(importedFunction(context, callee, scope.axios)) !== undefined ||
+    isDirectCall(callee, scope.got) ||
+    GOT_CALLS.has(importedFunction(context, callee, scope.got)) ||
+    HTTP_METHODS.has(importedFunction(context, node.callee, scope.http)) ||
+    isInstanceCall(scope, callee)
   );
 }

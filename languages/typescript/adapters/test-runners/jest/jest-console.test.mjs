@@ -125,7 +125,7 @@ describe('test console output on a Jest project', () => {
     const project = jestProject(JAVASCRIPT, {
       pick: [
         "it('asserts', () => {",
-        "  console.assert(pick(true) === 'no', 'expected no');",
+        "  console.assert(pick(true) === 'no', 'expected %s, got %o', 'no', pick(true));",
         "  console.group('door');",
         "  console.warn('at the door');",
         '  console.groupEnd();',
@@ -135,7 +135,7 @@ describe('test console output on a Jest project', () => {
     });
 
     expect(await consoleOutput(project)).toEqual([
-      ['test-console-output', 'test/pick.test.js', '"Assertion failed: expected no"'],
+      ['test-console-output', 'test/pick.test.js', `"Assertion failed: expected no, got 'yes'"`],
       ['test-console-output', 'test/pick.test.js', '"at the door"'],
     ]);
   });

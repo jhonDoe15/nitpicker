@@ -105,6 +105,19 @@ describe('findings cache', () => {
     expect(cache.read(analyzer)).toBeUndefined();
   });
 
+  it('keeps the module imports a publisher reported next to its findings', () => {
+    const directory = path.join(temporaryRoot(), 'cache');
+    const cache = createFindingsCache({ directory, mergeBaseSha: 'abc', projectRelativePath: '.' });
+    const report = {
+      findings: [finding],
+      moduleImports: [{ from: 'src/billing/invoice.ts', to: 'src/invoicing' }],
+    };
+
+    cache.write(analyzer, report);
+
+    expect(cache.read(analyzer)).toEqual(report);
+  });
+
   it('only runs uncached analyzers and their dependencies, and never stores errors', () => {
     const directory = path.join(temporaryRoot(), 'cache');
     const cache = createFindingsCache({ directory, mergeBaseSha: 'abc', projectRelativePath: '.' });

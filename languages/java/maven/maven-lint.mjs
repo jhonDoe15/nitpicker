@@ -1,3 +1,6 @@
+import { writeGuardRulesets } from '../builds/rulesets/pmd-rulesets.mjs';
+import { guardCompiler } from './errorprone/maven-compiler.mjs';
+import { withGuardChecks } from '../builds/rulesets/checkstyle-config.mjs';
 import { nitpickerCheckstyleConfig } from './configuration/checkstyle-config.mjs';
 import { spawnSync } from 'node:child_process';
 import {
@@ -17,22 +20,23 @@ import { writeRulesets } from '../adapters/tool-config/pmd-wrappers.mjs';
 import { layerCheckstyle } from '../adapters/tool-config/checkstyle/checkstyle-layers.mjs';
 import { unformattedCheckstyle } from '../adapters/tool-config/checkstyle/unformatted-checks.mjs';
 import { NITPICKER_RULESET } from '../adapters/tool-config/layer-files.mjs';
+import {
+  NITPICKER_SPOTBUGS,
+  spotbugsArguments,
+} from '../adapters/tool-config/declared/spotbugs-declared.mjs';
+import { JAVA_FORMATTERS } from '../adapters/style/jvm-formatters.mjs';
+import { projectFilesUnder } from '../../../shared/project-files/project-files.mjs';
 
 const LAYOUT_SUPPRESSIONS = 'checkstyle-suppressions.xml';
 const UNFORMATTED_SUPPRESSIONS = 'checkstyle-suppressions-unformatted.xml';
 const EMPTY_SARIF = '{"version":"2.1.0","runs":[]}';
-const JAVAC_EXPORTS = ['api', 'file', 'parser', 'tree', 'util', 'code'].map(
+export const JAVAC_EXPORTS = ['api', 'file', 'parser', 'tree', 'util', 'code'].map(
   (name) => `--add-exports=jdk.compiler/com.sun.tools.javac.${name}=ALL-UNNAMED`,
 );
 
 export function javaFiles(roots) {
   return roots
-    .filter((root) => existsSync(root))
-    .flatMap((root) =>
-      readdirSync(root, { recursive: true, withFileTypes: true })
-        .filter((entry) => entry.isFile() && entry.name.endsWith('.java'))
-        .map((entry) => path.join(entry.parentPath, entry.name)),
-    )
+    .flatMap((root) => projectFilesUnder(root).filter((file) => file.endsWith('.java')))
     .sort();
 }
 
@@ -48,28 +52,45 @@ function writeAuxClasspath({ module, reportDir, classpaths }) {
   return file;
 }
 
-export function runPmd({ module, reportDir, tools, classpaths, configs, spring, spawn }) {
-  const report = path.join(reportDir, 'pmd.sarif');
-  const linted = [...module.sourceRoots, ...module.testSourceRoots].filter((root) =>
-    existsSync(root),
-  );
-  if (linted.length === 0) {
-    writeFileSync(report, EMPTY_SARIF);
-    return;
-  }
-  const auxClasspath = writeAuxClasspath({ module, reportDir, classpaths });
-  const { mainRuleset, testsRuleset, layers } = writeRulesets({
-    module,
-    reportDir,
-    configs,
-    spring,
-  });
-  const rulesets = [
+function pmdRulesets(context) {
+  const { module, reportDir } = context;
+  const { mainRuleset, testsRuleset, layers } = writeRulesets(context);
+  return [
     layers.nitpicker ?? NITPICKER_RULESET,
     ...(layers.project === undefined ? [] : [layers.project]),
     testsRuleset,
     mainRuleset,
-  ];
+    ...writeGuardRulesets({
+      reportDir,
+      testDirectories: module.testSourceRoots,
+      compiler: guardCompiler(module.compiler),
+    }),
+  ].join(',');
+}
+
+export function runPmd(options) {
+  const {
+    module,
+    reportDir,
+    tools,
+    classpaths,
+    configs,
+    spring,
+    springRules,
+    reactor,
+    spawn,
+    timeoutMs,
+  } = options;
+  const report = path.join(reportDir, 'pmd.sarif');
+  const linted = [...module.sourceRoots, ...module.testSourceRoots].filter((root) =>
+    existsSync(root),
+  );
+  if (javaFiles(linted).length === 0) {
+    writeFileSync(report, EMPTY_SARIF);
+    return;
+  }
+  const auxClasspath = writeAuxClasspath({ module, reportDir, classpaths });
+  const rulesets = pmdRulesets({ module, reportDir, configs, spring, springRules, reactor });
   runJava({
     tool: 'PMD',
     classpath: tools.pmd,
@@ -83,7 +104,7 @@ export function runPmd({ module, reportDir, tools, classpaths, configs, spring, 
       '--report-file',
       report,
       '--rulesets',
-      rulesets.join(','),
+      rulesets,
       '--aux-classpath',
       `file:${auxClasspath}`,
       '--suppress-marker',
@@ -94,10 +115,19 @@ export function runPmd({ module, reportDir, tools, classpaths, configs, spring, 
     cwd: module.basedir,
     accept: () => existsSync(report),
     spawn,
+    timeoutMs,
   });
 }
 
-export function runSpotbugs({ module, reportDir, tools, spawn }) {
+export function runSpotbugs({
+  module,
+  reportDir,
+  tools,
+  configs,
+  auxClasspath = [],
+  spawn,
+  timeoutMs,
+}) {
   const report = path.join(reportDir, 'spotbugs.sarif');
   const hasClasses =
     existsSync(module.outputDirectory) && readdirSync(module.outputDirectory).length > 0;
@@ -110,42 +140,31 @@ export function runSpotbugs({ module, reportDir, tools, spawn }) {
     classpath: tools.spotbugs,
     mainClass: 'edu.umd.cs.findbugs.FindBugs2',
     args: [
-      '-effort:default',
-      '-medium',
+      ...(configs?.spotbugs?.arguments ?? spotbugsArguments(NITPICKER_SPOTBUGS)),
       '-sarif',
       '-output',
       report,
       '-sourcepath',
       module.sourceRoots.filter((root) => existsSync(root)).join(path.delimiter),
+      ...(auxClasspath.length === 0
+        ? []
+        : [
+            '-auxclasspath',
+            auxClasspath.filter((entry) => existsSync(entry)).join(path.delimiter),
+          ]),
       module.outputDirectory,
     ],
     cwd: module.basedir,
     accept: () => existsSync(report),
     spawn,
+    timeoutMs,
   });
 }
 
-const GOOGLE_FORMAT = {
-  tool: 'google-java-format',
-  classpath: 'format',
-  mainClass: 'com.google.googlejavaformat.java.Main',
-  flags: [],
-};
-const FORMATTERS = {
-  google: GOOGLE_FORMAT,
-  aosp: { ...GOOGLE_FORMAT, flags: ['--aosp'] },
-  palantir: {
-    tool: 'palantir-java-format',
-    classpath: 'format-palantir',
-    mainClass: 'com.palantir.javaformat.java.Main',
-    flags: ['--palantir'],
-  },
-};
-
-export function runFormat({ module, reportDir, tools, javaStyle = 'google', spawn }) {
+export function runFormat({ module, reportDir, tools, javaStyle = 'google', spawn, timeoutMs }) {
   const report = path.join(reportDir, 'format.txt');
   const files = javaFiles([...module.sourceRoots, ...module.testSourceRoots]);
-  const formatter = FORMATTERS[javaStyle];
+  const formatter = JAVA_FORMATTERS[javaStyle];
   if (files.length === 0 || formatter === undefined) {
     writeFileSync(report, '');
     return;
@@ -158,6 +177,7 @@ export function runFormat({ module, reportDir, tools, javaStyle = 'google', spaw
     args: [...formatter.flags, '--dry-run', ...files],
     cwd: module.basedir,
     spawn,
+    timeoutMs,
   });
   writeFileSync(report, result.stdout);
 }
@@ -183,15 +203,18 @@ function propertiesLine(name, value) {
   return `${name}=${value.replaceAll('\\', '\\\\')}`;
 }
 
-function checkstyleSetup({ reportDir, tools, configs, pinned, style, spawn }) {
+function checkstyleSetup({ reportDir, tools, configs, pinned, style, spawn, test = false }) {
   const jar = tools.checkstyle.find(
     (entry) => path.basename(entry) === `checkstyle-${pinned.checkstyle}.jar`,
   );
   const bundled = nitpickerCheckstyleConfig(bundledGoogleChecks(jar, spawn));
   const unformatted = style?.javaStyle === 'none';
   return writeCheckstyleSetup({
-    directory: path.join(reportDir, 'checkstyle-config'),
-    nitpickerConfig: unformatted ? unformattedCheckstyle(bundled, style.indentation) : bundled,
+    directory: path.join(reportDir, test ? 'checkstyle-test-config' : 'checkstyle-config'),
+    nitpickerConfig: withGuardChecks(
+      unformatted ? unformattedCheckstyle(bundled, style.indentation) : bundled,
+      ['checkstyle-all.xml', ...(test ? [] : ['checkstyle-main.xml'])],
+    ),
     suppressions: unformatted ? UNFORMATTED_SUPPRESSIONS : LAYOUT_SUPPRESSIONS,
     ...configs.checkstyle,
   });
@@ -230,7 +253,8 @@ export function writeCheckstyleSetup({
   return { config, properties };
 }
 
-function checkstyleReport({ module, setup, tools, pinned, roots, report, always, spawn }) {
+function checkstyleReport(options) {
+  const { module, setup, tools, pinned, roots, report, always, spawn, timeoutMs } = options;
   const files = javaFiles(roots);
   if (files.length === 0) {
     if (always) {
@@ -246,15 +270,18 @@ function checkstyleReport({ module, setup, tools, pinned, roots, report, always,
     cwd: module.basedir,
     accept: () => existsSync(report),
     spawn,
+    timeoutMs,
   });
 }
 
-export function runCheckstyle({ module, reportDir, tools, configs, pinned, style, spawn }) {
+export function runCheckstyle(options) {
+  const { module, reportDir, tools, configs, pinned, style, spawn, timeoutMs } = options;
   const context = {
     module,
     tools,
     pinned,
     spawn,
+    timeoutMs,
     setup: checkstyleSetup({ reportDir, tools, configs, pinned, style, spawn }),
   };
   checkstyleReport({
@@ -265,6 +292,7 @@ export function runCheckstyle({ module, reportDir, tools, configs, pinned, style
   });
   checkstyleReport({
     ...context,
+    setup: checkstyleSetup({ reportDir, tools, configs, pinned, style, spawn, test: true }),
     roots: module.testSourceRoots,
     report: path.join(reportDir, 'checkstyle-test.xml'),
     always: false,

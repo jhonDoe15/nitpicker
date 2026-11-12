@@ -1,6 +1,6 @@
-import { isPlainObject } from '../../../shared/config.mjs';
+import { SCHEMA_KEY, isPlainObject } from '../../../shared/config.mjs';
 
-const ROOT_ONLY_KEYS = ['extends', 'projects'];
+const ROOT_ONLY_KEYS = [SCHEMA_KEY, 'extends', 'projects'];
 
 export function settingsOf(config) {
   return Object.fromEntries(

@@ -46,15 +46,15 @@ describe('ingestJacocoBranches', () => {
     expect(findings.map((f) => [f.location.line, f.message])).toEqual([
       [
         4,
-        'Branch coverage is 50.00%; minimum is 95%. To accept the file, add it to "exclude" in nitpicker.config.json.',
+        'Branch coverage is 50.00%; minimum is 95%. Add a test for each outcome it misses. To accept the file, add it to "exclude" in nitpicker.config.json.',
       ],
       [
         8,
-        'Branch coverage is 0.00%; minimum is 95%. To accept the file, add it to "exclude" in nitpicker.config.json.',
+        'Branch coverage is 0.00%; minimum is 95%. Add a test for each outcome it misses. To accept the file, add it to "exclude" in nitpicker.config.json.',
       ],
       [
         14,
-        'Branch coverage is 0.00%; minimum is 95%. To accept the file, add it to "exclude" in nitpicker.config.json.',
+        'Branch coverage is 0.00%; minimum is 95%. Add a test for each outcome it misses. To accept the file, add it to "exclude" in nitpicker.config.json.',
       ],
     ]);
     expect(
@@ -84,7 +84,7 @@ describe('ingestJacocoBranches', () => {
       [14, undefined],
     ]);
     expect(findings[1].message).toBe(
-      'Branch coverage is 0.00%; minimum is 95%. If this is intended, add {"rule":"changed-branch-coverage","paths":["src/main/java/com/acme/Pick.java"],"function":"Pick.pick","reason":"..."} to "exceptions" in nitpicker.config.json.',
+      'Branch coverage is 0.00%; minimum is 95%. Add a test for each outcome it misses. If this is intended, add {"rule":"changed-branch-coverage","paths":["src/main/java/com/acme/Pick.java"],"function":"Pick.pick","reason":"..."} to "exceptions" in nitpicker.config.json.',
     );
   });
 
@@ -97,7 +97,7 @@ describe('ingestJacocoBranches', () => {
       [14, 'Pick.x'],
     ]);
     expect(findings[0].message).toBe(
-      'Branch coverage is 50.00%; minimum is 95%. If this is intended, add {"rule":"changed-branch-coverage","paths":["src/main/java/com/acme/Pick.java"],"function":"Pick.a","reason":"..."} to "exceptions" in nitpicker.config.json.',
+      'Branch coverage is 50.00%; minimum is 95%. Add a test for each outcome it misses. If this is intended, add {"rule":"changed-branch-coverage","paths":["src/main/java/com/acme/Pick.java"],"function":"Pick.a","reason":"..."} to "exceptions" in nitpicker.config.json.',
     );
   });
 
@@ -131,8 +131,8 @@ describe('ingestJacocoBranches', () => {
 });
 
 describe('changed-branch-coverage in the differential comparison', () => {
-  const touched = (diff) => ({
-    changedLines: parseChangedLines(diff),
+  const touched = (diff, sources) => ({
+    changedLines: parseChangedLines(diff, '.', () => new Map([[FILE, sources]])),
     isStrictRule,
   });
   const diffFor = (hunk) =>
@@ -186,6 +186,34 @@ describe('changed-branch-coverage in the differential comparison', () => {
       touchedCode: touched(diffFor('@@ -13,0 +14,3 @@')),
     });
     expect(added.newFindings.map((finding) => finding.location.line)).toEqual([14]);
+  });
+
+  it('keeps an uncovered branch baselined when the formatter only respaces its line', () => {
+    const head = SOURCE.replace('boolean x = o == null;', 'boolean x=o==null ;');
+    const reformatted = ingest(head);
+    const result = compareFindings({
+      baseFindings: base,
+      headFindings: reformatted,
+      touchedCode: touched(
+        diffFor('@@ -8 +8 @@\n-  boolean x = o == null;\n+  boolean x=o==null ;'),
+        { base: SOURCE, head },
+      ),
+    });
+
+    expect(reformatted.map(({ identity }) => identity)).toEqual(
+      base.map(({ identity }) => identity),
+    );
+    expect(result.newFindings).toEqual([]);
+  });
+
+  it.each([
+    ['  if (flag); value = 2;', '  if (flag) value = 2;'],
+    ['  int a = a > 0 ? a + ++b : b;', '  int a = a > 0 ? a++ + b : b;'],
+  ])('gives %s a branch identity of its own, apart from formatting', (before, after) => {
+    const identityOf = (line) =>
+      ingest(SOURCE.replace('  boolean x = o == null;', line))[1].identity;
+
+    expect(identityOf(before)).not.toBe(identityOf(after));
   });
 
   it('applies to the Java coverage rule only, not to the TypeScript check of the same name', () => {

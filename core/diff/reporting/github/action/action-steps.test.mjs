@@ -96,6 +96,7 @@ describe('every run step of action.yml', () => {
     expect(runSteps.map((step) => step.id ?? step.name)).toEqual([
       INSTALL,
       'prepare',
+      'approval',
       'gate',
       PUBLISH,
       FAIL,
@@ -196,7 +197,7 @@ describe('the prepare step', () => {
       {
         'skip-gate': 'false',
         'cache-scope': 'apps%2Fweb%2Cv2',
-        'cache-dir': `${checkout}/.git/nitpicker-cache`,
+        'cache-dir': `${checkout}/.git/nitpicker/cache`,
         base: 'origin/main',
         'base-sha': forkPoint,
       },
@@ -338,7 +339,7 @@ describe('the prepare step with a base that is not a branch, or an older nitpick
       PATH: `${tools}:${process.env.PATH}`,
     });
 
-    expect(outputs['cache-dir']).toBe(`C:${checkout}/.git/nitpicker-cache`);
+    expect(outputs['cache-dir']).toBe(`C:${checkout}/.git/nitpicker/cache`);
   });
 });
 
@@ -436,7 +437,7 @@ describe('the publish and fail steps', () => {
 
     expect([status, stdout]).toEqual([
       2,
-      'nitpicker exited with code 2 (1: new enforceable findings, 2: a tool error or a failure to decide).\n',
+      'nitpicker exited with code 2 (1: new enforceable findings or failing head tests, 2: a tool error or a failure to decide).\n',
     ]);
   });
 });

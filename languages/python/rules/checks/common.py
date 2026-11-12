@@ -16,6 +16,7 @@ LOG_METHODS = {
     "log",
 }
 ALIAS_PASSES = 3
+SHOWN_LENGTH = 30
 LOGGER_MODULES = {"logging", "structlog", "loguru"}
 LOGURU_LOGGER = "loguru.logger"
 TYPE_CHECKING_NAMES = {
@@ -29,8 +30,26 @@ LOG_OWNER = re.compile(
 )
 
 
+def shown(value, length=SHOWN_LENGTH):
+    return value[:length] + "..." if len(value) > length else value
+
+
 def finding(path, rule, subject, node):
-    return {"rule": rule, "path": path, "subject": subject, "line": node.lineno}
+    end = getattr(node, "end_lineno", None) or node.lineno
+    return {"rule": rule, "path": path, "subject": subject, "line": node.lineno, "end": end}
+
+
+def overlap_sites(found, overlaps):
+    return [
+        {
+            "rule": code,
+            "path": item["path"],
+            "line": item["line"],
+            "owner": item["rule"],
+        }
+        for item in found
+        for code in overlaps.get(item["rule"], ())
+    ]
 
 
 def directories(path):
@@ -117,12 +136,14 @@ def logger_names(tree, names, modules):
 
 def dotted_name(node, aliases):
     names, modules = aliases[:2]
-    if isinstance(node, ast.Name):
-        return names.get(node.id) or modules.get(node.id) or node.id
-    if isinstance(node, ast.Attribute):
-        base = dotted_name(node.value, aliases)
-        return f"{base}.{node.attr}" if base else None
-    return None
+    parts = []
+    while isinstance(node, ast.Attribute):
+        parts.append(node.attr)
+        node = node.value
+    if not isinstance(node, ast.Name):
+        return None
+    base = names.get(node.id) or modules.get(node.id) or node.id
+    return ".".join([base, *reversed(parts)])
 
 
 def call_name(node, aliases):
@@ -172,6 +193,38 @@ def functions_of(tree):
         for node in ast.walk(tree)
         if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef))
     ]
+
+
+def parameter_names(function):
+    arguments = function.args
+    names = {
+        argument.arg
+        for argument in arguments.posonlyargs + arguments.args + arguments.kwonlyargs
+    }
+    names.update(a.arg for a in (arguments.vararg, arguments.kwarg) if a)
+    return names
+
+
+def has_decorator(function, name):
+    return any(
+        last_name(decorator.func if isinstance(decorator, ast.Call) else decorator)
+        == name
+        for decorator in function.decorator_list
+    )
+
+
+def root_name(node, through_calls=False):
+    while True:
+        if through_calls and isinstance(node, ast.Await):
+            node = node.value
+        elif through_calls and isinstance(node, ast.Call):
+            if not isinstance(node.func, ast.Attribute):
+                return None
+            node = node.func.value
+        elif isinstance(node, (ast.Attribute, ast.Subscript)):
+            node = node.value
+        else:
+            return node.id if isinstance(node, ast.Name) else None
 
 
 def own_nodes(root):

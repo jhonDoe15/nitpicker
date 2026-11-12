@@ -15,6 +15,7 @@ export function comparisonBase({ repositoryRoot, configuredBase, cli }) {
     explicitBase: cli.options.baseRef,
     configuredBase,
     environment: cli.environment,
+    staged: cli.options.staged,
   });
   return { base, mergeBaseSha: resolveComparison(repositoryRoot, base.baseRef).mergeBaseSha };
 }

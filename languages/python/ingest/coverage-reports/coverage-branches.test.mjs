@@ -262,6 +262,27 @@ describe('ingestCoverageBranches', () => {
     ]);
     expect(new Set(findings.map((finding) => finding.identity.split('#')[0])).size).toBe(1);
   });
+
+  it('keeps the identity when the formatter changes quotes and spacing on the line', () => {
+    const text = reportOf([], [[1, 2]]);
+    const identity = (line) =>
+      ingestCoverageBranches(text, { sourceText: () => `${line}\n    pass\n` }).findings[0]
+        .identity;
+
+    expect(identity("if name=='a' :")).toBe(identity('if name == "a":'));
+    expect(identity('if name == "b":')).not.toBe(identity('if name == "a":'));
+  });
+
+  it('keeps the identity when ruff format moves a one-line body to its own line', () => {
+    const text = reportOf([], [[1, 2]]);
+    const identity = (source) =>
+      ingestCoverageBranches(text, { sourceText: () => source }).findings[0].identity;
+
+    expect(identity("if x == 1: print('v1')\n")).toBe(identity('if x == 1:\n    print("v1")\n'));
+    expect(identity('if name == "a  b":\n    pass\n')).not.toBe(
+      identity('if name == "a b":\n    pass\n'),
+    );
+  });
 });
 
 describe('changed-branch-coverage in the differential comparison', () => {
@@ -325,6 +346,26 @@ describe('changed-branch-coverage in the differential comparison', () => {
 
     expect(result.newFindings.map((finding) => finding.location.line)).toEqual([2]);
     expect(result.unchangedFindings.map((finding) => finding.location.line)).toEqual([8]);
+  });
+
+  it('keeps a legacy gap baselined when its function is renamed', () => {
+    const named = (name) => `def ${name}(a):\n    if a:\n        return 1\n    return 2\n`;
+    const gap = reportOf(
+      [],
+      [
+        [2, 3],
+        [2, 4],
+      ],
+    );
+
+    const result = compareFindings({
+      baseFindings: ingest({ sourceText: () => named('legacy') }, gap),
+      headFindings: ingest({ sourceText: () => named('renamed') }, gap),
+      touchedCode: touched(diffFor('@@ -1 +1 @@')),
+    });
+
+    expect(result.newFindings).toEqual([]);
+    expect(result.unchangedFindings.map((finding) => finding.location.line)).toEqual([2]);
   });
 
   it('applies to the Python tool only, not to the TypeScript coverage check of the same rule', () => {

@@ -69,11 +69,19 @@ inputs:
       findings as their base. Needs `cache-url`. The comparison is skipped there, since the head
       is the base.
     default: 'true'
+  policy-approval:
+    description: >-
+      Accept the policy loosenings of a pull request head that a person approved with the
+      `accept-policy-change` label, which the approval workflow of `nitpicker init --ci github`
+      records as the `nitpicker/policy-accepted` status of that commit. The job needs the
+      `statuses: read` permission. `false` ignores those approvals.
+    default: 'true'
   accept-policy-change:
     description: >-
       The `NITPICKER_ACCEPT_POLICY_CHANGE` digest that accepts a loosening of
-      `nitpicker.config.json`. Map the repository variable `vars.NITPICKER_ACCEPT_POLICY_CHANGE`,
-      which only an admin can set; never write a digest into a workflow.
+      `nitpicker.config.json`, for a run the label cannot approve, such as a merge queue. Map the
+      repository variable `vars.NITPICKER_ACCEPT_POLICY_CHANGE`, which only an admin can set; never
+      write a digest into a workflow.
     default: ''
   report-directory:
     description: >-
@@ -102,8 +110,8 @@ inputs:
 outputs:
   exit-code:
     description: >-
-      The exit code of the gate: 0 passed, 1 new enforceable findings, 2 a tool error or a failure
-      to decide. Empty when the gate did not run.
+      The exit code of the gate: 0 passed, 1 new enforceable findings or failing head tests, 2 a tool
+      error or a failure to decide. Empty when the gate did not run.
     value: ${{ steps.gate.outputs.exit-code }}
   report-directory:
     description: >-
@@ -216,7 +224,7 @@ runs:
         if [ -d node_modules ]; then
           echo "cache-dir=$(native_path "$PWD/node_modules/.cache/nitpicker")" >> "$GITHUB_OUTPUT"
         else
-          echo "cache-dir=$(native_path "$(git rev-parse --absolute-git-dir)/nitpicker-cache")" >> "$GITHUB_OUTPUT"
+          echo "cache-dir=$(native_path "$(git rev-parse --absolute-git-dir)/nitpicker/cache")" >> "$GITHUB_OUTPUT"
         fi
         if [ "$skip" = true ]; then
           echo "base-sha=none" >> "$GITHUB_OUTPUT"
@@ -303,6 +311,54 @@ runs:
         restore-keys: |
           nitpicker-${{ runner.os }}-${{ runner.arch }}-${{ steps.prepare.outputs.cache-scope }}-${{ steps.prepare.outputs.base-sha }}-
 
+    - name: Read the policy approval
+      id: approval-status
+      if: ${{ inputs.policy-approval == 'true' && steps.prepare.outputs.skip-gate != 'true' && github.event.pull_request.head.sha != '' }}
+      uses: actions/github-script@v8.0.0
+      env:
+        HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        PULL_REQUEST: ${{ github.event.pull_request.number }}
+        TARGET_BRANCH: ${{ github.event.pull_request.base.ref }}
+      with:
+        script: |
+          const sha = process.env.HEAD_SHA;
+          const scope = ` for #${process.env.PULL_REQUEST} into ${process.env.TARGET_BRANCH}`;
+          try {
+            const statuses = await github.paginate(github.rest.repos.listCommitStatusesForRef, {
+              ...context.repo,
+              ref: sha,
+              per_page: 100,
+            });
+            const latest = statuses.find(
+              (status) =>
+                status.context === 'nitpicker/policy-accepted' &&
+                status.creator?.login === 'github-actions[bot]' &&
+                status.description?.endsWith(scope) === true,
+            );
+            core.setOutput('approved-sha', latest?.state === 'success' ? sha : '');
+          } catch (error) {
+            const message = `Could not read the policy approval of ${sha} (${error.message}). Give the job the statuses: read permission.`;
+            core.info(message);
+            core.setOutput('unreadable', message);
+          }
+
+    - name: Bind the policy approval to the checkout
+      id: approval
+      if: ${{ steps.approval-status.outputs.approved-sha != '' }}
+      shell: bash
+      working-directory: ${{ inputs.working-directory }}
+      env:
+        APPROVED_SHA: ${{ steps.approval-status.outputs.approved-sha }}
+      run: |
+        set -euo pipefail
+        head="$(git rev-parse HEAD)"
+        merged="$(git rev-parse --verify --quiet 'HEAD^2' || true)"
+        if [ "$head" = "$APPROVED_SHA" ] || { [ "$head" = "$GITHUB_SHA" ] && [ "$merged" = "$APPROVED_SHA" ]; }; then
+          echo "acceptance=commit:$head" >> "$GITHUB_OUTPUT"
+        else
+          echo "::warning title=nitpicker::The policy approval is for ${APPROVED_SHA}, but the checkout is ${head}, so it accepts nothing in this run."
+        fi
+
     - name: Run the gate
       id: gate
       if: ${{ steps.prepare.outputs.skip-gate != 'true' }}
@@ -317,7 +373,7 @@ runs:
         NITPICKER_CACHE_DIR: ${{ steps.prepare.outputs.cache-dir }}
         NITPICKER_CACHE_URL: ${{ inputs.cache-url }}
         NITPICKER_CACHE_AUTH_HEADER: ${{ inputs.cache-auth-header }}
-        NITPICKER_ACCEPT_POLICY_CHANGE: ${{ inputs.accept-policy-change }}
+        NITPICKER_ACCEPT_POLICY_CHANGE: ${{ steps.approval.outputs.acceptance || inputs.accept-policy-change }}
       run: |
         set -eo pipefail
         args=(--base "$BASE" --output "$REPORT_DIRECTORY")
@@ -398,6 +454,10 @@ runs:
       shell: bash
       env:
         EXIT_CODE: ${{ steps.gate.outputs.exit-code }}
+        APPROVAL_UNREADABLE: ${{ steps.approval-status.outputs.unreadable }}
       run: |
-        echo "nitpicker exited with code ${EXIT_CODE} (1: new enforceable findings, 2: a tool error or a failure to decide)."
+        if [ -n "$APPROVAL_UNREADABLE" ]; then
+          echo "::warning title=nitpicker::${APPROVAL_UNREADABLE} Without it, an accept-policy-change label approves nothing."
+        fi
+        echo "nitpicker exited with code ${EXIT_CODE} (1: new enforceable findings or failing head tests, 2: a tool error or a failure to decide)."
         exit "$EXIT_CODE"

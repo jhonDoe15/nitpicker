@@ -11,6 +11,7 @@ import {
 } from './cache-stores.mjs';
 import { cacheKey, createFindingsCache } from './findings-cache.mjs';
 import { resetTestHttpServer, startTestHttpServer } from './test-support/test-http-server.mjs';
+import { linkSentence } from '../../../shared/messages/test-support/link-sentence.mjs';
 
 const cleanups = [];
 
@@ -229,20 +230,27 @@ describe('findings cache over a remote store', () => {
   });
 });
 
+const noCacheWarning =
+  'no writable findings cache, so the base side runs on every comparison; ' +
+  'set NITPICKER_CACHE_DIR to a writable folder to reuse it.';
+
 describe('resolveCacheStore', () => {
   it('has no store without a directory or a URL, and warns about unusable settings', () => {
     const projectRoot = temporaryDirectory();
     expect(resolveCacheStore({ projectRoot, environment: {} })).toEqual({
       store: undefined,
       remote: undefined,
-      warnings: [],
+      warnings: [noCacheWarning],
     });
     const bad = resolveCacheStore({
       projectRoot,
       environment: { NITPICKER_CACHE_URL: 'ftp://example.com' },
     });
     expect(bad.store).toBeUndefined();
-    expect(bad.warnings).toEqual(['NITPICKER_CACHE_URL ignored: it must be an http(s) URL.']);
+    expect(bad.warnings).toEqual([
+      `NITPICKER_CACHE_URL ignored: it must be an http(s) URL. ${linkSentence('staleCache')}`,
+      noCacheWarning,
+    ]);
     const header = resolveCacheStore({
       projectRoot,
       environment: {
@@ -252,7 +260,7 @@ describe('resolveCacheStore', () => {
     });
     expect(header.remote).toBeDefined();
     expect(header.warnings).toEqual([
-      'NITPICKER_CACHE_AUTH_HEADER ignored: expected "Name: value".',
+      `NITPICKER_CACHE_AUTH_HEADER ignored: expected "Name: value". ${linkSentence('staleCache')}`,
     ]);
   });
 });

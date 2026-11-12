@@ -1,4 +1,3 @@
-import { spawnSync } from 'node:child_process';
 import path from 'node:path';
 import { resolveTool } from '../../../../core/tooling/tool-resolution.mjs';
 import { readHeadPolicy } from '../../preset/head-policy.mjs';
@@ -7,11 +6,21 @@ import {
   TEST_ENVIRONMENTS_VARIABLE,
 } from '../../preset/test-environment/resolve-environment.mjs';
 import { lintWithOxlint } from '../oxlint/oxlint-runner.mjs';
+import {
+  TROUBLESHOOTING_ANCHORS,
+  troubleshootingError,
+} from '../../../../shared/messages/troubleshooting.mjs';
+import { spawnCollected } from '../oxlint/oxlint-process.mjs';
 import { PROJECT_LAYER_VARIABLE, projectLayerValue } from './project-layer.mjs';
 
 const MAX_ESLINT_OUTPUT_BYTES = 50 * 1024 * 1024;
 
-export function runLintEngine({ options, projectConfigPath, policyConfigPath, testEnvironments }) {
+export async function runLintEngine({
+  options,
+  projectConfigPath,
+  policyConfigPath,
+  testEnvironments,
+}) {
   const invocation = eslintInvocation({
     options,
     projectConfigPath,
@@ -59,9 +68,9 @@ function eslintInvocation({ options, projectConfigPath, policyConfigPath, testEn
   };
 }
 
-function runEslintCli(invocation, patterns, extraEnvironment = {}) {
+async function runEslintCli(invocation, patterns, extraEnvironment = {}) {
   const { options } = invocation;
-  const result = spawnSync(
+  const result = await spawnCollected(
     process.execPath,
     [
       invocation.eslintCliPath,
@@ -76,10 +85,8 @@ function runEslintCli(invocation, patterns, extraEnvironment = {}) {
     {
       cwd: options.projectRoot,
       env: { ...invocation.environment, ...extraEnvironment },
-      encoding: 'utf8',
       maxBuffer: MAX_ESLINT_OUTPUT_BYTES,
-      timeout: options.timeoutMs,
-      killSignal: 'SIGTERM',
+      timeoutMs: options.timeoutMs,
     },
   );
   assertEslintCompleted(result, options.timeoutMs);
@@ -97,9 +104,11 @@ function runEslintCli(invocation, patterns, extraEnvironment = {}) {
 function assertEslintCompleted(result, timeoutMs) {
   if (result.error !== undefined) {
     if (result.error.code === 'ETIMEDOUT') {
-      throw new Error(`ESLint timed out after ${String(timeoutMs)} ms`, {
-        cause: result.error,
-      });
+      throw troubleshootingError(
+        `ESLint timed out after ${String(timeoutMs)} ms`,
+        TROUBLESHOOTING_ANCHORS.analyzerTimeout,
+        { cause: result.error },
+      );
     }
     throw result.error;
   }

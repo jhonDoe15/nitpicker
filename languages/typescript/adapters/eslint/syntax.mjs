@@ -1,6 +1,11 @@
 import { createHash } from 'node:crypto';
+import {
+  formatAgnosticTokens,
+  sourceLanguage,
+} from '../../../../shared/source-text/format-tokens.mjs';
 import { ts } from '../../typescript-api/typescript-api.mjs';
 import { chainOf } from '../../../../shared/traversal.mjs';
+import { nameFreeHash } from '../../../../shared/rules/finding-helpers.mjs';
 export function commentAt(text, position, endPosition) {
   const isLine = text.startsWith('//', position);
   if (!isLine && !text.startsWith('/*', position)) {
@@ -86,6 +91,17 @@ export function nodeChain(node) {
   return chainOf(node, (current) => current.parent);
 }
 
+export function enclosingFunctionHash(node, symbol) {
+  const owner = nodeChain(node).find(
+    (current) => ts.isFunctionLike(current) && current.body !== undefined,
+  );
+  if (owner === undefined || symbol === undefined) {
+    return undefined;
+  }
+  const lines = owner.getText().split(/\r?\n/u);
+  return nameFreeHash(lines.map((line) => line.trim()).join('\n'), symbol);
+}
+
 export function enclosingSymbol(node) {
   const names = [];
   for (const current of nodeChain(node)) {
@@ -122,33 +138,18 @@ function fingerprintText(node) {
   return node.getText();
 }
 
+const SCRIPT = sourceLanguage('script.ts');
+const FINGERPRINT_LENGTH = 24;
+
 export function syntaxFingerprint(node, nodeType) {
   if (nodeType === 'Program') {
     return 'program';
   }
-
-  const scanner = ts.createScanner(
-    ts.ScriptTarget.Latest,
-    true,
-    ts.LanguageVariant.Standard,
-    fingerprintText(node),
-  );
-  const tokens = [...scannedTokens(scanner)];
-  const semanticTokens = tokens
-    .filter(
-      (token, index) =>
-        token.kind !== ts.SyntaxKind.CommaToken || !isClosingToken(tokens[index + 1]?.kind),
-    )
-    .map((token) => `${String(token.kind)}:${token.text}`);
-  return createHash('sha256').update(semanticTokens.join('\0')).digest('hex').slice(0, 24);
-}
-
-function isClosingToken(kind) {
-  return (
-    kind === ts.SyntaxKind.CloseBraceToken ||
-    kind === ts.SyntaxKind.CloseBracketToken ||
-    kind === ts.SyntaxKind.CloseParenToken
-  );
+  const semanticTokens = formatAgnosticTokens(fingerprintText(node), SCRIPT, { comments: false });
+  return createHash('sha256')
+    .update(semanticTokens.map(({ text }) => text).join('\0'))
+    .digest('hex')
+    .slice(0, FINGERPRINT_LENGTH);
 }
 
 export function normalizeMessageText(value) {
@@ -166,21 +167,4 @@ export function scriptKind(filePath) {
     return ts.ScriptKind.JS;
   }
   return ts.ScriptKind.TS;
-}
-
-function scannedTokens(scanner) {
-  return {
-    [Symbol.iterator]() {
-      return this;
-    },
-    next() {
-      const kind = scanner.scan();
-      return kind === ts.SyntaxKind.EndOfFileToken
-        ? { done: true }
-        : {
-            done: false,
-            value: { kind, text: scanner.getTokenText() },
-          };
-    },
-  };
 }

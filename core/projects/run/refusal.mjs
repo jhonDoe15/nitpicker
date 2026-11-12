@@ -1,5 +1,5 @@
 import { realpathSync } from 'node:fs';
-import { resolveProjectRoot } from '../../tooling/tool-resolution.mjs';
+import { resolveProjectRoot } from '../../configuration/project-checks/project-root.mjs';
 import { isGitWorkTree, memberProjectOf } from '../plan/member-root.mjs';
 import { enclosingMember } from '../plan/enclosing.mjs';
 import { planMonorepo } from '../plan/inspect.mjs';

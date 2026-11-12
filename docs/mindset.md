@@ -28,9 +28,9 @@ So a rule's default is decided by what it prevents, not by how often other teams
 3. **Flags legitimate code often?** Make the rule narrower and more precise, so it still blocks the
    bad shape (for example: a repository call inside a loop, not every call inside a loop).
 4. **Off, or report-only, only when the noise is structural**: the tool cannot know the answer
-   and no exception could make the finding right, such as Kotlin mutants (compiler-generated
-   code) or generated code. An equivalent mutant of Java, Python or TypeScript code is not that
-   case: a `mutant-survived` exception with the function accepts it, after review.
+   and no exception could make the finding right, such as generated code. An equivalent mutant
+   of Java, Kotlin, Python or TypeScript code is not that case: a `mutant-survived` exception with
+   the function accepts it, after review.
    Write the reason down where the rule is configured.
 
 When in doubt, keep the rule on and make the exception easy to find.
@@ -88,7 +88,8 @@ function over another branch in an old one.
 
 ## Our own code, and other people's
 
-- Dependencies must be under permissive licenses. Source-available analyzers (SonarJS and
+- Dependencies must be under permissive licenses. A weak-copyleft dependency (such as MPL-2.0)
+  is acceptable only when a tool uses it unmodified. Source-available analyzers (SonarJS and
   SonarJava, OpenRewrite's Spring recipes) are not used, and their implementations are not read
   when we write similar rules.
 - Ideas from MIT-licensed projects (for example Taikai's ArchUnit rules) are welcome when they fit

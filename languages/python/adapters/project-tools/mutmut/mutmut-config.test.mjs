@@ -4,6 +4,7 @@ import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import { writeMutmutConfig } from './mutmut-config.mjs';
 import { section, TEST_PATTERNS } from '../../mutation/test-support/mutmut-section.mjs';
+import { useGitFixtures } from '../../../../../core/diff/git/test-support/git-repository.mjs';
 
 const roots = [];
 
@@ -39,6 +40,7 @@ const ensureMutmutConfiguration = (context) => {
   writeMutmutConfig({ context, fail: failure });
 };
 const LISTED = { mutmut: ['project', 'nitpicker'] };
+const { createGitRepository } = useGitFixtures();
 
 describe('the mutmut configuration', () => {
   it('adds the source roots and the test patterns when the project has no mutmut configuration', () => {
@@ -258,5 +260,26 @@ describe('the mutmut configuration with tools.mutmut listing the project', () =>
     expect(() => {
       ensureMutmutConfiguration({ ...context, ...policy(context) });
     }).toThrow(/^"tools\.mutmut\.precedence" lists "project" but a mutmut config .+ is missing/u);
+  });
+
+  it('keeps mutmut away from every Python file outside the paths of a scoped run', () => {
+    const { root } = createGitRepository({
+      'src/shop/orders/models.py': '',
+      'src/shop/billing/bill.py': '',
+      'src/shop/app.py': '',
+      'scripts/tool.py': '',
+    });
+    const context = {
+      projectRoot: root,
+      project: { sourceRoots: ['src'] },
+      exclude: [],
+      mutationScope: ['src/shop/orders'],
+    };
+
+    ensureMutmutConfiguration(context);
+
+    expect(read(root, 'pyproject.toml')).toBe(
+      `\n${section(['src'], [...TEST_PATTERNS, 'scripts/*', 'src/shop/app.py', 'src/shop/billing/*'])}`,
+    );
   });
 });

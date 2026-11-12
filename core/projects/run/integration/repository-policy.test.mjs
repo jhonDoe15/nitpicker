@@ -351,11 +351,13 @@ describe('a run inside a member of a workspace', () => {
 
     expect([cache.exitCode, cache.err]).toEqual([
       2,
-      'nitpicker failed: nitpicker cache publish requires NITPICKER_CACHE_URL\n',
+      'nitpicker failed: nitpicker cache publish requires NITPICKER_CACHE_URL. See ' +
+        'https://github.com/jhonDoe15/nitpicker/blob/main/docs/troubleshooting.md#cache-publish-fails\n',
     ]);
     expect([aggregate.exitCode, aggregate.err]).toEqual([
       2,
-      'Quality shard aggregation failed: shardCount 2 exceeds 1 independent analyzer components\n',
+      'Quality shard aggregation failed: shardCount 2 exceeds 1 independent analyzer components. ' +
+        'See https://github.com/jhonDoe15/nitpicker/blob/main/docs/troubleshooting.md#shard-aggregation-fails\n',
     ]);
   });
 });

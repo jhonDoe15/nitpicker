@@ -9,16 +9,22 @@ import { canonicalRule } from '../../../../shared/exceptions/rule-names.mjs';
 import { validateExceptions } from '../../../../shared/exceptions/validation.mjs';
 import { COMMON_EXCEPTION_RULES } from '../../../../shared/policy.mjs';
 import { PYTHON_SIZE_RULES } from '../../../../shared/project-rules/size-rules.mjs';
+import { UNUSED_API_RULE_IDS } from '../../../../shared/unused-api/unused-api-policy.mjs';
 import { ruleIdProblem } from './python-rule-ids.mjs';
+import { suggestionOrAllowed } from '../../../../shared/messages/closest-match.mjs';
 
 /** The rules the top-level "exceptions" lift; python.exceptions lifts every other rule. */
-export const PYTHON_TOP_LEVEL_EXCEPTION_RULES = [...COMMON_EXCEPTION_RULES, ...PYTHON_SIZE_RULES];
+export const PYTHON_TOP_LEVEL_EXCEPTION_RULES = [
+  ...COMMON_EXCEPTION_RULES,
+  ...PYTHON_SIZE_RULES,
+  UNUSED_API_RULE_IDS.unusedOption,
+];
 
-const ENVIRONMENTS = ['uv', 'poetry', 'path', 'pipenv', 'hatch', 'conda'];
-const FORMATTERS = ['ruff', 'black'];
-const TEST_RUNNERS = ['pytest', 'unittest', 'django', 'nose2'];
-const TYPE_CHECKERS = ['mypy', 'pyright', 'basedpyright'];
-const SETTING_KEYS = [
+export const ENVIRONMENTS = ['uv', 'poetry', 'path', 'pipenv', 'hatch', 'conda'];
+export const FORMATTERS = ['ruff', 'black'];
+export const PYTHON_TEST_RUNNERS = ['pytest', 'unittest', 'django', 'nose2'];
+export const TYPE_CHECKERS = ['mypy', 'pyright', 'basedpyright'];
+export const SETTING_KEYS = [
   'environment',
   'formatter',
   'testRunner',
@@ -53,7 +59,7 @@ function validateKnownKeys(settings) {
   for (const key of Object.keys(settings)) {
     if (!SETTING_KEYS.includes(key)) {
       throw configError(
-        `unknown key "${key}" in "python". Allowed keys: ${SETTING_KEYS.join(', ')}`,
+        `unknown key "${key}" in "python"${suggestionOrAllowed(key, SETTING_KEYS)}`,
       );
     }
   }
@@ -61,7 +67,7 @@ function validateKnownKeys(settings) {
 
 function validateChoices(settings) {
   validateChoice(settings.formatter, 'python.formatter', FORMATTERS);
-  validateChoice(settings.testRunner, 'python.testRunner', TEST_RUNNERS);
+  validateChoice(settings.testRunner, 'python.testRunner', PYTHON_TEST_RUNNERS);
   validateChoice(settings.typeChecker, 'python.typeChecker', TYPE_CHECKERS);
   if (settings.environment !== undefined && !ENVIRONMENTS.includes(settings.environment)) {
     validateEnvironmentDirectory(settings.environment);
@@ -111,6 +117,8 @@ function validateRuleIds(exceptions, options) {
   }
 }
 
+export const WINDOWS_ABSOLUTE = /^[A-Za-z]:[\\/]/u;
+
 function validateEnvironmentDirectory(directory) {
   if (isAbsolutePath(directory)) {
     return;
@@ -119,7 +127,7 @@ function validateEnvironmentDirectory(directory) {
 }
 
 function isAbsolutePath(value) {
-  return typeof value === 'string' && (path.isAbsolute(value) || /^[A-Za-z]:[\\/]/.test(value));
+  return typeof value === 'string' && (path.isAbsolute(value) || WINDOWS_ABSOLUTE.test(value));
 }
 
 function validateSourceRoots(sourceRoots) {

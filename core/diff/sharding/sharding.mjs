@@ -1,5 +1,3 @@
-import { selectAnalyzers } from '../execution/run-analyzers.mjs';
-
 export function planAnalyzerShards(analyzers, shardCount) {
   validateShardCount(shardCount);
   validateAnalyzers(analyzers);
@@ -61,7 +59,8 @@ function validateAnalyzers(analyzers) {
 function dependencyComponents(analyzers) {
   const neighbors = new Map(analyzers.map(({ name }) => [name, new Set()]));
   for (const analyzer of analyzers) {
-    for (const dependencyName of analyzer.dependencies ?? []) {
+    const companions = (analyzer.colocatedWith ?? []).filter((name) => neighbors.has(name));
+    for (const dependencyName of [...(analyzer.dependencies ?? []), ...companions]) {
       neighbors.get(analyzer.name).add(dependencyName);
       neighbors.get(dependencyName).add(analyzer.name);
     }
@@ -122,17 +121,11 @@ function validateAnalyzerEntry(analyzer, analyzersByName) {
   ) {
     throw new TypeError(`${analyzer.name} dependencies must contain non-empty strings`);
   }
-}
-
-export function selectComparisonAnalyzers({ options, analyzers }) {
-  const selectedAnalyzers =
-    options.shardCount === undefined
-      ? selectAnalyzers(analyzers, options.analyzerNames)
-      : selectAnalyzerShard(analyzers, options.shardCount, options.shardIndex);
-  if (selectedAnalyzers.length === 0) {
-    throw new Error(
-      'No quality analyzers are configured. The comparison framework is ready, but real analyzer adapters are a later phase.',
-    );
+  if (
+    analyzer.colocatedWith !== undefined &&
+    (!Array.isArray(analyzer.colocatedWith) ||
+      analyzer.colocatedWith.some((name) => typeof name !== 'string' || name.length === 0))
+  ) {
+    throw new TypeError(`${analyzer.name} colocatedWith must contain non-empty strings`);
   }
-  return selectedAnalyzers;
 }

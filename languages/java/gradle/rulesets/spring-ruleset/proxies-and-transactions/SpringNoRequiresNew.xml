@@ -1,0 +1,8 @@
+  <rule name="SpringNoRequiresNew" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
+        message="Keep the default REQUIRED propagation and drop Propagation.REQUIRES_NEW: each nested transaction holds a second connection and can exhaust the pool under load.">
+    <priority>3</priority>
+    <properties><property name="xpath"><value><![CDATA[
+//Annotation[pmd-java:typeIs('org.springframework.transaction.annotation.Transactional')]
+  /AnnotationMemberList/MemberValuePair[@Name = 'propagation'][.//*[@Name = 'REQUIRES_NEW']]
+]]></value></property></properties>
+  </rule>

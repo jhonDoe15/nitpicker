@@ -1,13 +1,16 @@
 import { configError } from '../../shared/config.mjs';
+import { listNames } from '../../shared/messages/messages.mjs';
 import { KEYS } from './validate.mjs';
 import { readLayeredConfig } from './layers/read-layered.mjs';
 import { rejectUnreadableSources } from './project-checks/project-config.mjs';
 import { rejectUndeclaredPreset } from './project-checks/preset-detection.mjs';
+import { rejectMissingBuildFiles } from './project-checks/project-markers.mjs';
 
 export function loadConfig(projectRoot, options) {
   const config = readConfigFile(projectRoot, options);
   rejectUnreadableSources(config, projectRoot);
   rejectUndeclaredPreset(config, projectRoot);
+  rejectMissingBuildFiles(config, projectRoot);
   return config;
 }
 
@@ -15,8 +18,10 @@ export function readConfigFile(projectRoot, options) {
   return readLayeredConfig(projectRoot, options);
 }
 
+const RUN_SETTINGS = new Set(['analyzerTimeoutMinutes']);
+
 export function describeConfigOverrides(config) {
-  return KEYS.filter((key) => config[key] !== undefined).flatMap((key) =>
+  return KEYS.filter((key) => config[key] !== undefined && !RUN_SETTINGS.has(key)).flatMap((key) =>
     key === 'python' ? describePythonOverrides(config.python) : describeOverride(config, key),
   );
 }
@@ -52,10 +57,6 @@ function turnedOffByDependency(analyzers, disabled) {
     }
   }
   return causes;
-}
-
-function listNames(names) {
-  return names.length > 1 ? `${names.slice(0, -1).join(', ')} and ${names.at(-1)}` : names[0];
 }
 
 function checkKnown(analyzers, disabled) {

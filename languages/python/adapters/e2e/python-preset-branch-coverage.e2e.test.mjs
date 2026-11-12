@@ -160,6 +160,6 @@ describe.skipIf(!pythonE2eEnabled)('Python changed-branch coverage end to end', 
       ['src/demo/lookalikes.py:5', 'src/demo/lookalikes.py:14'],
     ],
   ])('still fails %s', (_, branch, expected) => {
-    expect(branchFindings(gate(project, branch))).toEqual(expected);
+    expect(branchFindings(gate(project, branch)).toSorted()).toEqual(expected.toSorted());
   });
 });

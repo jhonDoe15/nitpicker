@@ -1,12 +1,28 @@
 import { spawnSync } from 'node:child_process';
-import { existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from 'node:fs';
+import {
+  accessSync,
+  constants,
+  existsSync,
+  mkdirSync,
+  readFileSync,
+  renameSync,
+  writeFileSync,
+} from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { chainOf } from '../../../shared/traversal.mjs';
+import {
+  TROUBLESHOOTING_ANCHORS,
+  withTroubleshooting,
+} from '../../../shared/messages/troubleshooting.mjs';
+import { runGit } from '../git/repository/command.mjs';
 
 const WORKER = fileURLToPath(new URL('./http-cache-worker.mjs', import.meta.url));
 const DEFAULT_TIMEOUT_MS = 5000;
 const MAX_ENTRY_BYTES = 32 * 1024 * 1024;
+const NO_CACHE_WARNING =
+  'no writable findings cache, so the base side runs on every comparison; ' +
+  'set NITPICKER_CACHE_DIR to a writable folder to reuse it.';
 
 const CACHE_FOLDER = 'node_modules/.cache/nitpicker';
 
@@ -42,7 +58,26 @@ export function resolveCacheDirectory({ projectRoot, environment = process.env }
     return path.resolve(projectRoot, configured);
   }
   const root = path.resolve(projectRoot);
-  return dependenciesIn(root) ? path.join(root, CACHE_FOLDER) : workspaceCacheDirectory(root);
+  if (dependenciesIn(root)) {
+    return path.join(root, CACHE_FOLDER);
+  }
+  return workspaceCacheDirectory(root) ?? gitCacheDirectory(root);
+}
+
+function gitCacheDirectory(projectRoot) {
+  const located = locateGitCommonDirectory(projectRoot);
+  return located.kind === 'writable' ? path.join(located.directory, 'nitpicker/cache') : undefined;
+}
+
+function locateGitCommonDirectory(projectRoot) {
+  try {
+    const query = ['rev-parse', '--path-format=absolute', '--git-common-dir'];
+    const directory = runGit(projectRoot, query).trim();
+    accessSync(directory, constants.W_OK);
+    return { kind: 'writable', directory };
+  } catch (error) {
+    return { kind: 'unavailable', error };
+  }
 }
 
 function readStoredFile(file) {
@@ -141,10 +176,11 @@ export function resolveCacheStore({ projectRoot, environment = process.env, writ
   const directory = resolveCacheDirectory({ projectRoot, environment });
   const local = directory === undefined ? undefined : createDirectoryStore(directory);
   const remote = resolveRemoteStore(environment, warnings);
-  const store =
-    local === undefined && remote === undefined
-      ? undefined
-      : { ...createLayeredStore({ local, remote, writeRemote }), directory };
+  if (local === undefined && remote === undefined) {
+    warnings.push(NO_CACHE_WARNING);
+    return { store: undefined, remote, warnings };
+  }
+  const store = { ...createLayeredStore({ local, remote, writeRemote }), directory };
   return { store, remote, warnings };
 }
 
@@ -152,14 +188,25 @@ function resolveRemoteStore(environment, warnings) {
   const url = environment.NITPICKER_CACHE_URL;
   if (typeof url !== 'string' || url.length === 0) return undefined;
   if (!/^https?:\/\/[^\s/]/u.test(url)) {
-    warnings.push('NITPICKER_CACHE_URL ignored: it must be an http(s) URL.');
+    warnings.push(
+      withTroubleshooting(
+        'NITPICKER_CACHE_URL ignored: it must be an http(s) URL.',
+        TROUBLESHOOTING_ANCHORS.staleCache,
+      ),
+    );
     return undefined;
   }
   const timeout = Number(environment.NITPICKER_CACHE_TIMEOUT_MS ?? DEFAULT_TIMEOUT_MS);
   const header = environment.NITPICKER_CACHE_AUTH_HEADER;
   const validHeader = typeof header === 'string' && header.includes(':');
-  if (header && !validHeader)
-    warnings.push('NITPICKER_CACHE_AUTH_HEADER ignored: expected "Name: value".');
+  if (header && !validHeader) {
+    warnings.push(
+      withTroubleshooting(
+        'NITPICKER_CACHE_AUTH_HEADER ignored: expected "Name: value".',
+        TROUBLESHOOTING_ANCHORS.staleCache,
+      ),
+    );
+  }
   return createHttpStore({
     baseUrl: url,
     authHeader: validHeader ? header : undefined,

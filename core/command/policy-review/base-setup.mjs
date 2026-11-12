@@ -1,6 +1,10 @@
 import { existsSync } from 'node:fs';
 import path from 'node:path';
 import { CONFIG_FILE_NAME } from '../../../shared/config.mjs';
+import {
+  ANALYZER_TIMEOUT_KEY,
+  withConfiguredTimeout,
+} from '../../../shared/analyzer-timeouts/analyzer-timeouts.mjs';
 import { resolveHeadPolicy } from '../../../shared/head-policy.mjs';
 import { withHeadCheckoutFacts } from '../../../languages/typescript/preset/head-policy.mjs';
 import { configureAnalyzers } from '../../configuration/configure-analyzers.mjs';
@@ -9,6 +13,8 @@ import { baseConfigCoveringHead } from '../../policy-changes/base-coverage.mjs';
 import { policyChangeFields } from '../../policy-changes/describe-policy-changes.mjs';
 import { readPolicyScope } from '../../policy-changes/policy-scope.mjs';
 import { presetAnalyzers } from '../../configuration/preset-analyzers.mjs';
+import { applyRunProfile } from '../../quick/profile.mjs';
+import { withoutTroubleshooting } from '../../../shared/messages/troubleshooting.mjs';
 
 function readBaseConfig(baseProjectRoot, warn, overlay) {
   if (overlay === undefined && !existsSync(path.join(baseProjectRoot, CONFIG_FILE_NAME))) {
@@ -18,7 +24,7 @@ function readBaseConfig(baseProjectRoot, warn, overlay) {
     return readConfigFile(baseProjectRoot, { overlay });
   } catch (error) {
     warn(
-      `The base's ${CONFIG_FILE_NAME} cannot be applied (${error instanceof Error ? error.message : String(error)}); the base is analysed with the head config, and the head config is compared with the defaults.`,
+      `The base's ${CONFIG_FILE_NAME} cannot be applied (${withoutTroubleshooting(error instanceof Error ? error.message : String(error))}); the base is analysed with the head config, and the head config is compared with the defaults.`,
     );
     return undefined;
   }
@@ -32,6 +38,7 @@ export function baseSetupResolver(cli, headConfig, headPolicy) {
     overlay: cli.baseConfigOverlay,
     inherits: cli.configOverlay?.inherits,
     repositoryLoosenings: cli.repositoryLoosenings,
+    profile: cli.options,
     warn: (message) => cli.stderr.write(`nitpicker: ${message}\n`),
   });
 }
@@ -43,9 +50,10 @@ export function createBaseSetupResolver({
   overlay,
   inherits,
   repositoryLoosenings = [],
+  profile = {},
   warn = () => undefined,
 }) {
-  return ({ baseProjectRoot, headSnapshotRoot, moves, analyzers }) => {
+  return ({ baseProjectRoot, headSnapshotRoot, liveProjectRoot, moves, analyzers }) => {
     const baseConfig = readBaseConfig(baseProjectRoot, warn, overlay);
     const compared = baseConfig ?? {};
     const scope = readPolicyScope({
@@ -53,6 +61,7 @@ export function createBaseSetupResolver({
       headConfig,
       baseProjectRoot,
       headProjectRoot: headSnapshotRoot,
+      liveProjectRoot,
       moves,
       inherits,
     });
@@ -65,6 +74,7 @@ export function createBaseSetupResolver({
             headConfig,
             headPolicy,
             injectedAnalyzers,
+            profile,
             analyzers,
           })),
       ...policyChangeFields(compared, headConfig, { ...scope, repositoryLoosenings }),
@@ -72,16 +82,32 @@ export function createBaseSetupResolver({
   };
 }
 
-function measuredBase({ baseConfig, headConfig, headPolicy, injectedAnalyzers, analyzers }) {
-  const measured = baseConfigCoveringHead(baseConfig, headConfig);
+function withoutTimeouts(config) {
+  return Object.fromEntries(Object.entries(config).filter(([key]) => key !== ANALYZER_TIMEOUT_KEY));
+}
+
+function measuredBase({
+  baseConfig,
+  headConfig,
+  headPolicy,
+  injectedAnalyzers,
+  profile,
+  analyzers,
+}) {
+  const measured = withoutTimeouts(baseConfigCoveringHead(baseConfig, headConfig));
   const baseHeadPolicy = withHeadCheckoutFacts(resolveHeadPolicy(measured), headPolicy);
   const configured = new Map(
-    configureAnalyzers(presetAnalyzers(measured, injectedAnalyzers), measured, baseHeadPolicy).map(
-      (analyzer) => [analyzer.name, analyzer],
-    ),
+    applyRunProfile(
+      configureAnalyzers(presetAnalyzers(measured, injectedAnalyzers), measured, baseHeadPolicy),
+      { ...profile, analyzerNames: [] },
+    ).analyzers.map((analyzer) => [analyzer.name, analyzer]),
   );
   return {
-    analyzers: analyzers.map((analyzer) => configured.get(analyzer.name) ?? analyzer),
+    analyzers: analyzers.map((analyzer) =>
+      configured.has(analyzer.name)
+        ? withConfiguredTimeout(configured.get(analyzer.name), headConfig[ANALYZER_TIMEOUT_KEY])
+        : analyzer,
+    ),
     headPolicy: baseHeadPolicy,
     configOverrides: describeConfigOverrides(measured),
   };

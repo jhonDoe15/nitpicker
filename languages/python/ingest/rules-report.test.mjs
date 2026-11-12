@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { ingestRulesReport } from './rules-report.mjs';
+import { FAN_OUT_SEPARATOR } from '../rules/hints/ast/ast-smell-advice.mjs';
+import { applyRuleHints } from '../rules/rule-hints.mjs';
 
 const entry = (overrides) => ({
   rule: 'frozen-dataclass',
@@ -107,6 +109,11 @@ describe('rules script report', () => {
       '`os.getenv` reads the process environment outside the composition root',
     ],
     [
+      'process-stream-access',
+      'sys.stdout',
+      '`sys.stdout` reaches a standard stream outside the composition root',
+    ],
+    [
       'clock-now',
       'datetime.datetime.now',
       '`datetime.datetime.now()` reads the clock in domain code',
@@ -131,6 +138,21 @@ describe('rules script report', () => {
     ],
     ['module-level-mutable-state', 'ITEMS', '`ITEMS` changes a module-level collection'],
     [
+      'atomic-update-across-await',
+      'self.total',
+      '`self.total` is updated from a value read before an `await`: another task can change it while this one is suspended, and the write then overwrites that change',
+    ],
+    [
+      'lock-order-inversion',
+      '`report` takes `self.a` while it holds `self.b`, and `transfer` takes `self.b` while it holds `self.a`',
+      '`report` takes `self.a` while it holds `self.b`, and `transfer` takes `self.b` while it holds `self.a`: two threads or tasks that run both can each hold one lock and wait forever for the other, a deadlock that no test reliably shows',
+    ],
+    [
+      'inconsistent-attribute-locking',
+      '`reset` writes `self.count` without a lock, while `add` writes it holding `self.lock`',
+      '`reset` writes `self.count` without a lock, while `add` writes it holding `self.lock`: a thread or task that writes here races with the locked writer, so an update is lost or another reader sees a stale value',
+    ],
+    [
       'unsafe-path-join',
       'read',
       '`read()` builds a file path from its input without a containment check',
@@ -140,15 +162,23 @@ describe('rules script report', () => {
       'isinstance(data)',
       '`isinstance(data)` checks untrusted data by hand',
     ],
+    ['type-cast', 'cast(str)', '`cast(str)` asserts a type without checking the value'],
+    ['type-cast', 'cast(str) in convert', '`cast(str)` asserts a type without checking the value'],
+    ['explicit-any', 'convert(value)', '`convert(value)` is typed with an explicit `Any`'],
     ['any-in-domain', 'total', '`total` uses `Any` in domain code'],
     ['pydantic-any-field', 'Payload.body', 'The pydantic field `Payload.body` is typed `Any`'],
     ['pydantic-extra-allow', 'Payload', 'The pydantic model `Payload` accepts unknown fields'],
     ['repeated-string-literal', 'pending', 'The string "pending" is repeated three times or more'],
     ['generic-name', 'utils', '`utils` has a generic name'],
-    ['hardcoded-secret', 'API_TOKEN', '`API_TOKEN` holds a hardcoded secret'],
+    ['hardcoded-secret', 'API_TOKEN', 'The value of `API_TOKEN` is a hardcoded secret'],
     ['credential-shape', 'credential', 'A string has the shape of a credential'],
     ['secret-in-log', 'token', '`token` is a secret and is passed to a log call'],
     ['io-in-loop', 'requests.get()', '`requests.get()` runs once per item of a loop'],
+    [
+      'unbounded-fan-out',
+      ['asyncio.gather', 'a | b', 'fetch()', 'client.get()', 'message'].join(FAN_OUT_SEPARATOR),
+      '`asyncio.gather` starts `fetch()` (which publishes through `client.get()`) for every element of `a | b` at once',
+    ],
     [
       'task-outlives-resource',
       'stream passed to nursery.start_soon',
@@ -159,6 +189,11 @@ describe('rules script report', () => {
       'await stream.aclose() in finally',
       '`await stream.aclose() in finally` can be cancelled before the cleanup finishes, so the resource may stay open',
     ],
+    [
+      'timeout-scope-path-without-checkpoint',
+      'trio.fail_after: render()',
+      '`trio.fail_after` has a path that runs `render()` without reaching a checkpoint (an `await` that suspends, `async with` or `async for`), so its timeout or cancellation cannot interrupt that path',
+    ],
     ['todo-without-issue', 'TODO: later', 'The task marker `TODO: later` has no issue'],
     [
       'skipped-test-without-reason',
@@ -166,7 +201,23 @@ describe('rules script report', () => {
       '`pytest.mark.skip` skips a test without a reason',
     ],
     ['sleep-in-test', 'time.sleep', '`time.sleep` waits for real time in a test'],
+    ['switched-off-test', 'pytest.mark.skip', '`pytest.mark.skip` switches a test off for good'],
+    [
+      'conditional-assertion-in-test',
+      'test_total: for',
+      'Test `test_total` asserts inside a `for` loop',
+    ],
     ['tautological-assert', 'assert', '`assert` can never fail'],
+    [
+      'float-equality-in-test',
+      '0.3',
+      '`0.3` is compared exactly in a test, so rounding makes it fail',
+    ],
+    [
+      'weak-assertion',
+      'assert len(rows) > 0',
+      '`assert len(rows) > 0` passes for almost any value',
+    ],
     ['real-clock-in-test', 'time.time', '`time.time()` reads the real clock in a test'],
     ['random-in-test', 'random.random', '`random.random()` draws random values in a test'],
     ['network-in-test', 'requests.get', '`requests.get` reaches the network in a unit test'],
@@ -194,6 +245,11 @@ describe('rules script report', () => {
       'http-without-timeout',
       'urllib.request.urlopen',
       '`urllib.request.urlopen` can wait forever: it has no timeout',
+    ],
+    [
+      'subprocess-without-timeout',
+      'subprocess.run',
+      '`subprocess.run` waits for a child process without a deadline, so a command that never exits hangs this code for good',
     ],
     [
       'unsafe-deserialization',
@@ -296,5 +352,69 @@ describe('rules script report', () => {
 
   it('reads an empty report', () => {
     expect(ingestRulesReport('[]')).toEqual([]);
+  });
+
+  it('turns a check skipped for a too deep expression into a descriptive note', () => {
+    const report = [
+      entry({ rule: 'rules-too-deep', path: 'src/sums.py', subject: 'file', line: 1 }),
+      entry({ rule: 'rules-too-deep', path: '.', subject: 'unused-option', line: 1 }),
+      entry({ rule: 'rules-too-deep', path: 'src/deep.py', subject: 'all', line: 1 }),
+    ];
+
+    expect(ingestRulesReport(JSON.stringify(report))).toEqual([
+      {
+        tool: 'python-rules',
+        rule: 'rules-too-deep',
+        path: 'src/sums.py',
+        identity: 'file',
+        subject: 'file',
+        message:
+          "python-rules skipped some of the per-file checks here: an expression nests too deeply for Python's recursion limit. Split the expression to have it checked.",
+        classification: 'descriptive',
+        location: { line: 1 },
+      },
+      {
+        tool: 'python-rules',
+        rule: 'rules-too-deep',
+        path: '.',
+        identity: 'unused-option',
+        subject: 'unused-option',
+        message:
+          "python-rules skipped the unused-option checks here: an expression nests too deeply for Python's recursion limit. Split the expression to have it checked.",
+        classification: 'descriptive',
+        location: { line: 1 },
+      },
+      {
+        tool: 'python-rules',
+        rule: 'rules-too-deep',
+        path: 'src/deep.py',
+        identity: 'all',
+        subject: 'all',
+        message:
+          "python-rules skipped every check here: an expression nests too deeply for Python's recursion limit. Split the expression to have it checked.",
+        classification: 'descriptive',
+        location: { line: 1 },
+      },
+    ]);
+  });
+
+  it('names an unused parameter with a default, and which calls count', () => {
+    const report = [
+      entry({ rule: 'unused-option', subject: 'total.rate', data: { scope: 'private' } }),
+      entry({ rule: 'unused-option', subject: 'total.cents', data: { scope: 'published' } }),
+    ];
+
+    expect(ingestRulesReport(JSON.stringify(report)).map(({ message }) => message)).toEqual([
+      'Option total.rate is never set. Remove it, or set it from a real call (tests do not count).',
+      "Option total.cents is never set. Remove it, or set it from a real call (this package's own tests count).",
+    ]);
+    expect(
+      applyRuleHints(ingestRulesReport(JSON.stringify(report))).map(
+        ({ allowedForm }) => allowedForm,
+      ),
+    ).toEqual([
+      'Remove it, or set it from a real call (tests do not count).',
+      "Remove it, or set it from a real call (this package's own tests count).",
+    ]);
   });
 });

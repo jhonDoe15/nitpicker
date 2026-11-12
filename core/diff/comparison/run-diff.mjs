@@ -3,8 +3,9 @@ import {
   mustMeetOnEditedLines,
 } from '../../../languages/typescript/preset/strict-rules.mjs';
 import { writeDiffReports } from '../reporting/reporters.mjs';
+import { partialRunField } from '../reporting/partial-run/partial-run.mjs';
 import path from 'node:path';
-import { resolveComparison, captureWorkingTree } from '../git/repository/git.mjs';
+import { resolveComparison, captureWorkingTree, hasSameTree } from '../git/repository/git.mjs';
 import { readRepositoryChanges } from '../git/patches/changes.mjs';
 import {
   resolveBaseProjectPath,
@@ -15,12 +16,13 @@ import { readChangedLines } from '../git/patches/changed-lines.mjs';
 import { readRemovesTests } from '../git/patches/test-removal.mjs';
 import { withTemporaryWorktree, withNamedTemporaryWorktree } from '../git/repository/worktree.mjs';
 import { withHeadPolicyFile } from '../../../languages/typescript/preset/head-policy.mjs';
-import { runAnalyzers } from '../execution/run-analyzers.mjs';
+import { analyzerRunOptions, runAnalyzers } from '../execution/run-analyzers.mjs';
 import { withMovesFile } from '../git/patches/moves-file.mjs';
 import { PACKAGE_ROOT } from '../../tooling/tool-resolution.mjs';
-import { combineAnalyzerReports } from './results.mjs';
+import { combineAnalyzerReports, noChangesReport } from './results.mjs';
 import { runBaseWithCache, createFindingsCache } from '../cache/findings-cache.mjs';
 import { cachedLine } from '../execution/progress.mjs';
+import { quickScoped, runHeadAnalyzers } from './quick/head-run.mjs';
 import {
   prepareSnapshotDependencies,
   removeSnapshotDependencies,
@@ -30,15 +32,23 @@ export function runQualityDiff(options) {
   const settings = withDefaults(options);
   const startedAt = Date.now();
   const comparison = resolveSnapshots(settings);
-  const layout = readSnapshotLayout(settings, comparison);
-  const report = withSnapshotRoots({ settings, comparison, layout }, (roots) =>
-    compareSnapshots({ settings, comparison, layout, roots, startedAt }),
-  );
+  const report = hasSameTree(settings.repositoryRoot, comparison.mergeBaseSha, comparison.headSha)
+    ? noChangesReport({ ...settings, comparison, startedAt })
+    : compareChanges(settings, comparison, startedAt);
   report.summary.elapsedMs = Date.now() - startedAt;
+  Object.assign(report.summary, partialRunField(settings.partialRun));
   report.text = writeDiffReports(settings.outputRoot, report, {
     projectPath: settings.projectRelativePath,
+    repositoryRoot: settings.repositoryRoot,
   });
   return report;
+}
+
+function compareChanges(settings, comparison, startedAt) {
+  const layout = readSnapshotLayout(settings, comparison);
+  return withSnapshotRoots({ settings, comparison, layout }, (roots) =>
+    compareSnapshots({ settings, comparison, layout, roots, startedAt }),
+  );
 }
 
 function withDefaults(options) {
@@ -48,6 +58,7 @@ function withDefaults(options) {
   return {
     headProjectRoot: path.join(options.repositoryRoot, options.projectRelativePath),
     includeWorkingTree: false,
+    captureHead: captureWorkingTree,
     additionalToolErrors: [],
     configOverrides: [],
     headPolicy: {},
@@ -55,10 +66,10 @@ function withDefaults(options) {
   };
 }
 
-function resolveSnapshots({ repositoryRoot, requestedBaseRef, includeWorkingTree }) {
+function resolveSnapshots({ repositoryRoot, requestedBaseRef, includeWorkingTree, captureHead }) {
   const committed = resolveComparison(repositoryRoot, requestedBaseRef);
   return includeWorkingTree
-    ? { ...committed, headSha: captureWorkingTree(repositoryRoot, committed.headSha) }
+    ? { ...committed, headSha: captureHead(repositoryRoot, committed.headSha) }
     : committed;
 }
 
@@ -88,11 +99,10 @@ function readSnapshotLayout({ repositoryRoot, projectRelativePath }, comparison)
     baseProjectRelativePath,
     inferredMoves: moves.inferred,
   });
-  const touchedPaths = readTouchedPaths({ projectRelativePath, baseProjectRelativePath, changes });
   return {
     baseProjectRelativePath,
     moves,
-    touchedPaths,
+    touchedPaths: readTouchedPaths({ projectRelativePath, baseProjectRelativePath, changes }),
     touchedCode: {
       changedLines,
       isStrictRule,
@@ -109,11 +119,12 @@ function readSnapshotLayout({ repositoryRoot, projectRelativePath }, comparison)
 }
 
 function withSnapshotRoots({ settings, comparison, layout }, operation) {
-  const { repositoryRoot, projectRelativePath } = settings;
-  return withTemporaryWorktree(repositoryRoot, comparison.mergeBaseSha, (baseWorktreeRoot) =>
+  const { repositoryRoot, projectRelativePath, warn } = settings;
+  const base = { commitSha: comparison.mergeBaseSha, warn };
+  return withTemporaryWorktree(repositoryRoot, base, (baseWorktreeRoot) =>
     withNamedTemporaryWorktree(
       repositoryRoot,
-      { commitSha: comparison.headSha, directoryName: 'head' },
+      { commitSha: comparison.headSha, directoryName: 'head', warn },
       (headWorktreeRoot) =>
         operation({
           baseProjectRoot: path.join(baseWorktreeRoot, layout.baseProjectRelativePath),
@@ -133,6 +144,7 @@ function compareSnapshots(context) {
     policyLoosenings: [],
     ...settings.resolveBaseSetup?.({
       ...roots,
+      liveProjectRoot: settings.headProjectRoot,
       moves: layout.moves,
       analyzers: settings.analyzers,
     }),
@@ -167,21 +179,10 @@ function withBasePolicyFile({ basePolicy, headPolicy, headPolicyFile }, operatio
 }
 
 function runAndCombine(context) {
-  const { settings, comparison, layout, roots, startedAt, headPolicyFile } = context;
+  const { settings, comparison, layout, startedAt } = context;
   const baseRun = runBaseSide(context);
   const headRun = withMovesFile(layout.moves.files, (baselineMovesFile) =>
-    runAnalyzers({
-      analyzers: settings.analyzers,
-      projectRoot: roots.headSnapshotRoot,
-      policyRoot: roots.headSnapshotRoot,
-      toolRoot: PACKAGE_ROOT,
-      liveProjectRoot: settings.headProjectRoot,
-      headPolicyFile,
-      snapshot: 'head',
-      baselineRoot: roots.baseProjectRoot,
-      baselineMovesFile,
-      runTasks: settings.runTasks,
-    }),
+    runHeadAnalyzers(context, baselineMovesFile),
   );
   return combineAnalyzerReports({
     analyzers: settings.analyzers,
@@ -198,9 +199,13 @@ function runAndCombine(context) {
     policyLoosenings: context.baseSetup.policyLoosenings,
     policyKinds: context.baseSetup.policyKinds,
     policyDigest: context.baseSetup.policyDigest,
+    policies: { base: context.baseSetup.headPolicy, head: settings.headPolicy },
     acceptPolicyChange: settings.acceptPolicyChange,
+    scope: settings.scope,
     policyAcceptanceSource: settings.policyAcceptanceSource,
     reportsPolicy: settings.reportsPolicy !== false,
+    quick: settings.quick,
+    staged: settings.staged,
     notices:
       settings.describeNotices?.([...layout.touchedCode.changedLines.keys()], {
         mergeBaseSha: comparison.mergeBaseSha,
@@ -219,14 +224,14 @@ function runBaseAnalyzers(context, baseAnalyzers) {
     liveProjectRoot: settings.headProjectRoot,
     headPolicyFile: basePolicyFile,
     snapshot: 'base',
-    runTasks: settings.runTasks,
+    ...analyzerRunOptions(settings),
   });
 }
 
 function runBaseSide(context) {
   const { settings, comparison, layout, roots, baseSetup } = context;
   if (settings.cacheStore === undefined) {
-    return runBaseAnalyzers(context, baseSetup.analyzers);
+    return runBaseAnalyzers(context, quickScoped(settings, layout, baseSetup.analyzers));
   }
   return runBaseWithCache({
     cache: createFindingsCache({
@@ -236,7 +241,7 @@ function runBaseSide(context) {
       configOverrides: baseSetup.configOverrides,
       headPolicy: baseSetup.headPolicy,
     }),
-    analyzers: baseSetup.analyzers,
+    analyzers: quickScoped(settings, layout, baseSetup.analyzers),
     run: (baseAnalyzers) => runBaseAnalyzers(context, baseAnalyzers),
     onCached: (count) =>
       settings.progress?.write(
@@ -270,7 +275,6 @@ function withPreparedAnalyzerDependencies(
     if (baseDependencies !== undefined) {
       preparedDependencies.push(baseDependencies);
     }
-
     const headDependencies = prepareSnapshotDependencies({
       projectRoot: headSnapshotRoot,
       liveProjectRoot,

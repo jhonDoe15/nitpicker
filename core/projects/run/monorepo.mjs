@@ -1,6 +1,6 @@
 import path from 'node:path';
 import { policyAcceptance } from '../../command/policy-review/policy-acceptance.mjs';
-import { clearDiffReports } from '../../diff/reporting/reporters.mjs';
+import { clearDiffReports, outputRootFor } from '../../diff/reporting/reporters.mjs';
 import { clearSnapshotReports } from '../../snapshot/reporters.mjs';
 import { repositoryRootOf } from '../../configuration/layers/layers.mjs';
 import { readLayeredConfig } from '../../configuration/layers/read-layered.mjs';
@@ -33,14 +33,12 @@ import {
   rootConfigFiles,
   unlistedFolders,
 } from './context.mjs';
-import { shardingMessage, undeclaredHint, unlistedHint } from './messages.mjs';
-
-function outputRootOf(root, options) {
-  if (options.outputRoot !== undefined) {
-    return path.resolve(root, options.outputRoot);
-  }
-  return path.join(root, 'reports/quality', options.all ? 'snapshot' : 'diff');
-}
+import {
+  rejectPathScope,
+  rejectWholeRunOptions,
+  undeclaredHint,
+  unlistedHint,
+} from './messages.mjs';
 
 function clearReports(reportRoot) {
   clearDiffReports(reportRoot);
@@ -172,7 +170,8 @@ function repositoryOf({ plan, files, comparison, cli }) {
 }
 
 function prepare({ plan, cli }) {
-  const outputRoot = outputRootOf(plan.root, cli.options);
+  const { all, outputRoot: given } = cli.options;
+  const outputRoot = outputRootFor(plan.root, given, all ? 'snapshot' : 'diff');
   const analyzers = analyzersByProject(plan, cli);
   clearStaleProjectReports({ outputRoot, plan, clearReports });
   clearReports(outputRoot);
@@ -288,13 +287,12 @@ export function runMonorepo({ cli, currentProjectRoot, runProject }) {
   if (plan === undefined) {
     return singleMode({ inspection, cli, currentProjectRoot });
   }
+  rejectPathScope(plan, cli.scope);
   const member =
     cli.currentProjectRoot === undefined ? memberProjectOf(plan, cli.workingDirectory) : undefined;
   if (member !== undefined && (cli.options.projectPaths ?? []).length === 0) {
     return { exitCode: runMember({ plan, files, member, cli, runProject }) };
   }
-  if (cli.options.shardCount !== undefined) {
-    throw new Error(shardingMessage(plan));
-  }
+  rejectWholeRunOptions(plan, cli.options);
   return { exitCode: execute({ plan, files, cli, runProject }) };
 }

@@ -1,6 +1,6 @@
 import { existsSync, readFileSync, realpathSync } from 'node:fs';
 import path from 'node:path';
-import { parse as parseYaml } from 'yaml';
+import { parseYaml } from '../../tooling/yaml/yaml-documents.mjs';
 import { CONFIG_FILE_NAME } from '../../../shared/config.mjs';
 import { chainOf } from '../../../shared/traversal.mjs';
 import { runGit } from '../../diff/git/repository/command.mjs';

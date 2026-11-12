@@ -12,7 +12,7 @@ const BANNED_SUPPRESSIONS = [
   /^all$/i,
   /^detekt(?:[.:]|$)/i,
   /^ktlint(?:[.:]|$)/i,
-  /^[A-Z][A-Za-z0-9]*[a-z][A-Za-z0-9]*$/,
+  /^[A-Z][\dA-Z]*[a-z][\dA-Za-z]*$/,
 ];
 const DETEKT_RULESETS = new Set([
   'comments',
@@ -40,11 +40,58 @@ export const ONE_WAY_RULES = [
   },
   { name: 'CastNullableToNonNullableType', ruleset: 'potential-bugs' },
   {
+    name: 'CastToNullableType',
+    ruleset: 'potential-bugs',
+    allowed: 'Use `as? T` and handle the null; `as T?` still throws when the type is wrong.',
+  },
+  {
+    name: 'DontDowncastCollectionTypes',
+    ruleset: 'potential-bugs',
+    allowed:
+      'Copy it with `toMutableList()`, `toMutableMap()` or `toMutableSet()`, or ask for the mutable type at its source.',
+  },
+  {
     name: 'TooGenericExceptionCaught',
     ruleset: 'exceptions',
     allowed: 'In a test, use `assertFailsWith`.',
   },
   { name: 'GlobalCoroutineUsage', ruleset: 'coroutines' },
+  {
+    name: 'SuspendFunSwallowedCancellation',
+    ruleset: 'coroutines',
+    allowed:
+      'Make a direct suspend call and catch only the specific exception you expect, so cancellation still reaches the coroutine.',
+  },
+  {
+    name: 'InjectDispatcher',
+    ruleset: 'coroutines',
+    mainOnly: true,
+    allowed:
+      'Inject the dispatcher (`dispatcher: CoroutineDispatcher = Dispatchers.IO` as a parameter default), so a test can pass a test dispatcher.',
+  },
+  {
+    name: 'RedundantSuspendModifier',
+    ruleset: 'coroutines',
+    allowed: 'Remove the `suspend` modifier, or call a suspending function in the body.',
+  },
+  {
+    name: 'SleepInsteadOfDelay',
+    ruleset: 'coroutines',
+    allowed:
+      'Use `delay`, which suspends the coroutine instead of blocking its thread (in a test, `delay` under `runTest` runs in virtual time).',
+  },
+  {
+    name: 'SuspendFunWithFlowReturnType',
+    ruleset: 'coroutines',
+    allowed:
+      'Remove `suspend` and return the Flow from a plain function: a Flow is cold, and collecting it is what suspends.',
+  },
+  {
+    name: 'SuspendFunWithCoroutineScopeReceiver',
+    ruleset: 'coroutines',
+    allowed:
+      'Either keep `suspend` and use `coroutineScope { ... }` inside, or drop `suspend` for an extension that only launches coroutines in the receiver scope.',
+  },
   { name: 'ForbiddenMethodCall', ruleset: 'style' },
   {
     name: 'UnnecessaryLet',
@@ -57,6 +104,12 @@ export const ONE_WAY_RULES = [
     allowed: 'Remove `apply`; use it only to configure an object you just created.',
   },
   { name: 'UseLet', ruleset: 'style' },
+  {
+    name: 'CollapsibleIfStatements',
+    ruleset: 'style',
+    allowed:
+      'Merge them into one `if (a && b)`, with a condition that holds `||` in parentheses; nesting stays when the outer `if` has an `else` or other statements.',
+  },
   {
     name: 'UnusedParameter',
     ruleset: 'style',
@@ -107,5 +160,9 @@ export function withAllowedForm(finding) {
   if (finding.tool !== DETEKT_TOOL || rule?.allowed === undefined) {
     return finding;
   }
-  return { ...finding, message: appendSentence(finding.message, rule.allowed) };
+  return {
+    ...finding,
+    message: appendSentence(finding.message, rule.allowed),
+    allowedForm: rule.allowed,
+  };
 }

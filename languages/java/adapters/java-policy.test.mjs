@@ -2,8 +2,10 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
+import { readConfigFile } from '../../../core/configuration/config.mjs';
 import { createJavaAnalyzer } from './java-analyzer.mjs';
 import { JAVA_TOOLS } from './gradle-presets.mjs';
+import { lintBaselineProperties } from './java-diff.mjs';
 import {
   configureJavaAnalyzer,
   parseJavaRunnerArguments,
@@ -134,16 +136,19 @@ describe('configureJavaAnalyzer', () => {
   });
 
   it('declares every tool the Java reports produce', () => {
-    expect(createJavaAnalyzer().reportedTools).toEqual(JAVA_TOOLS);
+    expect(createJavaAnalyzer().reportedTools).toEqual([...JAVA_TOOLS, 'facts', 'build']);
     expect([...new Set(JAVA_TOOLS)].sort()).toEqual([
       'archunit',
       'checkstyle',
       'coupling',
       'crap',
+      'dependencies',
       'duplicates',
       'errorprone',
+      'forbiddenapis',
       'google-java-format',
       'jacoco',
+      'javac',
       'palantir-java-format',
       'pit',
       'pmd',
@@ -262,6 +267,28 @@ describe('project tool configs', () => {
     expect(configured.resolveConfigurationHash(root)).not.toBe(before);
   });
 
+  it('hands a build-declared tool to the runner and hashes only the settings it reads', () => {
+    const spotbugs = { spotbugs: { precedence: ['project'] } };
+    const configured = configureJavaAnalyzer(createJavaAnalyzer(), { tools: spotbugs });
+    const root = projectWith({
+      'build.gradle': "spotbugs { effort = 'max' }\n",
+      'settings.gradle': '',
+    });
+
+    const parsed = parseJavaRunnerArguments(configured.createInvocation(context()).args.slice(1));
+    const before = configured.resolveConfigurationHash(root);
+    writeFileSync(
+      path.join(root, 'build.gradle'),
+      "dependencies { }\nspotbugs { effort = 'max' }\n",
+    );
+    const unchanged = configured.resolveConfigurationHash(root);
+    writeFileSync(path.join(root, 'build.gradle'), "spotbugs { effort = 'more' }\n");
+
+    expect(parsed.policy.toolPrecedence).toEqual({ spotbugs: ['project'] });
+    expect(unchanged).toBe(before);
+    expect(configured.resolveConfigurationHash(root)).not.toBe(before);
+  });
+
   it('chains the project files into the legacy inventory hash', () => {
     const configured = configureJavaAnalyzer(createJavaAnalyzer(), {
       tools,
@@ -273,6 +300,17 @@ describe('project tool configs', () => {
     writeFileSync(path.join(root, 'config/pmd/ruleset.xml'), '<ruleset name="edited"/>');
 
     expect(configured.resolveConfigurationHash(root)).not.toBe(before);
+  });
+});
+
+describe('lintBaselineProperties', () => {
+  it('passes the base project root to the head run only', () => {
+    expect(lintBaselineProperties({ snapshot: 'head', baselineRoot: '/base/app' })).toEqual([
+      '-Pnitpicker.lintBaseline=/base/app',
+    ]);
+    expect(lintBaselineProperties({ snapshot: 'base', baselineRoot: '/base/app' })).toEqual([]);
+    expect(lintBaselineProperties({ snapshot: 'head' })).toEqual([]);
+    expect(lintBaselineProperties()).toEqual([]);
   });
 });
 
@@ -318,7 +356,7 @@ describe('Java file limits', () => {
 });
 
 const JAVA_USAGE = new Error(
-  'Usage: java-runner.mjs --project-root <directory> [--snapshot base|head] [--policy-root <directory>] [--baseline-root <directory>] [--crap-limit <number>] [--exclude <glob>]... [--exception <json>]... [--legacy-inventory <path>] [--kotlin-detekt-config <path>] [--file-limits <json>] [--test-seconds <json>] [--test-console-allow <json array>] [--duplicate-skipped-folders <json array>] [--preset java|kotlin] [--kotlin-formatter ktlint|ktfmt|none] [--<tool>-precedence <layers>]...',
+  'Usage: java-runner.mjs --project-root <directory> [--snapshot base|head] [--policy-root <directory>] [--baseline-root <directory>] [--log-root <directory> --log-label <path>] [--crap-limit <number>] [--exclude <glob>]... [--exception <json>]... [--legacy-inventory <path>] [--kotlin-detekt-config <path>] [--file-limits <json>] [--test-seconds <json>] [--test-console-allow <json array>] [--duplicate-skipped-folders <json array>] [--mutation-scope <json array>] [--preset java|kotlin] [--kotlin-formatter ktlint|ktfmt|none] [--<tool>-precedence <layers>]...',
 );
 
 describe('parseJavaRunnerArguments', () => {
@@ -418,5 +456,29 @@ describe('validateJavaConfig', () => {
     }).toThrow(
       `"exceptions[0].rule" names a Checkstyle check by class; findings print the check's name, so write "checkstyle/Indentation"`,
     );
+  });
+});
+
+describe('the no-production-runtime exception in nitpicker.config.json', () => {
+  function configOf(preset, rule) {
+    const root = mkdtempSync(path.join(tmpdir(), 'nitpicker-config-'));
+    roots.push(root);
+    const exception = { rule, paths: ['src/test/**'], reason: 'checks the schema only' };
+    writeFileSync(
+      path.join(root, 'nitpicker.config.json'),
+      JSON.stringify({ preset, exceptions: [exception] }),
+    );
+    return readConfigFile(root);
+  }
+
+  it.each([
+    ['java', 'no-production-runtime'],
+    ['java', 'test-runtime/no-production-runtime'],
+    ['kotlin', 'no-production-runtime'],
+    ['kotlin', 'test-runtime/no-production-runtime'],
+  ])('is accepted by config validation for the %s preset as %s', (preset, rule) => {
+    expect(configOf(preset, rule).exceptions).toEqual([
+      { rule: 'no-production-runtime', paths: ['src/test/**'], reason: 'checks the schema only' },
+    ]);
   });
 });
