@@ -2,6 +2,11 @@ const GENERIC =
   'Changes the checking policy for affected code. Restore the base setting unless a person confirms the weaker checks.';
 
 export const POLICY_GUIDANCE = {
+  'imported-entry-point': [
+    'An entry point is a file a command or runtime loads without an import, yet checked code imports',
+    'these files, and marking them relaxes the dead-code, module-load and process-access checks for them.',
+    'List only the files that start a program, or have a person confirm it.',
+  ].join(' '),
   exception: [
     'Silences the named rule for matching paths; other rules still apply.',
     'Remove the exception and fix the findings, or have a person confirm it.',

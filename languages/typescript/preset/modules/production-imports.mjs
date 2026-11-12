@@ -3,7 +3,7 @@ import { createRequire } from 'node:module';
 import path from 'node:path';
 import { selectTypeScriptApi } from '../../typescript-api/api-selection.mjs';
 import { depthFirst } from '../../../../shared/traversal.mjs';
-import { reachableModules } from './module-resolution.mjs';
+import { reachableModules, resolveModuleSpecifier } from './module-resolution.mjs';
 import { readJsonc } from './tsconfig-files.mjs';
 
 const requireModule = createRequire(import.meta.url);
@@ -58,4 +58,17 @@ export function productionReach(projectRoot, { importers, entries = [] }) {
     reached.set(path.relative(root, step.file).split(path.sep).join('/'), label);
   }
   return reached;
+}
+
+export function directlyImportedFiles(projectRoot, importers) {
+  const root = realpathSync(projectRoot);
+  return new Set(
+    importers.flatMap((file) => {
+      const absolute = path.join(root, file);
+      return specifiersOf(absolute)
+        .map((specifier) => resolveModuleSpecifier(specifier, absolute).path)
+        .filter((target) => target !== undefined && target !== absolute)
+        .map((target) => path.relative(root, target).split(path.sep).join('/'));
+    }),
+  );
 }

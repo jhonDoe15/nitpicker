@@ -21,6 +21,7 @@ import {
 } from '../../languages/typescript/preset/modules/tsconfig-files.mjs';
 import { presetToDeclare } from '../configuration/project-checks/preset-detection.mjs';
 import { readToolConfigs } from './build-files/tool-config-files.mjs';
+import { importedAmong } from './imported-files.mjs';
 import { isGeneratedJvm } from '../../languages/java/adapters/generated/generated-sources.mjs';
 import { isGeneratedPython } from '../../languages/python/libraries/generated-files.mjs';
 import { isMarkedGenerated } from '../../languages/typescript/preset/layout/generated-files.mjs';
@@ -132,6 +133,7 @@ export function createPolicyScope({
   buildSources,
   toolConfigs = [],
   reach = () => new Map(),
+  importedBy = () => [],
   blobOf = () => 'unread',
   generated = { base: () => false, head: () => false },
 }) {
@@ -155,6 +157,7 @@ export function createPolicyScope({
     buildSources,
     toolConfigs,
     productionReach: computedOnce(reach),
+    importedBy,
     blobOf,
     generated,
   };
@@ -275,6 +278,11 @@ export function readPolicyScope({
       { gitBlobId, replacedOptions },
     ),
     reach: () => productionReachOf({ headProjectRoot, headConfig, files, headRoots, headSources }),
+    importedBy: (candidates) =>
+      importedAmong(
+        { projectRoot: headProjectRoot, config: headConfig, files, roots: headRoots },
+        candidates,
+      ),
     blobOf: blobReader(headProjectRoot),
     generated: generatedReaders(headConfig.preset, baseProjectRoot, headProjectRoot),
   });

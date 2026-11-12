@@ -12,10 +12,10 @@ import { duplicateFolderExclusions } from './duplicate-folders.mjs';
 
 const NOTHING_NEW = 'covers no checked file it did not cover before';
 
-function newlyCovered(baseGlobs, headGlob, { paths }) {
+function newlyCovered(baseGlobs, headGlob, { paths, basePathOf = (file) => file }) {
   const before = matcherOf(baseGlobs);
   const after = matcherOf([headGlob]);
-  return paths.filter((file) => after(file) && !before(file));
+  return paths.filter((file) => after(file) && !before(basePathOf(file)));
 }
 
 function addedGlob({ text, kind }, covered, scope) {
@@ -114,19 +114,51 @@ function exceptionChanges(baseExceptions = [], headExceptions = [], scope) {
   return [...added, { loosened: [], changed: removed }];
 }
 
-function entryPointChanges(baseConfig, headConfig) {
-  return ['layout', 'python'].map((owner) => {
-    const key = `${owner}.entryPoints`;
+const ENTRY_POINT_KEYS = ['layout', 'python'];
+
+function addedEntryPoints(baseConfig, headConfig, scope) {
+  return ENTRY_POINT_KEYS.flatMap((owner) => {
     const before = baseConfig[owner]?.entryPoints ?? [];
-    const after = headConfig[owner]?.entryPoints ?? [];
-    return {
-      loosened: [],
-      changed: [
-        ...after.filter((glob) => !before.includes(glob)).map((glob) => `${key} added: ${glob}`),
-        ...before.filter((glob) => !after.includes(glob)).map((glob) => `${key} removed: ${glob}`),
-      ],
-    };
+    return (headConfig[owner]?.entryPoints ?? [])
+      .filter((glob) => !before.includes(glob))
+      .map((glob) => ({
+        key: `${owner}.entryPoints`,
+        glob,
+        covered: newlyCovered(before, glob, { paths: scope.code, basePathOf: scope.basePathOf }),
+      }));
   });
+}
+
+function entryPointAddition({ key, glob, covered }, imported) {
+  const text = `${key} added: ${glob}`;
+  const importedFiles = covered.filter((file) => imported.has(file));
+  return importedFiles.length === 0
+    ? { loosened: [], changed: [text] }
+    : {
+        loosened: [
+          {
+            kind: 'imported-entry-point',
+            text: `${text} (checked code imports ${importedFiles.join(', ')})`,
+            files: [CONFIG_FILE_NAME, ...importedFiles],
+          },
+        ],
+        changed: [],
+      };
+}
+
+function entryPointChanges(baseConfig, headConfig, scope) {
+  const added = addedEntryPoints(baseConfig, headConfig, scope);
+  const imported = new Set(scope.importedBy([...new Set(added.flatMap(({ covered }) => covered))]));
+  const removed = ENTRY_POINT_KEYS.flatMap((owner) => {
+    const after = headConfig[owner]?.entryPoints ?? [];
+    return (baseConfig[owner]?.entryPoints ?? [])
+      .filter((glob) => !after.includes(glob))
+      .map((glob) => `${owner}.entryPoints removed: ${glob}`);
+  });
+  return [
+    ...added.map((entry) => entryPointAddition(entry, imported)),
+    { loosened: [], changed: removed },
+  ];
 }
 
 function rootRemovalKind(key) {
@@ -186,7 +218,7 @@ function testRootAdditions(baseConfig, headConfig, scope) {
 export function coveredPathChanges(baseConfig, headConfig, scope) {
   return [
     ...exclusionChanges(baseConfig, headConfig, scope),
-    ...entryPointChanges(baseConfig, headConfig),
+    ...entryPointChanges(baseConfig, headConfig, scope),
     ...exceptionChanges(baseConfig.exceptions, headConfig.exceptions, scope),
     ...exceptionChanges(baseConfig.python?.exceptions, headConfig.python?.exceptions, scope),
     ...rootRemovals(scope),
