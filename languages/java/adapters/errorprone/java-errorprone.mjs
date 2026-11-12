@@ -23,17 +23,42 @@ export function readErrorProneFindings({ reportRoot, roots, lintedRoots, manifes
   }
   const testRoots = manifest.testSourceRoots ?? [];
   const outside = new Set();
-  const { findings } = ingestErrorProne(
-    withoutExemptCode(readFileSync(reportPath, 'utf8'), sourceReader(reportRoot)),
-    {
-      resolvePath: (file) => lintedPath(file, { roots, lintedRoots, outside }),
-      guava: (file) => (inRoots(file, testRoots) ? manifest.testGuava : manifest.guava) !== false,
-    },
-  );
+  const { diagnostics, crashes } = splitCrashes(JSON.parse(readFileSync(reportPath, 'utf8')));
+  const { findings } = ingestErrorProne(withoutExemptCode(diagnostics, sourceReader(reportRoot)), {
+    resolvePath: (file) => lintedPath(file, { roots, lintedRoots, outside }),
+    guava: (file) => (inRoots(file, testRoots) ? manifest.testGuava : manifest.guava) !== false,
+  });
   return [
     ...findings.map((finding) => withExceptionRoute(finding, testRoots)),
     ...(outside.size === 0 ? [] : [unmappedError(outside, roots)]),
+    ...crashes.map((crash) => crashError(crash, roots)),
   ];
+}
+
+function splitCrashes(diagnostics) {
+  if (!Array.isArray(diagnostics)) {
+    return { diagnostics, crashes: [] };
+  }
+  return {
+    diagnostics: diagnostics.filter((diagnostic) => !isCrash(diagnostic)),
+    crashes: diagnostics.filter(isCrash),
+  };
+}
+
+function isCrash(diagnostic) {
+  return typeof diagnostic?.crash === 'string';
+}
+
+function crashError({ crash, file, line, cause }, roots) {
+  const [relative = file] = projectRelative(file, roots);
+  const why = typeof cause === 'string' && cause !== '' ? ` (${cause})` : '';
+  return {
+    ...toolError(
+      'check-crashed',
+      `Error Prone's ${crash} check crashed on ${relative}:${String(line)}${why}, so it was turned off for this run and the findings of the other checks are kept. The crash is an Error Prone bug, not a problem in this code.`,
+    ),
+    identity: `check-crashed:${crash}`,
+  };
 }
 
 function toolError(rule, message) {
@@ -56,10 +81,9 @@ function unmappedError(outside, roots) {
   );
 }
 
-function withoutExemptCode(json, readSource) {
-  const diagnostics = JSON.parse(json);
+function withoutExemptCode(diagnostics, readSource) {
   if (!Array.isArray(diagnostics)) {
-    return json;
+    return JSON.stringify(diagnostics);
   }
   const texts = new Map();
   function textOf(file) {
