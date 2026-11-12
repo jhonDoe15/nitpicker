@@ -1,5 +1,6 @@
 import path from 'node:path';
 import { existsSync, readFileSync, statSync } from 'node:fs';
+import { checkoutModulePath } from './paths/checkout-module.mjs';
 
 const RELATIVE_SPECIFIER =
   /(?:\bfrom\s*|\bimport\s*\(\s*|^\s*import\s*)(['"])(\.{1,2}\/[^'"]+)\1/gmu;
@@ -19,7 +20,7 @@ export function importClosure(relativePaths, root, { stopAt = new Set() } = {}) 
   const pending = [...relativePaths];
   for (const relativePath of pending) {
     if (files.has(relativePath)) continue;
-    const contents = readFileSync(path.join(root, relativePath), 'utf8');
+    const contents = readFileSync(checkoutModulePath(path.join(root, relativePath)), 'utf8');
     files.set(relativePath, contents);
     if (SCRIPT_FILE.test(relativePath) && !stopAt.has(relativePath)) {
       pending.push(...importedFiles(relativePath, contents, root));
