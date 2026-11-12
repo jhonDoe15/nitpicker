@@ -8,8 +8,10 @@ Part of the [nitpicker-kotlin](../SKILL.md) skill. Write these forms from the st
   test. A test asserts on the specific exception (`assertFailsWith<IllegalStateException> { ... }`)
   instead of catching `Exception`, whatever the variable is called.
 - Design for a fixed clock and a seeded random: take a `java.time.Clock` and a `kotlin.random.Random`
-  as constructor parameters, and read environment variables once where `fun main` (or the
-  `@SpringBootApplication` class, or the Ktor module) builds the objects, into a config class passed in.
+  as constructor parameters, and read environment variables and system properties (`System.getProperty`,
+  `Integer.getInteger`) once where `fun main` (or the `@SpringBootApplication` class, the Ktor module, a
+  Micronaut `@Factory`, a Dagger or Guice module) builds the objects, into a config class passed in
+  (`kotlin-source/ConfigurationReadOutsideCompositionRoot`). JVM keys such as `java.*` and `user.*` are fine.
 - Program output: no `print` or `println`, and no `System.out` or `System.err` outside the file with
   `fun main` (`kotlin-source/StandardStreamOutsideEntryPoint`). Code takes an `Appendable`,
   `PrintStream` or `Writer` parameter and writes to it; `fun main` passes `System.out` or `System.err`.
@@ -60,6 +62,9 @@ Part of the [nitpicker-kotlin](../SKILL.md) skill. Write these forms from the st
   of them, and test a helper through the public function that calls it. No `mockkObject`,
   `mockkStatic`, `mockkConstructor` or `mockStatic` of the project's own code
   (`pmd/StaticMockOfProjectType`): pass a function, an interface or a `Clock` instead.
+- No relaxed mock of a project class (`pmd/RelaxedMockInTest`): no `mockk<Mailer>(relaxed = true)` or
+  `@RelaxedMockK`. Stub the calls the test needs (`every { mailer.send(any()) } returns Receipt(...)`), or use
+  `relaxUnitFun = true` when only `Unit` calls are left out.
 - A test puts back the process-wide state it changes (`pmd/GlobalStateLeakInTest`): a system property, the default
   `Locale` or `TimeZone`, `System.out`, `Dispatchers.setMain`, or a property of a project `object`. Restore it in
   `finally`, an `@AfterEach`/`@AfterTest` function or Kotest `afterTest { }` (`Dispatchers.resetMain()`), or use an
@@ -75,12 +80,13 @@ Part of the [nitpicker-kotlin](../SKILL.md) skill. Write these forms from the st
   runs all its tests). Create the state in the test, assign or `clear()` it in `@BeforeEach` or `beforeTest { }`,
   or give the spec `isolationMode = IsolationMode.InstancePerTest` (or `InstancePerLeaf`).
 - Assert unconditionally (`pmd/AssertionInControlFlow`): no assertion that can be skipped, inside an `if`,
-  a `when`, any loop (also over results), a safe call (`?.let`), `takeIf`, `&&`, `||`, `?:`, a `try` that
-  swallows the failure, a `runCatching`, or after an early `return`. An `if`/`else` or `when` whose every
-  branch asserts or fails is fine, and so are Kotest `checkAll` and `forAll`. Split the cases into separate
-  tests or a parameterized test (`@ParameterizedTest` with `@MethodSource` or `@CsvSource`, Kotest
-  `withData`), assert a whole collection at once, and narrow with `assertNotNull`, `assertIs` or
-  `?: fail(...)` instead of an `if`.
+  a `when`, any loop that can run zero times (also over results, and in a helper the test calls), a safe
+  call (`?.let`), `takeIf`, `&&`, `||`, `?:`, a `try` that swallows the failure, a `runCatching`, or after
+  an early `return`. An `if`/`else` or `when` whose every branch asserts or fails is fine, and so are
+  Kotest `checkAll` and `forAll`, `repeat(3)`, a literal range such as `for (i in 1..3)`, and
+  `do { } while`. Split the cases into separate tests or a parameterized test (`@ParameterizedTest` with
+  `@MethodSource` or `@CsvSource`, Kotest `withData`), assert a whole collection at once, and narrow with
+  `assertNotNull`, `assertIs` or `?: fail(...)` instead of an `if`.
 - Assert the value, not that something is there (`pmd/WeakAssertionInTest`): no `assertNotNull(x)`,
   `x.shouldNotBeNull()` or AssertJ `isNotNull()` as the whole check (a not-null check is fine when the
   test then uses `x`, since Kotlin smart-casts it), no `isNotEmpty()`, `size > 0` or `shouldNotBeEmpty()`, and
@@ -93,3 +99,6 @@ Part of the [nitpicker-kotlin](../SKILL.md) skill. Write these forms from the st
   (`backgroundScope.launch` for work that ends with the test), keep the job and `join()` it or `await()` the
   deferred (a collection of them too), or build the scope on the test dispatcher and drive it with
   `advanceUntilIdle`; a scope the test class cancels in `@AfterEach` or Kotest `afterSpec` is owned too.
+- Test each public inverse pair on its own output (`pmd/UntestedRoundTrip`): for `encodeOrder`/
+  `decodeOrder` or `toJson` and a companion `fromJson`, one test calls both,
+  `assertEquals(order, Order.fromJson(order.toJson()))`.

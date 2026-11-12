@@ -34,7 +34,7 @@ import { ingestJacoco } from '../../ingest/coverage-reports/jacoco.mjs';
 import { ingestPit } from '../../ingest/pit.mjs';
 import { ingestJacocoBranches } from '../../ingest/coverage-reports/jacoco-branches.mjs';
 import { sarifFindings } from './sarif/sarif-reports.mjs';
-import { projectWideFindings } from '../../builds/project-wide.mjs';
+import { projectWideReport, reportModuleProjects } from '../../builds/project-wide.mjs';
 import { applyRuleMessages } from '../../messages/rule-messages.mjs';
 import {
   jacocoSourceRoots,
@@ -45,6 +45,7 @@ import {
   sourceLocator,
 } from './kotlin-reports.mjs';
 import { withJavaCountRatchets } from './counts/java-counts.mjs';
+import { foreignKeyGate } from '../jpa/foreign-keys/key-gate.mjs';
 
 const ROOT_MODULE = 'root';
 
@@ -55,15 +56,24 @@ export function readJavaFindings(projectRoot, options = {}) {
   if (kotlinPreset && options.requireKotlin !== false) {
     requireKotlinManifest(manifest);
   }
-  const kotlinBuild = buildViews();
+  const run = { kotlinBuild: buildViews(), foreignKeys: foreignKeyGate(projectRoot) };
   const moduleFindings = modules
     .filter((module) => !isEmptyModule(projectRoot, module))
     .flatMap((module) =>
       withModuleIdentity(
-        moduleContextFindings(projectRoot, module, { manifest, modules, options, kotlinBuild }),
+        moduleContextFindings(projectRoot, module, { manifest, modules, options, ...run }),
         module,
       ),
     );
+  const wide = projectWide
+    ? projectWideReport(projectRoot, {
+        projects: reportModuleProjects(modules, ROOT_MODULE),
+        mergedRoot: path.join(reportBase, 'project'),
+        manifest,
+        kotlin: kotlinPreset,
+        policy: options,
+      })
+    : { findings: [], imports: undefined };
   const findings = applyRuleMessages(
     [
       ...moduleFindings,
@@ -74,38 +84,20 @@ export function readJavaFindings(projectRoot, options = {}) {
             skip: coveredByCpd(modules, projectRoot),
           })
         : []),
-      ...(projectWide
-        ? projectWideFindings(projectRoot, {
-            projects: modules.map(projectOf),
-            mergedRoot: path.join(reportBase, 'project'),
-            manifest,
-            kotlin: kotlinPreset,
-            policy: options,
-          })
-        : []),
+      ...wide.findings,
       ...readInlineSuppressionFindings(projectRoot, lintedRoots(manifest)),
       ...springFindings(projectRoot, manifest, options),
     ],
     { preset, javaStyle: options.javaStyle },
   );
   const locate = modulesUnitLocator(projectRoot, modules, kotlinPreset);
-  return { findings: withJavaCountRatchets(withoutExcludedFiles(findings, modules), locate) };
-}
-
-function projectOf(module) {
   return {
-    reportRoot: module.reportRoot,
-    qualifier: module.key === ROOT_MODULE ? '' : module.dir,
-    sourceRoots: module.manifest.sourceRoots ?? [],
-    kotlinSourceRoots: module.manifest.kotlinSourceRoots ?? [],
-    testSourceRoots: module.manifest.testSourceRoots ?? [],
-    kotlinTestSourceRoots: module.manifest.kotlinTestSourceRoots ?? [],
-    kotlinExcludedFiles: module.manifest.kotlinExcludedFiles ?? [],
-    resourceRoots: module.manifest.resourceRoots ?? [],
+    findings: withJavaCountRatchets(withoutExcludedFiles(findings, modules), locate),
+    imports: wide.imports,
   };
 }
 
-function moduleContextFindings(projectRoot, module, { manifest, modules, options, kotlinBuild }) {
+function moduleContextFindings(projectRoot, module, { manifest, modules, options, ...run }) {
   const preset = options.preset ?? 'java';
   const { fileLimits: thresholds, exceptions, modulePath } = options;
   const findings = readModuleFindings(
@@ -120,7 +112,7 @@ function moduleContextFindings(projectRoot, module, { manifest, modules, options
       lintedRoots: lintedRoots(module.manifest),
       allSourceRoots: manifest.sourceRoots,
       modules,
-      kotlinBuild,
+      ...run,
       kotlin: preset === 'kotlin' && module.manifest.kotlin === true,
       formatAdvice: options.formatAdvice,
       conventions: options.conventions,
@@ -154,13 +146,10 @@ function ifTested(jacoco, build) {
   return jacoco === undefined ? [] : build(jacoco);
 }
 
-function testRootsOf(manifest) {
-  return [...(manifest.testSourceRoots ?? []), ...(manifest.kotlinTestSourceRoots ?? [])];
-}
-
 function readModuleFindings(context, crapLimit) {
   const { reportRoot, projectRoot, kotlin, jacoco } = context;
-  const testRoots = testRootsOf(context.manifest);
+  const { testSourceRoots = [], kotlinTestSourceRoots = [] } = context.manifest;
+  const testRoots = [...testSourceRoots, ...kotlinTestSourceRoots];
   return [
     ...sarifFindings(context),
     ...readErrorProneFindings(context),

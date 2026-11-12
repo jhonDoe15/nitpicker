@@ -123,6 +123,7 @@ export function createJavaAnalyzer({ kotlin = false } = {}) {
   let runtimeVersion;
   return {
     name: kotlin ? 'kotlin' : 'java',
+    publishesModuleImports: true,
     version: readPinnedVersions(),
     resolveVersion: () => {
       runtimeVersion ??= javaRuntimeVersion();

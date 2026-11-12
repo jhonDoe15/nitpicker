@@ -15,7 +15,7 @@ function blank(text) {
   return text.replaceAll(/[^\n]/g, ' ');
 }
 
-function readSource(file) {
+export function readSource(file) {
   return existsSync(file) ? readFileSync(file, 'utf8').replaceAll(COMMENTS, blank) : undefined;
 }
 
@@ -54,7 +54,7 @@ function javaFilesUnder(projectRoot, sourceRoots) {
   );
 }
 
-function classIndex(projectRoot, sourceRoots) {
+export function classIndex(projectRoot, sourceRoots) {
   const index = new Map();
   for (const file of javaFilesUnder(projectRoot, sourceRoots)) {
     const name = path.basename(file, '.java');
@@ -63,7 +63,7 @@ function classIndex(projectRoot, sourceRoots) {
   return index;
 }
 
-function superclassOf(source, className) {
+export function superclassOf(source, className) {
   const declaration = new RegExp(
     String.raw`\bclass\s+${escapeRegExp(className)}\b(?:\s*<[^{]*?>)?\s+extends\s+([\w.]+)`,
   );
@@ -90,7 +90,7 @@ function superclassAfter(source, line) {
     .split('\n')
     .slice(line - 1)
     .join('\n');
-  return /\bclass\s+\w+\b(?:\s*<[^{]*?>)?\s+extends\s+([\w.]+)/.exec(after)?.[1].split('.').at(-1);
+  return /\bclass\s+\w+(?:\s*<[^{]*?>)?\s+extends\s+([\w.]+)/.exec(after)?.[1].split('.').at(-1);
 }
 
 export function dropInheritedVersions(findings, { projectRoot, sourceRoots }) {

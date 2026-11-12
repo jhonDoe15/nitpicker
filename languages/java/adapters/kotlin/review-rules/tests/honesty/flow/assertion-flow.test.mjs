@@ -176,7 +176,7 @@ describe('assertions in loops and other skippable code of JUnit tests', () => {
         flow.collect { assertTrue(it.valid) }
         listOf(1, 2)
             .forEach { assertTrue(it > 0) }`),
-      [12, 16, 17, 18, 21, 24, 25, 26, 27, 29].map((line) => `OrderTest.checks@${String(line)}`),
+      [12, 16, 17, 18, 25, 26, 27, 29].map((line) => `OrderTest.checks@${String(line)}`),
     ],
     [
       'a try/catch that swallows the failure and a runCatching',

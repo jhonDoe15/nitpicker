@@ -1,5 +1,6 @@
 import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
+import { globMatcher } from '../../../../shared/paths/glob.mjs';
 import { projectFilesUnder } from '../../../../shared/project-files/project-files.mjs';
 
 const SKIPPED_DIRECTORIES = new Set(['.git', '.gradle', 'build', 'node_modules', 'out', 'target']);
@@ -18,6 +19,8 @@ const IMPORT = /^\s*import\s+([\w.]+)\s*;/gmu;
 const STATIC_IMPORT = /^\s*import\s+static\s+([\w.]+?)(\.\*)?\s*;/gmu;
 const DEPTH_CHANGE = { '(': 1, '[': 1, ')': -1, ']': -1 };
 const EXPRESSION_END = ';,?:{}';
+const OUTSIDE_SOURCES = /^\.\.(?:\/|$)|(?:^|\/)build(?:\/|$)/u;
+const NOTHING_SKIPPED = new Set();
 
 function blank(literal) {
   return literal.replaceAll(/[^\n]/gu, ' ');
@@ -93,4 +96,31 @@ export function expressionAt(text, start) {
     end += character.length;
   }
   return text.slice(start);
+}
+
+function sourceRootsOf(project, { kotlin, test }) {
+  const java = test ? project.testSourceRoots : project.sourceRoots;
+  const kotlinRoots = test ? project.kotlinTestSourceRoots : project.kotlinSourceRoots;
+  return [...(java ?? []), ...(kotlin ? (kotlinRoots ?? []) : [])].filter(
+    (root) => root !== '' && !OUTSIDE_SOURCES.test(root),
+  );
+}
+
+function projectSources(projectRoot, { project, kotlin, test }) {
+  const extensions = kotlin ? ['.java', '.kt'] : ['.java'];
+  const excluded = new Set(project.kotlinExcludedFiles ?? []);
+  return [...new Set(sourceRootsOf(project, { kotlin, test }))]
+    .flatMap((root) =>
+      sourceFilesUnder(pathInside(projectRoot, root), extensions, { skipped: NOTHING_SKIPPED }),
+    )
+    .map((full) => [path.relative(projectRoot, full).replaceAll('\\', '/'), project])
+    .filter(([file]) => !excluded.has(file));
+}
+
+export function projectSourceFiles(projectRoot, { projects, kotlin, exclude = [], test = false }) {
+  const excluded = exclude.map((glob) => globMatcher(glob));
+  const found = projects
+    .flatMap((project) => projectSources(projectRoot, { project, kotlin, test }))
+    .filter(([file]) => !excluded.some((matcher) => matcher.test(file)));
+  return new Map(found.toReversed());
 }

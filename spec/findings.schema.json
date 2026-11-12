@@ -9,6 +9,11 @@
     "findings": {
       "type": "array",
       "items": { "$ref": "#/$defs/finding" }
+    },
+    "moduleImports": {
+      "description": "Optional. Import edges from a production file to the folder of a production file it imports, published by language analyzers when history.coChange is on. Core joins them into co-change findings and drops them from the report.",
+      "type": "array",
+      "items": { "$ref": "#/$defs/moduleImport" }
     }
   },
   "$defs": {
@@ -16,6 +21,21 @@
       "type": "string",
       "minLength": 1,
       "pattern": "^[^\\u0000]+$"
+    },
+    "moduleImport": {
+      "type": "object",
+      "required": ["from", "to"],
+      "additionalProperties": false,
+      "properties": {
+        "from": {
+          "$ref": "#/$defs/nonEmptyString",
+          "description": "Importing file, project-relative."
+        },
+        "to": {
+          "$ref": "#/$defs/nonEmptyString",
+          "description": "Imported folder, project-relative."
+        }
+      }
     },
     "finding": {
       "type": "object",

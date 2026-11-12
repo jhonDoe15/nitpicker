@@ -115,6 +115,7 @@ const productionSourceRules = {
   'nitpicker/no-unhandled-url-parse': 'error',
   'nitpicker/reusable-object-per-call': 'error',
   'nitpicker/no-compatibility-shim': 'error',
+  'nitpicker/untested-round-trip': 'error',
 };
 
 export function strictSyntaxConfigFor(layout = defaultResolvedLayout, options = {}) {
@@ -237,7 +238,9 @@ export const strictProductionRules = {
   'nitpicker/no-module-level-let': 'error',
   'nitpicker/no-shared-stateful-regex': 'error',
   'nitpicker/no-singular-and-plural-prop': 'error',
+  'nitpicker/no-unbounded-query-array': 'error',
   'nitpicker/no-uninjectable-delay': 'error',
+  'nitpicker/no-unordered-query': 'error',
   'nitpicker/no-unvalidated-schema-field': 'error',
 };
 

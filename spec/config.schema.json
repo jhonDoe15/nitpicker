@@ -366,6 +366,8 @@
                         "repository-hygiene/migration-hardcoded-name",
                         "start-schema-push",
                         "repository-hygiene/start-schema-push",
+                        "foreign-key-index",
+                        "repository-hygiene/foreign-key-index",
                         "co-change",
                         "change-history/co-change",
                         "duplicate-definition",
@@ -1481,6 +1483,7 @@
                     "committed-build-output",
                     "migration-order",
                     "migration-hardcoded-name",
+                    "foreign-key-index",
                     "start-schema-push",
                     "unused-dependency",
                     "unlisted-dependency",
@@ -1698,6 +1701,7 @@
                     "committed-build-output",
                     "migration-order",
                     "migration-hardcoded-name",
+                    "foreign-key-index",
                     "start-schema-push",
                     "unused-dependency",
                     "unlisted-dependency",
@@ -1861,6 +1865,8 @@
                             "repository-hygiene/migration-hardcoded-name",
                             "start-schema-push",
                             "repository-hygiene/start-schema-push",
+                            "foreign-key-index",
+                            "repository-hygiene/foreign-key-index",
                             "co-change",
                             "change-history/co-change",
                             "duplicate-definition",
@@ -2099,6 +2105,8 @@
                             "repository-hygiene/migration-hardcoded-name",
                             "start-schema-push",
                             "repository-hygiene/start-schema-push",
+                            "foreign-key-index",
+                            "repository-hygiene/foreign-key-index",
                             "co-change",
                             "change-history/co-change",
                             "duplicate-definition",
@@ -2140,6 +2148,7 @@
                             "structure/inheritance-depth-limit",
                             "test-runtime/test-console-output",
                             "test-runtime/test-not-run",
+                            "pmd/UntestedRoundTrip",
                             "pmd/CopiedConstantInTest",
                             "kotlin-source/ChildCoroutineOutlivesResource",
                             "kotlin-source/SuspendFunInFinallySection",
@@ -2149,11 +2158,15 @@
                             "kotlin-source/ListUsedAsSet",
                             "kotlin-source/LinearLookupInLoop",
                             "kotlin-source/SortForExtreme",
+                            "kotlin-source/ConfigurationReadOutsideCompositionRoot",
                             "kotlin-source/RepeatedStringLiteral",
                             "kotlin-source/LogFormatArguments",
                             "kotlin-source/LogExceptionFirst",
+                            "kotlin-source/SimplerBooleanLogic",
                             "kotlin-source/OperandSlip",
                             "kotlin-source/ProcessWaitWithoutTimeout",
+                            "kotlin-source/UnorderedQuery",
+                            "kotlin-source/UnboundedQueryArray",
                             "kotlin-source/RegexPartDefect",
                             "kotlin-source/BacktrackingRegex",
                             "kotlin-source/UnquotedRegexValue",
@@ -2209,6 +2222,7 @@
                             "pmd/SharedTestState",
                             "pmd/MockedSubjectInTest",
                             "pmd/StaticMockOfProjectType",
+                            "pmd/RelaxedMockInTest",
                             "pmd/SpringUnusedContext",
                             "pmd/ExhaustiveEnumPredicate",
                             "pmd/StaticForwardingWrapper",
@@ -2225,6 +2239,7 @@
                             "pmd/ClassLoadEffect",
                             "pmd/UnboundedThreadPool",
                             "pmd/RecursiveMapUpdate",
+                            "pmd/StreamedRowsCollected",
                             "pmd/ReusableObjectPerCall",
                             "pmd/GeneratedMemberCycle",
                             "pmd/GeneratedEqualsSkipsSuperclass",
@@ -2278,6 +2293,7 @@
                             "pmd/JpaVersion",
                             "pmd/JpaSequenceIds",
                             "pmd/JpaEnumString",
+                            "pmd/JpaUnindexedForeignKey",
                             "pmd/JpaIdentityHashCode",
                             "pmd/SpringDataDerivedQuery",
                             "pmd/SpringDataNativeQuery",
@@ -2438,6 +2454,8 @@
                         "repository-hygiene/migration-hardcoded-name",
                         "start-schema-push",
                         "repository-hygiene/start-schema-push",
+                        "foreign-key-index",
+                        "repository-hygiene/foreign-key-index",
                         "co-change",
                         "change-history/co-change",
                         "duplicate-definition",
@@ -2603,6 +2621,8 @@
                             "repository-hygiene/migration-hardcoded-name",
                             "start-schema-push",
                             "repository-hygiene/start-schema-push",
+                            "foreign-key-index",
+                            "repository-hygiene/foreign-key-index",
                             "co-change",
                             "change-history/co-change",
                             "duplicate-definition",
@@ -2650,7 +2670,9 @@
                             "dead-code/unlisted-dependency"
                           ]
                         },
-                        { "pattern": "^(?:vet|staticcheck|errcheck|modernize|deadcode)/[\\s\\S]" }
+                        {
+                          "pattern": "^(?:vet|staticcheck|errcheck|modernize|revive|bodyclose|rowserrcheck|sqlclosecheck|noctx|errorlint|nilerr|nilnil|errname|contextcheck|containedctx|fatcontext|exhaustive|recvcheck|durationcheck|makezero|reassign|unconvert|wastedassign|thelper|tparallel|testifylint|usetesting|asciicheck|bidichk|gocheckcompilerdirectives|canonicalheader|musttag|perfsprint|usestdlibvars|sloglint|spancheck|deadcode)/[\\s\\S]"
+                        }
                       ]
                     }
                   }
@@ -2676,7 +2698,6 @@
           "python": false,
           "kotlin": false,
           "spring": false,
-          "testConsole": false,
           "protocols": false
         }
       }
@@ -2919,6 +2940,8 @@
         "repository-hygiene/migration-order",
         "migration-hardcoded-name",
         "repository-hygiene/migration-hardcoded-name",
+        "foreign-key-index",
+        "repository-hygiene/foreign-key-index",
         "start-schema-push",
         "repository-hygiene/start-schema-push",
         "unused-dependency",
