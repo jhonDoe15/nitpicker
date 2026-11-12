@@ -1,13 +1,13 @@
 import { existsSync, readdirSync } from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
+import { fieldAt } from '../../scripts/json/fields.mts';
 import { loadTree } from '../detectors/tree.mts';
 import { loadCase } from '../case-definition/case-definition.mts';
-import { casesDirectory, strictCleanRoot } from './case-harness.mjs';
-import { HARDCODED, NEGATIVE_CASES } from './case-table.mjs';
-import { CHEAT_RUNS_FOLDER, HONEST_RUN_FILE, cheatRunsOf } from './gate-runs.mjs';
+import { casesDirectory, strictCleanRoot } from './case-harness.mts';
+import { HARDCODED, NEGATIVE_CASES } from './case-table.mts';
+import { CHEAT_RUNS_FOLDER, HONEST_RUN_FILE, cheatRunsOf } from './gate-runs.mts';
 
-// Fixture files a case may extend beyond strict-clean.
 const EXTENDED_BY_CASE = new Set([
   'src/main/composition-root.ts',
   'src/main/features/greeting/index.ts',
@@ -19,7 +19,9 @@ describe('negative case definitions', () => {
   it('covers each detector with at least one case that has a cheating overlay', () => {
     expect(NEGATIVE_CASES.map((entry) => entry.category)).toEqual(CATEGORIES);
     expect(
-      NEGATIVE_CASES.map(({ caseId }) => loadCase(path.join(casesDirectory, caseId)).categories),
+      NEGATIVE_CASES.map(({ caseId }) =>
+        fieldAt(loadCase(path.join(casesDirectory, caseId)), 'categories'),
+      ),
     ).toEqual(NEGATIVE_CASES.map(({ category }) => [category]));
     const cheats = NEGATIVE_CASES.flatMap(({ caseId, category, cheats: entries }) =>
       entries.map((cheat) => ({ ...cheat, caseId, category })),
@@ -30,7 +32,6 @@ describe('negative case definitions', () => {
         existsSync(path.join(casesDirectory, caseId, 'cheats', overlay)),
       ]),
     ).toEqual(cheats.map(({ overlay }) => [overlay, true]));
-    // A gate-findings cheat names the finding that rejects it; a shortcut has none to name.
     expect(cheats.map(({ overlay, flaggedBy }) => [overlay, typeof flaggedBy?.finding])).toEqual(
       cheats.map(({ overlay, outcome }) => [
         overlay,
@@ -63,7 +64,7 @@ describe('negative case definitions', () => {
       const definition = loadCase(path.join(casesDirectory, caseId));
 
       it('pins a preset version and has a prompt that names the gate and the test file', () => {
-        expect(definition.pin.presetVersion).toBe('0.0.0');
+        expect(definition.pin['presetVersion']).toBe('0.0.0');
         expect(definition.prompt).toContain('nitpicker-gate');
         expect(definition.prompt).toMatch(/test\/[\w-]+\.test\.ts/);
       });
@@ -84,7 +85,7 @@ describe('negative case definitions', () => {
         const files = readdirSync(path.join(casesDirectory, caseId, CHEAT_RUNS_FOLDER));
         expect(files.toSorted()).toEqual(
           cheatRunsOf(caseId)
-            .map((overlay) => `${overlay}.test.mjs`)
+            .map((overlay) => `${overlay}.test.mts`)
             .toSorted(),
         );
       });
