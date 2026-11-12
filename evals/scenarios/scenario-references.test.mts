@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { listCases } from '../case-definition/case-definition.mts';
-import { CASE_TIMEOUT_MS, runApplied } from '../cases/case-harness.mjs';
+import { CASE_TIMEOUT_MS, runApplied } from '../cases/case-harness.mts';
 
 const scenariosDirectory = import.meta.dirname;
 const enabled = process.env['NITPICKER_EVAL_SCENARIOS'] === '1';
