@@ -2,7 +2,7 @@ import { rmSync } from 'node:fs';
 import path from 'node:path';
 import { afterAll, describe, expect, it } from 'vitest';
 import { createProject } from '../test-support/oxlint-project.mjs';
-import { stageCompilerOptions } from './oxlint-paths.mjs';
+import { stageConfigOptions } from './oxlint-paths.mjs';
 
 const roots = [];
 
@@ -11,7 +11,8 @@ function optionsFor(files, config) {
   roots.push(root);
   return {
     root,
-    options: stageCompilerOptions(config, path.join(root, 'tsconfig.nitpicker.json'), root),
+    options: stageConfigOptions(config, path.join(root, 'tsconfig.nitpicker.json'), root)
+      .compilerOptions,
   };
 }
 
@@ -19,7 +20,7 @@ afterAll(() => {
   for (const root of roots) rmSync(root, { recursive: true, force: true });
 });
 
-describe('stageCompilerOptions', () => {
+describe('stageConfigOptions', () => {
   it('rewrites paths relative to a dot baseUrl and unsets baseUrl', () => {
     const { root, options } = optionsFor(
       {},
@@ -119,7 +120,8 @@ describe('stageCompilerOptions', () => {
     const config = { compilerOptions: { rootDir: 'src', rootDirs: ['.', 'gen', outside] } };
 
     expect(
-      stageCompilerOptions(config, path.join(root, 'tsconfig.nitpicker.json'), '/stage'),
+      stageConfigOptions(config, path.join(root, 'tsconfig.nitpicker.json'), '/stage')
+        .compilerOptions,
     ).toEqual({ rootDir: null, rootDirs: ['/stage', '/stage/gen', outside] });
   });
 

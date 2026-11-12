@@ -15,7 +15,7 @@ import { pathToFileURL } from 'node:url';
 import { ts } from '../../../typescript-api/typescript-api.mjs';
 import { ownedNativePlugins } from '../native/owned-native-rules.mjs';
 import { materializedDirectory } from './oxlint-inline-config.mjs';
-import { stageCompilerOptions } from './oxlint-paths.mjs';
+import { stageConfigOptions } from './oxlint-paths.mjs';
 
 const STAGE_DIRECTORY = '.nitpicker-oxlint';
 
@@ -74,13 +74,11 @@ function lintTypeScriptConfig(projectConfigPath, stage) {
       ? {}
       : { extends: rebasedExtends(config.extends, path.dirname(projectConfigPath)) }),
   };
+  const { compilerOptions, typeFiles } = stageConfigOptions(rebased, projectConfigPath, stage);
   return JSON.stringify({
     ...rebased,
-    compilerOptions: {
-      ...config.compilerOptions,
-      ...stageCompilerOptions(rebased, projectConfigPath, stage),
-      noEmit: true,
-    },
+    ...(typeFiles.length === 0 ? {} : { files: [...(config.files ?? []), ...typeFiles] }),
+    compilerOptions: { ...config.compilerOptions, ...compilerOptions, noEmit: true },
   });
 }
 
