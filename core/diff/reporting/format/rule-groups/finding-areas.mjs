@@ -1,3 +1,5 @@
+import { GO_LINTER_TOOLS } from '../../../../../languages/go/adapters/configuration/go-config.mjs';
+
 const AREA_TOOLS = [
   [
     'format',
@@ -30,10 +32,7 @@ const AREA_TOOLS = [
       'detekt',
       'ktlint',
       'kotlin-source',
-      'vet',
-      'staticcheck',
-      'errcheck',
-      'modernize',
+      ...GO_LINTER_TOOLS,
       'coding-standards',
       'entry-points',
       'dependency-architecture',
@@ -43,7 +42,7 @@ const AREA_TOOLS = [
   ],
   ['structure', ['structure', 'duplicates', 'coupling', 'repository-hygiene', 'change-history']],
   ['other', []],
-  ['tests', ['tests', 'test-runtime', 'test-console']],
+  ['tests', ['tests', 'race', 'test-runtime', 'test-console']],
   ['coverage', ['coverage', 'jacoco', 'coverage-py']],
   ['crap', ['crap']],
   ['mutation', ['mutation', 'pit', 'mutmut']],

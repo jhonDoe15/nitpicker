@@ -189,7 +189,7 @@ is not on npm. Keep the tarball in your repository, so teammates and CI install 
 without access to the release:
 
 ```sh
-VERSION=0.1.0-rc.1
+VERSION=0.1.0-rc.2
 gh release download "v$VERSION" --repo jhonDoe15/nitpicker --pattern 'nitpicker-*.tgz' --pattern SHA256SUMS --dir vendor
 (cd vendor && shasum -a 256 -c SHA256SUMS && rm SHA256SUMS)
 npm install --save-dev "./vendor/nitpicker-$VERSION.tgz" vitest @vitest/coverage-v8 typescript @types/node
@@ -231,8 +231,12 @@ npx nitpicker --all src/orders       # every finding in one folder
 Paths are read relative to the current folder, and the project is the one that holds the first path,
 so `npx nitpicker services/orders/src/main/java/Order.java` works from the repository top. All paths
 must be in that project. The analyzers still run over the whole project, so cross-file rules (dead
-code, unused exports, coupling, the type check, architecture) keep their full context and the run
-takes as long as a whole-project run. Only the findings in files under the paths fail the run and
+code, unused exports, coupling, the type check, architecture) keep their full context. Mutation, the
+slowest step, is the exception: on the head side it mutates only the source files under the paths
+(Stryker's `mutate`; PIT's `--targetClasses`, listing the classes compiled from those files, nested
+ones included; mutmut's `do_not_mutate` for every other Python file), while every test still runs
+against each mutant, so a mutant can be killed by any test. In a comparison it narrows the changed
+lines mutation already follows, and the base side is unchanged. Only the findings in files under the paths fail the run and
 appear in the console and the reports. Tool errors and `nitpicker-config/policy-loosened` findings
 (a loosened config changes the whole gate) still count wherever they come from. Findings about the
 whole project (path `.`) count only when a path is the project folder itself. The summary names the
@@ -1012,7 +1016,7 @@ in the console summary and in `report.txt` as "Policy changed in this change" an
 `summary.json` under `policyChanges`. A change that checks less fails the run with one
 `nitpicker-config/policy-loosened` finding per loosening. The console groups those changes by kind:
 it lists the changes of a kind, then what that kind does to the checks and how to undo it, once
-(ten new entry points print the entry point guidance once), followed by the count, the digest and
+(ten new exclusions print the exclusion guidance once), followed by the count, the digest and
 the acceptance command. `report.txt` and `new-findings.json` keep one finding per change, each with
 its guidance and the acceptance route. The first response is to undo the change and fix the code
 until it passes. If the change is intended, a coding agent stops and asks a person reviewing it, who
@@ -1023,7 +1027,7 @@ accepts it by the digest (`--accept-policy-change=<digest>` or, in CI,
 check the pull request merged into its target branch. A project's first `nitpicker.config.json` is
 compared with the defaults. These changes are loosening:
 
-- an added `exclude`, `layout.excludedGlobs`, `layout.entryPoints` or
+- an added `exclude`, `layout.excludedGlobs` or
   `exceptions` glob that covers a code file the base config did not already cover (every
   tracked code file of the preset, wherever it is: `.ts`/`.js` family files for TypeScript and
   JavaScript, `.py` files for Python, `.java`, `.kt` and `.kts` files for Java and Kotlin, so
@@ -1031,11 +1035,7 @@ compared with the defaults. These changes are loosening:
   and `layout.excludedGlobs` are one set: a glob respelled to cover the same files, or moved from
   one key to the other, is listed but does not fail. Files moved with `git mv` keep their base
   path, so updating a glob after a move is not loosening; a glob that covers no new code file is
-  listed but does not fail. A `layout.entryPoints` entry makes the dead-code check treat the files
-  as used and allows module-load effects and process access in them, and a `python.entryPoints`
-  entry only exempts them from `process-env-access`, `process-stream-access` and
-  `import-time-effect`; other checks still apply. A reviewer confirms that a command or runtime
-  loads each file without an import, and otherwise the entry is removed;
+  listed but does not fail;
 - a removed `layout.sourceRoots`, `layout.testRoots` or `python.sourceRoots` entry that still has
   checked files under it (Python's detected default counts when the setting is absent), and an
   added `layout.testRoots` entry that turns production code the base checked into test code;
@@ -1124,6 +1124,17 @@ noUncheckedIndexedAccess: true -> false`, only one that goes from `true` to `fal
 - a tool `precedence` that puts `"project"` first where it was not first, or that drops
   `"nitpicker"` (for `pmd`, which runs both rule sets, only dropping `"nitpicker"` counts);
 - a name removed from a `spring.roles` list (adding one only adds checks).
+
+An added `layout.entryPoints` or `python.entryPoints` entry is only listed, as long as no checked
+code imports the files it newly covers. An entry point names a file that a command or runtime loads
+without an import, such as a script run by path, a worker or a test reporter. The dead-code and
+unused-export checks treat it as used, and it may do what a program start does: with
+`layout.entryPoints`, module-load effects, process access and service-locator lookups (it counts as
+a composition root); with `python.entryPoints`, `process-env-access`, `process-stream-access`,
+`import-time-effect` and `service-locator-lookup` skip it. Every other check still applies. A file
+that a production file under the source roots imports is not an entry point, so an added entry that
+newly covers one (a broad glob such as `**`, for example) is loosening, and the finding names the
+imported files.
 
 Choosing another tool that runs the same checks is not loosening and is only listed:
 `tools.eslint.engine`, `tools.typescript.engine`, `python.typeChecker`, `python.formatter`,
@@ -1422,6 +1433,7 @@ change adds; a file already on the base is left alone. Each message names the ex
 | `committed-build-output`   | a file in a build output folder: `dist`, `build`, `out`, `coverage` or `target` next to a `package.json`, `build.gradle(.kts)`, `pom.xml` or `pyproject.toml`, or `.next`, `.nuxt`, `storybook-static`, `.turbo` or `.parcel-cache` at any depth; one finding per folder                                                                                                                                                                                                                                                                     |
 | `migration-order`          | a migration whose version sorts before, or equals, the newest migration of its folder on the base branch: Flyway `V<version>__name`, Prisma `migrations/<timestamp>_name/`, and numbered files in a `migrations`, `migration` or `drizzle` folder (TypeORM, Kysely, Knex, Sequelize, MikroORM, Drizzle, golang-migrate, goose); an Alembic revision or a Django migration whose parent already has a child on the base branch, so the history has two heads                                                                                  |
 | `migration-hardcoded-name` | a migration file (the layouts above, Liquibase changelogs and other files directly in a `migrations`, `migration`, `migrate` or `drizzle` folder) that qualifies a name with the `public` schema, names a database in `ALTER DATABASE` or a role in `OWNER TO`; one finding per file and form                                                                                                                                                                                                                                                |
+| `foreign-key-index`        | a foreign key that a migration or an sqlc schema file adds with no index that starts with its columns, or a Prisma relation whose `fields` no `@@index`, `@@unique` or `@@id` of the model starts with; not reported when the project uses MySQL or MariaDB, which index foreign keys themselves                                                                                                                                                                                                                                             |
 | `start-schema-push`        | a `start`, `prestart`, `serve` or `start:*` script in a `package.json` (not `start:dev`, `start:local`, `start:watch`, `start:debug` or `start:test`), or a script it runs through `npm`, `pnpm`, `yarn`, `bun` or `npm-run-all` (with its `pre` hook), that pushes the ORM schema: `prisma db push`, `prisma migrate dev`/`reset`, `drizzle-kit push`, `typeorm schema:sync`/`schema:drop`, `mikro-orm schema:update`/`create`/`fresh`/`drop` (options between the tool and the command count); apply migrations in the deploy step instead |
 
 An env file that holds only public build-time values (every key starts with `VITE_`, `NEXT_PUBLIC_`,
@@ -1445,6 +1457,26 @@ or an Atlas `atlas.sum`, and the schema and owners in a pg_dump baseline. Like e
 `repository-hygiene` rule it fails only what the change adds, so migrations already on the base are
 left alone. A project that pins its schema, database or roles on purpose adds an exception for its
 migrations folder, as the message shows.
+
+`foreign-key-index` reads the migration files (Flyway, Prisma, Liquibase XML, YAML and SQL
+changelogs, Alembic, and the SQL in TypeORM, MikroORM, Kysely, Knex and goose migrations, skipping their down part
+and `.down.sql` files), and the schema files an sqlc config (`sqlc.yaml`, `sqlc.yml` or `sqlc.json`,
+`schema` of each `sql` or `packages` entry: a file, a folder's own `.sql` files or a glob) names, unless its `engine` is `mysql`:
+`CREATE TABLE` with `REFERENCES` or `FOREIGN KEY`, `ALTER TABLE ... ADD`, Liquibase
+`addForeignKeyConstraint` and column `constraints`, Alembic `create_table`, `add_column` and
+`create_foreign_key` (also through `batch_alter_table`). A foreign key counts as indexed when an
+index, primary key or unique constraint of the same table, in any migration, starts with its
+columns; a composite index that has the column second does not count. The Knex and TypeORM
+schema builders (`table.foreign(...)`, `new TableForeignKey(...)`) and table renames are not read,
+and Django migrations are left alone because Django indexes its foreign keys. The Prisma schema
+(one file or a `prisma/schema/` folder) is checked only when no `migrations` folder sits next to
+it or above it (then the migrations are read), and a `mysql` provider only with
+`relationMode = "prisma"`. A migration is skipped when the nearest folder above it whose
+manifests name a database driver names only MySQL or MariaDB drivers (`mysql2`,
+`mysql-connector-j`, `pymysql`, `gorm.io/driver/mysql`, a `jdbc:mysql:` URL and the like), so each
+service of a monorepo goes by its own driver; a migration written for MySQL (backquoted names or
+`ENGINE=`) and a Liquibase change limited by `dbms` to other databases are skipped too. The fix is a migration that creates the index; a table known to stay small
+takes an exception for its migration.
 
 A build output folder is fine when what runs from the checkout points into it: a GitHub Action's
 `action.yml` (`runs.main`, `pre`, `post`), or the `main`, `module`, `types`, `bin`, `exports` or
@@ -1513,9 +1545,9 @@ These files are never modules:
 - declaration files (`*.d.ts`, `*.d.mts`, `*.d.cts`), documents, lockfiles, files directly in the
   project root and files under `exclude`.
 
-Only files with a TypeScript, JavaScript, Python, Java or Kotlin extension count, and a file counts
-under the path it has at the end of the history read: a renamed or moved file keeps its earlier
-history.
+Only files with a TypeScript, JavaScript, Python, Java, Kotlin or Go extension count, and a file
+counts under the path it has at the end of the history read: a renamed or moved file keeps its
+earlier history.
 
 Two modules are reported when both thresholds hold over the commits that count:
 
@@ -1538,7 +1570,7 @@ releases change modules together on purpose. Read a finding as a question:
 
 - Do they share knowledge such as a format, a constant or a schema? Give it one owner.
 - Does one module use the internals of the other? Put what it needs behind one smaller interface
-  that the other owns. The finding cannot tell which way the dependency goes (see the limits).
+  that the other owns. The finding says which way the imports go, see below.
 - Do they only ever change as one unit? Merge them into one module.
 
 A pair that is fine as it is takes an `exceptions` entry for `co-change` with a `<module>/**` glob
@@ -1572,9 +1604,22 @@ PATH, `change-history` reports nothing and the summary (`--all` runs print it on
 notice with the reason, quoting git's own error when the history cannot be read. In GitHub Actions,
 check out with `fetch-depth: 0` to enable it.
 
-Limits: nitpicker does not read imports for this check (they come from per-language tools, and this
-analyzer has no import graph), so a finding cannot say whether one module depends on the other. A
-module is a folder, so two folders of one component show up as a pair and a flat project has few
+The finding also says how the two modules depend on each other, from the imports the language
+analyzers already read: `src/billing imports src/invoicing in 3 files`, both directions when they
+import each other, or that neither imports the other, in which case what they share (a format, a
+constant, a schema) is not visible as a dependency and the first question above is the likely one.
+The imports are those between production files: the TypeScript and JavaScript `coupling` analyzer
+(the dependency-cruiser graph, with path aliases resolved), the Python facts step (its import scan) and
+the Java and Kotlin analyzers (the source references of every module of the Gradle or Maven build).
+A file under a `featureRoots` folder counts for its feature, as for the pair itself. The analyzers
+collect them only when `history.coChange` is on. When none ran or published imports (the `go` preset,
+an analyzer that failed or was turned off with `disable`), the finding says the dependency is
+unknown rather than claiming there is none. The direction is evidence for the reading, not a
+verdict: an import can be the right shape and still change in step.
+
+Limits: an import that the language analyzer cannot resolve (a dynamic import, reflection,
+dependency injection by name) is not seen, so "neither imports the other" means no import nitpicker
+found. A module is a folder, so two folders of one component show up as a pair and a flat project has few
 modules. The analysis sees only the history it is given, so a squash-merge workflow yields few, large
 commits. The head side reads the merge base at the project's head path, so a project whose folder
 moved in the change has no head evidence until the move is merged.

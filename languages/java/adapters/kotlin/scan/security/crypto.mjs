@@ -36,7 +36,7 @@ const INSECURE_TYPES = [
   'TrustSelfSignedStrategy',
   'InsecureTrustManagerFactory',
 ];
-const TRUE_LAMBDA = String.raw`\{\s*[\w_]+\s*,\s*[\w_]+\s*->\s*true\s*\}`;
+const TRUE_LAMBDA = String.raw`\{\s*\w+\s*,\s*\w+\s*->\s*true\s*\}`;
 const TRUST_ALL = [
   /\boverride\s+fun\s+checkServerTrusted\s*\([^)]*\)\s*(?::\s*Unit\s*)?(?:=\s*Unit\b|\{\s*\})/g,
   new RegExp(

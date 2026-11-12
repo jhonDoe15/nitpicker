@@ -7,10 +7,6 @@ import { compilerSettings } from './errorprone/maven-compiler.mjs';
 import { kotlinRoots } from './kotlin/kotlin-roots.mjs';
 import { testJvmArguments } from './configuration/surefire-jvm.mjs';
 
-const SCOPES = new Set(['compile', 'provided', 'runtime', 'test', 'system']);
-const MAIN_COMPILE_SCOPES = new Set(['compile', 'provided', 'system']);
-const MAIN_RUNTIME_SCOPES = new Set([...MAIN_COMPILE_SCOPES, 'runtime']);
-const TEST_COMPILE_SCOPES = new Set([...MAIN_COMPILE_SCOPES, 'test']);
 const BUILD_HELPER = 'org.codehaus.mojo:build-helper-maven-plugin';
 const GMAVENPLUS = 'org.codehaus.gmavenplus:gmavenplus-plugin';
 const GROOVY_TEST_ROOT = 'src/test/groovy';
@@ -117,7 +113,7 @@ function setting(plugin, goal, name) {
   return configured(defaultExecution(plugin, goal), plugin, name);
 }
 
-function describeModule(project, basedir) {
+function describeModule(project, { basedir, pomFile }) {
   const build = childAt(project, 'build');
   const plugins = pluginsOf(project);
   const buildDirectory = resolvedText(build, basedir, 'directory') ?? path.join(basedir, 'target');
@@ -132,6 +128,7 @@ function describeModule(project, basedir) {
   ];
   return {
     basedir,
+    pomFile,
     coordinates: coordinates(project),
     packaging: textAt(project, 'packaging') ?? 'jar',
     buildDirectory,
@@ -235,7 +232,7 @@ export function readReactor(projectRoot, effectivePom) {
     const basedir = moduleDirectory(projectRoot, pomFile, modules);
     const project = matchProject(pomFile, candidates);
     candidates.splice(candidates.indexOf(project), 1);
-    modules.push(withKotlin(project, describeModule(project, basedir)));
+    modules.push(withKotlin(project, describeModule(project, { basedir, pomFile })));
     const children = childrenAt(project, 'modules', 'module')
       .filter((module) => module.text !== undefined)
       .map((module) => pomFileOf(basedir, module.text));
@@ -246,41 +243,4 @@ export function readReactor(projectRoot, effectivePom) {
 
 export function lifecycleArgs(modules) {
   return modules.some((module) => module.runsFailsafe) ? VERIFY_BUILD : ['test'];
-}
-
-export function parseDependencyList(text) {
-  return text
-    .split(/\r?\n/u)
-    .map((line) =>
-      line
-        .trim()
-        .replace(/ -- module .*$/u, '')
-        .replace(/ \(optional\)$/u, ''),
-    )
-    .flatMap((line) => {
-      const parts = line.split(':');
-      const index = [5, 4].find(
-        (position) => SCOPES.has(parts[position]) && position < parts.length - 1,
-      );
-      return index === undefined
-        ? []
-        : [{ scope: parts[index], file: parts.slice(index + 1).join(':') }];
-    });
-}
-
-function filesIn(dependencies, scopes) {
-  return dependencies.filter((entry) => scopes.has(entry.scope)).map((entry) => entry.file);
-}
-
-export function moduleClasspaths(module, dependencies) {
-  return {
-    mainCompile: filesIn(dependencies, MAIN_COMPILE_SCOPES),
-    mainRuntime: filesIn(dependencies, MAIN_RUNTIME_SCOPES),
-    testCompile: filesIn(dependencies, TEST_COMPILE_SCOPES),
-    testRuntime: [
-      module.testOutputDirectory,
-      module.outputDirectory,
-      ...dependencies.map((entry) => entry.file),
-    ],
-  };
 }

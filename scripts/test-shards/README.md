@@ -4,13 +4,38 @@ The duration sequencer assigns every selected file to exactly one shard, longest
 Files without a measurement count as one second, so a new file, end-to-end ones included, needs
 no profile edit. The plan is rough until `record-durations` measures the file. With a suite flag such
 as `NITPICKER_JAVA_E2E=1` set, `vitest.config.mts` selects the test files that read that flag
-(`suiteFiles` in `e2e-gates.mjs`, itself or through a module it imports), so adding a test to a
+(`suiteFiles` in `e2e-gates.mts`, itself or through a module it imports), so adding a test to a
 language suite edits neither a shard list nor the `test:<language>` script in `package.json`.
 
 `durations.json` describes ordinary `npm test` runs. `java-e2e.json` and `kotlin-e2e.json` describe
 the corresponding enabled end-to-end suites. Selection uses the same `NITPICKER_JAVA_E2E=1` or
 `NITPICKER_KOTLIN_E2E=1` flag that enables those suites. The recorder and sequencer use the same
 profile; recording disabled tests in an ordinary run cannot erase enabled-suite measurements.
+
+## Where the end-to-end weights come from
+
+`java-e2e.json`, `kotlin-e2e.json` and `python-e2e.json` hold the median per-file time, rounded up
+to whole seconds, from the shard job logs of CI runs. The default reporter prints one line per
+passed file, `✓ <file> (<n> tests) <ms>ms`, and that time includes the file's hooks. The current
+values come from every Java, Kotlin and Python shard job that finished, passed or failed, from
+2026-11-09 to 2026-11-10: 11 to 160 samples per file. A file that failed in a job is not counted for
+that job, which puts files that often fail slightly low. Files that no longer exist are dropped, and
+a file with no passing sample keeps the one-second default.
+
+Before this refresh, 15 Kotlin files (the Kotlin-on-Maven suites and newer files) had no weight.
+They all counted as one second, so the sequencer put them on the same shard: the measured medians
+of that shard's files add up to about 2,940 seconds against 1,310 and 1,380 for the other two, and
+slow runners hit the 60-minute job limit. With the measured medians the sequencer's estimated loads
+are 1,876–1,880 seconds for Kotlin, 1,004–1,006 for Java (the old plan's shards add up to 842–1,158) and 776–777
+for Python. The longest single file, `kotlin-maven-lint` at about 511 seconds, is well below a
+Kotlin shard's load, so no file needs a split.
+
+To refresh the weights, list a workflow's recent runs
+(`gh api repos/<owner>/<repo>/actions/workflows/<language>-e2e.yml/runs`), read each shard job's
+log (`gh api repos/<owner>/<repo>/actions/jobs/<id>/logs`), collect the `✓` lines per file, take
+the median and write the sorted profile. Run `node scripts/test-shards/verify-e2e-shards.mts
+<language>` afterwards: it prints the estimated load of every shard and fails when the profile
+names a file the suite does not select. The paragraphs below record how earlier splits were sized.
 
 Python uses `python-e2e.json` when `NITPICKER_PYTHON_E2E=1`, with two isolated runner jobs and
 two test workers each. Its initial weights come from the successful
@@ -88,7 +113,7 @@ measurements. The existing duration recorder uses Vitest module diagnostics, whi
 execution in the module duration, and writes sorted whole-second profiles. Record enabled suites
 with the same package filters and flags after obtaining an isolated timing sample.
 
-`node scripts/test-shards/verify-e2e-shards.mjs [java|kotlin|python]` collects through the real
+`node scripts/test-shards/verify-e2e-shards.mts [java|kotlin|python]` collects through the real
 package scripts. It first lists every `.e2e.test.` file, and every other test file that reads a
 `NITPICKER_*_E2E` flag itself or through a module it imports, once with no suite flag and once with
 each suite's flag. Each of those files must be gated by exactly one suite flag (cases listed with it
@@ -110,6 +135,12 @@ Maven/Gradle actions cache dependencies; mutable fixture builds are not shared b
 The aggregate `java` and `kotlin` checks retain their names and require matrix success: a failed,
 cancelled or unexpectedly skipped matrix cannot turn green. Unrelated PR labels still skip the
 workflows' test jobs as before.
+
+The Java guard integration adds 23 guard cases. The Failsafe cases stay in the existing split
+Maven integration file rather than running the moved copy a second time. The new Gradle guards, Maven CPD and guard-parity
+files have planning weights of 160, 40 and 150 seconds, respectively. These are explicit
+estimates for deterministic assignment until isolated CI module timings are collected; they
+are not measurements of the new shards.
 
 The Kotlin style file test (`kotlin-e2e/style/kotlin-style-files.e2e.test.mjs`, nine cases) was
 gated on the Java flag but selected by neither suite. It runs the init script's two Kotlin style
@@ -170,15 +201,14 @@ run, an added repeat and an edited line: `java-preset-touched-lines` (Gradle) an
 `maven-preset-touched-lines` (Maven) share their scenario, and the Kotlin and Python files mirror
 it; the Python one runs the real `ruff format` over a file with 400 legacy findings. With them the
 suites list 124 Java, 110 Kotlin and 952 Python cases. Their weights (65, 78, 66 and 18 seconds)
-were recorded locally with `record-durations.mjs` on warm Gradle, Maven and uv caches, one file at
+were recorded locally with `record-durations.mts` on warm Gradle, Maven and uv caches, one file at
 a time; CI measurements should replace them.
 
 The shard counts were later lowered twice so that more pull request runs fit into the account's
 concurrent job limit at once. The loads, targets and measurements earlier in this file describe
 the previous split; this paragraph replaces them. The unit `test` job went from eight shards to
 two, Java from 16 to four, Kotlin from ten to three, Python from four to two and Go from two to one.
-Fewer runners also repeat the per-job setup (checkout, `npm ci`, toolchains) fewer times. With the
-current profiles the sequencer's estimated loads per shard are about 1,334 seconds for the unit
-suite (run with one worker per vCPU, so roughly six to nine minutes of wall time), 971–975 seconds
-for Java, 905–929 seconds for Kotlin, 707 seconds for Python and 70 seconds for Go, before setup.
-Every load stays well inside its job's `timeout-minutes`.
+Fewer runners also repeat the per-job setup (checkout, `npm ci`, toolchains) fewer times. At that
+change the sequencer estimated about 1,334 seconds per unit shard (run with one worker per vCPU,
+so roughly six to nine minutes of wall time) and 70 seconds for Go; the measured end-to-end loads
+are at the top of this file.

@@ -54,6 +54,7 @@ export function runHeadAnalyzers(context, baselineMovesFile) {
       snapshot: 'head',
       baselineRoot: roots.baseProjectRoot,
       baselineMovesFile,
+      mutationScope: settings.scope?.paths,
       ...analyzerRunOptions(settings),
     }),
   );

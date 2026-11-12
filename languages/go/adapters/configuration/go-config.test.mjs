@@ -18,6 +18,7 @@ describe('the go preset config', () => {
           { rule: 'staticcheck/ST1003', paths: ['api/*.go'], reason: 'generated names' },
           { rule: 'errcheck/unchecked', paths: ['cmd/main.go'], reason: 'best effort' },
           { rule: 'modernize/rangeint', paths: ['old/*.go'], reason: 'kept as is' },
+          { rule: 'go-rules/panic-for-failure', paths: ['cmd/*.go'], reason: 'startup only' },
           {
             rule: 'function-lines-limit',
             paths: ['cmd/main.go'],

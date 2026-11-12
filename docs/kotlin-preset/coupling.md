@@ -9,7 +9,9 @@ count) and the Nitpicker side builds the package graph as for Java (see the
 package fails with `stability-direction`, with the report-only coupling metrics beside it. A
 feature package is one unit, as in Java: adapters that implement interfaces declared in the
 feature's top package, and a top package that builds its adapters, are not an inversion (see
-[Stability direction](../usage.md#stability-direction)).
+[Stability direction](../usage.md#stability-direction)). Packages in a dependency cycle fail with
+`package-cycle`, one finding per package, from the same graph (see the Java preset's Guards
+section).
 
 **Module and package (decisions).** A module is a source file, as in Java and TypeScript. The Kotlin
 metrics step lists the JVM class names of each file: its top-level classes, objects and interfaces and

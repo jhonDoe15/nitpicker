@@ -13,6 +13,7 @@ import { rule as ruleNamingConvention } from './rules/wrapped/naming-convention.
 import { rule as ruleNoAccumulatingSpread } from './rules/collections/no-accumulating-spread.mjs';
 import { rule as ruleNoAssertionInLoop } from './test-assertions/loop-assertions/no-assertion-in-loop.mjs';
 import { rule as ruleNoBranchInCompositionRoot } from './rules/boundaries/no-branch-in-composition-root.mjs';
+import { rule as ruleNoCollectedStreamRows } from './rules/streams/no-collected-stream-rows.mjs';
 import { rule as ruleNoComments } from './rules/modules/no-comments.mjs';
 import { rule as ruleNoCompatibilityShim } from './rules/signatures/no-compatibility-shim.mjs';
 import { rule as ruleNoCopiedConstant } from './test-assertions/copied-constants/no-copied-constant.mjs';
@@ -77,6 +78,7 @@ import { rule as ruleNoTestRetry } from './test-assertions/no-test-retry.mjs';
 import { rule as ruleNoThrow } from './rules/errors/no-throw.mjs';
 import { rule as ruleNoTriStateBoolean } from './rules/signatures/no-tri-state-boolean.mjs';
 import { rule as ruleNoUiFrameworkInDomain } from './rules/syntax/no-ui-framework-in-domain.mjs';
+import { rule as ruleNoUnboundedQueryArray } from './rules/queries/arrays/no-unbounded-query-array.mjs';
 import { rule as ruleNoUncoercedRequestInput } from './rules/request-inputs/no-uncoerced-request-input.mjs';
 import { rule as ruleNoUncollectedTests } from './test-isolation/no-uncollected-tests.mjs';
 import { rule as ruleNoUnhandledUrlParse } from './rules/parsing/no-unhandled-url-parse.mjs';
@@ -86,6 +88,7 @@ import { rule as ruleNoUninjectableDelay } from './rules/testing/lifecycle/no-un
 import { rule as ruleNoUnknownInDomain } from './rules/boundaries/no-unknown-in-domain.mjs';
 import { rule as ruleNoUnknownMainFolder } from './rules/guards/no-unknown-main-folder.mjs';
 import { rule as ruleNoUnmappedException } from './rules/errors/unmapped/no-unmapped-exception.mjs';
+import { rule as ruleNoUnorderedQuery } from './rules/queries/order/no-unordered-query.mjs';
 import { rule as ruleNoUnownedAsyncAssertion } from './test-assertions/unowned-async/no-unowned-async-assertion.mjs';
 import { rule as ruleNoUnsafeDeserialization } from './rules/security/deserialization/no-unsafe-deserialization.mjs';
 import { rule as ruleNoUnsafePathJoin } from './rules/guards/no-unsafe-path-join.mjs';
@@ -121,6 +124,7 @@ import { rule as ruleTimeUnitMismatch } from './rules/time/units/time-unit-misma
 import { rule as ruleTimeoutAbandonsOperation } from './rules/async/timeout-abandons-operation.mjs';
 import { rule as ruleUnboundedFanOut } from './rules/concurrency/unbounded-fan-out.mjs';
 import { rule as ruleUnboundedReactiveFanOut } from './rules/concurrency/reactive/unbounded-reactive-fan-out.mjs';
+import { rule as ruleUntestedRoundTrip } from './rules/round-trips/untested-round-trip.mjs';
 
 export const directoryRules = {
   'bounded-container-teardown': ruleBoundedContainerTeardown,
@@ -138,6 +142,7 @@ export const directoryRules = {
   'no-accumulating-spread': ruleNoAccumulatingSpread,
   'no-assertion-in-loop': ruleNoAssertionInLoop,
   'no-branch-in-composition-root': ruleNoBranchInCompositionRoot,
+  'no-collected-stream-rows': ruleNoCollectedStreamRows,
   'no-comments': ruleNoComments,
   'no-compatibility-shim': ruleNoCompatibilityShim,
   'no-copied-constant': ruleNoCopiedConstant,
@@ -203,6 +208,7 @@ export const directoryRules = {
   'no-throw': ruleNoThrow,
   'no-tri-state-boolean': ruleNoTriStateBoolean,
   'no-ui-framework-in-domain': ruleNoUiFrameworkInDomain,
+  'no-unbounded-query-array': ruleNoUnboundedQueryArray,
   'no-uncoerced-request-input': ruleNoUncoercedRequestInput,
   'no-uncollected-tests': ruleNoUncollectedTests,
   'no-unhandled-url-parse': ruleNoUnhandledUrlParse,
@@ -212,6 +218,7 @@ export const directoryRules = {
   'no-unknown-in-domain': ruleNoUnknownInDomain,
   'no-unknown-main-folder': ruleNoUnknownMainFolder,
   'no-unmapped-exception': ruleNoUnmappedException,
+  'no-unordered-query': ruleNoUnorderedQuery,
   'no-unowned-async-assertion': ruleNoUnownedAsyncAssertion,
   'no-unsafe-deserialization': ruleNoUnsafeDeserialization,
   'no-unsafe-path-join': ruleNoUnsafePathJoin,
@@ -247,4 +254,5 @@ export const directoryRules = {
   'timeout-abandons-operation': ruleTimeoutAbandonsOperation,
   'unbounded-fan-out': ruleUnboundedFanOut,
   'unbounded-reactive-fan-out': ruleUnboundedReactiveFanOut,
+  'untested-round-trip': ruleUntestedRoundTrip,
 };

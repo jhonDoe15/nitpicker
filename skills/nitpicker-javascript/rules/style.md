@@ -51,6 +51,9 @@ Part of the [nitpicker-javascript](../SKILL.md) skill. Write these forms from th
   `(await repo.find()).length`, `where` instead of `.filter`/`.some`/`.find` on the rows, `order`/`orderBy`
   instead of `.sort`, and the ORM's aggregate or `groupBy` instead of `reduce` or `groupBy` over the rows
   (`nitpicker/no-in-memory-query`).
+- Index every foreign key in the migration that adds it (`CREATE INDEX ON orders (customer_id)`, or an index
+  that starts with the column) and give Prisma relations an `@@index([authorId])`: PostgreSQL does not create
+  one (`foreign-key-index`).
 - Join at most one to-many relation into a query: TypeORM `relationLoadStrategy: 'query'` or a query
   per collection, Sequelize `separate: true` on the other `hasMany` includes, and
   `strategy: 'select-in'` on a MikroORM `populate` (`nitpicker/no-multiple-collection-joins`).
@@ -61,6 +64,9 @@ Part of the [nitpicker-javascript](../SKILL.md) skill. Write these forms from th
   them, a `Map` built once before a loop or handler instead of `find((x) => x.key === key)` in it,
   and one `reduce` pass instead of `sort(...)[0]` or `toSorted(...).at(-1)`
   (`nitpicker/no-costly-collection-form`).
+- Rows read with `for await` (any source that is not an array) are handled as they arrive: flush
+  a fixed-size batch inside the loop and the rest after it, never one array of every row
+  (`nitpicker/no-collected-stream-rows`).
 - A child process you wait for gets a deadline: `{ timeout: 30_000 }` on `execFileSync`/`spawnSync`, or a
   `timeout` or `signal: AbortSignal.timeout(30_000)` on `execFile` and an awaited `spawn` or `execa`
   (`nitpicker/require-process-timeout`; a build wrapper that only runs a child to completion takes an exception).
