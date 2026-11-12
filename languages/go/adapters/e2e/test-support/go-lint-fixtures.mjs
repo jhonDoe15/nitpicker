@@ -125,3 +125,45 @@ func Label(status Status) string {
 	return ""
 }
 `;
+
+const MODELS = `package shop
+
+import "gorm.io/gorm"
+
+type Customer struct {
+	gorm.Model
+	Orders []Order
+}
+
+type Order struct {
+	gorm.Model
+	CustomerID uint
+}
+`;
+
+const GORM_STUB = `// Package gorm stands in for gorm.io/gorm.
+package gorm
+
+type Model struct {
+	ID uint \`gorm:"primarykey"\`
+}
+`;
+
+const ORDERS_MIGRATION = `CREATE TABLE orders (
+  id bigserial PRIMARY KEY,
+  customer_id bigint REFERENCES customers (id)
+);
+`;
+
+export const GORM_MODELS = {
+  'go.mod':
+    'module example.com/shop\n\ngo 1.22\n\nrequire gorm.io/gorm v0.0.0\n\nreplace gorm.io/gorm => ./third_party/gorm\n',
+  'third_party/gorm/go.mod': 'module gorm.io/gorm\n\ngo 1.22\n',
+  'third_party/gorm/gorm.go': GORM_STUB,
+  'shop/models.go': MODELS,
+};
+
+export const GORM_MIGRATED = {
+  ...GORM_MODELS,
+  'migrations/0001_orders.up.sql': ORDERS_MIGRATION,
+};
