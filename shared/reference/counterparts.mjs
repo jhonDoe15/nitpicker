@@ -21,6 +21,11 @@ const GROUPS = [
     typescript: 'nitpicker/no-multiple-collection-joins',
     python: 'multiple-collection-joins',
   },
+  {
+    java: 'JpaUnindexedForeignKey',
+    typescript: 'nitpicker/no-unindexed-foreign-key',
+    python: 'unindexed-foreign-key',
+  },
 ];
 
 function spring(rule) {
