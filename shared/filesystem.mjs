@@ -34,7 +34,7 @@ export function ancestorDirectories(directory) {
   return found;
 }
 
-export function* filesUnder(root, { skipDirectory = () => false } = {}) {
+export function* filesUnder(root, { skipDirectory = () => false, includeLinks = false } = {}) {
   function children(frame) {
     if (frame.entry && (!frame.entry.isDirectory() || skipDirectory(frame.absolute, frame.entry)))
       return [];
@@ -44,6 +44,8 @@ export function* filesUnder(root, { skipDirectory = () => false } = {}) {
     }));
   }
   for (const frame of depthFirst({ absolute: root }, children)) {
-    if (frame.entry?.isFile()) yield frame.absolute;
+    if (frame.entry?.isFile() || (includeLinks && frame.entry?.isSymbolicLink())) {
+      yield frame.absolute;
+    }
   }
 }

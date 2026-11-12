@@ -2,7 +2,13 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
+import {
+  nestedCheckout,
+  useGitCheckouts,
+} from '../../../../core/diff/git/test-support/git-checkout.mjs';
 import { uncollectedWorkspaceTestFindings } from './workspace-tests.mjs';
+
+const { gitCheckout } = useGitCheckouts();
 
 const temporaryRoots = [];
 const TEST = "it('x', () => {});\n";
@@ -43,6 +49,8 @@ function findings(files, exceptions = []) {
   });
 }
 
+const ALLOWED_FORM =
+  "Add a `test` script to its package.json, or add the package to the root test config's `projects`.";
 const fix =
   'Add a `test` script to its package.json, or add the package to the root test config\'s `projects`. If this is intended, add {"rule":"nitpicker/no-uncollected-tests","paths":["packages/web/package.json"],"reason":"..."} to "exceptions" in nitpicker.config.json.';
 
@@ -55,10 +63,12 @@ describe('workspace packages whose tests nothing runs', () => {
         path: 'packages/web/package.json',
         identity: 'uncollected-workspace-tests:2',
         message: `Nothing runs the 2 test files of this workspace package: it has no \`test\` script and the root test config does not include it. ${fix}`,
+        allowedForm: ALLOWED_FORM,
         classification: 'enforceable',
         ratchet: {
           key: 'uncollected-workspace-tests',
           value: 2,
+          worseAllowedForm: ALLOWED_FORM,
           worseMessage: `The test files of this workspace package that nothing runs grew from {base} to 2: it has no \`test\` script and the root test config does not include it. ${fix}`,
           heldMessage:
             'Workspace package: 2 test files that nothing runs, allowed because base had {base}; any new one fails.',
@@ -142,5 +152,26 @@ describe('workspace packages whose tests nothing runs', () => {
 
     expect(findings({}, [exception])).toEqual([]);
     expect(findings({ 'package.json': '{}' })).toEqual([]);
+  });
+
+  it('look at the files of the Git checkout, not at ignored folders or nested checkouts', () => {
+    const root = gitCheckout(
+      {
+        'package.json': JSON.stringify({ workspaces: ['packages/*'] }),
+        'packages/web/package.json': '{}',
+        'packages/web/src/a.test.ts': TEST,
+        'packages/web/generated/b.test.ts': TEST,
+        'packages/ignored/package.json': '{}',
+        'packages/ignored/src/c.test.ts': TEST,
+        ...nestedCheckout('packages/agent', { 'package.json': '{}', 'src/d.test.ts': TEST }),
+      },
+      ['packages/web/generated/', 'packages/ignored/'],
+    );
+
+    const found = uncollectedWorkspaceTestFindings(root, { analyzerName: 'structure' });
+
+    expect(found.map(({ path: file, identity }) => [file, identity])).toEqual([
+      ['packages/web/package.json', 'uncollected-workspace-tests:1'],
+    ]);
   });
 });

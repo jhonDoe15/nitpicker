@@ -1,4 +1,4 @@
-import { existsSync, readFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { evaluateDuplicates } from '../../../../shared/rules/duplicates.mjs';
 import {
@@ -21,6 +21,12 @@ import {
   skippedFolderGlobs,
 } from '../../../../core/tooling/jscpd/skipped-folders.mjs';
 
+const GLOB_SYNTAX = /[*?[\]{}()!@+]/gu;
+
+function literalGlob(file) {
+  return `**/${file.replaceAll(GLOB_SYNTAX, String.raw`\$&`)}`;
+}
+
 export function runJavaDuplicates(
   projectRoot,
   {
@@ -36,14 +42,21 @@ export function runJavaDuplicates(
   const roots = (manifest[rootsKey] ?? []).filter((root) =>
     existsSync(path.join(projectRoot, root)),
   );
+  const excluded = manifest.kotlinExcludedFiles ?? [];
+  mkdirSync(reportRoot, { recursive: true });
   runJscpd({
     cwd: projectRoot,
     roots,
     format,
-    ignore: skippedFolderGlobs(skippedFolders),
+    ignore: [...skippedFolderGlobs(skippedFolders), ...excluded.map(literalGlob)],
     reportRoot,
     reportFile,
-    renamed: { syntax: format, files: sourceFilesUnder(projectRoot, roots, renamedExtensions) },
+    renamed: {
+      syntax: format,
+      files: sourceFilesUnder(projectRoot, roots, renamedExtensions).filter(
+        (file) => !excluded.includes(file),
+      ),
+    },
   });
 }
 
@@ -52,26 +65,33 @@ function readRuns(reportRoot, reportFile) {
   return runs.flatMap(({ root, report }) => jscpdClones(report, [root]));
 }
 
-export function duplicateFindings(plain, { reportRoot, reportFile, projectRoot, syntax }) {
+export function duplicateFindings(
+  plain,
+  { reportRoot, reportFile, projectRoot, syntax, skip = () => false },
+) {
   const renamedFile = renamedReportFile(reportFile);
   const renamed =
     projectRoot !== undefined && existsSync(insideReportRoot(reportRoot, renamedFile))
       ? renamedClones(readRuns(reportRoot, renamedFile), { projectRoot, syntax })
       : [];
+  function kept(clones) {
+    return clones.filter((clone) => !skip(clone));
+  }
   return [
-    ...evaluateDuplicates(withoutRenamedCopies(plain, renamed), DUPLICATES_TOOL),
-    ...renamedFindings(renamed, DUPLICATES_TOOL),
+    ...evaluateDuplicates(kept(withoutRenamedCopies(plain, renamed)), DUPLICATES_TOOL),
+    ...renamedFindings(kept(renamed), DUPLICATES_TOOL),
   ];
 }
 
 export function readDuplicateFindings(
   reportRoot,
-  { reportFile = DUPLICATES_REPORT, format = 'java', projectRoot } = {},
+  { reportFile = DUPLICATES_REPORT, format = 'java', projectRoot, skip } = {},
 ) {
   return duplicateFindings(withoutImportOnlyClones(readRuns(reportRoot, reportFile), format), {
     reportRoot,
     reportFile,
     projectRoot,
     syntax: format,
+    skip,
   });
 }

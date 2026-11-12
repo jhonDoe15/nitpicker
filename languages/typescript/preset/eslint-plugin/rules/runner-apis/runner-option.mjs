@@ -3,7 +3,7 @@ import path from 'node:path';
 import { ancestorDirectories } from '../../../../../../shared/filesystem.mjs';
 import { readHeadPolicy, readLayout } from '../../../head-policy.mjs';
 import { DEFAULT_TEST_RUNNER, TEST_RUNNERS } from '../../../test-runner/runners.mjs';
-import { recordedTestRunner, runnerVocabulary } from '../../../test-runner/runner-vocabulary.mjs';
+import { recordedTestRunner, runnerVocabulary } from '../../../test-runner/vocabulary/runner-vocabulary.mjs';
 import {
   defaultTestFiles,
   testFileMatcher,

@@ -34,12 +34,12 @@ const MIXED_FILES = {
 const MIXED_RUNNERS_MESSAGE =
   'nitpicker failed: found several test runners: Jest (jest.config.js) and node:test (package.json script "test:node"). ' +
   'Set "tools.tests.runner" in nitpicker.config.json to "jest" or "node" to choose one.\n';
-const FAILING_COVERAGE_TOOL_ERRORS = (assertionLine) => [
+const FAILING_COVERAGE_TOOL_ERRORS = ({ failure, failureLine }) => [
   {
     tool: 'coverage',
     rule: 'tests-failed',
     path: 'test/failing.test.js',
-    message: `1 test fails, so coverage, CRAP and mutation were skipped. Fix the tests and rerun:\n  test/failing.test.js > checks greet: ${assertionLine}`,
+    message: `1 test fails; coverage, CRAP and mutation were skipped. Fix the tests and rerun:\n  test/failing.test.js:${String(failureLine)} > checks greet: ${failure}\n    expected: { kind: 'empty-name' }\n    received: { kind: 'greeted', text: 'Hello, Ada!' }`,
     snapshot: 'head',
   },
 ];
@@ -63,6 +63,7 @@ const RUNNERS = [
     imports: "import { expect, it } from '@jest/globals';",
     assertion: (call, expected) => `expect(${call}).toEqual(${expected});`,
     failure: 'Error: expect(received).toEqual(expected) // deep equality',
+    failureLine: 5,
   },
   {
     runner: 'node:test',
@@ -70,6 +71,7 @@ const RUNNERS = [
     imports: "import assert from 'node:assert/strict';\nimport { it } from 'node:test';",
     assertion: (call, expected) => `assert.deepStrictEqual(${call}, ${expected});`,
     failure: 'AssertionError [ERR_ASSERTION]: Expected values to be strictly deep-equal:',
+    failureLine: 6,
   },
 ];
 
@@ -146,8 +148,8 @@ describe.each(RUNNERS)('a $runner project', (runner) => {
 
     const { exitCode, toolErrors } = runSnapshot(root, ['--analyzer', 'coverage']);
 
-    expect(toolErrors).toEqual(FAILING_COVERAGE_TOOL_ERRORS(runner.failure));
-    expect(exitCode).toBe(2);
+    expect(toolErrors).toEqual(FAILING_COVERAGE_TOOL_ERRORS(runner));
+    expect(exitCode).toBe(1);
   });
 
   it(

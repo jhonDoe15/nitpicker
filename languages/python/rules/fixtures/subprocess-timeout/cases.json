@@ -1,0 +1,7 @@
+[
+  {
+    "tool": "python-rules",
+    "rule": "subprocess-without-timeout",
+    "mention": "timeout=30"
+  }
+]

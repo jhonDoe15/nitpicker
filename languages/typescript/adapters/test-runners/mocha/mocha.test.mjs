@@ -81,7 +81,7 @@ describe('coverage on a Mocha project', () => {
     );
 
     expect(rulesOf(findings)).toEqual(['tool-error:tests-failed']);
-    expect(findings[0].message).toMatch(/test\/pick\.test\.ts > pick answers: AssertionError/u);
+    expect(findings[0].message).toMatch(/test\/pick\.test\.ts:5 > pick answers: AssertionError/u);
   });
 
   it('names the test file that Mocha could not load', async () => {
@@ -95,11 +95,11 @@ describe('coverage on a Mocha project', () => {
     expect(findings).toEqual([
       {
         tool: 'coverage',
-        rule: 'tests-failed',
+        rule: 'tests-not-run',
         path: 'test/broken.test.ts',
-        identity: 'tests-failed',
+        identity: 'tests-not-run',
         message:
-          '1 test fails, so coverage, CRAP and mutation were skipped. Fix the tests and rerun:\n' +
+          '1 test fails; coverage, CRAP and mutation were skipped. Fix the tests and rerun:\n' +
           '  test/broken.test.ts > could not run: Error [ERR_MODULE_NOT_FOUND]: ' +
           `Cannot find package 'not-installed' imported from ${root}/test/broken.test.ts`,
         classification: 'tool-error',

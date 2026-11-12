@@ -1,9 +1,9 @@
-import { filesUnder } from '../../../../shared/filesystem.mjs';
+import { projectFilesUnder } from '../../../../shared/project-files/project-files.mjs';
 import { depthFirst } from '../../../../shared/traversal.mjs';
 import { syntaxChildren } from '../syntax/children.mjs';
 import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
-import ts from 'typescript';
+import { ts } from '../../typescript-api/typescript-api.mjs';
 import { isExcludedPath, normalizePath } from '../dependency-graph/cruise.mjs';
 import { defaultResolvedLayout } from '../layout.mjs';
 import { functionUnits, isFunctionLike } from './units/function-units.mjs';
@@ -114,7 +114,7 @@ function productionFiles(root, displayRoot, layout) {
   function skipDirectory(absolute, entry) {
     return isExcludedPath(projectRelative(absolute)) || entry.name === '__tests__';
   }
-  return [...filesUnder(root, { skipDirectory })]
+  return [...projectFilesUnder(root, { skipDirectory })]
     .filter((absolute) => {
       const relative = normalizePath(path.relative(root, absolute));
       return (

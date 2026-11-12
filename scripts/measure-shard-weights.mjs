@@ -264,14 +264,7 @@ export function buildFixture(kind, root) {
       'src/main/nitpicker/core/tooling/policy-links.ts',
     ];
   }
-  checked(root, 'npx', [
-    '--yes',
-    'npm@11',
-    'install',
-    '--no-audit',
-    '--no-fund',
-    '--prefer-offline',
-  ]);
+  checked(root, 'npx', ['--yes', 'npm@11', 'install', '--no-audit', '--no-fund']);
   checked(root, 'git', ['add', '.']);
   const identity = ['-c', 'user.name=Weights', '-c', 'user.email=weights@example.invalid'];
   checked(root, 'git', [...identity, 'commit', '-m', 'baseline']);

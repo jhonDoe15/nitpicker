@@ -25,12 +25,9 @@ const UNKNOWN = { environment: undefined, scopes: [] };
 const WHOLE_PROJECT_GLOBS = new Set(['**', '**/*']);
 const NO_COMMAND = { environment: {}, nodeArguments: [], arguments_: [] };
 
-function unreadable(projectRoot, configFile, failure) {
+function unreadable(projectRoot, configFile, describe) {
   const configPath = path.relative(projectRoot, configFile).split(path.sep).join('/');
-  return {
-    ...UNKNOWN,
-    notice: { path: configPath, message: noticeFor(configPath, failure) },
-  };
+  return { ...UNKNOWN, notice: { path: configPath, message: describe(configPath) } };
 }
 
 function loadJestEnvironments(options) {
@@ -40,7 +37,7 @@ function loadJestEnvironments(options) {
     ? unreadable(
         projectRoot,
         path.resolve(projectRoot, jestConfigFile(projectRoot, command)),
-        failure,
+        (configPath) => noticeFor(configPath, failure),
       )
     : environmentsFromJestConfig(config, projectRoot);
 }
@@ -66,7 +63,7 @@ function loadViteEnvironments({ projectRoot, liveProjectRoot, timeoutMs }) {
     timeoutMs,
   });
   return outcome.result === undefined
-    ? unreadable(projectRoot, configFile, outcome.failure)
+    ? unreadable(projectRoot, configFile, () => loadFailureNotice(outcome.failure))
     : outcome.result.environments;
 }
 
@@ -86,6 +83,10 @@ export function loadTestEnvironments({
 }) {
   const load = LOADERS[runner] ?? LOADERS[DEFAULT_TEST_RUNNER];
   return load({ projectRoot, liveProjectRoot, timeoutMs, command });
+}
+
+function loadFailureNotice(reason) {
+  return `The DOM-environment check only uses per-file directives: ${reason.replace(/\.$/u, '')}.`;
 }
 
 function noticeFor(configPath, reason) {

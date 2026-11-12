@@ -1,0 +1,7 @@
+[
+  {
+    "tool": "python-rules",
+    "rule": "falsy-default",
+    "mention": "is not None"
+  }
+]

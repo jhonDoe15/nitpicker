@@ -34,7 +34,15 @@ final class Scopes {
   }
 
   static Map<String, Object> lambdaData(KtLambdaExpression lambda, State state) {
-    PsiElement parent = lambda.getParent();
+    Map<String, Object> data = m("k", "lambda");
+    data.putAll(hostData(lambda));
+    data.put("line", state.lineOf(lambda.getTextOffset()));
+    data.put("params", parameters(lambda.getValueParameters()));
+    return data;
+  }
+
+  static Map<String, Object> hostData(KtExpression expression) {
+    PsiElement parent = expression.getParent();
     while (parent instanceof KtLabeledExpression || parent instanceof KtAnnotatedExpression
         || parent instanceof KtParenthesizedExpression) {
       parent = parent.getParent();
@@ -60,8 +68,7 @@ final class Scopes {
         && ((KtBinaryExpression) parent).getOperationToken() == KtTokens.IDENTIFIER) {
       host = ((KtBinaryExpression) parent).getOperationReference().getReferencedName();
     }
-    return m("k", "lambda", "host", host, "qualifier", qualifier, "argument", argument,
-        "line", state.lineOf(lambda.getTextOffset()), "params", parameters(lambda.getValueParameters()));
+    return m("host", host, "qualifier", qualifier, "argument", argument);
   }
 
   static Map<String, Object> loopData(KtLoopExpression loop, State state) {

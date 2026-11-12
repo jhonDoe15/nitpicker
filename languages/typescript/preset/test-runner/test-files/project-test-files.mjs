@@ -1,6 +1,6 @@
 import { resolveLayoutFor } from '../../layout.mjs';
 import { runnerChoiceNotices } from '../detect-runner.mjs';
-import { runnerTypesNotices } from '../runner-types.mjs';
+import { runnerTypesNotices } from '../vocabulary/runner-types.mjs';
 import { runnerTestFileFacts } from './runner-test-files.mjs';
 
 function usesPresetAnalyzers(analyzers) {

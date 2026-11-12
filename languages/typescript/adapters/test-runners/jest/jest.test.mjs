@@ -8,6 +8,7 @@ import {
   runArea,
   createRunnerProjects,
 } from '../test-support/runner-project.mjs';
+import { linkSentence } from '../../../../../shared/messages/test-support/link-sentence.mjs';
 
 const projects = createRunnerProjects();
 
@@ -81,6 +82,52 @@ describe('coverage on a Jest project', () => {
     expect(uncoveredBranch(findings)).toMatch(UNCOVERED_ELSE);
   });
 
+  it.each([
+    [
+      'the config',
+      { preset: 'ts-jest', coveragePathIgnorePatterns: ['/node_modules/', '/src/main/'] },
+      'jest',
+    ],
+    [
+      'a project',
+      {
+        projects: [
+          {
+            displayName: 'unit',
+            preset: 'ts-jest',
+            testEnvironment: 'node',
+            coveragePathIgnorePatterns: ['/src/main/'],
+          },
+        ],
+      },
+      'jest',
+    ],
+    ['the test script', undefined, 'jest --coveragePathIgnorePatterns /node_modules/ /src/main/'],
+  ])(
+    'measures the sources that coveragePathIgnorePatterns in %s leaves out',
+    async (_, jest, test) => {
+      const root = jestProject(SAYS_YES, jest, test);
+      writeFileSync(path.join(root, 'src/other.ts'), 'export const other = 1;\n');
+
+      const findings = await runArea('coverage', root);
+
+      expect(uncoveredBranch(findings)).toMatch(UNCOVERED_ELSE);
+    },
+  );
+
+  it('fails instead of passing when a setup file in the sources keeps Jest from measuring it', async () => {
+    const root = jestProject(SAYS_YES, {
+      preset: 'ts-jest',
+      testEnvironment: 'node',
+      setupFilesAfterEnv: ['<rootDir>/src/main/setup.ts'],
+    });
+    writeFileSync(path.join(root, 'src/main/setup.ts'), 'export const ready = true;\n');
+
+    await expect(runArea('coverage', root)).rejects.toThrow(
+      /^Jest left source files out of coverage, such as src\/main\/setup\.ts\. /u,
+    );
+  });
+
   it('fails instead of passing when Jest instruments none of the source files', async () => {
     const root = jestProject(SAYS_YES, { projects: ['<rootDir>/test'] });
     writeFileSync(
@@ -93,7 +140,8 @@ describe('coverage on a Jest project', () => {
         "Jest collected no coverage for the project's source files, such as src/main/pick.ts. " +
           'Jest only instruments files inside the rootDir of the config that runs the test ' +
           `(the global rootDir is ${root}). ` +
-          "Make the project's Jest config, or each of its projects, use a rootDir that holds the sources.",
+          "Make the project's Jest config, or each of its projects, use a rootDir that holds the sources. " +
+          linkSentence('jestNoCoverage'),
       ),
     );
   });
@@ -106,7 +154,7 @@ describe('coverage on a Jest project', () => {
 
     expect(rulesOf(findings)).toEqual(['tool-error:tests-failed']);
     expect(findings[0].message).toMatch(
-      /test\/pick\.test\.ts > says no: .*expect\(received\)\.toBe/u,
+      /test\/pick\.test\.ts:3 > says no: .*expect\(received\)\.toBe/u,
     );
   });
 
@@ -122,13 +170,13 @@ describe('coverage on a Jest project', () => {
     expect(findings).toEqual([
       {
         tool: 'coverage',
-        rule: 'tests-failed',
+        rule: 'tests-not-run',
         path: 'test/pick.test.ts',
-        identity: 'tests-failed',
+        identity: 'tests-not-run',
         message:
           'Jest ran no tests, but nitpicker sees test files such as test/pick.test.ts. ' +
           'Make the project\'s Jest config find them, or set "tools.tests.runner" in ' +
-          'nitpicker.config.json to the runner they are written for.',
+          `nitpicker.config.json to the runner they are written for.`,
         classification: 'tool-error',
       },
     ]);

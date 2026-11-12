@@ -296,6 +296,7 @@ describe('head policy reader', () => {
       testConsole: {},
       generatedFiles: [],
       frameworks: { defaultExports: [], entryPoints: [] },
+      history: {},
     });
   });
 
@@ -318,6 +319,7 @@ describe('head policy reader', () => {
         testConsole: {},
         generatedFiles: [],
         frameworks: { defaultExports: [], entryPoints: [] },
+        history: {},
       });
     });
   });
@@ -442,8 +444,8 @@ describe('head policy delivery', () => {
       .map((line) => JSON.parse(line));
     expect(runs).toHaveLength(2);
     expect(new Set(runs.map((run) => run.root)).size).toBe(2);
-    for (const run of runs) {
-      expect(run.policy).toEqual({
+    expect(runs.map((run) => run.policy)).toEqual(
+      runs.map(() => ({
         exclude: ['**/legacy/**'],
         layout: { ...defaultLayout, sourceRoots: ['lib'] },
         exceptions: [],
@@ -455,8 +457,9 @@ describe('head policy delivery', () => {
         testConsole: {},
         generatedFiles: [],
         frameworks: { defaultExports: [], entryPoints: [] },
-      });
-    }
+        history: {},
+      })),
+    );
   });
 });
 

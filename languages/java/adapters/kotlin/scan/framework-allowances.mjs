@@ -3,11 +3,14 @@ import path from 'node:path';
 import { pathInside } from '../../../../../shared/filesystem.mjs';
 import { listEntriesOf, MERGED_LISTS } from '../detekt/detekt-lists.mjs';
 import { ONE_WAY_RULES } from '../rules/kotlin-rules.mjs';
-import { isCompositionRoot } from './kotlin-scan.mjs';
 import { lineText, scanKotlinSource } from './kotlin-source.mjs';
+import { isConfigurationRoot } from './configuration/configuration-roots.mjs';
+import { hasCallbackAnnotation, UNUSED_PARAMETER_RULE } from './parameters/declaration-header.mjs';
 
 const FORBIDDEN_CALL = 'detekt.style.ForbiddenMethodCall';
 const SPREAD = 'detekt.performance.SpreadOperator';
+const SLEEP_IN_SUSPEND = 'detekt.coroutines.SleepInsteadOfDelay';
+const SLEEP_CALL = '`java.lang.Thread.sleep`';
 const ENVIRONMENT = '`java.lang.System.getenv`';
 const SPRING_ENTRY = /\brunApplication\s*<|\bSpringApplication\s*\.\s*run\s*\(/;
 const NAMED = /^The (?:method|import) `([^`]+)`/;
@@ -68,7 +71,11 @@ function sourceReader(projectRoot) {
 function isAllowed(finding, source, spring) {
   if (finding.rule === FORBIDDEN_CALL && finding.message.includes(ENVIRONMENT)) {
     const scanned = source(finding.path);
-    return scanned !== undefined && isCompositionRoot(scanned);
+    return scanned !== undefined && isConfigurationRoot(scanned);
+  }
+  if (finding.rule === UNUSED_PARAMETER_RULE && finding.location?.line !== undefined) {
+    const scanned = source(finding.path);
+    return scanned !== undefined && hasCallbackAnnotation(scanned, finding.location.line);
   }
   if (spring && finding.rule === SPREAD && finding.location?.line !== undefined) {
     const scanned = source(finding.path);
@@ -77,9 +84,31 @@ function isAllowed(finding, source, spring) {
   return false;
 }
 
+function lineKey(finding) {
+  return `${finding.path}:${String(finding.location?.line)}`;
+}
+
+function sleepLinesIn(findings) {
+  return new Set(findings.filter(({ rule }) => rule === SLEEP_IN_SUSPEND).map(lineKey));
+}
+
+function isRepeatedSleep(finding, sleepLines) {
+  return (
+    finding.rule === FORBIDDEN_CALL &&
+    finding.message.includes(SLEEP_CALL) &&
+    sleepLines.has(lineKey(finding))
+  );
+}
+
 export function withFrameworkAllowances(findings, { projectRoot, spring = false, testRoots = [] }) {
   const source = sourceReader(projectRoot);
+  const sleepLines = sleepLinesIn(findings);
   return findings.filter(
-    (finding) => !isMainOnlyInTest(finding, testRoots) && !isAllowed(finding, source, spring),
+    (finding) =>
+      !(
+        isMainOnlyInTest(finding, testRoots) ||
+        isAllowed(finding, source, spring) ||
+        isRepeatedSleep(finding, sleepLines)
+      ),
   );
 }

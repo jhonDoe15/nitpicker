@@ -9,13 +9,14 @@ The gate can't check these; reviewers keep catching them.
 - Fix a bug where it happens. When one caller of a shared function misbehaves, change that caller,
   not the contract the other callers rely on. If the contract must change, run and extend the
   tests of its existing callers.
-- When you move code, switch every caller in the same change; keep no `@Deprecated` delegate or
-  other compatibility path.
+- When you move code, switch every caller in the same change and delete the old name; keep no
+  compatibility path. The gate rejects `@Deprecated` and `typealias Old = New`, not an overload
+  that keeps the old signature alive.
 - An overload or wrapper that forwards a value must not turn `null`, an empty collection or
   `false` into a default; test both.
-- A state with more than two values is an `enum class` or a `sealed interface`, not a nullable
-  `Boolean`, a pair of flags, or a `null` that means "still loading". Model loading, loaded and
-  failed as three types and `when` over them without `else`.
+- A state with more than two values is an `enum class` or a `sealed interface`, not a pair of
+  flags or a `null` that means "still loading". Model loading, loaded and failed as three types
+  and `when` over them without `else`.
 - Generated code (KSP or kapt output, OpenAPI or protobuf output): change the generator, the spec
   or the template, then regenerate. Never edit the output.
 - Feature flags: one flag per feature, read in one place. When a flag retires, delete the flag,
@@ -27,8 +28,9 @@ The gate can't check these; reviewers keep catching them.
   boundary), not by calling the inner function you changed.
 - Test collections with two or more items, a duplicate, and an element whose nested field is
   `null`.
-- Round-trip values that need escaping or mapping:
-  `assertEquals(order, mapper.readValue(mapper.writeValueAsString(order)))`.
+- Round-trip through the library mapper too, which the gate does not check:
+  `assertEquals(order, mapper.readValue(mapper.writeValueAsString(order)))`, with values that need
+  escaping or mapping (quotes, newlines, non-ASCII, empty and absent fields).
 - Test a duration or limit with the production constant (`OrderLimits.MAX_ITEMS`), not a copy of
   its value.
 - Build fixtures from what the real producer returns (a recorded response, an entity as the

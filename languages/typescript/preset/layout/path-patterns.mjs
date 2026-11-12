@@ -6,7 +6,7 @@ const TEST_SUPPORT_DIRECTORY = 'test-support';
 export function filePatterns({ sourceRoots, testRoots, extensions, colocatedTests }) {
   const sourceAlternatives = sourceRoots.map(escapeRegExp).join('|');
   const testAlternatives = testRoots.map(escapeRegExp).join('|');
-  const suffix = `(?:${extensions.join('|')})$`;
+  const suffix = `(?:${extensions.map(escapeRegExp).join('|')})$`;
   const testPattern = new RegExp(
     [
       `^(?:${testAlternatives})/`,

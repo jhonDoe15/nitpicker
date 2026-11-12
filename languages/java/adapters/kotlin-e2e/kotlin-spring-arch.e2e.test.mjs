@@ -13,6 +13,11 @@ const fixture = path.resolve(import.meta.dirname, '../fixtures/spring-arch-kotli
 const ROLES = { controller: ['shop.wiring.Endpoint'], repository: ['shop.wiring.Store'] };
 
 const EXPECTED = [
+  'contract-infrastructure-type shop.accounts.AccountHandler feature|transport|view:org.springframework.http.ResponseEntity AccountWeb.kt',
+  'contract-infrastructure-type shop.accounts.AccountResource controller|persistence|export:java.sql.ResultSet AccountWeb.kt',
+  'contract-infrastructure-type shop.accounts.AccountService service|persistence|rows:java.sql.ResultSet AccountService.kt',
+  'contract-infrastructure-type shop.accounts.AccountServiceKt feature|persistence|connect:java.sql.Connection AccountService.kt',
+  'contract-infrastructure-type shop.accounts.AccountServiceKt feature|persistence|connect:javax.sql.DataSource AccountService.kt',
   'ddd-aggregate-reference shop.sales.Order shop.sales.Customer Sales.kt',
   'ddd-foreign-entity shop.sales.Order shop.sales.Cart:shop.sales.CartLine Sales.kt',
   'ddd-value-object-reference shop.sales.Receipt shop.sales.Order Sales.kt',
@@ -30,6 +35,13 @@ const EXPECTED = [
   'spring-no-dirties-context shop.OrderFlowTest  OrderFlowTest.kt',
   'spring-repository-service shop.carts.CartRepository shop.carts.CartService CartController.kt',
   'spring-repository-service shop.wiring.AuditStore shop.wiring.WiringService Wiring.kt',
+  'spring-request-state shop.requests.AttributesHolder attributes:=:RequestContextHolder.currentRequestAttributes() Visits.kt',
+  'spring-request-state shop.requests.VisitController Registry.seen:add:VisitController.register(page) Visits.kt',
+  'spring-request-state shop.requests.VisitController VisitController.SEEN:add:VisitController.audit(trace) Visits.kt',
+  'spring-request-state shop.requests.VisitController byId:put:VisitController.importAll(all) Visits.kt',
+  'spring-request-state shop.requests.VisitController current:=:VisitController.show(id) Visits.kt',
+  'spring-request-state shop.requests.VisitController last:put:VisitController.create(visit) Visits.kt',
+  'spring-request-state shop.requests.VisitLog recent:add:VisitController.delegate(visit) Visits.kt',
   'spring-scope-capture shop.carts.CartConfig pricing:request:shop.carts.Basket CartConfig.kt',
   'spring-scope-capture shop.carts.CartService request:shop.carts.Basket CartService.kt',
   'spring-scope-capture shop.wiring.WiringService request:shop.wiring.Badge Wiring.kt',
@@ -40,6 +52,13 @@ const EXPECTED = [
   'spring-shared-pure shop.shared.Totals shop.orders.OrderDto Totals.kt',
   'spring-test-placement shop.OrderFlowTest  OrderFlowTest.kt',
   'spring-test-placement shop.orders.OrderControllerIT  OrderControllerIT.kt',
+  'spring-typed-request-field shop.intake.ChatMessage ChatMessage.meta:field:IntakeController.chat Intake.kt',
+  'spring-typed-request-field shop.intake.CreateOrder CreateOrder.attributes:field:IntakeController.create Intake.kt',
+  'spring-typed-request-field shop.intake.CreateOrder CreateOrder.payload:field:IntakeController.create Intake.kt',
+  'spring-typed-request-field shop.intake.Freeform Freeform.points:field:IntakeController.shapes Intake.kt',
+  'spring-typed-request-field shop.intake.OrderLine OrderLine.options:field:IntakeController.create Intake.kt',
+  'spring-typed-request-field shop.intake.Profile Profile.put:any-setter:IntakeController.profile Intake.kt',
+  'spring-unmapped-exception shop.returns.ReturnController show:ReturnNotFound:ReturnService.find Returns.kt',
 ];
 
 describe.skipIf(!enabled)('Spring architecture rules on a Kotlin Spring project', () => {
@@ -75,7 +94,7 @@ describe.skipIf(!enabled)('Spring architecture rules on a Kotlin Spring project'
     }
   });
 
-  it('reports the Kotlin classes against their .kt files, and no file facade of top-level functions', () => {
+  it('reports Kotlin classes against their .kt files, leaving out accessors and web entry points', () => {
     const report = JSON.parse(
       readFileSync(path.join(projectRoot, 'build', 'nitpicker', 'spring-arch.json'), 'utf8'),
     );

@@ -1,5 +1,14 @@
 import { describe, expect, it } from 'vitest';
-import { runsArchRules, usesSpring, withDeclaredSpring } from './arch-rules-gate.mjs';
+import {
+  buildRunsArchRules,
+  runsArchRules,
+  springAotSkip,
+  usesSpring,
+  withDeclaredSpring,
+  withFeatureFolders,
+} from './arch-rules-gate.mjs';
+
+const jarsOn = (...jars) => ({ mainCompile: jars.map((jar) => `/repo/${jar}`) });
 
 describe('usesSpring', () => {
   const classpaths = (...jars) => ({ mainCompile: jars.map((jar) => `/repo/${jar}`) });
@@ -43,5 +52,46 @@ describe('withDeclaredSpring', () => {
       { spring: false, springArch: true },
       { spring: false, springArch: false },
     ]);
+  });
+});
+
+describe('springAotSkip', () => {
+  const SKIP = ['-Dspring-boot.aot.skip=true'];
+
+  it('skips Spring AOT processing unless Surefire or Failsafe runs tests in AOT mode', () => {
+    expect([
+      springAotSkip([{ testJvmArgs: ['-Xmx1g'], integrationTestJvmArgs: [] }, { testJvmArgs: [] }]),
+      springAotSkip([{ testJvmArgs: ['-Dspring.aot.enabled=true'] }, { testJvmArgs: [] }]),
+      springAotSkip([{ testJvmArgs: [], integrationTestJvmArgs: ['-Dspring.aot.enabled=TRUE'] }]),
+      springAotSkip([{ testJvmArgs: ['-Dspring.aot.enabled=false'] }]),
+      springAotSkip([{}]),
+    ]).toEqual([SKIP, [], [], SKIP, SKIP]);
+  });
+});
+
+describe('withFeatureFolders', () => {
+  it('turns on the architecture rules for a checkout with feature folders and keeps the others', () => {
+    expect([
+      withFeatureFolders({ spring: false, springArch: false }, true),
+      withFeatureFolders({ spring: true, springArch: true }, undefined),
+      withFeatureFolders({ spring: false, springArch: false }, undefined),
+    ]).toEqual([
+      { spring: false, springArch: true },
+      { spring: true, springArch: true },
+      { spring: false, springArch: false },
+    ]);
+  });
+});
+
+describe('buildRunsArchRules', () => {
+  it('resolves ArchUnit for a declared Spring build, feature folders or a module that runs the rules', () => {
+    const plain = [{ classpaths: jarsOn('guava.jar') }];
+
+    expect([
+      buildRunsArchRules({ spring: true }, plain),
+      buildRunsArchRules({ featureFolders: true }, plain),
+      buildRunsArchRules({}, [{ classpaths: jarsOn('jmolecules-ddd-2.0.1.jar') }]),
+      buildRunsArchRules({}, plain),
+    ]).toEqual([true, true, true, false]);
   });
 });

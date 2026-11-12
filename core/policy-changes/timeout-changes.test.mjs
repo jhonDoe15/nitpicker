@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { hasSpecificGuidance } from '../diff/reporting/review/policy-guidance.mjs';
 import { timeoutChanges } from './timeout-changes.mjs';
-import { policyChangeFields } from './describe-policy-changes.mjs';
+import { describePolicyChanges, policyChangeFields } from './describe-policy-changes.mjs';
 import { createPolicyScope, rootSets } from './policy-scope.mjs';
 
 const LANGUAGES = ['typescript', 'javascript', 'java', 'kotlin', 'python'];
@@ -15,9 +15,9 @@ const ceilings = (value) => ({ testDeclarationCeilingMs: value, hookDeclarationC
 
 function loosenedTexts(base, head) {
   const { loosened } = timeoutChanges(base, head);
-  for (const { text, kind } of loosened) {
-    expect(hasSpecificGuidance(kind), text).toBe(true);
-  }
+  expect(loosened.filter(({ kind }) => !hasSpecificGuidance(kind)).map(({ text }) => text)).toEqual(
+    [],
+  );
   return loosened.map(({ text }) => text);
 }
 
@@ -83,14 +83,14 @@ describe('timeout policy changes', () => {
     ]);
   });
 
-  it('allows shrinking a looser suite and detects shrinking a stricter suite', () => {
+  it.each([
+    ['detects', 5_000, true],
+    ['allows', 20_000, false],
+  ])('%s shrinking a suite with a %i ms ceiling', (_outcome, value, detected) => {
     const includes = ['test/jvm/**', 'test/new/**'];
-    for (const value of [5_000, 20_000]) {
-      const base = config({ projects: { jvm: project(ceilings(value), includes) } });
-      const head = config({ projects: { jvm: project(ceilings(value)) } });
-      const result = loosenedTexts(base, head);
-      expect(result.length > 0).toBe(value === 5_000);
-    }
+    const base = config({ projects: { jvm: project(ceilings(value), includes) } });
+    const head = config({ projects: { jvm: project(ceilings(value)) } });
+    expect(loosenedTexts(base, head).length > 0).toBe(detected);
   });
 
   it('reviews real execution increases and transitions to native hook deadlines', () => {
@@ -133,5 +133,32 @@ describe('timeout policy changes', () => {
       policyFields({}, config({ languages: { java: { testDeclarationCeilingMs: 25_000 } } }))
         .policyDigest,
     ).not.toBe(first.policyDigest);
+  });
+});
+
+describe('analyzer timeouts', () => {
+  function changes(base, head) {
+    const files = ['src/a.ts'];
+    return describePolicyChanges(
+      base,
+      head,
+      createPolicyScope({
+        files,
+        baseFiles: files,
+        baseRoots: rootSets(base, '.'),
+        headRoots: rootSets(head, '.'),
+        headConfig: head,
+      }),
+    );
+  }
+
+  it('lists no analyzer timeout change, raised, lowered, added or removed', () => {
+    const none = { loosened: [], changed: [] };
+
+    expect(changes({}, { analyzerTimeoutMinutes: { java: 60 } })).toEqual(none);
+    expect(
+      changes({ analyzerTimeoutMinutes: { java: 60 } }, { analyzerTimeoutMinutes: { java: 5 } }),
+    ).toEqual(none);
+    expect(changes({ analyzerTimeoutMinutes: { java: 60 } }, {})).toEqual(none);
   });
 });

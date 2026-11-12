@@ -33,7 +33,7 @@ describe.skipIf(!enabled)('Java preset on Maven builds', () => {
     expect(findings.filter((finding) => finding.tool === 'jacoco')).toEqual([
       lineCoverage('100% (3/3)', 100),
     ]);
-    expect(findings.filter((finding) => finding.tool === 'test-runtime')).toEqual([
+    expect(findings.filter((finding) => finding.rule === 'slow-test')).toEqual([
       {
         tool: 'test-runtime',
         rule: 'slow-test',
@@ -45,6 +45,14 @@ describe.skipIf(!enabled)('Java preset on Maven builds', () => {
           'Remove Thread.sleep and other waits, start a smaller Spring context or a test slice. ' +
           `If this is intended, add ${exception} to "exceptions" in nitpicker.config.json.`,
         classification: 'enforceable',
+        allowedForm:
+          'Remove Thread.sleep and other waits, start a smaller Spring context or a test slice.',
+        exception: {
+          rule: 'slow-test',
+          paths: ['src/test/java/demo/GreeterIT.java'],
+          reason: '...',
+        },
+        exceptionList: 'exceptions',
       },
     ]);
   }, 180_000);
@@ -71,7 +79,7 @@ describe.skipIf(!enabled)('Java preset on Maven builds', () => {
         tool: 'jacoco',
         rule: 'uncovered-method',
         path: 'src/main/java/demo/Greeter.java',
-        identity: 'cov:a14fde8c431ba476',
+        identity: 'cov:demo.Greeter#farewell(Ljava/lang/String;)Ljava/lang/String;',
         symbol: 'demo.Greeter#farewell(Ljava/lang/String;)Ljava/lang/String;',
         message:
           'Method demo.Greeter#farewell(Ljava/lang/String;)Ljava/lang/String; is not covered',

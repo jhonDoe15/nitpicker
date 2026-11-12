@@ -13,9 +13,15 @@ export function file(overrides = {}) {
     functions: [],
     properties: [],
     waits: [],
+    timeouts: [],
     predicates: [],
+    handlers: [],
     calls: [],
     references: [],
+    lookups: [],
+    typed: [],
+    loads: [],
+    bindings: [],
     ...overrides,
   };
 }
@@ -95,6 +101,23 @@ export function call(name, overrides = {}) {
   return { name, positional: 0, named: [], spread: false, lambda: false, ...overrides };
 }
 
+export function segment(name, call = false, args = []) {
+  return call ? { name, call, arguments: args } : { name, call };
+}
+
+export function loaded(text, context, overrides = {}) {
+  return {
+    line: 3,
+    name: text,
+    call: true,
+    receiver: [],
+    arguments: [],
+    text: `${text}()`,
+    context: { kind: 'file', owner: '', member: 'value', ...context },
+    ...overrides,
+  };
+}
+
 export function wait(name, overrides = {}) {
   return {
     line: 5,
@@ -126,6 +149,32 @@ export function routeOf(message) {
   return message.slice(message.lastIndexOf('If this is intended'));
 }
 
-export function routed(message, rule, file = MAIN_FILE) {
-  return `${message} If this is intended, add {"rule":"pmd/${rule}","paths":["${file}"],"reason":"..."} to "exceptions" in nitpicker.config.json.`;
+export function routed(message, rule, file = MAIN_FILE, tool = 'pmd') {
+  return `${message} If this is intended, add {"rule":"${tool}/${rule}","paths":["${file}"],"reason":"..."} to "exceptions" in nitpicker.config.json.`;
+}
+
+export function sourceRouted(message, rule) {
+  return routed(message, rule, MAIN_FILE, 'kotlin-source');
+}
+
+export function importOf(path, overrides = {}) {
+  return { path, alias: undefined, all: false, ...overrides };
+}
+
+export function cleanupCall(name, overrides = {}) {
+  return { section: 'finally', line: 7, name, owner: 'Store', function: 'close', ...overrides };
+}
+
+export function useLaunch(overrides = {}) {
+  return {
+    line: 9,
+    launch: 'launch',
+    resource: 'reader',
+    opened: 'source',
+    owner: 'Store',
+    function: 'copy',
+    scope: 'scope',
+    scopeType: 'CoroutineScope',
+    ...overrides,
+  };
 }

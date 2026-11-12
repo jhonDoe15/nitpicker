@@ -1,6 +1,7 @@
 import { existsSync, readFileSync, statSync } from 'node:fs';
+import { createRequire } from 'node:module';
 import path from 'node:path';
-import { scanDomEvidence } from '../../eslint-plugin/rules/testing/environment/dom-evidence.mjs';
+import { selectTypeScriptApi } from '../../../typescript-api/api-selection.mjs';
 import { tokenize } from '../../test-runner/script-command.mjs';
 
 const REGISTRARS = [
@@ -28,8 +29,11 @@ function fileEnvironment(file) {
   if (!SCRIPT_FILE.test(file)) {
     return undefined;
   }
-  const { specifiers } = scanDomEvidence(readFileSync(file, 'utf8'), file);
-  return specifiers.map(registeredEnvironment).find((environment) => environment !== undefined);
+  const ts = createRequire(import.meta.url)(selectTypeScriptApi().file);
+  const { importedFiles } = ts.preProcessFile(readFileSync(file, 'utf8'), true, true);
+  return importedFiles
+    .map(({ fileName }) => registeredEnvironment(fileName))
+    .find((environment) => environment !== undefined);
 }
 
 function setupOf(projectRoot, entry) {

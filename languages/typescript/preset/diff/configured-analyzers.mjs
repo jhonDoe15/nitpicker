@@ -24,7 +24,19 @@ const ESLINT_ADAPTER_FILES = [
   'languages/typescript/adapters/eslint/analyzer.mjs',
   'languages/typescript/adapters/eslint-runner.mjs',
   'languages/typescript/adapters/eslint-wrapper.config.mjs',
+  'languages/typescript/adapters/lint-engine/overlapping-reports.mjs',
+  'languages/typescript/adapters/oxlint/native/accumulating-spread-check.mjs',
+  'languages/typescript/adapters/oxlint/native/owned-native-rules.mjs',
+  'languages/typescript/adapters/lint-engine/lint-engine.mjs',
+  'languages/typescript/adapters/lint-engine/project-layer.mjs',
+  'languages/typescript/adapters/lint-engine/project-loader.mjs',
+  'languages/typescript/adapters/lint-engine/project-rules.mjs',
+  'languages/typescript/preset/eslint-config/exceptions.mjs',
+  'languages/typescript/preset/eslint-project/config-paths.mjs',
+  'languages/typescript/preset/eslint-project/project-config.mjs',
+  'shared/conventions/tool-precedence.mjs',
   'languages/typescript/adapters/oxlint/oxlint-bridge.mjs',
+  'languages/typescript/adapters/oxlint/oxlint-diagnostics.mjs',
   'languages/typescript/adapters/oxlint/oxlint-plan.mjs',
 ];
 const ENTRY_POINT_ADAPTER_FILES = [
@@ -66,6 +78,7 @@ function buildAnalyzers(checks) {
           exclusions: check.exclusions,
           policyFiles: check.policyFiles,
           shardWeight: check.shardWeight,
+          policyFromPackage: true,
         }),
       ),
     ),
@@ -146,6 +159,15 @@ export function applyLayout(analyzers, headPolicy) {
 }
 
 const TEST_RUNNER_ANALYZERS = new Set(['coverage', 'mutation', 'test-console']);
+const TYPESCRIPT_FREE_ANALYZERS = new Set(['prettier-format', 'duplicates', 'dead-code']);
+
+export function runsProjectTests(analyzerName) {
+  return TEST_RUNNER_ANALYZERS.has(analyzerName);
+}
+
+export function needsProjectTypeScript(analyzerName) {
+  return !TYPESCRIPT_FREE_ANALYZERS.has(analyzerName);
+}
 
 export function applyTestRunner(analyzers, headPolicy = {}) {
   const configured = headPolicy.tools?.tests?.runner;

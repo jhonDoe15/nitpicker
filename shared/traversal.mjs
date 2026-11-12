@@ -13,12 +13,47 @@ function stackIterator(items) {
   };
 }
 
+export function whileHolds(value, holds) {
+  return {
+    [Symbol.iterator]() {
+      return this;
+    },
+    next() {
+      return holds(value) ? { done: false, value } : { done: true, value: undefined };
+    },
+  };
+}
+
 export function* depthFirst(root, children) {
   const pending = [root];
   for (const node of stackIterator(pending)) {
     yield node;
-    pending.push(...children(node).toReversed());
+    for (const child of children(node).toReversed()) {
+      pending.push(child);
+    }
   }
+}
+
+function expandItem(item, expand, pending) {
+  const entries = expand(item.node, item.context);
+  pending.push({ ...item, entries });
+  for (const [node, context] of entries.toReversed()) {
+    pending.push({ node, context });
+  }
+}
+
+export function foldTree(root, context, { expand, combine }) {
+  const pending = [{ node: root, context }];
+  const results = [];
+  for (const item of stackIterator(pending)) {
+    if (item.entries === undefined) {
+      expandItem(item, expand, pending);
+    } else {
+      const childResults = results.splice(results.length - item.entries.length);
+      results.push(combine(item.node, item.context, childResults));
+    }
+  }
+  return results[0];
 }
 
 export function chainOf(start, next) {

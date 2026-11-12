@@ -172,6 +172,28 @@ describe('Python dependency findings', () => {
       },
     ]);
   });
+  it('reports an unresolved import even when the declaration is incomplete', () => {
+    const projectRoot = directory({ 'setup.py': 'setup()\n', 'src/app/a.py': '' });
+    const imports = {
+      ...IMPORTS,
+      imports: { 'src/app/a.py': [{ ...from('reqeusts'), line: 2 }, from('app.a')] },
+    };
+
+    expect(
+      readDependencyFindings(reports(projectRoot, { scan: { ...SCAN, importable: [] }, imports })),
+    ).toEqual([
+      {
+        tool: 'dependencies',
+        rule: 'unresolved-import',
+        path: 'src/app/a.py',
+        identity: 'unresolved:reqeusts',
+        classification: 'enforceable',
+        location: { line: 2 },
+        message:
+          'Import reqeusts resolves to no module or package. Fix the module name, or install the package and list it in pyproject.toml',
+      },
+    ]);
+  });
   it('leaves test imports alone when the project declares no dev dependencies', () => {
     const projectRoot = directory({ 'requirements.txt': 'requests\n' });
     const imports = {
@@ -198,6 +220,16 @@ describe('Python dependency findings', () => {
     expect(calls[0].command[2]).toMatch(/distribution-scan\.py$/u);
     expect(calls[0].options).toEqual({ rule: 'dependencies-failed' });
     expect(calls[0].request.files).toEqual(['src/app/a.py', 'tests/test_a.py']);
+    expect(calls[0].request.tops).toEqual([
+      'app',
+      'attr',
+      'freezegun',
+      'google',
+      'os',
+      'pytest',
+      'requests',
+      'yaml',
+    ]);
     const stored = JSON.parse(readFileSync(path.join(reportRoot, 'dependencies.json'), 'utf8'));
     expect(stored.environment).toBe('uv');
     expect(stored.declared.runtime).toEqual(['requests']);

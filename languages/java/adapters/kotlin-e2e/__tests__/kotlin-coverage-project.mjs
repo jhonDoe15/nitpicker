@@ -5,7 +5,11 @@ import {
   GENERATED_TEST,
   LABEL,
   LABEL_ONE_SIDED_TEST,
+  LIBRARY_CALLS,
+  LIBRARY_CALLS_TEST,
   OFFSET,
+  PORTS,
+  PORTS_TEST,
   SPREAD,
   SPREAD_TEST,
 } from '../test-support/kotlin-branch-coverage-data.mjs';
@@ -63,10 +67,10 @@ const TEST_ONLY_FILES = {
   ].join('\n'),
 };
 // Each file gets its own fixture tree and retains the original setup and cleanup.
-export function useKotlinCoverageProject() {
+export function useKotlinCoverageProject({ initialize = initializeProject } = {}) {
   let project;
   beforeAll(() => {
-    project = initializeProject();
+    project = initialize();
     commitBranch(project, 'one-sided-branch', {
       [`${kotlinSources}/Label.kt`]: LABEL,
       'src/test/kotlin/demo/LabelTest.kt': LABEL_ONE_SIDED_TEST,
@@ -75,6 +79,14 @@ export function useKotlinCoverageProject() {
       [`${kotlinSources}/Spread.kt`]: SPREAD,
       'src/test/kotlin/demo/SpreadTest.kt': SPREAD_TEST,
       'src/main/kotlin/Offset.kt': OFFSET,
+    });
+    commitBranch(project, 'library-branches', {
+      [`${kotlinSources}/Library.kt`]: LIBRARY_CALLS,
+      'src/test/kotlin/demo/LibraryTest.kt': LIBRARY_CALLS_TEST,
+    });
+    commitBranch(project, 'ports', {
+      [`${kotlinSources}/Ports.kt`]: PORTS,
+      'src/test/kotlin/demo/PortsTest.kt': PORTS_TEST,
     });
     commitBranch(project, 'generated-branches', {
       [`${kotlinSources}/Generated.kt`]: GENERATED,

@@ -19,10 +19,30 @@ export function withDeclaredSpring(manifest, declared) {
   return { ...manifest, spring, springArch: spring || manifest.springArch };
 }
 
+export function withFeatureFolders(manifest, featureFolders) {
+  return { ...manifest, springArch: manifest.springArch || featureFolders === true };
+}
+
 export function buildRunsArchRules(policy, analyzed) {
-  return policy.spring === true || analyzed.some(({ classpaths }) => runsArchRules(classpaths));
+  return (
+    policy.spring === true ||
+    policy.featureFolders === true ||
+    analyzed.some(({ classpaths }) => runsArchRules(classpaths))
+  );
 }
 
 export function springFacts(classpaths) {
   return { spring: usesSpring(classpaths), springArch: runsArchRules(classpaths) };
+}
+
+const AOT_TESTS = /^-Dspring\.aot\.enabled=true$/iu;
+
+export function springAotSkip(modules) {
+  return modules.some((module) =>
+    [...(module.testJvmArgs ?? []), ...(module.integrationTestJvmArgs ?? [])].some((argument) =>
+      AOT_TESTS.test(argument),
+    ),
+  )
+    ? []
+    : ['-Dspring-boot.aot.skip=true'];
 }

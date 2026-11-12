@@ -4,6 +4,7 @@ import path from 'node:path';
 import { afterAll, describe, expect, it } from 'vitest';
 import { runnerCommand } from '../../test-runner/script-command.mjs';
 import { jestConfigFile, readJestConfig } from './read-jest-config.mjs';
+import { linkSentence } from '../../../../../shared/messages/test-support/link-sentence.mjs';
 
 const repositoryJest = path.join(import.meta.dirname, '../../../../../node_modules/jest');
 const FAKE_REACT_SCRIPTS = [
@@ -90,7 +91,7 @@ describe('readJestConfig', () => {
     });
 
     expect(failure).toBe(
-      `The test script runs "craco test", but @craco/craco is not installed in ${root}. Install the project dependencies, or set "tools.tests.runner" in nitpicker.config.json.`,
+      `The test script runs "craco test", but @craco/craco is not installed in ${root}. Install the project dependencies, or set "tools.tests.runner" in nitpicker.config.json. ${linkSentence('testRunnerNotInstalled')}`,
     );
   });
 

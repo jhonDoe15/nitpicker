@@ -1,6 +1,8 @@
 import { createIdentityCounter, hashIdentity } from '../../../../shared/ingest/common.mjs';
 import { withoutClassLiteralRepeats } from './class-literals.mjs';
-import { errorProneMessage } from './messages.mjs';
+import { compareText } from '../../../../shared/paths/path-order.mjs';
+import { definedField } from '../../../../shared/messages/messages.mjs';
+import { errorProneAllowedForm, errorProneMessage } from './messages.mjs';
 
 const CHECK = /^\[([\w.-]+)\]\s*/;
 const SUGGESTION = /^\s*Did you mean\b/;
@@ -50,6 +52,7 @@ function finding({ tool, filePath, parsed, diagnostic, unique }) {
       hashIdentity('errorprone', [parsed.check, parsed.summary.replace(LINE_NUMBER, 'line')]),
     ),
     message: parsed.message,
+    ...definedField('allowedForm', errorProneAllowedForm(parsed.check)),
     classification: 'enforceable',
     ...location(diagnostic),
   };
@@ -91,11 +94,4 @@ function byPosition(left, right) {
     (left.line ?? 0) - (right.line ?? 0) ||
     (left.column ?? 0) - (right.column ?? 0)
   );
-}
-
-function compareText(left, right) {
-  if (left === right) {
-    return 0;
-  }
-  return left < right ? -1 : 1;
 }

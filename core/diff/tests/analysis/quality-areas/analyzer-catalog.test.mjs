@@ -7,6 +7,7 @@ import { DEFAULT_CRAP_SCORE_LIMIT } from '../../../../../shared/policy.mjs';
 import { runAnalyzers, selectAnalyzers } from '../../../execution/run-analyzers.mjs';
 import { planAnalyzerShards } from '../../../sharding/sharding.mjs';
 import { fileURLToPath } from 'node:url';
+import { linkSentence } from '../../../../../shared/messages/test-support/link-sentence.mjs';
 
 const packageAnalyzers = configuredAnalyzers();
 const EXPECTED_ANALYZER_NAMES = [
@@ -59,9 +60,11 @@ describe('quality-area analyzer catalog', () => {
     expect(report.summary.tools[0].version).not.toBe('unresolved');
   });
   it('resolves a real version for every analyzer', () => {
-    for (const analyzer of packageAnalyzers) {
-      expect(analyzer.resolveVersion(PACKAGE_ROOT), analyzer.name).not.toBe('unresolved');
-    }
+    const unresolved = packageAnalyzers.map((analyzer) => [
+      analyzer.name,
+      analyzer.resolveVersion(PACKAGE_ROOT) === 'unresolved',
+    ]);
+    expect(unresolved).toEqual(packageAnalyzers.map((analyzer) => [analyzer.name, false]));
   });
   it.each([['single-command', packageAnalyzers]])(
     'runs coverage before CRAP when CRAP alone is selected in the %s dial',
@@ -74,16 +77,13 @@ describe('quality-area analyzer catalog', () => {
   );
   it.each([['differential', packageAnalyzers]])(
     'configures expensive analyzer scheduling metadata in the %s dial',
-    (dial, analyzers) => {
+    (_dial, analyzers) => {
       const weights = Object.fromEntries(
         analyzers.map(({ name, concurrencyWeight = 1 }) => [name, concurrencyWeight]),
       );
       const priorities = Object.fromEntries(
         analyzers.map(({ name, executionPriority = 0 }) => [name, executionPriority]),
       );
-      const eslintConcurrencyGroup =
-        dial === 'differential' ? 'eslint-snapshot-dependencies' : undefined;
-
       expect(weights.coverage).toBe(2);
       expect(weights.mutation).toBe(2);
       expect(weights.crap).toBe(1);
@@ -105,7 +105,7 @@ describe('quality-area analyzer catalog', () => {
         analyzers
           .filter(({ name }) => name.startsWith('eslint-'))
           .map(({ concurrencyGroup }) => concurrencyGroup),
-      ).toEqual(Array(4).fill(eslintConcurrencyGroup));
+      ).toEqual(Array(4).fill(undefined));
     },
   );
   it('bounds coverage worker processes independently of host CPU visibility', async () => {
@@ -212,7 +212,7 @@ describe('quality-area analyzer catalog', () => {
       {
         tool: 'coverage',
         snapshot: 'head',
-        message: 'coverage crashed with exit 2: no diagnostic output',
+        message: `coverage crashed with exit 2: no diagnostic output. ${linkSentence('analyzerCrashed')}`,
       },
     ]);
   });

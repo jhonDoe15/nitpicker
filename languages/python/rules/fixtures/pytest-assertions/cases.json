@@ -1,0 +1,22 @@
+[
+  {
+    "tool": "ruff",
+    "rule": "PT015",
+    "mention": "pytest.fail(\"the reason\")"
+  },
+  {
+    "tool": "ruff",
+    "rule": "PT016",
+    "mention": "pytest.fail(\"the reason\")"
+  },
+  {
+    "tool": "ruff",
+    "rule": "PT017",
+    "mention": "pytest.raises"
+  },
+  {
+    "tool": "ruff",
+    "rule": "PT018",
+    "mention": "split the assertion"
+  }
+]

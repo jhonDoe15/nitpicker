@@ -245,6 +245,7 @@ describe('source root detection', () => {
       'zeta/__init__.py': '',
       'alpha/__init__.py': '',
       'tests/__init__.py': '',
+      'testing/__init__.py': '',
       '.hidden/__init__.py': '',
       'docs/__init__.py': '',
       'data/readme.txt': '',
@@ -290,6 +291,12 @@ describe('target version detection', () => {
     ['a compatible release', { 'pyproject.toml': 'requires-python = "~=3.11.2"\n' }, 'py311'],
     ['poetry alternatives', { 'pyproject.toml': 'python = "^3.12 || ^3.9"\n' }, 'py39'],
     ['setup.cfg', { 'setup.cfg': '[options]\npython_requires = >=3.9\n' }, 'py39'],
+    ['setup.cfg spacing', { 'setup.cfg': '[options]\npython_requires =   >=3.9\n' }, 'py39'],
+    [
+      'a value on the next line',
+      { 'setup.cfg': '[options]\npython_requires =\n  >=3.10\n' },
+      'py310',
+    ],
     [
       'a version older than the oldest supported',
       { 'pyproject.toml': 'requires-python = ">=3.6"\n' },

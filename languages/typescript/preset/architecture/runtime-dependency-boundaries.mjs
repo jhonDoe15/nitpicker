@@ -1,4 +1,4 @@
-import { filesUnder } from '../../../../shared/filesystem.mjs';
+import { projectFilesUnder } from '../../../../shared/project-files/project-files.mjs';
 import { depthFirst } from '../../../../shared/traversal.mjs';
 import { syntaxChildren } from '../syntax/children.mjs';
 import { chainOf } from '../../../../shared/traversal.mjs';
@@ -6,7 +6,7 @@ import { format as formatOutput } from 'node:util';
 import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
-import ts from 'typescript';
+import { ts } from '../../typescript-api/typescript-api.mjs';
 import { moduleRoleBoundaries } from './runtime-dependency-boundaries.config.mjs';
 import { defaultResolvedLayout } from '../layout.mjs';
 
@@ -175,7 +175,7 @@ function sourceFiles(root, exclude, { layout, displayRoot }) {
   function skipDirectory(absolute) {
     return matches(relative(absolute), exclude) || matches(relative(absolute) + '/', exclude);
   }
-  return [...filesUnder(root, { skipDirectory })]
+  return [...projectFilesUnder(root, { skipDirectory })]
     .map(relative)
     .filter(
       (file) =>

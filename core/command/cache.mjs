@@ -1,17 +1,28 @@
 import { realpathSync } from 'node:fs';
 import path from 'node:path';
-import { resolveProjectRoot } from '../tooling/tool-resolution.mjs';
+import { resolveProjectRoot } from '../configuration/project-checks/project-root.mjs';
 import { publishHeadPolicy } from '../conventions/resolve.mjs';
 import { withProjectTestFiles } from '../../languages/typescript/preset/test-runner/test-files/project-test-files.mjs';
 import { configureAnalyzers } from '../configuration/configure-analyzers.mjs';
 import { presetAnalyzers } from '../configuration/preset-analyzers.mjs';
 import { describeConfigOverrides, loadConfig } from '../configuration/config.mjs';
-import { parseDrillDownOptions } from '../diff/comparison/cli.mjs';
+import { parseDrillDownOptions, unknownArgumentError } from '../diff/comparison/cli.mjs';
+import { didYouMean } from '../../shared/messages/closest-match.mjs';
 import { createLayeredStore, resolveCacheStore } from '../diff/cache/cache-stores.mjs';
 import { publishBaseSnapshot } from '../diff/cache/publish-cache.mjs';
 import { runGit } from '../diff/git/repository/command.mjs';
 import { selectAnalyzers } from '../diff/execution/run-analyzers.mjs';
 import { selectAnalyzerShard } from '../diff/sharding/sharding.mjs';
+import { CACHE_PUBLISH_USAGE_TEXT } from '../help/usage-text.mjs';
+
+const HELP = '--help';
+
+export const CACHE_PUBLISH_OPTIONS = ['--analyzer', '--shard-count', '--shard-index', HELP];
+import {
+  TROUBLESHOOTING_ANCHORS,
+  troubleshootingError,
+  troubleshootingSentence,
+} from '../../shared/messages/troubleshooting.mjs';
 
 function selectedAnalyzers(configured, options) {
   const selected =
@@ -26,18 +37,40 @@ function writableStore(projectRoot, cli) {
   const { remote, warnings } = resolveCacheStore({ projectRoot, environment: cli.environment });
   for (const warning of warnings) cli.stderr.write(`nitpicker: ${warning}\n`);
   if (remote === undefined) {
-    throw new Error('nitpicker cache publish requires NITPICKER_CACHE_URL');
+    throw troubleshootingError(
+      'nitpicker cache publish requires NITPICKER_CACHE_URL',
+      TROUBLESHOOTING_ANCHORS.cachePublishFails,
+    );
   }
   return createLayeredStore({ remote, writeRemote: true });
 }
 
-function validateCommand(arguments_) {
-  if (arguments_.length === 1 && arguments_[0] === 'publish') return;
-  throw new Error(
-    arguments_.length === 0 || arguments_[0] === 'publish'
-      ? 'Usage: nitpicker cache publish'
-      : `Unknown cache command: ${arguments_.join(' ')}`,
+const CACHE_USAGE =
+  'Usage: nitpicker cache publish [--analyzer <name>]... [--shard-count <n> --shard-index <i>]';
+
+function rejectUnsupportedOptions(commandArguments) {
+  const unsupported = commandArguments.find(
+    (argument) => argument.startsWith('--') && !CACHE_PUBLISH_OPTIONS.includes(argument),
   );
+  if (unsupported !== undefined) {
+    throw unknownArgumentError(unsupported, CACHE_PUBLISH_OPTIONS, CACHE_USAGE);
+  }
+}
+
+function validateCommand(arguments_) {
+  const [command, extra] = arguments_;
+  if (command === undefined) {
+    throw new Error(CACHE_USAGE);
+  }
+  if (command !== 'publish') {
+    const suggestion = didYouMean(command, ['publish'], '');
+    throw new Error(
+      `Unknown cache command: ${arguments_.join(' ')}${suggestion === '' ? '.' : suggestion} ${CACHE_USAGE}`,
+    );
+  }
+  if (extra !== undefined) {
+    throw unknownArgumentError(extra, CACHE_PUBLISH_OPTIONS, CACHE_USAGE);
+  }
 }
 
 function writeOutcome({ stdout, result, selected }) {
@@ -46,11 +79,20 @@ function writeOutcome({ stdout, result, selected }) {
       ` for ${result.commitSha}${result.published.length === 0 ? '' : `: ${result.published.join(', ')}`}\n`,
   );
   for (const skipped of result.skipped) stdout.write(`Not published: ${skipped}\n`);
+  const help = troubleshootingSentence(TROUBLESHOOTING_ANCHORS.cachePublishFails);
+  if (result.skipped.length > 0 && help !== undefined) {
+    stdout.write(`${help}\n`);
+  }
   return result.skipped.length === 0 ? 0 : 2;
 }
 
 export function runCacheCommand(cli) {
+  rejectUnsupportedOptions(cli.arguments_);
   const options = parseDrillDownOptions(cli.arguments_);
+  if (options.remainingArguments.includes(HELP)) {
+    cli.stdout.write(CACHE_PUBLISH_USAGE_TEXT);
+    return 0;
+  }
   validateCommand(options.remainingArguments);
   const projectRoot =
     cli.currentProjectRoot === undefined
@@ -60,7 +102,9 @@ export function runCacheCommand(cli) {
   function configure(policy) {
     return configureAnalyzers(presetAnalyzers(config, cli.analyzers), config, policy);
   }
-  const detectedPolicy = publishHeadPolicy(config, projectRoot);
+  const detectedPolicy = publishHeadPolicy(config, projectRoot, {
+    maven: cli.environment?.NITPICKER_MAVEN,
+  });
   const headPolicy = withProjectTestFiles(detectedPolicy, {
     projectRoot,
     liveProjectRoot: projectRoot,
@@ -78,6 +122,7 @@ export function runCacheCommand(cli) {
     configOverrides: describeConfigOverrides(config),
     headPolicy,
     runTasks: cli.runTasks,
+    warn: (message) => cli.stderr.write(`nitpicker: ${message}\n`),
   });
   return writeOutcome({ stdout: cli.stdout, result, selected });
 }

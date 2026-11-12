@@ -51,6 +51,32 @@ describe.skipIf(!enabled)('a failing security check', () => {
   });
 });
 
+const BROKEN_EFFECTS = [
+  'from effects import import_time, reach',
+  'from environment import domain_imports',
+  'def failing(context):',
+  '    raise KeyError("missing")',
+  'for module in (import_time, reach, domain_imports):',
+  '    module.check = failing',
+].join('\n');
+
+describe.skipIf(!enabled)('a failing domain effects check', () => {
+  it('reports a check failure per effects check instead of stopping the run', () => {
+    const { status, rules } = script(
+      'python3',
+      { 'shop/domain/orders.py': 'def total(items):\n    return sum(items)\n' },
+      BROKEN_EFFECTS,
+    );
+
+    expect(status).toBe(0);
+    expect(rowsOf(rules, ['rules-check-failed'])).toEqual([
+      'rules-check-failed shop/domain/orders.py:1 helper-chain io-in-domain, clock-now and random-in-domain',
+      'rules-check-failed shop/domain/orders.py:1 import-time-effect',
+      'rules-check-failed shop/domain/orders.py:1 logger-in-domain and module-state-in-domain',
+    ]);
+  });
+});
+
 describe.skipIf(!enabled)('the security checks on a large class', () => {
   it('stay linear: a 3,600-line class takes about four times a 900-line one, under the unit budget', () => {
     const files = { 'small.py': largeClass(150), 'service.py': largeClass(600) };

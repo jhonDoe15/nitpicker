@@ -1,0 +1,80 @@
+name: nitpicker policy approval
+
+# A person with write access accepts the nitpicker policy loosenings of a pull request by adding
+# the accept-policy-change label. This job checks their access, records the approval on the head
+# commit as the nitpicker/policy-accepted status for this pull request and its target branch, and
+# removes the label. It then waits up to 20 minutes for the pull request runs of that commit to
+# finish and re-runs the failed jobs of each failed run of that commit, oldest first. A later push
+# is a new commit and needs the label again. The job never checks out or runs the code of the
+# pull request. Create the label once: gh label create accept-policy-change
+on:
+  pull_request_target:
+    types: [labeled]
+
+permissions: {}
+
+jobs:
+  approve:
+    if: github.event.label.name == 'accept-policy-change'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      actions: write
+      pull-requests: write
+      statuses: write
+    steps:
+      - uses: actions/github-script@v8.0.0
+        with:
+          script: |
+            const { pull_request: pull, sender, label } = context.payload;
+            const repo = context.repo;
+            await github.rest.issues
+              .removeLabel({ ...repo, issue_number: pull.number, name: label.name })
+              .catch(() => undefined);
+            const access = await github.rest.repos
+              .getCollaboratorPermissionLevel({ ...repo, username: sender.login })
+              .then(({ data }) => data.permission, () => 'no');
+            if (!['admin', 'write'].includes(access)) {
+              core.setFailed(
+                `${sender.login} has ${access} access. Only a person with write access accepts a policy loosening.`,
+              );
+              return;
+            }
+            const sha = pull.head.sha;
+            const description = `Accepted by ${sender.login} for #${pull.number} into ${pull.base.ref}`;
+            if (description.length > 140) {
+              core.setFailed(
+                `"${description}" is longer than a commit status allows (140 characters). ` +
+                  'Accept with the NITPICKER_ACCEPT_POLICY_CHANGE digest instead.',
+              );
+              return;
+            }
+            await github.rest.repos.createCommitStatus({
+              ...repo,
+              sha,
+              state: 'success',
+              context: 'nitpicker/policy-accepted',
+              description,
+            });
+            const listRuns = () =>
+              github.paginate(github.rest.actions.listWorkflowRunsForRepo, {
+                ...repo,
+                head_sha: sha,
+                event: 'pull_request',
+                per_page: 100,
+              });
+            let runs = await listRuns();
+            for (let wait = 0; wait < 40 && runs.some((run) => run.status !== 'completed'); wait++) {
+              await new Promise((resolve) => setTimeout(resolve, 30_000));
+              runs = await listRuns();
+            }
+            const failed = runs.filter((run) => run.conclusion === 'failure').toSorted((a, b) => a.id - b.id);
+            for (const run of failed) {
+              await github.rest.actions.reRunWorkflowFailedJobs({ ...repo, run_id: run.id });
+              core.notice(`Re-ran the failed jobs of ${run.name}.`);
+            }
+            if (runs.some((run) => run.status !== 'completed')) {
+              core.notice('Some runs of this commit are still going; re-run any that fails.');
+            } else if (failed.length === 0) {
+              core.notice('Recorded the approval; no failed run of this commit to re-run.');
+            }

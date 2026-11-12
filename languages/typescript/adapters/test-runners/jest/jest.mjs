@@ -1,6 +1,5 @@
 import path from 'node:path';
 import { spawnNodeTool } from '../../quality-areas/runners/tooling.mjs';
-import { withoutOptions } from '../../../preset/test-runner/script-command.mjs';
 import { readTestReport } from '../../quality-areas/reporting/test-report.mjs';
 import {
   finishedRun,
@@ -11,77 +10,16 @@ import {
 } from '../test-run.mjs';
 import { RUNNER_NAMES } from '../../../preset/test-runner/runners.mjs';
 import { assertSourcesCovered, coverageArguments, shownConfig } from './jest-coverage.mjs';
-import { jestTool } from './jest-launcher.mjs';
-import { consoleProducerPath, startTestConsole } from '../test-console-run.mjs';
+import { jestArguments, jestScriptArguments, jestTool } from './jest-launcher.mjs';
+import { consoleProducerPath, jestAssertImport, startTestConsole } from '../test-console-run.mjs';
 
 const LATE_LOG = 'Cannot log after tests are done';
 
-const OPTIONS_NITPICKER_SETS = {
-  flags: [
-    '--watch',
-    '--watchAll',
-    '--coverage',
-    '--collectCoverage',
-    '--json',
-    '--ci',
-    '--silent',
-    '--passWithNoTests',
-    '--onlyChanged',
-    '-o',
-    '--onlyFailures',
-    '-f',
-    '--lastCommit',
-    '--changedFilesWithAncestor',
-    '--findRelatedTests',
-    '--showConfig',
-    '--listTests',
-    '--clearCache',
-  ],
-  valued: [
-    '--outputFile',
-    '--coverageDirectory',
-    '--coverageReporters',
-    '--coverageProvider',
-    '--collectCoverageFrom',
-    '--coverageThreshold',
-    '--reporters',
-    '--testTimeout',
-    '--maxWorkers',
-    '-w',
-    '--changedSince',
-    '--shard',
-    '--testNamePattern',
-    '-t',
-  ],
-};
-
 const SERIAL_OPTIONS = new Set(['--runInBand', '-i']);
-
-function withoutRelatedFiles(tokens) {
-  const kept = [];
-  let related = false;
-  for (const token of tokens) {
-    if (token.startsWith('-')) {
-      related = token === '--findRelatedTests';
-    }
-    if (!related || token.startsWith('-')) {
-      kept.push(token);
-    }
-  }
-  return kept;
-}
-
-function scriptArguments(command) {
-  return withoutOptions(withoutRelatedFiles(command.arguments_), OPTIONS_NITPICKER_SETS);
-}
-
-export function jestArguments(command, nitpickerArguments, { leading, trailing }) {
-  return [...leading, ...scriptArguments(command), ...nitpickerArguments, ...trailing];
-}
 
 function rerunPaths(options, command) {
   const named = new Set(
-    scriptArguments(command).map((token) => path.resolve(options.projectRoot, token)),
+    jestScriptArguments(command).map((token) => path.resolve(options.projectRoot, token)),
   );
   return options.rerun.files.filter((file) => !named.has(file));
 }
@@ -97,20 +35,29 @@ function spawnJest(options, command, nitpickerArguments) {
     options,
     ...launch.tool,
     nodeArguments: command.nodeArguments,
+    nodeOptions: command.nodeOptions,
     environment: command.environment,
     arguments_: jestArguments(command, nitpickerArguments, launch),
   });
 }
 
-function consoleArguments(options, testConsole) {
+function reporterArguments(options, testConsole) {
+  return [
+    '--reporters=default',
+    ...(testConsole.enabled
+      ? ['--silent=false', '--verbose=false', `--reporters=${consoleProducerPath(options, 'jest')}`]
+      : []),
+  ];
+}
+
+function consoleCommand(options, command, testConsole) {
   return testConsole.enabled
-    ? [
-        '--silent=false',
-        '--verbose=false',
-        '--reporters=default',
-        `--reporters=${consoleProducerPath(options, 'jest')}`,
-      ]
-    : [];
+    ? {
+        ...command,
+        nodeOptions: [jestAssertImport(options)],
+        environment: { ...command.environment, ...testConsole.environment },
+      }
+    : command;
 }
 
 function passedEverything(report) {
@@ -140,32 +87,31 @@ export function runJest(options, command) {
   const reportPath = temporaryProjectPath(options, 'jest-report.json');
   const testConsole = startTestConsole(options, { collectsLines: false });
   try {
-    const result = spawnJest(
-      options,
-      { ...command, environment: { ...command.environment, ...testConsole.environment } },
-      [
-        '--ci',
-        '--no-watchman',
-        '--passWithNoTests',
-        ...(options.rerun === undefined
-          ? coverageArguments(options, rootDir)
-          : [
-              '--coverage=false',
-              '--testNamePattern',
-              options.rerun.namePattern,
-              '--runTestsByPath',
-              ...rerunPaths(options, command),
-            ]),
-        '--json',
-        `--outputFile=${reportPath}`,
-        '--testLocationInResults',
-        `--testTimeout=${String(testTimeoutMs(options))}`,
-        '--restoreMocks',
-        ...workerArguments(options, command.arguments_),
-        ...consoleArguments(options, testConsole),
-      ],
-    );
-    const report = readTestReport(reportPath, result, RUNNER_NAMES.jest);
+    const result = spawnJest(options, consoleCommand(options, command, testConsole), [
+      '--ci',
+      '--no-watchman',
+      '--passWithNoTests',
+      ...(options.rerun === undefined
+        ? coverageArguments(options, rootDir)
+        : [
+            '--coverage=false',
+            '--testNamePattern',
+            options.rerun.namePattern,
+            '--runTestsByPath',
+            ...rerunPaths(options, command),
+          ]),
+      '--json',
+      `--outputFile=${reportPath}`,
+      '--testLocationInResults',
+      `--testTimeout=${String(testTimeoutMs(options))}`,
+      '--restoreMocks',
+      ...workerArguments(options, command.arguments_),
+      ...reporterArguments(options, testConsole),
+    ]);
+    const report = readTestReport(reportPath, result, {
+      runnerName: RUNNER_NAMES.jest,
+      snapshot: options.snapshot,
+    });
     const run = finishedRun({
       report,
       result: withoutForcedLateLogExit(result, { report, printsDirectly, testConsole }),

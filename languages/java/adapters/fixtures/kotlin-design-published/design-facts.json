@@ -1,0 +1,310 @@
+{
+  "modules": [
+    {
+      "file": "src/lib/Api.kt",
+      "role": "production"
+    }
+  ],
+  "types": [
+    {
+      "id": "src/lib/Api.kt#Client",
+      "file": "src/lib/Api.kt",
+      "name": "Client",
+      "line": 3,
+      "kind": "class",
+      "exported": true,
+      "published": true,
+      "fields": [
+        {
+          "name": "timeout"
+        },
+        {
+          "name": "region"
+        }
+      ]
+    },
+    {
+      "id": "src/lib/Api.kt#Settings",
+      "file": "src/lib/Api.kt",
+      "name": "Settings",
+      "line": 7,
+      "kind": "data",
+      "exported": true,
+      "published": true,
+      "fields": [
+        {
+          "name": "timeout"
+        },
+        {
+          "name": "region"
+        }
+      ]
+    },
+    {
+      "id": "src/lib/Api.kt#Mode",
+      "file": "src/lib/Api.kt",
+      "name": "Mode",
+      "line": 9,
+      "kind": "enum",
+      "exported": true,
+      "published": true,
+      "cases": ["FAST", "SAFE"]
+    },
+    {
+      "id": "src/lib/Api.kt#Transport",
+      "file": "src/lib/Api.kt",
+      "name": "Transport",
+      "line": 11,
+      "kind": "interface",
+      "exported": true,
+      "published": true
+    },
+    {
+      "id": "src/lib/Api.kt#Pool",
+      "file": "src/lib/Api.kt",
+      "name": "Pool",
+      "line": 15,
+      "kind": "class",
+      "exported": true,
+      "published": true,
+      "fields": [
+        {
+          "name": "size"
+        }
+      ]
+    },
+    {
+      "id": "src/lib/Api.kt#Secret",
+      "file": "src/lib/Api.kt",
+      "name": "Secret",
+      "line": 19,
+      "kind": "class",
+      "exported": false,
+      "fields": [
+        {
+          "name": "key"
+        }
+      ]
+    },
+    {
+      "id": "src/lib/Api.kt",
+      "file": "src/lib/Api.kt",
+      "name": "Api",
+      "line": 23,
+      "kind": "module",
+      "exported": true,
+      "published": true
+    }
+  ],
+  "callables": [
+    {
+      "id": "src/lib/Api.kt#Client.<init>",
+      "file": "src/lib/Api.kt",
+      "name": "Client",
+      "line": 3,
+      "kind": "constructor",
+      "owner": "src/lib/Api.kt#Client",
+      "exported": true,
+      "params": [
+        {
+          "name": "timeout",
+          "type": "Int"
+        },
+        {
+          "name": "region",
+          "type": "String"
+        }
+      ],
+      "ownFields": ["timeout", "region"]
+    },
+    {
+      "id": "src/lib/Api.kt#Client.connect",
+      "file": "src/lib/Api.kt",
+      "name": "connect",
+      "line": 4,
+      "kind": "method",
+      "owner": "src/lib/Api.kt#Client",
+      "exported": true,
+      "returns": "String",
+      "ownFields": ["region", "timeout"]
+    },
+    {
+      "id": "src/lib/Api.kt#Transport.send",
+      "file": "src/lib/Api.kt",
+      "name": "send",
+      "line": 12,
+      "kind": "method",
+      "owner": "src/lib/Api.kt#Transport",
+      "exported": true,
+      "params": [
+        {
+          "name": "payload",
+          "type": "String"
+        }
+      ],
+      "returns": "Int"
+    },
+    {
+      "id": "src/lib/Api.kt#Pool.<init>",
+      "file": "src/lib/Api.kt",
+      "name": "Pool",
+      "line": 15,
+      "kind": "constructor",
+      "owner": "src/lib/Api.kt#Pool",
+      "exported": true,
+      "params": [
+        {
+          "name": "size",
+          "type": "Int"
+        }
+      ],
+      "ownFields": ["size"]
+    },
+    {
+      "id": "src/lib/Api.kt#Pool.grow",
+      "file": "src/lib/Api.kt",
+      "name": "grow",
+      "line": 16,
+      "kind": "method",
+      "owner": "src/lib/Api.kt#Pool",
+      "exported": true,
+      "returns": "Int",
+      "ownFields": ["size"]
+    },
+    {
+      "id": "src/lib/Api.kt#Secret.<init>",
+      "file": "src/lib/Api.kt",
+      "name": "Secret",
+      "line": 19,
+      "kind": "constructor",
+      "owner": "src/lib/Api.kt#Secret",
+      "exported": false,
+      "params": [
+        {
+          "name": "key",
+          "type": "String"
+        }
+      ],
+      "ownFields": ["key"]
+    },
+    {
+      "id": "src/lib/Api.kt#Secret.reveal",
+      "file": "src/lib/Api.kt",
+      "name": "reveal",
+      "line": 20,
+      "kind": "method",
+      "owner": "src/lib/Api.kt#Secret",
+      "exported": false,
+      "returns": "String",
+      "ownFields": ["key"],
+      "returnsField": "key"
+    },
+    {
+      "id": "src/lib/Api.kt#open",
+      "file": "src/lib/Api.kt",
+      "name": "open",
+      "line": 23,
+      "kind": "function",
+      "owner": "src/lib/Api.kt",
+      "exported": true,
+      "published": true,
+      "params": [
+        {
+          "name": "settings",
+          "type": "src/lib/Api.kt#Settings"
+        }
+      ],
+      "returns": "src/lib/Api.kt#Client",
+      "calls": [
+        {
+          "target": "src/lib/Api.kt#Client.<init>",
+          "line": 23
+        }
+      ],
+      "paramUses": [
+        {
+          "param": 0,
+          "fields": ["timeout", "region"],
+          "forwards": []
+        }
+      ],
+      "reads": [
+        {
+          "type": "src/lib/Api.kt#Settings",
+          "fields": ["timeout", "region"],
+          "line": 23
+        }
+      ]
+    },
+    {
+      "id": "src/lib/Api.kt#tune",
+      "file": "src/lib/Api.kt",
+      "name": "tune",
+      "line": 25,
+      "kind": "function",
+      "owner": "src/lib/Api.kt",
+      "exported": true,
+      "published": true,
+      "params": [
+        {
+          "name": "settings",
+          "type": "src/lib/Api.kt#Settings"
+        }
+      ],
+      "returns": "Int",
+      "paramUses": [
+        {
+          "param": 0,
+          "fields": ["timeout"],
+          "forwards": []
+        }
+      ],
+      "reads": [
+        {
+          "type": "src/lib/Api.kt#Settings",
+          "fields": ["timeout"],
+          "line": 25
+        }
+      ]
+    },
+    {
+      "id": "src/lib/Api.kt#hide",
+      "file": "src/lib/Api.kt",
+      "name": "hide",
+      "line": 27,
+      "kind": "function",
+      "owner": "src/lib/Api.kt",
+      "exported": false,
+      "params": [
+        {
+          "name": "settings",
+          "type": "src/lib/Api.kt#Settings"
+        }
+      ],
+      "returns": "Int",
+      "forward": {
+        "target": "src/lib/Api.kt#tune",
+        "arguments": [0],
+        "returned": true
+      },
+      "calls": [
+        {
+          "target": "src/lib/Api.kt#tune",
+          "line": 27
+        }
+      ],
+      "paramUses": [
+        {
+          "param": 0,
+          "fields": [],
+          "forwards": [
+            {
+              "target": "src/lib/Api.kt#tune",
+              "position": 0
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

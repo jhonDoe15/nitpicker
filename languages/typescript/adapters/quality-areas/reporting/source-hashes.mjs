@@ -1,7 +1,20 @@
-import { hash, positiveInteger } from '../../../../../shared/rules/finding-helpers.mjs';
+import {
+  declarationLine,
+  hash,
+  nameFreeHash,
+  positiveInteger,
+} from '../../../../../shared/rules/finding-helpers.mjs';
+import { escapeRegExp } from '../../../../../shared/paths/glob.mjs';
 import { functionIdentity } from '../../exceptions/function-identity.mjs';
 import { readFileSync, lstatSync } from 'node:fs';
 import path from 'node:path';
+
+const DEFAULT_CASE = 'the default case';
+const DEFAULT_CLAUSE = /^default\b/u;
+const NEVER_ANNOTATION = /^default\s*:[\s\S]*?:\s*never\b/u;
+const UNION_DEFAULT_HINT =
+  ' (a switch that lists every member of a union needs no default: switch-exhaustiveness-check proves it complete)';
+const VALUE_DEFAULT_HINT = ' (pass a value that no case lists)';
 
 export function withFunctionSourceHashes(report, projectRoot) {
   const sourceTexts = new Map();
@@ -15,12 +28,19 @@ export function withFunctionSourceHashes(report, projectRoot) {
         sourceTexts.set(entry.source, source);
         identities.set(entry.source, functionIdentity(source, entry.source));
       }
+      const name = identities.get(entry.source).crapFunctionName(entry) ?? entry.function;
+      const text = sourceLineRange(
+        source,
+        entry.start ?? entry.lines?.start,
+        entry.end ?? entry.lines?.end,
+      );
       return {
         ...entry,
-        function: identities.get(entry.source).crapFunctionName(entry) ?? entry.function,
-        sourceHash: hash(
-          sourceLineRange(source, entry.start ?? entry.lines?.start, entry.end ?? entry.lines?.end),
-        ),
+        function: name,
+        sourceHash: hash(text),
+        ...(text === ''
+          ? {}
+          : { anchorHash: nameFreeHash(text, name), declarationHash: hash(declarationLine(text)) }),
       };
     }),
   };
@@ -60,11 +80,23 @@ export function withBranchSourceHashes(report, projectRoot) {
 
 export function describeUncoveredArms(branch, hits, source) {
   const locations = branch.locations ?? [];
-  return (hits ?? []).flatMap((count, index) =>
-    count > 0
-      ? []
-      : [`${armName(branch, index, source)} at ${armPosition(locations[index], branch)}`],
-  );
+  return (hits ?? []).flatMap((count, index) => {
+    if (count > 0) {
+      return [];
+    }
+    const name = armName(branch, index, source);
+    const hint = name === DEFAULT_CASE ? defaultHint(branch, locations[index], source) : '';
+    return [`${name} at ${armPosition(locations[index], branch)}${hint}`];
+  });
+}
+
+function defaultHint(branch, location, source) {
+  const end = location?.end ?? branch.loc?.end;
+  if (location?.start === undefined || end === undefined) {
+    return VALUE_DEFAULT_HINT;
+  }
+  const clause = source.slice(offsetOf(source, location.start), offsetOf(source, end));
+  return NEVER_ANNOTATION.test(clause) ? UNION_DEFAULT_HINT : VALUE_DEFAULT_HINT;
 }
 
 function armPosition(location, branch) {
@@ -81,7 +113,9 @@ function armName(branch, index, source) {
     case 'binary-expr':
       return `the ${index === 0 ? 'left' : 'right'} side of ${logicalOperator(branch, source)}`;
     case 'switch':
-      return 'a switch case';
+      return startsWith(source, branch.locations?.[index], DEFAULT_CLAUSE)
+        ? DEFAULT_CASE
+        : 'a switch case';
     case 'default-arg':
       return 'the default value';
     default:
@@ -96,6 +130,12 @@ function logicalOperator(branch, source) {
   }
   const between = source.slice(offsetOf(source, first.start), offsetOf(source, second.start));
   return /\?\?|&&|\|\|/u.exec(between)?.[0] ?? 'the logical expression';
+}
+
+function startsWith(source, location, pattern) {
+  return (
+    location?.start !== undefined && pattern.test(source.slice(offsetOf(source, location.start)))
+  );
 }
 
 function offsetOf(source, { line, column }) {
@@ -140,7 +180,7 @@ function isUsedBesidesDeclaration(name, lines, declarationLine) {
   if (typeof name !== 'string' || name.length === 0) {
     return false;
   }
-  const word = new RegExp(`(?<![\\w$])${name.replaceAll('$', String.raw`\$`)}(?![\\w$])`, 'u');
+  const word = new RegExp(`(?<![\\w$])${escapeRegExp(name)}(?![\\w$])`, 'u');
   return lines.some((text, index) => index !== declarationLine - 1 && word.test(text));
 }
 

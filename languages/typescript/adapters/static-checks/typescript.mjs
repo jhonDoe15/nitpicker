@@ -1,3 +1,4 @@
+import { existsSync, readFileSync, realpathSync } from 'node:fs';
 import path from 'node:path';
 import { prepareSnapshotDependencies, removeSnapshotDependencies } from './dependencies.mjs';
 import { readHeadPolicy, readLayout, typecheckEngine } from '../../preset/head-policy.mjs';
@@ -5,36 +6,46 @@ import { policyTestRunner } from '../../preset/test-runner/project-runner.mjs';
 import {
   isUntypedRunnerGlobal,
   missingRunnerTypes,
-} from '../../preset/test-runner/runner-types.mjs';
+} from '../../preset/test-runner/vocabulary/runner-types.mjs';
 import { projectFile, hash, policyFile } from './shared.mjs';
 import { linkPolicyFile } from '../../../../core/tooling/policy-links.mjs';
 import { layoutTransformFor } from '../../preset/tool-configs.mjs';
 import { diagnosticMessages } from '../typecheck/compiler-hints.mjs';
 import {
   enclosingSymbol,
-  loadTypeScript,
   preEmitDiagnostics,
+  projectTypeScript,
 } from '../typecheck/typescript-program.mjs';
 import { withAssetImportHint } from '../typecheck/asset-import-hint.mjs';
 
 export async function runTypecheck(options) {
-  const ts = loadTypeScript(options.liveProjectRoot);
+  const { ts, native } = projectTypeScript(options.liveProjectRoot);
   const preparedDependencies = prepareSnapshotDependencies(options);
   let installedConfig;
   try {
     installedConfig = installTypeScriptConfig(options);
+    const configRelativePath =
+      extendedProjectConfig(installedConfig.targetPath, options.projectRoot) ??
+      options.configRelativePath;
     const diagnostics = await preEmitDiagnostics({
       ts,
       engine: typecheckEngine(),
       configPath: installedConfig.targetPath,
+      configName: configRelativePath,
       projectRoot: options.projectRoot,
+      projectNative: native,
     });
     return normalizeTypeScriptDiagnostics({
       ts,
-      diagnostics: gatedDiagnostics(diagnostics, options.projectRoot),
+      diagnostics: gatedDiagnostics(
+        diagnostics.map((diagnostic) =>
+          withProjectConfigFile(diagnostic, installedConfig.targetPath, options),
+        ),
+        options.projectRoot,
+      ),
       projectRoot: options.projectRoot,
       analyzerName: options.analyzerName,
-      configRelativePath: options.configRelativePath,
+      configRelativePath,
     });
   } finally {
     try {
@@ -114,4 +125,39 @@ function installTypeScriptConfig(options) {
     path.join(options.projectRoot, '.nitpicker-diff-typecheck.json'),
     layoutTransformFor(options.configRelativePath, readLayout()),
   );
+}
+
+function extendedProjectConfig(configPath, projectRoot) {
+  const extended = JSON.parse(readFileSync(configPath, 'utf8')).extends;
+  if (typeof extended !== 'string') {
+    return undefined;
+  }
+  const configDirectory = path.dirname(configPath);
+  const extendedPath = path.resolve(configDirectory, extended);
+  if (!extendedPath.startsWith(configDirectory + path.sep)) {
+    return undefined;
+  }
+  return existsSync(extendedPath) ? projectFile(projectRoot, extendedPath) : undefined;
+}
+
+function insideProject(projectRoot, filePath) {
+  const relative = path.relative(realpathSync(projectRoot), realpathSync(filePath));
+  return (
+    relative.length > 0 &&
+    relative !== '..' &&
+    !relative.startsWith(`..${path.sep}`) &&
+    !path.isAbsolute(relative)
+  );
+}
+
+function withProjectConfigFile(diagnostic, configPath, { projectRoot }) {
+  const fileName = diagnostic.file?.fileName;
+  if (
+    fileName === undefined ||
+    !fileName.endsWith('.json') ||
+    (path.resolve(fileName) !== configPath && insideProject(projectRoot, fileName))
+  ) {
+    return diagnostic;
+  }
+  return { ...diagnostic, file: undefined, start: undefined, length: undefined };
 }

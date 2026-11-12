@@ -1,6 +1,7 @@
-import { existsSync, readdirSync, readFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { globMatcher } from '../../../../shared/paths/glob.mjs';
+import { projectFilesUnder } from '../../../../shared/project-files/project-files.mjs';
 import { collectFileLimitFindings } from '../../../../shared/rules/file-limits.mjs';
 import { readStructureFindings } from '../../../../shared/ingest/structure-report.mjs';
 import { run } from '../execution/python-process.mjs';
@@ -59,31 +60,12 @@ const SKIPPED_DIRECTORIES = new Set([
   'dist',
 ]);
 
-function directoryEntries(projectRoot, directory) {
-  return readdirSync(path.join(projectRoot, directory), { withFileTypes: true }).map((entry) => ({
-    entry,
-    relative: directory === '' ? entry.name : `${directory}/${entry.name}`,
-  }));
-}
-
 function pythonFiles(projectRoot) {
-  const files = [];
-  const pending = [''];
-  for (const directory of pending) {
-    const entries = directoryEntries(projectRoot, directory);
-    pending.push(
-      ...entries
-        .filter(({ entry }) => entry.isDirectory())
-        .filter(({ entry }) => !entry.name.startsWith('.') && !SKIPPED_DIRECTORIES.has(entry.name))
-        .map(({ relative }) => relative),
-    );
-    files.push(
-      ...entries
-        .filter(({ entry }) => entry.isFile() && entry.name.endsWith('.py'))
-        .map(({ relative }) => relative),
-    );
-  }
-  return files;
+  return projectFilesUnder(projectRoot, {
+    skipDirectory: (_, entry) => entry.name.startsWith('.') || SKIPPED_DIRECTORIES.has(entry.name),
+  })
+    .filter((file) => file.endsWith('.py'))
+    .map((file) => path.relative(projectRoot, file).split(path.sep).join('/'));
 }
 
 export function pythonFileLimitFindings(

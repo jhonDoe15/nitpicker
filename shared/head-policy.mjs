@@ -19,6 +19,7 @@ export function resolveHeadPolicy(config = {}) {
     ...(config.tools === undefined ? {} : { tools: config.tools }),
     ...(config.duplicates === undefined ? {} : { duplicates: config.duplicates }),
     ...(config.testConsole === undefined ? {} : { testConsole: config.testConsole }),
+    ...(config.protocols === undefined ? {} : { protocols: config.protocols }),
     ...(config.history === undefined ? {} : { history: config.history }),
   };
 }
@@ -49,10 +50,15 @@ export function headPolicyEnvironment(policyFile) {
  * to a weaker policy.
  */
 export function readHeadPolicyFile(environment = process.env) {
+  const { policyFile, text } = readHeadPolicySource(environment);
+  return text === undefined ? {} : parsePolicy(policyFile, text);
+}
+
+export function readHeadPolicySource(environment) {
   const policyFile = environment[HEAD_POLICY_ENV];
   return policyFile === undefined || policyFile === ''
-    ? {}
-    : parsePolicy(policyFile, readFileSync(policyFile, 'utf8'));
+    ? { policyFile: undefined, text: undefined }
+    : { policyFile, text: readFileSync(policyFile, 'utf8') };
 }
 
 function parsePolicy(policyFile, text) {

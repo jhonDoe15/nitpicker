@@ -2,12 +2,12 @@ import ast
 import os
 import re
 
-from checks.common import dotted_name, finding, is_boundary_path
+from checks.common import dotted_name, finding, is_boundary_path, is_type_checking
+from syntax.walk import IterativeVisitor
 
 DEFAULT_BOUNDARY_ROOTS = ["pydantic", "pydantic_settings"]
 MIN_CLASS_CONSTANTS = 2
 MIN_MODULE_CONSTANTS = 3
-TYPE_CHECKING_NAMES = {"typing.TYPE_CHECKING", "typing_extensions.TYPE_CHECKING"}
 CONSTANT_NAME = re.compile(r"[A-Z][A-Z0-9_]*")
 
 
@@ -71,8 +71,9 @@ def is_plain_class(node):
     return not bases and not node.keywords and not node.decorator_list
 
 
-class Declarations(ast.NodeVisitor):
+class Declarations(IterativeVisitor):
     def __init__(self, context):
+        super().__init__()
         self.path = context.path
         self.aliases = context.aliases
         self.scope = []
@@ -89,8 +90,8 @@ class Declarations(ast.NodeVisitor):
     def visit_scope(self, node):
         self.scope.append(node.name)
         self.check_no_type_check(node)
+        self.on_exit(self.scope.pop)
         self.generic_visit(node)
-        self.scope.pop()
 
     def check_no_type_check(self, node):
         if any(
@@ -100,9 +101,7 @@ class Declarations(ast.NodeVisitor):
             self.add("no-type-check", ".".join(self.scope), node)
 
     def is_type_checking(self, node):
-        return dotted_name(node, self.aliases) in TYPE_CHECKING_NAMES or (
-            isinstance(node, ast.Name) and node.id == "TYPE_CHECKING"
-        )
+        return is_type_checking(node, self.aliases)
 
     def visit_If(self, node):
         if any(
@@ -123,8 +122,8 @@ class Declarations(ast.NodeVisitor):
         self.check_no_type_check(node)
         self.check_dataclass(node, subject)
         self.check_class_constants(node, subject)
+        self.on_exit(self.scope.pop)
         self.generic_visit(node)
-        self.scope.pop()
 
     def check_class_constants(self, node, subject):
         constants = string_constants(node.body)

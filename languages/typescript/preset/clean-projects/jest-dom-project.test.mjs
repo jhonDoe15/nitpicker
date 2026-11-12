@@ -1,6 +1,7 @@
 import { rmSync } from 'node:fs';
 import path from 'node:path';
 import { afterEach, beforeAll, describe, expect, it } from 'vitest';
+import { docsUrl } from '../../../../shared/messages/docs-url.mjs';
 import { createGitTemplate } from '../../../../core/diff/git/test-support/git-repository.mjs';
 import { createCleanProject, metricValue, runSnapshot } from './test-support/clean-project.mjs';
 
@@ -13,6 +14,7 @@ const PLANTED_OUTPUT = [
   'Enforceable findings: 2',
   'Descriptive findings: 0',
   'Tool errors: 0',
+  'Ran only: eslint-lint. Run nitpicker without --analyzer before you finish.',
   '',
   'Per-tool counts:',
   'eslint-lint: total=2 enforceable=2 descriptive=0',
@@ -20,6 +22,8 @@ const PLANTED_OUTPUT = [
   'Enforceable findings:',
   `eslint-lint/nitpicker/no-unused-dom-environment ${PLANTED_TEST}:1 This test file runs in jsdom, the project default, but never uses the DOM. Add \`/** @jest-environment node */\` here, or default to node and add \`/** @jest-environment jsdom */\` to DOM tests. An exception fits only when the file uses the DOM in a way nitpicker cannot see. If this is intended, add {"rule":"nitpicker/no-unused-dom-environment","paths":["${PLANTED_TEST}"],"reason":"..."} to "exceptions" in nitpicker.config.json.`,
   `eslint-lint/nitpicker/test-must-use-production-runtime ${PLANTED_TEST}:1 This test imports no production code at runtime (only types, libraries, or helpers that import none). Import the code under test from the source root, directly or through a helper such as a render function that imports it. Shared helpers belong in a file Jest does not run as a test: not named *.test.* or *.spec.*, not under __tests__, and outside the testMatch or testRegex of the Jest config. If this is intended, add {"rule":"nitpicker/test-must-use-production-runtime","paths":["${PLANTED_TEST}"],"reason":"..."} to "exceptions" in nitpicker.config.json.`,
+  '',
+  `Rule reference: ${docsUrl('docs/rules/README.md')} (nitpicker explain <tool/rule> prints one rule)`,
   '',
 ].join('\n');
 

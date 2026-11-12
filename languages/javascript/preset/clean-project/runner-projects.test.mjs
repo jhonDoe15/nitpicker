@@ -1,6 +1,7 @@
 import { rmSync } from 'node:fs';
 import path from 'node:path';
 import { afterEach, beforeAll, describe, expect, it } from 'vitest';
+import { docsUrl } from '../../../../shared/messages/docs-url.mjs';
 import { createGitTemplate } from '../../../../core/diff/git/test-support/git-repository.mjs';
 import {
   createCleanProject,
@@ -24,12 +25,15 @@ const PLANTED_OUTPUT = [
   'Enforceable findings: 1',
   'Descriptive findings: 0',
   'Tool errors: 0',
+  'Ran only: eslint-lint. Run nitpicker without --analyzer before you finish.',
   '',
   'Per-tool counts:',
   'eslint-lint: total=1 enforceable=1 descriptive=0',
   '',
   'Enforceable findings:',
   'eslint-lint/nitpicker/no-unused-dom-environment test/greet.js:1 This test file runs with jsdom, which the Mocha `require` setup (.mocharc or the test script) registers for every test file through `global-jsdom/register`, but never uses the DOM. Remove `global-jsdom/register` from the Mocha `require` setup (.mocharc or the test script), then import it at the top of the test files that use the DOM, or move those files to a separate Mocha run that registers it. An exception fits only when the file uses the DOM in a way nitpicker cannot see. If this is intended, add {"rule":"nitpicker/no-unused-dom-environment","paths":["test/greet.js"],"reason":"..."} to "exceptions" in nitpicker.config.json.',
+  '',
+  `Rule reference: ${docsUrl('docs/rules/README.md')} (nitpicker explain <tool/rule> prints one rule)`,
   '',
 ].join('\n');
 const NON_DOM_TEST = `import assert from 'node:assert/strict';

@@ -11,6 +11,7 @@ import {
   pythonE2eEnabled,
   removeRepositories,
 } from './test-support/python-e2e-support.mjs';
+import { linkSentence } from '../../../../shared/messages/test-support/link-sentence.mjs';
 
 const MUTATION_DISABLED = {
   environment: {
@@ -57,10 +58,10 @@ describe.skipIf(!pythonE2eEnabled)(
           rule: 'tests-failed',
           path: '.',
           message: [
-            'Tests fail in the head snapshot. Make each failing test pass:',
-            '  tests/test_more.py::test_one',
-            '  tests/test_more.py::test_two',
-            'The static analyzers ran as usual; coverage and CRAP come from the tests that ran.',
+            '2 tests fail; the static analyzers ran, and coverage and CRAP come from the tests ' +
+              'that ran. Fix the tests and rerun:',
+            '  tests/test_more.py:2 > test_one: assert 1 == 2',
+            '  tests/test_more.py:6 > test_two: assert 2 == 3',
             'Mutation testing (mutmut) leaves out the test modules tests/test_more.py.',
           ].join('\n'),
         },
@@ -93,7 +94,7 @@ describe.skipIf(!pythonE2eEnabled)(
       const result = gate(project, 'broken-environment');
 
       expect(result.exitCode, result.text).toBe(2);
-      const message = `No Python environment at ${path.join(project, 'nowhere')} (${path.join(project, 'nowhere/bin')} does not exist): create it, or set "python.environment"`;
+      const message = `No Python environment at ${path.join(project, 'nowhere')} (${path.join(project, 'nowhere/bin')} does not exist): create it, or set "python.environment". ${linkSentence('pythonEnvironment')}`;
       expect(
         result.json('tool-errors.json').sort((left, right) => left.tool.localeCompare(right.tool)),
       ).toEqual([
@@ -174,13 +175,25 @@ describe.skipIf(!pythonE2eEnabled)(
             identity: expect.any(String),
             message:
               'wide grew from 4 to 5 parameters (limit 3). Group related parameters into one object instead of adding another. If this is intended, add {"rule":"function-parameters-limit","paths":["src/demo/wide.py"],"function":"wide","reason":"..."} to "exceptions" in nitpicker.config.json.',
+            allowedForm: 'Group related parameters into one object instead of adding another.',
+            exception: {
+              rule: 'function-parameters-limit',
+              paths: ['src/demo/wide.py'],
+              function: 'wide',
+              reason: '...',
+            },
+            exceptionList: 'exceptions',
             classification: 'enforceable',
+            anchor: { key: expect.stringMatching(/^function:\w+:text:/u) },
             location: { line: 1 },
             ratchet: {
               key: 'function:wide:occurrence:1:parameters',
+              declarationKey: expect.stringMatching(/:declaration:/u),
               value: 5,
               worseMessage:
                 'wide grew from {base} to 5 parameters (limit 3). Group related parameters into one object instead of adding another. If this is intended, add {"rule":"function-parameters-limit","paths":["src/demo/wide.py"],"function":"wide","reason":"..."} to "exceptions" in nitpicker.config.json.',
+              worseAllowedForm:
+                'Group related parameters into one object instead of adding another.',
               heldMessage:
                 'wide: 5 parameters (limit 3), allowed because base was {base}; any increase fails.',
             },
@@ -200,13 +213,24 @@ describe.skipIf(!pythonE2eEnabled)(
             identity: expect.any(String),
             message:
               'pipeline.score has CRAP 10.00 although tests cover it; score must be below 9. Reduce its branches: split a branchy part into its own function. If this is intended, add {"rule":"crap-score-limit","paths":["src/demo/pipeline.py"],"function":"pipeline.score","reason":"..."} to "exceptions" in nitpicker.config.json.',
+            allowedForm: 'Reduce its branches: split a branchy part into its own function.',
+            exception: {
+              rule: 'crap-score-limit',
+              paths: ['src/demo/pipeline.py'],
+              function: 'pipeline.score',
+              reason: '...',
+            },
+            exceptionList: 'exceptions',
             classification: 'enforceable',
-            location: { line: 2 },
+            anchor: { key: expect.stringMatching(/^function:\w+:text:/u) },
+            location: { line: 2, endLine: 12 },
             ratchet: {
               key: 'function:pipeline.score:crap',
+              declarationKey: expect.stringMatching(/:declaration:/u),
               value: 10,
               worseMessage:
                 'pipeline.score CRAP rose from {base} to 10 (limit 9). Put new code in a new function and cover it with tests. If this is intended, add {"rule":"crap-score-limit","paths":["src/demo/pipeline.py"],"function":"pipeline.score","reason":"..."} to "exceptions" in nitpicker.config.json.',
+              worseAllowedForm: 'Put new code in a new function and cover it with tests.',
               heldMessage:
                 'pipeline.score: CRAP 10.00 (limit 9), allowed because base was {base}; any increase fails.',
             },
@@ -226,13 +250,25 @@ describe.skipIf(!pythonE2eEnabled)(
             identity: expect.any(String),
             message:
               'pick has CRAP 20.00; score must be below 9. Test its uncovered branches, or split a branchy part into its own function. If this is intended, add {"rule":"crap-score-limit","paths":["src/demo/branchy.py"],"function":"pick","reason":"..."} to "exceptions" in nitpicker.config.json.',
+            allowedForm:
+              'Test its uncovered branches, or split a branchy part into its own function.',
+            exception: {
+              rule: 'crap-score-limit',
+              paths: ['src/demo/branchy.py'],
+              function: 'pick',
+              reason: '...',
+            },
+            exceptionList: 'exceptions',
             classification: 'enforceable',
-            location: { line: 1 },
+            anchor: { key: expect.stringMatching(/^function:\w+:text:/u) },
+            location: { line: 1, endLine: 8 },
             ratchet: {
               key: 'function:pick:crap',
+              declarationKey: expect.stringMatching(/:declaration:/u),
               value: 20,
               worseMessage:
                 'pick CRAP rose from {base} to 20 (limit 9). Put new code in a new function and cover it with tests. If this is intended, add {"rule":"crap-score-limit","paths":["src/demo/branchy.py"],"function":"pick","reason":"..."} to "exceptions" in nitpicker.config.json.',
+              worseAllowedForm: 'Put new code in a new function and cover it with tests.',
               heldMessage:
                 'pick: CRAP 20.00 (limit 9), allowed because base was {base}; any increase fails.',
             },

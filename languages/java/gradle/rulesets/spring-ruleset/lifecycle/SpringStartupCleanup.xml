@@ -1,0 +1,56 @@
+  <rule name="SpringStartupCleanup" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
+        message="Release what this startup method already started when this call fails: put the call in a try and shut the event loops, executors or servers down in its catch before rethrowing, or in a finally. Spring does not call @PreDestroy on a bean whose startup failed, so the started threads keep the JVM running and the application hangs instead of exiting.">
+    <priority>2</priority>
+    <properties><property name="xpath"><value><![CDATA[
+let $loops := function($e) {
+  exists($e[self::ConstructorCall or self::MethodCall[*[1][self::TypeExpression]]]
+    [pmd-java:typeIs('io.netty.util.concurrent.EventExecutorGroup') or pmd-java:typeIs('java.util.Timer')])
+},
+    $pool := function($e) {
+  exists($e[self::ConstructorCall or self::MethodCall[*[1][self::TypeExpression]]]
+    [pmd-java:typeIs('java.util.concurrent.ExecutorService')])
+},
+    $cleanup := 'shutdown|close|stop|terminate|dispose|destroy|release|cancel|clean|abort'
+return //ClassDeclaration[ModifierList/Annotation[
+    pmd-java:typeIs('org.springframework.stereotype.Component')
+    or pmd-java:typeIs('org.springframework.stereotype.Service')
+    or pmd-java:typeIs('org.springframework.stereotype.Repository')
+    or pmd-java:typeIs('org.springframework.stereotype.Controller')
+    or pmd-java:typeIs('org.springframework.web.bind.annotation.RestController')
+    or pmd-java:typeIs('org.springframework.web.bind.annotation.ControllerAdvice')
+    or pmd-java:typeIs('org.springframework.web.bind.annotation.RestControllerAdvice')
+    or pmd-java:typeIs('org.springframework.context.annotation.Configuration')
+    or pmd-java:typeIs('org.springframework.boot.autoconfigure.SpringBootApplication')
+    or pmd-java:typeIs('org.springframework.boot.autoconfigure.AutoConfiguration')]]
+  /ClassBody/(ConstructorDeclaration | MethodDeclaration[
+    ModifierList/Annotation[pmd-java:typeIs('jakarta.annotation.PostConstruct') or pmd-java:typeIs('javax.annotation.PostConstruct')]
+    or (@Name = 'afterPropertiesSet' and @Arity = 0 and ../..[pmd-java:typeIs('org.springframework.beans.factory.InitializingBean')])
+    or (@Name = 'run' and ../..[pmd-java:typeIs('org.springframework.boot.ApplicationRunner')
+      or pmd-java:typeIs('org.springframework.boot.CommandLineRunner')])
+    or (@Name = 'start' and @Arity = 0 and ../..[pmd-java:typeIs('org.springframework.context.Lifecycle')])
+    or (@Arity = 0 and @Name = //Annotation[pmd-java:typeIs('org.springframework.context.annotation.Bean')]
+      /AnnotationMemberList/MemberValuePair[@Name = 'initMethod']//StringLiteral/@ConstValue)])
+  //MethodCall[@MethodName = ('bind', 'connect', 'start')]
+    [*[1][not(self::ArgumentList or self::TypeExpression or self::SuperExpression or self::ThisExpression)]
+      [not(pmd-java:typeIs('java.lang.Thread') or pmd-java:typeIs('java.lang.Thread.Builder')
+        or pmd-java:typeIs('java.util.regex.Matcher') or pmd-java:typeIs('org.springframework.util.StopWatch'))]]
+  [let $call := .,
+       $method := ancestor::*[self::MethodDeclaration or self::ConstructorDeclaration][1],
+       $body := $method/..,
+       $fields := $body/FieldDeclaration[not(pmd-java:modifiers() = 'static')],
+       $before := $method//*[. << $call],
+       $owned := ($fields/VariableDeclarator/*[2], $body/ConstructorDeclaration//*, $before),
+       $poolNames := ($fields/VariableDeclarator[*[2][$pool(.)]]/VariableId/@Name,
+         $method//VariableDeclarator[*[2][$pool(.)]]/VariableId/@Name),
+       $started := exists($owned[$loops(.)])
+         or exists($before[self::ConstructorCall][pmd-java:typeIs('java.lang.Thread')])
+         or exists($before[self::MethodCall][@MethodName = 'start'][*[1][pmd-java:typeIs('java.lang.Thread')]])
+         or exists($before[self::MethodCall]
+           [@MethodName = ('execute', 'submit', 'schedule', 'scheduleAtFixedRate', 'scheduleWithFixedDelay', 'invokeAll')]
+           [*[1][self::VariableAccess or self::FieldAccess][@Name = $poolNames]]),
+       $guarded := exists($call/ancestor::Block[parent::TryStatement]/parent::TryStatement
+         [(CatchClause | FinallyClause)//MethodCall[matches(@MethodName, $cleanup, 'i')]
+          or CatchClause[not(.//ThrowStatement)]])
+   return $started and not($guarded)]
+]]></value></property></properties>
+  </rule>

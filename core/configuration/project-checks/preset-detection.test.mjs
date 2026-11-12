@@ -2,7 +2,10 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
+import { nestedCheckout, useGitCheckouts } from '../../diff/git/test-support/git-checkout.mjs';
 import { loadConfig } from '../config.mjs';
+
+const { gitCheckout } = useGitCheckouts();
 
 const roots = [];
 
@@ -60,6 +63,16 @@ describe('a project without "preset"', () => {
     expect(message(files)).toBe(expected('Gradle or Maven', 'settings.gradle.kts', 'kotlin'));
   });
 
+  it('names the Java preset for Java sources whose build uses the Kotlin DSL', () => {
+    const files = {
+      'settings.gradle.kts': '',
+      'build.gradle.kts': 'plugins {\n    java\n}\n',
+      'src/main/java/App.java': 'class App {}',
+    };
+
+    expect(message(files)).toBe(expected('Gradle or Maven', 'build.gradle.kts', 'java'));
+  });
+
   it('stops with the Python preset for a Python project', () => {
     expect(message({ 'pyproject.toml': '', 'src/demo/app.py': '' })).toBe(
       expected('Python', 'pyproject.toml', 'python'),
@@ -102,5 +115,21 @@ describe('a project without "preset"', () => {
     };
 
     expect(message(files)).toBeUndefined();
+  });
+
+  it('does not count git-ignored files or nested checkouts as TypeScript or JavaScript sources', () => {
+    const files = {
+      'pyproject.toml': '',
+      'src/demo/app.py': '',
+      'src/generated/api.ts': '',
+      ...nestedCheckout('src/agent', { 'index.ts': '' }),
+    };
+
+    expect(() => loadConfig(gitCheckout(files, ['src/generated/']))).toThrow(
+      expected('Python', 'pyproject.toml', 'python'),
+    );
+    expect(() =>
+      loadConfig(gitCheckout({ ...files, 'src/app.ts': '' }, ['src/generated/'])),
+    ).not.toThrow();
   });
 });

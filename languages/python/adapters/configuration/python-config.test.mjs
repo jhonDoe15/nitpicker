@@ -76,6 +76,16 @@ describe('python config validation', () => {
     }).toThrow('only supported with "preset": "python"');
   });
 
+  it('sends test-console-output to the top-level exceptions', () => {
+    const exceptions = [{ rule: 'test-console-output', paths: ['tests/legacy/**'], reason: 'r' }];
+
+    expect(() => {
+      validate({ preset: 'python', python: { exceptions } });
+    }).toThrow(
+      '"python.exceptions[0].rule" is "test-console-output", a rule that every preset reports with a function or a path: lift it in the top-level "exceptions" instead',
+    );
+  });
+
   it.each(TYPESCRIPT_ONLY)('rejects %s instead of ignoring it', (key) => {
     expect(() => {
       validate({ preset: 'python', [key]: {} });
@@ -139,6 +149,26 @@ describe('python config validation', () => {
       { exceptions: [{ rule: 'S110', paths: ['a'], reason: 'r' }] },
       'names no rule nitpicker reports: "S110"; ruff S110 was replaced by "swallowed-exception": rename the entry to "swallowed-exception"',
     ],
+    ...['restating-docstring', 'long-docstring'].map((rule) => [
+      { exceptions: [{ rule, paths: ['a'], reason: 'r' }] },
+      `names no rule nitpicker reports: "${rule}"; ${rule} is now the shared "doc-comment-content" rule: move the entry to the top-level "exceptions" as "doc-comment-content"`,
+    ]),
+    [
+      { exceptions: [{ rule: 'unused-option', paths: ['a'], reason: 'r' }] },
+      'a rule that every preset reports with a function or a path: lift it in the top-level "exceptions" instead',
+    ],
+    [
+      { exceptions: [{ rule: 'doc-comment-content', paths: ['a'], reason: 'r' }] },
+      'a rule that every preset reports with a function or a path: lift it in the top-level "exceptions" instead',
+    ],
+    [
+      { exceptions: [{ rule: 'FBT001', paths: ['a'], reason: 'r' }] },
+      'names no rule nitpicker reports: "FBT001"; ruff FBT001 was replaced by "boolean-flag-parameter": rename the entry to "boolean-flag-parameter"',
+    ],
+    [
+      { exceptions: [{ rule: 'FBT002', paths: ['a'], reason: 'r' }] },
+      'ruff FBT002 was replaced by "boolean-flag-parameter"',
+    ],
     [
       {
         exceptions: [
@@ -162,5 +192,16 @@ describe('python config validation', () => {
     expect(() => {
       validate({ preset: 'python', python: settings });
     }).toThrow(message);
+  });
+
+  it('accepts any ruff code once the project ruff config is opted in, since it adds rules', () => {
+    const python = { exceptions: [{ rule: 'D100', paths: ['a'], reason: 'r' }] };
+
+    expect(() => {
+      validate({ preset: 'python', python, tools: { ruff: { precedence: ['project'] } } });
+    }).not.toThrow();
+    expect(() => {
+      validate({ preset: 'python', python, tools: { ruff: { precedence: ['nitpicker'] } } });
+    }).toThrow('names no rule nitpicker reports: "D100"');
   });
 });

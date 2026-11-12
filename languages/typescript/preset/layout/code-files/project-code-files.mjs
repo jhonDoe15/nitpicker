@@ -1,6 +1,6 @@
 import { existsSync } from 'node:fs';
 import path from 'node:path';
-import { filesUnder } from '../../../../../shared/filesystem.mjs';
+import { projectFilesUnder } from '../../../../../shared/project-files/project-files.mjs';
 export const DEPENDENCY_PATH_PATTERN = '(?:^|/)node_modules(?:/|$)';
 const DEPENDENCY_PATH = new RegExp(DEPENDENCY_PATH_PATTERN);
 
@@ -14,7 +14,7 @@ function codeFilesUnderRoot(layout, projectRoot, root) {
   }
   const directory = directoryUnder(projectRoot, root);
   return [
-    ...filesUnder(directory, {
+    ...projectFilesUnder(directory, {
       skipDirectory: (absolute) => DEPENDENCY_PATH.test(relativeOf(absolute)),
     }),
   ]

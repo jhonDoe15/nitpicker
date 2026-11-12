@@ -12,10 +12,11 @@ import { runProjectTests } from '../../test-runners/run-project-tests.mjs';
 import { hasProjectTests, projectTestFiles } from '../../test-runners/test-run.mjs';
 import { readLayout } from '../../../preset/head-policy.mjs';
 import {
-  TESTS_FAILED_RULE,
   TESTS_FAILED_SKIPPED_RULE,
+  TESTS_NOT_RUN_RULE,
 } from '../../../../../shared/rules/finding-helpers.mjs';
 import { normalizeCrap } from '../reporting/tests.mjs';
+import { testsFailAnchor } from '../../../../../shared/messages/troubleshooting.mjs';
 import { withFunctionSourceHashes } from '../reporting/source-hashes.mjs';
 
 export function runPolicyTests(options) {
@@ -52,7 +53,7 @@ function noTestsRanFinding(options, runnerName) {
   const layout = readLayout();
   const [first] = projectTestFiles(options, layout, layout.projectCodeFiles(options.projectRoot));
   return toolErrorFinding(options, {
-    rule: TESTS_FAILED_RULE,
+    rule: TESTS_NOT_RUN_RULE,
     path: first,
     message: `${runnerName} ran no tests, but nitpicker sees test files such as ${first}. Make the project's ${runnerName} config find them, or set "tools.tests.runner" in nitpicker.config.json to the runner they are written for.`,
   });
@@ -72,6 +73,7 @@ export function runCrap(options) {
       toolErrorFinding(options, {
         rule: TESTS_FAILED_SKIPPED_RULE,
         message: 'CRAP did not run: there is no coverage report, because the project tests fail.',
+        anchor: testsFailAnchor(options.snapshot),
       }),
     ];
   }

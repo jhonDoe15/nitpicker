@@ -1,9 +1,10 @@
-import { spawnSync } from 'node:child_process';
+import { spawnSyncWithOutputFile } from '../../../../core/tooling/output-file/output-file.mjs';
 import path from 'node:path';
 import { linkPolicyFile } from '../../../../core/tooling/policy-links.mjs';
 import { readLayout } from '../head-policy.mjs';
 import { EXCLUDED_PATH_PATTERN } from '../layout.mjs';
 import { layoutTransformFor } from '../tool-configs.mjs';
+import { TOOL_RUN_CEILING_MS } from '../../../../shared/processes/deadlines.mjs';
 
 const projectRoot = path.resolve(import.meta.dirname, '../../../..');
 const dependencyCruiser = path.join(
@@ -19,11 +20,20 @@ export const POLICY_TYPESCRIPT_CONFIG =
   'languages/typescript/preset/defaults/tsconfig.quality.json';
 export const TYPESCRIPT_CONFIG_ENVIRONMENT = 'NITPICKER_DEPENDENCY_GRAPH_TSCONFIG';
 
+export function dependencyGraphTsconfig(layout) {
+  const transform = layoutTransformFor(POLICY_TYPESCRIPT_CONFIG, layout);
+  return (text, targetPath) => {
+    const config = JSON.parse(transform(text, targetPath));
+    const compilerOptions = { ...config.compilerOptions, rewriteRelativeImportExtensions: false };
+    return `${JSON.stringify({ ...config, compilerOptions }, null, 2)}\n`;
+  };
+}
+
 function withProjectTypeScriptConfig({ policyRoot, projectRoot: root, name }, operation) {
   const linkedConfig = linkPolicyFile(
     path.join(policyRoot, POLICY_TYPESCRIPT_CONFIG),
     path.join(root, `.nitpicker-${name}-tsconfig.json`),
-    layoutTransformFor(POLICY_TYPESCRIPT_CONFIG, readLayout()),
+    dependencyGraphTsconfig(readLayout()),
   );
   try {
     return operation({ [TYPESCRIPT_CONFIG_ENVIRONMENT]: linkedConfig.targetPath });
@@ -33,7 +43,7 @@ function withProjectTypeScriptConfig({ policyRoot, projectRoot: root, name }, op
 }
 
 function spawnDependencyCruiser(paths, environment) {
-  return spawnSync(
+  return spawnSyncWithOutputFile(
     process.execPath,
     [
       dependencyCruiser,
@@ -52,6 +62,7 @@ function spawnDependencyCruiser(paths, environment) {
       env: { ...process.env, ...environment },
       encoding: 'utf8',
       maxBuffer: 50 * 1024 * 1024,
+      timeout: TOOL_RUN_CEILING_MS,
     },
   );
 }
@@ -153,5 +164,21 @@ export function internalEdges(graph, sourceRoot) {
   return [...edgeKinds].map(([key, kind]) => {
     const [source, target] = key.split('\0');
     return { source, target, kind };
+  });
+}
+
+export function projectImports(graph, isSourceFile) {
+  const modulePaths = new Set(graph.modules.map((module) => normalizePath(module.source)));
+  function isProjectSource(file) {
+    return modulePaths.has(file) && isSourceFile(file);
+  }
+  return graph.modules.flatMap((module) => {
+    const from = normalizePath(module.source);
+    return isProjectSource(from)
+      ? (module.dependencies ?? [])
+          .filter((dependency) => typeof dependency.resolved === 'string')
+          .map((dependency) => ({ from, to: normalizePath(dependency.resolved) }))
+          .filter(({ to }) => isProjectSource(to))
+      : [];
   });
 }

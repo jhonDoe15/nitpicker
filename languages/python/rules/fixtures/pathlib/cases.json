@@ -1,0 +1,8 @@
+[
+  {
+    "name": "os.path names pathlib",
+    "tool": "ruff",
+    "rule": "PTH118",
+    "mention": "pathlib.Path"
+  }
+]

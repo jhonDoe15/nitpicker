@@ -5,23 +5,25 @@ import { policyHash } from '../../diff/reporting/report-model.mjs';
 
 describe('i18n config key', () => {
   it('accepts enabled either way, the wrapper names and an empty object', () => {
-    for (const i18n of [
+    const i18nKeys = [
       {},
       { enabled: true },
       { enabled: false },
       { functionNames: ['translate'], componentNames: ['Text', 'Label'] },
       { functionNames: [], componentNames: [] },
-    ]) {
-      expect(validateConfig({ i18n })).toEqual({ i18n });
-    }
+    ];
+    expect(i18nKeys.map((i18n) => validateConfig({ i18n }))).toEqual(
+      i18nKeys.map((i18n) => ({ i18n })),
+    );
   });
 
   it.each([
     [[], /"i18n" must be an object/],
     ['react-intl', /"i18n" must be an object/],
+    [{ enable: true }, /unknown i18n key "enable". Did you mean "enabled"\?$/],
     [
-      { enable: true },
-      /unknown i18n key "enable". Allowed i18n keys: enabled, functionNames, componentNames/,
+      { strings: true },
+      /unknown i18n key "strings". Allowed i18n keys: enabled, functionNames, componentNames$/,
     ],
     [{ enabled: 'yes' }, /"i18n.enabled" must be true or false/],
     [{ enabled: 1 }, /"i18n.enabled" must be true or false/],

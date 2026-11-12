@@ -1,6 +1,7 @@
 import { configError, isPlainObject } from '../config.mjs';
+import { didYouMean } from '../messages/closest-match.mjs';
 
-const NAME = /^[A-Za-z_]\w*$/;
+export const FUNCTION_NAME = /^[A-Za-z_]\w*$/;
 
 export const COLUMNS = {
   valuePattern: /^[1-9]\d{1,2}$/,
@@ -27,7 +28,7 @@ function validateChoice(definition, choice) {
   if (definition.kind === 'names') {
     if (
       !Array.isArray(choice) ||
-      !choice.every((name) => typeof name === 'string' && NAME.test(name))
+      !choice.every((name) => typeof name === 'string' && FUNCTION_NAME.test(name))
     ) {
       throw configError(`"conventions.${definition.id}" must be a list of function names`);
     }
@@ -50,7 +51,7 @@ export function validateConventions(value, definitions) {
     const definition = known.get(id);
     if (definition === undefined) {
       throw configError(
-        `unknown convention "${id}". Allowed conventions: ${[...known.keys()].join(', ') || '(none for this preset)'}`,
+        `unknown convention "${id}"${didYouMean(id, [...known.keys()]) || `. Allowed conventions: ${[...known.keys()].join(', ') || '(none for this preset)'}`}`,
       );
     }
     validateChoice(definition, choice);

@@ -5,7 +5,9 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
+import org.springframework.transaction.annotation.Transactional;
 
+@Transactional
 public interface StockRepository extends JpaRepository<Product, Long> {
   @Modifying(clearAutomatically = true, flushAutomatically = true)
   @Query("update Product p set p.version = 0 where p.id = :id")
@@ -18,6 +20,14 @@ public interface StockRepository extends JpaRepository<Product, Long> {
   @Modifying(clearAutomatically = true, flushAutomatically = true)
   @Query("update Product p set p.version = p.version + 1 where p.id = :id")
   int markSold(@Param("id") Long id);
+
+  @Modifying(clearAutomatically = true, flushAutomatically = true)
+  @Query("update Product p set p.version = 0 where p.id = :id")
+  void ship(@Param("id") Long id);
+
+  @Modifying(clearAutomatically = true, flushAutomatically = true)
+  @Query("update Product p set p.version = 0 where p.id = :id and p.id not in :kept")
+  void restock(@Param("id") Long id, @Param("kept") List<Long> kept);
 
   @Query("select count(p) from Product p where p.version = :version")
   int countVersion(@Param("version") long version);

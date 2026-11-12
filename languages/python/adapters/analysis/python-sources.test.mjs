@@ -2,16 +2,23 @@ import { mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSy
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
+import {
+  nestedCheckout,
+  useGitCheckouts,
+} from '../../../../core/diff/git/test-support/git-checkout.mjs';
 import { createScratch } from '../test-support/scratch.mjs';
 import {
   existingSourceRoots,
   functionText,
+  listOtherModules,
   listProductionModules,
   NON_PRODUCTION_GLOBS,
   nonProductionGlobs,
   pythonSourceFiles,
   writeSourceListing,
 } from './python-sources.mjs';
+
+const { gitCheckout } = useGitCheckouts();
 
 const scratch = createScratch();
 
@@ -78,8 +85,8 @@ describe('listing production modules', () => {
       'app/node_modules/x.py',
       'app/site-packages/x.py',
       'app/venv/x.py',
-      'app/build/x.py',
-      'app/dist/x.py',
+      'build/x.py',
+      'dist/x.py',
       'app/migrations/0001_initial.py',
       'app/data.txt',
     ]);
@@ -100,23 +107,58 @@ describe('listing production modules', () => {
     ]);
   });
 
-  it('skips documentation, examples and scripts at the top of a project that is its own root', () => {
+  it('skips build and dist only at the project root or next to a manifest', () => {
+    const root = project([
+      'src/app/features/build/__init__.py',
+      'src/app/features/dist/api.py',
+      'tools/pyproject.toml',
+      'tools/build/lib/x.py',
+      'tools/run.py',
+    ]);
+
+    expect(listProductionModules(root, ['.']).map(({ file }) => file)).toEqual([
+      'src/app/features/build/__init__.py',
+      'src/app/features/dist/api.py',
+      'tools/run.py',
+    ]);
+  });
+
+  it('skips a behave or pytest-bdd features tree, but not a package that only has a steps folder', () => {
+    const root = project([
+      'features/checkout.feature',
+      'features/environment.py',
+      'features/steps/checkout_steps.py',
+      'src/app/features/steps/__init__.py',
+      'src/app/features/billing/api.py',
+    ]);
+
+    expect(listProductionModules(root, ['.']).map(({ file }) => file)).toEqual([
+      'src/app/features/billing/api.py',
+      'src/app/features/steps/__init__.py',
+    ]);
+  });
+
+  it('skips documentation, examples, scripts and testing at the top of a project that is its own root', () => {
     const root = project([
       'app/__init__.py',
       'docs/conf.py',
       'doc/conf.py',
       'examples/demo.py',
       'scripts/release.py',
+      'testing/fakes.py',
       'app/scripts/keep.py',
+      'app/testing/fakes.py',
     ]);
 
     expect(listProductionModules(root, ['.']).map(({ file }) => file)).toEqual([
       'app/__init__.py',
       'app/scripts/keep.py',
+      'app/testing/fakes.py',
     ]);
     expect(listProductionModules(root, ['app']).map(({ file }) => file)).toEqual([
       'app/__init__.py',
       'app/scripts/keep.py',
+      'app/testing/fakes.py',
     ]);
   });
 
@@ -151,6 +193,7 @@ describe('listing production modules', () => {
       'doc/**',
       'examples/**',
       'scripts/**',
+      'testing/**',
     ]);
     expect(nonProductionGlobs(['src'], django).slice(NON_PRODUCTION_GLOBS.length)).toEqual([
       '**/tests.py',
@@ -199,6 +242,7 @@ describe('listing production modules', () => {
       'doc/**',
       'examples/**',
       'scripts/**',
+      'testing/**',
     ]);
   });
 
@@ -264,6 +308,8 @@ describe('pythonSourceFiles for a flat project', () => {
       'conftest.py': '',
       'tests/test_app.py': '',
       'util/tests/test_helpers.py': '',
+      'testing/fakes.py': '',
+      'util/testing/fakes.py': '',
       'build/lib/app.py': '',
       'dist/app.py': '',
       'env/lib/sitecustomize.py': '',
@@ -271,7 +317,25 @@ describe('pythonSourceFiles for a flat project', () => {
       '.venv/lib/v.py': '',
     });
 
-    expect(pythonSourceFiles(root, ['.'])).toEqual(['app.py', 'util/helpers.py']);
+    expect(pythonSourceFiles(root, ['.'])).toEqual([
+      'app.py',
+      'util/helpers.py',
+      'util/testing/fakes.py',
+    ]);
+  });
+
+  it('keeps a package named reports, where nitpicker writes its own output', () => {
+    const root = scratch.write(scratch.directory(), {
+      'app.py': '',
+      'reports/monthly.py': '',
+      'app_pkg/reports/__init__.py': '',
+    });
+
+    expect(pythonSourceFiles(root, ['.'])).toEqual([
+      'app.py',
+      'app_pkg/reports/__init__.py',
+      'reports/monthly.py',
+    ]);
   });
 
   it('keeps the files of a root that is itself named like a test directory', () => {
@@ -336,5 +400,39 @@ describe('functionText', () => {
     const deep = '        def f():\n\n            return 1';
 
     expect(textOf(deep, { start: 1, end: 3 })).toBe(textOf(shallow, { start: 1, end: 3 }));
+  });
+});
+
+describe('listing the Python files of a Git checkout', () => {
+  const files = Object.fromEntries(
+    [
+      'src/app/__init__.py',
+      'src/app/core.py',
+      'scratch/__init__.py',
+      'scratch/draft.py',
+      'tools/build.py',
+      'agent/src/app/core.py',
+    ].map((file) => [file, '']),
+  );
+  const checkout = () =>
+    gitCheckout({ ...files, ...nestedCheckout('agent', { 'src/app/other.py': '' }) }, ['scratch/']);
+
+  it('leaves out ignored folders and nested checkouts in every listing', () => {
+    const root = checkout();
+    const production = listProductionModules(root, ['src']);
+
+    expect(pythonSourceFiles(root, ['.'])).toEqual([
+      'src/app/__init__.py',
+      'src/app/core.py',
+      'tools/build.py',
+    ]);
+    expect(listProductionModules(root, ['.']).map(({ file }) => file)).toEqual([
+      'src/app/__init__.py',
+      'src/app/core.py',
+      'tools/build.py',
+    ]);
+    expect(listOtherModules(root, ['src'], production).map(({ file }) => file)).toEqual([
+      'tools/build.py',
+    ]);
   });
 });

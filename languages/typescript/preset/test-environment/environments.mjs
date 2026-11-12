@@ -1,14 +1,11 @@
 import path from 'node:path';
+import { isRecord } from '../../../../shared/rules/facts/checks.mjs';
 
 export const DEFAULT_ENVIRONMENT = 'node';
 export const TEST_ENVIRONMENTS_VARIABLE = 'NITPICKER_TEST_ENVIRONMENTS';
 export const TEST_ENVIRONMENT_RULE = 'nitpicker/no-unused-dom-environment';
 const DOM_ENVIRONMENTS = new Set(['jsdom', 'happy-dom']);
 const SCRIPT_PATH = /\.[cm]?[jt]sx?$/u;
-
-function isRecord(value) {
-  return typeof value === 'object' && value !== null && !Array.isArray(value);
-}
 
 function stringList(value) {
   return Array.isArray(value) && value.every((item) => typeof item === 'string') ? value : [];

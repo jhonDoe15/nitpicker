@@ -1,6 +1,15 @@
+import {
+  CANCELLATION_FILES,
+  SWALLOWED_CANCELLATIONS,
+} from './swallowed/kotlin-cancellation-data.mjs';
+import { INTERRUPT_FILES, SWALLOWED_INTERRUPTS } from './swallowed/kotlin-interrupt-data.mjs';
+import { LOCKING_FILES, LOCKING_FINDINGS } from './concurrency/kotlin-locking-data.mjs';
+import { LIBRARY_STUBS, MOCK_REVIEW_FINDINGS, MOCK_RULE_FILES } from './kotlin-mock-data.mjs';
+import { PLURAL_FINDINGS, PLURALS } from './kotlin-plural-data.mjs';
+import { DEADLINES } from './kotlin-deadlines-data.mjs';
+
 const MAIN = 'src/main/kotlin/demo/orders';
 const TEST = 'src/test/kotlin/demo/orders';
-const SPRING = 'src/test/kotlin/org/springframework';
 
 const STATUS = `package demo.orders
 
@@ -26,6 +35,26 @@ fun isFinal(status: Status): Boolean =
         Status.SHIPPED, Status.CANCELLED -> true
     }
 
+fun isPending(status: Status): Boolean =
+    when (status) {
+        Status.NEW, Status.PAID -> true
+        else -> false
+    }
+
+fun isBilled(status: Status): Boolean =
+    when (status) {
+        Status.NEW -> false
+        Status.PAID -> true
+        else -> false
+    }
+
+fun isHandedOver(status: Status): Boolean {
+    when (status) {
+        Status.SHIPPED, Status.CANCELLED -> return true
+        else -> return false
+    }
+}
+
 val Status.isLive: Boolean get() = this == Status.NEW || this == Status.PAID
 
 fun weight(status: Status) = if (status == Status.NEW || status == Status.PAID) 1 else 0
@@ -36,9 +65,20 @@ fun total(cents: Int) = scaled(cents)
 
 fun scaled(cents: Int): Int = cents * 2
 
-data class Query(val tag: String, val tags: List<String>)
+class Cart {
+    fun sum(items: List<Int>): Int = items.size
 
-data class Page(val tag: String, val size: Int)
+    fun count(items: List<Int>): Int = sum(items)
+
+    fun withFee(items: List<Int>): Int = sum(items) + 1
+
+    @JvmName("legacyTotal")
+    fun legacy(items: List<Int>): Int = sum(items)
+
+    private fun hidden(items: List<Int>): Int = items.size
+
+    fun visible(items: List<Int>): Int = hidden(items)
+}
 `;
 
 const FORMATTING = `package demo.orders
@@ -54,6 +94,137 @@ internal class Mailer(private val host: String, private val retries: Int = 3) {
 internal data class Envelope(val id: String, val retries: Int = 3)
 
 fun report(): String = pad(1) + label(2) + Mailer("h").send() + label(3, "m") + Envelope("e").id
+`;
+
+const ARCHIVE = `package demo.orders
+
+import java.io.File
+import java.nio.file.Files
+import java.nio.file.Path
+import java.util.concurrent.Future
+import kotlin.time.Duration.Companion.seconds
+import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.NonCancellable
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.flow.flowOn
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.runInterruptible
+import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeout
+
+class Process(private val id: String) {
+    fun waitFor(): Int = id.length
+}
+
+class Archive(
+    private val index: File,
+    private val pending: Future<String>,
+    private val ioDispatcher: CoroutineDispatcher,
+) {
+    suspend fun loadsOnTheCaller(path: Path): String = Files.readString(path)
+
+    suspend fun waitsOnAFuture(): String = pending.get()
+
+    suspend fun timesOutBlockingWork(path: Path): String = withTimeout(1.seconds) { Files.readString(path) }
+
+    suspend fun shieldsWithoutMoving(path: Path): String = withContext(NonCancellable) { Files.readString(path) }
+
+    suspend fun readsEach(paths: List<Path>): List<String> = paths.map { Files.readString(it) }
+
+    fun streamsOnTheCollector(path: Path): Flow<String> = flow { emit(Files.readString(path)) }
+
+    fun streamsOnTheInjectedDispatcher(path: Path): Flow<String> =
+        flow { emit(Files.readString(path)) }.flowOn(ioDispatcher)
+
+    suspend fun offloaded(path: Path): String = withContext(ioDispatcher) { Files.readString(path) }
+
+    suspend fun interruptible(): String = runInterruptible(ioDispatcher) { pending.get() }
+
+    suspend fun timesOutOffloadedWork(path: Path): String =
+        withTimeout(1.seconds) { withContext(ioDispatcher) { Files.readString(path) } }
+
+    suspend fun timesOutAfterADelay(path: Path): Path = withTimeout(1.seconds) { delay(10); path }
+
+    suspend fun waitsForAProjectProcess(process: Process): Int = process.waitFor()
+
+    fun readsOutsideACoroutine(path: Path): String = Files.readString(path)
+
+    fun launchesOnTheInjectedDispatcher(scope: CoroutineScope, path: Path) {
+        scope.launch(ioDispatcher) { Files.readString(path) }
+    }
+
+    fun sizeOfTheIndex(): Long = index.length()
+}
+`;
+
+const PRICING = `package demo.orders
+
+import org.springframework.boot.context.properties.ConfigurationProperties
+
+fun price(cents: Int, discount: Int = 0): Int = cents - discount
+
+data class Quote(val cents: Int, val note: String = "")
+
+@ConfigurationProperties("queue")
+class QueueProperties(val name: String = "jobs", val retry: Retry = Retry()) {
+    class Retry(val attempts: Int = 3, val backoffMs: Long = 500)
+}
+
+internal class Outbox(private val dir: String, private val limit: Int = 10) {
+    private val log = java.util.logging.Logger.getLogger(Outbox::class.java.name)
+
+    fun path(): String = dir + limit + log.name
+}
+
+fun quote(): String = price(100).toString() + Quote(1).cents + QueueProperties().name + Outbox("d").path()
+`;
+
+const PRICING_TEST = `package demo.orders
+
+import kotlin.test.Test
+import kotlin.test.assertEquals
+
+class PricingTest {
+    @Test
+    fun discounts() {
+        assertEquals(90, price(100, 10))
+    }
+}
+`;
+
+const INVENTORY = `package demo.orders
+
+import java.nio.file.Files
+import java.nio.file.Path
+import java.sql.Connection
+import java.sql.DriverManager
+import java.util.concurrent.Executors
+import java.util.logging.Logger
+
+private val log: Logger = Logger.getLogger("inventory")
+val stockFile: Path = Path.of("stock.csv")
+val seeded: Boolean = Files.exists(stockFile)
+val stockLines: List<String> by lazy { Files.readAllLines(stockFile) }
+
+object Inventory {
+    val workers = Executors.newFixedThreadPool(2)
+
+    fun connection(): Connection {
+        log.fine("connecting")
+        return DriverManager.getConnection("jdbc:h2:mem:inventory")
+    }
+}
+
+enum class Shelf(val file: String) {
+    TOP("top.csv"),
+    BOTTOM("bottom.csv"),
+    ;
+
+    val present: Boolean = Files.exists(Path.of(file))
+}
 `;
 
 const WAITING_TEST = `package demo.orders
@@ -101,14 +272,114 @@ class WaitingTest {
 }
 `;
 
-const SPRING_BOOT_TEST = `package org.springframework.boot.test.context
+const LEDGER = `package demo.orders
 
-annotation class SpringBootTest(val webEnvironment: String = "MOCK")
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.Semaphore
+import kotlinx.coroutines.sync.withLock
+import kotlinx.coroutines.sync.withPermit
+
+interface Balances {
+    suspend fun fetch(): Int
+}
+
+private val fileGate = Semaphore(1)
+
+class Ledger(private val balances: Balances, private val scope: CoroutineScope) {
+    private val mutex = Mutex()
+    private val single = Semaphore(1)
+    private val pair = Semaphore(2)
+    var total = 0
+
+    suspend fun add() {
+        total += balances.fetch()
+    }
+
+    suspend fun addAfterAwaiting() {
+        val delta = balances.fetch()
+        total += delta
+    }
+
+    suspend fun addFromSaved() {
+        val current = total
+        val delta = balances.fetch()
+        total = current + delta
+    }
+
+    suspend fun addAccumulated() {
+        var current = total
+        current += balances.fetch()
+        total = current
+    }
+
+    suspend fun addSavedBeforeLock() {
+        val current = total
+        mutex.withLock { total = current + 1 }
+    }
+
+    suspend fun addSerialized() {
+        mutex.withLock { total += balances.fetch() }
+    }
+
+    suspend fun addSavedInsideLock() {
+        mutex.withLock {
+            val current = total
+            val delta = balances.fetch()
+            total = current + delta
+        }
+    }
+
+    suspend fun addLaunched() {
+        mutex.withLock { scope.launch { total += balances.fetch() } }
+    }
+
+    suspend fun addUnderLocalMutex() {
+        val local = Mutex()
+        local.withLock { total += balances.fetch() }
+    }
+
+    suspend fun addOneAtATime() {
+        single.withPermit { total += balances.fetch() }
+    }
+
+    suspend fun addThroughFileGate() {
+        fileGate.withPermit { total += balances.fetch() }
+    }
+
+    suspend fun addThroughCompanionGate() {
+        shared.withPermit { total += balances.fetch() }
+    }
+
+    suspend fun addTwoAtATime() {
+        pair.withPermit { total += balances.fetch() }
+    }
+
+    companion object {
+        private val shared = Semaphore(1)
+    }
+}
 `;
 
-const AUTOWIRED = `package org.springframework.beans.factory.annotation
+const FLOAT_TEST = `package demo.orders
 
-annotation class Autowired
+import kotlin.test.Test
+import kotlin.test.assertEquals
+import kotlin.test.assertTrue
+
+class FloatTest {
+    @Test
+    fun compares() {
+        val total = 0.5 + 0.25
+        assertEquals(0.75, total)
+        assertTrue(total == 0.75)
+        assertEquals(0.75, total, absoluteTolerance = 1e-9)
+        assertEquals(1.0, total + 0.25)
+        assertTrue(total < 1.0)
+        assertTrue(total + 0.25 == 1.0)
+    }
+}
 `;
 
 const CONTEXT_TEST = `package demo.orders
@@ -139,43 +410,79 @@ class UsedContextTest {
 }
 `;
 
+export const ARCHIVE_FILE = `${MAIN}/Archive.kt`;
+
 export const REVIEW_RULE_FILES = {
   [`${MAIN}/Status.kt`]: STATUS,
   [`${MAIN}/Clock.kt`]: CLOCK,
   [`${MAIN}/Settlement.kt`]: SETTLEMENT,
+  [`${MAIN}/Plurals.kt`]: PLURALS,
   [`${MAIN}/Formatting.kt`]: FORMATTING,
+  [`${MAIN}/Deadlines.kt`]: DEADLINES,
+  [`${MAIN}/Ledger.kt`]: LEDGER,
+  ...CANCELLATION_FILES,
+  ...INTERRUPT_FILES,
+  [ARCHIVE_FILE]: ARCHIVE,
+  [`${MAIN}/Pricing.kt`]: PRICING,
+  [`${TEST}/PricingTest.kt`]: PRICING_TEST,
+  [`${MAIN}/Inventory.kt`]: INVENTORY,
   [`${TEST}/WaitingTest.kt`]: WAITING_TEST,
   [`${TEST}/ContextTest.kt`]: CONTEXT_TEST,
-  [`${SPRING}/boot/test/context/SpringBootTest.kt`]: SPRING_BOOT_TEST,
-  [`${SPRING}/beans/factory/annotation/Autowired.kt`]: AUTOWIRED,
+  ...LOCKING_FILES,
+  [`${TEST}/FloatTest.kt`]: FLOAT_TEST,
+  ...LIBRARY_STUBS,
+  ...MOCK_RULE_FILES,
 };
 
 export const EXPECTED_REVIEW_FINDINGS = [
+  'BlockingCallInCoroutine Archive.loadsOnTheCaller.Files.readString',
+  'BlockingCallInCoroutine Archive.readsEach.Files.readString',
+  'BlockingCallInCoroutine Archive.shieldsWithoutMoving.Files.readString',
+  'BlockingCallInCoroutine Archive.streamsOnTheCollector.Files.readString',
+  'BlockingCallInCoroutine Archive.waitsOnAFuture.Future.get',
+  'ClassLoadEffect Inventory.workers',
+  'ClassLoadEffect Shelf.present',
+  'ClassLoadEffect seeded',
+  'ExhaustiveEnumPredicate isHandedOver',
   'ExhaustiveEnumPredicate isLive',
   'ExhaustiveEnumPredicate isOpen',
+  'ExhaustiveEnumPredicate isPending',
   'ExhaustiveEnumPredicate isSettled',
   'ExhaustiveEnumPredicate weight',
+  'FixedSleepInTest HandlersTest.pause',
   'FixedSleepInTest WaitingTest.iterates',
   'FixedSleepInTest WaitingTest.sleeps',
   'FixedSleepInTest WaitingTest.sleeps',
-  'SingularAndPluralMember Query.tags',
+  'NonAtomicUpdateAcrossSuspension Ledger.total in add',
+  'NonAtomicUpdateAcrossSuspension Ledger.total in addAccumulated',
+  'NonAtomicUpdateAcrossSuspension Ledger.total in addFromSaved',
+  'NonAtomicUpdateAcrossSuspension Ledger.total in addLaunched',
+  'NonAtomicUpdateAcrossSuspension Ledger.total in addSavedBeforeLock',
+  'NonAtomicUpdateAcrossSuspension Ledger.total in addTwoAtATime',
+  'NonAtomicUpdateAcrossSuspension Ledger.total in addUnderLocalMutex',
+  'ForwardingMethodAlias Cart.count',
+  'ForwardingMethodAlias Cart.visible',
+  'FloatEqualityInTest FloatTest.compares',
+  'FloatEqualityInTest FloatTest.compares',
+  ...PLURAL_FINDINGS,
   'SpringUnusedContext UnusedContextTest',
   'StaticForwardingWrapper absOf',
   'StaticForwardingWrapper total',
+  'timeout-abandons-operation awaitAllOutside:withTimeout:first',
+  'timeout-abandons-operation awaitAllOutside:withTimeout:second',
+  'timeout-abandons-operation awaitOutside:withTimeout:work',
+  'timeout-abandons-operation boundedAsync:orTimeout:supplyAsync',
+  'timeout-abandons-operation cancelAsyncTask:get:future',
+  'timeout-abandons-operation giveUp:get:future',
+  'timeout-abandons-operation shutDownLetsItFinish:get:future',
+  ...SWALLOWED_CANCELLATIONS,
+  ...SWALLOWED_INTERRUPTS,
+  'TimeoutWithoutSuspension Archive.timesOutBlockingWork.withTimeout',
   'unused-option Envelope.retries',
   'unused-option Mailer.retries',
+  'unused-option Outbox.limit',
   'unused-option pad.width',
-];
-
-const EMPTY_JAR = Buffer.from([0x50, 0x4b, 0x05, 0x06, ...Array.from({ length: 18 }, () => 0)]);
-
-export function runtimeSerializationFiles(build) {
-  return {
-    'build.gradle.kts': `${build}
-dependencies {
-    runtimeOnly(files("libs/jackson-module-kotlin-2.17.2.jar"))
-}
-`,
-    'libs/jackson-module-kotlin-2.17.2.jar': EMPTY_JAR,
-  };
-}
+  'unused-option price.discount',
+  ...LOCKING_FINDINGS,
+  ...MOCK_REVIEW_FINDINGS,
+].toSorted();

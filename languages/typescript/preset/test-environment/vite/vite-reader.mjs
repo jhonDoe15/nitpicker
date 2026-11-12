@@ -1,47 +1,27 @@
-import { spawnSync } from 'node:child_process';
-import path from 'node:path';
-import { MOCHA_MODE, RESULT_MARKER } from '../read-environment.mjs';
+import { loadInChild, loaderScript } from '../../project-configs/config-module.mjs';
+import { readConfigInChild } from '../read-environment.mjs';
 
-const READER = path.join(import.meta.dirname, '..', 'read-environment.mjs');
-const MAX_OUTPUT_BYTES = 10 * 1024 * 1024;
+const MOCHA_OPTIONS_MODULE = new URL(
+  '../../test-runner/test-files/mocha-options.mjs',
+  import.meta.url,
+).href;
 
-function readerOutcome(readerArguments, { projectRoot, environment, timeoutMs }) {
-  const result = spawnSync(process.execPath, [READER, ...readerArguments], {
-    cwd: projectRoot,
-    env: environment,
-    encoding: 'utf8',
-    input: '',
-    maxBuffer: MAX_OUTPUT_BYTES,
-    timeout: timeoutMs,
-    killSignal: 'SIGKILL',
-  });
-  if (result.error?.code === 'ETIMEDOUT') {
-    return { failure: `it did not finish within ${String(timeoutMs)} ms` };
+const MOCHA_SCRIPT = loaderScript(
+  `const { loadedMochaOptions } = await import(${JSON.stringify(MOCHA_OPTIONS_MODULE)});`,
+  'const [projectRoot, liveProjectRoot, ...tokens] = process.argv.slice(1);',
+  'report({ value: await loadedMochaOptions({ projectRoot, liveProjectRoot, tokens }) });',
+);
+
+function outcomeOf(load) {
+  try {
+    return { result: load() };
+  } catch (error) {
+    return { failure: error instanceof Error ? error.message : String(error) };
   }
-  if (result.error !== undefined) {
-    return { failure: result.error.message };
-  }
-  const line = result.stdout
-    .split('\n')
-    .findLast((candidate) => candidate.startsWith(RESULT_MARKER));
-  if (line === undefined) {
-    return { failure: `the config ended the process with exit code ${String(result.status)}` };
-  }
-  return JSON.parse(line.slice(RESULT_MARKER.length));
 }
 
-export function readViteConfig({
-  configFile,
-  projectRoot,
-  resolveRoots,
-  timeoutMs,
-  parentEnvironment = process.env,
-}) {
-  return readerOutcome([configFile, projectRoot, ...resolveRoots], {
-    projectRoot,
-    environment: { ...parentEnvironment, VITEST: 'true', NODE_ENV: 'test' },
-    timeoutMs,
-  });
+export function readViteConfig({ configFile, projectRoot, resolveRoots, timeoutMs }) {
+  return outcomeOf(() => readConfigInChild({ configFile, projectRoot, resolveRoots, timeoutMs }));
 }
 
 export function readMochaOptions({
@@ -49,11 +29,14 @@ export function readMochaOptions({
   liveProjectRoot = projectRoot,
   tokens,
   timeoutMs,
-  parentEnvironment = process.env,
 }) {
-  return readerOutcome([MOCHA_MODE, projectRoot, liveProjectRoot, ...tokens], {
-    projectRoot,
-    environment: parentEnvironment,
-    timeoutMs,
-  });
+  return outcomeOf(() =>
+    loadInChild({
+      script: MOCHA_SCRIPT,
+      args: [projectRoot, liveProjectRoot, ...tokens],
+      name: 'the Mocha config',
+      projectRoot,
+      timeoutMs,
+    }),
+  );
 }

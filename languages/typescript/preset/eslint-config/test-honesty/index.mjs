@@ -67,7 +67,7 @@ function testPlacementBlock(layout, { testAreaGlobs, testRootsOnDisk }) {
   };
 }
 
-function honestyRulesBlock(layout, files, runner) {
+function honestyRulesBlock(layout, { files, runner, assertionFunctionNames }) {
   const runnerOption = { runner };
   return {
     files,
@@ -82,6 +82,10 @@ function honestyRulesBlock(layout, files, runner) {
       'nitpicker/no-real-time-random-or-network': ['error', runnerOption],
       'nitpicker/no-switched-off-tests': 'error',
       'nitpicker/no-unpinned-assertion': 'error',
+      'nitpicker/no-float-equality-in-tests': 'error',
+      'nitpicker/no-assertion-in-loop': ['error', { assertionFunctionNames }],
+      'nitpicker/no-unowned-async-assertion': 'error',
+      'nitpicker/no-weak-assertion': 'error',
       ...matcherRules(runner),
     },
   };
@@ -107,12 +111,13 @@ export function testHonestyConfigFor(
     setupFiles = [],
     stubRestores = [],
     testRootsOnDisk = layout.testRoots,
+    assertionFunctionNames = [],
   } = {},
 ) {
   const files = testAreaGlobsFor(layout);
   const runnerOption = { runner };
   return [
-    honestyRulesBlock(layout, files, runner),
+    honestyRulesBlock(layout, { files, runner, assertionFunctionNames }),
     {
       files: unitTestGlobsFor(layout),
       ignores: layout.excludedGlobs,

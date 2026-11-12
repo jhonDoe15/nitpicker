@@ -50,6 +50,7 @@ describe('unused API findings', () => {
       classification: 'enforceable',
       location: { line: 3 },
       message: PROP_MESSAGE,
+      allowedForm: 'Remove it, or pass it from a real caller (tests and stories do not count).',
     });
     expect(findings.map(({ rule, identity }) => `${rule} ${identity}`)).toEqual([
       'unused-prop Button.tone',

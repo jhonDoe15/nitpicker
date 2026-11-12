@@ -1,6 +1,6 @@
 import { readHeadPolicy, readLayout } from '../head-policy.mjs';
 import { runnerDetection, testRunnerFor } from './detect-runner.mjs';
-import { recordedTestRunner } from './runner-vocabulary.mjs';
+import { recordedTestRunner } from './vocabulary/runner-vocabulary.mjs';
 import { DEFAULT_TEST_RUNNER } from './runners.mjs';
 import { runnerCommand } from './script-command.mjs';
 

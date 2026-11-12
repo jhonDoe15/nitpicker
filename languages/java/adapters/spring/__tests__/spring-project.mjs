@@ -3,6 +3,7 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 
 import { runJavaDiff } from '../../java-diff.mjs';
+import { schemaChecked } from '../../../../../core/diff/comparison/test-support/findings-schema-check.mjs';
 import { commitBranch, runGitIn } from '../../test-support/gradle-e2e.mjs';
 const enabled = process.env.NITPICKER_JAVA_E2E === '1';
 const gradle = process.env.NITPICKER_GRADLE ?? 'gradle';
@@ -58,18 +59,93 @@ function reportedViolations(sarifFile, sourceRoot) {
     })
     .sort();
 }
-const REVIEW_MARKER = /\/\/ violation: (\w+)/u;
+const REVIEW_MARKER = /\/\/ violation: ([\w-]+(?:, [\w-]+)*)/u;
 const REVIEW_RULES = new Set([
   'FixedSleepInTest',
   'NegativeWaitInTest',
+  'FloatEqualityInTest',
+  'WeakAssertionInTest',
+  'RetryInTest',
+  'MockedSubjectInTest',
+  'StaticMockOfProjectType',
+  'GlobalStateLeakInTest',
+  'ServerOrContainerPerTest',
+  'SharedTestState',
   'ExhaustiveEnumPredicate',
   'StaticForwardingWrapper',
+  'ForwardingMethodAlias',
+  'ServiceLocatorLookup',
   'SingularAndPluralMember',
+  'timeout-abandons-operation',
+  'TriStateBoolean',
+  'ParameterMutation',
+  'CompatibilityShim',
+  'LegacyCalendarApi',
+  'SwallowedInterrupt',
+  'UriCreateDynamic',
+  'UnclosedInlineResource',
+  'UnquotedRegexValue',
+  'PlainTextRegex',
+  'RegexPartDefect',
+  'BacktrackingRegex',
+  'ProcessWaitWithoutTimeout',
+  'LogFormatArguments',
+  'LogExceptionFirst',
+  'RecursiveMapUpdate',
+  'DefaultTimeZone',
+  'MixedTimeUnits',
+  'EpochNarrowedToInt',
+  'ClassLoadEffect',
+  'LockOrderInversion',
+  'InconsistentFieldLocking',
   'SpringUnusedContext',
+  'TaskOutlivesTryResource',
+  'ReactorBlockingInOperator',
+  'ReactorBlockInReactiveMethod',
+  'SpringProxySelfCall',
+  'SpringProxyMethodVisibility',
   'TestClassWithoutTestCases',
   'test-only-export',
+  'UnboundedFanOut',
+  'UnboundedReactiveFanOut',
+  'UnboundedThreadPool',
+  'SpringUnreleasedResource',
+  'SpringStartupCleanup',
+  'HttpWithoutTimeout',
+  'UnorderedQuery',
+  'UnboundedQueryArray',
+  'ConfigurationReadOutsideCompositionRoot',
+  'ListUsedAsSet',
+  'LinearLookupInLoop',
+  'SortForExtreme',
+  'StreamedRowsCollected',
+  'GeneratedMemberCycle',
+  'GeneratedEqualsSkipsSuperclass',
 ]);
 const roots = [];
+const RECEIPT_TEST_FILE = 'src/test/java/shop/ReceiptTest.java';
+const RECEIPT_CONSOLE_FINDING = {
+  tool: 'test-runtime',
+  rule: 'test-console-output',
+  path: '.',
+  identity: 'console:a5705cd8f80bae4111f91e91',
+  message: [
+    'Tests print new console output: "receipt total drifted by <n> cents"',
+    `(${RECEIPT_TEST_FILE}, test "printsTheDrift").`,
+    'Fix the cause (for example a warning the code under test now logs, or a mock or thread that outlives the test),',
+    'or allow a third-party message in "testConsole.allow" of nitpicker.config.json. If this is intended, add',
+    `{"rule":"test-runtime/test-console-output","paths":["${RECEIPT_TEST_FILE}"],"reason":"..."}`,
+    'to "exceptions" in nitpicker.config.json.',
+  ].join(' '),
+  classification: 'enforceable',
+  tokens: ['receipt', 'total', 'drifted', 'by', '<n>', 'cents'],
+  exception: {
+    rule: 'test-runtime/test-console-output',
+    paths: [RECEIPT_TEST_FILE],
+    reason: '...',
+  },
+  exceptionList: 'exceptions',
+};
 const RECEIPT_TEST = `package shop;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -101,8 +177,8 @@ function markedReviewViolations(root) {
       readFileSync(path.join(root, 'src', name), 'utf8')
         .split('\n')
         .flatMap((line, index) => {
-          const rule = REVIEW_MARKER.exec(line)?.[1];
-          return rule === undefined ? [] : [`src/${name}:${String(index + 1)} ${rule}`];
+          const rules = REVIEW_MARKER.exec(line)?.[1].split(', ') ?? [];
+          return rules.map((rule) => `src/${name}:${String(index + 1)} ${rule}`);
         }),
     )
     .sort();
@@ -128,8 +204,13 @@ function stableConsoleEmitters(findings) {
     if (file === undefined) {
       return finding;
     }
+    const exception = finding.exception && {
+      ...finding.exception,
+      paths: finding.exception.paths.map((entry) => (entry === file ? '<emitting source>' : entry)),
+    };
     return {
       ...finding,
+      ...(exception && { exception }),
       message: finding.message
         .replaceAll(file, '<emitting source>')
         .replace(/, test "[^"]*"/u, ', test "<emitting test>"'),
@@ -143,10 +224,12 @@ function consoleChange(build, ...left) {
   runGitIn(repository, 'commit', '-q', '-m', 'base');
   const filterTest = path.join(repository, 'src/test/java/shop/FilterTest.java');
   commitBranch(repository, 'receipt', {
-    'src/test/java/shop/ReceiptTest.java': RECEIPT_TEST,
+    [RECEIPT_TEST_FILE]: RECEIPT_TEST,
     'src/test/java/shop/FilterTest.java': readFileSync(filterTest, 'utf8').replace('42', '43'),
   });
-  const result = runJavaDiff({ repositoryRoot: repository, requestedBaseRef: 'main', ...build });
+  const result = schemaChecked(
+    runJavaDiff({ repositoryRoot: repository, requestedBaseRef: 'main', ...build }),
+  );
   return result.newFindings.filter(({ rule }) => rule === 'test-console-output');
 }
 export {
@@ -165,4 +248,5 @@ export {
   comparable,
   stableConsoleEmitters,
   consoleChange,
+  RECEIPT_CONSOLE_FINDING,
 };

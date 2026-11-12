@@ -1,0 +1,26 @@
+  <rule name="SpringCsrfDisabled" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
+        message="Keep CSRF protection on for session-based security. Turn it off only for a stateless API, in the same filter chain: SessionCreationPolicy.STATELESS or a NullSecurityContextRepository on servlet security, NoOpServerSecurityContextRepository on WebFlux, or oauth2ResourceServer with jwt or opaqueToken and every login form disabled.">
+    <priority>1</priority>
+    <properties><property name="xpath"><value><![CDATA[
+let $root := function($node) {
+  let $statement := $node/ancestor::*[self::ExpressionStatement or self::ReturnStatement or self::LocalVariableDeclaration][last()],
+      $chain := ($statement/VariableDeclarator/*[2], $statement/*[1])[1]
+  return string(($chain/descendant-or-self::*[not(*)]
+    [not(ancestor-or-self::*[exists(ancestor::*[. is $chain])][preceding-sibling::*])])[1]/@Name)
+}
+return (
+  //MethodCall[@MethodName = 'csrf'][ArgumentList/LambdaExpression//MethodCall[@MethodName = 'disable']]
+  | //MethodCall[@MethodName = 'csrf'][ArgumentList/MethodReference[@MethodName = 'disable']]
+  | //MethodCall[@MethodName = 'disable'][*[1][self::MethodCall[@MethodName = 'csrf'][not(ArgumentList/*)]]]
+)[let $chain := $root(.), $calls := ancestor::MethodDeclaration[1]//MethodCall[$root(.) = $chain]
+  return not($calls[@MethodName = 'sessionCreationPolicy'][.//*[@Name = 'STATELESS']]
+    or $calls[@MethodName = ('securityContext', 'securityContextRepository')][.//*[
+      pmd-java:typeIs('org.springframework.security.web.context.NullSecurityContextRepository')
+      or pmd-java:typeIs('org.springframework.security.web.server.context.NoOpServerSecurityContextRepository')]]
+    or ($calls[@MethodName = 'oauth2ResourceServer'][.//(MethodCall | MethodReference)[@MethodName = ('jwt', 'opaqueToken')]]
+        and not($calls[@MethodName = ('formLogin', 'httpBasic', 'rememberMe', 'oauth2Login', 'saml2Login')]
+          [not(ArgumentList/MethodReference[@MethodName = 'disable']
+            or ArgumentList/LambdaExpression[.//MethodCall[@MethodName = 'disable']]
+            or parent::MethodCall[@MethodName = 'disable'])])))]
+]]></value></property></properties>
+  </rule>

@@ -1,0 +1,44 @@
+  <rule name="SpringCacheWriteInTransaction" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
+        message="Write the cache after the commit (in a TransactionSynchronization afterCommit callback, a @TransactionalEventListener, or the caller once the transactional call returns), or make the cache manager transaction-aware (TransactionAwareCacheManagerProxy, or transactionAware() on its builder). Written inside the transaction, the cache keeps a value that a rollback undoes, and an early evict lets a concurrent reader put the old value back.">
+    <priority>2</priority>
+    <properties><property name="xpath"><value><![CDATA[
+let $writing := function($annotations) {
+  exists($annotations[pmd-java:typeIs('org.springframework.transaction.annotation.Transactional')]
+      [not(AnnotationMemberList/MemberValuePair[@Name = 'readOnly']/BooleanLiteral[@True = true()])]
+      [not(AnnotationMemberList/MemberValuePair[@Name = 'propagation'][.//*[@Name = ('NOT_SUPPORTED', 'NEVER', 'SUPPORTS')]])]
+    | $annotations[pmd-java:typeIs('jakarta.transaction.Transactional') or pmd-java:typeIs('javax.transaction.Transactional')]
+      [not(AnnotationMemberList/MemberValuePair[@Name = 'value'][.//*[@Name = ('NOT_SUPPORTED', 'NEVER', 'SUPPORTS')]])])
+},
+    $runsInTransaction := function($method) {
+  $writing($method/ModifierList/Annotation)
+  or ($method/@Visibility = 'public' and not($method/pmd-java:modifiers() = 'static')
+    and not($method/ModifierList/Annotation[pmd-java:typeIs('org.springframework.transaction.annotation.Transactional')
+      or pmd-java:typeIs('jakarta.transaction.Transactional') or pmd-java:typeIs('javax.transaction.Transactional')])
+    and $writing($method/parent::ClassBody/parent::ClassDeclaration/ModifierList/Annotation))
+},
+    $inTransaction := function($node) {
+  let $method := $node/ancestor::MethodDeclaration[1]
+  return exists($node/ancestor::ArgumentList/parent::MethodCall[@MethodName = ('execute', 'executeWithoutResult')]
+      [*[1][pmd-java:typeIs('org.springframework.transaction.support.TransactionOperations')
+        or pmd-java:typeIs('org.springframework.transaction.reactive.TransactionalOperator')]])
+    or (not($node/ancestor::LambdaExpression[ancestor::MethodDeclaration[1] is $method]
+          [parent::ArgumentList/parent::MethodCall[matches(@MethodName, 'commit|completion', 'i')]])
+      and ($runsInTransaction($method)
+        or ($method/@Visibility != 'public' and $method/parent::ClassBody/parent::ClassDeclaration
+          and (let $name := $method/@Name, $arity := $method/@Arity
+            return exists($method/parent::ClassBody/MethodDeclaration[$runsInTransaction(.)]
+              //MethodCall[*[1][self::ArgumentList or self::ThisExpression[not(*)]]]
+                [@MethodName = $name][count(ArgumentList/*) = $arity])))))
+}
+return
+//MethodCall[@MethodName = ('put', 'putIfAbsent', 'evict', 'evictIfPresent', 'clear', 'invalidate')]
+  [*[1][pmd-java:typeIs('org.springframework.cache.Cache')]][$inTransaction(.)]
+|
+//MethodDeclaration[$runsInTransaction(.)]/ModifierList/Annotation[
+    pmd-java:typeIs('org.springframework.cache.annotation.CachePut')
+    or (pmd-java:typeIs('org.springframework.cache.annotation.CacheEvict')
+      and not(AnnotationMemberList/MemberValuePair[@Name = 'beforeInvocation']/BooleanLiteral[@True = true()]))
+    or (pmd-java:typeIs('org.springframework.cache.annotation.Caching')
+      and AnnotationMemberList/MemberValuePair[@Name = ('put', 'evict')])]
+]]></value></property></properties>
+  </rule>
