@@ -126,10 +126,8 @@ const JAVA_AND_PYTHON = { typescript: false, java: true, python: true };
 const GO_NO_INHERITANCE =
   'the language has no inheritance: a struct embeds other types as fields and their methods are promoted, so there is no chain of superclasses to measure';
 
-function classRule(id, limit, enforcedBy, notApplicable) {
-  return notApplicable === undefined
-    ? { id, check: 'structure', limit, enforcedBy }
-    : { id, check: 'structure', limit, enforcedBy, notApplicable };
+function classRule(id, limit, enforcedBy) {
+  return { id, check: 'structure', limit, enforcedBy };
 }
 
 export function sizeRules({ all, withKotlin, withGo }) {
@@ -152,11 +150,13 @@ export function sizeRules({ all, withKotlin, withGo }) {
       `more than ${String(CLASS_LIMIT_DEFAULTS.classFields)} instance fields in a class of the main Java sources or the Python source roots, or in a Go struct outside test files; override with \`thresholds.classFields\``,
       withGo(classes),
     ),
-    classRule(
-      SIZE_RULE_IDS.inheritanceDepth,
-      `a class more than ${String(CLASS_LIMIT_DEFAULTS.inheritanceDepth)} superclasses deep in the main Java sources or the Python source roots (Go has no inheritance); override with \`thresholds.inheritanceDepth\``,
-      classes,
-      { go: GO_NO_INHERITANCE },
-    ),
+    {
+      ...classRule(
+        SIZE_RULE_IDS.inheritanceDepth,
+        `a class more than ${String(CLASS_LIMIT_DEFAULTS.inheritanceDepth)} superclasses deep in the main Java sources or the Python source roots (Go has no inheritance); override with \`thresholds.inheritanceDepth\``,
+        classes,
+      ),
+      notApplicable: { go: GO_NO_INHERITANCE },
+    },
   ];
 }
