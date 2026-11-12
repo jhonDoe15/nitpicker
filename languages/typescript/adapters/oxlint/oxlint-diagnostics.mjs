@@ -2,6 +2,10 @@ import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { ownedNativeChecker, ownedNativeMessage } from './native/owned-native-rules.mjs';
 import { reportedRuleKey } from './oxlint-translation.mjs';
+import {
+  TROUBLESHOOTING_ANCHORS,
+  troubleshootingError,
+} from '../../../../shared/messages/troubleshooting.mjs';
 
 const SENTINEL_HINT = / Unused [a-z ]+ should match \/\[\^\\s\\S\]\/\./gu;
 const IRREGULAR_WHITESPACE_RULE = 'no-irregular-whitespace';
@@ -35,18 +39,24 @@ export function eslintShapedResults(stage, diagnostics, naming) {
   });
 }
 
+const TSCONFIG_REJECTED =
+  'oxlint rejected the tsconfig nitpicker derives from the project tsconfig, so it ran no type-aware lint rule';
+
 function rejectTsconfigErrors(stage, diagnostics) {
   const rejections = diagnostics
     .filter((diagnostic) => diagnostic.code === TSCONFIG_ERROR_CODE)
     .map((diagnostic) => `${diagnostic.message} ${diagnostic.help ?? ''}`.trim())
-    .map((text) => withoutStage(text, stage));
-  if (rejections.length === 0) return;
-  throw new Error(
+    .map((text) => withoutStage(text, stage).replace(/\.$/u, ''));
+  if (rejections.length === 0) {
+    return;
+  }
+  throw troubleshootingError(
     [
-      'oxlint rejected the tsconfig nitpicker derives from the project tsconfig for type-aware',
-      `lint rules, so this analyzer reports no findings: ${[...new Set(rejections)].join('; ')}`,
-      '(a nitpicker bug when the project compiles with its own tsc)',
+      `${TSCONFIG_REJECTED}: ${[...new Set(rejections)].join('; ')}.`,
+      'If `npx tsc --noEmit` accepts the project tsconfig, report this to nitpicker,',
+      'or lint with ESLint: "tools": { "eslint": { "engine": "eslint" } }.',
     ].join(' '),
+    TROUBLESHOOTING_ANCHORS.typescriptConfigUnreadable,
   );
 }
 

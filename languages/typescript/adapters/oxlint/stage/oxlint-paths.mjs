@@ -11,29 +11,52 @@ const REMOVED_ENUM_VALUES = {
 const REMOVED_FALSE_OPTIONS = ['esModuleInterop', 'allowSyntheticDefaultImports', 'alwaysStrict'];
 const REMOVED_OPTIONS = ['downlevelIteration', 'outFile', 'out'];
 
-export function stageCompilerOptions(config, configPath, stage) {
+export function stageConfigOptions(config, configPath, stage) {
   const options = parsedOptions(config, configPath);
+  const projectRoot = path.dirname(configPath);
+  const typeDefinitions = stagedTypeDefinitions(options, projectRoot, stage);
   return {
-    ...baseUrlFreeOptions(options),
-    ...(options.rootDir === undefined ? {} : { rootDir: null }),
-    ...(options.rootDirs === undefined
-      ? {}
-      : { rootDirs: stagedRootDirs(options.rootDirs, path.dirname(configPath), stage) }),
-    ...(options.isolatedDeclarations === true ? { isolatedDeclarations: false } : {}),
-    ...removedOptionResets(options),
-    ...installedTypes(options, path.dirname(configPath)),
+    compilerOptions: {
+      ...baseUrlFreeOptions(options),
+      ...(options.rootDir === undefined ? {} : { rootDir: null }),
+      ...(options.rootDirs === undefined
+        ? {}
+        : { rootDirs: stagedRootDirs(options.rootDirs, projectRoot, stage) }),
+      ...(options.isolatedDeclarations === true ? { isolatedDeclarations: false } : {}),
+      ...removedOptionResets(options),
+      ...typeDefinitions.compilerOptions,
+    },
+    typeFiles: typeDefinitions.typeFiles,
   };
 }
 
-function installedTypes(options, projectRoot) {
-  if (!Array.isArray(options.types)) return {};
-  const containingFile = path.join(projectRoot, 'index.ts');
-  const installed = options.types.filter(
-    (name) =>
-      ts.resolveTypeReferenceDirective(name, containingFile, options, ts.sys)
-        .resolvedTypeReferenceDirective !== undefined,
-  );
-  return installed.length === options.types.length ? {} : { types: installed };
+function stagedTypeDefinitions(options, projectRoot, stage) {
+  if (!Array.isArray(options.types)) {
+    return { compilerOptions: {}, typeFiles: [] };
+  }
+  const stagedOptions = { ...options, configFilePath: path.join(stage, 'tsconfig.json') };
+  const resolved = options.types.map((name) => ({
+    name,
+    fromStage: resolvedTypeFile(name, stage, stagedOptions),
+    fromProject: resolvedTypeFile(name, projectRoot, options),
+  }));
+  const types = resolved.filter(({ fromStage }) => fromStage !== undefined).map(({ name }) => name);
+  return {
+    compilerOptions: types.length === options.types.length ? {} : { types },
+    typeFiles: resolved
+      .filter(({ fromStage, fromProject }) => fromStage === undefined && fromProject !== undefined)
+      .map(({ fromProject }) => fromProject.replaceAll('\\', '/')),
+  };
+}
+
+function isInside(directory, root) {
+  const relative = path.relative(root, directory);
+  return relative === '' || !(relative.startsWith('..') || path.isAbsolute(relative));
+}
+
+function resolvedTypeFile(name, directory, options) {
+  return ts.resolveTypeReferenceDirective(name, path.join(directory, 'index.ts'), options, ts.sys)
+    .resolvedTypeReferenceDirective?.resolvedFileName;
 }
 
 function removedOptionResets(options) {
@@ -49,9 +72,10 @@ function removedOptionResets(options) {
 
 function stagedRootDirs(rootDirs, projectRoot, stage) {
   return rootDirs.map((directory) => {
-    const relative = path.relative(projectRoot, directory);
-    const inside = relative === '' || (!relative.startsWith('..') && !path.isAbsolute(relative));
-    return (inside ? path.join(stage, relative) : directory).replaceAll('\\', '/');
+    const staged = isInside(directory, projectRoot)
+      ? path.join(stage, path.relative(projectRoot, directory))
+      : directory;
+    return staged.replaceAll('\\', '/');
   });
 }
 

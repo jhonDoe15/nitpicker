@@ -580,15 +580,22 @@ Switching engines reports the differences between them as new once; see
 
 ### The TypeScript config cannot be read
 
-**Symptom.** `The TypeScript config could not be read: ...` or a TypeScript diagnostic such as
-`error TS5083: Cannot read file '.../tsconfig.json'` or `error TS5057`.
+**Symptom.** `The TypeScript config could not be read: ...`, a TypeScript diagnostic such as
+`error TS5083: Cannot read file '.../tsconfig.json'` or `error TS5057`, or `oxlint rejected the
+tsconfig nitpicker derives from the project tsconfig, so it ran no type-aware lint rule: ...`.
 
 **Cause.** The `tsconfig.json` (or the file `tools.typescript.project` names, or one of the files it
-`extends`) is missing, is not valid JSON with comments, or names an option TypeScript rejects.
+`extends`) is missing, is not valid JSON with comments, or names an option TypeScript rejects. The
+type-aware lint rules run on TypeScript 7, which rejects some options older TypeScript versions
+accept; nitpicker adjusts the ones it knows (`rootDir`, `isolatedDeclarations`, removed options,
+`types` that are not installed), and any other error stops the lint analyzer rather than letting it
+report without its type-aware rules.
 
 **Fix.** Fix the config the diagnostic names. `npx tsc --noEmit -p <config>` shows the same error.
 If you set `tools.typescript.project`, the path is relative to the project root and must be a JSON
-file inside the project. See [TypeScript project config](usage.md#typescript-project-config).
+file inside the project. See [TypeScript project config](usage.md#typescript-project-config). When
+your own `tsc` accepts the config but oxlint rejects it, report it, and lint with ESLint meanwhile:
+`{"tools": {"eslint": {"engine": "eslint"}}}`.
 
 ### Mutation testing is skipped for this runner
 
