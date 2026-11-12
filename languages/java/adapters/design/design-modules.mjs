@@ -15,6 +15,7 @@ export function gradleDesignModules(report) {
     dir: module.dir,
     sourceRoots: module.manifest.sourceRoots ?? [],
     published: module.manifest.published === true,
+    sourceJava: module.manifest.sourceJava,
   }));
 }
 

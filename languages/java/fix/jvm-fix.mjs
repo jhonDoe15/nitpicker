@@ -1,4 +1,4 @@
-import { fixerError } from '../../../core/fix/common/fix-command.mjs';
+import { fixerError, fixSpawn } from '../../../core/fix/common/fix-command.mjs';
 import {
   collectFixFiles,
   excludedBy,
@@ -14,6 +14,7 @@ import { declaredSourceRoots } from '../adapters/notices/declared-roots.mjs';
 import { inJvmSourceSets } from '../adapters/notices/outside-roots-notice.mjs';
 import { javaStyle } from '../adapters/style/java-style.mjs';
 import { readPinnedTools } from '../builds/java-build.mjs';
+import { formatterJava } from '../maven/errorprone/maven-jdk.mjs';
 import { javaFormat, javaFormatterPlan } from './java-format.mjs';
 import { kotlinFormat, kotlinFormatterPlan } from './kotlin-format.mjs';
 import { resolveToolClasspaths } from './tools/tool-classpath.mjs';
@@ -35,7 +36,15 @@ function javaStep(settings, files, pinned) {
         files,
         plan,
         formatWith: (classpaths) =>
-          javaFormat({ style, classpath: classpaths['java-format'], executeFixCommand }),
+          javaFormat({
+            style,
+            classpath: classpaths['java-format'],
+            java: formatterJava({
+              tool: plan.label,
+              spawn: fixSpawn({ operation: 'java-runtime', executeFixCommand }),
+            }),
+            executeFixCommand,
+          }),
       };
 }
 
