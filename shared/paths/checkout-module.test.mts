@@ -1,0 +1,41 @@
+import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import path from 'node:path';
+import { pathToFileURL } from 'node:url';
+import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { checkoutModulePath, checkoutModuleUrl } from './checkout-module.mjs';
+
+describe('checkout modules', () => {
+  let directory: string;
+
+  beforeAll(() => {
+    directory = mkdtempSync(path.join(tmpdir(), 'nitpicker-checkout-module-'));
+    writeFileSync(path.join(directory, 'converted.mts'), '');
+    writeFileSync(path.join(directory, 'packaged.mjs'), '');
+  });
+
+  afterAll(() => {
+    rmSync(directory, { recursive: true, force: true });
+  });
+
+  it.each([
+    [
+      'opens the TypeScript source of a module that a checkout holds as .mts',
+      'converted.mjs',
+      'converted.mts',
+    ],
+    [
+      'keeps the packaged name when no TypeScript source sits beside it',
+      'packaged.mjs',
+      'packaged.mjs',
+    ],
+    ['leaves files that are not ES modules alone', 'rules.json', 'rules.json'],
+  ])('%s', (_name, file, opened) => {
+    expect(checkoutModulePath(path.join(directory, file))).toBe(path.join(directory, opened));
+  });
+  it('maps a module URL the same way', () => {
+    expect(checkoutModuleUrl(pathToFileURL(path.join(directory, 'converted.mjs'))).href).toBe(
+      pathToFileURL(path.join(directory, 'converted.mts')).href,
+    );
+  });
+});

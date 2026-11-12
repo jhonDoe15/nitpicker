@@ -7,7 +7,7 @@ import { PACKAGE_ROOT } from './tooling/tool-resolution.mjs';
 const root = PACKAGE_ROOT;
 
 const TEST_ONLY_PATH =
-  /(?:^|\/)(?:fixtures|test-support|__tests__|__pycache__)\/|\.test\.mjs$|_test\.go$|\.pyc$/u;
+  /(?:^|\/)(?:fixtures|test-support|__tests__|__pycache__)\/|\.test\.m[jt]s$|_test\.go$|\.pyc$/u;
 const GENERATOR_ONLY_PATH = new RegExp(
   [
     '^core/reference/',
@@ -33,7 +33,9 @@ function sourceFiles(directory) {
       return sourceFiles(relative);
     }
     if (entry.name === 'README.md') return [];
-    return statSync(path.join(root, relative)).isFile() ? [relative] : [];
+    return statSync(path.join(root, relative)).isFile()
+      ? [relative.replace(/\.mts$/u, '.mjs')]
+      : [];
   });
 }
 
@@ -77,6 +79,7 @@ describe('npm package contents', () => {
       [
         'core/cli.mjs',
         'core/cli.test.mjs',
+        'core/cli.test.mts',
         'core/diff/fixtures/fake-eslint-cli.mjs',
         'core/command/test-support/cli-harness.mjs',
         'languages/java/adapters/java-e2e/__tests__/java-preset-project.mjs',
@@ -98,6 +101,7 @@ describe('npm package contents', () => {
       ].filter(isNotShipped),
     ).toEqual([
       'core/cli.test.mjs',
+      'core/cli.test.mts',
       'core/diff/fixtures/fake-eslint-cli.mjs',
       'core/command/test-support/cli-harness.mjs',
       'languages/java/adapters/java-e2e/__tests__/java-preset-project.mjs',
@@ -116,6 +120,8 @@ describe('npm package contents', () => {
   it('ships the complete runtime tree without tests, fixtures, test support, bytecode or the lockfile', () => {
     assertRuntimeFiles(packedFiles);
     expect(packedFiles.has('core/bin.mjs')).toBe(true);
+    expect(packedFiles.has('shared/logic/sync/decide-worker.mjs')).toBe(true);
+    expect([...packedFiles].filter((file) => file.endsWith('.mts'))).toEqual([]);
     expect(packedFiles.has('core/tooling/node-version/node-version.mjs')).toBe(true);
     expect(packedFiles.has('core/fix/run-fix.mjs')).toBe(true);
     expect(packedFiles.has('CHANGELOG.md')).toBe(true);
