@@ -60,8 +60,16 @@ than the others, and this skill teaches its rules before an agent writes Go.
 - **Compile and vet first.** A package that does not build hides every other check in it, so the
   compile error is its own finding and the skill puts it first.
 - **Errors wrapped with `%w`, compared with `errors.Is`/`errors.As`.** All three style guides agree,
-  and comparing wrapped errors with `==` or their text is the most common Go error bug. Enforced
-  rules for it come with the one-way rules slice; until then the skill carries it.
+  and comparing wrapped errors with `==` or their text is the most common Go error bug. SA1032 and
+  `deepequalerrors` enforce part of it; errorlint (#977) is to enforce the rest, so the own rules do
+  not rebuild it.
+- **Own rules (`go-rules`).** Built only for the forms no linter enforces (#416). `panic` for
+  ordinary failures, logging and returning the same error, goroutines without an owner, root
+  contexts outside `main` and sleeping to wait for a goroutine come from Effective Go ("don't
+  panic"), the Uber guide (goroutine lifetimes, "handle errors once") and the Google guide
+  (contexts). `Must` functions and `main`/`init` keep `panic`, as in the standard library. Sleeps in
+  tests and goroutines tests leave behind are left to the test-honesty rules (#419), so a test line
+  is not reported twice.
 - **Configuration read once in `main`; clocks, randomness and writers passed in.** Matches the
   composition-root rule of the other presets and makes tests deterministic.
 - **`context.Context` first, never stored.** From Go Code Review Comments and the Google guide.

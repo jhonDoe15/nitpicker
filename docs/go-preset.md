@@ -1,8 +1,9 @@
 # Go preset
 
-Status: slices GO1 (ticket #414) and GO5 (ticket #418) implemented, and the first two parts of
-slice GO2 (#415): staticcheck, errcheck, modernize, the extra `golang.org/x/tools` passes and
-revive. The remaining slices are listed under [Remaining slices](#remaining-slices).
+Status: slices GO1 (ticket #414) and GO5 (ticket #418) implemented, and the first two parts of slice
+GO2 (#415): staticcheck, errcheck, modernize, the extra `golang.org/x/tools` passes and revive, and
+the first part of slice GO3 (#416): nitpicker's own rules for errors and concurrency. The remaining
+slices are listed under [Remaining slices](#remaining-slices).
 
 The Go preset gates a Go module (`go.mod` at the project root) with the same differential gate as
 the other presets: run the tools on the merge base and on head, turn each report into findings,
@@ -41,7 +42,8 @@ node core/cli.mjs go-analyzer --project-root <snapshot>   (per snapshot)
   -> inspect <module root> inspect.json           structure metrics (languages/go/inspect)
   -> <formatter> -l <files>                        format check, one per formatter
   -> go vet -json ./...                            compile errors and vet diagnostics
-  -> lint ./...                                    staticcheck, errcheck, modernize, revive (languages/go/lint)
+  -> lint ./...                                    staticcheck, errcheck, modernize, revive, catalog linters,
+                                                   go-rules (languages/go/lint)
   -> go test -vet=off -json -coverpkg=./... -coverprofile=coverage.out ./...
   -> jscpd --format go (plain, then over renamed sources)  duplicates
   -> go mod tidy -diff                             unused and unlisted requirements
@@ -90,6 +92,7 @@ per source hash and toolchain into the nitpicker cache.
 | staticcheck            | lint program              | `staticcheck/<check>`, for example `staticcheck/SA4006`                             |
 | Unchecked errors       | lint program (errcheck)   | `errcheck/unchecked`                                                                |
 | Modern forms           | lint program (modernize)  | `modernize/<analyzer>`, for example `modernize/rangeint`                            |
+| Own one-way rules      | lint program (go-rules)   | `go-rules/<rule>`, for example `go-rules/panic-for-failure`                         |
 | Failing tests          | `go test -json`           | `tests/tests-failed` tool error quoting each failure                                |
 | No tests ran           | `go test -json`           | `tests/no-tests-ran`                                                                |
 | Slow tests             | `go test -json`           | `test-runtime/slow-test`                                                            |
@@ -413,12 +416,13 @@ themselves, exhaustive's `//exhaustive:ignore` and makezero's `// nozero`, and a
 | SA9009 (space in a directive)                                    | gocheckcompilerdirectives                                                                 |
 | ST1013 (HTTP status constants)                                   | usestdlibvars                                                                             |
 | ST1018 (format characters in text)                               | bidichk                                                                                   |
+| contextcheck                                                     | `go-rules/context-outside-entry`                                                          |
 
-Those two compare the column too, because one line can hold a second, different problem
-(`found == true || ready && false`). revive keeps the rules staticcheck lacks in the same areas: `bool-literal-in-expr` also flags
-`found && true`, `empty-block` an empty `switch`, `useless-break` a `break` that ends a `select`
-case, `modifies-value-receiver` a changed receiver that is read again, and `defer` a deferred call
-chain.
+Those two compare the column too, because one line can hold a second, different problem (`found ==
+true || ready && false`). revive keeps the rules staticcheck lacks in the same areas:
+`bool-literal-in-expr` also flags `found && true`, `empty-block` an empty `switch`, `useless-break`
+a `break` that ends a `select` case, `modifies-value-receiver` a changed receiver that is read
+again, and `defer` a deferred call chain.
 
 **Project config.** `staticcheck.conf` files are read only when the project opts in with
 `"tools": { "staticcheck": { "precedence": ["project"] } }`. Then each package's merged
@@ -436,6 +440,33 @@ check has no fixture. `fixtures/legacy` (Go 1.14) and `fixtures/next` (Go 1.27) 
 that apply only before or after a Go version. A revive rule must be either in the list that runs
 or in the off list of the lint program's tests, so a revive upgrade that adds a rule fails until
 someone decides it.
+
+## Own rules
+
+nitpicker's own analyzers run in the lint program as the `go-rules` tool, for the forms no linter
+above settles. Each message names the allowed form and ends with its exception entry. They follow
+the project's choices and never flag them: `testing` or testify assertions, the logger (`log/slog`,
+zap, zerolog, logrus, go-kit log, klog, logr, hclog, charmbracelet log and apex log are
+recognised by package), table-driven or separate tests, and the
+`cmd/`, `internal/`, `pkg/` layout.
+
+| Rule                    | Reports                                                                                                                                                                                                               | Allowed form                                                                                    |
+| ----------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------- |
+| `panic-for-failure`     | `panic` in a non-test file outside `main` (in package main), `init`, a `default` clause and functions named `Must` or `MustX` (also `must`, `mustX`); re-panicking a `recover()` value, wrapped or not, is allowed    | return an error                                                                                 |
+| `logged-and-returned`   | in a non-test file, a logger call that takes a local error variable, followed in the same block by a `return` of that error (as is or wrapped) with no assignment to it, `return` or `break` in between               | return it wrapped with `%w` and log it where it is handled, or log it and handle it             |
+| `unowned-goroutine`     | a `go` statement in a non-test file whose function neither takes nor uses a `sync.WaitGroup`, errgroup, channel or `context.Context`, directly, through its receiver's fields or in the body of the function it calls | `wg.Go(...)`, an errgroup's `Go`, or a context the caller cancels or a channel the caller reads |
+| `context-outside-entry` | `context.Background()` or `context.TODO()` in a non-test file of a package other than `main`                                                                                                                          | take `ctx context.Context` first and pass it on                                                 |
+| `sleep-to-wait`         | `time.Sleep` in a non-test function that started a goroutine (`go`, `wg.Go`, an errgroup's `Go`) on a path that reaches it                                                                                            | wait on the WaitGroup, errgroup, channel or context                                             |
+
+Left to linters, so not rebuilt here (gosec comes with GO2's next part, #976): `%w` and
+`errors.Is`/`errors.As` (errorlint, SA1032, `deepequalerrors`), contexts in structs and contexts as the first parameter
+(containedctx, revive `context-as-argument`), `defer` in a loop (revive `defer`, SA9001), naked
+returns (revive `bare-return`), mixed receivers (recvcheck) and string-built SQL (gosec). Sleeps in
+tests and goroutines a test leaves behind are the test-honesty rules (GO6).
+
+**Fixtures.** `languages/go/lint/fixtures/go-rules` holds a failing and an allowed form for each
+rule, checked like the linters' fixtures. `fixtures/stubs` holds minimal stand-ins for zap, zerolog
+and errgroup, so the fixtures build without downloads.
 
 ## Facts
 
@@ -543,11 +574,10 @@ The top-level `exceptions` take a finding as it is printed, `<tool>/<rule>` (`ve
 `deadcode/unreachable-func`), as in the Java preset, plus the shared rules (the function, type, file
 and folder limits, `slow-test`, `duplicate-clone`, `stability-direction`, the fact rules,
 `unused-dependency`, `unlisted-dependency` and the repository checks). Every vet, staticcheck,
-errcheck, modernize, revive, deadcode, catalog linter, limit and slow-test message ends with its
-exception entry, for
-example `{"rule":"vet/printf","paths":["shop/label.go"],"reason":"..."}`. Format findings,
-compile errors and `no-tests-ran` have no exception route: run the formatter, fix the build, or
-add a test.
+errcheck, modernize, revive, deadcode, catalog linter, go-rules, limit and slow-test message ends
+with its exception entry, for example
+`{"rule":"vet/printf","paths":["shop/label.go"],"reason":"..."}`. Format findings, compile errors
+and `no-tests-ran` have no exception route: run the formatter, fix the build, or add a test.
 
 ## Config keys
 
@@ -582,15 +612,15 @@ there are no source roots to set) are config errors with `"preset": "go"`, each 
 
 ## Remaining slices
 
-| #   | Slice                                           | Scope                                                                                                                                                                                                                                                                                                               |
-| --- | ----------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| GO1 | Base (#414)                                     | This document: done.                                                                                                                                                                                                                                                                                                |
-| GO2 | Linters (#415)                                  | Parts 1 and 2 done: staticcheck, errcheck, modernize, the extra `golang.org/x/tools` passes and revive (see [Linters](#linters)). Next: gosec and the permissively licensed `go/analysis` linters, in the same program.                                                                                             |
-| GO3 | One-way rules (#416)                            | nitpicker's own analyzers for the forms Go still leaves open (constructors, receivers, loops), each message naming the allowed form. Error comparison and wrapping (errorlint, nilerr) and contexts in structs, loops and new contexts (containedctx, fatcontext, contextcheck) are covered by the catalog linters. |
-| GO4 | Coverage, CRAP and mutation (#417)              | changed-branch coverage and CRAP from the coverage profile; mutation testing.                                                                                                                                                                                                                                       |
-| GO5 | Duplicates, coupling, dead code, modules (#418) | Done: see [Facts](#facts) through [Module requirements](#module-requirements).                                                                                                                                                                                                                                      |
-| GO6 | Shared guards and test honesty (#419)           | Started: `duplicate-definition`, `sibling-copy-edit` and `doc-comment-content` (see [Facts](#facts)) and `test-console-output` (see [Tests](#tests)). Next: the guards the other presets share (secrets in code, path joins, subprocess timeouts, test assertions) after GO3.                                       |
-| GO7 | Race detector (#433)                            | `go test -race`, with each race a finding keyed by its stacks.                                                                                                                                                                                                                                                      |
+| #   | Slice                                           | Scope                                                                                                                                                                                                                                                                         |
+| --- | ----------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| GO1 | Base (#414)                                     | This document: done.                                                                                                                                                                                                                                                          |
+| GO2 | Linters (#415)                                  | Parts 1 and 2 done: staticcheck, errcheck, modernize, the extra `golang.org/x/tools` passes and revive (see [Linters](#linters)). Next: gosec and the permissively licensed `go/analysis` linters, in the same program.                                                       |
+| GO3 | One-way rules (#416)                            | Part 1 done: errors and concurrency (see [Own rules](#own-rules)). Next: package state and design, then HTTP timeouts and I/O in loops.                                                                                                                                       |
+| GO4 | Coverage, CRAP and mutation (#417)              | changed-branch coverage and CRAP from the coverage profile; mutation testing.                                                                                                                                                                                                 |
+| GO5 | Duplicates, coupling, dead code, modules (#418) | Done: see [Facts](#facts) through [Module requirements](#module-requirements).                                                                                                                                                                                                |
+| GO6 | Shared guards and test honesty (#419)           | Started: `duplicate-definition`, `sibling-copy-edit` and `doc-comment-content` (see [Facts](#facts)) and `test-console-output` (see [Tests](#tests)). Next: the guards the other presets share (secrets in code, path joins, subprocess timeouts, test assertions) after GO3. |
+| GO7 | Race detector (#433)                            | `go test -race`, with each race a finding keyed by its stacks.                                                                                                                                                                                                                |
 
 ## Known limits
 
