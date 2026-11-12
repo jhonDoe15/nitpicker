@@ -42,6 +42,12 @@ const slowTimeouts = {
 };
 
 const FIXTURES = {
+  'imported-entry-point': () =>
+    synthetic(
+      {},
+      { layout: { entryPoints: ['src/**'] } },
+      { scope: { importedBy: (files) => files } },
+    ),
   exception: () => synthetic({}, { exceptions: [exception] }),
   exclusion: () => synthetic({}, { exclude: ['src/vendor/**'] }),
   'duplicates-scope': () =>

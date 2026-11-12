@@ -1125,12 +1125,16 @@ noUncheckedIndexedAccess: true -> false`, only one that goes from `true` to `fal
   `"nitpicker"` (for `pmd`, which runs both rule sets, only dropping `"nitpicker"` counts);
 - a name removed from a `spring.roles` list (adding one only adds checks).
 
-An added `layout.entryPoints` or `python.entryPoints` entry is not loosening and is only listed. An
-entry point names a file that a command or runtime loads without an import, such as a script run by
-path, a worker or a test reporter: the dead-code check treats it as used and it may hold the
-module-load effects and process access a program start needs (for `python.entryPoints`, only
-`process-env-access`, `process-stream-access` and `import-time-effect` skip it). Every other check
-still applies to it, and the console lists each added entry so a reviewer sees it.
+An added `layout.entryPoints` or `python.entryPoints` entry is only listed, as long as no checked
+code imports the files it newly covers. An entry point names a file that a command or runtime loads
+without an import, such as a script run by path, a worker or a test reporter. The dead-code and
+unused-export checks treat it as used, and it may do what a program start does: with
+`layout.entryPoints`, module-load effects, process access and service-locator lookups (it counts as
+a composition root); with `python.entryPoints`, `process-env-access`, `process-stream-access`,
+`import-time-effect` and `service-locator-lookup` skip it. Every other check still applies. A file
+that a production file under the source roots imports is not an entry point, so an added entry that
+newly covers one (a broad glob such as `**`, for example) is loosening, and the finding names the
+imported files.
 
 Choosing another tool that runs the same checks is not loosening and is only listed:
 `tools.eslint.engine`, `tools.typescript.engine`, `python.typeChecker`, `python.formatter`,
