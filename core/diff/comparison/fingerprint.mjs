@@ -27,14 +27,14 @@ export function comparisonKey(finding, moves = NO_MOVES) {
   const cycle = parseCycleIdentity(finding.identity);
   const canonical =
     cycle === undefined
-      ? {
+      ? sortedPair({
           path: movedPath ?? normalizedPath,
           identity: remapQualifiedNames(
             remapRootPrefix(remapIdentityPaths(finding.identity, moves), moves.directories),
             moves.names,
             packages,
           ),
-        }
+        })
       : remapCycle(cycle, moves);
   const symbol = remapQualifiedNames(
     remapIdentityPaths(finding.symbol ?? '', moves),
@@ -50,6 +50,20 @@ export function comparisonKey(finding, moves = NO_MOVES) {
     finding.classification,
     finding.metric?.name ?? '',
   ]);
+}
+
+const PAIR_IDENTITY = /^((?:[\w-]+:)*pair:)([^|]+)\|([^:]+)(:.*)?$/u;
+
+function sortedPair(canonical) {
+  const match = PAIR_IDENTITY.exec(canonical.identity);
+  if (match === null || match[2].localeCompare(match[3]) <= 0) {
+    return canonical;
+  }
+  const [, prefix, first, second, suffix = ''] = match;
+  return {
+    path: canonical.path === first ? second : canonical.path,
+    identity: `${prefix}${second}|${first}${suffix}`,
+  };
 }
 
 function parseCycleIdentity(identity) {

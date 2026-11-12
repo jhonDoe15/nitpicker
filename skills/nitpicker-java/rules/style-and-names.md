@@ -32,6 +32,7 @@ Part of the [nitpicker-java](../SKILL.md) skill. Write these forms from the star
   name, and keeps the description to 5 lines, tags and `<pre>` blocks not counted
   (`doc-comment-content`).
 - nitpicker runs its own PMD rules (errorprone, bestpractices, performance, multithreading,
-  security, a broad-catch rule and the boolean simplification rules) and Google checks. A project's `config/pmd/ruleset.xml` or
+  security, a broad-catch rule, the boolean simplification rules and its own guard rules),
+  forbiddenapis, javac lint and Google checks. A project's `config/pmd/ruleset.xml` or
   `config/checkstyle/checkstyle.xml` counts only when `nitpicker.config.json` opts in under
   `tools`; then read it too.

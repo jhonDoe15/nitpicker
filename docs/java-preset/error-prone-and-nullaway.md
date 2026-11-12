@@ -15,8 +15,28 @@ Part of the [Java preset guide](../java-preset.md).
   NullAway resolve from a detached configuration with their versions pinned in the init script's
   map, so a dependency-management plugin of the project cannot move them. A compile error in this
   second compile fails the task with javac's errors (a `tool-error` on the CLI path); it never
-  becomes an empty report. `module-info.java` is left out, so the sources compile in the unnamed
-  module. Kotlin preset: Java sources only, like PMD and SpotBugs.
+  becomes an empty report. Main sources with a `module-info.java` compile as that module on both
+  builds: jars and class directories that are modules (`module-info.class`, also under
+  `META-INF/versions/`, or an `Automatic-Module-Name`) go on `--module-path`, the rest on the class
+  path, and when that compile fails it is retried with every library on `--module-path`, so a sealed
+  type may permit classes in another package. Test sources compile on the class path, without the
+  descriptor. Kotlin preset: Java sources only, like PMD and SpotBugs.
+- **Report and arguments files.** `ErrorProneReport <report.json> <checks.json> <arguments file>...`
+  reads one arguments file per source set: javac arguments, then `--sources` and the sources, one
+  per line, plus the lines that are not javac's (`--test-only`, `--own-classes=`, `--release=`,
+  `--source=`, `--target=`, `--project-arg=`, `--errorprone-flag=`). The report is a JSON array of
+  `{file, line, column, position, kind, message, classAnnotations}`: `position` is the one offset
+  Error Prone reports, `classAnnotations` the annotations (meta-annotations included) of every
+  class around it, innermost first.
+- **A check that crashes.** When a check throws, Error Prone reports an unhandled exception with
+  the `BugPattern: <Check>` it came from; the runner then turns that check off with
+  `-Xep:<Check>:OFF` and compiles the source set again, for as many checks as crash, so the other
+  checks' findings are kept. Each crashed check is one more report entry,
+  `{crash, cause, file, line, ...}`, and one `errorprone/check-crashed` tool error that names the
+  check, the file and line it crashed on and the exception, and says that it is an Error Prone bug.
+  Seen with Error Prone 2.50.0: `ForEachIterable` on a record pattern with `var` bindings
+  (`case And(var left, var right)`), and `FieldCanBeStatic` on a Lombok `@Getter` field
+  initialized from a constant of the same class.
 - **Which JDK.** Error Prone needs JDK 21 or newer. On Gradle the runner uses the JVM that runs
   Gradle when it is at least 21 and at least the JDK of every compile task's toolchain; otherwise
   it asks Gradle's toolchain service for a launcher of the version it needs (found locally or
@@ -76,8 +96,8 @@ Part of the [Java preset guide](../java-preset.md).
   file as the path). Only findings in main sources of the checks in `certainBugs` in `checks.json` go without it: a
   curated list of ERROR checks whose finding in main code is a bug, not a severity filter (the
   ERROR checks left out, and why, are listed below). Findings in test sources always keep the
-  route, since a test can build the broken case on purpose. The route is added after the identity is computed, so it
-  does not change it. Diagnostics outside the main and test source roots (annotation-processor
+  route, since a test can build the broken case on purpose. `applyRuleMessages` adds the route
+  after the identity is computed, so it does not change it. Diagnostics outside the main and test source roots (annotation-processor
   output) are dropped. Diagnostics with the same check, file, line, column and message are one
   finding, and the `class is an internal JDK API` diagnostic `SunApi` adds at the `.class` of a
   literal it already reported is dropped; different columns or messages on a line stay apart. Identity: a hash of the check and the
@@ -406,7 +426,12 @@ clearest message: usually the Error Prone check with its fix over a SpotBugs pat
 check over the general one (`OptionalEquality` or `BoxedPrimitiveEquality` over
 `ReferenceEquality`, over PMD's `CompareObjectsWithEquals` and SpotBugs `ES_COMPARING_*`), and the fullest switch check over the
 rest (`MissingCasesInEnumSwitch` over `NonExhaustiveSwitch`, `MissingDefault`, Checkstyle's
-`MissingSwitchDefault` and `SF_SWITCH_NO_DEFAULT`).
+`MissingSwitchDefault` and `SF_SWITCH_NO_DEFAULT`). A forbiddenapis signature stands over the
+Error Prone check on the same call: its message names the allowed form at least as clearly
+(`legacy-date-time` lists the java.time classes and the `toInstant()` conversion, where
+`JavaUtilDate` names only `Instant` or `LocalDate`), and its fix also settles the check, which the
+check's own fix does not (`LocalDate.now(zone)` for `JavaTimeDefaultTimeZone` is still a
+`clock-now` call, `Thread.sleep(Duration)` for `PreferJavaTimeOverload` still a `thread-sleep`).
 
 Where the primary covers only some of the secondary's cases, both stay on and the secondary is
 dropped only in the scope the two share: `RV_RETURN_VALUE_IGNORED` on a method Error Prone's
@@ -535,6 +560,13 @@ The pairs:
 - line: `pmd/ClassLoadEffect` over `spotbugs/SC_START_IN_CTOR`
 - line: `errorprone/CatchAndPrintStackTrace` over `pmd/AvoidPrintStackTrace`, `errorprone/SystemOut`
 - line: `errorprone/SystemOut` over `pmd/SystemPrintln`
+- line: `errorprone/StreamResourceLeak` over `pmd/StreamResourceNotClosed`
+- line: `errorprone/PatternMatchingInstanceof` over `pmd/InstanceofThenCast`
+- line: `errorprone/ThrowSpecificExceptions` over `pmd/AvoidThrowingRawExceptionTypes`
+- line: `forbiddenapis/legacy-date-time` over `errorprone/JavaUtilDate`
+- line: `forbiddenapis/clock-now` over `errorprone/JavaTimeDefaultTimeZone`
+- line: `forbiddenapis/thread-sleep` over `errorprone/PreferJavaTimeOverload`
+- line: `forbiddenapis/java-deserialization` over `errorprone/BanSerializableRead`
 - line: `errorprone/MissingOverride` over `pmd/MissingOverride`
 - line: `pmd/DefaultLabelNotLastInSwitch` over `errorprone/SwitchDefault`
 - line: `checkstyle/JavadocMethod` over `errorprone/InvalidParam`
@@ -552,7 +584,8 @@ The pairs:
 - line: `errorprone/NonOverridingEquals` over `pmd/SuspiciousEqualsMethodName`
 - line: `errorprone/DefaultLocale` over `pmd/SimpleDateFormatNeedsLocale`
 - line: `pmd/MixedTimeUnits` over `errorprone/TimeUnitMismatch`
-- line: `pmd/LegacyCalendarApi` over `pmd/AvoidCalendarDateCreation`, `pmd/SimpleDateFormatNeedsLocale`, `errorprone/DefaultLocale`, `errorprone/DateFormatConstant`
+- line: `pmd/LegacyCalendarApi` over `pmd/AvoidCalendarDateCreation`, `pmd/SimpleDateFormatNeedsLocale`, `errorprone/DefaultLocale`, `errorprone/DateFormatConstant`, `forbiddenapis/legacy-date-time`
+- line: `pmd/DefaultTimeZone` over `forbiddenapis/legacy-date-time`
 - line: `pmd/UnclosedInlineResource` over `spotbugs/OS_OPEN_STREAM`, `spotbugs/ODR_OPEN_DATABASE_RESOURCE`, `spotbugs/OBL_UNSATISFIED_OBLIGATION`
 - line: `pmd/UseLocaleWithCaseConversions` over `errorprone/StringCaseLocaleUsage`
 - line: `spotbugs/ST_WRITE_TO_STATIC_FROM_INSTANCE_METHOD` over `errorprone/StaticAssignmentInConstructor`, `pmd/AssignmentToNonFinalStatic`
@@ -585,6 +618,8 @@ The pairs:
 - field: `errorprone/DateFormatConstant` over `spotbugs/STCAL_STATIC_SIMPLE_DATE_FORMAT_INSTANCE`
 - line: `pmd/NonThreadSafeSingleton` over `spotbugs/LI_LAZY_INIT_STATIC`, `spotbugs/SING_SINGLETON_GETTER_NOT_SYNCHRONIZED`
 - line: `kotlin-source/ChildCoroutineOutlivesResource` over `pmd/CoroutineEscapesTest`
+- line: `pmd/SqlConcatenation` over `spotbugs/SQL_NONCONSTANT_STRING_PASSED_TO_EXECUTE`, `spotbugs/SQL_PREPARED_STATEMENT_GENERATED_FROM_NONCONSTANT_STRING`
+- line: `checkstyle/MagicNumber` over `pmd/AvoidLiteralsInIfCondition`
 
 ## Standard streams and the `main` method
 

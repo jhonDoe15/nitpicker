@@ -10,6 +10,8 @@ import {
 } from './test-support/go-e2e-support.mjs';
 import { BASE_FILES } from './test-support/go-fixtures.mjs';
 import {
+  GORM_MIGRATED,
+  GORM_MODELS,
   LOOKUP,
   OWN_RULES,
   PROJECT_STATICCHECK,
@@ -36,6 +38,8 @@ describe.skipIf(!goE2eEnabled)('Go preset linters end to end', () => {
       'shop/stock/stock.go': STOCK_REFRESH,
     });
     commitBranch(project, 'catalog-values', { 'shop/status.go': STATUS });
+    commitBranch(project, 'foreign-keys', GORM_MODELS);
+    commitBranch(project, 'foreign-keys-migrated', GORM_MIGRATED);
     commitBranch(project, 'conf-ignored', {
       'shop/lookup.go': LOOKUP,
       'staticcheck.conf': SKIP_S1003,
@@ -99,6 +103,21 @@ describe.skipIf(!goE2eEnabled)('Go preset linters end to end', () => {
       'comparing with == will fail on wrapped errors. Use errors.Is to check for a specific error. If this is intended, add {"rule":"errorlint/errorlint","paths":["shop/stock.go"],"reason":"..."} to "exceptions" in nitpicker.config.json.',
       'a new root context outside package main cannot be cancelled by any caller: take `ctx context.Context` as the first parameter and pass it on. If this is intended, add {"rule":"go-rules/context-outside-entry","paths":["shop/stock/stock.go"],"reason":"..."} to "exceptions" in nitpicker.config.json.',
       'error is not nil but it returns nil. Return the error the branch checks: the error when it is set, nil when it is not. If this is intended, add {"rule":"nilerr/nilerr","paths":["shop/stock.go"],"reason":"..."} to "exceptions" in nitpicker.config.json.',
+    ]);
+  });
+
+  it('fails a GORM foreign key without an index, and leaves it to the migrations when they declare it', () => {
+    const models = gate(project, 'foreign-keys');
+    expect(newFindings(models)).toEqual(['go-rules/unindexed-foreign-key shop/models.go']);
+    expect(newMessages(models)).toEqual([
+      '`Order.CustomerID` holds the foreign key of the GORM relation `Customer.Orders`, and no index, unique constraint or primary key of `Order` starts with it: add `gorm:"index"` to `Order.CustomerID`, or put it first in a composite index. ' +
+        'Only MySQL indexes a foreign-key column by itself; PostgreSQL, SQL Server and SQLite do not, so every delete of a referenced row, and every join or lookup by the column, scans the whole table once it grows. An exception fits only when the table is known to stay small. ' +
+        'If this is intended, add {"rule":"go-rules/unindexed-foreign-key","paths":["shop/models.go"],"reason":"..."} to "exceptions" in nitpicker.config.json.',
+    ]);
+
+    const migrated = gate(project, 'foreign-keys-migrated');
+    expect(newFindings(migrated)).toEqual([
+      'repository-hygiene/foreign-key-index migrations/0001_orders.up.sql',
     ]);
   });
 

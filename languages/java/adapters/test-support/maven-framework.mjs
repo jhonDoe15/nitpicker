@@ -1,8 +1,12 @@
-import { mkdirSync, readFileSync, readdirSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, readdirSync } from 'node:fs';
 import path from 'node:path';
 import { readPinnedTools } from '../../builds/java-build.mjs';
 import { runMaven, TEST_RERUNS_OFF } from '../../maven/maven-command.mjs';
-import { moduleClasspaths, parseDependencyList, readReactor } from '../../maven/maven-project.mjs';
+import { lifecycleArgs, readReactor } from '../../maven/maven-project.mjs';
+import {
+  moduleClasspaths,
+  parseDependencyList,
+} from '../../maven/configuration/maven-classpaths.mjs';
 import { jacocoPlugin, MAVEN_PLUGINS, resolveTools } from '../../maven/maven-tools.mjs';
 import {
   archunitMatcher,
@@ -30,16 +34,21 @@ function readReport(directory, name) {
 }
 
 function buildFixture(projectRoot, { maven, reportDir, pinned }) {
+  const effectivePom = path.join(reportDir, 'effective-pom.xml');
+  runMaven({
+    projectRoot,
+    maven,
+    args: ['--quiet', `${MAVEN_PLUGINS.help}:effective-pom`, `-Doutput=${effectivePom}`],
+  });
+  const modules = readReactor(projectRoot, readFileSync(effectivePom, 'utf8'));
   runMaven({
     projectRoot,
     maven,
     args: [
       '--quiet',
-      `${MAVEN_PLUGINS.help}:effective-pom`,
-      `-Doutput=${path.join(reportDir, 'effective-pom.xml')}`,
       `${jacocoPlugin(pinned)}:prepare-agent`,
       `-Djacoco.destFile=${path.join(reportDir, 'jacoco.exec')}`,
-      'test',
+      ...lifecycleArgs(modules),
       '-Dmaven.test.failure.ignore=true',
       ...TEST_RERUNS_OFF,
       `${MAVEN_PLUGINS.dependency}:list`,
@@ -47,10 +56,7 @@ function buildFixture(projectRoot, { maven, reportDir, pinned }) {
       '-DoutputAbsoluteArtifactFilename=true',
     ],
   });
-  const [module] = readReactor(
-    projectRoot,
-    readFileSync(path.join(reportDir, 'effective-pom.xml'), 'utf8'),
-  );
+  const [module] = modules;
   const dependencies = parseDependencyList(
     readFileSync(path.join(reportDir, 'dependencies.txt'), 'utf8'),
   );
@@ -58,13 +64,13 @@ function buildFixture(projectRoot, { maven, reportDir, pinned }) {
 }
 
 function measureFixture(context) {
-  const { module, classpaths, reportDir, pinned, maven, since } = context;
+  const { module, classpaths, reportDir, pinned, maven, since, mutations } = context;
   const launcher = junitLauncherVersion(classpaths.testRuntime);
   const tools = resolveTools({
     projectRoot: module.basedir,
     maven,
     pinned,
-    launcherVersions: launcher === undefined ? [] : [launcher],
+    launcherVersions: !mutations || launcher === undefined ? [] : [launcher],
   });
   const isArchunit = archunitMatcher(module.archunitIncludes);
   const { testsRan } = collectTestResults({ module, reportDir, since, isArchunit });
@@ -73,14 +79,16 @@ function measureFixture(context) {
     module,
     reportDir,
     tools,
-    execFiles: [path.join(reportDir, 'jacoco.exec')],
+    execFiles: [path.join(reportDir, 'jacoco.exec'), ...module.jacocoDestFiles],
     since,
     testsRan,
   });
-  runPit({ module, reportDir, tools, classpaths, isArchunit });
+  if (mutations) {
+    runPit({ module, reportDir, tools, classpaths, isArchunit });
+  }
 }
 
-function fixtureFindings({ module, reportDir, policy }) {
+function fixtureFindings({ module, reportDir, policy, mutations }) {
   const projectRoot = module.basedir;
   function relativeRoots(roots) {
     return roots.map((root) => path.relative(projectRoot, root));
@@ -95,9 +103,11 @@ function fixtureFindings({ module, reportDir, policy }) {
   const archunitDir = path.join(reportDir, 'archunit');
   return [
     ...sourceRoots.flatMap((sourceRoot) => ingestJacoco(jacoco, { sourceRoot }).findings),
-    ...ingestPit(readFileSync(path.join(reportDir, 'pit/mutations.xml'), 'utf8'), { resolvePath })
-      .findings,
-    ...readdirSync(archunitDir).flatMap(
+    ...(mutations
+      ? ingestPit(readFileSync(path.join(reportDir, 'pit/mutations.xml'), 'utf8'), { resolvePath })
+          .findings
+      : []),
+    ...(existsSync(archunitDir) ? readdirSync(archunitDir) : []).flatMap(
       (file) => ingestArchunit(readReport(archunitDir, file), { resolvePath }).findings,
     ),
     ...readSlowTestFindings({
@@ -109,8 +119,15 @@ function fixtureFindings({ module, reportDir, policy }) {
   ];
 }
 
-export function mavenFrameworkFindings(projectRoot, { maven, policy }) {
-  const reportDir = path.join(projectRoot, 'target/framework-reports');
+export function mavenFrameworkFindings(
+  projectRoot,
+  {
+    maven,
+    policy = {},
+    mutations = true,
+    reportDir = path.join(projectRoot, 'target/framework-reports'),
+  },
+) {
   mkdirSync(reportDir, { recursive: true });
   const pinned = readPinnedTools();
   const since = Date.now() - CLOCK_SLACK_MS;
@@ -121,6 +138,7 @@ export function mavenFrameworkFindings(projectRoot, { maven, policy }) {
     maven,
     since,
     policy,
+    mutations,
   };
   measureFixture(context);
   return fixtureFindings(context);
