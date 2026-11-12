@@ -1,0 +1,12 @@
+[
+  {
+    "tool": "python-rules",
+    "rule": "unordered-query",
+    "mention": "order_by(User.created.desc(), User.id)"
+  },
+  {
+    "tool": "python-rules",
+    "rule": "unbounded-query-array",
+    "mention": "itertools.batched(ids, 1000)"
+  }
+]

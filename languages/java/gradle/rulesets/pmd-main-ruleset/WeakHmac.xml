@@ -1,0 +1,23 @@
+  <rule name="WeakHmac" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
+        message="Sign with HMAC-SHA256: Mac.getInstance(&quot;HmacSHA256&quot;) (or Hashing.hmacSha256, HmacAlgorithms.HMAC_SHA_256). HMAC-SHA1 stays allowed where a protocol fixes it; HMAC-MD5 is not.">
+    <priority>2</priority>
+    <properties>
+      <property name="xpath">
+        <value><![CDATA[
+//MethodCall[@MethodName = 'getInstance'][*[1][self::TypeExpression][pmd-java:typeIs('javax.crypto.Mac')]]
+  [ArgumentList/*[1][let $name := self::VariableAccess/@Name
+     return (string(@ConstValue), //VariableDeclarator[VariableId/@Name = $name]/StringLiteral/@ConstValue)
+       [matches(., '^hmac(md2|md4|md5)$', 'i')]]]
+| //MethodCall[@MethodName = 'hmacMd5'][*[1][self::TypeExpression][pmd-java:typeIs('com.google.common.hash.Hashing')]]
+| //MethodCall[starts-with(@MethodName, 'hmacMd5') or @MethodName = 'getHmacMd5']
+    [*[1][self::TypeExpression][pmd-java:typeIs('org.apache.commons.codec.digest.HmacUtils')]]
+| //*[self::FieldAccess or self::VariableAccess][@Name = 'HMAC_MD5']
+    [pmd-java:typeIs('org.apache.commons.codec.digest.HmacAlgorithms')]
+| //ConstructorCall[pmd-java:typeIs('org.bouncycastle.crypto.macs.HMac')]
+    [ArgumentList/ConstructorCall[pmd-java:typeIs('org.bouncycastle.crypto.digests.MD5Digest')
+      or pmd-java:typeIs('org.bouncycastle.crypto.digests.MD4Digest')
+      or pmd-java:typeIs('org.bouncycastle.crypto.digests.MD2Digest')]]
+]]></value>
+      </property>
+    </properties>
+  </rule>

@@ -3,6 +3,7 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import { toolConfigProperties } from './tool-config-choices.mjs';
+import { linkSentence } from '../../../../shared/messages/test-support/link-sentence.mjs';
 
 const roots = [];
 afterEach(() => {
@@ -130,6 +131,30 @@ describe('the Gradle properties of the project tool configs', () => {
     expect(readFileSync(path.join(directory, 'checkstyle-merged.xml'), 'utf8')).toBe(MERGED(100));
   });
 
+  it("hands Gradle the SpotBugs settings layered from the head build's declarations", () => {
+    const head = projectWith({
+      'build.gradle':
+        "spotbugs {\n  reportLevel = 'low'\n  excludeFilter = file('exclude.xml')\n}\n",
+      'exclude.xml': '<FindBugsFilter/>',
+    });
+    const directory = path.join(head, 'layers');
+    const settings = path.join(directory, 'spotbugs-settings.json');
+
+    expect(
+      toolConfigProperties(
+        '/base',
+        { policyRoot: head, toolPrecedence: { spotbugs: ['project'] } },
+        { directory },
+      ),
+    ).toEqual([`-Pnitpicker.spotbugs.settings=${settings}`]);
+    expect(JSON.parse(readFileSync(settings, 'utf8'))).toEqual([
+      '-effort:default',
+      '-low',
+      '-exclude',
+      path.join(head, 'exclude.xml'),
+    ]);
+  });
+
   it('fails with the missing file when the project layer is chosen without one', () => {
     expect(() =>
       toolConfigProperties(
@@ -140,7 +165,10 @@ describe('the Gradle properties of the project tool configs', () => {
         },
       ),
     ).toThrow(
-      new Error('"tools.pmd.precedence" lists "project" but config/pmd/ruleset.xml is missing'),
+      new Error(
+        '"tools.pmd.precedence" lists "project" but config/pmd/ruleset.xml is missing: create it, ' +
+          `or remove "project" from tools.pmd.precedence. ${linkSentence('projectToolConfigMissing')}`,
+      ),
     );
   });
 });

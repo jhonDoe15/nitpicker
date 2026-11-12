@@ -25,6 +25,8 @@ const TYPESCRIPT_FILES = `**/*.{${TYPESCRIPT_EXTENSIONS_IN_JAVASCRIPT_PROJECT.jo
 export const JSDOC_RULE_OPTIONS = {
   'nitpicker/no-comments': { jsdocTypes: true },
   'nitpicker/no-unknown-in-domain': { jsdoc: true },
+  'nitpicker/no-tri-state-boolean': { jsdoc: true },
+  'nitpicker/no-compatibility-shim': { jsdoc: true },
   'nitpicker/no-handwritten-boundary-guard': { jsdoc: true },
   'nitpicker/report-module-load-effects': { commonJsExports: true },
 };

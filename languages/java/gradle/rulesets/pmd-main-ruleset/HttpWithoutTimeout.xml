@@ -1,0 +1,129 @@
+  <rule name="HttpWithoutTimeout" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
+        message="Give the call a deadline: HttpRequest.newBuilder(uri).timeout(Duration.ofSeconds(10)) and HttpClient.newBuilder().connectTimeout(...) for java.net.http, setConnectTimeout and setReadTimeout on an HttpURLConnection, setDefaultRequestConfig(RequestConfig.custom().setResponseTimeout(...)) on the Apache client builder, connectTimeout and readTimeout on a JAX-RS ClientBuilder, or OkHttp, which sets timeouts by default. This HTTP call has no timeout, so a server that never answers hangs it for good.">
+    <priority>2</priority>
+    <properties>
+      <property name="xpath">
+        <value><![CDATA[
+let $chain := function($node) {
+      $node/ancestor::MethodCall[let $call := . return
+        every $step in $node/ancestor-or-self::*[ancestor::* intersect $call]
+        satisfies ($step is $node or $step/self::MethodCall) and empty($step/preceding-sibling::*)]
+    },
+    $end := function($node) { ($chain($node)[1], $node)[1] },
+    $target := function($node) {
+      string(($node/parent::VariableDeclarator/VariableId/@Name,
+        $node/parent::AssignmentExpression/*[1][self::VariableAccess or self::FieldAccess]/@Name)[1])
+    },
+    $scope := function($node) {
+      ($node/parent::VariableDeclarator/parent::LocalVariableDeclaration
+        /ancestor::*[self::MethodDeclaration or self::ConstructorDeclaration or self::Initializer
+          or self::LambdaExpression][1],
+       $node/ancestor::ClassBody[last()])[1]
+    },
+    $uses := function($node) {
+      let $name := $target($node)
+      return if ($name = '') then () else
+        $scope($node)//(VariableAccess | FieldAccess[ThisExpression])[@Name = $name]
+          [not(parent::AssignmentExpression and empty(preceding-sibling::*))]
+    },
+    $configured := function($node, $allowed) {
+      let $end := $end($node)
+      return $chain($node)/@MethodName = $allowed
+        or (some $use in $uses($end) satisfies $chain($use)/@MethodName = $allowed)
+    },
+    $escapes := function($node) {
+      some $use in $uses($end($node)) satisfies empty($chain($use))
+    },
+    $built := function($node) {
+      let $end := $end($node)
+      return $end/@MethodName = 'build' and exists($chain($node))
+        or (some $use in $uses($end) satisfies $chain($use)/@MethodName = 'build')
+    },
+    $untimedBuilder := function($node, $allowed) {
+      $built($node) and not($configured($node, $allowed)) and not($escapes($node))
+    },
+    $passedOn := function($node) {
+      exists($end($node)/parent::ArgumentList)
+        or (some $use in $uses($end($node)) satisfies exists($use/parent::ArgumentList))
+    },
+    $handedOn := function($node) {
+      exists($node/parent::ReturnStatement | $node/parent::ArgumentList) or $escapes($node)
+    },
+    $timedFactory := function($node) {
+      $end($node)/parent::ArgumentList/parent::ConstructorCall
+        [pmd-java:typeIs('org.springframework.http.client.HttpComponentsClientHttpRequestFactory')]
+        [$configured(., 'setReadTimeout') or $escapes(.)]
+    },
+    $perRequestConfig := function($node) {
+      exists($node/ancestor::ClassBody[last()]//MethodCall[@MethodName = ('setConfig', 'setRequestConfig')])
+    },
+    $notHttp := function($expression) {
+      exists($expression/descendant-or-self::MethodCall[@MethodName = ('getResource', 'getSystemResource',
+          'getResources', 'getSystemResources', 'toUri', 'toURI', 'getCodeSource', 'getLocation')])
+      or exists($expression/descendant-or-self::*[self::ConstructorCall[pmd-java:typeIs('java.net.URL')]
+          or self::MethodCall[@MethodName = 'create'][*[1][pmd-java:typeIs('java.net.URI')]]]
+        /ArgumentList/*[1]/(self::StringLiteral | self::InfixExpression/*[1][self::StringLiteral])
+        [not(starts-with(lower-case(@ConstValue), 'http'))])
+    },
+    $urlSource := function($expression) {
+      ($expression/self::ConstructorCall[pmd-java:typeIs('java.net.URL')]
+       | $expression/self::MethodCall[@MethodName = 'toURL'][*[1][pmd-java:typeIs('java.net.URI')]])
+        [not($notHttp(.))]
+    },
+    $httpUrl := function($expression) {
+      exists($urlSource($expression))
+      or exists($expression/self::VariableAccess[let $name := @Name return
+        ancestor::*[self::MethodDeclaration or self::ConstructorDeclaration or self::LambdaExpression][1]
+          //LocalVariableDeclaration/VariableDeclarator[VariableId/@Name = $name]
+          /*[2][exists($urlSource(.))]])
+    },
+    $executable := function($node) {
+      $node/ancestor::*[self::MethodDeclaration or self::ConstructorDeclaration or self::Initializer
+        or self::LambdaExpression][1]
+    }
+return (
+  //MethodCall[@MethodName = 'newBuilder'][count(ArgumentList/*) <= 1]
+    [*[1][self::TypeExpression and pmd-java:typeIs('java.net.http.HttpRequest')]]
+    [$untimedBuilder(., 'timeout')]
+  | //MethodCall[@MethodName = 'newHttpClient'][not(ArgumentList/*)]
+    [*[1][self::TypeExpression and pmd-java:typeIs('java.net.http.HttpClient')]]
+  | //MethodCall[@MethodName = 'newBuilder'][not(ArgumentList/*)]
+    [*[1][self::TypeExpression and pmd-java:typeIs('java.net.http.HttpClient')]]
+    [$untimedBuilder(., 'connectTimeout')]
+  | //MethodCall[@MethodName = 'openConnection'][*[1][pmd-java:typeIs('java.net.URL')]]
+    [parent::CastExpression[pmd-java:typeIs('java.net.HttpURLConnection')] or $httpUrl(*[1])]
+    [not($executable(.)//MethodCall[@MethodName = 'setReadTimeout'])]
+    [not(let $node := (parent::CastExpression, .)[1] return $handedOn($node))]
+  | //MethodCall[@MethodName = 'openStream'][*[1][pmd-java:typeIs('java.net.URL')]][$httpUrl(*[1])]
+  | //MethodCall[starts-with(@MethodName, 'create')][not(ArgumentList/*)]
+    [*[1][self::TypeExpression and (pmd-java:typeIs('org.apache.http.impl.client.HttpClients')
+      or pmd-java:typeIs('org.apache.hc.client5.http.impl.classic.HttpClients')
+      or pmd-java:typeIs('org.apache.hc.client5.http.impl.async.HttpAsyncClients')
+      or pmd-java:typeIs('org.apache.http.impl.nio.client.HttpAsyncClients'))]]
+    [not($timedFactory(.))][not($perRequestConfig(.))]
+  | //MethodCall[(@MethodName = 'custom' and *[1][self::TypeExpression and (
+        pmd-java:typeIs('org.apache.http.impl.client.HttpClients')
+        or pmd-java:typeIs('org.apache.hc.client5.http.impl.classic.HttpClients')
+        or pmd-java:typeIs('org.apache.hc.client5.http.impl.async.HttpAsyncClients')
+        or pmd-java:typeIs('org.apache.http.impl.nio.client.HttpAsyncClients'))])
+      or (@MethodName = 'create' and *[1][self::TypeExpression and (
+        pmd-java:typeIs('org.apache.http.impl.client.HttpClientBuilder')
+        or pmd-java:typeIs('org.apache.hc.client5.http.impl.classic.HttpClientBuilder')
+        or pmd-java:typeIs('org.apache.hc.client5.http.impl.async.HttpAsyncClientBuilder')
+        or pmd-java:typeIs('org.apache.http.impl.nio.client.HttpAsyncClientBuilder'))])]
+    [$untimedBuilder(., ('setDefaultRequestConfig', 'setDefaultSocketConfig', 'setConnectionManager',
+      'setIOReactorConfig'))]
+    [not($timedFactory(.))][not($perRequestConfig(.))]
+  | //MethodCall[@MethodName = 'newClient'][not(ArgumentList/*)]
+    [*[1][self::TypeExpression and (pmd-java:typeIs('jakarta.ws.rs.client.ClientBuilder')
+      or pmd-java:typeIs('javax.ws.rs.client.ClientBuilder'))]]
+    [not($configured(., 'property'))][not($passedOn(.))]
+  | //MethodCall[@MethodName = 'newBuilder'][not(ArgumentList/*)]
+    [*[1][self::TypeExpression and (pmd-java:typeIs('jakarta.ws.rs.client.ClientBuilder')
+      or pmd-java:typeIs('javax.ws.rs.client.ClientBuilder'))]]
+    [$untimedBuilder(., ('readTimeout', 'property', 'withConfig'))]
+)
+]]></value>
+      </property>
+    </properties>
+  </rule>

@@ -24,6 +24,45 @@ public final class Initializers {
     return value instanceof KtCallExpression ? nameOf(((KtCallExpression) value).getCalleeExpression()) : null;
   }
 
+  public static String argument(KtProperty property) {
+    KtExpression value = property.getInitializer();
+    if (value instanceof KtQualifiedExpression) {
+      value = ((KtQualifiedExpression) value).getSelectorExpression();
+    }
+    if (!(value instanceof KtCallExpression) || ((KtCallExpression) value).getValueArguments().size() != 1) {
+      return null;
+    }
+    return clip(((KtCallExpression) value).getValueArguments().get(0).getArgumentExpression());
+  }
+
+  public static KtExpression lazyValue(KtProperty property) {
+    KtExpression delegate = property.getDelegateExpression();
+    if (!(delegate instanceof KtCallExpression)
+        || !"lazy".equals(nameOf(((KtCallExpression) delegate).getCalleeExpression()))) {
+      return null;
+    }
+    for (KtLambdaArgument argument : ((KtCallExpression) delegate).getLambdaArguments()) {
+      KtLambdaExpression lambda = argument.getLambdaExpression();
+      KtBlockExpression body = lambda == null ? null : lambda.getBodyExpression();
+      if (body != null && !body.getStatements().isEmpty()) {
+        return body.getStatements().get(body.getStatements().size() - 1);
+      }
+    }
+    return null;
+  }
+
+  public static String qualifier(KtExpression initializer) {
+    return initializer instanceof KtDotQualifiedExpression
+        && ((KtDotQualifiedExpression) initializer).getSelectorExpression() instanceof KtNameReferenceExpression
+        ? clip(((KtDotQualifiedExpression) initializer).getReceiverExpression()) : null;
+  }
+
+  public static String typeArguments(KtExpression initializer) {
+    KtExpression value = initializer instanceof KtQualifiedExpression
+        ? ((KtQualifiedExpression) initializer).getSelectorExpression() : initializer;
+    return value instanceof KtCallExpression ? clip(((KtCallExpression) value).getTypeArgumentList()) : null;
+  }
+
   static String alias(KtProperty property) {
     KtExpression value = property.getInitializer();
     while (value instanceof KtDotQualifiedExpression
@@ -36,6 +75,10 @@ public final class Initializers {
 
   public static Boolean literal(KtProperty property) {
     return isLiteral(property.getInitializer()) ? Boolean.TRUE : null;
+  }
+
+  public static String literalText(KtProperty property) {
+    return isLiteral(property.getInitializer()) ? clip(property.getInitializer()) : null;
   }
 
   static boolean isLiteral(KtExpression value) {

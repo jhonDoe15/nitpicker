@@ -2,6 +2,7 @@ import { rmSync } from 'node:fs';
 import path from 'node:path';
 import { afterEach, beforeAll, describe, expect, it } from 'vitest';
 import { createGitTemplate } from '../../../../core/diff/git/test-support/git-repository.mjs';
+import { docsUrl } from '../../../../shared/messages/docs-url.mjs';
 import {
   createCleanProject,
   readReport,
@@ -47,7 +48,15 @@ describe('component-story-missing through the CLI', () => {
         location: { line: 1 },
         message:
           'Most components in this project have a story. Add src/Table.stories.tsx for Table. If this is intended, add {"rule":"component-story-missing","paths":["src/Table.tsx"],"reason":"..."} to "exceptions" in nitpicker.config.json.',
+        allowedForm: 'Add src/Table.stories.tsx for Table.',
+        exception: {
+          rule: 'component-story-missing',
+          paths: ['src/Table.tsx'],
+          reason: '...',
+        },
+        exceptionList: 'exceptions',
         classification: 'enforceable',
+        helpUri: docsUrl('docs/rules/checks.md', 'structure-component-story-missing'),
       },
     ]);
     expect(exitCode).not.toBe(0);

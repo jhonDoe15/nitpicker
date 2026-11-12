@@ -9,9 +9,12 @@ The gate can't check these; reviewers keep catching them.
 - Fix a bug where it happens. When one caller of a shared function misbehaves, change that caller,
   not the contract the other callers rely on. If the contract must change, run and extend the
   tests of its existing callers.
-- When you move code, switch every caller in the same change; keep no compatibility path.
-- A wrapper that forwards a value or callback must not turn `undefined` or `false` into a default;
-  test both.
+- When you move code, switch every caller in the same change and delete the old name; keep no
+  compatibility path. The gate rejects a `@deprecated` tag and a second exported name for one thing
+  (`export const Old = New`, `export { load as fetchUser }`); an old signature kept alive by a
+  wrapper is not checked.
+- A wrapper that forwards a value or callback must not turn `false` or `0` into a default; test
+  both.
 - Generated files: change the generator or template, then regenerate. Never edit the output.
 - Feature flags: one flag per feature, checked in the feature's `adapters/`. When a flag retires,
   delete the flag, its checks and the old path together.
@@ -22,7 +25,8 @@ The gate can't check these; reviewers keep catching them.
   module boundary), not by calling the inner function you changed.
 - Test collections with two or more items, a duplicate, and an item whose nested field is
   `undefined`.
-- Round-trip values that need escaping: `expect(parse(format(value))).toEqual(value)`.
+- In a round-trip test, use values that need escaping or mapping: quotes, newlines, non-ASCII,
+  empty and absent fields.
 - Test a duration or limit with the production constant, not a copy of its value.
 - Build fixtures from what the real producer returns, including the shapes with absent fields.
 - For measured values (sizes, positions, timings), assert relationships (no overlap, order holds),

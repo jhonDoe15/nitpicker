@@ -324,7 +324,7 @@ describe('at most one code', () => {
   it('counts a repeated code and an unknown one as more than one', () => {
     const repeated = computeInvoice({ items: [widget], discountCodes: ['SAVE10', 'save10'] });
     const mixed = computeInvoice({ items: [widget], discountCodes: ['bogus', 'SAVE10'] });
-    for (const invoice of [repeated, mixed]) {
+    const countsAsMany = (invoice: typeof repeated) => {
       expect(invoice.lines).toEqual([
         '2 x Widget @ $10.00 = $20.00',
         'Subtotal: $20.00',
@@ -334,7 +334,9 @@ describe('at most one code', () => {
         'Total: $25.99',
       ]);
       expect(invoice.discountCents).toBe(0);
-    }
+    };
+    countsAsMany(repeated);
+    countsAsMany(mixed);
   });
 });
 

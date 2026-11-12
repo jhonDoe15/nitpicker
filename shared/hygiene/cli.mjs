@@ -1,9 +1,12 @@
 import { readHeadPolicyFile } from '../head-policy.mjs';
+import { TROUBLESHOOTING_ANCHORS, withTroubleshooting } from '../messages/troubleshooting.mjs';
+import { describeError } from '../messages/error-chain.mjs';
 
 const OPTION_NAMES = {
   '--check': 'check',
   '--project-root': 'projectRoot',
   '--history-ref': 'historyRef',
+  '--baseline-root': 'baselineRoot',
 };
 
 export function parseCheckArguments(commandArguments, label = 'hygiene') {
@@ -30,7 +33,7 @@ export function runCheckCli({ commandArguments, stdout, stderr, environment, run
     return 0;
   } catch (error) {
     stderr.write(
-      `${label} check failed: ${error instanceof Error ? error.message : String(error)}\n`,
+      `${withTroubleshooting(`${label} check failed: ${describeError(error)}`, TROUBLESHOOTING_ANCHORS.analyzerCrashed)}\n`,
     );
     return 2;
   }

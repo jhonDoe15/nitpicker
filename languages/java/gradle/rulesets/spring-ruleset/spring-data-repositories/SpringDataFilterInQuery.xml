@@ -1,0 +1,39 @@
+  <rule name="SpringDataFilterInQuery" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
+        message="Filter and count in the database, with an @Query that has a where clause, a count query or an exists query, instead of loading the whole table with findAll().">
+    <priority>2</priority>
+    <properties><property name="xpath"><value><![CDATA[
+let $loaded := function($node) {
+  exists($node[self::MethodCall[@MethodName = 'findAll'][not(ArgumentList/*)]
+    [*[1][pmd-java:typeIs('org.springframework.data.repository.Repository')]]])
+},
+    $held := function($node) {
+  some $access in $node[self::VariableAccess] satisfies
+    (let $name := $access/@Name
+     return some $block in $access/ancestor::Block satisfies
+       (exists($block/LocalVariableDeclaration/VariableDeclarator[VariableId/@Name = $name][$loaded(*[2])])
+        and count($block//VariableAccess[@Name = $name]) = 1))
+},
+    $source := function($node) { $loaded($node) or $held($node) },
+    $list := function($node) {
+  $source($node)
+  or exists($node[self::MethodCall[@MethodName = 'block']
+    [*[1][self::MethodCall[@MethodName = 'collectList'][$source(*[1])]]]])
+},
+    $streamFilters := ('filter', 'count', 'anyMatch', 'allMatch', 'noneMatch', 'findFirst', 'findAny'),
+    $readsList := function($lambda) {
+  let $param := $lambda/LambdaParameterList/LambdaParameter/VariableId/@Name
+  return exists($lambda//MethodCall[@MethodName = ('size', 'isEmpty')][*[1][self::VariableAccess[@Name = $param]]])
+    or exists($lambda//MethodCall[@MethodName = $streamFilters]
+      [*[1][self::MethodCall[@MethodName = 'stream'][*[1][self::VariableAccess[@Name = $param]]]]])
+}
+return (
+  //MethodCall[@MethodName = $streamFilters][*[1][self::MethodCall[@MethodName = 'stream'][$list(*[1])]]]
+  | //MethodCall[@MethodName = ('size', 'isEmpty')][$list(*[1])]
+  | //MethodCall[@MethodName = ('filter', 'filterWhen', 'count', 'any', 'all', 'hasElements', 'next', 'take', 'elementAt')]
+      [$source(*[1])]
+  | //MethodCall[@MethodName = ('map', 'flatMap', 'filter')]
+      [*[1][self::MethodCall[@MethodName = 'collectList'][$source(*[1])]]]
+      [ArgumentList/*[1][self::MethodReference[@MethodName = ('size', 'isEmpty')] or self::LambdaExpression[$readsList(.)]]]
+)
+]]></value></property></properties>
+  </rule>

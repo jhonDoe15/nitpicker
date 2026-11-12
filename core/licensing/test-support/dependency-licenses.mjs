@@ -11,6 +11,7 @@ import { jarLicenseViolations } from './pom-licenses.mjs';
 
 export const JAVA_TOOL_LICENSES = {
   pmd: 'BSD-style',
+  forbiddenapis: 'Apache-2.0',
   spotbugs: 'LGPL-2.1',
   findSecBugs: 'LGPL-3.0',
   googleJavaFormat: 'Apache-2.0',

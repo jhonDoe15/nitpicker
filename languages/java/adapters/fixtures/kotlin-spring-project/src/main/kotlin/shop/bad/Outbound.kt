@@ -15,7 +15,7 @@ import org.springframework.web.servlet.view.RedirectView
 import java.net.URI
 import java.net.http.HttpRequest
 
-data class Target(val url: String, val currency: String)
+data class Destination(val url: String, val currency: String)
 
 @Component
 class Outbound(
@@ -49,7 +49,7 @@ class Outbound(
         return template.getForObject(again, String::class.java)
     }
 
-    fun accessors(target: Target): String? {
+    fun accessors(target: Destination): String? {
         client.get().uri(target.url).retrieve().body(String::class.java)
         return template.getForObject("$BASE/rates/{currency}", String::class.java, target.currency)
     }

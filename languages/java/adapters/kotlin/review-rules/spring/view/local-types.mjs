@@ -1,17 +1,22 @@
-import { typeArguments, typeName } from '../spring-names.mjs';
-import { BEAN_FACTORIES } from '../spring-types.mjs';
+import { callResult } from './call-types.mjs';
+import { lastSelector, normalized, parseSelector, unwrapped } from './expressions.mjs';
+import { componentOf, elementOf, memberOf } from './member-types.mjs';
 
 const THIS = /^this\./u;
 const IDENTIFIER = /^[\p{L}_][\p{L}\p{N}_]*$/u;
-const DOTTED = /^[\p{L}_][\p{L}\p{N}_]*(?:\.[\p{L}_][\p{L}\p{N}_]*)+$/u;
-const CHUNKED = /\.(?:chunked|windowed)\([^()]*\)$/u;
 const RECEIVER_HOSTS = new Set(['apply', 'run', 'with']);
 const IT_HOSTS = new Set(['let', 'also', 'takeIf', 'takeUnless']);
-const MAPS = new Set(['Map', 'MutableMap', 'HashMap', 'LinkedHashMap', 'TreeMap', 'SortedMap']);
-const MAP_VIEWS = new Set(['values', 'keys', 'entries']);
+const INDEXED_HOSTS = new Set([
+  'forEachIndexed',
+  'mapIndexed',
+  'mapIndexedNotNull',
+  'onEachIndexed',
+  'filterIndexed',
+  'flatMapIndexed',
+]);
 const INITIALIZER_TYPES = new Map([['groupBy', 'Map<Any, List<Any>>']]);
 const COMPONENT_TYPES = new Map([['partition', ['List<Any>', 'List<Any>']]]);
-const DEPTH = 6;
+const DEPTH = 8;
 const BOUNDARIES = new Set(['fun', 'class', 'object']);
 
 function lambdaReceiver(scope) {
@@ -76,24 +81,27 @@ export function declaresLocally(view, id, name) {
   return false;
 }
 
-function elementOf(type, component) {
-  const name = typeName(type).split('.').at(-1);
-  const [first, second] = typeArguments(type);
-  if (MAPS.has(name)) {
-    return component === undefined ? undefined : [first, second][component - 1];
-  }
-  return component === undefined ? first : undefined;
-}
-
 function iterableStep(scope, component) {
-  const iterable = scope.k === 'lambda' ? scope.qualifier : scope.range;
-  if (iterable === undefined || CHUNKED.test(iterable)) {
-    return { type: iterable !== undefined && component === undefined ? 'List' : undefined };
+  const iterable = scope.k === 'lambda' || scope.k === 'fun' ? scope.qualifier : scope.range;
+  if (iterable === undefined) {
+    return { type: undefined };
   }
   return {
     next: { id: scope.parent, text: iterable },
-    then: (type) => elementOf(type, component),
+    then: (type) =>
+      component === undefined ? elementOf(type) : componentOf(elementOf(type), component),
   };
+}
+
+function positionalComponent(scope, parameter) {
+  const params = scope.params ?? [];
+  const position = params.indexOf(parameter);
+  if (parameter === undefined || parameter.component !== undefined || params.length !== 2) {
+    return { component: parameter?.component };
+  }
+  return INDEXED_HOSTS.has(scope.host)
+    ? { type: position === 0 ? 'Int' : undefined, component: undefined }
+    : { component: position + 1 };
 }
 
 function parameterStep(scope, name) {
@@ -108,7 +116,8 @@ function parameterStep(scope, name) {
   if (scope.k === 'lambda' && IT_HOSTS.has(scope.host)) {
     return { next: { id: scope.parent, text: scope.qualifier } };
   }
-  return iterableStep(scope, parameter?.component);
+  const { type, component } = positionalComponent(scope, parameter);
+  return type === undefined ? iterableStep(scope, component) : { type };
 }
 
 function localStep(view, scope, name) {
@@ -121,8 +130,15 @@ function localStep(view, scope, name) {
   if (local.component !== undefined) {
     return { type: local.type ?? COMPONENT_TYPES.get(local.initializer)?.[local.component - 1] };
   }
-  if (local.type !== undefined || local.initializer !== undefined) {
-    return { type: local.type ?? INITIALIZER_TYPES.get(local.initializer) ?? local.initializer };
+  if (local.type !== undefined) {
+    return { type: local.type };
+  }
+  const initialized = initializerStep(view, scope, local);
+  if (initialized !== undefined) {
+    return initialized;
+  }
+  if (local.initializer !== undefined) {
+    return { type: INITIALIZER_TYPES.get(local.initializer) ?? local.initializer };
   }
   return local.alias === undefined
     ? { type: undefined }
@@ -159,25 +175,6 @@ function nameStep(view, id, name) {
   );
 }
 
-function mapView(ownerType, member) {
-  const [key, value] = typeArguments(ownerType);
-  const element = new Map([
-    ['keys', key],
-    ['values', value],
-  ]).get(member);
-  return element === undefined ? 'Collection' : `Collection<${element}>`;
-}
-
-function memberOf(view, ownerType, member) {
-  if (MAPS.has(typeName(ownerType).split('.').at(-1)) && MAP_VIEWS.has(member)) {
-    return mapView(ownerType, member);
-  }
-  if (member === 'environment' && view.is(ownerType, BEAN_FACTORIES)) {
-    return 'org.springframework.core.env.Environment';
-  }
-  return view.memberTypeOf(ownerType, member);
-}
-
 function receiverStep(receiver) {
   if (receiver === undefined || receiver.type !== undefined) {
     return { type: receiver?.type };
@@ -185,27 +182,70 @@ function receiverStep(receiver) {
   return { next: { id: receiver.scope, text: receiver.text } };
 }
 
+function callStep(view, site, fallback) {
+  function then(ownerType) {
+    return callResult(view, site, ownerType) ?? fallback;
+  }
+  then.total = true;
+  return site.head === undefined
+    ? { type: then(undefined) }
+    : { next: { id: site.id, text: site.head }, then };
+}
+
+function initializerStep(view, scope, local) {
+  const invocation = view.file.invocations.find(
+    (entry) =>
+      entry.assignedTo === local.name &&
+      entry.scope === scope.id &&
+      entry.line >= local.line &&
+      entry.after === undefined &&
+      entry.reference !== true,
+  );
+  if (invocation === undefined) {
+    return undefined;
+  }
+  const call = {
+    name: invocation.name,
+    typeArguments: invocation.line === local.line ? local.initializerTypeArguments : undefined,
+    arguments: invocation.arguments,
+  };
+  const fallback =
+    local.initializer === undefined
+      ? undefined
+      : (INITIALIZER_TYPES.get(local.initializer) ?? local.initializer);
+  return callStep(view, { id: scope.id, head: invocation.receiver, call }, fallback);
+}
+
 function step(view, { id, text: raw }) {
-  const text = (raw ?? '').replace(THIS, '');
+  const text = normalized(raw).replace(THIS, '');
   if (text === '' || text === 'this') {
     return receiverStep(implicitReceiver(view, id));
   }
   if (IDENTIFIER.test(text)) {
     return nameStep(view, id, text);
   }
-  if (!DOTTED.test(text)) {
+  const inner = unwrapped(text);
+  if (inner !== undefined) {
+    return { next: { id, text: inner } };
+  }
+  const parts = lastSelector(text);
+  const selector = parseSelector(parts?.selector ?? text);
+  if (selector === undefined || (parts === undefined && !selector.call)) {
     return { type: undefined };
   }
-  const split = text.lastIndexOf('.');
+  if (selector.call) {
+    return callStep(view, { id, head: parts?.head, call: selector });
+  }
   return {
-    next: { id, text: text.slice(0, split) },
-    then: (ownerType) => memberOf(view, ownerType, text.slice(split + 1)),
+    next: { id, text: parts.head },
+    then: (ownerType) => memberOf(view, ownerType, selector.name),
   };
 }
 
 function settle(transforms, type) {
   return transforms.reduce(
-    (current, transform) => (current === undefined ? undefined : transform(current)),
+    (current, transform) =>
+      current === undefined && transform.total !== true ? undefined : transform(current),
     type,
   );
 }

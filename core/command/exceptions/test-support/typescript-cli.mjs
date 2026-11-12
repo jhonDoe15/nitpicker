@@ -1,6 +1,7 @@
 import { readFileSync, symlinkSync } from 'node:fs';
 import path from 'node:path';
 import { captureOutput } from '../../../diff/reporting/test-support/output-capture.mjs';
+import { withoutHelpUris } from '../../../diff/reporting/test-support/report-reading.mjs';
 import { useGitFixtures } from '../../../diff/git/test-support/git-repository.mjs';
 
 const COMPARISON_BASE_REF = 'comparison-base';
@@ -10,7 +11,7 @@ function readReport(reports, name) {
   if (!file.startsWith(reports + path.sep)) {
     throw new Error(`report outside the output folder: ${name}`);
   }
-  return JSON.parse(readFileSync(file, 'utf8'));
+  return withoutHelpUris(JSON.parse(readFileSync(file, 'utf8')));
 }
 
 export function useTypescriptCli(runCli) {

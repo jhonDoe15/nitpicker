@@ -76,13 +76,13 @@ describe('Python conventions with the ruff config of the project', () => {
       conventions: undefined,
       printed:
         `Format with ruff: ruff format --isolated --target-version py38 --line-length 88 --config 'format.quote-style = "double"' --config 'indent-width = 4' .\n` +
-        'Ignoring ruff.toml; opt in with "tools": { "ruff": { "precedence": ["project", "nitpicker"] } }\n',
+        'Ignoring ruff.toml except lint.flake8-pytest-style; opt in with "tools": { "ruff": { "precedence": ["project", "nitpicker"] } }\n',
     });
     expect(
       follow({ preset: 'python' }, { 'pyproject.toml': '[tool.ruff]\nline-length = 99\n' }).printed,
     ).toBe(
       `Format with ruff: ruff format --isolated --target-version py38 --line-length 88 --config 'format.quote-style = "double"' --config 'indent-width = 4' .\n` +
-        'Ignoring [tool.ruff] in pyproject.toml; opt in with "tools": { "ruff": { "precedence": ["project", "nitpicker"] } }\n',
+        'Ignoring [tool.ruff] in pyproject.toml except lint.flake8-pytest-style; opt in with "tools": { "ruff": { "precedence": ["project", "nitpicker"] } }\n',
     );
     expect(follow({ preset: 'python' }, { 'a.py': DOUBLE_QUOTED }).printed).not.toContain(
       'Ignoring',
@@ -189,6 +189,39 @@ describe('Python mutmut config of the project', () => {
     const config = { preset: 'python', disable: ['mutation'] };
 
     expect(follow(config, { 'pyproject.toml': table }).printed).toBe(fixed);
+  });
+});
+
+describe('Python coverage config of the project', () => {
+  const fixed = `Format with ruff: ruff format --isolated --target-version py38 --line-length 88 --config 'format.quote-style = "double"' --config 'indent-width = 4' .\n`;
+  const notice = (what) =>
+    `Ignoring ${what} except concurrency, patch and plugins, which the run needs; opt in with "tools": { "coverage": { "precedence": ["project", "nitpicker"] } }\n`;
+
+  it('names the coverage settings that are ignored, until the project is listed', () => {
+    const excluded = '[tool.coverage.report]\nexclude_also = ["def __repr__"]\n';
+
+    expect(follow({ preset: 'python' }, { 'pyproject.toml': excluded }).printed).toBe(
+      fixed + notice('[tool.coverage] in pyproject.toml'),
+    );
+    expect(follow({ preset: 'python' }, { '.coveragerc': '[run]\ntimid = True\n' }).printed).toBe(
+      fixed + notice('.coveragerc'),
+    );
+    expect(
+      follow(
+        { preset: 'python', tools: { coverage: { precedence: LISTED } } },
+        { 'pyproject.toml': excluded },
+      ).printed,
+    ).toBe(fixed);
+  });
+
+  it('says nothing when the config only holds what the run reads or never applies', () => {
+    const read = '[coverage:run]\nconcurrency = thread\n\n[coverage:report]\nfail_under = 90\n';
+    const omitted = '[coverage:run]\nomit = gen/*\n';
+
+    expect(follow({ preset: 'python' }, { 'setup.cfg': read }).printed).toBe(fixed);
+    expect(follow({ preset: 'python' }, { 'setup.cfg': omitted }).printed).toBe(
+      fixed + notice('[coverage:*] in setup.cfg'),
+    );
   });
 });
 

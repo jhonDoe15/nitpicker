@@ -1,6 +1,10 @@
-import { readFileSync } from 'node:fs';
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
 import path from 'node:path';
+import * as prettier from 'prettier';
 import { describe, expect, it } from 'vitest';
+import { prettierExclusions } from '../../../core/fix/extensions.mjs';
+import { readLayout } from './head-policy.mjs';
 import {
   builtInExcludedGlobs,
   defaultResolvedLayout,
@@ -28,28 +32,32 @@ describe('common layout', () => {
     expect([...stryker.include].sort()).toEqual(
       [...includes.filter((glob) => glob !== 'e2e/**/*'), 'stryker.vitest.config.ts'].sort(),
     );
-    for (const root of roots) {
-      expect(knip.project.some((glob) => glob.startsWith(`${root}/**/`))).toBe(true);
-    }
+    expect(
+      roots.map((root) => knip.project.some((glob) => glob.startsWith(`${root}/**/`))),
+    ).toEqual(roots.map(() => true));
     expect(duplicates.path).toContain(sourceRoot);
     expect(duplicates.path).toContain(testRoots[0]);
   });
   it('keeps the output folders of every tool config equal to the built-in exclusions', () => {
     const defaults = path.join(import.meta.dirname, 'defaults');
     const read = (name) => readFileSync(path.join(defaults, name), 'utf8');
-    const outputGlobs = (globs) => globs.filter((glob) => /^\*{0,2}\/?\w+\/\*\*$/u.test(glob));
+    const outputGlobs = (globs) =>
+      globs.filter((glob) => /^\*{0,2}\/?\w+(?:\/\w+)*\/\*\*$/u.test(glob));
     const builtIn = [...builtInExcludedGlobs].sort();
 
-    for (const name of ['tsconfig.quality.json', 'tsconfig.stryker.json']) {
-      expect([...JSON.parse(read(name)).exclude].sort(), name).toEqual(builtIn);
-    }
+    const tsconfigs = ['tsconfig.quality.json', 'tsconfig.stryker.json'];
+    expect(tsconfigs.map((name) => [...JSON.parse(read(name)).exclude].sort())).toEqual(
+      tsconfigs.map(() => builtIn),
+    );
     expect(outputGlobs(JSON.parse(read('jscpd.json')).ignore).sort()).toEqual(builtIn);
-    for (const glob of outputGlobs(JSON.parse(read('knip.json')).ignore)) {
-      expect(builtIn).toContain(glob);
-    }
-    for (const [, glob] of read('vitest.quality.config.ts').matchAll(/'(\w+\/\*\*)'/gu)) {
-      expect(builtIn).toContain(glob);
-    }
+    const knipGlobs = outputGlobs(JSON.parse(read('knip.json')).ignore);
+    expect(knipGlobs).not.toHaveLength(0);
+    expect(knipGlobs.filter((glob) => !builtIn.includes(glob))).toEqual([]);
+    const vitestGlobs = [...read('vitest.quality.config.ts').matchAll(/'(\w+\/\*\*)'/gu)].map(
+      ([, glob]) => glob,
+    );
+    expect(vitestGlobs).not.toHaveLength(0);
+    expect(vitestGlobs.filter((glob) => !builtIn.includes(glob))).toEqual([]);
   });
   it('selects both conventional source and test locations without treating colocated tests as source', () => {
     expect([...new Set(sourceGlobs)].sort()).toEqual(['src/**/*.{ts,tsx,mts,cts,js,jsx,mjs,cjs}']);
@@ -60,10 +68,10 @@ describe('common layout', () => {
       'test/**/*.{ts,tsx,mts,cts,js,jsx,mjs,cjs}',
       'tests/**/*.{ts,tsx,mts,cts,js,jsx,mjs,cjs}',
     ]);
-    for (const file of ['test/service.test.ts', 'tests/service.test.ts', 'src/service.spec.ts']) {
-      expect(isTestFile(file)).toBe(true);
-      expect(isSourceFile(file)).toBe(false);
-    }
+    const tests = ['test/service.test.ts', 'tests/service.test.ts', 'src/service.spec.ts'];
+    expect(tests.map((file) => [isTestFile(file), isSourceFile(file)])).toEqual(
+      tests.map(() => [true, false]),
+    );
     expect(isSourceFile('src/service.ts')).toBe(true);
     expect(isSourceFile('src/main/features/service.ts')).toBe(true);
     expect(isSourceFile('src/generated/service.ts')).toBe(true);
@@ -81,11 +89,43 @@ describe('built-in excluded globs', () => {
     const matches = (file) =>
       defaultResolvedLayout.excludedGlobs.some((glob) => globMatcher(glob).test(file));
 
-    for (const folder of ['dist', 'build', 'generated', 'coverage', 'reports', 'target']) {
-      expect(matches(`${folder}/a.ts`)).toBe(true);
-      expect(matches(`src/main/features/${folder}/domain/a.ts`)).toBe(false);
-    }
+    const folders = ['dist', 'build', 'generated', 'coverage', 'reports/quality', 'target'];
+    expect(
+      folders.map((folder) => [
+        matches(`${folder}/a.ts`),
+        matches(`src/main/features/${folder}/domain/a.ts`),
+      ]),
+    ).toEqual(folders.map(() => [true, false]));
+    expect(matches('reports/monthly.ts')).toBe(false);
+    expect(matches('src/reports/monthly.ts')).toBe(false);
     expect(matches('src/node_modules/pkg/a.ts')).toBe(true);
+  });
+
+  it('format folders named like an output folder unless they are the root output folder', async () => {
+    const ignorePath = path.join(import.meta.dirname, 'defaults/.prettierignore');
+    const ignored = async (file) =>
+      (await prettier.getFileInfo(path.join(import.meta.dirname, 'defaults', file), { ignorePath }))
+        .ignored;
+    const fixExcluded = (file) => prettierExclusions.some((pattern) => pattern.test(file));
+    const files = [
+      'reports/quality/diff/a.json',
+      'coverage/a.json',
+      '.stryker-tmp/a.ts',
+      'reports/monthly.ts',
+      'src/reports/monthly.ts',
+      'src/coverage/a.ts',
+    ];
+    const results = await Promise.all(
+      files.map(async (file) => [file, await ignored(file), fixExcluded(file)]),
+    );
+    expect(results).toEqual([
+      ['reports/quality/diff/a.json', true, true],
+      ['coverage/a.json', true, true],
+      ['.stryker-tmp/a.ts', true, true],
+      ['reports/monthly.ts', false, false],
+      ['src/reports/monthly.ts', false, false],
+      ['src/coverage/a.ts', false, false],
+    ]);
   });
 
   it('lint and type-check hand-written declaration files but keep them out of runtime checks', () => {
@@ -194,5 +234,21 @@ describe('layout.excludedGlobs', () => {
     expect(layout.isExcluded('src/vendor/a.ts')).toBe(true);
     expect(new RegExp(layout.excludePattern).test('src/hidden/big.ts')).toBe(true);
     expect(layout.isSourceFile('src/shown.ts')).toBe(true);
+  });
+});
+
+describe('the layout read from the head policy file', () => {
+  it('is resolved once per policy content and again when the file changes', () => {
+    const root = mkdtempSync(path.join(tmpdir(), 'nitpicker-layout-policy-'));
+    const environment = { NITPICKER_POLICY: path.join(root, 'policy.json') };
+    try {
+      writeFileSync(environment.NITPICKER_POLICY, '{"layout":{"entryPoints":["a.mjs"]}}');
+      const first = readLayout(environment);
+      expect(readLayout(environment)).toBe(first);
+      writeFileSync(environment.NITPICKER_POLICY, '{"layout":{"entryPoints":["b.mjs"]}}');
+      expect(readLayout(environment).entryPoints).toEqual(['b.mjs']);
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
   });
 });

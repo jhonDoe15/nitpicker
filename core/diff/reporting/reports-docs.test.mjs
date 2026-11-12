@@ -3,6 +3,7 @@ import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { SNAPSHOT_REPORT_FILE_NAMES } from '../../snapshot/reporters.mjs';
 import { REPORT_FILE_NAMES } from './reporters.mjs';
+import { guidePages, guideText } from '../../../shared/reference/build/guide-pages.mjs';
 
 const REPOSITORY = path.join(import.meta.dirname, '../../..');
 const DOCS = path.join(REPOSITORY, 'docs');
@@ -36,7 +37,8 @@ function guides() {
     ['README.md', readFileSync(path.join(REPOSITORY, 'README.md'), 'utf8')],
     ...readdirSync(DOCS)
       .filter((name) => name.endsWith('.md'))
-      .map((name) => [`docs/${name}`, readDoc(name)]),
+      .flatMap((name) => guidePages(`docs/${name}`))
+      .map((file) => [file, guideText(file)]),
   ];
 }
 
@@ -48,10 +50,11 @@ describe('report files in the docs', () => {
     expect(unnamedIn(readDoc('agents-snippet.md'))).toEqual([]);
   });
   it('names no report file that no run writes', () => {
-    for (const text of [reportsSection(), readDoc('agents-snippet.md')]) {
-      const named = [...text.matchAll(REPORT_FILE_PATTERN)].map(([, name]) => name);
-      expect(named.filter((name) => !REPORT_FILES.has(name))).toEqual([]);
-    }
+    const named = [reportsSection(), readDoc('agents-snippet.md')].flatMap((text) =>
+      [...text.matchAll(REPORT_FILE_PATTERN)].map(([, name]) => name),
+    );
+    expect(named).not.toHaveLength(0);
+    expect(named.filter((name) => !REPORT_FILES.has(name))).toEqual([]);
   });
   it('names only files the CLI writes wherever the README and the guides mention a report', () => {
     const unknown = guides().flatMap(([file, text]) =>

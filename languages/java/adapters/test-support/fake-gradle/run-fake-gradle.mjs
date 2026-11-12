@@ -101,6 +101,12 @@ function writeKotlinReports(module) {
   if (metrics !== undefined) {
     writeFileSync(moduleFile(module, 'kotlin-metrics.json'), bytes(run, metrics));
   }
+  const facts = [inside(module, 'kotlin-mutation-facts.json'), 'kotlin-mutation-facts.json'].find(
+    (file) => exists(run, file),
+  );
+  if (facts !== undefined) {
+    writeFileSync(moduleFile(module, 'kotlin-mutation-facts.json'), bytes(run, facts));
+  }
 }
 
 function writeJavaReports(module) {
@@ -127,11 +133,17 @@ function writeJavaReports(module) {
       : '[]',
   );
   writeFileSync(moduleFile(module, 'classes.json'), '{"files":{},"classes":[]}');
+  writeFileSync(
+    moduleFile(module, 'errorprone.json'),
+    exists(run, inside(module, 'errorprone.json'))
+      ? bytes(run, inside(module, 'errorprone.json'))
+      : '[]\n',
+  );
 }
 
 function copyJdeps(module) {
   const { run } = module;
-  for (const name of ['jdeps.txt', 'jdeps-classes.txt', 'jdeps-test.txt']) {
+  for (const name of ['jdeps.txt', 'jdeps-classes.txt', 'jdeps-test.txt', 'permits.txt']) {
     const source = [inside(module, name), inside(module, `jdeps/${name}`)].find((file) =>
       exists(run, file),
     );

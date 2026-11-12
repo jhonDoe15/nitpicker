@@ -1,0 +1,65 @@
+  <rule name="SpringHttpClientTimeouts" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
+        message="Build this HTTP client with connect and read timeouts, from the injected RestClient.Builder or RestTemplateBuilder (spring.http.client.* properties), with a request factory or connector that sets them, or with connectTimeout and readTimeout on the builder; give a Reactor Netty HttpClient a responseTimeout. A client without timeouts waits forever for a slow server.">
+    <priority>2</priority>
+    <properties><property name="xpath"><value><![CDATA[
+let $onlyFrom := function($method, $callers) {
+  let $uses := $method/parent::ClassBody//(MethodCall[*[1][self::ArgumentList or self::ThisExpression[not(*)]]]
+      | MethodReference[*[1][self::ThisExpression[not(*)]]])[@MethodName = $method/@Name]
+  return $method/@Visibility = 'private' and exists($uses)
+    and (every $use in $uses satisfies exists($use/ancestor::* intersect $callers))
+},
+    $setupMethod := function($method) {
+  let $body := $method/parent::ClassBody,
+      $starts := ($body/ConstructorDeclaration, $body/Initializer, $body/FieldDeclaration,
+        $body/MethodDeclaration[ModifierList/Annotation[pmd-java:typeIs('org.springframework.context.annotation.Bean')]]),
+      $helpers := $body/MethodDeclaration[$onlyFrom(., $starts)]
+  return exists($method intersect ($starts, $helpers, $body/MethodDeclaration[$onlyFrom(., ($starts, $helpers))]))
+},
+    $setup := function($node) {
+  not($node/ancestor::MethodDeclaration)
+  or $setupMethod($node/ancestor::MethodDeclaration[1])
+  or $node/ancestor::MethodDeclaration[1][pmd-java:modifiers() = 'static']
+    [exists($node/ancestor::ReturnStatement[ancestor::MethodDeclaration[1] is $node/ancestor::MethodDeclaration[1]])]
+},
+    $chain := function($node) {
+      $node/ancestor::MethodCall[let $call := . return
+        not($node/ancestor-or-self::*[exists(ancestor::*[. is $call])][preceding-sibling::*])]
+    },
+    $target := function($node) {
+      string(($node/parent::VariableDeclarator/VariableId/@Name, $node/parent::AssignmentExpression/*[1]/@Name)[1])
+    },
+    $scope := function($node) {
+      ($node/parent::VariableDeclarator/parent::LocalVariableDeclaration
+        /ancestor::*[self::MethodDeclaration or self::ConstructorDeclaration or self::Initializer][1],
+       $node/ancestor::ClassBody[last()])[1]
+    }
+return (
+  //ConstructorCall[pmd-java:typeIs('org.springframework.web.client.RestTemplate')][not(ArgumentList/*)]
+    [not(let $name := $target(.)
+      return $scope(.)//MethodCall[@MethodName = 'setRequestFactory'][*[1][@Name = $name]])]
+  | //ConstructorCall[pmd-java:typeIs('org.springframework.http.client.SimpleClientHttpRequestFactory')
+      or pmd-java:typeIs('org.springframework.http.client.HttpComponentsClientHttpRequestFactory')][not(ArgumentList/*)]
+    [not(let $name := $target(.)
+      return $scope(.)//MethodCall[@MethodName = ('setConnectTimeout', 'setReadTimeout', 'setConnectionRequestTimeout')]
+        [*[1][@Name = $name]])]
+  | //MethodCall[@MethodName = 'create']
+      [*[1][self::TypeExpression and (pmd-java:typeIs('org.springframework.web.client.RestClient')
+        or pmd-java:typeIs('org.springframework.web.reactive.function.client.WebClient'))]]
+      [not(ArgumentList/*[pmd-java:typeIs('org.springframework.web.client.RestTemplate')])]
+  | //MethodCall[@MethodName = ('builder', 'newBuilder')][not(ArgumentList/*)]
+      [*[1][self::TypeExpression and (pmd-java:typeIs('org.springframework.web.client.RestClient')
+        or pmd-java:typeIs('org.springframework.web.reactive.function.client.WebClient'))]]
+      [not($chain(.)[@MethodName = ('requestFactory', 'clientConnector')])]
+  | //ConstructorCall[pmd-java:typeIs('org.springframework.boot.web.client.RestTemplateBuilder')
+      or pmd-java:typeIs('org.springframework.boot.restclient.RestTemplateBuilder')][not(ArgumentList/*)]
+      [not($chain(.)[@MethodName = ('connectTimeout', 'readTimeout', 'setConnectTimeout', 'setReadTimeout',
+        'requestFactory', 'requestFactorySettings', 'requestFactoryBuilder')])]
+  | //MethodCall[@MethodName = ('create', 'newConnection')]
+      [*[1][self::TypeExpression and pmd-java:typeIs('reactor.netty.http.client.HttpClient')]]
+      [not($chain(.)[@MethodName = 'responseTimeout'])]
+      [not(let $name := $target(.)
+        return $scope(.)//MethodCall[@MethodName = 'responseTimeout'][*[1][@Name = $name]])]
+  | //ConstructorCall[pmd-java:typeIs('org.springframework.http.client.reactive.ReactorClientHttpConnector')][not(ArgumentList/*)]
+)[$setup(.)]
+]]></value></property></properties>
+  </rule>

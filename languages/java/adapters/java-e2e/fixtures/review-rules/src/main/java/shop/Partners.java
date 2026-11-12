@@ -43,7 +43,7 @@ public final class Partners {
 
   public int status(URL url) throws IOException {
     HttpURLConnection connection = (HttpURLConnection) url.openConnection(); // violation: HttpWithoutTimeout
-    connection.setReadTimeout(1_000);
+    connection.setConnectTimeout(1_000);
     return connection.getResponseCode();
   }
 

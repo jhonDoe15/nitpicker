@@ -1,5 +1,6 @@
 import { existsSync } from 'node:fs';
 import path from 'node:path';
+import { TROUBLESHOOTING_ANCHORS, withTroubleshooting } from '../messages/troubleshooting.mjs';
 
 export const JSCPD_PROJECT_FILE = '.jscpd.json';
 
@@ -9,16 +10,27 @@ export function precedenceLayers(precedence = ['nitpicker']) {
   return { usesProject: project !== -1, nitpickerFirst: nitpicker !== -1 && nitpicker < project };
 }
 
-function projectOptIn(tool) {
-  return `"tools": { "${tool}": { "precedence": ["project", "nitpicker"] } }`;
+function shownSetting(value) {
+  return Array.isArray(value)
+    ? `[${value.map((item) => JSON.stringify(item)).join(', ')}]`
+    : JSON.stringify(value);
+}
+
+function projectOptIn(tool, settings) {
+  const merged = { ...settings, precedence: ['project', 'nitpicker'] };
+  const shown = Object.entries(merged).map(([key, value]) => `"${key}": ${shownSetting(value)}`);
+  return `"tools": { "${tool}": { ${shown.join(', ')} } }`;
 }
 
 export function missingProjectConfig(tool, looked) {
-  return `"tools.${tool}.precedence" lists "project" but ${looked} is missing: create it, or remove "project" from tools.${tool}.precedence`;
+  return withTroubleshooting(
+    `"tools.${tool}.precedence" lists "project" but ${looked} is missing: create it, or remove "project" from tools.${tool}.precedence`,
+    TROUBLESHOOTING_ANCHORS.projectToolConfigMissing,
+  );
 }
 
-export function ignoredConfigNotice(ignored, tool) {
-  return `Ignoring ${ignored}; opt in with ${projectOptIn(tool)}`;
+export function ignoredConfigNotice(ignored, tool, settings = {}) {
+  return `Ignoring ${ignored}; opt in with ${projectOptIn(tool, settings)}`;
 }
 
 export function jscpdIgnoredNotices(config, projectRoot) {

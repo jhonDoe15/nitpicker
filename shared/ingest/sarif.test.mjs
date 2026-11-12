@@ -38,9 +38,9 @@ describe('ingestSarif', () => {
     const { findings } = ingestSarifText(fixture('sarif-base.json'), options);
     expect(findings).toHaveLength(4);
     expect(parseAnalyzerReport({ findings }, 'sarif').findings).toEqual(findings);
-    for (const finding of findings) {
-      expect(Object.keys(finding).every((key) => FINDING_KEYS.has(key))).toBe(true);
-    }
+    expect(
+      findings.map((finding) => Object.keys(finding).every((key) => FINDING_KEYS.has(key))),
+    ).toEqual(findings.map(() => true));
   });
 
   it('keeps identity stable when lines move', () => {

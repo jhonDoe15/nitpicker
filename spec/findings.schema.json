@@ -9,6 +9,11 @@
     "findings": {
       "type": "array",
       "items": { "$ref": "#/$defs/finding" }
+    },
+    "moduleImports": {
+      "description": "Optional. Import edges from a production file to the folder of a production file it imports, published by language analyzers when history.coChange is on. Core joins them into co-change findings and drops them from the report.",
+      "type": "array",
+      "items": { "$ref": "#/$defs/moduleImport" }
     }
   },
   "$defs": {
@@ -16,6 +21,21 @@
       "type": "string",
       "minLength": 1,
       "pattern": "^[^\\u0000]+$"
+    },
+    "moduleImport": {
+      "type": "object",
+      "required": ["from", "to"],
+      "additionalProperties": false,
+      "properties": {
+        "from": {
+          "$ref": "#/$defs/nonEmptyString",
+          "description": "Importing file, project-relative."
+        },
+        "to": {
+          "$ref": "#/$defs/nonEmptyString",
+          "description": "Imported folder, project-relative."
+        }
+      }
     },
     "finding": {
       "type": "object",
@@ -40,7 +60,23 @@
           "description": "enforceable findings fail the gate when new; descriptive findings are report-only; tool-error findings mark an analyzer failure.",
           "enum": ["enforceable", "descriptive", "tool-error"]
         },
+        "allowedForm": {
+          "description": "What to write instead, as the message states it: the sentence or sentences that name the accepted form of the code. It must be part of `message`; left out when the rule states none apart from the problem.",
+          "$ref": "#/$defs/nonEmptyString"
+        },
+        "exception": {
+          "description": "The entry that accepts this finding when it is intended, as the message prints it. The engine fills it in from the sentence the message ends with (`If this is intended, add {...} to \"exceptions\" in nitpicker.config.json.`) when the analyzer leaves it out, and refuses one that differs from that sentence or that a message without the sentence carries. Its `reason` is a placeholder to replace.",
+          "$ref": "#/$defs/exception"
+        },
+        "exceptionList": {
+          "description": "The list of nitpicker.config.json that takes `exception`: `exceptions`, or `python.exceptions` for the Python rules the top-level list does not take.",
+          "enum": ["exceptions", "python.exceptions"]
+        },
         "symbol": { "$ref": "#/$defs/nonEmptyString" },
+        "policyKind": {
+          "description": "On a policy-loosened finding of a report: which kind of policy change it is, which picks the guidance its message gives.",
+          "$ref": "#/$defs/nonEmptyString"
+        },
         "location": { "$ref": "#/$defs/location" },
         "metric": { "$ref": "#/$defs/metric" },
         "ratchet": { "$ref": "#/$defs/ratchet" },
@@ -48,11 +84,111 @@
           "description": "The words of the message. A new finding of three or more tokens counts as already present when the base has an unmatched finding with the same tool, rule, path and classification, the same number of tokens and at most one differing token.",
           "type": "array",
           "items": { "$ref": "#/$defs/nonEmptyString" }
-        }
+        },
+        "anchor": { "$ref": "#/$defs/anchor" },
+        "helpUri": {
+          "description": "Link to the page that explains the rule. Nitpicker fills it in new-findings.json from its rule reference (docs/rules); an analyzer may set its own.",
+          "allOf": [{ "$ref": "#/$defs/nonEmptyString" }, { "pattern": "^https?://\\S+$" }]
+        },
+        "toolNotRun": {
+          "description": "Marks a descriptive notice that this snapshot has no report from `tool`. When the base carries one, the comparison reports the head's enforceable findings of that tool as descriptive, since nothing tells which of them the change added.",
+          "const": true
+        },
+        "notRunScope": {
+          "description": "Narrows a toolNotRun notice to the findings of `tool` whose `path` lies in one of these project-relative directories (`.` is the whole project), such as one module's source roots. Without it the notice covers the whole project. On the base, the notice also covers the head path of each file renamed out of these directories; the directories themselves never follow a move. On the head, a notice counts as broken by the change unless a base notice of the same tool has the same comparison key or the base notices of the tool together cover each of its directories.",
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$ref": "#/$defs/nonEmptyString"
+          }
+        },
+        "notRunIdentityPrefix": {
+          "description": "Narrows a toolNotRun notice further, to the findings of `tool` whose `identity` starts with this prefix, such as `cpd:` when PMD CPD did not run while jscpd, which reports the same tool, did. On the head, a notice counts as covered only by base notices with the same prefix.",
+          "$ref": "#/$defs/nonEmptyString"
+        },
+        "cause": { "$ref": "#/$defs/cause" }
       },
+      "allOf": [
+        {
+          "if": { "required": ["exception"] },
+          "then": { "required": ["exceptionList"] }
+        },
+        {
+          "if": { "required": ["exceptionList"] },
+          "then": { "required": ["exception"] }
+        },
+        {
+          "if": {
+            "required": ["toolNotRun"]
+          },
+          "then": {
+            "properties": {
+              "classification": {
+                "const": "descriptive"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "required": ["notRunScope"]
+          },
+          "then": {
+            "required": ["toolNotRun"]
+          }
+        },
+        {
+          "if": {
+            "required": ["notRunIdentityPrefix"]
+          },
+          "then": {
+            "required": ["toolNotRun"]
+          }
+        }
+      ],
       "if": { "required": ["metric"] },
       "then": {
         "properties": { "classification": { "const": "descriptive" } }
+      }
+    },
+    "exception": {
+      "description": "An entry of the `exceptions` list of nitpicker.config.json.",
+      "type": "object",
+      "required": ["rule", "paths", "reason"],
+      "properties": {
+        "rule": { "$ref": "#/$defs/nonEmptyString" },
+        "paths": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "$ref": "#/$defs/nonEmptyString" }
+        },
+        "reason": { "$ref": "#/$defs/nonEmptyString" },
+        "packages": { "type": "array", "items": { "type": "string" } },
+        "function": { "type": "string" },
+        "name": { "type": "string" }
+      }
+    },
+    "cause": {
+      "description": "The units around a finding that measures more than one file. `folders` are the folders of the files the finding is about; `units` are the neighbouring features or packages whose dependencies move its numbers, each with its folders, at most three of its files and its file count. A new finding none of whose folders hold a changed file names the changed files of these units in its message.",
+      "type": "object",
+      "required": ["folders", "units"],
+      "additionalProperties": false,
+      "properties": {
+        "folders": { "type": "array", "items": { "$ref": "#/$defs/nonEmptyString" } },
+        "units": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["unit", "folders", "files", "count"],
+            "additionalProperties": false,
+            "properties": {
+              "unit": { "$ref": "#/$defs/nonEmptyString" },
+              "folders": { "type": "array", "items": { "$ref": "#/$defs/nonEmptyString" } },
+              "files": { "type": "array", "items": { "$ref": "#/$defs/nonEmptyString" } },
+              "count": { "type": "integer", "minimum": 1 }
+            }
+          }
+        }
       }
     },
     "location": {
@@ -61,8 +197,25 @@
       "additionalProperties": false,
       "properties": {
         "line": { "type": "integer", "minimum": 1 },
-        "column": { "type": "integer", "minimum": 1 },
+        "column": {
+          "description": "1-based column in UTF-16 code units, a tab counting as one; adapters convert the columns of tools that count code points, UTF-8 bytes or tab stops.",
+          "type": "integer",
+          "minimum": 1
+        },
         "endLine": { "type": "integer", "minimum": 1 }
+      }
+    },
+    "anchor": {
+      "description": "A second identity that leaves out the function's name and signature. A new finding counts as present when the base has an unmatched finding with the same tool, rule, path (renames applied), classification and anchor key, so a renamed function, a renamed class, a new parameter or an overload added above keeps its findings.",
+      "type": "object",
+      "required": ["key"],
+      "additionalProperties": false,
+      "properties": {
+        "key": { "$ref": "#/$defs/nonEmptyString" },
+        "requireUnchangedLine": {
+          "description": "When true, only a finding whose line the change left as it was can match by anchor, so code moved into a new function stays new.",
+          "type": "boolean"
+        }
       }
     },
     "ratchet": {
@@ -72,13 +225,25 @@
       "additionalProperties": false,
       "properties": {
         "key": { "$ref": "#/$defs/nonEmptyString" },
+        "declarationKey": {
+          "description": "A ratchet key that names the function by its signature or declaration line. Base findings are matched by it before `key`, so an overload added above an edited function does not take its place.",
+          "$ref": "#/$defs/nonEmptyString"
+        },
         "value": { "type": "number" },
         "worseMessage": {
-          "description": "Message to report instead of `message` when the finding is new only because its value grew past the base value; `{base}` is replaced with the base value.",
+          "description": "Message to report instead of `message` (with `worseAllowedForm` for `allowedForm`) when the finding is new only because its value grew past the base value; `{base}` is replaced with the base value.",
+          "$ref": "#/$defs/nonEmptyString"
+        },
+        "worseAllowedForm": {
+          "description": "The `allowedForm` to report together with `worseMessage`; `{base}` is replaced with the base value.",
           "$ref": "#/$defs/nonEmptyString"
         },
         "growthAdvice": {
-          "description": "Text appended to `message` when the finding is new while the base already had findings under the same ratchet key; `{base}` is replaced with the base value.",
+          "description": "Text added to `message`, before its exception sentence, when the finding is new while the base already had findings under the same ratchet key; `{base}` is replaced with the base value.",
+          "$ref": "#/$defs/nonEmptyString"
+        },
+        "growthAllowedForm": {
+          "description": "The part of `growthAdvice` that names the allowed form; it is appended to `allowedForm` when `growthAdvice` is added to `message`.",
           "$ref": "#/$defs/nonEmptyString"
         },
         "heldMessage": {
@@ -97,6 +262,32 @@
           "description": "With `pathIsFolder`: the number of files in the folder, when `value` is not that number. A base finding is held at a new path when more than half of these files were renamed there.",
           "type": "integer",
           "minimum": 1
+        },
+        "mustKeepUnchangedLines": {
+          "description": "Line ranges the finding spans (project-relative paths), on the base finding and on the head one. A head finding is held against a base finding with the same ratchet key only when, in each range, more than half of the lines are lines the change did not add or edit that map back (through the diff hunks) into the base finding's range of the same file; without a base range or a line map, only the majority of unchanged lines is checked.",
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["path", "startLine", "endLine"],
+            "additionalProperties": false,
+            "properties": {
+              "path": {
+                "$ref": "#/$defs/nonEmptyString"
+              },
+              "startLine": {
+                "type": "integer",
+                "minimum": 1
+              },
+              "endLine": {
+                "type": "integer",
+                "minimum": 1
+              }
+            }
+          }
+        },
+        "divisible": {
+          "description": "When true, the base value is shared: several head findings with the same key are held while their values add up to no more than one unmatched base finding's value (a legacy clone split in two).",
+          "type": "boolean"
         }
       }
     },

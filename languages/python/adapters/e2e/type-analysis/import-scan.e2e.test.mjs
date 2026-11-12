@@ -15,7 +15,7 @@ afterEach(() => {
   }
 });
 
-function scan(code) {
+function scanReport(code) {
   const root = realpathSync(mkdtempSync(path.join(tmpdir(), 'nitpicker-import-scan-')));
   const reportRoot = realpathSync(mkdtempSync(path.join(tmpdir(), 'nitpicker-import-report-')));
   roots.push(root, reportRoot);
@@ -28,9 +28,23 @@ function scan(code) {
     reportRoot,
   });
   scanImports(context, run);
-  return readImportsReport(reportRoot).imports['src/mod.py'].map(
+  return readImportsReport(reportRoot).imports['src/mod.py'];
+}
+
+function scan(code) {
+  return scanReport(code).map(
     ({ module, names, typeOnly }) => `${module ?? '-'} ${names.join(',')} ${String(typeOnly)}`,
   );
+}
+
+function guards(code) {
+  return scanReport(code).map(
+    ({ names, guarded, line }) => `${names.join(',')} ${String(guarded)} ${String(line)}`,
+  );
+}
+
+function locals(code) {
+  return scanReport(code).map(({ names, local }) => `${names.join(',')} ${String(local)}`);
 }
 
 describe.skipIf(!pythonE2eEnabled)('import scan of if TYPE_CHECKING blocks', () => {
@@ -99,5 +113,63 @@ describe.skipIf(!pythonE2eEnabled)('import scan of if TYPE_CHECKING blocks', () 
     expect(scan(`import os\ntotal = ${Array(2500).fill('1').join(' + ')}\n`)).toEqual([
       '- os false',
     ]);
+  });
+});
+
+describe.skipIf(!pythonE2eEnabled)('import scan of guarded imports', () => {
+  it.each([
+    [
+      'try:\n    import a\nexcept ImportError:\n    import b\nelse:\n    import c\n',
+      ['a true 2', 'b true 4', 'c true 6'],
+    ],
+    ['try:\n    import a\nexcept (ValueError, ModuleNotFoundError):\n    pass\n', ['a true 2']],
+    ['try:\n    import a\nexcept:\n    pass\n', ['a true 2']],
+    ['try:\n    import a\nexcept ValueError:\n    pass\n', ['a false 2']],
+    [
+      'try:\n    shell = get_ipython()\nexcept NameError:\n    pass\nelse:\n    import IPython\n',
+      ['IPython true 6'],
+    ],
+    ['with contextlib.suppress(ImportError):\n    import a\n', ['a true 2']],
+    ['with open(p):\n    import a\n', ['a false 2']],
+    [
+      'if sys.version_info >= (3, 11):\n    import a\nelse:\n    import b\n',
+      ['a true 2', 'b true 4'],
+    ],
+    ['if os.name == "nt":\n    import a\n', ['a true 2']],
+    ['if PY2:\n    import a\n', ['a true 2']],
+    ['if not _HAS_NUMPY:\n    import a\n', ['a true 2']],
+    [
+      'from sys import platform\nif platform == "darwin":\n    import a\n',
+      ['platform false 1', 'a true 3'],
+    ],
+    ['if os.environ.get("X"):\n    import a\n', ['a true 2']],
+    ['is_windows = sys.platform == "win32"\nif is_windows:\n    import a\n', ['a true 3']],
+    ['limit = MAX_ROWS\nif limit:\n    import a\n', ['a false 3']],
+    [
+      'try:\n    result = go()\nexcept Exception:\n    result = None\nif result:\n    import a\n',
+      ['a false 6'],
+    ],
+    ['if find_spec("a"):\n    import a\n', ['a true 2']],
+    ['if debug:\n    import a\n', ['a false 2']],
+    [
+      'has_b = False\ntry:\n    import b\n    has_b = True\nexcept ImportError:\n    pass\nif has_b:\n    import c\n',
+      ['b true 3', 'c true 8'],
+    ],
+    [
+      'def f():\n    try:\n        import a\n    except Exception:\n        a = None\n',
+      ['a true 3'],
+    ],
+  ])('%j', (code, expected) => {
+    expect(guards(code)).toEqual(expected);
+  });
+});
+
+describe.skipIf(!pythonE2eEnabled)('import scan of function-local imports', () => {
+  it('marks imports inside functions and lambdas, not inside classes', () => {
+    expect(
+      locals(
+        'import a\nclass C:\n    import b\n    def m(self):\n        import c\nasync def f():\n    import d\n',
+      ),
+    ).toEqual(['a false', 'b false', 'c true', 'd true']);
   });
 });

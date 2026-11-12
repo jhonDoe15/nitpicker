@@ -1,0 +1,19 @@
+  <rule name="NegatedOperands" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
+        message="Negate once: !a &amp;&amp; !b is !(a || b), and !a || !b is !(a &amp;&amp; b).">
+    <priority>3</priority>
+    <properties>
+      <property name="xpath">
+        <value><![CDATA[
+//InfixExpression[@Operator = ('&&', '||')]
+  [let $op := @Operator,
+       $top := .,
+       $chain := ($top, $top//InfixExpression[@Operator = $op]
+         [every $between in (ancestor::* intersect $top/descendant::*)
+          satisfies $between[self::InfixExpression][@Operator = $op]]),
+       $operands := $chain/*[not(self::InfixExpression[@Operator = $op])]
+   return not(parent::InfixExpression[@Operator = $op])
+     and (every $operand in $operands satisfies $operand[self::UnaryExpression][@Operator = '!'])]
+]]></value>
+      </property>
+    </properties>
+  </rule>

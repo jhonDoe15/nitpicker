@@ -137,6 +137,12 @@ function addCrapFunction(
           name: entry.function,
           identity: violationIdentity,
           ratchetKey: `function:${entry.function}:occurrence:${String(violationOccurrence)}:crap`,
+          ...(entry.anchorHash === undefined
+            ? {}
+            : {
+                anchor: `function:crap:text:${entry.anchorHash}`,
+                declarationKey: `function:${entry.function}:declaration:${entry.declarationHash}:crap`,
+              }),
           line: entry.lines?.start,
           endLine: entry.lines?.end,
           crap: entry.crap,
@@ -189,6 +195,34 @@ export function normalizeMutation(report, analyzerName) {
   return findings;
 }
 
+const CAUGHT_MUTANT_STATUSES = new Set(['Killed', 'Timeout']);
+
+function uncoveredWhenUnreached(mutant) {
+  return mutant.status === 'Survived' ? { ...mutant, status: 'NoCoverage', coveredBy: [] } : mutant;
+}
+
+export function withUnreachedMutantsUncovered(report, coverageAnalysis) {
+  const files = Object.entries(report.files ?? {});
+  const mutants = files.flatMap(([, file]) => file.mutants ?? []);
+  const coverageMissing = mutants.every((mutant) => mutant.coveredBy === undefined);
+  if (
+    coverageAnalysis === 'off' ||
+    !coverageMissing ||
+    mutants.some((mutant) => CAUGHT_MUTANT_STATUSES.has(mutant.status))
+  ) {
+    return report;
+  }
+  return {
+    ...report,
+    files: Object.fromEntries(
+      files.map(([filePath, file]) => [
+        filePath,
+        { ...file, mutants: (file.mutants ?? []).map(uncoveredWhenUnreached) },
+      ]),
+    ),
+  };
+}
+
 function collectFileMutants(file, { filePath, mutants, statusCounts, occurrences }) {
   for (const mutant of file.mutants ?? []) {
     const status = mutant.status ?? 'Unknown';
@@ -209,6 +243,7 @@ function neutralMutant(mutant, { filePath, status, occurrences }) {
   return {
     path: filePath,
     identity: `${semanticIdentity}|occurrence:${String(occurrence)}`,
+    ...(mutant.sourceHash === undefined ? {} : { anchor: semanticIdentity }),
     status,
     ...(status === 'Ignored' ? { hiddenByComment: true } : {}),
     label: mutant.mutatorName ?? 'mutant',

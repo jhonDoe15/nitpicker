@@ -11,6 +11,7 @@ import {
   productionLayoutConfigFor,
 } from '../eslint-config/policy/production-policy.mjs';
 import { applyRuleExceptions } from '../eslint-config/exceptions.mjs';
+import { logicConfigFor } from '../eslint-config/logic/logic-rules.mjs';
 import {
   applyJavascriptDialect,
   scriptRuleEntries,
@@ -28,11 +29,17 @@ import { readDependencyNames } from '../eslint-config/scope-support.mjs';
 import { securityFactsFor } from '../eslint-config/policy/security-facts.mjs';
 import { i18nRuleIds } from '../eslint-config/i18n/i18n-rules.mjs';
 import { i18nScopeConfigFor, isI18nProject } from '../eslint-config/i18n/i18n-scope.mjs';
+import { isServerProject, serverScopeConfigFor } from '../eslint-config/server/server-scope.mjs';
+import { serverRuleIds } from '../eslint-config/server/server-rules.mjs';
+import { isNestProject } from '../eslint-config/nest/nest-project.mjs';
+import { nestScopeConfigFor } from '../eslint-config/nest/nest-scope.mjs';
 import { readHeadPolicy, readLayout } from '../head-policy.mjs';
+import { precedenceLayers } from '../../../../shared/conventions/tool-precedence.mjs';
 import { existingRoots } from '../layout.mjs';
 import { fileNameRuleOptions } from '../../conventions/file-name-casing.mjs';
 import { assertionFunctionNames } from '../../conventions/measures/assertion-helpers.mjs';
 import { typeImportFixStyle } from '../../conventions/type-import-style.mjs';
+import { detachedWorkRunnerNames } from '../../conventions/measures/detached-work-runners.mjs';
 import {
   testEnvironmentConfigFor,
   testEnvironmentsFromVariables,
@@ -53,6 +60,8 @@ const i18n = isI18nProject({
   javascript: layout.javascript,
 });
 const security = securityFactsFor(analyzedProjectRoot(), (file) => layout.isSourceFile(file));
+const server = isServerProject(analyzedProjectRoot());
+const nest = isNestProject(analyzedProjectRoot());
 const { sourceGlobs, testGlobs, excludedGlobs, unitTestGlobs } = layout;
 const parserOptions = {
   project: './tsconfig.quality.json',
@@ -90,6 +99,7 @@ const presetConfig = defineConfig(
       ],
     },
   },
+  ...logicConfigFor(selectedFiles, parserOptions),
   {
     files: productionFiles,
     ignores: testFiles,
@@ -99,14 +109,18 @@ const presetConfig = defineConfig(
     rules: {
       'nitpicker/no-dev-dependency-in-production': 'error',
       'nitpicker/no-managed-resource-construction-outside-composition-roots': 'error',
+      'nitpicker/contract-infrastructure-type': 'error',
+      'nitpicker/handler-entity-type': 'error',
       'nitpicker/preserve-error-cause': ['error', errorWrappingPolicy],
     },
   },
   ...strictPresetConfig(layout, parserOptions, {
     react,
+    nest,
     routeHandlers,
     security,
     frameworkDefaultExports: policy.frameworks.defaultExports,
+    detachedWorkRunners: detachedWorkRunnerNames(policy.conventions),
   }),
   ...productionLayoutConfigFor(layout, { react }),
   ...(layout.endToEndGlobs.length === 0
@@ -119,6 +133,8 @@ const presetConfig = defineConfig(
       ]),
   ...(react ? await reactScopeConfigFor(layout, policy.react) : []),
   ...(i18n ? await i18nScopeConfigFor(layout, policy.i18n) : []),
+  ...(server ? serverScopeConfigFor(layout, { browser: react || security.browser }) : []),
+  ...(nest ? nestScopeConfigFor(selectedFiles) : []),
   {
     // eslint-errors reports this rule for all production code; reporting it here too lists every
     files: productionFiles,
@@ -179,6 +195,7 @@ const presetConfig = defineConfig(
     rules: { 'nitpicker/no-external-executables-in-unit-tests': 'error' },
   },
   ...testHonestyConfigFor(layout, {
+    assertionFunctionNames: assertionFunctionNames(policy.conventions),
     setupFiles: setupFilesIn(analyzedProjectRoot()),
     stubRestores: stubRestoresIn(analyzedProjectRoot()),
     testRootsOnDisk: existingRoots(analyzedProjectRoot(), layout.testRoots),
@@ -189,6 +206,7 @@ const presetConfig = defineConfig(
 const inactiveRuleIds = [
   ...(react ? [] : [...reactRuleIds, ...reactTestRuleIds]),
   ...(i18n ? [] : i18nRuleIds),
+  ...(server ? [] : serverRuleIds),
 ];
 const applicableExceptions = policy.exceptions.filter(
   ({ rule }) => !inactiveRuleIds.includes(rule),
@@ -197,4 +215,5 @@ const applicableExceptions = policy.exceptions.filter(
 export default applyRuleExceptions(
   applyJavascriptDialect([...presetConfig, ...scriptRuleEntries(selectedFiles)], policy),
   applicableExceptions,
+  { projectRules: precedenceLayers(policy.tools.eslint?.precedence).usesProject },
 );

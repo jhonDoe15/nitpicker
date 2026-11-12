@@ -35,7 +35,7 @@ def is_schema(node, where, depth=0):
     if isinstance(node, ast.Call):
         return schema_call(node, where, depth)
     if isinstance(node, ast.Attribute):
-        if node.attr == "__table__" or node.attr == DJANGO_META:
+        if node.attr in {"__table__", DJANGO_META}:
             return True
         if node.attr in METADATA_PARTS and isinstance(node.value, ast.Attribute):
             return node.value.attr == "metadata" or is_schema(

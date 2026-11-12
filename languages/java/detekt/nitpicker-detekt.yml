@@ -22,6 +22,18 @@ potential-bugs:
     excludes: []
     ignoreAnnotated: []
     includes: []
+  CastToNullableType:
+    active: true
+    severity: warning
+    excludes: []
+    ignoreAnnotated: []
+    includes: []
+  DontDowncastCollectionTypes:
+    active: true
+    severity: warning
+    excludes: []
+    ignoreAnnotated: []
+    includes: []
 
 exceptions:
   active: true
@@ -56,6 +68,46 @@ coroutines:
     excludes: []
     ignoreAnnotated: []
     includes: []
+  SuspendFunSwallowedCancellation:
+    active: true
+    severity: warning
+    excludes: []
+    ignoreAnnotated: []
+    includes: []
+  InjectDispatcher:
+    active: true
+    severity: warning
+    excludes: []
+    ignoreAnnotated: []
+    includes: []
+    dispatcherNames:
+      - 'IO'
+      - 'Default'
+      - 'Unconfined'
+  RedundantSuspendModifier:
+    active: true
+    severity: warning
+    excludes: []
+    ignoreAnnotated: []
+    includes: []
+  SleepInsteadOfDelay:
+    active: true
+    severity: warning
+    excludes: []
+    ignoreAnnotated: []
+    includes: []
+  SuspendFunWithFlowReturnType:
+    active: true
+    severity: warning
+    excludes: []
+    ignoreAnnotated: []
+    includes: []
+  SuspendFunWithCoroutineScopeReceiver:
+    active: true
+    severity: warning
+    excludes: []
+    ignoreAnnotated: []
+    includes: []
 
 style:
   active: true
@@ -78,11 +130,11 @@ style:
       - value: 'kotlinx.coroutines.runBlocking'
         reason: 'Make the caller `suspend` (`suspend fun main()` for an entry point) and use `coroutineScope { ... }` for concurrent work. In a test, use `runTest`.'
       - value: 'kotlin.io.print'
-        reason: 'Log through the application logger (`logger.info(...)`) instead of printing to the console.'
+        reason: 'Log through the application logger (`logger.info(...)`) instead of printing to the console. For program output, write to an `Appendable`, `PrintStream` or `Writer` parameter that the file with `fun main` passes as `System.out`.'
       - value: 'kotlin.io.println'
-        reason: 'Log through the application logger (`logger.info(...)`) instead of printing to the console.'
+        reason: 'Log through the application logger (`logger.info(...)`) instead of printing to the console. For program output, write to an `Appendable`, `PrintStream` or `Writer` parameter that the file with `fun main` passes as `System.out`.'
       - value: 'java.lang.System.getenv'
-        reason: 'Read environment variables only in the composition root (the file with `fun main`, the `@SpringBootApplication` class or a Ktor `Application` module): read them once into a config class there and pass it in.'
+        reason: 'Read environment variables only in the composition root (the file with `fun main`, the `@SpringBootApplication` class, a Ktor `Application` module, or a framework configuration type such as Spring `@Configuration`, Micronaut `@Factory` or a Dagger or Guice module): read them once into a config class there and pass it in.'
       - value: 'java.time.Instant.now()'
         reason: 'Inject a `java.time.Clock` and call `now(clock)` (`Instant.now(clock)`), so the code can be tested with a fixed time.'
       - value: 'java.time.LocalDate.now()'
@@ -207,9 +259,8 @@ style:
     ignoreAnnotated: []
     includes: []
     comments:
-      - value: '(?m)(?-i)(?:^[\s*]*(?:TODO|FIXME|XXX|HACK|STOPSHIP)(?![\w-])(?![./]\w)|(?<![\w./-])(?:TODO|FIXME|XXX|HACK|STOPSHIP)(?=[:(]))'
+      - value: '(?m)(?-i)(?:^[\s*]*(?:TODO|FIXME|XXX|HACK|STOPSHIP)(?![\w-])(?![./]\w)|(?<![\w./-])(?:TODO|FIXME|XXX|HACK|STOPSHIP)(?=[:(]))(?!\(\s*(?:#\d+|(?!(?:SHA|UTF|ISO|RFC|MD|AES|RSA|TLS|SSL|HTTP|ES|ECMA|IEEE|CVE)-)[A-Z][A-Z0-9]+-\d+|https?://\S+)\s*\)|:?\s+(?:#\d+|(?!(?:SHA|UTF|ISO|RFC|MD|AES|RSA|TLS|SSL|HTTP|ES|ECMA|IEEE|CVE)-)[A-Z][A-Z0-9]+-\d+|https?://\S+))'
         reason: 'A TODO or FIXME needs an issue reference: write `TODO(#123): ...` or `TODO PROJ-123: ...`, or do the work now.'
-    allowedPatterns: '(?-i)(?<![\w./-])(?:TODO|FIXME|XXX|HACK|STOPSHIP)(?:\(\s*(?:#\d+|(?!(?:SHA|UTF|ISO|RFC|MD|AES|RSA|TLS|SSL|HTTP|ES|ECMA|IEEE|CVE)-)[A-Z][A-Z0-9]+-\d+|https?://\S+)\s*\)|:?\s+(?:#\d+|(?!(?:SHA|UTF|ISO|RFC|MD|AES|RSA|TLS|SSL|HTTP|ES|ECMA|IEEE|CVE)-)[A-Z][A-Z0-9]+-\d+|https?://\S+))'
   UnnecessaryLet:
     active: true
     severity: warning
@@ -223,6 +274,12 @@ style:
     ignoreAnnotated: []
     includes: []
   UseLet:
+    active: true
+    severity: warning
+    excludes: []
+    ignoreAnnotated: []
+    includes: []
+  CollapsibleIfStatements:
     active: true
     severity: warning
     excludes: []
@@ -248,6 +305,13 @@ style:
     excludes: []
     ignoreAnnotated: []
     includes: []
+  UnusedParameter:
+    active: true
+    severity: warning
+    excludes: []
+    includes: []
+    allowedNames: '(ignored|unused).*'
+    ignoreAnnotated: []
 
 complexity:
   active: true
@@ -255,12 +319,4 @@ complexity:
   ignoreAnnotated: []
   includes: []
   StringLiteralDuplication:
-    active: true
-    severity: warning
-    excludes: []
-    ignoreAnnotated: []
-    includes: []
-    threshold: 3
-    ignoreAnnotation: true
-    excludeStringsWithLessThan5Characters: true
-    ignoreStringsRegex: '^[^A-Za-z0-9]*$'
+    active: false

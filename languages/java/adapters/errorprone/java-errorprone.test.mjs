@@ -1,4 +1,4 @@
-import { mkdirSync, mkdtempSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, realpathSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
@@ -37,7 +37,6 @@ describe('readErrorProneFindings', () => {
       diagnostic(path.join(root, 'src/main/java/demo/A.java')),
       diagnostic(path.join(root, 'src/test/java/demo/ATest.java')),
       diagnostic(path.join(root, 'build/nitpicker/errorprone/generated/main/demo/A_Impl.java')),
-      diagnostic('/elsewhere/src/main/java/demo/B.java'),
     ]);
 
     const findings = readErrorProneFindings({
@@ -150,11 +149,93 @@ describe('readErrorProneFindings', () => {
     ]);
   });
 
-  it('reads no findings when the report is absent', () => {
+  it('reports a missing report as a tool error instead of no findings', () => {
     const { projectRoot, reportRoot } = reportRootWith();
 
     expect(
       readErrorProneFindings({ reportRoot, roots: [projectRoot], lintedRoots: ['src'] }),
-    ).toEqual([]);
+    ).toEqual([
+      {
+        tool: 'errorprone',
+        rule: 'missing-report',
+        path: '.',
+        identity: 'missing-report',
+        message: `Error Prone wrote no report at ${path.join(reportRoot, 'errorprone.json')}.`,
+        classification: 'tool-error',
+      },
+    ]);
+  });
+
+  it('reports diagnostics on files outside every project root as a tool error', () => {
+    const { projectRoot, reportRoot } = reportRootWith((root) => [
+      diagnostic(path.join(root, 'src/main/java/demo/A.java')),
+      diagnostic('/elsewhere/src/main/java/demo/B.java'),
+    ]);
+
+    const findings = readErrorProneFindings({
+      reportRoot,
+      roots: [projectRoot],
+      lintedRoots: ['src/main/java'],
+    });
+
+    expect(
+      findings.map(({ rule, path: file, classification }) => [rule, file, classification]),
+    ).toEqual([
+      ['DeadException', 'src/main/java/demo/A.java', 'enforceable'],
+      ['unmapped-path', '.', 'tool-error'],
+    ]);
+    expect(findings[1].message).toBe(
+      `Error Prone reported 1 file(s) outside the project (${projectRoot}), so their findings ` +
+        'cannot be placed: /elsewhere/src/main/java/demo/B.java',
+    );
+  });
+
+  it('maps the long form of a project root that the build canonicalized', () => {
+    const { projectRoot, reportRoot } = reportRootWith((root) => [
+      diagnostic(path.join(root, 'src/main/java/demo/A.java')),
+    ]);
+    const linked = `${projectRoot}-link`;
+    roots.push(linked);
+    symlinkSync(projectRoot, linked, 'dir');
+
+    const findings = readErrorProneFindings({
+      reportRoot,
+      roots: [linked, projectRoot],
+      lintedRoots: ['src/main/java'],
+    });
+
+    expect(findings.map(({ path: file, classification }) => [file, classification])).toEqual([
+      ['src/main/java/demo/A.java', 'enforceable'],
+    ]);
+  });
+
+  it('keeps the findings of the other checks and names a crashed check in one tool error', () => {
+    const { projectRoot, reportRoot } = reportRootWith((root) => [
+      diagnostic(path.join(root, 'src/main/java/demo/A.java')),
+      {
+        crash: 'ForEachIterable',
+        file: path.join(root, 'src/main/java/demo/QueryVisitor.java'),
+        line: 59,
+        cause: 'java.lang.AssertionError: isSameType UNKNOWN',
+      },
+    ]);
+
+    const findings = readErrorProneFindings({
+      reportRoot,
+      roots: [projectRoot],
+      lintedRoots: ['src/main/java'],
+    });
+
+    expect(
+      findings.map(({ rule, identity, classification }) => [rule, identity, classification]),
+    ).toEqual([
+      ['DeadException', expect.any(String), 'enforceable'],
+      ['check-crashed', 'check-crashed:ForEachIterable', 'tool-error'],
+    ]);
+    expect(findings[1].message).toBe(
+      "Error Prone's ForEachIterable check crashed on src/main/java/demo/QueryVisitor.java:59 " +
+        '(java.lang.AssertionError: isSameType UNKNOWN), so it was turned off for this run and the ' +
+        'findings of the other checks are kept. The crash is an Error Prone bug, not a problem in this code.',
+    );
   });
 });

@@ -19,8 +19,23 @@ const RULE_FILES = [
   'google_checks.xml',
   'findbugs.xml',
 ];
-const EXTRA_PMD_RULES = ['AvoidCatchingGenericException'];
-const EXTRA_CHECKSTYLE_RULES = ['UnusedImports'];
+const EXTRA_PMD_RULES = [
+  'AvoidCatchingGenericException',
+  'SwallowedInterrupt',
+  'SimplifyBooleanReturns',
+  'SimplifyBooleanExpressions',
+  'SimplifiedTernary',
+  'SimplifyConditional',
+  'CollapsibleIfStatements',
+  'LogicInversion',
+  'ConfusingTernary',
+];
+const EXTRA_CHECKSTYLE_RULES = [
+  'ConstantName',
+  'MagicNumber',
+  'UnusedImports',
+  'VisibilityModifier',
+];
 const CHECKSTYLE_INFRASTRUCTURE = /^(?:Checker|TreeWalker)$|Filter$|^Suppress/u;
 
 function pinnedVersion(tool) {
