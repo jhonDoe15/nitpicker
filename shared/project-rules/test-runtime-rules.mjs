@@ -16,5 +16,8 @@ export function slowTest(ids, defaults, enforcedBy) {
   };
 }
 
+export const GO_NO_TYPE_ONLY =
+  'the language has no import that exists only for the type checker: every import links and initializes the package, so a test that only names a production type still depends on that package at run time and is judged by `no-production-runtime`';
+
 export const NO_TYPE_ONLY =
   'the language has no import that exists only for the type checker: a production type that a test names only as an erased generic argument leaves no reference in the bytecode, so the test is reported as `no-production-runtime`';

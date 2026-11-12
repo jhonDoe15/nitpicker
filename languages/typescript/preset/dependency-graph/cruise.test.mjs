@@ -82,4 +82,36 @@ describe('project imports from the dependency graph', () => {
     expect(disabled).not.toHaveProperty('moduleImports');
     expect(disabled.findings).toEqual(enabled.findings);
   });
+
+  it('counts an import naming the .ts file as runtime when tsconfig rewrites import extensions', async () => {
+    const projectRoot = projectWith({
+      'package.json': '{"name":"p","type":"module"}\n',
+      'tsconfig.json': JSON.stringify({
+        compilerOptions: {
+          module: 'NodeNext',
+          moduleResolution: 'NodeNext',
+          allowImportingTsExtensions: true,
+          rewriteRelativeImportExtensions: true,
+          noEmit: true,
+          types: [],
+          lib: ['ES2022'],
+        },
+      }),
+      'src/billing/invoice.ts':
+        "import { total } from '../invoicing/ledger.ts';\nexport const invoice = (): number => total();\n",
+      'src/invoicing/ledger.ts': 'export function total(): number {\n  return 1;\n}\n',
+    });
+    const policyFile = path.join(path.dirname(projectRoot), 'policy.json');
+    writeFileSync(policyFile, JSON.stringify({}));
+    vi.stubEnv(HEAD_POLICY_ENV, policyFile);
+
+    const { findings } = await coupling(projectRoot);
+
+    expect(
+      findings.find(
+        ({ path: file, metric }) =>
+          file === 'src/invoicing/ledger.ts' && metric.name === 'runtimeFanIn',
+      )?.metric.value,
+    ).toBe(1);
+  });
 });
