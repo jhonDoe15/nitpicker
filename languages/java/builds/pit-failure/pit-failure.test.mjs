@@ -47,6 +47,7 @@ function runWith(result, timeoutMs) {
 }
 
 afterEach(() => {
+  vi.useRealTimers();
   for (const root of roots.splice(0)) {
     rmSync(root, { recursive: true, force: true });
   }
@@ -129,7 +130,6 @@ describe('the time PIT gets on Maven', () => {
       timeoutMs: 15 * 60_000,
       deadline: 30_000,
     });
-    vi.useRealTimers();
 
     expect(spawned).toBe(false);
     expect(pitFailureFindings(root)[0].message).toBe(
