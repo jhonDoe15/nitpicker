@@ -1,21 +1,21 @@
 import { existsSync, readFileSync, realpathSync } from 'node:fs';
 import type TypeScript from 'typescript';
 import path from 'node:path';
-import { prepareSnapshotDependencies, removeSnapshotDependencies } from './dependencies.mjs';
-import { readLayout, typecheckEngine } from '../../preset/head-policy.mjs';
+import {
+  prepareSnapshotDependencies,
+  removeSnapshotDependencies,
+} from '../typed/static-checks.mts';
+import { layoutTransformFor, readLayout, typecheckEngine } from '../typed/head-policy.mts';
 import type { StaticCheckOptions } from './arguments.mts';
 import { type Finding, projectFile, hash, policyFile } from './shared.mts';
-import { linkPolicyFile } from '../../../../core/tooling/policy-links.mjs';
-import { layoutTransformFor } from '../../preset/tool-configs.mjs';
+import { type LinkedPolicyFile, linkPolicyFile } from '../typed/tooling.mts';
 import { diagnosticMessages } from '../typecheck/compiler-hints.mts';
 import {
   enclosingSymbol,
   preEmitDiagnostics,
   projectTypeScript,
-} from '../typecheck/typescript-program.mjs';
+} from '../typed/typescript-program.mts';
 import { withAssetImportHint } from '../typecheck/asset-import-hint.mts';
-
-type InstalledConfig = { readonly targetPath: string; remove(): void };
 
 type TypeScriptDiagnostics = {
   readonly diagnostics: readonly TypeScript.Diagnostic[];
@@ -28,13 +28,13 @@ type TypeScriptDiagnostics = {
 export async function runTypecheck(options: StaticCheckOptions): Promise<Finding[]> {
   const { ts, native } = projectTypeScript(options.liveProjectRoot);
   const preparedDependencies = prepareSnapshotDependencies(options);
-  let installedConfig: InstalledConfig | undefined;
+  let installedConfig: LinkedPolicyFile | undefined;
   try {
     installedConfig = installTypeScriptConfig(options);
     const { targetPath } = installedConfig;
     const configRelativePath =
       extendedProjectConfig(targetPath, options.projectRoot) ?? options.configRelativePath;
-    const diagnostics: TypeScript.Diagnostic[] = await preEmitDiagnostics({
+    const diagnostics = await preEmitDiagnostics({
       ts,
       engine: typecheckEngine(),
       configPath: targetPath,
@@ -113,7 +113,7 @@ export function normalizeTypeScriptDiagnostics({
   });
 }
 
-function installTypeScriptConfig(options: StaticCheckOptions): InstalledConfig {
+function installTypeScriptConfig(options: StaticCheckOptions): LinkedPolicyFile {
   return linkPolicyFile(
     policyFile(options, options.configRelativePath),
     path.join(options.projectRoot, '.nitpicker-diff-typecheck.json'),

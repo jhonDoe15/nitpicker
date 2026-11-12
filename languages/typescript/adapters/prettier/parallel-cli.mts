@@ -1,10 +1,7 @@
 import { type SpawnSyncReturns, spawnSync } from 'node:child_process';
 import { readdirSync, rmSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
-import {
-  trackTemporaryPath,
-  untrackTemporaryPath,
-} from '../../../../core/tooling/temporary-files.mjs';
+import { trackTemporaryPath, untrackTemporaryPath } from '../typed/tooling.mts';
 
 const EXCLUSION_FILE_NAME = '.nitpicker-diff-prettier-exclude';
 const MAX_OUTPUT_BYTES = 50 * 1024 * 1024;

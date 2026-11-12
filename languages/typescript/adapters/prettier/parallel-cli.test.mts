@@ -10,7 +10,7 @@ import {
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterAll, describe, expect, it } from 'vitest';
-import { toolBinaryPath } from '../static-checks/shared.mts';
+import { toolBinaryPath } from '../typed/tooling.mts';
 import { exclusionIgnoreLines, listUnformattedInParallel } from './parallel-cli.mts';
 
 const toolPath = toolBinaryPath('prettier', { bin: 'bin/prettier.cjs' });

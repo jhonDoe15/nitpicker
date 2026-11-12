@@ -9,40 +9,18 @@ import {
 import type { Finding } from './static-checks/shared.mts';
 import { runPrettier } from './static-checks/prettier.mts';
 import { runTypecheck } from './static-checks/typescript.mts';
-import { readLayout } from '../preset/head-policy.mjs';
-import { existingRoots } from '../preset/layout.mjs';
-import { loadDependencyGraph } from './dependency-graph/project-dependency-graph.mjs';
-import { applyAreaExceptions } from './exceptions/area-exceptions.mjs';
+import { readLayout } from './typed/head-policy.mts';
 import {
-  REACH_THROUGH_SHARED_RULE,
+  type CruiseReport,
+  type CruiseSummary,
+  type CruiseViolation,
+  applyAreaExceptions,
+  existingRoots,
+  loadDependencyGraph,
   sharedReachPath,
-} from '../preset/architecture/strict-boundary-rules.mjs';
-import { withTypeScriptHint } from './hints/tool-failure-hint.mjs';
-
-type CruiseRule = {
-  readonly name?: unknown;
-  readonly severity?: unknown;
-  readonly comment?: unknown;
-};
-
-type CruiseViolation = {
-  readonly rule?: CruiseRule;
-  readonly from?: unknown;
-  readonly to?: unknown;
-  readonly type?: unknown;
-  readonly cycle?: unknown;
-  readonly via?: unknown;
-};
-
-type CruiseSummary = {
-  readonly violations?: unknown;
-  readonly ruleSetUsed?: {
-    readonly forbidden?: readonly CruiseRule[];
-    readonly required?: readonly CruiseRule[];
-  };
-};
-
-export type CruiseReport = { readonly summary?: CruiseSummary; readonly modules?: unknown };
+  withTypeScriptHint,
+} from './typed/static-checks.mts';
+import { REACH_THROUGH_SHARED_RULE } from '../preset/architecture/strict-boundary-rules.mjs';
 
 type ViolationText = {
   readonly violation: CruiseViolation;
@@ -64,9 +42,7 @@ if (
     process.stdout.write(`${JSON.stringify({ findings })}\n`);
   } catch (failure) {
     const error = withTypeScriptHint(failure);
-    process.stderr.write(
-      `Static quality adapter failed: ${error instanceof Error ? error.message : String(error)}\n`,
-    );
+    process.stderr.write(`Static quality adapter failed: ${error.message}\n`);
     process.exitCode = 2;
   }
 }
@@ -92,7 +68,7 @@ function runArchitecture(options: StaticCheckOptions): Finding[] {
   if (layout.projectCodeFiles(options.projectRoot).length === 0) return [];
   const patterns = existingRoots(options.projectRoot, options.patterns);
   if (patterns.length === 0) return [];
-  const report: CruiseReport = loadDependencyGraph({
+  const report = loadDependencyGraph({
     projectRoot: options.projectRoot,
     policyRoot: options.policyRoot,
     liveProjectRoot: options.liveProjectRoot,
@@ -105,16 +81,13 @@ function runArchitecture(options: StaticCheckOptions): Finding[] {
   return applyAreaExceptions(normalizeArchitectureViolations(report, options.analyzerName));
 }
 
-function reportedViolations(
-  violations: readonly CruiseViolation[],
-  modules: unknown,
-): CruiseViolation[] {
+function reportedViolations(violations: readonly unknown[], modules: unknown): CruiseViolation[] {
   const moduleList: unknown[] = Array.isArray(modules) ? modules : [];
-  return violations.flatMap((violation): CruiseViolation[] => {
-    if (violation?.rule?.name !== REACH_THROUGH_SHARED_RULE) {
+  return violations.map(violationOf).flatMap((violation): CruiseViolation[] => {
+    if (nameOf(violation.rule) !== REACH_THROUGH_SHARED_RULE) {
       return [violation];
     }
-    const via: string[] | undefined = sharedReachPath(violation, moduleList);
+    const via = sharedReachPath(violation, moduleList);
     return via === undefined ? [] : [{ ...violation, via: via.map((name) => ({ name })) }];
   });
 }
@@ -123,7 +96,7 @@ export function normalizeArchitectureViolations(
   report: CruiseReport | undefined,
   analyzerName: string,
 ): Finding[] {
-  const violations: unknown = report?.summary?.violations;
+  const violations = report?.summary?.violations;
   if (!Array.isArray(violations)) {
     throw new TypeError('dependency-cruiser report is missing summary.violations');
   }
@@ -131,8 +104,8 @@ export function normalizeArchitectureViolations(
   const comments = ruleComments(report?.summary);
   return reportedViolations(violations, report?.modules).map((violation, index) => {
     const context = `dependency-cruiser violation ${String(index)}`;
-    const rule = requiredString(violation?.rule?.name, `${context}.rule.name`);
-    const severity = requiredString(violation?.rule?.severity, `${context}.rule.severity`);
+    const rule = requiredString(nameOf(violation.rule), `${context}.rule.name`);
+    const severity = requiredString(severityOf(violation.rule), `${context}.rule.severity`);
     const from = normalizedRelativePath(requiredString(violation.from, `${context}.from`), context);
     const to = displayedPath(requiredString(violation.to, `${context}.to`));
     const cycle = violation.type === 'cycle' ? canonicalCycle(violation.cycle, context) : undefined;
@@ -197,6 +170,16 @@ function ruleComments(summary: CruiseSummary | undefined): Map<string, string> {
       return typeof name === 'string' && typeof comment === 'string' ? [[name, comment]] : [];
     }),
   );
+}
+
+function violationOf(value: unknown): CruiseViolation {
+  return typeof value === 'object' && value !== null ? value : {};
+}
+
+function severityOf(rule: unknown): unknown {
+  return typeof rule === 'object' && rule !== null && 'severity' in rule
+    ? rule.severity
+    : undefined;
 }
 
 function commentOf(rule: unknown): unknown {
