@@ -205,12 +205,13 @@ describe('the package build on Node.js 22.14', () => {
     expect(convertedNodeBuildModules(modules, moduleImports(root, modules))).toEqual([
       'shared/text.mts',
     ]);
-    const kept = project(NODE_BUILD);
-    track(kept);
-    const renamed = trackedModules(kept).filter((file) => file !== 'scripts/typescript/emit.mjs');
-    expect(convertedNodeBuildModules(renamed, moduleImports(kept, renamed))).toEqual([
-      'scripts/typescript/emit.mjs',
-    ]);
+    const { 'scripts/typescript/emit.mjs': emitSource, ...rest } = NODE_BUILD;
+    const renamed = project({ ...rest, 'scripts/typescript/emit.mts': emitSource });
+    track(renamed);
+    const renamedModules = trackedModules(renamed);
+    expect(
+      convertedNodeBuildModules(renamedModules, moduleImports(renamed, renamedModules)),
+    ).toEqual(['scripts/typescript/emit.mts']);
   });
 });
 
