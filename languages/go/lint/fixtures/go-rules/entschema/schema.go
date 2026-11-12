@@ -143,3 +143,56 @@ func (Invoice) Mixin() []ent.Mixin {
 func (Invoice) Edges() []ent.Edge {
 	return []ent.Edge{edge.To("tenant", Team.Type).Unique()}
 }
+
+type Person struct{ ent.Schema }
+
+func (Person) Edges() []ent.Edge {
+	return []ent.Edge{edge.To("friends", Person.Type).Through("friendships", Friendship.Type)}
+}
+
+type Friendship struct{ ent.Schema }
+
+func (Friendship) Fields() []ent.Field {
+	return []ent.Field{field.Int("person_id"), field.Int("friend_id")}
+}
+
+func (Friendship) Edges() []ent.Edge {
+	return []ent.Edge{
+		edge.To("person", Person.Type).Unique().Field("person_id"),
+		edge.To("friend", Person.Type).Unique().Field("friend_id"), // want unindexed-foreign-key
+	}
+}
+
+func Tenanted() ent.Mixin {
+	return Tenant{}
+}
+
+type Receipt struct{ ent.Schema }
+
+func (Receipt) Mixin() []ent.Mixin {
+	return []ent.Mixin{Tenanted()}
+}
+
+func (Receipt) Edges() []ent.Edge {
+	return []ent.Edge{edge.To("tenant", Team.Type).Unique()}
+}
+
+type Wrapped struct{ Tenant }
+
+type Bill struct{ ent.Schema }
+
+func (Bill) Mixin() []ent.Mixin {
+	return []ent.Mixin{Wrapped{}}
+}
+
+func (Bill) Edges() []ent.Edge {
+	return []ent.Edge{edge.To("tenant", Team.Type).Unique()}
+}
+
+var ownerRef = "pets"
+
+type Toy struct{ ent.Schema }
+
+func (Toy) Edges() []ent.Edge {
+	return []ent.Edge{edge.From("owner", User.Type).Ref(ownerRef).Unique()}
+}

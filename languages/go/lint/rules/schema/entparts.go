@@ -12,6 +12,7 @@ import (
 
 type entEdge struct {
 	owner, target *types.TypeName
+	via           *types.TypeName
 	name, ref     string
 	field         string
 	inverse       bool
@@ -26,6 +27,7 @@ type entSchema struct {
 	leads  map[string]bool
 	opaque bool
 	skip   bool
+	keyed  bool
 }
 
 func readSchema(pass *analysis.Pass, owner *types.TypeName, methods map[string]*ast.FuncDecl) *entSchema {
@@ -61,18 +63,22 @@ func (read *entSchema) edge(pass *analysis.Pass, owner *types.TypeName, element 
 	base := entEdge{owner: owner, target: target, name: name, inverse: call.root.Name() == "From", pos: element.Pos()}
 	split := slices.IndexFunc(call.methods, func(step method) bool { return step.name == "From" })
 	if split < 0 || base.inverse {
-		read.edges = append(read.edges, describe(pass.TypesInfo, base, chain{root: call.root, methods: call.methods}))
-		return true
+		return read.add(describe(pass.TypesInfo, base, chain{root: call.root, methods: call.methods}))
 	}
 	inverseName, literal := stringValue(pass.TypesInfo, firstArg(call.methods[split]))
 	if !literal {
 		return false
 	}
 	inverse := entEdge{owner: owner, target: target, name: inverseName, ref: name, inverse: true, pos: element.Pos()}
-	read.edges = append(read.edges,
-		describe(pass.TypesInfo, base, chain{root: call.root, methods: call.methods[:split]}),
-		describe(pass.TypesInfo, inverse, chain{root: call.root, methods: call.methods[split+1:]}))
-	return true
+	return read.add(describe(pass.TypesInfo, base, chain{root: call.root, methods: call.methods[:split]})) &&
+		read.add(describe(pass.TypesInfo, inverse, chain{root: call.root, methods: call.methods[split+1:]}))
+}
+
+func (read *entSchema) add(edge *entEdge, readable bool) bool {
+	if readable {
+		read.edges = append(read.edges, edge)
+	}
+	return readable
 }
 
 func firstArg(step method) ast.Expr {
@@ -82,13 +88,25 @@ func firstArg(step method) ast.Expr {
 	return step.args[0]
 }
 
-func describe(info *types.Info, edge entEdge, steps chain) *entEdge {
-	if ref, found := steps.argument(info, "Ref"); found {
+func describe(info *types.Info, edge entEdge, steps chain) (*entEdge, bool) {
+	if steps.has("Ref") {
+		ref, literal := steps.argument(info, "Ref")
 		edge.ref = ref
+		if !literal {
+			return nil, false
+		}
 	}
-	edge.field, _ = steps.argument(info, "Field")
-	edge.unique, edge.through = steps.has("Unique"), steps.has("Through")
-	return &edge
+	field, literal := steps.argument(info, "Field")
+	if steps.has("Field") && !literal {
+		return nil, false
+	}
+	edge.field, edge.unique, edge.through = field, steps.has("Unique"), steps.has("Through")
+	for _, step := range steps.methods {
+		if step.name == "Through" && len(step.args) == 2 {
+			edge.via, _ = edgeTarget(info, step.args[1])
+		}
+	}
+	return &edge, true
 }
 
 func edgeTarget(info *types.Info, expr ast.Expr) (*types.TypeName, bool) {
@@ -166,22 +184,34 @@ func (read *entSchema) fieldOf(pass *analysis.Pass, _ *types.TypeName, element a
 
 func (read *entSchema) annotation(pass *analysis.Pass, _ *types.TypeName, element ast.Expr) bool {
 	if call, ok := readChain(pass.TypesInfo, element); ok && call.from(fieldPath, "ID") && len(call.args) > 0 {
-		if first, named := stringValue(pass.TypesInfo, call.args[0]); named {
-			read.leads["field:"+first] = true
-		}
+		first, named := stringValue(pass.TypesInfo, call.args[0])
+		read.leads["field:"+first], read.keyed = named, true
 	}
 	ast.Inspect(element, func(node ast.Node) bool {
 		switch each := node.(type) {
-		case *ast.KeyValueExpr:
-			key, ok := each.Key.(*ast.Ident)
-			read.skip = read.skip || ok && key.Name == "Skip" && isTrue(pass.TypesInfo, each.Value)
+		case *ast.CompositeLit:
+			read.skip = read.skip || support.IsNamed(pass.TypesInfo.TypeOf(each), entsqlPath, "Annotation") &&
+				skipsTable(pass.TypesInfo, each)
 		case *ast.CallExpr:
 			call, ok := readChain(pass.TypesInfo, each)
-			read.skip = read.skip || ok && call.root.Name() == "Skip" && len(call.args) == 0
+			read.skip = read.skip || ok && call.from(entsqlPath, "Skip")
 		}
 		return true
 	})
 	return true
+}
+
+func skipsTable(info *types.Info, literal *ast.CompositeLit) bool {
+	for _, element := range literal.Elts {
+		pair, ok := element.(*ast.KeyValueExpr)
+		if !ok {
+			continue
+		}
+		if key, isIdent := pair.Key.(*ast.Ident); isIdent && key.Name == "Skip" {
+			return isTrue(info, pair.Value)
+		}
+	}
+	return false
 }
 
 func isTrue(info *types.Info, expr ast.Expr) bool {
@@ -191,14 +221,14 @@ func isTrue(info *types.Info, expr ast.Expr) bool {
 
 func (read *entSchema) mixin(pass *analysis.Pass, _ *types.TypeName, element ast.Expr) bool {
 	named, ok := types.Unalias(support.Deref(pass.TypesInfo.TypeOf(element))).(*types.Named)
-	if !ok {
+	if !ok || types.IsInterface(named) {
 		return false
 	}
-	if named.Obj().Pkg() != nil && named.Obj().Pkg().Path() == mixinPath {
-		return true
-	}
-	for index := range named.NumMethods() {
-		if name := named.Method(index).Name(); name == "Edges" || name == "Indexes" {
+	methods := types.NewMethodSet(types.NewPointer(named))
+	for index := range methods.Len() {
+		object := methods.At(index).Obj()
+		own := object.Pkg() == nil || object.Pkg().Path() != mixinPath
+		if name := object.Name(); own && (name == "Edges" || name == "Indexes") {
 			return false
 		}
 	}
