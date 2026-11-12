@@ -13,7 +13,7 @@ func Blank(name string) {
 	_ = os.Remove(name) // want errcheck
 }
 
-func Asserted(value any) string {
+func Asserted(value any) string { // want any-in-exported-signature
 	return value.(string) // want errcheck
 }
 
@@ -30,7 +30,7 @@ func Joined(name string) (err error) {
 	return nil
 }
 
-func Checked(value any) (string, bool) {
+func Checked(value any) (string, bool) { // want any-in-exported-signature
 	text, ok := value.(string)
 	return text, ok
 }
