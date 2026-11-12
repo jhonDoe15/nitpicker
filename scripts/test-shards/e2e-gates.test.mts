@@ -32,7 +32,7 @@ function repository(files: Readonly<Record<string, string>>): string {
 }
 
 describe('the E2E gate candidates', () => {
-  it('are the .e2e.test. files and the tests that read a suite flag directly, through an import or its re-exports', () => {
+  it('are the .e2e.test. files and the tests that read a suite flag directly or through imports', () => {
     const root = repository({
       'languages/a/plain.e2e.test.mjs': "it('runs', () => {});\n",
       'languages/a/support.mjs': `export const on = ${ENV}.NITPICKER_JAVA_E2E === '1';\n`,
@@ -122,7 +122,7 @@ describe('the E2E gates', () => {
     },
   };
 
-  it('report a file under two flags, under none, under a flag no suite sets or under another flag than it reads', () => {
+  it('report a file under two flags, none, a flag no suite sets or a flag it does not read', () => {
     expect(classifyGates(candidates, listings).problems).toEqual([
       'both.e2e.test.mjs is gated by NITPICKER_JAVA_E2E and NITPICKER_KOTLIN_E2E',
       'ungated.e2e.test.mjs is gated by no suite flag',
