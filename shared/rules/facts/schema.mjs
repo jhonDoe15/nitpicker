@@ -52,6 +52,7 @@ const SHAPES = {
     line: isLine,
     exported: isBoolean,
     tokens: isStrings,
+    untypedTokens: optional(isStrings),
     qualifier: optional(isNonEmpty),
     lines: optional(isLine),
     size: optional(isCount),

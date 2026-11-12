@@ -90,6 +90,7 @@ function neutralDefinition(definition, fact, resolve) {
     exported: exportNames.length > 0,
     exportNames,
     tokens: definition.tokens,
+    untypedTokens: definition.untypedTokens,
     text: definition.text,
     key: keyOf(definition, fact, resolve),
     size: definition.size,
