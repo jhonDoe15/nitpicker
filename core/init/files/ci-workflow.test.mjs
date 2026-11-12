@@ -1,7 +1,7 @@
 import { symlinkSync, writeFileSync } from 'node:fs';
 import { parse } from 'yaml';
 import { describe, expect, it } from 'vitest';
-import { unpinnedActions } from '../../../scripts/action-pins/action-pins.mjs';
+import { unpinnedActions } from '../../../scripts/action-pins/action-pins.mts';
 import { describePackageManager } from '../detection/package-manager.mjs';
 import { readText, useProjects } from '../test-support/projects.mjs';
 import { unifiedDiff } from './line-diff.mjs';
