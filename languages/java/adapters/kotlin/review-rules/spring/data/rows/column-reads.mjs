@@ -52,11 +52,14 @@ function storedMembers(found) {
 
 function columnsOf(view, found) {
   const pending = [found];
+  const seen = new Set(pending);
   for (const current of pending) {
-    const bases = current.declared.supers
-      .map((type) => holderOf(view, type))
-      .filter((base) => base !== undefined && !pending.includes(base));
-    pending.push(...bases);
+    for (const base of current.declared.supers.map((type) => holderOf(view, type))) {
+      if (base !== undefined && !seen.has(base)) {
+        seen.add(base);
+        pending.push(base);
+      }
+    }
   }
   return pending.flatMap((holder) => storedMembers(holder));
 }
