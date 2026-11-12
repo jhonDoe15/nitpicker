@@ -114,7 +114,7 @@ jobs:
           cache: npm
           cache-dependency-path: package-lock.json
       - run: npm ci
-      - run: node scripts/test-shards/verify-e2e-shards.mjs python
+      - run: node scripts/test-shards/verify-e2e-shards.mts python
 
   python-e2e:
     if: ${{ always() && (github.event_name != 'pull_request' || contains(github.event.pull_request.labels.*.name, 'run-ci')) }}

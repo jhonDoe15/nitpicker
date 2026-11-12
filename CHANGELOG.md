@@ -17,6 +17,11 @@ about your code is explained in [troubleshooting](https://github.com/jhonDoe15/n
   conditional branch in the data passed to `JSON.stringify`, where it is the JSON value for nothing
   (an explicit `null` field of a request body, or a key a tsconfig or merge patch must unset) (#1100).
   `null` built outside the call, or passed to another function inside it, is still reported.
+- An added `layout.entryPoints` or `python.entryPoints` entry is listed among the policy changes
+  and no longer fails the gate as a `nitpicker-config/policy-loosened` finding, so it needs no
+  `accept-policy-change` approval (#1094). An entry that covers a file other production code
+  imports, such as a `**` glob, still fails, as do exceptions, exclusions, disabled analyzers and
+  the other loosenings.
 
 ### Fixed
 
