@@ -77,7 +77,7 @@ jobs:
 
   # The suite runs in parallel jobs, each on its own shard of the test files (Vitest --shard), so the
   # slowest shard sets the time instead of the whole suite. The required `test` check is the job
-  # below that passes only when every shard passed. scripts/test-shards/sequencer.mjs balances them.
+  # below that passes only when every shard passed. scripts/test-shards/sequencer.mts balances them.
   test-shard:
     if: github.event_name != 'pull_request' || contains(github.event.pull_request.labels.*.name, 'run-ci')
     name: test shard ${{ matrix.shard }}/${{ strategy.job-total }}
