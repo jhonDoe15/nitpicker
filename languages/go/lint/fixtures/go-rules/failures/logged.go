@@ -20,7 +20,7 @@ func Load(name string) ([]byte, error) {
 func LoadWrapped(logger *slog.Logger, name string) ([]byte, error) {
 	data, err := os.ReadFile(name)
 	if err != nil {
-		logger.Error("read failed", "name", name, "error", err) // want logged-and-returned
+		logger.Error("read failed", slog.String("name", name), slog.Any("error", err)) // want logged-and-returned
 		return nil, fmt.Errorf("read %s: %w", name, err)
 	}
 	return data, nil
@@ -37,7 +37,7 @@ func LoadOnce(name string) ([]byte, error) {
 func LoadOrDefault(name string) []byte {
 	data, err := os.ReadFile(name)
 	if err != nil {
-		slog.Warn("using the default", "name", name, "error", err)
+		slog.Warn("using the default", slog.String("name", name), slog.Any("error", err))
 		return []byte("{}")
 	}
 	return data
@@ -47,10 +47,10 @@ func Remove(name string) error {
 	err := os.Remove(name)
 	switch {
 	case errors.Is(err, os.ErrNotExist):
-		slog.Info("already removed", "error", err)
+		slog.Info("already removed", slog.Any("error", err))
 		return nil
 	case err != nil:
-		slog.Error("remove failed", "error", err) // want logged-and-returned
+		slog.Error("remove failed", slog.Any("error", err)) // want logged-and-returned
 		return err
 	}
 	return nil
@@ -59,7 +59,7 @@ func Remove(name string) error {
 func LoadAgain(name string) ([]byte, error) {
 	data, err := os.ReadFile(name)
 	if err != nil {
-		slog.Warn("first read failed, retrying", "error", err)
+		slog.Warn("first read failed, retrying", slog.Any("error", err))
 		data, err = os.ReadFile(name)
 	}
 	return data, err
@@ -70,6 +70,6 @@ type Attempt struct {
 }
 
 func Compare(first, second Attempt) error {
-	slog.Info("first attempt", "error", first.err)
+	slog.Info("first attempt", slog.Any("error", first.err))
 	return second.err
 }
