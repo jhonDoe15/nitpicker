@@ -3,7 +3,6 @@ import path from 'node:path';
 import { durationFile } from './duration-profile.mts';
 
 const UNMEASURED_SECONDS = 1;
-const UNSHARDED = { index: 1, count: 1 };
 
 export type Durations = ReadonlyMap<string, number>;
 
@@ -96,9 +95,15 @@ export function createDurationSequencer(
   }
   return {
     shard: (specifications) => {
-      const { index, count } = context.config.shard ?? UNSHARDED;
-      const shards = assignShards(filesOf(specifications), durations, count);
-      return inFileOrder(specifications, shards[index - 1] ?? []);
+      const { shard } = context.config;
+      const files =
+        shard === undefined
+          ? undefined
+          : assignShards(filesOf(specifications), durations, shard.count)[shard.index - 1];
+      if (files === undefined) {
+        throw new Error('The duration sequencer shards only a run started with a valid --shard');
+      }
+      return inFileOrder(specifications, files);
     },
     sort: (specifications) =>
       inFileOrder(specifications, heaviestFirst([...new Set(filesOf(specifications))], durations)),
