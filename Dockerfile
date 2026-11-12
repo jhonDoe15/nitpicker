@@ -25,8 +25,11 @@ COPY languages/ /opt/nitpicker/languages/
 COPY docs/ /opt/nitpicker/docs/
 COPY spec/ /opt/nitpicker/spec/
 COPY scripts/reference/ /opt/nitpicker/scripts/reference/
+COPY scripts/typescript/emit.mjs /opt/nitpicker/scripts/typescript/emit.mjs
 RUN cd /opt/nitpicker \
     && npm ci --omit=dev --no-audit --no-fund \
+    && node scripts/typescript/emit.mjs \
+    && find core shared languages -name '*.mts' -delete \
     && node scripts/reference/gen-rules.mjs --data \
     && rm -rf docs spec scripts \
     && ln -s /opt/nitpicker/core/cli.mjs /usr/local/bin/nitpicker
