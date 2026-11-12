@@ -80,7 +80,7 @@ describe.skipIf(!kotlinE2eEnabled)('Kotlin preset coverage and structure end to 
     const stable = onlyTools(result.newFindings, 'coupling').find(
       ({ identity }) => identity === 'package:stable2:instability',
     );
-    expect(stable.metric).toEqual({ name: 'instability', value: 0.3333 });
+    expect(stable.metric).toEqual({ name: 'instability', value: expect.closeTo(0.3333, 10) });
     expect(
       onlyTools(result.unchangedFindings, 'coupling')
         .filter(({ rule }) => rule === 'stability-direction')
@@ -96,7 +96,7 @@ describe.skipIf(!kotlinE2eEnabled)('Kotlin preset coverage and structure end to 
         .map(({ path: file, symbol, location }) => `${file}:${String(location.line)} ${symbol}`),
     ).toEqual(['src/main/kotlin/demo/Shouting.kt:3 demo.ShoutingKt']);
   });
-  it('reports a Gradle failure as a tool error instead of throwing', () => {
+  it('reports a Gradle compile failure as compile-error findings at the broken file', () => {
     git(fixture.project, 'checkout', '-q', 'broken');
 
     const { findings } = analyzeJavaSnapshot(fixture.project.root, {
@@ -104,20 +104,16 @@ describe.skipIf(!kotlinE2eEnabled)('Kotlin preset coverage and structure end to 
       policy: kotlinPolicy,
     });
 
-    expect(
-      findings.map(({ tool, rule, classification, message }) => ({
-        tool,
-        rule,
-        classification,
-        namesTheBrokenFile: message.includes('Broken.kt'),
-      })),
-    ).toEqual([
-      {
-        tool: 'kotlin',
-        rule: 'gradle-failure',
-        classification: 'tool-error',
-        namesTheBrokenFile: true,
-      },
+    expect([
+      ...new Set(
+        findings.map(
+          ({ tool, rule, classification, path: file }) =>
+            `${tool}/${rule} ${classification} ${file}`,
+        ),
+      ),
+    ]).toEqual([
+      `build/compile-error enforceable ${kotlinSources}/Broken.kt`,
+      'kotlin/compile-failed-skipped tool-error .',
     ]);
   });
 });

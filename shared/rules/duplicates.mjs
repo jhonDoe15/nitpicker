@@ -1,16 +1,3 @@
-// Duplicate-code findings, from neutral inputs.
-//
-// Input: a list of clones, each
-//   {
-//     first:  { file: string, line?: number },   // project-relative, forward-slash paths
-//     second: { file: string, line?: number },
-//     fragment?: string,                          // the cloned text (hashed into the identity)
-//     lines?: number, tokens?: number,            // size of the clone
-//   }
-// The two sides are ordered by path, so the same pair gives the same finding either way round.
-// Identity is the file pair, a hash of the fragment and the n-th occurrence of that pair, never a
-// line number. Each clone is one enforceable `duplicate-clone` plus descriptive size metrics.
-
 import { RULE_IDS } from '../policy.mjs';
 import { addMetric, hash, nextOccurrence, positiveInteger } from './finding-helpers.mjs';
 
@@ -40,26 +27,59 @@ function cloneMetrics({ analyzerName, sides, clone, pair, occurrence }) {
   return metrics;
 }
 
+function clonedRange(side, lines) {
+  const startLine = positiveInteger(side.line);
+  if (startLine === undefined) {
+    return undefined;
+  }
+  const endLine = positiveInteger(side.endLine) ?? startLine + (lines ?? 0) - 1;
+  return endLine < startLine ? undefined : { path: side.file, startLine, endLine };
+}
+
+function keptLines(sides, lines) {
+  const ranges = sides.map((side) => clonedRange(side, positiveInteger(lines)));
+  return ranges.includes(undefined) ? {} : { mustKeepUnchangedLines: ranges };
+}
+
+function sizeRatchet(pair, clone, sides) {
+  const size = positiveInteger(clone.tokens) ?? positiveInteger(clone.lines);
+  return size === undefined
+    ? {}
+    : {
+        ratchet: {
+          key: `pair:${pair}:clone`,
+          value: size,
+          divisible: true,
+          ...keptLines(sides, clone.lines),
+        },
+      };
+}
+
 export function evaluateDuplicates(clones, analyzerName) {
   const findings = [];
-  const occurrences = new Map();
+  const pairOccurrences = new Map();
+  const fragmentOccurrences = new Map();
   for (const clone of clones) {
     const sides = [clone.first, clone.second].sort((left, right) =>
       left.file.localeCompare(right.file),
     );
     const pair = sides.map((side) => side.file).join('|');
-    const occurrence = nextOccurrence(occurrences, sides.map((side) => side.file).join('\0'));
+    const pairKey = sides.map((side) => side.file).join('\0');
+    const fragment = hash(clone.fragment ?? '');
+    const occurrence = nextOccurrence(pairOccurrences, pairKey);
+    const fragmentOccurrence = nextOccurrence(fragmentOccurrences, `${pairKey}\0${fragment}`);
     findings.push(
       {
         tool: analyzerName,
         rule: RULE_IDS.duplicateClone,
         path: sides[0].file,
-        identity: `pair:${pair}:fragment:${hash(clone.fragment ?? '')}:occurrence:${String(occurrence)}`,
+        identity: `pair:${pair}:fragment:${fragment}:occurrence:${String(fragmentOccurrence)}`,
         message: duplicateMessage(sides, clone.lines),
         classification: 'enforceable',
         ...(positiveInteger(sides[0].line) === undefined
           ? {}
           : { location: { line: sides[0].line } }),
+        ...sizeRatchet(pair, clone, sides),
       },
       ...cloneMetrics({ analyzerName, sides, clone, pair, occurrence }),
     );

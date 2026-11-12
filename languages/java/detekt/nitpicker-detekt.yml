@@ -68,6 +68,46 @@ coroutines:
     excludes: []
     ignoreAnnotated: []
     includes: []
+  SuspendFunSwallowedCancellation:
+    active: true
+    severity: warning
+    excludes: []
+    ignoreAnnotated: []
+    includes: []
+  InjectDispatcher:
+    active: true
+    severity: warning
+    excludes: []
+    ignoreAnnotated: []
+    includes: []
+    dispatcherNames:
+      - 'IO'
+      - 'Default'
+      - 'Unconfined'
+  RedundantSuspendModifier:
+    active: true
+    severity: warning
+    excludes: []
+    ignoreAnnotated: []
+    includes: []
+  SleepInsteadOfDelay:
+    active: true
+    severity: warning
+    excludes: []
+    ignoreAnnotated: []
+    includes: []
+  SuspendFunWithFlowReturnType:
+    active: true
+    severity: warning
+    excludes: []
+    ignoreAnnotated: []
+    includes: []
+  SuspendFunWithCoroutineScopeReceiver:
+    active: true
+    severity: warning
+    excludes: []
+    ignoreAnnotated: []
+    includes: []
 
 style:
   active: true
@@ -94,7 +134,7 @@ style:
       - value: 'kotlin.io.println'
         reason: 'Log through the application logger (`logger.info(...)`) instead of printing to the console. For program output, write to an `Appendable`, `PrintStream` or `Writer` parameter that the file with `fun main` passes as `System.out`.'
       - value: 'java.lang.System.getenv'
-        reason: 'Read environment variables only in the composition root (the file with `fun main`, the `@SpringBootApplication` class or a Ktor `Application` module): read them once into a config class there and pass it in.'
+        reason: 'Read environment variables only in the composition root (the file with `fun main`, the `@SpringBootApplication` class, a Ktor `Application` module, or a framework configuration type such as Spring `@Configuration`, Micronaut `@Factory` or a Dagger or Guice module): read them once into a config class there and pass it in.'
       - value: 'java.time.Instant.now()'
         reason: 'Inject a `java.time.Clock` and call `now(clock)` (`Instant.now(clock)`), so the code can be tested with a fixed time.'
       - value: 'java.time.LocalDate.now()'

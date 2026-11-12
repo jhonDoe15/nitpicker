@@ -34,7 +34,7 @@ const BUILD = `spotbugs {
 const HEAD = { 'build.gradle': BUILD, 'config/spotbugs/exclude.xml': FILTER };
 const NOTHING_DECLARED = new RegExp(
   '^"tools\\.spotbugs\\.precedence" lists "project" but SpotBugs settings in the build .* is missing: ' +
-    'create it, or remove "project" from tools\\.spotbugs\\.precedence$',
+    'create it, or remove "project" from tools\\.spotbugs\\.precedence\\. See \\S+$',
   'u',
 );
 const choicesOf = (root, precedence, policyRoot = root) =>

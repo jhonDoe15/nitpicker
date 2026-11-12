@@ -217,6 +217,12 @@
         }
       }
     },
+    "analyzerTimeoutMinutes": {
+      "description": "Minutes each named analyzer may run before it is stopped. A deadline is not policy: it leaves the policy hash alone.",
+      "type": "object",
+      "propertyNames": { "pattern": "\\S" },
+      "additionalProperties": { "type": "integer", "minimum": 1, "maximum": 35791 }
+    },
     "legacyInventory": {
       "description": "Path of the legacy inventory inside the project; nitpicker.legacy.json when absent.",
       "type": "string",
@@ -360,6 +366,8 @@
                         "repository-hygiene/migration-hardcoded-name",
                         "start-schema-push",
                         "repository-hygiene/start-schema-push",
+                        "foreign-key-index",
+                        "repository-hygiene/foreign-key-index",
                         "co-change",
                         "change-history/co-change",
                         "duplicate-definition",
@@ -370,12 +378,27 @@
                         "structure/sibling-copy-edit",
                         "shared-used-by-one-feature",
                         "coupling/shared-used-by-one-feature",
+                        "feature-internal-import",
+                        "coupling/feature-internal-import",
+                        "shared-imports-feature",
+                        "coupling/shared-imports-feature",
+                        "feature-cycle",
+                        "coupling/feature-cycle",
                         "test-only-export",
                         "dead-code/test-only-export",
                         "coupling/test-only-export",
                         "doc-comment-content",
                         "facts/doc-comment-content",
                         "test-console-output",
+                        "mutable-state-escape",
+                        "context-threading",
+                        "caller-protocol",
+                        "protocol-contract",
+                        "forwarding-chain",
+                        "disjoint-consumer-groups",
+                        "data-clump",
+                        "repeated-policy-decision",
+                        "foreign-state-decision",
                         "folder-depth-limit",
                         "structure/folder-depth-limit",
                         "class-methods-limit",
@@ -849,6 +872,36 @@
             }
           }
         },
+        "errorprone": {
+          "description": "Settings of errorprone.",
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["precedence"],
+          "properties": {
+            "precedence": {
+              "description": "Which config errorprone uses: \"project\" is your own config file, \"nitpicker\" is the preset's. List each at most once.",
+              "type": "array",
+              "minItems": 1,
+              "uniqueItems": true,
+              "items": { "enum": ["project", "nitpicker"] }
+            }
+          }
+        },
+        "pit": {
+          "description": "Settings of pit.",
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["precedence"],
+          "properties": {
+            "precedence": {
+              "description": "Which config pit uses: \"project\" is your own config file, \"nitpicker\" is the preset's. List each at most once.",
+              "type": "array",
+              "minItems": 1,
+              "uniqueItems": true,
+              "items": { "enum": ["project", "nitpicker"] }
+            }
+          }
+        },
         "ktlint": {
           "description": "Settings of ktlint.",
           "type": "object",
@@ -1067,6 +1120,45 @@
         }
       }
     },
+    "protocols": {
+      "description": "Lifecycle contracts for the protocol-contract rule: a type whose open member must be followed by a close member on every exit.",
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["type", "open", "close"],
+        "properties": {
+          "type": {
+            "description": "The class or interface name, such as \"Session\".",
+            "type": "string",
+            "minLength": 1
+          },
+          "open": {
+            "description": "Members that start the lifecycle.",
+            "type": "array",
+            "minItems": 1,
+            "items": { "type": "string", "minLength": 1 }
+          },
+          "close": {
+            "description": "Members that end the lifecycle; one must run on every exit.",
+            "type": "array",
+            "minItems": 1,
+            "items": { "type": "string", "minLength": 1 }
+          },
+          "steps": {
+            "description": "Members that must come after an open member.",
+            "type": "array",
+            "minItems": 1,
+            "items": { "type": "string", "minLength": 1 }
+          },
+          "reason": {
+            "description": "Why the contract exists.",
+            "type": "string",
+            "pattern": "\\S"
+          }
+        }
+      }
+    },
     "kotlin": {
       "description": "Kotlin preset settings.",
       "type": "object",
@@ -1202,6 +1294,8 @@
               "pmd": false,
               "checkstyle": false,
               "spotbugs": false,
+              "errorprone": false,
+              "pit": false,
               "ktlint": false,
               "ktfmt": false,
               "detekt": false,
@@ -1355,6 +1449,7 @@
                     "mutant-nocoverage",
                     "duplicate-clone",
                     "stability-direction",
+                    "package-cycle",
                     "no-production-runtime",
                     "type-only-production-dependency",
                     "baseline-expansion",
@@ -1370,6 +1465,9 @@
                     "class-fields-limit",
                     "inheritance-depth-limit",
                     "shared-used-by-one-feature",
+                    "feature-internal-import",
+                    "shared-imports-feature",
+                    "feature-cycle",
                     "duplicate-definition",
                     "sibling-copy-edit",
                     "exported-name-collision",
@@ -1385,13 +1483,23 @@
                     "committed-build-output",
                     "migration-order",
                     "migration-hardcoded-name",
+                    "foreign-key-index",
                     "start-schema-push",
                     "unused-dependency",
                     "unlisted-dependency",
                     "unresolved-import",
                     "co-change",
                     "test-console-output",
-                    "doc-comment-content"
+                    "doc-comment-content",
+                    "mutable-state-escape",
+                    "context-threading",
+                    "caller-protocol",
+                    "protocol-contract",
+                    "forwarding-chain",
+                    "disjoint-consumer-groups",
+                    "data-clump",
+                    "repeated-policy-decision",
+                    "foreign-state-decision"
                   ]
                 }
               }
@@ -1416,6 +1524,8 @@
               "pmd": false,
               "checkstyle": false,
               "spotbugs": false,
+              "errorprone": false,
+              "pit": false,
               "ktlint": false,
               "ktfmt": false,
               "detekt": false,
@@ -1557,6 +1667,7 @@
                     "mutant-nocoverage",
                     "duplicate-clone",
                     "stability-direction",
+                    "package-cycle",
                     "no-production-runtime",
                     "type-only-production-dependency",
                     "baseline-expansion",
@@ -1572,6 +1683,9 @@
                     "class-fields-limit",
                     "inheritance-depth-limit",
                     "shared-used-by-one-feature",
+                    "feature-internal-import",
+                    "shared-imports-feature",
+                    "feature-cycle",
                     "duplicate-definition",
                     "sibling-copy-edit",
                     "exported-name-collision",
@@ -1587,13 +1701,23 @@
                     "committed-build-output",
                     "migration-order",
                     "migration-hardcoded-name",
+                    "foreign-key-index",
                     "start-schema-push",
                     "unused-dependency",
                     "unlisted-dependency",
                     "unresolved-import",
                     "co-change",
                     "test-console-output",
-                    "doc-comment-content"
+                    "doc-comment-content",
+                    "mutable-state-escape",
+                    "context-threading",
+                    "caller-protocol",
+                    "protocol-contract",
+                    "forwarding-chain",
+                    "disjoint-consumer-groups",
+                    "data-clump",
+                    "repeated-policy-decision",
+                    "foreign-state-decision"
                   ]
                 }
               }
@@ -1714,6 +1838,7 @@
                             "duplicates/duplicate-clone",
                             "stability-direction",
                             "coupling/stability-direction",
+                            "package-cycle",
                             "no-production-runtime",
                             "test-runtime/no-production-runtime",
                             "file-lines-limit",
@@ -1740,6 +1865,8 @@
                             "repository-hygiene/migration-hardcoded-name",
                             "start-schema-push",
                             "repository-hygiene/start-schema-push",
+                            "foreign-key-index",
+                            "repository-hygiene/foreign-key-index",
                             "co-change",
                             "change-history/co-change",
                             "duplicate-definition",
@@ -1750,12 +1877,27 @@
                             "structure/sibling-copy-edit",
                             "shared-used-by-one-feature",
                             "coupling/shared-used-by-one-feature",
+                            "feature-internal-import",
+                            "coupling/feature-internal-import",
+                            "shared-imports-feature",
+                            "coupling/shared-imports-feature",
+                            "feature-cycle",
+                            "coupling/feature-cycle",
                             "test-only-export",
                             "dead-code/test-only-export",
                             "coupling/test-only-export",
                             "doc-comment-content",
                             "facts/doc-comment-content",
                             "test-console-output",
+                            "mutable-state-escape",
+                            "context-threading",
+                            "caller-protocol",
+                            "protocol-contract",
+                            "forwarding-chain",
+                            "disjoint-consumer-groups",
+                            "data-clump",
+                            "repeated-policy-decision",
+                            "foreign-state-decision",
                             "folder-depth-limit",
                             "structure/folder-depth-limit",
                             "class-methods-limit",
@@ -1767,7 +1909,7 @@
                           ]
                         },
                         {
-                          "pattern": "^(?:pmd|spotbugs|errorprone|archunit|google-java-format|palantir-java-format|jacoco|checkstyle|crap|duplicates|pit|structure|coupling|spring|test-runtime)/[\\s\\S]"
+                          "pattern": "^(?:pmd|spotbugs|errorprone|archunit|google-java-format|palantir-java-format|jacoco|checkstyle|crap|duplicates|pit|structure|coupling|javac|forbiddenapis|dependencies|spring|test-runtime)/[\\s\\S]"
                         }
                       ]
                     }
@@ -1936,6 +2078,7 @@
                             "duplicates/duplicate-clone",
                             "stability-direction",
                             "coupling/stability-direction",
+                            "package-cycle",
                             "no-production-runtime",
                             "test-runtime/no-production-runtime",
                             "file-lines-limit",
@@ -1962,6 +2105,8 @@
                             "repository-hygiene/migration-hardcoded-name",
                             "start-schema-push",
                             "repository-hygiene/start-schema-push",
+                            "foreign-key-index",
+                            "repository-hygiene/foreign-key-index",
                             "co-change",
                             "change-history/co-change",
                             "duplicate-definition",
@@ -1972,12 +2117,27 @@
                             "structure/sibling-copy-edit",
                             "shared-used-by-one-feature",
                             "coupling/shared-used-by-one-feature",
+                            "feature-internal-import",
+                            "coupling/feature-internal-import",
+                            "shared-imports-feature",
+                            "coupling/shared-imports-feature",
+                            "feature-cycle",
+                            "coupling/feature-cycle",
                             "test-only-export",
                             "dead-code/test-only-export",
                             "coupling/test-only-export",
                             "doc-comment-content",
                             "facts/doc-comment-content",
                             "test-console-output",
+                            "mutable-state-escape",
+                            "context-threading",
+                            "caller-protocol",
+                            "protocol-contract",
+                            "forwarding-chain",
+                            "disjoint-consumer-groups",
+                            "data-clump",
+                            "repeated-policy-decision",
+                            "foreign-state-decision",
                             "folder-depth-limit",
                             "structure/folder-depth-limit",
                             "class-methods-limit",
@@ -1988,18 +2148,27 @@
                             "structure/inheritance-depth-limit",
                             "test-runtime/test-console-output",
                             "test-runtime/test-not-run",
+                            "pmd/UntestedRoundTrip",
+                            "pmd/CopiedConstantInTest",
+                            "kotlin-source/ChildCoroutineOutlivesResource",
+                            "kotlin-source/SuspendFunInFinallySection",
                             "kotlin-source/UnboundedFanOut",
                             "kotlin-source/UnboundedReactiveFanOut",
                             "kotlin-source/UnsafeCastOperator",
                             "kotlin-source/ListUsedAsSet",
                             "kotlin-source/LinearLookupInLoop",
                             "kotlin-source/SortForExtreme",
-                            "kotlin-source/FutureWithoutException",
+                            "kotlin-source/ConfigurationReadOutsideCompositionRoot",
                             "kotlin-source/RepeatedStringLiteral",
                             "kotlin-source/LogFormatArguments",
                             "kotlin-source/LogExceptionFirst",
+                            "kotlin-source/SimplerBooleanLogic",
                             "kotlin-source/OperandSlip",
                             "kotlin-source/ProcessWaitWithoutTimeout",
+                            "kotlin-source/UnorderedQuery",
+                            "kotlin-source/UnboundedQueryArray",
+                            "kotlin-source/RegexPartDefect",
+                            "kotlin-source/BacktrackingRegex",
                             "kotlin-source/UnquotedRegexValue",
                             "kotlin-source/PlainTextRegex",
                             "kotlin-source/UnclosedInlineResource",
@@ -2033,6 +2202,7 @@
                             "kotlin-source/TriStateBoolean",
                             "kotlin-source/DefaultTimeZone",
                             "kotlin-source/LegacyCalendarApi",
+                            "kotlin-source/TimeUnitMismatch",
                             "kotlin-source/UriCreateDynamic",
                             "kotlinc/deprecation",
                             "kotlinc/unchecked",
@@ -2046,19 +2216,31 @@
                             "pmd/ServerOrContainerPerTest",
                             "pmd/AssertionInControlFlow",
                             "pmd/CoroutineEscapesTest",
+                            "pmd/FloatEqualityInTest",
+                            "pmd/WeakAssertionInTest",
                             "pmd/GlobalStateLeakInTest",
                             "pmd/SharedTestState",
                             "pmd/MockedSubjectInTest",
                             "pmd/StaticMockOfProjectType",
+                            "pmd/RelaxedMockInTest",
                             "pmd/SpringUnusedContext",
                             "pmd/ExhaustiveEnumPredicate",
                             "pmd/StaticForwardingWrapper",
+                            "pmd/ForwardingMethodAlias",
                             "pmd/SingularAndPluralMember",
                             "pmd/timeout-abandons-operation",
+                            "pmd/NonAtomicUpdateAcrossSuspension",
+                            "pmd/SwallowedInterrupt",
+                            "pmd/SwallowedCancellation",
+                            "pmd/LockOrderInversion",
+                            "pmd/InconsistentFieldLocking",
+                            "pmd/ServiceLocatorLookup",
                             "pmd/ValidationAnnotationTarget",
                             "pmd/ClassLoadEffect",
                             "pmd/UnboundedThreadPool",
                             "pmd/RecursiveMapUpdate",
+                            "pmd/StreamedRowsCollected",
+                            "pmd/ReusableObjectPerCall",
                             "pmd/GeneratedMemberCycle",
                             "pmd/GeneratedEqualsSkipsSuperclass",
                             "pmd/SpringConstructorInjection",
@@ -2106,10 +2288,12 @@
                             "pmd/JpaLazyFetching",
                             "pmd/JpaEntityClass",
                             "pmd/JpaManyToManyCascade",
+                            "pmd/JpaMultipleCollectionFetch",
                             "pmd/JpaManyToManySet",
                             "pmd/JpaVersion",
                             "pmd/JpaSequenceIds",
                             "pmd/JpaEnumString",
+                            "pmd/JpaUnindexedForeignKey",
                             "pmd/JpaIdentityHashCode",
                             "pmd/SpringDataDerivedQuery",
                             "pmd/SpringDataNativeQuery",
@@ -2125,12 +2309,14 @@
                             "pmd/SpringDataFilterInQuery",
                             "pmd/SpringQueryConcatenation",
                             "unused-option",
-                            "structure/unused-option"
+                            "structure/unused-option",
+                            "kotlin-source/BlockingCallInCoroutine",
+                            "kotlin-source/TimeoutWithoutSuspension"
                           ]
                         },
                         { "pattern": "^detekt\\.[a-z-]+\\.[A-Z][A-Za-z0-9]*$" },
                         {
-                          "pattern": "^(?:pmd|spotbugs|errorprone|archunit|google-java-format|palantir-java-format|jacoco|checkstyle|crap|duplicates|pit|structure|coupling|spring|test-runtime)/[\\s\\S]"
+                          "pattern": "^(?:pmd|spotbugs|errorprone|archunit|google-java-format|palantir-java-format|jacoco|checkstyle|crap|duplicates|pit|structure|coupling|javac|forbiddenapis|dependencies|spring|test-runtime)/[\\s\\S]"
                         }
                       ]
                     }
@@ -2168,8 +2354,7 @@
               "sourceRoots": false,
               "testRoots": false,
               "excludedGlobs": false,
-              "entryPoints": false,
-              "sharedRoots": false
+              "entryPoints": false
             }
           },
           "tools": {
@@ -2184,6 +2369,8 @@
               "pmd": false,
               "checkstyle": false,
               "spotbugs": false,
+              "errorprone": false,
+              "pit": false,
               "ktlint": false,
               "ktfmt": false,
               "detekt": false,
@@ -2267,6 +2454,8 @@
                         "repository-hygiene/migration-hardcoded-name",
                         "start-schema-push",
                         "repository-hygiene/start-schema-push",
+                        "foreign-key-index",
+                        "repository-hygiene/foreign-key-index",
                         "co-change",
                         "change-history/co-change",
                         "duplicate-definition",
@@ -2277,12 +2466,27 @@
                         "structure/sibling-copy-edit",
                         "shared-used-by-one-feature",
                         "coupling/shared-used-by-one-feature",
+                        "feature-internal-import",
+                        "coupling/feature-internal-import",
+                        "shared-imports-feature",
+                        "coupling/shared-imports-feature",
+                        "feature-cycle",
+                        "coupling/feature-cycle",
                         "test-only-export",
                         "dead-code/test-only-export",
                         "coupling/test-only-export",
                         "doc-comment-content",
                         "facts/doc-comment-content",
                         "test-console-output",
+                        "mutable-state-escape",
+                        "context-threading",
+                        "caller-protocol",
+                        "protocol-contract",
+                        "forwarding-chain",
+                        "disjoint-consumer-groups",
+                        "data-clump",
+                        "repeated-policy-decision",
+                        "foreign-state-decision",
                         "folder-depth-limit",
                         "structure/folder-depth-limit",
                         "class-methods-limit",
@@ -2318,23 +2522,7 @@
           "kotlin": false,
           "go": false,
           "spring": false
-        },
-        "allOf": [
-          {
-            "if": {
-              "not": {
-                "required": ["history"],
-                "properties": {
-                  "history": {
-                    "required": ["coChange"],
-                    "properties": { "coChange": { "const": true } }
-                  }
-                }
-              }
-            },
-            "then": { "properties": { "layout": { "properties": { "featureRoots": false } } } }
-          }
-        ]
+        }
       }
     },
     {
@@ -2342,11 +2530,17 @@
       "then": {
         "properties": {
           "thresholds": { "properties": { "inheritanceDepth": false } },
-          "layout": false,
+          "layout": {
+            "properties": {
+              "sourceRoots": false,
+              "testRoots": false,
+              "excludedGlobs": false,
+              "entryPoints": false
+            }
+          },
           "tools": {
             "properties": {
               "prettier": false,
-              "jscpd": false,
               "stryker": false,
               "knip": false,
               "dependency-cruiser": false,
@@ -2356,6 +2550,8 @@
               "pmd": false,
               "checkstyle": false,
               "spotbugs": false,
+              "errorprone": false,
+              "pit": false,
               "ktlint": false,
               "ktfmt": false,
               "detekt": false,
@@ -2425,6 +2621,8 @@
                             "repository-hygiene/migration-hardcoded-name",
                             "start-schema-push",
                             "repository-hygiene/start-schema-push",
+                            "foreign-key-index",
+                            "repository-hygiene/foreign-key-index",
                             "co-change",
                             "change-history/co-change",
                             "duplicate-definition",
@@ -2435,21 +2633,46 @@
                             "structure/sibling-copy-edit",
                             "shared-used-by-one-feature",
                             "coupling/shared-used-by-one-feature",
+                            "feature-internal-import",
+                            "coupling/feature-internal-import",
+                            "shared-imports-feature",
+                            "coupling/shared-imports-feature",
+                            "feature-cycle",
+                            "coupling/feature-cycle",
                             "test-only-export",
                             "dead-code/test-only-export",
                             "coupling/test-only-export",
                             "doc-comment-content",
                             "facts/doc-comment-content",
                             "test-console-output",
+                            "mutable-state-escape",
+                            "context-threading",
+                            "caller-protocol",
+                            "protocol-contract",
+                            "forwarding-chain",
+                            "disjoint-consumer-groups",
+                            "data-clump",
+                            "repeated-policy-decision",
+                            "foreign-state-decision",
                             "folder-depth-limit",
                             "structure/folder-depth-limit",
                             "class-methods-limit",
                             "structure/class-methods-limit",
                             "class-fields-limit",
-                            "structure/class-fields-limit"
+                            "structure/class-fields-limit",
+                            "duplicate-clone",
+                            "duplicates/duplicate-clone",
+                            "stability-direction",
+                            "coupling/stability-direction",
+                            "unused-dependency",
+                            "dead-code/unused-dependency",
+                            "unlisted-dependency",
+                            "dead-code/unlisted-dependency"
                           ]
                         },
-                        { "pattern": "^(?:vet|staticcheck|errcheck|modernize)/[\\s\\S]" }
+                        {
+                          "pattern": "^(?:vet|staticcheck|errcheck|modernize|revive|bodyclose|rowserrcheck|sqlclosecheck|noctx|errorlint|nilerr|nilnil|errname|contextcheck|containedctx|fatcontext|exhaustive|recvcheck|durationcheck|makezero|reassign|unconvert|wastedassign|thelper|tparallel|testifylint|usetesting|asciicheck|bidichk|gocheckcompilerdirectives|canonicalheader|musttag|perfsprint|usestdlibvars|sloglint|spancheck|go-rules|deadcode)/[\\s\\S]"
+                        }
                       ]
                     }
                   }
@@ -2474,26 +2697,9 @@
           "i18n": false,
           "python": false,
           "kotlin": false,
-          "duplicates": false,
           "spring": false,
-          "testConsole": false
-        },
-        "allOf": [
-          {
-            "if": {
-              "not": {
-                "required": ["history"],
-                "properties": {
-                  "history": {
-                    "required": ["coChange"],
-                    "properties": { "coChange": { "const": true } }
-                  }
-                }
-              }
-            },
-            "then": { "properties": { "layout": { "properties": { "featureRoots": false } } } }
-          }
-        ]
+          "protocols": false
+        }
       }
     }
   ],
@@ -2667,6 +2873,7 @@
         "duplicates/duplicate-clone",
         "stability-direction",
         "coupling/stability-direction",
+        "package-cycle",
         "no-production-runtime",
         "test-runtime/no-production-runtime",
         "type-only-production-dependency",
@@ -2697,6 +2904,12 @@
         "structure/inheritance-depth-limit",
         "shared-used-by-one-feature",
         "coupling/shared-used-by-one-feature",
+        "feature-internal-import",
+        "coupling/feature-internal-import",
+        "shared-imports-feature",
+        "coupling/shared-imports-feature",
+        "feature-cycle",
+        "coupling/feature-cycle",
         "duplicate-definition",
         "structure/duplicate-definition",
         "sibling-copy-edit",
@@ -2727,6 +2940,8 @@
         "repository-hygiene/migration-order",
         "migration-hardcoded-name",
         "repository-hygiene/migration-hardcoded-name",
+        "foreign-key-index",
+        "repository-hygiene/foreign-key-index",
         "start-schema-push",
         "repository-hygiene/start-schema-push",
         "unused-dependency",
@@ -2739,7 +2954,16 @@
         "change-history/co-change",
         "test-console-output",
         "doc-comment-content",
-        "facts/doc-comment-content"
+        "facts/doc-comment-content",
+        "mutable-state-escape",
+        "context-threading",
+        "caller-protocol",
+        "protocol-contract",
+        "forwarding-chain",
+        "disjoint-consumer-groups",
+        "data-clump",
+        "repeated-policy-decision",
+        "foreign-state-decision"
       ]
     }
   }

@@ -13,6 +13,7 @@ const HEAD = `package demo
 
 import io.mockk.every
 import io.mockk.mockk
+import io.mockk.mockkClass
 import io.mockk.mockkConstructor
 import io.mockk.mockkObject
 import io.mockk.mockkStatic
@@ -84,6 +85,8 @@ describe('subjectMockFindings', () => {
   private val viaMockito: OrderService = mock()
   private val viaClass = Mockito.mock(OrderService::class.java)
   private val clock = mockk<Clock>()
+  private val byClass = mockkClass(OrderService::class)
+  private val other = mockkClass(Pricing::class)
 }
 `;
     expect(summary(body)).toEqual([
@@ -91,6 +94,7 @@ describe('subjectMockFindings', () => {
       'MockedSubjectInTest@4',
       'MockedSubjectInTest@5',
       'MockedSubjectInTest@6',
+      'MockedSubjectInTest@8',
     ]);
     expect(findingsFor(body)[0].message).toBe(routed(subjectMessage('OrderService')));
   });

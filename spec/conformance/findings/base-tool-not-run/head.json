@@ -1,0 +1,20 @@
+{
+  "findings": [
+    {
+      "tool": "javac",
+      "rule": "rawtypes",
+      "path": "src/A.java",
+      "identity": "raw:a",
+      "message": "found raw type: List",
+      "classification": "enforceable"
+    },
+    {
+      "tool": "pmd",
+      "rule": "EmptyCatchBlock",
+      "path": "src/A.java",
+      "identity": "catch:a",
+      "message": "Avoid empty catch blocks",
+      "classification": "enforceable"
+    }
+  ]
+}

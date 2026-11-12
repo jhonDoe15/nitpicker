@@ -39,6 +39,25 @@ limits as the tests. `test-support/` holds what the tests import without hooks: 
 fixture file contents, and helpers that run a build or summarize a report. Neither folder ships in
 the npm package.
 
+## TypeScript sources
+
+The code is moving from JavaScript (`.mjs`) to TypeScript (`.mts`) one area at a time; issue #147
+tracks the plan. Node.js strips the types itself, so a checkout runs `.mts` files with no build
+step, and `npm pack` emits a `.mjs` file beside each shipped `.mts` (`scripts/typescript/emit.mjs`)
+so the package stays plain JavaScript.
+
+- Import a converted module by its real name (`./a.mts`); `npm run typecheck` checks every `.mts`
+  file against `tsconfig.json`, the flags of the strict preset.
+- Use only syntax that Node.js can strip: no enums, namespaces or parameter properties.
+- A shipped `.mjs` file must not import a `.mts` file, so shipped code converts from the importers
+  down. `node scripts/typescript/ready.mts <folder>` lists the modules of a folder that can convert
+  now, and `node scripts/typescript/convert.mts <files>` renames them and rewrites their imports and
+  their `nitpicker.config.json` entries, then lists the places that name them by path.
+- Code that opens a module by path (a worker, a spawned runner, a config file handed to a tool, a
+  file list that is hashed) keeps the packaged `.mjs` name and resolves it with
+  `checkoutModulePath` or `checkoutModuleUrl` from `shared/paths/checkout-module.mjs`, which pick
+  the `.mts` source in a checkout.
+
 ## Running the checks
 
 Pull requests do not run CI on every push. Check your change locally before you push it and again
@@ -52,7 +71,7 @@ npm run check
 
 `npm run check` runs the self-gate (nitpicker checks your change against the remote's default
 branch) and then the full test suite, and fails if either fails. Arguments after `--` go to vitest,
-so `npm run check -- --shard=2/2` runs only what one CI test shard runs. It needs Node.js 22.14 or newer (CI
+so `npm run check -- --shard=2/2` runs only what one CI test shard runs. It needs Node.js 22.18 or newer (CI
 uses 24) and Java 21 for the structure-metrics test. It checks your working tree, uncommitted and
 untracked files included, while CI checks the pull request merged into its target branch, so commit
 everything and merge or rebase on the latest `main` before the final run. A change to a language's
@@ -90,8 +109,11 @@ CI (the `typescript` workflow) runs:
 
 - on every push to `main` that touches a path in the workflow's `paths` list (a run that has started
   finishes; a run still waiting is replaced by the next push's run, which tests everything merged so far);
-- on a pull request when someone adds the `run-ci` label, once per added label (remove and add the
-  label again for another run);
+- on a pull request when someone adds a label while it carries the `run-ci` label: adding `run-ci`
+  starts it, and any later label runs it again (remove and add `run-ci` for another run). GitHub
+  keeps only the newest run of a workflow for a commit and counts a skipped required check as
+  passed, so a label never skips the checks: on a pull request without `run-ci` the self-gate
+  still runs and `test` fails until someone adds `run-ci`;
 - by hand from the Actions tab (Run workflow) on any branch that already has this workflow.
 
 GitHub does not start a pull request run while the pull request has a merge conflict, so resolve it
@@ -109,18 +131,18 @@ self-gate runs the pull request's own code and workflow, so changes to `.github/
 `core/`, `package.json` and `nitpicker.config.json` need a careful review whatever the gate says.
 
 CI splits the test files into shards that run as parallel jobs, and the required `test` check passes
-only when every shard passed. `scripts/test-shards/sequencer.mjs` gives each shard about the same
+only when every shard passed. `scripts/test-shards/sequencer.mts` gives each shard about the same
 total time, from the per-file times in `scripts/test-shards/durations.json`; a file that is not
 listed counts as one second. The split never drops a file, it only gets less even as the times drift.
 After adding or reshaping slow tests, record the times again: the script runs the suite (vitest
 arguments pass through) and rewrites the times of the files it ran.
 
 ```sh
-node scripts/test-shards/record-durations.mjs --maxWorkers=100%
+node scripts/test-shards/record-durations.mts --maxWorkers=100%
 ```
 
 Java end-to-end CI uses 4 isolated runner shards and Kotlin uses 3, with files run serially in
-each shard. Independent behavior groups have separate fixture trees; the full 102 Java and 98
+each shard. Independent behavior groups have separate fixture trees; the full 124 Java and 110
 Kotlin cases remain selected. The final `java` or `kotlin` check passes only when all its shards
 pass. Reproduce a shard with `npm run test:java -- --shard=1/4` or
 `npm run test:kotlin -- --no-file-parallelism --shard=1/3`. A file that runs longer than about
@@ -140,14 +162,14 @@ without starting a JVM build or a Python project (CI runs the same check in the 
 Java, Kotlin, Python and Go workflows):
 
 ```sh
-node scripts/test-shards/verify-e2e-shards.mjs
+node scripts/test-shards/verify-e2e-shards.mts
 ```
 
 Enabled JVM suites use separate timing files: `scripts/test-shards/java-e2e.json` and
 `scripts/test-shards/kotlin-e2e.json`. Ordinary recordings cannot overwrite these with the timings
 of skipped E2E tests. To record a JVM suite, set its `NITPICKER_JAVA_E2E=1` or
 `NITPICKER_KOTLIN_E2E=1` flag, pass the same file filters as its package script to
-`record-durations.mjs`, and use `--no-file-parallelism`. The recorder selects the corresponding
+`record-durations.mts`, and use `--no-file-parallelism`. The recorder selects the corresponding
 timing file automatically. Run one enabled JVM suite at a time. CI uploads a JSON report per
 shard for reviewing durations and failures; timing provenance and limits are in
 [scripts/test-shards/README.md](scripts/test-shards/README.md).

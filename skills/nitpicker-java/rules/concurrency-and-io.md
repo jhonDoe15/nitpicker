@@ -26,6 +26,17 @@ Part of the [nitpicker-java](../SKILL.md) skill. Write these forms from the star
   `setReadTimeout` on an `HttpURLConnection`, `setDefaultRequestConfig(...)` on an Apache client
   builder, `readTimeout` on a JAX-RS `ClientBuilder`; not `URL.openStream()` or
   `HttpClients.createDefault()` (`pmd/HttpWithoutTimeout`).
+- Pages of rows: a query that takes a page (`setMaxResults`, `setFirstResult`, `limit`, `offset`, an
+  unsorted `PageRequest` passed to `findAll`) or builds an `array_agg`/`json_agg` list orders on a unique key:
+  `order by a.createdAt desc, a.id`, `criteria.orderBy(...)`, `PageRequest.of(page, size, Sort.by("createdAt", "id"))`
+  (`pmd/UnorderedQuery`).
+- A list bound into a query (`setParameter("ids", ids)`, `findAllById(ids)`, `MapSqlParameterSource`) has an
+  empty check first and goes in chunks (`Lists.partition(ids, 1000)`), or goes as one array parameter
+  (`id = any(:ids)`): an empty list renders `in ()` and PostgreSQL takes at most 65,535 bound parameters
+  (`pmd/UnboundedQueryArray`).
+- Build shareable objects once: an `ObjectMapper`, `Gson`, `JAXBContext`, `ValidatorFactory` or
+  `DateTimeFormatter.ofPattern("...")` goes in a `static final` constant, a final field or a `@Bean`,
+  not inside a method that runs per call (`pmd/ReusableObjectPerCall`).
 - Resources: try-with-resources for anything `Closeable`, also one used once: not
   `resource.getInputStream().readAllBytes()` or `load(new JarFile(root))`
   (`pmd/UnclosedInlineResource`). No `finally` that returns or throws.

@@ -4,7 +4,7 @@ func user_name() string { // want ST1003
 	return "a"
 }
 
-func ParseUrl(text string) string { // want ST1003
+func ParseHttp(text string) string { // want ST1003
 	return text
 }
 

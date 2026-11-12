@@ -1,6 +1,6 @@
 import { childAt } from '../../../../shared/ingest/common.mjs';
 
-const ARGUMENT = /(?:[^\s"']+|"[^"]*"?|'[^']*'?)+/gu;
+const ARGUMENT = /(?:[^\s"']|"[^"]*"?|'[^']*'?)+/gu;
 const QUOTED = /"([^"]*)"?|'([^']*)'?/gu;
 const LATE_REFERENCE = /@\{([^}]*)\}/gu;
 const UNRESOLVED_REFERENCE = /[@$]\{/u;

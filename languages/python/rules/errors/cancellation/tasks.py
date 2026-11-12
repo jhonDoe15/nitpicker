@@ -8,12 +8,13 @@ BLOCKS = ("body", "orelse", "finalbody")
 
 
 def chain_text(node):
-    if isinstance(node, ast.Name):
-        return node.id
-    if isinstance(node, ast.Attribute):
-        base = chain_text(node.value)
-        return f"{base}.{node.attr}" if base else None
-    return None
+    parts = []
+    while isinstance(node, ast.Attribute):
+        parts.append(node.attr)
+        node = node.value
+    if not isinstance(node, ast.Name):
+        return None
+    return ".".join([node.id, *reversed(parts)])
 
 
 def cancel_target(call):
