@@ -5,7 +5,7 @@ Part of the [Kotlin preset guide](../kotlin-preset.md).
 The shared duplicates rule runs on Kotlin: jscpd (the version of the TypeScript preset, mode `mild`)
 with `--format kotlin` over each Kotlin source root from the manifest, ignoring the folders named `build`, `generated`,
 `target` and `out` (replaced by `duplicates.skippedFolders`). Clones made only of `package` and `import` lines are not reported. Its message names both files and tells to add either to `exclude`; a glob that matches either file of the pair lifts the finding. Any new clone fails with `duplicate-clone`, tool `duplicates`, identity from the file pair,
-the cloned text and the n-th occurrence, never a line. Clones are found within one source root and
+the cloned text and the n-th occurrence of that text in the pair, never a line. Clones are found within one source root and
 within the Kotlin files; a clone between a `.kt` and a `.java` file, or between two source roots, is not
 (the same as for several Java roots).
 

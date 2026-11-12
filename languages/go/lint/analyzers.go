@@ -1,7 +1,10 @@
 package main
 
 import (
+	"strings"
+
 	"github.com/jhonDoe15/nitpicker/languages/go/lint/catalog"
+	"github.com/jhonDoe15/nitpicker/languages/go/lint/rules"
 	"github.com/kisielk/errcheck/errcheck"
 	"golang.org/x/tools/go/analysis"
 	"golang.org/x/tools/go/analysis/passes/deepequalerrors"
@@ -76,6 +79,7 @@ func groups() []group {
 		{tool: "vet", analyzers: passes()},
 		{tool: "errcheck", analyzers: []*analysis.Analyzer{errcheck.Analyzer}},
 		{tool: modernizeTool, analyzers: modernize.Suite},
+		{tool: rules.Tool, analyzers: rules.Analyzers()},
 	}
 	for _, linter := range catalog.Linters() {
 		all = append(all, group{tool: linter.Tool, analyzers: linter.Analyzers})
@@ -88,7 +92,7 @@ func analyzers() []*analysis.Analyzer {
 	var selected []*analysis.Analyzer
 	for _, each := range groups() {
 		for _, analyzer := range each.analyzers {
-			if !off[analyzer.Name] {
+			if !off[ruleName(analyzer)] {
 				selected = append(selected, analyzer)
 			}
 		}
@@ -104,4 +108,8 @@ func toolNames() map[string]string {
 		}
 	}
 	return names
+}
+
+func ruleName(analyzer *analysis.Analyzer) string {
+	return strings.ReplaceAll(analyzer.Name, "_", "-")
 }

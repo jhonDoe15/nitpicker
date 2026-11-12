@@ -48,6 +48,7 @@ Each topic has its own page, so two changes to different topics never edit the s
 - [Class and package size limits](java-preset/class-and-package-size-limits.md)
 - [Style](java-preset/style.md)
 - [Coupling and stability (ticket SH6)](java-preset/coupling-and-stability-ticket-sh6.md)
+- [Guards](java-preset/guards.md)
 - [Generated sources](java-preset/generated-sources.md)
 - [Spring rules](java-preset/spring-rules.md)
 - [Spring architecture rules](java-preset/spring-architecture-rules.md)

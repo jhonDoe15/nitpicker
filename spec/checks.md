@@ -114,8 +114,9 @@ concurrency argument over a collection, `forkJoin` and friends over a mapped arr
 a concurrency argument over `Flux.fromIterable`, `Mono.zip`/`Mono.when`/`Flux.zip`/`Flux.merge` over a
 list built per element, and Kotlin `flatMapMerge(Int.MAX_VALUE)`). The Python preset has no reactive
 rule: RxPY is rare in services, and `asyncio.gather` and task groups are covered by
-`unbounded-fan-out`. The Go preset has no rule engine of its own yet.
-Database calls per element are left to the per-item I/O rules, which also keep a bounded or
+`unbounded-fan-out`. The Go preset has no fan-out rule yet.
+Database calls per element are left to the per-item I/O rules (`io-in-loop` in the Python preset and
+`go-rules/io-in-loop` in the Go preset; the other presets' own rules are named in their documents), which also keep a bounded or
 awaited per-item remote call; a call the fan-out rule reports is not reported twice. A worker pool
 started once per slot of a count is bounded, while a count read from a collection's size is not.
 
@@ -165,7 +166,7 @@ element (one pass). The same forms run as `list-used-as-set`, `linear-lookup-in-
 `FURB192` in the Python preset, `pmd/ListUsedAsSet`, `pmd/LinearLookupInLoop` and `pmd/SortForExtreme`
 in the Java preset (main sources, Gradle and Maven) and `kotlin-source/` rules of the same names in the
 Kotlin preset. The other presets read `contains` or `in` only, and the Java and Kotlin rules read
-loops and iterating lambdas, not recursion or listeners. The Go preset has no own rule engine yet.
+loops and iterating lambdas, not recursion or listeners. The Go preset has no counterpart yet.
 
 Streamed rows collected: `nitpicker/no-collected-stream-rows` (production source, in `eslint-lint`)
 reports every item of a `for await` loop over a stream, async generator or cursor pushed into one array
@@ -183,7 +184,8 @@ HTTP deadlines: `nitpicker/require-http-timeout` (strict preset, production sour
 HTTP call that has no timeout, so a server that accepts the connection and never answers hangs it. The same
 rule runs as `http-without-timeout` in the Python preset, `pmd/HttpWithoutTimeout` in the Java preset (main
 sources, with or without Spring; the clients Spring builds stay with `pmd/SpringHttpClientTimeouts` and
-`pmd/SpringHttpClientPerCall`) and `kotlin-source/HttpWithoutTimeout` in the Kotlin preset; each preset's
+`pmd/SpringHttpClientPerCall`), `kotlin-source/HttpWithoutTimeout` in the Kotlin preset and
+`go-rules/http-without-timeout` in the Go preset; each preset's
 document lists the clients it knows.
 
 Configuration reads: the process environment and system properties are read once, in the composition root,
@@ -299,6 +301,7 @@ over limit" and does not fail.
 | `mutant-nocoverage`                | `mutation`           | no score gate (`thresholds.break` is `null`); each new uncovered mutant fails                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   | enforced     | enforced             | enforced       | enforced     | enforced       | not enforced   |
 | `duplicate-clone`                  | `duplicates`         | jscpd in `mild` mode, also over sources with names and literals normalized (at least 100 tokens, except code that only repeats one or two statements); any new clone fails                                                                                                                                                                                                                                                                                                                                                                                      | enforced     | enforced             | enforced       | enforced     | enforced       | enforced       |
 | `stability-direction`              | `coupling`           | a package depending on a less stable package; a feature folder is one unit, and edges between its public face and its own internals do not count; an import that exists only for the type checker (`import type`, `if TYPE_CHECKING:`) is never the reported dependency, but still counts toward instability                                                                                                                                                                                                                                                    | enforced     | enforced             | enforced       | enforced     | enforced       | enforced       |
+| `package-cycle`                    | `coupling`           | packages that depend on each other in a loop                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    | not enforced | not enforced         | enforced       | enforced     | enforced       | not enforced   |
 | `no-production-runtime`            | `test-runtime`       | a test file (Java and Kotlin: a test class) that runs no production code: nothing it imports or references, directly or through test helpers, is production code, and it starts no production process or framework context                                                                                                                                                                                                                                                                                                                                      | enforced     | enforced             | enforced       | enforced     | enforced       | not enforced   |
 | `type-only-production-dependency`  | `test-runtime`       | a test file whose only link to production code is imports that exist only for the type checker (`import type`, `if TYPE_CHECKING:`)                                                                                                                                                                                                                                                                                                                                                                                                                             | enforced     | enforced             | does not apply | enforced     | does not apply | not enforced   |
 | `baseline-expansion`               | `coding-standards`   | raising a legacy baseline allowance fails                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       | enforced     | enforced             | enforced       | enforced     | enforced       | enforced       |

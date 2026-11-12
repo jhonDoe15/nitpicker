@@ -1,3 +1,4 @@
+const COUPLING = 'coupling';
 const QUALIFIED_NAMES =
   "Go code names another package's export through the package (`billing.Total`, `report.Total`), so two exports with one name never meet unqualified, and two dot imports that both define a name do not compile";
 const NO_REEXPORT =
@@ -17,7 +18,7 @@ function featureFolderRules(ids) {
   return [
     {
       id: ids.sharedUsedByOneFeature,
-      check: 'coupling',
+      check: COUPLING,
       limit:
         'a module under a shared root (`layout.sharedRoots`) that exactly one feature reaches and nothing else uses',
     },
@@ -75,6 +76,24 @@ export function reuseRules(ids, reactEnforcedBy) {
       check: 'structure',
       limit: 'React only: a new icon-sized `.svg` file while an icon package is a dependency',
       enforcedBy: reactEnforcedBy,
+    },
+  ];
+}
+
+export function couplingRules(ids, { everyLanguage, withoutTypescript }) {
+  return [
+    {
+      id: ids.stabilityDirection,
+      check: COUPLING,
+      limit:
+        'a package depending on a less stable package; a feature folder is one unit, and edges between its public face and its own internals do not count; an import that exists only for the type checker (`import type`, `if TYPE_CHECKING:`) is never the reported dependency, but still counts toward instability',
+      enforcedBy: everyLanguage,
+    },
+    {
+      id: ids.packageCycle,
+      check: COUPLING,
+      limit: 'packages that depend on each other in a loop',
+      enforcedBy: withoutTypescript,
     },
   ];
 }
