@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest';
-import { moduleClasspaths, parseDependencyList } from '../maven-project.mjs';
+import { moduleClasspaths, parseDependencyList } from './maven-classpaths.mjs';
 
 describe('parseDependencyList', () => {
-  it('reads scope and file, with classifiers, module names, optional markers and drive letters', () => {
+  it('reads coordinates, scope and file, with classifiers, module names, optional markers and drive letters', () => {
     const listing = [
       '',
       'The following files have been resolved:',
@@ -14,10 +14,34 @@ describe('parseDependencyList', () => {
     ].join('\n');
 
     expect(parseDependencyList(listing)).toEqual([
-      { scope: 'test', file: '/m2/junit-jupiter-api-5.11.0.jar' },
-      { scope: 'test', file: '/work/core/target/test-classes' },
-      { scope: 'compile', file: 'C:\\work\\shared\\target\\classes' },
-      { scope: 'compile', file: '/m2/z-1.0-runtime.jar' },
+      {
+        groupId: 'org.junit.jupiter',
+        artifactId: 'junit-jupiter-api',
+        type: 'jar',
+        scope: 'test',
+        file: '/m2/junit-jupiter-api-5.11.0.jar',
+      },
+      {
+        groupId: 'demo',
+        artifactId: 'core',
+        type: 'jar',
+        scope: 'test',
+        file: '/work/core/target/test-classes',
+      },
+      {
+        groupId: 'demo',
+        artifactId: 'shared',
+        type: 'jar',
+        scope: 'compile',
+        file: 'C:\\work\\shared\\target\\classes',
+      },
+      {
+        groupId: 'demo',
+        artifactId: 'z',
+        type: 'jar',
+        scope: 'compile',
+        file: '/m2/z-1.0-runtime.jar',
+      },
     ]);
   });
 });

@@ -111,7 +111,7 @@ function blocksComparison(error, name, stopped) {
 function compareOrReportError(context) {
   const { name, baseFindings, headFindings, toolErrors, unknownFailures } = context;
   try {
-    return compareFindings({
+    const result = compareFindings({
       baseFindings,
       headFindings,
       baseToHeadRenames: context.baseToHeadRenames,
@@ -122,6 +122,10 @@ function compareOrReportError(context) {
           ? undefined
           : unknownOnBaseFor(unknownFailures, context.touchedCode),
     });
+    return {
+      ...result,
+      newFindings: withoutEmittedToolErrors(result.newFindings, 'head', toolErrors),
+    };
   } catch (error) {
     toolErrors.push({
       tool: name,
