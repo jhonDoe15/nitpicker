@@ -110,7 +110,7 @@ describe('describePolicyChanges', () => {
     ]);
   });
 
-  it('counts a python entry point that hides more files, and lists a removed one', () => {
+  it('lists an added or removed python entry point without counting it as loosening', () => {
     const python = (entryPoints) => ({
       preset: 'python',
       python: { sourceRoots: ['src'], entryPoints },
@@ -118,8 +118,8 @@ describe('describePolicyChanges', () => {
     const files = ['src/shop/jobs.py', 'src/shop/billing.py'];
 
     expect(changes(python([]), python(['src/shop/jobs.py']), files)).toEqual({
-      loosened: ['python.entryPoints added: src/shop/jobs.py'],
-      changed: [],
+      loosened: [],
+      changed: ['python.entryPoints added: src/shop/jobs.py'],
     });
     expect(changes(python(['src/shop/jobs.py']), python([]), files)).toEqual({
       loosened: [],
@@ -184,7 +184,7 @@ describe('describePolicyChanges', () => {
     });
   });
 
-  it('counts layout exclusions and entry points that cover more files, and removed roots', () => {
+  it('counts layout exclusions that cover more files and removed roots, and lists added entry points', () => {
     expect(
       changes(
         { layout: { sourceRoots: ['src', 'lib'], entryPoints: ['src/a.ts'] } },
@@ -206,12 +206,11 @@ describe('describePolicyChanges', () => {
         },
       ),
     ).toEqual({
-      loosened: [
-        'layout.excludedGlobs added: **/vendor/**',
+      loosened: ['layout.excludedGlobs added: **/vendor/**', 'layout.sourceRoots removed: lib'],
+      changed: [
         'layout.entryPoints added: src/cli/*.ts',
-        'layout.sourceRoots removed: lib',
+        'layout.sourceRoots: ["src","lib"] -> ["src","app"]',
       ],
-      changed: ['layout.sourceRoots: ["src","lib"] -> ["src","app"]'],
     });
   });
 

@@ -131,14 +131,14 @@ self-gate runs the pull request's own code and workflow, so changes to `.github/
 `core/`, `package.json` and `nitpicker.config.json` need a careful review whatever the gate says.
 
 CI splits the test files into shards that run as parallel jobs, and the required `test` check passes
-only when every shard passed. `scripts/test-shards/sequencer.mjs` gives each shard about the same
+only when every shard passed. `scripts/test-shards/sequencer.mts` gives each shard about the same
 total time, from the per-file times in `scripts/test-shards/durations.json`; a file that is not
 listed counts as one second. The split never drops a file, it only gets less even as the times drift.
 After adding or reshaping slow tests, record the times again: the script runs the suite (vitest
 arguments pass through) and rewrites the times of the files it ran.
 
 ```sh
-node scripts/test-shards/record-durations.mjs --maxWorkers=100%
+node scripts/test-shards/record-durations.mts --maxWorkers=100%
 ```
 
 Java end-to-end CI uses 4 isolated runner shards and Kotlin uses 3, with files run serially in
@@ -162,14 +162,14 @@ without starting a JVM build or a Python project (CI runs the same check in the 
 Java, Kotlin, Python and Go workflows):
 
 ```sh
-node scripts/test-shards/verify-e2e-shards.mjs
+node scripts/test-shards/verify-e2e-shards.mts
 ```
 
 Enabled JVM suites use separate timing files: `scripts/test-shards/java-e2e.json` and
 `scripts/test-shards/kotlin-e2e.json`. Ordinary recordings cannot overwrite these with the timings
 of skipped E2E tests. To record a JVM suite, set its `NITPICKER_JAVA_E2E=1` or
 `NITPICKER_KOTLIN_E2E=1` flag, pass the same file filters as its package script to
-`record-durations.mjs`, and use `--no-file-parallelism`. The recorder selects the corresponding
+`record-durations.mts`, and use `--no-file-parallelism`. The recorder selects the corresponding
 timing file automatically. Run one enabled JVM suite at a time. CI uploads a JSON report per
 shard for reviewing durations and failures; timing provenance and limits are in
 [scripts/test-shards/README.md](scripts/test-shards/README.md).

@@ -116,7 +116,7 @@
     },
     {
       "tool": "checkstyle",
-      "rule": "MemberName",
+      "rule": "GoogleNonConstantFieldName",
       "path": "src/main/java/probe/C7Names.java",
       "line": 6
     },
@@ -2673,6 +2673,13 @@
     {
       "tool": "spotbugs",
       "rule": "DMI_INVOKING_HASHCODE_ON_ARRAY",
+      "path": "src/main/java/probe/Arrays1.java",
+      "line": 5,
+      "symbol": "probe.Arrays1.all(int[], int[])#a"
+    },
+    {
+      "tool": "spotbugs",
+      "rule": "DMI_INVOKING_TOSTRING_ON_ARRAY",
       "path": "src/main/java/probe/Arrays1.java",
       "line": 5,
       "symbol": "probe.Arrays1.all(int[], int[])#a"
