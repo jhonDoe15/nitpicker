@@ -5,7 +5,7 @@ description: Use before writing or changing Java in a project that runs nitpicke
 
 # nitpicker for Java
 
-Written for nitpicker 0.1.0-rc.1. If `npx nitpicker --version` prints another version, reinstall
+Written for nitpicker 0.1.0-rc.2. If `npx nitpicker --version` prints another version, reinstall
 this skill with the command `npx nitpicker init` prints.
 
 nitpicker gates a Gradle or Maven project (Java 21) with PMD, SpotBugs, Error Prone with NullAway,
