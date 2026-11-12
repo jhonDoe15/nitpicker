@@ -12,6 +12,8 @@ describe('checkout modules', () => {
     directory = mkdtempSync(path.join(tmpdir(), 'nitpicker-checkout-module-'));
     writeFileSync(path.join(directory, 'converted.mts'), '');
     writeFileSync(path.join(directory, 'packaged.mjs'), '');
+    writeFileSync(path.join(directory, 'emitted.mts'), '');
+    writeFileSync(path.join(directory, 'emitted.mjs'), '');
   });
 
   afterAll(() => {
@@ -36,6 +38,13 @@ describe('checkout modules', () => {
   it('maps a module URL the same way', () => {
     expect(checkoutModuleUrl(pathToFileURL(path.join(directory, 'converted.mjs'))).href).toBe(
       pathToFileURL(path.join(directory, 'converted.mts')).href,
+    );
+  });
+  it('opens the emitted JavaScript where Node.js cannot strip types, as in the package build', () => {
+    const emitted = path.join(directory, 'emitted.mjs');
+    expect(checkoutModulePath(emitted, { stripsTypes: false })).toBe(emitted);
+    expect(checkoutModulePath(emitted, { stripsTypes: true })).toBe(
+      path.join(directory, 'emitted.mts'),
     );
   });
 });
