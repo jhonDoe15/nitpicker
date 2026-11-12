@@ -7,6 +7,7 @@ export const HYGIENE_RULE_IDS = {
   migrationOrder: 'migration-order',
   migrationHardcodedName: 'migration-hardcoded-name',
   startSchemaPush: 'start-schema-push',
+  foreignKeyIndex: 'foreign-key-index',
 };
 
 export const PACKAGE_RULE_IDS = {
@@ -21,7 +22,11 @@ export const PACKAGE_EXCEPTION_RULES = Object.values(PACKAGE_RULE_IDS);
 export const LARGE_FILE_BYTES = 1024 * 1024;
 
 const EVERY_LANGUAGE = { typescript: true, java: true, python: true, kotlin: true, go: true };
+const IMPORTS_COMPILE =
+  'an import that resolves to no class is a compile error in the source sets the build compiles, which are the ones nitpicker reads, so the build fails and reports it before any analyzer runs';
 const TYPESCRIPT_AND_PYTHON = { typescript: true, java: false, python: true, kotlin: false };
+const GO_RESOLVES_IMPORTS =
+  'the compiler rejects an import that no package provides, so it is a `build/compile-error` finding';
 
 export const HYGIENE_RULES = [
   {
@@ -70,6 +75,13 @@ export const HYGIENE_RULES = [
     enforcedBy: EVERY_LANGUAGE,
   },
   {
+    id: HYGIENE_RULE_IDS.foreignKeyIndex,
+    check: 'repository-hygiene',
+    limit:
+      'a foreign key that a migration adds, or a Prisma relation, with no index that starts with its columns, unless the project uses MySQL or MariaDB (which index foreign keys themselves)',
+    enforcedBy: EVERY_LANGUAGE,
+  },
+  {
     id: HYGIENE_RULE_IDS.startSchemaPush,
     check: 'repository-hygiene',
     limit:
@@ -80,21 +92,22 @@ export const HYGIENE_RULES = [
     id: PACKAGE_RULE_IDS.unusedDependency,
     check: 'dead-code',
     limit:
-      "a dependency in package.json (Python: in the project's dependency files) that nothing imports or runs",
-    enforcedBy: TYPESCRIPT_AND_PYTHON,
+      "a dependency in package.json (Python: in the project's dependency files; Go: a `require` that `go mod tidy` removes) that nothing imports or runs",
+    enforcedBy: { ...TYPESCRIPT_AND_PYTHON, go: true },
   },
   {
     id: PACKAGE_RULE_IDS.unlistedDependency,
     check: 'dead-code',
     limit:
-      "an import of a package that package.json (Python: the project's dependency files) does not list",
-    enforcedBy: TYPESCRIPT_AND_PYTHON,
+      "an import of a package that package.json (Python: the project's dependency files; Go: a direct `require` that `go mod tidy` adds) does not list",
+    enforcedBy: { ...TYPESCRIPT_AND_PYTHON, go: true },
   },
   {
     id: PACKAGE_RULE_IDS.unresolvedImport,
     check: 'dead-code',
     limit: 'an import that resolves to no file and no package',
     enforcedBy: TYPESCRIPT_AND_PYTHON,
+    notApplicable: { java: IMPORTS_COMPILE, kotlin: IMPORTS_COMPILE, go: GO_RESOLVES_IMPORTS },
   },
 ];
 
@@ -124,12 +137,6 @@ export const CO_CHANGE_LIMITS = {
 export const CO_CHANGE_EXAMPLES = 3;
 
 const PERCENT = 100;
-const REPORTED_EVERYWHERE = Object.fromEntries(
-  ['typescript', 'javascript', 'java', 'python', 'kotlin', 'go'].map((language) => [
-    language,
-    'reported',
-  ]),
-);
 
 export const HISTORY_RULES = [
   {
@@ -142,6 +149,7 @@ export const HISTORY_RULES = [
       `(only edits of production code count, and commits of more than ${String(CO_CHANGE_DEFAULTS.maxCommitFiles)} files are ignored);`,
       'opt-in with `history.coChange`, never fails',
     ].join(' '),
-    enforcedBy: REPORTED_EVERYWHERE,
+    enforcedBy: EVERY_LANGUAGE,
+    reportOnly: true,
   },
 ];

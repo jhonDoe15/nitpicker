@@ -12,13 +12,11 @@
 //       name: string, modules?, fanIn?, fanOut?, instability?: number,
 //       cohesion?: { internalEdges?, edgeDensity?, connectedComponents?, largestComponentShare? },
 //     }],
-//     stabilityDirection?: [{ source: string, target: string, delta: number }],
 //   }
-// `stabilityDirection` lists the package edges where `source` depends on a less stable `target`
-// (instability delta `delta`); each is an enforceable `stability-direction` finding.
 
 import { RULE_IDS } from '../policy.mjs';
 import { addMetric, summaryMetrics } from './finding-helpers.mjs';
+import { rounded, stabilityDirections } from './stability/stability-direction.mjs';
 
 const MODULE_METRICS = [
   'fanIn',
@@ -69,27 +67,33 @@ export function evaluateCoupling(report, analyzerName) {
     }
   }
   for (const direction of report.stabilityDirection ?? []) {
-    const message = `${direction.source} depends on less stable package ${direction.target}`;
-    const identity = `package-edge:${direction.source}->${direction.target}`;
-    findings.push({
-      tool: analyzerName,
-      rule: RULE_IDS.stabilityDirection,
-      path: direction.source,
-      identity,
-      message,
-      classification: 'enforceable',
-    });
-    addMetric(findings, {
-      analyzerName,
-      rule: 'stability-direction-metric',
-      path: '.',
-      identity,
-      message,
-      metricName: 'instabilityDelta',
-      value: direction.delta,
-    });
+    addStabilityFindings(findings, { analyzerName, direction });
   }
   return findings;
+}
+
+function addStabilityFindings(findings, { analyzerName, direction }) {
+  const message =
+    direction.message ?? `${direction.source} depends on less stable package ${direction.target}`;
+  const identity = `package-edge:${direction.source}->${direction.target}`;
+  findings.push({
+    tool: analyzerName,
+    rule: RULE_IDS.stabilityDirection,
+    path: direction.path ?? direction.source,
+    identity,
+    message,
+    classification: 'enforceable',
+    ...(direction.cause === undefined ? {} : { cause: direction.cause }),
+  });
+  addMetric(findings, {
+    analyzerName,
+    rule: 'stability-direction-metric',
+    path: '.',
+    identity,
+    message,
+    metricName: 'instabilityDelta',
+    value: direction.delta,
+  });
 }
 
 // ---------------------------------------------------------------------------------------------
@@ -102,15 +106,8 @@ export function evaluateCoupling(report, analyzerName) {
 //   packageOf (module) => string  the package / component a module belongs to
 //   runtime   boolean             also compute the runtime-only variants, from edges whose
 //                                  `kind` is 'runtime' (default false)
-// Output: `{ modules, packages, stabilityDirection }`; the adapter adds its own summary.
 //   modules[]: { module, package, fanIn, fanOut, totalCoupling, instability, [runtime*] }
 //   packages[] (sorted by name): { name, modules, fanIn, fanOut, instability, cohesion }
-//   stabilityDirection[]: { source, target, sourceInstability, targetInstability, delta },
-//     one per package pair whose source is less stable than its target, largest delta first.
-
-function rounded(value) {
-  return Math.round(value * 10_000) / 10_000;
-}
 
 function instabilityOf(fanIn, fanOut) {
   return fanIn + fanOut === 0 ? null : rounded(fanOut / (fanIn + fanOut));
@@ -146,7 +143,7 @@ function connectedComponentSizes(members, edges) {
   return sizes.sort((left, right) => right - left);
 }
 
-export function computeCoupling({ modules, edges, packageOf, runtime = false }) {
+export function computeCoupling({ modules, edges, packageOf, runtime = false, ...stability }) {
   const runtimeEdges = edges.filter((edge) => edge.kind === 'runtime');
   const distinct = (list, predicate, side) =>
     new Set(list.filter(predicate).map((edge) => edge[side])).size;
@@ -209,37 +206,7 @@ export function computeCoupling({ modules, edges, packageOf, runtime = false }) 
     })
     .sort((left, right) => left.name.localeCompare(right.name));
 
-  const packageByName = new Map(packages.map((entry) => [entry.name, entry]));
-  const stabilityDirection = [];
-  const seenPackageEdges = new Set();
-  for (const edge of edges.filter(({ kind }) => kind !== 'type-only')) {
-    const sourcePackage = packageOf(edge.source);
-    const targetPackage = packageOf(edge.target);
-    if (sourcePackage === targetPackage) {
-      continue;
-    }
-    const key = `${sourcePackage}\0${targetPackage}`;
-    if (seenPackageEdges.has(key)) {
-      continue;
-    }
-    seenPackageEdges.add(key);
-    const sourceInstability = packageByName.get(sourcePackage)?.instability;
-    const targetInstability = packageByName.get(targetPackage)?.instability;
-    if (
-      typeof sourceInstability === 'number' &&
-      typeof targetInstability === 'number' &&
-      sourceInstability < targetInstability
-    ) {
-      stabilityDirection.push({
-        source: sourcePackage,
-        target: targetPackage,
-        sourceInstability,
-        targetInstability,
-        delta: rounded(targetInstability - sourceInstability),
-      });
-    }
-  }
-  stabilityDirection.sort((left, right) => right.delta - left.delta);
+  const stabilityDirection = stabilityDirections({ modules, edges, packageOf, ...stability });
 
   return { modules: moduleMetrics, packages, stabilityDirection };
 }
@@ -259,7 +226,7 @@ function byName(left, right) {
  * every metric, including package instability, but is never itself reported as a
  * stability-direction violation; a repeated edge is type-only only when every copy is.
  */
-export function buildCouplingReport({ modules, edges, packageOf, fileOf }) {
+export function buildCouplingReport({ modules, edges, packageOf, fileOf, roleOf }) {
   const moduleSet = new Set(modules);
   const moduleEdges = new Map();
   for (const { source, target, kind = 'runtime' } of edges) {
@@ -270,7 +237,7 @@ export function buildCouplingReport({ modules, edges, packageOf, fileOf }) {
     }
   }
   const allEdges = [...moduleEdges.values()];
-  const metrics = computeCoupling({ modules, edges: allEdges, packageOf });
+  const metrics = computeCoupling({ modules, edges: allEdges, packageOf, roleOf, fileOf });
   const packages = metrics.packages.sort(byName);
   return {
     summary: {
@@ -286,10 +253,17 @@ export function buildCouplingReport({ modules, edges, packageOf, fileOf }) {
       instability,
     })),
     packages,
-    stabilityDirection: metrics.stabilityDirection.map(({ source, target, delta }) => ({
-      source,
-      target,
-      delta,
-    })),
+    stabilityDirection: metrics.stabilityDirection.map(reportedDirection),
+  };
+}
+
+function reportedDirection({ source, target, delta, cause, path, message }) {
+  return {
+    source,
+    target,
+    delta,
+    cause,
+    ...(path === undefined ? {} : { path }),
+    ...(message === undefined ? {} : { message }),
   };
 }

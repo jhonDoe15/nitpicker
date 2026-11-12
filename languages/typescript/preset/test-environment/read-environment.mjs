@@ -1,15 +1,22 @@
-import { spawnSyncWithOutputFile } from '../../../../core/tooling/output-file/output-file.mjs';
 import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { markedLine, markedPayload } from '../../../../core/tooling/child-output.mjs';
 import { chainOf } from '../../../../shared/traversal.mjs';
+import { loadInChild, loaderScript } from '../project-configs/config-module.mjs';
 import { aliasesFromConfig } from './aliases.mjs';
 import { environmentsFromConfig } from './environments.mjs';
+import {
+  TROUBLESHOOTING_ANCHORS,
+  troubleshootingError,
+} from '../../../../shared/messages/troubleshooting.mjs';
 
-export const RESULT_MARKER = 'NITPICKER_TEST_ENVIRONMENT_RESULT ';
-const TIMEOUT_MS = 30_000;
-const MAX_OUTPUT_BYTES = 10 * 1024 * 1024;
+const READ_SCRIPT = loaderScript(
+  "process.env.VITEST = 'true';",
+  "process.env.NODE_ENV = 'test';",
+  `const { readEnvironment } = await import(${JSON.stringify(import.meta.url)});`,
+  'const [configFile, projectRoot, ...resolveRoots] = process.argv.slice(1);',
+  'report({ value: await readEnvironment({ configFile, projectRoot, resolveRoots }) });',
+);
 
 function entryOf(manifest) {
   const entry = manifest.exports?.['.'];
@@ -27,7 +34,12 @@ function viteManifestFrom(root) {
   const manifestPath = chainOf(root, parentDirectory)
     .map((directory) => path.join(directory, 'node_modules/vite/package.json'))
     .find((candidate) => existsSync(candidate));
-  if (manifestPath === undefined) throw new Error(`vite is not installed at or above ${root}`);
+  if (manifestPath === undefined) {
+    throw troubleshootingError(
+      `vite is not installed at or above ${root}`,
+      TROUBLESHOOTING_ANCHORS.missingPeer,
+    );
+  }
   return manifestPath;
 }
 
@@ -46,7 +58,10 @@ async function loadVite(roots) {
       failures.push(error instanceof Error ? error.message : String(error));
     }
   }
-  throw new Error(`vite could not be resolved from the project (${failures.join('; ')})`);
+  throw troubleshootingError(
+    `vite could not be resolved from the project (${failures.join('; ')})`,
+    TROUBLESHOOTING_ANCHORS.missingPeer,
+  );
 }
 
 function serializedRetry(retry) {
@@ -90,55 +105,12 @@ export async function readEnvironment({ configFile, projectRoot, resolveRoots })
   };
 }
 
-async function main(argumentsList) {
-  const [configFile, projectRoot, ...resolveRoots] = argumentsList;
-  try {
-    const result = await readEnvironment({ configFile, projectRoot, resolveRoots });
-    process.stdout.write(markedLine(RESULT_MARKER, { result }));
-  } catch (error) {
-    const reason = error instanceof Error ? error.message : String(error);
-    process.stdout.write(markedLine(RESULT_MARKER, { failure: reason }));
-  }
-  process.exit(0);
-}
-
-export function readConfigInChild({
-  configFile,
-  projectRoot,
-  resolveRoots,
-  timeoutMs = TIMEOUT_MS,
-}) {
-  const result = spawnSyncWithOutputFile(
-    process.execPath,
-    [import.meta.filename, configFile, projectRoot, ...resolveRoots],
-    {
-      cwd: projectRoot,
-      env: { ...process.env, VITEST: 'true', NODE_ENV: 'test' },
-      encoding: 'utf8',
-      input: '',
-      maxBuffer: MAX_OUTPUT_BYTES,
-      timeout: timeoutMs,
-      killSignal: 'SIGKILL',
-    },
-  );
-  if (result.error?.code === 'ETIMEDOUT') {
-    return { failure: `it did not finish within ${String(timeoutMs)} ms` };
-  }
-  if (result.error !== undefined) {
-    return { failure: result.error.message };
-  }
-  return (
-    markedPayload(result.stdout, RESULT_MARKER) ?? {
-      failure: `the config ended the process with exit code ${String(result.status)}`,
-    }
-  );
-}
-
-const invokedPath = process.argv[1];
-
-if (
-  invokedPath !== undefined &&
-  import.meta.url === pathToFileURL(path.resolve(invokedPath)).href
-) {
-  await main(process.argv.slice(2));
+export function readConfigInChild({ configFile, projectRoot, resolveRoots, timeoutMs }) {
+  return loadInChild({
+    script: READ_SCRIPT,
+    args: [configFile, projectRoot, ...resolveRoots],
+    name: path.relative(projectRoot, configFile).split(path.sep).join('/'),
+    projectRoot,
+    timeoutMs,
+  });
 }

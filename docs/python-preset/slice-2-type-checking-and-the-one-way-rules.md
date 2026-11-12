@@ -4,7 +4,7 @@ Part of the [Python preset guide](../python-preset.md).
 
 The purpose of this slice is the "one way" for each construct. Every finding message names the
 allowed form, and, because any rule can flag legitimate code, ends with how to add the exception.
-Every enforceable finding of ruff, the type checkers, the rules, coverage, duplicates, coupling, import-linter, the dependency checks, the test times and mutmut ends with the one exception sentence (`If this is intended, add {"rule":"<rule>","paths":["<path>"],"reason":"..."} to "python.exceptions" in nitpicker.config.json.`), except mypy `unused-ignore` (delete the comment), `no-import-outside-roots` (whose way out is `python.sourceRoots`), findings on `.`, the shared file and size limits and the function rules (the function limits, `crap-score-limit`, `crap-coverage-unknown`, `changed-branch-coverage`, `mutant-survived`, `mutant-nocoverage`), whose message names the top-level `exceptions` entry, with `function` for the function rules, instead. The allowed forms live in `languages/python/rules/hints/` and the route in one place, `exceptionSentence` in `languages/python/rules/rule-hints.mjs`, which assembles them and applies them to both analyzers' findings with `applyRuleHints`; `languages/python/rules/exception-sentences.test.mjs` fails on any other Python file that writes a route of its own, and a test checks that each rule's message
+Every enforceable finding of ruff, the type checkers, the rules, coverage, duplicates, coupling, import-linter, the dependency checks, the test times and mutmut ends with the one exception sentence (`If this is intended, add {"rule":"<rule>","paths":["<path>"],"reason":"..."} to "python.exceptions" in nitpicker.config.json.`), except mypy `unused-ignore` (delete the comment), `no-import-outside-roots` (whose way out is `python.sourceRoots`), findings on `.`, the shared file and size limits, `slow-test`, the [feature folder rules](feature-folders.md) and the function rules (the function limits, `crap-score-limit`, `crap-coverage-unknown`, `changed-branch-coverage`, `mutant-survived`, `mutant-nocoverage`), whose message names the top-level `exceptions` entry, with `function` for the function rules, instead. The allowed forms live in `languages/python/rules/hints/` and the route in one place, `exceptionSentence` in `languages/python/rules/rule-hints.mjs`, which assembles them and applies them to both analyzers' findings with `applyRuleHints`; `languages/python/rules/exception-sentences.test.mjs` fails on any other Python file that writes a route of its own, and a test checks that each rule's message
 names its allowed form, and an opt-in test runs a banned and an allowed fixture of every rule
 through the real tools.
 
@@ -61,7 +61,7 @@ through the real tools.
   `Ignoring [tool.pyright] in pyproject.toml except its environment keys; opt in with ...` once. The code is in
   `languages/python/adapters/project-tools/`.
 - **Lint rules.** `languages/python/ruff/nitpicker-ruff.toml` selects, besides slice 1's rules,
-  `PTH`, `UP031`, `UP032`, `FLY002` and `BLE001`, and ignores `F405`
+  `PTH`, `UP031`, `UP032`, `FLY002`, `FURB192` and `BLE001`, and ignores `F405`
   (the star import itself is `F403`), `SIM105` (the `swallowed-exception` rule below covers that
   form) and `RUF100` (every `noqa` is already a finding). `S110` and `S112` are not selected:
   `swallowed-exception` reports what they did, and more, once and under one id. The shared
@@ -112,6 +112,9 @@ through the real tools.
 | a `TextIO` parameter, `out.write(...)` or `print(..., file=out)` | `sys.stdout`, `sys.stderr` outside the entry point                           | `process-stream-access`                                    |
 | log the caught exception itself                                  | logging only `str(error)` or an f-string with it in an `except`              | `catch-log-without-exception`                              |
 | a test that asserts                                              | a test function with no assertion                                            | `test-without-assertion`                                   |
+| the constant by name in a test                                   | a test literal that copies the value of a constant it can see                | `copied-constant-in-test`                                  |
+| one case per test, asserted outright                             | an assertion inside a branch, loop, `except` or comprehension                | `conditional-assertion-in-test`                            |
+| a skip on a real condition, a strict `xfail`                     | a permanent skip, a literal `skipif`, a non-strict `xfail`                   | `switched-off-test`                                        |
 | `@dataclass(frozen=True)`                                        | `@dataclass` without `frozen=True`, outside tests                            | `frozen-dataclass`                                         |
 | the validation library in `adapters/` only                       | importing pydantic (or the declared library) elsewhere                       | `pydantic-boundary`                                        |
 | an `enum.Enum` / `StrEnum`                                       | a plain class of two string constants, or three `X_*`                        | `enum-string-constants`                                    |
@@ -184,6 +187,24 @@ Details that are decisions rather than the table:
   `self.name(...)` or qualified by a project test module (`helpers.check_total(...)`), never on an
   arbitrary receiver. A smoke test that deliberately asserts nothing takes a `python.exceptions`
   entry for `test-without-assertion`.
+- `copied-constant-in-test` flags a string, integer or float literal in a collected test file that
+  equals the value of a module-level `UPPER_SNAKE` constant (`NAME = 50`, `NAME: Final = "eu"`, a
+  negative number too) declared in a production module the test imports (`import a.b`,
+  `import a.b as x`, `from a.b import ...`, `from a import b`, or by a fixed absolute name with
+  `importlib.import_module`, `__import__` or `pytest.importorskip`). An `UPPER_SNAKE` class attribute
+  counts too, in nested classes as well (`Api.Paging.MAX_PAGES`), except in a class whose name starts
+  with `_` and the members of an enum: a class whose base, read through the module's imports, ends in
+  `Enum`, `Flag` or `Choices` (`enum.Enum`, `from enum import Enum as E`, Django `TextChoices`), or is
+  an enum class of the same module. Test files, `test_*.py` and `*_test.py`
+  modules and the test support files (`conftest.py`, the `tests`/`test` folders and `testpaths`, and the
+  `testing`, `fixtures`, `mocks` and other support folders that production code does not import, as
+  for the security rules) declare no constants; booleans, `None`, bytes
+  and f-strings are not values. Not reported: the numbers -1, 0, 1 and 2, strings shorter than three
+  characters or blank, a literal whose statement also names the constant
+  (`assert limits.MAX_ITEMS == 50` pins the value on purpose; a lambda counts as its own statement), docstrings, imports,
+  annotations, `ids=` and the argument names of `pytest.mark.parametrize`, and `id=` of
+  `pytest.param`. Numbers compare by value (`5000` matches `5000.0` and `5_000`), as in the other presets. A value declared in
+  two imported modules is one finding naming all of them, sorted, joined by `or`.
 - The boundary is a directory named `adapters` anywhere in the path (`src/shop/adapters/api.py`),
   as in the TypeScript preset; a project that keeps its models elsewhere (`schemas/`,
   `api/`) adds a `python.exceptions` entry for `pydantic-boundary` with those paths.
@@ -207,6 +228,20 @@ Details that are decisions rather than the table:
   from the checkers: `@no_type_check` on a function or class, an `if not TYPE_CHECKING:` branch,
   and a `.pyi` beside a `.py` of the same stem in the sources (mypy then ignores the `.py` body).
   `typing.cast` is allowed.
+- `unmapped-exception` flags a FastAPI or Starlette route (a function decorated with a route
+  method of a `FastAPI`, `APIRouter` or `Starlette` object) that can raise a project exception
+  class no exception handler maps, so the client gets a 500. The walk follows calls into project
+  functions and methods four levels deep, and the message names the call path; a `raise` inside a
+  `try` that has an `except` or a `with contextlib.suppress(...)` is not followed. Apps built in a
+  factory function count. A class is mapped when it or a project superclass
+  derives from `HTTPException`, `WebSocketException` or FastAPI's `RequestValidationError`, or from
+  a library class the rule cannot read, or a handler is registered for it or a
+  superclass anywhere in the project: `@app.exception_handler(E)`,
+  `app.add_exception_handler(E, handler)` (also in a loop over a literal tuple) or
+  `FastAPI(exception_handlers={E: handler})` (also a dict in a variable). A handler for `Exception`
+  maps only the classes it checks with `isinstance` (a class or a tuple of classes). Built-in and library
+  exceptions and `raise error` of a variable are left out; Django and Flask views are not checked
+  yet.
 - `swallowed-exception` flags an `except` handler whose body does nothing with the error (a handler
   of an asyncio, Trio or AnyIO cancellation inside `async def` is judged by
   `cancellation-not-propagated` instead, see [Cancellation propagation](cancellation-propagation.md)): every

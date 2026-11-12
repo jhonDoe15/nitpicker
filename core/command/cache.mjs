@@ -1,6 +1,6 @@
 import { realpathSync } from 'node:fs';
 import path from 'node:path';
-import { resolveProjectRoot } from '../tooling/tool-resolution.mjs';
+import { resolveProjectRoot } from '../configuration/project-checks/project-root.mjs';
 import { publishHeadPolicy } from '../conventions/resolve.mjs';
 import { configureAnalyzers } from '../configuration/configure-analyzers.mjs';
 import { presetAnalyzers } from '../configuration/preset-analyzers.mjs';
@@ -17,6 +17,11 @@ import { CACHE_PUBLISH_USAGE_TEXT } from '../help/usage-text.mjs';
 const HELP = '--help';
 
 export const CACHE_PUBLISH_OPTIONS = ['--analyzer', '--shard-count', '--shard-index', HELP];
+import {
+  TROUBLESHOOTING_ANCHORS,
+  troubleshootingError,
+  troubleshootingSentence,
+} from '../../shared/messages/troubleshooting.mjs';
 
 function selectedAnalyzers(configured, options) {
   const selected =
@@ -31,7 +36,10 @@ function writableStore(projectRoot, cli) {
   const { remote, warnings } = resolveCacheStore({ projectRoot, environment: cli.environment });
   for (const warning of warnings) cli.stderr.write(`nitpicker: ${warning}\n`);
   if (remote === undefined) {
-    throw new Error('nitpicker cache publish requires NITPICKER_CACHE_URL');
+    throw troubleshootingError(
+      'nitpicker cache publish requires NITPICKER_CACHE_URL',
+      TROUBLESHOOTING_ANCHORS.cachePublishFails,
+    );
   }
   return createLayeredStore({ remote, writeRemote: true });
 }
@@ -70,6 +78,10 @@ function writeOutcome({ stdout, result, selected }) {
       ` for ${result.commitSha}${result.published.length === 0 ? '' : `: ${result.published.join(', ')}`}\n`,
   );
   for (const skipped of result.skipped) stdout.write(`Not published: ${skipped}\n`);
+  const help = troubleshootingSentence(TROUBLESHOOTING_ANCHORS.cachePublishFails);
+  if (result.skipped.length > 0 && help !== undefined) {
+    stdout.write(`${help}\n`);
+  }
   return result.skipped.length === 0 ? 0 : 2;
 }
 

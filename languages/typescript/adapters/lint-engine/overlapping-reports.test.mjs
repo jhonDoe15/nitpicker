@@ -16,6 +16,12 @@ describe('withoutSupersededMessages', () => {
     expect(withoutSupersededMessages([key, property, elsewhere])).toEqual([key, elsewhere]);
   });
 
+  it('drops a costly collection report where the in-memory query rule reports the same start', () => {
+    const query = { ruleId: 'nitpicker/no-in-memory-query', line: 3, column: 43 };
+    const sort = { ruleId: 'nitpicker/no-costly-collection-form', line: 3, column: 43 };
+    expect(withoutSupersededMessages([query, sort])).toEqual([query]);
+  });
+
   it('drops a loop accumulator report inside a let declaration that no-let already reports', () => {
     const messages = [noLet, spread('loopArray', 4, 7), spread('domainLoopObject', 4, 40)];
     expect(withoutSupersededMessages(messages)).toEqual([noLet]);

@@ -2,6 +2,7 @@ import path from 'node:path';
 import { run } from '../execution/go-process.mjs';
 import { toolCommand } from '../execution/go-tools.mjs';
 import { formatterOptions } from './go-formatters.mjs';
+import { formatAdvice } from '../../../../shared/messages/format/format-advice.mjs';
 
 const FORMAT_RULE = 'format';
 const CHUNK = 400;
@@ -22,11 +23,12 @@ function chunks(files) {
   );
 }
 
+function optionsOf(context, formatter) {
+  return formatterOptions(context.policyRoot, formatter, context.toolPrecedence?.[formatter]);
+}
+
 export function unformattedFiles(context, formatter, files) {
-  const command = [
-    ...commandOf(context, formatter),
-    ...formatterOptions(context.policyRoot, formatter, context.toolPrecedence?.[formatter]),
-  ];
+  const command = [...commandOf(context, formatter), ...optionsOf(context, formatter)];
   const listed = chunks(files).flatMap((chunk) => {
     const result = run(context, [...command, '-l', ...chunk], {
       rule: 'go-format-failed',
@@ -37,18 +39,21 @@ export function unformattedFiles(context, formatter, files) {
   return [...new Set(listed.map((file) => file.split(path.sep).join('/')))].sort();
 }
 
-function formatMessage(formatter, from) {
+function formatMessage(context, formatter) {
+  const from = context.formatting.from;
   const detected = from === undefined ? '' : ` (the project's formatter, from ${from})`;
-  return `File is not formatted with ${formatter}${detected}. Run \`${formatter} -w\` on it.`;
+  const command = [formatter, ...optionsOf(context, formatter), '-w'].join(' ');
+  return `File is not formatted with ${formatter}${detected}. ${formatAdvice(command)}`;
 }
 
-export function formatFindings({ formatter, from, files }) {
+export function formatFindings(context, { formatter, files }) {
+  const message = formatMessage(context, formatter);
   return files.map((file) => ({
     tool: formatter,
     rule: FORMAT_RULE,
     path: file,
     identity: FORMAT_RULE,
-    message: formatMessage(formatter, from),
+    message,
     classification: 'enforceable',
   }));
 }

@@ -3,6 +3,7 @@ import { nitpickerRules } from '../eslint-plugin/index.mjs';
 import { functionalPlugin } from '../eslint-plugin/type-identity/functional-plugin.mjs';
 import { defaultResolvedLayout } from '../layout.mjs';
 import { errorWrappingPolicy } from './policies/error-wrapping-policy.mjs';
+import { nestSelectors } from './nest/nest-forms.mjs';
 import {
   escapeHatchLinterOptions,
   escapeHatchRules,
@@ -35,23 +36,32 @@ import {
   restrictedAdapterSyntax,
   strictAdaptersTypedConfig,
 } from './strict-adapters.mjs';
+import { atomicUpdateConfigFor } from './concurrency/atomic-updates.mjs';
 import { strictTestConfigFor, testAreaGlobsFor } from './strict-tests.mjs';
 import { truthinessRules } from './truthiness/truthiness-rules.mjs';
 import { configFileGlobsFor, productionPolicyConfigFor } from './policy/production-policy.mjs';
 
-export function restrictedSyntaxFor(options = {}) {
-  const everywhereSelectors = [...escapeHatchSelectors, ...declarationSelectorsFor(options)];
-  const productionSelectors = [
-    ...everywhereSelectors,
+function everywhereSelectorsFor(options) {
+  return [...escapeHatchSelectors, ...declarationSelectorsFor(options)];
+}
+
+function productionSelectorsFor(options) {
+  return [
+    ...everywhereSelectorsFor(options),
     ...typeDefinitionSelectors,
     ...moduleSurfaceSelectors,
     ...controlFlowSelectors,
+    ...(options.nest === true ? nestSelectors : []),
   ];
+}
+
+export function restrictedSyntaxFor(options = {}) {
+  const productionSelectors = productionSelectorsFor(options);
   return {
-    configFile: everywhereSelectors,
+    configFile: everywhereSelectorsFor(options),
     source: productionSelectors,
     domain: [
-      ...productionSelectors.filter(
+      ...productionSelectorsFor({ ...options, nest: false }).filter(
         (selector) => ![...loopSelectors, ...forEachSelectors].includes(selector),
       ),
       ...domainRestrictedSyntax,
@@ -98,6 +108,16 @@ const domainRules = {
   'nitpicker/no-unknown-in-domain': 'error',
 };
 
+const productionSourceRules = {
+  'nitpicker/no-self-recursion': 'error',
+  'nitpicker/no-task-outliving-resource': 'error',
+  'nitpicker/no-tri-state-boolean': 'error',
+  'nitpicker/no-unhandled-url-parse': 'error',
+  'nitpicker/reusable-object-per-call': 'error',
+  'nitpicker/no-compatibility-shim': 'error',
+  'nitpicker/untested-round-trip': 'error',
+};
+
 export function strictSyntaxConfigFor(layout = defaultResolvedLayout, options = {}) {
   const restrictedSyntax = restrictedSyntaxFor(options);
   return [
@@ -113,10 +133,7 @@ export function strictSyntaxConfigFor(layout = defaultResolvedLayout, options = 
         ...controlFlowRules,
         'no-restricted-syntax': ['error', ...restrictedSyntax.source],
         ...sourceSyntaxBans(options),
-        'nitpicker/no-self-recursion': 'error',
-        'nitpicker/no-tri-state-boolean': 'error',
-        'nitpicker/no-unhandled-url-parse': 'error',
-        'nitpicker/no-compatibility-shim': 'error',
+        ...productionSourceRules,
       },
     },
     {
@@ -150,6 +167,24 @@ export function strictSyntaxConfigFor(layout = defaultResolvedLayout, options = 
 
 export const strictSyntaxConfig = strictSyntaxConfigFor();
 
+function typedProductionRules(layout, options) {
+  return {
+    ...typedDeclarationRules,
+    ...controlFlowTypedRules,
+    'nitpicker/no-unhandled-void-promise': [
+      'error',
+      { runners: options.detachedWorkRunners ?? [] },
+    ],
+    'nitpicker/exhaustive-union-predicate': 'error',
+    'nitpicker/no-forwarding-method-alias': 'error',
+    'nitpicker/no-forwarding-wrapper': 'error',
+    'nitpicker/no-service-locator': ['error', { entryPoints: layout.entryPoints ?? [] }],
+    'nitpicker/no-falsy-default': 'error',
+    'nitpicker/no-string-as-regex': 'error',
+    'nitpicker/no-unmapped-exception': 'error',
+  };
+}
+
 function strictTypedConfigFor(layout, parserOptions, options = {}) {
   return [
     {
@@ -157,18 +192,7 @@ function strictTypedConfigFor(layout, parserOptions, options = {}) {
       ...productionScope(layout),
       languageOptions: { parser: tseslint.parser, parserOptions },
       plugins: { '@typescript-eslint': tseslint.plugin, nitpicker: nitpickerRules },
-      rules: {
-        ...typedDeclarationRules,
-        ...controlFlowTypedRules,
-        'nitpicker/no-unhandled-void-promise': [
-          'error',
-          { runners: options.detachedWorkRunners ?? [] },
-        ],
-        'nitpicker/exhaustive-union-predicate': 'error',
-        'nitpicker/no-forwarding-wrapper': 'error',
-        'nitpicker/no-falsy-default': 'error',
-        'nitpicker/no-string-as-regex': 'error',
-      },
+      rules: typedProductionRules(layout, options),
     },
     {
       files: layout.sourceGlobs,
@@ -189,7 +213,7 @@ function strictTypedConfigFor(layout, parserOptions, options = {}) {
       ignores: layout.excludedGlobs,
       languageOptions: { parser: tseslint.parser, parserOptions },
       plugins: { nitpicker: nitpickerRules },
-      rules: truthinessRules,
+      rules: { ...truthinessRules, 'nitpicker/simpler-boolean-logic': 'error' },
     },
     ...strictAdaptersTypedConfig.map((entry) => ({
       ...entry,
@@ -214,7 +238,9 @@ export const strictProductionRules = {
   'nitpicker/no-module-level-let': 'error',
   'nitpicker/no-shared-stateful-regex': 'error',
   'nitpicker/no-singular-and-plural-prop': 'error',
+  'nitpicker/no-unbounded-query-array': 'error',
   'nitpicker/no-uninjectable-delay': 'error',
+  'nitpicker/no-unordered-query': 'error',
   'nitpicker/no-unvalidated-schema-field': 'error',
 };
 
@@ -229,6 +255,7 @@ export function strictPresetConfig(layout, parserOptions, options = {}) {
       plugins: { nitpicker: nitpickerRules },
       rules: strictProductionRules,
     },
+    atomicUpdateConfigFor(layout),
     ...strictTestConfigFor(layout),
   ];
 }
