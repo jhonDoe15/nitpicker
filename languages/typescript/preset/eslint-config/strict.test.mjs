@@ -17,11 +17,23 @@ describe('strict escape-hatch rules', () => {
       'export function present(value: unknown) { return value !== null; }',
     ],
     ['JSON.stringify replacer', 'export const text = JSON.stringify({ a: 1 }, null, 2);'],
+    [
+      'null data inside JSON.stringify',
+      'export const body = JSON.stringify({ gone: null, unset: Object.fromEntries(keys.map((key) => [key, null])) });',
+    ],
     ['tool directive', '// prettier-ignore\nexport const value = 1;'],
     ['ts-check', '// @ts-check\nexport const value = 1;'],
     ['shebang', '#!/usr/bin/env node\nexport const value = 1;'],
   ])('allows %s', (_name, code) => {
     expect(messages(code)).toEqual([]);
+  });
+
+  it('reports null built outside JSON.stringify, even when the value is serialized later', () => {
+    const code = 'const body = { gone: null };\nexport const text = JSON.stringify(body);';
+
+    expect(messages(code).map((message) => message.split('.')[0])).toEqual([
+      'Use `undefined` for an absent value, and an optional field or parameter (`value?: T`) where it may be missing',
+    ]);
   });
 
   it('does not apply to test files', () => {

@@ -11,6 +11,12 @@ about your code is explained in [troubleshooting](https://github.com/jhonDoe15/n
 
 ## [Unreleased]
 
+### Changed
+
+- TypeScript and JavaScript: `nitpicker/no-null` allows `null` anywhere inside the arguments of
+  `JSON.stringify`, where it is the JSON value for nothing (an explicit `null` field of a request
+  body, or a key a tsconfig or merge patch must unset). `null` built elsewhere is still reported.
+
 ### Fixed
 
 - Java: Spring architecture findings no longer print their exception sentence twice, which made

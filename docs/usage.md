@@ -2239,8 +2239,8 @@ new and touched code must comply.
   keyword (arrow functions only as callbacks); named exports only (config files and
   `declare module` blocks may default-export); early returns, no `else` after
   `return`, no nested ternaries; `switch` over a union handles every case; no `as` (except
-  `as const`), `any`, non-null `!`, `<Type>value`, or `null` (except strict comparison and the
-  `JSON.stringify` replacer); no comments except doc comments on exported API, no inline lint disables, no `@ts-ignore`,
+  `as const`), `any`, non-null `!`, `<Type>value`, or `null` (except strict comparison and
+  inside `JSON.stringify` arguments, where it is the JSON value for nothing); no comments except doc comments on exported API, no inline lint disables, no `@ts-ignore`,
   `@ts-expect-error` or `@ts-nocheck`; `for...of` is the only loop (no `for(;;)`, `for...in`,
   `while`, `do...while` or `forEach`), no growing accumulator spread into its own next value
   (`xs.reduce((acc, x) => ({ ...acc, [x.id]: x }), {})` or `out = [...out, x]` in a loop: build the
