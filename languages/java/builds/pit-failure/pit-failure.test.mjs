@@ -1,7 +1,11 @@
 import { existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
+import {
+  TROUBLESHOOTING_ANCHORS,
+  withTroubleshooting,
+} from '../../../../shared/messages/troubleshooting.mjs';
 import { pitTimeoutMs, runPit } from '../../maven/pit/maven-pit.mjs';
 import { pitFailureFindings } from './pit-failure.mjs';
 
@@ -28,7 +32,7 @@ function moduleTree() {
 
 function runWith(result, timeoutMs) {
   const { root, module } = moduleTree();
-  const run = () =>
+  const run = () => {
     runPit({
       module,
       reportDir: root,
@@ -38,6 +42,7 @@ function runWith(result, timeoutMs) {
       spawn: () => result,
       timeoutMs,
     });
+  };
   return { root, run };
 }
 
@@ -74,15 +79,13 @@ describe('a PIT run that fails', () => {
 
     run();
 
-    const { message } = pitFailureFindings(root)[0];
-
-    expect(
-      message.startsWith(`PIT did not finish in ${root} within 20 minutes and was stopped. `),
-    ).toBe(true);
-    expect(message).toContain(
-      'Set NITPICKER_MAVEN_TIMEOUT_MINUTES to give each Maven command and Java tool more time. See ',
+    expect(pitFailureFindings(root)[0].message).toBe(
+      withTroubleshooting(
+        `PIT did not finish in ${root} within 20 minutes and was stopped. ` +
+          'Set NITPICKER_MAVEN_TIMEOUT_MINUTES to give each Maven command and Java tool more time',
+        TROUBLESHOOTING_ANCHORS.pitFails,
+      ),
     );
-    expect(message).toMatch(/#pit-fails-or-times-out$/u);
   });
 });
 
@@ -110,6 +113,8 @@ describe('the time PIT gets on Maven', () => {
   it('is not started with less than a minute left, and says why', () => {
     const { root, module } = moduleTree();
     let spawned = false;
+    vi.useFakeTimers();
+    vi.setSystemTime(0);
 
     runPit({
       module,
@@ -122,12 +127,18 @@ describe('the time PIT gets on Maven', () => {
         return { status: 0, stdout: '', stderr: '' };
       },
       timeoutMs: 15 * 60_000,
-      deadline: Date.now() + 30_000,
+      deadline: 30_000,
     });
+    vi.useRealTimers();
 
     expect(spawned).toBe(false);
-    expect(pitFailureFindings(root)[0].message).toMatch(
-      /^PIT was not started in .+: less than a minute of the Java analyzer's time limit was left\./u,
+    expect(pitFailureFindings(root)[0].message).toBe(
+      withTroubleshooting(
+        `PIT was not started in ${root}: less than a minute of the Java analyzer's time limit ` +
+          'was left. Set NITPICKER_MAVEN_TIMEOUT_MINUTES, or analyzerTimeoutMinutes when the ' +
+          'config sets it, to give the Java analyzer more time',
+        TROUBLESHOOTING_ANCHORS.pitFails,
+      ),
     );
   });
 });

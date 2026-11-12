@@ -10,7 +10,7 @@ import { classFiles, pitClasspath, pitTargets, pitTests } from '../maven-tests.m
 const MINUTE_MS = 60_000;
 
 export function pitTimeoutMs(
-  timeoutMs = mavenBudget(process.env).commandTimeoutMs,
+  timeoutMs = mavenBudget().commandTimeoutMs,
   deadline = Number.POSITIVE_INFINITY,
   now = Date.now(),
 ) {
