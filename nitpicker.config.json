@@ -166,16 +166,6 @@
       "reason": "The project's tsconfig may still set baseUrl, which TypeScript 6 deprecates and TypeScript 7 removes. The file reads it to rewrite paths into the form tsgolint accepts, so the deprecated option is the input being migrated."
     },
     {
-      "rule": "no-restricted-syntax",
-      "paths": ["languages/typescript/adapters/oxlint/stage/oxlint-paths.mjs"],
-      "reason": "The generated tsconfig must carry an explicit baseUrl: null to unset a baseUrl inherited through extends; undefined is dropped by JSON.stringify and leaves the inherited value in place."
-    },
-    {
-      "rule": "nitpicker/no-null",
-      "paths": ["languages/typescript/adapters/oxlint/stage/oxlint-paths.mjs"],
-      "reason": "tsconfig unsets an option inherited through extends only with an explicit null (baseUrl, rootDir, options TypeScript 7 removed); undefined is dropped by JSON.stringify and leaves the inherited value in place."
-    },
-    {
       "rule": "nitpicker/no-default-export",
       "paths": ["languages/typescript/adapters/test-runners/node-test/node-test-reporter.mjs"],
       "reason": "node --test-reporter loads a reporter only through the module's default export."

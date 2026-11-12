@@ -6,13 +6,18 @@ import { stageConfigOptions } from './oxlint-paths.mjs';
 
 const roots = [];
 
+function writtenOptions({ compilerOptions, unset }) {
+  return { ...compilerOptions, ...Object.fromEntries(unset.map((option) => [option, null])) };
+}
+
 function optionsFor(files, config) {
   const root = createProject('nitpicker-oxlint-paths-test-', files);
   roots.push(root);
   return {
     root,
-    options: stageConfigOptions(config, path.join(root, 'tsconfig.nitpicker.json'), root)
-      .compilerOptions,
+    options: writtenOptions(
+      stageConfigOptions(config, path.join(root, 'tsconfig.nitpicker.json'), root),
+    ),
   };
 }
 
@@ -120,8 +125,9 @@ describe('stageConfigOptions', () => {
     const config = { compilerOptions: { rootDir: 'src', rootDirs: ['.', 'gen', outside] } };
 
     expect(
-      stageConfigOptions(config, path.join(root, 'tsconfig.nitpicker.json'), '/stage')
-        .compilerOptions,
+      writtenOptions(
+        stageConfigOptions(config, path.join(root, 'tsconfig.nitpicker.json'), '/stage'),
+      ),
     ).toEqual({ rootDir: null, rootDirs: ['/stage', '/stage/gen', outside] });
   });
 

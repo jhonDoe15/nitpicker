@@ -74,11 +74,20 @@ function lintTypeScriptConfig(projectConfigPath, stage) {
       ? {}
       : { extends: rebasedExtends(config.extends, path.dirname(projectConfigPath)) }),
   };
-  const { compilerOptions, typeFiles } = stageConfigOptions(rebased, projectConfigPath, stage);
+  const { compilerOptions, unset, typeFiles } = stageConfigOptions(
+    rebased,
+    projectConfigPath,
+    stage,
+  );
   return JSON.stringify({
     ...rebased,
     ...(typeFiles.length === 0 ? {} : { files: [...(config.files ?? []), ...typeFiles] }),
-    compilerOptions: { ...config.compilerOptions, ...compilerOptions, noEmit: true },
+    compilerOptions: {
+      ...config.compilerOptions,
+      ...compilerOptions,
+      ...Object.fromEntries(unset.map((option) => [option, null])),
+      noEmit: true,
+    },
   });
 }
 
