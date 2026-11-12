@@ -8,7 +8,9 @@ import { yamlDocuments } from '../../../../../core/tooling/yaml/yaml-documents.m
 const TOOL = 'go-rules';
 const RULE = 'unindexed-foreign-key';
 const GORM_OFF =
-  /\b(?:DisableForeignKeyConstraintWhenMigrating|IgnoreRelationshipsWhenMigrating)\s*:\s*true\b/u;
+  /\b(?:DisableForeignKeyConstraintWhenMigrating|IgnoreRelationshipsWhenMigrating)\s*[:=]\s*true\b/u;
+const LINE_COMMENT = /\/\/[^\n]*/gu;
+const BLOCK_COMMENT = /\/\*[\s\S]*?\*\//gu;
 const ENT_OFF = /\bWithForeignKeys\s*\(\s*false\s*\)/u;
 
 function isForeignKey(entry) {
@@ -16,14 +18,20 @@ function isForeignKey(entry) {
 }
 
 function isSourceFile(file) {
-  return file.endsWith('.go') && !file.endsWith('_test.go');
+  return (
+    file.endsWith('.go') && !file.endsWith('_test.go') && !file.split('/').includes('testdata')
+  );
+}
+
+function code(text) {
+  return text.replaceAll(BLOCK_COMMENT, '').replaceAll(LINE_COMMENT, '');
 }
 
 function constraintsTurnedOff(projectRoot) {
   return schemaProjectFiles(projectRoot)
     .filter(isSourceFile)
     .some((file) => {
-      const text = readSource(projectRoot, file) ?? '';
+      const text = code(readSource(projectRoot, file) ?? '');
       return GORM_OFF.test(text) || ENT_OFF.test(text);
     });
 }
