@@ -464,7 +464,7 @@ this needs a JDK 21 and Gradle, and takes several minutes) and rewrites the file
 runs the same sources as a Maven project (`maven/fixtures/single/pom.xml` with the same two
 dependencies) instead, and `--gradle=<command>` or `--maven=<command>` names another Gradle or Maven.
 The overlap table serves both builds, so both must report the same findings. To probe a new case,
-add the source file to `sources` first and run the command. `node scripts/gen-overlap-probe.mjs
+add the source file to `sources` first and run the command. `node scripts/gen-overlap-probe.mts
 --check` writes nothing and exits 1 with the added and removed findings when the committed file
 differs from a fresh run; `adapters/java-e2e/overlap-probe.e2e.test.mjs` runs the same check for
 Gradle and for Maven in the Java end-to-end suite (`npm run test:java`), so the Java CI job fails on
@@ -545,7 +545,7 @@ The pairs:
 - line: `errorprone/MultiVariableDeclaration` over `pmd/OneDeclarationPerLine`, `checkstyle/MultipleVariableDeclarations`
 - line: `pmd/OneDeclarationPerLine` over `checkstyle/MultipleVariableDeclarations`
 - line: `errorprone/InterruptedExceptionSwallowed` over `pmd/AvoidCatchingGenericException`
-- line: `errorprone/IdentifierName` over `checkstyle/CatchParameterName`, `checkstyle/LambdaParameterName`, `checkstyle/LocalVariableName`, `checkstyle/MemberName`, `checkstyle/MethodName`, `checkstyle/ParameterName`, `checkstyle/PatternVariableName`, `checkstyle/RecordComponentName`
+- line: `errorprone/IdentifierName` over `checkstyle/CatchParameterName`, `checkstyle/GoogleNonConstantFieldName`, `checkstyle/LambdaParameterName`, `checkstyle/LocalVariableName`, `checkstyle/MethodName`, `checkstyle/ParameterName`, `checkstyle/PatternVariableName`, `checkstyle/RecordComponentName`
 - line: `errorprone/TypeParameterNaming` over `checkstyle/ClassTypeParameterName`, `checkstyle/InterfaceTypeParameterName`, `checkstyle/MethodTypeParameterName`, `checkstyle/RecordTypeParameterName`
 - file: `errorprone/WildcardImport` over `checkstyle/AvoidStarImport`
 - line: `errorprone/LongLiteralLowerCaseSuffix` over `checkstyle/UpperEll`

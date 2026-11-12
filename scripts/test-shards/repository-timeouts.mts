@@ -7,7 +7,7 @@ const root = path.resolve(import.meta.dirname, '../..');
 applyVitestTimeouts(
   readConfigFile(root),
   { file: expect.getState().testPath, root },
-  (settings) => {
+  (settings: Parameters<typeof vi.setConfig>[0]) => {
     vi.setConfig(settings);
   },
 );

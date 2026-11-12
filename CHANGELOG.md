@@ -230,6 +230,18 @@ Other changes:
 
 ### Fixed
 
+- Maven: a project that binds its own JaCoCo `prepare-agent` (Spring Boot apps often do) no longer
+  aborts its test JVM with two JaCoCo agents; nitpicker's agent runs at the project's JaCoCo version
+  (#1052).
+- Java 25 class files: JaCoCo moves to 0.8.16, PIT to 1.22.1 and SpotBugs to 4.9.8. Before, a
+  Java 25 build lost coverage and mutation results to a tool error, and SpotBugs reported nothing
+  without saying so (#1068).
+- Java 25 sources: Checkstyle moves to 13.5.0, PMD to 7.16.0, google-java-format to 1.35.0 and
+  palantir-java-format to 2.90.0, so module imports and statements before `super(...)` parse; the
+  formatter check no longer comes back empty when the formatter fails. Checkstyle and the
+  formatters run on JDK 21 or newer, and the source parsers and `--fix` run on a JDK that reads the
+  project's language level (#1068). PMD findings of every priority still fail the gate, though
+  PMD 7.16 marks its lower priorities as notes.
 - An uncommitted edit made in the same second as the last index write is no longer analyzed as the
   old content (#258).
 - A timed-out Gradle build is stopped, with the processes it started, before the next snapshot
@@ -273,6 +285,13 @@ Other changes:
 
 ### Upgrade notes
 
+- Checkstyle 13.5 renames some rules: `checkstyle/MemberName` is now
+  `checkstyle/GoogleNonConstantFieldName`, `checkstyle/OperatorWrap` is `OperatorWrapNL` or
+  `OperatorWrapEOL`, and `checkstyle/AnnotationLocationMostCases` is
+  `AnnotationLocationMethodsAndCtors` or `AnnotationLocationTypeAndPackage`. A check with an `id`
+  reports as that id. Rename `exceptions` entries that use the old names.
+- Checkstyle and the Java formatters need JDK 21 or newer to run. The project can still compile
+  for an older release; nitpicker finds an installed JDK 21 (or a Gradle toolchain) for them.
 - `vitest` and `@vitest/coverage-v8` are needed only when Vitest is your test runner. Install the
   peers of the runner you use.
 - A `react` key with `"preset": "javascript"` is a configuration error. Use the TypeScript preset for
