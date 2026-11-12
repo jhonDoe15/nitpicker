@@ -1,4 +1,4 @@
-import { spawnSync } from 'node:child_process';
+import { type SpawnSyncReturns, spawnSync } from 'node:child_process';
 import { readdirSync, rmSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import {
@@ -12,6 +12,19 @@ const PRETTIER_RUN_CEILING_MS = 60 * 60 * 1000;
 const LITERAL_SEGMENT = /^[\w.-]+$/u;
 const GLOB_CHARACTERS = /[*?[\]{}()!+@|\\]/u;
 
+export type ParallelPrettierRun = {
+  readonly toolPath: string;
+  readonly projectRoot: string;
+  readonly configPath: string;
+  readonly ignorePath: string;
+  readonly patterns: readonly string[];
+  readonly exclusions: readonly string[];
+};
+
+type ExclusionScope = { readonly projectRoot: string; readonly patterns: readonly string[] };
+
+type ExclusionFile = { readonly path?: string | undefined; readonly failure?: unknown };
+
 export function listUnformattedInParallel({
   toolPath,
   projectRoot,
@@ -19,7 +32,7 @@ export function listUnformattedInParallel({
   ignorePath,
   patterns,
   exclusions,
-}) {
+}: ParallelPrettierRun): string[] | undefined {
   const exclusionLines = exclusionIgnoreLines(exclusions, { projectRoot, patterns });
   if (exclusionLines === undefined) {
     return undefined;
@@ -60,14 +73,23 @@ export function listUnformattedInParallel({
   }
 }
 
-export function exclusionIgnoreLines(exclusions, { projectRoot, patterns }) {
+export function exclusionIgnoreLines(
+  exclusions: readonly string[],
+  { projectRoot, patterns }: ExclusionScope,
+): string[] | undefined {
   const staticBases = patterns.map(staticBase);
   return exclusions.every((glob) => isTranslatableExclusion(glob, { projectRoot, staticBases }))
     ? exclusions.map((glob) => `/${glob}`)
     : undefined;
 }
 
-function isTranslatableExclusion(glob, { projectRoot, staticBases }) {
+function isTranslatableExclusion(
+  glob: string,
+  {
+    projectRoot,
+    staticBases,
+  }: { readonly projectRoot: string; readonly staticBases: readonly string[][] },
+): boolean {
   const segments = glob.split('/');
   const folderSegments = segments.at(-1) === '**' ? segments.slice(0, -1) : segments;
   return (
@@ -78,19 +100,19 @@ function isTranslatableExclusion(glob, { projectRoot, staticBases }) {
   );
 }
 
-function staticBase(pattern) {
+function staticBase(pattern: string): string[] {
   const segments = pattern.split('/');
   const firstGlob = segments.findIndex((segment) => GLOB_CHARACTERS.test(segment));
   return firstGlob === -1 ? segments.slice(0, -1) : segments.slice(0, firstGlob);
 }
 
-function isAncestorOrSelf(segments, base) {
+function isAncestorOrSelf(segments: readonly string[], base: readonly string[]): boolean {
   return (
     segments.length <= base.length && segments.every((segment, index) => segment === base[index])
   );
 }
 
-function hasCaseVariant(projectRoot, segments) {
+function hasCaseVariant(projectRoot: string, segments: readonly string[]): boolean {
   for (const [index, segment] of segments.entries()) {
     const entryPath = path.resolve(projectRoot, ...segments.slice(0, index + 1));
     if (!entryPath.startsWith(projectRoot + path.sep)) {
@@ -110,7 +132,7 @@ function hasCaseVariant(projectRoot, segments) {
   return false;
 }
 
-function unformattedFilesOf(result) {
+function unformattedFilesOf(result: SpawnSyncReturns<string>): string[] | undefined {
   if (result.error !== undefined || result.stderr.trim().length > 0) {
     return undefined;
   }
@@ -124,7 +146,7 @@ function unformattedFilesOf(result) {
   return result.status === 1 && files.length > 0 ? files : undefined;
 }
 
-function writeExclusionFile(projectRoot, exclusionLines) {
+function writeExclusionFile(projectRoot: string, exclusionLines: readonly string[]): ExclusionFile {
   if (exclusionLines.length === 0) {
     return { path: undefined };
   }
@@ -138,7 +160,7 @@ function writeExclusionFile(projectRoot, exclusionLines) {
   }
 }
 
-function removeExclusionFile(exclusionPath) {
+function removeExclusionFile(exclusionPath: string | undefined): void {
   if (exclusionPath === undefined) {
     return;
   }
