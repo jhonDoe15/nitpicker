@@ -82,7 +82,7 @@ export function runMaven({
   projectRoot,
   maven,
   args,
-  timeoutMs = mavenBudget(process.env).commandTimeoutMs,
+  timeoutMs = mavenBudget().commandTimeoutMs,
   spawn = spawnSyncWithOutputFile,
 }) {
   const target = mavenTarget({ projectRoot, configured: maven, args: [...MAVEN_FLAGS, ...args] });
@@ -140,7 +140,7 @@ export function runJava({
   cwd,
   accept = () => true,
   spawn = spawnSyncWithOutputFile,
-  timeoutMs = mavenBudget(process.env).commandTimeoutMs,
+  timeoutMs = mavenBudget().commandTimeoutMs,
 }) {
   const directory = mkdtempSync(path.join(tmpdir(), 'nitpicker-java-'));
   try {
