@@ -39,6 +39,25 @@ limits as the tests. `test-support/` holds what the tests import without hooks: 
 fixture file contents, and helpers that run a build or summarize a report. Neither folder ships in
 the npm package.
 
+## TypeScript sources
+
+The code is moving from JavaScript (`.mjs`) to TypeScript (`.mts`) one area at a time; issue #147
+tracks the plan. Node.js strips the types itself, so a checkout runs `.mts` files with no build
+step, and `npm pack` emits a `.mjs` file beside each shipped `.mts` (`scripts/typescript/emit.mjs`)
+so the package stays plain JavaScript.
+
+- Import a converted module by its real name (`./a.mts`); `npm run typecheck` checks every `.mts`
+  file against `tsconfig.json`, the flags of the strict preset.
+- Use only syntax that Node.js can strip: no enums, namespaces or parameter properties.
+- A shipped `.mjs` file must not import a `.mts` file, so shipped code converts from the importers
+  down. `node scripts/typescript/ready.mts <folder>` lists the modules of a folder that can convert
+  now, and `node scripts/typescript/convert.mts <files>` renames them and rewrites their imports and
+  their `nitpicker.config.json` entries, then lists the places that name them by path.
+- Code that opens a module by path (a worker, a spawned runner, a config file handed to a tool, a
+  file list that is hashed) keeps the packaged `.mjs` name and resolves it with
+  `checkoutModulePath` or `checkoutModuleUrl` from `shared/paths/checkout-module.mjs`, which pick
+  the `.mts` source in a checkout.
+
 ## Running the checks
 
 Pull requests do not run CI on every push. Check your change locally before you push it and again
@@ -52,7 +71,7 @@ npm run check
 
 `npm run check` runs the self-gate (nitpicker checks your change against the remote's default
 branch) and then the full test suite, and fails if either fails. Arguments after `--` go to vitest,
-so `npm run check -- --shard=2/2` runs only what one CI test shard runs. It needs Node.js 22.14 or newer (CI
+so `npm run check -- --shard=2/2` runs only what one CI test shard runs. It needs Node.js 22.18 or newer (CI
 uses 24) and Java 21 for the structure-metrics test. It checks your working tree, uncommitted and
 untracked files included, while CI checks the pull request merged into its target branch, so commit
 everything and merge or rebase on the latest `main` before the final run. A change to a language's
