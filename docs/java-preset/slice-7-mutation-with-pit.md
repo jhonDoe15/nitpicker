@@ -9,7 +9,7 @@ Part of the [Java preset guide](../java-preset.md).
   so classes directly in `org` are named one by one), against the project's own tests. The only
   profile can produce enforceable findings. In a comparison, head starts from the base run's results (see
   [Mutation in a comparison](mutation-in-a-comparison.md)).
-- **What runs.** `nitpickerPit` runs the pinned `pitest-command-line` (1.17.4) with the test
+- **What runs.** `nitpickerPit` (`languages/java/gradle/nitpicker.init.gradle`) runs the pinned `pitest-command-line` (1.17.4) with the test
   plugins the project's framework needs (`pitest-junit5-plugin` 1.2.1, `pitest-testng-plugin`
   1.0.0, both pinned, added on the conditions below), nitpicker's mutator list (see
   [Mutators](../mutation-testing.md#java-and-kotlin-mutators)), XML output, two threads, to
@@ -60,7 +60,7 @@ other check ran. Fix the tests and rerun:`) instead of Gradle's own failure outp
 - **Equivalent mutants.** A survived mutant's message names the common equivalent cases (a
   `compareTo` boundary, a discarded lambda return, a field set to the value it already has, a
   redundant `trim()` or `sorted()`) and the way out: simplify the code, or add an
-  exception for `pit/mutant-survived`.
+  `exceptions` entry for `mutant-survived` narrowed to the mutated `function`.
 - **The `main` method.** A `mutant-nocoverage` on a line inside the body of a
   `static void main(String[])` method is dropped (`adapters/reporting/main-method.mjs`, after
   every report is read, so it is the same on Gradle and Maven): the method only hands the real
