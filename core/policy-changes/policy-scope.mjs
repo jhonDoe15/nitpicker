@@ -144,7 +144,6 @@ export function createPolicyScope({
     code,
     keptCode,
     keptPaths: [...keptCode, ...new Set(keptCode.flatMap(foldersOf))],
-    codePaths: [...code, ...folders],
     baseCode: codeOf(baseFiles, headConfig),
     usesLayout: usesLayout(headConfig),
     baseRoots,

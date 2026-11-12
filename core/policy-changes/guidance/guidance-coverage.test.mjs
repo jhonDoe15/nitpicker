@@ -42,13 +42,6 @@ const slowTimeouts = {
 };
 
 const FIXTURES = {
-  'entry-point': () => synthetic({}, { layout: { entryPoints: ['src/a.ts'] } }),
-  'python-entry-point': () =>
-    synthetic(
-      { preset: 'python', python: { sourceRoots: ['src'] } },
-      { preset: 'python', python: { sourceRoots: ['src'], entryPoints: ['src/jobs.py'] } },
-      { files: ['src/jobs.py'] },
-    ),
   exception: () => synthetic({}, { exceptions: [exception] }),
   exclusion: () => synthetic({}, { exclude: ['src/vendor/**'] }),
   'duplicates-scope': () =>
@@ -250,15 +243,15 @@ describe('policy guidance kinds', () => {
   });
 
   it('carries the kind to the finding, which words its message with that guidance', () => {
-    const fields = FIXTURES['entry-point']();
+    const fields = FIXTURES.exception();
     const [finding] = policyFindings(fields.policyLoosenings, 'd1e2f3a4b5c6', {
       kinds: fields.policyKinds,
     });
 
-    expect(finding.policyKind).toBe('entry-point');
+    expect(finding.policyKind).toBe('exception');
     expect(finding.message).toBe(
       [
-        `${fields.policyLoosenings[0]}. ${POLICY_GUIDANCE['entry-point']}`,
+        `${fields.policyLoosenings[0]}. ${POLICY_GUIDANCE.exception}`,
         'If the policy change is intended, stop and ask a person reviewing this change:',
         'only they accept exactly these loosenings, with --accept-policy-change=d1e2f3a4b5c6',
         'at an interactive terminal, NITPICKER_ACCEPT_POLICY_CHANGE=d1e2f3a4b5c6 in CI,',
