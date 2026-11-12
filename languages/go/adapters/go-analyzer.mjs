@@ -6,6 +6,7 @@ import { importClosure } from '../../../shared/import-closure.mjs';
 import { toolVersions } from './execution/go-tools.mjs';
 import { GO_LINTER_TOOLS } from './configuration/go-config.mjs';
 import { PROBE_TIMEOUT_MS } from '../../../shared/processes/deadlines.mjs';
+import { checkoutModulePath } from '../../../shared/paths/checkout-module.mjs';
 
 export const GO_ANALYZER_NAME = 'go';
 export const GO_MUTATION_ANALYZER_NAME = 'mutation';
@@ -14,7 +15,7 @@ const MUTATION_SHARD_WEIGHT = 90;
 const ANALYZER_TIMEOUT_MS = 30 * 60 * 1000;
 const packageRoot = path.resolve(import.meta.dirname, '../../..');
 const goRoot = path.join(packageRoot, 'languages/go');
-const cliPath = path.join(packageRoot, 'core/cli.mjs');
+const cliPath = checkoutModulePath(path.join(packageRoot, 'core/cli.mjs'));
 const runnerPath = path.join(import.meta.dirname, 'go-runner.mjs');
 const TEST_ONLY_FOLDERS = new Set(['fixtures', 'test-support']);
 const TEST_FILE = /(?:\.test\.mjs|_test\.go)$/u;

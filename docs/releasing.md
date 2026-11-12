@@ -102,7 +102,7 @@ Work from a clean checkout of `main` with full history.
    date, as the workflow below builds them:
 
    ```sh
-   node core/cli.mjs changelog v<new-version> > changelog-entry.md
+   node core/cli.mts changelog v<new-version> > changelog-entry.md
    rm -rf release-assets && mkdir release-assets && npm pack --pack-destination release-assets
    (cd release-assets && shasum -a 256 nitpicker-*.tgz > SHA256SUMS)
    { cat .github/release-notes/v<new-version>.md; printf '\n'; cat changelog-entry.md; } > notes.md

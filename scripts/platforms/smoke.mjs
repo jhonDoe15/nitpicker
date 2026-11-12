@@ -4,8 +4,9 @@ import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { parseArgs } from 'node:util';
 import { createSampleRepository, inside, REPOSITORY_ROOT } from './samples.mjs';
+import { checkoutModulePath } from '../../shared/paths/checkout-module.mjs';
 
-const CLI = path.join(REPOSITORY_ROOT, 'core/cli.mjs');
+const CLI = checkoutModulePath(path.join(REPOSITORY_ROOT, 'core/cli.mjs'));
 const RUN_TIMEOUT_MS = 60 * 60 * 1000;
 const RUNTIMES = {
   node: () => [process.execPath],

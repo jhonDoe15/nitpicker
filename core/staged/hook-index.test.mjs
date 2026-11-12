@@ -2,15 +2,18 @@ import { chmodSync, readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { describe, expect, it } from 'vitest';
-import { runCli as nitpickerCli } from '../cli.mjs';
+import { runCli as nitpickerCli } from '../cli.mts';
 import { policy } from '../diff/execution/test-support/analyzer-findings.mjs';
 import { fixtureGit } from '../diff/git/test-support/git-repository.mjs';
 import { writeFiles } from '../diff/git/test-support/fixture-files.mjs';
 import { useCliFixtures } from '../command/test-support/cli-harness.mjs';
+import { checkoutModulePath } from '../../shared/paths/checkout-module.mjs';
 
 const { createRepository, makeOutputRoot, makeTemporaryRoot } = useCliFixtures(nitpickerCli);
 
-const CLI_URL = pathToFileURL(path.resolve(import.meta.dirname, '../cli.mjs')).href;
+const CLI_URL = pathToFileURL(
+  checkoutModulePath(path.resolve(import.meta.dirname, '../cli.mjs')),
+).href;
 const EMPTY_REPORT = String.raw`process.stdout.write(JSON.stringify({ findings: [] }) + '\n');`;
 
 function hookScript({ baseRef, outputRoot, flags, exitFile }) {

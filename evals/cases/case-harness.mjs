@@ -4,6 +4,7 @@ import { quickAnalyzersOf } from '../lib/presets.mjs';
 import { linkedTree, linkedWorkdir } from '../lib/workdirs.mjs';
 import { loadTree } from '../detectors/tree.mjs';
 import { loadCase, referenceTree, runCase } from '../runner/run-case.mjs';
+import { checkoutModulePath } from '../../shared/paths/checkout-module.mjs';
 
 export { linkedWorkdir };
 
@@ -34,7 +35,7 @@ export const CASE_TIMEOUT_MS = 600_000;
 
 const gateCommand = (withoutAnalyzers, onlyAnalyzers, preset, rule) => [
   'node',
-  path.join(packageRoot, 'core', 'cli.mjs'),
+  checkoutModulePath(path.join(packageRoot, 'core', 'cli.mjs')),
   '--base',
   'main',
   ...analyzerArgumentsWithout(withoutAnalyzers, onlyAnalyzers, preset),

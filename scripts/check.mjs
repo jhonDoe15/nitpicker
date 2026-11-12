@@ -7,7 +7,7 @@ const repositoryRoot = fileURLToPath(new URL('..', import.meta.url));
 const pinProblems = actionPinProblems(repositoryRoot);
 
 const steps = [
-  ['self-gate', ['core/cli.mjs']],
+  ['self-gate', ['core/cli.mts']],
   [
     'tests',
     [

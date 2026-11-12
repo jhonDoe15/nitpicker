@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { runCli as nitpickerCli } from '../../cli.mjs';
+import { runCli as nitpickerCli } from '../../cli.mts';
 import { commit } from '../../diff/git/test-support/git-repository.mjs';
 import { writeFiles } from '../../diff/git/test-support/fixture-files.mjs';
 import { useGradleFixtures, useMavenFixtures } from '../java/test-support/java-cli-harness.mjs';

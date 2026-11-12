@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { missingPathHint, parseArguments } from '../../../../command/arguments.mjs';
 import { runBaseCommand } from '../../../../command/base.mjs';
-import { runCacheCommand } from '../../../../command/cache.mjs';
+import { runCacheCommand } from '../../../../command/cache.mts';
 import { parseArguments as parseAggregateArguments } from '../../../sharding/arguments.mjs';
 
 const HELP = 'Run nitpicker --help for the options.';
