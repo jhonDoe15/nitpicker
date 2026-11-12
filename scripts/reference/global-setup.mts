@@ -14,22 +14,19 @@ function runs(script: URL, options: readonly string[]): boolean {
   return status === 0;
 }
 
-function buildsReferenceData(): boolean {
-  if (STRIPS_TYPES) {
-    return runs(GENERATOR, ['--data']);
-  }
-  if (!runs(EMIT, [])) {
-    return false;
-  }
-  try {
-    return runs(GENERATOR, ['--data']);
-  } finally {
-    runs(EMIT, ['--clean']);
-  }
+function cleanEmitted(): void {
+  runs(EMIT, ['--clean']);
 }
 
-export function setup(): void {
-  if (!buildsReferenceData()) {
+export function setup(): (() => void) | undefined {
+  if (!(STRIPS_TYPES || runs(EMIT, []))) {
+    throw new Error('Emitting the TypeScript modules failed: run node scripts/typescript/emit.mjs');
+  }
+  if (!runs(GENERATOR, ['--data'])) {
+    if (!STRIPS_TYPES) {
+      cleanEmitted();
+    }
     throw new Error('Building the rule reference data failed: run npm run gen:rules -- --data');
   }
+  return STRIPS_TYPES ? undefined : cleanEmitted;
 }

@@ -33,12 +33,16 @@ describe('checkout modules', () => {
     ],
     ['leaves files that are not ES modules alone', 'rules.json', 'rules.json'],
   ])('%s', (_name, file, opened) => {
-    expect(checkoutModulePath(path.join(directory, file))).toBe(path.join(directory, opened));
+    expect(checkoutModulePath(path.join(directory, file), { stripsTypes: true })).toBe(
+      path.join(directory, opened),
+    );
   });
   it('maps a module URL the same way', () => {
-    expect(checkoutModuleUrl(pathToFileURL(path.join(directory, 'converted.mjs'))).href).toBe(
+    const converted = pathToFileURL(path.join(directory, 'converted.mjs'));
+    expect(checkoutModuleUrl(converted, { stripsTypes: true }).href).toBe(
       pathToFileURL(path.join(directory, 'converted.mts')).href,
     );
+    expect(checkoutModuleUrl(converted, { stripsTypes: false }).href).toBe(converted.href);
   });
   it('opens the emitted JavaScript where Node.js cannot strip types, as in the package build', () => {
     const emitted = path.join(directory, 'emitted.mjs');
