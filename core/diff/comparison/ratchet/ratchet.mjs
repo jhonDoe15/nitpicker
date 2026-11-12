@@ -5,6 +5,7 @@ import {
   withGrowthAdvice,
   withWorseMessage,
 } from '../../../../shared/messages/advice/finding-advice.mjs';
+import { keepsBaseSpans } from './line-spans.mjs';
 import { isHeldOnTouchedLine } from './touched-code.mjs';
 
 const NO_MOVES = baseMoves(new Map());
@@ -13,7 +14,7 @@ export function holdRatchetedFindings({ newFindings, unmatchedBase, moves, touch
   const byDeclaration = holdAgainst(
     newFindings,
     groupBaseByRatchetKey(unmatchedBase, (finding) => declarationKey(finding, moves)),
-    { touchedCode, matchedBase: new Set(), keyOf: declarationKey },
+    { touchedCode, moves, matchedBase: new Set(), keyOf: declarationKey },
   );
   const atSamePath = holdAgainst(
     byDeclaration.unmatched,
@@ -21,7 +22,7 @@ export function holdRatchetedFindings({ newFindings, unmatchedBase, moves, touch
       unmatchedBase.filter((baseFinding) => !byDeclaration.matchedBase.has(baseFinding)),
       (finding) => ratchetKey(finding, moves),
     ),
-    { touchedCode, matchedBase: byDeclaration.matchedBase, keyOf: ratchetKey },
+    { touchedCode, moves, matchedBase: byDeclaration.matchedBase, keyOf: ratchetKey },
   );
   const folders = folderMoves(moves.files);
   const movedFolders = groupBaseByRatchetKey(
@@ -33,6 +34,7 @@ export function holdRatchetedFindings({ newFindings, unmatchedBase, moves, touch
   );
   const atMovedPath = holdAgainst(atSamePath.unmatched, movedFolders, {
     touchedCode,
+    moves,
     matchedBase: atSamePath.matchedBase,
     keyOf: ratchetKey,
   });
@@ -44,27 +46,67 @@ export function holdRatchetedFindings({ newFindings, unmatchedBase, moves, touch
   };
 }
 
-function holdAgainst(headFindings, baseByRatchet, { touchedCode, matchedBase, keyOf }) {
-  const result = { unmatched: [], grew: [], heldFindings: [], matchedBase };
+function roomTracker() {
+  const left = new Map();
+  const spent = new Set();
+  function roomOf(candidate) {
+    return left.get(candidate) ?? candidate.ratchet.value;
+  }
+  function take(baseFinding, headFinding) {
+    const { value, divisible } = headFinding.ratchet;
+    if (divisible === true && value < roomOf(baseFinding)) {
+      left.set(baseFinding, roomOf(baseFinding) - value);
+      return;
+    }
+    spent.add(baseFinding);
+  }
+  return { roomOf, take, isSpent: (candidate) => spent.has(candidate) };
+}
+
+function byValueDescending(left, right) {
+  return (right.ratchet?.value ?? 0) - (left.ratchet?.value ?? 0);
+}
+
+function holdAgainst(headFindings, baseByRatchet, context) {
+  const rooms = roomTracker();
+  const decided = new Map();
+  for (const headFinding of headFindings.toSorted(byValueDescending)) {
+    decided.set(headFinding, decide(headFinding, { ...context, baseByRatchet, rooms }));
+  }
+  const result = {
+    unmatched: [],
+    grew: [],
+    heldFindings: [],
+    matchedBase: context.matchedBase,
+  };
   for (const headFinding of headFindings) {
-    const candidates = holdCandidatesFor(headFinding, baseByRatchet, { touchedCode, keyOf });
-    const baseFinding =
-      candidates === undefined || candidates.length === 0
-        ? undefined
-        : closestCandidate(candidates, headFinding.ratchet.value);
-    if (baseFinding === undefined) {
-      result.unmatched.push(headFinding);
-      continue;
-    }
-    if (headFinding.ratchet.value > baseFinding.ratchet.value) {
-      result.grew.push(withWorseMessage(headFinding, baseFinding.ratchet.value));
-      continue;
-    }
-    candidates.splice(candidates.indexOf(baseFinding), 1);
-    result.matchedBase.add(baseFinding);
-    result.heldFindings.push({ ...headFinding, heldAtBase: baseFinding.ratchet.value });
+    const { bucket, entry } = decided.get(headFinding);
+    result[bucket].push(entry);
   }
   return result;
+}
+
+function decide(headFinding, context) {
+  const { baseByRatchet, matchedBase, rooms } = context;
+  const candidates = (holdCandidatesFor(headFinding, baseByRatchet, context) ?? []).filter(
+    (candidate) => !rooms.isSpent(candidate),
+  );
+  const baseFinding =
+    candidates.length === 0
+      ? undefined
+      : closestCandidate(candidates, headFinding.ratchet.value, rooms.roomOf);
+  if (baseFinding === undefined) {
+    return { bucket: 'unmatched', entry: headFinding };
+  }
+  if (headFinding.ratchet.value > rooms.roomOf(baseFinding)) {
+    return { bucket: 'grew', entry: withWorseMessage(headFinding, baseFinding.ratchet.value) };
+  }
+  rooms.take(baseFinding, headFinding);
+  matchedBase.add(baseFinding);
+  return {
+    bucket: 'heldFindings',
+    entry: { ...headFinding, heldAtBase: baseFinding.ratchet.value },
+  };
 }
 
 function movedFolderKey(finding, folders) {
@@ -76,12 +118,12 @@ function movedFolderKey(finding, folders) {
     : undefined;
 }
 
-function closestCandidate(candidates, value) {
-  const holding = candidates.filter((candidate) => candidate.ratchet.value >= value);
+function closestCandidate(candidates, value, room) {
+  const holding = candidates.filter((candidate) => room(candidate) >= value);
   const pool = holding.length > 0 ? holding : candidates;
   const pick = holding.length > 0 ? Math.min : Math.max;
-  const target = pick(...pool.map((candidate) => candidate.ratchet.value));
-  return pool.find((candidate) => candidate.ratchet.value === target);
+  const target = pick(...pool.map((candidate) => room(candidate)));
+  return pool.find((candidate) => room(candidate) === target);
 }
 
 export function addGrowthAdvice({ findings, baseFindings, moves }) {
@@ -109,11 +151,17 @@ function groupBaseByRatchetKey(unmatchedBase, keyOf) {
   return baseByRatchet;
 }
 
-function holdCandidatesFor(headFinding, baseByRatchet, { touchedCode, keyOf }) {
+function holdCandidatesFor(headFinding, baseByRatchet, { touchedCode, keyOf, moves }) {
   const isNeverHeld =
     headFinding.ratchet === undefined || isHeldOnTouchedLine(headFinding, touchedCode);
   const key = isNeverHeld ? undefined : keyOf(headFinding);
-  return key === undefined ? undefined : baseByRatchet.get(key);
+  return key === undefined
+    ? undefined
+    : baseByRatchet
+        .get(key)
+        ?.filter((baseFinding) =>
+          keepsBaseSpans(headFinding, baseFinding, { touchedCode, renames: moves.files }),
+        );
 }
 
 function ratchetKey(finding, moves = NO_MOVES) {

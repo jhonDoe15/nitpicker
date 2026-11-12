@@ -1,0 +1,42 @@
+{
+  "description": "Directories never follow a move: when a not-run module is renamed as a whole, the base notice covers its old directories and the exact head paths of the renamed files. The moved clone stays descriptive, a new clone in kernel is enforceable, and the head's kernel notice, whose path and directories the base notice does not match, is a conservative tool-error.",
+  "renames": {
+    "legacy/src/main/java/p/E.java": "kernel/src/main/java/p/E.java",
+    "legacy/src/main/java/p/F.java": "kernel/src/main/java/p/F.java",
+    "legacy/src/test/java/p/ET.java": "kernel/src/test/java/p/ET.java"
+  },
+  "new": [
+    {
+      "tool": "duplicates",
+      "rule": "cpd-not-run",
+      "path": "kernel",
+      "identity": "cpd-not-run",
+      "classification": "tool-error"
+    },
+    {
+      "tool": "duplicates",
+      "rule": "duplicate-clone",
+      "path": "kernel/src/main/java/n/Fresh.java",
+      "identity": "cpd:pair:kernel/src/main/java/n/Fresh.java|kernel/src/main/java/n/Copy.java:occurrence:1",
+      "classification": "enforceable"
+    },
+    {
+      "tool": "duplicates",
+      "rule": "duplicate-clone",
+      "path": "kernel/src/main/java/p/E.java",
+      "identity": "cpd:pair:kernel/src/main/java/p/E.java|kernel/src/main/java/p/F.java:occurrence:1",
+      "classification": "descriptive"
+    }
+  ],
+  "resolved": [
+    {
+      "tool": "duplicates",
+      "rule": "cpd-not-run",
+      "path": "legacy",
+      "identity": "cpd-not-run",
+      "classification": "descriptive"
+    }
+  ],
+  "unchanged": [],
+  "changedMetrics": []
+}

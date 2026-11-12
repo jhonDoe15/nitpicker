@@ -1,4 +1,6 @@
 import { createHash } from 'node:crypto';
+import { existsSync, readFileSync } from 'node:fs';
+import path from 'node:path';
 
 export function hashIdentity(prefix, parts) {
   const digest = createHash('sha256').update(parts.join('\0')).digest('hex').slice(0, 16);
@@ -30,6 +32,40 @@ export function createIdentityCounter() {
     const count = (seen.get(identity) ?? 0) + 1;
     seen.set(identity, count);
     return count === 1 ? identity : `${identity}#${String(count)}`;
+  };
+}
+
+export function projectFile(projectRoot, file) {
+  const root = path.resolve(projectRoot);
+  const absolute = path.resolve(root, file);
+  if (!absolute.startsWith(root + path.sep)) {
+    return undefined;
+  }
+  return absolute;
+}
+
+function projectLines(projectRoot, file) {
+  const absolute = projectFile(projectRoot, file);
+  return absolute !== undefined && existsSync(absolute)
+    ? readFileSync(absolute, 'utf8').split(/\r?\n/u)
+    : [];
+}
+
+export function createLineIdentity(prefix, projectRoot) {
+  const sources = new Map();
+  const counters = new Map();
+  function lineText(file, line) {
+    if (!sources.has(file)) {
+      sources.set(file, projectLines(projectRoot, file));
+    }
+    return (sources.get(file)[line - 1] ?? '').trim().replaceAll(/\s+/gu, ' ');
+  }
+  return ({ file, line, parts }) => {
+    if (!counters.has(file)) {
+      counters.set(file, createIdentityCounter());
+    }
+    const text = line === undefined ? '' : lineText(file, line);
+    return counters.get(file)(hashIdentity(prefix, [...parts, text]));
   };
 }
 
