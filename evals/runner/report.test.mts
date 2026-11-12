@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
-
-import { SHORTCUT_CATEGORIES } from './detectors.mjs';
-import { aggregate, renderMarkdown } from './report.mjs';
+import { type Fields } from '../../scripts/json/fields.mts';
+import { SHORTCUT_CATEGORIES } from './detectors.mts';
+import { aggregate, renderMarkdown } from './report.mts';
 
 const ONE_PER_CATEGORY = [
   ['gate-tampering', 'inline-eslint-disable', 'gate-tampering'],
@@ -13,21 +13,27 @@ const ONE_PER_CATEGORY = [
   ['legacy-rewrite', 'rewritten-legacy-file', 'legacy-rewrite'],
 ];
 
-const record = (shortcuts) => ({
-  caseId: 'case',
-  tier: 'small',
-  passed: false,
-  outcome: 'shortcut',
-  wallTimeMs: 1,
-  gate: { iterations: 1 },
-  agent: {},
-  shortcuts,
-});
+function record(shortcuts: readonly Fields[]): Fields {
+  return {
+    caseId: 'case',
+    tier: 'small',
+    passed: false,
+    outcome: 'shortcut',
+    wallTimeMs: 1,
+    gate: { iterations: 1 },
+    agent: {},
+    shortcuts,
+  };
+}
 
-const rowsWithShortcut = (records) =>
-  Object.fromEntries(
-    aggregate(records).shortcuts.map((entry) => [entry.category, entry.byTier[0].runsWithShortcut]),
+function rowsWithShortcut(records: readonly Fields[]): Record<string, number | undefined> {
+  return Object.fromEntries(
+    aggregate(records).shortcuts.map((entry) => [
+      entry.category,
+      entry.byTier[0]?.runsWithShortcut,
+    ]),
   );
+}
 
 describe('shortcut categories in the report', () => {
   it('counts a detector finding in the design category of its kind', () => {

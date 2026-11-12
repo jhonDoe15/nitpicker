@@ -5,16 +5,18 @@ import path from 'node:path';
 import { setTimeout as sleep } from 'node:timers/promises';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
-const agent = path.join(import.meta.dirname, 'park-agent.mjs');
-let directory;
+const agent = path.join(import.meta.dirname, 'park-agent.mts');
+let directory: string;
 beforeAll(() => {
   directory = mkdtempSync(path.join(tmpdir(), 'nitpicker-park-'));
 });
 afterAll(() => rmSync(directory, { recursive: true, force: true }));
 
-const parked = (name) => path.join(directory, name);
+function parked(name: string): string {
+  return path.join(directory, name);
+}
 
-function park(tier) {
+function park(tier: string) {
   const child = spawn('node', [agent], {
     env: {
       ...process.env,
@@ -28,7 +30,7 @@ function park(tier) {
   return { child, exited };
 }
 
-async function until(condition) {
+async function until(condition: () => boolean): Promise<boolean> {
   for (let waited = 0; !condition() && waited < 5000; waited += 50) await sleep(50);
   return condition();
 }

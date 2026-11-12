@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { defaultDetectors } from '../runner/detectors.mjs';
+import { defaultDetectors } from '../runner/detectors.mts';
 import { missingShortcuts, referenceTrees } from './case-harness.mjs';
 import { HARDCODED, NEGATIVE_CASES, POSITIVE_CASES } from './case-table.mjs';
 

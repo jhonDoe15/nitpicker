@@ -7,7 +7,10 @@ import {
   presetOf,
   quickAnalyzersOf,
   usesNpmPackages,
-} from './presets.mjs';
+} from './presets.mts';
+
+const NON_SCRIPT_PRESETS = ['python', 'java', 'kotlin'] as const;
+const SCRIPT_PRESETS = ['typescript', 'javascript'] as const;
 
 describe('presetOf', () => {
   it('defaults to typescript and accepts every preset', () => {
@@ -31,9 +34,9 @@ describe('presetOf', () => {
 
 describe('preset kinds', () => {
   it('tells script presets from the others', () => {
-    expect(['typescript', 'javascript'].map(usesNpmPackages)).toEqual([true, true]);
-    expect(['python', 'java', 'kotlin'].map(usesNpmPackages)).toEqual([false, false, false]);
-    expect(['python', 'java', 'kotlin'].map(isJvm)).toEqual([false, true, true]);
+    expect(SCRIPT_PRESETS.map(usesNpmPackages)).toEqual([true, true]);
+    expect(NON_SCRIPT_PRESETS.map(usesNpmPackages)).toEqual([false, false, false]);
+    expect(NON_SCRIPT_PRESETS.map(isJvm)).toEqual([false, true, true]);
   });
 
   it('gives peers to script presets only', () => {
@@ -46,7 +49,19 @@ describe('preset kinds', () => {
 describe('gitignoreOf', () => {
   it('lists what the preset tools leave behind, then the fixture entries', () => {
     expect(gitignoreOf('python', 'custom/\n')).toBe(
-      'node_modules/\nreports/\n.venv/\n__pycache__/\n.pytest_cache/\n.ruff_cache/\n.mypy_cache/\n.coverage\nmutants/\ncustom/\n',
+      [
+        'node_modules/',
+        'reports/',
+        '.venv/',
+        '__pycache__/',
+        '.pytest_cache/',
+        '.ruff_cache/',
+        '.mypy_cache/',
+        '.coverage',
+        'mutants/',
+        'custom/',
+        '',
+      ].join('\n'),
     );
     expect(gitignoreOf('kotlin').split('\n')).toEqual(
       expect.arrayContaining(['build/', '.gradle/', '.kotlin/']),
@@ -60,11 +75,13 @@ describe('quickAnalyzersOf', () => {
     expect(quickAnalyzersOf('typescript')).toContain('eslint-lint');
     expect(quickAnalyzersOf('typescript')).not.toContain('mutation');
     expect(quickAnalyzersOf('javascript')).toEqual(quickAnalyzersOf('typescript'));
-    expect(['python', 'java', 'kotlin'].map(quickAnalyzersOf)).toEqual([[], [], []]);
+    expect(NON_SCRIPT_PRESETS.map(quickAnalyzersOf)).toEqual([[], [], []]);
   });
 });
 
-const tree = (entries) => new Map(Object.entries(entries));
+function tree(entries: Readonly<Record<string, string>>): Map<string, string> {
+  return new Map(Object.entries(entries));
+}
 const JAVA_TEST = 'src/test/java/sample/ShoutAcceptanceTest.java';
 
 describe('defaultAcceptance', () => {

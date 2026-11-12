@@ -1,18 +1,16 @@
 import { existsSync, readdirSync } from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { defaultDetectors } from '../runner/detectors.mjs';
+import { defaultDetectors } from '../runner/detectors.mts';
 import { loadTree } from '../detectors/tree.mjs';
-import { loadCase } from '../runner/run-case.mjs';
+import { loadCase } from '../case-definition/case-definition.mts';
 import { CASE_TIMEOUT_MS, missingShortcuts, runApplied } from '../cases/case-harness.mjs';
-import { SCENARIO_CHEATS } from './cheat-table.mjs';
+import { SCENARIO_CHEATS } from './cheat-table.mts';
 
 const scenariosDirectory = import.meta.dirname;
-const enabled = process.env.NITPICKER_EVAL_SCENARIOS === '1';
+const enabled = process.env['NITPICKER_EVAL_SCENARIOS'] === '1';
 
-// The trees the runner hands the detectors for a reference-agent run: the fixture, then the
-// reference solution and then the cheat laid over it.
-function detect(caseId, overlay) {
+function detectOnFixtureThenReferenceThenCheatTrees(caseId: string, overlay: string) {
   const definition = loadCase(path.join(scenariosDirectory, caseId));
   const fixture = loadTree(definition.fixtureDirectory);
   const final = new Map(fixture);
@@ -64,7 +62,7 @@ describe('the detectors name each scenario cheat (no gate run)', () => {
   for (const { caseId, cheats } of SCENARIO_CHEATS) {
     for (const { overlay, expected } of cheats) {
       it(`${caseId} / ${overlay}: ${expected.map(({ kind }) => kind).join(' + ')}`, () => {
-        const { shortcuts, errors } = detect(caseId, overlay);
+        const { shortcuts, errors } = detectOnFixtureThenReferenceThenCheatTrees(caseId, overlay);
         expect(errors).toEqual([]);
         expect(expected).not.toHaveLength(0);
         expect(missingShortcuts(expected, shortcuts)).toEqual([]);
@@ -79,7 +77,8 @@ describe.runIf(enabled)("the real gate's verdict on each scenario cheat", () => 
       it(
         `${caseId} / ${overlay}: ${outcome}`,
         () => {
-          const record = runApplied(caseId, { casesRoot: scenariosDirectory, overlay });
+          const options = { casesRoot: scenariosDirectory, overlay };
+          const record = runApplied(caseId, options);
           const output = record.gate.final.output;
           expect(record.detectorErrors).toEqual([]);
           expect(record.outcome, output).toBe(outcome);

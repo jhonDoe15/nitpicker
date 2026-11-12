@@ -3,9 +3,9 @@ import { mkdtempSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { appendRecord, readRecords } from './results.mjs';
+import { appendRecordAsSingleWrite, readRecords } from './results.mts';
 
-let directory;
+let directory: string;
 beforeAll(() => {
   directory = mkdtempSync(path.join(tmpdir(), 'nitpicker-results-'));
 });
@@ -18,8 +18,8 @@ describe('run records', () => {
 
   it('appends one line per record and reads them back in order', () => {
     const target = path.join(directory, 'ordered');
-    appendRecord(target, { caseId: 'a', run: 1, output: 'two\nlines' });
-    appendRecord(target, { caseId: 'b', run: 2 });
+    appendRecordAsSingleWrite(target, { caseId: 'a', run: 1, output: 'two\nlines' });
+    appendRecordAsSingleWrite(target, { caseId: 'b', run: 2 });
     const text = readFileSync(path.join(target, 'runs.jsonl'), 'utf8');
     expect(text.split('\n').filter(Boolean)).toHaveLength(2);
     expect(readRecords(target)).toEqual([
@@ -30,9 +30,11 @@ describe('run records', () => {
 
   it('keeps every line whole when several processes append at once', () => {
     const target = path.join(directory, 'parallel');
-    const script = `import { appendRecord } from ${JSON.stringify(new URL('./results.mjs', import.meta.url).href)};
+    const resultsModule = JSON.stringify(new URL('./results.mts', import.meta.url).href);
+    const record = "{ process: process.argv[1], run, padding: 'x'.repeat(5000) }";
+    const script = `import { appendRecordAsSingleWrite } from ${resultsModule};
       for (let run = 0; run < 25; run += 1) {
-        appendRecord(${JSON.stringify(target)}, { process: process.argv[1], run, padding: 'x'.repeat(5000) });
+        appendRecordAsSingleWrite(${JSON.stringify(target)}, ${record});
       }`;
     const processes = ['one', 'two', 'three', 'four'].map((name) =>
       spawnSync('node', ['--input-type=module', '-e', script, name], { encoding: 'utf8' }),
@@ -40,8 +42,9 @@ describe('run records', () => {
     expect(processes.map((result) => result.status)).toEqual([0, 0, 0, 0]);
     const records = readRecords(target);
     expect(records).toHaveLength(100);
-    expect(new Set(records.map((record) => `${record.process}:${String(record.run)}`)).size).toBe(
-      100,
-    );
+    expect(
+      new Set(records.map((record) => `${String(record['process'])}:${String(record['run'])}`))
+        .size,
+    ).toBe(100);
   });
 });

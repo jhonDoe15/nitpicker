@@ -1,14 +1,10 @@
 import { closeSync, existsSync, mkdirSync, openSync, readFileSync, writeSync } from 'node:fs';
 import path from 'node:path';
+import { type Fields, requiredFields } from '../../scripts/json/fields.mts';
 
 const RECORDS_FILE = 'runs.jsonl';
 
-/**
- * Appends one run record to `<directory>/runs.jsonl` as a single line, written with one `write`
- * call to a file opened for appending. Runner processes that share a results directory (one per
- * case or per range of runs) therefore never interleave or overwrite each other's lines.
- */
-export function appendRecord(directory, record) {
+export function appendRecordAsSingleWrite(directory: string, record: unknown): void {
   mkdirSync(directory, { recursive: true });
   const descriptor = openSync(path.join(directory, RECORDS_FILE), 'a');
   try {
@@ -18,11 +14,11 @@ export function appendRecord(directory, record) {
   }
 }
 
-export function readRecords(directory) {
+export function readRecords(directory: string): readonly Fields[] {
   const file = path.join(directory, RECORDS_FILE);
   if (!existsSync(file)) return [];
   return readFileSync(file, 'utf8')
     .split('\n')
     .filter(Boolean)
-    .map((line) => JSON.parse(line));
+    .map((line) => requiredFields(JSON.parse(line), 'run record'));
 }
