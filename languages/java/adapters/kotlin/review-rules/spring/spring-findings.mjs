@@ -1,7 +1,6 @@
-import { exceptionMatcher } from '../../../../../../shared/rules/exceptions.mjs';
-import { inModule } from '../../../../builds/module-path.mjs';
 import { COLUMN_RULES } from './data/columns.mjs';
 import { ENTITY_RULES } from './data/entities.mjs';
+import { FOREIGN_KEY_RULES } from './data/keys/foreign-keys.mjs';
 import { LOOP_RULES } from './data/loops/loops.mjs';
 import { QUERY_RULES } from './data/queries.mjs';
 import { BEAN_RULES } from './rules/beans.mjs';
@@ -19,6 +18,7 @@ import { WEB_RULES } from './web/web.mjs';
 import { WIRING_RULES } from './wiring/wiring.mjs';
 import { STARTUP_RULES } from './lifecycle/startup-cleanup.mjs';
 import { UNRELEASED_RULES } from './lifecycle/unreleased.mjs';
+import { foreignKeyGate } from '../../../jpa/foreign-keys/key-gate.mjs';
 
 const RULES = [
   ...BEAN_RULES,
@@ -35,6 +35,7 @@ const RULES = [
   ...ERROR_LEAK_RULES,
   ...SECURITY_RULES,
   ...ENTITY_RULES,
+  ...FOREIGN_KEY_RULES,
   ...COLUMN_RULES,
   ...QUERY_RULES,
   ...LOOP_RULES,
@@ -48,6 +49,7 @@ export function springFindings(
     projectFiles,
     projectRoot,
     javaRoots,
+    foreignKeys = foreignKeyGate(projectRoot),
     rules = RULES,
     message = springMessage,
   },
@@ -55,7 +57,11 @@ export function springFindings(
   if (manifest.spring !== true) {
     return [];
   }
-  const options = { allOpen: manifest.kotlinAllOpen, projectFiles };
+  const options = {
+    allOpen: manifest.kotlinAllOpen,
+    projectFiles,
+    checksForeignKeys: foreignKeys,
+  };
   return springViews({ files, projectFiles, projectRoot, javaRoots }).flatMap((view) =>
     rules
       .flatMap((rule) => rule(view, options))
@@ -70,35 +76,6 @@ export function springFindings(
           message: message(rule),
           allowedForm: message(rule),
         }),
-      ),
-  );
-}
-
-const COVERED_SOURCE_RULES = {
-  HttpWithoutTimeout: new Set(['SpringHttpClientTimeouts', 'SpringHttpClientPerCall']),
-  IoCallInLoop: new Set([
-    'SpringDataNoSaveInLoop',
-    'SpringDataBatchOfOne',
-    'SpringDataRowWriteInLoop',
-    'SpringDataSaveInLoopHelper',
-  ]),
-};
-
-export function withoutCoveredSourceFindings(findings, { exceptions = [], modulePath } = {}) {
-  const lifted = exceptionMatcher(exceptions);
-  const reported = new Set(
-    findings
-      .filter(
-        ({ tool, rule, path }) =>
-          tool === 'pmd' && !lifted(`${tool}/${rule}`, inModule(modulePath, path)),
-      )
-      .map(({ rule, path, location }) => `${rule}\0${path}\0${String(location?.line)}`),
-  );
-  return findings.filter(
-    ({ tool, rule, path, location }) =>
-      tool !== 'kotlin-source' ||
-      ![...(COVERED_SOURCE_RULES[rule] ?? [])].some((covering) =>
-        reported.has(`${covering}\0${path}\0${String(location?.line)}`),
       ),
   );
 }

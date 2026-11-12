@@ -1,0 +1,15 @@
+export const QUERY_RULE_FILES = [
+  'languages/typescript/preset/eslint-plugin/rules/queries/arrays/array-bounds.mjs',
+  'languages/typescript/preset/eslint-plugin/rules/queries/arrays/array-sinks.mjs',
+  'languages/typescript/preset/eslint-plugin/rules/queries/arrays/no-unbounded-query-array.mjs',
+  'languages/typescript/preset/eslint-plugin/rules/queries/order/no-unordered-query.mjs',
+  'languages/typescript/preset/eslint-plugin/rules/queries/order/query-options.mjs',
+  'languages/typescript/preset/eslint-plugin/rules/queries/query-chains.mjs',
+  'languages/typescript/preset/eslint-plugin/rules/queries/query-texts.mjs',
+  'shared/rules/queries/query-rule-files.mjs',
+  'shared/rules/queries/sql-order.mjs',
+  'languages/typescript/preset/eslint-plugin/rules/queries/no-in-memory-query.mjs',
+  'languages/typescript/preset/eslint-plugin/rules/queries/query-calls.mjs',
+  'languages/typescript/preset/eslint-plugin/rules/queries/result-uses.mjs',
+  'languages/typescript/preset/eslint-plugin/rules/queries/row-callbacks.mjs',
+];

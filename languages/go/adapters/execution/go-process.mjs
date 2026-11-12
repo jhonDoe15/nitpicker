@@ -15,7 +15,15 @@ function goFlags(context) {
     .join(' ');
 }
 
-export function execute(context, command, { timeout = TOOL_TIMEOUT_MS, env = {}, cwd } = {}) {
+function toolTimeoutMs(context) {
+  return context.analyzerDeadlineMs ?? TOOL_TIMEOUT_MS;
+}
+
+export function execute(
+  context,
+  command,
+  { timeout = toolTimeoutMs(context), env = {}, cwd } = {},
+) {
   const [program, ...args] = command;
   return (context.spawn ?? spawnSync)(program, args, {
     cwd: cwd ?? context.projectRoot,
@@ -33,7 +41,7 @@ function accepts(accepted, status) {
 export function run(
   context,
   command,
-  { accepted = [0], rule, timeoutMs = TOOL_TIMEOUT_MS, ...options },
+  { accepted = [0], rule, timeoutMs = toolTimeoutMs(context), ...options },
 ) {
   const result = execute(context, command, { timeout: timeoutMs, ...options });
   if (result.error !== undefined || !accepts(accepted, result.status)) {

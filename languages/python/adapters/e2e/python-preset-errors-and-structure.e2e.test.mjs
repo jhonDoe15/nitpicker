@@ -11,6 +11,7 @@ import {
   pythonE2eEnabled,
   removeRepositories,
 } from './test-support/python-e2e-support.mjs';
+import { linkSentence } from '../../../../shared/messages/test-support/link-sentence.mjs';
 
 const MUTATION_DISABLED = {
   environment: {
@@ -93,7 +94,7 @@ describe.skipIf(!pythonE2eEnabled)(
       const result = gate(project, 'broken-environment');
 
       expect(result.exitCode, result.text).toBe(2);
-      const message = `No Python environment at ${path.join(project, 'nowhere')} (${path.join(project, 'nowhere/bin')} does not exist): create it, or set "python.environment"`;
+      const message = `No Python environment at ${path.join(project, 'nowhere')} (${path.join(project, 'nowhere/bin')} does not exist): create it, or set "python.environment". ${linkSentence('pythonEnvironment')}`;
       expect(
         result.json('tool-errors.json').sort((left, right) => left.tool.localeCompare(right.tool)),
       ).toEqual([

@@ -7,10 +7,12 @@ import { buildOnce, TransientBuildError } from '../../../../core/tooling/build-o
 import { linkPolicyFile } from '../../../../core/tooling/policy-links.mjs';
 import { trackTemporaryPath } from '../../../../core/tooling/temporary-files.mjs';
 import { resolveTool } from '../../../../core/tooling/tool-resolution.mjs';
-import { ARCHITECTURE_CONFIG } from '../../preset/dependency-graph/cruise.mjs';
+import {
+  ARCHITECTURE_CONFIG,
+  dependencyGraphTsconfig,
+} from '../../preset/dependency-graph/cruise.mjs';
 import { readLayout } from '../../preset/head-policy.mjs';
 import { revivedExpression } from '../../preset/project-tools/config-values.mjs';
-import { layoutTransformFor } from '../../preset/tool-configs.mjs';
 import { projectExcludePaths } from './project-config/dependency-cruiser-layers.mjs';
 import { projectGraphLayer } from './project-config/graph-layer.mjs';
 import { TOOL_RUN_CEILING_MS } from '../../../../shared/processes/deadlines.mjs';
@@ -161,7 +163,7 @@ function installWrapperConfig(cruise) {
   const typeScriptConfig = linkPolicyFile(
     cruise.policyTypeScriptConfig,
     path.join(cruise.projectRoot, `.nitpicker-diff-tsconfig-${suffix}.json`),
-    layoutTransformFor(TSCONFIG_NAME, readLayout()),
+    dependencyGraphTsconfig(readLayout()),
   );
   trackTemporaryPath(wrapperPath);
   try {

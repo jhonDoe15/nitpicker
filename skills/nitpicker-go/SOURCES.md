@@ -25,6 +25,28 @@ than the others, and this skill teaches its rules before an agent writes Go.
   what the gate runs today.
 - The shared rules of the other presets (size limits, slow tests, repository hygiene), applied to
   Go where they fit.
+- [staticcheck](https://staticcheck.dev/docs/checks/) (MIT),
+  [errcheck](https://github.com/kisielk/errcheck) (MIT) and the
+  [`golang.org/x/tools` analysis passes](https://pkg.go.dev/golang.org/x/tools/go/analysis/passes),
+  including [modernize](https://pkg.go.dev/golang.org/x/tools/go/analysis/passes/modernize)
+  (BSD-3-Clause): the lint program, run directly instead of through golangci-lint.
+- [revive](https://revive.run/r) (MIT), in the same program through its library. It links
+  [hashicorp/go-version](https://github.com/hashicorp/go-version) (MPL-2.0, weak copyleft) for
+  Go version checks; nitpicker uses it unmodified and does not ship it (the lint program is built
+  from `go.mod` on the user's machine), which the license policy allows for unmodified tools.
+- Catalog linters, each license checked at the pinned version: bodyclose, sqlclosecheck, noctx,
+  errorlint, nilerr, nilnil, errname, containedctx, fatcontext and rowserrcheck (MIT),
+  contextcheck (Apache-2.0). Their shared helpers (gostaticanalysis analysisutil and comment) are
+  MIT.
+  Types and values: exhaustive (BSD-2-Clause), recvcheck, reassign and wastedassign (MIT),
+  durationcheck and makezero (Apache-2.0), unconvert (BSD-3-Clause, the analyzer form
+  golangci-lint maintains).
+  Tests: thelper, tparallel and testifylint (MIT), usetesting (Apache-2.0). testify itself is
+  only a dependency of the fixtures.
+  Other forms: asciicheck and canonicalheader (MIT, the forks golangci-lint maintains), bidichk,
+  gocheckcompilerdirectives, perfsprint, usestdlibvars and spancheck (MIT), musttag and sloglint
+  (MPL-2.0, weak copyleft, used unmodified). OpenTelemetry's trace package is only a dependency
+  of the spancheck fixtures.
 
 ## Rules and their reasoning
 
@@ -38,8 +60,44 @@ than the others, and this skill teaches its rules before an agent writes Go.
 - **Compile and vet first.** A package that does not build hides every other check in it, so the
   compile error is its own finding and the skill puts it first.
 - **Errors wrapped with `%w`, compared with `errors.Is`/`errors.As`.** All three style guides agree,
-  and comparing wrapped errors with `==` or their text is the most common Go error bug. Enforced
-  rules for it come with the one-way rules slice; until then the skill carries it.
+  and comparing wrapped errors with `==` or their text is the most common Go error bug. SA1032 and
+  `deepequalerrors` enforce part of it; errorlint (#977) is to enforce the rest, so the own rules do
+  not rebuild it.
+- **Own rules (`go-rules`).** Built only for the forms no linter enforces (#416). `panic` for
+  ordinary failures, logging and returning the same error, goroutines without an owner, root
+  contexts outside `main` and sleeping to wait for a goroutine come from Effective Go ("don't
+  panic"), the Uber guide (goroutine lifetimes, "handle errors once") and the Google guide
+  (contexts). `Must` functions and `main`/`init` keep `panic`, as in the standard library. Sleeps in
+  tests are `sleep-in-test` (#419) rather than `sleep-to-wait`, so a test line is not reported
+  twice; goroutines a test leaves behind are `unowned-goroutine` in test files too. Package state and `init` side effects come from the Uber guide ("avoid
+  mutable globals", "avoid `init()`"); producer-side interfaces ("accept interfaces, return
+  structs") and `any` in APIs from Go Code Review Comments ("Interfaces"); `helper` package names
+  from the Go blog's "Package names" (revive's `package-naming` already reports `util`, `common` and
+  the rest of the blog's list, so the own rule covers only the names it leaves out); `GetX` getters
+  from Effective Go ("Getters"). A sealed interface is exempt because it is the Uber guide's
+  functional-options form, and registrations in `init` because the standard library's driver
+  registry (`database/sql`) is built on them.
+- **HTTP timeouts and I/O in loops.** `http-without-timeout` is the rule every other preset runs
+  (`http-without-timeout` in Python, `pmd/HttpWithoutTimeout` in Java, `kotlin-source/` in Kotlin,
+  `nitpicker/require-http-timeout` in TypeScript): Go's default client has no timeout at all.
+  `io-in-loop` carries the Python rule's name and remedies: a query per item is the most common
+  cause of slow endpoints.
+- **The shared guards (#419).** Swallowed errors, repeated strings, generic names, task markers
+  without an issue, forwarding method aliases and secrets in code or logs are the guards every
+  preset runs (`swallowed-exception`, `repeated-string-literal`, `generic-name`,
+  `todo-without-issue`, `forwarding-method-alias`, `hardcoded-secret`, `credential-shape` and
+  `secret-in-log` in Python), with one definition: the secret words and shapes are shared
+  (`shared/naming/secret-words.mjs`, mirrored in Go and checked by a test). The Go forms follow the
+  language: an `errors.Is` check is the Go way to expect one error, so only `err != nil` is judged;
+  printf templates are Go's interpolated strings, so they are not counted as repeats; and a method
+  an interface asks for may forward, since Go has no other way to satisfy it. Unused parameters,
+  boolean flags, commented-out code and discarded errors are revive, go-critic and errcheck rules.
+- **Test honesty (#211, #587).** The test rules of every preset (`test-without-assertion`,
+  `conditional-assertion-in-test`, `skipped-test-without-reason`, `switched-off-test`,
+  `sleep-in-test`), in Go's forms: `if got != want { t.Errorf(...) }` is Go's assertion, so an `if`
+  is a condition only when its body does not fail itself and nothing after it asserts; and the loop
+  decisions of #587 (constant counts and non-empty literal tables are fine; a table's cases run as
+  `t.Run` subtests, the subtest form of the Go wiki's table-driven tests).
 - **Configuration read once in `main`; clocks, randomness and writers passed in.** Matches the
   composition-root rule of the other presets and makes tests deterministic.
 - **`context.Context` first, never stored.** From Go Code Review Comments and the Google guide.
@@ -66,6 +124,84 @@ than the others, and this skill teaches its rules before an agent writes Go.
   `testing.Short()` marker counts only as a skip guard at the top of the test (read from the
   syntax tree), because a text match let `_ = testing.Short()` lift any test to 30 s (#707).
 
+- **Tests run under the race detector.** Data races are the Go mistake no linter catches reliably,
+  and `go test -race` finds the ones the tests exercise. Each race is a finding keyed by the two
+  conflicting functions rather than a failing test, because a failing test makes a snapshot a tool
+  error, and a project whose merge base already had a race could then never pass. Keyed by the
+  functions (not lines or goroutine numbers, which change between runs), a race the base had stays
+  quiet and only a new one fails. A data race is undefined behaviour in Go's memory model, so the
+  finding has no exception route. Without cgo the tests run without `-race` and a descriptive
+  finding says races were not checked, instead of skipping silently.
+- **The cost of `-race`.** The race detector documents a 2 to 20 times slowdown in CPU and 5 to 10
+  times in memory. On the preset's own metrics program (one package, 7 tests) a warm run took
+  0.18 s without it and 1.3 s with it, most of it linking the instrumented binary, and a cold run
+  (empty build cache) 5.1 s against 7.6 s. The end-to-end fixture modules stay within a few seconds
+  per snapshot. That is cheap enough to run every time, on every package, from the same run that
+  writes the coverage profile, so the preset runs it always instead of only on the packages a change
+  touches. The slow-test check reruns a test over its budget without `-race` and keeps the fastest
+  time, so the slowdown never fails a test.
+- **Every linter check that narrows a choice, off-by-default ones included.** The preset exists to
+  leave one way to write each construct, so staticcheck's non-default checks (package and doc
+  comments, names, receiver names, empty branches) and the QF quick fixes run too: each picks one
+  of two equivalent forms. ST1013 allows no bare status codes, because "200 is clear enough" is
+  exactly the second form the preset removes.
+- **errcheck with blank assignments and type assertions.** `_ = f()` hides an error as surely as
+  ignoring the result, and a one-value assertion panics; the allowed forms are returning, handling
+  or joining the error and the two-value assertion.
+- **modernize as findings, `go fix` as the fix.** The suite rewrites only where the file's Go
+  version allows the newer form, and `go fix ./...` applies every rewrite, so an agent never
+  writes them by hand.
+- **One finding per line and problem.** When two checks report the same line for the same
+  problem, the more specific one stays (the overlap table in `docs/go-preset.md`), and checks that
+  `go vet` already runs are off, so a fix never has to satisfy two messages.
+- **ST1000 on the package folder.** staticcheck reports a missing package comment on whichever
+  file it reads first, so adding a file moved the finding and made it new; the finding sits on
+  the package folder instead.
+- **`staticcheck.conf` only on opt-in.** A project config could switch checks off silently, so it
+  is read only when the project opts in, and then every such file is policy.
+- **revive with one setting per style rule.** revive's `enforce-*` rules exist to pick one form,
+  so each gets the setting that matches the rest of the preset: literals for empty maps and
+  slices (as staticcheck's own fixes write them), grouped parameter types (as gofumpt writes
+  them), `default` last. Its in-code `//revive:disable` comments are blanked before revive reads
+  the file, so they suppress nothing, the same contract as `//nolint`. Rules that duplicate a
+  check that already runs are off with the check named, and where both report the same line the
+  staticcheck finding stays; revive keeps the cases staticcheck misses.
+- **revive's typed rules see the whole program.** revive's command line type-checks each package
+  alone with the toolchain's export data, which fails for any import outside the standard library,
+  and its typed rules then report nothing for the whole package. The lint program hands revive the
+  types from its own package load instead, so those rules work in real modules; a fixture that
+  imports a sibling package keeps it that way.
+- **Catalog linters for resources, errors and contexts.** A response body or rows left open, an
+  error compared with `==` or dropped by `return nil`, and a context made anew or kept in a
+  struct are logic bugs, and each linter's allowed form is the one the Go wiki and the standard
+  library document. Each runs under its own tool name, so its exception entry reads as the
+  linter is known.
+- **Catalog linters for types and values.** An enum switch that misses a constant, a type with
+  mixed receivers, a duration squared, an append after `make([]T, n)` and an assignment never
+  read are bugs or a second form of the same code. A `default` case counts as handling the other
+  constants: without it, a switch on `reflect.Kind` or `token.Token` would have to list dozens of
+  constants that do not matter to it. Map literals and type switches are left out because a
+  partial lookup map is common and an interface's implementations are open. recvcheck lets the
+  methods an interface expects on values (`String`, `Error`, `Format`, `Value`, `Marshal...`)
+  take a value next to pointer methods, since a pointer receiver there would stop
+  `fmt` and `encoding/json` using them for plain values.
+- **Test linters.** A helper without `t.Helper()` reports failures on its own line, a serial
+  test with parallel subtests runs them after it returns, `os.Setenv` in a test leaks into the
+  next one, and a generic testify assertion hides what failed; each has one allowed form.
+  testifylint runs every check, and each is printed under its own name, so an exception names
+  one check rather than all of testify. paralleltest is left out: `t.Parallel()` everywhere
+  conflicts with `t.Setenv` and shared fixtures.
+- **Other one-form linters.** A `fmt.Sprintf` that `strconv` or `+` replaces, a layout or status literal where the standard library names the constant, an untagged struct whose field names become its
+  encoded form, a log call that drops the context it has, a span not ended on every path, a
+  non-canonical header key, a non-ASCII identifier and a bidirectional control character are a
+  second form or a hidden bug, each with one allowed form. sloglint asks for typed attributes
+  rather than key-value pairs, because `LogAttrs` takes only attributes, so it is the form every
+  call accepts, and a key-value list can pair a key with the wrong value. usestdlibvars's checks for bare words (`\"May\"`, `\"MD5\"`) and sloglint's constant-message check stay off: both flag correct code (a type-name table, a logging wrapper) that has no other form. predeclared is left
+  out because revive's `redefines-builtin-id` reports the same names.
+- **A fixture for every check.** Each enabled check has a failing line and the allowed form in
+  `languages/go/lint/fixtures`; the harness fails on a missing or unexpected report, so a tool
+  upgrade that changes what a check reports is caught before release.
+
 ## Rejected ideas
 
 - **Running golangci-lint.** It is GPL-3.0 licensed, and nitpicker ships only permissively licensed
@@ -75,6 +211,25 @@ than the others, and this skill teaches its rules before an agent writes Go.
   the follow-the-project rule applies.
 - **A Go-specific line length.** gofmt has no width and there is no measured Go convention, so the
   shared 120-character limit applies.
+- **Checks that report what another check already reports.** SA1014, SA1017, SA2000, SA2002,
+  SA4018, SA4021, SA5009, SA5010 and SA9006 duplicate `go vet`; S1029 duplicates SA6003; ST1023
+  duplicates QF1011; vet `sortslice` duplicates SA1028; vet `sqlrowserr` duplicates rowserrcheck,
+  whose message has no line number in it. SA5005 never reports on current Go.
+- **vet `shadow`.** It flags the idiomatic `if err := f(); err != nil` inside a function that has
+  an outer `err`, which would push code away from Go's own convention.
+- **vet `fieldalignment` and `atomicalign`.** Field order for memory layout is a performance
+  choice, not a second way to write the same code; SA1027 still catches misaligned 64-bit atomics.
+- **revive rules that need a project's own input or are noisy.** `add-constant` flags every numeric
+  literal; `banned-characters`, `file-header`, `imports-blocklist`, `string-format` and
+  `comments-density` need lists or thresholds only a project can set; `confusing-naming` reports
+  whichever of two names it reads last, so its finding moves between runs; `modifies-parameter`
+  and `optimize-operands-order` never reach revive's confidence floor; `unsecure-url-scheme` flags
+  XML namespaces and similar identifiers. The size rules are left to the shared limits.
+- **forcetypeassert.** errcheck `-assert` already reports every one-value type assertion.
+- **err113 and wrapcheck.** err113 rejects every `errors.New` inside a function, and wrapcheck
+  every unwrapped error from another package, the module's own included; both need per-project
+  lists to stop flagging correct code. errorlint's `%w` and comparison checks cover the part that
+  is one way to write.
 - **Holding interfaces to the method limit.** Interface size is better judged by a linter that
   knows where the interface is used.
 
@@ -97,3 +252,72 @@ Two adversarial reviews of the first version changed these rules:
 - **`layout` and `duplicates` are config errors with their reason**, not silently ignored.
 - **The project's `GOFLAGS` is read with `go env`**, so `go env -w` settings apply, and the tools
   build from a neutral environment so the project's `GOOS` or `GOFLAGS` cannot break them.
+- **Race detector review.** Two reviews of the first version changed it: parallel tests the
+  detector failed next to a race, and race-only tests that logged with `t.Log`, were still listed as
+  failing, so a failing test whose package raced or timed out is now rerun without `-race` instead
+  of judged by its output; a parent test's own failure is no longer hidden by a failing subtest; a
+  path with a space no longer loses the race; a report with one restorable stack is still a
+  finding; only blocks that start with `WARNING: DATA RACE` are cut from quoted output; the "not
+  checked" notice shows on every run, not only when it is new; cgo is part of the analyzer version
+  for the findings cache; and a timeout, ThreadSanitizer crash or goroutine limit under `-race`
+  falls back instead of failing the snapshot.
+
+Two adversarial reviews of the linters changed these rules:
+
+- **An analyzer that fails is a tool error.** A failed analyzer reported nothing, so a package
+  could pass without being checked; only packages that do not build are skipped, because their
+  compile error is already a finding.
+- **Generated files are not linted**, as staticcheck's own driver does, since they cannot be fixed
+  by hand.
+- **Messages that count things are trimmed**: ST1016 lists how often each receiver name is used,
+  so adding a method changed the message and made the finding new.
+- **`staticcheck.conf` check names match case-sensitively**, as staticcheck reads them.
+
+Two adversarial reviews of the catalog linters changed these rules:
+
+- **Comments that switch a linter off are findings or do nothing.** nilerr reads `//lint:ignore`
+  and contextcheck `// nolint:contextcheck`; both are turned off. bodyclose reads
+  `//bodyclose:handled` from the callee's file on disk, so the directive is reported as
+  `bodyclose/handled` instead.
+- **contextcheck is scoped to the module by package path**, not by string prefix, so a
+  dependency named like the module (`example.com/shop-utils`) is not analyzed.
+- **Messages keep no line numbers or call chains**: nilerr's `(line N)` and contextcheck's
+  `A->B->C` chain are trimmed, and vet `sqlrowserr` (whose message names a line) is off.
+- **One finding per problem**: `return nil, nil` after an error check is nilerr, not nilnil too;
+  a `rows.Close()` that is not deferred is sqlclosecheck, not errcheck too.
+
+Two adversarial reviews of the type and value linters changed these rules:
+
+- **A `default` case counts for exhaustive**, and recvcheck lets the value methods interfaces
+  expect (`String`, `Error`, `Marshal...`) sit next to pointer methods (see above).
+- **unconvert findings are matched to the conversion's parenthesis**, not to a line of the file
+  a `//line` directive names, which crashed the run or lost findings in cgo files.
+- **exhaustive and durationcheck messages drop the missing constants and the expression**, so
+  adding a case or a constant does not make the finding new.
+- **Rewritten directives keep their length and shape** (`//exhaustivx:`, `//nolinx:`), so no
+  comment's end moves and none turns from a directive into doc text.
+
+Two adversarial reviews of the test linters changed these rules:
+
+- **testifylint's formatter checks format strings only**; requiring `Equalf` for every message
+  flagged plain messages that format nothing. usetesting leaves `os.TempDir()` alone, since
+  building an expected path with it creates nothing.
+- **Messages drop test names and counts** (usetesting's `in TestX`, formatter's argument
+  numbers), and a testifylint check name testifylint adds later falls back to
+  `testifylint/testifylint` instead of an unknown rule.
+- **One finding per line**: errorlint wins over testifylint `compares` on
+  `assert.True(t, err == io.EOF)`, and thelper over `suite-thelper`.
+
+Two adversarial reviews of the other catalog linters changed these rules:
+
+- **Checks that match a bare word are off.** usestdlibvars's month, weekday, hash, isolation
+  level, TLS scheme and constant-kind checks flag `"May"` or `"Int"` in any string, and
+  sloglint's constant-message check flags a constant from another package and every logging
+  wrapper; neither leaves an allowed form.
+- **A misspelled directive alone on its line is reported.** gocheckcompilerdirectives reads a
+  directive only up to a following space, so `//go:nosplitt` with nothing after it passed; the
+  lint program hands it each comment with a space appended.
+- **perfsprint stays quiet where staticcheck reports the call**: S1025, S1028, S1039, SA1006,
+  QF1010 and QF1012 keep the line.
+- **Hints fit every message**: musttag names the tag the message names, spancheck covers a span
+  that is never assigned, and sloglint's key-value message names the attribute form.

@@ -2,21 +2,23 @@ import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { LANGUAGES, RULES } from '../policy.mjs';
+import { FACT_RULE_LANGUAGES } from '../project-rules/fact-rules.mjs';
 import { catalogFileOf, isKotlinPath, mentionsRule, ruleEmitters } from './rule-emitters.mjs';
 
 const repositoryRoot = path.resolve(import.meta.dirname, '../..');
 
+const GO_REGISTERED_FACT_RULES_ONLY = {
+  file: 'languages/go/adapters/facts/go-fact-findings.mjs',
+  evidence: /const registered = registeredFactRules\(LANGUAGE\)/u,
+};
+const GO_FACT_RULES_NOT_RUN = Object.fromEntries(
+  ['exported-name-collision'].map((rule) => [rule, GO_REGISTERED_FACT_RULES_ONLY]),
+);
 const JVM_RUNTIME_EDGES_ONLY = {
   file: 'languages/java/adapters/test-runtime/test-graph.mjs',
   evidence: /kind: EDGE_KINDS\.RUNTIME/u,
 };
 const NOT_ENFORCED_ALTHOUGH_EMITTED = {
-  python: {
-    'shared-used-by-one-feature': {
-      file: 'languages/python/adapters/facts/python-facts.mjs',
-      evidence: /registeredFactRules\('python'\)/u,
-    },
-  },
   java: {
     'public-alternative-bypass': {
       file: 'languages/java/adapters/reuse/jvm-reuse-facts.mjs',
@@ -28,6 +30,7 @@ const NOT_ENFORCED_ALTHOUGH_EMITTED = {
     'type-only-production-dependency': JVM_RUNTIME_EDGES_ONLY,
   },
   go: {
+    ...GO_FACT_RULES_NOT_RUN,
     'inheritance-depth-limit': {
       file: 'languages/go/adapters/configuration/go-config.mjs',
       evidence: /Go has no inheritance/u,
@@ -53,8 +56,13 @@ const emitters = Object.fromEntries(
   LANGUAGES.map((language) => [language, ruleEmitters(language)]),
 );
 
+const FACT_ENGINE = { file: 'shared/rules/facts/evaluate.mjs', evidence: /registeredFactRules/u };
+
 function documented(language, ruleId) {
-  return NOT_ENFORCED_ALTHOUGH_EMITTED[language]?.[ruleId];
+  return (
+    NOT_ENFORCED_ALTHOUGH_EMITTED[language]?.[ruleId] ??
+    (FACT_RULE_LANGUAGES[ruleId] === undefined ? undefined : FACT_ENGINE)
+  );
 }
 
 function fixFor(id) {
@@ -98,6 +106,11 @@ describe('the enforcedBy column of every catalogued rule', () => {
 
     expect(unused).toEqual([]);
   });
+  it('leaves fact rules to the registry the fact engine runs them by', () => {
+    const { file, evidence } = FACT_ENGINE;
+
+    expect(readFileSync(path.join(repositoryRoot, file), 'utf8')).toMatch(evidence);
+  });
   it('keeps every documented exception tied to code that still holds it', () => {
     const documented = Object.entries(NOT_ENFORCED_ALTHOUGH_EMITTED).flatMap(([language, rules]) =>
       Object.entries(rules).map(([ruleId, { file, evidence }]) => ({
@@ -117,7 +130,7 @@ describe('the enforcedBy column of every catalogued rule', () => {
       documented.map(({ name }) => [name, true]),
     );
   });
-  it('finds the adapters that emit a rule in the language folders and the shared code they import', () => {
+  it('finds the adapters that emit a rule in the language folders and the shared code they import, and counts only the rules a call of the shared fact evaluator lists', () => {
     const found = (language, ruleId, file) => emitters[language].get(ruleId).includes(file);
 
     expect([
@@ -135,6 +148,19 @@ describe('the enforcedBy column of every catalogued rule', () => {
       found('python', 'committed-env-file', 'shared/hygiene/files/repository-files.mjs'),
     ]).toEqual([true, true, true, true]);
     expect(emitters.java.get('unused-option')).toEqual([]);
+    expect([
+      emitters.java.get('mutable-state-escape'),
+      emitters.java.get('duplicate-definition'),
+      found(
+        'typescript',
+        'duplicate-definition',
+        'languages/typescript/preset/structure/reuse/reuse-findings.mjs',
+      ),
+    ]).toEqual([
+      ['languages/java/adapters/design/design-findings.mjs'],
+      ['languages/java/adapters/reuse/jvm-reuse-facts.mjs'],
+      true,
+    ]);
     expect(emitters.kotlin.get('unused-option')).not.toEqual([]);
   });
   it('does not count a rule named only in a comment', () => {
