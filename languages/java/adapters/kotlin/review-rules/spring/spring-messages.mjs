@@ -98,6 +98,8 @@ const ALLOWED = {
     'Generate ids with GenerationType.SEQUENCE (or UUID). IDENTITY and TABLE ids disable JDBC insert batching.',
   JpaEnumString:
     'Write @Enumerated(EnumType.STRING) on this enum property or element collection, and @MapKeyEnumerated(EnumType.STRING) on a map with enum keys. The default stores the ordinal, so adding or reordering constants silently corrupts stored rows.',
+  JpaUnindexedForeignKey:
+    'Add Index(columnList = "<join column>") to the entity\'s @Table(indexes = [...]) for the join column of this @ManyToOne. Only MySQL indexes a foreign key by itself; on PostgreSQL, SQL Server and SQLite every join and delete through it scans the table.',
   JpaIdentityHashCode:
     'Return javaClass.hashCode() from the hashCode of an entity, or hash an immutable business key, and do not make an entity with a generated id a data class. A hash of the generated id or of every property changes when the entity is saved, and a hash set then loses it.',
   SpringDataDerivedQuery:

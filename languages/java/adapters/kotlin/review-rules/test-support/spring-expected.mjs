@@ -115,6 +115,7 @@ export const EXPECTED = [
   'bad/Entities.kt:20 JpaIdentityHashCode Customer',
   'bad/Entities.kt:21 JpaSequenceIds Customer.id',
   'bad/Entities.kt:32 JpaLazyFetching Invoice.customer',
+  'bad/Entities.kt:32 JpaUnindexedForeignKey Invoice.customer',
   'bad/Entities.kt:33 JpaLazyFetching Invoice.receipt',
   'bad/Entities.kt:34 JpaLazyFetching Invoice.lines',
   'bad/Entities.kt:35 JpaManyToManyCascade Invoice.tags',

@@ -53,7 +53,8 @@ Before you change code other packages use, or fix a bug, read
 [beyond-the-gate.md](beyond-the-gate.md). Why each rule is here: [SOURCES.md](SOURCES.md).
 
 The linters' allowed forms (errors, names and doc comments, simplifications, modern forms): read
-[rules/linters.md](rules/linters.md) before you write Go.
+[rules/linters.md](rules/linters.md) before you write Go. nitpicker's own rules (panics, logged
+errors, goroutine owners, root contexts, sleeps): read [rules/own-rules.md](rules/own-rules.md).
 
 ## Write it this way
 
