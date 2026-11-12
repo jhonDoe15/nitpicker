@@ -67,6 +67,20 @@ function withOneAliasRule(log) {
   };
 }
 
+function filteredPmdFindings(pmd, context) {
+  const { allSourceRoots, projectRoot } = context;
+  return withJpaFilters(
+    withGeneratedMembers(
+      withSpringTransactionFilters(
+        withoutSpringCoveredReads(ingestSarif(pmd, { tool: 'pmd' }).findings),
+        context,
+      ),
+      { projectRoot },
+    ),
+    { projectRoot, sourceRoots: allSourceRoots, foreignKeys: context.foreignKeys },
+  );
+}
+
 export function sarifFindings(context) {
   const { allSourceRoots, projectRoot } = context;
   const pmd = withOneAliasRule(
@@ -90,19 +104,10 @@ export function sarifFindings(context) {
   ];
   const ownFindings = dropNetworkInIntegrationTests(
     withProjectTypeMocks(
-      dropInheritedVersions(
-        withJpaFilters(
-          withGeneratedMembers(
-            withSpringTransactionFilters(
-              withoutSpringCoveredReads(ingestSarif(pmd, { tool: 'pmd' }).findings),
-              context,
-            ),
-            { projectRoot },
-          ),
-          { projectRoot, sourceRoots: allSourceRoots, foreignKeys: context.foreignKeys },
-        ),
-        { projectRoot, sourceRoots: allSourceRoots },
-      ),
+      dropInheritedVersions(filteredPmdFindings(pmd, context), {
+        projectRoot,
+        sourceRoots: allSourceRoots,
+      }),
       { projectRoot, mainRoots },
     ),
     { projectRoot, testRoots },
