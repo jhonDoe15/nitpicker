@@ -82,6 +82,16 @@ than the others, and this skill teaches its rules before an agent writes Go.
   `nitpicker/require-http-timeout` in TypeScript): Go's default client has no timeout at all.
   `io-in-loop` carries the Python rule's name and remedies: a query per item is the most common
   cause of slow endpoints.
+- **The shared guards (#419).** Swallowed errors, repeated strings, generic names, task markers
+  without an issue, forwarding method aliases and secrets in code or logs are the guards every
+  preset runs (`swallowed-exception`, `repeated-string-literal`, `generic-name`,
+  `todo-without-issue`, `forwarding-method-alias`, `hardcoded-secret`, `credential-shape` and
+  `secret-in-log` in Python), with one definition: the secret words and shapes are shared
+  (`shared/naming/secret-words.mjs`, mirrored in Go and checked by a test). The Go forms follow the
+  language: an `errors.Is` check is the Go way to expect one error, so only `err != nil` is judged;
+  printf templates are Go's interpolated strings, so they are not counted as repeats; and a method
+  an interface asks for may forward, since Go has no other way to satisfy it. Unused parameters,
+  boolean flags, commented-out code and discarded errors are revive, go-critic and errcheck rules.
 - **Configuration read once in `main`; clocks, randomness and writers passed in.** Matches the
   composition-root rule of the other presets and makes tests deterministic.
 - **`context.Context` first, never stored.** From Go Code Review Comments and the Google guide.

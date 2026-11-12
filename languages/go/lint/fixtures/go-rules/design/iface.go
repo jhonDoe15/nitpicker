@@ -80,7 +80,7 @@ type Finder interface {
 
 func Describe(finder Finder, id string) string {
 	row, err := finder.Find(id)
-	if err != nil {
+	if err != nil { // want swallowed-error
 		return "unknown"
 	}
 	return row
