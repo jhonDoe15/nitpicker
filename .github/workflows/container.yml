@@ -17,6 +17,7 @@ on:
       - 'shared/**'
       - 'languages/**'
       - '.github/container-smoke/**'
+      - 'scripts/ci/**'
       - '.github/workflows/container.yml'
   pull_request:
     types: [labeled]
@@ -49,18 +50,44 @@ env:
   REGISTRY: ghcr.io
   IMAGE_NAME: nitpicker
 
-# Pull requests are checked locally; CI runs on a pull request only when the `run-ci` label is added,
-# and a newer request cancels the older run.
+# Pull requests are checked locally with `npm run check` (CONTRIBUTING.md). On a pull request CI runs
+# when a label is added while the pull request carries `run-ci`; a newer run cancels the older one.
+# On main a started run finishes, and a newer push replaces a run that is still waiting.
 concurrency:
-  group: ${{ github.workflow }}-${{ github.event.label.name == 'run-ci' && github.event.pull_request.number || github.run_id }}
+  group: ${{ github.workflow }}-${{ github.event_name == 'push' && 'main' || github.event.pull_request.number || github.run_id }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
+  # On a pull request, the jobs below run only when the pull request changes a file in this
+  # workflow's push paths, or when the changed files cannot be listed. Other runs check everything.
+  changes:
+    if: github.event_name != 'pull_request' || contains(github.event.pull_request.labels.*.name, 'run-ci')
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      pull-requests: read
+    outputs:
+      run: ${{ steps.select.outputs.run }}
+    steps:
+      - uses: actions/checkout@v7.0.1
+        with:
+          sparse-checkout: |
+            .github/workflows
+            scripts/ci
+      - id: select
+        uses: actions/github-script@v8.0.0
+        with:
+          script: |
+            const { selectWorkflowJobs } = await import(`${process.env.GITHUB_WORKSPACE}/scripts/ci/affected-jobs.mjs`);
+            await selectWorkflowJobs({ github, context, core, workflow: '.github/workflows/container.yml' });
+
   # Each case runs as the host user with a home directory mounted, or as <case>@root, or as
   # <case>@<uid>:<gid>, a user with no passwd entry and no home mount (.github/container-smoke/run.sh).
   image:
     name: image ${{ matrix.variant }}
-    if: github.event_name != 'pull_request' || github.event.label.name == 'run-ci'
+    needs: changes
+    if: needs.changes.outputs.run == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 90
     # packages: write is used only to push, when publish is set; the checkout keeps no credentials,
@@ -81,18 +108,18 @@ jobs:
           - variant: all
             cases: typescript javascript@root java-maven kotlin@12345:12345 python poetry@12345:12345
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7.0.1
         with:
           ref: ${{ inputs.commit }}
           persist-credentials: false
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7.1.0
         with:
           node-version: 24
-      - uses: docker/setup-buildx-action@v3
+      - uses: docker/setup-buildx-action@v3.12.0
       # Every run reads the layer cache; only main and releases write it, so pull requests cannot
       # evict the cache that main builds from.
       - name: Build the image
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@v6.19.2
         with:
           context: .
           target: ${{ matrix.variant }}
@@ -117,7 +144,7 @@ jobs:
       # The image pushed is the one the cases above just passed in, never a rebuild.
       - name: Log in to the registry
         if: ${{ inputs.publish }}
-        uses: docker/login-action@v3
+        uses: docker/login-action@v3.7.0
         with:
           registry: ${{ env.REGISTRY }}
           username: ${{ github.actor }}
@@ -140,16 +167,16 @@ jobs:
   # A stable release moves the latest tags only after every variant passed and was pushed, so they
   # never point at a mix of versions. The manifests are copied in the registry, not rebuilt.
   latest:
-    if: ${{ inputs.publish && inputs.latest }}
-    needs: image
+    needs: [changes, image]
+    if: always() && needs.image.result == 'success' && inputs.publish && inputs.latest
     runs-on: ubuntu-latest
     timeout-minutes: 10
     permissions:
       contents: read
       packages: write
     steps:
-      - uses: docker/setup-buildx-action@v3
-      - uses: docker/login-action@v3
+      - uses: docker/setup-buildx-action@v3.12.0
+      - uses: docker/login-action@v3.7.0
         with:
           registry: ${{ env.REGISTRY }}
           username: ${{ github.actor }}
