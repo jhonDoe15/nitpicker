@@ -4,28 +4,21 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 import { ESLINT_REGISTRY, eslintRegistrySource } from './eslint-registry.mjs';
 import { KOTLIN_SCAN_REGISTRY, kotlinScanRegistrySource } from './kotlin-scan-registry.mjs';
 import { pmdRulesetSources } from './pmd-rulesets.mjs';
-import {
-  installedRuffRules,
-  isOlderVersion,
-  withSelectedNewerRules,
-} from '../../languages/python/reference/ruff-selection.mjs';
-import {
-  readRuffSnapshot,
-  RUFF_RULES_FILE,
-} from '../../languages/python/reference/ruff-entries.mjs';
-import {
-  liveToolText,
-  TOOL_TEXT_TOOLS,
-  toolTextFile,
-} from '../../languages/java/reference/tool-text/tool-text.mjs';
-import {
-  liveEslintInventory,
-  writeEslintInventory,
-} from '../../languages/typescript/reference/eslint-inventory.mjs';
 
 const repositoryRoot = path.resolve(import.meta.dirname, '../..');
+const STRIPS_TYPES = typeof process.features.typescript === 'string';
+const REFERENCE_SOURCE = path.join(repositoryRoot, 'core/reference/generate.mts');
+const REFERENCE_EMITTED = path.join(repositoryRoot, 'core/reference/generate.mjs');
 
-async function refreshRuff(ruff, { stderr, formattedText }) {
+function referenceModule() {
+  const opened =
+    STRIPS_TYPES && existsSync(REFERENCE_SOURCE) ? REFERENCE_SOURCE : REFERENCE_EMITTED;
+  return import(pathToFileURL(opened).href);
+}
+
+async function refreshRuff(ruff, { stderr, reference }) {
+  const { installedRuffRules, isOlderVersion, withSelectedNewerRules } = reference;
+  const { formattedText, readRuffSnapshot, RUFF_RULES_FILE } = reference;
   const snapshot = installedRuffRules(ruff);
   if (snapshot === undefined) {
     throw new Error(`ruff could not be run as ${ruff}: pass its path as --refresh-ruff=<path>`);
@@ -48,11 +41,12 @@ async function refreshRuff(ruff, { stderr, formattedText }) {
   );
 }
 
-async function buildEslintInventory() {
+async function buildEslintInventory({ liveEslintInventory, writeEslintInventory }) {
   writeEslintInventory(`${JSON.stringify(await liveEslintInventory())}\n`);
 }
 
-async function refreshJvm({ formattedText }) {
+async function refreshJvm({ reference }) {
+  const { formattedText, liveToolText, TOOL_TEXT_TOOLS, toolTextFile } = reference;
   for (const tool of TOOL_TEXT_TOOLS) {
     const file = toolTextFile(tool);
     const snapshot = path.relative(repositoryRoot, fileURLToPath(file));
@@ -142,9 +136,9 @@ export async function main(options, { stderr }) {
   if (!options.includes('--check') && !options.includes('--data')) {
     writeGenerated(registry);
   }
-  await buildEslintInventory();
-  const reference = await import('../../core/reference/generate.mjs');
-  await refreshSnapshots(options, { stderr, formattedText: reference.formattedText });
+  const reference = await referenceModule();
+  await buildEslintInventory(reference);
+  await refreshSnapshots(options, { stderr, reference });
   return options.includes('--check')
     ? reportStale(registry, reference, stderr)
     : writeRequested(options, reference);
