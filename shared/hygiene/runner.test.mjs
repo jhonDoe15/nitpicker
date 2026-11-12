@@ -214,6 +214,7 @@ describe('the hygiene configuration hash', () => {
       'hygiene/schema/foreign-key-index.mjs',
       'hygiene/schema/migration-schema.mjs',
       'hygiene/schema/prisma-schema.mjs',
+      'hygiene/schema/sources/sqlc-schemas.mjs',
       'hygiene/schema/statements/alembic-statements.mjs',
       'hygiene/schema/statements/changelog-statements.mjs',
       'hygiene/schema/statements/sql-statements.mjs',
