@@ -64,7 +64,8 @@ export function summaryOf(findings, matches) {
 export function isFormatting({ tool, rule }) {
   return (
     ['google-java-format', 'palantir-java-format'].includes(tool) ||
-    (tool === 'checkstyle' && ['Indentation', 'UnusedImports', 'GoogleNonConstantFieldName'].includes(rule)) ||
+    (tool === 'checkstyle' &&
+      ['Indentation', 'UnusedImports', 'GoogleNonConstantFieldName'].includes(rule)) ||
     rule === 'line-length-limit'
   );
 }
