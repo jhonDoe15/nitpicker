@@ -6,7 +6,21 @@ import {
 } from '../../../../core/tooling/tool-resolution.mjs';
 import { realTemporaryDirectory } from '../../../../core/tooling/temporary-files.mjs';
 const TRUSTED_TOOL_ROOT = PACKAGE_ROOT;
-const SUPPORTED_KINDS = new Set(['prettier', 'typecheck', 'architecture']);
+const SUPPORTED_KINDS: ReadonlySet<string> = new Set(['prettier', 'typecheck', 'architecture']);
+
+export type StaticCheckOptions = {
+  readonly analyzerName: string;
+  readonly kind: string;
+  readonly projectRoot: string;
+  readonly policyRoot: string;
+  readonly toolRoot: string;
+  readonly liveProjectRoot: string;
+  readonly configRelativePath: string;
+  readonly ignoreRelativePath: string | undefined;
+  readonly includeOnly: string | undefined;
+  readonly exclude: string | undefined;
+  readonly patterns: readonly string[];
+};
 
 const VALUE_ARGUMENTS = new Set([
   '--analyzer-name',
@@ -21,16 +35,19 @@ const VALUE_ARGUMENTS = new Set([
   '--exclude',
 ]);
 
-function recordValue(values, name, value) {
+function recordValue(values: Map<string, string>, name: string, value: string): void {
   if (!VALUE_ARGUMENTS.has(name)) {
     throw new Error(`Unknown static-check adapter argument: ${name}`);
   }
   values.set(name, value);
 }
 
-function collectArguments(arguments_) {
-  const values = new Map();
-  const patterns = [];
+function collectArguments(arguments_: readonly string[]): {
+  values: Map<string, string>;
+  patterns: string[];
+} {
+  const values = new Map<string, string>();
+  const patterns: string[] = [];
   const remaining = arguments_.values();
   for (const name of remaining) {
     const { value } = remaining.next();
@@ -46,7 +63,7 @@ function collectArguments(arguments_) {
   return { values, patterns };
 }
 
-export function parseArguments(arguments_) {
+export function parseArguments(arguments_: readonly string[]): StaticCheckOptions {
   const { values, patterns } = collectArguments(arguments_);
   const kind = requiredValue(values, '--kind');
   if (!SUPPORTED_KINDS.has(kind)) {
@@ -56,6 +73,8 @@ export function parseArguments(arguments_) {
   if (toolRoot !== TRUSTED_TOOL_ROOT) {
     throw new Error('--tool-root must be the project checkout containing this adapter');
   }
+  const liveProjectRoot = values.get('--live-project-root');
+  const ignoreRelativePath = values.get('--ignore-path');
   return {
     analyzerName: requiredValue(values, '--analyzer-name'),
     kind,
@@ -63,21 +82,21 @@ export function parseArguments(arguments_) {
     policyRoot: validatedSnapshotRoot(requiredValue(values, '--policy-root'), '--policy-root'),
     toolRoot,
     liveProjectRoot:
-      values.get('--live-project-root') === undefined
+      liveProjectRoot === undefined
         ? PACKAGE_ROOT
-        : directoryRoot(values.get('--live-project-root'), '--live-project-root'),
+        : directoryRoot(liveProjectRoot, '--live-project-root'),
     configRelativePath: normalizedRelativePath(requiredValue(values, '--config'), '--config'),
     ignoreRelativePath:
-      values.get('--ignore-path') === undefined
+      ignoreRelativePath === undefined
         ? undefined
-        : normalizedRelativePath(values.get('--ignore-path'), '--ignore-path'),
+        : normalizedRelativePath(ignoreRelativePath, '--ignore-path'),
     includeOnly: values.get('--include-only'),
     exclude: values.get('--exclude'),
     patterns: patterns.map((value) => normalizedPattern(value)),
   };
 }
 
-function directoryRoot(value, name) {
+function directoryRoot(value: string, name: string): string {
   const root = realpathSync(path.resolve(value));
   if (!statSync(root).isDirectory()) {
     throw new Error(`${name} must be a directory`);
@@ -85,7 +104,7 @@ function directoryRoot(value, name) {
   return root;
 }
 
-function validatedSnapshotRoot(value, name) {
+function validatedSnapshotRoot(value: string, name: string): string {
   const root = directoryRoot(value, name);
   if (root === TRUSTED_TOOL_ROOT) {
     return root;
@@ -96,15 +115,15 @@ function validatedSnapshotRoot(value, name) {
     relativeToTemporaryRoot.startsWith(`..${path.sep}`) ||
     path.isAbsolute(relativeToTemporaryRoot) ||
     segments.length < 2 ||
-    !segments[0].startsWith('nitpicker-diff-') ||
-    !SNAPSHOT_DIRECTORY_NAMES.includes(segments[1])
+    !(segments[0] ?? '').startsWith('nitpicker-diff-') ||
+    !SNAPSHOT_DIRECTORY_NAMES.includes(segments[1] ?? '')
   ) {
     throw new Error(`${name} must be inside a generated quality-diff worktree`);
   }
   return root;
 }
 
-function normalizedPattern(value) {
+function normalizedPattern(value: string): string {
   if (
     value.length === 0 ||
     path.posix.isAbsolute(value) ||
@@ -116,7 +135,7 @@ function normalizedPattern(value) {
   return value.replaceAll('\\', '/');
 }
 
-export function normalizedRelativePath(value, context) {
+export function normalizedRelativePath(value: string, context: string): string {
   const normalizedPath = path.posix.normalize(value.replaceAll('\\', '/')).replace(/^\.\//, '');
   if (
     normalizedPath.length === 0 ||
@@ -130,11 +149,11 @@ export function normalizedRelativePath(value, context) {
   return normalizedPath;
 }
 
-function requiredValue(values, name) {
+function requiredValue(values: ReadonlyMap<string, string>, name: string): string {
   return requiredString(values.get(name), name);
 }
 
-export function requiredString(value, context) {
+export function requiredString(value: unknown, context: string): string {
   if (typeof value !== 'string' || value.length === 0) {
     throw new TypeError(`${context} must be a non-empty string`);
   }

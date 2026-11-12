@@ -1,31 +1,43 @@
 import { existsSync, readFileSync, realpathSync } from 'node:fs';
+import type TypeScript from 'typescript';
 import path from 'node:path';
 import { prepareSnapshotDependencies, removeSnapshotDependencies } from './dependencies.mjs';
 import { readLayout, typecheckEngine } from '../../preset/head-policy.mjs';
-import { projectFile, hash, policyFile } from './shared.mjs';
+import type { StaticCheckOptions } from './arguments.mts';
+import { type Finding, projectFile, hash, policyFile } from './shared.mts';
 import { linkPolicyFile } from '../../../../core/tooling/policy-links.mjs';
 import { layoutTransformFor } from '../../preset/tool-configs.mjs';
-import { diagnosticMessages } from '../typecheck/compiler-hints.mjs';
+import { diagnosticMessages } from '../typecheck/compiler-hints.mts';
 import {
   enclosingSymbol,
   preEmitDiagnostics,
   projectTypeScript,
 } from '../typecheck/typescript-program.mjs';
-import { withAssetImportHint } from '../typecheck/asset-import-hint.mjs';
+import { withAssetImportHint } from '../typecheck/asset-import-hint.mts';
 
-export async function runTypecheck(options) {
+type InstalledConfig = { readonly targetPath: string; remove(): void };
+
+type TypeScriptDiagnostics = {
+  readonly diagnostics: readonly TypeScript.Diagnostic[];
+  readonly projectRoot: string;
+  readonly analyzerName: string;
+  readonly configRelativePath: string;
+  readonly ts: typeof TypeScript;
+};
+
+export async function runTypecheck(options: StaticCheckOptions): Promise<Finding[]> {
   const { ts, native } = projectTypeScript(options.liveProjectRoot);
   const preparedDependencies = prepareSnapshotDependencies(options);
-  let installedConfig;
+  let installedConfig: InstalledConfig | undefined;
   try {
     installedConfig = installTypeScriptConfig(options);
+    const { targetPath } = installedConfig;
     const configRelativePath =
-      extendedProjectConfig(installedConfig.targetPath, options.projectRoot) ??
-      options.configRelativePath;
-    const diagnostics = await preEmitDiagnostics({
+      extendedProjectConfig(targetPath, options.projectRoot) ?? options.configRelativePath;
+    const diagnostics: TypeScript.Diagnostic[] = await preEmitDiagnostics({
       ts,
       engine: typecheckEngine(),
-      configPath: installedConfig.targetPath,
+      configPath: targetPath,
       configName: configRelativePath,
       projectRoot: options.projectRoot,
       projectNative: native,
@@ -34,7 +46,7 @@ export async function runTypecheck(options) {
     return normalizeTypeScriptDiagnostics({
       ts,
       diagnostics: diagnostics
-        .map((diagnostic) => withProjectConfigFile(diagnostic, installedConfig.targetPath, options))
+        .map((diagnostic) => withProjectConfigFile(diagnostic, targetPath, options))
         .filter(
           (diagnostic) =>
             diagnostic.file === undefined ||
@@ -59,22 +71,22 @@ export function normalizeTypeScriptDiagnostics({
   analyzerName,
   configRelativePath,
   ts,
-}) {
-  const occurrences = new Map();
+}: TypeScriptDiagnostics): Finding[] {
+  const occurrences = new Map<string, number>();
   return diagnostics.map((diagnostic) => {
     const { message, display } = diagnosticMessages(ts, diagnostic, projectRoot);
     const relativePath =
       diagnostic.file === undefined
         ? configRelativePath
         : projectFile(projectRoot, diagnostic.file.fileName);
-    const symbol =
+    const symbol: string | undefined =
       diagnostic.file === undefined || diagnostic.start === undefined
         ? undefined
         : enclosingSymbol(ts, diagnostic.file, diagnostic.start);
     const semanticKey = JSON.stringify([diagnostic.code, relativePath, symbol ?? '', message]);
     const occurrence = (occurrences.get(semanticKey) ?? 0) + 1;
     occurrences.set(semanticKey, occurrence);
-    const finding = {
+    const finding: Finding = {
       tool: analyzerName,
       rule: `TS${String(diagnostic.code)}`,
       path: relativePath,
@@ -101,7 +113,7 @@ export function normalizeTypeScriptDiagnostics({
   });
 }
 
-function installTypeScriptConfig(options) {
+function installTypeScriptConfig(options: StaticCheckOptions): InstalledConfig {
   return linkPolicyFile(
     policyFile(options, options.configRelativePath),
     path.join(options.projectRoot, '.nitpicker-diff-typecheck.json'),
@@ -109,8 +121,12 @@ function installTypeScriptConfig(options) {
   );
 }
 
-function extendedProjectConfig(configPath, projectRoot) {
-  const extended = JSON.parse(readFileSync(configPath, 'utf8')).extends;
+function extendedProjectConfig(configPath: string, projectRoot: string): string | undefined {
+  const config: unknown = JSON.parse(readFileSync(configPath, 'utf8'));
+  const extended =
+    typeof config === 'object' && config !== null && 'extends' in config
+      ? config.extends
+      : undefined;
   if (typeof extended !== 'string') {
     return undefined;
   }
@@ -122,7 +138,7 @@ function extendedProjectConfig(configPath, projectRoot) {
   return existsSync(extendedPath) ? projectFile(projectRoot, extendedPath) : undefined;
 }
 
-function insideProject(projectRoot, filePath) {
+function insideProject(projectRoot: string, filePath: string): boolean {
   const relative = path.relative(realpathSync(projectRoot), realpathSync(filePath));
   return (
     relative.length > 0 &&
@@ -132,7 +148,11 @@ function insideProject(projectRoot, filePath) {
   );
 }
 
-function withProjectConfigFile(diagnostic, configPath, { projectRoot }) {
+function withProjectConfigFile(
+  diagnostic: TypeScript.Diagnostic,
+  configPath: string,
+  { projectRoot }: { readonly projectRoot: string },
+): TypeScript.Diagnostic {
   const fileName = diagnostic.file?.fileName;
   if (
     fileName === undefined ||

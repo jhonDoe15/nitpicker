@@ -1,3 +1,4 @@
+import type TypeScript from 'typescript';
 import { formatDiagnostic, withoutProjectRoot } from './typescript-program.mjs';
 
 const INDEX_SIGNATURE_ACCESS = 4111;
@@ -7,14 +8,18 @@ const INDEX_SIGNATURE_HINT =
 const EXACT_OPTIONAL_HINT =
   ' Declare the optional field `title?: string | undefined` when a caller passes `undefined` through (as when forwarding a prop), or leave the key out when the value is missing.';
 
-function hintFor(code, message) {
+function hintFor(code: number, message: string): string {
   if (code === INDEX_SIGNATURE_ACCESS) {
     return INDEX_SIGNATURE_HINT;
   }
   return message.includes("'exactOptionalPropertyTypes: true'") ? EXACT_OPTIONAL_HINT : '';
 }
 
-export function diagnosticMessages(ts, diagnostic, projectRoot) {
-  const message = withoutProjectRoot(formatDiagnostic(ts, diagnostic), projectRoot);
+export function diagnosticMessages(
+  ts: typeof TypeScript,
+  diagnostic: TypeScript.Diagnostic,
+  projectRoot: string,
+): { message: string; display: string } {
+  const message: string = withoutProjectRoot(formatDiagnostic(ts, diagnostic), projectRoot);
   return { message, display: `${message}${hintFor(diagnostic.code, message)}` };
 }

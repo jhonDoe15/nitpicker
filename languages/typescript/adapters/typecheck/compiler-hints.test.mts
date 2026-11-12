@@ -2,12 +2,13 @@ import { createHash } from 'node:crypto';
 import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
+import type TypeScript from 'typescript';
 import { afterAll, describe, expect, it } from 'vitest';
-import { normalizeTypeScriptDiagnostics } from '../static-checks/typescript.mjs';
+import { normalizeTypeScriptDiagnostics } from '../static-checks/typescript.mts';
 import { loadTypeScript } from './typescript-program.mjs';
 
-const ts = loadTypeScript();
-const roots = [];
+const ts: typeof TypeScript = loadTypeScript();
+const roots: string[] = [];
 
 afterAll(() => {
   for (const root of roots.splice(0)) rmSync(root, { recursive: true, force: true });
@@ -21,11 +22,11 @@ const SOURCE = [
   '',
 ].join('\n');
 
-function sha(value) {
+function sha(value: string): string {
   return createHash('sha256').update(value).digest('hex').slice(0, 24);
 }
 
-function findingsFor(source) {
+function findingsFor(source: string): ReturnType<typeof normalizeTypeScriptDiagnostics> {
   const root = mkdtempSync(path.join(tmpdir(), 'nitpicker-compiler-hints-'));
   roots.push(root);
   const file = path.join(root, 'index.ts');
