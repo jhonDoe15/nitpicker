@@ -56,6 +56,17 @@ describe('test-only-export over facts', () => {
     ]);
   });
 
+  it('counts a framework entry definition as used in production', () => {
+    const facts = factFixture('test-only');
+    const definitions = facts.definitions.map((definition) =>
+      definition.name === 'make' ? { ...definition, entry: true } : definition,
+    );
+
+    expect(
+      rows(findingsOf({ ...facts, definitions }, [RULE])).map(([, , identity]) => identity),
+    ).toEqual(['exports:debug_dump', 'files:lib/helpers.py', 'types:Shape']);
+  });
+
   it('honours an exception', () => {
     const policy = { exceptions: [exception(RULE, 'lib/core.py')] };
 

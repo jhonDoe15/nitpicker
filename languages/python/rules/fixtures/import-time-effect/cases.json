@@ -1,0 +1,7 @@
+[
+  {
+    "tool": "python-rules",
+    "rule": "import-time-effect",
+    "mention": "composition root"
+  }
+]

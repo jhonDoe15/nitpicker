@@ -6,7 +6,7 @@ import {
   fixtureFindings,
   rows,
 } from '../facts/test-support/fact-fixtures.mjs';
-import { descriptionLines, docCommentProblem } from './doc-comments.mjs';
+import { descriptionLines, docCommentProblem, tagsHaveContent } from './doc-comments.mjs';
 
 const RULE = 'doc-comment-content';
 
@@ -98,8 +98,41 @@ describe('doc-comment content', () => {
       { name: 'x', lines: ['1', '```', 'a();', '```', '2', '- 3', '- 4', '* 5', '6'] },
       { kind: 'long', lines: 6, limit: 5 },
     ],
+    [{ name: 'orderId', lines: ['The order id.'], detailed: true }, undefined],
+    [
+      { name: 'orderId', lines: ['The order id.'], detailed: false },
+      { kind: 'restating', name: 'orderId' },
+    ],
+    [
+      { name: 'x', lines: ['1', '2', '3', '4', '5', '6'], detailed: true },
+      { kind: 'long', lines: 6, limit: 5 },
+    ],
   ])('%j is %j', (comment, problem) => {
     expect(docCommentProblem(comment)).toEqual(problem);
+  });
+
+  it.each([
+    ['@param id the account', true],
+    ['@param {string} id', false],
+    ['@param [id=1] -', false],
+    ['@param <T> the element type', true],
+    ['@returns {string}', false],
+    ['@return the user, never null', true],
+    ['@throws {RangeError}', false],
+    ['@throws IOException', false],
+    ['@throws IOException when the file is gone', true],
+    ['@throws {RangeError} for a negative id', true],
+    ['@returns {{ id: string }}', false],
+    ['@deprecated', false],
+    ['@returns\n  the display name', true],
+    ['```\n@param x the kept example\n```', false],
+    ['the account id', false],
+    ['@author Ada\n@since 1.2\n@version 3\n@see Order\n  and Cart', false],
+    ['@see Order\n@return the user, never null', true],
+  ])('finds tag content in %j: %s', (text, detailed) => {
+    const javadoc = { blockTag: /^@[A-Za-z][\w-]*(?=[\s{]|$)/u };
+
+    expect(tagsHaveContent(`Loads the user.\n${text}`, javadoc)).toBe(detailed);
   });
 
   it('cuts at a block tag after a fence that is never closed', () => {

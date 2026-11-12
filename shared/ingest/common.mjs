@@ -1,4 +1,6 @@
 import { createHash } from 'node:crypto';
+import { existsSync, readFileSync } from 'node:fs';
+import path from 'node:path';
 
 export function hashIdentity(prefix, parts) {
   const digest = createHash('sha256').update(parts.join('\0')).digest('hex').slice(0, 16);
@@ -33,6 +35,40 @@ export function createIdentityCounter() {
   };
 }
 
+export function projectFile(projectRoot, file) {
+  const root = path.resolve(projectRoot);
+  const absolute = path.resolve(root, file);
+  if (!absolute.startsWith(root + path.sep)) {
+    return undefined;
+  }
+  return absolute;
+}
+
+function projectLines(projectRoot, file) {
+  const absolute = projectFile(projectRoot, file);
+  return absolute !== undefined && existsSync(absolute)
+    ? readFileSync(absolute, 'utf8').split(/\r?\n/u)
+    : [];
+}
+
+export function createLineIdentity(prefix, projectRoot) {
+  const sources = new Map();
+  const counters = new Map();
+  function lineText(file, line) {
+    if (!sources.has(file)) {
+      sources.set(file, projectLines(projectRoot, file));
+    }
+    return (sources.get(file)[line - 1] ?? '').trim().replaceAll(/\s+/gu, ' ');
+  }
+  return ({ file, line, parts }) => {
+    if (!counters.has(file)) {
+      counters.set(file, createIdentityCounter());
+    }
+    const text = line === undefined ? '' : lineText(file, line);
+    return counters.get(file)(hashIdentity(prefix, [...parts, text]));
+  };
+}
+
 function percent(covered, total) {
   return Math.round((covered / total) * 10000) / 100;
 }
@@ -54,7 +90,7 @@ export function uncoveredFinding({ tool, rule, path, symbol, message }) {
     tool,
     rule,
     path,
-    identity: hashIdentity('cov', [rule, path, symbol]),
+    identity: `cov:${symbol}`,
     message,
     classification: 'descriptive',
     symbol,
@@ -83,8 +119,8 @@ const XML_TOKEN_PARTS = [
   String.raw`<!--[\s\S]*?-->`,
   String.raw`<!\[CDATA\[[\s\S]*?\]\]>`,
   String.raw`<\?[\s\S]*?\?>`,
-  String.raw`<!DOCTYPE[^>[]*(?:\[[\s\S]*?\])?\s*>`,
-  String.raw`<(\/?)([^\s/>]+)((?:[^>"']|"[^"]*"|'[^']*')*?)(\/?)>`,
+  String.raw`<!DOCTYPE[^>[]*(?:\[[\s\S]*?\]\s*)?>`,
+  String.raw`<(\/?)([^\s/>]+)((?:[\s/](?:[^>"']|"[^"]*"|'[^']*')*?)??)(\/?)>`,
 ];
 
 export function parseXml(text) {
@@ -149,6 +185,18 @@ function parseAttributes(source) {
 
 export function childrenNamed(element, name) {
   return element.children.filter((child) => child.name === name);
+}
+
+export function testCaseProblem(testCase) {
+  const failed = [...childrenNamed(testCase, 'failure'), ...childrenNamed(testCase, 'error')];
+  if (failed.length > 0) {
+    return { problem: failed[0], flaky: false };
+  }
+  const flaky = [
+    ...childrenNamed(testCase, 'flakyFailure'),
+    ...childrenNamed(testCase, 'flakyError'),
+  ];
+  return flaky.length > 0 ? { problem: flaky[0], flaky: true } : undefined;
 }
 
 export function childAt(element, ...names) {

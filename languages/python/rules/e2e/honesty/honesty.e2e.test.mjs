@@ -2,7 +2,14 @@ import { afterEach, describe, expect, it } from 'vitest';
 import { createScripts } from '../../test-support/python-script-helpers.mjs';
 
 const enabled = process.env.NITPICKER_PYTHON_E2E === '1';
-const { cleanup, outcomes } = createScripts({ hidden: ['test-without-assertion'] });
+const { cleanup, outcomes } = createScripts({
+  hidden: [
+    'test-without-assertion',
+    'weak-assertion',
+    'switched-off-test',
+    'conditional-assertion-in-test',
+  ],
+});
 afterEach(cleanup);
 
 const inTests = (code, file = 'tests/test_a.py') => ({ file, code });
@@ -346,7 +353,7 @@ describe.skipIf(!enabled)('real clock, randomness and network in unit tests', ()
       [
         'a fixed datetime',
         inTests(
-          'from datetime import datetime\n\n\ndef test_a():\n    assert datetime(2026, 1, 1).year\n',
+          'from datetime import datetime, timezone\n\n\ndef test_a():\n    assert datetime(2026, 1, 1, tzinfo=timezone.utc).year\n',
         ),
         [],
       ],

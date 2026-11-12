@@ -1,5 +1,8 @@
 import path from 'node:path';
-import { describe, expect, it } from 'vitest';
+import { writeFileSync } from 'node:fs';
+import { stripVTControlCharacters } from 'node:util';
+import { afterEach, describe, expect, it, vi } from 'vitest';
+import { HEAD_POLICY_ENV } from '../../../../../shared/head-policy.mjs';
 import { runQualityDiff } from '../../../comparison/run-diff.mjs';
 import { parseArguments } from '../../../../../languages/typescript/adapters/static-checks/arguments.mjs';
 import { runPrettier } from '../../../../../languages/typescript/adapters/static-checks/prettier.mjs';
@@ -14,6 +17,10 @@ import { writeFiles } from '../../../git/test-support/fixture-files.mjs';
 import { commit } from '../../../git/test-support/git-repository.mjs';
 
 const { createRepository, generatedSnapshot } = useStaticCheckFixtures();
+
+afterEach(() => {
+  vi.unstubAllEnvs();
+});
 
 describe('static differential adapters: Prettier', () => {
   describe('prettier findings by touched lines', () => {
@@ -59,7 +66,8 @@ describe('static differential adapters: Prettier', () => {
           rule: 'prettier/prettier',
           path: 'src/main/legacy.ts',
           identity: 'format-diff:21be5318beb85c3a6ff3440b',
-          message: 'Format these lines with Prettier',
+          message:
+            'These lines are not formatted with Prettier. Run `nitpicker --fix` to format the changed files; it skips a file that was already unformatted on the base, so format such lines by hand.',
           classification: 'enforceable',
           location: { line: 1, endLine: 1 },
         },
@@ -77,7 +85,8 @@ describe('static differential adapters: Prettier', () => {
           rule: 'prettier/prettier',
           path: 'src/main/legacy.ts',
           identity: 'format-diff:8a051786838f18724e9c186e',
-          message: 'Format these lines with Prettier',
+          message:
+            'These lines are not formatted with Prettier. Run `nitpicker --fix` to format the changed files; it skips a file that was already unformatted on the base, so format such lines by hand.',
           classification: 'enforceable',
           location: { line: 1, endLine: 1 },
         },
@@ -107,7 +116,8 @@ describe('static differential adapters: Prettier', () => {
           rule: 'prettier/prettier',
           path: 'src/main/fresh.ts',
           identity: 'format-diff:fb042a0e28721a451f393e30',
-          message: 'Format these lines with Prettier',
+          message:
+            'These lines are not formatted with Prettier. Run `nitpicker --fix` to format the changed files; it skips a file that was already unformatted on the base, so format such lines by hand.',
           classification: 'enforceable',
           location: { line: 1, endLine: 1 },
         },
@@ -126,7 +136,8 @@ describe('static differential adapters: Prettier', () => {
           rule: 'prettier/prettier',
           path: 'src/main/ok.ts',
           identity: 'format-diff:f56d25669f365e5afd0ac8af',
-          message: 'Format these lines with Prettier',
+          message:
+            'These lines are not formatted with Prettier. Run `nitpicker --fix` to format the changed files; it skips a file that was already unformatted on the base, so format such lines by hand.',
           classification: 'enforceable',
           location: { line: 2, endLine: 2 },
         },
@@ -179,7 +190,8 @@ describe('static differential adapters: Prettier', () => {
           rule: 'prettier/prettier',
           path: 'src/main/fresh.ts',
           identity: 'format-diff:046e36fb31cb6cd60107aae3',
-          message: 'Format these lines with Prettier',
+          message:
+            'These lines are not formatted with Prettier. Run `nitpicker --fix` to format the changed files; it skips a file that was already unformatted on the base, so format such lines by hand.',
           classification: 'enforceable',
           location: { line: 1, endLine: 1 },
         },
@@ -199,21 +211,16 @@ describe('static differential adapters: Prettier', () => {
           rule: 'prettier/prettier',
           path: 'src/main/fresh.ts',
           identity: 'format-diff:b2a1d02d8759b56690983826',
-          message: 'Format these lines with Prettier',
+          message:
+            'These lines are not formatted with Prettier. Run `nitpicker --fix` to format the changed files; it skips a file that was already unformatted on the base, so format such lines by hand.',
           classification: 'enforceable',
           location: { line: 1, endLine: 1 },
         },
       ]);
     });
   });
-  it('ignores generated quality-diff files during formatting checks', async () => {
-    const projectRoot = generatedSnapshot();
-    writeFiles(projectRoot, {
-      '.nitpicker-diff-dependency-cruiser.config.mjs': 'export default{temporary:true}\n',
-      'src/main/formatted.ts': 'export const formatted = true;\n',
-    });
-
-    const findings = await runPrettier(
+  function runPrettierOn(projectRoot) {
+    return runPrettier(
       parseArguments([
         '--analyzer-name',
         'prettier-format',
@@ -231,11 +238,61 @@ describe('static differential adapters: Prettier', () => {
         '*.{ts,mts,mjs,json}',
         '--pattern',
         'src/main/**/*.ts',
+        '--pattern',
+        'src/legacy/**/*.ts',
         '--tool-root',
         toolRoot,
       ]),
     );
+  }
+  it('ignores generated quality-diff files during formatting checks', async () => {
+    const projectRoot = generatedSnapshot();
+    writeFiles(projectRoot, {
+      '.nitpicker-diff-dependency-cruiser.config.mjs': 'export default{temporary:true}\n',
+      'src/main/formatted.ts': 'export const formatted = true;\n',
+    });
+
+    const findings = await runPrettierOn(projectRoot);
 
     expect(findings).toEqual([]);
   });
+  it('reports a file Prettier cannot parse with the classic CLI error text', async () => {
+    const projectRoot = generatedSnapshot();
+    writeFiles(projectRoot, {
+      'src/main/broken.ts': 'export const = ;\n',
+      'src/main/fresh.ts': 'export const fresh = "a"\n',
+    });
+
+    await expect(runPrettierOn(projectRoot)).rejects.toSatisfy((error) =>
+      /^prettier exited with 2: \[error\] src\/main\/broken\.ts: SyntaxError/u.test(
+        stripVTControlCharacters(error.message),
+      ),
+    );
+  });
+  it.each([
+    [['src/legacy/**'], { '.nitpicker-diff-prettier-exclude': '/src/main/**\n' }],
+    [['src/legacy/**', '**/*.gen.ts'], {}],
+  ])(
+    'keeps exclusions %j on the classic CLI when the parallel CLI cannot take them',
+    async (exclude, extraFiles) => {
+      const projectRoot = generatedSnapshot();
+      const policyFile = path.join(projectRoot, '..', 'policy.json');
+      writeFileSync(policyFile, JSON.stringify({ exclude }));
+      vi.stubEnv(HEAD_POLICY_ENV, policyFile);
+      writeFiles(projectRoot, {
+        ...extraFiles,
+        'src/main/fresh.ts': 'export const fresh = "a"\n',
+        'src/main/types.gen.ts': 'export const generated = "a"\n',
+        'src/legacy/old.ts': 'export const old = "a"\n',
+      });
+
+      const findings = await runPrettierOn(projectRoot);
+
+      expect(findings.map(({ path: file }) => file)).toEqual(
+        exclude.includes('**/*.gen.ts')
+          ? ['src/main/fresh.ts']
+          : ['src/main/fresh.ts', 'src/main/types.gen.ts'],
+      );
+    },
+  );
 });

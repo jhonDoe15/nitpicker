@@ -1,0 +1,12 @@
+[
+  {
+    "tool": "ruff",
+    "rule": "S508",
+    "mention": "snmpv3"
+  },
+  {
+    "tool": "ruff",
+    "rule": "S509",
+    "mention": "snmpv3"
+  }
+]

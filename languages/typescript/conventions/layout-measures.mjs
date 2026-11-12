@@ -1,5 +1,5 @@
 const MODULE_SPECIFIER =
-  /^\s*(?:import|export)\b[^'"`]*?(['"])|^[^'"`]*\b(?:require|import)\(\s*(['"])/;
+  /^\s*(?:import|export)\b[^'"`]*(['"])|^[^'"`]*\b(?:require|import)\(\s*(['"])/;
 const OPENS_BLOCK = /\{\s*(?:\/\/.*)?$/;
 const COMMENT_LINE = /^\s*(?:\/\/|\/\*|\*)/;
 const PARENTHESIZED_PARAMETER = /\(\s*[A-Za-z_$][\w$]*\s*\)\s*=>/g;

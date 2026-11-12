@@ -1,4 +1,7 @@
-const QUALIFIED = /^[a-z_][\w]*(?:\.[\w]+)+$/u;
+import { ancestorsOf } from '../kotlin-facts.mjs';
+import { SPRING_MANAGED_CLASSES } from './spring-types.mjs';
+
+const QUALIFIED = /^[a-z_]\w*(?:\.\w+)+$/u;
 const DEFAULT_PACKAGES = [
   'kotlin',
   'kotlin.annotation',
@@ -174,4 +177,15 @@ export function stringValues(text) {
     stringValue(literal),
   );
   return values.filter((value) => value !== undefined);
+}
+
+export function springManagedOwner(file, declared) {
+  const resolve = nameResolver(file, declared);
+  const classes = new Map(file.classes.map((klass) => [klass.qualified, klass]));
+  return (owner) =>
+    ancestorsOf(owner).some(
+      (qualified) =>
+        annotationIn(resolve, classes.get(qualified)?.annotations, SPRING_MANAGED_CLASSES) !==
+        undefined,
+    );
 }

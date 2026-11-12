@@ -1,0 +1,20 @@
+[
+  {
+    "name": "mypy untyped function names fixing the type",
+    "tool": "mypy",
+    "rule": "no-untyped-def",
+    "mention": "fix the type"
+  },
+  {
+    "name": "pyright untyped parameter names fixing the type",
+    "tool": "pyright",
+    "rule": "reportMissingParameterType",
+    "mention": "fix the type"
+  },
+  {
+    "name": "basedpyright untyped parameter names fixing the type",
+    "tool": "basedpyright",
+    "rule": "reportMissingParameterType",
+    "mention": "fix the type"
+  }
+]

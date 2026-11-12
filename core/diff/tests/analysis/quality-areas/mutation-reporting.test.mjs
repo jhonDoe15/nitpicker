@@ -1,6 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import { sourceSnippet } from '../../../../../languages/typescript/adapters/quality-areas/reporting/source-hashes.mjs';
-import { normalizeMutation } from '../../../../../languages/typescript/adapters/quality-areas/reporting/tests.mjs';
+import {
+  normalizeMutation,
+  withUnreachedMutantsUncovered,
+} from '../../../../../languages/typescript/adapters/quality-areas/reporting/tests.mjs';
 import { rebaseMutationConfig } from '../../../../../languages/typescript/adapters/quality-areas/runners/mutation.mjs';
 
 describe('mutation reporting in the quality-area analyzers', () => {
@@ -43,6 +46,8 @@ describe('mutation reporting in the quality-area analyzers', () => {
         identity: 'BooleanLiteral|fcbcf165908dd18a9e49f7ff|42fa055d09edd207663e69f0|occurrence:1',
         message:
           'Survived BooleanLiteral at column 5: replacing this code with `false` fails no test. Add an assertion that would. If no input can tell the two apart, simplify the code so this mutant disappears.',
+        allowedForm:
+          'Add an assertion that would. If no input can tell the two apart, simplify the code so this mutant disappears.',
         classification: 'enforceable',
         location: { line: 4, column: 5 },
       },
@@ -53,6 +58,8 @@ describe('mutation reporting in the quality-area analyzers', () => {
         identity: 'BooleanLiteral|fcbcf165908dd18a9e49f7ff|42fa055d09edd207663e69f0|occurrence:2',
         message:
           'Survived BooleanLiteral at column 5: replacing this code with `false` fails no test. Add an assertion that would. If no input can tell the two apart, simplify the code so this mutant disappears.',
+        allowedForm:
+          'Add an assertion that would. If no input can tell the two apart, simplify the code so this mutant disappears.',
         classification: 'enforceable',
         location: { line: 4, column: 5 },
       },
@@ -83,6 +90,8 @@ describe('mutation reporting in the quality-area analyzers', () => {
         identity: 'BooleanLiteral|fcbcf165908dd18a9e49f7ff|42fa055d09edd207663e69f0|occurrence:1',
         message:
           'Survived BooleanLiteral at column 5: replacing this code with `false` fails no test. Add an assertion that would. If no input can tell the two apart, simplify the code so this mutant disappears.',
+        allowedForm:
+          'Add an assertion that would. If no input can tell the two apart, simplify the code so this mutant disappears.',
         classification: 'enforceable',
         location: { line: 4, column: 5 },
       },
@@ -93,6 +102,8 @@ describe('mutation reporting in the quality-area analyzers', () => {
         identity: 'BooleanLiteral|fcbcf165908dd18a9e49f7ff|42fa055d09edd207663e69f0|occurrence:2',
         message:
           'Survived BooleanLiteral at column 5: replacing this code with `false` fails no test. Add an assertion that would. If no input can tell the two apart, simplify the code so this mutant disappears.',
+        allowedForm:
+          'Add an assertion that would. If no input can tell the two apart, simplify the code so this mutant disappears.',
         classification: 'enforceable',
         location: { line: 4, column: 5 },
       },
@@ -123,6 +134,8 @@ describe('mutation reporting in the quality-area analyzers', () => {
         identity: 'BooleanLiteral|fcbcf165908dd18a9e49f7ff|42fa055d09edd207663e69f0|occurrence:1',
         message:
           'Survived BooleanLiteral at column 5: replacing this code with `false` fails no test. Add an assertion that would. If no input can tell the two apart, simplify the code so this mutant disappears.',
+        allowedForm:
+          'Add an assertion that would. If no input can tell the two apart, simplify the code so this mutant disappears.',
         classification: 'enforceable',
         location: { line: 4, column: 5 },
       },
@@ -133,6 +146,8 @@ describe('mutation reporting in the quality-area analyzers', () => {
         identity: 'BooleanLiteral|fcbcf165908dd18a9e49f7ff|42fa055d09edd207663e69f0|occurrence:2',
         message:
           'Survived BooleanLiteral at column 5: replacing this code with `false` fails no test. Add an assertion that would. If no input can tell the two apart, simplify the code so this mutant disappears.',
+        allowedForm:
+          'Add an assertion that would. If no input can tell the two apart, simplify the code so this mutant disappears.',
         classification: 'enforceable',
         location: { line: 4, column: 5 },
       },
@@ -235,5 +250,43 @@ describe('mutation reporting in the quality-area analyzers', () => {
         related: false,
       },
     });
+  });
+});
+
+describe('mutants of a run whose tests reach no mutated module', () => {
+  function reportOf(...mutants) {
+    return { files: { 'src/lonely.ts': { mutants } } };
+  }
+
+  function mutant(status, coveredBy) {
+    return { id: status, status, ...(coveredBy === undefined ? {} : { coveredBy }) };
+  }
+
+  function statusesOf(report) {
+    return report.files['src/lonely.ts'].mutants.map(({ status }) => status);
+  }
+
+  it('are reported as not covered when the dry run collected no coverage at all', () => {
+    const report = withUnreachedMutantsUncovered(
+      reportOf(mutant('Survived'), mutant('Survived'), mutant('CompileError')),
+      'perTest',
+    );
+
+    expect(report.files['src/lonely.ts'].mutants).toEqual([
+      { id: 'Survived', status: 'NoCoverage', coveredBy: [] },
+      { id: 'Survived', status: 'NoCoverage', coveredBy: [] },
+      { id: 'CompileError', status: 'CompileError' },
+    ]);
+  });
+
+  it.each([
+    ['the run has coverage for some mutant', [mutant('Survived'), mutant('Survived', ['0'])]],
+    ['a test killed a mutant', [mutant('Survived'), mutant('Killed')]],
+    ['a test timed out on a mutant', [mutant('Survived'), mutant('Timeout')]],
+    ['coverage analysis is off', [mutant('Survived')], 'off'],
+  ])('keep their status when %s', (_case, mutants, coverageAnalysis = 'perTest') => {
+    expect(
+      statusesOf(withUnreachedMutantsUncovered(reportOf(...mutants), coverageAnalysis)),
+    ).toEqual(mutants.map(({ status }) => status));
   });
 });

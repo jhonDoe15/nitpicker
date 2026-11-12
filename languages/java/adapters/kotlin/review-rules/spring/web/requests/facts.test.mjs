@@ -14,8 +14,8 @@ function factsOf(name) {
   return files.find(({ file }) => file.endsWith(name));
 }
 
-const bad = factsOf('shop/bad/Requests.kt');
-const good = factsOf('shop/good/Requests.kt');
+const bad = factsOf('shop/bad/RequestValues.kt');
+const good = factsOf('shop/good/RequestValues.kt');
 
 function argumentReads(facts, line, name = 'getForObject') {
   return facts.invocations.find((call) => call.line === line && call.name === name).arguments[0]
@@ -100,22 +100,22 @@ describe('bindingIndex on the recorded reads', () => {
   }
 
   it('binds a shadowing lambda parameter and an inner local, not the function parameter', () => {
-    const lambda = viewOf('good/Requests.kt').file.scopes.find(({ host }) => host === 'map');
-    expect(resolve('good/Requests.kt', 16)[1]).toEqual({
+    const lambda = viewOf('good/RequestValues.kt').file.scopes.find(({ host }) => host === 'map');
+    expect(resolve('good/RequestValues.kt', 16)[1]).toEqual({
       node: `${String(lambda.id)}:url`,
       member: undefined,
     });
-    const local = viewOf('good/Requests.kt').file.locals.find(({ line }) => line === 20);
-    expect(resolve('good/Requests.kt', 21)).toEqual([
+    const local = viewOf('good/RequestValues.kt').file.locals.find(({ line }) => line === 20);
+    expect(resolve('good/RequestValues.kt', 21)).toEqual([
       { node: `${String(local.scope)}:url@20`, member: undefined },
     ]);
   });
 
   it('binds it, a named lambda parameter and the receiver of run and with to their lambda', () => {
-    const scopes = viewOf('bad/Requests.kt').file.scopes.filter(
+    const scopes = viewOf('bad/RequestValues.kt').file.scopes.filter(
       ({ line }) => line >= 24 && line <= 27,
     );
-    expect([24, 25, 26, 27].map((line) => resolve('bad/Requests.kt', line)[0].node)).toEqual([
+    expect([24, 25, 26, 27].map((line) => resolve('bad/RequestValues.kt', line)[0].node)).toEqual([
       `${String(scopes[0].id)}:it`,
       `${String(scopes[1].id)}:target`,
       `${String(scopes[2].id)}:this`,
@@ -124,14 +124,14 @@ describe('bindingIndex on the recorded reads', () => {
   });
 
   it('binds a name in a class body to the class parameter and a property read to the property', () => {
-    const view = viewOf('bad/Requests.kt');
+    const view = viewOf('bad/RequestValues.kt');
     const hook = view.file.scopes.find(({ qualified }) => qualified === 'Hook');
     const index = bindingIndex(view);
     expect(index.resolve({ name: 'endpoint' }, hook.id, { line: 68 })).toEqual({
       node: `${String(hook.id)}:endpoint`,
       member: undefined,
     });
-    expect(resolve('bad/Requests.kt', 70, 'uri')).toEqual([
+    expect(resolve('bad/RequestValues.kt', 70, 'uri')).toEqual([
       { node: `${String(hook.id)}:target`, member: undefined },
     ]);
   });

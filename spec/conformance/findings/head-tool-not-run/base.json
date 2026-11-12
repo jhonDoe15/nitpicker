@@ -1,0 +1,12 @@
+{
+  "findings": [
+    {
+      "tool": "javac",
+      "rule": "rawtypes",
+      "path": "src/A.java",
+      "identity": "raw:a",
+      "message": "found raw type: List",
+      "classification": "enforceable"
+    }
+  ]
+}

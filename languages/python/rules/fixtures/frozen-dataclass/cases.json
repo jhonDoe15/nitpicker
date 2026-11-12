@@ -1,0 +1,8 @@
+[
+  {
+    "name": "mutable dataclass names frozen=True",
+    "tool": "python-rules",
+    "rule": "frozen-dataclass",
+    "mention": "frozen=True"
+  }
+]

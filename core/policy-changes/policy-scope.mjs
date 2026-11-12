@@ -3,7 +3,7 @@ import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { pathInside } from '../../shared/filesystem.mjs';
 import { globMatcher } from '../../shared/paths/glob.mjs';
-import { runGit } from '../diff/git/repository/command.mjs';
+import { projectFilePaths } from '../../shared/project-files/project-files.mjs';
 import { GRADLE_PRESETS } from '../../languages/java/adapters/gradle-presets.mjs';
 import { readBuildSources } from '../../languages/java/builds/narrowing/build-sources.mjs';
 import { jvmProductionReach } from '../../languages/java/builds/reach/source-reach.mjs';
@@ -21,13 +21,16 @@ import {
 } from '../../languages/typescript/preset/modules/tsconfig-files.mjs';
 import { presetToDeclare } from '../configuration/project-checks/preset-detection.mjs';
 import { readToolConfigs } from './build-files/tool-config-files.mjs';
+import { importedAmong } from './imported-files.mjs';
 import { isGeneratedJvm } from '../../languages/java/adapters/generated/generated-sources.mjs';
 import { isGeneratedPython } from '../../languages/python/libraries/generated-files.mjs';
 import { isMarkedGenerated } from '../../languages/typescript/preset/layout/generated-files.mjs';
+import { isGeneratedGo } from '../../languages/go/adapters/structure/go-generated.mjs';
 
 const GRADLE_EXTENSIONS = ['java', 'kt', 'kts'];
 const PRESET_EXTENSIONS = new Map([
   ['python', ['py']],
+  ['go', ['go']],
   ['java', GRADLE_EXTENSIONS],
   ['kotlin', GRADLE_EXTENSIONS],
 ]);
@@ -130,6 +133,7 @@ export function createPolicyScope({
   buildSources,
   toolConfigs = [],
   reach = () => new Map(),
+  importedBy = () => [],
   blobOf = () => 'unread',
   generated = { base: () => false, head: () => false },
 }) {
@@ -142,7 +146,6 @@ export function createPolicyScope({
     code,
     keptCode,
     keptPaths: [...keptCode, ...new Set(keptCode.flatMap(foldersOf))],
-    codePaths: [...code, ...folders],
     baseCode: codeOf(baseFiles, headConfig),
     usesLayout: usesLayout(headConfig),
     baseRoots,
@@ -154,17 +157,14 @@ export function createPolicyScope({
     buildSources,
     toolConfigs,
     productionReach: computedOnce(reach),
+    importedBy,
     blobOf,
     generated,
   };
 }
 
 export function listedFiles(projectRoot) {
-  return existsSync(projectRoot)
-    ? runGit(projectRoot, ['ls-files', '-z', '--cached', '--others', '--exclude-standard'])
-        .split('\0')
-        .filter(Boolean)
-    : [];
+  return projectFilePaths(projectRoot);
 }
 
 function typescriptReach(headProjectRoot, headConfig, files) {
@@ -218,6 +218,9 @@ function generatedTestOf(preset) {
   if (preset === 'python') {
     return isGeneratedPython;
   }
+  if (preset === 'go') {
+    return isGeneratedGo;
+  }
   return GRADLE_PRESETS.includes(preset) ? isGeneratedJvm : isMarkedGenerated;
 }
 
@@ -243,7 +246,9 @@ export function readPolicyScope({
   headConfig,
   baseProjectRoot,
   headProjectRoot,
+  liveProjectRoot = headProjectRoot,
   moves,
+  replacedOptions,
 }) {
   const files = listedFiles(headProjectRoot);
   const baseFiles = listedFiles(baseProjectRoot);
@@ -268,11 +273,16 @@ export function readPolicyScope({
       : undefined,
     buildSources: { base: buildSourcesOf(headConfig, base), head: headSources },
     toolConfigs: readToolConfigs(
-      { config: baseConfig, root: baseProjectRoot, files: baseFiles },
-      { config: headConfig, root: headProjectRoot, files },
-      gitBlobId,
+      { config: baseConfig, root: baseProjectRoot, files: baseFiles, liveRoot: liveProjectRoot },
+      { config: headConfig, root: headProjectRoot, files, liveRoot: liveProjectRoot },
+      { gitBlobId, replacedOptions },
     ),
     reach: () => productionReachOf({ headProjectRoot, headConfig, files, headRoots, headSources }),
+    importedBy: (candidates) =>
+      importedAmong(
+        { projectRoot: headProjectRoot, config: headConfig, files, roots: headRoots },
+        candidates,
+      ),
     blobOf: blobReader(headProjectRoot),
     generated: generatedReaders(headConfig.preset, baseProjectRoot, headProjectRoot),
   });

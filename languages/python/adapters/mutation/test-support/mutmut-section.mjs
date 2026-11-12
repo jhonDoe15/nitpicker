@@ -1,6 +1,7 @@
 export const TEST_PATTERNS = [
   'tests/*',
   'test/*',
+  'testing/*',
   '*/tests/*',
   '*/test/*',
   'test_*.py',

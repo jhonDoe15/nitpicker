@@ -32,6 +32,11 @@ export const ONE_WAY_VIOLATIONS = [
 export const HIDDEN_ERROR =
   'from typing import no_type_check\n\n\n@no_type_check\ndef hidden(value: int) -> str:\n    return value * 2\n';
 
+export const UNLINKED_TEST = 'def test_arithmetic():\n    assert 1 + 1 == 2\n';
+
+export const TYPE_ONLY_TEST =
+  'from typing import TYPE_CHECKING\n\nif TYPE_CHECKING:\n    from demo.greeter import greet\n\n\ndef test_arithmetic() -> None:\n    handler: greet | None = None\n    assert handler is None\n';
+
 export const WEAKENED_MYPY = `${readFileSync(path.join(fixture, 'pyproject.toml'), 'utf8')}\n[tool.mypy]\nignore_errors = true\ndisable_error_code = ["return-value"]\nexclude = ["src/demo/typed.py"]\n`;
 
 export const WEAKENED_PYRIGHT = JSON.stringify({
@@ -100,6 +105,23 @@ export const LAYERED_FILES = {
     'from shop.domain import pricing\nfrom shop.web import views\n\n\ndef test_show():\n    assert views.show([10]) == "11.0 1"\n\n\ndef test_total():\n    assert pricing.order_total([(2, 3), (2, 3)], 0) == 12\n',
 };
 
+export const FEATURE_FILES = {
+  'src/shop/features/__init__.py': '',
+  'src/shop/features/billing/__init__.py':
+    'from shop.features.billing.invoice import invoice_total\n',
+  'src/shop/features/billing/_rates.py': 'def rate() -> int:\n    return 2\n',
+  'src/shop/features/billing/invoice.py':
+    'from shop.features.billing import _rates\nfrom shop.features.shipping import fees\n\n\ndef invoice_total(amount: int) -> int:\n    return amount * _rates.rate() + fees.fee()\n',
+  'src/shop/features/shipping/__init__.py': '',
+  'src/shop/features/shipping/fees.py':
+    'from shop.features import billing\nfrom shop.features.billing import _rates\n\n\ndef fee() -> int:\n    return _rates.rate() - 1\n\n\ndef billed(amount: int) -> int:\n    return billing.invoice_total(amount)\n',
+  'src/shop/shared/__init__.py': '',
+  'src/shop/shared/money.py':
+    'from shop.features.billing import invoice_total\n\n\ndef doubled(amount: int) -> int:\n    return 2 * invoice_total(amount)\n',
+  'tests/test_billing.py':
+    'from shop.features.billing import invoice_total\nfrom shop.shared import money\n\n\ndef test_invoice_total():\n    assert invoice_total(10) == 21\n\n\ndef test_doubled():\n    assert money.doubled(1) == 6\n',
+};
+
 export const SIGNS = 'def sign(x):\n    if x < 0:\n        return -1\n    return 1\n';
 
 export const BRANCH_CLAMP =
@@ -132,3 +154,29 @@ export const SIGN_NEGATIVE = ['sign_negative', 'signs.sign(-5) == -1'];
 export const CLAMP_LOW = ['clamp_low', 'signs.clamp(1) == 1'];
 
 export const CLAMP_HIGH = ['clamp_high', 'signs.clamp(50) == 10'];
+
+export const RUNTIME_TEST = [
+  'import logging',
+  'import time',
+  '',
+  'from demo.legacy import value',
+  '',
+  '',
+  'def test_value_is_cached():',
+  '    logging.getLogger("demo").warning("cache is cold for key %s", 42)',
+  '    time.sleep(0.3)',
+  '    assert value() == 1',
+  '',
+].join('\n');
+
+export const NOISY_TEST = [
+  'import sys',
+  '',
+  'from demo.legacy import clamp',
+  '',
+  '',
+  'def test_clamp_limits():',
+  '    sys.stderr.write("clamping above the limit\\n")',
+  '    assert clamp(30) == 10',
+  '',
+].join('\n');

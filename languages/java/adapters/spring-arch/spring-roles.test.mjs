@@ -23,11 +23,12 @@ function temporaryDirectory() {
 }
 
 describe('Spring role mappings', () => {
-  it('accepts roles mapped to fully qualified names on the JVM presets', () => {
-    for (const preset of ['java', 'kotlin']) {
+  it.each(['java', 'kotlin'])(
+    'accepts roles mapped to fully qualified names on the %s preset',
+    (preset) => {
       expect(() => validateConfig({ preset, spring: { roles: ROLES } })).not.toThrow();
-    }
-  });
+    },
+  );
 
   it.each([
     [
@@ -43,6 +44,10 @@ describe('Spring role mappings', () => {
     [
       { preset: 'java', spring: { roles: { usecase: ['com.acme.UseCase'] } } },
       'unknown role "spring.roles.usecase". Roles: controller, service, repository',
+    ],
+    [
+      { preset: 'java', spring: { roles: { controler: ['com.acme.Api'] } } },
+      'unknown role "spring.roles.controler". Did you mean "controller"?',
     ],
     [
       { preset: 'java', spring: { roles: { service: ['UseCase'] } } },

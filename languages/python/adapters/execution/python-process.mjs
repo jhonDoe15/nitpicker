@@ -1,19 +1,23 @@
-import { spawnSync } from 'node:child_process';
+import {
+  TROUBLESHOOTING_ANCHORS,
+  withTroubleshooting,
+} from '../../../../shared/messages/troubleshooting.mjs';
+import { spawnSyncWithOutputFile } from '../../../../core/tooling/output-file/output-file.mjs';
 
 const MAX_OUTPUT_BYTES = 50 * 1024 * 1024;
 const TOOL_TIMEOUT_MS = 25 * 60 * 1000;
 const MILLISECONDS_PER_MINUTE = 60000;
 const MESSAGE_TAIL_LENGTH = 3000;
-export const VERSION_PATTERN = /\d+(?:\.\d+)+\S*/;
+export const VERSION_PATTERN = /\d+\.\d\S*/;
 
 export function execute(
   context,
   command,
-  { timeout = TOOL_TIMEOUT_MS, env = {}, defaultEnv = {}, cwd } = {},
+  { timeout = context.analyzerDeadlineMs ?? TOOL_TIMEOUT_MS, env = {}, defaultEnv = {}, cwd } = {},
 ) {
   const [tool, ...args] = command;
   const launch = context.launcher.launch(tool, args);
-  return (context.spawn ?? spawnSync)(launch.command, launch.args, {
+  return (context.spawn ?? spawnSyncWithOutputFile)(launch.command, launch.args, {
     cwd: cwd ?? context.projectRoot,
     env: { ...defaultEnv, ...process.env, ...launch.env, ...context.env, ...env },
     encoding: 'utf8',
@@ -43,7 +47,13 @@ function isAccepted(accepted, result) {
 export function run(
   context,
   command,
-  { accepted = [0], rule, timeoutMs = TOOL_TIMEOUT_MS, notFoundHint = '', ...environment },
+  {
+    accepted = [0],
+    rule,
+    timeoutMs = context.analyzerDeadlineMs ?? TOOL_TIMEOUT_MS,
+    notFoundHint = '',
+    ...environment
+  },
 ) {
   const result = execute(context, command, { timeout: timeoutMs, ...environment });
   if (result.error !== undefined || !isAccepted(accepted, result)) {
@@ -59,15 +69,27 @@ export function failure({ context, command, result, rule, timeoutMs, notFoundHin
   );
 }
 
-function describeFailure({ context, command, result, timeoutMs = TOOL_TIMEOUT_MS, notFoundHint }) {
+function describeFailure({
+  context,
+  command,
+  result,
+  timeoutMs = context.analyzerDeadlineMs ?? TOOL_TIMEOUT_MS,
+  notFoundHint,
+}) {
   const [tool, subcommand = '-'] = command;
   const label = subcommand.startsWith('-') ? tool : `${tool} ${subcommand}`;
   const where = `the ${context.launcher.description} environment`;
   if (result.error?.code === 'ENOENT') {
-    return `${tool} was not found in ${where}: install it there (for example as a dev dependency), or set "python.environment" to the environment that has it${notFoundHint}`;
+    return withTroubleshooting(
+      `${tool} was not found in ${where}: install it there (for example as a dev dependency), or set "python.environment" to the environment that has it${notFoundHint}`,
+      TROUBLESHOOTING_ANCHORS.pythonToolMissing,
+    );
   }
   if (result.error?.code === 'ETIMEDOUT') {
-    return `${label} timed out after ${String(timeoutMs / MILLISECONDS_PER_MINUTE)} minutes in ${where}`;
+    return withTroubleshooting(
+      `${label} timed out after ${String(timeoutMs / MILLISECONDS_PER_MINUTE)} minutes in ${where}`,
+      TROUBLESHOOTING_ANCHORS.analyzerTimeout,
+    );
   }
   if (result.error !== undefined) {
     return `${label} could not run in ${where}: ${result.error.message}`;

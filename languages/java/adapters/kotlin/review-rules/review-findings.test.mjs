@@ -4,18 +4,22 @@ import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import { parseAnalyzerReport } from '../../../../../core/diff/comparison/finding-schema.mjs';
 import { KOTLIN_EXCEPTION_RULES, validateKotlinOptions } from '../kotlin-options.mjs';
-import { readKotlinFacts } from './kotlin-facts.mjs';
+import { buildViews } from './build-view.mjs';
+import { REVIEW_TOOL, SOURCE_TOOL, withoutCoveredFindings } from './review-finding.mjs';
+import { readKotlinFacts } from './report/kotlin-report.mjs';
 import { readKotlinReviewFindings } from './review-findings.mjs';
 import { KOTLIN_REVIEW_EXCEPTION_RULES } from './review-rules.mjs';
 import { SPRING_RULES } from './spring/spring-messages.mjs';
 import {
   call,
+  cleanupCall,
   file,
   fn,
   klass,
   parameter,
   testFile,
   testMethod,
+  useLaunch,
   wait,
 } from './test-support/facts.mjs';
 
@@ -33,7 +37,10 @@ function projectWith(facts) {
   const reportRoot = path.join(root, 'build/nitpicker');
   mkdirSync(reportRoot, { recursive: true });
   if (facts !== undefined) {
-    writeFileSync(path.join(reportRoot, 'kotlin-facts.json'), JSON.stringify(facts));
+    writeFileSync(
+      path.join(reportRoot, 'kotlin-facts.json'),
+      JSON.stringify({ design: { modules: [], types: [], callables: [] }, ...facts }),
+    );
   }
   return { root, reportRoot };
 }
@@ -43,7 +50,7 @@ describe('readKotlinReviewFindings', () => {
     const missing = projectWith();
     const empty = projectWith({ files: [] });
 
-    expect(readKotlinFacts(missing.reportRoot)).toEqual({ files: [] });
+    expect(readKotlinFacts(missing.reportRoot)).toEqual({ files: [], skipped: [] });
     expect(
       readKotlinReviewFindings({ ...missing, projectRoot: missing.root, manifest: {} }),
     ).toEqual([]);
@@ -63,6 +70,16 @@ describe('readKotlinReviewFindings', () => {
             }),
           ],
           calls: [call('Mailer')],
+          handlers: [
+            {
+              line: 5,
+              symbol: 'Mailer.send',
+              type: 'InterruptedException',
+              name: 'e',
+              cancellation: false,
+              interrupt: true,
+            },
+          ],
         }),
         testFile({
           classes: [klass('SampleTest')],
@@ -77,9 +94,45 @@ describe('readKotlinReviewFindings', () => {
 
     expect(findings.map(({ tool, rule }) => `${tool}/${rule}`).sort()).toEqual([
       'pmd/FixedSleepInTest',
+      'pmd/SwallowedInterrupt',
       'structure/unused-option',
     ]);
     expect(() => parseAnalyzerReport({ findings }, 'kotlin')).not.toThrow();
+  });
+});
+
+describe('readKotlinReviewFindings for coroutine lifetimes', () => {
+  it('reads the cleanup and use-block facts of a file into kotlin-source findings the schema accepts', () => {
+    const facts = {
+      files: [
+        file({
+          imports: [{ path: 'kotlinx.coroutines', all: true }],
+          cleanupCalls: [cleanupCall('delay')],
+          useLaunches: [useLaunch()],
+        }),
+      ],
+    };
+    const { root, reportRoot } = projectWith(facts);
+
+    const findings = readKotlinReviewFindings({ reportRoot, projectRoot: root, manifest: {} });
+
+    expect(findings.map(({ tool, rule }) => `${tool}/${rule}`).sort()).toEqual([
+      'kotlin-source/ChildCoroutineOutlivesResource',
+      'kotlin-source/SuspendFunInFinallySection',
+    ]);
+  });
+});
+
+describe('readKotlinReviewFindings design facts', () => {
+  it('adds a tool error when the facts report lacks the design facts of its files', () => {
+    const { root, reportRoot } = projectWith({ files: [file()] });
+    writeFileSync(path.join(reportRoot, 'kotlin-facts.json'), JSON.stringify({ files: [file()] }));
+
+    const findings = readKotlinReviewFindings({ reportRoot, projectRoot: root, manifest: {} });
+
+    expect(findings.map(({ rule, classification }) => `${rule} ${classification}`)).toEqual([
+      'design-facts tool-error',
+    ]);
   });
 });
 
@@ -103,7 +156,7 @@ describe('readKotlinReviewFindings on the test sources', () => {
 
     expect(
       findings.map(({ tool, rule, path: file, location }) => [tool, rule, file, location.line]),
-    ).toEqual([['pmd', 'DisabledTest', 'src/test/kotlin/SkippedTest.kt', 3]]);
+    ).toEqual([[REVIEW_TOOL, 'DisabledTest', 'src/test/kotlin/SkippedTest.kt', 3]]);
     expect(() => parseAnalyzerReport({ findings }, 'kotlin')).not.toThrow();
   });
 });
@@ -115,8 +168,8 @@ describe('readKotlinReviewFindings across the project', () => {
     return {
       first,
       modules: [
-        { reportRoot: first.reportRoot, manifest: { sourceRoots: [] } },
-        { reportRoot: second.reportRoot, manifest: { sourceRoots: [] } },
+        { reportRoot: first.reportRoot, path: ':', manifest: { sourceRoots: [] } },
+        { reportRoot: second.reportRoot, path: ':billing', manifest: { sourceRoots: [] } },
       ],
     };
   }
@@ -142,6 +195,52 @@ describe('readKotlinReviewFindings across the project', () => {
 
     expect(readKotlinReviewFindings(context)).toHaveLength(1);
     expect(readKotlinReviewFindings({ ...context, modules })).toEqual([]);
+  });
+
+  it('judges a public option by its own published flag and the Java sources of every module', () => {
+    const format = fn('format', {
+      parameters: [parameter('value', 'Int'), parameter('pad', 'Int', { default: true })],
+    });
+    const { first, modules } = twoModules(
+      {
+        files: [
+          file({ functions: [format], calls: [call('format', { positional: 1 })] }),
+          testFile({ calls: [call('format', { positional: 2 })] }),
+        ],
+      },
+      { files: [] },
+    );
+    const context = { reportRoot: first.reportRoot, projectRoot: first.root, manifest: {} };
+    const javaRoot = path.join(first.root, 'billing/src/main/java');
+    const judgedWith = (index, manifest) =>
+      readKotlinReviewFindings({
+        ...context,
+        modules: modules.map((module, at) =>
+          at === index ? { ...module, manifest: { ...module.manifest, ...manifest } } : module,
+        ),
+      });
+
+    expect(judgedWith(0, {})).toHaveLength(1);
+    expect(judgedWith(0, { published: true })).toEqual([]);
+    mkdirSync(javaRoot, { recursive: true });
+    writeFileSync(path.join(javaRoot, 'Bill.java'), 'class Bill { int a = Kt.format(1, 2); }\n');
+    expect(judgedWith(1, { sourceRoots: ['billing/src/main/java'] })).toEqual([]);
+    expect(
+      judgedWith(1, {
+        kotlinCallerGaps: [{ label: 'the included build tools', reaches: [':'] }],
+      }).map(({ symbol, classification }) => `${symbol} ${classification}`),
+    ).toEqual(['callers-not-analyzed descriptive']);
+  });
+
+  it('reads the facts of the build once for every module of a report', () => {
+    const { first, modules } = twoModules({ files: [file()] }, { files: [testFile()] });
+    const views = buildViews();
+    const view = views({ reportRoot: first.reportRoot, projectRoot: first.root, modules });
+
+    expect(views({ reportRoot: modules[1].reportRoot, projectRoot: first.root, modules })).toBe(
+      view,
+    );
+    expect(view.files.map(({ test }) => test)).toEqual([false, true]);
   });
 
   it('does not stop at a Kotlin name that is not a valid pattern when it scans Java sources', () => {
@@ -173,7 +272,10 @@ describe('readKotlinReviewFindings across the project', () => {
   it('leaves a file whose collection was skipped out of the facts', () => {
     const { reportRoot } = projectWith({ files: [{ file: 'a.kt', test: false, skipped: true }] });
 
-    expect(readKotlinFacts(reportRoot)).toEqual({ files: [] });
+    expect(readKotlinFacts(reportRoot)).toEqual({
+      files: [],
+      skipped: [{ file: 'a.kt', test: false }],
+    });
   });
 });
 
@@ -184,28 +286,60 @@ describe('Kotlin exception rules for the review rules', () => {
       'pmd/NegativeWaitInTest',
       'pmd/DisabledTest',
       'pmd/FocusedTest',
+      'pmd/RetryInTest',
+      'pmd/ServerOrContainerPerTest',
       'pmd/AssertionInControlFlow',
       'pmd/CoroutineEscapesTest',
+      'pmd/FloatEqualityInTest',
+      'pmd/WeakAssertionInTest',
+      'pmd/GlobalStateLeakInTest',
+      'pmd/SharedTestState',
+      'pmd/MockedSubjectInTest',
+      'pmd/StaticMockOfProjectType',
+      'pmd/RelaxedMockInTest',
       'pmd/SpringUnusedContext',
       'pmd/ExhaustiveEnumPredicate',
       'pmd/StaticForwardingWrapper',
+      'pmd/ForwardingMethodAlias',
       'pmd/SingularAndPluralMember',
+      'pmd/timeout-abandons-operation',
+      'pmd/NonAtomicUpdateAcrossSuspension',
+      'pmd/SwallowedInterrupt',
+      'pmd/SwallowedCancellation',
+      'pmd/LockOrderInversion',
+      'pmd/InconsistentFieldLocking',
+      'pmd/ServiceLocatorLookup',
+      'pmd/ValidationAnnotationTarget',
       'pmd/ClassLoadEffect',
+      'pmd/UnboundedThreadPool',
+      'pmd/RecursiveMapUpdate',
+      'pmd/StreamedRowsCollected',
+      'pmd/ReusableObjectPerCall',
+      'pmd/GeneratedMemberCycle',
+      'pmd/GeneratedEqualsSkipsSuperclass',
       ...SPRING_RULES.map((rule) => `pmd/${rule}`),
       'pmd/SpringQueryConcatenation',
       'unused-option',
+      'kotlin-source/SuspendFunInFinallySection',
+      'kotlin-source/ChildCoroutineOutlivesResource',
+      'kotlin-source/BlockingCallInCoroutine',
+      'kotlin-source/TimeoutWithoutSuspension',
     ]);
-    for (const rule of KOTLIN_REVIEW_EXCEPTION_RULES) {
-      expect(KOTLIN_EXCEPTION_RULES).toContain(rule);
+  });
+
+  it.each(KOTLIN_REVIEW_EXCEPTION_RULES)(
+    'accepts an exception for %s and lists it among the Kotlin exception rules',
+    (rule) => {
       const config = {
         preset: 'kotlin',
         exceptions: [{ rule, paths: ['src/**'], reason: 'intended' }],
       };
+      expect(KOTLIN_EXCEPTION_RULES).toContain(rule);
       expect(() => {
         validateKotlinOptions(config);
       }).not.toThrow();
-    }
-  });
+    },
+  );
 
   const onKotlinSource = (rule) => ({
     preset: 'kotlin',
@@ -225,5 +359,61 @@ describe('Kotlin exception rules for the review rules', () => {
     expect(() => {
       validateKotlinOptions(onKotlinSource('pmd/SpringFieldInjection'));
     }).toThrow('reported in .java files only: its paths name Kotlin sources');
+  });
+});
+
+describe('withoutCoveredFindings', () => {
+  const at = (tool, rule, line) => ({ tool, rule, path: 'A.kt', location: { line } });
+
+  it('keeps one finding when a Spring rule names the allowed form for the same client or loop', () => {
+    const findings = [
+      at(SOURCE_TOOL, 'HttpWithoutTimeout', 3),
+      at(REVIEW_TOOL, 'SpringHttpClientPerCall', 3),
+      at(SOURCE_TOOL, 'HttpWithoutTimeout', 9),
+      at(SOURCE_TOOL, 'IoCallInLoop', 3),
+      at(SOURCE_TOOL, 'IoCallInLoop', 7),
+      at(REVIEW_TOOL, 'SpringDataNoSaveInLoop', 7),
+    ];
+
+    expect(withoutCoveredFindings(findings)).toEqual([
+      findings[1],
+      findings[2],
+      findings[3],
+      findings[5],
+    ]);
+  });
+
+  it('keeps the Kotlin finding when an exception lifts the Spring finding on that line', () => {
+    const findings = [
+      at(SOURCE_TOOL, 'HttpWithoutTimeout', 3),
+      at(REVIEW_TOOL, 'SpringHttpClientPerCall', 3),
+    ];
+    const exceptions = [{ rule: 'pmd/SpringHttpClientPerCall', glob: 'app/A.kt' }];
+
+    expect(withoutCoveredFindings(findings, { exceptions, modulePath: 'app' })).toEqual(findings);
+    expect(withoutCoveredFindings(findings, { exceptions, modulePath: 'other' })).toEqual(
+      findings.slice(1),
+    );
+  });
+
+  it('keeps one finding for a swallowed cancellation or interrupt and for a fixed sleep in a test', () => {
+    const findings = [
+      at(SOURCE_TOOL, 'CatchOnlyLogsOrReturnsDefault', 4),
+      at(REVIEW_TOOL, 'SwallowedInterrupt', 4),
+      at(SOURCE_TOOL, 'CatchOnlyLogsOrReturnsDefault', 8),
+      at(REVIEW_TOOL, 'SwallowedCancellation', 8),
+      at(SOURCE_TOOL, 'CatchOnlyLogsOrReturnsDefault', 12),
+      at('detekt', 'detekt.coroutines.SleepInsteadOfDelay', 15),
+      at(REVIEW_TOOL, 'FixedSleepInTest', 15),
+      at('detekt', 'detekt.coroutines.SleepInsteadOfDelay', 20),
+    ];
+
+    expect(withoutCoveredFindings(findings)).toEqual([
+      findings[1],
+      findings[3],
+      findings[4],
+      findings[6],
+      findings[7],
+    ]);
   });
 });

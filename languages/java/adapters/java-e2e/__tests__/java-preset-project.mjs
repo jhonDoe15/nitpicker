@@ -25,6 +25,7 @@ import {
 import { UNITS, UNITS_TEST } from '../test-support/unit-sources.mjs';
 import { WIDE, WIDE_EXTENDED, WIDE_REFORMATTED } from '../test-support/wide-sources.mjs';
 import { runJavaDiff } from '../../java-diff.mjs';
+import { schemaChecked } from '../../../../../core/diff/comparison/test-support/findings-schema-check.mjs';
 import { commitBranch, runGitIn } from '../../test-support/gradle-e2e.mjs';
 
 const enabled = process.env.NITPICKER_JAVA_E2E === '1';
@@ -63,6 +64,8 @@ const BASELINED_FINDINGS = [
   'pit mutation-summary .',
   'pmd UnusedPrivateField Legacy.java',
   'structure function-parameters-limit Wide.java',
+  'test-runtime category-count .',
+  'test-runtime test-runtime .',
 ];
 const BASELINED_FINDINGS_WITHOUT_GREETER_LINE_COVERAGE = [
   'coupling coupling .',
@@ -88,6 +91,8 @@ const BASELINED_FINDINGS_WITHOUT_GREETER_LINE_COVERAGE = [
   'pit mutation-summary .',
   'pmd UnusedPrivateField Legacy.java',
   'structure function-parameters-limit Wide.java',
+  'test-runtime category-count .',
+  'test-runtime test-runtime .',
 ];
 // Each file gets its own fixture tree and retains the original setup and cleanup.
 export function useJavaPresetProject() {
@@ -144,7 +149,9 @@ export function useJavaPresetProject() {
   });
   const diffOf = (branch, policy) => {
     runGitIn(repository, 'checkout', '-q', branch);
-    return runJavaDiff({ repositoryRoot: repository, requestedBaseRef: 'main', gradle, policy });
+    return schemaChecked(
+      runJavaDiff({ repositoryRoot: repository, requestedBaseRef: 'main', gradle, policy }),
+    );
   };
   const structureOf = (findings) =>
     findings

@@ -4,6 +4,7 @@ import { createHygieneAnalyzers } from '../../shared/hygiene/analyzers.mjs';
 import { GRADLE_PRESETS } from '../../languages/java/adapters/gradle-presets.mjs';
 import { createJavaAnalyzer } from '../../languages/java/adapters/java-analyzer.mjs';
 import { createPythonAnalyzers } from '../../languages/python/adapters/python-analyzer.mjs';
+import { createGoAnalyzers } from '../../languages/go/adapters/go-analyzer.mjs';
 import {
   configuredAnalyzers,
   javascriptAnalyzers,
@@ -14,12 +15,19 @@ const hygieneAnalyzers = createHygieneAnalyzers(entryPath);
 const historyAnalyzers = createHistoryAnalyzers(entryPath);
 
 export function presetAnalyzers(config, injected) {
-  return injected ?? [...languageAnalyzers(config), ...hygieneAnalyzers, ...optInAnalyzers(config)];
+  if (injected !== undefined) {
+    return injected;
+  }
+  const language = languageAnalyzers(config);
+  return [...language, ...hygieneAnalyzers, ...optInAnalyzers(config, language)];
 }
 
 function languageAnalyzers(config) {
   if (config.preset === 'python') {
     return createPythonAnalyzers(config.python);
+  }
+  if (config.preset === 'go') {
+    return createGoAnalyzers(config.go);
   }
   if (GRADLE_PRESETS.includes(config.preset)) {
     return [createJavaAnalyzer({ kotlin: config.preset === 'kotlin' })];
@@ -27,6 +35,11 @@ function languageAnalyzers(config) {
   return config.preset === 'javascript' ? javascriptAnalyzers() : configuredAnalyzers();
 }
 
-function optInAnalyzers(config) {
-  return config.history?.coChange === true ? historyAnalyzers : [];
+function optInAnalyzers(config, language) {
+  const publishers = language
+    .filter(({ publishesModuleImports }) => publishesModuleImports === true)
+    .map(({ name }) => name);
+  return config.history?.coChange === true
+    ? historyAnalyzers.map((analyzer) => ({ ...analyzer, colocatedWith: publishers }))
+    : [];
 }

@@ -1,0 +1,8 @@
+[
+  {
+    "name": "singular and plural fields name the one-element list",
+    "tool": "python-rules",
+    "rule": "singular-and-plural-field",
+    "mention": "one-element list"
+  }
+]

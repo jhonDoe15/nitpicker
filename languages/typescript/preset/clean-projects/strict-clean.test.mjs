@@ -1,7 +1,10 @@
-import { readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { appendFileSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest';
+import { EDITED_LINE_SENTENCE } from '../../../../core/diff/comparison/positions/touched-lines.mjs';
 import { createGitTemplate } from '../../../../core/diff/git/test-support/git-repository.mjs';
+import { findingsSchemaErrors } from '../../../../core/diff/comparison/test-support/findings-schema-check.mjs';
+import { docsUrl } from '../../../../shared/messages/docs-url.mjs';
 import {
   createCleanProject,
   git,
@@ -16,6 +19,7 @@ const BANNED_FORM_OUTPUT = [
   'Enforceable findings: 1',
   'Descriptive findings: 0',
   'Tool errors: 0',
+  'Ran only: eslint-lint. Run nitpicker without --analyzer before you finish.',
   '',
   'Per-tool counts:',
   'eslint-lint: total=1 enforceable=1 descriptive=0',
@@ -23,8 +27,46 @@ const BANNED_FORM_OUTPUT = [
   'Enforceable findings:',
   'eslint-lint/no-restricted-syntax src/main/features/greeting/domain/greet.ts:21 Do not assert with `as`. Narrow the value (a discriminated union check or a zod parse) or give it the correct type at its source. `as const` is allowed. If this is intended, add {"rule":"no-restricted-syntax","paths":["src/main/features/greeting/domain/greet.ts"],"reason":"..."} to "exceptions" in nitpicker.config.json.',
   '',
+  `Rule reference: ${docsUrl('docs/rules/README.md')} (nitpicker explain <tool/rule> prints one rule)`,
+  '',
 ].join('\n');
 const FIXTURE_TIMEOUT_MS = 300_000;
+const SCHEMA_ANALYZERS = ['eslint-lint', 'prettier-format', 'structure', 'dead-code', 'duplicates'];
+const STATEMENTS = Array.from({ length: 20 }, (_, index) => `  total += ${String(index + 3)};`);
+const REFUSED_CODE = [
+  '',
+  'export function widen(value: unknown): string {',
+  '      return value as string;',
+  '}',
+  '',
+  'export function long(start: number): number {',
+  '  let total = start;',
+  ...STATEMENTS,
+  '  return total;',
+  '}',
+  '',
+].join('\n');
+
+const lines = (...text) => `${text.join('\n')}\n`;
+const WIDENED = "export const widened = ['a'] as readonly string[];";
+const DOUBLED = 'const doubled = [1, 2].map((item) => item * 2);';
+const TOTAL = 'export const total = doubled.reduce((sum, item) => sum + item, 0);';
+const LOG = '  log([] as readonly string[]);';
+const RUN = 'export function run(log: (value: readonly string[]) => void): void {';
+const LOGGED = 'console.info([] as readonly string[]);';
+const LEGACY = lines('export const first = 1;', WIDENED, 'export const last = 3;', '');
+const LEGACY_FILES = {
+  'src/main/legacy.ts': LEGACY,
+  'src/main/moved.ts': lines(WIDENED, DOUBLED, TOTAL),
+  'src/main/messy.ts': lines(
+    'export const first = [ "a" ]   as readonly string[]',
+    'export const second = [',
+    '  "b",',
+    '] as readonly string[]',
+  ),
+  'src/main/repeated.ts': lines(RUN, LOG, '  log([]);', LOG, '}'),
+  'src/main/logged.ts': lines(LOGGED, 'console.info([]);', LOGGED),
+};
 
 describe('the strict-clean fixture project', () => {
   const temporaryRoots = [];
@@ -69,9 +111,30 @@ describe('the strict-clean fixture project', () => {
       expect(stderrText).toBe('');
       expect(findings.filter(({ classification }) => classification === 'enforceable')).toEqual([]);
       expect(toolErrors).toEqual([]);
+      expect(findingsSchemaErrors(findings)).toEqual([]);
       expect(summary.overallStatus).toBe('clean');
       expect(summary.enforceableFindings).toBe(0);
       expect(summary.tools.length).toBeGreaterThan(10);
+      expect(exitCode).toBe(0);
+    },
+    FIXTURE_TIMEOUT_MS,
+  );
+
+  it(
+    'passes `nitpicker --all` on the project once `nitpicker init` has written its config',
+    () => {
+      const root = createProject();
+
+      const init = runNitpicker(root, ['init']);
+      const { exitCode, stderrText, summary, toolErrors } = runSnapshot(root);
+
+      expect(init.exitCode).toBe(0);
+      expect(readFileSync(path.join(root, 'nitpicker.config.json'), 'utf8')).toBe(
+        '{ "preset": "typescript" }\n',
+      );
+      expect(stderrText).toBe('');
+      expect(toolErrors).toEqual([]);
+      expect(summary.overallStatus).toBe('clean');
       expect(exitCode).toBe(0);
     },
     FIXTURE_TIMEOUT_MS,
@@ -91,33 +154,57 @@ describe('the strict-clean fixture project', () => {
     expect(stdoutText).toBe(BANNED_FORM_OUTPUT);
   });
 
+  it(
+    'writes new findings that match spec/findings.schema.json, with every kind of field it fills in',
+    () => {
+      const root = createProject();
+      appendFileSync(path.join(root, 'src/main/features/greeting/domain/greet.ts'), REFUSED_CODE);
+      git(root, 'add', '-A');
+      git(root, 'commit', '-q', '-m', 'add code the gate refuses');
+      runNitpicker(root, [
+        '--base',
+        'HEAD~1',
+        ...SCHEMA_ANALYZERS.flatMap((name) => ['--analyzer', name]),
+        '--no-cache',
+        '--output',
+        path.join(root, 'reports/diff'),
+      ]);
+      const newFindings = readReport(root, 'reports/diff/new-findings.json');
+      const fields = new Set(newFindings.flatMap((finding) => Object.keys(finding)));
+      const located = new Set(newFindings.flatMap(({ location = {} }) => Object.keys(location)));
+
+      expect(findingsSchemaErrors(newFindings)).toEqual([]);
+      expect(
+        ['allowedForm', 'exception', 'exceptionList', 'ratchet'].filter(
+          (field) => !fields.has(field),
+        ),
+      ).toEqual([]);
+      expect(located.has('endLine')).toBe(true);
+    },
+    FIXTURE_TIMEOUT_MS,
+  );
+
   describe('strict rules in touched code', () => {
-    const legacy = [
-      'export const first = 1;',
-      "export const widened = ['a'] as readonly string[];",
-      'export const last = 3;',
-      '',
-    ].join('\n');
     let sharedRoot;
 
-    function legacyTarget() {
-      return path.join(sharedRoot, 'src/main/legacy.ts');
-    }
-
     beforeAll(() => {
-      sharedRoot = createCleanProject({ fixtureRoot, gitTemplateRoot, name: 'strict-clean' });
-      writeFileSync(legacyTarget(), legacy);
-      git(sharedRoot, 'add', '-A');
-      git(sharedRoot, 'commit', '-q', '-m', 'legacy violation');
+      sharedRoot = createCleanProject({
+        fixtureRoot,
+        gitTemplateRoot,
+        name: 'strict-clean',
+        files: LEGACY_FILES,
+      });
     });
 
     afterAll(() => {
       rmSync(sharedRoot, { recursive: true, force: true });
     });
 
-    function runDifference(branch, edit) {
+    function runBranch(branch, files) {
       git(sharedRoot, 'switch', '-q', '-f', '-c', branch, 'main');
-      writeFileSync(legacyTarget(), edit(legacy));
+      for (const [file, text] of Object.entries(files)) {
+        writeFileSync(path.join(sharedRoot, file), text);
+      }
       const result = runNitpicker(sharedRoot, [
         '--base',
         'main',
@@ -127,6 +214,17 @@ describe('the strict-clean fixture project', () => {
         'reports/diff',
       ]);
       return { ...result, summary: readReport(sharedRoot, 'reports/diff/summary.json') };
+    }
+
+    function runDifference(branch, edit) {
+      return runBranch(branch, { 'src/main/legacy.ts': edit(LEGACY) });
+    }
+
+    function newStrictLines(branch, files) {
+      runBranch(branch, files);
+      return readReport(sharedRoot, 'reports/diff/new-findings.json')
+        .filter(({ rule }) => rule === 'no-restricted-syntax')
+        .map(({ path: file, location }) => `${file}:${String(location?.line)}`);
     }
 
     it(
@@ -142,9 +240,9 @@ describe('the strict-clean fixture project', () => {
       FIXTURE_TIMEOUT_MS,
     );
 
-    it('fails when the edit touches the line of a legacy violation', () => {
+    it('fails when the edit changes the line of a legacy violation, and says why', () => {
       const { exitCode, stdoutText } = runDifference('touched', (text) =>
-        text.replace('] as', ']  as'),
+        text.replace('string[];', 'string[], extra = 1;'),
       );
 
       expect(stdoutText).toBe(
@@ -153,13 +251,43 @@ describe('the strict-clean fixture project', () => {
           '',
           'Quality gate summary',
           '✖ 1 new enforceable violation',
-          '  eslint-lint/no-restricted-syntax src/main/legacy.ts:2',
-          '    Do not assert with `as`. Narrow the value (a discriminated union check or a zod parse) or give it the correct type at its source. `as const` is allowed. If this is intended, add {"rule":"no-restricted-syntax","paths":["src/main/legacy.ts"],"reason":"..."} to "exceptions" in nitpicker.config.json.',
+          `  eslint-lint/no-restricted-syntax: Do not assert with \`as\`. Narrow the value (a discriminated union check or a zod parse) or give it the correct type at its source. \`as const\` is allowed. ${EDITED_LINE_SENTENCE}`,
+          '    src/main/legacy.ts:2:24',
+          '    If this is intended, add {"rule":"no-restricted-syntax","paths":["src/main/legacy.ts"],"reason":"..."} to "exceptions" in nitpicker.config.json.',
+          'Ran only: eslint-lint. Run nitpicker without --analyzer before you finish.',
           `Full diagnostics: ${sharedRoot}/reports/diff/report.txt`,
           '',
         ].join('\n'),
       );
       expect(exitCode).toBe(1);
+    });
+
+    it('holds a legacy line that the diff shows moved past unchanged code to the rule', () => {
+      const moved = newStrictLines('moved', {
+        'src/main/moved.ts': lines(DOUBLED, TOTAL, '', WIDENED, 'export { doubled };'),
+      });
+
+      expect(moved).toEqual(['src/main/moved.ts:4']);
+    });
+
+    it('keeps legacy findings baselined when the formatter rewrites the file', () => {
+      const formatted = newStrictLines('formatted', {
+        'src/main/messy.ts': lines(
+          "export const first = ['a'] as readonly string[];",
+          "export const second = ['b'] as readonly string[];",
+        ),
+      });
+
+      expect(formatted).toEqual([]);
+    });
+
+    it('reports a repeated finding on the line the change added, not on a legacy one', () => {
+      const repeated = newStrictLines('repeated', {
+        'src/main/repeated.ts': lines(RUN, LOG, '  log([]);', LOG, LOG, '}'),
+        'src/main/logged.ts': lines(LOGGED, LOGGED, 'console.info([]);', LOGGED),
+      });
+
+      expect(repeated.toSorted()).toEqual(['src/main/logged.ts:2', 'src/main/repeated.ts:5']);
     });
   });
 });

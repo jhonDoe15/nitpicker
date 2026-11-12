@@ -1,19 +1,17 @@
-import { spawnSync } from 'node:child_process';
-import { cpSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { cpSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { ingestSarifText } from '../../../../../../shared/ingest/sarif.mjs';
 import { applyFindingPolicy } from '../../../../../../shared/findings/finding-policy.mjs';
 import { compareFindings } from '../../../../../../core/diff/comparison/compare.mjs';
-import { applyRuleMessages } from '../../../../messages/rule-messages.mjs';
-import { INIT_SCRIPT } from '../../../../builds/java-build.mjs';
-import { writeRulesets } from '../../../tool-config/pmd-wrappers.mjs';
+import {
+  preparePmdProbe,
+  readPmdProbeFindings,
+  runPmdProbe,
+} from '../../test-support/pmd/pmd-probe.mjs';
 
 const enabled = process.env.NITPICKER_JAVA_E2E === '1';
 const gradle = process.env.NITPICKER_GRADLE ?? 'gradle';
 const fixtures = path.resolve(import.meta.dirname, '../../fixtures/pmd-categories');
-const ruleset = path.resolve(import.meta.dirname, '../../../../gradle/pmd-ruleset.xml');
 const categories = new Set([
   'AddEmptyString',
   'AppendCharacterWithChar',
@@ -58,79 +56,20 @@ let root;
 let findings;
 let shifted;
 
-function scopedRulesets() {
-  const { mainRuleset, testsRuleset } = writeRulesets({
-    module: {
-      sourceRoots: [path.join(root, 'src/main/java')],
-      testSourceRoots: [path.join(root, 'src/test/java')],
-    },
-    reportDir: root,
-    configs: { pmd: {} },
-    spring: false,
-  });
-  return [ruleset, mainRuleset, testsRuleset].join(',');
-}
-
-function prepare() {
-  root = mkdtempSync(path.join(tmpdir(), 'nitpicker-pmd-categories-'));
-  const version = /^\s*pmd\s*:\s*'([^']+)'/mu.exec(readFileSync(INIT_SCRIPT, 'utf8'))[1];
-  const sources = path.join(root, 'src');
-  writeFileSync(path.join(root, 'settings.gradle'), "rootProject.name = 'pmd-categories'\n");
-  writeFileSync(
-    path.join(root, 'build.gradle'),
-    `plugins { id 'java' }
-repositories { mavenCentral() }
-configurations { probe }
-dependencies {
-  probe 'net.sourceforge.pmd:pmd-cli:${version}'
-  probe 'net.sourceforge.pmd:pmd-java:${version}'
-}
-tasks.register('pmdProbe', JavaExec) {
-  classpath = configurations.probe
-  mainClass = 'net.sourceforge.pmd.cli.PmdCli'
-  args 'check', '--no-cache', '--no-progress', '--format', 'sarif',
-    '--report-file', 'pmd.sarif', '--dir', ${JSON.stringify(sources)},
-    '--rulesets', ${JSON.stringify(scopedRulesets())}
-  ignoreExitValue = true
-}
-`,
-  );
-  for (const role of ['main', 'test']) {
-    const directory = path.join(root, 'src', role, 'java/demo');
-    mkdirSync(directory, { recursive: true });
-    cpSync(fixtures, directory, { recursive: true });
-  }
-}
-
-function readFindings() {
-  const report = readFileSync(path.join(root, 'pmd.sarif'), 'utf8');
-  return applyRuleMessages(ingestSarifText(report, { tool: 'pmd', root }).findings);
-}
-
-function runPmd() {
-  const result = spawnSync(gradle, ['--console=plain', '--quiet', 'pmdProbe'], {
-    cwd: root,
-    encoding: 'utf8',
-    timeout: 180_000,
-  });
-  expect({ status: result.status, signal: result.signal, error: result.error }).toEqual({
-    status: 0,
-    signal: null,
-    error: undefined,
-  });
-}
-
 describe.skipIf(!enabled)('pinned PMD additional categories', () => {
   beforeAll(() => {
-    prepare();
-    runPmd();
-    findings = readFindings();
+    root = preparePmdProbe('pmd-categories');
+    for (const role of ['main', 'test']) {
+      cpSync(fixtures, path.join(root, 'src', role, 'java/demo'), { recursive: true });
+    }
+    runPmdProbe(root, gradle);
+    findings = readPmdProbeFindings(root);
     for (const role of ['main', 'test']) {
       const file = path.join(root, 'src', role, 'java/demo/Banned.java');
       writeFileSync(file, `\n\n\n\n\n${readFileSync(file, 'utf8')}`);
     }
-    runPmd();
-    shifted = readFindings();
+    runPmdProbe(root, gradle);
+    shifted = readPmdProbeFindings(root);
   });
 
   afterAll(() => {

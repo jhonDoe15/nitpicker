@@ -49,7 +49,7 @@ function readIniLine(line, sections, state) {
 export function parseIni(text) {
   const sections = new Map();
   const state = { options: undefined, key: undefined };
-  for (const raw of text.split(/\r?\n/)) {
+  for (const raw of text.split(/\r\n?|\n/u)) {
     readIniLine(raw.replace(INI_COMMENT, ''), sections, state);
   }
   return sections;

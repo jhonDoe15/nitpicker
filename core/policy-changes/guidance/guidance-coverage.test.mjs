@@ -32,8 +32,8 @@ function synthetic(base, head, options = {}) {
   return policyChangeFields(base, head, scope);
 }
 
-function gitBacked({ base, head, config }) {
-  return () => between({ base, head, config });
+function gitBacked({ base, head, config, baseConfig = config }) {
+  return () => between({ base, head, config, baseConfig });
 }
 
 const exception = { rule: 'nitpicker/no-comments', paths: ['src/legacy/**'], reason: 'Legacy' };
@@ -42,12 +42,11 @@ const slowTimeouts = {
 };
 
 const FIXTURES = {
-  'entry-point': () => synthetic({}, { layout: { entryPoints: ['src/a.ts'] } }),
-  'python-entry-point': () =>
+  'imported-entry-point': () =>
     synthetic(
-      { preset: 'python', python: { sourceRoots: ['src'] } },
-      { preset: 'python', python: { sourceRoots: ['src'], entryPoints: ['src/jobs.py'] } },
-      { files: ['src/jobs.py'] },
+      {},
+      { layout: { entryPoints: ['src/**'] } },
+      { scope: { importedBy: (files) => files } },
     ),
   exception: () => synthetic({}, { exceptions: [exception] }),
   exclusion: () => synthetic({}, { exclude: ['src/vendor/**'] }),
@@ -143,6 +142,12 @@ const FIXTURES = {
     head: { 'config/pmd/ruleset.xml': '<ruleset a="2"/>', 'src/main/java/A.java': 'class A {}\n' },
     config: { preset: 'java', tools: { pmd: PROJECT } },
   }),
+  'tool-config-opt-in': gitBacked({
+    base: { 'config/pmd/ruleset.xml': '<ruleset a="1"/>', 'src/main/java/A.java': 'class A {}\n' },
+    head: { 'config/pmd/ruleset.xml': '<ruleset a="1"/>', 'src/main/java/A.java': 'class A {}\n' },
+    baseConfig: { preset: 'java' },
+    config: { preset: 'java', tools: { pmd: PROJECT } },
+  }),
   'test-timeout': () => synthetic({}, slowTimeouts),
   'test-timeout-invalid': () =>
     synthetic({}, { tools: { tests: { timeouts: { defaults: { testTimeoutMs: -1 } } } } }),
@@ -162,12 +167,20 @@ const FIXTURES = {
     synthetic({ preset: 'kotlin' }, { preset: 'kotlin', kotlin: { formatter: 'none' } }),
   'kotlin-detekt-config': () =>
     synthetic({ preset: 'kotlin' }, { preset: 'kotlin', kotlin: { detektConfig: 'detekt.yml' } }),
+  'go-formatters-dropped': () =>
+    synthetic({ preset: 'go', go: { formatters: ['gofumpt'] } }, { preset: 'go' }),
+  'go-build-tags-dropped': () =>
+    synthetic({ preset: 'go', go: { buildTags: ['integration'] } }, { preset: 'go' }),
   'tool-precedence': () => synthetic({}, { tools: { prettier: PROJECT } }),
+  'protocols-loosened': () =>
+    synthetic({ protocols: [{ type: 'Session', open: ['begin'], close: ['commit'] }] }, {}),
   'spring-roles-shrank': () =>
     synthetic(
       { preset: 'java', spring: { roles: { service: ['com.example.UseCase'] } } },
       { preset: 'java' },
     ),
+  'detached-work-runner-added': () =>
+    synthetic({}, { conventions: { 'typescript.detachedWorkRunners': ['runDetached'] } }),
 };
 
 const VARIANTS = [
@@ -220,10 +233,13 @@ describe('policy guidance kinds', () => {
       const fields = run();
 
       expect(fields.policyLoosenings.length).toBeGreaterThan(0);
-      for (const text of fields.policyLoosenings) {
-        expect(typeof fields.policyKinds[text], text).toBe('string');
-        expect(hasSpecificGuidance(fields.policyKinds[text]), text).toBe(true);
-      }
+      expect(
+        fields.policyLoosenings.map((text) => [
+          text,
+          typeof fields.policyKinds[text],
+          hasSpecificGuidance(fields.policyKinds[text]),
+        ]),
+      ).toEqual(fields.policyLoosenings.map((text) => [text, 'string', true]));
       expect(fields.policyLoosenings.map((text) => fields.policyKinds[text])).toContain(kind);
     },
   );
@@ -233,18 +249,19 @@ describe('policy guidance kinds', () => {
   });
 
   it('carries the kind to the finding, which words its message with that guidance', () => {
-    const fields = FIXTURES['entry-point']();
+    const fields = FIXTURES.exception();
     const [finding] = policyFindings(fields.policyLoosenings, 'd1e2f3a4b5c6', {
       kinds: fields.policyKinds,
     });
 
-    expect(finding.policyKind).toBe('entry-point');
+    expect(finding.policyKind).toBe('exception');
     expect(finding.message).toBe(
       [
-        `${fields.policyLoosenings[0]}. ${POLICY_GUIDANCE['entry-point']}`,
+        `${fields.policyLoosenings[0]}. ${POLICY_GUIDANCE.exception}`,
         'If the policy change is intended, stop and ask a person reviewing this change:',
         'only they accept exactly these loosenings, with --accept-policy-change=d1e2f3a4b5c6',
-        'at an interactive terminal or NITPICKER_ACCEPT_POLICY_CHANGE=d1e2f3a4b5c6 in CI.',
+        'at an interactive terminal, NITPICKER_ACCEPT_POLICY_CHANGE=d1e2f3a4b5c6 in CI,',
+        'or the accept-policy-change label of a GitHub pull request, with the nitpicker approval workflow.',
       ].join(' '),
     );
   });

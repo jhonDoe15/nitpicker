@@ -62,14 +62,25 @@ describe('nitpicker with "preset": "kotlin" and function structure', () => {
         identity: 'function:sum:occurrence:1:source:88a9edab7be3d0a022e4137e',
         message:
           'sum grew from 4 to 5 parameters (limit 3). Group related parameters into one object instead of adding another. If this is intended, add {"rule":"function-parameters-limit","paths":["src/main/kotlin/demo/Wide.kt"],"function":"sum","reason":"..."} to "exceptions" in nitpicker.config.json.',
+        allowedForm: 'Group related parameters into one object instead of adding another.',
+        exception: {
+          rule: 'function-parameters-limit',
+          paths: ['src/main/kotlin/demo/Wide.kt'],
+          function: 'sum',
+          reason: '...',
+        },
+        exceptionList: 'exceptions',
         classification: 'enforceable',
         symbol: 'sum',
+        anchor: { key: expect.stringMatching(/^function:parameters:text:/u) },
         location: { line: 3 },
         ratchet: {
           key: 'function:sum:occurrence:1:parameters',
+          declarationKey: expect.stringMatching(/^function:\w+:declaration:\w+:parameters$/u),
           value: 5,
           worseMessage:
             'sum grew from {base} to 5 parameters (limit 3). Group related parameters into one object instead of adding another. If this is intended, add {"rule":"function-parameters-limit","paths":["src/main/kotlin/demo/Wide.kt"],"function":"sum","reason":"..."} to "exceptions" in nitpicker.config.json.',
+          worseAllowedForm: 'Group related parameters into one object instead of adding another.',
           heldMessage:
             'sum: 5 parameters (limit 3), allowed because base was {base}; any increase fails.',
         },
@@ -98,14 +109,24 @@ describe('nitpicker with "preset": "kotlin" and function structure', () => {
         identity: 'function:product:occurrence:1:source:4028b70dcfd552e455558543',
         message:
           'product has 4 parameters; limit is 3. If this is intended, add {"rule":"function-parameters-limit","paths":["src/main/kotlin/demo/Wide.kt"],"function":"product","reason":"..."} to "exceptions" in nitpicker.config.json.',
+        exception: {
+          rule: 'function-parameters-limit',
+          paths: ['src/main/kotlin/demo/Wide.kt'],
+          function: 'product',
+          reason: '...',
+        },
+        exceptionList: 'exceptions',
         classification: 'enforceable',
         symbol: 'product',
+        anchor: { key: expect.stringMatching(/^function:parameters:text:/u) },
         location: { line: 5 },
         ratchet: {
           key: 'function:product:occurrence:1:parameters',
+          declarationKey: expect.stringMatching(/^function:\w+:declaration:\w+:parameters$/u),
           value: 4,
           worseMessage:
             'product grew from {base} to 4 parameters (limit 3). Group related parameters into one object instead of adding another. If this is intended, add {"rule":"function-parameters-limit","paths":["src/main/kotlin/demo/Wide.kt"],"function":"product","reason":"..."} to "exceptions" in nitpicker.config.json.',
+          worseAllowedForm: 'Group related parameters into one object instead of adding another.',
           heldMessage:
             'product: 4 parameters (limit 3), allowed because base was {base}; any increase fails.',
         },
@@ -140,6 +161,15 @@ describe('nitpicker with "preset": "kotlin" and function structure', () => {
           'This code repeats src/main/kotlin/demo/Right.kt:3 (46 lines). Keep one copy and call it from both places. If the repetition is intended, add src/main/kotlin/demo/Left.kt or src/main/kotlin/demo/Right.kt to "exclude" in nitpicker.config.json.',
         classification: 'enforceable',
         location: { line: 3 },
+        ratchet: {
+          key: 'pair:src/main/kotlin/demo/Left.kt|src/main/kotlin/demo/Right.kt:clone',
+          value: 283,
+          divisible: true,
+          mustKeepUnchangedLines: [
+            { path: 'src/main/kotlin/demo/Left.kt', startLine: 3, endLine: 48 },
+            { path: 'src/main/kotlin/demo/Right.kt', startLine: 3, endLine: 48 },
+          ],
+        },
       },
     ]);
   });
@@ -165,6 +195,15 @@ describe('nitpicker with "preset": "kotlin" and function structure', () => {
           'This code repeats src/main/kotlin/demo/Parcel.kt:3 (17 lines). Keep one copy and call it from both places. If the repetition is intended, add src/main/kotlin/demo/Invoice.kt or src/main/kotlin/demo/Parcel.kt to "exclude" in nitpicker.config.json.',
         classification: 'enforceable',
         location: { line: 3 },
+        ratchet: {
+          key: 'pair:src/main/kotlin/demo/Invoice.kt|src/main/kotlin/demo/Parcel.kt:clone',
+          value: 131,
+          divisible: true,
+          mustKeepUnchangedLines: [
+            { path: 'src/main/kotlin/demo/Invoice.kt', startLine: 3, endLine: 19 },
+            { path: 'src/main/kotlin/demo/Parcel.kt', startLine: 3, endLine: 19 },
+          ],
+        },
       },
     ]);
   });

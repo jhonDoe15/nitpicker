@@ -2,6 +2,7 @@ import { spawnSync } from 'node:child_process';
 import { readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
+import { AGGREGATE_USAGE_TEXT } from '../../help/usage-text.mjs';
 import { runAggregateCli } from './aggregate-shards.mjs';
 import { fileURLToPath } from 'node:url';
 import { captureOutput } from '../reporting/test-support/output-capture.mjs';
@@ -39,14 +40,50 @@ describe('quality shard aggregation command', () => {
 
     expect(exitCode).toBe(1);
     expect(output.stdoutText).toEqual(`
-\u001b[1m\u001b[31mQuality gate summary\u001b[0m
-\u001b[1m\u001b[31m✖ 1 new enforceable violation\u001b[0m
-  \u001b[33monly/example\u001b[0m src/main/example.ts
-    example finding
-\u001b[2mFull diagnostics: ${fixture.outputRoot}/report.txt\u001b[0m
+Quality gate summary
+✖ 1 new enforceable violation
+  only/example: example finding
+    src/main/example.ts
+Full diagnostics: ${fixture.outputRoot}/report.txt
 `);
     expect(output.stdoutText).not.toContain('Per-tool counts:');
     expect(output.stderrText).toBe('');
+  });
+  it('writes the job summary and annotations of the combined run on GitHub Actions', () => {
+    const fixture = createFixture();
+    writeShard(fixture.inputRoot, 0, {
+      tools: ['only'],
+      findings: [
+        {
+          tool: 'only',
+          rule: 'example',
+          path: 'src/main/example.ts',
+          identity: 'example',
+          message: 'example finding',
+          classification: 'enforceable',
+        },
+      ],
+    });
+    const summaryPath = path.join(path.dirname(fixture.inputRoot), 'summary.md');
+    const output = captureOutput();
+
+    runAggregateCli({
+      arguments_: ['--input-root', 'shards', '--shard-count', '1', '--output', 'combined'],
+      currentProjectRoot: path.dirname(fixture.inputRoot),
+      analyzers: [analyzer('only')],
+      stdout: output.stdout,
+      stderr: output.stderr,
+      environment: { GITHUB_ACTIONS: 'true', GITHUB_STEP_SUMMARY: summaryPath },
+    });
+
+    expect(output.stdoutText.split('\n').filter((line) => line.startsWith('::'))).toEqual([
+      '::error file=src/main/example.ts,title=only/example::example finding',
+    ]);
+    expect(readFileSync(summaryPath, 'utf8').split('\n').slice(0, 3)).toEqual([
+      '## nitpicker',
+      '',
+      '**✖ 1 new enforceable finding**',
+    ]);
   });
   it.each([
     ['findings plus a tool error', true, true, 1],
@@ -144,8 +181,6 @@ Full diagnostics: ${fixture.outputRoot}/report.txt
     );
 
     expect(result.status, result.stderr).toBe(0);
-    expect(result.stdout).toBe(
-      'Usage: node core/diff/sharding/aggregate-shards.mjs --input-root <directory> --shard-count <count> [--output <directory>] [--policy-root <directory>]\n',
-    );
+    expect(result.stdout).toBe(AGGREGATE_USAGE_TEXT);
   });
 });

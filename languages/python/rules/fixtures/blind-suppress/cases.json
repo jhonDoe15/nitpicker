@@ -1,0 +1,8 @@
+[
+  {
+    "name": "suppress of Exception names the expected exception",
+    "tool": "python-rules",
+    "rule": "blind-suppress",
+    "mention": "contextlib.suppress(KeyError)"
+  }
+]

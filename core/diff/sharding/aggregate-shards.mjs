@@ -3,7 +3,13 @@ import path from 'node:path';
 import { configuredAnalyzers } from '../../../languages/typescript/preset/diff/configured-analyzers.mjs';
 import { planAnalyzerShards } from './sharding.mjs';
 import { resolveMetadata } from './metadata.mjs';
-import { readAndValidateShard, validateCommonSummaries, commonSummary } from './read-shards.mjs';
+import {
+  readAndValidateShard,
+  readUnchangedShards,
+  validateCommonSummaries,
+  commonSummary,
+} from './read-shards.mjs';
+import { noChangesReport } from '../comparison/results.mjs';
 import { sortByToolAndPath, policyHash, summaryFields } from '../reporting/report-model.mjs';
 import {
   writeDiffReports,
@@ -12,13 +18,26 @@ import {
 } from '../reporting/reporters.mjs';
 import { parseArguments } from './arguments.mjs';
 import { GitCommandError, runGit } from '../git/repository/command.mjs';
-import { resolveProjectRoot } from '../../tooling/tool-resolution.mjs';
+import { resolveProjectRoot } from '../../configuration/project-checks/project-root.mjs';
 import { pathToFileURL } from 'node:url';
 import { loadConfig, describeConfigOverrides } from '../../configuration/config.mjs';
 import { configureAnalyzers } from '../../configuration/configure-analyzers.mjs';
 import { presetAnalyzers } from '../../configuration/preset-analyzers.mjs';
 import { resolveHeadPolicy } from '../../../languages/typescript/preset/head-policy.mjs';
 import { renderConsoleSummary } from '../reporting/summary.mjs';
+import { AGGREGATE_USAGE_TEXT } from '../../help/usage-text.mjs';
+import {
+  TROUBLESHOOTING_ANCHORS,
+  withTroubleshooting,
+} from '../../../shared/messages/troubleshooting.mjs';
+import { writeGithubOutput } from '../reporting/github/emit.mjs';
+import { describeError } from '../../../shared/messages/error-chain.mjs';
+import {
+  colorEnabled,
+  displayPath,
+  withoutAnsi,
+} from '../../../shared/messages/terminal/terminal-text.mjs';
+import { comparisonExitCode } from '../reporting/failing-tests/failing-tests.mjs';
 
 function resolvePolicyRoot({ policyRoot, optionsPolicyRoot, currentProjectRoot }) {
   if (policyRoot !== undefined) {
@@ -37,13 +56,20 @@ export function aggregateShardReports({
   liveProjectRoot,
   policyRoot,
   configOverrides = [],
+  warn,
 }) {
   const plan = planAnalyzerShards(analyzers, shardCount);
+  const unchangedShards = readUnchangedShards(inputRoot, plan.length);
+  if (unchangedShards !== undefined) {
+    const report = unchangedReport(unchangedShards, { analyzers, configOverrides });
+    return writeAggregate(report, { outputRoot, liveProjectRoot });
+  }
   const analyzerResolutionErrors = resolveMetadata({
     analyzers,
     liveProjectRoot,
     policyRoot,
     inputRoot,
+    warn,
   });
   const shardReports = plan.map((shardAnalyzers, index) =>
     readAndValidateShard(inputRoot, index, shardAnalyzers),
@@ -68,21 +94,40 @@ export function aggregateShardReports({
     toolErrors: sortByToolAndPath(toolErrors),
     notes: sortByToolAndPath(notes),
   };
-  report.text = writeDiffReports(outputRoot, report, {
-    projectPath: projectPathOf(liveProjectRoot),
-  });
+  return writeAggregate(report, { outputRoot, liveProjectRoot });
+}
+
+function writeAggregate(report, { outputRoot, liveProjectRoot }) {
+  report.text = writeDiffReports(outputRoot, report, repositoryLocationOf(liveProjectRoot));
   return report;
 }
 
-function projectPathOf(liveProjectRoot) {
+function unchangedReport(shards, { analyzers, configOverrides }) {
+  const report = noChangesReport({
+    analyzers,
+    configOverrides,
+    comparison: commonSummary(shards[0].summary),
+    startedAt: Date.now(),
+    additionalToolErrors: sortByToolAndPath(shards.flatMap(({ toolErrors }) => toolErrors)),
+  });
+  report.summary.elapsedMs = Math.max(...shards.map(({ summary }) => summary.elapsedMs));
+  return report;
+}
+
+function repositoryLocationOf(liveProjectRoot) {
   if (liveProjectRoot === undefined) {
-    return undefined;
+    return {};
   }
   try {
-    return runGit(liveProjectRoot, ['rev-parse', '--show-prefix']).trim();
+    const [repositoryRoot, projectPath] = runGit(liveProjectRoot, [
+      'rev-parse',
+      '--show-toplevel',
+      '--show-prefix',
+    ]).split('\n');
+    return { projectPath, repositoryRoot };
   } catch (error) {
     if (error instanceof GitCommandError) {
-      return undefined;
+      return {};
     }
     throw error;
   }
@@ -118,10 +163,7 @@ export function runAggregateCli({
   try {
     const options = parseArguments(arguments_);
     if (options.kind === 'help') {
-      stdout.write(
-        'Usage: node core/diff/sharding/aggregate-shards.mjs --input-root <directory>' +
-          ' --shard-count <count> [--output <directory>] [--policy-root <directory>]\n',
-      );
+      stdout.write(AGGREGATE_USAGE_TEXT);
       return 0;
     }
     currentProjectRoot =
@@ -136,17 +178,27 @@ export function runAggregateCli({
       outputRoot,
       analyzers,
       policyRoot,
+      warn: (message) => stderr.write(`nitpicker: ${message}\n`),
     });
-    return reportExitCode(report, { stdout, environment, outputRoot });
+    return reportExitCode(report, {
+      stdout,
+      stderr,
+      environment,
+      outputRoot,
+      currentProjectRoot,
+      details: options.details,
+    });
   } catch (error) {
     if (outputRoot !== undefined) {
       clearDiffReports(outputRoot);
     }
-    stderr.write(
-      `Quality shard aggregation failed: ${error instanceof Error ? error.message : String(error)}\n`,
-    );
+    stderr.write(`Quality shard aggregation failed: ${aggregationFailure(error)}\n`);
     return 2;
   }
+}
+
+function aggregationFailure(error) {
+  return withTroubleshooting(describeError(error), TROUBLESHOOTING_ANCHORS.shardAggregationFails);
 }
 
 function analyzerExclusions(analyzers) {
@@ -154,7 +206,13 @@ function analyzerExclusions(analyzers) {
 }
 
 function mergeEntries(shardReports, property) {
-  return shardReports.flatMap((report) => report[property]);
+  return shardReports
+    .flatMap((report) => report[property])
+    .map((entry) =>
+      typeof entry?.message === 'string'
+        ? { ...entry, message: withoutAnsi(entry.message) }
+        : entry,
+    );
 }
 
 const invokedPath = process.argv[1];
@@ -194,7 +252,10 @@ function aggregateSummary({ shardReports, analyzers, configOverrides, newFinding
   };
 }
 
-function configuredReport(options, { currentProjectRoot, outputRoot, analyzers, policyRoot }) {
+function configuredReport(
+  options,
+  { currentProjectRoot, outputRoot, analyzers, policyRoot, warn },
+) {
   const config = loadConfig(currentProjectRoot);
   return aggregateShardReports({
     inputRoot: path.resolve(currentProjectRoot, options.inputRoot),
@@ -207,6 +268,7 @@ function configuredReport(options, { currentProjectRoot, outputRoot, analyzers, 
     configOverrides: describeConfigOverrides(config),
     shardCount: options.shardCount,
     liveProjectRoot: currentProjectRoot,
+    warn,
     policyRoot: resolvePolicyRoot({
       policyRoot,
       optionsPolicyRoot: options.policyRoot,
@@ -215,15 +277,24 @@ function configuredReport(options, { currentProjectRoot, outputRoot, analyzers, 
   });
 }
 
-function reportExitCode(report, { stdout, environment, outputRoot }) {
+function reportExitCode(
+  report,
+  { stdout, stderr, environment, outputRoot, currentProjectRoot, details },
+) {
   stdout.write(
     renderConsoleSummary(report, {
-      color: environment.NO_COLOR === undefined,
-      diagnosticsPath: absoluteTextReportPath(outputRoot),
+      color: colorEnabled(stdout, environment),
+      details,
+      diagnosticsPath: displayPath(absoluteTextReportPath(outputRoot)),
     }),
   );
-  if (report.summary.newEnforceableFindings > 0) {
-    return 1;
-  }
-  return report.summary.overallStatus === 'completed' ? 0 : 2;
+  writeGithubOutput({
+    kind: 'diff',
+    report,
+    projectRoot: currentProjectRoot,
+    environment,
+    stdout,
+    stderr,
+  });
+  return comparisonExitCode(report);
 }

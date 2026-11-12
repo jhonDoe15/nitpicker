@@ -4,6 +4,9 @@ import path from 'node:path';
 import { importClosure } from '../../../shared/import-closure.mjs';
 import { RULES_TOOL } from '../rules/rule-hints.mjs';
 import { createToolContext, mutationVersions, toolVersions } from './python-tools.mjs';
+import { TEST_CONSOLE_TOOL } from './test-results/console-output.mjs';
+import { FACTS_TOOL } from './facts/python-facts.mjs';
+import { mutationScopeArguments } from '../../../core/tooling/runner-arguments.mjs';
 
 export const PYTHON_ANALYZER_NAME = 'python';
 export const MUTATION_ANALYZER_NAME = 'mutation';
@@ -57,7 +60,7 @@ function resolveVersion(liveProjectRoot, versions, { settings, probes }) {
 }
 
 function pythonInvocation(settings, part) {
-  return ({ projectRoot, liveProjectRoot, toolRoot }) => ({
+  return ({ projectRoot, liveProjectRoot, toolRoot, baselineMovesFile, mutationScope }) => ({
     command: process.execPath,
     args: [
       runnerPath,
@@ -70,6 +73,10 @@ function pythonInvocation(settings, part) {
       ...(Object.keys(settings).length === 0
         ? []
         : ['--python-settings', JSON.stringify(settings)]),
+      ...(part === PYTHON_ANALYZER_NAME && baselineMovesFile !== undefined
+        ? ['--baseline-moves-file', baselineMovesFile]
+        : []),
+      ...(part === MUTATION_ANALYZER_NAME ? mutationScopeArguments(mutationScope) : []),
     ],
     cwd: toolRoot,
   });
@@ -78,6 +85,7 @@ function pythonInvocation(settings, part) {
 function pythonAnalyzer(settings, probes) {
   return {
     name: PYTHON_ANALYZER_NAME,
+    publishesModuleImports: true,
     version: UNRESOLVED_VERSION,
     resolveVersion: (liveProjectRoot) =>
       resolveVersion(liveProjectRoot, toolVersions, { settings, probes }),
@@ -100,6 +108,8 @@ function pythonAnalyzer(settings, probes) {
       'import-linter',
       'tests',
       'test-runtime',
+      TEST_CONSOLE_TOOL,
+      FACTS_TOOL,
       'dependencies',
     ],
     timeoutMs: ANALYZER_TIMEOUT_MS,

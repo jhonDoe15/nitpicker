@@ -15,7 +15,7 @@ const SUPERTYPE_CALL = /^\s*[A-Z][\w.]*\s*(?:<[^>]*>\s*)?\(/;
 const SUITE = /@(?:Suite|SelectClasses|SelectPackages|RunWith|Cucumber\w*|IncludeEngines)\b/;
 const FUNCTION_MODIFIERS = 'private|public|internal|protected|override|suspend|open';
 const FUNCTION = new RegExp(
-  String.raw`(^|\n)([ \t]*)((?:(?:${FUNCTION_MODIFIERS})\s+)*)fun\s+(\`[^\`]+\`|[A-Za-z_]\w*)\s*\(\s*\)(?:\s*:\s*Unit\b)?\s*\{`,
+  String.raw`(^|\n)([ \t]*)((?:(?:${FUNCTION_MODIFIERS})\s+)*)fun\s+(\`[^\`]+\`|[A-Za-z_]\w*)\s*\(\s*\)(?:\s*:\s*Unit)?\s*\{`,
   'g',
 );
 const TEST_NAME = /^`.+`$|^test[A-Z_]|^should[A-Z_]/;
@@ -35,7 +35,7 @@ const TEST_FRAMEWORK = new RegExp(
   'm',
 );
 
-export const TEST_MESSAGES = {
+const TEST_MESSAGES = {
   TestClassWithoutTestCases:
     'Add @Test functions to the class, or rename it if it is a helper (for example `TestInputGenerator` becomes `InputGenerator`): a test class without tests never runs.',
   DetachedTestCase:
@@ -107,3 +107,9 @@ export function testHelpersInSource(scanned) {
         },
       ];
 }
+
+export const kotlinSourceRules = {
+  messages: TEST_MESSAGES,
+  main: [testHelpersInSource],
+  test: [testClassesWithoutTests],
+};

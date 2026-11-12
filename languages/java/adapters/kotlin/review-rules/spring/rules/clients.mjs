@@ -47,7 +47,7 @@ const THIS = /^this\./u;
 const TEMPLATE_NAME = /template/iu;
 const PACKAGE = /^[a-z_]\w*(?:\.[a-z_]\w*)*$/u;
 
-function constructorName(invocation) {
+export function constructorName(invocation) {
   if (invocation.assign === true || invocation.index === true) {
     return undefined;
   }

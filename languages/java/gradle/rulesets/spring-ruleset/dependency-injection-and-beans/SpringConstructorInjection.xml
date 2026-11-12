@@ -1,0 +1,19 @@
+  <rule name="SpringConstructorInjection" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
+        message="Inject through the constructor into private final fields. Do not put @Autowired, @Inject, @Resource or @Value on fields or setters.">
+    <priority>2</priority>
+    <properties><property name="xpath"><value><![CDATA[
+(
+  //FieldDeclaration/ModifierList/Annotation
+  | //MethodDeclaration/ModifierList/Annotation
+)[pmd-java:typeIs('org.springframework.beans.factory.annotation.Autowired')
+  or (pmd-java:typeIs('jakarta.inject.Inject') or pmd-java:typeIs('javax.inject.Inject'))
+  or (pmd-java:typeIs('jakarta.annotation.Resource') or pmd-java:typeIs('javax.annotation.Resource'))
+  or (pmd-java:typeIs('org.springframework.beans.factory.annotation.Value')
+      and (parent::ModifierList/parent::FieldDeclaration
+           or parent::ModifierList/parent::MethodDeclaration[not(ModifierList/Annotation[pmd-java:typeIs('org.springframework.context.annotation.Bean')])]))]
+|
+//ConstructorDeclaration[count(../ConstructorDeclaration) = 1]/ModifierList/Annotation[
+  pmd-java:typeIs('org.springframework.beans.factory.annotation.Autowired')
+  or (pmd-java:typeIs('jakarta.inject.Inject') or pmd-java:typeIs('javax.inject.Inject'))]
+]]></value></property></properties>
+  </rule>

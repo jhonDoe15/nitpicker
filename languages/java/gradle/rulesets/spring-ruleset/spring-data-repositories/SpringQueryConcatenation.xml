@@ -1,0 +1,57 @@
+  <rule name="SpringQueryConcatenation" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
+        message="Write the query as constant text (a text block) and pass values as bind parameters; for a list of values use NamedParameterJdbcTemplate or JdbcClient with in (:ids). Joining or formatting values into SQL or JPQL allows injection. A column name chosen from a fixed list can be intended.">
+    <priority>1</priority>
+    <properties><property name="xpath"><value><![CDATA[
+let $scope := function($node) {
+  $node/ancestor::*[self::MethodDeclaration or self::ConstructorDeclaration or self::Initializer or self::FieldDeclaration][1]
+},
+    $parts := function($expression) {
+  $expression/descendant-or-self::*[not(self::InfixExpression[@Operator = '+'])]
+    [every $up in ancestor::*[exists(ancestor-or-self::*[. is $expression])] satisfies $up[self::InfixExpression[@Operator = '+']]]
+},
+    $constant := function($node) {
+  exists($node[self::StringLiteral or self::NumericLiteral or self::CharLiteral or self::BooleanLiteral
+    or self::VariableAccess[matches(@Name, '^[A-Z][A-Z0-9_]*$')] or self::FieldAccess[matches(@Name, '^[A-Z][A-Z0-9_]*$')]
+    or self::ConditionalExpression[*[2][self::StringLiteral]][*[3][self::StringLiteral]]
+    or self::MethodCall[@MethodName = 'join'][*[1][pmd-java:typeIs('java.lang.String')]]
+      [ArgumentList[count(*) = 2]/*[2][self::MethodCall[@MethodName = 'nCopies'][ArgumentList/*[2][self::StringLiteral[@ConstValue = '?']]]]]
+    or self::MethodCall[@MethodName = ('format', 'formatted')][*[1][pmd-java:typeIs('java.lang.String')]]
+      [every $argument in ArgumentList/* satisfies $argument[self::StringLiteral or self::NumericLiteral]]])
+},
+    $fixedLocal := function($node) {
+  exists($node[self::VariableAccess]) and (
+    let $name := $node/@Name, $within := $scope($node),
+        $values := $within//VariableDeclarator[VariableId/@Name = $name]/*[2]
+    return exists($values) and empty($within//AssignmentExpression[*[1][@Name = $name]])
+      and (every $value in $values satisfies (every $part in $parts($value) satisfies $constant($part))))
+},
+    $dynamic := function($expression) {
+  some $part in $parts($expression) satisfies not($constant($part) or $fixedLocal($part))
+},
+    $built := function($expression) {
+  ($expression[self::InfixExpression[@Operator = '+']] and $dynamic($expression))
+  or exists($expression[self::MethodCall[not($constant(.))]
+    [@MethodName = ('format', 'formatted', 'concat', 'replace', 'join') and *[1][pmd-java:typeIs('java.lang.String')]
+     or @MethodName = 'format' and *[1][pmd-java:typeIs('java.text.MessageFormat')]]
+    [some $argument in (ArgumentList/*, *[1][not(self::TypeExpression)]) satisfies $dynamic($argument)]])
+  or exists($expression[self::MethodCall[@MethodName = 'toString']
+    [*[1][pmd-java:typeIs('java.lang.StringBuilder') or pmd-java:typeIs('java.lang.StringBuffer')]]
+    [some $piece in ($scope(.)//MethodCall[@MethodName = 'append']/ArgumentList/*,
+        $scope(.)//ConstructorCall[ClassType[pmd-java:typeIs('java.lang.StringBuilder') or pmd-java:typeIs('java.lang.StringBuffer')]]/ArgumentList/*)
+     satisfies $dynamic($piece)]])
+}
+return //MethodCall[
+    (@MethodName = ('createQuery', 'createNativeQuery') and *[1][(pmd-java:typeIs('jakarta.persistence.EntityManager') or pmd-java:typeIs('javax.persistence.EntityManager'))])
+    or (@MethodName = ('query', 'queryForList', 'queryForObject', 'queryForMap', 'queryForRowSet', 'queryForStream', 'update', 'execute', 'batchUpdate')
+        and *[1][pmd-java:typeIs('org.springframework.jdbc.core.JdbcOperations')
+          or pmd-java:typeIs('org.springframework.jdbc.core.namedparam.NamedParameterJdbcOperations')])
+    or (@MethodName = 'sql' and *[1][pmd-java:typeIs('org.springframework.jdbc.core.simple.JdbcClient')])]
+  /ArgumentList/*[1][
+    $built(.)
+    or self::VariableAccess[let $name := @Name, $within := $scope(.)
+      return some $value in ($within//VariableDeclarator[VariableId/@Name = $name]/*[2],
+          $within//AssignmentExpression[@Operator = '='][*[1][@Name = $name]]/*[2])
+        satisfies $built($value)
+      or (some $value in $within//AssignmentExpression[@Operator = '+='][*[1][@Name = $name]]/*[2] satisfies $dynamic($value))]]
+]]></value></property></properties>
+  </rule>

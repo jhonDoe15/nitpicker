@@ -43,13 +43,13 @@ afterAll(() => {
   for (const root of roots) rmSync(root, { recursive: true, force: true });
 });
 
-function findings(options) {
+async function findings(options) {
   const root = createProject('nitpicker-oxlint-conventions-', {
     'policy.mjs': policy(options),
     ...SOURCES,
   });
   roots.push(root);
-  return lintProject({ root, patterns: ['src/**/*.ts'] }).flatMap((result) =>
+  return (await lintProject({ root, patterns: ['src/**/*.ts'] })).flatMap((result) =>
     result.messages.map(({ ruleId, line }) => ({
       file: path.relative(root, result.filePath),
       ruleId,
@@ -61,8 +61,8 @@ function findings(options) {
 describe('convention-driven rules on the default oxlint engine', () => {
   it.each(['separate-type-imports', 'inline-type-imports'])(
     'accepts both type import forms with fixStyle %s and flags only the value import',
-    (fixStyle) => {
-      expect(findings({ fixStyle, casing: 'kebab-case' })).toEqual([
+    async (fixStyle) => {
+      expect(await findings({ fixStyle, casing: 'kebab-case' })).toEqual([
         { file: 'src/snake/odd-one.ts', ruleId: 'nitpicker/file-name-casing', line: 1 },
         {
           file: 'src/valueStyle.ts',
@@ -74,12 +74,90 @@ describe('convention-driven rules on the default oxlint engine', () => {
     },
   );
 
-  it('checks file names against the configured casing and the folder majority', () => {
-    expect(findings({ fixStyle: 'separate-type-imports', casing: 'camelCase' })).toEqual([
+  it('checks file names against the configured casing and the folder majority', async () => {
+    expect(await findings({ fixStyle: 'separate-type-imports', casing: 'camelCase' })).toEqual([
       { file: 'src/inline-style.ts', ruleId: 'nitpicker/file-name-casing', line: 1 },
       { file: 'src/separate-style.ts', ruleId: 'nitpicker/file-name-casing', line: 1 },
       { file: 'src/snake/odd-one.ts', ruleId: 'nitpicker/file-name-casing', line: 1 },
       { file: 'src/valueStyle.ts', ruleId: '@typescript-eslint/consistent-type-imports', line: 1 },
     ]);
   });
+});
+
+function decoratorPolicy() {
+  return `import tseslint from ${JSON.stringify(import.meta.resolve('typescript-eslint'))};
+
+export default [
+  {
+    files: ['src/**/*.ts'],
+    languageOptions: {
+      parser: tseslint.parser,
+      parserOptions: { project: './tsconfig.json', tsconfigRootDir: import.meta.dirname },
+    },
+    plugins: { '@typescript-eslint': tseslint.plugin },
+    rules: { '@typescript-eslint/consistent-type-imports': 'error' },
+  },
+];
+`;
+}
+
+async function decoratorRun(compilerOptions) {
+  const root = createProject('nitpicker-oxlint-decorators-', {
+    'policy.mjs': decoratorPolicy(),
+    'tsconfig.json': JSON.stringify({ compilerOptions, include: ['src'] }),
+    'src/store.ts': 'export type Store = { size: number };\n',
+    'src/cats.ts': [
+      "import { Store } from './store';",
+      'function Injectable() {',
+      '  return (target: object) => target;',
+      '}',
+      '@Injectable()',
+      'export class Cats {',
+      '  constructor(private readonly store: Store) {}',
+      '}',
+      '',
+    ].join('\n'),
+    'src/sizes.ts':
+      "import { Store } from './store';\nexport const size = (store: Store) => store.size;\n",
+  });
+  roots.push(root);
+  const residualRuns = [];
+  const results = await lintProject({
+    root,
+    patterns: ['src/**/*.ts'],
+    runEslintCli: (files, environment) => {
+      residualRuns.push({ files, rules: JSON.parse(environment.NITPICKER_DIFF_ESLINT_ONLY_RULES) });
+      return [];
+    },
+  });
+  const ruleIds = results.flatMap((result) =>
+    result.messages.map(({ ruleId }) => `${path.relative(root, result.filePath)}:${ruleId}`),
+  );
+  return { ruleIds, residualRuns };
+}
+
+describe('type imports where the compiler emits decorator metadata', () => {
+  it('runs the type import rule of decorated files through ESLint, which knows the metadata', async () => {
+    const run = await decoratorRun({ experimentalDecorators: true, emitDecoratorMetadata: true });
+
+    expect(run).toEqual({
+      ruleIds: ['src/sizes.ts:@typescript-eslint/consistent-type-imports'],
+      residualRuns: [
+        { files: ['src/cats.ts'], rules: ['@typescript-eslint/consistent-type-imports'] },
+      ],
+    });
+  });
+
+  it.each([{}, { experimentalDecorators: true }, { emitDecoratorMetadata: true }])(
+    'keeps the rule on oxlint with compiler options %j',
+    async (compilerOptions) => {
+      expect(await decoratorRun(compilerOptions)).toEqual({
+        ruleIds: [
+          'src/cats.ts:@typescript-eslint/consistent-type-imports',
+          'src/sizes.ts:@typescript-eslint/consistent-type-imports',
+        ],
+        residualRuns: [],
+      });
+    },
+  );
 });
