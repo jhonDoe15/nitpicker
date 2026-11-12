@@ -1,4 +1,5 @@
 import path from 'node:path';
+import { parsedJsonc } from '../../../jsonc/jsonc.mjs';
 import { readSource } from '../../migrations/revision-graph.mjs';
 
 const CONFIG_FILE = /^sqlc\.(?:ya?ml|json)$/u;
@@ -9,14 +10,11 @@ const ESCAPED = /[.+^${}()|\\]/gu;
 const MYSQL_ENGINE = 'mysql';
 
 function parsedConfig(file, text, parseYaml) {
-  if (file.endsWith('.json')) {
-    try {
-      return JSON.parse(text);
-    } catch {
-      return undefined;
-    }
+  if (!file.endsWith('.json')) {
+    return parseYaml?.(text)[0];
   }
-  return parseYaml?.(text)[0];
+  const parsed = parsedJsonc(text);
+  return parsed.kind === 'json' ? parsed.value : undefined;
 }
 
 function configEntries(config) {
@@ -55,17 +53,24 @@ function isSchemaFile(file) {
   return SQL_FILE.test(base) && !DOWN_FILE.test(base) && !base.startsWith('.');
 }
 
+function configTargets(projectRoot, file, parseYaml) {
+  const text = readSource(projectRoot, file);
+  const config = text === undefined ? undefined : parsedConfig(file, text, parseYaml);
+  return configEntries(config).map(({ engine, schema }) => ({
+    checked: engine !== MYSQL_ENGINE,
+    matchers: schema.map((each) => targetMatcher(path.posix.dirname(file), each)),
+  }));
+}
+
 export function sqlcSchemaFiles(projectRoot, files, parseYaml) {
   const sqlFiles = files.filter(isSchemaFile);
+  const targets = files
+    .filter((name) => CONFIG_FILE.test(path.posix.basename(name)))
+    .flatMap((file) => configTargets(projectRoot, file, parseYaml));
   const found = new Map();
-  for (const file of files.filter((name) => CONFIG_FILE.test(path.posix.basename(name)))) {
-    const text = readSource(projectRoot, file);
-    const config = text === undefined ? undefined : parsedConfig(file, text, parseYaml);
-    for (const { engine, schema } of configEntries(config)) {
-      const matchers = schema.map((each) => targetMatcher(path.posix.dirname(file), each));
-      for (const sqlFile of sqlFiles.filter((name) => matchers.some((matches) => matches(name)))) {
-        found.set(sqlFile, found.get(sqlFile) === false ? false : engine !== MYSQL_ENGINE);
-      }
+  for (const { checked, matchers } of targets) {
+    for (const sqlFile of sqlFiles.filter((name) => matchers.some((matches) => matches(name)))) {
+      found.set(sqlFile, found.get(sqlFile) !== false && checked);
     }
   }
   return {

@@ -20,7 +20,11 @@ function isUpMigration(file) {
   return isMigrationFile(file) && !DOWN_FILE.test(file) && graphCandidate(file)?.kind !== 'django';
 }
 
-function schemaFiles(projectRoot, files, parseYaml, kindOf = () => undefined) {
+function anyKind() {
+  return 'unknown';
+}
+
+function schemaFiles({ projectRoot, files, parseYaml }, kindOf) {
   const sqlc = sqlcSchemaFiles(projectRoot, files, parseYaml);
   const migrations = files
     .filter(isUpMigration)
@@ -58,7 +62,7 @@ function finding({ path, key, line, message }) {
   };
 }
 
-function indexHint(file, table, columns, declared) {
+function indexHint({ file, declared }, table, columns) {
   if (declared) {
     return `Add \`CREATE INDEX ON ${table} (${columns})\` to the schema.`;
   }
@@ -83,7 +87,7 @@ function migrationFinding({ file, text, declared }, foreignKey, ordinal) {
     message: [
       `${file} ${declared ? 'declares' : 'adds'} a foreign key on ${foreignKey.table} (${columns}) (line ${String(line)})`,
       `and no ${declared ? 'schema file' : 'migration'} creates an index that starts with it.`,
-      indexHint(file, foreignKey.table, columns, declared),
+      indexHint({ file, declared }, foreignKey.table, columns),
     ].join(' '),
   });
 }
@@ -115,14 +119,16 @@ function prismaFinding(relation) {
 }
 
 export function migratesForeignKeys(projectRoot, files, parseYaml) {
-  return migrationSchemas(projectRoot, schemaFiles(projectRoot, files, parseYaml), parseYaml).some(
-    ({ schema }) => schema.foreignKeys.length > 0,
-  );
+  return migrationSchemas(
+    projectRoot,
+    schemaFiles({ projectRoot, files, parseYaml }, anyKind),
+    parseYaml,
+  ).some(({ schema }) => schema.foreignKeys.length > 0);
 }
 
 export function foreignKeyIndexFindings(tool, { projectRoot, files, parseYaml }) {
   const kindOf = databaseKinds(projectRoot, files);
-  const entries = schemaFiles(projectRoot, files, parseYaml, kindOf);
+  const entries = schemaFiles({ projectRoot, files, parseYaml }, kindOf);
   const schemas = migrationSchemas(projectRoot, entries, parseYaml);
   const indexes = schemas.flatMap(({ schema }) => schema.indexes);
   const migrations = schemas.flatMap((entry) => fileFindings(entry, indexes));

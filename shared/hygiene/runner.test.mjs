@@ -219,6 +219,7 @@ describe('the hygiene configuration hash', () => {
       'hygiene/schema/statements/changelog-statements.mjs',
       'hygiene/schema/statements/sql-statements.mjs',
       'hygiene/tracked-files.mjs',
+      'jsonc/jsonc.mjs',
       'messages/docs-url.mjs',
       'messages/error-chain.mjs',
       'messages/exception-sentence.mjs',

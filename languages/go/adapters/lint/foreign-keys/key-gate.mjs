@@ -7,8 +7,9 @@ import { yamlDocuments } from '../../../../../core/tooling/yaml/yaml-documents.m
 
 const TOOL = 'go-rules';
 const RULE = 'unindexed-foreign-key';
-const TURNED_OFF =
-  /\b(?:DisableForeignKeyConstraintWhenMigrating|IgnoreRelationshipsWhenMigrating)\s*:\s*true\b|\bWithForeignKeys\s*\(\s*false\s*\)/u;
+const GORM_OFF =
+  /\b(?:DisableForeignKeyConstraintWhenMigrating|IgnoreRelationshipsWhenMigrating)\s*:\s*true\b/u;
+const ENT_OFF = /\bWithForeignKeys\s*\(\s*false\s*\)/u;
 
 function isForeignKey(entry) {
   return entry.tool === TOOL && entry.rule === RULE;
@@ -21,7 +22,10 @@ function isSourceFile(file) {
 function constraintsTurnedOff(projectRoot) {
   return schemaProjectFiles(projectRoot)
     .filter(isSourceFile)
-    .some((file) => TURNED_OFF.test(readSource(projectRoot, file) ?? ''));
+    .some((file) => {
+      const text = readSource(projectRoot, file) ?? '';
+      return GORM_OFF.test(text) || ENT_OFF.test(text);
+    });
 }
 
 export function withoutGatedForeignKeys(projectRoot, entries) {
