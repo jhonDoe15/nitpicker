@@ -1,7 +1,10 @@
+import { WARNING, withoutRaceReports } from '../race/race-reports.mjs';
+
 const OUTCOMES = { pass: 'passed', fail: 'failed', skip: 'skipped' };
+const RUNNER_LINE = /^(?:=== |--- |FAIL\b|ok\b|PASS$|coverage: )/u;
 const PACKAGE_SUFFIX = / \[[^\]]+\]$/u;
 
-function parseLines(text) {
+export function parseEventLines(text) {
   return text.split(/\r?\n/u).flatMap((line) => {
     if (!line.startsWith('{')) {
       return [];
@@ -57,21 +60,37 @@ function unfinishedOutput(events, outputs, packageName) {
     .join('');
 }
 
+export function meaningfulLines(output) {
+  return output
+    .split(/\r?\n/u)
+    .map((line) => line.trim())
+    .filter((line) => line !== '' && !RUNNER_LINE.test(line));
+}
+
 function failureOf(event, { events, outputs }) {
   const packageName = packageOf(event);
   const own = outputs.get(`${packageName}\0${event.Test ?? ''}`) ?? '';
+  const output =
+    event.Test === undefined ? `${unfinishedOutput(events, outputs, packageName)}${own}` : own;
   return {
     id: event.Test === undefined ? packageName : `${packageName}.${event.Test}`,
     package: packageName,
     test: event.Test,
-    output:
-      event.Test === undefined ? `${unfinishedOutput(events, outputs, packageName)}${own}` : own,
+    output: withoutRaceReports(output),
   };
+}
+
+function outputEntries(outputs) {
+  return [...outputs].map(([key, output]) => {
+    const [packageName, test] = key.split('\0');
+    return { package: packageName, test, output };
+  });
 }
 
 function hasFailingSubtest(failure, failures) {
   return (
     failure.test !== undefined &&
+    meaningfulLines(failure.output).length === 0 &&
     failures.some(
       (other) =>
         other.package === failure.package && other.test?.startsWith(`${failure.test}/`) === true,
@@ -80,9 +99,10 @@ function hasFailingSubtest(failure, failures) {
 }
 
 export function parseTestEvents(text) {
-  const events = parseLines(text);
+  const events = parseEventLines(text);
   const builds = failedBuilds(events);
   const outputs = outputsOf(events);
+  const entries = outputEntries(outputs);
   const finished = events.filter(({ Action }) => Object.hasOwn(OUTCOMES, Action));
   const tests = finished
     .filter(({ Test }) => Test !== undefined)
@@ -104,10 +124,8 @@ export function parseTestEvents(text) {
       .filter((failure) => !hasFailingSubtest(failure, failures))
       .map(({ id, package: packageName, output }) => ({ id, package: packageName, output })),
     buildFailures: [...builds].sort(),
-    outputs: [...outputs].map(([key, output]) => {
-      const [packageName, test] = key.split('\0');
-      return { package: packageName, test, output };
-    }),
+    outputs: entries,
+    raceOutputs: entries.filter(({ output }) => output.includes(WARNING)),
     testsRan: events.some(({ Action }) => Action === 'run'),
   };
 }
